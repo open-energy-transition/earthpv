@@ -185,13 +185,20 @@ def build_chips(
             "training. Add local composites under local_root or use the STAC path."
         )
     region_dir = Path(settings.raw["local_root"]) / source_region
+    # Two-season stack: chips get [base 10 bands, contrast-window 10 bands]. When the
+    # AOI's composed cells already carry composite_1 the stack is read locally;
+    # otherwise (germany: single-layer rooftopsenti COGs) the contrast season is
+    # fetched per chip from STAC on the base window's exact grid.
+    stack_window = tuple(cfg["stack_window"]) if cfg.get("stack_window") else None
     # Imagery: prefer composites built by the `compose` stage for this AOI (mirrors
     # infer.py) — e.g. punjab trains on its composed cells with pakistan_500 labels.
     composed = Path("data/composites") / aoi
+    fetch_contrast = False
     if composed.exists() and any(composed.glob("composites/*/composite_0.tif")):
-        comp_idx = CompositeIndex(composed)
+        comp_idx = CompositeIndex(composed, layers=2 if stack_window else 1)
     else:
         comp_idx = CompositeIndex(region_dir)
+        fetch_contrast = stack_window is not None
     coverage = comp_idx.coverage
     labels = load_solar_labels(region_dir)
     labels = labels[labels.geometry.centroid.within(coverage)].reset_index(drop=True)
@@ -204,11 +211,15 @@ def build_chips(
     rng = np.random.default_rng(42)
     centers = sample_chip_centers(labels, coverage, rng, limit)
     val_tiles = set(cfg.get("val_tiles", []))
-    log.info("Sampling %d chips (%s)", len(centers), centers.kind.value_counts().to_dict())
+    log.info(
+        "Sampling %d chips (%s)%s", len(centers), centers.kind.value_counts().to_dict(),
+        f", contrast window {stack_window} via {'STAC' if fetch_contrast else 'local layers'}"
+        if stack_window else "",
+    )
 
-    n_bands = len(MODEL_BANDS)
-    records = []
-    for _, row in tqdm(centers.iterrows(), total=len(centers), desc="chips"):
+    n_bands = len(MODEL_BANDS) * (2 if stack_window else 1)
+
+    def _build_one(row) -> dict | None:
         cid = _chip_id(row.lon, row.lat)
         img_path = out_dir / "images" / f"{cid}.tif"
         mask_path = out_dir / "masks" / f"{cid}.tif"
@@ -217,27 +228,59 @@ def build_chips(
             if not (img_path.exists() and mask_path.exists()):
                 res = comp_idx.read_window(_chip_bbox(row.lon, row.lat))
                 if res is None:
-                    continue
+                    return None
                 arr, transform, crs = res
-                arr = arr[:n_bands]  # composites store exactly the 10 local bands
+                arr = arr[:n_bands if not fetch_contrast else len(MODEL_BANDS)]
                 arr, ox, oy = _crop(arr, CHIP_SIZE)
                 # Shift the geotransform to the cropped top-left so the mask aligns
                 transform = transform * rasterio.Affine.translation(ox, oy)
+                if fetch_contrast:
+                    from odc.geo.geobox import GeoBox
+
+                    from earthpv.imagery import annual_composite
+
+                    gbox = GeoBox((CHIP_SIZE, CHIP_SIZE), transform, crs)
+                    cres = annual_composite(
+                        _chip_bbox(row.lon, row.lat), date_range=stack_window,
+                        geobox=gbox, max_cloud=60,
+                    )
+                    contrast = (
+                        cres[0] if cres is not None
+                        else np.zeros_like(arr[: len(MODEL_BANDS)])
+                    )
+                    if cres is None:
+                        log.warning("chip %s: no contrast-season scenes, zero-filled", cid)
+                    arr = np.concatenate([arr, contrast.astype(arr.dtype)], axis=0)
                 win_labels = labels[labels.geometry.intersects(_bbox_poly(row.lon, row.lat))]
                 mask = _burn_mask(win_labels, transform, crs, arr.shape[-2:])
                 _write_tif(img_path, arr, transform, crs, "uint16")
                 _write_tif(mask_path, mask.astype("int16"), transform, crs, "int16")
         except Exception as e:  # noqa: BLE001 — one bad chip must not kill the run
             log.warning("chip %s failed: %s", cid, e)
-            continue
+            return None
         with rasterio.open(mask_path) as m:
             band = m.read(1)
         split = "val" if tile in val_tiles else "train"
-        records.append(
-            dict(chip_id=cid, lon=row.lon, lat=row.lat, kind=row.kind, tile=tile,
-                 split=split, pv_pixels=int((band == 1).sum()),
-                 image=str(img_path), mask=str(mask_path))
-        )
+        return dict(chip_id=cid, lon=row.lon, lat=row.lat, kind=row.kind, tile=tile,
+                    split=split, pv_pixels=int((band == 1).sum()),
+                    image=str(img_path), mask=str(mask_path))
+
+    rows = [row for _, row in centers.iterrows()]
+    records = []
+    if fetch_contrast:
+        # STAC-bound: overlap the network waits. Searches are serialized inside
+        # annual_composite; the COG reads parallelize.
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            for rec in tqdm(ex.map(_build_one, rows), total=len(rows), desc="chips"):
+                if rec:
+                    records.append(rec)
+    else:
+        for row in tqdm(rows, desc="chips"):
+            rec = _build_one(row)
+            if rec:
+                records.append(rec)
 
     index = pd.DataFrame(records)
     index_path = out_dir / "index.parquet"

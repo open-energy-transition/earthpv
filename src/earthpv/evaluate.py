@@ -18,7 +18,7 @@ import rasterio.warp
 from rasterio import features as rio_features
 from shapely.geometry import box
 
-from earthpv.config import MODEL_BANDS, Settings
+from earthpv.config import Settings
 from earthpv.labels import geodesic_area_m2, resolve_aoi
 from earthpv.local_source import load_solar_labels
 
@@ -54,13 +54,14 @@ def evaluate(aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3
     task = SemanticSegmentationTask.load_from_checkpoint(checkpoint, map_location="cpu").eval()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     task = task.to(device)
-    n_bands = len(MODEL_BANDS)
+    # Chips carry the model's full input (10 bands, or 20 for a two-season stack);
+    # feed all of them rather than truncating to the single-season band count.
 
     tp = fp = fn = 0
     detected, missed = [], []  # areas of GT installations
     for _, row in val.iterrows():
         with rasterio.open(row["image"]) as src:
-            arr = src.read()[:n_bands].astype("float32")
+            arr = src.read().astype("float32")
             transform, crs, shape = src.transform, src.crs, (src.height, src.width)
             chip_geo = box(*rasterio.warp.transform_bounds(crs, "EPSG:4326", *src.bounds))
         x = torch.from_numpy(arr / 10000.0)[None].to(device)

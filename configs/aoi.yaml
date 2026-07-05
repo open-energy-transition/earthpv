@@ -27,6 +27,10 @@ aois:
     # MGRS tiles held out for validation (geographic split). Must be tiles that are
     # actually downloaded; these two (SW Germany) are in the local composite set.
     val_tiles: [32TQT, 32TPT]
+    # Two-season stack: local composite_0 is summer (Apr–Sep); the model also gets a
+    # winter contrast layer fetched per chip from STAC on the base grid. PV is
+    # spectrally stable across both while vegetation/roofs swing -> small-array signal.
+    stack_window: ["2025-11-01", "2026-03-15"]
   # Inference target + PK training source (chips read data/composites/punjab)
   punjab:
     bbox: [69.30, 27.70, 75.40, 34.05]
@@ -34,6 +38,10 @@ aois:
     source_region: pakistan_500         # Punjab tiles are a subset of the PK download
     # Composed-cell names held out for validation (chips stage tags split by cell)
     val_tiles: ["0050_0036", "0036_0036"]
+    # composite_0 is dry-season (Nov–Mar, smog-prone over the cities); the contrast
+    # layer is the clear post-monsoon window — this is the item-2 imagery fix folded
+    # into the stack, so the model sees the clear season AND the temporal contrast.
+    stack_window: ["2025-09-20", "2025-11-15"]
   # Country-wide inference: compose + infer over every building-populated cell.
   # grid_origin anchors the cell grid to punjab's (boundary total_bounds origin,
   # full precision) so punjab's already-composited cells are reused by renaming.
@@ -42,6 +50,7 @@ aois:
     division: { name: Pakistan, country: PK, subtype: country }
     source_region: pakistan_500
     grid_origin: [69.3405158324398, 27.7089663393252]
+    stack_window: ["2025-09-20", "2025-11-15"]
 
 seasons:
   spring: ["2025-03-01", "2025-05-31"]

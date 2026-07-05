@@ -43,10 +43,13 @@ pixi run -e ml earthpv compose --aoi punjab --min-buildings 1000
 # 4. Inference over Punjab (uses data/composites/punjab if present; building-screened)
 pixi run -e ml earthpv infer --aoi punjab --checkpoint data/models/<best>.ckpt
 
-# 5. Candidates: threshold -> polygons -> building join
+# 5. Candidates: threshold -> polygons -> building join + prior re-ranking.
+#    On first run, pulls VIDA Open Buildings (dense, imagery-derived) around the
+#    candidates and caches them under data/predictions/<aoi>/buildings/; falls back
+#    to the local Overture footprints when the AOI's country is unknown.
 pixi run earthpv postprocess --aoi punjab --threshold 0.3
 
-# 6. Export GeoParquet / GeoJSON / MapRoulette challenge
+# 6. Export GeoParquet / GeoJSON / MapRoulette challenge (queue ordered by rank_score)
 pixi run earthpv export --aoi punjab
 ```
 
@@ -64,38 +67,49 @@ bands); TerraMind's S2L2A patch-embed is subset to those 10 bands at load time.
 
 ## Result (TerraMind-tiny, GTX 1060)
 
-The detector targets **large rooftop arrays (≥ 1000 m²)** — `MIN_PV_AREA` in
-`chips.py` sets the positive threshold; smaller arrays are burned as *ignore*.
-Per-installation recall on held-out German MGRS tiles (threshold 0.3, recall-first):
+The detector targets **arrays ≥ 400 m²** — `MIN_PV_AREA` in `chips.py` sets the
+positive threshold (~4 Sentinel-2 pixels, the practical floor for per-pixel
+supervision at 10 m GSD); smaller arrays are burned as *ignore*. Training combines
+Germany (3189 chips) with Punjab, Pakistan (274 chips from the composed cells +
+`pakistan_500` OSM labels), merged by `scripts/merge_chip_index.py`.
+Per-installation recall (threshold 0.3, recall-first, checkpoint
+`v2_combined/terramind-pv-epoch=39`):
 
-| array size (m²) | recall |
-|-----------------|--------|
-| ≥ 1000 (target) | 0.79   |
-| 500 – 1000      | 0.93   |
-| 250 – 500       | 0.97   |
+| array size (m²) | Germany val | Punjab val |
+|-----------------|-------------|------------|
+| ≥ 1000          | 0.83        | 0.55       |
+| 500 – 1000      | 0.84        | 0.16       |
+| 250 – 500       | 0.95        | 0.14       |
 
-Pixel IoU 0.54, F1 0.70. A high FP rate is expected and acceptable — candidates are
-human-validated against high-res imagery in OSM. The signature learned on ≥1000 m²
-arrays transfers to smaller ones, but sub-500 m² detection is unreliable in practice
-(Sentinel-2's 10 m floor); use PlanetScope/VHR if small residential rooftops matter.
-Lower `MIN_PV_AREA` and switch the loss to Focal-Tversky to push smaller.
+Germany pixel IoU 0.51, F1 0.68; Punjab 0.29/0.45. A high FP rate is expected and
+acceptable — candidates are human-validated against high-res imagery in OSM. The
+Punjab numbers, while much weaker, are ~3× the Germany-only model (0.18 at ≥1000 m²):
+in-domain chips matter. The residual Punjab misses look imagery-limited (smog-season
+composites, mixed pixels, OSM label noise) — the model outputs near-zero probability
+on them even at threshold 0.05, and oversampling Punjab 4× did not help. Sub-500 m²
+detection remains unreliable at Sentinel-2's 10 m floor; use PlanetScope/VHR if small
+residential rooftops matter.
 
-## Punjab inference result
+## Pakistan inference result (country-wide)
 
-The local `rooftopsenti` composites cover Balochistan/Sindh, **not** Punjab, so Punjab
-imagery is built on demand with `earthpv compose` (Sentinel-2 dry-season median, ~12
-least-cloudy scenes per 0.1° cell). Rooftop PV only exists where there are roofs, so
-`compose` targets the building-populated cells (61 cells with ≥1000 buildings cover
-every major Punjab city). Compositing is network-bound (~2 min/cell on a clear link).
+The local `rooftopsenti` composites cover Balochistan/Sindh, **not** the populated
+east, so imagery is built on demand with `earthpv compose` (Sentinel-2 dry-season
+median, ~12 least-cloudy scenes per 0.1° cell). Rooftop PV only exists where there
+are roofs, so `compose` targets building-populated cells; the `pakistan` AOI covers
+**122 cells (≥1000 buildings each) spanning every major city in the country**. Its
+cell grid is anchored to punjab's via `grid_origin` in `configs/aoi.yaml`, so the 64
+cells composited for the earlier Punjab run were reused by hardlinking (only 58 new
+downloads). Compositing is network-bound (~1 min/cell on a clear link).
 
-A run over 45 composited cells (Multan/Bahawalpur up to the Rawalpindi belt, covering
-Lahore, Faisalabad, Gujranwala, Multan, Sargodha) produced **999 candidate arrays, 880
-of them ≥ 1000 m²** (median 3300 m², median confidence 0.98); the highest-confidence
-detections are large factory-roof arrays in Faisalabad's textile belt. The high
-`no_building` share is expected — the local building set is sparse for Punjab, and
-unmapped roofs are exactly the target. Outputs: `data/predictions/punjab/punjab_pv_*.{geoparquet,geojson}`
-plus a MapRoulette challenge. To extend to all 61 city cells, re-run `compose` (it skips
-finished cells) then `infer → postprocess → export`.
+The country-wide run (checkpoint `v2_combined/terramind-pv-epoch=39`, threshold 0.3)
+produced **1836 candidates: 1261 rooftop, 424 ground-adjacent, 151 no-building**
+(median merged-blob area ~11 500 m², median confidence 0.99). Spread: ~1200 in Punjab,
+470 around Karachi/Sindh, 119 Peshawar/KP, 103 Islamabad/Rawalpindi, 21 Quetta. 26 %
+intersect already-mapped OSM solar (a good sanity check); **~1360 are new leads** for
+validation. Outputs: `data/predictions/pakistan/pakistan_pv_*.{geoparquet,geojson}`
+plus a MapRoulette challenge. The VIDA building join uses a one-time 9.3 GB local
+download (`data/vida/PAK.parquet`) — country-scale candidate sets make remote
+row-group scans impractical (~5 h vs ~4 min locally).
 
 ## Avoiding tiling artefacts
 
@@ -109,6 +123,26 @@ spacing, both now fixed:
 - **Window seams.** `infer.py` overlap-adds windows with a 2D Hann taper into one seamless
   raster per cell, and uses a stride that is *not* a multiple of the 16 px ViT patch size so
   patch-edge effects decorrelate between neighbours.
+
+## Building prior & candidate re-ranking
+
+`postprocess` classifies each candidate against a footprint set in the candidates'
+local UTM zone, recording `building_overlap_frac` (share of the polygon sitting on a
+roof) and `building_dist_m` (gap to the nearest footprint). These feed a
+`building_prior` and a `rank_score = confidence × (0.5 + 0.5·prior)`; `export` orders
+the GeoParquet and the MapRoulette queue by `rank_score`. It stays recall-first —
+**nothing is dropped**, and a high-confidence detection with no nearby building (an
+unmapped roof or a ground-mount farm) still surfaces; the prior only re-orders triage
+so validators hit on-building detections first.
+
+The footprint set is **VIDA Google+Microsoft Open Buildings** (`src/earthpv/buildings.py`),
+which — unlike the Overture ≥ 500 m² local set — is imagery-derived and includes small,
+unmapped structures, so "no building within ~30 m" becomes a usable false-positive
+signal. It's fetched once per AOI, windowed to the candidate-containing 0.1° cells
+(the country file is ~76 M rows) and cached. Note: for a candidate set dominated by
+*large* arrays on already-mapped buildings, VIDA and the Overture set attribute nearly
+identically; VIDA's advantage shows most once `MIN_PV_AREA` is lowered to admit small
+residential roofs.
 
 ## Notes
 

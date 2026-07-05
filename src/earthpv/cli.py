@@ -40,11 +40,16 @@ def compose(
     out_dir: Path = typer.Option(Path("data/composites")),
     min_buildings: int = typer.Option(1000, help="Composite cells with >= this many buildings"),
     limit: int = typer.Option(0, help="Cap number of cells (0 = all)"),
+    window: str = typer.Option("", help="Date range 'YYYY-MM-DD:YYYY-MM-DD' (default: dry season)"),
+    index: int = typer.Option(0, help="Layer index; >0 writes composite_<i>.tif on the base grid"),
+    workers: int = typer.Option(1, help="Concurrent cells (I/O-bound; 4-6 is a good range)"),
 ) -> None:
     """Build S2 composites for building-populated cells of an AOI (STAC, resumable)."""
     from earthpv.compose import run_compose
 
-    run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit)
+    win = tuple(window.split(":")) if window else None
+    run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit,
+                window=win, index=index, workers=workers)
 
 
 @app.command()

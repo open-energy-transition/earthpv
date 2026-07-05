@@ -27,10 +27,16 @@ Bbox = tuple[float, float, float, float]
 
 
 class CompositeIndex:
-    """Spatial index over `composites/<TILE>/composite_0.tif` COGs of one region."""
+    """Spatial index over `composites/<TILE>/composite_0.tif` COGs of one region.
 
-    def __init__(self, region_dir: Path):
+    `layers=2` additionally reads each tile's `composite_1.tif` (a contrast-season
+    composite on the same grid) and returns the windows channel-stacked
+    [layer0 bands..., layer1 bands...]. Tiles missing composite_1 raise at read.
+    """
+
+    def __init__(self, region_dir: Path, layers: int = 1):
         self.region_dir = Path(region_dir)
+        self.layers = layers
         rows = []
         for tif in sorted(self.region_dir.glob("composites/*/composite_0.tif")):
             try:
@@ -49,22 +55,38 @@ class CompositeIndex:
         return self.index.union_all()
 
     def read_window(self, bbox: Bbox) -> tuple[np.ndarray, rasterio.Affine, CRS] | None:
-        """Read a 4326-bbox window; mosaics across tiles. Returns None if uncovered."""
+        """Read a 4326-bbox window; mosaics across tiles. Returns None if uncovered.
+
+        With layers=2 the result has both layers' bands stacked on axis 0.
+        """
         hits = self.index[self.index.intersects(box(*bbox))]
         if hits.empty:
             return None
         # Prefer a single tile that fully covers the bbox (cheap path)
         full = hits[hits.covers(box(*bbox))]
         paths = [full.iloc[0].path] if not full.empty else list(hits.path)
-        srcs = [rasterio.open(p) for p in paths]
-        try:
-            dst_crs = srcs[0].crs
-            wb = rasterio.warp.transform_bounds("EPSG:4326", dst_crs, *bbox)
-            arr, transform = rasterio.merge.merge(srcs, bounds=wb, nodata=0)
-            return arr, transform, dst_crs
-        finally:
-            for s in srcs:
-                s.close()
+        layer_arrays = []
+        transform = dst_crs = None
+        for layer in range(self.layers):
+            lpaths = [str(Path(p).with_name(f"composite_{layer}.tif")) for p in paths]
+            missing = [p for p in lpaths if not Path(p).exists()]
+            if missing:
+                raise FileNotFoundError(f"missing layer-{layer} composites: {missing[:3]}")
+            srcs = [rasterio.open(p) for p in lpaths]
+            try:
+                dst_crs = srcs[0].crs
+                wb = rasterio.warp.transform_bounds("EPSG:4326", dst_crs, *bbox)
+                arr, transform = rasterio.merge.merge(srcs, bounds=wb, nodata=0)
+                layer_arrays.append(arr)
+            finally:
+                for s in srcs:
+                    s.close()
+        if len(layer_arrays) > 1:
+            # Same grids by construction; guard off-by-one merge shapes.
+            h = min(a.shape[1] for a in layer_arrays)
+            w = min(a.shape[2] for a in layer_arrays)
+            layer_arrays = [a[:, :h, :w] for a in layer_arrays]
+        return np.concatenate(layer_arrays, axis=0), transform, dst_crs
 
 
 @lru_cache(maxsize=4)

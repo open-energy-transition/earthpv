@@ -89,11 +89,15 @@ def seasonal_composites(
     return out.fillna(0).astype("uint16")
 
 
+_SEARCH_LOCK = __import__("threading").Lock()
+
+
 def annual_composite(
     bbox: tuple[float, float, float, float],
     date_range: tuple[str, str] = ("2025-11-01", "2026-03-15"),
     max_cloud: int = 30,
     max_items: int = 12,
+    geobox=None,
 ) -> tuple[np.ndarray, object, object] | None:
     """Cloud-masked median over the 10 local bands (B02..B12), 10 m.
 
@@ -101,32 +105,42 @@ def annual_composite(
     season) to bound the download while keeping a clean median. Returns
     (array[10,H,W] uint16, transform, crs) in the bbox's UTM zone, or None if no
     usable scenes. Mirrors the rooftopsenti composite layout for downstream reuse.
+
+    `geobox` (odc.geo GeoBox) pins the output to an exact existing grid so a
+    contrast-season composite aligns pixel-perfectly with a base window; the STAC
+    search still uses `bbox`. The catalog search is serialized (pystac-client is
+    not thread-safe); the COG reads run concurrently fine.
     """
     from rasterio.crs import CRS
 
     bands = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
-    search = _catalog().search(
-        collections=["sentinel-2-l2a"], bbox=bbox,
-        datetime=f"{date_range[0]}/{date_range[1]}",
-        query={"eo:cloud_cover": {"lt": max_cloud}},
-    )
-    items = sorted(search.items(), key=lambda it: it.properties.get("eo:cloud_cover", 100))
+    with _SEARCH_LOCK:
+        search = _catalog().search(
+            collections=["sentinel-2-l2a"], bbox=bbox,
+            datetime=f"{date_range[0]}/{date_range[1]}",
+            query={"eo:cloud_cover": {"lt": max_cloud}},
+        )
+        items = sorted(search.items(), key=lambda it: it.properties.get("eo:cloud_cover", 100))
     if not items:
         return None
     items = items[:max_items]
     lon = (bbox[0] + bbox[2]) / 2
     lat = (bbox[1] + bbox[3]) / 2
     epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) / 6) + 1
+    grid = dict(geobox=geobox) if geobox is not None else dict(
+        bbox=bbox, resolution=10, crs=CRS.from_epsg(epsg)
+    )
     ds = odc.stac.load(
-        items, bands=[*bands, "SCL"], bbox=bbox, resolution=10, crs=CRS.from_epsg(epsg),
-        groupby="solar_day", chunks={"x": 2048, "y": 2048}, fail_on_error=False,
+        items, bands=[*bands, "SCL"], groupby="solar_day",
+        chunks={"x": 2048, "y": 2048}, fail_on_error=False, **grid,
     )
     valid = ds["SCL"].isin(_SCL_VALID)
     masked = ds[bands].where(valid)
     med = masked.median(dim="time", skipna=True).fillna(0).astype("uint16").compute()
     arr = np.stack([med[b].values for b in bands], axis=0)
     transform = med.odc.transform if hasattr(med, "odc") else med.rio.transform()
-    return arr, transform, CRS.from_epsg(epsg)
+    crs = geobox.crs if geobox is not None else CRS.from_epsg(epsg)
+    return arr, transform, crs
 
 
 def to_chip_array(ds: xr.Dataset, seasons: list[str]) -> np.ndarray:

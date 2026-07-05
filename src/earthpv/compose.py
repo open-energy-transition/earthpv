@@ -76,8 +76,25 @@ def populated_cells(aoi: str, cfg: dict, settings: Settings, min_buildings: int)
     return cells.sort_values("n", ascending=False).reset_index(drop=True)
 
 
-def run_compose(aoi: str, out_dir: Path, min_buildings: int = 1000, limit: int = 0) -> Path:
+def run_compose(
+    aoi: str,
+    out_dir: Path,
+    min_buildings: int = 1000,
+    limit: int = 0,
+    window: tuple[str, str] | None = None,
+    index: int = 0,
+    workers: int = 1,
+) -> Path:
+    """`window`/`index` build an extra seasonal layer (`composite_<index>.tif`, e.g.
+    a post-monsoon contrast season) into the same cell dirs as the base run.
+
+    `workers` > 1 composites cells concurrently. The work is I/O-bound (remote STAC
+    scene reads), so threads overlap the network waits for a near-linear speedup;
+    the STAC search is serialized internally (annual_composite) for thread safety.
+    """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if index > 0 and window is None:
+        raise ValueError("compose --index > 0 requires --window (the layer's date range)")
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     # Mirror the rooftopsenti layout (<region>/composites/<cell>/composite_0.tif) so
@@ -89,34 +106,62 @@ def run_compose(aoi: str, out_dir: Path, min_buildings: int = 1000, limit: int =
     cells = populated_cells(aoi, cfg, settings, min_buildings)
     if limit:
         cells = cells.head(limit)
-    log.info("Compositing %d cells (>= %d buildings) for %s", len(cells), min_buildings, aoi)
+    log.info("Compositing %d cells (>= %d buildings) for %s (%d workers)",
+             len(cells), min_buildings, aoi, workers)
 
-    done = 0
-    for _, cell in tqdm(cells.iterrows(), total=len(cells), desc="compose"):
+    def _one(cell) -> bool:
         name = f"{int(cell.ix):04d}_{int(cell.iy):04d}"
         cell_dir = out_dir / name
-        tif = cell_dir / "composite_0.tif"
+        tif = cell_dir / f"composite_{index}.tif"
         if tif.exists():
-            continue
+            return False
         bbox = (cell.lon0, cell.lat0, cell.lon0 + CELL_DEG, cell.lat0 + CELL_DEG)
         try:
-            res = annual_composite(bbox)
+            if index > 0:
+                # Pin the extra layer to the base layer's exact grid.
+                base = cell_dir / "composite_0.tif"
+                if not base.exists():
+                    log.warning("cell %s: no base composite for layer %d", name, index)
+                    return False
+                from odc.geo.geobox import GeoBox
+
+                with rasterio.open(base) as b:
+                    gbox = GeoBox((b.height, b.width), b.transform, b.crs)
+                res = annual_composite(bbox, date_range=window, geobox=gbox, max_cloud=60)
+            else:
+                res = annual_composite(bbox, date_range=window) if window else annual_composite(bbox)
         except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
             log.warning("cell %s failed: %s", name, e)
-            continue
+            return False
         if res is None:
             log.warning("cell %s: no scenes", name)
-            continue
+            return False
         arr, transform, crs = res
         cell_dir.mkdir(parents=True, exist_ok=True)
+        # Write to a temp then rename so a killed run never leaves a half-written COG
+        # that the resumable skip would treat as done.
+        tmp = tif.with_suffix(".tif.tmp")
         with rasterio.open(
-            tif, "w", driver="GTiff", width=arr.shape[2], height=arr.shape[1], count=arr.shape[0],
+            tmp, "w", driver="GTiff", width=arr.shape[2], height=arr.shape[1], count=arr.shape[0],
             dtype="uint16", crs=crs, transform=transform, compress="deflate", predictor=2,
         ) as dst:
             dst.write(arr)
             dst.descriptions = tuple(
                 ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
             )
-        done += 1
+        tmp.rename(tif)
+        return True
+
+    rows = [cell for _, cell in cells.iterrows()]
+    done = 0
+    if workers > 1:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for ok in tqdm(ex.map(_one, rows), total=len(rows), desc="compose"):
+                done += int(ok)
+    else:
+        for cell in tqdm(rows, desc="compose"):
+            done += int(_one(cell))
     log.info("Composited %d new cells -> %s", done, out_dir)
     return region_dir

@@ -56,6 +56,17 @@ def run_inference(
     # building-populated, and rooftop/ground attribution happens in postprocess.
     log.info("Inference on %s: %d composite cells", aoi, len(comp_idx.index))
 
+    # Two-season stack: model input is [composite_0 bands, composite_1 bands]; every
+    # cell must have the contrast layer (built by `compose --index 1`).
+    stacked = bool(cfg.get("stack_window"))
+    if stacked:
+        missing = [p for p in comp_idx.index.path
+                   if not (Path(p).parent / "composite_1.tif").exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"{len(missing)} cells missing composite_1.tif (e.g. {missing[:3]}); "
+                "run compose --index 1 --window <contrast season> first"
+            )
     out_dir = Path(out_dir) / aoi / "prob"
     out_dir.mkdir(parents=True, exist_ok=True)
     task, device = load_model(checkpoint)
@@ -74,6 +85,7 @@ def run_inference(
     windows_run = 0
     for tile_path in tqdm(tiles, desc="cells"):
         tile = Path(tile_path).parent.name
+        src1 = rasterio.open(Path(tile_path).parent / "composite_1.tif") if stacked else None
         with rasterio.open(tile_path) as src:
             H, W = src.height, src.width
             transform, crs = src.transform, src.crs
@@ -86,12 +98,16 @@ def run_inference(
             cols = sorted(set(list(range(0, max(W - CHIP_SIZE, 0) + 1, stride)) + [max(W - CHIP_SIZE, 0)]))
             for r in rows:
                 for c in cols:
-                    arr = src.read(
-                        window=Window(c, r, CHIP_SIZE, CHIP_SIZE), boundless=True, fill_value=0
-                    )[:n_bands]
+                    win = Window(c, r, CHIP_SIZE, CHIP_SIZE)
+                    arr = src.read(window=win, boundless=True, fill_value=0)[:n_bands]
                     h, w = min(CHIP_SIZE, H - r), min(CHIP_SIZE, W - c)
                     if (arr[:, :h, :w] > 0).mean() < 0.2:  # skip mostly-nodata windows
                         continue
+                    if src1 is not None:
+                        arr = np.concatenate(
+                            [arr, src1.read(window=win, boundless=True, fill_value=0)[:n_bands]],
+                            axis=0,
+                        )
                     x = torch.from_numpy(arr.astype("float32") / 10000.0)[None].to(device)
                     with torch.no_grad(), torch.autocast(device_type=device, enabled=device == "cuda"):
                         out = task(x)
@@ -110,6 +126,8 @@ def run_inference(
             crs=crs, transform=transform, compress="deflate", predictor=2,
         ) as dst:
             dst.write((np.clip(prob_full, 0, 1) * 255).astype("uint8"), 1)
+        if src1 is not None:
+            src1.close()
     log.info("Inference wrote %d seamless cell rasters (%d windows) -> %s",
              len(tiles), windows_run, out_dir)
     return out_dir
