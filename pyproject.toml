@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "earthpv"
+version = "0.1.0"
+description = "Rooftop solar PV detection from Sentinel-2 with TerraMind, Overture Maps and OSM labels"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+earthpv = "earthpv.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/earthpv"]
+
+[tool.ruff]
+line-length = 100

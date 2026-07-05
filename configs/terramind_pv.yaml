@@ -1,0 +1,48 @@
+# TerraTorch fine-tuning config for PV segmentation.
+# Validated end-to-end: terramind_v1_tiny loads pretrained S2L2A weights, subsets
+# the patch-embed to our 10 local bands, and the pyramidal-neck + UNet decoder
+# produces (B, 2, H, W) logits on a 6 GB GPU.
+
+data:
+  # Merged germany + punjab chip index (built by scripts/merge_chip_index.py)
+  index_path: data/chips/combined/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # terramind_v1_tiny fits the GTX 1060; bump to _small if a bigger GPU is used.
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  loss: dice
+  # Heavy class imbalance: tiny PV targets vs background.
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models
+patience: 8

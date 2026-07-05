@@ -1,0 +1,49 @@
+[workspace]
+name = "earthpv"
+authors = ["ly0n <tobiasaugspurger@gmail.com>"]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.11.*"
+
+# Default env: data pipeline (labels, imagery, chips, postprocess, export).
+# The heavy ML stack (torch cu126 + terratorch) lives in the `ml` feature so
+# data work doesn't wait on a multi-GB solve.
+[pypi-dependencies]
+earthpv = { path = ".", editable = true }
+duckdb = ">=1.1"
+geopandas = ">=1.0"
+pyarrow = ">=15"
+shapely = ">=2.0"
+rasterio = ">=1.3"
+rioxarray = "*"
+xarray = "*"
+odc-stac = "*"
+pystac-client = "*"
+planetary-computer = "*"
+typer = "*"
+pyyaml = "*"
+matplotlib = "*"
+tqdm = "*"
+
+[feature.ml.pypi-dependencies]
+# GTX 1060 (Pascal, sm_61): CUDA 13 dropped Pascal, so pin cu126 wheels.
+torch = { version = "==2.7.1", index = "https://download.pytorch.org/whl/cu126" }
+torchvision = { version = "==0.22.1", index = "https://download.pytorch.org/whl/cu126" }
+terratorch = ">=1.0"
+
+[environments]
+default = { solve-group = "default" }
+ml = { features = ["ml"], solve-group = "default" }
+
+[tasks]
+labels = "python -m earthpv.cli labels"
+chips = "python -m earthpv.cli chips"
+postprocess = "python -m earthpv.cli postprocess"
+export = "python -m earthpv.cli export"
+
+[feature.ml.tasks]
+train = "python -m earthpv.cli train"
+infer = "python -m earthpv.cli infer"
+gpu-check = "python -c 'import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))'"

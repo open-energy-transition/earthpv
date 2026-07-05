@@ -1,0 +1,50 @@
+# Areas of interest and label/chip parameters.
+overture_release: "2026-06-17.0"
+
+# Reuse Sentinel-2 composites + OSM/Overture labels already downloaded by the
+# sibling `rooftopsenti` project instead of re-fetching (see src/earthpv/local_source.py).
+# When a `source_region` dir exists, chips/inference read its composite COGs; the
+# STAC/Overture fetchers are the fallback for regions without local artifacts.
+local_root: /run/media/tobi/aidisc/rooftopsenti/data
+
+# Solar arrays smaller than this (m²) are kept in labels but flagged; the
+# headline target is >= 500 m².
+min_array_area_m2: 100.0
+# Fraction of a solar polygon that must fall on a building footprint to count as rooftop.
+rooftop_overlap_frac: 0.5
+# Buildings smaller than this footprint (m²) are ignored for chip screening.
+min_roof_area_m2: 200.0
+
+aois:
+  # Smoke-test tile: Freiburg im Breisgau + industrial outskirts (~12x11 km)
+  freiburg:
+    bbox: [7.70, 47.95, 7.90, 48.05]
+  # Training country
+  germany:
+    bbox: [5.866, 47.270, 15.042, 55.059]
+    division: { name: Deutschland, country: DE, subtype: country }
+    source_region: germany_500          # rooftopsenti data/<region> dir
+    # MGRS tiles held out for validation (geographic split). Must be tiles that are
+    # actually downloaded; these two (SW Germany) are in the local composite set.
+    val_tiles: [32TQT, 32TPT]
+  # Inference target + PK training source (chips read data/composites/punjab)
+  punjab:
+    bbox: [69.30, 27.70, 75.40, 34.05]
+    division: { name: Punjab, country: PK, subtype: region }
+    source_region: pakistan_500         # Punjab tiles are a subset of the PK download
+    # Composed-cell names held out for validation (chips stage tags split by cell)
+    val_tiles: ["0050_0036", "0036_0036"]
+  # Country-wide inference: compose + infer over every building-populated cell.
+  # grid_origin anchors the cell grid to punjab's (boundary total_bounds origin,
+  # full precision) so punjab's already-composited cells are reused by renaming.
+  pakistan:
+    bbox: [60.87, 23.80, 77.13, 37.09]
+    division: { name: Pakistan, country: PK, subtype: country }
+    source_region: pakistan_500
+    grid_origin: [69.3405158324398, 27.7089663393252]
+
+seasons:
+  spring: ["2025-03-01", "2025-05-31"]
+  summer: ["2025-06-01", "2025-08-31"]
+  autumn: ["2025-09-01", "2025-11-30"]
+  winter: ["2025-12-01", "2026-02-28"]
