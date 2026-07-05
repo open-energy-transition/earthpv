@@ -1,4 +1,6 @@
-# earthpv — rooftop solar detection from Sentinel-2
+# earthpv - rooftop solar detection from Sentinel-2
+
+⚠️ This is a prototype that is not intended for production or collaboration purposes. If you would like to use this project, please contact the main developer.  ⚠️
 
 Detects rooftop solar PV arrays (target ≥ ~500 m², smaller where possible) from
 Sentinel-2 L2A imagery by fine-tuning the open-source **TerraMind** geospatial
