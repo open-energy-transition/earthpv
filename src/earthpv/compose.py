@@ -21,7 +21,7 @@ from tqdm import tqdm
 from earthpv.config import Settings
 from earthpv.imagery import annual_composite
 from earthpv.labels import resolve_aoi
-from earthpv.local_source import load_buildings
+from earthpv.local_source import load_buildings, load_solar_labels
 
 log = logging.getLogger(__name__)
 
@@ -42,11 +42,48 @@ def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame |
     return None
 
 
-def populated_cells(aoi: str, cfg: dict, settings: Settings, min_buildings: int) -> pd.DataFrame:
-    """0.1 deg cells within the AOI that contain >= min_buildings, sorted by density.
+def _solar_label_cells(
+    cfg: dict,
+    settings: Settings,
+    minx: float,
+    miny: float,
+    bbox: tuple[float, float, float, float],
+    boundary: gpd.GeoDataFrame | None,
+) -> set[tuple[int, int]]:
+    """Cells (same grid/origin as populated_cells) that contain an OSM solar positive.
 
-    Buildings are clipped to the AOI polygon (not just its bbox) so neighbouring
-    provinces' cities in the shared building set don't leak in.
+    Building density finds *unknown* arrays for inference; these guarantee imagery
+    over *already-mapped* arrays so each becomes a trainable in-domain positive,
+    independent of local building density. Uses the same bbox + boundary clip as the
+    building pass so nothing outside the AOI leaks in.
+    """
+    region_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
+    labels = load_solar_labels(region_dir)
+    if labels is None or labels.empty:
+        return set()
+    pts = labels.geometry.representative_point()
+    xmin, ymin, xmax, ymax = bbox
+    inb = (pts.x >= xmin) & (pts.x <= xmax) & (pts.y >= ymin) & (pts.y <= ymax)
+    pts = gpd.GeoDataFrame(geometry=pts[inb].values, crs="EPSG:4326")
+    if boundary is not None and not pts.empty:
+        pts = gpd.sjoin(pts, boundary[["geometry"]], predicate="within", how="inner")
+    if pts.empty:
+        return set()
+    ix = np.floor((pts.geometry.x.values - minx) / CELL_DEG).astype(int)
+    iy = np.floor((pts.geometry.y.values - miny) / CELL_DEG).astype(int)
+    return set(zip(ix.tolist(), iy.tolist()))
+
+
+def populated_cells(
+    aoi: str, cfg: dict, settings: Settings, min_buildings: int, include_labels: bool = True
+) -> pd.DataFrame:
+    """0.1 deg cells within the AOI to composite, sorted by building density.
+
+    A cell is selected if it has >= min_buildings buildings OR (when include_labels)
+    it contains an OSM solar polygon — so density coverage for finding new arrays is
+    unioned with full imagery coverage over every already-mapped one. Buildings are
+    clipped to the AOI polygon (not just its bbox) so neighbouring provinces' cities
+    in the shared building set don't leak in.
     """
     boundary = _aoi_boundary(aoi, cfg, settings)
     bbox = tuple(boundary.total_bounds) if boundary is not None else tuple(cfg["bbox"])
@@ -70,9 +107,31 @@ def populated_cells(aoi: str, cfg: dict, settings: Settings, min_buildings: int)
     ix = np.floor((bx - minx) / CELL_DEG).astype(int)
     iy = np.floor((by - miny) / CELL_DEG).astype(int)
     cells = pd.DataFrame({"ix": ix, "iy": iy}).value_counts().reset_index(name="n")
-    cells = cells[cells.n >= min_buildings].reset_index(drop=True)
+
+    label_cells = (
+        _solar_label_cells(cfg, settings, minx, miny, bbox, boundary) if include_labels else set()
+    )
+    has_label = (
+        np.array([(a, b) in label_cells for a, b in zip(cells.ix, cells.iy)], dtype=bool)
+        if label_cells
+        else np.zeros(len(cells), dtype=bool)
+    )
+    n_by_density = int((cells.n >= min_buildings).sum())
+    cells = cells[(cells.n >= min_buildings) | has_label].reset_index(drop=True)
+    # Label cells with no mapped buildings at all are absent from the histogram; add them.
+    extra = sorted(label_cells - set(zip(cells.ix, cells.iy)))
+    if extra:
+        cells = pd.concat(
+            [cells, pd.DataFrame({"ix": [a for a, _ in extra], "iy": [b for _, b in extra], "n": 0})],
+            ignore_index=True,
+        )
     cells["lon0"] = minx + cells.ix * CELL_DEG
     cells["lat0"] = miny + cells.iy * CELL_DEG
+    if include_labels:
+        log.info(
+            "Selected %d cells: %d by density (>=%d buildings), %d contain OSM solar labels",
+            len(cells), n_by_density, min_buildings, len(label_cells),
+        )
     return cells.sort_values("n", ascending=False).reset_index(drop=True)
 
 
@@ -84,6 +143,7 @@ def run_compose(
     window: tuple[str, str] | None = None,
     index: int = 0,
     workers: int = 1,
+    include_labels: bool = True,
 ) -> Path:
     """`window`/`index` build an extra seasonal layer (`composite_<index>.tif`, e.g.
     a post-monsoon contrast season) into the same cell dirs as the base run.
@@ -103,7 +163,7 @@ def run_compose(
     out_dir = region_dir / "composites"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    cells = populated_cells(aoi, cfg, settings, min_buildings)
+    cells = populated_cells(aoi, cfg, settings, min_buildings, include_labels)
     if limit:
         cells = cells.head(limit)
     log.info("Compositing %d cells (>= %d buildings) for %s (%d workers)",

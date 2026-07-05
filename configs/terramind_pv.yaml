@@ -29,8 +29,14 @@ task:
     decoder_channels: [256, 128, 64, 32]
     num_classes: 2
     rescale: true
-  loss: dice
-  # Heavy class imbalance: tiny PV targets vs background.
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term). train.py injects this
+  # as an smp loss module (TerraTorch has no built-in Tversky).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  # Class imbalance is handled by Tversky's alpha/beta above; class_weights is only used
+  # by the ce/focal paths and is dropped by train.py under loss: tversky (kept for easy
+  # revert to loss: dice/ce).
   class_weights: [0.25, 0.75]
   ignore_index: -1
   lr: 1.0e-4
@@ -46,3 +52,9 @@ trainer:
 
 checkpoint_dir: data/models
 patience: 8
+# Checkpoint / early-stop on balanced (macro) recall instead of mIoU. TerraTorch logs
+# val/Accuracy = MulticlassAccuracy(average="macro") = mean per-class recall; maximising
+# it selects for PV recall while the background-recall term blocks the trivial
+# predict-everything solution.
+monitor: val/Accuracy
+monitor_mode: max
