@@ -1,11 +1,12 @@
 """Build Germany as a 2-layer 0.1-degree composed AOI (base summer + winter contrast).
 
-Germany's base imagery is stored as huge per-MGRS-tile composites; building a matching
-winter tile means re-downloading a whole season over 10k x 10k px (~hours/tile). Instead
-we composite only the 0.1-degree cells that actually contain PV labels (the chip-sampling
-footprint), both seasons, at ~50 s/cell — the same fast per-cell path Punjab/Pakistan use.
-Output mirrors the composed-AOI layout (data/composites/germany/composites/<ix>_<iy>/),
-which chips.py/infer.py already prefer. Resumable.
+Germany's summer base imagery ALREADY exists locally as the rooftopsenti per-MGRS
+composites, so the base layer is *cropped from those* (a local window read, no
+download) — only the winter contrast is fetched from STAC, halving the network cost.
+We build only the 0.1-degree cells that contain PV labels (the chip-sampling
+footprint). Output mirrors the composed-AOI layout
+(data/composites/germany/composites/<ix>_<iy>/), which chips.py/infer.py already
+prefer. Resumable.
 
 The geographic val split is the SW cells (the old 32TPT/32TQT region); their names are
 printed so configs/aoi.yaml germany.val_tiles can be set to them.
@@ -31,12 +32,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("de-seasonal")
 
 CELL = 0.1
-SUMMER = ("2025-04-01", "2025-09-30")   # base: leaf-on, matches original germany composites
-WINTER = ("2025-11-01", "2026-03-15")   # contrast: leaf-off
+WINTER = ("2025-11-01", "2026-03-15")   # contrast: leaf-off (base=existing local summer)
 RS = Path("/run/media/tobi/aidisc/rooftopsenti/data/germany_500")
 OUT = Path("data/composites/germany/composites")
 # SW val box (~Freiburg/Stuttgart, the old 32TPT/32TQT tiles held out for validation)
 VAL_BOX = (7.3, 47.4, 9.7, 49.2)
+_SRC = CompositeIndex(RS)  # local summer composites, cropped for the base layer
 
 
 def top_pv_cells(n: int) -> pd.DataFrame:
@@ -54,7 +55,11 @@ def top_pv_cells(n: int) -> pd.DataFrame:
 
 
 def _build_cell(cell) -> str | None:
-    """Build both season layers for one 0.1-deg cell. Returns cell name on success."""
+    """Build both season layers for one 0.1-deg cell. Returns cell name on success.
+
+    Base (summer) = local crop of the existing rooftopsenti composite (no download);
+    contrast (winter) = STAC fetch pinned to that base crop's grid.
+    """
     name = f"{int(cell.ix):04d}_{int(cell.iy):04d}"
     x0, y0 = cell.lon0, cell.lat0
     cell_dir = OUT / name
@@ -63,16 +68,20 @@ def _build_cell(cell) -> str | None:
     base = cell_dir / "composite_0.tif"
     try:
         if not base.exists():
-            res = annual_composite(bbox, date_range=SUMMER, max_cloud=60, max_items=15)
+            res = _SRC.read_window(bbox)  # local summer window, MGRS-tile UTM grid
             if res is None:
-                log.warning("%s: no summer scenes, skip", name)
+                log.warning("%s: no local base coverage, skip", name)
                 return None
-            _write(base, *res)
+            arr, tr, crs = res
+            if arr.shape[0] < 10 or arr[:10].max() == 0:
+                log.warning("%s: empty local base, skip", name)
+                return None
+            _write(base, arr[:10], tr, crs)
         contrast = cell_dir / "composite_1.tif"
         if not contrast.exists():
             with rasterio.open(base) as b:
                 gbox = GeoBox((b.height, b.width), b.transform, b.crs)
-            res = annual_composite(bbox, date_range=WINTER, geobox=gbox, max_cloud=60, max_items=15)
+            res = annual_composite(bbox, date_range=WINTER, geobox=gbox, max_cloud=60, max_items=10)
             if res is None:
                 log.warning("%s: no winter scenes, skip", name)
                 return None

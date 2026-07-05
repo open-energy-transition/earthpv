@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import rasterio
+import rasterio.warp
 from odc.geo.geobox import GeoBox
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -54,7 +55,6 @@ def reconcile(region: str) -> None:
         # Recover bbox from the base raster's own georeferencing instead of guessing.
         with rasterio.open(cell / "composite_0.tif") as b:
             gbox = GeoBox((b.height, b.width), b.transform, b.crs)
-            import rasterio.warp
             bbox = rasterio.warp.transform_bounds(b.crs, "EPSG:4326", *b.bounds)
         try:
             res = annual_composite(bbox, date_range=WINDOW, geobox=gbox, max_cloud=60)

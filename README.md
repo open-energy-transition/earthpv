@@ -113,6 +113,27 @@ plus a MapRoulette challenge. The VIDA building join uses a one-time 9.3 GB loca
 download (`data/vida/PAK.parquet`) — country-scale candidate sets make remote
 row-group scans impractical (~5 h vs ~4 min locally).
 
+## Two-season stacking experiment (negative result)
+
+A 20-band **two-season stack** (dry-season base + a contrast season per cell:
+post-monsoon for Pakistan, winter for Germany) was implemented to push detection below
+1000 m² — the idea being that PV is spectrally stable across seasons while vegetation
+and roofs swing. The full path is wired (`imagery.annual_composite(geobox=…)`,
+`CompositeIndex(layers=2)`, `compose --window/--index/--workers`, per-AOI `stack_window`,
+`configs/terramind_pv_seasonal.yaml`) and TerraMind duplicates its pretrained S2L2A
+patch-embed into both season slots.
+
+**It did not improve the target.** On the clean Punjab val set (same installations),
+per-installation recall for ≥1000 / 500–1000 / 250–500 m² was **0.51 / 0.17 / 0.14**
+(seasonal) vs **0.55 / 0.16 / 0.14** (10-band v2) — small buckets unchanged within
+noise, large slightly worse. So **`v2_combined/epoch=39` (10-band) stays production**
+and the validated country-wide candidate set above is unchanged; the seasonal
+checkpoint is kept at `data/models/v4_seasonal/` for future iteration. Likely causes:
+too few in-domain Punjab chips (274) to learn the temporal signal, the tiny backbone's
+capacity, and post-monsoon vs dry season not differing enough spectrally in arid
+Pakistan. The strongest remaining lever is retraining on **human-validated candidates**
+(a larger, cleaner in-domain signal than a second season).
+
 ## Avoiding tiling artefacts
 
 Two things previously produced a regular grid of false positives at the sliding-window
