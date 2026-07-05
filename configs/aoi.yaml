@@ -19,18 +19,27 @@ aois:
   # Smoke-test tile: Freiburg im Breisgau + industrial outskirts (~12x11 km)
   freiburg:
     bbox: [7.70, 47.95, 7.90, 48.05]
+  # NOTE ON `stack_window` (two-season 20-band stacking): OPT-IN, disabled by default.
+  # Setting stack_window on an AOI switches chips/infer to the 2-layer (20-band) path,
+  # which requires the 20-band model (configs/terramind_pv_seasonal.yaml) and per-cell
+  # contrast composites. The default pipeline and the production checkpoint
+  # (data/models/v2_combined/*.ckpt) are 10-band, so these keys are left commented.
+  # It was tested and did not beat 10-band on Punjab (see README "Two-season stacking
+  # experiment"); to re-enable, uncomment the stack_window below, rebuild the contrast
+  # composites, and train/infer with the seasonal config.
+
   # Training country
   germany:
     bbox: [5.866, 47.270, 15.042, 55.059]
     division: { name: Deutschland, country: DE, subtype: country }
     source_region: germany_500          # rooftopsenti data/<region> dir
-    # MGRS tiles held out for validation (geographic split). Must be tiles that are
-    # actually downloaded; these two (SW Germany) are in the local composite set.
+    # MGRS tiles held out for validation (geographic split); in the local composite set.
     val_tiles: [32TQT, 32TPT]
-    # Two-season stack: local composite_0 is summer (Apr–Sep); the model also gets a
-    # winter contrast layer fetched per chip from STAC on the base grid. PV is
-    # spectrally stable across both while vegetation/roofs swing -> small-array signal.
-    stack_window: ["2025-11-01", "2026-03-15"]
+    # Two-season opt-in (see note above). When enabled, chips read data/composites/germany
+    # (0.1° cells from scripts/build_germany_seasonal.py) and val_tiles must instead be
+    # the SW 0.1° cell names: ["0085_0491","0087_0489","0089_0487","0086_0488","0085_0488",
+    # "0085_0489","0082_0476","0075_0480","0088_0488","0086_0489","0095_0476"].
+    # stack_window: ["2025-11-01", "2026-03-15"]
   # Inference target + PK training source (chips read data/composites/punjab)
   punjab:
     bbox: [69.30, 27.70, 75.40, 34.05]
@@ -38,10 +47,8 @@ aois:
     source_region: pakistan_500         # Punjab tiles are a subset of the PK download
     # Composed-cell names held out for validation (chips stage tags split by cell)
     val_tiles: ["0050_0036", "0036_0036"]
-    # composite_0 is dry-season (Nov–Mar, smog-prone over the cities); the contrast
-    # layer is the clear post-monsoon window — this is the item-2 imagery fix folded
-    # into the stack, so the model sees the clear season AND the temporal contrast.
-    stack_window: ["2025-09-20", "2025-11-15"]
+    # Two-season opt-in (see note above): clear post-monsoon contrast to the dry-season base.
+    # stack_window: ["2025-09-20", "2025-11-15"]
   # Country-wide inference: compose + infer over every building-populated cell.
   # grid_origin anchors the cell grid to punjab's (boundary total_bounds origin,
   # full precision) so punjab's already-composited cells are reused by renaming.
@@ -50,7 +57,8 @@ aois:
     division: { name: Pakistan, country: PK, subtype: country }
     source_region: pakistan_500
     grid_origin: [69.3405158324398, 27.7089663393252]
-    stack_window: ["2025-09-20", "2025-11-15"]
+    # Two-season opt-in (see note above).
+    # stack_window: ["2025-09-20", "2025-11-15"]
 
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
