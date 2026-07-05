@@ -45,8 +45,13 @@ aois:
     bbox: [69.30, 27.70, 75.40, 34.05]
     division: { name: Punjab, country: PK, subtype: region }
     source_region: pakistan_500         # Punjab tiles are a subset of the PK download
-    # Composed-cell names held out for validation (chips stage tags split by cell)
-    val_tiles: ["0050_0036", "0036_0036"]
+    # Geographic val holdout = the whole Faisalabad cluster (~73.0-73.35E, 31.3-31.55N),
+    # a contiguous block ~100 km from the Lahore training cluster so jitter/window overlap
+    # can't leak val positives into train. ~31% of Punjab positives, rooftop-dominant.
+    # (chips stage tags split=val for chips whose composite cell is in this list.)
+    val_tiles: ["0035_0036", "0036_0036", "0036_0037", "0036_0038", "0037_0036",
+                "0037_0037", "0037_0038", "0038_0036", "0038_0037", "0038_0038",
+                "0039_0037", "0039_0038", "0040_0037", "0040_0038"]
     # Two-season opt-in (see note above): clear post-monsoon contrast to the dry-season base.
     # stack_window: ["2025-09-20", "2025-11-15"]
   # Country-wide inference: compose + infer over every building-populated cell.
@@ -57,6 +62,10 @@ aois:
     division: { name: Pakistan, country: PK, subtype: country }
     source_region: pakistan_500
     grid_origin: [69.3405158324398, 27.7089663393252]
+    # Small geographic val holdout: an isolated Multan-area cluster (~71.6E, 30.3N),
+    # rooftop-dominant, ~20 km from the nearest training positive so no window/jitter
+    # leakage. Deliberately small (~38 positives, ~1.5%) to maximise training data.
+    val_tiles: ["0106_0064", "0107_0065", "0108_0065"]
     # Two-season opt-in (see note above).
     # stack_window: ["2025-09-20", "2025-11-15"]
 

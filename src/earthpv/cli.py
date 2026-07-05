@@ -43,13 +43,17 @@ def compose(
     window: str = typer.Option("", help="Date range 'YYYY-MM-DD:YYYY-MM-DD' (default: dry season)"),
     index: int = typer.Option(0, help="Layer index; >0 writes composite_<i>.tif on the base grid"),
     workers: int = typer.Option(1, help="Concurrent cells (I/O-bound; 4-6 is a good range)"),
+    label_cells: bool = typer.Option(
+        True, "--label-cells/--no-label-cells",
+        help="Also composite cells containing OSM solar labels (in-domain training positives)",
+    ),
 ) -> None:
     """Build S2 composites for building-populated cells of an AOI (STAC, resumable)."""
     from earthpv.compose import run_compose
 
     win = tuple(window.split(":")) if window else None
     run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit,
-                window=win, index=index, workers=workers)
+                window=win, index=index, workers=workers, include_labels=label_cells)
 
 
 @app.command()
