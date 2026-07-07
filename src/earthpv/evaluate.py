@@ -51,6 +51,14 @@ def evaluate(aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3
         val = index.sample(frac=0.2, random_state=42)
     log.info("Evaluating on %d val chips", len(val))
 
+    # Recall-tuned checkpoints pickle a TverskyLoss criterion into their hparams; PyTorch
+    # 2.6 defaults torch.load(weights_only=True), which rejects it. Allowlist our own class.
+    try:
+        import segmentation_models_pytorch as smp
+
+        torch.serialization.add_safe_globals([smp.losses.TverskyLoss])
+    except Exception:  # noqa: BLE001 — best-effort; dice/ce checkpoints don't need it
+        pass
     task = SemanticSegmentationTask.load_from_checkpoint(checkpoint, map_location="cpu").eval()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     task = task.to(device)
