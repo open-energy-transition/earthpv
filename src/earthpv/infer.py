@@ -28,6 +28,14 @@ def load_model(checkpoint: Path):
     import torch
     from terratorch.tasks import SemanticSegmentationTask
 
+    # Recall-tuned checkpoints pickle a TverskyLoss criterion into their hparams; PyTorch
+    # 2.6 defaults torch.load(weights_only=True), which rejects it. Allowlist our own class.
+    try:
+        import segmentation_models_pytorch as smp
+
+        torch.serialization.add_safe_globals([smp.losses.TverskyLoss])
+    except Exception:  # noqa: BLE001 — best-effort; dice/ce checkpoints don't need it
+        pass
     task = SemanticSegmentationTask.load_from_checkpoint(checkpoint, map_location="cpu")
     task.eval()
     device = "cuda" if torch.cuda.is_available() else "cpu"

@@ -132,7 +132,17 @@ def populated_cells(
             "Selected %d cells: %d by density (>=%d buildings), %d contain OSM solar labels",
             len(cells), n_by_density, min_buildings, len(label_cells),
         )
-    return cells.sort_values("n", ascending=False).reset_index(drop=True)
+    if label_cells:
+        # Composite label cells (which hold the OSM solar positives = the training data)
+        # BEFORE density-only cells (which only add inference coverage), each ordered by
+        # density. On a slow/partial run this makes the full training set available without
+        # waiting for the whole country to composite.
+        cells["_lbl"] = [(a, b) not in label_cells for a, b in zip(cells.ix, cells.iy)]
+        cells = cells.sort_values(["_lbl", "n"], ascending=[True, False])
+        cells = cells.drop(columns="_lbl").reset_index(drop=True)
+    else:
+        cells = cells.sort_values("n", ascending=False).reset_index(drop=True)
+    return cells
 
 
 def run_compose(
