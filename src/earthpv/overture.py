@@ -170,14 +170,16 @@ def fetch_regions(
     country: str,
     settings: Settings | None = None,
     con: duckdb.DuckDBPyConnection | None = None,
+    subtype: str = "region",
 ) -> gpd.GeoDataFrame:
-    """All first-level regions (states/provinces) of a country."""
+    """All divisions of a country at one level (subtype='region' = provinces/states,
+    'county' = districts)."""
     settings = settings or Settings.load()
     con = con or connect()
     path = _theme_path(settings.overture_release, "divisions", "division_area")
     sql = f"""
         SELECT id, names.primary AS name, country, subtype, ST_AsWKB(geometry) AS geometry
         FROM read_parquet('{path}', hive_partitioning=1)
-        WHERE country = '{country}' AND subtype = 'region'
+        WHERE country = '{country}' AND subtype = '{subtype}'
     """
     return _to_gdf(con.execute(sql).df())

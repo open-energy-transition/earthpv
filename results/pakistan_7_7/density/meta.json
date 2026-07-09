@@ -1,0 +1,18 @@
+{
+  "aoi": "pakistan",
+  "threshold": 0.3,
+  "kwp_per_m2": 0.18,
+  "min_prob": 0.05,
+  "min_building_exp_m2": 10.0,
+  "limit": 0,
+  "districts": false,
+  "n_cells": 1393,
+  "n_signal_buildings": 97717,
+  "n_regions": 7,
+  "total_pv_area_det_total_m2": 129035327.05874912,
+  "total_pv_area_det_roofcand_m2": 25310250.153242804,
+  "total_pv_area_det_roof_m2": 26224147.68194799,
+  "total_pv_area_exp_roof_m2": 23127395.34542396,
+  "total_est_mwp_det": 4720.3458,
+  "total_est_mwp_exp": 4162.9311
+}

@@ -35,7 +35,7 @@ VIDA_URL = (
 # one bulk download + local scans is ~10x faster overall.
 VIDA_LOCAL = "data/vida/{iso3}.parquet"
 
-_ISO2_TO_ISO3 = {"PK": "PAK", "DE": "DEU"}
+_ISO2_TO_ISO3 = {"PK": "PAK", "DE": "DEU", "IN": "IND"}
 
 Bbox = tuple[float, float, float, float]
 

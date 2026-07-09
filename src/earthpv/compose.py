@@ -10,6 +10,7 @@ and infer consume them unchanged. Resumable: existing cells are skipped.
 from __future__ import annotations
 
 import logging
+import unicodedata
 from pathlib import Path
 
 import geopandas as gpd
@@ -28,10 +29,23 @@ log = logging.getLogger(__name__)
 CELL_DEG = 0.1
 
 
+def _fold_name(s: str) -> str:
+    """Casefold + strip diacritics, so config names like 'Gujarat' match gazetteer
+    transliterations like 'Gujarāt' (geoBoundaries' Indian ADM1 names carry macrons)."""
+    decomposed = unicodedata.normalize("NFKD", s)
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).casefold()
+
+
 def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame | None:
     """Boundary polygon for the AOI. Prefer the AOI-named region (e.g. punjab_500)
     over source_region — source_region supplies imagery/buildings and may cover a
-    different, larger area (e.g. pakistan_500 = Balochistan+Sindh)."""
+    different, larger area (e.g. pakistan_500 = Balochistan+Sindh).
+
+    AOIs with no local rooftopsenti dataset at all (e.g. a fresh country/state with no
+    source_region) fall back to geoBoundaries ADM1, filtered to `division.name` — this
+    is what keeps e.g. a "gujarat" AOI's cells from spilling into neighbouring states
+    when only a loose bbox is configured.
+    """
     cands = [f"{aoi}_500", aoi]
     if cfg.get("source_region"):
         cands.append(cfg["source_region"])
@@ -39,6 +53,20 @@ def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame |
         p = Path(settings.raw["local_root"]) / cand / "aoi" / "boundary.parquet"
         if p.exists():
             return gpd.read_parquet(p).to_crs("EPSG:4326")
+    division = cfg.get("division") or {}
+    name, iso2, subtype = division.get("name"), division.get("country"), division.get("subtype")
+    if name and iso2 and subtype and subtype != "country":
+        from earthpv.buildings import _iso3_for
+        from earthpv.density import fetch_geoboundaries  # deferred: density.py imports this module
+
+        iso3 = _iso3_for(cfg)
+        if iso3:
+            adm1 = fetch_geoboundaries(iso3, "ADM1")
+            if adm1 is not None:
+                hit = adm1[adm1.name.map(_fold_name) == _fold_name(name)]
+                if not hit.empty:
+                    return hit.reset_index(drop=True)
+                log.warning("geoBoundaries ADM1 for %s has no region named %r; using raw bbox", iso3, name)
     return None
 
 
@@ -56,7 +84,14 @@ def _solar_label_cells(
     over *already-mapped* arrays so each becomes a trainable in-domain positive,
     independent of local building density. Uses the same bbox + boundary clip as the
     building pass so nothing outside the AOI leaks in.
+
+    AOIs with no local source_region (no rooftopsenti OSM solar dataset downloaded)
+    have no efficient local label source — direct Overture S3 label queries time out
+    from this machine (see CLAUDE.md) — so this degrades to no label cells rather than
+    attempting one. Inference coverage (via building density) is unaffected either way.
     """
+    if not cfg.get("source_region"):
+        return set()
     region_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
     labels = load_solar_labels(region_dir)
     if labels is None or labels.empty:
@@ -96,7 +131,23 @@ def populated_cells(
         minx = gx + np.floor((minx - gx) / CELL_DEG) * CELL_DEG
         miny = gy + np.floor((miny - gy) / CELL_DEG) * CELL_DEG
     bbox = (minx, miny, bbox[2], bbox[3])
-    buildings = load_buildings(Path(settings.raw["local_root"]) / cfg["source_region"])
+    if cfg.get("source_region"):
+        buildings = load_buildings(Path(settings.raw["local_root"]) / cfg["source_region"])
+    else:
+        # No local rooftopsenti dataset for this AOI (e.g. a new country/state) — fetch
+        # VIDA Open Buildings directly, bbox-pruned, the same source density.py already
+        # uses per-cell. One bbox-sized scan up front instead of a bulk local download.
+        from earthpv import overture
+        from earthpv.buildings import _iso3_for, fetch_vida_buildings
+
+        iso3 = _iso3_for(cfg)
+        if not iso3:
+            raise ValueError(
+                f"AOI '{aoi}' has no source_region and no resolvable division.country "
+                "-> cannot locate buildings for cell selection."
+            )
+        log.info("No local source_region for '%s'; fetching VIDA buildings for %s", aoi, iso3)
+        buildings = fetch_vida_buildings(bbox, iso3, con=overture.connect())
     pts = buildings.geometry.representative_point()
     minx, miny, maxx, maxy = bbox
     inb = (pts.x >= minx) & (pts.x <= maxx) & (pts.y >= miny) & (pts.y <= maxy)

@@ -17,9 +17,10 @@ DN_SCALE = 10000.0
 
 
 class PVChipDataset(Dataset):
-    def __init__(self, index: pd.DataFrame, augment: bool = False):
+    def __init__(self, index: pd.DataFrame, augment: bool = False, target: str = "class"):
         self.index = index.reset_index(drop=True)
         self.augment = augment
+        self.target = target
 
     def __len__(self) -> int:
         return len(self.index)
@@ -30,7 +31,8 @@ class PVChipDataset(Dataset):
         with rasterio.open(row["image"]) as src:
             img = src.read().astype("float32") / DN_SCALE  # (10, H, W) reflectance
         with rasterio.open(row["mask"]) as src:
-            mask = src.read(1).astype("int64")
+            mask_dtype = "float32" if self.target == "fraction" else "int64"
+            mask = src.read(1).astype(mask_dtype)
         if self.augment:
             k = np.random.randint(4)
             img, mask = np.rot90(img, k, (1, 2)).copy(), np.rot90(mask, k, (0, 1)).copy()
@@ -46,12 +48,14 @@ class PVDataModule(LightningDataModule):
         batch_size: int = 4,
         num_workers: int = 4,
         min_val_chips: int = 8,
+        target: str = "class",
     ):
         super().__init__()
         self.index_path = Path(index_path)
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.min_val_chips = min_val_chips
+        self.target = target
 
     def setup(self, stage: str | None = None) -> None:
         index = pd.read_parquet(self.index_path)
@@ -61,8 +65,8 @@ class PVDataModule(LightningDataModule):
             # Smoke tests / small AOIs without held-out regions: random 20% split
             val = train.sample(frac=0.2, random_state=42)
             train = train.drop(val.index)
-        self.train_ds = PVChipDataset(train, augment=True)
-        self.val_ds = PVChipDataset(val)
+        self.train_ds = PVChipDataset(train, augment=True, target=self.target)
+        self.val_ds = PVChipDataset(val, target=self.target)
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
