@@ -127,6 +127,34 @@ def _join_buildings_metric(
     return cands
 
 
+def _join_buildings_chunked(
+    cands: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, chunk_deg: float = 1.0
+) -> gpd.GeoDataFrame:
+    """`_join_buildings_metric` per coarse spatial chunk of candidates.
+
+    `_join_buildings_metric`'s own bbox buffer only prunes the buildings table when
+    the CANDIDATES passed to it are already spatially tight — for a country-scale
+    candidate set (spanning the whole VIDA extent in one call) it degenerates to
+    reprojecting the ENTIRE buildings table (millions of rows) at once, which is what
+    killed a whole-Pakistan postprocess run. Chunking candidates first keeps each
+    call's candidate bbox small, so its internal `.cx[]` slice actually does its job.
+    """
+    if cands.empty:
+        return cands
+    reps = cands.geometry.representative_point()
+    keys = list(zip(
+        np.floor(reps.x.to_numpy() / chunk_deg).astype(int).tolist(),
+        np.floor(reps.y.to_numpy() / chunk_deg).astype(int).tolist(),
+    ))
+    cands = cands.reset_index(drop=True)
+    parts = []
+    for key in sorted(set(keys)):
+        mask = [k == key for k in keys]
+        parts.append(_join_buildings_metric(cands[mask].reset_index(drop=True), buildings))
+    log.info("Building join: %d candidates in %d spatial chunks", len(cands), len(parts))
+    return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=cands.crs)
+
+
 def _add_ranking(cands: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Blend model confidence with a building prior into a `rank_score` for triage.
 
@@ -202,7 +230,16 @@ def _resolve_buildings(
     return None
 
 
-def run_postprocess(aoi: str, pred_dir: Path, threshold: float = 0.3) -> Path:
+def run_postprocess(
+    aoi: str, pred_dir: Path, threshold: float = 0.3, max_building_dist_m: float = 0.0,
+) -> Path:
+    """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
+    farther than this — isolated detections (cropland glare, bare soil, water glint)
+    are the dominant false-positive mode away from any structure. Only applies where
+    a real distance was resolved (`_join_buildings_metric`, i.e. VIDA/local buildings
+    available); candidates with no distance signal at all (`-1`, e.g. the Overture
+    fallback join or no buildings anywhere in the AOI) are left alone rather than
+    dropped on missing information."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
     prob_dir = Path(pred_dir) / aoi / "prob"
@@ -215,12 +252,21 @@ def run_postprocess(aoi: str, pred_dir: Path, threshold: float = 0.3) -> Path:
         buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir)
         if buildings is not None and not buildings.empty:
             log.info("Joining %d candidates with %d buildings", len(cands), len(buildings))
-            cands = _join_buildings_metric(cands, buildings)
+            cands = _join_buildings_chunked(cands, buildings)
         else:
             # Last resort: remote Overture join (no metric signals for ranking).
             cands = attach_buildings(cands, settings)
         cands = _add_ranking(cands)
         cands = cands.sort_values("rank_score", ascending=False).reset_index(drop=True)
+        if max_building_dist_m and "building_dist_m" in cands.columns:
+            n_before = len(cands)
+            dist = cands["building_dist_m"].to_numpy(float)
+            keep = (dist < 0) | (dist <= max_building_dist_m)
+            cands = cands[keep].reset_index(drop=True)
+            log.info(
+                "Dropped %d/%d candidates > %.0f m from the nearest building",
+                n_before - len(cands), n_before, max_building_dist_m,
+            )
     out = Path(pred_dir) / aoi / "candidates.parquet"
     cands.to_parquet(out)
     log.info("Wrote %s (%s)", out,

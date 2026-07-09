@@ -34,39 +34,39 @@ def _bucket(area: float) -> str:
     return "0-250"
 
 
-def evaluate(aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3) -> pd.DataFrame:
+def evaluate(
+    aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3,
+    task_type: str = "auto", chips_name: str | None = None,
+) -> pd.DataFrame:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     import torch
-    from terratorch.tasks import SemanticSegmentationTask
+
+    from earthpv.infer import _sniff_task_type, load_model
 
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     region_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
     labels = load_solar_labels(region_dir)
-    labels = labels[labels.placement.isin(["rooftop", "ground"])].reset_index(drop=True)
+    if task_type == "auto":
+        task_type = _sniff_task_type(checkpoint)
+    placements = ["rooftop", "ground", "small"] if task_type == "regression" else \
+        ["rooftop", "ground"]
+    labels = labels[labels.placement.isin(placements)].reset_index(drop=True)
 
-    index = pd.read_parquet(Path(chips_dir) / aoi / "index.parquet")
+    index = pd.read_parquet(Path(chips_dir) / (chips_name or aoi) / "index.parquet")
     val = index[index.split == "val"]
     if val.empty:
         val = index.sample(frac=0.2, random_state=42)
     log.info("Evaluating on %d val chips", len(val))
 
-    # Recall-tuned checkpoints pickle a TverskyLoss criterion into their hparams; PyTorch
-    # 2.6 defaults torch.load(weights_only=True), which rejects it. Allowlist our own class.
-    try:
-        import segmentation_models_pytorch as smp
-
-        torch.serialization.add_safe_globals([smp.losses.TverskyLoss])
-    except Exception:  # noqa: BLE001 — best-effort; dice/ce checkpoints don't need it
-        pass
-    task = SemanticSegmentationTask.load_from_checkpoint(checkpoint, map_location="cpu").eval()
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    task = task.to(device)
+    task, device, task_type = load_model(checkpoint, task_type=task_type)
     # Chips carry the model's full input (10 bands, or 20 for a two-season stack);
     # feed all of them rather than truncating to the single-season band count.
 
     tp = fp = fn = 0
     detected, missed = [], []  # areas of GT installations
+    pred_sums, gt_sums = [], []  # chip-level Σ predicted / true PV area (m2), regression only
+    sq_err_sum = abs_err_sum = n_valid_px = 0.0
     for _, row in val.iterrows():
         with rasterio.open(row["image"]) as src:
             arr = src.read().astype("float32")
@@ -76,14 +76,29 @@ def evaluate(aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3
         with torch.no_grad(), torch.autocast(device_type=device, enabled=device == "cuda"):
             out = task(x)
             logits = out.output if hasattr(out, "output") else out
-            pred = (torch.softmax(logits, 1)[0, 1] >= threshold).cpu().numpy()
+            if task_type == "regression":
+                frac = logits[0] if logits.ndim == 3 else logits[0, 0]
+                frac = frac.clamp(0, 1).cpu().numpy()
+            else:
+                frac = torch.softmax(logits, 1)[0, 1].cpu().numpy()
+        pred = frac >= threshold
 
         with rasterio.open(row["mask"]) as src:
-            gt = src.read(1)
-        valid = gt != -1
-        tp += int((pred & (gt == 1) & valid).sum())
-        fp += int((pred & (gt == 0) & valid).sum())
-        fn += int((~pred & (gt == 1) & valid).sum())
+            gt_raw = src.read(1).astype("float32")
+        valid = gt_raw != -1
+        if task_type == "regression":
+            err = frac[valid] - gt_raw[valid]
+            sq_err_sum += float((err**2).sum())
+            abs_err_sum += float(np.abs(err).sum())
+            n_valid_px += int(valid.sum())
+            pred_sums.append(float(frac[valid].sum()) * 100.0)
+            gt_sums.append(float(gt_raw[valid].sum()) * 100.0)
+            gt_binary = gt_raw > 0
+        else:
+            gt_binary = gt_raw == 1
+        tp += int((pred & gt_binary & valid).sum())
+        fp += int((pred & ~gt_binary & valid).sum())
+        fn += int((~pred & gt_binary & valid).sum())
 
         # Per-installation recall
         gt_here = labels[labels.geometry.intersects(chip_geo)]
@@ -116,6 +131,23 @@ def evaluate(aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3
     report = pd.DataFrame(rows)
     report.attrs["pixel_iou"] = iou
     report.attrs["pixel_f1"] = f1
+
+    if task_type == "regression":
+        rmse = (sq_err_sum / max(n_valid_px, 1)) ** 0.5
+        mae = abs_err_sum / max(n_valid_px, 1)
+        pred_s, gt_s = np.array(pred_sums), np.array(gt_sums)
+        bias = float((pred_s - gt_s).mean()) if len(pred_s) else float("nan")
+        if len(pred_s) > 1 and gt_s.std() > 0 and pred_s.std() > 0:
+            r2 = float(np.corrcoef(pred_s, gt_s)[0, 1] ** 2)
+            slope = float(np.sum(pred_s * gt_s) / max(float(np.sum(gt_s**2)), 1e-9))
+        else:
+            r2 = slope = float("nan")
+        report.attrs.update(pixel_rmse=rmse, pixel_mae=mae, chip_sum_r2=r2,
+                            chip_sum_slope=slope, chip_sum_bias_m2=bias)
+        log.info(
+            "Pixel RMSE=%.4f MAE=%.4f | chip-sum R2=%.3f slope=%.3f bias=%.1f m2 (n=%d chips)",
+            rmse, mae, r2, slope, bias, len(pred_s),
+        )
     log.info("Per-installation recall by size (m2):\n%s", report.to_string(index=False))
     return report
 

@@ -49,31 +49,56 @@ def _chip_bbox(lon: float, lat: float) -> tuple[float, float, float, float]:
 
 
 def sample_chip_centers(
-    labels: gpd.GeoDataFrame, coverage, rng: np.random.Generator, limit: int
+    labels: gpd.GeoDataFrame, coverage, rng: np.random.Generator, limit: int,
+    min_seed_area: float = MIN_PV_AREA, max_positives: int = 0,
+    region_filter: gpd.GeoDataFrame | None = None,
 ) -> pd.DataFrame:
     """Positives from PV polygons + matched near-negatives + random background,
-    all constrained to the composite coverage polygon. Only arrays >= MIN_PV_AREA
-    seed positive chips so training centres on the target large installations."""
+    all constrained to the composite coverage polygon. Only arrays >= min_seed_area
+    seed positive chips; the binary task keeps this at MIN_PV_AREA so training centres
+    on the target large installations, while the fraction-regression task passes 0 to
+    also seed from small (sub-pixel) arrays.
+
+    `region_filter`, if given, restricts ALL centres (positive, near-negative,
+    background) to its union polygon. This matters most for fraction regression: a
+    background/near-negative chip centred where OSM PV mapping is incomplete would
+    carry a false 0 target on any unmapped roof, which corrupts the aggregate signal
+    the regression task depends on."""
+    if region_filter is not None and not region_filter.empty:
+        union = region_filter.union_all()
+        labels = labels[labels.geometry.centroid.within(union)]
+        coverage = coverage.intersection(union)
+
+    # min_seed_area <= 0 means the fraction-regression task (called with 0.0 from
+    # build_chips), which also wants "small" (sub-MIN_PV_AREA) arrays as positive seeds —
+    # they're exactly the sub-pixel signal the regression task is meant to pick up.
+    seed_placements = ["rooftop", "ground", "small"] if min_seed_area <= 0 else \
+        ["rooftop", "ground"]
     pos_polys = labels[
-        labels.placement.isin(["rooftop", "ground"]) & (labels.area_m2 >= MIN_PV_AREA)
+        labels.placement.isin(seed_placements) & (labels.area_m2 >= min_seed_area)
     ]
     # Jitter each positive chip so the installation lands at a RANDOM position in the
     # frame, not the centre. Without this the model learns a centre bias and, at
     # sliding-window inference, fires once per window -> a regular grid of false
     # positives at the stride spacing. Jitter up to ~±half a chip (chip = 2.24 km).
     jit_deg = 900.0 / 111320.0  # ~±900 m
-    rows = []
-    for _, r in pos_polys.iterrows():
-        c = r.geometry.centroid
-        jx = rng.uniform(-jit_deg, jit_deg) / np.cos(np.radians(c.y))
-        jy = rng.uniform(-jit_deg, jit_deg)
-        rows.append((c.x + jx, c.y + jy, "positive", r.placement))
-    pos = pd.DataFrame(rows, columns=["lon", "lat", "kind", "placement"])
-    # Dedupe positives sharing a ~2 km cell to avoid near-identical chips
+    centroids = pos_polys.geometry.centroid
+    cx, cy = centroids.x.to_numpy(), centroids.y.to_numpy()
+    jx = rng.uniform(-jit_deg, jit_deg, len(cx)) / np.cos(np.radians(cy))
+    jy = rng.uniform(-jit_deg, jit_deg, len(cy))
+    pos = pd.DataFrame(
+        {"lon": cx + jx, "lat": cy + jy, "kind": "positive",
+         "placement": pos_polys.placement.to_numpy()}
+    )
+    # Shuffle before the dedupe below so which chip survives a shared cell is
+    # unbiased, then dedupe positives sharing a ~2 km cell to avoid near-identical chips.
+    pos = pos.iloc[rng.permutation(len(pos))].reset_index(drop=True)
     cell = (pos.lon / 0.02).round().astype(int).astype(str) + "_" + (
         pos.lat / 0.02
     ).round().astype(int).astype(str)
     pos = pos.loc[~cell.duplicated()].reset_index(drop=True)
+    if max_positives and len(pos) > max_positives:
+        pos = pos.sample(n=max_positives, random_state=42).reset_index(drop=True)
     n_pos = len(pos)
 
     near = pos.sample(n=max(n_pos // 2, 1), random_state=1, replace=n_pos < 2).copy()
@@ -92,6 +117,8 @@ def sample_chip_centers(
         }
     )
     out = pd.concat([pos, near, rand], ignore_index=True)
+    # `coverage` is already intersected with region_filter's union above, so this single
+    # check enforces both the composite-coverage and (if given) region-filter constraints.
     inside = gpd.GeoSeries(gpd.points_from_xy(out.lon, out.lat), crs="EPSG:4326").within(coverage)
     out = out[inside.values].reset_index(drop=True)
     if limit and len(out) > limit:
@@ -133,11 +160,36 @@ def _burn_mask(labels: gpd.GeoDataFrame, transform, crs, shape) -> np.ndarray:
     return mask
 
 
+def _burn_fraction(labels: gpd.GeoDataFrame, transform, crs, shape, factor: int = 10) -> np.ndarray:
+    """Sub-pixel PV coverage fraction per 10 m pixel: rasterize ALL placements (including
+    sub-MIN_PV_AREA "small" arrays — the whole point of the regression task) at `factor`x
+    resolution (~1 m with the default), then block-mean back down to the native grid.
+    `all_touched=False` at the hi-res grid keeps the area estimate honest — `all_touched=True`
+    would inflate every polygon by a partial-pixel halo at 1 m too."""
+    lab_utm = labels.to_crs(crs)
+    polys = [
+        (g, 1) for g, p in zip(lab_utm.geometry, labels.placement)
+        if not g.is_empty and p in ("rooftop", "ground", "small")
+        and g.geom_type in ("Polygon", "MultiPolygon")
+    ]
+    hi_shape = (shape[0] * factor, shape[1] * factor)
+    hi_transform = transform * rasterio.Affine.scale(1.0 / factor)
+    if not polys:
+        return np.zeros(shape, dtype="float32")
+    hi = rio_features.rasterize(
+        polys, out_shape=hi_shape, transform=hi_transform, fill=0, all_touched=False,
+        dtype="uint8",
+    )
+    frac = hi.reshape(shape[0], factor, shape[1], factor).mean(axis=(1, 3))
+    return frac.astype("float32")
+
+
 def _write_tif(path: Path, arr: np.ndarray, transform, crs, dtype: str) -> None:
     arr = arr if arr.ndim == 3 else arr[None]
+    predictor = 3 if dtype.startswith("float") else 2
     with rasterio.open(
         path, "w", driver="GTiff", width=arr.shape[2], height=arr.shape[1], count=arr.shape[0],
-        dtype=dtype, crs=crs, transform=transform, compress="deflate", predictor=2,
+        dtype=dtype, crs=crs, transform=transform, compress="deflate", predictor=predictor,
     ) as dst:
         dst.write(arr)
 
@@ -169,14 +221,17 @@ def _tile_of(lon: float, lat: float, comp_idx: CompositeIndex) -> str | None:
 
 
 def build_chips(
-    aoi: str, labels_dir: Path, out_dir: Path, limit: int = 0, seasonal: bool = False
+    aoi: str, labels_dir: Path, out_dir: Path, limit: int = 0, seasonal: bool = False,
+    fraction: bool = False, max_positives: int = 0, region_filter: Path | None = None,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
-    out_dir = Path(out_dir) / aoi
+    # Fraction chips live in a parallel tree so the binary-segmentation chips are untouched.
+    out_dir = Path(out_dir) / (f"{aoi}_fraction" if fraction else aoi)
     (out_dir / "images").mkdir(parents=True, exist_ok=True)
     (out_dir / "masks").mkdir(parents=True, exist_ok=True)
+    region_gdf = gpd.read_parquet(region_filter) if region_filter else None
 
     source_region = cfg.get("source_region")
     if not source_region:
@@ -209,7 +264,11 @@ def build_chips(
     )
 
     rng = np.random.default_rng(42)
-    centers = sample_chip_centers(labels, coverage, rng, limit)
+    centers = sample_chip_centers(
+        labels, coverage, rng, limit,
+        min_seed_area=0.0 if fraction else MIN_PV_AREA,
+        max_positives=max_positives, region_filter=region_gdf,
+    )
     val_tiles = set(cfg.get("val_tiles", []))
     log.info(
         "Sampling %d chips (%s)%s", len(centers), centers.kind.value_counts().to_dict(),
@@ -252,18 +311,25 @@ def build_chips(
                         log.warning("chip %s: no contrast-season scenes, zero-filled", cid)
                     arr = np.concatenate([arr, contrast.astype(arr.dtype)], axis=0)
                 win_labels = labels[labels.geometry.intersects(_bbox_poly(row.lon, row.lat))]
-                mask = _burn_mask(win_labels, transform, crs, arr.shape[-2:])
                 _write_tif(img_path, arr, transform, crs, "uint16")
-                _write_tif(mask_path, mask.astype("int16"), transform, crs, "int16")
+                if fraction:
+                    mask = _burn_fraction(win_labels, transform, crs, arr.shape[-2:])
+                    _write_tif(mask_path, mask, transform, crs, "float32")
+                else:
+                    mask = _burn_mask(win_labels, transform, crs, arr.shape[-2:])
+                    _write_tif(mask_path, mask.astype("int16"), transform, crs, "int16")
         except Exception as e:  # noqa: BLE001 — one bad chip must not kill the run
             log.warning("chip %s failed: %s", cid, e)
             return None
         with rasterio.open(mask_path) as m:
             band = m.read(1)
         split = "val" if tile in val_tiles else "train"
-        return dict(chip_id=cid, lon=row.lon, lat=row.lat, kind=row.kind, tile=tile,
-                    split=split, pv_pixels=int((band == 1).sum()),
-                    image=str(img_path), mask=str(mask_path))
+        pv_pixels = int((band > 0).sum()) if fraction else int((band == 1).sum())
+        record = dict(chip_id=cid, lon=row.lon, lat=row.lat, kind=row.kind, tile=tile,
+                      split=split, pv_pixels=pv_pixels, image=str(img_path), mask=str(mask_path))
+        if fraction:
+            record["pv_frac_sum"] = float(band.sum())
+        return record
 
     rows = [row for _, row in centers.iterrows()]
     records = []

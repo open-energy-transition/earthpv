@@ -26,6 +26,10 @@ typer = "*"
 pyyaml = "*"
 matplotlib = "*"
 tqdm = "*"
+pyogrio = "*"
+open-mastr = "*"
+sqlalchemy = "*"
+requests = "*"
 
 [feature.ml.pypi-dependencies]
 # GTX 1060 (Pascal, sm_61): CUDA 13 dropped Pascal, so pin cu126 wheels.
@@ -42,6 +46,8 @@ labels = "python -m earthpv.cli labels"
 chips = "python -m earthpv.cli chips"
 postprocess = "python -m earthpv.cli postprocess"
 export = "python -m earthpv.cli export"
+mastr = "python -m earthpv.cli mastr"
+calibrate = "python -m earthpv.cli calibrate"
 
 [feature.ml.tasks]
 train = "python -m earthpv.cli train"

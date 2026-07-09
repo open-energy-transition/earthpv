@@ -53,6 +53,9 @@ pixi run earthpv postprocess --aoi punjab --threshold 0.3
 
 # 6. Export GeoParquet / GeoJSON / MapRoulette challenge (queue ordered by rank_score)
 pixi run earthpv export --aoi punjab
+
+# 7. (optional) PV density per building + PyPSA-ready grid/region aggregates
+pixi run earthpv density --aoi pakistan
 ```
 
 AOIs and parameters: `configs/aoi.yaml`. Model/training: `configs/terramind_pv.yaml`.
@@ -166,6 +169,49 @@ signal. It's fetched once per AOI, windowed to the candidate-containing 0.1° ce
 *large* arrays on already-mapped buildings, VIDA and the Overture set attribute nearly
 identically; VIDA's advantage shows most once `MIN_PV_AREA` is lowered to admit small
 residential roofs.
+
+## PV density per building (energy-model / PyPSA export)
+
+`density` (`src/earthpv/density.py`) turns the same probability rasters into
+building-level PV density and area/region aggregates — the shape energy-system models
+(PyPSA / PyPSA-Earth) consume, rather than a validation queue. It runs on existing
+artifacts (rasters + `candidates.parquet` + the VIDA footprints); no GPU, no retraining.
+
+Two PV-area metrics are reported per building because the model is deliberately
+recall-first and neither is unconditionally honest:
+
+- **detected** (`*_det`) — area of the thresholded, merged candidate polygons on the
+  footprint. The precision-honest **floor**; use `est_mwp_det` as an existing-rooftop-
+  capacity seed per bus region.
+- **expected** (`*_exp`) — probability-weighted area (Σ per-pixel probability × 100 m²
+  over the footprint, above a small noise floor). Integrates sub-threshold signal; an
+  **upper-leaning** expectation for sensitivity bands. The truth is bracketed between them.
+
+Three layers land in `data/predictions/<aoi>/density/`:
+
+- `buildings.geoparquet` — one row per building carrying PV signal: `roof_area_m2`,
+  `pv_area_det_m2` / `pv_area_exp_m2`, `pv_ratio_{det,exp}` (≤ 1), `est_kwp_{det,exp}`,
+  `pv_placement`, `region`/`district`.
+- `grid.geoparquet` + `grid.csv` — one row per 0.1° cell (the pipeline's native grid):
+  roof area, PV area (both metrics), densities (m²/km²) and `est_mwp_{det,exp}`. The CSV
+  `lon_center`/`lat_center` map straight onto atlite/PyPSA-Earth cutout grids or Voronoi
+  bus regions.
+- `regions.geoparquet` + `.csv` + `.geojson` — per Overture/geoBoundaries province (and
+  `--districts` for ADM2), additive totals with ratios recomputed from sums.
+
+Capacity uses `est_kwp = pv_area × --kwp-per-m2` (default **0.18 kWp/m²**, ≈ 5.5 m²
+of c-Si module per kWp). Double counting is avoided at the source: adjacent rasters
+overlap by a few pixels, so each building is assigned to exactly one cell by its
+representative point and each cell's raster sum is cropped to the canonical 0.1° box.
+The run is resumable (per-cell partials under `density/cells/`), ~1.5–2.5 h single-process
+for all of Pakistan. Province polygons come from **geoBoundaries** (open, CC-BY) because
+Overture's S3 divisions endpoint times out from this machine; pass `--regions-file` to
+override, or the cached `data/labels/<aoi>_regions.parquet` is reused.
+
+Sentinel-1 (VV/VH) is a planned follow-up: TerraMind-tiny ships pretrained S1 patch
+embeddings, but wiring it needs S1 RTC compositing, a modality-dict input path, neck
+reconfiguration and a retrain gated against v3 on the Multan validation split — a
+separate phase from this density product.
 
 ## Notes
 

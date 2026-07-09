@@ -69,6 +69,18 @@ aois:
     # Two-season opt-in (see note above).
     # stack_window: ["2025-09-20", "2025-11-15"]
 
+  # India pilot: no rooftopsenti local dataset exists for India (unlike PK/DE), so this
+  # is the first AOI exercising compose.py's VIDA-buildings + geoBoundaries fallbacks
+  # (no `source_region` key here on purpose). Gujarat chosen as the pilot state — it has
+  # India's highest rooftop-solar penetration (Surya Gujarat / net-metering programs),
+  # concentrated in mid-size cities (Ahmedabad, Surat, Vadodara, Rajkot) rather than
+  # spread thin like utility-scale-heavy states (e.g. Rajasthan). Detection uses the
+  # existing Germany-trained checkpoint (data/models/v2_combined) unchanged, same as the
+  # original Punjab bootstrap — no India-specific retraining yet.
+  gujarat:
+    bbox: [68.0, 20.0, 74.6, 24.8]
+    division: { name: Gujarat, country: IN, subtype: region }
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]

@@ -24,26 +24,56 @@ from earthpv.local_source import CompositeIndex
 log = logging.getLogger(__name__)
 
 
-def load_model(checkpoint: Path):
+def _allow_custom_losses() -> None:
+    """Allowlist our custom loss classes for torch.load(weights_only=True) (PyTorch 2.6+):
+    checkpoints pickle their criterion into hparams, and it must be a known-safe global."""
     import torch
-    from terratorch.tasks import SemanticSegmentationTask
 
-    # Recall-tuned checkpoints pickle a TverskyLoss criterion into their hparams; PyTorch
-    # 2.6 defaults torch.load(weights_only=True), which rejects it. Allowlist our own class.
+    from earthpv.losses import TargetWeightedMSE
+
+    globals_ = [TargetWeightedMSE]
     try:
         import segmentation_models_pytorch as smp
 
-        torch.serialization.add_safe_globals([smp.losses.TverskyLoss])
+        globals_.append(smp.losses.TverskyLoss)
     except Exception:  # noqa: BLE001 — best-effort; dice/ce checkpoints don't need it
         pass
-    task = SemanticSegmentationTask.load_from_checkpoint(checkpoint, map_location="cpu")
+    torch.serialization.add_safe_globals(globals_)
+
+
+def _sniff_task_type(checkpoint: Path) -> str:
+    """Segmentation configs carry model_args.num_classes; regression configs don't
+    (RegressionHead defaults to 1 output). Used by both infer and evaluate."""
+    import torch
+
+    _allow_custom_losses()
+    ckpt = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    model_args = ckpt.get("hyper_parameters", {}).get("model_args", {})
+    return "regression" if "num_classes" not in model_args else "segmentation"
+
+
+def load_model(checkpoint: Path, task_type: str = "auto"):
+    import torch
+
+    _allow_custom_losses()
+    if task_type == "auto":
+        task_type = _sniff_task_type(checkpoint)
+    if task_type == "regression":
+        from terratorch.tasks import PixelwiseRegressionTask
+
+        task = PixelwiseRegressionTask.load_from_checkpoint(checkpoint, map_location="cpu")
+    else:
+        from terratorch.tasks import SemanticSegmentationTask
+
+        task = SemanticSegmentationTask.load_from_checkpoint(checkpoint, map_location="cpu")
     task.eval()
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    return task.to(device), device
+    return task.to(device), device, task_type
 
 
 def run_inference(
-    aoi: str, checkpoint: Path, out_dir: Path, only_built: bool = True, limit: int = 0
+    aoi: str, checkpoint: Path, out_dir: Path, only_built: bool = True, limit: int = 0,
+    task_type: str = "auto", tiles: list[str] | None = None,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     import torch
@@ -77,7 +107,8 @@ def run_inference(
             )
     out_dir = Path(out_dir) / aoi / "prob"
     out_dir.mkdir(parents=True, exist_ok=True)
-    task, device = load_model(checkpoint)
+    task, device, task_type = load_model(checkpoint, task_type=task_type)
+    log.info("Loaded %s checkpoint %s", task_type, checkpoint)
     n_bands = len(MODEL_BANDS)
     # Stride deliberately NOT a multiple of the 16 px ViT patch size: this offsets the
     # patch grid between neighbouring windows so patch-edge artefacts decorrelate and
@@ -87,11 +118,14 @@ def run_inference(
     # seams blend smoothly (overlap-add) and border artefacts get near-zero weight.
     hann = np.outer(np.hanning(CHIP_SIZE), np.hanning(CHIP_SIZE)).astype("float32") + 1e-3
 
-    tiles = list(comp_idx.index.path)
+    tile_paths = list(comp_idx.index.path)
+    if tiles:
+        wanted = set(tiles)
+        tile_paths = [p for p in tile_paths if Path(p).parent.name in wanted]
     if limit:
-        tiles = tiles[:limit]
+        tile_paths = tile_paths[:limit]
     windows_run = 0
-    for tile_path in tqdm(tiles, desc="cells"):
+    for tile_path in tqdm(tile_paths, desc="cells"):
         tile = Path(tile_path).parent.name
         src1 = rasterio.open(Path(tile_path).parent / "composite_1.tif") if stacked else None
         with rasterio.open(tile_path) as src:
@@ -120,7 +154,13 @@ def run_inference(
                     with torch.no_grad(), torch.autocast(device_type=device, enabled=device == "cuda"):
                         out = task(x)
                         logits = out.output if hasattr(out, "output") else out
-                        prob = torch.softmax(logits, dim=1)[0, 1].float().cpu().numpy()
+                        if task_type == "regression":
+                            # Sigmoid already applied by the head (head_final_act); output
+                            # is (B, H, W) after PixelWiseModel squeezes the single channel.
+                            pred = logits[0] if logits.ndim == 3 else logits[0, 0]
+                            prob = pred.clamp(0, 1).float().cpu().numpy()
+                        else:
+                            prob = torch.softmax(logits, dim=1)[0, 1].float().cpu().numpy()
                     acc[r : r + h, c : c + w] += prob[:h, :w] * hann[:h, :w]
                     wacc[r : r + h, c : c + w] += hann[:h, :w]
                     valid_any[r : r + h, c : c + w] |= (arr[:, :h, :w] > 0).any(axis=0)
@@ -137,5 +177,5 @@ def run_inference(
         if src1 is not None:
             src1.close()
     log.info("Inference wrote %d seamless cell rasters (%d windows) -> %s",
-             len(tiles), windows_run, out_dir)
+             len(tile_paths), windows_run, out_dir)
     return out_dir

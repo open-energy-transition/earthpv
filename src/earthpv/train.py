@@ -24,23 +24,38 @@ def run_training(config: Path, smoke: bool = False) -> Path:
 
     dm = PVDataModule(**cfg["data"])
     task_args = dict(cfg["task"])
-    if task_args.get("loss") == "tversky":
-        # TerraTorch has no built-in Tversky loss, but SemanticSegmentationTask accepts a
-        # loss nn.Module. Tversky with beta>alpha penalises false negatives (missed PV)
-        # harder than false positives -> recall-first. With a module loss the task's
-        # class_weights is inactive (alpha/beta do the class weighting), so drop it.
-        import segmentation_models_pytorch as smp
+    task_type = cfg.get("task_type", "segmentation")
+    if task_type == "regression":
+        from terratorch.tasks import PixelwiseRegressionTask
 
-        ta = task_args.pop("tversky_args", None) or {}
-        task_args.pop("class_weights", None)
-        task_args["loss"] = smp.losses.TverskyLoss(
-            mode="multiclass",
-            ignore_index=task_args.get("ignore_index", -1),
-            alpha=ta.get("alpha", 0.3),
-            beta=ta.get("beta", 0.7),
-            gamma=ta.get("gamma", 1.0),
-        )
-    task = SemanticSegmentationTask(**task_args)
+        if task_args.get("loss") == "weighted_mse":
+            # Counters the zero-inflation of a fraction target; see earthpv.losses. Like
+            # the tversky branch below, PixelwiseRegressionTask accepts a loss nn.Module.
+            from earthpv.losses import TargetWeightedMSE
+
+            wa = task_args.pop("weighted_mse_args", None) or {}
+            task_args["loss"] = TargetWeightedMSE(
+                k=wa.get("k", 10.0), ignore_index=task_args.get("ignore_index", -1)
+            )
+        task = PixelwiseRegressionTask(**task_args)
+    else:
+        if task_args.get("loss") == "tversky":
+            # TerraTorch has no built-in Tversky loss, but SemanticSegmentationTask accepts a
+            # loss nn.Module. Tversky with beta>alpha penalises false negatives (missed PV)
+            # harder than false positives -> recall-first. With a module loss the task's
+            # class_weights is inactive (alpha/beta do the class weighting), so drop it.
+            import segmentation_models_pytorch as smp
+
+            ta = task_args.pop("tversky_args", None) or {}
+            task_args.pop("class_weights", None)
+            task_args["loss"] = smp.losses.TverskyLoss(
+                mode="multiclass",
+                ignore_index=task_args.get("ignore_index", -1),
+                alpha=ta.get("alpha", 0.3),
+                beta=ta.get("beta", 0.7),
+                gamma=ta.get("gamma", 1.0),
+            )
+        task = SemanticSegmentationTask(**task_args)
 
     ckpt_dir = Path(cfg.get("checkpoint_dir", "data/models"))
     ckpt_dir.mkdir(parents=True, exist_ok=True)

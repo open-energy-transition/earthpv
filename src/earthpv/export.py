@@ -25,7 +25,43 @@ def _imagery_links(lon: float, lat: float) -> dict[str, str]:
     }
 
 
-def run_export(aoi: str, pred_dir: Path) -> None:
+def _load_mapped_reference(aoi: str, cfg: dict, settings) -> gpd.GeoDataFrame | None:
+    """Every already-known OSM solar polygon for this AOI — the rooftopsenti-cached
+    snapshot (source_region/osm/*.parquet) plus any fresher Overpass-fetched labels
+    (data/labels/*_overpass_solar.parquet) sitting in the same country. Used to hold
+    back candidates that are already mapped, so a human-validation queue only ever
+    surfaces genuinely new leads."""
+    from earthpv.local_source import load_solar_labels
+
+    parts = []
+    source_region = cfg.get("source_region")
+    if source_region:
+        region_dir = Path(settings.raw["local_root"]) / source_region
+        cached = load_solar_labels(region_dir)
+        if cached is not None and not cached.empty:
+            parts.append(cached[["geometry"]])
+    for p in sorted(Path("data/labels").glob("*_overpass_solar.parquet")):
+        fresh = gpd.read_parquet(p)
+        if not fresh.empty:
+            parts.append(fresh[["geometry"]])
+    if not parts:
+        return None
+    import pandas as pd
+
+    return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs="EPSG:4326")
+
+
+def filter_new_leads(cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Drop candidates that spatially intersect an already-mapped OSM solar polygon —
+    same zero-buffer `intersects` convention used for the Lahore recall check."""
+    if cands.empty or mapped.empty:
+        return cands
+    sindex = mapped.sindex
+    is_new = [len(sindex.query(g, predicate="intersects")) == 0 for g in cands.geometry]
+    return cands[is_new].reset_index(drop=True)
+
+
+def run_export(aoi: str, pred_dir: Path, exclude_mapped: bool = False) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pred_dir = Path(pred_dir) / aoi
     cands = gpd.read_parquet(pred_dir / "candidates.parquet")
@@ -43,6 +79,24 @@ def run_export(aoi: str, pred_dir: Path) -> None:
     cands.to_parquet(gpq)
     gj = pred_dir / f"{aoi}_pv_candidates.geojson"
     cands.to_file(gj, driver="GeoJSON")
+
+    if exclude_mapped:
+        from earthpv.config import Settings
+        from earthpv.labels import resolve_aoi
+
+        settings = Settings.load()
+        _, cfg = resolve_aoi(aoi, settings)
+        mapped = _load_mapped_reference(aoi, cfg, settings)
+        if mapped is None or mapped.empty:
+            log.warning("No already-mapped OSM reference found for %s; new_leads == candidates", aoi)
+            leads = cands
+        else:
+            leads = filter_new_leads(cands, mapped)
+        log.info(
+            "New leads (not already mapped): %d / %d candidates", len(leads), len(cands)
+        )
+        nl = pred_dir / f"{aoi}_pv_new_leads.geojson"
+        leads.to_file(nl, driver="GeoJSON")
 
     # MapRoulette: newline-delimited FeatureCollections (RFC 7464-style, MR "lineByLine")
     mr = pred_dir / f"{aoi}_pv_maproulette.geojson"

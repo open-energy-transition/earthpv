@@ -1,5 +1,6 @@
 data/
 logs/
+hf_cache/
 __pycache__/
 *.pyc
 .pixi/
