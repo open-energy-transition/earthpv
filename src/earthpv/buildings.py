@@ -17,6 +17,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 from earthpv import overture
@@ -71,6 +72,29 @@ def fetch_vida_buildings(
     if not gdf.empty:
         gdf["id"] = [f"vida-{i}" for i in range(len(gdf))]
     return gdf
+
+
+def fetch_vida_building_points(bbox: Bbox, iso3: str, con=None) -> pd.DataFrame:
+    """Building locations within `bbox` as plain (lon, lat) float columns, no geometry.
+
+    For country-scale scans (Pakistan has 76M+ VIDA buildings) `fetch_vida_buildings`
+    OOMs: decoding tens of millions of WKB polygons into shapely objects costs far more
+    memory than the buildings themselves. This is for callers that only need a point
+    per building (e.g. binning into cells for density-based cell selection) — it reads
+    the parquet's own `bbox` struct (already used for row-group pruning) and returns its
+    center, never touching the `geometry` column or DuckDB's spatial/GEOS layer at all.
+    """
+    con = con or overture.connect()
+    local = Path(VIDA_LOCAL.format(iso3=iso3))
+    url = str(local) if local.exists() else VIDA_URL.format(iso3=iso3)
+    xmin, ymin, xmax, ymax = bbox
+    sql = f"""
+        SELECT (bbox.xmin + bbox.xmax) / 2 AS lon, (bbox.ymin + bbox.ymax) / 2 AS lat
+        FROM read_parquet('{url}')
+        WHERE bbox.xmin <= {xmax} AND bbox.xmax >= {xmin}
+          AND bbox.ymin <= {ymax} AND bbox.ymax >= {ymin}
+    """
+    return con.execute(sql).df()
 
 
 CELL_DEG = 0.1  # VIDA is spatially clustered ~this well; one cell scans in seconds

@@ -110,7 +110,8 @@ def _solar_label_cells(
 
 
 def populated_cells(
-    aoi: str, cfg: dict, settings: Settings, min_buildings: int, include_labels: bool = True
+    aoi: str, cfg: dict, settings: Settings, min_buildings: int, include_labels: bool = True,
+    use_vida: bool = False,
 ) -> pd.DataFrame:
     """0.1 deg cells within the AOI to composite, sorted by building density.
 
@@ -119,6 +120,12 @@ def populated_cells(
     unioned with full imagery coverage over every already-mapped one. Buildings are
     clipped to the AOI polygon (not just its bbox) so neighbouring provinces' cities
     in the shared building set don't leak in.
+
+    `use_vida=True` forces VIDA Open Buildings for cell selection even when the AOI has
+    a `source_region` — the local rooftopsenti building set is Overture-only, filtered
+    to >= 500 m2, so it silently undercounts by 2-3 orders of magnitude wherever small
+    (mostly residential) structures dominate and aren't individually mapped in OSM.
+    VIDA is imagery-derived and doesn't have that gap.
     """
     boundary = _aoi_boundary(aoi, cfg, settings)
     bbox = tuple(boundary.total_bounds) if boundary is not None else tuple(cfg["bbox"])
@@ -131,14 +138,22 @@ def populated_cells(
         minx = gx + np.floor((minx - gx) / CELL_DEG) * CELL_DEG
         miny = gy + np.floor((miny - gy) / CELL_DEG) * CELL_DEG
     bbox = (minx, miny, bbox[2], bbox[3])
-    if cfg.get("source_region"):
+    minx, miny, maxx, maxy = bbox
+    if cfg.get("source_region") and not use_vida:
         buildings = load_buildings(Path(settings.raw["local_root"]) / cfg["source_region"])
+        rep = buildings.geometry.representative_point()
+        bx_all, by_all = rep.x.values, rep.y.values
     else:
-        # No local rooftopsenti dataset for this AOI (e.g. a new country/state) — fetch
-        # VIDA Open Buildings directly, bbox-pruned, the same source density.py already
-        # uses per-cell. One bbox-sized scan up front instead of a bulk local download.
+        # No local rooftopsenti dataset for this AOI (e.g. a new country/state), or VIDA
+        # was explicitly requested — fetch VIDA Open Buildings directly, bbox-pruned, the
+        # same source density.py already uses per-cell. Uses the local cached parquet
+        # (data/vida/<iso3>.parquet) if present, else a bbox-pruned remote scan.
+        #
+        # Country-scale VIDA scans (Pakistan: 76M+ buildings) OOM if decoded into full
+        # shapely polygons (fetch_vida_buildings): use the lightweight point-only path,
+        # which reads the parquet's `bbox` struct and never touches WKB/GEOS.
         from earthpv import overture
-        from earthpv.buildings import _iso3_for, fetch_vida_buildings
+        from earthpv.buildings import _iso3_for, fetch_vida_building_points
 
         iso3 = _iso3_for(cfg)
         if not iso3:
@@ -146,15 +161,21 @@ def populated_cells(
                 f"AOI '{aoi}' has no source_region and no resolvable division.country "
                 "-> cannot locate buildings for cell selection."
             )
-        log.info("No local source_region for '%s'; fetching VIDA buildings for %s", aoi, iso3)
-        buildings = fetch_vida_buildings(bbox, iso3, con=overture.connect())
-    pts = buildings.geometry.representative_point()
-    minx, miny, maxx, maxy = bbox
-    inb = (pts.x >= minx) & (pts.x <= maxx) & (pts.y >= miny) & (pts.y <= maxy)
-    pts = gpd.GeoDataFrame(geometry=pts[inb].values, crs="EPSG:4326")
+        log.info(
+            "%s buildings for '%s' (%s)", "Forcing VIDA" if use_vida else "No local source_region;"
+            " fetching VIDA", aoi, iso3,
+        )
+        pts_df = fetch_vida_building_points(bbox, iso3, con=overture.connect())
+        bx_all, by_all = pts_df["lon"].values, pts_df["lat"].values
+    inb = (bx_all >= minx) & (bx_all <= maxx) & (by_all >= miny) & (by_all <= maxy)
+    bx, by = bx_all[inb], by_all[inb]
     if boundary is not None:
-        pts = gpd.sjoin(pts, boundary[["geometry"]], predicate="within", how="inner")
-    bx, by = pts.geometry.x.values, pts.geometry.y.values
+        # shapely's vectorized point-in-polygon test operates on plain float arrays, so
+        # tens of millions of buildings never need a Point object or GeoDataFrame built.
+        import shapely
+
+        within = shapely.contains_xy(boundary.geometry.union_all(), bx, by)
+        bx, by = bx[within], by[within]
     ix = np.floor((bx - minx) / CELL_DEG).astype(int)
     iy = np.floor((by - miny) / CELL_DEG).astype(int)
     cells = pd.DataFrame({"ix": ix, "iy": iy}).value_counts().reset_index(name="n")
@@ -205,6 +226,7 @@ def run_compose(
     index: int = 0,
     workers: int = 1,
     include_labels: bool = True,
+    use_vida: bool = False,
 ) -> Path:
     """`window`/`index` build an extra seasonal layer (`composite_<index>.tif`, e.g.
     a post-monsoon contrast season) into the same cell dirs as the base run.
@@ -224,7 +246,7 @@ def run_compose(
     out_dir = region_dir / "composites"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    cells = populated_cells(aoi, cfg, settings, min_buildings, include_labels)
+    cells = populated_cells(aoi, cfg, settings, min_buildings, include_labels, use_vida)
     if limit:
         cells = cells.head(limit)
     log.info("Compositing %d cells (>= %d buildings) for %s (%d workers)",
