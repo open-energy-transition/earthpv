@@ -84,13 +84,19 @@ def compose(
         True, "--label-cells/--no-label-cells",
         help="Also composite cells containing OSM solar labels (in-domain training positives)",
     ),
+    use_vida: bool = typer.Option(
+        False, help="Force VIDA Open Buildings for cell selection even if the AOI has a "
+        "source_region — the local Overture-only set (>=500 m2) undercounts small/unmapped "
+        "buildings by orders of magnitude in some regions"
+    ),
 ) -> None:
     """Build S2 composites for building-populated cells of an AOI (STAC, resumable)."""
     from earthpv.compose import run_compose
 
     win = tuple(window.split(":")) if window else None
     run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit,
-                window=win, index=index, workers=workers, include_labels=label_cells)
+                window=win, index=index, workers=workers, include_labels=label_cells,
+                use_vida=use_vida)
 
 
 @app.command()
