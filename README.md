@@ -137,6 +137,45 @@ capacity, and post-monsoon vs dry season not differing enough spectrally in arid
 Pakistan. The strongest remaining lever is retraining on **human-validated candidates**
 (a larger, cleaner in-domain signal than a second season).
 
+## Planned: two-epoch change detection — the 2022–2026 solar boom as signal
+
+Pakistan's rooftop PV stock is dominated by the post-2022 boom: panel imports jumped
+to double-digit GW per year (~13 GW+ imported in 2024 alone), driven by grid tariffs,
+load shedding and net metering. The consequence for detection: **almost every real
+rooftop array visible in 2026 imagery did not exist in the 2021/22 dry season** — a
+temporal prior that no single-epoch optical model can exploit. The plumbing to use it
+already exists from the seasonal experiment (`annual_composite(geobox=…)`,
+`CompositeIndex(layers=2)`, `compose --index/--window`):
+
+1. Compose a **pre-boom epoch** onto the exact same 0.1° grid:
+   `compose --aoi pakistan --index 1 --window 2021-10-01:2022-01-24 --use-vida`
+   (same cost profile as the current-epoch run: ~4.4k cells, resumable, network-bound).
+2. Run the **unchanged production model** on both epochs. Unlike the two-season stack
+   above — which fed both seasons to the model as extra input bands and needed a
+   retrain — this is two independent inference passes with no training at all.
+3. **Difference the probability surfaces** and re-score candidates:
+   - *Persistent false positives cancel.* Bright riverbeds, rock outcrops, industrial
+     roofs, greenhouses existed pre-boom too, so they fire in both epochs and Δ≈0;
+     new PV fires only in the current epoch. This attacks exactly the countryside-FP
+     class that building-distance filtering cannot (a bright outcrop near a village
+     survives the 2 km filter; it cannot survive the epoch difference).
+   - *"Already present in 2021" is a negative prior in Pakistan* — the opposite of
+     Germany, where old installations dominate. Detections with high pre-boom
+     probability get down-ranked per candidate.
+4. The difference is also a product in itself: **ΔMWp 2022→2026 per cell and district
+   is the rooftop-density development over the boom**, independently checkable against
+   NEPRA net-metering registrations (a grid-tied lower bound, per DISCO) and the
+   customs panel-import series — a second calibration anchor besides TransitionZero,
+   and a spatially-resolved growth map of the boom.
+
+Caveats to design around: the Sentinel-2 processing-baseline change (04.00, Jan 2022)
+shifts the DN convention by +1000 mid-window — the suggested pre-boom window ends
+2022-01-24 to stay on one baseline; epoch-to-epoch atmosphere/phenology differences
+are mitigated by differencing model *outputs* rather than reflectances; and the model
+has only ever seen current-epoch spectra, so spot-check pre-boom composites over
+installations known to predate 2022 (e.g. Quaid-e-Azam Solar Park) before trusting
+the pass.
+
 ## Avoiding tiling artefacts
 
 Two things previously produced a regular grid of false positives at the sliding-window
@@ -208,10 +247,48 @@ for all of Pakistan. Province polygons come from **geoBoundaries** (open, CC-BY)
 Overture's S3 divisions endpoint times out from this machine; pass `--regions-file` to
 override, or the cached `data/labels/<aoi>_regions.parquet` is reused.
 
+### How the density estimate developed
+
+The density product went through several validated iterations; each step exists
+because the previous one had a measurable gap:
+
+1. **Detected-area floor** — thresholded candidate polygons joined to footprints
+   (`est_mwp_det`). Precision-honest but blind to everything below the threshold and
+   below the ~1000 m² detection size, i.e. to most residential PV.
+2. **Probability-weighted expectation** (`est_mwp_exp`) — Σ per-pixel probability
+   × 100 m² over each footprint. Integrates sub-threshold signal; together the two
+   metrics bracket the truth.
+3. **Fraction-regression track** — a second model head trained to predict per-pixel
+   PV *coverage fraction* (OSM polygons burned at 10× supersampling, block-averaged
+   to 10 m). Individually noisy (0–250 m² per-installation recall is only ~4.5 %) but
+   **unbiased-in-aggregate**: chip-sum R² 0.60 on held-out Germany, and municipal
+   Spearman ρ vs the legally-complete MaStR register of **0.740** across all German
+   Gemeinden — vs 0.499 for the segmentation baseline. Aggregate density is the
+   quantity energy models need, and this head is the purpose-built estimator for it.
+4. **Calibration anchors** — Germany: MaStR per-Gemeinde totals established a stable
+   ~2.4–2.5× aggregate over-prediction (consistent from chip level to municipality
+   level, i.e. correctable). Pakistan: cross-checked against TransitionZero's 27.5 GW
+   distributed-solar study with a coverage-share-disentangled single-point calibration
+   — separating "scale error inside imaged cells" from "cells never imaged at all".
+5. **Coverage expansion** — that comparison showed the missing-coverage term dominated:
+   cell selection had used the local Overture ≥500 m² building set, which undercounts
+   small/informal structures by 200–1000× in rural Pakistan. Switching selection to
+   VIDA Open Buildings (76.5 M footprints) grew Pakistan's compose target from 122 to
+   ~4 460 cells — the country-wide imagery runs feeding the current estimates.
+6. **Next** — the OSM flywheel (leads validated into OSM become in-domain Pakistani
+   training positives via the Overpass label path; a retrain is pending), NEPRA
+   net-metering totals as a Pakistani MaStR analogue, and the two-epoch ΔMWp above as
+   the growth axis: per-epoch density estimates make `est_mwp` a **time series**, so
+   the boom itself becomes measurable per district rather than a single snapshot.
+
 Sentinel-1 (VV/VH) is a planned follow-up: TerraMind-tiny ships pretrained S1 patch
 embeddings, but wiring it needs S1 RTC compositing, a modality-dict input path, neck
 reconfiguration and a retrain gated against v3 on the Multan validation split — a
-separate phase from this density product.
+separate phase from this density product. A lighter-weight S1 use needs no model
+change at all: multi-temporal backscatter *variance* at candidate locations separates
+permanent structures (PV: static, low, flat backscatter) from seasonally-changing
+fields, and greenhouses' metal frames act as corner reflectors (bright return —
+opposite to PV), making S1 a cheap post-hoc false-positive filter.
 
 ## Notes
 
