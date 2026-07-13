@@ -168,9 +168,14 @@ def build_overpass_labels(
     place: str | None = None,
     name: str | None = None,
     timeout: int = 180,
+    iso3: str | None = None,
 ) -> Path:
     """Fetch + classify + write an Overpass-sourced labels parquet, mirroring
-    `labels.build_labels`'s output shape (`<name>_solar.parquet`) but from live OSM."""
+    `labels.build_labels`'s output shape (`<name>_solar.parquet`) but from live OSM.
+
+    `iso3` routes the placement classification's building lookups to the local VIDA
+    parquet (data/vida/<iso3>.parquet) instead of Overture's remote S3, which times
+    out from this machine — required for countries with no rooftopsenti cache."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     from earthpv import overture
     from earthpv.config import Settings
@@ -186,7 +191,7 @@ def build_overpass_labels(
         )
 
     con = overture.connect()
-    solar = classify_placement(solar, con, settings, settings.rooftop_overlap_frac)
+    solar = classify_placement(solar, con, settings, settings.rooftop_overlap_frac, iso3=iso3)
     solar["area_m2"] = [geodesic_area_m2(g) for g in solar.geometry]
     solar["geom_type"] = solar.geom_type
 

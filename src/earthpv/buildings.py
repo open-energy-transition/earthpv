@@ -13,6 +13,7 @@ GeoParquet; the S3/Overture path stays the fallback for AOIs with no VIDA cache.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 import geopandas as gpd
@@ -137,7 +138,19 @@ def fetch_vida_near(
     parts = []
     for lon0, lat0 in tqdm(cells, desc="vida cells"):
         bbox = (lon0, lat0, lon0 + CELL_DEG, lat0 + CELL_DEG)
-        g = fetch_vida_buildings(bbox, iso3, con=con)
+        # Remote scans hit transient httpfs/Thrift errors; a failed query can also
+        # poison the connection, so retry each cell on a fresh one before giving up
+        # (giving up raises: a silently skipped cell would be cached as building-free).
+        for attempt in range(3):
+            try:
+                g = fetch_vida_buildings(bbox, iso3, con=con)
+                break
+            except Exception as e:  # noqa: BLE001
+                if attempt == 2:
+                    raise
+                log.warning("VIDA cell (%s, %s) failed (%s); reconnecting", lon0, lat0, e)
+                time.sleep(5 * (attempt + 1))
+                con = overture.connect()
         if g.empty:
             continue
         keep = g.sindex.query(clip, predicate="intersects")

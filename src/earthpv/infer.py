@@ -71,13 +71,27 @@ def load_model(checkpoint: Path, task_type: str = "auto"):
     return task.to(device), device, task_type
 
 
+def predict_window(arr: np.ndarray, task, device: str, task_type: str) -> np.ndarray:
+    """Run the model on one (bands, H, W) window; returns the PV-probability map."""
+    import torch
+
+    x = torch.from_numpy(arr.astype("float32") / 10000.0)[None].to(device)
+    with torch.no_grad(), torch.autocast(device_type=device, enabled=device == "cuda"):
+        out = task(x)
+        logits = out.output if hasattr(out, "output") else out
+        if task_type == "regression":
+            # Sigmoid already applied by the head (head_final_act); output
+            # is (B, H, W) after PixelWiseModel squeezes the single channel.
+            pred = logits[0] if logits.ndim == 3 else logits[0, 0]
+            return pred.clamp(0, 1).float().cpu().numpy()
+        return torch.softmax(logits, dim=1)[0, 1].float().cpu().numpy()
+
+
 def run_inference(
     aoi: str, checkpoint: Path, out_dir: Path, only_built: bool = True, limit: int = 0,
     task_type: str = "auto", tiles: list[str] | None = None,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    import torch
-
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     # Prefer composites built by the `compose` stage for this AOI (e.g. Punjab, which
@@ -150,17 +164,7 @@ def run_inference(
                             [arr, src1.read(window=win, boundless=True, fill_value=0)[:n_bands]],
                             axis=0,
                         )
-                    x = torch.from_numpy(arr.astype("float32") / 10000.0)[None].to(device)
-                    with torch.no_grad(), torch.autocast(device_type=device, enabled=device == "cuda"):
-                        out = task(x)
-                        logits = out.output if hasattr(out, "output") else out
-                        if task_type == "regression":
-                            # Sigmoid already applied by the head (head_final_act); output
-                            # is (B, H, W) after PixelWiseModel squeezes the single channel.
-                            pred = logits[0] if logits.ndim == 3 else logits[0, 0]
-                            prob = pred.clamp(0, 1).float().cpu().numpy()
-                        else:
-                            prob = torch.softmax(logits, dim=1)[0, 1].float().cpu().numpy()
+                    prob = predict_window(arr, task, device, task_type)
                     acc[r : r + h, c : c + w] += prob[:h, :w] * hann[:h, :w]
                     wacc[r : r + h, c : c + w] += hann[:h, :w]
                     valid_any[r : r + h, c : c + w] |= (arr[:, :h, :w] > 0).any(axis=0)

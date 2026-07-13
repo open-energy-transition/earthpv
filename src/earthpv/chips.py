@@ -220,6 +220,21 @@ def _tile_of(lon: float, lat: float, comp_idx: CompositeIndex) -> str | None:
     return Path(hit.iloc[0].path).parent.name
 
 
+def _overpass_labels(path: Path, min_area_m2: float = 400.0) -> gpd.GeoDataFrame:
+    """Normalize an Overpass-fetched solar parquet (overpass.build_overpass_labels)
+    to the schema load_solar_labels returns, so AOIs without a rooftopsenti dataset
+    (e.g. India) can train from live OSM: polygons >= min_area keep their classified
+    rooftop/ground placement (unknown -> ground, mirroring rooftopsenti's "large
+    off-building = ground-mount" rule); smaller ones become the "small" ignore class."""
+    labels = gpd.read_parquet(path)
+    labels = labels[labels.geom_type.isin(["Polygon", "MultiPolygon"])].copy()
+    labels = labels.rename(columns={"id": "osm_id"})
+    big = labels.area_m2 >= min_area_m2
+    labels.loc[big & (labels.placement == "unknown"), "placement"] = "ground"
+    labels.loc[~big, "placement"] = "small"
+    return labels[["osm_id", "placement", "area_m2", "geometry"]].reset_index(drop=True)
+
+
 def build_chips(
     aoi: str, labels_dir: Path, out_dir: Path, limit: int = 0, seasonal: bool = False,
     fraction: bool = False, max_positives: int = 0, region_filter: Path | None = None,
@@ -234,12 +249,17 @@ def build_chips(
     region_gdf = gpd.read_parquet(region_filter) if region_filter else None
 
     source_region = cfg.get("source_region")
-    if not source_region:
+    composed = Path("data/composites") / aoi
+    overpass_path = Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
+    if not source_region and not (
+        composed.exists() and any(composed.glob("composites/*/composite_0.tif"))
+        and overpass_path.exists()
+    ):
         raise NotImplementedError(
-            f"AOI '{aoi}' has no source_region; the STAC chip backend is not wired for "
-            "training. Add local composites under local_root or use the STAC path."
+            f"AOI '{aoi}' has no source_region; training needs composed imagery under "
+            f"{composed} (run `compose`) plus Overpass labels at {overpass_path} "
+            "(run `overpass-labels`)."
         )
-    region_dir = Path(settings.raw["local_root"]) / source_region
     # Two-season stack: chips get [base 10 bands, contrast-window 10 bands]. When the
     # AOI's composed cells already carry composite_1 the stack is read locally;
     # otherwise (germany: single-layer rooftopsenti COGs) the contrast season is
@@ -247,15 +267,21 @@ def build_chips(
     stack_window = tuple(cfg["stack_window"]) if cfg.get("stack_window") else None
     # Imagery: prefer composites built by the `compose` stage for this AOI (mirrors
     # infer.py) — e.g. punjab trains on its composed cells with pakistan_500 labels.
-    composed = Path("data/composites") / aoi
     fetch_contrast = False
     if composed.exists() and any(composed.glob("composites/*/composite_0.tif")):
         comp_idx = CompositeIndex(composed, layers=2 if stack_window else 1)
     else:
-        comp_idx = CompositeIndex(region_dir)
+        comp_idx = CompositeIndex(Path(settings.raw["local_root"]) / source_region)
         fetch_contrast = stack_window is not None
     coverage = comp_idx.coverage
-    labels = load_solar_labels(region_dir)
+    # Labels: rooftopsenti's curated set when the AOI has one; fresh Overpass OSM
+    # otherwise (also used when a source_region exists but the AOI-named Overpass
+    # file was fetched deliberately — the fresher source wins).
+    if overpass_path.exists():
+        labels = _overpass_labels(overpass_path)
+        log.info("Using Overpass labels from %s", overpass_path)
+    else:
+        labels = load_solar_labels(Path(settings.raw["local_root"]) / source_region)
     labels = labels[labels.geometry.centroid.within(coverage)].reset_index(drop=True)
     log.info(
         "AOI %s: %d composite tiles, %d labels in coverage (%s)",
@@ -363,3 +389,88 @@ def _bbox_poly(lon: float, lat: float):
     from shapely.geometry import box
 
     return box(*_chip_bbox(lon, lat))
+
+
+def build_hard_negative_chips(
+    aoi: str, centers_path: Path, labels_dir: Path, out_dir: Path
+) -> Path:
+    """Cut real chips at hard_negatives.py's confirmed centers, into a chip set
+    parallel to the AOI's normal one (e.g. `<aoi>_hard_neg/`) so it can be added to
+    `scripts/merge_chip_index.py`'s AOI list independently.
+
+    Images always come from the AOI's current composites (matching every other chip);
+    the older-year comparison used to confirm these as negatives is a filtering-only
+    artifact and never enters the training image itself. The mask is still burned from
+    the real label set as a safety net against staleness between when hard_negatives.py
+    ran its OSM-exclusion query and when this cuts chips (should be all-zero throughout)."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    out_dir = Path(out_dir) / f"{aoi}_hard_neg"
+    (out_dir / "images").mkdir(parents=True, exist_ok=True)
+    (out_dir / "masks").mkdir(parents=True, exist_ok=True)
+
+    source_region = cfg.get("source_region")
+    composed = Path("data/composites") / aoi
+    overpass_path = Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
+    if composed.exists() and any(composed.glob("composites/*/composite_0.tif")):
+        comp_idx = CompositeIndex(composed)
+    else:
+        comp_idx = CompositeIndex(Path(settings.raw["local_root"]) / source_region)
+    if overpass_path.exists():
+        labels = _overpass_labels(overpass_path)
+    else:
+        labels = load_solar_labels(Path(settings.raw["local_root"]) / source_region)
+
+    centers = pd.read_parquet(centers_path)
+    val_tiles = set(cfg.get("val_tiles", []))
+    log.info("Cutting %d hard-negative chips for %s", len(centers), aoi)
+
+    def _build_one(row) -> dict | None:
+        cid = _chip_id(row.lon, row.lat)
+        img_path = out_dir / "images" / f"{cid}.tif"
+        mask_path = out_dir / "masks" / f"{cid}.tif"
+        tile = _tile_of(row.lon, row.lat, comp_idx)
+        try:
+            if not (img_path.exists() and mask_path.exists()):
+                res = comp_idx.read_window(_chip_bbox(row.lon, row.lat))
+                if res is None:
+                    return None
+                arr, transform, crs = res
+                arr = arr[: len(MODEL_BANDS)]
+                arr, ox, oy = _crop(arr, CHIP_SIZE)
+                transform = transform * rasterio.Affine.translation(ox, oy)
+                win_labels = labels[labels.geometry.intersects(_bbox_poly(row.lon, row.lat))]
+                _write_tif(img_path, arr, transform, crs, "uint16")
+                mask = _burn_mask(win_labels, transform, crs, arr.shape[-2:])
+                _write_tif(mask_path, mask.astype("int16"), transform, crs, "int16")
+        except Exception as e:  # noqa: BLE001 — one bad chip must not kill the run
+            log.warning("chip %s failed: %s", cid, e)
+            return None
+        with rasterio.open(mask_path) as m:
+            band = m.read(1)
+        split = "val" if tile in val_tiles else "train"
+        return dict(
+            chip_id=cid, lon=row.lon, lat=row.lat, kind="hard_negative", tile=tile,
+            split=split, pv_pixels=int((band == 1).sum()), image=str(img_path), mask=str(mask_path),
+        )
+
+    records = []
+    for _, row in tqdm(list(centers.iterrows()), desc="hard_neg_chips"):
+        rec = _build_one(row)
+        if rec:
+            records.append(rec)
+
+    index = pd.DataFrame(records)
+    index_path = out_dir / "index.parquet"
+    index.to_parquet(index_path)
+    n_leaked = int((index.pv_pixels > 0).sum()) if len(index) else 0
+    if n_leaked:
+        log.warning(
+            "%d/%d hard-negative chips actually rasterized PV pixels from the label set "
+            "(stale exclusion vs. current labels) -- inspect before training on this set",
+            n_leaked, len(index),
+        )
+    log.info("Wrote %d hard-negative chips (%d val) -> %s",
+              len(index), int((index.split == "val").sum()) if len(index) else 0, index_path)
+    return index_path
