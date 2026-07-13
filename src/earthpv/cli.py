@@ -31,6 +31,11 @@ def overpass_labels(
     out_dir: Path = typer.Option(Path("data/labels")),
     name: str = typer.Option(None, help="Output file stem (default: slugified --place)"),
     timeout: int = typer.Option(180, help="Overpass query timeout (seconds)"),
+    iso3: str = typer.Option(
+        None, help="Use the local VIDA building parquet (data/vida/<ISO3>.parquet) for "
+        "placement classification instead of Overture's remote S3 (which times out "
+        "from this machine) — needed for countries without a rooftopsenti cache"
+    ),
 ) -> None:
     """Fetch fresh OSM solar-PV mappings directly via Overpass (bypasses Overture's
     periodic-snapshot lag — use for a region that was just hand-mapped)."""
@@ -38,7 +43,8 @@ def overpass_labels(
 
     parsed_bbox = tuple(float(x) for x in bbox.split(",")) if bbox else None
     build_overpass_labels(
-        out_dir=out_dir, bbox=parsed_bbox, place=place, name=name, timeout=timeout
+        out_dir=out_dir, bbox=parsed_bbox, place=place, name=name, timeout=timeout,
+        iso3=iso3,
     )
 
 
@@ -183,6 +189,53 @@ def export(
     from earthpv.export import run_export
 
     run_export(aoi=aoi, pred_dir=pred_dir, exclude_mapped=exclude_mapped)
+
+
+@app.command("hard-negatives")
+def hard_negatives(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    checkpoint: Path = typer.Option(..., help="Trained model checkpoint used for the bi-temporal check"),
+    compare_year: str = typer.Option("2022", help="Older year to confirm PV absence against"),
+    window: str = typer.Option(
+        "", help="Older-year date range 'YYYY-MM-DD:YYYY-MM-DD' (default: all of --compare-year)"
+    ),
+    composites_dir: Path = typer.Option(Path("data/composites")),
+    out_dir: Path = typer.Option(Path("data/predictions")),
+    min_area: float = typer.Option(400.0, help="Minimum building area (m2) to be a candidate"),
+    limit: int = typer.Option(300, help="Cap number of candidate buildings"),
+    neg_threshold: float = typer.Option(
+        0.1, help="Predicted-probability ceiling for 'the model sees nothing here'"
+    ),
+    workers: int = typer.Option(4, help="Concurrent cells for the older-year composite build (I/O-bound)"),
+) -> None:
+    """Mine hard negatives: large buildings with no OSM solar match, confirmed by
+    checking the model sees no PV signal in EITHER the current composite or an older
+    year's -- screens out buildings that likely got an unmapped recent installation."""
+    from earthpv.hard_negatives import run_hard_negatives
+
+    win = tuple(window.split(":")) if window else None
+    run_hard_negatives(
+        aoi=aoi, checkpoint=checkpoint, compare_year=compare_year, window=win,
+        composites_dir=composites_dir, out_dir=out_dir, min_area_m2=min_area, limit=limit,
+        neg_prob_threshold=neg_threshold, workers=workers,
+    )
+
+
+@app.command("hard-negative-chips")
+def hard_negative_chips(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    centers: Path = typer.Option(
+        None, help="hard_negatives_confirmed.parquet (default: data/predictions/<aoi>/...)"
+    ),
+    labels_dir: Path = typer.Option(Path("data/labels")),
+    out_dir: Path = typer.Option(Path("data/chips")),
+) -> None:
+    """Cut real training chips at hard-negatives' confirmed centers, into `<aoi>_hard_neg/`
+    (add it to `scripts/merge_chip_index.py`'s AOI list to include it in training)."""
+    from earthpv.chips import build_hard_negative_chips
+
+    centers = centers or Path("data/predictions") / aoi / "hard_negatives_confirmed.parquet"
+    build_hard_negative_chips(aoi=aoi, centers_path=centers, labels_dir=labels_dir, out_dir=out_dir)
 
 
 @app.command()

@@ -41,8 +41,13 @@ def resolve_aoi(aoi: str, settings: Settings) -> tuple[tuple[float, float, float
 
 
 def classify_placement(
-    solar: gpd.GeoDataFrame, con, settings: Settings, overlap_frac: float
+    solar: gpd.GeoDataFrame, con, settings: Settings, overlap_frac: float,
+    iso3: str | None = None,
 ) -> gpd.GeoDataFrame:
+    """`iso3` switches the building source to a local VIDA country parquet
+    (data/vida/<iso3>.parquet) — required where Overture's remote S3 is unusable
+    (direct queries time out from this machine, see CLAUDE.md) and no rooftopsenti
+    building cache exists, e.g. India."""
     solar = solar.copy()
     solar["placement"] = "unknown"
 
@@ -67,7 +72,12 @@ def classify_placement(
         in_cell = todo[todo.geometry.intersects(box(*cell_bbox))]
         if in_cell.empty:
             continue
-        buildings = overture.fetch_buildings(cell_bbox, settings, con)
+        if iso3:
+            from earthpv.buildings import fetch_vida_buildings
+
+            buildings = fetch_vida_buildings(cell_bbox, iso3, con=con)
+        else:
+            buildings = overture.fetch_buildings(cell_bbox, settings, con)
         if buildings.empty:
             solar.loc[in_cell.index, "placement"] = "ground"
             continue
