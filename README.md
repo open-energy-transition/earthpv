@@ -207,6 +207,39 @@ signal. It's fetched once per AOI, windowed to the candidate-containing 0.1° ce
 identically; VIDA's advantage shows most once `MIN_PV_AREA` is lowered to admit small
 residential roofs.
 
+## Solar-glint corroboration (rank_score)
+
+![Solar-glint validation geometry: a matched panel tilt reflects the sun straight into Sentinel-2's near-nadir sensor, a mismatched tilt sends it elsewhere, and the resulting time series shows a reflectance spike on the geometry-predicted date while the surrounding annulus stays flat.](docs/glint_geometry.svg)
+
+A glass-fronted PV panel is partly a specular reflector: Sentinel-2 views near-nadir,
+so a fixed panel only glints into the sensor when its tilt/azimuth happens to bisect
+the sun and the sensor at the ~10:30 local overpass — a narrow, geometry-predictable
+condition (`src/earthpv/glint.py`). Validated against known German and Punjab
+installations (skyfield-propagated sun/view geometry cross-checked against real
+MTD_TL.xml granule angles): arrays that glint do so on dates that self-consistently
+recover a single panel orientation, cleanly separable from cloud/cropland brightening
+by requiring the surrounding annulus to stay stable. But real arrays frequently
+**don't** glint at all — about 30% of confirmed installations in the validation set
+showed zero spikes over 2 years, simply because their orientation never lines up
+with this specific overpass geometry — so absence of glint is not evidence against a
+candidate.
+
+`postprocess --check-glint` pulls each of the current top `--glint-top-n` (default
+300) candidates' ~2-year Sentinel-2 time series and checks for spikes consistent with
+one fixed orientation (`postprocess.py::add_glint_prior`). This is **reward-only**:
+candidates with fewer than 2 mutually-consistent spike dates are left unchanged;
+confirmed ones get a `rank_score` bonus scaling up to ×1.2 at 4+ consistent dates.
+Nothing is dropped, matching the recall-first `building_prior`/`epoch_prior` re-ranking
+contract above.
+
+This is a network-bound per-candidate scene pull (dozens to hundreds of Sentinel-2
+reads each, ~1-2 min/candidate), so it's opt-in and bounded to the top-N by
+`rank_score` rather than run over a whole country-scale candidate set. Like
+`imagery.py`'s composite fetcher, it tries Planetary Computer first and falls back to
+Earth Search (AWS Open Data, no auth/tokens, a different failure domain) if PC returns
+no scenes at all for a candidate — individual PC scene-read failures during a 503
+storm are already tolerated per-scene, so only a total PC miss triggers the fallback.
+
 ## PV density per building (energy-model / PyPSA export)
 
 `density` (`src/earthpv/density.py`) turns the same probability rasters into

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import geopandas as gpd
@@ -155,6 +157,115 @@ def _join_buildings_chunked(
     return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=cands.crs)
 
 
+def _prob_raster_index(prob_dir: Path) -> gpd.GeoDataFrame:
+    rows = []
+    for tif in sorted(Path(prob_dir).glob("*.tif")):
+        with rasterio.open(tif) as src:
+            geom = shapely_box(*rasterio.warp.transform_bounds(src.crs, "EPSG:4326", *src.bounds))
+            rows.append({"path": str(tif), "geometry": geom})
+    return gpd.GeoDataFrame(rows, crs="EPSG:4326")
+
+
+def add_epoch_prior(cands: gpd.GeoDataFrame, preboom_prob_dir: Path) -> gpd.GeoDataFrame:
+    """Down-weight candidates that were already bright in the pre-boom (2021/22) epoch.
+
+    Pakistan's rooftop PV stock is dominated by the post-2022 import boom, so a feature
+    with high probability in BOTH epochs — a bright riverbed, rock outcrop, industrial
+    roof, greenhouse — is likely a persistent false positive rather than new PV; one
+    bright only in the current epoch is plausibly genuine. Cells with no pre-boom raster
+    (no scenes in that window) are left neutral (`preboom_prob=0`) rather than penalised,
+    since we can't check them. Nothing is dropped — same recall-first ranking-only
+    contract as `building_prior`.
+    """
+    cands = cands.reset_index(drop=True).copy()
+    cands["preboom_prob"] = 0.0
+    if cands.empty:
+        cands["epoch_prior"] = 1.0
+        return cands
+    tiles = _prob_raster_index(Path(preboom_prob_dir))
+    if tiles.empty:
+        log.warning("No pre-boom rasters under %s; epoch prior left neutral", preboom_prob_dir)
+        cands["epoch_prior"] = 1.0
+        return cands
+    reps = gpd.GeoDataFrame(geometry=cands.geometry.representative_point(), crs=cands.crs)
+    hits = gpd.sjoin(reps, tiles, predicate="within", how="left")
+    for tif_path, idx in hits.dropna(subset=["path"]).groupby("path").groups.items():
+        idx = list(idx)
+        with rasterio.open(tif_path) as src:
+            prob = src.read(1).astype("float32") / 255.0
+            sub = cands.loc[idx].to_crs(src.crs)
+            for i, geom in zip(idx, sub.geometry):
+                mask = rio_features.geometry_mask(
+                    [geom], out_shape=prob.shape, transform=src.transform, invert=True
+                )
+                if mask.any():
+                    cands.loc[i, "preboom_prob"] = float(prob[mask].mean())
+    cands["epoch_prior"] = (1.0 - cands["preboom_prob"]).clip(0.0, 1.0).round(3)
+    return cands
+
+
+def add_glint_prior(
+    cands: gpd.GeoDataFrame, top_n: int = 300, lookback_days: int = 730,
+    tol_deg: float = 3.0, min_consistent: int = 2, bonus: float = 0.2,
+    max_workers: int = 4,
+) -> gpd.GeoDataFrame:
+    """Physics-based corroborator: does the candidate glint on dates geometrically
+    consistent with one fixed panel orientation? A glass PV panel is partly a
+    specular reflector; Sentinel-2 views near-nadir, so a fixed panel only glints
+    when its tilt/azimuth happens to bisect the sun and sensor at the ~10:30 overpass
+    (see `earthpv.glint`). Validated against known German and Punjab installations:
+    self-consistent multi-date glint recovers the true panel orientation cleanly, but
+    **absence of glint is common even for real arrays** (wrong orientation for this
+    geometry — ~30% of confirmed installations showed zero spikes over 2 years), so
+    this is reward-only: candidates with no or inconsistent glint are left unchanged,
+    never down-weighted. Confirmed candidates get a small rank_score bonus (up to
+    `1 + bonus`, saturating at 4 mutually-consistent spike dates).
+
+    This is a network-bound per-candidate Sentinel-2 time-series pull (dozens to
+    hundreds of scene reads each), impractical at country scale for every polygon —
+    bounded to the current top `top_n` by rank_score.
+    """
+    cands = cands.reset_index(drop=True).copy()
+    cands["glint_spikes"] = 0
+    cands["glint_consistent"] = 0
+    cands["glint_fit_tilt"] = np.nan
+    cands["glint_fit_az"] = np.nan
+    cands["glint_prior"] = 0.0
+    if cands.empty or "rank_score" not in cands.columns:
+        return cands
+
+    from earthpv import glint
+
+    idx = cands["rank_score"].to_numpy().argsort()[::-1][:top_n]
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=lookback_days)
+
+    def _check(i: int):
+        series = glint.scene_series(cands.geometry.iloc[i], start, end, n_threads=6)
+        if series.empty:
+            return i, None
+        return i, glint.spike_fit(series, tol_deg=tol_deg)
+
+    log.info("Glint check: pulling Sentinel-2 time series for top %d candidates", len(idx))
+    with ThreadPoolExecutor(max_workers) as ex:
+        futs = [ex.submit(_check, int(i)) for i in idx]
+        for f in tqdm(as_completed(futs), total=len(futs), desc="glint"):
+            i, res = f.result()
+            if not res:
+                continue
+            cands.loc[i, "glint_spikes"] = res["n_spikes"]
+            cands.loc[i, "glint_consistent"] = res["n_consistent"]
+            cands.loc[i, "glint_fit_tilt"] = res["fit_tilt"]
+            cands.loc[i, "glint_fit_az"] = res["fit_az"]
+
+    consistent = cands["glint_consistent"].to_numpy(float)
+    confidence = np.clip(consistent / 4.0, 0.0, 1.0)
+    confidence[consistent < min_consistent] = 0.0
+    cands["glint_prior"] = confidence.round(3)
+    cands["rank_score"] = (cands["rank_score"] * (1.0 + bonus * confidence)).round(4)
+    return cands
+
+
 def _add_ranking(cands: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Blend model confidence with a building prior into a `rank_score` for triage.
 
@@ -232,6 +343,8 @@ def _resolve_buildings(
 
 def run_postprocess(
     aoi: str, pred_dir: Path, threshold: float = 0.3, max_building_dist_m: float = 0.0,
+    preboom_prob_dir: Path | None = None,
+    check_glint: bool = False, glint_top_n: int = 300,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this — isolated detections (cropland glare, bare soil, water glint)
@@ -257,6 +370,15 @@ def run_postprocess(
             # Last resort: remote Overture join (no metric signals for ranking).
             cands = attach_buildings(cands, settings)
         cands = _add_ranking(cands)
+        if preboom_prob_dir:
+            cands = add_epoch_prior(cands, preboom_prob_dir)
+            cands["rank_score"] = (
+                cands["rank_score"] * (0.5 + 0.5 * cands["epoch_prior"])
+            ).round(4)
+            log.info("Epoch-diff rescoring applied from %s", preboom_prob_dir)
+        if check_glint:
+            cands = add_glint_prior(cands, top_n=glint_top_n)
+            log.info("Glint-consistency check applied to top %d candidates", glint_top_n)
         cands = cands.sort_values("rank_score", ascending=False).reset_index(drop=True)
         if max_building_dist_m and "building_dist_m" in cands.columns:
             n_before = len(cands)

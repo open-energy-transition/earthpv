@@ -119,3 +119,8 @@ stay in place:
 - Long GPU/network stages are run detached (`nohup … &`) and polled; the rich progress bar
   does not flush cleanly to a redirected log, so watch checkpoint files / cell counts to
   gauge progress rather than parsing the log.
+- **`nohup setsid` alone does not survive a session logout on this machine.** systemd-logind
+  kills a whole session's cgroup (all processes in it, `setsid` or not) when the session ends
+  unless lingering is enabled. Run `loginctl show-user "$USER" | grep Linger` — if `Linger=no`,
+  `loginctl enable-linger "$USER"` once (no sudo needed for your own account) before launching
+  anything multi-hour, or it can silently die with no error/traceback partway through.

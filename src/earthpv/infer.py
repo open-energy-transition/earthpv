@@ -89,7 +89,7 @@ def predict_window(arr: np.ndarray, task, device: str, task_type: str) -> np.nda
 
 def run_inference(
     aoi: str, checkpoint: Path, out_dir: Path, only_built: bool = True, limit: int = 0,
-    task_type: str = "auto", tiles: list[str] | None = None,
+    task_type: str = "auto", tiles: list[str] | None = None, index: int = 0,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
@@ -141,8 +141,16 @@ def run_inference(
     windows_run = 0
     for tile_path in tqdm(tile_paths, desc="cells"):
         tile = Path(tile_path).parent.name
+        # `index` picks an alternate layer (e.g. a pre-boom epoch composited by
+        # `compose --index 1 --window ...`) as the primary inference input; layer 0
+        # (the default) is `tile_path` itself. Cells missing the requested layer are
+        # skipped rather than raising, since a contrast epoch may cover fewer cells.
+        primary_path = Path(tile_path).parent / f"composite_{index}.tif" if index else Path(tile_path)
+        if not primary_path.exists():
+            log.warning("cell %s: no composite_%d.tif, skipping", tile, index)
+            continue
         src1 = rasterio.open(Path(tile_path).parent / "composite_1.tif") if stacked else None
-        with rasterio.open(tile_path) as src:
+        with rasterio.open(primary_path) as src:
             H, W = src.height, src.width
             transform, crs = src.transform, src.crs
             acc = np.zeros((H, W), dtype="float32")

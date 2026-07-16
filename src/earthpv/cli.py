@@ -147,6 +147,10 @@ def infer(
     tiles: str = typer.Option(
         "", help="Comma-separated cell/tile names to restrict inference to (0 = all cells)"
     ),
+    index: int = typer.Option(
+        0, help="Composite layer to run inference on (e.g. 1 for a pre-boom/contrast epoch "
+        "built by `compose --index 1`); use a distinct --out-dir per layer"
+    ),
 ) -> None:
     """Tiled inference over an AOI, writing probability GeoTIFFs."""
     from earthpv.infer import run_inference
@@ -154,6 +158,7 @@ def infer(
     run_inference(
         aoi=aoi, checkpoint=checkpoint, out_dir=out_dir, only_built=only_built, limit=limit,
         task_type=task_type, tiles=[t.strip() for t in tiles.split(",") if t.strip()] or None,
+        index=index,
     )
 
 
@@ -166,12 +171,28 @@ def postprocess(
         0.0, help="Drop candidates farther than this from the nearest building, in metres "
         "(0 = disabled; only applies where a real distance was resolved)"
     ),
+    preboom_prob_dir: Path = typer.Option(
+        None, help="Probability rasters from a pre-boom/contrast epoch (e.g. "
+        "data/predictions_preboom/<aoi>/prob) — candidates already bright there get "
+        "down-weighted in rank_score as likely persistent false positives, not dropped"
+    ),
+    check_glint: bool = typer.Option(
+        False, help="Physics-based corroborator: pull each top candidate's Sentinel-2 "
+        "time series and check for solar-glint spikes consistent with one fixed panel "
+        "orientation (see earthpv.glint). Reward-only (never down-weights); network-bound "
+        "so only applied to the top --glint-top-n candidates by rank_score."
+    ),
+    glint_top_n: int = typer.Option(
+        300, help="How many top-ranked candidates to run the glint check on (matches "
+        "--check-glint; ignored otherwise)"
+    ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
     from earthpv.postprocess import run_postprocess
 
     run_postprocess(
-        aoi=aoi, pred_dir=pred_dir, threshold=threshold, max_building_dist_m=max_building_dist
+        aoi=aoi, pred_dir=pred_dir, threshold=threshold, max_building_dist_m=max_building_dist,
+        preboom_prob_dir=preboom_prob_dir, check_glint=check_glint, glint_top_n=glint_top_n,
     )
 
 
@@ -259,6 +280,22 @@ def density(
         min_prob=min_prob, min_building_exp_m2=min_building_exp_m2, limit=limit,
         districts=districts, regions_file=regions_file, force=force,
     )
+
+
+@app.command()
+def pv_yield(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs `density` already run"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    kwp_per_m2: float = typer.Option(
+        None, help="Override density's assumed kWp/m2 (default: reuse density.py's constant)"
+    ),
+) -> None:
+    """pvlib double-check: CEC module-database sanity check + PVGIS-modelled annual
+    yield per region, converting est_mwp to expected GWh/yr for cross-checking against
+    known generation figures (NEPRA net-metering, TransitionZero)."""
+    from earthpv.pv_capacity import run_pv_capacity_check
+
+    run_pv_capacity_check(aoi=aoi, pred_dir=pred_dir, kwp_per_m2=kwp_per_m2)
 
 
 @app.command()

@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 630" font-family="'Iowan Old Style','Palatino Linotype','Book Antiqua',Georgia,serif">
+  <style>
+    .bg      { fill:#EEF1F0; }
+    .card    { fill:#FFFFFF; stroke:#D7DCDA; stroke-width:1; }
+    .ink     { fill:#10192B; }
+    .muted   { fill:#5B6670; }
+    .hair    { stroke:#C7CDCB; stroke-width:1; }
+    .ground  { stroke:#8A7358; stroke-width:3; }
+    .hatch   { stroke:#8A7358; stroke-width:1.4; opacity:0.55; }
+    .panel   { fill:#2E4568; stroke:#182236; stroke-width:1.5; }
+    .normal  { stroke:#10192B; stroke-width:1.4; fill:none; stroke-dasharray:3 3; }
+    .ray-sun { stroke:#E8A23A; stroke-width:3; fill:none; }
+    .ray-view{ stroke:#3FA7B8; stroke-width:3; fill:none; }
+    .ray-miss{ stroke:#B85C50; stroke-width:3; fill:none; }
+    .arc     { stroke:#10192B; stroke-width:1.3; fill:none; }
+    .arc-miss{ stroke:#B85C50; stroke-width:1.3; fill:none; }
+    .vert    { stroke:#9AA3A8; stroke-width:1; stroke-dasharray:2 3; }
+    .sat     { fill:#3FA7B8; stroke:#1D5E68; stroke-width:1; }
+    .mono    { font-family:'IBM Plex Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace; }
+    .chart-array  { stroke:#E8A23A; stroke-width:2.4; fill:none; }
+    .chart-ring   { stroke:#7C8790; stroke-width:1.6; fill:none; }
+    .chart-mis    { stroke:#3FA7B8; stroke-width:1.6; fill:none; }
+    .band    { fill:#E8A23A; opacity:0.12; }
+    .badge-ok  { fill:#B8791A; }
+    .badge-bad { fill:#B85C50; }
+    @media (prefers-color-scheme: dark) {
+      .bg      { fill:#10192B; }
+      .card    { fill:#152036; stroke:#2A374D; }
+      .ink     { fill:#EDEFEF; }
+      .muted   { fill:#9AA7B0; }
+      .hair    { stroke:#2A374D; }
+      .ground  { stroke:#A7906F; }
+      .hatch   { stroke:#A7906F; }
+      .panel   { fill:#5B7BAE; stroke:#0D1524; }
+      .normal  { stroke:#EDEFEF; }
+      .arc     { stroke:#EDEFEF; }
+      .vert    { stroke:#455063; }
+      .band    { opacity:0.18; }
+      .badge-ok  { fill:#F2B863; }
+    }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="980" height="630"/>
+
+  <text x="40" y="34" class="ink" font-size="21" font-weight="600">Solar-glint validation: geometry &amp; signature</text>
+  <text x="40" y="53" class="muted mono" font-size="11">n = (s + v) / |s + v| &#8212; the panel normal that sends a sun reflection straight into the sensor</text>
+
+  <!-- ============================= Panel A1: GLINT ============================= -->
+  <g transform="translate(30,66)">
+    <rect class="card" x="0" y="0" width="270" height="284" rx="6"/>
+    <text x="16" y="26" class="ink" font-size="13.5" font-weight="600">A &#8212; matched tilt</text>
+    <text x="254" y="26" class="badge-ok mono" font-size="10.5" font-weight="600" text-anchor="end">GLINT</text>
+
+    <g transform="translate(15,46)">
+      <line class="ground" x1="0" y1="180" x2="240" y2="180"/>
+      <line class="hatch" x1="10" y1="188" x2="0" y2="180"/>
+      <line class="hatch" x1="30" y1="188" x2="20" y2="180"/>
+      <line class="hatch" x1="50" y1="188" x2="40" y2="180"/>
+      <line class="hatch" x1="200" y1="188" x2="190" y2="180"/>
+      <line class="hatch" x1="220" y1="188" x2="210" y2="180"/>
+      <line class="vert" x1="120" y1="180" x2="120" y2="34"/>
+
+      <g transform="translate(134,44)">
+        <rect class="sat" x="-9" y="-4" width="18" height="8" rx="1.5"/>
+        <rect class="sat" x="-18" y="-2" width="8" height="4"/>
+        <rect class="sat" x="10" y="-2" width="8" height="4"/>
+      </g>
+
+      <!-- sun ray: incoming, from (175.8,63.1) to pivot (120,180) -->
+      <line class="ray-sun" x1="175.8" y1="63.1" x2="120" y2="180" marker-end="url(#arrowSun)"/>
+      <text x="180" y="60" class="badge-ok mono" font-size="10.5">sun</text>
+
+      <!-- view/reflected ray: pivot to satellite, angle 6 deg -->
+      <line class="ray-view" x1="120" y1="180" x2="129.9" y2="85.5" marker-end="url(#arrowView)"/>
+
+      <!-- normal -->
+      <line class="normal" x1="120" y1="180" x2="134.3" y2="142.7"/>
+      <text x="139" y="144" class="ink mono" font-size="10">n</text>
+
+      <!-- panel -->
+      <line class="panel" x1="64" y1="158.5" x2="176" y2="201.5" stroke-width="7" stroke-linecap="round"/>
+
+      <!-- equal-angle arcs: sun-to-normal and normal-to-view -->
+      <path class="arc" d="M 135.3 59.0 A 26 26 0 0 1 129.3 55.7"/>
+      <path class="arc" d="M 129.3 55.7 A 26 26 0 0 1 122.7 54.1"/>
+      <text x="70" y="128" class="muted mono" font-size="9.5">&#8736;i = &#8736;r</text>
+
+      <!-- angle readouts -->
+      <text x="180" y="80" class="muted mono" font-size="9.5">&#952;sun=36&#176;</text>
+      <text x="180" y="94" class="muted mono" font-size="9.5">&#952;view=6&#176;</text>
+      <text x="18" y="172" class="ink mono" font-size="10.5" font-weight="600">&#946;=21&#176;</text>
+    </g>
+    <text x="16" y="252" class="muted" font-size="11">Reflected sun ray lands</text>
+    <text x="16" y="267" class="muted" font-size="11">exactly on the sensor.</text>
+  </g>
+
+  <!-- ============================= Panel A2: NO GLINT ============================= -->
+  <g transform="translate(340,66)">
+    <rect class="card" x="0" y="0" width="270" height="284" rx="6"/>
+    <text x="16" y="26" class="ink" font-size="13.5" font-weight="600">B &#8212; wrong tilt</text>
+    <text x="254" y="26" class="badge-bad mono" font-size="10.5" font-weight="600" text-anchor="end">NO GLINT</text>
+
+    <g transform="translate(15,46)">
+      <line class="ground" x1="0" y1="180" x2="240" y2="180"/>
+      <line class="hatch" x1="10" y1="188" x2="0" y2="180"/>
+      <line class="hatch" x1="30" y1="188" x2="20" y2="180"/>
+      <line class="hatch" x1="50" y1="188" x2="40" y2="180"/>
+      <line class="hatch" x1="200" y1="188" x2="190" y2="180"/>
+      <line class="hatch" x1="220" y1="188" x2="210" y2="180"/>
+      <line class="vert" x1="120" y1="180" x2="120" y2="34"/>
+
+      <g transform="translate(134,44)">
+        <rect class="sat" x="-9" y="-4" width="18" height="8" rx="1.5"/>
+        <rect class="sat" x="-18" y="-2" width="8" height="4"/>
+        <rect class="sat" x="10" y="-2" width="8" height="4"/>
+      </g>
+
+      <!-- same sun ray as A1 -->
+      <line class="ray-sun" x1="175.8" y1="63.1" x2="120" y2="180"/>
+
+      <!-- view ray to satellite (unreached) -->
+      <line class="ray-view" x1="120" y1="180" x2="129.9" y2="85.5" stroke-dasharray="4 3"/>
+
+      <!-- steeper panel normal (45 deg) -->
+      <line class="normal" x1="120" y1="180" x2="148.3" y2="151.7"/>
+      <text x="153" y="150" class="ink mono" font-size="10">n&#8217;</text>
+
+      <!-- wrong panel, steeper tilt -->
+      <line class="panel" x1="77.6" y1="142.4" x2="162.4" y2="217.6" stroke-width="7" stroke-linecap="round"/>
+
+      <!-- reflected ray flies past the sensor -->
+      <line class="ray-miss" x1="120" y1="180" x2="241.4" y2="88.2" marker-end="url(#arrowMiss)"/>
+
+      <!-- gap indicator between reflected ray and true view direction -->
+      <path class="arc-miss" d="M 129.3 55.7 A 46 46 0 0 1 187.1 33.1" stroke-dasharray="2 2"/>
+      <text x="176" y="18" class="badge-bad mono" font-size="9">48&#176; off target</text>
+
+      <text x="18" y="172" class="ink mono" font-size="10.5" font-weight="600">&#946;=45&#176;</text>
+    </g>
+    <text x="16" y="252" class="muted" font-size="11">Same sun, same satellite &#8212;</text>
+    <text x="16" y="267" class="muted" font-size="11">wrong tilt sends the glint elsewhere.</text>
+  </g>
+
+  <!-- ============================= Legend / formula ============================= -->
+  <g transform="translate(650,66)">
+    <rect class="card" x="0" y="0" width="300" height="284" rx="6"/>
+    <text x="18" y="28" class="ink" font-size="13.5" font-weight="600">Reading the rays</text>
+
+    <line x1="18" y1="52" x2="48" y2="52" class="ray-sun"/>
+    <text x="56" y="56" class="ink mono" font-size="11">sun ray, &#952;sun (from MTD_TL.xml)</text>
+
+    <line x1="18" y1="76" x2="48" y2="76" class="ray-view"/>
+    <text x="56" y="80" class="ink mono" font-size="11">view ray, &#952;view (near-nadir, &#8804;12&#176;)</text>
+
+    <line x1="18" y1="100" x2="48" y2="100" class="normal"/>
+    <text x="56" y="104" class="ink mono" font-size="11">panel normal n</text>
+
+    <line x1="18" y1="124" x2="48" y2="124" class="ray-miss"/>
+    <text x="56" y="128" class="ink mono" font-size="11">reflected ray, wrong tilt</text>
+
+    <line x1="18" y1="146" x2="48" y2="146" stroke-width="7" stroke-linecap="round" class="panel"/>
+    <text x="56" y="150" class="ink mono" font-size="11">PV panel surface</text>
+
+    <line x1="1" y1="172" x2="299" y2="172" class="hair"/>
+
+    <text x="18" y="196" class="ink mono" font-size="11" font-weight="600">n = (s + v) / |s + v|</text>
+    <text x="18" y="216" class="muted" font-size="11">Sentinel-2 views near-nadir, so for a</text>
+    <text x="18" y="232" class="muted" font-size="11">fixed panel this only holds on the few</text>
+    <text x="18" y="248" class="muted" font-size="11">dates per year when &#946; &#8776; &#952;sun/2 &#8212; a</text>
+    <text x="18" y="264" class="muted" font-size="11">narrow, predictable window.</text>
+  </g>
+
+  <!-- ============================= Panel B: validation signature ============================= -->
+  <g transform="translate(30,370)">
+    <rect class="card" x="0" y="0" width="920" height="240" rx="6"/>
+    <text x="16" y="24" class="ink" font-size="13.5" font-weight="600">What the Sentinel-2 time series actually shows</text>
+    <text x="16" y="40" class="muted" font-size="11">In-array reflectance spikes on the geometry-predicted date; the surrounding annulus stays flat (rules out clouds).</text>
+
+    <g transform="translate(20,54)">
+      <!-- predicted glint window band -->
+      <rect class="band" x="560" y="0" width="46" height="72"/>
+
+      <text x="330" y="10" class="muted mono" font-size="9.5">annulus (stable, no spike)</text>
+
+      <!-- annulus (flat, stable) -->
+      <path class="chart-ring" d="M0,58 C 120,56 240,60 360,57 C 460,59 520,56 560,58
+                                    C 600,57 660,59 760,56 C 820,58 860,57 880,58"/>
+
+      <!-- in-array reflectance: baseline with one clear spike inside the band -->
+      <path class="chart-array" d="M0,64 C 120,62 240,66 360,63
+                                    C 460,65 520,46 545,20
+                                    C 558,4 578,4 583,22
+                                    C 600,44 610,60 660,62
+                                    C 760,59 820,63 880,61"/>
+      <circle cx="571" cy="10" r="3.6" fill="#E8A23A"/>
+      <text x="586" y="8" class="ink mono" font-size="10">spike</text>
+      <text x="562" y="66" class="muted mono" font-size="9">predicted window</text>
+
+      <!-- axis -->
+      <line class="hair" x1="0" y1="72" x2="880" y2="72"/>
+      <text x="0" y="86" class="muted mono" font-size="9.5">Jan</text>
+      <text x="215" y="86" class="muted mono" font-size="9.5">Apr</text>
+      <text x="430" y="86" class="muted mono" font-size="9.5">Jul</text>
+      <text x="645" y="86" class="muted mono" font-size="9.5">Oct</text>
+      <text x="855" y="86" class="muted mono" font-size="9.5">Dec</text>
+
+      <!-- misalignment strip -->
+      <text x="0" y="108" class="muted mono" font-size="9">misalign(&#952;) vs. fitted orientation</text>
+      <line class="hair" x1="0" y1="122" x2="880" y2="122" stroke-dasharray="2 3"/>
+      <text x="884" y="125" class="muted mono" font-size="8.5">tol.</text>
+      <path class="chart-mis" d="M0,150 C 150,158 300,168 400,166 C 460,164 500,150 545,136
+                                  C 558,130 578,130 590,136
+                                  C 610,146 650,162 720,167 C 800,170 850,166 880,160"/>
+    </g>
+  </g>
+
+  <defs>
+    <marker id="arrowSun" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#E8A23A"/></marker>
+    <marker id="arrowView" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#3FA7B8"/></marker>
+    <marker id="arrowMiss" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#B85C50"/></marker>
+  </defs>
+</svg>
