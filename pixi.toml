@@ -30,6 +30,8 @@ pyogrio = "*"
 open-mastr = "*"
 sqlalchemy = "*"
 requests = "*"
+pvlib = "*"
+skyfield = ">=1.45"
 
 [feature.ml.pypi-dependencies]
 # GTX 1060 (Pascal, sm_61): CUDA 13 dropped Pascal, so pin cu126 wheels.
