@@ -421,13 +421,21 @@ def _polygon_band_stats(
         inside = rasterio.features.geometry_mask(
             [geom_native], arr.shape, wt, invert=True, all_touched=False
         )
+        if not inside.any():
+            # Sub-pixel installation (common for small rooftop generators): the
+            # strict mask selects no pixel centres. Fall back to every pixel the
+            # polygon touches — p98 then reads the brightest touched pixel, which
+            # is exactly where a glint from a small array shows up.
+            inside = rasterio.features.geometry_mask(
+                [geom_native], arr.shape, wt, invert=True, all_touched=True
+            )
         ring = ~rasterio.features.geometry_mask(
             [geom_native.buffer(30)], arr.shape, wt, invert=True
         )
     arr[arr == 0] = np.nan
     arr = arr + _boa_offset(item, provider)  # NaN-preserving: nodata stays nodata
     inside_v, ring_v = arr[inside], arr[ring]
-    if np.isfinite(inside_v).sum() < 3 or np.isfinite(ring_v).sum() < 20:
+    if np.isfinite(inside_v).sum() < 1 or np.isfinite(ring_v).sum() < 20:
         return np.nan, np.nan, 0
     return (
         float(np.nanpercentile(inside_v, 98)),
