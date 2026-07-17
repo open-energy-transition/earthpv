@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 
 log = logging.getLogger(__name__)
 
@@ -51,17 +52,62 @@ def _load_mapped_reference(aoi: str, cfg: dict, settings) -> gpd.GeoDataFrame | 
     return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs="EPSG:4326")
 
 
-def filter_new_leads(cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Drop candidates that spatially intersect an already-mapped OSM solar polygon —
-    same zero-buffer `intersects` convention used for the Lahore recall check."""
+def filter_new_leads(
+    cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, min_distance_m: float = 0.0
+) -> gpd.GeoDataFrame:
+    """Drop candidates within `min_distance_m` of an already-mapped OSM solar feature.
+
+    `min_distance_m=0` is the original zero-buffer `intersects` convention (a
+    candidate must literally overlap the mapped geometry) — same as the Lahore
+    recall check, but it misses candidates whose model-drawn footprint is offset
+    from a mapped feature that is just a point (a common OSM `generator:source=solar`
+    node), which never "intersects" a polygon that doesn't happen to contain it. A
+    positive `min_distance_m` catches those as the same already-mapped installation.
+    Works in local-UTM 1-degree chunks, the same pattern as
+    `postprocess._join_buildings_chunked`, so it holds up at country scale.
+    """
     if cands.empty or mapped.empty:
         return cands
-    sindex = mapped.sindex
-    is_new = [len(sindex.query(g, predicate="intersects")) == 0 for g in cands.geometry]
+    if min_distance_m <= 0:
+        sindex = mapped.sindex
+        is_new = [len(sindex.query(g, predicate="intersects")) == 0 for g in cands.geometry]
+        return cands[is_new].reset_index(drop=True)
+
+    cands = cands.reset_index(drop=True)
+    reps = cands.geometry.representative_point()
+    chunk_deg = 1.0
+    keys = list(zip(
+        np.floor(reps.x.to_numpy() / chunk_deg).astype(int).tolist(),
+        np.floor(reps.y.to_numpy() / chunk_deg).astype(int).tolist(),
+    ))
+    is_new = np.ones(len(cands), dtype=bool)
+    # Pad each chunk's mapped-feature lookup by the distance threshold (+ margin)
+    # in degrees, so a mapped feature just outside the chunk still gets caught.
+    buf = min_distance_m / 111_000 + 0.02
+    for key in sorted(set(keys)):
+        mask = np.array([k == key for k in keys])
+        sub = cands[mask]
+        minx, miny, maxx, maxy = sub.total_bounds
+        near = mapped.cx[minx - buf : maxx + buf, miny - buf : maxy + buf]
+        if near.empty:
+            continue
+        lon, lat = (minx + maxx) / 2, (miny + maxy) / 2
+        epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) / 6) + 1
+        su = sub.to_crs(epsg)
+        mu = near.to_crs(epsg).reset_index(drop=True)
+        sindex = mu.sindex
+        idx, d = sindex.nearest(su.geometry.values, return_all=False, return_distance=True)
+        dist = np.full(len(sub), np.inf)
+        for k in range(idx.shape[1]):
+            dist[int(idx[0, k])] = float(d[k])
+        is_new[np.where(mask)[0]] = dist > min_distance_m
+    log.info("Distance-filtered (>%.0f m) new-lead check across %d spatial chunks", min_distance_m, len(set(keys)))
     return cands[is_new].reset_index(drop=True)
 
 
-def run_export(aoi: str, pred_dir: Path, exclude_mapped: bool = False) -> None:
+def run_export(
+    aoi: str, pred_dir: Path, exclude_mapped: bool = False, min_distance_m: float = 0.0
+) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pred_dir = Path(pred_dir) / aoi
     cands = gpd.read_parquet(pred_dir / "candidates.parquet")
@@ -91,9 +137,10 @@ def run_export(aoi: str, pred_dir: Path, exclude_mapped: bool = False) -> None:
             log.warning("No already-mapped OSM reference found for %s; new_leads == candidates", aoi)
             leads = cands
         else:
-            leads = filter_new_leads(cands, mapped)
+            leads = filter_new_leads(cands, mapped, min_distance_m=min_distance_m)
         log.info(
-            "New leads (not already mapped): %d / %d candidates", len(leads), len(cands)
+            "New leads (not already mapped, >%.0fm): %d / %d candidates",
+            min_distance_m, len(leads), len(cands),
         )
         nl = pred_dir / f"{aoi}_pv_new_leads.geojson"
         leads.to_file(nl, driver="GeoJSON")

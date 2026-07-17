@@ -205,11 +205,17 @@ def export(
         "intersect any already-mapped OSM solar polygon (cached source_region + any "
         "data/labels/*_overpass_solar.parquet)"
     ),
+    min_distance_m: float = typer.Option(
+        0.0, help="With --exclude-mapped, drop candidates within this many metres of "
+        "an already-mapped OSM solar feature, not just ones that literally overlap it "
+        "— catches candidates offset from a mapped point (a common generator:source=solar "
+        "node) that would otherwise never 'intersect' and wrongly surface as new"
+    ),
 ) -> None:
     """Export candidates as GeoParquet/GeoJSON + MapRoulette challenge."""
     from earthpv.export import run_export
 
-    run_export(aoi=aoi, pred_dir=pred_dir, exclude_mapped=exclude_mapped)
+    run_export(aoi=aoi, pred_dir=pred_dir, exclude_mapped=exclude_mapped, min_distance_m=min_distance_m)
 
 
 @app.command("hard-negatives")
