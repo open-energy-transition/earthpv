@@ -1,0 +1,545 @@
+<title>Fitted Panel Pose — Pakistan Glint Survey</title>
+<style>
+:root {
+  --bg: #f2efe6;
+  --bg-panel: #eae4d3;
+  --bg-chart: #ece6d6;
+  --ink: #2a2620;
+  --ink-dim: #675f4d;
+  --ink-faint: #a49874;
+  --rule: #d6cbac;
+  --accent-sun: #a8641f;
+  --accent-glint: #1f7a72;
+  --excluded: #ddd3b3;
+  --excluded-line: #b7a87d;
+  --card-shadow: 0 1px 2px rgba(60,50,20,0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151d;
+    --bg-panel: #171d28;
+    --bg-chart: #141a24;
+    --ink: #e9e6db;
+    --ink-dim: #8d94a6;
+    --ink-faint: #565e70;
+    --rule: #262d3c;
+    --accent-sun: #e3a34d;
+    --accent-glint: #5fc9c1;
+    --excluded: #202536;
+    --excluded-line: #333c52;
+    --card-shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151d; --bg-panel: #171d28; --bg-chart: #141a24;
+  --ink: #e9e6db; --ink-dim: #8d94a6; --ink-faint: #565e70;
+  --rule: #262d3c; --accent-sun: #e3a34d; --accent-glint: #5fc9c1;
+  --excluded: #202536; --excluded-line: #333c52; --card-shadow: none;
+}
+:root[data-theme="light"] {
+  --bg: #f2efe6; --bg-panel: #eae4d3; --bg-chart: #ece6d6;
+  --ink: #2a2620; --ink-dim: #675f4d; --ink-faint: #a49874;
+  --rule: #d6cbac; --accent-sun: #a8641f; --accent-glint: #1f7a72;
+  --excluded: #ddd3b3; --excluded-line: #b7a87d; --card-shadow: 0 1px 2px rgba(60,50,20,0.06);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+body {
+  font-family: Iowan Old Style, Sitka Text, Georgia, "Noto Serif", serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+}
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+
+/* ---- Header ---- */
+header { margin-bottom: 40px; }
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  margin: 0 0 14px;
+}
+h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 600;
+  line-height: 1.12;
+  margin: 0 0 14px;
+  text-wrap: balance;
+  max-width: 16ch;
+}
+.dek {
+  font-size: 17px;
+  color: var(--ink-dim);
+  max-width: 62ch;
+  margin: 0;
+}
+.dek .mono { font-size: 15px; }
+
+/* ---- Layout ---- */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: var(--card-shadow);
+}
+
+/* ---- Chart panel ---- */
+.chart-panel { padding: 22px 22px 18px; }
+.chart-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 4px; flex-wrap: wrap; gap: 8px;
+}
+.chart-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-dim); font-family: inherit;
+}
+.chart-title.mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", Consolas, monospace; }
+.chart-n { font-size: 12px; color: var(--ink-faint); }
+
+#polar-wrap { position: relative; width: 100%; }
+#polar { width: 100%; height: auto; display: block; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 18px;
+  margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--rule);
+  font-size: 12.5px; color: var(--ink-dim);
+}
+.legend-item { display: flex; align-items: center; gap: 7px; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.swatch.sun { background: var(--accent-sun); }
+.swatch.glint { background: var(--accent-glint); }
+.swatch.excl {
+  width: 13px; height: 13px; border-radius: 2px;
+  background: repeating-linear-gradient(45deg, var(--excluded-line), var(--excluded-line) 1px, var(--excluded) 1px, var(--excluded) 4px);
+  border: 1px solid var(--excluded-line);
+}
+
+.tooltip {
+  position: absolute; pointer-events: none;
+  background: var(--ink); color: var(--bg);
+  font-size: 11.5px; padding: 7px 9px; border-radius: 3px;
+  line-height: 1.5; white-space: nowrap;
+  transform: translate(-50%, -115%);
+  opacity: 0; transition: opacity 0.1s;
+  z-index: 5;
+}
+.tooltip.show { opacity: 0.96; }
+.tooltip b { font-weight: 600; }
+
+/* ---- Sidebar ---- */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+.stat-card { padding: 16px 18px; }
+.stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; }
+.stat-row + .stat-row { border-top: 1px dashed var(--rule); }
+.stat-label { font-size: 12.5px; color: var(--ink-dim); }
+.stat-val { font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat-big { padding: 16px 18px; }
+.stat-big .num { font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.stat-big .num small { font-size: 16px; font-weight: 400; color: var(--ink-dim); }
+.stat-big .label { font-size: 12.5px; color: var(--ink-dim); margin-top: 6px; }
+
+.callout {
+  padding: 18px 20px;
+  border-left: 3px solid var(--accent-sun);
+}
+.callout h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-dim); margin: 0 0 10px; font-family: inherit;
+}
+.callout p { margin: 0 0 10px; font-size: 14.5px; }
+.callout p:last-child { margin-bottom: 0; }
+.callout .fig { font-weight: 600; color: var(--ink); }
+
+/* ---- Lower section ---- */
+.lower {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 760px) { .lower { grid-template-columns: 1fr; } }
+.hist-panel { padding: 18px 20px 14px; }
+.hist-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 10px; }
+svg text { fill: var(--ink-dim); }
+
+.strip-panel { margin-top: 20px; padding: 18px 20px 16px; }
+.strip-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 12px; }
+
+footer {
+  margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--rule);
+  font-size: 12.5px; color: var(--ink-faint);
+}
+footer p { margin: 0 0 6px; max-width: 70ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow mono">Glint-derived orientation survey · Pakistan</p>
+    <h1>Which way does a Pakistani solar panel actually face?</h1>
+    <p class="dek">
+      Fitted tilt and azimuth for <span class="mono" id="hdr-n">96</span> installations whose
+      historical Sentinel-2 specular reflections agree on a single fixed panel orientation —
+      out of <span class="mono">499</span> installations checked, stratified by size, across
+      two years of imagery. <b>This is not a neutral sample of installed pose</b> — read the
+      envelope note before trusting the shape.
+    </p>
+  </header>
+
+  <div class="grid">
+    <div class="panel chart-panel">
+      <div class="chart-head">
+        <span class="chart-title mono">Tilt (radius) × Azimuth (angle)</span>
+        <span class="chart-n mono">n = 96 validated fits</span>
+      </div>
+      <div id="polar-wrap">
+        <svg id="polar" viewBox="0 0 640 640" role="img" aria-label="Polar plot of fitted panel tilt and azimuth"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch sun"></span> rooftop generator</span>
+        <span class="legend-item"><span class="swatch glint"></span> ground plant</span>
+        <span class="legend-item"><span class="swatch excl"></span> outside the achievable window — 0 of 96 ever observed here</span>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel stat-big">
+        <div class="num">28.6<small>%</small></div>
+        <div class="label">of ≥ 1,000 m² installations get a pose in this plot at all — the rest never produce two self-consistent spikes, so there's nothing to fit</div>
+      </div>
+      <div class="panel stat-card">
+        <div class="stat-row"><span class="stat-label">≥1 spike, no fittable pose†</span><span class="stat-val mono">28.6%</span></div>
+        <div class="stat-row"><span class="stat-label">no glint signal at all</span><span class="stat-val mono">42.9%</span></div>
+        <div class="stat-row"><span class="stat-label">azimuth range observed</span><span class="stat-val mono">81.7° – 180.1°</span></div>
+        <div class="stat-row"><span class="stat-label">rooftops geometrically excluded‡</span><span class="stat-val mono">35.8%</span></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 2px 0;">figures restricted to the ≥ 1,000 m² target class (n=259 of 499)</p>
+      <div class="panel callout">
+        <h3>Why nothing crosses 180°</h3>
+        <p>
+          Sentinel-2 crosses this latitude at a fixed <b>~10:30 local time</b>, so across two full
+          years of imagery the sun's azimuth at the moment of every overpass never once swings
+          west of due south. A specular glint needs the panel, sun and sensor to line up — a
+          panel facing southwest, west, or north <b>cannot glint into this sensor no matter how
+          long you wait.</b> The <span class="fig">180° line is a hard sensor ceiling</span>, not
+          a property of Pakistani rooftops.
+        </p>
+        <p>
+          ‡ Checked directly: of 5,730 real Lahore building footprints, <span class="fig">35.8%
+          have neither long-axis facing option</span> inside the achievable window — over a
+          third of rooftops could never validate under this method, independent of data volume.
+        </p>
+        <p>
+          † A single spike can't be checked for self-consistency — 17.6% of installations glint
+          <i>once</i> (or glint on dates that disagree on a panel geometry) and so are correctly
+          detected as "PV is probably here" but carry <b>no orientation information</b>. Don't
+          mistake this project's own reported "51% detected" figures for a pose sample size —
+          detection and pose-fitting use different, non-interchangeable criteria.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="panel hist-panel">
+      <div class="hist-title mono">Tilt distribution</div>
+      <svg id="hist-tilt" viewBox="0 0 460 200"></svg>
+    </div>
+    <div class="panel hist-panel">
+      <div class="hist-title mono">Azimuth distribution <span style="opacity:.6">(180° = geometric ceiling)</span></div>
+      <svg id="hist-az" viewBox="0 0 460 200"></svg>
+    </div>
+  </div>
+
+  <div class="panel strip-panel">
+    <div class="strip-title mono">For context — validation rate by installation size (all 499, not just the fitted 96)</div>
+    <svg id="strip" viewBox="0 0 1000 150" style="width:100%; height:auto; display:block;"></svg>
+  </div>
+
+  <footer>
+    <p>
+      Data: <span class="mono">data/glint/pakistan_summary.csv</span> (500-target stratified
+      country study) joined to province boundaries via geoBoundaries ADM1. Validated = a single
+      (tilt, azimuth) explains ≥ 2 independent spike dates via the specular reflection condition,
+      tolerance 3°. Point size ∝ √(installation area). Building-orientation check computed
+      directly from VIDA Open Buildings footprints in the Lahore density layer.
+    </p>
+  </footer>
+</div>
+
+<script>
+const DATA = [{"pid": "pk_0031", "kind": "generator", "bucket": "<100", "area_m2": 74.5, "tilt": 12.2, "az": 105.6, "n_consistent": 4, "province": "Balochistan"}, {"pid": "pk_0071", "kind": "generator", "bucket": "<100", "area_m2": 49.5, "tilt": 18.4, "az": 145.5, "n_consistent": 8, "province": "Islamabad Capital Territory"}, {"pid": "pk_0092", "kind": "generator", "bucket": "100-500", "area_m2": 494.1, "tilt": 21.0, "az": 179.4, "n_consistent": 7, "province": "Punjab"}, {"pid": "pk_0103", "kind": "generator", "bucket": "100-500", "area_m2": 153.1, "tilt": 18.2, "az": 136.2, "n_consistent": 5, "province": "Punjab"}, {"pid": "pk_0118", "kind": "generator", "bucket": "100-500", "area_m2": 255.8, "tilt": 20.1, "az": 175.3, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0127", "kind": "generator", "bucket": "100-500", "area_m2": 236.7, "tilt": 19.8, "az": 140.3, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0133", "kind": "generator", "bucket": "100-500", "area_m2": 223.7, "tilt": 3.1, "az": 141.7, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0135", "kind": "generator", "bucket": "100-500", "area_m2": 442.2, "tilt": 6.6, "az": 156.4, "n_consistent": 13, "province": "Punjab"}, {"pid": "pk_0140", "kind": "plant", "bucket": "100-500", "area_m2": 273.7, "tilt": 14.1, "az": 167.2, "n_consistent": 4, "province": "Sindh"}, {"pid": "pk_0167", "kind": "generator", "bucket": "500-1k", "area_m2": 707.8, "tilt": 18.9, "az": 146.2, "n_consistent": 4, "province": "Islamabad Capital Territory"}, {"pid": "pk_0176", "kind": "plant", "bucket": "500-1k", "area_m2": 676.8, "tilt": 13.5, "az": 172.6, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0179", "kind": "generator", "bucket": "500-1k", "area_m2": 622.5, "tilt": 3.7, "az": 122.7, "n_consistent": 2, "province": "Sindh"}, {"pid": "pk_0181", "kind": "generator", "bucket": "500-1k", "area_m2": 542.3, "tilt": 17.6, "az": 177.4, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0188", "kind": "generator", "bucket": "500-1k", "area_m2": 996.0, "tilt": 18.9, "az": 124.2, "n_consistent": 3, "province": "Sindh"}, {"pid": "pk_0194", "kind": "plant", "bucket": "500-1k", "area_m2": 787.4, "tilt": 21.0, "az": 179.4, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0213", "kind": "plant", "bucket": "500-1k", "area_m2": 873.2, "tilt": 8.5, "az": 165.3, "n_consistent": 8, "province": "Punjab"}, {"pid": "pk_0222", "kind": "generator", "bucket": "500-1k", "area_m2": 669.8, "tilt": 6.9, "az": 164.7, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0233", "kind": "generator", "bucket": "500-1k", "area_m2": 824.2, "tilt": 21.0, "az": 179.4, "n_consistent": 7, "province": "Punjab"}, {"pid": "pk_0234", "kind": "plant", "bucket": "500-1k", "area_m2": 786.6, "tilt": 3.2, "az": 151.3, "n_consistent": 10, "province": "Punjab"}, {"pid": "pk_0236", "kind": "generator", "bucket": "500-1k", "area_m2": 726.9, "tilt": 10.6, "az": 152.4, "n_consistent": 3, "province": "Sindh"}, {"pid": "pk_0237", "kind": "plant", "bucket": "500-1k", "area_m2": 906.3, "tilt": 17.4, "az": 177.1, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0238", "kind": "plant", "bucket": "500-1k", "area_m2": 994.2, "tilt": 2.9, "az": 125.5, "n_consistent": 10, "province": "Punjab"}, {"pid": "pk_0241", "kind": "plant", "bucket": "1k-5k", "area_m2": 1735.2, "tilt": 25.2, "az": 145.2, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0242", "kind": "plant", "bucket": "1k-5k", "area_m2": 2241.2, "tilt": 3.1, "az": 124.1, "n_consistent": 5, "province": "Punjab"}, {"pid": "pk_0243", "kind": "plant", "bucket": "1k-5k", "area_m2": 4809.6, "tilt": 3.0, "az": 140.9, "n_consistent": 5, "province": "Punjab"}, {"pid": "pk_0244", "kind": "generator", "bucket": "1k-5k", "area_m2": 4680.8, "tilt": 11.8, "az": 166.1, "n_consistent": 5, "province": "Sindh"}, {"pid": "pk_0245", "kind": "plant", "bucket": "1k-5k", "area_m2": 3889.1, "tilt": 11.4, "az": 155.1, "n_consistent": 2, "province": "Sindh"}, {"pid": "pk_0246", "kind": "plant", "bucket": "1k-5k", "area_m2": 3421.2, "tilt": 24.7, "az": 156.4, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0251", "kind": "generator", "bucket": "1k-5k", "area_m2": 1542.6, "tilt": 18.8, "az": 177.8, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0252", "kind": "plant", "bucket": "1k-5k", "area_m2": 2391.0, "tilt": 12.7, "az": 168.0, "n_consistent": 6, "province": "Sindh"}, {"pid": "pk_0253", "kind": "plant", "bucket": "1k-5k", "area_m2": 2601.7, "tilt": 4.5, "az": 150.6, "n_consistent": 9, "province": "Punjab"}, {"pid": "pk_0257", "kind": "generator", "bucket": "1k-5k", "area_m2": 1276.2, "tilt": 5.3, "az": 129.7, "n_consistent": 16, "province": "Punjab"}, {"pid": "pk_0259", "kind": "plant", "bucket": "1k-5k", "area_m2": 4388.1, "tilt": 3.7, "az": 122.7, "n_consistent": 4, "province": "Sindh"}, {"pid": "pk_0263", "kind": "plant", "bucket": "1k-5k", "area_m2": 1950.2, "tilt": 4.0, "az": 86.3, "n_consistent": 15, "province": "Sindh"}, {"pid": "pk_0265", "kind": "plant", "bucket": "1k-5k", "area_m2": 2124.2, "tilt": 16.3, "az": 176.4, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0272", "kind": "plant", "bucket": "1k-5k", "area_m2": 3715.9, "tilt": 6.0, "az": 110.7, "n_consistent": 7, "province": "Punjab"}, {"pid": "pk_0278", "kind": "generator", "bucket": "1k-5k", "area_m2": 1234.8, "tilt": 9.9, "az": 166.8, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0283", "kind": "plant", "bucket": "1k-5k", "area_m2": 1467.5, "tilt": 14.3, "az": 173.9, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0284", "kind": "generator", "bucket": "1k-5k", "area_m2": 3929.9, "tilt": 22.7, "az": 177.1, "n_consistent": 7, "province": "Punjab"}, {"pid": "pk_0285", "kind": "plant", "bucket": "1k-5k", "area_m2": 3980.2, "tilt": 4.0, "az": 152.7, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0287", "kind": "plant", "bucket": "1k-5k", "area_m2": 3023.9, "tilt": 21.3, "az": 165.8, "n_consistent": 7, "province": "Sindh"}, {"pid": "pk_0296", "kind": "plant", "bucket": "1k-5k", "area_m2": 3870.6, "tilt": 25.0, "az": 177.8, "n_consistent": 15, "province": "Punjab"}, {"pid": "pk_0302", "kind": "plant", "bucket": "1k-5k", "area_m2": 3548.1, "tilt": 5.2, "az": 138.2, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0304", "kind": "generator", "bucket": "1k-5k", "area_m2": 2503.3, "tilt": 24.5, "az": 178.0, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0320", "kind": "generator", "bucket": "1k-5k", "area_m2": 4050.8, "tilt": 2.5, "az": 81.7, "n_consistent": 8, "province": "Sindh"}, {"pid": "pk_0322", "kind": "plant", "bucket": "1k-5k", "area_m2": 2912.3, "tilt": 29.5, "az": 150.4, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0323", "kind": "plant", "bucket": "1k-5k", "area_m2": 4626.7, "tilt": 20.3, "az": 177.6, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0324", "kind": "plant", "bucket": "1k-5k", "area_m2": 1017.8, "tilt": 10.8, "az": 162.7, "n_consistent": 2, "province": "Sindh"}, {"pid": "pk_0330", "kind": "plant", "bucket": "5k-50k", "area_m2": 13189.8, "tilt": 9.8, "az": 152.6, "n_consistent": 6, "province": "Sindh"}, {"pid": "pk_0331", "kind": "plant", "bucket": "5k-50k", "area_m2": 8577.3, "tilt": 10.4, "az": 148.2, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0334", "kind": "plant", "bucket": "5k-50k", "area_m2": 7023.9, "tilt": 17.6, "az": 174.8, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0337", "kind": "plant", "bucket": "5k-50k", "area_m2": 11443.2, "tilt": 10.5, "az": 167.0, "n_consistent": 2, "province": "Sindh"}, {"pid": "pk_0339", "kind": "plant", "bucket": "5k-50k", "area_m2": 5934.0, "tilt": 7.0, "az": 146.5, "n_consistent": 9, "province": "Sindh"}, {"pid": "pk_0340", "kind": "plant", "bucket": "5k-50k", "area_m2": 6207.9, "tilt": 11.8, "az": 157.0, "n_consistent": 2, "province": "Balochistan"}, {"pid": "pk_0343", "kind": "generator", "bucket": "5k-50k", "area_m2": 6828.8, "tilt": 14.3, "az": 174.8, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0353", "kind": "plant", "bucket": "5k-50k", "area_m2": 6228.9, "tilt": 15.3, "az": 175.5, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0356", "kind": "generator", "bucket": "5k-50k", "area_m2": 5291.7, "tilt": 5.2, "az": 162.1, "n_consistent": 8, "province": "Punjab"}, {"pid": "pk_0358", "kind": "generator", "bucket": "5k-50k", "area_m2": 21092.1, "tilt": 26.1, "az": 174.3, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0361", "kind": "plant", "bucket": "5k-50k", "area_m2": 6011.2, "tilt": 3.9, "az": 122.6, "n_consistent": 5, "province": "Sindh"}, {"pid": "pk_0363", "kind": "plant", "bucket": "5k-50k", "area_m2": 40956.2, "tilt": 6.8, "az": 148.8, "n_consistent": 8, "province": "Sindh"}, {"pid": "pk_0365", "kind": "plant", "bucket": "5k-50k", "area_m2": 22698.6, "tilt": 9.4, "az": 148.3, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0373", "kind": "plant", "bucket": "5k-50k", "area_m2": 10999.0, "tilt": 20.0, "az": 179.0, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0375", "kind": "plant", "bucket": "5k-50k", "area_m2": 13171.0, "tilt": 10.5, "az": 147.3, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0376", "kind": "plant", "bucket": "5k-50k", "area_m2": 9835.7, "tilt": 14.3, "az": 174.2, "n_consistent": 7, "province": "Punjab"}, {"pid": "pk_0384", "kind": "generator", "bucket": "5k-50k", "area_m2": 7239.5, "tilt": 17.4, "az": 176.4, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0386", "kind": "generator", "bucket": "5k-50k", "area_m2": 13242.1, "tilt": 20.0, "az": 179.0, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0389", "kind": "generator", "bucket": "5k-50k", "area_m2": 7219.5, "tilt": 21.9, "az": 178.0, "n_consistent": 7, "province": "Punjab"}, {"pid": "pk_0390", "kind": "plant", "bucket": "5k-50k", "area_m2": 24681.6, "tilt": 10.2, "az": 153.9, "n_consistent": 5, "province": "Sindh"}, {"pid": "pk_0391", "kind": "plant", "bucket": "5k-50k", "area_m2": 5209.4, "tilt": 17.7, "az": 174.8, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0393", "kind": "generator", "bucket": "5k-50k", "area_m2": 26178.8, "tilt": 14.3, "az": 174.9, "n_consistent": 6, "province": "Punjab"}, {"pid": "pk_0400", "kind": "plant", "bucket": "5k-50k", "area_m2": 5863.1, "tilt": 15.9, "az": 172.1, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0403", "kind": "plant", "bucket": "5k-50k", "area_m2": 6411.7, "tilt": 15.4, "az": 159.2, "n_consistent": 5, "province": "Sindh"}, {"pid": "pk_0407", "kind": "plant", "bucket": ">50k", "area_m2": 1404886.7, "tilt": 12.2, "az": 123.1, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0408", "kind": "plant", "bucket": ">50k", "area_m2": 82983.2, "tilt": 13.6, "az": 170.7, "n_consistent": 5, "province": "Sindh"}, {"pid": "pk_0410", "kind": "plant", "bucket": ">50k", "area_m2": 1745036.0, "tilt": 10.0, "az": 108.9, "n_consistent": 5, "province": "Punjab"}, {"pid": "pk_0411", "kind": "plant", "bucket": ">50k", "area_m2": 1728242.5, "tilt": 10.0, "az": 108.9, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0413", "kind": "plant", "bucket": ">50k", "area_m2": 56131.2, "tilt": 19.3, "az": 177.2, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0416", "kind": "plant", "bucket": ">50k", "area_m2": 295178.7, "tilt": 12.1, "az": 145.2, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0425", "kind": "plant", "bucket": ">50k", "area_m2": 2625592.3, "tilt": 5.4, "az": 148.0, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0426", "kind": "plant", "bucket": ">50k", "area_m2": 70711.2, "tilt": 23.4, "az": 180.1, "n_consistent": 8, "province": "Punjab"}, {"pid": "pk_0429", "kind": "plant", "bucket": ">50k", "area_m2": 303892.6, "tilt": 22.0, "az": 170.8, "n_consistent": 13, "province": "Balochistan"}, {"pid": "pk_0433", "kind": "plant", "bucket": ">50k", "area_m2": 240429.5, "tilt": 23.5, "az": 174.1, "n_consistent": 3, "province": "Punjab"}, {"pid": "pk_0434", "kind": "plant", "bucket": ">50k", "area_m2": 79139.8, "tilt": 20.3, "az": 167.7, "n_consistent": 7, "province": "Khyber Pakhtunkhwa"}, {"pid": "pk_0442", "kind": "plant", "bucket": ">50k", "area_m2": 119964.0, "tilt": 20.0, "az": 167.9, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0446", "kind": "plant", "bucket": ">50k", "area_m2": 51337.2, "tilt": 15.5, "az": 173.9, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0447", "kind": "plant", "bucket": ">50k", "area_m2": 67843.6, "tilt": 20.1, "az": 177.5, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0453", "kind": "plant", "bucket": ">50k", "area_m2": 134096.8, "tilt": 16.8, "az": 161.8, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0454", "kind": "plant", "bucket": ">50k", "area_m2": 71412.7, "tilt": 16.8, "az": 161.8, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0457", "kind": "plant", "bucket": ">50k", "area_m2": 75580.2, "tilt": 7.4, "az": 129.2, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0463", "kind": "plant", "bucket": ">50k", "area_m2": 67609.1, "tilt": 19.8, "az": 166.0, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0476", "kind": "plant", "bucket": ">50k", "area_m2": 274816.9, "tilt": 24.8, "az": 177.4, "n_consistent": 6, "province": "Khyber Pakhtunkhwa"}, {"pid": "pk_0481", "kind": "plant", "bucket": ">50k", "area_m2": 121126.2, "tilt": 20.2, "az": 172.8, "n_consistent": 3, "province": "Khyber Pakhtunkhwa"}, {"pid": "pk_0483", "kind": "plant", "bucket": ">50k", "area_m2": 66366.0, "tilt": 15.7, "az": 168.9, "n_consistent": 4, "province": "Punjab"}, {"pid": "pk_0486", "kind": "plant", "bucket": ">50k", "area_m2": 856364.0, "tilt": 19.5, "az": 143.0, "n_consistent": 2, "province": "Sindh"}, {"pid": "pk_0488", "kind": "generator", "bucket": ">50k", "area_m2": 142332.1, "tilt": 18.5, "az": 135.3, "n_consistent": 2, "province": "Punjab"}, {"pid": "pk_0491", "kind": "generator", "bucket": ">50k", "area_m2": 325700.4, "tilt": 22.0, "az": 170.8, "n_consistent": 13, "province": "Balochistan"}];
+
+const isDark = () => {
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function polarXY(cx, cy, r, azDeg) {
+  const a = azDeg * Math.PI / 180;
+  return [cx + r * Math.sin(a), cy - r * Math.cos(a)];
+}
+
+function buildWedgePath(cx, cy, r, fromDeg, toDeg) {
+  // Sample every 2deg to avoid arc-flag ambiguity; sweeps the excluded arc.
+  let d = `M ${cx} ${cy} `;
+  const steps = Math.round((toDeg - fromDeg) / 2);
+  for (let i = 0; i <= steps; i++) {
+    const az = fromDeg + (toDeg - fromDeg) * (i / steps);
+    const [x, y] = polarXY(cx, cy, r, az % 360);
+    d += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
+  }
+  d += 'Z';
+  return d;
+}
+
+function renderPolar() {
+  const svg = document.getElementById('polar');
+  svg.innerHTML = '';
+  const NS = 'http://www.w3.org/2000/svg';
+  const cx = 320, cy = 320, R = 250, tiltMax = 30;
+  const ink = css('--ink'), inkDim = css('--ink-dim'), inkFaint = css('--ink-faint'),
+        rule = css('--rule'), sun = css('--accent-sun'), glint = css('--accent-glint'),
+        excl = css('--excluded'), exclLine = css('--excluded-line');
+
+  const el = (tag, attrs) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  };
+
+  // Excluded wedge: 180 -> 440 (i.e. through W, N, up to 80 on the E side)
+  svg.appendChild(el('path', { d: buildWedgePath(cx, cy, R, 180, 440), fill: excl, opacity: 0.9 }));
+
+  // Concentric tilt gridlines
+  [10, 20, 30].forEach((t) => {
+    const r = (t / tiltMax) * R;
+    svg.appendChild(el('circle', { cx, cy, r, fill: 'none', stroke: rule, 'stroke-width': 1 }));
+    const [lx, ly] = polarXY(cx, cy, r, 250); // label on the empty SW side
+    const lbl = el('text', { x: lx, y: ly, 'font-size': 11, 'text-anchor': 'middle', class: 'mono' });
+    lbl.textContent = t + '°';
+    svg.appendChild(lbl);
+  });
+
+  // Angular ticks N/E/S/W + diagonals
+  const compass = [[0, 'N'], [45, 'NE'], [90, 'E'], [135, 'SE'], [180, 'S'], [225, 'SW'], [270, 'W'], [315, 'NW']];
+  compass.forEach(([deg, label]) => {
+    const [x1, y1] = polarXY(cx, cy, R, deg);
+    const [x2, y2] = polarXY(cx, cy, R + 8, deg);
+    svg.appendChild(el('line', { x1, y1, x2, y2, stroke: inkFaint, 'stroke-width': 1 }));
+    const [lx, ly] = polarXY(cx, cy, R + 24, deg);
+    const t = el('text', { x: lx, y: ly, 'font-size': 12, 'text-anchor': 'middle', 'dominant-baseline': 'middle' });
+    t.setAttribute('class', 'mono');
+    t.textContent = label;
+    t.style.fill = (label === 'N' || label === 'E' || label === 'S' || label === 'W') ? ink : inkFaint;
+    svg.appendChild(t);
+  });
+
+  // The hard, confident boundary at 180 deg
+  {
+    const [x2, y2] = polarXY(cx, cy, R, 180);
+    svg.appendChild(el('line', { x1: cx, y1: cy, x2, y2, stroke: exclLine, 'stroke-width': 2, 'stroke-dasharray': '5,4' }));
+  }
+  // The softer, fuzzier boundary near 80deg
+  {
+    const [x2, y2] = polarXY(cx, cy, R, 82);
+    svg.appendChild(el('line', { x1: cx, y1: cy, x2, y2, stroke: exclLine, 'stroke-width': 1, 'stroke-dasharray': '2,4', opacity: 0.6 }));
+  }
+
+  // Data points
+  const areas = DATA.map(d => d.area_m2);
+  const minA = Math.min(...areas), maxA = Math.max(...areas);
+  const sizeFor = (a) => 3 + 7 * (Math.sqrt(a - minA + 1) / Math.sqrt(maxA - minA + 1));
+
+  const tip = document.getElementById('tooltip');
+  const wrap = document.getElementById('polar-wrap');
+
+  DATA.forEach((d) => {
+    const r = (d.tilt / tiltMax) * R;
+    const [x, y] = polarXY(cx, cy, r, d.az);
+    const c = el('circle', {
+      cx: x, cy: y, r: sizeFor(d.area_m2),
+      fill: d.kind === 'generator' ? sun : glint,
+      stroke: css('--bg-chart'), 'stroke-width': 1, opacity: 0.88,
+      style: 'cursor: pointer;',
+    });
+    c.addEventListener('mouseenter', (ev) => {
+      tip.innerHTML = `<b>${d.pid}</b> · ${d.kind} · ${d.province}<br>` +
+        `tilt ${d.tilt}° · az ${d.az}° · area ${Math.round(d.area_m2).toLocaleString()} m²<br>` +
+        `${d.n_consistent} consistent spike dates · ${d.bucket} m² bucket`;
+      tip.classList.add('show');
+    });
+    c.addEventListener('mousemove', (ev) => {
+      const rect = wrap.getBoundingClientRect();
+      tip.style.left = (ev.clientX - rect.left) + 'px';
+      tip.style.top = (ev.clientY - rect.top) + 'px';
+    });
+    c.addEventListener('mouseleave', () => tip.classList.remove('show'));
+    svg.appendChild(c);
+  });
+}
+
+function bar(svg, x, y, w, h, fill) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const r = document.createElementNS(NS, 'rect');
+  r.setAttribute('x', x); r.setAttribute('y', y - h);
+  r.setAttribute('width', w); r.setAttribute('height', Math.max(h, 0));
+  r.setAttribute('fill', fill);
+  svg.appendChild(r);
+}
+function text(svg, x, y, s, opts = {}) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const t = document.createElementNS(NS, 'text');
+  t.setAttribute('x', x); t.setAttribute('y', y);
+  t.setAttribute('font-size', opts.size || 10.5);
+  t.setAttribute('text-anchor', opts.anchor || 'middle');
+  t.setAttribute('class', 'mono');
+  if (opts.fill) t.style.fill = opts.fill;
+  t.textContent = s;
+  svg.appendChild(t);
+}
+
+function renderHistTilt() {
+  const svg = document.getElementById('hist-tilt');
+  svg.innerHTML = '';
+  const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const binSize = 3, maxTilt = 30;
+  const bins = Array.from({ length: maxTilt / binSize }, () => ({ gen: 0, plant: 0 }));
+  DATA.forEach(d => {
+    const i = Math.min(Math.floor(d.tilt / binSize), bins.length - 1);
+    bins[i][d.kind === 'generator' ? 'gen' : 'plant']++;
+  });
+  const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
+  const bw = plotW / bins.length;
+  const sun = css('--accent-sun'), glint = css('--accent-glint'), inkFaint = css('--ink-faint');
+  bins.forEach((b, i) => {
+    const x = padL + i * bw + bw * 0.12;
+    const w = bw * 0.76;
+    const totalH = (b.gen + b.plant) / maxCount * plotH;
+    const genH = b.gen / maxCount * plotH;
+    const baseY = padT + plotH;
+    bar(svg, x, baseY - genH, w, genH, sun);
+    bar(svg, x, baseY - totalH, w, totalH - genH, glint);
+    if (i % 2 === 0) text(svg, x + w / 2, H - 8, (i * binSize) + '°', { size: 9.5, fill: inkFaint });
+  });
+  text(svg, padL, padT + plotH + 2, '', {});
+  // axis line
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+  line.setAttribute('y1', padT + plotH); line.setAttribute('y2', padT + plotH);
+  line.setAttribute('stroke', css('--rule'));
+  svg.appendChild(line);
+}
+
+function renderHistAz() {
+  const svg = document.getElementById('hist-az');
+  svg.innerHTML = '';
+  const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const lo = 60, hi = 200, binSize = 10;
+  const nbins = (hi - lo) / binSize;
+  const bins = Array.from({ length: nbins }, () => ({ gen: 0, plant: 0 }));
+  DATA.forEach(d => {
+    const i = Math.min(Math.max(Math.floor((d.az - lo) / binSize), 0), nbins - 1);
+    bins[i][d.kind === 'generator' ? 'gen' : 'plant']++;
+  });
+  const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
+  const bw = plotW / nbins;
+  const sun = css('--accent-sun'), glint = css('--accent-glint'), inkFaint = css('--ink-faint'), exclLine = css('--excluded-line');
+  bins.forEach((b, i) => {
+    const x = padL + i * bw + bw * 0.12;
+    const w = bw * 0.76;
+    const totalH = (b.gen + b.plant) / maxCount * plotH;
+    const genH = b.gen / maxCount * plotH;
+    const baseY = padT + plotH;
+    bar(svg, x, baseY - genH, w, genH, sun);
+    bar(svg, x, baseY - totalH, w, totalH - genH, glint);
+    if (i % 2 === 0) text(svg, x + w / 2, H - 8, (lo + i * binSize), { size: 9.5, fill: inkFaint });
+  });
+  // 180deg ceiling marker
+  const xCeil = padL + ((180 - lo) / (hi - lo)) * plotW;
+  const vline = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  vline.setAttribute('x1', xCeil); vline.setAttribute('x2', xCeil);
+  vline.setAttribute('y1', padT); vline.setAttribute('y2', padT + plotH);
+  vline.setAttribute('stroke', exclLine); vline.setAttribute('stroke-width', 1.5);
+  vline.setAttribute('stroke-dasharray', '4,3');
+  svg.appendChild(vline);
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+  line.setAttribute('y1', padT + plotH); line.setAttribute('y2', padT + plotH);
+  line.setAttribute('stroke', css('--rule'));
+  svg.appendChild(line);
+}
+
+function renderStrip() {
+  const svg = document.getElementById('strip');
+  svg.innerHTML = '';
+  const rows = [
+    ['<100', 6.2, 2.5], ['100-500', 16.2, 8.8], ['500-1k', 22.5, 16.2],
+    ['1k-5k', 44.7, 30.6], ['5k-50k', 52.4, 29.3], ['>50k', 72.8, 26.1],
+  ];
+  const W = 1000, H = 150, padL = 50, padR = 20, padT = 14, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const groupW = plotW / rows.length;
+  const inkDim = css('--ink-dim'), inkFaint = css('--ink-faint'), sun = css('--accent-sun'), glint = css('--accent-glint'), rule = css('--rule');
+  rows.forEach(([label, det, val], i) => {
+    const gx = padL + i * groupW;
+    const bw = groupW * 0.28;
+    const hDet = det / 100 * plotH, hVal = val / 100 * plotH;
+    const baseY = padT + plotH;
+    bar(svg, gx + groupW * 0.22, baseY - hDet, bw, hDet, inkFaint);
+    bar(svg, gx + groupW * 0.52, baseY - hVal, bw, hVal, glint);
+    text(svg, gx + groupW / 2, H - 8, label, { size: 11 });
+  });
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+  line.setAttribute('y1', padT + plotH); line.setAttribute('y2', padT + plotH);
+  line.setAttribute('stroke', rule);
+  svg.appendChild(line);
+  // y-axis labels
+  [0, 25, 50, 75].forEach(p => {
+    const y = padT + plotH - (p / 100) * plotH;
+    text(svg, padL - 10, y + 3, p + '%', { size: 10, anchor: 'end', fill: inkFaint });
+  });
+  // legend
+  text(svg, padL, 10, 'grey = detected (≥ 1 spike)   teal = validated (≥ 2 consistent)', { size: 10.5, anchor: 'start', fill: inkDim });
+}
+
+function renderAll() {
+  renderPolar();
+  renderHistTilt();
+  renderHistAz();
+  renderStrip();
+}
+renderAll();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>
