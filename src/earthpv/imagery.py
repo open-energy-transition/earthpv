@@ -12,6 +12,7 @@ load; Earth Search needs no auth/tokens and lives in a different failure domain.
 
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import threading
 from functools import lru_cache
@@ -28,6 +29,15 @@ log = logging.getLogger(__name__)
 
 STAC_URL = "https://planetarycomputer.microsoft.com/api/stac/v1"
 ES_STAC_URL = "https://earth-search.aws.element84.com/v1"
+# A healthy cell composites via PC in well under a minute; past this, treat PC as
+# "struggling" (SAS-token/503 storms degrade individual band reads without raising,
+# so a cell can silently take minutes instead of erroring outright) and hand the
+# cell to Earth Search rather than keep waiting. The abandoned PC attempt is left to
+# finish on its own in the background (vsicurl reads have no side effects to clean
+# up); the pool is sized well above compose's typical worker count so a run of
+# stragglers can't starve fresh cells of a PC attempt slot.
+PC_TIMEOUT_S = 60
+_PC_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=24, thread_name_prefix="pc-attempt")
 # SCL classes to keep: 4 vegetation, 5 bare, 6 water, 7 unclassified, 11 snow(excl)
 _SCL_VALID = (4, 5, 6, 7)
 MAX_CLOUD = 60  # scene-level filter; per-pixel SCL masking below
@@ -199,13 +209,28 @@ def annual_composite(
     search still uses `bbox`. The catalog search is serialized (pystac-client is
     not thread-safe); the COG reads run concurrently fine.
 
-    Tries Planetary Computer first (fastest from here when healthy), and retries
-    the whole cell via Earth Search (AWS) if PC errors out or comes back empty —
-    different hosting, so PC's recurring 503 storms don't take the cell down.
+    Tries Planetary Computer first (fastest from here when healthy), and hands the
+    cell to Earth Search (AWS) if PC errors out, comes back empty, or is simply
+    struggling — `PC_TIMEOUT_S` bounds how long we wait, since a SAS-token/503 storm
+    degrades individual band reads (retried and swallowed by `fail_on_error=False`)
+    without ever raising, so a struggling cell would otherwise silently take minutes
+    instead of erroring outright. Different hosting from PC, so its recurring
+    outages don't take the cell down.
     """
+    fut = _PC_EXECUTOR.submit(
+        _annual_composite_via, "planetary-computer", bbox, date_range, max_cloud, max_items, geobox
+    )
     try:
-        result = _annual_composite_via(
-            "planetary-computer", bbox, date_range, max_cloud, max_items, geobox
+        result = fut.result(timeout=PC_TIMEOUT_S)
+    except concurrent.futures.TimeoutError:
+        log.warning(
+            "Planetary Computer exceeded %ds for bbox=%s (struggling); handing off to "
+            "Earth Search without waiting further (the PC attempt is abandoned, not "
+            "killed, and will finish in the background)",
+            PC_TIMEOUT_S, bbox,
+        )
+        return _annual_composite_via(
+            "earth-search", bbox, date_range, max_cloud, max_items, geobox
         )
     except Exception as e:  # noqa: BLE001 — any PC failure is grounds for fallback
         log.warning(
