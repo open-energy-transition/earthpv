@@ -311,15 +311,65 @@ because the previous one had a measurable gap:
    net-metering totals as a Pakistani MaStR analogue, and the two-epoch ΔMWp above as
    the growth axis: per-epoch density estimates make `est_mwp` a **time series**, so
    the boom itself becomes measurable per district rather than a single snapshot.
+7. **Cell-aggregate glint calibration** (tested, inconclusive) — small residential
+   arrays are individually sub-pixel and rarely glint on their own (~1–4% of dates,
+   each on its own orientation-specific window), so the hypothesis was that a dense
+   neighbourhood of many independently-oriented small arrays would union those narrow
+   windows into a far higher combined spike-count than any single installation shows
+   alone. Tested against a fully OSM-mapped Lahore residential cluster (below — up to
+   120 separately-mapped generators inside a single 300 m block) by gridding it into
+   cells with known true PV area and regressing each cell's aggregate reflectance-
+   spike count (p90 of the whole cell against a wide 150–450 m external ring, not the
+   per-installation 30 m annulus, since a tight ring risks comparing panels against
+   neighbouring panels) against that density. **Result: no signal** — zero-PV control
+   cells averaged 1.0 spike, PV-bearing cells 1.45 (median tied at 1.0 for both), and
+   even the 120-installation hotspot cell showed only 1 spike over 2 years. Likely a
+   methodology problem rather than a physics one: p90-of-the-whole-cell only moves if
+   ~10% of the cell (~90 of 900 pixels) brightens at once, but even every installation
+   in the busiest hotspot glinting simultaneously covers under half that — a per-pixel
+   anomaly-count statistic (each pixel against its own baseline) would be the correct
+   next test, not attempted here.
 
-Sentinel-1 (VV/VH) is a planned follow-up: TerraMind-tiny ships pretrained S1 patch
-embeddings, but wiring it needs S1 RTC compositing, a modality-dict input path, neck
-reconfiguration and a retrain gated against v3 on the Multan validation split — a
-separate phase from this density product. A lighter-weight S1 use needs no model
-change at all: multi-temporal backscatter *variance* at candidate locations separates
-permanent structures (PV: static, low, flat backscatter) from seasonally-changing
-fields, and greenhouses' metal frames act as corner reflectors (bright return —
-opposite to PV), making S1 a cheap post-hoc false-positive filter.
+   <img src="docs/pv_density_test_area.png" alt="JOSM view of the Lahore calibration test area: yellow building footprints densely packed with mapped solar-generator icons, illustrating the many-small-installations-per-block pattern the cell-aggregate test targets." width="480">
+
+8. **Missed-installation glint recovery** (tested, negative) — a different idea from
+   #7: rather than aggregating over a cell, find real OSM-confirmed installations the
+   model's own thresholded mask completely misses (`pv_area_det`'s recall gap made
+   concrete) and check whether glint-validating them could safely add their area back.
+   Tested on 43 missed German installations (from the val split) and 208 missed
+   Lahore installations, each against a matched sample of confirmed non-PV buildings.
+   **Both regions fail the one thing this needs to do**: Germany's control
+   false-validation rate (20.8%) is uncomfortably close to its missed-installation
+   validated rate (37.2%); Lahore's control rate (8.7%) is *higher* than its missed
+   rate (5.3%) — worse than chance at telling real missed PV apart from ordinary
+   buildings. Recovered area was a modest 10.8% of the Lahore gap even before
+   accounting for that false-positive risk. Not safe to deploy as a blanket density
+   correction in either region tested.
+
+
+**Sentinel-1 corner-reflector test (negative result).** A tilted PV row over flat
+ground forms a dihedral corner reflector — hypothesis: this should show up as strong
+SAR backscatter, and (unlike optical glint) persistently, since S1's orbit geometry
+is fixed year-round rather than season-dependent, and it isn't blocked by cloud.
+Tested on 17 glint-validated installations spanning the full observed azimuth range,
+pulling ~2 years of Sentinel-1 RTC (VV/VH) and checking for backscatter enhancement
+inside each footprint vs. a wide external ring, split by ascending/descending pass.
+**No signal**: median enhancement rate ~3.2% (VV) / 1.7% (VH) of scenes — in the range
+of plain speckle noise — and critically, ascending vs. descending rates were nearly
+identical (1.7% vs. 1.8% median) with no correlation to the panel's implied row axis.
+A real corner-reflector effect should show a sharp asymmetry between orbit headings;
+its absence suggests this isn't a usable detection channel at these sites, at least
+not via a simple per-footprint aggregate.
+
+Wiring S1 into the *model itself* remains a separate, larger idea: TerraMind-tiny
+ships pretrained S1 patch embeddings, but using them needs S1 RTC compositing, a
+modality-dict input path, neck reconfiguration and a retrain gated against v3 on the
+Multan validation split. A lighter-weight use needs no model change at all:
+multi-temporal backscatter *variance* at candidate locations separates permanent
+structures (PV: static, low, flat backscatter) from seasonally-changing fields, and
+greenhouses' metal frames act as corner reflectors (bright return — opposite to PV),
+making S1 a cheap post-hoc false-positive filter — untested, but distinct from the
+per-footprint corner-reflector idea above and not ruled out by its negative result.
 
 ## Notes
 
