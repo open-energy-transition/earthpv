@@ -15,48 +15,177 @@ human-validated against imagery in OSM workflows (MapRoulette export included).
 
 ## Setup
 
+Prerequisites: an NVIDIA GPU for training/inference (this project targets a **GTX
+1060, Pascal sm_61** — see the cu126 note in Operational notes below; anything
+newer works too), and — for the AOIs already configured (`germany`, `punjab`,
+`pakistan`) — the sibling `rooftopsenti` project's Sentinel-2 composites/labels on
+the same machine (`local_root` in `configs/aoi.yaml`). **You don't need that sibling
+project to run this on a new region** — see "Running on a new region" below for the
+fully-standalone path (Overpass labels + `compose` + VIDA buildings), which is what
+`gujarat` (already in `configs/aoi.yaml`) uses.
+
 ```bash
-pixi install          # data pipeline env
-pixi install -e ml    # + PyTorch cu126 (Pascal-safe) + TerraTorch
-pixi run -e ml gpu-check
+pixi install          # data pipeline env (DuckDB, geopandas, rasterio, odc-stac)
+pixi install -e ml    # + PyTorch cu126 (Pascal-safe) + TerraTorch, multi-GB solve
+pixi run -e ml gpu-check   # confirms torch.cuda.is_available() and the device name
 ```
 
-## Pipeline
+Two environments share one pixi solve-group: `default` (no PyTorch, used for every
+data/network stage) and `ml` (adds `torch`/`terratorch`, only needed for
+`train`/`infer`/`evaluate`/`hard-negatives`). Calling `.pixi/envs/ml/bin/python -m
+earthpv.cli ...` directly skips pixi's per-invocation overhead on long runs.
+
+## Quickstart (smoke test)
+
+A complete, minutes-long, low-cost run through every stage that touches the GPU —
+do this first on a fresh checkout to confirm the environment actually works before
+committing to a multi-hour real run:
 
 ```bash
-# 1. Labels: Overture buildings + OSM solar tags
+pixi run earthpv labels --aoi freiburg                      # tiny bbox, seconds
+pixi run earthpv chips --aoi freiburg --limit 50             # 50 chips, ~1 min
+pixi run -e ml earthpv train --config configs/terramind_pv.yaml --smoke   # 50 steps
+pixi run -e ml earthpv evaluate --aoi freiburg --checkpoint data/models/last.ckpt
+```
+
+`--smoke` on `train` runs 50 optimizer steps — enough to confirm the model loads,
+the GPU is used, and a checkpoint is written, not enough to detect anything (loss
+will not have converged; don't read anything into `evaluate`'s numbers here). If
+this all runs without error, move on to a real chip/train run below.
+
+## Full pipeline
+
+Ordered by dependency; every stage after `train` needs a checkpoint path
+(`data/models/<run>/<epoch>.ckpt`), and every stage is resumable / safe to re-run
+(existing chips/composites/predictions are skipped, not rebuilt) — this matters
+because most real runs here are network- or GPU-bound for hours, see Operational
+notes for how to run them detached and recover from interruption.
+
+**1. Labels** — building footprints + OSM solar polygons for an AOI.
+
+```bash
 pixi run earthpv labels --aoi germany
-
-# 2. Chips: S2 composites + burned PV masks
-pixi run earthpv chips --aoi germany
-
-# 3. Fine-tune TerraMind (smoke: --smoke)
-pixi run -e ml earthpv train --config configs/terramind_pv.yaml
-
-# 3b. Evaluate: pixel IoU/F1 + per-installation recall by array size
-pixi run -e ml earthpv evaluate --aoi germany --checkpoint data/models/<best>.ckpt
-
-# 3c. Punjab has no local imagery — composite building-populated cells via STAC first
-#     (resumable; cities first). Skip for regions that already have local composites.
-pixi run -e ml earthpv compose --aoi punjab --min-buildings 1000
-
-# 4. Inference over Punjab (uses data/composites/punjab if present; building-screened)
-pixi run -e ml earthpv infer --aoi punjab --checkpoint data/models/<best>.ckpt
-
-# 5. Candidates: threshold -> polygons -> building join + prior re-ranking.
-#    On first run, pulls VIDA Open Buildings (dense, imagery-derived) around the
-#    candidates and caches them under data/predictions/<aoi>/buildings/; falls back
-#    to the local Overture footprints when the AOI's country is unknown.
-pixi run earthpv postprocess --aoi punjab --threshold 0.3
-
-# 6. Export GeoParquet / GeoJSON / MapRoulette challenge (queue ordered by rank_score)
-pixi run earthpv export --aoi punjab
-
-# 7. (optional) PV density per building + PyPSA-ready grid/region aggregates
-pixi run earthpv density --aoi pakistan
+# Freshly-mapped region, bypassing Overture's snapshot lag (e.g. right after hand-mapping):
+pixi run earthpv overpass-labels --place "Lahore" --iso3 PAK
 ```
 
-AOIs and parameters: `configs/aoi.yaml`. Model/training: `configs/terramind_pv.yaml`.
+**2. Chips** — Sentinel-2 composite windows + burned PV masks, the training set.
+
+```bash
+pixi run earthpv chips --aoi germany                         # full run, ~3-4k chips
+pixi run earthpv chips --aoi germany --limit 500              # capped, for iteration
+# Regression target (continuous per-pixel PV coverage fraction) instead of binary mask:
+pixi run earthpv chips --aoi germany --fraction
+```
+
+**3. Train** — fine-tune TerraMind via TerraTorch (needs the `ml` env / GPU).
+
+```bash
+pixi run -e ml earthpv train --config configs/terramind_pv.yaml
+# Merge multiple AOIs' chips into one training set first (2x oversamples pakistan's
+# train rows so Germany's larger chip count doesn't swamp the in-domain signal):
+.pixi/envs/default/bin/python scripts/merge_chip_index.py germany pakistan:2
+```
+
+**4. Evaluate** — pixel IoU/F1 + per-installation recall bucketed by array size.
+
+```bash
+pixi run -e ml earthpv evaluate --aoi germany --checkpoint data/models/<run>/<epoch>.ckpt
+```
+
+**5. Compose** — build Sentinel-2 composites for AOIs with no local imagery
+(building-populated cells only, via Planetary Computer STAC; skip this for AOIs that
+already have `source_region` composites, e.g. `germany`).
+
+```bash
+pixi run -e ml earthpv compose --aoi punjab --min-buildings 1000 --workers 6
+# A second epoch on the same grid (e.g. the pre-2022-boom baseline for Pakistan's
+# change-detection track — see "Planned: two-epoch change detection" below):
+pixi run -e ml earthpv compose --aoi pakistan --index 1 \
+  --window 2021-10-01:2022-01-24 --use-vida --workers 6
+```
+
+**6. Infer** — tiled inference over an AOI, writing per-cell probability GeoTIFFs.
+
+```bash
+pixi run -e ml earthpv infer --aoi punjab --checkpoint data/models/<run>/<epoch>.ckpt
+```
+
+**7. Postprocess** — threshold, polygonize, join to building footprints, rank.
+
+```bash
+pixi run earthpv postprocess --aoi punjab --threshold 0.3
+# Drop isolated candidates far from any building (bare-soil/water false positives):
+pixi run earthpv postprocess --aoi punjab --threshold 0.3 --max-building-dist 30
+# Physics-based glint corroboration on the top 300 candidates (network-bound, ~1-2
+# min/candidate — see "Solar-glint corroboration" below):
+pixi run earthpv postprocess --aoi punjab --check-glint --glint-top-n 300
+```
+
+**8. Export** — GeoParquet/GeoJSON + a MapRoulette challenge, ranked by `rank_score`.
+
+```bash
+pixi run earthpv export --aoi punjab
+# Also write a new-leads file excluding anything within 100m of already-mapped OSM PV:
+pixi run earthpv export --aoi punjab --exclude-mapped --min-distance-m 100
+```
+
+**9. Density** *(optional)* — per-building PV area/capacity + PyPSA-ready grid/region
+aggregates, from artifacts already on disk (no GPU, no retrain).
+
+```bash
+pixi run earthpv density --aoi pakistan --districts
+```
+
+**10. Hard-negative mining** *(optional)* — confirm large, OSM-unmapped buildings as
+true negatives via a bi-temporal check (model must see no PV in *either* the current
+composite or an older year's), then cut them into training chips.
+
+```bash
+pixi run -e ml earthpv hard-negatives --aoi pakistan --checkpoint data/models/<run>/<epoch>.ckpt
+pixi run earthpv hard-negative-chips --aoi pakistan
+```
+
+**11. German calibration** *(optional, Germany-only)* — cross-check `density`
+against the legally-complete MaStR register and pvlib-modelled generation.
+
+```bash
+pixi run earthpv mastr                                       # downloads/aggregates MaStR
+pixi run earthpv calibrate --aoi germany                     # zonal-join + validate
+pixi run earthpv pv-yield --aoi germany                      # pvlib GWh/yr cross-check
+```
+
+AOIs and parameters: `configs/aoi.yaml`. Model/training configs: `configs/*.yaml`
+(`terramind_pv.yaml` production 10-band, `_seasonal`/`_fraction`/`_v3india` variants
+for the experiments documented below).
+
+## Running on a new region
+
+The AOIs above (`germany`, `punjab`, `pakistan`) reuse imagery/labels already
+downloaded by a sibling project on this machine — a shortcut, not a requirement.
+`gujarat` in `configs/aoi.yaml` is the template for a region with **no local
+data at all**:
+
+```yaml
+gujarat:
+  bbox: [68.0, 20.0, 74.6, 24.8]
+  division: { name: Gujarat, country: IN, subtype: region }
+  # no source_region key -> chips/compose fall back to Planetary Computer STAC
+```
+
+1. `labels`/`overpass-labels` fetch OSM solar polygons directly (Overture or live
+   Overpass) instead of reading a cached local parquet.
+2. `chips`/`compose` fetch Sentinel-2 composites from Planetary Computer STAC
+   instead of reading local composite COGs — the same code path used for `punjab`,
+   just without the `source_region` shortcut, so it's slower (network-bound) but
+   requires nothing pre-downloaded.
+3. `postprocess`'s building join fetches VIDA Open Buildings for the AOI's country
+   on first use and caches it locally — works for any ISO3, not just the countries
+   with a local building parquet already cached.
+4. Detection itself reuses the existing Germany-trained checkpoint unchanged — no
+   region-specific retraining is required to get a first candidate set; retraining
+   on in-domain chips (once `chips`/`compose` produce some) is what closes the
+   domain-gap recall difference documented below.
 
 ## Data provenance
 
@@ -371,11 +500,108 @@ greenhouses' metal frames act as corner reflectors (bright return — opposite t
 making S1 a cheap post-hoc false-positive filter — untested, but distinct from the
 per-footprint corner-reflector idea above and not ruled out by its negative result.
 
-## Notes
+## Scripts reference
 
-- 500 m² ≈ 5 Sentinel-2 pixels: evaluation reports per-installation recall bucketed
-  by array size; tune the postprocess threshold on the German validation states for
-  the recall you need.
-- GTX 1060 (Pascal, sm_61) requires PyTorch cu126 wheels — CUDA 13 dropped Pascal.
-- Chips store the annual median (12 bands); pass `--seasonal` for 4-season 60-band
+The CLI (`src/earthpv/cli.py`) covers the core pipeline; `scripts/` holds
+orchestration wrappers and research one-offs that either predate a CLI command,
+chain several stages together for a long unattended run, or were built to test a
+specific hypothesis (mostly the glint experiments below). None of these are
+required for the core pipeline above — skip straight to "Data provenance" if
+you're not chasing one of the specific results this README documents.
+
+**Long-run orchestration** (resumable, meant to run detached — see Operational
+notes for why):
+- `compose_loop.sh` — auto-restarts `compose` every 30 min so a fresh Planetary
+  Computer SAS token replaces one that's about to expire mid-run; exits on target
+  reached, clean completion, or 3x no-progress.
+- `rebuild_training.sh [aoi] [train_repeat]` — rebuilds an AOI's chips after its
+  compose finishes, then remerges the combined training index.
+- `infer_after_compose.sh` — waits for `compose_loop.sh` to finish, then chains
+  `infer → postprocess → export` on whatever cells it composited.
+- `run_preboom_pipeline.sh` — the full two-epoch pipeline (pre-boom compose ||
+  current-epoch eval-gate + inference, in parallel; then pre-boom inference,
+  epoch-diff rescoring, density on both epochs, the growth map, a pvlib capacity
+  check) behind marker-file resumability.
+- `download_vida_ind.sh` — bulk VIDA India buildings download with retry-on-reset.
+
+**Training-data construction:**
+- `merge_chip_index.py [aoi[:repeat] ...]` — combine per-AOI chip indexes
+  (`default: germany punjab`); see the Train step above.
+- `build_germany_seasonal.py`, `build_contrast_composites.py`,
+  `reconcile_contrast.py` — build/reconcile the two-season 20-band stack (see
+  "Two-season stacking experiment" below — kept for future iteration, not
+  production).
+
+**Post-detection QA:**
+- `compare_candidates_overpass.py` — cross-reference exported candidates against
+  a live Overpass query, giving distance-to-nearest-mapped-feature for triage.
+
+**Solar-glint research suite** (`src/earthpv/glint.py` is the production module,
+used by `postprocess --check-glint`; everything below is validation/experimentation
+around it, mostly network-bound per-target Sentinel-2 time-series pulls):
+- `glint_validation.py` / `glint_validate_pakistan.py` — the core empirical
+  validation (spike detection + self-consistent orientation fit), the latter at
+  country scale, stratified by installation size (results in "Solar-glint
+  corroboration" below and `results/glint_validation_pakistan/`).
+- `glint_iou_experiment.py`, `glint_pixel_refine.py`, `roof_axis_iou_experiment.py`
+  — can glint move pixel IoU rather than just re-rank candidates? (threshold
+  gating: no; per-pixel spike-amplitude trim: a narrow real win; roof-orientation
+  threshold gating: no — see conversation/commit history for the full results).
+- `glint_density_targets.py` / `_pull.py` / `_analyze.py` and
+  `glint_cell_density_targets.py` / `_pull.py` / `_analyze.py` — two different
+  attempts to use glint for regional density estimation rather than per-candidate
+  ranking (missed-installation recovery; cell-aggregate spike-count calibration) —
+  both tested negative, see the numbered list under "How the density estimate
+  developed" above.
+- `glint_skyfield_check.py` — cross-checks the empirical MTD_TL.xml-metadata-based
+  fit against independent Skyfield astronomy (sun-only: exact agreement; full
+  TLE-propagated forward prediction: unreliable for reconstructing historical spike
+  dates, confirming why `glint.py` never uses TLEs for anything but the forward-
+  looking overpass calendar).
+- `s1_corner_reflector_test.py` — the Sentinel-1 dihedral-reflector test, negative
+  result documented above.
+
+## Operational notes & troubleshooting
+
+- **500 m² ≈ 5 Sentinel-2 pixels**: evaluation reports per-installation recall
+  bucketed by array size; tune the postprocess threshold on the German validation
+  states for the recall you need. Sub-500 m² detection is unreliable at Sentinel-2's
+  10 m floor regardless of threshold — see "Result" above.
+- **GPU**: GTX 1060 (Pascal, sm_61) requires PyTorch **cu126** wheels — CUDA 13
+  dropped Pascal support; pinned in `pixi.toml`. A newer card has more headroom but
+  doesn't need anything else changed.
+- Chips store the annual median (10 bands); pass `--seasonal` for 4-season 60-band
   chips (disk-heavy) to experiment with explicit temporal stacks.
+- **`data/` is gitignored** and expected on a fast local/external drive — `chips/`,
+  `composites/`, `models/`, `predictions/` are all multi-GB to multi-hundred-GB.
+  Files there won't show up in a git-aware file explorer even though they're real.
+- **Long network/GPU stages die silently on session logout.** `nohup setsid` alone
+  does not survive a session ending — systemd-logind kills the whole session's
+  cgroup (everything in it, `setsid` or not) unless lingering is enabled. Before
+  launching anything multi-hour: `loginctl show-user "$USER" | grep Linger` — if
+  `Linger=no`, run `loginctl enable-linger "$USER"` once (no sudo needed for your
+  own account).
+- **Planetary Computer has frequent multi-hour outages** (Azure Front Door 504s, or
+  requests that hang with no error at all) — every network-bound stage in this
+  project (`compose`, `chips` without a `source_region`, the glint scripts) is
+  built to be resumable (temp-then-rename writes, per-target/per-cell skip-if-
+  exists) specifically because of this. The practical pattern: launch detached,
+  poll a log for a completion marker or a stall (no new output for ~20-30 min), and
+  if stalled, kill and relaunch the same command — it picks up where it left off.
+  `compose_loop.sh` automates exactly this cycle for `compose`; for anything else,
+  a simple `until grep -q DONE log || ! pgrep -f the_process; do sleep 30; done`
+  loop around a kill-and-relaunch does the job.
+- **`row.mask` / `row.image` on a pandas row**: use bracket access (`row["mask"]`)
+  — `.mask` resolves to the `Series.mask` *method*, not the column, a bug worth
+  knowing about if you're reading/extending the chip-index code.
+- **Changing `MIN_PV_AREA`** (the training positive threshold in `chips.py`)
+  requires rebuilding chips and retraining — it's baked into the burned masks, not
+  a runtime parameter.
+- **Geographic val splits must match real coverage**: `val_tiles` in
+  `configs/aoi.yaml` has to name MGRS tiles (or composed cells) the AOI's
+  `source_region`/`compose` run actually produced, or the val set silently ends up
+  empty and the datamodule falls back to a random 20% split — check `evaluate`'s
+  reported `installations` count per bucket isn't suspiciously small before trusting
+  a recall number.
+- **Areas are geodesic** (`labels.geodesic_area_m2`) — never `.area` on lat/lon
+  geometries, which silently returns nonsense (degrees², not m²).
