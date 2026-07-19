@@ -183,8 +183,13 @@ def postprocess(
         "so only applied to the top --glint-top-n candidates by rank_score."
     ),
     glint_top_n: int = typer.Option(
-        300, help="How many top-ranked candidates to run the glint check on (matches "
+        300, help="How many eligible candidates to run the glint check on (matches "
         "--check-glint; ignored otherwise)"
+    ),
+    glint_skip_top: int = typer.Option(
+        100, help="Skip the this-many highest-ranked candidates before spending the "
+        "glint budget — they reach human validation regardless, so the check adds "
+        "nothing there; 0 restores the old check-from-the-top behavior"
     ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
@@ -193,6 +198,7 @@ def postprocess(
     run_postprocess(
         aoi=aoi, pred_dir=pred_dir, threshold=threshold, max_building_dist_m=max_building_dist,
         preboom_prob_dir=preboom_prob_dir, check_glint=check_glint, glint_top_n=glint_top_n,
+        glint_skip_top=glint_skip_top,
     )
 
 
