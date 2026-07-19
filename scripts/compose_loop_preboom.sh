@@ -29,8 +29,10 @@ while true; do
   if [ "$done" -le "$prev" ]; then stall=$((stall+1)); else stall=0; fi
   [ "$stall" -ge 3 ] && { echo "$(date '+%F %T') LOOP: no progress 3x at ${done}, exiting" >> "$LOG"; break; }
   prev=$done
+  # 4 workers, not 6: 6 peaked at 11.4G RSS and got the unit oom-killed while GPU
+  # inference was also running (2026-07-19); network-bound anyway, so cost is small.
   timeout -k 60 "$ITER" $PY -m earthpv.cli compose --aoi "$AOI" --min-buildings 1000 --use-vida \
-    --workers 6 --index 1 --window 2021-10-01:2022-01-24 >> "$LOG" 2>&1
+    --workers 4 --index 1 --window 2021-10-01:2022-01-24 >> "$LOG" 2>&1
   rc=$?
   echo "$(date '+%F %T') LOOP: iteration exit rc=${rc}" >> "$LOG"
   [ "$rc" -eq 0 ] && { echo "$(date '+%F %T') LOOP: compose exited cleanly, done" >> "$LOG"; break; }
