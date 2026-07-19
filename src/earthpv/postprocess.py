@@ -204,10 +204,29 @@ def add_epoch_prior(cands: gpd.GeoDataFrame, preboom_prob_dir: Path) -> gpd.GeoD
     return cands
 
 
+# Glint-evidence calibration, measured on 500 OSM-confirmed Pakistan installations
+# stratified by installation area (results/glint_validation_pakistan/REPORT.md,
+# data/glint/pakistan_stats_by_size.csv) plus 69 no-PV control buildings (50-5000 m2,
+# Lahore) from the corroboration experiment. "Validated" = >= 2 mutually-consistent
+# spike dates; the rates below hold only at that criterion (min_consistent=2).
+# LR = P(validated | real PV of this size) / P(validated | no PV). Below ~500 m2 the
+# instrument has no discrimination (LR <= 1: 8.8% validated on real PV vs 8.7% on
+# controls), so those candidates are never queried and never boosted.
+_GLINT_BUCKET_EDGES_M2 = (100.0, 500.0, 1000.0, 5000.0, 50000.0)
+_GLINT_VALIDATED_RATE = (0.025, 0.088, 0.162, 0.306, 0.293, 0.261)
+_GLINT_FALSE_VALIDATED = 0.087
+
+
+def _glint_likelihood_ratio(area_m2: np.ndarray) -> np.ndarray:
+    """Likelihood ratio of a validated glint fit for a candidate of this area."""
+    bucket = np.digitize(area_m2, _GLINT_BUCKET_EDGES_M2)
+    return np.asarray(_GLINT_VALIDATED_RATE)[bucket] / _GLINT_FALSE_VALIDATED
+
+
 def add_glint_prior(
-    cands: gpd.GeoDataFrame, top_n: int = 300, lookback_days: int = 730,
-    tol_deg: float = 3.0, min_consistent: int = 2, bonus: float = 0.2,
-    max_workers: int = 4,
+    cands: gpd.GeoDataFrame, top_n: int = 300, skip_top: int = 100,
+    lookback_days: int = 730, tol_deg: float = 3.0, min_consistent: int = 2,
+    min_lr: float = 1.2, max_boost: float = 4.0, max_workers: int = 4,
 ) -> gpd.GeoDataFrame:
     """Physics-based corroborator: does the candidate glint on dates geometrically
     consistent with one fixed panel orientation? A glass PV panel is partly a
@@ -218,25 +237,55 @@ def add_glint_prior(
     **absence of glint is common even for real arrays** (wrong orientation for this
     geometry — ~30% of confirmed installations showed zero spikes over 2 years), so
     this is reward-only: candidates with no or inconsistent glint are left unchanged,
-    never down-weighted. Confirmed candidates get a small rank_score bonus (up to
-    `1 + bonus`, saturating at 4 mutually-consistent spike dates).
+    never down-weighted.
+
+    Query targeting (the pull is the scarce resource, so spend it where a result can
+    change a decision): candidates in area buckets without meaningful discrimination
+    (LR < `min_lr`, which at the default 1.2 excludes everything < 500 m2 — the
+    100-500 m2 bucket measures LR 1.01, i.e. a validated fit there is barely more
+    likely on real PV than on a control roof) are skipped entirely, and the
+    `skip_top` highest-ranked candidates are skipped too — they reach human
+    validation regardless, so corroborating them adds nothing. The budget of `top_n`
+    pulls then goes to the best-ranked eligible candidates below that band.
+
+    Confirmed candidates (>= `min_consistent` mutually-consistent spike dates) get a
+    rank_score boost calibrated from the measured evidence weight: the multiplier
+    approaches the area bucket's likelihood ratio (capped at `max_boost`) as the
+    consistent-date count saturates at 4. Unconfirmed candidates keep multiplier 1.
 
     This is a network-bound per-candidate Sentinel-2 time-series pull (dozens to
-    hundreds of scene reads each), impractical at country scale for every polygon —
-    bounded to the current top `top_n` by rank_score.
+    hundreds of scene reads each), impractical at country scale for every polygon.
     """
     cands = cands.reset_index(drop=True).copy()
     cands["glint_spikes"] = 0
     cands["glint_consistent"] = 0
     cands["glint_fit_tilt"] = np.nan
     cands["glint_fit_az"] = np.nan
+    cands["glint_lr"] = 0.0
     cands["glint_prior"] = 0.0
     if cands.empty or "rank_score" not in cands.columns:
         return cands
 
     from earthpv import glint
 
-    idx = cands["rank_score"].to_numpy().argsort()[::-1][:top_n]
+    if "area_m2" in cands.columns:
+        area = cands["area_m2"].to_numpy(float)
+    else:
+        area = np.array([geodesic_area_m2(g) for g in cands.geometry], dtype=float)
+    lr = _glint_likelihood_ratio(area)
+    cands["glint_lr"] = np.clip(lr, 1.0, max_boost).round(2)
+
+    scores = cands["rank_score"].to_numpy(float)
+    overall_rank = (-scores).argsort().argsort()  # 0 = highest rank_score
+    sel = np.flatnonzero((lr >= min_lr) & (overall_rank >= skip_top))
+    idx = sel[scores[sel].argsort()[::-1]][:top_n]
+    if len(idx) == 0:
+        log.info("Glint check: no eligible candidates (all LR < %.2f or within skip_top)", min_lr)
+        return cands
+    log.info(
+        "Glint check: %d of %d candidates eligible (LR >= %.2f and below the top %d); "
+        "querying the best-ranked %d", len(sel), len(cands), min_lr, skip_top, len(idx),
+    )
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=lookback_days)
 
@@ -246,7 +295,6 @@ def add_glint_prior(
             return i, None
         return i, glint.spike_fit(series, tol_deg=tol_deg)
 
-    log.info("Glint check: pulling Sentinel-2 time series for top %d candidates", len(idx))
     with ThreadPoolExecutor(max_workers) as ex:
         futs = [ex.submit(_check, int(i)) for i in idx]
         for f in tqdm(as_completed(futs), total=len(futs), desc="glint"):
@@ -261,8 +309,10 @@ def add_glint_prior(
     consistent = cands["glint_consistent"].to_numpy(float)
     confidence = np.clip(consistent / 4.0, 0.0, 1.0)
     confidence[consistent < min_consistent] = 0.0
+    lr_capped = np.clip(lr, 1.0, max_boost)
+    boost = 1.0 + (lr_capped - 1.0) * confidence  # 1 (no evidence) -> LR (saturated)
     cands["glint_prior"] = confidence.round(3)
-    cands["rank_score"] = (cands["rank_score"] * (1.0 + bonus * confidence)).round(4)
+    cands["rank_score"] = (cands["rank_score"] * boost).round(4)
     return cands
 
 
@@ -344,7 +394,7 @@ def _resolve_buildings(
 def run_postprocess(
     aoi: str, pred_dir: Path, threshold: float = 0.3, max_building_dist_m: float = 0.0,
     preboom_prob_dir: Path | None = None,
-    check_glint: bool = False, glint_top_n: int = 300,
+    check_glint: bool = False, glint_top_n: int = 300, glint_skip_top: int = 100,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this — isolated detections (cropland glare, bare soil, water glint)
@@ -377,8 +427,9 @@ def run_postprocess(
             ).round(4)
             log.info("Epoch-diff rescoring applied from %s", preboom_prob_dir)
         if check_glint:
-            cands = add_glint_prior(cands, top_n=glint_top_n)
-            log.info("Glint-consistency check applied to top %d candidates", glint_top_n)
+            cands = add_glint_prior(cands, top_n=glint_top_n, skip_top=glint_skip_top)
+            log.info("Glint-consistency check applied (top_n=%d, skip_top=%d)",
+                     glint_top_n, glint_skip_top)
         cands = cands.sort_values("rank_score", ascending=False).reset_index(drop=True)
         if max_building_dist_m and "building_dist_m" in cands.columns:
             n_before = len(cands)

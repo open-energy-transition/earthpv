@@ -117,9 +117,11 @@ pixi run -e ml earthpv infer --aoi punjab --checkpoint data/models/<run>/<epoch>
 pixi run earthpv postprocess --aoi punjab --threshold 0.3
 # Drop isolated candidates far from any building (bare-soil/water false positives):
 pixi run earthpv postprocess --aoi punjab --threshold 0.3 --max-building-dist 30
-# Physics-based glint corroboration on the top 300 candidates (network-bound, ~1-2
-# min/candidate — see "Solar-glint corroboration" below):
-pixi run earthpv postprocess --aoi punjab --check-glint --glint-top-n 300
+# Physics-based glint corroboration, calibrated & targeted: skips the top 100 (they
+# reach review anyway) and all sub-500 m² candidates (no measured discrimination),
+# then spends 300 pulls on the uncertain band (network-bound, ~1-2 min/candidate —
+# see "Solar-glint corroboration" below):
+pixi run earthpv postprocess --aoi punjab --check-glint --glint-top-n 300 --glint-skip-top 100
 ```
 
 **8. Export** — GeoParquet/GeoJSON + a MapRoulette challenge, ranked by `rank_score`.
@@ -353,17 +355,29 @@ showed zero spikes over 2 years, simply because their orientation never lines up
 with this specific overpass geometry — so absence of glint is not evidence against a
 candidate.
 
-`postprocess --check-glint` pulls each of the current top `--glint-top-n` (default
-300) candidates' ~2-year Sentinel-2 time series and checks for spikes consistent with
-one fixed orientation (`postprocess.py::add_glint_prior`). This is **reward-only**:
-candidates with fewer than 2 mutually-consistent spike dates are left unchanged;
-confirmed ones get a `rank_score` bonus scaling up to ×1.2 at 4+ consistent dates.
-Nothing is dropped, matching the recall-first `building_prior`/`epoch_prior` re-ranking
-contract above.
+`postprocess --check-glint` pulls candidates' ~2-year Sentinel-2 time series and
+checks for spikes consistent with one fixed orientation
+(`postprocess.py::add_glint_prior`). This is **reward-only**: candidates with fewer
+than 2 mutually-consistent spike dates are left unchanged. Nothing is dropped,
+matching the recall-first `building_prior`/`epoch_prior` re-ranking contract above.
 
-This is a network-bound per-candidate scene pull (dozens to hundreds of Sentinel-2
-reads each, ~1-2 min/candidate), so it's opt-in and bounded to the top-N by
-`rank_score` rather than run over a whole country-scale candidate set. Like
+Both the boost and the query targeting are **calibrated against measurement**, not
+heuristic. The 500-installation Pakistan validation study
+(`results/glint_validation_pakistan/REPORT.md`) measured the validated-fit rate per
+installation-area bucket, and 69 no-PV control buildings measured the false-validation
+floor (8.7%). The ratio is a per-bucket likelihood ratio — how much more likely a
+validated fit is on real PV than on an empty roof: ~1.9× for 500 m²–1k m², ~3.5× for
+1–5k m², ~3× above that, and **~1× below 500 m²** (no discrimination — the instrument
+is blind there). Confirmed candidates get a `rank_score` multiplier approaching their
+bucket's likelihood ratio (capped at 4×) as consistent-date count saturates at 4.
+
+The check is a network-bound per-candidate scene pull (dozens to hundreds of
+Sentinel-2 reads each, ~1-2 min/candidate), so it's opt-in and budgeted: sub-500 m²
+candidates are never queried (LR ≈ 1 means the answer changes nothing), the
+`--glint-skip-top` (default 100) highest-ranked candidates are skipped (they reach
+human validation regardless), and the `--glint-top-n` (default 300) budget goes to
+the best-ranked eligible candidates below that band — where a calibrated boost can
+actually move a candidate into the validation queue. Like
 `imagery.py`'s composite fetcher, it tries Planetary Computer first and falls back to
 Earth Search (AWS Open Data, no auth/tokens, a different failure domain) if PC returns
 no scenes at all for a candidate — individual PC scene-read failures during a 503
