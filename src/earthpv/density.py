@@ -65,6 +65,7 @@ DEFAULT_KWP_PER_M2 = 0.18
 _SUM_COLS = [
     "n_buildings", "roof_area_m2", "n_pv_buildings",
     "pv_area_det_roof_m2", "pv_area_det_total_m2", "pv_area_det_roofcand_m2",
+    "pv_area_cal_roof_m2", "pv_area_cal_total_m2",
     "pv_area_exp_m2", "pv_area_exp_roof_m2",
 ]
 
@@ -203,30 +204,39 @@ def per_building_detected(bu: gpd.GeoDataFrame, cands: gpd.GeoDataFrame) -> pd.D
     For each candidate intersecting the cell, the footprint-candidate intersection
     area (geodesic) is added to every building it overlaps; the best-overlap
     candidate's confidence and placement are recorded. Area is capped at the roof.
+    `pv_area_cal_m2` is the same sum with each candidate weighted by its `p_real`
+    (capacity_calibration; 1.0 when uncalibrated, making cal == det).
     """
     n = len(bu)
     det = np.zeros(n)
+    cal = np.zeros(n)
     conf = np.full(n, np.nan)
     placement = np.array([""] * n, dtype=object)
     best_area = np.zeros(n)
     if n == 0 or cands.empty:
         return pd.DataFrame(
-            {"pv_area_det_m2": det, "pv_conf_det": conf, "pv_placement": placement}
+            {"pv_area_det_m2": det, "pv_area_cal_m2": cal,
+             "pv_conf_det": conf, "pv_placement": placement}
         )
     sindex = bu.sindex
     for cand in cands.itertuples():
         hits = sindex.query(cand.geometry, predicate="intersects")
+        p_real = float(getattr(cand, "p_real", 1.0))
         for bi in hits:
             inter = geodesic_area_m2(bu.geometry.iloc[bi].intersection(cand.geometry))
             if inter <= 0:
                 continue
             det[bi] += inter
+            cal[bi] += inter * p_real
             if inter > best_area[bi]:
                 best_area[bi] = inter
                 conf[bi] = float(getattr(cand, "confidence", np.nan))
                 placement[bi] = getattr(cand, "placement", "") or ""
-    det = np.minimum(det, bu["area_m2"].to_numpy(float))
-    return pd.DataFrame({"pv_area_det_m2": det, "pv_conf_det": conf, "pv_placement": placement})
+    roof = bu["area_m2"].to_numpy(float)
+    det = np.minimum(det, roof)
+    cal = np.minimum(cal, roof)
+    return pd.DataFrame({"pv_area_det_m2": det, "pv_area_cal_m2": cal,
+                         "pv_conf_det": conf, "pv_placement": placement})
 
 
 def process_cell(
@@ -290,6 +300,7 @@ def process_cell(
         b["lon"], b["lat"] = rp.x.to_numpy(), rp.y.to_numpy()
         b = b.rename(columns={"area_m2": "roof_area_m2"})
         b["pv_area_det_m2"] = dstats["pv_area_det_m2"].to_numpy()
+        b["pv_area_cal_m2"] = dstats["pv_area_cal_m2"].to_numpy()
         b["pv_area_exp_m2"] = rstats["pv_area_exp_m2"].to_numpy()
         b["pv_prob_max"] = rstats["pv_prob_max"].round(3).to_numpy()
         b["pv_conf_det"] = dstats["pv_conf_det"].to_numpy()
@@ -299,7 +310,7 @@ def process_cell(
         keep = (b.pv_area_det_m2 > 0) | (b.pv_area_exp_m2 >= min_building_exp_m2)
         cols = [
             "building_uid", "cell", "geometry", "lon", "lat", "roof_area_m2", "bf_confidence",
-            "pv_area_det_m2", "pv_area_exp_m2", "pv_ratio_det", "pv_ratio_exp",
+            "pv_area_det_m2", "pv_area_cal_m2", "pv_area_exp_m2", "pv_ratio_det", "pv_ratio_exp",
             "pv_conf_det", "pv_prob_max", "pv_placement",
         ]
         signal = gpd.GeoDataFrame(b[keep][cols], geometry="geometry", crs="EPSG:4326")
@@ -308,26 +319,37 @@ def process_cell(
             "roof_area_m2": roof_area,
             "n_pv_buildings": int((b.pv_area_det_m2 > 0).sum()),
             "pv_area_det_roof_m2": float(b.pv_area_det_m2.sum()),
+            "pv_area_cal_roof_m2": float(b.pv_area_cal_m2.sum()),
             "pv_area_exp_roof_m2": float(b.pv_area_exp_m2.sum()),
         }
     else:
         signal = gpd.GeoDataFrame(
             {c: [] for c in [
                 "building_uid", "cell", "lon", "lat", "roof_area_m2", "bf_confidence",
-                "pv_area_det_m2", "pv_area_exp_m2", "pv_ratio_det", "pv_ratio_exp",
-                "pv_conf_det", "pv_prob_max", "pv_placement"]},
+                "pv_area_det_m2", "pv_area_cal_m2", "pv_area_exp_m2", "pv_ratio_det",
+                "pv_ratio_exp", "pv_conf_det", "pv_prob_max", "pv_placement"]},
             geometry=[], crs="EPSG:4326",
         )
         summary = {
             "n_buildings": 0, "roof_area_m2": 0.0, "n_pv_buildings": 0,
-            "pv_area_det_roof_m2": 0.0, "pv_area_exp_roof_m2": 0.0,
+            "pv_area_det_roof_m2": 0.0, "pv_area_cal_roof_m2": 0.0,
+            "pv_area_exp_roof_m2": 0.0,
         }
 
+    if not cands_in.empty:
+        p_real_in = (
+            cands_in["p_real"].to_numpy(float)
+            if "p_real" in cands_in.columns else np.ones(len(cands_in))
+        )
+        cal_total = float((cands_in["area_m2"].to_numpy(float) * p_real_in).sum())
+    else:
+        cal_total = 0.0
     summary.update({
         "cell": row.cell, "ix": int(row.ix), "iy": int(row.iy),
         "lon0": lon0, "lat0": lat0,
         "pv_area_exp_m2": exp_cell,
         "pv_area_det_total_m2": float(cands_in["area_m2"].sum()) if not cands_in.empty else 0.0,
+        "pv_area_cal_total_m2": cal_total,
         "pv_area_det_roofcand_m2": (
             float(cands_in[cands_in.placement == "rooftop"]["area_m2"].sum())
             if not cands_in.empty else 0.0
@@ -425,7 +447,24 @@ def _ratios(df: pd.DataFrame, area_km2: pd.Series, kwp_per_m2: float) -> pd.Data
     df["pv_det_m2_per_km2"] = (df.pv_area_det_roof_m2 / area_km2.clip(lower=1e-9)).round(2)
     df["pv_exp_m2_per_km2"] = (df.pv_area_exp_roof_m2 / area_km2.clip(lower=1e-9)).round(2)
     df["est_mwp_det"] = (df.pv_area_det_roof_m2 * kwp_per_m2 / 1000.0).round(4)
+    df["est_mwp_cal"] = (df.pv_area_cal_roof_m2 * kwp_per_m2 / 1000.0).round(4)
     df["est_mwp_exp"] = (df.pv_area_exp_roof_m2 * kwp_per_m2 / 1000.0).round(4)
+    return df
+
+
+def _backfill_cal(df: pd.DataFrame) -> pd.DataFrame:
+    """Cell partials written before the calibrated estimator lack the cal columns;
+    treat them as uncalibrated (cal == det) so mixed-vintage runs stay additive."""
+    for cal_col, det_col in (
+        ("pv_area_cal_m2", "pv_area_det_m2"),
+        ("pv_area_cal_roof_m2", "pv_area_det_roof_m2"),
+        ("pv_area_cal_total_m2", "pv_area_det_total_m2"),
+    ):
+        if det_col in df.columns:
+            if cal_col not in df.columns:
+                df[cal_col] = df[det_col]
+            else:
+                df[cal_col] = df[cal_col].fillna(df[det_col])
     return df
 
 
@@ -442,7 +481,9 @@ def aggregate(
         pd.concat(parts, ignore_index=True), geometry="geometry", crs="EPSG:4326"
     ) if parts else gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
     if not buildings.empty:
+        buildings = _backfill_cal(buildings)
         buildings["est_kwp_det"] = (buildings.pv_area_det_m2 * kwp_per_m2).round(3)
+        buildings["est_kwp_cal"] = (buildings.pv_area_cal_m2 * kwp_per_m2).round(3)
         buildings["est_kwp_exp"] = (buildings.pv_area_exp_m2 * kwp_per_m2).round(3)
         pts = gpd.GeoDataFrame(
             geometry=gpd.points_from_xy(buildings.lon, buildings.lat), crs="EPSG:4326"
@@ -460,6 +501,7 @@ def aggregate(
         [pd.read_parquet(p) for p in sorted(cells_dir.glob("*.summary.parquet"))],
         ignore_index=True,
     )
+    summ = _backfill_cal(summ)
     grid = manifest[["cell", "ix", "iy", "lon0", "lat0", "geometry"]].merge(
         summ.drop(columns=["ix", "iy", "lon0", "lat0"]), on="cell", how="left"
     )
@@ -508,8 +550,10 @@ def aggregate(
         "total_pv_area_det_total_m2": float(grid.pv_area_det_total_m2.sum()),
         "total_pv_area_det_roofcand_m2": float(grid.pv_area_det_roofcand_m2.sum()),
         "total_pv_area_det_roof_m2": float(grid.pv_area_det_roof_m2.sum()),
+        "total_pv_area_cal_roof_m2": float(grid.pv_area_cal_roof_m2.sum()),
         "total_pv_area_exp_roof_m2": float(grid.pv_area_exp_roof_m2.sum()),
         "total_est_mwp_det": float(grid.est_mwp_det.sum()),
+        "total_est_mwp_cal": float(grid.est_mwp_cal.sum()),
         "total_est_mwp_exp": float(grid.est_mwp_exp.sum()),
     }
 
@@ -529,6 +573,7 @@ def run_density(
     regions_file: Path | None = None,
     labels_dir: Path = Path("data/labels"),
     force: bool = False,
+    calibration: Path | None = None,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
@@ -544,6 +589,31 @@ def run_density(
     cands = gpd.read_parquet(cand_path)
     if not cands.empty:
         _ = cands.sindex  # build once, reused per cell
+
+    # Capacity-atlas calibration: weight each candidate by P(real | size, glint).
+    # This is the split from the leads product — rank_score is never consumed here,
+    # and the leads path never consumes p_real. Without a table, p_real = 1 and
+    # est_mwp_cal degenerates to est_mwp_det.
+    from earthpv import capacity_calibration as cc
+
+    cal_path = Path(calibration) if calibration else cc.default_table_path(aoi)
+    cal_status = "uncalibrated"
+    if cal_path.exists():
+        table = cc.load_table(cal_path)
+        cal_status = table["status"]
+        glint_cons = cands.get("glint_consistent") if not cands.empty else None
+        if not cands.empty:
+            cands["p_real"] = cc.candidate_p_real(
+                cands["area_m2"].to_numpy(), table,
+                glint_consistent=None if glint_cons is None else glint_cons.to_numpy(),
+            )
+        log.info("Calibration table %s (%s): est_mwp_cal is precision-weighted", cal_path, cal_status)
+    else:
+        log.warning(
+            "No calibration table at %s — est_mwp_cal will equal est_mwp_det; "
+            "run `earthpv calibrate-candidates --aoi %s` first for a calibrated atlas",
+            cal_path, aoi,
+        )
 
     out_dir = Path(pred_dir) / aoi / "density"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -567,9 +637,20 @@ def run_density(
     meta = {
         "aoi": aoi, "threshold": threshold, "kwp_per_m2": kwp_per_m2,
         "min_prob": min_prob, "min_building_exp_m2": min_building_exp_m2,
-        "limit": limit, "districts": districts, **stats,
+        "limit": limit, "districts": districts,
+        "calibration": str(cal_path) if cal_path.exists() else None,
+        "calibration_status": cal_status, **stats,
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2))
+
+    # Self-contained HTML capacity atlas (results/pakistan_7_7-style); never fatal.
+    try:
+        from earthpv.atlas import build_atlas
+
+        build_atlas(aoi, out_dir)
+    except Exception as e:  # noqa: BLE001 — a map rendering issue must not fail the run
+        log.warning("atlas generation failed: %s", e)
+
     log.info("Wrote density outputs -> %s", out_dir)
     log.info("Summary: %s", json.dumps(stats, indent=2))
     return out_dir

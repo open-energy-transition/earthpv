@@ -179,8 +179,9 @@ def postprocess(
     check_glint: bool = typer.Option(
         False, help="Physics-based corroborator: pull each top candidate's Sentinel-2 "
         "time series and check for solar-glint spikes consistent with one fixed panel "
-        "orientation (see earthpv.glint). Reward-only (never down-weights); network-bound "
-        "so only applied to the top --glint-top-n candidates by rank_score."
+        "orientation (see earthpv.glint). Reward-only (never down-weights); fetched "
+        "tile-major (--glint-tile-deg) so --glint-top-n can be set far higher than the "
+        "few hundred a per-candidate pull was capped at."
     ),
     glint_top_n: int = typer.Option(
         300, help="How many eligible candidates to run the glint check on (matches "
@@ -191,6 +192,11 @@ def postprocess(
         "glint budget — they reach human validation regardless, so the check adds "
         "nothing there; 0 restores the old check-from-the-top behavior"
     ),
+    glint_tile_deg: float = typer.Option(
+        1.0, help="Spatial bin size (degrees) for batching the glint fetch: one STAC "
+        "search + one set of asset opens per bin, shared by every eligible candidate "
+        "in it (see docs/issues/glint-tile-batched-coverage.md)"
+    ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
     from earthpv.postprocess import run_postprocess
@@ -198,7 +204,7 @@ def postprocess(
     run_postprocess(
         aoi=aoi, pred_dir=pred_dir, threshold=threshold, max_building_dist_m=max_building_dist,
         preboom_prob_dir=preboom_prob_dir, check_glint=check_glint, glint_top_n=glint_top_n,
-        glint_skip_top=glint_skip_top,
+        glint_skip_top=glint_skip_top, glint_tile_deg=glint_tile_deg,
     )
 
 
@@ -283,6 +289,11 @@ def density(
     districts: bool = typer.Option(False, help="Also aggregate to Overture county (district) level"),
     regions_file: Path = typer.Option(None, help="Local region polygons (skip Overture S3)"),
     force: bool = typer.Option(False, help="Recompute cells even if partials exist"),
+    calibration: Path = typer.Option(
+        None,
+        help="Candidate-precision table for est_mwp_cal "
+        "(default configs/calibration/<aoi>_candidate_precision.yaml if present)",
+    ),
 ) -> None:
     """Per-building PV density + 0.1-deg-grid and admin-region aggregates (PyPSA-ready)."""
     from earthpv.density import run_density
@@ -290,8 +301,24 @@ def density(
     run_density(
         aoi=aoi, pred_dir=pred_dir, threshold=threshold, kwp_per_m2=kwp_per_m2,
         min_prob=min_prob, min_building_exp_m2=min_building_exp_m2, limit=limit,
-        districts=districts, regions_file=regions_file, force=force,
+        districts=districts, regions_file=regions_file, force=force, calibration=calibration,
     )
+
+
+@app.command()
+def atlas(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs `density` already run"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    out: Path = typer.Option(None, help="Output HTML (default <pred_dir>/<aoi>/density/<aoi>_pv_atlas.html)"),
+) -> None:
+    """Regenerate the self-contained HTML capacity atlas from existing density outputs
+    (density writes it automatically at the end of every run)."""
+    import logging
+
+    from earthpv.atlas import build_atlas
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    build_atlas(aoi, Path(pred_dir) / aoi / "density", out=out)
 
 
 @app.command()
@@ -308,6 +335,49 @@ def pv_yield(
     from earthpv.pv_capacity import run_pv_capacity_check
 
     run_pv_capacity_check(aoi=aoi, pred_dir=pred_dir, kwp_per_m2=kwp_per_m2)
+
+
+@app.command()
+def calibrate_candidates(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    glint_sample: Path = typer.Option(
+        None,
+        help="Per-bin glint outcomes on unmapped candidates "
+        "(scripts/glint_candidate_precision.py analyze); omit for interim mapped-only table",
+    ),
+    min_distance_m: float = typer.Option(100.0, help="Mapped-candidate distance (match export)"),
+    out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
+) -> None:
+    """Derive the capacity-atlas candidate-precision table (p_real per area bin).
+
+    Combines the mapped-in-OSM fraction with glint inversion through the measured
+    sensitivity curve. Feeds `density --calibration`; never touches the leads product."""
+    import logging
+
+    import geopandas as gpd
+    import pandas as pd
+
+    from earthpv import capacity_calibration as cc
+    from earthpv.config import Settings
+    from earthpv.export import _load_mapped_reference
+    from earthpv.labels import resolve_aoi
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    cands = gpd.read_parquet(Path(pred_dir) / aoi / "candidates.parquet")
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    mapped = _load_mapped_reference(aoi, cfg, settings)
+    sample = pd.read_csv(glint_sample) if glint_sample else None
+    table = cc.derive_table(
+        cands, mapped, aoi=aoi, glint_sample=sample, min_distance_m=min_distance_m
+    )
+    cc.write_table(table, out or cc.default_table_path(aoi))
+    for row in table["bins"]:
+        typer.echo(
+            f"{row['label']:>8}: n={row['n_candidates']:5d} mapped={row['mapped_frac']:.3f} "
+            f"p_u={row['p_unmapped']:.3f} ({row['p_unmapped_source']}) p_real={row['p_real']:.3f}"
+        )
 
 
 @app.command()

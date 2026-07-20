@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="1000" viewBox="0 0 980 1000" font-family="'DejaVu Sans', system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52514e"/>
+    </marker>
+    <marker id="arrow-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a3aa7"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#eb6834"/>
+    </marker>
+  </defs>
+
+  <!-- card -->
+  <rect x="0.5" y="0.5" width="979" height="999" rx="12" fill="#fcfcfb" stroke="#e1e0d9"/>
+
+  <!-- title -->
+  <text x="50" y="42" font-size="20" font-weight="700" fill="#0b0b0b">earthpv — processing pipeline</text>
+  <text x="50" y="64" font-size="12" fill="#52514e">Rooftop-PV detection from Sentinel-2 by fine-tuning TerraMind; recall-first, human-validated.</text>
+
+  <!-- ================= arrows (under nodes) ================= -->
+  <g stroke="#52514e" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+    <path d="M190,146 V180"/>                              <!-- S2 -> compose -->
+    <path d="M500,146 V180"/>                              <!-- OSM -> labels -->
+    <path d="M190,242 V309 H356"/>                         <!-- compose -> chips (left edge) -->
+    <path d="M500,242 V276"/>                              <!-- labels -> chips -->
+    <path d="M500,338 V372"/>                              <!-- chips -> train -->
+    <path d="M500,434 V468"/>                              <!-- train -> evaluate -->
+    <path d="M500,530 V564"/>                              <!-- evaluate -> infer -->
+    <path d="M500,626 V660"/>                              <!-- infer -> postprocess -->
+    <path d="M800,146 V693 H644"/>                         <!-- buildings -> postprocess (right edge) -->
+    <path d="M500,722 V741 H190 V756"/>                    <!-- postprocess -> density -->
+    <path d="M500,722 V756"/>                              <!-- postprocess -> export -->
+    <path d="M190,818 V852"/>                              <!-- density -> atlas -->
+    <path d="M500,818 V852"/>                              <!-- export -> validation -->
+  </g>
+
+  <!-- two-epoch branch (dashed violet) -->
+  <g stroke="#4a3aa7" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#arrow-violet)">
+    <path d="M190,242 V564"/>                              <!-- compose -> pre-boom -->
+    <path d="M330,597 H345 V693 H356"/>                    <!-- pre-boom -> postprocess -->
+  </g>
+  <text x="352" y="654" font-size="10" fill="#4a3aa7">epoch prior</text>
+
+  <!-- feedback loop (dashed orange) -->
+  <g stroke="#eb6834" stroke-width="1.5" fill="none" stroke-dasharray="5 4" marker-end="url(#arrow-orange)">
+    <path d="M640,885 H952 V74 H500 V84"/>
+  </g>
+  <text x="948" y="500" font-size="10.5" fill="#eb6834" transform="rotate(-90 948 500)" text-anchor="middle">validated arrays land in OSM → labels for the next training round</text>
+
+  <!-- ================= nodes ================= -->
+  <!-- inputs (blue) -->
+  <g>
+    <rect x="50" y="88" width="280" height="58" rx="8" fill="#cde2fb" stroke="#2a78d6" stroke-width="1.5"/>
+    <text x="190" y="112" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">Sentinel-2 L2A imagery</text>
+    <text x="190" y="131" font-size="11" fill="#52514e" text-anchor="middle">Planetary Computer STAC · rooftopsenti COGs</text>
+
+    <rect x="360" y="88" width="280" height="58" rx="8" fill="#cde2fb" stroke="#2a78d6" stroke-width="1.5"/>
+    <text x="500" y="112" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">OSM solar labels</text>
+    <text x="500" y="131" font-size="11" fill="#52514e" text-anchor="middle">Overture / Overpass solar polygons</text>
+
+    <rect x="670" y="88" width="260" height="58" rx="8" fill="#cde2fb" stroke="#2a78d6" stroke-width="1.5"/>
+    <text x="800" y="112" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">Building footprints</text>
+    <text x="800" y="131" font-size="11" fill="#52514e" text-anchor="middle">VIDA Open Buildings · Overture</text>
+  </g>
+
+  <!-- stages (violet) -->
+  <g>
+    <rect x="50" y="184" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="190" y="208" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">compose</text>
+    <text x="190" y="227" font-size="11" fill="#52514e" text-anchor="middle">dry-season median → 10-band COGs per cell</text>
+
+    <rect x="360" y="184" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="500" y="208" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">labels</text>
+    <text x="500" y="227" font-size="11" fill="#52514e" text-anchor="middle">solar polygons → label parquet (geodesic areas)</text>
+
+    <rect x="360" y="280" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="500" y="304" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">chips</text>
+    <text x="500" y="323" font-size="11" fill="#52514e" text-anchor="middle">224 px chips · positives jittered ±900 m</text>
+
+    <rect x="360" y="376" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="500" y="400" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">train</text>
+    <text x="500" y="419" font-size="11" fill="#52514e" text-anchor="middle">TerraMind ViT + UNet · Tversky (recall-first)</text>
+
+    <rect x="360" y="472" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="500" y="496" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">evaluate</text>
+    <text x="500" y="515" font-size="11" fill="#52514e" text-anchor="middle">recall gate on held-out tiles → best checkpoint</text>
+
+    <rect x="360" y="568" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="500" y="592" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">infer</text>
+    <text x="500" y="611" font-size="11" fill="#52514e" text-anchor="middle">Hann overlap-add windows → probability rasters</text>
+
+    <rect x="360" y="664" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="500" y="688" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">postprocess</text>
+    <text x="500" y="707" font-size="11" fill="#52514e" text-anchor="middle">polygonize · building join · priors → rank_score</text>
+
+    <rect x="50" y="760" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="190" y="784" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">density</text>
+    <text x="190" y="803" font-size="11" fill="#52514e" text-anchor="middle">calibrated per-building / grid / region MWp</text>
+
+    <rect x="360" y="760" width="280" height="58" rx="8" fill="#e7e4f8" stroke="#4a3aa7" stroke-width="1.5"/>
+    <text x="500" y="784" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle" font-family="ui-monospace, monospace">export</text>
+    <text x="500" y="803" font-size="11" fill="#52514e" text-anchor="middle">rank-sorted leads · already-mapped excluded</text>
+  </g>
+
+  <!-- pre-boom epoch (dashed violet) -->
+  <g>
+    <rect x="50" y="568" width="280" height="58" rx="8" fill="#fcfcfb" stroke="#4a3aa7" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="190" y="592" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">Pre-boom epoch</text>
+    <text x="190" y="611" font-size="11" fill="#52514e" text-anchor="middle">compose + infer on Oct 2021 – Jan 2022</text>
+  </g>
+
+  <!-- deliverables (green) & human loop (orange) -->
+  <g>
+    <rect x="50" y="856" width="280" height="58" rx="8" fill="#dcefdc" stroke="#008300" stroke-width="1.5"/>
+    <text x="190" y="880" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">PV capacity atlas</text>
+    <text x="190" y="899" font-size="11" fill="#52514e" text-anchor="middle">calibrated MWp · growth map · HTML atlas</text>
+
+    <rect x="360" y="856" width="280" height="58" rx="8" fill="#fde4da" stroke="#eb6834" stroke-width="1.5"/>
+    <text x="500" y="880" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="middle">Human validation in OSM</text>
+    <text x="500" y="899" font-size="11" fill="#52514e" text-anchor="middle">MapRoulette challenge · GeoJSON / GeoParquet</text>
+  </g>
+
+  <!-- ================= legend ================= -->
+  <g font-size="11" fill="#52514e">
+    <rect x="50" y="946" width="14" height="14" rx="3" fill="#cde2fb" stroke="#2a78d6"/>
+    <text x="70" y="957">input data</text>
+    <rect x="150" y="946" width="14" height="14" rx="3" fill="#e7e4f8" stroke="#4a3aa7"/>
+    <text x="170" y="957">pipeline stage (earthpv CLI)</text>
+    <rect x="340" y="946" width="14" height="14" rx="3" fill="#dcefdc" stroke="#008300"/>
+    <text x="360" y="957">deliverable</text>
+    <rect x="445" y="946" width="14" height="14" rx="3" fill="#fde4da" stroke="#eb6834"/>
+    <text x="465" y="957">human-in-the-loop</text>
+    <line x1="590" y1="953" x2="620" y2="953" stroke="#898781" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="628" y="957">two-epoch change detection / feedback</text>
+  </g>
+</svg>

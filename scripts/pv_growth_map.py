@@ -20,13 +20,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("pv_growth_map")
 
 DELTA_COLS = ["est_mwp_det", "est_mwp_exp"]
+# est_mwp_cal joined in only when both epochs have it (pre-boom runs may predate it).
+OPTIONAL_DELTA_COLS = ["est_mwp_cal"]
 
 
 def _diff(current: pd.DataFrame, preboom: pd.DataFrame, on: str) -> pd.DataFrame:
+    cols = DELTA_COLS + [
+        c for c in OPTIONAL_DELTA_COLS if c in current.columns and c in preboom.columns
+    ]
     merged = current.merge(
-        preboom[[on, *DELTA_COLS]], on=on, how="left", suffixes=("", "_preboom")
+        preboom[[on, *cols]], on=on, how="left", suffixes=("", "_preboom")
     )
-    for col in DELTA_COLS:
+    for col in cols:
         merged[col + "_preboom"] = merged[col + "_preboom"].fillna(0.0)
         merged[f"delta_{col}"] = (merged[col] - merged[col + "_preboom"]).round(4)
     return merged

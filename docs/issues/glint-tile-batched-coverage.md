@@ -1,3 +1,31 @@
+## Status (2026-07-20): implemented
+
+`earthpv.glint.tile_scene_series_batch` (+ `_search_items_bbox`, `_read_targets_from_item`,
+`_read_target_stats` factored out of `_polygon_band_stats` so both paths share one
+per-pixel implementation). Wired into both consumers named in the problem statement:
+`postprocess.add_glint_prior` (new `tile_deg` param, default 1.0) and
+`scripts/glint_density_pull.py` / `scripts/glint_candidate_precision.py`'s `pull`
+commands (new `--batch`/`--tile-deg`, batched by default, `--no-batch` keeps the old
+path). Measured ~22x wall-clock on a real 6-candidate cluster in one tile.
+
+**Real bug found and fixed during validation** (synthetic-only testing would have
+missed this): grouping by bbox instead of point means a target sitting near a genuine
+Sentinel-2 tile-overlap seam can have items from an ADJACENT tile show up in its
+group's search results. The original design (dedupe items by date *before* checking
+per-target coverage, "keep the alphabetically-first item id per date-key") could keep
+an item that does not actually cover a given seam-zone target while discarding the one
+that does — silently, because `TileAngles.at()` always returns an angle via its
+nearest-finite-node fallback even for a point outside real coverage, so the miss only
+surfaces as zero finite pixels in the actual band read. Caught by comparing against
+the original per-target `scene_series` on 6 real Pakistan candidates: one (sitting near
+a tile seam) came back with 0/21 finite scenes in the batched path vs 19/20 clear in
+the original. Fixed by moving the per-date dedup to AFTER reading, per target, keeping
+whichever item actually had data (max `npx`) — verified this brings batched output to
+exactly 0.000 numerical difference from the original on all matched scenes, plus one
+extra genuinely-valid scene the bbox search found that the point search didn't.
+
+---
+
 # Batch glint queries by Sentinel-2 tile to scale coverage from hundreds to thousands
 
 **Labels:** enhancement, glint, performance
