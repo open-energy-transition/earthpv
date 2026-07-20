@@ -347,6 +347,11 @@ residential roofs.
 
 ![Solar-glint validation geometry: a matched panel tilt reflects the sun straight into Sentinel-2's near-nadir sensor, a mismatched tilt sends it elsewhere, and the resulting time series shows a reflectance spike on the geometry-predicted date while the surrounding annulus stays flat.](docs/glint_geometry.svg)
 
+See [`docs/glint_examples.md`](docs/glint_examples.md) for what this actually looks
+like: six real installations glinting in high-resolution ESRI imagery, and the same
+phenomenon rendered from real Sentinel-2 data at one example per installation-size
+bucket.
+
 A glass-fronted PV panel is partly a specular reflector: Sentinel-2 views near-nadir,
 so a fixed panel only glints into the sensor when its tilt/azimuth happens to bisect
 the sun and the sensor at the ~10:30 local overpass — a narrow, geometry-predictable
@@ -609,6 +614,9 @@ around it, mostly network-bound per-target Sentinel-2 time-series pulls):
   looking overpass calendar).
 - `s1_corner_reflector_test.py` — the Sentinel-1 dihedral-reflector test, negative
   result documented above.
+- `glint_s2_example_grid.py` — builds the Sentinel-2 example grid in
+  [`docs/glint_examples.md`](docs/glint_examples.md) from cached validation data (one
+  real, strongly-validated installation per size bucket, cropped to its own spike date).
 
 ## Operational notes & troubleshooting
 
