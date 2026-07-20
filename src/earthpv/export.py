@@ -55,7 +55,16 @@ def _load_mapped_reference(aoi: str, cfg: dict, settings) -> gpd.GeoDataFrame | 
 def filter_new_leads(
     cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, min_distance_m: float = 0.0
 ) -> gpd.GeoDataFrame:
-    """Drop candidates within `min_distance_m` of an already-mapped OSM solar feature.
+    """Drop candidates within `min_distance_m` of an already-mapped OSM solar feature."""
+    if cands.empty or mapped.empty:
+        return cands
+    return cands[new_lead_mask(cands, mapped, min_distance_m)].reset_index(drop=True)
+
+
+def new_lead_mask(
+    cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, min_distance_m: float = 0.0
+) -> np.ndarray:
+    """Boolean mask: True where a candidate is NOT near an already-mapped feature.
 
     `min_distance_m=0` is the original zero-buffer `intersects` convention (a
     candidate must literally overlap the mapped geometry) — same as the Lahore
@@ -65,13 +74,16 @@ def filter_new_leads(
     positive `min_distance_m` catches those as the same already-mapped installation.
     Works in local-UTM 1-degree chunks, the same pattern as
     `postprocess._join_buildings_chunked`, so it holds up at country scale.
+    Also reused (inverted) by `capacity_calibration` as the "certainly real" mapped
+    fraction per size bin.
     """
     if cands.empty or mapped.empty:
-        return cands
+        return np.ones(len(cands), dtype=bool)
     if min_distance_m <= 0:
         sindex = mapped.sindex
-        is_new = [len(sindex.query(g, predicate="intersects")) == 0 for g in cands.geometry]
-        return cands[is_new].reset_index(drop=True)
+        return np.array(
+            [len(sindex.query(g, predicate="intersects")) == 0 for g in cands.geometry]
+        )
 
     cands = cands.reset_index(drop=True)
     reps = cands.geometry.representative_point()
@@ -102,7 +114,7 @@ def filter_new_leads(
             dist[int(idx[0, k])] = float(d[k])
         is_new[np.where(mask)[0]] = dist > min_distance_m
     log.info("Distance-filtered (>%.0f m) new-lead check across %d spatial chunks", min_distance_m, len(set(keys)))
-    return cands[is_new].reset_index(drop=True)
+    return is_new
 
 
 def run_export(

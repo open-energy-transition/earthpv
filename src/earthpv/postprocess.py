@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -227,6 +226,7 @@ def add_glint_prior(
     cands: gpd.GeoDataFrame, top_n: int = 300, skip_top: int = 100,
     lookback_days: int = 730, tol_deg: float = 3.0, min_consistent: int = 2,
     min_lr: float = 1.2, max_boost: float = 4.0, max_workers: int = 4,
+    tile_deg: float = 1.0,
 ) -> gpd.GeoDataFrame:
     """Physics-based corroborator: does the candidate glint on dates geometrically
     consistent with one fixed panel orientation? A glass PV panel is partly a
@@ -253,8 +253,12 @@ def add_glint_prior(
     approaches the area bucket's likelihood ratio (capped at `max_boost`) as the
     consistent-date count saturates at 4. Unconfirmed candidates keep multiplier 1.
 
-    This is a network-bound per-candidate Sentinel-2 time-series pull (dozens to
-    hundreds of scene reads each), impractical at country scale for every polygon.
+    Fetched tile-major (`glint.tile_scene_series_batch`, `tile_deg`-degree bins): one
+    STAC search and one set of asset opens per spatial group, shared by every eligible
+    candidate that falls in it, instead of per-candidate — candidates cluster heavily
+    by tile, so this amortizes the network cost that used to cap `top_n` at a few
+    hundred (measured ~20x on a 6-candidate real cluster; see
+    docs/issues/glint-tile-batched-coverage.md). `top_n` can now be set far higher.
     """
     cands = cands.reset_index(drop=True).copy()
     cands["glint_spikes"] = 0
@@ -289,22 +293,30 @@ def add_glint_prior(
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=lookback_days)
 
-    def _check(i: int):
-        series = glint.scene_series(cands.geometry.iloc[i], start, end, n_threads=6)
-        if series.empty:
-            return i, None
-        return i, glint.spike_fit(series, tol_deg=tol_deg)
-
-    with ThreadPoolExecutor(max_workers) as ex:
-        futs = [ex.submit(_check, int(i)) for i in idx]
-        for f in tqdm(as_completed(futs), total=len(futs), desc="glint"):
-            i, res = f.result()
-            if not res:
-                continue
-            cands.loc[i, "glint_spikes"] = res["n_spikes"]
-            cands.loc[i, "glint_consistent"] = res["n_consistent"]
-            cands.loc[i, "glint_fit_tilt"] = res["fit_tilt"]
-            cands.loc[i, "glint_fit_az"] = res["fit_az"]
+    # Tile-major batched fetch (docs/issues/glint-tile-batched-coverage.md): one STAC
+    # search + one set of asset opens per spatial group, shared by every eligible
+    # candidate in it, instead of one of each per candidate — the actual cost driver at
+    # scale. Output schema is identical to the old per-candidate `scene_series` loop,
+    # so the boost/scoring logic below is unchanged.
+    sel_geom = cands.geometry.iloc[idx].reset_index(drop=True)
+    targets = pd.DataFrame({
+        "pid": [str(i) for i in idx],
+        "geometry": sel_geom.to_numpy(),
+        "lon": sel_geom.centroid.x.to_numpy(),
+        "lat": sel_geom.centroid.y.to_numpy(),
+    })
+    series_by_pid = glint.tile_scene_series_batch(
+        targets, start, end, tile_deg=tile_deg, max_workers=max_workers,
+    )
+    for i in idx:
+        series = series_by_pid.get(str(i))
+        if series is None or series.empty:
+            continue
+        res = glint.spike_fit(series, tol_deg=tol_deg)
+        cands.loc[i, "glint_spikes"] = res["n_spikes"]
+        cands.loc[i, "glint_consistent"] = res["n_consistent"]
+        cands.loc[i, "glint_fit_tilt"] = res["fit_tilt"]
+        cands.loc[i, "glint_fit_az"] = res["fit_az"]
 
     consistent = cands["glint_consistent"].to_numpy(float)
     confidence = np.clip(consistent / 4.0, 0.0, 1.0)
@@ -395,6 +407,7 @@ def run_postprocess(
     aoi: str, pred_dir: Path, threshold: float = 0.3, max_building_dist_m: float = 0.0,
     preboom_prob_dir: Path | None = None,
     check_glint: bool = False, glint_top_n: int = 300, glint_skip_top: int = 100,
+    glint_tile_deg: float = 1.0,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this — isolated detections (cropland glare, bare soil, water glint)
@@ -427,9 +440,11 @@ def run_postprocess(
             ).round(4)
             log.info("Epoch-diff rescoring applied from %s", preboom_prob_dir)
         if check_glint:
-            cands = add_glint_prior(cands, top_n=glint_top_n, skip_top=glint_skip_top)
-            log.info("Glint-consistency check applied (top_n=%d, skip_top=%d)",
-                     glint_top_n, glint_skip_top)
+            cands = add_glint_prior(
+                cands, top_n=glint_top_n, skip_top=glint_skip_top, tile_deg=glint_tile_deg,
+            )
+            log.info("Glint-consistency check applied (top_n=%d, skip_top=%d, tile_deg=%.2f)",
+                     glint_top_n, glint_skip_top, glint_tile_deg)
         cands = cands.sort_values("rank_score", ascending=False).reset_index(drop=True)
         if max_building_dist_m and "building_dist_m" in cands.columns:
             n_before = len(cands)

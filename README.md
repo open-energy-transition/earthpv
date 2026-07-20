@@ -133,9 +133,14 @@ pixi run earthpv export --aoi punjab --exclude-mapped --min-distance-m 100
 ```
 
 **9. Density** *(optional)* — per-building PV area/capacity + PyPSA-ready grid/region
-aggregates, from artifacts already on disk (no GPU, no retrain).
+aggregates, from artifacts already on disk (no GPU, no retrain). Every run also writes a
+self-contained HTML capacity atlas (`density/<aoi>_pv_atlas.html`; regenerate standalone
+with `earthpv atlas`).
 
 ```bash
+# One-time (and after new validation evidence): derive the candidate-precision table
+# that turns the recall-first candidates into a calibrated capacity estimate:
+pixi run earthpv calibrate-candidates --aoi pakistan
 pixi run earthpv density --aoi pakistan --districts
 ```
 
@@ -371,17 +376,24 @@ validated fit is on real PV than on an empty roof: ~1.9× for 500 m²–1k m², 
 is blind there). Confirmed candidates get a `rank_score` multiplier approaching their
 bucket's likelihood ratio (capped at 4×) as consistent-date count saturates at 4.
 
-The check is a network-bound per-candidate scene pull (dozens to hundreds of
-Sentinel-2 reads each, ~1-2 min/candidate), so it's opt-in and budgeted: sub-500 m²
-candidates are never queried (LR ≈ 1 means the answer changes nothing), the
-`--glint-skip-top` (default 100) highest-ranked candidates are skipped (they reach
-human validation regardless), and the `--glint-top-n` (default 300) budget goes to
-the best-ranked eligible candidates below that band — where a calibrated boost can
-actually move a candidate into the validation queue. Like
-`imagery.py`'s composite fetcher, it tries Planetary Computer first and falls back to
-Earth Search (AWS Open Data, no auth/tokens, a different failure domain) if PC returns
-no scenes at all for a candidate — individual PC scene-read failures during a 503
-storm are already tolerated per-scene, so only a total PC miss triggers the fallback.
+The check is network-bound (dozens to hundreds of Sentinel-2 reads per candidate), so
+it's opt-in and budgeted: sub-500 m² candidates are never queried (LR ≈ 1 means the
+answer changes nothing), the `--glint-skip-top` (default 100) highest-ranked candidates
+are skipped (they reach human validation regardless), and the `--glint-top-n` (default
+300) budget goes to the best-ranked eligible candidates below that band. Fetched
+**tile-major**, not per-candidate (`glint.tile_scene_series_batch`, `--glint-tile-deg`
+default 1.0°): one STAC search plus one set of asset opens per spatial bin, shared by
+every eligible candidate in it, instead of rediscovering the same scene list and
+reopening the same COGs per candidate — candidates cluster heavily by tile, so this
+amortizes the cost that used to cap `--glint-top-n` at a few hundred (measured ~22x on
+a real 6-candidate cluster; output is identical to the old per-candidate fetch, down to
+0.000 numerical difference on matched scenes — verified after fixing a real bug where
+a seam-zone candidate could silently pick up an adjacent tile's non-covering item).
+`scripts/glint_density_pull.py` and `scripts/glint_candidate_precision.py pull` (used
+by the density-calibration path below) share the same batched fetcher. Like
+`imagery.py`'s composite fetcher, each tile group tries Planetary Computer first and
+falls back to Earth Search (AWS Open Data, no auth/tokens, a different failure domain)
+if PC returns no scenes at all for that group's bbox.
 
 ## PV density per building (energy-model / PyPSA export)
 
@@ -390,27 +402,45 @@ building-level PV density and area/region aggregates — the shape energy-system
 (PyPSA / PyPSA-Earth) consume, rather than a validation queue. It runs on existing
 artifacts (rasters + `candidates.parquet` + the VIDA footprints); no GPU, no retraining.
 
-Two PV-area metrics are reported per building because the model is deliberately
-recall-first and neither is unconditionally honest:
+**Two products, one model.** The leads product (postprocess → export → MapRoulette) is
+recall-first and human-validated, so its false positives are a feature; the capacity
+atlas has no human in the loop, so it must not inherit them. The split is downstream of
+the shared model: density never consumes `rank_score`, and it re-weights every candidate
+by a measured **P(real | size, glint)** from
+`configs/calibration/<aoi>_candidate_precision.yaml` (derive with
+`earthpv calibrate-candidates`; see `src/earthpv/capacity_calibration.py`). The table
+combines the size-binned fraction of candidates already mapped in OSM with a glint
+inversion of unmapped candidates through the 500-target study's sensitivity curve
+(`scripts/glint_candidate_precision.py` collects that sample; without it the table is an
+honest mapped-only lower bound, `status: interim-mapped-only`).
+
+Three PV-area metrics are reported per building because the model is deliberately
+recall-first and no single number is unconditionally honest:
 
 - **detected** (`*_det`) — area of the thresholded, merged candidate polygons on the
-  footprint. The precision-honest **floor**; use `est_mwp_det` as an existing-rooftop-
-  capacity seed per bus region.
+  footprint, taken at face value. Raw-candidate **floor** semantics.
+- **calibrated** (`*_cal`) — the same area with each candidate weighted by its
+  P(real | size, glint). The **headline** capacity number (`est_mwp_cal`); equals
+  `*_det` when no calibration table exists. Remains dependent on the 0.3
+  polygonization threshold; the quadrat protocol
+  (`docs/calibration-mapping-protocol.md`) is the planned ground-truth upgrade.
 - **expected** (`*_exp`) — probability-weighted area (Σ per-pixel probability × 100 m²
   over the footprint, above a small noise floor). Integrates sub-threshold signal; an
-  **upper-leaning** expectation for sensitivity bands. The truth is bracketed between them.
+  **upper-leaning** ceiling for sensitivity bands.
 
-Three layers land in `data/predictions/<aoi>/density/`:
+Three layers (plus the atlas) land in `data/predictions/<aoi>/density/`:
 
 - `buildings.geoparquet` — one row per building carrying PV signal: `roof_area_m2`,
-  `pv_area_det_m2` / `pv_area_exp_m2`, `pv_ratio_{det,exp}` (≤ 1), `est_kwp_{det,exp}`,
+  `pv_area_{det,cal,exp}_m2`, `pv_ratio_{det,exp}` (≤ 1), `est_kwp_{det,cal,exp}`,
   `pv_placement`, `region`/`district`.
 - `grid.geoparquet` + `grid.csv` — one row per 0.1° cell (the pipeline's native grid):
-  roof area, PV area (both metrics), densities (m²/km²) and `est_mwp_{det,exp}`. The CSV
-  `lon_center`/`lat_center` map straight onto atlite/PyPSA-Earth cutout grids or Voronoi
-  bus regions.
+  roof area, PV area (all metrics), densities (m²/km²) and `est_mwp_{det,cal,exp}`. The
+  CSV `lon_center`/`lat_center` map straight onto atlite/PyPSA-Earth cutout grids or
+  Voronoi bus regions.
 - `regions.geoparquet` + `.csv` + `.geojson` — per Overture/geoBoundaries province (and
   `--districts` for ADM2), additive totals with ratios recomputed from sums.
+- `<aoi>_pv_atlas.html` — the self-contained night-lights-style capacity atlas
+  (`src/earthpv/atlas.py`; colour/hero metric is `est_mwp_cal` when calibrated).
 
 Capacity uses `est_kwp = pv_area × --kwp-per-m2` (default **0.18 kWp/m²**, ≈ 5.5 m²
 of c-Si module per kWp). Double counting is avoided at the source: adjacent rasters
@@ -549,6 +579,11 @@ notes for why):
 **Post-detection QA:**
 - `compare_candidates_overpass.py` — cross-reference exported candidates against
   a live Overpass query, giving distance-to-nearest-mapped-feature for triage.
+- `glint_candidate_precision.py` — stratified glint sample of *unmapped model
+  candidates* (sample → pull → analyze); its per-bin validated rates feed
+  `earthpv calibrate-candidates`, which inverts them through the 500-target
+  study's sensitivity curve into the capacity-atlas precision table (see "PV
+  density per building").
 
 **Solar-glint research suite** (`src/earthpv/glint.py` is the production module,
 used by `postprocess --check-glint`; everything below is validation/experimentation

@@ -98,6 +98,8 @@ def expected_annual_yield(
     regions["kwh_per_kwp_yr"] = yields
     regions["expected_gwh_det"] = regions["est_mwp_det"] * regions["kwh_per_kwp_yr"] / 1000.0
     regions["expected_gwh_exp"] = regions["est_mwp_exp"] * regions["kwh_per_kwp_yr"] / 1000.0
+    if "est_mwp_cal" in regions.columns:  # older density outputs predate the calibrated column
+        regions["expected_gwh_cal"] = regions["est_mwp_cal"] * regions["kwh_per_kwp_yr"] / 1000.0
     return regions.drop(columns="geometry")
 
 
@@ -122,6 +124,8 @@ def run_pv_capacity_check(
         "total_expected_gwh_det": float(yields["expected_gwh_det"].sum()),
         "total_expected_gwh_exp": float(yields["expected_gwh_exp"].sum()),
     }
+    if "expected_gwh_cal" in yields.columns:
+        summary["total_expected_gwh_cal"] = float(yields["expected_gwh_cal"].sum())
     (density_dir / "pv_capacity_check.json").write_text(json.dumps(summary, indent=2))
     log.info("Wrote %s and %s", out_csv, density_dir / "pv_capacity_check.json")
     log.info("Summary: %s", json.dumps(summary, indent=2))

@@ -396,44 +396,47 @@ def _cached_tile_angles(item, provider: str) -> TileAngles:
     return ta
 
 
-def _polygon_band_stats(
-    item, band: str, geometry, lon: float, lat: float, provider: str,
-) -> tuple[float, float, int]:
-    """(p98 inside geometry, annulus median, n inside pixels), raw DN, in one band."""
-    import rasterio
+def _read_target_stats(src, geometry, lon: float, lat: float) -> tuple[float, float, int]:
+    """(p98 inside geometry, annulus median, n inside pixels), raw DN (no BOA offset —
+    that's a per-item constant, applied by the caller, not per-read), from an ALREADY
+    -OPEN band dataset.
+
+    Extracted from `_polygon_band_stats` so the tile-batched reader (opens the dataset
+    once, calls this per target) and the original per-target path share one
+    implementation of the per-pixel math — the window read/mask/percentile logic is
+    unavoidably per-target (each target has its own location), only the dataset open
+    (and its HTTP session) is shared in the batched path.
+    """
     import rasterio.features
     import rasterio.warp
     import rasterio.windows
 
-    href = item.assets[_band_asset_key(band, provider)].href
-    with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
-        xs, ys = rasterio.warp.transform("EPSG:4326", src.crs, [lon], [lat])
-        row, col = src.index(xs[0], ys[0])
-        geom_native = gpd.GeoSeries([geometry], crs="EPSG:4326").to_crs(src.crs).iloc[0]
-        half_extent = max(
-            geom_native.bounds[2] - geom_native.bounds[0],
-            geom_native.bounds[3] - geom_native.bounds[1],
-        ) / 2
-        r_px = int(np.clip(half_extent / 10 + 10, 16, 60))
-        win = rasterio.windows.Window(col - r_px, row - r_px, 2 * r_px, 2 * r_px)
-        arr = src.read(1, window=win, boundless=True, fill_value=0).astype(float)
-        wt = src.window_transform(win)
+    xs, ys = rasterio.warp.transform("EPSG:4326", src.crs, [lon], [lat])
+    row, col = src.index(xs[0], ys[0])
+    geom_native = gpd.GeoSeries([geometry], crs="EPSG:4326").to_crs(src.crs).iloc[0]
+    half_extent = max(
+        geom_native.bounds[2] - geom_native.bounds[0],
+        geom_native.bounds[3] - geom_native.bounds[1],
+    ) / 2
+    r_px = int(np.clip(half_extent / 10 + 10, 16, 60))
+    win = rasterio.windows.Window(col - r_px, row - r_px, 2 * r_px, 2 * r_px)
+    arr = src.read(1, window=win, boundless=True, fill_value=0).astype(float)
+    wt = src.window_transform(win)
+    inside = rasterio.features.geometry_mask(
+        [geom_native], arr.shape, wt, invert=True, all_touched=False
+    )
+    if not inside.any():
+        # Sub-pixel installation (common for small rooftop generators): the
+        # strict mask selects no pixel centres. Fall back to every pixel the
+        # polygon touches — p98 then reads the brightest touched pixel, which
+        # is exactly where a glint from a small array shows up.
         inside = rasterio.features.geometry_mask(
-            [geom_native], arr.shape, wt, invert=True, all_touched=False
+            [geom_native], arr.shape, wt, invert=True, all_touched=True
         )
-        if not inside.any():
-            # Sub-pixel installation (common for small rooftop generators): the
-            # strict mask selects no pixel centres. Fall back to every pixel the
-            # polygon touches — p98 then reads the brightest touched pixel, which
-            # is exactly where a glint from a small array shows up.
-            inside = rasterio.features.geometry_mask(
-                [geom_native], arr.shape, wt, invert=True, all_touched=True
-            )
-        ring = ~rasterio.features.geometry_mask(
-            [geom_native.buffer(30)], arr.shape, wt, invert=True
-        )
+    ring = ~rasterio.features.geometry_mask(
+        [geom_native.buffer(30)], arr.shape, wt, invert=True
+    )
     arr[arr == 0] = np.nan
-    arr = arr + _boa_offset(item, provider)  # NaN-preserving: nodata stays nodata
     inside_v, ring_v = arr[inside], arr[ring]
     if np.isfinite(inside_v).sum() < 1 or np.isfinite(ring_v).sum() < 20:
         return np.nan, np.nan, 0
@@ -442,6 +445,19 @@ def _polygon_band_stats(
         float(np.nanmedian(ring_v)),
         int(np.isfinite(inside_v).sum()),
     )
+
+
+def _polygon_band_stats(
+    item, band: str, geometry, lon: float, lat: float, provider: str,
+) -> tuple[float, float, int]:
+    """(p98 inside geometry, annulus median, n inside pixels), raw DN, in one band."""
+    import rasterio
+
+    href = item.assets[_band_asset_key(band, provider)].href
+    with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
+        p98, ring, npx = _read_target_stats(src, geometry, lon, lat)
+    offset = _boa_offset(item, provider)  # NaN-preserving: nan + offset stays nan
+    return p98 + offset, ring + offset, npx
 
 
 def _scene_row(
@@ -511,6 +527,162 @@ def scene_series(
         df = _scene_series_via("earth-search", geometry, lon, lat, start, end,
                                 bands, max_cloud, n_threads)
     return df
+
+
+# --------------------------------------------------------------------------------------
+# Tile-batched fetch: the same per-target output as `scene_series`, for many targets at
+# once. One STAC search + one set of asset opens per spatial group, shared by every
+# target that falls in it, instead of one of each per target — the actual bottleneck at
+# scale is re-discovering the same scene list and re-opening the same COGs for every
+# candidate in a cluster, not the per-pixel math (see
+# docs/issues/glint-tile-batched-coverage.md). Feeds both `postprocess.add_glint_prior`
+# (detection) and `scripts/glint_spike_rate_estimator.py` (density) — same fetch, same
+# output schema, so neither's scoring/inversion logic needs to change.
+# --------------------------------------------------------------------------------------
+def _tile_key(lon: float, lat: float, tile_deg: float) -> tuple[int, int]:
+    return int(np.floor(lon / tile_deg)), int(np.floor(lat / tile_deg))
+
+
+def _search_items_bbox(provider: str, bbox: tuple[float, float, float, float],
+                        start: datetime, end: datetime, max_cloud: int):
+    catalog = _es_catalog() if provider == "earth-search" else _pc_catalog()
+    with _SEARCH_LOCK:
+        search = catalog.search(
+            collections=["sentinel-2-l2a"], bbox=list(bbox),
+            datetime=f"{start.date()}/{end.date()}",
+            query={"eo:cloud_cover": {"lt": max_cloud}},
+        )
+        return list(search.items())
+
+
+def _read_targets_from_item(
+    item, band: str, targets: list[tuple[str, object, float, float]], provider: str,
+) -> dict[str, tuple[float, float, int]]:
+    """Open one band asset once, read every target's window from it — the batched
+    analogue of `_polygon_band_stats`, sharing one dataset handle (and its HTTP
+    session/connection) across all targets instead of reopening per target."""
+    import rasterio
+
+    href = item.assets[_band_asset_key(band, provider)].href
+    offset = _boa_offset(item, provider)
+    out = {}
+    with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
+        for pid, geometry, lon, lat in targets:
+            try:
+                p98, ring, npx = _read_target_stats(src, geometry, lon, lat)
+            except Exception as e:  # noqa: BLE001 — one bad target must not kill the batch
+                log.debug("target %s failed on %s: %s", pid, href, e)
+                p98, ring, npx = np.nan, np.nan, 0
+            out[pid] = (p98 + offset, ring + offset, npx)
+    return out
+
+
+def tile_scene_series_batch(
+    targets: pd.DataFrame, start: datetime, end: datetime,
+    bands: tuple[str, ...] = GLINT_BANDS, max_cloud: int = 80,
+    tile_deg: float = 1.0, max_workers: int = 6,
+) -> dict[str, pd.DataFrame]:
+    """Tile-major batched analogue of `scene_series`, for many targets at once.
+
+    `targets` needs columns `pid`, `geometry` (WGS84 point or small polygon), `lon`,
+    `lat`. Groups targets into `tile_deg`-degree bins (a plain lon/lat grid, not a
+    literal MGRS tile lookup — cheaper to compute and just as effective an
+    amortization proxy: correctness of each target's read comes from its own
+    coordinate transform into whichever scene's native CRS covers it, not from the
+    grouping, so an imperfect group/tile alignment only costs a few wasted item-opens
+    for out-of-bounds targets, never a wrong answer). One STAC search per group (by
+    bbox, not per-target point, so a PC miss falls back to Earth Search once per group
+    rather than once per target), then for every returned scene, each band asset is
+    opened once and every group member's window is read from it.
+
+    Returns `{pid: DataFrame}`, one row per scene, with the SAME columns
+    `scene_series`/`_scene_row` produce (`time`, `cloud`, sun/view angles,
+    `p98_<band>`/`ring_<band>` per band, `npx`) — every downstream consumer
+    (`spike_fit`, `annotate_spikes`, `add_glint_prior`) is unchanged. Missing pids (no
+    scenes found in range) come back as empty DataFrames, matching `scene_series`.
+    """
+    keys = [_tile_key(lon, lat, tile_deg) for lon, lat in zip(targets.lon, targets.lat)]
+    groups: dict[tuple, list[int]] = {}
+    for i, k in enumerate(keys):
+        groups.setdefault(k, []).append(i)
+    log.info("tile-batch: %d targets -> %d groups (%.2f deg)", len(targets), len(groups), tile_deg)
+
+    all_rows: dict[str, list[dict]] = {pid: [] for pid in targets.pid}
+    for gi, ((gx, gy), rows_idx) in enumerate(groups.items()):
+        grp = targets.iloc[rows_idx]
+        bbox = (gx * tile_deg, gy * tile_deg, (gx + 1) * tile_deg, (gy + 1) * tile_deg)
+        provider = "planetary-computer"
+        items = _search_items_bbox(provider, bbox, start, end, max_cloud)
+        if not items:
+            provider = "earth-search"
+            items = _search_items_bbox(provider, bbox, start, end, max_cloud)
+        if not items:
+            log.debug("tile-batch group %d: no scenes for bbox %s", gi, bbox)
+            continue
+        # Do NOT dedupe items by date here: near a real tile-overlap seam, two items
+        # sharing a date-minute key can cover DIFFERENT (only partially-overlapping)
+        # footprints — a group-wide "keep the alphabetically-first id" tie-break can
+        # silently keep the item that does NOT cover a given target while dropping the
+        # one that does, since `TileAngles.at()` always returns an angle via its
+        # nearest-finite-node fallback even for a point outside real coverage (masking
+        # the miss until the pixel read fails). Caught by comparing against the
+        # original per-target `scene_series` on a real seam-zone candidate: the group
+        # search picked an adjacent tile that didn't actually cover that point, and
+        # every one of its ~20 scenes silently read 0 finite pixels. Fix: process every
+        # item, and resolve the per-date choice AFTER reading, per target, by whichever
+        # item actually has data there (see the npx-based pick below).
+        items = sorted(items, key=lambda i: i.id)
+        member_targets = [(r.pid, r.geometry, r.lon, r.lat) for r in grp.itertuples()]
+
+        def _process_item(item):
+            try:
+                ta = _cached_tile_angles(item, provider)
+            except Exception as e:  # noqa: BLE001 — one bad scene shouldn't kill the group
+                log.debug("tile-angles failed for %s: %s", item.id, e)
+                return []
+            band_results = {
+                band: _read_targets_from_item(item, band, member_targets, provider)
+                for band in bands
+            }
+            out = []
+            for pid, geometry, lon, lat in member_targets:
+                try:
+                    ang = ta.at(lon, lat)
+                    if ang is None:
+                        continue
+                    row = dict(pid=pid, time=ta.sensing_time or item.datetime,
+                               cloud=item.properties.get("eo:cloud_cover"), **ang)
+                    for band in bands:
+                        p98, ring, npx = band_results[band][pid]
+                        row[f"p98_{band}"], row[f"ring_{band}"] = p98, ring
+                        row["npx"] = npx  # last band wins, matching `_scene_row`
+                    out.append(row)
+                except Exception as e:  # noqa: BLE001 — per-target failures shouldn't
+                    log.debug("target %s on %s failed: %s", pid, item.id, e)  # kill the scene
+            return out
+
+        with ThreadPoolExecutor(max_workers) as ex:
+            futs = [ex.submit(_process_item, it) for it in items]
+            for f in as_completed(futs):
+                for row in f.result():
+                    all_rows[row["pid"]].append(row)
+
+    # Per-target, per-date dedup: keep whichever item actually had data (max npx) —
+    # the correctness fix described above. Applied here (once, in pandas) rather than
+    # per-target during the fetch, since "best of several items for this date" can only
+    # be decided once every item's read is in.
+    def _dedupe(rows: list[dict]) -> pd.DataFrame:
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows)
+        df["_date_key"] = pd.to_datetime(df["time"]).dt.strftime("%Y%m%d%H%M")
+        df = df.sort_values("npx", ascending=False).drop_duplicates("_date_key", keep="first")
+        return df.drop(columns="_date_key").sort_values("time").reset_index(drop=True)
+
+    return {
+        pid: (_dedupe(rows) if rows else pd.DataFrame())
+        for pid, rows in all_rows.items()
+    }
 
 
 def _refl(dn):
