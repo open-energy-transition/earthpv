@@ -14,6 +14,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 
 log = logging.getLogger(__name__)
 
@@ -139,6 +140,8 @@ def new_lead_mask(
 def run_export(
     aoi: str, pred_dir: Path, exclude_mapped: bool = False, min_distance_m: float = 0.0,
     epoch_clean: bool = False, epoch_fp_max_prior: float = 0.5,
+    veg_max_ndvi: float | None = None,
+    annual_ndvi: Path | None = None, annual_ndvi_max: float = 0.4,
 ) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pred_dir = Path(pred_dir) / aoi
@@ -158,7 +161,8 @@ def run_export(
     gj = pred_dir / f"{aoi}_pv_candidates.geojson"
     cands.to_file(gj, driver="GeoJSON")
 
-    if exclude_mapped or epoch_clean:
+    any_filter = epoch_clean or veg_max_ndvi is not None or annual_ndvi is not None
+    if exclude_mapped or any_filter:
         from earthpv.config import Settings
         from earthpv.labels import resolve_aoi
 
@@ -178,33 +182,92 @@ def run_export(
             nl = pred_dir / f"{aoi}_pv_new_leads.geojson"
             leads.to_file(nl, driver="GeoJSON")
 
-    if epoch_clean:
+    if any_filter:
         # Precision-leaning EXTRA artifact — the only export that drops candidates.
-        # A lead that was already bright in the pre-boom (2021/22) epoch is most
-        # likely a persistent non-PV feature (bright roof/soil/water), the same
-        # judgement _epoch_note surfaces to mappers; here it becomes a hard filter
-        # so a validation queue can skip those entirely. Never-checked candidates
-        # (no pre-boom raster coverage) are kept — absence of evidence is not a
-        # verdict. Caveat: PV that already existed pre-boom is dropped along with
-        # the false positives, so this file trades a little real (old, unmapped)
-        # PV for a much cleaner queue; the default new_leads file keeps everything.
-        if not {"epoch_checked", "epoch_prior"} <= set(leads.columns):
-            log.warning(
-                "epoch-clean requested but candidates carry no epoch columns — rerun "
-                "`earthpv postprocess` with --preboom-prob-dir first; file not written"
+        # The default new_leads file keeps the recall-first contract; this cleaned
+        # queue trades a little real PV for far fewer wasted validations. Every
+        # veto requires positive evidence — a lead no instrument could check is
+        # always kept (absence of evidence is not a verdict).
+        leads = leads.reset_index(drop=True)
+        drop = np.zeros(len(leads), dtype=bool)
+        reason = np.array([""] * len(leads), dtype=object)
+
+        def _veto(mask: np.ndarray, tag: str) -> None:
+            fresh = mask & ~drop
+            reason[fresh] = tag
+            drop[mask] = True
+
+        if epoch_clean:
+            # Bright already in the pre-boom (2021/22) epoch -> likely a persistent
+            # non-PV feature (the judgement _epoch_note shows mappers, made hard).
+            # Caveat: genuinely old unmapped PV is dropped too.
+            if not {"epoch_checked", "epoch_prior"} <= set(leads.columns):
+                log.warning(
+                    "epoch-clean requested but candidates carry no epoch columns — rerun "
+                    "`earthpv postprocess` with --preboom-prob-dir first; veto skipped"
+                )
+            else:
+                checked = leads["epoch_checked"].astype(bool).to_numpy()
+                fp = checked & (leads["epoch_prior"].to_numpy(float) < epoch_fp_max_prior)
+                _veto(fp, "epoch_persistent")
+                log.info("Epoch veto: %d of %d checked (epoch_prior < %.2f)",
+                         int(fp.sum()), int(checked.sum()), epoch_fp_max_prior)
+
+        if veg_max_ndvi is not None:
+            # Green in ANY composite epoch on disk -> vegetation, not PV. Two
+            # dry-season medians undersample the crop cycle; the annual instrument
+            # below is the thorough version of the same physics.
+            from earthpv.vegetation import composite_max_ndvi
+
+            nd = composite_max_ndvi(leads.geometry, aoi, cfg, settings)
+            leads["veg_max_ndvi"] = np.round(nd, 3)
+            fp = np.nan_to_num(nd, nan=-1.0) > veg_max_ndvi
+            _veto(fp, "veg_composite")
+            log.info("Composite-NDVI veto: %d of %d covered (max NDVI > %.2f)",
+                     int(fp.sum()), int(np.isfinite(nd).sum()), veg_max_ndvi)
+
+        if annual_ndvi is not None:
+            # Year-long scene sampling (scripts/veg_annual_ndvi.py): a p95 NDVI
+            # above the threshold means the footprint greened up at some point —
+            # a crop cycle, which PV never shows.
+            tbl = pd.read_parquet(annual_ndvi) if str(annual_ndvi).endswith(".parquet") \
+                else pd.read_csv(annual_ndvi)
+            p95 = leads["candidate_id"].map(
+                tbl.set_index("candidate_id")["ndvi_p95"]).to_numpy(float)
+            leads["annual_ndvi_p95"] = np.round(p95, 3)
+            fp = np.nan_to_num(p95, nan=-1.0) > annual_ndvi_max
+            _veto(fp, "veg_annual")
+            log.info("Annual-NDVI veto: %d of %d sampled (p95 NDVI > %.2f)",
+                     int(fp.sum()), int(np.isfinite(p95).sum()), annual_ndvi_max)
+
+        clean = leads[~drop]
+        cl = pred_dir / f"{aoi}_pv_new_leads_clean.geojson"
+        clean.to_file(cl, driver="GeoJSON")
+        log.info("Clean leads: %d / %d kept (dropped: %s) -> %s",
+                 len(clean), len(leads),
+                 ", ".join(f"{t}={int((reason == t).sum())}"
+                           for t in ("epoch_persistent", "veg_composite", "veg_annual")
+                           if (reason == t).any()) or "none",
+                 cl.name)
+
+        # Vegetation-vetoed leads are near-conclusive non-PV (a crop cycle is
+        # positive evidence, unlike epoch persistence, which old real PV also
+        # shows) -> hard-negative training centers for the next retrain, in the
+        # lon/lat schema `earthpv hard-negative-chips --centers` consumes.
+        veg_fp = leads[np.isin(reason, ("veg_composite", "veg_annual"))]
+        if not veg_fp.empty:
+            reps = veg_fp.geometry.representative_point()
+            hn = veg_fp.drop(columns="geometry").assign(
+                lon=reps.x.to_numpy(), lat=reps.y.to_numpy(),
+                evidence=reason[np.isin(reason, ("veg_composite", "veg_annual"))],
             )
-        else:
-            checked = leads["epoch_checked"].astype(bool).to_numpy()
-            fp = checked & (leads["epoch_prior"].to_numpy(float) < epoch_fp_max_prior)
-            clean = leads[~fp]
-            ec = pred_dir / f"{aoi}_pv_new_leads_epochclean.geojson"
-            clean.to_file(ec, driver="GeoJSON")
-            log.info(
-                "Epoch-clean leads: dropped %d likely pre-boom FPs (epoch_prior < %.2f) "
-                "of %d checked; kept %d never-checked; %d / %d leads -> %s",
-                int(fp.sum()), epoch_fp_max_prior, int(checked.sum()),
-                int((~checked).sum()), len(clean), len(leads), ec.name,
-            )
+            keep_cols = [c for c in ("candidate_id", "lon", "lat", "evidence", "area_m2",
+                                     "veg_max_ndvi", "annual_ndvi_p95") if c in hn.columns]
+            hn_path = pred_dir / "hard_negatives_veg.parquet"
+            pd.DataFrame(hn[keep_cols]).to_parquet(hn_path)
+            log.info("Wrote %d vegetation hard-negative centers -> %s "
+                     "(feed to `earthpv hard-negative-chips --centers`)",
+                     len(hn), hn_path.name)
 
     # MapRoulette: newline-delimited FeatureCollections (RFC 7464-style, MR "lineByLine")
     mr = pred_dir / f"{aoi}_pv_maproulette.geojson"
