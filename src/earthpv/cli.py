@@ -230,11 +230,27 @@ def export(
         "— catches candidates offset from a mapped point (a common generator:source=solar "
         "node) that would otherwise never 'intersect' and wrongly surface as new"
     ),
+    epoch_clean: bool = typer.Option(
+        False, help="Also write <aoi>_pv_new_leads_epochclean.geojson: the new-leads set "
+        "with likely persistent false positives dropped — candidates that a pre-boom "
+        "(2021/22) epoch raster confirmed as already bright (epoch_checked and "
+        "epoch_prior below --epoch-fp-max-prior). Never-checked candidates are kept. "
+        "Needs postprocess --preboom-prob-dir to have run"
+    ),
+    epoch_fp_max_prior: float = typer.Option(
+        0.5, help="With --epoch-clean, drop checked candidates whose epoch_prior "
+        "(1 - pre-boom probability) is below this — 0.5 matches the 'likely persistent "
+        "FP' judgement shown to MapRoulette mappers"
+    ),
 ) -> None:
     """Export candidates as GeoParquet/GeoJSON + MapRoulette challenge."""
     from earthpv.export import run_export
 
-    run_export(aoi=aoi, pred_dir=pred_dir, exclude_mapped=exclude_mapped, min_distance_m=min_distance_m)
+    run_export(
+        aoi=aoi, pred_dir=pred_dir, exclude_mapped=exclude_mapped,
+        min_distance_m=min_distance_m, epoch_clean=epoch_clean,
+        epoch_fp_max_prior=epoch_fp_max_prior,
+    )
 
 
 @app.command("hard-negatives")
