@@ -197,6 +197,12 @@ def postprocess(
         "search + one set of asset opens per bin, shared by every eligible candidate "
         "in it (see docs/issues/glint-tile-batched-coverage.md)"
     ),
+    glint_self_referenced: bool = typer.Option(
+        False, help="Compare each candidate's surrounding annulus to its OWN history "
+        "instead of requiring it to be dim right now — for dense urban blocks where "
+        "the annulus is itself lined with similarly-bright rooftops and the default "
+        "spatial check never fires (see earthpv.glint.annotate_spikes)"
+    ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
     from earthpv.postprocess import run_postprocess
@@ -205,6 +211,7 @@ def postprocess(
         aoi=aoi, pred_dir=pred_dir, threshold=threshold, max_building_dist_m=max_building_dist,
         preboom_prob_dir=preboom_prob_dir, check_glint=check_glint, glint_top_n=glint_top_n,
         glint_skip_top=glint_skip_top, glint_tile_deg=glint_tile_deg,
+        glint_self_referenced=glint_self_referenced,
     )
 
 

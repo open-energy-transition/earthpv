@@ -8,7 +8,8 @@ overture_release: "2026-06-17.0"
 local_root: /run/media/tobi/aidisc/rooftopsenti/data
 
 # Solar arrays smaller than this (m²) are kept in labels but flagged; the
-# headline target is >= 500 m².
+# headline detection target is > 400 m² (MIN_PV_AREA in chips.py) — smaller
+# installations are covered by the density stage's aggregate estimate instead.
 min_array_area_m2: 100.0
 # Fraction of a solar polygon that must fall on a building footprint to count as rooftop.
 rooftop_overlap_frac: 0.5
