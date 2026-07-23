@@ -231,25 +231,42 @@ def export(
         "node) that would otherwise never 'intersect' and wrongly surface as new"
     ),
     epoch_clean: bool = typer.Option(
-        False, help="Also write <aoi>_pv_new_leads_epochclean.geojson: the new-leads set "
-        "with likely persistent false positives dropped — candidates that a pre-boom "
-        "(2021/22) epoch raster confirmed as already bright (epoch_checked and "
-        "epoch_prior below --epoch-fp-max-prior). Never-checked candidates are kept. "
-        "Needs postprocess --preboom-prob-dir to have run"
+        False, help="Veto leads a pre-boom (2021/22) epoch raster confirmed as already "
+        "bright (epoch_checked and epoch_prior below --epoch-fp-max-prior). Never-checked "
+        "candidates are kept. Needs postprocess --preboom-prob-dir to have run"
     ),
     epoch_fp_max_prior: float = typer.Option(
         0.5, help="With --epoch-clean, drop checked candidates whose epoch_prior "
         "(1 - pre-boom probability) is below this — 0.5 matches the 'likely persistent "
         "FP' judgement shown to MapRoulette mappers"
     ),
+    veg_max_ndvi: float = typer.Option(
+        None, help="Veto leads whose footprint mean NDVI exceeds this in ANY composite "
+        "epoch on disk (green field, not PV). 0.35 measured: catches ~17% of countryside "
+        "FP suspects at ~2% cost to confirmed PV. Interim, local-only version of the "
+        "annual instrument below"
+    ),
+    annual_ndvi: Path = typer.Option(
+        None, help="annual_ndvi.parquet from scripts/veg_annual_ndvi.py analyze — vetoes "
+        "leads whose year-long p95 NDVI exceeds --annual-ndvi-max (a crop cycle; PV "
+        "never greens up)"
+    ),
+    annual_ndvi_max: float = typer.Option(
+        0.4, help="With --annual-ndvi, the p95 NDVI veto threshold"
+    ),
 ) -> None:
-    """Export candidates as GeoParquet/GeoJSON + MapRoulette challenge."""
+    """Export candidates as GeoParquet/GeoJSON + MapRoulette challenge.
+
+    Any of the veto flags additionally writes <aoi>_pv_new_leads_clean.geojson (the
+    filtered validation queue) and hard_negatives_veg.parquet (vegetation-vetoed
+    leads as retraining centers). The default artifacts stay recall-first."""
     from earthpv.export import run_export
 
     run_export(
         aoi=aoi, pred_dir=pred_dir, exclude_mapped=exclude_mapped,
         min_distance_m=min_distance_m, epoch_clean=epoch_clean,
-        epoch_fp_max_prior=epoch_fp_max_prior,
+        epoch_fp_max_prior=epoch_fp_max_prior, veg_max_ndvi=veg_max_ndvi,
+        annual_ndvi=annual_ndvi, annual_ndvi_max=annual_ndvi_max,
     )
 
 

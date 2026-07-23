@@ -132,6 +132,9 @@ pixi run earthpv postprocess --aoi punjab --check-glint --glint-top-n 300 --glin
 pixi run earthpv export --aoi punjab
 # Also write a new-leads file excluding anything within 100m of already-mapped OSM PV:
 pixi run earthpv export --aoi punjab --exclude-mapped --min-distance-m 100
+# Add the pre-boom + vegetation vetoes (see "Vegetation veto" below) -> new_leads_clean:
+pixi run earthpv export --aoi punjab --exclude-mapped --min-distance-m 100 \
+    --epoch-clean --veg-max-ndvi 0.35
 ```
 
 **9. Density** *(optional)* — per-building PV area/capacity + PyPSA-ready grid/region
@@ -150,13 +153,18 @@ pixi run earthpv calibrate-sample --aoi pakistan            # -> fill `verdict` 
 pixi run earthpv calibrate-candidates --aoi pakistan --manual-reviews <reviewed file>
 ```
 
-**10. Hard-negative mining** *(optional)* — confirm large, OSM-unmapped buildings as
-true negatives via a bi-temporal check (model must see no PV in *either* the current
-composite or an older year's), then cut them into training chips.
+**10. Hard-negative mining** *(optional)* — confirm negatives for retraining from two
+independent sources, then cut both into training chips (`--centers` merges into one
+index, so run both without either clobbering the other):
 
 ```bash
+# Bi-temporal: large OSM-unmapped buildings the model must see no PV on in *either*
+# the current composite or an older year's.
 pixi run -e ml earthpv hard-negatives --aoi pakistan --checkpoint data/models/<run>/<epoch>.ckpt
-pixi run earthpv hard-negative-chips --aoi pakistan
+pixi run earthpv hard-negative-chips --aoi pakistan --centers data/predictions/<aoi>/hard_negatives_confirmed.parquet
+# Vegetation-vetoed leads (see below) — the confusion class (dark fallow/paddy soil)
+# German training data never showed the model:
+pixi run earthpv hard-negative-chips --aoi pakistan --centers data/predictions/<aoi>/hard_negatives_veg.parquet
 ```
 
 **11. German calibration** *(optional, Germany-only)* — cross-check `density`
@@ -422,6 +430,61 @@ almost exactly (±1 `n_consistent`) on 8 real installations the default already 
 so it's a different criterion for the same evidence, not a laxer one — reach for it in
 dense urban contexts, not as a general replacement.
 
+## Vegetation veto (green-field false positives)
+
+Manual review of Pakistan's countryside leads (`no_building`/`ground_adjacent`
+placement) found a lot of green fields flagged as PV. The obvious fix — check NDVI
+on the composite the model reads — doesn't work: measuring NDVI on the actual dry-season
+composites for 150 suspect leads found them **not green there** (median NDVI 0.10,
+statistically indistinguishable from OSM-confirmed PV's 0.04). The field a validator
+sees as green in current high-res imagery was dark fallow/harvested/flooded-paddy soil
+when the dry-season median was built — a **season mismatch**, not a spectral confusion
+the model could have avoided at inference time. That also explains why the pre-boom
+epoch check (below) barely touches these: crop state isn't persistent year-to-year, so
+being dim in *both* dry-season epochs doesn't distinguish a field from a PV panel.
+
+The instrument that does discriminate is the **vegetation cycle**: every crop field
+greens up at some point in the year; a PV panel never does. Two implementations, by cost
+(`src/earthpv/vegetation.py`):
+
+- **`--veg-max-ndvi`** (interim, free) — max mean-NDVI across every composite epoch
+  already on disk (current + pre-boom). Undersamples the crop cycle (two dry-season
+  snapshots), but costs nothing: on Pakistan, a 0.35 threshold caught **596 of 5,132**
+  new leads (11.6%) — 20.2% of `no_building`, 10.5% of `ground_adjacent`, only 0.3% of
+  rooftop (the veto is specific to the country-side confusion, as intended).
+- **`scripts/veg_annual_ndvi.py`** (thorough, network-bound) — samples a year of
+  Sentinel-2 scenes per lead (the glint pipeline's batched B04/B08 fetcher) and reports
+  p95 NDVI over the year; crossing `--annual-ndvi-max` (default 0.4) means a crop
+  cycle was observed. A positive-control run on 10 leads the composite veto had already
+  flagged found 8/10 crossing p95 > 0.3 within a year — confirming the composite veto's
+  catches are real vegetation, and that the annual version would catch more (residual
+  cloud biases NDVI *down*, so this is conservative). Resumable
+  (`data/veg/<aoi>/<candidate_id>.parquet`); `pull` then `analyze` writes
+  `annual_ndvi.parquet` for `export --annual-ndvi`.
+
+```bash
+pixi run earthpv export --aoi pakistan --exclude-mapped --min-distance-m 100 \
+    --epoch-clean --veg-max-ndvi 0.35
+# Optional, thorough pass (network-bound, hours at country scale — run as its own
+# systemd --user unit, see "Operational notes"):
+.pixi/envs/default/bin/python scripts/veg_annual_ndvi.py pull --aoi pakistan \
+    --leads-file data/predictions/pakistan/pakistan_pv_new_leads_clean.geojson
+.pixi/envs/default/bin/python scripts/veg_annual_ndvi.py analyze --aoi pakistan
+pixi run earthpv export --aoi pakistan --exclude-mapped --min-distance-m 100 \
+    --epoch-clean --veg-max-ndvi 0.35 \
+    --annual-ndvi data/predictions/pakistan/annual_ndvi.parquet
+```
+
+Both vetoes compose with `--epoch-clean` into one `<aoi>_pv_new_leads_clean.geojson` —
+the only export artifact that drops candidates (every default file keeps the
+recall-first contract). Every veto requires *positive* evidence: a lead no instrument
+could check (no composite coverage, no scenes pulled) is always kept, never dropped for
+lack of a read. Vegetation-vetoed leads are also written to `hard_negatives_veg.parquet`
+— unlike epoch persistence (which real old PV can also show), a measured crop cycle is
+near-conclusive non-PV evidence, so these feed straight into
+`hard-negative-chips --centers` as training negatives for the confusion class (dark
+fallow/paddy soil) German training data never contained.
+
 ## PV density per building (energy-model / PyPSA export)
 
 `density` (`src/earthpv/density.py`) turns the same probability rasters into
@@ -662,6 +725,9 @@ notes for why):
   `earthpv calibrate-candidates`, which inverts them through the 500-target
   study's sensitivity curve into the capacity-atlas precision table (see "PV
   density per building").
+- `veg_annual_ndvi.py` — per-lead year-long Sentinel-2 NDVI series (pull → analyze),
+  the thorough half of the green-field veto (see "Vegetation veto" above); feeds
+  `earthpv export --annual-ndvi`.
 
 **Solar-glint research suite** (`src/earthpv/glint.py` is the production module,
 used by `postprocess --check-glint`; everything below is validation/experimentation
@@ -670,10 +736,14 @@ around it, mostly network-bound per-target Sentinel-2 time-series pulls):
   validation (spike detection + self-consistent orientation fit), the latter at
   country scale, stratified by installation size (results in "Solar-glint
   corroboration" below and `results/glint_validation_pakistan/`).
-- `glint_iou_experiment.py`, `glint_pixel_refine.py`, `roof_axis_iou_experiment.py`
-  — can glint move pixel IoU rather than just re-rank candidates? (threshold
-  gating: no; per-pixel spike-amplitude trim: a narrow real win; roof-orientation
-  threshold gating: no — see conversation/commit history for the full results).
+- `glint_iou_experiment.py`, `glint_pixel_refine.py` — can glint move pixel IoU
+  rather than just re-rank candidates? (threshold gating: no; per-pixel
+  spike-amplitude trim: a narrow real win — see conversation/commit history for
+  the full results). A companion experiment gating by building-roof-axis
+  orientation (a free, zero-network proxy for "plausibly south-facing") was
+  also tested and removed: no predictive signal, most likely because Pakistan's
+  dominant urban roof type is flat concrete, where a tilt-frame's azimuth isn't
+  constrained by the footprint shape the way a pitched roof's ridge line would be.
 - `glint_density_targets.py` / `_pull.py` / `_analyze.py` and
   `glint_cell_density_targets.py` / `_pull.py` / `_analyze.py` — two different
   attempts to use glint for regional density estimation rather than per-candidate

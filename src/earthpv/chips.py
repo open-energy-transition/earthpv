@@ -463,6 +463,15 @@ def build_hard_negative_chips(
 
     index = pd.DataFrame(records)
     index_path = out_dir / "index.parquet"
+    # Merge with any existing index: hard negatives arrive from several confirmers
+    # (bi-temporal building check, vegetation veto) in separate runs, and a plain
+    # overwrite would silently de-index every earlier run's chips.
+    if index_path.exists() and len(index):
+        prev = pd.read_parquet(index_path)
+        kept = prev[~prev.chip_id.isin(index.chip_id)]
+        if len(kept):
+            log.info("Merging with existing index: %d prior chips kept", len(kept))
+            index = pd.concat([kept, index], ignore_index=True)
     index.to_parquet(index_path)
     n_leaked = int((index.pv_pixels > 0).sum()) if len(index) else 0
     if n_leaked:
