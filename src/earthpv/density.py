@@ -17,6 +17,13 @@ recall-first (many false positives) and neither number is unconditionally honest
   (above a small noise floor) times 100 m² over the footprint. Integrates
   sub-threshold signal; an upper-leaning expectation for sensitivity bands.
 
+With a calibration table (capacity_calibration) two more estimators join at the
+cell/region level: **calibrated** (`*_cal`, candidates weighted by a measured
+P(real | size, glint)) and **recall-corrected** (`*_rc`, the calibrated area further
+divided by the model's measured per-size-bin recall — a Horvitz-Thompson estimate of
+the whole >= detection-floor population, with 90% credible intervals from posterior
+draws over every calibration count; see `_candidate_uncertainty`).
+
 Three layers are written to `data/predictions/<aoi>/density/`:
   buildings.geoparquet  — one row per building carrying a PV signal
   grid.geoparquet/.csv  — one row per 0.1 deg cell (the pipeline's native grid)
@@ -437,6 +444,118 @@ def load_admin(
 
 
 # --------------------------------------------------------------------------------------
+# Recall-corrected candidate estimator + posterior uncertainty
+# --------------------------------------------------------------------------------------
+def _candidate_uncertainty(
+    cands: gpd.GeoDataFrame,
+    table: dict,
+    origin: tuple[float, float],
+    manifest_cells: set[str],
+    recall_floor: float,
+    n_draws: int = 1000,
+) -> dict | None:
+    """Per-cell recall-corrected (Horvitz-Thompson) candidate area with posterior draws.
+
+    Each surviving candidate of size bin b stands in for 1/recall(b) real
+    installations of that class (recall measured against a pipeline-independent
+    mapped OSM reference, see capacity_calibration), so
+
+        pv_area_rc = sum(area * p_real / max(recall, recall_floor))
+
+    estimates the *whole* >= detection-floor population, not just the detected part.
+    It lives on the candidate population — comparable to the `*_total` cell columns
+    (`*_roofcand` for the rooftop-placed subset), NOT to the footprint-intersected
+    `*_roof` columns; per-building recall inflation would be meaningless (the missed
+    installations sit on other, unknown buildings).
+
+    Uncertainty: bin-level posterior draws over every calibration count
+    (capacity_calibration.posterior_draws) are pushed through the same weights.
+    Draws are shared across cells within a bin (fully correlated), so summing a
+    cell's draw rows gives the correct interval at any aggregation level. Returns
+    per-cell draw matrices (m^2) for the calibrated and recall-corrected sums, for
+    the full and rooftop-placed candidate populations.
+    """
+    from earthpv import capacity_calibration as cc
+
+    if cands.empty:
+        return None
+    area = cands["area_m2"].to_numpy(float)
+    bins = cc.bin_index(area)
+    reps = cands.geometry.representative_point()
+    minx, miny = origin
+    ix = np.floor((reps.x.to_numpy() - minx) / CELL_DEG).astype(int)
+    iy = np.floor((reps.y.to_numpy() - miny) / CELL_DEG).astype(int)
+    cell = np.array([f"{i:04d}_{j:04d}" for i, j in zip(ix, iy)])
+
+    glint = (
+        cands["glint_consistent"].to_numpy() if "glint_consistent" in cands.columns else None
+    )
+    validated = np.zeros(len(cands), bool) if glint is None else np.asarray(glint) >= 2
+    rooftop = (
+        cands["placement"].astype(str).to_numpy() == "rooftop"
+        if "placement" in cands.columns
+        else np.zeros(len(cands), bool)
+    )
+    p_pt = cc.candidate_p_real(area, table, glint_consistent=glint)
+    r_pt = cc.candidate_recall(area, table, floor=recall_floor)
+
+    # Same population process_cell counts into the cell totals: assigned by
+    # representative point to a manifest cell.
+    keep = np.isin(cell, list(manifest_cells))
+    if not keep.all():
+        log.info("Uncertainty: %d candidates outside manifest cells ignored", (~keep).sum())
+    df = pd.DataFrame({
+        "cell": cell[keep], "b": bins[keep], "v": validated[keep],
+        "roof": rooftop[keep], "area": area[keep],
+        "rc_pt": (area * p_pt / r_pt)[keep],
+    })
+    if df.empty:
+        return None
+
+    draws = cc.posterior_draws(table, n_draws=n_draws)
+    prior = np.clip(draws["p_real"], 1e-6, 1 - 1e-6)
+    odds = prior / (1.0 - prior) * draws["lr"]
+    w = np.stack([draws["p_real"], odds / (1.0 + odds)])  # (validated?, bin, draw)
+    r_dr = np.maximum(draws["recall"], recall_floor)
+
+    cells = np.unique(df["cell"].to_numpy())
+    pos = {c: i for i, c in enumerate(cells)}
+    mats = {k: np.zeros((len(cells), n_draws)) for k in ("cal_all", "rc_all", "cal_roof", "rc_roof")}
+    for roof_only, cal_key, rc_key in ((False, "cal_all", "rc_all"), (True, "cal_roof", "rc_roof")):
+        sub = df[df.roof] if roof_only else df
+        for (c, b, v), a in sub.groupby(["cell", "b", "v"])["area"].sum().items():
+            wa = a * w[int(v), b]
+            mats[cal_key][pos[c]] += wa
+            mats[rc_key][pos[c]] += wa / r_dr[b]
+
+    points = (
+        df.assign(rc_roof_pt=np.where(df.roof, df.rc_pt, 0.0))
+        .groupby("cell", as_index=False)[["rc_pt", "rc_roof_pt"]].sum()
+        .rename(columns={"rc_pt": "pv_area_rc_total_m2", "rc_roof_pt": "pv_area_rc_roofcand_m2"})
+    )
+    return {
+        "cells": cells, "pos": pos, "mats": mats, "points": points,
+        "n_draws": n_draws, "recall_floor": recall_floor,
+    }
+
+
+def _unc_mwp_ci(unc: dict, cell_list: list[str], kwp_per_m2: float) -> dict:
+    """Credible intervals (MWp) over the summed draws of a set of cells."""
+    from earthpv.capacity_calibration import CI_PCT
+
+    rows = [unc["pos"][c] for c in cell_list if c in unc["pos"]]
+    out = {}
+    for key, name in (
+        ("rc_all", "est_mwp_rc"), ("rc_roof", "est_mwp_rc_roof"),
+        ("cal_all", "est_mwp_cal_total"),
+    ):
+        tot = unc["mats"][key][rows].sum(axis=0) if rows else np.zeros(unc["n_draws"])
+        lo, hi = np.percentile(tot * kwp_per_m2 / 1000.0, CI_PCT)
+        out[f"{name}_lo"], out[f"{name}_hi"] = round(float(lo), 4), round(float(hi), 4)
+    return out
+
+
+# --------------------------------------------------------------------------------------
 # Aggregation
 # --------------------------------------------------------------------------------------
 def _ratios(df: pd.DataFrame, area_km2: pd.Series, kwp_per_m2: float) -> pd.DataFrame:
@@ -448,7 +567,13 @@ def _ratios(df: pd.DataFrame, area_km2: pd.Series, kwp_per_m2: float) -> pd.Data
     df["pv_exp_m2_per_km2"] = (df.pv_area_exp_roof_m2 / area_km2.clip(lower=1e-9)).round(2)
     df["est_mwp_det"] = (df.pv_area_det_roof_m2 * kwp_per_m2 / 1000.0).round(4)
     df["est_mwp_cal"] = (df.pv_area_cal_roof_m2 * kwp_per_m2 / 1000.0).round(4)
+    df["est_mwp_cal_total"] = (df.pv_area_cal_total_m2 * kwp_per_m2 / 1000.0).round(4)
     df["est_mwp_exp"] = (df.pv_area_exp_roof_m2 * kwp_per_m2 / 1000.0).round(4)
+    for src, dst in (
+        ("pv_area_rc_total_m2", "est_mwp_rc"), ("pv_area_rc_roofcand_m2", "est_mwp_rc_roof")
+    ):
+        if src in df.columns:
+            df[dst] = (df[src] * kwp_per_m2 / 1000.0).round(4)
     return df
 
 
@@ -470,9 +595,11 @@ def _backfill_cal(df: pd.DataFrame) -> pd.DataFrame:
 
 def aggregate(
     out_dir: Path, manifest: gpd.GeoDataFrame, regions: gpd.GeoDataFrame | None,
-    districts: gpd.GeoDataFrame | None, kwp_per_m2: float,
+    districts: gpd.GeoDataFrame | None, kwp_per_m2: float, unc: dict | None = None,
 ) -> dict:
     cells_dir = out_dir / "cells"
+    rc_cols = ["pv_area_rc_total_m2", "pv_area_rc_roofcand_m2"] if unc is not None else []
+    sum_cols = _SUM_COLS + rc_cols
 
     # Per-building layer -------------------------------------------------------------
     parts = [gpd.read_parquet(p) for p in sorted(cells_dir.glob("*.parquet"))
@@ -506,11 +633,25 @@ def aggregate(
         summ.drop(columns=["ix", "iy", "lon0", "lat0"]), on="cell", how="left"
     )
     grid = gpd.GeoDataFrame(grid, geometry="geometry", crs="EPSG:4326")
-    grid[_SUM_COLS] = grid[_SUM_COLS].fillna(0.0)
+    if unc is not None:
+        grid = grid.merge(unc["points"], on="cell", how="left")
+    grid[sum_cols] = grid[sum_cols].fillna(0.0)
     grid["lon_center"] = grid.lon0 + CELL_DEG / 2
     grid["lat_center"] = grid.lat0 + CELL_DEG / 2
     grid["cell_area_km2"] = [geodesic_area_m2(g) / 1e6 for g in grid.geometry]
     grid = _ratios(grid, grid["cell_area_km2"], kwp_per_m2)
+    if unc is not None:
+        from earthpv.capacity_calibration import CI_PCT
+
+        lohi = np.percentile(unc["mats"]["rc_all"], CI_PCT, axis=1) * kwp_per_m2 / 1000.0
+        ci = pd.DataFrame({
+            "cell": unc["cells"],
+            "est_mwp_rc_lo": lohi[0].round(4), "est_mwp_rc_hi": lohi[1].round(4),
+        })
+        grid = grid.merge(ci, on="cell", how="left")
+        grid[["est_mwp_rc_lo", "est_mwp_rc_hi"]] = (
+            grid[["est_mwp_rc_lo", "est_mwp_rc_hi"]].fillna(0.0)
+        )
     grid.to_parquet(out_dir / "grid.geoparquet")
     grid.drop(columns="geometry").to_csv(out_dir / "grid.csv", index=False)
 
@@ -518,7 +659,7 @@ def aggregate(
     n_regions = 0
     if regions is not None and not regions.empty:
         centroids = gpd.GeoDataFrame(
-            grid[["cell"] + _SUM_COLS],
+            grid[["cell"] + sum_cols],
             geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs="EPSG:4326",
         )
         frames = []
@@ -528,13 +669,19 @@ def aggregate(
             j = gpd.sjoin(centroids, gdf[["id", "name", "geometry"]], how="inner",
                           predicate="within")
             agg = j.groupby(["id", "name"], as_index=False).agg(
-                {**{c: "sum" for c in _SUM_COLS}, "cell": "count"}
+                {**{c: "sum" for c in sum_cols}, "cell": "count"}
             ).rename(columns={"cell": "n_cells"})
             agg = agg.merge(gdf[["id", "name", "country", "geometry"]], on=["id", "name"])
             agg = gpd.GeoDataFrame(agg, geometry="geometry", crs="EPSG:4326")
             agg["level"] = level
             agg["area_km2"] = [geodesic_area_m2(g) / 1e6 for g in agg.geometry]
             agg = _ratios(agg, agg["area_km2"], kwp_per_m2)
+            if unc is not None:
+                ci_rows = [
+                    {"id": rid, "name": name, **_unc_mwp_ci(unc, cell_list, kwp_per_m2)}
+                    for (rid, name), cell_list in j.groupby(["id", "name"])["cell"].agg(list).items()
+                ]
+                agg = agg.merge(pd.DataFrame(ci_rows), on=["id", "name"], how="left")
             frames.append(agg.rename(columns={"id": "region_id"}))
         if frames:
             reg = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs="EPSG:4326")
@@ -543,7 +690,7 @@ def aggregate(
             reg.to_file(out_dir / "regions.geojson", driver="GeoJSON")
             n_regions = int((reg.level == "region").sum())
 
-    return {
+    stats = {
         "n_cells": int(len(grid)),
         "n_signal_buildings": int(len(buildings)),
         "n_regions": n_regions,
@@ -554,8 +701,21 @@ def aggregate(
         "total_pv_area_exp_roof_m2": float(grid.pv_area_exp_roof_m2.sum()),
         "total_est_mwp_det": float(grid.est_mwp_det.sum()),
         "total_est_mwp_cal": float(grid.est_mwp_cal.sum()),
+        "total_est_mwp_cal_total": float(grid.est_mwp_cal_total.sum()),
         "total_est_mwp_exp": float(grid.est_mwp_exp.sum()),
     }
+    if unc is not None:
+        stats.update({
+            "recall_floor": unc["recall_floor"],
+            "n_draws": unc["n_draws"],
+            "total_pv_area_rc_total_m2": float(grid.pv_area_rc_total_m2.sum()),
+            "total_pv_area_rc_roofcand_m2": float(grid.pv_area_rc_roofcand_m2.sum()),
+            "total_est_mwp_rc": float(grid.est_mwp_rc.sum()),
+            "total_est_mwp_rc_roof": float(grid.est_mwp_rc_roof.sum()),
+            **{f"total_{k}": v
+               for k, v in _unc_mwp_ci(unc, list(unc["cells"]), kwp_per_m2).items()},
+        })
+    return stats
 
 
 # --------------------------------------------------------------------------------------
@@ -574,6 +734,7 @@ def run_density(
     labels_dir: Path = Path("data/labels"),
     force: bool = False,
     calibration: Path | None = None,
+    recall_floor: float | None = None,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
@@ -598,6 +759,7 @@ def run_density(
 
     cal_path = Path(calibration) if calibration else cc.default_table_path(aoi)
     cal_status = "uncalibrated"
+    table = None
     if cal_path.exists():
         table = cc.load_table(cal_path)
         cal_status = table["status"]
@@ -614,12 +776,15 @@ def run_density(
             "run `earthpv calibrate-candidates --aoi %s` first for a calibrated atlas",
             cal_path, aoi,
         )
+    if recall_floor is None:
+        recall_floor = cc.DEFAULT_RECALL_FLOOR
 
     out_dir = Path(pred_dir) / aoi / "density"
     out_dir.mkdir(parents=True, exist_ok=True)
     cells_dir = out_dir / "cells"
 
-    manifest = cell_manifest(prob_dir, _grid_origin(aoi, cfg, settings))
+    origin = _grid_origin(aoi, cfg, settings)
+    manifest = cell_manifest(prob_dir, origin)
     if limit:
         manifest = manifest.head(limit)
     log.info("Processing %d cells for %s (iso3=%s)", len(manifest), aoi, iso3)
@@ -632,7 +797,12 @@ def run_density(
             log.warning("cell %s failed: %s", row.cell, e)
 
     regions, dist = load_admin(aoi, cfg, settings, iso3, labels_dir, districts, regions_file)
-    stats = aggregate(out_dir, manifest, regions, dist, kwp_per_m2)
+    unc = None
+    if table is not None and not cands.empty:
+        unc = _candidate_uncertainty(
+            cands, table, origin, set(manifest.cell), recall_floor=recall_floor
+        )
+    stats = aggregate(out_dir, manifest, regions, dist, kwp_per_m2, unc=unc)
 
     meta = {
         "aoi": aoi, "threshold": threshold, "kwp_per_m2": kwp_per_m2,

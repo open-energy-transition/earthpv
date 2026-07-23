@@ -223,6 +223,13 @@ def add_epoch_prior(cands: gpd.GeoDataFrame, preboom_prob_dir: Path) -> gpd.GeoD
 _GLINT_BUCKET_EDGES_M2 = (100.0, 500.0, 1000.0, 5000.0, 50000.0)
 _GLINT_VALIDATED_RATE = (0.025, 0.088, 0.162, 0.306, 0.293, 0.261)
 _GLINT_FALSE_VALIDATED = 0.087
+# Binomial counts behind the rates above (rate = validated / n), so downstream
+# consumers (capacity_calibration) can put Beta posteriors on them instead of
+# treating the point rates as exact.
+_GLINT_STUDY_N = (80, 80, 80, 85, 82, 92)
+_GLINT_STUDY_VALIDATED = (2, 7, 13, 26, 24, 24)
+_GLINT_FALSE_N = 69
+_GLINT_FALSE_N_VALIDATED = 6
 
 
 def _glint_likelihood_ratio(area_m2: np.ndarray) -> np.ndarray:

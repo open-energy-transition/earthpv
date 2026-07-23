@@ -301,6 +301,11 @@ def density(
         help="Candidate-precision table for est_mwp_cal "
         "(default configs/calibration/<aoi>_candidate_precision.yaml if present)",
     ),
+    recall_floor: float = typer.Option(
+        None,
+        help="Clamp per-bin model recall for the Horvitz-Thompson est_mwp_rc "
+        "(default capacity_calibration.DEFAULT_RECALL_FLOOR)",
+    ),
 ) -> None:
     """Per-building PV density + 0.1-deg-grid and admin-region aggregates (PyPSA-ready)."""
     from earthpv.density import run_density
@@ -309,6 +314,7 @@ def density(
         aoi=aoi, pred_dir=pred_dir, threshold=threshold, kwp_per_m2=kwp_per_m2,
         min_prob=min_prob, min_building_exp_m2=min_building_exp_m2, limit=limit,
         districts=districts, regions_file=regions_file, force=force, calibration=calibration,
+        recall_floor=recall_floor,
     )
 
 
@@ -353,13 +359,28 @@ def calibrate_candidates(
         help="Per-bin glint outcomes on unmapped candidates "
         "(scripts/glint_candidate_precision.py analyze); omit for interim mapped-only table",
     ),
+    manual_reviews: Path = typer.Option(
+        None,
+        help="Reviewed calibrate-sample file (CSV/GeoJSON with bin_label + verdict); direct "
+        "P(real | unmapped) that takes precedence over glint inversion in its bins",
+    ),
+    recall_reference: str = typer.Option(
+        "snapshot",
+        help="Mapped set for per-bin model recall: 'snapshot' = the pre-pipeline rooftopsenti "
+        "OSM cache (independent of this pipeline's own OSM contributions), 'all' = every mapped "
+        "feature incl. pipeline-validated leads (recall biased up -> smaller correction), "
+        "'none' = skip recall (est_mwp_rc degenerates to est_mwp_cal)",
+    ),
     min_distance_m: float = typer.Option(100.0, help="Mapped-candidate distance (match export)"),
     out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
 ) -> None:
-    """Derive the capacity-atlas candidate-precision table (p_real per area bin).
+    """Derive the capacity-atlas candidate-precision table (p_real + recall per area bin).
 
-    Combines the mapped-in-OSM fraction with glint inversion through the measured
-    sensitivity curve. Feeds `density --calibration`; never touches the leads product."""
+    Combines the mapped-in-OSM fraction with manual review and/or glint inversion on
+    the unmapped remainder, measures model recall against a pipeline-independent
+    mapped reference restricted to imaged cells, and stores Beta-posterior credible
+    intervals for everything. Feeds `density --calibration`; never touches the leads
+    product."""
     import logging
 
     import geopandas as gpd
@@ -376,15 +397,142 @@ def calibrate_candidates(
     _, cfg = resolve_aoi(aoi, settings)
     mapped = _load_mapped_reference(aoi, cfg, settings)
     sample = pd.read_csv(glint_sample) if glint_sample else None
+    reviews = _aggregate_manual_reviews(manual_reviews) if manual_reviews else None
+
+    ref = None
+    ref_name = "none"
+    if recall_reference != "none":
+        if recall_reference == "snapshot":
+            from earthpv.local_source import load_solar_labels
+
+            source_region = cfg.get("source_region")
+            ref = (
+                load_solar_labels(Path(settings.raw["local_root"]) / source_region)
+                if source_region else None
+            )
+            ref_name = f"rooftopsenti {source_region} OSM snapshot (pre-pipeline)"
+        elif recall_reference == "all":
+            ref = mapped
+            ref_name = "all mapped features incl. pipeline-validated leads (recall biased up)"
+        else:
+            raise typer.BadParameter("recall_reference must be snapshot | all | none")
+        if ref is None or ref.empty:
+            typer.echo(f"recall reference '{recall_reference}' empty — skipping recall")
+            ref, ref_name = None, "none"
+        else:
+            n0 = len(ref)
+            ref = cc.coverage_filter(ref, Path(pred_dir) / aoi / "prob")
+            typer.echo(f"recall reference: {len(ref)}/{n0} features inside imaged coverage")
+
     table = cc.derive_table(
-        cands, mapped, aoi=aoi, glint_sample=sample, min_distance_m=min_distance_m
+        cands, mapped, aoi=aoi, glint_sample=sample, min_distance_m=min_distance_m,
+        manual_reviews=reviews, recall_reference=ref, recall_reference_name=ref_name,
     )
     cc.write_table(table, out or cc.default_table_path(aoi))
     for row in table["bins"]:
+        rec = "recall=  n/a" if row["recall"] is None else f"recall={row['recall']:.3f}"
         typer.echo(
             f"{row['label']:>8}: n={row['n_candidates']:5d} mapped={row['mapped_frac']:.3f} "
-            f"p_u={row['p_unmapped']:.3f} ({row['p_unmapped_source']}) p_real={row['p_real']:.3f}"
+            f"p_u={row['p_unmapped']:.3f} ({row['p_unmapped_source']}) "
+            f"p_real={row['p_real']:.3f} [{row['p_real_lo']:.3f},{row['p_real_hi']:.3f}] "
+            f"{rec} ({row['recall_source']}, {row['recall_matched']}/{row['recall_n']})"
         )
+
+
+def _aggregate_manual_reviews(path: Path):
+    """Reviewed calibrate-sample file -> per-bin (n, n_real) counts.
+
+    Accepts CSV or anything geopandas reads; needs `bin_label` and `verdict` columns.
+    Blank verdicts (unreviewed rows) are skipped; unrecognized ones abort loudly."""
+    import geopandas as gpd
+    import pandas as pd
+
+    df = pd.read_csv(path) if str(path).endswith(".csv") else gpd.read_file(path)
+    verdict = df["verdict"].astype(str).str.strip().str.lower()
+    yes = {"yes", "y", "true", "1", "real", "pv"}
+    no = {"no", "n", "false", "0", "fp", "not_pv", "nopv"}
+    reviewed = df[verdict.isin(yes | no)].assign(real=verdict[verdict.isin(yes | no)].isin(yes))
+    bad = df[~verdict.isin(yes | no | {"", "nan", "none"})]
+    if len(bad):
+        raise typer.BadParameter(
+            f"{path}: unrecognized verdicts {sorted(bad['verdict'].astype(str).unique())[:5]} "
+            f"(use yes/no)"
+        )
+    if reviewed.empty:
+        raise typer.BadParameter(f"{path}: no reviewed rows (fill the `verdict` column)")
+    out = reviewed.groupby("bin_label", as_index=False).agg(
+        n=("real", "size"), n_real=("real", "sum")
+    )
+    typer.echo(f"manual reviews: {out.to_dict('records')}")
+    return out
+
+
+@app.command()
+def calibrate_sample(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    per_bin: int = typer.Option(50, help="Unmapped candidates to sample per bin"),
+    bins: str = typer.Option(
+        "<100,100-500,500-1k",
+        help="Comma-separated bin labels to sample (default: the bins where the glint "
+        "instrument has little or no discrimination and only a human verdict works)",
+    ),
+    min_distance_m: float = typer.Option(100.0, help="Mapped-candidate distance (match export)"),
+    seed: int = typer.Option(20260723, help="Sampling seed (keep fixed for resumable review)"),
+    out: Path = typer.Option(None, help="Output GeoJSON (default <pred_dir>/<aoi>/calibration_review_sample.geojson)"),
+) -> None:
+    """Stratified sample of UNMAPPED candidates for manual high-res review.
+
+    Fill the `verdict` property (yes/no) in JOSM/QGIS against current imagery, then
+    feed the file back via `earthpv calibrate-candidates --manual-reviews <file>` —
+    each bin with >= 20 verdicts gets a directly-measured P(real | unmapped) instead
+    of a glint extrapolation. This is the calibration path for the < 1000 m2 bins
+    that hold most residential candidates."""
+    import logging
+
+    import geopandas as gpd
+    import numpy as np
+    import pandas as pd
+
+    from earthpv import capacity_calibration as cc
+    from earthpv.config import Settings
+    from earthpv.export import _load_mapped_reference, new_lead_mask
+    from earthpv.labels import resolve_aoi
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    cands = gpd.read_parquet(Path(pred_dir) / aoi / "candidates.parquet").reset_index(drop=True)
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    mapped = _load_mapped_reference(aoi, cfg, settings)
+    unmapped = cands
+    if mapped is not None and not mapped.empty:
+        unmapped = cands[new_lead_mask(cands, mapped, min_distance_m=min_distance_m)]
+
+    wanted = [b.strip() for b in bins.split(",") if b.strip()]
+    unknown = set(wanted) - set(cc.BIN_LABELS)
+    if unknown:
+        raise typer.BadParameter(f"unknown bins {sorted(unknown)}; valid: {cc.BIN_LABELS}")
+    idx = cc.bin_index(unmapped["area_m2"].to_numpy())
+    rng = np.random.default_rng(seed)
+    parts = []
+    for label in wanted:
+        pool = unmapped[idx == cc.BIN_LABELS.index(label)]
+        take = pool.sample(n=min(per_bin, len(pool)), random_state=rng.integers(2**32))
+        typer.echo(f"{label:>8}: sampled {len(take)}/{len(pool)} unmapped candidates")
+        parts.append(take.assign(bin_label=label))
+    sample = gpd.GeoDataFrame(pd.concat(parts), crs=cands.crs).reset_index(drop=True)
+    reps = sample.geometry.representative_point()
+    sample["sample_uid"] = [f"{aoi}_cal_{i:04d}" for i in range(len(sample))]
+    sample["lon"], sample["lat"] = reps.x.round(6), reps.y.round(6)
+    sample["verdict"] = ""
+    cols = ["sample_uid", "bin_label", "area_m2", "lon", "lat", "verdict", "geometry"]
+    out = out or Path(pred_dir) / aoi / "calibration_review_sample.geojson"
+    sample[cols].to_file(out, driver="GeoJSON")
+    typer.echo(
+        f"wrote {out} ({len(sample)} candidates) — review `verdict` (yes/no) against "
+        f"high-res imagery, then run:\n  earthpv calibrate-candidates --aoi {aoi} "
+        f"--manual-reviews {out}"
+    )
 
 
 @app.command()

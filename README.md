@@ -144,6 +144,10 @@ with `earthpv atlas`).
 # that turns the recall-first candidates into a calibrated capacity estimate:
 pixi run earthpv calibrate-candidates --aoi pakistan
 pixi run earthpv density --aoi pakistan --districts
+# Optional precision upgrade for the <1000 m2 bins (where glint is blind): review a
+# stratified sample of unmapped candidates against high-res imagery, then re-derive:
+pixi run earthpv calibrate-sample --aoi pakistan            # -> fill `verdict` in JOSM/QGIS
+pixi run earthpv calibrate-candidates --aoi pakistan --manual-reviews <reviewed file>
 ```
 
 **10. Hard-negative mining** *(optional)* — confirm large, OSM-unmapped buildings as
@@ -432,13 +436,23 @@ the shared model: density never consumes `rank_score`, and it re-weights every c
 by a measured **P(real | size, glint)** from
 `configs/calibration/<aoi>_candidate_precision.yaml` (derive with
 `earthpv calibrate-candidates`; see `src/earthpv/capacity_calibration.py`). The table
-combines the size-binned fraction of candidates already mapped in OSM with a glint
-inversion of unmapped candidates through the 500-target study's sensitivity curve
-(`scripts/glint_candidate_precision.py` collects that sample; without it the table is an
-honest mapped-only lower bound, `status: interim-mapped-only`).
+combines the size-binned fraction of candidates already mapped in OSM with, per bin and
+in order of directness, a **manual high-res review** of a stratified unmapped sample
+(`earthpv calibrate-sample` → fill `verdict` → `--manual-reviews`; the only instrument
+that works below ~500 m², where glint has no discrimination) and a glint inversion of
+unmapped candidates through the 500-target study's sensitivity curve
+(`scripts/glint_candidate_precision.py` collects that sample; without either the table is
+an honest mapped-only lower bound, `status: interim-mapped-only`). The table also stores,
+per bin: the **model's recall** — the fraction of installations in a pipeline-independent
+mapped reference (the pre-pipeline rooftopsenti OSM snapshot, restricted to imaged cells)
+that the model matched with any candidate (0 % at <100 m² rising to 100 % at >50k m² for
+Pakistan) — and **90 % credible intervals** on every rate, from posterior draws over the
+stored binomial counts (Jeffreys Beta for directly-observed rates; a binomial-mixture
+likelihood for the glint inversion, which stays honestly wide where sensitivity ≈ false
+floor instead of pretending precision).
 
-Three PV-area metrics are reported per building because the model is deliberately
-recall-first and no single number is unconditionally honest:
+Four PV-area metrics are reported because the model is deliberately recall-first and no
+single number is unconditionally honest:
 
 - **detected** (`*_det`) — area of the thresholded, merged candidate polygons on the
   footprint, taken at face value. Raw-candidate **floor** semantics.
@@ -447,6 +461,18 @@ recall-first and no single number is unconditionally honest:
   `*_det` when no calibration table exists. Remains dependent on the 0.3
   polygonization threshold; the quadrat protocol
   (`docs/calibration-mapping-protocol.md`) is the planned ground-truth upgrade.
+- **recall-corrected** (`*_rc`, cell/region level only) — the calibrated candidate area
+  further divided by the model's measured per-bin recall (clamped at `--recall-floor`,
+  default 0.05): a Horvitz–Thompson estimate of the **whole ≥ detection-floor
+  population**, missed installations included, with 90 % credible bands
+  (`est_mwp_rc_lo/hi`) propagated from the calibration posteriors. Lives on the
+  candidate population — comparable to the `*_total` columns (`est_mwp_rc_roof` for the
+  rooftop-placed subset), not to the footprint-intersected `*_roof` ones; there is no
+  per-building version because the missed installations sit on other, unknown buildings.
+  Two honesty caveats: the recall reference skews toward visible/mappable installations
+  (recall optimistic → correction conservative), and a mapped installation counts as
+  "detected" if *any* candidate lies within 100 m (generous in dense clusters — same
+  convention as `mapped_frac`, so the two biases partially offset).
 - **expected** (`*_exp`) — probability-weighted area (Σ per-pixel probability × 100 m²
   over the footprint, above a small noise floor). Integrates sub-threshold signal; an
   **upper-leaning** ceiling for sensitivity bands.
@@ -457,11 +483,14 @@ Three layers (plus the atlas) land in `data/predictions/<aoi>/density/`:
   `pv_area_{det,cal,exp}_m2`, `pv_ratio_{det,exp}` (≤ 1), `est_kwp_{det,cal,exp}`,
   `pv_placement`, `region`/`district`.
 - `grid.geoparquet` + `grid.csv` — one row per 0.1° cell (the pipeline's native grid):
-  roof area, PV area (all metrics), densities (m²/km²) and `est_mwp_{det,cal,exp}`. The
-  CSV `lon_center`/`lat_center` map straight onto atlite/PyPSA-Earth cutout grids or
-  Voronoi bus regions.
+  roof area, PV area (all metrics), densities (m²/km²), `est_mwp_{det,cal,exp}` and
+  `est_mwp_rc` (+ `_lo`/`_hi` bands). The CSV `lon_center`/`lat_center` map straight
+  onto atlite/PyPSA-Earth cutout grids or Voronoi bus regions.
 - `regions.geoparquet` + `.csv` + `.geojson` — per Overture/geoBoundaries province (and
-  `--districts` for ADM2), additive totals with ratios recomputed from sums.
+  `--districts` for ADM2), additive totals with ratios recomputed from sums and
+  credible bands re-derived from the summed posterior draws (bin-level uncertainty is
+  fully correlated across cells, so intervals must be built from summed draws — never
+  by adding per-cell bounds).
 - `<aoi>_pv_atlas.html` — the self-contained night-lights-style capacity atlas
   (`src/earthpv/atlas.py`; colour/hero metric is `est_mwp_cal` when calibrated).
 
@@ -541,6 +570,32 @@ because the previous one had a measurable gap:
    buildings. Recovered area was a modest 10.8% of the Lahore gap even before
    accounting for that false-positive risk. Not safe to deploy as a blanket density
    correction in either region tested.
+
+9. **Recall correction + uncertainty bands** (deployed 2026-07-23) — the calibration
+   in #4 was precision-only: `est_mwp_cal` down-weights false positives but nothing
+   credited the installations the model *missed*, so even the headline was
+   structurally a floor. The fix has two independent parts. (a) The model's recall
+   per size bin is now measured directly — the fraction of installations in the
+   pre-pipeline rooftopsenti OSM snapshot (2,811 polygons, restricted to imaged
+   cells; deliberately *not* the fresher Overpass sets, which contain this
+   pipeline's own validated leads and would self-confirm recall upward) matched by
+   any candidate within 100 m: 0/142 below 100 m², 59% at 100–500, 74% at 500–1k,
+   89% at 1k–5k, 99% at 5k–50k, 100% above. Dividing each candidate's calibrated
+   area by its bin's recall (clamped at 0.05) gives the Horvitz–Thompson
+   `est_mwp_rc` — an estimate of the whole ≥ detection-floor population. For
+   Pakistan it adds a modest ~8.6% over the calibrated candidate total (the
+   area-dominant ≥ 5k m² bins are already nearly fully recalled): 18.3 GWp
+   [17.1–21.3] all placements, 6.1 GWp [5.6–7.3] rooftop-placed. (b) Every rate in
+   the table now carries its binomial counts, and 90% credible intervals are
+   propagated through the whole estimator by posterior draws (Jeffreys Betas;
+   the glint inversion uses a proper binomial-mixture likelihood that stays wide
+   where the instrument barely discriminates, rather than the point inversion's
+   false certainty). The wide small-bin intervals this exposes (p_real in 100–500 m²
+   is [0.10, 0.89] — glint simply cannot pin it down) are the quantified case for
+   the manual-review channel: `earthpv calibrate-sample` emits a stratified
+   unmapped-candidate sample for human verdicts, and ≥ 20 verdicts in a bin replace
+   the glint extrapolation with a directly-measured P(real | unmapped) and a
+   correspondingly tight interval.
 
 
 **Sentinel-1 corner-reflector test (negative result).** A tilted PV row over flat
