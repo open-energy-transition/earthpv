@@ -18,6 +18,25 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 
+def _epoch_note(row, has_epoch: bool) -> str:
+    """Human-readable pre-boom/post-boom note for the MapRoulette instruction text.
+
+    `epoch_prior`/`preboom_prob` (postprocess.add_epoch_prior) already feed rank_score,
+    but silently — a mapper doing the actual validation never saw why a candidate was
+    ranked where it was. Only speaks up when `epoch_checked` is True (a pre-boom raster
+    actually covered this candidate); otherwise the pre-/post-boom contrast is unknown,
+    not confirmed either way, so saying nothing is more honest than a false "new" claim.
+    """
+    if not has_epoch or not bool(row.get("epoch_checked", False)):
+        return ""
+    if row.epoch_prior < 0.5:
+        return (" Note: this location was already bright in pre-2022 imagery -- may be "
+                "a persistent non-PV feature (bright roof/soil/water), not new PV.")
+    if row.epoch_prior >= 0.9:
+        return " Appears new since the 2021-22 solar-import boom (dim before, bright now)."
+    return ""
+
+
 def _imagery_links(lon: float, lat: float) -> dict[str, str]:
     return {
         "osm": f"https://www.openstreetmap.org/edit#map=19/{lat:.5f}/{lon:.5f}",
@@ -159,6 +178,7 @@ def run_export(
 
     # MapRoulette: newline-delimited FeatureCollections (RFC 7464-style, MR "lineByLine")
     mr = pred_dir / f"{aoi}_pv_maproulette.geojson"
+    has_epoch = "epoch_prior" in cands.columns and "epoch_checked" in cands.columns
     with mr.open("w") as f:
         for _, row in cands.iterrows():
             c = row.geometry.centroid
@@ -171,12 +191,15 @@ def run_export(
                 ),
                 "area_m2": round(float(row.area_m2), 1),
                 "placement": row.placement,
+                "epoch_checked": bool(row.epoch_checked) if has_epoch else None,
+                "epoch_prior": round(float(row.epoch_prior), 3) if has_epoch else None,
                 "instruction": (
                     f"Possible solar PV array (~{row.area_m2:.0f} m2, "
                     f"confidence {row.confidence:.2f}, {row.placement}). "
                     "Check imagery; if confirmed, map power=generator + "
                     "generator:source=solar + generator:method=photovoltaic"
                     + (" + location=roof" if row.placement == "rooftop" else "")
+                    + _epoch_note(row, has_epoch)
                 ),
                 **_imagery_links(c.x, c.y),
             }

@@ -4,12 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`earthpv` detects large rooftop solar PV arrays (target ≥ 1000 m²) from Sentinel-2 L2A
-imagery by fine-tuning the open-source **TerraMind** geospatial foundation model (IBM/ESA,
-via **TerraTorch**). Labels come from OpenStreetMap solar mapping (through Overture Maps);
+`earthpv` detects individual large rooftop solar PV arrays (target > 400 m², the practical
+floor for per-pixel supervision at Sentinel-2's 10 m GSD) from Sentinel-2 L2A imagery by
+fine-tuning the open-source **TerraMind** geospatial foundation model (IBM/ESA, via
+**TerraTorch**). Labels come from OpenStreetMap solar mapping (through Overture Maps);
 building footprints classify detections as rooftop/ground. It is **recall-first**:
 candidates are meant to be human-validated against high-res imagery in OSM workflows, so
-false positives are tolerated. Trained on Germany, inferred on Punjab, Pakistan. Read
+false positives are tolerated. Installations below the 400 m² floor are not targeted by
+detection at all — their aggregate capacity is instead estimated by the `density` stage
+(`density.py`), which derives building-level PV density from the same probability rasters
+(probability-weighted/calibrated area, not per-object polygons) rather than trying to
+detect them individually. Trained on Germany, inferred on Punjab, Pakistan. Read
 `README.md` for the narrative and the current result numbers.
 
 ## Environments & commands
@@ -88,6 +93,21 @@ footprints for a rooftop/ground/no-building `placement` and a metric-based `rank
 **VIDA Open Buildings** (Google+Microsoft, imagery-derived, includes small/unmapped roofs),
 fetched windowed-and-cached per AOI; the local Overture ≥500 m² set is the fallback.
 `export.py` sorts by `rank_score` and writes GeoParquet/GeoJSON + a MapRoulette challenge.
+This candidate-polygon path is the > 400 m² individual-detection product; it is not
+extended down to smaller installations — `density.py` covers those instead (see below).
+
+### Density stage (capacity for installations below the detection floor)
+
+`density.py` reuses the same per-cell probability rasters (no GPU, no retraining) to
+report *aggregate* PV capacity per building/grid-cell/region rather than individual
+candidate polygons — this is the answer for solar below the ~400 m² detection floor,
+which `postprocess`/`export` cannot resolve as discrete objects. It reports three area
+metrics per building: `*_det` (thresholded candidate polygons on the footprint — the
+precision-honest floor, blind to sub-threshold/sub-400 m² signal), `*_exp`
+(probability-weighted area integrating sub-threshold signal, an upper-leaning ceiling),
+and `*_cal` (`*_det` re-weighted by a measured P(real | size, glint) from
+`configs/calibration/<aoi>_candidate_precision.yaml` — the headline capacity number).
+See README's "PV density per building" section for the full metric derivation.
 
 ### Invariants that prevent tiling artifacts (do not regress)
 

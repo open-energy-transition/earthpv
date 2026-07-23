@@ -175,9 +175,17 @@ def add_epoch_prior(cands: gpd.GeoDataFrame, preboom_prob_dir: Path) -> gpd.GeoD
     (no scenes in that window) are left neutral (`preboom_prob=0`) rather than penalised,
     since we can't check them. Nothing is dropped — same recall-first ranking-only
     contract as `building_prior`.
+
+    `epoch_checked` records whether a candidate actually got a pre-boom read (`True`) vs.
+    fell back to the neutral default because no pre-boom raster covered it (`False`) — the
+    two cases both leave `preboom_prob=0`/`epoch_prior=1`, which otherwise makes "confirmed
+    dim pre-boom" indistinguishable from "never checked" (only 40% of Pakistan candidates
+    had pre-boom coverage as of the 2026-07-21 country-scale run, see
+    docs/issues/glint-tile-batched-coverage.md).
     """
     cands = cands.reset_index(drop=True).copy()
     cands["preboom_prob"] = 0.0
+    cands["epoch_checked"] = False
     if cands.empty:
         cands["epoch_prior"] = 1.0
         return cands
@@ -199,6 +207,7 @@ def add_epoch_prior(cands: gpd.GeoDataFrame, preboom_prob_dir: Path) -> gpd.GeoD
                 )
                 if mask.any():
                     cands.loc[i, "preboom_prob"] = float(prob[mask].mean())
+                    cands.loc[i, "epoch_checked"] = True
     cands["epoch_prior"] = (1.0 - cands["preboom_prob"]).clip(0.0, 1.0).round(3)
     return cands
 
@@ -226,7 +235,7 @@ def add_glint_prior(
     cands: gpd.GeoDataFrame, top_n: int = 300, skip_top: int = 100,
     lookback_days: int = 730, tol_deg: float = 3.0, min_consistent: int = 2,
     min_lr: float = 1.2, max_boost: float = 4.0, max_workers: int = 4,
-    tile_deg: float = 1.0,
+    tile_deg: float = 1.0, self_referenced: bool = False,
 ) -> gpd.GeoDataFrame:
     """Physics-based corroborator: does the candidate glint on dates geometrically
     consistent with one fixed panel orientation? A glass PV panel is partly a
@@ -259,6 +268,16 @@ def add_glint_prior(
     by tile, so this amortizes the network cost that used to cap `top_n` at a few
     hundred (measured ~20x on a 6-candidate real cluster; see
     docs/issues/glint-tile-batched-coverage.md). `top_n` can now be set far higher.
+
+    `self_referenced` (see `glint.annotate_spikes`) swaps the spike criterion's
+    "annulus must be dim right now" check for "annulus must be near its own
+    baseline right now" — for dense urban blocks where every candidate's annulus is
+    itself lined with similarly-bright rooftops, so it's never meaningfully darker
+    than the candidate in absolute terms (confirmed: a confirmed, heavily-panelled
+    Lahore rooftop never exceeded a 1.09x ratio against its spatial annulus over a
+    full year, against the 1.5x default threshold). Verified to match the default
+    mode almost exactly on installations it already detects — this is a genuinely
+    different criterion for the same evidence, not a laxer one.
     """
     cands = cands.reset_index(drop=True).copy()
     cands["glint_spikes"] = 0
@@ -312,7 +331,7 @@ def add_glint_prior(
         series = series_by_pid.get(str(i))
         if series is None or series.empty:
             continue
-        res = glint.spike_fit(series, tol_deg=tol_deg)
+        res = glint.spike_fit(series, tol_deg=tol_deg, self_referenced=self_referenced)
         cands.loc[i, "glint_spikes"] = res["n_spikes"]
         cands.loc[i, "glint_consistent"] = res["n_consistent"]
         cands.loc[i, "glint_fit_tilt"] = res["fit_tilt"]
@@ -407,7 +426,7 @@ def run_postprocess(
     aoi: str, pred_dir: Path, threshold: float = 0.3, max_building_dist_m: float = 0.0,
     preboom_prob_dir: Path | None = None,
     check_glint: bool = False, glint_top_n: int = 300, glint_skip_top: int = 100,
-    glint_tile_deg: float = 1.0,
+    glint_tile_deg: float = 1.0, glint_self_referenced: bool = False,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this — isolated detections (cropland glare, bare soil, water glint)
@@ -442,9 +461,11 @@ def run_postprocess(
         if check_glint:
             cands = add_glint_prior(
                 cands, top_n=glint_top_n, skip_top=glint_skip_top, tile_deg=glint_tile_deg,
+                self_referenced=glint_self_referenced,
             )
-            log.info("Glint-consistency check applied (top_n=%d, skip_top=%d, tile_deg=%.2f)",
-                     glint_top_n, glint_skip_top, glint_tile_deg)
+            log.info("Glint-consistency check applied (top_n=%d, skip_top=%d, tile_deg=%.2f, "
+                     "self_referenced=%s)", glint_top_n, glint_skip_top, glint_tile_deg,
+                     glint_self_referenced)
         cands = cands.sort_values("rank_score", ascending=False).reset_index(drop=True)
         if max_building_dist_m and "building_dist_m" in cands.columns:
             n_before = len(cands)

@@ -1,6 +1,6 @@
 aoi: pakistan
-status: interim-mapped-only
-derived: '2026-07-19'
+status: glint-calibrated
+derived: '2026-07-23'
 min_distance_m: 100.0
 false_floor: 0.087
 bin_edges_m2:
@@ -14,56 +14,56 @@ bins:
   n_candidates: 95
   mapped_frac: 0.0526
   sensitivity: 0.025
-  glint_sample_n: 0
+  glint_sample_n: 12
   glint_sample_validated: 0
   p_unmapped: 0.0
-  p_unmapped_source: none
+  p_unmapped_source: extrapolated from 500-1k
   p_real: 0.0526
 - label: 100-500
   n_candidates: 516
   mapped_frac: 0.0795
   sensitivity: 0.088
-  glint_sample_n: 0
-  glint_sample_validated: 0
+  glint_sample_n: 48
+  glint_sample_validated: 2
   p_unmapped: 0.0
-  p_unmapped_source: none
+  p_unmapped_source: extrapolated from 500-1k
   p_real: 0.0795
 - label: 500-1k
   n_candidates: 421
   mapped_frac: 0.1164
   sensitivity: 0.162
-  glint_sample_n: 0
-  glint_sample_validated: 0
+  glint_sample_n: 49
+  glint_sample_validated: 3
   p_unmapped: 0.0
-  p_unmapped_source: none
+  p_unmapped_source: measured
   p_real: 0.1164
 - label: 1k-5k
   n_candidates: 2177
   mapped_frac: 0.1493
   sensitivity: 0.306
-  glint_sample_n: 0
-  glint_sample_validated: 0
+  glint_sample_n: 240
+  glint_sample_validated: 19
   p_unmapped: 0.0
-  p_unmapped_source: none
+  p_unmapped_source: measured
   p_real: 0.1493
 - label: 5k-50k
   n_candidates: 4072
-  mapped_frac: 0.4546
+  mapped_frac: 0.4548
   sensitivity: 0.293
-  glint_sample_n: 0
-  glint_sample_validated: 0
-  p_unmapped: 0.0
-  p_unmapped_source: none
-  p_real: 0.4546
+  glint_sample_n: 308
+  glint_sample_validated: 35
+  p_unmapped: 0.1293
+  p_unmapped_source: measured
+  p_real: 0.5253
 - label: '>50k'
   n_candidates: 428
   mapped_frac: 0.7126
   sensitivity: 0.261
-  glint_sample_n: 0
-  glint_sample_validated: 0
-  p_unmapped: 0.0
-  p_unmapped_source: none
-  p_real: 0.7126
+  glint_sample_n: 5
+  glint_sample_validated: 2
+  p_unmapped: 0.1293
+  p_unmapped_source: extrapolated from 5k-50k
+  p_real: 0.7498
 provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u(b) = clip((v_b
   - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed installations
   (results/glint_validation_pakistan/), f from 69 Lahore no-PV controls, v from a

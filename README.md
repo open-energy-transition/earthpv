@@ -1,12 +1,14 @@
 # earthpv - rooftop solar detection from Sentinel-2
 
-Detects rooftop solar PV arrays (target ≥ ~500 m², smaller where possible) from
-Sentinel-2 L2A imagery by fine-tuning the open-source **TerraMind** geospatial
-foundation model (IBM/ESA, 2025) with **TerraTorch**. Labels come from
-OpenStreetMap solar mapping via **Overture Maps** (`source_tags` on the
-base/infrastructure layer); building footprints and admin boundaries also come
-from Overture. Designed to be recall-oriented: candidates are meant to be
-human-validated against imagery in OSM workflows (MapRoulette export included).
+Detects individual rooftop solar PV arrays (target > 400 m², the practical floor for
+per-pixel supervision at Sentinel-2's 10 m GSD) from Sentinel-2 L2A imagery by
+fine-tuning the open-source **TerraMind** geospatial foundation model (IBM/ESA, 2025)
+with **TerraTorch**. Labels come from OpenStreetMap solar mapping via **Overture Maps**
+(`source_tags` on the base/infrastructure layer); building footprints and admin
+boundaries also come from Overture. Designed to be recall-oriented: candidates are meant
+to be human-validated against imagery in OSM workflows (MapRoulette export included).
+Installations below 400 m² aren't targeted by detection — their aggregate capacity is
+estimated instead by the density stage (see "PV density per building" below).
 
 - **Training region:** Germany (dense OSM solar labels, geographic train/val split by state)
 - **Inference target:** Punjab, Pakistan (building-screened chip grid)
@@ -225,9 +227,10 @@ acceptable — candidates are human-validated against high-res imagery in OSM. T
 Punjab numbers, while much weaker, are ~3× the Germany-only model (0.18 at ≥1000 m²):
 in-domain chips matter. The residual Punjab misses look imagery-limited (smog-season
 composites, mixed pixels, OSM label noise) — the model outputs near-zero probability
-on them even at threshold 0.05, and oversampling Punjab 4× did not help. Sub-500 m²
-detection remains unreliable at Sentinel-2's 10 m floor; use PlanetScope/VHR if small
-residential rooftops matter.
+on them even at threshold 0.05, and oversampling Punjab 4× did not help. Sub-400 m²
+detection remains unreliable at Sentinel-2's 10 m floor — that's out of scope for
+individual detection by design; the density stage's `est_mwp_exp`/`est_mwp_cal` (below)
+is the intended way to estimate capacity from installations this small.
 
 ## Pakistan inference result (country-wide)
 
@@ -400,6 +403,21 @@ by the density-calibration path below) share the same batched fetcher. Like
 falls back to Earth Search (AWS Open Data, no auth/tokens, a different failure domain)
 if PC returns no scenes at all for that group's bbox.
 
+**Glint as a direct detector, not just a corroborator — tested negative in dense urban
+blocks, with a fix.** Exhaustively scanning every building (not just model candidates)
+in a ~0.2 km² Lahore residential block against fresh Overpass ground truth (430/503
+buildings already mapped) found **zero** detections anywhere — mapped or unmapped. Not
+a bug: the default check requires the surrounding annulus to be dim *right now*
+(`a > 1.5×r`), which fails structurally at ~2,500 buildings/km² — every annulus is lined
+with similarly-bright rooftops, so even a confirmed, heavily-panelled 503 m² rooftop
+never exceeded a 1.09× ratio over a full year. `--glint-self-referenced`
+(`glint.annotate_spikes`) swaps that for a temporal check — the annulus must stay near
+*its own* baseline, not be dim in absolute terms — which targets exactly this failure
+mode while keeping the same cloud/haze rejection. Verified to match the default mode
+almost exactly (±1 `n_consistent`) on 8 real installations the default already detects,
+so it's a different criterion for the same evidence, not a laxer one — reach for it in
+dense urban contexts, not as a general replacement.
+
 ## PV density per building (energy-model / PyPSA export)
 
 `density` (`src/earthpv/density.py`) turns the same probability rasters into
@@ -463,7 +481,7 @@ because the previous one had a measurable gap:
 
 1. **Detected-area floor** — thresholded candidate polygons joined to footprints
    (`est_mwp_det`). Precision-honest but blind to everything below the threshold and
-   below the ~1000 m² detection size, i.e. to most residential PV.
+   below the ~400 m² detection size, i.e. to most residential PV.
 2. **Probability-weighted expectation** (`est_mwp_exp`) — Σ per-pixel probability
    × 100 m² over each footprint. Integrates sub-threshold signal; together the two
    metrics bracket the truth.
