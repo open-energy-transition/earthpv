@@ -137,7 +137,8 @@ def new_lead_mask(
 
 
 def run_export(
-    aoi: str, pred_dir: Path, exclude_mapped: bool = False, min_distance_m: float = 0.0
+    aoi: str, pred_dir: Path, exclude_mapped: bool = False, min_distance_m: float = 0.0,
+    epoch_clean: bool = False, epoch_fp_max_prior: float = 0.5,
 ) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pred_dir = Path(pred_dir) / aoi
@@ -157,7 +158,7 @@ def run_export(
     gj = pred_dir / f"{aoi}_pv_candidates.geojson"
     cands.to_file(gj, driver="GeoJSON")
 
-    if exclude_mapped:
+    if exclude_mapped or epoch_clean:
         from earthpv.config import Settings
         from earthpv.labels import resolve_aoi
 
@@ -173,8 +174,37 @@ def run_export(
             "New leads (not already mapped, >%.0fm): %d / %d candidates",
             min_distance_m, len(leads), len(cands),
         )
-        nl = pred_dir / f"{aoi}_pv_new_leads.geojson"
-        leads.to_file(nl, driver="GeoJSON")
+        if exclude_mapped:
+            nl = pred_dir / f"{aoi}_pv_new_leads.geojson"
+            leads.to_file(nl, driver="GeoJSON")
+
+    if epoch_clean:
+        # Precision-leaning EXTRA artifact — the only export that drops candidates.
+        # A lead that was already bright in the pre-boom (2021/22) epoch is most
+        # likely a persistent non-PV feature (bright roof/soil/water), the same
+        # judgement _epoch_note surfaces to mappers; here it becomes a hard filter
+        # so a validation queue can skip those entirely. Never-checked candidates
+        # (no pre-boom raster coverage) are kept — absence of evidence is not a
+        # verdict. Caveat: PV that already existed pre-boom is dropped along with
+        # the false positives, so this file trades a little real (old, unmapped)
+        # PV for a much cleaner queue; the default new_leads file keeps everything.
+        if not {"epoch_checked", "epoch_prior"} <= set(leads.columns):
+            log.warning(
+                "epoch-clean requested but candidates carry no epoch columns — rerun "
+                "`earthpv postprocess` with --preboom-prob-dir first; file not written"
+            )
+        else:
+            checked = leads["epoch_checked"].astype(bool).to_numpy()
+            fp = checked & (leads["epoch_prior"].to_numpy(float) < epoch_fp_max_prior)
+            clean = leads[~fp]
+            ec = pred_dir / f"{aoi}_pv_new_leads_epochclean.geojson"
+            clean.to_file(ec, driver="GeoJSON")
+            log.info(
+                "Epoch-clean leads: dropped %d likely pre-boom FPs (epoch_prior < %.2f) "
+                "of %d checked; kept %d never-checked; %d / %d leads -> %s",
+                int(fp.sum()), epoch_fp_max_prior, int(checked.sum()),
+                int((~checked).sum()), len(clean), len(leads), ec.name,
+            )
 
     # MapRoulette: newline-delimited FeatureCollections (RFC 7464-style, MR "lineByLine")
     mr = pred_dir / f"{aoi}_pv_maproulette.geojson"
