@@ -126,13 +126,18 @@ def evaluate(
     chips_name: str = typer.Option(
         None, help="Chip subdir under chips_dir if not <aoi> (e.g. germany_fraction)"
     ),
+    labels_dir: Path = typer.Option(
+        Path("data/labels"), help="Prefer <labels_dir>/<aoi>_overpass_solar.parquet over the "
+        "source_region cache when it exists (matches chips.py's build_chips) -- needed for "
+        "AOIs trained off a live Overpass pull rather than a rooftopsenti-cached region"
+    ),
 ) -> None:
     """Report pixel IoU/F1 and per-installation recall by array size."""
     from earthpv.evaluate import evaluate as _eval
 
     _eval(
         aoi=aoi, checkpoint=checkpoint, chips_dir=chips_dir, threshold=threshold,
-        task_type=task_type, chips_name=chips_name,
+        task_type=task_type, chips_name=chips_name, labels_dir=labels_dir,
     )
 
 
@@ -356,6 +361,11 @@ def atlas(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs `density` already run"),
     pred_dir: Path = typer.Option(Path("data/predictions")),
     out: Path = typer.Option(None, help="Output HTML (default <pred_dir>/<aoi>/density/<aoi>_pv_atlas.html)"),
+    zoom_out: float = typer.Option(
+        0.0, help="Pad the map bounds by this fraction of their own span (e.g. 0.10 = "
+        "10% less zoom: draws the country 10% smaller, showing that much more "
+        "surrounding context) — cells/provinces/cities are unchanged, just rescaled"
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
@@ -364,7 +374,7 @@ def atlas(
     from earthpv.atlas import build_atlas
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    build_atlas(aoi, Path(pred_dir) / aoi / "density", out=out)
+    build_atlas(aoi, Path(pred_dir) / aoi / "density", out=out, zoom_out_frac=zoom_out)
 
 
 @app.command()
@@ -403,6 +413,14 @@ def calibrate_candidates(
         "OSM cache (independent of this pipeline's own OSM contributions), 'all' = every mapped "
         "feature incl. pipeline-validated leads (recall biased up -> smaller correction), "
         "'none' = skip recall (est_mwp_rc degenerates to est_mwp_cal)",
+    ),
+    calibration_box: list[Path] = typer.Option(
+        [], help="Fully-mapped ground-truth quadrat(s) "
+        "(docs/calibration-mapping-protocol.md), e.g. "
+        "data/labels/lahore_calib_1km_overpass_solar.parquet. Unlike the country snapshot "
+        "(only as complete as OSM happens to be), every real installation inside a "
+        "quadrat is known, so this measures TRUE recall, not recall-against-what's-mapped "
+        "— pooled into the recall reference. Repeat the flag for more than one box",
     ),
     min_distance_m: float = typer.Option(100.0, help="Mapped-candidate distance (match export)"),
     out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
@@ -456,6 +474,31 @@ def calibrate_candidates(
             n0 = len(ref)
             ref = cc.coverage_filter(ref, Path(pred_dir) / aoi / "prob")
             typer.echo(f"recall reference: {len(ref)}/{n0} features inside imaged coverage")
+
+    if calibration_box:
+        from earthpv.export import new_lead_mask
+
+        boxes = gpd.GeoDataFrame(
+            pd.concat([gpd.read_parquet(p) for p in calibration_box], ignore_index=True),
+        )
+        boxes = boxes[boxes.geometry.geom_type.isin(("Polygon", "MultiPolygon"))].reset_index(drop=True)
+        typer.echo(f"calibration box(es) ({', '.join(p.name for p in calibration_box)}): "
+                   f"{len(boxes)} fully-mapped ground-truth installations")
+        box_idx = cc.bin_index(boxes["area_m2"].to_numpy())
+        box_matched = ~new_lead_mask(boxes, cands, min_distance_m=min_distance_m)
+        for b, label in enumerate(cc.BIN_LABELS):
+            m = box_idx == b
+            if m.any():
+                typer.echo(f"  box-only recall[{label}]: {int(box_matched[m].sum())}/{int(m.sum())} "
+                           f"(pooled into the table below, alongside {ref_name})")
+        ref = (
+            gpd.GeoDataFrame(pd.concat([ref, boxes], ignore_index=True), crs=boxes.crs)
+            if ref is not None else boxes
+        )
+        ref_name = (f"{ref_name} + " if ref_name != "none" else "") + (
+            f"{len(calibration_box)} ground-truth calibration box(es) "
+            f"({len(boxes)} fully-mapped installations)"
+        )
 
     table = cc.derive_table(
         cands, mapped, aoi=aoi, glint_sample=sample, min_distance_m=min_distance_m,

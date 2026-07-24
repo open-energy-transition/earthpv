@@ -36,17 +36,28 @@ def _bucket(area: float) -> str:
 
 def evaluate(
     aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3,
-    task_type: str = "auto", chips_name: str | None = None,
+    task_type: str = "auto", chips_name: str | None = None, labels_dir: Path = Path("data/labels"),
 ) -> pd.DataFrame:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     import torch
 
+    from earthpv.chips import _overpass_labels
     from earthpv.infer import _sniff_task_type, load_model
 
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
-    region_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
-    labels = load_solar_labels(region_dir)
+    # Prefer a fresh Overpass pull over the aoi's source_region cache, exactly like
+    # chips.py::build_chips (chips.py:277-284) -- AOIs trained off live OSM (no
+    # rooftopsenti dataset for their true training labels, e.g. pakistan's
+    # source_region pakistan_500 is a stale/geographically-different cache) must be
+    # evaluated against the SAME labels they were trained on, not that cache.
+    overpass_path = Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
+    if overpass_path.exists():
+        labels = _overpass_labels(overpass_path)
+        log.info("Using Overpass labels from %s", overpass_path)
+    else:
+        region_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
+        labels = load_solar_labels(region_dir)
     if task_type == "auto":
         task_type = _sniff_task_type(checkpoint)
     placements = ["rooftop", "ground", "small"] if task_type == "regression" else \

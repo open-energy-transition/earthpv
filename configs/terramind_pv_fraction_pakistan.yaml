@@ -1,0 +1,60 @@
+# TerraTorch fine-tuning config for PV FRACTION regression (sub-pixel density),
+# Pakistan-tuned. Copy of configs/terramind_pv_fraction.yaml (Germany-only) with
+# only index_path/checkpoint_dir changed: same backbone/necks/decoder/loss, trained
+# fresh from the pretrained TerraMind backbone on Germany + Pakistan combined
+# (scripts/merge_fraction_chip_index.py), the same recipe that took the
+# segmentation model from Germany-only zero-shot to a real Pakistan checkpoint
+# (pk16085, F1 0.624). task_type is read by train.py/infer.py to dispatch
+# PixelwiseRegressionTask instead of SemanticSegmentationTask; the *absence* of
+# num_classes is also how infer.py/evaluate.py auto-detect a checkpoint's task type.
+task_type: regression
+
+data:
+  # Germany (unfiltered, 5,587 chips) + Pakistan (pakistan_overpass_solar.parquet,
+  # 16,085 features, oversampled 2x train) via merge_fraction_chip_index.py.
+  index_path: data/chips/combined_fraction/index.parquet
+  batch_size: 8
+  num_workers: 4
+  # PVDataModule/PVChipDataset: read masks as float32 fractions instead of int64 classes.
+  target: fraction
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    head_final_act: torch.nn.Sigmoid
+    rescale: true
+  # Plain MSE/Huber collapse to predict-zero under the heavy zero-inflation of a fraction
+  # target; weighted_mse (train.py) scales the loss by (1 + k*target) instead.
+  loss: weighted_mse
+  weighted_mse_args: {k: 10.0}
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/fraction_pakistan_v1
+patience: 8
+# PixelwiseRegressionTask logs val/RMSE, val/MSE, val/MAE, val/R2_Score, val/loss.
+monitor: val/RMSE
+monitor_mode: min

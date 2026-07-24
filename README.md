@@ -512,6 +512,23 @@ that the model matched with any candidate (0 % at <100 m² rising to 100 % at >5
 Pakistan) — and **90 % credible intervals** on every rate, from posterior draws over the
 stored binomial counts (Jeffreys Beta for directly-observed rates; a binomial-mixture
 likelihood for the glint inversion, which stays honestly wide where sensitivity ≈ false
+
+`--calibration-box` pools in fully-mapped ground-truth quadrats
+(`docs/calibration-mapping-protocol.md` — small areas where *every* real installation is
+known, unlike the country snapshot, which is only as complete as OSM happens to be there)
+as additional recall evidence: the box's own per-bin (installations, matched) counts are
+added directly to the snapshot's before the same Beta-posterior machinery runs, so a small
+quadrat nudges the estimate and its interval by exactly as much as its sample size honestly
+supports — no separate code path, no manual override. First box (Lahore, 1 km², 8
+fully-mapped rooftop installations, 0 matched — see `docs/issues/pakistan-calibration-boxes.md`)
+pulled the 100-500 m² and 500-1k m² recall estimates down slightly (58.5→56.5%, 73.6→73.2%)
+and widened their intervals; the national `est_mwp_rc` barely moves (+0.001%) because n=8
+against a ~2,800-installation snapshot is exactly as small as it looks — the point of the
+mechanism is to be ready to matter once more of the protocol's planned 25-35 quadrats land,
+not to overclaim from the first one. That the box's *true* recall (0/8) sits well below the
+snapshot-based recall in the same bins is itself a signal (not yet statistically load-bearing
+at n=8) that snapshot recall may be optimistic — OSM completeness is uneven, and a mapper is
+more likely to have mapped exactly the installations a model also finds easiest.
 floor instead of pretending precision).
 
 Four PV-area metrics are reported because the model is deliberately recall-first and no
