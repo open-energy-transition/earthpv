@@ -45,7 +45,16 @@ def _rings(geom, tolerance: float = 0.03) -> list:
     ]
 
 
-def build_atlas(aoi: str, density_dir: Path, out: Path | None = None) -> Path:
+def build_atlas(
+    aoi: str, density_dir: Path, out: Path | None = None, zoom_out_frac: float = 0.0,
+) -> Path:
+    """`zoom_out_frac` pads the map's lon/lat bounds by this fraction of their own
+    span on every side (e.g. 0.10 = 10% less zoom: the map draws 10% smaller within
+    the same frame, showing that much more surrounding context). The template's
+    `proj()` fits the SVG viewBox exactly to `DATA.bounds`, so this is the only knob
+    that changes -- cells, province outlines and city labels all fall out unchanged,
+    just at the new scale (a city just outside the old bounds may now come into view;
+    none already inside can drop out, since the box only grows)."""
     density_dir = Path(density_dir)
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
     meta = json.loads((density_dir / "meta.json").read_text())
@@ -67,6 +76,13 @@ def build_atlas(aoi: str, density_dir: Path, out: Path | None = None) -> Path:
         round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
         round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
     ]
+    if zoom_out_frac:
+        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
+        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
+        bounds = [
+            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
+            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
+        ]
 
     provinces = []
     regions_path = density_dir / "regions.geoparquet"
