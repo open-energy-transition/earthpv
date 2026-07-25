@@ -1,19 +1,27 @@
 """Self-contained HTML capacity atlas from `density` outputs.
 
-Renders the night-lights-style choropleth page originally hand-built as
-results/pakistan_7_7/pakistan_pv_atlas.html (template extracted to
-templates/pv_atlas.html): an SVG 0.1° cell map with province outlines, hero
-capacity number, province ranking and method notes — no external requests, dark
-and light themes. `density` calls `build_atlas` at the end of every run; the
-`earthpv atlas` CLI command regenerates it standalone.
+Two templates, chosen automatically by what the density run actually computed:
 
-The colour/hero metric is `est_mwp_cal` when the run was calibrated
-(capacity_calibration), else `est_mwp_det`; detected and expected stay visible
-as the bracketing floor/ceiling.
+- **Six-estimator atlas** (`templates/pv_estimator_atlas.html`, the default whenever
+  the columns exist): the night-lights choropleth originally hand-built as
+  results/pakistan_pv_estimator_atlas.html, switchable between all six capacity
+  estimators (detected / calibrated / expected / recall-corrected-rooftop in
+  rooftop scope; calibrated / recall-corrected in all-PV scope) with a national
+  comparison chart, credible-interval bands and a province ranking that follows
+  the selected estimator. Requires `est_mwp_rc*` columns, i.e. a run that had a
+  capacity_calibration table (`earthpv calibrate-candidates` before `density`).
+- **Simple atlas** (`templates/pv_atlas.html`, the fallback): a single-metric
+  night-lights map (est_mwp_cal if calibrated, else est_mwp_det, bracketed by
+  expected) for runs without recall-correction — e.g. Germany, or a partial/
+  validation-only density run that skipped calibration.
+
+`density` calls `build_atlas` at the end of every run; the `earthpv atlas` CLI
+command regenerates it standalone.
 """
 
 from __future__ import annotations
 
+import datetime
 import json
 import logging
 from pathlib import Path
@@ -23,6 +31,7 @@ import geopandas as gpd
 log = logging.getLogger(__name__)
 
 TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
+ESTIMATOR_TEMPLATE = Path(__file__).parent / "templates" / "pv_estimator_atlas.html"
 
 # Major-city annotations per AOI (the map renders fine with none).
 CITIES: dict[str, list] = {
@@ -33,6 +42,43 @@ CITIES: dict[str, list] = {
         ["Gujranwala", 74.19, 32.16], ["Sukkur", 68.85, 27.7], ["Bahawalpur", 71.68, 29.4],
     ],
 }
+
+# Calibration ground-truth quadrats per AOI (docs/issues/pakistan-calibration-boxes.md):
+# 1 km^2 boxes fully re-mapped this session and pooled into the recall-corrected
+# estimator's denominator. `status` is an AI visual pass against high-res imagery,
+# NOT a Rule-1 two-mapper verification -- corroboration, not independent ground truth.
+CALIBRATION_BOXES: dict[str, list] = {
+    "pakistan": [
+        {"name": "Lahore DHA Phase V", "file": "lahore", "status": "corroborated"},
+        {"name": "Faisalabad (PSIE)", "file": "faisalabad", "status": "suspect"},
+        {"name": "Multan Industrial Estate", "file": "multan", "status": "corroborated"},
+        {"name": "Sundar Industrial Estate", "file": "sundar", "status": "corroborated"},
+        {"name": "SITE Karachi", "file": "site_karachi", "status": "corroborated"},
+    ],
+}
+
+
+def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[dict]:
+    """Ring geometry + live-pulled installation count for each defined calibration
+    quadrat. A box with no `<file>_calib_1km_overpass_solar.parquet` (Multan) had
+    zero solar features on its last live Overpass pull, not a missing fetch."""
+    import pandas as pd
+
+    out = []
+    for box in CALIBRATION_BOXES.get(aoi, []):
+        boundary = Path(labels_dir) / f"{box['file']}_calib_1km_boundary.geojson"
+        if not boundary.exists():
+            continue
+        geom = gpd.read_file(boundary)
+        centroid = geom.union_all().centroid
+        solar_path = Path(labels_dir) / f"{box['file']}_calib_1km_overpass_solar.parquet"
+        n = len(pd.read_parquet(solar_path)) if solar_path.exists() else 0
+        out.append({
+            "name": box["name"], "status": box["status"],
+            "lon": round(float(centroid.x), 4), "lat": round(float(centroid.y), 4),
+            "n": n, "rings": _rings(geom.union_all(), tolerance=0.0),
+        })
+    return out
 
 
 def _rings(geom, tolerance: float = 0.03) -> list:
@@ -47,17 +93,32 @@ def _rings(geom, tolerance: float = 0.03) -> list:
 
 def build_atlas(
     aoi: str, density_dir: Path, out: Path | None = None, zoom_out_frac: float = 0.0,
+    labels_dir: Path = Path("data/labels"),
 ) -> Path:
     """`zoom_out_frac` pads the map's lon/lat bounds by this fraction of their own
     span on every side (e.g. 0.10 = 10% less zoom: the map draws 10% smaller within
-    the same frame, showing that much more surrounding context). The template's
-    `proj()` fits the SVG viewBox exactly to `DATA.bounds`, so this is the only knob
-    that changes -- cells, province outlines and city labels all fall out unchanged,
-    just at the new scale (a city just outside the old bounds may now come into view;
-    none already inside can drop out, since the box only grows)."""
+    the same frame, showing that much more surrounding context).
+
+    Dispatches to the six-estimator template when the run has recall-correction
+    columns (est_mwp_rc*, i.e. `calibrate-candidates` ran before `density`); falls
+    back to the single-metric template otherwise. See module docstring."""
     density_dir = Path(density_dir)
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
     meta = json.loads((density_dir / "meta.json").read_text())
+    if "est_mwp_rc" in grid.columns:
+        return _build_estimator_atlas(aoi, density_dir, grid, meta, out, zoom_out_frac, labels_dir)
+    return _build_simple_atlas(aoi, density_dir, grid, meta, out, zoom_out_frac)
+
+
+def _build_simple_atlas(
+    aoi: str, density_dir: Path, grid: gpd.GeoDataFrame, meta: dict,
+    out: Path | None = None, zoom_out_frac: float = 0.0,
+) -> Path:
+    """The template's `proj()` fits the SVG viewBox exactly to `DATA.bounds`, so
+    `zoom_out_frac` is the only knob that changes -- cells, province outlines and
+    city labels all fall out unchanged, just at the new scale (a city just outside
+    the old bounds may now come into view; none already inside can drop out, since
+    the box only grows)."""
     calibrated = (
         meta.get("calibration_status", "uncalibrated") != "uncalibrated"
         and "est_mwp_cal" in grid.columns
@@ -194,4 +255,112 @@ def build_atlas(
     out = Path(out) if out else density_dir / f"{aoi}_pv_atlas.html"
     out.write_text(html)
     log.info("Wrote capacity atlas (%s metric) -> %s", word, out)
+    return out
+
+
+# Cell/province/total field order shared with templates/pv_estimator_atlas.html's
+# METRICS registry -- keep the two in sync if either changes.
+_EST_COLS = [
+    "est_mwp_det", "est_mwp_cal", "est_mwp_exp", "est_mwp_rc_roof",
+    "est_mwp_cal_total", "est_mwp_rc",
+]
+
+
+def _build_estimator_atlas(
+    aoi: str, density_dir: Path, grid: gpd.GeoDataFrame, meta: dict,
+    out: Path | None = None, zoom_out_frac: float = 0.0,
+    labels_dir: Path = Path("data/labels"),
+) -> Path:
+    """Six-estimator dark night-lights atlas (see module docstring)."""
+    title = aoi.replace("_", " ").title()
+
+    cells = [
+        [round(float(r.lon0), 3), round(float(r.lat0), 3),
+         *[round(float(getattr(r, c)), 3) for c in _EST_COLS],
+         int(r.n_pv_buildings),
+         round(float(r.est_mwp_rc_lo), 3), round(float(r.est_mwp_rc_hi), 3)]
+        for r in grid.itertuples()
+    ]
+    bounds = [
+        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
+        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
+    ]
+    if zoom_out_frac:
+        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
+        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
+        bounds = [
+            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
+            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
+        ]
+
+    provinces = []
+    regions_path = density_dir / "regions.geoparquet"
+    if regions_path.exists():
+        reg = gpd.read_parquet(regions_path)
+        for r in reg[reg.level == "region"].itertuples():
+            provinces.append({
+                "name": str(r.name),
+                "m": [round(float(getattr(r, c)), 1) for c in _EST_COLS],
+                "rc_ci": [round(float(r.est_mwp_rc_lo), 1), round(float(r.est_mwp_rc_hi), 1)],
+                "rcr_ci": [round(float(r.est_mwp_rc_roof_lo), 1), round(float(r.est_mwp_rc_roof_hi), 1)],
+                "ct_ci": [round(float(r.est_mwp_cal_total_lo), 1), round(float(r.est_mwp_cal_total_hi), 1)],
+                "rings": _rings(r.geometry),
+            })
+
+    run_date = meta.get("run_date")
+    if not run_date:
+        meta_path = density_dir / "meta.json"
+        run_date = (
+            datetime.datetime.fromtimestamp(meta_path.stat().st_mtime).strftime("%Y-%m-%d")
+            if meta_path.exists() else "n/a"
+        )
+
+    data = {
+        "bounds": bounds,
+        "cells": cells,
+        "provinces": provinces,
+        "cities": CITIES.get(aoi, []),
+        "calibBoxes": _load_calib_boxes(aoi, labels_dir),
+        "totals": {
+            "m": [round(float(grid[c].sum())) for c in _EST_COLS],
+            "rc_ci": [round(float(grid.est_mwp_rc_lo.sum())), round(float(grid.est_mwp_rc_hi.sum()))],
+            "rcr_ci": [
+                round(meta.get("total_est_mwp_rc_roof_lo", grid.est_mwp_rc_roof.sum())),
+                round(meta.get("total_est_mwp_rc_roof_hi", grid.est_mwp_rc_roof.sum())),
+            ],
+            "ct_ci": [
+                round(meta.get("total_est_mwp_cal_total_lo", grid.est_mwp_cal_total.sum())),
+                round(meta.get("total_est_mwp_cal_total_hi", grid.est_mwp_cal_total.sum())),
+            ],
+            "n_cells": int(len(grid)),
+            "kwp": meta.get("kwp_per_m2", 0.18),
+            "recall_floor": meta.get("recall_floor", 0.05),
+            "run_date": run_date,
+        },
+    }
+
+    lede = (
+        "One recall-first model read a year of Sentinel-2 imagery over every "
+        f"building-populated cell of {title}. How much photovoltaic capacity it saw "
+        "depends on how honestly you count: the same probability rasters support "
+        "<b>six defensible estimates</b>, from a raw-detection floor to a "
+        "recall-corrected estimate of the whole detectable population. Switch "
+        "between them — the map, the hero number and the province ranking follow."
+    )
+    html = ESTIMATOR_TEMPLATE.read_text()
+    for key, value in {
+        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
+        "__PAGE_TITLE__": f"{title} PV Capacity — Six Estimates, One Map",
+        "__EYEBROW__": f"earthpv · Sentinel-2 × TerraMind · 0.1° grid · {run_date}",
+        "__H1__": f"{title}'s solar boom, at six exposures",
+        "__LEDE_HTML__": lede,
+    }.items():
+        html = html.replace(key, value)
+
+    out = Path(out) if out else density_dir / f"{aoi}_pv_atlas.html"
+    out.write_text(html)
+    log.info(
+        "Wrote six-estimator capacity atlas (headline %s MWp, %s calibration quadrats) -> %s",
+        f"{data['totals']['m'][5]:,}", len(data["calibBoxes"]), out,
+    )
     return out

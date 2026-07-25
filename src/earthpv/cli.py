@@ -322,6 +322,30 @@ def hard_negative_chips(
     build_hard_negative_chips(aoi=aoi, centers_path=centers, labels_dir=labels_dir, out_dir=out_dir)
 
 
+@app.command("road-hard-negatives")
+def road_hard_negatives(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    composites_dir: Path = typer.Option(Path("data/composites")),
+    out_dir: Path = typer.Option(Path("data/predictions")),
+    sample_spacing_m: float = typer.Option(150.0, help="Spacing (m) between sampled points along a road"),
+    mapped_buffer_m: float = typer.Option(75.0, help="Halo (m) around mapped solar excluded from sampling"),
+    chunk_deg: float = typer.Option(0.5, help="Overpass query tile size in degrees"),
+    limit: int = typer.Option(0, help="Cap number of road hard-negative centers (0 = no cap)"),
+) -> None:
+    """Mine road hard negatives: sample points along major/paved OSM highways inside
+    the AOI's composited coverage, away from any mapped solar feature. Bright, linear
+    asphalt is a real false-positive source; unlike buildings, a road needs no
+    bi-temporal check -- writes straight to hard_negatives_roads.parquet, ready for
+    `earthpv hard-negative-chips --centers`."""
+    from earthpv.roads import run_road_hard_negatives
+
+    run_road_hard_negatives(
+        aoi=aoi, composites_dir=composites_dir, out_dir=out_dir,
+        sample_spacing_m=sample_spacing_m, mapped_buffer_m=mapped_buffer_m,
+        chunk_deg=chunk_deg, limit=limit,
+    )
+
+
 @app.command()
 def density(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
