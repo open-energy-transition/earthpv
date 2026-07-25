@@ -44,8 +44,11 @@ def main(sources: list[str]) -> None:
             train = df[df.split == "train"]
             df = pd.concat([df] + [train] * (rep - 1), ignore_index=True)
         frames.append(df)
+        # Hard-negative sources (build_hard_negative_chips) burn masks the segmentation
+        # way (pv_pixels, no pv_frac_sum column) since they're all-zero targets either way.
+        pv_col = df.pv_frac_sum if "pv_frac_sum" in df.columns else df.pv_pixels
         print(f"{name} (x{rep} train, {path}): {len(df)} chips "
-              f"({int((df.split == 'val').sum())} val, {int((df.pv_frac_sum > 0).sum())} with PV)")
+              f"({int((df.split == 'val').sum())} val, {int((pv_col > 0).sum())} with PV)")
     out = pd.concat(frames, ignore_index=True)
     out_path = ROOT / "data" / "chips" / "combined_fraction" / "index.parquet"
     out_path.parent.mkdir(parents=True, exist_ok=True)

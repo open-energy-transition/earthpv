@@ -16,7 +16,7 @@ PY=.pixi/envs/default/bin/python
 [ -x "$PY" ] || PY=python
 AOI=pakistan
 LOG=data/preboom_pipeline.log
-TARGET=4464
+TARGET=4473  # current-epoch (composite_0) cell count as of 2026-07-24; was 4464, stale
 ITER=1800          # 30 min per fresh process, comfortably under the token lifetime
 COMPDIR="data/composites/$AOI/composites"
 
