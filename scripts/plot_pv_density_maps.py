@@ -136,7 +136,10 @@ def build_scientific() -> Path:
     fig.text(
         0.09, 0.965,
         f"{len(b):,} individual buildings carrying detected PV signal, calibrated capacity "
-        f"(P(real | size, glint)) at {meta.get('kwp_per_m2', 0.18)} kWp/m² of panel area · "
+        # Per-building capacity is footprint-intersected, i.e. rooftop module area, so the
+        # module constant is the one that applies. `kwp_per_m2` is the pre-split meta key.
+        f"(P(real | size, glint)) at "
+        f"{meta.get('kwp_per_m2_module', meta.get('kwp_per_m2', 0.18))} kWp/m² of panel area · "
         "TerraMind-tiny on Sentinel-2 L2A · earthpv density stage",
         fontsize=11.5, family=SANS, color="#444444", ha="left", va="top",
     )

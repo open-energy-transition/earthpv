@@ -24,6 +24,18 @@ divided by the model's measured per-size-bin recall — a Horvitz-Thompson estim
 the whole >= detection-floor population, with 90% credible intervals from posterior
 draws over every calibration count; see `_candidate_uncertainty`).
 
+Area becomes capacity through **two** constants, not one, because detected area means
+two different things (capacity_calibration.DEFAULT_KWP_PER_M2_{MODULE,LAND}): a rooftop
+detection is ~module area, a ground-mount detection is *site* area, of which only the
+ground-cover ratio is module. Every all-PV estimator is therefore split by `placement`
+before conversion (`_ratios`), and both constants carry lognormal priors that propagate
+into the credible intervals (`_composed_mwp_draws`).
+
+Candidates above `postprocess.MAX_CANDIDATE_M2` are excluded here (not from the leads
+product): a single multi-km2 polygon is a merged false-positive sheet or a whole plant
+site, and converting it as one installation's panel area is what let a handful of blobs
+dominate a country total.
+
 Three layers are written to `data/predictions/<aoi>/density/`:
   buildings.geoparquet  — one row per building carrying a PV signal
   grid.geoparquet/.csv  — one row per 0.1 deg cell (the pipeline's native grid)
@@ -57,23 +69,36 @@ from tqdm import tqdm
 
 from earthpv import overture
 from earthpv.buildings import _iso3_for, fetch_vida_buildings
+from earthpv.capacity_calibration import (
+    DEFAULT_KWP_PER_M2_LAND,
+    DEFAULT_KWP_PER_M2_MODULE,
+)
 from earthpv.compose import CELL_DEG, _aoi_boundary
 from earthpv.config import Settings
 from earthpv.labels import geodesic_area_m2, resolve_aoi
+from earthpv.postprocess import MAX_CANDIDATE_M2
 
 log = logging.getLogger(__name__)
 
 PIXEL_M2 = 100.0  # 10 m x 10 m Sentinel-2 pixel
-# kWp per m2 of detected panel area. ~5.5 m2 of c-Si module per kWp -> ~0.18 kWp/m2.
-# The model detects the dark panel area itself, so this maps area -> capacity directly.
-DEFAULT_KWP_PER_M2 = 0.18
+# Retained name for the rooftop/module constant (pv_capacity imports it); the ground-mount
+# constant is DEFAULT_KWP_PER_M2_LAND. See capacity_calibration for both derivations.
+DEFAULT_KWP_PER_M2 = DEFAULT_KWP_PER_M2_MODULE
 
 # Additive per-cell columns summed up into region totals (never average ratios).
 _SUM_COLS = [
     "n_buildings", "roof_area_m2", "n_pv_buildings",
     "pv_area_det_roof_m2", "pv_area_det_total_m2", "pv_area_det_roofcand_m2",
-    "pv_area_cal_roof_m2", "pv_area_cal_total_m2",
+    "pv_area_cal_roof_m2", "pv_area_cal_total_m2", "pv_area_cal_roofcand_m2",
     "pv_area_exp_m2", "pv_area_exp_roof_m2",
+]
+# The subset of _SUM_COLS that describes the *candidate* population rather than the
+# building/raster layers. These are recomputed from the (oversize-filtered) candidate
+# frame by `candidate_cell_totals` on every run, so the filter takes effect without
+# rebuilding the expensive per-cell partials; any copies in cached partials are dropped.
+_CAND_COLS = [
+    "pv_area_det_total_m2", "pv_area_det_roofcand_m2",
+    "pv_area_cal_total_m2", "pv_area_cal_roofcand_m2",
 ]
 
 
@@ -246,6 +271,52 @@ def per_building_detected(bu: gpd.GeoDataFrame, cands: gpd.GeoDataFrame) -> pd.D
                          "pv_conf_det": conf, "pv_placement": placement})
 
 
+def candidate_cell_totals(
+    cands: gpd.GeoDataFrame, origin: tuple[float, float], manifest_cells: set[str]
+) -> pd.DataFrame:
+    """Per-cell candidate-population areas, split into rooftop-placed and everything else.
+
+    One row per cell that has candidates, with the four `_CAND_COLS`. Candidates are
+    assigned to exactly one cell by representative point, matching how
+    `_candidate_uncertainty` assigns them, so the point columns and the draw matrices
+    describe the same population.
+
+    The rooftop/other split is what makes the two-constant capacity conversion possible:
+    `*_roofcand` converts at the module constant, the remainder (total minus roofcand,
+    i.e. `ground_adjacent` + `no_building`) at the land constant. Deriving these here
+    rather than in `process_cell` keeps them a pure function of the candidate frame handed
+    in, so an oversize filter or a re-calibration takes effect on a plain re-run.
+    """
+    cols = ["cell", *_CAND_COLS]
+    if cands.empty:
+        return pd.DataFrame({c: pd.Series(dtype="float64") for c in cols}).astype({"cell": object})
+    minx, miny = origin
+    reps = cands.geometry.representative_point()
+    ix = np.floor((reps.x.to_numpy() - minx) / CELL_DEG).astype(int)
+    iy = np.floor((reps.y.to_numpy() - miny) / CELL_DEG).astype(int)
+    cell = np.array([f"{i:04d}_{j:04d}" for i, j in zip(ix, iy)])
+
+    area = cands["area_m2"].to_numpy(float)
+    p_real = (
+        cands["p_real"].to_numpy(float) if "p_real" in cands.columns else np.ones(len(cands))
+    )
+    roof = (
+        cands["placement"].astype(str).to_numpy() == "rooftop"
+        if "placement" in cands.columns else np.zeros(len(cands), bool)
+    )
+    df = pd.DataFrame({
+        "cell": cell,
+        "pv_area_det_total_m2": area,
+        "pv_area_det_roofcand_m2": np.where(roof, area, 0.0),
+        "pv_area_cal_total_m2": area * p_real,
+        "pv_area_cal_roofcand_m2": np.where(roof, area * p_real, 0.0),
+    })
+    keep = df["cell"].isin(manifest_cells)
+    if not keep.all():
+        log.info("Cell totals: %d candidates outside manifest cells ignored", int((~keep).sum()))
+    return df[keep].groupby("cell", as_index=False)[_CAND_COLS].sum()
+
+
 def process_cell(
     row, cands: gpd.GeoDataFrame, con, iso3: str, min_prob: float,
     min_building_exp_m2: float, cells_dir: Path, force: bool,
@@ -275,22 +346,15 @@ def process_cell(
         )
         bu = bu[in_box.to_numpy()].reset_index(drop=True)
 
-    # Candidates intersecting the cell (for per-building detection) and those assigned
-    # to it by representative point (for cell totals that reconcile with candidates.parquet).
+    # Candidates intersecting the cell, for the per-building detected area. Cell-level
+    # candidate-population totals are NOT computed here — `candidate_cell_totals` derives
+    # them from the whole candidate frame at aggregate time, so they always reflect the
+    # current oversize filter rather than whatever was in force when a partial was written.
     box_geom = shapely_box(lon0, lat0, lon0 + CELL_DEG, lat0 + CELL_DEG)
     cand_hits = (
         cands.iloc[cands.sindex.query(box_geom, predicate="intersects")]
         if not cands.empty else cands
     )
-    if not cand_hits.empty:
-        crp = cand_hits.geometry.representative_point()
-        c_in = (
-            (crp.x >= lon0) & (crp.x < lon0 + CELL_DEG)
-            & (crp.y >= lat0) & (crp.y < lat0 + CELL_DEG)
-        )
-        cands_in = cand_hits[c_in.to_numpy()]
-    else:
-        cands_in = cand_hits
 
     n_buildings = len(bu)
     roof_area = float(bu["area_m2"].sum()) if n_buildings else 0.0
@@ -343,24 +407,10 @@ def process_cell(
             "pv_area_exp_roof_m2": 0.0,
         }
 
-    if not cands_in.empty:
-        p_real_in = (
-            cands_in["p_real"].to_numpy(float)
-            if "p_real" in cands_in.columns else np.ones(len(cands_in))
-        )
-        cal_total = float((cands_in["area_m2"].to_numpy(float) * p_real_in).sum())
-    else:
-        cal_total = 0.0
     summary.update({
         "cell": row.cell, "ix": int(row.ix), "iy": int(row.iy),
         "lon0": lon0, "lat0": lat0,
         "pv_area_exp_m2": exp_cell,
-        "pv_area_det_total_m2": float(cands_in["area_m2"].sum()) if not cands_in.empty else 0.0,
-        "pv_area_cal_total_m2": cal_total,
-        "pv_area_det_roofcand_m2": (
-            float(cands_in[cands_in.placement == "rooftop"]["area_m2"].sum())
-            if not cands_in.empty else 0.0
-        ),
     })
 
     cells_dir.mkdir(parents=True, exist_ok=True)
@@ -452,6 +502,8 @@ def _candidate_uncertainty(
     origin: tuple[float, float],
     manifest_cells: set[str],
     recall_floor: float,
+    kwp_module: float = DEFAULT_KWP_PER_M2_MODULE,
+    kwp_land: float = DEFAULT_KWP_PER_M2_LAND,
     n_draws: int = 1000,
 ) -> dict | None:
     """Per-cell recall-corrected (Horvitz-Thompson) candidate area with posterior draws.
@@ -474,6 +526,10 @@ def _candidate_uncertainty(
     cell's draw rows gives the correct interval at any aggregation level. Returns
     per-cell draw matrices (m^2) for the calibrated and recall-corrected sums, for
     the full and rooftop-placed candidate populations.
+
+    Also returns matching draws for the two area->capacity constants (`kwp`), drawn at the
+    same `n_draws` so `_composed_mwp_draws` can turn any (all, rooftop) pair of area
+    matrices into MWp draws that carry the conversion uncertainty as well.
     """
     from earthpv import capacity_calibration as cc
 
@@ -536,21 +592,50 @@ def _candidate_uncertainty(
     return {
         "cells": cells, "pos": pos, "mats": mats, "points": points,
         "n_draws": n_draws, "recall_floor": recall_floor,
+        "kwp": cc.kwp_draws(n_draws=n_draws, module=kwp_module, land=kwp_land),
     }
 
 
-def _unc_mwp_ci(unc: dict, cell_list: list[str], kwp_per_m2: float) -> dict:
-    """Credible intervals (MWp) over the summed draws of a set of cells."""
+def _composed_mwp_draws(
+    unc: dict, all_key: str, roof_key: str, rows: list[int] | None = None
+) -> np.ndarray:
+    """Per-draw MWp for an area draw matrix, split by placement before conversion.
+
+    `all_key` is the whole candidate population, `roof_key` its rooftop-placed subset;
+    the remainder is ground-mount and converts at the land constant. Pass `rows` to sum a
+    cell subset first (region/country totals), or None to keep the per-cell axis (the
+    grid layer's own intervals). Shapes: (n_draws,) with rows, (n_cells, n_draws) without.
+    """
+    tot_m2 = unc["mats"][all_key]
+    roof_m2 = unc["mats"][roof_key]
+    if rows is not None:
+        n = unc["n_draws"]
+        tot_m2 = tot_m2[rows].sum(axis=0) if rows else np.zeros(n)
+        roof_m2 = roof_m2[rows].sum(axis=0) if rows else np.zeros(n)
+    ground_m2 = np.clip(tot_m2 - roof_m2, 0.0, None)
+    kwp = unc["kwp"]
+    return (roof_m2 * kwp["module"] + ground_m2 * kwp["land"]) / 1000.0
+
+
+def _unc_mwp_ci(unc: dict, cell_list: list[str]) -> dict:
+    """Credible intervals (MWp) over the summed draws of a set of cells.
+
+    Each estimator is composed from its rooftop-placed and ground-mount parts at the two
+    per-draw kWp/m2 constants, so the interval carries the area->capacity uncertainty as
+    well as the calibration counts. `est_mwp_rc_roof` is rooftop-only, hence the same key
+    on both sides (zero ground-mount area).
+    """
     from earthpv.capacity_calibration import CI_PCT
 
     rows = [unc["pos"][c] for c in cell_list if c in unc["pos"]]
     out = {}
-    for key, name in (
-        ("rc_all", "est_mwp_rc"), ("rc_roof", "est_mwp_rc_roof"),
-        ("cal_all", "est_mwp_cal_total"),
+    for all_key, roof_key, name in (
+        ("rc_all", "rc_roof", "est_mwp_rc"),
+        ("rc_roof", "rc_roof", "est_mwp_rc_roof"),
+        ("cal_all", "cal_roof", "est_mwp_cal_total"),
     ):
-        tot = unc["mats"][key][rows].sum(axis=0) if rows else np.zeros(unc["n_draws"])
-        lo, hi = np.percentile(tot * kwp_per_m2 / 1000.0, CI_PCT)
+        tot = _composed_mwp_draws(unc, all_key, roof_key, rows)
+        lo, hi = np.percentile(tot, CI_PCT)
         out[f"{name}_lo"], out[f"{name}_hi"] = round(float(lo), 4), round(float(hi), 4)
     return out
 
@@ -558,32 +643,57 @@ def _unc_mwp_ci(unc: dict, cell_list: list[str], kwp_per_m2: float) -> dict:
 # --------------------------------------------------------------------------------------
 # Aggregation
 # --------------------------------------------------------------------------------------
-def _ratios(df: pd.DataFrame, area_km2: pd.Series, kwp_per_m2: float) -> pd.DataFrame:
+def _ratios(
+    df: pd.DataFrame, area_km2: pd.Series, kwp_module: float, kwp_land: float
+) -> pd.DataFrame:
+    """Ratios and MWp estimates for a cell/region frame.
+
+    Conversion is split by what the area physically is. The roof-scope estimators
+    (`est_mwp_det`/`_cal`/`_exp`) come from candidate-footprint *intersections*, so they
+    are module area whatever the candidate's placement, and convert at `kwp_module`. The
+    candidate-population estimators (`est_mwp_cal_total`, `est_mwp_rc`) mix rooftop-placed
+    candidates with ground-mount ones whose polygon is site area, so each is summed as
+    rooftop-placed at `kwp_module` plus the remainder at `kwp_land`. `*_ground` is exported
+    alongside because the ground/roof balance is the plausibility signal that catches
+    false-positive sheets (see plausibility.py).
+    """
     df = df.copy()
     roof = df["roof_area_m2"].clip(lower=1e-6)
     df["pv_ratio_det"] = (df.pv_area_det_roof_m2 / roof).clip(upper=1.0).round(4)
     df["pv_ratio_exp"] = (df.pv_area_exp_roof_m2 / roof).clip(upper=1.0).round(4)
     df["pv_det_m2_per_km2"] = (df.pv_area_det_roof_m2 / area_km2.clip(lower=1e-9)).round(2)
     df["pv_exp_m2_per_km2"] = (df.pv_area_exp_roof_m2 / area_km2.clip(lower=1e-9)).round(2)
-    df["est_mwp_det"] = (df.pv_area_det_roof_m2 * kwp_per_m2 / 1000.0).round(4)
-    df["est_mwp_cal"] = (df.pv_area_cal_roof_m2 * kwp_per_m2 / 1000.0).round(4)
-    df["est_mwp_cal_total"] = (df.pv_area_cal_total_m2 * kwp_per_m2 / 1000.0).round(4)
-    df["est_mwp_exp"] = (df.pv_area_exp_roof_m2 * kwp_per_m2 / 1000.0).round(4)
-    for src, dst in (
-        ("pv_area_rc_total_m2", "est_mwp_rc"), ("pv_area_rc_roofcand_m2", "est_mwp_rc_roof")
-    ):
-        if src in df.columns:
-            df[dst] = (df[src] * kwp_per_m2 / 1000.0).round(4)
+    df["est_mwp_det"] = (df.pv_area_det_roof_m2 * kwp_module / 1000.0).round(4)
+    df["est_mwp_cal"] = (df.pv_area_cal_roof_m2 * kwp_module / 1000.0).round(4)
+    df["est_mwp_exp"] = (df.pv_area_exp_roof_m2 * kwp_module / 1000.0).round(4)
+
+    def _split(total_col: str, roof_col: str, prefix: str) -> None:
+        roof_mwp = df[roof_col] * kwp_module / 1000.0
+        ground_mwp = (df[total_col] - df[roof_col]).clip(lower=0.0) * kwp_land / 1000.0
+        df[f"{prefix}_roofcand"] = roof_mwp.round(4)
+        df[f"{prefix}_ground"] = ground_mwp.round(4)
+        df[prefix] = (roof_mwp + ground_mwp).round(4)
+
+    _split("pv_area_cal_total_m2", "pv_area_cal_roofcand_m2", "est_mwp_cal_total")
+    if {"pv_area_rc_total_m2", "pv_area_rc_roofcand_m2"} <= set(df.columns):
+        _split("pv_area_rc_total_m2", "pv_area_rc_roofcand_m2", "est_mwp_rc")
+        # est_mwp_rc_roof is the established name for the rooftop-placed recall-corrected
+        # estimator (atlas metric 3); est_mwp_rc_roofcand is its _split alias.
+        df["est_mwp_rc_roof"] = df["est_mwp_rc_roofcand"]
     return df
 
 
 def _backfill_cal(df: pd.DataFrame) -> pd.DataFrame:
     """Cell partials written before the calibrated estimator lack the cal columns;
-    treat them as uncalibrated (cal == det) so mixed-vintage runs stay additive."""
+    treat them as uncalibrated (cal == det) so mixed-vintage runs stay additive.
+
+    Only the building/footprint columns need this. The candidate-population columns
+    (`_CAND_COLS`) are recomputed from the candidate frame every run by
+    `candidate_cell_totals`, so a stale copy in a partial is dropped rather than patched.
+    """
     for cal_col, det_col in (
         ("pv_area_cal_m2", "pv_area_det_m2"),
         ("pv_area_cal_roof_m2", "pv_area_det_roof_m2"),
-        ("pv_area_cal_total_m2", "pv_area_det_total_m2"),
     ):
         if det_col in df.columns:
             if cal_col not in df.columns:
@@ -595,7 +705,8 @@ def _backfill_cal(df: pd.DataFrame) -> pd.DataFrame:
 
 def aggregate(
     out_dir: Path, manifest: gpd.GeoDataFrame, regions: gpd.GeoDataFrame | None,
-    districts: gpd.GeoDataFrame | None, kwp_per_m2: float, unc: dict | None = None,
+    districts: gpd.GeoDataFrame | None, kwp_module: float, kwp_land: float,
+    cand_totals: pd.DataFrame, unc: dict | None = None,
 ) -> dict:
     cells_dir = out_dir / "cells"
     rc_cols = ["pv_area_rc_total_m2", "pv_area_rc_roofcand_m2"] if unc is not None else []
@@ -609,16 +720,23 @@ def aggregate(
     ) if parts else gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
     if not buildings.empty:
         buildings = _backfill_cal(buildings)
-        buildings["est_kwp_det"] = (buildings.pv_area_det_m2 * kwp_per_m2).round(3)
-        buildings["est_kwp_cal"] = (buildings.pv_area_cal_m2 * kwp_per_m2).round(3)
-        buildings["est_kwp_exp"] = (buildings.pv_area_exp_m2 * kwp_per_m2).round(3)
+        # Per-building areas are all candidate-footprint intersections, i.e. module area
+        # on a roof, so they convert at the module constant regardless of placement.
+        buildings["est_kwp_det"] = (buildings.pv_area_det_m2 * kwp_module).round(3)
+        buildings["est_kwp_cal"] = (buildings.pv_area_cal_m2 * kwp_module).round(3)
+        buildings["est_kwp_exp"] = (buildings.pv_area_exp_m2 * kwp_module).round(3)
         pts = gpd.GeoDataFrame(
             geometry=gpd.points_from_xy(buildings.lon, buildings.lat), crs="EPSG:4326"
         )
         for gdf, col in ((regions, "region"), (districts, "district")):
             if gdf is not None and not gdf.empty:
+                # Reduce per input row before assigning: a point landing in two polygons
+                # (overlapping admin claims) makes sjoin return more rows than it got, and
+                # positional assignment would then shift every later building's label.
                 j = gpd.sjoin(pts, gdf[["name", "geometry"]], how="left", predicate="within")
-                buildings[col] = j["name"].to_numpy()[: len(buildings)]
+                buildings[col] = (
+                    j["name"].groupby(level=0).first().reindex(pts.index).to_numpy()
+                )
             else:
                 buildings[col] = None
     buildings.to_parquet(out_dir / "buildings.geoparquet")
@@ -628,22 +746,25 @@ def aggregate(
         [pd.read_parquet(p) for p in sorted(cells_dir.glob("*.summary.parquet"))],
         ignore_index=True,
     )
-    summ = _backfill_cal(summ)
+    # Drop any candidate-population columns cached in the partials and take them from
+    # `cand_totals`, which was derived from the candidate frame this run actually used.
+    summ = _backfill_cal(summ.drop(columns=_CAND_COLS, errors="ignore"))
     grid = manifest[["cell", "ix", "iy", "lon0", "lat0", "geometry"]].merge(
         summ.drop(columns=["ix", "iy", "lon0", "lat0"]), on="cell", how="left"
     )
     grid = gpd.GeoDataFrame(grid, geometry="geometry", crs="EPSG:4326")
+    grid = grid.merge(cand_totals, on="cell", how="left")
     if unc is not None:
         grid = grid.merge(unc["points"], on="cell", how="left")
     grid[sum_cols] = grid[sum_cols].fillna(0.0)
     grid["lon_center"] = grid.lon0 + CELL_DEG / 2
     grid["lat_center"] = grid.lat0 + CELL_DEG / 2
     grid["cell_area_km2"] = [geodesic_area_m2(g) / 1e6 for g in grid.geometry]
-    grid = _ratios(grid, grid["cell_area_km2"], kwp_per_m2)
+    grid = _ratios(grid, grid["cell_area_km2"], kwp_module, kwp_land)
     if unc is not None:
         from earthpv.capacity_calibration import CI_PCT
 
-        lohi = np.percentile(unc["mats"]["rc_all"], CI_PCT, axis=1) * kwp_per_m2 / 1000.0
+        lohi = np.percentile(_composed_mwp_draws(unc, "rc_all", "rc_roof"), CI_PCT, axis=1)
         ci = pd.DataFrame({
             "cell": unc["cells"],
             "est_mwp_rc_lo": lohi[0].round(4), "est_mwp_rc_hi": lohi[1].round(4),
@@ -675,10 +796,10 @@ def aggregate(
             agg = gpd.GeoDataFrame(agg, geometry="geometry", crs="EPSG:4326")
             agg["level"] = level
             agg["area_km2"] = [geodesic_area_m2(g) / 1e6 for g in agg.geometry]
-            agg = _ratios(agg, agg["area_km2"], kwp_per_m2)
+            agg = _ratios(agg, agg["area_km2"], kwp_module, kwp_land)
             if unc is not None:
                 ci_rows = [
-                    {"id": rid, "name": name, **_unc_mwp_ci(unc, cell_list, kwp_per_m2)}
+                    {"id": rid, "name": name, **_unc_mwp_ci(unc, cell_list)}
                     for (rid, name), cell_list in j.groupby(["id", "name"])["cell"].agg(list).items()
                 ]
                 agg = agg.merge(pd.DataFrame(ci_rows), on=["id", "name"], how="left")
@@ -694,14 +815,19 @@ def aggregate(
         "n_cells": int(len(grid)),
         "n_signal_buildings": int(len(buildings)),
         "n_regions": n_regions,
+        "kwp_per_m2_module": float(kwp_module),
+        "kwp_per_m2_land": float(kwp_land),
         "total_pv_area_det_total_m2": float(grid.pv_area_det_total_m2.sum()),
         "total_pv_area_det_roofcand_m2": float(grid.pv_area_det_roofcand_m2.sum()),
         "total_pv_area_det_roof_m2": float(grid.pv_area_det_roof_m2.sum()),
         "total_pv_area_cal_roof_m2": float(grid.pv_area_cal_roof_m2.sum()),
+        "total_pv_area_cal_roofcand_m2": float(grid.pv_area_cal_roofcand_m2.sum()),
         "total_pv_area_exp_roof_m2": float(grid.pv_area_exp_roof_m2.sum()),
         "total_est_mwp_det": float(grid.est_mwp_det.sum()),
         "total_est_mwp_cal": float(grid.est_mwp_cal.sum()),
         "total_est_mwp_cal_total": float(grid.est_mwp_cal_total.sum()),
+        "total_est_mwp_cal_total_roofcand": float(grid.est_mwp_cal_total_roofcand.sum()),
+        "total_est_mwp_cal_total_ground": float(grid.est_mwp_cal_total_ground.sum()),
         "total_est_mwp_exp": float(grid.est_mwp_exp.sum()),
     }
     if unc is not None:
@@ -712,8 +838,8 @@ def aggregate(
             "total_pv_area_rc_roofcand_m2": float(grid.pv_area_rc_roofcand_m2.sum()),
             "total_est_mwp_rc": float(grid.est_mwp_rc.sum()),
             "total_est_mwp_rc_roof": float(grid.est_mwp_rc_roof.sum()),
-            **{f"total_{k}": v
-               for k, v in _unc_mwp_ci(unc, list(unc["cells"]), kwp_per_m2).items()},
+            "total_est_mwp_rc_ground": float(grid.est_mwp_rc_ground.sum()),
+            **{f"total_{k}": v for k, v in _unc_mwp_ci(unc, list(unc["cells"])).items()},
         })
     return stats
 
@@ -725,7 +851,8 @@ def run_density(
     aoi: str,
     pred_dir: Path = Path("data/predictions"),
     threshold: float = 0.3,
-    kwp_per_m2: float = DEFAULT_KWP_PER_M2,
+    kwp_per_m2_module: float = DEFAULT_KWP_PER_M2_MODULE,
+    kwp_per_m2_land: float = DEFAULT_KWP_PER_M2_LAND,
     min_prob: float = 0.05,
     min_building_exp_m2: float = 10.0,
     limit: int = 0,
@@ -735,6 +862,7 @@ def run_density(
     force: bool = False,
     calibration: Path | None = None,
     recall_floor: float | None = None,
+    max_candidate_m2: float = MAX_CANDIDATE_M2,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
@@ -748,6 +876,40 @@ def run_density(
     if not cand_path.exists():
         raise FileNotFoundError(f"{cand_path} missing — run `earthpv postprocess --aoi {aoi}` first")
     cands = gpd.read_parquet(cand_path)
+
+    # Drop blobs before anything consumes them. A multi-km2 contiguous polygon is a merged
+    # false-positive sheet or a whole plant site, not one installation's panel area, and
+    # unfiltered they dominated the Pakistan country total (see postprocess.MAX_CANDIDATE_M2).
+    # Kept in candidates.parquet for the human-validated leads product; excluded here only.
+    n_oversize, oversize_area_m2 = 0, 0.0
+    if max_candidate_m2 and not cands.empty:
+        over = cands["area_m2"].to_numpy(float) > max_candidate_m2
+        n_oversize = int(over.sum())
+        oversize_area_m2 = float(cands.loc[over, "area_m2"].sum())
+        if n_oversize:
+            log.warning(
+                "Excluding %d/%d oversize candidates (> %.0f m2) from capacity: %.1f%% of "
+                "candidate area, largest %.2f km2",
+                n_oversize, len(cands), max_candidate_m2,
+                100.0 * oversize_area_m2 / max(float(cands["area_m2"].sum()), 1e-9),
+                float(cands["area_m2"].max()) / 1e6,
+            )
+            cands = cands[~over].reset_index(drop=True)
+    # Cached partials carry the per-building/footprint columns from whatever candidate set
+    # was in force when they were written; only the candidate-population columns are
+    # rederived each run. Say so rather than letting the two disagree silently.
+    cached_cells = Path(pred_dir) / aoi / "density" / "cells"
+    stale_partials = (
+        bool(n_oversize) and not force
+        and cached_cells.exists() and any(cached_cells.glob("*.summary.parquet"))
+    )
+    if stale_partials:
+        log.warning(
+            "Cached cell partials exist: the per-building and *_roof columns still include "
+            "the excluded oversize candidates. Re-run with --force to rebuild them "
+            "(re-fetches VIDA footprints per cell)."
+        )
+
     if not cands.empty:
         _ = cands.sindex  # build once, reused per cell
 
@@ -797,17 +959,28 @@ def run_density(
             log.warning("cell %s failed: %s", row.cell, e)
 
     regions, dist = load_admin(aoi, cfg, settings, iso3, labels_dir, districts, regions_file)
+    manifest_cells = set(manifest.cell)
+    cand_totals = candidate_cell_totals(cands, origin, manifest_cells)
     unc = None
     if table is not None and not cands.empty:
         unc = _candidate_uncertainty(
-            cands, table, origin, set(manifest.cell), recall_floor=recall_floor
+            cands, table, origin, manifest_cells, recall_floor=recall_floor,
+            kwp_module=kwp_per_m2_module, kwp_land=kwp_per_m2_land,
         )
-    stats = aggregate(out_dir, manifest, regions, dist, kwp_per_m2, unc=unc)
+    stats = aggregate(
+        out_dir, manifest, regions, dist, kwp_per_m2_module, kwp_per_m2_land,
+        cand_totals, unc=unc,
+    )
 
     meta = {
-        "aoi": aoi, "threshold": threshold, "kwp_per_m2": kwp_per_m2,
+        "aoi": aoi, "threshold": threshold,
+        "kwp_per_m2_module": kwp_per_m2_module, "kwp_per_m2_land": kwp_per_m2_land,
         "min_prob": min_prob, "min_building_exp_m2": min_building_exp_m2,
         "limit": limit, "districts": districts,
+        "max_candidate_m2": max_candidate_m2,
+        "n_oversize_excluded": n_oversize,
+        "oversize_area_m2": oversize_area_m2,
+        "oversize_stale_partials": stale_partials,
         "calibration": str(cal_path) if cal_path.exists() else None,
         "calibration_status": cal_status, **stats,
     }

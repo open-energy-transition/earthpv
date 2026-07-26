@@ -511,11 +511,21 @@ function setMetric(i) {
   drawMap(); drawChart(); drawTable();
 }
 
+/* Two conversion constants: a rooftop detection is ~module area, a ground-mount detection
+   is site area of which only the ground-cover ratio is module. Older runs carry one. */
+const kwpNote = D.totals.kwpLand
+  ? `capacity at ${D.totals.kwp} kWp/m² of rooftop module area and ${D.totals.kwpLand} kWp/m²
+     of ground-mount site area`
+  : `capacity at ${D.totals.kwp} kWp/m² of panel area`;
+const blobNote = D.totals.nOversize
+  ? ` · ${fmt(D.totals.nOversize)} candidates over ${fmt(D.totals.maxCandidateM2)} m² excluded
+      as merged blobs / whole plant sites`
+  : "";
 document.getElementById("foot").innerHTML =
   `TerraMind-tiny fine-tuned on Germany + Pakistan OSM solar · Sentinel-2 L2A dry-season composites ·
-  ${fmt(D.totals.n_cells)} cells × 0.1° · capacity at ${D.totals.kwp} kWp/m² of panel area ·
+  ${fmt(D.totals.n_cells)} cells × 0.1° · ${kwpNote} ·
   precision from P(real | size, glint) vs OSM + 500-target glint study · recall vs pre-pipeline OSM
-  snapshot, floor ${D.totals.recall_floor} · earthpv density stage, ${D.totals.run_date} ·
+  snapshot, floor ${D.totals.recall_floor}${blobNote} · earthpv density stage, ${D.totals.run_date} ·
   indicative estimates for energy-system modelling, not metered capacity`;
 
 setMetric(sel);

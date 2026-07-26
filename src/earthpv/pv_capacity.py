@@ -1,19 +1,25 @@
 """pvlib-based cross-checks for the `density` stage's capacity heuristic.
 
-`density.py` converts detected panel area to installed capacity via a flat
-`kwp_per_m2` constant (default 0.18, i.e. ~5.5 m2 of c-Si module per kWp). This module
-double-checks that assumption two independent ways:
+`density.py` converts area to capacity with **two** constants
+(capacity_calibration.DEFAULT_KWP_PER_M2_{MODULE,LAND}): rooftop detections are ~module
+area, ground-mount detections are site area of which only the ground-cover ratio is
+module. This module cross-checks two things:
 
-1. `check_kwp_per_m2` grounds it against pvlib's CEC module database (real datasheets)
-   instead of a single literature figure.
+1. `check_kwp_per_m2` grounds the *module* constant against pvlib's CEC module database
+   (real datasheets) instead of a single literature figure. **It validates only that
+   constant**: it says nothing about whether a detected polygon's area is module area,
+   which is the assumption that actually fails for ground-mount (hence the land constant
+   and its wider prior). Passing this check is not evidence the conversion is right for
+   anything but a rooftop detection.
 2. `expected_annual_yield` converts each region's estimated MWp into expected annual
    generation (GWh/yr) via PVGIS-modelled specific yield at representative coordinates,
    so the capacity estimate can be cross-checked against known Pakistani generation
    anchors (NEPRA net-metering totals, TransitionZero's 27.5 GW distributed-solar
    study — see README.md) independently of the detection pipeline entirely.
 
-Both are sanity checks, not silent replacements: `density.py`'s `DEFAULT_KWP_PER_M2`
-is left as-is; this module only surfaces the comparison.
+Both are sanity checks, not silent replacements: the density-stage constants are left
+as-is; this module only surfaces the comparison. For a check that gates the output, see
+`plausibility.py` / `earthpv check-density`.
 """
 
 from __future__ import annotations

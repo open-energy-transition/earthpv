@@ -351,7 +351,21 @@ def density(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
     pred_dir: Path = typer.Option(Path("data/predictions")),
     threshold: float = typer.Option(0.3, help="Matches the postprocess threshold (metadata only)"),
-    kwp_per_m2: float = typer.Option(0.18, help="kWp per m2 of detected panel area (~5.5 m2/kWp)"),
+    kwp_per_m2_module: float = typer.Option(
+        None,
+        help="kWp per m2 of ROOFTOP panel area (~5.5 m2 of module per kWp; default 0.18)",
+    ),
+    kwp_per_m2_land: float = typer.Option(
+        None,
+        help="kWp per m2 of GROUND-MOUNT site area — a detected plant polygon is site, not "
+        "module, so only its ground-cover ratio counts (default 0.07)",
+    ),
+    max_candidate_m2: float = typer.Option(
+        None,
+        help="Exclude candidates larger than this from capacity (0 = keep all; default "
+        "postprocess.MAX_CANDIDATE_M2 = 100000). Blobs this size are merged false "
+        "positives or whole plant sites, not one installation",
+    ),
     min_prob: float = typer.Option(0.05, help="Pixel-probability noise floor for expected-area sums"),
     min_building_exp_m2: float = typer.Option(10.0, help="Keep a building row if expected PV >= this"),
     limit: int = typer.Option(0, help="Cap number of cells (0 = all; use for smoke tests)"),
@@ -370,14 +384,90 @@ def density(
     ),
 ) -> None:
     """Per-building PV density + 0.1-deg-grid and admin-region aggregates (PyPSA-ready)."""
-    from earthpv.density import run_density
+    from earthpv.density import (
+        DEFAULT_KWP_PER_M2_LAND,
+        DEFAULT_KWP_PER_M2_MODULE,
+        MAX_CANDIDATE_M2,
+        run_density,
+    )
 
     run_density(
-        aoi=aoi, pred_dir=pred_dir, threshold=threshold, kwp_per_m2=kwp_per_m2,
+        aoi=aoi, pred_dir=pred_dir, threshold=threshold,
+        kwp_per_m2_module=(
+            DEFAULT_KWP_PER_M2_MODULE if kwp_per_m2_module is None else kwp_per_m2_module
+        ),
+        kwp_per_m2_land=DEFAULT_KWP_PER_M2_LAND if kwp_per_m2_land is None else kwp_per_m2_land,
+        max_candidate_m2=MAX_CANDIDATE_M2 if max_candidate_m2 is None else max_candidate_m2,
         min_prob=min_prob, min_building_exp_m2=min_building_exp_m2, limit=limit,
         districts=districts, regions_file=regions_file, force=force, calibration=calibration,
         recall_floor=recall_floor,
     )
+
+
+@app.command("check-density")
+def check_density_cmd(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    warn_ratio: float = typer.Option(
+        None, help="Ground-mount:rooftop capacity ratio that marks a region suspect (default 3)"
+    ),
+    fail_ratio: float = typer.Option(
+        None, help="Ground-mount:rooftop ratio that fails a region (default 5)"
+    ),
+    min_nonroof_mwp: float = typer.Option(
+        None, help="Ignore the ratio below this much ground-mount capacity (default 50 MWp)"
+    ),
+    max_cell_share: float = typer.Option(
+        None, help="Fail a region if one 0.1-deg cell exceeds this share of its total "
+        "(default 0.25) — the signature of a single merged blob"
+    ),
+    strict: bool = typer.Option(
+        True, help="Exit non-zero when any region fails, so this can gate CI"
+    ),
+) -> None:
+    """Plausibility-check a density run: ground-mount vs rooftop balance per region, and
+    single-cell concentration. Writes density/plausibility.csv."""
+    from earthpv import plausibility as pl
+
+    kwargs = {
+        k: v for k, v in (
+            ("warn_ratio", warn_ratio), ("fail_ratio", fail_ratio),
+            ("min_nonroof_mwp", min_nonroof_mwp), ("max_cell_share", max_cell_share),
+        ) if v is not None
+    }
+    try:
+        table, summary = pl.check_density(aoi=aoi, pred_dir=pred_dir, **kwargs)
+    except FileNotFoundError as e:  # a missing run is a setup error, not a failed check
+        typer.echo(str(e), err=True)
+        raise typer.Exit(2) from None
+
+    if summary.get("n_oversize_excluded"):
+        typer.echo(
+            f"oversize candidates excluded by density: {summary['n_oversize_excluded']} "
+            f"({summary['oversize_area_m2'] / 1e6:.2f} km2, cap "
+            f"{summary['max_candidate_m2']:.0f} m2)"
+        )
+    if summary.get("kwp_per_m2_land") is not None:
+        typer.echo(
+            f"conversion: {summary['kwp_per_m2_module']} kWp/m2 rooftop module area, "
+            f"{summary['kwp_per_m2_land']} kWp/m2 ground-mount site area"
+        )
+    if table.empty:
+        typer.echo(f"skipped: {summary.get('note', 'nothing to check')}")
+        raise typer.Exit(0)
+
+    typer.echo(
+        table[["region", "mwp_roof", "mwp_ground", "nonroof_ratio", "top_cell_share",
+               "status", "reason"]].to_string(index=False)
+    )
+    typer.echo(
+        f"\n{summary['status'].upper()}: {summary['n_fail']} fail, "
+        f"{summary['n_suspect']} suspect of {len(table)} regions "
+        f"({summary['mwp_roof']:,.0f} MWp rooftop + {summary['mwp_ground']:,.0f} MWp "
+        f"ground-mount) -> {summary['report']}"
+    )
+    if strict and summary["n_fail"]:
+        raise typer.Exit(1)
 
 
 @app.command()

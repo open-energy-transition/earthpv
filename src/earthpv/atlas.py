@@ -173,7 +173,10 @@ def _build_simple_atlas(
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "det_km2": round(float(grid[pacol].sum()) / 1e6, 1),
             "n_cells": int(len(grid)),
-            "kwp_per_m2": meta.get("kwp_per_m2", 0.18),
+            # Every metric on this page is roof-scope (footprint intersections), so the
+            # module constant is the only one that applies here. `kwp_per_m2` is the
+            # pre-split key, kept as a fallback for older meta.json files.
+            "kwp_per_m2": meta.get("kwp_per_m2_module", meta.get("kwp_per_m2", 0.18)),
             "threshold": meta.get("threshold", 0.3),
         },
     }
@@ -333,8 +336,14 @@ def _build_estimator_atlas(
                 round(meta.get("total_est_mwp_cal_total_hi", grid.est_mwp_cal_total.sum())),
             ],
             "n_cells": int(len(grid)),
-            "kwp": meta.get("kwp_per_m2", 0.18),
+            # Two conversion constants, because roof-scope metrics are module area and
+            # all-PV metrics include ground-mount candidates whose polygon is site area.
+            # `kwp` keeps the module value under its original key for older templates.
+            "kwp": meta.get("kwp_per_m2_module", meta.get("kwp_per_m2", 0.18)),
+            "kwpLand": meta.get("kwp_per_m2_land"),
             "recall_floor": meta.get("recall_floor", 0.05),
+            "nOversize": meta.get("n_oversize_excluded"),
+            "maxCandidateM2": meta.get("max_candidate_m2"),
             "run_date": run_date,
         },
     }
