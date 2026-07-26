@@ -52,7 +52,7 @@ nothing pre-downloaded. See [scaling](#scaling-to-another-country) below.
 
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
-    <img src="docs/assets/figures/pakistan_capacity_atlas.png" width="820"
+    <img src="docs/assets/figures/pakistan_capacity_atlas.png" width="520"
          alt="The earthpv capacity atlas showing 18,312 MWp for Pakistan with a 90 percent band of 16,889 to 21,468, above a night-lights style map of estimated capacity per 0.1 degree cell. Capacity concentrates in the Punjab corridor from Peshawar through Lahore, Faisalabad and Multan, with further clusters at Sukkur, Hyderabad and Karachi.">
   </a>
 </p>
@@ -102,7 +102,7 @@ is present and recover how the panel is mounted.
 
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/pv-pose/">
-    <img src="docs/assets/figures/pakistan_pv_pose.png" width="820"
+    <img src="docs/assets/figures/pakistan_pv_pose.png" width="520"
          alt="The glint pose survey page: a polar plot of fitted tilt and azimuth for 290 Pakistani installations, clustered between east-southeast and due south at tilts of roughly 5 to 20 degrees, beside statistics showing that only 23.6 percent of installations above 1000 square metres yield a fittable pose and 51.2 percent show no glint signal at all.">
   </a>
 </p>
