@@ -30,7 +30,7 @@ high-resolution imagery that cannot be shared and cannot legally be processed by
 
 ## What the map looks like
 
-![Estimated rooftop and ground-mount solar capacity per building across Pakistan. Detections concentrate in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_capacity_map.png)
+![Estimated rooftop and ground-mount solar capacity per building across Pakistan. Detections concentrate in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_capacity_atlas.png)
 
 /// caption
 Calibrated capacity for every building carrying PV signal in Pakistan.
