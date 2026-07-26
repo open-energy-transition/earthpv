@@ -1,0 +1,409 @@
+<title>Fitted Panel Pose — Pakistan Glint Survey (n=2000)</title>
+<style>
+:root {
+  --bg: #f2efe6;
+  --bg-panel: #eae4d3;
+  --bg-chart: #ece6d6;
+  --ink: #2a2620;
+  --ink-dim: #675f4d;
+  --ink-faint: #a49874;
+  --rule: #d6cbac;
+  --accent-sun: #a8641f;
+  --accent-glint: #1f7a72;
+  --excluded: #ddd3b3;
+  --excluded-line: #b7a87d;
+  --card-shadow: 0 1px 2px rgba(60,50,20,0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151d; --bg-panel: #171d28; --bg-chart: #141a24;
+    --ink: #e9e6db; --ink-dim: #8d94a6; --ink-faint: #565e70;
+    --rule: #262d3c; --accent-sun: #e3a34d; --accent-glint: #5fc9c1;
+    --excluded: #202536; --excluded-line: #333c52; --card-shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151d; --bg-panel: #171d28; --bg-chart: #141a24;
+  --ink: #e9e6db; --ink-dim: #8d94a6; --ink-faint: #565e70;
+  --rule: #262d3c; --accent-sun: #e3a34d; --accent-glint: #5fc9c1;
+  --excluded: #202536; --excluded-line: #333c52; --card-shadow: none;
+}
+:root[data-theme="light"] {
+  --bg: #f2efe6; --bg-panel: #eae4d3; --bg-chart: #ece6d6;
+  --ink: #2a2620; --ink-dim: #675f4d; --ink-faint: #a49874;
+  --rule: #d6cbac; --accent-sun: #a8641f; --accent-glint: #1f7a72;
+  --excluded: #ddd3b3; --excluded-line: #b7a87d; --card-shadow: 0 1px 2px rgba(60,50,20,0.06);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+body { font-family: Iowan Old Style, Sitka Text, Georgia, "Noto Serif", serif; font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", Consolas, monospace; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 48px 24px 64px; }
+header { margin-bottom: 40px; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-dim); margin: 0 0 14px; }
+h1 { font-size: clamp(28px, 4vw, 42px); font-weight: 600; line-height: 1.12; margin: 0 0 14px; text-wrap: balance; max-width: 20ch; }
+.dek { font-size: 17px; color: var(--ink-dim); max-width: 62ch; margin: 0; }
+.dek .mono { font-size: 15px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+.panel { background: var(--bg-panel); border: 1px solid var(--rule); border-radius: 3px; box-shadow: var(--card-shadow); }
+.chart-panel { padding: 22px 22px 18px; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; gap: 8px; }
+.chart-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); font-family: inherit; }
+.chart-title.mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", Consolas, monospace; }
+.chart-n { font-size: 12px; color: var(--ink-faint); }
+#polar-wrap { position: relative; width: 100%; }
+#polar { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--ink-dim); }
+.legend-item { display: flex; align-items: center; gap: 7px; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.swatch.sun { background: var(--accent-sun); }
+.swatch.glint { background: var(--accent-glint); }
+.swatch.excl { width: 13px; height: 13px; border-radius: 2px; background: repeating-linear-gradient(45deg, var(--excluded-line), var(--excluded-line) 1px, var(--excluded) 1px, var(--excluded) 4px); border: 1px solid var(--excluded-line); }
+.swatch.mirror { background: transparent; border: 1.5px dashed var(--ink-faint); }
+.tooltip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 11.5px; padding: 7px 9px; border-radius: 3px; line-height: 1.5; white-space: nowrap; transform: translate(-50%, -115%); opacity: 0; transition: opacity 0.1s; z-index: 5; }
+.tooltip.show { opacity: 0.96; }
+.tooltip b { font-weight: 600; }
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+.stat-card { padding: 16px 18px; }
+.stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; }
+.stat-row + .stat-row { border-top: 1px dashed var(--rule); }
+.stat-label { font-size: 12.5px; color: var(--ink-dim); }
+.stat-val { font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat-big { padding: 16px 18px; }
+.stat-big .num { font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.stat-big .num small { font-size: 16px; font-weight: 400; color: var(--ink-dim); }
+.stat-big .label { font-size: 12.5px; color: var(--ink-dim); margin-top: 6px; }
+.callout { padding: 18px 20px; border-left: 3px solid var(--accent-sun); }
+.callout h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); margin: 0 0 10px; font-family: inherit; }
+.callout p { margin: 0 0 10px; font-size: 14.5px; }
+.callout p:last-child { margin-bottom: 0; }
+.callout .fig { font-weight: 600; color: var(--ink); }
+.lower { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 760px) { .lower { grid-template-columns: 1fr; } }
+.hist-panel { padding: 18px 20px 14px; }
+.hist-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 10px; }
+svg text { fill: var(--ink-dim); }
+.strip-panel { margin-top: 20px; padding: 18px 20px 16px; }
+.strip-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 12px; }
+footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 12.5px; color: var(--ink-faint); }
+footer p { margin: 0 0 6px; max-width: 70ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow mono">Glint-derived orientation survey · Pakistan · n=2000</p>
+    <h1>Which way does a Pakistani solar panel actually face? (4x sample)</h1>
+    <p class="dek">
+      Fitted tilt and azimuth for <span class="mono" id="hdr-n">290</span> installations whose
+      historical Sentinel-2 specular reflections agree on a single fixed panel orientation --
+      out of <span class="mono">2000</span> installations checked, stratified by size, across
+      two years of imagery (a 4x-larger, chunked-tile-batch re-run of the original 500-target study).
+      <b>This is not a neutral sample of installed pose</b> -- read the envelope note before trusting the shape.
+    </p>
+  </header>
+
+  <div class="grid">
+    <div class="panel chart-panel">
+      <div class="chart-head">
+        <span class="chart-title mono">Tilt (radius) x Azimuth (angle)</span>
+        <span class="chart-n mono">290 measured + 290 mirrored (assumed)</span>
+      </div>
+      <div id="polar-wrap">
+        <svg id="polar" viewBox="0 0 640 640" role="img" aria-label="Polar plot of fitted panel tilt and azimuth"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch sun"></span> rooftop generator</span>
+        <span class="legend-item"><span class="swatch glint"></span> ground plant</span>
+        <span class="legend-item"><span class="swatch mirror"></span> mirrored across 180&deg; -- assumed, not measured</span>
+        <span class="legend-item"><span class="swatch excl"></span> still unreachable even under mirror symmetry</span>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel stat-big">
+        <div class="num">23.6<small>%</small></div>
+        <div class="label">of &ge; 1,000 m&sup2; installations get a pose in this plot at all -- the rest never produce two self-consistent spikes, so there's nothing to fit</div>
+      </div>
+      <div class="panel stat-card">
+        <div class="stat-row"><span class="stat-label">&ge;1 spike, no fittable pose&dagger;</span><span class="stat-val mono">25.1%</span></div>
+        <div class="stat-row"><span class="stat-label">no glint signal at all</span><span class="stat-val mono">51.2%</span></div>
+        <div class="stat-row"><span class="stat-label">azimuth range observed</span><span class="stat-val mono">81.7&deg; &ndash; 180.1&deg;</span></div>
+        <div class="stat-row"><span class="stat-label">tilt IQR observed</span><span class="stat-val mono">6.3&deg; &ndash; 18.8&deg;</span></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--ink-faint);margin:-6px 2px 0;">figures restricted to the &ge; 1,000 m&sup2; target class (n=855 of 2000)</p>
+      <div class="panel callout">
+        <h3>Why nothing measured crosses 180&deg; -- and the mirrored half</h3>
+        <p>
+          Sentinel-2 crosses this latitude at a fixed <b>~10:30 local time</b>, so across two full
+          years of imagery the sun's azimuth at the moment of every overpass never once swings
+          west of due south -- a panel facing southwest, west, or north <b>cannot glint into this
+          sensor no matter how long you wait.</b> That's a sensor limit, not a property of
+          Pakistani rooftops, so the <span class="fig">dashed outline points beyond 180&deg;</span>
+          are this same measured sample <b>mirrored</b> across the south axis. The residual shaded
+          wedge (<span class="fig">163&deg;</span> wide) is what stays unreachable even
+          granting the mirror-symmetry assumption.
+        </p>
+        <p>
+          &dagger; A single spike can't be checked for self-consistency -- 25.1% of installations glint
+          <i>once</i> (or on dates that disagree on a panel geometry) and so are correctly
+          detected as "PV is probably here" but carry <b>no orientation information</b>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="panel hist-panel">
+      <div class="hist-title mono">Tilt distribution</div>
+      <svg id="hist-tilt" viewBox="0 0 460 200"></svg>
+    </div>
+    <div class="panel hist-panel">
+      <div class="hist-title mono">Azimuth distribution <span style="opacity:.6">(180&deg; = geometric ceiling)</span></div>
+      <svg id="hist-az" viewBox="0 0 460 200"></svg>
+    </div>
+  </div>
+
+  <div class="panel strip-panel">
+    <div class="strip-title mono">For context -- validation rate by installation size (all 2000, not just the fitted 290)</div>
+    <svg id="strip" viewBox="0 0 1000 150" style="width:100%; height:auto; display:block;"></svg>
+  </div>
+
+  <footer>
+    <p>
+      Data: <span class="mono">data/glint/country2000_summary.csv</span> (2000-target stratified
+      country study, chunked tile-batch pull). Validated = a single
+      (tilt, azimuth) explains &ge; 2 independent spike dates via the specular reflection condition,
+      tolerance 3&deg;. Point size &prop; &radic;(installation area).
+    </p>
+  </footer>
+</div>
+
+<script type="application/json" id="pvdata">{"points":[{"p":"c2k_0026","k":"generator","pl":"rooftop","a":74.2,"t":24.1,"az":137.7,"n":4,"m":false},{"p":"c2k_0026_mirror","k":"generator","pl":"rooftop","a":74.2,"t":24.1,"az":222.3,"n":4,"m":true},{"p":"c2k_0031","k":"generator","pl":"rooftop","a":74.5,"t":12.2,"az":105.6,"n":4,"m":false},{"p":"c2k_0031_mirror","k":"generator","pl":"rooftop","a":74.5,"t":12.2,"az":254.4,"n":4,"m":true},{"p":"c2k_0071","k":"generator","pl":"rooftop","a":49.5,"t":18.4,"az":145.5,"n":8,"m":false},{"p":"c2k_0071_mirror","k":"generator","pl":"rooftop","a":49.5,"t":18.4,"az":214.5,"n":8,"m":true},{"p":"c2k_0226","k":"generator","pl":"rooftop","a":57.3,"t":17.3,"az":147.3,"n":2,"m":false},{"p":"c2k_0226_mirror","k":"generator","pl":"rooftop","a":57.3,"t":17.3,"az":212.7,"n":2,"m":true},{"p":"c2k_0255","k":"generator","pl":"rooftop","a":78.8,"t":14.9,"az":170.0,"n":4,"m":false},{"p":"c2k_0255_mirror","k":"generator","pl":"rooftop","a":78.8,"t":14.9,"az":190.0,"n":4,"m":true},{"p":"c2k_0289","k":"generator","pl":"rooftop","a":61.5,"t":19.0,"az":145.8,"n":4,"m":false},{"p":"c2k_0289_mirror","k":"generator","pl":"rooftop","a":61.5,"t":19.0,"az":214.2,"n":4,"m":true},{"p":"c2k_0394","k":"generator","pl":"rooftop","a":494.1,"t":21.0,"az":179.4,"n":7,"m":false},{"p":"c2k_0394_mirror","k":"generator","pl":"rooftop","a":494.1,"t":21.0,"az":180.6,"n":7,"m":true},{"p":"c2k_0405","k":"generator","pl":"rooftop","a":153.1,"t":18.2,"az":139.0,"n":6,"m":false},{"p":"c2k_0405_mirror","k":"generator","pl":"rooftop","a":153.1,"t":18.2,"az":221.0,"n":6,"m":true},{"p":"c2k_0420","k":"generator","pl":"rooftop","a":255.8,"t":20.1,"az":175.3,"n":6,"m":false},{"p":"c2k_0420_mirror","k":"generator","pl":"rooftop","a":255.8,"t":20.1,"az":184.7,"n":6,"m":true},{"p":"c2k_0429","k":"generator","pl":"rooftop","a":236.7,"t":19.8,"az":140.3,"n":2,"m":false},{"p":"c2k_0429_mirror","k":"generator","pl":"rooftop","a":236.7,"t":19.8,"az":219.7,"n":2,"m":true},{"p":"c2k_0435","k":"generator","pl":"ground","a":223.7,"t":3.1,"az":141.7,"n":2,"m":false},{"p":"c2k_0435_mirror","k":"generator","pl":"ground","a":223.7,"t":3.1,"az":218.3,"n":2,"m":true},{"p":"c2k_0437","k":"generator","pl":"ground","a":442.2,"t":6.6,"az":156.4,"n":13,"m":false},{"p":"c2k_0437_mirror","k":"generator","pl":"ground","a":442.2,"t":6.6,"az":203.6,"n":13,"m":true},{"p":"c2k_0442","k":"plant","pl":"ground","a":273.7,"t":14.1,"az":167.2,"n":4,"m":false},{"p":"c2k_0442_mirror","k":"plant","pl":"ground","a":273.7,"t":14.1,"az":192.8,"n":4,"m":true},{"p":"c2k_0482","k":"generator","pl":"rooftop","a":348.8,"t":5.5,"az":138.0,"n":8,"m":false},{"p":"c2k_0482_mirror","k":"generator","pl":"rooftop","a":348.8,"t":5.5,"az":222.0,"n":8,"m":true},{"p":"c2k_0489","k":"generator","pl":"rooftop","a":403.9,"t":18.8,"az":177.7,"n":3,"m":false},{"p":"c2k_0489_mirror","k":"generator","pl":"rooftop","a":403.9,"t":18.8,"az":182.3,"n":3,"m":true},{"p":"c2k_0492","k":"generator","pl":"rooftop","a":151.4,"t":19.4,"az":145.4,"n":2,"m":false},{"p":"c2k_0492_mirror","k":"generator","pl":"rooftop","a":151.4,"t":19.4,"az":214.6,"n":2,"m":true},{"p":"c2k_0500","k":"generator","pl":"rooftop","a":155.1,"t":15.4,"az":166.0,"n":3,"m":false},{"p":"c2k_0500_mirror","k":"generator","pl":"rooftop","a":155.1,"t":15.4,"az":194.0,"n":3,"m":true},{"p":"c2k_0502","k":"generator","pl":"rooftop","a":271.5,"t":13.0,"az":166.4,"n":4,"m":false},{"p":"c2k_0502_mirror","k":"generator","pl":"rooftop","a":271.5,"t":13.0,"az":193.6,"n":4,"m":true},{"p":"c2k_0507","k":"generator","pl":"rooftop","a":134.3,"t":18.5,"az":149.9,"n":4,"m":false},{"p":"c2k_0507_mirror","k":"generator","pl":"rooftop","a":134.3,"t":18.5,"az":210.1,"n":4,"m":true},{"p":"c2k_0510","k":"generator","pl":"rooftop","a":257.5,"t":5.7,"az":155.7,"n":10,"m":false},{"p":"c2k_0510_mirror","k":"generator","pl":"rooftop","a":257.5,"t":5.7,"az":204.3,"n":10,"m":true},{"p":"c2k_0527","k":"generator","pl":"rooftop","a":338.3,"t":21.0,"az":179.4,"n":7,"m":false},{"p":"c2k_0527_mirror","k":"generator","pl":"rooftop","a":338.3,"t":21.0,"az":180.6,"n":7,"m":true},{"p":"c2k_0542","k":"generator","pl":"rooftop","a":418.9,"t":17.9,"az":174.6,"n":3,"m":false},{"p":"c2k_0542_mirror","k":"generator","pl":"rooftop","a":418.9,"t":17.9,"az":185.4,"n":3,"m":true},{"p":"c2k_0548","k":"generator","pl":"ground","a":124.4,"t":14.1,"az":173.0,"n":3,"m":false},{"p":"c2k_0548_mirror","k":"generator","pl":"ground","a":124.4,"t":14.1,"az":187.0,"n":3,"m":true},{"p":"c2k_0570","k":"generator","pl":"ground","a":136.5,"t":4.8,"az":161.0,"n":2,"m":false},{"p":"c2k_0570_mirror","k":"generator","pl":"ground","a":136.5,"t":4.8,"az":199.0,"n":2,"m":true},{"p":"c2k_0582","k":"generator","pl":"rooftop","a":197.2,"t":18.6,"az":144.9,"n":4,"m":false},{"p":"c2k_0582_mirror","k":"generator","pl":"rooftop","a":197.2,"t":18.6,"az":215.1,"n":4,"m":true},{"p":"c2k_0590","k":"generator","pl":"rooftop","a":136.8,"t":16.8,"az":146.0,"n":2,"m":false},{"p":"c2k_0590_mirror","k":"generator","pl":"rooftop","a":136.8,"t":16.8,"az":214.0,"n":2,"m":true},{"p":"c2k_0611","k":"plant","pl":"ground","a":474.4,"t":5.0,"az":137.0,"n":5,"m":false},{"p":"c2k_0611_mirror","k":"plant","pl":"ground","a":474.4,"t":5.0,"az":223.0,"n":5,"m":true},{"p":"c2k_0612","k":"plant","pl":"ground","a":474.0,"t":4.8,"az":127.0,"n":2,"m":false},{"p":"c2k_0612_mirror","k":"plant","pl":"ground","a":474.0,"t":4.8,"az":233.0,"n":2,"m":true},{"p":"c2k_0621","k":"generator","pl":"rooftop","a":157.5,"t":19.0,"az":145.8,"n":3,"m":false},{"p":"c2k_0621_mirror","k":"generator","pl":"rooftop","a":157.5,"t":19.0,"az":214.2,"n":3,"m":true},{"p":"c2k_0636","k":"plant","pl":"ground","a":368.9,"t":23.0,"az":175.8,"n":7,"m":false},{"p":"c2k_0636_mirror","k":"plant","pl":"ground","a":368.9,"t":23.0,"az":184.2,"n":7,"m":true},{"p":"c2k_0638","k":"generator","pl":"rooftop","a":298.0,"t":3.9,"az":122.1,"n":4,"m":false},{"p":"c2k_0638_mirror","k":"generator","pl":"rooftop","a":298.0,"t":3.9,"az":237.9,"n":4,"m":true},{"p":"c2k_0653","k":"plant","pl":"ground","a":472.8,"t":15.9,"az":154.5,"n":4,"m":false},{"p":"c2k_0653_mirror","k":"plant","pl":"ground","a":472.8,"t":15.9,"az":205.5,"n":4,"m":true},{"p":"c2k_0660","k":"generator","pl":"rooftop","a":371.1,"t":3.2,"az":88.2,"n":6,"m":false},{"p":"c2k_0660_mirror","k":"generator","pl":"rooftop","a":371.1,"t":3.2,"az":271.8,"n":6,"m":true},{"p":"c2k_0689","k":"generator","pl":"rooftop","a":339.4,"t":18.8,"az":178.2,"n":9,"m":false},{"p":"c2k_0689_mirror","k":"generator","pl":"rooftop","a":339.4,"t":18.8,"az":181.8,"n":9,"m":true},{"p":"c2k_0704","k":"generator","pl":"rooftop","a":114.8,"t":16.8,"az":146.0,"n":2,"m":false},{"p":"c2k_0704_mirror","k":"generator","pl":"rooftop","a":114.8,"t":16.8,"az":214.0,"n":2,"m":true},{"p":"c2k_0707","k":"plant","pl":"ground","a":292.3,"t":26.4,"az":166.5,"n":9,"m":false},{"p":"c2k_0707_mirror","k":"plant","pl":"ground","a":292.3,"t":26.4,"az":193.5,"n":9,"m":true},{"p":"c2k_0732","k":"generator","pl":"rooftop","a":485.6,"t":4.0,"az":121.0,"n":2,"m":false},{"p":"c2k_0732_mirror","k":"generator","pl":"rooftop","a":485.6,"t":4.0,"az":239.0,"n":2,"m":true},{"p":"c2k_0743","k":"plant","pl":"ground","a":374.7,"t":11.8,"az":165.2,"n":5,"m":false},{"p":"c2k_0743_mirror","k":"plant","pl":"ground","a":374.7,"t":11.8,"az":194.8,"n":5,"m":true},{"p":"c2k_0750","k":"generator","pl":"rooftop","a":408.9,"t":3.6,"az":155.6,"n":27,"m":false},{"p":"c2k_0750_mirror","k":"generator","pl":"rooftop","a":408.9,"t":3.6,"az":204.4,"n":27,"m":true},{"p":"c2k_0755","k":"plant","pl":"ground","a":374.5,"t":10.9,"az":162.8,"n":2,"m":false},{"p":"c2k_0755_mirror","k":"plant","pl":"ground","a":374.5,"t":10.9,"az":197.2,"n":2,"m":true},{"p":"c2k_0771","k":"generator","pl":"rooftop","a":707.8,"t":18.9,"az":146.2,"n":4,"m":false},{"p":"c2k_0771_mirror","k":"generator","pl":"rooftop","a":707.8,"t":18.9,"az":213.8,"n":4,"m":true},{"p":"c2k_0780","k":"plant","pl":"ground","a":676.8,"t":14.5,"az":174.2,"n":4,"m":false},{"p":"c2k_0780_mirror","k":"plant","pl":"ground","a":676.8,"t":14.5,"az":185.8,"n":4,"m":true},{"p":"c2k_0785","k":"generator","pl":"rooftop","a":542.3,"t":17.3,"az":177.0,"n":6,"m":false},{"p":"c2k_0785_mirror","k":"generator","pl":"rooftop","a":542.3,"t":17.3,"az":183.0,"n":6,"m":true},{"p":"c2k_0798","k":"plant","pl":"ground","a":787.4,"t":21.0,"az":179.4,"n":6,"m":false},{"p":"c2k_0798_mirror","k":"plant","pl":"ground","a":787.4,"t":21.0,"az":180.6,"n":6,"m":true},{"p":"c2k_0817","k":"plant","pl":"ground","a":873.2,"t":8.5,"az":165.3,"n":8,"m":false},{"p":"c2k_0817_mirror","k":"plant","pl":"ground","a":873.2,"t":8.5,"az":194.7,"n":8,"m":true},{"p":"c2k_0826","k":"generator","pl":"rooftop","a":669.8,"t":6.9,"az":164.7,"n":8,"m":false},{"p":"c2k_0826_mirror","k":"generator","pl":"rooftop","a":669.8,"t":6.9,"az":195.3,"n":8,"m":true},{"p":"c2k_0837","k":"generator","pl":"rooftop","a":824.2,"t":21.0,"az":179.4,"n":7,"m":false},{"p":"c2k_0837_mirror","k":"generator","pl":"rooftop","a":824.2,"t":21.0,"az":180.6,"n":7,"m":true},{"p":"c2k_0838","k":"plant","pl":"ground","a":786.6,"t":3.2,"az":151.3,"n":11,"m":false},{"p":"c2k_0838_mirror","k":"plant","pl":"ground","a":786.6,"t":3.2,"az":208.7,"n":11,"m":true},{"p":"c2k_0840","k":"generator","pl":"rooftop","a":726.9,"t":10.6,"az":152.4,"n":3,"m":false},{"p":"c2k_0840_mirror","k":"generator","pl":"rooftop","a":726.9,"t":10.6,"az":207.6,"n":3,"m":true},{"p":"c2k_0841","k":"plant","pl":"ground","a":906.3,"t":17.4,"az":177.1,"n":6,"m":false},{"p":"c2k_0841_mirror","k":"plant","pl":"ground","a":906.3,"t":17.4,"az":182.9,"n":6,"m":true},{"p":"c2k_0842","k":"plant","pl":"ground","a":994.2,"t":2.9,"az":125.5,"n":10,"m":false},{"p":"c2k_0842_mirror","k":"plant","pl":"ground","a":994.2,"t":2.9,"az":234.5,"n":10,"m":true},{"p":"c2k_0846","k":"plant","pl":"ground","a":970.0,"t":20.1,"az":179.0,"n":6,"m":false},{"p":"c2k_0846_mirror","k":"plant","pl":"ground","a":970.0,"t":20.1,"az":181.0,"n":6,"m":true},{"p":"c2k_0860","k":"generator","pl":"ground","a":575.3,"t":18.9,"az":139.2,"n":2,"m":false},{"p":"c2k_0860_mirror","k":"generator","pl":"ground","a":575.3,"t":18.9,"az":220.8,"n":2,"m":true},{"p":"c2k_0868","k":"plant","pl":"ground","a":696.1,"t":25.2,"az":177.2,"n":15,"m":false},{"p":"c2k_0868_mirror","k":"plant","pl":"ground","a":696.1,"t":25.2,"az":182.8,"n":15,"m":true},{"p":"c2k_0880","k":"plant","pl":"ground","a":628.8,"t":19.6,"az":162.4,"n":2,"m":false},{"p":"c2k_0880_mirror","k":"plant","pl":"ground","a":628.8,"t":19.6,"az":197.6,"n":2,"m":true},{"p":"c2k_0883","k":"generator","pl":"rooftop","a":890.0,"t":13.7,"az":169.8,"n":4,"m":false},{"p":"c2k_0883_mirror","k":"generator","pl":"rooftop","a":890.0,"t":13.7,"az":190.2,"n":4,"m":true},{"p":"c2k_0905","k":"plant","pl":"ground","a":721.1,"t":20.8,"az":163.3,"n":3,"m":false},{"p":"c2k_0905_mirror","k":"plant","pl":"ground","a":721.1,"t":20.8,"az":196.7,"n":3,"m":true},{"p":"c2k_0925","k":"plant","pl":"ground","a":578.1,"t":6.5,"az":150.8,"n":4,"m":false},{"p":"c2k_0925_mirror","k":"plant","pl":"ground","a":578.1,"t":6.5,"az":209.2,"n":4,"m":true},{"p":"c2k_0937","k":"plant","pl":"ground","a":502.0,"t":18.4,"az":160.0,"n":2,"m":false},{"p":"c2k_0937_mirror","k":"plant","pl":"ground","a":502.0,"t":18.4,"az":200.0,"n":2,"m":true},{"p":"c2k_0945","k":"plant","pl":"ground","a":691.5,"t":17.9,"az":163.2,"n":2,"m":false},{"p":"c2k_0945_mirror","k":"plant","pl":"ground","a":691.5,"t":17.9,"az":196.8,"n":2,"m":true},{"p":"c2k_0951","k":"plant","pl":"ground","a":632.7,"t":12.3,"az":162.5,"n":2,"m":false},{"p":"c2k_0951_mirror","k":"plant","pl":"ground","a":632.7,"t":12.3,"az":197.5,"n":2,"m":true},{"p":"c2k_0958","k":"plant","pl":"ground","a":798.5,"t":11.7,"az":118.6,"n":3,"m":false},{"p":"c2k_0958_mirror","k":"plant","pl":"ground","a":798.5,"t":11.7,"az":241.4,"n":3,"m":true},{"p":"c2k_0959","k":"generator","pl":"rooftop","a":626.5,"t":15.0,"az":173.8,"n":9,"m":false},{"p":"c2k_0959_mirror","k":"generator","pl":"rooftop","a":626.5,"t":15.0,"az":186.2,"n":9,"m":true},{"p":"c2k_0977","k":"plant","pl":"ground","a":526.3,"t":5.6,"az":136.3,"n":2,"m":false},{"p":"c2k_0977_mirror","k":"plant","pl":"ground","a":526.3,"t":5.6,"az":223.7,"n":2,"m":true},{"p":"c2k_0992","k":"generator","pl":"rooftop","a":824.2,"t":18.3,"az":178.0,"n":2,"m":false},{"p":"c2k_0992_mirror","k":"generator","pl":"rooftop","a":824.2,"t":18.3,"az":182.0,"n":2,"m":true},{"p":"c2k_0994","k":"plant","pl":"ground","a":593.5,"t":8.1,"az":115.4,"n":2,"m":false},{"p":"c2k_0994_mirror","k":"plant","pl":"ground","a":593.5,"t":8.1,"az":244.6,"n":2,"m":true},{"p":"c2k_1014","k":"generator","pl":"rooftop","a":767.1,"t":24.0,"az":172.4,"n":11,"m":false},{"p":"c2k_1014_mirror","k":"generator","pl":"rooftop","a":767.1,"t":24.0,"az":187.6,"n":11,"m":true},{"p":"c2k_1016","k":"plant","pl":"ground","a":844.1,"t":22.3,"az":177.2,"n":2,"m":false},{"p":"c2k_1016_mirror","k":"plant","pl":"ground","a":844.1,"t":22.3,"az":182.8,"n":2,"m":true},{"p":"c2k_1018","k":"generator","pl":"rooftop","a":839.8,"t":3.6,"az":110.7,"n":9,"m":false},{"p":"c2k_1018_mirror","k":"generator","pl":"rooftop","a":839.8,"t":3.6,"az":249.3,"n":9,"m":true},{"p":"c2k_1021","k":"plant","pl":"ground","a":802.2,"t":11.8,"az":166.1,"n":4,"m":false},{"p":"c2k_1021_mirror","k":"plant","pl":"ground","a":802.2,"t":11.8,"az":193.9,"n":4,"m":true},{"p":"c2k_1024","k":"generator","pl":"rooftop","a":885.2,"t":19.4,"az":173.5,"n":6,"m":false},{"p":"c2k_1024_mirror","k":"generator","pl":"rooftop","a":885.2,"t":19.4,"az":186.5,"n":6,"m":true},{"p":"c2k_1027","k":"generator","pl":"rooftop","a":952.3,"t":25.1,"az":161.1,"n":6,"m":false},{"p":"c2k_1027_mirror","k":"generator","pl":"rooftop","a":952.3,"t":25.1,"az":198.9,"n":6,"m":true},{"p":"c2k_1031","k":"generator","pl":"rooftop","a":892.8,"t":14.9,"az":174.8,"n":2,"m":false},{"p":"c2k_1031_mirror","k":"generator","pl":"rooftop","a":892.8,"t":14.9,"az":185.2,"n":2,"m":true},{"p":"c2k_1053","k":"plant","pl":"ground","a":676.6,"t":4.8,"az":134.9,"n":8,"m":false},{"p":"c2k_1053_mirror","k":"plant","pl":"ground","a":676.6,"t":4.8,"az":225.1,"n":8,"m":true},{"p":"c2k_1058","k":"plant","pl":"ground","a":649.2,"t":17.4,"az":176.7,"n":6,"m":false},{"p":"c2k_1058_mirror","k":"plant","pl":"ground","a":649.2,"t":17.4,"az":183.3,"n":6,"m":true},{"p":"c2k_1065","k":"generator","pl":"rooftop","a":967.1,"t":8.4,"az":148.7,"n":10,"m":false},{"p":"c2k_1065_mirror","k":"generator","pl":"rooftop","a":967.1,"t":8.4,"az":211.3,"n":10,"m":true},{"p":"c2k_1074","k":"plant","pl":"ground","a":868.5,"t":19.9,"az":163.2,"n":4,"m":false},{"p":"c2k_1074_mirror","k":"plant","pl":"ground","a":868.5,"t":19.9,"az":196.8,"n":4,"m":true},{"p":"c2k_1077","k":"plant","pl":"ground","a":625.2,"t":18.5,"az":176.4,"n":4,"m":false},{"p":"c2k_1077_mirror","k":"plant","pl":"ground","a":625.2,"t":18.5,"az":183.6,"n":4,"m":true},{"p":"c2k_1080","k":"plant","pl":"ground","a":986.8,"t":13.6,"az":171.7,"n":3,"m":false},{"p":"c2k_1080_mirror","k":"plant","pl":"ground","a":986.8,"t":13.6,"az":188.3,"n":3,"m":true},{"p":"c2k_1093","k":"generator","pl":"rooftop","a":778.0,"t":3.6,"az":155.6,"n":18,"m":false},{"p":"c2k_1093_mirror","k":"generator","pl":"rooftop","a":778.0,"t":3.6,"az":204.4,"n":18,"m":true},{"p":"c2k_1104","k":"plant","pl":"ground","a":900.2,"t":3.5,"az":121.7,"n":24,"m":false},{"p":"c2k_1104_mirror","k":"plant","pl":"ground","a":900.2,"t":3.5,"az":238.3,"n":24,"m":true},{"p":"c2k_1106","k":"generator","pl":"rooftop","a":767.3,"t":3.2,"az":150.1,"n":19,"m":false},{"p":"c2k_1106_mirror","k":"generator","pl":"rooftop","a":767.3,"t":3.2,"az":209.9,"n":19,"m":true},{"p":"c2k_1111","k":"plant","pl":"ground","a":738.9,"t":21.5,"az":177.0,"n":5,"m":false},{"p":"c2k_1111_mirror","k":"plant","pl":"ground","a":738.9,"t":21.5,"az":183.0,"n":5,"m":true},{"p":"c2k_1113","k":"generator","pl":"rooftop","a":638.9,"t":19.8,"az":146.5,"n":3,"m":false},{"p":"c2k_1113_mirror","k":"generator","pl":"rooftop","a":638.9,"t":19.8,"az":213.5,"n":3,"m":true},{"p":"c2k_1116","k":"generator","pl":"rooftop","a":934.8,"t":25.1,"az":161.1,"n":2,"m":false},{"p":"c2k_1116_mirror","k":"generator","pl":"rooftop","a":934.8,"t":25.1,"az":198.9,"n":2,"m":true},{"p":"c2k_1121","k":"plant","pl":"ground","a":580.1,"t":22.3,"az":177.2,"n":2,"m":false},{"p":"c2k_1121_mirror","k":"plant","pl":"ground","a":580.1,"t":22.3,"az":182.8,"n":2,"m":true},{"p":"c2k_1138","k":"generator","pl":"rooftop","a":598.8,"t":25.4,"az":147.6,"n":9,"m":false},{"p":"c2k_1138_mirror","k":"generator","pl":"rooftop","a":598.8,"t":25.4,"az":212.4,"n":9,"m":true},{"p":"c2k_1143","k":"plant","pl":"ground","a":687.9,"t":14.7,"az":172.4,"n":5,"m":false},{"p":"c2k_1143_mirror","k":"plant","pl":"ground","a":687.9,"t":14.7,"az":187.6,"n":5,"m":true},{"p":"c2k_1146","k":"plant","pl":"ground","a":1735.2,"t":25.2,"az":145.2,"n":4,"m":false},{"p":"c2k_1146_mirror","k":"plant","pl":"ground","a":1735.2,"t":25.2,"az":214.8,"n":4,"m":true},{"p":"c2k_1147","k":"plant","pl":"ground","a":2241.2,"t":3.1,"az":124.1,"n":5,"m":false},{"p":"c2k_1147_mirror","k":"plant","pl":"ground","a":2241.2,"t":3.1,"az":235.9,"n":5,"m":true},{"p":"c2k_1148","k":"plant","pl":"ground","a":4809.6,"t":3.0,"az":140.9,"n":5,"m":false},{"p":"c2k_1148_mirror","k":"plant","pl":"ground","a":4809.6,"t":3.0,"az":219.1,"n":5,"m":true},{"p":"c2k_1149","k":"generator","pl":"rooftop","a":4680.8,"t":11.8,"az":166.1,"n":5,"m":false},{"p":"c2k_1149_mirror","k":"generator","pl":"rooftop","a":4680.8,"t":11.8,"az":193.9,"n":5,"m":true},{"p":"c2k_1150","k":"plant","pl":"ground","a":3889.1,"t":11.4,"az":155.1,"n":2,"m":false},{"p":"c2k_1150_mirror","k":"plant","pl":"ground","a":3889.1,"t":11.4,"az":204.9,"n":2,"m":true},{"p":"c2k_1151","k":"plant","pl":"ground","a":3421.2,"t":24.7,"az":156.4,"n":2,"m":false},{"p":"c2k_1151_mirror","k":"plant","pl":"ground","a":3421.2,"t":24.7,"az":203.6,"n":2,"m":true},{"p":"c2k_1156","k":"generator","pl":"rooftop","a":1542.6,"t":18.8,"az":177.8,"n":3,"m":false},{"p":"c2k_1156_mirror","k":"generator","pl":"rooftop","a":1542.6,"t":18.8,"az":182.2,"n":3,"m":true},{"p":"c2k_1157","k":"plant","pl":"ground","a":2391.0,"t":12.7,"az":168.0,"n":6,"m":false},{"p":"c2k_1157_mirror","k":"plant","pl":"ground","a":2391.0,"t":12.7,"az":192.0,"n":6,"m":true},{"p":"c2k_1158","k":"plant","pl":"ground","a":2601.7,"t":4.5,"az":150.6,"n":9,"m":false},{"p":"c2k_1158_mirror","k":"plant","pl":"ground","a":2601.7,"t":4.5,"az":209.4,"n":9,"m":true},{"p":"c2k_1162","k":"generator","pl":"ground","a":1276.2,"t":5.3,"az":129.7,"n":17,"m":false},{"p":"c2k_1162_mirror","k":"generator","pl":"ground","a":1276.2,"t":5.3,"az":230.3,"n":17,"m":true},{"p":"c2k_1164","k":"plant","pl":"ground","a":4388.1,"t":3.7,"az":122.7,"n":3,"m":false},{"p":"c2k_1164_mirror","k":"plant","pl":"ground","a":4388.1,"t":3.7,"az":237.3,"n":3,"m":true},{"p":"c2k_1168","k":"plant","pl":"ground","a":1950.2,"t":4.0,"az":86.3,"n":13,"m":false},{"p":"c2k_1168_mirror","k":"plant","pl":"ground","a":1950.2,"t":4.0,"az":273.7,"n":13,"m":true},{"p":"c2k_1170","k":"plant","pl":"ground","a":2124.2,"t":16.3,"az":176.4,"n":6,"m":false},{"p":"c2k_1170_mirror","k":"plant","pl":"ground","a":2124.2,"t":16.3,"az":183.6,"n":6,"m":true},{"p":"c2k_1177","k":"plant","pl":"ground","a":3715.9,"t":6.0,"az":110.7,"n":7,"m":false},{"p":"c2k_1177_mirror","k":"plant","pl":"ground","a":3715.9,"t":6.0,"az":249.3,"n":7,"m":true},{"p":"c2k_1183","k":"generator","pl":"ground","a":1234.8,"t":9.9,"az":166.8,"n":2,"m":false},{"p":"c2k_1183_mirror","k":"generator","pl":"ground","a":1234.8,"t":9.9,"az":193.2,"n":2,"m":true},{"p":"c2k_1188","k":"plant","pl":"ground","a":1467.5,"t":14.3,"az":173.9,"n":3,"m":false},{"p":"c2k_1188_mirror","k":"plant","pl":"ground","a":1467.5,"t":14.3,"az":186.1,"n":3,"m":true},{"p":"c2k_1189","k":"generator","pl":"rooftop","a":3929.9,"t":22.7,"az":177.1,"n":7,"m":false},{"p":"c2k_1189_mirror","k":"generator","pl":"rooftop","a":3929.9,"t":22.7,"az":182.9,"n":7,"m":true},{"p":"c2k_1190","k":"plant","pl":"ground","a":3980.2,"t":4.0,"az":152.7,"n":5,"m":false},{"p":"c2k_1190_mirror","k":"plant","pl":"ground","a":3980.2,"t":4.0,"az":207.3,"n":5,"m":true},{"p":"c2k_1192","k":"plant","pl":"ground","a":3023.9,"t":21.3,"az":165.8,"n":7,"m":false},{"p":"c2k_1192_mirror","k":"plant","pl":"ground","a":3023.9,"t":21.3,"az":194.2,"n":7,"m":true},{"p":"c2k_1201","k":"plant","pl":"ground","a":3870.6,"t":24.7,"az":178.4,"n":8,"m":false},{"p":"c2k_1201_mirror","k":"plant","pl":"ground","a":3870.6,"t":24.7,"az":181.6,"n":8,"m":true},{"p":"c2k_1209","k":"generator","pl":"rooftop","a":2503.3,"t":24.4,"az":178.0,"n":4,"m":false},{"p":"c2k_1209_mirror","k":"generator","pl":"rooftop","a":2503.3,"t":24.4,"az":182.0,"n":4,"m":true},{"p":"c2k_1225","k":"generator","pl":"rooftop","a":4050.8,"t":28.6,"az":145.5,"n":4,"m":false},{"p":"c2k_1225_mirror","k":"generator","pl":"rooftop","a":4050.8,"t":28.6,"az":214.5,"n":4,"m":true},{"p":"c2k_1228","k":"plant","pl":"ground","a":4626.7,"t":3.4,"az":125.7,"n":3,"m":false},{"p":"c2k_1228_mirror","k":"plant","pl":"ground","a":4626.7,"t":3.4,"az":234.3,"n":3,"m":true},{"p":"c2k_1233","k":"generator","pl":"rooftop","a":1004.3,"t":5.4,"az":138.4,"n":3,"m":false},{"p":"c2k_1233_mirror","k":"generator","pl":"rooftop","a":1004.3,"t":5.4,"az":221.6,"n":3,"m":true},{"p":"c2k_1236","k":"generator","pl":"rooftop","a":3693.3,"t":23.7,"az":179.0,"n":4,"m":false},{"p":"c2k_1236_mirror","k":"generator","pl":"rooftop","a":3693.3,"t":23.7,"az":181.0,"n":4,"m":true},{"p":"c2k_1240","k":"generator","pl":"rooftop","a":3807.0,"t":11.5,"az":169.4,"n":2,"m":false},{"p":"c2k_1240_mirror","k":"generator","pl":"rooftop","a":3807.0,"t":11.5,"az":190.6,"n":2,"m":true},{"p":"c2k_1251","k":"plant","pl":"ground","a":2457.6,"t":15.6,"az":155.7,"n":3,"m":false},{"p":"c2k_1251_mirror","k":"plant","pl":"ground","a":2457.6,"t":15.6,"az":204.3,"n":3,"m":true},{"p":"c2k_1254","k":"generator","pl":"rooftop","a":3640.4,"t":14.6,"az":173.3,"n":4,"m":false},{"p":"c2k_1254_mirror","k":"generator","pl":"rooftop","a":3640.4,"t":14.6,"az":186.7,"n":4,"m":true},{"p":"c2k_1264","k":"generator","pl":"rooftop","a":2789.6,"t":10.9,"az":162.8,"n":2,"m":false},{"p":"c2k_1264_mirror","k":"generator","pl":"rooftop","a":2789.6,"t":10.9,"az":197.2,"n":2,"m":true},{"p":"c2k_1268","k":"plant","pl":"ground","a":3636.9,"t":13.7,"az":112.1,"n":5,"m":false},{"p":"c2k_1268_mirror","k":"plant","pl":"ground","a":3636.9,"t":13.7,"az":247.9,"n":5,"m":true},{"p":"c2k_1271","k":"plant","pl":"ground","a":3670.4,"t":17.5,"az":177.1,"n":4,"m":false},{"p":"c2k_1271_mirror","k":"plant","pl":"ground","a":3670.4,"t":17.5,"az":182.9,"n":4,"m":true},{"p":"c2k_1273","k":"plant","pl":"ground","a":1007.3,"t":14.6,"az":172.5,"n":4,"m":false},{"p":"c2k_1273_mirror","k":"plant","pl":"ground","a":1007.3,"t":14.6,"az":187.5,"n":4,"m":true},{"p":"c2k_1277","k":"plant","pl":"ground","a":1384.7,"t":5.6,"az":138.2,"n":4,"m":false},{"p":"c2k_1277_mirror","k":"plant","pl":"ground","a":1384.7,"t":5.6,"az":221.8,"n":4,"m":true},{"p":"c2k_1281","k":"plant","pl":"ground","a":2969.2,"t":3.8,"az":141.5,"n":30,"m":false},{"p":"c2k_1281_mirror","k":"plant","pl":"ground","a":2969.2,"t":3.8,"az":218.5,"n":30,"m":true},{"p":"c2k_1285","k":"plant","pl":"ground","a":1925.7,"t":4.5,"az":99.3,"n":2,"m":false},{"p":"c2k_1285_mirror","k":"plant","pl":"ground","a":1925.7,"t":4.5,"az":260.7,"n":2,"m":true},{"p":"c2k_1288","k":"plant","pl":"ground","a":2137.4,"t":24.3,"az":178.7,"n":3,"m":false},{"p":"c2k_1288_mirror","k":"plant","pl":"ground","a":2137.4,"t":24.3,"az":181.3,"n":3,"m":true},{"p":"c2k_1308","k":"plant","pl":"ground","a":1911.3,"t":5.5,"az":138.0,"n":9,"m":false},{"p":"c2k_1308_mirror","k":"plant","pl":"ground","a":1911.3,"t":5.5,"az":222.0,"n":9,"m":true},{"p":"c2k_1316","k":"plant","pl":"ground","a":4536.5,"t":10.4,"az":148.2,"n":2,"m":false},{"p":"c2k_1316_mirror","k":"plant","pl":"ground","a":4536.5,"t":10.4,"az":211.8,"n":2,"m":true},{"p":"c2k_1325","k":"plant","pl":"ground","a":1750.7,"t":5.0,"az":121.2,"n":12,"m":false},{"p":"c2k_1325_mirror","k":"plant","pl":"ground","a":1750.7,"t":5.0,"az":238.8,"n":12,"m":true},{"p":"c2k_1327","k":"plant","pl":"ground","a":1145.1,"t":16.8,"az":174.3,"n":4,"m":false},{"p":"c2k_1327_mirror","k":"plant","pl":"ground","a":1145.1,"t":16.8,"az":185.7,"n":4,"m":true},{"p":"c2k_1328","k":"plant","pl":"ground","a":4797.8,"t":4.0,"az":114.5,"n":5,"m":false},{"p":"c2k_1328_mirror","k":"plant","pl":"ground","a":4797.8,"t":4.0,"az":245.5,"n":5,"m":true},{"p":"c2k_1335","k":"plant","pl":"ground","a":2360.1,"t":17.3,"az":177.0,"n":2,"m":false},{"p":"c2k_1335_mirror","k":"plant","pl":"ground","a":2360.1,"t":17.3,"az":183.0,"n":2,"m":true},{"p":"c2k_1341","k":"plant","pl":"ground","a":1851.5,"t":3.5,"az":145.8,"n":2,"m":false},{"p":"c2k_1341_mirror","k":"plant","pl":"ground","a":1851.5,"t":3.5,"az":214.2,"n":2,"m":true},{"p":"c2k_1349","k":"generator","pl":"rooftop","a":2094.9,"t":5.3,"az":140.6,"n":10,"m":false},{"p":"c2k_1349_mirror","k":"generator","pl":"rooftop","a":2094.9,"t":5.3,"az":219.4,"n":10,"m":true},{"p":"c2k_1350","k":"plant","pl":"ground","a":3735.7,"t":22.7,"az":171.4,"n":4,"m":false},{"p":"c2k_1350_mirror","k":"plant","pl":"ground","a":3735.7,"t":22.7,"az":188.6,"n":4,"m":true},{"p":"c2k_1365","k":"generator","pl":"rooftop","a":3659.9,"t":8.4,"az":148.7,"n":7,"m":false},{"p":"c2k_1365_mirror","k":"generator","pl":"rooftop","a":3659.9,"t":8.4,"az":211.3,"n":7,"m":true},{"p":"c2k_1377","k":"generator","pl":"rooftop","a":4748.6,"t":5.5,"az":138.0,"n":10,"m":false},{"p":"c2k_1377_mirror","k":"generator","pl":"rooftop","a":4748.6,"t":5.5,"az":222.0,"n":10,"m":true},{"p":"c2k_1383","k":"generator","pl":"rooftop","a":1199.5,"t":5.6,"az":137.1,"n":10,"m":false},{"p":"c2k_1383_mirror","k":"generator","pl":"rooftop","a":1199.5,"t":5.6,"az":222.9,"n":10,"m":true},{"p":"c2k_1405","k":"generator","pl":"ground","a":1234.9,"t":3.3,"az":130.7,"n":2,"m":false},{"p":"c2k_1405_mirror","k":"generator","pl":"ground","a":1234.9,"t":3.3,"az":229.3,"n":2,"m":true},{"p":"c2k_1410","k":"plant","pl":"ground","a":4250.1,"t":9.0,"az":144.9,"n":4,"m":false},{"p":"c2k_1410_mirror","k":"plant","pl":"ground","a":4250.1,"t":9.0,"az":215.1,"n":4,"m":true},{"p":"c2k_1419","k":"generator","pl":"rooftop","a":2526.8,"t":4.6,"az":127.2,"n":11,"m":false},{"p":"c2k_1419_mirror","k":"generator","pl":"rooftop","a":2526.8,"t":4.6,"az":232.8,"n":11,"m":true},{"p":"c2k_1426","k":"generator","pl":"rooftop","a":2413.7,"t":5.4,"az":138.4,"n":9,"m":false},{"p":"c2k_1426_mirror","k":"generator","pl":"rooftop","a":2413.7,"t":5.4,"az":221.6,"n":9,"m":true},{"p":"c2k_1427","k":"plant","pl":"ground","a":4717.6,"t":4.7,"az":161.4,"n":6,"m":false},{"p":"c2k_1427_mirror","k":"plant","pl":"ground","a":4717.6,"t":4.7,"az":198.6,"n":6,"m":true},{"p":"c2k_1446","k":"plant","pl":"ground","a":1909.3,"t":13.8,"az":146.1,"n":6,"m":false},{"p":"c2k_1446_mirror","k":"plant","pl":"ground","a":1909.3,"t":13.8,"az":213.9,"n":6,"m":true},{"p":"c2k_1448","k":"generator","pl":"rooftop","a":2156.8,"t":16.9,"az":176.1,"n":6,"m":false},{"p":"c2k_1448_mirror","k":"generator","pl":"rooftop","a":2156.8,"t":16.9,"az":183.9,"n":6,"m":true},{"p":"c2k_1453","k":"generator","pl":"ground","a":1236.8,"t":3.3,"az":130.7,"n":2,"m":false},{"p":"c2k_1453_mirror","k":"generator","pl":"ground","a":1236.8,"t":3.3,"az":229.3,"n":2,"m":true},{"p":"c2k_1465","k":"plant","pl":"ground","a":4538.0,"t":22.7,"az":171.4,"n":2,"m":false},{"p":"c2k_1465_mirror","k":"plant","pl":"ground","a":4538.0,"t":22.7,"az":188.6,"n":2,"m":true},{"p":"c2k_1466","k":"plant","pl":"ground","a":1249.2,"t":7.1,"az":144.0,"n":6,"m":false},{"p":"c2k_1466_mirror","k":"plant","pl":"ground","a":1249.2,"t":7.1,"az":216.0,"n":6,"m":true},{"p":"c2k_1474","k":"generator","pl":"rooftop","a":2831.9,"t":4.2,"az":125.6,"n":3,"m":false},{"p":"c2k_1474_mirror","k":"generator","pl":"rooftop","a":2831.9,"t":4.2,"az":234.4,"n":3,"m":true},{"p":"c2k_1483","k":"plant","pl":"ground","a":3126.7,"t":11.2,"az":139.4,"n":2,"m":false},{"p":"c2k_1483_mirror","k":"plant","pl":"ground","a":3126.7,"t":11.2,"az":220.6,"n":2,"m":true},{"p":"c2k_1490","k":"generator","pl":"rooftop","a":2372.4,"t":16.0,"az":169.3,"n":2,"m":false},{"p":"c2k_1490_mirror","k":"generator","pl":"rooftop","a":2372.4,"t":16.0,"az":190.7,"n":2,"m":true},{"p":"c2k_1495","k":"plant","pl":"ground","a":4751.8,"t":10.5,"az":167.0,"n":2,"m":false},{"p":"c2k_1495_mirror","k":"plant","pl":"ground","a":4751.8,"t":10.5,"az":193.0,"n":2,"m":true},{"p":"c2k_1501","k":"plant","pl":"ground","a":2738.1,"t":22.4,"az":167.2,"n":6,"m":false},{"p":"c2k_1501_mirror","k":"plant","pl":"ground","a":2738.1,"t":22.4,"az":192.8,"n":6,"m":true},{"p":"c2k_1502","k":"plant","pl":"ground","a":2661.6,"t":21.9,"az":165.9,"n":8,"m":false},{"p":"c2k_1502_mirror","k":"plant","pl":"ground","a":2661.6,"t":21.9,"az":194.1,"n":8,"m":true},{"p":"c2k_1519","k":"plant","pl":"ground","a":2503.9,"t":18.5,"az":176.4,"n":4,"m":false},{"p":"c2k_1519_mirror","k":"plant","pl":"ground","a":2503.9,"t":18.5,"az":183.6,"n":4,"m":true},{"p":"c2k_1521","k":"plant","pl":"ground","a":2193.6,"t":21.8,"az":165.1,"n":7,"m":false},{"p":"c2k_1521_mirror","k":"plant","pl":"ground","a":2193.6,"t":21.8,"az":194.9,"n":7,"m":true},{"p":"c2k_1523","k":"plant","pl":"ground","a":2289.4,"t":18.6,"az":137.5,"n":3,"m":false},{"p":"c2k_1523_mirror","k":"plant","pl":"ground","a":2289.4,"t":18.6,"az":222.5,"n":3,"m":true},{"p":"c2k_1531","k":"plant","pl":"ground","a":13189.8,"t":9.8,"az":152.6,"n":6,"m":false},{"p":"c2k_1531_mirror","k":"plant","pl":"ground","a":13189.8,"t":9.8,"az":207.4,"n":6,"m":true},{"p":"c2k_1532","k":"plant","pl":"ground","a":8577.3,"t":10.4,"az":148.2,"n":2,"m":false},{"p":"c2k_1532_mirror","k":"plant","pl":"ground","a":8577.3,"t":10.4,"az":211.8,"n":2,"m":true},{"p":"c2k_1538","k":"plant","pl":"ground","a":11443.2,"t":10.5,"az":167.0,"n":2,"m":false},{"p":"c2k_1538_mirror","k":"plant","pl":"ground","a":11443.2,"t":10.5,"az":193.0,"n":2,"m":true},{"p":"c2k_1540","k":"plant","pl":"ground","a":5934.0,"t":7.0,"az":146.5,"n":9,"m":false},{"p":"c2k_1540_mirror","k":"plant","pl":"ground","a":5934.0,"t":7.0,"az":213.5,"n":9,"m":true},{"p":"c2k_1541","k":"plant","pl":"ground","a":6207.9,"t":11.7,"az":157.1,"n":2,"m":false},{"p":"c2k_1541_mirror","k":"plant","pl":"ground","a":6207.9,"t":11.7,"az":202.9,"n":2,"m":true},{"p":"c2k_1554","k":"plant","pl":"ground","a":6228.9,"t":15.3,"az":175.5,"n":2,"m":false},{"p":"c2k_1554_mirror","k":"plant","pl":"ground","a":6228.9,"t":15.3,"az":184.5,"n":2,"m":true},{"p":"c2k_1557","k":"generator","pl":"rooftop","a":5291.7,"t":3.7,"az":134.8,"n":2,"m":false},{"p":"c2k_1557_mirror","k":"generator","pl":"rooftop","a":5291.7,"t":3.7,"az":225.2,"n":2,"m":true},{"p":"c2k_1559","k":"generator","pl":"ground","a":21092.1,"t":26.1,"az":174.3,"n":6,"m":false},{"p":"c2k_1559_mirror","k":"generator","pl":"ground","a":21092.1,"t":26.1,"az":185.7,"n":6,"m":true},{"p":"c2k_1562","k":"plant","pl":"ground","a":6011.2,"t":3.7,"az":123.4,"n":3,"m":false},{"p":"c2k_1562_mirror","k":"plant","pl":"ground","a":6011.2,"t":3.7,"az":236.6,"n":3,"m":true},{"p":"c2k_1564","k":"plant","pl":"ground","a":40956.2,"t":6.8,"az":148.8,"n":9,"m":false},{"p":"c2k_1564_mirror","k":"plant","pl":"ground","a":40956.2,"t":6.8,"az":211.2,"n":9,"m":true},{"p":"c2k_1566","k":"plant","pl":"ground","a":22698.6,"t":9.4,"az":148.3,"n":6,"m":false},{"p":"c2k_1566_mirror","k":"plant","pl":"ground","a":22698.6,"t":9.4,"az":211.7,"n":6,"m":true},{"p":"c2k_1574","k":"plant","pl":"ground","a":10999.0,"t":20.0,"az":179.0,"n":3,"m":false},{"p":"c2k_1574_mirror","k":"plant","pl":"ground","a":10999.0,"t":20.0,"az":181.0,"n":3,"m":true},{"p":"c2k_1576","k":"plant","pl":"ground","a":13171.0,"t":10.5,"az":147.3,"n":2,"m":false},{"p":"c2k_1576_mirror","k":"plant","pl":"ground","a":13171.0,"t":10.5,"az":212.7,"n":2,"m":true},{"p":"c2k_1577","k":"plant","pl":"ground","a":9835.7,"t":14.3,"az":174.2,"n":4,"m":false},{"p":"c2k_1577_mirror","k":"plant","pl":"ground","a":9835.7,"t":14.3,"az":185.8,"n":4,"m":true},{"p":"c2k_1587","k":"generator","pl":"rooftop","a":13242.1,"t":20.0,"az":179.0,"n":3,"m":false},{"p":"c2k_1587_mirror","k":"generator","pl":"rooftop","a":13242.1,"t":20.0,"az":181.0,"n":3,"m":true},{"p":"c2k_1590","k":"generator","pl":"ground","a":7219.5,"t":21.2,"az":178.0,"n":3,"m":false},{"p":"c2k_1590_mirror","k":"generator","pl":"ground","a":7219.5,"t":21.2,"az":182.0,"n":3,"m":true},{"p":"c2k_1591","k":"plant","pl":"ground","a":24681.6,"t":10.2,"az":153.9,"n":5,"m":false},{"p":"c2k_1591_mirror","k":"plant","pl":"ground","a":24681.6,"t":10.2,"az":206.1,"n":5,"m":true},{"p":"c2k_1592","k":"plant","pl":"ground","a":5209.4,"t":17.7,"az":174.8,"n":4,"m":false},{"p":"c2k_1592_mirror","k":"plant","pl":"ground","a":5209.4,"t":17.7,"az":185.2,"n":4,"m":true},{"p":"c2k_1594","k":"generator","pl":"rooftop","a":26178.8,"t":16.2,"az":176.9,"n":4,"m":false},{"p":"c2k_1594_mirror","k":"generator","pl":"rooftop","a":26178.8,"t":16.2,"az":183.1,"n":4,"m":true},{"p":"c2k_1604","k":"plant","pl":"ground","a":6411.7,"t":15.4,"az":159.2,"n":5,"m":false},{"p":"c2k_1604_mirror","k":"plant","pl":"ground","a":6411.7,"t":15.4,"az":200.8,"n":5,"m":true},{"p":"c2k_1610","k":"plant","pl":"ground","a":6040.0,"t":6.6,"az":150.1,"n":4,"m":false},{"p":"c2k_1610_mirror","k":"plant","pl":"ground","a":6040.0,"t":6.6,"az":209.9,"n":4,"m":true},{"p":"c2k_1612","k":"plant","pl":"ground","a":15666.3,"t":12.0,"az":165.3,"n":4,"m":false},{"p":"c2k_1612_mirror","k":"plant","pl":"ground","a":15666.3,"t":12.0,"az":194.7,"n":4,"m":true},{"p":"c2k_1616","k":"plant","pl":"ground","a":5824.7,"t":15.3,"az":175.5,"n":2,"m":false},{"p":"c2k_1616_mirror","k":"plant","pl":"ground","a":5824.7,"t":15.3,"az":184.5,"n":2,"m":true},{"p":"c2k_1618","k":"plant","pl":"ground","a":16365.5,"t":14.9,"az":154.2,"n":6,"m":false},{"p":"c2k_1618_mirror","k":"plant","pl":"ground","a":16365.5,"t":14.9,"az":205.8,"n":6,"m":true},{"p":"c2k_1621","k":"generator","pl":"rooftop","a":5126.4,"t":6.3,"az":141.9,"n":8,"m":false},{"p":"c2k_1621_mirror","k":"generator","pl":"rooftop","a":5126.4,"t":6.3,"az":218.1,"n":8,"m":true},{"p":"c2k_1624","k":"plant","pl":"ground","a":7765.9,"t":17.5,"az":177.0,"n":4,"m":false},{"p":"c2k_1624_mirror","k":"plant","pl":"ground","a":7765.9,"t":17.5,"az":183.0,"n":4,"m":true},{"p":"c2k_1626","k":"plant","pl":"ground","a":9866.7,"t":24.9,"az":176.6,"n":12,"m":false},{"p":"c2k_1626_mirror","k":"plant","pl":"ground","a":9866.7,"t":24.9,"az":183.4,"n":12,"m":true},{"p":"c2k_1645","k":"generator","pl":"rooftop","a":10121.9,"t":2.9,"az":125.5,"n":2,"m":false},{"p":"c2k_1645_mirror","k":"generator","pl":"rooftop","a":10121.9,"t":2.9,"az":234.5,"n":2,"m":true},{"p":"c2k_1653","k":"plant","pl":"ground","a":46842.1,"t":9.5,"az":147.5,"n":10,"m":false},{"p":"c2k_1653_mirror","k":"plant","pl":"ground","a":46842.1,"t":9.5,"az":212.5,"n":10,"m":true},{"p":"c2k_1660","k":"plant","pl":"ground","a":15794.4,"t":8.1,"az":151.7,"n":2,"m":false},{"p":"c2k_1660_mirror","k":"plant","pl":"ground","a":15794.4,"t":8.1,"az":208.3,"n":2,"m":true},{"p":"c2k_1666","k":"plant","pl":"ground","a":5711.9,"t":15.5,"az":175.6,"n":2,"m":false},{"p":"c2k_1666_mirror","k":"plant","pl":"ground","a":5711.9,"t":15.5,"az":184.4,"n":2,"m":true},{"p":"c2k_1673","k":"plant","pl":"ground","a":7147.0,"t":14.3,"az":174.6,"n":2,"m":false},{"p":"c2k_1673_mirror","k":"plant","pl":"ground","a":7147.0,"t":14.3,"az":185.4,"n":2,"m":true},{"p":"c2k_1677","k":"plant","pl":"ground","a":7124.3,"t":14.8,"az":170.8,"n":7,"m":false},{"p":"c2k_1677_mirror","k":"plant","pl":"ground","a":7124.3,"t":14.8,"az":189.2,"n":7,"m":true},{"p":"c2k_1679","k":"generator","pl":"rooftop","a":11698.6,"t":6.4,"az":162.2,"n":4,"m":false},{"p":"c2k_1679_mirror","k":"generator","pl":"rooftop","a":11698.6,"t":6.4,"az":197.8,"n":4,"m":true},{"p":"c2k_1680","k":"generator","pl":"rooftop","a":6987.3,"t":4.2,"az":119.9,"n":6,"m":false},{"p":"c2k_1680_mirror","k":"generator","pl":"rooftop","a":6987.3,"t":4.2,"az":240.1,"n":6,"m":true},{"p":"c2k_1692","k":"plant","pl":"ground","a":19873.4,"t":9.6,"az":138.1,"n":7,"m":false},{"p":"c2k_1692_mirror","k":"plant","pl":"ground","a":19873.4,"t":9.6,"az":221.9,"n":7,"m":true},{"p":"c2k_1693","k":"plant","pl":"ground","a":6366.6,"t":16.2,"az":176.9,"n":5,"m":false},{"p":"c2k_1693_mirror","k":"plant","pl":"ground","a":6366.6,"t":16.2,"az":183.1,"n":5,"m":true},{"p":"c2k_1694","k":"plant","pl":"ground","a":5285.0,"t":3.7,"az":146.1,"n":4,"m":false},{"p":"c2k_1694_mirror","k":"plant","pl":"ground","a":5285.0,"t":3.7,"az":213.9,"n":4,"m":true},{"p":"c2k_1695","k":"plant","pl":"ground","a":15522.7,"t":19.7,"az":176.1,"n":7,"m":false},{"p":"c2k_1695_mirror","k":"plant","pl":"ground","a":15522.7,"t":19.7,"az":183.9,"n":7,"m":true},{"p":"c2k_1697","k":"generator","pl":"ground","a":11645.0,"t":13.8,"az":170.8,"n":3,"m":false},{"p":"c2k_1697_mirror","k":"generator","pl":"ground","a":11645.0,"t":13.8,"az":189.2,"n":3,"m":true},{"p":"c2k_1699","k":"generator","pl":"rooftop","a":11196.7,"t":17.5,"az":175.7,"n":2,"m":false},{"p":"c2k_1699_mirror","k":"generator","pl":"rooftop","a":11196.7,"t":17.5,"az":184.3,"n":2,"m":true},{"p":"c2k_1700","k":"generator","pl":"ground","a":9163.4,"t":27.2,"az":166.3,"n":6,"m":false},{"p":"c2k_1700_mirror","k":"generator","pl":"ground","a":9163.4,"t":27.2,"az":193.7,"n":6,"m":true},{"p":"c2k_1701","k":"plant","pl":"ground","a":15056.3,"t":2.9,"az":127.1,"n":8,"m":false},{"p":"c2k_1701_mirror","k":"plant","pl":"ground","a":15056.3,"t":2.9,"az":232.9,"n":8,"m":true},{"p":"c2k_1704","k":"plant","pl":"ground","a":13200.8,"t":14.8,"az":170.8,"n":7,"m":false},{"p":"c2k_1704_mirror","k":"plant","pl":"ground","a":13200.8,"t":14.8,"az":189.2,"n":7,"m":true},{"p":"c2k_1706","k":"plant","pl":"ground","a":9413.9,"t":4.2,"az":120.1,"n":2,"m":false},{"p":"c2k_1706_mirror","k":"plant","pl":"ground","a":9413.9,"t":4.2,"az":239.9,"n":2,"m":true},{"p":"c2k_1707","k":"plant","pl":"ground","a":10369.7,"t":5.3,"az":144.2,"n":2,"m":false},{"p":"c2k_1707_mirror","k":"plant","pl":"ground","a":10369.7,"t":5.3,"az":215.8,"n":2,"m":true},{"p":"c2k_1713","k":"plant","pl":"ground","a":7751.4,"t":16.7,"az":173.8,"n":6,"m":false},{"p":"c2k_1713_mirror","k":"plant","pl":"ground","a":7751.4,"t":16.7,"az":186.2,"n":6,"m":true},{"p":"c2k_1719","k":"generator","pl":"rooftop","a":6171.1,"t":3.4,"az":94.4,"n":6,"m":false},{"p":"c2k_1719_mirror","k":"generator","pl":"rooftop","a":6171.1,"t":3.4,"az":265.6,"n":6,"m":true},{"p":"c2k_1726","k":"generator","pl":"rooftop","a":5421.0,"t":6.4,"az":140.8,"n":2,"m":false},{"p":"c2k_1726_mirror","k":"generator","pl":"rooftop","a":5421.0,"t":6.4,"az":219.2,"n":2,"m":true},{"p":"c2k_1727","k":"plant","pl":"ground","a":23492.3,"t":8.3,"az":139.6,"n":10,"m":false},{"p":"c2k_1727_mirror","k":"plant","pl":"ground","a":23492.3,"t":8.3,"az":220.4,"n":10,"m":true},{"p":"c2k_1730","k":"generator","pl":"rooftop","a":12801.4,"t":3.5,"az":107.0,"n":7,"m":false},{"p":"c2k_1730_mirror","k":"generator","pl":"rooftop","a":12801.4,"t":3.5,"az":253.0,"n":7,"m":true},{"p":"c2k_1735","k":"plant","pl":"ground","a":23741.3,"t":6.8,"az":135.3,"n":17,"m":false},{"p":"c2k_1735_mirror","k":"plant","pl":"ground","a":23741.3,"t":6.8,"az":224.7,"n":17,"m":true},{"p":"c2k_1736","k":"plant","pl":"ground","a":14674.2,"t":4.5,"az":143.9,"n":3,"m":false},{"p":"c2k_1736_mirror","k":"plant","pl":"ground","a":14674.2,"t":4.5,"az":216.1,"n":3,"m":true},{"p":"c2k_1743","k":"plant","pl":"ground","a":8299.9,"t":17.2,"az":146.9,"n":3,"m":false},{"p":"c2k_1743_mirror","k":"plant","pl":"ground","a":8299.9,"t":17.2,"az":213.1,"n":3,"m":true},{"p":"c2k_1747","k":"plant","pl":"ground","a":24150.1,"t":14.9,"az":170.6,"n":3,"m":false},{"p":"c2k_1747_mirror","k":"plant","pl":"ground","a":24150.1,"t":14.9,"az":189.4,"n":3,"m":true},{"p":"c2k_1748","k":"generator","pl":"rooftop","a":38621.5,"t":7.2,"az":123.8,"n":12,"m":false},{"p":"c2k_1748_mirror","k":"generator","pl":"rooftop","a":38621.5,"t":7.2,"az":236.2,"n":12,"m":true},{"p":"c2k_1756","k":"plant","pl":"ground","a":13454.4,"t":14.4,"az":174.3,"n":6,"m":false},{"p":"c2k_1756_mirror","k":"plant","pl":"ground","a":13454.4,"t":14.4,"az":185.7,"n":6,"m":true},{"p":"c2k_1762","k":"generator","pl":"rooftop","a":5781.0,"t":3.2,"az":127.1,"n":4,"m":false},{"p":"c2k_1762_mirror","k":"generator","pl":"rooftop","a":5781.0,"t":3.2,"az":232.9,"n":4,"m":true},{"p":"c2k_1763","k":"plant","pl":"ground","a":42304.7,"t":8.7,"az":142.2,"n":8,"m":false},{"p":"c2k_1763_mirror","k":"plant","pl":"ground","a":42304.7,"t":8.7,"az":217.8,"n":8,"m":true},{"p":"c2k_1767","k":"plant","pl":"ground","a":5512.3,"t":15.7,"az":141.8,"n":2,"m":false},{"p":"c2k_1767_mirror","k":"plant","pl":"ground","a":5512.3,"t":15.7,"az":218.2,"n":2,"m":true},{"p":"c2k_1769","k":"plant","pl":"ground","a":36046.6,"t":7.2,"az":123.8,"n":12,"m":false},{"p":"c2k_1769_mirror","k":"plant","pl":"ground","a":36046.6,"t":7.2,"az":236.2,"n":12,"m":true},{"p":"c2k_1773","k":"plant","pl":"ground","a":19737.3,"t":8.9,"az":159.4,"n":7,"m":false},{"p":"c2k_1773_mirror","k":"plant","pl":"ground","a":19737.3,"t":8.9,"az":200.6,"n":7,"m":true},{"p":"c2k_1776","k":"plant","pl":"ground","a":5070.6,"t":3.3,"az":151.0,"n":10,"m":false},{"p":"c2k_1776_mirror","k":"plant","pl":"ground","a":5070.6,"t":3.3,"az":209.0,"n":10,"m":true},{"p":"c2k_1778","k":"generator","pl":"ground","a":11828.6,"t":16.2,"az":176.9,"n":6,"m":false},{"p":"c2k_1778_mirror","k":"generator","pl":"ground","a":11828.6,"t":16.2,"az":183.1,"n":6,"m":true},{"p":"c2k_1782","k":"plant","pl":"ground","a":6880.7,"t":8.1,"az":139.7,"n":2,"m":false},{"p":"c2k_1782_mirror","k":"plant","pl":"ground","a":6880.7,"t":8.1,"az":220.3,"n":2,"m":true},{"p":"c2k_1783","k":"plant","pl":"ground","a":14406.8,"t":17.5,"az":175.0,"n":5,"m":false},{"p":"c2k_1783_mirror","k":"plant","pl":"ground","a":14406.8,"t":17.5,"az":185.0,"n":5,"m":true},{"p":"c2k_1788","k":"plant","pl":"ground","a":11227.6,"t":3.4,"az":82.2,"n":11,"m":false},{"p":"c2k_1788_mirror","k":"plant","pl":"ground","a":11227.6,"t":3.4,"az":277.8,"n":11,"m":true},{"p":"c2k_1790","k":"plant","pl":"ground","a":13407.3,"t":10.0,"az":154.9,"n":5,"m":false},{"p":"c2k_1790_mirror","k":"plant","pl":"ground","a":13407.3,"t":10.0,"az":205.1,"n":5,"m":true},{"p":"c2k_1792","k":"generator","pl":"rooftop","a":10074.7,"t":2.5,"az":81.7,"n":3,"m":false},{"p":"c2k_1792_mirror","k":"generator","pl":"rooftop","a":10074.7,"t":2.5,"az":278.3,"n":3,"m":true},{"p":"c2k_1793","k":"plant","pl":"ground","a":5447.6,"t":4.7,"az":102.7,"n":15,"m":false},{"p":"c2k_1793_mirror","k":"plant","pl":"ground","a":5447.6,"t":4.7,"az":257.3,"n":15,"m":true},{"p":"c2k_1796","k":"generator","pl":"rooftop","a":7764.9,"t":14.6,"az":173.3,"n":6,"m":false},{"p":"c2k_1796_mirror","k":"generator","pl":"rooftop","a":7764.9,"t":14.6,"az":186.7,"n":6,"m":true},{"p":"c2k_1802","k":"plant","pl":"ground","a":7827.5,"t":12.9,"az":167.6,"n":4,"m":false},{"p":"c2k_1802_mirror","k":"plant","pl":"ground","a":7827.5,"t":12.9,"az":192.4,"n":4,"m":true},{"p":"c2k_1804","k":"plant","pl":"ground","a":10750.0,"t":13.8,"az":169.7,"n":2,"m":false},{"p":"c2k_1804_mirror","k":"plant","pl":"ground","a":10750.0,"t":13.8,"az":190.3,"n":2,"m":true},{"p":"c2k_1806","k":"plant","pl":"ground","a":5908.8,"t":3.0,"az":129.0,"n":6,"m":false},{"p":"c2k_1806_mirror","k":"plant","pl":"ground","a":5908.8,"t":3.0,"az":231.0,"n":6,"m":true},{"p":"c2k_1809","k":"plant","pl":"ground","a":12650.0,"t":9.6,"az":147.4,"n":4,"m":false},{"p":"c2k_1809_mirror","k":"plant","pl":"ground","a":12650.0,"t":9.6,"az":212.6,"n":4,"m":true},{"p":"c2k_1811","k":"plant","pl":"ground","a":20374.2,"t":24.8,"az":179.3,"n":17,"m":false},{"p":"c2k_1811_mirror","k":"plant","pl":"ground","a":20374.2,"t":24.8,"az":180.7,"n":17,"m":true},{"p":"c2k_1819","k":"plant","pl":"ground","a":6469.9,"t":25.7,"az":177.1,"n":9,"m":false},{"p":"c2k_1819_mirror","k":"plant","pl":"ground","a":6469.9,"t":25.7,"az":182.9,"n":9,"m":true},{"p":"c2k_1824","k":"plant","pl":"ground","a":5614.1,"t":21.5,"az":138.1,"n":2,"m":false},{"p":"c2k_1824_mirror","k":"plant","pl":"ground","a":5614.1,"t":21.5,"az":221.9,"n":2,"m":true},{"p":"c2k_1828","k":"generator","pl":"rooftop","a":9776.2,"t":20.0,"az":179.0,"n":6,"m":false},{"p":"c2k_1828_mirror","k":"generator","pl":"rooftop","a":9776.2,"t":20.0,"az":181.0,"n":6,"m":true},{"p":"c2k_1830","k":"plant","pl":"ground","a":12847.8,"t":18.8,"az":177.3,"n":5,"m":false},{"p":"c2k_1830_mirror","k":"plant","pl":"ground","a":12847.8,"t":18.8,"az":182.7,"n":5,"m":true},{"p":"c2k_1837","k":"plant","pl":"ground","a":10522.5,"t":12.7,"az":153.1,"n":2,"m":false},{"p":"c2k_1837_mirror","k":"plant","pl":"ground","a":10522.5,"t":12.7,"az":206.9,"n":2,"m":true},{"p":"c2k_1844","k":"generator","pl":"ground","a":5232.4,"t":24.6,"az":174.7,"n":5,"m":false},{"p":"c2k_1844_mirror","k":"generator","pl":"ground","a":5232.4,"t":24.6,"az":185.3,"n":5,"m":true},{"p":"c2k_1845","k":"plant","pl":"ground","a":8126.2,"t":3.4,"az":82.9,"n":16,"m":false},{"p":"c2k_1845_mirror","k":"plant","pl":"ground","a":8126.2,"t":3.4,"az":277.1,"n":16,"m":true},{"p":"c2k_1846","k":"generator","pl":"ground","a":5452.1,"t":14.3,"az":173.9,"n":4,"m":false},{"p":"c2k_1846_mirror","k":"generator","pl":"ground","a":5452.1,"t":14.3,"az":186.1,"n":4,"m":true},{"p":"c2k_1848","k":"generator","pl":"rooftop","a":17018.6,"t":2.6,"az":104.3,"n":3,"m":false},{"p":"c2k_1848_mirror","k":"generator","pl":"rooftop","a":17018.6,"t":2.6,"az":255.7,"n":3,"m":true},{"p":"c2k_1854","k":"generator","pl":"rooftop","a":11200.1,"t":3.6,"az":147.2,"n":10,"m":false},{"p":"c2k_1854_mirror","k":"generator","pl":"rooftop","a":11200.1,"t":3.6,"az":212.8,"n":10,"m":true},{"p":"c2k_1855","k":"generator","pl":"rooftop","a":5143.9,"t":3.6,"az":153.9,"n":2,"m":false},{"p":"c2k_1855_mirror","k":"generator","pl":"rooftop","a":5143.9,"t":3.6,"az":206.1,"n":2,"m":true},{"p":"c2k_1858","k":"plant","pl":"ground","a":5021.7,"t":13.2,"az":117.3,"n":7,"m":false},{"p":"c2k_1858_mirror","k":"plant","pl":"ground","a":5021.7,"t":13.2,"az":242.7,"n":7,"m":true},{"p":"c2k_1859","k":"plant","pl":"ground","a":7482.0,"t":3.7,"az":135.6,"n":3,"m":false},{"p":"c2k_1859_mirror","k":"plant","pl":"ground","a":7482.0,"t":3.7,"az":224.4,"n":3,"m":true},{"p":"c2k_1860","k":"plant","pl":"ground","a":14023.7,"t":17.6,"az":172.8,"n":3,"m":false},{"p":"c2k_1860_mirror","k":"plant","pl":"ground","a":14023.7,"t":17.6,"az":187.2,"n":3,"m":true},{"p":"c2k_1864","k":"plant","pl":"ground","a":7857.4,"t":5.3,"az":137.0,"n":2,"m":false},{"p":"c2k_1864_mirror","k":"plant","pl":"ground","a":7857.4,"t":5.3,"az":223.0,"n":2,"m":true},{"p":"c2k_1865","k":"plant","pl":"ground","a":22852.2,"t":5.5,"az":154.6,"n":8,"m":false},{"p":"c2k_1865_mirror","k":"plant","pl":"ground","a":22852.2,"t":5.5,"az":205.4,"n":8,"m":true},{"p":"c2k_1867","k":"plant","pl":"ground","a":15077.4,"t":20.0,"az":177.0,"n":4,"m":false},{"p":"c2k_1867_mirror","k":"plant","pl":"ground","a":15077.4,"t":20.0,"az":183.0,"n":4,"m":true},{"p":"c2k_1870","k":"generator","pl":"ground","a":5224.5,"t":21.0,"az":179.4,"n":7,"m":false},{"p":"c2k_1870_mirror","k":"generator","pl":"ground","a":5224.5,"t":21.0,"az":180.6,"n":7,"m":true},{"p":"c2k_1875","k":"plant","pl":"ground","a":15701.0,"t":18.0,"az":138.8,"n":2,"m":false},{"p":"c2k_1875_mirror","k":"plant","pl":"ground","a":15701.0,"t":18.0,"az":221.2,"n":2,"m":true},{"p":"c2k_1881","k":"plant","pl":"ground","a":7671.9,"t":12.7,"az":159.7,"n":4,"m":false},{"p":"c2k_1881_mirror","k":"plant","pl":"ground","a":7671.9,"t":12.7,"az":200.3,"n":4,"m":true},{"p":"c2k_1885","k":"generator","pl":"rooftop","a":5526.2,"t":14.5,"az":171.8,"n":6,"m":false},{"p":"c2k_1885_mirror","k":"generator","pl":"rooftop","a":5526.2,"t":14.5,"az":188.2,"n":6,"m":true},{"p":"c2k_1886","k":"plant","pl":"ground","a":17591.3,"t":10.9,"az":154.0,"n":6,"m":false},{"p":"c2k_1886_mirror","k":"plant","pl":"ground","a":17591.3,"t":10.9,"az":206.0,"n":6,"m":true},{"p":"c2k_1888","k":"plant","pl":"ground","a":7056.4,"t":5.6,"az":137.1,"n":10,"m":false},{"p":"c2k_1888_mirror","k":"plant","pl":"ground","a":7056.4,"t":5.6,"az":222.9,"n":10,"m":true},{"p":"c2k_1891","k":"plant","pl":"ground","a":5474.0,"t":6.6,"az":150.3,"n":3,"m":false},{"p":"c2k_1891_mirror","k":"plant","pl":"ground","a":5474.0,"t":6.6,"az":209.7,"n":3,"m":true},{"p":"c2k_1896","k":"plant","pl":"ground","a":5169.5,"t":9.6,"az":158.5,"n":2,"m":false},{"p":"c2k_1896_mirror","k":"plant","pl":"ground","a":5169.5,"t":9.6,"az":201.5,"n":2,"m":true},{"p":"c2k_1901","k":"plant","pl":"ground","a":11202.8,"t":9.7,"az":158.5,"n":7,"m":false},{"p":"c2k_1901_mirror","k":"plant","pl":"ground","a":11202.8,"t":9.7,"az":201.5,"n":7,"m":true},{"p":"c2k_1903","k":"plant","pl":"ground","a":6556.1,"t":19.7,"az":159.4,"n":5,"m":false},{"p":"c2k_1903_mirror","k":"plant","pl":"ground","a":6556.1,"t":19.7,"az":200.6,"n":5,"m":true},{"p":"c2k_1904","k":"plant","pl":"ground","a":12748.9,"t":8.7,"az":160.8,"n":6,"m":false},{"p":"c2k_1904_mirror","k":"plant","pl":"ground","a":12748.9,"t":8.7,"az":199.2,"n":6,"m":true},{"p":"c2k_1907","k":"plant","pl":"ground","a":1404886.7,"t":10.0,"az":108.9,"n":3,"m":false},{"p":"c2k_1907_mirror","k":"plant","pl":"ground","a":1404886.7,"t":10.0,"az":251.1,"n":3,"m":true},{"p":"c2k_1908","k":"plant","pl":"ground","a":82983.2,"t":13.6,"az":170.7,"n":5,"m":false},{"p":"c2k_1908_mirror","k":"plant","pl":"ground","a":82983.2,"t":13.6,"az":189.3,"n":5,"m":true},{"p":"c2k_1910","k":"plant","pl":"ground","a":1745036.0,"t":10.0,"az":106.1,"n":3,"m":false},{"p":"c2k_1910_mirror","k":"plant","pl":"ground","a":1745036.0,"t":10.0,"az":253.9,"n":3,"m":true},{"p":"c2k_1911","k":"plant","pl":"ground","a":1728242.5,"t":10.0,"az":108.9,"n":3,"m":false},{"p":"c2k_1911_mirror","k":"plant","pl":"ground","a":1728242.5,"t":10.0,"az":251.1,"n":3,"m":true},{"p":"c2k_1913","k":"plant","pl":"ground","a":56131.2,"t":18.3,"az":176.3,"n":4,"m":false},{"p":"c2k_1913_mirror","k":"plant","pl":"ground","a":56131.2,"t":18.3,"az":183.7,"n":4,"m":true},{"p":"c2k_1914","k":"plant","pl":"ground","a":211700.0,"t":5.1,"az":124.3,"n":2,"m":false},{"p":"c2k_1914_mirror","k":"plant","pl":"ground","a":211700.0,"t":5.1,"az":235.7,"n":2,"m":true},{"p":"c2k_1916","k":"plant","pl":"ground","a":295178.7,"t":12.1,"az":145.2,"n":2,"m":false},{"p":"c2k_1916_mirror","k":"plant","pl":"ground","a":295178.7,"t":12.1,"az":214.8,"n":2,"m":true},{"p":"c2k_1922","k":"plant","pl":"ground","a":97138.1,"t":13.0,"az":130.1,"n":2,"m":false},{"p":"c2k_1922_mirror","k":"plant","pl":"ground","a":97138.1,"t":13.0,"az":229.9,"n":2,"m":true},{"p":"c2k_1923","k":"plant","pl":"ground","a":175031.7,"t":20.2,"az":134.7,"n":3,"m":false},{"p":"c2k_1923_mirror","k":"plant","pl":"ground","a":175031.7,"t":20.2,"az":225.3,"n":3,"m":true},{"p":"c2k_1924","k":"plant","pl":"ground","a":344188.9,"t":15.1,"az":134.7,"n":2,"m":false},{"p":"c2k_1924_mirror","k":"plant","pl":"ground","a":344188.9,"t":15.1,"az":225.3,"n":2,"m":true},{"p":"c2k_1925","k":"plant","pl":"ground","a":2625592.3,"t":5.4,"az":148.0,"n":3,"m":false},{"p":"c2k_1925_mirror","k":"plant","pl":"ground","a":2625592.3,"t":5.4,"az":212.0,"n":3,"m":true},{"p":"c2k_1926","k":"plant","pl":"ground","a":70711.2,"t":23.4,"az":180.1,"n":8,"m":false},{"p":"c2k_1926_mirror","k":"plant","pl":"ground","a":70711.2,"t":23.4,"az":179.9,"n":8,"m":true},{"p":"c2k_1929","k":"plant","pl":"ground","a":303892.6,"t":22.0,"az":170.8,"n":13,"m":false},{"p":"c2k_1929_mirror","k":"plant","pl":"ground","a":303892.6,"t":22.0,"az":189.2,"n":13,"m":true},{"p":"c2k_1933","k":"plant","pl":"ground","a":240429.5,"t":23.5,"az":174.1,"n":3,"m":false},{"p":"c2k_1933_mirror","k":"plant","pl":"ground","a":240429.5,"t":23.5,"az":185.9,"n":3,"m":true},{"p":"c2k_1934","k":"plant","pl":"ground","a":79139.8,"t":20.3,"az":167.7,"n":7,"m":false},{"p":"c2k_1934_mirror","k":"plant","pl":"ground","a":79139.8,"t":20.3,"az":192.3,"n":7,"m":true},{"p":"c2k_1936","k":"plant","pl":"ground","a":218644.4,"t":18.6,"az":145.6,"n":2,"m":false},{"p":"c2k_1936_mirror","k":"plant","pl":"ground","a":218644.4,"t":18.6,"az":214.4,"n":2,"m":true},{"p":"c2k_1942","k":"plant","pl":"ground","a":119964.0,"t":20.0,"az":167.9,"n":4,"m":false},{"p":"c2k_1942_mirror","k":"plant","pl":"ground","a":119964.0,"t":20.0,"az":192.1,"n":4,"m":true},{"p":"c2k_1944","k":"plant","pl":"ground","a":74481.9,"t":21.5,"az":153.3,"n":2,"m":false},{"p":"c2k_1944_mirror","k":"plant","pl":"ground","a":74481.9,"t":21.5,"az":206.7,"n":2,"m":true},{"p":"c2k_1946","k":"plant","pl":"ground","a":51337.2,"t":14.5,"az":172.6,"n":5,"m":false},{"p":"c2k_1946_mirror","k":"plant","pl":"ground","a":51337.2,"t":14.5,"az":187.4,"n":5,"m":true},{"p":"c2k_1947","k":"plant","pl":"ground","a":67843.6,"t":20.1,"az":177.5,"n":7,"m":false},{"p":"c2k_1947_mirror","k":"plant","pl":"ground","a":67843.6,"t":20.1,"az":182.5,"n":7,"m":true},{"p":"c2k_1953","k":"plant","pl":"ground","a":134096.8,"t":16.8,"az":161.8,"n":2,"m":false},{"p":"c2k_1953_mirror","k":"plant","pl":"ground","a":134096.8,"t":16.8,"az":198.2,"n":2,"m":true},{"p":"c2k_1955","k":"plant","pl":"ground","a":81964.6,"t":6.1,"az":135.0,"n":2,"m":false},{"p":"c2k_1955_mirror","k":"plant","pl":"ground","a":81964.6,"t":6.1,"az":225.0,"n":2,"m":true},{"p":"c2k_1957","k":"plant","pl":"ground","a":75580.2,"t":7.4,"az":129.2,"n":2,"m":false},{"p":"c2k_1957_mirror","k":"plant","pl":"ground","a":75580.2,"t":7.4,"az":230.8,"n":2,"m":true},{"p":"c2k_1963","k":"plant","pl":"ground","a":67609.1,"t":19.8,"az":166.0,"n":4,"m":false},{"p":"c2k_1963_mirror","k":"plant","pl":"ground","a":67609.1,"t":19.8,"az":194.0,"n":4,"m":true},{"p":"c2k_1976","k":"plant","pl":"ground","a":274816.9,"t":24.8,"az":177.4,"n":6,"m":false},{"p":"c2k_1976_mirror","k":"plant","pl":"ground","a":274816.9,"t":24.8,"az":182.6,"n":6,"m":true},{"p":"c2k_1981","k":"plant","pl":"ground","a":121126.2,"t":20.2,"az":172.8,"n":3,"m":false},{"p":"c2k_1981_mirror","k":"plant","pl":"ground","a":121126.2,"t":20.2,"az":187.2,"n":3,"m":true},{"p":"c2k_1983","k":"plant","pl":"ground","a":66366.0,"t":15.7,"az":168.9,"n":4,"m":false},{"p":"c2k_1983_mirror","k":"plant","pl":"ground","a":66366.0,"t":15.7,"az":191.1,"n":4,"m":true},{"p":"c2k_1986","k":"plant","pl":"ground","a":856364.0,"t":19.5,"az":143.0,"n":2,"m":false},{"p":"c2k_1986_mirror","k":"plant","pl":"ground","a":856364.0,"t":19.5,"az":217.0,"n":2,"m":true},{"p":"c2k_1988","k":"generator","pl":"rooftop","a":142332.1,"t":18.5,"az":135.3,"n":2,"m":false},{"p":"c2k_1988_mirror","k":"generator","pl":"rooftop","a":142332.1,"t":18.5,"az":224.7,"n":2,"m":true},{"p":"c2k_1991","k":"generator","pl":"ground","a":325700.4,"t":22.0,"az":170.8,"n":13,"m":false},{"p":"c2k_1991_mirror","k":"generator","pl":"ground","a":325700.4,"t":22.0,"az":189.2,"n":13,"m":true},{"p":"c2k_1996","k":"plant","pl":"ground","a":213679.4,"t":7.4,"az":114.6,"n":2,"m":false},{"p":"c2k_1996_mirror","k":"plant","pl":"ground","a":213679.4,"t":7.4,"az":245.4,"n":2,"m":true}],"wedge":[278.3,441.7],"hard_edges":[81.7,278.3],"strip":[["<100",3.9,1.6],["100-500",14.9,8.9],["500-1k",27.0,12.6],["1k-5k",33.1,17.6],["5k-50k",58.0,27.3],[">50k",75.3,33.3]]}</script>
+<script>
+const DATA = JSON.parse(document.getElementById("pvdata").textContent);
+
+const isDark = () => {
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function polarXY(cx, cy, r, azDeg) {
+  const a = azDeg * Math.PI / 180;
+  return [cx + r * Math.sin(a), cy - r * Math.cos(a)];
+}
+function buildWedgePath(cx, cy, r, fromDeg, toDeg) {
+  let d = `M ${cx} ${cy} `;
+  const steps = Math.round((toDeg - fromDeg) / 2);
+  for (let i = 0; i <= steps; i++) {
+    const az = fromDeg + (toDeg - fromDeg) * (i / steps);
+    const [x, y] = polarXY(cx, cy, r, az % 360);
+    d += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
+  }
+  d += 'Z';
+  return d;
+}
+
+function renderPolar() {
+  const svg = document.getElementById('polar');
+  svg.innerHTML = '';
+  const NS = 'http://www.w3.org/2000/svg';
+  const cx = 320, cy = 320, R = 250, tiltMax = 30;
+  const ink = css('--ink'), inkFaint = css('--ink-faint'), rule = css('--rule'),
+        sun = css('--accent-sun'), glint = css('--accent-glint'),
+        excl = css('--excluded'), exclLine = css('--excluded-line');
+  const el = (tag, attrs) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  };
+  svg.appendChild(el('path', { d: buildWedgePath(cx, cy, R, DATA.wedge[0], DATA.wedge[1]), fill: excl, opacity: 0.9 }));
+  [10, 20, 30].forEach((t) => {
+    const r = (t / tiltMax) * R;
+    svg.appendChild(el('circle', { cx, cy, r, fill: 'none', stroke: rule, 'stroke-width': 1 }));
+    const [lx, ly] = polarXY(cx, cy, r, 250);
+    const lbl = el('text', { x: lx, y: ly, 'font-size': 11, 'text-anchor': 'middle', class: 'mono' });
+    lbl.textContent = t + '°';
+    svg.appendChild(lbl);
+  });
+  const compass = [[0, 'N'], [45, 'NE'], [90, 'E'], [135, 'SE'], [180, 'S'], [225, 'SW'], [270, 'W'], [315, 'NW']];
+  compass.forEach(([deg, label]) => {
+    const [x1, y1] = polarXY(cx, cy, R, deg);
+    const [x2, y2] = polarXY(cx, cy, R + 8, deg);
+    svg.appendChild(el('line', { x1, y1, x2, y2, stroke: inkFaint, 'stroke-width': 1 }));
+    const [lx, ly] = polarXY(cx, cy, R + 24, deg);
+    const t = el('text', { x: lx, y: ly, 'font-size': 12, 'text-anchor': 'middle', 'dominant-baseline': 'middle' });
+    t.setAttribute('class', 'mono');
+    t.textContent = label;
+    t.style.fill = (label === 'N' || label === 'E' || label === 'S' || label === 'W') ? ink : inkFaint;
+    svg.appendChild(t);
+  });
+  {
+    const [x2, y2] = polarXY(cx, cy, R, 180);
+    svg.appendChild(el('line', { x1: cx, y1: cy, x2, y2, stroke: inkFaint, 'stroke-width': 1, 'stroke-dasharray': '1,3', opacity: 0.5 }));
+  }
+  DATA.hard_edges.forEach((deg) => {
+    const [x2, y2] = polarXY(cx, cy, R, deg);
+    svg.appendChild(el('line', { x1: cx, y1: cy, x2, y2, stroke: exclLine, 'stroke-width': 2, 'stroke-dasharray': '5,4' }));
+  });
+  const areas = DATA.points.map(d => d.a);
+  const minA = Math.min(...areas), maxA = Math.max(...areas);
+  const sizeFor = (a) => 3 + 7 * (Math.sqrt(a - minA + 1) / Math.sqrt(maxA - minA + 1));
+  const tip = document.getElementById('tooltip');
+  const wrap = document.getElementById('polar-wrap');
+  DATA.points.forEach((d) => {
+    const r = (d.t / tiltMax) * R;
+    const [x, y] = polarXY(cx, cy, r, d.az);
+    const color = d.k === 'generator' ? sun : glint;
+    const c = el('circle', d.m ? {
+      cx: x, cy: y, r: sizeFor(d.a), fill: 'none', stroke: color, 'stroke-width': 1.25,
+      'stroke-dasharray': '2,1.5', opacity: 0.55, style: 'cursor: pointer;',
+    } : {
+      cx: x, cy: y, r: sizeFor(d.a), fill: color, stroke: css('--bg-chart'), 'stroke-width': 1,
+      opacity: 0.88, style: 'cursor: pointer;',
+    });
+    c.addEventListener('mouseenter', () => {
+      const tag = d.m ? ' · MIRRORED (assumed, not measured)' : '';
+      tip.innerHTML = `<b>${d.p}</b> · ${d.k} · ${d.pl}${tag}<br>` +
+        `tilt ${d.t}° · az ${d.az}° · area ${Math.round(d.a).toLocaleString()} m²<br>` +
+        `${d.n} consistent spike dates`;
+      tip.classList.add('show');
+    });
+    c.addEventListener('mousemove', (ev) => {
+      const rect = wrap.getBoundingClientRect();
+      tip.style.left = (ev.clientX - rect.left) + 'px';
+      tip.style.top = (ev.clientY - rect.top) + 'px';
+    });
+    c.addEventListener('mouseleave', () => tip.classList.remove('show'));
+    svg.appendChild(c);
+  });
+}
+
+function bar(svg, x, y, w, h, fill) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const r = document.createElementNS(NS, 'rect');
+  r.setAttribute('x', x); r.setAttribute('y', y - h);
+  r.setAttribute('width', w); r.setAttribute('height', Math.max(h, 0));
+  r.setAttribute('fill', fill);
+  svg.appendChild(r);
+}
+function text(svg, x, y, s, opts = {}) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const t = document.createElementNS(NS, 'text');
+  t.setAttribute('x', x); t.setAttribute('y', y);
+  t.setAttribute('font-size', opts.size || 10.5);
+  t.setAttribute('text-anchor', opts.anchor || 'middle');
+  t.setAttribute('class', 'mono');
+  if (opts.fill) t.style.fill = opts.fill;
+  t.textContent = s;
+  svg.appendChild(t);
+}
+
+function renderHistTilt() {
+  const svg = document.getElementById('hist-tilt');
+  svg.innerHTML = '';
+  const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const binSize = 3, maxTilt = 30;
+  const bins = Array.from({ length: maxTilt / binSize }, () => ({ gen: 0, plant: 0 }));
+  DATA.points.forEach(d => {
+    const i = Math.min(Math.floor(d.t / binSize), bins.length - 1);
+    bins[i][d.k === 'generator' ? 'gen' : 'plant']++;
+  });
+  const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
+  const bw = plotW / bins.length;
+  const sun = css('--accent-sun'), glint = css('--accent-glint'), inkFaint = css('--ink-faint');
+  bins.forEach((b, i) => {
+    const x = padL + i * bw + bw * 0.12;
+    const w = bw * 0.76;
+    const totalH = (b.gen + b.plant) / maxCount * plotH;
+    const genH = b.gen / maxCount * plotH;
+    const baseY = padT + plotH;
+    bar(svg, x, baseY - genH, w, genH, sun);
+    bar(svg, x, baseY - totalH, w, totalH - genH, glint);
+    if (i % 2 === 0) text(svg, x + w / 2, H - 8, (i * binSize) + '°', { size: 9.5, fill: inkFaint });
+  });
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+  line.setAttribute('y1', padT + plotH); line.setAttribute('y2', padT + plotH);
+  line.setAttribute('stroke', css('--rule'));
+  svg.appendChild(line);
+}
+
+function renderHistAz() {
+  const svg = document.getElementById('hist-az');
+  svg.innerHTML = '';
+  const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const lo = 60, hi = 200, binSize = 10;
+  const nbins = (hi - lo) / binSize;
+  const bins = Array.from({ length: nbins }, () => ({ gen: 0, plant: 0 }));
+  DATA.points.forEach(d => {
+    const i = Math.min(Math.max(Math.floor((d.az - lo) / binSize), 0), nbins - 1);
+    bins[i][d.k === 'generator' ? 'gen' : 'plant']++;
+  });
+  const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
+  const bw = plotW / nbins;
+  const sun = css('--accent-sun'), glint = css('--accent-glint'), inkFaint = css('--ink-faint'), exclLine = css('--excluded-line');
+  bins.forEach((b, i) => {
+    const x = padL + i * bw + bw * 0.12;
+    const w = bw * 0.76;
+    const totalH = (b.gen + b.plant) / maxCount * plotH;
+    const genH = b.gen / maxCount * plotH;
+    const baseY = padT + plotH;
+    bar(svg, x, baseY - genH, w, genH, sun);
+    bar(svg, x, baseY - totalH, w, totalH - genH, glint);
+    if (i % 2 === 0) text(svg, x + w / 2, H - 8, (lo + i * binSize), { size: 9.5, fill: inkFaint });
+  });
+  const xCeil = padL + ((180 - lo) / (hi - lo)) * plotW;
+  const vline = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  vline.setAttribute('x1', xCeil); vline.setAttribute('x2', xCeil);
+  vline.setAttribute('y1', padT); vline.setAttribute('y2', padT + plotH);
+  vline.setAttribute('stroke', exclLine); vline.setAttribute('stroke-width', 1.5);
+  vline.setAttribute('stroke-dasharray', '4,3');
+  svg.appendChild(vline);
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+  line.setAttribute('y1', padT + plotH); line.setAttribute('y2', padT + plotH);
+  line.setAttribute('stroke', css('--rule'));
+  svg.appendChild(line);
+}
+
+function renderStrip() {
+  const svg = document.getElementById('strip');
+  svg.innerHTML = '';
+  const rows = DATA.strip;
+  const W = 1000, H = 150, padL = 50, padR = 20, padT = 14, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const groupW = plotW / rows.length;
+  const inkDim = css('--ink-dim'), inkFaint = css('--ink-faint'), glint = css('--accent-glint'), rule = css('--rule');
+  rows.forEach(([label, det, val], i) => {
+    const gx = padL + i * groupW;
+    const bw = groupW * 0.28;
+    const hDet = det / 100 * plotH, hVal = val / 100 * plotH;
+    const baseY = padT + plotH;
+    bar(svg, gx + groupW * 0.22, baseY - hDet, bw, hDet, inkFaint);
+    bar(svg, gx + groupW * 0.52, baseY - hVal, bw, hVal, glint);
+    text(svg, gx + groupW / 2, H - 8, label, { size: 11 });
+  });
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+  line.setAttribute('y1', padT + plotH); line.setAttribute('y2', padT + plotH);
+  line.setAttribute('stroke', rule);
+  svg.appendChild(line);
+  [0, 25, 50, 75].forEach(p => {
+    const y = padT + plotH - (p / 100) * plotH;
+    text(svg, padL - 10, y + 3, p + '%', { size: 10, anchor: 'end', fill: inkFaint });
+  });
+  text(svg, padL, 10, 'grey = detected (>= 1 spike)   teal = validated (>= 2 consistent)', { size: 10.5, anchor: 'start', fill: inkDim });
+}
+
+function renderAll() { renderPolar(); renderHistTilt(); renderHistAz(); renderStrip(); }
+renderAll();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>

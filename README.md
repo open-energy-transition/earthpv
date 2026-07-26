@@ -1,824 +1,171 @@
-# earthpv - rooftop solar detection from Sentinel-2
+<div align="center">
 
-Detects individual rooftop solar PV arrays (target > 400 m², the practical floor for
-per-pixel supervision at Sentinel-2's 10 m GSD) from Sentinel-2 L2A imagery by
-fine-tuning the open-source **TerraMind** geospatial foundation model (IBM/ESA, 2025)
-with **TerraTorch**. Labels come from OpenStreetMap solar mapping via **Overture Maps**
-(`source_tags` on the base/infrastructure layer); building footprints and admin
-boundaries also come from Overture. Designed to be recall-oriented: candidates are meant
-to be human-validated against imagery in OSM workflows (MapRoulette export included).
-Installations below 400 m² aren't targeted by detection — their aggregate capacity is
-estimated instead by the density stage (see "PV density per building" below).
+# earthpv
 
-- **Training region:** Germany (dense OSM solar labels, geographic train/val split by state)
-- **Inference target:** Punjab, Pakistan (building-screened chip grid)
-- **Imagery:** multi-temporal cloud-free composites (2025-03 → 2026-02), 12 S2L2A bands, 10 m,
-  from Microsoft Planetary Computer
+**Open rooftop solar mapping from free satellite imagery.**
 
-## Setup
+[Documentation](https://open-energy-transition.github.io/earthpv/) &nbsp;·&nbsp;
+[Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) &nbsp;·&nbsp;
+[Workflow](https://open-energy-transition.github.io/earthpv/workflow/) &nbsp;·&nbsp;
+[Experiments](https://open-energy-transition.github.io/earthpv/experiments/) &nbsp;·&nbsp;
+[Community](https://open-energy-transition.github.io/earthpv/community/)
 
-Prerequisites: an NVIDIA GPU for training/inference (this project targets a **GTX
-1060, Pascal sm_61** — see the cu126 note in Operational notes below; anything
-newer works too), and — for the AOIs already configured (`germany`, `punjab`,
-`pakistan`) — the sibling `rooftopsenti` project's Sentinel-2 composites/labels on
-the same machine (`local_root` in `configs/aoi.yaml`). **You don't need that sibling
-project to run this on a new region** — see "Running on a new region" below for the
-fully-standalone path (Overpass labels + `compose` + VIDA buildings), which is what
-`gujarat` (already in `configs/aoi.yaml`) uses.
+</div>
+
+---
+
+Pakistan's installed solar capacity is reported anywhere between
+[6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
+Nobody can check those numbers, because the maps behind them are built on commercial
+high-resolution imagery that cannot be shared and that most licences forbid processing
+with AI.
+
+earthpv takes the opposite route. It fine-tunes the open **TerraMind** geospatial
+foundation model (IBM and ESA, through TerraTorch) on **Sentinel-2** imagery, which is
+free, global and refreshed every five days, and it puts every detection in front of
+**OpenStreetMap** mappers for verification. The verified result becomes the next round of
+training data. Model, code, training labels and capacity numbers are all open.
+
+## Key results
+
+| | |
+| --- | --- |
+| **18.3 GWp** [16.9 to 21.5] | Pakistan, all PV, recall-corrected |
+| **6.1 GWp** [5.6 to 7.3] | of that on rooftops |
+| **114,188** | individual buildings carrying PV signal |
+| **400 m²** | per-object detection floor at Sentinel-2's 10 m resolution |
+| **0.18 → 0.55** | Punjab recall for arrays ≥ 1000 m², before and after in-domain training data |
+
+<p align="center">
+  <img src="docs/assets/figures/pakistan_capacity_map.png" width="620"
+       alt="Estimated rooftop and ground-mount solar capacity per building across Pakistan. Detections concentrate in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.">
+</p>
+
+<p align="center"><em>Calibrated capacity for every building carrying PV signal in Pakistan.
+The <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">interactive
+atlas</a> lets you switch between six defensible estimators.</em></p>
+
+## The mapping workflow
+
+The technical novelty is not one model. It is a loop that combines free low-resolution
+imagery, an open foundation model, and human mappers working inside OpenStreetMap with the
+high-resolution imagery they are already licensed to look at.
+
+<p align="center">
+  <img src="docs/assets/figures/osm_ai_flywheel.svg" width="720"
+       alt="The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.">
+</p>
+
+Two licences pull in opposite directions, and the loop is what resolves them. Sentinel-2 is
+free and global but coarse; Esri, Bing and Mapbox resolve individual panels but only allow
+a *person* to trace from them inside the OpenStreetMap editor. So the machine only ever
+reads Sentinel-2, people only ever read the high-resolution layers, and the verified
+installations they map are ordinary, openly licensed OpenStreetMap features that are
+legitimate training data for the next model.
+
+That loop is measurable: adding Pakistani chips produced by it took large-array recall in
+Punjab from 0.18 to 0.55. Full description:
+[Workflow](https://open-energy-transition.github.io/earthpv/workflow/).
+
+## Capabilities
+
+**Detect individual arrays above 400 m².** Fine-tuned TerraMind-tiny, recall-first by
+design, exported as ranked GeoParquet, GeoJSON and a MapRoulette challenge for human
+validation. Recall on the Germany validation states is 0.83 to 0.95 depending on array
+size.
+
+**Estimate capacity below that floor.** A 200 m² array is a handful of mixed pixels, so
+outlining it is not defensible but counting it is. The `density` stage integrates
+calibrated probability over building footprints into MWp per building, per 0.1 degree cell
+and per district, in the shape PyPSA and PyPSA-Earth consume.
+
+**Confirm panels physically, using solar glint.** A glass-fronted panel is partly a mirror,
+so it flashes into Sentinel-2 only on the geometry-predictable dates when its tilt and
+azimuth bisect the sun and the sensor. Two or more mutually consistent flashes confirm PV
+is present and recover how the panel is mounted.
+
+<p align="center">
+  <img src="docs/assets/figures/pv_pose_polar.svg" width="520"
+       alt="Polar plot of fitted panel pose across Pakistan: tilt as radius from 0 to 30 degrees, azimuth as angle. Measured points cluster between east-southeast and due south at tilts of roughly 5 to 20 degrees, with the mirrored half shown hollow, and a shaded wedge from west-northwest through north to east marking orientations this orbit can never observe.">
+</p>
+
+<p align="center"><em>Panel pose recovered from Sentinel-2 glint for 290 Pakistani
+installations. <a href="https://open-energy-transition.github.io/earthpv/results/pv-pose/">Interactive
+version and the sensitivity study</a>.</em></p>
+
+**State uncertainty honestly.** Every capacity number carries a 90 percent credible
+interval propagated from measured binomial counts, not from model confidence. The same
+rasters support six defensible estimates, and the atlas makes you pick one on purpose.
+
+**Run anywhere.** No pre-downloaded data is required. Labels come from live Overpass or
+Overture, imagery from Planetary Computer STAC, footprints from VIDA Open Buildings for any
+ISO3 code, and detection reuses the existing checkpoint until you have local training data.
+
+## Quickstart
 
 ```bash
-pixi install          # data pipeline env (DuckDB, geopandas, rasterio, odc-stac)
-pixi install -e ml    # + PyTorch cu126 (Pascal-safe) + TerraTorch, multi-GB solve
-pixi run -e ml gpu-check   # confirms torch.cuda.is_available() and the device name
-```
+pixi install              # data pipeline: DuckDB, geopandas, rasterio, odc-stac
+pixi install -e ml        # adds PyTorch cu126 (Pascal-safe) and TerraTorch
+pixi run -e ml gpu-check
 
-Two environments share one pixi solve-group: `default` (no PyTorch, used for every
-data/network stage) and `ml` (adds `torch`/`terratorch`, only needed for
-`train`/`infer`/`evaluate`/`hard-negatives`). Calling `.pixi/envs/ml/bin/python -m
-earthpv.cli ...` directly skips pixi's per-invocation overhead on long runs.
-
-## Quickstart (smoke test)
-
-A complete, minutes-long, low-cost run through every stage that touches the GPU —
-do this first on a fresh checkout to confirm the environment actually works before
-committing to a multi-hour real run:
-
-```bash
-pixi run earthpv labels --aoi freiburg                      # tiny bbox, seconds
-pixi run earthpv chips --aoi freiburg --limit 50             # 50 chips, ~1 min
-pixi run -e ml earthpv train --config configs/terramind_pv.yaml --smoke   # 50 steps
+# minutes-long smoke test through every GPU stage
+pixi run earthpv labels --aoi freiburg
+pixi run earthpv chips  --aoi freiburg --limit 50
+pixi run -e ml earthpv train --config configs/terramind_pv.yaml --smoke
 pixi run -e ml earthpv evaluate --aoi freiburg --checkpoint data/models/last.ckpt
 ```
 
-`--smoke` on `train` runs 50 optimizer steps — enough to confirm the model loads,
-the GPU is used, and a checkpoint is written, not enough to detect anything (loss
-will not have converged; don't read anything into `evaluate`'s numbers here). If
-this all runs without error, move on to a real chip/train run below.
-
-## Full pipeline
-
-Ordered by dependency; every stage after `train` needs a checkpoint path
-(`data/models/<run>/<epoch>.ckpt`), and every stage is resumable / safe to re-run
-(existing chips/composites/predictions are skipped, not rebuilt) — this matters
-because most real runs here are network- or GPU-bound for hours, see Operational
-notes for how to run them detached and recover from interruption.
-
-**1. Labels** — building footprints + OSM solar polygons for an AOI.
-
-```bash
-pixi run earthpv labels --aoi germany
-# Freshly-mapped region, bypassing Overture's snapshot lag (e.g. right after hand-mapping):
-pixi run earthpv overpass-labels --place "Lahore" --iso3 PAK
-```
-
-**2. Chips** — Sentinel-2 composite windows + burned PV masks, the training set.
-
-```bash
-pixi run earthpv chips --aoi germany                         # full run, ~3-4k chips
-pixi run earthpv chips --aoi germany --limit 500              # capped, for iteration
-# Regression target (continuous per-pixel PV coverage fraction) instead of binary mask:
-pixi run earthpv chips --aoi germany --fraction
-```
-
-**3. Train** — fine-tune TerraMind via TerraTorch (needs the `ml` env / GPU).
-
-```bash
-pixi run -e ml earthpv train --config configs/terramind_pv.yaml
-# Merge multiple AOIs' chips into one training set first (2x oversamples pakistan's
-# train rows so Germany's larger chip count doesn't swamp the in-domain signal):
-.pixi/envs/default/bin/python scripts/merge_chip_index.py germany pakistan:2
-```
-
-**4. Evaluate** — pixel IoU/F1 + per-installation recall bucketed by array size.
-
-```bash
-pixi run -e ml earthpv evaluate --aoi germany --checkpoint data/models/<run>/<epoch>.ckpt
-```
-
-**5. Compose** — build Sentinel-2 composites for AOIs with no local imagery
-(building-populated cells only, via Planetary Computer STAC; skip this for AOIs that
-already have `source_region` composites, e.g. `germany`).
-
-```bash
-pixi run -e ml earthpv compose --aoi punjab --min-buildings 1000 --workers 6
-# A second epoch on the same grid (e.g. the pre-2022-boom baseline for Pakistan's
-# change-detection track — see "Planned: two-epoch change detection" below):
-pixi run -e ml earthpv compose --aoi pakistan --index 1 \
-  --window 2021-10-01:2022-01-24 --use-vida --workers 6
-```
-
-**6. Infer** — tiled inference over an AOI, writing per-cell probability GeoTIFFs.
-
-```bash
-pixi run -e ml earthpv infer --aoi punjab --checkpoint data/models/<run>/<epoch>.ckpt
-```
-
-**7. Postprocess** — threshold, polygonize, join to building footprints, rank.
-
-```bash
-pixi run earthpv postprocess --aoi punjab --threshold 0.3
-# Drop isolated candidates far from any building (bare-soil/water false positives):
-pixi run earthpv postprocess --aoi punjab --threshold 0.3 --max-building-dist 30
-# Physics-based glint corroboration, calibrated & targeted: skips the top 100 (they
-# reach review anyway) and all sub-500 m² candidates (no measured discrimination),
-# then spends 300 pulls on the uncertain band (network-bound, ~1-2 min/candidate —
-# see "Solar-glint corroboration" below):
-pixi run earthpv postprocess --aoi punjab --check-glint --glint-top-n 300 --glint-skip-top 100
-```
-
-**8. Export** — GeoParquet/GeoJSON + a MapRoulette challenge, ranked by `rank_score`.
-
-```bash
-pixi run earthpv export --aoi punjab
-# Also write a new-leads file excluding anything within 100m of already-mapped OSM PV:
-pixi run earthpv export --aoi punjab --exclude-mapped --min-distance-m 100
-# Add the pre-boom + vegetation vetoes (see "Vegetation veto" below) -> new_leads_clean:
-pixi run earthpv export --aoi punjab --exclude-mapped --min-distance-m 100 \
-    --epoch-clean --veg-max-ndvi 0.35
-```
-
-**9. Density** *(optional)* — per-building PV area/capacity + PyPSA-ready grid/region
-aggregates, from artifacts already on disk (no GPU, no retrain). Every run also writes a
-self-contained HTML capacity atlas (`density/<aoi>_pv_atlas.html`; regenerate standalone
-with `earthpv atlas`).
-
-```bash
-# One-time (and after new validation evidence): derive the candidate-precision table
-# that turns the recall-first candidates into a calibrated capacity estimate:
-pixi run earthpv calibrate-candidates --aoi pakistan
-pixi run earthpv density --aoi pakistan --districts
-# Optional precision upgrade for the <1000 m2 bins (where glint is blind): review a
-# stratified sample of unmapped candidates against high-res imagery, then re-derive:
-pixi run earthpv calibrate-sample --aoi pakistan            # -> fill `verdict` in JOSM/QGIS
-pixi run earthpv calibrate-candidates --aoi pakistan --manual-reviews <reviewed file>
-```
-
-**10. Hard-negative mining** *(optional)* — confirm negatives for retraining from two
-independent sources, then cut both into training chips (`--centers` merges into one
-index, so run both without either clobbering the other):
-
-```bash
-# Bi-temporal: large OSM-unmapped buildings the model must see no PV on in *either*
-# the current composite or an older year's.
-pixi run -e ml earthpv hard-negatives --aoi pakistan --checkpoint data/models/<run>/<epoch>.ckpt
-pixi run earthpv hard-negative-chips --aoi pakistan --centers data/predictions/<aoi>/hard_negatives_confirmed.parquet
-# Vegetation-vetoed leads (see below) — the confusion class (dark fallow/paddy soil)
-# German training data never showed the model:
-pixi run earthpv hard-negative-chips --aoi pakistan --centers data/predictions/<aoi>/hard_negatives_veg.parquet
-```
-
-**11. German calibration** *(optional, Germany-only)* — cross-check `density`
-against the legally-complete MaStR register and pvlib-modelled generation.
-
-```bash
-pixi run earthpv mastr                                       # downloads/aggregates MaStR
-pixi run earthpv calibrate --aoi germany                     # zonal-join + validate
-pixi run earthpv pv-yield --aoi germany                      # pvlib GWh/yr cross-check
-```
-
-AOIs and parameters: `configs/aoi.yaml`. Model/training configs: `configs/*.yaml`
-(`terramind_pv.yaml` production 10-band, `_seasonal`/`_fraction`/`_v3india` variants
-for the experiments documented below).
-
-## Running on a new region
-
-The AOIs above (`germany`, `punjab`, `pakistan`) reuse imagery/labels already
-downloaded by a sibling project on this machine — a shortcut, not a requirement.
-`gujarat` in `configs/aoi.yaml` is the template for a region with **no local
-data at all**:
-
-```yaml
-gujarat:
-  bbox: [68.0, 20.0, 74.6, 24.8]
-  division: { name: Gujarat, country: IN, subtype: region }
-  # no source_region key -> chips/compose fall back to Planetary Computer STAC
-```
-
-1. `labels`/`overpass-labels` fetch OSM solar polygons directly (Overture or live
-   Overpass) instead of reading a cached local parquet.
-2. `chips`/`compose` fetch Sentinel-2 composites from Planetary Computer STAC
-   instead of reading local composite COGs — the same code path used for `punjab`,
-   just without the `source_region` shortcut, so it's slower (network-bound) but
-   requires nothing pre-downloaded.
-3. `postprocess`'s building join fetches VIDA Open Buildings for the AOI's country
-   on first use and caches it locally — works for any ISO3, not just the countries
-   with a local building parquet already cached.
-4. Detection itself reuses the existing Germany-trained checkpoint unchanged — no
-   region-specific retraining is required to get a first candidate set; retraining
-   on in-domain chips (once `chips`/`compose` produce some) is what closes the
-   domain-gap recall difference documented below.
-
-## Data provenance
-
-To avoid re-downloading terabytes, chips and inference read the Sentinel-2 composite
-COGs and OSM/Overture label + building parquets already produced by the sibling
-`rooftopsenti` project, via `local_root` in `configs/aoi.yaml`
-(`src/earthpv/local_source.py`). The Overture (`src/earthpv/overture.py`) and
-Planetary-Computer (`src/earthpv/imagery.py`) fetchers are the fallback for regions
-with no local artifacts. Composites are 10-band (B02–B12 minus the 60 m atmospheric
-bands); TerraMind's S2L2A patch-embed is subset to those 10 bands at load time.
-
-## Result (TerraMind-tiny, GTX 1060)
-
-The detector targets **arrays ≥ 400 m²** — `MIN_PV_AREA` in `chips.py` sets the
-positive threshold (~4 Sentinel-2 pixels, the practical floor for per-pixel
-supervision at 10 m GSD); smaller arrays are burned as *ignore*. Training combines
-Germany (3189 chips) with Punjab, Pakistan (274 chips from the composed cells +
-`pakistan_500` OSM labels), merged by `scripts/merge_chip_index.py`.
-Per-installation recall (threshold 0.3, recall-first, checkpoint
-`v2_combined/terramind-pv-epoch=39`):
-
-| array size (m²) | Germany val | Punjab val |
-|-----------------|-------------|------------|
-| ≥ 1000          | 0.83        | 0.55       |
-| 500 – 1000      | 0.84        | 0.16       |
-| 250 – 500       | 0.95        | 0.14       |
-
-Germany pixel IoU 0.51, F1 0.68; Punjab 0.29/0.45. A high FP rate is expected and
-acceptable — candidates are human-validated against high-res imagery in OSM. The
-Punjab numbers, while much weaker, are ~3× the Germany-only model (0.18 at ≥1000 m²):
-in-domain chips matter. The residual Punjab misses look imagery-limited (smog-season
-composites, mixed pixels, OSM label noise) — the model outputs near-zero probability
-on them even at threshold 0.05, and oversampling Punjab 4× did not help. Sub-400 m²
-detection remains unreliable at Sentinel-2's 10 m floor — that's out of scope for
-individual detection by design; the density stage's `est_mwp_exp`/`est_mwp_cal` (below)
-is the intended way to estimate capacity from installations this small.
-
-## Pakistan inference result (country-wide)
-
-The local `rooftopsenti` composites cover Balochistan/Sindh, **not** the populated
-east, so imagery is built on demand with `earthpv compose` (Sentinel-2 dry-season
-median, ~12 least-cloudy scenes per 0.1° cell). Rooftop PV only exists where there
-are roofs, so `compose` targets building-populated cells; the `pakistan` AOI covers
-**122 cells (≥1000 buildings each) spanning every major city in the country**. Its
-cell grid is anchored to punjab's via `grid_origin` in `configs/aoi.yaml`, so the 64
-cells composited for the earlier Punjab run were reused by hardlinking (only 58 new
-downloads). Compositing is network-bound (~1 min/cell on a clear link).
-
-The country-wide run (checkpoint `v2_combined/terramind-pv-epoch=39`, threshold 0.3)
-produced **1836 candidates: 1261 rooftop, 424 ground-adjacent, 151 no-building**
-(median merged-blob area ~11 500 m², median confidence 0.99). Spread: ~1200 in Punjab,
-470 around Karachi/Sindh, 119 Peshawar/KP, 103 Islamabad/Rawalpindi, 21 Quetta. 26 %
-intersect already-mapped OSM solar (a good sanity check); **~1360 are new leads** for
-validation. Outputs: `data/predictions/pakistan/pakistan_pv_*.{geoparquet,geojson}`
-plus a MapRoulette challenge. The VIDA building join uses a one-time 9.3 GB local
-download (`data/vida/PAK.parquet`) — country-scale candidate sets make remote
-row-group scans impractical (~5 h vs ~4 min locally).
-
-## Two-season stacking experiment (negative result)
-
-A 20-band **two-season stack** (dry-season base + a contrast season per cell:
-post-monsoon for Pakistan, winter for Germany) was implemented to push detection below
-1000 m² — the idea being that PV is spectrally stable across seasons while vegetation
-and roofs swing. The full path is wired (`imagery.annual_composite(geobox=…)`,
-`CompositeIndex(layers=2)`, `compose --window/--index/--workers`, per-AOI `stack_window`,
-`configs/terramind_pv_seasonal.yaml`) and TerraMind duplicates its pretrained S2L2A
-patch-embed into both season slots.
-
-**It did not improve the target.** On the clean Punjab val set (same installations),
-per-installation recall for ≥1000 / 500–1000 / 250–500 m² was **0.51 / 0.17 / 0.14**
-(seasonal) vs **0.55 / 0.16 / 0.14** (10-band v2) — small buckets unchanged within
-noise, large slightly worse. So **`v2_combined/epoch=39` (10-band) stays production**
-and the validated country-wide candidate set above is unchanged; the seasonal
-checkpoint is kept at `data/models/v4_seasonal/` for future iteration. Likely causes:
-too few in-domain Punjab chips (274) to learn the temporal signal, the tiny backbone's
-capacity, and post-monsoon vs dry season not differing enough spectrally in arid
-Pakistan. The strongest remaining lever is retraining on **human-validated candidates**
-(a larger, cleaner in-domain signal than a second season).
-
-## Planned: two-epoch change detection — the 2022–2026 solar boom as signal
-
-Pakistan's rooftop PV stock is dominated by the post-2022 boom: panel imports jumped
-to double-digit GW per year (~13 GW+ imported in 2024 alone), driven by grid tariffs,
-load shedding and net metering. The consequence for detection: **almost every real
-rooftop array visible in 2026 imagery did not exist in the 2021/22 dry season** — a
-temporal prior that no single-epoch optical model can exploit. The plumbing to use it
-already exists from the seasonal experiment (`annual_composite(geobox=…)`,
-`CompositeIndex(layers=2)`, `compose --index/--window`):
-
-1. Compose a **pre-boom epoch** onto the exact same 0.1° grid:
-   `compose --aoi pakistan --index 1 --window 2021-10-01:2022-01-24 --use-vida`
-   (same cost profile as the current-epoch run: ~4.4k cells, resumable, network-bound).
-2. Run the **unchanged production model** on both epochs. Unlike the two-season stack
-   above — which fed both seasons to the model as extra input bands and needed a
-   retrain — this is two independent inference passes with no training at all.
-3. **Difference the probability surfaces** and re-score candidates:
-   - *Persistent false positives cancel.* Bright riverbeds, rock outcrops, industrial
-     roofs, greenhouses existed pre-boom too, so they fire in both epochs and Δ≈0;
-     new PV fires only in the current epoch. This attacks exactly the countryside-FP
-     class that building-distance filtering cannot (a bright outcrop near a village
-     survives the 2 km filter; it cannot survive the epoch difference).
-   - *"Already present in 2021" is a negative prior in Pakistan* — the opposite of
-     Germany, where old installations dominate. Detections with high pre-boom
-     probability get down-ranked per candidate.
-4. The difference is also a product in itself: **ΔMWp 2022→2026 per cell and district
-   is the rooftop-density development over the boom**, independently checkable against
-   NEPRA net-metering registrations (a grid-tied lower bound, per DISCO) and the
-   customs panel-import series — a second calibration anchor besides TransitionZero,
-   and a spatially-resolved growth map of the boom.
-
-Caveats to design around: the Sentinel-2 processing-baseline change (04.00, Jan 2022)
-shifts the DN convention by +1000 mid-window — the suggested pre-boom window ends
-2022-01-24 to stay on one baseline; epoch-to-epoch atmosphere/phenology differences
-are mitigated by differencing model *outputs* rather than reflectances; and the model
-has only ever seen current-epoch spectra, so spot-check pre-boom composites over
-installations known to predate 2022 (e.g. Quaid-e-Azam Solar Park) before trusting
-the pass.
-
-## Avoiding tiling artefacts
-
-Two things previously produced a regular grid of false positives at the sliding-window
-spacing, both now fixed:
-- **Training centre-bias (the dominant cause).** Positive chips must be *jittered* so the
-  installation lands anywhere in the frame (`sample_chip_centers`, ±900 m). Without it the
-  model learns "PV is in the middle" and fires once per window at inference. Diagnostic:
-  nearest-neighbour distance between detections spikes at the window stride (was 60% of
-  detections one stride apart; ~7% after the fix).
-- **Window seams.** `infer.py` overlap-adds windows with a 2D Hann taper into one seamless
-  raster per cell, and uses a stride that is *not* a multiple of the 16 px ViT patch size so
-  patch-edge effects decorrelate between neighbours.
-
-## Building prior & candidate re-ranking
-
-`postprocess` classifies each candidate against a footprint set in the candidates'
-local UTM zone, recording `building_overlap_frac` (share of the polygon sitting on a
-roof) and `building_dist_m` (gap to the nearest footprint). These feed a
-`building_prior` and a `rank_score = confidence × (0.5 + 0.5·prior)`; `export` orders
-the GeoParquet and the MapRoulette queue by `rank_score`. It stays recall-first —
-**nothing is dropped**, and a high-confidence detection with no nearby building (an
-unmapped roof or a ground-mount farm) still surfaces; the prior only re-orders triage
-so validators hit on-building detections first.
-
-The footprint set is **VIDA Google+Microsoft Open Buildings** (`src/earthpv/buildings.py`),
-which — unlike the Overture ≥ 500 m² local set — is imagery-derived and includes small,
-unmapped structures, so "no building within ~30 m" becomes a usable false-positive
-signal. It's fetched once per AOI, windowed to the candidate-containing 0.1° cells
-(the country file is ~76 M rows) and cached. Note: for a candidate set dominated by
-*large* arrays on already-mapped buildings, VIDA and the Overture set attribute nearly
-identically; VIDA's advantage shows most once `MIN_PV_AREA` is lowered to admit small
-residential roofs.
-
-## Solar-glint corroboration (rank_score)
-
-![Solar-glint validation geometry: a matched panel tilt reflects the sun straight into Sentinel-2's near-nadir sensor, a mismatched tilt sends it elsewhere, and the resulting time series shows a reflectance spike on the geometry-predicted date while the surrounding annulus stays flat.](docs/glint_geometry.svg)
-
-See [`docs/glint_examples.md`](docs/glint_examples.md) for what this actually looks
-like: six real installations glinting in high-resolution ESRI imagery, and the same
-phenomenon rendered from real Sentinel-2 data at one example per installation-size
-bucket.
-
-A glass-fronted PV panel is partly a specular reflector: Sentinel-2 views near-nadir,
-so a fixed panel only glints into the sensor when its tilt/azimuth happens to bisect
-the sun and the sensor at the ~10:30 local overpass — a narrow, geometry-predictable
-condition (`src/earthpv/glint.py`). Validated against known German and Punjab
-installations (skyfield-propagated sun/view geometry cross-checked against real
-MTD_TL.xml granule angles): arrays that glint do so on dates that self-consistently
-recover a single panel orientation, cleanly separable from cloud/cropland brightening
-by requiring the surrounding annulus to stay stable. But real arrays frequently
-**don't** glint at all — about 30% of confirmed installations in the validation set
-showed zero spikes over 2 years, simply because their orientation never lines up
-with this specific overpass geometry — so absence of glint is not evidence against a
-candidate.
-
-`postprocess --check-glint` pulls candidates' ~2-year Sentinel-2 time series and
-checks for spikes consistent with one fixed orientation
-(`postprocess.py::add_glint_prior`). This is **reward-only**: candidates with fewer
-than 2 mutually-consistent spike dates are left unchanged. Nothing is dropped,
-matching the recall-first `building_prior`/`epoch_prior` re-ranking contract above.
-
-Both the boost and the query targeting are **calibrated against measurement**, not
-heuristic. The 500-installation Pakistan validation study
-(`results/glint_validation_pakistan/REPORT.md`) measured the validated-fit rate per
-installation-area bucket, and 69 no-PV control buildings measured the false-validation
-floor (8.7%). The ratio is a per-bucket likelihood ratio — how much more likely a
-validated fit is on real PV than on an empty roof: ~1.9× for 500 m²–1k m², ~3.5× for
-1–5k m², ~3× above that, and **~1× below 500 m²** (no discrimination — the instrument
-is blind there). Confirmed candidates get a `rank_score` multiplier approaching their
-bucket's likelihood ratio (capped at 4×) as consistent-date count saturates at 4.
-
-The check is network-bound (dozens to hundreds of Sentinel-2 reads per candidate), so
-it's opt-in and budgeted: sub-500 m² candidates are never queried (LR ≈ 1 means the
-answer changes nothing), the `--glint-skip-top` (default 100) highest-ranked candidates
-are skipped (they reach human validation regardless), and the `--glint-top-n` (default
-300) budget goes to the best-ranked eligible candidates below that band. Fetched
-**tile-major**, not per-candidate (`glint.tile_scene_series_batch`, `--glint-tile-deg`
-default 1.0°): one STAC search plus one set of asset opens per spatial bin, shared by
-every eligible candidate in it, instead of rediscovering the same scene list and
-reopening the same COGs per candidate — candidates cluster heavily by tile, so this
-amortizes the cost that used to cap `--glint-top-n` at a few hundred (measured ~22x on
-a real 6-candidate cluster; output is identical to the old per-candidate fetch, down to
-0.000 numerical difference on matched scenes — verified after fixing a real bug where
-a seam-zone candidate could silently pick up an adjacent tile's non-covering item).
-`scripts/glint_density_pull.py` and `scripts/glint_candidate_precision.py pull` (used
-by the density-calibration path below) share the same batched fetcher. Like
-`imagery.py`'s composite fetcher, each tile group tries Planetary Computer first and
-falls back to Earth Search (AWS Open Data, no auth/tokens, a different failure domain)
-if PC returns no scenes at all for that group's bbox.
-
-**Glint as a direct detector, not just a corroborator — tested negative in dense urban
-blocks, with a fix.** Exhaustively scanning every building (not just model candidates)
-in a ~0.2 km² Lahore residential block against fresh Overpass ground truth (430/503
-buildings already mapped) found **zero** detections anywhere — mapped or unmapped. Not
-a bug: the default check requires the surrounding annulus to be dim *right now*
-(`a > 1.5×r`), which fails structurally at ~2,500 buildings/km² — every annulus is lined
-with similarly-bright rooftops, so even a confirmed, heavily-panelled 503 m² rooftop
-never exceeded a 1.09× ratio over a full year. `--glint-self-referenced`
-(`glint.annotate_spikes`) swaps that for a temporal check — the annulus must stay near
-*its own* baseline, not be dim in absolute terms — which targets exactly this failure
-mode while keeping the same cloud/haze rejection. Verified to match the default mode
-almost exactly (±1 `n_consistent`) on 8 real installations the default already detects,
-so it's a different criterion for the same evidence, not a laxer one — reach for it in
-dense urban contexts, not as a general replacement.
-
-## Vegetation veto (green-field false positives)
-
-Manual review of Pakistan's countryside leads (`no_building`/`ground_adjacent`
-placement) found a lot of green fields flagged as PV. The obvious fix — check NDVI
-on the composite the model reads — doesn't work: measuring NDVI on the actual dry-season
-composites for 150 suspect leads found them **not green there** (median NDVI 0.10,
-statistically indistinguishable from OSM-confirmed PV's 0.04). The field a validator
-sees as green in current high-res imagery was dark fallow/harvested/flooded-paddy soil
-when the dry-season median was built — a **season mismatch**, not a spectral confusion
-the model could have avoided at inference time. That also explains why the pre-boom
-epoch check (below) barely touches these: crop state isn't persistent year-to-year, so
-being dim in *both* dry-season epochs doesn't distinguish a field from a PV panel.
-
-The instrument that does discriminate is the **vegetation cycle**: every crop field
-greens up at some point in the year; a PV panel never does. Two implementations, by cost
-(`src/earthpv/vegetation.py`):
-
-- **`--veg-max-ndvi`** (interim, free) — max mean-NDVI across every composite epoch
-  already on disk (current + pre-boom). Undersamples the crop cycle (two dry-season
-  snapshots), but costs nothing: on Pakistan, a 0.35 threshold caught **596 of 5,132**
-  new leads (11.6%) — 20.2% of `no_building`, 10.5% of `ground_adjacent`, only 0.3% of
-  rooftop (the veto is specific to the country-side confusion, as intended).
-- **`scripts/veg_annual_ndvi.py`** (thorough, network-bound) — samples a year of
-  Sentinel-2 scenes per lead (the glint pipeline's batched B04/B08 fetcher) and reports
-  p95 NDVI over the year; crossing `--annual-ndvi-max` (default 0.4) means a crop
-  cycle was observed. A positive-control run on 10 leads the composite veto had already
-  flagged found 8/10 crossing p95 > 0.3 within a year — confirming the composite veto's
-  catches are real vegetation, and that the annual version would catch more (residual
-  cloud biases NDVI *down*, so this is conservative). Resumable
-  (`data/veg/<aoi>/<candidate_id>.parquet`); `pull` then `analyze` writes
-  `annual_ndvi.parquet` for `export --annual-ndvi`.
-
-```bash
-pixi run earthpv export --aoi pakistan --exclude-mapped --min-distance-m 100 \
-    --epoch-clean --veg-max-ndvi 0.35
-# Optional, thorough pass (network-bound, hours at country scale — run as its own
-# systemd --user unit, see "Operational notes"):
-.pixi/envs/default/bin/python scripts/veg_annual_ndvi.py pull --aoi pakistan \
-    --leads-file data/predictions/pakistan/pakistan_pv_new_leads_clean.geojson
-.pixi/envs/default/bin/python scripts/veg_annual_ndvi.py analyze --aoi pakistan
-pixi run earthpv export --aoi pakistan --exclude-mapped --min-distance-m 100 \
-    --epoch-clean --veg-max-ndvi 0.35 \
-    --annual-ndvi data/predictions/pakistan/annual_ndvi.parquet
-```
-
-Both vetoes compose with `--epoch-clean` into one `<aoi>_pv_new_leads_clean.geojson` —
-the only export artifact that drops candidates (every default file keeps the
-recall-first contract). Every veto requires *positive* evidence: a lead no instrument
-could check (no composite coverage, no scenes pulled) is always kept, never dropped for
-lack of a read. Vegetation-vetoed leads are also written to `hard_negatives_veg.parquet`
-— unlike epoch persistence (which real old PV can also show), a measured crop cycle is
-near-conclusive non-PV evidence, so these feed straight into
-`hard-negative-chips --centers` as training negatives for the confusion class (dark
-fallow/paddy soil) German training data never contained.
-
-## PV density per building (energy-model / PyPSA export)
-
-`density` (`src/earthpv/density.py`) turns the same probability rasters into
-building-level PV density and area/region aggregates — the shape energy-system models
-(PyPSA / PyPSA-Earth) consume, rather than a validation queue. It runs on existing
-artifacts (rasters + `candidates.parquet` + the VIDA footprints); no GPU, no retraining.
-
-**Two products, one model.** The leads product (postprocess → export → MapRoulette) is
-recall-first and human-validated, so its false positives are a feature; the capacity
-atlas has no human in the loop, so it must not inherit them. The split is downstream of
-the shared model: density never consumes `rank_score`, and it re-weights every candidate
-by a measured **P(real | size, glint)** from
-`configs/calibration/<aoi>_candidate_precision.yaml` (derive with
-`earthpv calibrate-candidates`; see `src/earthpv/capacity_calibration.py`). The table
-combines the size-binned fraction of candidates already mapped in OSM with, per bin and
-in order of directness, a **manual high-res review** of a stratified unmapped sample
-(`earthpv calibrate-sample` → fill `verdict` → `--manual-reviews`; the only instrument
-that works below ~500 m², where glint has no discrimination) and a glint inversion of
-unmapped candidates through the 500-target study's sensitivity curve
-(`scripts/glint_candidate_precision.py` collects that sample; without either the table is
-an honest mapped-only lower bound, `status: interim-mapped-only`). The table also stores,
-per bin: the **model's recall** — the fraction of installations in a pipeline-independent
-mapped reference (the pre-pipeline rooftopsenti OSM snapshot, restricted to imaged cells)
-that the model matched with any candidate (0 % at <100 m² rising to 100 % at >50k m² for
-Pakistan) — and **90 % credible intervals** on every rate, from posterior draws over the
-stored binomial counts (Jeffreys Beta for directly-observed rates; a binomial-mixture
-likelihood for the glint inversion, which stays honestly wide where sensitivity ≈ false
-
-`--calibration-box` pools in fully-mapped ground-truth quadrats
-(`docs/calibration-mapping-protocol.md` — small areas where *every* real installation is
-known, unlike the country snapshot, which is only as complete as OSM happens to be there)
-as additional recall evidence: the box's own per-bin (installations, matched) counts are
-added directly to the snapshot's before the same Beta-posterior machinery runs, so a small
-quadrat nudges the estimate and its interval by exactly as much as its sample size honestly
-supports — no separate code path, no manual override. First box (Lahore, 1 km², 8
-fully-mapped rooftop installations, 0 matched — see `docs/issues/pakistan-calibration-boxes.md`)
-pulled the 100-500 m² and 500-1k m² recall estimates down slightly (58.5→56.5%, 73.6→73.2%)
-and widened their intervals; the national `est_mwp_rc` barely moves (+0.001%) because n=8
-against a ~2,800-installation snapshot is exactly as small as it looks — the point of the
-mechanism is to be ready to matter once more of the protocol's planned 25-35 quadrats land,
-not to overclaim from the first one. That the box's *true* recall (0/8) sits well below the
-snapshot-based recall in the same bins is itself a signal (not yet statistically load-bearing
-at n=8) that snapshot recall may be optimistic — OSM completeness is uneven, and a mapper is
-more likely to have mapped exactly the installations a model also finds easiest.
-floor instead of pretending precision).
-
-Four PV-area metrics are reported because the model is deliberately recall-first and no
-single number is unconditionally honest:
-
-- **detected** (`*_det`) — area of the thresholded, merged candidate polygons on the
-  footprint, taken at face value. Raw-candidate **floor** semantics.
-- **calibrated** (`*_cal`) — the same area with each candidate weighted by its
-  P(real | size, glint). The **headline** capacity number (`est_mwp_cal`); equals
-  `*_det` when no calibration table exists. Remains dependent on the 0.3
-  polygonization threshold; the quadrat protocol
-  (`docs/calibration-mapping-protocol.md`) is the planned ground-truth upgrade.
-- **recall-corrected** (`*_rc`, cell/region level only) — the calibrated candidate area
-  further divided by the model's measured per-bin recall (clamped at `--recall-floor`,
-  default 0.05): a Horvitz–Thompson estimate of the **whole ≥ detection-floor
-  population**, missed installations included, with 90 % credible bands
-  (`est_mwp_rc_lo/hi`) propagated from the calibration posteriors. Lives on the
-  candidate population — comparable to the `*_total` columns (`est_mwp_rc_roof` for the
-  rooftop-placed subset), not to the footprint-intersected `*_roof` ones; there is no
-  per-building version because the missed installations sit on other, unknown buildings.
-  Two honesty caveats: the recall reference skews toward visible/mappable installations
-  (recall optimistic → correction conservative), and a mapped installation counts as
-  "detected" if *any* candidate lies within 100 m (generous in dense clusters — same
-  convention as `mapped_frac`, so the two biases partially offset).
-- **expected** (`*_exp`) — probability-weighted area (Σ per-pixel probability × 100 m²
-  over the footprint, above a small noise floor). Integrates sub-threshold signal; an
-  **upper-leaning** ceiling for sensitivity bands.
-
-Three layers (plus the atlas) land in `data/predictions/<aoi>/density/`:
-
-- `buildings.geoparquet` — one row per building carrying PV signal: `roof_area_m2`,
-  `pv_area_{det,cal,exp}_m2`, `pv_ratio_{det,exp}` (≤ 1), `est_kwp_{det,cal,exp}`,
-  `pv_placement`, `region`/`district`.
-- `grid.geoparquet` + `grid.csv` — one row per 0.1° cell (the pipeline's native grid):
-  roof area, PV area (all metrics), densities (m²/km²), `est_mwp_{det,cal,exp}` and
-  `est_mwp_rc` (+ `_lo`/`_hi` bands). The CSV `lon_center`/`lat_center` map straight
-  onto atlite/PyPSA-Earth cutout grids or Voronoi bus regions.
-- `regions.geoparquet` + `.csv` + `.geojson` — per Overture/geoBoundaries province (and
-  `--districts` for ADM2), additive totals with ratios recomputed from sums and
-  credible bands re-derived from the summed posterior draws (bin-level uncertainty is
-  fully correlated across cells, so intervals must be built from summed draws — never
-  by adding per-cell bounds).
-- `<aoi>_pv_atlas.html` — the self-contained night-lights-style capacity atlas
-  (`src/earthpv/atlas.py`; colour/hero metric is `est_mwp_cal` when calibrated).
-
-Capacity uses `est_kwp = pv_area × --kwp-per-m2` (default **0.18 kWp/m²**, ≈ 5.5 m²
-of c-Si module per kWp). Double counting is avoided at the source: adjacent rasters
-overlap by a few pixels, so each building is assigned to exactly one cell by its
-representative point and each cell's raster sum is cropped to the canonical 0.1° box.
-The run is resumable (per-cell partials under `density/cells/`), ~1.5–2.5 h single-process
-for all of Pakistan. Province polygons come from **geoBoundaries** (open, CC-BY) because
-Overture's S3 divisions endpoint times out from this machine; pass `--regions-file` to
-override, or the cached `data/labels/<aoi>_regions.parquet` is reused.
-
-### How the density estimate developed
-
-The density product went through several validated iterations; each step exists
-because the previous one had a measurable gap:
-
-1. **Detected-area floor** — thresholded candidate polygons joined to footprints
-   (`est_mwp_det`). Precision-honest but blind to everything below the threshold and
-   below the ~400 m² detection size, i.e. to most residential PV.
-2. **Probability-weighted expectation** (`est_mwp_exp`) — Σ per-pixel probability
-   × 100 m² over each footprint. Integrates sub-threshold signal; together the two
-   metrics bracket the truth.
-3. **Fraction-regression track** — a second model head trained to predict per-pixel
-   PV *coverage fraction* (OSM polygons burned at 10× supersampling, block-averaged
-   to 10 m). Individually noisy (0–250 m² per-installation recall is only ~4.5 %) but
-   **unbiased-in-aggregate**: chip-sum R² 0.60 on held-out Germany, and municipal
-   Spearman ρ vs the legally-complete MaStR register of **0.740** across all German
-   Gemeinden — vs 0.499 for the segmentation baseline. Aggregate density is the
-   quantity energy models need, and this head is the purpose-built estimator for it.
-4. **Calibration anchors** — Germany: MaStR per-Gemeinde totals established a stable
-   ~2.4–2.5× aggregate over-prediction (consistent from chip level to municipality
-   level, i.e. correctable). Pakistan: cross-checked against TransitionZero's 27.5 GW
-   distributed-solar study with a coverage-share-disentangled single-point calibration
-   — separating "scale error inside imaged cells" from "cells never imaged at all".
-5. **Coverage expansion** — that comparison showed the missing-coverage term dominated:
-   cell selection had used the local Overture ≥500 m² building set, which undercounts
-   small/informal structures by 200–1000× in rural Pakistan. Switching selection to
-   VIDA Open Buildings (76.5 M footprints) grew Pakistan's compose target from 122 to
-   ~4 460 cells — the country-wide imagery runs feeding the current estimates.
-6. **Next** — the OSM flywheel (leads validated into OSM become in-domain Pakistani
-   training positives via the Overpass label path; a retrain is pending), NEPRA
-   net-metering totals as a Pakistani MaStR analogue, and the two-epoch ΔMWp above as
-   the growth axis: per-epoch density estimates make `est_mwp` a **time series**, so
-   the boom itself becomes measurable per district rather than a single snapshot.
-7. **Cell-aggregate glint calibration** (tested, inconclusive) — small residential
-   arrays are individually sub-pixel and rarely glint on their own (~1–4% of dates,
-   each on its own orientation-specific window), so the hypothesis was that a dense
-   neighbourhood of many independently-oriented small arrays would union those narrow
-   windows into a far higher combined spike-count than any single installation shows
-   alone. Tested against a fully OSM-mapped Lahore residential cluster (below — up to
-   120 separately-mapped generators inside a single 300 m block) by gridding it into
-   cells with known true PV area and regressing each cell's aggregate reflectance-
-   spike count (p90 of the whole cell against a wide 150–450 m external ring, not the
-   per-installation 30 m annulus, since a tight ring risks comparing panels against
-   neighbouring panels) against that density. **Result: no signal** — zero-PV control
-   cells averaged 1.0 spike, PV-bearing cells 1.45 (median tied at 1.0 for both), and
-   even the 120-installation hotspot cell showed only 1 spike over 2 years. Likely a
-   methodology problem rather than a physics one: p90-of-the-whole-cell only moves if
-   ~10% of the cell (~90 of 900 pixels) brightens at once, but even every installation
-   in the busiest hotspot glinting simultaneously covers under half that — a per-pixel
-   anomaly-count statistic (each pixel against its own baseline) would be the correct
-   next test, not attempted here.
-
-   <img src="docs/pv_density_test_area.png" alt="JOSM view of the Lahore calibration test area: yellow building footprints densely packed with mapped solar-generator icons, illustrating the many-small-installations-per-block pattern the cell-aggregate test targets." width="480">
-
-8. **Missed-installation glint recovery** (tested, negative) — a different idea from
-   #7: rather than aggregating over a cell, find real OSM-confirmed installations the
-   model's own thresholded mask completely misses (`pv_area_det`'s recall gap made
-   concrete) and check whether glint-validating them could safely add their area back.
-   Tested on 43 missed German installations (from the val split) and 208 missed
-   Lahore installations, each against a matched sample of confirmed non-PV buildings.
-   **Both regions fail the one thing this needs to do**: Germany's control
-   false-validation rate (20.8%) is uncomfortably close to its missed-installation
-   validated rate (37.2%); Lahore's control rate (8.7%) is *higher* than its missed
-   rate (5.3%) — worse than chance at telling real missed PV apart from ordinary
-   buildings. Recovered area was a modest 10.8% of the Lahore gap even before
-   accounting for that false-positive risk. Not safe to deploy as a blanket density
-   correction in either region tested.
-
-9. **Recall correction + uncertainty bands** (deployed 2026-07-23) — the calibration
-   in #4 was precision-only: `est_mwp_cal` down-weights false positives but nothing
-   credited the installations the model *missed*, so even the headline was
-   structurally a floor. The fix has two independent parts. (a) The model's recall
-   per size bin is now measured directly — the fraction of installations in the
-   pre-pipeline rooftopsenti OSM snapshot (2,811 polygons, restricted to imaged
-   cells; deliberately *not* the fresher Overpass sets, which contain this
-   pipeline's own validated leads and would self-confirm recall upward) matched by
-   any candidate within 100 m: 0/142 below 100 m², 59% at 100–500, 74% at 500–1k,
-   89% at 1k–5k, 99% at 5k–50k, 100% above. Dividing each candidate's calibrated
-   area by its bin's recall (clamped at 0.05) gives the Horvitz–Thompson
-   `est_mwp_rc` — an estimate of the whole ≥ detection-floor population. For
-   Pakistan it adds a modest ~8.6% over the calibrated candidate total (the
-   area-dominant ≥ 5k m² bins are already nearly fully recalled): 18.3 GWp
-   [17.1–21.3] all placements, 6.1 GWp [5.6–7.3] rooftop-placed. (b) Every rate in
-   the table now carries its binomial counts, and 90% credible intervals are
-   propagated through the whole estimator by posterior draws (Jeffreys Betas;
-   the glint inversion uses a proper binomial-mixture likelihood that stays wide
-   where the instrument barely discriminates, rather than the point inversion's
-   false certainty). The wide small-bin intervals this exposes (p_real in 100–500 m²
-   is [0.10, 0.89] — glint simply cannot pin it down) are the quantified case for
-   the manual-review channel: `earthpv calibrate-sample` emits a stratified
-   unmapped-candidate sample for human verdicts, and ≥ 20 verdicts in a bin replace
-   the glint extrapolation with a directly-measured P(real | unmapped) and a
-   correspondingly tight interval.
-
-
-**Sentinel-1 corner-reflector test (negative result).** A tilted PV row over flat
-ground forms a dihedral corner reflector — hypothesis: this should show up as strong
-SAR backscatter, and (unlike optical glint) persistently, since S1's orbit geometry
-is fixed year-round rather than season-dependent, and it isn't blocked by cloud.
-Tested on 17 glint-validated installations spanning the full observed azimuth range,
-pulling ~2 years of Sentinel-1 RTC (VV/VH) and checking for backscatter enhancement
-inside each footprint vs. a wide external ring, split by ascending/descending pass.
-**No signal**: median enhancement rate ~3.2% (VV) / 1.7% (VH) of scenes — in the range
-of plain speckle noise — and critically, ascending vs. descending rates were nearly
-identical (1.7% vs. 1.8% median) with no correlation to the panel's implied row axis.
-A real corner-reflector effect should show a sharp asymmetry between orbit headings;
-its absence suggests this isn't a usable detection channel at these sites, at least
-not via a simple per-footprint aggregate.
-
-Wiring S1 into the *model itself* remains a separate, larger idea: TerraMind-tiny
-ships pretrained S1 patch embeddings, but using them needs S1 RTC compositing, a
-modality-dict input path, neck reconfiguration and a retrain gated against v3 on the
-Multan validation split. A lighter-weight use needs no model change at all:
-multi-temporal backscatter *variance* at candidate locations separates permanent
-structures (PV: static, low, flat backscatter) from seasonally-changing fields, and
-greenhouses' metal frames act as corner reflectors (bright return — opposite to PV),
-making S1 a cheap post-hoc false-positive filter — untested, but distinct from the
-per-footprint corner-reflector idea above and not ruled out by its negative result.
-
-## Scripts reference
-
-The CLI (`src/earthpv/cli.py`) covers the core pipeline; `scripts/` holds
-orchestration wrappers and research one-offs that either predate a CLI command,
-chain several stages together for a long unattended run, or were built to test a
-specific hypothesis (mostly the glint experiments below). None of these are
-required for the core pipeline above — skip straight to "Data provenance" if
-you're not chasing one of the specific results this README documents.
-
-**Long-run orchestration** (resumable, meant to run detached — see Operational
-notes for why):
-- `compose_loop.sh` — auto-restarts `compose` every 30 min so a fresh Planetary
-  Computer SAS token replaces one that's about to expire mid-run; exits on target
-  reached, clean completion, or 3x no-progress.
-- `rebuild_training.sh [aoi] [train_repeat]` — rebuilds an AOI's chips after its
-  compose finishes, then remerges the combined training index.
-- `infer_after_compose.sh` — waits for `compose_loop.sh` to finish, then chains
-  `infer → postprocess → export` on whatever cells it composited.
-- `run_preboom_pipeline.sh` — the full two-epoch pipeline (pre-boom compose ||
-  current-epoch eval-gate + inference, in parallel; then pre-boom inference,
-  epoch-diff rescoring, density on both epochs, the growth map, a pvlib capacity
-  check) behind marker-file resumability.
-- `download_vida_ind.sh` — bulk VIDA India buildings download with retry-on-reset.
-
-**Training-data construction:**
-- `merge_chip_index.py [aoi[:repeat] ...]` — combine per-AOI chip indexes
-  (`default: germany punjab`); see the Train step above.
-- `build_germany_seasonal.py`, `build_contrast_composites.py`,
-  `reconcile_contrast.py` — build/reconcile the two-season 20-band stack (see
-  "Two-season stacking experiment" below — kept for future iteration, not
-  production).
-
-**Post-detection QA:**
-- `compare_candidates_overpass.py` — cross-reference exported candidates against
-  a live Overpass query, giving distance-to-nearest-mapped-feature for triage.
-- `glint_candidate_precision.py` — stratified glint sample of *unmapped model
-  candidates* (sample → pull → analyze); its per-bin validated rates feed
-  `earthpv calibrate-candidates`, which inverts them through the 500-target
-  study's sensitivity curve into the capacity-atlas precision table (see "PV
-  density per building").
-- `veg_annual_ndvi.py` — per-lead year-long Sentinel-2 NDVI series (pull → analyze),
-  the thorough half of the green-field veto (see "Vegetation veto" above); feeds
-  `earthpv export --annual-ndvi`.
-
-**Solar-glint research suite** (`src/earthpv/glint.py` is the production module,
-used by `postprocess --check-glint`; everything below is validation/experimentation
-around it, mostly network-bound per-target Sentinel-2 time-series pulls):
-- `glint_validation.py` / `glint_validate_pakistan.py` — the core empirical
-  validation (spike detection + self-consistent orientation fit), the latter at
-  country scale, stratified by installation size (results in "Solar-glint
-  corroboration" below and `results/glint_validation_pakistan/`).
-- `glint_iou_experiment.py`, `glint_pixel_refine.py` — can glint move pixel IoU
-  rather than just re-rank candidates? (threshold gating: no; per-pixel
-  spike-amplitude trim: a narrow real win — see conversation/commit history for
-  the full results). A companion experiment gating by building-roof-axis
-  orientation (a free, zero-network proxy for "plausibly south-facing") was
-  also tested and removed: no predictive signal, most likely because Pakistan's
-  dominant urban roof type is flat concrete, where a tilt-frame's azimuth isn't
-  constrained by the footprint shape the way a pitched roof's ridge line would be.
-- `glint_density_targets.py` / `_pull.py` / `_analyze.py` and
-  `glint_cell_density_targets.py` / `_pull.py` / `_analyze.py` — two different
-  attempts to use glint for regional density estimation rather than per-candidate
-  ranking (missed-installation recovery; cell-aggregate spike-count calibration) —
-  both tested negative, see the numbered list under "How the density estimate
-  developed" above.
-- `glint_skyfield_check.py` — cross-checks the empirical MTD_TL.xml-metadata-based
-  fit against independent Skyfield astronomy (sun-only: exact agreement; full
-  TLE-propagated forward prediction: unreliable for reconstructing historical spike
-  dates, confirming why `glint.py` never uses TLEs for anything but the forward-
-  looking overpass calendar).
-- `s1_corner_reflector_test.py` — the Sentinel-1 dihedral-reflector test, negative
-  result documented above.
-- `glint_s2_example_grid.py` — builds the Sentinel-2 example grid in
-  [`docs/glint_examples.md`](docs/glint_examples.md) from cached validation data (one
-  real, strongly-validated installation per size bucket, cropped to its own spike date).
-
-## Operational notes & troubleshooting
-
-- **500 m² ≈ 5 Sentinel-2 pixels**: evaluation reports per-installation recall
-  bucketed by array size; tune the postprocess threshold on the German validation
-  states for the recall you need. Sub-500 m² detection is unreliable at Sentinel-2's
-  10 m floor regardless of threshold — see "Result" above.
-- **GPU**: GTX 1060 (Pascal, sm_61) requires PyTorch **cu126** wheels — CUDA 13
-  dropped Pascal support; pinned in `pixi.toml`. A newer card has more headroom but
-  doesn't need anything else changed.
-- Chips store the annual median (10 bands); pass `--seasonal` for 4-season 60-band
-  chips (disk-heavy) to experiment with explicit temporal stacks.
-- **`data/` is gitignored** and expected on a fast local/external drive — `chips/`,
-  `composites/`, `models/`, `predictions/` are all multi-GB to multi-hundred-GB.
-  Files there won't show up in a git-aware file explorer even though they're real.
-- **Long network/GPU stages die silently on session logout.** `nohup setsid` alone
-  does not survive a session ending — systemd-logind kills the whole session's
-  cgroup (everything in it, `setsid` or not) unless lingering is enabled. Before
-  launching anything multi-hour: `loginctl show-user "$USER" | grep Linger` — if
-  `Linger=no`, run `loginctl enable-linger "$USER"` once (no sudo needed for your
-  own account).
-- **Planetary Computer has frequent multi-hour outages** (Azure Front Door 504s, or
-  requests that hang with no error at all) — every network-bound stage in this
-  project (`compose`, `chips` without a `source_region`, the glint scripts) is
-  built to be resumable (temp-then-rename writes, per-target/per-cell skip-if-
-  exists) specifically because of this. The practical pattern: launch detached,
-  poll a log for a completion marker or a stall (no new output for ~20-30 min), and
-  if stalled, kill and relaunch the same command — it picks up where it left off.
-  `compose_loop.sh` automates exactly this cycle for `compose`; for anything else,
-  a simple `until grep -q DONE log || ! pgrep -f the_process; do sleep 30; done`
-  loop around a kill-and-relaunch does the job.
-- **`row.mask` / `row.image` on a pandas row**: use bracket access (`row["mask"]`)
-  — `.mask` resolves to the `Series.mask` *method*, not the column, a bug worth
-  knowing about if you're reading/extending the chip-index code.
-- **Changing `MIN_PV_AREA`** (the training positive threshold in `chips.py`)
-  requires rebuilding chips and retraining — it's baked into the burned masks, not
-  a runtime parameter.
-- **Geographic val splits must match real coverage**: `val_tiles` in
-  `configs/aoi.yaml` has to name MGRS tiles (or composed cells) the AOI's
-  `source_region`/`compose` run actually produced, or the val set silently ends up
-  empty and the datamodule falls back to a random 20% split — check `evaluate`'s
-  reported `installations` count per bucket isn't suspiciously small before trusting
-  a recall number.
-- **Areas are geodesic** (`labels.geodesic_area_m2`) — never `.area` on lat/lon
-  geometries, which silently returns nonsense (degrees², not m²).
+The pipeline is `labels → chips → train → evaluate → compose → infer → postprocess →
+export`, plus `density` for capacity and `calibrate-candidates` for the precision table.
+Every stage is resumable and safe to re-run. The full runbook, including operational
+notes for multi-hour network-bound jobs, is in
+[Reproduce](https://open-energy-transition.github.io/earthpv/reproduce/).
+
+## What did not work
+
+Most of what was tried here failed, and the negative results are documented because they
+map where the 10 m resolution limit actually is: two-season band stacking, Sentinel-1
+corner reflection, two separate routes from glint to density, roof-axis orientation
+priors, and three super-resolution variants. Every one has runnable code in `scripts/`.
+See [Experiments](https://open-energy-transition.github.io/earthpv/experiments/).
+
+## Community
+
+earthpv is the software half of **TraceTheSun**, a pilot run by
+[Open Energy Transition](https://openenergytransition.org) to make PV mapping
+cost-effective, verifiable, community-driven and local. The Pakistani results rest on four
+OET-funded interns at the **Lahore University of Management Sciences**, led by
+[Muhammad Awais](https://www.linkedin.com/in/awais307/), who do the mapping, validation and
+ground-truth quadrat work.
+
+TraceTheSun also brings together [Jake Stid](https://github.com/stidjaco/GMSEUS) of Michigan
+State University and [Gabriel Kasmi](https://github.com/gabrielkasmi/deeppvmapper), and it
+is open to more.
+
+The most valuable contribution is **verified installations in OpenStreetMap**. Load the
+[mapping leads](https://open-energy-transition.github.io/earthpv/results/leads/) into
+MapRoulette or JOSM, check them against the high-resolution layers, and map what is real.
+See [Community](https://open-energy-transition.github.io/earthpv/community/) for the
+quadrat protocol and the other ways in.
+
+## Documentation
+
+This README is the short version. The full documentation is at
+**<https://open-energy-transition.github.io/earthpv/>** and covers the
+[capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/),
+[mapping leads](https://open-energy-transition.github.io/earthpv/results/leads/),
+[panel pose](https://open-energy-transition.github.io/earthpv/results/pv-pose/),
+the [detection](https://open-energy-transition.github.io/earthpv/methods/detection/),
+[density](https://open-energy-transition.github.io/earthpv/methods/density/),
+[glint](https://open-energy-transition.github.io/earthpv/methods/glint/) and
+[calibration](https://open-energy-transition.github.io/earthpv/methods/calibration/)
+methods, the [experiment log](https://open-energy-transition.github.io/earthpv/experiments/),
+and the [reproduction runbook](https://open-energy-transition.github.io/earthpv/reproduce/).
+
+Build it locally with `pixi run docs-figures && pixi run -e docs docs-serve`.
+
+## Licence
+
+Code MIT. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
+and Overture Maps; labels from OpenStreetMap contributors under ODbL; administrative
+boundaries from geoBoundaries under CC-BY.

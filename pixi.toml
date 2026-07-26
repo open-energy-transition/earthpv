@@ -39,9 +39,18 @@ torch = { version = "==2.7.1", index = "https://download.pytorch.org/whl/cu126" 
 torchvision = { version = "==0.22.1", index = "https://download.pytorch.org/whl/cu126" }
 terratorch = ">=1.0"
 
+# Documentation site (MkDocs Material). Kept out of the default solve so a docs
+# edit never waits on the data-pipeline or torch environments.
+[feature.docs.dependencies]
+python = "3.11.*"
+
+[feature.docs.pypi-dependencies]
+mkdocs-material = ">=9.5"
+
 [environments]
 default = { solve-group = "default" }
 ml = { features = ["ml"], solve-group = "default" }
+docs = { features = ["docs"], no-default-feature = true }
 
 [tasks]
 labels = "python -m earthpv.cli labels"
@@ -50,6 +59,12 @@ postprocess = "python -m earthpv.cli postprocess"
 export = "python -m earthpv.cli export"
 mastr = "python -m earthpv.cli mastr"
 calibrate = "python -m earthpv.cli calibrate"
+# Regenerate every figure and interactive page the docs site and README embed.
+docs-figures = "python scripts/build_docs_figures.py"
+
+[feature.docs.tasks]
+docs-serve = "mkdocs serve"
+docs-build = "mkdocs build --strict"
 
 [feature.ml.tasks]
 train = "python -m earthpv.cli train"
