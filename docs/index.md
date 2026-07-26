@@ -2,6 +2,9 @@
 
 <div class="hero" markdown>
 
+![earthpv](assets/figures/earthpv-logo-mark.png#only-light){ .hero-logo }
+![earthpv](assets/figures/earthpv-logo-mark-white.png#only-dark){ .hero-logo }
+
 **Open rooftop solar mapping from free satellite imagery.**
 { .lede }
 
