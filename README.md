@@ -184,12 +184,8 @@ earthpv is the software half of **TraceTheSun**, a pilot run by
 [Open Energy Transition](https://openenergytransition.org) to make PV mapping
 cost-effective, verifiable, community-driven and local. The Pakistani results rest on four
 OET-funded interns at the **Lahore University of Management Sciences**, led by
-[Muhammad Awais](https://www.linkedin.com/in/awais307/), who do the mapping, validation and
+[Muhammad Awais](https://www.linkedin.com/in/awais307/), who do the mapping, validation, model development and
 ground-truth quadrat work.
-
-TraceTheSun also brings together [Jake Stid](https://github.com/stidjaco/GMSEUS) of Michigan
-State University and [Gabriel Kasmi](https://github.com/gabrielkasmi/deeppvmapper), and it
-is open to more.
 
 The most valuable contribution is **verified installations in OpenStreetMap**. Load the
 [mapping leads](https://open-energy-transition.github.io/earthpv/results/leads/) into
