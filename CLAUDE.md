@@ -43,6 +43,7 @@ pixi run earthpv labels --aoi germany            # default env is fine for data 
 CLI stages (`src/earthpv/cli.py`): `labels → chips → train → evaluate → infer →
 postprocess → export`, plus `compose` (build imagery for AOIs with no local composites).
 `train --smoke` runs 50 steps; `chips --limit N` caps the chip count for quick runs.
+For capacity: `density → check-density` (the latter gates the numbers, see below).
 
 **There is no test suite and no lint task wired.** Ruff is configured (line-length 100)
 but run manually. The practical "does it work" check is a small end-to-end run:
@@ -121,6 +122,40 @@ precision-honest floor, blind to sub-threshold/sub-400 m² signal), `*_exp`
 and `*_cal` (`*_det` re-weighted by a measured P(real | size, glint) from
 `configs/calibration/<aoi>_candidate_precision.yaml` — the headline capacity number).
 See README's "PV density per building" section for the full metric derivation.
+
+**Area → capacity uses two constants, never one.** A rooftop detection is ~module area
+(`DEFAULT_KWP_PER_M2_MODULE = 0.18`); a ground-mount detection is *site* area, because the
+ground-PV training labels are OSM `power=plant` perimeters, so only the ground-cover ratio
+is module (`DEFAULT_KWP_PER_M2_LAND = 0.07`). Both live in `capacity_calibration.py` with
+lognormal priors (`kwp_draws`), so the conversion propagates into the credible intervals
+instead of being treated as exact. Every all-PV estimator is split by `placement` before
+conversion (`_ratios`, `_composed_mwp_draws`); the roof-scope ones are footprint
+intersections and convert at the module constant throughout. Applying the module constant
+to site area overstates ground-mount by 2-3x — that regression is what the split prevents.
+
+`density` also **excludes candidates over `postprocess.MAX_CANDIDATE_M2` (100k m²)** from
+capacity. `polygonize_chips` merges every touching thresholded pixel with no upper bound,
+so a connected sheet of false positives becomes one multi-km² "installation" with
+`confidence` 1.0 (it is the *max* over the polygon). On the Pakistan country run 167 such
+candidates carried 47% of all candidate area. `postprocess` only flags them (`oversize`);
+they stay in the leads product, where a human validates every candidate. Because cell
+partials cache the per-building/`*_roof` columns, the filter only reaches those on a
+`--force` re-run — `meta.json`'s `oversize_stale_partials` records when it did not, and
+the candidate-population columns (`_CAND_COLS`) are rederived from the candidate frame
+every run by `candidate_cell_totals` precisely so they never go stale.
+
+### Plausibility gate (`plausibility.py`, `earthpv check-density`)
+
+The leads product has a human on every candidate; the capacity atlas has nobody, so a
+false-positive mode that survives `p_real` reaches the headline number silently. Two
+per-region checks, both from artifacts `density` already wrote, exit non-zero so a
+regression fails CI: **ground-mount:rooftop capacity ratio** (bare ground, riverbed, salt
+flat, rock and snow read bright and nothing constrains them to a plausible host) and
+**single-cell concentration** (one 0.1° cell over 25% of a region means that region's
+total is one blob, not a population). Both need `mwp_ground >= 50` so a tiny region's
+ratio is not noise. Acceptance test for any change here: the pre-fix Pakistan output
+(18.3 GWp, Gilgit-Baltistan 166 MWp against 0.8 MWp of rooftop) must **fail**, the
+current one must pass.
 
 ### Invariants that prevent tiling artifacts (do not regress)
 

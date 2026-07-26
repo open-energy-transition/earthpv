@@ -101,9 +101,73 @@ N_DRAWS = 4000
 SEED = 20260723
 CI_PCT = (5.0, 95.0)  # 90% equal-tailed credible interval
 
+# --------------------------------------------------------------------------------------
+# Area -> capacity conversion: two constants, because detected area means two things
+# --------------------------------------------------------------------------------------
+# A *rooftop* detection outlines the panel field on a roof, which is close to module
+# area: ~5.5 m2 of c-Si module per kWp -> 0.18 kWp/m2 (grounded against the CEC
+# datasheet database by pv_capacity.check_kwp_per_m2).
+DEFAULT_KWP_PER_M2_MODULE = 0.18
+# A *ground-mount* detection outlines the SITE, not the modules. The ground-PV training
+# labels are OSM `power=plant` perimeters (labels.py), which enclose access roads,
+# inter-row spacing and substations, so the model is taught to fill the fence line and a
+# detected polygon is site area. Only the ground-cover ratio of it is module: GCR
+# 0.3-0.5 for fixed tilt at these latitudes -> 0.18 * ~0.4 ~= 0.07 kWp per m2 of site.
+# Converting site area at the module constant overstates ground-mount capacity 2-3x.
+DEFAULT_KWP_PER_M2_LAND = 0.07
+# 90% ranges for the two constants, carried as lognormal priors so the conversion enters
+# the credible intervals instead of being treated as exact (it was the largest term
+# previously excluded from them). Module: module-efficiency spread plus roof packing.
+# Land: GCR 0.25-0.6, by far the dominant unknown of the two. Each range is centred
+# geometrically on its point value, so the point is the prior's median.
+KWP_MODULE_CI90 = (0.15, 0.21)
+KWP_LAND_CI90 = (0.045, 0.11)
+# Offset so the conversion draws are independent of the precision/recall draws, which
+# use `seed` directly.
+KWP_SEED_OFFSET = 7
+_Z95 = 1.6448536269514722  # standard-normal 95th percentile
+
 
 def default_table_path(aoi: str) -> Path:
     return CALIBRATION_DIR / f"{aoi}_candidate_precision.yaml"
+
+
+def _lognormal_draws(
+    rng: np.random.Generator, median: float, ci90: tuple[float, float], n: int
+) -> np.ndarray:
+    """Lognormal draws with the given median and (to within the median's own offset from
+    the range's geometric centre) the given 90% range."""
+    lo, hi = float(ci90[0]), float(ci90[1])
+    if not 0 < lo < hi:
+        raise ValueError(f"ci90 must satisfy 0 < lo < hi, got {ci90}")
+    sigma = np.log(hi / lo) / (2.0 * _Z95)
+    return float(median) * np.exp(rng.normal(0.0, sigma, n))
+
+
+def kwp_draws(
+    n_draws: int = N_DRAWS,
+    module: float = DEFAULT_KWP_PER_M2_MODULE,
+    land: float = DEFAULT_KWP_PER_M2_LAND,
+    module_ci90: tuple[float, float] = KWP_MODULE_CI90,
+    land_ci90: tuple[float, float] = KWP_LAND_CI90,
+    seed: int | None = None,
+) -> dict:
+    """Prior draws for the two area->capacity constants, in kWp per m2.
+
+    `module` converts rooftop panel area, `land` converts ground-mount *site* area; see
+    the constants above for why they differ by ~2.5x. Both are lognormal (a strictly
+    positive multiplicative factor) centred on their point value. Returns
+    `{"module": (n_draws,), "land": (n_draws,), "module_point": float,
+    "land_point": float}` so a caller can compose per-cell draw matrices and point
+    estimates from one object.
+    """
+    rng = np.random.default_rng(SEED + KWP_SEED_OFFSET if seed is None else seed)
+    return {
+        "module": _lognormal_draws(rng, module, module_ci90, n_draws),
+        "land": _lognormal_draws(rng, land, land_ci90, n_draws),
+        "module_point": float(module),
+        "land_point": float(land),
+    }
 
 
 def bin_index(area_m2: np.ndarray) -> np.ndarray:

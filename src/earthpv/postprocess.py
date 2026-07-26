@@ -27,6 +27,20 @@ log = logging.getLogger(__name__)
 # A candidate whose nearest footprint is within this gap counts as building-adjacent.
 NEAR_BUILDING_M = 30.0
 
+# `polygonize_chips` merges every touching thresholded pixel in the AOI into one polygon,
+# with no upper bound, so a connected sheet of false positives (dry riverbed, salt flat,
+# bare rock, snow) becomes a single multi-km2 "installation" whose `confidence` is the max
+# over millions of pixels, i.e. 1.0. On the Pakistan country run the 428 candidates above
+# this size carried 58% of all candidate area and the ten largest carried 27%, so the
+# country capacity total was effectively a handful of blobs. Above this area a candidate
+# is either such a blob or an entire plant *site* (whose area is not module area either) —
+# both wrong to convert as one installation's panel area.
+#
+# Flagged, never dropped: the leads product is recall-first and a human validates every
+# candidate, so an oversize polygon is still a legitimate (if coarse) mapping lead. The
+# density stage is what excludes them, because it has no human in the loop.
+MAX_CANDIDATE_M2 = 100_000.0
+
 
 def polygonize_chips(prob_dir: Path, threshold: float) -> gpd.GeoDataFrame:
     parts = []
@@ -66,6 +80,34 @@ def polygonize_chips(prob_dir: Path, threshold: float) -> gpd.GeoDataFrame:
     conf = joined.groupby(joined.index)["confidence"].max()
     merged["confidence"] = conf
     return merged
+
+
+def flag_oversize(
+    cands: gpd.GeoDataFrame, max_area_m2: float = MAX_CANDIDATE_M2
+) -> gpd.GeoDataFrame:
+    """Add an `oversize` flag for candidates too large to be one installation.
+
+    See `MAX_CANDIDATE_M2` for why these exist and why they are flagged rather than
+    dropped. The log line reports the area share, not just the count, because the count is
+    always small and the share is what matters to any area-derived number downstream.
+    """
+    cands = cands.copy()
+    if cands.empty or "area_m2" not in cands.columns:
+        cands["oversize"] = pd.Series(dtype=bool)
+        return cands
+    area = cands["area_m2"].to_numpy(float)
+    cands["oversize"] = area > max_area_m2
+    n_over = int(cands["oversize"].sum())
+    if n_over:
+        log.warning(
+            "%d/%d candidates exceed %.0f m2: %.1f%% of total candidate area, largest "
+            "%.2f km2. Flagged `oversize` (kept as mapping leads); the density stage "
+            "excludes them from capacity — see MAX_CANDIDATE_M2.",
+            n_over, len(cands), max_area_m2,
+            100.0 * area[area > max_area_m2].sum() / max(area.sum(), 1e-9),
+            area.max() / 1e6,
+        )
+    return cands
 
 
 def _join_buildings_metric(
@@ -450,6 +492,7 @@ def run_postprocess(
     if not cands.empty:
         cands["area_m2"] = [geodesic_area_m2(g) for g in cands.geometry]
         cands = cands[cands.area_m2 >= 50].reset_index(drop=True)
+        cands = flag_oversize(cands)
         _, cfg = resolve_aoi(aoi, settings)
         buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir)
         if buildings is not None and not buildings.empty:
