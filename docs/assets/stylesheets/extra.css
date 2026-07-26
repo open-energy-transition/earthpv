@@ -1,0 +1,166 @@
+/* earthpv documentation theme.
+   Ink and surface come from Material; the brand hues below are the validated
+   categorical slots used by the figures, so charts and chrome agree. */
+
+:root {
+  --md-primary-fg-color: #1c3f63;
+  --md-primary-fg-color--light: #2a78d6;
+  --md-primary-fg-color--dark: #12293f;
+  --md-accent-fg-color: #eb6834;
+  --md-accent-fg-color--transparent: rgba(235, 104, 52, 0.1);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #12293f;
+  --md-primary-fg-color--light: #3987e5;
+  --md-primary-fg-color--dark: #0d1c2b;
+  --md-accent-fg-color: #f08a5d;
+  --md-hue: 220;
+}
+
+/* ---------------------------------------------------------------- hero block */
+
+.hero {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.6rem 1.6rem 1.2rem;
+  margin: 0 0 1.6rem;
+  background: var(--md-code-bg-color);
+}
+
+.hero p:first-child {
+  margin-top: 0;
+}
+
+.hero .lede {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--md-default-fg-color--light);
+}
+
+/* --------------------------------------------------------------- stat strip */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.9rem;
+  margin: 1.4rem 0 1.8rem;
+}
+
+.stat {
+  border-left: 3px solid var(--md-primary-fg-color--light);
+  padding: 0.2rem 0 0.2rem 0.8rem;
+}
+
+.stat .value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--md-default-fg-color);
+}
+
+.stat .label {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.2rem;
+}
+
+/* ------------------------------------------------------------ embedded pages */
+
+.embed {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.2rem 0 0.6rem;
+}
+
+.embed iframe {
+  display: block;
+  width: 100%;
+  height: 760px;
+  border: 0;
+  background: var(--md-default-bg-color);
+}
+
+.embed.short iframe {
+  height: 560px;
+}
+
+.embed-note {
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+  margin: 0 0 1.6rem;
+}
+
+/* --------------------------------------------------------------- figure bits */
+
+.md-typeset figure img,
+.md-typeset .figure img {
+  border-radius: 6px;
+}
+
+.md-typeset figcaption {
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+  max-width: 60ch;
+  margin: 0.4rem auto 0;
+}
+
+/* Tables read better left-aligned and slightly denser than the default. */
+.md-typeset table:not([class]) th {
+  background: var(--md-code-bg-color);
+}
+
+.md-typeset table:not([class]) td,
+.md-typeset table:not([class]) th {
+  padding: 0.5em 0.9em;
+}
+
+/* Wide content must scroll inside itself, never the page. */
+.md-typeset .md-typeset__table {
+  overflow-x: auto;
+}
+
+/* ------------------------------------------------------------------- outcome */
+
+.outcome {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.outcome.works {
+  background: rgba(27, 175, 122, 0.16);
+  color: #0f7a53;
+}
+
+.outcome.mixed {
+  background: rgba(237, 161, 0, 0.18);
+  color: #8a5d00;
+}
+
+.outcome.negative {
+  background: rgba(227, 73, 72, 0.15);
+  color: #a52f2e;
+}
+
+.outcome.open {
+  background: rgba(42, 120, 214, 0.14);
+  color: #1c5cab;
+}
+
+[data-md-color-scheme="slate"] .outcome.works { color: #5fd3a6; }
+[data-md-color-scheme="slate"] .outcome.mixed { color: #f0be5a; }
+[data-md-color-scheme="slate"] .outcome.negative { color: #f08a89; }
+[data-md-color-scheme="slate"] .outcome.open { color: #7fb4f0; }

@@ -1,0 +1,108 @@
+site_name: earthpv
+site_description: >-
+  Open rooftop solar mapping from Sentinel-2. A recall-first geospatial foundation
+  model, an OpenStreetMap validation loop, and a calibrated national capacity atlas.
+site_url: https://open-energy-transition.github.io/earthpv/
+repo_url: https://github.com/open-energy-transition/earthpv
+repo_name: open-energy-transition/earthpv
+edit_uri: edit/main/docs/
+copyright: >-
+  Open Energy Transition. Code under MIT, documentation and data under open licences.
+
+theme:
+  name: material
+  language: en
+  favicon: assets/figures/favicon.svg
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.blocks.caption
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.smartsymbols
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/open-energy-transition/earthpv
+      name: earthpv on GitHub
+    - icon: fontawesome/solid/globe
+      link: https://openenergytransition.org
+      name: Open Energy Transition
+
+nav:
+  - Home: index.md
+  - Workflow: workflow.md
+  - Results:
+      - Capacity map: results/capacity.md
+      - Panel pose from glint: results/pv-pose.md
+      - Mapping leads: results/leads.md
+  - Methods:
+      - Detection model: methods/detection.md
+      - Capacity density: methods/density.md
+      - Solar glint: methods/glint.md
+      - Glint image gallery: glint_examples.md
+      - Calibration: methods/calibration.md
+      - Quadrat protocol: calibration-mapping-protocol.md
+  - Experiments: experiments.md
+  - Reproduce: reproduce.md
+  - Community: community.md
+  - Notes:
+      - notes/index.md
+      - Calibration boxes: issues/pakistan-calibration-boxes.md
+      - Epoch jump as recall signal: issues/epoch-jump-recall-signal.md
+      - Standard pose matched filter: issues/standard-pose-matched-filter.md
+      - Glint spike-rate estimator: issues/glint-spike-rate-density-estimator.md
+      - Glint tile-batched coverage: issues/glint-tile-batched-coverage.md
+      - Glint-validated training labels: issues/glint-validated-training-labels.md
+      - Quadrats as training data: issues/quadrats-as-training-data.md
+      - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md

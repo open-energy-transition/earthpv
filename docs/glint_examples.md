@@ -4,8 +4,8 @@
 used by `postprocess --check-glint`): a glass-fronted PV panel is partly a specular
 mirror, so on the rare dates its tilt happens to bisect the sun and Sentinel-2's
 near-nadir sensor, it reflects a sudden burst of light straight back at the satellite —
-a *glint*. See the "Solar-glint corroboration" section of the main [README](../README.md)
-for how the resulting spike is scored.
+a *glint*. See [Solar glint](methods/glint.md) for how the resulting spike is scored, and
+[Panel pose from glint](results/pv-pose.md) for what the country-wide survey found.
 
 This page collects visual examples of the same phenomenon at two very different
 resolutions: sub-metre commercial imagery, where you can see the panels themselves

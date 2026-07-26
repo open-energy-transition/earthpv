@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="214"
+     viewBox="0 0 900 214" font-family="DejaVu Sans, system-ui, sans-serif">
+  <rect width="900" height="214" rx="10" fill="#fcfcfb"/>
+  <text x="30" y="34" font-size="14" font-weight="600" fill="#0b0b0b">Two products from one model</text>
+
+  <rect x="30" y="56" width="180" height="60" rx="7" fill="#ffffff" stroke="#e1e0d9"/>
+  <text x="48" y="82" font-size="12" font-weight="600" fill="#0b0b0b">Sentinel-2 L2A</text>
+  <text x="48" y="100" font-size="10.5" fill="#52514e">dry-season composites</text>
+
+  <rect x="238" y="56" width="180" height="60" rx="7" fill="#ffffff" stroke="#e1e0d9"/>
+  <text x="256" y="82" font-size="12" font-weight="600" fill="#0b0b0b">TerraMind-tiny</text>
+  <text x="256" y="100" font-size="10.5" fill="#52514e">probability raster</text>
+
+  <rect x="446" y="26" width="204" height="60" rx="7" fill="#ffffff" stroke="#2a78d6"/>
+  <text x="464" y="52" font-size="12" font-weight="600" fill="#2a78d6">Leads product</text>
+  <text x="464" y="70" font-size="10.5" fill="#52514e">polygons for human review</text>
+
+  <rect x="446" y="116" width="204" height="60" rx="7" fill="#ffffff" stroke="#1baf7a"/>
+  <text x="464" y="142" font-size="12" font-weight="600" fill="#1baf7a">Capacity product</text>
+  <text x="464" y="160" font-size="10.5" fill="#52514e">MWp per building and cell</text>
+
+  <rect x="678" y="26" width="192" height="60" rx="7" fill="#ffffff" stroke="#e1e0d9"/>
+  <text x="696" y="52" font-size="12" font-weight="600" fill="#0b0b0b">OpenStreetMap</text>
+  <text x="696" y="70" font-size="10.5" fill="#52514e">MapRoulette challenge</text>
+
+  <rect x="678" y="116" width="192" height="60" rx="7" fill="#ffffff" stroke="#e1e0d9"/>
+  <text x="696" y="142" font-size="12" font-weight="600" fill="#0b0b0b">PyPSA-Earth</text>
+  <text x="696" y="160" font-size="10.5" fill="#52514e">0.1 degree grid CSV</text>
+
+  <g stroke="#52514e" stroke-width="1.6" fill="none">
+    <path d="M210,86 H236"/>
+    <path d="M418,86 H432 V56 H444"/>
+    <path d="M418,86 H432 V146 H444"/>
+  </g>
+  <g stroke="#2a78d6" stroke-width="1.6" fill="none"><path d="M650,56 H676"/></g>
+  <g stroke="#1baf7a" stroke-width="1.6" fill="none"><path d="M650,146 H676"/></g>
+
+  <text x="30" y="200" font-size="10.5" fill="#52514e">False positives are useful on the top path and forbidden on the bottom one, so only the bottom path is precision-calibrated.</text>
+</svg>

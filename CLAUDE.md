@@ -19,13 +19,15 @@ detect them individually. Trained on Germany, inferred on Punjab, Pakistan. Read
 
 ## Environments & commands
 
-Managed with **pixi**. There are two environments sharing one solve-group:
+Managed with **pixi**. Two environments share one solve-group, plus an independent docs env:
 - `default` — the data pipeline (DuckDB, geopandas, rasterio, odc-stac). No PyTorch.
 - `ml` — adds `torch`/`torchvision` (**cu126 wheels**) and `terratorch`.
+- `docs` — mkdocs-material only (`no-default-feature`), so a docs edit never waits on a solve.
 
 ```bash
 pixi install            # default env
 pixi install -e ml      # + torch cu126 + terratorch (multi-GB solve)
+pixi install -e docs    # mkdocs-material
 pixi run -e ml gpu-check # verify torch.cuda + device name
 ```
 
@@ -120,6 +122,19 @@ stay in place:
 - **`infer.py` overlap-adds windows with a 2D Hann taper** into one seamless raster per
   cell, with a **stride that is not a multiple of the 16 px ViT patch size** (currently 104)
   so patch-edge effects decorrelate between neighbors.
+
+### Documentation site
+
+`mkdocs.yml` + `docs/` build the MkDocs Material site published to GitHub Pages by
+`.github/workflows/docs.yml` on every push to `main` that touches docs, results or the
+figure script. **Every figure and embedded interactive page under `docs/assets/` is
+generated** by `scripts/build_docs_figures.py` (`pixi run docs-figures`), which reads its
+numbers from tracked files (`results/*.csv`, the atlas HTML's embedded JSON, the
+calibration YAML) so the site cannot drift from them — edit the sources, not the SVGs.
+Charts are written twice (`x.svg` / `x.dark.svg`) for Material's `#only-light` /
+`#only-dark` suffixes. Local preview: `pixi run docs-figures && pixi run -e docs docs-serve`.
+The build runs `--strict`, so a broken internal link fails CI. Docs prose in this repo
+avoids em dashes and emoji.
 
 ## Conventions & gotchas
 
