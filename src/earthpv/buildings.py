@@ -37,13 +37,20 @@ VIDA_URL = (
 # one bulk download + local scans is ~10x faster overall.
 VIDA_LOCAL = "data/vida/{iso3}.parquet"
 
+# Convenience only, for the AOIs that predate the explicit `division.iso3` key.
+# A new region should set `iso3` in its division block rather than extend this;
+# `scripts/new_region.py add` writes it for you.
 _ISO2_TO_ISO3 = {"PK": "PAK", "DE": "DEU", "IN": "IND"}
 
 Bbox = tuple[float, float, float, float]
 
 
 def _iso3_for(cfg: dict) -> str | None:
+    """ISO3 country code for an AOI: explicit `division.iso3` wins, else the ISO2 map."""
     div = cfg.get("division") or {}
+    iso3 = div.get("iso3")
+    if iso3:
+        return str(iso3).upper()
     iso2 = div.get("country")
     return _ISO2_TO_ISO3.get(iso2) if iso2 else None
 

@@ -573,6 +573,58 @@ def sync_interactive():
         print(f"  wrote docs/assets/interactive/{name}")
 
 
+LOGO_SRC = ROOT / "docs" / "assets" / "earthpv-logo.png"
+BRAND_NAVY = (18, 41, 63)
+
+
+def derive_logo():
+    """Trim and recolour the source logo into the variants the site and README need.
+
+    The source is a black mark on transparency, off-centre with wide margins. Black is
+    invisible on the navy header bar and on a dark README, so a white variant is
+    generated from the same alpha channel; nothing is redrawn.
+    """
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        print("  pillow not installed, skipping logo derivation")
+        return
+    if not LOGO_SRC.exists():
+        print(f"  {LOGO_SRC.relative_to(ROOT)} missing, skipping logo derivation")
+        return
+    OUT.mkdir(parents=True, exist_ok=True)
+
+    src = Image.open(LOGO_SRC).convert("RGBA")
+    alpha = src.split()[-1]
+    box = alpha.getbbox()
+    mark = src.crop(box)
+
+    # Square canvas with a small even margin, so the mark scales predictably wherever
+    # it is placed and never sits off-centre.
+    side = int(max(mark.size) * 1.08)
+    for name, rgb in (("earthpv-logo-mark", (0, 0, 0)), ("earthpv-logo-mark-white", (255, 255, 255))):
+        canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+        tinted = Image.new("RGBA", mark.size, rgb + (0,))
+        tinted.putalpha(mark.split()[-1])
+        canvas.paste(tinted, ((side - mark.width) // 2, (side - mark.height) // 2), tinted)
+        out = canvas.resize((512, 512), Image.LANCZOS)
+        out.save(OUT / f"{name}.png", optimize=True)
+        print(f"  wrote docs/assets/figures/{name}.png")
+
+    # Favicon: the white mark on the brand navy, rounded, at browser-tab scale.
+    size = 256
+    fav = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    plate = Image.new("RGBA", (size, size), BRAND_NAVY + (255,))
+    rounded = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(rounded).rounded_rectangle([0, 0, size - 1, size - 1], radius=size // 5, fill=255)
+    fav.paste(plate, (0, 0), rounded)
+    white = Image.open(OUT / "earthpv-logo-mark-white.png").resize(
+        (int(size * 0.74), int(size * 0.74)), Image.LANCZOS)
+    fav.paste(white, ((size - white.width) // 2, (size - white.height) // 2), white)
+    fav.save(OUT / "favicon.png", optimize=True)
+    print("  wrote docs/assets/figures/favicon.png")
+
+
 def main():
     print("charts")
     for t in THEMES:
@@ -585,6 +637,8 @@ def main():
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")
+    print("logo")
+    derive_logo()
     print("rasters")
     crop_hero_map()
     print("interactive pages")

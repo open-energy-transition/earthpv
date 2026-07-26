@@ -78,6 +78,17 @@ needs a feature pyramid built by the neck stack `SelectIndices → ReshapeTokens
 LearnedInterpolateToPyramidal`. Training (`train.py`) is a TerraTorch
 `SemanticSegmentationTask` via Lightning; checkpoints monitor `val/mIoU`.
 
+### Adding a new AOI
+
+`scripts/new_region.py` is the front door for a region with no local data: `check`
+preflights the four open sources (Overpass label count, VIDA parquet for the ISO3,
+geoBoundaries ADM1/ADM2, Sentinel-2 cloud cover in the compose window) read-only, `add`
+appends the AOI block to `configs/aoi.yaml` and re-parses to catch a bad insert, `plan`
+prints the runbook. **New AOIs must carry `division.iso3`** — `buildings._iso3_for`
+prefers it and the ISO2 fallback map only covers PK/DE/IN, so an AOI without it fails at
+the density stage rather than at setup. `source.coop` 403s any request without a
+User-Agent header, which reads exactly like "no such country". Guide: `docs/scale.md`.
+
 ### Compose stage (imagery for AOIs without local composites)
 
 `compose.py` builds Sentinel-2 composites on demand via Planetary Computer STAC
@@ -132,9 +143,18 @@ generated** by `scripts/build_docs_figures.py` (`pixi run docs-figures`), which 
 numbers from tracked files (`results/*.csv`, the atlas HTML's embedded JSON, the
 calibration YAML) so the site cannot drift from them — edit the sources, not the SVGs.
 Charts are written twice (`x.svg` / `x.dark.svg`) for Material's `#only-light` /
-`#only-dark` suffixes. Local preview: `pixi run docs-figures && pixi run -e docs docs-serve`.
-The build runs `--strict`, so a broken internal link fails CI. Docs prose in this repo
-avoids em dashes and emoji.
+`#only-dark` suffixes. The logo variants and favicon are derived from
+`docs/assets/earthpv-logo.png` (a black mark on transparency, invisible on the navy
+header) by the same script. Local preview:
+`pixi run docs-figures && pixi run -e docs docs-serve`. The build runs `--strict`, so a
+broken internal link fails CI. Docs prose in this repo avoids em dashes and emoji.
+
+`scripts/screenshot_pages.py` (`pixi run docs-screenshots`) renders the interactive HTML
+pages to PNG for the README, which cannot embed an iframe. It is **not** in CI because
+it needs a browser. **Snap-packaged Firefox can only read a non-hidden directory under
+`$HOME`** — `/tmp`, the external drive holding this repo, and even `~/.cache` all fail,
+and the failure mode is a silent hang rather than an error, so the script stages pages
+in `~/earthpv-screenshots/` and sets the subprocess cwd there.
 
 ## Conventions & gotchas
 

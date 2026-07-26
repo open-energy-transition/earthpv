@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/earthpv-logo-mark-white.png">
+  <img src="docs/assets/figures/earthpv-logo-mark.png" width="132" alt="earthpv logo">
+</picture>
+
 # earthpv
 
 **Open rooftop solar mapping from free satellite imagery.**
@@ -7,12 +12,17 @@
 [Documentation](https://open-energy-transition.github.io/earthpv/) &nbsp;·&nbsp;
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) &nbsp;·&nbsp;
 [Workflow](https://open-energy-transition.github.io/earthpv/workflow/) &nbsp;·&nbsp;
+[Scale to a new country](https://open-energy-transition.github.io/earthpv/scale/) &nbsp;·&nbsp;
 [Experiments](https://open-energy-transition.github.io/earthpv/experiments/) &nbsp;·&nbsp;
 [Community](https://open-energy-transition.github.io/earthpv/community/)
 
 </div>
 
 ---
+
+> **EarthPV demonstrates how free Sentinel-2 imagery, an open foundation model and
+> human-in-the-loop validation by OpenStreetMap mappers can render global photovoltaic
+> mapping more scalable, verifiable and cost-effective than existing methods.**
 
 Pakistan's installed solar capacity is reported anywhere between
 [6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
@@ -26,7 +36,11 @@ free, global and refreshed every five days, and it puts every detection in front
 **OpenStreetMap** mappers for verification. The verified result becomes the next round of
 training data. Model, code, training labels and capacity numbers are all open.
 
-## Key results
+**Pakistan is the first pilot, not the product.** Every input is a global open dataset, the
+model was trained in Germany before it was ever pointed at Punjab, and a new country needs
+nothing pre-downloaded. See [scaling](#scaling-to-another-country) below.
+
+## Key results, Pakistan pilot
 
 | | |
 | --- | --- |
@@ -37,13 +51,15 @@ training data. Model, code, training labels and capacity numbers are all open.
 | **0.18 → 0.55** | Punjab recall for arrays ≥ 1000 m², before and after in-domain training data |
 
 <p align="center">
-  <img src="docs/assets/figures/pakistan_capacity_map.png" width="620"
-       alt="Estimated rooftop and ground-mount solar capacity per building across Pakistan. Detections concentrate in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.">
+  <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
+    <img src="docs/assets/figures/pakistan_capacity_atlas.png" width="820"
+         alt="The earthpv capacity atlas showing 18,312 MWp for Pakistan with a 90 percent band of 16,889 to 21,468, above a night-lights style map of estimated capacity per 0.1 degree cell. Capacity concentrates in the Punjab corridor from Peshawar through Lahore, Faisalabad and Multan, with further clusters at Sukkur, Hyderabad and Karachi.">
+  </a>
 </p>
 
-<p align="center"><em>Calibrated capacity for every building carrying PV signal in Pakistan.
-The <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">interactive
-atlas</a> lets you switch between six defensible estimators.</em></p>
+<p align="center"><em>The capacity atlas, one of six defensible estimators.
+<a href="https://open-energy-transition.github.io/earthpv/results/capacity/">Open the
+interactive version</a> to switch estimators and rank provinces by each of them.</em></p>
 
 ## The mapping workflow
 
@@ -85,21 +101,54 @@ azimuth bisect the sun and the sensor. Two or more mutually consistent flashes c
 is present and recover how the panel is mounted.
 
 <p align="center">
-  <img src="docs/assets/figures/pv_pose_polar.svg" width="520"
-       alt="Polar plot of fitted panel pose across Pakistan: tilt as radius from 0 to 30 degrees, azimuth as angle. Measured points cluster between east-southeast and due south at tilts of roughly 5 to 20 degrees, with the mirrored half shown hollow, and a shaded wedge from west-northwest through north to east marking orientations this orbit can never observe.">
+  <a href="https://open-energy-transition.github.io/earthpv/results/pv-pose/">
+    <img src="docs/assets/figures/pakistan_pv_pose.png" width="820"
+         alt="The glint pose survey page: a polar plot of fitted tilt and azimuth for 290 Pakistani installations, clustered between east-southeast and due south at tilts of roughly 5 to 20 degrees, beside statistics showing that only 23.6 percent of installations above 1000 square metres yield a fittable pose and 51.2 percent show no glint signal at all.">
+  </a>
 </p>
 
 <p align="center"><em>Panel pose recovered from Sentinel-2 glint for 290 Pakistani
-installations. <a href="https://open-energy-transition.github.io/earthpv/results/pv-pose/">Interactive
-version and the sensitivity study</a>.</em></p>
+installations, out of 2,000 checked.
+<a href="https://open-energy-transition.github.io/earthpv/results/pv-pose/">Open the
+interactive version</a>.</em></p>
 
 **State uncertainty honestly.** Every capacity number carries a 90 percent credible
 interval propagated from measured binomial counts, not from model confidence. The same
 rasters support six defensible estimates, and the atlas makes you pick one on purpose.
 
-**Run anywhere.** No pre-downloaded data is required. Labels come from live Overpass or
-Overture, imagery from Planetary Computer STAC, footprints from VIDA Open Buildings for any
-ISO3 code, and detection reuses the existing checkpoint until you have local training data.
+## Scaling to another country
+
+Nothing in the pipeline is Pakistan-specific. All four inputs are global open datasets:
+
+| Input | Source | Coverage |
+| --- | --- | --- |
+| Imagery | Copernicus Sentinel-2 L2A | global, every five days, free |
+| Labels | OpenStreetMap, live Overpass or Overture | global, wherever mappers have been |
+| Footprints | VIDA Open Buildings | global, imagery-derived |
+| Boundaries | geoBoundaries, CC-BY | global, ADM1 and ADM2 |
+
+Three commands set up a region that has never been touched. The first is read-only and
+tells you within a couple of minutes whether the data is actually there.
+
+```bash
+pixi run python scripts/new_region.py check --bbox 98.5,7.8,101.0,10.2 --iso3 THA
+pixi run python scripts/new_region.py add   --aoi surat_thani --bbox 98.5,7.8,101.0,10.2 --iso3 THA
+pixi run python scripts/new_region.py plan  --aoi surat_thani
+```
+
+`check` probes OpenStreetMap label density, VIDA availability, geoBoundaries, Sentinel-2
+cloud cover in your composite window, and the compose budget. `add` writes the AOI block.
+`plan` prints the ordered runbook with the region's name filled in.
+
+A first candidate set needs no local training data: the existing checkpoint runs unchanged.
+What closes the domain gap afterwards is local mapping, which is why the guide starts by
+telling you to find a mapping community before you run anything. Programme targets are
+Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and Nigeria; Gujarat is already
+registered as a worked template.
+
+Full guide, including what to expect by starting condition and what genuinely differs from
+Pakistan (climate windows, roof type, latitude-dependent glint geometry, installation-size
+distribution): **[Scale to a new country](https://open-energy-transition.github.io/earthpv/scale/)**.
 
 ## Quickstart
 

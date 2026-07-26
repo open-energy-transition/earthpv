@@ -12,7 +12,8 @@ copyright: >-
 theme:
   name: material
   language: en
-  favicon: assets/figures/favicon.svg
+  logo: assets/figures/earthpv-logo-mark-white.png
+  favicon: assets/figures/favicon.png
   icon:
     repo: fontawesome/brands/github
   features:
@@ -95,6 +96,7 @@ nav:
       - Quadrat protocol: calibration-mapping-protocol.md
   - Experiments: experiments.md
   - Reproduce: reproduce.md
+  - Scale to a new country: scale.md
   - Community: community.md
   - Notes:
       - notes/index.md

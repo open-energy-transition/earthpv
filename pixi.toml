@@ -61,6 +61,8 @@ mastr = "python -m earthpv.cli mastr"
 calibrate = "python -m earthpv.cli calibrate"
 # Regenerate every figure and interactive page the docs site and README embed.
 docs-figures = "python scripts/build_docs_figures.py"
+# Re-capture the interactive HTML pages as PNGs for the README (needs firefox).
+docs-screenshots = "python scripts/screenshot_pages.py"
 
 [feature.docs.tasks]
 docs-serve = "mkdocs serve"

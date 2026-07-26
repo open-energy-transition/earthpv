@@ -180,30 +180,34 @@ Areas and their parameters live in `configs/aoi.yaml`; model and training config
 
 ## Running on a new region
 
-The configured areas reuse locally cached imagery. `gujarat` in `configs/aoi.yaml` is the
-template for a region with **no local data at all**:
-
-```yaml
-gujarat:
-  bbox: [68.0, 20.0, 74.6, 24.8]
-  division: { name: Gujarat, country: IN, subtype: region }
-  # no source_region key, so chips and compose fall back to Planetary Computer STAC
-```
+The configured areas reuse locally cached imagery, which is a shortcut specific to the
+development machine. A region with **no local data at all** needs nothing pre-downloaded:
 
 1. `labels` or `overpass-labels` fetch OpenStreetMap solar polygons directly, from Overture
    or live Overpass, instead of reading a cached parquet.
 2. `chips` and `compose` fetch Sentinel-2 from Planetary Computer STAC. Same code path,
-   just slower, and it needs nothing pre-downloaded.
+   just slower.
 3. The building join fetches VIDA Open Buildings for the area's country on first use and
    caches it. Works for any ISO3 code.
-4. Detection reuses the existing Germany-trained checkpoint unchanged. No region-specific
-   retraining is needed for a first candidate set; retraining on in-domain chips is what
-   closes the domain gap afterwards.
+4. Detection reuses the existing checkpoint unchanged. No region-specific retraining is
+   needed for a first candidate set.
+
+Three commands cover setup:
+
+```bash
+pixi run python scripts/new_region.py check --bbox <bbox> --iso3 <ISO3>   # preflight
+pixi run python scripts/new_region.py add   --aoi <name> --bbox <bbox> --iso3 <ISO3>
+pixi run python scripts/new_region.py plan  --aoi <name>                  # runbook
+```
+
+Full guide, including what to expect by starting condition and what differs from Pakistan:
+[Scale to a new country](scale.md).
 
 ## Rebuilding this site
 
 ```bash
-pixi run docs-figures          # regenerate every chart, diagram and embedded page
+pixi run docs-figures          # charts, diagrams, logo variants, embedded pages
+pixi run docs-screenshots      # re-capture the interactive pages as PNGs (needs firefox)
 pixi run -e docs docs-serve    # live preview at http://127.0.0.1:8000
 pixi run -e docs docs-build    # strict build into site/
 ```
@@ -211,6 +215,12 @@ pixi run -e docs docs-build    # strict build into site/
 `scripts/build_docs_figures.py` reads its numbers from files on disk wherever a file
 exists, so after a new pipeline pass the figures update themselves. Pushing to `main`
 publishes the site through GitHub Pages via `.github/workflows/docs.yml`.
+
+`scripts/screenshot_pages.py` is separate because it needs a browser, which CI does not
+install. The README cannot embed an iframe, so its hero images are screenshots of the
+same interactive pages this site serves; re-run it after regenerating an atlas or pose
+page. If Firefox is installed as a snap it can only read a non-hidden directory under
+`$HOME`, so the script stages pages in `~/earthpv-screenshots/` before rendering.
 
 ## Operational notes
 
@@ -264,7 +274,9 @@ burned masks, not a runtime parameter.
 
 | Script | What it does |
 | --- | --- |
-| `compose_loop.sh` | Auto-restarts `compose` every 30 minutes for a fresh token; exits on target reached, clean completion, or three no-progress cycles. |
+| `screenshot_pages.py` | Render the interactive HTML pages to PNG with headless Firefox, for the README. |
+| `new_region.py` | Preflight the four open data sources for a new area, register it in `configs/aoi.yaml`, print its runbook. See [Scale to a new country](scale.md). |
+| `compose_loop.sh` | Auto-restarts `compose` every 30 minutes for a fresh token; exits on target reached, clean completion, or three no-progress cycles. Takes `[AOI] [TARGET_CELLS] [MIN_BUILDINGS]`. |
 | `rebuild_training.sh` | Rebuilds an area's chips after its compose finishes, then remerges the combined training index. |
 | `infer_after_compose.sh` | Waits for compose, then chains infer into postprocess into export. |
 | `run_preboom_pipeline.sh` | The full two-epoch pipeline behind marker-file resumability. |
