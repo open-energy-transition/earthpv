@@ -61,6 +61,13 @@ that PV is present, and a measurement of
 verified installations come back as in-domain training labels. That
 [flywheel](workflow.md) is the reason a model trained on Germany now works in Punjab.
 
+**Pakistan is the first pilot, not the product.** Every input is a global open dataset:
+Sentinel-2 for imagery, OpenStreetMap for labels, VIDA Open Buildings for footprints,
+geoBoundaries for administrative areas. The model was trained in Germany before it was ever
+pointed at Punjab, and it runs on a new country with nothing pre-downloaded. Three commands
+set an area up, and the same pipeline follows.
+[Scale to a new country](scale.md) is the guide.
+
 ## Where to go next
 
 | If you want to | Read |
@@ -70,6 +77,7 @@ verified installations come back as in-domain training labels. That
 | Know how detection and density actually work | [Detection](methods/detection.md), [Density](methods/density.md) |
 | See what was tried and what failed | [Experiments](experiments.md) |
 | Run the whole thing yourself | [Reproduce](reproduce.md) |
+| Bring it to another country | [Scale to a new country](scale.md) |
 | Join the effort | [Community](community.md) |
 | Read the one-page version | the [README](https://github.com/open-energy-transition/earthpv#readme) in the repository |
 

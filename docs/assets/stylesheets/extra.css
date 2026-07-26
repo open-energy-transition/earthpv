@@ -18,6 +18,19 @@
   --md-hue: 220;
 }
 
+/* The mark carries detail (helmet, panel grid, sun), so it needs more than
+   Material's default 1.2rem to stay legible in the header. */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.7rem;
+  width: auto;
+}
+
+.md-nav__title .md-nav__button.md-logo img {
+  height: 2.2rem;
+  width: auto;
+}
+
 /* ---------------------------------------------------------------- hero block */
 
 .hero {

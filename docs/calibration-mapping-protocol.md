@@ -9,7 +9,7 @@ Sentinel-2 solar-density estimation.
 earthpv estimates rooftop/ground PV density per 0.1° grid cell across Pakistan
 from 10 m Sentinel-2 imagery. The model is deliberately recall-first: it
 overcounts in some landscapes (bare/arid land looks like panels) and
-undercounts in others (small roofs are below sensor resolution — detection
+undercounts in others (small roofs are below sensor resolution, so detection
 measured at only ~6% for sub-100 m² installations vs ~73% for utility plants).
 To publish honest density numbers, we measure these errors against ground
 truth: small areas where **every** PV installation is mapped, so the model's
@@ -18,11 +18,11 @@ output over each area can be compared against reality, per landscape type.
 That works only if "no PV mapped here" genuinely means "no PV exists here."
 This leads to the one rule that overrides everything else:
 
-> **Rule 1 — completeness beats coverage.** A quadrat is only usable when
+> **Rule 1, completeness beats coverage.** A quadrat is only usable when
 > *every visible panel inside it* is mapped, down to the smallest rooftop
 > unit. A half-mapped quadrat is worse than an unmapped one, because it
 > silently teaches the calibration that the model overcounts. If you cannot
-> finish a quadrat, say so — it will be excluded, no harm done.
+> finish a quadrat, say so; it will be excluded, no harm done.
 
 ## The quadrat plan
 
@@ -34,13 +34,13 @@ standard.
 | # | Stratum | Where (examples) | Quadrat size | Why it matters |
 |---|---|---|---|---|
 | 1 | Affluent planned housing | DHA/Bahria-type societies: Lahore, Karachi, Islamabad/Rawalpindi | 1–2 km² | Highest rooftop-PV adoption; regular concrete roofs |
-| 2 | Dense older urban / informal settlement | inner-city Lahore, Karachi, Faisalabad | 1 km² | Small, irregular, often sub-10 m roofs — where the model undercounts most |
+| 2 | Dense older urban / informal settlement | inner-city Lahore, Karachi, Faisalabad | 1 km² | Small, irregular, often sub-10 m roofs, where the model undercounts most |
 | 3 | Peri-urban / tehsil town | mid-size towns, one per province | 2 km² | Middle of the building-size distribution, mixed roof materials |
-| 4 | Irrigated rural village + fields | Punjab and Sindh canal-irrigated belts | 2–4 km² incl. surrounding fields | Solar tube wells / irrigation pumps — ground-mounted, small, easily missed |
-| 5 | Arid / bare-land settlement | Balochistan, Thar fringe | 2–4 km² | Bare ground is the model's main false-positive class — these measure overcounting |
+| 4 | Irrigated rural village + fields | Punjab and Sindh canal-irrigated belts | 2–4 km² incl. surrounding fields | Solar tube wells and irrigation pumps: ground-mounted, small, easily missed |
+| 5 | Arid / bare-land settlement | Balochistan, Thar fringe | 2–4 km² | Bare ground is the model's main false-positive class, so these measure overcounting |
 | 6 | Industrial zone | Faisalabad, Sialkot, Karachi industrial estates | 1–2 km² | Large metal roofs, big captive-PV arrays, different spectral behaviour |
 
-Utility-scale plants are **not** part of this protocol — they are already well
+Utility-scale plants are **not** part of this protocol; they are already well
 covered in OSM and TZ-SAM.
 
 ### Choosing the exact quadrat
@@ -48,7 +48,7 @@ covered in OSM and TZ-SAM.
 - Draw a simple rectangle; snap edges to roads/canals so the boundary is
   unambiguous on imagery.
 - Pick *typical* neighbourhoods, not showcase ones. Do not choose a quadrat
-  because you already know it has (or lacks) solar — that biases the sample.
+  because you already know it has (or lacks) solar. That biases the sample.
   Pick by landscape type first, look at panels second.
 - Avoid quadrats that straddle two strata (e.g. half planned housing, half
   informal). Move the rectangle until it is one thing.
@@ -56,7 +56,7 @@ covered in OSM and TZ-SAM.
 
 ## What counts as PV (map all of it)
 
-- Rooftop panels of any size — including single-panel household units.
+- Rooftop panels of any size, including single-panel household units.
 - Ground-mounted arrays of any size, in fields, yards, compounds.
 - Solar water pumps / tube-well installations (panels on frames near wells).
 - Solar street lights and telecom-site panels **only if** panel area is
@@ -90,13 +90,13 @@ location=roof                           (rooftop) | omit for ground-mounted
 ```
 
 For solar pumps add `pump=powered` on the associated well/pump node where one
-exists. Do not invent capacity values — panel geometry is the ground truth
+exists. Do not invent capacity values; panel geometry is the ground truth
 here, not wattage.
 
 ## Imagery and dating (critical)
 
 - Map against the **most recent** high-resolution imagery available (Esri
-  Clear/Maxar/Bing — record which, and its capture date if the layer exposes
+  Clear/Maxar/Bing. Record which, and its capture date if the layer exposes
   it).
 - PV in Pakistan grows fast. A calibration quadrat mapped against year-old
   imagery reads as "model overcounts" when the model simply sees newer
@@ -109,7 +109,7 @@ here, not wattage.
 A quadrat is *done* when:
 
 1. The mapper declares: "every visible PV installation inside the boundary is
-   mapped" — scanned systematically (street-by-street / block-by-block, not
+   mapped": scanned systematically (street-by-street / block-by-block, not
    free roaming).
 2. A **second mapper** independently sweeps the same quadrat and either adds
    what was missed or countersigns. Disagreements resolved together; the
@@ -127,15 +127,15 @@ n_added_by_second_pass, notes
 
 - Boundary polygon (GeoJSON, in the shared register).
 - All PV features mapped **directly in OSM** (they benefit the map as well as
-  the calibration — that's deliberate).
+  the calibration, and that is deliberate).
 - The register row above.
 
 ## Common failure modes (please read)
 
-- Mapping only the obvious/large installations and moving on — breaks Rule 1.
-- Tracing roofs instead of panels — inflates area ground truth.
-- Choosing a quadrat *because* it is full of solar — biases density upward.
-- Copy-pasting a capacity guess into `generator:output:electricity` — poisons
+- Mapping only the obvious or large installations and moving on. Breaks Rule 1.
+- Tracing roofs instead of panels. Inflates area ground truth.
+- Choosing a quadrat *because* it is full of solar. Biases density upward.
+- Copy-pasting a capacity guess into `generator:output:electricity`. Poisons
   downstream capacity estimates; geometry only, unless documented.
 - Silent partial work: an unfinished quadrat left looking finished is the one
   error we cannot detect later. Mark unfinished work `fixme=incomplete
