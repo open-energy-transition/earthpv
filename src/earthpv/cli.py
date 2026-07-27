@@ -156,6 +156,10 @@ def infer(
         0, help="Composite layer to run inference on (e.g. 1 for a pre-boom/contrast epoch "
         "built by `compose --index 1`); use a distinct --out-dir per layer"
     ),
+    resume: bool = typer.Option(
+        True, help="Skip cells that already have a raster in --out-dir. A country pass is "
+        "hours of GPU time; --no-resume recomputes everything"
+    ),
 ) -> None:
     """Tiled inference over an AOI, writing probability GeoTIFFs."""
     from earthpv.infer import run_inference
@@ -163,7 +167,7 @@ def infer(
     run_inference(
         aoi=aoi, checkpoint=checkpoint, out_dir=out_dir, only_built=only_built, limit=limit,
         task_type=task_type, tiles=[t.strip() for t in tiles.split(",") if t.strip()] or None,
-        index=index,
+        index=index, resume=resume,
     )
 
 
@@ -366,6 +370,18 @@ def density(
         "postprocess.MAX_CANDIDATE_M2 = 100000). Blobs this size are merged false "
         "positives or whole plant sites, not one installation",
     ),
+    fraction_prob_dir: Path = typer.Option(
+        None,
+        help="Fraction-head prob/ dir to use as the EXPECTED-AREA instrument instead of the "
+        "segmentation raster. The segmentation model is trained with sub-400 m2 arrays "
+        "burned as ignore, so only a fraction head has sub-floor sensitivity. Cells the "
+        "fraction run did not cover get exp_covered=0 (absent, not zero)",
+    ),
+    exp_scale: float = typer.Option(
+        1.0,
+        help="Divide expected area by this measured aggregate over-prediction factor "
+        "(1.0 = uncorrected; the fraction head's absolute scale is not yet established)",
+    ),
     min_prob: float = typer.Option(0.05, help="Pixel-probability noise floor for expected-area sums"),
     min_building_exp_m2: float = typer.Option(10.0, help="Keep a building row if expected PV >= this"),
     limit: int = typer.Option(0, help="Cap number of cells (0 = all; use for smoke tests)"),
@@ -398,9 +414,42 @@ def density(
         ),
         kwp_per_m2_land=DEFAULT_KWP_PER_M2_LAND if kwp_per_m2_land is None else kwp_per_m2_land,
         max_candidate_m2=MAX_CANDIDATE_M2 if max_candidate_m2 is None else max_candidate_m2,
+        fraction_prob_dir=fraction_prob_dir, exp_scale=exp_scale,
         min_prob=min_prob, min_building_exp_m2=min_building_exp_m2, limit=limit,
         districts=districts, regions_file=regions_file, force=force, calibration=calibration,
         recall_floor=recall_floor,
+    )
+
+
+@app.command("roof-classifier")
+def roof_classifier_cmd(
+    aoi: str = typer.Option("pakistan", help="AOI name (supplies division.iso3 for VIDA)"),
+    quadrat: list[str] = typer.Option(
+        None, help="Quadrat name(s) to use; default every one with a boundary + mapped solar"
+    ),
+    composites: Path = typer.Option(Path("data/composites/pakistan")),
+    seg_prob_dir: Path = typer.Option(
+        Path("data/predictions_pk16085/pakistan/prob"), help="Segmentation prob/ dir (baseline)"
+    ),
+    frac_prob_dir: Path = typer.Option(
+        Path("data/predictions_frac_pk_v2/pakistan/prob"), help="Fraction-head prob/ dir"
+    ),
+    labels_dir: Path = typer.Option(Path("data/labels")),
+    out_dir: Path = typer.Option(Path("data/roofclf")),
+) -> None:
+    """Per-building PV classifier on the fully-mapped quadrats: the sub-400 m2 instrument.
+
+    Predicts "does this roof carry PV?" rather than panel outlines, which is the tractable
+    question at one mixed pixel. Reports leave-one-quadrat-out AUC against the segmentation
+    and fraction-head baselines, and measures the absolute-scale anchor that
+    `density --exp-scale` needs.
+    """
+    from earthpv.roofclf import run_roof_classifier
+
+    run_roof_classifier(
+        aoi=aoi, quadrats=list(quadrat) if quadrat else None, composites=composites,
+        seg_prob_dir=seg_prob_dir, frac_prob_dir=frac_prob_dir, labels_dir=labels_dir,
+        out_dir=out_dir,
     )
 
 

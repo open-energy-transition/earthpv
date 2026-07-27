@@ -36,24 +36,29 @@ free, global and refreshed every five days, and it puts every detection in front
 **OpenStreetMap** mappers for verification. The verified result becomes the next round of
 training data. Model, code, training labels and capacity numbers are all open.
 
-**Pakistan is the first pilot, not the product.** Every input is a global open dataset, the
-model was trained in Germany before it was ever pointed at Punjab, and a new country needs
-nothing pre-downloaded. See [scaling](#scaling-to-another-country) below.
+**Pakistan is the first pilot, not the end.** See [scaling](#scaling-to-another-country).
 
 ## Key results, Pakistan pilot
 
 | | |
 | --- | --- |
-| **18.3 GWp** [16.9 to 21.5] | Pakistan, all PV, recall-corrected |
-| **6.1 GWp** [5.6 to 7.3] | of that on rooftops |
-| **114,188** | individual buildings carrying PV signal |
+| **6.1 GWp** [5.0 to 8.2] | Pakistan, all PV ≥ 400 m², recall-corrected |
+| **4.7 GWp** [3.9 to 6.1] | of that on rooftops |
+| **93,120** | individual buildings carrying detected PV |
 | **400 m²** | per-object detection floor at Sentinel-2's 10 m resolution |
 | **0.18 → 0.55** | Punjab recall for arrays ≥ 1000 m², before and after in-domain training data |
+
+> **Scope, stated plainly.** These are capacities for installations **at or above the
+> 400 m² detection floor**. Germany's legally complete MaStR register puts 72.6 percent of
+> rooftop capacity in systems of 100 kWp or less, roughly 555 m² of module, so the majority
+> of real rooftop capacity is very likely *below* this floor and is not in the numbers
+> above. The sub-400 m² instruments are
+> [under construction, with measured skill but no published capacity yet](https://open-energy-transition.github.io/earthpv/methods/density/).
 
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_capacity_atlas.png" width="520"
-         alt="The earthpv capacity atlas showing 18,312 MWp for Pakistan with a 90 percent band of 16,889 to 21,468, above a night-lights style map of estimated capacity per 0.1 degree cell. Capacity concentrates in the Punjab corridor from Peshawar through Lahore, Faisalabad and Multan, with further clusters at Sukkur, Hyderabad and Karachi.">
+         alt="The earthpv capacity atlas showing 6,064 MWp for Pakistan with a 90 percent band of 5,034 to 8,239, above a night-lights style map of estimated capacity per 0.1 degree cell. Capacity concentrates in the Punjab corridor from Peshawar through Lahore, Faisalabad and Multan, with further clusters at Sukkur, Hyderabad and Karachi.">
   </a>
 </p>
 
@@ -90,10 +95,23 @@ design, exported as ranked GeoParquet, GeoJSON and a MapRoulette challenge for h
 validation. Recall on the Germany validation states is 0.83 to 0.95 depending on array
 size.
 
-**Estimate capacity below that floor.** A 200 m² array is a handful of mixed pixels, so
-outlining it is not defensible but counting it is. The `density` stage integrates
-calibrated probability over building footprints into MWp per building, per 0.1 degree cell
-and per district, in the shape PyPSA and PyPSA-Earth consume.
+**Aggregate that into the shape energy models consume.** The `density` stage turns
+candidate polygons and probability rasters into MWp per building, per 0.1 degree cell and
+per district, with credible intervals, in the shape PyPSA and PyPSA-Earth take directly.
+Rooftop and ground-mount area convert at different rates, because a rooftop detection
+outlines the panels and a ground-mount detection outlines the site.
+
+**Below the floor: measured skill, no published capacity yet.** This is the project's open
+front, and the honest status is that the shipped estimator barely reaches there — the whole
+sub-500 m² class is 8.2 MWp of the national total, while one exhaustively mapped square
+kilometre of residential Lahore holds 3.3 times more sub-100 m² PV area than the model
+finds nationwide. Two instruments now do better by dropping the polygon: a per-building
+classifier trained on fully-mapped quadrats reaches **0.88 AUC on roofs under 500 m²**
+where the segmentation model scores 0.50, and a fraction head recovers 52 percent of true
+PV area in that residential quadrat against segmentation's 2.3 percent. Neither yet
+produces a published capacity number, because absolute rates do not transfer between
+residential and industrial strata and four of the five quadrats are industrial estates.
+See [Capacity density](https://open-energy-transition.github.io/earthpv/methods/density/).
 
 **Confirm panels physically, using solar glint.** A glass-fronted panel is partly a mirror,
 so it flashes into Sentinel-2 only on the geometry-predictable dates when its tilt and

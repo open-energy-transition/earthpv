@@ -175,6 +175,14 @@ are not negligible next to the country snapshot's own n=142/n=164 there. Nationa
 the country's total capacity — but the *interval* widened more meaningfully, 90% CI
 [17,065, 21,318] → [17,021, 21,400]).
 
+!!! note "Absolute totals here are superseded"
+    The `est_mwp_rc` figures above are from the pre-2026-07-26 conversion, which applied
+    the rooftop kWp/m² constant to ground-mount site area and put no bound on candidate
+    polygon size. The current national total is roughly a third of the number quoted here
+    (see [Capacity density](../methods/density.md)). The *relative* effect this section
+    measures — which is what it is about — is unaffected: the bins in question still hold
+    little of the country's capacity, and the interval still widens.
+
 **Lesson for the mapping protocol itself:** a "done" quadrat should be spot-checked
 against a fresh Overpass pull before it feeds any calibration, even hours after
 completion — mapping is iterative (the two-mapper completeness pass is designed to add

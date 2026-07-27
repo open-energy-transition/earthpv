@@ -91,6 +91,9 @@ _SUM_COLS = [
     "pv_area_det_roof_m2", "pv_area_det_total_m2", "pv_area_det_roofcand_m2",
     "pv_area_cal_roof_m2", "pv_area_cal_total_m2", "pv_area_cal_roofcand_m2",
     "pv_area_exp_m2", "pv_area_exp_roof_m2",
+    # A count, not an area: how many of a region's cells the expected-area instrument
+    # actually covered. Summed like the areas so region rows carry their own coverage.
+    "exp_covered",
 ]
 # The subset of _SUM_COLS that describes the *candidate* population rather than the
 # building/raster layers. These are recomputed from the (oversize-filtered) candidate
@@ -182,7 +185,8 @@ def _canonical_window(src, lon0: float, lat0: float) -> Window:
 
 
 def per_building_raster_stats(
-    bu_utm: gpd.GeoDataFrame, prob: np.ndarray, transform, min_prob: float
+    bu_utm: gpd.GeoDataFrame, prob: np.ndarray, transform, min_prob: float,
+    scale: float = 1.0,
 ) -> pd.DataFrame:
     """Expected PV area, pixel count and peak probability per building.
 
@@ -191,6 +195,11 @@ def per_building_raster_stats(
     pixels this way, so those fall back to the probability of their centroid pixel
     times the footprint area. Expected area is capped at the roof area (a 100 m2
     pixel overhangs a small roof).
+
+    `prob` is whichever raster the caller chose as the expected-area instrument (see
+    `process_cell`): segmentation class probability, or a fraction head's per-pixel PV
+    coverage fraction. `scale` divides the summed area by a measured aggregate
+    over-prediction factor and is applied *before* the roof-area cap.
     """
     n = len(bu_utm)
     out = pd.DataFrame(
@@ -223,6 +232,8 @@ def per_building_raster_stats(
         p_c = np.where(p_c >= min_prob, p_c, 0.0)
         pv_area[zero] = p_c * roof[zero]
         max_p[zero] = prob[rr, cc]
+    if scale != 1.0:
+        pv_area = pv_area / scale
 
     out["pv_area_exp_m2"] = np.minimum(pv_area, roof)
     out["n_px"] = n_px.astype(int)
@@ -320,20 +331,55 @@ def candidate_cell_totals(
 def process_cell(
     row, cands: gpd.GeoDataFrame, con, iso3: str, min_prob: float,
     min_building_exp_m2: float, cells_dir: Path, force: bool,
+    exp_source: str = "segmentation", exp_path: str | None = None, exp_scale: float = 1.0,
 ) -> None:
-    """Resumable per-cell unit: write buildings partial + one summary row."""
+    """Resumable per-cell unit: write buildings partial + one summary row.
+
+    Every raster read here serves the *expected-area* metric (`pv_area_exp_*`,
+    `pv_prob_max`); the detected and calibrated columns come from candidate polygons.
+    So `exp_path` swaps the instrument wholesale: pass a fraction head's per-pixel PV
+    coverage raster for this cell and `pv_area_exp` becomes an integral of predicted
+    coverage rather than of segmentation class probability. That is the estimator that
+    can see sub-400 m2 arrays at all, because the segmentation model is trained with
+    everything below `chips.MIN_PV_AREA` burned as ignore and therefore has no reason to
+    put probability mass there. `exp_scale` divides by a measured aggregate
+    over-prediction factor. When `exp_path` is None the segmentation raster is used, as
+    before.
+    """
     part = cells_dir / f"{row.cell}.parquet"
     summ = cells_dir / f"{row.cell}.summary.parquet"
     if part.exists() and summ.exists() and not force:
         return
 
     lon0, lat0 = float(row.lon0), float(row.lat0)
+    # The cell's geographic footprint and CRS always come from the canonical (segmentation)
+    # raster, so cell geometry and building assignment stay identical whichever instrument
+    # supplies the expected-area values.
     with rasterio.open(row.path) as src:
         win = _canonical_window(src, lon0, lat0)
         prob = src.read(1, window=win).astype("float32") / 255.0
         win_tf = window_transform(win, src.transform)
         crs = src.crs
+        grid_shape = (src.height, src.width)
         w4, s4, e4, n4 = transform_bounds(src.crs, "EPSG:4326", *src.bounds)
+    # exp_covered: 1 when the chosen instrument actually supplied values for this cell.
+    # In segmentation mode that is always true. In fraction mode the fraction run may
+    # cover fewer cells than the segmentation run, and those cells' expected area is
+    # *absent*, not zero -- aggregates must report the coverage, not average in the gap.
+    exp_covered = 1
+    if exp_source == "fraction":
+        if exp_path is None:
+            exp_covered = 0
+            prob = np.zeros_like(prob)
+        else:
+            with rasterio.open(exp_path) as esrc:
+                if esrc.crs != crs or (esrc.height, esrc.width) != grid_shape:
+                    raise ValueError(
+                        f"cell {row.cell}: expected-area raster {exp_path} is not on the "
+                        f"same grid as {row.path} ({esrc.crs}/{(esrc.height, esrc.width)} "
+                        f"vs {crs}/{grid_shape})"
+                    )
+                prob = esrc.read(1, window=win).astype("float32") / 255.0
 
     # Buildings whose representative point falls in this cell's canonical box only
     # (half-open) so each building nationwide is processed by exactly one cell.
@@ -359,10 +405,12 @@ def process_cell(
     n_buildings = len(bu)
     roof_area = float(bu["area_m2"].sum()) if n_buildings else 0.0
     # Building-independent expected area over the cropped box (no overlap double-count).
-    exp_cell = float(np.where(prob >= min_prob, prob, 0.0).sum() * PIXEL_M2)
+    exp_cell = float(np.where(prob >= min_prob, prob, 0.0).sum() * PIXEL_M2) / exp_scale
 
     if n_buildings:
-        rstats = per_building_raster_stats(bu.to_crs(crs), prob, win_tf, min_prob)
+        rstats = per_building_raster_stats(
+            bu.to_crs(crs), prob, win_tf, min_prob, scale=exp_scale
+        )
         dstats = per_building_detected(bu, cand_hits)
         b = bu.copy()
         b["building_uid"] = [f"{row.cell}_{i:06d}" for i in range(n_buildings)]
@@ -411,6 +459,7 @@ def process_cell(
         "cell": row.cell, "ix": int(row.ix), "iy": int(row.iy),
         "lon0": lon0, "lat0": lat0,
         "pv_area_exp_m2": exp_cell,
+        "exp_covered": exp_covered,
     })
 
     cells_dir.mkdir(parents=True, exist_ok=True)
@@ -823,6 +872,11 @@ def aggregate(
         "total_pv_area_cal_roof_m2": float(grid.pv_area_cal_roof_m2.sum()),
         "total_pv_area_cal_roofcand_m2": float(grid.pv_area_cal_roofcand_m2.sum()),
         "total_pv_area_exp_roof_m2": float(grid.pv_area_exp_roof_m2.sum()),
+        # Expected-area coverage. Below 1.0 the exp totals describe only part of the AOI
+        # (a fraction-head run covering fewer cells than the segmentation run), so they
+        # are NOT comparable to the det/cal/rc totals, which cover every manifest cell.
+        "n_cells_exp_covered": int(grid.exp_covered.sum()),
+        "exp_coverage_frac": round(float(grid.exp_covered.sum()) / max(len(grid), 1), 4),
         "total_est_mwp_det": float(grid.est_mwp_det.sum()),
         "total_est_mwp_cal": float(grid.est_mwp_cal.sum()),
         "total_est_mwp_cal_total": float(grid.est_mwp_cal_total.sum()),
@@ -863,6 +917,8 @@ def run_density(
     calibration: Path | None = None,
     recall_floor: float | None = None,
     max_candidate_m2: float = MAX_CANDIDATE_M2,
+    fraction_prob_dir: Path | None = None,
+    exp_scale: float = 1.0,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
@@ -952,9 +1008,45 @@ def run_density(
     log.info("Processing %d cells for %s (iso3=%s)", len(manifest), aoi, iso3)
 
     con = overture.connect()
+    # Expected-area instrument. Default is the segmentation raster (`prob_dir`), which by
+    # construction cannot see below chips.MIN_PV_AREA -- those arrays are burned as ignore
+    # in training. A fraction-head run supplies per-pixel PV *coverage* instead, which is
+    # the only instrument here with sub-400 m2 sensitivity. Its cells are keyed by the same
+    # canonical grid, so a fraction run covering fewer cells simply leaves those uncovered.
+    exp_source = "segmentation"
+    exp_paths: dict[str, str] = {}
+    if fraction_prob_dir is not None:
+        exp_source = "fraction"
+        frac_man = cell_manifest(Path(fraction_prob_dir), origin)
+        exp_paths = dict(zip(frac_man.cell, frac_man.path))
+        n_cov = sum(1 for c in manifest.cell if c in exp_paths)
+        log.info(
+            "Expected-area instrument: fraction head %s — %d/%d manifest cells covered "
+            "(%.1f%%), exp_scale=%.3f",
+            fraction_prob_dir, n_cov, len(manifest), 100.0 * n_cov / max(len(manifest), 1),
+            exp_scale,
+        )
+        if n_cov < len(manifest):
+            log.warning(
+                "%d cells have no fraction raster: their pv_area_exp_* is ABSENT, not zero "
+                "(exp_covered=0). Country exp totals from this run cover only the %.1f%% of "
+                "cells listed above — do not read them as national.",
+                len(manifest) - n_cov, 100.0 * n_cov / max(len(manifest), 1),
+            )
+        if exp_scale == 1.0:
+            log.warning(
+                "exp_scale=1.0: the fraction head's absolute scale is NOT established. The "
+                "German MaStR bench puts it 2.5x high on all Gemeinden (slope 0.394) and "
+                "8-13x high on the well-mapped subset (0.077-0.129). Treat these areas as a "
+                "ranking layer until anchored — see `earthpv roof-classifier` for a "
+                "quadrat-based absolute anchor."
+            )
     for row in tqdm([r for _, r in manifest.iterrows()], desc="density"):
         try:
-            process_cell(row, cands, con, iso3, min_prob, min_building_exp_m2, cells_dir, force)
+            process_cell(
+                row, cands, con, iso3, min_prob, min_building_exp_m2, cells_dir, force,
+                exp_source=exp_source, exp_path=exp_paths.get(row.cell), exp_scale=exp_scale,
+            )
         except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
             log.warning("cell %s failed: %s", row.cell, e)
 
@@ -981,6 +1073,9 @@ def run_density(
         "n_oversize_excluded": n_oversize,
         "oversize_area_m2": oversize_area_m2,
         "oversize_stale_partials": stale_partials,
+        "exp_source": exp_source,
+        "fraction_prob_dir": str(fraction_prob_dir) if fraction_prob_dir else None,
+        "exp_scale": exp_scale,
         "calibration": str(cal_path) if cal_path.exists() else None,
         "calibration_status": cal_status, **stats,
     }

@@ -90,6 +90,7 @@ def predict_window(arr: np.ndarray, task, device: str, task_type: str) -> np.nda
 def run_inference(
     aoi: str, checkpoint: Path, out_dir: Path, only_built: bool = True, limit: int = 0,
     task_type: str = "auto", tiles: list[str] | None = None, index: int = 0,
+    resume: bool = True,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
@@ -136,8 +137,24 @@ def run_inference(
     if tiles:
         wanted = set(tiles)
         tile_paths = [p for p in tile_paths if Path(p).parent.name in wanted]
+    # Resume before `limit`, so `--limit N` on a resumed run means N *remaining* cells.
+    # A country-scale pass is hours of GPU time and gets interrupted; without this,
+    # re-running silently recomputes everything already on disk. Rasters are written
+    # atomically below, so an existing file is always a complete one.
+    if resume:
+        done = {p.stem for p in out_dir.glob("*.tif")}
+        n_before = len(tile_paths)
+        tile_paths = [p for p in tile_paths if Path(p).parent.name not in done]
+        if n_before != len(tile_paths):
+            log.info(
+                "Resume: %d/%d cells already written in %s, %d to go (pass --no-resume to "
+                "recompute all)", n_before - len(tile_paths), n_before, out_dir, len(tile_paths),
+            )
     if limit:
         tile_paths = tile_paths[:limit]
+    if not tile_paths:
+        log.info("Nothing to do: every requested cell already has a raster in %s", out_dir)
+        return out_dir
     windows_run = 0
     for tile_path in tqdm(tile_paths, desc="cells"):
         tile = Path(tile_path).parent.name
@@ -180,12 +197,16 @@ def run_inference(
         # Weighted average; zero where no window contributed or the composite had no data.
         prob_full = np.where(wacc > 0, acc / np.maximum(wacc, 1e-6), 0.0)
         prob_full[~valid_any] = 0.0
+        # Write to .tmp then rename: an interrupted run must not leave a truncated raster
+        # that `resume` would then treat as finished.
         out_tif = out_dir / f"{tile}.tif"
+        tmp_tif = out_tif.with_suffix(".tif.tmp")
         with rasterio.open(
-            out_tif, "w", driver="GTiff", width=W, height=H, count=1, dtype="uint8",
+            tmp_tif, "w", driver="GTiff", width=W, height=H, count=1, dtype="uint8",
             crs=crs, transform=transform, compress="deflate", predictor=2,
         ) as dst:
             dst.write((np.clip(prob_full, 0, 1) * 255).astype("uint8"), 1)
+        tmp_tif.rename(out_tif)
         if src1 is not None:
             src1.close()
     log.info("Inference wrote %d seamless cell rasters (%d windows) -> %s",
