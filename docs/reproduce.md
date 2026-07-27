@@ -160,10 +160,19 @@ Ordered by dependency. Every stage after `train` needs a checkpoint path.
     pixi run earthpv calibrate-candidates --aoi pakistan
     pixi run earthpv density --aoi pakistan --districts
 
+    # Gate the numbers before publishing them: exits non-zero if a province's
+    # ground-mount estimate dwarfs its rooftop one, or if one cell dominates a region.
+    pixi run earthpv check-density --aoi pakistan
+
     # Optional precision upgrade for the bins below 1,000 m2, where glint is blind:
     pixi run earthpv calibrate-sample --aoi pakistan     # fill `verdict` in JOSM or QGIS
     pixi run earthpv calibrate-candidates --aoi pakistan --manual-reviews <reviewed file>
     ```
+
+    Changing `--max-candidate-m2` or either `--kwp-per-m2-*` constant only reaches the
+    per-building and `*_roof` columns on a `--force` re-run, which rebuilds every cell
+    partial and takes about two hours for Pakistan. The candidate-population columns
+    (`*_total`, `*_roofcand`, `est_mwp_rc`) are rederived on every run.
 
 === "10. Germany calibration"
 

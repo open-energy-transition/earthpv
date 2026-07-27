@@ -8,8 +8,10 @@ candidate, purely as a **negative** signal: a candidate bright in both epochs is
 almost certainly a persistent non-PV feature (bright roof, concrete, sand), and its
 `rank_score` gets downweighted accordingly. That comparison is never used
 positively. The unused half is exactly what would help the recall gap surfaced
-comparing our recall-corrected 18.3 GWp against Ember/import-derived Pakistan solar
-estimates (best current read: real, mostly attributable to (a) standalone
+comparing our recall-corrected national total against Ember/import-derived Pakistan solar
+estimates (written when that total read 18.3 GWp; the 2026-07-26 conversion fix puts it
+near 6 GWp, so the gap this section is about is *wider* than described and the motivation
+correspondingly stronger) (best current read: real, mostly attributable to (a) standalone
 agricultural/ground-mount solar in cells that never get composited at all -- see
 `compose.py`'s `min_buildings=1000` gate -- and (b) weak recall on small distributed
 rooftop, exactly the size class this session's Lahore calibration box measured the

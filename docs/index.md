@@ -22,9 +22,9 @@ high-resolution imagery that cannot be shared and cannot legally be processed by
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">18.3 GWp</span><span class="label">Pakistan, all PV, recall-corrected</span></div>
-<div class="stat"><span class="value">6.1 GWp</span><span class="label">of that on rooftops</span></div>
-<div class="stat"><span class="value">114,188</span><span class="label">buildings carrying PV signal</span></div>
+<div class="stat"><span class="value">6.1 GWp</span><span class="label">Pakistan, all PV &ge; 400 m&sup2;, recall-corrected</span></div>
+<div class="stat"><span class="value">4.7 GWp</span><span class="label">of that on rooftops</span></div>
+<div class="stat"><span class="value">93,120</span><span class="label">buildings carrying detected PV</span></div>
 <div class="stat"><span class="value">400 m&sup2;</span><span class="label">per-object detection floor</span></div>
 </div>
 
@@ -46,9 +46,11 @@ OpenStreetMap labels pushes reliable per-object detection down to about
 **400 m<sup>2</sup>**, which reaches commercial rooftops and large residential arrays.
 
 **Below that floor, count instead of outline.** A 200 m<sup>2</sup> array is a handful of
-mixed pixels; drawing a polygon around it is not defensible. Summing calibrated
-probability over building footprints is. That is the
-[density stage](methods/density.md), and it is what produces the capacity atlas.
+mixed pixels; drawing a polygon around it is not defensible. Asking whether a *building*
+carries PV is. A per-building classifier trained on exhaustively mapped quadrats reaches
+0.88 AUC on roofs under 500 m<sup>2</sup>, where the segmentation model scores 0.50. It
+does not yet produce a published capacity number, and the
+[density stage](methods/density.md) is explicit about why.
 
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.dark.svg#only-dark)

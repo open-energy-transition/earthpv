@@ -277,8 +277,14 @@ def fig_capacity_estimators(t: Theme):
                     bbox_to_anchor=(0.0, -0.05), handlelength=1.1)
     for txt in leg.get_texts():
         txt.set_color(t.ink_dim)
+    # Two conversion constants since the placement split; older atlas payloads carry one.
+    conv = (
+        f"{tot['kwp']} kWp/m$^2$ rooftop module area, {tot['kwpLand']} kWp/m$^2$ "
+        "ground-mount site area"
+        if tot.get("kwpLand") else f"{tot['kwp']} kWp/m$^2$"
+    )
     titled(fig, t, "One model, six defensible answers to “how much PV?”",
-           f"Pakistan, {tot['n_cells']:,} grid cells, {tot['kwp']} kWp/m$^2$, run {tot['run_date']}. "
+           f"Pakistan, {tot['n_cells']:,} grid cells, {conv}, run {tot['run_date']}. "
            "Whiskers are 90% credible intervals.")
     save(fig, t, "capacity_estimators")
 
@@ -552,6 +558,27 @@ def crop_hero_map():
     print(f"  wrote {dst.relative_to(ROOT)} ({im.width}x{im.height})")
 
 
+# Data-dependent rasters generated outside this script (they read gitignored `data/`, so CI
+# cannot rebuild them) and tracked in `results/`. Copied in verbatim; regenerate with
+# `python scripts/plot_calib_quadrat.py`.
+STATIC_RASTERS = [
+    ("results/coastal-Karachi.png", "coastal-Karachi.png"),
+]
+
+
+def copy_static_rasters():
+    import shutil
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    for src_rel, name in STATIC_RASTERS:
+        src = ROOT / src_rel
+        if not src.exists():
+            print(f"  {src_rel} missing, skipping")
+            continue
+        shutil.copyfile(src, OUT / name)
+        print(f"  wrote {(OUT / name).relative_to(ROOT)}")
+
+
 # Interactive pages the site embeds in an iframe. MkDocs only serves what lives
 # under `docs/`, so the tracked originals in `results/` are copied in here.
 INTERACTIVE = [
@@ -641,6 +668,8 @@ def main():
     derive_logo()
     print("rasters")
     crop_hero_map()
+    print("static rasters")
+    copy_static_rasters()
     print("interactive pages")
     sync_interactive()
 

@@ -11,10 +11,13 @@ fine-tuning the open-source **TerraMind** geospatial foundation model (IBM/ESA, 
 building footprints classify detections as rooftop/ground. It is **recall-first**:
 candidates are meant to be human-validated against high-res imagery in OSM workflows, so
 false positives are tolerated. Installations below the 400 m² floor are not targeted by
-detection at all — their aggregate capacity is instead estimated by the `density` stage
-(`density.py`), which derives building-level PV density from the same probability rasters
-(probability-weighted/calibrated area, not per-object polygons) rather than trying to
-detect them individually. Trained on Germany, inferred on Punjab, Pakistan. Read
+detection at all, and — measured, 2026-07-26 — the `density` stage does **not** rescue them
+either: the whole sub-500 m² class is 8.2 MWp of the Pakistan total (~0.2%), and on the one
+Rule-1-complete quadrat the segmentation raster predicts *zero* PV area (AUC 0.500). Every
+published capacity figure is therefore scoped **≥ 400 m²**, while Germany's complete MaStR
+register puts 72.6% of rooftop capacity in units ≤100 kWp (~≤555 m² of module). Closing that
+gap is the open front: see "Sub-400 m² instruments" below. Trained on Germany, inferred on
+Punjab, Pakistan. Read
 `README.md` for the narrative and the current result numbers.
 
 ## Environments & commands
@@ -110,12 +113,12 @@ fetched windowed-and-cached per AOI; the local Overture ≥500 m² set is the fa
 This candidate-polygon path is the > 400 m² individual-detection product; it is not
 extended down to smaller installations — `density.py` covers those instead (see below).
 
-### Density stage (capacity for installations below the detection floor)
+### Density stage (aggregation into PyPSA-ready shapes)
 
 `density.py` reuses the same per-cell probability rasters (no GPU, no retraining) to
 report *aggregate* PV capacity per building/grid-cell/region rather than individual
-candidate polygons — this is the answer for solar below the ~400 m² detection floor,
-which `postprocess`/`export` cannot resolve as discrete objects. It reports three area
+candidate polygons. It aggregates the **≥ 400 m²** population into PyPSA-ready shapes; it is
+*not* the answer below that floor (see the measured blindness above). It reports three area
 metrics per building: `*_det` (thresholded candidate polygons on the footprint — the
 precision-honest floor, blind to sub-threshold/sub-400 m² signal), `*_exp`
 (probability-weighted area integrating sub-threshold signal, an upper-leaning ceiling),
@@ -144,18 +147,64 @@ partials cache the per-building/`*_roof` columns, the filter only reaches those 
 the candidate-population columns (`_CAND_COLS`) are rederived from the candidate frame
 every run by `candidate_cell_totals` precisely so they never go stale.
 
+### Sub-400 m² instruments (the recall correction cannot reach here)
+
+`est_mwp_rc` scales up what was detected, so `1/recall × ~0 ≈ 0`. Measured: the whole
+sub-500 m² class is **8.2 MWp** of the Pakistan estimate (~0.2% of rooftop), while one
+fully-mapped km² of residential Lahore holds **3.3× more sub-100 m² PV area than the model
+finds nationally**. Germany's MaStR (legally complete) puts **72.6% of rooftop capacity in
+units ≤100 kWp** (≈ ≤555 m² of module), so this is very likely the majority of the quantity
+the rooftop headline claims to describe. Two instruments, both dropping the polygon:
+
+- **Fraction-head expected area** — `density --fraction-prob-dir <run>/prob [--exp-scale k]`
+  swaps the `*_exp` instrument from segmentation class probability to per-pixel PV coverage.
+  Quadrat-measured predicted/true ratio in the *residential* quadrat: segmentation **0.023**
+  vs fraction **0.520** (≈23× better); comparable in the four industrial quadrats. **Not
+  publishable nationally yet** — the fraction run covers 1,396 of 4,473 cells, so uncovered
+  cells carry `exp_covered=0` (absent, not zero) and `meta.json` reports
+  `exp_coverage_frac`. The published atlas keeps the segmentation instrument.
+- **`roofclf.py` / `earthpv roof-classifier`** — per-building "does this roof carry PV?",
+  trained on the exhaustively mapped quadrats (the only source where a no-PV building is a
+  real negative). 6 quadrats, 7,827 buildings, 1,327 with PV. Leave-one-quadrat-out median
+  AUC **0.879**, **0.845 conditional on roof-size band** (see below), against the
+  segmentation raster's **0.707** conditional. Ablation set the default feature set:
+  size-only 0.727, reflectance-only 0.861, size+reflectance **0.879**; adding the seg/frac
+  rasters as features buys nothing and *hurts* small roofs, so they are off by default.
+
+**Size is a confounder — report `auc_within_size`.** Adoption rises with house size (mappers
+report large houses packed with PV, small ones much less), so footprint area *alone* scores
+~0.73. `auc_within_size` scores inside `_SIZE_BANDS` and n-weights, removing size as a
+discriminator. It costs the classifier ~3 points (0.879 → 0.845) and the segmentation
+raster ~3 (0.734 → 0.707). Quote the conditional number as the imagery's contribution.
+
+**Three invariants here.** (a) Skill must be read per quadrat, never pooled — 4 of 6 are
+industrial estates, 2 residential, and they are not one population. (b) **Ranking transfers,
+absolute rates do not**: `rate_ratio` spans 0.47–1.89, and the model predicts 0.142 for
+residential Lahore where truth is 0.301. A per-stratum intercept is required before
+publishing any adoption rate or capacity from it. (c) **Only
+`karachi_coast_calib_700m` is Rule-1 complete** (every visible panel mapped, owner-verified),
+so it is the only quadrat whose negatives are trustworthy and the only one where a low score
+cannot be blamed on missing labels. It is also the hardest and the most diagnostic: median
+installation 86 m², 98.8% below the detection floor, and there the segmentation raster scores
+**exactly 0.500** and predicts **0.0 m² of PV against 13,964 m² mapped**. Quadrat file naming
+is size-agnostic (`*_calib_*_boundary.geojson`, newest dated `_overpass_solar*` pull wins) —
+do not re-hardcode `_calib_1km_`.
+
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 
 The leads product has a human on every candidate; the capacity atlas has nobody, so a
 false-positive mode that survives `p_real` reaches the headline number silently. Two
-per-region checks, both from artifacts `density` already wrote, exit non-zero so a
-regression fails CI: **ground-mount:rooftop capacity ratio** (bare ground, riverbed, salt
-flat, rock and snow read bright and nothing constrains them to a plausible host) and
-**single-cell concentration** (one 0.1° cell over 25% of a region means that region's
-total is one blob, not a population). Both need `mwp_ground >= 50` so a tiny region's
-ratio is not noise. Acceptance test for any change here: the pre-fix Pakistan output
-(18.3 GWp, Gilgit-Baltistan 166 MWp against 0.8 MWp of rooftop) must **fail**, the
-current one must pass.
+per-region checks, both from artifacts `density` already wrote: **ground-mount:rooftop
+capacity ratio** (bare ground, riverbed, salt flat, rock and snow read bright and nothing
+constrains them to a plausible host) and **single-cell concentration** (one 0.1° cell over
+25% of a region means that region's total is one blob, not a population). Both need
+`mwp_ground >= 50` so a tiny region's ratio is not noise. Exit 1 = a region failed, 2 =
+`density` has not run. **Run it between `density` and publishing** — the docs CI *cannot*,
+since `data/` is gitignored, so this gate is only as good as the operator invoking it.
+
+Acceptance test for any change here: the pre-fix Pakistan output (18.3 GWp,
+Gilgit-Baltistan 166 MWp against 0.8 MWp of rooftop) must **fail** (4 of 7 provinces did),
+the current one must pass.
 
 ### Invariants that prevent tiling artifacts (do not regress)
 

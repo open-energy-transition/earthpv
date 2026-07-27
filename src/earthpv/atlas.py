@@ -43,36 +43,43 @@ CITIES: dict[str, list] = {
     ],
 }
 
-# Calibration ground-truth quadrats per AOI (docs/issues/pakistan-calibration-boxes.md):
-# 1 km^2 boxes fully re-mapped this session and pooled into the recall-corrected
-# estimator's denominator. `status` is an AI visual pass against high-res imagery,
-# NOT a Rule-1 two-mapper verification -- corroboration, not independent ground truth.
+# Calibration ground-truth quadrats per AOI (docs/issues/pakistan-calibration-boxes.md),
+# pooled into the recall-corrected estimator's denominator.
+# `stem` is the full quadrat file prefix, so the box size is not baked into the code
+# (the protocol allows 1-4 km2 and the first Rule-1-complete box is 0.49 km2).
+# status: "rule1" = every visible panel mapped and verified, so its has-no-PV buildings
+# are trustworthy negatives; "corroborated" = visual pass supports the count but
+# completeness is not asserted; "suspect" = needs re-verification.
 CALIBRATION_BOXES: dict[str, list] = {
     "pakistan": [
-        {"name": "Lahore DHA Phase V", "file": "lahore", "status": "corroborated"},
-        {"name": "Faisalabad (PSIE)", "file": "faisalabad", "status": "suspect"},
-        {"name": "Multan Industrial Estate", "file": "multan", "status": "corroborated"},
-        {"name": "Sundar Industrial Estate", "file": "sundar", "status": "corroborated"},
-        {"name": "SITE Karachi", "file": "site_karachi", "status": "corroborated"},
+        {"name": "Lahore DHA Phase V", "stem": "lahore_calib_1km", "status": "corroborated"},
+        {"name": "Faisalabad (PSIE)", "stem": "faisalabad_calib_1km", "status": "suspect"},
+        {"name": "Multan Industrial Estate", "stem": "multan_calib_1km", "status": "corroborated"},
+        {"name": "Sundar Industrial Estate", "stem": "sundar_calib_1km", "status": "corroborated"},
+        {"name": "SITE Karachi", "stem": "site_karachi_calib_1km", "status": "corroborated"},
+        {"name": "Karachi DHA Phase 5 / Zamzama (coastal)",
+         "stem": "karachi_coast_calib_700m", "status": "rule1"},
     ],
 }
 
 
 def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[dict]:
     """Ring geometry + live-pulled installation count for each defined calibration
-    quadrat. A box with no `<file>_calib_1km_overpass_solar.parquet` (Multan) had
-    zero solar features on its last live Overpass pull, not a missing fetch."""
+    quadrat. A box with no `<stem>_overpass_solar*.parquet` had zero solar features on its
+    last live Overpass pull, not a missing fetch. The newest dated pull wins, because a
+    quadrat gets re-pulled after a completeness pass and the stale one would silently
+    become ground truth."""
     import pandas as pd
 
     out = []
     for box in CALIBRATION_BOXES.get(aoi, []):
-        boundary = Path(labels_dir) / f"{box['file']}_calib_1km_boundary.geojson"
+        boundary = Path(labels_dir) / f"{box['stem']}_boundary.geojson"
         if not boundary.exists():
             continue
         geom = gpd.read_file(boundary)
         centroid = geom.union_all().centroid
-        solar_path = Path(labels_dir) / f"{box['file']}_calib_1km_overpass_solar.parquet"
-        n = len(pd.read_parquet(solar_path)) if solar_path.exists() else 0
+        pulls = sorted(Path(labels_dir).glob(f"{box['stem']}_overpass_solar*.parquet"))
+        n = len(pd.read_parquet(pulls[-1])) if pulls else 0
         out.append({
             "name": box["name"], "status": box["status"],
             "lon": round(float(centroid.x), 4), "lat": round(float(centroid.y), 4),
@@ -326,7 +333,14 @@ def _build_estimator_atlas(
         "calibBoxes": _load_calib_boxes(aoi, labels_dir),
         "totals": {
             "m": [round(float(grid[c].sum())) for c in _EST_COLS],
-            "rc_ci": [round(float(grid.est_mwp_rc_lo.sum())), round(float(grid.est_mwp_rc_hi.sum()))],
+            # From the country-level summed draws in meta, NOT by adding the per-cell
+            # bounds: bin-level calibration uncertainty is fully correlated across cells,
+            # so summing per-cell quantiles is the error density.py's docstring warns
+            # about. It gave [4854, 8465] here against the correct [5034, 8239].
+            "rc_ci": [
+                round(meta.get("total_est_mwp_rc_lo", grid.est_mwp_rc_lo.sum())),
+                round(meta.get("total_est_mwp_rc_hi", grid.est_mwp_rc_hi.sum())),
+            ],
             "rcr_ci": [
                 round(meta.get("total_est_mwp_rc_roof_lo", grid.est_mwp_rc_roof.sum())),
                 round(meta.get("total_est_mwp_rc_roof_hi", grid.est_mwp_rc_roof.sum())),
@@ -356,6 +370,11 @@ def _build_estimator_atlas(
         "recall-corrected estimate of the whole detectable population. Switch "
         "between them — the map, the hero number and the province ranking follow."
     )
+    if data["totals"].get("kwpLand"):
+        lede += (
+            " Rooftop and ground-mount area convert at different rates, because a rooftop "
+            "detection outlines the panels and a ground-mount detection outlines the site."
+        )
     html = ESTIMATOR_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),

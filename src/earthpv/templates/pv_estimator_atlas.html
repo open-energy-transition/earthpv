@@ -265,9 +265,9 @@ const METRICS = [
   { i:3, key:"rcr",  scope:"roof", tab:"Recall-corr.",    name:"Recall-corrected · rooftop-placed", ci:"rcr_ci",
     desc:"Calibrated area of rooftop-placed candidates, divided by the model's measured per-size recall: an estimate of the <b>whole detectable rooftop population</b>, missed installations included." },
   { i:4, key:"ct",   scope:"all",  tab:"Calibrated",      name:"Calibrated · all PV", ci:"ct_ci",
-    desc:"Precision-weighted capacity of <b>every</b> candidate — ground-mounted solar farms included. The scope change, not the correction, is what multiplies the number." },
+    desc:"Precision-weighted capacity of <b>every</b> candidate — ground-mounted solar farms included. Ground-mount area converts at the lower site constant, since a detected farm polygon encloses the land, not the modules." },
   { i:5, key:"rc",   scope:"all",  tab:"Recall-corr.",    name:"Recall-corrected · all PV", ci:"rc_ci",
-    desc:"The <b>fullest defensible estimate</b>: all candidates, precision-weighted and recall-corrected, with a 90% credible band propagated from the calibration's measured counts." },
+    desc:"The <b>fullest defensible estimate</b>: all candidates, precision-weighted, recall-corrected and split by mounting before conversion, with a 90% credible band covering both the calibration counts and the two conversion constants." },
 ];
 let sel = 5; // start on the fullest estimate
 
@@ -391,6 +391,8 @@ mapbox.addEventListener("mousemove", (e) => {
   if (hitBox) {
     const tag = hitBox.status === "suspect"
       ? '<span class="tag-suspect">suspect — needs re-verification</span>'
+      : hitBox.status === "rule1"
+      ? '<span class="tag-ok">Rule-1 complete — every visible panel mapped</span>'
       : '<span class="tag-ok">visually corroborated</span>';
     tt.innerHTML = `<div class="tt-h">${hitBox.name}</div>
       <div>${hitBox.n} mapped installation${hitBox.n === 1 ? "" : "s"} · ${tag}</div>
@@ -494,7 +496,10 @@ if (D.calibBoxes && D.calibBoxes.length) {
   note.style.display = "block";
   document.getElementById("calibNoteList").innerHTML = D.calibBoxes.map((b) => {
     const tag = b.status === "suspect"
-      ? '<span class="tag-suspect">suspect</span>' : '<span class="tag-ok">corroborated</span>';
+      ? '<span class="tag-suspect">suspect</span>'
+      : b.status === "rule1"
+      ? '<span class="tag-ok">Rule-1 complete</span>'
+      : '<span class="tag-ok">corroborated</span>';
     return `<li><b>${b.name}</b> — ${b.n} mapped install${b.n === 1 ? "" : "s"}, ${tag}</li>`;
   }).join("");
 }
