@@ -8,16 +8,7 @@
 **Open rooftop solar mapping from free satellite imagery.**
 { .lede }
 
-earthpv takes the opposite route. It fine-tunes the open **TerraMind** geospatial foundation
-model on **Sentinel-2** imagery, which is free, global and refreshed every five days, and it
-puts every detection in front of **OpenStreetMap** mappers for verification. The verified
-result becomes the next round of training data. Everything, including the model weights and
-the capacity numbers, is open and reproducible.
-
-In countries like Pakistan installed solar capacity is reported anywhere between
-[6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
-Nobody can check those numbers, because the maps behind them are built on commercial
-high-resolution imagery that cannot be shared and cannot legally be processed by anyone else.
+EarthPV demonstrates how the use of free Sentinel-2 imagery, an open foundation model, and human-in-the-loop validation in OpenStreetMap can make global photovoltaic mapping more scalable, verifiable, and cost-effective than existing methods.
 
 </div>
 
