@@ -20,9 +20,7 @@
 
 ---
 
-> **EarthPV demonstrates how free Sentinel-2 imagery, an open foundation model and
-> human-in-the-loop validation by OpenStreetMap mappers can render global photovoltaic
-> mapping more scalable, verifiable and cost-effective than existing methods.**
+> **EarthPV demonstrates how the use of free Sentinel-2 imagery, an open foundation model, and human-in-the-loop validation in OpenStreetMap can make global photovoltaic mapping more scalable, verifiable, and cost-effective than existing methods.**
 
 Pakistan's installed solar capacity is reported anywhere between
 [6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
