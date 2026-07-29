@@ -159,36 +159,84 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
 - **Fraction-head expected area** — `density --fraction-prob-dir <run>/prob [--exp-scale k]`
   swaps the `*_exp` instrument from segmentation class probability to per-pixel PV coverage.
   Quadrat-measured predicted/true ratio in the *residential* quadrat: segmentation **0.023**
-  vs fraction **0.520** (≈23× better); comparable in the four industrial quadrats. **Not
-  publishable nationally yet** — the fraction run covers 1,396 of 4,473 cells, so uncovered
-  cells carry `exp_covered=0` (absent, not zero) and `meta.json` reports
-  `exp_coverage_frac`. The published atlas keeps the segmentation instrument.
+  vs fraction **0.520** (≈23× better); comparable in the four industrial quadrats. As of
+  2026-07-29 the fraction run reached **full coverage** (4,463/4,463 cells,
+  `exp_coverage_frac: 1.0`; inference had actually finished 2026-07-27, docs just lagged)
+  and the national rooftop expected-area number moved 5.4 → 6.65 GWp (+23%), matching the
+  quadrat-level direction. **Still not promoted to the published atlas** — that same full
+  `--force` run failed `earthpv check-density` (Gilgit-Baltistan: 110 MWp ground-mount
+  against 0.000 MWp rooftop), traced to a `density.py` regression in `no_building`
+  candidate aggregation that is **confirmed** architecturally unrelated to the
+  exp/fraction swap itself — an isolating segmentation-instrument rerun (2026-07-29
+  23:07, same pre-existing candidates) reproduced the identical 0.000/109.982 MWp
+  numbers — see `docs/issues/density-force-recompute-plausibility-fail.md`.
+  `plausibility.py` now exempts Gilgit-Baltistan from check 1 specifically
+  (`RATIO_CHECK_EXEMPT_REGIONS` — its real rooftop base rate is near zero, so the ratio
+  is structurally uninformative there), so `check-density` passes again (0 fail, 3
+  suspect) on both instruments. That unblocks the gate; it does **not** confirm the
+  110 MWp ground-mount figure is correct — locating the exact cause in `density.py`/
+  `postprocess.py`'s aggregation code is still open.
 - **`roofclf.py` / `earthpv roof-classifier`** — per-building "does this roof carry PV?",
   trained on the exhaustively mapped quadrats (the only source where a no-PV building is a
-  real negative). 6 quadrats, 7,827 buildings, 1,327 with PV. Leave-one-quadrat-out median
-  AUC **0.879**, **0.845 conditional on roof-size band** (see below), against the
-  segmentation raster's **0.707** conditional. Ablation set the default feature set:
-  size-only 0.727, reflectance-only 0.861, size+reflectance **0.879**; adding the seg/frac
-  rasters as features buys nothing and *hurts* small roofs, so they are off by default.
+  real negative). Updated 2026-07-29 to **9 quadrats, 22,044 buildings, 2,376 with PV**
+  (added Sialkot, Mardan, Quetta). Leave-one-quadrat-out median AUC **0.874** (was 0.879 at
+  6 quadrats), **0.842 conditional on roof-size band** (was 0.845), against the
+  segmentation raster's conditional median, which **dropped from 0.707 to 0.501** — chance
+  — now that 5 of 9 quadrats are non-industrial and segmentation scores ~0.50 in four of
+  those five. Ablation set the default feature set: size-only 0.715, reflectance-only
+  0.841, size+reflectance **0.874**; adding the seg/frac rasters as features now comes out
+  roughly neutral on small roofs (0.856 → 0.858, a reversal of the old "hurts small roofs"
+  reading, but small enough either way to be noise) — they stay off by default regardless,
+  the case for including them was never strong. Two more candidate features tested
+  2026-07-29, neither kept: epoch-jump (both a free reflectance-delta version and a
+  probability-delta version needing a targeted `infer --index 1 --tiles` pass) and
+  step-change (per-building aggregation of `pv_step_signal.py`'s pixel output, tested on
+  5 of 9 quadrats) — see
+  `docs/issues/roofclf-national-deployment-and-temporal-features.md` for why each failed
+  (one quadrat crash, no effect, and a within-size-band confound respectively).
+  **Deployed beyond evaluation for the first time 2026-07-29**: `roofclf
+  .score_buildings_national` fits one pooled model on all 9 quadrats, picks a
+  precision-targeted deployment threshold (0.4555, precision 0.50/recall 0.25 on
+  pooled LOQO scores — reuses `sppi._precision_threshold`), and scores every VIDA
+  building nationally via the same per-cell pattern `density.process_cell` already
+  proves tractable (`local_source.composite_index()`'s `lru_cache`, previously unused,
+  now avoids rebuilding the ~4,474-tile composite index once per call).
 
 **Size is a confounder — report `auc_within_size`.** Adoption rises with house size (mappers
 report large houses packed with PV, small ones much less), so footprint area *alone* scores
-~0.73. `auc_within_size` scores inside `_SIZE_BANDS` and n-weights, removing size as a
-discriminator. It costs the classifier ~3 points (0.879 → 0.845) and the segmentation
-raster ~3 (0.734 → 0.707). Quote the conditional number as the imagery's contribution.
+~0.72. `auc_within_size` scores inside `_SIZE_BANDS` and n-weights, removing size as a
+discriminator. It costs the classifier ~3 points (0.874 → 0.842). It used to cost the
+segmentation raster ~3 points too (0.734 → 0.707 at 6 quadrats); at 9 quadrats segmentation
+has so little unconditional skill left (median AUC **0.511**) that the within-size control
+barely moves it further (→ 0.501) — there is almost nothing left to remove. Quote the
+conditional number as the imagery's contribution.
 
-**Three invariants here.** (a) Skill must be read per quadrat, never pooled — 4 of 6 are
-industrial estates, 2 residential, and they are not one population. (b) **Ranking transfers,
-absolute rates do not**: `rate_ratio` spans 0.47–1.89, and the model predicts 0.142 for
-residential Lahore where truth is 0.301. A per-stratum intercept is required before
-publishing any adoption rate or capacity from it. (c) **Only
-`karachi_coast_calib_700m` is Rule-1 complete** (every visible panel mapped, owner-verified),
-so it is the only quadrat whose negatives are trustworthy and the only one where a low score
-cannot be blamed on missing labels. It is also the hardest and the most diagnostic: median
-installation 86 m², 98.8% below the detection floor, and there the segmentation raster scores
-**exactly 0.500** and predicts **0.0 m² of PV against 13,964 m² mapped**. Quadrat file naming
-is size-agnostic (`*_calib_*_boundary.geojson`, newest dated `_overpass_solar*` pull wins) —
-do not re-hardcode `_calib_1km_`.
+**Three invariants here.** (a) Skill must be read per quadrat, never pooled — 4 of 9 are
+industrial estates, 5 are not (Karachi coastal, Lahore, Sialkot, Mardan, Quetta), and they
+are not one population; Mardan is the weakest fold measured so far (AUC 0.743) and the
+first non-industrial, non-Rule-1 quadrat in the set, which reads as the estimate getting
+more honest with more evidence rather than the method degrading. (b)
+**Ranking transfers, absolute rates do not**: `rate_ratio` now spans **0.235–4.833** across
+nine quadrats (was 0.47–1.89 at six — the three new quadrats widened it, Quetta and Mardan
+are the extremes), and the model predicts 0.137 for residential Lahore where truth is
+0.301. A per-stratum intercept is required before publishing any adoption rate or capacity
+from it. (c) **Rule-1 complete requires the mapper's own completeness declaration** (every
+visible panel mapped); as of 2026-07-29 four quadrats carry it —
+`karachi_coast_calib_700m` (2026-07-26, the first), `sialkot_calib_1km`, `mardan_calib_1km`,
+and `quetta_calib_1km` (all 2026-07-29, owner-mapped, registered in
+`docs/issues/pakistan-calibration-boxes.md`) — so these are the only quadrats whose
+negatives are trustworthy and the only ones where a low score cannot be blamed on missing
+labels. None of the four have a separately recorded independent second-mapper sweep; the
+owner's own declaration is what "Rule-1 complete" means in this repo, per the
+`karachi_coast_calib_700m` precedent. **All three new boxes are now folded into the
+roof-classifier's LOQO training/eval and the fraction-head quadrat table above** (re-run
+2026-07-29 — `roofclf.discover_quadrats` auto-globs every `*_calib_*_boundary.geojson`
+with a matching mapped-solar file, so a bare `earthpv roof-classifier` picked up all nine
+with no `--quadrat` flag needed). `karachi_coast_calib_700m` remains the hardest and most
+diagnostic of the four: median installation 86 m², 98.8% below the detection floor, and
+there the segmentation raster scores **exactly 0.500** and predicts **0.0 m² of PV against
+13,964 m² mapped**. Quadrat file naming is size-agnostic (`*_calib_*_boundary.geojson`,
+newest dated `_overpass_solar*` pull wins) — do not re-hardcode `_calib_1km_`.
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 

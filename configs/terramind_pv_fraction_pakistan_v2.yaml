@@ -1,0 +1,58 @@
+# TerraTorch fine-tuning config for PV FRACTION regression (sub-pixel density),
+# Pakistan-tuned, v2. Copy of configs/terramind_pv_fraction_pakistan.yaml with only
+# checkpoint_dir changed. `data/chips/combined_fraction/index.parquet` (the shared
+# index_path both configs point at) now additionally includes the 8 training
+# calibration quadrats (faisalabad/lahore/mardan/multan/quetta/sialkot/site_karachi/
+# sundar -- karachi_coast held out on purpose, see configs/aoi.yaml's note), each
+# oversampled 20x train via scripts/merge_fraction_chip_index.py, on top of the
+# existing Germany + Pakistan-nationwide corpus. These quadrats are Rule-1-complete
+# (exhaustively mapped down to the smallest rooftop unit), unlike the national OSM
+# snapshot which under-represents small installations -- the rationale for this
+# retrain (docs/experiments.md's in-domain-chips finding: the single biggest lever
+# measured in this project, 0.18 -> 0.55 recall from adding just 274 Punjabi chips).
+# The pre-quadrat index is backed up at data/chips/combined_fraction_v1_backup/.
+task_type: regression
+
+data:
+  index_path: data/chips/combined_fraction/index.parquet
+  batch_size: 8
+  num_workers: 4
+  target: fraction
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    head_final_act: torch.nn.Sigmoid
+    rescale: true
+  loss: weighted_mse
+  weighted_mse_args: {k: 10.0}
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/fraction_pakistan_v2
+patience: 8
+monitor: val/RMSE
+monitor_mode: min

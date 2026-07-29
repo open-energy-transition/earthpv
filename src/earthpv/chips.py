@@ -38,6 +38,23 @@ CHIP_M = CHIP_SIZE * 10.0  # chip edge in metres
 MIN_PV_AREA = 400.0
 
 
+def _newest_overpass_path(aoi: str, labels_dir: Path) -> Path:
+    """Newest `<aoi>_overpass_solar*.parquet` pull, dated variant wins.
+
+    Mapping is iterative -- a quadrat gets re-pulled after a completeness pass, and
+    the undated `<aoi>_overpass_solar.parquet` is often the STALE one (e.g.
+    faisalabad_calib_1km: 53 features undated vs 84 in the dated re-pull; sundar: 22
+    vs 49; karachi_coast: 136 vs 165, missing exactly the completeness-pass
+    additions). Picking the undated file unconditionally silently trains on
+    incomplete labels -- the same failure `roofclf._newest_solar` already guards
+    against for evaluation; this mirrors that convention for chip-building. '.'
+    sorts before '_' lexicographically, so the bare name always sorts first and a
+    dated suffix always wins.
+    """
+    cands = sorted(Path(labels_dir).glob(f"{aoi}_overpass_solar*.parquet"))
+    return cands[-1] if cands else Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
+
+
 def _chip_id(lon: float, lat: float) -> str:
     return hashlib.sha1(f"{lon:.5f}_{lat:.5f}".encode()).hexdigest()[:12]
 
@@ -229,6 +246,11 @@ def _overpass_labels(path: Path, min_area_m2: float = 400.0) -> gpd.GeoDataFrame
     labels = gpd.read_parquet(path)
     labels = labels[labels.geom_type.isin(["Polygon", "MultiPolygon"])].copy()
     labels = labels.rename(columns={"id": "osm_id"})
+    if "placement" not in labels.columns:
+        # A raw re-pull (e.g. a freshness check via `overpass-labels --bbox`) may
+        # predate `classify_placement` -- treat as unclassified rather than crash on
+        # the `.placement` access below; the big/small split still applies.
+        labels["placement"] = "unknown"
     big = labels.area_m2 >= min_area_m2
     labels.loc[big & (labels.placement == "unknown"), "placement"] = "ground"
     labels.loc[~big, "placement"] = "small"
@@ -250,7 +272,7 @@ def build_chips(
 
     source_region = cfg.get("source_region")
     composed = Path("data/composites") / aoi
-    overpass_path = Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
+    overpass_path = _newest_overpass_path(aoi, labels_dir)
     if not source_region and not (
         composed.exists() and any(composed.glob("composites/*/composite_0.tif"))
         and overpass_path.exists()
@@ -412,7 +434,7 @@ def build_hard_negative_chips(
 
     source_region = cfg.get("source_region")
     composed = Path("data/composites") / aoi
-    overpass_path = Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
+    overpass_path = _newest_overpass_path(aoi, labels_dir)
     if composed.exists() and any(composed.glob("composites/*/composite_0.tif")):
         comp_idx = CompositeIndex(composed)
     else:

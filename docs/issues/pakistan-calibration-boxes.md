@@ -286,6 +286,62 @@ intersection.**
 
 ---
 
+## Rule-1-complete quadrats (owner-mapped), 2026-07-29
+
+Three quadrats added directly as Rule-1 complete, following the `karachi_coast_calib_700m`
+precedent: mapped and declared complete by the repository owner rather than pulled live
+and left as an open task like Boxes 2-5 above. As with `karachi_coast_calib_700m`, "Rule-1
+complete" here means the mapper's own completeness declaration per
+`docs/calibration-mapping-protocol.md`; there is no separately recorded independent
+second-mapper sweep for any of the four owner-mapped boxes, karachi_coast included. Each
+boundary was recorded before this doc entry was written, per the protocol's "record the
+rectangle... before mapping starts."
+
+### Box 6 — Sialkot Old City, 1km x 1km around (32.503855, 74.5422037) — 2026-07-29
+
+bbox `74.536883,32.499346,74.547524,32.508364`
+(`data/labels/sialkot_calib_1km_overpass_solar.parquet`, boundary
+`data/labels/sialkot_calib_1km_boundary.geojson`). Reverse-geocode: **Puran Nagar / Old
+City, Sialkot Tehsil, Sialkot District, Punjab** — stratum 2 (dense older urban /
+informal settlement), the protocol's least-represented stratum among prior boxes.
+
+**Ground truth: 182 installations (177 rooftop / 5 ground), 15,055.8 m² total**, median
+63.7 m², max 646.8 m². 148/182 (81.3%) below 100 m², none at or above 1,000 m² — a second
+sub-floor test ground alongside `karachi_coast_calib_700m`, this time in dense inner-city
+fabric rather than affluent planned housing.
+
+### Box 7 — Sheikh Maltoon Town, Mardan, 1km x 1km around (34.189388, 72.0253755) — 2026-07-29
+
+bbox `72.019951,34.18488,72.0308,34.193896`
+(`data/labels/mardan_calib_1km_overpass_solar.parquet`, boundary
+`data/labels/mardan_calib_1km_boundary.geojson`). Reverse-geocode: **Sheikh Maltoon Town,
+Bypass Road, Mardan Tehsil, Mardan District, Khyber Pakhtunkhwa** — a planned
+residential scheme in a peri-urban tehsil town, so it sits between the protocol's
+stratum 1 and stratum 3 examples rather than cleanly inside either. **First
+Khyber Pakhtunkhwa quadrat**, and the first outside Punjab/Sindh.
+
+**Ground truth: 794 installations, all rooftop, 20,701.2 m² total**, median 21.7 m²,
+max 221.5 m². 784/794 (98.7%) below 100 m², none at or above 500 m² — the smallest
+median installation size of any registered quadrat, and by far the largest installation
+count for a 1 km² box so far.
+
+### Box 8 — Quetta City, 1km x 1km around (30.1915156, 67.015288) — 2026-07-29
+
+bbox `67.010096,30.187005,67.02048,30.196026`
+(`data/labels/quetta_calib_1km_overpass_solar.parquet`, boundary
+`data/labels/quetta_calib_1km_boundary.geojson`). Reverse-geocode: **Brahimzai, Abdul
+Sattar Road, Quetta City Tehsil, Quetta District, Balochistan** — stratum 5 (arid /
+bare-land settlement). **First Balochistan quadrat** — notable because
+`plausibility.py`'s ground-mount:rooftop check already flags Balochistan as structurally
+suspect (see `docs/methods/density.md`), so a trustworthy rooftop-only ground truth here
+is high-value independent of the sub-floor question.
+
+**Ground truth: 73 installations, all rooftop, 12,238.3 m² total**, median 103.9 m²,
+max 1,856.6 m². Wider size spread than Boxes 6/7 (35/73 below 100 m², 3/73 at or above
+1,000 m²) — not purely a sub-floor test ground, unlike the other two new boxes.
+
+---
+
 ## Visual verification pass (2026-07-24) — what this is and is NOT
 
 Prompted by a direct request to bring all boxes to Rule-1-verified status. **Important

@@ -224,6 +224,7 @@ def derive_table(
     manual_reviews: pd.DataFrame | None = None,
     recall_reference: gpd.GeoDataFrame | None = None,
     recall_reference_name: str = "none",
+    recall_cands: gpd.GeoDataFrame | None = None,
 ) -> dict:
     """Derive the per-bin p_real (+ recall + CI) table.
 
@@ -233,6 +234,14 @@ def derive_table(
     calibrate-sample file). `recall_reference` is a GeoDataFrame of mapped OSM solar
     *polygons* independent of this pipeline's own contributions, already restricted
     to imaged coverage (`coverage_filter`).
+
+    `recall_cands` lets the recall check (below) be measured against a DIFFERENT
+    candidate population than the one precision (`p_real`, mapped fraction) is measured
+    against -- e.g. `cands` unioned with a second detector's candidates, so recall(b)
+    reflects "did EITHER detector find this", while precision still only speaks to
+    `cands`' own candidates (a second detector's own precision is a separate, unmeasured
+    question, and conflating the two would silently launder it in). Defaults to `cands`,
+    so every existing caller's behavior is unchanged.
     """
     from earthpv.export import new_lead_mask
     from earthpv.labels import geodesic_area_m2
@@ -255,6 +264,7 @@ def derive_table(
 
     # Model recall per bin: mapped reference installations matched by any candidate.
     recall_by_bin: dict[str, tuple[int, int]] = {}
+    recall_pop = cands if recall_cands is None else recall_cands
     if recall_reference is not None and not recall_reference.empty:
         ref = recall_reference[
             recall_reference.geometry.geom_type.isin(("Polygon", "MultiPolygon"))
@@ -267,7 +277,7 @@ def derive_table(
         if not ref.empty:
             areas = np.array([geodesic_area_m2(g) for g in ref.geometry])
             ridx = bin_index(areas)
-            matched = ~new_lead_mask(ref, cands, min_distance_m=min_distance_m)
+            matched = ~new_lead_mask(ref, recall_pop, min_distance_m=min_distance_m)
             for b, label in enumerate(BIN_LABELS):
                 in_bin = ridx == b
                 recall_by_bin[label] = (int(in_bin.sum()), int(matched[in_bin].sum()))

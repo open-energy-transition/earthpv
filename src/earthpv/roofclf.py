@@ -91,6 +91,9 @@ MIN_PV_OVERLAP_FRAC = 0.05
 # Ridge strength on standardised features. Deliberately firm: five spatial folds cannot
 # support tuning, so this is set once and left.
 L2 = 1.0
+# Same floor as chips.MIN_PV_AREA -- "sub-400 m2" is this project's standard name for
+# the population below the segmentation model's detection floor.
+MIN_PV_AREA_FOR_PACKING = 400.0
 
 
 # --------------------------------------------------------------------------------------
@@ -144,6 +147,39 @@ def load_quadrat(stem: str, labels_dir: Path = Path("data/labels")) -> tuple:
     pv = pv[pv.geom_type.isin(("Polygon", "MultiPolygon"))].reset_index(drop=True)
     log.info("quadrat %s: %d mapped PV polygons from %s", stem, len(pv), solar_path.name)
     return boundary, pv
+
+
+def packing_density(pv: gpd.GeoDataFrame, max_area_m2: float = MIN_PV_AREA_FOR_PACKING) -> float:
+    """Median nearest-neighbour distance (m) between sub-`max_area_m2` installations.
+
+    Measured 2026-07-29 across all 9 quadrats: this single, model-free, purely
+    geometric number correlates strongly with `exp_scale_anchor`'s fraction-head
+    scale (r=0.70), its segmentation scale (r=0.82), and `roofclf`'s own
+    `auc_within_size` (r=0.78) -- i.e. most of why quadrats behave so differently is
+    already visible from installation spacing alone, before any imagery is even
+    read. Splits the 9 quadrats cleanly at ~20-40 m: five pack sub-400 m2 arrays
+    tighter than one Sentinel-2 pixel (7-19 m, informal/residential), four sit at
+    44-52 m with sub-400 m2 as a small minority of their population (industrial) --
+    the same stratum split this project already tracks by hand, but continuous and
+    measurable from the labels alone. NaN if fewer than 2 qualifying installations
+    (no pair to measure a distance between).
+    """
+    from scipy.spatial import cKDTree
+
+    from earthpv.labels import geodesic_area_m2
+
+    if pv.empty:
+        return float("nan")
+    areas = np.array([geodesic_area_m2(g) for g in pv.geometry])
+    small = pv[areas < max_area_m2]
+    if len(small) < 2:
+        return float("nan")
+    lon, lat = small.geometry.centroid.x.mean(), small.geometry.centroid.y.mean()
+    epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) / 6) + 1
+    cent_utm = small.to_crs(epsg).geometry.centroid
+    xy = np.column_stack([cent_utm.x.to_numpy(), cent_utm.y.to_numpy()])
+    d, _ = cKDTree(xy).query(xy, k=2)
+    return float(np.median(d[:, 1]))
 
 
 # --------------------------------------------------------------------------------------
@@ -232,11 +268,12 @@ def _read_prob(path: Path, bounds4326: tuple, out_crs, out_transform, out_shape)
 def building_table(
     stem: str, iso3: str, composites: Path, seg_prob_dir: Path | None,
     frac_prob_dir: Path | None, labels_dir: Path = Path("data/labels"), con=None,
+    include_epoch_jump: bool = False, preboom_prob_dir: Path | None = None,
 ) -> pd.DataFrame:
     """One row per VIDA building in the quadrat, labelled and featurised."""
     from earthpv.buildings import fetch_vida_buildings
     from earthpv.labels import geodesic_area_m2
-    from earthpv.local_source import CompositeIndex
+    from earthpv.local_source import composite_index
 
     boundary, pv = load_quadrat(stem, labels_dir)
     name = quadrat_label(stem)
@@ -261,14 +298,24 @@ def building_table(
                     pv_area[bi] += inter
     roof = bu["area_m2"].to_numpy(float)
     frac_true = np.divide(pv_area, np.maximum(roof, 1e-6))
+    nn_median_m = packing_density(pv)
 
     # Imagery on the composite's own grid; the probability rasters are resampled onto it.
-    res = CompositeIndex(Path(composites)).read_window((minx, miny, maxx, maxy))
+    # `composite_index` is `lru_cache`d on (path, layers), so calling this once per
+    # quadrat (9x) or once per national cell (4,000+x, see `score_buildings_national`)
+    # only ever pays the ~4,500-tile directory scan once per run, not once per call.
+    # `layers=2` additionally reads composite_1 (pre-boom, ~2021-10 to 2022-01) stacked
+    # on the same grid -- zero extra inference, since composite_1 is already ~complete
+    # nationally (docs/issues/epoch-jump-recall-signal.md's cheap variant).
+    n_layers = 2 if include_epoch_jump else 1
+    res = composite_index(str(composites), layers=n_layers).read_window((minx, miny, maxx, maxy))
     if res is None:
         log.warning("quadrat %s: no composite coverage", name)
         return pd.DataFrame()
     arr, transform, crs = res
-    arr = arr[: len(BAND_NAMES)].astype("float32") / REFL_SCALE
+    arr = arr.astype("float32") / REFL_SCALE
+    preboom_arr = arr[len(BAND_NAMES): 2 * len(BAND_NAMES)] if include_epoch_jump else None
+    arr = arr[: len(BAND_NAMES)]
     bu_utm = bu.to_crs(crs)
     means, maxes = zonal_mean_max(bu_utm, arr, transform)
 
@@ -280,6 +327,10 @@ def building_table(
         "pv_area_true_m2": pv_area,
         "pv_frac_true": frac_true,
         "has_pv": (frac_true >= MIN_PV_OVERLAP_FRAC).astype(int),
+        # A per-quadrat constant (same value every row), not a per-building feature --
+        # carried here so `_fold_report` can read it straight off the held-out fold's
+        # rows without a second pass over the labels. See `packing_density`.
+        "nn_median_m": nn_median_m,
     })
     for i, b in enumerate(BAND_NAMES):
         out[f"{b}_mean"] = means[i]
@@ -293,8 +344,19 @@ def building_table(
     out["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
     out["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
 
+    if include_epoch_jump:
+        # Raw pre-boom reflectance delta per band -- the free variant from
+        # docs/issues/epoch-jump-recall-signal.md (that doc's proposed version uses a
+        # *probability* jump instead, which needs a targeted preboom inference pass;
+        # this one needs none). A real installation should be dim pre-boom and bright
+        # now; jump ~0 in either direction is uninformative or a persistent bright
+        # roof/soil, not evidence of PV.
+        pb_means, _ = zonal_mean_max(bu_utm, preboom_arr, transform)
+        for i, b in enumerate(BAND_NAMES):
+            out[f"{b}_jump"] = means[i] - pb_means[i]
+
     bounds = (minx, miny, maxx, maxy)
-    for label, d in (("seg", seg_prob_dir), ("frac", frac_prob_dir)):
+    for label, d in (("seg", seg_prob_dir), ("frac", frac_prob_dir), ("preboom", preboom_prob_dir)):
         out[f"{label}_mean"] = 0.0
         out[f"{label}_max"] = 0.0
         if d is None:
@@ -306,6 +368,12 @@ def building_table(
         p = _read_prob(path, bounds, crs, transform, arr.shape[-2:])
         pm, px = zonal_mean_max(bu_utm, p, transform)
         out[f"{label}_mean"], out[f"{label}_max"] = pm[0], px[0]
+    if preboom_prob_dir is not None:
+        # Probability-jump variant (docs/issues/epoch-jump-recall-signal.md): current
+        # minus pre-boom segmentation probability. A building the model never lights up
+        # for at all (seg_max=0 both epochs, the common case below the detection floor)
+        # gets jump=0, correctly uninformative -- only a genuine rise is signal.
+        out["epoch_jump"] = out["seg_max"] - out["preboom_max"]
     out = out.set_geometry("geometry").set_crs("EPSG:4326")
     log.info(
         "quadrat %s: %d buildings, %d with PV (%.1f%%), true PV area %.0f m2",
@@ -437,6 +505,16 @@ def _fold_report(name: str, y: np.ndarray, p: np.ndarray, df: pd.DataFrame) -> d
         "auc_within_size_seg": round(within_seg, 4),
         "pred_rate": round(float(p.mean()), 4),
         "rate_ratio": round(float(p.mean() / max(y.mean(), 1e-9)), 3),
+        # Median nearest-neighbour spacing (m) of this quadrat's own sub-400 m2
+        # installations -- measured 2026-07-29 to correlate strongly with exp_scale
+        # (r=0.70-0.82) and auc_within_size (r=0.78) across all 9 quadrats; reported
+        # per fold so a reader can see at a glance whether a fold's skill/scale sits
+        # in the dense-packed (~7-19 m, informal/residential) or sparse (~44-52 m,
+        # industrial) regime, without cross-referencing a separate table.
+        "nn_median_m": (
+            round(float(df.nn_median_m.iloc[0]), 1)
+            if "nn_median_m" in df.columns and len(df) else float("nan")
+        ),
     }
 
 
@@ -568,6 +646,135 @@ def exp_scale_anchor(table: pd.DataFrame) -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------------------
+# National deployment
+# --------------------------------------------------------------------------------------
+def save_model(model: dict, feats: list[str], path: Path) -> None:
+    """Persist a `fit_logistic` result + the feature list it was fit on, so scoring new
+    buildings later doesn't need to refit (LOQO already measures honest skill; a
+    national deployment uses ONE fit on all labelled quadrats pooled, the same "full"
+    fit `evaluate()` already computes for its `coef`/`intercept` summary fields)."""
+    payload = {
+        "w": model["w"].tolist(), "mu": model["mu"].tolist(), "sd": model["sd"].tolist(),
+        "converged": model["converged"], "features": feats,
+    }
+    Path(path).write_text(json.dumps(payload, indent=2))
+
+
+def load_model(path: Path) -> tuple[dict, list[str]]:
+    d = json.loads(Path(path).read_text())
+    model = {
+        "w": np.array(d["w"]), "mu": np.array(d["mu"]), "sd": np.array(d["sd"]),
+        "converged": d["converged"],
+    }
+    return model, d["features"]
+
+
+def score_buildings_national(
+    aoi: str, model: dict, feats: list[str], composites: Path, out_dir: Path,
+    min_roof_area_m2: float = 0.0, force: bool = False, limit: int = 0,
+) -> Path:
+    """Apply an already-fit model to every VIDA building under `composites`, one cell
+    (one composite tile) at a time -- the per-cell/per-building pattern
+    `density.process_cell` already proves tractable at Pakistan's ~4,463-cell national
+    scale, adapted here to skip anything label-dependent (no ground truth exists
+    outside the 9 calibration quadrats; this writes a predicted probability, not a
+    fold-evaluated one).
+
+    Resumable like `density.py`: a cell already written to `out_dir/{cell}.parquet` is
+    skipped unless `force`. `min_roof_area_m2` is a pass-through to
+    `fetch_vida_buildings`'s own filter (0 = keep everything, matching `density.py`'s
+    convention -- about half of Pakistani VIDA footprints are sub-pixel and
+    `zonal_mean_max`'s representative-point fallback already handles them).
+    `limit` caps the number of cells actually processed this call (0 = all), for a
+    smoke test before a multi-hour national run.
+    """
+    from earthpv.buildings import _iso3_for, fetch_vida_buildings
+    from earthpv.config import Settings
+    from earthpv.labels import resolve_aoi
+    from earthpv.local_source import composite_index
+    from earthpv import overture
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    iso3 = _iso3_for(cfg)
+    if iso3 is None:
+        raise ValueError(f"AOI '{aoi}' has no division.iso3 -> cannot locate VIDA buildings")
+
+    comp_idx = composite_index(str(composites))
+    con = overture.connect()
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    n_cells, n_buildings, n_flagged_05 = 0, 0, 0
+    for row in comp_idx.index.itertuples():
+        if limit and n_cells >= limit:
+            break
+        cell = Path(row.path).parent.name
+        out_path = out_dir / f"{cell}.parquet"
+        if out_path.exists() and not force:
+            continue
+        bbox = row.geometry.bounds
+        bu = fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con)
+        if bu.empty:
+            pd.DataFrame().to_parquet(out_path)
+            continue
+        # Half-open claim on the cell's own box (not the fetch bbox, which is padded by
+        # sjoin/row-group slop) so every building nationwide is scored by exactly one
+        # cell -- same convention `density.process_cell` uses.
+        inside = bu.geometry.representative_point().within(row.geometry)
+        bu = bu[inside.to_numpy()].reset_index(drop=True)
+        if bu.empty:
+            pd.DataFrame().to_parquet(out_path)
+            continue
+
+        res = comp_idx.read_window(bbox)
+        if res is None:
+            log.warning("cell %s: no composite coverage, skipping %d buildings", cell, len(bu))
+            continue
+        arr, transform, crs = res
+        arr = arr[: len(BAND_NAMES)].astype("float32") / REFL_SCALE
+        bu_utm = bu.to_crs(crs)
+        means, _ = zonal_mean_max(bu_utm, arr, transform)
+
+        eps = 1e-6
+        r, nir, sw = means[_I_RED], means[_I_NIR], means[_I_SWIR1]
+        feat_df = pd.DataFrame({
+            "roof_area_m2": bu["area_m2"].to_numpy(float),
+            "bf_confidence": bu.get(
+                "bf_confidence", pd.Series(np.nan, index=bu.index)
+            ).to_numpy(),
+        })
+        for i, b in enumerate(BAND_NAMES):
+            feat_df[f"{b}_mean"] = means[i]
+        feat_df["ndvi"] = (nir - r) / (nir + r + eps)
+        feat_df["ndbi"] = (sw - nir) / (sw + nir + eps)
+        feat_df["brightness"] = means.mean(axis=0)
+        feat_df["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
+        feat_df["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
+
+        p = predict_proba(model, design_matrix(feat_df, feats))
+        result = gpd.GeoDataFrame({
+            "cell": cell, "geometry": bu.geometry.to_numpy(),
+            "roof_area_m2": feat_df["roof_area_m2"], "p_roofclf": p,
+        }, crs="EPSG:4326")
+        result.to_parquet(out_path)
+
+        n_cells += 1
+        n_buildings += len(bu)
+        n_flagged_05 += int((p >= 0.5).sum())
+        if n_cells % 200 == 0:
+            log.info("Scored %d cells, %d buildings so far (%d >= 0.5 raw)",
+                      n_cells, n_buildings, n_flagged_05)
+
+    log.info("Done: %d cells scored this run, %d buildings, %d >= 0.5 raw probability "
+              "(deployment threshold is chosen separately, see the LOQO precision "
+              "calibration, not this raw count) -> %s", n_cells, n_buildings, n_flagged_05,
+              out_dir)
+    return out_dir
+
+
+# --------------------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------------------
 def run_roof_classifier(
@@ -611,6 +818,32 @@ def run_roof_classifier(
     folds, summary, oof = evaluate(table, l2=l2)
     table["p_oof"] = oof  # scored by a model that never saw this building's quadrat
     table.to_parquet(out_dir / "buildings.geoparquet")
+
+    # Deployment artifact: ONE fit on every labelled building pooled (not per-fold --
+    # LOQO above is for honest skill measurement; a national scorer needs a single
+    # model), persisted so `score_buildings_national` never needs to refit.
+    full_model = fit_logistic(design_matrix(table, MODEL_FEATURES), table.has_pv.to_numpy(float), l2)
+    save_model(full_model, MODEL_FEATURES, out_dir / "model_full.json")
+    # Deployment threshold: precision-targeted (not Youden's J -- this session's SPPI
+    # validation measured that a balanced-sensitivity criterion trades away far too much
+    # precision for a capacity-contributing detector), on the pooled out-of-fold scores,
+    # i.e. still an honest LOQO number, just one threshold instead of nine per-fold ones.
+    from earthpv.sppi import _precision_threshold
+
+    valid = ~np.isnan(oof)
+    y_valid, s_valid = table.loc[valid, "has_pv"].to_numpy(bool), oof[valid]
+    thresh = _precision_threshold(y_valid, s_valid, min_precision=0.5)
+    pred = s_valid >= thresh
+    tp, fp = int((pred & y_valid).sum()), int((pred & ~y_valid).sum())
+    thresh_stats = {
+        "n_flagged": int(pred.sum()), "precision": round(tp / max(tp + fp, 1), 4),
+        "recall": round(tp / max(int(y_valid.sum()), 1), 4),
+    }
+    summary["deployment_threshold"] = round(float(thresh), 4)
+    summary["deployment_threshold_stats"] = thresh_stats
+    log.info("Deployment threshold (precision>=0.5 target, pooled LOQO scores): %.4f -> %s",
+              thresh, thresh_stats)
+
     anchor = exp_scale_anchor(table)
     abl = ablate(table, l2=l2)
     summary["ablation_median_auc"] = {k: float(v) for k, v in abl["auc"].items()}

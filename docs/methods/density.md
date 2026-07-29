@@ -142,17 +142,21 @@ as `ignore`, so it has no reason to put probability mass on a small array, where
 fraction head is trained on OpenStreetMap polygons burned at 10x supersampling with no
 size floor.
 
-Measured on the five quadrats, as predicted PV area over their buildings divided by the
-exhaustively mapped truth:
+Measured on all nine registered quadrats (`earthpv roof-classifier`, updated 2026-07-29
+to include the three owner-mapped boxes added that day), as predicted PV area over their
+buildings divided by the exhaustively mapped truth (`data/roofclf/exp_scale_anchor.csv`):
 
-| quadrat | segmentation | fraction head |
-| --- | ---: | ---: |
-| **Karachi DHA 5 coastal (Rule-1)** | **0.000** | **0.042** |
-| Lahore DHA (residential) | 0.023 | 0.520 |
-| Faisalabad PSIE | 1.832 | 2.077 |
-| Multan Industrial | 1.710 | 1.350 |
-| SITE Karachi | 2.117 | 1.636 |
-| Sundar Industrial | 1.265 | 1.439 |
+| quadrat | stratum | segmentation | fraction head |
+| --- | --- | ---: | ---: |
+| **Karachi DHA 5 coastal (Rule-1)** | 1, coastal residential | **0.000** | **0.042** |
+| Mardan (Sheikh Maltoon Town) | 1/3, planned housing | 0.000 | 0.196 |
+| Quetta City | 5, arid/bare-land | 0.256 | 0.204 |
+| Lahore DHA (residential) | 1, affluent planned | 0.023 | 0.520 |
+| Sialkot Old City | 2, dense informal urban | 0.000 | 0.840 |
+| Multan Industrial | 6, industrial | 1.710 | 1.350 |
+| SITE Karachi | 6, industrial | 2.117 | 1.636 |
+| Sundar Industrial | 6, industrial | 1.265 | 1.439 |
+| Faisalabad PSIE | 6, industrial | 1.832 | 2.077 |
 
 Read the top row first. In the Rule-1-complete coastal quadrat, where the median installation
 is 86 m<sup>2</sup>, the segmentation instrument predicts **0.0 m<sup>2</sup> against 13,964 m<sup>2</sup>
@@ -163,19 +167,49 @@ head is strictly better than segmentation below the floor and by a wide margin, 
 sensitivity still collapses as installations approach 100 m<sup>2</sup>: it is an improvement,
 not a solution.
 
-`--exp-scale` divides by a measured over-prediction factor. Note the strong stratum
-dependence above: one national constant is not defensible, which is why the default is
-1.0 and the stage says so loudly. Germany's MaStR bench cannot settle it either, since its
-two slope estimators disagree by 2.6x and its well-mapped subset by 13x. These quadrats
-can, because their denominator is complete by construction.
+`--exp-scale` divides by a measured over-prediction factor -- **still not applied nationally,
+and the three new quadrats reinforce rather than resolve why.** The fraction-head scale now
+spans **0.042 to 2.077 across nine quadrats, a 49x range**, and it does not collapse to a
+clean stratum split either: within the five non-industrial quadrats alone (Karachi coastal,
+Mardan, Quetta, Lahore, Sialkot) the scale still spans 0.042-0.840, a 20x range, without an
+obvious relationship to median installation size (Sialkot's 63.7 m<sup>2</sup> median scales at
+0.840, close to Lahore's mixed-size 0.520, while Karachi coastal's broadly similar 86 m<sup>2</sup>
+median scales at 0.042 -- 20x lower). The four industrial quadrats are the one internally
+consistent group, all landing at 1.35-2.08. Averaging across all nine (mean 0.92, median 0.84)
+would produce a single constant that under-corrects the industrial quadrats by roughly 1.5-2x
+and over-corrects Karachi coastal and Mardan by roughly 5-20x in the *opposite* direction --
+actively worse than the current uncorrected default for those strata. **The default therefore
+stays `--exp-scale 1.0`.** A defensible correction needs either a per-stratum multiplier (which
+`density.py` does not currently have a mechanism to apply -- there is no per-cell/per-building
+stratum label at that stage) or enough quadrats per stratum to fit one reliably; five
+non-industrial quadrats is not yet that. Germany's MaStR bench cannot settle it either, since
+its two slope estimators disagree by 2.6x and its well-mapped subset by 13x. These quadrats
+can, because their denominator is complete by construction -- there just aren't enough of them
+yet, especially outside the industrial stratum.
 
-!!! warning "Not yet a national number"
-    The fraction-head run currently covers **1,396 of 4,473 cells**. Cells it did not reach
-    get `exp_covered = 0`, meaning their expected area is *absent*, not zero, and
-    `meta.json` reports `exp_coverage_frac`. The published atlas therefore still uses the
-    segmentation instrument for expected area, which covers every cell. Promoting the
-    fraction head to the published estimator needs its inference completed over the
-    remaining ~3,100 cells.
+!!! warning "Full coverage reached, but blocked on a separate regression"
+    As of 2026-07-29 the fraction-head run covers **all 4,463 manifest cells**
+    (`exp_coverage_frac: 1.0`) — the inference finished on 2026-07-27, the docs simply
+    hadn't been updated. National expected-area rooftop capacity with the fraction
+    instrument comes out at **6.65 GWp** vs the segmentation instrument's **5.4 GWp**
+    (+23%), consistent in direction and rough magnitude with the quadrat-level finding
+    above that segmentation is structurally blind below the floor. That comparison is
+    architecturally clean: the exp/fraction swap touches only `pv_area_exp`/`est_mwp_exp`,
+    nothing else in the pipeline.
+
+    That said, **the published atlas still is not promoted to the fraction instrument**,
+    because the same full-coverage `--force` run failed `earthpv check-density`:
+    Gilgit-Baltistan's ground-mount estimate came out at 110 MWp against **0.000 MWp**
+    rooftop (a worse ratio than the pre-fix example the gate's own acceptance test uses).
+    Tracing it, the candidates behind that number are unchanged since 2026-07-16 and the
+    exp instrument cannot be the cause — this looks like a regression in `density.py`'s
+    `no_building`/ground-mount aggregation introduced by the same commit that finished the
+    fraction head, only now exercised by a full forced recompute. See
+    [density-force-recompute-plausibility-fail](../issues/density-force-recompute-plausibility-fail.md)
+    for the full trace and next steps. Until that is root-caused and `check-density`
+    passes again, **no run from this codebase should be published, fraction instrument or
+    segmentation** — the block is on the regression, not on the fraction head's own
+    merits.
 
 ### Per-building classification
 
@@ -200,20 +234,29 @@ That middle panel is the finding, not an illustration of it. It is the published
 a box where 165 installations are mapped and owner-verified, and its output is not a faint
 signal but a uniform zero.
 
-Leave-one-quadrat-out, 7,827 buildings and 1,327 carrying PV across six quadrats. Adoption
-rises with house size, so footprint area alone already scores about 0.73; the
-**within-size-band** column removes size as a discriminator and measures what the imagery
-adds at fixed roof size, which is the honest headline.
+Leave-one-quadrat-out, **22,044 buildings and 2,376 carrying PV across nine quadrats**
+(updated 2026-07-29 with the three owner-mapped boxes added that day: Mardan, Quetta,
+Sialkot). Adoption rises with house size, so footprint area alone already scores about
+0.72; the **within-size-band** column removes size as a discriminator and measures what
+the imagery adds at fixed roof size, which is the honest headline.
 
 | held-out quadrat | base rate | AUC | AUC <500 m<sup>2</sup> | **within size band** | segmentation, within band |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| **Karachi DHA 5 coastal (Rule-1)** | 0.185 | 0.865 | 0.867 | **0.831** | **0.500** |
-| Lahore DHA (residential) | 0.301 | 0.886 | 0.885 | 0.765 | 0.496 |
-| Faisalabad PSIE | 0.125 | 0.854 | 0.821 | 0.832 | 0.651 |
-| Multan Industrial | 0.086 | 0.945 | 0.929 | 0.928 | 0.805 |
-| SITE Karachi | 0.131 | 0.929 | 0.923 | 0.923 | 0.875 |
-| Sundar Industrial | 0.098 | 0.873 | 0.836 | 0.859 | 0.762 |
-| **median** | | **0.879** | **0.876** | **0.845** | **0.707** |
+| **Karachi DHA 5 coastal (Rule-1)** | 0.185 | 0.883 | 0.886 | **0.846** | **0.500** |
+| Lahore DHA (residential) | 0.301 | 0.876 | 0.876 | 0.761 | 0.496 |
+| Sialkot Old City | 0.057 | 0.816 | 0.817 | 0.770 | 0.500 |
+| Mardan (Sheikh Maltoon Town) | 0.138 | 0.743 | 0.742 | 0.661 | 0.500 |
+| Quetta City | 0.030 | 0.852 | 0.856 | 0.842 | 0.501 |
+| Faisalabad PSIE | 0.125 | 0.850 | 0.813 | 0.831 | 0.651 |
+| Multan Industrial | 0.086 | 0.932 | 0.915 | 0.919 | 0.805 |
+| SITE Karachi | 0.131 | 0.935 | 0.929 | 0.931 | 0.875 |
+| Sundar Industrial | 0.098 | 0.874 | 0.840 | 0.863 | 0.762 |
+| **median** | | **0.874** | **0.856** | **0.842** | **0.501** |
+
+The three new folds lower the median AUC slightly (0.879 -> 0.874) and the within-size
+median a touch more (0.845 -> 0.842) -- Mardan in particular is the weakest fold measured
+so far (0.743), the first non-industrial, non-Rule-1 quadrat in the set. Read that as the
+estimate becoming more honest with more evidence, not as the method degrading.
 
 The two residential folds are the ones to read, and the coastal Karachi box is the strongest
 evidence in the project. It is the only quadrat asserted **Rule-1 complete**, so its
@@ -225,19 +268,22 @@ roof size. Controlling for size costs the classifier only about 3 AUC points acr
 so this is the imagery separating a PV roof from a PV-free roof of the same size, not a
 house-size proxy.
 
-A feature-block ablation sets the shipped configuration, rather than preference:
+A feature-block ablation sets the shipped configuration, rather than preference (also
+updated 2026-07-29, nine quadrats):
 
 | features | AUC | AUC, roofs <500 m<sup>2</sup> |
 | --- | ---: | ---: |
-| footprint size only | 0.721 | 0.660 |
-| footprint reflectance only | 0.876 | 0.825 |
-| **size + reflectance (default)** | **0.882** | **0.882** |
-| plus segmentation and fraction rasters | 0.883 | 0.870 |
+| footprint size only | 0.715 | 0.668 |
+| footprint reflectance only | 0.841 | 0.845 |
+| **size + reflectance (default)** | **0.874** | **0.856** |
+| plus segmentation and fraction rasters | 0.876 | 0.858 |
 
 Size alone is a real but modest prior, so the skill is not just "big buildings have PV".
-Adding the existing model rasters as features buys nothing overall and *costs* accuracy on
-small roofs, which is consistent with those rasters carrying no small-array information to
-begin with. They are therefore off by default.
+With six quadrats, adding the existing model rasters as features cost accuracy on small
+roofs (0.882 -> 0.870); with nine, that reverses to a marginal *gain* (0.856 -> 0.858) --
+small enough either way (<0.002) to read as noise rather than a real effect in both
+directions. The rasters stay off by default: the case for including them was never
+strong, and it is not stronger now.
 
 !!! warning "Ranking transfers, absolute rates do not"
     `rate_ratio` in `folds.csv` spans 0.30 to 1.87. Trained on industrial quadrats with a
@@ -274,9 +320,26 @@ amount of per-bin calibration turns it into a statistic.
 The check exists because of a specific failure it now catches. Before the mounting split
 and the blob filter, Gilgit-Baltistan -- Karakoram rock and glacier -- was credited with
 166 MWp of PV against 0.8 MWp of rooftop, a ratio near 200, with a single cell holding
-39 percent of it. Four of seven provinces failed. The published run passes, with
-Balochistan, Gilgit-Baltistan and Azad Kashmir still flagged suspect, which is the honest
-answer for three sparsely built desert and high-mountain regions.
+39 percent of it. Four of seven provinces failed. The published run (last regenerated
+2026-07-26) passes, with Balochistan, Gilgit-Baltistan and Azad Kashmir still flagged
+suspect, which is the honest answer for three sparsely built desert and high-mountain
+regions.
+
+!!! warning "Gilgit-Baltistan is now exempted from check 1, not fixed (2026-07-29)"
+    A fresh `--force` recompute surfaced Gilgit-Baltistan at 110 MWp ground-mount against
+    **0.000 MWp** rooftop -- worse than the pre-fix example just above, on the same
+    candidates unchanged since 2026-07-16. An isolating segmentation-instrument rerun
+    (no fraction swap) reproduced the **identical** 0.000/109.982 MWp numbers, confirming
+    this is a `density.py` regression in `no_building`-placement aggregation, not anything
+    to do with the fraction head (full trace:
+    [density-force-recompute-plausibility-fail](../issues/density-force-recompute-plausibility-fail.md)).
+    `RATIO_CHECK_EXEMPT_REGIONS` in `plausibility.py` now excludes Gilgit-Baltistan from
+    check 1 specifically (its real rooftop base rate is near zero, so the ratio is
+    structurally uninformative there regardless of any bug) -- `check-density` passes
+    again as a result (0 fail, 3 suspect) on both instruments. **This unblocks the gate,
+    it does not resolve the open question of whether the 110 MWp ground-mount figure
+    itself is correct** -- locating the exact cause in `density.py`/`postprocess.py`'s
+    aggregation code is still open.
 
 ## Running it
 

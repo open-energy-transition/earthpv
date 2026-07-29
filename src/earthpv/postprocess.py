@@ -110,6 +110,76 @@ def flag_oversize(
     return cands
 
 
+def replace_with_osm_geometry(
+    cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, max_distance_m: float = NEAR_BUILDING_M,
+) -> gpd.GeoDataFrame:
+    """Swap a candidate's model-polygonized blob for the real OSM footprint, where one
+    exists (todo.md: "replace detected polygons for already mapped OSM data with the OSM
+    polygon"). `polygonize_chips` produces a coarse threshold-and-merge shape; where OSM
+    already has the human-mapped installation, that geometry is strictly more accurate
+    for every downstream area-derived number (`*_det`, `density`'s per-building join, the
+    leads/MapRoulette product) with no new false-positive risk -- the candidate already
+    existed, only its shape changes.
+
+    Uses `export.match_mapped_polygons`'s chunked nearest-neighbor match, which only
+    considers polygon/multipolygon mapped features (a point can't replace an area).
+    `max_distance_m` defaults to `NEAR_BUILDING_M` for the same reasoning as the
+    building-adjacency check: a coarse blob and its real footprint should be a few tens
+    of meters apart at most, not the ~100 m "is this roughly the same installation"
+    threshold used for recall/precision calibration or new-leads exclusion elsewhere.
+
+    **Imagery-currency caveat.** The replacement geometry is only as current as the OSM
+    mapper's own imagery, which lags real installation growth (`docs
+    /calibration-mapping-protocol.md`); a small/informal array added since that mapping
+    pass, or one that has since grown, will not show up in the substituted shape. The
+    match's `osm_matched_id`/`osm_match_timestamp` are kept precisely so this is
+    auditable rather than silent -- acquiring fresher ground truth for stale matches is
+    future work, not solved here.
+    """
+    from earthpv.export import match_mapped_polygons
+
+    cands = cands.reset_index(drop=True)
+    cands["geometry_source"] = "model"
+    cands["osm_matched_id"] = pd.array([None] * len(cands), dtype="object")
+    cands["osm_match_dist_m"] = np.nan
+    cands["osm_match_timestamp"] = pd.Series([pd.NaT] * len(cands), dtype="object")
+    if cands.empty or mapped is None or mapped.empty:
+        return cands
+
+    match = match_mapped_polygons(cands, mapped, max_distance_m=max_distance_m)
+    matched = match["matched_id"].notna().to_numpy()
+    if not matched.any():
+        return cands
+    # Real OSM polygons occasionally have invalid topology (self-intersections etc.) that
+    # a model-polygonized shape never has -- shapely's building-intersection join downstream
+    # raises GEOSException on these; repair rather than let one bad OSM way take down a
+    # country-scale run.
+    import shapely
+
+    osm_geoms = shapely.make_valid(match.loc[matched, "geometry"].to_numpy())
+    cands.loc[matched, "geometry"] = osm_geoms
+    cands.loc[matched, "area_m2"] = [
+        geodesic_area_m2(g) for g in match.loc[matched, "geometry"]
+    ]
+    cands.loc[matched, "geometry_source"] = "osm"
+    cands.loc[matched, "osm_matched_id"] = match.loc[matched, "matched_id"].to_numpy()
+    cands.loc[matched, "osm_match_dist_m"] = match.loc[matched, "dist_m"].to_numpy()
+    cands.loc[matched, "osm_match_timestamp"] = match.loc[matched, "timestamp"].to_numpy()
+
+    ts = pd.to_datetime(match.loc[matched, "timestamp"], errors="coerce", utc=True)
+    known = ts.notna()
+    stale = known & (ts < (pd.Timestamp.now(tz="UTC") - pd.DateOffset(months=12)))
+    log.info(
+        "OSM geometry replacement: %d/%d candidates now carry the mapped OSM footprint "
+        "(<=%.0f m). Edit-date known for %d/%d matches, of which %d are >12 months old "
+        "(imagery may be stale -- see docs/calibration-mapping-protocol.md); %d have no "
+        "edit-date metadata at all (rooftopsenti-sourced or a pre-`out meta` Overpass pull).",
+        int(matched.sum()), len(cands), max_distance_m,
+        int(known.sum()), int(matched.sum()), int(stale.sum()), int((~known).sum()),
+    )
+    return cands
+
+
 def _join_buildings_metric(
     cands: gpd.GeoDataFrame, buildings: gpd.GeoDataFrame, near_m: float = NEAR_BUILDING_M
 ) -> gpd.GeoDataFrame:
@@ -476,6 +546,7 @@ def run_postprocess(
     preboom_prob_dir: Path | None = None,
     check_glint: bool = False, glint_top_n: int = 300, glint_skip_top: int = 100,
     glint_tile_deg: float = 1.0, glint_self_referenced: bool = False,
+    osm_replace: bool = True, osm_match_distance_m: float = NEAR_BUILDING_M,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this — isolated detections (cropland glare, bare soil, water glint)
@@ -483,7 +554,12 @@ def run_postprocess(
     a real distance was resolved (`_join_buildings_metric`, i.e. VIDA/local buildings
     available); candidates with no distance signal at all (`-1`, e.g. the Overture
     fallback join or no buildings anywhere in the AOI) are left alone rather than
-    dropped on missing information."""
+    dropped on missing information.
+
+    `osm_replace` swaps a candidate's polygonized blob for the real OSM footprint where
+    one is mapped within `osm_match_distance_m` (see `replace_with_osm_geometry`) —
+    runs before the building join so placement classification sees the corrected
+    geometry too, and before `_add_ranking` so `rank_score` sees the corrected area."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
     prob_dir = Path(pred_dir) / aoi / "prob"
@@ -494,6 +570,12 @@ def run_postprocess(
         cands = cands[cands.area_m2 >= 50].reset_index(drop=True)
         cands = flag_oversize(cands)
         _, cfg = resolve_aoi(aoi, settings)
+        if osm_replace:
+            from earthpv.export import load_mapped_reference_attrs
+
+            mapped = load_mapped_reference_attrs(aoi, cfg, settings)
+            cands = replace_with_osm_geometry(cands, mapped, max_distance_m=osm_match_distance_m)
+            cands = flag_oversize(cands)  # a replaced geometry can cross MAX_CANDIDATE_M2
         buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir)
         if buildings is not None and not buildings.empty:
             log.info("Joining %d candidates with %d buildings", len(cands), len(buildings))

@@ -212,6 +212,15 @@ def postprocess(
         "the annulus is itself lined with similarly-bright rooftops and the default "
         "spatial check never fires (see earthpv.glint.annotate_spikes)"
     ),
+    osm_replace: bool = typer.Option(
+        True, help="Swap a candidate's polygonized blob for the real OSM footprint "
+        "where one is mapped within --osm-match-distance-m (strictly more accurate; "
+        "the candidate already existed, only its shape/area changes)"
+    ),
+    osm_match_distance_m: float = typer.Option(
+        30.0, help="Max distance (m) to accept an OSM polygon as the same installation "
+        "as a candidate, for --osm-replace (matches postprocess.NEAR_BUILDING_M)"
+    ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
     from earthpv.postprocess import run_postprocess
@@ -221,6 +230,7 @@ def postprocess(
         preboom_prob_dir=preboom_prob_dir, check_glint=check_glint, glint_top_n=glint_top_n,
         glint_skip_top=glint_skip_top, glint_tile_deg=glint_tile_deg,
         glint_self_referenced=glint_self_referenced,
+        osm_replace=osm_replace, osm_match_distance_m=osm_match_distance_m,
     )
 
 

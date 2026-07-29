@@ -82,6 +82,50 @@ aois:
     bbox: [68.0, 20.0, 74.6, 24.8]
     division: { name: Gujarat, country: IN, subtype: region }
 
+  # The 9 Rule-1-complete calibration quadrats (docs/calibration-mapping-protocol.md),
+  # added as fraction-head training AOIs (2026-07-29): each is a tiny 1 km^2-ish box
+  # inside a region pakistan_500 already has composites for, so no new imagery. No
+  # val_tiles -- every chip built here is `split=train`. karachi_coast is deliberately
+  # NOT trained on: it is the held-out fold for measuring this retrain's actual effect
+  # (see docs/methods/detection.md / the fraction-head-v2 retrain writeup).
+  faisalabad_calib_1km:
+    bbox: [73.047103, 31.493125, 73.057639, 31.502108]
+    division: { name: Punjab, country: PK, subtype: region }
+    source_region: pakistan_500
+  lahore_calib_1km:
+    bbox: [74.399244, 31.458839, 74.409775, 31.467822]
+    division: { name: Punjab, country: PK, subtype: region }
+    source_region: pakistan_500
+  mardan_calib_1km:
+    bbox: [72.019951, 34.18488, 72.0308, 34.193896]
+    division: { name: Khyber Pakhtunkhwa, country: PK, subtype: region }
+    source_region: pakistan_500
+  multan_calib_1km:
+    bbox: [71.377714, 30.121733, 71.3881, 30.130716]
+    division: { name: Punjab, country: PK, subtype: region }
+    source_region: pakistan_500
+  quetta_calib_1km:
+    bbox: [67.010096, 30.187005, 67.02048, 30.196026]
+    division: { name: Balochistan, country: PK, subtype: region }
+    source_region: pakistan_500
+  sialkot_calib_1km:
+    bbox: [74.536883, 32.499346, 74.547524, 32.508364]
+    division: { name: Punjab, country: PK, subtype: region }
+    source_region: pakistan_500
+  site_karachi_calib_1km:
+    bbox: [66.989194, 24.902509, 66.999098, 24.911492]
+    division: { name: Sindh, country: PK, subtype: region }
+    source_region: pakistan_500
+  sundar_calib_1km:
+    bbox: [74.166838, 31.281673, 74.17735, 31.290656]
+    division: { name: Punjab, country: PK, subtype: region }
+    source_region: pakistan_500
+  # karachi_coast_calib_700m: held out on purpose, see note above -- no chips built.
+  karachi_coast_calib_700m:
+    bbox: [67.036521, 24.795372, 67.043448, 24.80166]
+    division: { name: Sindh, country: PK, subtype: region }
+    source_region: pakistan_500
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]
