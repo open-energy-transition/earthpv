@@ -43,7 +43,13 @@ _SELECTORS = ['["generator:source"="solar"]', '["plant:source"="solar"]']
 
 def _build_query(region_filter: str, timeout: int) -> str:
     clauses = "\n".join(f'  nwr{sel}{region_filter};' for sel in _SELECTORS)
-    return f"[out:json][timeout:{timeout}];\n(\n{clauses}\n);\nout body geom;"
+    # `meta` (not `body`) so each element carries its last-edit `timestamp` -- OSM mapping
+    # passes lag real-world installation growth (docs/calibration-mapping-protocol.md:
+    # "PV in Pakistan grows fast... a quadrat mapped against year-old imagery reads as
+    # 'model overcounts' when the model simply sees newer panels"), and a candidate whose
+    # polygon gets REPLACED by a mapped feature (postprocess.replace_with_osm_geometry)
+    # inherits that feature's age with no signal of its own that it might be stale.
+    return f"[out:json][timeout:{timeout}];\n(\n{clauses}\n);\nout meta geom;"
 
 
 def _query_bbox(bbox: Bbox, timeout: int) -> str:
@@ -56,7 +62,7 @@ def _query_place(place: str, timeout: int) -> str:
     escaped = place.replace('"', '\\"')
     prelude = f'area["name"="{escaped}"]->.searchArea;\n'
     clauses = "\n".join(f'  nwr{sel}(area.searchArea);' for sel in _SELECTORS)
-    return f"[out:json][timeout:{timeout}];\n{prelude}(\n{clauses}\n);\nout body geom;"
+    return f"[out:json][timeout:{timeout}];\n{prelude}(\n{clauses}\n);\nout meta geom;"
 
 
 # overpass-api.de's reverse proxy 406s the default python-requests User-Agent
@@ -148,11 +154,16 @@ def fetch_solar_overpass(
             "plant_source": tags.get("plant:source"),
             "generator_place": tags.get("generator:place"),
             "osm_location": tags.get("location"),
+            # Last-edit time (`out meta`), a proxy for imagery date the mapper actually
+            # saw -- absent, not "recent", when the endpoint omits meta (e.g. some mirrors
+            # under load); do not assume freshness on a missing value.
+            "osm_timestamp": el.get("timestamp"),
             "geometry": geom,
         })
     gdf = gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:4326") if rows else \
         gpd.GeoDataFrame(columns=["id", "class", "generator_source", "plant_source",
-                                   "generator_place", "osm_location"], geometry=[], crs="EPSG:4326")
+                                   "generator_place", "osm_location", "osm_timestamp"],
+                          geometry=[], crs="EPSG:4326")
     if not gdf.empty:
         gdf["kind"] = gdf["class"].map(lambda c: "generator" if c == "generator" else "plant")
     log.info(

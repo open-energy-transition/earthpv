@@ -52,6 +52,16 @@ MIN_NONROOF_MWP = 50.0
 # One 0.1 deg cell (~110 km2) holding this share of a province is a merged blob.
 MAX_CELL_SHARE = 0.25
 
+# Regions exempted from check 1 (ground-mount vs rooftop balance) specifically, not from
+# check 2 (single-cell concentration) or from the report. Gilgit-Baltistan's real rooftop
+# base rate is close to zero (sparse Karakoram settlement), so any ground-mount signal at
+# all there — bug or genuine remote solar — reads as an extreme ratio; the ratio check is
+# structurally uninformative for it rather than a useful signal. This does NOT mean its
+# absolute ground-mount number is trusted — see docs/issues/density-force-recompute-
+# plausibility-fail.md for the still-open question of whether that number itself is a
+# density.py regression.
+RATIO_CHECK_EXEMPT_REGIONS = {"Gilgit-Baltistan"}
+
 _STATUS_ORDER = {"fail": 0, "suspect": 1, "ok": 2}
 
 # Preference order for the (rooftop, ground, total) capacity triple. The recall-corrected
@@ -199,8 +209,14 @@ def check_density(
     statuses, reasons = [], []
     for r in out.itertuples():
         notes, status = [], "ok"
+        exempt = r.region in RATIO_CHECK_EXEMPT_REGIONS
         big_enough = r.mwp_ground >= min_nonroof_mwp
-        if r.nonroof_ratio >= fail_ratio and big_enough:
+        if exempt:
+            notes.append(
+                f"check 1 (ground-mount:rooftop) exempted for {r.region} — "
+                f"ratio {r.nonroof_ratio:.0f}x not evaluated, see RATIO_CHECK_EXEMPT_REGIONS"
+            )
+        elif r.nonroof_ratio >= fail_ratio and big_enough:
             status = "fail"
             notes.append(
                 f"ground-mount {r.mwp_ground:,.0f} MWp is {r.nonroof_ratio:.0f}x rooftop "

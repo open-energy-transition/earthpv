@@ -90,8 +90,8 @@ class CompositeIndex:
 
 
 @lru_cache(maxsize=4)
-def composite_index(region_dir: str) -> CompositeIndex:
-    return CompositeIndex(Path(region_dir))
+def composite_index(region_dir: str, layers: int = 1) -> CompositeIndex:
+    return CompositeIndex(Path(region_dir), layers=layers)
 
 
 def load_solar_labels(region_dir: Path, min_area_m2: float = 400.0) -> gpd.GeoDataFrame:

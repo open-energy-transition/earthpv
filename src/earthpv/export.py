@@ -72,6 +72,140 @@ def _load_mapped_reference(aoi: str, cfg: dict, settings) -> gpd.GeoDataFrame | 
     return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs="EPSG:4326")
 
 
+def load_mapped_reference_attrs(aoi: str, cfg: dict, settings) -> gpd.GeoDataFrame:
+    """Attribute-preserving twin of `_load_mapped_reference`, for callers that need to
+    know WHICH mapped feature matched (geometry replacement), not just whether one
+    exists nearby. Same two sources (rooftopsenti cache + `data/labels/*_overpass_solar
+    .parquet`), reconciled to a common schema: `id`, `placement`, `area_m2`, `source`,
+    `osm_timestamp`, `geometry`. Empty GeoDataFrame (not None) when neither source has
+    anything, so callers can treat "no reference" and "reference with 0 rows"
+    identically.
+
+    `osm_timestamp` (the mapped feature's last OSM edit, from `overpass.py`'s `out
+    meta`) is a proxy for how current the polygon is -- OSM mapping passes lag
+    real-world installation growth (`docs/calibration-mapping-protocol.md`), so an
+    older polygon may under- or over-represent what is actually there today. `NaT` for
+    the rooftopsenti-cached source (no edit metadata available) and any Overpass pull
+    predating this field -- absence, not evidence of freshness.
+    """
+    from earthpv.local_source import load_solar_labels
+
+    cols = ["id", "placement", "area_m2", "source", "osm_timestamp", "geometry"]
+    parts = []
+    source_region = cfg.get("source_region")
+    if source_region:
+        region_dir = Path(settings.raw["local_root"]) / source_region
+        cached = load_solar_labels(region_dir)
+        if cached is not None and not cached.empty:
+            c = cached.rename(columns={"osm_id": "id"})
+            # rooftopsenti's osm_id is int64; Overpass's id is already a "osm-{type}/{n}"
+            # string -- normalise to string so the merged column has one dtype (a mixed
+            # int/str object column fails to_parquet's arrow conversion).
+            c["id"] = c["id"].astype(str)
+            c["source"] = "rooftopsenti"
+            c["osm_timestamp"] = pd.NaT
+            parts.append(c[cols])
+    for p in sorted(Path("data/labels").glob("*_overpass_solar.parquet")):
+        fresh = gpd.read_parquet(p)
+        if fresh.empty:
+            continue
+        # Ad hoc Overpass pulls vary in vintage/schema (e.g. lahore_city10k/city4k predate
+        # `classify_placement` being wired in) -- only `id`/`geometry` are load-bearing for
+        # matching; backfill the rest rather than dropping the whole file's ground truth.
+        f = fresh.copy()
+        if "id" not in f.columns:
+            log.warning("%s has no `id` column -- skipped", p.name)
+            continue
+        if "placement" not in f.columns:
+            f["placement"] = "unknown"
+        if "area_m2" not in f.columns:
+            from earthpv.labels import geodesic_area_m2
+            f["area_m2"] = [geodesic_area_m2(g) for g in f.geometry]
+        if "osm_timestamp" not in f.columns:
+            f["osm_timestamp"] = pd.NaT  # pull predates `out meta` (see overpass.py)
+        f["source"] = "overpass"
+        parts.append(f[cols])
+    if not parts:
+        return gpd.GeoDataFrame({c: [] for c in cols}, geometry="geometry", crs="EPSG:4326")
+    out = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs="EPSG:4326")
+    out["id"] = out["id"].astype(str)  # belt-and-suspenders: one dtype regardless of source
+    return out
+
+
+def match_mapped_polygons(
+    cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, max_distance_m: float = 30.0,
+) -> pd.DataFrame:
+    """Nearest mapped-OSM polygon match per candidate, for geometry replacement.
+
+    Unlike `new_lead_mask` (a boolean "is anything nearby"), this returns WHICH mapped
+    feature matched and how far, so the caller can substitute the real OSM geometry for
+    the model's coarse polygonized blob. Only polygon/multipolygon mapped features are
+    considered — a point can't replace an area. Same chunked local-UTM nearest-neighbor
+    pattern as `new_lead_mask`/`postprocess._join_buildings_chunked` (proven at country
+    scale), kept as its own function rather than a shared refactor of `new_lead_mask`
+    itself, since that function is load-bearing for the published recall/precision
+    calibration and this session leaves it untouched on purpose.
+
+    Returns a DataFrame positionally aligned to `cands` with columns `matched_id`
+    (mapped's `id` where a polygon is within `max_distance_m`, else `None`), `dist_m`
+    (else `NaN`), `timestamp` (the matched feature's last OSM edit if `mapped` carries
+    an `osm_timestamp` column, else `NaT` -- see `load_mapped_reference_attrs`), and
+    `geometry` (the matched mapped polygon, else `None`).
+    """
+    n = len(cands)
+    out = pd.DataFrame({
+        "matched_id": pd.array([None] * n, dtype="object"),
+        "dist_m": np.full(n, np.nan),
+        "timestamp": pd.Series([pd.NaT] * n, dtype="object"),
+        "geometry": [None] * n,
+    })
+    poly = mapped[mapped.geometry.geom_type.isin(("Polygon", "MultiPolygon"))]
+    if cands.empty or poly.empty:
+        return out
+
+    cands = cands.reset_index(drop=True)
+    reps = cands.geometry.representative_point()
+    chunk_deg = 1.0
+    keys = list(zip(
+        np.floor(reps.x.to_numpy() / chunk_deg).astype(int).tolist(),
+        np.floor(reps.y.to_numpy() / chunk_deg).astype(int).tolist(),
+    ))
+    buf = max_distance_m / 111_000 + 0.02
+    for key in sorted(set(keys)):
+        mask = np.array([k == key for k in keys])
+        sub_positions = np.where(mask)[0]
+        sub = cands[mask]
+        minx, miny, maxx, maxy = sub.total_bounds
+        near = poly.cx[minx - buf: maxx + buf, miny - buf: maxy + buf]
+        if near.empty:
+            continue
+        lon, lat = (minx + maxx) / 2, (miny + maxy) / 2
+        epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) / 6) + 1
+        su = sub.to_crs(epsg)
+        mu = near.to_crs(epsg).reset_index(drop=True)
+        sindex = mu.sindex
+        idx, d = sindex.nearest(su.geometry.values, return_all=False, return_distance=True)
+        # idx[0] = input (candidate-within-chunk) position, idx[1] = tree (mapped) position
+        # -- verified against geopandas' own STRtree.nearest contract, not assumed.
+        for k in range(idx.shape[1]):
+            dist = float(d[k])
+            if dist > max_distance_m:
+                continue
+            cand_pos = sub_positions[int(idx[0, k])]
+            tree_pos = int(idx[1, k])
+            matched_row = near.iloc[tree_pos]
+            out.at[cand_pos, "matched_id"] = matched_row["id"]
+            out.at[cand_pos, "dist_m"] = dist
+            if "osm_timestamp" in near.columns:
+                out.at[cand_pos, "timestamp"] = matched_row["osm_timestamp"]
+            out.at[cand_pos, "geometry"] = matched_row.geometry
+    log.info(
+        "OSM-polygon match (<=%.0f m): %d/%d candidates matched across %d spatial chunks",
+        max_distance_m, out["matched_id"].notna().sum(), n, len(set(keys)),
+    )
+    return out
+
+
 def filter_new_leads(
     cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, min_distance_m: float = 0.0
 ) -> gpd.GeoDataFrame:
