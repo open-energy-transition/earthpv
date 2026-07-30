@@ -467,11 +467,25 @@ The gain concentrates almost entirely in Multan/Sialkot/Sundar -- exactly the th
 low-base-rate quadrats the density-stratified precision work above had to *exclude* from
 calibration because `roofclf` overestimates 2x+ there. That is a coherent story, not a
 coincidence: SPPI agreement specifically catches `roofclf`'s overconfidence in the
-regime already known to be miscalibrated, rather than helping everywhere. Not (yet) a
-national instrument -- SPPI needs the same composite band means already read during
-`roofclf.score_buildings_national`, so folding it in nationally costs no new composite
-read, only saving one more column during the next national scoring pass; that pass has
-not been re-run since this finding.
+regime already known to be miscalibrated, rather than helping everywhere.
+
+**Tested nationally, 2026-07-30, on the domain-restricted population -- and it does not
+help there, confirming the table above rather than adding to it.**
+`score_buildings_national` now saves `sppi` alongside `p_roofclf` (zero extra cost, same
+bands already read; re-run once to backfill it,
+`data/roofclf_national_with_sppi/pakistan/prob/`). Applying the AND-gate to the *same*
+93 domain-restricted cells the sub-400 capacity figure below uses (i.e. exactly the
+Faisalabad/Karachi-coastal/SITE-Karachi-like regime, not Multan/Sialkot/Sundar):
+precision on those three calibration quadrats themselves is **flat** (0.5501 roofclf-alone
+vs 0.5499 AND-gate) while the AND-gate cuts the flagged population by 31% (496,122 to
+343,032 buildings) and the resulting capacity figure by 29% (6,628 to 4,690 MWp) for no
+precision gain. This is the mechanistic prediction of the per-quadrat table above,
+confirmed rather than contradicted: SPPI's benefit lives specifically in the low-density
+quadrats the domain restriction already excludes, so stacking the AND-gate on top of an
+already-restricted, already-well-calibrated population only removes recall for free.
+**Not adopted for the domain-restricted figure.** SPPI remains valuable as a check in
+the regime it actually helps (a future, separate low-density correction, not yet
+designed), not as a blanket addition to every roofclf deployment.
 
 ### Sub-400 m² experimental capacity: density-stratified, deliberately separate
 

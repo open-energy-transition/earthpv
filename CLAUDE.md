@@ -252,8 +252,16 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
   density-stratified precision fit below for overestimating 2x+. Coherent story: SPPI
   agreement specifically catches roofclf's overconfidence in the regime already known
   miscalibrated, not a uniform improvement (Faisalabad/Karachi coastal: -0.7/-0.9pp).
-  Not yet deployed nationally — needs one more national rescore that also saves SPPI's
-  band means (cheap, they're already read during scoring; not yet done). Full writeup:
+  **Tested nationally the same day: does not help the domain-restricted sub-400 figure.**
+  `score_buildings_national` now saves `sppi` (zero extra cost); re-ran nationally
+  (`data/roofclf_national_with_sppi/`). Applying the AND-gate to the SAME 93
+  domain-restricted cells the 6,628 MWp figure uses: precision on those three calibration
+  quadrats is flat (0.5501→0.5499) while the AND-gate cuts flagged buildings 31%
+  (496,122→343,032) and the capacity figure 29% (6,628→4,690 MWp) for zero precision
+  gain — confirms the per-quadrat table's own prediction (SPPI helps in the low-density
+  quadrats the domain restriction already excludes, so stacking it on an
+  already-restricted population only removes recall for free). **Not adopted** for the
+  domain-restricted figure, which stays at 6,628 MWp (roofclf-only). Full writeup:
   `docs/methods/density.md`'s "SPPI cross-validation" subsection.
   **Density-stratified capacity, 2026-07-30 — a partial fix, deliberately kept out of
   `density.py`.** `sub400_capacity.py` (new module) answers "how much does restricting to

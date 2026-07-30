@@ -20,6 +20,7 @@
     --prov-stroke: rgba(247,183,51,0.26);
     --accent: #f5a623;
     --accent-dim: #b5610f;
+    --domain: #2fd9c4;
     --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
     --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
@@ -30,7 +31,7 @@
       --land: #e6dcc7; --map-bg: #efe8d8;
       --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
       --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
-      --accent: #c25e12; --accent-dim: #db7f24; --bloom: 0;
+      --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --bloom: 0;
       --card-ring: rgba(120,80,20,0.14);
       --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
     }
@@ -40,7 +41,7 @@
     --land: #e6dcc7; --map-bg: #efe8d8;
     --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
     --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
-    --accent: #c25e12; --accent-dim: #db7f24; --bloom: 0;
+    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --bloom: 0;
     --card-ring: rgba(120,80,20,0.14);
     --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
   }
@@ -49,7 +50,7 @@
     --land: #241f16; --map-bg: #0c0a07;
     --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
     --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
-    --accent: #f5a623; --accent-dim: #b5610f; --bloom: 0.55;
+    --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
     --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
   }
@@ -99,6 +100,13 @@
   .city-dot { fill: var(--ink); opacity: 0.55; }
   .city-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 10.5px;
     paint-order: stroke; stroke: var(--map-bg); stroke-width: 2.4px; opacity: 0.9; }
+  .domain-ring-rect { fill: none; stroke: var(--domain); stroke-width: 1;
+    stroke-dasharray: 2 1.5; opacity: 0.85; pointer-events: none; }
+  .tip .rowt.domain-flag span:first-child { color: var(--domain); }
+  .legend .domain-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--ink-2); }
+  .legend .domain-key .sw { width: 10px; height: 10px; border: 1px dashed var(--domain);
+    border-radius: 2px; }
 
   /* legend */
   .legend { display: flex; align-items: center; gap: 12px; margin: 12px 6px 2px;
@@ -229,6 +237,9 @@
           <div class="ticks" id="legticks"></div>
         </div>
         <div class="cap">MWp&nbsp;/&nbsp;cell</div>
+        <div class="domain-key" id="domainKey" style="display:none;margin-left:14px">
+          <span class="sw"></span>sub-400 m² coverage (dashed outline)
+        </div>
       </div>
     </section>
 
@@ -251,7 +262,7 @@
         <details class="tablewrap">
           <summary>Full province figures</summary>
           <div style="overflow-x:auto;"><table id="ptable">
-            <thead><tr><th>Province</th><th>__PRIMARY_COL__ MWp</th><th>Exp MWp</th><th>PV bldgs</th><th>m²/km²</th></tr></thead>
+            <thead><tr><th>Province</th><th>__PRIMARY_COL__ MWp</th><th>__SECONDARY_COL__ MWp</th><th>PV bldgs</th><th>m²/km²</th></tr></thead>
             <tbody></tbody>
           </table></div>
         </details>
@@ -302,11 +313,7 @@
           <td>kWp &rarr; MWp</td></tr>
       </tbody>
     </table>
-    <p class="note" style="margin-top:14px;"><b>A<sub>det</sub></b> counts only pixels above the
-      0.30 threshold that fall on a building footprint &mdash; the precision-honest floor.
-      <b>A<sub>exp</sub></b> integrates sub-threshold probability, so it leans high. Reported
-      capacity is <b>P&nbsp;=&nbsp;A&nbsp;&times;&nbsp;&eta;</b> for each, giving the detected /
-      expected pair (4,720 / 4,163 MWp nationwide) that brackets the true installed capacity.</p>
+    <p class="note" style="margin-top:14px;">__FORMULA_NOTE_HTML__</p>
   </section>
 
   <div class="foot" id="foot"></div>
@@ -408,6 +415,23 @@
     }
     svg.appendChild(gC);
 
+    // domain-cell overlay: c[6]===1 marks a cell with real sub-400 m2 calibration
+    // coverage (see __FORMULA_NOTE_HTML__/legend) -- drawn over ALL cells regardless of
+    // value so an unlit domain cell (combined===0) is still flagged as measured, not blank.
+    if (DATA.cells.some(c => c[6])) {
+      const gD = el("g", {class:"domain-ring"});
+      for (const c of DATA.cells){
+        if (!c[6]) continue;
+        const tl = proj(c[0], c[1] + 0.1);
+        gD.appendChild(el("rect", {
+          x:(tl[0]+0.8).toFixed(1), y:(tl[1]+0.8).toFixed(1),
+          width:Math.max(cw-1.6,0.5).toFixed(1), height:Math.max(ch-1.6,0.5).toFixed(1),
+          class:"domain-ring-rect",
+        }));
+      }
+      svg.appendChild(gD);
+    }
+
     // province strokes
     const gS = el("g", {});
     for (const p of DATA.provinces) gS.appendChild(el("path", {d:ringPath(p.rings), class:"prov-line"}));
@@ -430,11 +454,13 @@
       const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
+      const domainRow = (c[6]) ? `<div class="rowt domain-flag"><span>&#9679; sub-400 m² coverage</span><span>in domain</span></div>` : "";
       tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
         + `<div class="rowt"><span>__PRIMARY_LABEL__</span><span>${c[2].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>Expected</span><span>${c[3].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>__SECONDARY_LABEL__</span><span>${c[3].toFixed(1)} MWp</span></div>`
         + `<div class="rowt"><span>PV buildings</span><span>${c[4].toLocaleString()}</span></div>`
-        + `<div class="rowt"><span>Roof area</span><span>${c[5].toFixed(1)} km²</span></div>`;
+        + `<div class="rowt"><span>Roof area</span><span>${c[5].toFixed(1)} km²</span></div>`
+        + domainRow;
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
@@ -446,6 +472,7 @@
     const ticks = [0.1, 1, 10, 100];
     document.getElementById("legticks").innerHTML =
       ticks.map(v => `<span style="left:${(tOf(v)*100).toFixed(1)}%">${v}</span>`).join("");
+    if (DATA.cells.some(c => c[6])) document.getElementById("domainKey").style.display = "flex";
   }
 
   // ---- side panel (theme-independent) ----

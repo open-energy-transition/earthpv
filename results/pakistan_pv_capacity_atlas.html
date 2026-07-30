@@ -1,0 +1,489 @@
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --blue-100: #cde2fb; --blue-150: #b7d3f6; --blue-200: #9ec5f4; --blue-250: #86b6ef;
+    --blue-300: #6da7ec; --blue-350: #5598e7; --blue-400: #3987e5; --blue-450: #2a78d6;
+    --blue-500: #256abf; --blue-550: #1c5cab; --blue-600: #184f95; --blue-650: #104281; --blue-700: #0d366b;
+    --orange-100:#fbe3d4; --orange-300:#f2a374; --orange-450:#eb6834; --orange-600:#a8461f; --orange-700:#7e3417;
+    --status-good: #0ca30c; --status-warning:#fab219; --status-serious:#ec835a; --status-critical:#d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --blue-400: #3987e5; --blue-450: #2a78d6; --blue-500: #256abf;
+      --orange-450: #d95926; --orange-300:#e6885a; --orange-600:#f3b088;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --blue-400: #3987e5; --blue-450: #2a78d6; --blue-500: #256abf;
+    --orange-450: #d95926; --orange-300:#e6885a; --orange-600:#f3b088;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  .viz-root {
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+    padding: 0 0 64px 0;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  header.hero { padding: 48px 0 28px 0; }
+  header.hero h1 { font-size: 1.7rem; margin: 0 0 8px 0; letter-spacing: -0.01em; }
+  header.hero p.sub { color: var(--text-secondary); max-width: 720px; margin: 0; font-size: 0.98rem; }
+  header.hero .datestamp { color: var(--text-muted); font-size: 0.82rem; margin-top: 10px; }
+
+  .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0 8px 0; }
+  @media (max-width: 720px) { .stat-row { grid-template-columns: 1fr; } }
+  .stat-tile {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .stat-tile .label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600; }
+  .stat-tile .value { font-size: 2.1rem; font-weight: 650; margin: 6px 0 2px 0; }
+  .stat-tile .value .unit { font-size: 1rem; font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
+  .stat-tile .detail { font-size: 0.85rem; color: var(--text-secondary); }
+  .stat-tile .scope-flag {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+    font-size: 0.76rem; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  }
+  .scope-flag.national { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); }
+  .scope-flag.partial { background: color-mix(in srgb, var(--status-warning) 22%, transparent); color: #9a6b04; }
+  :root[data-theme="dark"] .scope-flag.partial, @media (prefers-color-scheme: dark) { }
+  .scope-flag.partial { color: #9a6b04; }
+  @media (prefers-color-scheme: dark) { .scope-flag.partial { color: var(--status-warning); } }
+  :root[data-theme="dark"] .scope-flag.partial { color: var(--status-warning); }
+
+  section.block { margin-top: 44px; }
+  section.block h2 { font-size: 1.25rem; margin: 0 0 4px 0; }
+  section.block .section-sub { color: var(--text-secondary); font-size: 0.92rem; max-width: 760px; margin: 0 0 20px 0; }
+
+  .panel { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+
+  svg { display: block; max-width: 100%; height: auto; }
+  .province-path { stroke: var(--surface-1); stroke-width: 1.4; cursor: pointer; transition: filter 0.1s; }
+  .province-path:hover { filter: brightness(1.08); }
+  .cell-dot { cursor: pointer; }
+  .cell-dot:hover { stroke: var(--text-primary); stroke-width: 1.5; }
+
+  .legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.78rem; color: var(--text-secondary); }
+  .legend .ramp { height: 10px; flex: 1; border-radius: 3px; }
+  .legend-blue .ramp { background: linear-gradient(90deg, var(--blue-100), var(--blue-700)); }
+  .legend-orange .ramp { background: linear-gradient(90deg, var(--orange-100), var(--orange-700)); }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 40;
+    background: var(--text-primary); color: var(--surface-1);
+    font-size: 0.78rem; padding: 8px 10px; border-radius: 8px; max-width: 240px;
+    opacity: 0; transform: translateY(4px); transition: opacity 0.08s, transform 0.08s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .tooltip.show { opacity: 1; transform: translateY(0); }
+  .tooltip b { display: block; margin-bottom: 3px; font-size: 0.82rem; }
+  .tooltip .tt-row { display: flex; justify-content: space-between; gap: 14px; color: var(--surface-1); opacity: 0.85; }
+
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  table.data-table th, table.data-table td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--grid); }
+  table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+  table.data-table th { color: var(--text-muted); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  table.data-table td.num, table.data-table th.num { font-variant-numeric: tabular-nums; }
+  table.data-table tbody tr:hover { background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
+
+  .bars { display: flex; flex-direction: column; gap: 9px; }
+  .bar-row { display: grid; grid-template-columns: 108px 1fr 74px; align-items: center; gap: 10px; font-size: 0.82rem; }
+  .bar-row .name { color: var(--text-secondary); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { position: relative; height: 16px; background: var(--grid); border-radius: 4px; overflow: visible; }
+  .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+  .bar-fill.blue { background: var(--blue-450); }
+  .bar-fill.orange { background: var(--orange-450); }
+  .bar-fill .roof-marker { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-primary); opacity: 0.55; }
+  .bar-row .val { font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; text-align: right; }
+  .bar-whisker { position: absolute; top: 50%; height: 2px; background: var(--text-muted); opacity: 0.6; }
+
+  .toggle-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .toggle-btn {
+    font-size: 0.78rem; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer;
+  }
+  .toggle-btn.active { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
+
+  .view { display: none; } .view.active { display: block; }
+
+  .callout {
+    border-left: 3px solid var(--status-warning); background: color-mix(in srgb, var(--status-warning) 10%, transparent);
+    padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.86rem; color: var(--text-secondary); margin-top: 16px;
+  }
+  .callout.info { border-left-color: var(--blue-450); background: color-mix(in srgb, var(--blue-450) 10%, transparent); }
+  .callout b { color: var(--text-primary); }
+
+  .faq dt { font-weight: 650; margin-top: 18px; font-size: 0.95rem; }
+  .faq dd { margin: 6px 0 0 0; color: var(--text-secondary); font-size: 0.9rem; max-width: 780px; }
+  .faq dd code { background: var(--grid); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+
+  footer.foot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--grid); color: var(--text-muted); font-size: 0.78rem; }
+  .caption { color: var(--text-muted); font-size: 0.78rem; margin-top: 10px; }
+</style>
+
+<div class="viz-root">
+<div class="wrap">
+
+  <header class="hero">
+    <h1>Pakistan PV Capacity — Two Instruments, Two Scopes</h1>
+    <p class="sub">
+      Recall-corrected rooftop/ground-mount capacity from Sentinel-2 detection (≥ 400 m²,
+      national), alongside a density-stratified estimate of the sub-400 m² population that
+      the detection model structurally cannot see (scoped to 93 calibration-matched cells
+      only). The two numbers describe different, non-overlapping populations and are
+      reported separately on purpose — see the FAQ below before combining them.
+    </p>
+    <div class="datestamp">earthpv · Pakistan AOI · generated from the published density run + sub400_capacity.py domain restriction</div>
+  </header>
+
+  <div class="stat-row">
+    <div class="stat-tile">
+      <div class="label">Large installations · ≥ 400 m²</div>
+      <div class="value">5,078<span class="unit">MWp</span></div>
+      <div class="detail">2,230 MWp roof-only · 90% CI 4,592–8,340 MWp all-placement</div>
+      <span class="scope-flag national">● national coverage</span>
+    </div>
+    <div class="stat-tile">
+      <div class="label">Small installations · &lt; 400 m²</div>
+      <div class="value">6,628<span class="unit">MWp</span></div>
+      <div class="detail">93 of 4,473 cells · 19.1% of national buildings · NOT a country total</div>
+      <span class="scope-flag partial">● domain-restricted, not national</span>
+    </div>
+  </div>
+
+  <section class="block" id="large-pv">
+    <h2>Large-PV atlas (≥ 400 m²) — national</h2>
+    <p class="section-sub">
+      Recall-corrected capacity (<code>est_mwp_rc</code>) per province, from the segmentation
+      detector + building-density aggregation. Pinned to the pre-OSM-geometry-replace
+      candidate snapshot (see callout below) — the passing, published state.
+    </p>
+    <div class="two-col">
+      <div class="panel">
+        <svg id="map-large" viewBox="0 0 640 640"></svg>
+        <div class="legend legend-blue"><span>low</span><div class="ramp"></div><span>high MWp</span></div>
+        <p class="caption">Hover a province for its recall-corrected estimate and credible interval. Choropleth uses a log-scaled single-hue ramp (Punjab dominates ~63% of the national total).</p>
+      </div>
+      <div class="panel">
+        <div class="toggle-row">
+          <button class="toggle-btn active" data-view="chart-large">Chart</button>
+          <button class="toggle-btn" data-view="table-large">Table</button>
+        </div>
+        <div class="view active" id="chart-large"><div class="bars" id="bars-large"></div>
+          <p class="caption"><span style="display:inline-block;width:8px;height:8px;background:var(--blue-450);border-radius:2px;margin-right:4px;"></span> all-placement &nbsp; <span style="display:inline-block;width:2px;height:10px;background:var(--text-primary);opacity:.55;margin:0 4px;"></span> roof-only marker &nbsp; whisker = 90% credible interval</p>
+        </div>
+        <div class="view" id="table-large">
+          <table class="data-table" id="table-large-el">
+            <thead><tr><th>Province</th><th class="num">All MWp</th><th class="num">Roof MWp</th><th class="num">90% CI</th><th class="num">Buildings</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="callout">
+      <b>Known caveat, not yet resolved:</b> a fresh run against the current (post-OSM-replace)
+      candidate population fails <code>check-density</code> for Khyber Pakhtunkhwa and
+      Balochistan — confirmed to be a real measurement asymmetry (OSM's Pakistan solar
+      mapping is almost entirely rooftop, so rooftop candidates get corrected toward their
+      true size far more often than remote ground-mount/no-building candidates do), not a
+      code defect. There is no clean fix yet, so this atlas uses the last snapshot that
+      passes the gate cleanly. Gilgit-Baltistan is exempted from the ratio check on separate,
+      pre-existing grounds (its real rooftop base rate is near zero).
+    </div>
+  </section>
+
+  <section class="block" id="small-pv">
+    <h2>Small-PV supplement (&lt; 400 m²) — 93 cells only</h2>
+    <p class="section-sub">
+      The segmentation model burns everything below the training floor as <code>ignore</code>,
+      so it has no sensitivity below 400 m² at all — recall correction cannot rescue a
+      population the model never sees. This figure comes from a different instrument
+      (<code>roofclf</code> per-building scoring + a building-density domain restriction to the
+      settlement-density range the 8 calibration quadrats actually cover) and intentionally
+      stops at those 93 cells rather than extrapolating.
+    </p>
+    <div class="two-col">
+      <div class="panel">
+        <svg id="map-small" viewBox="0 0 640 640"></svg>
+        <div class="legend legend-orange"><span>low</span><div class="ramp"></div><span>high MWp</span></div>
+        <p class="caption">Each dot is one of the 93 domain-restricted cells, sized and colored by its incremental sub-400 m² capacity.</p>
+      </div>
+      <div class="panel">
+        <div class="toggle-row">
+          <button class="toggle-btn active" data-view="chart-small">Chart</button>
+          <button class="toggle-btn" data-view="table-small">Table</button>
+        </div>
+        <div class="view active" id="chart-small"><div class="bars" id="bars-small"></div>
+          <p class="caption">Cells grouped by nearest major city (approximate, straight-line nearest-neighbor — not an admin-boundary join). "Other" = the 17 cells not near a major metro.</p>
+        </div>
+        <div class="view" id="table-small">
+          <table class="data-table" id="table-small-el">
+            <thead><tr><th>Cluster</th><th class="num">Cells</th><th class="num">MWp</th><th class="num">Buildings</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="callout">
+      <b>Do not rescale this number.</b> 6,628 MWp describes only the 93 cells shown here
+      (2.1% of national cells, 19.1% of national buildings). Extrapolating by that share to
+      estimate a country total implies ~315 GWp — the exact base-rate-transfer failure this
+      module was built to avoid. The other ~81% of buildings are mostly rural and not known
+      to share this rate; per-quadrat measured adoption ranges 0.235–4.833× the model's own
+      prediction across nine calibration quadrats.
+    </div>
+  </section>
+
+  <section class="block faq">
+    <h2>Methodology notes</h2>
+    <dl class="faq">
+      <dt>Are OSM PV labels the model misses added directly to the capacity total?</dt>
+      <dd>
+        No. OSM geometry replacement (<code>postprocess.replace_with_osm_geometry</code>)
+        only corrects the <em>shape</em> of a candidate the model already detected within
+        30 m of a mapped installation — it never creates a new candidate from an
+        OSM-mapped installation the model produced no nearby detection for. A real,
+        OSM-mapped installation with zero nearby model output contributes zero area to
+        <code>pv_area_det_*</code>/<code>pv_area_cal_*</code>.
+      </dd>
+      <dt>So how does the estimate account for installations the model missed?</dt>
+      <dd>
+        Statistically, not additively. Mapped OSM installations serve as a held-out
+        reference to measure the model's <b>recall per size bin</b> (what share of real,
+        mapped installations get matched by any candidate). <code>est_mwp_rc</code> — the
+        headline number above — then scales every surviving candidate by
+        <code>1 / recall(bin)</code>, a Horvitz–Thompson estimator. It assumes missed
+        installations in a bin resemble detected ones in that bin; it does not sum any
+        specific missed installation's own mapped area.
+      </dd>
+      <dt>Why doesn't that fix the sub-400 m² population?</dt>
+      <dd>
+        Because recall correction only rescales what the model can, in principle, detect.
+        Below 400 m² the segmentation model was trained with those arrays burned as
+        <code>ignore</code>, so its recall there is effectively zero by construction —
+        <code>1/recall × ~0 ≈ 0</code>. That's why the small-PV figure above comes from an
+        entirely separate instrument rather than a correction factor on the same one.
+      </dd>
+      <dt>Why are the two figures reported separately instead of summed?</dt>
+      <dd>
+        Different populations, different coverage, different confidence. The large-PV
+        figure is a national, recall-corrected estimate over a population the model can
+        see. The small-PV figure is a bounded, non-extrapolated measurement over 19.1% of
+        buildings. Summing 5,078 + 6,628 would silently imply the second number is national
+        when it explicitly is not.
+      </dd>
+    </dl>
+  </section>
+
+  <footer class="foot">
+    Sources: <code>data/predictions/pakistan/density/</code> (recall-corrected large-PV,
+    pinned pre-OSM-replace snapshot, passes <code>earthpv check-density</code>) ·
+    <code>data/predictions_alt_fraction_roofclf/pakistan/density/sub400_roofclf_summary.json</code>
+    + <code>sub400_roofclf_domain_restricted.parquet</code> (density-stratified small-PV,
+    2026-07-30). Province boundaries simplified from Overture region polygons for display;
+    not survey-grade.
+  </footer>
+
+</div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+(function () {
+  const PROVINCES = [{"name": "Punjab", "path": "M 322.28,413.83 L 328.08,411.39 L 336.88,415.62 L 339.51,430.79 L 349.05,442.12 L 355.29,434.59 L 362.31,432.65 L 367.29,437.36 L 367.63,441.87 L 371.40,448.00 L 377.40,448.13 L 389.80,440.97 L 407.41,439.42 L 413.92,435.23 L 416.49,425.13 L 426.21,414.27 L 428.84,401.78 L 432.15,396.66 L 453.41,384.02 L 465.58,360.23 L 470.50,340.09 L 485.70,334.16 L 491.70,328.86 L 491.99,321.87 L 489.01,318.34 L 490.78,315.76 L 497.47,310.36 L 498.73,306.53 L 504.90,305.59 L 506.62,300.70 L 517.87,286.06 L 521.99,285.43 L 521.36,282.50 L 516.56,283.19 L 514.79,281.31 L 515.93,271.84 L 518.90,266.98 L 514.56,254.87 L 515.30,250.34 L 521.25,243.84 L 525.53,243.28 L 529.96,237.39 L 533.53,238.74 L 542.19,236.42 L 548.53,227.07 L 536.75,217.16 L 533.09,218.89 L 522.01,217.25 L 519.42,212.35 L 521.12,210.24 L 521.36,201.46 L 516.16,205.20 L 512.44,202.87 L 509.47,203.73 L 494.65,195.65 L 491.18,191.40 L 487.59,192.60 L 481.38,189.61 L 479.01,176.27 L 480.50,166.45 L 479.01,163.00 L 479.17,150.62 L 476.11,141.66 L 471.66,144.11 L 463.85,153.78 L 469.39,159.81 L 463.22,169.21 L 460.72,168.50 L 461.18,165.37 L 458.65,161.78 L 452.43,165.04 L 450.94,163.17 L 450.22,159.78 L 453.90,157.58 L 448.38,147.50 L 444.01,150.28 L 441.26,144.86 L 438.10,144.47 L 430.98,149.44 L 428.99,156.41 L 421.29,159.37 L 418.00,171.19 L 409.80,177.62 L 408.72,181.30 L 410.88,186.64 L 409.35,189.44 L 406.52,189.97 L 404.23,184.81 L 398.44,184.68 L 399.98,194.07 L 390.49,196.48 L 387.33,200.13 L 387.12,210.94 L 391.49,218.42 L 394.16,218.82 L 394.28,224.74 L 389.20,230.04 L 388.66,235.93 L 385.54,238.09 L 383.25,250.84 L 377.09,260.60 L 377.55,271.70 L 374.43,278.64 L 364.98,277.06 L 361.24,279.60 L 360.57,283.32 L 354.91,285.28 L 353.11,297.13 L 346.54,304.77 L 347.34,310.42 L 342.41,322.63 L 345.86,327.60 L 335.05,352.31 L 329.51,356.93 L 328.71,366.26 L 331.28,367.79 L 332.20,372.49 L 335.91,374.98 L 333.51,382.56 L 326.03,392.38 L 328.03,398.71 L 323.40,406.97 L 319.91,408.82 L 322.28,413.83 Z", "est_mwp_rc": 3190.2, "est_mwp_rc_roof": 1454.0, "est_mwp_rc_lo": 2482.3, "est_mwp_rc_hi": 4592.5, "area_km2": 201926.0, "n_buildings": 41245322}, {"name": "Islamabad Capital Territory", "path": "M 463.85,153.78 L 450.22,159.78 L 450.94,163.17 L 452.43,165.04 L 458.65,161.78 L 462.40,169.21 L 469.36,160.33 L 463.85,153.78 Z", "est_mwp_rc": 76.9, "est_mwp_rc_roof": 58.1, "est_mwp_rc_lo": 64.0, "est_mwp_rc_hi": 104.6, "area_km2": 893.0, "n_buildings": 1005417}, {"name": "Gilgit-Baltistan", "path": "M 552.53,115.15 L 567.65,116.71 L 573.02,110.47 L 582.91,111.55 L 591.60,103.64 L 600.62,103.10 L 609.65,94.13 L 619.83,91.51 L 626.34,87.51 L 629.71,82.74 L 637.14,79.23 L 640.00,72.70 L 637.77,71.45 L 624.68,74.12 L 616.57,70.50 L 613.83,66.29 L 597.48,57.58 L 595.65,51.56 L 589.54,54.92 L 581.25,54.39 L 578.11,48.90 L 571.31,45.65 L 574.05,37.70 L 574.05,29.36 L 567.94,17.28 L 561.19,11.96 L 553.02,13.95 L 550.11,4.72 L 544.39,3.73 L 541.13,0.64 L 535.19,0.64 L 531.07,3.38 L 521.65,0.00 L 504.39,4.43 L 498.04,8.75 L 492.84,5.30 L 487.87,5.36 L 484.77,6.82 L 491.25,11.93 L 491.32,15.70 L 479.62,16.75 L 471.65,14.13 L 463.27,16.57 L 461.95,21.29 L 455.01,27.48 L 452.55,32.33 L 441.36,39.97 L 440.85,54.28 L 442.09,55.67 L 446.26,58.02 L 463.31,56.70 L 462.83,62.04 L 466.38,66.85 L 487.08,74.45 L 484.74,80.35 L 486.57,87.06 L 492.24,87.63 L 504.05,94.39 L 516.05,92.40 L 518.68,95.80 L 520.04,102.42 L 528.70,108.44 L 544.10,109.74 L 552.53,115.15 Z", "est_mwp_rc": 110.0, "est_mwp_rc_roof": 0.0, "est_mwp_rc_lo": 69.0, "est_mwp_rc_hi": 188.7, "area_km2": 69077.0, "n_buildings": 391497}, {"name": "Azad Kashmir", "path": "M 500.38,92.31 L 498.77,100.28 L 495.05,105.22 L 486.31,107.65 L 483.33,112.45 L 483.09,117.91 L 474.59,119.11 L 472.99,129.12 L 479.17,150.62 L 480.56,188.38 L 487.59,192.60 L 491.18,191.40 L 494.65,195.65 L 508.81,202.66 L 507.70,193.08 L 501.99,191.49 L 495.24,183.48 L 495.59,180.37 L 500.67,176.29 L 502.10,171.90 L 501.81,167.34 L 495.13,161.99 L 495.53,156.90 L 498.84,153.20 L 504.50,151.99 L 507.02,146.24 L 493.81,144.24 L 491.64,141.82 L 496.10,136.15 L 494.39,131.20 L 488.56,128.43 L 489.93,123.02 L 495.30,113.95 L 507.87,108.37 L 534.96,115.63 L 552.53,115.15 L 544.10,109.74 L 528.70,108.44 L 520.04,102.42 L 518.68,95.80 L 516.05,92.40 L 507.31,94.46 L 500.38,92.31 Z", "est_mwp_rc": 19.3, "est_mwp_rc_roof": 0.0, "est_mwp_rc_lo": 12.2, "est_mwp_rc_hi": 33.6, "area_km2": 12392.0, "n_buildings": 1672684}, {"name": "Sindh", "path": "M 219.72,582.94 L 220.19,586.75 L 233.39,588.41 L 237.96,592.45 L 237.67,601.40 L 241.56,608.23 L 244.53,623.53 L 248.93,631.53 L 255.28,636.60 L 261.68,638.20 L 264.93,633.59 L 265.56,636.53 L 269.91,640.00 L 271.45,634.33 L 274.82,635.33 L 283.56,628.59 L 297.74,629.66 L 297.97,613.68 L 300.25,613.75 L 301.74,616.94 L 304.31,613.95 L 307.34,616.54 L 310.20,614.68 L 314.94,616.01 L 329.74,613.95 L 334.54,619.40 L 346.03,619.60 L 349.69,613.62 L 364.03,608.23 L 366.77,608.77 L 366.43,614.68 L 368.32,616.88 L 377.00,616.74 L 380.37,611.56 L 385.46,610.29 L 386.72,607.30 L 383.40,606.37 L 382.37,600.38 L 384.82,592.87 L 379.57,581.72 L 378.32,573.07 L 369.40,560.47 L 368.89,545.79 L 354.20,545.00 L 347.17,533.97 L 346.26,528.27 L 350.31,514.72 L 349.69,504.21 L 345.28,501.40 L 336.14,502.58 L 324.31,493.91 L 324.65,482.39 L 326.77,475.19 L 343.34,454.85 L 349.05,442.12 L 339.51,430.79 L 336.88,415.62 L 326.31,411.39 L 320.88,414.79 L 289.22,416.33 L 285.56,423.26 L 280.25,425.06 L 263.16,440.77 L 248.99,442.13 L 247.62,449.55 L 240.47,461.51 L 238.07,500.62 L 240.42,511.72 L 248.82,529.32 L 248.70,544.02 L 239.73,557.17 L 237.10,567.19 L 232.42,572.80 L 230.93,578.42 L 219.72,582.94 Z", "est_mwp_rc": 1142.4, "est_mwp_rc_roof": 600.5, "est_mwp_rc_lo": 909.8, "est_mwp_rc_hi": 1614.2, "area_km2": 137721.0, "n_buildings": 13092408}, {"name": "Khyber Pakhtunkhwa", "path": "M 354.27,285.98 L 360.57,283.32 L 361.24,279.60 L 364.98,277.06 L 371.68,277.28 L 373.43,279.28 L 377.55,271.70 L 377.09,260.60 L 383.25,250.84 L 385.54,238.09 L 388.66,235.93 L 389.20,230.04 L 394.28,224.74 L 394.16,218.82 L 391.49,218.42 L 387.12,210.94 L 387.33,200.13 L 390.49,196.48 L 399.98,194.07 L 398.44,184.68 L 404.23,184.81 L 406.52,189.97 L 409.35,189.44 L 410.88,186.64 L 408.72,181.30 L 409.80,177.62 L 418.29,170.79 L 418.54,165.17 L 421.29,159.37 L 428.99,156.41 L 429.53,150.99 L 437.48,144.60 L 440.85,144.47 L 444.01,150.28 L 448.38,147.50 L 453.05,157.30 L 464.30,153.44 L 471.66,144.11 L 476.11,141.66 L 472.99,129.12 L 474.59,119.11 L 483.09,117.91 L 483.33,112.45 L 486.31,107.65 L 495.05,105.22 L 498.77,100.28 L 499.99,91.67 L 486.57,87.06 L 485.07,84.61 L 484.74,80.35 L 487.08,74.45 L 466.38,66.85 L 462.83,62.04 L 463.31,56.70 L 446.26,58.02 L 440.85,54.28 L 441.87,39.03 L 452.55,32.33 L 455.01,27.48 L 461.95,21.29 L 462.58,17.09 L 471.65,14.13 L 488.73,16.79 L 492.24,14.28 L 490.67,11.29 L 484.77,6.82 L 443.98,8.92 L 429.41,13.54 L 426.84,18.04 L 413.16,27.90 L 407.09,26.15 L 405.75,31.93 L 393.43,41.40 L 389.77,46.65 L 400.48,56.15 L 403.16,63.00 L 401.82,66.79 L 404.68,69.02 L 407.18,75.51 L 402.63,82.39 L 405.66,86.67 L 400.84,98.70 L 395.48,101.41 L 386.55,110.77 L 385.84,117.80 L 381.64,117.89 L 382.80,123.90 L 387.98,128.42 L 387.18,138.88 L 384.32,143.03 L 376.73,147.38 L 358.78,147.09 L 344.14,141.90 L 340.03,145.01 L 339.85,149.65 L 342.17,154.57 L 349.41,158.64 L 351.19,163.00 L 350.48,168.51 L 356.10,176.41 L 354.41,179.83 L 342.62,187.94 L 330.65,187.18 L 326.55,189.37 L 325.12,193.39 L 330.65,195.78 L 331.01,202.57 L 326.19,206.31 L 326.19,213.99 L 317.17,220.71 L 316.55,236.81 L 318.59,244.64 L 321.45,247.92 L 328.88,247.74 L 333.45,241.80 L 339.91,241.92 L 338.94,245.20 L 341.06,245.76 L 341.34,250.09 L 344.26,251.08 L 342.77,255.18 L 342.94,267.04 L 345.91,268.66 L 346.88,274.14 L 348.88,270.90 L 354.37,269.53 L 354.27,285.98 Z", "est_mwp_rc": 367.4, "est_mwp_rc_roof": 84.6, "est_mwp_rc_lo": 261.3, "est_mwp_rc_hi": 585.6, "area_km2": 101530.0, "n_buildings": 13016948}, {"name": "Balochistan", "path": "M 219.72,582.94 L 230.93,578.42 L 232.42,572.80 L 237.10,567.19 L 239.73,557.17 L 248.70,544.02 L 248.82,529.32 L 240.42,511.72 L 238.07,500.62 L 240.47,461.51 L 247.62,449.55 L 248.99,442.13 L 263.16,440.77 L 280.25,425.06 L 285.56,423.26 L 289.22,416.33 L 322.31,414.21 L 319.91,408.82 L 323.40,406.97 L 328.03,398.71 L 326.03,392.38 L 334.48,380.26 L 335.86,373.77 L 332.20,372.49 L 331.28,367.79 L 328.54,365.50 L 329.51,356.93 L 335.05,352.31 L 342.94,336.37 L 343.28,331.00 L 345.97,326.63 L 342.41,322.63 L 347.34,310.42 L 346.54,304.77 L 353.11,297.13 L 354.26,286.81 L 354.37,269.53 L 348.88,270.90 L 346.88,274.14 L 345.91,268.66 L 342.94,267.04 L 342.77,255.18 L 344.26,251.08 L 341.34,250.09 L 339.00,241.18 L 333.45,241.80 L 328.88,247.74 L 321.45,247.92 L 317.35,245.21 L 307.97,257.32 L 303.06,259.75 L 299.58,259.55 L 291.45,249.28 L 281.90,252.38 L 276.10,248.80 L 270.20,257.71 L 264.67,258.29 L 260.47,263.15 L 253.24,263.63 L 254.93,268.98 L 261.54,269.37 L 261.45,273.06 L 249.49,278.03 L 236.90,277.74 L 234.13,276.47 L 234.22,273.06 L 227.25,275.50 L 222.07,279.78 L 221.27,283.98 L 216.54,289.64 L 210.82,291.40 L 208.95,294.92 L 205.37,309.71 L 207.43,315.11 L 207.25,324.35 L 203.50,333.71 L 207.87,340.12 L 202.34,344.77 L 160.91,358.23 L 147.42,356.24 L 134.47,357.83 L 122.42,364.77 L 104.47,360.70 L 61.61,365.37 L 0.00,344.33 L 16.25,365.76 L 18.57,376.10 L 23.30,380.58 L 28.48,394.04 L 34.46,401.73 L 41.88,408.13 L 59.38,413.24 L 66.43,421.77 L 73.13,421.26 L 71.97,435.03 L 75.00,453.28 L 72.86,468.45 L 79.83,470.58 L 88.49,467.94 L 92.06,470.47 L 93.13,474.12 L 90.18,476.76 L 87.06,498.61 L 75.00,497.70 L 68.31,500.75 L 59.38,501.36 L 53.04,506.26 L 50.00,517.18 L 44.38,513.40 L 35.54,518.40 L 32.59,535.70 L 34.37,541.34 L 28.84,542.58 L 26.91,564.29 L 26.91,567.13 L 33.02,570.36 L 30.68,576.37 L 35.42,576.17 L 37.08,572.60 L 44.40,572.08 L 44.51,569.04 L 48.11,566.33 L 52.63,569.57 L 53.88,574.58 L 56.51,573.13 L 55.37,571.15 L 56.51,567.85 L 61.60,565.34 L 71.20,567.92 L 78.23,566.80 L 80.46,568.84 L 86.80,566.14 L 99.20,569.04 L 100.00,565.02 L 105.72,560.93 L 111.20,560.99 L 114.75,563.50 L 124.18,562.58 L 135.61,568.45 L 141.09,566.60 L 141.78,571.48 L 144.41,572.14 L 145.78,570.23 L 144.18,568.78 L 144.75,566.40 L 148.46,563.89 L 164.92,565.15 L 169.61,562.05 L 181.61,564.42 L 203.90,558.82 L 212.81,561.46 L 207.10,556.51 L 199.96,558.42 L 200.58,554.67 L 206.70,553.16 L 216.41,558.69 L 216.76,565.74 L 222.30,569.90 L 219.72,582.94 Z", "est_mwp_rc": 154.1, "est_mwp_rc_roof": 31.4, "est_mwp_rc_lo": 108.1, "est_mwp_rc_hi": 249.0, "area_km2": 352521.0, "n_buildings": 4792247}];
+  const CELLS = [{"cell": "0032_0032", "lon": 64.0876, "lat": 26.9716, "n_buildings": 21244, "est_mwp": 160.724, "city": "other"}, {"cell": "0061_0011", "lon": 67.0068, "lat": 24.8587, "n_buildings": 4334, "est_mwp": 72.6946, "city": "Karachi"}, {"cell": "0061_0012", "lon": 67.0001, "lat": 24.9515, "n_buildings": 6661, "est_mwp": 82.529, "city": "Karachi"}, {"cell": "0061_0064", "lon": 66.995, "lat": 30.1688, "n_buildings": 24304, "est_mwp": 284.0416, "city": "Quetta"}, {"cell": "0061_0065", "lon": 66.9923, "lat": 30.247, "n_buildings": 25715, "est_mwp": 297.0113, "city": "Quetta"}, {"cell": "0062_0011", "lon": 67.0794, "lat": 24.8549, "n_buildings": 14533, "est_mwp": 269.2118, "city": "Karachi"}, {"cell": "0062_0012", "lon": 67.0871, "lat": 24.9489, "n_buildings": 11792, "est_mwp": 191.1286, "city": "Karachi"}, {"cell": "0062_0013", "lon": 67.09, "lat": 25.0375, "n_buildings": 4335, "est_mwp": 52.4229, "city": "Karachi"}, {"cell": "0063_0011", "lon": 67.1921, "lat": 24.8695, "n_buildings": 5962, "est_mwp": 78.5631, "city": "Karachi"}, {"cell": "0063_0012", "lon": 67.1807, "lat": 24.9527, "n_buildings": 9666, "est_mwp": 158.3332, "city": "Karachi"}, {"cell": "0064_0011", "lon": 67.2756, "lat": 24.8576, "n_buildings": 2760, "est_mwp": 37.5809, "city": "Karachi"}, {"cell": "0073_0038", "lon": 68.2063, "lat": 27.5595, "n_buildings": 3185, "est_mwp": 36.066, "city": "other"}, {"cell": "0074_0016", "lon": 68.3017, "lat": 25.3771, "n_buildings": 11877, "est_mwp": 136.4426, "city": "Hyderabad"}, {"cell": "0075_0016", "lon": 68.3647, "lat": 25.3691, "n_buildings": 12965, "est_mwp": 159.4451, "city": "Hyderabad"}, {"cell": "0080_0039", "lon": 68.8825, "lat": 27.682, "n_buildings": 752, "est_mwp": 9.1634, "city": "Sukkur"}, {"cell": "0094_0047", "lon": 70.3133, "lat": 28.426, "n_buildings": 1073, "est_mwp": 18.68, "city": "other"}, {"cell": "0097_0092", "lon": 70.6, "lat": 32.974, "n_buildings": 790, "est_mwp": 11.5516, "city": "other"}, {"cell": "0098_0063", "lon": 70.6641, "lat": 30.0507, "n_buildings": 2406, "est_mwp": 33.0689, "city": "other"}, {"cell": "0098_0092", "lon": 70.6809, "lat": 32.9688, "n_buildings": 267, "est_mwp": 3.7318, "city": "other"}, {"cell": "0100_0081", "lon": 70.8988, "lat": 31.8443, "n_buildings": 1254, "est_mwp": 21.8959, "city": "other"}, {"cell": "0103_0063", "lon": 71.1903, "lat": 30.0716, "n_buildings": 1030, "est_mwp": 15.7159, "city": "Multan"}, {"cell": "0105_0064", "lon": 71.4129, "lat": 30.1673, "n_buildings": 2134, "est_mwp": 40.9487, "city": "Multan"}, {"cell": "0105_0102", "lon": 71.4277, "lat": 33.9665, "n_buildings": 2023, "est_mwp": 41.9291, "city": "Peshawar"}, {"cell": "0106_0064", "lon": 71.4868, "lat": 30.1812, "n_buildings": 2323, "est_mwp": 41.2132, "city": "Multan"}, {"cell": "0106_0065", "lon": 71.4952, "lat": 30.2414, "n_buildings": 3628, "est_mwp": 73.5116, "city": "Multan"}, {"cell": "0106_0098", "lon": 71.4656, "lat": 33.5677, "n_buildings": 1088, "est_mwp": 17.0104, "city": "Peshawar"}, {"cell": "0106_0102", "lon": 71.4718, "lat": 33.9798, "n_buildings": 2631, "est_mwp": 56.9088, "city": "Peshawar"}, {"cell": "0106_0103", "lon": 71.5055, "lat": 34.0466, "n_buildings": 1988, "est_mwp": 31.9063, "city": "Peshawar"}, {"cell": "0107_0102", "lon": 71.5722, "lat": 33.9845, "n_buildings": 886, "est_mwp": 13.3879, "city": "Peshawar"}, {"cell": "0107_0103", "lon": 71.5898, "lat": 34.0368, "n_buildings": 2622, "est_mwp": 41.877, "city": "Peshawar"}, {"cell": "0107_0105", "lon": 71.5774, "lat": 34.237, "n_buildings": 1650, "est_mwp": 25.6611, "city": "Charsadda"}, {"cell": "0108_0056", "lon": 71.6901, "lat": 29.3833, "n_buildings": 6378, "est_mwp": 103.4961, "city": "other"}, {"cell": "0108_0102", "lon": 71.6735, "lat": 33.9831, "n_buildings": 120, "est_mwp": 2.1939, "city": "Peshawar"}, {"cell": "0108_0103", "lon": 71.6726, "lat": 34.0311, "n_buildings": 562, "est_mwp": 9.6162, "city": "Peshawar"}, {"cell": "0108_0105", "lon": 71.6846, "lat": 34.273, "n_buildings": 1895, "est_mwp": 27.0566, "city": "Charsadda"}, {"cell": "0109_0104", "lon": 71.7783, "lat": 34.1593, "n_buildings": 1248, "est_mwp": 20.2242, "city": "Charsadda"}, {"cell": "0110_0105", "lon": 71.896, "lat": 34.2675, "n_buildings": 1039, "est_mwp": 16.5088, "city": "Mardan"}, {"cell": "0110_0106", "lon": 71.8946, "lat": 34.3606, "n_buildings": 450, "est_mwp": 7.2144, "city": "Mardan"}, {"cell": "0111_0103", "lon": 71.9977, "lat": 34.0679, "n_buildings": 1397, "est_mwp": 20.2499, "city": "Mardan"}, {"cell": "0111_0104", "lon": 72.0218, "lat": 34.1597, "n_buildings": 4253, "est_mwp": 65.6301, "city": "Mardan"}, {"cell": "0111_0105", "lon": 71.9974, "lat": 34.2384, "n_buildings": 613, "est_mwp": 9.627, "city": "Mardan"}, {"cell": "0112_0104", "lon": 72.056, "lat": 34.1668, "n_buildings": 2654, "est_mwp": 43.3322, "city": "Mardan"}, {"cell": "0112_0105", "lon": 72.0753, "lat": 34.2494, "n_buildings": 871, "est_mwp": 14.9738, "city": "Mardan"}, {"cell": "0114_0075", "lon": 72.3169, "lat": 31.2708, "n_buildings": 278, "est_mwp": 4.4725, "city": "other"}, {"cell": "0115_0110", "lon": 72.378, "lat": 34.7693, "n_buildings": 1677, "est_mwp": 23.8976, "city": "other"}, {"cell": "0118_0064", "lon": 72.6827, "lat": 30.1635, "n_buildings": 943, "est_mwp": 15.7137, "city": "other"}, {"cell": "0118_0074", "lon": 72.6859, "lat": 31.1528, "n_buildings": 235, "est_mwp": 3.8212, "city": "Faisalabad"}, {"cell": "0118_0083", "lon": 72.6883, "lat": 32.0686, "n_buildings": 564, "est_mwp": 10.0782, "city": "other"}, {"cell": "0119_0100", "lon": 72.7818, "lat": 33.7598, "n_buildings": 3471, "est_mwp": 52.1103, "city": "Islamabad"}, {"cell": "0120_0099", "lon": 72.8916, "lat": 33.6454, "n_buildings": 2462, "est_mwp": 49.8843, "city": "Rawalpindi"}, {"cell": "0120_0102", "lon": 72.9001, "lat": 33.9698, "n_buildings": 1260, "est_mwp": 18.6853, "city": "Islamabad"}, {"cell": "0121_0076", "lon": 72.9778, "lat": 31.3782, "n_buildings": 371, "est_mwp": 5.4761, "city": "Faisalabad"}, {"cell": "0121_0077", "lon": 73.0189, "lat": 31.4436, "n_buildings": 398, "est_mwp": 6.466, "city": "Faisalabad"}, {"cell": "0121_0098", "lon": 73.0101, "lat": 33.5855, "n_buildings": 2726, "est_mwp": 46.9096, "city": "Rawalpindi"}, {"cell": "0121_0099", "lon": 72.9959, "lat": 33.6685, "n_buildings": 8379, "est_mwp": 167.3281, "city": "Rawalpindi"}, {"cell": "0122_0069", "lon": 73.0952, "lat": 30.6706, "n_buildings": 1514, "est_mwp": 27.4234, "city": "other"}, {"cell": "0122_0076", "lon": 73.09, "lat": 31.3767, "n_buildings": 994, "est_mwp": 17.6856, "city": "Faisalabad"}, {"cell": "0122_0077", "lon": 73.0939, "lat": 31.4503, "n_buildings": 2846, "est_mwp": 58.5304, "city": "Faisalabad"}, {"cell": "0122_0098", "lon": 73.0998, "lat": 33.5591, "n_buildings": 13760, "est_mwp": 286.9264, "city": "Rawalpindi"}, {"cell": "0122_0099", "lon": 73.0774, "lat": 33.6556, "n_buildings": 7182, "est_mwp": 127.051, "city": "Islamabad"}, {"cell": "0123_0077", "lon": 73.1747, "lat": 31.457, "n_buildings": 2281, "est_mwp": 46.4817, "city": "Faisalabad"}, {"cell": "0123_0099", "lon": 73.1846, "lat": 33.6605, "n_buildings": 2770, "est_mwp": 49.9898, "city": "Islamabad"}, {"cell": "0123_0104", "lon": 73.2067, "lat": 34.1626, "n_buildings": 5219, "est_mwp": 65.1299, "city": "Islamabad"}, {"cell": "0123_0106", "lon": 73.1938, "lat": 34.3431, "n_buildings": 4787, "est_mwp": 56.5368, "city": "other"}, {"cell": "0125_0076", "lon": 73.4004, "lat": 31.3448, "n_buildings": 124, "est_mwp": 2.1346, "city": "Faisalabad"}, {"cell": "0126_0088", "lon": 73.4896, "lat": 32.5678, "n_buildings": 451, "est_mwp": 7.4527, "city": "other"}, {"cell": "0126_0106", "lon": 73.4808, "lat": 34.358, "n_buildings": 1596, "est_mwp": 19.7431, "city": "other"}, {"cell": "0128_0083", "lon": 73.6882, "lat": 32.0724, "n_buildings": 159, "est_mwp": 2.959, "city": "Sheikhpura"}, {"cell": "0128_0092", "lon": 73.697, "lat": 32.9549, "n_buildings": 397, "est_mwp": 7.0164, "city": "other"}, {"cell": "0131_0079", "lon": 73.9887, "lat": 31.6882, "n_buildings": 549, "est_mwp": 8.4222, "city": "Sheikhpura"}, {"cell": "0131_0080", "lon": 73.9712, "lat": 31.7272, "n_buildings": 463, "est_mwp": 8.5014, "city": "Sheikhpura"}, {"cell": "0132_0088", "lon": 74.0802, "lat": 32.5761, "n_buildings": 7256, "est_mwp": 119.4544, "city": "Gujranwala"}, {"cell": "0133_0076", "lon": 74.1953, "lat": 31.3701, "n_buildings": 5756, "est_mwp": 106.8803, "city": "Lahore"}, {"cell": "0133_0077", "lon": 74.211, "lat": 31.4363, "n_buildings": 5703, "est_mwp": 114.7845, "city": "Lahore"}, {"cell": "0133_0083", "lon": 74.1919, "lat": 32.0767, "n_buildings": 690, "est_mwp": 14.6379, "city": "Gujranwala"}, {"cell": "0133_0084", "lon": 74.1937, "lat": 32.1633, "n_buildings": 1625, "est_mwp": 32.994, "city": "Gujranwala"}, {"cell": "0133_0085", "lon": 74.1658, "lat": 32.2348, "n_buildings": 1360, "est_mwp": 31.4639, "city": "Gujranwala"}, {"cell": "0134_0077", "lon": 74.2863, "lat": 31.4619, "n_buildings": 24671, "est_mwp": 478.4749, "city": "Lahore"}, {"cell": "0134_0078", "lon": 74.3006, "lat": 31.5348, "n_buildings": 11658, "est_mwp": 192.4129, "city": "Lahore"}, {"cell": "0134_0079", "lon": 74.2802, "lat": 31.6364, "n_buildings": 798, "est_mwp": 12.057, "city": "Lahore"}, {"cell": "0135_0076", "lon": 74.3821, "lat": 31.3569, "n_buildings": 1929, "est_mwp": 28.0426, "city": "Lahore"}, {"cell": "0135_0077", "lon": 74.3893, "lat": 31.4697, "n_buildings": 13056, "est_mwp": 263.6143, "city": "Lahore"}, {"cell": "0135_0078", "lon": 74.3843, "lat": 31.5384, "n_buildings": 11606, "est_mwp": 215.423, "city": "Lahore"}, {"cell": "0135_0086", "lon": 74.3796, "lat": 32.3496, "n_buildings": 277, "est_mwp": 3.9836, "city": "Sialkot"}, {"cell": "0135_0087", "lon": 74.3928, "lat": 32.4661, "n_buildings": 371, "est_mwp": 4.8637, "city": "Sialkot"}, {"cell": "0136_0074", "lon": 74.4592, "lat": 31.1303, "n_buildings": 1478, "est_mwp": 23.1408, "city": "Lahore"}, {"cell": "0136_0078", "lon": 74.4616, "lat": 31.5512, "n_buildings": 3818, "est_mwp": 67.3915, "city": "Lahore"}, {"cell": "0136_0087", "lon": 74.4993, "lat": 32.4727, "n_buildings": 3142, "est_mwp": 53.9193, "city": "Sialkot"}, {"cell": "0136_0088", "lon": 74.5109, "lat": 32.5507, "n_buildings": 2301, "est_mwp": 35.6532, "city": "Sialkot"}, {"cell": "0137_0087", "lon": 74.574, "lat": 32.479, "n_buildings": 1887, "est_mwp": 31.1169, "city": "Sialkot"}, {"cell": "0207_0116", "lon": 73.1235, "lat": 31.4445, "n_buildings": 2477, "est_mwp": 47.0284, "city": "Faisalabad"}, {"cell": "0219_0116", "lon": 74.3132, "lat": 31.4634, "n_buildings": 22000, "est_mwp": 413.7721, "city": "Lahore"}, {"cell": "0219_0117", "lon": 74.3221, "lat": 31.5315, "n_buildings": 17003, "est_mwp": 285.9041, "city": "Lahore"}];
+
+  const tooltip = document.getElementById('tooltip');
+  function showTip(html, x, y) {
+    tooltip.innerHTML = html;
+    tooltip.style.left = (x + 14) + 'px';
+    tooltip.style.top = (y + 14) + 'px';
+    tooltip.classList.add('show');
+  }
+  function hideTip() { tooltip.classList.remove('show'); }
+
+  function fmt(n, d) { return Number(n).toLocaleString(undefined, {minimumFractionDigits:d||0, maximumFractionDigits:d||0}); }
+
+  // ---------- sequential color helpers (log-scaled) ----------
+  const BLUE_STEPS = ['#cde2fb','#b7d3f6','#9ec5f4','#86b6ef','#6da7ec','#5598e7','#3987e5','#2a78d6','#256abf','#1c5cab','#184f95','#104281','#0d366b'];
+  const ORANGE_STEPS = ['#fbe3d4','#f2a374','#eb6834','#a8461f','#7e3417'];
+  function rampColor(steps, t) {
+    t = Math.max(0, Math.min(1, t));
+    const idx = t * (steps.length - 1);
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    if (lo === hi) return steps[lo];
+    const f = idx - lo;
+    const c1 = steps[lo], c2 = steps[hi];
+    const p = (h) => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+    const [r1,g1,b1] = p(c1), [r2,g2,b2] = p(c2);
+    const r = Math.round(r1 + (r2-r1)*f), g = Math.round(g1 + (g2-g1)*f), b = Math.round(b1 + (b2-b1)*f);
+    return `rgb(${r},${g},${b})`;
+  }
+  function logT(v, min, max) {
+    const lv = Math.log(Math.max(v, min * 1.01));
+    return (lv - Math.log(min)) / (Math.log(max) - Math.log(min));
+  }
+
+  // ---------- Large-PV choropleth ----------
+  const svgLarge = document.getElementById('map-large');
+  const vals = PROVINCES.map(p => p.est_mwp_rc).filter(v => v > 0);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  PROVINCES.forEach(p => {
+    const t = logT(Math.max(p.est_mwp_rc, 0.1), minV, maxV);
+    const color = rampColor(BLUE_STEPS, t);
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', p.path);
+    path.setAttribute('fill', color);
+    path.setAttribute('class', 'province-path');
+    path.addEventListener('mousemove', (e) => {
+      showTip(`<b>${p.name}</b>
+        <div class="tt-row"><span>All-placement</span><span>${fmt(p.est_mwp_rc)} MWp</span></div>
+        <div class="tt-row"><span>Roof-only</span><span>${fmt(p.est_mwp_rc_roof)} MWp</span></div>
+        <div class="tt-row"><span>90% CI</span><span>${fmt(p.est_mwp_rc_lo)}–${fmt(p.est_mwp_rc_hi)}</span></div>
+        <div class="tt-row"><span>Buildings</span><span>${fmt(p.n_buildings)}</span></div>`, e.clientX, e.clientY);
+    });
+    path.addEventListener('mouseleave', hideTip);
+    svgLarge.appendChild(path);
+  });
+
+  // Large-PV bar chart (sorted desc)
+  const barsLarge = document.getElementById('bars-large');
+  const sortedProv = [...PROVINCES].sort((a,b) => b.est_mwp_rc - a.est_mwp_rc);
+  const maxBar = sortedProv[0].est_mwp_rc;
+  sortedProv.forEach(p => {
+    const row = document.createElement('div'); row.className = 'bar-row';
+    const w = (p.est_mwp_rc / maxBar) * 100;
+    const roofW = (p.est_mwp_rc_roof / maxBar) * 100;
+    const loPct = (p.est_mwp_rc_lo / maxBar) * 100, hiPct = (p.est_mwp_rc_hi / maxBar) * 100;
+    row.innerHTML = `
+      <div class="name">${p.name}</div>
+      <div class="bar-track">
+        <div class="bar-fill blue" style="width:${w}%"><div class="roof-marker" style="left:${roofW>0?Math.min(roofW/w*100,100):0}%"></div></div>
+        <div class="bar-whisker" style="left:${loPct}%; width:${Math.max(hiPct-loPct,0.5)}%"></div>
+      </div>
+      <div class="val">${fmt(p.est_mwp_rc)}</div>`;
+    barsLarge.appendChild(row);
+  });
+
+  // Large-PV table
+  const tblLargeBody = document.querySelector('#table-large-el tbody');
+  sortedProv.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.name}</td><td class="num">${fmt(p.est_mwp_rc)}</td><td class="num">${fmt(p.est_mwp_rc_roof)}</td>
+      <td class="num">${fmt(p.est_mwp_rc_lo)}–${fmt(p.est_mwp_rc_hi)}</td><td class="num">${fmt(p.n_buildings)}</td>`;
+    tblLargeBody.appendChild(tr);
+  });
+
+  // ---------- Small-PV cell map ----------
+  const B = { minx: 60.87688104972074, miny: 23.731318744064822, maxx: 77.8088824367751, maxy: 36.998951263590016 };
+  const W = 640, H = 640;
+  function toSvg(lon, lat) {
+    return [ (lon - B.minx) / (B.maxx - B.minx) * W, H - (lat - B.miny) / (B.maxy - B.miny) * H ];
+  }
+  const svgSmall = document.getElementById('map-small');
+  // faint province outlines as context
+  PROVINCES.forEach(p => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', p.path);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'var(--baseline)');
+    path.setAttribute('stroke-width', '1');
+    path.setAttribute('opacity', '0.5');
+    svgSmall.appendChild(path);
+  });
+  const cMin = Math.min(...CELLS.map(c => c.est_mwp)), cMax = Math.max(...CELLS.map(c => c.est_mwp));
+  CELLS.forEach(c => {
+    const [x, y] = toSvg(c.lon, c.lat);
+    const t = logT(c.est_mwp, cMin, cMax);
+    const r = 2.5 + t * 9;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x.toFixed(2)); circle.setAttribute('cy', y.toFixed(2)); circle.setAttribute('r', r.toFixed(2));
+    circle.setAttribute('fill', rampColor(ORANGE_STEPS, t));
+    circle.setAttribute('fill-opacity', '0.88');
+    circle.setAttribute('stroke', 'var(--surface-1)'); circle.setAttribute('stroke-width', '0.8');
+    circle.setAttribute('class', 'cell-dot');
+    circle.addEventListener('mousemove', (e) => {
+      showTip(`<b>Cell ${c.cell} (near ${c.city === 'other' ? 'no major metro' : c.city})</b>
+        <div class="tt-row"><span>Sub-400 m² capacity</span><span>${fmt(c.est_mwp,1)} MWp</span></div>
+        <div class="tt-row"><span>Flagged buildings</span><span>${fmt(c.n_buildings)}</span></div>`, e.clientX, e.clientY);
+    });
+    circle.addEventListener('mouseleave', hideTip);
+    svgSmall.appendChild(circle);
+  });
+
+  // Small-PV city cluster bars
+  const clusters = {};
+  CELLS.forEach(c => {
+    const k = c.city;
+    clusters[k] = clusters[k] || { name: k, n_cells: 0, mwp: 0, n_buildings: 0 };
+    clusters[k].n_cells += 1; clusters[k].mwp += c.est_mwp; clusters[k].n_buildings += c.n_buildings;
+  });
+  const clusterList = Object.values(clusters).sort((a,b) => b.mwp - a.mwp);
+  const maxCluster = clusterList[0].mwp;
+  const barsSmall = document.getElementById('bars-small');
+  clusterList.forEach(cl => {
+    const row = document.createElement('div'); row.className = 'bar-row';
+    const w = (cl.mwp / maxCluster) * 100;
+    const label = cl.name === 'other' ? 'Other (17 cells)' : cl.name;
+    row.innerHTML = `
+      <div class="name">${label}</div>
+      <div class="bar-track"><div class="bar-fill orange" style="width:${w}%"></div></div>
+      <div class="val">${fmt(cl.mwp,0)}</div>`;
+    barsSmall.appendChild(row);
+  });
+
+  const tblSmallBody = document.querySelector('#table-small-el tbody');
+  clusterList.forEach(cl => {
+    const tr = document.createElement('tr');
+    const label = cl.name === 'other' ? 'Other' : cl.name;
+    tr.innerHTML = `<td>${label}</td><td class="num">${cl.n_cells}</td><td class="num">${fmt(cl.mwp,1)}</td><td class="num">${fmt(cl.n_buildings)}</td>`;
+    tblSmallBody.appendChild(tr);
+  });
+
+  // ---------- view toggles ----------
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.view;
+      const group = target.startsWith('chart-large') || target.startsWith('table-large') ? ['chart-large','table-large'] : ['chart-small','table-small'];
+      group.forEach(id => {
+        document.getElementById(id).classList.toggle('active', id === target);
+      });
+      const parent = btn.parentElement;
+      parent.querySelectorAll('.toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+})();
+</script>
