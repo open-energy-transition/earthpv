@@ -27,6 +27,7 @@ import logging
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
 
 log = logging.getLogger(__name__)
 
@@ -241,6 +242,17 @@ def _build_simple_atlas(
         f"{word} panel area becomes an estimate of installed rooftop capacity — the input "
         "an energy-system model needs. The map glows where that capacity concentrates."
     )
+    det_total_note = round(float(grid.est_mwp_det.sum()))
+    exp_total_note = round(float(grid.est_mwp_exp.sum()))
+    formula_note = (
+        "<b>A<sub>det</sub></b> counts only pixels above the 0.30 threshold that fall on a "
+        "building footprint &mdash; the precision-honest floor. <b>A<sub>exp</sub></b> "
+        "integrates sub-threshold probability, so it leans high. Reported capacity is "
+        "<b>P&nbsp;=&nbsp;A&nbsp;&times;&nbsp;&eta;</b> for each, giving the detected / "
+        f"expected pair ({det_total_note:,} / {exp_total_note:,} MWp nationwide) that "
+        "brackets the true installed capacity."
+    )
+
     html = TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -250,6 +262,8 @@ def _build_simple_atlas(
         "__PRIMARY_WORD__": word,
         "__PRIMARY_LABEL__": label,
         "__PRIMARY_COL__": col,
+        "__SECONDARY_LABEL__": "Expected",
+        "__SECONDARY_COL__": "Exp",
         "__BRACKET_HTML__": bracket,
         "__N_CELLS_TOTAL__": f"{len(grid):,}",
         "__FOOT_MODEL__": (
@@ -259,12 +273,236 @@ def _build_simple_atlas(
         "__AOI_TITLE__": title,
         "__HOWTO_HTML__": howto,
         "__METHOD_LEDE__": method_lede,
+        "__FORMULA_NOTE_HTML__": formula_note,
     }.items():
         html = html.replace(key, value)
 
     out = Path(out) if out else density_dir / f"{aoi}_pv_atlas.html"
     out.write_text(html)
     log.info("Wrote capacity atlas (%s metric) -> %s", word, out)
+    return out
+
+
+def build_combined_atlas(
+    aoi: str, density_dir: Path, sub400_cells_path: Path,
+    out: Path | None = None, zoom_out_frac: float = 0.0,
+) -> Path:
+    """Large-PV (>= 400 m2, national, recall-corrected) + small-PV (sub-400 m2,
+    density-domain-restricted -- see `sub400_capacity.domain_restricted_capacity`) in ONE
+    per-cell map, reusing `templates/pv_atlas.html` (the same template `_build_simple_atlas`
+    uses) rather than a bespoke page.
+
+    The two instruments have wildly different national coverage -- large-PV covers every
+    cell, small-PV only the ~93 cells whose building density matches the calibration
+    quadrats' range -- so a cell outside that domain shows large-PV alone, not "zero
+    small-PV" (the small-PV contribution there is simply unmeasured). The map draws a
+    dashed teal outline on every in-domain cell regardless of its value, so that
+    distinction survives the color scale: a color alone cannot show "this number includes
+    a second, differently-calibrated instrument" the way an outline can.
+
+    `sub400_cells_path` is the building-level domain-restricted parquet
+    `sub400_capacity.domain_restricted_capacity` writes (columns: `cell`, `roof_area_m2`,
+    `p_roofclf`, `est_kwp_sub400`) -- summing `est_kwp_sub400` per `cell` gives that cell's
+    small-PV MWp exactly as the 6,628 MWp national (domain-only) figure sums it.
+    """
+    density_dir = Path(density_dir)
+    grid = gpd.read_parquet(density_dir / "grid.geoparquet")
+    meta = json.loads((density_dir / "meta.json").read_text())
+    if "est_mwp_rc" not in grid.columns:
+        raise ValueError(
+            f"{density_dir}/grid.geoparquet has no est_mwp_rc column -- run "
+            "`earthpv calibrate-candidates` before `density` so recall-correction exists; "
+            "the combined atlas needs a large-PV instrument to add the small-PV figure to."
+        )
+    title = aoi.replace("_", " ").title()
+
+    # Reassign buildings to cells by spatial join against THIS grid's own cell polygons
+    # (grid.geometry is exactly the [lon0,lon0+0.1) x [lat0,lat0+0.1) box), rather than
+    # trusting the `cell` id already baked into sub400_cells_path: that id was computed
+    # against whatever manifest was current when roofclf's national scoring ran, and even
+    # reconstructing ix/iy from "this grid's observed min lon0/lat0" is unsafe -- that min
+    # is just the smallest POPULATED cell, not the true compose-grid origin, so a run with
+    # a slightly different populated extent shatters cells that should be one. Measured on
+    # the pinned pre-OSM-replace snapshot: the naive string-id join silently dropped 3
+    # cells (746.7 MWp); the origin-guessing rebuild fragmented the 93 cells into 245 and
+    # still dropped 39. A spatial join against the grid's actual polygons is the only
+    # version of this that cannot silently misplace a building.
+    sub400 = gpd.read_parquet(sub400_cells_path, columns=["est_kwp_sub400", "geometry"])
+    sub400 = sub400.set_geometry(sub400.geometry.representative_point())
+    joined = gpd.sjoin(sub400, grid[["cell", "geometry"]], predicate="within", how="left")
+    n_unmatched = int(joined["cell"].isna().sum())
+    if n_unmatched:
+        unmatched_mwp = float(joined.loc[joined["cell"].isna(), "est_kwp_sub400"].sum()) / 1000.0
+        log.warning(
+            "Combined atlas: %d of %d domain-restricted buildings (%.1f MWp) fall outside "
+            "every cell of this %d-cell grid -- likely outside this run's AOI/manifest "
+            "bounds entirely (a different density run's coverage), not a join bug. Their "
+            "capacity is excluded from the map/totals below.",
+            n_unmatched, len(joined), unmatched_mwp, len(grid),
+        )
+    by_cell = joined.dropna(subset=["cell"]).groupby("cell")["est_kwp_sub400"].sum() / 1000.0
+    n_domain_cells = int(by_cell.size)
+
+    grid = grid.copy()
+    grid["est_mwp_sub400"] = grid["cell"].map(by_cell).fillna(0.0)
+    grid["in_domain"] = grid["cell"].isin(by_cell.index)
+    grid["est_mwp_combined"] = grid["est_mwp_rc"] + grid["est_mwp_sub400"]
+
+    cells = [
+        [round(float(r.lon0), 3), round(float(r.lat0), 3),
+         round(float(r.est_mwp_combined), 3), round(float(r.est_mwp_rc), 3),
+         int(r.n_pv_buildings), round(float(r.roof_area_m2) / 1e6, 3), int(r.in_domain)]
+        for r in grid.itertuples()
+    ]
+    bounds = [
+        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
+        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
+    ]
+    if zoom_out_frac:
+        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
+        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
+        bounds = [
+            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
+            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
+        ]
+
+    provinces = []
+    regions_path = density_dir / "regions.geoparquet"
+    if regions_path.exists():
+        reg = gpd.read_parquet(regions_path)
+        reg_regions = reg[reg.level == "region"]
+        # Sum the two new per-cell columns into each province by point-in-polygon --
+        # regions.geoparquet's own precomputed sums predate est_mwp_sub400/combined and
+        # don't have them, so this is a join, not a lookup.
+        pts = gpd.GeoDataFrame(
+            grid[["est_mwp_rc", "est_mwp_sub400", "est_mwp_combined"]],
+            geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
+        )
+        joined = gpd.sjoin(pts, reg_regions[["region_id", "geometry"]], predicate="within", how="left")
+        by_region = joined.groupby("region_id")[["est_mwp_sub400", "est_mwp_combined"]].sum()
+        for r in reg_regions.itertuples():
+            area_km2 = max(float(r.area_km2), 1e-9)
+            region_sub400 = float(by_region["est_mwp_sub400"].get(r.region_id, 0.0))
+            region_combined = float(by_region["est_mwp_combined"].get(r.region_id, r.est_mwp_rc))
+            provinces.append({
+                "name": str(r.name),
+                # "mwp_det"/"mwp_exp" are the template's field names; here "det" is the
+                # combined (primary, colours the map) figure and "exp" is large-PV alone
+                # (the secondary/bracket column), NOT literally detected/expected.
+                "mwp_det": round(region_combined, 1),
+                "mwp_exp": round(float(r.est_mwp_rc), 1),
+                "mwp_sub400": round(region_sub400, 1),
+                "nb": int(r.n_pv_buildings),
+                "dens": round(float(r.pv_area_rc_total_m2) / area_km2, 1),
+                "rings": _rings(r.geometry),
+            })
+        provinces.sort(key=lambda p: -p["mwp_det"])
+
+    total_rc = float(grid.est_mwp_rc.sum())
+    total_sub400 = float(grid.est_mwp_sub400.sum())
+    total_combined = float(grid.est_mwp_combined.sum())
+
+    data = {
+        "bounds": bounds,
+        "cells": cells,
+        "provinces": provinces,
+        "cities": CITIES.get(aoi, []),
+        "totals": {
+            "mwp_det": round(total_combined),
+            "mwp_exp": round(total_rc),
+            "pv_buildings": int(grid.n_pv_buildings.sum()),
+            "det_km2": round(float(grid.pv_area_rc_total_m2.sum()) / 1e6, 1),
+            "n_cells": int(len(grid)),
+            "kwp_per_m2": meta.get("kwp_per_m2_module", 0.18),
+            "threshold": meta.get("threshold", 0.3),
+        },
+    }
+
+    lede = (
+        "Two instruments, one map. A recall-first segmentation model finds installations "
+        f"&ge; 400 m&sup2; across every building-populated cell of {title} — the "
+        "population large enough to train a per-pixel detector on. Below that floor, a "
+        "separate per-building classifier (<code>roofclf</code>) supplies a second "
+        "estimate, but only in cells whose settlement density matches where it has been "
+        "calibrated against ground truth. Colour is the sum of both where both exist; a "
+        "dashed outline marks exactly which cells that is."
+    )
+    bracket = (
+        f'Large-PV alone (&ge; 400 m&sup2;, national, recall-corrected): <b id="expNum">0</b> '
+        f"MWp. Adding small-PV inside the {n_domain_cells} outlined cells brings the total "
+        f"shown to <b>{round(total_combined):,}</b> MWp — <b>not</b> a national small-PV "
+        "estimate: outside the outline, the map shows large-PV only, because there is no "
+        "calibration evidence there either way, not because small-PV is known to be zero. "
+        "The domain is reported elsewhere as 93 cells (a different manifest's grid) — "
+        f"{n_domain_cells} is that same physical area re-cast onto this run's own cell "
+        "boundaries, not a different or larger coverage claim."
+    )
+    howto = (
+        "<b>How to read it.</b> Colour is <b>combined</b> capacity: large-PV "
+        "(recall-corrected, every cell) plus small-PV (only inside the "
+        f"{n_domain_cells} dashed-outline cells). Outside the outline, colour is large-PV "
+        "alone — the small-PV term is unmeasured there, not zero. Hover any cell for the "
+        "large-PV/combined breakdown and its domain status."
+    )
+    method_lede = (
+        "Large-PV capacity comes from `density.py`'s recall-corrected estimator (see the "
+        "six-estimator atlas for its full derivation). Small-PV capacity comes from "
+        "`sub400_capacity.domain_restricted_capacity`: a per-building classifier "
+        "(`roofclf`) scored nationally, restricted to cells whose building density falls "
+        "in the calibration quadrats' measured range, weighted by density-regime "
+        "precision, and with buildings already >= 400 m² excluded as contamination. The "
+        f"{n_domain_cells}-cell domain is {100 * n_domain_cells / len(grid):.1f}% of "
+        "national cells; extrapolating the small-PV component beyond it is exactly the "
+        "failure this restriction exists to prevent, so this map deliberately does not do it. "
+        "The domain is measured and published elsewhere as 93 cells, against a national "
+        "building-density manifest computed separately from this density run's own grid; "
+        "its cell boundaries are offset from this map's, so the same physical domain lands "
+        f"on {n_domain_cells} of this map's cells. Every domain building was reassigned by "
+        "spatial join against this map's actual cell polygons (not by matching cell-id "
+        "strings across the two manifests), so the total shown is exact regardless of that "
+        "offset — only the cell *count* differs, not the capacity."
+    )
+    formula_note = (
+        f"Large-PV total shown: <b>{round(total_rc):,} MWp</b> (recall-corrected, all "
+        f"placements, national). Small-PV total shown: <b>{round(total_sub400):,} MWp</b> "
+        f"(domain-restricted to {n_domain_cells} cells only). Combined: "
+        f"<b>{round(total_combined):,} MWp</b> — reported because summing them was asked "
+        "for, not because the project's own calibration work treats this as one validated "
+        "population estimate (the two terms have very different national coverage and "
+        "confidence). See the dashed-outline cells for exactly where the small-PV term "
+        "is non-zero."
+    )
+
+    html = TEMPLATE.read_text()
+    for key, value in {
+        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
+        "__PAGE_TITLE__": f"{title} PV Density — Large + Small, One Map",
+        "__H1__": f"{title}'s solar, large and small, in one map",
+        "__LEDE_HTML__": lede,
+        "__PRIMARY_WORD__": "combined",
+        "__PRIMARY_LABEL__": "Combined",
+        "__PRIMARY_COL__": "Combined",
+        "__SECONDARY_LABEL__": "Large-PV only",
+        "__SECONDARY_COL__": "Large-only",
+        "__BRACKET_HTML__": bracket,
+        "__N_CELLS_TOTAL__": f"{len(grid):,}",
+        "__FOOT_MODEL__": (
+            "Model: TerraMind-tiny (large-PV) + roofclf per-building classifier (small-PV, "
+            f"{n_domain_cells}-cell domain restriction)"
+        ),
+        "__AOI_TITLE__": title,
+        "__HOWTO_HTML__": howto,
+        "__METHOD_LEDE__": method_lede,
+        "__FORMULA_NOTE_HTML__": formula_note,
+    }.items():
+        html = html.replace(key, value)
+
+    out = Path(out) if out else density_dir / f"{aoi}_pv_combined_atlas.html"
+    out.write_text(html)
+    log.info(
+        "Wrote combined atlas (large %.0f + small %.0f = %.0f MWp, %d/%d domain cells) -> %s",
+        total_rc, total_sub400, total_combined, n_domain_cells, len(grid), out,
+    )
     return out
 
 
@@ -325,12 +563,24 @@ def _build_estimator_atlas(
             if meta_path.exists() else "n/a"
         )
 
+    sub400 = meta.get("sub400_roofclf_supplemental")
+    if sub400 is not None:
+        # Requested explicitly despite the "do not sum" note above: the two instruments
+        # cover disjoint populations (>=400 m2 recall-corrected vs. a 93-cell sub-400 m2
+        # domain restriction) at very different confidence levels, so this combined figure
+        # is a user-requested convenience number, not a validated national estimate.
+        sub400 = {**sub400, "combined_mwp": round(
+            float(grid.est_mwp_rc.sum()) + float(sub400["total_est_mwp"]), 1
+        )}
+
     data = {
         "bounds": bounds,
         "cells": cells,
         "provinces": provinces,
         "cities": CITIES.get(aoi, []),
         "calibBoxes": _load_calib_boxes(aoi, labels_dir),
+        "plausibilityNote": meta.get("plausibility_note"),
+        "sub400": sub400,
         "totals": {
             "m": [round(float(grid[c].sum())) for c in _EST_COLS],
             # From the country-level summed draws in meta, NOT by adding the per-cell

@@ -761,9 +761,19 @@ def score_buildings_national(
         feat_df["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
 
         p = predict_proba(model, design_matrix(feat_df, feats))
+        # SPPI costs nothing extra here -- the five bands it needs are already read for
+        # the model features above. Saving it alongside p_roofclf is what lets a future
+        # national AND-gate (see docs/methods/density.md's "SPPI cross-validation")
+        # happen without a second national composite-read pass.
+        from earthpv.sppi import compute_sppi
+
+        sppi_val = compute_sppi(
+            feat_df["b02_mean"], feat_df["b03_mean"], feat_df["b08_mean"],
+            feat_df["b11_mean"], feat_df["b12_mean"],
+        )
         result = gpd.GeoDataFrame({
             "cell": cell, "geometry": bu.geometry.to_numpy(),
-            "roof_area_m2": feat_df["roof_area_m2"], "p_roofclf": p,
+            "roof_area_m2": feat_df["roof_area_m2"], "p_roofclf": p, "sppi": sppi_val,
         }, crs="EPSG:4326")
         result.to_parquet(out_path)
 

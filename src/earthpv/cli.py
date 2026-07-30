@@ -546,15 +546,27 @@ def atlas(
         "10% less zoom: draws the country 10% smaller, showing that much more "
         "surrounding context) — cells/provinces/cities are unchanged, just rescaled"
     ),
+    sub400_cells: Path = typer.Option(
+        None, help="Building-level domain-restricted parquet from "
+        "`sub400_capacity.domain_restricted_capacity` (columns: cell, est_kwp_sub400). "
+        "When given, writes the COMBINED large+small per-cell atlas instead of the "
+        "standard one -- large-PV (recall-corrected, national) plus small-PV summed "
+        "per cell inside the density-domain restriction only; other cells show large-PV "
+        "alone, marked by a dashed outline where small-PV is actually included.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
     import logging
 
-    from earthpv.atlas import build_atlas
+    from earthpv.atlas import build_atlas, build_combined_atlas
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    build_atlas(aoi, Path(pred_dir) / aoi / "density", out=out, zoom_out_frac=zoom_out)
+    density_dir = Path(pred_dir) / aoi / "density"
+    if sub400_cells is not None:
+        build_combined_atlas(aoi, density_dir, sub400_cells, out=out, zoom_out_frac=zoom_out)
+    else:
+        build_atlas(aoi, density_dir, out=out, zoom_out_frac=zoom_out)
 
 
 @app.command()

@@ -44,6 +44,13 @@
   .lede { color: var(--ink-2); max-width: 62ch; }
   .lede b { color: var(--ink); font-weight: 600; }
 
+  /* ── caveat banner (unvalidated / published-ahead-of-gate runs) ────── */
+  .banner {
+    margin: 18px 0 0; padding: 12px 16px; border-radius: 6px; max-width: 68ch;
+    background: #1D1608; border: 1px solid #4A3313; color: var(--ink-2); font-size: 13.5px;
+  }
+  .banner b { color: var(--glow); }
+
   /* ── estimator switcher ─────────────────────────────────────────── */
   .switch { display: flex; flex-wrap: wrap; gap: 20px; margin: 30px 0 0; }
   .scope { flex: 1 1 300px; }
@@ -159,6 +166,7 @@
     <div class="eyebrow">__EYEBROW__</div>
     <h1>__H1__</h1>
     <p class="lede">__LEDE_HTML__</p>
+    <div class="banner" id="plausibilityBanner" style="display:none">⚠ <span id="plausibilityText"></span></div>
   </header>
 
   <div class="switch" role="group" aria-label="Estimator">
@@ -236,6 +244,11 @@
       bin, with a 90% credible band from posterior draws over every calibration count.
       The correction is modest where the area-dominant ≥ 5,000 m² bins are already
       almost fully recalled.</p></div>
+    <div class="note" id="sub400Note" style="display:none">
+      <h3><span class="dot" style="background:var(--calib)"></span>Sub-400 m² capacity — separate, not in the six numbers above</h3>
+      <p id="sub400Text"></p>
+      <p id="sub400CombinedText" style="margin-top:8px;color:var(--ink-3);font-size:13px"></p>
+    </div>
     <div class="note" id="calibNote" style="display:none">
       <h3><span class="dot" style="background:var(--calib)"></span>Calibration ground truth</h3>
       <p>Recall above pools <b>fully re-mapped 1&nbsp;km² quadrats</b> into the recall
@@ -487,6 +500,33 @@ function drawTable() {
       <td class="v">${fmt(v)}</td>${ci}<td>${(100*v/total).toFixed(1)}%</td></tr>`;
   }).join("");
   document.getElementById("prov").innerHTML = head + body;
+}
+
+/* ── caveat banner: set when this run is published ahead of, or without,
+   `earthpv check-density`'s pass (see density.py's --plausibility-note) ─ */
+if (D.plausibilityNote) {
+  document.getElementById("plausibilityBanner").style.display = "block";
+  document.getElementById("plausibilityText").textContent = D.plausibilityNote;
+}
+
+/* ── sub-400 m² supplemental (roofclf, domain-restricted) ──────────── */
+if (D.sub400) {
+  const s = D.sub400;
+  document.getElementById("sub400Note").style.display = "block";
+  document.getElementById("sub400Text").innerHTML =
+    `<b>${fmt(s.total_est_mwp)} MWp</b> from buildings roofclf flags with no existing
+    segmentation candidate nearby, footprint &lt; 400 m², restricted to
+    ${s.n_domain_cells} of ${s.n_national_cells} national cells whose building density
+    matches the calibration quadrats (${s.calibration_quadrats.join(", ")}) —
+    <b>not a national figure</b>, and <b>not included</b> in any of the six numbers
+    above. Do not sum it with them.`;
+  document.getElementById("sub400CombinedText").innerHTML =
+    `Sum, if forced to one number anyway: <b>${fmt(s.combined_mwp)} MWp</b>
+    (recall-corrected all-placement ${fmt(D.totals.m[5])} MWp + this sub-400 m² figure).
+    Shown because it was asked for — it is <b>not</b> a validated single-population
+    estimate: the two terms have different national coverage (100% vs. 19.1% of
+    buildings) and different confidence, so this total inherits the sub-400 figure's
+    "do not rescale" caveat above.`;
 }
 
 /* ── calibration ground-truth note + legend ──────────────────────── */
