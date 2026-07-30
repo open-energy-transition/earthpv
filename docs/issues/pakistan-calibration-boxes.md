@@ -340,6 +340,85 @@ is high-value independent of the sub-floor question.
 max 1,856.6 m². Wider size spread than Boxes 6/7 (35/73 below 100 m², 3/73 at or above
 1,000 m²) — not purely a sub-floor test ground, unlike the other two new boxes.
 
+### Box 9 — Peshawar, 1km x 1km around (34.0199854, 71.5505752) — 2026-07-30
+
+bbox `71.545162,34.015478,71.555989,34.024493`
+(`data/labels/peshawar_calib_1km_overpass_solar.parquet`, boundary
+`data/labels/peshawar_calib_1km_boundary.geojson`, geodesic area 999,999.998 m² by
+construction — built as a precise 1 km square via `pyproj.Geod.fwd`, not drawn by eye).
+Reverse-geocode against the density stage's own admin polygons: **Peshawar district,
+Khyber Pakhtunkhwa** — the **first Peshawar quadrat**, and the city was already flagged
+as a priority target in `docs/methods/density.md`'s sub-400 m² region-suggestion table
+(one of the top building-density cities nationally, alongside Karachi/Lahore/Faisalabad/
+Islamabad, none of which had a Peshawar-specific quadrat yet).
+
+**Status: NOT a Rule-1-verified quadrat**, same caveat as Boxes 2–5. This is a live
+Overpass pull at a center coordinate the user supplied, not an exhaustively-mapped
+completeness pass by a human against high-res imagery — no mapper name, no second-pass
+countersign, no imagery-date record. Its boundary and building geometry are exact; its
+*completeness* is unverified, so absence of a mapped installation anywhere inside it does
+NOT mean absence of PV. Usable as an interim data point and as a `roofclf` training
+quadrat (the same way Boxes 2–5 already are), not as a source of trustworthy negatives,
+until it goes through the two-mapper sign-off in
+`docs/calibration-mapping-protocol.md`.
+
+**Re-pulled twice more, 2026-07-30, same day, after the user added missing OSM labels
+each time**: 290 → 353 (+63) → 360 (+7) installations. Every snapshot preserved, none
+overwritten: bare `peshawar_calib_1km_overpass_solar.parquet` (pull 1, 290), dated
+`..._20260730.parquet` (pull 2, 353), `..._20260730_v2.parquet` (pull 3, 360, current —
+`_newest_solar`/`_newest_overpass_path` both pick it, verified). This is the "OSM is
+iteratively completed, re-pull after mapping" pattern the protocol expects, not a sign
+this box is done — still not Rule-1 without a completeness declaration and
+second-mapper pass; the shrinking increment (+63, then +7) is a reasonable, but not
+sufficient, signal that the mapping is converging.
+
+**Ground truth (current pull): 360 installations, 356 rooftop / 4 ground, 28,955.1 m² total**,
+median 71.5 m², mean 80.4 m², max 555.8 m². **358/360 (99.4%) below the 400 m² detection
+floor, 265/360 (73.6%) below 100 m²** — the largest single haul of sub-floor installations
+of any quadrat registered so far (previous densest was Mardan at 794 installations but a
+larger box; Peshawar's 360-in-1 km² is a higher areal density). `packing_density`
+(nn_median_m) measures **15.7 m** — tightly packed, in the same "informal/residential"
+cluster as Karachi coastal (16.8 m), Quetta (16.8 m; coincidentally close) and Sialkot
+(18.8 m), not the industrial estates' 44–52 m spacing. Geometries are simple `way`
+polygons tagged `generator:source=solar`/`location=roof`, consistent with an ordinary
+building-by-building OSM mapping pass rather than a bulk import.
+
+### Box 10 — Peshawar East, 1km x 1km around (34.0242579, 71.5600512) — 2026-07-30
+
+bbox `71.554638,34.019750,71.565465,34.028766`
+(`data/labels/peshawar_east_calib_1km_overpass_solar.parquet`, boundary
+`data/labels/peshawar_east_calib_1km_boundary.geojson`, geodesic area 999,999.998 m²).
+User-suggested center, ~995 m from Box 9's center — checked for overlap **before**
+creation (per the protocol note added to this doc): the two 1 km boxes share a corner,
+**6.56% of this box's area**. Added anyway on the user's confirmation, as adjacent
+Peshawar coverage rather than a duplicate.
+
+**The overlap matters more than its area share suggests.** 42 of this box's 131
+installations (32.1%) — nearly a third — sit inside that 6.56%-of-area shared corner,
+i.e. the corner is far denser with PV than the rest of either box. **Consequence: if
+`peshawar_calib_1km` and `peshawar_east_calib_1km` are both pooled into `roofclf`
+training/LOQO without deduplication, those ~42 installations (and their host buildings)
+are double-counted** — present in both quadrats' building tables, which breaks the
+leave-one-quadrat-out independence assumption (holding out one no longer removes all of
+that ground truth from training, since the other still carries the overlap). **Not yet
+deduplicated** — `roofclf.building_table`/`discover_quadrats` has no overlap-aware
+filtering today. Whoever next runs `earthpv roof-classifier` with both Peshawar quadrats
+present should either clip one box's buildings to exclude the shared corner, or treat
+this as a known limitation of the resulting fold statistics for these two quadrats
+specifically.
+
+**Status: NOT Rule-1 verified**, same caveat as every other non-owner-mapped box.
+
+**Ground truth: 131 installations, 127 rooftop / 4 ground, 7,572.2 m² total**, median
+44.9 m², **100% below the 400 m² floor** — entirely sub-floor, smaller median than even
+Box 9. `packing_density` (nn_median_m) **17.3 m**, same tightly-packed cluster.
+**base_rate 3.7%** (126/3,382 buildings) — notably lower than Box 9's 16.5% despite
+being 995 m away and sharing a corner; this box's own building count (3,382) is also
+60% higher than Box 9's (2,111) over a similarly-sized area, so the two boxes are not
+drawn from the same population despite being adjacent and in the same city — a useful,
+concrete illustration of why `base_rate` must be read per quadrat, never pooled, even at
+this fine a spatial grain.
+
 ---
 
 ## Visual verification pass (2026-07-24) — what this is and is NOT

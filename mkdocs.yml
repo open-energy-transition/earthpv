@@ -93,6 +93,7 @@ nav:
       - Solar glint: methods/glint.md
       - Glint image gallery: glint_examples.md
       - Calibration: methods/calibration.md
+      - Calibration quadrats overview: methods/calibration-quadrats.md
       - Quadrat protocol: calibration-mapping-protocol.md
   - Experiments: experiments.md
   - Reproduce: reproduce.md
