@@ -238,6 +238,68 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
   capacity fold-in rejection above — a lower threshold flags *more* buildings, so the
   incremental-capacity number is expected to grow, not shrink, until a real per-stratum
   correction exists).
+  **Density-stratified capacity, 2026-07-30 — a partial fix, deliberately kept out of
+  `density.py`.** `sub400_capacity.py` (new module) answers "how much does restricting to
+  the calibration-covered density regime change the rejected 18-37 GWp national number,"
+  and the answer is nuanced: precision alone does not fix it (0.499→0.5495 pooled
+  precision from restricting to the 3 quadrats whose `rate_ratio` is within 2x either
+  direction — faisalabad, karachi_coast, site_karachi, base_rate 12.5-18.5% — makes the
+  *unrestricted* national number worse, 37,197→40,879 MWp, since 0.5495>0.5). The
+  relationship between `rate_ratio` and `base_rate` is not "higher density is better" —
+  it is a crossing point: quadrats below ~12% base rate overestimate 2x+, the one quadrat
+  well above it (lahore, 30%) underestimates instead, and mardan is a separate,
+  already-documented bad fold. What actually moves the number is restricting the
+  *population*, not the weight: intersecting the density-regime precision with the
+  pre-existing building-density domain restriction (93 of 4,473 national cells matching
+  the 8 quadrats' 737-4750 bldg/km² range) AND excluding buildings whose own footprint is
+  already ≥400 m² (a `new_lead_mask` 30 m-radius matching gap, not real sub-400 signal —
+  13.4% of the domain-restricted incremental buildings, 49% of its area) gives **6,628
+  MWp**, the same order of magnitude as the country's entire existing
+  segmentation-based total (5,078 MWp) for the first time. This number describes ONLY
+  those 93 cells (19.1% of national buildings) — rescaling it by the domain's cell/building
+  share to estimate a country total (~implies 315 GWp) is exactly the failure this module
+  exists to avoid, and `domain_restricted_capacity`'s returned summary says so explicitly.
+  The 93 cells concentrate in Karachi, Lahore, Peshawar, Mardan, Faisalabad, Islamabad,
+  Sialkot, Multan, Gujranwala, Charsadda, Sheikhpura, Rawalpindi and Quetta — i.e. Pakistan's
+  largest cities, matched against the building-density (not PV-density) proxy, the only one
+  that survived testing (existing candidate density anti-correlates with true small-PV rate;
+  roofclf's own predicted rate does not separate calibrated from miscalibrated quadrats
+  either — both tested and rejected as national selection proxies this session). Kept as a
+  **separate product**, never merged into `density.py`'s `total_est_mwp_rc`: the fraction-head
+  promotion attempt into `density.py` itself (below) broke `check-density` for an unrelated
+  reason, and stacking two shaky corrections into one pipeline path is how that happened.
+  `density.py` itself gained one small, safe, segmentation-only addition instead: a
+  `density_confidence` flag (`below`/`in`/`above_calibrated_range`, from the same 737-4750
+  bldg/km² range) on `grid.csv`/`regions.csv`, which states where the ≥400 m² recall
+  correction has no calibration evidence either way — it does not correct anything, and it
+  is deliberately never computed for a fraction-head run (`aggregate`'s `exp_source` gate),
+  so it cannot be read as validating a different instrument's numbers.
+  **Fraction-head promotion into `density.py`, attempted and reverted the same day.**
+  Forcing `density --fraction-prob-dir` through the *current* (post-OSM-replace) candidate
+  population broke `check-density` (2 regions failing vs. the passing 0-fail baseline) —
+  root cause: a disproportionate 46% collapse in roof-intersected candidate area vs. 29%
+  overall, most likely the same never-fully-root-caused `density.py`/`postprocess.py`
+  ground-mount aggregation issue as the Gilgit-Baltistan case above, now exposed by the
+  first *forced* full recompute against the OSM-corrected candidates. Reverted to the
+  passing segmentation-based backup; the fraction head is not promoted, and the sub-400
+  products above are its replacement path — evidence-bearing but explicitly out-of-band.
+  **Generalized the same day, by accident and worth recording**: a plain, non-`--force`
+  `earthpv density --aoi pakistan --districts` re-run (adding only the `density_confidence`
+  flag, segmentation instrument, no fraction involved) reproduced the identical failure
+  (2 fail, 3 suspect; `total_est_mwp_rc_roof` 2,229.9→570.9). Cause: `_CAND_COLS` is
+  *always* rederived from whatever `candidates.parquet` is current, every run, force or
+  not, while the cached cell partials' per-building/`*_roof` columns only refresh on
+  `--force` — so the two now permanently disagree, because `candidates.parquet` was
+  OSM-geometry-replaced (2026-07-29, oversize 233→149) after the partials were last built.
+  **The fraction head was never the cause — any run against the current candidate
+  population breaks the gate, segmentation included.** The published `density/` is
+  therefore pinned to the pre-OSM-replace candidate snapshot (`n_oversize_excluded=233`,
+  restored from `density_segmentation_pre_fraction_promote_20260730/`) until someone does
+  a `--force` rebuild AND separately root-causes the roof-candidate collapse that a
+  `--force` rebuild triggers — both are still open. The broken re-run is preserved at
+  `density_STALE_PARTIALS_VS_CURRENT_CANDIDATES_20260730/`. Consequence: the
+  `density_confidence` completeness flag is implemented and correct but not yet present
+  on the published output, since publishing it requires a run this bug currently blocks.
 
 **Size is a confounder — report `auc_within_size`.** Adoption rises with house size (mappers
 report large houses packed with PV, small ones much less), so footprint area *alone* scores

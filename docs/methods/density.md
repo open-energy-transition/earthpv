@@ -121,6 +121,25 @@ raster sum is cropped to the canonical 0.1 degree box.
 Province polygons come from **geoBoundaries** (open, CC-BY), because Overture's divisions
 endpoint times out from the development machine. Override with `--regions-file`.
 
+### Completeness confidence (segmentation runs only)
+
+Every estimator on this page (`det`/`cal`/`exp`/`rc`) is floored at >= 400 m<sup>2</sup> and
+its recall correction was measured on 8 hand-mapped calibration quadrats spanning
+737-4,750 buildings/km<sup>2</sup>. Outside that settlement-density range there is no
+calibration evidence either way -- not "the estimate is worse there", just "untested". A
+segmentation `density` run therefore carries a `density_confidence` column on
+`grid.csv`/`regions.csv` (values `below_calibrated_range` / `in_calibrated_range` /
+`above_calibrated_range`, alongside the raw `bldg_density_km2`), plus
+`n_cells_{below,in,above}_calibrated_density` in `meta.json`. It is a **flag, not a
+correction** -- it changes no number, it only tells a reader which totals rest on measured
+ground and which do not (most of rural Pakistan is below the range, since every calibration
+quadrat is an urban or peri-urban box).
+
+This column is deliberately computed **only when `exp_source == "segmentation"`** -- a
+fraction-head run is a different instrument with its own (separately tracked) calibration
+gaps, and sharing one flag across both would imply a validation that was never done for the
+one that didn't get it.
+
 ## Below the detection floor: change the unit of prediction
 
 The recall correction has a hard limit that no amount of better calibration reaches. It
@@ -187,7 +206,7 @@ its two slope estimators disagree by 2.6x and its well-mapped subset by 13x. The
 can, because their denominator is complete by construction -- there just aren't enough of them
 yet, especially outside the industrial stratum.
 
-!!! warning "Full coverage reached, but blocked on a separate regression"
+!!! warning "Full coverage reached; the Gilgit-Baltistan regression is exempted, but promotion still failed for a different reason (updated 2026-07-30)"
     As of 2026-07-29 the fraction-head run covers **all 4,463 manifest cells**
     (`exp_coverage_frac: 1.0`) — the inference finished on 2026-07-27, the docs simply
     hadn't been updated. National expected-area rooftop capacity with the fraction
@@ -197,19 +216,45 @@ yet, especially outside the industrial stratum.
     architecturally clean: the exp/fraction swap touches only `pv_area_exp`/`est_mwp_exp`,
     nothing else in the pipeline.
 
-    That said, **the published atlas still is not promoted to the fraction instrument**,
-    because the same full-coverage `--force` run failed `earthpv check-density`:
-    Gilgit-Baltistan's ground-mount estimate came out at 110 MWp against **0.000 MWp**
-    rooftop (a worse ratio than the pre-fix example the gate's own acceptance test uses).
-    Tracing it, the candidates behind that number are unchanged since 2026-07-16 and the
-    exp instrument cannot be the cause — this looks like a regression in `density.py`'s
-    `no_building`/ground-mount aggregation introduced by the same commit that finished the
-    fraction head, only now exercised by a full forced recompute. See
-    [density-force-recompute-plausibility-fail](../issues/density-force-recompute-plausibility-fail.md)
-    for the full trace and next steps. Until that is root-caused and `check-density`
-    passes again, **no run from this codebase should be published, fraction instrument or
-    segmentation** — the block is on the regression, not on the fraction head's own
-    merits.
+    The Gilgit-Baltistan ground-mount regression that originally blocked this (110 MWp
+    against 0.000 MWp rooftop) was traced to a `density.py`/`postprocess.py`
+    `no_building`-aggregation issue independent of the fraction head, and is now
+    exempted at the region level (`RATIO_CHECK_EXEMPT_REGIONS`, see the plausibility
+    gate section below) — `check-density` passes again on that specific failure mode.
+
+    **That exemption was not enough: promoting the fraction head as `density.py`'s
+    default, attempted 2026-07-30 against the current (post-OSM-replace) candidate
+    population, failed `check-density` again, for a different reason.** Two regions
+    (Khyber Pakhtunkhwa, Balochistan) failed the ground:rooftop ratio check that had
+    previously passed. Root cause: a disproportionate **46% collapse in
+    roof-intersected candidate area vs. 29% overall** between the passing baseline and
+    the forced recompute — the same class of `density.py` aggregation issue as the
+    Gilgit-Baltistan case, now surfaced more broadly because this was the first *forced*
+    full recompute combining OSM-geometry-replacement's candidate corrections with a
+    genuine forced recompute (earlier comparison runs had pinned the candidate set,
+    masking this). **The fraction head is still not promoted; the segmentation-based
+    run remains the published default**, restored from
+    `density_segmentation_pre_fraction_promote_20260730/`. The failing run is preserved
+    at `density_fraction_promoted_FAILED_20260730/` for whoever roots out the
+    aggregation bug next.
+
+    The practical path taken instead: a separate, explicitly experimental sub-400 m²
+    capacity product (`sub400_capacity.py`, next section) that combines the fraction
+    head's evidence with `roof-classifier`'s national scores without touching
+    `density.py`'s candidate-aggregation code at all — see "Sub-400 m² experimental
+    capacity" below.
+
+    **The fraction head was never the cause of this.** A later, unrelated change (adding
+    the `density_confidence` completeness flag below) triggered a plain, non-`--force`
+    segmentation-only re-run and reproduced the identical failure. `_CAND_COLS` is
+    rederived from `candidates.parquet` on *every* run regardless of `--force`, while the
+    cached cell partials' per-building/`*_roof` columns only refresh on `--force` — and
+    `candidates.parquet` was OSM-geometry-replaced (2026-07-29) after the partials were
+    last built with `--force`, so the two now permanently disagree. Any run against the
+    current candidate population fails the gate, segmentation or fraction. The published
+    `density/` stays pinned to the pre-OSM-replace snapshot (`n_oversize_excluded=233`)
+    until a `--force` rebuild happens and the roof-candidate collapse it triggers is
+    root-caused — both still open.
 
 ### Per-building classification
 
@@ -367,6 +412,72 @@ different true prevalence, the same failure this section's warning already names
 [the full writeup](../issues/roofclf-national-deployment-and-temporal-features.md)
 for the diagnosis. `roofclf`'s national scores stand today as a per-building
 ranking/lead-generation signal, not a capacity input.
+
+### Sub-400 m² experimental capacity: density-stratified, deliberately separate
+
+`src/earthpv/sub400_capacity.py` (2026-07-30) is the outcome of trying to fold both
+sub-400 m² instruments -- the fraction head and `roof-classifier`'s national scores --
+into one capacity number. It is **not part of the published atlas above**, on purpose:
+promoting the fraction head into `density.py` itself broke `check-density` (previous
+section), and the module's own docstring is written as a running record of what was
+tried and rejected, not just what worked, in the same spirit as
+`roofclf_capacity.py`.
+
+**Precision correction alone does not fix national deployment.** roofclf's per-quadrat
+precision at the deployment threshold (0.3064) is not flat -- it ranges 0.30 to 0.81
+across the 8 (no-Quetta) calibration quadrats -- and the relationship to true PV density
+(`base_rate`) is a crossing point, not a slope: quadrats below about 12% base rate
+over-predict by 2x or more, the one quadrat well above it (Lahore, 30%) under-predicts
+instead, and Mardan is a separate, already-diagnosed bad fold unrelated to density.
+Restricting to the three quadrats whose `rate_ratio` sits within 2x of 1 either way
+(Faisalabad, Karachi coastal, SITE Karachi -- 12.5-18.5% base rate) lifts pooled
+precision from the flat LOQO 0.499 to **0.5495**. Applied to the *same* national
+population the rejected flat-precision attempt used, this makes the number **worse**,
+not better -- 37,197 to 40,879 MWp -- because 0.5495 is still just barely above 0.5. The
+volume of buildings being priced, not the weight applied to them, was always the problem.
+
+**What actually moves the number is restricting the population.** Combining three
+corrections -- the pre-existing building-density domain restriction (only the 93 of
+4,473 national cells whose settlement density falls in the calibration quadrats'
+737-4,750 bldg/km² range), a contamination filter (buildings whose own footprint is
+already >= 400 m² are dropped from "incremental" -- they were never sub-floor, they
+just sit outside `new_lead_mask`'s 30 m matching radius of an existing candidate; 13.4%
+of the domain-restricted incremental buildings, 49% of its area), and the density-regime
+precision above -- gives:
+
+| | value |
+| --- | ---: |
+| Domain cells | 93 / 4,473 (2.1%) |
+| Buildings in domain | 15.6M / 81.8M (19.1%) |
+| Incremental buildings (post-contamination-filter) | 418,076 |
+| Incremental sub-400 m² roof area | 67.0 million m² |
+| **Sub-400 m² capacity (domain-restricted)** | **6,628 MWp** |
+
+That is, for the first time, the same order of magnitude as the country's entire
+existing segmentation-based total (5,078 MWp) rather than 3.5-8x it. It is still not a
+national number: **6,628 MWp describes only those 93 cells.** Rescaling it by the
+domain's 2.1%/19.1% share to infer a country total (~315 GWp) is exactly the
+base-rate-transfer failure this module exists to avoid, and
+`domain_restricted_capacity`'s returned summary states the scope explicitly so a caller
+cannot lose that caveat downstream.
+
+**Where those 93 cells are** (the only areas this figure actually describes): Karachi,
+Lahore and Peshawar (7-8 cells each), Mardan and Faisalabad (6), Islamabad and Sialkot
+(5), Multan, Charsadda, Sheikhpura and Gujranwala (3), Rawalpindi and Quetta (2), plus a
+long tail of single-cell districts. Building density (not PV density) is the only
+national proxy that survived testing as a way to identify candidate areas -- existing
+segmentation-detected candidate density was tried and **rejected**: it anti-correlates
+with true small-PV base rate (Karachi coastal and Lahore, the two quadrats with the
+*highest* true small-PV adoption, both show near-zero existing large-PV candidate
+density, because large-industrial and small-residential PV are different populations).
+roofclf's own raw predicted rate per cell was also tried and rejected: it does not
+separate calibrated from miscalibrated quadrats either (Multan and Sundar's predicted
+rate sits inside the "well-calibrated" band despite being 2x+ miscalibrated in truth).
+So "where might medium/high sub-400 m² PV density exist beyond the 8 mapped quadrats" is
+answered here only as "these are the largest, densest cities, which is where 6 of the 8
+existing quadrats already are" -- a reason to prioritize new calibration quadrats in
+Karachi's other residential districts, Rawalpindi, Peshawar and Islamabad, not a
+validated prediction of where capacity sits.
 
 ## The plausibility gate
 

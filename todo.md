@@ -29,5 +29,6 @@
 15. Plot glint gallery to validate and check for clouds. 
 16. Improve building dataset.
 17. Consider the distance between polygons for the evaluation.
+18. Load calibration polygons/labels into JOSM for validation. 
 
 
