@@ -413,6 +413,66 @@ different true prevalence, the same failure this section's warning already names
 for the diagnosis. `roofclf`'s national scores stand today as a per-building
 ranking/lead-generation signal, not a capacity input.
 
+### SPPI cross-validation: real but uneven, and only as a second opinion
+
+SPPI (He et al. 2026, `src/earthpv/sppi.py`) is a zero-training spectral index scored
+directly on `roofclf`'s own held-out ground truth
+(`data/roofclf/buildings.geoparquet`) -- the same 8 quadrats, same labels, apples to
+apples:
+
+| signal | median AUC | within size band |
+|---|---:|---:|
+| SPPI (zero training) | 0.823 | 0.828 |
+| `roofclf` (17 features, fitted) | **0.874** | **0.842** |
+
+`roofclf` wins, but not by a wide margin given SPPI needs no training at all. **Adding
+SPPI as a `roofclf` input feature does nothing** -- 0.8736 to 0.8734 AUC, the same
+within-noise result the seg/frac raster features got when tried the same way -- because
+`roofclf`'s fitted linear weights already span the bands SPPI computes a fixed nonlinear
+combination of. That could read as "SPPI is redundant, stop here." It is not: a
+**second, independent check does something a single linear model over the same bands
+cannot**, tested 2026-07-30 as a live question ("could both methods agreeing produce a
+conservative sub-400 m<sup>2</sup> estimate?") rather than assumed.
+
+Restricting to sub-400 m<sup>2</sup> buildings (8 quadrats, Mardan excluded as its own
+already-diagnosed bad fold) and requiring `roofclf >= 0.3064` **and** SPPI above a
+matched-recall threshold:
+
+| | precision | recall | n flagged |
+|---|---:|---:|---:|
+| `roofclf` alone | 0.496 | 0.462 | 1,144 |
+| **AND-gate (both agree)** | **0.540** | 0.445 | 1,009 |
+| `roofclf` alone, at the *same* recall (0.445) | 0.498 | -- | -- |
+
+Agreement buys roughly **+4 points of precision over `roofclf` alone at matched recall**
+-- a real, measured gain, not just a stricter cutoff on one model wearing a different
+hat. The mechanism: SPPI is a fixed nonlinear combination of bands, `roofclf` a linear
+model over similar bands -- a linear model cannot fully reconstruct a nonlinear AND from
+one added covariate, so the two decision boundaries stay genuinely complementary even
+though SPPI carries no *rank* information `roofclf` doesn't already have on its own.
+
+**The gain is real but concentrated, not uniform -- read per quadrat, as always:**
+
+| quadrat | `roofclf` precision | AND-gate precision | delta |
+|---|---:|---:|---:|
+| Multan | 0.256 | 0.363 | **+10.7pp** |
+| Sialkot | 0.321 | 0.376 | **+5.5pp** |
+| Sundar | 0.253 | 0.304 | **+5.1pp** |
+| SITE Karachi | 0.567 | 0.581 | +1.4pp |
+| Lahore | 0.791 | 0.795 | ~flat |
+| Faisalabad | 0.359 | 0.352 | -0.7pp |
+| Karachi coastal | 0.644 | 0.635 | -0.9pp |
+
+The gain concentrates almost entirely in Multan/Sialkot/Sundar -- exactly the three
+low-base-rate quadrats the density-stratified precision work above had to *exclude* from
+calibration because `roofclf` overestimates 2x+ there. That is a coherent story, not a
+coincidence: SPPI agreement specifically catches `roofclf`'s overconfidence in the
+regime already known to be miscalibrated, rather than helping everywhere. Not (yet) a
+national instrument -- SPPI needs the same composite band means already read during
+`roofclf.score_buildings_national`, so folding it in nationally costs no new composite
+read, only saving one more column during the next national scoring pass; that pass has
+not been re-run since this finding.
+
 ### Sub-400 m² experimental capacity: density-stratified, deliberately separate
 
 `src/earthpv/sub400_capacity.py` (2026-07-30) is the outcome of trying to fold both

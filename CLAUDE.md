@@ -238,6 +238,23 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
   capacity fold-in rejection above — a lower threshold flags *more* buildings, so the
   incremental-capacity number is expected to grow, not shrink, until a real per-stratum
   correction exists).
+  **SPPI cross-validation, 2026-07-30 — a genuine, measured, but uneven win.** SPPI (He
+  et al. 2026, zero-training spectral index) scored on the exact same held-out ground
+  truth roofclf uses: median AUC 0.823/0.828 (within size band) vs roofclf's
+  0.874/0.842 — roofclf wins but not by much for something needing no training. Adding
+  SPPI as a roofclf *feature* does nothing (0.8736→0.8734 AUC, already known). But an
+  **AND-gate** (roofclf ≥ 0.3064 **and** SPPI above a matched-recall threshold, sub-400
+  m² buildings, 8 quadrats no-Mardan) lifts precision from 0.496 (roofclf alone) to
+  0.540 at matched recall (0.445) — roofclf-alone precision at that same recall is only
+  0.498, so this is a real +4pp gain from agreement, not just a stricter cutoff. Per
+  quadrat the gain concentrates almost entirely in Multan (+10.7pp), Sialkot (+5.5pp),
+  Sundar (+5.1pp) — exactly the three low-base-rate quadrats already excluded from the
+  density-stratified precision fit below for overestimating 2x+. Coherent story: SPPI
+  agreement specifically catches roofclf's overconfidence in the regime already known
+  miscalibrated, not a uniform improvement (Faisalabad/Karachi coastal: -0.7/-0.9pp).
+  Not yet deployed nationally — needs one more national rescore that also saves SPPI's
+  band means (cheap, they're already read during scoring; not yet done). Full writeup:
+  `docs/methods/density.md`'s "SPPI cross-validation" subsection.
   **Density-stratified capacity, 2026-07-30 — a partial fix, deliberately kept out of
   `density.py`.** `sub400_capacity.py` (new module) answers "how much does restricting to
   the calibration-covered density regime change the rejected 18-37 GWp national number,"
@@ -300,6 +317,64 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
   `density_STALE_PARTIALS_VS_CURRENT_CANDIDATES_20260730/`. Consequence: the
   `density_confidence` completeness flag is implemented and correct but not yet present
   on the published output, since publishing it requires a run this bug currently blocks.
+  A `--force` rebuild against the current candidates was relaunched the same day to get
+  the true consistent state and check whether the KP/Balochistan ratio failure is a
+  genuine finding (their large `no_building` candidates share Gilgit-Baltistan's exact
+  low-OSM-match, remote-terrain profile, circumstantial but not proof) or a further
+  aggregation bug.
+  **Result: confirmed genuine, not a further bug.** The 2-hour `--force` rebuild
+  completed cleanly (4,463/4,463 cells, zero failures, fingerprint written) but crashed
+  at meta.json on the exact `stale_partials` NameError described above — the running
+  process had the pre-fix code loaded in memory, editing the file mid-run couldn't
+  reach it. Cheap fix: re-running `density` (no `--force`) with the now-fixed code
+  skipped every cached cell and finished in seconds, producing the same numbers.
+  `check-density` on this true, fingerprint-verified current state **still fails
+  identically** (KP 8x, Balochistan 18x, 2 fail/3 suspect) — proving the ratio failure is
+  a real property of the current candidate population (uneven OSM-replace correction:
+  rooftop candidates got dramatically smaller/more precise via frequent OSM matching,
+  `no_building`/ground-mount candidates rarely match OSM and mostly kept their original,
+  possibly-inflated size), not an artifact of any bug introduced this session. **Not
+  published** — restored the passing pre-replace backup again pending investigation;
+  the true-but-failing state is preserved at
+  `density_TRUE_CURRENT_STATE_FAILING_20260730/` for whoever root-causes it next. This is
+  now the actual, non-speculative version of task substance in
+  `docs/issues/density-force-recompute-plausibility-fail.md` — that doc should be updated
+  to match before anyone treats the KP/Balochistan question as still open-ended.
+  **A tenth quadrat was added 2026-07-30**: `peshawar_calib_1km`, centered at the
+  user-supplied (34.0199854, 71.5505752), built as an exact geodesic 1 km² square
+  (`pyproj.Geod.fwd`, not hand-drawn). **Re-pulled twice more the same day** as the user
+  added missing OSM labels: 290→353→360 installations (+63, then +7 — a shrinking
+  increment, suggestive of convergence but not proof of completeness). 358/360 (99.4%)
+  below the 400 m² floor, 265/360 (73.6%) below 100 m², packing distance 15.7 m (same
+  tightly-packed cluster as Karachi coastal/Quetta/Sialkot) — the densest sub-floor haul
+  of any quadrat registered so far. All three pulls kept, none overwritten: bare
+  `peshawar_calib_1km_overpass_solar.parquet` (290), dated `..._20260730.parquet` (353),
+  `..._20260730_v2.parquet` (360, current) — `_newest_solar`/`_newest_overpass_path` both
+  pick the `_v2` file, verified. **Still not Rule-1 verified** — repeated re-pulls are
+  not a substitute for a human completeness pass with a second-mapper sign-off; treat it
+  like Boxes 2-5 (usable as a `roofclf` training quadrat, not as a source of trustworthy
+  negatives) until that happens. `roofclf.discover_quadrats()` picks it up automatically
+  (globs `*_calib_*_boundary.geojson`); not yet folded into a retrained `model_full.json`
+  — the next `earthpv roof-classifier` run will include it with no flag needed.
+  Registered as Box 9 in `docs/issues/pakistan-calibration-boxes.md`.
+  **An eleventh quadrat, `peshawar_east_calib_1km`, was added the same day** at a second
+  user-suggested center (34.0242579, 71.5600512) — checked for overlap *before* creation
+  (per the new procedure this added to the mapping protocol): ~995 m from Box 9's center,
+  sharing 6.56% of its area as one corner. Added on the user's confirmation. **That
+  overlap is denser than its area share suggests**: 42/131 (32.1%) of this box's
+  installations sit inside the shared 6.56% corner, so pooling both Peshawar quadrats into
+  `roofclf` training without deduplication double-counts those ~42 installations/buildings
+  and breaks LOQO's fold-independence assumption for this pair specifically. **Not yet
+  deduplicated** — flagged as an open item, not fixed. Otherwise 131 installations, 100%
+  below the 400 m² floor, median 44.9 m², base_rate 3.7% (126/3,382 buildings) — notably
+  lower than Box 9's 16.5% despite being 995 m away in the same city, and on 60% more
+  buildings over a similar-sized box: a concrete, fine-grained illustration that
+  `base_rate` cannot be pooled even between adjacent quadrats. Registered as Box 10.
+  Both Peshawar boxes and this overlap caveat are in the new
+  `docs/methods/calibration-quadrats.md` overview page (added the same day, in direct
+  response to the user not being able to find a table of quadrat status anywhere on the
+  site) — that page, not this narrative log, is the place to look for current per-quadrat
+  numbers going forward; this file keeps the dated history of how each number changed.
 
 **Size is a confounder — report `auc_within_size`.** Adoption rises with house size (mappers
 report large houses packed with PV, small ones much less), so footprint area *alone* scores
