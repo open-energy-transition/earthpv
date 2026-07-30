@@ -176,6 +176,14 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
   suspect) on both instruments. That unblocks the gate; it does **not** confirm the
   110 MWp ground-mount figure is correct — locating the exact cause in `density.py`/
   `postprocess.py`'s aggregation code is still open.
+  **Retrain attempt, 2026-07-30: negative, not promoted.** `fraction_pakistan_v2`
+  (8 of 9 quadrats oversampled 20x into the national corpus, `lahore_calib_1km` held
+  out for validation) scored *worse* than production on every metric measured against
+  Lahore's own ground truth (scale 0.520→0.197, correlation 0.136→0.070, AUC
+  0.589→0.553) — training-from-scratch on the current recipe should not be assumed to
+  transfer just because more real small-array labels were added. `fraction_pakistan_v1`
+  remains the deployed checkpoint. See
+  `docs/issues/roofclf-national-deployment-and-temporal-features.md`.
 - **`roofclf.py` / `earthpv roof-classifier`** — per-building "does this roof carry PV?",
   trained on the exhaustively mapped quadrats (the only source where a no-PV building is a
   real negative). Updated 2026-07-29 to **9 quadrats, 22,044 buildings, 2,376 with PV**
@@ -201,6 +209,35 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
   building nationally via the same per-cell pattern `density.process_cell` already
   proves tractable (`local_source.composite_index()`'s `lru_cache`, previously unused,
   now avoids rebuilding the ~4,474-tile composite index once per call).
+  **Capacity fold-in tried 2026-07-30, rejected**: folding the 898,593 nationally-flagged
+  buildings (97.1% with no existing segmentation candidate) into capacity at the flat
+  LOQO precision (0.50) gives 18,063 MWp incremental — 3.5-8x the country's entire
+  existing recall-corrected total (5,078 MWp all-placement, 2,230 MWp roof-only). Not a
+  result, a miscalibration: PPV at a fixed threshold falls as true prevalence falls, and
+  extrapolating a 9-quadrat precision (10.8% PV base rate, urban/industrial-skewed) to
+  81.76M mostly-rural buildings nationally is exactly the "absolute rates don't transfer"
+  failure already on record just below (rate_ratio 0.235–4.833). Three cells also show
+  textbook logistic-saturation (`p_roofclf` pinned ~0.999999, a covariate outside training
+  range) but are a minor, secondary artifact (4% of flagged area). **Not folded into
+  `density.py`**; `roofclf`'s national output stands as a per-building ranking/lead-gen
+  signal only, pending a per-stratum precision correction that doesn't exist yet. See
+  `docs/issues/roofclf-national-deployment-and-temporal-features.md`.
+  **Quetta-exclusion recalibration, 2026-07-30 — a genuine, measured win.** Quetta is the
+  lowest-base-rate quadrat by a wide margin (3.0% vs next-lowest 5.7%) and the one place
+  SPPI's own detector collapsed to 10.5% precision; it was forcing the pooled 9-quadrat
+  threshold up to 0.4555 to hold 0.50 precision, catching only 25% recall. Re-fit on the
+  other 8 quadrats (`quetta_calib_1km` excluded; old 9-quadrat outputs kept at
+  `data/roofclf_with_quetta_20260730/`) relaxes the threshold to **0.3064** and recall at
+  the same 0.50 precision rises to **39.6%** — median fold AUC dips slightly (0.874→0.861,
+  expected, since Quetta's own raw AUC was fine at 0.852; it was the threshold-transfer
+  side that broke) and Mardan stays the worst fold (0.743) unchanged, confirming Mardan's
+  problem is unrelated to Quetta. This is a clean illustration of the "ranking transfers,
+  absolute rates do not" lesson: one outlier stratum, not nine ordinary ones, was setting
+  the whole country's operating point. `model_full.json` now reflects the 8-quadrat fit;
+  national re-scoring with it is a separate, larger step (does not, by itself, fix the
+  capacity fold-in rejection above — a lower threshold flags *more* buildings, so the
+  incremental-capacity number is expected to grow, not shrink, until a real per-stratum
+  correction exists).
 
 **Size is a confounder — report `auc_within_size`.** Adoption rises with house size (mappers
 report large houses packed with PV, small ones much less), so footprint area *alone* scores
@@ -237,6 +274,12 @@ diagnostic of the four: median installation 86 m², 98.8% below the detection fl
 there the segmentation raster scores **exactly 0.500** and predicts **0.0 m² of PV against
 13,964 m² mapped**. Quadrat file naming is size-agnostic (`*_calib_*_boundary.geojson`,
 newest dated `_overpass_solar*` pull wins) — do not re-hardcode `_calib_1km_`.
+
+`roofclf.packing_density` (added 2026-07-29) reports each quadrat's median distance
+from a sub-400 m² installation to its nearest neighbour of any size — a cheap,
+model-free number that correlates r=0.70–0.82 with `exp_scale`/`auc_within_size`
+across all nine quadrats, and now a standing column (`nn_median_m`) in every
+`evaluate()` fold report. See `docs/methods/density.md`'s "Packing distance" section.
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 

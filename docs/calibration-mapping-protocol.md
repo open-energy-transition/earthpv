@@ -123,6 +123,17 @@ date_completed, imagery_layer, imagery_date, n_installations,
 n_added_by_second_pass, notes
 ```
 
+**Packing distance is computed automatically, not recorded by hand.** Once a
+quadrat's installations are mapped, `roofclf.packing_density` derives the median
+distance from each sub-400 m<sup>2</sup> installation to its nearest neighbour --
+measured 2026-07-29 to correlate strongly (r=0.70-0.82) with how a quadrat's
+calibration numbers (`exp_scale`, `auc_within_size`) behave, a continuous proxy for
+the stratum table above (see [Capacity density](methods/density.md#packing-distance-a-cheap-measured-proxy-for-stratum)).
+Worth checking when *choosing* a new quadrat's location: the existing nine split
+cleanly into "packed tighter than one Sentinel-2 pixel" (7-19 m) and "sparse" (44-52
+m) with nothing in between -- a quadrat landing in that 20-40 m gap would be new,
+useful information, not a duplicate of an existing one.
+
 ## Deliverables per quadrat
 
 - Boundary polygon (GeoJSON, in the shared register).

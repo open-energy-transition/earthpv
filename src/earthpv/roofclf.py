@@ -150,36 +150,43 @@ def load_quadrat(stem: str, labels_dir: Path = Path("data/labels")) -> tuple:
 
 
 def packing_density(pv: gpd.GeoDataFrame, max_area_m2: float = MIN_PV_AREA_FOR_PACKING) -> float:
-    """Median nearest-neighbour distance (m) between sub-`max_area_m2` installations.
+    """Median distance (m) from each sub-`max_area_m2` installation to its nearest
+    neighbour of ANY size -- what actually sits next to a small array on the ground
+    (which is what drives 10 m-pixel mixing), not just the spacing among other small
+    arrays. A quadrat that is one small array surrounded by a dense field of large
+    ones is "packed" by this measure even though `packing_density` restricted to
+    small-only pairs would call it sparse.
 
-    Measured 2026-07-29 across all 9 quadrats: this single, model-free, purely
-    geometric number correlates strongly with `exp_scale_anchor`'s fraction-head
-    scale (r=0.70), its segmentation scale (r=0.82), and `roofclf`'s own
-    `auc_within_size` (r=0.78) -- i.e. most of why quadrats behave so differently is
-    already visible from installation spacing alone, before any imagery is even
-    read. Splits the 9 quadrats cleanly at ~20-40 m: five pack sub-400 m2 arrays
-    tighter than one Sentinel-2 pixel (7-19 m, informal/residential), four sit at
-    44-52 m with sub-400 m2 as a small minority of their population (industrial) --
-    the same stratum split this project already tracks by hand, but continuous and
-    measurable from the labels alone. NaN if fewer than 2 qualifying installations
-    (no pair to measure a distance between).
+    Measured 2026-07-29 across all 9 quadrats with this exact definition: this
+    single, model-free, purely geometric number correlates strongly with
+    `exp_scale_anchor`'s fraction-head scale (r=0.70), its segmentation scale
+    (r=0.82), and `roofclf`'s own `auc_within_size` (r=0.78) -- i.e. most of why
+    quadrats behave so differently is already visible from installation spacing
+    alone, before any imagery is even read. Splits the 9 quadrats cleanly at
+    ~20-40 m: five pack sub-400 m2 arrays tighter than one Sentinel-2 pixel
+    (7-19 m, informal/residential), four sit at 44-52 m with sub-400 m2 as a small
+    minority of their population (industrial) -- the same stratum split this
+    project already tracks by hand, but continuous and measurable from the labels
+    alone. NaN if fewer than 2 total installations (no pair to measure a distance
+    between) or none below `max_area_m2` (nothing to measure FROM).
     """
     from scipy.spatial import cKDTree
 
     from earthpv.labels import geodesic_area_m2
 
-    if pv.empty:
+    if len(pv) < 2:
         return float("nan")
     areas = np.array([geodesic_area_m2(g) for g in pv.geometry])
-    small = pv[areas < max_area_m2]
-    if len(small) < 2:
+    is_small = areas < max_area_m2
+    if not is_small.any():
         return float("nan")
-    lon, lat = small.geometry.centroid.x.mean(), small.geometry.centroid.y.mean()
+    lon, lat = pv.geometry.centroid.x.mean(), pv.geometry.centroid.y.mean()
     epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) / 6) + 1
-    cent_utm = small.to_crs(epsg).geometry.centroid
+    cent_utm = pv.to_crs(epsg).geometry.centroid
     xy = np.column_stack([cent_utm.x.to_numpy(), cent_utm.y.to_numpy()])
+    # k=2: nearest OTHER point (k=1 would be the point itself, distance 0).
     d, _ = cKDTree(xy).query(xy, k=2)
-    return float(np.median(d[:, 1]))
+    return float(np.median(d[is_small, 1]))
 
 
 # --------------------------------------------------------------------------------------
