@@ -49,9 +49,55 @@ was fixed) -- no new imagery, reuses tiles the `compose` stage already built.
 Training launched as `earthpv-retrain-fraction-v2` (systemd unit,
 `configs/terramind_pv_fraction_pakistan_v2.yaml`, checkpoint_dir
 `data/models/fraction_pakistan_v2`); GPU was concurrently shared with another
-project's process during this run, so wall-clock may exceed the historical ~8h38min
-baseline. **Held-out `karachi_coast_calib_700m` validation is pending training
-completion** -- the number that actually answers whether this retrain worked.
+project's process during this run. Completed 2026-07-30 06:11, 23:54:54 -> 06:11:02
+= **6h16m**, early-stopped at epoch 25 (`patience=8`), best checkpoint epoch 17
+(`terramind-pv-epoch=17-step=12636.ckpt`). One transient slowdown around epoch 11
+(74 min for one epoch vs. the steady ~14.5 min/epoch elsewhere) was investigated live
+-- process confirmed genuinely computing (100%+ CPU, `R` state, no OOM/crash in
+`journalctl`), not hung; resolved on its own by the next check.
+
+### Held-out validation: negative result, checkpoint not promoted
+
+Inferred the new checkpoint restricted to `lahore_calib_1km`'s cell (`--tiles
+0135_0077`) and compared against the production checkpoint
+(`fraction_pakistan_v1/terramind-pv-epoch=29-step=19680.ckpt`), both scored against
+Lahore's exhaustive ground truth (1,938 buildings, 583 with PV, 47,118.6 m<sup>2</sup>
+true PV area) via the same `zonal_mean_max` sampling `roofclf.building_table` uses.
+Confirmed not a loading bug first: the new checkpoint's raw probability raster has a
+normal, varying distribution (0-253 range, 59.6% nonzero pixels), not degenerate.
+
+| | production (v1, epoch 29) | retrained (v2, epoch 17, Lahore held out) |
+| --- | ---: | ---: |
+| predicted PV area | 24,506.6 m² | **9,267.5 m²** |
+| scale (pred/true) | 0.520 | **0.197** |
+| Pearson r (pred vs. true per-building fraction) | 0.136 | **0.070** |
+| AUC (pred vs. has_pv) | 0.589 | **0.553** |
+
+**The retrained checkpoint is worse than production on every metric measured, on the
+exact quadrat it was held out to test.** Not promoted -- `fraction_pakistan_v1`
+remains the checkpoint used for Phase 5, and no national fraction inference is run
+with `fraction_pakistan_v2`.
+
+**Why, as far as can be said without further experiments:** the 8 training quadrats
+(oversampled 20x each, ~1,600 chip-repeats total) are dominated by industrial/arid
+context once Lahore -- the single densest, most residential quadrat -- is removed;
+the densest remaining quadrat is Mardan (11.2 m vs. Lahore's 7.2 m). Oversampling a
+handful of unique chips 20x each risks the model memorizing per-quadrat idiosyncrasy
+(specific roof materials, background reflectance) rather than a transferable PV
+spectral signature, and training from scratch (this project's only supported mode --
+there is no `ckpt_path`/fine-tune-resume anywhere in `train.py`) gives the new
+quadrat data equal footing with the whole national corpus rather than a gentle
+nudge. Both are plausible contributors; neither is confirmed by a further ablation
+here. **This does not mean adding quadrat data as training positives is a bad idea in
+general** -- it means *this specific* 8-quadrat, 20x-oversampled, train-from-scratch
+recipe did not improve on production for the one quadrat withheld to check it, and
+that result should be trusted over the a priori expectation that more real small-array
+labels must help.
+
+**Consequence for Phase 5**: "rerun over Pakistan" proceeds with the roofclf national
+deployment (validated, kept) and the *existing* segmentation/fraction instruments
+(unchanged, since the fraction retrain did not improve on them) -- not with a new
+national fraction inference pass using `fraction_pakistan_v2`.
 
 ### 2. `roofclf` national deployment
 
@@ -88,6 +134,17 @@ composite cells / tens of millions of VIDA buildings. **Trust in this run's prec
 is bounded by the LOQO number above, carried forward as an extrapolation** -- there is
 no ground truth outside the 9 quadrats to verify it directly, the same honesty this
 project already applies to `exp_scale`/`rate_ratio`.
+
+**Completed 2026-07-30 01:41** (started 23:24, ~2h17m). All 4,473 cells scored,
+**81,762,684 VIDA buildings** total, **898,593 flagged** at the deployment threshold
+(0.4555), totalling **222,012,609 m² of flagged roof area** -- output at
+`data/roofclf_national/pakistan/prob/*.parquet` (6.6 GB), spot-checked for valid
+probability ranges and geometry. **This is the raw flagged count, not a capacity
+number** -- it is not yet deduped against existing segmentation candidates (only
+buildings segmentation *misses* should count as incremental) and not yet
+precision-weighted (the 0.4555 threshold's own precision is 0.50, so roughly half of
+this flagged area is expected to be real) -- both steps are part of Phase 5, not done
+yet.
 
 ### 3. Epoch-jump: tested, does not survive LOQO in either form
 
@@ -157,12 +214,73 @@ matters, so the ~1hr additional STAC pull is not spent chasing it further this p
 confound-aware aggregation (e.g. an explicit size term in the step estimator itself,
 not just in the classifier that consumes it).
 
+### Capacity fold-in: negative result, not promoted
+
+The plan's last step was to fold `roofclf`'s nationally-flagged buildings into
+capacity: buildings scored `>= 0.4555` (the LOQO precision-0.50 deployment threshold)
+with no existing segmentation candidate within 30 m counted as incremental,
+non-double-counted population, weighted by the flat LOQO precision (0.50) rather than
+`p_roofclf` itself (`roofclf_capacity.py`, new this session).
+
+Run against the real national output (`data/roofclf_national/pakistan/prob/`,
+4,473 cells): 898,593 buildings flagged nationally (1.10% of 81.76M scored), 872,730
+of them (97.1%) incremental. At 0.18 kWp/m² x 0.50 precision that is **18,063 MWp of
+incremental capacity** -- not added to density, for one decisive reason: the
+country's entire current recall-corrected total (`density`'s unchanged, segmentation +
+`fraction_pakistan_v1` output, `data/predictions/pakistan/density/meta.json`) is
+**5,078 MWp all-placement, 2,230 MWp roof-only**. A single uncorrected proxy signal
+proposing to add 3.5-8x the country's existing total on top is not a result to
+publish, it is the signature of the extrapolation itself failing.
+
+Diagnosed the mechanism rather than just distrusting the headline number. Three cells
+(`0054_0047`, `0138_0086`, `0124_0107`) are flagged at 94.7-99.8% of every building in
+the cell (vs. 1.10% nationally, 0.078 mean `p_roofclf` nationally) -- `predict_proba`
+output for these cells is pinned at `p ~ 0.999999...` (one cell even spans both
+saturation extremes, `4e-11` to `1.0`), the textbook signature of a standardized
+logistic model handed a covariate far outside its training range: the linear score
+blows up and the sigmoid saturates. These three cells are a real, distinct QA issue
+(some composite/reflectance value there is degenerate -- not yet root-caused pixel by
+pixel) but they are **not** the main story: excluding them entirely only takes the
+total from 18,063 to 17,334 MWp (they are 11.9% of flagged buildings but only 4.0% of
+flagged area, since they are dense-small-building cells). The other 96% of the number
+is unremarkable-looking, distributed, ordinary-magnitude flagging across thousands of
+cells -- and it is *still* 3.4x the country's current roof-only total.
+
+The root cause is the same one already on record for `roofclf` elsewhere in this repo
+(invariant (c), "ranking transfers, absolute rates do not" -- `rate_ratio` spans
+0.235-4.833 across the 9 training quadrats, and the model predicts 0.137 for
+residential Lahore against a true 0.301). A flat national precision weight assumes the
+9 quadrats' base rate (2,376/22,044 buildings = 10.8% PV prevalence, chosen to span
+strata but still skewed toward urban/industrial/known-solar areas) generalizes to
+81.76M buildings covering the whole country, most of which are rural/informal/
+agricultural with a much lower true base rate. Precision at a fixed score threshold is
+base-rate-dependent (PPV falls as prevalence falls even at constant TPR/FPR), so this
+was always the likely failure mode for exactly the reason CLAUDE.md already flags: "a
+per-stratum intercept is required before publishing any adoption rate or capacity from
+it," and none exists yet.
+
+**Decision: `roofclf`'s national output is not folded into `density.py` or the
+published capacity atlas.** It remains valid for what it was actually validated to do
+-- per-building LOQO ranking/classification within a stratum, feeding
+`packing_density`/`auc_within_size` diagnostics, and (like glint) as a lead-generation
+signal for human-validated mapping -- but converting its raw national flag count into
+an addable MWp figure needs a per-stratum (or continuous covariate, e.g.
+building-density or nightlight-based) intercept correction first, which is future
+work, not something to invent under this task. `earthpv check-density --aoi pakistan`
+was run against the existing, unchanged density output (segmentation +
+`fraction_pakistan_v1`, `roofclf` not folded in) as the closing gate: **0 fail, 3
+suspect of 7 regions**, the same already-documented pattern (Gilgit-Baltistan exempted,
+Khyber Pakhtunkhwa/Balochistan/Azad Kashmir suspect on the ground:rooftop ratio check)
+-- nothing regressed, because nothing about the published capacity numbers changed
+this phase.
+
 ### Summary
 
-| addition | kept? | median AUC effect |
+| addition | kept? | effect |
 | --- | --- | --- |
-| Retrain (fraction head, 8 quadrats + national corpus) | pending held-out check | n/a |
-| `roofclf` national deployment | yes -- running | n/a (extrapolated from LOQO) |
+| Retrain (fraction head, 8 quadrats + national corpus, Lahore held out) | **no** | held-out Lahore: scale 0.520 -> 0.197, r 0.136 -> 0.070, AUC 0.589 -> 0.553 (worse on every metric) |
+| `roofclf` national deployment | yes -- complete (4,473 cells, 81.76M buildings, 898,593 flagged) | n/a (extrapolated from LOQO) |
+| `roofclf` capacity fold-in | **no** | 18,063 MWp incremental vs. country's existing 5,078 MWp total (3.5-8x) -- flat national precision weight does not survive the base-rate shift from 9 training quadrats to 81.76M buildings; not folded into density |
 | Epoch-jump, reflectance delta | no | 0.8736 -> 0.8608 (worse, one quadrat crashes) |
 | Epoch-jump, probability delta | no | 0.8736 -> 0.8736 (no effect) |
 | Step-change (5/9 quadrats) | no | 0.8819 -> 0.8946 raw, but 0.8518 -> 0.8397 within-size (confound) |

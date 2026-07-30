@@ -240,23 +240,56 @@ Sialkot). Adoption rises with house size, so footprint area alone already scores
 0.72; the **within-size-band** column removes size as a discriminator and measures what
 the imagery adds at fixed roof size, which is the honest headline.
 
-| held-out quadrat | base rate | AUC | AUC <500 m<sup>2</sup> | **within size band** | segmentation, within band |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| **Karachi DHA 5 coastal (Rule-1)** | 0.185 | 0.883 | 0.886 | **0.846** | **0.500** |
-| Lahore DHA (residential) | 0.301 | 0.876 | 0.876 | 0.761 | 0.496 |
-| Sialkot Old City | 0.057 | 0.816 | 0.817 | 0.770 | 0.500 |
-| Mardan (Sheikh Maltoon Town) | 0.138 | 0.743 | 0.742 | 0.661 | 0.500 |
-| Quetta City | 0.030 | 0.852 | 0.856 | 0.842 | 0.501 |
-| Faisalabad PSIE | 0.125 | 0.850 | 0.813 | 0.831 | 0.651 |
-| Multan Industrial | 0.086 | 0.932 | 0.915 | 0.919 | 0.805 |
-| SITE Karachi | 0.131 | 0.935 | 0.929 | 0.931 | 0.875 |
-| Sundar Industrial | 0.098 | 0.874 | 0.840 | 0.863 | 0.762 |
-| **median** | | **0.874** | **0.856** | **0.842** | **0.501** |
+| held-out quadrat | base rate | AUC | AUC <500 m<sup>2</sup> | **within size band** | segmentation, within band | packing (m) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Karachi DHA 5 coastal (Rule-1)** | 0.185 | 0.883 | 0.886 | **0.846** | **0.500** | 16.8 |
+| Lahore DHA (residential) | 0.301 | 0.876 | 0.876 | 0.761 | 0.496 | 7.2 |
+| Sialkot Old City | 0.057 | 0.816 | 0.817 | 0.770 | 0.500 | 18.8 |
+| Mardan (Sheikh Maltoon Town) | 0.138 | 0.743 | 0.742 | 0.661 | 0.500 | 11.2 |
+| Quetta City | 0.030 | 0.852 | 0.856 | 0.842 | 0.501 | 44.0 |
+| Faisalabad PSIE | 0.125 | 0.850 | 0.813 | 0.831 | 0.651 | 45.8 |
+| Multan Industrial | 0.086 | 0.932 | 0.915 | 0.919 | 0.805 | 50.8 |
+| SITE Karachi | 0.131 | 0.935 | 0.929 | 0.931 | 0.875 | 46.2 |
+| Sundar Industrial | 0.098 | 0.874 | 0.840 | 0.863 | 0.762 | 52.1 |
+| **median** | | **0.874** | **0.856** | **0.842** | **0.501** | |
 
 The three new folds lower the median AUC slightly (0.879 -> 0.874) and the within-size
 median a touch more (0.845 -> 0.842) -- Mardan in particular is the weakest fold measured
 so far (0.743), the first non-industrial, non-Rule-1 quadrat in the set. Read that as the
 estimate becoming more honest with more evidence, not as the method degrading.
+
+### Packing distance: a cheap, measured proxy for stratum
+
+**packing (m)** is `roofclf.packing_density`: the median distance from each
+sub-400 m<sup>2</sup> installation to its nearest neighbour of *any* size, in metres
+-- added 2026-07-29 and now computed automatically for every fold (`folds.csv`), not
+a one-off calculation. It splits the nine quadrats cleanly at ~20-40 m with no
+quadrat in between: five pack sub-400 m<sup>2</sup> arrays tighter than one
+Sentinel-2 pixel (7-19 m -- Lahore, Mardan, Karachi coastal, Sialkot), four sit at
+44-52 m (Quetta, Faisalabad, Multan, SITE Karachi, Sundar).
+
+That split is not incidental. Measured against the same nine quadrats' own numbers:
+packing distance correlates **r=0.70** with `exp_scale_anchor`'s fraction-head scale,
+**r=0.82** with its segmentation scale, and **r=0.78** with `auc_within_size` above.
+A single geometric measurement from the labels alone -- no imagery, no model --
+predicts most of why quadrats disagree on `exp_scale`, `rate_ratio`, and skill. It is
+effectively a continuous, measurable version of the "4 industrial vs 5 residential"
+split this project already tracked by hand.
+
+Two consequences, both acted on already:
+
+- **Held-out quadrat choice for the fraction-head retrain** (below) should account for
+  packing, not just be picked for convenience. Lahore, the densest quadrat (7.2 m),
+  is also the single richest source of graded per-pixel training signal for the
+  sub-400 m<sup>2</sup> regression target -- holding it out is a real trade-off
+  (removing the best training example) made deliberately because it is also the
+  most statistically powerful validation check (1,033 installations to test against,
+  more than the other four dense quadrats combined).
+- **`nn_median_m` is now a standing column in `evaluate()`'s fold report**, so any
+  future fold's AUC/`rate_ratio` swing can be read against its packing regime at a
+  glance, instead of needing a separate cross-reference. It is not (yet) used as a
+  per-building model feature -- it is a quadrat-level property, not a building-level
+  one, so it belongs in the reporting layer, not `MODEL_FEATURES`.
 
 The two residential folds are the ones to read, and the coastal Karachi box is the strongest
 evidence in the project. It is the only quadrat asserted **Rule-1 complete**, so its
@@ -286,13 +319,54 @@ directions. The rasters stay off by default: the case for including them was nev
 strong, and it is not stronger now.
 
 !!! warning "Ranking transfers, absolute rates do not"
-    `rate_ratio` in `folds.csv` spans 0.30 to 1.87. Trained on industrial quadrats with a
-    base rate near 0.10, the model predicts 0.091 for residential Lahore where the truth is
-    0.301. So the ordering generalises out of stratum but the *level* does not, and a
-    per-stratum intercept is required before any adoption rate or capacity number is
-    published. That needs residential quadrats, which is the binding constraint on this
-    whole route: four of five current quadrats are industrial estates, chosen because PV is
-    dense and easy to verify there.
+    `rate_ratio` in `folds.csv` spans **0.235 to 4.833** across nine quadrats (Mardan
+    under-predicts 4.3x, Quetta over-predicts 4.8x). Trained pooled, the model predicts
+    0.137 for residential Lahore where the truth is 0.301. So the ordering generalises out
+    of stratum but the *level* does not, and a per-stratum intercept is required before any
+    adoption rate or capacity number is published. That needs more residential/non-industrial
+    quadrats -- five of nine now cover that ground (Karachi coastal, Lahore, Sialkot, Mardan,
+    Quetta), up from one, but the spread above shows the binding constraint has not gone away.
+
+### National deployment: a scaling success, with one clean calibration lesson
+
+`roofclf.score_buildings_national` takes the pooled fit above and scores every VIDA
+building in the country -- **81.76 million buildings across all 4,473 composite
+cells**, previously untested at this scale. Two things made it tractable rather than a
+multi-day job: the shipped feature set never needed the segmentation/fraction
+probability rasters (ablation-excluded, see the table above), so scoring needs only
+composites + VIDA buildings, both already proven at national scale by `density.py`;
+and routing through `local_source.composite_index`'s existing `lru_cache` (previously
+unused by anything) avoids rebuilding the ~4,474-tile composite index once per cell.
+The deployment threshold is chosen the same way as the SPPI work
+(`sppi._precision_threshold`): most conservative cut clearing a target precision on
+pooled leave-one-quadrat-out scores, not Youden's J, because a capacity-contributing
+detector needs precision as the primary criterion.
+
+That threshold is also where the "ranking transfers, absolute rates do not" warning
+above stopped being abstract. Quetta -- the lowest-base-rate quadrat by a wide margin
+(3.0%, next-lowest is 5.7%) and the one place SPPI's own building-scoped detector
+collapsed to 10.5% precision -- was distorting the pooled threshold: holding a 0.50
+precision target across all nine quadrats forced the cut up to 0.4555, which caught
+only 25% of true positives at that precision. Re-fitting on the other eight quadrats
+(Quetta excluded, `data/roofclf_with_quetta_20260730/` kept for comparison) relaxed the
+threshold to 0.3064 and recall at the *same* 0.50 precision target rose to **39.6%** --
+a real, measured gain from removing one quadrat whose extreme base rate was pulling the
+whole pooled cut in the wrong direction, not from more data or a better model.
+
+**What this experiment does and does not license.** It is a genuine win on the
+question `roofclf` was built to answer -- given a fixed precision bar, how many true
+installations does the flagged set catch -- and it is the clearest illustration yet of
+why a single pooled cut is fragile: one outlier stratum, not nine ordinary ones, was
+setting the whole country's operating point. It does **not** mean `roofclf`'s national
+output is ready to contribute a capacity number. Converting 872,730 incrementally
+flagged buildings (no segmentation candidate within 30 m) into MWp at a flat precision
+weight was tried and produced 18,063 MWp -- 3.5 to 8x the country's entire existing
+recall-corrected total -- because a flat precision measured on nine base-rate-skewed
+quadrats does not survive being applied to 81.76 million mostly-rural buildings at a
+different true prevalence, the same failure this section's warning already names. See
+[the full writeup](../issues/roofclf-national-deployment-and-temporal-features.md)
+for the diagnosis. `roofclf`'s national scores stand today as a per-building
+ranking/lead-generation signal, not a capacity input.
 
 ## The plausibility gate
 
