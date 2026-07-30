@@ -104,6 +104,40 @@ _CAND_COLS = [
     "pv_area_cal_total_m2", "pv_area_cal_roofcand_m2",
 ]
 
+# Building-density range (buildings/km2) spanned by the 8 (no-Quetta) roofclf calibration
+# quadrats, measured 2026-07-30. This is the only ground truth this project has about how
+# much the segmentation-based estimators (det/cal/rc, all floored at >=400 m2) actually
+# miss -- see CLAUDE.md's "Sub-400 m2 instruments" section. A region/cell whose settlement
+# density falls outside this range has NO calibration evidence either way: the flag below
+# says so, it does not correct anything. Deliberately segmentation-only (`aggregate`'s
+# `exp_source` gate) -- the fraction-head/roofclf sub-400 instrument is a separate,
+# differently-calibrated product (`sub400_capacity.py`) and must not share this flag.
+CALIBRATED_BLDG_DENSITY_KM2 = (737.28, 4750.24)
+
+
+def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:
+    """Cheap, exact-enough identity of a candidates.parquet snapshot: file mtime/size
+    catch essentially any rewrite (in-place edits, OSM-geometry-replace, a fresh
+    postprocess run), `n_rows` catches the one pathological case where a rewrite
+    preserves both by coincidence. Stored alongside cached cell partials so a later
+    run can tell whether they still match -- see the `RuntimeError`s in `run_density`.
+    """
+    st = cand_path.stat()
+    return {"path": str(cand_path), "mtime": st.st_mtime, "size": st.st_size, "n_rows": n_rows}
+
+
+def _completeness_flag(density_km2: pd.Series) -> pd.Series:
+    """'below'/'in'/'above' the calibration quadrats' building-density range -- see
+    `CALIBRATED_BLDG_DENSITY_KM2`. Below-range is the common case (rural Pakistan is far
+    sparser than any hand-mapped quadrat) and is exactly where the recall correction's
+    true miss rate is least known, not where it is worst; the label says "unmeasured",
+    not "bad"."""
+    lo, hi = CALIBRATED_BLDG_DENSITY_KM2
+    return pd.cut(
+        density_km2.astype(float), bins=[-np.inf, lo, hi, np.inf],
+        labels=["below_calibrated_range", "in_calibrated_range", "above_calibrated_range"],
+    ).astype(str)
+
 
 # --------------------------------------------------------------------------------------
 # Cell bookkeeping
@@ -755,7 +789,7 @@ def _backfill_cal(df: pd.DataFrame) -> pd.DataFrame:
 def aggregate(
     out_dir: Path, manifest: gpd.GeoDataFrame, regions: gpd.GeoDataFrame | None,
     districts: gpd.GeoDataFrame | None, kwp_module: float, kwp_land: float,
-    cand_totals: pd.DataFrame, unc: dict | None = None,
+    cand_totals: pd.DataFrame, unc: dict | None = None, exp_source: str = "segmentation",
 ) -> dict:
     cells_dir = out_dir / "cells"
     rc_cols = ["pv_area_rc_total_m2", "pv_area_rc_roofcand_m2"] if unc is not None else []
@@ -810,6 +844,11 @@ def aggregate(
     grid["lat_center"] = grid.lat0 + CELL_DEG / 2
     grid["cell_area_km2"] = [geodesic_area_m2(g) / 1e6 for g in grid.geometry]
     grid = _ratios(grid, grid["cell_area_km2"], kwp_module, kwp_land)
+    if exp_source == "segmentation":
+        grid["bldg_density_km2"] = (
+            grid.n_buildings / grid.cell_area_km2.clip(lower=1e-9)
+        ).round(2)
+        grid["density_confidence"] = _completeness_flag(grid["bldg_density_km2"])
     if unc is not None:
         from earthpv.capacity_calibration import CI_PCT
 
@@ -846,6 +885,11 @@ def aggregate(
             agg["level"] = level
             agg["area_km2"] = [geodesic_area_m2(g) / 1e6 for g in agg.geometry]
             agg = _ratios(agg, agg["area_km2"], kwp_module, kwp_land)
+            if exp_source == "segmentation":
+                agg["bldg_density_km2"] = (
+                    agg.n_buildings / agg.area_km2.clip(lower=1e-9)
+                ).round(2)
+                agg["density_confidence"] = _completeness_flag(agg["bldg_density_km2"])
             if unc is not None:
                 ci_rows = [
                     {"id": rid, "name": name, **_unc_mwp_ci(unc, cell_list)}
@@ -866,6 +910,21 @@ def aggregate(
         "n_regions": n_regions,
         "kwp_per_m2_module": float(kwp_module),
         "kwp_per_m2_land": float(kwp_land),
+        **(
+            {
+                "density_confidence_calibrated_range_km2": list(CALIBRATED_BLDG_DENSITY_KM2),
+                "n_cells_below_calibrated_density": int(
+                    (grid.density_confidence == "below_calibrated_range").sum()
+                ),
+                "n_cells_in_calibrated_density": int(
+                    (grid.density_confidence == "in_calibrated_range").sum()
+                ),
+                "n_cells_above_calibrated_density": int(
+                    (grid.density_confidence == "above_calibrated_range").sum()
+                ),
+            }
+            if "density_confidence" in grid.columns else {}
+        ),
         "total_pv_area_det_total_m2": float(grid.pv_area_det_total_m2.sum()),
         "total_pv_area_det_roofcand_m2": float(grid.pv_area_det_roofcand_m2.sum()),
         "total_pv_area_det_roof_m2": float(grid.pv_area_det_roof_m2.sum()),
@@ -919,6 +978,7 @@ def run_density(
     max_candidate_m2: float = MAX_CANDIDATE_M2,
     fraction_prob_dir: Path | None = None,
     exp_scale: float = 1.0,
+    plausibility_note: str | None = None,
 ) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.load()
@@ -932,6 +992,15 @@ def run_density(
     if not cand_path.exists():
         raise FileNotFoundError(f"{cand_path} missing — run `earthpv postprocess --aoi {aoi}` first")
     cands = gpd.read_parquet(cand_path)
+    cand_fp = _candidates_fingerprint(cand_path, len(cands))
+    if plausibility_note:
+        log.warning(
+            "plausibility_note set: %s -- this run's meta.json records that note, but "
+            "`earthpv check-density` is unaffected (it still evaluates the actual numbers "
+            "and reports pass/fail); it is a documentation field for a run being published "
+            "before, or without waiting for, that gate.",
+            plausibility_note,
+        )
 
     # Drop blobs before anything consumes them. A multi-km2 contiguous polygon is a merged
     # false-positive sheet or a whole plant site, not one installation's panel area, and
@@ -952,19 +1021,38 @@ def run_density(
             )
             cands = cands[~over].reset_index(drop=True)
     # Cached partials carry the per-building/footprint columns from whatever candidate set
-    # was in force when they were written; only the candidate-population columns are
-    # rederived each run. Say so rather than letting the two disagree silently.
-    cached_cells = Path(pred_dir) / aoi / "density" / "cells"
-    stale_partials = (
-        bool(n_oversize) and not force
-        and cached_cells.exists() and any(cached_cells.glob("*.summary.parquet"))
-    )
-    if stale_partials:
-        log.warning(
-            "Cached cell partials exist: the per-building and *_roof columns still include "
-            "the excluded oversize candidates. Re-run with --force to rebuild them "
-            "(re-fetches VIDA footprints per cell)."
-        )
+    # was in force when they were written; only the candidate-population columns
+    # (`_CAND_COLS`) are rederived from `cands` every run, force or not. If `candidates.
+    # parquet` changed since the partials were last force-built, the two now permanently
+    # disagree -- this is exactly what broke `check-density` on 2026-07-30 (a plain,
+    # non-`--force` segmentation-only re-run after an OSM-geometry-replace collapsed
+    # `total_est_mwp_rc_roof` by 74% while the region-level ground/total columns moved
+    # independently, an entirely mechanical inconsistency, not an instrument or aggregation
+    # bug). A stale_partials warning used to be the only signal, and it was silently
+    # bypassable (only fired when oversize count changed). This is now a hard error: no run
+    # should ever again produce numbers from two different candidate snapshots at once.
+    out_dir = Path(pred_dir) / aoi / "density"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cells_dir = out_dir / "cells"
+    fp_path = out_dir / "candidates_fingerprint.json"
+    has_cached_partials = cells_dir.exists() and any(cells_dir.glob("*.summary.parquet"))
+    if has_cached_partials and not force:
+        if not fp_path.exists():
+            raise RuntimeError(
+                f"{cells_dir} has cached partials but no {fp_path.name} to verify they "
+                f"match the current {cand_path.name} -- consistency cannot be confirmed. "
+                "Re-run once with --force to rebuild the partials and record a fingerprint."
+            )
+        prior_fp = json.loads(fp_path.read_text())
+        if prior_fp != cand_fp:
+            raise RuntimeError(
+                f"{cand_path} has changed since the cached partials in {cells_dir} were "
+                f"built (fingerprint mismatch: {prior_fp} -> {cand_fp}). Their per-building/"
+                "*_roof columns still reflect the OLD candidate set while region-level "
+                "totals would be recomputed from the NEW one, silently producing "
+                "internally-inconsistent numbers. Re-run with --force to rebuild the "
+                "partials (re-fetches VIDA footprints per cell)."
+            )
 
     if not cands.empty:
         _ = cands.sindex  # build once, reused per cell
@@ -996,10 +1084,6 @@ def run_density(
         )
     if recall_floor is None:
         recall_floor = cc.DEFAULT_RECALL_FLOOR
-
-    out_dir = Path(pred_dir) / aoi / "density"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    cells_dir = out_dir / "cells"
 
     origin = _grid_origin(aoi, cfg, settings)
     manifest = cell_manifest(prob_dir, origin)
@@ -1041,6 +1125,7 @@ def run_density(
                 "ranking layer until anchored — see `earthpv roof-classifier` for a "
                 "quadrat-based absolute anchor."
             )
+    n_cell_failures = 0
     for row in tqdm([r for _, r in manifest.iterrows()], desc="density"):
         try:
             process_cell(
@@ -1049,6 +1134,21 @@ def run_density(
             )
         except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
             log.warning("cell %s failed: %s", row.cell, e)
+            n_cell_failures += 1
+
+    # A full, force-rebuilt (or first-ever) run with no cell failures is guaranteed
+    # consistent with `cands` -- record that so the NEXT run can verify it's still true
+    # instead of silently trusting stale partials (see the RuntimeErrors above).
+    did_full_rebuild = force or not has_cached_partials
+    if did_full_rebuild and n_cell_failures == 0:
+        fp_path.write_text(json.dumps(cand_fp, indent=2))
+    elif did_full_rebuild:
+        log.warning(
+            "%d/%d cells failed during a full rebuild -- not writing %s, since the "
+            "partials cannot be guaranteed consistent with %s. Re-run with --force again "
+            "to retry the failed cells before trusting a non-force run.",
+            n_cell_failures, len(manifest), fp_path.name, cand_path.name,
+        )
 
     regions, dist = load_admin(aoi, cfg, settings, iso3, labels_dir, districts, regions_file)
     manifest_cells = set(manifest.cell)
@@ -1061,7 +1161,7 @@ def run_density(
         )
     stats = aggregate(
         out_dir, manifest, regions, dist, kwp_per_m2_module, kwp_per_m2_land,
-        cand_totals, unc=unc,
+        cand_totals, unc=unc, exp_source=exp_source,
     )
 
     meta = {
@@ -1072,12 +1172,15 @@ def run_density(
         "max_candidate_m2": max_candidate_m2,
         "n_oversize_excluded": n_oversize,
         "oversize_area_m2": oversize_area_m2,
-        "oversize_stale_partials": stale_partials,
+        "did_full_rebuild": did_full_rebuild,
+        "n_cell_failures": n_cell_failures,
+        "candidates_fingerprint_written": did_full_rebuild and n_cell_failures == 0,
         "exp_source": exp_source,
         "fraction_prob_dir": str(fraction_prob_dir) if fraction_prob_dir else None,
         "exp_scale": exp_scale,
         "calibration": str(cal_path) if cal_path.exists() else None,
-        "calibration_status": cal_status, **stats,
+        "calibration_status": cal_status,
+        "plausibility_note": plausibility_note, **stats,
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 

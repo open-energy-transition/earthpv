@@ -408,6 +408,13 @@ def density(
         help="Clamp per-bin model recall for the Horvitz-Thompson est_mwp_rc "
         "(default capacity_calibration.DEFAULT_RECALL_FLOOR)",
     ),
+    plausibility_note: str = typer.Option(
+        None,
+        help="Record a note in meta.json explaining that this run is published without "
+        "requiring `earthpv check-density` to pass (e.g. pending more calibration "
+        "regions). Does not change any number and does not skip check-density itself -- "
+        "it only documents the decision to publish ahead of, or without, that gate.",
+    ),
 ) -> None:
     """Per-building PV density + 0.1-deg-grid and admin-region aggregates (PyPSA-ready)."""
     from earthpv.density import (
@@ -427,7 +434,7 @@ def density(
         fraction_prob_dir=fraction_prob_dir, exp_scale=exp_scale,
         min_prob=min_prob, min_building_exp_m2=min_building_exp_m2, limit=limit,
         districts=districts, regions_file=regions_file, force=force, calibration=calibration,
-        recall_floor=recall_floor,
+        recall_floor=recall_floor, plausibility_note=plausibility_note,
     )
 
 
