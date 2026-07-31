@@ -27,6 +27,7 @@ import logging
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 log = logging.getLogger(__name__)
@@ -264,6 +265,8 @@ def _build_simple_atlas(
         "__PRIMARY_COL__": col,
         "__SECONDARY_LABEL__": "Expected",
         "__SECONDARY_COL__": "Exp",
+        "__TILE_LARGE_LABEL__": f"{label} MWp",
+        "__TILE_SMALL_LABEL__": "Expected MWp",
         "__BRACKET_HTML__": bracket,
         "__N_CELLS_TOTAL__": f"{len(grid):,}",
         "__FOOT_MODEL__": (
@@ -283,9 +286,58 @@ def _build_simple_atlas(
     return out
 
 
+# Size bins in m2, split at the 400 m2 detection floor: below it, a "large" candidate
+# cannot exist by construction (the segmentation model burns everything smaller as
+# ignore during training -- see chips.MIN_PV_AREA); above it, a "small" checked building
+# has already been dropped by the contamination filter in
+# `sub400_capacity.domain_restricted_capacity`. So the two series never share a bin --
+# this is one continuous size axis assembled from two instruments, not two overlapping
+# ones.
+_SMALL_BIN_EDGES = [0, 25, 50, 100, 200, 400]
+_LARGE_BIN_EDGES = [400, 1000, 2500, 5000, 10000, 25000, 100000]
+
+
+def _bin_counts(values: np.ndarray, edges: list[float]) -> list[int]:
+    values = values[np.isfinite(values)]
+    idx = np.digitize(values, edges[1:-1], right=False)
+    return [int((idx == i).sum()) for i in range(len(edges) - 1)]
+
+
+def _bin_label(lo: float, hi: float) -> str:
+    def fmt(v: float) -> str:
+        return f"{v / 1000:g}k" if v >= 1000 else f"{v:g}"
+    return f"{fmt(lo)}–{fmt(hi)} m²"
+
+
+def _size_distribution(density_dir: Path, sub400_cells_path: Path | None) -> dict:
+    """Installation-count histogram spanning both instruments this atlas combines:
+    detected candidate polygons (>= 400 m2, from `postprocess`) and checked buildings
+    (< 400 m2, from the domain-restricted sub400 population). Counts only, not area or
+    capacity, so it answers "how many installations of each size" -- the long tail of
+    small installations the 400 m2 floor otherwise hides entirely from view.
+    """
+    bins: list[dict] = []
+    if sub400_cells_path is not None and Path(sub400_cells_path).exists():
+        small = pd.read_parquet(sub400_cells_path, columns=["roof_area_m2"])
+        counts = _bin_counts(small["roof_area_m2"].to_numpy(float), _SMALL_BIN_EDGES)
+        for lo, hi, n in zip(_SMALL_BIN_EDGES[:-1], _SMALL_BIN_EDGES[1:], counts):
+            bins.append({"label": _bin_label(lo, hi), "n": n, "series": "small"})
+
+    cand_path = Path(density_dir).parent / "candidates.parquet"
+    if cand_path.exists():
+        cands = pd.read_parquet(cand_path, columns=["area_m2", "oversize"])
+        areas = cands.loc[~cands["oversize"].astype(bool), "area_m2"].to_numpy(float)
+        counts = _bin_counts(areas, _LARGE_BIN_EDGES)
+        for lo, hi, n in zip(_LARGE_BIN_EDGES[:-1], _LARGE_BIN_EDGES[1:], counts):
+            bins.append({"label": _bin_label(lo, hi), "n": n, "series": "large"})
+
+    return {"bins": bins}
+
+
 def build_combined_atlas(
     aoi: str, density_dir: Path, sub400_cells_path: Path,
     out: Path | None = None, zoom_out_frac: float = 0.0,
+    labels_dir: Path = Path("data/labels"),
 ) -> Path:
     """Large-PV (>= 400 m2, national, recall-corrected) + small-PV (sub-400 m2,
     density-domain-restricted -- see `sub400_capacity.domain_restricted_capacity`) in ONE
@@ -407,88 +459,97 @@ def build_combined_atlas(
         "cells": cells,
         "provinces": provinces,
         "cities": CITIES.get(aoi, []),
+        "calibBoxes": _load_calib_boxes(aoi, labels_dir),
         "totals": {
             "mwp_det": round(total_combined),
             "mwp_exp": round(total_rc),
+            "mwp_large": round(total_rc),
+            "mwp_small": round(total_sub400),
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "det_km2": round(float(grid.pv_area_rc_total_m2.sum()) / 1e6, 1),
             "n_cells": int(len(grid)),
             "kwp_per_m2": meta.get("kwp_per_m2_module", 0.18),
             "threshold": meta.get("threshold", 0.3),
         },
+        "sizeDist": _size_distribution(density_dir, sub400_cells_path),
     }
 
     lede = (
-        "Two instruments, one map. A recall-first segmentation model finds installations "
-        f"&ge; 400 m&sup2; across every building-populated cell of {title} — the "
-        "population large enough to train a per-pixel detector on. Below that floor, a "
-        "separate per-building classifier (<code>roofclf</code>) supplies a second "
-        "estimate, but only in cells whose settlement density matches where it has been "
-        "calibrated against ground truth. Colour is the sum of both where both exist; a "
-        "dashed outline marks exactly which cells that is."
+        f"This map estimates solar power capacity across {title}, combining two methods "
+        "so both large solar sites and small rooftop installations show up in one place. "
+        "A satellite based model scans Sentinel-2 imagery to find installations of "
+        "400 square metres or larger everywhere in the country. A second, building by "
+        "building model adds smaller installations, but only in areas that have been "
+        "checked against real, hand mapped locations in OpenStreetMap. Colour shows the "
+        "combined total wherever both estimates apply. A dashed outline marks exactly "
+        "which areas that is."
     )
     bracket = (
-        f'Large-PV alone (&ge; 400 m&sup2;, national, recall-corrected): <b id="expNum">0</b> '
-        f"MWp. Adding small-PV inside the {n_domain_cells} outlined cells brings the total "
-        f"shown to <b>{round(total_combined):,}</b> MWp — <b>not</b> a national small-PV "
-        "estimate: outside the outline, the map shows large-PV only, because there is no "
-        "calibration evidence there either way, not because small-PV is known to be zero. "
-        "The domain is reported elsewhere as 93 cells (a different manifest's grid) — "
-        f"{n_domain_cells} is that same physical area re-cast onto this run's own cell "
-        "boundaries, not a different or larger coverage claim."
+        'Large installations alone (400 square metres and larger, nationwide): '
+        f'<b id="expNum">0</b> MWp. Including smaller installations inside the '
+        f"{n_domain_cells} outlined cells brings the total shown to "
+        f"<b>{round(total_combined):,}</b> MWp. This is <b>not</b> a nationwide estimate "
+        "for small installations: outside the outlined cells, the map shows large "
+        "installations only, because there is not yet enough checked ground data there, "
+        "not because small scale solar is known to be absent. The checked area is "
+        f"measured elsewhere as 93 locations; {n_domain_cells} is that same area, redrawn "
+        "on this map's own grid, not a larger coverage claim."
     )
     howto = (
-        "<b>How to read it.</b> Colour is <b>combined</b> capacity: large-PV "
-        "(recall-corrected, every cell) plus small-PV (only inside the "
-        f"{n_domain_cells} dashed-outline cells). Outside the outline, colour is large-PV "
-        "alone — the small-PV term is unmeasured there, not zero. Hover any cell for the "
-        "large-PV/combined breakdown and its domain status."
+        "<b>How to read this map.</b> Colour shows <b>combined</b> capacity: large "
+        "installations everywhere, plus small installations inside the "
+        f"{n_domain_cells} dashed outline cells. Outside the outline, colour reflects "
+        "large installations only, since the small-installation estimate is unmeasured "
+        "there, not zero. Teal dots mark calibration areas, small locations checked by "
+        "hand against real installations, which is how the small-installation estimate "
+        "was validated. Hover any cell or marker for details."
     )
     method_lede = (
-        "Large-PV capacity comes from `density.py`'s recall-corrected estimator (see the "
-        "six-estimator atlas for its full derivation). Small-PV capacity comes from "
-        "`sub400_capacity.domain_restricted_capacity`: a per-building classifier "
-        "(`roofclf`) scored nationally, restricted to cells whose building density falls "
-        "in the calibration quadrats' measured range, weighted by density-regime "
-        "precision, and with buildings already >= 400 m² excluded as contamination. The "
-        f"{n_domain_cells}-cell domain is {100 * n_domain_cells / len(grid):.1f}% of "
-        "national cells; extrapolating the small-PV component beyond it is exactly the "
-        "failure this restriction exists to prevent, so this map deliberately does not do it. "
-        "The domain is measured and published elsewhere as 93 cells, against a national "
-        "building-density manifest computed separately from this density run's own grid; "
-        "its cell boundaries are offset from this map's, so the same physical domain lands "
-        f"on {n_domain_cells} of this map's cells. Every domain building was reassigned by "
-        "spatial join against this map's actual cell polygons (not by matching cell-id "
-        "strings across the two manifests), so the total shown is exact regardless of that "
-        "offset — only the cell *count* differs, not the capacity."
+        "Large scale solar capacity comes from a satellite image model trained to "
+        "recognise solar panels in Sentinel-2 imagery, corrected for installations the "
+        "model is known to miss. Small scale solar capacity comes from a separate model "
+        "that scores each building individually, calibrated against a set of small areas "
+        "mapped by hand in OpenStreetMap and checked against real installations (the "
+        "calibration areas marked on the map). That calibration currently covers a small "
+        f"share of the country, {n_domain_cells} of this map's {len(grid):,} cells "
+        f"({100 * n_domain_cells / len(grid):.1f} percent), based on a national survey of "
+        "building density computed separately from this map's own grid. Because the two "
+        f"surveys use slightly different cell boundaries, the same checked area appears as "
+        f"{n_domain_cells} cells here even though it is reported as 93 locations "
+        "elsewhere; the total shown is exact either way, since buildings were matched by "
+        "location rather than by cell name. Extending the small-installation estimate "
+        "beyond the checked areas is left for future work rather than assumed here."
     )
     formula_note = (
-        f"Large-PV total shown: <b>{round(total_rc):,} MWp</b> (recall-corrected, all "
-        f"placements, national). Small-PV total shown: <b>{round(total_sub400):,} MWp</b> "
-        f"(domain-restricted to {n_domain_cells} cells only). Combined: "
-        f"<b>{round(total_combined):,} MWp</b> — reported because summing them was asked "
-        "for, not because the project's own calibration work treats this as one validated "
-        "population estimate (the two terms have very different national coverage and "
-        "confidence). See the dashed-outline cells for exactly where the small-PV term "
-        "is non-zero."
+        f"Large installations shown: <b>{round(total_rc):,} MWp</b> (corrected for "
+        f"detection misses, all placements, nationwide). Small installations shown: "
+        f"<b>{round(total_sub400):,} MWp</b> (limited to the checked area only). "
+        f"Combined: <b>{round(total_combined):,} MWp</b>. This combined figure is shown "
+        "on request; it is not treated as a single validated estimate in this project's "
+        "own methodology, since the two figures cover very different shares of the "
+        "country and rest on different levels of confidence. See the dashed outline "
+        "cells above for exactly where the small-installation figure is greater than zero."
     )
 
     html = TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} PV Density — Large + Small, One Map",
-        "__H1__": f"{title}'s solar, large and small, in one map",
+        "__PAGE_TITLE__": f"{title} Solar Capacity: Large and Small Installations",
+        "__H1__": f"Every scale of solar power in {title}, on one map",
         "__LEDE_HTML__": lede,
         "__PRIMARY_WORD__": "combined",
         "__PRIMARY_LABEL__": "Combined",
         "__PRIMARY_COL__": "Combined",
-        "__SECONDARY_LABEL__": "Large-PV only",
-        "__SECONDARY_COL__": "Large-only",
+        "__SECONDARY_LABEL__": "Large only",
+        "__SECONDARY_COL__": "Large only",
+        "__TILE_LARGE_LABEL__": "Large capacity MWp",
+        "__TILE_SMALL_LABEL__": "Small capacity MWp",
         "__BRACKET_HTML__": bracket,
         "__N_CELLS_TOTAL__": f"{len(grid):,}",
         "__FOOT_MODEL__": (
-            "Model: TerraMind-tiny (large-PV) + roofclf per-building classifier (small-PV, "
-            f"{n_domain_cells}-cell domain restriction)"
+            "Large-scale detector: TerraMind satellite image model. Small-scale detector: "
+            "a per-building classifier calibrated against OpenStreetMap-mapped areas "
+            f"({n_domain_cells}-cell checked area)"
         ),
         "__AOI_TITLE__": title,
         "__HOWTO_HTML__": howto,

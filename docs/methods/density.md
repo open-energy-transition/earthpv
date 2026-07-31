@@ -487,6 +487,79 @@ already-restricted, already-well-calibrated population only removes recall for f
 the regime it actually helps (a future, separate low-density correction, not yet
 designed), not as a blanket addition to every roofclf deployment.
 
+### Regime-B correction and a national-proxy test (2026-07-31)
+
+Two follow-up questions, asked directly: does the Multan/Sialkot/Sundar-specific gain
+reproduce under a pooled (not per-quadrat) re-test, and can a per-cell signal tell us
+*where* that regime applies nationally so its correction could actually be deployed?
+
+**Reproduced, pooled, at matched recall.** `sppi.and_gate_regime_precision` pools
+TP/FP/FN across Multan, Sialkot and Sundar (sub-400 m<sup>2</sup> buildings, 9-quadrat
+table) rather than reading off per-quadrat deltas one at a time:
+
+| | precision | recall |
+|---|---:|---:|
+| `roofclf` alone (0.3064 threshold) | 0.309 | 0.424 |
+| `roofclf` alone, at the AND-gate's own recall | 0.462 | 0.153 |
+| **AND-gate** | **0.578** | 0.153 |
+
+A **+11.7 point** pooled gain at matched recall, a bit larger than the mean of the three
+individual per-quadrat deltas (+10.7/+5.5/+5.1pp) reported above -- the effect survives
+pooling, it is not an artefact of averaging three small samples. The cost is the same
+one already on record: only 15% of true installations in this regime survive the
+AND-gate. This is now reusable code (`sppi.and_gate_regime_precision`), not a one-off
+script result.
+
+**A related instability worth naming.** Which quadrats even count as "Multan/Sialkot/
+Sundar-like" (`rate_ratio` outside [0.5, 2.0]) depends on which fold table you read,
+because `rate_ratio` is itself a leave-one-quadrat-out statistic that shifts as the
+training pool changes. Sundar measures 1.68 (7-quadrat table), 2.11 (8-quadrat,
+Mardan added), then 1.71 (9-quadrat, Quetta added) -- straddling the 2.0 boundary across
+runs. The domain-restricted capacity figure (6,628 MWp) used the 8-quadrat table's
+3-quadrat split (Faisalabad, Karachi coastal, SITE Karachi); re-running
+`select_calibrated_quadrats` against the current 9-quadrat table gives 4 (Sundar now
+included). This does not change the 6,628 MWp figure retroactively -- that number is
+pinned to the fold table it was computed from -- but it means the Good/Regime-B split
+is a measurement with its own sampling noise near the boundary, not a fixed partition
+of Pakistan's geography.
+
+**Per-cell SPPI agreement rate as a national stratification proxy: tested, and it does
+not work.** The real, reproduced gain above is useless for national deployment without
+a way to tell which national cells are Multan/Sialkot/Sundar-like versus
+Faisalabad/Karachi-coastal/SITE-Karachi-like -- exactly the proxy problem this project
+has already failed to solve twice (existing candidate density anti-correlates with true
+small-PV rate; `roofclf`'s own raw predicted rate does not separate the regimes
+either). A per-cell signal needs no ground truth to compute nationally, so a candidate
+worth testing before assuming it does not exist: does the *fraction of `roofclf`-flagged
+buildings that SPPI also confirms* (`sppi.agreement_rate_by_quadrat`) track `rate_ratio`?
+
+| quadrat | confirmation rate | `rate_ratio` |
+|---|---:|---:|
+| Mardan | 0.000 | 0.235 |
+| Lahore | 0.050 | 0.454 |
+| Karachi coastal | 0.098 | 0.682 |
+| SITE Karachi | 0.440 | 1.146 |
+| Faisalabad | 0.675 | 1.328 |
+| Sundar | 0.319 | 1.710 |
+| Multan | 0.327 | 2.068 |
+| Sialkot | 0.117 | 2.304 |
+| Quetta | 0.506 | 4.833 |
+
+Correlation among the 7 quadrats with an ordinary failure mode (excluding Mardan and
+Quetta, each already separately diagnosed as a distinct problem, not a density-regime
+one) is weak: Pearson r = 0.19, Spearman rho = 0.36. It only looks strong (r = 0.50,
+rho = 0.63) with Mardan and Quetta folded back in -- almost certainly driven by those
+two known outliers rather than a real relationship, since the sign is not even
+consistent among the core 7: Karachi coastal (well-calibrated, `rate_ratio` 0.68) shows
+a *lower* confirmation rate than Sundar (over-predicting, `rate_ratio` 1.71), the
+opposite of what the hypothesis predicts. **Negative result, kept as code
+(`sppi.agreement_rate_by_quadrat`) rather than deleted**, in the same spirit as
+`roofclf_capacity.py`: this project has now failed to find a national stratification
+proxy three times (candidate density, `roofclf`'s own rate, SPPI agreement rate), which
+is itself useful to know before trying a fourth. The Regime-B correction above therefore
+stays exactly where it started: a real, reproducible effect with no known way to say
+where it applies outside the quadrats it was measured on.
+
 ### Sub-400 m² experimental capacity: density-stratified, deliberately separate
 
 `src/earthpv/sub400_capacity.py` (2026-07-30) is the outcome of trying to fold both

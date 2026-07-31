@@ -220,3 +220,111 @@ def recall_effect(
             "recall_delta": round(combined_recall - seg_recall, 4),
         })
     return pd.DataFrame(rows)
+
+
+def and_gate_regime_precision(
+    t: pd.DataFrame, quadrats: list[str], thresholds: pd.DataFrame,
+    roofclf_col: str = "p_oof", roofclf_thresh: float = 0.3064,
+) -> dict:
+    """Pooled roofclf-alone vs. AND-gate (roofclf AND SPPI agree) precision/recall
+    across `quadrats`, matching `sub400_capacity.density_regime_precision`'s pooling
+    convention (raw TP/FP/FN summed across quadrats, not an average of per-quadrat
+    precisions -- the quadrats have very different sample sizes, so a plain average
+    would let a small quadrat outvote a large one).
+
+    Also reports roofclf-alone's precision AT THE AND-GATE'S OWN RECALL (found by
+    sweeping `roofclf_col` from its top score down), the matched-recall comparison this
+    project already uses when judging whether agreement adds anything beyond a stricter
+    cutoff on roofclf alone. `thresholds` is `calibrate_threshold_loqo`'s output
+    (LOQO-fit SPPI thresholds, one per held-out quadrat).
+
+    Verified 2026-07-30 on the 9-quadrat table pooling Multan/Sialkot/Sundar (the three
+    quadrats `sub400_capacity.select_calibrated_quadrats` excludes from the density-regime
+    precision fit for over-predicting 2x+): AND-gate precision 0.578 vs. roofclf-alone
+    0.462 at the same 0.153 recall -- a real +11.6 point gain, consistent with (a bit
+    larger than) the individual per-quadrat deltas measured earlier (+10.7/+5.5/+5.1pp).
+    The cost is recall: only 15% of true installations survive the AND-gate in this
+    regime. This is not yet wired into any capacity figure -- see the module docstring
+    and `docs/methods/density.md`'s SPPI section for why (no national proxy exists to
+    say which cells this regime's precision should even apply to).
+    """
+    thresh_by_q = thresholds.set_index("quadrat")["threshold"].to_dict()
+    g = t[t["quadrat"].isin(quadrats)]
+    y = g["has_pv"].astype(bool).to_numpy()
+    roof_pred = (g[roofclf_col] >= roofclf_thresh).to_numpy()
+    row_thresh = g["quadrat"].map(thresh_by_q).fillna(np.inf).to_numpy()
+    and_pred = roof_pred & (g["sppi"].to_numpy() >= row_thresh)
+
+    def _stats(pred: np.ndarray) -> dict:
+        tp = int((pred & y).sum())
+        fp = int((pred & ~y).sum())
+        fn = int((~pred & y).sum())
+        precision = tp / (tp + fp) if (tp + fp) else float("nan")
+        recall = tp / (tp + fn) if (tp + fn) else float("nan")
+        return {"precision": precision, "recall": recall, "tp": tp, "fp": fp, "fn": fn}
+
+    roof_stats = _stats(roof_pred)
+    and_stats = _stats(and_pred)
+
+    # roofclf-alone at the AND-gate's own recall: sweep roofclf_col from the top down.
+    order = np.argsort(-g[roofclf_col].to_numpy())
+    y_sorted = y[order]
+    n_pos = int(y.sum())
+    cum_tp = np.cumsum(y_sorted)
+    recalls = cum_tp / n_pos if n_pos else np.zeros(len(y_sorted))
+    idx = min(int(np.searchsorted(recalls, and_stats["recall"])), len(recalls) - 1) if n_pos else 0
+    matched_recall = float(recalls[idx]) if n_pos else float("nan")
+    matched_precision = float(cum_tp[idx] / (idx + 1)) if n_pos else float("nan")
+
+    return {
+        "quadrats": quadrats,
+        "n": int(len(g)),
+        "roofclf_alone": {k: round(v, 4) if isinstance(v, float) else v for k, v in roof_stats.items()},
+        "and_gate": {k: round(v, 4) if isinstance(v, float) else v for k, v in and_stats.items()},
+        "roofclf_alone_at_matched_recall": {
+            "recall": round(matched_recall, 4), "precision": round(matched_precision, 4),
+        },
+        "precision_gain_at_matched_recall": round(and_stats["precision"] - matched_precision, 4),
+    }
+
+
+def agreement_rate_by_quadrat(
+    t: pd.DataFrame, thresholds: pd.DataFrame, roofclf_col: str = "p_oof",
+    roofclf_thresh: float = 0.3064,
+) -> pd.DataFrame:
+    """Per quadrat: among buildings roofclf flags, what fraction does SPPI also confirm
+    (at that quadrat's LOQO-fit threshold)? Tested 2026-07-30 as a candidate national
+    stratification proxy -- "which cells look like the over-predicting Multan/Sialkot/
+    Sundar regime vs. the well-calibrated one" is exactly the proxy this project has
+    twice failed to find (existing candidate density anti-correlates with true small-PV
+    rate; roofclf's own raw predicted rate does not separate the regimes either -- see
+    `docs/methods/density.md`). A per-cell signal needs no ground truth to compute
+    nationally, so if it tracked `rate_ratio` it would be a genuinely new, deployable
+    handle.
+
+    **Result: it does not, at least not on 9 quadrats.** Correlation against `rate_ratio`
+    is weak among the 7 quadrats with an ordinary failure mode (Pearson r=0.19, Spearman
+    rho=0.36, n=7) and only looks strong (r=0.50, rho=0.63) when Mardan and Quetta are
+    included -- but those are exactly the two quadrats already separately diagnosed as
+    distinct failure modes (threshold-transfer failure and arid false positives,
+    respectively), so that apparent strength is almost certainly driven by two known
+    outliers, not a general relationship. Karachi coastal (well-calibrated, rate_ratio
+    0.68) shows a LOWER confirmation rate (0.10) than Sundar (over-predicting, rate_ratio
+    1.71, confirmation rate 0.32) -- the opposite of what the hypothesis predicts. This
+    is a negative result, kept here (not deleted) in the same spirit as
+    `roofclf_capacity.py`: a record of what was tried and did not work, so it is not
+    re-tried from scratch next time.
+    """
+    thresh_by_q = thresholds.set_index("quadrat")["threshold"].to_dict()
+    rows = []
+    for q, g in t.groupby("quadrat"):
+        flagged = g[g[roofclf_col] >= roofclf_thresh]
+        if flagged.empty:
+            continue
+        thresh = thresh_by_q.get(q)
+        confirmed = float((flagged["sppi"] >= thresh).mean()) if thresh is not None else float("nan")
+        rows.append({
+            "quadrat": q, "n_flagged": int(len(flagged)),
+            "confirmation_rate": round(confirmed, 4) if confirmed == confirmed else np.nan,
+        })
+    return pd.DataFrame(rows)
