@@ -530,6 +530,44 @@ it needs a browser. **Snap-packaged Firefox can only read a non-hidden directory
 and the failure mode is a silent hang rather than an error, so the script stages pages
 in `~/earthpv-screenshots/` and sets the subprocess cwd there.
 
+### National dashboards
+
+Added 2026-07-31: `earthpv dashboard --aoi <name>` combines an AOI's existing,
+independently-built HTML pages (the sub-400 m² bracket atlas, a glint panel-pose
+survey) into one tabbed page, rather than any of them being recomputed. It is a
+thin shell for a reason — each source page already carries its own `:root`
+CSS-variable palette, theme toggle and `prefers-color-scheme` handling, and merging
+their markup into one DOM would collide on those variable names; instead
+`src/earthpv/dashboard.py`'s `build_national_dashboard` copies each panel's HTML
+into a self-contained bundle directory (`results/<aoi>_pv_dashboard/{index.html,
+<panel-key>.html}`) and wires them behind lazy-loaded `<iframe>`s, so every panel
+keeps working exactly as it does standalone. The panel list is config, not code:
+each AOI's `dashboard:` block in `configs/aoi.yaml` (title + an ordered
+`{key, label, sublabel, src, note}` list) is what `dashboard --aoi` reads, so a
+second country needs a config block once its atlas/survey pages exist, not a code
+change — see `docs/dashboards/index.md` for the shape and the add-a-country
+runbook. `src/earthpv/pose.py::build_pose_survey_page` is the same pull-out applied
+to the panel-pose page itself (previously a one-off script,
+`scripts/build_pv_pose_country2000.py` is now a thin wrapper around it), so a
+second country's glint survey doesn't need its own copy of that template either.
+
+The dashboard bundle is a directory, not a single file, so it is synced into
+`docs/assets/interactive/` by a second, directory-aware step
+(`build_docs_figures.py::sync_interactive_dirs`, alongside the existing
+single-file `sync_interactive`) and does not appear in `atlas.py`'s per-AOI
+`CITIES`/`CALIBRATION_BOXES` dicts at all — those remain a separate, pre-existing
+extension point for the atlas maps themselves, untouched by this feature.
+
+The dashboard's own docs page (`docs/dashboards/pakistan.md`) is the site's first
+**full-bleed** page: front matter `hide: [navigation, toc]` removes the left nav
+tree and right TOC (a stable, native Material feature), and pairing the embed with
+a `.page-full-bleed` class lets `extra.css` remove the leftover content max-width
+via `.md-grid:has(.page-full-bleed) { max-width: 100% }` — deliberately a plain
+CSS selector rather than a `theme.custom_dir` Jinja template override, since the
+latter couples the site to Material's internal block names across the open-ended
+`mkdocs-material = ">=9.5"` pin, where `:has()` (universal in evergreen browsers
+since 2023) does not.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**

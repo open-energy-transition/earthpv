@@ -438,7 +438,7 @@
       desc: "Large PV across every placement, ground-mount farms included, plus the same Central small-PV component (roofclf alone, 93 checked cells). A wider question than the other three: how much PV of any kind, not how much rooftop PV.",
       combined: true, largeLabel: "Large PV (all placements, incl. ground-mount)", vmax: 10 },
   ];
-  let sel = 1; // start on Central, this project's own domain-restricted pick
+  let sel = 3; // start on All-PV, per explicit request (2026-07-31)
 
   function proj(lon, lat) {
     return [ (lon - b0) / lonspan * W, (b3 - lat) / latspan * H ];

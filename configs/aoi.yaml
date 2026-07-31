@@ -69,6 +69,23 @@ aois:
     val_tiles: ["0106_0064", "0107_0065", "0108_0065"]
     # Two-season opt-in (see note above).
     # stack_window: ["2025-09-20", "2025-11-15"]
+    # `earthpv dashboard --aoi pakistan` reads this block: an ordered panel list, each
+    # {key, label, sublabel, src, note}. `src` is repo-relative; `key` becomes
+    # "<key>.html" inside the generated bundle. See docs/dashboards/index.md for what
+    # a new country needs before it can get one of these.
+    dashboard:
+      title: Pakistan
+      panels:
+        - key: capacity
+          label: Capacity
+          sublabel: Sub-400 m² bracket + large PV
+          src: results/pakistan_pv_sub400_bracket_atlas.html
+          note: ">=400 m2 recall-corrected detection nationwide, plus four small-PV brackets (Low/Central/High/All-PV). See Capacity density."
+        - key: pose
+          label: Panel orientation
+          sublabel: Glint-fitted tilt & azimuth, n=2000
+          src: results/glint_validation_pakistan/pv_pose_country2000.html
+          note: "Fitted pose for 290 installations whose Sentinel-2 glints agree on one fixed plane. See Panel pose from glint."
 
   # India pilot: no rooftopsenti local dataset exists for India (unlike PK/DE), so this
   # is the first AOI exercising compose.py's VIDA-buildings + geoBoundaries fallbacks
