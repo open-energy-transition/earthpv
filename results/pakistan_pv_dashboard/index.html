@@ -104,7 +104,7 @@
     <p class="lede">2 independently-built views of Pakistan&#x27;s solar footprint, combined in one place: Capacity and Panel orientation. Switch tabs above; each is the same standalone page documented elsewhere on this site.</p>
     <div class="switch" role="tablist" aria-label="Dashboard panel">
       <button class="tab" type="button" aria-pressed="false">
-        <span class="tt1">Capacity</span><span class="tt2">Sub-400 m² bracket + large PV</span>
+        <span class="tt1">Capacity</span><span class="tt2">Verified / Best estimate / Ceiling</span>
       </button>
       <button class="tab" type="button" aria-pressed="false">
         <span class="tt1">Panel orientation</span><span class="tt2">Glint-fitted tilt &amp; azimuth, n=2000</span>
@@ -126,7 +126,7 @@
 (function () {
   const tabs = Array.from(document.querySelectorAll(".tab"));
   const frames = Array.from(document.querySelectorAll(".panel-frame"));
-  const notes = [">=400 m2 recall-corrected detection nationwide, plus four small-PV brackets (Low/Central/High/All-PV). See Capacity density.", "Fitted pose for 290 installations whose Sentinel-2 glints agree on one fixed plane. See Panel pose from glint."];
+  const notes = ["Three tiers by standard of proof, not by point estimate: hand-mapped + two detectors agree, this project's best defensible figure, and an explicit uncalibrated ceiling. See Capacity density.", "Fitted pose for 290 installations whose Sentinel-2 glints agree on one fixed plane. See Panel pose from glint."];
 
   function activate(i) {
     tabs.forEach((t, j) => t.setAttribute("aria-pressed", String(j === i)));

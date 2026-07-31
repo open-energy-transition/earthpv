@@ -1,0 +1,787 @@
+<meta charset="utf-8">
+<title>__PAGE_TITLE__</title>
+<script id="pv" type="application/json">__PV_DATA_JSON__</script>
+
+<style>
+  :root {
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+    /* dark = the primary "night lights" world */
+    --page: #100d09;
+    --panel: #1a160f;
+    --panel-2: #221d14;
+    --land: #241f16;
+    --map-bg: #0c0a07;
+    --ink: #f7f1e6;
+    --ink-2: #c9bda4;
+    --muted: #93866c;
+    --hair: rgba(247,183,51,0.14);
+    --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623;
+    --accent-dim: #b5610f;
+    --domain: #2fd9c4;
+    --large: #4fb2e8;
+    --bloom: 0.55;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+      --land: #e6dcc7; --map-bg: #efe8d8;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+      --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+      --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --bloom: 0;
+      --card-ring: rgba(120,80,20,0.14);
+      --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+    --land: #e6dcc7; --map-bg: #efe8d8;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+    --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --bloom: 0;
+    --card-ring: rgba(120,80,20,0.14);
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+  }
+  :root[data-theme="dark"] {
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
+    --land: #241f16; --map-bg: #0c0a07;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #4fb2e8; --bloom: 0.55;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: clamp(20px, 3.5vw, 48px); }
+
+  header { margin-bottom: 6px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 {
+    font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
+    font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
+  }
+  .lede {
+    margin: 14px 0 0; max-width: 72ch; color: var(--ink-2);
+    font-size: clamp(15px, 1.5vw, 17px);
+  }
+  .lede b { color: var(--ink); font-weight: 640; }
+
+  /* ── section scaffolding ─────────────────────────────────────────── */
+  .sec { margin-top: 44px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .sec-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent); }
+  .sec-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 0; }
+  .sec-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+
+  /* ── kpi strip ───────────────────────────────────────────────────── */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
+  .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
+    padding: 15px 16px; box-shadow: var(--shadow); }
+  .kpi .v { font-size: 25px; font-weight: 780; letter-spacing: -0.01em; color: var(--accent);
+    font-variant-numeric: tabular-nums; }
+  .kpi .v small { font-size: 0.52em; font-weight: 650; color: var(--ink-2); margin-left: 4px; }
+  .kpi .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+
+  /* ── view selector ──────────────────────────────────────────────── */
+  .switch { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+  .tab {
+    font-family: var(--font-mono); font-size: 12.5px; padding: 9px 14px;
+    background: var(--panel); border: 1px solid var(--card-ring); border-radius: 8px;
+    color: var(--ink-2); cursor: pointer; transition: border-color .15s, color .15s; text-align: left;
+  }
+  .tab .tt1 { display: block; font-weight: 650; }
+  .tab .tt2 { display: block; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted); margin-top: 2px; }
+  .tab:hover { color: var(--ink); border-color: var(--accent-dim); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tab[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+  .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; margin-top: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border-radius: 16px; padding: 18px;
+    box-shadow: var(--shadow); border: 1px solid var(--card-ring);
+  }
+  .map-card { padding: 14px; position: relative; overflow: hidden; }
+
+  .map-head { display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin: 4px 6px 12px; flex-wrap: wrap; }
+  .map-title { font-weight: 640; font-size: 15px; }
+  .map-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
+    letter-spacing: 0.02em; }
+
+  svg.map { width: 100%; height: auto; display: block; }
+  .cell { shape-rendering: crispEdges; }
+  .prov-fill { fill: var(--land); }
+  .prov-line { fill: none; stroke: var(--prov-stroke); stroke-width: 1; stroke-linejoin: round; }
+  .city-dot { fill: var(--ink); opacity: 0.55; }
+  .city-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 21px;
+    paint-order: stroke; stroke: var(--map-bg); stroke-width: 2.4px; opacity: 0.9; }
+  .domain-ring-rect { fill: none; stroke: var(--domain); stroke-width: 1;
+    stroke-dasharray: 2 1.5; opacity: 0.85; pointer-events: none; }
+  .large-dot { fill: none; stroke: var(--large); opacity: 0.9; pointer-events: none; }
+  .tip .rowt.domain-flag span:first-child { color: var(--domain); }
+  .tip .rowt.large-flag span:first-child { color: var(--large); }
+  .legend .domain-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--ink-2); }
+  .legend .domain-key .sw { width: 10px; height: 10px; border: 1px dashed var(--domain);
+    border-radius: 2px; }
+  .legend .large-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--ink-2); }
+  .legend .large-key .sw { width: 10px; height: 10px; border: 1.4px solid var(--large);
+    border-radius: 50%; }
+  .calib-ring { fill: none; stroke: var(--domain); stroke-width: 1.4;
+    stroke-dasharray: 3 2; opacity: 0.95; }
+  .calib-dot { fill: var(--domain); stroke: var(--map-bg); stroke-width: 1.2;
+    cursor: pointer; }
+  .legend .calib-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--ink-2); }
+  .legend .calib-key .sw { width: 9px; height: 9px; border-radius: 50%;
+    background: var(--domain); }
+
+  .legend { display: flex; align-items: center; gap: 12px; margin: 12px 6px 2px;
+    flex-wrap: wrap; }
+  .legend .bar { height: 12px; width: min(260px, 50vw); border-radius: 6px; }
+  .legend .ticks { position: relative; height: 14px; width: min(260px, 50vw);
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .legend .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .legend .ticks span::before { content: ""; position: absolute; top: -4px; left: 50%;
+    width: 1px; height: 3px; background: var(--muted); }
+  .legend .cap { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2);
+    letter-spacing: 0.03em; }
+  .legend .lg-col { display: flex; flex-direction: column; }
+
+  .hero-num { font-size: clamp(36px, 5.4vw, 54px); font-weight: 800; letter-spacing: -0.03em;
+    line-height: 0.95; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hero-unit { font-size: 0.34em; font-weight: 700; color: var(--ink-2); letter-spacing: 0;
+    margin-left: 6px; }
+  .hero-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+  .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
+  .hero-desc b { color: var(--ink); font-weight: 660; }
+
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
+    border: 1px solid var(--card-ring); }
+  .tile.large-tile { border-color: var(--large); }
+  .tile .v { font-size: 22px; font-weight: 740; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums; }
+  .tile.large-tile .v { color: var(--large); }
+  .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  .rank { margin-top: 4px; }
+  .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
+  .row { display: grid; grid-template-columns: 1fr; gap: 5px; margin-bottom: 11px; }
+  .row .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .row .nm { font-size: 13px; font-weight: 560; }
+  .row .vl { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; }
+  .track { height: 9px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
+
+  details.tablewrap { margin-top: 14px; }
+  details.tablewrap summary { font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--hair);
+    font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-family: var(--font-mono); font-weight: 500; color: var(--muted);
+    font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  .tip { position: fixed; pointer-events: none; z-index: 20; opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px)); transition: opacity .1s;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 9px 11px; box-shadow: var(--shadow);
+    font-size: 12px; min-width: 160px; }
+  .tip .th { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+    letter-spacing: 0.05em; margin-bottom: 5px; }
+  .tip .rowt { display: flex; justify-content: space-between; gap: 14px; }
+  .tip .rowt span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    color: var(--ink); }
+  .tip .rowt span:first-child { color: var(--ink-2); }
+  .tip .rowt.sel span:first-child { color: var(--accent); }
+
+  .foot { margin-top: 34px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.03em; line-height: 1.7; }
+  .theme-btn { position: fixed; top: 14px; right: 14px; z-index: 30;
+    background: var(--panel); color: var(--ink-2); border: 1px solid var(--card-ring);
+    border-radius: 999px; padding: 7px 12px; font-family: var(--font-mono); font-size: 11px;
+    cursor: pointer; letter-spacing: 0.04em; }
+  .theme-btn:focus-visible, summary:focus-visible { outline: 2px solid var(--accent);
+    outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  .tag { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
+  .tag.low { background: rgba(245,166,35,0.14); color: var(--accent-dim); }
+  .tag.central { background: rgba(245,166,35,0.22); color: var(--accent); }
+  .tag.high { background: rgba(201,189,164,0.16); color: var(--ink-2); }
+  .tag.large { background: rgba(79,178,232,0.18); color: var(--large); }
+
+  /* ── expandable background sections ─────────────────────────────── */
+  .xdetails { background: var(--panel); border: 1px solid var(--card-ring);
+    border-radius: 14px; margin-top: 12px; overflow: hidden; }
+  .xdetails summary { list-style: none; cursor: pointer; padding: 15px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .xdetails summary::-webkit-details-marker { display: none; }
+  .xdetails summary .xt { font-weight: 650; font-size: 14px; }
+  .xdetails summary .xs { display: block; font-family: var(--font-mono); font-size: 10.5px;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 3px;
+    font-weight: 500; }
+  .xdetails summary .xi { font-family: var(--font-mono); color: var(--accent); font-size: 17px;
+    flex: none; }
+  .xdetails[open] summary .xi { transform: rotate(45deg); }
+  .xdetails .xbody { padding: 0 18px 18px; color: var(--ink-2); font-size: 13.5px; line-height: 1.65; }
+  .xdetails .xbody p { margin: 0 0 12px; }
+  .xdetails .xbody p:last-child { margin-bottom: 0; }
+  .xdetails .xbody b { color: var(--ink); font-weight: 650; }
+  .xdetails .xbody a { color: var(--accent); }
+  dl.viewdefs { margin: 0; }
+  dl.viewdefs dt { font-weight: 640; font-size: 13.5px; margin-top: 14px; display: flex;
+    align-items: center; gap: 8px; }
+  dl.viewdefs dt:first-child { margin-top: 0; }
+  dl.viewdefs dd { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+</style>
+
+<button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">Dark mode</button>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">EarthPV · Sentinel-2 · OpenStreetMap · TerraMind · roofclf · SPPI</p>
+    <h1>__H1__</h1>
+    <p class="lede">__LEDE_HTML__</p>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kVerified">0<small>MWp</small></div>
+      <div class="k">Verified: mapped by people, or agreed by two detectors</div></div>
+    <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
+      <div class="k">Best estimate, the highest defensible figure</div></div>
+    <div class="kpi"><div class="v" id="kOsm">0</div>
+      <div class="k">Installations hand-mapped in OpenStreetMap</div></div>
+    <div class="kpi"><div class="v" id="kDomain">0</div>
+      <div class="k">of 0.1&deg; cells have density-matched sub-400 m&sup2; calibration</div></div>
+  </div>
+
+  <section class="sec" id="capacity">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Capacity</div>
+        <div class="sec-title">How much PV, by 0.1&deg; cell, by standard of proof</div>
+      </div>
+      <div class="switch" role="group" aria-label="Evidence tier">
+        <button class="tab" id="tab0" type="button" data-i="0">
+          <span class="tt1">Verified</span><span class="tt2">hand-mapped + two detectors agree</span>
+        </button>
+        <button class="tab" id="tab1" type="button" data-i="1">
+          <span class="tt1">Best estimate</span><span class="tt2">+ calibrated detections + density</span>
+        </button>
+        <button class="tab" id="tab2" type="button" data-i="2">
+          <span class="tt1">Ceiling</span><span class="tt2">flat precision, plus known large PV</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card map-card">
+        <div class="map-head">
+          <div class="map-title">Capacity per cell at the selected standard of proof</div>
+          <div class="map-sub">≈11 km × 11 km cells · log scale</div>
+        </div>
+        <div id="mapmount"></div>
+        <div class="legend">
+          <div class="lg-col">
+            <div class="bar" id="legbar"></div>
+            <div class="ticks" id="legticks"></div>
+          </div>
+          <div class="cap" id="legcap">MWp&nbsp;/&nbsp;cell, selected tier</div>
+          <div class="large-key">
+            <span class="sw"></span>hand-mapped OSM PV: ring size, always shown
+          </div>
+          <div class="domain-key" id="domainKey" style="margin-left:14px">
+            <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
+          </div>
+          <div class="calib-key" style="margin-left:14px">
+            <span class="sw"></span>hand-checked calibration area (hover for detail)
+          </div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="card">
+          <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
+          <div class="hero-label" id="heroLabel">Selected tier, nationwide</div>
+          <div class="hero-desc" id="heroDesc"></div>
+          <div class="tiles" id="tiles"></div>
+        </div>
+
+        <div class="card rank" style="margin-top:14px;">
+          <h3 id="rankH">Provinces, ranked by selected tier</h3>
+          <div id="ranks"></div>
+          <details class="tablewrap">
+            <summary>Full province figures</summary>
+            <div style="overflow-x:auto;"><table id="ptable">
+              <thead><tr><th>Province</th><th>Verified</th><th>Best estimate</th>
+                <th>Ceiling</th><th>OSM mapped</th><th>Model, &ge;400 m²</th>
+                <th>Small PV, checked cells</th><th>Flat precision, national</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+          </details>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="sec" id="background">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Background</div>
+        <div class="sec-title">How to read these numbers</div>
+      </div>
+    </div>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">What each tier admits as evidence</span>
+        <span class="xs">Verified / Best estimate / Ceiling, defined</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <dl class="viewdefs">
+          <dt><span class="tag low">Verified</span> nothing here rests on a single model</dt>
+          <dd><b>Every PV installation drawn by a person in OpenStreetMap</b>
+          (<span id="dOsmN">0</span> of them), <b>plus</b> the sub-400 m² buildings where
+          two independent instruments agree &mdash; roofclf, a per-building size and
+          reflectance classifier, and SPPI, a zero-training spectral index. Requiring
+          agreement raises measured precision on held-out hand-mapped quadrats, at the
+          cost of recall. This is a <b>floor and it is known to be one</b>: OpenStreetMap
+          coverage is incomplete and uneven, and the small-PV term only applies inside
+          the checked cells.</dd>
+
+          <dt><span class="tag central">Best estimate</span> this project's own pick</dt>
+          <dd>The hand-mapped population <b>plus the satellite model's own &ge;400 m²
+          detections</b>, precision-calibrated and recall-corrected, <b>plus</b> the
+          roofclf per-building density estimate inside the same checked cells. The
+          model's detections and the OSM mapping overlap heavily, so the overlap is
+          removed rather than added twice (see the next section). This is the highest
+          number the project defends; it is still incomplete, because the small-PV term
+          covers only a fraction of national buildings.</dd>
+
+          <dt><span class="tag high">Ceiling</span> a bound, not an estimate</dt>
+          <dd><b>A much looser assumption on the small-PV side, plus every large
+          installation already known.</b> Every roofclf-flagged building nationwide
+          (the same threshold used to train the classifier) is credited at a
+          <b>flat precision weight</b> &mdash; not its own per-building probability, not
+          restricted to the density-checked cells &mdash; after excluding buildings that
+          already sit near a known &ge;400 m² detection, so the two terms don't overlap.
+          The large-PV side is the same recall-corrected total used everywhere else on
+          this page, across every placement. The small-PV side is <b>explicitly
+          uncalibrated at national scale</b>: a flat weight known not to survive the
+          shift from a handful of urban and industrial calibration quadrats to the
+          country's mostly rural buildings. Treat this tier as an outer bound on
+          plausibility, not a measurement.</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">How double counting is avoided</span>
+        <span class="xs">the mapped and the detected are largely the same installations</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <p>OpenStreetMap and the satellite detector are looking at the same country, so
+        naively adding them would count many installations twice. Each model detection
+        carries the identity of the OSM feature it matched, if any:
+        <b><span id="dMatched">0</span> of the <span id="dOsmN2">0</span> hand-mapped
+        installations were also found by the model</b>, and those detections already
+        carry the OSM geometry. The Best estimate therefore adds only the
+        <b><span id="dUnmatched">0</span> MWp of hand-mapped PV the model never
+        found</b>, on top of the model's own recall-corrected total.</p>
+        <p>The Ceiling tier avoids the same overlap by construction rather than by
+        subtraction: its small-PV component only includes buildings with <b>no existing
+        &ge;400 m² detection within 30 m</b> (the "incremental" population
+        <code>roofclf_capacity.incremental_capacity</code> already computes), so adding
+        the known large-PV total on top does not double count either.</p>
+      </div>
+    </details>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">Where the small-PV numbers apply</span>
+        <span class="xs">reading the dashed outline on the map</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <p>Installations under 400 m² are below the satellite detector's practical floor at
+        10 m resolution, so they are estimated per building instead. That estimate is only
+        reported <b>inside the dashed outline</b>: the
+        <span id="dDomain">0</span> cells whose building density falls inside the range
+        covered by the hand-mapped calibration quadrats. Outside it, small PV reads as zero
+        in the Verified and Best estimate tiers &mdash; not because small solar is absent
+        there, but because there is no calibration evidence either way. The Ceiling tier
+        deliberately ignores this restriction, along with every other one.</p>
+      </div>
+    </details>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">Data &amp; methods</span>
+        <span class="xs">what's under the hood</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <p>Imagery is Sentinel-2 L2A, dry-season composites. <b>Hand-mapped PV</b> is the
+        national OpenStreetMap solar pull, areas measured geodesically, converted at
+        __KWP_MOD__ kWp/m² for rooftop module area and the land constant for everything
+        else. <b>Detections &ge;400 m²</b> come from a TerraMind geospatial foundation
+        model fine-tuned for segmentation, trained on Germany and inferred on this AOI,
+        then precision-calibrated and recall-corrected. <b>Sub-400 m² capacity</b> comes
+        from two per-building instruments (roofclf, a size and reflectance classifier;
+        SPPI, a zero-training spectral index) trained and validated on hand-mapped 1 km²
+        quadrats, restricted to cells whose building density matches those quadrats
+        (Verified and Best estimate), or applied nationally at a flat precision weight
+        explicitly known to be uncalibrated at that scale (Ceiling). Building footprints
+        are VIDA Open Buildings. Full derivations and caveats live in this project's
+        methodology notes (<code>docs/methods/density.md</code>).</p>
+      </div>
+    </details>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="off"></div>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById("pv").textContent);
+  const [b0, b1, b2, b3] = DATA.bounds;
+  const lonspan = b2 - b0, latspan = b3 - b1;
+  const meanlat = (b1 + b3) / 2, k = Math.cos(meanlat * Math.PI / 180);
+  const W = 1000, H = Math.round(W * latspan / (lonspan * k));
+
+  const RAMP_DARK = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
+  const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
+
+  /* cell tuple: [lon0, lat0, verified, best, ceiling, osm_mwp, osm_n, small_low,
+     small_central, small_high, mwp_large, in_domain, pv_buildings] */
+  const IDX = [2, 3, 4];
+  const OSM_IDX = 5;
+  const T = DATA.totals;
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+
+  const VIEWS = [
+    { key: "verified", label: "Verified", vmax: 3,
+      name: "Verified: hand-mapped OSM PV, plus small rooftops two detectors both flag",
+      desc: "No single model is trusted on its own here. Every installation is either drawn by a person or flagged independently by roofclf and SPPI.",
+      tiles: [
+        ["osm_mwp", "Hand-mapped OSM PV, MWp"],
+        ["small_low", "Two detectors agree, MWp"],
+        ["osm_n", "OSM installations"],
+        ["n_domain_cells", "Cells with small-PV calibration"],
+      ] },
+    { key: "best", label: "Best estimate", vmax: 8,
+      name: "Best estimate: mapped PV, plus calibrated detections, plus per-building density",
+      desc: "Adds the model's own recall-corrected detections above 400 m² and its per-building estimate below, with the mapped-and-detected overlap removed.",
+      tiles: [
+        ["mwp_large", "Model detections &ge;400 m², MWp"],
+        ["osm_mwp_unmatched", "Mapped but never detected, MWp"],
+        ["small_central", "Small PV, checked cells, MWp"],
+        ["pv_buildings", "Buildings with a large detection"],
+      ] },
+    { key: "ceiling", label: "Ceiling", vmax: 40,
+      name: "Ceiling: flat national precision, plus every large installation already known",
+      desc: "roofclf flagged nationwide at a precision-tuned threshold, credited at a flat precision rather than each building's own probability, restricted to buildings with no existing large detection nearby &mdash; plus every &ge;400 m² installation of any placement already known. An explicit, unvalidated national ceiling on the small-PV side; the large-PV side is real.",
+      tiles: [
+        ["small_high", "Flat-precision small PV, national, MWp"],
+        ["mwp_large", "Known large PV, all placements, MWp"],
+        ["pv_buildings", "Buildings with a large detection"],
+        ["n_cells", "Cells, no restriction"],
+      ] },
+  ];
+  let sel = 1;
+
+  function proj(lon, lat) {
+    return [ (lon - b0) / lonspan * W, (b3 - lat) / latspan * H ];
+  }
+  function hex2rgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function ramp(t, stops){
+    t = Math.max(0, Math.min(1, t));
+    const n = stops.length - 1, f = t * n, i = Math.min(n-1, Math.floor(f)), r = f - i;
+    const a = hex2rgb(stops[i]), c = hex2rgb(stops[i+1]);
+    return `rgb(${Math.round(lerp(a[0],c[0],r))},${Math.round(lerp(a[1],c[1],r))},${Math.round(lerp(a[2],c[2],r))})`;
+  }
+
+  function isDark(){
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr) return attr === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function el(n, a){ const e = document.createElementNS(SVGNS, n); for (const kk in a) e.setAttribute(kk, a[kk]); return e; }
+
+  function ringPath(rings){
+    let d = "";
+    for (const ring of rings){
+      for (let i=0;i<ring.length;i++){
+        const p = proj(ring[i][0], ring[i][1]);
+        d += (i===0?"M":"L") + p[0].toFixed(1) + " " + p[1].toFixed(1);
+      }
+      d += "Z";
+    }
+    return d;
+  }
+
+  function renderMap(){
+    const dark = isDark();
+    const stops = dark ? RAMP_DARK : RAMP_LIGHT;
+    const view = VIEWS[sel], mi = IDX[sel];
+    const VMIN = 0.02, VMAX = Math.max(view.vmax, 0.1, ...DATA.cells.map(c => c[mi]));
+    const lVMIN = Math.log(VMIN), lVMAX = Math.log(VMAX);
+    const tOf = (v) => (Math.log(Math.max(v, VMIN)) - lVMIN) / (lVMAX - lVMIN);
+    const bright = (v) => v > 0 ? tOf(v) : -1;
+
+    const osmMax = Math.max(1, ...DATA.cells.map(c => c[OSM_IDX]));
+
+    const mount = document.getElementById("mapmount");
+    mount.innerHTML = "";
+    const svg = el("svg", {viewBox:`0 0 ${W} ${H}`, class:"map", role:"img",
+      "aria-label":`Choropleth map of __AOI_TITLE__ showing the ${view.name} estimate per cell, with hand-mapped OpenStreetMap PV always overlaid`});
+
+    svg.appendChild(el("rect", {x:0,y:0,width:W,height:H,fill:"var(--map-bg)"}));
+
+    const defs = el("defs", {});
+    const filt = el("filter", {id:"bloom", x:"-20%", y:"-20%", width:"140%", height:"140%"});
+    filt.appendChild(el("feGaussianBlur", {stdDeviation:"4"}));
+    defs.appendChild(filt); svg.appendChild(defs);
+
+    const gLand = el("g", {});
+    for (const p of DATA.provinces) gLand.appendChild(el("path", {d:ringPath(p.rings), class:"prov-fill"}));
+    svg.appendChild(gLand);
+
+    const cw = (0.1 / lonspan * W) + 0.4, ch = (0.1 / latspan * H) + 0.4;
+    const lit = DATA.cells.filter(c => c[mi] > 0).sort((a,b)=>a[mi]-b[mi]);
+
+    if (dark){
+      const gB = el("g", {filter:"url(#bloom)", opacity:"var(--bloom)"});
+      for (const c of lit){
+        const tl = proj(c[0], c[1] + 0.1);
+        gB.appendChild(el("rect", {x:tl[0].toFixed(1), y:tl[1].toFixed(1),
+          width:cw.toFixed(1), height:ch.toFixed(1), fill:ramp(bright(c[mi]), stops)}));
+      }
+      svg.appendChild(gB);
+    }
+
+    const gC = el("g", {});
+    for (const c of DATA.cells){
+      const tl = proj(c[0], c[1] + 0.1);
+      const t = bright(c[mi]);
+      const r = el("rect", {x:tl[0].toFixed(1), y:tl[1].toFixed(1),
+        width:cw.toFixed(1), height:ch.toFixed(1),
+        fill: t >= 0 ? ramp(t, stops) : "var(--land)", class:"cell"});
+      r.__c = c;
+      gC.appendChild(r);
+    }
+    svg.appendChild(gC);
+
+    if (sel < 2 && DATA.cells.some(c => c[11])) {
+      const gD = el("g", {class:"domain-ring"});
+      for (const c of DATA.cells){
+        if (!c[11]) continue;
+        const tl = proj(c[0], c[1] + 0.1);
+        gD.appendChild(el("rect", {
+          x:(tl[0]+0.8).toFixed(1), y:(tl[1]+0.8).toFixed(1),
+          width:Math.max(cw-1.6,0.5).toFixed(1), height:Math.max(ch-1.6,0.5).toFixed(1),
+          class:"domain-ring-rect",
+        }));
+      }
+      svg.appendChild(gD);
+    }
+
+    {
+      const gL = el("g", {class:"large-ring"});
+      for (const c of DATA.cells){
+        if (c[OSM_IDX] <= 0) continue;
+        const frac = Math.min(1, Math.sqrt(c[OSM_IDX] / osmMax));
+        const rad = 0.9 + frac * (Math.min(cw, ch) * 0.42);
+        gL.appendChild(el("circle", {
+          cx: (proj(c[0], c[1]+0.05)[0]).toFixed(1), cy: (proj(c[0], c[1]+0.05)[1]).toFixed(1),
+          r: rad.toFixed(2), class:"large-dot", "stroke-width": (0.6 + frac*1.2).toFixed(2),
+        }));
+      }
+      svg.appendChild(gL);
+    }
+
+    const gS = el("g", {});
+    for (const p of DATA.provinces) gS.appendChild(el("path", {d:ringPath(p.rings), class:"prov-line"}));
+    svg.appendChild(gS);
+
+    const gCity = el("g", {});
+    for (const [nm, lon, lat] of DATA.cities){
+      if (lon < b0 || lon > b2 || lat < b1 || lat > b3) continue;
+      const p = proj(lon, lat);
+      gCity.appendChild(el("circle", {cx:p[0].toFixed(1), cy:p[1].toFixed(1), r:2.6, class:"city-dot"}));
+      const t = el("text", {x:(p[0]+8).toFixed(1), y:(p[1]+7).toFixed(1), class:"city-label"});
+      t.textContent = nm; gCity.appendChild(t);
+    }
+    svg.appendChild(gCity);
+
+    if (DATA.calibBoxes && DATA.calibBoxes.length){
+      const gCalib = el("g", {class:"calib-group"});
+      for (const b of DATA.calibBoxes){
+        if (b.lon < b0 || b.lon > b2 || b.lat < b1 || b.lat > b3) continue;
+        if (b.rings && b.rings.length) {
+          gCalib.appendChild(el("path", {d:ringPath(b.rings), class:"calib-ring"}));
+        }
+        const p = proj(b.lon, b.lat);
+        const dot = el("circle", {
+          cx:p[0].toFixed(1), cy:p[1].toFixed(1), r:4.5, class:"calib-dot", tabindex:"0",
+        });
+        dot.__b = b;
+        gCalib.appendChild(dot);
+      }
+      svg.appendChild(gCalib);
+    }
+
+    const tip = document.getElementById("tip");
+    gC.addEventListener("pointermove", (e) => {
+      const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
+      tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
+      const rows = VIEWS.map((v, i) =>
+        `<div class="rowt${i===sel?' sel':''}"><span>${v.label}</span><span>${c[IDX[i]].toFixed(1)} MWp</span></div>`
+      ).join("");
+      tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
+        + rows
+        + `<div class="rowt large-flag"><span>&#9675; Hand-mapped in OSM</span><span>${c[OSM_IDX].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>&nbsp;&nbsp;OSM installations</span><span>${c[6].toLocaleString()}</span></div>`
+        + `<div class="rowt"><span>Model detections &ge;400 m²</span><span>${c[10].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>Small PV, roofclf alone</span><span>${c[8].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>Flat precision, national</span><span>${c[9].toFixed(1)} MWp</span></div>`
+        + (c[11] ? `<div class="rowt domain-flag"><span>&#9679; Small-PV calibration</span><span>checked</span></div>` : "");
+    });
+    gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+
+    svg.querySelectorAll(".calib-dot").forEach((dot) => {
+      dot.addEventListener("pointerenter", (e) => {
+        const b = e.target.__b;
+        tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+        const statusLabel = b.status === "rule1"
+          ? "Fully checked against real ground survey"
+          : b.status === "suspect"
+          ? "Needs re-checking"
+          : "Checked against high-resolution imagery";
+        tip.innerHTML = `<div class="th">CALIBRATION AREA: ${b.name}</div>`
+          + `<div class="rowt"><span>Mapped installations</span><span>${b.n}</span></div>`
+          + `<div class="rowt"><span>Status</span><span>${statusLabel}</span></div>`;
+      });
+      dot.addEventListener("pointermove", (e) => {
+        tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      });
+      dot.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+    });
+
+    mount.appendChild(svg);
+
+    const grad = stops.map((s,i)=>`${s} ${(i/(stops.length-1)*100).toFixed(0)}%`).join(",");
+    document.getElementById("legbar").style.background = `linear-gradient(90deg, ${grad})`;
+    const ticks = [VMIN, Math.sqrt(VMIN*VMAX), VMAX].map(v => Math.round(v*100)/100);
+    document.getElementById("legticks").innerHTML =
+      ticks.map(v => `<span style="left:${(tOf(v)*100).toFixed(1)}%">${v}</span>`).join("");
+    document.getElementById("legcap").textContent = `MWp per cell, ${view.label} tier`;
+  }
+
+  function countUp(id, target, dur){
+    const e = document.getElementById(id);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches){ e.textContent = fmt(target); return; }
+    const t0 = performance.now();
+    function step(now){
+      const p = Math.min(1, (now - t0)/dur), e2 = 1 - Math.pow(1-p, 3);
+      e.textContent = fmt(target * e2);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  document.getElementById("kVerified").innerHTML = `${fmt(T.mwp_verified)}<small>MWp</small>`;
+  document.getElementById("kBest").innerHTML = `${fmt(T.mwp_best)}<small>MWp</small>`;
+  document.getElementById("kOsm").textContent = fmt(T.osm_n);
+  document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
+
+  const TOTAL_KEY = ["mwp_verified", "mwp_best", "mwp_ceiling"];
+  const PROV_KEY = ["mwp_verified", "mwp_best", "mwp_ceiling"];
+
+  function drawTable() {
+    const provs = [...DATA.provinces].sort((a,b) => b[PROV_KEY[sel]] - a[PROV_KEY[sel]]);
+    const maxP = provs.length ? Math.max(...provs.map(p => p[PROV_KEY[sel]]), 1) : 1;
+    document.getElementById("ranks").innerHTML = provs.map(p => {
+      const nm = p.name;
+      const v = p[PROV_KEY[sel]];
+      return `<div class="row"><div class="top"><span class="nm">${nm}</span>`
+        + `<span class="vl">${fmt(v)} MWp</span></div>`
+        + `<div class="track"><div class="fill" style="width:${(v/maxP*100).toFixed(1)}%"></div></div></div>`;
+    }).join("");
+    document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
+      `<tr><td>${p.name}</td><td>${fmt(p.mwp_verified)}</td><td>${fmt(p.mwp_best)}</td><td>${fmt(p.mwp_ceiling)}</td>`
+      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
+      + `<td>${fmt(p.small_high)}</td></tr>`).join("");
+  }
+
+  function setView(i) {
+    sel = i;
+    ["tab0", "tab1", "tab2"].forEach((id, j) =>
+      document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
+    const view = VIEWS[i];
+    countUp("heroNum", T[TOTAL_KEY[i]], 700);
+    document.getElementById("heroLabel").textContent = `${view.label}, nationwide`;
+    document.getElementById("heroDesc").innerHTML = `<b>${view.name}.</b> ${view.desc}`;
+    document.getElementById("tiles").innerHTML = view.tiles.map(([key, label]) =>
+      `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
+    document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
+    document.getElementById("domainKey").style.display = i < 2 ? "" : "none";
+    renderMap(); drawTable();
+  }
+  ["tab0", "tab1", "tab2"].forEach((id, i) =>
+    document.getElementById(id).addEventListener("click", () => setView(i)));
+
+  document.getElementById("dOsmN").textContent = fmt(T.osm_n);
+  document.getElementById("dOsmN2").textContent = fmt(T.osm_n);
+  document.getElementById("dMatched").textContent = fmt(T.n_osm_matched);
+  document.getElementById("dUnmatched").textContent = fmt(T.osm_mwp_unmatched);
+  document.getElementById("dDomain").textContent = fmt(T.n_domain_cells);
+
+  document.getElementById("foot").innerHTML =
+    `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf/SPPI per-building `
+    + `classifiers · ${fmt(T.n_cells)} cells × 0.1° · ${T.kwp_per_m2} kWp/m² of module area · `
+    + `Sentinel-2 L2A dry-season composites · buildings from VIDA Open Buildings · `
+    + `see docs/methods/density.md for full derivations and caveats.`;
+
+  const btn = document.getElementById("themeBtn");
+  function updateThemeBtn(){ btn.textContent = isDark() ? "Light mode" : "Dark mode"; }
+  btn.addEventListener("click", () => {
+    const cur = isDark();
+    document.documentElement.setAttribute("data-theme", cur ? "light" : "dark");
+    updateThemeBtn();
+    renderMap();
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!document.documentElement.getAttribute("data-theme")) { updateThemeBtn(); renderMap(); }
+  });
+
+  updateThemeBtn();
+  setView(sel);
+})();
+</script>

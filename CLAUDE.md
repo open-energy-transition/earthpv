@@ -438,6 +438,27 @@ detections to calibrate against. That version (`unmixing.cell_selfcheck_ratio`,
 implemented, unexercised) is still open. Full table and discussion:
 `docs/methods/density.md`, item 10 under "How the estimate got here."
 
+**The bracket atlas was superseded by a three-tier evidence atlas, 2026-08-01.**
+`atlas.build_evidence_atlas` + `templates/pv_evidence_atlas.html` replaces
+Low/Central/High/All-PV (a menu of point estimates on one scale) with **Verified / Best
+estimate / Ceiling** — three different *standards of proof* over the same underlying
+numbers: Verified is the hand-mapped OSM population plus buildings where roofclf and
+SPPI both agree (no single model trusted alone); Best estimate adds the recall-corrected
+&ge;400 m² detections plus roofclf-alone density, with the OSM/detection overlap removed
+via `osm_matched_id` rather than summed twice; Ceiling keeps the old High figure (flat
+0.5 precision, thresholded, national) and, per explicit request, adds the known
+&ge;400 m² total on top rather than showing small-PV alone — landing at **42,251 MWp**
+(37,173.0 High-only + 5,077.9 large-PV — note: differs from a same-day standalone-script
+computation of 42,274.5 by 23.6 MWp, because this pipeline version aggregates the three
+building-level parquets via `_join_buildings_to_grid_cells`'s spatial join instead of a
+plain `cell`-id string match, correctly excluding ~4,565 buildings whose id came from a
+manifest this run's grid does not cover, rather than guessing their coordinates back from
+the id). This is now the `earthpv atlas` CLI's recommended path (`--osm-solar` alongside
+the pre-existing three `--sub400-*-cells` flags) and what `configs/aoi.yaml`'s Pakistan
+`dashboard:` block embeds; see "Results-page house style" above for the page-shell side
+of this change. `build_sub400_bracket_atlas` and its template are unchanged and still
+work for anyone invoking the CLI without `--osm-solar`.
+
 **Size is a confounder — report `auc_within_size`.** Adoption rises with house size (mappers
 report large houses packed with PV, small ones much less), so footprint area *alone* scores
 ~0.72. `auc_within_size` scores inside `_SIZE_BANDS` and n-weights, removing size as a
@@ -567,6 +588,60 @@ CSS selector rather than a `theme.custom_dir` Jinja template override, since the
 latter couples the site to Material's internal block names across the open-ended
 `mkdocs-material = ">=9.5"` pin, where `:has()` (universal in evergreen browsers
 since 2023) does not.
+
+### Results-page house style (default for reporting and presentation)
+
+As of 2026-08-01, this interactive HTML "night lights" style is the **default** for any
+new results/presentation page — not just the density atlas. Reference implementations:
+`results/pakistan_pv_sub400_bracket_atlas.html` introduced it; `results/
+pakistan_pv_evidence_overview.html` (built by `scripts/
+build_pakistan_pv_evidence_overview.py`) is currently the tightest example of the full
+pattern: an eyebrow + H1 + lede header, a KPI strip of 4-5 headline numbers, a tab
+switcher over a dark glowing choropleth map with a hero stat beside it, and
+`<details class="xdetails">` "Background" sections below the fold carrying methodology
+and caveats instead of a wall of prose up front. Every page supports a light theme via
+`:root[data-theme]` + `prefers-color-scheme`, toggled by the same `#themeBtn` script.
+This supersedes static PNG/PDF figures (e.g. `pakistan_pv_density_scientific.png/pdf`)
+as the default for anything meant to be read interactively; static figures stay
+appropriate only for the docs site's embedded `<img>`s (`scripts/build_docs_figures.py`)
+and anywhere print/export is the actual requirement.
+
+The CSS design system (palette, `.kpi`/`.card`/`.tab`/`.xdetails` classes, the choropleth
+SVG helpers) originated in `build_pakistan_pv_overview.py` as a standalone-script proof
+of concept. `src/earthpv/templates/pv_evidence_atlas.html` (below) is now a second,
+independent copy of the same system inside the actual pipeline — the two are not sliced
+from one shared source, since a static `.html` template has no mechanism to slice from a
+`.py` file at pipeline run time the way `build_pakistan_pv_evidence_overview.py` slices
+CSS from its sibling script. Keep the two in sync by eye when the palette changes; a
+`third` reuse point (a real templating layer shared between the standalone scripts and
+`src/earthpv/templates/`) is worth building once keeping them in sync by eye actually
+starts to hurt, not before. A new **standalone script** still either slices the CSS
+wholesale — `_slice`/`_shared_fragments` in `build_pakistan_pv_evidence_overview.py` is
+the pattern to copy, matched by exact string markers that fail loudly rather than
+silently drift — or copies the `<style>` block outright. A section that deliberately
+diverges between pages should be written directly in the new page instead of forced
+through a shared slice: `build_pakistan_pv_evidence_overview.py`'s
+`POSE_SECTION_HTML`/`POSE_SECTION_JS` stopped slicing the sibling's orientation section
+the moment its chart selection and layout diverged (fewer charts, different placement).
+
+**The atlas is generated by the pipeline itself, not only by standalone scripts.**
+`src/earthpv/atlas.py::build_evidence_atlas` + `src/earthpv/templates/
+pv_evidence_atlas.html` is the pipeline-native version of this style: three tiers by
+**standard of proof** rather than by point estimate (Verified / Best estimate / Ceiling
+— see "Sub-400 m² instruments" below for what each tier means and how the numbers were
+arrived at), promoted 2026-08-01 to the `earthpv atlas` CLI's recommended path,
+superseding `build_sub400_bracket_atlas`'s older Low/Central/High/All-PV framing (kept,
+undocumented as the default, for AOIs that only have the older bracket inputs). Invoke it
+with the same three `--sub400-{low,central,high}-cells` flags the bracket atlas already
+used, plus one new flag, `--osm-solar <national OSM/Overpass solar parquet>` — passing
+that flag is what selects the evidence atlas over the bracket atlas; the run's own
+`candidates.parquet` is found automatically. `density`'s own end-of-run auto-atlas-call
+deliberately still writes the plain `build_atlas` (grid/regions only) rather than
+guessing at these three extra paths — see the comment above that call in `density.py` for
+why guessing would be unsafe. Regenerate the atlas explicitly once the OSM pull,
+`earthpv roof-classifier`, and the `sub400_capacity.py`/`roofclf_capacity.py` building
+parquets exist for an AOI; `configs/aoi.yaml`'s Pakistan `dashboard:` block already points
+its `capacity` panel at the regenerated `results/pakistan_pv_evidence_atlas.html`.
 
 ## Conventions & gotchas
 

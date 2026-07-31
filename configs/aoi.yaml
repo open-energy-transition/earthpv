@@ -78,9 +78,9 @@ aois:
       panels:
         - key: capacity
           label: Capacity
-          sublabel: Sub-400 m² bracket + large PV
-          src: results/pakistan_pv_sub400_bracket_atlas.html
-          note: ">=400 m2 recall-corrected detection nationwide, plus four small-PV brackets (Low/Central/High/All-PV). See Capacity density."
+          sublabel: Verified / Best estimate / Ceiling
+          src: results/pakistan_pv_evidence_atlas.html
+          note: "Three tiers by standard of proof, not by point estimate: hand-mapped + two detectors agree, this project's best defensible figure, and an explicit uncalibrated ceiling. See Capacity density."
         - key: pose
           label: Panel orientation
           sublabel: Glint-fitted tilt & azimuth, n=2000
