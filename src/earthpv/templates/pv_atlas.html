@@ -98,7 +98,7 @@
   .prov-fill { fill: var(--land); }
   .prov-line { fill: none; stroke: var(--prov-stroke); stroke-width: 1; stroke-linejoin: round; }
   .city-dot { fill: var(--ink); opacity: 0.55; }
-  .city-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 10.5px;
+  .city-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 21px;
     paint-order: stroke; stroke: var(--map-bg); stroke-width: 2.4px; opacity: 0.9; }
   .domain-ring-rect { fill: none; stroke: var(--domain); stroke-width: 1;
     stroke-dasharray: 2 1.5; opacity: 0.85; pointer-events: none; }
@@ -107,6 +107,14 @@
     font-size: 10.5px; color: var(--ink-2); }
   .legend .domain-key .sw { width: 10px; height: 10px; border: 1px dashed var(--domain);
     border-radius: 2px; }
+  .calib-ring { fill: none; stroke: var(--domain); stroke-width: 1.4;
+    stroke-dasharray: 3 2; opacity: 0.95; }
+  .calib-dot { fill: var(--domain); stroke: var(--map-bg); stroke-width: 1.2;
+    cursor: pointer; }
+  .legend .calib-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--ink-2); }
+  .legend .calib-key .sw { width: 9px; height: 9px; border-radius: 50%;
+    background: var(--domain); }
 
   /* legend */
   .legend { display: flex; align-items: center; gap: 12px; margin: 12px 6px 2px;
@@ -186,6 +194,24 @@
     outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
+  /* size distribution */
+  .size-dist h3 { font-size: 15px; font-weight: 640; margin: 2px 2px 6px; }
+  .size-dist .sub { color: var(--ink-2); font-size: 13px; max-width: 72ch; margin: 0 2px 14px; }
+  .size-bar-track { fill: var(--panel-2); }
+  .size-bar { cursor: pointer; }
+  .size-bar.large { fill: var(--accent); }
+  .size-bar.small { fill: var(--domain); }
+  .size-axis-label { fill: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+  .size-count-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 10px;
+    text-anchor: middle; }
+  .size-grid-line { stroke: var(--hair); stroke-width: 1; }
+  .size-dist-legend { display: flex; gap: 18px; margin-top: 10px; font-family: var(--font-mono);
+    font-size: 11px; color: var(--ink-2); }
+  .size-dist-legend .key { display: flex; align-items: center; gap: 6px; }
+  .size-dist-legend .sw { width: 10px; height: 10px; border-radius: 2px; }
+  .size-dist-legend .sw.large { background: var(--accent); }
+  .size-dist-legend .sw.small { background: var(--domain); }
+
   /* method / formula band */
   .method { margin-top: 22px; }
   .method h3 { font-size: 15px; font-weight: 640; margin: 2px 2px 6px; }
@@ -215,11 +241,11 @@
   table.vartable td:last-child { font-family: var(--font-mono); color: var(--ink-2); }
 </style>
 
-<button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">◐ theme</button>
+<button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">Dark mode</button>
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">EarthPV · Sentinel-2 · TerraMind</p>
+    <p class="eyebrow">EarthPV · Sentinel-2 · TerraMind · OpenStreetMap</p>
     <h1>__H1__</h1>
     <p class="lede">__LEDE_HTML__</p>
   </header>
@@ -238,7 +264,10 @@
         </div>
         <div class="cap">MWp&nbsp;/&nbsp;cell</div>
         <div class="domain-key" id="domainKey" style="display:none;margin-left:14px">
-          <span class="sw"></span>sub-400 m² coverage (dashed outline)
+          <span class="sw"></span>small-scale coverage area (dashed outline)
+        </div>
+        <div class="calib-key" id="calibKey" style="display:none;margin-left:14px">
+          <span class="sw"></span>hand-checked calibration area (hover for detail)
         </div>
       </div>
     </section>
@@ -249,8 +278,9 @@
         <div class="hero-label">Rooftop solar, nationwide</div>
         <div class="bracket">__BRACKET_HTML__</div>
         <div class="tiles">
+          <div class="tile"><div class="v" id="tLarge">0</div><div class="k">__TILE_LARGE_LABEL__</div></div>
+          <div class="tile"><div class="v" id="tSmall">0</div><div class="k">__TILE_SMALL_LABEL__</div></div>
           <div class="tile"><div class="v" id="tBuild">0</div><div class="k">PV buildings</div></div>
-          <div class="tile"><div class="v" id="tCells">0</div><div class="k">Cells lit / __N_CELLS_TOTAL__</div></div>
           <div class="tile"><div class="v" id="tArea">0</div><div class="k">Panel area km²</div></div>
           <div class="tile"><div class="v" id="tShare">0</div><div class="k">In Punjab + Sindh</div></div>
         </div>
@@ -273,6 +303,20 @@
       </div>
     </aside>
   </div>
+
+  <section class="card size-dist" id="sizeDistCard" style="display:none;margin-top:22px;">
+    <h3>How many installations, at what size</h3>
+    <p class="sub">Every installation counted on this map, by size. Large installations
+    (amber) are detected panel or site polygons at or above the 400 m² floor the
+    satellite model can see. Small installations (teal) are individual buildings below
+    that floor, counted only inside the checked cells. Count, not capacity, so the long
+    tail of small installations is visible even though it contributes little area.</p>
+    <div id="sizeDistMount"></div>
+    <div class="size-dist-legend">
+      <span class="key"><span class="sw large"></span>Large (&ge; 400 m²)</span>
+      <span class="key"><span class="sw small"></span>Small (&lt; 400 m², checked cells only)</span>
+    </div>
+  </section>
 
   <section class="card method">
     <h3>How the capacity is estimated</h3>
@@ -443,10 +487,30 @@
       if (lon < b0 || lon > b2 || lat < b1 || lat > b3) continue;
       const p = proj(lon, lat);
       gCity.appendChild(el("circle", {cx:p[0].toFixed(1), cy:p[1].toFixed(1), r:2.6, class:"city-dot"}));
-      const t = el("text", {x:(p[0]+5).toFixed(1), y:(p[1]+3.5).toFixed(1), class:"city-label"});
+      const t = el("text", {x:(p[0]+8).toFixed(1), y:(p[1]+7).toFixed(1), class:"city-label"});
       t.textContent = nm; gCity.appendChild(t);
     }
     svg.appendChild(gCity);
+
+    // calibration quadrats -- small, hand-verified ground-truth areas the small-PV
+    // estimate is checked against. Drawn as a dashed ring + marker regardless of the
+    // selected metric, since they mark where evidence was measured, not a value.
+    if (DATA.calibBoxes && DATA.calibBoxes.length){
+      const gCalib = el("g", {class:"calib-group"});
+      for (const b of DATA.calibBoxes){
+        if (b.lon < b0 || b.lon > b2 || b.lat < b1 || b.lat > b3) continue;
+        if (b.rings && b.rings.length) {
+          gCalib.appendChild(el("path", {d:ringPath(b.rings), class:"calib-ring"}));
+        }
+        const p = proj(b.lon, b.lat);
+        const dot = el("circle", {
+          cx:p[0].toFixed(1), cy:p[1].toFixed(1), r:4.5, class:"calib-dot", tabindex:"0",
+        });
+        dot.__b = b;
+        gCalib.appendChild(dot);
+      }
+      svg.appendChild(gCalib);
+    }
 
     // hover
     const tip = document.getElementById("tip");
@@ -464,6 +528,26 @@
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
+    // calibration-marker hover takes priority over the cell it sits above
+    svg.querySelectorAll(".calib-dot").forEach((dot) => {
+      dot.addEventListener("pointerenter", (e) => {
+        const b = e.target.__b;
+        tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+        const statusLabel = b.status === "rule1"
+          ? "Fully checked against real ground survey"
+          : b.status === "suspect"
+          ? "Needs re-checking"
+          : "Checked against high-resolution imagery";
+        tip.innerHTML = `<div class="th">CALIBRATION AREA: ${b.name}</div>`
+          + `<div class="rowt"><span>Mapped installations</span><span>${b.n}</span></div>`
+          + `<div class="rowt"><span>Status</span><span>${statusLabel}</span></div>`;
+      });
+      dot.addEventListener("pointermove", (e) => {
+        tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      });
+      dot.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+    });
+
     mount.appendChild(svg);
 
     // legend gradient
@@ -473,6 +557,7 @@
     document.getElementById("legticks").innerHTML =
       ticks.map(v => `<span style="left:${(tOf(v)*100).toFixed(1)}%">${v}</span>`).join("");
     if (DATA.cells.some(c => c[6])) document.getElementById("domainKey").style.display = "flex";
+    if (DATA.calibBoxes && DATA.calibBoxes.length) document.getElementById("calibKey").style.display = "flex";
   }
 
   // ---- side panel (theme-independent) ----
@@ -492,8 +577,9 @@
   countUp("heroNum", T.mwp_det, 1100);
   document.getElementById("expNum").textContent = fmt(T.mwp_exp);
   document.getElementById("tBuild").textContent = fmt(T.pv_buildings);
-  document.getElementById("tCells").textContent = fmt(DATA.cells.filter(c=>c[2]>0).length);
   document.getElementById("tArea").textContent = T.det_km2.toFixed(1);
+  document.getElementById("tLarge").textContent = fmt(Math.round(T.mwp_large ?? T.mwp_det));
+  document.getElementById("tSmall").textContent = fmt(Math.round(T.mwp_small ?? T.mwp_exp));
 
   const provs = DATA.provinces;
   const maxP = provs.length ? Math.max(...provs.map(p=>p.mwp_det)) : 1;
@@ -520,17 +606,80 @@
     + `${T.kwp_per_m2} kWp/m² · ${fmt(T.n_cells)} cells · Sentinel-2 L2A dry-season composites · `
     + `buildings from VIDA Open Buildings · provinces from geoBoundaries.`;
 
+  // size distribution (drawn once -- colours are CSS vars, so a theme switch needs no redraw)
+  function drawSizeDist(){
+    const bins = (DATA.sizeDist && DATA.sizeDist.bins) || [];
+    if (!bins.length || !bins.some(b => b.n > 0)) return;
+    document.getElementById("sizeDistCard").style.display = "block";
+
+    const mount = document.getElementById("sizeDistMount");
+    const Wp = Math.max(mount.clientWidth || 900, 300), Hp = 220;
+    const padL = 6, padR = 6, padT = 10, padB = 34;
+    const plotW = Wp - padL - padR, plotH = Hp - padT - padB;
+    const n = bins.length, gap = 4;
+    const bw = (plotW - gap * (n - 1)) / n;
+    const maxN = Math.max(1, ...bins.map(b => b.n));
+    const yOf = (v) => plotH - (Math.log(v + 1) / Math.log(maxN + 1)) * plotH;
+
+    const svg = el("svg", {viewBox:`0 0 ${Wp} ${Hp}`, width:"100%", height:Hp,
+      role:"img", "aria-label":"Installation count by size, large and small"});
+
+    // recessive gridlines at 1, 10, 100, 1000, ...
+    for (let v = 1; v <= maxN; v *= 10){
+      const y = padT + yOf(v);
+      svg.appendChild(el("line", {x1:padL, x2:Wp-padR, y1:y.toFixed(1), y2:y.toFixed(1), class:"size-grid-line"}));
+    }
+
+    const tip = document.getElementById("tip");
+    bins.forEach((b, i) => {
+      const x = padL + i * (bw + gap);
+      const barTop = padT + yOf(b.n);
+      const barH = Math.max(0, plotH - yOf(b.n));
+      svg.appendChild(el("rect", {x:x.toFixed(1), y:(padT).toFixed(1), width:bw.toFixed(1),
+        height:plotH.toFixed(1), class:"size-bar-track"}));
+      const rect = el("rect", {x:x.toFixed(1), y:barTop.toFixed(1), width:bw.toFixed(1),
+        height:barH.toFixed(1), class:`size-bar ${b.series}`});
+      rect.addEventListener("pointerenter", (e) => {
+        tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+        tip.innerHTML = `<div class="th">${b.label}</div>`
+          + `<div class="rowt"><span>${b.series === "large" ? "Large" : "Small"} installations</span>`
+          + `<span>${b.n.toLocaleString()}</span></div>`;
+      });
+      rect.addEventListener("pointermove", (e) => {
+        tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      });
+      rect.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+      svg.appendChild(rect);
+
+      const label = el("text", {x:(x + bw/2).toFixed(1), y:(Hp - 10).toFixed(1), class:"size-axis-label",
+        "text-anchor":"middle", transform:`rotate(-40 ${(x+bw/2).toFixed(1)} ${(Hp-10).toFixed(1)})`});
+      label.textContent = b.label;
+      svg.appendChild(label);
+    });
+
+    mount.innerHTML = "";
+    mount.appendChild(svg);
+  }
+  drawSizeDist();
+  window.addEventListener("resize", () => {
+    const card = document.getElementById("sizeDistCard");
+    if (card.style.display !== "none") drawSizeDist();
+  });
+
   // theme toggle + reactive map
   const btn = document.getElementById("themeBtn");
+  function updateThemeBtn(){ btn.textContent = isDark() ? "Light mode" : "Dark mode"; }
   btn.addEventListener("click", () => {
     const cur = isDark();
     document.documentElement.setAttribute("data-theme", cur ? "light" : "dark");
+    updateThemeBtn();
     render();
   });
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    if (!document.documentElement.getAttribute("data-theme")) render();
+    if (!document.documentElement.getAttribute("data-theme")) { updateThemeBtn(); render(); }
   });
 
+  updateThemeBtn();
   render();
 })();
 </script>
