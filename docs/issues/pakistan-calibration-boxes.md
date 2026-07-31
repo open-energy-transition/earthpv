@@ -419,6 +419,42 @@ drawn from the same population despite being adjacent and in the same city — a
 concrete illustration of why `base_rate` must be read per quadrat, never pooled, even at
 this fine a spatial grain.
 
+### Box 11 — Rahim Yar Khan District, 1km x 1km around (28.4255547, 70.2779961) — 2026-07-31
+
+bbox `70.2728926,28.4210431,70.2830996,28.4300663`
+(`data/labels/rahim_yar_khan_calib_1km_overpass_solar.parquet`, boundary
+`data/labels/rahim_yar_khan_calib_1km_boundary.geojson`, geodesic area 999,999.999 m² by
+construction — `pyproj.Geod.fwd`, not drawn by eye). User-supplied center. Checked for
+overlap against all 10 existing boxes before creation (per the protocol note added after
+the Peshawar pair): **no intersection with any existing quadrat.**
+
+**Location: Rahim Yar Khan District, Punjab (near Sadiqabad) — approximate.** Identified
+from the coordinates alone (southern Punjab, close to the Sindh border); the exact
+settlement is not confirmed against the density stage's admin polygons the way Box 9 was,
+so treat "Rahim Yar Khan District" as a district-level placement, not a verified town name.
+`stratum` in the boundary file is left as "unclassified pending mapper review," same as
+every other non-owner-mapped box at creation.
+
+**Status: NOT a Rule-1-verified quadrat**, same caveat as every other live-pull box. A
+single Overpass pull at a user-supplied center, no completeness declaration, no
+second-mapper sign-off. Usable as a `roofclf` training quadrat, not as a source of
+trustworthy negatives.
+
+**Ground truth: 204 installations, 183 rooftop / 21 ground, 19,803.9 m² total**, median
+35.4 m². **97.1% below the 400 m² detection floor, 88.7% below 100 m²** — solidly in the
+small/informal-residential regime this project's sub-400 m² work is most short on
+quadrats for. A live VIDA fetch over the same bbox returns 2,099 buildings; against 183
+rooftop installations that is an approximate base rate of **8.7%**, not yet the exact
+matched count `roofclf.building_table` would produce (that requires a composite/VIDA join
+this session did not run) — read as indicative, not the precise per-building figure the
+table above reports for the other 11 boxes.
+
+**Not yet folded into `roofclf`'s fold table or `docs/methods/calibration-quadrats.md`'s
+overview table.** `roofclf.discover_quadrats` globs `*_calib_*_boundary.geojson` with a
+matching solar file, so a bare `earthpv roof-classifier` run will pick this box up
+automatically as the 12th quadrat, same as Peshawar/Peshawar East did — no code change
+needed, just the next full run.
+
 ---
 
 ## Visual verification pass (2026-07-24) — what this is and is NOT

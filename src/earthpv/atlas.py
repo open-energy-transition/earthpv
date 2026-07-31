@@ -34,6 +34,7 @@ log = logging.getLogger(__name__)
 
 TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
 ESTIMATOR_TEMPLATE = Path(__file__).parent / "templates" / "pv_estimator_atlas.html"
+SUB400_BRACKET_TEMPLATE = Path(__file__).parent / "templates" / "pv_sub400_bracket_atlas.html"
 
 # Major-city annotations per AOI (the map renders fine with none).
 CITIES: dict[str, list] = {
@@ -701,5 +702,235 @@ def _build_estimator_atlas(
     log.info(
         "Wrote six-estimator capacity atlas (headline %s MWp, %s calibration quadrats) -> %s",
         f"{data['totals']['m'][5]:,}", len(data["calibBoxes"]), out,
+    )
+    return out
+
+
+def _join_buildings_to_grid_cells(
+    buildings: gpd.GeoDataFrame, value_col: str, grid: gpd.GeoDataFrame,
+) -> pd.Series:
+    """Aggregate a building-level per-cell estimate onto the density grid's OWN cell
+    polygons via a representative-point spatial join, rather than trusting the `cell`
+    id string already on `buildings` to match `grid`'s.
+
+    This is the same safe pattern `build_combined_atlas` already established: those ids
+    come from whatever manifest was current when `roofclf.score_buildings_national` ran,
+    and even reconstructing them from this grid's own observed bounds is unsafe (a run
+    with a slightly different populated extent shatters/misaligns cells). Measured there:
+    a naive string-id join silently dropped cells; the origin-guessing rebuild fragmented
+    and dropped more. A spatial join against the grid's actual polygons cannot misplace a
+    building.
+    """
+    pts = buildings[[value_col, "geometry"]].copy()
+    pts = pts.set_geometry(pts.geometry.representative_point())
+    joined = gpd.sjoin(pts, grid[["cell", "geometry"]], predicate="within", how="left")
+    n_unmatched = int(joined["cell"].isna().sum())
+    if n_unmatched:
+        unmatched_val = float(joined.loc[joined["cell"].isna(), value_col].sum())
+        log.warning(
+            "%d of %d buildings (%.1f in %s) fall outside every cell of this %d-cell "
+            "grid -- excluded from the map/totals below, not a join bug (likely outside "
+            "this run's AOI/manifest bounds entirely).",
+            n_unmatched, len(joined), unmatched_val, value_col, len(grid),
+        )
+    return joined.dropna(subset=["cell"]).groupby("cell")[value_col].sum()
+
+
+def build_sub400_bracket_atlas(
+    aoi: str, density_dir: Path,
+    low_buildings_path: Path, central_buildings_path: Path, high_buildings_path: Path,
+    out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
+) -> Path:
+    """Per-cell atlas of the three sub-400 m² capacity bracket members
+    (`docs/methods/density.md`'s "A sub-400 m² capacity bracket", 2026-07-31), switchable
+    between them, with the large-PV (>= 400 m², recall-corrected, rooftop-scope)
+    instrument ALWAYS shown alongside every view -- both populations resolve to the same
+    0.1 degree grid, so the two read together regardless of which small-PV view is active.
+
+    `*_buildings_path` are the per-building parquets each bracket function already
+    returns (this only aggregates them to cells, it recomputes nothing):
+
+    - `low_buildings_path`: `sub400_capacity.domain_restricted_and_gate_capacity`'s
+      `incr` (columns: cell, geometry, roof_area_m2, est_kwp_sub400_and_gate) --
+      roofclf AND SPPI agree, 93-cell density-calibrated domain only.
+    - `central_buildings_path`: `sub400_capacity.domain_restricted_capacity`'s `incr`
+      (est_kwp_sub400) -- roofclf alone, the SAME 93-cell domain.
+    - `high_buildings_path`: `roofclf_capacity.incremental_capacity`'s `incr`
+      (est_kwp_roofclf) -- flat national precision, unrestricted, explicitly
+      uncalibrated ceiling.
+
+    Low and central share one domain (`in_domain`, drawn as a dashed outline regardless
+    of the selected view -- it does not change meaning when High is selected, since High
+    is unrestricted and simply has no signal in most cells rather than being "out of
+    domain"). Large-PV is `est_mwp_rc_roof` from the run's own `grid.geoparquet` --
+    national, rooftop-scope, recall-corrected -- so it converts capacity at the same
+    module constant the sub-400 figures use throughout, not the ground-mount site
+    constant.
+    """
+    density_dir = Path(density_dir)
+    grid = gpd.read_parquet(density_dir / "grid.geoparquet")
+    if "est_mwp_rc_roof" not in grid.columns:
+        raise ValueError(
+            f"{density_dir}/grid.geoparquet has no est_mwp_rc_roof column -- run "
+            "`earthpv calibrate-candidates` before `density` so recall-correction "
+            "exists; the bracket atlas needs the large-PV instrument to show alongside."
+        )
+    title = aoi.replace("_", " ").title()
+
+    by_low = _join_buildings_to_grid_cells(
+        gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
+    ) / 1000.0
+    by_central = _join_buildings_to_grid_cells(
+        gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
+    ) / 1000.0
+    by_high = _join_buildings_to_grid_cells(
+        gpd.read_parquet(high_buildings_path), "est_kwp_roofclf", grid
+    ) / 1000.0
+
+    grid = grid.copy()
+    grid["mwp_low"] = grid["cell"].map(by_low).fillna(0.0)
+    grid["mwp_central"] = grid["cell"].map(by_central).fillna(0.0)
+    grid["mwp_high"] = grid["cell"].map(by_high).fillna(0.0)
+    grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
+    n_domain_cells = int(grid["in_domain"].sum())
+    # Low and Central are combined with large PV (>= 400 m2, recall-corrected rooftop)
+    # into a single reported total, per the user's explicit request (2026-07-31): fold
+    # the >= 400 m2 instrument into the Low and Central estimates specifically, the same
+    # "large everywhere + small where checked" combination `build_combined_atlas` already
+    # ships for its own single roofclf-alone case. High stays UNCOMBINED on purpose -- it
+    # is presented as an explicit, unvalidated national ceiling on the sub-400 m2 signal
+    # alone, and folding an already-uncalibrated national extrapolation together with the
+    # project's main validated number would blur exactly the distinction this atlas exists
+    # to preserve.
+    grid["mwp_combined_low"] = grid["mwp_low"] + grid["est_mwp_rc_roof"]
+    grid["mwp_combined_central"] = grid["mwp_central"] + grid["est_mwp_rc_roof"]
+    # All-PV (2026-07-31): Central's small-PV component plus large PV across EVERY
+    # placement (`est_mwp_rc`, ground-mount included), not just rooftop. Kept as a
+    # fourth, separately labelled view rather than folded into Central, because it
+    # answers a different question -- "how much PV of any kind" vs. "how much rooftop
+    # PV" -- and ground-mount converts at a different constant (site area, not module
+    # area) and carries its own, separately documented plausibility risk (the ground
+    # mount vs. rooftop ratio check in `plausibility.py` exists precisely because this
+    # is the pipeline's most bug-prone component). Folding it into Central silently
+    # would make a rooftop number look bigger without saying why.
+    grid["mwp_all_pv"] = grid["mwp_central"] + grid["est_mwp_rc"]
+
+    cells = [
+        [round(float(r.lon0), 3), round(float(r.lat0), 3),
+         round(float(r.mwp_low), 3), round(float(r.mwp_central), 3), round(float(r.mwp_high), 3),
+         round(float(r.est_mwp_rc_roof), 3), int(r.n_pv_buildings),
+         round(float(r.roof_area_m2) / 1e6, 3), int(r.in_domain),
+         round(float(r.mwp_combined_low), 3), round(float(r.mwp_combined_central), 3),
+         round(float(r.est_mwp_rc), 3), round(float(r.mwp_all_pv), 3)]
+        for r in grid.itertuples()
+    ]
+    bounds = [
+        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
+        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
+    ]
+    if zoom_out_frac:
+        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
+        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
+        bounds = [
+            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
+            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
+        ]
+
+    provinces = []
+    regions_path = density_dir / "regions.geoparquet"
+    if regions_path.exists():
+        reg = gpd.read_parquet(regions_path)
+        reg_regions = reg[reg.level == "region"]
+        pts = gpd.GeoDataFrame(
+            grid[[
+                "mwp_low", "mwp_central", "mwp_high", "est_mwp_rc_roof", "est_mwp_rc",
+                "mwp_combined_low", "mwp_combined_central", "mwp_all_pv", "n_pv_buildings",
+            ]],
+            geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
+        )
+        joined = gpd.sjoin(pts, reg_regions[["region_id", "geometry"]], predicate="within", how="left")
+        by_region = joined.groupby("region_id")[
+            ["mwp_low", "mwp_central", "mwp_high", "est_mwp_rc_roof", "est_mwp_rc",
+             "mwp_combined_low", "mwp_combined_central", "mwp_all_pv"]
+        ].sum()
+        for r in reg_regions.itertuples():
+            area_km2 = max(float(r.area_km2), 1e-9)
+            row = by_region.reindex([r.region_id]).fillna(0.0).iloc[0]
+            provinces.append({
+                "name": str(r.name),
+                "mwp_low": round(float(row["mwp_combined_low"]), 1),
+                "mwp_central": round(float(row["mwp_combined_central"]), 1),
+                "mwp_high": round(float(row["mwp_high"]), 1),
+                "mwp_all_pv": round(float(row["mwp_all_pv"]), 1),
+                "mwp_large": round(float(row["est_mwp_rc_roof"]), 1),
+                "mwp_large_all": round(float(row["est_mwp_rc"]), 1),
+                "mwp_low_small_only": round(float(row["mwp_low"]), 1),
+                "mwp_central_small_only": round(float(row["mwp_central"]), 1),
+                "nb": int(r.n_pv_buildings),
+                "dens": round(float(r.pv_area_rc_total_m2) / area_km2, 1),
+                "rings": _rings(r.geometry),
+            })
+        provinces.sort(key=lambda p: -p["mwp_central"])
+
+    total_low = float(grid.mwp_low.sum())
+    total_central = float(grid.mwp_central.sum())
+    total_high = float(grid.mwp_high.sum())
+    total_large = float(grid.est_mwp_rc_roof.sum())
+    total_large_all = float(grid.est_mwp_rc.sum())
+    total_combined_low = float(grid.mwp_combined_low.sum())
+    total_combined_central = float(grid.mwp_combined_central.sum())
+    total_all_pv = float(grid.mwp_all_pv.sum())
+
+    data = {
+        "bounds": bounds,
+        "cells": cells,
+        "provinces": provinces,
+        "cities": CITIES.get(aoi, []),
+        "calibBoxes": _load_calib_boxes(aoi, labels_dir),
+        "totals": {
+            "mwp_low": round(total_combined_low, 1),
+            "mwp_central": round(total_combined_central, 1),
+            "mwp_high": round(total_high, 1),
+            "mwp_large": round(total_large, 1),
+            "mwp_low_small_only": round(total_low, 1),
+            "mwp_central_small_only": round(total_central, 1),
+            "mwp_all_pv": round(total_all_pv, 1),
+            "mwp_large_all": round(total_large_all, 1),
+            "pv_buildings": int(grid.n_pv_buildings.sum()),
+            "n_cells": int(len(grid)),
+            "n_domain_cells": n_domain_cells,
+            "kwp_per_m2": 0.18,
+        },
+    }
+
+    html = SUB400_BRACKET_TEMPLATE.read_text()
+    for key, value in {
+        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
+        "__PAGE_TITLE__": f"{title} Sub-400 m² Capacity Bracket",
+        "__H1__": f"How much rooftop solar is too small for {title}'s satellite map to see?",
+        "__AOI_TITLE__": title,
+        "__LEDE_HTML__": (
+            "The satellite model above only detects installations of 400 square metres "
+            "or larger. Four different, differently-confident methods estimate what "
+            "that leaves out, or restate it at a wider scope. Switch between them: "
+            "large installations (400 m² and up, from the main model) are always shown "
+            "alongside, on every view. For Low and Central, the total shown adds "
+            "large rooftop installations to small ones; for High, large rooftop "
+            "installations are shown for scale only and are not added in; All-PV adds "
+            "large installations of every placement, ground-mount farms included, to "
+            "Central's small-PV component, a wider and separately labelled question "
+            "from the other three."
+        ),
+    }.items():
+        html = html.replace(key, value)
+
+    out = Path(out) if out else density_dir / f"{aoi}_pv_sub400_bracket_atlas.html"
+    out.write_text(html)
+    log.info(
+        "Wrote sub-400 bracket atlas (low combined %.0f / central combined %.0f / "
+        "high %.0f / all-PV %.0f MWp, large-PV roof %.0f / all-placement %.0f MWp, "
+        "%d/%d domain cells) -> %s",
+        total_combined_low, total_combined_central, total_high, total_all_pv,
+        total_large, total_large_all, n_domain_cells, len(grid), out,
     )
     return out

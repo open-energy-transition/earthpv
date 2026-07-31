@@ -384,6 +384,60 @@ the rooftop headline claims to describe. Two instruments, both dropping the poly
   site) — that page, not this narrative log, is the place to look for current per-quadrat
   numbers going forward; this file keeps the dated history of how each number changed.
 
+**A sub-400 m² capacity bracket was assembled 2026-07-31**, replacing the single rejected
+18-37 GWp point estimate with an explicit range plus two non-imagery anchors. Domain-
+restricted (93 cells only, `sub400_capacity.py`, NOT a national figure): 6,628 MWp
+roofclf-alone, **2,651 MWp** for a new roofclf-AND-SPPI AND-gate
+(`domain_restricted_and_gate_capacity`, promoted out of an unsaved prior script that had
+reported 4,690 MWp under a different, non-reproducible SPPI threshold, and that number is
+superseded). Unrestricted national ceiling, refreshed at the current 0.3064 threshold:
+**37,197 MWp** (matches the figure already on record; supersedes the older 18,063 MWp run
+at the prior pre-Quetta-exclusion 0.4555 threshold), explicitly uncalibrated per the
+user's go-ahead to publish an upper bound that doesn't need full validation. Two
+independent, non-imagery anchors pulled in for the first time: Pakistan's NEPRA
+net-metering register (5.3 GW registered by April 2025, 283k consumers, 18.7 kWp/consumer
+average, well under the model's 72 kWp floor, so this register is itself dominated by
+the sub-400 m² population, and it is a floor since it excludes unregistered/off-grid
+solar) and Chinese customs import data (16.91 GW in 2024 alone, ~50 GW cumulative by
+August 2025 per trade press, a much looser, all-market ceiling). A Germany MaStR-shape
+transfer applied to this project's own current ≥400 m² total (2,229.9 MWp roof,
+recall-corrected, summed fresh from `grid.geoparquet`; an earlier draft of this note
+misread `regions.csv`, which carries both province- and district-level rows each
+summing to the national total, and summed across both, doubling it to 4,457; corrected
+2026-07-31) implies roughly 5.9 GWp sub-400 m², landing close to the domain-restricted
+central figure rather than between it and the unrestricted ceiling. Full derivation,
+caveats and a table:
+`docs/methods/density.md`'s "A sub-400 m² capacity bracket" section.
+
+**The bracket is resolved per cell in an interactive atlas** (added the same day,
+extended 2026-07-31): `results/pakistan_pv_sub400_bracket_atlas.html`
+(`atlas.build_sub400_bracket_atlas`). Low and Central fold large rooftop PV into their
+reported total (large PV nationwide plus small PV inside the checked cells); High
+stays small-PV-only on purpose, since it is an explicit, uncalibrated ceiling and
+combining it with the project's main validated number would blur that distinction. A
+fourth view, All-PV, was added on request the same day: Central's small-PV component
+plus large PV across every placement, ground-mount farms included, giving 11,706 MWp
+nationally. This is deliberately not folded into Central itself: ground-mount is a
+different asset class (site-area, not module-area, conversion) and the pipeline's most
+bug-prone component (the ground-mount-to-rooftop ratio check in `plausibility.py`
+exists because of it), so adding it does not raise certainty, it adds a different kind
+of risk under what would otherwise read as a rooftop number. Two next steps
+identified as harder than another modeling pass: probability-sampled (not purposive)
+calibration quadrats for a design-based national variance estimate (not started, needs
+new field/OSM mapping, not code, outside what this agent can do itself), and per-cell
+sub-pixel unmixing self-calibrated against each cell's own ≥400 m² detections. The
+second was tried the same day (`src/earthpv/unmixing.py`, two-endmember linear mixture,
+LOQO-evaluated on the 8 quadrats): **negative in this form**, median AUC 0.659/0.664
+(within size), worse than SPPI (0.823/0.828) and roofclf (0.874/0.842), and a 92x scale
+spread across quadrats, the worst of any instrument on this page. The LOQO test pools
+endmembers across quadrats, though, which is exactly the cross-quadrat transfer this
+page's other proxies already fail at; it does not test the actually-novel claim
+(fitting a cell's endmembers from that cell's own confirmed detections), which needs
+national grid-cell scale, not a 1 km² quadrat, to have enough of its own large
+detections to calibrate against. That version (`unmixing.cell_selfcheck_ratio`,
+implemented, unexercised) is still open. Full table and discussion:
+`docs/methods/density.md`, item 10 under "How the estimate got here."
+
 **Size is a confounder — report `auc_within_size`.** Adoption rises with house size (mappers
 report large houses packed with PV, small ones much less), so footprint area *alone* scores
 ~0.72. `auc_within_size` scores inside `_SIZE_BANDS` and n-weights, removing size as a

@@ -334,6 +334,144 @@ def domain_restricted_capacity(
     return incremental, summary
 
 
+def domain_restricted_and_gate_capacity(
+    roofclf_dir: Path,
+    candidates_path: Path,
+    folds_path: Path,
+    buildings_path: Path,
+    cell_density_path: Path,
+    threshold: float,
+    sppi_min_precision: float = 0.5,
+    max_distance_m: float = 30.0,
+    contamination_max_m2: float = 400.0,
+    ratio_lo: float = DEFAULT_RATIO_LO,
+    ratio_hi: float = DEFAULT_RATIO_HI,
+) -> tuple[gpd.GeoDataFrame, dict]:
+    """The sub-400 bracket's LOW end: `domain_restricted_capacity`'s same 93-cell
+    population, but requiring `p_roofclf >= threshold` AND SPPI above a pooled
+    precision-targeted threshold, instead of roofclf alone.
+
+    `docs/methods/density.md`'s "SPPI cross-validation" section measured this AND-gate
+    on the domain-restricted population in prose on 2026-07-30 (496,122 -> 343,032
+    flagged buildings, 6,628 -> 4,690 MWp, precision flat at ~0.55) but never saved it as
+    reusable code or a pinned artifact -- this is that promotion, re-measured against
+    whatever `roofclf_dir`/`candidates_path` are current rather than assumed to
+    reproduce the exact prior figure. It was rejected there as *the* domain-restricted
+    number (no precision gain, only lost recall) -- that verdict still holds. As a
+    bracket LOW end it is being asked a different question: not "is this the best
+    domain-restricted estimate" but "what does the more conservative of two measured
+    detector agreements say", which is exactly what a stricter join criterion is for.
+
+    The SPPI threshold is a single pooled fit on the SAME calibration quadrats
+    `select_calibrated_quadrats` already selects (`sppi.pooled_precision_threshold`) --
+    no LOQO here, since there is no national quadrat to hold out, matching how
+    roofclf's own national `deployment_threshold` is one pooled constant.
+    """
+    from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
+    from earthpv.export import new_lead_mask
+    from earthpv.sppi import add_sppi, pooled_precision_threshold
+
+    all_cells = pd.read_parquet(cell_density_path)
+    in_domain_cells = national_cell_domain(cell_density_path)
+    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
+
+    bt = gpd.read_parquet(buildings_path)
+    if "sppi" not in bt.columns:
+        bt = add_sppi(bt)
+    sppi_thresh = pooled_precision_threshold(bt, quadrats, min_precision=sppi_min_precision)
+
+    cal = bt[bt.quadrat.isin(quadrats)]
+    y = cal.has_pv.to_numpy(bool)
+    roof_pred = cal.p_oof.to_numpy(float) >= threshold
+    and_pred = roof_pred & (cal.sppi.to_numpy(float) >= sppi_thresh)
+    tp = int((and_pred & y).sum())
+    fp = int((and_pred & ~y).sum())
+    and_precision = tp / (tp + fp) if (tp + fp) else float("nan")
+    and_recall = tp / int(y.sum()) if y.sum() else float("nan")
+    roof_tp = int((roof_pred & y).sum())
+    roof_fp = int((roof_pred & ~y).sum())
+    roof_only_precision = roof_tp / (roof_tp + roof_fp) if (roof_tp + roof_fp) else float("nan")
+    roof_only_recall = roof_tp / int(y.sum()) if y.sum() else float("nan")
+
+    parts = []
+    for cell in sorted(in_domain_cells):
+        p = Path(roofclf_dir) / f"{cell}.parquet"
+        if not p.exists():
+            continue
+        d = gpd.read_parquet(p)
+        if d.empty or "p_roofclf" not in d.columns or "sppi" not in d.columns:
+            continue
+        f = d[(d.p_roofclf >= threshold) & (d.sppi >= sppi_thresh)]
+        if not f.empty:
+            parts.append(f)
+    flagged = (
+        gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs="EPSG:4326")
+        if parts
+        else gpd.GeoDataFrame(
+            columns=["cell", "geometry", "roof_area_m2", "p_roofclf", "sppi"], crs="EPSG:4326"
+        )
+    )
+    log.info(
+        "Domain-restricted AND-gate: %d/%d cells, %d flagged buildings in-domain "
+        "(sppi_threshold=%.4f)", len(in_domain_cells), len(all_cells), len(flagged), sppi_thresh,
+    )
+
+    cands = gpd.read_parquet(candidates_path)
+    is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
+    incremental_raw = flagged[is_new].reset_index(drop=True)
+
+    over = incremental_raw.roof_area_m2 >= contamination_max_m2
+    n_contaminated = int(over.sum())
+    contaminated_area_m2 = float(incremental_raw.loc[over, "roof_area_m2"].sum())
+    incremental = incremental_raw[~over].reset_index(drop=True)
+
+    total_area_m2 = float(incremental.roof_area_m2.sum())
+    incremental = incremental.copy()
+    incremental["est_kwp_sub400_and_gate"] = (
+        incremental.roof_area_m2.to_numpy(float)
+        * DEFAULT_KWP_PER_M2_MODULE
+        * (and_precision if and_precision == and_precision else 0.0)
+    )
+    total_mwp = float(incremental.est_kwp_sub400_and_gate.sum()) / 1000.0
+
+    summary = {
+        "method": "domain_restricted_and_gate_sub400_capacity",
+        "calibration_quadrats": quadrats,
+        "roofclf_threshold": threshold,
+        "sppi_threshold": round(float(sppi_thresh), 4),
+        "roofclf_only_precision_same_quadrats": (
+            round(roof_only_precision, 4) if roof_only_precision == roof_only_precision else None
+        ),
+        "roofclf_only_recall_same_quadrats": (
+            round(roof_only_recall, 4) if roof_only_recall == roof_only_recall else None
+        ),
+        "and_gate_precision": round(and_precision, 4) if and_precision == and_precision else None,
+        "and_gate_recall": round(and_recall, 4) if and_recall == and_recall else None,
+        "n_domain_cells": len(in_domain_cells),
+        "n_national_cells": int(len(all_cells)),
+        "n_flagged_in_domain": int(len(flagged)),
+        "n_incremental_before_contamination_filter": int(len(incremental_raw)),
+        "n_contaminated_excluded_ge_400m2": n_contaminated,
+        "contaminated_area_m2_excluded": round(contaminated_area_m2, 1),
+        "n_incremental_sub400": int(len(incremental)),
+        "total_incremental_sub400_area_m2": round(total_area_m2, 1),
+        "total_est_mwp_sub400_and_gate": round(total_mwp, 4),
+        "scope": (
+            f"{len(in_domain_cells)} of {len(all_cells)} national cells "
+            f"({100 * len(in_domain_cells) / len(all_cells):.1f}% of cells) -- the SAME "
+            "population `domain_restricted_capacity` uses, joined against SPPI instead "
+            "of roofclf alone. NOT a national figure; see that function's docstring for "
+            "why rescaling by cell/building share is invalid. This is the sub-400 "
+            "bracket's LOW member -- read alongside `total_est_mwp_sub400_domain_"
+            "restricted` (central, roofclf alone, same population) and the unrestricted "
+            "flat-precision national fold-in (high, see roofclf_capacity.py / "
+            "docs/methods/density.md)."
+        ),
+    }
+    log.info("Domain-restricted AND-gate sub-400 capacity: %s", summary)
+    return incremental, summary
+
+
 def suggest_high_density_regions(
     cell_density_path: Path,
     calibration_quadrat_densities: dict[str, float],
