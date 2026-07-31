@@ -17,6 +17,15 @@ Two templates, chosen automatically by what the density run actually computed:
 
 `density` calls `build_atlas` at the end of every run; the `earthpv atlas` CLI
 command regenerates it standalone.
+
+A fourth, richer template (`templates/pv_evidence_atlas.html`, `build_evidence_atlas`)
+is the project's default going forward as of 2026-08-01 for AOIs with the extra
+national-scale artifacts it needs (OSM solar pull, national roofclf+SPPI scoring, the
+sub-400 m2 bracket's building-level parquets): three tiers by STANDARD OF PROOF
+(Verified / Best / Ceiling) rather than by point estimate, plus the KPI-strip +
+expandable-background page shell documented in `CLAUDE.md`'s "Results-page house
+style". It supersedes `build_sub400_bracket_atlas` as the CLI's recommended path; that
+function stays for reference and for AOIs that only have the older bracket inputs.
 """
 
 from __future__ import annotations
@@ -35,6 +44,7 @@ log = logging.getLogger(__name__)
 TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
 ESTIMATOR_TEMPLATE = Path(__file__).parent / "templates" / "pv_estimator_atlas.html"
 SUB400_BRACKET_TEMPLATE = Path(__file__).parent / "templates" / "pv_sub400_bracket_atlas.html"
+EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.html"
 
 # Major-city annotations per AOI (the map renders fine with none).
 CITIES: dict[str, list] = {
@@ -932,5 +942,230 @@ def build_sub400_bracket_atlas(
         "%d/%d domain cells) -> %s",
         total_combined_low, total_combined_central, total_high, total_all_pv,
         total_large, total_large_all, n_domain_cells, len(grid), out,
+    )
+    return out
+
+
+def build_evidence_atlas(
+    aoi: str, density_dir: Path,
+    osm_solar_path: Path, candidates_path: Path,
+    low_buildings_path: Path, central_buildings_path: Path, high_buildings_path: Path,
+    out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
+) -> Path:
+    """Three-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
+    atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
+    (kept above for reference; no longer the CLI's default path). Each tier is a
+    different STANDARD OF PROOF, not a different point estimate on the same scale:
+
+    - **Verified**: every PV installation hand-mapped in OpenStreetMap (`osm_solar_path`,
+      any placement, converted at the module constant for rooftop and the land constant
+      for everything else), plus sub-400 m2 buildings where roofclf AND SPPI
+      independently agree (`low_buildings_path`). No model detection enters this tier by
+      itself.
+    - **Best**: the hand-mapped population minus what the model already found -- so the
+      two don't double count, `candidates_path`'s `osm_matched_id` marks the overlap --
+      plus the model's own recall-corrected >= 400 m2 detections (`grid.est_mwp_rc`,
+      every placement), plus the roofclf-alone density estimate
+      (`central_buildings_path`). This project's own pick, the highest figure it
+      defends.
+    - **Ceiling**: roofclf flagged nationwide at a precision-tuned threshold, credited at
+      a flat 0.5 precision weight rather than each building's own probability, restricted
+      to buildings with no existing large detection nearby (`high_buildings_path`, the
+      same "incremental" population `roofclf_capacity.incremental_capacity` writes) --
+      plus every large installation already known, of every placement. An explicit,
+      unvalidated national bound, not a tighter measurement.
+
+    Ported from `scripts/build_pakistan_pv_evidence_overview.py` (see that file's git
+    history for the full derivation and the 2026-08-01 redefinition of Ceiling) with one
+    correctness fix: the three building-level parquets are now aggregated to cells via
+    `_join_buildings_to_grid_cells` -- a spatial join against THIS run's own grid
+    polygons -- rather than a plain string `cell`-id match. The id-matching join the
+    standalone script used silently drops any building whose id came from a manifest
+    that numbered cells differently than this run's grid (the same failure mode
+    `build_combined_atlas`'s docstring measured directly: a naive id join lost cells a
+    spatial join does not). Buildings that fall outside every cell of this run's grid are
+    excluded from the map and totals with a warning, the same as every other atlas
+    builder here -- not reconstructed from a guessed cell origin, which
+    `_join_buildings_to_grid_cells`'s own docstring explains is unsafe.
+    """
+    density_dir = Path(density_dir)
+    grid = gpd.read_parquet(density_dir / "grid.geoparquet")
+    meta = json.loads((density_dir / "meta.json").read_text())
+    if "est_mwp_rc" not in grid.columns:
+        raise ValueError(
+            f"{density_dir}/grid.geoparquet has no est_mwp_rc column -- run "
+            "`earthpv calibrate-candidates` before `density` so recall-correction "
+            "exists; the evidence atlas needs the large-PV instrument for the Best "
+            "and Ceiling tiers."
+        )
+    title = aoi.replace("_", " ").title()
+    kwp_mod = meta.get("kwp_per_m2_module", 0.18)
+    kwp_land = meta.get("kwp_per_m2_land", 0.07)
+
+    # --- hand-mapped OSM PV, per cell, split by whether the model already found it
+    #     (candidates carry the id of the OSM feature they matched, if any).
+    osm = gpd.read_parquet(osm_solar_path)
+    cand = gpd.read_parquet(candidates_path)
+    matched_ids = (
+        set(cand["osm_matched_id"].dropna().astype(str))
+        if "osm_matched_id" in cand.columns else set()
+    )
+    osm = osm.copy()
+    osm["matched"] = osm["id"].astype(str).isin(matched_ids)
+    osm["kwp"] = np.where(
+        osm["placement"] == "rooftop", osm["area_m2"] * kwp_mod, osm["area_m2"] * kwp_land
+    )
+    pts = osm.copy()
+    pts["geometry"] = pts.geometry.representative_point()
+    joined_osm = gpd.sjoin(pts, grid[["cell", "geometry"]], predicate="within", how="left")
+    n_unmatched_osm = int(joined_osm["cell"].isna().sum())
+    if n_unmatched_osm:
+        log.warning(
+            "Evidence atlas: %d of %d OSM-mapped installations fall outside every cell "
+            "of this %d-cell grid -- excluded from the map/totals below.",
+            n_unmatched_osm, len(joined_osm), len(grid),
+        )
+    osm_by_cell = joined_osm.dropna(subset=["cell"]).groupby("cell").apply(
+        lambda d: pd.Series({
+            "osm_mwp": d["kwp"].sum() / 1000,
+            "osm_mwp_unmatched": d.loc[~d["matched"], "kwp"].sum() / 1000,
+            "osm_n": float(len(d)),
+        }),
+        include_groups=False,
+    )
+
+    by_low = _join_buildings_to_grid_cells(
+        gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
+    ) / 1000.0
+    by_central = _join_buildings_to_grid_cells(
+        gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
+    ) / 1000.0
+    by_high = _join_buildings_to_grid_cells(
+        gpd.read_parquet(high_buildings_path), "est_kwp_roofclf", grid
+    ) / 1000.0
+
+    grid = grid.copy()
+    grid["osm_mwp"] = grid["cell"].map(osm_by_cell.get("osm_mwp", pd.Series(dtype=float))).fillna(0.0)
+    grid["osm_mwp_unmatched"] = grid["cell"].map(
+        osm_by_cell.get("osm_mwp_unmatched", pd.Series(dtype=float))
+    ).fillna(0.0)
+    grid["osm_n"] = grid["cell"].map(osm_by_cell.get("osm_n", pd.Series(dtype=float))).fillna(0.0)
+    grid["small_low"] = grid["cell"].map(by_low).fillna(0.0)
+    grid["small_central"] = grid["cell"].map(by_central).fillna(0.0)
+    grid["small_high"] = grid["cell"].map(by_high).fillna(0.0)
+    grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
+    n_domain_cells = int(grid["in_domain"].sum())
+
+    grid["mwp_verified"] = grid["osm_mwp"] + grid["small_low"]
+    grid["mwp_best"] = grid["osm_mwp_unmatched"] + grid["est_mwp_rc"] + grid["small_central"]
+    grid["mwp_ceiling"] = grid["small_high"] + grid["est_mwp_rc"]
+
+    cells = [
+        [round(float(r.lon0), 3), round(float(r.lat0), 3),
+         round(float(r.mwp_verified), 3), round(float(r.mwp_best), 3), round(float(r.mwp_ceiling), 3),
+         round(float(r.osm_mwp), 3), int(r.osm_n),
+         round(float(r.small_low), 3), round(float(r.small_central), 3), round(float(r.small_high), 3),
+         round(float(r.est_mwp_rc), 3), int(r.in_domain), int(r.n_pv_buildings)]
+        for r in grid.itertuples()
+    ]
+    bounds = [
+        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
+        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
+    ]
+    if zoom_out_frac:
+        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
+        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
+        bounds = [
+            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
+            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
+        ]
+
+    provinces = []
+    regions_path = density_dir / "regions.geoparquet"
+    if regions_path.exists():
+        reg = gpd.read_parquet(regions_path)
+        reg_regions = reg[reg.level == "region"]
+        keep = [
+            "mwp_verified", "mwp_best", "mwp_ceiling", "osm_mwp", "est_mwp_rc",
+            "small_low", "small_central", "small_high",
+        ]
+        pts2 = gpd.GeoDataFrame(
+            grid[keep], geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
+        )
+        joined = gpd.sjoin(pts2, reg_regions[["region_id", "geometry"]], predicate="within", how="left")
+        by_region = joined.groupby("region_id")[keep].sum()
+        for r in reg_regions.itertuples():
+            row = by_region.reindex([r.region_id]).fillna(0.0).iloc[0]
+            provinces.append({
+                "name": str(r.name),
+                "mwp_verified": round(float(row["mwp_verified"]), 1),
+                "mwp_best": round(float(row["mwp_best"]), 1),
+                "mwp_ceiling": round(float(row["mwp_ceiling"]), 1),
+                "osm_mwp": round(float(row["osm_mwp"]), 1),
+                "mwp_large": round(float(row["est_mwp_rc"]), 1),
+                "small_low": round(float(row["small_low"]), 1),
+                "small_central": round(float(row["small_central"]), 1),
+                "small_high": round(float(row["small_high"]), 1),
+                "nb": int(r.n_pv_buildings),
+                "rings": _rings(r.geometry),
+            })
+        provinces.sort(key=lambda p: -p["mwp_best"])
+
+    total_verified = float(grid.mwp_verified.sum())
+    total_best = float(grid.mwp_best.sum())
+    total_ceiling = float(grid.mwp_ceiling.sum())
+    total_large = float(grid.est_mwp_rc.sum())
+
+    data = {
+        "bounds": bounds,
+        "cells": cells,
+        "provinces": provinces,
+        "cities": CITIES.get(aoi, []),
+        "calibBoxes": _load_calib_boxes(aoi, labels_dir),
+        "totals": {
+            "mwp_verified": round(total_verified, 1),
+            "mwp_best": round(total_best, 1),
+            "mwp_ceiling": round(total_ceiling, 1),
+            "mwp_large": round(total_large, 1),
+            "osm_mwp": round(float(grid.osm_mwp.sum()), 1),
+            "osm_mwp_unmatched": round(float(grid.osm_mwp_unmatched.sum()), 1),
+            "osm_n": int(grid.osm_n.sum()),
+            "n_osm_matched": int(osm["matched"].sum()),
+            "small_low": round(float(grid.small_low.sum()), 1),
+            "small_central": round(float(grid.small_central.sum()), 1),
+            "small_high": round(float(grid.small_high.sum()), 1),
+            "pv_buildings": int(grid.n_pv_buildings.sum()),
+            "n_cells": int(len(grid)),
+            "n_domain_cells": n_domain_cells,
+            "kwp_per_m2": kwp_mod,
+        },
+    }
+
+    html = EVIDENCE_TEMPLATE.read_text()
+    for key, value in {
+        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
+        "__PAGE_TITLE__": f"{title} Solar PV — Counted Three Times Over",
+        "__H1__": f"{title}'s solar, counted three times over",
+        "__AOI_TITLE__": title,
+        "__KWP_MOD__": str(kwp_mod),
+        "__LEDE_HTML__": (
+            "The same country, the same imagery, three different standards of proof. "
+            "<b>Verified</b> counts only PV a person has drawn in OpenStreetMap plus the "
+            "small rooftops where two independent detectors agree. <b>Best</b> adds the "
+            "satellite model's own recall-corrected detections and its per-building "
+            "density estimate: the highest figure this project is willing to defend. "
+            "<b>Ceiling</b> swaps the small-PV side for a much looser national "
+            "assumption and adds every large installation already known on top: a "
+            "bound built on a cruder assumption, not a tighter measurement."
+        ),
+    }.items():
+        html = html.replace(key, value)
+
+    out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
+    out.write_text(html)
+    log.info(
+        "Wrote evidence atlas (verified %.0f / best %.0f / ceiling %.0f MWp, "
+        "%d/%d domain cells) -> %s",
+        total_verified, total_best, total_ceiling, n_domain_cells, len(grid), out,
     )
     return out

@@ -569,14 +569,26 @@ def atlas(
     sub400_high_cells: Path = typer.Option(
         None, help="Building-level parquet from "
         "`roofclf_capacity.incremental_capacity` (columns: cell, geometry, roof_area_m2, "
-        "est_kwp_roofclf), unrestricted national -- the bracket atlas's High view.",
+        "est_kwp_roofclf), unrestricted national -- the bracket atlas's High view, and "
+        "the evidence atlas's Ceiling small-PV component.",
+    ),
+    osm_solar: Path = typer.Option(
+        None, help="National OSM/Overpass solar pull (e.g. "
+        "data/labels/<aoi>_overpass_solar.parquet). Pass together with "
+        "--sub400-low-cells/--sub400-central-cells/--sub400-high-cells to write the "
+        "EVIDENCE atlas (Verified/Best/Ceiling, the project's default as of 2026-08-01) "
+        "instead of the older Low/Central/High/All-PV bracket atlas -- same three "
+        "building-level parquets, plus this national mapping pull and this run's own "
+        "candidates.parquet (found automatically at <pred_dir>/<aoi>/candidates.parquet).",
     ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
     import logging
 
-    from earthpv.atlas import build_atlas, build_combined_atlas, build_sub400_bracket_atlas
+    from earthpv.atlas import (
+        build_atlas, build_combined_atlas, build_evidence_atlas, build_sub400_bracket_atlas,
+    )
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     density_dir = Path(pred_dir) / aoi / "density"
@@ -584,12 +596,20 @@ def atlas(
         if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
             raise typer.BadParameter(
                 "--sub400-low-cells, --sub400-central-cells and --sub400-high-cells must "
-                "all be given together for the bracket atlas"
+                "all be given together for the bracket or evidence atlas"
             )
-        build_sub400_bracket_atlas(
-            aoi, density_dir, sub400_low_cells, sub400_central_cells, sub400_high_cells,
-            out=out, zoom_out_frac=zoom_out,
-        )
+        if osm_solar is not None:
+            candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
+            build_evidence_atlas(
+                aoi, density_dir, osm_solar, candidates_path,
+                sub400_low_cells, sub400_central_cells, sub400_high_cells,
+                out=out, zoom_out_frac=zoom_out,
+            )
+        else:
+            build_sub400_bracket_atlas(
+                aoi, density_dir, sub400_low_cells, sub400_central_cells, sub400_high_cells,
+                out=out, zoom_out_frac=zoom_out,
+            )
     elif sub400_cells is not None:
         build_combined_atlas(aoi, density_dir, sub400_cells, out=out, zoom_out_frac=zoom_out)
     else:
