@@ -101,6 +101,23 @@ def _precision_threshold(y: np.ndarray, s: np.ndarray, min_precision: float = 0.
     return float(s_sorted[ok[-1]]) if len(ok) else float(s_sorted[0]) + 1.0
 
 
+def pooled_precision_threshold(
+    t: pd.DataFrame, quadrats: list[str], score_col: str = "sppi",
+    truth_col: str = "has_pv", min_precision: float = 0.5,
+) -> float:
+    """Single SPPI threshold fit by pooling `quadrats` together (no LOQO held-out unit --
+    there is no national quadrat to hold out), for deployment as one national constant.
+    Same convention `roofclf.score_buildings_national` already uses for its own
+    `deployment_threshold`: one pooled precision-targeted cut, not a per-region value.
+    """
+    sub = t[t["quadrat"].isin(quadrats)]
+    if sub.empty:
+        raise ValueError(f"None of {quadrats} found in the table")
+    return _precision_threshold(
+        sub[truth_col].to_numpy(bool), sub[score_col].to_numpy(float), min_precision=min_precision
+    )
+
+
 def calibrate_threshold_loqo(
     t: pd.DataFrame, score_col: str = "sppi", truth_col: str = "has_pv",
     quadrat_col: str = "quadrat", criterion: str = "precision", min_precision: float = 0.5,

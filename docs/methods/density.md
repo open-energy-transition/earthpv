@@ -626,6 +626,134 @@ existing quadrats already are" -- a reason to prioritize new calibration quadrat
 Karachi's other residential districts, Rawalpindi, Peshawar and Islamabad, not a
 validated prediction of where capacity sits.
 
+### A sub-400 m² capacity bracket, plus non-imagery anchors (2026-07-31)
+
+Everything above answers "how much capacity does a detector find." This section asks a
+different question: given that both instruments are known to need a per-stratum
+correction that does not exist yet, what is a defensible **range**, and does anything
+independent of imagery corroborate it? Two frames, kept explicitly separate -- mixing
+them is exactly the base-rate-transfer mistake this page documents repeatedly.
+
+The Low/Central/High bracket members below are resolved per 0.1&deg; cell (not just as
+national totals) in an interactive atlas, switchable between four views:
+`results/pakistan_pv_sub400_bracket_atlas.html`
+(`atlas.build_sub400_bracket_atlas`, `earthpv atlas --sub400-low-cells ... --sub400-
+central-cells ... --sub400-high-cells ...`). Large PV (>= 400 m<sup>2</sup>,
+recall-corrected) is always shown too, per a follow-up request (2026-07-31): for Low
+and Central it is added into the reported total using the ROOFTOP-scope figure only
+(large PV nationwide plus small PV inside the checked cells, the same "large
+everywhere, small where checked" combination `build_combined_atlas` already ships for
+its single roofclf-alone case, now extended to both Low and Central); for High it is
+shown for scale only and not added in, since High is an explicit, uncalibrated ceiling
+and folding it together with the project's main validated number would blur that
+distinction. The atlas still reports each view's small-PV-only component alongside
+the combined figure, so nothing here is hidden, only added to.
+
+A fourth view, **All-PV**, answers a deliberately different, wider question: Central's
+small-PV component (roofclf alone, the 93-cell domain) plus large PV across EVERY
+placement, ground-mount farms included (`est_mwp_rc`, not `est_mwp_rc_roof`) --
+**11,706 MWp** nationally (6,628 small-PV + 5,078 large all-placement). This is kept
+separate from Central rather than used as Central's own headline number, for two
+reasons requested and confirmed the same day: ground-mount is a different physical
+asset class than "how much PV small buildings carry," with its own site-area
+conversion constant, and it is this pipeline's most bug-prone component (the
+ground-mount-to-rooftop ratio check in `plausibility.py` exists specifically because
+of it) -- so folding it in does not raise certainty, it adds a different kind of risk
+under a number that would otherwise read as a rooftop total.
+
+**Frame A -- domain-restricted (93 of 4,473 cells, 19.1% of buildings, NOT a national
+figure).** The existing roofclf-alone figure above (6,628 MWp) gets a new companion,
+requiring roofclf **and** SPPI to agree instead of roofclf alone --
+`sub400_capacity.domain_restricted_and_gate_capacity` (new this session; the AND-gate
+was previously measured only in an unsaved ad hoc script, reported in prose two sections
+up as 4,690 MWp). Re-measured with a properly pooled (not in-sample-ad-hoc) SPPI
+threshold fit on the same three calibration quadrats:
+
+| | roofclf alone | AND-gate (roofclf & SPPI) |
+| --- | ---: | ---: |
+| Precision (on the 3 calibration quadrats) | 0.5495 | **0.6166** |
+| Recall (same quadrats) | 0.7226 | 0.5839 |
+| Flagged buildings (93-cell domain) | 496,122 | 187,740 |
+| **Sub-400 m² capacity (this domain only)** | **6,628 MWp** | **2,651 MWp** |
+
+Unlike the earlier prose result (flat precision, recall traded away for nothing), the
+properly pooled threshold shows the AND-gate buys a real **+6.7 point precision gain**,
+not just a stricter cut at the same precision -- the earlier 4,690 MWp figure is
+superseded by this one; it was never saved as reusable code and is not exactly
+reproducible. Both remain scoped to the same 93 cells -- **do not rescale either to a
+country total**, for the reason stated repeatedly above.
+
+**Frame B -- unrestricted national, explicitly uncalibrated.** Refreshing the flat-LOQO-
+precision fold-in (`roofclf_capacity.incremental_capacity`) at the **current** deployment
+threshold (0.3064, post-Quetta-exclusion) against the full national scoring output
+reproduces **37,196.6 MWp** -- matching the 37,197 MWp already on record in
+`sub400_capacity.py`'s docstring, confirming the number is stable under a fresh read of
+the current artifacts. This supersedes the older 18,063 MWp figure, which used the prior
+9-quadrat 0.4555 threshold (since relaxed) and is not directly comparable. This is
+offered as a ceiling only, per the go-ahead to publish an upper bound that "does not need
+to be fully calibrated or validated" -- the precision weight is known not to survive the
+prevalence shift from 9 urban/industrial quadrats to 81.76M mostly rural buildings (see
+above), so treat it as an outer bound on plausibility, not an estimate.
+
+**External, non-imagery anchors.** Two independent administrative/trade data points,
+neither derived from this pipeline at all:
+
+- **NEPRA net-metering register** (Pakistan's regulator, the closest available analogue
+  to Germany's MaStR): **5.3 GW** registered nationally by April 2025 across 283,000
+  consumers, projected to reach 6.3 GW by the end of FY2024-25
+  ([pv magazine](https://www.pv-magazine.com/2025/06/02/pakistans-net-metering-capacity-hits-5-3-gw/),
+  [pv magazine](https://www.pv-magazine.com/2025/03/20/pakistans-net-metering-solar-capacity-surpasses-4-gw/)).
+  Average registered size is **18.7 kWp/consumer** -- well under the model's 72 kWp
+  (400 m²) floor, so this register is itself dominated by exactly the sub-400 m²
+  population this section is about. It is a **floor, not a total**: it only counts
+  customers who completed DISCO net-metering paperwork, and Pakistan's solar boom is
+  widely reported as running well ahead of formal registration (self-consumption and
+  off-grid/battery installs never appear here at all). Frame B's ceiling (37.2 GWp)
+  sitting roughly 6-7x above this floor is consistent with that gap, not contradicted by
+  it.
+- **Cumulative panel imports**: Chinese customs data puts Pakistan's 2024 solar panel
+  imports at **16.91 GW**, up from 7.47 GW in 2023 (+127%), with trade press citing
+  roughly **50 GW cumulative by August 2025**
+  ([pv magazine](https://www.pv-magazine.com/2025/02/07/china-exports-235-9-gw-of-solar-panels-in-2024/),
+  [Renewables First/Taiyang News](https://taiyangnews.info/markets/pakistan-9m-fy2025-solar-panel-imports-hit-127-gw)).
+  This is a much looser anchor -- it is import volume, not installed rooftop capacity,
+  and conflates utility-scale procurement, warehoused stock, and re-exports with rooftop
+  installs of every size. It is included only as an order-of-magnitude sanity check: the
+  gap between it and the NEPRA floor is the same "unregistered solar" phenomenon Pakistani
+  energy press already documents, and it is large enough that nothing in this bracket is
+  anywhere near implausible on these grounds.
+- **MaStR-shape-implied ceiling.** Applying Germany's legally complete size split
+  (72.6% of rooftop capacity in units <=100 kWp, ~<=555 m² of module; see "How the
+  estimate got here" below) to this project's own current published >= 400 m² rooftop
+  total -- **2,229.9 MWp**, recall-corrected, summed directly from
+  `data/predictions/pakistan/density/grid.geoparquet` (the per-cell source of truth;
+  an earlier draft of this section misread `regions.csv`, which stores BOTH province-
+  and district-level rows summing to the same national total each, and summed across
+  both, doubling it to 4,457 -- corrected 2026-07-31) -- implies a sub-400 m² total of
+  order (0.726/0.274 =) 2.65 x 2,230 approx **5,900 MWp**, *if* Pakistan's roof-size
+  distribution resembled Germany's. Two named caveats: the 400 m² vs. ~555 m² cutoff
+  mismatch, and no evidence yet that a mostly-rural, much poorer country's roof-size
+  distribution resembles Germany's at all. It lands close to Frame A's central figure,
+  which is the most it should be read as saying.
+
+| bracket member | value | scope | mechanism |
+| --- | ---: | --- | --- |
+| Frame A, AND-gate (low) | 2,651 MWp | 93 cells only | roofclf & SPPI agree, density-restricted |
+| Frame A, roofclf-alone (central) | 6,628 MWp | 93 cells only | roofclf alone, density-restricted |
+| MaStR-shape-implied | ~5,900 MWp | national (implied) | Germany size-distribution transfer |
+| NEPRA net-metering | 5,300-6,300 MWp | national (registered only) | admin record, non-imagery |
+| Frame B (high) | 37,197 MWp | national, unrestricted | flat LOQO precision, explicitly uncalibrated |
+
+**Read this table by column, not by sorting the value column.** The two Frame A rows and
+the Frame B row describe different populations (2.1% of cells vs. 100%) and must not be
+combined or rescaled into each other. NEPRA and MaStR are the only two rows that are
+genuinely national and independent of this pipeline. The MaStR-implied figure lands
+close to Frame A's own central estimate despite sharing no inputs with it -- two
+disjoint methods agreeing that closely is the strongest corroboration in this table.
+Frame B's explicitly uncalibrated ceiling sits a further 6x above both, comfortably
+above the NEPRA floor either way; that gap is consistent with "not implausible" for an
+explicit ceiling, not evidence that 37,197 MWp is itself a good estimate.
+
 ## The plausibility gate
 
 The leads product has a human on every candidate. The capacity atlas has nobody, so a
@@ -735,6 +863,57 @@ Each step exists because the previous one had a measurable gap.
    sound, moved much less.
 
 Open next steps are the OpenStreetMap flywheel producing enough in-domain positives for a
-retrain, NEPRA net-metering totals as a Pakistani MaStR analogue, and per-epoch density
-estimates turning `est_mwp` into a time series so the 2022 to 2026 boom becomes measurable
-per district.
+retrain, and per-epoch density estimates turning `est_mwp` into a time series so the 2022
+to 2026 boom becomes measurable per district. NEPRA net-metering totals as a Pakistani
+MaStR analogue (also on this list until 2026-07-31) are now pulled in above -- the two
+that replace it, still undone, are lower down the difficulty curve than another modeling
+pass:
+
+9. **Probability-sampled calibration quadrats.** Every quadrat mapped so far (11, as of
+   2026-07-30) was chosen purposively -- a city, an industrial estate, a box a mapper
+   picked. `rate_ratio`'s 0.235-4.833 spread and three separate failed searches for a
+   national stratification proxy (candidate density, roofclf's own rate, SPPI agreement
+   rate) are all downstream of that: there is no design-based estimate of national
+   variance because there is no probability sample. Drawing 15-20 new 1 km² boxes by
+   stratified-random sampling over the national building-density frame -- deliberately
+   including low-density and rural strata the current 11 boxes barely touch -- would
+   convert the base-rate question from "extrapolate a biased sample and hope" into an
+   estimator with a computable variance. Rural boxes are cheap to map completely (few
+   installations to check); this is mapping effort, not code, and is the single highest-
+   value action left on this list.
+10. **Per-cell sub-pixel unmixing, self-calibrated in place -- tried 2026-07-31, the
+   pooled version is negative, the actually-novel self-calibrated version remains
+   untested.** `src/earthpv/unmixing.py` implements a minimal two-endmember linear
+   mixture model (project each building's zonal-mean reflectance onto the line joining a
+   fitted "pure PV" and "pure background" vector, clip to [0, 1]) and evaluates it LOQO
+   on the 8 mapped quadrats, same protocol as every other instrument on this page:
+
+   | signal | median AUC | within size band | Pearson r (area frac) | scale spread |
+   | --- | ---: | ---: | ---: | ---: |
+   | segmentation raster | 0.511 | 0.501 | -- | -- |
+   | fraction head | 0.702 | 0.704 | 0.22 | 49x |
+   | **unmixing (this)** | **0.659** | **0.664** | **0.24** | **92x** |
+   | SPPI | 0.823 | 0.828 | 0.42 | 18x |
+   | roofclf | 0.874 | 0.842 | -- | -- |
+
+   **Negative: worse than SPPI and roofclf on every axis, and its 92x scale spread
+   (Karachi coastal underpredicts at 0.45x, Sialkot overpredicts at 41x) is the worst of
+   any instrument measured on this page.** Karachi coastal -- the one Rule-1-complete
+   quadrat with trustworthy negatives -- scores AUC 0.498, at chance. Not recommended in
+   this form; the code is kept (`fit_endmembers`/`unmix_fraction`/`evaluate_loqo`), same
+   convention as `roofclf_capacity.py` and `sppi.agreement_rate_by_quadrat`.
+
+   **This result does not actually test the proposal's differentiating claim.** The
+   whole case for unmixing was self-calibration -- fitting each cell's PV/background
+   endmembers from *that cell's own* confirmed >= 400 m² detections, not a pooled
+   national fit. The LOQO test above fits endmembers on 7 *other quadrats pooled
+   together* and applies them to an 8th -- exactly the cross-quadrat transfer this
+   page's other three stratification attempts already failed at, not the in-cell
+   self-calibration the idea depends on. A 1 km² quadrat is also the wrong scale to test
+   it at: it rarely contains enough of its own >= 400 m² confirmed detections to fit a
+   local endmember, unlike a real 0.1 degree (~11 km) national grid cell.
+   `cell_selfcheck_ratio` (implemented, unexercised) is what a real per-cell test would
+   use. **Still open, and now a better-specified next step than before this test ran**:
+   fit endmembers per national grid cell from its own segmentation-confirmed detections
+   and low-`p_roofclf` buildings, check recovered area against that cell's own known
+   large-array area, and only trust the sub-400 m² output where recovery holds.

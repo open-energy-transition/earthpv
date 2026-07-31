@@ -19,6 +19,14 @@ rather than hand-maintained prose.
   already-detected candidate is real, at country scale. It reads some of these quadrats
   too (`--calibration-box`), but answers a different question.
 
+!!! note "A 12th quadrat was added 2026-07-31, not yet in the table below"
+    Rahim Yar Khan District, Punjab (near Sadiqabad) — 204 installations, 97.1% below
+    400 m², base rate approximately 8.7% (not yet the exact matched count).
+    `roofclf.discover_quadrats` will pick it up automatically on the next
+    `earthpv roof-classifier` run; this page's table is regenerated from that run's
+    output, not hand-typed, so it stays at eleven rows until then. Full detail:
+    [Calibration boxes, Box 11](../issues/pakistan-calibration-boxes.md).
+
 ## Current quadrats
 
 Regenerated 2026-07-30 directly from `data/labels/*_calib_*_boundary.geojson` +

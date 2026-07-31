@@ -554,16 +554,43 @@ def atlas(
         "per cell inside the density-domain restriction only; other cells show large-PV "
         "alone, marked by a dashed outline where small-PV is actually included.",
     ),
+    sub400_low_cells: Path = typer.Option(
+        None, help="Building-level parquet from "
+        "`sub400_capacity.domain_restricted_and_gate_capacity` (columns: cell, geometry, "
+        "roof_area_m2, est_kwp_sub400_and_gate). Pass together with --sub400-central-cells "
+        "and --sub400-high-cells to write the three-view sub-400 m2 BRACKET atlas instead "
+        "of any other atlas -- Low/Central/High selectable per cell, large-PV always shown.",
+    ),
+    sub400_central_cells: Path = typer.Option(
+        None, help="Building-level parquet from "
+        "`sub400_capacity.domain_restricted_capacity` (columns: cell, geometry, "
+        "roof_area_m2, est_kwp_sub400) -- the bracket atlas's Central view.",
+    ),
+    sub400_high_cells: Path = typer.Option(
+        None, help="Building-level parquet from "
+        "`roofclf_capacity.incremental_capacity` (columns: cell, geometry, roof_area_m2, "
+        "est_kwp_roofclf), unrestricted national -- the bracket atlas's High view.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
     import logging
 
-    from earthpv.atlas import build_atlas, build_combined_atlas
+    from earthpv.atlas import build_atlas, build_combined_atlas, build_sub400_bracket_atlas
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     density_dir = Path(pred_dir) / aoi / "density"
-    if sub400_cells is not None:
+    if sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
+        if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
+            raise typer.BadParameter(
+                "--sub400-low-cells, --sub400-central-cells and --sub400-high-cells must "
+                "all be given together for the bracket atlas"
+            )
+        build_sub400_bracket_atlas(
+            aoi, density_dir, sub400_low_cells, sub400_central_cells, sub400_high_cells,
+            out=out, zoom_out_frac=zoom_out,
+        )
+    elif sub400_cells is not None:
         build_combined_atlas(aoi, density_dir, sub400_cells, out=out, zoom_out_frac=zoom_out)
     else:
         build_atlas(aoi, density_dir, out=out, zoom_out_frac=zoom_out)
