@@ -1,0 +1,132 @@
+<meta charset="utf-8">
+<title>__PAGE_TITLE__</title>
+
+<style>
+  :root {
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+    /* dark = the primary "night lights" world, matching the atlas pages this shell hosts */
+    --page: #100d09;
+    --panel: #1a160f;
+    --panel-2: #221d14;
+    --ink: #f7f1e6;
+    --ink-2: #c9bda4;
+    --muted: #93866c;
+    --accent: #f5a623;
+    --accent-dim: #b5610f;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+      --accent: #c25e12; --accent-dim: #db7f24;
+      --card-ring: rgba(120,80,20,0.14);
+      --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+    --accent: #c25e12; --accent-dim: #db7f24;
+    --card-ring: rgba(120,80,20,0.14);
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+  }
+  :root[data-theme="dark"] {
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --accent: #f5a623; --accent-dim: #b5610f;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: var(--font-display); -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  .wrap {
+    max-width: 1440px; margin: 0 auto; padding: clamp(16px, 2.2vw, 28px);
+    height: 100vh; box-sizing: border-box; display: flex; flex-direction: column;
+  }
+
+  header { flex: none; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 8px;
+  }
+  h1 {
+    font-size: clamp(20px, 2.8vw, 30px); line-height: 1.1; margin: 0;
+    font-weight: 780; letter-spacing: -0.02em;
+  }
+  .lede {
+    margin: 8px 0 0; max-width: 84ch; color: var(--ink-2);
+    font-size: clamp(13px, 1.2vw, 14.5px); line-height: 1.55;
+  }
+
+  .switch { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+  .tab {
+    font-family: var(--font-mono); font-size: 12.5px; padding: 8px 13px;
+    background: var(--panel); border: 1px solid var(--card-ring); border-radius: 8px;
+    color: var(--ink-2); cursor: pointer; transition: border-color .15s, color .15s; text-align: left;
+  }
+  .tab .tt1 { display: block; font-weight: 650; }
+  .tab .tt2 { display: block; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted); margin-top: 2px; }
+  .tab:hover { color: var(--ink); border-color: var(--accent-dim); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tab[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset; }
+
+  .panels {
+    flex: 1 1 auto; min-height: 0; position: relative; margin-top: 14px;
+    border-radius: 12px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .panel-frame { position: absolute; inset: 0; display: none; background: var(--panel); }
+  .panel-frame.active { display: block; }
+  .panel-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  .panel-note {
+    flex: none; margin: 8px 2px 0; font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); letter-spacing: 0.02em; min-height: 1.4em;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">EarthPV &middot; National PV dashboard</p>
+    <h1>__H1__</h1>
+    <p class="lede">__LEDE_HTML__</p>
+    <div class="switch" role="tablist" aria-label="Dashboard panel">
+__TABS_HTML__
+    </div>
+  </header>
+  <div class="panels">
+__IFRAMES_HTML__
+  </div>
+  <p class="panel-note" id="panelNote"></p>
+</div>
+
+<script>
+(function () {
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+  const frames = Array.from(document.querySelectorAll(".panel-frame"));
+  const notes = __NOTES_JSON__;
+
+  function activate(i) {
+    tabs.forEach((t, j) => t.setAttribute("aria-pressed", String(j === i)));
+    frames.forEach((f, j) => f.classList.toggle("active", j === i));
+    const iframe = frames[i].querySelector("iframe");
+    if (!iframe.getAttribute("src")) iframe.setAttribute("src", iframe.dataset.src);
+    document.getElementById("panelNote").textContent = notes[i] || "";
+  }
+
+  tabs.forEach((t, i) => t.addEventListener("click", () => activate(i)));
+  activate(0);
+})();
+</script>

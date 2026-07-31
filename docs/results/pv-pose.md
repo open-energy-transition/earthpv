@@ -11,8 +11,8 @@ inverts to a single panel orientation.
 
 ## The country survey
 
-![Polar plot of fitted panel pose across Pakistan: tilt as radius from 0 to 30 degrees, azimuth as angle. Measured points cluster between east-southeast and due south at tilts of roughly 5 to 20 degrees, with the mirrored half shown hollow, and a shaded wedge from west-northwest through north to east marking orientations this orbit can never observe.](../assets/figures/pv_pose_polar.svg#only-light)
-![Polar plot of fitted panel pose across Pakistan: tilt as radius from 0 to 30 degrees, azimuth as angle. Measured points cluster between east-southeast and due south at tilts of roughly 5 to 20 degrees, with the mirrored half shown hollow, and a shaded wedge from west-northwest through north to east marking orientations this orbit can never observe.](../assets/figures/pv_pose_polar.dark.svg#only-dark)
+![Polar plot of fitted panel pose across Pakistan: tilt as radius from 0 to 30 degrees, azimuth as angle. Measured points cluster between east-southeast and due south at tilts of roughly 5 to 20 degrees, with a shaded wedge covering the rest of the compass, from due south through west and north to east-southeast, marking orientations this orbit can never observe.](../assets/figures/pv_pose_polar.svg#only-light)
+![Polar plot of fitted panel pose across Pakistan: tilt as radius from 0 to 30 degrees, azimuth as angle. Measured points cluster between east-southeast and due south at tilts of roughly 5 to 20 degrees, with a shaded wedge covering the rest of the compass, from due south through west and north to east-southeast, marking orientations this orbit can never observe.](../assets/figures/pv_pose_polar.dark.svg#only-dark)
 
 The interactive version below adds per-installation detail, the tilt and azimuth
 histograms, and the validation rate by size.
@@ -31,9 +31,11 @@ Three things in that plot are worth stating plainly.
 **Nothing measured crosses due south, and that is the sensor, not the roofs.** Sentinel-2
 crosses this latitude at a fixed local time, so over two full years the sun's azimuth at
 the moment of every overpass never once swings west of south. A panel facing southwest,
-west or north cannot glint into this sensor no matter how long you wait. The dashed points
-in the plot are the measured sample mirrored across the south axis, and the shaded wedge is
-what stays unreachable even granting that mirror assumption.
+west, north or northeast cannot glint into this sensor no matter how long you wait, so the
+shaded wedge covering that arc is not measured emptiness -- it is missing measurement.
+Installations facing that way are invisible to this method, not absent, so the plot shows
+only what was actually measured rather than assuming the population is mirror-symmetric
+about the south axis and filling the rest in.
 
 **The population is dispersed, and bimodally so.** Tilt ranges from 2.5 to 28.6 degrees
 with an interquartile range of 6.3 to 18.8, and it splits into a shallow cluster around

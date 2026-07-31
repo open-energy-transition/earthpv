@@ -114,6 +114,32 @@
   height: 560px;
 }
 
+/* Full-bleed pages (national dashboards): pair `.page-full-bleed` on the embed with
+   `hide: [navigation, toc]` in the page's front matter. `hide` removes the left tree
+   and right TOC columns; this `:has()` rule removes the leftover max-width cap on
+   what's left, so the iframe fills nearly the whole viewport. Deliberately a plain
+   CSS selector rather than a custom theme_dir/main.html override: overriding
+   Material's own template blocks would couple this site to Material's internal
+   naming across version bumps, where a `:has()` selector (supported by every
+   evergreen browser since 2023) does not. */
+.md-grid:has(.page-full-bleed) {
+  max-width: 100%;
+}
+
+.page-full-bleed {
+  margin: 0.8rem 0 0;
+  border-radius: 6px;
+}
+
+.page-full-bleed iframe {
+  width: 100%;
+  height: calc(100vh - 12rem);
+  min-height: 480px;
+  border: 0;
+  display: block;
+  background: var(--md-default-bg-color);
+}
+
 .embed-note {
   font-size: 0.72rem;
   color: var(--md-default-fg-color--light);

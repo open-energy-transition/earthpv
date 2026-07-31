@@ -377,24 +377,20 @@ def fig_pv_pose(t: Theme):
     ax.set_theta_direction(-1)
 
     lo, hi = d["wedge"]
+    mid = math.radians((lo + hi) / 2 % 360)
     ax.bar(x=math.radians((lo + hi) / 2), height=32, width=math.radians(hi - lo),
            bottom=0, color=t.rule, alpha=0.55, zorder=0, linewidth=0)
-    ax.text(math.radians(335), 25, "never reachable\nfrom this orbit", ha="center",
+    ax.text(mid, 25, "never reachable\nfrom this orbit", ha="center",
             va="center", fontsize=8, color=t.ink_dim, zorder=6)
 
     groups = [("rooftop", "rooftop generator", t.s1), ("ground", "ground plant", t.s2)]
     for placement, label, col in groups:
-        for mirrored, kw in ((False, dict(alpha=0.85, linewidths=0)),
-                             (True, dict(facecolors="none", linewidths=0.8, alpha=0.55))):
-            pts = [p for p in d["points"] if p["pl"] == placement and p["m"] is mirrored]
-            if not pts:
-                continue
-            ax.scatter([math.radians(p["az"]) for p in pts], [p["t"] for p in pts],
-                       s=[max(9, min(90, p["a"] * 1.1)) for p in pts],
-                       color=col if not mirrored else None,
-                       edgecolors=col if mirrored else "none",
-                       label=f"{label}, mirrored" if mirrored else label,
-                       zorder=3, **kw)
+        pts = [p for p in d["points"] if p["pl"] == placement]
+        if not pts:
+            continue
+        ax.scatter([math.radians(p["az"]) for p in pts], [p["t"] for p in pts],
+                   s=[max(9, min(90, p["a"] * 1.1)) for p in pts],
+                   color=col, linewidths=0, label=label, alpha=0.85, zorder=3)
 
     ax.set_rlim(0, 32)
     ax.set_rticks([10, 20, 30])
@@ -411,8 +407,8 @@ def fig_pv_pose(t: Theme):
         txt.set_color(t.ink_dim)
     titled(fig, t, "How Pakistani solar panels are actually mounted",
            "Fitted tilt and azimuth for 290 installations whose Sentinel-2 glints agree on "
-           "one fixed panel plane, out of 2,000 checked. Hollow points are the measured "
-           "sample mirrored across due south.", width=76)
+           "one fixed panel plane, out of 2,000 checked. The shaded wedge is unreachable by "
+           "this sensor's fixed overpass time, not known to be empty.", width=76)
     save(fig, t, "pv_pose_polar")
 
 
@@ -600,6 +596,27 @@ def sync_interactive():
         print(f"  wrote docs/assets/interactive/{name}")
 
 
+# National-dashboard bundles (earthpv.dashboard.build_national_dashboard): each is a
+# directory of a few files (the tab shell plus one copy per panel), not a single file,
+# so this is a directory copy rather than a row in INTERACTIVE above.
+INTERACTIVE_DIRS = [
+    ("results/pakistan_pv_dashboard", "pakistan_dashboard"),
+]
+
+
+def sync_interactive_dirs():
+    import shutil
+
+    dst_root = ROOT / "docs" / "assets" / "interactive"
+    for src_rel, name in INTERACTIVE_DIRS:
+        src = ROOT / src_rel
+        if not src.exists():
+            print(f"  {src_rel} missing, skipping")
+            continue
+        shutil.copytree(src, dst_root / name, dirs_exist_ok=True)
+        print(f"  wrote docs/assets/interactive/{name}/")
+
+
 LOGO_SRC = ROOT / "docs" / "assets" / "earthpv-logo.png"
 BRAND_NAVY = (18, 41, 63)
 
@@ -672,6 +689,7 @@ def main():
     copy_static_rasters()
     print("interactive pages")
     sync_interactive()
+    sync_interactive_dirs()
 
 
 if __name__ == "__main__":

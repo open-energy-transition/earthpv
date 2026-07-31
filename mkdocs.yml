@@ -82,6 +82,9 @@ extra:
 
 nav:
   - Home: index.md
+  - Dashboards:
+      - Overview: dashboards/index.md
+      - Pakistan: dashboards/pakistan.md
   - Workflow: workflow.md
   - Results:
       - Capacity map: results/capacity.md

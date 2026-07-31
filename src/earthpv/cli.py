@@ -597,6 +597,35 @@ def atlas(
 
 
 @app.command()
+def dashboard(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs a `dashboard:` block in configs/aoi.yaml"),
+    out_dir: Path = typer.Option(None, help="Bundle output directory (default results/<aoi>_pv_dashboard/)"),
+) -> None:
+    """Combine an AOI's dashboard panels (e.g. the sub-400 m2 bracket atlas, a glint
+    panel-pose survey) into one tabbed national-overview page. Panels are declared in
+    configs/aoi.yaml under `aois.<aoi>.dashboard`; see docs/dashboards/index.md for the
+    shape of that block and how to add a new country."""
+    from earthpv.config import REPO_ROOT, Settings
+    from earthpv.dashboard import DashboardPanel, build_national_dashboard
+
+    settings = Settings.load()
+    cfg = (settings.aois.get(aoi) or {}).get("dashboard")
+    if not cfg:
+        raise typer.BadParameter(
+            f"AOI {aoi!r} has no `dashboard:` block in configs/aoi.yaml -- see "
+            "docs/dashboards/index.md for the panel-list shape to add one."
+        )
+    panels = [
+        DashboardPanel(
+            key=p["key"], label=p["label"], sublabel=p.get("sublabel", ""),
+            src=REPO_ROOT / p["src"], note=p.get("note", ""),
+        )
+        for p in cfg["panels"]
+    ]
+    build_national_dashboard(aoi, cfg.get("title", aoi.title()), panels, out_dir=out_dir)
+
+
+@app.command()
 def pv_yield(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs `density` already run"),
     pred_dir: Path = typer.Option(Path("data/predictions")),
