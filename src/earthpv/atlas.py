@@ -45,6 +45,7 @@ TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
 ESTIMATOR_TEMPLATE = Path(__file__).parent / "templates" / "pv_estimator_atlas.html"
 SUB400_BRACKET_TEMPLATE = Path(__file__).parent / "templates" / "pv_sub400_bracket_atlas.html"
 EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.html"
+POTENTIAL_TEMPLATE = Path(__file__).parent / "templates" / "pv_potential_atlas.html"
 
 # Major-city annotations per AOI (the map renders fine with none).
 CITIES: dict[str, list] = {
@@ -1167,5 +1168,167 @@ def build_evidence_atlas(
         "Wrote evidence atlas (verified %.0f / best %.0f / ceiling %.0f MWp, "
         "%d/%d domain cells) -> %s",
         total_verified, total_best, total_ceiling, n_domain_cells, len(grid), out,
+    )
+    return out
+
+
+def build_potential_atlas(
+    aoi: str, density_dir: Path, potential_buildings_path: Path,
+    out: Path | None = None, zoom_out_frac: float = 0.0,
+    irradiance_cache: Path | None = None, n_probe: int = 36,
+) -> Path:
+    """Two-tab atlas: **Potential** (uncovered large-roof area, weighted by modelled
+    annual irradiance -- a siting signal for FUTURE rooftop solar, not a capacity
+    measurement of existing PV) and **Saturation** (existing PV area / roof area,
+    already computed by `density.py::_ratios` -- this tab adds no new computation,
+    only a new choropleth view of `pv_ratio_det`).
+
+    `potential_buildings_path` is `potential.large_roof_buildings`'s output (columns
+    `cell, geometry, roof_area_m2`, every building >= its `min_roof_m2`, national, no
+    domain restriction -- see that function's docstring for why this is pure geometry
+    and carries none of the sub-400 m2 calibration caveats the rest of this codebase
+    documents at length). `irradiance_cache` defaults to a CSV alongside this run's
+    density outputs so a re-run of the same AOI reuses the cached PVGIS probes instead
+    of re-fetching them.
+    """
+    from earthpv.pv_capacity import grid_specific_yield, interpolate_yield
+
+    density_dir = Path(density_dir)
+    grid = gpd.read_parquet(density_dir / "grid.geoparquet")
+    meta = json.loads((density_dir / "meta.json").read_text())
+    title = aoi.replace("_", " ").title()
+    kwp_module = meta.get("kwp_per_m2_module", 0.18)
+
+    large = gpd.read_parquet(potential_buildings_path)
+    large_by_cell = _join_buildings_to_grid_cells(large, "roof_area_m2", grid)
+
+    grid = grid.copy()
+    grid["large_roof_m2"] = grid["cell"].map(large_by_cell).fillna(0.0)
+    # Subtract the upper-leaning expected-coverage estimate (not the detected floor), so
+    # a roof already showing ANY sub-threshold PV signal is conservatively excluded from
+    # "opportunity" rather than double-suggested.
+    grid["uncovered_large_m2"] = (
+        grid["large_roof_m2"] - grid["pv_area_exp_roof_m2"]
+    ).clip(lower=0.0)
+    grid["potential_kwp"] = grid["uncovered_large_m2"] * kwp_module
+    grid["potential_mwp"] = grid["potential_kwp"] / 1000.0
+
+    irradiance_cache = (
+        Path(irradiance_cache) if irradiance_cache else density_dir / "irradiance_probes.csv"
+    )
+    bounds = tuple(grid.total_bounds)
+    probes = grid_specific_yield(bounds, irradiance_cache, n_probe=n_probe)
+    grid["kwh_per_kwp_yr"] = interpolate_yield(
+        probes, grid["lon_center"].to_numpy(), grid["lat_center"].to_numpy()
+    )
+    grid["potential_gwh_yr"] = grid["potential_kwp"] * grid["kwh_per_kwp_yr"] / 1e6
+
+    grid["sat_pct"] = (grid["pv_ratio_det"] * 100.0).round(4)
+
+    cells = [
+        [round(float(r.lon0), 3), round(float(r.lat0), 3),
+         round(float(r.potential_gwh_yr), 4), round(float(r.potential_mwp), 3),
+         round(float(r.sat_pct), 2), int(r.n_pv_buildings),
+         round(float(r.roof_area_m2) / 1e6, 4), round(float(r.large_roof_m2) / 1e6, 4),
+         round(float(r.uncovered_large_m2) / 1e6, 4)]
+        for r in grid.itertuples()
+    ]
+    bounds_out = [
+        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
+        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
+    ]
+    if zoom_out_frac:
+        lon_pad = (bounds_out[2] - bounds_out[0]) * zoom_out_frac / 2
+        lat_pad = (bounds_out[3] - bounds_out[1]) * zoom_out_frac / 2
+        bounds_out = [
+            round(bounds_out[0] - lon_pad, 3), round(bounds_out[1] - lat_pad, 3),
+            round(bounds_out[2] + lon_pad, 3), round(bounds_out[3] + lat_pad, 3),
+        ]
+
+    provinces = []
+    regions_path = density_dir / "regions.geoparquet"
+    if regions_path.exists():
+        reg = gpd.read_parquet(regions_path)
+        reg_regions = reg[reg.level == "region"]
+        # Potential is derived from a building parquet regions.geoparquet predates, so
+        # join the grid's own per-cell potential columns to provinces by centroid --
+        # the same pattern build_combined_atlas/build_sub400_bracket_atlas already use
+        # for a column that isn't already a region aggregate.
+        pts = gpd.GeoDataFrame(
+            grid[["potential_gwh_yr", "potential_mwp", "large_roof_m2", "uncovered_large_m2"]],
+            geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
+        )
+        joined = gpd.sjoin(pts, reg_regions[["region_id", "geometry"]], predicate="within", how="left")
+        by_region = joined.groupby("region_id")[
+            ["potential_gwh_yr", "potential_mwp", "large_roof_m2", "uncovered_large_m2"]
+        ].sum()
+        for r in reg_regions.itertuples():
+            row = by_region.reindex([r.region_id]).fillna(0.0).iloc[0]
+            provinces.append({
+                "name": str(r.name),
+                "gwh_potential": round(float(row["potential_gwh_yr"]), 1),
+                "mwp_potential": round(float(row["potential_mwp"]), 1),
+                "sat_pct": round(float(r.pv_ratio_det) * 100.0, 2),
+                "nb": int(r.n_pv_buildings),
+                "large_km2": round(float(row["large_roof_m2"]) / 1e6, 2),
+                "uncovered_km2": round(float(row["uncovered_large_m2"]) / 1e6, 2),
+                "rings": _rings(r.geometry),
+            })
+        provinces.sort(key=lambda p: -p["gwh_potential"])
+
+    total_gwh = float(grid.potential_gwh_yr.sum())
+    total_mwp = float(grid.potential_mwp.sum())
+    total_uncovered_km2 = float(grid.uncovered_large_m2.sum()) / 1e6
+    total_large_km2 = float(grid.large_roof_m2.sum()) / 1e6
+    national_sat_pct = (
+        100.0 * float(grid.pv_area_det_roof_m2.sum()) / max(float(grid.roof_area_m2.sum()), 1e-9)
+    )
+
+    data = {
+        "bounds": bounds_out,
+        "cells": cells,
+        "provinces": provinces,
+        "cities": CITIES.get(aoi, []),
+        "totals": {
+            "gwh_potential": round(total_gwh, 1),
+            "mwp_potential": round(total_mwp, 1),
+            "sat_pct": round(national_sat_pct, 2),
+            "large_km2": round(total_large_km2, 2),
+            "uncovered_km2": round(total_uncovered_km2, 2),
+            "n_large_buildings": int(len(large)),
+            "pv_buildings": int(grid.n_pv_buildings.sum()),
+            "n_cells": int(len(grid)),
+            "kwp_per_m2": kwp_module,
+            "kwh_per_kwp_range": [
+                round(float(probes.kwh_per_kwp_yr.min()), 0),
+                round(float(probes.kwh_per_kwp_yr.max()), 0),
+            ],
+        },
+    }
+
+    html = POTENTIAL_TEMPLATE.read_text()
+    for key, value in {
+        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
+        "__PAGE_TITLE__": f"{title} Rooftop Potential & Saturation",
+        "__H1__": f"Where {title} could add more rooftop solar",
+        "__AOI_TITLE__": title,
+        "__LEDE_HTML__": (
+            "Two views of the same buildings, neither one a capacity measurement of "
+            "existing PV. <b>Potential</b> highlights large roofs (&ge; 200 m&sup2;) "
+            "showing no detected PV signal, weighted by modelled annual irradiance -- a "
+            "siting signal for future installations, built from building footprint "
+            "geometry alone, never a PV-presence probability. <b>Saturation</b> shows "
+            "how much of each cell's total roof area already carries detected PV, to "
+            "contrast dense-adoption urban areas against under-adopted ones."
+        ),
+    }.items():
+        html = html.replace(key, value)
+
+    out = Path(out) if out else density_dir / f"{aoi}_pv_potential_atlas.html"
+    out.write_text(html)
+    log.info(
+        "Wrote potential atlas (potential %.0f GWh/yr / %.0f MWp uncovered large-roof, "
+        "national saturation %.2f%%) -> %s",
+        total_gwh, total_mwp, national_sat_pct, out,
     )
     return out

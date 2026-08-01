@@ -29,6 +29,7 @@ import logging
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pvlib
 
@@ -107,6 +108,83 @@ def expected_annual_yield(
     if "est_mwp_cal" in regions.columns:  # older density outputs predate the calibrated column
         regions["expected_gwh_cal"] = regions["est_mwp_cal"] * regions["kwh_per_kwp_yr"] / 1000.0
     return regions.drop(columns="geometry")
+
+
+def grid_specific_yield(
+    bounds: tuple[float, float, float, float], cache_path: Path,
+    n_probe: int = 36, year: int = 2020, loss_pct: float = DEFAULT_SYSTEM_LOSS_PCT,
+) -> pd.DataFrame:
+    """PVGIS-modelled specific yield (kWh/kWp/yr) on a coarse probe grid spanning
+    `bounds` (minx, miny, maxx, maxy), cached at `cache_path` so repeat calls (including
+    repeat pipeline runs) don't re-hit PVGIS for a probe already fetched.
+
+    Reuses `specific_yield_kwh_per_kwp` unchanged, just at more points than the single
+    region-centroid call `expected_annual_yield` makes. Irradiance is smooth at country
+    scale, so a coarse regular grid (default 6x6 = 36 points) is enough to interpolate
+    any finer grid-cell centroid from (`interpolate_yield`) without a per-cell PVGIS
+    call, which would be both slow (thousands of cells) and unnecessary.
+    """
+    minx, miny, maxx, maxy = bounds
+    side = max(1, round(n_probe ** 0.5))
+    lons = np.linspace(minx, maxx, side)
+    lats = np.linspace(miny, maxy, side)
+    probe_lon, probe_lat = np.meshgrid(lons, lats)
+    probe_lon, probe_lat = probe_lon.ravel(), probe_lat.ravel()
+
+    cache_path = Path(cache_path)
+    cached = (
+        pd.read_csv(cache_path) if cache_path.exists()
+        else pd.DataFrame(columns=["lon", "lat", "kwh_per_kwp_yr"])
+    )
+    have = set(zip(cached["lon"].round(4), cached["lat"].round(4)))
+
+    new_rows = []
+    for lon, lat in zip(probe_lon, probe_lat):
+        key = (round(float(lon), 4), round(float(lat), 4))
+        if key in have:
+            continue
+        yield_val = specific_yield_kwh_per_kwp(lat, lon, year=year, loss_pct=loss_pct)
+        if yield_val is not None:
+            new_rows.append({"lon": key[0], "lat": key[1], "kwh_per_kwp_yr": yield_val})
+
+    if new_rows:
+        cached = pd.concat([cached, pd.DataFrame(new_rows)], ignore_index=True)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cached.to_csv(cache_path, index=False)
+
+    if cached.empty:
+        raise RuntimeError(
+            f"No PVGIS probe succeeded for bounds {bounds} -- check network access; "
+            f"see {cache_path}"
+        )
+    log.info(
+        "Irradiance probe grid: %d points cached at %s, kwh_per_kwp_yr range %.0f-%.0f "
+        "(mean %.0f)", len(cached), cache_path, cached["kwh_per_kwp_yr"].min(),
+        cached["kwh_per_kwp_yr"].max(), cached["kwh_per_kwp_yr"].mean(),
+    )
+    return cached
+
+
+def interpolate_yield(
+    probes: pd.DataFrame, lons: np.ndarray, lats: np.ndarray
+) -> np.ndarray:
+    """Inverse-distance-weighted (power 2) interpolation of `probes`'
+    `kwh_per_kwp_yr` onto arbitrary (lon, lat) points. Plain numpy -- `scipy` is not a
+    project dependency and irradiance is smooth enough at country scale that IDW from a
+    few dozen cached PVGIS probes is ample; it also degrades gracefully at the edges of
+    the probe grid, unlike a triangulation-based method that can misbehave outside its
+    convex hull.
+    """
+    plon = probes["lon"].to_numpy(float)
+    plat = probes["lat"].to_numpy(float)
+    pval = probes["kwh_per_kwp_yr"].to_numpy(float)
+    lons = np.asarray(lons, dtype=float)
+    lats = np.asarray(lats, dtype=float)
+
+    d2 = (lons[:, None] - plon[None, :]) ** 2 + (lats[:, None] - plat[None, :]) ** 2
+    d2 = np.maximum(d2, 1e-12)  # a query point exactly on a probe would divide by zero
+    w = 1.0 / d2
+    return (w * pval[None, :]).sum(axis=1) / w.sum(axis=1)
 
 
 def run_pv_capacity_check(

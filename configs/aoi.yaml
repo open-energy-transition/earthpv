@@ -86,6 +86,11 @@ aois:
           sublabel: Glint-fitted tilt & azimuth, n=2000
           src: results/glint_validation_pakistan/pv_pose_country2000.html
           note: "Fitted pose for 290 installations whose Sentinel-2 glints agree on one fixed plane. See Panel pose from glint."
+        - key: potential
+          label: Rooftop potential
+          sublabel: Uncovered large roofs x irradiance, plus PV saturation
+          src: results/pakistan_pv_potential_atlas.html
+          note: "Where large (>= 200 m2), currently-uncovered roofs and high modelled irradiance overlap -- a siting signal for future installations, built from footprint geometry alone, never a PV-presence probability. A second tab shows PV saturation (existing PV area / roof area) to contrast dense-adoption areas against under-adopted ones."
 
   # India pilot: no rooftopsenti local dataset exists for India (unlike PK/DE), so this
   # is the first AOI exercising compose.py's VIDA-buildings + geoBoundaries fallbacks

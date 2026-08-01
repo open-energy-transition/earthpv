@@ -62,6 +62,9 @@ calibrate = "python -m earthpv.cli calibrate"
 # Small-PV (< 400 m2) JOSM validation leads, AND-gate + roofclf-only populations --
 # re-run whenever roofclf/SPPI national scoring or the OSM solar pull is refreshed.
 small-pv-leads = "python scripts/build_small_pv_josm_leads.py"
+# Rooftop-potential (large, currently-uncovered roof) JOSM/site-visit leads -- re-run
+# whenever `earthpv large-roof-buildings` or the national OSM solar pull is refreshed.
+potential-leads = "python scripts/build_potential_leads.py"
 # Regenerate every figure and interactive page the docs site and README embed.
 docs-figures = "python scripts/build_docs_figures.py"
 # Re-capture the interactive HTML pages as PNGs for the README (needs firefox).

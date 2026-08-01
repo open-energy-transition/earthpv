@@ -536,6 +536,38 @@ def check_density_cmd(
         raise typer.Exit(1)
 
 
+@app.command("large-roof-buildings")
+def large_roof_buildings_cmd(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    roofclf_dir: Path = typer.Option(
+        ..., help="Per-cell roofclf national-scoring dir, i.e. "
+        "`roofclf.score_buildings_national`'s output (e.g. "
+        "data/roofclf_national_with_sppi/pakistan/prob)"
+    ),
+    min_roof_m2: float = typer.Option(
+        200.0, help="Minimum building footprint area (m2) to count as a 'large' roof"
+    ),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    out: Path = typer.Option(
+        None, help="Output parquet (default "
+        "<pred_dir>/<aoi>/potential/large_roof_buildings.parquet)"
+    ),
+) -> None:
+    """Every VIDA building >= --min-roof-m2 nationally, pure footprint geometry (no
+    PV-presence probability) -- the raw material for `earthpv atlas --potential-buildings`.
+    """
+    import logging
+
+    from earthpv.potential import large_roof_buildings
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    buildings = large_roof_buildings(roofclf_dir, min_roof_m2=min_roof_m2)
+    out = Path(out) if out else Path(pred_dir) / aoi / "potential" / "large_roof_buildings.parquet"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    buildings.to_parquet(out)
+    typer.echo(f"Wrote {len(buildings):,} buildings -> {out}")
+
+
 @app.command()
 def atlas(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs `density` already run"),
@@ -581,18 +613,30 @@ def atlas(
         "building-level parquets, plus this national mapping pull and this run's own "
         "candidates.parquet (found automatically at <pred_dir>/<aoi>/candidates.parquet).",
     ),
+    potential_buildings: Path = typer.Option(
+        None, help="Building-level parquet from `potential.large_roof_buildings` "
+        "(columns: cell, geometry, roof_area_m2) -- writes the POTENTIAL/SATURATION "
+        "atlas instead of any other atlas: uncovered large-roof area weighted by "
+        "modelled annual irradiance (Potential tab) alongside the existing PV-area/"
+        "roof-area ratio (Saturation tab). Takes priority over every other flag above.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
     import logging
 
     from earthpv.atlas import (
-        build_atlas, build_combined_atlas, build_evidence_atlas, build_sub400_bracket_atlas,
+        build_atlas, build_combined_atlas, build_evidence_atlas, build_potential_atlas,
+        build_sub400_bracket_atlas,
     )
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     density_dir = Path(pred_dir) / aoi / "density"
-    if sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
+    if potential_buildings is not None:
+        build_potential_atlas(
+            aoi, density_dir, potential_buildings, out=out, zoom_out_frac=zoom_out,
+        )
+    elif sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
         if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
             raise typer.BadParameter(
                 "--sub400-low-cells, --sub400-central-cells and --sub400-high-cells must "

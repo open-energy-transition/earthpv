@@ -492,7 +492,13 @@ with a matching mapped-solar file, so a bare `earthpv roof-classifier` picked up
 with no `--quadrat` flag needed). `karachi_coast_calib_700m` remains the hardest and most
 diagnostic of the four: median installation 86 m², 98.8% below the detection floor, and
 there the segmentation raster scores **exactly 0.500** and predicts **0.0 m² of PV against
-13,964 m² mapped**. Quadrat file naming is size-agnostic (`*_calib_*_boundary.geojson`,
+13,964 m² mapped**. **None of the quadrats record when their reference imagery was
+captured** — the mapping protocol asks for it but the field has never been filled in
+(`docs/issues/calibration-imagery-dating.md`), so stale background imagery missing
+recently-installed PV is an untested, plausible contributor to the documented
+overestimation in low-base-rate quadrats, alongside the already-verified false-positive
+mechanisms — not yet measured either way. Quadrat file naming is size-agnostic
+(`*_calib_*_boundary.geojson`,
 newest dated `_overpass_solar*` pull wins) — do not re-hardcode `_calib_1km_`.
 
 `roofclf.packing_density` (added 2026-07-29) reports each quadrat's median distance
@@ -694,6 +700,36 @@ those areas, not a training defect. Not yet addressed in the leads file: flaggin
 leads whose nearest neighbor sits inside that ~15–20 m band as "dense cluster, exact
 attribution uncertain" instead of pointing at one specific polygon (discussed, not yet
 implemented as of this writing).
+
+### Rooftop potential & saturation atlas (`earthpv atlas --potential-buildings`)
+
+A forward-looking counterpart to everything above: not "how much PV is already there,"
+but where large, currently-uncovered roofs and high modelled irradiance overlap — a
+siting signal for *future* rooftop solar, plus a saturation view of where PV adoption is
+already dense vs. sparse. `potential.py::large_roof_buildings` pulls every VIDA building
+nationally with `roof_area_m2 >= 200` from `roofclf.score_buildings_national`'s existing
+per-cell output, using **only that table's footprint geometry, never `p_roofclf`/
+`sppi`** — this is what keeps the feature outside every calibration/precision problem
+documented in "Sub-400 m² instruments" above, all of which arise from converting a
+PV-*presence probability* into capacity, which this never does. `atlas.py::
+build_potential_atlas` subtracts each cell's `pv_area_exp_roof_m2` (upper-leaning, so a
+roof with any sub-threshold signal is conservatively excluded from "opportunity") to get
+an uncovered large-roof area, converts it to capacity at the usual module constant, then
+to annual energy via a coarse, cached PVGIS-modelled specific-yield probe grid
+(`pv_capacity.py::grid_specific_yield`/`interpolate_yield`, reusing
+`specific_yield_kwh_per_kwp` unchanged; interpolation is plain inverse-distance-weighted
+numpy, since `scipy` is not a project dependency). 200 m² (not the segmentation model's
+400 m² detection floor) is a deliberate choice reaching further into the realistic
+rooftop-opportunity space; the 200–400 m² slice specifically gets no discriminating
+signal from the segmentation-based subtraction (trained with everything below
+`chips.MIN_PV_AREA` burned as `ignore`), so it reads as almost entirely uncovered
+regardless of ground truth — expected, documented in `docs/methods/density.md`, not a
+bug. The Saturation tab adds no new computation: it's `pv_ratio_det`/`pv_ratio_exp`,
+already computed unconditionally by `density.py::_ratios`, given its own choropleth.
+`scripts/build_potential_leads.py` (`pixi run potential-leads`) is the leads-generation
+counterpart, same shape as `build_small_pv_josm_leads.py`: ranks individual roofs by
+size × modelled yield, drops anything near an existing candidate or OSM solar feature,
+caps per cell for a human to spot-check before treating any of it as validated.
 
 ## Conventions & gotchas
 

@@ -754,6 +754,63 @@ Frame B's explicitly uncalibrated ceiling sits a further 6x above both, comforta
 above the NEPRA floor either way; that gap is consistent with "not implausible" for an
 explicit ceiling, not evidence that 37,197 MWp is itself a good estimate.
 
+## Rooftop potential and saturation
+
+Everything above answers "how much PV is already there." `earthpv atlas
+--potential-buildings <path>` (`atlas.py::build_potential_atlas`,
+`potential.py::large_roof_buildings`) answers a different, forward-looking question:
+where are large, currently-uncovered roofs that would make good candidates for *future*
+rooftop solar, and where is existing adoption already dense vs. sparse. It is a
+two-tab atlas, not a new capacity estimator, and it is deliberately kept separate from
+every number above.
+
+**Potential.** Every VIDA building nationally with `roof_area_m2 >= 200` is pulled from
+`roofclf.score_buildings_national`'s existing per-cell output -- reusing only that
+table's building-footprint geometry, never its `p_roofclf`/`sppi` PV-presence scores.
+This is the load-bearing design choice: every calibration/precision problem documented
+above (the rejected 18-37 GWp roofclf fold-in, the 0.235-4.833 `rate_ratio` spread, the
+whole "ranking transfers, absolute rates do not" lesson) arises from converting a
+PV-*presence probability* into a capacity number. This instrument never does that -- it
+only measures building footprint size, a quantity roofclf's classifier neither predicts
+nor can get wrong in that sense, so none of those caveats apply here. From each cell's
+total large-roof area, the segmentation model's own probability-weighted expected PV
+area (`pv_area_exp_roof_m2`, upper-leaning on purpose) is subtracted to get an
+**uncovered** large-roof area, conservatively excluding any roof that already shows even
+sub-threshold PV signal. That area converts to peak capacity at the usual 0.18 kWp/m2
+module constant, then to annual energy via PVGIS-modelled specific yield (kWh/kWp/yr,
+`pv_capacity.py::specific_yield_kwh_per_kwp`, unchanged) interpolated
+(`pv_capacity.py::interpolate_yield`, plain inverse-distance-weighted numpy -- `scipy` is
+not a project dependency) from a coarse, cached probe grid (default 6x6 = 36 points)
+across the country. Irradiance is smooth at country scale, so a handful of PVGIS calls,
+cached to a CSV alongside the run's other density outputs, is enough.
+
+**Why 200 m2, not the 400 m2 detection floor.** The segmentation model is trained with
+everything below `chips.MIN_PV_AREA` (400 m2) burned as `ignore`, so it has essentially
+no discriminating signal in the 200-400 m2 band specifically. That band's "potential"
+therefore reads as almost entirely uncovered regardless of whether PV is actually
+there -- an expected property of the instrument, not a bug, but worth stating plainly:
+a reader who compares this map to the `>= 400 m2` candidate population reported
+elsewhere on this site should not assume the same measurement confidence applies
+uniformly from 200 m2 up. 200 m2 was chosen specifically to reach further into the
+realistic rooftop-opportunity space -- roughly where Germany's MaStR register shows
+most rooftop capacity actually sits (72.6% of rooftop capacity in units <= 100 kWp, see
+the sub-400 m2 section above) -- rather than to merely restate the already-known
+population above the detection floor.
+
+**Saturation.** This second tab adds no new computation at all: `pv_ratio_det`/
+`pv_ratio_exp` (PV area / roof area) are already computed per cell and region by
+`_ratios()` and land unconditionally on `grid.geoparquet`/`regions.geoparquet`. The tab
+exists purely to give that existing ratio its own choropleth view, so dense-adoption
+urban areas read as visually distinct from under-adopted ones instead of only appearing
+in a table column.
+
+**Leads.** `scripts/build_potential_leads.py` (`pixi run potential-leads`) ranks
+individual large, uncovered roofs by `roof_area_m2 * kwh_per_kwp_yr` at the building's
+own cell, drops anything within 30 m of an existing detected candidate or hand-mapped
+OSM solar feature, and caps at 6 per 0.1 deg cell -- the same shape as
+`build_small_pv_josm_leads.py` -- for a human to spot-check the highest-opportunity
+roofs before treating any of this as validated.
+
 ## The plausibility gate
 
 The leads product has a human on every candidate. The capacity atlas has nobody, so a
