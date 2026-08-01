@@ -104,6 +104,13 @@ here, not wattage.
 - Record for every quadrat: mapper name, mapping completion date, imagery
   layer + capture date (or "unknown").
 
+**Known gap (2026-08-01):** this field has not actually been populated for any of the
+real quadrats mapped so far — see
+[Calibration quadrat imagery dating](issues/calibration-imagery-dating.md) for the
+mechanism by which that matters, free tools (Esri Wayback, Google Earth Pro's
+historical slider) that can likely backfill it at no cost, and what it would cost to
+close the gap with purchased imagery if those don't suffice.
+
 ## Completeness declaration and QA
 
 A quadrat is *done* when:

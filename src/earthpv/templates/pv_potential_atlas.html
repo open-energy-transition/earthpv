@@ -1,0 +1,546 @@
+<meta charset="utf-8">
+<title>__PAGE_TITLE__</title>
+<script id="pv" type="application/json">__PV_DATA_JSON__</script>
+
+<style>
+  :root {
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+    /* dark = the primary "night lights" world */
+    --page: #100d09;
+    --panel: #1a160f;
+    --panel-2: #221d14;
+    --land: #241f16;
+    --map-bg: #0c0a07;
+    --ink: #f7f1e6;
+    --ink-2: #c9bda4;
+    --muted: #93866c;
+    --hair: rgba(247,183,51,0.14);
+    --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623;
+    --accent-dim: #b5610f;
+    --domain: #2fd9c4;
+    --bloom: 0.55;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+      --land: #e6dcc7; --map-bg: #efe8d8;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+      --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+      --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --bloom: 0;
+      --card-ring: rgba(120,80,20,0.14);
+      --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+    --land: #e6dcc7; --map-bg: #efe8d8;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+    --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --bloom: 0;
+    --card-ring: rgba(120,80,20,0.14);
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+  }
+  :root[data-theme="dark"] {
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
+    --land: #241f16; --map-bg: #0c0a07;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --bloom: 0.55;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: clamp(20px, 3.5vw, 48px); }
+
+  header { margin-bottom: 20px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 54px); line-height: 1.02; margin: 0;
+    font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 20ch;
+  }
+  .lede {
+    margin: 14px 0 0; max-width: 68ch; color: var(--ink-2);
+    font-size: clamp(15px, 1.5vw, 17px);
+  }
+  .lede b { color: var(--ink); font-weight: 640; }
+
+  /* view selector */
+  .switch { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+  .tab {
+    font-family: var(--font-mono); font-size: 12.5px; padding: 9px 14px;
+    background: var(--panel); border: 1px solid var(--card-ring); border-radius: 8px;
+    color: var(--ink-2); cursor: pointer; transition: border-color .15s, color .15s; text-align: left;
+  }
+  .tab .tt1 { display: block; font-weight: 650; }
+  .tab .tt2 { display: block; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted); margin-top: 2px; }
+  .tab:hover { color: var(--ink); border-color: var(--accent-dim); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tab[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+  .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; margin-top: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border-radius: 16px; padding: 18px;
+    box-shadow: var(--shadow); border: 1px solid var(--card-ring);
+  }
+  .map-card { padding: 14px; position: relative; overflow: hidden; }
+
+  .map-head { display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin: 4px 6px 12px; flex-wrap: wrap; }
+  .map-title { font-weight: 640; font-size: 15px; }
+  .map-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
+    letter-spacing: 0.02em; }
+
+  svg.map { width: 100%; height: auto; display: block; }
+  .cell { shape-rendering: crispEdges; }
+  .prov-fill { fill: var(--land); }
+  .prov-line { fill: none; stroke: var(--prov-stroke); stroke-width: 1; stroke-linejoin: round; }
+  .city-dot { fill: var(--ink); opacity: 0.55; }
+  .city-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 21px;
+    paint-order: stroke; stroke: var(--map-bg); stroke-width: 2.4px; opacity: 0.9; }
+
+  .legend { display: flex; align-items: center; gap: 12px; margin: 12px 6px 2px;
+    flex-wrap: wrap; }
+  .legend .bar { height: 12px; width: min(320px, 60vw); border-radius: 6px; }
+  .legend .ticks { position: relative; height: 14px; width: min(320px, 60vw);
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .legend .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .legend .ticks span::before { content: ""; position: absolute; top: -4px; left: 50%;
+    width: 1px; height: 3px; background: var(--muted); }
+  .legend .cap { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2);
+    letter-spacing: 0.03em; }
+  .legend .lg-col { display: flex; flex-direction: column; }
+
+  .hero-num { font-size: clamp(40px, 6vw, 62px); font-weight: 800; letter-spacing: -0.03em;
+    line-height: 0.95; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hero-unit { font-size: 0.34em; font-weight: 700; color: var(--ink-2); letter-spacing: 0;
+    margin-left: 6px; }
+  .hero-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+  .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); }
+  .hero-desc b { color: var(--ink); font-weight: 660; }
+
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
+    border: 1px solid var(--card-ring); }
+  .tile .v { font-size: 20px; font-weight: 740; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums; }
+  .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  .rank { margin-top: 4px; }
+  .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
+  .row { display: grid; grid-template-columns: 1fr; gap: 5px; margin-bottom: 11px; }
+  .row .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .row .nm { font-size: 13px; font-weight: 560; }
+  .row .vl { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; }
+  .track { height: 9px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
+
+  .note { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-top: 4px; }
+  .note b { color: var(--ink-2); font-weight: 620; }
+
+  details.tablewrap { margin-top: 14px; }
+  details.tablewrap summary { font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--hair);
+    font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-family: var(--font-mono); font-weight: 500; color: var(--muted);
+    font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  .tip { position: fixed; pointer-events: none; z-index: 20; opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px)); transition: opacity .1s;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 9px 11px; box-shadow: var(--shadow);
+    font-size: 12px; min-width: 170px; }
+  .tip .th { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+    letter-spacing: 0.05em; margin-bottom: 5px; }
+  .tip .rowt { display: flex; justify-content: space-between; gap: 14px; }
+  .tip .rowt span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    color: var(--ink); }
+  .tip .rowt span:first-child { color: var(--ink-2); }
+  .tip .rowt.sel span:first-child { color: var(--accent); }
+
+  .foot { margin-top: 22px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.03em; line-height: 1.7; }
+  .theme-btn { position: fixed; top: 14px; right: 14px; z-index: 30;
+    background: var(--panel); color: var(--ink-2); border: 1px solid var(--card-ring);
+    border-radius: 999px; padding: 7px 12px; font-family: var(--font-mono); font-size: 11px;
+    cursor: pointer; letter-spacing: 0.04em; }
+  .theme-btn:focus-visible, summary:focus-visible { outline: 2px solid var(--accent);
+    outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  details.xdetails { margin-top: 22px; }
+  details.xdetails summary { font-family: var(--font-mono); font-size: 12px;
+    letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); cursor: pointer;
+    padding: 4px 0; }
+  details.xdetails .body { margin-top: 10px; font-size: 13.5px; color: var(--ink-2);
+    max-width: 78ch; line-height: 1.65; }
+  details.xdetails .body b { color: var(--ink); font-weight: 640; }
+  details.xdetails h4 { font-size: 13.5px; font-weight: 650; color: var(--ink); margin: 16px 0 6px; }
+</style>
+
+<button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">Dark mode</button>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">EarthPV · Sentinel-2 · TerraMind · PVGIS</p>
+    <h1>__H1__</h1>
+    <p class="lede">__LEDE_HTML__</p>
+    <div class="switch" role="group" aria-label="Map layer">
+      <button class="tab" id="tab0" type="button" data-i="0">
+        <span class="tt1">Potential</span><span class="tt2">uncovered large roofs &times; irradiance</span>
+      </button>
+      <button class="tab" id="tab1" type="button" data-i="1">
+        <span class="tt1">Saturation</span><span class="tt2">existing PV area &divide; roof area</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card map-card">
+      <div class="map-head">
+        <div class="map-title" id="mapTitle">Rooftop potential per 0.1° cell</div>
+        <div class="map-sub">≈11 km × 11 km cells</div>
+      </div>
+      <div id="mapmount"></div>
+      <div class="legend">
+        <div class="lg-col">
+          <div class="bar" id="legbar"></div>
+          <div class="ticks" id="legticks"></div>
+        </div>
+        <div class="cap" id="legcap">GWh/yr per cell</div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit" id="heroUnit">GWh/yr</span></div>
+        <div class="hero-label" id="heroLabel">Potential, nationwide</div>
+        <div class="hero-desc" id="heroDesc"></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+
+      <div class="card rank" style="margin-top:22px;">
+        <h3 id="rankH">Provinces, ranked by potential</h3>
+        <div id="ranks"></div>
+        <details class="tablewrap">
+          <summary>Full province figures</summary>
+          <div style="overflow-x:auto;"><table id="ptable">
+            <thead><tr><th>Province</th><th>Potential GWh/yr</th><th>Potential MWp</th>
+              <th>Saturation %</th><th>Large-roof km²</th><th>Uncovered km²</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </details>
+      </div>
+    </aside>
+  </div>
+
+  <details class="xdetails">
+    <summary>Background &amp; method</summary>
+    <div class="body">
+      <p><b>Potential</b> is not a capacity measurement of existing PV, and it does not
+      use any PV-presence probability. It starts from every building footprint
+      &ge; 200&nbsp;m&sup2; nationwide (from the same per-building roof-classifier
+      scoring run that also predicts PV presence elsewhere in this project, but here
+      only its <b>roof_area_m2</b> column is used — pure building geometry, not a
+      prediction). From each cell's total large-roof area, the model's own
+      probability-weighted expected PV area is subtracted (an upper-leaning estimate of
+      what's already covered, so a roof with any sub-threshold PV signal is
+      conservatively excluded from "opportunity" rather than double-suggested) to get
+      an <b>uncovered</b> large-roof area. That area converts to peak capacity at the
+      same 0.18 kWp/m&sup2; module constant used throughout this project, then to
+      annual energy via PVGIS-modelled specific yield (kWh/kWp/yr) interpolated from a
+      coarse, cached probe grid across the country — irradiance is smooth at country
+      scale, so a few dozen points are enough.</p>
+
+      <h4>Why 200 m² and not the model's 400 m² detection floor</h4>
+      <p>The segmentation model that finds existing PV is trained with everything below
+      400&nbsp;m&sup2; burned as "ignore," so it has essentially no discriminating
+      signal in the 200&ndash;400&nbsp;m&sup2; band. That band's "potential" therefore
+      reads as almost entirely uncovered regardless of whether PV is actually there —
+      expected, not a bug, and worth knowing when comparing this map to the 400&nbsp;m²
+      candidate population reported elsewhere on this site. 200&nbsp;m&sup2; was chosen
+      deliberately to reach further into the realistic rooftop-opportunity space
+      (roughly where Germany's MaStR register shows most rooftop capacity actually
+      sits), not to restate the already-known &ge;400&nbsp;m&sup2; population.</p>
+
+      <h4>Saturation</h4>
+      <p>This tab adds no new computation: it is the same per-cell/per-region
+      PV-area-over-roof-area ratio the density stage always computes, drawn as its own
+      choropleth so dense-adoption urban areas are visually distinct from
+      under-adopted ones, rather than only appearing in a table.</p>
+    </div>
+  </details>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="off"></div>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById("pv").textContent);
+  const T = DATA.totals;
+  const [b0, b1, b2, b3] = DATA.bounds;
+  const lonspan = b2 - b0, latspan = b3 - b1;
+  const meanlat = (b1 + b3) / 2, k = Math.cos(meanlat * Math.PI / 180);
+  const W = 1000, H = Math.round(W * latspan / (lonspan * k));
+
+  const RAMP_DARK = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
+  const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
+
+  const VIEWS = [
+    {
+      key: "potential", idx: 2, scale: "log", vmin: 0.01,
+      label: "Potential", heroUnit: "GWh/yr",
+      heroDesc: "Annual energy potential of uncovered roofs &ge; 200 m&sup2;, weighted by modelled irradiance.",
+      totalKey: "gwh_potential", provKey: "gwh_potential",
+      mapTitle: "Rooftop potential per 0.1° cell", legendCap: "GWh/yr per cell",
+      tiles: [
+        ["mwp_potential", "Potential MWp (capacity)"],
+        ["large_km2", "Large-roof area, km²"],
+        ["uncovered_km2", "Uncovered area, km²"],
+        ["n_large_buildings", "Buildings ≥ 200 m²"],
+      ],
+    },
+    {
+      key: "saturation", idx: 4, scale: "linear", vmin: 0, vmax: 100,
+      label: "Saturation", heroUnit: "%",
+      heroDesc: "Share of each cell's total roof area already carrying detected PV, area-weighted.",
+      totalKey: "sat_pct", provKey: "sat_pct",
+      mapTitle: "PV saturation per 0.1° cell", legendCap: "% of roof area with detected PV",
+      tiles: [
+        ["pv_buildings", "Buildings with detected PV"],
+        ["n_cells", "Cells mapped"],
+      ],
+    },
+  ];
+  let sel = 0;
+
+  function proj(lon, lat) {
+    return [ (lon - b0) / lonspan * W, (b3 - lat) / latspan * H ];
+  }
+  function hex2rgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function ramp(t, stops){
+    t = Math.max(0, Math.min(1, t));
+    const n = stops.length - 1, f = t * n, i = Math.min(n-1, Math.floor(f)), r = f - i;
+    const a = hex2rgb(stops[i]), c = hex2rgb(stops[i+1]);
+    return `rgb(${Math.round(lerp(a[0],c[0],r))},${Math.round(lerp(a[1],c[1],r))},${Math.round(lerp(a[2],c[2],r))})`;
+  }
+
+  function isDark(){
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr) return attr === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function el(n, a){ const e = document.createElementNS(SVGNS, n); for (const kk in a) e.setAttribute(kk, a[kk]); return e; }
+
+  function ringPath(rings){
+    let d = "";
+    for (const ring of rings){
+      for (let i=0;i<ring.length;i++){
+        const p = proj(ring[i][0], ring[i][1]);
+        d += (i===0?"M":"L") + p[0].toFixed(1) + " " + p[1].toFixed(1);
+      }
+      d += "Z";
+    }
+    return d;
+  }
+
+  function tOf(v, view, vmax){
+    if (view.scale === "log") {
+      const vmin = view.vmin;
+      const lo = Math.log(vmin), hi = Math.log(Math.max(vmax, vmin * 10));
+      return (Math.log(Math.max(v, vmin)) - lo) / (hi - lo);
+    }
+    return Math.max(0, Math.min(1, (v - view.vmin) / (view.vmax - view.vmin)));
+  }
+
+  function renderMap(){
+    const dark = isDark();
+    const stops = dark ? RAMP_DARK : RAMP_LIGHT;
+    const view = VIEWS[sel];
+    const vmax = view.scale === "log"
+      ? Math.max(view.vmin * 10, ...DATA.cells.map(c => c[view.idx]))
+      : view.vmax;
+    const bright = (c) => c[6] > 0 ? tOf(c[view.idx], view, vmax) : -1;
+
+    const mount = document.getElementById("mapmount");
+    mount.innerHTML = "";
+    const svg = el("svg", {viewBox:`0 0 ${W} ${H}`, class:"map", role:"img",
+      "aria-label":`Choropleth map of __AOI_TITLE__ showing ${view.label.toLowerCase()} per cell`});
+
+    svg.appendChild(el("rect", {x:0,y:0,width:W,height:H,fill:"var(--map-bg)"}));
+
+    const defs = el("defs", {});
+    const filt = el("filter", {id:"bloom", x:"-20%", y:"-20%", width:"140%", height:"140%"});
+    filt.appendChild(el("feGaussianBlur", {stdDeviation:"4"}));
+    defs.appendChild(filt); svg.appendChild(defs);
+
+    const gLand = el("g", {});
+    for (const p of DATA.provinces) gLand.appendChild(el("path", {d:ringPath(p.rings), class:"prov-fill"}));
+    svg.appendChild(gLand);
+
+    const cw = (0.1 / lonspan * W) + 0.4, ch = (0.1 / latspan * H) + 0.4;
+    const lit = DATA.cells.filter(c => bright(c) >= 0).sort((a,b)=>bright(a)-bright(b));
+
+    if (dark){
+      const gB = el("g", {filter:"url(#bloom)", opacity:"var(--bloom)"});
+      for (const c of lit){
+        const tl = proj(c[0], c[1] + 0.1);
+        gB.appendChild(el("rect", {x:tl[0].toFixed(1), y:tl[1].toFixed(1),
+          width:cw.toFixed(1), height:ch.toFixed(1), fill:ramp(bright(c), stops)}));
+      }
+      svg.appendChild(gB);
+    }
+
+    const gC = el("g", {});
+    for (const c of DATA.cells){
+      const tl = proj(c[0], c[1] + 0.1);
+      const t = bright(c);
+      const r = el("rect", {x:tl[0].toFixed(1), y:tl[1].toFixed(1),
+        width:cw.toFixed(1), height:ch.toFixed(1),
+        fill: t >= 0 ? ramp(t, stops) : "var(--land)", class:"cell"});
+      r.__c = c;
+      gC.appendChild(r);
+    }
+    svg.appendChild(gC);
+
+    const gS = el("g", {});
+    for (const p of DATA.provinces) gS.appendChild(el("path", {d:ringPath(p.rings), class:"prov-line"}));
+    svg.appendChild(gS);
+
+    const gCity = el("g", {});
+    for (const [nm, lon, lat] of DATA.cities){
+      if (lon < b0 || lon > b2 || lat < b1 || lat > b3) continue;
+      const p = proj(lon, lat);
+      gCity.appendChild(el("circle", {cx:p[0].toFixed(1), cy:p[1].toFixed(1), r:2.6, class:"city-dot"}));
+      const t2 = el("text", {x:(p[0]+8).toFixed(1), y:(p[1]+7).toFixed(1), class:"city-label"});
+      t2.textContent = nm; gCity.appendChild(t2);
+    }
+    svg.appendChild(gCity);
+
+    const tip = document.getElementById("tip");
+    gC.addEventListener("pointermove", (e) => {
+      const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
+      tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
+      tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
+        + `<div class="rowt${sel===0?' sel':''}"><span>Potential</span><span>${c[2].toFixed(2)} GWh/yr</span></div>`
+        + `<div class="rowt"><span>&nbsp;&nbsp;capacity</span><span>${c[3].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt${sel===1?' sel':''}"><span>Saturation</span><span>${c[4].toFixed(1)}%</span></div>`
+        + `<div class="rowt"><span>Large-roof area</span><span>${c[7].toFixed(2)} km²</span></div>`
+        + `<div class="rowt"><span>Uncovered area</span><span>${c[8].toFixed(2)} km²</span></div>`
+        + `<div class="rowt"><span>PV buildings</span><span>${c[5].toLocaleString()}</span></div>`;
+    });
+    gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+
+    mount.appendChild(svg);
+
+    const grad = stops.map((s,i)=>`${s} ${(i/(stops.length-1)*100).toFixed(0)}%`).join(",");
+    document.getElementById("legbar").style.background = `linear-gradient(90deg, ${grad})`;
+    let ticks;
+    if (view.scale === "log") {
+      ticks = [view.vmin, Math.sqrt(view.vmin * vmax), vmax].map(v => Math.round(v * 100) / 100);
+    } else {
+      ticks = [0, 25, 50, 75, 100];
+    }
+    document.getElementById("legticks").innerHTML =
+      ticks.map(v => `<span style="left:${(tOf(v, view, vmax)*100).toFixed(1)}%">${v}</span>`).join("");
+    document.getElementById("legcap").textContent = view.legendCap;
+    document.getElementById("mapTitle").textContent = view.mapTitle;
+  }
+
+  const fmt = n => Number(n).toLocaleString("en-US", {maximumFractionDigits: n >= 100 ? 0 : 1});
+  function countUp(id, target, dur){
+    const e = document.getElementById(id);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches){ e.textContent = fmt(target); return; }
+    const t0 = performance.now();
+    function step(now){
+      const p = Math.min(1, (now - t0)/dur), e2 = 1 - Math.pow(1-p, 3);
+      e.textContent = fmt(target * e2);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function drawTable(view) {
+    const provs = [...DATA.provinces].sort((a,b) => b[view.provKey] - a[view.provKey]);
+    const maxP = provs.length ? Math.max(...provs.map(p => p[view.provKey]), 1e-9) : 1;
+    document.getElementById("ranks").innerHTML = provs.map(p => {
+      const v = p[view.provKey];
+      const unit = view.key === "saturation" ? "%" : "GWh/yr";
+      return `<div class="row"><div class="top"><span class="nm">${p.name}</span>`
+        + `<span class="vl">${fmt(v)} ${unit}</span></div>`
+        + `<div class="track"><div class="fill" style="width:${(v/maxP*100).toFixed(1)}%"></div></div></div>`;
+    }).join("");
+    document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
+      `<tr><td>${p.name}</td><td>${fmt(p.gwh_potential)}</td><td>${fmt(p.mwp_potential)}</td>`
+      + `<td>${fmt(p.sat_pct)}</td><td>${fmt(p.large_km2)}</td><td>${fmt(p.uncovered_km2)}</td></tr>`).join("");
+  }
+
+  function setView(i){
+    sel = i;
+    ["tab0", "tab1"].forEach((id, j) =>
+      document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
+    const view = VIEWS[i];
+    countUp("heroNum", T[view.totalKey], 700);
+    document.getElementById("heroUnit").textContent = view.heroUnit;
+    document.getElementById("heroLabel").textContent = `${view.label}, nationwide`;
+    document.getElementById("heroDesc").innerHTML = view.heroDesc;
+    document.getElementById("tiles").innerHTML = view.tiles.map(([key, label]) =>
+      `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
+    document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
+    renderMap();
+    drawTable(view);
+  }
+  ["tab0", "tab1"].forEach((id, i) =>
+    document.getElementById(id).addEventListener("click", () => setView(i)));
+
+  document.getElementById("foot").innerHTML =
+    `TerraMind-tiny segmentation (existing PV, Saturation tab) + roof-classifier building `
+    + `geometry (Potential tab, footprint area only, no PV-presence probability) + `
+    + `PVGIS-ERA5 modelled specific yield (${T.kwh_per_kwp_range[0]}&ndash;${T.kwh_per_kwp_range[1]} `
+    + `kWh/kWp/yr across ${fmt(T.n_cells)} cells) · ${T.kwp_per_m2} kWp/m² of module area · `
+    + `buildings from VIDA Open Buildings · see docs/methods/density.md for full derivation.`;
+
+  const btn = document.getElementById("themeBtn");
+  function updateThemeBtn(){ btn.textContent = isDark() ? "Light mode" : "Dark mode"; }
+  btn.addEventListener("click", () => {
+    const cur = isDark();
+    document.documentElement.setAttribute("data-theme", cur ? "light" : "dark");
+    updateThemeBtn();
+    renderMap();
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!document.documentElement.getAttribute("data-theme")) { updateThemeBtn(); renderMap(); }
+  });
+
+  updateThemeBtn();
+  setView(0);
+})();
+</script>

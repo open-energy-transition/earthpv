@@ -113,4 +113,5 @@ nav:
       - Glint-validated training labels: issues/glint-validated-training-labels.md
       - Quadrats as training data: issues/quadrats-as-training-data.md
       - Roof classifier national deployment: issues/roofclf-national-deployment-and-temporal-features.md
+      - Calibration imagery dating: issues/calibration-imagery-dating.md
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md
