@@ -512,6 +512,208 @@ PIPELINE_STRIP = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="
 """
 
 
+# ---------------------------------------------------- generated architecture diagram
+#
+# Unlike FLYWHEEL/PIPELINE_STRIP above, this one is built programmatically: too many
+# boxes (18) and cross-lane arrows to hand-place reliably as a static template.
+
+ARCH_W = 1200
+ARCH_MARGIN = 40
+
+
+def _row_x(n, gap=20, x0=ARCH_MARGIN, width=ARCH_W - 2 * ARCH_MARGIN):
+    bw = (width - gap * (n - 1)) / n
+    return [x0 + i * (bw + gap) for i in range(n)], bw
+
+
+def _elbow(sx, sy, tx, ty):
+    mid = (sy + ty) / 2
+    return f"M{sx:.0f},{sy:.0f} V{mid:.0f} H{tx:.0f} V{ty:.0f}"
+
+
+def _esc(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def build_architecture_svg(t: Theme) -> str:
+    card = "#ffffff" if t.name == "light" else "#232321"
+    boxes: dict[str, tuple[float, float, float, float]] = {}
+    parts: list[str] = []
+
+    def box(key, x, y, w, h, title, lines, stroke=None):
+        boxes[key] = (x, y, w, h)
+        s = stroke or t.rule
+        sw = 1.8 if stroke else 1.1
+        parts.append(f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="8" '
+                     f'fill="{card}" stroke="{s}" stroke-width="{sw}"/>')
+        parts.append(f'<text x="{x + 16:.0f}" y="{y + 23:.0f}" font-size="12.2" '
+                     f'font-weight="600" fill="{t.ink}">{_esc(title)}</text>')
+        for i, ln in enumerate(lines):
+            parts.append(f'<text x="{x + 16:.0f}" y="{y + 23 + 17 * (i + 1):.0f}" '
+                         f'font-size="10.1" fill="{t.ink_dim}">{_esc(ln)}</text>')
+
+    def anchor(k, side):
+        x, y, w, h = boxes[k]
+        return {
+            "top": (x + w / 2, y),
+            "bottom": (x + w / 2, y + h),
+            "left": (x, y + h / 2),
+            "right": (x + w, y + h / 2),
+        }[side]
+
+    def arrow(k1, k2, color, *, dashed=False, from_side="bottom", to_side="top",
+              route=None, label=None):
+        sx, sy = anchor(k1, from_side)
+        tx, ty = anchor(k2, to_side)
+        label_xy = None
+        if route == "under":
+            drop = max(sy, ty) + 22
+            path = f"M{sx:.0f},{sy:.0f} V{drop:.0f} H{tx:.0f} V{ty:.0f}"
+            label_xy = ((sx + tx) / 2, drop + 13)
+        elif route == "loop-left":
+            gx, turn_y = 18, 204
+            path = f"M{sx:.0f},{sy:.0f} H{gx} V{turn_y} H{tx:.0f} V{ty:.0f}"
+            label_xy = ((gx + tx) / 2, turn_y - 7)
+        elif from_side == "right" and to_side == "left" and abs(sy - ty) < 1:
+            path = f"M{sx:.0f},{sy:.0f} H{tx:.0f}"
+        else:
+            path = _elbow(sx, sy, tx, ty)
+        dash = ' stroke-dasharray="6,4"' if dashed else ""
+        marker_id = f"ah-{color.lstrip('#')}-{t.name}"
+        parts.append(f'<path d="{path}" stroke="{color}" stroke-width="1.7" fill="none" '
+                     f'marker-end="url(#{marker_id})"{dash}/>')
+        if label:
+            mx, my = label_xy if label_xy else ((sx + tx) / 2, (sy + ty) / 2 - 6)
+            parts.append(f'<text x="{mx:.0f}" y="{my:.0f}" font-size="9.2" fill="{color}" '
+                         f'text-anchor="middle">{_esc(label)}</text>')
+
+    def lane_label(text, y):
+        parts.append(f'<text x="{ARCH_MARGIN}" y="{y:.0f}" font-size="11.3" '
+                     f'font-weight="600" fill="{t.ink_dim}">{_esc(text)}</text>')
+
+    def note(text, y, x=ARCH_MARGIN):
+        parts.append(f'<text x="{x}" y="{y:.0f}" font-size="9.6" font-style="italic" '
+                     f'fill="{t.ink_dim}">{_esc(text)}</text>')
+
+    # ---- layout: 6 lanes, top to bottom -------------------------------------------
+
+    title = "How raw data becomes a mapping lead and a capacity number"
+    subtitle = ("Five instruments read the same Sentinel-2 composites and combine into two "
+                "products: OpenStreetMap mapping leads and a calibrated capacity atlas.")
+    parts.append(f'<text x="{ARCH_MARGIN}" y="38" font-size="17.5" font-weight="600" '
+                 f'fill="{t.ink}">{_esc(title)}</text>')
+    parts.append(f'<text x="{ARCH_MARGIN}" y="60" font-size="12" fill="{t.ink_dim}">'
+                 f'{_esc(subtitle)}</text>')
+
+    # Lane A - raw data
+    lane_label("Raw data", 84)
+    xa, wa = _row_x(3, gap=50)
+    box("a1", xa[0], 90, wa, 84, "Sentinel-2 L2A",
+        ["10-band dry-season composites,", "reused per tile or built on demand", "by compose"])
+    box("a2", xa[1], 90, wa, 84, "OSM / Overture solar labels",
+        ["mapped installations, plus live", "Overpass pulls for new areas"])
+    box("a3", xa[2], 90, wa, 84, "VIDA / Overture buildings",
+        ["imagery-derived footprints,", "includes small unmapped roofs"])
+
+    # Lane B - train
+    lane_label("Train", 228)
+    xb, wb = _row_x(2, gap=80)
+    box("b1", xb[0], 234, wb, 84, "chips",
+        ["jittered positive windows,", "labels burned to per-pixel masks"])
+    box("b2", xb[1], 234, wb, 84, "TerraMind-tiny fine-tune",
+        ["TerraTorch + Lightning,", "checkpoint monitors val mIoU"])
+
+    # Lane C - inference signals
+    lane_label("Inference — five instruments, same Sentinel-2 imagery", 372)
+    xc, wc = _row_x(5, gap=20)
+    box("c1", xc[0], 378, wc, 106, "Segmentation raster", ["infer: per-pixel PV", "probability, primary", "≥ 400 m² instrument"], stroke=t.s1)
+    box("c2", xc[1], 378, wc, 106, "Fraction head", ["alt checkpoint: per-pixel", "PV coverage fraction,", "drops the polygon"], stroke=t.s3)
+    box("c3", xc[2], 378, wc, 106, "Glint matched filter", ["specular flash geometry,", "corroborates only", "(never demotes)"], stroke=t.s2)
+    box("c4", xc[3], 378, wc, 106, "SPPI", ["zero-training spectral", "index, cross-validated,", "no model fit"], stroke=t.s3)
+    box("c5", xc[4], 378, wc, 106, "roofclf", ["per-building classifier:", "size + reflectance,", "calibration quadrats"], stroke=t.s1)
+    note("Glint and SPPI read the composites directly, no model fit; segmentation and the fraction head share one TerraMind checkpoint; roofclf trains separately on calibration-quadrat labels.", 502)
+
+    # Lane D - combine and rank
+    lane_label("Combine & rank", 538)
+    xd, wd = _row_x(3, gap=50)
+    box("d1", xd[0], 544, wd, 100, "postprocess",
+        ["polygonize, join to building", "footprint, rank_score for", "the leads queue"])
+    box("d2", xd[1], 544, wd, 100, "density",
+        ["per-building / cell / region", "MWp: _det / _exp / _cal,", "≥ 400 m² only"])
+    box("d3", xd[2], 544, wd, 100, "sub-400 m² bracket",
+        ["domain-restricted roofclf +", "SPPI AND-gate, building-", "density-matched cells"])
+
+    # Lane E - plausibility gate
+    lane_label("Plausibility gate", 664)
+    ew, ex = 460.0, (ARCH_W - 460.0) / 2
+    box("e1", ex, 670, ew, 62, "check-density",
+        ["ground:rooftop capacity ratio + single-cell concentration checks"], stroke=t.s2)
+
+    # Lane F - outputs
+    lane_label("Outputs", 780)
+    xf, wf = _row_x(4, gap=20)
+    box("f1", xf[0], 786, wf, 94, "MapRoulette leads",
+        ["→ OpenStreetMap,", "a human verifies every", "candidate"], stroke=t.s1)
+    box("f2", xf[1], 786, wf, 94, "Capacity atlas / dashboard",
+        ["MWp per building, cell", "and region, ≥ 400 m²"], stroke=t.s3)
+    box("f3", xf[2], 786, wf, 94, "PyPSA-Earth grid CSV",
+        ["0.1° cell capacity for", "power-system modelling"], stroke=t.s3)
+    box("f4", xf[3], 786, wf, 94, "Evidence atlas",
+        ["Verified / Best estimate /", "Ceiling tiers, sub-400 m²", "plus ≥ 400 m²"], stroke=t.s2)
+
+    note("Building footprints also feed roofclf and the sub-400 m² bracket directly (arrows omitted for clarity).", 936)
+    note("Solid grey = the main trunk. Blue = load-bearing instruments. Orange = glint, corroborates only. Aqua = auxiliary instruments not (yet) in the headline number.", 954)
+
+    # ---- arrows -------------------------------------------------------------------
+
+    arrow("a1", "b1", t.ink_dim)
+    arrow("a2", "b1", t.ink_dim)
+    arrow("b1", "b2", t.ink_dim, from_side="right", to_side="left")
+    arrow("b2", "c1", t.ink_dim)
+    arrow("c1", "d1", t.s1)
+    arrow("c1", "d2", t.s1)
+    arrow("c2", "d2", t.s3, dashed=True)
+    arrow("c3", "d1", t.s2)
+    arrow("c4", "d3", t.s3)
+    arrow("c5", "d3", t.s1)
+    arrow("d1", "f1", t.ink_dim)
+    arrow("d2", "e1", t.ink_dim)
+    arrow("e1", "f2", t.ink_dim)
+    arrow("f2", "f3", t.ink_dim, from_side="right", to_side="left")
+    arrow("f2", "f4", t.ink_dim, from_side="bottom", to_side="bottom", route="under",
+          label="+ existing ≥ 400 m² total")
+    arrow("d3", "f4", t.s2)
+    arrow("f1", "a2", t.s2, dashed=True, from_side="left", to_side="bottom", route="loop-left",
+          label="verified leads become new training labels")
+
+    markers = []
+    for name, color in (("dim", t.ink_dim), ("s1", t.s1), ("s2", t.s2), ("s3", t.s3)):
+        markers.append(
+            f'<marker id="ah-{color.lstrip("#")}-{t.name}" viewBox="0 0 10 10" refX="9" '
+            f'refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
+            f'<path d="M0,0 L10,5 L0,10 z" fill="{color}"/></marker>'
+        )
+
+    body = "".join(markers) + "".join(parts)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{ARCH_W}" height="988" '
+        f'viewBox="0 0 {ARCH_W} 988" font-family="DejaVu Sans, system-ui, sans-serif">'
+        f'<defs>{"".join(markers)}</defs>'
+        f'<rect width="{ARCH_W}" height="988" rx="10" fill="{t.surface}"/>'
+        f'{"".join(parts)}</svg>'
+    )
+
+
+def write_architecture_diagram():
+    OUT.mkdir(parents=True, exist_ok=True)
+    for t in THEMES:
+        svg = build_architecture_svg(t)
+        suffix = ".svg" if t.name == "light" else ".dark.svg"
+        path = OUT / f"architecture{suffix}"
+        path.write_text(svg)
+        print(f"  wrote {path.relative_to(ROOT)}")
+
+
 def write_svg_pair(template: str, stem: str):
     for t in THEMES:
         card = "#ffffff" if t.name == "light" else "#232321"
@@ -681,6 +883,7 @@ def main():
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")
+    write_architecture_diagram()
     print("logo")
     derive_logo()
     print("rasters")
