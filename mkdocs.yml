@@ -86,6 +86,7 @@ nav:
       - Overview: dashboards/index.md
       - Pakistan: dashboards/pakistan.md
   - Workflow: workflow.md
+  - Architecture: architecture.md
   - Results:
       - Capacity map: results/capacity.md
       - Panel pose from glint: results/pv-pose.md

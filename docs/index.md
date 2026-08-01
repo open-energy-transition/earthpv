@@ -70,6 +70,7 @@ set an area up, and the same pipeline follows.
 | --- | --- |
 | See the capacity numbers and interrogate them | [Capacity map](results/capacity.md) |
 | Understand the community mapping loop | [Workflow](workflow.md) |
+| See how every stage connects, raw data to outputs | [Architecture](architecture.md) |
 | Know how detection and density actually work | [Detection](methods/detection.md), [Density](methods/density.md) |
 | See what was tried and what failed | [Experiments](experiments.md) |
 | Run the whole thing yourself | [Reproduce](reproduce.md) |
