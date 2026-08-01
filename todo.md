@@ -32,5 +32,11 @@
 18. Load calibration polygons/labels into JOSM for validation.
 19. Try nightlights as national density regime proxy.
 20. Validate false postives for >500m² with SPPI. 
+21. Check correlations of PV distribution with Relative Wealth Index (vector) https://geohub.data.undp.org/data/019a4692967f6412fb70808ee325d0e3#Info
+22. Rooftop Potencial map for Pakistan
+23. Build archi diagram
+24. Integrate tilt in capacity estimate.
+25. Check for regional distributions.
+26. Build glint as automated validator of pv installations. 
 
 
