@@ -643,6 +643,58 @@ why guessing would be unsafe. Regenerate the atlas explicitly once the OSM pull,
 parquets exist for an AOI; `configs/aoi.yaml`'s Pakistan `dashboard:` block already points
 its `capacity` panel at the regenerated `results/pakistan_pv_evidence_atlas.html`.
 
+### Small-PV JOSM validation leads (`pixi run small-pv-leads`)
+
+`scripts/build_small_pv_josm_leads.py`, added 2026-08-01 as a **regular, repeatable
+task** (`pixi run small-pv-leads` in `pixi.toml`, alongside `docs-figures`) rather than
+a one-off script — re-run it whenever national roofclf/SPPI scoring or the OSM solar
+pull is refreshed. It writes three GeoJSON files for manual review in JOSM, answering a
+narrower question than any capacity number: does the sub-400 m² instrument actually
+point at real, previously unmapped installations when a human looks at the imagery?
+
+- `results/pakistan_small_pv_josm_leads.geojson` — the **AND-gate** population
+  (roofclf AND SPPI both agree, `sub400_low_incremental_buildings.parquet`, the
+  evidence atlas's Verified tier).
+- `results/pakistan_small_pv_josm_leads_roofclf_only.geojson` — **roofclf alone**
+  (`sub400_central_incremental_buildings.parquet`, the Best-estimate tier).
+- `results/pakistan_small_pv_josm_leads_sppi_only.geojson` — **SPPI alone**, gated at
+  its own pooled precision-targeted threshold (`sppi.pooled_precision_threshold`, same
+  93-cell domain and incremental/contamination filters as the other two) with no
+  roofclf condition — derived fresh by the script each run, not a pre-built artifact,
+  since SPPI was never adopted as its own deployable capacity instrument in this
+  project (see the SPPI cross-validation notes above). Its `est_kwp` is explicitly
+  **uncalibrated** (raw area × the module constant, no measured precision weight).
+
+All three exclude buildings within 30 m of an existing OSM solar feature
+(`export.filter_new_leads`) so the files test genuinely untested leads rather than
+re-confirming known installations, rank by the model's own confidence score (recovered
+for the two pre-built populations by an exact-geometry join back to the per-cell
+probability parquets, not a proxy like roof area — an earlier, roof-area-ranked
+revision of this file was replaced the same day after a first human-reviewed batch came
+back "promising but still lots of false positives"), and cap at 6 leads per 0.1° cell so
+the sample spans the checked area instead of clustering into whichever cell scores
+highest. All three exist specifically so a human can compare their false-positive rates
+against each other in JOSM.
+
+**A specific false-positive mode found by that comparison, 2026-08-01**: cell
+`0061_0012`'s roofclf-only leads are very bright white buildings — and checking them
+against the AND-gate threshold shows **SPPI does not catch this one**: all six
+buildings score `sppi` 0.05–0.10, comfortably above the AND-gate's −0.0144 cutoff, so
+they pass both detectors together. This is a shared blind spot, not something
+roofclf-vs-SPPI disagreement resolves — worth targeted hard-negative labeling (bright
+non-PV roofs specifically) rather than expecting the AND-gate to fix it.
+
+**A known, measured limitation surfaced by this exercise, not a bug**: in JOSM, a
+flagged building's polygon sometimes sits *among* several real installations rather
+than exactly on the one carrying the panels. This matches `roofclf.packing_density`'s
+own finding that the densest quadrats (Karachi coastal, Quetta, Sialkot) have a median
+15–17 m spacing between neighboring small installations — at or below Sentinel-2's
+10 m pixel size, so per-building attribution is a real sensor-resolution ceiling in
+those areas, not a training defect. Not yet addressed in the leads file: flagging
+leads whose nearest neighbor sits inside that ~15–20 m band as "dense cluster, exact
+attribution uncertain" instead of pointing at one specific polygon (discussed, not yet
+implemented as of this writing).
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**
