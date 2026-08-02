@@ -24,6 +24,26 @@ import pandas as pd
 
 EPS = 1e-6
 
+# NOT `pooled_precision_threshold`'s building-classification value (-0.0183, fit for 50%
+# precision on has_pv) -- that threshold costs 31.1% of confirmed real PV when used as a
+# leads veto (measured 2026-08-02, 2,421 OSM-confirmed real vs. 694 confirmed FP: vegetation-
+# cycle-refuted + epoch-persistent), because it was calibrated for a different task (balanced
+# building classification, not "drop as little real PV as possible"). Swept the full
+# threshold curve instead and picked a point matching this project's other vetoes' cost
+# convention (the vegetation veto costs ~2% of real PV):
+#   thr      real cost   fp catch (694 confirmed FP)   catch on the 21 hardest cases*
+#   -0.06    2.3%        57.5%                          9.5%
+#   -0.05    3.9%         62.8%                         19.0%
+#   -0.04    7.9%         67.9%                            -
+#   -0.0183  31.1%        75.6%                         66.7%
+# *21 confirmed bare-terrain FPs flagged by hand in Balochistan desert / Gilgit-Baltistan
+# mountains -- a harder population for SPPI than the aggregate (vegetation and epoch-
+# persistent FPs separate more cleanly), so a low-cost cut catches noticeably fewer of
+# exactly this failure class. See candidate_sppi's docstring for the full picture; this is
+# a real trade-off, not a bug -- tune `sppi_min` explicitly if catching more of the remote-
+# terrain class matters more than a low false-veto rate.
+DEFAULT_SPPI_MIN = -0.05
+
 
 def compute_sppi(b02, b03, b08, b11, b12):
     """SPPI = (B02/B03) * ((B11 - B03 - |B08-B03| - |B12-B03|) / (B11 + B03)).
@@ -166,6 +186,102 @@ def calibrate_threshold_loqo(
             "train_specificity": round(train_stats.get("specificity", np.nan), 4),
         })
     return pd.DataFrame(rows)
+
+
+def candidate_sppi(geoms, aoi: str, cfg: dict, settings) -> np.ndarray:
+    """Zonal SPPI per candidate footprint, from whatever local composites this AOI has.
+
+    This module's own header restricts SPPI to BUILDING footprints specifically to keep
+    bare rock/glacier/desert candidates (no building to attach to) structurally out of
+    the SPPI path, rather than trusting a statistical cut to reject them. This function
+    is the opposite: it scores the raw formula directly on a candidate's OWN polygon --
+    exactly the `no_building`/`ground_adjacent` population the header excludes -- so it
+    is a genuinely new, unvalidated use of the instrument, not the one the rest of this
+    module describes.
+
+    Measured 2026-08-02 at country scale: 2,421 OSM-confirmed real candidates vs. 694
+    confirmed false positives (vegetation-cycle-refuted + epoch-persistent bright,
+    `hard_negatives_veg.parquet` + `hard_negatives_confirmed.parquet`) give AUC 0.790
+    overall (0.68-0.86 size-conditional) -- a meaningfully cleaner separation than the
+    equivalent S1 backscatter check (`sar.py`, AUC 0.71-0.73) -- and a real, substantial
+    catch rate at every cost level tried (see `DEFAULT_SPPI_MIN`'s threshold table: 57.5%
+    of confirmed FP caught at just 2.3% cost to real PV, far ahead of the S1 veto's
+    13.9%-caught/6.8%-cost). This is NOT a free win, though: at the building-classification
+    threshold (-0.0183) real-cost balloons to 31.1%, because that threshold was tuned for
+    a different task. It is also uneven across false-positive types: on the 21 confirmed
+    bare-terrain FPs flagged by hand (Balochistan desert, Gilgit-Baltistan mountains --
+    the population this function exists to catch), a low-cost cut (-0.05, matching the
+    project's other vetoes' ~2-4% convention) only catches 19% of them, rising to 67% only
+    at the much costlier -0.0183 cut. Vegetation-cycle and epoch-persistent false positives
+    separate far more cleanly from real PV than this specific remote-terrain class does.
+    The threshold was also calibrated (both the -0.0183 and the swept alternatives) on
+    urban/industrial Punjab and Sindh quadrats -- none resemble the remote terrain this
+    function is actually being asked to screen -- so read any of these numbers as
+    encouraging, not proven (the same "ranking transfers, absolute rates do not" caution
+    this project applies everywhere else).
+
+    NaN where no local composite covers the point -- the caller must treat NaN as
+    "unchecked", never as a veto (same contract as `vegetation.composite_max_ndvi`).
+    """
+    import geopandas as gpd
+    import rasterio
+    import rasterio.features as rfeat
+    import rasterio.transform
+    from rasterio.windows import Window, from_bounds
+    from rasterio.windows import transform as window_transform
+
+    from earthpv.config import LOCAL_BANDS
+    from earthpv.local_source import CompositeIndex
+    from earthpv.vegetation import _composites_region_dir
+
+    # rasterio band indices are 1-based
+    band_idx = {b: LOCAL_BANDS.index(b) + 1 for b in ("B02", "B03", "B08", "B11", "B12")}
+    region_dir = _composites_region_dir(aoi, cfg, settings)
+    idx = CompositeIndex(region_dir).index
+
+    geoms = geoms.reset_index(drop=True)
+    reps = gpd.GeoDataFrame(geometry=geoms.representative_point(), crs=geoms.crs)
+    hits = gpd.sjoin(reps, idx[["path", "geometry"]], predicate="within", how="left")
+    hits = hits[~hits.index.duplicated(keep="first")]
+
+    out = np.full(len(geoms), np.nan)
+    for tif_path, rows in hits.dropna(subset=["path"]).groupby("path").groups.items():
+        rows = list(rows)
+        with rasterio.open(tif_path) as src:
+            gg = geoms.iloc[rows].to_crs(src.crs)
+            for pos, geom in zip(rows, gg):
+                # A bare Point (a hard-negative center, no polygon) has zero-area bounds
+                # -- from_bounds degenerates to a <1 px window and would wrongly read as
+                # "no coverage" rather than falling back to its own pixel, the same
+                # sub-pixel convention `roofclf.zonal_mean_max` uses for tiny footprints.
+                if geom.geom_type == "Point" or geom.area == 0:
+                    rr, cc = rasterio.transform.rowcol(src.transform, geom.x, geom.y)
+                    if not (0 <= rr < src.height and 0 <= cc < src.width):
+                        continue
+                    vals = src.read(list(band_idx.values()), window=Window(cc, rr, 1, 1))
+                    b02, b03, b08, b11, b12 = vals.astype("float32").reshape(5)
+                    out[pos] = compute_sppi(b02, b03, b08, b11, b12)
+                    continue
+                try:
+                    win = from_bounds(*geom.bounds, transform=src.transform)
+                    win = win.round_offsets().round_lengths().intersection(
+                        Window(0, 0, src.width, src.height)
+                    )
+                except rasterio.errors.WindowError:
+                    continue
+                if win.width < 1 or win.height < 1:
+                    continue
+                arr = src.read(list(band_idx.values()), window=win).astype("float32")
+                transform = window_transform(win, src.transform)
+                mask = rfeat.geometry_mask(
+                    [geom], out_shape=arr.shape[1:], transform=transform,
+                    invert=True, all_touched=True,
+                )
+                if not mask.any():
+                    continue
+                b02, b03, b08, b11, b12 = (arr[i][mask].mean() for i in range(5))
+                out[pos] = compute_sppi(b02, b03, b08, b11, b12)
+    return out
 
 
 def sppi_only_incremental(
