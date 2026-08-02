@@ -276,6 +276,8 @@ def run_export(
     epoch_clean: bool = False, epoch_fp_max_prior: float = 0.5,
     veg_max_ndvi: float | None = None,
     annual_ndvi: Path | None = None, annual_ndvi_max: float = 0.4,
+    s1_composites_dir: Path | None = None, s1_vh_max_db: float | None = None,
+    min_area_m2: float = 0.0,
 ) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pred_dir = Path(pred_dir) / aoi
@@ -295,7 +297,10 @@ def run_export(
     gj = pred_dir / f"{aoi}_pv_candidates.geojson"
     cands.to_file(gj, driver="GeoJSON")
 
-    any_filter = epoch_clean or veg_max_ndvi is not None or annual_ndvi is not None
+    any_filter = (
+        epoch_clean or veg_max_ndvi is not None or annual_ndvi is not None
+        or s1_composites_dir is not None
+    )
     if exclude_mapped or any_filter:
         from earthpv.config import Settings
         from earthpv.labels import resolve_aoi
@@ -374,13 +379,30 @@ def run_export(
             log.info("Annual-NDVI veto: %d of %d sampled (p95 NDVI > %.2f)",
                      int(fp.sum()), int(np.isfinite(p95).sum()), annual_ndvi_max)
 
+        if s1_composites_dir is not None:
+            # Bare-terrain false positives (dry riverbed, salt flat, bare rock, snow)
+            # backscatter darker than real/built PV in both S1 polarizations -- see
+            # sar.py's module docstring for the measured cost/catch numbers. Optional:
+            # an AOI with no local S1 composites (the common case) never reaches here.
+            from earthpv import sar
+
+            vh_max = s1_vh_max_db if s1_vh_max_db is not None else sar.DEFAULT_S1_VH_MAX_DB
+            vv, vh = sar.s1_backscatter(leads.geometry, s1_composites_dir)
+            leads["s1_vv_db"] = np.round(vv, 2)
+            leads["s1_vh_db"] = np.round(vh, 2)
+            fp = np.nan_to_num(vh, nan=np.inf) < vh_max
+            _veto(fp, "s1_bare_terrain")
+            log.info("S1 backscatter veto: %d of %d covered (VH < %.1f dB)",
+                     int(fp.sum()), int(np.isfinite(vh).sum()), vh_max)
+
         clean = leads[~drop]
         cl = pred_dir / f"{aoi}_pv_new_leads_clean.geojson"
         clean.to_file(cl, driver="GeoJSON")
         log.info("Clean leads: %d / %d kept (dropped: %s) -> %s",
                  len(clean), len(leads),
                  ", ".join(f"{t}={int((reason == t).sum())}"
-                           for t in ("epoch_persistent", "veg_composite", "veg_annual")
+                           for t in ("epoch_persistent", "veg_composite", "veg_annual",
+                                     "s1_bare_terrain")
                            if (reason == t).any()) or "none",
                  cl.name)
 
@@ -402,6 +424,37 @@ def run_export(
             log.info("Wrote %d vegetation hard-negative centers -> %s "
                      "(feed to `earthpv hard-negative-chips --centers`)",
                      len(hn), hn_path.name)
+
+        # S1-vetoed leads are a coarser signal than the vegetation veto (see sar.py --
+        # the two distributions overlap substantially), so kept as a separate hard-
+        # negative file rather than folded into hard_negatives_veg.parquet's evidence.
+        s1_fp = leads[reason == "s1_bare_terrain"]
+        if not s1_fp.empty:
+            reps = s1_fp.geometry.representative_point()
+            hn = s1_fp.drop(columns="geometry").assign(
+                lon=reps.x.to_numpy(), lat=reps.y.to_numpy(), evidence="s1_bare_terrain",
+            )
+            keep_cols = [c for c in ("candidate_id", "lon", "lat", "evidence", "area_m2",
+                                     "s1_vv_db", "s1_vh_db") if c in hn.columns]
+            hn_path = pred_dir / "hard_negatives_s1.parquet"
+            pd.DataFrame(hn[keep_cols]).to_parquet(hn_path)
+            log.info("Wrote %d S1 hard-negative centers -> %s "
+                     "(feed to `earthpv hard-negative-chips --centers`)",
+                     len(hn), hn_path.name)
+
+    if min_area_m2 > 0:
+        # The segmentation model's own trained positive-class floor is MIN_PV_AREA
+        # (chips.py), but polygonize_chips does not enforce it on its OUTPUT -- small
+        # blobs below that floor still surface as candidates (near-chance noise, per
+        # the model's own training regime). This is a separate, explicit filter for
+        # whoever wants a validation queue scoped to the project's stated detection
+        # floor, applied to the most-processed lead set already computed above.
+        base = clean if any_filter else (leads if exclude_mapped else cands)
+        scoped = base[base.area_m2 >= min_area_m2]
+        sp = pred_dir / f"{aoi}_pv_new_leads_ge{int(min_area_m2)}m2.geojson"
+        scoped.to_file(sp, driver="GeoJSON")
+        log.info("Area-scoped leads (>= %.0f m2): %d / %d kept -> %s",
+                 min_area_m2, len(scoped), len(base), sp.name)
 
     # MapRoulette: newline-delimited FeatureCollections (RFC 7464-style, MR "lineByLine")
     mr = pred_dir / f"{aoi}_pv_maproulette.geojson"

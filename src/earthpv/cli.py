@@ -273,12 +273,30 @@ def export(
     annual_ndvi_max: float = typer.Option(
         0.4, help="With --annual-ndvi, the p95 NDVI veto threshold"
     ),
+    s1_composites_dir: Path = typer.Option(
+        None, help="Directory of composites/<cell>/composite_s1.tif Sentinel-1 RTC "
+        "composites (VV/VH) on the same 0.1 deg grid as configs/aoi.yaml -- e.g. a "
+        "sibling project's already-built composites. Optional: earthpv's own compose "
+        "stage does not fetch S1, so an AOI with no such directory is unaffected. "
+        "Vetoes leads whose S1 backscatter reads as bare terrain, not built/PV -- "
+        "see sar.py for the measured cost/catch numbers"
+    ),
+    s1_vh_max_db: float = typer.Option(
+        None, help="With --s1-composites-dir, the VH veto threshold in dB "
+        "(default sar.DEFAULT_S1_VH_MAX_DB, -18.0)"
+    ),
+    min_area_m2: float = typer.Option(
+        0.0, help="Also write <aoi>_pv_new_leads_ge<N>m2.geojson: the most-filtered "
+        "lead set already computed above, restricted to the segmentation model's own "
+        "target floor (candidates below it can still surface as near-chance noise -- "
+        "polygonize_chips does not enforce MIN_PV_AREA on its output)"
+    ),
 ) -> None:
     """Export candidates as GeoParquet/GeoJSON + MapRoulette challenge.
 
     Any of the veto flags additionally writes <aoi>_pv_new_leads_clean.geojson (the
-    filtered validation queue) and hard_negatives_veg.parquet (vegetation-vetoed
-    leads as retraining centers). The default artifacts stay recall-first."""
+    filtered validation queue) and hard_negatives_veg.parquet / hard_negatives_s1.parquet
+    (vetoed leads as retraining centers). The default artifacts stay recall-first."""
     from earthpv.export import run_export
 
     run_export(
@@ -286,6 +304,8 @@ def export(
         min_distance_m=min_distance_m, epoch_clean=epoch_clean,
         epoch_fp_max_prior=epoch_fp_max_prior, veg_max_ndvi=veg_max_ndvi,
         annual_ndvi=annual_ndvi, annual_ndvi_max=annual_ndvi_max,
+        s1_composites_dir=s1_composites_dir, s1_vh_max_db=s1_vh_max_db,
+        min_area_m2=min_area_m2,
     )
 
 
