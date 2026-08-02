@@ -17,7 +17,7 @@ number.
 
 Pakistan is the only country with both artifacts today. A country needs, at minimum,
 a completed `density` run (see [Reproduce](../reproduce.md) and
-[Scale to a new country](../scale.md)) before it has anything to show here; the panel
+[Scale to a new country](../reproduce.md#scale-to-a-new-country)) before it has anything to show here; the panel
 orientation tab additionally needs a country-scale glint survey, which is
 [Sentinel-2 -- and time -- intensive](../methods/glint.md) and is not expected for
 every country.

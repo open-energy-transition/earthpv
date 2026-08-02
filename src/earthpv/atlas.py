@@ -73,6 +73,12 @@ CALIBRATION_BOXES: dict[str, list] = {
         {"name": "SITE Karachi", "stem": "site_karachi_calib_1km", "status": "corroborated"},
         {"name": "Karachi DHA Phase 5 / Zamzama (coastal)",
          "stem": "karachi_coast_calib_700m", "status": "rule1"},
+        {"name": "Sialkot Old City", "stem": "sialkot_calib_1km", "status": "rule1"},
+        {"name": "Sheikh Maltoon Town, Mardan", "stem": "mardan_calib_1km", "status": "rule1"},
+        {"name": "Quetta City", "stem": "quetta_calib_1km", "status": "rule1"},
+        {"name": "Peshawar", "stem": "peshawar_calib_1km", "status": "corroborated"},
+        {"name": "Peshawar East", "stem": "peshawar_east_calib_1km", "status": "corroborated"},
+        {"name": "Rahim Yar Khan District", "stem": "rahim_yar_khan_calib_1km", "status": "corroborated"},
     ],
 }
 
@@ -1117,12 +1123,15 @@ def build_evidence_atlas(
     total_ceiling = float(grid.mwp_ceiling.sum())
     total_large = float(grid.est_mwp_rc.sum())
 
+    calib_boxes = _load_calib_boxes(aoi, labels_dir)
+    n_calib_rule1 = sum(1 for b in calib_boxes if b["status"] == "rule1")
+
     data = {
         "bounds": bounds,
         "cells": cells,
         "provinces": provinces,
         "cities": CITIES.get(aoi, []),
-        "calibBoxes": _load_calib_boxes(aoi, labels_dir),
+        "calibBoxes": calib_boxes,
         "totals": {
             "mwp_verified": round(total_verified, 1),
             "mwp_best": round(total_best, 1),
@@ -1139,6 +1148,8 @@ def build_evidence_atlas(
             "n_cells": int(len(grid)),
             "n_domain_cells": n_domain_cells,
             "kwp_per_m2": kwp_mod,
+            "n_calib_boxes": len(calib_boxes),
+            "n_calib_rule1": n_calib_rule1,
         },
     }
 
@@ -1157,7 +1168,45 @@ def build_evidence_atlas(
             "density estimate: the highest figure this project is willing to defend. "
             "<b>Ceiling</b> swaps the small-PV side for a much looser national "
             "assumption and adds every large installation already known on top: a "
-            "bound built on a cruder assumption, not a tighter measurement."
+            "bound built on a cruder assumption, not a tighter measurement. This is a "
+            "research methodology under active validation, not a finished census &mdash; "
+            "see &ldquo;How confident should you be in this?&rdquo; below for what's "
+            "independently corroborated and what's still open."
+        ),
+        "__CONFIDENCE_HTML__": (
+            "<p><b>Read this as promising preliminary results from an ongoing "
+            "methodology, not a finished capacity census.</b> What's genuinely novel "
+            "here &mdash; a reproducible pipeline using free satellite imagery and "
+            "open-source geospatial AI to estimate distributed solar deployment where "
+            "official statistics are sparse &mdash; is true regardless of whether any "
+            "single number on this page holds up exactly. Treat the numbers as the "
+            "current state of an experiment being actively tested, not a settled "
+            "fact.</p>"
+            "<p><b>The calibration quadrats are hand-picked, not randomly sampled.</b> "
+            f"All <b>{data['totals']['n_calib_boxes']}</b> ground-truth quadrats behind "
+            "the small-PV instruments were chosen by a researcher to cover a spread of "
+            "landscape types (planned housing, dense informal urban, industrial, "
+            "arid/bare-land), not drawn at random from a defined national frame. Only "
+            f"<b>{data['totals']['n_calib_rule1']}</b> of them have been through a full "
+            "human completeness pass strict enough to trust their negatives (see the "
+            "teal markers on the map). Purposive sampling at any size &mdash; whether "
+            "this many quadrats or several times more &mdash; does not by itself support "
+            "a formal national margin of error; that would need a probability sample "
+            "drawn from the national building-density frame, which does not yet exist. "
+            "More quadrats have real value (each new one has surfaced a genuinely new "
+            "failure mode so far), but count alone does not resolve this.</p>"
+            "<p><b>Independent, non-imagery data points land in the same order of "
+            "magnitude.</b> Pakistan's NEPRA net-metering register &mdash; a government "
+            "administrative record with no connection to this pipeline &mdash; puts "
+            "registered rooftop solar at 5.3-6.3 GW nationally (a floor, since it only "
+            "counts customers who completed formal registration paperwork). Chinese "
+            "customs export data separately puts cumulative panel imports into Pakistan "
+            "at roughly 50 GW by mid-2025, a much looser ceiling on the whole market, "
+            "utility-scale included. This page's Verified and Best tiers sit inside that "
+            "bracket, and its Ceiling sits a further step above it &mdash; two "
+            "independent, non-satellite data sources landing in a mutually consistent "
+            "range is real corroboration for the order of magnitude, even though it "
+            "cannot confirm any single number here precisely.</p>"
         ),
     }.items():
         html = html.replace(key, value)

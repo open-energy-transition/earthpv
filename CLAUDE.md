@@ -91,7 +91,8 @@ appends the AOI block to `configs/aoi.yaml` and re-parses to catch a bad insert,
 prints the runbook. **New AOIs must carry `division.iso3`** — `buildings._iso3_for`
 prefers it and the ISO2 fallback map only covers PK/DE/IN, so an AOI without it fails at
 the density stage rather than at setup. `source.coop` 403s any request without a
-User-Agent header, which reads exactly like "no such country". Guide: `docs/scale.md`.
+User-Agent header, which reads exactly like "no such country". Guide:
+`docs/reproduce.md`'s "Scale to a new country" section.
 
 ### Compose stage (imagery for AOIs without local composites)
 

@@ -12,14 +12,21 @@ which is the too-small well-mapped-filtered variant — see
 `configs/terramind_pv_fraction.yaml`'s comment), so reusing the shared script
 as-is would need path overrides anyway.
 
-Usage: python scripts/merge_fraction_chip_index.py [name:path[:repeat] ...]
-  (default: germany:data/chips_unfiltered/germany_fraction:1 pakistan:data/chips/pakistan_fraction:2)
-Writes data/chips/combined_fraction/index.parquet with a `source` column added.
+Usage: python scripts/merge_fraction_chip_index.py [--out PATH] [name:path[:repeat] ...]
+  (default sources: germany:data/chips_unfiltered/germany_fraction:1 pakistan:data/chips/pakistan_fraction:2)
+  (default --out: data/chips/combined_fraction/index.parquet)
+
+`--out` exists because the default path is shared, mutable state: both
+`configs/terramind_pv_fraction_pakistan.yaml` (v1) and `..._v2.yaml` point
+`index_path` at it identically, so re-running this script with a different source
+list silently overwrites whichever mix a config previously assumed it built from.
+Any new experiment should pass an explicitly-named `--out` and point a fresh config
+at that exact path, not reuse the shared default in place.
 """
 
 from __future__ import annotations
 
-import sys
+import argparse
 from pathlib import Path
 
 import pandas as pd
@@ -29,9 +36,10 @@ DEFAULT_SOURCES = [
     "germany:data/chips_unfiltered/germany_fraction:1",
     "pakistan:data/chips/pakistan_fraction:2",
 ]
+DEFAULT_OUT = ROOT / "data" / "chips" / "combined_fraction" / "index.parquet"
 
 
-def main(sources: list[str]) -> None:
+def main(sources: list[str], out_path: Path) -> None:
     frames = []
     for spec in sources:
         parts = spec.split(":")
@@ -50,11 +58,14 @@ def main(sources: list[str]) -> None:
         print(f"{name} (x{rep} train, {path}): {len(df)} chips "
               f"({int((df.split == 'val').sum())} val, {int((pv_col > 0).sum())} with PV)")
     out = pd.concat(frames, ignore_index=True)
-    out_path = ROOT / "data" / "chips" / "combined_fraction" / "index.parquet"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out.to_parquet(out_path)
-    print(f"combined_fraction: {len(out)} chips -> {out_path}")
+    print(f"{out_path.parent.name}: {len(out)} chips -> {out_path}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or DEFAULT_SOURCES)
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--out", type=Path, default=DEFAULT_OUT, help="Output index.parquet path")
+    ap.add_argument("sources", nargs="*", default=DEFAULT_SOURCES, help="name:path[:repeat] specs")
+    args = ap.parse_args()
+    main(args.sources, args.out)

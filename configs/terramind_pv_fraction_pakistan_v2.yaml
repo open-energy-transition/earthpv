@@ -8,7 +8,7 @@
 # existing Germany + Pakistan-nationwide corpus. These quadrats are Rule-1-complete
 # (exhaustively mapped down to the smallest rooftop unit), unlike the national OSM
 # snapshot which under-represents small installations -- the rationale for this
-# retrain (docs/experiments.md's in-domain-chips finding: the single biggest lever
+# retrain (docs/how-it-works.md's in-domain-chips finding: the single biggest lever
 # measured in this project, 0.18 -> 0.55 recall from adding just 274 Punjabi chips).
 # The pre-quadrat index is backed up at data/chips/combined_fraction_v1_backup/.
 task_type: regression

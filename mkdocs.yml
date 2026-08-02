@@ -85,24 +85,11 @@ nav:
   - Dashboards:
       - Overview: dashboards/index.md
       - Pakistan: dashboards/pakistan.md
-  - Workflow: workflow.md
-  - Architecture: architecture.md
   - Results:
       - Capacity map: results/capacity.md
       - Panel pose from glint: results/pv-pose.md
       - Mapping leads: results/leads.md
-  - Methods:
-      - Detection model: methods/detection.md
-      - Capacity density: methods/density.md
-      - Solar glint: methods/glint.md
-      - Glint image gallery: glint_examples.md
-      - Calibration: methods/calibration.md
-      - Calibration quadrats overview: methods/calibration-quadrats.md
-      - Quadrat protocol: calibration-mapping-protocol.md
-  - Experiments: experiments.md
   - Reproduce: reproduce.md
-  - Scale to a new country: scale.md
-  - Community: community.md
   - Notes:
       - notes/index.md
       - Calibration boxes: issues/pakistan-calibration-boxes.md
@@ -115,3 +102,12 @@ nav:
       - Roof classifier national deployment: issues/roofclf-national-deployment-and-temporal-features.md
       - Calibration imagery dating: issues/calibration-imagery-dating.md
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md
+  - How it works:
+      - how-it-works.md
+      - Detection model: methods/detection.md
+      - Capacity density: methods/density.md
+      - Solar glint: methods/glint.md
+      - Glint image gallery: glint_examples.md
+      - Calibration: methods/calibration.md
+      - Calibration quadrats overview: methods/calibration-quadrats.md
+      - Quadrat protocol: calibration-mapping-protocol.md
