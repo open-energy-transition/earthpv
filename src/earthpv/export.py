@@ -277,6 +277,9 @@ def run_export(
     veg_max_ndvi: float | None = None,
     annual_ndvi: Path | None = None, annual_ndvi_max: float = 0.4,
     s1_composites_dir: Path | None = None, s1_vh_max_db: float | None = None,
+    sppi_veto: bool = False, sppi_min: float | None = None,
+    worldcover_veto: bool = False, ensemble_veto: bool = False,
+    sppi_rescue_min: float | None = None,
     min_area_m2: float = 0.0,
 ) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -299,7 +302,8 @@ def run_export(
 
     any_filter = (
         epoch_clean or veg_max_ndvi is not None or annual_ndvi is not None
-        or s1_composites_dir is not None
+        or s1_composites_dir is not None or sppi_veto
+        or worldcover_veto or ensemble_veto
     )
     if exclude_mapped or any_filter:
         from earthpv.config import Settings
@@ -395,6 +399,60 @@ def run_export(
             log.info("S1 backscatter veto: %d of %d covered (VH < %.1f dB)",
                      int(fp.sum()), int(np.isfinite(vh).sum()), vh_max)
 
+        if sppi_veto:
+            # SPPI (He et al. 2026, sppi.py) scored directly on the candidate's own
+            # footprint rather than a building -- a new, unvalidated use of the
+            # instrument (see candidate_sppi's docstring). Needs no extra data beyond
+            # this AOI's own composites, unlike the S1 check above.
+            from earthpv import sppi as sppi_mod
+
+            thresh = sppi_min if sppi_min is not None else sppi_mod.DEFAULT_SPPI_MIN
+            sp = sppi_mod.candidate_sppi(leads.geometry, aoi, cfg, settings)
+            leads["sppi"] = np.round(sp, 4)
+            fp = np.nan_to_num(sp, nan=np.inf) < thresh
+            _veto(fp, "sppi_bare_terrain")
+            log.info("SPPI veto: %d of %d covered (SPPI < %.4f)",
+                     int(fp.sum()), int(np.isfinite(sp).sum()), thresh)
+
+        if worldcover_veto:
+            # ESA WorldCover (worldcover.py): directly checks candidates against an
+            # existing, independently-trained land-cover classifier rather than a
+            # spectral proxy. Strong on bare/mountain terrain, weak on vegetation/
+            # epoch-type FP (those correctly read as cropland, not bare) -- see the
+            # module docstring. Real cost is concentrated in legitimate ground-mount
+            # arrays sited on bare land; prefer --ensemble-veto if that cost is a
+            # concern.
+            from earthpv import worldcover
+
+            wc, fp = worldcover.candidate_worldcover_veto(leads.geometry)
+            leads["wc_class"] = wc
+            _veto(fp, "worldcover_bare_terrain")
+            log.info("WorldCover veto: %d of %d covered (class in %s)",
+                     int(fp.sum()), int(np.isfinite(wc).sum()), worldcover.DEFAULT_VETO_CLASSES)
+
+        if ensemble_veto:
+            # ensemble.py: WorldCover's bare/water/snow flag, gated behind SPPI so a
+            # candidate is only dropped when SPPI ALSO reads non-PV-like -- roughly
+            # halves WorldCover's real-PV cost while keeping most of its catch power
+            # on the desert/mountain false-positive class. See ensemble.py's module
+            # docstring for the measured cost/catch curve and why simple voting
+            # across S1/SPPI/WorldCover was tried and rejected (it either costs too
+            # much real PV or throws away WorldCover's catch entirely).
+            from earthpv import ensemble
+
+            rescue = (
+                sppi_rescue_min if sppi_rescue_min is not None
+                else ensemble.DEFAULT_SPPI_RESCUE_MIN
+            )
+            fp, wc, sp = ensemble.combined_bare_terrain_veto(
+                leads.geometry, aoi, cfg, settings, sppi_rescue_min=rescue
+            )
+            leads["wc_class"] = wc
+            leads["sppi"] = np.round(sp, 4)
+            _veto(fp, "ensemble_bare_terrain")
+            log.info("Ensemble (WorldCover gated by SPPI) veto: %d flagged "
+                     "(SPPI rescue threshold %.4f)", int(fp.sum()), rescue)
+
         clean = leads[~drop]
         cl = pred_dir / f"{aoi}_pv_new_leads_clean.geojson"
         clean.to_file(cl, driver="GeoJSON")
@@ -402,7 +460,8 @@ def run_export(
                  len(clean), len(leads),
                  ", ".join(f"{t}={int((reason == t).sum())}"
                            for t in ("epoch_persistent", "veg_composite", "veg_annual",
-                                     "s1_bare_terrain")
+                                     "s1_bare_terrain", "sppi_bare_terrain",
+                                     "worldcover_bare_terrain", "ensemble_bare_terrain")
                            if (reason == t).any()) or "none",
                  cl.name)
 
@@ -439,6 +498,46 @@ def run_export(
             hn_path = pred_dir / "hard_negatives_s1.parquet"
             pd.DataFrame(hn[keep_cols]).to_parquet(hn_path)
             log.info("Wrote %d S1 hard-negative centers -> %s "
+                     "(feed to `earthpv hard-negative-chips --centers`)",
+                     len(hn), hn_path.name)
+
+        # Same rationale as the S1 hard-negative file above -- kept separate since the
+        # measured cost/catch profile differs (see candidate_sppi's docstring).
+        sppi_fp = leads[reason == "sppi_bare_terrain"]
+        if not sppi_fp.empty:
+            reps = sppi_fp.geometry.representative_point()
+            hn = sppi_fp.drop(columns="geometry").assign(
+                lon=reps.x.to_numpy(), lat=reps.y.to_numpy(), evidence="sppi_bare_terrain",
+            )
+            keep_cols = [c for c in ("candidate_id", "lon", "lat", "evidence", "area_m2",
+                                     "sppi") if c in hn.columns]
+            hn_path = pred_dir / "hard_negatives_sppi.parquet"
+            pd.DataFrame(hn[keep_cols]).to_parquet(hn_path)
+            log.info("Wrote %d SPPI hard-negative centers -> %s "
+                     "(feed to `earthpv hard-negative-chips --centers`)",
+                     len(hn), hn_path.name)
+
+        # WorldCover and ensemble vetoes are the two `--worldcover-veto`/`--ensemble-
+        # veto` flags -- mutually exclusive in normal use (the latter is a refinement
+        # of the former), but kept as separate hard-negative files regardless since
+        # each records a different confirming instrument.
+        for tag, cols, path_name in (
+            ("worldcover_bare_terrain", ("candidate_id", "lon", "lat", "evidence",
+                                         "area_m2", "wc_class"), "hard_negatives_worldcover.parquet"),
+            ("ensemble_bare_terrain", ("candidate_id", "lon", "lat", "evidence",
+                                       "area_m2", "wc_class", "sppi"), "hard_negatives_ensemble.parquet"),
+        ):
+            sub = leads[reason == tag]
+            if sub.empty:
+                continue
+            reps = sub.geometry.representative_point()
+            hn = sub.drop(columns="geometry").assign(
+                lon=reps.x.to_numpy(), lat=reps.y.to_numpy(), evidence=tag,
+            )
+            keep_cols = [c for c in cols if c in hn.columns]
+            hn_path = pred_dir / path_name
+            pd.DataFrame(hn[keep_cols]).to_parquet(hn_path)
+            log.info("Wrote %d hard-negative centers -> %s "
                      "(feed to `earthpv hard-negative-chips --centers`)",
                      len(hn), hn_path.name)
 

@@ -285,6 +285,46 @@ def export(
         None, help="With --s1-composites-dir, the VH veto threshold in dB "
         "(default sar.DEFAULT_S1_VH_MAX_DB, -18.0)"
     ),
+    sppi_veto: bool = typer.Option(
+        False, help="Veto leads whose SPPI (He et al. 2026) index, scored directly on "
+        "the candidate's own footprint, reads as bare terrain. Needs no extra data "
+        "beyond this AOI's own composites, unlike --s1-composites-dir. A new, "
+        "unvalidated use of SPPI outside its designed building-footprint scope -- see "
+        "sppi.candidate_sppi's docstring for the measured cost/catch numbers (AUC 0.79 "
+        "real-vs-FP at country scale, well ahead of the S1 check's 0.71-0.73, but catches "
+        "only 19-67% of the specific remote-terrain FP class depending on threshold, "
+        "vs. 57-76% of vegetation/epoch-type FP at the same thresholds)"
+    ),
+    sppi_min: float = typer.Option(
+        None, help="With --sppi-veto, the SPPI veto threshold "
+        "(default sppi.DEFAULT_SPPI_MIN, -0.05: 3.9% cost to confirmed real PV, "
+        "62.8% of confirmed FP caught -- see sppi.DEFAULT_SPPI_MIN for the full "
+        "threshold/cost/catch table)"
+    ),
+    worldcover_veto: bool = typer.Option(
+        False, help="Veto leads whose ESA WorldCover land-cover class (free, no login, "
+        "via Planetary Computer) reads as bare/snow/water. Strong on the desert/mountain "
+        "false-positive class (76% caught on 21 confirmed cases), weak on vegetation/"
+        "epoch-type FP (4%) -- complementary to, not a replacement for, --sppi-veto/"
+        "--s1-composites-dir. Costs 15.8% of confirmed real PV, concentrated in "
+        "legitimate ground-mount arrays sited on bare land -- prefer --ensemble-veto "
+        "if that cost is a concern. See worldcover.py for the full numbers"
+    ),
+    ensemble_veto: bool = typer.Option(
+        False, help="Recommended over --worldcover-veto when minimizing lost real PV "
+        "matters: WorldCover's bare/snow/water flag, gated behind SPPI so a candidate "
+        "is only dropped when SPPI ALSO reads non-PV-like. Roughly halves WorldCover's "
+        "real-PV cost (15.8% -> 7.3%) while keeping most of its catch power (11/21 vs "
+        "16/21 on the confirmed desert/mountain cases). Naive voting across S1/SPPI/"
+        "WorldCover was tried and rejected -- see ensemble.py for why and the full "
+        "cost/catch curve"
+    ),
+    sppi_rescue_min: float = typer.Option(
+        None, help="With --ensemble-veto, the SPPI threshold that rescues a "
+        "WorldCover-flagged candidate from the veto (default "
+        "ensemble.DEFAULT_SPPI_RESCUE_MIN, 0.0 -- see ensemble.py's docstring for "
+        "the full threshold/cost/catch table)"
+    ),
     min_area_m2: float = typer.Option(
         0.0, help="Also write <aoi>_pv_new_leads_ge<N>m2.geojson: the most-filtered "
         "lead set already computed above, restricted to the segmentation model's own "
@@ -305,6 +345,9 @@ def export(
         epoch_fp_max_prior=epoch_fp_max_prior, veg_max_ndvi=veg_max_ndvi,
         annual_ndvi=annual_ndvi, annual_ndvi_max=annual_ndvi_max,
         s1_composites_dir=s1_composites_dir, s1_vh_max_db=s1_vh_max_db,
+        sppi_veto=sppi_veto, sppi_min=sppi_min,
+        worldcover_veto=worldcover_veto, ensemble_veto=ensemble_veto,
+        sppi_rescue_min=sppi_rescue_min,
         min_area_m2=min_area_m2,
     )
 

@@ -155,7 +155,18 @@ sub-500 m² class is **8.2 MWp** of the Pakistan estimate (~0.2% of rooftop), wh
 fully-mapped km² of residential Lahore holds **3.3× more sub-100 m² PV area than the model
 finds nationally**. Germany's MaStR (legally complete) puts **72.6% of rooftop capacity in
 units ≤100 kWp** (≈ ≤555 m² of module), so this is very likely the majority of the quantity
-the rooftop headline claims to describe. Two instruments, both dropping the polygon:
+the rooftop headline claims to describe.
+
+**All instruments below are rooftop/building-scoped — small ground-mounted installations
+below 400 m² have no instrument at all, at any confidence level.** `roofclf` and SPPI are
+both per-*building* classifiers (they score a VIDA footprint); the fraction head is the
+only one of the three not tied to a building, but it still runs on the same segmentation
+input trained with everything below `chips.MIN_PV_AREA` burned as `ignore`, so a small
+free-standing ground array gets no more signal there than a small roof does. There is
+no building footprint to hang a classifier off for ground-mount the way there is for
+rooftop, so the partial mitigations below do not generalize to it even in principle —
+this is a distinct, currently open gap, not a smaller version of the rooftop one. Two
+instruments, both rooftop-only and both dropping the polygon:
 
 - **Fraction-head expected area** — `density --fraction-prob-dir <run>/prob [--exp-scale k]`
   swaps the `*_exp` instrument from segmentation class probability to per-pixel PV coverage.
