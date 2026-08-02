@@ -78,7 +78,7 @@ When mapping a lead, tag it the way the rest of OpenStreetMap does
 (`generator:source=solar` on a rooftop generator, `power=plant` with
 `plant:source=solar` for a plant) so the next `overpass-labels` run picks it up as
 training data. Mapped installations returning through that path are what closes the
-[flywheel](../workflow.md).
+[flywheel](../how-it-works.md#workflow).
 
 ## Other regions
 

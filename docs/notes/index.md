@@ -16,4 +16,4 @@ later than the code that was built.
 | [Glint-validated training labels](../issues/glint-validated-training-labels.md) | Using glint confirmations as additional supervision. |
 | [Quadrats as training data](../issues/quadrats-as-training-data.md) | Whether exhaustively mapped boxes should also be trained on, not just measured against. |
 
-For the conclusions these notes fed into, see [Experiments](../experiments.md).
+For the conclusions these notes fed into, see [Experiments](../how-it-works.md#experiments).

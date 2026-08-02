@@ -101,13 +101,16 @@
   <header>
     <p class="eyebrow">EarthPV &middot; National PV dashboard</p>
     <h1>Pakistan: national PV overview</h1>
-    <p class="lede">2 independently-built views of Pakistan&#x27;s solar footprint, combined in one place: Capacity and Panel orientation. Switch tabs above; each is the same standalone page documented elsewhere on this site.</p>
+    <p class="lede">3 independently-built views of Pakistan&#x27;s solar footprint, combined in one place: Capacity, Panel orientation and Rooftop potential. Switch tabs above; each is the same standalone page documented elsewhere on this site.</p>
     <div class="switch" role="tablist" aria-label="Dashboard panel">
       <button class="tab" type="button" aria-pressed="false">
         <span class="tt1">Capacity</span><span class="tt2">Verified / Best estimate / Ceiling</span>
       </button>
       <button class="tab" type="button" aria-pressed="false">
         <span class="tt1">Panel orientation</span><span class="tt2">Glint-fitted tilt &amp; azimuth, n=2000</span>
+      </button>
+      <button class="tab" type="button" aria-pressed="false">
+        <span class="tt1">Rooftop potential</span><span class="tt2">Uncovered large roofs x irradiance, plus PV saturation</span>
       </button>
     </div>
   </header>
@@ -118,6 +121,9 @@
     <div class="panel-frame">
       <iframe data-src="pose.html" title="Panel orientation"></iframe>
     </div>
+    <div class="panel-frame">
+      <iframe data-src="potential.html" title="Rooftop potential"></iframe>
+    </div>
   </div>
   <p class="panel-note" id="panelNote"></p>
 </div>
@@ -126,7 +132,7 @@
 (function () {
   const tabs = Array.from(document.querySelectorAll(".tab"));
   const frames = Array.from(document.querySelectorAll(".panel-frame"));
-  const notes = ["Three tiers by standard of proof, not by point estimate: hand-mapped + two detectors agree, this project's best defensible figure, and an explicit uncalibrated ceiling. See Capacity density.", "Fitted pose for 290 installations whose Sentinel-2 glints agree on one fixed plane. See Panel pose from glint."];
+  const notes = ["Three tiers by standard of proof, not by point estimate: hand-mapped + two detectors agree, this project's best defensible figure, and an explicit uncalibrated ceiling. See Capacity density.", "Fitted pose for 290 installations whose Sentinel-2 glints agree on one fixed plane. See Panel pose from glint.", "Where large (>= 200 m2), currently-uncovered roofs and high modelled irradiance overlap -- a siting signal for future installations, built from footprint geometry alone, never a PV-presence probability. A second tab shows PV saturation (existing PV area / roof area) to contrast dense-adoption areas against under-adopted ones."];
 
   function activate(i) {
     tabs.forEach((t, j) => t.setAttribute("aria-pressed", String(j === i)));

@@ -312,7 +312,7 @@
 
   const VIEWS = [
     {
-      key: "potential", idx: 2, scale: "log", vmin: 0.01,
+      key: "potential", idx: 2, vmin: 0.01,
       label: "Potential", heroUnit: "GWh/yr",
       heroDesc: "Annual energy potential of uncovered roofs &ge; 200 m&sup2;, weighted by modelled irradiance.",
       totalKey: "gwh_potential", provKey: "gwh_potential",
@@ -325,7 +325,7 @@
       ],
     },
     {
-      key: "saturation", idx: 4, scale: "linear", vmin: 0, vmax: 100,
+      key: "saturation", idx: 4, vmin: 0.001,
       label: "Saturation", heroUnit: "%",
       heroDesc: "Share of each cell's total roof area already carrying detected PV, area-weighted.",
       totalKey: "sat_pct", provKey: "sat_pct",
@@ -371,23 +371,37 @@
     return d;
   }
 
-  function tOf(v, view, vmax){
-    if (view.scale === "log") {
-      const vmin = view.vmin;
-      const lo = Math.log(vmin), hi = Math.log(Math.max(vmax, vmin * 10));
-      return (Math.log(Math.max(v, vmin)) - lo) / (hi - lo);
-    }
-    return Math.max(0, Math.min(1, (v - view.vmin) / (view.vmax - view.vmin)));
+  function percentile(sortedAsc, p){
+    if (!sortedAsc.length) return 0;
+    return sortedAsc[Math.min(sortedAsc.length - 1, Math.floor(p * sortedAsc.length))];
+  }
+
+  // A percentile cap on vmax (not the true max) keeps a handful of outlier cells from
+  // washing out contrast for the rest of the map -- both metrics here are heavily
+  // right-skewed (a few huge industrial roofs for Potential; Saturation is 86% exact
+  // zero nationally, with the nonzero tail itself long), so a domain fit to the true
+  // extremes leaves nearly every other cell indistinguishable near one end.
+  const VMAX_PERCENTILE = 0.98;
+
+  function domainFor(view){
+    const vals = DATA.cells.map(c => c[view.idx]).filter(v => v > 0).sort((a,b) => a-b);
+    if (!vals.length) return {vmin: view.vmin, vmax: view.vmin * 10};
+    const vmin = vals[0];
+    const vmax = Math.max(vmin * 1.01, percentile(vals, VMAX_PERCENTILE));
+    return {vmin, vmax};
+  }
+
+  function tOf(v, vmin, vmax){
+    const lo = Math.log(vmin), hi = Math.log(vmax);
+    return (Math.log(Math.min(Math.max(v, vmin), vmax)) - lo) / (hi - lo);
   }
 
   function renderMap(){
     const dark = isDark();
     const stops = dark ? RAMP_DARK : RAMP_LIGHT;
     const view = VIEWS[sel];
-    const vmax = view.scale === "log"
-      ? Math.max(view.vmin * 10, ...DATA.cells.map(c => c[view.idx]))
-      : view.vmax;
-    const bright = (c) => c[6] > 0 ? tOf(c[view.idx], view, vmax) : -1;
+    const {vmin, vmax} = domainFor(view);
+    const bright = (c) => c[view.idx] > 0 ? tOf(c[view.idx], vmin, vmax) : -1;
 
     const mount = document.getElementById("mapmount");
     mount.innerHTML = "";
@@ -463,14 +477,9 @@
 
     const grad = stops.map((s,i)=>`${s} ${(i/(stops.length-1)*100).toFixed(0)}%`).join(",");
     document.getElementById("legbar").style.background = `linear-gradient(90deg, ${grad})`;
-    let ticks;
-    if (view.scale === "log") {
-      ticks = [view.vmin, Math.sqrt(view.vmin * vmax), vmax].map(v => Math.round(v * 100) / 100);
-    } else {
-      ticks = [0, 25, 50, 75, 100];
-    }
+    const ticks = [vmin, Math.sqrt(vmin * vmax), vmax].map(v => Math.round(v * 100) / 100);
     document.getElementById("legticks").innerHTML =
-      ticks.map(v => `<span style="left:${(tOf(v, view, vmax)*100).toFixed(1)}%">${v}</span>`).join("");
+      ticks.map(v => `<span style="left:${(tOf(v, vmin, vmax)*100).toFixed(1)}%">${v}</span>`).join("");
     document.getElementById("legcap").textContent = view.legendCap;
     document.getElementById("mapTitle").textContent = view.mapTitle;
   }

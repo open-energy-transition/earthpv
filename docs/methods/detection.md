@@ -35,7 +35,7 @@ Pixel IoU and F1 are 0.51 and 0.68 on Germany, 0.29 and 0.45 on Punjab.
 The Punjab column is much weaker than Germany's, and it is also **three times** what the
 Germany-only model achieved on the same cells (0.18 at or above 1,000 m<sup>2</sup>).
 In-domain chips are the single biggest lever found so far, which is the empirical case for
-the [mapping flywheel](../workflow.md).
+the [mapping flywheel](../how-it-works.md#workflow).
 
 The residual Punjab misses look imagery-limited rather than model-limited. The model
 outputs near-zero probability on them even at threshold 0.05, and oversampling Punjab four
@@ -97,5 +97,5 @@ drops toward residential scale.
 | `configs/terramind_pv.yaml` | production, 10-band segmentation |
 | `configs/terramind_pv_fraction.yaml` | per-pixel PV coverage fraction regression |
 | `configs/terramind_pv_fraction_pakistan.yaml` | fraction head retrained in domain |
-| `configs/terramind_pv_seasonal.yaml` | 20-band two-season stack ([negative result](../experiments.md)) |
+| `configs/terramind_pv_seasonal.yaml` | 20-band two-season stack ([negative result](../how-it-works.md#experiments)) |
 | `configs/terramind_pv_v3india.yaml` | Germany plus Pakistan plus India combined |

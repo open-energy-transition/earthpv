@@ -536,6 +536,74 @@ def check_density_cmd(
         raise typer.Exit(1)
 
 
+@app.command("redistribute-capacity")
+def redistribute_capacity_cmd(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs `density` already run"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    estimator: str = typer.Option(
+        "est_mwp_rc", help="Which existing column's SHAPE to redistribute by (the "
+        "external total replaces its scale, not its relative pattern). --grain grid/"
+        "region: one of est_mwp_{det,cal,exp,rc,rc_roof,cal_total} (MWp). --grain "
+        "buildings: only est_kwp_{det,cal,exp} exist (kWp, not MWp -- recall "
+        "correction and the roof/ground split have no per-building analogue) -- pass "
+        "a matching --estimator AND a --total-capacity in the same unit"
+    ),
+    total_capacity: float = typer.Option(
+        None, help="External total capacity, e.g. a NEPRA net-metering figure. Same "
+        "unit as --estimator's column (MWp for grid/region, kWp for buildings). "
+        "Required with --scope national"
+    ),
+    scope: str = typer.Option(
+        "national", help="'national' (one --total-capacity split by this AOI's whole "
+        "shape) or 'region' (--region-totals gives one total per region, each split "
+        "by that region's own local shape)"
+    ),
+    region_totals: Path = typer.Option(
+        None, help="CSV (region,total_mwp) or YAML (region: total_mwp) mapping, "
+        "required with --scope region"
+    ),
+    grain: str = typer.Option(
+        "grid", help="'grid' (0.1 deg cells, est_mwp_* columns) or 'buildings' "
+        "(est_kwp_* columns only) -- which layer's rows to redistribute across"
+    ),
+    level: str = typer.Option(
+        "region", help="With --scope region and --grain grid: which regions.geoparquet "
+        "admin level ('region'=province, 'county'=district) the mapping's keys are at"
+    ),
+    out: Path = typer.Option(None, help="Output path (default a new sibling file under density/)"),
+) -> None:
+    """Redistribute an externally-supplied total PV capacity across this project's own
+    measured spatial shape, rather than reporting this pipeline's own absolute total.
+
+    OPEN, UNTESTED ASSUMPTION (see capacity_redistribution.py's module docstring):
+    this treats small (< 400 m2) PV's spatial distribution as tracking the >= 400 m2
+    population this project can actually validate -- existing (informal) evidence
+    leans against that in the two quadrats where it's been looked at. Ships point
+    estimates only; est_mwp_rc's credible interval is not propagated through this
+    transform."""
+    import logging
+
+    from earthpv.capacity_redistribution import (
+        distribute_by_region, distribute_national, load_region_totals,
+    )
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    density_dir = Path(pred_dir) / aoi / "density"
+    if scope == "national":
+        if total_capacity is None:
+            raise typer.BadParameter("--total-capacity is required with --scope national")
+        distribute_national(density_dir, total_capacity, estimator=estimator, grain=grain, out=out)
+    elif scope == "region":
+        if region_totals is None:
+            raise typer.BadParameter("--region-totals is required with --scope region")
+        totals = load_region_totals(region_totals)
+        distribute_by_region(
+            density_dir, totals, estimator=estimator, grain=grain, level=level, out=out,
+        )
+    else:
+        raise typer.BadParameter("--scope must be 'national' or 'region'")
+
+
 @app.command("large-roof-buildings")
 def large_roof_buildings_cmd(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),

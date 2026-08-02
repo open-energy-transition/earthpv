@@ -754,6 +754,48 @@ Frame B's explicitly uncalibrated ceiling sits a further 6x above both, comforta
 above the NEPRA floor either way; that gap is consistent with "not implausible" for an
 explicit ceiling, not evidence that 37,197 MWp is itself a good estimate.
 
+## Total capacity as a pipeline input
+
+Every number above is this project's own estimate of the total. `earthpv
+redistribute-capacity` (`capacity_redistribution.py`) answers a different question:
+given a total from an independent, possibly more-trusted source -- e.g. the NEPRA
+register above -- how should that total be spread across cells, regions or buildings,
+using this project's own measured RELATIVE shape rather than its absolute number.
+`share = row's est_mwp_* value / (national or per-region) sum`, `distributed = share x
+external_total`. Kept out of `density.py` itself, matching the same separation
+`sub400_capacity.py`/`pv_capacity.py`/`roofclf_capacity.py` already keep from the main
+aggregation path, for the same reason: this reads `density/`'s finished outputs and
+writes its own new sibling file, never touching `grid.geoparquet`/`regions.geoparquet`
+in place.
+
+Two things worth stating plainly, not burying in code comments:
+
+- **Open, untested assumption.** An external total necessarily includes small
+  (< 400 m²) PV, so distributing it by the &ge; 400 m² shape this project can actually
+  validate assumes small-PV's spatial distribution tracks large-PV's. The one place
+  this has been looked at, even informally -- existing candidate density
+  anti-correlates with true small-PV base rate in the two quadrats compared above
+  (Karachi coastal, Lahore) -- leans against the assumption, though it has never been
+  computed as a formal statistic across all nine calibration quadrats. Every number
+  `redistribute-capacity` produces is conditional on that assumption holding, not
+  evidence that it does.
+- **Point estimates only.** `est_mwp_rc`'s posterior credible interval is not
+  propagated through this transform (doing so correctly needs either persisting
+  `density.py`'s internal per-draw matrices to disk, or recomputing them here from
+  `candidates.parquet` + the calibration table -- both real, not-yet-built work, left
+  as a named follow-up rather than attempted silently).
+
+First concrete run, the national NEPRA midpoint against the published Pakistan total:
+
+```bash
+earthpv redistribute-capacity --aoi pakistan --total-capacity 5800 --scope national
+```
+
+`--scope region` (one total per region, each spread by that region's own local shape)
+is built and wired the same way, but has no real companion data yet -- no provincial
+NEPRA breakdown exists anywhere in this project's sources today, only the national
+scalar above.
+
 ## Rooftop potential and saturation
 
 Everything above answers "how much PV is already there." `earthpv atlas
