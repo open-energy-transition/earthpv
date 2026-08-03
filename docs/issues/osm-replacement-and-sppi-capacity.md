@@ -5,7 +5,7 @@ this session: `todo.md` #5 (replace detected polygons with the mapped OSM polygo
 one exists) and adding SPPI (`docs/issues/sppi-spectral-index-evaluation.md`) as a
 building-scoped, precision-calibrated PV detector.
 
-### Part 1 — OSM geometry replacement (shipped, ran nationally)
+### Part 1 -- OSM geometry replacement (shipped, ran nationally)
 
 `postprocess.replace_with_osm_geometry` (new) swaps a candidate's polygonized blob for
 the real OSM footprint when one is mapped within `--osm-match-distance-m` (default
@@ -59,7 +59,7 @@ natural next step (`earthpv overpass-labels --bbox <pakistan bbox> --name pakist
 --iso3 PAK`) but is a slower live-API operation than seemed warranted to do
 unprompted; until then, its matches report `osm_match_timestamp` as unknown, honestly.
 
-### Part 2 — SPPI building-scoped capacity: quadrat validation (NOT promoted to national)
+### Part 2 -- SPPI building-scoped capacity: quadrat validation (NOT promoted to national)
 
 New module `src/earthpv/sppi.py` promotes the formula out of the one-off
 `scripts/sppi_index_test.py`: `compute_sppi`/`add_sppi`, plus LOQO threshold calibration

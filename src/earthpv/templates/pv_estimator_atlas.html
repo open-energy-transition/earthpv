@@ -171,11 +171,11 @@
 
   <div class="switch" role="group" aria-label="Estimator">
     <div class="scope">
-      <div class="scope-h"><span class="dot" style="background:var(--roof)"></span>Rooftop scope — PV on building footprints</div>
+      <div class="scope-h"><span class="dot" style="background:var(--roof)"></span>Rooftop scope -- PV on building footprints</div>
       <div class="tabs" id="tabsRoof"></div>
     </div>
     <div class="scope">
-      <div class="scope-h"><span class="dot" style="background:var(--allpv)"></span>All-PV scope — every candidate, farms included</div>
+      <div class="scope-h"><span class="dot" style="background:var(--allpv)"></span>All-PV scope -- every candidate, farms included</div>
       <div class="tabs" id="tabsAll"></div>
     </div>
   </div>
@@ -191,7 +191,7 @@
     <canvas id="map"></canvas>
     <div class="tt" id="tt"></div>
     <div class="maplegend">
-      <div>MWp per 0.1° cell — shared scale across all six estimators</div>
+      <div>MWp per 0.1° cell -- shared scale across all six estimators</div>
       <div class="ramp"></div>
       <div class="lab"><span>0</span><span id="legMid"></span><span id="legMax"></span></div>
       <div class="calibrow" id="calibLegend" style="display:none">
@@ -216,17 +216,17 @@
 
   <h2>What each estimator means</h2>
   <div class="notes">
-    <div class="note"><h3><span class="dot" style="background:var(--roof)"></span>Detected — the raw floor</h3>
+    <div class="note"><h3><span class="dot" style="background:var(--roof)"></span>Detected -- the raw floor</h3>
       <p>Thresholded (p ≥ 0.3) candidate polygons intersected with VIDA building
       footprints, taken at face value. Consistent with the human-validation leads product,
       but the model is deliberately recall-first, so this both includes false positives
       and misses everything sub-threshold.</p></div>
-    <div class="note"><h3><span class="dot" style="background:var(--roof)"></span>Calibrated — the headline</h3>
+    <div class="note"><h3><span class="dot" style="background:var(--roof)"></span>Calibrated -- the headline</h3>
       <p>Detected area with every candidate weighted by its measured
       <span class="k">P(real | size, glint)</span>: the size-binned fraction already mapped in
       OSM, plus glint corroboration and manual review of the unmapped remainder. The
       conservative number to quote for rooftop PV.</p></div>
-    <div class="note"><h3><span class="dot" style="background:var(--roof)"></span>Expected — the ceiling</h3>
+    <div class="note"><h3><span class="dot" style="background:var(--roof)"></span>Expected -- the ceiling</h3>
       <p>Probability-weighted area: every pixel's probability × 100 m² summed over each
       footprint, no threshold. Integrates sub-threshold and sub-400 m² signal the polygons
       cannot resolve; leans high because false-positive probability mass is summed too.</p></div>
@@ -236,7 +236,7 @@
       pre-pipeline OSM reference), clamped at 0.05. A Horvitz–Thompson estimate of the whole
       detectable rooftop population, missed installations included.</p></div>
     <div class="note"><h3><span class="dot" style="background:var(--allpv)"></span>Calibrated · all PV</h3>
-      <p>The same precision weighting applied to <b>every</b> candidate — ground-mounted
+      <p>The same precision weighting applied to <b>every</b> candidate -- ground-mounted
       farms and installations with no mapped building included. This is the scope jump:
       utility-scale PV dwarfs the rooftop total.</p></div>
     <div class="note"><h3><span class="dot" style="background:var(--allpv)"></span>Recall-corrected · all PV</h3>
@@ -245,14 +245,14 @@
       The correction is modest where the area-dominant ≥ 5,000 m² bins are already
       almost fully recalled.</p></div>
     <div class="note" id="sub400Note" style="display:none">
-      <h3><span class="dot" style="background:var(--calib)"></span>Sub-400 m² capacity — separate, not in the six numbers above</h3>
+      <h3><span class="dot" style="background:var(--calib)"></span>Sub-400 m² capacity -- separate, not in the six numbers above</h3>
       <p id="sub400Text"></p>
       <p id="sub400CombinedText" style="margin-top:8px;color:var(--ink-3);font-size:13px"></p>
     </div>
     <div class="note" id="calibNote" style="display:none">
       <h3><span class="dot" style="background:var(--calib)"></span>Calibration ground truth</h3>
       <p>Recall above pools <b>fully re-mapped 1&nbsp;km² quadrats</b> into the recall
-      denominator directly — real counted installations, not a model score. Every quadrat
+      denominator directly -- real counted installations, not a model score. Every quadrat
       below is an AI visual pass against high-res imagery only (<b>not yet Rule-1
       two-mapper verified</b>); treat as corroboration, not ground truth on its own.</p>
       <ul id="calibNoteList"></ul>
@@ -267,18 +267,18 @@
 const D = JSON.parse(document.getElementById("pvdata").textContent);
 const fmt = (v) => Math.round(v).toLocaleString("en-US");
 
-/* metric registry — index into cell/province/total arrays */
+/* metric registry -- index into cell/province/total arrays */
 const METRICS = [
   { i:0, key:"det",  scope:"roof", tab:"Detected",        name:"Detected · rooftop",
-    desc:"Thresholded candidate polygons on building footprints, taken at face value — the <b>raw floor</b>: no precision weighting, no credit for what the model missed." },
+    desc:"Thresholded candidate polygons on building footprints, taken at face value -- the <b>raw floor</b>: no precision weighting, no credit for what the model missed." },
   { i:1, key:"cal",  scope:"roof", tab:"Calibrated",      name:"Calibrated · rooftop (headline)",
-    desc:"Each candidate weighted by its measured probability of being real PV. The <b>conservative headline</b> for rooftop capacity — precision-honest, but still blind to missed installations." },
+    desc:"Each candidate weighted by its measured probability of being real PV. The <b>conservative headline</b> for rooftop capacity -- precision-honest, but still blind to missed installations." },
   { i:2, key:"exp",  scope:"roof", tab:"Expected",        name:"Expected · rooftop",
-    desc:"Probability-weighted area over every footprint, no threshold — integrates sub-threshold and sub-400 m² signal. The <b>upper-leaning ceiling</b> of the rooftop bracket." },
+    desc:"Probability-weighted area over every footprint, no threshold -- integrates sub-threshold and sub-400 m² signal. The <b>upper-leaning ceiling</b> of the rooftop bracket." },
   { i:3, key:"rcr",  scope:"roof", tab:"Recall-corr.",    name:"Recall-corrected · rooftop-placed", ci:"rcr_ci",
     desc:"Calibrated area of rooftop-placed candidates, divided by the model's measured per-size recall: an estimate of the <b>whole detectable rooftop population</b>, missed installations included." },
   { i:4, key:"ct",   scope:"all",  tab:"Calibrated",      name:"Calibrated · all PV", ci:"ct_ci",
-    desc:"Precision-weighted capacity of <b>every</b> candidate — ground-mounted solar farms included. Ground-mount area converts at the lower site constant, since a detected farm polygon encloses the land, not the modules." },
+    desc:"Precision-weighted capacity of <b>every</b> candidate -- ground-mounted solar farms included. Ground-mount area converts at the lower site constant, since a detected farm polygon encloses the land, not the modules." },
   { i:5, key:"rc",   scope:"all",  tab:"Recall-corr.",    name:"Recall-corrected · all PV", ci:"rc_ci",
     desc:"The <b>fullest defensible estimate</b>: all candidates, precision-weighted, recall-corrected and split by mounting before conversion, with a 90% credible band covering both the calibration counts and the two conversion constants." },
 ];
@@ -332,7 +332,7 @@ function drawMap() {
   // bare land pass
   ctx.fillStyle = "#12141B";
   for (const c of D.cells) ctx.fillRect(px(c[0]), py(c[1]) - ch, cw + 0.5, ch + 0.5);
-  // light pass — all cell fills first, then all blooms, so a bloom is never
+  // light pass -- all cell fills first, then all blooms, so a bloom is never
   // clipped by a neighbouring cell drawn after it
   const cores = [];
   for (const c of D.cells) {
@@ -358,7 +358,7 @@ function drawMap() {
     ring.forEach(([lon, lat], k) => k ? ctx.lineTo(px(lon), py(lat)) : ctx.moveTo(px(lon), py(lat)));
     ctx.stroke();
   }
-  // calibration ground-truth quadrats — dashed teal outline + marker, always visible
+  // calibration ground-truth quadrats -- dashed teal outline + marker, always visible
   // regardless of the selected metric (they mark where recall was measured, not a value)
   if (D.calibBoxes && D.calibBoxes.length) {
     ctx.save();
@@ -382,7 +382,7 @@ function drawMap() {
   }
 }
 
-/* cell lookup + tooltip — indexed relative to the grid origin (x0,y0), which
+/* cell lookup + tooltip -- indexed relative to the grid origin (x0,y0), which
    is AOI-snapped and not generally a multiple of 0.1° */
 const cellIndex = new Map();
 for (const c of D.cells)
@@ -392,7 +392,7 @@ mapbox.addEventListener("mousemove", (e) => {
   const r = cv.getBoundingClientRect();
   const mx = e.clientX - r.left, my = e.clientY - r.top;
   const sx = mx * (W / r.width), sy = my * (H / r.height);
-  // calibration quadrats take priority over the cell they sit in — they're the
+  // calibration quadrats take priority over the cell they sit in -- they're the
   // point of the overlay, and would otherwise be indistinguishable at this scale
   let hitBox = null;
   if (D.calibBoxes && D.calibBoxes.length) {
@@ -403,9 +403,9 @@ mapbox.addEventListener("mousemove", (e) => {
   }
   if (hitBox) {
     const tag = hitBox.status === "suspect"
-      ? '<span class="tag-suspect">suspect — needs re-verification</span>'
+      ? '<span class="tag-suspect">suspect -- needs re-verification</span>'
       : hitBox.status === "rule1"
-      ? '<span class="tag-ok">Rule-1 complete — every visible panel mapped</span>'
+      ? '<span class="tag-ok">Rule-1 complete -- every visible panel mapped</span>'
       : '<span class="tag-ok">visually corroborated</span>';
     tt.innerHTML = `<div class="tt-h">${hitBox.name}</div>
       <div>${hitBox.n} mapped installation${hitBox.n === 1 ? "" : "s"} · ${tag}</div>
@@ -491,7 +491,7 @@ function drawTable() {
   const total = D.totals.m[m.i];
   const vmaxp = Math.max(...provs.map((p) => p.m[m.i]));
   document.getElementById("provSub").textContent =
-    `Ranked by ${m.name.toLowerCase()} — additive totals; credible bands are re-derived from summed posterior draws, never by adding per-cell bounds.`;
+    `Ranked by ${m.name.toLowerCase()} -- additive totals; credible bands are re-derived from summed posterior draws, never by adding per-cell bounds.`;
   let head = `<tr><th>Province</th><th>MWp</th>${m.ci ? "<th>90% band</th>" : ""}<th>Share</th></tr>`;
   let body = provs.map((p) => {
     const v = p.m[m.i], w = Math.max(2, 90 * v / vmaxp);
@@ -517,13 +517,13 @@ if (D.sub400) {
     `<b>${fmt(s.total_est_mwp)} MWp</b> from buildings roofclf flags with no existing
     segmentation candidate nearby, footprint &lt; 400 m², restricted to
     ${s.n_domain_cells} of ${s.n_national_cells} national cells whose building density
-    matches the calibration quadrats (${s.calibration_quadrats.join(", ")}) —
+    matches the calibration quadrats (${s.calibration_quadrats.join(", ")}) --
     <b>not a national figure</b>, and <b>not included</b> in any of the six numbers
     above. Do not sum it with them.`;
   document.getElementById("sub400CombinedText").innerHTML =
     `Sum, if forced to one number anyway: <b>${fmt(s.combined_mwp)} MWp</b>
     (recall-corrected all-placement ${fmt(D.totals.m[5])} MWp + this sub-400 m² figure).
-    Shown because it was asked for — it is <b>not</b> a validated single-population
+    Shown because it was asked for -- it is <b>not</b> a validated single-population
     estimate: the two terms have different national coverage (100% vs. 19.1% of
     buildings) and different confidence, so this total inherits the sub-400 figure's
     "do not rescale" caveat above.`;
@@ -540,7 +540,7 @@ if (D.calibBoxes && D.calibBoxes.length) {
       : b.status === "rule1"
       ? '<span class="tag-ok">Rule-1 complete</span>'
       : '<span class="tag-ok">corroborated</span>';
-    return `<li><b>${b.name}</b> — ${b.n} mapped install${b.n === 1 ? "" : "s"}, ${tag}</li>`;
+    return `<li><b>${b.name}</b> -- ${b.n} mapped install${b.n === 1 ? "" : "s"}, ${tag}</li>`;
   }).join("");
 }
 

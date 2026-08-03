@@ -29,7 +29,7 @@ EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and E
 TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
 and puts every detection in front of **OpenStreetMap** mappers for verification. The
 verified result becomes the next round of training data. Model, code, training labels and
-capacity numbers are all open, and every input is a global dataset — nothing here is built
+capacity numbers are all open, and every input is a global dataset -- nothing here is built
 on imagery or licences that only exist in one country.
 
 **Pakistan is the first pilot, not the destination.** It is where four methods below were
@@ -48,7 +48,7 @@ array size; recall on Punjab rooftops went from 0.18 to 0.55 once verified in-do
 training data closed the loop.
 
 **Density below the floor, for everything smaller.** At 10 m resolution, a 100 m² array is
-a handful of mixed pixels — not enough to draw a polygon around, but enough to ask whether
+a handful of mixed pixels -- not enough to draw a polygon around, but enough to ask whether
 a *building* carries PV. Two independent instruments answer that: **roofclf**, a
 per-building classifier trained on exhaustively mapped ground-truth quadrats (0.874 AUC on
 roofs under 500 m², where segmentation scores 0.50), and **SPPI**, a zero-training
@@ -63,15 +63,15 @@ confirmation that PV is present, independent of spectral appearance, and recover
 panel is mounted.
 
 **Growth, for when installations appeared.** Diffing a pre-boom (2021/22) Sentinel-2
-composite against the current one — with both the segmentation model and SPPI run
-independently on each epoch — shows where solar capacity actually landed, not just where
+composite against the current one -- with both the segmentation model and SPPI run
+independently on each epoch -- shows where solar capacity actually landed, not just where
 it stands today. Pakistan's own rooftop stock roughly doubled since 2021/22 by this
 measure. See [Growth](https://open-energy-transition.github.io/earthpv/results/growth/).
 
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: three tiers by standard of proof for Pakistan's rooftop solar capacity — Verified (7,685 MWp, hand-mapped or two detectors agreeing), Best estimate (15,004 MWp, the project's own defensible figure), and Ceiling (42,251 MWp, an explicit uncalibrated upper bound) — above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: three tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (7,685 MWp, hand-mapped or two detectors agreeing), Best estimate (15,004 MWp, the project's own defensible figure), and Ceiling (42,251 MWp, an explicit uncalibrated upper bound) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 

@@ -1101,7 +1101,7 @@ def main() -> None:
         "__CSS__": frag["css"],
         "__POSE_HTML__": POSE_SECTION_HTML,
         "__POSE_JS__": POSE_SECTION_JS,
-        "__PAGE_TITLE__": "Pakistan Solar PV — Counted Three Times Over",
+        "__PAGE_TITLE__": "Pakistan Solar PV -- Counted Three Times Over",
         "__PV_JSON__": json.dumps(payload, separators=(",", ":")),
         "__POSE_JSON__": json.dumps(pose, separators=(",", ":")),
         "__POSE_N_TOTAL__": str(stats["n_total"]),

@@ -1,38 +1,38 @@
 ## Ground-truth calibration boxes
 
 Small, hand-verified areas where *all* rooftop PV has been mapped from high-resolution
-imagery (not just OSM's usual partial coverage) — fetched fresh via `earthpv
+imagery (not just OSM's usual partial coverage) -- fetched fresh via `earthpv
 overpass-labels --bbox` rather than the Overture snapshot, since a just-finished mapping
 pass won't be in Overture for weeks/months. Unlike the country-wide `mapped_frac` used by
 `capacity_calibration`/`configs/calibration/<aoi>_candidate_precision.yaml` (which only
-measures **precision** — is an existing candidate real — because it can only check
+measures **precision** -- is an existing candidate real -- because it can only check
 candidates that exist), a fully-mapped box is small enough to check **recall** too: every
 real installation is known, so a candidate-free patch of the box is a genuine miss, not
 just "unmapped."
 
-### Box 1 — Lahore, 1km x 1km around (31.4633307, 74.4045096) — 2026-07-22
+### Box 1 -- Lahore, 1km x 1km around (31.4633307, 74.4045096) -- 2026-07-22
 
 bbox `74.399244,31.458839,74.409775,31.467822` (`data/labels/lahore_calib_1km_overpass_solar.parquet`).
 
 **Ground truth:** 8 rooftop installations, all clustered in one corner of the box
-(74.409-74.410, 31.467-31.468), 314-577 m2 each — reads as one small residential/
+(74.409-74.410, 31.467-31.468), 314-577 m2 each -- reads as one small residential/
 commercial development where each unit got its own rooftop array, not 8 independent
 sites.
 
 **Our candidates (pk16085) in/near the box:** exactly 1, a 2702 m2 / confidence 0.49 /
 rank_score 0.39 rooftop candidate ~335m from the box center. Checked against a widened
-2km search: the closest any candidate gets to any of the 8 real installations is 877m —
+2km search: the closest any candidate gets to any of the 8 real installations is 877m --
 not a geometry-offset artifact, a genuine miss.
 
 **Result: 0/8 recall, 1 likely false positive.**
 - The model missed all 8 real installations. Each is well below this project's
-  ≥1000 m2 recall-first design target (README/CLAUDE.md) — consistent with, and now a
+  ≥1000 m2 recall-first design target (README/CLAUDE.md) -- consistent with, and now a
   direct empirical confirmation of, the known operating point rather than a new bug.
   Doesn't mean small arrays are unrecoverable, just that they're outside what this
   checkpoint was tuned to prioritize.
 - The one candidate found in the box is nowhere near any of the 8 confirmed
   installations. Since this box's OSM mapping is asserted complete, a real PV array at
-  that location would already be in the fetch — it isn't, so this candidate is very
+  that location would already be in the fetch -- it isn't, so this candidate is very
   likely a false positive. One useful confirmed-FP data point for the `1k-5k` bucket
   (currently `p_real=0.149` in the interim-mapped-only calibration table).
 
@@ -40,7 +40,7 @@ not a geometry-offset artifact, a genuine miss.
 `earthpv calibrate-candidates` gained `--calibration-box <parquet>` (repeatable):
 it pools a box's per-bin (installations, matched-by-any-candidate) counts directly into
 the same `recall_reference` denominator the country snapshot already builds, before the
-existing Beta-posterior machinery runs — so a quadrat's TRUE-recall evidence (every
+existing Beta-posterior machinery runs -- so a quadrat's TRUE-recall evidence (every
 installation known, unlike the snapshot) moves the recall estimate and its credible
 interval by exactly as much as its sample size supports, automatically, no separate
 code path. Re-ran for Pakistan with this box pooled in:
@@ -56,11 +56,11 @@ earthpv calibrate-candidates --aoi pakistan --pred-dir data/predictions_pk16085 
 | 100-500 m² | 96/164 = 58.5% | 96/170 = 56.5% | [52.0, 64.5] | [50.1, 62.4] |
 | 500-1k m² | 270/367 = 73.6% | 270/369 = 73.2% | [69.7, 77.2] | [69.3, 76.8] |
 
-National `est_mwp_rc` moved +0.001% — negligible, and correctly so: n=8 against a
+National `est_mwp_rc` moved +0.001% -- negligible, and correctly so: n=8 against a
 ~2,800-installation country snapshot genuinely can't move a country-scale estimate much,
 exactly as this doc originally predicted. What changed is that the pipeline now HAS a
 mechanism ready to matter as more of the mapping protocol's planned 25-35 quadrats land
-(`docs/calibration-mapping-protocol.md`) — each new box is one more `--calibration-box`
+(`docs/calibration-mapping-protocol.md`) -- each new box is one more `--calibration-box`
 flag, no code changes needed. The precision side (`mapped_frac`/`p_real`) is genuinely
 unaffected here (no candidate sits near these 8 features, confirmed above), by design:
 `--calibration-box` only ever feeds recall, the same separation `capacity_calibration.py`
@@ -68,42 +68,42 @@ already draws between precision and recall evidence.
 
 One qualitative flag worth carrying forward even though n=8 can't prove it: this box's
 TRUE recall (0/8) sits well below the country-snapshot recall in the same size bins
-(58-74%) — consistent with the snapshot itself being an incomplete, and possibly biased,
+(58-74%) -- consistent with the snapshot itself being an incomplete, and possibly biased,
 sample of real installations (a mapper is more likely to have mapped exactly the
 installations a model also finds easiest to detect). More quadrats will tell us whether
 that gap is real or n=8 noise.
 
 ### Direct density-method validation against Box 1 (2026-07-23)
 
-Location confirmed by reverse-geocode: **DHA Phase V, Lahore** — exactly the mapping
+Location confirmed by reverse-geocode: **DHA Phase V, Lahore** -- exactly the mapping
 protocol's stratum 1 ("affluent planned housing... highest rooftop-PV adoption"). Boundary
 saved as `data/labels/lahore_calib_1km_boundary.geojson`.
 
 Beyond the candidate-level recall check above, this checks `density.py`'s actual per-pixel
 and per-building output against the same 8 installations (true total **3,145.8 m²**),
-pulling the raw probability raster (cell `0135_0077`) and `buildings.geoparquet` directly —
+pulling the raw probability raster (cell `0135_0077`) and `buildings.geoparquet` directly --
 the same artifacts `density` ships, not a re-derived approximation.
 
 **At the 8 true installation footprints, the model's raw pixel probability is exactly
-0.000 — at every one, not just below threshold.** This is a stronger and more concerning
+0.000 -- at every one, not just below threshold.** This is a stronger and more concerning
 finding than "recall is low": it means `pv_area_exp` (the metric whose entire premise is
-integrating *sub-threshold* signal) has nothing to integrate here — these installations
+integrating *sub-threshold* signal) has nothing to integrate here -- these installations
 aren't faintly visible and miscalibrated, they produce no model activation at all. All
 three building-level metrics are therefore zero at every one of the 8 true locations:
 `pv_area_det = pv_area_cal = pv_area_exp = 0`.
 
 **Meanwhile the box's only signal is a false positive, elsewhere.** One candidate
-(2,701.9 m², rooftop, confidence 0.49) sits 877 m from the nearest real installation —
+(2,701.9 m², rooftop, confidence 0.49) sits 877 m from the nearest real installation --
 `density.py` correctly attributes it to 9 nearby (wrong) buildings:
 
 | metric | total in the false-positive cluster | true total (8 real installations) |
 |---|---|---|
 | `pv_area_det` | 2,281.0 m² | 3,145.8 m² |
-| `pv_area_cal` | 340.6 m² | — |
-| `pv_area_exp` | 1,241.4 m² | — |
+| `pv_area_cal` | 340.6 m² | -- |
+| `pv_area_exp` | 1,241.4 m² | -- |
 
 **The trap this exposes:** naively summing "PV area estimated in this box" gives
-~1,200-2,300 m² — deceptively close to the true 3,145.8 m², entirely by coincidence.
+~1,200-2,300 m² -- deceptively close to the true 3,145.8 m², entirely by coincidence.
 Every square metre of it is misattributed; the aggregate number would look roughly right
 while being 100% spatially wrong. A cell/region-aggregate sanity check (as the density
 stage's grid/region layers necessarily are) cannot catch this; only a fully-mapped,
@@ -111,56 +111,56 @@ building-level ground truth like this box can.
 
 **Implication for `est_mwp_rc` (recall-corrected estimator):** the recall correction
 (dividing calibrated candidate area by a size-bin's country-average recall, ~56-73% for
-100-1k m²) is a *population-level* correction — it is only unbiased in expectation across
+100-1k m²) is a *population-level* correction -- it is only unbiased in expectation across
 many neighbourhoods whose true recall averages out to the country figure. This box is a
 direct counterexample at the neighbourhood scale: its true recall is 0%, not 56-73%, so
 `est_mwp_rc` for a query scoped to just this box (or a similar single neighbourhood) would
-still be far too low — recall-correction repairs the *national* total, it does not make
+still be far too low -- recall-correction repairs the *national* total, it does not make
 any single building- or neighbourhood-level number trustworthy. Worth stating explicitly
 wherever `est_mwp_rc` is surfaced at sub-national granularity.
 
 Net read on this one box: 0/8 recall, confirmed at both the candidate-polygon level
-(above) and now the raw-probability level (this section) — the model is currently blind,
+(above) and now the raw-probability level (this section) -- the model is currently blind,
 not just imprecise, in the exact stratum (affluent planned housing, 300-600 m² rooftop
 arrays) the mapping protocol calls the highest-adoption one. That's the single most
 useful thing a first calibration box could have told us.
 
 ### Correction (2026-07-23, later same day): the 8-feature snapshot was stale AND flawed
 
-Prompted by a direct "have you pulled the newest labels for this?" check — good catch,
+Prompted by a direct "have you pulled the newest labels for this?" check -- good catch,
 because the answer was no, and it mattered. Re-fetching this exact bbox live via
 `earthpv overpass-labels --bbox 74.399244,31.458839,74.409775,31.467822 --iso3 PAK`
 returned **1,021 features (52,188.9 m² true PV area)**, not 8 (3,145.8 m²). Comparing
 geometries: 2 of the original 8 (both exactly 314 m², same OSM way IDs) are unchanged;
 the other 6 have been **replaced by clusters of much smaller polygons 3-20 m away**
-(areas now 8-95 m² instead of 314-577 m²) — i.e. the original mapping pass traced whole
+(areas now 8-95 m² instead of 314-577 m²) -- i.e. the original mapping pass traced whole
 roofs for those 6, not individual panels, exactly the "Common failure mode" the
 protocol's Rule 1 warns about, and a second, more careful pass has since fixed it. The
 section above and the earlier calibration-table update both used the stale, partly-wrong
-file — corrected below. New size distribution: 882 installations <100 m², 138 in
+file -- corrected below. New size distribution: 882 installations <100 m², 138 in
 100-500 m², 1 in 1k-5k m², none larger. **Everything above this point in the file
 describes the superseded 8-feature analysis; treat the numbers below as current.**
 
 **Recall, recomputed on the corrected 1,021-installation ground truth:**
-- Within 100 m of any candidate: 40/1,021 (3.9%) — all 40 attributable to the SAME one
+- Within 100 m of any candidate: 40/1,021 (3.9%) -- all 40 attributable to the SAME one
   candidate (2,701.9 m², rooftop, confidence 0.49), which sits in/next to a dense cluster
   of small installations, not scattered across the box.
 - Literal polygon intersection: only 2/1,021 (0.2%).
 - **Raw pixel probability at the true footprints: nonzero for exactly 2/1,021** (the
-  same 2 the candidate literally overlaps) — 1,019/1,021 (99.8%) installations still
+  same 2 the candidate literally overlaps) -- 1,019/1,021 (99.8%) installations still
   show *exactly* 0.000 probability. The core finding survives correction, just more
   starkly: near-total blindness, not literal-zero-of-everything. `pv_area_exp` recovers
-  571.7 of 52,188.9 m² true (1.1%) — nonzero this time, but still capturing almost none
+  571.7 of 52,188.9 m² true (1.1%) -- nonzero this time, but still capturing almost none
   of the true signal.
 - **This reverses the earlier "false positive, 877 m from nearest install" read on the
   one candidate**: against the corrected ground truth its nearest real installation is
   **0.0 m away** (it literally overlaps one). The candidate is better read as a coarse,
-  unresolved detection of a genuine dense small-array cluster — the model correctly
+  unresolved detection of a genuine dense small-array cluster -- the model correctly
   flagged that *something* PV-related is happening there, it just can't resolve the
   ~40 individual panels into separate polygons. Different lesson than "spurious FP
   elsewhere in the box": this is a resolution failure on a real signal, not hallucination.
 
-**Calibration table impact (`--calibration-box`, corrected file) — now genuinely
+**Calibration table impact (`--calibration-box`, corrected file) -- now genuinely
 consequential, unlike the first (stale) pooling:**
 
 | bin | recall before any box | after stale 8-feature box | after corrected 1,021-feature box |
@@ -169,10 +169,10 @@ consequential, unlike the first (stale) pooling:**
 | 100-500 m² | 96/164 (58.5%) | 96/170 (56.5%) | **101/302 (33.4%)** |
 | 1k-5k m² | 1152/1296 | 1152/1296 | 1153/1297 (negligible) |
 
-The <100 and 100-500 bins moved for real this time — n=882 and n=138 from one quadrat
+The <100 and 100-500 bins moved for real this time -- n=882 and n=138 from one quadrat
 are not negligible next to the country snapshot's own n=142/n=164 there. National
-`est_mwp_rc`: 18,309.5 → 18,312.0 MWp (+0.014%, still small — these bins hold little of
-the country's total capacity — but the *interval* widened more meaningfully, 90% CI
+`est_mwp_rc`: 18,309.5 → 18,312.0 MWp (+0.014%, still small -- these bins hold little of
+the country's total capacity -- but the *interval* widened more meaningfully, 90% CI
 [17,065, 21,318] → [17,021, 21,400]).
 
 !!! note "Absolute totals here are superseded"
@@ -180,49 +180,49 @@ the country's total capacity — but the *interval* widened more meaningfully, 9
     the rooftop kWp/m² constant to ground-mount site area and put no bound on candidate
     polygon size. The current national total is roughly a third of the number quoted here
     (see [Capacity density](../methods/density.md)). The *relative* effect this section
-    measures — which is what it is about — is unaffected: the bins in question still hold
+    measures -- which is what it is about -- is unaffected: the bins in question still hold
     little of the country's capacity, and the interval still widens.
 
 **Lesson for the mapping protocol itself:** a "done" quadrat should be spot-checked
 against a fresh Overpass pull before it feeds any calibration, even hours after
-completion — mapping is iterative (the two-mapper completeness pass is designed to add
+completion -- mapping is iterative (the two-mapper completeness pass is designed to add
 exactly this kind of correction), and a calibration mechanism now exists that will
 silently encode whatever was cached at pull time as ground truth.
 
 ---
 
-### Box 2 — Faisalabad, 1km x 1km around (31.4976169, 73.0523711) — 2026-07-24
+### Box 2 -- Faisalabad, 1km x 1km around (31.4976169, 73.0523711) -- 2026-07-24
 
 bbox `73.047103,31.493125,73.057639,31.502108` (`data/labels/faisalabad_calib_1km_overpass_solar.parquet`,
 boundary `data/labels/faisalabad_calib_1km_boundary.geojson`). Reverse-geocode: **Punjab
-Small Industries Estate, Faisalabad Sadar Tehsil** — the mapping protocol's **stratum 6
+Small Industries Estate, Faisalabad Sadar Tehsil** -- the mapping protocol's **stratum 6
 (industrial zone)**, which names Faisalabad as an example location directly.
 
 **Status: NOT a Rule-1-verified quadrat.** This is a live OSM pull, not an
-exhaustively-mapped completeness pass — no second-mapper declaration, no imagery-date
+exhaustively-mapped completeness pass -- no second-mapper declaration, no imagery-date
 record. Documented here as a useful interim data point; do not fold into
 `calibrate-candidates --calibration-box` until it's been through the same completeness
 process as Box 1.
 
 **Ground truth (as currently mapped):** 53 installations, all tagged `plant:source=solar`
 (deliberate ground-mount/captive-plant tagging, not an ambiguous-generator fallback),
-63,501 m² total. Sequential OSM way IDs (1498181449–1498181511) — one mapping pass.
-Size range 193–4,722 m² (median 922 m², mean 1,198 m²) — squarely in the model's
+63,501 m² total. Sequential OSM way IDs (1498181449–1498181511) -- one mapping pass.
+Size range 193–4,722 m² (median 922 m², mean 1,198 m²) -- squarely in the model's
 designed ≥500 m² strength zone, unlike Box 1's sub-100 m² residential cluster.
 
 **Candidate recall (pk16085): 53/53 (100%) within 100 m, 34/53 (64.2%) literal
-intersection** — a sharp contrast with Box 1's 0.2%/3.9%. Consistent with size:
+intersection** -- a sharp contrast with Box 1's 0.2%/3.9%. Consistent with size:
 these installations sit well inside the range the model was tuned for. One thing worth
 a second look later: several nearby candidates are much larger than any single true
-installation here (up to 64,997 m² and 58,697 m², vs. a 4,722 m² true max) — plausibly
+installation here (up to 64,997 m² and 58,697 m², vs. a 4,722 m² true max) -- plausibly
 the model merging a dense cluster of adjacent ground arrays into fewer, larger candidate
 polygons rather than resolving them individually; not confirmed, just flagged.
 
-### Box 3 — Multan, 1km x 1km around (30.1262242, 71.3829068) — 2026-07-24
+### Box 3 -- Multan, 1km x 1km around (30.1262242, 71.3829068) -- 2026-07-24
 
 bbox `71.377714,30.121733,71.3881,30.130716` (boundary
-`data/labels/multan_calib_1km_boundary.geojson`; no labels parquet — see below).
-Reverse-geocode: **Multan Industrial Estate, Thati Lal, Multan Sadar Tehsil** — also
+`data/labels/multan_calib_1km_boundary.geojson`; no labels parquet -- see below).
+Reverse-geocode: **Multan Industrial Estate, Thati Lal, Multan Sadar Tehsil** -- also
 stratum 6 (industrial). Sits inside the `pakistan` AOI's `val_tiles` holdout region
 (`configs/aoi.yaml`, the Multan cluster used for the model's own validation split).
 
@@ -230,10 +230,10 @@ stratum 6 (industrial). Sits inside the `pakistan` AOI's `val_tiles` holdout reg
 features.** This is explicitly **not** usable as a "0 installations, 0 recall"
 ground-truth point: per Rule 1 of `docs/calibration-mapping-protocol.md`, a quadrat with
 no completeness declaration is indistinguishable between "genuinely no PV here" and
-"nobody has mapped this area in OSM yet" — treating an unmapped area as a confirmed
+"nobody has mapped this area in OSM yet" -- treating an unmapped area as a confirmed
 negative is exactly the failure mode the protocol calls out as worse than leaving a
 quadrat out entirely. Flagged as an **open mapping task** (industrial zone, Multan,
-overlapping the model's own val split — a high-value quadrat to complete), not a result.
+overlapping the model's own val split -- a high-value quadrat to complete), not a result.
 
 **Both boxes' honest status:** neither has been through a human high-res-imagery
 completeness pass. Box 2's plant-tagged, sequential-ID mapping looks like a deliberate,
@@ -242,26 +242,26 @@ showed) but that is circumstantial, not a substitute for the protocol's actual
 two-mapper sign-off. Treat both as candidates for the mapping team's queue, not
 finished quadrats, until that happens.
 
-### Box 4 — Sundar Industrial Estate, Lahore, 1km x 1km around (31.2861646, 74.1720942) — 2026-07-24
+### Box 4 -- Sundar Industrial Estate, Lahore, 1km x 1km around (31.2861646, 74.1720942) -- 2026-07-24
 
 bbox `74.166838,31.281673,74.17735,31.290656`
 (`data/labels/sundar_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/sundar_calib_1km_boundary.geojson`). Reverse-geocode: **Sundar Industrial
-Estate, Raiwind Tehsil, Lahore District** — stratum 6 (industrial) again, a third
+Estate, Raiwind Tehsil, Lahore District** -- stratum 6 (industrial) again, a third
 industrial box alongside Faisalabad and Multan.
 
-**Status: NOT a Rule-1-verified quadrat** (same caveat as Boxes 2/3 — live pull only,
+**Status: NOT a Rule-1-verified quadrat** (same caveat as Boxes 2/3 -- live pull only,
 no completeness declaration).
 
 **Ground truth (as currently mapped):** 38 installations, 72,561 m² total, mixed tagging
 (20 `plant`/18 `generator`, 23 ground/15 rooftop by placement) and **non-sequential**
-OSM way IDs spanning several ID ranges — unlike Faisalabad's single contiguous pass,
+OSM way IDs spanning several ID ranges -- unlike Faisalabad's single contiguous pass,
 this looks like several separate mapping sessions over time. Size range 76.7–6,579.7 m²
-(median 1,658 m²) — again squarely in the model's designed strength zone.
+(median 1,658 m²) -- again squarely in the model's designed strength zone.
 
 **Candidate recall (pk16085): 33/38 (86.8%) within 100 m, 26/38 (68.4%) literal
 intersection.** The 5 misses are all at or below 999 m² (76.7, 103.8, 254.4, 722.8,
-999.4 m²) — consistent with the model's known size-dependent recall falloff, not a
+999.4 m²) -- consistent with the model's known size-dependent recall falloff, not a
 surprise. A third data point reinforcing the same pattern as Box 2: this model performs
 reasonably well once installations clear roughly the 1,000 m² mark, regardless of
 industrial vs. residential context; the failure mode found in Box 1 is specifically
@@ -269,12 +269,12 @@ about very small (<500 m²) arrays, not industrial siting per se.
 
 ---
 
-### Box 5 — SITE Karachi, 1km x 1km around (24.9070005, 66.9941461) — 2026-07-24
+### Box 5 -- SITE Karachi, 1km x 1km around (24.9070005, 66.9941461) -- 2026-07-24
 
 bbox `66.989194,24.902509,66.999098,24.911492`
 (`data/labels/site_karachi_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/site_karachi_calib_1km_boundary.geojson`). Reverse-geocode: **Sindh
-Industrial Trading Estate (SITE), Rashid Abad, SITE Town, Kemari District, Karachi** —
+Industrial Trading Estate (SITE), Rashid Abad, SITE Town, Kemari District, Karachi** --
 stratum 6 (industrial), and the mapping protocol's explicit Karachi example. First
 non-Punjab box.
 
@@ -297,64 +297,64 @@ second-mapper sweep for any of the four owner-mapped boxes, karachi_coast includ
 boundary was recorded before this doc entry was written, per the protocol's "record the
 rectangle... before mapping starts."
 
-### Box 6 — Sialkot Old City, 1km x 1km around (32.503855, 74.5422037) — 2026-07-29
+### Box 6 -- Sialkot Old City, 1km x 1km around (32.503855, 74.5422037) -- 2026-07-29
 
 bbox `74.536883,32.499346,74.547524,32.508364`
 (`data/labels/sialkot_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/sialkot_calib_1km_boundary.geojson`). Reverse-geocode: **Puran Nagar / Old
-City, Sialkot Tehsil, Sialkot District, Punjab** — stratum 2 (dense older urban /
+City, Sialkot Tehsil, Sialkot District, Punjab** -- stratum 2 (dense older urban /
 informal settlement), the protocol's least-represented stratum among prior boxes.
 
 **Ground truth: 182 installations (177 rooftop / 5 ground), 15,055.8 m² total**, median
-63.7 m², max 646.8 m². 148/182 (81.3%) below 100 m², none at or above 1,000 m² — a second
+63.7 m², max 646.8 m². 148/182 (81.3%) below 100 m², none at or above 1,000 m² -- a second
 sub-floor test ground alongside `karachi_coast_calib_700m`, this time in dense inner-city
 fabric rather than affluent planned housing.
 
-### Box 7 — Sheikh Maltoon Town, Mardan, 1km x 1km around (34.189388, 72.0253755) — 2026-07-29
+### Box 7 -- Sheikh Maltoon Town, Mardan, 1km x 1km around (34.189388, 72.0253755) -- 2026-07-29
 
 bbox `72.019951,34.18488,72.0308,34.193896`
 (`data/labels/mardan_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/mardan_calib_1km_boundary.geojson`). Reverse-geocode: **Sheikh Maltoon Town,
-Bypass Road, Mardan Tehsil, Mardan District, Khyber Pakhtunkhwa** — a planned
+Bypass Road, Mardan Tehsil, Mardan District, Khyber Pakhtunkhwa** -- a planned
 residential scheme in a peri-urban tehsil town, so it sits between the protocol's
 stratum 1 and stratum 3 examples rather than cleanly inside either. **First
 Khyber Pakhtunkhwa quadrat**, and the first outside Punjab/Sindh.
 
 **Ground truth: 794 installations, all rooftop, 20,701.2 m² total**, median 21.7 m²,
-max 221.5 m². 784/794 (98.7%) below 100 m², none at or above 500 m² — the smallest
+max 221.5 m². 784/794 (98.7%) below 100 m², none at or above 500 m² -- the smallest
 median installation size of any registered quadrat, and by far the largest installation
 count for a 1 km² box so far.
 
-### Box 8 — Quetta City, 1km x 1km around (30.1915156, 67.015288) — 2026-07-29
+### Box 8 -- Quetta City, 1km x 1km around (30.1915156, 67.015288) -- 2026-07-29
 
 bbox `67.010096,30.187005,67.02048,30.196026`
 (`data/labels/quetta_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/quetta_calib_1km_boundary.geojson`). Reverse-geocode: **Brahimzai, Abdul
-Sattar Road, Quetta City Tehsil, Quetta District, Balochistan** — stratum 5 (arid /
-bare-land settlement). **First Balochistan quadrat** — notable because
+Sattar Road, Quetta City Tehsil, Quetta District, Balochistan** -- stratum 5 (arid /
+bare-land settlement). **First Balochistan quadrat** -- notable because
 `plausibility.py`'s ground-mount:rooftop check already flags Balochistan as structurally
 suspect (see `docs/methods/density.md`), so a trustworthy rooftop-only ground truth here
 is high-value independent of the sub-floor question.
 
 **Ground truth: 73 installations, all rooftop, 12,238.3 m² total**, median 103.9 m²,
 max 1,856.6 m². Wider size spread than Boxes 6/7 (35/73 below 100 m², 3/73 at or above
-1,000 m²) — not purely a sub-floor test ground, unlike the other two new boxes.
+1,000 m²) -- not purely a sub-floor test ground, unlike the other two new boxes.
 
-### Box 9 — Peshawar, 1km x 1km around (34.0199854, 71.5505752) — 2026-07-30
+### Box 9 -- Peshawar, 1km x 1km around (34.0199854, 71.5505752) -- 2026-07-30
 
 bbox `71.545162,34.015478,71.555989,34.024493`
 (`data/labels/peshawar_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/peshawar_calib_1km_boundary.geojson`, geodesic area 999,999.998 m² by
-construction — built as a precise 1 km square via `pyproj.Geod.fwd`, not drawn by eye).
+construction -- built as a precise 1 km square via `pyproj.Geod.fwd`, not drawn by eye).
 Reverse-geocode against the density stage's own admin polygons: **Peshawar district,
-Khyber Pakhtunkhwa** — the **first Peshawar quadrat**, and the city was already flagged
+Khyber Pakhtunkhwa** -- the **first Peshawar quadrat**, and the city was already flagged
 as a priority target in `docs/methods/density.md`'s sub-400 m² region-suggestion table
 (one of the top building-density cities nationally, alongside Karachi/Lahore/Faisalabad/
 Islamabad, none of which had a Peshawar-specific quadrat yet).
 
 **Status: NOT a Rule-1-verified quadrat**, same caveat as Boxes 2–5. This is a live
 Overpass pull at a center coordinate the user supplied, not an exhaustively-mapped
-completeness pass by a human against high-res imagery — no mapper name, no second-pass
+completeness pass by a human against high-res imagery -- no mapper name, no second-pass
 countersign, no imagery-date record. Its boundary and building geometry are exact; its
 *completeness* is unverified, so absence of a mapped installation anywhere inside it does
 NOT mean absence of PV. Usable as an interim data point and as a `roofclf` training
@@ -365,43 +365,43 @@ until it goes through the two-mapper sign-off in
 **Re-pulled twice more, 2026-07-30, same day, after the user added missing OSM labels
 each time**: 290 → 353 (+63) → 360 (+7) installations. Every snapshot preserved, none
 overwritten: bare `peshawar_calib_1km_overpass_solar.parquet` (pull 1, 290), dated
-`..._20260730.parquet` (pull 2, 353), `..._20260730_v2.parquet` (pull 3, 360, current —
+`..._20260730.parquet` (pull 2, 353), `..._20260730_v2.parquet` (pull 3, 360, current --
 `_newest_solar`/`_newest_overpass_path` both pick it, verified). This is the "OSM is
 iteratively completed, re-pull after mapping" pattern the protocol expects, not a sign
-this box is done — still not Rule-1 without a completeness declaration and
+this box is done -- still not Rule-1 without a completeness declaration and
 second-mapper pass; the shrinking increment (+63, then +7) is a reasonable, but not
 sufficient, signal that the mapping is converging.
 
 **Ground truth (current pull): 360 installations, 356 rooftop / 4 ground, 28,955.1 m² total**,
 median 71.5 m², mean 80.4 m², max 555.8 m². **358/360 (99.4%) below the 400 m² detection
-floor, 265/360 (73.6%) below 100 m²** — the largest single haul of sub-floor installations
+floor, 265/360 (73.6%) below 100 m²** -- the largest single haul of sub-floor installations
 of any quadrat registered so far (previous densest was Mardan at 794 installations but a
 larger box; Peshawar's 360-in-1 km² is a higher areal density). `packing_density`
-(nn_median_m) measures **15.7 m** — tightly packed, in the same "informal/residential"
+(nn_median_m) measures **15.7 m** -- tightly packed, in the same "informal/residential"
 cluster as Karachi coastal (16.8 m), Quetta (16.8 m; coincidentally close) and Sialkot
 (18.8 m), not the industrial estates' 44–52 m spacing. Geometries are simple `way`
 polygons tagged `generator:source=solar`/`location=roof`, consistent with an ordinary
 building-by-building OSM mapping pass rather than a bulk import.
 
-### Box 10 — Peshawar East, 1km x 1km around (34.0242579, 71.5600512) — 2026-07-30
+### Box 10 -- Peshawar East, 1km x 1km around (34.0242579, 71.5600512) -- 2026-07-30
 
 bbox `71.554638,34.019750,71.565465,34.028766`
 (`data/labels/peshawar_east_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/peshawar_east_calib_1km_boundary.geojson`, geodesic area 999,999.998 m²).
-User-suggested center, ~995 m from Box 9's center — checked for overlap **before**
+User-suggested center, ~995 m from Box 9's center -- checked for overlap **before**
 creation (per the protocol note added to this doc): the two 1 km boxes share a corner,
 **6.56% of this box's area**. Added anyway on the user's confirmation, as adjacent
 Peshawar coverage rather than a duplicate.
 
 **The overlap matters more than its area share suggests.** 42 of this box's 131
-installations (32.1%) — nearly a third — sit inside that 6.56%-of-area shared corner,
+installations (32.1%) -- nearly a third -- sit inside that 6.56%-of-area shared corner,
 i.e. the corner is far denser with PV than the rest of either box. **Consequence: if
 `peshawar_calib_1km` and `peshawar_east_calib_1km` are both pooled into `roofclf`
 training/LOQO without deduplication, those ~42 installations (and their host buildings)
-are double-counted** — present in both quadrats' building tables, which breaks the
+are double-counted** -- present in both quadrats' building tables, which breaks the
 leave-one-quadrat-out independence assumption (holding out one no longer removes all of
 that ground truth from training, since the other still carries the overlap). **Not yet
-deduplicated** — `roofclf.building_table`/`discover_quadrats` has no overlap-aware
+deduplicated** -- `roofclf.building_table`/`discover_quadrats` has no overlap-aware
 filtering today. Whoever next runs `earthpv roof-classifier` with both Peshawar quadrats
 present should either clip one box's buildings to exclude the shared corner, or treat
 this as a known limitation of the resulting fold statistics for these two quadrats
@@ -410,25 +410,25 @@ specifically.
 **Status: NOT Rule-1 verified**, same caveat as every other non-owner-mapped box.
 
 **Ground truth: 131 installations, 127 rooftop / 4 ground, 7,572.2 m² total**, median
-44.9 m², **100% below the 400 m² floor** — entirely sub-floor, smaller median than even
+44.9 m², **100% below the 400 m² floor** -- entirely sub-floor, smaller median than even
 Box 9. `packing_density` (nn_median_m) **17.3 m**, same tightly-packed cluster.
-**base_rate 3.7%** (126/3,382 buildings) — notably lower than Box 9's 16.5% despite
+**base_rate 3.7%** (126/3,382 buildings) -- notably lower than Box 9's 16.5% despite
 being 995 m away and sharing a corner; this box's own building count (3,382) is also
 60% higher than Box 9's (2,111) over a similarly-sized area, so the two boxes are not
-drawn from the same population despite being adjacent and in the same city — a useful,
+drawn from the same population despite being adjacent and in the same city -- a useful,
 concrete illustration of why `base_rate` must be read per quadrat, never pooled, even at
 this fine a spatial grain.
 
-### Box 11 — Rahim Yar Khan District, 1km x 1km around (28.4255547, 70.2779961) — 2026-07-31
+### Box 11 -- Rahim Yar Khan District, 1km x 1km around (28.4255547, 70.2779961) -- 2026-07-31
 
 bbox `70.2728926,28.4210431,70.2830996,28.4300663`
 (`data/labels/rahim_yar_khan_calib_1km_overpass_solar.parquet`, boundary
 `data/labels/rahim_yar_khan_calib_1km_boundary.geojson`, geodesic area 999,999.999 m² by
-construction — `pyproj.Geod.fwd`, not drawn by eye). User-supplied center. Checked for
+construction -- `pyproj.Geod.fwd`, not drawn by eye). User-supplied center. Checked for
 overlap against all 10 existing boxes before creation (per the protocol note added after
 the Peshawar pair): **no intersection with any existing quadrat.**
 
-**Location: Rahim Yar Khan District, Punjab (near Sadiqabad) — approximate.** Identified
+**Location: Rahim Yar Khan District, Punjab (near Sadiqabad) -- approximate.** Identified
 from the coordinates alone (southern Punjab, close to the Sindh border); the exact
 settlement is not confirmed against the density stage's admin polygons the way Box 9 was,
 so treat "Rahim Yar Khan District" as a district-level placement, not a verified town name.
@@ -441,23 +441,23 @@ second-mapper sign-off. Usable as a `roofclf` training quadrat, not as a source 
 trustworthy negatives.
 
 **Ground truth: 204 installations, 183 rooftop / 21 ground, 19,803.9 m² total**, median
-35.4 m². **97.1% below the 400 m² detection floor, 88.7% below 100 m²** — solidly in the
+35.4 m². **97.1% below the 400 m² detection floor, 88.7% below 100 m²** -- solidly in the
 small/informal-residential regime this project's sub-400 m² work is most short on
 quadrats for. A live VIDA fetch over the same bbox returns 2,099 buildings; against 183
 rooftop installations that is an approximate base rate of **8.7%**, not yet the exact
 matched count `roofclf.building_table` would produce (that requires a composite/VIDA join
-this session did not run) — read as indicative, not the precise per-building figure the
+this session did not run) -- read as indicative, not the precise per-building figure the
 table above reports for the other 11 boxes.
 
 **Not yet folded into `roofclf`'s fold table or `docs/methods/calibration-quadrats.md`'s
 overview table.** `roofclf.discover_quadrats` globs `*_calib_*_boundary.geojson` with a
 matching solar file, so a bare `earthpv roof-classifier` run will pick this box up
-automatically as the 12th quadrat, same as Peshawar/Peshawar East did — no code change
+automatically as the 12th quadrat, same as Peshawar/Peshawar East did -- no code change
 needed, just the next full run.
 
 ---
 
-## Visual verification pass (2026-07-24) — what this is and is NOT
+## Visual verification pass (2026-07-24) -- what this is and is NOT
 
 Prompted by a direct request to bring all boxes to Rule-1-verified status. **Important
 scope note, stated plainly: this pass does not achieve that.** Rule 1
@@ -467,14 +467,14 @@ declaration. What follows is a single systematic visual pass by Claude against l
 World Imagery (fetched via the public ArcGIS `World_Imagery/MapServer/export` REST
 endpoint, no API key, capture date not exposed by this endpoint so recorded as
 "unknown" per the protocol's own allowance), reading each exported image directly. That
-is real, substantive evidence — a genuine plausibility/completeness check against
-imagery, not just trust in existing OSM tags — but it is **one AI pass, not two
+is real, substantive evidence -- a genuine plausibility/completeness check against
+imagery, not just trust in existing OSM tags -- but it is **one AI pass, not two
 independent human mappers**, and it produces approximate location/plausibility
 judgments, not precise digitized polygons. None of these boxes should be described as
 "Rule 1 verified" on this basis. Treat this as a strong prioritization signal for the
 actual mapping team, not a substitute for their sign-off.
 
-**Method:** fetched a ~1024x1024–2048x2048 export per box (~0.35–0.5 m/pixel — enough to
+**Method:** fetched a ~1024x1024–2048x2048 export per box (~0.35–0.5 m/pixel -- enough to
 resolve individual rooftop panel-grid texture, confirmed by cross-checking specific
 claimed installations' exact centroids against the image), plus quadrant crops and
 targeted zooms on the largest claimed features per box.
@@ -483,48 +483,48 @@ targeted zooms on the largest claimed features per box.
 
 - **Box 1 (Lahore DHA):** Confirmed. A close crop of the known-dense NE corner shows
   dozens of distinct small dark-panel-grid rooftops scattered through the residential
-  blocks — visually consistent with the corrected 1,021-installation dataset (already
+  blocks -- visually consistent with the corrected 1,021-installation dataset (already
   established via the OSM re-pull earlier this session).
-- **Box 2 (Faisalabad):** **Not confirmed — a real discrepancy.** The single largest
+- **Box 2 (Faisalabad):** **Not confirmed -- a real discrepancy.** The single largest
   claimed installation (`osm-way/1498181472`, 4,722 m², tagged `plant:source=solar`) is
-  absent from the imagery at its exact stated centroid (31.499789, 73.051969) — ordinary
+  absent from the imagery at its exact stated centroid (31.499789, 73.051969) -- ordinary
   small rooftops, no large dark array. The general area also doesn't show the kind of
   obvious large ground-mount arrays the claimed size distribution (median 922 m², all 53
   tagged `plant`) would predict, unlike the unambiguous large arrays visible in Boxes 3-5.
-  **Recommendation: do not trust this box's labels without independent re-verification —
+  **Recommendation: do not trust this box's labels without independent re-verification --
   possible bad tagging/import, not necessarily "the model is wrong."**
-- **Box 3 (Multan):** **Confirmed absent from OSM, confirmed present in reality** — the
+- **Box 3 (Multan):** **Confirmed absent from OSM, confirmed present in reality** -- the
   single most important finding of this pass. All four quadrants show multiple large,
   unambiguous rooftop solar arrays with clear panel-row texture (one in the SE quadrant
   alone is easily several thousand m², with crisp visible panel rows). Roughly a
   dozen-plus plausible installations visible total. This resolves last turn's stated
   ambiguity definitively: **not a solar-free estate, just an unmapped one.** Highest-value
-  quadrat for the mapping team to complete next — real signal is sitting there unmapped,
+  quadrat for the mapping team to complete next -- real signal is sitting there unmapped,
   and it sits inside the model's own `val_tiles` holdout.
 - **Box 4 (Sundar):** Confirmed. Roughly 10-15 large, clearly grid-textured rooftop
   arrays visible across the estate; the three largest claimed installations checked
   against their exact centroids correspond to real visible arrays in the same cluster of
   buildings.
-- **Box 5 (SITE Karachi):** Confirmed, most visually dense of all five boxes — dozens of
+- **Box 5 (SITE Karachi):** Confirmed, most visually dense of all five boxes -- dozens of
   clear rooftop arrays visible across nearly every block, strongly supporting (if
   anything, suggesting the true count could be even higher than) the claimed 67.
 
 **Net effect on box status:**
 - Boxes 1, 4, 5: visual pass materially increases confidence but does not constitute
   Rule-1 sign-off. Still recommend NOT pooling 4/5 into `--calibration-box` without an
-  actual human completeness pass — the Faisalabad case below is exactly why that caution
+  actual human completeness pass -- the Faisalabad case below is exactly why that caution
   matters.
-- Box 2 (Faisalabad): actively flagged as suspect, not just unverified — recommend a
+- Box 2 (Faisalabad): actively flagged as suspect, not just unverified -- recommend a
   human mapper re-examine these specific 53 features before using them for anything.
 - Box 3 (Multan): status changed from "ambiguous, open task" to "confirmed high-value
-  open task" — there is real, visible, substantial PV here that needs mapping.
+  open task" -- there is real, visible, substantial PV here that needs mapping.
 
 ---
 
 ## Glint-method validation against Box 1's full ground truth (2026-07-24)
 
 Direct empirical check of `earthpv.glint`'s own spike-detection/orientation-consistency
-method against the corrected 1,021-installation Lahore ground truth — a genuinely
+method against the corrected 1,021-installation Lahore ground truth -- a genuinely
 different question from the model-blindness finding above: does the *independent
 physics-based* corroborator (not the trained segmentation model) find anything here?
 Reused `glint.tile_scene_series_batch` (all 1,021 targets sit in one 1-degree tile
@@ -533,7 +533,7 @@ into 7 chunks of ~150 targets each (fresh search + token per chunk) after the
 tile-batched country-scale bug (`docs/issues/glint-tile-batched-coverage.md`) bit an
 un-chunked first attempt at this exact box (every target came back with an identical,
 truncated 55-scene count). Chunking fixed it: scene counts came back in 3 clean,
-systematic tiers (136/95/87 scenes, each shared by a large uniform group — sub-area
+systematic tiers (136/95/87 scenes, each shared by a large uniform group -- sub-area
 band-availability differences, not random loss) rather than one suspicious uniform low
 number.
 
@@ -541,19 +541,19 @@ number.
 `n_consistent >= 2` validation bar**, against a country-wide reference of 2.5%
 (<100 m²) and 8.8% (100-500 m²) validated from the 500-target study. Even generously
 discounting for the reduced scene count here (87-136 valid scenes vs. the original
-study's typical ~130-150 — a real methodological difference, not nothing), a clean 0/1,021
+study's typical ~130-150 -- a real methodological difference, not nothing), a clean 0/1,021
 against an expectation of roughly 22-34 lands far outside what reduced sample size alone
 would explain.
 
-**This is consistent with, not contradicting, the earlier model-blindness finding** — two
+**This is consistent with, not contradicting, the earlier model-blindness finding** -- two
 independent detection channels (the trained segmentation model, and the physics-based
 glint corroborator) both show near-total failure on this specific stratum. A plausible
 physical reason specific to glint: `glint.py`'s own documented caveat is that ~30% of
 confirmed real installations show zero spikes over 2 years because their actual
 tilt/azimuth doesn't happen to bisect the sun/sensor at the fixed ~10:30 overpass
-geometry — a *per-installation* orientation lottery nationally. But this box is one
+geometry -- a *per-installation* orientation lottery nationally. But this box is one
 affluent planned-housing development (DHA Phase V, stratum 1) where many roofs likely
-share a similar pitch/orientation convention by construction standard — if that shared
+share a similar pitch/orientation convention by construction standard -- if that shared
 convention happens to be glint-unfavorable, it could plausibly apply to nearly the whole
 quadrat at once, rather than the ~30% national miss rate being independently rolled per
 installation. Not confirmed (would need actual roof-orientation data to check), but a
@@ -562,6 +562,6 @@ technique has real, if modest, power nationally.
 
 **Practical implication:** glint corroboration should not be expected to help recover
 capacity in this specific stratum/quadrat type (small, uniform, closely-packed
-residential rooftop arrays) — both the model and the independent physics check are
+residential rooftop arrays) -- both the model and the independent physics check are
 weak here. Data: `data/glint/calib_box/lahore_calib_box_glint_summary.csv`,
 `lahore_calib_box_stats_by_size.csv`.
