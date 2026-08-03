@@ -24,8 +24,11 @@ The one exception is the per-installation recall table, which `earthpv evaluate`
 prints to stdout rather than writing to disk; it is transcribed into RECALL
 below with the checkpoint it came from.
 
-Palette: the validated default categorical slots 1-3 (blue / orange / aqua),
-used unchanged in the documented fixed order.
+Palette: the three series slots of the interactive result pages' "night lights"
+design system (amber / blue / aqua = the atlas's accent / large / domain), on the
+same surfaces the docs site paints -- see docs/assets/stylesheets/extra.css, which
+carries the same values as MkDocs Material variables. Slot order is fixed, so slot 1
+is the primary series on every chart.
 """
 
 from __future__ import annotations
@@ -52,7 +55,7 @@ OUT = ROOT / "docs" / "assets" / "figures"
 
 @dataclass(frozen=True)
 class Theme:
-    """One rendering mode. Series hues are the validated slots, per mode."""
+    """One rendering mode. Series hues are the three atlas slots, per mode."""
 
     name: str
     surface: str
@@ -60,16 +63,21 @@ class Theme:
     ink_dim: str
     ink_faint: str
     rule: str
+    card: str
     s1: str
     s2: str
     s3: str
-    band: str
 
 
-LIGHT = Theme("light", "#fcfcfb", "#0b0b0b", "#52514e", "#8a8880", "#e1e0d9",
-              "#2a78d6", "#eb6834", "#1baf7a", "#f0efec")
-DARK = Theme("dark", "#1a1a19", "#ffffff", "#c3c2b7", "#8a8880", "#383835",
-             "#3987e5", "#d95926", "#199e70", "#262624")
+# `surface` is the page background these charts sit directly on, and `card` the panel
+# fill the diagram boxes use, so both are the `--pv-page` / `--pv-panel` values from
+# docs/assets/stylesheets/extra.css. `rule` is that stylesheet's hairline flattened
+# against the surface and pushed a little harder, since a gridline has to read on its
+# own where a table border has cell text next to it.
+LIGHT = Theme("light", "#f1ebdd", "#2a2216", "#5f5540", "#857a61", "#cfc0a5", "#faf6ec",
+              "#c25e12", "#1c6fa8", "#1f9b8a")
+DARK = Theme("dark", "#100d09", "#f7f1e6", "#c9bda4", "#93866c", "#3a2d16", "#1a160f",
+             "#f5a623", "#4fb2e8", "#2fd9c4")
 THEMES = (LIGHT, DARK)
 
 
@@ -536,7 +544,7 @@ def _esc(s: str) -> str:
 
 
 def build_architecture_svg(t: Theme) -> str:
-    card = "#ffffff" if t.name == "light" else "#232321"
+    card = t.card
     boxes: dict[str, tuple[float, float, float, float]] = {}
     parts: list[str] = []
 
@@ -716,9 +724,8 @@ def write_architecture_diagram():
 
 def write_svg_pair(template: str, stem: str):
     for t in THEMES:
-        card = "#ffffff" if t.name == "light" else "#232321"
         svg = template.format(surface=t.surface, ink=t.ink, dim=t.ink_dim, rule=t.rule,
-                              card=card, s1=t.s1, s2=t.s2, s3=t.s3, sfx=t.name)
+                              card=t.card, s1=t.s1, s2=t.s2, s3=t.s3, sfx=t.name)
         suffix = ".svg" if t.name == "light" else ".dark.svg"
         path = OUT / f"{stem}{suffix}"
         OUT.mkdir(parents=True, exist_ok=True)
@@ -822,14 +829,16 @@ def sync_interactive_dirs():
 
 
 LOGO_SRC = ROOT / "docs" / "assets" / "earthpv-logo.png"
-BRAND_NAVY = (18, 41, 63)
+# The site's header bar, `--pv-bar` in the light scheme: the favicon plate matches the
+# bar the logo sits on rather than being its own colour.
+BRAND_BAR = (42, 34, 22)
 
 
 def derive_logo():
     """Trim and recolour the source logo into the variants the site and README need.
 
     The source is a black mark on transparency, off-centre with wide margins. Black is
-    invisible on the navy header bar and on a dark README, so a white variant is
+    invisible on the dark header bar and on a dark README, so a white variant is
     generated from the same alpha channel; nothing is redrawn.
     """
     try:
@@ -859,10 +868,10 @@ def derive_logo():
         out.save(OUT / f"{name}.png", optimize=True)
         print(f"  wrote docs/assets/figures/{name}.png")
 
-    # Favicon: the white mark on the brand navy, rounded, at browser-tab scale.
+    # Favicon: the white mark on the brand bar colour, rounded, at browser-tab scale.
     size = 256
     fav = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    plate = Image.new("RGBA", (size, size), BRAND_NAVY + (255,))
+    plate = Image.new("RGBA", (size, size), BRAND_BAR + (255,))
     rounded = Image.new("L", (size, size), 0)
     ImageDraw.Draw(rounded).rounded_rectangle([0, 0, size - 1, size - 1], radius=size // 5, fill=255)
     fav.paste(plate, (0, 0), rounded)

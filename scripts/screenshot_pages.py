@@ -8,10 +8,20 @@ exactly the kind of step that silently goes stale, so it is a script.
     pixi run docs-screenshots
     # or
     .pixi/envs/default/bin/python scripts/screenshot_pages.py
+    .pixi/envs/default/bin/python scripts/screenshot_pages.py pakistan_pv_pose
+
+Any arguments are treated as output stems to re-render, so a palette change to one
+page does not have to re-render (and re-commit) all of them.
 
 Outputs go to `docs/assets/figures/`. Requires `firefox` on PATH; if it is missing
 the script says so and exits 0, leaving any existing PNGs in place, so a machine
 without a browser can still build the docs.
+
+Every page here paints itself from `prefers-color-scheme`, and the committed PNGs are
+the dark rendering, so this drives Firefox with a throwaway profile pinning
+`ui.systemUsesDarkTheme`. Without it the output silently follows whichever theme the
+operator's desktop happens to be in, and a light-desktop re-run would replace all of
+them with the light rendering.
 
 Snap note, learned the hard way: Firefox installed as a snap can only read files
 under a NON-hidden directory in $HOME. `/tmp`, an external drive, and even
@@ -66,7 +76,19 @@ def have_firefox() -> str | None:
     return shutil.which("firefox")
 
 
-def capture(firefox: str, shot: Shot) -> bool:
+def dark_profile() -> Path:
+    """A throwaway Firefox profile pinned to a dark system theme (see module docstring)."""
+    prof = STAGE / "profile-dark"
+    shutil.rmtree(prof, ignore_errors=True)
+    prof.mkdir(parents=True)
+    (prof / "user.js").write_text(
+        'user_pref("ui.systemUsesDarkTheme", 1);\n'
+        'user_pref("browser.shell.checkDefaultBrowser", false);\n'
+    )
+    return prof
+
+
+def capture(firefox: str, shot: Shot, profile: Path) -> bool:
     src = ROOT / shot.src
     if not src.exists():
         print(f"  {shot.src} missing, skipping")
@@ -78,7 +100,8 @@ def capture(firefox: str, shot: Shot) -> bool:
     staged_html.write_bytes(src.read_bytes())
     staged_png.unlink(missing_ok=True)
 
-    cmd = [firefox, "--headless", f"--window-size={shot.width},{shot.height}",
+    cmd = [firefox, "--headless", "--no-remote", "-profile", str(profile),
+           f"--window-size={shot.width},{shot.height}",
            f"--screenshot={staged_png}", f"file://{staged_html}"]
     # cwd must also be readable by the snap, or firefox never starts.
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180, cwd=STAGE)
@@ -109,8 +132,18 @@ def main() -> int:
         print("firefox not found on PATH; keeping the existing screenshots.")
         print("Install Firefox, or capture the pages by hand into docs/assets/figures/.")
         return 0
+
+    wanted = set(sys.argv[1:])
+    shots = [s for s in SHOTS if not wanted or s.name in wanted]
+    unknown = wanted - {s.name for s in SHOTS}
+    if unknown:
+        print(f"no such shot: {', '.join(sorted(unknown))}")
+        print(f"known: {', '.join(s.name for s in SHOTS)}")
+        return 1
+
     print(f"screenshots via {firefox}")
-    ok = all([capture(firefox, s) for s in SHOTS])
+    profile = dark_profile()
+    ok = all([capture(firefox, s, profile) for s in shots])
     return 0 if ok else 1
 
 
