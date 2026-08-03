@@ -1,4 +1,4 @@
-# Standard-pose glint matched filter (assessed against real data — not recommended as a general detector)
+# Standard-pose glint matched filter (assessed against real data -- not recommended as a general detector)
 
 ## The idea, as discussed
 

@@ -208,7 +208,7 @@ yet, especially outside the industrial stratum.
 
 !!! warning "Full coverage reached; the Gilgit-Baltistan regression is exempted, but promotion still failed for a different reason (updated 2026-07-30)"
     As of 2026-07-29 the fraction-head run covers **all 4,463 manifest cells**
-    (`exp_coverage_frac: 1.0`) — the inference finished on 2026-07-27, the docs simply
+    (`exp_coverage_frac: 1.0`) -- the inference finished on 2026-07-27, the docs simply
     hadn't been updated. National expected-area rooftop capacity with the fraction
     instrument comes out at **6.65 GWp** vs the segmentation instrument's **5.4 GWp**
     (+23%), consistent in direction and rough magnitude with the quadrat-level finding
@@ -220,7 +220,7 @@ yet, especially outside the industrial stratum.
     against 0.000 MWp rooftop) was traced to a `density.py`/`postprocess.py`
     `no_building`-aggregation issue independent of the fraction head, and is now
     exempted at the region level (`RATIO_CHECK_EXEMPT_REGIONS`, see the plausibility
-    gate section below) — `check-density` passes again on that specific failure mode.
+    gate section below) -- `check-density` passes again on that specific failure mode.
 
     **That exemption was not enough: promoting the fraction head as `density.py`'s
     default, attempted 2026-07-30 against the current (post-OSM-replace) candidate
@@ -228,7 +228,7 @@ yet, especially outside the industrial stratum.
     (Khyber Pakhtunkhwa, Balochistan) failed the ground:rooftop ratio check that had
     previously passed. Root cause: a disproportionate **46% collapse in
     roof-intersected candidate area vs. 29% overall** between the passing baseline and
-    the forced recompute — the same class of `density.py` aggregation issue as the
+    the forced recompute -- the same class of `density.py` aggregation issue as the
     Gilgit-Baltistan case, now surfaced more broadly because this was the first *forced*
     full recompute combining OSM-geometry-replacement's candidate corrections with a
     genuine forced recompute (earlier comparison runs had pinned the candidate set,
@@ -241,20 +241,20 @@ yet, especially outside the industrial stratum.
     The practical path taken instead: a separate, explicitly experimental sub-400 m²
     capacity product (`sub400_capacity.py`, next section) that combines the fraction
     head's evidence with `roof-classifier`'s national scores without touching
-    `density.py`'s candidate-aggregation code at all — see "Sub-400 m² experimental
+    `density.py`'s candidate-aggregation code at all -- see "Sub-400 m² experimental
     capacity" below.
 
     **The fraction head was never the cause of this.** A later, unrelated change (adding
     the `density_confidence` completeness flag below) triggered a plain, non-`--force`
     segmentation-only re-run and reproduced the identical failure. `_CAND_COLS` is
     rederived from `candidates.parquet` on *every* run regardless of `--force`, while the
-    cached cell partials' per-building/`*_roof` columns only refresh on `--force` — and
+    cached cell partials' per-building/`*_roof` columns only refresh on `--force` -- and
     `candidates.parquet` was OSM-geometry-replaced (2026-07-29) after the partials were
     last built with `--force`, so the two now permanently disagree. Any run against the
     current candidate population fails the gate, segmentation or fraction. The published
     `density/` stays pinned to the pre-OSM-replace snapshot (`n_oversize_excluded=233`)
     until a `--force` rebuild happens and the roof-candidate collapse it triggers is
-    root-caused — both still open.
+    root-caused -- both still open.
 
 ### Per-building classification
 

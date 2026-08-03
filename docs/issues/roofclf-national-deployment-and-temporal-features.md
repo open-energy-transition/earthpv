@@ -9,7 +9,7 @@ entry records what was actually measured.
 ### 1. Retrain: fraction head, 8 quadrats pooled + 1 held out
 
 Literal 9-fold LOQO retraining of the deep model would cost 9-80+ GPU hours (measured:
-past retrains here took 47 min to 8h38min each) — no precedent in this codebase and not
+past retrains here took 47 min to 8h38min each) -- no precedent in this codebase and not
 a responsible single-session use of the GPU. Compromise: train once on 8 quadrats'
 fraction chips pooled into the existing Germany+Pakistan corpus (oversampled 20x train
 each via `scripts/merge_fraction_chip_index.py`), holding one out for one honest

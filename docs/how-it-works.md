@@ -111,15 +111,15 @@ real module or CLI stage; the [Setup New Country](reproduce.md) runbook runs the
 
 Three inputs, each reused everywhere downstream rather than re-fetched per stage:
 
-- **Sentinel-2 L2A** — 10-band dry-season composites (`local_source.py`'s
+- **Sentinel-2 L2A** -- 10-band dry-season composites (`local_source.py`'s
   `CompositeIndex` where a sibling project already downloaded a tile, otherwise
   `compose.py` builds one on demand from Planetary Computer STAC). Every instrument in
   the inference lane reads from this same set of rasters.
-- **OSM / Overture solar labels** — mapped installations from Overture's periodic
+- **OSM / Overture solar labels** -- mapped installations from Overture's periodic
   snapshot, or a live Overpass pull for a region being freshly mapped
   (`earthpv overpass-labels`). This is both the training signal and, through the
   flywheel, the thing the pipeline's own output eventually feeds back into.
-- **VIDA / Overture buildings** — imagery-derived footprints (`buildings.py`), which
+- **VIDA / Overture buildings** -- imagery-derived footprints (`buildings.py`), which
   matter because they include small, unmapped structures OpenStreetMap does not yet
   have. Buildings feed three downstream consumers directly: `postprocess`'s building
   join, `roofclf`'s per-building features, and the sub-400 m² bracket's domain
@@ -135,7 +135,7 @@ internals and the two invariants (chip jitter, Hann-tapered overlap-add) that ke
 inference from tiling into a grid of false positives.
 
 From there, five instruments read the same Sentinel-2 composites, but they are not
-five versions of the same thing — they differ in what they need to exist first:
+five versions of the same thing -- they differ in what they need to exist first:
 
 | Instrument | Needs the trained checkpoint? | What it outputs |
 | --- | --- | --- |
@@ -174,7 +174,7 @@ is common, while a glint on something that is not PV is rare. See
 ### Combine, rank, and gate
 
 - **`postprocess`** polygonizes the segmentation raster, joins each candidate to a
-  building footprint, and computes `rank_score` — the ranking the leads queue is sorted
+  building footprint, and computes `rank_score` -- the ranking the leads queue is sorted
   by. Glint corroboration boosts this score; nothing here demotes a candidate to zero,
   because a false positive on this path costs a mapper seconds and a miss is invisible
   forever.
@@ -190,7 +190,7 @@ is common, while a glint on something that is not PV is rare. See
   and publishing: a ground-mount-to-rooftop capacity ratio per region and a
   single-cell concentration check, both tuned so the pre-fix 18.3 GWp Pakistan run
   (Gilgit-Baltistan 166 MWp of ground-mount against 0.8 MWp of rooftop) fails and the
-  current run passes. It has no CI hook — `data/` is gitignored, so a human must run it.
+  current run passes. It has no CI hook -- `data/` is gitignored, so a human must run it.
 
 ### The two published products
 

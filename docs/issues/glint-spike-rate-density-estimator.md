@@ -38,7 +38,7 @@ instrument:
 
 ## Why this is credible now
 
-- The detection-probability curve is measured, not assumed — that's what makes
+- The detection-probability curve is measured, not assumed -- that's what makes
   the inversion legitimate.
 - Spike amplitude is roughly size-independent (median 2.2–3.1× baseline
   across all buckets), so the instrument doesn't saturate or fade with size;
@@ -51,7 +51,7 @@ instrument:
 
 `scripts/glint_spike_rate_estimator.py` implements sample → (existing
 `glint_density_pull.py`) → analyze, end-to-end tested on a small Lahore patch.
-The false-spike floor is no longer an open question — measured on the
+The false-spike floor is no longer an open question -- measured on the
 corroboration experiment's control buildings:
 
 | criterion | Lahore controls (n=69) | detection prob, 100–500 m² bucket |
@@ -60,10 +60,10 @@ corroboration experiment's control buildings:
 | validated (≥2 consistent) | **8.7%** false rate | 8.8% |
 
 i.e. **below ~500 m², the instrument's false rate currently equals or exceeds
-its true-detection rate — the inversion is undefined exactly where the
+its true-detection rate -- the inversion is undefined exactly where the
 estimator matters most.** It works today for the 500 m²–50k m² range
 (validated: d 16–31% vs f 8.7%). Two caveats cut in opposite directions:
-(a) the "controls" were only model-negative, not verified-negative — real
+(a) the "controls" were only model-negative, not verified-negative -- real
 unmapped PV among them inflates f, so the true floor may be lower (quadrat
 verified-negatives will settle this); (b) Germany controls show far higher
 false rates (70%/21%), so the floor is region-dependent and must be measured
@@ -75,11 +75,11 @@ estimates.
 ## Open questions
 
 - ~~False-spike rate on *non*-PV roofs (metal roofs, water tanks) sets the
-  estimator's floor — needs measuring on a known-negative building sample~~
+  estimator's floor -- needs measuring on a known-negative building sample~~
   Measured (see Status above): 8.7–20.3% on Lahore model-negative controls,
   region-dependent; verified-negative measurement from quadrats still needed.
 - Sample size N per cell for a target CI width; likely hundreds of buildings
-  per stratum, not per cell — may argue for stratum-level rather than
+  per stratum, not per cell -- may argue for stratum-level rather than
   cell-level estimation, disaggregated by covariates.
 - Detection curve was measured on OSM-mapped (biased toward visible?)
   installations; quadrat data should re-verify it.

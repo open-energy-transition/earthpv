@@ -17,6 +17,7 @@
 26. Build glint as automated validator of pv installations. 
 27. Reduce tile size and region where the pv density usage is been applied to smaller cities and don't just check the building density just for a whole cell.
 28. Check if and how PV density estimation could be used for growing a seed of PV, increasing the ROI. 
+29. Test a training of fraction head with all <400 m² labels from Pakistan.
 
 
 
