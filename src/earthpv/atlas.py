@@ -953,6 +953,133 @@ def build_sub400_bracket_atlas(
     return out
 
 
+GROWTH_TEMPLATE = Path(__file__).parent / "templates" / "pv_growth_atlas.html"
+
+
+def build_growth_atlas(
+    aoi: str, growth_dir: Path, out: Path | None = None,
+    zoom_out_frac: float = 0.0,
+) -> Path:
+    """Two-tab atlas from `scripts/pv_growth_map.py` (segmentation, current vs. pre-boom
+    epoch) and `scripts/sppi_growth_map.py` (per-building SPPI epoch-diff), both reading
+    from the same `growth_dir` (default `<density_dir>/growth`).
+
+    Deliberately does not attempt to visualize the boom-window stacked-model retrain
+    (`docs/issues/boom-window-stacking-experiment.md`) as a map layer -- that experiment
+    produced no usable per-cell output (a training collapse, not a spatial result) --
+    it is summarized in this page's background section as text instead.
+    """
+    growth_dir = Path(growth_dir)
+    grid = gpd.read_parquet(growth_dir / "growth_grid.geoparquet")
+
+    sppi_path = growth_dir / "sppi_growth_grid.geoparquet"
+    sppi_cols = ["n_onset_buildings", "onset_roof_area_m2", "onset_mwp"]
+    if sppi_path.exists():
+        sppi = gpd.read_parquet(sppi_path).drop(columns="geometry")
+        missing = [c for c in sppi_cols if c not in sppi.columns]
+        for c in missing:  # older sppi_growth_grid.geoparquet predating onset_mwp
+            sppi[c] = 0.0
+        grid = grid.merge(sppi[["cell", *sppi_cols]], on="cell", how="left")
+    else:
+        for c in sppi_cols:
+            grid[c] = 0.0
+    grid[sppi_cols] = grid[sppi_cols].fillna(0.0)
+
+    title = aoi.replace("_", " ").title()
+
+    cells = [
+        [round(float(r.lon0), 3), round(float(r.lat0), 3),
+         round(float(r.delta_est_mwp_rc), 3), round(float(r.delta_est_mwp_det), 3),
+         int(r.n_onset_buildings), round(float(r.onset_roof_area_m2) / 1e6, 4),
+         round(float(r.onset_mwp), 3)]
+        for r in grid.itertuples()
+    ]
+    bounds = [
+        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
+        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
+    ]
+    if zoom_out_frac:
+        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
+        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
+        bounds = [
+            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
+            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
+        ]
+
+    provinces = []
+    regions_path = growth_dir / "growth_regions.geoparquet"
+    sppi_regions_path = growth_dir / "sppi_growth_regions.geoparquet"
+    sppi_by_name = {}
+    if sppi_regions_path.exists():
+        sr = gpd.read_parquet(sppi_regions_path)
+        sppi_by_name = {str(row["name"]): row for _, row in sr.iterrows()}
+    if regions_path.exists():
+        reg = gpd.read_parquet(regions_path)
+        for r in reg[reg.level == "region"].itertuples():
+            sr = sppi_by_name.get(str(r.name))
+            provinces.append({
+                "name": str(r.name),
+                "delta_mwp_rc": round(float(r.delta_est_mwp_rc), 1),
+                "delta_mwp_det": round(float(r.delta_est_mwp_det), 1),
+                "mwp_rc": round(float(r.est_mwp_rc), 1),
+                "mwp_rc_preboom": round(float(r.est_mwp_rc_preboom), 1),
+                "n_onset": int(sr["n_onset_buildings"]) if sr is not None else 0,
+                "onset_km2": (
+                    round(float(sr["onset_roof_area_m2"]) / 1e6, 2) if sr is not None else 0.0
+                ),
+                "onset_mwp": (
+                    round(float(sr["onset_mwp"]), 1)
+                    if sr is not None and "onset_mwp" in sr else 0.0
+                ),
+                "rings": _rings(r.geometry),
+            })
+        provinces.sort(key=lambda p: -p["delta_mwp_rc"])
+
+    data = {
+        "bounds": bounds,
+        "cells": cells,
+        "provinces": provinces,
+        "cities": CITIES.get(aoi, []),
+        "totals": {
+            "delta_mwp_rc": round(float(grid.delta_est_mwp_rc.sum()), 1),
+            "delta_mwp_det": round(float(grid.delta_est_mwp_det.sum()), 1),
+            "mwp_rc_current": round(float(grid.est_mwp_rc.sum()), 1),
+            "mwp_rc_preboom": round(float(grid.est_mwp_rc_preboom.sum()), 1),
+            "n_onset_buildings": int(grid.n_onset_buildings.sum()),
+            "onset_km2": round(float(grid.onset_roof_area_m2.sum()) / 1e6, 1),
+            "onset_mwp": round(float(grid.onset_mwp.sum()), 1),
+            "n_cells": int(len(grid)),
+        },
+    }
+
+    html = GROWTH_TEMPLATE.read_text()
+    for key, value in {
+        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
+        "__PAGE_TITLE__": f"{title} PV Growth Atlas",
+        "__H1__": f"Where {title}'s rooftop solar appeared since before the boom",
+        "__AOI_TITLE__": title,
+        "__LEDE_HTML__": (
+            "Pakistan's rooftop PV stock is dominated by a post-2022 import boom. Two "
+            "independent instruments diff the same pre-boom (2021/22) and current "
+            "Sentinel-2 imagery to show where that growth actually landed: a trained "
+            "segmentation model's own recall-corrected capacity estimate, and a "
+            "model-free spectral index computed directly on each building's own "
+            "reflectance. Switch between them below."
+        ),
+    }.items():
+        html = html.replace(key, value)
+
+    out = Path(out) if out else growth_dir / f"{aoi}_pv_growth_atlas.html"
+    out.write_text(html)
+    log.info(
+        "Wrote growth atlas (Δ %.1f MWp recall-corrected, %d SPPI-onset buildings, "
+        "%.1f km² onset roof area, %.1f MWp uncalibrated SPPI ceiling) -> %s",
+        data["totals"]["delta_mwp_rc"], data["totals"]["n_onset_buildings"],
+        data["totals"]["onset_km2"], data["totals"]["onset_mwp"], out,
+    )
+    return out
+
+
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,

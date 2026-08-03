@@ -71,7 +71,7 @@ set an area up, and the same pipeline follows.
 | See the capacity numbers and interrogate them | [Capacity map](results/capacity.md) |
 | Understand the workflow, architecture, methods and what's been tried | [How it works](how-it-works.md) |
 | Know how detection and density actually work | [Detection](methods/detection.md), [Density](methods/density.md) |
-| Run the whole thing yourself, or bring it to another country | [Reproduce](reproduce.md) |
+| Run the whole thing yourself, or bring it to another country | [Setup New Country](reproduce.md) |
 | Join the effort | [Community](#community) |
 | Read the one-page version | the [README](https://github.com/open-energy-transition/earthpv#readme) in the repository |
 

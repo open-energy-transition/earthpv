@@ -111,4 +111,4 @@ pixi run earthpv atlas --aoi pakistan
 
 The density stage needs no GPU and no retraining; it runs on rasters already on disk in
 roughly two hours single-process for all of Pakistan, and is resumable per cell. See
-[Reproduce](../reproduce.md) for the stages that produce those rasters in the first place.
+[Setup New Country](../reproduce.md) for the stages that produce those rasters in the first place.
