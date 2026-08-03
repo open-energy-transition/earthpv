@@ -1,38 +1,54 @@
 <title>Fitted Panel Pose — Pakistan Glint Survey (n=2000)</title>
 <style>
+/* Palette: the same "night lights" tokens as the atlas templates and the docs site
+   (docs/assets/stylesheets/extra.css). `--accent-sun` is the atlas accent (amber) and
+   `--accent-glint` its `--domain` (aqua); the dark scheme used to be a cool navy of its
+   own, which read as a foreign panel once this page was embedded in the docs site
+   alongside a warm-dark atlas. The serif body face below is this page's own voice and
+   deliberately unchanged. */
 :root {
-  --bg: #f2efe6;
-  --bg-panel: #eae4d3;
-  --bg-chart: #ece6d6;
-  --ink: #2a2620;
-  --ink-dim: #675f4d;
-  --ink-faint: #a49874;
-  --rule: #d6cbac;
-  --accent-sun: #a8641f;
-  --accent-glint: #1f7a72;
-  --excluded: #ddd3b3;
-  --excluded-line: #b7a87d;
-  --card-shadow: 0 1px 2px rgba(60,50,20,0.06);
+  --bg: #f1ebdd;
+  --bg-panel: #faf6ec;
+  --bg-chart: #f3ecdb;
+  --ink: #2a2216;
+  --ink-dim: #5f5540;
+  --ink-faint: #857a61;
+  --rule: #cfc0a5;
+  --accent-sun: #c25e12;
+  --accent-glint: #1f9b8a;
+  --excluded: #e6dcc7;
+  --excluded-line: #c3b492;
+  --card-shadow: 0 1px 2px rgba(80,55,15,0.07);
+  /* Without this the browser paints a light scrollbar over the dark page, which is
+     what gives an embedded iframe away. */
+  color-scheme: light;
+  scrollbar-color: #c3b492 #ece4d2;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11151d; --bg-panel: #171d28; --bg-chart: #141a24;
-    --ink: #e9e6db; --ink-dim: #8d94a6; --ink-faint: #565e70;
-    --rule: #262d3c; --accent-sun: #e3a34d; --accent-glint: #5fc9c1;
-    --excluded: #202536; --excluded-line: #333c52; --card-shadow: none;
+    --bg: #100d09; --bg-panel: #1a160f; --bg-chart: #221d14;
+    --ink: #f7f1e6; --ink-dim: #c9bda4; --ink-faint: #93866c;
+    --rule: #3a2d16; --accent-sun: #f5a623; --accent-glint: #2fd9c4;
+    --excluded: #241f16; --excluded-line: #4a3a1c; --card-shadow: none;
+    color-scheme: dark;
+    scrollbar-color: #4a3a1c #14100b;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #11151d; --bg-panel: #171d28; --bg-chart: #141a24;
-  --ink: #e9e6db; --ink-dim: #8d94a6; --ink-faint: #565e70;
-  --rule: #262d3c; --accent-sun: #e3a34d; --accent-glint: #5fc9c1;
-  --excluded: #202536; --excluded-line: #333c52; --card-shadow: none;
+  --bg: #100d09; --bg-panel: #1a160f; --bg-chart: #221d14;
+  --ink: #f7f1e6; --ink-dim: #c9bda4; --ink-faint: #93866c;
+  --rule: #3a2d16; --accent-sun: #f5a623; --accent-glint: #2fd9c4;
+  --excluded: #241f16; --excluded-line: #4a3a1c; --card-shadow: none;
+  color-scheme: dark;
+  scrollbar-color: #4a3a1c #14100b;
 }
 :root[data-theme="light"] {
-  --bg: #f2efe6; --bg-panel: #eae4d3; --bg-chart: #ece6d6;
-  --ink: #2a2620; --ink-dim: #675f4d; --ink-faint: #a49874;
-  --rule: #d6cbac; --accent-sun: #a8641f; --accent-glint: #1f7a72;
-  --excluded: #ddd3b3; --excluded-line: #b7a87d; --card-shadow: 0 1px 2px rgba(60,50,20,0.06);
+  --bg: #f1ebdd; --bg-panel: #faf6ec; --bg-chart: #f3ecdb;
+  --ink: #2a2216; --ink-dim: #5f5540; --ink-faint: #857a61;
+  --rule: #cfc0a5; --accent-sun: #c25e12; --accent-glint: #1f9b8a;
+  --excluded: #e6dcc7; --excluded-line: #c3b492; --card-shadow: 0 1px 2px rgba(80,55,15,0.07);
+  color-scheme: light;
+  scrollbar-color: #c3b492 #ece4d2;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }

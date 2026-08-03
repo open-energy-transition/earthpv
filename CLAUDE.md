@@ -557,17 +557,54 @@ numbers from tracked files (`results/*.csv`, the atlas HTML's embedded JSON, the
 calibration YAML) so the site cannot drift from them -- edit the sources, not the SVGs.
 Charts are written twice (`x.svg` / `x.dark.svg`) for Material's `#only-light` /
 `#only-dark` suffixes. The logo variants and favicon are derived from
-`docs/assets/earthpv-logo.png` (a black mark on transparency, invisible on the navy
+`docs/assets/earthpv-logo.png` (a black mark on transparency, invisible on the dark
 header) by the same script. Local preview:
 `pixi run docs-figures && pixi run -e docs docs-serve`. The build runs `--strict`, so a
 broken internal link fails CI. Docs prose in this repo avoids em dashes and emoji.
 
+**The site chrome is the same design system as the pages it embeds (2026-08-03).** The
+site used to be navy-and-white Material with a warm-amber "night lights" atlas pasted
+into an iframe in the middle of it; now `docs/assets/stylesheets/extra.css` defines the
+atlas's own tokens as `--pv-*` (a verbatim copy of `templates/pv_evidence_atlas.html`'s
+values, kept in sync by eye for the reason given under "Results-page house style") and
+maps them onto Material's variables, in both schemes. `theme.font: false` plus
+`--md-text-font`/`--md-code-font` put both sides on the same system-ui/ui-monospace
+stacks. Consequences worth knowing before editing any of it:
+
+- **Both dark modes have to agree at runtime, not just on paper.** Material's toggle
+  writes `data-md-color-scheme` on `<body>`; each result page has its own toggle reading
+  `data-theme` off its own `<html>`, defaulting to `prefers-color-scheme`. They desync
+  the moment a reader uses the site toggle without changing the OS preference.
+  `docs/assets/javascripts/embed-theme.js` drives the frames from the site's scheme; it
+  **clicks each frame's `#themeBtn`** rather than setting the attribute, because the
+  atlas pages recolour their SVG map inside that click handler and only the pose page
+  observes the attribute. Verified 2026-08-03 by rendering a slate-scheme page under a
+  light-OS Firefox profile.
+- **`color-scheme` alone does not fix the frame's scrollbar** (measured, Firefox): it
+  computes correctly on the frame root and the scrollbar still paints light down the
+  side of the panel. `scrollbar-color` is what works. Both are declared in the
+  templates *and* set by the sync script, since the docs site copies whatever artifact
+  is on disk and the built `results/*.html` predate the template change.
+- Admonitions keep Material's per-type icon and title tint but lose the coloured ring
+  (the atlas never rings a card in a second hue). That rule needs a `[class]`
+  specificity bump to outrank Material's own `.md-typeset .admonition.info`.
+- `scripts/build_docs_figures.py`'s `LIGHT`/`DARK` themes carry the same values, so the
+  generated charts sit on the page surface rather than on their own near-white canvas.
+  Series slots are now the atlas's three hues (amber / blue / aqua), slot 1 primary.
+- `docs/glint_geometry.svg` is hand-drawn, not generated, and switches on
+  `prefers-color-scheme` internally rather than being an `#only-light`/`#only-dark`
+  pair -- so it is the one asset that still follows the OS instead of the site toggle.
+  Recoloured, not split; splitting means hand-maintaining two copies.
+
 `scripts/screenshot_pages.py` (`pixi run docs-screenshots`) renders the interactive HTML
 pages to PNG for the README, which cannot embed an iframe. It is **not** in CI because
-it needs a browser. **Snap-packaged Firefox can only read a non-hidden directory under
-`$HOME`** -- `/tmp`, the external drive holding this repo, and even `~/.cache` all fail,
-and the failure mode is a silent hang rather than an error, so the script stages pages
-in `~/earthpv-screenshots/` and sets the subprocess cwd there.
+it needs a browser. Pass output stems as arguments to re-render a subset. **Snap-packaged
+Firefox can only read a non-hidden directory under `$HOME`** -- `/tmp`, the external drive
+holding this repo, and even `~/.cache` all fail, and the failure mode is a silent hang
+rather than an error, so the script stages pages in `~/earthpv-screenshots/` and sets the
+subprocess cwd there. It also pins `ui.systemUsesDarkTheme` in a throwaway profile: the
+committed PNGs are the dark rendering, and without the pin the output silently follows
+the operator's desktop theme.
 
 ### National dashboards (bundle CLI kept, no longer used by the site)
 

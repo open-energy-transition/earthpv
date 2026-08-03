@@ -1,0 +1,56 @@
+# TerraTorch fine-tuning config for PV FRACTION regression (sub-pixel density),
+# Pakistan-tuned, hard-negative retrain. Copy of configs/terramind_pv_fraction_pakistan.yaml
+# (v1, the deployed checkpoint) with only index_path/checkpoint_dir changed: same
+# backbone/necks/decoder/loss, same Germany + Pakistan-nationwide (2x) base corpus, plus
+# 2,626 hard-negative chips (data/chips/pakistan_hard_neg, 1x, no oversampling) --
+# buildings the fraction model itself flagged as persistently bright in both the current
+# and 2022 composites (data/predictions_fraction_hardneg/pakistan/hard_negatives_confirmed.parquet,
+# 1,021 of the original 1,032 kept after excluding 11 whose exact center now falls inside a
+# currently-mapped OSM solar polygon -- see docs/issues/ write-up for that check). All-zero
+# fraction masks: these are genuine negatives from the same source_region/composites v1
+# trained on, not a new domain.
+task_type: regression
+
+data:
+  index_path: data/chips/combined_fraction_hardneg/index.parquet
+  batch_size: 8
+  num_workers: 4
+  target: fraction
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    head_final_act: torch.nn.Sigmoid
+    rescale: true
+  loss: weighted_mse
+  weighted_mse_args: {k: 10.0}
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/fraction_pakistan_hardneg
+patience: 8
+monitor: val/RMSE
+monitor_mode: min
