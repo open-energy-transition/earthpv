@@ -88,7 +88,16 @@ nav:
       - Panel pose from glint: results/pv-pose.md
       - Mapping leads: results/leads.md
   - Setup New Country: reproduce.md
-  - Notes:
+  - How it works:
+      - how-it-works.md
+      - Detection model: methods/detection.md
+      - Capacity density: methods/density.md
+      - Solar glint: methods/glint.md
+      - Glint image gallery: glint_examples.md
+      - Calibration: methods/calibration.md
+      - Calibration quadrats overview: methods/calibration-quadrats.md
+      - Quadrat protocol: calibration-mapping-protocol.md
+ - Notes:
       - notes/index.md
       - Calibration boxes: issues/pakistan-calibration-boxes.md
       - Epoch jump as recall signal: issues/epoch-jump-recall-signal.md
@@ -100,12 +109,3 @@ nav:
       - Roof classifier national deployment: issues/roofclf-national-deployment-and-temporal-features.md
       - Calibration imagery dating: issues/calibration-imagery-dating.md
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md
-  - How it works:
-      - how-it-works.md
-      - Detection model: methods/detection.md
-      - Capacity density: methods/density.md
-      - Solar glint: methods/glint.md
-      - Glint image gallery: glint_examples.md
-      - Calibration: methods/calibration.md
-      - Calibration quadrats overview: methods/calibration-quadrats.md
-      - Quadrat protocol: calibration-mapping-protocol.md
