@@ -1,9 +1,11 @@
-# Reproduce
+# Setting up a new country
 
-Everything in this documentation was produced by the commands on this page. Every stage is
-resumable and safe to re-run: existing chips, composites and predictions are skipped rather
-than rebuilt. That matters, because most real runs here are network-bound or GPU-bound for
-hours.
+Pakistan is the first pilot, not the product. Every input this pipeline needs is a global
+open dataset, and the model was trained in Germany before it was ever pointed at Punjab --
+nothing about the setup below is Pakistan-specific. This page is also, incidentally, how
+every number on this site was produced: every stage is resumable and safe to re-run, so the
+same commands that bring up a new country also reproduce Pakistan's own results. Most real
+runs here are network-bound or GPU-bound for hours.
 
 ## Requirements
 
@@ -209,19 +211,15 @@ pixi run python scripts/new_region.py add   --aoi <name> --bbox <bbox> --iso3 <I
 pixi run python scripts/new_region.py plan  --aoi <name>                  # runbook
 ```
 
-Full guide, including what to expect by starting condition and what differs from Pakistan:
-[Scale to a new country](#scale-to-a-new-country).
+[Scale to a new country](#scale-to-a-new-country) below is the full guide: what to
+expect by starting condition and what differs from Pakistan.
 
 ## Scale to a new country
 
-Pakistan is the first pilot, not the product. Nothing in the pipeline is Pakistan-specific:
-every input is a global open dataset, and the model was trained in Germany before it was
-ever pointed at Punjab. This section is the path from "we would like a solar map of X" to a
-published capacity atlas for X.
-
-The programme's stated next targets are Mexico, Japan, Korea, Indonesia, India, Brazil,
-South Africa and Nigeria, and Gujarat in India is already registered as a worked template.
-None of them require anything Pakistan required.
+This section is the path from "we would like a solar map of X" to a published capacity
+atlas for X. The programme's stated next targets are Mexico, Japan, Korea, Indonesia,
+India, Brazil, South Africa and Nigeria, and Gujarat in India is already registered as a
+worked template. None of them require anything Pakistan required.
 
 ### What makes it portable
 
@@ -405,6 +403,21 @@ Without local calibration evidence the table marks itself `status: interim-mappe
 and the capacity number is an honest lower bound. That is a legitimate thing to publish as
 long as you say so. Quadrats and manual review are what turn it into an estimate with an
 interval. See [Calibration](methods/calibration.md).
+
+### Step 7: publish it on this site
+
+Optional, and only relevant if the new country's results are meant to join this shared
+site rather than stay in your own deployment. Each entry under **Results** is a short,
+hand-written page: a lede, an embedded interactive HTML page under
+`docs/assets/interactive/` (`INTERACTIVE` in `scripts/build_docs_figures.py` is what
+copies it there -- add a `(results/....html, docs-facing name)` pair and run
+`pixi run docs-figures`), and a caveats section. `docs/results/capacity.md` and
+`docs/results/growth.md` are the templates to copy. Add the new page to `mkdocs.yml`'s
+`Results` nav list once it exists. There is deliberately no config schema or generator
+for this: a country's results are whatever pages it actually has, added by hand, not
+templated -- the one time this project tried a config-driven, auto-combined dashboard
+(`earthpv dashboard`, `src/earthpv/dashboard.py`), keeping it in sync turned out to cost
+more than the plain pages it replaced.
 
 ### What to expect, by starting condition
 

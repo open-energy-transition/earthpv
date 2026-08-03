@@ -20,8 +20,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("pv_growth_map")
 
 DELTA_COLS = ["est_mwp_det", "est_mwp_exp"]
-# est_mwp_cal joined in only when both epochs have it (pre-boom runs may predate it).
-OPTIONAL_DELTA_COLS = ["est_mwp_cal"]
+# est_mwp_cal/est_mwp_rc joined in only when both epochs have them (pre-boom runs may
+# predate a given estimator). est_mwp_rc is the project's actual headline (recall-
+# corrected) metric everywhere else, so it belongs in the growth diff too, not just the
+# precision-honest det floor.
+OPTIONAL_DELTA_COLS = ["est_mwp_cal", "est_mwp_rc", "est_mwp_rc_roof"]
 
 
 def _diff(current: pd.DataFrame, preboom: pd.DataFrame, on: str) -> pd.DataFrame:
@@ -51,6 +54,12 @@ def run(current_dir: Path, preboom_dir: Path, out_dir: Path) -> None:
         pre_grid.est_mwp_det.sum(),
         grid.delta_est_mwp_det.sum(),
     )
+    if "delta_est_mwp_rc" in grid.columns:
+        log.info(
+            "Grid growth: current %.1f MWp (recall-corrected) vs pre-boom %.1f MWp -> "
+            "delta %.1f MWp",
+            cur_grid.est_mwp_rc.sum(), pre_grid.est_mwp_rc.sum(), grid.delta_est_mwp_rc.sum(),
+        )
 
     cur_reg_path = current_dir / "regions.geoparquet"
     pre_reg_path = preboom_dir / "regions.csv"

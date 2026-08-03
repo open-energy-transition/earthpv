@@ -798,8 +798,10 @@ def dashboard(
 ) -> None:
     """Combine an AOI's dashboard panels (e.g. the sub-400 m2 bracket atlas, a glint
     panel-pose survey) into one tabbed national-overview page. Panels are declared in
-    configs/aoi.yaml under `aois.<aoi>.dashboard`; see docs/dashboards/index.md for the
-    shape of that block and how to add a new country."""
+    configs/aoi.yaml under `aois.<aoi>.dashboard`. Not used by the docs site itself
+    (docs/results/*.md links to each standalone page directly -- see
+    docs/reproduce.md's "Step 7: publish it on this site"); kept for whatever else a
+    single bundled, tab-switching page might be useful for."""
     from earthpv.config import REPO_ROOT, Settings
     from earthpv.dashboard import DashboardPanel, build_national_dashboard
 
@@ -808,7 +810,7 @@ def dashboard(
     if not cfg:
         raise typer.BadParameter(
             f"AOI {aoi!r} has no `dashboard:` block in configs/aoi.yaml -- see "
-            "docs/dashboards/index.md for the panel-list shape to add one."
+            "that key's own comment in configs/aoi.yaml for the panel-list shape."
         )
     panels = [
         DashboardPanel(

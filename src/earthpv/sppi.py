@@ -284,6 +284,130 @@ def candidate_sppi(geoms, aoi: str, cfg: dict, settings) -> np.ndarray:
     return out
 
 
+def score_buildings_national_growth(
+    aoi: str, composites, out_dir, min_roof_area_m2: float = 0.0,
+    force: bool = False, limit: int = 0,
+) -> "Path":
+    """Per-building SPPI against BOTH epochs in one pass, nationally -- the spectral-index
+    counterpart to the segmentation-based growth map (scripts/pv_growth_map.py).
+
+    Unlike that map this needs no GPU inference: SPPI is a five-band formula read
+    straight off the composite, so the only cost is the same per-cell building
+    zonal-stats pass `roofclf.score_buildings_national` already proved tractable at this
+    scale (~82M buildings nationally, ~2h16m for one epoch there) -- here it reads both
+    layers (`CompositeIndex(layers=2)`: composite_0 current, composite_1 pre-boom) in one
+    window per cell, so the building fetch and rasterization happen once, not twice.
+
+    `delta_sppi = sppi_current - sppi_preboom` is the change signal to read. Either
+    epoch's SPPI *level* alone carries the same adopter-propensity confound the
+    step-change work measured for a static spectral index (~0.82 AUC from roof/context
+    alone, before panels exist, [[earthpv-step-change-small-pv]]) -- differencing is the
+    same move `postprocess.add_epoch_prior` already makes with the segmentation
+    probability, applied here to SPPI instead.
+
+    A handful of cells never got a composite_1 (see compose_loop_preboom.sh's log) --
+    `CompositeIndex.read_window` raises `FileNotFoundError` there at `layers=2` (unlike
+    the layers=1 "no coverage" `None` return), so those are caught and skipped with a
+    warning rather than crashing the whole national run.
+    """
+    import logging
+    from pathlib import Path
+
+    import geopandas as gpd
+
+    from earthpv.buildings import _iso3_for, fetch_vida_buildings
+    from earthpv.config import Settings
+    from earthpv.labels import resolve_aoi
+    from earthpv.local_source import composite_index
+    from earthpv.roofclf import BAND_NAMES, REFL_SCALE, zonal_mean_max
+    from earthpv import overture
+
+    log = logging.getLogger("sppi")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    iso3 = _iso3_for(cfg)
+    if iso3 is None:
+        raise ValueError(f"AOI '{aoi}' has no division.iso3 -> cannot locate VIDA buildings")
+
+    i02, i03, i08, i11, i12 = (BAND_NAMES.index(b) for b in ("b02", "b03", "b08", "b11", "b12"))
+    nb = len(BAND_NAMES)
+
+    comp_idx = composite_index(str(composites), layers=2)
+    con = overture.connect()
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    n_cells, n_buildings, n_skipped_no_preboom = 0, 0, 0
+    for row in comp_idx.index.itertuples():
+        if limit and n_cells >= limit:
+            break
+        cell = Path(row.path).parent.name
+        out_path = out_dir / f"{cell}.parquet"
+        if out_path.exists() and not force:
+            continue
+        bbox = row.geometry.bounds
+        bu = fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con)
+        if bu.empty:
+            pd.DataFrame().to_parquet(out_path)
+            continue
+        # Half-open claim on the cell's own box, matching density.process_cell /
+        # roofclf.score_buildings_national's convention so every building nationwide is
+        # scored by exactly one cell.
+        inside = bu.geometry.representative_point().within(row.geometry)
+        bu = bu[inside.to_numpy()].reset_index(drop=True)
+        if bu.empty:
+            pd.DataFrame().to_parquet(out_path)
+            continue
+
+        try:
+            res = comp_idx.read_window(bbox)
+        except FileNotFoundError:
+            log.warning(
+                "cell %s: no composite_1 (pre-boom), skipping %d buildings", cell, len(bu)
+            )
+            n_skipped_no_preboom += 1
+            continue
+        if res is None:
+            log.warning("cell %s: no composite coverage, skipping %d buildings", cell, len(bu))
+            continue
+        arr, transform, crs = res
+        arr = arr.astype("float32") / REFL_SCALE
+        current, preboom = arr[:nb], arr[nb : 2 * nb]
+        bu_utm = bu.to_crs(crs)
+        means_cur, _ = zonal_mean_max(bu_utm, current, transform)
+        means_pre, _ = zonal_mean_max(bu_utm, preboom, transform)
+
+        sppi_cur = compute_sppi(
+            means_cur[i02], means_cur[i03], means_cur[i08], means_cur[i11], means_cur[i12]
+        )
+        sppi_pre = compute_sppi(
+            means_pre[i02], means_pre[i03], means_pre[i08], means_pre[i11], means_pre[i12]
+        )
+
+        result = gpd.GeoDataFrame({
+            "cell": cell, "geometry": bu.geometry.to_numpy(),
+            "roof_area_m2": bu["area_m2"].to_numpy(float),
+            "sppi_current": sppi_cur, "sppi_preboom": sppi_pre,
+            "delta_sppi": sppi_cur - sppi_pre,
+        }, crs="EPSG:4326")
+        result.to_parquet(out_path)
+
+        n_cells += 1
+        n_buildings += len(bu)
+        if n_cells % 200 == 0:
+            log.info(
+                "Scored %d cells, %d buildings so far (%d cells skipped, no pre-boom composite)",
+                n_cells, n_buildings, n_skipped_no_preboom,
+            )
+
+    log.info(
+        "Done: %d cells scored this run, %d buildings, %d cells skipped (no pre-boom "
+        "composite) -> %s", n_cells, n_buildings, n_skipped_no_preboom, out_dir,
+    )
+    return out_dir
+
+
 def sppi_only_incremental(
     t: pd.DataFrame, thresholds: pd.DataFrame, seg_threshold: float = 0.3,
     kwp_per_m2_module: float = 0.18,

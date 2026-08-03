@@ -783,6 +783,8 @@ INTERACTIVE = [
     ("results/pakistan_pv_estimator_atlas.html", "pakistan_capacity_atlas.html"),
     ("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose.html"),
     ("results/pakistan_pv_density/pakistan_pv_density_map.html", "pakistan_density_map.html"),
+    ("results/pakistan_pv_evidence_atlas.html", "pakistan_evidence_atlas.html"),
+    ("results/pakistan_pv_growth_atlas.html", "pakistan_growth_atlas.html"),
 ]
 
 

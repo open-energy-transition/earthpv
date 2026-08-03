@@ -94,7 +94,7 @@ accounting, documented in [Calibration](methods/calibration.md).
 
 Every step above is a CLI command that is resumable and safe to re-run. The full runbook,
 including how to start on a region with no pre-existing data, is in
-[Reproduce](reproduce.md).
+[Setup New Country](reproduce.md).
 
 ## Architecture
 
@@ -102,7 +102,7 @@ including how to start on a region with no pre-existing data, is in
 proposes leads, mappers dispose of them, and verified installations become the next
 round of labels. This section is the technical complement: what actually reads what, stage
 by stage, from raw Sentinel-2 pixels to the two published products. Each box below is a
-real module or CLI stage; the [Reproduce](reproduce.md) runbook runs them in this order.
+real module or CLI stage; the [Setup New Country](reproduce.md) runbook runs them in this order.
 
 ![How raw data becomes a mapping lead and a capacity number: Sentinel-2 composites and OpenStreetMap labels train a TerraMind checkpoint; five inference instruments (segmentation, the fraction head, glint, SPPI, roofclf) read the same imagery; postprocess, density and the sub-400 square metre bracket combine their outputs; a plausibility gate checks the capacity numbers; and four outputs follow: MapRoulette leads back to OpenStreetMap, a capacity atlas, a PyPSA-Earth grid CSV, and an evidence atlas.](assets/figures/architecture.svg#only-light)
 ![How raw data becomes a mapping lead and a capacity number: Sentinel-2 composites and OpenStreetMap labels train a TerraMind checkpoint; five inference instruments (segmentation, the fraction head, glint, SPPI, roofclf) read the same imagery; postprocess, density and the sub-400 square metre bracket combine their outputs; a plausibility gate checks the capacity numbers; and four outputs follow: MapRoulette leads back to OpenStreetMap, a capacity atlas, a PyPSA-Earth grid CSV, and an evidence atlas.](assets/figures/architecture.dark.svg#only-dark)
@@ -221,7 +221,7 @@ Everything converges on four outputs, split by tolerance for false positives:
 | postprocess, export | `postprocess.py`, `export.py` | [Mapping leads](results/leads.md) |
 | density, calibration | `density.py`, `capacity_calibration.py` | [Capacity density](methods/density.md), [Calibration](methods/calibration.md) |
 | Plausibility gate | `plausibility.py` | this page's [Combine, rank, and gate](#combine-rank-and-gate) section |
-| Atlas, dashboard | `atlas.py`, `dashboard.py` | [Capacity map](results/capacity.md), [Dashboards](dashboards/index.md) |
+| Atlas | `atlas.py` | [Capacity map](results/capacity.md), [Growth](results/growth.md) |
 
 ## Methods
 

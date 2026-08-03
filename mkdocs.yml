@@ -82,14 +82,12 @@ extra:
 
 nav:
   - Home: index.md
-  - Dashboards:
-      - Overview: dashboards/index.md
-      - Pakistan: dashboards/pakistan.md
   - Results:
       - Capacity map: results/capacity.md
+      - Growth: results/growth.md
       - Panel pose from glint: results/pv-pose.md
       - Mapping leads: results/leads.md
-  - Reproduce: reproduce.md
+  - Setup New Country: reproduce.md
   - Notes:
       - notes/index.md
       - Calibration boxes: issues/pakistan-calibration-boxes.md

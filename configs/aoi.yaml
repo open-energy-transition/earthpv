@@ -55,6 +55,26 @@ aois:
                 "0039_0037", "0039_0038", "0040_0037", "0040_0038"]
     # Two-season opt-in (see note above): clear post-monsoon contrast to the dry-season base.
     # stack_window: ["2025-09-20", "2025-11-15"]
+  # Boom-window stacking: same idea as the seasonal experiment above, but the contrast
+  # layer is the actual pre-boom epoch (2021-10 to 2022-01, before Pakistan's solar
+  # import boom) instead of a same-year weather season -- the seasonal test had no real
+  # adoption change between its two windows to learn from; this one does, by
+  # construction, since almost every currently-mapped Punjab installation postdates it
+  # (fitted onsets cluster 2022-2024, docs/issues/small-pv-step-signal.md). Composites
+  # live under data/composites/punjab_boom (own tree, not data/composites/punjab, so the
+  # seasonal experiment's stale composite_1 -- built before the 2026-07-26 Collection-1
+  # radiometric-offset fix in imagery.py -- is never silently reused): composite_0 is
+  # symlinked from punjab's own 65 cells (current epoch, unaffected by that bug) plus 9
+  # freshly-fetched cells to complete val coverage; composite_1 is freshly built at the
+  # boom window with the fixed imagery.py (scripts/build_punjab_boom_composites.py).
+  punjab_boom:
+    bbox: [69.30, 27.70, 75.40, 34.05]
+    division: { name: Punjab, country: PK, subtype: region }
+    source_region: pakistan_500
+    val_tiles: ["0035_0036", "0036_0036", "0036_0037", "0036_0038", "0037_0036",
+                "0037_0037", "0037_0038", "0038_0036", "0038_0037", "0038_0038",
+                "0039_0037", "0039_0038", "0040_0037", "0040_0038"]
+    stack_window: ["2021-10-01", "2022-01-24"]
   # Country-wide inference: compose + infer over every building-populated cell.
   # grid_origin anchors the cell grid to punjab's (boundary total_bounds origin,
   # full precision) so punjab's already-composited cells are reused by renaming.
@@ -71,8 +91,11 @@ aois:
     # stack_window: ["2025-09-20", "2025-11-15"]
     # `earthpv dashboard --aoi pakistan` reads this block: an ordered panel list, each
     # {key, label, sublabel, src, note}. `src` is repo-relative; `key` becomes
-    # "<key>.html" inside the generated bundle. See docs/dashboards/index.md for what
-    # a new country needs before it can get one of these.
+    # "<key>.html" inside the generated bundle. This CLI command and the bundle it
+    # builds are no longer used by the docs site (docs/results/*.md links directly to
+    # each standalone page instead -- see docs/reproduce.md's "Step 7: publish it on
+    # this site"), but the command still works if a bundled, tab-switching page is
+    # useful for something else.
     dashboard:
       title: Pakistan
       panels:
