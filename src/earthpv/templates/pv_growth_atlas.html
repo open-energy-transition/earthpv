@@ -555,9 +555,14 @@
     document.getElementById("ranks").innerHTML = provs.map(p => {
       const nm = p.name.replace("Islamabad Capital Territory","Islamabad").replace("Khyber Pakhtunkhwa","Kh. Pakhtunkhwa");
       const v = p[PROV_KEY[sel]];
+      // A handful of provinces can show negative segmentation growth (independent
+      // re-polygonization noise between two epochs' rasters, see the method note) --
+      // a negative width is invalid CSS and renders as an unclamped full-width bar,
+      // which reads as the opposite of what a negative number means. Clamp to 0.
+      const pct = Math.max(0, v / maxP * 100);
       return `<div class="row"><div class="top"><span class="nm">${nm}</span>`
         + `<span class="vl">${fmt(v)} MWp</span></div>`
-        + `<div class="track"><div class="fill" style="width:${(v/maxP*100).toFixed(1)}%"></div></div></div>`;
+        + `<div class="track"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div></div>`;
     }).join("");
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
       `<tr><td>${p.name}</td><td>${fmt(p.delta_mwp_rc)}</td><td>${fmt(p.delta_mwp_det)}</td>`

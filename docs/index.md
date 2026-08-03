@@ -5,70 +5,83 @@
 ![earthpv](assets/figures/earthpv-logo-mark.png#only-light){ .hero-logo }
 ![earthpv](assets/figures/earthpv-logo-mark-white.png#only-dark){ .hero-logo }
 
-**Open rooftop solar mapping from free satellite imagery.**
+**Open, global photovoltaic mapping from free satellite imagery.**
 { .lede }
 
-EarthPV demonstrates how the use of free Sentinel-2 imagery, an open foundation model, and human-in-the-loop validation in OpenStreetMap can make global photovoltaic mapping more scalable, verifiable, and cost-effective than existing methods.
+EarthPV demonstrates how free Sentinel-2 imagery, an open foundation model, and
+human-in-the-loop validation in OpenStreetMap can make global photovoltaic mapping more
+scalable, verifiable, and cost-effective than existing methods. Pakistan is the first
+pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">6.1 GWp</span><span class="label">Pakistan, all PV &ge; 400 m&sup2;, recall-corrected</span></div>
-<div class="stat"><span class="value">4.7 GWp</span><span class="label">of that on rooftops</span></div>
-<div class="stat"><span class="value">93,120</span><span class="label">buildings carrying detected PV</span></div>
-<div class="stat"><span class="value">400 m&sup2;</span><span class="label">per-object detection floor</span></div>
+<div class="stat"><span class="value">15,004 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
+<div class="stat"><span class="value">+2,598 MWp</span><span class="label">measured growth since the 2021/22 pre-boom epoch</span></div>
+<div class="stat"><span class="value">4</span><span class="label">independent instruments: segmentation, roofclf, SPPI, glint</span></div>
+<div class="stat"><span class="value">400 m&sup2;</span><span class="label">segmentation's per-object floor -- the others reach below it</span></div>
 </div>
 
 ## What the map looks like
 
-![Estimated rooftop and ground-mount solar capacity per building across Pakistan. Detections concentrate in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_capacity_atlas.png)
+![Pakistan's rooftop solar counted three times over: Verified (hand-mapped or two detectors agree), Best estimate (this project's own defensible figure), and Ceiling (an explicit uncalibrated upper bound), over a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_evidence_atlas.png)
 
 /// caption
-Calibrated capacity for every building carrying PV signal in Pakistan.
-The [interactive version](results/capacity.md) lets you switch between six defensible
-estimators and rank provinces by each of them.
+Three tiers by standard of proof, not by point estimate, for every building carrying PV
+signal in the pilot country. The
+[interactive version](results/capacity.md) switches tiers and ranks provinces by each.
 ///
 
 ## What is new here
 
-**Sentinel-2 can do more than utility-scale.** Earlier work using free 10 m imagery could
-only find large, isolated solar farms. Fine-tuning a foundation model on dense
-OpenStreetMap labels pushes reliable per-object detection down to about
-**400 m<sup>2</sup>**, which reaches commercial rooftops and large residential arrays.
+**Detection at every scale, not one model.** No single instrument sees rooftop solar from
+utility-scale plants down to a household system, so earthpv runs four, each measured
+against ground truth:
 
-**Below that floor, count instead of outline.** A 200 m<sup>2</sup> array is a handful of
-mixed pixels; drawing a polygon around it is not defensible. Asking whether a *building*
-carries PV is. A per-building classifier trained on exhaustively mapped quadrats reaches
-0.88 AUC on roofs under 500 m<sup>2</sup>, where the segmentation model scores 0.50. It
-does not yet produce a published capacity number, and the
-[density stage](methods/density.md) is explicit about why.
+- **Segmentation** outlines individual arrays **&ge;400 m<sup>2</sup>** directly -- a
+  fine-tuned TerraMind reaching commercial rooftops and large residential arrays, where
+  earlier work with free 10 m imagery could only find isolated solar farms.
+- **roofclf and SPPI** answer the question below that floor: not "where is the polygon"
+  but "does this *building* carry PV." **roofclf**, a per-building classifier trained on
+  exhaustively mapped quadrats, reaches 0.874 AUC on roofs under 500 m<sup>2</sup>, where
+  segmentation scores 0.50. **SPPI**, a zero-training spectral index, reaches 0.823 AUC
+  with no labels at all. See [Capacity density](methods/density.md).
+- **Glint** confirms panels physically: a glass-fronted array flashes into Sentinel-2 only
+  on the geometry-predictable dates its tilt and azimuth bisect the sun and the sensor, a
+  confirmation independent of spectral appearance that also recovers
+  [how the panel is mounted](results/pv-pose.md).
+- **Growth** diffs a pre-boom (2021/22) composite against the current one -- with
+  segmentation and SPPI each run independently on both epochs -- to show where capacity
+  actually appeared, not just where it stands today. See [Growth](results/growth.md).
 
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.dark.svg#only-dark)
-
-**Panels give themselves away by glinting.** A glass-fronted panel is partly a mirror.
-Sentinel-2 views close to nadir, so a fixed panel flashes into the sensor only on the
-few dates when its tilt and azimuth happen to bisect the sun and the satellite. Those
-dates are predictable, which makes a glint a physical, geometry-checkable confirmation
-that PV is present, and a measurement of
-[how the panel is mounted](results/pv-pose.md).
 
 **The map improves itself.** Detections go to mappers as a MapRoulette challenge;
 verified installations come back as in-domain training labels. That
 [flywheel](how-it-works.md#workflow) is the reason a model trained on Germany now works in Punjab.
 
-**Pakistan is the first pilot, not the product.** Every input is a global open dataset:
-Sentinel-2 for imagery, OpenStreetMap for labels, VIDA Open Buildings for footprints,
-geoBoundaries for administrative areas. The model was trained in Germany before it was ever
-pointed at Punjab, and it runs on a new country with nothing pre-downloaded. Three commands
-set an area up, and the same pipeline follows.
-[Scale to a new country](reproduce.md#scale-to-a-new-country) is the guide.
+**Nothing here is Pakistan-specific.** Every input is a global open dataset: Sentinel-2
+for imagery, OpenStreetMap for labels, VIDA Open Buildings for footprints, geoBoundaries
+for administrative areas. The model was trained in Germany before it was ever pointed at
+Punjab, and it runs on a new country with nothing pre-downloaded. Three commands set an
+area up, and the same pipeline follows -- see [Scaling worldwide](#scaling-worldwide).
+
+## Scaling worldwide
+
+Programme targets are **Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and
+Nigeria**; Gujarat in India is already registered as a worked template. A first candidate
+set in a new country needs no local training data at all -- the existing checkpoint runs
+unchanged -- and what closes the domain gap afterwards is local mapping, which is why
+[Setup a new country](reproduce.md#scale-to-a-new-country) starts by asking you to find a
+mapping community before running anything.
 
 ## Where to go next
 
 | If you want to | Read |
 | --- | --- |
 | See the capacity numbers and interrogate them | [Capacity map](results/capacity.md) |
+| See where solar capacity appeared since the pre-boom epoch | [Growth](results/growth.md) |
 | Understand the workflow, architecture, methods and what's been tried | [How it works](how-it-works.md) |
 | Know how detection and density actually work | [Detection](methods/detection.md), [Density](methods/density.md) |
 | Run the whole thing yourself, or bring it to another country | [Setup New Country](reproduce.md) |
