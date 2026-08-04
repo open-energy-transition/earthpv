@@ -18,7 +18,7 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 <div class="stats" markdown>
 <div class="stat"><span class="value">15,004 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
 <div class="stat"><span class="value">8,220 / 6,785 MWp</span><span class="label">capacity &ge;400 m&sup2; segmentation vs. <400 m&sup2; rooftop classifier </span></div>
-<div class="stat"><span class="value">4</span><span class="label">independent instruments: segmentation, roofclf, SPPI, glint</span></div>
+<div class="stat"><span class="value">4</span><span class="label">independent detected methods: segmentation, roofclf, SPPI, glint</span></div>
 </div>
 
 ## What the map looks like
