@@ -51,14 +51,6 @@ the *site* -- see [Capacity density](../methods/density.md) for both derivations
 [Growth](growth.md) for how this same instrument changed between the 2021/22 pre-boom
 epoch and now.
 
-!!! info "Superseded numbers"
-    This page previously reported a single six-estimator figure (2.7 to 6.1 GWp,
-    segmentation only, no sub-400 m<sup>2</sup> instruments). That page is superseded by
-    the evidence atlas above, which is this project's current recommended view as of
-    2026-08-01: three tiers by standard of proof, not six variants of one instrument. The
-    six-estimator atlas and its own page are no longer linked from this site, though the
-    code that builds it (`earthpv atlas`, without `--osm-solar`) still works.
-
 ## Using it in an energy model
 
 The density stage writes three layers under `data/predictions/<aoi>/density/`:

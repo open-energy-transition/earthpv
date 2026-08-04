@@ -87,8 +87,8 @@
   }
   .lede b { color: var(--ink); font-weight: 640; }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0 0; }
-  @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 22px 0 0; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
     padding: 14px 16px; box-shadow: var(--shadow); }
   .kpi .v { font-size: clamp(20px, 2.6vw, 28px); font-weight: 760; letter-spacing: -0.01em;
@@ -264,6 +264,8 @@
       <div class="k">SPPI onset capacity &mdash; uncalibrated ceiling, not a precision-weighted estimate</div></div>
     <div class="kpi"><div class="v" id="kOnset">0</div>
       <div class="k">Buildings whose spectral signature crossed the has-PV threshold (SPPI)</div></div>
+    <div class="kpi"><div class="v" id="kFracDelta">0<small>MWp</small></div>
+      <div class="k">Fraction-sourced growth &mdash; the small-PV-sensitive expected-area instrument</div></div>
   </div>
 
   <div class="switch" role="group" aria-label="Growth instrument">
@@ -272,6 +274,9 @@
     </button>
     <button class="tab" id="tabSppi" type="button" data-i="1">
       <span class="tt1">SPPI onset</span><span class="tt2">spectral signature, no model</span>
+    </button>
+    <button class="tab" id="tabFrac" type="button" data-i="2">
+      <span class="tt1">Fraction growth</span><span class="tt2">Δ expected area, small-PV sensitive</span>
     </button>
   </div>
 
@@ -307,6 +312,7 @@
           <div style="overflow-x:auto;"><table id="ptable">
             <thead><tr><th>Province</th><th>Δ MWp (rc)</th><th>Δ MWp (det)</th>
               <th>SPPI onset buildings</th><th>SPPI onset km²</th><th>SPPI onset MWp (uncalib.)</th>
+              <th>Δ MWp (fraction)</th>
               <th>Current MWp</th><th>Pre-boom MWp</th></tr></thead>
             <tbody></tbody>
           </table></div>
@@ -317,11 +323,13 @@
 
   <section class="card method">
     <h3>What each view means, and what it doesn't</h3>
-    <p class="method-lede">Two independent ways of asking the same question &mdash; where did
+    <p class="method-lede">Three independent ways of asking the same question &mdash; where did
     rooftop solar appear since before Pakistan's 2021/22 import boom &mdash; built from the
-    same imagery but nothing else in common: one diffs a trained segmentation model's own
-    capacity estimate across two dates, the other diffs a fixed spectral formula on the same
-    building's reflectance, with no model at all.</p>
+    same imagery but different mechanisms: segmentation and fraction both diff a trained
+    model's own estimate across two dates (one thresholded and precision-corrected, the
+    other a probability-weighted expected area reaching below segmentation's 400 m² floor),
+    while SPPI diffs a fixed spectral formula on the same building's reflectance, no model
+    at all.</p>
     <div class="notes">
       <div class="formula">
         <div class="fl"><span class="dot" style="background:var(--accent)"></span>Segmentation growth</div>
@@ -348,6 +356,20 @@
         in Balochistan and Gilgit-Baltistan, not just Punjab) matches SPPI's documented
         weak spot on bare/arid terrain rather than a validated finding &mdash; treat MWp
         outside Punjab's urban core with more skepticism than inside it.</p>
+      </div>
+      <div class="formula">
+        <div class="fl"><span class="dot" style="background:var(--large)"></span>Fraction growth <span class="tag high">leans high, no precision correction</span></div>
+        <p><b>The only growth instrument here with real sub-400 m² sensitivity.</b> The
+        fraction head predicts per-pixel PV coverage rather than a threshold, so unlike
+        segmentation's expected area it is not trained blind below the 400 m² floor.
+        Scored on the current and pre-boom composites separately with the same checkpoint,
+        then differenced per cell -- same mechanics as segmentation growth, different
+        instrument. It is <b>probability-weighted with no precision correction</b>
+        (segmentation's growth figure is both recall- and precision-corrected), and the
+        fraction head's absolute scale is not independently established -- a German MaStR
+        benchmark found it 2.5 to 13x high depending on how well-mapped the comparison
+        area is. Read the delta as a directional, small-PV-inclusive signal, not a
+        calibrated capacity number.</p>
       </div>
     </div>
     <details class="xdetails">
@@ -397,9 +419,12 @@
   const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
   const RAMP_DARK_SPPI = ["#0f2e2a","#124a41","#0f6b5c","#12937d","#2fd9c4","#7ff0e0","#d4fbf5"];
   const RAMP_LIGHT_SPPI = ["#d8f3ee","#a9e6db","#6dd0bf","#3bb6a2","#1f9b8a","#157567","#0a4a41"];
+  const RAMP_DARK_FRAC = ["#1a1c3c","#2b2f6b","#3d4599","#4f5cc7","#6b78e0","#9aa3ec","#ccd1f7"];
+  const RAMP_LIGHT_FRAC = ["#dfe2fa","#b9c0f0","#8f99e4","#6672d4","#4a54b8","#363e94","#242a6e"];
 
-  /* cell tuple: [lon0, lat0, deltaMwpRc, deltaMwpDet, nOnsetBuildings, onsetKm2, onsetMwp] */
-  const IDX = [2, 6];
+  /* cell tuple: [lon0, lat0, deltaMwpRc, deltaMwpDet, nOnsetBuildings, onsetKm2, onsetMwp,
+     deltaMwpExpFraction] */
+  const IDX = [2, 6, 7];
   const VIEWS = [
     { key: "seg", label: "Segmentation growth", unit: "MWp",
       name: "Segmentation growth: Δ recall-corrected MWp, current minus pre-boom",
@@ -409,6 +434,10 @@
       name: "SPPI onset capacity: uncalibrated ceiling, current minus pre-boom",
       desc: "No model: a fixed five-band spectral formula (SPPI) on the same building's own reflectance in both epochs, converted to capacity at 0.18 kWp/m² with NO precision weighting -- an explicit ceiling, not an estimate (see Background).",
       vmax: 5, dark: RAMP_DARK_SPPI, light: RAMP_LIGHT_SPPI },
+    { key: "frac", label: "Fraction growth", unit: "MWp",
+      name: "Fraction growth: Δ expected-area MWp, current minus pre-boom",
+      desc: "The fraction head's own expected-area estimate (per-pixel PV coverage, not a threshold), scored on both epochs and differenced -- the only growth instrument here with real sub-400 m² sensitivity, but probability-weighted with no precision correction, so it leans high (see Background).",
+      vmax: 5, dark: RAMP_DARK_FRAC, light: RAMP_LIGHT_FRAC },
   ];
   let sel = 0;
 
@@ -519,7 +548,8 @@
         + `<div class="rowt${sel===0?' sel':''}"><span>Segmentation Δ (det)</span><span>${c[3].toFixed(1)} MWp</span></div>`
         + `<div class="rowt${sel===1?' sel':''}"><span>SPPI onset capacity (uncalib.)</span><span>${c[6].toFixed(1)} MWp</span></div>`
         + `<div class="rowt${sel===1?' sel':''}"><span>SPPI onset buildings</span><span>${c[4].toLocaleString()}</span></div>`
-        + `<div class="rowt${sel===1?' sel':''}"><span>SPPI onset roof area</span><span>${(c[5]*1e6).toLocaleString(undefined,{maximumFractionDigits:0})} m²</span></div>`;
+        + `<div class="rowt${sel===1?' sel':''}"><span>SPPI onset roof area</span><span>${(c[5]*1e6).toLocaleString(undefined,{maximumFractionDigits:0})} m²</span></div>`
+        + `<div class="rowt${sel===2?' sel':''}"><span>Fraction Δ (expected area)</span><span>${c[7].toFixed(1)} MWp</span></div>`;
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
@@ -553,9 +583,10 @@
     T.mwp_rc_preboom > 0 ? Math.round(100 * T.delta_mwp_rc / T.mwp_rc_preboom) : "–";
   document.getElementById("kOnset").textContent = fmt(T.n_onset_buildings);
   document.getElementById("kOnsetMwp").firstChild.textContent = fmt(T.onset_mwp);
+  document.getElementById("kFracDelta").firstChild.textContent = fmt(T.delta_mwp_exp_fraction);
 
-  const TOTAL_KEY = ["delta_mwp_rc", "onset_mwp"];
-  const PROV_KEY = ["delta_mwp_rc", "onset_mwp"];
+  const TOTAL_KEY = ["delta_mwp_rc", "onset_mwp", "delta_mwp_exp_fraction"];
+  const PROV_KEY = ["delta_mwp_rc", "onset_mwp", "delta_mwp_exp_fraction"];
 
   function drawTable() {
     const provs = [...DATA.provinces].sort((a,b) => b[PROV_KEY[sel]] - a[PROV_KEY[sel]]);
@@ -575,39 +606,56 @@
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
       `<tr><td>${p.name}</td><td>${fmt(p.delta_mwp_rc)}</td><td>${fmt(p.delta_mwp_det)}</td>`
       + `<td>${fmt(p.n_onset)}</td><td>${p.onset_km2.toFixed(2)}</td><td>${fmt(p.onset_mwp)}</td>`
+      + `<td>${fmt(p.delta_mwp_exp_fraction)}</td>`
       + `<td>${fmt(p.mwp_rc)}</td><td>${fmt(p.mwp_rc_preboom)}</td></tr>`).join("");
   }
 
+  const MAP_TITLES = [
+    "Segmentation Δ recall-corrected MWp per 0.1° cell, current minus pre-boom",
+    "SPPI onset capacity per 0.1° cell (uncalibrated ceiling, MWp), pre-boom to current",
+    "Fraction Δ expected-area MWp per 0.1° cell, current minus pre-boom",
+  ];
+
   function setView(i) {
     sel = i;
-    ["tabSeg", "tabSppi"].forEach((id, j) =>
+    ["tabSeg", "tabSppi", "tabFrac"].forEach((id, j) =>
       document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
     const view = VIEWS[i];
     document.getElementById("heroUnit").textContent = view.unit;
     countUp("heroNum", T[TOTAL_KEY[i]], 700, i === 1 ? 1 : 0);
     document.getElementById("heroLabel").textContent = `${view.label}, nationwide`;
     document.getElementById("heroDesc").innerHTML = `<b>${view.name}.</b> ${view.desc}`;
-    document.getElementById("mapTitle").textContent = i === 0
-      ? "Segmentation Δ recall-corrected MWp per 0.1° cell, current minus pre-boom"
-      : "SPPI onset capacity per 0.1° cell (uncalibrated ceiling, MWp), pre-boom to current";
+    document.getElementById("mapTitle").textContent = MAP_TITLES[i];
     document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
-    document.getElementById("tiles").innerHTML = i === 0
-      ? `<div class="tile"><div class="v">${fmt(T.mwp_rc_current)}</div><div class="k">Current MWp (rc)</div></div>
+    if (i === 0) {
+      document.getElementById("tiles").innerHTML =
+        `<div class="tile"><div class="v">${fmt(T.mwp_rc_current)}</div><div class="k">Current MWp (rc)</div></div>
          <div class="tile"><div class="v">${fmt(T.mwp_rc_preboom)}</div><div class="k">Pre-boom MWp (rc)</div></div>
          <div class="tile"><div class="v">${fmt(T.delta_mwp_det)}</div><div class="k">Δ detected (unweighted) MWp</div></div>
-         <div class="tile"><div class="v">${fmt(T.n_cells)}</div><div class="k">Cells nationwide</div></div>`
-      : `<div class="tile"><div class="v">${fmt(T.n_onset_buildings)}</div><div class="k">Onset buildings</div></div>
+         <div class="tile"><div class="v">${fmt(T.n_cells)}</div><div class="k">Cells nationwide</div></div>`;
+    } else if (i === 1) {
+      document.getElementById("tiles").innerHTML =
+        `<div class="tile"><div class="v">${fmt(T.n_onset_buildings)}</div><div class="k">Onset buildings</div></div>
          <div class="tile"><div class="v">${T.onset_km2.toFixed(1)}</div><div class="k">Onset roof area, km²</div></div>
          <div class="tile"><div class="v">${(T.onset_mwp * 1000 / Math.max(T.n_onset_buildings,1)).toFixed(1)}</div><div class="k">Avg. kWp per onset building (uncalib.)</div></div>
          <div class="tile"><div class="v">81.8<small style="font-size:0.5em;margin-left:2px;">M</small></div><div class="k">Buildings scored nationally</div></div>`;
+    } else {
+      document.getElementById("tiles").innerHTML =
+        `<div class="tile"><div class="v">${fmt(T.mwp_exp_fraction_current)}</div><div class="k">Current MWp (expected area)</div></div>
+         <div class="tile"><div class="v">${fmt(T.mwp_exp_fraction_preboom)}</div><div class="k">Pre-boom MWp (expected area)</div></div>
+         <div class="tile"><div class="v">${T.mwp_rc_preboom > 0 ? Math.round(100*T.delta_mwp_exp_fraction/T.mwp_exp_fraction_preboom) : 0}<small>%</small></div><div class="k">Growth relative to pre-boom</div></div>
+         <div class="tile"><div class="v">${fmt(T.n_cells)}</div><div class="k">Cells nationwide</div></div>`;
+    }
     render(); drawTable();
   }
   document.getElementById("tabSeg").addEventListener("click", () => setView(0));
   document.getElementById("tabSppi").addEventListener("click", () => setView(1));
+  document.getElementById("tabFrac").addEventListener("click", () => setView(2));
 
   document.getElementById("foot").innerHTML =
     `Segmentation: TerraMind-tiny, pre-boom (2021-10 to 2022-01) vs. current composite, recall-corrected · `
     + `SPPI: He et al. 2026 five-band spectral index, no training · `
+    + `Fraction: TerraMind-tiny fraction head, expected-area, no precision correction · `
     + `${fmt(T.n_cells)} cells × 0.1° · Sentinel-2 L2A · buildings from VIDA Open Buildings · `
     + `see docs/issues/boom-window-stacking-experiment.md for the retrained-model attempt.`;
 

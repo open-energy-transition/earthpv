@@ -960,9 +960,11 @@ def build_growth_atlas(
     aoi: str, growth_dir: Path, out: Path | None = None,
     zoom_out_frac: float = 0.0,
 ) -> Path:
-    """Two-tab atlas from `scripts/pv_growth_map.py` (segmentation, current vs. pre-boom
-    epoch) and `scripts/sppi_growth_map.py` (per-building SPPI epoch-diff), both reading
-    from the same `growth_dir` (default `<density_dir>/growth`).
+    """Three-tab atlas from `scripts/pv_growth_map.py` (segmentation, current vs.
+    pre-boom epoch -- called once with segmentation density dirs, growth_dir, and once
+    more with fraction-sourced density dirs into the sibling `growth_fraction/` dir) and
+    `scripts/sppi_growth_map.py` (per-building SPPI epoch-diff), all reading from
+    `growth_dir` (default `<density_dir>/growth`) and its `growth_fraction` sibling.
 
     Deliberately does not attempt to visualize the boom-window stacked-model retrain
     (`docs/issues/boom-window-stacking-experiment.md`) as a map layer -- that experiment
@@ -985,13 +987,33 @@ def build_growth_atlas(
             grid[c] = 0.0
     grid[sppi_cols] = grid[sppi_cols].fillna(0.0)
 
+    # Fraction-sourced growth: scripts/pv_growth_map.py run a second time against
+    # density runs built with --fraction-prob-dir, in a sibling directory (not a
+    # subdirectory of growth_dir, since it comes from an entirely separate pair of
+    # density runs, current + pre-boom, both fraction-sourced).
+    frac_dir = growth_dir.parent / "growth_fraction"
+    frac_cols = ["delta_mwp_exp_fraction", "mwp_exp_fraction_current", "mwp_exp_fraction_preboom"]
+    frac_path = frac_dir / "growth_grid.geoparquet"
+    if frac_path.exists():
+        frac = gpd.read_parquet(frac_path).drop(columns="geometry")
+        frac = frac.rename(columns={
+            "delta_est_mwp_exp": "delta_mwp_exp_fraction",
+            "est_mwp_exp": "mwp_exp_fraction_current",
+            "est_mwp_exp_preboom": "mwp_exp_fraction_preboom",
+        })
+        grid = grid.merge(frac[["cell", *frac_cols]], on="cell", how="left")
+    else:
+        for c in frac_cols:
+            grid[c] = 0.0
+    grid[frac_cols] = grid[frac_cols].fillna(0.0)
+
     title = aoi.replace("_", " ").title()
 
     cells = [
         [round(float(r.lon0), 3), round(float(r.lat0), 3),
          round(float(r.delta_est_mwp_rc), 3), round(float(r.delta_est_mwp_det), 3),
          int(r.n_onset_buildings), round(float(r.onset_roof_area_m2) / 1e6, 4),
-         round(float(r.onset_mwp), 3)]
+         round(float(r.onset_mwp), 3), round(float(r.delta_mwp_exp_fraction), 3)]
         for r in grid.itertuples()
     ]
     bounds = [
@@ -1009,14 +1031,20 @@ def build_growth_atlas(
     provinces = []
     regions_path = growth_dir / "growth_regions.geoparquet"
     sppi_regions_path = growth_dir / "sppi_growth_regions.geoparquet"
+    frac_regions_path = frac_dir / "growth_regions.geoparquet"
     sppi_by_name = {}
     if sppi_regions_path.exists():
         sr = gpd.read_parquet(sppi_regions_path)
         sppi_by_name = {str(row["name"]): row for _, row in sr.iterrows()}
+    frac_by_name = {}
+    if frac_regions_path.exists():
+        fr = gpd.read_parquet(frac_regions_path)
+        frac_by_name = {str(row["name"]): row for _, row in fr.iterrows()}
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
         for r in reg[reg.level == "region"].itertuples():
             sr = sppi_by_name.get(str(r.name))
+            fr = frac_by_name.get(str(r.name))
             provinces.append({
                 "name": str(r.name),
                 "delta_mwp_rc": round(float(r.delta_est_mwp_rc), 1),
@@ -1030,6 +1058,15 @@ def build_growth_atlas(
                 "onset_mwp": (
                     round(float(sr["onset_mwp"]), 1)
                     if sr is not None and "onset_mwp" in sr else 0.0
+                ),
+                "delta_mwp_exp_fraction": (
+                    round(float(fr["delta_est_mwp_exp"]), 1) if fr is not None else 0.0
+                ),
+                "mwp_exp_fraction_current": (
+                    round(float(fr["est_mwp_exp"]), 1) if fr is not None else 0.0
+                ),
+                "mwp_exp_fraction_preboom": (
+                    round(float(fr["est_mwp_exp_preboom"]), 1) if fr is not None else 0.0
                 ),
                 "rings": _rings(r.geometry),
             })
@@ -1048,6 +1085,9 @@ def build_growth_atlas(
             "n_onset_buildings": int(grid.n_onset_buildings.sum()),
             "onset_km2": round(float(grid.onset_roof_area_m2.sum()) / 1e6, 1),
             "onset_mwp": round(float(grid.onset_mwp.sum()), 1),
+            "delta_mwp_exp_fraction": round(float(grid.delta_mwp_exp_fraction.sum()), 1),
+            "mwp_exp_fraction_current": round(float(grid.mwp_exp_fraction_current.sum()), 1),
+            "mwp_exp_fraction_preboom": round(float(grid.mwp_exp_fraction_preboom.sum()), 1),
             "n_cells": int(len(grid)),
         },
     }
@@ -1059,10 +1099,11 @@ def build_growth_atlas(
         "__H1__": f"Where {title}'s rooftop solar appeared since before the boom",
         "__AOI_TITLE__": title,
         "__LEDE_HTML__": (
-            "Pakistan's rooftop PV stock is dominated by a post-2022 import boom. Two "
+            "Pakistan's rooftop PV stock is dominated by a post-2022 import boom. Three "
             "independent instruments diff the same pre-boom (2021/22) and current "
             "Sentinel-2 imagery to show where that growth actually landed: a trained "
-            "segmentation model's own recall-corrected capacity estimate, and a "
+            "segmentation model's own recall-corrected capacity estimate, that same "
+            "checkpoint's fraction head reaching below its 400 m² floor, and a "
             "model-free spectral index computed directly on each building's own "
             "reflectance. Switch between them below."
         ),
@@ -1073,9 +1114,11 @@ def build_growth_atlas(
     out.write_text(html)
     log.info(
         "Wrote growth atlas (Δ %.1f MWp recall-corrected, %d SPPI-onset buildings, "
-        "%.1f km² onset roof area, %.1f MWp uncalibrated SPPI ceiling) -> %s",
+        "%.1f km² onset roof area, %.1f MWp uncalibrated SPPI ceiling, "
+        "Δ %.1f MWp fraction-sourced expected area) -> %s",
         data["totals"]["delta_mwp_rc"], data["totals"]["n_onset_buildings"],
-        data["totals"]["onset_km2"], data["totals"]["onset_mwp"], out,
+        data["totals"]["onset_km2"], data["totals"]["onset_mwp"],
+        data["totals"]["delta_mwp_exp_fraction"], out,
     )
     return out
 

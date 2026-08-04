@@ -18,6 +18,9 @@
 27. Reduce tile size and region where the pv density usage is been applied to smaller cities and don't just check the building density just for a whole cell.
 28. Check if and how PV density estimation could be used for growing a seed of PV, increasing the ROI. 
 29. Test a training of fraction head with all <400 m² labels from Pakistan.
+30. Add to calibration: 33.990721, 71.4253978
+31. Fix old sentinel data 2021 radiometric offset. 
+32. Improve and "fit" SPPI to our labels sepctrum peaks!
 
 
 

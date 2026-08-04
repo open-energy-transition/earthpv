@@ -193,9 +193,45 @@ instruments, both rooftop-only and both dropping the polygon:
   out for validation) scored *worse* than production on every metric measured against
   Lahore's own ground truth (scale 0.520→0.197, correlation 0.136→0.070, AUC
   0.589→0.553) -- training-from-scratch on the current recipe should not be assumed to
-  transfer just because more real small-array labels were added. `fraction_pakistan_v1`
-  remains the deployed checkpoint. See
+  transfer just because more real small-array labels were added. See
   `docs/issues/roofclf-national-deployment-and-temporal-features.md`.
+  **Hard-negative retrain, 2026-08-03: positive, promoted.**
+  `hard_negatives.py::run_hard_negatives` mined 1,032 large OSM-unmapped buildings the
+  production checkpoint already scores correctly-low in two imagery epochs
+  (reinforcement of existing correct negatives, not a fix to a known false positive);
+  after excluding 11 whose center falls inside a current OSM solar polygon, the
+  remaining 1,021 clean chips were folded into the training pool (2,626 total,
+  unweighted) alongside the same Germany+Pakistan corpus v1/v2 used.
+  `fraction_pakistan_hardneg/terramind-pv-epoch=32-step=27027.ckpt` (5h35m, early-stopped
+  epoch 40 of 60) scores better than v1 on `pakistan_fraction`'s own genuinely
+  held-out val split: pixel IoU 0.459→0.500, F1 0.629→0.666, false-positive pixels
+  -28.6%, at a per-installation recall cost of at most 2 installations per size
+  bucket (noise, given n=37-180 per bucket) -- a real reduction in false positives
+  without a real loss of recall on *that* split. **`fraction_pakistan_hardneg` is now
+  the fraction-head checkpoint of record**, replacing `fraction_pakistan_v1`.
+  **National inference re-run 2026-08-03/04 and validated against the quadrats --
+  a regime-specific win, so still NOT promoted into the published sub-400 m² numbers.**
+  Ran on the latest dry-season composites (`composite_0`, 2025-11-01→2026-03-15, the
+  most recent in-domain layer; there is no newer one until Nov 2026), single-epoch:
+  4,473/4,473 cells in 3h19m, then `density --fraction-prob-dir` at full coverage.
+  It cuts national rooftop expected area 21.9% (6,647→5,194 MWp) and off-building raw
+  response to 0.30x, and the median quadrat scale (predicted/true) improves from 1.458
+  to 0.809. But scoring both rasters against all 12 mapped quadrats
+  (`scripts/validate_fraction_quadrats.py`, no GPU -- it reads the finished national
+  rasters; `results/fraction_quadrat_validation.csv`) splits **exactly 6/12 and not at
+  random**: every quadrat that improves is industrial/large-array, every one that
+  degrades is dense small-rooftop -- median pixel AUC 0.790→0.749, with Peshawar
+  0.840→0.799 and Peshawar-east 0.852→0.776. In `mardan` and `karachi_coast` -- both
+  Rule-1 complete, and both places v1 already *under*-predicted (0.311, 0.291) -- the
+  retrain cuts predicted area a further 75%/64%, which cannot be removed false
+  positives because there was no over-prediction to remove. So the sub-400 m² products
+  (`results/`, `docs/results/growth.md`, the evidence atlas's Best-estimate tier)
+  deliberately still describe `fraction_pakistan_v1`. Both national rasters now exist
+  side by side, which makes "hard-neg raster for ≥400 m², v1 for sub-400 m²" cheap to
+  test next. Note also that this pass's `*_rc`/roof figures (2,847 / 570.9 MWp,
+  `check-density` 2 fail) reproduce the documented candidate-population mismatch
+  byte-for-byte and are not new results -- the fraction head only drives `*_exp`. See
+  `docs/issues/fraction-head-hard-negative-retrain.md`.
 - **`roofclf.py` / `earthpv roof-classifier`** -- per-building "does this roof carry PV?",
   trained on the exhaustively mapped quadrats (the only source where a no-PV building is a
   real negative). Updated 2026-07-29 to **9 quadrats, 22,044 buildings, 2,376 with PV**
