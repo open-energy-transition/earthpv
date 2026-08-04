@@ -93,7 +93,7 @@ nav:
   - Home: index.md
   - Results:
       - Capacity map: results/capacity.md
-      - Growth: results/growth.md
+      #- Growth: results/growth.md
       - Panel pose from glint: results/pv-pose.md
       - Mapping leads: results/leads.md
   - Setup New Country: reproduce.md
