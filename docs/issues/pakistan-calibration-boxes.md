@@ -443,17 +443,81 @@ trustworthy negatives.
 **Ground truth: 204 installations, 183 rooftop / 21 ground, 19,803.9 m² total**, median
 35.4 m². **97.1% below the 400 m² detection floor, 88.7% below 100 m²** -- solidly in the
 small/informal-residential regime this project's sub-400 m² work is most short on
-quadrats for. A live VIDA fetch over the same bbox returns 2,099 buildings; against 183
-rooftop installations that is an approximate base rate of **8.7%**, not yet the exact
-matched count `roofclf.building_table` would produce (that requires a composite/VIDA join
-this session did not run) -- read as indicative, not the precise per-building figure the
-table above reports for the other 11 boxes.
+quadrats for.
 
-**Not yet folded into `roofclf`'s fold table or `docs/methods/calibration-quadrats.md`'s
-overview table.** `roofclf.discover_quadrats` globs `*_calib_*_boundary.geojson` with a
-matching solar file, so a bare `earthpv roof-classifier` run will pick this box up
-automatically as the 12th quadrat, same as Peshawar/Peshawar East did -- no code change
-needed, just the next full run.
+**Exact base rate resolved 2026-08-04: 10.3% (214 PV buildings / 2,068).** The estimate
+recorded here on 2026-07-31 was an approximate **8.7%** (183 rooftop installations against
+a 2,099-building live VIDA fetch), pending the composite/VIDA join
+`roofclf.building_table` performs. That join has now been run, and this box is in
+`results/calibration_quadrats.csv` and
+`docs/methods/calibration-quadrats.md`'s overview table.
+
+---
+
+### Box 12 -- Peshawar West, 1.5km x 1.5km around (33.9905887, 71.4261494) -- 2026-08-04
+
+bbox `71.418032,33.983827,71.434267,33.997350`
+(`data/labels/peshawar_west_calib_1500m_overpass_solar.parquet`, boundary
+`data/labels/peshawar_west_calib_1500m_boundary.geojson`, geodesic area **2,249,999.991 m²**
+by construction). User-supplied center. **The largest quadrat in the set at 2.25 km²** --
+the first that is neither 1 km² nor Karachi coastal's 0.49 km², which is exactly why the
+naming convention is size-agnostic (`*_calib_*_boundary.geojson`; the stem is
+`_calib_1500m`, not `_calib_1km`).
+
+Created with **`scripts/new_calibration_quadrat.py`**, added the same day so this stops
+being a hand-built artifact: it builds the square via `pyproj.Geod.fwd`, runs the overlap
+check *before writing anything* and refuses to continue on a hit without
+`--allow-overlap`, then pulls OSM solar and prints the profile below.
+
+**Overlap check: clear against all 12 existing quadrats.** Nearest is Box 9 (Peshawar) at
+**11.95 km** centre-to-centre and Box 10 at 12.92 km, so unlike the Peshawar/Peshawar East
+pair this box adds no deduplication debt. Reverse-geocoded against the density stage's own
+admin polygons: **Peshawar district, Khyber Pakhtunkhwa** -- the third Peshawar quadrat.
+
+**Status: NOT a Rule-1-verified quadrat**, same caveat as every live-pull box. A single
+Overpass pull at a supplied center, no completeness declaration, no second-mapper
+sign-off, no imagery-date record. Usable as a `roofclf` training quadrat, not as a source
+of trustworthy negatives.
+
+**Ground truth: 163 installations, 143 rooftop / 20 ground, 147,502.4 m² total**, median
+416.8 m², mean 904.9 m², max 10,271.1 m². `base_rate` **10.8%** (415 PV buildings /
+3,845), `nn_median_m` **34.0 m**.
+
+**This box is unlike the other two Peshawar quadrats, and that is its value.** Boxes 9 and
+10 are 99.4% and 100% sub-floor with medians of 71.5 and 44.9 m²; this one is **48.5%
+sub-floor by count but only 7.7% sub-floor by area** -- 92.3% of its mapped PV area sits
+in installations at or above the 400 m² detection floor, 108,174 m² of it in 38
+installations of 1,000 m² or more:
+
+| size bucket | installations | mapped area |
+| --- | ---: | ---: |
+| 0-100 m² | 36 | 1,854 m² |
+| 100-250 m² | 27 | 4,201 m² |
+| 250-400 m² | 16 | 5,367 m² |
+| 400-1,000 m² | 46 | 27,906 m² |
+| >= 1,000 m² | 38 | 108,174 m² |
+
+So this is the **first Peshawar quadrat that can test the segmentation model rather than
+only the sub-400 m² instruments** -- the other two have essentially no in-floor population
+to score against. Its `nn_median_m` of 34.0 m also falls in what was an empty band between
+the "informal/residential" (7-19 m) and "industrial" (44-52 m) clusters, which is why
+`docs/methods/calibration-quadrats.md`'s packing section no longer describes that split as
+having nothing in between.
+
+Two things to read carefully. **`n_pv_buildings` (415) exceeds `n_installations` (163)**,
+unlike every previous box -- not an error: `building_table` flags a footprint by overlap
+share, and installations this large span several VIDA polygons each. And 28 of the 163
+installations (17%) do not land on any VIDA footprint at all, consistent with the 20
+ground-mounted ones plus a few unmapped roofs.
+
+**A silent Overpass failure mode was measured on this box and is worth knowing.** When
+`overpass-api.de` returns 504 and `_run_query` fails over, a mirror can answer with **zero
+elements instead of an error**: two consecutive pulls of this exact bbox returned 0, then
+167. `build_overpass_labels` does raise on an empty result, so nothing empty was written,
+but from a single attempt "this box has no PV" and "the endpoint lied" are
+indistinguishable. `new_calibration_quadrat.py` therefore treats an empty response as
+retryable (`--retries`, default 4) rather than as truth -- never register a 0-installation
+quadrat from one attempt.
 
 ---
 

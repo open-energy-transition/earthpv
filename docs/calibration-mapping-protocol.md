@@ -136,10 +136,83 @@ distance from each sub-400 m<sup>2</sup> installation to its nearest neighbour -
 measured 2026-07-29 to correlate strongly (r=0.70-0.82) with how a quadrat's
 calibration numbers (`exp_scale`, `auc_within_size`) behave, a continuous proxy for
 the stratum table above (see [Capacity density](methods/density.md#packing-distance-a-cheap-measured-proxy-for-stratum)).
-Worth checking when *choosing* a new quadrat's location: the existing nine split
-cleanly into "packed tighter than one Sentinel-2 pixel" (7-19 m) and "sparse" (44-52
-m) with nothing in between -- a quadrat landing in that 20-40 m gap would be new,
-useful information, not a duplicate of an existing one.
+Worth checking when *choosing* a new quadrat's location. As of 2026-07-29 the existing
+nine split cleanly into "packed tighter than one Sentinel-2 pixel" (7-19 m) and
+"sparse" (44-52 m) with nothing in between, and this paragraph called a quadrat landing
+in that 20-40 m gap new information rather than a duplicate. **Two have since landed
+there** -- Rahim Yar Khan at 20.3 m and Peshawar West at 34.0 m -- so the gap is now
+known to be an artifact of which boxes had been picked, not a real feature of Pakistani
+settlement. The useful check today is therefore the reverse: prefer a location whose
+likely packing distance is *under-represented* across the current thirteen, rather than
+assuming any particular band is empty.
+
+## Validating every quadrat in one pass
+
+Rule 1 is judged per quadrat against high-res imagery, and doing that one boundary file at
+a time is how quadrats end up half-checked. This exports **all** of them as a single JOSM
+layer:
+
+```bash
+pixi run calib-export
+# -> results/calibration_quadrats_validation.geojson   (13 boxes + 3,353 installations)
+# -> results/calibration_quadrats_validation.mapcss    (JOSM paint style)
+```
+
+Re-run it whenever a quadrat is added or an `_overpass_solar` pull is refreshed; it reads
+whatever is on disk (`roofclf.discover_quadrats` plus `_newest_solar`'s dated-file-wins
+rule), so it never shows a stale pull. `--boundaries-only` drops the solar polygons if you
+only want the boxes; `--no-mapcss` skips the style file.
+
+The layer holds two kinds of feature, and both are needed for the job. The
+`quadrat_boundary` polygon is the **exact geodesic box**, drawn as a heavy dashed outline
+with almost no fill so imagery reads through it -- completeness is judged strictly *inside*
+that line, and a panel one metre outside is out of scope rather than a miss. The
+`mapped_solar` polygons are what OSM already has, so what you are hunting is panels in the
+imagery with **no** polygon on them.
+
+### Loading it in JOSM
+
+1. **File -> Open** the `.geojson`. It arrives as its own data layer.
+2. **Preferences -> Map Paint Styles -> +** and point at the `.mapcss` next to it.
+   Without it JOSM paints every imported way the same colour and the boundary stops being
+   distinguishable from the panels, which defeats the point.
+3. Turn on the imagery layer the register records for that quadrat (see
+   [Imagery and dating](#imagery-and-dating-critical)) -- not whatever loads by default.
+4. Download OSM data for the box you are working on, then **make every edit in the OSM
+   layer**, never in the imported one.
+
+The style encodes what to look at:
+
+| appearance | meaning |
+| --- | --- |
+| red dashed box | quadrat boundary, Rule-1 complete |
+| orange dashed box | quadrat boundary, **not** completeness-checked -- these are the ones worth your time |
+| blue fill | mapped installation **below** 400 m², the population most often missing from OSM |
+| amber fill | mapped installation at or above 400 m² |
+| violet fill | mapped, but only **partly** inside the box (see below) |
+| dashed outline | ground-mounted rather than rooftop |
+
+!!! warning "Never upload this layer to OSM"
+    The boxes are not OSM features and the solar polygons are a snapshot copy of features
+    that already exist. Uploading the layer would duplicate every installation in it and
+    add 13 nonsense squares. Every feature carries a `do_not_upload` tag as a tripwire, but
+    the real protection is keeping it as a separate layer and editing only in the OSM one.
+
+### Two things in the file that are easy to misread
+
+**Violet "edge straddling" polygons are already mapped.** An installation whose
+representative point falls outside the box but whose footprint reaches inside is out of
+scope for the completeness count, yet it is still exported -- because a panel visibly
+inside the line with nothing drawn on it reads as unmapped, and re-mapping it would
+duplicate an existing OSM feature. Each box carries both counts: `n_mapped_solar` (all
+installations in the pull, the number
+[the overview table](methods/calibration-quadrats.md#current-quadrats) reports) and
+`n_inside_box`.
+
+**A missing `placement` tag does not mean "not a rooftop".** Five of the pulls
+(Faisalabad, Lahore, Multan, SITE Karachi, Sundar -- the oldest five) predate placement
+classification and carry no `placement` at all, so their polygons never render with the
+ground-mount dashes regardless of what they are. Absent, not "rooftop".
 
 ## Deliverables per quadrat
 

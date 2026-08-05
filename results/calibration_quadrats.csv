@@ -4,6 +4,8 @@ peshawar_east_calib_1km,peshawar_east,1.0,3382,126,0.0373,131,7572.2,44.9,1.0,17
 sialkot_calib_1km,sialkot,1.0,4208,238,0.0566,181,15055.8,63.9,0.9834,18.8,Punjab,2 dense older/informal urban,True,2026-07-29,32.503855,74.5422035
 multan_calib_1km,multan,0.997,1028,88,0.0856,45,74440.8,877.1,0.2667,50.8,Punjab,6 industrial,False,2026-07-24,30.1262245,71.382907
 sundar_calib_1km,sundar,0.997,735,72,0.098,49,76412.7,999.4,0.2653,52.1,Punjab,6 industrial,False,2026-07-24,31.2861645,74.172094
+rahim_yar_khan_calib_1km,rahim_yar_khan,1.0,2068,214,0.1035,204,19803.9,35.4,0.9706,20.3,Punjab,unclassified pending mapper review,False,2026-07-31,28.4255547,70.2779961
+peshawar_west_calib_1500m,peshawar_west,2.25,3845,415,0.1079,163,147502.4,416.8,0.4847,34.0,Khyber Pakhtunkhwa,unclassified pending mapper review,False,2026-08-04,33.9905887,71.4261494
 faisalabad_calib_1km,faisalabad,0.997,1236,155,0.1254,84,75695.4,665.9,0.2857,45.8,Punjab,6 industrial,False,2026-07-24,31.4976165,73.052371
 site_karachi_calib_1km,site_karachi,0.996,1961,257,0.1311,70,117716.2,1059.9,0.1429,46.2,Sindh,6 industrial,False,2026-07-24,24.9070005,66.994146
 mardan_calib_1km,mardan,1.0,4751,654,0.1377,794,20701.2,21.7,1.0,11.2,Khyber Pakhtunkhwa,"1/3 planned housing, peri-urban",True,2026-07-29,34.189388,72.0253755

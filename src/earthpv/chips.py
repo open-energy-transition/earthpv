@@ -36,6 +36,9 @@ CHIP_M = CHIP_SIZE * 10.0  # chip edge in metres
 # floor for per-pixel supervision at 10 m GSD; it also matches the rooftop/ground
 # vs "small" split in local_source.load_solar_labels.
 MIN_PV_AREA = 400.0
+# Target value the tasks treat as "no supervision here" -- must match `ignore_index` in
+# the configs and `losses.TargetWeightedMSE`'s default, which masks it out of the loss.
+IGNORE_VALUE = -1.0
 
 
 def _newest_overpass_path(aoi: str, labels_dir: Path) -> Path:
@@ -411,6 +414,141 @@ def _bbox_poly(lon: float, lat: float):
     from shapely.geometry import box
 
     return box(*_chip_bbox(lon, lat))
+
+
+def build_quadrat_fraction_chips(
+    aoi: str,
+    labels_dir: Path,
+    out_dir: Path,
+    per_quadrat: int = 12,
+    quadrats: list[str] | None = None,
+    seed: int = 42,
+) -> Path:
+    """Fraction chips from the calibration quadrats, with everything OUTSIDE a quadrat's
+    boundary burned as `ignore`.
+
+    Why this is not just `build_chips --region-filter <boundaries>`: a chip is
+    `CHIP_M` = 2,240 m on a side (5.02 km2) and a quadrat is 0.49-2.25 km2, so
+    **measured 18.8% of an ordinary "quadrat chip" is the completeness-mapped ground and
+    81.2% is the surrounding national OSM snapshot**. Oversampling such chips (what the
+    v2 retrain did, 20x) therefore oversamples mostly *unverified* labels, where
+    unmapped small PV is burned as 0 and actively teaches the model to suppress exactly
+    the signal the quadrats were mapped to supply. That is a plausible mechanism for v2
+    scoring worse than v1 on Lahore's own ground truth, and it means the "train on the
+    calibration grounds" idea has not actually been tested yet.
+
+    Here the fraction target is kept only inside the boundary; every pixel outside it
+    becomes `IGNORE_VALUE`, which `losses.TargetWeightedMSE` masks out of both loss and
+    gradient. The image still carries the full 5 km2 of context -- only the supervision
+    is confined to the ground that was actually swept.
+
+    Masks are written **float32**, like `_burn_fraction`'s other output and unlike
+    `build_hard_negative_chips`' int16 binary masks, so a fraction corpus stays one dtype
+    and one target semantics throughout.
+
+    Caveat this cannot fix: quadrats were mapped against high-res imagery that is
+    generally *older* than the Sentinel-2 composite, so installations built in between
+    exist in the image and not in the labels, and are burned as 0 inside the boundary --
+    real false negatives in the training target. Nothing here detects those; the
+    evaluation side has to treat apparent false positives as candidate new installations
+    rather than errors.
+    """
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # Reuse roofclf's discovery + newest-pull rules rather than reimplementing them, so a
+    # re-pulled quadrat feeds training and evaluation from the same file.
+    from earthpv.roofclf import _newest_solar, discover_quadrats
+
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    out_dir = Path(out_dir) / f"{aoi}_quadrat_fraction"
+    (out_dir / "images").mkdir(parents=True, exist_ok=True)
+    (out_dir / "masks").mkdir(parents=True, exist_ok=True)
+
+    composed = Path("data/composites") / aoi
+    if composed.exists() and any(composed.glob("composites/*/composite_0.tif")):
+        comp_idx = CompositeIndex(composed)
+    else:
+        comp_idx = CompositeIndex(Path(settings.raw["local_root"]) / cfg.get("source_region"))
+
+    stems = quadrats or discover_quadrats(Path(labels_dir))
+    rng = np.random.default_rng(seed)
+    val_tiles = set(cfg.get("val_tiles", []))
+    records: list[dict] = []
+
+    for stem in stems:
+        bpath = Path(labels_dir) / f"{stem}_boundary.geojson"
+        spath = _newest_solar(stem, Path(labels_dir))
+        if not bpath.exists() or spath is None:
+            log.warning("quadrat %s: missing boundary or solar pull, skipped", stem)
+            continue
+        boundary = gpd.read_file(bpath).to_crs("EPSG:4326").geometry.iloc[0]
+        labels = _overpass_labels(spath, min_area_m2=MIN_PV_AREA)
+        cx, cy = boundary.centroid.x, boundary.centroid.y
+        # Jitter, but only as far as keeps the whole quadrat inside the chip window --
+        # otherwise part of the mapped ground falls outside the frame and is lost. The
+        # project's anti-tiling invariant wants positives off-centre; here the quadrat's
+        # own installations are spread across it, so the residual centre bias is on the
+        # box, not on any array.
+        bminx, bminy, bmaxx, bmaxy = boundary.bounds
+        span_m = max((bmaxx - bminx) * 111_320 * np.cos(np.radians(cy)),
+                     (bmaxy - bminy) * 110_540)
+        max_off_m = max((CHIP_M - span_m) / 2.0 - 120.0, 0.0)
+        log.info("quadrat %s: %d labels, jitter +-%.0f m", stem, len(labels), max_off_m)
+
+        for _ in range(per_quadrat):
+            dx = rng.uniform(-max_off_m, max_off_m) / (111_320 * np.cos(np.radians(cy)))
+            dy = rng.uniform(-max_off_m, max_off_m) / 110_540
+            lon, lat = cx + dx, cy + dy
+            cid = _chip_id(lon, lat)
+            img_path = out_dir / "images" / f"{cid}.tif"
+            mask_path = out_dir / "masks" / f"{cid}.tif"
+            tile = _tile_of(lon, lat, comp_idx)
+            try:
+                if not (img_path.exists() and mask_path.exists()):
+                    res = comp_idx.read_window(_chip_bbox(lon, lat))
+                    if res is None:
+                        continue
+                    arr, transform, crs = res
+                    arr = arr[: len(MODEL_BANDS)]
+                    arr, ox, oy = _crop(arr, CHIP_SIZE)
+                    transform = transform * rasterio.Affine.translation(ox, oy)
+                    shape = arr.shape[-2:]
+                    win_labels = labels[labels.geometry.intersects(_bbox_poly(lon, lat))]
+                    frac = _burn_fraction(win_labels, transform, crs, shape)
+                    inside = rio_features.rasterize(
+                        [(gpd.GeoSeries([boundary], crs="EPSG:4326").to_crs(crs).iloc[0], 1)],
+                        out_shape=shape, transform=transform, fill=0, all_touched=False,
+                        dtype="uint8",
+                    ).astype(bool)
+                    frac[~inside] = IGNORE_VALUE
+                    _write_tif(img_path, arr, transform, crs, "uint16")
+                    _write_tif(mask_path, frac.astype("float32"), transform, crs, "float32")
+            except Exception as e:  # noqa: BLE001 — one bad chip must not kill the run
+                log.warning("quadrat chip %s failed: %s", cid, e)
+                continue
+            with rasterio.open(mask_path) as m:
+                band = m.read(1)
+            sup = band != IGNORE_VALUE
+            records.append(dict(
+                chip_id=cid, lon=lon, lat=lat, kind="quadrat", tile=tile,
+                split="val" if tile in val_tiles else "train",
+                pv_pixels=int((band > 0).sum()), image=str(img_path), mask=str(mask_path),
+                pv_frac_sum=float(band[sup].sum()), quadrat=stem,
+                supervised_frac=float(sup.mean()),
+            ))
+
+    index = pd.DataFrame(records)
+    if index.empty:
+        raise RuntimeError("no quadrat chips built — check boundaries/composite coverage")
+    index_path = out_dir / "index.parquet"
+    index.to_parquet(index_path)
+    log.info(
+        "Wrote %d quadrat fraction chips across %d quadrats (mean supervised area %.1f%% "
+        "of a chip, mean PV coverage sum %.1f px) -> %s",
+        len(index), index.quadrat.nunique(), index.supervised_frac.mean() * 100,
+        index.pv_frac_sum.mean(), index_path,
+    )
+    return index_path
 
 
 def build_hard_negative_chips(

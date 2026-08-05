@@ -1,0 +1,88 @@
+# TerraTorch fine-tuning config for PV FRACTION regression (sub-pixel density),
+# Pakistan-tuned, trained on ALL 13 calibration quadrats as supervision.
+#
+# Copy of configs/terramind_pv_fraction_pakistan.yaml (v1, the previous deployed
+# checkpoint) with only index_path/checkpoint_dir changed -- same backbone, necks,
+# decoder, loss, lr and schedule, so the only variable is the corpus.
+#
+# Corpus (data/chips/combined_fraction_quadrats/index.parquet, 11,960 rows):
+#   germany : data/chips_unfiltered/germany_fraction   x1  (5,587)
+#   pakistan: data/chips/pakistan_fraction             x2  (5,125)
+#   quadrat : data/chips/pakistan_quadrat_fraction     x8  (1,248 = 156 x 8)
+#
+# Two deliberate differences from the v2 quadrat attempt, which scored WORSE than v1:
+#
+# 1. `earthpv quadrat-chips` burns everything OUTSIDE a quadrat boundary as ignore
+#    (-1). A chip is 5.02 km2 and a quadrat 0.49-2.25 km2, so an ordinary "quadrat
+#    chip" is only ~19% completeness-mapped ground (measured 18.8% on v2's own chips)
+#    and ~81% surrounding national OSM, where unmapped small PV is burned as 0 and
+#    teaches the model to suppress the very signal the quadrats exist to supply.
+#    v2 oversampled that mixture 20x. These chips supervise the mapped ground only
+#    (21.0% of chip area, 10.9% of supervised pixels carrying PV vs ~0.35% nationally).
+# 2. The oversampling factor is chosen by signal mass, not by feel: at x8 the quadrats
+#    carry 20.9% of the corpus's total (1 + k*target) signal weight, up from 3.2% at
+#    x1. v2's 20x would be 39.8%. Deliberately less aggressive: the ground truth is
+#    ~13 km2 in 13 places, so overfitting to those places is the live risk.
+#
+# The 2,626 `pakistan_hard_neg` chips are EXCLUDED here on purpose: they carry int16
+# binary `_burn_mask` targets (555 of them with 465,030 pixels at full coverage where a
+# fraction target wants partial) rather than float32 `_burn_fraction` coverage, so
+# including them would confound the corpus change with a target-semantics change.
+#
+# Known limitation this cannot fix: the quadrats were mapped against high-res imagery
+# generally OLDER than the Sentinel-2 composite, so installations built in between are
+# in the image and absent from the labels, burned as 0 inside the boundary. Those are
+# genuine false negatives in the training target, and on the evaluation side apparent
+# false positives must be read as candidate new installations rather than as errors.
+task_type: regression
+
+data:
+  index_path: data/chips/combined_fraction_quadrats/index.parquet
+  batch_size: 8
+  num_workers: 4
+  target: fraction
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    head_final_act: torch.nn.Sigmoid
+    rescale: true
+  # Most pixels carry zero coverage; plain MSE lets the model collapse to predict-zero.
+  # weighted_mse (train.py -> losses.TargetWeightedMSE) scales by (1 + k*target) and
+  # masks ignore_index itself, which is what makes the outside-boundary -1 above work.
+  loss: weighted_mse
+  weighted_mse_args: {k: 10.0}
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/fraction_pakistan_quadrats
+patience: 8
+# PixelwiseRegressionTask logs val/RMSE, val/MSE, val/MAE, val/R2_Score, val/loss.
+# NOTE: the val split is the national + Germany one (229 chips); the quadrat chips are
+# all train, as requested. So early stopping is driven by the >=400 m2-dominated
+# regime, not by small-PV performance -- the quadrat evaluation happens after training.
+monitor: val/RMSE
+monitor_mode: min

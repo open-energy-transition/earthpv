@@ -1,0 +1,53 @@
+/* earthpv calibration quadrat validation layer.
+   JOSM: Preferences -> Map Paint Styles -> + -> point at this file.
+   Draws the quadrat box as a heavy dashed outline (near-zero fill so imagery shows
+   through) and colours already-mapped PV by the 400 m2 detection floor. */
+
+way[feature_type=quadrat_boundary] {
+    color: #ff3b30;
+    width: 4;
+    dashes: 14,7;
+    fill-color: #ff3b30;
+    fill-opacity: 0.02;
+    text: quadrat_label;
+    text-color: #ff3b30;
+    font-size: 15;
+    font-weight: bold;
+    z-index: 100;
+}
+
+/* Not yet completeness-checked: a low score here cannot be blamed on the model. */
+way[feature_type=quadrat_boundary][rule1_complete=no] {
+    color: #ff9500;
+    fill-color: #ff9500;
+    text-color: #ff9500;
+}
+
+way[feature_type=mapped_solar] {
+    color: #ffb000;
+    width: 2;
+    fill-color: #ffb000;
+    fill-opacity: 0.40;
+    z-index: 120;
+}
+
+/* Below the segmentation model's per-object floor -- the population completeness
+   matters most for, and the one most often missing from OSM. */
+way[feature_type=mapped_solar][size_class=sub_400] {
+    color: #2ec7ff;
+    fill-color: #2ec7ff;
+    fill-opacity: 0.45;
+}
+
+/* Already in OSM but only partly inside the box. Shown on purpose: an unmarked panel
+   inside the line reads as unmapped, and re-mapping it would duplicate an existing
+   feature. Out of scope for the completeness count, in scope for not double-mapping. */
+way[feature_type=mapped_solar][edge_straddling=yes] {
+    color: #9b8cff;
+    fill-color: #9b8cff;
+    fill-opacity: 0.22;
+}
+
+way[feature_type=mapped_solar][placement=ground] {
+    dashes: 6,4;
+}
