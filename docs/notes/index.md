@@ -15,5 +15,6 @@ later than the code that was built.
 | [Glint tile-batched coverage](../issues/glint-tile-batched-coverage.md) | The 22x fetch speedup, the seam-zone bug it exposed, and the equivalence check. |
 | [Glint-validated training labels](../issues/glint-validated-training-labels.md) | Using glint confirmations as additional supervision. |
 | [Quadrats as training data](../issues/quadrats-as-training-data.md) | Whether exhaustively mapped boxes should also be trained on, not just measured against. |
+| [Quadrat-supervised fraction retrain](../issues/quadrat-supervision-fraction-retrain.md) | The pixel-supervision half of that question, run twice with one box held out. A large in-sample win the holdout does not support, so **not promoted**. |
 
 For the conclusions these notes fed into, see [Experiments](../how-it-works.md#experiments).

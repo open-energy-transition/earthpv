@@ -1,0 +1,5 @@
+quadrat,block_px,run,auc,auc_lo95,auc_hi95,d_vs_base,d_lo95,d_hi95,p_one_sided
+karachi_coast_calib_700m,5,v1,0.7333,0.6939,0.7713,0.0,0.0,0.0,
+karachi_coast_calib_700m,5,hn,0.7217,0.6809,0.7593,-0.0116,-0.0519,0.0297,0.7255
+karachi_coast_calib_700m,5,quadho,0.7598,0.7237,0.7954,0.0265,-0.0085,0.0611,0.062
+karachi_coast_calib_700m,5,quad13,0.7983,0.7668,0.8291,0.065,0.0341,0.0965,0.0
