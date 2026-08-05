@@ -27,7 +27,7 @@ out wholesale while this was written, and ES already serves offset-corrected COG
 
 Usage:
     python scripts/pv_ts_cube.py pull --name lahore_box \
-        --boundary data/labels/lahore_calib_1km_boundary.geojson --buffer-m 250
+        --boundary data/labels/lahore_calib_6p61km2_boundary.geojson --buffer-m 250
     python scripts/pv_ts_cube.py pull --name control_crop --bbox 74.55,31.30,74.57,31.32
 """
 

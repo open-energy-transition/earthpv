@@ -6,8 +6,10 @@ OSM-mapped installations, it's the ENTIRE population of a small area, letting us
 "does glint's country-wide sensitivity curve replicate in one genuinely exhaustive
 micro-area?" rather than "does glint work on a representative national sample?"
 
-Efficient by construction: all 1,021 installations sit inside one 1km x 1km box, i.e.
-one single 1-degree tile group for `glint.tile_scene_series_batch` — one STAC search,
+Efficient by construction: every installation sits inside one small box (1 km2 when this
+was written; 6.61 km2 and ~5,695 installations since the 2026-08-05 extension, still well
+inside one 1-degree tile group), i.e. one single tile group for
+`glint.tile_scene_series_batch` — one STAC search,
 shared per-scene band opens across every target, immediate read (no deferred re-read
 of retained items), so this does NOT hit the SAS-token-staleness bug the tile-batched
 country-scale revalidation did (docs/issues/glint-tile-batched-coverage.md) — that bug
@@ -43,7 +45,12 @@ from glint_validation import analyze_point  # noqa: E402 (shared spike/fit logic
 
 log = logging.getLogger("glint_calib_box")
 
-LABELS_FILE = Path("data/labels/lahore_calib_1km_overpass_solar.parquet")
+# The Lahore quadrat was extended 2026-08-05 from 1 km2 to a hand-drawn 6.61 km2 boundary
+# that fully contains it, so this now points at the larger population. The published run
+# behind this script's recorded numbers used the retired 1,034-installation file, still at
+# data/labels/retired/lahore_calib_1km_overpass_solar.parquet -- a re-run against the path
+# below is a ~5.6x larger job over a different population, not a reproduction of it.
+LABELS_FILE = Path("data/labels/lahore_calib_6p61km2_overpass_solar.parquet")
 OUT_DIR = DATA_DIR / "glint" / "calib_box"
 DATE_RANGE = (datetime(2024, 7, 1, tzinfo=timezone.utc), datetime(2026, 7, 14, tzinfo=timezone.utc))
 BANDS = ("B03", "B08")

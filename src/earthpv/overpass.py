@@ -70,6 +70,18 @@ def _query_place(place: str, timeout: int) -> str:
 _HEADERS = {"User-Agent": "earthpv-solar-labels/1.0 (research tool; contact via repo issues)"}
 
 
+class OverpassTruncated(RuntimeError):
+    """An Overpass response that is a partial answer rather than an answer.
+
+    Overpass signals a query it could not finish with a top-level `remark` ("Query timed
+    out", "out of memory") and returns whatever it had already collected -- HTTP 200, valid
+    JSON, fewer elements. Treating that as data is how a quadrat silently acquires a
+    fraction of its ground truth: measured 2026-08-05 on the 6.61 km2 Lahore DHA-5 box,
+    one pull yielded 68 installations where the correct answer is ~1,100, inside a box that
+    fully contains a 1 km2 box already known to hold 1,034.
+    """
+
+
 def _run_query(query: str, timeout: int) -> dict:
     last_err = None
     for url in OVERPASS_ENDPOINTS:
@@ -78,7 +90,13 @@ def _run_query(query: str, timeout: int) -> dict:
                 url, data={"data": query}, headers=_HEADERS, timeout=timeout + 30
             )
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            remark = data.get("remark")
+            if remark:
+                # Not raise_for_status-able: the HTTP call succeeded. Fail over to the next
+                # mirror instead of returning a truncated element list as if it were whole.
+                raise OverpassTruncated(f"{url} returned a partial result: {remark}")
+            return data
         except Exception as e:  # noqa: BLE001 — try the next mirror
             log.warning("Overpass endpoint %s failed: %s", url, e)
             last_err = e

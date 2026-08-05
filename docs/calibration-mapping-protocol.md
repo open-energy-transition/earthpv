@@ -162,6 +162,21 @@ real quadrats mapped so far -- see
 mechanism by which that matters, free tools (Esri Wayback, Google Earth Pro's
 historical slider) that can likely backfill it at no cost, and what it would cost to
 close the gap with purchased imagery if those don't suffice.
+`results/calibration_quadrats.csv` now carries `imagery_layer` and `imagery_date`
+columns so the gap is visible per quadrat; they are still empty for all seventeen.
+
+**This bounds what a completeness declaration can mean (owner, 2026-08-05).** The OSM
+background imagery a mapper works from is generally *older* than the Sentinel-2 composite
+the model reads, and the newest installations are therefore unmappable -- they exist in
+the model's input and cannot exist in the labels. So **Rule-1 certifies completeness as of
+the mapping imagery, not as of the model's epoch**, and it only becomes a statement about
+the latter once contemporaneous imagery is acquired and swept. Do not read a Rule-1
+declaration as "there is no PV here that the model could see". The practical consequences:
+precision measured against these negatives is a **lower bound**, `base_rate` is a **lower
+bound** and `rate_ratio` an **upper bound**; recall over mapped installations is unaffected.
+`scripts/fraction_stale_label_audit.py` measures the size of the effect without any new
+mapping, and it is large in exactly the dense small-rooftop quadrats the sub-400 m² work
+depends on (68.4% of apparent false positives in Karachi coastal).
 
 ## Completeness declaration and QA
 

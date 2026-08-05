@@ -64,21 +64,58 @@ CITIES: dict[str, list] = {
 # status: "rule1" = every visible panel mapped and verified, so its has-no-PV buildings
 # are trustworthy negatives; "corroborated" = visual pass supports the count but
 # completeness is not asserted; "suspect" = needs re-verification.
+# All seventeen carry status "rule1" as of 2026-08-05: the repository owner declared
+# completeness for the whole current set, which is what Rule-1 means here (see roofclf.py's
+# module docstring -- it is a mapper's declaration, never something code infers or a script
+# can produce). That is a reversal for Karachi coastal, whose Rule-1 the owner had withdrawn
+# earlier the same day when its boundary was extended, and a promotion for the five quadrats
+# added that day. A missing stem is skipped SILENTLY by `calibration_box_features`, so this
+# list must track every rename -- six stems changed on 2026-08-05.
 CALIBRATION_BOXES: dict[str, list] = {
     "pakistan": [
-        {"name": "Lahore DHA Phase V", "stem": "lahore_calib_1km", "status": "corroborated"},
-        {"name": "Faisalabad (PSIE)", "stem": "faisalabad_calib_1km", "status": "suspect"},
-        {"name": "Multan Industrial Estate", "stem": "multan_calib_1km", "status": "corroborated"},
-        {"name": "Sundar Industrial Estate", "stem": "sundar_calib_1km", "status": "corroborated"},
-        {"name": "SITE Karachi", "stem": "site_karachi_calib_1km", "status": "corroborated"},
+        # Extended 2026-08-05 from a 1 km2 square to a 6.61 km2 hand-drawn boundary that
+        # fully contains it (`_calib_1km` retired to data/labels/retired/).
+        {"name": "Lahore DHA Phase V", "stem": "lahore_calib_6p61km2", "status": "rule1"},
+        {"name": "Faisalabad (PSIE)", "stem": "faisalabad_calib_1km", "status": "rule1"},
+        # Extended 2026-08-05, 1 km2 square -> hand-drawn 3.92 km2 that fully contains it
+        # (`_calib_1km` retired to data/labels/retired/). Rule-1 explicitly re-declared by
+        # the owner for the extended area the same day (initially withheld, since the
+        # blanket declaration predated this boundary).
+        {"name": "Multan Industrial Estate", "stem": "multan_calib_3p92km2", "status": "rule1"},
+        # Extended 2026-08-05, 1 km2 square -> hand-drawn 4.34 km2 that fully contains it.
+        {"name": "Sundar Industrial Estate", "stem": "sundar_calib_4p34km2", "status": "rule1"},
+        # Extended 2026-08-05, 1 km2 square -> hand-drawn 4.14 km2 that fully contains it.
+        {"name": "SITE Karachi", "stem": "site_karachi_calib_4p14km2", "status": "rule1"},
+        # Extended 2026-08-05, 0.49 -> 2.16 km2. Not a strict superset: 8.6% of the old box
+        # falls outside this boundary, but that sliver held zero mapped installations.
         {"name": "Karachi DHA Phase 5 / Zamzama (coastal)",
-         "stem": "karachi_coast_calib_700m", "status": "rule1"},
+         "stem": "karachi_coast_calib_2p16km2", "status": "rule1"},
         {"name": "Sialkot Old City", "stem": "sialkot_calib_1km", "status": "rule1"},
         {"name": "Sheikh Maltoon Town, Mardan", "stem": "mardan_calib_1km", "status": "rule1"},
         {"name": "Quetta City", "stem": "quetta_calib_1km", "status": "rule1"},
-        {"name": "Peshawar", "stem": "peshawar_calib_1km", "status": "corroborated"},
-        {"name": "Peshawar East", "stem": "peshawar_east_calib_1km", "status": "corroborated"},
-        {"name": "Rahim Yar Khan District", "stem": "rahim_yar_khan_calib_1km", "status": "corroborated"},
+        {"name": "Peshawar", "stem": "peshawar_calib_1km", "status": "rule1"},
+        # Peshawar East removed 2026-08-05 as wrong (retired to data/labels/retired/): 32.1%
+        # of its installations sat inside the 6.56% corner it shared with Peshawar, so the
+        # pair could not be pooled without double-counting them or breaking LOQO fold
+        # independence, and its 3.7% base rate against Peshawar's 16.5% at 995 m was never
+        # reconciled. Do not re-add without resolving both.
+        # Extended 2026-08-05, 1.5 km square -> hand-drawn 4.39 km2 that fully contains it.
+        # Never listed here before that date, so the atlas silently omitted it.
+        {"name": "Peshawar West", "stem": "peshawar_west_calib_4p39km2", "status": "rule1"},
+        # Extended 2026-08-05, 1 km2 square -> hand-drawn 2.06 km2 that fully contains it.
+        {"name": "Rahim Yar Khan District", "stem": "rahim_yar_khan_calib_2p06km2",
+         "status": "rule1"},
+        # Added 2026-08-05. Sukkur is the first quadrat in Sindh outside Karachi, and at
+        # 100% of installations below the 400 m2 floor (median 27 m2) it is the purest
+        # sub-floor population in the set.
+        {"name": "Sukkur", "stem": "sukkur_calib_2p63km2", "status": "rule1"},
+        # Added 2026-08-05: four mutually non-overlapping diamonds around Islamabad, the
+        # first quadrats placed as a directional ring rather than purposively, and the first
+        # in Islamabad Capital Territory.
+        {"name": "Islamabad North", "stem": "islamabad_north_calib_2p79km2", "status": "rule1"},
+        {"name": "Islamabad East", "stem": "islamabad_east_calib_2p79km2", "status": "rule1"},
+        {"name": "Islamabad South", "stem": "islamabad_south_calib_2p79km2", "status": "rule1"},
+        {"name": "Islamabad West", "stem": "islamabad_west_calib_2p79km2", "status": "rule1"},
     ],
 }
 

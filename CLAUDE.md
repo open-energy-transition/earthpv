@@ -447,19 +447,27 @@ instruments, both rooftop-only and both dropping the polygon:
   (globs `*_calib_*_boundary.geojson`); not yet folded into a retrained `model_full.json`
   -- the next `earthpv roof-classifier` run will include it with no flag needed.
   Registered as Box 9 in `docs/issues/pakistan-calibration-boxes.md`.
-  **An eleventh quadrat, `peshawar_east_calib_1km`, was added the same day** at a second
+  **An eleventh quadrat, `peshawar_east_calib_1km`, was added the same day and
+  WITHDRAWN 2026-08-05 as wrong** (owner's instruction; files retired to
+  `data/labels/retired/`, removed from `results/calibration_quadrats.csv`, the JOSM
+  validation layer and `atlas.py::CALIBRATION_BOXES`). It was created at a second
   user-suggested center (34.0242579, 71.5600512) -- checked for overlap *before* creation
   (per the new procedure this added to the mapping protocol): ~995 m from Box 9's center,
   sharing 6.56% of its area as one corner. Added on the user's confirmation. **That
-  overlap is denser than its area share suggests**: 42/131 (32.1%) of this box's
-  installations sit inside the shared 6.56% corner, so pooling both Peshawar quadrats into
-  `roofclf` training without deduplication double-counts those ~42 installations/buildings
-  and breaks LOQO's fold-independence assumption for this pair specifically. **Not yet
-  deduplicated** -- flagged as an open item, not fixed. Otherwise 131 installations, 100%
-  below the 400 m² floor, median 44.9 m², base_rate 3.7% (126/3,382 buildings) -- notably
-  lower than Box 9's 16.5% despite being 995 m away in the same city, and on 60% more
-  buildings over a similar-sized box: a concrete, fine-grained illustration that
-  `base_rate` cannot be pooled even between adjacent quadrats. Registered as Box 10.
+  overlap was denser than its area share suggests**: 42/131 (32.1%) of the box's
+  installations sat inside the shared 6.56% corner, so pooling both Peshawar quadrats into
+  `roofclf` training without deduplication would double-count those ~42
+  installations/buildings and break LOQO's fold-independence assumption for that pair.
+  **Removal is what resolved that -- no deduplication code was ever written**, so
+  `new_calibration_quadrat.py`'s pre-creation overlap check remains the only guard; do not
+  pass `--allow-overlap` without a plan for the shared ground. Its other numbers, now
+  history: 131 installations, 100% below the 400 m² floor, median 44.9 m², base_rate 3.7%
+  (126/3,382 buildings) -- notably lower than Box 9's 16.5% despite being 995 m away in
+  the same city, and on 60% more buildings over a similar-sized box, which was a concrete,
+  fine-grained illustration that `base_rate` cannot be pooled even between adjacent
+  quadrats. Was Box 10. **Its removal makes every pooled `roofclf`/fraction number that
+  included it stale in the same way the Lahore and Sundar replacements do** -- see the
+  staleness note below.
   Both Peshawar boxes and this overlap caveat are in the new
   `docs/methods/calibration-quadrats.md` overview page (added the same day, in direct
   response to the user not being able to find a table of quadrat status anywhere on the
@@ -603,21 +611,57 @@ nine quadrats (was 0.47–1.89 at six -- the three new quadrats widened it, Quet
 are the extremes), and the model predicts 0.137 for residential Lahore where truth is
 0.301. A per-stratum intercept is required before publishing any adoption rate or capacity
 from it. (c) **Rule-1 complete requires the mapper's own completeness declaration** (every
-visible panel mapped); as of 2026-07-29 four quadrats carry it --
+visible panel mapped). Four quadrats carried it as of 2026-07-29 --
 `karachi_coast_calib_700m` (2026-07-26, the first), `sialkot_calib_1km`, `mardan_calib_1km`,
 and `quetta_calib_1km` (all 2026-07-29, owner-mapped, registered in
-`docs/issues/pakistan-calibration-boxes.md`) -- so these are the only quadrats whose
+`docs/issues/pakistan-calibration-boxes.md`) -- so these were the only quadrats whose
 negatives are trustworthy and the only ones where a low score cannot be blamed on missing
-labels. None of the four have a separately recorded independent second-mapper sweep; the
-owner's own declaration is what "Rule-1 complete" means in this repo, per the
-`karachi_coast_calib_700m` precedent. **All three new boxes are now folded into the
+labels. None had a separately recorded independent second-mapper sweep; the owner's own
+declaration is what "Rule-1 complete" means in this repo, per the `karachi_coast_calib_700m`
+precedent. **As of 2026-08-05 all seventeen quadrats carry Rule-1: the owner declared
+completeness for the whole current set.** Coverage went 3 of 12 to 17 of 17 in one step
+(earlier the same day it had briefly dropped to three, when Rule-1 was withdrawn from Karachi
+coastal as its boundary was extended -- that withdrawal is superseded). This is what makes
+precision, false-positive rate and `base_rate` meaningful anywhere outside the old three, and
+it is the first time the dense small-rooftop coastal, capital-territory and Sukkur regimes
+have trustworthy negatives at all. Two caveats nothing in the data expresses: five of the
+seventeen were first pulled from OSM the same day they were declared complete, and **no
+quadrat in this repo has a recorded independent second-mapper sweep** (true since the first
+one, not new) -- so these negatives are owner-attested, which is a real standard of evidence
+but not an independently verified one.
+**Rule-1 does not carry forward to new ground automatically -- it must be re-asserted, and
+here it was.** Multan was extended the same day, after the blanket declaration (1 km² →
+3.92 km², `multan_calib_3p92km2`, 40 → 164 installations, 0 lost). Rule-1 was initially
+withheld (the declaration covered the boundaries that existed when it was made, and the
+added 2.92 km² was ground the owner had not yet looked at), then the owner explicitly
+declared Rule-1 for the extended area the same day, so it now reads `rule1_complete: yes`
+like the other sixteen. The general rule for the *next* extension is unchanged: never infer
+Rule-1 from a predecessor's declaration, always re-assert it explicitly.
+**Rule-1 is epoch-relative and that qualification is load-bearing** (owner, 2026-08-05):
+mapping is done against OSM's background imagery (Esri/Bing/Maxar), whose capture date does
+not match the Sentinel-2 composite and is generally older, so the freshest installations
+cannot be mapped at all. Rule-1 certifies completeness *as of the mapping imagery* and only
+becomes a statement about the model's own epoch once contemporaneous imagery is acquired and
+swept. Known bias directions: **precision is a lower bound** (a correct detection of
+unmapped-but-real PV scores as a false positive), **`base_rate` a lower bound** and therefore
+**`rate_ratio` an upper bound**, while recall over mapped installations is unaffected (it only
+divides by labels that exist). The magnitude is measurable without new mapping via
+`scripts/fraction_stale_label_audit.py` (same checkpoint, two epochs): pooled over 13 quadrats
+it is only 5.8% of apparent false positives (precision 0.435 → 0.450), but that pooled figure
+is dominated by industrial quadrats with large FP pixel counts, and **per quadrat it dominates
+exactly where the sub-400 m² work lives** -- 68.4% in `karachi_coast` (0.570 → 0.807), 23.7%
+in Quetta, 11.7% in Lahore. `results/calibration_quadrats.csv` now carries `imagery_layer` /
+`imagery_date` columns for this; they are **empty for all seventeen**, which is why the
+per-quadrat magnitude is unknown rather than merely unstated
+(`docs/issues/calibration-imagery-dating.md`). **All three new boxes are now folded into the
 roof-classifier's LOQO training/eval and the fraction-head quadrat table above** (re-run
 2026-07-29 -- `roofclf.discover_quadrats` auto-globs every `*_calib_*_boundary.geojson`
 with a matching mapped-solar file, so a bare `earthpv roof-classifier` picked up all nine
-with no `--quadrat` flag needed). `karachi_coast_calib_700m` remains the hardest and most
+with no `--quadrat` flag needed). `karachi_coast_calib_700m` was the hardest and most
 diagnostic of the four: median installation 86 m², 98.8% below the detection floor, and
 there the segmentation raster scores **exactly 0.500** and predicts **0.0 m² of PV against
-13,964 m² mapped**. **None of the quadrats record when their reference imagery was
+13,964 m² mapped** -- all measured on the retired 0.49 km² boundary, so these figures now
+describe `data/labels/retired/karachi_coast_calib_700m_*` rather than a current quadrat. **None of the quadrats record when their reference imagery was
 captured** -- the mapping protocol asks for it but the field has never been filled in
 (`docs/issues/calibration-imagery-dating.md`), so stale background imagery missing
 recently-installed PV is an untested, plausible contributor to the documented
@@ -651,6 +695,42 @@ shape is a dimension that does not exist); a drawn quadrat is named by geodesic 
 (`..._calib_1p24km2`) and carries `shape: drawn` + `source_geojson`. Mapper-facing
 instructions, including the close-the-way and ~2.2 km bbox constraints:
 `docs/calibration-mapping-protocol.md`'s "Drawing the boundary in JOSM".
+
+**First use of that path, same day: Box 1 (Lahore) was replaced by a drawn 6.61 km² boundary
+(`lahore_calib_6p61km2`, from `data/labels/calibration_boundaries/DH5.geojson`), retiring the
+1 km² square to `data/labels/retired/`.** It fully contains the old square, which is what
+made the swap checkable: all 1,014 old installations are present in the new pull (0 lost),
+and the added 5.61 km² is mapped at 831 installations/km² against the core's 1,034, so it is
+an extension rather than a dilution with unmapped ground. Now 5,688 installations, 13,500
+buildings, base rate 25.4% (was 30.1%), median 29.0 m², 99.0% sub-400 m², packing 6.8 m --
+**the largest sub-400 m² ground-truth population in the project**, 5,631 sub-floor
+installations against 5,688 for all twelve other quadrats combined. Still not Rule-1.
+Three consequences worth carrying:
+- **A non-empty Overpass truncation mode exists and nearly poisoned this box.** A mirror
+  returned HTTP 200, valid JSON, **no `remark`**, and a partial element list: the first pull
+  wrote **68** installations where the answer is ~5,700, and would have been accepted. Four
+  consecutive raw queries of the same bbox gave 5,983/5,983/5,983/**72**, so it is
+  intermittent and one query is untrustworthy in either direction. `_run_query` now rejects
+  any `remark`ed response (`OverpassTruncated`) and fails over; the quadrat script
+  cross-checks each pull against the **max** of three confirming queries (max, because
+  truncation only loses elements) and retries below 98%. But what actually caught it was the
+  containment invariant -- **prefer replacing a quadrat by extension**, so "cannot hold fewer
+  than the box it contains" is available as a check.
+- **Every model score for Lahore is now stale and is deliberately NOT half-refreshed**:
+  `roofclf` LOQO folds + `model_full.json`, `results/fraction_quadrat_validation*.csv`, and
+  `results/quadrat_detection_correlations.csv` were all measured on the retired boundary.
+  Regenerating the correlations was tried and reverted -- it silently produced a *mixture*,
+  because `quadrat_correlations.py` joins the folds table on `label` ("lahore", so new ground
+  truth paired with old scores at unchanged n, r moved) and the fraction table on the full
+  stem (no match, so n dropped 12→11). It now prints which quadrats each model-side join
+  failed to cover and when that table was written; that also exposed a pre-existing silent
+  gap, the 9-quadrat folds table missing all four post-2026-07-30 boxes.
+- Hardcoded references had to move with it or they fail silently/loudly:
+  `atlas.py::CALIBRATION_BOXES` (a missing stem is skipped without error, so the box would
+  have vanished from the atlas), `configs/aoi.yaml`'s per-box AOI key + bbox (composites
+  cached under the old key cover only the old core and are orphaned, not wrong), and three
+  scripts' paths (`glint_validate_calibration_box.py`'s `LABELS_FILE` constant, plus
+  `pv_step_signal.py`/`pv_ts_cube.py` usage examples).
 
 `roofclf.packing_density` (added 2026-07-29) reports each quadrat's median distance
 from a sub-400 m² installation to its nearest neighbour of any size -- a cheap,

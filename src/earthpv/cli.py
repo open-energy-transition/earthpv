@@ -886,7 +886,7 @@ def calibrate_candidates(
     calibration_box: list[Path] = typer.Option(
         [], help="Fully-mapped ground-truth quadrat(s) "
         "(docs/calibration-mapping-protocol.md), e.g. "
-        "data/labels/lahore_calib_1km_overpass_solar.parquet. Unlike the country snapshot "
+        "data/labels/lahore_calib_6p61km2_overpass_solar.parquet. Unlike the country snapshot "
         "(only as complete as OSM happens to be), every real installation inside a "
         "quadrat is known, so this measures TRUE recall, not recall-against-what's-mapped "
         "— pooled into the recall reference. Repeat the flag for more than one box",

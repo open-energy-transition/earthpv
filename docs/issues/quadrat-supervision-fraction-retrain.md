@@ -1,5 +1,26 @@
 ## Quadrat-supervised fraction retrain, and what its holdout says (2026-08-04/05)
 
+!!! warning "The holdout quadrat was replaced hours after this was written"
+    Every number below describes `karachi_coast_calib_700m`, the 0.49 km² box. On
+    **2026-08-05** that boundary was replaced by a hand-drawn 2.16 km² one
+    (`karachi_coast_calib_2p16km2`, old files at `data/labels/retired/`) and its **Rule-1
+    status was withdrawn**. Two things follow, and neither invalidates the *conclusion*:
+
+    - The measurements stand as measurements -- both checkpoints' rasters and the retired
+      boundary are still on disk, so they remain reproducible and are still the honest
+      answer to "what did the model do on that box". They are simply no longer measurements
+      of a *current* quadrat.
+    - One stated justification for the choice of holdout is now void: "it is Rule-1
+      complete, so its PV-free buildings are trustworthy negatives and precision on it
+      means something". Precision figures for this box should now be read with the same
+      "absence may be unmapped" caveat as every other non-Rule-1 quadrat.
+
+    The verdict does not move, because it rests on `scale` (predicted/true area over
+    *mapped* installations) and pixel AUC, neither of which needs trustworthy negatives --
+    both only need the positives to be real, which they are. Re-running the pair on the new
+    2.16 km² boundary would give a fresh out-of-sample estimate over ~4.4x the area, which
+    is the cheapest way to attack the n=1 problem this document ends on.
+
 The 13 calibration quadrats are the project's only exhaustively mapped ground, and the only
 place a sub-400 m² installation is reliably labelled at all. `quadrats-as-training-data.md`
 proposed spending them on a per-building classifier; `roofclf.py` did that. This is the

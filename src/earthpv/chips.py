@@ -446,7 +446,11 @@ def quadrat_chip_centers(
     span_x_m, span_y_m = (bmaxx - bminx) * m_per_deg_x, (bmaxy - bminy) * 110_540.0
     usable = CHIP_M - 2.0 * margin_m
 
-    if span_x_m <= usable and span_y_m <= usable:
+    # Tile only when the boundary genuinely does NOT fit a chip. A boundary that fits with
+    # less than `margin_m` to spare still gets one centred window, with the jitter shrinking
+    # to zero -- gating this on `usable` instead would tile a 2,138 m box inside a 2,240 m
+    # chip into four windows and quadruple its chip count for no coverage gain.
+    if span_x_m <= CHIP_M and span_y_m <= CHIP_M:
         off = max(min(CHIP_M - span_x_m, CHIP_M - span_y_m) / 2.0 - margin_m, 0.0)
         centers = []
         for _ in range(per_quadrat):

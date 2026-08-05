@@ -137,16 +137,22 @@ aois:
     bbox: [73.047103, 31.493125, 73.057639, 31.502108]
     division: { name: Punjab, country: PK, subtype: region }
     source_region: pakistan_500
-  lahore_calib_1km:
-    bbox: [74.399244, 31.458839, 74.409775, 31.467822]
+  # Replaced its 1 km2 predecessor 2026-08-05 (hand-drawn 6.61 km2 boundary that fully
+  # contains it). Any composites cached under data/composites/lahore_calib_1km/ cover only
+  # the old core and are orphaned, not wrong -- recompose under the new key for the full box.
+  lahore_calib_6p61km2:
+    bbox: [74.392709, 31.450724, 74.432030, 31.477134]
     division: { name: Punjab, country: PK, subtype: region }
     source_region: pakistan_500
   mardan_calib_1km:
     bbox: [72.019951, 34.18488, 72.0308, 34.193896]
     division: { name: Khyber Pakhtunkhwa, country: PK, subtype: region }
     source_region: pakistan_500
-  multan_calib_1km:
-    bbox: [71.377714, 30.121733, 71.3881, 30.130716]
+  # Replaced its 1 km2 predecessor 2026-08-05 (hand-drawn 3.92 km2 boundary that fully
+  # contains it). Composites cached under data/composites/multan_calib_1km/ cover only the
+  # old core and are orphaned, not wrong -- recompose under this key for the full box.
+  multan_calib_3p92km2:
+    bbox: [71.370492, 30.117067, 71.392508, 30.134698]
     division: { name: Punjab, country: PK, subtype: region }
     source_region: pakistan_500
   quetta_calib_1km:
@@ -157,17 +163,28 @@ aois:
     bbox: [74.536883, 32.499346, 74.547524, 32.508364]
     division: { name: Punjab, country: PK, subtype: region }
     source_region: pakistan_500
-  site_karachi_calib_1km:
-    bbox: [66.989194, 24.902509, 66.999098, 24.911492]
+  # Replaced its 1 km2 predecessor 2026-08-05 (hand-drawn 4.14 km2 boundary that fully
+  # contains it). Composites under data/composites/site_karachi_calib_1km/, if any, cover
+  # only the old core and are orphaned, not wrong.
+  site_karachi_calib_4p14km2:
+    bbox: [66.988192, 24.900061, 67.009263, 24.918628]
     division: { name: Sindh, country: PK, subtype: region }
     source_region: pakistan_500
-  sundar_calib_1km:
-    bbox: [74.166838, 31.281673, 74.17735, 31.290656]
+  # Replaced its 1 km2 predecessor 2026-08-05 (hand-drawn 4.34 km2 boundary that fully
+  # contains it). Composites cached under data/composites/sundar_calib_1km/ cover only the
+  # old core and are orphaned, not wrong -- recompose under this key for the full box.
+  sundar_calib_4p34km2:
+    bbox: [74.158294, 31.280660, 74.180524, 31.305267]
     division: { name: Punjab, country: PK, subtype: region }
     source_region: pakistan_500
-  # karachi_coast_calib_700m: held out on purpose, see note above -- no chips built.
-  karachi_coast_calib_700m:
-    bbox: [67.036521, 24.795372, 67.043448, 24.80166]
+  # karachi_coast: held out on purpose, see note above -- no chips built. Replaced its
+  # 0.49 km2 predecessor 2026-08-05 with a hand-drawn 2.16 km2 boundary, and NO LONGER
+  # Rule-1 complete (the owner withdrew that status for the extended area), so it is no
+  # longer a source of trustworthy negatives -- which was most of the reason to hold it out.
+  # Keeping the holdout anyway: the fraction-head experiment on record used it as the
+  # out-of-sample box, and building chips here now would retroactively invalidate that.
+  karachi_coast_calib_2p16km2:
+    bbox: [67.031987, 24.789637, 67.053230, 24.808464]
     division: { name: Sindh, country: PK, subtype: region }
     source_region: pakistan_500
 

@@ -12,7 +12,15 @@ just "unmapped."
 
 ### Box 1 -- Lahore, 1km x 1km around (31.4633307, 74.4045096) -- 2026-07-22
 
-bbox `74.399244,31.458839,74.409775,31.467822` (`data/labels/lahore_calib_1km_overpass_solar.parquet`).
+!!! note "Superseded 2026-08-05"
+    This 1 km² square was replaced by a hand-drawn 6.61 km² boundary that fully contains
+    it (`lahore_calib_6p61km2`) -- see
+    [Box 1 replaced](#box-1-replaced-lahore-dha-phase-5-hand-drawn-661-km2-2026-08-05)
+    below. Everything in this entry and the two that follow it describes the retired
+    square, whose files are at `data/labels/retired/`. The counts below (8 installations)
+    are also the *original* stale snapshot, corrected further down the same day.
+
+bbox `74.399244,31.458839,74.409775,31.467822` (`data/labels/retired/lahore_calib_1km_overpass_solar.parquet`).
 
 **Ground truth:** 8 rooftop installations, all clustered in one corner of the box
 (74.409-74.410, 31.467-31.468), 314-577 m2 each -- reads as one small residential/
@@ -220,6 +228,13 @@ polygons rather than resolving them individually; not confirmed, just flagged.
 
 ### Box 3 -- Multan, 1km x 1km around (30.1262242, 71.3829068) -- 2026-07-24
 
+!!! note "Superseded 2026-08-05"
+    This 1 km² square was replaced by a hand-drawn 3.92 km² boundary that fully contains
+    it (`multan_calib_3p92km2`) -- see
+    [Box 3 replaced](#box-3-replaced-multan-industrial-estate-hand-drawn-392-km2-2026-08-05)
+    below. Files retired to `data/labels/retired/`. Everything below describes the
+    retired square.
+
 bbox `71.377714,30.121733,71.3881,30.130716` (boundary
 `data/labels/multan_calib_1km_boundary.geojson`; no labels parquet -- see below).
 Reverse-geocode: **Multan Industrial Estate, Thati Lal, Multan Sadar Tehsil** -- also
@@ -243,6 +258,12 @@ two-mapper sign-off. Treat both as candidates for the mapping team's queue, not
 finished quadrats, until that happens.
 
 ### Box 4 -- Sundar Industrial Estate, Lahore, 1km x 1km around (31.2861646, 74.1720942) -- 2026-07-24
+
+!!! note "Superseded 2026-08-05"
+    This square was replaced by a hand-drawn 4.34 km² boundary that fully contains it
+    (`sundar_calib_4p34km2`); files retired to `data/labels/retired/`. See
+    [the 2026-08-05 batch](#boundary-replacements-and-additions-2026-08-05-continued).
+    Everything below describes the retired square.
 
 bbox `74.166838,31.281673,74.17735,31.290656`
 (`data/labels/sundar_calib_1km_overpass_solar.parquet`, boundary
@@ -383,11 +404,22 @@ cluster as Karachi coastal (16.8 m), Quetta (16.8 m; coincidentally close) and S
 polygons tagged `generator:source=solar`/`location=roof`, consistent with an ordinary
 building-by-building OSM mapping pass rather than a bulk import.
 
-### Box 10 -- Peshawar East, 1km x 1km around (34.0242579, 71.5600512) -- 2026-07-30
+### Box 10 -- Peshawar East, 1km x 1km around (34.0242579, 71.5600512) -- 2026-07-30 -- WITHDRAWN 2026-08-05
+
+!!! danger "Withdrawn 2026-08-05 as wrong -- no longer a quadrat"
+    Removed from the project at the owner's instruction. Its files are retired to
+    `data/labels/retired/peshawar_east_calib_1km_*` (kept, not deleted: `data/` is
+    gitignored and there is no other copy), it is gone from
+    `results/calibration_quadrats.csv`, the JOSM validation layer and
+    `atlas.py::CALIBRATION_BOXES`, and `roofclf.discover_quadrats` no longer finds it.
+    Removal is also what resolved the un-deduplicated overlap described below -- **no
+    deduplication code was ever written**, so the pre-creation overlap check in
+    `scripts/new_calibration_quadrat.py` is still the only guard against a repeat.
+    The entry is kept for the record; everything in it is history, not current state.
 
 bbox `71.554638,34.019750,71.565465,34.028766`
-(`data/labels/peshawar_east_calib_1km_overpass_solar.parquet`, boundary
-`data/labels/peshawar_east_calib_1km_boundary.geojson`, geodesic area 999,999.998 m²).
+(`data/labels/retired/peshawar_east_calib_1km_overpass_solar.parquet`, boundary
+`data/labels/retired/peshawar_east_calib_1km_boundary.geojson`, geodesic area 999,999.998 m²).
 User-suggested center, ~995 m from Box 9's center -- checked for overlap **before**
 creation (per the protocol note added to this doc): the two 1 km boxes share a corner,
 **6.56% of this box's area**. Added anyway on the user's confirmation, as adjacent
@@ -456,9 +488,16 @@ a 2,099-building live VIDA fetch), pending the composite/VIDA join
 
 ### Box 12 -- Peshawar West, 1.5km x 1.5km around (33.9905887, 71.4261494) -- 2026-08-04
 
+!!! note "Superseded 2026-08-05"
+    This square was replaced by a hand-drawn 4.39 km² boundary that fully contains it
+    (`peshawar_west_calib_4p39km2`); files retired to `data/labels/retired/`. See
+    [the 2026-08-05 batch](#boundary-replacements-and-additions-2026-08-05-continued).
+    Everything below describes the retired square, including its "largest quadrat in the
+    set" claim, which the replacement and the Lahore box both overtook.
+
 bbox `71.418032,33.983827,71.434267,33.997350`
-(`data/labels/peshawar_west_calib_1500m_overpass_solar.parquet`, boundary
-`data/labels/peshawar_west_calib_1500m_boundary.geojson`, geodesic area **2,249,999.991 m²**
+(`data/labels/retired/peshawar_west_calib_1500m_overpass_solar.parquet`, boundary
+`data/labels/retired/peshawar_west_calib_1500m_boundary.geojson`, geodesic area **2,249,999.991 m²**
 by construction). User-supplied center. **The largest quadrat in the set at 2.25 km²** --
 the first that is neither 1 km² nor Karachi coastal's 0.49 km², which is exactly why the
 naming convention is size-agnostic (`*_calib_*_boundary.geojson`; the stem is
@@ -518,6 +557,93 @@ but from a single attempt "this box has no PV" and "the endpoint lied" are
 indistinguishable. `new_calibration_quadrat.py` therefore treats an empty response as
 retryable (`--retries`, default 4) rather than as truth -- never register a 0-installation
 quadrat from one attempt.
+
+---
+
+### Box 1 replaced -- Lahore DHA Phase 5, hand-drawn 6.61 km2 -- 2026-08-05
+
+Box 1's 1 km x 1 km square was **replaced** by a boundary drawn in JOSM and supplied as
+`data/labels/calibration_boundaries/DH5.geojson`: `lahore_calib_6p61km2`, 6.61 km2, 18
+vertices, bbox `74.392709,31.450724,74.432030,31.477134`. It is the **first non-square
+quadrat** in the set and the largest by a wide margin (2.9x Box 12). The retired square and
+both its Overpass pulls are kept at `data/labels/retired/lahore_calib_1km_*` -- not deleted,
+since `data/` is gitignored and there is no other copy.
+
+**The new boundary fully contains the old one** (0.0 m2 of the old square falls outside it),
+which makes the replacement checkable rather than a matter of trust. Both checks pass:
+
+- **Nothing was lost.** All 1,014 installations the old box held are present in the new
+  pull, matched by OSM id -- 0 absent. (The old core's count rose 1,014 -> 1,031 in the
+  new pull, i.e. mapping continued there since 2026-07-25.)
+- **The extension is mapped to a comparable standard**, so this is an extension and not a
+  dilution with unmapped ground: 1,034 installations/km2 inside the old core against
+  **831/km2** across the added 5.61 km2. A fringe that had merely never been mapped would
+  show a fraction of that.
+
+**Profile:** 5,688 installations inside the boundary, 13,500 VIDA buildings, base rate
+**25.4%** (was 30.1% on the square), median installation **29.0 m2**, **99.0% below the
+400 m2 floor**, packing distance **6.8 m** -- the tightest of any quadrat, and now by far
+the largest sub-400 m2 ground-truth population in the project (5,631 sub-floor
+installations against 5,688 for all twelve other quadrats combined). Still **NOT Rule-1
+complete**: no completeness declaration has been made for the added area, so its negatives
+remain untrustworthy exactly as before.
+
+**A second, worse Overpass truncation mode was measured here -- read this before trusting
+any pull.** The Box 12 note above covers an endpoint answering with *zero* elements;
+`build_overpass_labels` raises on empty, so nothing empty is written. This box hit the
+non-empty version: a mirror returned **HTTP 200, valid JSON, no `remark`, and a partial
+element list**. The first registration pull wrote **68** installations for a box whose
+correct answer is ~5,700 -- and it would have been accepted as ground truth, in a box known
+to contain 1,034 mapped installations, if the containment invariant had not been checked.
+Four consecutive raw queries of the same bbox then returned 5,983 / 5,983 / 5,983 / 72, so
+the failure is intermittent and a single query is untrustworthy in *either* direction. Two
+guards were added:
+
+- `overpass._run_query` now rejects any response carrying a top-level `remark` (Overpass's
+  own "timed out"/"out of memory" signal) and fails over to the next mirror instead of
+  returning a truncated element list as data (`OverpassTruncated`).
+- `new_calibration_quadrat.py` cross-checks every pull against `confirm_element_count`,
+  which takes the **maximum** over three independent queries of the same bbox -- the max,
+  because truncation only ever loses elements, so the largest answer is the best available
+  lower bound on the truth -- and retries the pull when the written count falls below 98%
+  of it.
+
+Neither guard would have caught this from the count alone had the box been new: what
+actually caught it was the invariant that a boundary containing a known box cannot hold
+fewer installations than it. Prefer replacing a quadrat by *extension* for that reason.
+
+---
+
+### Box 3 replaced -- Multan Industrial Estate, hand-drawn 3.92 km2 -- 2026-08-05
+
+Box 3's 1 km x 1 km square was replaced by a boundary supplied as
+`data/labels/calibration_boundaries/multan_industrial.geojson`: `multan_calib_3p92km2`,
+3.92 km2 (3.94x the old box), bbox `71.370492,30.117067,71.392508,30.134698`. The retired
+square and its pulls are kept at `data/labels/retired/multan_calib_1km_*`.
+
+**Containment checked before registering, as with every replacement so far**: the new
+boundary fully contains the old one (0.0 m2 outside it), and all 40 installations the old
+box held are present in the new pull -- 0 lost. The pull itself was clean on the first
+attempt (166 features written, 166 confirmed by an independent query, no truncation).
+
+**Profile:** 164 installations, 3,419 VIDA buildings, base rate **8.1%** (was 8.6% on the
+square), median installation **605.5 m2**, 37.8% below the 400 m2 floor (was 26.7%) --
+sub-floor share rose because the extension reaches beyond the estate's core large arrays.
+Packing distance **35.2 m**, in the same sparse industrial-estate range as Multan always
+was. The added 2.92 km2 is mapped at **34 installations/km2 against the old core's 64** --
+about half the density, the same signature Sundar showed on 2026-08-05: consistent with
+extending past an industrial estate into surrounding, less array-dense ground rather than a
+mapping gap, but the two are not distinguishable without a completeness sweep.
+
+**This is the first extension registered *after* all seventeen quadrats were declared
+Rule-1 (2026-08-05, see the mapping protocol), which is why Rule-1 was initially withheld
+here.** That declaration was for the boundaries that existed at the time it was made; a
+boundary the owner has not yet looked at does not inherit it just by sharing a name with
+one that did. The owner then explicitly declared Rule-1 for the extended area the same
+day, so `multan_calib_3p92km2` now reads `rule1_complete: yes` in
+`results/calibration_quadrats.csv` and status `rule1` in `atlas.py::CALIBRATION_BOXES`,
+matching the other sixteen. The general rule for the *next* extension is unchanged:
+Rule-1 must be re-asserted for new ground, never inferred from a predecessor's.
 
 ---
 

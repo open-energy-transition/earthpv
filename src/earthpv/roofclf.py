@@ -34,12 +34,45 @@ exactly the stratum the module exists to serve, and reported skill must be read 
 never pooled. `evaluate` therefore reports leave-one-quadrat-out folds and refuses to
 headline a pooled number.
 
-Only `karachi_coast_calib_700m` is asserted **Rule-1 complete** (every visible panel mapped,
-verified against imagery by the repository owner). It is therefore the only quadrat whose
-has-no-PV buildings are trustworthy negatives, and the only one where a low score cannot be
-blamed on missing labels. It is also the hardest: median installation 86 m², 98.8% of
-installations below the 400 m² detection floor, and the segmentation raster predicts
-*exactly zero* PV area over its buildings (AUC 0.500, chance).
+**Rule-1 complete** (every visible panel inside the boundary mapped, verified against
+high-res imagery) is a *mapper's declaration*, never something this code infers and never
+something a script can produce. As of **2026-08-05 the repository owner declared it for all
+seventeen quadrats**, so every quadrat's has-no-PV buildings now count as trustworthy
+negatives and a low score anywhere can no longer be attributed to missing labels.
+
+**Rule-1 is epoch-relative, and this is the single most important thing to know about it.**
+Mapping is done against OpenStreetMap's background imagery (Esri/Bing/Maxar), whose capture
+date does not match the Sentinel-2 composite the model reads and is generally *older*. So the
+declaration certifies "every panel visible in THAT imagery is mapped" -- it cannot certify
+panels built after it. In a country where rooftop PV is growing as fast as Pakistan's, the
+gap between the two epochs is exactly where new installations live: they are present in the
+model's input and absent from the labels. Rule-1 therefore holds *as of the mapping imagery*,
+and only becomes a statement about the model's own epoch once imagery contemporaneous with
+the composite is acquired and swept.
+
+Concretely, the bias directions are known even though the magnitude per quadrat is not:
+
+- **Precision is a lower bound.** A correct detection of an unmapped-but-real installation
+  scores as a false positive.
+- **`base_rate` is a lower bound** and therefore **`rate_ratio` an upper bound**, since a
+  building carrying unmapped PV is counted as a negative.
+- **Recall over mapped installations is unaffected** by this mechanism -- it only ever
+  divides by labels that exist.
+
+The size of the effect is measurable without new mapping, by running one checkpoint over two
+imagery epochs (`scripts/fraction_stale_label_audit.py`): a pixel predicted PV now and not
+pre-boom, and unlabelled, is a candidate post-mapping installation rather than an error.
+Measured 2026-08-05 across 13 quadrats it moves pooled precision 0.435 -> 0.450, only 5.8% of
+apparent false positives -- but that pooled number is dominated by industrial quadrats with
+large false-positive pixel counts, and **per quadrat it is the dominant error term exactly
+where the sub-400 m² work lives**: 68.4% in karachi_coast (precision 0.570 -> 0.807), 23.7%
+in quetta, 11.7% in lahore.
+
+Two further caveats nothing in the data expresses: five of the seventeen were first pulled
+from OSM the same day they were declared complete, and no independent second-mapper sweep is
+recorded for any quadrat in this repo (true since the first one). `imagery_layer` and
+`imagery_date` in `results/calibration_quadrats.csv` are where the epoch belongs and are
+**still empty for every quadrat** -- see docs/issues/calibration-imagery-dating.md.
 
 ## Size is a confounder, so skill is reported conditional on it
 
@@ -120,7 +153,13 @@ def discover_quadrats(labels_dir: Path = Path("data/labels")) -> list[str]:
 
 
 def quadrat_label(stem: str) -> str:
-    """Short display name for a quadrat stem (`lahore_calib_1km` -> `lahore`)."""
+    """Short display name for a quadrat stem (`lahore_calib_6p61km2` -> `lahore`).
+
+    Deliberately drops the size tag, so a quadrat keeps its fold label when its boundary is
+    redrawn. That continuity is also a trap on the reporting side: a label-keyed join cannot
+    tell new ground truth from old model scores (see the Lahore replacement note in
+    docs/methods/calibration-quadrats.md).
+    """
     return re.sub(r"_calib_.*$", "", stem)
 
 

@@ -109,8 +109,10 @@ def describe_geometry(geom, area_m2: float) -> dict:
     cy = (miny + maxy) / 2.0
     span_x = (maxx - minx) * 111_320.0 * np.cos(np.radians(cy))
     span_y = (maxy - miny) * 110_540.0
-    usable = CHIP_M - 2.0 * CHIP_MARGIN_M
-    fits = span_x <= usable and span_y <= usable
+    # Same threshold `chips.quadrat_chip_centers` tiles on: the chip edge itself, not the
+    # jitterable width. A boundary between the two fits one window with no jitter left.
+    fits = span_x <= CHIP_M and span_y <= CHIP_M
+    tight = fits and min(CHIP_M - span_x, CHIP_M - span_y) / 2.0 <= CHIP_MARGIN_M
     return {
         "type": geom.geom_type,
         "n_parts": len(parts),
@@ -123,9 +125,52 @@ def describe_geometry(geom, area_m2: float) -> dict:
         # need several chip windows for little mapped area.
         "bbox_fill": round(area_m2 / max(span_x * span_y, 1e-9), 3),
         "rectangular": is_rectangular(geom),
-        "chip_fit": "one 2.24 km window" if fits else "needs tiling (bbox exceeds a chip)",
+        "chip_fit": (
+            f"needs tiling (bbox exceeds the {CHIP_M:,.0f} m chip)" if not fits
+            else "one window, no jitter room" if tight
+            else "one window with jitter"
+        ),
         "fits_one_chip": fits,
     }
+
+
+def confirm_element_count(
+    bbox: tuple[float, float, float, float], attempts: int = 2, timeout: int = 90,
+) -> int:
+    """Largest element count seen over `attempts` independent Overpass queries of the same
+    bbox, for cross-checking a pull that may have come back partial.
+
+    The **max**, not one query and not the mean, because the failure being checked for is
+    truncation and truncation only ever loses elements: the largest answer any endpoint
+    gives is the best available lower bound on the truth. Measured on the Lahore DHA-5 box
+    on 2026-08-05, consecutive identical queries returned 5,983 / 5,983 / 5,983 and then
+    72 -- so a single confirming query is itself untrustworthy, in either direction.
+
+    Counts only elements that yield a geometry, via the same `_element_geometry` the fetcher
+    uses, so this is comparable with the ROW count of what was written. Counting raw elements
+    instead would make any element the fetcher legitimately drops (no geometry, an open way
+    with <2 nodes) look like truncation, and the retry loop would then spin and abort on a
+    perfectly good pull.
+
+    Returns 0 if no attempt succeeded; an unavailable checker must not read as "fine".
+
+    `timeout` is deliberately shorter than the fetch's: `_run_query` walks three mirrors at
+    `timeout + 30` each, so a generous value here turns a cheap cross-check into tens of
+    minutes of hanging on a slow endpoint (measured on the Sundar box). A confirming query
+    that times out reports 0 for that attempt, which is safe -- 0 cannot fail the check.
+    """
+    from earthpv.overpass import _element_geometry, _query_bbox, _run_query
+
+    q, best = _query_bbox(bbox, timeout), 0
+    for i in range(attempts):
+        try:
+            els = _run_query(q, timeout).get("elements", [])
+            usable = sum(1 for el in els
+                         if (g := _element_geometry(el)) is not None and not g.is_empty)
+            best = max(best, usable)
+        except Exception as e:  # noqa: BLE001
+            print(f"  (confirming query {i + 1}/{attempts} unavailable: {e})")
+    return best
 
 
 def check_overlap(poly: Polygon, area_m2: float, skip: str = "") -> list[tuple[str, float, float]]:
@@ -345,6 +390,32 @@ def main() -> None:
     for attempt in range(1, args.retries + 1):
         try:
             out = build_overpass_labels(LABELS, bbox=(w, s, e, n), name=stem, iso3=args.iso3)
+            # An empty response is retryable (below) and a `remark`ed one now fails over
+            # inside `_run_query`. Neither catches the third case, measured on this very
+            # box: a mirror returning a *partial* element list, HTTP 200, no remark. So
+            # confirm the count against an independent query of the same bbox before
+            # accepting the pull as ground truth. A quadrat that silently holds a fraction
+            # of its installations poisons every negative in it.
+            n_written = len(gpd.read_parquet(out))
+            n_confirm = confirm_element_count((w, s, e, n))
+            print(f"  wrote {n_written} features; confirming query sees {n_confirm}")
+            if not n_confirm:
+                # Says so loudly and records it, because a pull that could not be
+                # cross-checked is indistinguishable on disk from one that was -- and for a
+                # brand-new quadrat with no predecessor, the cross-check is the ONLY guard
+                # against the silent partial response. Re-verify when the endpoints recover.
+                print("  WARNING: no confirming query succeeded, so this pull is UNVERIFIED "
+                      "against the\n           partial-response failure mode. For a new "
+                      "quadrat (no predecessor to check\n           containment against) "
+                      "that is the only guard -- re-run once Overpass recovers.")
+                props["pull_unverified"] = True
+                gpd.GeoDataFrame([props], geometry=[poly], crs="EPSG:4326").to_parquet(
+                    LABELS / f"{stem}_boundary.parquet")
+            if n_confirm and n_written < 0.98 * n_confirm:
+                raise RuntimeError(
+                    f"pull looks truncated: {n_written} features written vs {n_confirm} "
+                    "elements in a confirming query of the same bbox"
+                )
             break
         except RuntimeError as e:
             print(f"  attempt {attempt}/{args.retries} failed: {e}")

@@ -33,8 +33,8 @@ and reference-pixel-only false-positive rates.
 
 Usage:
     python scripts/pv_step_signal.py --cube lahore_box \
-        --solar data/labels/lahore_calib_1km_overpass_solar_20260725.parquet \
-        --boundary data/labels/lahore_calib_1km_boundary.geojson --out data/step/lahore_box
+        --solar data/labels/lahore_calib_6p61km2_overpass_solar.parquet \
+        --boundary data/labels/lahore_calib_6p61km2_boundary.geojson --out data/step/lahore_box
 """
 
 from __future__ import annotations

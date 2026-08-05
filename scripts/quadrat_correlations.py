@@ -75,11 +75,18 @@ def load() -> pd.DataFrame:
             "median_install_m2", "frac_sub400", "pv_area_per_km2",
             "installs_per_km2", "rule1_complete"]].copy()
 
+    # The two model-side tables are keyed differently, and BOTH ways of getting it wrong
+    # are silent, so each merge reports what it failed to line up. Measured 2026-08-05,
+    # when the Lahore quadrat's boundary was replaced by a 6.6x larger drawn one: the
+    # label-keyed merge happily paired the new box's density with the retired box's roofclf
+    # scores (n unchanged, r moved), while the stem-keyed merge dropped the new box to NaN
+    # (n 12 -> 11). Neither showed up anywhere in the output.
     if FOLDS.exists():
         f = pd.read_csv(FOLDS).rename(columns={"quadrat": "label"})
         keep = ["label", "auc", "auc_small", "auc_within_size", "auc_seg_baseline",
                 "auc_frac_baseline", "auc_within_size_seg", "rate_ratio"]
         df = df.merge(f[[c for c in keep if c in f.columns]], on="label", how="left")
+        _warn_stale("FOLDS", FOLDS, df, "auc", by="label")
 
     if ANCHOR.exists():
         a = pd.read_csv(ANCHOR).rename(columns={"quadrat": "label"})
@@ -91,7 +98,32 @@ def load() -> pd.DataFrame:
         fr = pd.read_csv(FRACTION)
         keep = ["quadrat", "v1_scale", "hn_scale", "v1_auc", "hn_auc"]
         df = df.merge(fr[[c for c in keep if c in fr.columns]], on="quadrat", how="left")
+        _warn_stale("FRACTION", FRACTION, df, "v1_auc", by="quadrat")
     return df
+
+
+def _warn_stale(tag: str, path: Path, df: pd.DataFrame, probe: str, by: str) -> None:
+    """Say which quadrats a model-side merge did not cover, and when that table was written.
+
+    A quadrat whose boundary was redrawn keeps its `label` and changes its `quadrat` stem,
+    so a label-keyed join silently pairs new ground truth with old model scores and a
+    stem-keyed join silently drops it. The mtime is printed because that is what tells a
+    reader whether these scores predate a boundary change at all.
+    """
+    import datetime as _dt
+
+    if probe not in df:
+        return
+    missing = df.loc[df[probe].isna(), "quadrat"].tolist()
+    when = _dt.datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d")
+    print(f"{tag}: {path} (written {when}), joined on '{by}'")
+    if missing:
+        print(f"  NO MATCH for {len(missing)} quadrat(s), excluded from its columns: "
+              f"{', '.join(missing)}")
+    if by == "label":
+        print("  NOTE joined on label, so a quadrat whose boundary changed since the date "
+              "above is\n       paired with scores measured on its OLD boundary. Re-run the "
+              "model side before\n       reading any pair involving it.")
 
 
 def _partial(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> tuple[float, int]:

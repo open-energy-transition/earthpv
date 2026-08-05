@@ -63,7 +63,7 @@ def _rgb(arr: np.ndarray) -> np.ndarray:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--quadrat", default="karachi_coast_calib_700m")
+    ap.add_argument("--quadrat", default="karachi_coast_calib_2p16km2")
     ap.add_argument("--label", default="karachi_coast", help="row value in the roofclf table")
     ap.add_argument("--title", default="Coastal Karachi (DHA Phase 5 / Zamzama)")
     ap.add_argument("--composites", default="data/composites/pakistan")
