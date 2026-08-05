@@ -27,11 +27,11 @@ PRE="data/predictions_${NAME}_quadcells_preboom"
 
 echo "=== $(date -Is) inference, current epoch (index 0) ==="
 .pixi/envs/ml/bin/python -m earthpv.cli infer --aoi pakistan --checkpoint "$CKPT" \
-  --out-dir "$CUR" --tiles "$CELLS" --index 0 --only-built false
+  --out-dir "$CUR" --tiles "$CELLS" --index 0 --no-only-built
 
 echo "=== $(date -Is) inference, pre-boom epoch (index 1) ==="
 .pixi/envs/ml/bin/python -m earthpv.cli infer --aoi pakistan --checkpoint "$CKPT" \
-  --out-dir "$PRE" --tiles "$CELLS" --index 1 --only-built false
+  --out-dir "$PRE" --tiles "$CELLS" --index 1 --no-only-built
 
 echo "=== $(date -Is) per-quadrat scale + pixel AUC vs v1 and hard-neg ==="
 .pixi/envs/default/bin/python scripts/validate_fraction_quadrats.py \

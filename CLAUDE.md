@@ -232,6 +232,40 @@ instruments, both rooftop-only and both dropping the polygon:
   `check-density` 2 fail) reproduce the documented candidate-population mismatch
   byte-for-byte and are not new results -- the fraction head only drives `*_exp`. See
   `docs/issues/fraction-head-hard-negative-retrain.md`.
+  **Quadrat-supervised retrain, 2026-08-04/05: a large in-sample win that the holdout
+  does not support, so still NOT promoted.** Two runs of v1's exact recipe differing only
+  in corpus -- `fraction_pakistan_quadrats` (all 13 quadrats as pixel supervision, x8) and
+  `fraction_pakistan_quadrats_holdout_karachi` (12 quadrats, `karachi_coast_calib_700m`
+  held out, and the one national chip covering 16.3% of that box excluded too). Unlike
+  the failed v2 quadrat attempt, `earthpv quadrat-chips` confines supervision to the
+  mapped ground (v2 trained on a ~81%-unmapped chip mixture at 20x, which taught
+  suppression of the very signal the quadrats supply). In-sample this reverses v2
+  decisively: pixel AUC beats v1 in **13 of 13** quadrats (median +0.0615) and, more
+  importantly, `scale` dispersion collapses from **11.95x** (geo-SD 2.447; v1 ranged
+  0.262 Quetta to 3.131 Faisalabad) to **2.48x** (geo-SD 1.313) -- a uniform ~2x
+  over-prediction is one `--exp-scale` constant from corrected, an 11.95x spread is not
+  correctable at all. **That consistency is fitted, which is why it is not promoted.** On
+  the held-out box the model reverts to `scale` 0.461 -- outside the tight 1.878-3.684
+  band it holds on trained-on quadrats, and only ~10% of the way from v1's 0.291 to the
+  in-sample 1.963 -- so a national `--exp-scale` derived from the in-sample band would
+  push the estimate the wrong way everywhere unlike the 13. Discrimination transfers
+  better but is not established: +0.0265 AUC out-of-sample vs +0.0650 in-sample (~41%),
+  and a paired spatial block bootstrap (`scripts/quadrat_auc_block_bootstrap.py`, blocks
+  resampled rather than pixels, since a 10 m raster gives many pixels per installation)
+  puts the held-out gain at **-0.009 to +0.061, one-sided p 0.062** at 50 m blocks,
+  degrading monotonically to p 0.102 at 120 m, while the in-sample gain clears zero at
+  every block size. n=1 quadrat, 797 labelled pixels, is the binding constraint -- more
+  LOQO folds, not more analysis of these rasters, is what would resolve it. One
+  standing hypothesis was killed on the way: the ~2x over-prediction is **not** stale
+  labels. Running the same checkpoint on the pre-boom composite
+  (`scripts/fraction_stale_label_audit.py`) attributes only **5.8%** of apparent
+  false-positive pixels to candidate post-mapping installations, moving pooled precision
+  0.435 → 0.450. Reading note: a quadrat can show near-zero thresholded `tp` and `scale`
+  ~1.7 at once (Mardan) -- its predictions are diffuse (mean fraction 0.036) and rarely
+  cross 0.2, while `scale` integrates sub-threshold coverage, which is how `*_exp` uses
+  the raster. Both checkpoints' quadrat-cell rasters are kept in both epochs
+  (`data/predictions_quad{13,ho}_quadcells{,_preboom}/`) so further scoring needs no GPU.
+  Full tables: `docs/issues/quadrat-supervision-fraction-retrain.md`.
 - **`roofclf.py` / `earthpv roof-classifier`** -- per-building "does this roof carry PV?",
   trained on the exhaustively mapped quadrats (the only source where a no-PV building is a
   real negative). Updated 2026-07-29 to **9 quadrats, 22,044 buildings, 2,376 with PV**
