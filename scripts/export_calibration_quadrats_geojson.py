@@ -38,6 +38,7 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 from pyproj import Geod
+from shapely.geometry import box as shapely_box
 from shapely.geometry import mapping
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -129,6 +130,24 @@ def _clean(v):
     return str(v)
 
 
+def _is_rect(geom, tol_frac: float = 1e-4) -> bool:
+    """Whether the boundary is (to rounding) its own bounding box. True for every
+    script-generated geodesic square, false for a boundary drawn in JOSM."""
+    if geom.geom_type != "Polygon" or list(geom.interiors):
+        return False
+    env = shapely_box(*geom.bounds)
+    return env.area > 0 and geom.symmetric_difference(env).area / env.area < tol_frac
+
+
+def _side_m(geom, area_km2: float, row: dict):
+    """A side length only where one exists: an explicit `side_m` from the stats CSV, else
+    sqrt(area) for a rectangle, else nothing (dropped from the output by `_feature`)."""
+    v = _clean(row.get("side_m"))
+    if v:
+        return v
+    return round(area_km2 ** 0.5 * 1000, 1) if _is_rect(geom) else None
+
+
 def _feature(geom, props: dict) -> dict:
     return {
         "type": "Feature",
@@ -170,7 +189,11 @@ def build(labels_dir: Path, boundaries_only: bool) -> tuple[list[dict], list[dic
             "quadrat": stem,
             "quadrat_label": label,
             "area_km2": round(area_km2, 4),
-            "side_m": _clean(row.get("side_m")) or round(area_km2 ** 0.5 * 1000, 1),
+            # Only for boxes that really are axis-aligned squares. sqrt(area) on a drawn
+            # boundary is a side length that does not exist, and a JOSM reader would take
+            # it for a real dimension of the shape on screen.
+            "side_m": _side_m(boundary, area_km2, row),
+            "shape": "square" if _is_rect(boundary) else "drawn",
             "province": _clean(row.get("province")),
             "stratum": _clean(row.get("stratum")),
             "rule1_complete": rule1_str,

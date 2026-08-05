@@ -76,6 +76,7 @@ import rasterio.features
 import rasterio.transform
 from rasterio.warp import transform_bounds
 from shapely.geometry import box as shapely_box
+from shapely.geometry.base import BaseGeometry
 
 log = logging.getLogger(__name__)
 
@@ -137,11 +138,69 @@ def _newest_solar(stem: str, labels_dir: Path) -> Path | None:
     return cands[-1] if cands else None
 
 
+def load_boundary(path: Path) -> BaseGeometry:
+    """One EPSG:4326 (Multi)Polygon for a quadrat boundary file, however it was authored.
+
+    Quadrats no longer have to be script-generated geodesic squares -- a mapper can draw
+    the boundary in JOSM and hand over the GeoJSON (see
+    `docs/calibration-mapping-protocol.md`). That makes three normalisations load-bearing
+    rather than cosmetic, and all of them have to happen in ONE place, because the
+    evaluation scripts read every feature in the file (`rio_mask(s, list(gs.geometry))`,
+    `bnd.union_all()`) while this loader and `chips.quadrat_chips` used to read only
+    `geometry.iloc[0]` -- a multi-part hand-drawn boundary would then have trained on one
+    piece and been scored on all of them, silently:
+
+    1. **Every feature is unioned**, not just the first.
+    2. **A closed LineString becomes a Polygon.** JOSM exports a closed way as a Polygon
+       only when it carries area tags; an untagged one comes out as a LineString, whose
+       `rasterize` is a one-pixel-wide outline and whose `.within()` is empty -- so the
+       quadrat would score zero buildings and zero supervised pixels with no error.
+    3. **Invalid rings are repaired** (`make_valid`) and Z is dropped. A ring drawn by
+       hand can self-intersect where it closes, and shapely predicates on an invalid
+       polygon are undefined rather than wrong-but-usable.
+    """
+    from shapely import force_2d, make_valid
+    from shapely.geometry import MultiPolygon, Polygon
+
+    gdf = gpd.read_file(path).to_crs("EPSG:4326")
+    geoms = []
+    for g in gdf.geometry:
+        if g is None or g.is_empty:
+            continue
+        g = force_2d(g)
+        if g.geom_type in ("LineString", "LinearRing"):
+            if len(g.coords) < 4 or g.coords[0] != g.coords[-1]:
+                raise ValueError(
+                    f"{path}: contains an open LineString ({len(g.coords)} nodes). A quadrat "
+                    "boundary must be a closed area -- in JOSM, close the way (and ideally tag "
+                    "it, e.g. `landuse=residential`, so it exports as a polygon)."
+                )
+            g = Polygon(g.coords)
+        if not g.is_valid:
+            g = make_valid(g)
+        geoms.append(g)
+    if not geoms:
+        raise ValueError(f"{path}: no usable geometry")
+
+    merged = gpd.GeoSeries(geoms, crs="EPSG:4326").union_all()
+    # make_valid on a self-touching ring can yield a GeometryCollection; keep the areal parts.
+    if merged.geom_type == "GeometryCollection":
+        parts = [g for g in merged.geoms if g.geom_type in ("Polygon", "MultiPolygon")]
+        if not parts:
+            raise ValueError(f"{path}: no areal geometry after repair")
+        merged = parts[0] if len(parts) == 1 else MultiPolygon(
+            [p for g in parts for p in (g.geoms if g.geom_type == "MultiPolygon" else [g])]
+        )
+    if merged.geom_type not in ("Polygon", "MultiPolygon"):
+        raise ValueError(f"{path}: boundary is {merged.geom_type}, expected a closed area")
+    if len(geoms) > 1:
+        log.info("boundary %s: unioned %d features", Path(path).name, len(geoms))
+    return merged
+
+
 def load_quadrat(stem: str, labels_dir: Path = Path("data/labels")) -> tuple:
     """`(boundary geometry, mapped PV polygons)` for one quadrat, in EPSG:4326."""
-    boundary = gpd.read_file(
-        Path(labels_dir) / f"{stem}{_BOUNDARY_SUFFIX}"
-    ).to_crs("EPSG:4326").geometry.iloc[0]
+    boundary = load_boundary(Path(labels_dir) / f"{stem}{_BOUNDARY_SUFFIX}")
     solar_path = _newest_solar(stem, labels_dir)
     pv = gpd.read_parquet(solar_path).to_crs("EPSG:4326")
     pv = pv[pv.geom_type.isin(("Polygon", "MultiPolygon"))].reset_index(drop=True)
@@ -368,10 +427,20 @@ def building_table(
         out[f"{label}_max"] = 0.0
         if d is None:
             continue
-        path = _raster_for(boundary.centroid, Path(d))
+        # A representative point, not the centroid: a concave drawn boundary can have its
+        # centroid outside itself, which would look up a raster cell the quadrat is not in.
+        path = _raster_for(boundary.representative_point(), Path(d))
         if path is None:
             log.warning("quadrat %s: no %s raster covers it", name, label)
             continue
+        # One cell only. Fine for a boundary inside a single 0.1 deg cell (every quadrat so
+        # far); a larger drawn boundary straddling cells gets zero-filled outside this one,
+        # so say so rather than silently featurising part of it as no-signal.
+        with rasterio.open(path) as _s:
+            if not shapely_box(*transform_bounds(_s.crs, "EPSG:4326", *_s.bounds)).covers(boundary):
+                log.warning("quadrat %s: %s raster %s does not cover the whole boundary; "
+                            "the uncovered part is featurised as zero probability",
+                            name, label, path.name)
         p = _read_prob(path, bounds, crs, transform, arr.shape[-2:])
         pm, px = zonal_mean_max(bu_utm, p, transform)
         out[f"{label}_mean"], out[f"{label}_max"] = pm[0], px[0]

@@ -626,6 +626,32 @@ mechanisms -- not yet measured either way. Quadrat file naming is size-agnostic
 (`*_calib_*_boundary.geojson`,
 newest dated `_overpass_solar*` pull wins) -- do not re-hardcode `_calib_1km_`.
 
+**Quadrats are also shape-agnostic as of 2026-08-05: a boundary can be drawn in JOSM and
+imported with `new_calibration_quadrat.py --geojson`, not only generated as a geodesic
+square.** Every consumer already masked and rasterised the real geometry, so this was
+mostly a matter of removing three ways it could fail *silently*, and those are the parts
+worth not regressing. (a) `chips.quadrat_chips` and `roofclf.load_quadrat` read only
+`geometry.iloc[0]` while every evaluation script reads all features
+(`rio_mask(s, list(gs.geometry))`, `union_all()`) -- a multi-part hand-drawn boundary would
+have trained on one piece and been scored on all of them. Both now go through
+`roofclf.load_boundary`, the single normaliser: unions every feature, converts a **closed
+`LineString` to a Polygon** (JOSM exports a closed way as a polygon only if it carries area
+tags, and a LineString boundary rasterises to a one-pixel outline and matches zero
+buildings -- zero supervision, no error), `make_valid`s a self-intersecting ring and drops
+Z. (b) A boundary whose bbox exceeds one **2,240 m** chip (`CHIP_SIZE` 224 @ 10 m) used to
+have the excess mapped ground fall outside every chip window and vanish;
+`chips.quadrat_chip_centers` now tiles such a boundary across covering windows, logs the
+covered share, and records `boundary_covered_frac` on every chip row. Verified that all 13
+existing quadrats produce **byte-identical chip centres** under the new code path, so no
+existing corpus changes. (c) `roofclf`'s seg/frac raster features looked up their cell by
+`boundary.centroid`, which for a concave polygon can be outside it -- now
+`representative_point()`, and it warns when the chosen cell does not cover the whole
+boundary. `side_m` is written and exported only for actual squares (sqrt(area) of a drawn
+shape is a dimension that does not exist); a drawn quadrat is named by geodesic area
+(`..._calib_1p24km2`) and carries `shape: drawn` + `source_geojson`. Mapper-facing
+instructions, including the close-the-way and ~2.2 km bbox constraints:
+`docs/calibration-mapping-protocol.md`'s "Drawing the boundary in JOSM".
+
 `roofclf.packing_density` (added 2026-07-29) reports each quadrat's median distance
 from a sub-400 m² installation to its nearest neighbour of any size -- a cheap,
 model-free number that correlates r=0.70–0.82 with `exp_scale`/`auc_within_size`

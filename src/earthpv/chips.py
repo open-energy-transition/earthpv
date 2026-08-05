@@ -416,6 +416,69 @@ def _bbox_poly(lon: float, lat: float):
     return box(*_chip_bbox(lon, lat))
 
 
+def quadrat_chip_centers(
+    boundary, per_quadrat: int, rng: np.random.Generator, margin_m: float = 120.0,
+) -> tuple[list[tuple[float, float]], float]:
+    """Chip centres covering a quadrat boundary, and the share of it they actually cover.
+
+    A quadrat only supervises the pixels inside its boundary, so any mapped ground falling
+    outside every chip window is supervision paid for by a mapper and then thrown away.
+    A geodesic square of 1-1.5 km fits inside one 2.24 km chip with room to jitter, which
+    is why this used to be one centred window; a **hand-drawn** boundary need not, and a
+    long thin one following a canal or a ring road can exceed the window in one dimension
+    while still being ~1 km2 in area. So:
+
+    - Boundary fits: one centred window per chip, jittered as far as keeps the whole
+      boundary in frame. Identical to the previous behaviour for an axis-aligned square
+      (whose polygon centroid is its bbox centre), so existing quadrats are unaffected.
+    - Boundary does not fit: tile the bbox into as few windows as cover it, keep the ones
+      that actually touch the boundary, and spread `per_quadrat` over them round-robin.
+
+    The returned coverage fraction is logged by the caller and recorded per chip, so
+    truncation is loud rather than silent either way.
+    """
+    from shapely.geometry import box as shapely_box
+    from shapely.ops import unary_union
+
+    bminx, bminy, bmaxx, bmaxy = boundary.bounds
+    cx, cy = (bminx + bmaxx) / 2.0, (bminy + bmaxy) / 2.0
+    m_per_deg_x = 111_320.0 * np.cos(np.radians(cy))
+    span_x_m, span_y_m = (bmaxx - bminx) * m_per_deg_x, (bmaxy - bminy) * 110_540.0
+    usable = CHIP_M - 2.0 * margin_m
+
+    if span_x_m <= usable and span_y_m <= usable:
+        off = max(min(CHIP_M - span_x_m, CHIP_M - span_y_m) / 2.0 - margin_m, 0.0)
+        centers = []
+        for _ in range(per_quadrat):
+            centers.append((cx + rng.uniform(-off, off) / m_per_deg_x,
+                            cy + rng.uniform(-off, off) / 110_540.0))
+        return centers, 1.0
+
+    n_x, n_y = int(np.ceil(span_x_m / usable)), int(np.ceil(span_y_m / usable))
+    step_x, step_y = usable / m_per_deg_x, usable / 110_540.0
+    tiles = []
+    for i in range(n_x):
+        for j in range(n_y):
+            tx = cx + (i - (n_x - 1) / 2.0) * step_x
+            ty = cy + (j - (n_y - 1) / 2.0) * step_y
+            if shapely_box(*_chip_bbox(tx, ty)).intersects(boundary):
+                tiles.append((tx, ty))
+    if not tiles:  # cannot happen for a non-empty boundary, but never return an empty plan
+        tiles = [(cx, cy)]
+
+    covered = unary_union([shapely_box(*_chip_bbox(tx, ty)) for tx, ty in tiles])
+    frac = float(boundary.intersection(covered).area / boundary.area) if boundary.area else 0.0
+    # Jitter is per tile and small here: the tiling is already the minimum that covers the
+    # boundary, so a large offset would push mapped ground back out of frame.
+    off = min(margin_m, 60.0)
+    centers = []
+    for k in range(per_quadrat):
+        tx, ty = tiles[k % len(tiles)]
+        centers.append((tx + rng.uniform(-off, off) / m_per_deg_x,
+                        ty + rng.uniform(-off, off) / 110_540.0))
+    return centers, frac
+
+
 def build_quadrat_fraction_chips(
     aoi: str,
     labels_dir: Path,
@@ -456,7 +519,7 @@ def build_quadrat_fraction_chips(
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     # Reuse roofclf's discovery + newest-pull rules rather than reimplementing them, so a
     # re-pulled quadrat feeds training and evaluation from the same file.
-    from earthpv.roofclf import _newest_solar, discover_quadrats
+    from earthpv.roofclf import _newest_solar, discover_quadrats, load_boundary
 
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
@@ -481,24 +544,26 @@ def build_quadrat_fraction_chips(
         if not bpath.exists() or spath is None:
             log.warning("quadrat %s: missing boundary or solar pull, skipped", stem)
             continue
-        boundary = gpd.read_file(bpath).to_crs("EPSG:4326").geometry.iloc[0]
+        boundary = load_boundary(bpath)
         labels = _overpass_labels(spath, min_area_m2=MIN_PV_AREA)
-        cx, cy = boundary.centroid.x, boundary.centroid.y
         # Jitter, but only as far as keeps the whole quadrat inside the chip window --
         # otherwise part of the mapped ground falls outside the frame and is lost. The
         # project's anti-tiling invariant wants positives off-centre; here the quadrat's
         # own installations are spread across it, so the residual centre bias is on the
-        # box, not on any array.
-        bminx, bminy, bmaxx, bmaxy = boundary.bounds
-        span_m = max((bmaxx - bminx) * 111_320 * np.cos(np.radians(cy)),
-                     (bmaxy - bminy) * 110_540)
-        max_off_m = max((CHIP_M - span_m) / 2.0 - 120.0, 0.0)
-        log.info("quadrat %s: %d labels, jitter +-%.0f m", stem, len(labels), max_off_m)
+        # box, not on any array. A boundary too large for one window is tiled instead.
+        centers, covered_frac = quadrat_chip_centers(boundary, per_quadrat, rng)
+        n_windows = len({(round(x, 5), round(y, 5)) for x, y in centers})
+        log.info("quadrat %s: %d labels, %d chip centre(s), boundary coverage %.3f",
+                 stem, len(labels), n_windows, covered_frac)
+        if covered_frac < 0.999:
+            # Never silent: this is mapped ground that a human paid for and the corpus
+            # cannot see. Splitting the boundary into pieces that each fit a 2.24 km
+            # window is the fix on the mapping side.
+            log.warning("quadrat %s: chip windows cover only %.1f%% of the boundary -- "
+                        "%.1f%% of the mapped ground is outside every chip and will not be "
+                        "supervised", stem, covered_frac * 100, (1 - covered_frac) * 100)
 
-        for _ in range(per_quadrat):
-            dx = rng.uniform(-max_off_m, max_off_m) / (111_320 * np.cos(np.radians(cy)))
-            dy = rng.uniform(-max_off_m, max_off_m) / 110_540
-            lon, lat = cx + dx, cy + dy
+        for lon, lat in centers:
             cid = _chip_id(lon, lat)
             img_path = out_dir / "images" / f"{cid}.tif"
             mask_path = out_dir / "masks" / f"{cid}.tif"
@@ -535,6 +600,11 @@ def build_quadrat_fraction_chips(
                 pv_pixels=int((band > 0).sum()), image=str(img_path), mask=str(mask_path),
                 pv_frac_sum=float(band[sup].sum()), quadrat=stem,
                 supervised_frac=float(sup.mean()),
+                # Per-quadrat, not per-chip: the share of the boundary any chip window
+                # reaches. 1.0 for every boundary that fits one window. Recorded so a
+                # corpus built from a truncated boundary can be identified after the fact
+                # rather than only from a log line that has since scrolled away.
+                boundary_covered_frac=round(covered_frac, 4),
             ))
 
     index = pd.DataFrame(records)

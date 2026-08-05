@@ -45,14 +45,66 @@ covered in OSM and TZ-SAM.
 
 ### Choosing the exact quadrat
 
-- Draw a simple rectangle; snap edges to roads/canals so the boundary is
-  unambiguous on imagery.
+- **The boundary does not have to be a rectangle.** Any closed shape works, and
+  following roads, canals or the edge of a built-up area is usually better than a
+  square, because a square clips arbitrary halves of whatever it lands on. See
+  "Drawing the boundary in JOSM" below for how to hand one over.
+- Snap edges to features that are unambiguous on imagery, so a second mapper can
+  tell exactly where the boundary runs.
 - Pick *typical* neighbourhoods, not showcase ones. Do not choose a quadrat
   because you already know it has (or lacks) solar. That biases the sample.
   Pick by landscape type first, look at panels second.
 - Avoid quadrats that straddle two strata (e.g. half planned housing, half
-  informal). Move the rectangle until it is one thing.
-- Record the rectangle as a GeoJSON polygon before mapping starts.
+  informal). Move or reshape the boundary until it is one thing. An irregular
+  boundary makes this easier, not harder: it can follow the actual edge of the
+  stratum instead of splitting the difference.
+- Record the boundary as a GeoJSON polygon before mapping starts.
+
+### Drawing the boundary in JOSM
+
+Draw the area in JOSM, select it, and use **File -> Save As -> GeoJSON**. Then hand
+the file over and it gets registered with:
+
+```bash
+python scripts/new_calibration_quadrat.py --name gujranwala_east \
+    --geojson ~/drawn/gujranwala_east.geojson --dry-run   # inspect first
+python scripts/new_calibration_quadrat.py --name gujranwala_east \
+    --geojson ~/drawn/gujranwala_east.geojson             # then register
+```
+
+`--dry-run` prints the geometry report, the overlap check against every existing
+quadrat, and the district lookup without writing or fetching anything. The script
+refuses to register a boundary that overlaps an existing quadrat unless
+`--allow-overlap` is passed, because pooling overlapping quadrats double-counts the
+shared installations and breaks leave-one-quadrat-out fold independence (Boxes 9 and
+10 share a corner, which is why that check exists).
+
+Four things about a drawn boundary that are worth knowing before you map, not after:
+
+- **Close the way.** JOSM exports a closed way as a GeoJSON polygon only when it
+  carries area tags; an untagged closed way comes out as a `LineString`. The importer
+  converts a closed `LineString` back to a polygon and rejects an open one with a
+  clear error, so either is fine, but an unclosed way is not.
+- **Several pieces are allowed.** Multiple features in one file are unioned into one
+  boundary. Every stage reads the union, so a two-part quadrat is a single unit for
+  base rate, packing distance and leave-one-quadrat-out folds.
+- **Keep the bounding box under about 2.2 km in both directions.** A training chip
+  is 224 px at 10 m = 2,240 m, so a boundary that fits inside one is framed by one
+  chip window. A larger one is tiled across several covering windows, which works and
+  loses no mapped ground, but it buys more chips for the same supervision and dilutes
+  the quadrat's weight in the training corpus. A long thin shape following a canal for
+  4 km is better registered as two or three separate quadrats. The importer prints
+  `chip_fit` and `bbox_fill` so this is visible up front, and `earthpv quadrat-chips`
+  logs the covered share of every boundary rather than truncating one silently.
+- **Size guidance is 1-4 km², and it is guidance.** The importer warns outside
+  0.4-4 km² and proceeds; the first Rule-1-complete quadrat is 0.49 km². A small box
+  gives a noisy `base_rate`, a large one is a long mapping job.
+
+Nothing downstream cares about the shape: `chips.quadrat_chips`,
+`roofclf.building_table` and every quadrat evaluation script mask and rasterise the
+real geometry. What *is* shape-dependent is the reported `side_m`, which is written
+only for actual squares, and the `_calib_<tag>` name suffix, which becomes the
+geodesic area (`..._calib_1p24km2`) instead of a side length.
 
 ## What counts as PV (map all of it)
 

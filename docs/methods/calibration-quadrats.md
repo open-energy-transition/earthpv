@@ -123,17 +123,32 @@ building layout, not a direct stand-in for the stratum table.
 
 ## Adding a new quadrat
 
-1. Pick a center coordinate and run **`scripts/new_calibration_quadrat.py`**, which does
-   steps 1 and 2 together:
+1. Run **`scripts/new_calibration_quadrat.py`**, which does steps 1 and 2 together.
+   Either give it a center and a side length, and it builds the box geodesically
+   (`pyproj.Geod.fwd`, never drawn by eye):
 
     ```bash
     python scripts/new_calibration_quadrat.py \
         --name peshawar_west --lat 33.9905887 --lon 71.4261494 --side-m 1500
     ```
 
-    It builds the box geodesically (`pyproj.Geod.fwd`, never drawn by eye), runs the
-    overlap check *before writing anything*, pulls the Overpass snapshot and prints the
-    size/placement/packing profile. `--dry-run` stops after the checks. See
+    or hand it a boundary **drawn in JOSM** and exported as GeoJSON, which does not have
+    to be square or even a single piece:
+
+    ```bash
+    python scripts/new_calibration_quadrat.py \
+        --name gujranwala_east --geojson ~/drawn/gujranwala_east.geojson
+    ```
+
+    Either way it runs the overlap check *before writing anything*, pulls the Overpass
+    snapshot and prints the size/placement/packing profile. `--dry-run` stops after the
+    checks. A drawn boundary additionally gets a geometry report (parts, vertices, holes,
+    bounding-box span and fill, whether it fits one 2.24 km training chip), is named by
+    its geodesic area rather than a side length (`..._calib_1p24km2`), and carries
+    `shape: drawn` plus the source path for provenance. The shape constraints that
+    actually matter are in
+    [the protocol](../calibration-mapping-protocol.md#drawing-the-boundary-in-josm) --
+    close the way, keep the bounding box under ~2.2 km. See
     [the protocol](../calibration-mapping-protocol.md) for how to choose a *good* location
     (typical, not showcase; check this page for packing-distance/stratum gaps first).
 2. **Overlap with existing quadrats is checked before anything is written**, and the
