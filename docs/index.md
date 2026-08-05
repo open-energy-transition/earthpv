@@ -21,7 +21,7 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 <div class="stat"><span class="value">4</span><span class="label">independent detected methods: segmentation, roofclf, SPPI, glint</span></div>
 </div>
 
-## What the map looks like
+## Build PV capacity maps for every country
 
 ![Pakistan's rooftop solar counted three times over: Verified (hand-mapped or two detectors agree), Best estimate (this project's own defensible figure), and Ceiling (an explicit uncalibrated upper bound), over a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_evidence_atlas.png)
 
