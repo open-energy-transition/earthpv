@@ -19,21 +19,17 @@ rather than hand-maintained prose.
   already-detected candidate is real, at country scale. It reads some of these quadrats
   too (`--calibration-box`), but answers a different question.
 
-!!! note "A 12th quadrat was added 2026-07-31, not yet in the table below"
-    Rahim Yar Khan District, Punjab (near Sadiqabad) -- 204 installations, 97.1% below
-    400 m², base rate approximately 8.7% (not yet the exact matched count).
-    `roofclf.discover_quadrats` will pick it up automatically on the next
-    `earthpv roof-classifier` run; this page's table is regenerated from that run's
-    output, not hand-typed, so it stays at eleven rows until then. Full detail:
-    [Calibration boxes, Box 11](../issues/pakistan-calibration-boxes.md).
-
 ## Current quadrats
 
-Regenerated 2026-07-30 directly from `data/labels/*_calib_*_boundary.geojson` +
-their newest `_overpass_solar` pull (`_newest_solar`'s dated-file-wins rule) and a live
-VIDA building fetch -- not cached, not hand-typed. Source: `results/calibration_quadrats.csv`,
-reproducible with the query in `roofclf.discover_quadrats`/`load_quadrat`. Sorted by
-`base_rate` (ascending) -- see below for what that column means.
+Eleven rows regenerated 2026-07-30 directly from `data/labels/*_calib_*_boundary.geojson`
++ their newest `_overpass_solar` pull (`_newest_solar`'s dated-file-wins rule) and a live
+VIDA building fetch -- not cached, not hand-typed. **Rahim Yar Khan and Peshawar West were
+added 2026-08-04** from the same `roofclf.building_table` code path (one call per quadrat,
+not a full re-run of the other eleven), which is what replaced Rahim Yar Khan's previously
+estimated base rate with its exact matched count. Source:
+`results/calibration_quadrats.csv`, reproducible with the query in
+`roofclf.discover_quadrats`/`load_quadrat`. Sorted by `base_rate` (ascending) -- see below
+for what that column means.
 
 | quadrat | province | stratum | Rule-1 | buildings | PV buildings | base rate | installations | median install m² | % sub-400 m² | packing (nn_median_m) |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -42,6 +38,8 @@ reproducible with the query in `roofclf.discover_quadrats`/`load_quadrat`. Sorte
 | Sialkot | Punjab | 2 dense old/informal urban | **yes** | 4,208 | 238 | **5.7%** | 181 | 63.9 | 98.3% | 18.8 m |
 | Multan | Punjab | 6 industrial | no | 1,028 | 88 | **8.6%** | 45 | 877.1 | 26.7% | 50.8 m |
 | Sundar | Punjab | 6 industrial | no | 735 | 72 | **9.8%** | 49 | 999.4 | 26.5% | 52.1 m |
+| Rahim Yar Khan | Punjab | unclassified pending review | no | 2,068 | 214 | **10.3%** | 204 | 35.4 | 97.1% | 20.3 m |
+| **Peshawar West** | Khyber Pakhtunkhwa | unclassified pending review | no | 3,845 | 415 | **10.8%** | 163 | 416.8 | 48.5% | 34.0 m |
 | Faisalabad | Punjab | 6 industrial | no | 1,236 | 155 | **12.5%** | 84 | 665.9 | 28.6% | 45.8 m |
 | SITE Karachi | Sindh | 6 industrial | no | 1,961 | 257 | **13.1%** | 70 | 1,059.9 | 14.3% | 46.2 m |
 | Mardan | Khyber Pakhtunkhwa | 1/3 planned housing | **yes** | 4,751 | 654 | **13.8%** | 794 | 21.7 | 100.0% | 11.2 m |
@@ -55,7 +53,7 @@ mapped, verified against high-res imagery, per
 Only these quadrats' *negatives* (a building with no mapped PV) are trustworthy -- for
 every other row, "not mapped" can mean "genuinely no PV" or "nobody has mapped it yet,"
 and the two are indistinguishable without a completeness pass. **Rule-1 = no** quadrats
-are still used for training positives and general features (`roofclf` uses all eleven),
+are still used for training positives and general features (`roofclf` uses all thirteen),
 just not as a source of confirmed negatives.
 
 !!! warning "Peshawar and Peshawar East overlap -- not yet deduplicated"
@@ -97,12 +95,27 @@ for how (and how cautiously) this evidence feeds a capacity number.
 ## Packing distance, at a glance
 
 `nn_median_m` (median distance from a sub-400 m² installation to its nearest neighbour of
-any size, `roofclf.packing_density`) splits the eleven quadrats cleanly into two
-clusters, with nothing in between:
+any size, `roofclf.packing_density`) used to split the eleven quadrats into two clusters
+with **nothing in between**. The two quadrats added 2026-08-04 land in that gap, so the
+gap was an artifact of which eleven boxes had been chosen, not a property of Pakistani
+settlement:
 
 - **Tightly packed (7–19 m, informal/residential):** Lahore, Mardan, Peshawar, Peshawar
   East, Karachi coastal, Sialkot.
+- **Intermediate (20–34 m):** Rahim Yar Khan (20.3 m), Peshawar West (34.0 m) -- both
+  added after the original split was described, both sitting in what was an empty band.
 - **Sparse (44–52 m, industrial):** Quetta, Faisalabad, SITE Karachi, Multan, Sundar.
+
+This matters beyond bookkeeping: `packing_density` was adopted because it correlates
+r=0.70–0.82 with the imagery instruments' per-quadrat scale and skill, and a *bimodal*
+predictor invites treating the two modes as two regimes to calibrate separately. A filled
+gap means the underlying variable is continuous, so the correlation -- not the
+cluster label -- is the part to rely on. And that correlation is mostly **installation
+size** rather than spacing as such: see
+[Density and detection quality](density.md#density-and-detection-quality-what-actually-correlates-with-what)
+for the partial correlations that separate the two, and for why `base_rate`'s even
+stronger relationship with predicted-versus-true *rate* is arithmetic rather than
+landscape.
 
 Quetta is the one landscape-vs-packing mismatch: an arid *settlement* (not an industrial
 estate) that nonetheless packs sparsely -- a reminder that packing distance is a proxy for
@@ -110,13 +123,24 @@ building layout, not a direct stand-in for the stratum table.
 
 ## Adding a new quadrat
 
-1. Pick a center coordinate and pull a live Overpass snapshot for a precise geodesic
-   1 km² box (`earthpv overpass-labels --bbox ...`) -- see
-   [the protocol](../calibration-mapping-protocol.md) for how to choose a *good* location
-   (typical, not showcase; check this page for packing-distance/stratum gaps first).
-2. **Check for overlap with existing quadrats before mapping** -- a box within ~1 km of
+1. Pick a center coordinate and run **`scripts/new_calibration_quadrat.py`**, which does
+   steps 1 and 2 together:
+
+    ```bash
+    python scripts/new_calibration_quadrat.py \
+        --name peshawar_west --lat 33.9905887 --lon 71.4261494 --side-m 1500
+    ```
+
+    It builds the box geodesically (`pyproj.Geod.fwd`, never drawn by eye), runs the
+    overlap check *before writing anything*, pulls the Overpass snapshot and prints the
+    size/placement/packing profile. `--dry-run` stops after the checks. See
+    [the protocol](../calibration-mapping-protocol.md) for how to choose a *good* location
+    (typical, not showcase; check this page for packing-distance/stratum gaps first).
+2. **Overlap with existing quadrats is checked before anything is written**, and the
+   script refuses to continue on a hit without `--allow-overlap` -- a box within ~1 km of
    an existing center will share a corner with it, which is fine for an adjacent
-   neighbourhood but worth deciding on deliberately, not discovering after the fact.
+   neighbourhood but worth deciding on deliberately, not discovering after the fact
+   (see the Peshawar pair's warning above for what discovering it late costs).
 3. It is discoverable automatically (`roofclf.discover_quadrats`, globs
    `*_calib_*_boundary.geojson`) as soon as the boundary + a matching `_overpass_solar`
    file exist -- no registration step beyond that.
@@ -125,3 +149,7 @@ building layout, not a direct stand-in for the stratum table.
    or often re-pulled, is not a substitute -- see Peshawar's entry in
    [Calibration boxes](../issues/pakistan-calibration-boxes.md) for what that looks like
    in practice (three re-pulls the same day as new labels landed, still not Rule-1).
+5. For the completeness pass itself, `pixi run calib-export` writes every quadrat -- boxes
+   plus already-mapped solar -- as one JOSM layer with a paint style, so all thirteen can
+   be swept in one sitting instead of one boundary file at a time:
+   [Validating every quadrat in one pass](../calibration-mapping-protocol.md#validating-every-quadrat-in-one-pass).

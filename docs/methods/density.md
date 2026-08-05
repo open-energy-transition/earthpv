@@ -321,6 +321,15 @@ predicts most of why quadrats disagree on `exp_scale`, `rate_ratio`, and skill. 
 effectively a continuous, measurable version of the "4 industrial vs 5 residential"
 split this project already tracked by hand.
 
+!!! note "What packing distance is a proxy *for*"
+    Those correlations hold, but they are mostly **installation size** wearing a
+    spacing costume: control for median installation size and packing distance's
+    relationship with segmentation skill collapses from 0.819 to -0.155. The one part
+    that survives the control is its relationship with the *fraction head's* AUC
+    (0.931 -> 0.809 partial), which is the genuine 10 m pixel-mixing effect. Full
+    derivation, and the same treatment of `base_rate`, in
+    [Density and detection quality](#density-and-detection-quality-what-actually-correlates-with-what).
+
 Two consequences, both acted on already:
 
 - **Held-out quadrat choice for the fraction-head retrain** (below) should account for
@@ -371,6 +380,106 @@ strong, and it is not stronger now.
     adoption rate or capacity number is published. That needs more residential/non-industrial
     quadrats -- five of nine now cover that ground (Karachi coastal, Lahore, Sialkot, Mardan,
     Quetta), up from one, but the spread above shows the binding constraint has not gone away.
+
+### Density and detection quality: what actually correlates with what
+
+This project has asserted a density-vs-detection-quality relationship in several places --
+the packing-distance r values just above, and the `rate_ratio` spread in the warning box.
+Recomputed in one pass across every quadrat artifact on disk
+(`scripts/quadrat_correlations.py` -> `results/quadrat_detection_correlations.csv`,
+`pixi run quadrat-correlations`), the relationship is real but it is **two different
+findings, and neither is "denser landscapes are harder in some intrinsic way."** Both turn
+out to be artifacts with a specific fix, which is more useful than a correlation would be.
+
+The script keeps two things apart on purpose, because conflating them is how "denser is
+worse" gets asserted: **discrimination** (can the instrument tell a PV pixel or building
+from a non-PV one *within* the quadrat -- the `*_auc*` columns, scale-free) and **bias**
+(does it predict the right *amount* -- `scale`, `rate_ratio`). A quadrat can rank perfectly
+and still be 3x high, so a correlation with one says nothing about the other.
+
+#### Discrimination: it is installation size, not density
+
+Every density measure correlates strongly with segmentation skill, and every one of those
+correlations disappears once installation size is held constant (n=9, Spearman, partial
+correlation controlling for `median_install_m2`):
+
+| relationship | Pearson r | Spearman rho | partial r given median size |
+| --- | ---: | ---: | ---: |
+| `median_install_m2` vs segmentation AUC | **0.991** | 0.932 | -- |
+| `frac_sub400` vs segmentation AUC | -0.981 | -0.932 | -0.241 |
+| packing distance vs segmentation AUC | 0.819 | 0.915 | **-0.155** |
+| installations per km² vs segmentation AUC | -0.603 | -0.915 | **+0.201** |
+| `frac_sub400` vs segmentation AUC within size band | -0.954 | -0.932 | +0.224 |
+| `median_install_m2` vs fraction-head pixel AUC (n=12) | 0.889 | 0.888 | -- |
+
+Median installation size is the single best predictor of whether the segmentation raster
+works at all, at **r=0.991** -- which is not a subtle empirical finding but the detection
+floor doing exactly what it says: the model is trained with everything below
+`chips.MIN_PV_AREA` burned as `ignore`, so a quadrat whose installations are mostly small
+gets chance-level output. Dense quadrats score badly **because dense quadrats are dense in
+*small* installations**, not because density itself hurts. Controlling for size, packing
+distance's relationship with segmentation skill goes to -0.155 and installations-per-km²
+actually flips sign.
+
+**One relationship survives the control, and it is the mechanistically expected one:**
+packing distance vs the *fraction head's* per-building AUC, 0.931 unconditionally and
+**0.809 partial**. That is the one place a spacing effect should appear independent of array
+size -- the fraction head predicts per-pixel coverage, and what spacing controls at 10 m GSD
+is how much of a pixel a neighbouring array contributes. `roofclf.packing_density`'s median
+15-17 m in the densest quadrats is at or below one pixel, so neighbours mix into each other
+regardless of how big any one of them is.
+
+So `packing_density` remains a useful cheap stratum proxy -- but for **installation size
+regime** first and spectral mixing second, not for density as such. That is a correction to
+how the r=0.70-0.82 figures above were framed, not a retraction of them.
+
+#### Bias: the base-rate correlation is mechanical
+
+`base_rate` is the strongest correlate of bias in the whole table, at **rho=-0.950**
+(p=0.0001, n=9), and unlike the discrimination results it **survives** controlling for
+installation size (partial r=-0.765). Higher true adoption, more under-prediction. It is
+also almost entirely an arithmetic consequence of a missing intercept:
+
+- The model's **predicted** rate is essentially unrelated to the truth: `pred_rate` vs
+  `base_rate` is r=-0.167 (p=0.67), rho=-0.417 (p=0.27).
+- `pred_rate` is nearly flat -- mean **0.137**, sd 0.043, CV 0.31 -- while `base_rate`
+  spans 3.0% to 30.1%, CV 0.62. The classifier predicts roughly one number everywhere.
+- So `rate_ratio = pred_rate / base_rate` reduces to `constant / base_rate`. Substituting
+  the mean predicted rate for `pred_rate` reproduces the observed `rate_ratio` at r=0.969,
+  rho=0.950, **median relative error 8.9%**.
+- A log-log fit gives slope **-1.133**, where exactly -1.0 is the purely mechanical
+  hyperbola.
+
+The "crossing point" this project has described at ~12% base rate is therefore not a
+property of Pakistani settlement: `rate_ratio = 1` at **base_rate 12.3%** simply because
+that is where the flat predicted rate happens to meet the truth, and it sits right next to
+the training quadrats' own mean base rate (12.8%). Recalibrating on a different set of
+quadrats would move the crossing point to that set's mean, without the model having learned
+anything new.
+
+Read that as confirmation of the fix already on record rather than a new obstacle: a
+**per-stratum intercept** is the thing missing, and `rate_ratio`'s 0.235-4.833 spread is
+what a missing intercept looks like when you divide by a base rate that varies 10x. Mardan
+is the one quadrat the mechanical account does not fit (`pred_rate` 0.032 against a flat
+~0.137), which is consistent with it being the weakest fold on independent grounds.
+
+One bias relationship is not mechanical and is worth keeping: `frac_sub400` vs the
+fraction head's predicted/true area, r=-0.945 / rho=-0.841 (n=12) and **-0.691 partial**.
+The more of a quadrat's PV sits below the detection floor, the more area the instrument
+misses -- the sub-400 m² blindness measured directly, and the reason
+[the sub-400 m² instruments](#below-the-detection-floor-change-the-unit-of-prediction)
+exist at all.
+
+#### How much to trust these numbers
+
+n is 7-13 per pair and the script tests 72 pairs, so no single p-value here is evidence on
+its own. What carries the weight is that the two headline results are each **pre-registered
+by an earlier claim in this document** (packing distance predicts skill; `rate_ratio` varies
+with base rate) and each has a mechanism that predicts the sign and rough magnitude in
+advance -- a detection floor at 400 m², and a classifier with one pooled intercept. The
+partial correlations are computed on a single control with n=9, so treat them as
+directional, not precise. Re-run the script when a quadrat is added; that is the check that
+matters more than any p-value in it.
 
 ### National deployment: a scaling success, with one clean calibration lesson
 

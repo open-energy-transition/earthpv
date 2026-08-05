@@ -382,6 +382,30 @@ def hard_negatives(
     )
 
 
+@app.command("quadrat-chips")
+def quadrat_chips(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    labels_dir: Path = typer.Option(Path("data/labels")),
+    out_dir: Path = typer.Option(Path("data/chips")),
+    per_quadrat: int = typer.Option(12, help="Jittered chips per quadrat"),
+    quadrat: list[str] = typer.Option(
+        None, help="Quadrat stems (default: every discoverable one)"
+    ),
+) -> None:
+    """Fraction chips from the calibration quadrats, supervision confined to each
+    boundary (outside = ignore), into `<aoi>_quadrat_fraction/`.
+
+    Unlike `chips --fraction --region-filter`, this does not import the unverified
+    surroundings: a chip is 5.02 km² and a quadrat 0.49-2.25 km², so an ordinary quadrat
+    chip is only ~19% mapped ground -- see `build_quadrat_fraction_chips`' docstring."""
+    from earthpv.chips import build_quadrat_fraction_chips
+
+    build_quadrat_fraction_chips(
+        aoi=aoi, labels_dir=labels_dir, out_dir=out_dir, per_quadrat=per_quadrat,
+        quadrats=list(quadrat) if quadrat else None,
+    )
+
+
 @app.command("hard-negative-chips")
 def hard_negative_chips(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),

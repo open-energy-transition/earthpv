@@ -21,6 +21,11 @@
 30. Add to calibration: 33.990721, 71.4253978
 31. Fix old sentinel data 2021 radiometric offset. 
 32. Improve and "fit" SPPI to our labels sepctrum peaks!
+32. Add a script 
+33. Double calibration area of 24.9049124, 66.9973245, 24.7982837, 67.0406985
+34. Add calibration area of 27.7106599, 68.8374266
+35. Remove calibration ground at 34.022774, 71.5578736
+36. Remove calibration ground at 30.1913385, 67.0157459
 
 
 

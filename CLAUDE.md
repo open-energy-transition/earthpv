@@ -431,6 +431,49 @@ instruments, both rooftop-only and both dropping the polygon:
   response to the user not being able to find a table of quadrat status anywhere on the
   site) -- that page, not this narrative log, is the place to look for current per-quadrat
   numbers going forward; this file keeps the dated history of how each number changed.
+  **Box 12, `peshawar_west_calib_1500m`, was added 2026-08-04** and is the first quadrat
+  created by a script rather than by hand: `scripts/new_calibration_quadrat.py` builds the
+  geodesic square, runs the overlap check *before writing anything* (refusing a hit
+  without `--allow-overlap`), pulls OSM solar and prints the profile. Use it for the next
+  one. It is 1.5 km on a side (**2.25 km², the largest in the set** -- do not assume 1 km²
+  anywhere), 11.95 km from Box 9 so it carries no dedup debt, Peshawar district/KP, and
+  its value is that it is *unlike* Boxes 9/10: 163 installations, 48.5% sub-floor by count
+  but only **7.7% sub-floor by area** (92.3% of mapped area is ≥400 m², 38 installations
+  ≥1,000 m²), so it is the first Peshawar quadrat that can score the segmentation model at
+  all rather than only the sub-400 m² instruments. `n_pv_buildings` (415) exceeding
+  `n_installations` (163) is expected here, not a bug -- `building_table` flags by overlap
+  share and arrays this large span several VIDA footprints. Two consequences worth
+  carrying: (a) its `nn_median_m` of 34.0 m, plus Box 11's 20.3 m, **fill the 20-40 m
+  packing gap** that `docs/methods/calibration-quadrats.md` and the mapping protocol both
+  described as empty with "nothing in between" -- the bimodality was an artifact of the
+  original nine purposive boxes, so rely on `packing_density`'s r=0.70-0.82 correlation,
+  not on a two-regime cluster label; and (b) **a mirror can answer an Overpass query with
+  zero elements instead of erroring** when `overpass-api.de` 504s and `_run_query` fails
+  over -- measured on this box, two consecutive pulls of the same bbox gave 0 then 167, so
+  the new script treats an empty response as retryable and no 0-installation quadrat
+  should ever be registered from a single attempt. Box 11's base rate was also corrected
+  from an estimated 8.7% to its exact matched **10.3%** in the same pass, and both boxes
+  are now in `results/calibration_quadrats.csv` and the overview table (13 rows).
+  **Quadrat completeness passes are done from one exported layer, not one file at a time
+  (2026-08-04).** `pixi run calib-export`
+  (`scripts/export_calibration_quadrats_geojson.py`) writes every quadrat into
+  `results/calibration_quadrats_validation.geojson` -- 13 `quadrat_boundary` boxes plus
+  3,353 `mapped_solar` polygons -- with a sibling `.mapcss` JOSM paint style, because an
+  imported GeoJSON otherwise renders in one flat colour and "which line is the boundary"
+  is the whole point. Re-run it after adding a quadrat or refreshing any
+  `_overpass_solar` pull; it reads `discover_quadrats` + `_newest_solar` so it cannot show
+  a stale pull. Three non-obvious things baked in: (a) the layer is **reference geometry
+  that must never be uploaded** -- the boxes are not OSM features and the solar polygons
+  are copies of ones that are, so every feature carries a `do_not_upload` tag and the doc
+  says to edit only in the OSM layer; (b) edge-straddling installations (representative
+  point outside the box, footprint reaching in -- 59 of 3,353) are **exported and
+  flagged, not dropped**, since a panel visibly inside the line with no polygon on it
+  reads as unmapped and re-mapping it would duplicate an existing OSM feature, so each
+  box reports both `n_mapped_solar` (matches the docs table) and `n_inside_box`; and
+  (c) the five oldest pulls (Faisalabad, Lahore, Multan, SITE Karachi, Sundar) carry **no
+  `placement` column at all**, so a missing placement there means absent, not "rooftop".
+  Workflow documented at
+  `docs/calibration-mapping-protocol.md`'s "Validating every quadrat in one pass".
 
 **A sub-400 m² capacity bracket was assembled 2026-07-31**, replacing the single rejected
 18-37 GWp point estimate with an explicit range plus two non-imagery anchors. Domain-
@@ -554,6 +597,38 @@ from a sub-400 m² installation to its nearest neighbour of any size -- a cheap,
 model-free number that correlates r=0.70–0.82 with `exp_scale`/`auc_within_size`
 across all nine quadrats, and now a standing column (`nn_median_m`) in every
 `evaluate()` fold report. See `docs/methods/density.md`'s "Packing distance" section.
+
+**The density↔detection-quality correlation was recomputed and documented 2026-08-04,
+and it is two artifacts rather than one landscape effect** --
+`scripts/quadrat_correlations.py` / `pixi run quadrat-correlations` →
+`results/quadrat_detection_correlations.csv`, written up in `docs/methods/density.md`'s
+"Density and detection quality" section. It deliberately separates **discrimination**
+(`*_auc*`, scale-free) from **bias** (`scale`, `rate_ratio`), since a quadrat can rank
+perfectly and still be 3x high. Two findings, both of which sharpen claims already made
+in this file:
+- **Discrimination is installation size, not density.** `median_install_m2` vs
+  segmentation AUC is **r=0.991** (n=9) -- the 400 m² training floor doing exactly what
+  it says. Every density measure's correlation with segmentation skill dies on
+  controlling for size: packing distance 0.819 → **-0.155** partial, installations/km²
+  rho -0.915 → **+0.201**. Dense quadrats score badly because they are dense in *small*
+  arrays. The one survivor is packing distance vs the **fraction head's** AUC (0.931 →
+  **0.809** partial), the real 10 m pixel-mixing effect. So `packing_density` is a proxy
+  for size regime first, mixing second -- it stays useful, but do not describe it as
+  measuring density's effect.
+- **`base_rate` vs `rate_ratio` (rho=-0.950, n=9) is arithmetic.** `pred_rate` is
+  unrelated to truth (r=-0.167, p=0.67) and nearly flat (mean 0.137, CV 0.31) while
+  `base_rate` spans 3.0–30.1% (CV 0.62), so `rate_ratio ≈ const/base_rate`: substituting
+  the mean predicted rate reproduces it at r=0.969, median relative error 8.9%, log-log
+  slope **-1.133** (-1.0 = purely mechanical). The "~12% crossing point" is just where
+  the flat predicted rate meets truth (**12.3%**, next to the training quadrats' own mean
+  12.8%) -- refit elsewhere and it moves, having learned nothing. This is confirmation
+  that the missing **per-stratum intercept** is the whole problem, not a new obstacle.
+  Mardan is the lone misfit (`pred_rate` 0.032), consistent with it being the weakest
+  fold anyway. One non-mechanical bias result worth keeping: `frac_sub400` vs the
+  fraction head's predicted/true area, r=-0.945 / **-0.691** partial (n=12) -- sub-400 m²
+  blindness measured directly. n is 7-13 per pair over 72 pairs, so no single p-value
+  carries weight; both headline results were pre-registered by earlier claims and have a
+  mechanism predicting sign and magnitude in advance.
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 

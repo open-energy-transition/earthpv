@@ -1,0 +1,86 @@
+# TerraTorch fine-tuning config for PV FRACTION regression, Pakistan-tuned, trained on
+# 12 of the 13 calibration quadrats with `karachi_coast_calib_700m` HELD OUT.
+#
+# Companion to configs/terramind_pv_fraction_pakistan_quadrats.yaml (all 13 quadrats).
+# Identical in every respect except the corpus, so the pair measures one thing: scoring
+# the same quadrat in-sample (that config) and out-of-sample (this one) separates a real
+# generalising gain from memorisation of 13 specific places.
+#
+# Why karachi_coast is the holdout: it is Rule-1 complete, so its PV-free buildings are
+# trustworthy negatives and precision on it means something; and it is the project's
+# hardest, most diagnostic box -- median installation 86 m2, 98.8% below the 400 m2
+# detection floor, where the segmentation raster scores exactly 0.500 and predicts 0.0 m2
+# of PV against 13,963.6 m2 mapped, and fraction v1 recovers 0.291x of the true area.
+# Cost of that choice: 0.488 km2 and 797 labelled PV pixels, so the estimate is noisy.
+# Mardan would give ~2x the test signal but is the known-anomalous weakest fold, which
+# would make a pessimistic holdout unrepresentative rather than conservative.
+#
+# TWO leakage paths were closed before training, not assumed absent:
+#   1. The 12 remaining quadrats' chips: none overlap the held-out boundary (checked).
+#   2. The NATIONAL Pakistan chips: karachi_coast's installations are part of the
+#      countrywide OSM snapshot, and chip `150118f0c295` covers 16.3% of the held-out box
+#      with full national supervision over exactly those labels. It is excluded via
+#      data/chips/pakistan_fraction_holdout_karachi (2,580 of 2,581 chips kept).
+#      Germany: no overlap, as expected.
+#
+# Corpus (data/chips/combined_fraction_quadrats_holdout_karachi/index.parquet, 11,862):
+#   germany : data/chips_unfiltered/germany_fraction              x1  (5,587)
+#   pakistan: data/chips/pakistan_fraction_holdout_karachi        x2  (5,123)
+#   quadrat : data/chips/pakistan_quadrat_fraction_holdout_karachi x8 (1,152 = 144 x 8)
+#
+# See the all-13 config for the rest of the rationale: why supervision is confined to
+# each quadrat boundary (a 5.02 km2 chip over a 0.49-2.25 km2 quadrat is only ~19% mapped
+# ground), why x8 rather than v2's 20x, why the hard-negative chips are excluded, and the
+# stale-label caveat that the mapping imagery predates the Sentinel-2 composite.
+task_type: regression
+
+data:
+  index_path: data/chips/combined_fraction_quadrats_holdout_karachi/index.parquet
+  batch_size: 8
+  num_workers: 4
+  target: fraction
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    head_final_act: torch.nn.Sigmoid
+    rescale: true
+  # Most pixels carry zero coverage; plain MSE lets the model collapse to predict-zero.
+  # weighted_mse (train.py -> losses.TargetWeightedMSE) scales by (1 + k*target) and
+  # masks ignore_index itself, which is what makes the outside-boundary -1 above work.
+  loss: weighted_mse
+  weighted_mse_args: {k: 10.0}
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/fraction_pakistan_quadrats_holdout_karachi
+patience: 8
+# PixelwiseRegressionTask logs val/RMSE, val/MSE, val/MAE, val/R2_Score, val/loss.
+# NOTE: the val split is the national + Germany one (229 chips); the quadrat chips are
+# all train, as requested. So early stopping is driven by the >=400 m2-dominated
+# regime, not by small-PV performance -- the quadrat evaluation happens after training.
+monitor: val/RMSE
+monitor_mode: min

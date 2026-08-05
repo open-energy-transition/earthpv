@@ -65,6 +65,14 @@ small-pv-leads = "python scripts/build_small_pv_josm_leads.py"
 # Rooftop-potential (large, currently-uncovered roof) JOSM/site-visit leads -- re-run
 # whenever `earthpv large-roof-buildings` or the national OSM solar pull is refreshed.
 potential-leads = "python scripts/build_potential_leads.py"
+# Every calibration quadrat as one JOSM layer (boxes + already-mapped solar) for a
+# completeness pass against OSM imagery -- re-run whenever a quadrat is added or an
+# `_overpass_solar` pull is refreshed. See docs/calibration-mapping-protocol.md.
+calib-export = "python scripts/export_calibration_quadrats_geojson.py"
+# Per-quadrat PV density vs detection quality (discrimination and bias kept apart, with
+# partial correlations controlling for installation size) -- re-run when a quadrat is
+# added or `earthpv roof-classifier` is re-run. See docs/methods/density.md.
+quadrat-correlations = "python scripts/quadrat_correlations.py"
 # Regenerate every figure and interactive page the docs site and README embed.
 docs-figures = "python scripts/build_docs_figures.py"
 # Re-capture the interactive HTML pages as PNGs for the README (needs firefox).

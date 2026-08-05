@@ -30,7 +30,7 @@ what precision. None of them double-count: OpenStreetMap-mapped installations ar
 by location and removed from the model-detected side before summing.
 
 !!! warning "This is a research methodology under active validation, not a finished census"
-    Only 4 of the 12 ground-truth calibration quadrats are **Rule-1 complete** (every
+    Only 4 of the 13 ground-truth calibration quadrats are **Rule-1 complete** (every
     visible panel independently verified), and the density-matched calibration only
     covers 245 of Pakistan's 4,463 grid cells. roofclf's own measured skill varies
     sharply by quadrat (AUC 0.50 to 0.96) and its predicted rate does not reliably
