@@ -51,7 +51,7 @@ the *site* -- see [Capacity density](../methods/density.md) for both derivations
 [Growth](growth.md) for how this same instrument changed between the 2021/22 pre-boom
 epoch and now.
 
-## Using it in an energy model
+## Using it in an energy model like [PyPSA](https://pypsa.org/)
 
 The density stage writes three layers under `data/predictions/<aoi>/density/`:
 
