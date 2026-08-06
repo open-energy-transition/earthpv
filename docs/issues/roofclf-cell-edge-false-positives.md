@@ -1,8 +1,9 @@
 # Cell-edge false positives in the roof classifier
 
-Status: **root-caused and fixed in code, 2026-08-06. The national scoring output on disk
-(`data/roofclf_national_20260805/`) still carries the bug and every product derived from
-it is affected.**
+Status: **both bugs (cell-edge fill and composite-tile grid-origin overlap) root-caused
+and fixed in code, 2026-08-06. The full re-run (refit -> national scoring -> sub-400
+capacity -> evidence atlas) was kicked off the same day; see the bottom of this doc for
+the outcome.**
 
 A JOSM review pass over `pixi run roofclf-tiles` output found dense clusters of
 roof-classifier detections lining up along straight lines that do not correspond to
@@ -159,26 +160,83 @@ Everything downstream of `data/roofclf_national_20260805/`, in order:
 The published sub-400 m² numbers should be treated as **unreliable until step 3 is
 redone**, in the specific direction of over-counting.
 
-## A second, independent bug found while testing this
+## A second, independent bug found while testing this -- also fixed, 2026-08-06
 
-`score_buildings_national` claims that assigning each building to the cell whose bbox
+`score_buildings_national` claimed that assigning each building to the cell whose bbox
 contains its representative point means "every building nationwide is scored by exactly
-one cell". That is false: composite cell bboxes **overlap**, so a building in an overlap
-is written to both cells' parquets.
+one cell". That was false in two distinct ways, one narrow and severe, one shallow and
+universal -- both stem from the same root cause (ownership tested against a tile's own,
+slightly-larger-than-nominal geometry instead of an exact, non-overlapping canonical
+grid), and both are fixed by the same change.
 
-- Cells `0135_0078` and `0219_0117` overlap by 31.9% of area and share **137,556
-  buildings, 32.4% of `0135_0078`'s rows**.
-- 796 tile pairs overlap by more than 5% of either tile's area, involving 901 of the
-  4,473 tiles (20.1%).
-- Summed over those pairs, **2,221,352 duplicated building instances**, against a
-  national per-cell row total of 81,762,684 -- so at least **2.7% of the national
-  building population is a duplicate**. That is a lower bound twice over: it ignores
-  every pair overlapping by less than 5%, and a building shared by three cells is counted
-  once per pair rather than twice over.
+**The severe case: two different grid origins.** `configs/aoi.yaml`'s
+`pakistan.grid_origin` snaps the pakistan AOI's grid to be *phase*-congruent with
+Punjab's own (mod 0.1 deg), left over from an earlier on-demand `compose --aoi punjab`
+run -- but phase congruency is not index equality: Pakistan's own snapped origin is
+Punjab's origin minus 85 cells of longitude, so the same ground gets two
+differently-numbered, both "valid-looking" canonical names (e.g. Lahore is `0134_0078`
+under Pakistan's grid, `0219_0117` under Punjab's). Exactly 3 canonical cells nationally
+were claimed by both grids, all three in the Lahore area, each pair sharing 52-81% of
+its rows (measured by exact representative-point match): 240,704 / 201,898 / 340,961
+duplicated instances, 783,563 total.
 
-The two grids appear to come from separate `compose` runs with different cell origins
-whose output landed in the same `composites/` directory. This inflates the national
-building count and double-counts area in anything that sums over the per-cell parquets
-without deduplicating. It is **not fixed** -- the ownership rule needs a real
-tie-break (e.g. nearest cell centre, or a canonical grid) and that changes national
-totals, so it is left for an explicit decision.
+**The universal case: ordinary neighbouring tiles of the SAME grid.** Composite tiles are
+deliberately ~0.101 deg, ~1% oversized on their own so `read_window` never gaps at a seam
+(`density.py`'s own `_canonical_window` comment documents this). `density.py` crops that
+buffer away before summing (`_canonical_window`); `score_buildings_national` did not --
+it tested ownership against the tile's own inflated geometry directly, so a building in
+that ~1% buffer strip was legitimately inside BOTH neighbours' geometries and got written
+to both cells' output files. Measured directly on ordinary (non-Lahore, non-duplicate-
+grid) neighbour pairs in the pre-fix output: `0135_0078`/`0135_0079` shared 0.54% of the
+smaller cell's rows, `0061_0012`/`0061_0011` shared 2.40%, `0062_0012`/`0062_0011` shared
+3.01%. Summed over the whole country this is far bigger than the severe case: re-running
+the fixed code end-to-end (2026-08-06) dropped the national building count from
+81,762,684 to 75,703,524, **4,885,803 fewer rows (6.0%)**, spread across 4,461 of the
+4,470 surviving cells (i.e. almost every cell was inflated a little, not just the 3
+duplicate-origin ones a lot) -- every single differing cell went down, never up,
+confirming this was pure double-counting rather than noise.
+
+**Fixed** by `canonical_composite_manifest`, mirroring the dedup `density.cell_manifest`
+already does for probability rasters: recompute every composite tile's cell from its own
+centre under the AOI's *own* grid origin (ignoring the tile's directory name), and where
+two tiles land on the same recomputed cell, keep whichever tile's name already equals
+that canonical name. `score_buildings_national` and
+`sppi.score_buildings_national_growth` now iterate that manifest instead of the raw
+composite index, and use each cell's exact canonical (non-overlapping, by construction)
+0.1 deg box for both building ownership and the raster read -- so no cell pair can ever
+claim the same ground again, independent of how many raw tiles happen to exist per bin,
+and independent of whether the overlap came from a severe grid mismatch or the ordinary
+per-tile buffer. Building counts per cell now match `national_cell_density.parquet`
+(itself derived from probability rasters via `density.cell_manifest`, unaffected by
+either version of this bug) exactly.
+
+## Measured outcome of the full re-run (2026-08-06)
+
+`scripts/run_roofclf_edge_fix_repipeline.sh` ran refit -> national scoring -> sub-400
+capacity -> evidence atlas end to end (as a detached `systemd-run --user` unit,
+~2h23m wall clock, almost entirely the national scoring pass):
+
+| | before (buggy) | after (fixed) | change |
+|---|---|---|---|
+| national building rows | 81,762,684 | 75,703,524 | -6.0M (-7.4%, both bugs combined) |
+| domain-restricted roofclf-only (Best-estimate component) | -- | 10,502.9 MWp | -- |
+| domain-restricted AND-gate (Verified component) | -- | 5,600.1 MWp | -- |
+| evidence atlas: Verified tier | 13,697.1 MWp | 10,634 MWp | -22.4% |
+| evidence atlas: Best-estimate tier | 21,354.8 MWp | 18,879 MWp | -11.6% |
+
+Both tiers fell, in the direction the diagnosis predicted (removing false-positive-driven
+over-counting), by double digits. The refit itself moved little (18 quadrats, 91,840
+buildings, median fold AUC 0.8824 vs the pre-fix 0.8876, deployment threshold 0.2405 vs
+0.2407) -- almost all of the movement is the national scoring and downstream capacity
+math, not the model changing. Pre-fix atlas backed up to
+`results/pakistan_pv_evidence_atlas_PRE_edge_overlap_fix_20260806_backup.html`; new
+outputs live at `data/roofclf/`, `data/roofclf_national_with_sppi/pakistan/`,
+`data/sub400_20260806_fixed/`, and `results/pakistan_pv_evidence_atlas.html`.
+
+`roofclf.run_roof_classifier`'s default `--out-dir` (`data/roofclf/`) and
+`score_buildings_national`'s canonical national location
+(`data/roofclf_national_with_sppi/pakistan/prob/`) are now established as the
+project's ongoing "current" paths -- `scripts/build_small_pv_josm_leads.py` already
+hardcodes them, so a future refresh only needs to re-run
+`scripts/run_roofclf_edge_fix_repipeline.sh` (or its steps individually) against the
+same paths, not a newly dated directory each time.

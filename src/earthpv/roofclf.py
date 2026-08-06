@@ -862,6 +862,59 @@ def load_model(path: Path) -> tuple[dict, list[str]]:
     return model, d["features"]
 
 
+def canonical_composite_manifest(comp_idx, origin: tuple[float, float], cell_deg: float) -> pd.DataFrame:
+    """Every composite tile mapped onto its canonical `(ix, iy)` cell under `origin`,
+    deduping any tile that lands on a cell another tile already claims.
+
+    **Why this exists (found 2026-08-06 while fixing the cell-edge fill bug above).**
+    Pakistan's `data/composites/pakistan/composites/` carries tiles from two different
+    grid origins describing overlapping ground: this AOI's own snapped grid (e.g.
+    `0135_0078`, covering Lahore) and Punjab's un-snapped one, left over from an earlier
+    on-demand `compose --aoi punjab` run (e.g. `0219_0117`, the same ground, 31.9%
+    overlap, sharing 137,556 buildings -- 32.4% of `0135_0078`'s VIDA population). Punjab
+    is a subregion of Pakistan, so its own boundary bbox's lower-left corner is not
+    Pakistan's; `configs/aoi.yaml`'s `pakistan.grid_origin` snaps the *phase* of the two
+    grids to agree (mod `cell_deg`) but that does not make their absolute indices agree
+    -- Pakistan's snapped origin is `punjab_origin - 85 * cell_deg` in longitude, so the
+    same ground gets two different, both "valid-looking", canonical names. Iterating raw
+    `comp_idx.index` (as `score_buildings_national` used to) scores a building lying in
+    the overlap once under each name -- the exact class of bug `density.cell_manifest`
+    already exists to dedupe for probability rasters; this is the composite-tile
+    counterpart, same convention: recompute each tile's cell from its own centre under
+    THIS AOI's `origin` (ignoring what its directory happens to be named), and where two
+    tiles land on the same recomputed cell, keep whichever one's directory name already
+    equals that canonical name (i.e. prefer the tile this AOI's own `compose` produced),
+    else the first.
+    """
+    minx, miny = origin
+    rows = []
+    for row in comp_idx.index.itertuples():
+        cx, cy = row.geometry.centroid.x, row.geometry.centroid.y
+        ix = int(np.floor((cx - minx) / cell_deg))
+        iy = int(np.floor((cy - miny) / cell_deg))
+        rows.append({"name": Path(row.path).parent.name, "path": row.path, "ix": ix, "iy": iy})
+    df = pd.DataFrame(rows)
+    df["cell"] = df.apply(lambda r: f"{int(r.ix):04d}_{int(r.iy):04d}", axis=1)
+    kept, dropped = [], []
+    for cell, grp in df.groupby("cell"):
+        if len(grp) == 1:
+            kept.append(grp.iloc[0])
+            continue
+        exact = grp[grp.name == cell]
+        chosen = exact.iloc[0] if len(exact) else grp.iloc[0]
+        kept.append(chosen)
+        dropped += [r["name"] for _, r in grp.iterrows() if r.path != chosen.path]
+    if dropped:
+        log.info(
+            "canonical composite manifest: deduped %d off-grid/overlapping tile(s) onto "
+            "an existing canonical cell: %s", len(dropped), dropped,
+        )
+    man = pd.DataFrame(kept).reset_index(drop=True)
+    man["lon0"] = minx + man.ix * cell_deg
+    man["lat0"] = miny + man.iy * cell_deg
+    return man
+
+
 def score_buildings_national(
     aoi: str, model: dict, feats: list[str], composites: Path, out_dir: Path,
     min_roof_area_m2: float = 0.0, force: bool = False, limit: int = 0,
@@ -890,9 +943,22 @@ def score_buildings_national(
     `potential.large_roof_buildings` stay complete) but gets `p_roofclf`/`sppi` NaN,
     counted in `n_unscored_nodata` and logged. See `zonal_mean_max` for the mechanism,
     the measured numbers, and why widening the read instead makes it worse.
+
+    **Double-scored buildings in composite-tile overlaps (2026-08-06 fix).** Iterating
+    `comp_idx.index` directly used to let two differently-named tiles both claim the same
+    building whenever their (possibly off-grid) bboxes overlapped -- measured at >=5% of
+    tile area for 901 of Pakistan's 4,473 tiles, at least 2.2M duplicated building
+    instances overall. Cells are now taken from `canonical_composite_manifest`, which
+    recomputes each tile's cell under this AOI's own grid and dedupes overlaps onto one
+    canonical `(ix, iy)` per cell -- see its docstring for the mechanism. Both the VIDA
+    fetch/ownership test and the composite read now use that cell's exact canonical
+    0.1 deg box instead of a tile's own (possibly duplicated, possibly non-rectangular)
+    bounds.
     """
     from earthpv.buildings import _iso3_for, fetch_vida_buildings
+    from earthpv.compose import CELL_DEG
     from earthpv.config import Settings
+    from earthpv.density import _grid_origin
     from earthpv.labels import resolve_aoi
     from earthpv.local_source import composite_index
     from earthpv import overture
@@ -905,27 +971,30 @@ def score_buildings_national(
         raise ValueError(f"AOI '{aoi}' has no division.iso3 -> cannot locate VIDA buildings")
 
     comp_idx = composite_index(str(composites))
+    origin = _grid_origin(aoi, cfg, settings)
+    manifest = canonical_composite_manifest(comp_idx, origin, CELL_DEG)
+    log.info("Canonical grid: %d cells from %d composite tiles", len(manifest), len(comp_idx.index))
     con = overture.connect()
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     n_cells, n_buildings, n_flagged_05, n_unscored_nodata = 0, 0, 0, 0
-    for row in comp_idx.index.itertuples():
+    for m in manifest.itertuples():
         if limit and n_cells >= limit:
             break
-        cell = Path(row.path).parent.name
+        cell = m.cell
         out_path = out_dir / f"{cell}.parquet"
         if out_path.exists() and not force:
             continue
-        bbox = row.geometry.bounds
+        bbox = (m.lon0, m.lat0, m.lon0 + CELL_DEG, m.lat0 + CELL_DEG)
         bu = fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con)
         if bu.empty:
             pd.DataFrame().to_parquet(out_path)
             continue
-        # Half-open claim on the cell's own box (not the fetch bbox, which is padded by
-        # sjoin/row-group slop) so every building nationwide is scored by exactly one
-        # cell -- same convention `density.process_cell` uses.
-        inside = bu.geometry.representative_point().within(row.geometry)
+        # Half-open claim on the cell's own canonical box (not the fetch bbox, which is
+        # padded by sjoin/row-group slop) so every building nationwide is scored by
+        # exactly one cell -- same convention `density.cell_manifest` uses.
+        inside = bu.geometry.representative_point().within(shapely_box(*bbox))
         bu = bu[inside.to_numpy()].reset_index(drop=True)
         if bu.empty:
             pd.DataFrame().to_parquet(out_path)

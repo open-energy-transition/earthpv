@@ -309,17 +309,26 @@ def score_buildings_national_growth(
     `CompositeIndex.read_window` raises `FileNotFoundError` there at `layers=2` (unlike
     the layers=1 "no coverage" `None` return), so those are caught and skipped with a
     warning rather than crashing the whole national run.
+
+    Cell-edge fill and composite-tile overlap are both fixed the same way
+    `roofclf.score_buildings_national` fixes them (2026-08-06) -- see that function's
+    docstring and `roofclf.canonical_composite_manifest`.
     """
     import logging
     from pathlib import Path
 
     import geopandas as gpd
+    from shapely.geometry import box as shapely_box
 
     from earthpv.buildings import _iso3_for, fetch_vida_buildings
+    from earthpv.compose import CELL_DEG
     from earthpv.config import Settings
+    from earthpv.density import _grid_origin
     from earthpv.labels import resolve_aoi
     from earthpv.local_source import composite_index
-    from earthpv.roofclf import BAND_NAMES, COMPOSITE_FILL, REFL_SCALE, zonal_mean_max
+    from earthpv.roofclf import (
+        BAND_NAMES, COMPOSITE_FILL, REFL_SCALE, canonical_composite_manifest, zonal_mean_max,
+    )
     from earthpv import overture
 
     log = logging.getLogger("sppi")
@@ -334,27 +343,30 @@ def score_buildings_national_growth(
     nb = len(BAND_NAMES)
 
     comp_idx = composite_index(str(composites), layers=2)
+    origin = _grid_origin(aoi, cfg, settings)
+    manifest = canonical_composite_manifest(comp_idx, origin, CELL_DEG)
+    log.info("Canonical grid: %d cells from %d composite tiles", len(manifest), len(comp_idx.index))
     con = overture.connect()
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     n_cells, n_buildings, n_skipped_no_preboom, n_unscored_nodata = 0, 0, 0, 0
-    for row in comp_idx.index.itertuples():
+    for m in manifest.itertuples():
         if limit and n_cells >= limit:
             break
-        cell = Path(row.path).parent.name
+        cell = m.cell
         out_path = out_dir / f"{cell}.parquet"
         if out_path.exists() and not force:
             continue
-        bbox = row.geometry.bounds
+        bbox = (m.lon0, m.lat0, m.lon0 + CELL_DEG, m.lat0 + CELL_DEG)
         bu = fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con)
         if bu.empty:
             pd.DataFrame().to_parquet(out_path)
             continue
-        # Half-open claim on the cell's own box, matching density.process_cell /
+        # Half-open claim on the cell's own canonical box, matching
         # roofclf.score_buildings_national's convention so every building nationwide is
         # scored by exactly one cell.
-        inside = bu.geometry.representative_point().within(row.geometry)
+        inside = bu.geometry.representative_point().within(shapely_box(*bbox))
         bu = bu[inside.to_numpy()].reset_index(drop=True)
         if bu.empty:
             pd.DataFrame().to_parquet(out_path)

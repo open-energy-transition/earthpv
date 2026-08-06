@@ -291,17 +291,33 @@ instruments, both rooftop-only and both dropping the polygon:
   padding re-sources the whole border strip from a differently-composited neighbour: it
   leaves Lahore's sub-50 m edge at 10.1% against a 5.95% interior, and moves an isolated
   cell's *interior* rate 3.86 -> 4.68%. Masking alone gives 5.06% vs 5.95% and leaves
-  interior buildings bit-identical. **`data/roofclf_national_20260805/` on disk still has
-  the bug**, so `sub400_capacity`'s parquets, the evidence atlas's Verified and
-  Best-estimate tiers, and both JOSM lead sets over-count until the national scoring,
-  those parquets and the atlas are re-run in that order. A **second, independent bug**
-  surfaced during the same testing and is NOT fixed: composite cell bboxes overlap (two
-  grid origins in one `composites/` directory), so the "every building is scored by
-  exactly one cell" claim is false -- `0135_0078` and `0219_0117` share 137,556 buildings,
-  32.4% of the former; 901 of 4,473 tiles (20.1%) are in a >5%-area overlap with another
-  tile, and summing over those 796 pairs gives **2,221,352 duplicated building instances,
-  at least 2.7% of the national building population** (a lower bound -- sub-5% overlaps
-  are excluded). Full writeup, tables and the re-run order:
+  interior buildings bit-identical.
+  A **second, independent bug** surfaced during the same testing, in two forms. The
+  severe form: composite cell bboxes overlap where Pakistan's own grid is only
+  *phase*-anchored to an earlier Punjab-only compose run's grid (mod 0.1 deg), not
+  index-anchored to it, so the same ground can carry two valid-looking canonical names
+  (e.g. Lahore is `0134_0078` under Pakistan's grid, `0219_0117` under Punjab's) -- 3
+  canonical cells nationally (all in Lahore) were claimed by both grids, 783,563
+  duplicated building instances. The shallow, universal form: ordinary composite tiles
+  are deliberately ~1% oversized so `read_window` never gaps at a seam (`density.py`
+  crops this away before summing; `score_buildings_national` did not), so a building in
+  that buffer strip was legitimately "inside" two neighbouring tiles at once -- measured
+  0.5-3% shared rows on ordinary (non-Lahore) neighbour pairs. **Both fixed** the same
+  way (`roofclf.canonical_composite_manifest`, reusing `density.cell_manifest`'s existing
+  dedup convention): both scoring loops now iterate a deduped, canonical 0.1 deg grid and
+  use each cell's exact non-overlapping box for both ownership and the raster read.
+  **A full re-run (refit -> national scoring -> sub-400 capacity -> evidence atlas,
+  `scripts/run_roofclf_edge_fix_repipeline.sh`) completed 2026-08-06, ~2h23m.** National
+  building rows fell 81,762,684 -> 75,703,524 (-6.0%, both bugs combined, confirmed pure
+  double-counting: every one of the 4,461 differing cells went down, none up). The
+  evidence atlas moved in the predicted direction: Verified 13,697.1 -> **10,634 MWp**
+  (-22.4%), Best-estimate 21,354.8 -> **18,879 MWp** (-11.6%). Pre-fix atlas backed up to
+  `results/pakistan_pv_evidence_atlas_PRE_edge_overlap_fix_20260806_backup.html`. New
+  canonical "current" paths (used by `scripts/build_small_pv_josm_leads.py` and any
+  future refresh): `data/roofclf/` (refit) and
+  `data/roofclf_national_with_sppi/pakistan/prob/` (national scoring) --
+  `data/roofclf_national_20260805/` is now superseded and should not be read by anything
+  new. Full writeup, tables and both fix mechanisms:
   `docs/issues/roofclf-cell-edge-false-positives.md`.
   Updated 2026-07-29 to **9 quadrats, 22,044 buildings, 2,376 with PV**
   (added Sialkot, Mardan, Quetta). Leave-one-quadrat-out median AUC **0.874** (was 0.879 at
