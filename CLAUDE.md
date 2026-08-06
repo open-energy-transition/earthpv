@@ -1060,7 +1060,10 @@ the comment above that call in `density.py` for why guessing would be unsafe. Re
 the atlas explicitly once the OSM pull, `earthpv roof-classifier`, and the
 `sub400_capacity.py`/`roofclf_capacity.py` building parquets exist for an AOI;
 `configs/aoi.yaml`'s Pakistan `dashboard:` block already points its `capacity` panel at
-the regenerated `results/pakistan_pv_evidence_atlas.html`.
+the regenerated atlas. **Its canonical location is `docs/assets/interactive/pakistan_
+evidence_atlas.html` (2026-08-06), not `results/`** -- this is the project's primary
+output, so the docs site and the README screenshot read it directly with no separate
+`results/` original to sync from; `earthpv atlas --out` should point there directly.
 
 **A third tier, Ceiling, was removed 2026-08-06 at the owner's explicit request.**
 Ceiling combined roofclf flagged nationwide at a flat 0.5 precision weight

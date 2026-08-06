@@ -58,10 +58,12 @@ SHOTS = [
     # The capacity atlas, framed on the headline number and the national map.
     Shot("results/pakistan_pv_estimator_atlas.html", "pakistan_capacity_atlas",
          width=1500, height=2100, crop=(0, 0, 1500, 1650)),
-    # The three-tier evidence atlas (Verified / Best estimate / Ceiling) -- the
-    # current recommended capacity page, combining segmentation (>=400 m2) with the
-    # roofclf/SPPI sub-400 m2 instruments. Framed on the KPI strip and the map.
-    Shot("results/pakistan_pv_evidence_atlas.html", "pakistan_evidence_atlas",
+    # The evidence atlas (Verified / Best estimate) -- this project's primary output,
+    # combining segmentation (>=400 m2) with the roofclf/SPPI sub-400 m2 instruments.
+    # Framed on the KPI strip and the map. Lives directly under docs/ (2026-08-06),
+    # not results/ -- it is this project's primary output, so its canonical copy is
+    # wherever the site and README read it from, with no separate results/ original.
+    Shot("docs/assets/interactive/pakistan_evidence_atlas.html", "pakistan_evidence_atlas",
          width=1500, height=2100, crop=(0, 0, 1500, 1650)),
     # The glint pose survey, framed on the polar plot and its stat column.
     Shot("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose",

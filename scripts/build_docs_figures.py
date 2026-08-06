@@ -786,11 +786,18 @@ def copy_static_rasters():
 
 # Interactive pages the site embeds in an iframe. MkDocs only serves what lives
 # under `docs/`, so the tracked originals in `results/` are copied in here.
+#
+# The evidence atlas is the exception (2026-08-06): it is this project's primary
+# output, so its canonical copy lives directly at
+# `docs/assets/interactive/pakistan_evidence_atlas.html` -- write there directly
+# (`earthpv atlas --aoi <aoi> --out docs/assets/interactive/pakistan_evidence_atlas.html`)
+# rather than through `results/` and this sync step. The other pages below still
+# follow the `results/` + sync pattern; the same move is a reasonable follow-up for
+# each but has not been done.
 INTERACTIVE = [
     ("results/pakistan_pv_estimator_atlas.html", "pakistan_capacity_atlas.html"),
     ("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose.html"),
     ("results/pakistan_pv_density/pakistan_pv_density_map.html", "pakistan_density_map.html"),
-    ("results/pakistan_pv_evidence_atlas.html", "pakistan_evidence_atlas.html"),
     ("results/pakistan_pv_growth_atlas.html", "pakistan_growth_atlas.html"),
 ]
 

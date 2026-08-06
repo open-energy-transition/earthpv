@@ -22,8 +22,8 @@ Interactive. Switch tier with the tabs, hover a cell for its value.
 
 | Tier | Pakistan | What it admits as evidence |
 | --- | ---: | --- |
-| Verified | 13,697 MWp | Every installation a person has drawn in OpenStreetMap (16,085 of them), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **21,355 MWp** | Verified, plus the segmentation model's own recall-corrected detections **&ge;400 m<sup>2</sup>** (5,078 MWp, precision- and recall-corrected), plus the roofclf per-building density estimate inside the cells checked against ground-truth quadrats -- the project's own pick. |
+| Verified | 10,634 MWp | Every installation a person has drawn in OpenStreetMap (16,085 of them), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
+| **Best estimate** | **18,879 MWp** | Verified, plus the segmentation model's own recall-corrected detections **&ge;400 m<sup>2</sup>** (5,078 MWp, precision- and recall-corrected), plus the roofclf per-building density estimate inside the cells checked against ground-truth quadrats -- the project's own pick. |
 
 Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
@@ -38,7 +38,7 @@ component's MWp, 343-438 MWp).
 !!! warning "This is a research methodology under active validation, not a finished census"
     All 17 ground-truth calibration quadrats are now **Rule-1 complete** (every
     visible panel independently verified, as of 2026-08-05), and the density-matched
-    calibration covers 401 of Pakistan's 4,463 grid cells. roofclf's own measured skill
+    calibration covers 92 of Pakistan's 4,463 grid cells. roofclf's own measured skill
     still varies by quadrat (AUC 0.76 to 0.94 across the 17) and its predicted rate does
     not reliably separate well-calibrated cells from over-predicting ones -- see
     [Capacity density](../methods/density.md) for what is independently corroborated

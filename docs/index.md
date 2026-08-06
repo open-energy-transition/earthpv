@@ -16,20 +16,22 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">21,355 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
-<div class="stat"><span class="value">5,078 / 12,979 MWp</span><span class="label">capacity &ge;400 m&sup2; segmentation vs. <400 m&sup2; rooftop classifier </span></div>
+<div class="stat"><span class="value">18,879 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
+<div class="stat"><span class="value">5,078 / 10,503 MWp</span><span class="label">capacity &ge;400 m&sup2; segmentation vs. <400 m&sup2; rooftop classifier </span></div>
 <div class="stat"><span class="value">2</span><span class="label">detectors in the main workflow: segmentation (&ge;400 m&sup2;) and roofclf (&lt;400 m&sup2;), cross-checked with SPPI</span></div>
 </div>
 
 ## Build PV capacity maps for every country
 
-![Pakistan's rooftop solar counted two ways: Verified (hand-mapped or two detectors agree) and Best estimate (this project's own defensible figure), over a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_evidence_atlas.png)
-
-/// caption
-Two tiers by standard of proof, not by point estimate, for every building carrying PV
-signal in the pilot country. The
-[interactive version](results/capacity.md) switches tiers and ranks provinces by each.
-///
+<div class="embed" markdown>
+<iframe src="assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: Verified and Best estimate" loading="lazy"></iframe>
+</div>
+<p class="embed-note">
+Interactive -- this project's primary output. Switch tier with the tabs, hover a cell
+for its value.
+<a href="assets/interactive/pakistan_evidence_atlas.html" target="_blank">Open full screen</a> ·
+<a href="results/capacity.md">Full capacity page</a>.
+</p>
 
 ## What is new here
 

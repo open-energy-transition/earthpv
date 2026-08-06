@@ -94,7 +94,7 @@ for what was tried and why the main workflow above is what shipped.
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (13,697 MWp, hand-mapped or two detectors agreeing) and Best estimate (21,355 MWp, the project's own defensible figure) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (10,634 MWp, hand-mapped or two detectors agreeing) and Best estimate (18,879 MWp, the project's own defensible figure) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -149,8 +149,8 @@ above, with a stated standard of proof:
 
 | | |
 | --- | --- |
-| **13,697 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
-| **21,355 MWp** | Best estimate: this project's own highest defensible figure |
+| **10,634 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
+| **18,879 MWp** | Best estimate: this project's own highest defensible figure |
 | **+2,598 MWp** | Rooftop growth measured since the 2021/22 pre-boom epoch (segmentation, recall-corrected) |
 | **16,085** | individual installations hand-mapped in OpenStreetMap |
 | **400 m²** | per-object segmentation floor at Sentinel-2's 10 m resolution; roofclf/SPPI reach below it |

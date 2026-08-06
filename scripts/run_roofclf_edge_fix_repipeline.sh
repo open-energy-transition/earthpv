@@ -96,7 +96,11 @@ print("LOW (AND-gate):", json.dumps(low_summary, indent=2))
 EOF
 
 echo "########## $(date -Is) STEP 4: rebuild the evidence atlas"
-ATLAS_OUT=results/pakistan_pv_evidence_atlas.html
+# Canonical location is under docs/ (2026-08-06), not results/: this is the project's
+# primary output, so the site and README read it directly with no separate results/
+# original to sync from. A dated backup of the outgoing version still goes to results/
+# since a backup is not itself needed to build the docs.
+ATLAS_OUT=docs/assets/interactive/pakistan_evidence_atlas.html
 if [ -f "$ATLAS_OUT" ]; then
   cp "$ATLAS_OUT" "results/pakistan_pv_evidence_atlas_PRE_edge_overlap_fix_${STAMP}_backup.html"
 fi

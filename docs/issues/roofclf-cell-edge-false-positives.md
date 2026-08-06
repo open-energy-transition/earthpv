@@ -149,8 +149,10 @@ Everything downstream of `data/roofclf_national_20260805/`, in order:
    Expect roughly 45% fewer flagged buildings.
 2. `sub400_capacity.domain_restricted_capacity` / `domain_restricted_and_gate_capacity`
    -> `data/sub400_20260806/sub400_{central,low}.parquet`.
-3. `atlas.build_evidence_atlas` -> `results/pakistan_pv_evidence_atlas.html`. The Verified
-   and Best-estimate tiers both take a small-PV component from those parquets.
+3. `atlas.build_evidence_atlas` -> `docs/assets/interactive/pakistan_evidence_atlas.html`
+   (canonical location as of 2026-08-06 -- this is the project's primary output, so it
+   lives directly under `docs/`, not `results/`). The Verified and Best-estimate tiers
+   both take a small-PV component from those parquets.
 4. `pixi run small-pv-leads` and `pixi run roofclf-tiles` (the JOSM layers that surfaced
    this).
 5. `roofclf.run_roof_classifier`, to refit `model_full.json` on quadrat features that no
@@ -231,7 +233,16 @@ buildings, median fold AUC 0.8824 vs the pre-fix 0.8876, deployment threshold 0.
 math, not the model changing. Pre-fix atlas backed up to
 `results/pakistan_pv_evidence_atlas_PRE_edge_overlap_fix_20260806_backup.html`; new
 outputs live at `data/roofclf/`, `data/roofclf_national_with_sppi/pakistan/`,
-`data/sub400_20260806_fixed/`, and `results/pakistan_pv_evidence_atlas.html`.
+`data/sub400_20260806_fixed/`, and `docs/assets/interactive/pakistan_evidence_atlas.html`
+(moved out of `results/` and into `docs/` the same day -- see below).
+
+**Moved to `docs/`, 2026-08-06.** The evidence atlas is this project's primary output,
+so its canonical copy now lives at `docs/assets/interactive/pakistan_evidence_atlas.html`
+directly, with no separate `results/` original to keep in sync -- the docs site already
+embedded it from exactly that path, and the README's hero screenshot
+(`scripts/screenshot_pages.py`) now reads from there too. `scripts/build_docs_figures.py`
+no longer syncs it in from `results/`. Historical dated backups (like the one above)
+still land in `results/`, since a backup is not itself needed to build the docs.
 
 `roofclf.run_roof_classifier`'s default `--out-dir` (`data/roofclf/`) and
 `score_buildings_national`'s canonical national location

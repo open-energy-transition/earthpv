@@ -102,8 +102,8 @@ aois:
         - key: capacity
           label: Capacity
           sublabel: Verified / Best estimate / Ceiling
-          src: results/pakistan_pv_evidence_atlas.html
-          note: "Three tiers by standard of proof, not by point estimate: hand-mapped + two detectors agree, this project's best defensible figure, and an explicit uncalibrated ceiling. See Capacity density."
+          src: docs/assets/interactive/pakistan_evidence_atlas.html
+          note: "Two tiers by standard of proof, not by point estimate: hand-mapped + two detectors agree, and this project's best defensible figure. See Capacity density."
         - key: pose
           label: Panel orientation
           sublabel: Glint-fitted tilt & azimuth, n=2000
