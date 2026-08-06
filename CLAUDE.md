@@ -268,7 +268,42 @@ instruments, both rooftop-only and both dropping the polygon:
   Full tables: `docs/issues/quadrat-supervision-fraction-retrain.md`.
 - **`roofclf.py` / `earthpv roof-classifier`** -- per-building "does this roof carry PV?",
   trained on the exhaustively mapped quadrats (the only source where a no-PV building is a
-  real negative). Updated 2026-07-29 to **9 quadrats, 22,044 buildings, 2,376 with PV**
+  real negative).
+  **Read this before trusting any national roofclf number below (2026-08-06).** A JOSM
+  review found detections lining the straight edges of the 0.1 deg composite cells. Cause:
+  `CompositeIndex.read_window` round-trips a tile's UTM bounds through a lat/lon envelope
+  and back, which inflates the requested window past the tile (50-70 m in Punjab, up to
+  357 m at the worst tile), and `rasterio.merge.merge(..., nodata=0)` fills the excess with
+  **zeros**. Zero reflectance is darker than any real roof and PV is dark, so the fitted
+  model scores an all-fill footprint at p=0.735 (100 m2) against 0.100 for a typical roof,
+  and 0.484 even at 30 m2 -- above the 0.2407 deployment threshold at every size.
+  Nationally: **2.86M all-fill building rows, 95.4% of them flagged, 45.6% of every flagged
+  building in the country**; within 25 m of a cell edge the flag rate was 65.3% against
+  5.9% in the interior. Training was near-clean (only sialkot 1.0% and sukkur 0.45% of
+  their windows are fill, the other 15 quadrats none), which is exactly why it went
+  unnoticed -- a train/deploy skew, not a modelling error. Fixed by
+  `zonal_mean_max(..., nodata=COMPOSITE_FILL)`: fill pixels are excluded from the zonal
+  statistics and a footprint with no valid pixel gets NaN (row kept, score NaN, so
+  `potential.large_roof_buildings` and building counts stay complete while nothing
+  unscored can clear a threshold). **Padding the read was tried and measured worse** --
+  composite tiles overlap by ~150 m strips, `merge`'s "first wins" precedence is filename
+  order rather than the cell's own tile, and the bounds are off the source pixel grid, so
+  padding re-sources the whole border strip from a differently-composited neighbour: it
+  leaves Lahore's sub-50 m edge at 10.1% against a 5.95% interior, and moves an isolated
+  cell's *interior* rate 3.86 -> 4.68%. Masking alone gives 5.06% vs 5.95% and leaves
+  interior buildings bit-identical. **`data/roofclf_national_20260805/` on disk still has
+  the bug**, so `sub400_capacity`'s parquets, the evidence atlas's Verified and
+  Best-estimate tiers, and both JOSM lead sets over-count until the national scoring,
+  those parquets and the atlas are re-run in that order. A **second, independent bug**
+  surfaced during the same testing and is NOT fixed: composite cell bboxes overlap (two
+  grid origins in one `composites/` directory), so the "every building is scored by
+  exactly one cell" claim is false -- `0135_0078` and `0219_0117` share 137,556 buildings,
+  32.4% of the former; 901 of 4,473 tiles (20.1%) are in a >5%-area overlap with another
+  tile, and summing over those 796 pairs gives **2,221,352 duplicated building instances,
+  at least 2.7% of the national building population** (a lower bound -- sub-5% overlaps
+  are excluded). Full writeup, tables and the re-run order:
+  `docs/issues/roofclf-cell-edge-false-positives.md`.
+  Updated 2026-07-29 to **9 quadrats, 22,044 buildings, 2,376 with PV**
   (added Sialkot, Mardan, Quetta). Leave-one-quadrat-out median AUC **0.874** (was 0.879 at
   6 quadrats), **0.842 conditional on roof-size band** (was 0.845), against the
   segmentation raster's conditional median, which **dropped from 0.707 to 0.501** -- chance

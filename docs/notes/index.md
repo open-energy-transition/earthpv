@@ -16,5 +16,6 @@ later than the code that was built.
 | [Glint-validated training labels](../issues/glint-validated-training-labels.md) | Using glint confirmations as additional supervision. |
 | [Quadrats as training data](../issues/quadrats-as-training-data.md) | Whether exhaustively mapped boxes should also be trained on, not just measured against. |
 | [Quadrat-supervised fraction retrain](../issues/quadrat-supervision-fraction-retrain.md) | The pixel-supervision half of that question, run twice with one box held out. A large in-sample win the holdout does not support, so **not promoted**. |
+| [Roof classifier cell-edge false positives](../issues/roofclf-cell-edge-false-positives.md) | Raster fill read as imagery along every composite cell boundary was **45.6% of all national roof-classifier flags**. Fixed in code; the national output and everything downstream of it still need re-running. |
 
 For the conclusions these notes fed into, see [Experiments](../how-it-works.md#experiments).

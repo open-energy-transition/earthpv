@@ -117,5 +117,6 @@ nav:
       - Quadrats as training data: issues/quadrats-as-training-data.md
       - Quadrat-supervised fraction retrain: issues/quadrat-supervision-fraction-retrain.md
       - Roof classifier national deployment: issues/roofclf-national-deployment-and-temporal-features.md
+      - Roof classifier cell-edge false positives: issues/roofclf-cell-edge-false-positives.md
       - Calibration imagery dating: issues/calibration-imagery-dating.md
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md

@@ -319,7 +319,7 @@ def score_buildings_national_growth(
     from earthpv.config import Settings
     from earthpv.labels import resolve_aoi
     from earthpv.local_source import composite_index
-    from earthpv.roofclf import BAND_NAMES, REFL_SCALE, zonal_mean_max
+    from earthpv.roofclf import BAND_NAMES, COMPOSITE_FILL, REFL_SCALE, zonal_mean_max
     from earthpv import overture
 
     log = logging.getLogger("sppi")
@@ -338,7 +338,7 @@ def score_buildings_national_growth(
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    n_cells, n_buildings, n_skipped_no_preboom = 0, 0, 0
+    n_cells, n_buildings, n_skipped_no_preboom, n_unscored_nodata = 0, 0, 0, 0
     for row in comp_idx.index.itertuples():
         if limit and n_cells >= limit:
             break
@@ -375,8 +375,8 @@ def score_buildings_national_growth(
         arr = arr.astype("float32") / REFL_SCALE
         current, preboom = arr[:nb], arr[nb : 2 * nb]
         bu_utm = bu.to_crs(crs)
-        means_cur, _ = zonal_mean_max(bu_utm, current, transform)
-        means_pre, _ = zonal_mean_max(bu_utm, preboom, transform)
+        means_cur, _ = zonal_mean_max(bu_utm, current, transform, nodata=COMPOSITE_FILL)
+        means_pre, _ = zonal_mean_max(bu_utm, preboom, transform, nodata=COMPOSITE_FILL)
 
         sppi_cur = compute_sppi(
             means_cur[i02], means_cur[i03], means_cur[i08], means_cur[i11], means_cur[i12]
@@ -384,6 +384,12 @@ def score_buildings_national_growth(
         sppi_pre = compute_sppi(
             means_pre[i02], means_pre[i03], means_pre[i08], means_pre[i11], means_pre[i12]
         )
+
+        # NaN in either epoch means no valid composite pixel there (see
+        # roofclf.zonal_mean_max) -- the row is kept so the building population stays
+        # complete, but every SPPI column stays NaN rather than carrying the fill
+        # value's spectral signature into a change signal.
+        n_unscored_nodata += int((np.isnan(sppi_cur) | np.isnan(sppi_pre)).sum())
 
         result = gpd.GeoDataFrame({
             "cell": cell, "geometry": bu.geometry.to_numpy(),
@@ -403,7 +409,9 @@ def score_buildings_national_growth(
 
     log.info(
         "Done: %d cells scored this run, %d buildings, %d cells skipped (no pre-boom "
-        "composite) -> %s", n_cells, n_buildings, n_skipped_no_preboom, out_dir,
+        "composite), %d buildings left unscored (SPPI NaN) for having no valid "
+        "composite pixel in one or both epochs -> %s",
+        n_cells, n_buildings, n_skipped_no_preboom, n_unscored_nodata, out_dir,
     )
     return out_dir
 

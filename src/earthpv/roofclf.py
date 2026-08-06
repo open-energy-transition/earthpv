@@ -122,6 +122,11 @@ _I_RED, _I_NIR, _I_SWIR1, _I_BLUE, _I_GREEN = 2, 6, 8, 0, 1
 # A building counts as PV-carrying when a mapped array covers at least this share of it, so
 # a panel array that merely clips a neighbouring roof's edge does not label that roof.
 MIN_PV_OVERLAP_FRAC = 0.05
+# Reflectance value `CompositeIndex.read_window` leaves where the requested window falls
+# outside the composite tile (`rasterio.merge.merge(..., nodata=0)`). Real composite
+# pixels are never exactly zero in all ten bands, so this doubles as the "no data here"
+# test -- see `zonal_mean_max`, which must be passed it for any reflectance window.
+COMPOSITE_FILL = 0.0
 # Ridge strength on standardised features. Deliberately firm: five spatial folds cannot
 # support tuning, so this is set once and left.
 L2 = 1.0
@@ -291,7 +296,7 @@ def packing_density(pv: gpd.GeoDataFrame, max_area_m2: float = MIN_PV_AREA_FOR_P
 # Per-footprint zonal statistics
 # --------------------------------------------------------------------------------------
 def zonal_mean_max(
-    bu_utm: gpd.GeoDataFrame, arr: np.ndarray, transform
+    bu_utm: gpd.GeoDataFrame, arr: np.ndarray, transform, nodata: float | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
     """Per-building mean and max of a (bands, H, W) or (H, W) array over its footprint.
 
@@ -300,6 +305,47 @@ def zonal_mean_max(
     same convention `density.per_building_raster_stats` uses. Without the fallback the
     entire small-building population, i.e. the population this module exists for, would
     drop out of the table.
+
+    **`nodata` is what keeps a fill value out of the statistics, and on the national run
+    it is load-bearing rather than defensive.** Pass `nodata=0.0` for a reflectance
+    window: a pixel where EVERY band equals it is treated as absent, so a footprint is
+    averaged over its real pixels only, and a footprint with no real pixel at all comes
+    back NaN instead of a plausible-looking number. Leave it `None` for a probability
+    raster, where 0 is a legitimate value and the commonest one.
+
+    The mechanism this exists for (measured 2026-08-06, and the cause of what looked like
+    a band of rooftop-PV false positives along every cell boundary in JOSM): a composite
+    tile's bounds round-trip through EPSG:4326 in `CompositeIndex.read_window` -- UTM
+    bounds -> lat/lon envelope -> UTM envelope of that envelope -- which inflates the
+    requested window by the grid convergence, 50-70 m in Punjab and up to 357 m across
+    Pakistan's tiles. `rasterio.merge.merge` fills the excess with its `nodata=0`, so a
+    per-cell read carries a frame of exact zeros (5-7 px, 2.2% of the window in cell
+    0135_0078) exactly where the cell's edge buildings sit. It is unavoidable at the
+    read: a lat/lon box is not a UTM box, so requesting one from a UTM raster always
+    asks for corners the raster does not have. Zero reflectance is darker than any real
+    roof, and PV is dark, so the classifier reads it as a near-certain array: the fitted
+    national model returns p=0.73 for a 100 m2 all-zero footprint against 0.10 for a
+    typical one, and 0.48 even at 30 m2 -- above the 0.2407 deployment threshold at
+    every size. Nationally that was 2.86M all-fill buildings, 95.4% of them flagged,
+    **45.6% of every flagged building in the country**. Within 25 m of a cell edge the
+    flag rate was 65.3% against 5.9% in the interior.
+
+    Masking is the fix; widening the read is not. Padding the request so the fill frame
+    lands outside the cell was tried and measured worse: composite tiles overlap their
+    neighbours by ~150 m strips, `merge`'s "first source wins" precedence is filename
+    order rather than "the cell's own tile", and the requested bounds are not on the
+    source pixel grid -- so a padded read silently re-sources the cell's whole border
+    strip from a differently-composited neighbour and shifts every pixel by a fraction
+    of one. Measured on the same two cells: masking alone puts the sub-50 m edge flag
+    rate at or below the interior rate (Lahore 5.06% vs 5.95%, isolated cell 0.40% vs
+    3.86%), while a 150 m pad leaves the edge at 10.10% vs 5.95% and moves the isolated
+    cell's *interior* rate 3.86% -> 4.68%.
+
+    A building whose representative point resolves OUTSIDE the array, or onto a fill
+    pixel, likewise gets NaN, not a silently clipped edge-row/-column pixel. Callers must
+    handle NaN: keep the building but leave its score NaN (`score_buildings_national`,
+    so building counts and `potential.large_roof_buildings` stay complete), or drop the
+    row before it reaches a fit (`building_table`).
     """
     if arr.ndim == 2:
         arr = arr[None]
@@ -309,6 +355,13 @@ def zonal_mean_max(
         ((g, i) for i, g in enumerate(bu_utm.geometry, start=1)),
         out_shape=(h, w), transform=transform, fill=0, all_touched=False, dtype="int32",
     )
+    # A nodata pixel is relabelled to the background bin 0, so it contributes to neither
+    # the sums nor the counts and a footprint covering only nodata falls through to the
+    # representative-point branch below (which then also rejects it).
+    valid_px = None
+    if nodata is not None:
+        valid_px = ~np.all(arr == nodata, axis=0)
+        idx = np.where(valid_px, idx, 0)
     flat = idx.ravel()
     counts = np.bincount(flat, minlength=n + 1)[1:]
     means = np.zeros((nb, n), dtype="float64")
@@ -328,12 +381,21 @@ def zonal_mean_max(
         rr, cc = rasterio.transform.rowcol(
             transform, pts.x.to_numpy()[zero], pts.y.to_numpy()[zero]
         )
-        rr = np.clip(np.asarray(rr), 0, h - 1)
-        cc = np.clip(np.asarray(cc), 0, w - 1)
+        rr = np.asarray(rr)
+        cc = np.asarray(cc)
+        ok = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
+        if valid_px is not None:
+            # Same rejection for a point that lands inside the window but on fill.
+            ok[ok] &= valid_px[rr[ok], cc[ok]]
+        zero_idx = np.flatnonzero(zero)
+        valid_idx, oob_idx = zero_idx[ok], zero_idx[~ok]
+        rr_v, cc_v = rr[ok], cc[ok]
         for b in range(nb):
-            v = arr[b][rr, cc].astype("float64")
-            means[b, zero] = v
-            maxes[b, zero] = v
+            v = arr[b][rr_v, cc_v].astype("float64")
+            means[b, valid_idx] = v
+            maxes[b, valid_idx] = v
+            means[b, oob_idx] = np.nan
+            maxes[b, oob_idx] = np.nan
     return means, maxes
 
 
@@ -412,6 +474,10 @@ def building_table(
     # `layers=2` additionally reads composite_1 (pre-boom, ~2021-10 to 2022-01) stacked
     # on the same grid -- zero extra inference, since composite_1 is already ~complete
     # nationally (docs/issues/epoch-jump-recall-signal.md's cheap variant).
+    # `nodata=COMPOSITE_FILL` below matters here for the same reason it does nationally,
+    # just at much smaller scale: measured 2026-08-06, sialkot's window is 1.0% fill and
+    # sukkur's 0.45%, the other 16 quadrats none. Training was therefore near-clean while
+    # deployment was not, which is the skew that let the fill go unnoticed for so long.
     n_layers = 2 if include_epoch_jump else 1
     res = composite_index(str(composites), layers=n_layers).read_window((minx, miny, maxx, maxy))
     if res is None:
@@ -422,7 +488,7 @@ def building_table(
     preboom_arr = arr[len(BAND_NAMES): 2 * len(BAND_NAMES)] if include_epoch_jump else None
     arr = arr[: len(BAND_NAMES)]
     bu_utm = bu.to_crs(crs)
-    means, maxes = zonal_mean_max(bu_utm, arr, transform)
+    means, maxes = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
 
     out = gpd.GeoDataFrame({
         "quadrat": name,
@@ -456,7 +522,7 @@ def building_table(
         # this one needs none). A real installation should be dim pre-boom and bright
         # now; jump ~0 in either direction is uninformative or a persistent bright
         # roof/soil, not evidence of PV.
-        pb_means, _ = zonal_mean_max(bu_utm, preboom_arr, transform)
+        pb_means, _ = zonal_mean_max(bu_utm, preboom_arr, transform, nodata=COMPOSITE_FILL)
         for i, b in enumerate(BAND_NAMES):
             out[f"{b}_jump"] = means[i] - pb_means[i]
 
@@ -489,6 +555,18 @@ def building_table(
         # for at all (seg_max=0 both epochs, the common case below the detection floor)
         # gets jump=0, correctly uninformative -- only a genuine rise is signal.
         out["epoch_jump"] = out["seg_max"] - out["preboom_max"]
+
+    # `zonal_mean_max` returns NaN (2026-08-06 fix) for a building with no valid
+    # composite pixel. Unlike `score_buildings_national`, which keeps the row with a NaN
+    # score, drop it here: an unfeaturisable building cannot contribute to a fit, and a
+    # silent NaN would poison the standardisation in `fit_logistic`.
+    band_cols = [f"{b}_mean" for b in BAND_NAMES]
+    valid = out[band_cols].notna().all(axis=1)
+    if not valid.all():
+        log.warning("quadrat %s: dropping %d/%d buildings with no valid composite pixel "
+                    "(likely at the quadrat's own boundary)", name, int((~valid).sum()), len(out))
+        out = out[valid.to_numpy()].reset_index(drop=True)
+
     out = out.set_geometry("geometry").set_crs("EPSG:4326")
     log.info(
         "quadrat %s: %d buildings, %d with PV (%.1f%%), true PV area %.0f m2",
@@ -802,6 +880,16 @@ def score_buildings_national(
     `zonal_mean_max`'s representative-point fallback already handles them).
     `limit` caps the number of cells actually processed this call (0 = all), for a
     smoke test before a multi-hour national run.
+
+    **Cell-edge false positives (2026-08-06 fix).** `read_window`'s bounds round-trip
+    inflates the requested window past the tile and `rasterio.merge` fills the excess
+    with zeros, which this classifier reads as near-certain PV -- before the fix that was
+    45.6% of every flagged building in Pakistan, concentrated in a band along every cell
+    boundary. `zonal_mean_max(..., nodata=COMPOSITE_FILL)` excludes those pixels from the
+    statistics; a building left with no valid pixel keeps its row (building counts and
+    `potential.large_roof_buildings` stay complete) but gets `p_roofclf`/`sppi` NaN,
+    counted in `n_unscored_nodata` and logged. See `zonal_mean_max` for the mechanism,
+    the measured numbers, and why widening the read instead makes it worse.
     """
     from earthpv.buildings import _iso3_for, fetch_vida_buildings
     from earthpv.config import Settings
@@ -821,7 +909,7 @@ def score_buildings_national(
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    n_cells, n_buildings, n_flagged_05 = 0, 0, 0
+    n_cells, n_buildings, n_flagged_05, n_unscored_nodata = 0, 0, 0, 0
     for row in comp_idx.index.itertuples():
         if limit and n_cells >= limit:
             break
@@ -850,7 +938,7 @@ def score_buildings_national(
         arr, transform, crs = res
         arr = arr[: len(BAND_NAMES)].astype("float32") / REFL_SCALE
         bu_utm = bu.to_crs(crs)
-        means, _ = zonal_mean_max(bu_utm, arr, transform)
+        means, _ = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
 
         eps = 1e-6
         r, nir, sw = means[_I_RED], means[_I_NIR], means[_I_SWIR1]
@@ -868,7 +956,22 @@ def score_buildings_national(
         feat_df["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
         feat_df["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
 
-        p = predict_proba(model, design_matrix(feat_df, feats))
+        # A building with no valid composite pixel keeps its row -- building counts and
+        # `potential.large_roof_buildings` read this table for footprints alone, so
+        # dropping it would quietly shrink the national building population -- but its
+        # scores stay NaN. NaN never satisfies `p_roofclf >= threshold`, so it cannot
+        # reach a capacity figure or a JOSM lead. This is the fix, not a defensive
+        # check: before it, those rows scored ~0.73 and were 45.6% of all national flags
+        # (see `zonal_mean_max`).
+        valid = feat_df[[c for c in feat_df.columns if c != "bf_confidence"]].notna().all(axis=1)
+        valid = valid.to_numpy()
+        n_unscored_nodata += int((~valid).sum())
+
+        p = np.full(len(feat_df), np.nan)
+        if valid.any():
+            p[valid] = predict_proba(
+                model, design_matrix(feat_df[valid].reset_index(drop=True), feats)
+            )
         # SPPI costs nothing extra here -- the five bands it needs are already read for
         # the model features above. Saving it alongside p_roofclf is what lets a future
         # national AND-gate (see docs/methods/density.md's "SPPI cross-validation")
@@ -894,8 +997,9 @@ def score_buildings_national(
 
     log.info("Done: %d cells scored this run, %d buildings, %d >= 0.5 raw probability "
               "(deployment threshold is chosen separately, see the LOQO precision "
-              "calibration, not this raw count) -> %s", n_cells, n_buildings, n_flagged_05,
-              out_dir)
+              "calibration, not this raw count), %d left unscored (p_roofclf NaN) for "
+              "having no valid composite pixel -> %s",
+              n_cells, n_buildings, n_flagged_05, n_unscored_nodata, out_dir)
     return out_dir
 
 
