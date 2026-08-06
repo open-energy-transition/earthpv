@@ -51,12 +51,32 @@ earthpv density --aoi <aoi> --districts && earthpv check-density --aoi <aoi>
 
 earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration quadrats
 earthpv roofclf-score-national --aoi <aoi>          # long: hours at country scale
+
+# ESSENTIAL, not optional -- run after every national scoring pass. See
+# docs/methods/roofclf-national-validation.md.
+pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
+
 earthpv sub400-capacity --aoi <aoi> --osm-solar <national OSM solar pull>
 earthpv atlas --aoi <aoi> \
   --sub400-central-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
   --sub400-low-cells     data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
   --osm-solar <national OSM solar pull>
 ```
+
+**Random-cell manual validation (2026-08-06) is part of this workflow, not an optional
+extra.** The 17 calibration quadrats are curated and industrial-leaning; a `roofclf`
+that scores well only there is not evidence it works on the un-curated rest of the
+country. `scripts/tile_roofclf_detections_geojson.py --random-cells N --seed S` draws N
+cells uniformly at random from the national scoring output (only cells with >=1 flagged
+building by default; `--include-empty-cells` to sample true-negative regions too),
+excludes anything already inside a calibration quadrat, and writes the same
+complete-per-region JOSM GeoJSON tiles `--all-quadrats` already produces, into
+`results/<aoi>_roofclf_validation/`. Reviewed in JOSM the same way as the quadrat tiles;
+results get logged to `results/roofclf_random_validation_log.csv` (create it with a
+header row on first use) so precision against this unbiased population accumulates
+across batches instead of being re-eyeballed from scratch each time. Full protocol:
+`docs/methods/roofclf-national-validation.md`. First batch: 20 cells, seed 1, in
+`results/pakistan_roofclf_validation/`.
 
 **Everything else in this file is optional, supplementary, or experimental**, kept
 because it is either evidence toward the main workflow (calibration, quadrat protocol),

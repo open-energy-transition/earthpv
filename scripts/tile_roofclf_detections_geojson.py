@@ -11,7 +11,8 @@ most/least confident calls." A capped or randomly-sampled file cannot show that,
 JOSM reviewer working through tiles one at a time does not need the whole country pooled
 into one random draw; they need one region, completely, at a time.
 
-Exactly one of `--cell` / `--bbox` / `--all-quadrats` selects which region(s):
+Exactly one of `--cell` / `--bbox` / `--all-quadrats` / `--random-cells` selects which
+region(s):
 
 - `--cell` -- one or more named 0.1deg grid cells, comma-separated.
 - `--bbox` -- one arbitrary box, minx,miny,maxx,maxy.
@@ -20,6 +21,17 @@ Exactly one of `--cell` / `--bbox` / `--all-quadrats` selects which region(s):
   validation regions. Filters to each quadrat's actual boundary polygon, not just its
   bounding box, since several are hand-drawn and not rectangular. One output file set
   per quadrat, so you get a JOSM layer for every validation region in one run.
+- `--random-cells N` -- N grid cells picked uniformly at random from every cell
+  `roofclf-score-national` actually scored, seeded (`--seed`, default 0) for a
+  reproducible draw. Unlike `--all-quadrats`, these are NOT curated -- that is the
+  point: the quadrats are small, hand-picked, industrial-leaning boxes, and a model that
+  looks good only there could still be failing broadly. This is the spot-check for
+  everywhere else, and is meant to be run repeatedly (a fresh `--seed` each time) as a
+  standing part of the workflow, not a one-off. Only draws from cells with at least one
+  flagged building by default (nothing to review otherwise); `--include-empty-cells` to
+  sample the full national cell set including ones with zero detections, e.g. to spot
+  check true-negative regions too. Each selected cell is then handled exactly like
+  `--cell`, including the calibration-overlap exclusion below.
 
 All output for a run lands in one folder, `results/<aoi>_roofclf_validation/` by default
 (override with `--out-dir`) -- every region's tiles side by side rather than scattered
@@ -31,6 +43,11 @@ otherwise write the identical style file dozens of times over.
     pixi run roofclf-tiles -- --cell 0135_0078,0061_0012
     python scripts/tile_roofclf_detections_geojson.py --all-quadrats --mapcss
     python scripts/tile_roofclf_detections_geojson.py --bbox 74.35,31.55,74.40,31.58 --max-per-file 1500
+    python scripts/tile_roofclf_detections_geojson.py --random-cells 20 --seed 1 --mapcss
+
+See `docs/methods/roofclf-national-validation.md` for the manual-validation workflow
+this feeds -- read it before running a JOSM session, especially the batch-size and
+result-recording conventions.
 """
 from __future__ import annotations
 
@@ -109,6 +126,49 @@ def load_by_cell(roofclf_dir: Path, cell: str, threshold: float) -> gpd.GeoDataF
     if not p.exists():
         raise SystemExit(f"{p} not found -- is {cell!r} a cell roofclf actually scored?")
     return _read_flagged(p, threshold)
+
+
+def pick_random_cells(
+    roofclf_dir: Path, n: int, threshold: float, seed: int, include_empty: bool,
+) -> list[str]:
+    """`n` cell names drawn uniformly at random from `roofclf_dir`'s scored cells.
+
+    Column-pruned (`columns=["p_roofclf"]`, no geometry) so checking every cell for
+    "has at least one flagged building" is a full-national scan in seconds, not the
+    minutes a geopandas read per file would cost -- measured on Pakistan's 4,470 cells,
+    ~8s total. Skips a cell whose parquet failed to write anything readable (an empty
+    placeholder from `score_buildings_national`'s own "0 buildings this cell" case)
+    rather than erroring the whole draw over one cell.
+    """
+    import random
+
+    all_cells = sorted(p.stem for p in roofclf_dir.glob("*.parquet"))
+    if not all_cells:
+        raise SystemExit(f"no cell parquets under {roofclf_dir}")
+
+    if include_empty:
+        pool = all_cells
+    else:
+        pool = []
+        for cell in all_cells:
+            try:
+                df = pd.read_parquet(roofclf_dir / f"{cell}.parquet", columns=["p_roofclf"])
+            except Exception:
+                continue
+            if not df.empty and (df["p_roofclf"] >= threshold).any():
+                pool.append(cell)
+        print(f"  {len(pool):,}/{len(all_cells):,} scored cells have >=1 flagged building "
+              f"at this threshold -- drawing from those (--include-empty-cells for all)")
+
+    if not pool:
+        raise SystemExit("no cell qualifies for --random-cells (nothing >= threshold "
+                          "anywhere -- pass --include-empty-cells to sample regardless)")
+
+    k = min(n, len(pool))
+    if k < n:
+        print(f"  WARNING: only {k} qualifying cells exist nationally, fewer than "
+              f"--random-cells {n} -- returning all of them")
+    return sorted(random.Random(seed).sample(pool, k))
 
 
 def calibration_quadrats_union(labels_dir: Path) -> BaseGeometry | None:
@@ -255,11 +315,18 @@ def write_tile(
 def process_region(
     label: str, gdf: gpd.GeoDataFrame, bbox: tuple, out_prefix: Path, threshold: float,
     roofclf_dir: Path, max_per_file: int, osm_solar_path: Path | None, make_mapcss: bool,
+    region_meta: dict | None = None,
 ) -> dict:
     """One region (cell / bbox / quadrat): tile it, write every tile, return a summary
     row. Never raises on an empty region -- that is a real, reportable outcome across a
     multi-region run (`--all-quadrats`), not a fatal error the way it is for a single
-    explicit `--cell`/`--bbox`."""
+    explicit `--cell`/`--bbox`.
+
+    `region_meta` (e.g. `{"selection": "random", "seed": 1}` for `--random-cells`) is
+    merged into every tile's embedded `earthpv` metadata, so a reviewer picking up a
+    GeoJSON later -- see docs/methods/roofclf-national-validation.md's "Recording
+    results" -- can read back exactly how the region was chosen without needing shell
+    history."""
     print(f"\n=== {label} ===")
     if gdf.empty:
         print("  0 flagged buildings -- skipping")
@@ -278,7 +345,7 @@ def process_region(
         write_tile(
             tile_gdf, tile_bbox, out_path,
             {"region": label, "threshold": threshold, "roofclf_dir": str(roofclf_dir),
-             "part": i, "n_parts": len(tiles)},
+             "part": i, "n_parts": len(tiles), **(region_meta or {})},
             osm_solar_path, make_mapcss,
         )
         files.append(str(out_path))
@@ -290,8 +357,11 @@ def process_region(
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--aoi", default="pakistan")
-    ap.add_argument("--roofclf-dir", default="data/roofclf_national_20260805")
-    ap.add_argument("--model-summary", default="data/roofclf_20260805_newquadrats/summary.json")
+    ap.add_argument("--roofclf-dir", default=None,
+                     help="default data/roofclf_national_with_sppi/<aoi>/prob -- "
+                          "`roofclf-score-national`'s output")
+    ap.add_argument("--model-summary", default="data/roofclf/summary.json",
+                     help="`earthpv roof-classifier`'s summary.json, for the default threshold")
     ap.add_argument("--threshold", type=float, default=None,
                      help="p_roofclf cutoff (default: deployment_threshold from --model-summary)")
     ap.add_argument("--cell", default=None,
@@ -303,6 +373,22 @@ def main() -> None:
         help="every registered calibration quadrat (roofclf.discover_quadrats) -- the "
              "project's small hand-mapped validation regions -- one output file set "
              "per quadrat, filtered to its real boundary polygon",
+    )
+    ap.add_argument(
+        "--random-cells", type=int, default=None,
+        help="N grid cells picked uniformly at random nationally from roofclf-dir "
+             "(seeded by --seed) -- the un-curated counterpart to --all-quadrats. "
+             "Each is then treated exactly like --cell",
+    )
+    ap.add_argument("--seed", type=int, default=0,
+                     help="RNG seed for --random-cells, so a draw is reproducible "
+                          "(default 0; pass a fresh value to get a different sample)")
+    ap.add_argument(
+        "--include-empty-cells", action="store_true",
+        help="for --random-cells only: sample from every scored cell nationally, "
+             "including ones with zero flagged buildings (default: only cells with "
+             ">=1 flagged building, since an empty one gives a JOSM reviewer nothing "
+             "to check)",
     )
     ap.add_argument("--labels-dir", default="data/labels",
                      help="for --all-quadrats, and for the calibration-overlap exclusion "
@@ -331,11 +417,17 @@ def main() -> None:
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    modes_given = sum(bool(x) for x in (args.cell, args.bbox, args.all_quadrats))
+    modes_given = sum(bool(x) for x in (args.cell, args.bbox, args.all_quadrats, args.random_cells))
     if modes_given != 1:
-        raise SystemExit("pass EXACTLY ONE of --cell, --bbox, or --all-quadrats")
+        raise SystemExit(
+            "pass EXACTLY ONE of --cell, --bbox, --all-quadrats, or --random-cells"
+        )
+    if args.include_empty_cells and not args.random_cells:
+        raise SystemExit("--include-empty-cells only applies to --random-cells")
 
-    roofclf_dir = Path(args.roofclf_dir)
+    roofclf_dir = Path(args.roofclf_dir) if args.roofclf_dir else (
+        Path("data") / "roofclf_national_with_sppi" / args.aoi / "prob"
+    )
     if not roofclf_dir.exists():
         raise SystemExit(f"{roofclf_dir} not found -- pass --roofclf-dir")
 
@@ -358,12 +450,12 @@ def main() -> None:
     out_dir = Path(args.out_dir) if args.out_dir else Path("results") / f"{args.aoi}_roofclf_validation"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Loaded once, reused for every --cell/--bbox region below -- cheap (18 small
-    # polygons unioned once), and must be the SAME union all regions are checked
-    # against so two regions in one run cannot each keep the half of an excluded
-    # building the other one dropped.
+    # Loaded once, reused for every --cell/--bbox/--random-cells region below -- cheap
+    # (18 small polygons unioned once), and must be the SAME union all regions are
+    # checked against so two regions in one run cannot each keep the half of an
+    # excluded building the other one dropped.
     quadrats_union = None
-    if (args.cell or args.bbox) and not args.include_calibration_overlap:
+    if (args.cell or args.bbox or args.random_cells) and not args.include_calibration_overlap:
         quadrats_union = calibration_quadrats_union(Path(args.labels_dir))
         if quadrats_union is None:
             print(f"(no calibration quadrats found under {args.labels_dir} -- nothing to exclude)")
@@ -371,8 +463,16 @@ def main() -> None:
     # Build the region list up front so --all-quadrats can report "N regions to process"
     # before spending any time reading composites.
     regions = []  # (label, gdf, bbox)
-    if args.cell:
-        cells = [c.strip() for c in args.cell.split(",") if c.strip()]
+    if args.cell or args.random_cells:
+        if args.cell:
+            cells = [c.strip() for c in args.cell.split(",") if c.strip()]
+        else:
+            print(f"drawing {args.random_cells} random cell(s) from {roofclf_dir} "
+                  f"(seed={args.seed})")
+            cells = pick_random_cells(
+                roofclf_dir, args.random_cells, threshold, args.seed, args.include_empty_cells,
+            )
+            print(f"  picked: {', '.join(cells)}")
         for cell in cells:
             gdf = load_by_cell(roofclf_dir, cell, threshold)
             gdf, n_excluded = exclude_calibration_overlap(gdf, quadrats_union)
@@ -410,9 +510,10 @@ def main() -> None:
     summaries = []
     for label, gdf, bbox in regions:
         out_prefix = out_dir / f"{args.aoi}_roofclf_tiles_{label}"
+        region_meta = {"selection": "random", "seed": args.seed} if args.random_cells else None
         summaries.append(process_region(
             label, gdf, bbox, out_prefix, threshold, roofclf_dir, args.max_per_file,
-            osm_solar_path, args.mapcss,
+            osm_solar_path, args.mapcss, region_meta,
         ))
 
     n_regions = len(summaries)

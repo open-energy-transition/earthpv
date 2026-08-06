@@ -75,9 +75,11 @@ rooftop-detections-export = "python scripts/export_rooftop_detections_geojson.py
 # roofclf-flagged buildings (sub-400 m2, density-domain-restricted, capped per cell) as
 # one JOSM validation layer -- re-run whenever roofclf national scoring is refreshed.
 roofclf-detections-export = "python scripts/export_roofclf_detections_geojson.py"
-# EVERY roofclf-flagged building in one/many cells, a bbox, or all calibration quadrats,
-# complete and never sampled, split into as many tiled JOSM files per region as it takes
-# to keep each one reviewable -- no domain restriction, unlike roofclf-detections-export.
+# EVERY roofclf-flagged building in one/many cells, a bbox, all calibration quadrats, or
+# N random national cells (--random-cells, the essential un-curated validation batch --
+# see docs/methods/roofclf-national-validation.md), complete and never sampled, split
+# into as many tiled JOSM files per region as it takes to keep each one reviewable -- no
+# domain restriction, unlike roofclf-detections-export.
 roofclf-tiles = "python scripts/tile_roofclf_detections_geojson.py"
 # Per-quadrat PV density vs detection quality (discrimination and bias kept apart, with
 # partial correlations controlling for installation size) -- re-run when a quadrat is

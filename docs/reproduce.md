@@ -52,11 +52,12 @@ anything into the evaluate numbers here.
 
 ## The full pipeline
 
-Ordered by dependency. Every stage after `train` needs a checkpoint path. **Steps 1-13
+Ordered by dependency. Every stage after `train` needs a checkpoint path. **Steps 1-14
 are the project's default, main workflow** -- segmentation for individual arrays
-&ge; 400 m&sup2; (steps 6-9), `roofclf` for every building below that floor (steps 10-12),
-combined by step 13 into the **evidence atlas**, which is this project's primary output.
-Step 14 (Germany calibration) and everything under [How it
+&ge; 400 m&sup2; (steps 6-9), `roofclf` for every building below that floor (steps
+10-13, including the essential random-cell manual validation at step 12), combined by
+step 14 into the **evidence atlas**, which is this project's primary output. Step 15
+(Germany calibration) and everything under [How it
 works](how-it-works.md#experiments) are optional extras, not alternative main paths.
 
 === "1. Labels"
@@ -183,9 +184,9 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     (`*_total`, `*_roofcand`, `est_mwp_rc`) are rederived on every run.
 
     If your AOI has no mapped [calibration quadrats](calibration-mapping-protocol.md)
-    yet, stop here and run step 13 without any `--sub400-*` flag: that gives the
+    yet, stop here and run step 14 without any `--sub400-*` flag: that gives the
     &ge; 400 m&sup2;-only atlas, which is still this workflow's output for that country
-    -- steps 10-12 need quadrats to exist first.
+    -- steps 10-13 need quadrats to exist first.
 
 === "10. Roof classifier"
 
@@ -218,7 +219,27 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     cells this takes 2 to 3 hours. Writes one parquet per cell (`p_roofclf`, `sppi`) to
     `data/roofclf_national_with_sppi/<aoi>/prob/`.
 
-=== "12. Sub-400 m² capacity"
+=== "12. Manual validation (random cells)"
+
+    **Essential, not optional** -- run this after every national scoring pass, not just
+    once. The calibration quadrats are curated and industrial-leaning; this is the
+    un-curated counterpart, a fresh random sample of national cells reviewed by hand in
+    JOSM. See [Random-cell manual
+    validation](methods/roofclf-national-validation.md) for the full protocol
+    (selection, JOSM review steps, and where to record what you find) -- this is just
+    the command:
+
+    ```bash
+    pixi run roofclf-tiles -- --random-cells 20 --seed 1 --mapcss
+    ```
+
+    No GPU. Writes complete, un-sampled GeoJSON tiles to
+    `results/<aoi>_roofclf_validation/`, one region per drawn cell, in the exact format
+    `--all-quadrats` already uses. A fresh `--seed` each run draws a new, independent
+    batch -- the point is repetition over time, building up a precision estimate on a
+    population the quadrats cannot represent by construction.
+
+=== "13. Sub-400 m² capacity"
 
     Restrict the national scoring to cells whose building density matches the
     calibration quadrats, dedupe against existing segmentation candidates and mapped
@@ -238,7 +259,7 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     and [Capacity density](methods/density.md) for exactly what it does and does not
     claim.
 
-=== "13. Evidence atlas"
+=== "14. Evidence atlas"
 
     Combine both halves into the **main workflow's primary output**: two tiers by
     *standard of proof*, de-duplicated against each other and against hand-mapped OSM.
@@ -259,7 +280,7 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     segmentation-only atlas -- still this workflow's output, just missing its sub-400
     m&sup2; half until quadrats exist.
 
-=== "14. Germany calibration (optional)"
+=== "15. Germany calibration (optional)"
 
     Optional, Germany only, and not part of the main workflow above. Cross-check
     against the legally complete MaStR register.

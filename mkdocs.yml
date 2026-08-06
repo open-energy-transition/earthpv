@@ -106,6 +106,7 @@ nav:
       - Calibration: methods/calibration.md
       - Calibration quadrats overview: methods/calibration-quadrats.md
       - Quadrat protocol: calibration-mapping-protocol.md
+      - Roofclf random-cell validation: methods/roofclf-national-validation.md
   - Notes:
       - notes/index.md
       - Calibration boxes: issues/pakistan-calibration-boxes.md
