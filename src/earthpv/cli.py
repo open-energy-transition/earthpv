@@ -557,6 +557,169 @@ def roof_classifier_cmd(
     )
 
 
+@app.command("roofclf-score-national")
+def roofclf_score_national_cmd(
+    aoi: str = typer.Option("pakistan", help="AOI name (supplies division.iso3 for VIDA)"),
+    model_path: Path = typer.Option(
+        Path("data/roofclf/model_full.json"),
+        help="Saved model from `earthpv roof-classifier` (its --out-dir/model_full.json)",
+    ),
+    composites: Path = typer.Option(None, help="Composite dir (default data/composites/<aoi>)"),
+    out_dir: Path = typer.Option(
+        None, help="Output dir, one parquet per cell (default "
+        "data/roofclf_national_with_sppi/<aoi>/prob)",
+    ),
+    min_roof_area_m2: float = typer.Option(
+        0.0, help="Pass-through to fetch_vida_buildings' own filter (0 = keep everything)"
+    ),
+    force: bool = typer.Option(False, help="Recompute a cell even if its parquet already exists"),
+    limit: int = typer.Option(
+        0, help="Cap the number of cells processed this call (0 = all; use for a smoke test "
+        "before a multi-hour national run)"
+    ),
+) -> None:
+    """Score every VIDA building nationally with an already-fit roofclf model -- the
+    sub-400 m2 half of the **main workflow** (see CLAUDE.md's "Main workflow" section):
+    segmentation covers individual arrays >= 400 m2, this covers every building below
+    that floor, and `sub400-capacity` + `atlas --sub400-*` combine both into the evidence
+    atlas. Long-running at country scale (~2-3h for Pakistan's ~4,470 cells); resumable
+    (a cell already written is skipped unless --force) and safe to run detached -- see
+    docs/reproduce.md's "Operational notes" for running it as its own systemd unit.
+    """
+    from earthpv.roofclf import load_model, score_buildings_national
+
+    composites = composites or Path("data/composites") / aoi
+    out_dir = out_dir or Path("data/roofclf_national_with_sppi") / aoi / "prob"
+    model, feats = load_model(model_path)
+    score_buildings_national(
+        aoi, model, feats, composites, out_dir,
+        min_roof_area_m2=min_roof_area_m2, force=force, limit=limit,
+    )
+    typer.echo(f"-> {out_dir}")
+
+
+@app.command("sub400-capacity")
+def sub400_capacity_cmd(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    roofclf_dir: Path = typer.Option(
+        None, help="`roofclf-score-national`'s output dir (default "
+        "data/roofclf_national_with_sppi/<aoi>/prob)",
+    ),
+    pred_dir: Path = typer.Option(
+        Path("data/predictions"),
+        help="For <pred_dir>/<aoi>/candidates.parquet and, if --cell-density-path is not "
+        "given and none is cached yet, <pred_dir>/<aoi>/density/grid.csv",
+    ),
+    calib_dir: Path = typer.Option(
+        Path("data/roofclf"),
+        help="`earthpv roof-classifier`'s output dir -- reads folds.csv, "
+        "buildings.geoparquet and summary.json (for the deployment threshold), and "
+        "caches national_cell_density.parquet there if it doesn't exist yet",
+    ),
+    cell_density_path: Path = typer.Option(
+        None, help="Override <calib-dir>/national_cell_density.parquet (cell, n_buildings, "
+        "density); derived from <pred-dir>/<aoi>/density/grid.csv on first use otherwise"
+    ),
+    out_dir: Path = typer.Option(None, help="Output dir (default <roofclf-dir>/../density)"),
+    threshold: float = typer.Option(
+        None, help="roofclf deployment threshold (default: calib-dir/summary.json's "
+        "deployment_threshold, the pooled precision-targeted cut `roof-classifier` chose)"
+    ),
+    osm_solar: Path = typer.Option(
+        None, help="National OSM/Overpass solar pull (e.g. data/labels/<aoi>_overpass_"
+        "solar.parquet) -- dedupes against buildings OSM already mapped that segmentation "
+        "missed entirely. Optional but recommended for every call feeding the evidence "
+        "atlas (see domain_restricted_capacity's docstring for the double-counting this "
+        "closes)."
+    ),
+    max_distance_m: float = typer.Option(30.0, help="'Not already a known candidate/OSM feature' distance"),
+    contamination_max_m2: float = typer.Option(
+        400.0, help="Exclude flagged buildings whose OWN footprint already exceeds this "
+        "-- they were never sub-400 m2, just outside the 30 m match radius of an "
+        "existing candidate"
+    ),
+    ratio_lo: float = typer.Option(
+        None, help="Lower bound of roofclf's rate_ratio band selecting 'calibrated' "
+        "quadrats (default sub400_capacity.DEFAULT_RATIO_LO = 0.5)"
+    ),
+    ratio_hi: float = typer.Option(
+        None, help="Upper bound of that same band (default DEFAULT_RATIO_HI = 2.0)"
+    ),
+    sppi_min_precision: float = typer.Option(
+        0.5, help="Precision target for the AND-gate's pooled SPPI threshold"
+    ),
+) -> None:
+    """Sub-400 m2 capacity (roofclf-only, and roofclf-AND-SPPI), restricted to national
+    cells whose building density matches the calibration quadrats -- the other half of
+    the **main workflow**'s evidence atlas alongside segmentation's >= 400 m2 total. See
+    `sub400_capacity.py`'s module docstring for exactly what this number does and does
+    not claim (in particular: NOT a national figure, do not rescale it).
+
+    Writes `sub400_central_incremental_buildings.parquet` (roofclf-only, the evidence
+    atlas's Best-estimate small-PV component) and `sub400_low_incremental_buildings.
+    parquet` (the AND-gate, the Verified small-PV component) plus a summary JSON for
+    each, both feeding directly into `earthpv atlas --sub400-central-cells ...
+    --sub400-low-cells ...`.
+    """
+    import json
+    import logging
+
+    from earthpv.sub400_capacity import (
+        DEFAULT_RATIO_HI, DEFAULT_RATIO_LO, cell_density_from_grid,
+        domain_restricted_and_gate_capacity, domain_restricted_capacity,
+    )
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    roofclf_dir = Path(roofclf_dir) if roofclf_dir else Path("data/roofclf_national_with_sppi") / aoi / "prob"
+    out_dir = Path(out_dir) if out_dir else roofclf_dir.parent / "density"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    calib_dir = Path(calib_dir)
+    candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
+    folds_path = calib_dir / "folds.csv"
+    buildings_path = calib_dir / "buildings.geoparquet"
+
+    cell_density_path = Path(cell_density_path) if cell_density_path else calib_dir / "national_cell_density.parquet"
+    if not cell_density_path.exists():
+        grid_csv = Path(pred_dir) / aoi / "density" / "grid.csv"
+        cell_density_path.parent.mkdir(parents=True, exist_ok=True)
+        cell_density_from_grid(grid_csv).to_parquet(cell_density_path)
+        typer.echo(f"Derived {cell_density_path} from {grid_csv}")
+
+    if threshold is None:
+        threshold = json.loads((calib_dir / "summary.json").read_text())["deployment_threshold"]
+
+    kwargs = dict(
+        roofclf_dir=roofclf_dir, candidates_path=candidates_path, folds_path=folds_path,
+        buildings_path=buildings_path, cell_density_path=cell_density_path,
+        threshold=threshold, max_distance_m=max_distance_m,
+        contamination_max_m2=contamination_max_m2,
+        ratio_lo=DEFAULT_RATIO_LO if ratio_lo is None else ratio_lo,
+        ratio_hi=DEFAULT_RATIO_HI if ratio_hi is None else ratio_hi,
+        osm_solar_path=osm_solar,
+    )
+
+    central, central_summary = domain_restricted_capacity(**kwargs)
+    central.to_parquet(out_dir / "sub400_central_incremental_buildings.parquet")
+    (out_dir / "sub400_central_summary.json").write_text(json.dumps(central_summary, indent=2))
+
+    low, low_summary = domain_restricted_and_gate_capacity(
+        **kwargs, sppi_min_precision=sppi_min_precision,
+    )
+    low.to_parquet(out_dir / "sub400_low_incremental_buildings.parquet")
+    (out_dir / "sub400_low_summary.json").write_text(json.dumps(low_summary, indent=2))
+
+    typer.echo(
+        f"roofclf-only (Best-estimate small-PV component): "
+        f"{central_summary['total_est_mwp_sub400_domain_restricted']:.1f} MWp "
+        f"({central_summary['scope']})"
+    )
+    typer.echo(
+        f"AND-gate (Verified small-PV component): "
+        f"{low_summary['total_est_mwp_sub400_and_gate']:.1f} MWp"
+    )
+    typer.echo(f"-> {out_dir}")
+
+
 @app.command("check-density")
 def check_density_cmd(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),

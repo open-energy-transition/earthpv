@@ -74,23 +74,36 @@ built from summed draws. Adding per-cell bounds gives the wrong answer.
 
 ## Reproducing this map
 
+This is earthpv's [main workflow](../reproduce.md#the-full-pipeline), end to end: the
+&ge;400 m<sup>2</sup> segmentation half, then the < 400 m<sup>2</sup> roofclf half, then
+the atlas that combines them.
+
 ```bash
+# >= 400 m2 segmentation half
 pixi run earthpv calibrate-candidates --aoi pakistan
 pixi run earthpv density --aoi pakistan --districts
 pixi run earthpv check-density --aoi pakistan   # gate: exits non-zero on an implausible region
 
-# Evidence atlas (Verified / Best estimate): needs the OSM solar pull and the
-# roofclf/SPPI sub-400 m2 building parquets alongside the density run above.
+# < 400 m2 roofclf half -- needs mapped calibration quadrats first, see
+# calibration-mapping-protocol.md. roofclf-score-national is the long pole (hours at
+# country scale) and is resumable per cell like density.
+pixi run earthpv roof-classifier --aoi pakistan
+pixi run earthpv roofclf-score-national --aoi pakistan
+pixi run earthpv sub400-capacity --aoi pakistan \
+    --osm-solar data/labels/pakistan_overpass_solar.parquet
+
+# Evidence atlas (Verified / Best estimate), combining both halves.
 # (--sub400-high-cells is no longer accepted here -- the Ceiling tier was removed
 # 2026-08-06; it still exists for the older bracket atlas, see build_sub400_bracket_atlas.)
 pixi run earthpv atlas --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet \
-    --sub400-low-cells     data/sub400_20260806/sub400_low.parquet \
-    --sub400-central-cells data/sub400_20260806/sub400_central.parquet
+    --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
+    --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet
 ```
 
-The density stage needs no GPU and no retraining; it runs on rasters already on disk in
-roughly two hours single-process for all of Pakistan, and is resumable per cell. See
-[Setup New Country](../reproduce.md) for the stages that produce those rasters in the
-first place, and [Capacity density](../methods/density.md) for how `roofclf`/SPPI and the
-OSM pull that feed the evidence atlas are themselves built.
+Neither `density` nor `roofclf-score-national` needs a GPU or retraining; both run on
+rasters already on disk, each taking roughly two hours single-process for all of
+Pakistan, and both are resumable per cell. See [Setup New
+Country](../reproduce.md#the-full-pipeline) for the stages that produce those rasters in
+the first place, and [Capacity density](../methods/density.md) for how `roofclf`/SPPI
+and the OSM pull that feed the evidence atlas are themselves built.

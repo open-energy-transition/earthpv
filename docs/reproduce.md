@@ -52,7 +52,12 @@ anything into the evaluate numbers here.
 
 ## The full pipeline
 
-Ordered by dependency. Every stage after `train` needs a checkpoint path.
+Ordered by dependency. Every stage after `train` needs a checkpoint path. **Steps 1-13
+are the project's default, main workflow** -- segmentation for individual arrays
+&ge; 400 m&sup2; (steps 6-9), `roofclf` for every building below that floor (steps 10-12),
+combined by step 13 into the **evidence atlas**, which is this project's primary output.
+Step 14 (Germany calibration) and everything under [How it
+works](how-it-works.md#experiments) are optional extras, not alternative main paths.
 
 === "1. Labels"
 
@@ -155,8 +160,9 @@ Ordered by dependency. Every stage after `train` needs a checkpoint path.
 
 === "9. Density"
 
-    Per-building PV area and capacity, plus grid and region aggregates. No GPU, no
-    retraining, runs on artifacts already on disk.
+    Per-building PV area and capacity for the **&ge; 400 m&sup2; segmentation half** of
+    the main workflow, plus grid and region aggregates. No GPU, no retraining, runs on
+    artifacts already on disk.
 
     ```bash
     pixi run earthpv calibrate-candidates --aoi pakistan
@@ -176,9 +182,87 @@ Ordered by dependency. Every stage after `train` needs a checkpoint path.
     partial and takes about two hours for Pakistan. The candidate-population columns
     (`*_total`, `*_roofcand`, `est_mwp_rc`) are rederived on every run.
 
-=== "10. Germany calibration"
+    If your AOI has no mapped [calibration quadrats](calibration-mapping-protocol.md)
+    yet, stop here and run step 13 without any `--sub400-*` flag: that gives the
+    &ge; 400 m&sup2;-only atlas, which is still this workflow's output for that country
+    -- steps 10-12 need quadrats to exist first.
 
-    Optional, Germany only. Cross-check against the legally complete MaStR register.
+=== "10. Roof classifier"
+
+    The **< 400 m&sup2; half** of the main workflow: a per-building "does this roof
+    carry PV?" classifier, fit on the exhaustively mapped calibration quadrats (the only
+    source where a no-PV building is a real negative -- see the
+    [quadrat protocol](calibration-mapping-protocol.md)). No GPU.
+
+    ```bash
+    pixi run earthpv roof-classifier --aoi pakistan
+    ```
+
+    Writes `data/roofclf/`: `model_full.json` (the pooled fit every later step reads),
+    `summary.json` (leave-one-quadrat-out AUC and the precision-targeted deployment
+    threshold), `folds.csv` and `buildings.geoparquet`. Reports skill **per quadrat**,
+    never pooled -- see [Capacity density](methods/density.md) for why a pooled number
+    here would be misleading.
+
+=== "11. Score roofclf nationally"
+
+    Apply the fitted model to every VIDA building in the AOI. No GPU, but the long pole
+    of the main workflow at country scale.
+
+    ```bash
+    pixi run earthpv roofclf-score-national --aoi pakistan
+    ```
+
+    Resumable per cell (`--force` to redo one that already exists) and safe to run
+    detached -- see [Operational notes](#operational-notes) below; at Pakistan's ~4,470
+    cells this takes 2 to 3 hours. Writes one parquet per cell (`p_roofclf`, `sppi`) to
+    `data/roofclf_national_with_sppi/<aoi>/prob/`.
+
+=== "12. Sub-400 m² capacity"
+
+    Restrict the national scoring to cells whose building density matches the
+    calibration quadrats, dedupe against existing segmentation candidates and mapped
+    OSM solar, and convert to capacity at the LOQO-measured precision. No GPU.
+
+    ```bash
+    pixi run earthpv sub400-capacity --aoi pakistan \
+        --osm-solar data/labels/pakistan_overpass_solar.parquet
+    ```
+
+    Writes `sub400_central_incremental_buildings.parquet` (roofclf alone, the evidence
+    atlas's Best-estimate small-PV component) and `sub400_low_incremental_buildings.
+    parquet` (roofclf AND SPPI agreeing, the Verified component) to
+    `data/roofclf_national_with_sppi/<aoi>/density/`. The result is explicitly **not a
+    national figure** -- it describes only the density-matched cells, and must not be
+    rescaled by their share of the country. See `sub400_capacity.py`'s module docstring
+    and [Capacity density](methods/density.md) for exactly what it does and does not
+    claim.
+
+=== "13. Evidence atlas"
+
+    Combine both halves into the **main workflow's primary output**: two tiers by
+    *standard of proof*, de-duplicated against each other and against hand-mapped OSM.
+
+    ```bash
+    pixi run earthpv atlas --aoi pakistan \
+        --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
+        --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
+        --osm-solar data/labels/pakistan_overpass_solar.parquet
+    ```
+
+    Writes the self-contained interactive HTML atlas at
+    `data/predictions/<aoi>/density/<aoi>_pv_evidence_atlas.html` by default. **Verified**
+    is hand-mapped OSM plus roofclf-and-SPPI agreement; **Best estimate** adds
+    recall-corrected &ge; 400 m&sup2; detections plus roofclf-alone density, with the
+    OSM/detection overlap removed rather than double-counted. Without a mapped quadrat
+    yet (step 10's prerequisite), omit both `--sub400-*` flags for the &ge; 400 m&sup2;
+    segmentation-only atlas -- still this workflow's output, just missing its sub-400
+    m&sup2; half until quadrats exist.
+
+=== "14. Germany calibration (optional)"
+
+    Optional, Germany only, and not part of the main workflow above. Cross-check
+    against the legally complete MaStR register.
 
     ```bash
     pixi run earthpv mastr        # download and aggregate MaStR
@@ -391,18 +475,42 @@ cluster before trusting any recall number: a validation split that overlaps the 
 cluster leaks through chip jitter and window overlap, and an empty `val_tiles` silently
 falls back to a random 20 percent split.
 
-### Step 6: capacity
+### Step 6: capacity -- the main workflow's output
+
+This is where the [main workflow](reproduce.md#the-full-pipeline) (steps 9-13 above)
+actually lands for a new country: segmentation's &ge; 400 m&sup2; total, plus `roofclf`'s
+< 400 m&sup2; total once at least one quadrat exists, combined into the evidence atlas.
 
 ```bash
 pixi run earthpv calibrate-candidates --aoi surat_thani
 pixi run earthpv density --aoi surat_thani --districts
-pixi run earthpv atlas --aoi surat_thani
+pixi run earthpv atlas --aoi surat_thani     # >= 400 m2 segmentation-only, for now
 ```
 
 Without local calibration evidence the table marks itself `status: interim-mapped-only`
 and the capacity number is an honest lower bound. That is a legitimate thing to publish as
-long as you say so. Quadrats and manual review are what turn it into an estimate with an
-interval. See [Calibration](methods/calibration.md).
+long as you say so. See [Calibration](methods/calibration.md).
+
+**Once step 4's quadrat is mapped**, extend to the full evidence atlas -- `roofclf` is
+what actually uses it:
+
+```bash
+pixi run earthpv roof-classifier --aoi surat_thani
+pixi run earthpv roofclf-score-national --aoi surat_thani     # long: hours at country scale
+pixi run earthpv sub400-capacity --aoi surat_thani \
+    --osm-solar <national OSM/Overpass solar pull>
+pixi run earthpv atlas --aoi surat_thani \
+    --sub400-central-cells data/roofclf_national_with_sppi/surat_thani/density/sub400_central_incremental_buildings.parquet \
+    --sub400-low-cells     data/roofclf_national_with_sppi/surat_thani/density/sub400_low_incremental_buildings.parquet \
+    --osm-solar <national OSM/Overpass solar pull>
+```
+
+One quadrat is enough to fit `roofclf` and get a number, but leave-one-quadrat-out skill
+(what `roof-classifier`'s `summary.json` reports) needs several, ideally spanning the
+region's different built-up densities the way Pakistan's do -- a single quadrat's number
+is not yet a measured skill estimate, just a fit. Quadrats and manual review are what
+turn the whole thing from a lower bound into an estimate with an interval. See
+[Capacity density](methods/density.md) and [Calibration](methods/calibration.md).
 
 ### Step 7: publish it on this site
 

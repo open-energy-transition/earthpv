@@ -18,7 +18,7 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 <div class="stats" markdown>
 <div class="stat"><span class="value">21,355 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
 <div class="stat"><span class="value">5,078 / 12,979 MWp</span><span class="label">capacity &ge;400 m&sup2; segmentation vs. <400 m&sup2; rooftop classifier </span></div>
-<div class="stat"><span class="value">4</span><span class="label">independent detected methods: segmentation, roofclf, SPPI, glint</span></div>
+<div class="stat"><span class="value">2</span><span class="label">detectors in the main workflow: segmentation (&ge;400 m&sup2;) and roofclf (&lt;400 m&sup2;), cross-checked with SPPI</span></div>
 </div>
 
 ## Build PV capacity maps for every country
@@ -33,28 +33,43 @@ signal in the pilot country. The
 
 ## What is new here
 
-**Detection at every scale, not one model.** No single instrument sees rooftop solar from
-utility-scale plants down to a household system, so earthpv runs four, each measured
-against ground truth:
+**The main workflow: two detectors, one per size regime, one evidence atlas.** No single
+instrument sees rooftop solar from a commercial rooftop down to a household system, so
+earthpv's default pipeline runs two, each measured against ground truth, and combines
+them into this project's primary output:
 
 - **Segmentation** outlines individual arrays **&ge;400 m<sup>2</sup>** directly -- a
   fine-tuned TerraMind reaching commercial rooftops and large residential arrays, where
   earlier work with free 10 m imagery could only find isolated solar farms.
-- **roofclf and SPPI** answer the question below that floor: not "where is the polygon"
-  but "does this *building* carry PV." **roofclf**, a per-building classifier trained on
-  exhaustively mapped quadrats, reaches 0.874 AUC on roofs under 500 m<sup>2</sup>, where
-  segmentation scores 0.50. **SPPI**, a zero-training spectral index, reaches 0.823 AUC
-  with no labels at all. See [Capacity density](methods/density.md).
-- **Glint** confirms panels physically: a glass-fronted array flashes into Sentinel-2 only
-  on the geometry-predictable dates its tilt and azimuth bisect the sun and the sensor, a
-  confirmation independent of spectral appearance that also recovers
-  [how the panel is mounted](results/pv-pose.md).
-- **Growth** diffs a pre-boom (2021/22) composite against the current one -- with
-  segmentation and SPPI each run independently on both epochs -- to show where capacity
-  actually appeared, not just where it stands today. See [Growth](results/growth.md).
+- **roofclf**, cross-checked with **SPPI**, answers the question below that floor: not
+  "where is the polygon" but "does this *building* carry PV." **roofclf**, a per-building
+  classifier trained on exhaustively mapped quadrats, reaches 0.874 AUC on roofs under
+  500 m<sup>2</sup>, where segmentation scores 0.50. **SPPI**, a zero-training spectral
+  index, reaches 0.823 AUC with no labels at all and corroborates roofclf's Verified tier.
+  See [Capacity density](methods/density.md).
+- Both halves converge on the **evidence atlas**: two tiers by *standard of proof* --
+  **Verified** (hand-mapped OpenStreetMap, or roofclf and SPPI agreeing) and **Best
+  estimate** (this project's own highest defensible figure) -- with the overlap between
+  OSM and detections removed rather than double-counted. Command sequence:
+  [The full pipeline](reproduce.md#the-full-pipeline).
 
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.dark.svg#only-dark)
+
+**Optional, supplementary instruments read the same imagery too**, each measured and each
+kept whether or not it was promoted -- evidence toward the main workflow, a secondary
+product, or a documented negative result, never a competing main path. **Glint** confirms
+panels physically (a glass-fronted array flashes into Sentinel-2 only on the
+geometry-predictable dates its tilt and azimuth bisect the sun and the sensor) and also
+recovers [how the panel is mounted](results/pv-pose.md); it folds into the main workflow's
+leads ranking as a boost-only signal, never required for the evidence atlas. **Growth**
+diffs a pre-boom (2021/22) composite against the current one to show where capacity
+actually appeared, not just where it stands today -- see [Growth](results/growth.md). A
+fraction-head expected-area instrument, SPPI as a standalone detector, an older
+Low/Central/High/All-PV bracket atlas, a Germany MaStR cross-check and a rooftop
+potential/saturation atlas exist too; see
+[Experiments](how-it-works.md#experiments) for what was tried and why the two detectors
+above are what shipped as the default.
 
 **The map improves itself.** Detections go to mappers as a MapRoulette challenge;
 verified installations come back as in-domain training labels. That

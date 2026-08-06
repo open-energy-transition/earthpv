@@ -201,6 +201,21 @@ def national_incremental_capacity(
     return incremental, summary
 
 
+def cell_density_from_grid(grid_csv_path: Path) -> pd.DataFrame:
+    """`(cell, n_buildings, density)` derived from `density.py`'s own `grid.csv` -- the
+    building count and the geodesic cell area this needs are already there, so producing
+    the file this module's functions read as `cell_density_path` needs no new fetch, just
+    a projection. Recomputes `density` (buildings/km2) directly from `n_buildings` /
+    `cell_area_km2` rather than reading `grid.csv`'s own `bldg_density_km2` column, which
+    `density.aggregate` only writes when `exp_source == "segmentation"` -- this way the
+    main workflow's `earthpv sub400-capacity` step works regardless of which expected-area
+    instrument the preceding `earthpv density` run used.
+    """
+    grid = pd.read_csv(grid_csv_path, usecols=["cell", "n_buildings", "cell_area_km2"])
+    grid["density"] = grid.n_buildings / grid.cell_area_km2.clip(lower=1e-9)
+    return grid[["cell", "n_buildings", "density"]]
+
+
 def national_cell_domain(cell_density_path: Path) -> set[str]:
     """Cells whose building density falls in the calibration quadrats' range
     (`density.CALIBRATED_BLDG_DENSITY_KM2`) -- the same range `density.py`'s

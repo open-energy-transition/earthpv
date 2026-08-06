@@ -20,6 +20,57 @@ gap is the open front: see "Sub-400 m² instruments" below. Trained on Germany, 
 Punjab, Pakistan. Read
 `README.md` for the narrative and the current result numbers.
 
+## Main workflow (default pipeline, primary output)
+
+**As of 2026-08-06, this is the project's default, documented workflow, and the evidence
+atlas is its primary output.** Two detectors, one per size regime, combined into one
+product:
+
+- **Segmentation** (`infer` → `postprocess` → `density`) for individual arrays
+  **≥ 400 m²** -- the TerraMind fine-tune, outlining panels directly.
+- **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `sub400-capacity`) for
+  every building **< 400 m²** -- a per-building "does this roof carry PV?" classifier,
+  cross-checked with the zero-training **SPPI** spectral index for the atlas's Verified
+  tier (roofclf AND SPPI agreeing).
+- **`atlas.build_evidence_atlas`** (`earthpv atlas --sub400-central-cells
+  --sub400-low-cells --osm-solar`) combines both into two tiers by *standard of proof*
+  -- **Verified** (hand-mapped OSM, or roofclf+SPPI agreement) and **Best estimate**
+  (recall-corrected ≥ 400 m² detections plus roofclf-alone density) -- de-duplicated
+  against each other and against OSM so nothing is counted twice.
+
+The end-to-end command sequence is in `docs/reproduce.md`'s "The full pipeline"; the
+short version:
+
+```bash
+earthpv labels --aoi <aoi>       && earthpv chips --aoi <aoi>
+earthpv train  --config configs/terramind_pv.yaml
+earthpv infer  --aoi <aoi> --checkpoint <ckpt>
+earthpv postprocess --aoi <aoi> --threshold 0.3
+earthpv export --aoi <aoi>
+earthpv density --aoi <aoi> --districts && earthpv check-density --aoi <aoi>
+
+earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration quadrats
+earthpv roofclf-score-national --aoi <aoi>          # long: hours at country scale
+earthpv sub400-capacity --aoi <aoi> --osm-solar <national OSM solar pull>
+earthpv atlas --aoi <aoi> \
+  --sub400-central-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
+  --sub400-low-cells     data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
+  --osm-solar <national OSM solar pull>
+```
+
+**Everything else in this file is optional, supplementary, or experimental**, kept
+because it is either evidence toward the main workflow (calibration, quadrat protocol),
+a real but secondary product (the growth map, panel-pose survey, PyPSA-Earth grid CSV,
+potential/saturation atlas), or a documented negative/inconclusive result (the fraction
+head, SPPI as a standalone instrument, the older Low/Central/High/All-PV bracket atlas,
+Germany MaStR calibration, dashboards, every entry under "Sub-400 m² instruments" that
+was tried and not promoted). None of it is required to produce the evidence atlas, and
+none of it should be read as a competing main path -- if a change here conflicts with
+producing the evidence atlas correctly, the evidence atlas wins. A country with no
+mapped calibration quadrats yet gets the ≥ 400 m² segmentation-only atlas
+(`earthpv atlas --aoi <aoi>`, no `--sub400-*`) until quadrats exist to fit `roofclf` --
+that is still this workflow's output for that country, just missing its sub-400 m² half.
+
 ## Environments & commands
 
 Managed with **pixi**. Two environments share one solve-group, plus an independent docs env:
@@ -46,7 +97,12 @@ pixi run earthpv labels --aoi germany            # default env is fine for data 
 CLI stages (`src/earthpv/cli.py`): `labels → chips → train → evaluate → infer →
 postprocess → export`, plus `compose` (build imagery for AOIs with no local composites).
 `train --smoke` runs 50 steps; `chips --limit N` caps the chip count for quick runs.
-For capacity: `density → check-density` (the latter gates the numbers, see below).
+For capacity, **this is the main workflow** (see above): `density → check-density` for
+the ≥ 400 m² segmentation half, `roof-classifier → roofclf-score-national →
+sub400-capacity` for the < 400 m² roofclf half, then `atlas --sub400-central-cells
+--sub400-low-cells --osm-solar` to combine both into the evidence atlas.
+`roofclf-score-national` is the long pole (hours at country scale) and is resumable
+per-cell like `density`.
 
 **There is no test suite and no lint task wired.** Ruff is configured (line-length 100)
 but run manually. The practical "does it work" check is a small end-to-end run:
@@ -157,6 +213,12 @@ finds nationally**. Germany's MaStR (legally complete) puts **72.6% of rooftop c
 units ≤100 kWp** (≈ ≤555 m² of module), so this is very likely the majority of the quantity
 the rooftop headline claims to describe.
 
+**Of everything below, `roofclf` (with SPPI cross-validation) is the one promoted into
+the [main workflow](#main-workflow-default-pipeline-primary-output)'s evidence atlas.**
+The fraction head, SPPI as a standalone instrument, and every retrain variant discussed
+below were tried, measured, and NOT promoted -- kept here as the record of what was
+tried and why it did not replace `roofclf`, not as alternative main paths.
+
 **All instruments below are rooftop/building-scoped -- small ground-mounted installations
 below 400 m² have no instrument at all, at any confidence level.** `roofclf` and SPPI are
 both per-*building* classifiers (they score a VIDA footprint); the fraction head is the
@@ -266,7 +328,8 @@ instruments, both rooftop-only and both dropping the polygon:
   the raster. Both checkpoints' quadrat-cell rasters are kept in both epochs
   (`data/predictions_quad{13,ho}_quadcells{,_preboom}/`) so further scoring needs no GPU.
   Full tables: `docs/issues/quadrat-supervision-fraction-retrain.md`.
-- **`roofclf.py` / `earthpv roof-classifier`** -- per-building "does this roof carry PV?",
+- **`roofclf.py` / `earthpv roof-classifier`** -- **the sub-400 m² half of the main
+  workflow** (see "Main workflow" above), per-building "does this roof carry PV?",
   trained on the exhaustively mapped quadrats (the only source where a no-PV building is a
   real negative).
   **Read this before trusting any national roofclf number below (2026-08-06).** A JOSM
