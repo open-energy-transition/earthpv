@@ -21,11 +21,11 @@ command regenerates it standalone.
 A fourth, richer template (`templates/pv_evidence_atlas.html`, `build_evidence_atlas`)
 is the project's default going forward as of 2026-08-01 for AOIs with the extra
 national-scale artifacts it needs (OSM solar pull, national roofclf+SPPI scoring, the
-sub-400 m2 bracket's building-level parquets): three tiers by STANDARD OF PROOF
-(Verified / Best / Ceiling) rather than by point estimate, plus the KPI-strip +
-expandable-background page shell documented in `CLAUDE.md`'s "Results-page house
-style". It supersedes `build_sub400_bracket_atlas` as the CLI's recommended path; that
-function stays for reference and for AOIs that only have the older bracket inputs.
+sub-400 m2 bracket's building-level parquets): tiers by STANDARD OF PROOF (Verified /
+Best, a third Ceiling tier removed 2026-08-06) rather than by point estimate, plus the
+KPI-strip + expandable-background page shell documented in `CLAUDE.md`'s "Results-page
+house style". It supersedes `build_sub400_bracket_atlas` as the CLI's recommended path;
+that function stays for reference and for AOIs that only have the older bracket inputs.
 """
 
 from __future__ import annotations
@@ -1163,13 +1163,21 @@ def build_growth_atlas(
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
-    low_buildings_path: Path, central_buildings_path: Path, high_buildings_path: Path,
+    low_buildings_path: Path, central_buildings_path: Path,
     out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
 ) -> Path:
-    """Three-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
+    """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
-    (kept above for reference; no longer the CLI's default path). Each tier is a
-    different STANDARD OF PROOF, not a different point estimate on the same scale:
+    (kept above for reference; no longer the CLI's default path). A third tier, Ceiling
+    (roofclf flagged nationwide at a flat 0.5 precision weight, restricted only to
+    buildings with no existing large detection nearby, plus every large installation
+    already known), was removed 2026-08-06 at the owner's request: a lower deployment
+    threshold from a later roofclf refit roughly doubled it (37,173 -> 79,221 MWp small-PV
+    component) with no accompanying validation, so it had stopped being a meaningful
+    bound and the owner judged it not worth carrying forward. `high_buildings_path` /
+    `roofclf_capacity.incremental_capacity` are unaffected -- `build_sub400_bracket_atlas`
+    still uses them for its own High view. Each remaining tier is a different STANDARD OF
+    PROOF, not a different point estimate on the same scale:
 
     - **Verified**: every PV installation hand-mapped in OpenStreetMap (`osm_solar_path`,
       any placement, converted at the module constant for rooftop and the land constant
@@ -1182,16 +1190,10 @@ def build_evidence_atlas(
       every placement), plus the roofclf-alone density estimate
       (`central_buildings_path`). This project's own pick, the highest figure it
       defends.
-    - **Ceiling**: roofclf flagged nationwide at a precision-tuned threshold, credited at
-      a flat 0.5 precision weight rather than each building's own probability, restricted
-      to buildings with no existing large detection nearby (`high_buildings_path`, the
-      same "incremental" population `roofclf_capacity.incremental_capacity` writes) --
-      plus every large installation already known, of every placement. An explicit,
-      unvalidated national bound, not a tighter measurement.
 
     Ported from `scripts/build_pakistan_pv_evidence_overview.py` (see that file's git
     history for the full derivation and the 2026-08-01 redefinition of Ceiling) with one
-    correctness fix: the three building-level parquets are now aggregated to cells via
+    correctness fix: the building-level parquets are now aggregated to cells via
     `_join_buildings_to_grid_cells` -- a spatial join against THIS run's own grid
     polygons -- rather than a plain string `cell`-id match. The id-matching join the
     standalone script used silently drops any building whose id came from a manifest
@@ -1210,7 +1212,7 @@ def build_evidence_atlas(
             f"{density_dir}/grid.geoparquet has no est_mwp_rc column -- run "
             "`earthpv calibrate-candidates` before `density` so recall-correction "
             "exists; the evidence atlas needs the large-PV instrument for the Best "
-            "and Ceiling tiers."
+            "tier."
         )
     title = aoi.replace("_", " ").title()
     kwp_mod = meta.get("kwp_per_m2_module", 0.18)
@@ -1254,9 +1256,6 @@ def build_evidence_atlas(
     by_central = _join_buildings_to_grid_cells(
         gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
     ) / 1000.0
-    by_high = _join_buildings_to_grid_cells(
-        gpd.read_parquet(high_buildings_path), "est_kwp_roofclf", grid
-    ) / 1000.0
 
     grid = grid.copy()
     grid["osm_mwp"] = grid["cell"].map(osm_by_cell.get("osm_mwp", pd.Series(dtype=float))).fillna(0.0)
@@ -1266,19 +1265,17 @@ def build_evidence_atlas(
     grid["osm_n"] = grid["cell"].map(osm_by_cell.get("osm_n", pd.Series(dtype=float))).fillna(0.0)
     grid["small_low"] = grid["cell"].map(by_low).fillna(0.0)
     grid["small_central"] = grid["cell"].map(by_central).fillna(0.0)
-    grid["small_high"] = grid["cell"].map(by_high).fillna(0.0)
     grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
     n_domain_cells = int(grid["in_domain"].sum())
 
     grid["mwp_verified"] = grid["osm_mwp"] + grid["small_low"]
     grid["mwp_best"] = grid["osm_mwp_unmatched"] + grid["est_mwp_rc"] + grid["small_central"]
-    grid["mwp_ceiling"] = grid["small_high"] + grid["est_mwp_rc"]
 
     cells = [
         [round(float(r.lon0), 3), round(float(r.lat0), 3),
-         round(float(r.mwp_verified), 3), round(float(r.mwp_best), 3), round(float(r.mwp_ceiling), 3),
+         round(float(r.mwp_verified), 3), round(float(r.mwp_best), 3),
          round(float(r.osm_mwp), 3), int(r.osm_n),
-         round(float(r.small_low), 3), round(float(r.small_central), 3), round(float(r.small_high), 3),
+         round(float(r.small_low), 3), round(float(r.small_central), 3),
          round(float(r.est_mwp_rc), 3), int(r.in_domain), int(r.n_pv_buildings)]
         for r in grid.itertuples()
     ]
@@ -1300,8 +1297,8 @@ def build_evidence_atlas(
         reg = gpd.read_parquet(regions_path)
         reg_regions = reg[reg.level == "region"]
         keep = [
-            "mwp_verified", "mwp_best", "mwp_ceiling", "osm_mwp", "est_mwp_rc",
-            "small_low", "small_central", "small_high",
+            "mwp_verified", "mwp_best", "osm_mwp", "est_mwp_rc",
+            "small_low", "small_central",
         ]
         pts2 = gpd.GeoDataFrame(
             grid[keep], geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
@@ -1314,12 +1311,10 @@ def build_evidence_atlas(
                 "name": str(r.name),
                 "mwp_verified": round(float(row["mwp_verified"]), 1),
                 "mwp_best": round(float(row["mwp_best"]), 1),
-                "mwp_ceiling": round(float(row["mwp_ceiling"]), 1),
                 "osm_mwp": round(float(row["osm_mwp"]), 1),
                 "mwp_large": round(float(row["est_mwp_rc"]), 1),
                 "small_low": round(float(row["small_low"]), 1),
                 "small_central": round(float(row["small_central"]), 1),
-                "small_high": round(float(row["small_high"]), 1),
                 "nb": int(r.n_pv_buildings),
                 "rings": _rings(r.geometry),
             })
@@ -1327,7 +1322,6 @@ def build_evidence_atlas(
 
     total_verified = float(grid.mwp_verified.sum())
     total_best = float(grid.mwp_best.sum())
-    total_ceiling = float(grid.mwp_ceiling.sum())
     total_large = float(grid.est_mwp_rc.sum())
 
     calib_boxes = _load_calib_boxes(aoi, labels_dir)
@@ -1342,7 +1336,6 @@ def build_evidence_atlas(
         "totals": {
             "mwp_verified": round(total_verified, 1),
             "mwp_best": round(total_best, 1),
-            "mwp_ceiling": round(total_ceiling, 1),
             "mwp_large": round(total_large, 1),
             "osm_mwp": round(float(grid.osm_mwp.sum()), 1),
             "osm_mwp_unmatched": round(float(grid.osm_mwp_unmatched.sum()), 1),
@@ -1350,7 +1343,6 @@ def build_evidence_atlas(
             "n_osm_matched": int(osm["matched"].sum()),
             "small_low": round(float(grid.small_low.sum()), 1),
             "small_central": round(float(grid.small_central.sum()), 1),
-            "small_high": round(float(grid.small_high.sum()), 1),
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "n_cells": int(len(grid)),
             "n_domain_cells": n_domain_cells,
@@ -1363,22 +1355,19 @@ def build_evidence_atlas(
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Solar PV — Counted Three Times Over",
-        "__H1__": f"{title}'s solar, counted three times over",
+        "__PAGE_TITLE__": f"{title} Solar PV — Counted Two Ways",
+        "__H1__": f"{title}'s solar, counted two ways",
         "__AOI_TITLE__": title,
         "__KWP_MOD__": str(kwp_mod),
         "__LEDE_HTML__": (
-            "The same country, the same imagery, three different standards of proof. "
+            "The same country, the same imagery, two different standards of proof. "
             "<b>Verified</b> counts only PV a person has drawn in OpenStreetMap plus the "
             "small rooftops where two independent detectors agree. <b>Best</b> adds the "
             "satellite model's own recall-corrected detections and its per-building "
             "density estimate: the highest figure this project is willing to defend. "
-            "<b>Ceiling</b> swaps the small-PV side for a much looser national "
-            "assumption and adds every large installation already known on top: a "
-            "bound built on a cruder assumption, not a tighter measurement. This is a "
-            "research methodology under active validation, not a finished census &mdash; "
-            "see &ldquo;How confident should you be in this?&rdquo; below for what's "
-            "independently corroborated and what's still open."
+            "This is a research methodology under active validation, not a finished "
+            "census &mdash; see &ldquo;How confident should you be in this?&rdquo; below "
+            "for what's independently corroborated and what's still open."
         ),
         "__CONFIDENCE_HTML__": (
             "<p><b>Read this as promising preliminary results from an ongoing "
@@ -1410,10 +1399,9 @@ def build_evidence_atlas(
             "customs export data separately puts cumulative panel imports into Pakistan "
             "at roughly 50 GW by mid-2025, a much looser ceiling on the whole market, "
             "utility-scale included. This page's Verified and Best tiers sit inside that "
-            "bracket, and its Ceiling sits a further step above it &mdash; two "
-            "independent, non-satellite data sources landing in a mutually consistent "
-            "range is real corroboration for the order of magnitude, even though it "
-            "cannot confirm any single number here precisely.</p>"
+            "bracket &mdash; two independent, non-satellite data sources landing in a "
+            "mutually consistent range is real corroboration for the order of magnitude, "
+            "even though it cannot confirm any single number here precisely.</p>"
         ),
     }.items():
         html = html.replace(key, value)
@@ -1421,9 +1409,9 @@ def build_evidence_atlas(
     out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
     out.write_text(html)
     log.info(
-        "Wrote evidence atlas (verified %.0f / best %.0f / ceiling %.0f MWp, "
+        "Wrote evidence atlas (verified %.0f / best %.0f MWp, "
         "%d/%d domain cells) -> %s",
-        total_verified, total_best, total_ceiling, n_domain_cells, len(grid), out,
+        total_verified, total_best, n_domain_cells, len(grid), out,
     )
     return out
 

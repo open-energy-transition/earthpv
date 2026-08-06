@@ -417,8 +417,13 @@ def main() -> None:
                     "elements in a confirming query of the same bbox"
                 )
             break
-        except RuntimeError as e:
-            print(f"  attempt {attempt}/{args.retries} failed: {e}")
+        except RuntimeError as exc:
+            # NOT `as e` -- `w, s, e, n = poly.bounds` above already bound `e` to the east
+            # bound, and `except ... as e` implicitly deletes `e` when the block exits
+            # (PEP 3110), which left `e` unbound on the next loop iteration's
+            # `bbox=(w, s, e, n)` reference (measured 2026-08-06, `islamabad_northeast`:
+            # UnboundLocalError on retry attempt 2, once all three mirrors had failed once).
+            print(f"  attempt {attempt}/{args.retries} failed: {exc}")
             if attempt == args.retries:
                 raise SystemExit(
                     "\nABORT: no usable Overpass response after "
@@ -427,7 +432,7 @@ def main() -> None:
                     "box's own boundary). Do NOT record this as 'no PV in the box' -- an "
                     "endpoint returning zero elements is indistinguishable from an empty "
                     "box in a single attempt."
-                ) from e
+                ) from exc
             time.sleep(args.retry_wait_s)
     sol = gpd.read_parquet(out)
     # Overpass returns anything intersecting the bbox; the quadrat is the polygon.

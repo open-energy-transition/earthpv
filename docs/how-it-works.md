@@ -203,12 +203,14 @@ Everything converges on four outputs, split by tolerance for false positives:
   (`configs/calibration/`) before its area counts. See
   [Calibration](methods/calibration.md).
 - **Evidence atlas.** The newest output (2026-08-01), and the place the sub-400 m²
-  bracket and the ≥ 400 m² total actually meet. It reports three tiers by *standard of
-  proof* rather than three point estimates on one scale: **Verified** (hand-mapped OSM
-  plus the roofclf-and-SPPI agreement set), **Best estimate** (recall-corrected
+  bracket and the ≥ 400 m² total actually meet. It reports tiers by *standard of
+  proof* rather than point estimates on one scale: **Verified** (hand-mapped OSM
+  plus the roofclf-and-SPPI agreement set) and **Best estimate** (recall-corrected
   ≥ 400 m² detections plus roofclf-alone density, OSM overlap removed rather than
-  double-counted), and **Ceiling** (a flat-precision, uncalibrated upper bound, with the
-  known ≥ 400 m² total added on top rather than shown alone).
+  double-counted). A third tier, **Ceiling** (a flat-precision, uncalibrated upper
+  bound), was removed 2026-08-06: a later roofclf refit's lower deployment threshold
+  roughly doubled it with no accompanying validation, so it had stopped being a
+  meaningful bound.
 
 ### Where each stage is documented in depth
 

@@ -1,40 +1,46 @@
 # Pakistan capacity map
 
 How much rooftop solar does Pakistan actually have? The honest answer depends on how much
-proof you require, so this atlas gives three, not one: what a person has actually drawn in
-OpenStreetMap, this project's own best defensible estimate, and an explicit, uncalibrated
-ceiling. All three read the same underlying detections -- a segmentation model for
-individual arrays 400 m<sup>2</sup> and larger, plus two independent per-building
-instruments (**roofclf**, **SPPI**) for everything smaller that the segmentation model is
-trained blind to.
+proof you require, so this atlas gives two, not one: what a person has actually drawn in
+OpenStreetMap, and this project's own best defensible estimate. Both read the same
+underlying detections -- a segmentation model for individual arrays 400 m<sup>2</sup> and
+larger, plus two independent per-building instruments (**roofclf**, **SPPI**) for
+everything smaller that the segmentation model is trained blind to. A third, looser
+tier (an explicit, uncalibrated ceiling) was published here through early August 2026 and
+was retired 2026-08-06: a roofclf refit's lower deployment threshold roughly doubled it
+with no accompanying validation, so it had stopped being a meaningful bound.
 
 <div class="embed" markdown>
-<iframe src="../../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: Verified, Best estimate and Ceiling" loading="lazy"></iframe>
+<iframe src="../../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: Verified and Best estimate" loading="lazy"></iframe>
 </div>
 <p class="embed-note">
 Interactive. Switch tier with the tabs, hover a cell for its value.
 <a href="../../assets/interactive/pakistan_evidence_atlas.html" target="_blank">Open full screen</a>.
 </p>
 
-## Three tiers, one country
+## Two tiers, one country
 
 | Tier | Pakistan | What it admits as evidence |
 | --- | ---: | --- |
-| Verified | 7,685 MWp | Every installation a person has drawn in OpenStreetMap (16,085 of them), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **15,004 MWp** | Verified, plus the segmentation model's own recall-corrected detections **&ge;400 m<sup>2</sup>** (5,078 MWp, precision- and recall-corrected), plus the roofclf per-building density estimate inside the cells checked against ground-truth quadrats -- the project's own pick. |
-| Ceiling | 42,251 MWp | Swaps the small-PV side for roofclf at a flat, un-tuned national precision (no density restriction), plus the same &ge;400 m<sup>2</sup> total on top. An outer bound on plausibility, not a measurement. |
+| Verified | 13,697 MWp | Every installation a person has drawn in OpenStreetMap (16,085 of them), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
+| **Best estimate** | **21,355 MWp** | Verified, plus the segmentation model's own recall-corrected detections **&ge;400 m<sup>2</sup>** (5,078 MWp, precision- and recall-corrected), plus the roofclf per-building density estimate inside the cells checked against ground-truth quadrats -- the project's own pick. |
 
-Every tier folds in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
+Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
-what precision. None of them double-count: OpenStreetMap-mapped installations are matched
-by location and removed from the model-detected side before summing.
+what precision. Neither double-counts, on either axis: OpenStreetMap-mapped installations
+are matched by location and removed from the model-detected side before summing, **and**
+(fixed 2026-08-06) the sub-400 m<sup>2</sup> instrument itself drops any building within 30 m
+of an OpenStreetMap solar feature, not just those near an existing segmentation candidate --
+without that second check, a building OSM had already mapped but segmentation missed
+entirely could be counted twice (measured before the fix: 3.3-3.8% of the sub-400 m<sup>2</sup>
+component's MWp, 343-438 MWp).
 
 !!! warning "This is a research methodology under active validation, not a finished census"
-    Only 4 of the 13 ground-truth calibration quadrats are **Rule-1 complete** (every
-    visible panel independently verified), and the density-matched calibration only
-    covers 245 of Pakistan's 4,463 grid cells. roofclf's own measured skill varies
-    sharply by quadrat (AUC 0.50 to 0.96) and its predicted rate does not reliably
-    separate well-calibrated cells from over-predicting ones -- see
+    All 17 ground-truth calibration quadrats are now **Rule-1 complete** (every
+    visible panel independently verified, as of 2026-08-05), and the density-matched
+    calibration covers 401 of Pakistan's 4,463 grid cells. roofclf's own measured skill
+    still varies by quadrat (AUC 0.76 to 0.94 across the 17) and its predicted rate does
+    not reliably separate well-calibrated cells from over-predicting ones -- see
     [Capacity density](../methods/density.md) for what is independently corroborated
     and what is still open.
 
@@ -73,13 +79,14 @@ pixi run earthpv calibrate-candidates --aoi pakistan
 pixi run earthpv density --aoi pakistan --districts
 pixi run earthpv check-density --aoi pakistan   # gate: exits non-zero on an implausible region
 
-# Evidence atlas (Verified / Best estimate / Ceiling): needs the OSM solar pull and the
+# Evidence atlas (Verified / Best estimate): needs the OSM solar pull and the
 # roofclf/SPPI sub-400 m2 building parquets alongside the density run above.
+# (--sub400-high-cells is no longer accepted here -- the Ceiling tier was removed
+# 2026-08-06; it still exists for the older bracket atlas, see build_sub400_bracket_atlas.)
 pixi run earthpv atlas --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet \
-    --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-    --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
-    --sub400-high-cells    data/roofclf_national_with_sppi/pakistan/density/sub400_high_incremental_buildings.parquet
+    --sub400-low-cells     data/sub400_20260806/sub400_low.parquet \
+    --sub400-central-cells data/sub400_20260806/sub400_central.parquet
 ```
 
 The density stage needs no GPU and no retraining; it runs on rasters already on disk in

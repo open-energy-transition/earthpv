@@ -16,17 +16,17 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">15,004 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
-<div class="stat"><span class="value">8,220 / 6,785 MWp</span><span class="label">capacity &ge;400 m&sup2; segmentation vs. <400 m&sup2; rooftop classifier </span></div>
+<div class="stat"><span class="value">21,355 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
+<div class="stat"><span class="value">5,078 / 12,979 MWp</span><span class="label">capacity &ge;400 m&sup2; segmentation vs. <400 m&sup2; rooftop classifier </span></div>
 <div class="stat"><span class="value">4</span><span class="label">independent detected methods: segmentation, roofclf, SPPI, glint</span></div>
 </div>
 
 ## Build PV capacity maps for every country
 
-![Pakistan's rooftop solar counted three times over: Verified (hand-mapped or two detectors agree), Best estimate (this project's own defensible figure), and Ceiling (an explicit uncalibrated upper bound), over a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_evidence_atlas.png)
+![Pakistan's rooftop solar counted two ways: Verified (hand-mapped or two detectors agree) and Best estimate (this project's own defensible figure), over a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor between Lahore, Faisalabad and Multan, along the Karachi industrial belt, and around Islamabad and Peshawar.](assets/figures/pakistan_evidence_atlas.png)
 
 /// caption
-Three tiers by standard of proof, not by point estimate, for every building carrying PV
+Two tiers by standard of proof, not by point estimate, for every building carrying PV
 signal in the pilot country. The
 [interactive version](results/capacity.md) switches tiers and ranks provinces by each.
 ///

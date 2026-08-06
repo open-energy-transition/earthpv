@@ -103,6 +103,30 @@ the two are indistinguishable. **Every quadrat above now carries it** (2026-08-0
 column no longer discriminates between rows; it is kept because the distinction still governs
 what the negatives mean, and because a future quadrat starts out without it.
 
+**An eighteenth quadrat, `islamabad_northeast_calib_3p34km2`, was added 2026-08-06** from
+a hand-drawn boundary (`data/labels/calibration_boundaries/5-quad.geojson`, the fifth
+diamond in the same Islamabad cluster the four `islamabad_{north,east,south,west}`
+quadrats above belong to) via `scripts/new_calibration_quadrat.py`. Confirmed clear
+against all 17 existing quadrats (nearest is `islamabad_east` at 1.88 km). Not yet in the
+table above -- that needs a `build_calibration_quadrats_csv.py` rerun against a `roofclf`
+fit that includes it, which needs the VIDA building join, not just the raw OSM pull.
+Measured directly from the pull in the meantime: 839 installations (99.0% sub-400 m²,
+median 67.0 m², packing 18.6 m -- the same dense small-rooftop regime as the other three
+Islamabad diamonds), 5,718 buildings, 1,292 with PV, **base rate 22.6%**. The owner declared
+it **Rule-1 complete the same day it was created** -- recorded in
+`results/calibration_quadrats.csv` (`rule1_complete: True`, since that column is a human
+judgement no script may infer) -- so all **eighteen** quadrats now carry Rule-1, not
+seventeen; the callout below predates this and still says seventeen.
+
+While registering this quadrat, a real bug surfaced in
+`scripts/new_calibration_quadrat.py`: the OSM-pull retry loop's `except RuntimeError as e:`
+shadowed the `e` (east bound) local from `w, s, e, n = poly.bounds` earlier in `main()`,
+and Python's implicit `del e` at the end of an `except ... as e:` block (PEP 3110) left `e`
+unbound on any retry past the first failed attempt --
+`UnboundLocalError: cannot access local variable 'e'` rather than a clean retry. Hit for
+real this time because all three Overpass mirrors failed on the first attempt (504, 502,
+connection timeout) before recovering. Fixed by renaming the exception variable to `exc`.
+
 !!! success "All seventeen quadrats are Rule-1 as of 2026-08-05"
     The repository owner declared completeness for the entire current set, which is what
     Rule-1 means here. Rule-1 coverage went 3 of 12 to **17 of 17** in one step, and it is a

@@ -69,6 +69,15 @@ potential-leads = "python scripts/build_potential_leads.py"
 # completeness pass against OSM imagery -- re-run whenever a quadrat is added or an
 # `_overpass_solar` pull is refreshed. See docs/calibration-mapping-protocol.md.
 calib-export = "python scripts/export_calibration_quadrats_geojson.py"
+# Every detected rooftop-PV candidate nationally as one JOSM validation layer -- re-run
+# whenever `earthpv postprocess` (candidates.parquet) is refreshed.
+rooftop-detections-export = "python scripts/export_rooftop_detections_geojson.py"
+# roofclf-flagged buildings (sub-400 m2, density-domain-restricted, capped per cell) as
+# one JOSM validation layer -- re-run whenever roofclf national scoring is refreshed.
+roofclf-detections-export = "python scripts/export_roofclf_detections_geojson.py"
+# N roofclf-flagged buildings, random nationally or from one cell/bbox, for a JOSM
+# spot-check -- no domain restriction, unlike roofclf-detections-export.
+roofclf-sample = "python scripts/sample_roofclf_detections_geojson.py"
 # Per-quadrat PV density vs detection quality (discrimination and bias kept apart, with
 # partial correlations controlling for installation size) -- re-run when a quadrat is
 # added or `earthpv roof-classifier` is re-run. See docs/methods/density.md.

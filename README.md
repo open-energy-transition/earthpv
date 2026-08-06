@@ -71,13 +71,12 @@ measure. See [Growth](https://open-energy-transition.github.io/earthpv/results/g
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: three tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (7,685 MWp, hand-mapped or two detectors agreeing), Best estimate (15,004 MWp, the project's own defensible figure), and Ceiling (42,251 MWp, an explicit uncalibrated upper bound) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (13,697 MWp, hand-mapped or two detectors agreeing) and Best estimate (21,355 MWp, the project's own defensible figure) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
-<p align="center"><em>Three tiers by standard of proof, not by point estimate: what a person
-mapped or two detectors agree on, this project's own best defensible figure, and an
-explicit, uncalibrated ceiling.
+<p align="center"><em>Two tiers by standard of proof, not by point estimate: what a person
+mapped or two detectors agree on, and this project's own best defensible figure.
 <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">Open the
 interactive version</a>.</em></p>
 
@@ -125,16 +124,16 @@ with AI. earthpv's own numbers, by contrast, come with a stated standard of proo
 
 | | |
 | --- | --- |
-| **7,685 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
-| **15,004 MWp** | Best estimate: this project's own highest defensible figure |
-| **42,251 MWp** | Ceiling: an explicit, uncalibrated upper bound, not an estimate |
+| **13,697 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
+| **21,355 MWp** | Best estimate: this project's own highest defensible figure |
 | **+2,598 MWp** | Rooftop growth measured since the 2021/22 pre-boom epoch (segmentation, recall-corrected) |
 | **16,085** | individual installations hand-mapped in OpenStreetMap |
 | **400 m²** | per-object segmentation floor at Sentinel-2's 10 m resolution; roofclf/SPPI reach below it |
 
 Every number above carries the same caveat: **this is a screening and estimation layer,
-not a register**. No human has validated most of it at scale, and the Ceiling tier in
-particular is a bound on plausibility, not a measurement. See
+not a register**. No human has validated most of it at scale, and the sub-400 m² share of
+Best estimate in particular is restricted to a small, density-matched slice of the
+country, not a national measurement. See
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for how
 each tier is derived and what it does and does not claim.
 

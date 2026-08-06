@@ -244,7 +244,6 @@
     text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
   .tag.low { background: rgba(245,166,35,0.14); color: var(--accent-dim); }
   .tag.central { background: rgba(245,166,35,0.22); color: var(--accent); }
-  .tag.high { background: rgba(201,189,164,0.16); color: var(--ink-2); }
   .tag.large { background: rgba(79,178,232,0.18); color: var(--large); }
 
   /* ── expandable background sections ─────────────────────────────── */
@@ -305,9 +304,6 @@
         <button class="tab" id="tab1" type="button" data-i="1">
           <span class="tt1">Best estimate</span><span class="tt2">+ calibrated detections + density</span>
         </button>
-        <button class="tab" id="tab2" type="button" data-i="2">
-          <span class="tt1">Ceiling</span><span class="tt2">flat precision, plus known large PV</span>
-        </button>
       </div>
     </div>
 
@@ -351,8 +347,8 @@
             <summary>Full province figures</summary>
             <div style="overflow-x:auto;"><table id="ptable">
               <thead><tr><th>Province</th><th>Verified</th><th>Best estimate</th>
-                <th>Ceiling</th><th>OSM mapped</th><th>Model, &ge;400 m²</th>
-                <th>Small PV, checked cells</th><th>Flat precision, national</th></tr></thead>
+                <th>OSM mapped</th><th>Model, &ge;400 m²</th>
+                <th>Small PV, checked cells</th></tr></thead>
               <tbody></tbody>
             </table></div>
           </details>
@@ -379,7 +375,7 @@
 
     <details class="xdetails">
       <summary><span><span class="xt">What each tier admits as evidence</span>
-        <span class="xs">Verified / Best estimate / Ceiling, defined</span></span><span class="xi">+</span></summary>
+        <span class="xs">Verified / Best estimate, defined</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <dl class="viewdefs">
           <dt><span class="tag low">Verified</span> nothing here rests on a single model</dt>
@@ -400,20 +396,6 @@
           removed rather than added twice (see the next section). This is the highest
           number the project defends; it is still incomplete, because the small-PV term
           covers only a fraction of national buildings.</dd>
-
-          <dt><span class="tag high">Ceiling</span> a bound, not an estimate</dt>
-          <dd><b>A much looser assumption on the small-PV side, plus every large
-          installation already known.</b> Every roofclf-flagged building nationwide
-          (the same threshold used to train the classifier) is credited at a
-          <b>flat precision weight</b> &mdash; not its own per-building probability, not
-          restricted to the density-checked cells &mdash; after excluding buildings that
-          already sit near a known &ge;400 m² detection, so the two terms don't overlap.
-          The large-PV side is the same recall-corrected total used everywhere else on
-          this page, across every placement. The small-PV side is <b>explicitly
-          uncalibrated at national scale</b>: a flat weight known not to survive the
-          shift from a handful of urban and industrial calibration quadrats to the
-          country's mostly rural buildings. Treat this tier as an outer bound on
-          plausibility, not a measurement.</dd>
         </dl>
       </div>
     </details>
@@ -430,11 +412,6 @@
         carry the OSM geometry. The Best estimate therefore adds only the
         <b><span id="dUnmatched">0</span> MWp of hand-mapped PV the model never
         found</b>, on top of the model's own recall-corrected total.</p>
-        <p>The Ceiling tier avoids the same overlap by construction rather than by
-        subtraction: its small-PV component only includes buildings with <b>no existing
-        &ge;400 m² detection within 30 m</b> (the "incremental" population
-        <code>roofclf_capacity.incremental_capacity</code> already computes), so adding
-        the known large-PV total on top does not double count either.</p>
       </div>
     </details>
 
@@ -447,9 +424,8 @@
         reported <b>inside the dashed outline</b>: the
         <span id="dDomain">0</span> cells whose building density falls inside the range
         covered by the hand-mapped calibration quadrats. Outside it, small PV reads as zero
-        in the Verified and Best estimate tiers &mdash; not because small solar is absent
-        there, but because there is no calibration evidence either way. The Ceiling tier
-        deliberately ignores this restriction, along with every other one.</p>
+        in both tiers &mdash; not because small solar is absent there, but because there
+        is no calibration evidence either way.</p>
       </div>
     </details>
 
@@ -465,10 +441,8 @@
         then precision-calibrated and recall-corrected. <b>Sub-400 m² capacity</b> comes
         from two per-building instruments (roofclf, a size and reflectance classifier;
         SPPI, a zero-training spectral index) trained and validated on hand-mapped 1 km²
-        quadrats, restricted to cells whose building density matches those quadrats
-        (Verified and Best estimate), or applied nationally at a flat precision weight
-        explicitly known to be uncalibrated at that scale (Ceiling). Building footprints
-        are VIDA Open Buildings. Full derivations and caveats live in this project's
+        quadrats, restricted to cells whose building density matches those quadrats.
+        Building footprints are VIDA Open Buildings. Full derivations and caveats live in this project's
         methodology notes (<code>docs/methods/density.md</code>).</p>
       </div>
     </details>
@@ -490,10 +464,10 @@
   const RAMP_DARK = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
   const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
 
-  /* cell tuple: [lon0, lat0, verified, best, ceiling, osm_mwp, osm_n, small_low,
-     small_central, small_high, mwp_large, in_domain, pv_buildings] */
-  const IDX = [2, 3, 4];
-  const OSM_IDX = 5;
+  /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
+     small_central, mwp_large, in_domain, pv_buildings] */
+  const IDX = [2, 3];
+  const OSM_IDX = 4;
   const T = DATA.totals;
   const fmt = n => Math.round(n).toLocaleString("en-US");
 
@@ -515,15 +489,6 @@
         ["osm_mwp_unmatched", "Mapped but never detected, MWp"],
         ["small_central", "Small PV, checked cells, MWp"],
         ["pv_buildings", "Buildings with a large detection"],
-      ] },
-    { key: "ceiling", label: "Ceiling", vmax: 40,
-      name: "Ceiling: flat national precision, plus every large installation already known",
-      desc: "roofclf flagged nationwide at a precision-tuned threshold, credited at a flat precision rather than each building's own probability, restricted to buildings with no existing large detection nearby &mdash; plus every &ge;400 m² installation of any placement already known. An explicit, unvalidated national ceiling on the small-PV side; the large-PV side is real.",
-      tiles: [
-        ["small_high", "Flat-precision small PV, national, MWp"],
-        ["mwp_large", "Known large PV, all placements, MWp"],
-        ["pv_buildings", "Buildings with a large detection"],
-        ["n_cells", "Cells, no restriction"],
       ] },
   ];
   let sel = 1;
@@ -613,10 +578,10 @@
     }
     svg.appendChild(gC);
 
-    if (sel < 2 && DATA.cells.some(c => c[11])) {
+    if (DATA.cells.some(c => c[9])) {
       const gD = el("g", {class:"domain-ring"});
       for (const c of DATA.cells){
-        if (!c[11]) continue;
+        if (!c[9]) continue;
         const tl = proj(c[0], c[1] + 0.1);
         gD.appendChild(el("rect", {
           x:(tl[0]+0.8).toFixed(1), y:(tl[1]+0.8).toFixed(1),
@@ -683,11 +648,10 @@
       tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
         + rows
         + `<div class="rowt large-flag"><span>&#9675; Hand-mapped in OSM</span><span>${c[OSM_IDX].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>&nbsp;&nbsp;OSM installations</span><span>${c[6].toLocaleString()}</span></div>`
-        + `<div class="rowt"><span>Model detections &ge;400 m²</span><span>${c[10].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>Small PV, roofclf alone</span><span>${c[8].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>Flat precision, national</span><span>${c[9].toFixed(1)} MWp</span></div>`
-        + (c[11] ? `<div class="rowt domain-flag"><span>&#9679; Small-PV calibration</span><span>checked</span></div>` : "");
+        + `<div class="rowt"><span>&nbsp;&nbsp;OSM installations</span><span>${c[5].toLocaleString()}</span></div>`
+        + `<div class="rowt"><span>Model detections &ge;400 m²</span><span>${c[8].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>Small PV, roofclf alone</span><span>${c[7].toFixed(1)} MWp</span></div>`
+        + (c[9] ? `<div class="rowt domain-flag"><span>&#9679; Small-PV calibration</span><span>checked</span></div>` : "");
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
@@ -737,8 +701,8 @@
   document.getElementById("kOsm").textContent = fmt(T.osm_n);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
 
-  const TOTAL_KEY = ["mwp_verified", "mwp_best", "mwp_ceiling"];
-  const PROV_KEY = ["mwp_verified", "mwp_best", "mwp_ceiling"];
+  const TOTAL_KEY = ["mwp_verified", "mwp_best"];
+  const PROV_KEY = ["mwp_verified", "mwp_best"];
 
   function drawTable() {
     const provs = [...DATA.provinces].sort((a,b) => b[PROV_KEY[sel]] - a[PROV_KEY[sel]]);
@@ -751,14 +715,13 @@
         + `<div class="track"><div class="fill" style="width:${(v/maxP*100).toFixed(1)}%"></div></div></div>`;
     }).join("");
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
-      `<tr><td>${p.name}</td><td>${fmt(p.mwp_verified)}</td><td>${fmt(p.mwp_best)}</td><td>${fmt(p.mwp_ceiling)}</td>`
-      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
-      + `<td>${fmt(p.small_high)}</td></tr>`).join("");
+      `<tr><td>${p.name}</td><td>${fmt(p.mwp_verified)}</td><td>${fmt(p.mwp_best)}</td>`
+      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td></tr>`).join("");
   }
 
   function setView(i) {
     sel = i;
-    ["tab0", "tab1", "tab2"].forEach((id, j) =>
+    ["tab0", "tab1"].forEach((id, j) =>
       document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
     const view = VIEWS[i];
     countUp("heroNum", T[TOTAL_KEY[i]], 700);
@@ -767,10 +730,9 @@
     document.getElementById("tiles").innerHTML = view.tiles.map(([key, label]) =>
       `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
     document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
-    document.getElementById("domainKey").style.display = i < 2 ? "" : "none";
     renderMap(); drawTable();
   }
-  ["tab0", "tab1", "tab2"].forEach((id, i) =>
+  ["tab0", "tab1"].forEach((id, i) =>
     document.getElementById(id).addEventListener("click", () => setView(i)));
 
   document.getElementById("dOsmN").textContent = fmt(T.osm_n);

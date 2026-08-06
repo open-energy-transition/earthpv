@@ -756,17 +756,20 @@ def atlas(
     sub400_high_cells: Path = typer.Option(
         None, help="Building-level parquet from "
         "`roofclf_capacity.incremental_capacity` (columns: cell, geometry, roof_area_m2, "
-        "est_kwp_roofclf), unrestricted national -- the bracket atlas's High view, and "
-        "the evidence atlas's Ceiling small-PV component.",
+        "est_kwp_roofclf), unrestricted national -- the bracket atlas's High view. No "
+        "longer used by the evidence atlas: its Ceiling tier was removed 2026-08-06 "
+        "(a later roofclf refit's lower deployment threshold roughly doubled this "
+        "figure with no accompanying validation).",
     ),
     osm_solar: Path = typer.Option(
         None, help="National OSM/Overpass solar pull (e.g. "
         "data/labels/<aoi>_overpass_solar.parquet). Pass together with "
-        "--sub400-low-cells/--sub400-central-cells/--sub400-high-cells to write the "
-        "EVIDENCE atlas (Verified/Best/Ceiling, the project's default as of 2026-08-01) "
-        "instead of the older Low/Central/High/All-PV bracket atlas -- same three "
-        "building-level parquets, plus this national mapping pull and this run's own "
-        "candidates.parquet (found automatically at <pred_dir>/<aoi>/candidates.parquet).",
+        "--sub400-low-cells/--sub400-central-cells to write the "
+        "EVIDENCE atlas (Verified/Best, the project's default as of 2026-08-01, "
+        "Ceiling removed 2026-08-06) instead of the older Low/Central/High/All-PV "
+        "bracket atlas -- same two building-level parquets, plus this national mapping "
+        "pull and this run's own candidates.parquet (found automatically at "
+        "<pred_dir>/<aoi>/candidates.parquet). --sub400-high-cells is ignored here.",
     ),
     potential_buildings: Path = typer.Option(
         None, help="Building-level parquet from `potential.large_roof_buildings` "
@@ -792,19 +795,25 @@ def atlas(
             aoi, density_dir, potential_buildings, out=out, zoom_out_frac=zoom_out,
         )
     elif sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
-        if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
-            raise typer.BadParameter(
-                "--sub400-low-cells, --sub400-central-cells and --sub400-high-cells must "
-                "all be given together for the bracket or evidence atlas"
-            )
         if osm_solar is not None:
+            if not (sub400_low_cells and sub400_central_cells):
+                raise typer.BadParameter(
+                    "--sub400-low-cells and --sub400-central-cells must both be given "
+                    "for the evidence atlas (--sub400-high-cells is no longer used -- "
+                    "the Ceiling tier was removed 2026-08-06)"
+                )
             candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
             build_evidence_atlas(
                 aoi, density_dir, osm_solar, candidates_path,
-                sub400_low_cells, sub400_central_cells, sub400_high_cells,
+                sub400_low_cells, sub400_central_cells,
                 out=out, zoom_out_frac=zoom_out,
             )
         else:
+            if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
+                raise typer.BadParameter(
+                    "--sub400-low-cells, --sub400-central-cells and --sub400-high-cells "
+                    "must all be given together for the bracket atlas"
+                )
             build_sub400_bracket_atlas(
                 aoi, density_dir, sub400_low_cells, sub400_central_cells, sub400_high_cells,
                 out=out, zoom_out_frac=zoom_out,

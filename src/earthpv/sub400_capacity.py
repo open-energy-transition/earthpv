@@ -227,6 +227,7 @@ def domain_restricted_capacity(
     contamination_max_m2: float = 400.0,
     ratio_lo: float = DEFAULT_RATIO_LO,
     ratio_hi: float = DEFAULT_RATIO_HI,
+    osm_solar_path: Path | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The module's actually-recommended output (see module docstring's 2026-07-30 note):
     combines three corrections, each individually insufficient on its own when measured:
@@ -243,6 +244,16 @@ def domain_restricted_capacity(
     3. **Density-regime precision** -- `density_regime_precision`'s measured value (from
        the quadrats whose rate_ratio is within `[ratio_lo, ratio_hi]`), not the flat LOQO
        number, which the module docstring shows does not help on its own.
+
+    `osm_solar_path`, when given, adds a FOURTH exclusion: buildings within `max_distance_m`
+    of an already hand-mapped OSM solar feature. Without it, "incremental" only means "no
+    nearby *segmentation* candidate" -- a roofclf-flagged building that OSM already mapped
+    but segmentation missed entirely (no candidate anywhere near it) passes straight
+    through, and the evidence atlas counts it twice: once as `osm_mwp_unmatched`, once here.
+    Measured 2026-08-06 against the then-current outputs: 2.8% of buildings / 3.3% of MWp
+    in this population sat within 30 m of an OSM feature -- real, not hypothetical. Optional
+    (not required) only because some callers may not have a national OSM pull handy; every
+    call that feeds the evidence atlas should pass it.
 
     Returns `(incremental_buildings, summary)`. `summary["scope"]` states exactly what
     population this describes -- READ IT before quoting the MWp number. It is a LOCAL
@@ -289,6 +300,12 @@ def domain_restricted_capacity(
 
     cands = gpd.read_parquet(candidates_path)
     is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
+    n_near_osm = 0
+    if osm_solar_path is not None:
+        osm = gpd.read_parquet(osm_solar_path)
+        is_new_osm = new_lead_mask(flagged, osm, min_distance_m=max_distance_m)
+        n_near_osm = int((is_new & ~is_new_osm).sum())
+        is_new = is_new & is_new_osm
     incremental_raw = flagged[is_new].reset_index(drop=True)
 
     over = incremental_raw.roof_area_m2 >= contamination_max_m2
@@ -314,6 +331,8 @@ def domain_restricted_capacity(
         "n_buildings_in_domain": n_buildings_in_domain,
         "n_buildings_national": n_buildings_national,
         "n_flagged_in_domain": int(len(flagged)),
+        "osm_dedup_applied": osm_solar_path is not None,
+        "n_excluded_near_osm": n_near_osm,
         "n_incremental_before_contamination_filter": int(len(incremental_raw)),
         "n_contaminated_excluded_ge_400m2": n_contaminated,
         "contaminated_area_m2_excluded": round(contaminated_area_m2, 1),
@@ -346,6 +365,7 @@ def domain_restricted_and_gate_capacity(
     contamination_max_m2: float = 400.0,
     ratio_lo: float = DEFAULT_RATIO_LO,
     ratio_hi: float = DEFAULT_RATIO_HI,
+    osm_solar_path: Path | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The sub-400 bracket's LOW end: `domain_restricted_capacity`'s same 93-cell
     population, but requiring `p_roofclf >= threshold` AND SPPI above a pooled
@@ -366,6 +386,10 @@ def domain_restricted_and_gate_capacity(
     `select_calibrated_quadrats` already selects (`sppi.pooled_precision_threshold`) --
     no LOQO here, since there is no national quadrat to hold out, matching how
     roofclf's own national `deployment_threshold` is one pooled constant.
+
+    `osm_solar_path`: see `domain_restricted_capacity`'s docstring -- same fix, same
+    reason (measured 2026-08-06: 3.0% of buildings / 3.8% of MWp in this population
+    were within 30 m of an OSM feature before this parameter existed).
     """
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask
@@ -418,6 +442,12 @@ def domain_restricted_and_gate_capacity(
 
     cands = gpd.read_parquet(candidates_path)
     is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
+    n_near_osm = 0
+    if osm_solar_path is not None:
+        osm = gpd.read_parquet(osm_solar_path)
+        is_new_osm = new_lead_mask(flagged, osm, min_distance_m=max_distance_m)
+        n_near_osm = int((is_new & ~is_new_osm).sum())
+        is_new = is_new & is_new_osm
     incremental_raw = flagged[is_new].reset_index(drop=True)
 
     over = incremental_raw.roof_area_m2 >= contamination_max_m2
@@ -450,6 +480,8 @@ def domain_restricted_and_gate_capacity(
         "n_domain_cells": len(in_domain_cells),
         "n_national_cells": int(len(all_cells)),
         "n_flagged_in_domain": int(len(flagged)),
+        "osm_dedup_applied": osm_solar_path is not None,
+        "n_excluded_near_osm": n_near_osm,
         "n_incremental_before_contamination_filter": int(len(incremental_raw)),
         "n_contaminated_excluded_ge_400m2": n_contaminated,
         "contaminated_area_m2_excluded": round(contaminated_area_m2, 1),
