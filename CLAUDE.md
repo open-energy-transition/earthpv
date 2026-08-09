@@ -170,6 +170,46 @@ the density stage rather than at setup. `source.coop` 403s any request without a
 User-Agent header, which reads exactly like "no such country". Guide:
 `docs/reproduce.md`'s "Scale to a new country" section.
 
+**Gujarat's first full capacity atlas, 2026-08-07** (`docs/results/gujarat.md`,
+`docs/assets/interactive/gujarat_pv_atlas.html`), at the owner's direction. Compose +
+infer + postprocess had already been run in full for this AOI (1,527/1,527 cells
+composited, 1,526/1,527 inferred, `candidates.parquet` 4,816 rows, 2026-07-12) --
+what was missing was everything from calibration onward: `calibrate-candidates
+--recall-reference none` (no pipeline-independent mapped reference exists for India yet,
+so this is `status: interim-mapped-only`, an honest precision floor, not a central
+estimate), `density --districts --force` (2h24m, first-ever run for this AOI so no
+fingerprint existed to protect), `check-density` (0 fail, 3 suspect -- the AOI bbox
+spills slightly into 4 neighbouring Indian states/territories, all `suspect` on small
+absolute MWp below the plausibility floor, not a Gujarat-specific finding), then the
+plain segmentation-only `earthpv atlas` (no `--sub400-*`/`--ge400-roof-cells`: zero
+calibration quadrats exist for Gujarat, so neither roofclf instrument can be fit here --
+this is the documented main-workflow fallback for a country with no mapped quadrats yet,
+not a lesser product). Result: **812.6 MWp** (`est_mwp_rc`, roof 197.0 / ground 615.6),
+recall-*uncorrected* (recall-reference none means this number is `est_mwp_cal`,
+precision-weighted only, with no Horvitz-Thompson inflation -- a floor, not a central
+estimate, exactly the same sense in which Pakistan's own numbers before their own recall
+correction were floors).
+
+**A real, unresolved gap surfaced by this run, not a silent substitution: this atlas
+does NOT use `v3_combined_india`**, the checkpoint the owner directed this project to use
+for all future development the same day (see "Which segmentation checkpoint" under the
+Density stage section above). Gujarat's existing candidates were produced 2026-07-12,
+three days before `v3_combined_india` was even trained (2026-07-15/16) -- and
+re-inferring with it was not possible because **the checkpoint file no longer exists
+anywhere on this machine** (`find /` came back empty), and neither does `v2_combined`,
+the checkpoint `configs/aoi.yaml`'s own Gujarat comment names as what was used ("the
+existing Germany-trained checkpoint ... unchanged, same as the original Punjab
+bootstrap"). Both were apparently deleted at some point after producing their outputs,
+before this session started. This atlas is therefore built from whichever checkpoint
+actually produced Gujarat's existing candidates -- almost certainly `v2_combined` per
+that comment, but this can no longer be verified against the weights themselves, and
+should NOT be read as a like-for-like comparison with Pakistan's `v3_combined_india`
+numbers. Flagged prominently in `docs/results/gujarat.md` rather than silently glossed
+over. Re-running Gujarat's compose+infer with whichever checkpoint is current when
+someone next revisits this AOI, and re-deriving density/atlas from there, is the natural
+next step -- not done here because it needs a fresh multi-hour training or inference run
+this session judged out of scope, not because the gap was missed.
+
 ### Compose stage (imagery for AOIs without local composites)
 
 `compose.py` builds Sentinel-2 composites on demand via Planetary Computer STAC
@@ -223,6 +263,136 @@ partials cache the per-building/`*_roof` columns, the filter only reaches those 
 `--force` re-run -- `meta.json`'s `oversize_stale_partials` records when it did not, and
 the candidate-population columns (`_CAND_COLS`) are rederived from the candidate frame
 every run by `candidate_cell_totals` precisely so they never go stale.
+
+**`buildings.geoparquet`'s summed rooftop capacity is NOT the same number as
+`grid.geoparquet`'s region-level rooftop total, structurally, not as a bug -- measured and
+documented 2026-08-06** (`docs/methods/density.md`'s "`buildings.geoparquet`'s rooftop sum
+is not the region total's rooftop component"). The region/national total
+(`est_mwp_rc_roof`, `pv_area_det_roofcand_m2`) sums each rooftop-placed candidate's full
+polygon area once; the per-building table (`density.per_building_detected`) only credits
+each building with its actual geometric intersection with the candidates touching it,
+capped at that building's own roof area -- so whatever part of a "rooftop"-classified
+candidate's own polygon does not literally sit on a building (gaps between the buildings
+a big polygon spans, general polygonize-and-merge over-draw past a roof's edge) is counted
+in the first total and silently missing from the second. Measured on a single matched
+candidate snapshot (so staleness above isn't confounding it): of 21,506,014 m² of
+rooftop-placed candidate area nationally, only 11,527,028 m² (53.6%) is attributed to any
+building -- a **46.4% gap**. `postprocess._join_buildings_metric`'s own recorded
+`building_overlap_frac` (mean 0.588 across rooftop-classified candidates -- it only takes
+>= 0.3 to be called `rooftop`) predicts a 9,781,295 m² gap via `sum(area * (1 -
+overlap_frac))`, matching the measured 9,978,986 m² to within 2% -- confirming the
+mechanism directly rather than leaving it circumstantial. **Ground-mount is not
+involved**: both sides of this comparison are already restricted to `placement ==
+"rooftop"` candidates before summing, so the gap is whitespace inside rooftop-classified
+polygons, not a rooftop/ground-mount misclassification. Practical consequence: any
+PyPSA-style per-building disaggregation built from `buildings.geoparquet` is a
+conservative, roof-anchored floor and should not be expected to sum back to
+`grid.geoparquet`'s own rooftop total.
+
+**A full recall/precision re-derivation against the current candidates was attempted
+2026-08-06 and NOT published -- restored the passing snapshot, matching the 2026-07-30
+precedent for this exact failure shape.** The published `est_mwp_rc` (5,077.9 MWp) had
+been computed from a `candidates.parquet` snapshot that predates the 2026-07-29
+OSM-geometry replacement (no `candidates_fingerprint.json` existed to catch this), and
+`configs/calibration/pakistan_candidate_precision.yaml`'s per-bin recall came from a
+2026-07-23 reference pooling only 1 (now-retired, much smaller) calibration box. Both
+were re-derived properly the same day: `earthpv calibrate-candidates` re-run against the
+current `candidates.parquet` with all 18 Rule-1-complete quadrats pooled into
+`--calibration-box` (14,811 fully-mapped installations, vs. the 1,021 the published table
+used), then `earthpv density --force` with the refreshed table (~2h, 4,463/4,463 cells,
+completed cleanly). Recall fell in every bin against this much richer ground truth
+(500-1k: 0.736 -> 0.419, 1k-5k: 0.889 -> 0.644, 5k-50k: 0.991 -> 0.841, >50k: 1.000 ->
+0.840), which alone would raise `est_mwp_rc`, but `p_real` fell by MORE in the
+area-dominant large bins (mapped_frac for >50k: 0.713 -> 0.165) because the current,
+OSM-replaced candidate population has a different bin composition than the snapshot the
+2026-07-23 table was fit against -- net effect, `est_mwp_rc` **fell** to 2,327.2 MWp
+(roof 640.2, ground 1,686.9), the opposite direction naive reasoning about recall alone
+would predict.
+
+**`check-density` failed on this refreshed state**: Khyber Pakhtunkhwa (ground:rooftop
+5.54x) and Balochistan (10.17x) both crossed from `suspect` to `fail` (previously 3.35x /
+3.90x). Checked whether the newly-found duplicate-OSM-match bug (see "Small-PV JOSM
+validation leads" below / `docs/issues/osm-replacement-and-sppi-capacity.md` Part 3)
+explains it at scale: nationally it affects 16 nested/duplicate candidate pairs, 3.27 km²
+(10.3% of OSM-replaced candidate area) -- real, but far too small to account for a
+5-10x regional ratio swing on its own. The actual driver is that the re-fit `p_real`
+dropped much harder for rooftop-classified large candidates than for ground-mount ones
+specifically in these two regions; not root-caused further given the same result was
+already accepted as "confirmed genuine, not a further bug" once before at a similar
+KP/Balochistan ratio failure (2026-07-30 entry above).
+
+**Restored, not published**: `data/predictions/pakistan/density/` reverted to
+`density_PUBLISHED_PINNED_backup_20260805/` (byte-identical, `check-density` re-verified
+passing: 0 fail, 3 suspect, same as before this attempt) and
+`configs/calibration/pakistan_candidate_precision.yaml` reverted to its last-committed
+state (verified identical via `git diff`). The failing refreshed state is preserved at
+`data/predictions/pakistan/density_TRUE_CURRENT_STATE_FAILING_20260806/` and the
+re-derived (18-quadrat, current-candidates) calibration table at
+`data/predictions/pakistan/density_PRE_recall_and_candidates_refresh_20260806/` is kept
+alongside it for whoever picks up the root-cause next -- neither the >= 400 m² total this
+would have produced nor the richer recall evidence behind it should be discarded, just
+not shipped yet. The published evidence atlas (Verified 7,384.1 / Best 12,614.2 MWp,
+`docs/assets/interactive/pakistan_evidence_atlas.html`) was built earlier the same day
+from the still-passing state and needed no changes -- it already reflects the sub-400
+coverage-ratio fix, the geometric OSM-dedup fix and the Best-floor fix documented above,
+all independent of this recall/candidates question.
+
+**roofclf now replaces segmentation's own rooftop estimate for >= 400 m² buildings inside
+the density-matched domain -- implemented and shipped 2026-08-07, at the owner's explicit
+direction after reviewing the measured comparison.** Two things resolved the open question
+from the same-day segmentation-model audit (see "Which segmentation checkpoint" note
+below): the owner confirmed segmentation validation should only ever use INSTALLATION
+size (`pv_area_true_m2`), not building size -- a >= 400 m² building can carry an
+installation far smaller than its own roof, which segmentation is trained blind to
+regardless of the building it sits on, explaining the exact-zero-AUC quadrats found in
+that audit without further root-causing them -- and confirmed `v3_combined_india` (the
+existing production checkpoint) as the segmentation model to use going forward, no
+retrain. New module `roofclf_ge400_capacity.py` (`domain_restricted_ge400_roof_capacity`,
+CLI `earthpv ge400-roof-capacity`) mirrors `sub400_capacity.py`'s domain-restricted,
+coverage-ratio-weighted design exactly, just for `roof_area_m2 >= 400` instead of `< 400`:
+same 13-quadrat calibrated-density-ratio selection, same measured (true PV area / roof
+area) multiplier (0.2372, close to sub-400's 0.1988-0.265 -- coverage is a similar
+fraction of the footprint regardless of size), same OSM dedup. Unlike the sub-400
+functions, this REPLACES rather than adds to segmentation's estimate (no dedup against
+segmentation candidates): `atlas.py::build_evidence_atlas` takes a new optional
+`ge400_roof_buildings_path`, uses the roofclf-based per-cell rooftop value inside the 92
+density-matched cells and segmentation's own `est_mwp_rc_roof` everywhere else (that
+column is the only evidence-backed number outside the domain), sums with
+`est_mwp_rc_ground` (untouched -- roofclf cannot score ground-mount) into a new
+`mwp_large` that replaces the bare `est_mwp_rc` reference throughout the function.
+Result, run against the current national roofclf scoring (already covers every building
+size, no re-inference needed) and the restored-published segmentation state: in-domain
+roofclf rooftop 3,432.3 MWp vs segmentation's own 1,573.5 MWp for the identical 92 cells
+(2.18x) -- checked against the domain's own building population (225,628 buildings
+>= 400 m², 42.5% flagged) for a sanity bound, consistent with the quadrats' own 61% flag
+rate at their higher true PV prevalence. National blended rooftop total 2,229.9 ->
+4,088.7 MWp (in-domain replaced, out-of-domain segmentation kept); evidence atlas
+republished: Verified unchanged at 7,384.1 MWp (rooftop swap does not touch Verified),
+Best 12,614.2 -> **14,473.0 MWp**. Old atlas backed up to
+`results/pakistan_pv_evidence_atlas_PRE_roofclf_ge400_swap_20260807_backup.html`.
+
+**Which segmentation checkpoint -- an audit finding worth keeping, 2026-08-07.**
+`roofclf.py`'s `seg_mean`/`seg_max` features (used throughout this project's
+segmentation-vs-roofclf comparisons) default to `data/predictions_pk16085/pakistan/prob/`
+(checkpoint `terramind-pv-epoch=11-step=5880.ckpt`, F1=0.624 on its own val split, chosen
+via an actual top-k comparison 2026-07-19) -- an undocumented directory with zero mentions
+anywhere in this file or `docs/` before this entry, NOT the checkpoint the main workflow's
+`candidates.parquet`/`density.py` actually uses (`v3_combined_india/terramind-pv-
+epoch=22-step=9062.ckpt`, F1=0.641 on a Multan val split, logged at the time as "no prior
+evaluation" before that same-day safety-gate check). Recomputed roofclf's zonal-stat
+features against the actual production raster for the same quadrat buildings rather than
+trust two F1 numbers from different val splits: `v3_combined_india` scores AUC
+0.761-0.775 on >= 400 m² buildings against `pk16085`'s 0.726 -- the production checkpoint
+is slightly BETTER, so every segmentation-vs-roofclf comparison already made this session
+was, if anything, mildly unfavorable to segmentation, not favorable. **Confirmed by the
+owner as the checkpoint to use for all future development; no retrain planned.** A
+second thing fell out of the same audit and was resolved by the owner directly rather
+than further code investigation: 7 of 18 quadrats showed literal exact-zero probability
+at EVERY building (positive and negative alike) from both checkpoints, despite those
+cells' rasters having isolated nonzero pixels elsewhere -- explained by the
+installation-size point above (a >= 400 m² building with a much smaller true array reads
+as a segmentation miss regardless of its own footprint size), not chased further as a
+separate raster/alignment bug.
 
 ### Sub-400 m² instruments (the recall correction cannot reach here)
 
@@ -1122,6 +1292,63 @@ Rebuilt `data/sub400_20260806/sub400_{central,low}.parquet` with it: central
 Evidence atlas republished: Verified 14,040.2 -> **13,697.1 MWp**, Best estimate
 21,792.4 -> **21,354.8 MWp**. Old atlas backed up to
 `results/pakistan_pv_evidence_atlas_PRE_osm_dedup_fix_20260806_backup.html`.
+
+**Three more measured issues found and fixed the same day (2026-08-06 release audit),
+all upstream of the OSM-dedup fix above -- pre-release review found the atlas's two
+headline numbers were each overstated by a different, independently-verifiable
+mechanism.**
+
+- **Sub-400 m² capacity assumed a flagged roof is entirely covered by panels.**
+  `domain_restricted_capacity`/`domain_restricted_and_gate_capacity` multiplied
+  flagged roof area by precision alone (`roof_area_m2 * kwp_per_m2 * precision`) --
+  precision corrects for false positives, nothing corrected for the fact that a real
+  installation covers only part of its roof. Measured directly against the
+  calibration quadrats' own mapped `pv_area_true_m2`: on sub-400 m² buildings roofclf
+  flags in the 13 selected quadrats, mapped PV covers only **19.9%** of the flagged
+  footprint (roofclf-only) / **26.5%** (AND-gate) -- so precision alone (0.53 / 0.63)
+  overstated capacity 2.7x / 2.4x. `sub400_capacity.density_regime_coverage_ratio`
+  (new function) measures this ratio directly on the flagged population and replaces
+  `precision` as the multiplier; `calibration_precision`/`calibration_recall` are kept
+  in the summary for diagnostic comparison only. Central 10,502.9 -> **3,906.4 MWp**,
+  low (AND-gate) 5,600.1 -> **2,350.3 MWp**.
+- **The evidence atlas's own OSM-matched flag used `osm_matched_id`, a one-to-one
+  nearest match, so it undercounted matches and inflated `osm_mwp_unmatched`.**
+  `postprocess.replace_with_osm_geometry` assigns at most one OSM id per *candidate*
+  polygon, even when that polygon (a coarse model blob, or a large mapped array) spans
+  several OSM installations -- common in dense residential quadrats. Using that id set
+  in `build_evidence_atlas` found only 1,674 of 16,085 OSM installations "already
+  found by the model." A direct 30 m geometric proximity check (`export.new_lead_mask`,
+  the same test the rest of the pipeline uses for "is this a new lead") finds 3,022.
+  `osm_mwp_unmatched` fell 3,298.1 -> **1,398.4 MWp** -- that MWp was never missing from
+  the model's own detections, it was a counting artifact.
+- **`mwp_best` could read below `mwp_verified` in the same cell**, because Best
+  discards a cell's matched-OSM value in favor of the model's own `est_mwp_rc`/
+  `small_central`, which is sometimes smaller than what it replaced. Worst case measured:
+  the Quaid-e-Azam Solar Park cell scored Verified 866.5 MWp against Best 243.3 MWp
+  pre-fix (`est_mwp_rc` there was 0.2 MWp) -- Best is defined as "the highest defensible
+  figure" and cannot legitimately read lower than Verified. `build_evidence_atlas` now
+  floors `mwp_best` at `mwp_verified` per cell after both are computed (62 of 4,463
+  cells needed it) and records `n_cells_best_floored` in the totals.
+
+Evidence atlas republished with the three fixes above (OSM dedup from the prior entry
+was already in): Verified 10,633.9 -> **7,384.1 MWp** (-30.6%), Best estimate
+18,878.9 -> **12,614.2 MWp** (-33.2%), zero cells remaining with Verified > Best. Old
+atlas backed up to
+`results/pakistan_pv_evidence_atlas_PRE_coverage_ratio_and_dedup_fix_20260806_backup.html`;
+pre-fix sub-400 building parquets backed up to
+`data/roofclf_national_with_sppi/pakistan/density_PRE_coverage_ratio_fix_20260806/` and
+`data/sub400_20260806_fixed_PRE_coverage_ratio_fix_20260806/`. **The &ge;400 m²
+segmentation total (5,077.9 MWp) is untouched by this pass and is a separate, still-open
+question**: it is computed from a `candidates.parquet` snapshot that predates the
+2026-07-29 OSM-geometry replacement (see "roofclf.py" below for that fix's effect on
+matched-candidate area), and the model's per-size-bin recall
+(`configs/calibration/pakistan_candidate_precision.yaml`) was fit before the current
+16,085-installation national OSM pull existed -- re-measuring recall against it moves
+every bin down (e.g. 1k-5k: table 0.889 vs re-measured 0.606), which pulls the
+&ge;400 m² total in the *opposite* direction from the stale-candidates issue. Recomputing
+`est_mwp_rc` against the current candidates alone (no recall re-fit) gives ~2,847 MWp;
+this needs a single combined re-derivation, not two independent partial fixes shipped
+separately, and was left out of this pass for exactly that reason.
 
 ### Small-PV JOSM validation leads (`pixi run small-pv-leads`)
 

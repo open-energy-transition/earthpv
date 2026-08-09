@@ -96,6 +96,7 @@ nav:
       #- Growth: results/growth.md
       - Panel pose from glint: results/pv-pose.md
       - Mapping leads: results/leads.md
+      - Gujarat capacity map: results/gujarat.md
   - Setup New Country: reproduce.md
   - How it works:
       - how-it-works.md

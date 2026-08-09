@@ -1165,6 +1165,7 @@ def build_evidence_atlas(
     osm_solar_path: Path, candidates_path: Path,
     low_buildings_path: Path, central_buildings_path: Path,
     out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
+    ge400_roof_buildings_path: Path | None = None,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -1191,18 +1192,54 @@ def build_evidence_atlas(
       (`central_buildings_path`). This project's own pick, the highest figure it
       defends.
 
+    **`ge400_roof_buildings_path` (added 2026-08-07): roofclf replaces segmentation's own
+    rooftop estimate for >= 400 m2 buildings, inside the density-matched domain only.**
+    Measured on the same buildings (13 quadrats, LOQO): roofclf AUC 0.896 vs
+    segmentation's own raster AUC 0.726-0.775 (`seg_mean`/`seg_mean_main`, both the
+    undocumented `pk16085` checkpoint and the actual production `v3_combined_india` one),
+    and at matched ~54% precision, recall 94.2% (roofclf) vs 19-25% (segmentation) --
+    segmentation is a known weak instrument for small PV, including small PV *on large
+    buildings*, which is exactly the >= 400 m2 rooftop population this replaces.
+    `roofclf_ge400_capacity.domain_restricted_ge400_roof_capacity` produces this path's
+    buildings (`est_kwp_ge400_roof` per building); `grid.est_mwp_rc_roof` (segmentation)
+    stays authoritative outside the ~92-cell domain, where roofclf has no calibration
+    evidence. Ground-mount (`grid.est_mwp_rc_ground`) is untouched either way -- roofclf
+    has no footprint to score there. Optional: omitting it falls back to the pre-2026-08-07
+    behavior (segmentation's own `est_mwp_rc`, roof+ground combined, unchanged) for AOIs
+    with no roofclf national scoring yet.
+
     Ported from `scripts/build_pakistan_pv_evidence_overview.py` (see that file's git
-    history for the full derivation and the 2026-08-01 redefinition of Ceiling) with one
-    correctness fix: the building-level parquets are now aggregated to cells via
-    `_join_buildings_to_grid_cells` -- a spatial join against THIS run's own grid
-    polygons -- rather than a plain string `cell`-id match. The id-matching join the
-    standalone script used silently drops any building whose id came from a manifest
-    that numbered cells differently than this run's grid (the same failure mode
-    `build_combined_atlas`'s docstring measured directly: a naive id join lost cells a
-    spatial join does not). Buildings that fall outside every cell of this run's grid are
-    excluded from the map and totals with a warning, the same as every other atlas
-    builder here -- not reconstructed from a guessed cell origin, which
-    `_join_buildings_to_grid_cells`'s own docstring explains is unsafe.
+    history for the full derivation and the 2026-08-01 redefinition of Ceiling) with two
+    correctness fixes:
+
+    - The building-level parquets are now aggregated to cells via
+      `_join_buildings_to_grid_cells` -- a spatial join against THIS run's own grid
+      polygons -- rather than a plain string `cell`-id match. The id-matching join the
+      standalone script used silently drops any building whose id came from a manifest
+      that numbered cells differently than this run's grid (the same failure mode
+      `build_combined_atlas`'s docstring measured directly: a naive id join lost cells a
+      spatial join does not). Buildings that fall outside every cell of this run's grid
+      are excluded from the map and totals with a warning, the same as every other atlas
+      builder here -- not reconstructed from a guessed cell origin, which
+      `_join_buildings_to_grid_cells`'s own docstring explains is unsafe.
+    - **OSM-matched dedup is now geometric, not an id lookup (2026-08-06 fix).**
+      `postprocess.replace_with_osm_geometry` assigns `osm_matched_id` as a one-to-one
+      nearest match: one candidate polygon can only ever carry a single OSM id, even
+      when it overlaps many mapped installations (a common shape in dense residential
+      quadrats). Using that id set to mark OSM features as "found by the model" left
+      2,007 ids covering only 1,674 of 16,085 OSM installations, so `osm_mwp_unmatched`
+      counted the model's own detections as if they were still missing -- measured
+      2026-08-06 at ~1,900 MWp of double-counting. Replaced with
+      `~export.new_lead_mask(osm, cand, min_distance_m=NEAR_BUILDING_M)`, the same
+      proximity test the rest of the pipeline uses for "is this a genuinely new lead."
+    - **`mwp_best` is now floored at `mwp_verified` per cell (2026-08-06 fix).** Best
+      subtracts a cell's matched OSM value and substitutes the model's own recall- and
+      density-based estimate, which can be smaller than the mapped value it replaced --
+      e.g. Quaid-e-Azam Solar Park scored Verified 866 MWp against Best 243 MWp before
+      this fix, since `est_mwp_rc` for that cell was ~0. Best is defined as "the highest
+      defensible figure," so it can never legitimately read below Verified in the same
+      cell; `np.maximum(mwp_best, mwp_verified)` enforces that ordering after both are
+      computed, and `n_cells_best_floored` records how often it had to.
     """
     density_dir = Path(density_dir)
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
@@ -1218,16 +1255,18 @@ def build_evidence_atlas(
     kwp_mod = meta.get("kwp_per_m2_module", 0.18)
     kwp_land = meta.get("kwp_per_m2_land", 0.07)
 
-    # --- hand-mapped OSM PV, per cell, split by whether the model already found it
-    #     (candidates carry the id of the OSM feature they matched, if any).
+    # --- hand-mapped OSM PV, per cell, split by whether the model already found it.
+    #     Geometric proximity, not `osm_matched_id`: that id is assigned one-to-one by
+    #     `postprocess.replace_with_osm_geometry`, so one candidate blob overlapping many
+    #     mapped installations only ever "claims" one of them -- see this function's
+    #     docstring for the ~1,900 MWp of double-counting that undercounted matches.
+    from earthpv.export import new_lead_mask
+    from earthpv.postprocess import NEAR_BUILDING_M
+
     osm = gpd.read_parquet(osm_solar_path)
     cand = gpd.read_parquet(candidates_path)
-    matched_ids = (
-        set(cand["osm_matched_id"].dropna().astype(str))
-        if "osm_matched_id" in cand.columns else set()
-    )
     osm = osm.copy()
-    osm["matched"] = osm["id"].astype(str).isin(matched_ids)
+    osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=NEAR_BUILDING_M)
     osm["kwp"] = np.where(
         osm["placement"] == "rooftop", osm["area_m2"] * kwp_mod, osm["area_m2"] * kwp_land
     )
@@ -1268,15 +1307,48 @@ def build_evidence_atlas(
     grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
     n_domain_cells = int(grid["in_domain"].sum())
 
+    # roofclf replaces segmentation's rooftop estimate inside the density-matched domain
+    # (see docstring); outside it, segmentation's own est_mwp_rc_roof is the only
+    # evidence-backed number, so it stays. Falls back to the pre-2026-08-07 combined
+    # est_mwp_rc when no ge400 rooftop path is given (e.g. an AOI with no roofclf yet).
+    if ge400_roof_buildings_path is not None:
+        by_ge400_roof = _join_buildings_to_grid_cells(
+            gpd.read_parquet(ge400_roof_buildings_path), "est_kwp_ge400_roof", grid
+        ) / 1000.0
+        ge400_domain_cells = set(by_ge400_roof.index)
+        grid["mwp_large_roof"] = np.where(
+            grid["cell"].isin(ge400_domain_cells),
+            grid["cell"].map(by_ge400_roof).fillna(0.0),
+            grid["est_mwp_rc_roof"],
+        )
+        grid["in_domain"] = grid["in_domain"] | grid["cell"].isin(ge400_domain_cells)
+        n_domain_cells = int(grid["in_domain"].sum())
+    else:
+        grid["mwp_large_roof"] = grid["est_mwp_rc_roof"]
+    grid["mwp_large"] = grid["mwp_large_roof"] + grid["est_mwp_rc_ground"]
+
     grid["mwp_verified"] = grid["osm_mwp"] + grid["small_low"]
-    grid["mwp_best"] = grid["osm_mwp_unmatched"] + grid["est_mwp_rc"] + grid["small_central"]
+    grid["mwp_best"] = grid["osm_mwp_unmatched"] + grid["mwp_large"] + grid["small_central"]
+    # Best is "the highest defensible figure" -- it must never read below Verified in the
+    # same cell. It can, before this floor: Best drops a cell's matched-OSM value in favor
+    # of the model's own est_mwp_rc/small_central, which is sometimes smaller (e.g.
+    # Quaid-e-Azam Solar Park: Verified 866 MWp vs Best 243 MWp pre-fix, since est_mwp_rc
+    # there was ~0). See this function's docstring, 2026-08-06 fix.
+    n_cells_best_floored = int((grid["mwp_best"] < grid["mwp_verified"]).sum())
+    if n_cells_best_floored:
+        log.info(
+            "Evidence atlas: flooring mwp_best at mwp_verified in %d/%d cells "
+            "(model estimate below the mapped value it was meant to supersede)",
+            n_cells_best_floored, len(grid),
+        )
+    grid["mwp_best"] = np.maximum(grid["mwp_best"], grid["mwp_verified"])
 
     cells = [
         [round(float(r.lon0), 3), round(float(r.lat0), 3),
          round(float(r.mwp_verified), 3), round(float(r.mwp_best), 3),
          round(float(r.osm_mwp), 3), int(r.osm_n),
          round(float(r.small_low), 3), round(float(r.small_central), 3),
-         round(float(r.est_mwp_rc), 3), int(r.in_domain), int(r.n_pv_buildings)]
+         round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings)]
         for r in grid.itertuples()
     ]
     bounds = [
@@ -1297,7 +1369,7 @@ def build_evidence_atlas(
         reg = gpd.read_parquet(regions_path)
         reg_regions = reg[reg.level == "region"]
         keep = [
-            "mwp_verified", "mwp_best", "osm_mwp", "est_mwp_rc",
+            "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
             "small_low", "small_central",
         ]
         pts2 = gpd.GeoDataFrame(
@@ -1312,7 +1384,7 @@ def build_evidence_atlas(
                 "mwp_verified": round(float(row["mwp_verified"]), 1),
                 "mwp_best": round(float(row["mwp_best"]), 1),
                 "osm_mwp": round(float(row["osm_mwp"]), 1),
-                "mwp_large": round(float(row["est_mwp_rc"]), 1),
+                "mwp_large": round(float(row["mwp_large"]), 1),
                 "small_low": round(float(row["small_low"]), 1),
                 "small_central": round(float(row["small_central"]), 1),
                 "nb": int(r.n_pv_buildings),
@@ -1322,7 +1394,7 @@ def build_evidence_atlas(
 
     total_verified = float(grid.mwp_verified.sum())
     total_best = float(grid.mwp_best.sum())
-    total_large = float(grid.est_mwp_rc.sum())
+    total_large = float(grid.mwp_large.sum())
 
     calib_boxes = _load_calib_boxes(aoi, labels_dir)
     n_calib_rule1 = sum(1 for b in calib_boxes if b["status"] == "rule1")
@@ -1346,6 +1418,7 @@ def build_evidence_atlas(
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "n_cells": int(len(grid)),
             "n_domain_cells": n_domain_cells,
+            "n_cells_best_floored": n_cells_best_floored,
             "kwp_per_m2": kwp_mod,
             "n_calib_boxes": len(calib_boxes),
             "n_calib_rule1": n_calib_rule1,

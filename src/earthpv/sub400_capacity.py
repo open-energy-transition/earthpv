@@ -150,6 +150,68 @@ def density_regime_precision(
     return result
 
 
+def density_regime_coverage_ratio(
+    buildings_path: Path,
+    quadrats: list[str],
+    threshold: float,
+    sppi_min_precision: float | None = None,
+    contamination_max_m2: float = 400.0,
+) -> dict:
+    """Measured (true mapped PV area / roof area) on the buildings roofclf (optionally
+    AND SPPI) flags in `quadrats`, sub-`contamination_max_m2` only -- the actual
+    multiplier capacity needs, replacing the flat precision weight.
+
+    `density_regime_precision`'s `precision` implicitly assumes a flagged roof is
+    entirely covered by panels once it's counted as a true positive (`roof_area_m2 *
+    kwp_per_m2 * precision`). Measured directly against the quadrats' own mapped ground
+    truth (`pv_area_true_m2`, the same quantity the module constant expects): on
+    sub-400 m2 buildings roofclf flags in the 13 calibration quadrats, mapped PV covers
+    only ~33.9% of the flagged footprint on average -- multiplying by precision alone
+    (0.53-0.63) overstated capacity 1.4-2.3x (measured 2026-08-06, both roofclf-only and
+    the AND-gate, in every one of the 13 quadrats individually). This ratio already
+    nets out both effects in one number: false positives contribute ~0 true area, true
+    positives contribute their real (partial) coverage, so `roof_area_m2 * kwp_per_m2 *
+    coverage_ratio` is the direct measured estimator rather than precision times an
+    assumed-100%-coverage guess.
+
+    `sppi_min_precision`, when given, additionally requires SPPI above the pooled
+    precision-targeted threshold (`sppi.pooled_precision_threshold`) -- the AND-gate's
+    own selection -- so this can be called with the same predicate
+    `domain_restricted_and_gate_capacity` uses instead of roofclf alone.
+    """
+    df = gpd.read_parquet(buildings_path)
+    sub = df[df.quadrat.isin(quadrats) & (df.roof_area_m2 < contamination_max_m2)]
+    if sub.empty:
+        raise ValueError(
+            f"None of {quadrats} found under {contamination_max_m2} m2 in {buildings_path}"
+        )
+    pred = sub.p_oof.to_numpy(float) >= threshold
+    if sppi_min_precision is not None:
+        from earthpv.sppi import add_sppi, pooled_precision_threshold
+
+        if "sppi" not in df.columns:
+            df = add_sppi(df)
+            sub = df[df.quadrat.isin(quadrats) & (df.roof_area_m2 < contamination_max_m2)]
+        sppi_thresh = pooled_precision_threshold(df, quadrats, min_precision=sppi_min_precision)
+        pred = pred & (sub.sppi.to_numpy(float) >= sppi_thresh)
+    flagged = sub[pred]
+    roof_sum = float(flagged.roof_area_m2.sum())
+    true_sum = float(flagged.pv_area_true_m2.sum())
+    ratio = true_sum / roof_sum if roof_sum else float("nan")
+    result = {
+        "quadrats": quadrats,
+        "threshold": threshold,
+        "contamination_max_m2": contamination_max_m2,
+        "n_sub400": int(len(sub)),
+        "n_flagged": int(len(flagged)),
+        "flagged_roof_area_m2": round(roof_sum, 1),
+        "flagged_true_pv_area_m2": round(true_sum, 1),
+        "coverage_ratio": round(ratio, 4),
+    }
+    log.info("Density-regime coverage ratio: %s", result)
+    return result
+
+
 def national_incremental_capacity(
     roofclf_dir: Path,
     candidates_path: Path,
@@ -256,9 +318,15 @@ def domain_restricted_capacity(
        >= `contamination_max_m2` are dropped from "incremental": they were never sub-400
        m2 to begin with, they are just outside `new_lead_mask`'s 30 m matching radius of
        an existing segmentation candidate (a geometry-matching gap, not sub-floor signal).
-    3. **Density-regime precision** -- `density_regime_precision`'s measured value (from
-       the quadrats whose rate_ratio is within `[ratio_lo, ratio_hi]`), not the flat LOQO
-       number, which the module docstring shows does not help on its own.
+    3. **Density-regime coverage ratio** -- `density_regime_coverage_ratio`'s measured
+       (true mapped PV area / roof area) on the flagged population (from the quadrats
+       whose rate_ratio is within `[ratio_lo, ratio_hi]`), not the flat LOQO precision.
+       Precision alone assumes a true positive's *entire* footprint is PV-covered;
+       measured against the quadrats' own `pv_area_true_m2`, flagged sub-400 m2
+       buildings average only ~34% coverage, so precision alone overstated capacity
+       ~2.3x (measured 2026-08-06 -- see `density_regime_coverage_ratio`'s docstring).
+       `calibration_precision`/`calibration_recall` are still reported in the summary
+       for diagnostic comparison, but no longer drive the MWp figure.
 
     `osm_solar_path`, when given, adds a FOURTH exclusion: buildings within `max_distance_m`
     of an already hand-mapped OSM solar feature. Without it, "incremental" only means "no
@@ -287,6 +355,9 @@ def domain_restricted_capacity(
     n_buildings_national = int(all_cells.n_buildings.sum())
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
     precision_info = density_regime_precision(buildings_path, quadrats, threshold)
+    coverage_info = density_regime_coverage_ratio(
+        buildings_path, quadrats, threshold, contamination_max_m2=contamination_max_m2
+    )
 
     # Read only the ~93 in-domain per-cell parquets, not all 4,473 -- files are named
     # <cell>.parquet by `score_buildings_national`, so this is a filename filter, not a
@@ -328,19 +399,21 @@ def domain_restricted_capacity(
     contaminated_area_m2 = float(incremental_raw.loc[over, "roof_area_m2"].sum())
     incremental = incremental_raw[~over].reset_index(drop=True)
 
-    precision = precision_info["precision"]
+    coverage_ratio = coverage_info["coverage_ratio"]
     total_area_m2 = float(incremental.roof_area_m2.sum())
     incremental = incremental.copy()
     incremental["est_kwp_sub400"] = (
-        incremental.roof_area_m2.to_numpy(float) * DEFAULT_KWP_PER_M2_MODULE * precision
+        incremental.roof_area_m2.to_numpy(float) * DEFAULT_KWP_PER_M2_MODULE * coverage_ratio
     )
     total_mwp = float(incremental.est_kwp_sub400.sum()) / 1000.0
 
     summary = {
         "method": "domain_restricted_sub400_capacity",
         "calibration_quadrats": quadrats,
-        "calibration_precision": precision,
+        "calibration_precision": precision_info["precision"],
         "calibration_recall": precision_info["recall"],
+        "calibration_coverage_ratio": coverage_ratio,
+        "calibration_coverage_ratio_n_flagged": coverage_info["n_flagged"],
         "n_domain_cells": len(in_domain_cells),
         "n_national_cells": int(len(all_cells)),
         "n_buildings_in_domain": n_buildings_in_domain,
@@ -405,6 +478,13 @@ def domain_restricted_and_gate_capacity(
     `osm_solar_path`: see `domain_restricted_capacity`'s docstring -- same fix, same
     reason (measured 2026-08-06: 3.0% of buildings / 3.8% of MWp in this population
     were within 30 m of an OSM feature before this parameter existed).
+
+    **Capacity multiplier is now the measured coverage ratio, not `and_precision`
+    (2026-08-06 fix)** -- see `domain_restricted_capacity`'s docstring point 3 and
+    `density_regime_coverage_ratio`'s docstring for why: `and_precision` (0.63) assumes
+    full-footprint PV coverage on every true positive, but the AND-gate's own flagged
+    sub-400 m2 population covers only ~26.5% of its footprint on average, so precision
+    alone overstated this tier's capacity ~1.4x.
     """
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask
@@ -431,6 +511,11 @@ def domain_restricted_and_gate_capacity(
     roof_fp = int((roof_pred & ~y).sum())
     roof_only_precision = roof_tp / (roof_tp + roof_fp) if (roof_tp + roof_fp) else float("nan")
     roof_only_recall = roof_tp / int(y.sum()) if y.sum() else float("nan")
+
+    coverage_info = density_regime_coverage_ratio(
+        buildings_path, quadrats, threshold,
+        sppi_min_precision=sppi_min_precision, contamination_max_m2=contamination_max_m2,
+    )
 
     parts = []
     for cell in sorted(in_domain_cells):
@@ -470,12 +555,13 @@ def domain_restricted_and_gate_capacity(
     contaminated_area_m2 = float(incremental_raw.loc[over, "roof_area_m2"].sum())
     incremental = incremental_raw[~over].reset_index(drop=True)
 
+    coverage_ratio = coverage_info["coverage_ratio"]
     total_area_m2 = float(incremental.roof_area_m2.sum())
     incremental = incremental.copy()
     incremental["est_kwp_sub400_and_gate"] = (
         incremental.roof_area_m2.to_numpy(float)
         * DEFAULT_KWP_PER_M2_MODULE
-        * (and_precision if and_precision == and_precision else 0.0)
+        * (coverage_ratio if coverage_ratio == coverage_ratio else 0.0)
     )
     total_mwp = float(incremental.est_kwp_sub400_and_gate.sum()) / 1000.0
 
@@ -492,6 +578,8 @@ def domain_restricted_and_gate_capacity(
         ),
         "and_gate_precision": round(and_precision, 4) if and_precision == and_precision else None,
         "and_gate_recall": round(and_recall, 4) if and_recall == and_recall else None,
+        "and_gate_coverage_ratio": coverage_ratio,
+        "and_gate_coverage_ratio_n_flagged": coverage_info["n_flagged"],
         "n_domain_cells": len(in_domain_cells),
         "n_national_cells": int(len(all_cells)),
         "n_flagged_in_domain": int(len(flagged)),

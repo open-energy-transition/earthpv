@@ -755,3 +755,61 @@ capacity in this specific stratum/quadrat type (small, uniform, closely-packed
 residential rooftop arrays) -- both the model and the independent physics check are
 weak here. Data: `data/glint/calib_box/lahore_calib_box_glint_summary.csv`,
 `lahore_calib_box_stats_by_size.csv`.
+
+---
+
+## Two ground-mount solar-farm calibration areas (2026-08-06)
+
+Every box above is rooftop/urban -- ground-mount (site-area, 0.07 kWp/m² conversion) has
+had zero dedicated calibration ground truth anywhere in this project, despite being
+roughly half of the >= 400 m² capacity estimate and the component `check-density`'s worst
+plausibility failures (Balochistan, KP, Gilgit-Baltistan) concentrate in. Two known,
+well-mapped Pakistani utility-scale farms, using their own OSM boundary rather than a
+drawn/geodesic shape:
+
+- **`sukkur_solar_farm_gmcalib_5p93km2`** -- the combined "Helios Power (Pvt.) Limited
+  (Phase 3), Meridian Energy (Pvt.) Ltd (Phase 1), HND Energy (Pvt.) Limited (Phase 2),
+  Scatec Sukkur solar farm" complex (`osm-way/1374632672`, `plant:output:electricity`
+  50 MW), Sukkur district, Sindh. Plant footprint 2.265 km², boundary buffered +400 m
+  to 5.93 km² for surrounding-terrain false-positive testing.
+- **`quaid_e_azam_solar_park_gmcalib_14p07km2`** -- Quaid-e-Azam Solar Park
+  (`osm-relation/11789995`, operator QA Solar Power Ltd, 400 MW), Bahawalpur district,
+  Punjab. Buffered +400 m from 6.65 km² (the relation's own area) to 14.07 km².
+
+Both named `..._gmcalib_...`, not `..._calib_...`, so `roofclf.discover_quadrats()`'s glob
+(`*_calib_*_boundary.geojson`) does not pick them up -- confirmed (still 18 quadrats
+discovered after adding these). Mixing ground-mount PV into roofclf's rooftop-classifier
+training population would contradict the placement separation this project enforces
+everywhere else.
+
+**Both raw OSM pulls needed a fix before use.** Each site turned out to have nested,
+overlapping OSM mapping at multiple levels -- an outer envelope (oddly tagged
+`generator:source=solar` at both sites rather than `plant:source=solar`) drawn over
+pre-existing finer per-phase/per-block mapping, with no tags distinguishing the levels
+from each other. Naively summing the raw pull's `area_m2` triple-counts the same ground:
+8.63 km² raw vs. **2.61 km² dissolved** at Sukkur (21 overlapping elements -> 1), 22.20
+km² raw vs. **8.90 km² dissolved** at QASP (6 overlapping elements -> 1). Both quadrats'
+`*_overpass_solar.parquet` now hold one dissolved-footprint row rather than the raw pull.
+
+**Checking both sites against the current `candidates.parquet` surfaced a real,
+previously undocumented pipeline bug** -- see `docs/issues/osm-replacement-and-sppi-capacity.md`'s
+new Part 3 for the full mechanism and reproduction. Short version: at Quaid-e-Azam Solar
+Park, two *different* model-detected candidates each independently matched their own
+nearest OSM feature via `postprocess.replace_with_osm_geometry` -- one to the outer
+envelope (8,904,839 m²), one to a member way **100% contained inside it**
+(1,745,036 m²) -- and both survive as separate rows in `candidates.parquet`, so this one
+site's ~8.90 km² footprint is currently double-counted to ~10.65 km² (+20%) in any
+capacity estimate built from this snapshot. At Sukkur the opposite failure shows instead:
+the one nearby candidate (44,948 m², never OSM-replaced) undercounts the true 2,606,013 m²
+footprint by **58x** -- a second, independent confirmation of this project's established
+"segmentation badly underestimates ground-mount" finding, beyond Quaid-e-Azam Solar
+Park's own count-zero cell (the evidence-atlas `mwp_best` floor fix, same session).
+
+Not yet folded into any capacity number or plausibility check -- these two quadrats
+exist so far only as ground truth for a future targeted evaluation of the segmentation
+model's own ground-mount recall/area accuracy (the actually-novel thing solar-farm
+calibration areas can measure that rooftop quadrats cannot), and as the source of the
+duplicate-match finding above. Not Rule-1 complete in the usual sense (no human
+completeness pass over the surrounding buffer for false positives yet) -- the two sites'
+own footprints are corroborated by two independently-drawn OSM outlines converging on
+the same shape, which is not nothing, but is not a substitute for that pass.

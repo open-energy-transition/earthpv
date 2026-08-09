@@ -84,4 +84,6 @@ training data. Mapped installations returning through that path are what closes 
 
 `results/gujarat_pv_candidates.geojson` and `results/gujarat_pv_new_leads.geojson` hold a
 first pass over Gujarat, India, produced with no locally cached data at all. Gujarat is
-the worked template for [running on a new region](../reproduce.md#running-on-a-new-region).
+the worked template for [running on a new region](../reproduce.md#running-on-a-new-region);
+see the [Gujarat capacity map](gujarat.md) for its first full capacity estimate
+(2026-08-07, segmentation-only -- no calibration quadrats exist there yet).

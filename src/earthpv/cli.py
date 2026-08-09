@@ -720,6 +720,79 @@ def sub400_capacity_cmd(
     typer.echo(f"-> {out_dir}")
 
 
+@app.command("ge400-roof-capacity")
+def ge400_roof_capacity_cmd(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    roofclf_dir: Path = typer.Option(
+        None, help="`roofclf-score-national`'s output dir (default "
+        "data/roofclf_national_with_sppi/<aoi>/prob)",
+    ),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    calib_dir: Path = typer.Option(
+        Path("data/roofclf"),
+        help="`earthpv roof-classifier`'s output dir -- reads folds.csv, "
+        "buildings.geoparquet and summary.json (for the deployment threshold)",
+    ),
+    cell_density_path: Path = typer.Option(
+        None, help="Override <calib-dir>/national_cell_density.parquet",
+    ),
+    out_dir: Path = typer.Option(None, help="Output dir (default <roofclf-dir>/../density)"),
+    threshold: float = typer.Option(
+        None, help="roofclf deployment threshold (default: calib-dir/summary.json's)"
+    ),
+    osm_solar: Path = typer.Option(
+        None, help="National OSM/Overpass solar pull -- dedupes against buildings OSM "
+        "already mapped. Recommended for every call feeding the evidence atlas.",
+    ),
+    max_distance_m: float = typer.Option(30.0, help="'Not already a known OSM feature' distance"),
+    min_area_m2: float = typer.Option(400.0, help="Rooftop-building size floor (matches the segmentation detection floor)"),
+    ratio_lo: float = typer.Option(None, help="Lower bound of roofclf's rate_ratio calibrated-quadrat band"),
+    ratio_hi: float = typer.Option(None, help="Upper bound of that same band"),
+) -> None:
+    """roofclf-based capacity for >= 400 m2 ROOFTOP buildings -- REPLACES segmentation's
+    own est_mwp_rc_roof inside the density-matched domain (roofclf measured AUC 0.896 vs
+    segmentation's 0.73-0.78 on the same buildings; see `roofclf_ge400_capacity.py`'s
+    module docstring). Feeds `earthpv atlas --ge400-roof-cells ...` alongside the
+    existing --sub400-low-cells/--sub400-central-cells."""
+    import json
+    import logging
+
+    from earthpv.roofclf_ge400_capacity import domain_restricted_ge400_roof_capacity
+    from earthpv.sub400_capacity import cell_density_from_grid
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    roofclf_dir = Path(roofclf_dir) if roofclf_dir else Path("data/roofclf_national_with_sppi") / aoi / "prob"
+    out_dir = Path(out_dir) if out_dir else roofclf_dir.parent / "density"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    calib_dir = Path(calib_dir)
+    folds_path = calib_dir / "folds.csv"
+    buildings_path = calib_dir / "buildings.geoparquet"
+
+    cell_density_path = Path(cell_density_path) if cell_density_path else calib_dir / "national_cell_density.parquet"
+    if not cell_density_path.exists():
+        grid_csv = Path(pred_dir) / aoi / "density" / "grid.csv"
+        cell_density_path.parent.mkdir(parents=True, exist_ok=True)
+        cell_density_from_grid(grid_csv).to_parquet(cell_density_path)
+        typer.echo(f"Derived {cell_density_path} from {grid_csv}")
+
+    if threshold is None:
+        threshold = json.loads((calib_dir / "summary.json").read_text())["deployment_threshold"]
+
+    flagged, summary = domain_restricted_ge400_roof_capacity(
+        roofclf_dir=roofclf_dir, folds_path=folds_path, buildings_path=buildings_path,
+        cell_density_path=cell_density_path, threshold=threshold, osm_solar_path=osm_solar,
+        max_distance_m=max_distance_m, min_area_m2=min_area_m2,
+        ratio_lo=ratio_lo, ratio_hi=ratio_hi,
+    )
+    flagged.to_parquet(out_dir / "ge400_roof_incremental_buildings.parquet")
+    (out_dir / "ge400_roof_summary.json").write_text(json.dumps(summary, indent=2))
+    typer.echo(
+        f"roofclf >= {min_area_m2:.0f} m2 rooftop (domain-restricted): "
+        f"{summary['total_est_mwp_ge400_roof_domain']:.1f} MWp ({summary['scope']})"
+    )
+    typer.echo(f"-> {out_dir}")
+
+
 @app.command("check-density")
 def check_density_cmd(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
@@ -941,6 +1014,16 @@ def atlas(
         "modelled annual irradiance (Potential tab) alongside the existing PV-area/"
         "roof-area ratio (Saturation tab). Takes priority over every other flag above.",
     ),
+    ge400_roof_cells: Path = typer.Option(
+        None, help="Building-level parquet from `roofclf_ge400_capacity."
+        "domain_restricted_ge400_roof_capacity` (columns: cell, geometry, roof_area_m2, "
+        "est_kwp_ge400_roof) -- only used with the EVIDENCE atlas (--osm-solar). Replaces "
+        "segmentation's own >= 400 m2 rooftop estimate inside the density-matched domain "
+        "(roofclf measured AUC 0.896 vs segmentation's 0.73-0.78 on the same buildings, "
+        "2026-08-07); segmentation's est_mwp_rc_roof stays authoritative outside it. "
+        "Ground-mount is unaffected either way. Optional -- omitting it keeps the "
+        "pre-2026-08-07 segmentation-only rooftop total.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
@@ -970,6 +1053,7 @@ def atlas(
                 aoi, density_dir, osm_solar, candidates_path,
                 sub400_low_cells, sub400_central_cells,
                 out=out, zoom_out_frac=zoom_out,
+                ge400_roof_buildings_path=ge400_roof_cells,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):

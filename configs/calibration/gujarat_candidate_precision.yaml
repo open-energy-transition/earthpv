@@ -1,0 +1,155 @@
+aoi: gujarat
+status: interim-mapped-only
+derived: '2026-08-07'
+min_distance_m: 100.0
+false_floor: 0.087
+false_n: 69
+false_validated: 6
+recall_reference: none
+recall_reference_n: 0
+n_draws: 4000
+seed: 20260723
+ci_pct:
+- 5.0
+- 95.0
+bin_edges_m2:
+- 100.0
+- 500.0
+- 1000.0
+- 5000.0
+- 50000.0
+bins:
+- label: <100
+  n_candidates: 45
+  n_mapped: 2
+  mapped_frac: 0.0444
+  sensitivity: 0.025
+  sensitivity_n: 80
+  sensitivity_validated: 2
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.0444
+  p_real_lo: 0.013
+  p_real_hi: 0.1133
+- label: 100-500
+  n_candidates: 170
+  n_mapped: 3
+  mapped_frac: 0.0176
+  sensitivity: 0.088
+  sensitivity_n: 80
+  sensitivity_validated: 7
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.0176
+  p_real_lo: 0.0063
+  p_real_hi: 0.0417
+- label: 500-1k
+  n_candidates: 167
+  n_mapped: 2
+  mapped_frac: 0.012
+  sensitivity: 0.162
+  sensitivity_n: 80
+  sensitivity_validated: 13
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.012
+  p_real_lo: 0.0035
+  p_real_hi: 0.0327
+- label: 1k-5k
+  n_candidates: 780
+  n_mapped: 15
+  mapped_frac: 0.0192
+  sensitivity: 0.306
+  sensitivity_n: 85
+  sensitivity_validated: 26
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.0192
+  p_real_lo: 0.0126
+  p_real_hi: 0.0289
+- label: 5k-50k
+  n_candidates: 2416
+  n_mapped: 80
+  mapped_frac: 0.0331
+  sensitivity: 0.293
+  sensitivity_n: 82
+  sensitivity_validated: 24
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.0331
+  p_real_lo: 0.0274
+  p_real_hi: 0.0396
+- label: '>50k'
+  n_candidates: 1238
+  n_mapped: 245
+  mapped_frac: 0.1979
+  sensitivity: 0.261
+  sensitivity_n: 92
+  sensitivity_validated: 24
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.1979
+  p_real_lo: 0.1799
+  p_real_hi: 0.2179
+provenance: "p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from manual\
+  \ review of unmapped candidates where sampled (n>=20), else glint inversion p_u(b)\
+  \ = clip((v_b - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed\
+  \ installations (results/glint_validation_pakistan/), f from 69 Lahore no-PV controls,\
+  \ v from a stratified glint sample of unmapped candidates (scripts/glint_candidate_precision.py).\
+  \ recall(b) = fraction of coverage-restricted, pipeline-independent mapped OSM installations\
+  \ of bin b matched by any candidate; density divides by it (clamped at a floor)\
+  \ for the Horvitz-Thompson estimator est_mwp_rc. *_lo/*_hi are the 5th/95th percentiles\
+  \ of posteriors over every stored count (Jeffreys Beta for the direct rates; for\
+  \ glint bins a uniform-prior binomial-mixture likelihood k ~ Binom(n, p_u*S + (1-p_u)*f),\
+  \ which stays honestly flat where S ~ f). The p_real point clips p_u at 0, so where\
+  \ the observed glint rate sits below the false floor the floor-leaning point can\
+  \ fall below p_real_lo \u2014 the interval, not the point, is the uncertainty statement.\
+  \ interim-mapped-only means p_u=0 everywhere: an honest lower bound."

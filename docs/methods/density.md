@@ -118,6 +118,50 @@ Double counting is prevented at the source. Adjacent rasters overlap by a few pi
 each building is assigned to exactly one cell by its representative point, and each cell's
 raster sum is cropped to the canonical 0.1 degree box.
 
+### `buildings.geoparquet`'s rooftop sum is not the region total's rooftop component
+
+**These are two different accounting methods over the same candidates, and they are not
+expected to agree.** The region/national rooftop total (`est_mwp_rc_roof`,
+`pv_area_det_roofcand_m2` in `grid.geoparquet`/`meta.json`) sums each rooftop-placed
+candidate's **full polygon area**, exactly once. `buildings.geoparquet`'s per-building
+`pv_area_det_m2` instead sums, for each building, only the **geometric intersection**
+between it and every candidate that touches it (`density.per_building_detected`), capped
+at that building's own roof area. Whatever part of a rooftop-classified candidate's own
+polygon does *not* sit on any building -- gaps between the buildings it spans, general
+polygonize-and-merge over-draw beyond a roof's edge -- is counted in the first total and
+silently absent from the second.
+
+This is not a rounding difference. Measured 2026-08-06 against a single matched candidate
+snapshot (so the comparison isn't confounded by the separate stale-partials issue
+described elsewhere on this page):
+of 21,506,014 m<sup>2</sup> of rooftop-placed candidate area nationally, only
+11,527,028 m<sup>2</sup> (53.6%) is attributed to any building in `buildings.geoparquet`
+-- a **46.4% gap (9,978,986 m<sup>2</sup>)**. The mechanism is exactly what it looks like:
+`postprocess._join_buildings_metric` only requires >= 30% of a candidate's own area to
+sit on *some* building before calling it `rooftop` (`NEAR_BUILDING_M`'s sibling
+threshold), and the mean `building_overlap_frac` across rooftop-classified candidates is
+only **58.8%** -- multiplying that shortfall through (`sum(area * (1 - overlap_frac))`)
+predicts a 9,781,295 m<sup>2</sup> gap, matching the measured figure to within 2%. Ground
+mount is not involved: both sides of this comparison are already restricted to
+`placement == "rooftop"` candidates before summing.
+
+Practical consequence: **`buildings.geoparquet`'s summed rooftop capacity understates the
+region/national rooftop total by roughly half**, structurally, not as a bug to patch --
+the per-building table is answering "how much PV sits on this specific building," which is
+a stricter and smaller question than "how much rooftop-placed candidate area exists in
+this region." Any PyPSA-style per-building disaggregation built from `buildings.geoparquet`
+should be read as a conservative, roof-anchored floor, not as a decomposition that sums
+back to `grid.geoparquet`'s own `est_mwp_rc_roof`. A `building_overlap_frac` above 1.0 was
+also observed on a handful of candidates (VIDA building footprints occasionally overlap
+each other, double-counting a candidate's own intersection area across two overlapping
+buildings) -- a minor, secondary data-quality note, not the driver of the gap above.
+
+This is a separate, always-present structural gap from the cached-partials staleness issue
+described earlier on this page (the `_CAND_COLS`-vs-cached-`*_roof`-columns mismatch from
+the 2026-07-29/30 OSM-replace incident) -- it exists even when both sides are freshly
+computed from the exact same candidate snapshot, and would remain even after that other
+issue is fully resolved.
+
 Province polygons come from **geoBoundaries** (open, CC-BY), because Overture's divisions
 endpoint times out from the development machine. Override with `--regions-file`.
 

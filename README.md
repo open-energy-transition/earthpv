@@ -48,13 +48,19 @@ human validation. Recall on the Germany validation states is 0.83 to 0.95 depend
 array size; recall on Punjab rooftops went from 0.18 to 0.55 once verified in-domain
 training data closed the loop.
 
-**roofclf, for everything smaller.** At 10 m resolution, a 100 m² array is a handful of
-mixed pixels -- not enough to draw a polygon around, but enough to ask whether a
-*building* carries PV. **roofclf** is a per-building classifier trained on exhaustively
-mapped ground-truth quadrats (0.874 AUC on roofs under 500 m², where segmentation scores
-0.50), cross-checked against **SPPI**, a zero-training five-band spectral index (He et
-al. 2026) that needs no labels at all (0.823 AUC on the same quadrats). They agree often
-enough to raise measured precision from 0.55 to 0.62 when both flag a building. See
+**roofclf, for everything smaller -- and now for large rooftops too.** At 10 m
+resolution, a 100 m² array is a handful of mixed pixels -- not enough to draw a polygon
+around, but enough to ask whether a *building* carries PV. **roofclf** is a per-building
+classifier trained on exhaustively mapped ground-truth quadrats (0.874 AUC on roofs
+under 500 m², where segmentation scores 0.50), cross-checked against **SPPI**, a
+zero-training five-band spectral index (He et al. 2026) that needs no labels at all
+(0.823 AUC on the same quadrats). They agree often enough to raise measured precision
+from 0.55 to 0.62 when both flag a building. Segmentation's blind spot turns out not to
+be building size but *installation* size -- a small array on a large roof is invisible to
+it too -- so as of 2026-08-07 roofclf's own rooftop estimate (AUC 0.896 vs segmentation's
+0.73-0.78 on the identical ≥ 400 m² buildings) replaces segmentation's rooftop total
+inside the density-matched cells; segmentation remains the only instrument for
+ground-mount, which has no building footprint to classify. See
 [Capacity density](https://open-energy-transition.github.io/earthpv/methods/density/).
 
 **Both halves converge on the evidence atlas.** `density` aggregates segmentation's
@@ -94,7 +100,7 @@ for what was tried and why the main workflow above is what shipped.
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (10,634 MWp, hand-mapped or two detectors agreeing) and Best estimate (18,879 MWp, the project's own defensible figure) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (7,384 MWp, hand-mapped or two detectors agreeing) and Best estimate (14,473 MWp, the project's own defensible figure) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -131,7 +137,9 @@ A first candidate set needs no local training data: the existing checkpoint runs
 What closes the domain gap afterwards is local mapping, which is why the guide starts by
 telling you to find a mapping community before you run anything. **Programme targets are
 Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and Nigeria**; Gujarat is
-already registered as a worked template.
+already registered as a worked template, with a first full, segmentation-only capacity
+estimate (812.6 MWp, ≥ 400 m², no calibration quadrats yet) at
+[Gujarat capacity map](https://open-energy-transition.github.io/earthpv/results/gujarat/).
 
 Full guide, including what to expect by starting condition and what genuinely differs from
 Pakistan (climate windows, roof type, latitude-dependent glint geometry, installation-size
@@ -149,8 +157,8 @@ above, with a stated standard of proof:
 
 | | |
 | --- | --- |
-| **10,634 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
-| **18,879 MWp** | Best estimate: this project's own highest defensible figure |
+| **7,384 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
+| **14,473 MWp** | Best estimate: this project's own highest defensible figure |
 | **+2,598 MWp** | Rooftop growth measured since the 2021/22 pre-boom epoch (segmentation, recall-corrected) |
 | **16,085** | individual installations hand-mapped in OpenStreetMap |
 | **400 m²** | per-object segmentation floor at Sentinel-2's 10 m resolution; roofclf/SPPI reach below it |

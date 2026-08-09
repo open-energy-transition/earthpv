@@ -121,3 +121,57 @@ flags suspect for ground-mount (Balochistan, Gilgit-Baltistan, Azad Kashmir) fro
 mechanism specifically, and/or (b) add more quadrats per stratum before trusting one
 pooled cut nationally -- the same prescription this project already follows for
 `exp_scale`. Reproduce: `.pixi/envs/default/bin/python scripts/sppi_capacity_validation.py`.
+
+### Part 3 -- a real double-counting bug in OSM geometry replacement, found via two new
+ground-mount calibration quadrats (2026-08-06)
+
+While building `sukkur_solar_farm_gmcalib_5p93km2` and
+`quaid_e_azam_solar_park_gmcalib_14p07km2` (two ground-mount solar-farm calibration
+areas -- OSM boundaries for the combined Helios/Meridian/HND/Scatec Sukkur complex and
+Quaid-e-Azam Solar Park, see `docs/issues/pakistan-calibration-boxes.md` for the
+boxes themselves), checking the two sites against the current `candidates.parquet`
+surfaced a mechanism Part 1 above did not anticipate: **`replace_with_osm_geometry`
+matches each candidate independently to its own nearest OSM feature, with no check for
+whether two different candidates matched two OSM features that themselves overlap.**
+
+Both Pakistani solar-farm sites checked turn out to have nested/duplicated OSM mapping
+-- an outer envelope (tagged `generator:source=solar` at both sites, oddly, rather than
+`plant:source=solar`) drawn over pre-existing finer per-phase/per-block mapping, with no
+tags distinguishing the levels. At Quaid-e-Azam Solar Park this produced exactly the
+failure mode: candidate 1682 matched the outer envelope (`osm-way/1530316244`,
+8,904,839 m²) and candidate 1680 -- a **different, separately-detected** candidate --
+matched one of its own contained member ways (`osm-way/596123516`, 1,745,036 m²,
+confirmed **100% contained** within candidate 1682's replaced geometry). Both survive
+independently in `candidates.parquet` and both get summed by `density.py`, so this one
+physical site's ~8.90 km² footprint is currently double-counted to ~10.65 km²
+(+20%) in any capacity estimate built from this candidate snapshot -- on top of, and a
+different mechanism from, the ground-mount aggregation issues already tracked in
+`docs/issues/density-force-recompute-plausibility-fail.md`.
+
+The Sukkur site shows the opposite failure instead: only one candidate falls near the
+site (44,948 m², `geometry_source=model`, never OSM-replaced) against a true dissolved
+footprint of 2,606,013 m² -- a **58x undercount**, consistent with this project's
+established "segmentation badly underestimates ground-mount" finding, now with a second,
+independently-confirmed data point beyond Quaid-e-Azam Solar Park's own count-zero cell
+(see the evidence-atlas `mwp_best` floor fix earlier this session).
+
+**Not fixed here** -- this was found as a side effect of building the two calibration
+quadrats, not the task in progress (the density/calibration re-derivation covering issue
+#2's stale-candidates problem was already running when this was found). A fix needs
+`replace_with_osm_geometry` (or a post-hoc pass over `candidates.parquet`) to detect when
+two candidates' replaced geometries overlap and collapse them to one, keeping the
+larger/more-complete match -- worth doing together with, not separately from, whatever
+`candidates.parquet` rebuild eventually resolves the OSM-replace/stale-recall
+reconciliation flagged as still-open in CLAUDE.md's "Three more measured issues" entry.
+
+The two new quadrats are deliberately named `..._gmcalib_...` rather than `..._calib_...`
+so `roofclf.discover_quadrats()`'s glob (`*_calib_*_boundary.geojson`) does not pick them
+up -- they test ground-mount segmentation/capacity, not per-building rooftop
+classification, and mixing ground-mount PV into roofclf's training population would
+contradict the placement-separation this project already enforces everywhere else
+(rooftop vs. ground-mount kWp/m² constants, `sub400_capacity`'s roof-only scope, etc.).
+Each quadrat's own ground truth also needed a fix before use: the raw Overpass pull
+returned 21 (Sukkur) and 6 (QASP) overlapping/nested elements whose areas sum to far more
+than the true footprint (8.63 km² raw vs. 2.61 km² dissolved at Sukkur; 22.20 km² raw
+vs. 8.90 km² dissolved at QASP) -- both quadrats' `*_overpass_solar.parquet` now hold one
+dissolved-footprint row instead of the raw multi-row pull.
