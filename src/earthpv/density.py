@@ -104,15 +104,26 @@ _CAND_COLS = [
     "pv_area_cal_total_m2", "pv_area_cal_roofcand_m2",
 ]
 
-# Building-density range (buildings/km2) spanned by the 8 (no-Quetta) roofclf calibration
-# quadrats, measured 2026-07-30. This is the only ground truth this project has about how
-# much the segmentation-based estimators (det/cal/rc, all floored at >=400 m2) actually
-# miss -- see CLAUDE.md's "Sub-400 m2 instruments" section. A region/cell whose settlement
-# density falls outside this range has NO calibration evidence either way: the flag below
-# says so, it does not correct anything. Deliberately segmentation-only (`aggregate`'s
-# `exp_source` gate) -- the fraction-head/roofclf sub-400 instrument is a separate,
-# differently-calibrated product (`sub400_capacity.py`) and must not share this flag.
-CALIBRATED_BLDG_DENSITY_KM2 = (737.28, 4750.24)
+# Building-density range (buildings/km2) spanned by every currently Rule-1-complete
+# calibration quadrat -- 18 quadrats as of 2026-08-09 (widened from the original 8,
+# no-Quetta figure, 737.28-4750.24, measured 2026-07-30 and left stale through several
+# rounds of quadrat additions). Deliberately the FULL 18-quadrat span, not just the
+# subset `sub400_capacity.select_calibrated_quadrats` trusts for precision/coverage-ratio
+# (13 quadrats, 871.6-2316.3/km2 -- narrower, because that selection drops quadrats for
+# being poorly *calibrated*, not for having an untrustworthy *density measurement*): a
+# quadrat like Quetta or Mardan is still real, Rule-1 ground truth about what building
+# density looks like there, even where its roofclf precision is excluded elsewhere. This
+# is the only ground truth this project has about how much the segmentation-based
+# estimators (det/cal/rc, all floored at >=400 m2) actually miss -- see CLAUDE.md's
+# "Sub-400 m2 instruments" section. A region/cell whose settlement density falls outside
+# this range has NO calibration evidence either way: the flag below says so, it does not
+# correct anything. Deliberately segmentation-only (`aggregate`'s `exp_source` gate) --
+# the fraction-head/roofclf sub-400 instrument is a separate, differently-calibrated
+# product (`sub400_capacity.py`) and must not share this flag, but DOES share this same
+# range for its own domain restriction (`sub400_capacity.national_cell_domain`) -- widening
+# it here widens both simultaneously. Widening this range to the full 18-quadrat span grew
+# the roofclf domain restriction from 92 to 163 of Pakistan's 4,463 national cells.
+CALIBRATED_BLDG_DENSITY_KM2 = (553.40, 5258.00)
 
 
 def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:

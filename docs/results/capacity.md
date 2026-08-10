@@ -22,8 +22,8 @@ Interactive. Switch tier with the tabs, hover a cell for its value.
 
 | Tier | Pakistan | What it admits as evidence |
 | --- | ---: | --- |
-| Verified | 7,384 MWp | Every installation a person has drawn in OpenStreetMap (16,085 of them), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **14,473 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (6,937 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells -- the project's own pick. |
+| Verified | 7,869 MWp | Every installation a person has drawn in OpenStreetMap (16,085 of them), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
+| **Best estimate** | **15,843 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (7,356 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells -- the project's own pick. |
 
 Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
@@ -45,8 +45,50 @@ own ground truth:**
   quadrats' own mapped PV polygons, a flagged sub-400 m<sup>2</sup> roof is on average
   only ~20-27% covered -- so precision alone overstated this component 1.4-2.3x. Both
   small-PV numbers now use the measured (true mapped PV area / roof area) ratio on the
-  flagged population instead: central 10,503 &rarr; 3,906 MWp, low (the AND-gate) 5,600
-  &rarr; 2,350 MWp.
+  flagged population instead of precision: central 10,503 &rarr; 3,906 MWp, low (the
+  AND-gate) 5,600 &rarr; 2,350 MWp (2026-08-06).
+- **That ratio is now measured per building size, not as one flat number (2026-08-09).**
+  A flat 19.9%/26.5% coverage ratio applied the same multiplier to a 50 m<sup>2</sup> roof
+  and a 350 m<sup>2</sup> roof alike. Binning the same calibration-quadrat labels by each
+  flagged building's own roof area (`sub400_capacity.coverage_ratio_by_size`, 10
+  equal-count bins) shows real size structure instead: roofclf-only coverage ranges
+  ~0.17-0.25 across the deciles (area-weighted mean 0.203, barely above the old flat
+  0.199), while the AND-gate population is markedly steeper, ~0.21 in the smallest decile
+  of flagged roofs up to ~0.46 in the largest (area-weighted mean 0.267 against the old
+  flat 0.265). `roofclf_ge400_capacity.py`'s &ge;400 m<sup>2</sup> rooftop instrument now
+  draws from this SAME calibration (one fit spanning both size regimes, since the ratio is
+  continuous across the 400 m<sup>2</sup> boundary) rather than its own separate flat
+  0.2372. Net effect on the aggregates, since a flat number was already close to the
+  population-weighted average -- individual buildings' shares move more than the totals
+  do: central 3,906 &rarr; 3,993 MWp, low (AND-gate) 2,350 &rarr; 2,364 MWp, &ge;400
+  m<sup>2</sup> roofclf rooftop 3,432 &rarr; 3,380 MWp.
+- **The density-matched domain widened from 92 to 163 of Pakistan's 4,463 cells
+  (2026-08-09).** All three roofclf capacity functions only ever speak for cells whose
+  building density falls inside `density.CALIBRATED_BLDG_DENSITY_KM2` -- a constant that
+  had gone stale: it was fit on 8 (no-Quetta) quadrats in 2026-07-30 and never
+  recomputed as the calibration set grew to 18. Recomputed from the density span of every
+  currently Rule-1-complete quadrat (553-5,258 bldg/km<sup>2</sup>, not just the 13
+  quadrats whose *precision* is separately trusted -- a quadrat like Quetta or Mardan is
+  still real ground truth about density even where its roofclf precision is excluded from
+  that narrower fit), this widens the domain to 3.7% of national cells / 24.5% of
+  national buildings, still describing only those cells, not the country. Moved: central
+  3,993 &rarr; 5,075 MWp, low (AND-gate) 2,364 &rarr; 2,807 MWp, &ge;400 m<sup>2</sup>
+  roofclf rooftop 3,380 &rarr; 4,336 MWp. Ground-mount capacity is untouched by this
+  change at every step -- roofclf has no footprint to score there, so nothing about this
+  domain restriction ever applied to it.
+- **The coverage ratio is now also stratified by building density, not pooled across the
+  whole domain (2026-08-09).** `rate_ratio` (roofclf's predicted/true adoption rate) is
+  close to flat across quadrats while true adoption spans 3-30% base rate -- standing
+  evidence that a single pooled fit hides real structure by density regime, the same
+  reasoning that motivated size-stratification a few hours earlier. The 13
+  precision-calibrated quadrats split into two building-density bands at their own
+  median (871-1,758 and 1,758-2,316 bldg/km<sup>2</sup>); each band fits its own
+  size-binned coverage-ratio table, and a national cell is assigned to a band by its own
+  measured density. The two bands turn out fairly close in their overall level (0.217 vs
+  0.220 for roofclf-only) but differ more within specific size bins, and the AND-gate's
+  two bands separate more (0.385 vs 0.317 overall) -- real, if modest, structure a pooled
+  fit was averaging away. Moved: central 5,075 &rarr; 4,874 MWp, low (AND-gate) 2,807
+  &rarr; 2,836 MWp, &ge;400 m<sup>2</sup> roofclf rooftop 4,336 &rarr; 4,269 MWp.
 - **OpenStreetMap dedup in the atlas itself is now geometric, not an id lookup.** The
   candidate-to-OSM match assigns one OSM id per candidate polygon even when that polygon
   overlaps several mapped installations (common in dense residential areas), so using

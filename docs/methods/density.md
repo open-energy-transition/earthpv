@@ -168,9 +168,12 @@ endpoint times out from the development machine. Override with `--regions-file`.
 ### Completeness confidence (segmentation runs only)
 
 Every estimator on this page (`det`/`cal`/`exp`/`rc`) is floored at >= 400 m<sup>2</sup> and
-its recall correction was measured on 8 hand-mapped calibration quadrats spanning
-737-4,750 buildings/km<sup>2</sup>. Outside that settlement-density range there is no
-calibration evidence either way -- not "the estimate is worse there", just "untested". A
+its recall correction was measured on hand-mapped calibration quadrats spanning
+553-5,258 buildings/km<sup>2</sup> -- the full density range of every currently
+Rule-1-complete quadrat (18 as of 2026-08-09; widened from an 8-quadrat, no-Quetta figure
+of 737-4,750 that had gone stale as the calibration set grew). Outside that
+settlement-density range there is no calibration evidence either way -- not "the estimate
+is worse there", just "untested". A
 segmentation `density` run therefore carries a `density_confidence` column on
 `grid.csv`/`regions.csv` (values `below_calibrated_range` / `in_calibrated_range` /
 `above_calibrated_range`, alongside the raw `bldg_density_km2`), plus

@@ -62,9 +62,15 @@ def _chip_id(lon: float, lat: float) -> str:
     return hashlib.sha1(f"{lon:.5f}_{lat:.5f}".encode()).hexdigest()[:12]
 
 
-def _chip_bbox(lon: float, lat: float) -> tuple[float, float, float, float]:
-    dy = CHIP_M / 2 / 111320.0
-    dx = CHIP_M / 2 / (111320.0 * np.cos(np.radians(lat)))
+def _chip_bbox(
+    lon: float, lat: float, chip_m: float = CHIP_M
+) -> tuple[float, float, float, float]:
+    """`chip_m` defaults to the segmentation task's own 2.24 km chip edge; a caller
+    building a smaller, differently-scoped chip (e.g. `roofclf_cnn`'s per-building
+    crop) passes its own edge length in metres. Every existing call site omits it and
+    is unaffected."""
+    dy = chip_m / 2 / 111320.0
+    dx = chip_m / 2 / (111320.0 * np.cos(np.radians(lat)))
     return (lon - dx, lat - dy, lon + dx, lat + dy)
 
 

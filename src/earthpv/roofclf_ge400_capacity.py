@@ -37,38 +37,6 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 
-def density_regime_coverage_ratio_ge400(
-    buildings_path: Path, quadrats: list[str], threshold: float, min_area_m2: float = 400.0,
-) -> dict:
-    """Measured (true mapped PV area / roof area) on the >= `min_area_m2` buildings
-    roofclf flags in `quadrats` -- the >= 400 m2 mirror of
-    `sub400_capacity.density_regime_coverage_ratio`. Same reasoning: a flat precision
-    weight assumes full-footprint coverage on every true positive, which measurably
-    overstates capacity (see that function's docstring); this ratio nets out precision
-    and partial coverage in one measured number.
-    """
-    df = gpd.read_parquet(buildings_path)
-    sub = df[df.quadrat.isin(quadrats) & (df.roof_area_m2 >= min_area_m2)]
-    if sub.empty:
-        raise ValueError(f"None of {quadrats} found >= {min_area_m2} m2 in {buildings_path}")
-    flagged = sub[sub.p_oof >= threshold]
-    roof_sum = float(flagged.roof_area_m2.sum())
-    true_sum = float(flagged.pv_area_true_m2.sum())
-    ratio = true_sum / roof_sum if roof_sum else float("nan")
-    result = {
-        "quadrats": quadrats,
-        "threshold": threshold,
-        "min_area_m2": min_area_m2,
-        "n_ge400": int(len(sub)),
-        "n_flagged": int(len(flagged)),
-        "flagged_roof_area_m2": round(roof_sum, 1),
-        "flagged_true_pv_area_m2": round(true_sum, 1),
-        "coverage_ratio": round(ratio, 4),
-    }
-    log.info("Density-regime >= %.0f m2 coverage ratio: %s", min_area_m2, result)
-    return result
-
-
 def domain_restricted_ge400_roof_capacity(
     roofclf_dir: Path,
     folds_path: Path,
@@ -80,9 +48,27 @@ def domain_restricted_ge400_roof_capacity(
     min_area_m2: float = 400.0,
     ratio_lo: float | None = None,
     ratio_hi: float | None = None,
+    quadrat_profile_path: Path = Path("results/calibration_quadrats.csv"),
+    n_density_bands: int | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """roofclf-scored, coverage-ratio-weighted capacity for >= 400 m2 rooftop buildings,
     restricted to the density-matched domain (same ~92 cells `sub400_capacity` uses).
+
+    **Size-binned coverage ratio, not a flat one (2026-08-09).** The capacity multiplier
+    is looked up per building from `sub400_capacity.coverage_ratio_by_size`/
+    `apply_size_coverage_ratio` -- the SAME calibration `sub400_capacity.py`'s own
+    sub-400 m2 functions use, since that function is fit once across the full size range
+    the calibration quadrats cover and the ratio was measured continuous across the
+    400 m2 boundary (no separate >= 400 m2 refit). Its predecessor
+    (`density_regime_coverage_ratio_ge400`, one flat number for every >= 400 m2 building
+    regardless of how much bigger than 400 m2 it actually was) is retired; see
+    `coverage_ratio_by_size`'s docstring for the measured size trend.
+
+    **Also density-stratified, same day.** As with `sub400_capacity.py`'s own two
+    functions, the size-binned fit is now itself fit separately per building-density
+    stratum (`sub400_capacity.coverage_ratio_by_size_and_density`/
+    `apply_stratified_coverage_ratio`) and looked up by each building's OWN cell's
+    density, not a single pooled fit applied uniformly across the whole domain.
 
     Returns `(flagged_buildings, summary)`. `flagged_buildings` carries `est_kwp_ge400_
     roof` per building (for `atlas.py`'s per-cell aggregation via
@@ -97,19 +83,22 @@ def domain_restricted_ge400_roof_capacity(
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask
     from earthpv.sub400_capacity import (
-        DEFAULT_RATIO_HI, DEFAULT_RATIO_LO, national_cell_domain, select_calibrated_quadrats,
+        DEFAULT_N_DENSITY_STRATA, DEFAULT_RATIO_HI, DEFAULT_RATIO_LO,
+        apply_stratified_coverage_ratio, coverage_ratio_by_size_and_density,
+        national_cell_domain, quadrat_building_density_km2, select_calibrated_quadrats,
     )
 
     ratio_lo = DEFAULT_RATIO_LO if ratio_lo is None else ratio_lo
     ratio_hi = DEFAULT_RATIO_HI if ratio_hi is None else ratio_hi
+    n_density_bands = DEFAULT_N_DENSITY_STRATA if n_density_bands is None else n_density_bands
 
     all_cells = pd.read_parquet(cell_density_path)
     in_domain_cells = national_cell_domain(cell_density_path)
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
-    coverage_info = density_regime_coverage_ratio_ge400(
-        buildings_path, quadrats, threshold, min_area_m2
+    quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
+    stratified = coverage_ratio_by_size_and_density(
+        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
     )
-    coverage_ratio = coverage_info["coverage_ratio"]
 
     parts = []
     for cell in sorted(in_domain_cells):
@@ -142,17 +131,33 @@ def domain_restricted_ge400_roof_capacity(
 
     flagged = flagged.copy()
     total_area_m2 = float(flagged["roof_area_m2"].sum()) if not flagged.empty else 0.0
-    flagged["est_kwp_ge400_roof"] = (
-        flagged["roof_area_m2"].to_numpy(float) * DEFAULT_KWP_PER_M2_MODULE * coverage_ratio
-        if not flagged.empty else np.array([])
-    )
+    if not flagged.empty:
+        cell_density_lookup = all_cells.set_index("cell")["density"]
+        flagged_cell_density = flagged["cell"].map(cell_density_lookup).to_numpy(float)
+        flagged["coverage_ratio"] = apply_stratified_coverage_ratio(
+            flagged["roof_area_m2"].to_numpy(float), flagged_cell_density, stratified
+        )
+        flagged["est_kwp_ge400_roof"] = (
+            flagged["roof_area_m2"].to_numpy(float)
+            * DEFAULT_KWP_PER_M2_MODULE
+            * flagged["coverage_ratio"].to_numpy()
+        )
+        mean_coverage_ratio = float(
+            np.average(flagged["coverage_ratio"], weights=flagged["roof_area_m2"])
+        )
+    else:
+        flagged["coverage_ratio"] = np.array([])
+        flagged["est_kwp_ge400_roof"] = np.array([])
+        mean_coverage_ratio = float("nan")
     total_mwp = float(flagged["est_kwp_ge400_roof"].sum()) / 1000.0 if not flagged.empty else 0.0
 
     summary = {
         "method": "domain_restricted_ge400_roof_capacity",
         "calibration_quadrats": quadrats,
-        "calibration_coverage_ratio": coverage_ratio,
-        "calibration_coverage_ratio_n_flagged": coverage_info["n_flagged"],
+        "calibration_coverage_ratio_by_size_and_density": stratified,
+        "calibration_coverage_ratio_area_weighted_mean": (
+            round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None
+        ),
         "threshold": threshold,
         "min_area_m2": min_area_m2,
         "n_domain_cells": len(in_domain_cells),

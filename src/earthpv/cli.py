@@ -648,6 +648,17 @@ def sub400_capacity_cmd(
     sppi_min_precision: float = typer.Option(
         0.5, help="Precision target for the AND-gate's pooled SPPI threshold"
     ),
+    size_floor_m2: str = typer.Option(
+        "0,50", help="Comma-separated per-density-band m2 floor, one value per "
+        "n-density-bands (default '0,50': no floor in the sparser calibration band, "
+        "50 m2 in the denser one). Measured 2026-08-10 "
+        "(scripts/roofclf_size_density_signal.py): a size floor buys ~2x more precision "
+        "per point of recall spent in the denser band than the sparser one, so a flat "
+        "floor is the wrong shape here; 50 m2 dense-band-only removed ~13-14k of the "
+        "smallest, most noise-prone flagged buildings nationally for <0.5% capacity cost "
+        "on either tier (100/200 m2 cost 2.5-3.8%/14-20%, not adopted as default). Pass "
+        "'' to disable (reproduces pre-2026-08-10 behavior exactly)."
+    ),
 ) -> None:
     """Sub-400 m2 capacity (roofclf-only, and roofclf-AND-SPPI), restricted to national
     cells whose building density matches the calibration quadrats -- the other half of
@@ -667,6 +678,10 @@ def sub400_capacity_cmd(
     from earthpv.sub400_capacity import (
         DEFAULT_RATIO_HI, DEFAULT_RATIO_LO, cell_density_from_grid,
         domain_restricted_and_gate_capacity, domain_restricted_capacity,
+    )
+
+    parsed_size_floor_m2 = (
+        [float(v) for v in size_floor_m2.split(",")] if size_floor_m2.strip() else None
     )
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -696,6 +711,7 @@ def sub400_capacity_cmd(
         ratio_lo=DEFAULT_RATIO_LO if ratio_lo is None else ratio_lo,
         ratio_hi=DEFAULT_RATIO_HI if ratio_hi is None else ratio_hi,
         osm_solar_path=osm_solar,
+        size_floor_m2=parsed_size_floor_m2,
     )
 
     central, central_summary = domain_restricted_capacity(**kwargs)
@@ -717,6 +733,13 @@ def sub400_capacity_cmd(
         f"AND-gate (Verified small-PV component): "
         f"{low_summary['total_est_mwp_sub400_and_gate']:.1f} MWp"
     )
+    if parsed_size_floor_m2 is not None:
+        typer.echo(
+            f"size floor {parsed_size_floor_m2} m2 by density band "
+            f"{central_summary['size_floor_band_edges']}: excluded "
+            f"{central_summary['n_excluded_by_size_floor']} central / "
+            f"{low_summary['n_excluded_by_size_floor']} AND-gate buildings"
+        )
     typer.echo(f"-> {out_dir}")
 
 

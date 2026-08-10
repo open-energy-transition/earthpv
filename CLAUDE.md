@@ -394,7 +394,151 @@ installation-size point above (a >= 400 m² building with a much smaller true ar
 as a segmentation miss regardless of its own footprint size), not chased further as a
 separate raster/alignment bug.
 
-### Sub-400 m² instruments (the recall correction cannot reach here)
+**Coverage ratio is now measured per building size, not one flat number -- implemented
+2026-08-09, at the owner's request.** Every coverage-ratio multiplier above (sub-400's
+0.1988/0.265, >= 400 m²'s 0.2372) was a single flat number applied to every flagged
+building regardless of how big its roof was. `sub400_capacity.coverage_ratio_by_size`
+measures the same quantity (true mapped PV area / roof area on the flagged population)
+binned by each flagged building's own `roof_area_m2` instead of pooled -- 10 equal-count
+(quantile) bins over the calibration quadrats' own labels, falling back to the pooled
+ratio for any bin with fewer than 25 flagged buildings. Measured on the 13
+density-calibrated quadrats at the deployment threshold: roofclf-only coverage is fairly
+flat across size deciles, ~0.17-0.25 (area-weighted mean 0.203, barely above the old flat
+0.199) -- but the roofclf-AND-SPPI (AND-gate) population shows a real, much sharper size
+trend, ~0.21 in the smallest decile of flagged roofs rising to ~0.46 in the largest
+(area-weighted mean 0.267 against the old flat 0.265). `apply_size_coverage_ratio` looks
+up each building's own ratio by which bin its `roof_area_m2` falls into (`np.searchsorted`
+against the bin edges); `coverage_ratio_by_size` itself is called with NO built-in size
+restriction, so ONE fit spans both sub-400 m² and >= 400 m² buildings together --
+`roofclf_ge400_capacity.domain_restricted_ge400_roof_capacity` now imports and calls the
+exact same function `sub400_capacity.py`'s own two capacity functions use, rather than
+fitting its own separate >= 400 m²-only ratio, since the ratio was measured continuous
+across the 400 m² boundary with no discontinuity there. `density_regime_coverage_ratio`
+(sub400_capacity.py) and `density_regime_coverage_ratio_ge400`
+(roofclf_ge400_capacity.py), the flat-ratio functions this replaces, are removed rather
+than kept alongside the new one.
+
+Re-ran all three domain-restricted capacity functions and the evidence atlas against the
+current national roofclf scoring (no re-inference needed, CPU-only, ~1-2 min total since
+the domain restriction only ever reads the 92 in-domain cells). Because a flat ratio was
+already close to its own population's area-weighted mean in every case, the aggregate
+MWp figures move only modestly even though individual buildings' shares now differ by
+roof size: sub-400 central (Best-estimate small-PV) 3,906.4 -> **3,993.0 MWp** (+2.2%),
+sub-400 AND-gate (Verified small-PV) 2,350.3 -> **2,364.3 MWp** (+0.6%), >= 400 m²
+roofclf rooftop 3,432.3 -> **3,380.0 MWp** (-1.5%). Evidence atlas republished: Verified
+7,384.1 -> **7,398.2 MWp**, Best estimate 14,473.0 -> **14,507.2 MWp**. Old atlas and the
+pre-change sub400/ge400 building parquets backed up to
+`results/pakistan_pv_evidence_atlas_PRE_20260809_size_coverage_ratio_backup.html` and
+`data/roofclf_national_with_sppi/pakistan/density_PRE_20260809_size_coverage_ratio/`.
+
+**The density-matched domain widened from 92 to 163 of Pakistan's 4,463 cells, same
+day, at the owner's request ("how can I increase the number of cells processed for
+roofclf").** All three domain-restricted capacity functions (`sub400_capacity.py`'s two,
+`roofclf_ge400_capacity.py`'s one) only ever speak for cells whose building density falls
+inside `density.CALIBRATED_BLDG_DENSITY_KM2` via `sub400_capacity.national_cell_domain`
+-- a plain module-level constant, `(737.28, 4750.24)`, fit on 8 (no-Quetta) quadrats on
+2026-07-30 and never recomputed since, even as the calibration set grew to 18. Two things
+worth recording about how this was diagnosed: (a) `--ratio-lo`/`--ratio-hi` do NOT affect
+this at all -- `national_cell_domain` never reads `select_calibrated_quadrats`'s output,
+only the fixed tuple, so widening the ratio band on the CLI silently does nothing to cell
+count, a real footgun if someone tries that first; (b) `roofclf-score-national` was
+already scoring effectively all 4,463+ national cells (4,470 per-cell parquets existed
+already) -- the bottleneck was never national scoring coverage, only this downstream
+density filter. Measured before changing anything: recomputing the constant from the 13
+quadrats `select_calibrated_quadrats` currently trusts for precision (871.6-2316.3/km²)
+would have *shrunk* the domain to 50 cells, since that ratio-band selection drops
+quadrats (Quetta, Mardan, Sialkot, Sundar, Rahim Yar Khan) specifically for being poorly
+*calibrated*, not for having an untrustworthy *density measurement* -- a quadrat's
+density is real Rule-1 ground truth regardless of whether its precision passed the ratio
+band. Recomputed instead from the density span of **all 18** currently Rule-1-complete
+quadrats (553.40-5258.00/km², sundar to quetta) -- presented to the owner as one of three
+options (widen to all 18, narrow to the 13, or leave as documentation-only) and this was
+the one chosen. `CALIBRATED_BLDG_DENSITY_KM2` updated in `density.py` (shared by
+`sub400_capacity`'s domain restriction AND `density.py`'s own segmentation-only
+`density_confidence` completeness flag -- the latter is not currently published for
+Pakistan, so this change has no live effect there yet, only on roofclf). Domain grew to
+163 cells (3.7% of national cells, 24.5% of national buildings). Re-ran all three
+capacity functions + the evidence atlas: sub-400 central 3,993.0 -> **5,074.6 MWp**,
+sub-400 AND-gate 2,364.3 -> **2,807.3 MWp**, >= 400 m² roofclf rooftop 3,380.0 ->
+**4,335.7 MWp**. Evidence atlas: Verified 7,398.2 -> **7,841.2 MWp**, Best estimate
+14,507.2 -> **16,110.1 MWp**. Ground-mount capacity is untouched at every step -- roofclf
+has no footprint to score there, so this domain restriction never applied to it in the
+first place. Old atlas and pre-change building parquets backed up to
+`results/pakistan_pv_evidence_atlas_PRE_20260809b_widen_domain_backup.html` and
+`data/roofclf_national_with_sppi/pakistan/density_PRE_20260809b_widen_domain/`.
+
+**Coverage ratio is now also stratified by building density, not pooled across the whole
+domain -- implemented 2026-08-09, same day, at the owner's request ("increase the
+precision of roofclf... do 2 [a per-stratum correction]").** `rate_ratio` (roofclf's
+predicted/true adoption rate) is close to flat across quadrats while true `base_rate`
+spans 3-30% (see "Density and detection quality" below) -- standing evidence that a
+single pooled fit hides real structure by density regime, the same argument that
+motivated `coverage_ratio_by_size`'s SIZE stratification a few hours earlier in this same
+session. New `sub400_capacity.coverage_ratio_by_size_and_density` +
+`apply_stratified_coverage_ratio`: the 13 precision-calibrated quadrats split into
+`DEFAULT_N_DENSITY_STRATA = 2` density bands at their own median (chosen deliberately
+coarse -- 3+ bands leaves 4 or fewer quadrats per band, too thin to trust over the
+pooled fit), each band still fits its own size-binned coverage table exactly like
+`coverage_ratio_by_size` did before, with graceful fallback to the fully pooled fit if a
+band's own flagged population is too sparse (none of the 3 capacity functions needed the
+fallback in practice). A national cell is assigned to a band by ITS OWN measured
+building density (from `national_cell_density.parquet`, already read for the domain
+restriction itself), not by any property of the specific building being priced.
+`roofclf_ge400_capacity.domain_restricted_ge400_roof_capacity` calls the exact same
+function rather than fitting a separate one, matching how it already shared the
+size-only fit. Measured: the two bands (871.6-1757.8 and 1757.8-2316.3 bldg/km² for the
+13-quadrat calibration set) are fairly close in overall level for roofclf-only (0.217 vs
+0.220) but differ more within specific size bins (e.g. the 274-314 m² bin: 0.157 low-density
+vs 0.198 high-density), and separate more clearly for the AND-gate (0.385 vs 0.317
+overall) -- real, if modest, structure a single pooled number was averaging away. Re-ran
+all three domain-restricted capacity functions + the evidence atlas: sub-400 central
+5,074.6 -> **4,874.0 MWp**, sub-400 AND-gate 2,807.3 -> **2,835.6 MWp**, >= 400 m² roofclf
+rooftop 4,335.7 -> **4,268.7 MWp**. Evidence atlas: Verified 7,841.2 -> **7,869.4 MWp**,
+Best estimate 16,110.1 -> **15,842.6 MWp** (Best moved down this time -- the ge400-roof
+and central components both fell more than AND-gate/low rose). Old atlas + pre-change
+building parquets backed up to
+`results/pakistan_pv_evidence_atlas_PRE_20260809c_density_stratified_backup.html` and
+`data/roofclf_national_with_sppi/pakistan/density_PRE_20260809c_density_stratified/`.
+
+**Hard-negative retrain attempt using the one confirmed false-positive example already on
+record, 2026-08-09 -- negative, not promoted, but genuinely informative.** Same request's
+second half ("take the hard negatives we already know about") pointed at the one
+concretely-locatable confirmed false-positive example in this project's history: cell
+`0061_0012`'s six very-bright-roof buildings (see "Small-PV JOSM validation leads" below --
+found 2026-08-01, roofclf scores them 0.98-1.00, SPPI mostly does not catch them either).
+Retrieved their exact geometries from the national scoring output by matching
+`(roof_area_m2, p_roofclf)` back to `data/roofclf_national_with_sppi/pakistan/prob/
+0061_0012.parquet`, recomputed the same zonal-stat features `roofclf.building_table` uses
+(reflectance band means, ndvi/ndbi/brightness/ratios) from that cell's own composite
+raster, and appended them to `buildings.geoparquet` as `has_pv=0` rows under a synthetic
+`quadrat` label excluded from `select_calibrated_quadrats` by construction (an all-negative
+"fold" gets an astronomical `rate_ratio`, comfortably outside any sane `[ratio_lo,
+ratio_hi]` band) -- `evaluate()`'s existing LOQO loop required no code change to handle
+this gracefully (`auc()` already returns NaN rather than erroring on a single-class fold).
+**Plain (unweighted) addition changed almost nothing**: 6 rows against ~92k moved these
+buildings' own full-model score by 0.0001-0.003 (e.g. 0.9882 -> 0.9854) and left
+`median_fold_auc`/`deployment_threshold` unchanged to 3 decimal places -- 6 examples
+carry negligible gradient weight in a regularized fit over 92k rows, a real, if
+unsurprising, negative result on its own. **Oversampling makes the tradeoff explicit
+rather than solving it**: replicating the 6 rows 20x/100x/500x (0.13%/0.65%/3.16% of the
+augmented table) does suppress the target scores (100x: down to 0.16-0.96; 500x: down to
+0.01-0.35, now below the 0.2405 deployment threshold) but at a monotonically worsening
+COST to overall held-out skill (`median_fold_auc` 0.8824 -> 0.8811 -> 0.8726 -> 0.839;
+`median_fold_auc_within_size` 0.8364 -> 0.8336 -> 0.8217 -> 0.7851) -- the model is
+learning to specifically distrust the tiny neighbourhood of feature-space these 6 points
+define, at the expense of everything else roofclf was measured against. No oversampling
+factor tested threads this needle; the AUC cost is already non-trivial by 100x, well
+before the false positives are reliably suppressed. **Conclusion, and why nothing was
+promoted to `data/roofclf/`**: n=6 is not enough signal to fix this failure mode by
+retraining, with or without reweighting -- the fix this specific finding actually
+recommends is mining MORE examples of the same bright-roof pattern nationally (the
+mining machinery for this exists for the SEGMENTATION model, `hard_negatives.py`'s
+bi-temporal confirmed-negative check, but has no roofclf/building-classifier
+equivalent yet), not further leverage on the 6 already known. Kept as a diagnostic
+record, not shipped: `data/roofclf_hardneg/` (the plain, unweighted augmented refit --
+`buildings.geoparquet`, `model_full.json`, `folds.csv`, `summary.json`); the oversampling
+sweep was not saved as a pinned artifact since none of its factors were candidates for
+promotion.
 
 `est_mwp_rc` scales up what was detected, so `1/recall × ~0 ≈ 0`. Measured: the whole
 sub-500 m² class is **8.2 MWp** of the Pakistan estimate (~0.2% of rooftop), while one

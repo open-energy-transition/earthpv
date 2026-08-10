@@ -107,6 +107,7 @@ import pandas as pd
 import rasterio
 import rasterio.features
 import rasterio.transform
+import shapely
 from rasterio.warp import transform_bounds
 from shapely.geometry import box as shapely_box
 from shapely.geometry.base import BaseGeometry
@@ -399,6 +400,76 @@ def zonal_mean_max(
     return means, maxes
 
 
+def shape_features(geoms_utm: gpd.GeoSeries) -> dict[str, np.ndarray]:
+    """Compactness, rectangularity and aspect ratio from each building's OWN footprint
+    geometry -- no new imagery, using shape the VIDA polygon already carries and roofclf
+    never looked at (only `roof_area_m2`, a scalar, was used before). Motivation: a large
+    PV installation tends to occupy a large, regular rectangular section of a roof;
+    oddly-shaped footprints (courtyards, informal additions, L-shapes) are a priori less
+    likely to carry a full array, and this is a genuinely different signal from anything
+    reflectance-based -- weaker than a physical measurement like glint, but free (the
+    geometry is already fetched) and worth an ablation.
+
+    `geoms_utm` must be projected (a UTM-like CRS in metres), not EPSG:4326 -- area and
+    perimeter in degrees are not physically meaningful. Fully vectorised (shapely 2's
+    array ufuncs), not a per-row `.apply`, so this is cheap even at national scale.
+
+    - `compactness`: Polsby-Popper (4*pi*area/perimeter^2), 1.0 for a circle, lower for an
+      elongated or irregular outline.
+    - `rectangularity`: area / area of the minimum-rotated-bounding-rectangle, 1.0 for a
+      perfect rectangle.
+    - `aspect_ratio`: long/short side of that same minimum rotated rectangle, recovered
+      from its own area and perimeter (long+short = P/2, long*short = A, solved as the
+      roots of a quadratic) rather than extracting corner coordinates -- avoids a
+      per-polygon Python loop entirely.
+    """
+    area = geoms_utm.area.to_numpy(dtype="float64")
+    perim = geoms_utm.length.to_numpy(dtype="float64")
+    compactness = 4 * np.pi * area / np.maximum(perim**2, 1e-9)
+
+    rects = shapely.minimum_rotated_rectangle(geoms_utm.to_numpy())
+    rect_area = shapely.area(rects)
+    rect_perim = shapely.length(rects)
+    # Clipped to <=1.0: by definition a polygon can never exceed its own bounding
+    # rectangle's area, but the rectangle-fitting algorithm's floating-point rounding
+    # can put it a hair over (measured up to 1.0003) for an already-near-rectangular
+    # footprint.
+    rectangularity = np.clip(area / np.maximum(rect_area, 1e-9), 0.0, 1.0)
+
+    half_sum = rect_perim / 2.0  # long + short
+    disc = np.maximum(half_sum**2 - 4 * rect_area, 0.0)  # long*short = rect_area
+    sq = np.sqrt(disc)
+    long_side = (half_sum + sq) / 2.0
+    short_side = np.maximum((half_sum - sq) / 2.0, 1e-6)
+    aspect_ratio = long_side / short_side
+
+    return {
+        "compactness": compactness, "rectangularity": rectangularity,
+        "aspect_ratio": aspect_ratio,
+    }
+
+
+def local_zscore(values: np.ndarray) -> np.ndarray:
+    """`(value - local median) / local std`, "local" meaning whatever population the
+    caller passes in -- one quadrat's worth of buildings in `building_table`, one
+    national cell's worth in `score_buildings_national`. Both are already-existing,
+    roughly-comparable spatial units (a quadrat is built to fit inside one composite
+    cell; national scoring already iterates cell-by-cell), so no new grouping concept is
+    introduced, just a per-unit re-centring instead of a nationally-pooled absolute value.
+
+    Targets the specific bright-roof false-positive mode a single national model can't
+    otherwise separate from a genuine bright array: a building unusually bright for ITS
+    OWN neighbourhood is a different claim than "bright in absolute terms", which
+    conflates a real anomaly with a merely regionally-common roofing material (e.g. a
+    city where white-painted or bare-metal roofs are the norm). Population std (ddof=0),
+    not sample std, so a single-building cell/quadrat gives 0 rather than NaN.
+    """
+    values = np.asarray(values, dtype="float64")
+    med = np.median(values)
+    std = values.std(ddof=0)
+    return (values - med) / max(std, 1e-6)
+
+
 def _raster_for(point, prob_dir: Path) -> Path | None:
     """The per-cell raster in `prob_dir` whose extent contains `point`."""
     for tif in sorted(Path(prob_dir).glob("*.tif")):
@@ -515,6 +586,13 @@ def building_table(
     out["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
     out["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
 
+    # Shape features from the VIDA footprint geometry itself (no new imagery) and a
+    # per-quadrat local-contrast re-centring of brightness (see `shape_features`/
+    # `local_zscore`'s docstrings for what each targets and why).
+    for k, v in shape_features(bu_utm.geometry).items():
+        out[k] = v
+    out["brightness_zscore"] = local_zscore(out["brightness"].to_numpy())
+
     if include_epoch_jump:
         # Raw pre-boom reflectance delta per band -- the free variant from
         # docs/issues/epoch-jump-recall-signal.md (that doc's proposed version uses a
@@ -585,10 +663,21 @@ SPECTRAL_FEATURES = [f"{b}_mean" for b in BAND_NAMES] + [
 # available behind `include_prob_features`, and always computed so `_fold_report` can keep
 # scoring them as baselines.
 PROB_FEATURES = ["seg_mean", "frac_mean"]
+# Footprint geometry (`shape_features`) -- free (no new imagery, the polygon is already
+# fetched), tested for whether a large/regular roof section reads differently than an
+# irregular one. See `_ABLATIONS`'s `plus_shape` for whether this earns a place in
+# MODEL_FEATURES.
+SHAPE_FEATURES = ["compactness", "rectangularity", "aspect_ratio"]
+# Brightness re-centred against the building's own quadrat/cell (`local_zscore`) instead
+# of a nationally-pooled absolute value -- targets the bright-roof false-positive mode
+# specifically. See `_ABLATIONS`'s `plus_local_contrast`.
+LOCAL_CONTRAST_FEATURES = ["brightness_zscore"]
 # Default model input: footprint size plus footprint reflectance. Set by the ablation, not
 # by preference.
 MODEL_FEATURES = ["log_roof_area", "bf_confidence"] + SPECTRAL_FEATURES
-FEATURES = MODEL_FEATURES + PROB_FEATURES  # every column the table carries
+FEATURES = (
+    MODEL_FEATURES + PROB_FEATURES + SHAPE_FEATURES + LOCAL_CONTRAST_FEATURES
+)  # every column the table carries
 
 
 def design_matrix(df: pd.DataFrame, feats: list[str] | None = None) -> np.ndarray:
@@ -780,14 +869,42 @@ _ABLATIONS = {
     "spectral_only": list(SPECTRAL_FEATURES),
     # The shipped default.
     "size_plus_spectral": list(MODEL_FEATURES),
-    "plus_prob_rasters": list(FEATURES),
+    "plus_prob_rasters": list(MODEL_FEATURES) + list(PROB_FEATURES),
+    # 2026-08-09: footprint shape (compactness/rectangularity/aspect ratio), free --
+    # no new imagery, the polygon is already fetched.
+    "plus_shape": list(MODEL_FEATURES) + list(SHAPE_FEATURES),
+    # 2026-08-09: brightness re-centred against the building's own quadrat/cell instead
+    # of a nationally-pooled absolute value -- targets the bright-roof false-positive mode.
+    "plus_local_contrast": list(MODEL_FEATURES) + list(LOCAL_CONTRAST_FEATURES),
+    "plus_shape_and_local_contrast": (
+        list(MODEL_FEATURES) + list(SHAPE_FEATURES) + list(LOCAL_CONTRAST_FEATURES)
+    ),
 }
 
 
+# Glint (`roofclf_glint.glint_score_features`) is NOT computed by default -- network-bound,
+# minutes to hours per that module's own docstring -- so it is never in `table` unless a
+# caller has explicitly run that expensive pull and joined the two columns in by hand.
+# Kept as a name list here, not folded into `_ABLATIONS` unconditionally, so an ordinary
+# `ablate()` call on a table without glint data never KeyErrors on a missing column.
+GLINT_FEATURES = ["glint_n_consistent", "glint_spike_rate"]
+
+
 def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
-    """Leave-one-quadrat-out AUC per feature block, so the size prior is separated out."""
+    """Leave-one-quadrat-out AUC per feature block, so the size prior is separated out.
+
+    Adds `plus_glint`/`plus_everything` blocks only when `table` already carries
+    `GLINT_FEATURES` -- see that constant's comment.
+    """
+    ablations = dict(_ABLATIONS)
+    if all(c in table.columns for c in GLINT_FEATURES):
+        ablations["plus_glint"] = list(MODEL_FEATURES) + list(GLINT_FEATURES)
+        ablations["plus_everything"] = (
+            list(MODEL_FEATURES) + list(SHAPE_FEATURES) + list(LOCAL_CONTRAST_FEATURES)
+            + list(GLINT_FEATURES)
+        )
     rows = []
-    for label, feats in _ABLATIONS.items():
+    for label, feats in ablations.items():
         for name in table.quadrat.unique():
             te = (table.quadrat == name).to_numpy()
             tr = ~te
@@ -1024,6 +1141,11 @@ def score_buildings_national(
         feat_df["brightness"] = means.mean(axis=0)
         feat_df["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
         feat_df["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
+        # Same shape/local-contrast features as `building_table` -- "local" here is this
+        # cell's own building population, the national-scale analogue of one quadrat.
+        for k, v in shape_features(bu_utm.geometry).items():
+            feat_df[k] = v
+        feat_df["brightness_zscore"] = local_zscore(feat_df["brightness"].to_numpy())
 
         # A building with no valid composite pixel keeps its row -- building counts and
         # `potential.large_roof_buildings` read this table for footprints alone, so
