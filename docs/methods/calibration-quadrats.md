@@ -118,7 +118,30 @@ it **Rule-1 complete the same day it was created** -- recorded in
 judgement no script may infer) -- so all **eighteen** quadrats now carry Rule-1, not
 seventeen; the callout below predates this and still says seventeen.
 
-While registering this quadrat, a real bug surfaced in
+**A nineteenth quadrat, `hasal_calib_1p00km2`, was added 2026-08-10** from a hand-drawn
+boundary (`data/labels/calibration_boundaries/hasal.geojson`, ~1 km² near Bahawalpur,
+Punjab) via `scripts/new_calibration_quadrat.py`. Confirmed clear against all 18
+existing quadrats (nearest is `multan_calib_3p92km2` at 121.74 km). The OSM pull itself
+succeeded on the first attempt (328 installations), but the script's independent
+confirming cross-check against silent Overpass truncation could not complete -- all
+three mirrors were down at the time -- so the pull is recorded `pull_unverified: True`
+pending a re-check once Overpass recovers. Ground truth: 328 installations (99.7% below
+the 400 m² floor, median 31.4 m², packing 18.5 m -- the tightly-packed
+informal/residential regime). The owner declared it **Rule-1 complete the same day it
+was created**, recorded in `results/calibration_quadrats.csv`.
+
+Folded into a fresh 19-quadrat `roofclf` refit the same day: `hasal` contributes 4,378
+buildings, 444 with PV (**base_rate 10.1%**), AUC **0.805**. Its `rate_ratio` is
+**0.461** -- roofclf under-predicts adoption there by more than 2x, the same failure
+shape as Rahim Yar Khan -- which keeps it just outside `select_calibrated_quadrats`'s
+`[0.5, 2.0]` band, so it does not (yet) enter the trusted-13 set the domain-restricted
+sub-400 m² capacity fit uses. It does widen the pooled 19-quadrat LOQO fit behind the
+national deployment threshold, which moved 0.2405 -> **0.2441** (`median_fold_auc`
+0.8824 -> 0.8757). Not yet in the table below -- see
+[Calibration boxes](../issues/pakistan-calibration-boxes.md)'s Box 13 for the full
+writeup.
+
+While registering the eighteenth quadrat, a real bug surfaced in
 `scripts/new_calibration_quadrat.py`: the OSM-pull retry loop's `except RuntimeError as e:`
 shadowed the `e` (east bound) local from `w, s, e, n = poly.bounds` earlier in `main()`,
 and Python's implicit `del e` at the end of an `except ... as e:` block (PEP 3110) left `e`

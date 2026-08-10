@@ -813,3 +813,58 @@ duplicate-match finding above. Not Rule-1 complete in the usual sense (no human
 completeness pass over the surrounding buffer for false positives yet) -- the two sites'
 own footprints are corroborated by two independently-drawn OSM outlines converging on
 the same shape, which is not nothing, but is not a substitute for that pass.
+
+---
+
+### Box 13 -- Hasal, ~1km x 1km around (29.7161176, 72.5512755) -- 2026-08-10
+
+A **drawn** boundary, not a geodesic square (`--geojson data/labels/calibration_boundaries/
+hasal.geojson`, a hand-drawn ~1km x 1km rectangle exported from JOSM, feature name
+`hasal_1x1`), registered via `scripts/new_calibration_quadrat.py`. Geodesic area
+996,572.5 m² (0.9966 km²), stem `hasal_calib_1p00km2`.
+
+**Overlap check: clear against all 18 existing quadrats.** Nearest is `multan_
+calib_3p92km2` at 121.74 km, so no deduplication debt. Reverse-geocoded against the
+density stage's own admin polygons: **Bahawalpur District, Punjab**.
+
+**Overpass fetch hit a genuine outage, not a truncation.** At creation time all three
+mirrors (`overpass-api.de`, `overpass.kumi.systems`, `overpass.openstreetmap.ru`) were
+returning 504s or connection timeouts; the first `build_overpass_labels` call itself
+succeeded (328 solar elements returned cleanly), but the SECOND, independent confirming
+query `new_calibration_quadrat.py` runs specifically to guard against silent partial
+responses could not complete against any mirror. The script does not treat an
+unavailable confirming check as a failure (an unreachable checker must not read as
+"fine" but also must not block registration) -- it wrote the pull with `pull_unverified:
+True` recorded on the boundary parquet. 328 features over a ~1 km² box is not the shape
+of a truncated response, but this should be re-run once Overpass recovers to get an
+actual independent count to check against.
+
+**Ground truth: 328 installations, 318 rooftop / 10 ground, 16,082.9 m² total**, median
+31.4 m², mean 49.0 m², max 1,056.3 m². **99.7% of installations (327/328) sit below the
+400 m² detection floor**, 93.9% below 100 m² -- one of the most sub-floor-dominated
+quadrats registered so far, close to Sialkot/Rahim Yar Khan/Mardan/Sukkur territory.
+`nn_median_m` **18.5 m**, the tightly-packed informal/residential cluster.
+
+**Status: Rule-1 complete**, per the repository owner's explicit declaration the same
+day the box was created (2026-08-10) -- recorded in `results/calibration_quadrats.csv`
+(`rule1_complete: True`). Same standing caveat as every other quadrat in this file: this
+is an owner-attested completeness declaration, not an independently second-mapper-verified
+one, and (per the Rule-1-is-epoch-relative warning earlier in this file / `docs/methods/
+calibration-quadrats.md`) `imagery_layer`/`imagery_date` remain unrecorded for this box
+too, so the gap between the mapping imagery's epoch and the Sentinel-2 composite's is
+unmeasured here as everywhere else.
+
+**Folded into `roofclf` the same day.** `earthpv roof-classifier` was re-fit on all 19
+quadrats: `hasal` contributes 4,378 buildings, 444 with PV (**base_rate 10.14%**), AUC
+**0.8048** (mid-pack -- above `mardan` 0.760 and `sukkur` 0.788, below most others).
+Its `rate_ratio` (roofclf's own predicted/true adoption-rate ratio) is **0.461** --
+roofclf predicts only 4.67% adoption against Hasal's true 10.14%, more than 2x
+under-prediction, the same failure shape as Box 11 (Rahim Yar Khan, 0.304-0.332 across
+refits). That keeps Hasal just outside `select_calibrated_quadrats`'s `[0.5, 2.0]`
+band, so it does **not** enter the trusted-13 set that drives the domain-restricted
+sub-400 m² precision/coverage-ratio fit (`sub400_capacity.py`) -- it only widens the
+19-quadrat pool behind the pooled LOQO threshold/AUC fit, which moved the deployment
+threshold from 0.2405 to **0.2441** and `median_fold_auc` from 0.8824 to 0.8757. This is
+a rate-*mismatch*, not a low-quality addition -- Hasal's own discrimination (AUC 0.805)
+is unremarkable in the good sense; roofclf simply under-counts adoption there, exactly
+as it does at Rahim Yar Khan.
