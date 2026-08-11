@@ -22,6 +22,7 @@
     --accent-dim: #b5610f;
     --domain: #2fd9c4;
     --large: #4fb2e8;
+    --extended: #c97fe0;
     --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
     --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
@@ -34,7 +35,7 @@
       --land: #e6dcc7; --map-bg: #efe8d8;
       --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
       --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
-      --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --bloom: 0;
+      --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --extended: #9b47b8; --bloom: 0;
       --card-ring: rgba(120,80,20,0.14);
       --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
       color-scheme: light;
@@ -57,7 +58,7 @@
     --land: #241f16; --map-bg: #0c0a07;
     --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
     --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
-    --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #4fb2e8; --bloom: 0.55;
+    --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #4fb2e8; --extended: #c97fe0; --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
     --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
     color-scheme: dark;
@@ -146,12 +147,19 @@
     paint-order: stroke; stroke: var(--map-bg); stroke-width: 2.4px; opacity: 0.9; }
   .domain-ring-rect { fill: none; stroke: var(--domain); stroke-width: 1;
     stroke-dasharray: 2 1.5; opacity: 0.85; pointer-events: none; }
+  .extended-ring-rect { fill: none; stroke: var(--extended); stroke-width: 1;
+    stroke-dasharray: 1 2; opacity: 0.85; pointer-events: none; }
   .large-dot { fill: none; stroke: var(--large); opacity: 0.9; pointer-events: none; }
   .tip .rowt.domain-flag span:first-child { color: var(--domain); }
+  .tip .rowt.extended-flag span:first-child { color: var(--extended); }
   .tip .rowt.large-flag span:first-child { color: var(--large); }
   .legend .domain-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
     font-size: 10.5px; color: var(--ink-2); }
   .legend .domain-key .sw { width: 10px; height: 10px; border: 1px dashed var(--domain);
+    border-radius: 2px; }
+  .legend .extended-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--ink-2); }
+  .legend .extended-key .sw { width: 10px; height: 10px; border: 1px dotted var(--extended);
     border-radius: 2px; }
   .legend .large-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
     font-size: 10.5px; color: var(--ink-2); }
@@ -326,6 +334,9 @@
           <div class="domain-key" id="domainKey" style="margin-left:14px">
             <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
           </div>
+          <div class="extended-key" id="extendedKey" style="margin-left:14px">
+            <span class="sw"></span>Best tier only: extrapolated beyond calibration (dotted outline)
+          </div>
           <div class="calib-key" style="margin-left:14px">
             <span class="sw"></span>hand-checked calibration area (hover for detail)
           </div>
@@ -348,7 +359,8 @@
             <div style="overflow-x:auto;"><table id="ptable">
               <thead><tr><th>Province</th><th>Verified</th><th>Best estimate</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
-                <th>Small PV, checked cells</th></tr></thead>
+                <th>Small PV, checked cells</th>
+                <th>Small PV, extrapolated</th></tr></thead>
               <tbody></tbody>
             </table></div>
           </details>
@@ -417,15 +429,26 @@
 
     <details class="xdetails">
       <summary><span><span class="xt">Where the small-PV numbers apply</span>
-        <span class="xs">reading the dashed outline on the map</span></span><span class="xi">+</span></summary>
+        <span class="xs">reading the dashed and dotted outlines on the map</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <p>Installations under 400 m² are below the satellite detector's practical floor at
-        10 m resolution, so they are estimated per building instead. That estimate is only
-        reported <b>inside the dashed outline</b>: the
+        10 m resolution, so they are estimated per building instead. The calibrated estimate
+        used in <b>both tiers</b> is only reported <b>inside the dashed outline</b>: the
         <span id="dDomain">0</span> cells whose building density falls inside the range
-        covered by the hand-mapped calibration quadrats. Outside it, small PV reads as zero
-        in both tiers &mdash; not because small solar is absent there, but because there
-        is no calibration evidence either way.</p>
+        covered by the hand-mapped calibration quadrats.</p>
+        <p>Outside that outline, Verified still reads zero &mdash; not because small solar
+        is absent there, but because there is no calibration evidence either way. <b>Best</b>
+        adds one more thing in those cells (the <b>dotted outline</b>,
+        <span id="dExtended">0</span> cells, <span id="dOutdomainMwp">0</span> MWp
+        nationally): buildings where roofclf and SPPI still independently agree, priced
+        with the same coverage ratios measured on the calibrated cells. This exists because
+        a manual imagery check of that population turned out to be blocked by reference
+        imagery too old to confirm recently-installed panels &mdash; agreement between two
+        differently-built detectors is the fallback evidence standard, not a replacement for
+        looking. Every calibration quadrat behind that coverage ratio sits inside the dashed
+        outline, so this is a genuine extrapolation to a less dense, more rural building
+        population, not an interpolation &mdash; treat it as the more speculative half of
+        Best, not as validated as anything inside the dashed line.</p>
       </div>
     </details>
 
@@ -465,9 +488,11 @@
   const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
 
   /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
-     small_central, mwp_large, in_domain, pv_buildings] */
+     small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended] */
   const IDX = [2, 3];
   const OSM_IDX = 4;
+  const OUTDOMAIN_IDX = 11;
+  const EXTENDED_IDX = 12;
   const T = DATA.totals;
   const fmt = n => Math.round(n).toLocaleString("en-US");
 
@@ -488,7 +513,7 @@
         ["mwp_large", "Model detections &ge;400 m², MWp"],
         ["osm_mwp_unmatched", "Mapped but never detected, MWp"],
         ["small_central", "Small PV, checked cells, MWp"],
-        ["pv_buildings", "Buildings with a large detection"],
+        ["small_outdomain", "Small PV, unchecked cells (extrapolated), MWp"],
       ] },
   ];
   let sel = 1;
@@ -592,6 +617,20 @@
       svg.appendChild(gD);
     }
 
+    if (sel === 1 && DATA.cells.some(c => c[EXTENDED_IDX])) {
+      const gE = el("g", {class:"extended-ring"});
+      for (const c of DATA.cells){
+        if (!c[EXTENDED_IDX]) continue;
+        const tl = proj(c[0], c[1] + 0.1);
+        gE.appendChild(el("rect", {
+          x:(tl[0]+0.8).toFixed(1), y:(tl[1]+0.8).toFixed(1),
+          width:Math.max(cw-1.6,0.5).toFixed(1), height:Math.max(ch-1.6,0.5).toFixed(1),
+          class:"extended-ring-rect",
+        }));
+      }
+      svg.appendChild(gE);
+    }
+
     {
       const gL = el("g", {class:"large-ring"});
       for (const c of DATA.cells){
@@ -651,7 +690,9 @@
         + `<div class="rowt"><span>&nbsp;&nbsp;OSM installations</span><span>${c[5].toLocaleString()}</span></div>`
         + `<div class="rowt"><span>Model detections &ge;400 m²</span><span>${c[8].toFixed(1)} MWp</span></div>`
         + `<div class="rowt"><span>Small PV, roofclf alone</span><span>${c[7].toFixed(1)} MWp</span></div>`
-        + (c[9] ? `<div class="rowt domain-flag"><span>&#9679; Small-PV calibration</span><span>checked</span></div>` : "");
+        + (c[OUTDOMAIN_IDX] > 0 ? `<div class="rowt"><span>Small PV, extrapolated (Best only)</span><span>${c[OUTDOMAIN_IDX].toFixed(1)} MWp</span></div>` : "")
+        + (c[9] ? `<div class="rowt domain-flag"><span>&#9679; Small-PV calibration</span><span>checked</span></div>` : "")
+        + (c[EXTENDED_IDX] ? `<div class="rowt extended-flag"><span>&#9675; Small-PV extrapolated, not checked</span><span></span></div>` : "");
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
@@ -716,7 +757,8 @@
     }).join("");
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
       `<tr><td>${p.name}</td><td>${fmt(p.mwp_verified)}</td><td>${fmt(p.mwp_best)}</td>`
-      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td></tr>`).join("");
+      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
+      + `<td>${fmt(p.small_outdomain)}</td></tr>`).join("");
   }
 
   function setView(i) {
@@ -730,6 +772,7 @@
     document.getElementById("tiles").innerHTML = view.tiles.map(([key, label]) =>
       `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
     document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
+    document.getElementById("extendedKey").style.display = i === 1 ? "" : "none";
     renderMap(); drawTable();
   }
   ["tab0", "tab1"].forEach((id, i) =>
@@ -740,6 +783,8 @@
   document.getElementById("dMatched").textContent = fmt(T.n_osm_matched);
   document.getElementById("dUnmatched").textContent = fmt(T.osm_mwp_unmatched);
   document.getElementById("dDomain").textContent = fmt(T.n_domain_cells);
+  document.getElementById("dExtended").textContent = fmt(T.n_extended_cells);
+  document.getElementById("dOutdomainMwp").textContent = fmt(T.small_outdomain);
 
   document.getElementById("foot").innerHTML =
     `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf/SPPI per-building `

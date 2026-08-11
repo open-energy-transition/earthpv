@@ -941,6 +941,199 @@ def domain_restricted_and_gate_capacity(
     return incremental, summary
 
 
+def out_of_domain_and_gate_capacity(
+    roofclf_dir: Path,
+    candidates_path: Path,
+    folds_path: Path,
+    buildings_path: Path,
+    cell_density_path: Path,
+    threshold: float,
+    sppi_min_precision: float = 0.5,
+    max_distance_m: float = 30.0,
+    contamination_max_m2: float = 400.0,
+    ratio_lo: float = DEFAULT_RATIO_LO,
+    ratio_hi: float = DEFAULT_RATIO_HI,
+    osm_solar_path: Path | None = None,
+    quadrat_profile_path: Path = Path("results/calibration_quadrats.csv"),
+    n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
+    size_floor_m2: list[float] | None = None,
+) -> tuple[gpd.GeoDataFrame, dict]:
+    """`domain_restricted_and_gate_capacity`'s mirror image: the SAME roofclf-AND-SPPI
+    join, coverage-ratio-by-size-and-density fit, OSM/candidate dedup and contamination
+    filter, applied to national cells OUTSIDE `national_cell_domain()` instead of inside
+    it. Added 2026-08-11 at the owner's explicit direction, after a manual JOSM
+    validation pass for the out-of-domain random-cell batch
+    (`results/pakistan_roofclf_validation_outdomain/`) turned out to be blocked by
+    stale reference imagery -- too old to confirm or refute recently-installed small PV.
+    The AND-gate was proposed as a substitute standard of evidence for exactly the cells
+    that cannot currently be manually checked: requiring two independent, differently-
+    built detectors (a supervised classifier and a zero-training spectral index) to agree
+    is a real, if partial, substitute for a human looking at fresh imagery, which is why
+    this is wired into the Best-estimate tier alongside `domain_restricted_capacity`
+    (roofclf alone) rather than left as a one-off estimate.
+
+    **This is a strict extrapolation, not a modest widening, and callers must not
+    mistake it for one.** Measured against the current national cell-density table the
+    day this was added: of 4,300 out-of-domain cells, precisely ZERO sit above
+    `density.CALIBRATED_BLDG_DENSITY_KM2`'s upper edge -- all of them are below its lower
+    edge (median 86.6 bldg/km2 against the calibrated floor of ~553/km2, roughly 6x
+    sparser than the least-dense calibrated quadrat). So this does not interpolate
+    between calibrated regimes, it extrapolates a fit measured on 13 urban/semi-urban
+    quadrats across the entire rural remainder of the country, which has no calibration
+    quadrat anywhere in its density range. `apply_stratified_coverage_ratio` handles this
+    mechanically (every out-of-domain cell's density clips to the lowest calibrated
+    stratum via `np.searchsorted` against band edges forced to +-inf), but "handles
+    gracefully" is not "validated" -- rural roof material, vegetation context and true PV
+    prevalence could all differ from the urban quadrats this coverage ratio was measured
+    on, and nothing in this function's inputs could detect that if it were true.
+
+    Returns `(incremental_buildings, summary)` with the same shape as
+    `domain_restricted_and_gate_capacity`; `summary["scope"]` restates this caveat so it
+    travels with the number wherever it is logged or displayed.
+    """
+    from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
+    from earthpv.export import new_lead_mask
+    from earthpv.sppi import add_sppi, pooled_precision_threshold
+
+    all_cells = pd.read_parquet(cell_density_path)
+    in_domain_cells = national_cell_domain(cell_density_path)
+    out_domain_cells = set(all_cells.cell) - in_domain_cells
+    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
+
+    from earthpv.density import CALIBRATED_BLDG_DENSITY_KM2
+
+    lo, hi = CALIBRATED_BLDG_DENSITY_KM2
+    out_density = all_cells.loc[all_cells.cell.isin(out_domain_cells), "density"]
+    n_below = int((out_density < lo).sum())
+    n_above = int((out_density > hi).sum())
+    log.warning(
+        "Out-of-domain AND-gate: %d/%d out-of-domain cells are BELOW the calibrated "
+        "band (%.1f/km2), %d are ABOVE it (%.1f/km2) -- this is an extrapolation in "
+        "whichever direction dominates, not an interpolation",
+        n_below, len(out_domain_cells), lo, n_above, hi,
+    )
+
+    bt = gpd.read_parquet(buildings_path)
+    if "sppi" not in bt.columns:
+        bt = add_sppi(bt)
+    sppi_thresh = pooled_precision_threshold(bt, quadrats, min_precision=sppi_min_precision)
+
+    quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
+    stratified = coverage_ratio_by_size_and_density(
+        buildings_path, quadrats, threshold, quadrat_density,
+        sppi_min_precision=sppi_min_precision, n_density_bands=n_density_bands,
+    )
+
+    parts = []
+    for cell in sorted(out_domain_cells):
+        p = Path(roofclf_dir) / f"{cell}.parquet"
+        if not p.exists():
+            continue
+        d = gpd.read_parquet(p)
+        if d.empty or "p_roofclf" not in d.columns or "sppi" not in d.columns:
+            continue
+        f = d[(d.p_roofclf >= threshold) & (d.sppi >= sppi_thresh)]
+        if not f.empty:
+            parts.append(f)
+    flagged = (
+        gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs="EPSG:4326")
+        if parts
+        else gpd.GeoDataFrame(
+            columns=["cell", "geometry", "roof_area_m2", "p_roofclf", "sppi"], crs="EPSG:4326"
+        )
+    )
+    log.info(
+        "Out-of-domain AND-gate: %d/%d cells, %d flagged buildings out-of-domain "
+        "(sppi_threshold=%.4f)", len(out_domain_cells), len(all_cells), len(flagged), sppi_thresh,
+    )
+
+    cands = gpd.read_parquet(candidates_path)
+    is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
+    n_near_osm = 0
+    if osm_solar_path is not None:
+        osm = gpd.read_parquet(osm_solar_path)
+        is_new_osm = new_lead_mask(flagged, osm, min_distance_m=max_distance_m)
+        n_near_osm = int((is_new & ~is_new_osm).sum())
+        is_new = is_new & is_new_osm
+    incremental_raw = flagged[is_new].reset_index(drop=True)
+
+    over = incremental_raw.roof_area_m2 >= contamination_max_m2
+    n_contaminated = int(over.sum())
+    contaminated_area_m2 = float(incremental_raw.loc[over, "roof_area_m2"].sum())
+    incremental = incremental_raw[~over].reset_index(drop=True)
+
+    incremental = incremental.copy()
+    cell_density_lookup = all_cells.set_index("cell")["density"]
+    incremental_cell_density = incremental["cell"].map(cell_density_lookup).to_numpy(float)
+
+    n_excluded_by_size_floor = 0
+    area_m2_excluded_by_size_floor = 0.0
+    if size_floor_m2 is not None:
+        floor_band_edges = np.array(stratified["band_edges"])
+        keep = size_floor_by_density_band(
+            incremental.roof_area_m2.to_numpy(float), incremental_cell_density,
+            floor_band_edges, size_floor_m2,
+        )
+        n_excluded_by_size_floor = int((~keep).sum())
+        area_m2_excluded_by_size_floor = float(incremental.loc[~keep, "roof_area_m2"].sum())
+        incremental = incremental[keep].reset_index(drop=True)
+        incremental_cell_density = incremental_cell_density[keep]
+
+    total_area_m2 = float(incremental.roof_area_m2.sum())
+    incremental["coverage_ratio"] = apply_stratified_coverage_ratio(
+        incremental.roof_area_m2.to_numpy(float), incremental_cell_density, stratified
+    )
+    incremental["est_kwp_sub400_outdomain"] = (
+        incremental.roof_area_m2.to_numpy(float)
+        * DEFAULT_KWP_PER_M2_MODULE
+        * incremental["coverage_ratio"].to_numpy()
+    )
+    total_mwp = float(incremental.est_kwp_sub400_outdomain.sum()) / 1000.0
+    mean_coverage_ratio = (
+        float(np.average(incremental["coverage_ratio"], weights=incremental.roof_area_m2))
+        if len(incremental) else float("nan")
+    )
+
+    summary = {
+        "method": "out_of_domain_and_gate_sub400_capacity",
+        "calibration_quadrats": quadrats,
+        "roofclf_threshold": threshold,
+        "sppi_threshold": round(float(sppi_thresh), 4),
+        "and_gate_coverage_ratio_area_weighted_mean": (
+            round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None
+        ),
+        "n_out_domain_cells": len(out_domain_cells),
+        "n_out_domain_cells_below_calibrated_band": n_below,
+        "n_out_domain_cells_above_calibrated_band": n_above,
+        "n_national_cells": int(len(all_cells)),
+        "n_flagged_out_domain": int(len(flagged)),
+        "osm_dedup_applied": osm_solar_path is not None,
+        "n_excluded_near_osm": n_near_osm,
+        "n_incremental_before_contamination_filter": int(len(incremental_raw)),
+        "n_contaminated_excluded_ge_400m2": n_contaminated,
+        "contaminated_area_m2_excluded": round(contaminated_area_m2, 1),
+        "size_floor_applied": size_floor_m2 is not None,
+        "size_floor_m2": size_floor_m2,
+        "n_excluded_by_size_floor": n_excluded_by_size_floor,
+        "area_m2_excluded_by_size_floor": round(area_m2_excluded_by_size_floor, 1),
+        "n_incremental_sub400": int(len(incremental)),
+        "total_incremental_sub400_area_m2": round(total_area_m2, 1),
+        "total_est_mwp_sub400_outdomain_and_gate": round(total_mwp, 4),
+        "scope": (
+            f"{len(out_domain_cells)} of {len(all_cells)} national cells OUTSIDE the "
+            "calibrated density domain, roofclf-AND-SPPI agreement only. STRICT "
+            f"EXTRAPOLATION: {n_below} of these cells sit below the calibrated density "
+            f"band and {n_above} above it -- no calibration quadrat exists anywhere in "
+            "this density range. Not a substitute for manual validation, only for cells "
+            "where manual validation is currently blocked by stale reference imagery "
+            "(see docs/methods/roofclf-national-validation.md). Feeds the Best-estimate "
+            "tier only, never Verified."
+        ),
+    }
+    log.info("Out-of-domain AND-gate sub-400 capacity: %s", summary)
+    return incremental, summary
+
+
 def suggest_high_density_regions(
     cell_density_path: Path,
     calibration_quadrat_densities: dict[str, float],

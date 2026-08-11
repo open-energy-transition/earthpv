@@ -1186,6 +1186,7 @@ def build_evidence_atlas(
     low_buildings_path: Path, central_buildings_path: Path,
     out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
     ge400_roof_buildings_path: Path | None = None,
+    sub400_outdomain_buildings_path: Path | None = None,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -1227,6 +1228,27 @@ def build_evidence_atlas(
     has no footprint to score there. Optional: omitting it falls back to the pre-2026-08-07
     behavior (segmentation's own `est_mwp_rc`, roof+ground combined, unchanged) for AOIs
     with no roofclf national scoring yet.
+
+    **`sub400_outdomain_buildings_path` (added 2026-08-11): roofclf-AND-SPPI agreement
+    outside the density-calibrated domain, folded into Best only.** A manual JOSM
+    validation pass for cells outside the calibrated domain (drawn to test whether that
+    domain could be widened with evidence) turned out to be blocked by reference imagery
+    too old to confirm or refute recently-installed small PV -- see
+    `docs/methods/roofclf-national-validation.md`. Requiring two independently-built
+    detectors (roofclf, a supervised classifier; SPPI, a zero-training spectral index) to
+    agree is used as a substitute standard of evidence for exactly the cells that cannot
+    currently be checked by eye. `sub400_capacity.out_of_domain_and_gate_capacity`
+    produces this path's buildings; its own docstring states the caveat that must travel
+    with this number: EVERY out-of-domain cell nationally sits outside the calibrated
+    density band in one direction (measured 2026-08-11: all 4,300 below, none above), so
+    this is a strict extrapolation of a fit measured on 13 urban/semi-urban quadrats
+    across the rural remainder of the country, not a modest widening of it. It is added
+    to `mwp_best` alongside `small_central`, marked separately in the map/totals as
+    `small_outdomain` (never merged into `small_central` itself) and cells it touches get
+    their own `is_extended` flag distinct from `in_domain` -- a reader must be able to
+    tell "calibrated" and "extrapolated" apart, the same reasoning that keeps Verified
+    and Best as separate tiers in the first place. Optional; omitting it reproduces the
+    pre-2026-08-11 Best-estimate total exactly.
 
     Ported from `scripts/build_pakistan_pv_evidence_overview.py` (see that file's git
     history for the full derivation and the 2026-08-01 redefinition of Ceiling) with two
@@ -1331,6 +1353,13 @@ def build_evidence_atlas(
     by_central = _join_buildings_to_grid_cells(
         gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
     ) / 1000.0
+    by_outdomain = (
+        _join_buildings_to_grid_cells(
+            gpd.read_parquet(sub400_outdomain_buildings_path), "est_kwp_sub400_outdomain", grid
+        ) / 1000.0
+        if sub400_outdomain_buildings_path is not None
+        else pd.Series(dtype=float)
+    )
 
     grid = grid.copy()
     grid["osm_mwp"] = grid["cell"].map(osm_by_cell.get("osm_mwp", pd.Series(dtype=float))).fillna(0.0)
@@ -1340,8 +1369,14 @@ def build_evidence_atlas(
     grid["osm_n"] = grid["cell"].map(osm_by_cell.get("osm_n", pd.Series(dtype=float))).fillna(0.0)
     grid["small_low"] = grid["cell"].map(by_low).fillna(0.0)
     grid["small_central"] = grid["cell"].map(by_central).fillna(0.0)
+    grid["small_outdomain"] = grid["cell"].map(by_outdomain).fillna(0.0)
     grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
     n_domain_cells = int(grid["in_domain"].sum())
+    # Distinct from `in_domain`: these cells carry an EXTRAPOLATED small-PV contribution
+    # (out_of_domain_and_gate_capacity, no calibration quadrat in their density range),
+    # never a calibrated one -- must render differently on the map, not folded into the
+    # same "checked" visual as in_domain.
+    grid["is_extended"] = grid["cell"].isin(by_outdomain.index)
 
     # roofclf replaces segmentation's rooftop estimate inside the density-matched domain
     # (see docstring); outside it, segmentation's own est_mwp_rc_roof is the only
@@ -1364,7 +1399,9 @@ def build_evidence_atlas(
     grid["mwp_large"] = grid["mwp_large_roof"] + grid["est_mwp_rc_ground"]
 
     grid["mwp_verified"] = grid["osm_mwp"] + grid["small_low"]
-    grid["mwp_best"] = grid["osm_mwp_unmatched"] + grid["mwp_large"] + grid["small_central"]
+    grid["mwp_best"] = (
+        grid["osm_mwp_unmatched"] + grid["mwp_large"] + grid["small_central"] + grid["small_outdomain"]
+    )
     # Best is "the highest defensible figure" -- it must never read below Verified in the
     # same cell. It can, before this floor: Best drops a cell's matched-OSM value in favor
     # of the model's own est_mwp_rc/small_central, which is sometimes smaller (e.g.
@@ -1384,7 +1421,8 @@ def build_evidence_atlas(
          round(float(r.mwp_verified), 3), round(float(r.mwp_best), 3),
          round(float(r.osm_mwp), 3), int(r.osm_n),
          round(float(r.small_low), 3), round(float(r.small_central), 3),
-         round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings)]
+         round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings),
+         round(float(r.small_outdomain), 3), int(r.is_extended)]
         for r in grid.itertuples()
     ]
     bounds = [
@@ -1406,7 +1444,7 @@ def build_evidence_atlas(
         reg_regions = reg[reg.level == "region"]
         keep = [
             "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
-            "small_low", "small_central",
+            "small_low", "small_central", "small_outdomain",
         ]
         pts2 = gpd.GeoDataFrame(
             grid[keep], geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
@@ -1423,6 +1461,7 @@ def build_evidence_atlas(
                 "mwp_large": round(float(row["mwp_large"]), 1),
                 "small_low": round(float(row["small_low"]), 1),
                 "small_central": round(float(row["small_central"]), 1),
+                "small_outdomain": round(float(row["small_outdomain"]), 1),
                 "nb": int(r.n_pv_buildings),
                 "rings": _rings(r.geometry),
             })
@@ -1451,9 +1490,11 @@ def build_evidence_atlas(
             "n_osm_matched": int(osm["matched"].sum()),
             "small_low": round(float(grid.small_low.sum()), 1),
             "small_central": round(float(grid.small_central.sum()), 1),
+            "small_outdomain": round(float(grid.small_outdomain.sum()), 1),
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "n_cells": int(len(grid)),
             "n_domain_cells": n_domain_cells,
+            "n_extended_cells": int(grid.is_extended.sum()),
             "n_cells_best_floored": n_cells_best_floored,
             "kwp_per_m2": kwp_mod,
             "n_calib_boxes": len(calib_boxes),
@@ -1519,8 +1560,9 @@ def build_evidence_atlas(
     out.write_text(html)
     log.info(
         "Wrote evidence atlas (verified %.0f / best %.0f MWp, "
-        "%d/%d domain cells) -> %s",
-        total_verified, total_best, n_domain_cells, len(grid), out,
+        "%d/%d domain cells, %d extended-only cells contributing %.0f MWp) -> %s",
+        total_verified, total_best, n_domain_cells, len(grid),
+        int(grid.is_extended.sum()), float(grid.small_outdomain.sum()), out,
     )
     return out
 

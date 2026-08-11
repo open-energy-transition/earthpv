@@ -23,7 +23,7 @@ Interactive. Switch tier with the tabs, hover a cell for its value.
 | Tier | Pakistan | What it admits as evidence |
 | --- | ---: | --- |
 | Verified | 5,467 MWp | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **11,230 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (5,336 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells -- the project's own pick. |
+| **Best estimate** | **12,410 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (5,336 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 1,224 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
 
 Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
@@ -164,6 +164,27 @@ ground-mount over-inflation that used to mask that concentration was removed):
     against the current `candidates.parquet`, with `check-density`'s ratio check
     passing where it previously failed.
 
+**A sixth change, 2026-08-11: roofclf-AND-SPPI agreement now extends into cells outside
+the density-matched domain, folded into Best only, as a substitute for manual validation
+that turned out to be blocked.** A random-cell JOSM validation batch was drawn
+specifically to test whether the 136-163 cell domain above could be widened with
+evidence, split between cells inside and outside it. The outside-domain half couldn't be
+manually checked: the reference imagery behind it is too old to confirm or refute
+recently-installed small PV. Requiring two independently-built detectors (roofclf, a
+supervised classifier; SPPI, a zero-training spectral index) to agree is used as a
+substitute standard of evidence for exactly this population --
+`sub400_capacity.out_of_domain_and_gate_capacity` applies the same coverage-ratio fit
+measured on the in-domain quadrats to every one of the other 4,300 national cells. **This
+is a strict extrapolation, not a modest widening**: measured the day this was added,
+every one of those 4,300 cells sits below the calibrated density band (median
+87 bldg/km<sup>2</sup> against a calibrated floor around 553/km<sup>2</sup>) -- none
+above it -- so the fit is being applied to a settlement-density regime with no
+calibration quadrat anywhere in it. It adds **1,224 MWp** (217,751 buildings across 2,983
+cells) to Best only, never Verified, moving Best **11,230 &rarr; 12,410 MWp**. On the map
+these cells get their own dotted marker, distinct from the dashed calibrated-domain
+outline, so the two standards of evidence are never visually conflated. Full derivation
+in `sub400_capacity.out_of_domain_and_gate_capacity`'s docstring.
+
 ## Segmentation vs. roofclf on large rooftops
 
 Measured on the calibration quadrats' own &ge;400 m<sup>2</sup> buildings (5,004 of them,
@@ -240,10 +261,16 @@ pixi run earthpv ge400-roof-capacity --aoi pakistan \
 # 2026-08-06; it still exists for the older bracket atlas, see build_sub400_bracket_atlas.)
 pixi run earthpv atlas --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet \
-    --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-    --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
-    --ge400-roof-cells     data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet
+    --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
+    --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
+    --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
+    --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet
 ```
+
+`--sub400-outdomain-cells` is optional (added 2026-08-11) -- omitting it reproduces the
+pre-2026-08-11 Best-estimate total exactly, folding in nothing for cells outside the
+density-matched domain. Passing it adds roofclf-AND-SPPI agreement in those cells to
+Best only, marked as a strict extrapolation (see "A sixth change" above).
 
 Neither `density` nor `roofclf-score-national` needs a GPU or retraining; both run on
 rasters already on disk, each taking roughly two hours single-process for all of

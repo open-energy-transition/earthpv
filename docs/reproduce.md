@@ -259,14 +259,17 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
         --osm-solar data/labels/pakistan_overpass_solar.parquet
     ```
 
-    Writes `sub400_central_incremental_buildings.parquet` (roofclf alone, the evidence
-    atlas's Best-estimate small-PV component) and `sub400_low_incremental_buildings.
-    parquet` (roofclf AND SPPI agreeing, the Verified component) to
-    `data/roofclf_national_with_sppi/<aoi>/density/`. The result is explicitly **not a
-    national figure** -- it describes only the density-matched cells, and must not be
-    rescaled by their share of the country. See `sub400_capacity.py`'s module docstring
-    and [Capacity density](methods/density.md) for exactly what it does and does not
-    claim.
+    Writes three building-level parquets to `data/roofclf_national_with_sppi/<aoi>/
+    density/`: `sub400_central_incremental_buildings.parquet` (roofclf alone, the
+    evidence atlas's Best-estimate small-PV component), `sub400_low_incremental_
+    buildings.parquet` (roofclf AND SPPI agreeing, the Verified component), and (added
+    2026-08-11) `sub400_outdomain_and_gate_incremental_buildings.parquet` (roofclf AND
+    SPPI agreeing OUTSIDE the density-matched domain -- an extrapolation, feeds Best
+    only, see step 15). The first two describe only the density-matched cells and must
+    not be rescaled by their share of the country; the third describes the rest of the
+    country and is even less certain, since no calibration quadrat sits in that density
+    range at all. See `sub400_capacity.py`'s module docstring and [Capacity
+    density](methods/density.md) for exactly what each does and does not claim.
 
 === "14. ≥400 m² rooftop capacity (roofclf)"
 
@@ -293,12 +296,21 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
 
     ```bash
     pixi run earthpv atlas --aoi pakistan \
-        --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
-        --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-        --ge400-roof-cells     data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
+        --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
+        --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
+        --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
+        --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
         --osm-solar data/labels/pakistan_overpass_solar.parquet \
         --out docs/assets/interactive/pakistan_evidence_atlas.html
     ```
+
+    **`--sub400-outdomain-cells` (added 2026-08-11) is optional** -- roofclf-AND-SPPI
+    agreement outside the density-matched domain, folded into Best only as a strict,
+    clearly-marked extrapolation (measured 2026-08-11: +1,224 MWp, since every cell
+    outside the domain sits below the calibrated density band with no quadrat evidence
+    in that range). Omitting it reproduces the pre-2026-08-11 Best total exactly. Both
+    `sub400-*` and this flag's input come from step 13's `earthpv sub400-capacity`,
+    which now writes all three building-level parquets in one run.
 
     **`--ge400-roof-cells` is easy to omit by accident and changes the headline number
     by double digits of percent** (measured 2026-08-10: omitting it dropped Best

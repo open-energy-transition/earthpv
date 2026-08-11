@@ -33,10 +33,12 @@ product:
   cross-checked with the zero-training **SPPI** spectral index for the atlas's Verified
   tier (roofclf AND SPPI agreeing).
 - **`atlas.build_evidence_atlas`** (`earthpv atlas --sub400-central-cells
-  --sub400-low-cells --osm-solar`) combines both into two tiers by *standard of proof*
-  -- **Verified** (hand-mapped OSM, or roofclf+SPPI agreement) and **Best estimate**
-  (recall-corrected ≥ 400 m² detections plus roofclf-alone density) -- de-duplicated
-  against each other and against OSM so nothing is counted twice.
+  --sub400-low-cells --sub400-outdomain-cells --osm-solar`) combines both into two tiers
+  by *standard of proof* -- **Verified** (hand-mapped OSM, or roofclf+SPPI agreement) and
+  **Best estimate** (recall-corrected ≥ 400 m² detections plus roofclf-alone density,
+  plus roofclf+SPPI agreement outside the density-matched domain as a clearly-marked
+  extrapolation -- see "Out-of-domain AND-gate" below) -- de-duplicated against each
+  other and against OSM so nothing is counted twice.
 
 The end-to-end command sequence is in `docs/reproduce.md`'s "The full pipeline"; the
 short version:
@@ -58,8 +60,9 @@ pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
 
 earthpv sub400-capacity --aoi <aoi> --osm-solar <national OSM solar pull>
 earthpv atlas --aoi <aoi> \
-  --sub400-central-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
-  --sub400-low-cells     data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
+  --sub400-central-cells   data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
+  --sub400-low-cells       data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
+  --sub400-outdomain-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
   --osm-solar <national OSM solar pull>
 ```
 
@@ -120,7 +123,8 @@ postprocess → export`, plus `compose` (build imagery for AOIs with no local co
 For capacity, **this is the main workflow** (see above): `density → check-density` for
 the ≥ 400 m² segmentation half, `roof-classifier → roofclf-score-national →
 sub400-capacity` for the < 400 m² roofclf half, then `atlas --sub400-central-cells
---sub400-low-cells --osm-solar` to combine both into the evidence atlas.
+--sub400-low-cells --sub400-outdomain-cells --osm-solar` to combine both into the
+evidence atlas.
 `roofclf-score-national` is the long pole (hours at country scale) and is resumable
 per-cell like `density`.
 
@@ -1692,6 +1696,63 @@ KP/Balochistan largest-ground-mount-candidate JOSM layer
 (`results/pakistan_groundmount_kp_balochistan_josm.geojson`,
 `scripts/export_groundmount_kp_balochistan_josm.py`, new). None of these substitute for
 the actual visual review; they exist so that review can happen.
+
+### Out-of-domain AND-gate: a substitute for validation that turned out to be blocked, 2026-08-11
+
+**The out-of-domain random-cell batch above (`results/pakistan_roofclf_validation_outdomain/`,
+20 cells, seed 20260811) turned out not to be reviewable.** The owner attempted the JOSM
+review it exists for and found the reference imagery too old to confirm or refute
+recently-installed small PV in that population -- exactly the epoch-relative limitation
+already on record for the calibration quadrats themselves (see "Rule-1 is epoch-relative"
+above), now blocking the specific validation pass meant to test whether the 163-cell
+density domain could be widened with evidence.
+
+**Proposed and implemented the same day, at the owner's explicit direction: use
+roofclf-AND-SPPI agreement as a substitute standard of evidence for exactly the
+population that cannot currently be checked by eye.** New
+`sub400_capacity.out_of_domain_and_gate_capacity` mirrors
+`domain_restricted_and_gate_capacity` exactly (same pooled thresholds, same
+`coverage_ratio_by_size_and_density` fit, same OSM/candidate dedup and >=400 m2
+contamination filter) but applied to the 4,300 national cells OUTSIDE
+`national_cell_domain()` instead of inside it. Requiring two independently-built
+detectors to agree is a real, if partial, substitute for a human looking at fresh
+imagery -- the same logic that already makes AND-gate agreement the Verified tier's own
+standard of proof -- which is why this was wired into the **Best-estimate tier**
+specifically, not treated as a one-off number.
+
+**This is a strict extrapolation and the code says so at every level, not just in
+prose.** Measured the moment this was built: of the 4,300 out-of-domain cells, **all
+4,300 sit below `density.CALIBRATED_BLDG_DENSITY_KM2`'s lower edge (553.4/km2), zero
+above it** -- median out-of-domain density 86.6/km2, roughly 6x sparser than the
+least-dense calibrated quadrat. So this does not interpolate between calibrated
+regimes, it extrapolates a coverage-ratio fit measured on 13 urban/semi-urban quadrats
+(Lahore, Karachi, Faisalabad, Multan, Peshawar, etc.) across the rural remainder of the
+country, which has no calibration quadrat anywhere in its density range. Rural roof
+material, vegetation context and true PV prevalence could all differ from the urban
+quadrats this ratio was measured on, and nothing in the pipeline could detect that if it
+were true. `out_of_domain_and_gate_capacity`'s own docstring, its `summary["scope"]`
+string, the atlas template's methodology prose, and a distinct dotted-outline map marker
+(`is_extended`, separate from the calibrated domain's dashed `in_domain` outline) all
+carry this caveat forward -- the goal is that nobody downstream can end up treating this
+number with the same confidence as the calibrated one without deliberately ignoring
+several places that say otherwise.
+
+Measured result: **+1,224 MWp** (217,751 buildings across 2,983 cells, mean coverage
+ratio 0.263 -- in line with the in-domain ratios). Folded into `mwp_best` only (never
+`mwp_verified`) via a new `small_outdomain` grid column in `atlas.py::build_evidence_atlas`
+(new optional `sub400_outdomain_buildings_path` parameter, new CLI flag
+`--sub400-outdomain-cells`, wired into `earthpv sub400-capacity`'s standard output
+alongside central/low so it is part of the default pipeline, not a side script). National
+Best estimate moved **11,229.7 -> 12,410.4 MWp** (Verified unchanged at 5,466.9 MWp, since
+this tier never touches it) -- less than the raw +1,223.6 MWp the population itself
+totals, because `mwp_best`'s existing per-cell floor at `mwp_verified` means the addition
+is invisible in cells where hand-mapped OSM already exceeds the model's estimate by more
+than this extension provides; that floor mechanism working as designed, not a
+miscalculation. Old atlas backed up to
+`/tmp/pakistan_evidence_atlas_PRE_20260811_outdomain_andgate_backup.html`
+and the pre-change building parquets to
+`data/roofclf_national_with_sppi/pakistan/density_PRE_20260811_outdomain_andgate_backup/`
+(both session-local, not under version control).
 
 ## Conventions & gotchas
 

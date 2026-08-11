@@ -679,6 +679,7 @@ def sub400_capacity_cmd(
     from earthpv.sub400_capacity import (
         DEFAULT_RATIO_HI, DEFAULT_RATIO_LO, cell_density_from_grid,
         domain_restricted_and_gate_capacity, domain_restricted_capacity,
+        out_of_domain_and_gate_capacity,
     )
 
     parsed_size_floor_m2 = (
@@ -725,6 +726,21 @@ def sub400_capacity_cmd(
     low.to_parquet(out_dir / "sub400_low_incremental_buildings.parquet")
     (out_dir / "sub400_low_summary.json").write_text(json.dumps(low_summary, indent=2))
 
+    # Out-of-domain AND-gate (2026-08-11): the density-domain restriction leaves 75%+ of
+    # national buildings with zero sub-400 m2 credit at all. Manually validating that
+    # population in JOSM turned out to be blocked by stale reference imagery (see
+    # docs/methods/roofclf-national-validation.md), so requiring roofclf AND SPPI to
+    # independently agree is used as a substitute standard of evidence for exactly the
+    # cells that cannot currently be checked by eye. This is a strict extrapolation
+    # (every out-of-domain cell's coverage ratio comes from the same in-domain-only fit
+    # `low` used) -- see out_of_domain_and_gate_capacity's docstring -- so it feeds the
+    # Best-estimate tier only, never Verified.
+    outdomain, outdomain_summary = out_of_domain_and_gate_capacity(
+        **kwargs, sppi_min_precision=sppi_min_precision,
+    )
+    outdomain.to_parquet(out_dir / "sub400_outdomain_and_gate_incremental_buildings.parquet")
+    (out_dir / "sub400_outdomain_summary.json").write_text(json.dumps(outdomain_summary, indent=2))
+
     typer.echo(
         f"roofclf-only (Best-estimate small-PV component): "
         f"{central_summary['total_est_mwp_sub400_domain_restricted']:.1f} MWp "
@@ -734,12 +750,20 @@ def sub400_capacity_cmd(
         f"AND-gate (Verified small-PV component): "
         f"{low_summary['total_est_mwp_sub400_and_gate']:.1f} MWp"
     )
+    typer.echo(
+        f"Out-of-domain AND-gate (Best-estimate extension, extrapolated): "
+        f"{outdomain_summary['total_est_mwp_sub400_outdomain_and_gate']:.1f} MWp "
+        f"({outdomain_summary['n_out_domain_cells_below_calibrated_band']} cells below / "
+        f"{outdomain_summary['n_out_domain_cells_above_calibrated_band']} above the "
+        "calibrated density band)"
+    )
     if parsed_size_floor_m2 is not None:
         typer.echo(
             f"size floor {parsed_size_floor_m2} m2 by density band "
             f"{central_summary['size_floor_band_edges']}: excluded "
             f"{central_summary['n_excluded_by_size_floor']} central / "
-            f"{low_summary['n_excluded_by_size_floor']} AND-gate buildings"
+            f"{low_summary['n_excluded_by_size_floor']} AND-gate / "
+            f"{outdomain_summary['n_excluded_by_size_floor']} out-of-domain buildings"
         )
     typer.echo(f"-> {out_dir}")
 
@@ -1013,6 +1037,14 @@ def atlas(
         "`sub400_capacity.domain_restricted_capacity` (columns: cell, geometry, "
         "roof_area_m2, est_kwp_sub400) -- the bracket atlas's Central view.",
     ),
+    sub400_outdomain_cells: Path = typer.Option(
+        None, help="Building-level parquet from "
+        "`sub400_capacity.out_of_domain_and_gate_capacity` (columns: cell, geometry, "
+        "roof_area_m2, est_kwp_sub400_outdomain) -- roofclf-AND-SPPI agreement outside "
+        "the density-calibrated domain, added to the Best-estimate tier as a strict, "
+        "clearly-marked extrapolation (2026-08-11). Only used with the EVIDENCE atlas "
+        "(--osm-solar); optional, never affects Verified.",
+    ),
     sub400_high_cells: Path = typer.Option(
         None, help="Building-level parquet from "
         "`roofclf_capacity.incremental_capacity` (columns: cell, geometry, roof_area_m2, "
@@ -1078,6 +1110,7 @@ def atlas(
                 sub400_low_cells, sub400_central_cells,
                 out=out, zoom_out_frac=zoom_out,
                 ge400_roof_buildings_path=ge400_roof_cells,
+                sub400_outdomain_buildings_path=sub400_outdomain_cells,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
