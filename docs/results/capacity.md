@@ -22,8 +22,8 @@ Interactive. Switch tier with the tabs, hover a cell for its value.
 
 | Tier | Pakistan | What it admits as evidence |
 | --- | ---: | --- |
-| Verified | 5,886 MWp | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **14,462 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (6,499 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 575 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
+| Verified | 6,139 MWp | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
+| **Best estimate** | **16,441 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (7,860 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 278 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
 
 Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
@@ -245,6 +245,31 @@ quadrat**: to widen this domain further, size and place a boundary so its own av
 deliberately includes enough non-built land to read below the current floor -- picking a
 "low-average" surrounding cell and then tracing a settlement inside it, as both earlier
 attempts did, will not work.
+
+**A correction and a ninth change, same day: the eighth change's "confirmed zero" was
+wrong, and a second widening quadrat pushed the floor down again.** The owner went back
+to `muzaffargarh_rural_wide_calib_2km`, found PV the original sweep had missed, mapped
+it, and reported the correction. Re-pulled once the mapping propagated: **12
+installations** (not 0), base_rate 0.81%. What the eighth change's "8 independent
+confirming queries, all zero" actually established was that the box held 0 OSM-mapped
+installations *at that moment* -- true, but a different claim from "mapping is
+complete," which only a person can attest to. `rate_ratio` (3.39) keeps this quadrat out
+of the trusted precision subset regardless, so the correction changed no coverage-ratio
+number directly, only the domain-restriction share every widening quadrat naturally
+carries.
+
+A second quadrat, `khairpur_rural_calib_2km` (Khairpur District, Sindh -- deliberately
+outside the Muzaffargarh area for geographic diversity), used the same verified-before-
+mapping method: 4 km<sup>2</sup>, checked at **141.0 bldg/km<sup>2</sup>** against VIDA
+buildings before being handed over, confirmed with 3 ground-mount installations after
+mapping. Combined, the two quadrats moved the floor **277.75 -> 141.00** bldg/km<sup>2</sup>,
+growing the domain **646 -> 1,680** of Pakistan's 4,463 cells (14.5% -> 37.6% of cells,
+48.9% -> 78.6% of national buildings) -- the largest cumulative widening yet, in two
+verified steps. Re-ran the full chain once more: sub-400 central (Best) 5,557 &rarr;
+**6,531 MWp**, sub-400 AND-gate (Verified) 2,676 &rarr; **2,929 MWp**, out-of-domain
+extension (a much smaller remaining population now) 575 &rarr; **278 MWp**, &ge;400
+m<sup>2</sup> roofclf rooftop &rarr; **6,427 MWp**. Evidence atlas: Verified 5,886 &rarr;
+**6,139 MWp** (+4.3%), Best 14,462 &rarr; **16,441 MWp** (+13.7%).
 
 ## Segmentation vs. roofclf on large rooftops
 

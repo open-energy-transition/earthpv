@@ -1899,6 +1899,59 @@ because villages and towns are inherently dense and it is the land *between* the
 pulls the country average down. A range-extending quadrat has to be sized and placed to
 average in enough of that non-built land on purpose.
 
+### A false "confirmed zero" corrected, and a second widening quadrat, same day (2026-08-11)
+
+**The "confirmed zero" declaration for `muzaffargarh_rural_wide_calib_2km` earlier this
+session was wrong -- and the reason why is a real gap in the tooling, not just an unlucky
+guess.** The owner went back to the box, found PV that the original JOSM sweep had
+missed, mapped it, and reported the correction. Re-pulling once the new mapping had
+propagated to Overpass found **12 installations** (7 rooftop, 5 ground; 9 of 1,111
+buildings flagged `has_pv`, base_rate 0.81%), cross-confirmed cleanly this time ("wrote
+12 features; confirming query sees 12"). What actually happened the first time: 8
+independent, non-timeout Overpass queries over ~20 minutes all genuinely returned 0
+elements *at that moment*, because the box genuinely held 0 OSM-mapped installations
+*at that moment* -- the queries were not lying, the underlying map data was incomplete.
+"Repeated confirming queries against live OSM" and "a human completeness sweep" answer
+different questions: the former can only ever attest to what is currently mapped, never
+to whether mapping is finished. Rule 1 exists precisely because that second question
+needs a person's declaration, and this is a concrete case of what happens when that
+declaration is skipped in favor of a data-side proxy, however well-corroborated the
+proxy appears. **Practical consequence for this correction**: `rate_ratio` (3.39) keeps
+`muzaffargarh_rural_wide` out of the trusted precision-calibration subset either way, so
+the correction did not need to touch any coverage-ratio or precision number directly --
+only the domain-restriction share that naturally follows from the (unchanged) building
+count. `atlas.py::CALIBRATION_BOXES`'s comment for this quadrat now documents the
+correction in place rather than presenting the wrong number as settled history.
+
+**A second range-extending quadrat, `khairpur_rural_calib_2km`, was added the same
+session using the exact same verified method**: a 4 km² box deliberately including
+farmland, its own density checked directly against VIDA buildings (141.0 bldg/km²,
+564 buildings) *before* asking the owner to map it, rather than trusting a surrounding
+cell's average. Chosen in Khairpur District, Sindh specifically for geographic
+diversity -- every other 2026-08-11 quadrat is in or near Muzaffargarh, Punjab. Mapped
+and confirmed the same way: 3 installations, all ground-mount, median 22.1 m²,
+base_rate 0.53%, `rate_ratio` 4.36 (also outside the trusted precision subset). Its OSM
+pull needed one retry for a clean cross-check (the first attempt's confirming query
+timed out rather than disagreeing, so it was correctly treated as unverified rather than
+accepted).
+
+**Combined effect of both quadrats**: `CALIBRATED_BLDG_DENSITY_KM2`'s floor moved
+**277.75 -> 141.00** bldg/km², growing the roofclf domain restriction from **646 to
+1,680** of Pakistan's 4,463 national cells (14.5% -> 37.6% of cells, 48.9% -> 78.6% of
+national buildings) -- by far the largest cumulative widening in this constant's
+history, done in two verified steps in one session. Re-ran the full chain again:
+sub-400 central (Best) 5,556.8 -> **6,531.3 MWp**, sub-400 AND-gate (Verified)
+2,676.2 -> **2,928.8 MWp**, out-of-domain AND-gate extension (now describing a much
+smaller remaining 2,783-cell population) 574.7 -> **278.0 MWp**, >= 400 m² roofclf
+rooftop (in-domain) -> **6,427.2 MWp**. Evidence atlas: Verified 5,886.0 -> **6,138.6
+MWp** (+4.3%), Best 14,462.0 -> **16,441.4 MWp** (+13.7%). `select_calibrated_quadrats`'s
+trusted subset shifted again too (now 15, with Multan back in and Hasal out relative to
+the previous count) -- the same perturbation-from-retraining pattern documented earlier
+this session, not a new mechanism. Backups: `/tmp/pakistan_evidence_atlas_PRE_20260811_
+khairpur_and_correction_backup.html`, `data/roofclf_national_with_sppi/pakistan/
+density_PRE_20260811_khairpur_and_correction_backup/`, `data/roofclf_PRE_20260811_
+wide_correction_and_khairpur_backup/` (all session-local).
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**

@@ -155,16 +155,34 @@ CALIBRATION_BOXES: dict[str, list] = {
         # village (4 km2, centered 7.2 km from Muzaffargarh Rural) rather than tracing a
         # settlement's built-up edge, specifically to test whether a quadrat could
         # average BELOW density.CALIBRATED_BLDG_DENSITY_KM2's floor. It did: 277.75
-        # bldg/km2, confirmed 0 mapped PV installations (base_rate 0.0, the first
-        # confirmed-zero quadrat in the set) -- the OSM pull itself required manually
-        # confirming a persistent empty Overpass result (8 independent non-timeout
-        # queries, all 0 elements, over ~20 minutes) since `build_overpass_labels` hard-
-        # fails on any single empty response by design and cannot accept a genuine zero
-        # through its normal retry path. This quadrat moved the calibrated floor
-        # 553.40 -> 277.75 bldg/km2, growing the roofclf domain restriction from 163 to
-        # 646 of Pakistan's 4,463 national cells.
+        # bldg/km2 (unaffected by the correction below, since building count -- not PV --
+        # sets density). This quadrat moved the calibrated floor 553.40 -> 277.75 bldg/km2,
+        # growing the roofclf domain restriction from 163 to 646 of Pakistan's 4,463
+        # national cells.
+        #
+        # CORRECTED same day: the first OSM pull found 0 installations after 8
+        # independent non-timeout Overpass queries over ~20 minutes, which was treated as
+        # a confirmed-empty result (`build_overpass_labels` hard-fails on any single empty
+        # response by design and has no path to accept a genuine zero through its normal
+        # retry logic, so this required a manual override at the time). The owner then
+        # found and mapped PV the original pass had missed -- a genuine Rule-1
+        # completeness gap in the original sweep, not an Overpass reliability issue after
+        # all. Re-pulled once the new mapping was uploaded and propagated: **12
+        # installations** (7 rooftop, 5 ground; 9 of 1,111 buildings flagged has_pv),
+        # base_rate 0.81%, not 0.0%. `rate_ratio` (3.39) keeps it out of the trusted
+        # precision-calibration subset either way, so this correction did not need to
+        # touch any published capacity number beyond the domain-restriction share that
+        # naturally follows from more cells being in-domain.
         {"name": "Muzaffargarh Rural Wide", "stem": "muzaffargarh_rural_wide_calib_2km",
          "status": "rule1"},
+        # Added 2026-08-11, same session: a second range-extending quadrat, same method
+        # (a 4 km2 box deliberately including farmland, verified via direct VIDA building
+        # count before mapping) but in Khairpur District, Sindh, for geographic diversity
+        # from the Muzaffargarh-area quadrats. Measured 141.0 bldg/km2, moving the floor
+        # 277.75 -> 141.00 and growing the domain from 646 to 1,680 of Pakistan's 4,463
+        # cells. 3 installations (all ground-mount), base_rate 0.53%, rate_ratio (4.36)
+        # excluded from the trusted precision subset like Muzaffargarh Rural Wide.
+        {"name": "Khairpur Rural", "stem": "khairpur_rural_calib_2km", "status": "rule1"},
     ],
 }
 

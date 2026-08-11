@@ -105,31 +105,34 @@ _CAND_COLS = [
 ]
 
 # Building-density range (buildings/km2) spanned by every currently Rule-1-complete
-# calibration quadrat -- 22 quadrats as of 2026-08-11 (widened from 18 quadrats,
-# 553.40-5258.00, measured 2026-08-09). Deliberately the FULL span, not just the
-# subset `sub400_capacity.select_calibrated_quadrats` trusts for precision/coverage-ratio
-# (15 quadrats as of 2026-08-11 -- narrower, because that selection drops quadrats for
-# being poorly *calibrated*, not for having an untrustworthy *density measurement*): a
-# quadrat like Quetta or Mardan is still real, Rule-1 ground truth about what building
-# density looks like there, even where its roofclf precision is excluded elsewhere. This
-# is the only ground truth this project has about how much the segmentation-based
-# estimators (det/cal/rc, all floored at >=400 m2) actually miss -- see CLAUDE.md's
-# "Sub-400 m2 instruments" section. A region/cell whose settlement density falls outside
-# this range has NO calibration evidence either way: the flag below says so, it does not
-# correct anything. Deliberately segmentation-only (`aggregate`'s `exp_source` gate) --
-# the fraction-head/roofclf sub-400 instrument is a separate, differently-calibrated
-# product (`sub400_capacity.py`) and must not share this flag, but DOES share this same
-# range for its own domain restriction (`sub400_capacity.national_cell_domain`) -- widening
-# it here widens both simultaneously.
+# calibration quadrat -- 23 quadrats as of 2026-08-11 (widened from 22 quadrats,
+# 277.75-5258.00, measured earlier the same day). Deliberately the FULL span, not just
+# the subset `sub400_capacity.select_calibrated_quadrats` trusts for precision/coverage-
+# ratio (narrower, because that selection drops quadrats for being poorly *calibrated*,
+# not for having an untrustworthy *density measurement*): a quadrat like Quetta or Mardan
+# is still real, Rule-1 ground truth about what building density looks like there, even
+# where its roofclf precision is excluded elsewhere. This is the only ground truth this
+# project has about how much the segmentation-based estimators (det/cal/rc, all floored
+# at >=400 m2) actually miss -- see CLAUDE.md's "Sub-400 m2 instruments" section. A
+# region/cell whose settlement density falls outside this range has NO calibration
+# evidence either way: the flag below says so, it does not correct anything. Deliberately
+# segmentation-only (`aggregate`'s `exp_source` gate) -- the fraction-head/roofclf
+# sub-400 instrument is a separate, differently-calibrated product (`sub400_capacity.py`)
+# and must not share this flag, but DOES share this same range for its own domain
+# restriction (`sub400_capacity.national_cell_domain`) -- widening it here widens both
+# simultaneously.
 #
-# The lower edge moved from 553.40 to 277.75 on 2026-08-11, from a single new quadrat
-# (`muzaffargarh_rural_wide_calib_2km`, 4 km2, deliberately drawn to include open
+# The lower edge moved 553.40 -> 277.75 -> 141.00 in two steps on 2026-08-11.
+# `muzaffargarh_rural_wide_calib_2km` (4 km2, deliberately drawn to include open
 # farmland alongside a village rather than tracing a settlement's built-up edge -- see
 # CLAUDE.md for why two earlier attempts at a range-extending quadrat both landed INSIDE
-# the existing range instead). This is a genuine widening, not a recalibration: it grew
-# the roofclf domain restriction from 163 to 646 of Pakistan's 4,463 national cells
-# (3.7% -> 14.5% of cells, 24.5% -> 48.9% of national buildings).
-CALIBRATED_BLDG_DENSITY_KM2 = (277.75, 5258.00)
+# the existing range instead) set the first new floor at 277.75. A second quadrat picked
+# the same way, `khairpur_rural_calib_2km` (4 km2, Khairpur District, Sindh -- chosen
+# for geographic diversity from the Muzaffargarh-area quadrats), measured 141.00,
+# pushing the floor down again. Both are genuine widenings, not recalibrations: together
+# they grew the roofclf domain restriction from 163 to 1,680 of Pakistan's 4,463
+# national cells (3.7% -> 37.6% of cells, 24.5% -> 78.6% of national buildings).
+CALIBRATED_BLDG_DENSITY_KM2 = (141.00, 5258.00)
 
 
 def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:

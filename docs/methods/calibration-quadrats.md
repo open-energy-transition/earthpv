@@ -74,28 +74,35 @@ withheld here pending the owner looking at the extended area specifically -- the
 explicitly re-declared for it the same day, so this quadrat reads `yes` like the other
 sixteen. The rule for the *next* extension is the same: re-assert, never infer.
 
-**Known gap: this table was not regenerated when Hasal, Islamabad Northeast, or the three
-quadrats below were added (2026-08-10/11), so it undercounts the current 22-quadrat set
-by five.** `results/calibration_quadrats.csv` is current; this page is a hand-maintained
+**Known gap: this table was not regenerated when Hasal, Islamabad Northeast, or the four
+quadrats below were added (2026-08-10/11), so it undercounts the current 23-quadrat set
+by six.** `results/calibration_quadrats.csv` is current; this page is a hand-maintained
 snapshot of it and has fallen behind more than once before (see CLAUDE.md's per-quadrat
-history for the full account). The three rows added below (Muzaffargarh Rural, Malok,
-Muzaffargarh Rural Wide) are inserted in the same base-rate-ascending order the rest of
-the table follows, but Hasal and Islamabad Northeast are not yet reflected -- do not read
-this table as exhaustive.
+history for the full account). The four rows added below (Muzaffargarh Rural, Malok,
+Muzaffargarh Rural Wide, Khairpur Rural) are inserted in the same base-rate-ascending
+order the rest of the table follows, but Hasal and Islamabad Northeast are not yet
+reflected -- do not read this table as exhaustive.
 
-**Muzaffargarh Rural Wide is the first quadrat with a confirmed base rate of exactly
-zero** (0 mapped PV installations of 1,111 buildings) -- deliberately drawn to include
-open farmland alongside a village so its own density (277.75 bldg/km<sup>2</sup>) reads
-below `density.CALIBRATED_BLDG_DENSITY_KM2`'s floor, unlike Muzaffargarh Rural and Malok
-above, both of which measured denser than the floor despite being picked from low-average
-national cells. This one moved the floor 553.40 -> 277.75 bldg/km<sup>2</sup>, growing the
-domain from 163 to 646 of Pakistan's 4,463 cells -- see
-[Capacity](../results/capacity.md#two-tiers-one-country)'s "eighth change" for the full
-derivation and why the two earlier attempts the same day did not.
+**Correction: Muzaffargarh Rural Wide was never confirmed at a base rate of zero --
+that declaration was wrong and has been corrected.** The row below originally read 0
+installations / 0.0% base rate, from 8 independent Overpass queries all genuinely
+returning zero at the time. What that actually established was "0 OSM-mapped
+installations as of that pull," not "mapping is complete" -- a different claim only a
+human sweep can make, which is exactly why Rule 1 requires one. The owner went back,
+found PV the original sweep had missed, mapped it, and the corrected pull (cross-
+confirmed) found **12 installations**, 9 of 1,111 buildings flagged, base rate 0.81%.
+Its density (277.75 bldg/km<sup>2</sup>, unaffected by the correction since it depends on
+building count, not PV) still moved `density.CALIBRATED_BLDG_DENSITY_KM2`'s floor from
+553.40 to 277.75, growing the domain from 163 to 646 of Pakistan's 4,463 cells.
+**Khairpur Rural**, added the same day for geographic diversity (Sindh, not Punjab),
+pushed the floor down again to 141.00 bldg/km<sup>2</sup> (646 -> 1,680 cells) -- see
+[Capacity](../results/capacity.md#two-tiers-one-country)'s "eighth change" and
+subsequent correction/ninth-change entry for the full derivation.
 
 | quadrat | province | stratum | Rule-1 | buildings | PV buildings | base rate | installations | median install m² | % sub-400 m² | packing (nn_median_m) |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Muzaffargarh Rural Wide | Punjab | unclassified pending mapper review | **yes** | 1,111 | 0 | **0.0%** | 0 | — | — | — |
+| Khairpur Rural | Sindh | unclassified pending mapper review | **yes** | 564 | 3 | **0.5%** | 3 | 22.1 | 100.0% | 11.7 m |
+| Muzaffargarh Rural Wide | Punjab | unclassified pending mapper review | **yes** | 1,111 | 9 | **0.8%** | 12 | 54.6 | 100.0% | 85.5 m |
 | Muzaffargarh Rural | Punjab | unclassified pending mapper review | **yes** | 639 | 6 | **0.9%** | 7 | 89.8 | 100.0% | 292.6 m |
 | Quetta | Balochistan | 5 arid / bare-land settlement | **yes** | 5,258 | 157 | **3.0%** | 73 | 103.9 | 94.5% | 44.0 m |
 | Sialkot | Punjab | 2 dense older/informal urban | **yes** | 4,208 | 238 | **5.7%** | 181 | 63.9 | 98.3% | 18.8 m |
@@ -303,9 +310,15 @@ settlement:
 - **Sparse (44–52 m, industrial):** Quetta, Faisalabad, SITE Karachi, Multan, Sundar.
 - **A new extreme, 2026-08-11:** Muzaffargarh Rural measures **292.6 m** -- roughly 6x
   sparser than anything above, from a genuinely low-density rural population rather than
-  an industrial estate. Malok (26.0 m) sits inside the existing intermediate band. Neither
-  changes the correlation story below, but Muzaffargarh Rural is the first quadrat to test
-  the fit's own extrapolation into a regime this sparse.
+  an industrial estate. Malok (26.0 m) and Khairpur Rural (11.7 m) sit inside the
+  existing tightly-packed/intermediate bands despite both being deliberately low
+  *building*-density quadrats -- packing distance tracks installation clustering, not
+  settlement density, so the two need not move together (Khairpur's 3 installations are
+  a tight cluster of ground-mount arrays, not spread across the box). Muzaffargarh Rural
+  Wide (85.5 m, corrected from an initial n=0 reading) lands in a genuinely new gap
+  between the intermediate and sparse bands. None of this changes the correlation story
+  below, but this cluster of quadrats is the first to test the fit's own extrapolation
+  into a regime this sparse.
 
 This matters beyond bookkeeping: `packing_density` was adopted because it correlates
 r=0.70–0.82 with the imagery instruments' per-quadrat scale and skill, and a *bimodal*
