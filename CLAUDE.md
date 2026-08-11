@@ -1754,6 +1754,151 @@ and the pre-change building parquets to
 `data/roofclf_national_with_sppi/pakistan/density_PRE_20260811_outdomain_andgate_backup/`
 (both session-local, not under version control).
 
+### Three new calibration quadrats, and a real lesson about what "widens the domain" means, 2026-08-11
+
+**Attempted to widen `CALIBRATED_BLDG_DENSITY_KM2`'s lower edge with two new quadrats,
+both landed inside the existing range instead -- a genuine, non-obvious finding, not a
+failed experiment.** `muzaffargarh_rural_calib_1km` (1 km², picked from the densest
+200x200 m building cluster inside a national cell averaging ~200 bldg/km², mapped
+complete by the owner) measured **639 bldg/km²** of its own -- inside 553.4-5,258.0, not
+below it. `malok_calib_4p13km2` (4.13 km², a mapper-drawn boundary near Malok, Lodhran
+District, "complete as the imagery in JOSM allows") measured **1,427.8 bldg/km²** --
+also inside. **The mechanism**: `national_cell_domain`'s density figure averages over an
+entire 0.1° cell (~121 km²), while a real settlement is a tight cluster surrounded by
+empty farmland -- so ANY quadrat boundary traced around a village or town's built-up
+extent (the natural way to draw one, since that's where any PV would be) reads far
+denser locally than the sparse national cells its surroundings would otherwise resemble.
+Picking a *low-average* cell to build a quadrat in does not produce a *low-density*
+quadrat. Directly verified this before drawing anything further: a 2km-square box at
+(30.573, 71.127), in the SAME cell as `muzaffargarh_rural` but deliberately not centered
+on its village cluster, measures **277.8 bldg/km²** via direct VIDA building count --
+genuinely below the floor. That boundary
+(`muzaffargarh_rural_wide_calib_2km_boundary.geojson`, 0 overlaps, ~1,111 buildings) is
+drawn and waiting for a JOSM completeness pass; recomputing the range once it is Rule-1
+would extend the floor from 553 to ~278 bldg/km², pulling roughly another 1,000+ cells
+into the calibrated domain. **The actual, generalizable rule going forward**: a
+range-extending quadrat needs to be sized/placed so ITS OWN average includes enough
+non-built land alongside any settlement to read below the current floor -- not just
+"located in a low-average cell."
+
+**Rule 1's definition was formally amended the same day, at the owner's direction,
+after declaring Malok complete.** The owner's exact words: "Malok is as complete as the
+imagery in JOSM allows... the labels will not [capture] PV that was built in between the
+date of the JOSM imagery and the date of the Sentinel-2 imagery we are using." This
+epoch-relative bound had been documented as a narrative finding since 2026-08-05 (see
+"Rule-1 is epoch-relative" above), but was never part of the RULE 1 DEFINITION itself in
+`docs/calibration-mapping-protocol.md` -- now it is: the blockquote gained a second
+paragraph stating a Rule-1 declaration certifies completeness "as of the mapping
+imagery's capture date," not as of the model's own epoch, plus a forward-looking "Open
+item" noting that closing this gap for real needs imagery contemporaneous with (or newer
+than) the Sentinel-2 composite -- e.g. a tasked high-resolution commercial capture --
+which JOSM's default background layers do not reliably provide. Not pursued yet;
+`scripts/fraction_stale_label_audit.py` remains the interim, no-new-imagery way to bound
+the size of the gap.
+
+**Malok's inclusion shifted the trusted 13-quadrat precision/coverage-ratio set more than
+just by adding itself.** Refitting `roofclf` on all 21 quadrats (96,857 -> 102,748
+buildings) moved every quadrat's predicted rate slightly, which moved `rate_ratio`
+(predicted/true adoption rate) enough to cross `select_calibrated_quadrats`'s [0.5, 2.0]
+trust band in three places at once: **Multan dropped out** (rate_ratio 2.016, just over
+the cutoff -- previously just under), while **Sialkot** (1.337), **Hasal** (exactly
+0.500) and **Malok** (0.858) newly qualify. Net: trusted set 13 -> **15** quadrats, a
+real compositional change, not a simple addition -- checked directly (`select_calibrated_
+quadrats` re-run), not assumed. `muzaffargarh_rural` itself never entered this set
+(rate_ratio 2.903, same overestimate-side exclusion as Quetta/Sialkot/Sundar historically)
+despite being Rule-1 complete -- Rule-1 status and precision-trust are independent gates,
+as documented throughout this file; `select_calibrated_quadrats` does not check Rule-1 at
+all, only `rate_ratio`, which is exactly why Malok's Rule-1 declaration was confirmed with
+the owner before letting it enter this set (see the conversation this session -- a
+non-Rule-1 quadrat's negatives are not trustworthy, and this selection function has no
+guard against that on its own).
+
+Re-ran the full downstream chain (`sub400-capacity`, `ge400-roof-capacity`, the evidence
+atlas) against the 21-quadrat refit. All three domain-restricted components moved down,
+consistent with losing Multan (an industrial estate, historically high coverage ratio)
+from the trusted set: sub-400 central (Best) 3,906.8 -> **3,870.3 MWp**, sub-400 AND-gate
+(Verified) 2,257.1 -> **2,090.5 MWp**, out-of-domain AND-gate extension (Best only)
+1,223.6 -> **1,148.8 MWp**, >= 400 m² roofclf rooftop (in-domain) -> **3,156.4 MWp**
+(precise prior in-domain figure not independently logged this session; back-calculated
+from the measured -303.2 MWp national `mwp_large` delta at ~3,459.6 MWp). Evidence atlas:
+Verified **5,466.9 -> 5,300.3 MWp** (-3.0%), Best **12,410.4 -> 11,997.8 MWp** (-3.3%).
+Neither `CALIBRATED_BLDG_DENSITY_KM2` (still 553.4-5,258.0) nor the domain cell counts
+(163 sub-400, 136 atlas-joined) changed -- this move is entirely precision/coverage-ratio
+recalibration from the richer, still-non-widening quadrat set, not a domain-size effect.
+Backups: `/tmp/pakistan_evidence_atlas_PRE_20260811_malok_backup.html`,
+`data/roofclf_national_with_sppi/pakistan/density_PRE_20260811_malok_backup/`,
+`data/roofclf_PRE_20260811_muzaffargarh_rural_backup/` (all session-local).
+
+Registered both new Rule-1 quadrats in `results/calibration_quadrats.csv` and
+`atlas.py::CALIBRATION_BOXES["pakistan"]` (21 and 21 respectively, `muzaffargarh_rural`
+and `malok`). `imagery_layer`/`imagery_date` remain unpopulated for both -- the
+known gap documented since 2026-08-01 is still open; neither quadrat's JOSM background
+layer/capture date was recorded when they were mapped.
+
+### A quadrat that actually widened the domain, same day (2026-08-11)
+
+**The third candidate from the same session -- `muzaffargarh_rural_wide_calib_2km`,
+deliberately drawn to include open farmland alongside a village rather than trace a
+settlement's built-up edge -- measured 277.75 bldg/km², genuinely below the 553.40 floor,
+confirmed via direct VIDA building count before asking the owner to map it.** The owner
+mapped it and reported zero PV found. Registered as the first confirmed-zero quadrat in
+the set (`n_pv_buildings=0`, `base_rate=0.0`, `n_installations=0`) -- real, useful
+ground truth: a true rural non-adoption population, distinct from every other quadrat's
+"how much did we miss" question.
+
+**The OSM pull for this box could not go through the normal path at all, which is worth
+recording as a real tooling gap, not just a workaround.** `build_overpass_labels` hard-
+raises on ANY empty Overpass response by design (`scripts/new_calibration_quadrat.py`'s
+own comment: "an empty response counts as a failure, not as an empty box") -- because
+one bad response cannot be distinguished from a genuinely empty box, per the 2026-08-05
+Lahore truncation incident. That design has no path to ever accept a *real* empty result,
+no matter how many times it is confirmed. Resolved by gathering independent evidence
+outside that code path: **8 separate, successful (non-timeout) Overpass queries across
+~20 minutes, using both the script's own retry loop and a direct manual query against
+`earthpv.overpass`'s primitives, all returned exactly 0 elements** with zero contradicting
+non-zero responses anywhere -- stronger confirmation than the truncation check the
+codebase already trusts (which accepts a single non-zero confirming query against one
+prior count). On that basis, a schema-matching empty `_overpass_solar.parquet` was
+written by hand (matching `fetch_solar_overpass`'s exact column set, verified to
+round-trip through `roofclf.load_quadrat` identically to a normal pull) rather than
+leaving the box unregistered. `scripts/new_calibration_quadrat.py` still has no automated
+way to accept a confirmed-zero result -- worth fixing if another genuinely-empty box comes
+up, since manually reconstructing the schema by hand does not scale.
+
+**This is the widening the two 2026-08-11 attempts above were looking for.**
+`CALIBRATED_BLDG_DENSITY_KM2`'s lower edge moved **553.40 -> 277.75** bldg/km²
+(`density.py`), growing the roofclf domain restriction from **163 to 646** of Pakistan's
+4,463 national cells (3.7% -> 14.5% of cells, 24.5% -> 48.9% of national buildings) --
+the largest single jump in this constant's history, from ONE quadrat, because it targeted
+the actual mechanism (a quadrat's own average must include enough non-built land to read
+below the floor) rather than a location's surrounding-cell average. `select_calibrated_
+quadrats`'s trusted precision set moved again too, in the same way retraining always
+perturbs it: 15 -> 14 (Hasal dropped out this time; the new quadrat's own rate_ratio is
+correctly excluded as well, since 0/0-adjacent division against a true zero base rate
+produces an enormous ratio, guarded by the existing `max(y.mean(), 1e-9)` floor in
+`roofclf.py` so this did not crash anything, just correctly excluded it).
+
+Re-ran the full chain again (`sub400-capacity`, `ge400-roof-capacity`, the evidence
+atlas) against the widened domain: sub-400 central (Best) 3,870.3 -> **5,556.8 MWp**,
+sub-400 AND-gate (Verified) 2,090.5 -> **2,676.2 MWp**, out-of-domain AND-gate extension
+(now describing only the smaller remaining 3,817-cell out-of-domain population) 1,148.8
+-> **574.7 MWp**, >= 400 m² roofclf rooftop (in-domain) -> **5,048.9 MWp**. Evidence
+atlas: Verified **5,300.3 -> 5,886.0 MWp** (+11.0%), Best **11,997.8 -> 14,462.0 MWp**
+(+20.5%) -- both real increases from genuine new calibration coverage, not
+recalibration noise like the Malok move earlier the same day. Backups:
+`/tmp/pakistan_evidence_atlas_PRE_20260811_widen_domain_backup.html`,
+`data/roofclf_national_with_sppi/pakistan/density_PRE_20260811_widen_domain_backup/`,
+`data/roofclf_PRE_20260811_wide_backup/` (all session-local).
+
+**The generalizable lesson, stated once for reuse**: a calibration quadrat widens
+`national_cell_domain`'s density floor only if its OWN average density (not the
+surrounding national cell's average) reads below the current floor. A boundary traced
+around a settlement's built-up extent -- the natural, arguably only sensible way to draw
+a mapping box, since that is where any PV would be -- will essentially never do this,
+because villages and towns are inherently dense and it is the land *between* them that
+pulls the country average down. A range-extending quadrat has to be sized and placed to
+average in enough of that non-built land on purpose.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**

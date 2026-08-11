@@ -129,6 +129,42 @@ CALIBRATION_BOXES: dict[str, list] = {
         # multiplier note for why that distinction matters and why it still belongs on
         # the map.
         {"name": "Hasal", "stem": "hasal_calib_1p00km2", "status": "rule1"},
+        # Added 2026-08-11, purpose-built to test whether the density-matched domain
+        # (national_cell_domain) could be widened downward with evidence -- picked from
+        # the densest 200x200 m building cluster inside a national cell averaging ~200
+        # bldg/km2, specifically to still have enough buildings to map. The quadrat's OWN
+        # density (639 bldg/km2) came out INSIDE the existing 553-5,258 bldg/km2 range,
+        # not below it -- a real, non-obvious finding, not the intended result: a small
+        # quadrat centered on a real settlement reads far denser than the coarse 0.1 deg
+        # cell average surrounding it, because villages cluster and farmland does not.
+        # Extremely low base rate (0.94%, second-lowest after Quetta's 3.0%) makes it
+        # valuable ground truth for the low end of the currently-calibrated range even
+        # though it does not extend that range. See CLAUDE.md's "Out-of-domain AND-gate"
+        # entry for the full story and what an actually range-extending quadrat needs.
+        {"name": "Muzaffargarh Rural", "stem": "muzaffargarh_rural_calib_1km", "status": "rule1"},
+        # Added 2026-08-11: a mapper-drawn (not geodesic-square) boundary, checked the
+        # same way -- 1,427.8 bldg/km2, also inside the existing calibrated range, but
+        # its rate_ratio (0.858) falls inside the trusted [0.5, 2.0] precision band, so
+        # unlike muzaffargarh_rural it DOES enter the 13-quadrat precision/coverage-ratio
+        # fit (-> 14). Declared Rule-1 complete by the owner "as complete as the imagery
+        # in JOSM allows" -- see CLAUDE.md's Rule-1-epoch-relative amendment the same day
+        # for what that qualification does and does not certify.
+        {"name": "Malok", "stem": "malok_calib_4p13km2", "status": "rule1"},
+        # Added 2026-08-11, the same day as Muzaffargarh Rural and Malok but for a
+        # different purpose: deliberately drawn to include open farmland alongside a
+        # village (4 km2, centered 7.2 km from Muzaffargarh Rural) rather than tracing a
+        # settlement's built-up edge, specifically to test whether a quadrat could
+        # average BELOW density.CALIBRATED_BLDG_DENSITY_KM2's floor. It did: 277.75
+        # bldg/km2, confirmed 0 mapped PV installations (base_rate 0.0, the first
+        # confirmed-zero quadrat in the set) -- the OSM pull itself required manually
+        # confirming a persistent empty Overpass result (8 independent non-timeout
+        # queries, all 0 elements, over ~20 minutes) since `build_overpass_labels` hard-
+        # fails on any single empty response by design and cannot accept a genuine zero
+        # through its normal retry path. This quadrat moved the calibrated floor
+        # 553.40 -> 277.75 bldg/km2, growing the roofclf domain restriction from 163 to
+        # 646 of Pakistan's 4,463 national cells.
+        {"name": "Muzaffargarh Rural Wide", "stem": "muzaffargarh_rural_wide_calib_2km",
+         "status": "rule1"},
     ],
 }
 

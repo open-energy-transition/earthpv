@@ -19,10 +19,22 @@ That works only if "no PV mapped here" genuinely means "no PV exists here."
 This leads to the one rule that overrides everything else:
 
 > **Rule 1, completeness beats coverage.** A quadrat is only usable when
-> *every visible panel inside it* is mapped, down to the smallest rooftop
-> unit. A half-mapped quadrat is worse than an unmapped one, because it
-> silently teaches the calibration that the model overcounts. If you cannot
-> finish a quadrat, say so; it will be excluded, no harm done.
+> *every visible panel inside it, as of the reference imagery available to the
+> mapper* is mapped, down to the smallest rooftop unit. A half-mapped quadrat
+> is worse than an unmapped one, because it silently teaches the calibration
+> that the model overcounts. If you cannot finish a quadrat, say so; it will
+> be excluded, no harm done.
+>
+> **Rule 1 is bounded by imagery epoch, not just mapper effort (amended
+> 2026-08-11).** JOSM's background imagery (Esri/Bing/Maxar) is generally
+> captured earlier than the Sentinel-2 composite the model reads, so a panel
+> installed in that gap cannot be mapped no matter how carefully the quadrat
+> is swept -- it exists in the model's input and cannot exist in the labels.
+> A Rule-1 declaration therefore certifies "every visible panel as of the
+> mapping imagery's capture date," not "there is no PV here the model could
+> see." Record the imagery layer and its best-known capture date for every
+> quadrat (`imagery_layer`/`imagery_date` below) so this gap is visible
+> per-quadrat instead of assumed away.
 
 ## The quadrat plan
 
@@ -165,18 +177,29 @@ close the gap with purchased imagery if those don't suffice.
 `results/calibration_quadrats.csv` now carries `imagery_layer` and `imagery_date`
 columns so the gap is visible per quadrat; they are still empty for all seventeen.
 
-**This bounds what a completeness declaration can mean (owner, 2026-08-05).** The OSM
-background imagery a mapper works from is generally *older* than the Sentinel-2 composite
-the model reads, and the newest installations are therefore unmappable -- they exist in
-the model's input and cannot exist in the labels. So **Rule-1 certifies completeness as of
-the mapping imagery, not as of the model's epoch**, and it only becomes a statement about
-the latter once contemporaneous imagery is acquired and swept. Do not read a Rule-1
-declaration as "there is no PV here that the model could see". The practical consequences:
-precision measured against these negatives is a **lower bound**, `base_rate` is a **lower
-bound** and `rate_ratio` an **upper bound**; recall over mapped installations is unaffected.
+**This bounds what a completeness declaration can mean (owner, 2026-08-05; folded into
+the Rule 1 definition itself 2026-08-11).** The OSM background imagery a mapper works
+from is generally *older* than the Sentinel-2 composite the model reads, and the newest
+installations are therefore unmappable -- they exist in the model's input and cannot
+exist in the labels. So **Rule-1 certifies completeness as of the mapping imagery, not as
+of the model's epoch**, and it only becomes a statement about the latter once
+contemporaneous imagery is acquired and swept. Do not read a Rule-1 declaration as
+"there is no PV here that the model could see". The practical consequences: precision
+measured against these negatives is a **lower bound**, `base_rate` is a **lower bound**
+and `rate_ratio` an **upper bound**; recall over mapped installations is unaffected.
 `scripts/fraction_stale_label_audit.py` measures the size of the effect without any new
 mapping, and it is large in exactly the dense small-rooftop quadrats the sub-400 m² work
 depends on (68.4% of apparent false positives in Karachi coastal).
+
+**Open item, not yet pursued: closing this gap needs imagery contemporaneous with (or
+newer than) the Sentinel-2 composite, which JOSM's default background layers do not
+reliably provide.** A future completeness pass against high-resolution imagery tasked or
+sourced specifically for this purpose (e.g. a commercial Maxar/Planet capture, or any
+systematically recent-capture layer) could certify a quadrat against the model's own
+epoch rather than an unknown, generally older one -- narrowing or eliminating the
+lower-bound/upper-bound qualifications above rather than just measuring their size.
+Nothing in the pipeline depends on this happening; `fraction_stale_label_audit.py`
+remains the interim, no-new-imagery way to bound the effect until it does.
 
 ## Completeness declaration and QA
 

@@ -22,8 +22,8 @@ Interactive. Switch tier with the tabs, hover a cell for its value.
 
 | Tier | Pakistan | What it admits as evidence |
 | --- | ---: | --- |
-| Verified | 5,467 MWp | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **12,410 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (5,336 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 1,224 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
+| Verified | 5,886 MWp | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
+| **Best estimate** | **14,462 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (6,499 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 575 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
 
 Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
@@ -184,6 +184,67 @@ cells) to Best only, never Verified, moving Best **11,230 &rarr; 12,410 MWp**. O
 these cells get their own dotted marker, distinct from the dashed calibrated-domain
 outline, so the two standards of evidence are never visually conflated. Full derivation
 in `sub400_capacity.out_of_domain_and_gate_capacity`'s docstring.
+
+**A seventh change, 2026-08-11: two new calibration quadrats, an important negative
+result about what actually widens the density-matched domain, and a recalibrated
+trusted-quadrat set.** Two quadrats were added specifically to try to push the domain's
+553 bldg/km<sup>2</sup> floor lower: `muzaffargarh_rural_calib_1km` (1 km<sup>2</sup>,
+Muzaffargarh District) and `malok_calib_4p13km2` (4.13 km<sup>2</sup>, Lodhran District).
+**Neither did** -- both measured their OWN building density above the current floor
+(639 and 1,427.8 bldg/km<sup>2</sup> respectively), because a quadrat boundary drawn
+around a real settlement (the only sensible way to draw one) reads far denser locally
+than the sparse 0.1&deg;-cell average around it. A third boundary,
+`muzaffargarh_rural_wide_calib_2km`, was deliberately placed to include open farmland
+alongside a village and verified at 277.8 bldg/km<sup>2</sup> -- genuinely below the
+floor -- and is now awaiting a JOSM completeness pass.
+
+Malok's inclusion did move the numbers, though, and by more than just adding one
+quadrat: refitting `roofclf` on all 21 quadrats shifted every quadrat's predicted rate
+enough that Multan **dropped out** of the trusted 13-quadrat precision/coverage-ratio set
+(rate_ratio crossed from just-under to just-over 2.0) while Sialkot, Hasal and Malok
+**newly qualified** -- net 13 &rarr; 15. Losing an industrial estate with historically
+high coverage lowered every domain-restricted figure: sub-400 central (Best) 3,907 &rarr;
+**3,870 MWp**, sub-400 AND-gate (Verified) 2,257 &rarr; **2,091 MWp**, out-of-domain
+extension (Best only) 1,224 &rarr; **1,149 MWp**, &ge;400 m<sup>2</sup> roofclf rooftop
+&rarr; **3,156 MWp**. Evidence atlas: Verified 5,467 &rarr; **5,300 MWp**, Best 12,410
+&rarr; **11,998 MWp**. The density-matched domain itself is unchanged (still 553.4-5,258.0
+bldg/km<sup>2</sup>, still 136-163 cells) -- this move is entirely recalibration from a
+richer quadrat set, not a domain-size effect. `docs/calibration-mapping-protocol.md`'s
+Rule 1 definition was formally amended the same day to state its imagery-epoch bound
+explicitly (a Rule-1 declaration certifies completeness as of the *mapping* imagery's
+capture date, not the model's own Sentinel-2 epoch) rather than leaving that only as a
+narrative caveat elsewhere.
+
+**An eighth change, 2026-08-11, the same day: a third quadrat found the actual mechanism
+for widening the domain and it worked.** The lesson from the seventh change's two
+failed attempts was that a quadrat's OWN density, not its surrounding cell's average,
+determines whether it extends `density.CALIBRATED_BLDG_DENSITY_KM2`'s floor -- and a
+boundary traced around a settlement (the natural way to draw one) is always denser than
+the land around it. `muzaffargarh_rural_wide_calib_2km` (4 km<sup>2</sup>) was
+deliberately drawn to include open farmland alongside a village instead, verified at
+**277.75 bldg/km<sup>2</sup>** -- genuinely below the 553.40 floor -- before asking it to
+be mapped. It came back with **zero mapped PV installations**, the first confirmed-zero
+quadrat in the set: real ground truth about a rural population with no adoption, not a
+failed pull. (The OSM pull itself needed a manual work-around: the fetch tooling hard-
+fails on any single empty Overpass response by design, with no path to ever accept a
+*real* empty result -- resolved by gathering 8 independent non-timeout query responses,
+all zero, well beyond the confirmation bar the tooling already trusts for a non-zero
+pull, then writing a schema-matching empty parquet by hand.)
+
+The floor moved **553.40 -> 277.75** bldg/km<sup>2</sup>, growing the domain from **163
+to 646** of Pakistan's 4,463 cells (3.7% -> 14.5% of cells, 24.5% -> 48.9% of national
+buildings) -- by far the largest jump in this constant's history, from one quadrat,
+because it targeted the mechanism directly. Re-ran the full chain again: sub-400 central
+(Best) 3,870 &rarr; **5,557 MWp**, sub-400 AND-gate (Verified) 2,090 &rarr; **2,676
+MWp**, out-of-domain extension (now describing a smaller remaining population) 1,149
+&rarr; **575 MWp**, &ge;400 m<sup>2</sup> roofclf rooftop &rarr; **5,049 MWp**. Evidence
+atlas: Verified 5,300 &rarr; **5,886 MWp** (+11.0%), Best 11,998 &rarr; **14,462 MWp**
+(+20.5%) -- real increases from new calibration coverage this time, not the
+recalibration-only move of the seventh change. **Generalizable lesson for the next
+quadrat**: to widen this domain further, size and place a boundary so its own average
+deliberately includes enough non-built land to read below the current floor -- picking a
+"low-average" surrounding cell and then tracing a settlement inside it, as both earlier
+attempts did, will not work.
 
 ## Segmentation vs. roofclf on large rooftops
 

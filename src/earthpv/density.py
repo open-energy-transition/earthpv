@@ -105,11 +105,10 @@ _CAND_COLS = [
 ]
 
 # Building-density range (buildings/km2) spanned by every currently Rule-1-complete
-# calibration quadrat -- 18 quadrats as of 2026-08-09 (widened from the original 8,
-# no-Quetta figure, 737.28-4750.24, measured 2026-07-30 and left stale through several
-# rounds of quadrat additions). Deliberately the FULL 18-quadrat span, not just the
+# calibration quadrat -- 22 quadrats as of 2026-08-11 (widened from 18 quadrats,
+# 553.40-5258.00, measured 2026-08-09). Deliberately the FULL span, not just the
 # subset `sub400_capacity.select_calibrated_quadrats` trusts for precision/coverage-ratio
-# (13 quadrats, 871.6-2316.3/km2 -- narrower, because that selection drops quadrats for
+# (15 quadrats as of 2026-08-11 -- narrower, because that selection drops quadrats for
 # being poorly *calibrated*, not for having an untrustworthy *density measurement*): a
 # quadrat like Quetta or Mardan is still real, Rule-1 ground truth about what building
 # density looks like there, even where its roofclf precision is excluded elsewhere. This
@@ -121,9 +120,16 @@ _CAND_COLS = [
 # the fraction-head/roofclf sub-400 instrument is a separate, differently-calibrated
 # product (`sub400_capacity.py`) and must not share this flag, but DOES share this same
 # range for its own domain restriction (`sub400_capacity.national_cell_domain`) -- widening
-# it here widens both simultaneously. Widening this range to the full 18-quadrat span grew
-# the roofclf domain restriction from 92 to 163 of Pakistan's 4,463 national cells.
-CALIBRATED_BLDG_DENSITY_KM2 = (553.40, 5258.00)
+# it here widens both simultaneously.
+#
+# The lower edge moved from 553.40 to 277.75 on 2026-08-11, from a single new quadrat
+# (`muzaffargarh_rural_wide_calib_2km`, 4 km2, deliberately drawn to include open
+# farmland alongside a village rather than tracing a settlement's built-up edge -- see
+# CLAUDE.md for why two earlier attempts at a range-extending quadrat both landed INSIDE
+# the existing range instead). This is a genuine widening, not a recalibration: it grew
+# the roofclf domain restriction from 163 to 646 of Pakistan's 4,463 national cells
+# (3.7% -> 14.5% of cells, 24.5% -> 48.9% of national buildings).
+CALIBRATED_BLDG_DENSITY_KM2 = (277.75, 5258.00)
 
 
 def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:
