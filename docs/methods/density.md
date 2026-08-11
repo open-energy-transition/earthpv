@@ -55,15 +55,23 @@ about 5.5 m<sup>2</sup> of crystalline silicon per kWp, so **0.18 kWp per m<sup>
 A **ground-mount** detection outlines the *site*, not the modules. The ground-PV training
 labels are OpenStreetMap `power=plant` perimeters, which enclose access roads, inter-row
 spacing and substations, so the model is taught to fill the fence line. Only the
-ground-cover ratio of that polygon is module: 0.3 to 0.5 for fixed tilt at these
-latitudes, giving **0.07 kWp per m<sup>2</sup> of site**. Converting site area at the
-rooftop constant overstates ground-mount capacity by a factor of two to three.
+ground-cover ratio of that polygon is module -- **0.05 kWp per m<sup>2</sup> of site**
+as of 2026-08-11, calibrated against the two named-plant ground-mount boxes
+(`docs/issues/pakistan-calibration-boxes.md`) rather than reasoned from a GCR assumption
+alone: Quaid-e-Azam Solar Park (400 MW / 8,904,839 m<sup>2</sup> dissolved OSM footprint)
+implies 0.0449 kWp/m<sup>2</sup>, the Sukkur solar farm (150 MW combined, three phases /
+2,606,013 m<sup>2</sup>) implies 0.0576 -- geometric mean 0.0509, rounded to 0.05. The
+previous 0.07 point sat nearer the upper-middle of the old GCR-reasoned range (0.045-0.11
+for GCR 0.25-0.6) than either measured site does. Converting site area at the rooftop
+constant still overstates ground-mount capacity, now by roughly 3.5-4x rather than the
+previously stated two to three.
 
 Every all-PV estimator is therefore split by placement before conversion, and both
-constants carry lognormal priors (90 percent ranges of 0.15 to 0.21 and 0.045 to 0.11) so
-the conversion propagates into the credible intervals instead of being treated as exact.
-It was previously the largest term excluded from them, and the land constant, driven by an
-unobserved ground-cover ratio, is much the wider of the two.
+constants carry lognormal priors (90 percent ranges of 0.15 to 0.21 and, as of 2026-08-11,
+0.035 to 0.075 for the land constant -- kept close to its old width rather than
+collapsed to bracket only the two measured plants, since n=2 does not support a tight
+posterior and other sites plausibly use tracking or different row spacing) so the
+conversion propagates into the credible intervals instead of being treated as exact.
 
 ## Blobs are excluded, not converted
 

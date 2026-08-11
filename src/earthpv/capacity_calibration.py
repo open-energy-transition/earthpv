@@ -111,17 +111,37 @@ DEFAULT_KWP_PER_M2_MODULE = 0.18
 # A *ground-mount* detection outlines the SITE, not the modules. The ground-PV training
 # labels are OSM `power=plant` perimeters (labels.py), which enclose access roads,
 # inter-row spacing and substations, so the model is taught to fill the fence line and a
-# detected polygon is site area. Only the ground-cover ratio of it is module: GCR
-# 0.3-0.5 for fixed tilt at these latitudes -> 0.18 * ~0.4 ~= 0.07 kWp per m2 of site.
-# Converting site area at the module constant overstates ground-mount capacity 2-3x.
-DEFAULT_KWP_PER_M2_LAND = 0.07
+# detected polygon is site area. Only the ground-cover ratio of it is module.
+#
+# Calibrated 2026-08-10 against the two named-plant ground-mount calibration boxes
+# (docs/issues/pakistan-calibration-boxes.md, results/groundmount_quadrat_validation.csv)
+# -- the only external nameplate-capacity anchors this project has for the constant,
+# where before it was reasoned from a GCR assumption alone:
+#   Quaid-e-Azam Solar Park: 400 MW operational (Wikipedia/PPDB/Global Energy Monitor)
+#     / 8,904,839 m2 dissolved OSM footprint (labels.dissolve_overlapping; the raw,
+#     un-dissolved pull nested a `generator` way inside its own `plant` perimeter,
+#     which would have understated the implied constant by treating one site as two)
+#     -> 0.0449 kWp/m2.
+#   Sukkur solar farm: 150 MW combined (3 x 50 MW phases -- Helios/Meridian/HND-Scatec,
+#     confirmed via Global Energy Monitor and Scatec's own financial-close reporting;
+#     the single `plant:output:electricity=50 MW` OSM tag on the calibration box's
+#     matched way describes only ONE phase, not the combined complex, so 50 MW alone
+#     would have been a 3x undercount here) / 2,606,013 m2 -> 0.0576 kWp/m2.
+# Geometric mean 0.0509, rounded to 0.05 -- close to the LOW end of the old GCR-reasoned
+# range (0.045-0.11 for GCR 0.25-0.6), i.e. the old 0.07 point sat nearer the range's
+# upper-middle than either measured site does. n=2 is not enough to claim a tight
+# posterior, so the 90% range is kept close to its old width (log-ratio ~2.44) rather
+# than collapsed to bracket only these two points -- other sites plausibly use tracking
+# or wider row spacing this pair doesn't cover.
+DEFAULT_KWP_PER_M2_LAND = 0.05
 # 90% ranges for the two constants, carried as lognormal priors so the conversion enters
 # the credible intervals instead of being treated as exact (it was the largest term
 # previously excluded from them). Module: module-efficiency spread plus roof packing.
-# Land: GCR 0.25-0.6, by far the dominant unknown of the two. Each range is centred
+# Land: bracketed by the two measured plants above with a margin on each side for GCR
+# regimes they don't cover (tracking, wider fixed-tilt spacing). Each range is centred
 # geometrically on its point value, so the point is the prior's median.
 KWP_MODULE_CI90 = (0.15, 0.21)
-KWP_LAND_CI90 = (0.045, 0.11)
+KWP_LAND_CI90 = (0.035, 0.075)
 # Offset so the conversion draws are independent of the precision/recall draws, which
 # use `seed` directly.
 KWP_SEED_OFFSET = 7
@@ -225,6 +245,8 @@ def derive_table(
     recall_reference: gpd.GeoDataFrame | None = None,
     recall_reference_name: str = "none",
     recall_cands: gpd.GeoDataFrame | None = None,
+    by_placement: bool = False,
+    mapped_attrs: gpd.GeoDataFrame | None = None,
 ) -> dict:
     """Derive the per-bin p_real (+ recall + CI) table.
 
@@ -242,6 +264,15 @@ def derive_table(
     `cands`' own candidates (a second detector's own precision is a separate, unmeasured
     question, and conflating the two would silently launder it in). Defaults to `cands`,
     so every existing caller's behavior is unchanged.
+
+    `by_placement`, if True, additionally derives `table["placement_bins"]`
+    (`derive_placement_tables`) -- separate rooftop/ground precision+recall, so
+    density.py's per-candidate weighting can stop applying rooftop's much higher
+    mapped fraction to ground candidates in the same area bin. Needs `mapped_attrs`
+    (a `placement`-carrying reference, e.g. `export.load_mapped_reference_attrs`'s
+    output -- NOT `mapped`, which is boolean-only) to restrict the mapped-fraction
+    test by placement; without it, falls back to the unrestricted `mapped` for both
+    groups (see `derive_placement_tables`'s own docstring for what that costs).
     """
     from earthpv.export import new_lead_mask
     from earthpv.labels import geodesic_area_m2
@@ -382,7 +413,203 @@ def derive_table(
         if row["recall"] is not None:
             lo, hi = np.percentile(draws["recall"][i], CI_PCT)
             row["recall_lo"], row["recall_hi"] = round(float(lo), 4), round(float(hi), 4)
+
+    if by_placement:
+        table["placement_bins"] = derive_placement_tables(
+            cands, bins, aoi, mapped_attrs=mapped_attrs, min_distance_m=min_distance_m,
+            recall_reference=recall_reference, recall_cands=recall_pop,
+            n_draws=N_DRAWS, seed=SEED,
+        )
     return table
+
+
+PLACEMENT_GROUPS = ("rooftop", "ground")
+
+
+def _placement_group(placement: np.ndarray) -> np.ndarray:
+    """Rooftop vs everything else -- matches `density.py`'s own roof/ground split
+    (`placement == "rooftop"` vs `no_building`/`ground_adjacent`) and the two area ->
+    capacity constants (module vs land)."""
+    is_rooftop = np.asarray(placement).astype(str) == "rooftop"
+    return np.where(is_rooftop, "rooftop", "ground")
+
+
+def derive_placement_tables(
+    cands: gpd.GeoDataFrame,
+    pooled_bins: list[dict],
+    aoi: str,
+    mapped_attrs: gpd.GeoDataFrame | None = None,
+    min_distance_m: float = 100.0,
+    recall_reference: gpd.GeoDataFrame | None = None,
+    recall_cands: gpd.GeoDataFrame | None = None,
+    n_draws: int = N_DRAWS,
+    seed: int = SEED,
+) -> dict:
+    """Separate rooftop/ground precision+recall tables, so ground-mount stops
+    borrowing rooftop's much higher mapped fraction in the same area bin.
+
+    Pooling both placements into one set of bins was measured 2026-08-10 to matter a
+    lot: nationally, only ~1% of surviving model-only ground candidates sit within
+    100 m of ANY mapped OSM solar feature (vs ~14% for rooftop), so the pooled table's
+    `p_real` for a mid-size bin is dominated by rooftop's much better corroboration
+    and applied unchanged to ground candidates that have almost none of their own.
+
+    `mapped_frac` and `recall` are pure geometric OSM matches — no glint needed — so
+    both are split by placement directly, using `mapped_attrs` (must carry a
+    `placement` column; `export.load_mapped_reference_attrs`'s output, NOT the
+    boolean-only `mapped` `derive_table` itself uses) and, where given,
+    `recall_reference`'s own `placement` column. Either falls back to the unrestricted
+    (pooled) population with a warning if it lacks a `placement` column — a rooftop
+    candidate matching a ground reference feature 100 m away is a rare, not a
+    systematic, error, so this is a fallback worth having rather than refusing to run.
+
+    `p_unmapped` (the glint-inversion component of precision) is NOT independently
+    split: the existing glint sample (`data/glint/pakistan_cand_targets.parquet`,
+    pulled 2026-07-19) predates three subsequent candidate-population regenerations
+    (the 2026-07-29 OSM-geometry replacement, the 2026-08-06 edge-overlap fix, the
+    2026-08-10 postprocess refresh) and cannot be reliably re-attributed to a
+    placement it never recorded. Rather than fabricate a split or silently reuse a
+    number that may not describe either group:
+      - **ground** bins force `p_unmapped = 0.0` ("interim-mapped-only-by-placement"),
+        an honest floor in the same sense this project already uses that label
+        elsewhere (Gujarat's `recall-reference none`) -- so `p_real = mapped_frac`
+        for ground, i.e. only geometrically-corroborated ground candidates count as
+        real until a placement-specific glint pull exists.
+      - **rooftop** bins inherit the pooled table's own `p_unmapped` per bin
+        ("inherited-from-pooled"), since rooftop dominates the pooled population these
+        values were fit on and a placement-restricted mapped_frac for rooftop is
+        already a real improvement over the fully pooled number on its own.
+
+    Returns `{"rooftop": [...6 bins...], "ground": [...6 bins...]}`, each shaped like
+    `derive_table`'s own `table["bins"]` (same keys, `p_real_lo`/`_hi` included via
+    `posterior_draws` reused on a synthetic per-group table).
+    """
+    from earthpv.export import new_lead_mask
+    from earthpv.labels import geodesic_area_m2
+
+    cands = cands.reset_index(drop=True)
+    groups = _placement_group(cands["placement"].to_numpy())
+    recall_cands = cands if recall_cands is None else recall_cands
+    recall_groups = (
+        _placement_group(recall_cands["placement"].to_numpy())
+        if "placement" in recall_cands.columns else None
+    )
+    if recall_groups is None and recall_reference is not None and not recall_reference.empty:
+        log.warning(
+            "recall_cands has no `placement` column — recall split by placement will "
+            "use the unrestricted candidate population for both groups"
+        )
+
+    ref_groups = None
+    if recall_reference is not None and not recall_reference.empty:
+        if "placement" in recall_reference.columns:
+            ref_groups = _placement_group(recall_reference["placement"].to_numpy())
+        else:
+            log.warning(
+                "recall_reference has no `placement` column — recall split by "
+                "placement will pool both groups against the same reference"
+            )
+
+    mapped_groups = None
+    if mapped_attrs is not None and not mapped_attrs.empty:
+        if "placement" in mapped_attrs.columns:
+            mapped_groups = _placement_group(mapped_attrs["placement"].to_numpy())
+        else:
+            log.warning(
+                "mapped_attrs has no `placement` column — mapped_frac split by "
+                "placement will use the unrestricted reference for both groups"
+            )
+
+    pooled_p_u = {row["label"]: row["p_unmapped"] for row in pooled_bins}
+    out: dict[str, list[dict]] = {}
+    for g in PLACEMENT_GROUPS:
+        g_cands = cands[groups == g].reset_index(drop=True)
+        idx = bin_index(g_cands["area_m2"].to_numpy()) if len(g_cands) else np.array([], dtype=int)
+
+        if mapped_attrs is not None and not mapped_attrs.empty:
+            ref = mapped_attrs[mapped_groups == g] if mapped_groups is not None else mapped_attrs
+            is_mapped = (
+                ~new_lead_mask(g_cands, ref, min_distance_m=min_distance_m)
+                if len(g_cands) and not ref.empty else np.zeros(len(g_cands), dtype=bool)
+            )
+        else:
+            is_mapped = np.zeros(len(g_cands), dtype=bool)
+
+        recall_by_bin: dict[str, tuple[int, int]] = {}
+        if recall_reference is not None and not recall_reference.empty:
+            ref_sub = (
+                recall_reference[ref_groups == g] if ref_groups is not None else recall_reference
+            )
+            ref_sub = ref_sub[
+                ref_sub.geometry.geom_type.isin(("Polygon", "MultiPolygon"))
+            ].reset_index(drop=True)
+            pop_sub = recall_cands[recall_groups == g] if recall_groups is not None else recall_cands
+            if not ref_sub.empty:
+                areas = np.array([geodesic_area_m2(geom) for geom in ref_sub.geometry])
+                ridx = bin_index(areas)
+                matched = (
+                    ~new_lead_mask(ref_sub, pop_sub, min_distance_m=min_distance_m)
+                    if not pop_sub.empty else np.zeros(len(ref_sub), dtype=bool)
+                )
+                for b, label in enumerate(BIN_LABELS):
+                    in_bin = ridx == b
+                    recall_by_bin[label] = (int(in_bin.sum()), int(matched[in_bin].sum()))
+
+        bins: list[dict] = []
+        for b, label in enumerate(BIN_LABELS):
+            in_bin = idx == b
+            n = int(in_bin.sum())
+            n_mapped = int(is_mapped[in_bin].sum())
+            mapped_frac = round(n_mapped / n, 4) if n else 0.0
+            p_u = 0.0 if g == "ground" else float(pooled_p_u.get(label, 0.0))
+            p_u_source = "interim-mapped-only-by-placement" if g == "ground" else "inherited-from-pooled"
+
+            recall_n, recall_matched = recall_by_bin.get(label, (0, 0))
+            recall: float | None = None
+            recall_source = "none"
+            if recall_n >= MIN_RECALL_N:
+                recall = round(recall_matched / recall_n, 4)
+                recall_source = "measured"
+
+            bins.append({
+                "label": label, "n_candidates": n, "n_mapped": n_mapped,
+                "mapped_frac": mapped_frac, "p_unmapped": round(p_u, 4),
+                "p_unmapped_source": p_u_source,
+                "p_real": round(mapped_frac + (1.0 - mapped_frac) * p_u, 4),
+                "recall_n": recall_n, "recall_matched": recall_matched,
+                "recall": recall, "recall_source": recall_source,
+                # Placement-independent property of the glint instrument itself (from
+                # the 500-target OSM-confirmed study), not fit on this group's own
+                # candidates -- carried only so `posterior_draws` (reused as-is below)
+                # has the key it unconditionally reads; irrelevant here since
+                # `p_unmapped_source` never equals "manual"/"measured" for a placement
+                # table, so the branches that would actually consume it never run.
+                "sensitivity": float(SENSITIVITY[b]),
+            })
+        _nearest_measured(bins, "recall_source")
+        for row in bins:
+            row["recall"] = None if row["recall"] is None else round(float(row["recall"]), 4)
+
+        synthetic = {
+            "seed": seed, "n_draws": n_draws,
+            "false_validated": FALSE_VALIDATED_N, "false_n": FALSE_N,
+            "bins": bins,
+        }
+        draws = posterior_draws(synthetic, n_draws=n_draws, seed=seed)
+        for i, row in enumerate(bins):
+            lo, hi = np.percentile(draws["p_real"][i], CI_PCT)
+            row["p_real_lo"], row["p_real_hi"] = round(float(lo), 4), round(float(hi), 4)
+            if row["recall"] is not None:
+                lo, hi = np.percentile(draws["recall"][i], CI_PCT)
+                row["recall_lo"], row["recall_hi"] = round(float(lo), 4), round(float(hi), 4)
+        out[g] = bins
+        log.info(
+            "Placement table [%s]: n=%d mapped_frac(mean)=%.3f p_real(mean)=%.3f "
+            "(%s p_unmapped)",
+            g, len(g_cands), float(np.mean([r["mapped_frac"] for r in bins])),
+            float(np.mean([r["p_real"] for r in bins])), p_u_source,
+        )
+    return out
 
 
 def _binom_mixture_posterior(
@@ -495,6 +722,7 @@ def candidate_p_real(
     table: dict,
     glint_consistent: np.ndarray | None = None,
     min_consistent: int = 2,
+    placement: np.ndarray | None = None,
 ) -> np.ndarray:
     """Per-candidate P(real): the bin prior, Bayes-updated where glint evidence exists.
 
@@ -503,9 +731,25 @@ def candidate_p_real(
     evidence weight the leads-side rank boost uses. Candidates without a validated
     fit keep the prior: absence of glint is weak evidence (~70% of real arrays never
     validate), mirroring the reward-only convention of `add_glint_prior`.
+
+    `placement`, if given and `table` carries `placement_bins`
+    (`derive_placement_tables`), looks the bin prior up in that candidate's OWN
+    placement group's subtable instead of the pooled one -- see that function's
+    docstring for why pooling understated ground-mount's false-positive rate. Falls
+    back to the pooled `table["bins"]` for a table with no placement split (older
+    tables, or an AOI not yet re-derived with `--by-placement`).
     """
     idx = bin_index(area_m2)
-    prior = np.array([table["bins"][b]["p_real"] for b in idx], dtype=float)
+    if placement is not None and "placement_bins" in table:
+        groups = _placement_group(placement)
+        prior = np.empty(len(idx), dtype=float)
+        for g in PLACEMENT_GROUPS:
+            gm = groups == g
+            if gm.any():
+                gbins = table["placement_bins"][g]
+                prior[gm] = np.array([gbins[b]["p_real"] for b in idx[gm]], dtype=float)
+    else:
+        prior = np.array([table["bins"][b]["p_real"] for b in idx], dtype=float)
     if glint_consistent is None:
         return prior
     validated = np.asarray(glint_consistent) >= min_consistent
@@ -517,14 +761,31 @@ def candidate_p_real(
 
 
 def candidate_recall(
-    area_m2: np.ndarray, table: dict, floor: float = DEFAULT_RECALL_FLOOR
+    area_m2: np.ndarray, table: dict, floor: float = DEFAULT_RECALL_FLOOR,
+    placement: np.ndarray | None = None,
 ) -> np.ndarray:
     """Per-candidate model recall for its size bin, clamped to `floor`.
 
     Bins whose recall was never measured (recall None / absent — pre-v2 tables)
-    return 1.0: no correction rather than a made-up one.
+    return 1.0: no correction rather than a made-up one. `placement` selects the
+    candidate's own placement group's subtable when `table` carries
+    `placement_bins` -- see `candidate_p_real`.
     """
-    per_bin = np.array(
-        [1.0 if row.get("recall") is None else float(row["recall"]) for row in table["bins"]]
-    )
-    return np.maximum(per_bin[bin_index(area_m2)], floor)
+    idx = bin_index(area_m2)
+    if placement is not None and "placement_bins" in table:
+        groups = _placement_group(placement)
+        per_row = np.empty(len(idx), dtype=float)
+        for g in PLACEMENT_GROUPS:
+            gm = groups == g
+            if gm.any():
+                gbins = table["placement_bins"][g]
+                per_bin = np.array(
+                    [1.0 if row.get("recall") is None else float(row["recall"]) for row in gbins]
+                )
+                per_row[gm] = per_bin[idx[gm]]
+    else:
+        per_bin = np.array(
+            [1.0 if row.get("recall") is None else float(row["recall"]) for row in table["bins"]]
+        )
+        per_row = per_bin[idx]
+    return np.maximum(per_row, floor)

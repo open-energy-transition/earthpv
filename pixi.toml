@@ -60,6 +60,16 @@ postprocess = "python -m earthpv.cli postprocess"
 export = "python -m earthpv.cli export"
 mastr = "python -m earthpv.cli mastr"
 calibrate = "python -m earthpv.cli calibrate"
+# Main workflow, primary output (docs/reproduce.md steps 9-15) -- no pixi task existed
+# for any of these before 2026-08-10, despite everything upstream having one.
+calibrate-candidates = "python -m earthpv.cli calibrate-candidates"
+density = "python -m earthpv.cli density"
+check-density = "python -m earthpv.cli check-density"
+roof-classifier = "python -m earthpv.cli roof-classifier"
+roofclf-score-national = "python -m earthpv.cli roofclf-score-national"
+sub400-capacity = "python -m earthpv.cli sub400-capacity"
+ge400-roof-capacity = "python -m earthpv.cli ge400-roof-capacity"
+atlas = "python -m earthpv.cli atlas"
 # Small-PV (< 400 m2) JOSM validation leads, AND-gate + roofclf-only populations --
 # re-run whenever roofclf/SPPI national scoring or the OSM solar pull is refreshed.
 small-pv-leads = "python scripts/build_small_pv_josm_leads.py"

@@ -116,6 +116,19 @@ CALIBRATION_BOXES: dict[str, list] = {
         {"name": "Islamabad East", "stem": "islamabad_east_calib_2p79km2", "status": "rule1"},
         {"name": "Islamabad South", "stem": "islamabad_south_calib_2p79km2", "status": "rule1"},
         {"name": "Islamabad West", "stem": "islamabad_west_calib_2p79km2", "status": "rule1"},
+        # Added the same day as the other four Islamabad diamonds but never listed here --
+        # found 2026-08-10/11: one of the 13 quadrats sub400_capacity's coverage-ratio and
+        # precision fits actually trust, so it was invisible on a map whose own numbers
+        # partly came from it. `_load_calib_boxes` skips a missing stem without erroring,
+        # which is exactly how this went unnoticed for days -- see that function's
+        # docstring on why a caller can't rely on it to catch this by itself.
+        {"name": "Islamabad Northeast", "stem": "islamabad_northeast_calib_3p34km2", "status": "rule1"},
+        # Added 2026-08-10, never listed here. Not one of the 13 quadrats behind the
+        # precision/coverage-ratio fits (rate_ratio outside the trusted band), but it is
+        # Rule-1 ground truth like every other quadrat -- see this file's own domain-vs-
+        # multiplier note for why that distinction matters and why it still belongs on
+        # the map.
+        {"name": "Hasal", "stem": "hasal_calib_1p00km2", "status": "rule1"},
     ],
 }
 
@@ -132,6 +145,13 @@ def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[
     for box in CALIBRATION_BOXES.get(aoi, []):
         boundary = Path(labels_dir) / f"{box['stem']}_boundary.geojson"
         if not boundary.exists():
+            log.warning(
+                "Calibration box %r (stem %r) has no boundary file at %s -- skipped, "
+                "will not appear on the map. If this quadrat is Rule-1 complete and in "
+                "use elsewhere (e.g. sub400_capacity's precision fit), this is a real "
+                "gap, not just a missing map marker.",
+                box["name"], box["stem"], boundary,
+            )
             continue
         geom = gpd.read_file(boundary)
         centroid = geom.union_all().centroid
@@ -1251,20 +1271,36 @@ def build_evidence_atlas(
             "exists; the evidence atlas needs the large-PV instrument for the Best "
             "tier."
         )
+    from earthpv import capacity_calibration as cc
+
     title = aoi.replace("_", " ").title()
-    kwp_mod = meta.get("kwp_per_m2_module", 0.18)
-    kwp_land = meta.get("kwp_per_m2_land", 0.07)
+    kwp_mod = meta.get("kwp_per_m2_module", cc.DEFAULT_KWP_PER_M2_MODULE)
+    kwp_land = meta.get("kwp_per_m2_land", cc.DEFAULT_KWP_PER_M2_LAND)
 
     # --- hand-mapped OSM PV, per cell, split by whether the model already found it.
     #     Geometric proximity, not `osm_matched_id`: that id is assigned one-to-one by
     #     `postprocess.replace_with_osm_geometry`, so one candidate blob overlapping many
     #     mapped installations only ever "claims" one of them -- see this function's
     #     docstring for the ~1,900 MWp of double-counting that undercounted matches.
+    from earthpv.density import capacity_relevant_candidates
     from earthpv.export import new_lead_mask
+    from earthpv.labels import dissolve_overlapping
     from earthpv.postprocess import NEAR_BUILDING_M
 
     osm = gpd.read_parquet(osm_solar_path)
+    # Two OSM features (a `plant` perimeter and a nested `generator` way, or two
+    # overlapping mapping passes) can describe one real installation -- summing their
+    # individual areas double-counts it (measured 2026-08-10: ground-mount OSM area
+    # shrinks 24.4% once dissolved; see labels.dissolve_overlapping's docstring).
+    osm = dissolve_overlapping(osm, group_col="placement")
     cand = gpd.read_parquet(candidates_path)
+    # Match against the SAME population that actually earns capacity, not the raw
+    # candidate file: an OSM installation matched only by a candidate this run
+    # excludes from capacity (a non-exempt oversize blob) is not "already found by
+    # the model" in any sense `mwp_large` reflects -- counting it as matched would
+    # double-subtract it from `osm_mwp_unmatched` for nothing (measured 2026-08-10 at
+    # 1,704 MWp nationally, see capacity_relevant_candidates's docstring).
+    cand, _ = capacity_relevant_candidates(cand)
     osm = osm.copy()
     osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=NEAR_BUILDING_M)
     osm["kwp"] = np.where(

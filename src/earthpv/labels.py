@@ -33,6 +33,105 @@ def geodesic_area_m2(geom) -> float:
     return abs(area)
 
 
+def dissolve_overlapping(
+    gdf: gpd.GeoDataFrame, group_col: str | None = "placement"
+) -> gpd.GeoDataFrame:
+    """Merge polygons that geometrically intersect into one feature per connected
+    cluster, recomputing area geodesically on the union.
+
+    Two OSM tags can describe the same real installation — a `power=plant` perimeter
+    and a nested `power=generator` way, or two overlapping ways from independent
+    mapping passes — as separate FEATURES. Summing their individual `area_m2`s
+    double-counts the physical PV they share. Measured 2026-08-10 at Quaid-e-Azam
+    Solar Park: 77% of the dissolved `generator` footprint sits inside the `plant`
+    perimeter already covering it; nationally, ground-mount OSM area shrinks 24.4%
+    once dissolved (55.95 -> 42.32 km²). It also fixes a second, unrelated failure
+    mode: `postprocess.replace_with_osm_geometry`'s nearest-match picks whichever
+    fragment happens to be closest, which can be a small nested member way instead of
+    the real installation's outer footprint (Sukkur solar farm matched a 44,948 m²
+    fragment — 1.7% of its true 2.6 km² footprint — because the national OSM pull had
+    21 overlapping, un-dissolved elements at that site). Dissolving first removes the
+    fragments before matching ever runs.
+
+    `group_col`, if given and present, keeps clusters within the same value only —
+    rooftop and ground-mount should never merge into each other even if their
+    footprints happen to touch (a rooftop array directly above a ground-mount plant's
+    substation, say). Non-polygon rows (points — an OSM `generator:source=solar` node
+    with no mapped footprint) pass through unchanged; there is nothing to dissolve and
+    their area stays whatever it already was (typically 0).
+
+    Every other column keeps the value of the LARGEST (by pre-dissolve `area_m2`, or
+    planar `.area` if that column is absent) contributing row per cluster — an
+    `osm_matched_id`-style identifier from a dissolved pair should point at something
+    real, not an arbitrary concatenation. A new `n_dissolved` column records cluster
+    size (1 for anything that didn't merge) so the effect is auditable rather than
+    silent.
+    """
+    import shapely
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    gdf = gdf.reset_index(drop=True)
+    n_total = len(gdf)
+    if n_total == 0:
+        return gdf.assign(n_dissolved=pd.array([], dtype="int64"))
+
+    is_poly = gdf.geometry.geom_type.isin(("Polygon", "MultiPolygon")).to_numpy()
+    poly_idx = np.flatnonzero(is_poly)
+    n_dissolved = np.ones(n_total, dtype=int)
+    keep_mask = np.ones(n_total, dtype=bool)
+    if poly_idx.size == 0:
+        return gdf.assign(n_dissolved=n_dissolved)
+
+    geoms = shapely.make_valid(gdf.geometry.to_numpy()[poly_idx])
+    if group_col and group_col in gdf.columns:
+        groups = gdf[group_col].to_numpy()[poly_idx]
+        groups = np.where(pd.isna(groups), "__none__", groups.astype(str))
+    else:
+        groups = np.zeros(poly_idx.size, dtype=object)
+
+    area_basis = (
+        gdf["area_m2"].to_numpy(float)[poly_idx] if "area_m2" in gdf.columns
+        else shapely.area(geoms)
+    )
+    out_geom = list(gdf.geometry.to_numpy())
+    out_area = gdf["area_m2"].to_numpy(float).copy() if "area_m2" in gdf.columns else None
+
+    for g in np.unique(groups):
+        members = np.flatnonzero(groups == g)
+        sub_geoms = geoms[members]
+        n = members.size
+        if n == 1:
+            continue
+        tree = shapely.STRtree(sub_geoms)
+        li, ri = tree.query(sub_geoms, predicate="intersects")
+        pair_mask = li != ri
+        li, ri = li[pair_mask], ri[pair_mask]
+        rows = np.concatenate([li, np.arange(n)])
+        cols = np.concatenate([ri, np.arange(n)])
+        graph = csr_matrix((np.ones(len(rows)), (rows, cols)), shape=(n, n))
+        _, labels = connected_components(graph, directed=False)
+        for cl in np.unique(labels):
+            cl_members = members[labels == cl]
+            if cl_members.size == 1:
+                continue
+            global_members = poly_idx[cl_members]
+            rep = global_members[np.argmax(area_basis[cl_members])]
+            union = shapely.union_all(geoms[cl_members])
+            out_geom[rep] = union
+            if out_area is not None:
+                out_area[rep] = geodesic_area_m2(union)
+            n_dissolved[rep] = cl_members.size
+            keep_mask[global_members[global_members != rep]] = False
+
+    result = gdf.copy()
+    result["geometry"] = out_geom
+    if out_area is not None:
+        result["area_m2"] = out_area
+    result["n_dissolved"] = n_dissolved
+    return result[keep_mask].reset_index(drop=True)
+
+
 def resolve_aoi(aoi: str, settings: Settings) -> tuple[tuple[float, float, float, float], dict]:
     cfg = settings.aois.get(aoi)
     if cfg is None:

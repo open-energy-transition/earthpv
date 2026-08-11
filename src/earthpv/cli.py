@@ -459,7 +459,8 @@ def density(
     kwp_per_m2_land: float = typer.Option(
         None,
         help="kWp per m2 of GROUND-MOUNT site area — a detected plant polygon is site, not "
-        "module, so only its ground-cover ratio counts (default 0.07)",
+        "module, so only its ground-cover ratio counts "
+        "(default capacity_calibration.DEFAULT_KWP_PER_M2_LAND)",
     ),
     max_candidate_m2: float = typer.Option(
         None,
@@ -1171,6 +1172,23 @@ def calibrate_candidates(
         "— pooled into the recall reference. Repeat the flag for more than one box",
     ),
     min_distance_m: float = typer.Option(100.0, help="Mapped-candidate distance (match export)"),
+    max_candidate_m2: float = typer.Option(
+        None,
+        help="Exclude candidates larger than this from the population precision/recall "
+        "are measured against (0 = keep all; default postprocess.MAX_CANDIDATE_M2 = "
+        "100000, mirroring density's own default) -- must match what `density` actually "
+        "applies capacity to, or recall/mapped_frac describe a population this table's "
+        "own consumer never sees. See capacity_relevant_candidates.",
+    ),
+    by_placement: bool = typer.Option(
+        False,
+        help="Also derive separate rooftop/ground precision+recall tables "
+        "(table['placement_bins'], capacity_calibration.derive_placement_tables) -- "
+        "pooling both placements into one set of area bins lets ground-mount borrow "
+        "rooftop's much higher mapped fraction in the same bin (measured 2026-08-10: "
+        "~1% of surviving ground candidates are OSM-corroborated within 100 m vs ~14% "
+        "for rooftop). `density.py` uses the split automatically when present.",
+    ),
     out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
 ) -> None:
     """Derive the capacity-atlas candidate-precision table (p_real + recall per area bin).
@@ -1187,14 +1205,30 @@ def calibrate_candidates(
 
     from earthpv import capacity_calibration as cc
     from earthpv.config import Settings
-    from earthpv.export import _load_mapped_reference
+    from earthpv.density import capacity_relevant_candidates
+    from earthpv.export import _load_mapped_reference, load_mapped_reference_attrs
     from earthpv.labels import resolve_aoi
+    from earthpv.postprocess import MAX_CANDIDATE_M2
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    cands = gpd.read_parquet(Path(pred_dir) / aoi / "candidates.parquet")
+    raw_cands = gpd.read_parquet(Path(pred_dir) / aoi / "candidates.parquet")
+    max_candidate_m2 = MAX_CANDIDATE_M2 if max_candidate_m2 is None else max_candidate_m2
+    # Precision/recall must describe the SAME population density.py actually applies
+    # capacity to -- measuring them against the raw candidate file (including
+    # oversize blobs density excludes) means recall in the largest bins reflects how
+    # often a >100,000 m2 merged blob happens to sit near a mapped reference
+    # installation, not how often the model's own capacity-relevant detections do.
+    cands, _ = capacity_relevant_candidates(raw_cands, max_candidate_m2)
+    if len(cands) != len(raw_cands):
+        typer.echo(
+            f"Calibrating against the capacity-relevant population: {len(cands)}/"
+            f"{len(raw_cands)} candidates (excludes oversize blobs the same way "
+            f"`density` does, see capacity_relevant_candidates)"
+        )
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     mapped = _load_mapped_reference(aoi, cfg, settings)
+    mapped_attrs = load_mapped_reference_attrs(aoi, cfg, settings) if by_placement else None
     sample = pd.read_csv(glint_sample) if glint_sample else None
     reviews = _aggregate_manual_reviews(manual_reviews) if manual_reviews else None
 
@@ -1251,6 +1285,7 @@ def calibrate_candidates(
     table = cc.derive_table(
         cands, mapped, aoi=aoi, glint_sample=sample, min_distance_m=min_distance_m,
         manual_reviews=reviews, recall_reference=ref, recall_reference_name=ref_name,
+        by_placement=by_placement, mapped_attrs=mapped_attrs,
     )
     cc.write_table(table, out or cc.default_table_path(aoi))
     for row in table["bins"]:
@@ -1261,6 +1296,17 @@ def calibrate_candidates(
             f"p_real={row['p_real']:.3f} [{row['p_real_lo']:.3f},{row['p_real_hi']:.3f}] "
             f"{rec} ({row['recall_source']}, {row['recall_matched']}/{row['recall_n']})"
         )
+    if by_placement:
+        for g, bins in table["placement_bins"].items():
+            typer.echo(f"-- placement: {g} --")
+            for row in bins:
+                rec = "recall=  n/a" if row["recall"] is None else f"recall={row['recall']:.3f}"
+                typer.echo(
+                    f"{row['label']:>8}: n={row['n_candidates']:5d} "
+                    f"mapped={row['mapped_frac']:.3f} p_real={row['p_real']:.3f} "
+                    f"[{row['p_real_lo']:.3f},{row['p_real_hi']:.3f}] "
+                    f"{rec} ({row['recall_source']}, {row['recall_matched']}/{row['recall_n']})"
+                )
 
 
 def _aggregate_manual_reviews(path: Path):

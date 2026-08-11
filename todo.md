@@ -15,10 +15,9 @@
 27. Reduce tile size and region where the pv density usage is been applied to smaller cities and don't just check the building density just for a whole cell.
 29. Test a training of fraction head with all <400 m² labels from Pakistan.
 30. Add to calibration: 33.990721, 71.4253978
-31. Fix old sentinel data 2021 radiometric offset. 
-32. Hard negative retrain roofclf.
-33. Check again clustering probability. 
-34. Add hard lower building size threshold. 
+3
+
+
 
 
 

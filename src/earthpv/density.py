@@ -137,6 +137,126 @@ def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:
     return {"path": str(cand_path), "mtime": st.st_mtime, "size": st.st_size, "n_rows": n_rows}
 
 
+def _dedup_osm_oversize(over_osm: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Dissolve OSM-sourced oversize candidates that describe the same real
+    installation more than once, via `labels.dissolve_overlapping`.
+
+    Measured 2026-08-10 (`docs/issues/pakistan-calibration-boxes.md`'s ground-mount
+    validation): among 28 `geometry_source == "osm"` oversize candidates nationally, 4
+    pairs geometrically overlap -- 3 are exact duplicates (same `osm_matched_id`,
+    identical area) and 1 is Quaid-e-Azam Solar Park's own outer-envelope/member-way
+    pair, which have DIFFERENT `osm_matched_id`s (`postprocess.replace_with_osm_geometry`
+    matches each model candidate to its OWN nearest OSM feature independently, so an
+    outer envelope and a way nested inside it can each survive as separate candidate
+    rows describing the same site twice). Unlike a keep-only-the-largest dedup (the
+    original form of this function), this UNIONS the overlapping geometries -- QASP's
+    member way sits only 77% inside its own plant perimeter, so keep-largest-drop-rest
+    would silently lose the other 23% instead of counting it once.
+
+    Returns a GeoDataFrame indexed by `over_osm`'s ORIGINAL index (one row per cluster
+    -- the kept, now-dissolved representative) with `geometry`/`area_m2` updated to the
+    union. Now that `postprocess.replace_with_osm_geometry` matches against an
+    already-dissolved OSM reference (`labels.dissolve_overlapping`, wired in
+    2026-08-10), new duplicate pairs of this shape should not recur going forward --
+    this stays as a defense-in-depth backstop for candidates matched before that fix,
+    or from a stale/un-refreshed OSM pull.
+    """
+    from earthpv.labels import dissolve_overlapping
+
+    tagged = over_osm.assign(_orig_index=over_osm.index)
+    dissolved = dissolve_overlapping(tagged, group_col=None)
+    return dissolved.set_index("_orig_index")
+
+
+def capacity_relevant_candidates(
+    cands: gpd.GeoDataFrame, max_candidate_m2: float = MAX_CANDIDATE_M2,
+) -> tuple[gpd.GeoDataFrame, dict]:
+    """The candidate population that actually earns capacity.
+
+    A multi-km2 contiguous polygon is a merged false-positive sheet or a whole plant
+    site, not one installation's panel area, and unfiltered they dominated the
+    Pakistan country total (see `postprocess.MAX_CANDIDATE_M2`) -- kept in
+    `candidates.parquet` for the human-validated leads product, excluded HERE only.
+
+    EXCEPT a candidate whose `geometry_source` is "osm": that shape is the real,
+    human-mapped OSM footprint (`postprocess.replace_with_osm_geometry`), not a
+    `polygonize_chips`-merged blob, so it cannot be the unconstrained-false-positive-
+    sheet failure mode this filter exists to catch, regardless of its area. Measured
+    2026-08-10 against the two ground-mount calibration boxes
+    (`docs/issues/pakistan-calibration-boxes.md`): Quaid-e-Azam Solar Park's true
+    footprint was captured almost exactly by two now-exempted OSM-matched candidates
+    that were previously dropped entirely, leaving only a 13,086 m2 fragment (0.15% of
+    true area) counted. Exempting them first requires deduping OSM-sourced oversize
+    candidates that geometrically overlap (`_dedup_osm_oversize`) -- even with
+    `labels.dissolve_overlapping` now applied to the OSM reference before matching
+    (2026-08-10), a candidate matched under the old, un-dissolved reference (or from a
+    stale OSM pull) can still carry this shape.
+
+    Returns `(filtered_cands, stats)`. `stats` is exactly the set of keys
+    `run_density`'s `meta.json` records for this step
+    (`n_oversize_excluded`/`oversize_area_m2`/`n_osm_oversize_exempted`/
+    `osm_oversize_exempted_area_m2`/`n_osm_oversize_dedup_dropped`/
+    `osm_oversize_dedup_dropped_area_m2`) -- shared so `atlas.build_evidence_atlas`'s
+    OSM-matched/unmatched split uses IDENTICAL population logic to what actually earns
+    capacity, rather than matching against candidates this function would exclude (a
+    real bug otherwise: an OSM installation matched only by a non-exempt oversize blob
+    would be marked "already found by the model" while contributing zero to the
+    model's own capacity number -- measured 2026-08-10 at 1,704 MWp nationally).
+    """
+    stats = {
+        "n_oversize_excluded": 0, "oversize_area_m2": 0.0,
+        "n_osm_oversize_exempted": 0, "osm_oversize_exempted_area_m2": 0.0,
+        "n_osm_oversize_dedup_dropped": 0, "osm_oversize_dedup_dropped_area_m2": 0.0,
+    }
+    if not max_candidate_m2 or cands.empty:
+        return cands, stats
+    cands = cands.copy()
+    over = pd.Series(cands["area_m2"].to_numpy(float) > max_candidate_m2, index=cands.index)
+    geometry_source = cands.get(
+        "geometry_source", pd.Series("model", index=cands.index)
+    ).fillna("model")
+    is_osm_over = over & (geometry_source == "osm")
+    exempt = pd.Series(False, index=cands.index)
+    if is_osm_over.any():
+        osm_over = cands[is_osm_over]
+        dissolved = _dedup_osm_oversize(osm_over)
+        stats["n_osm_oversize_dedup_dropped"] = int(len(osm_over) - len(dissolved))
+        stats["osm_oversize_dedup_dropped_area_m2"] = float(
+            osm_over["area_m2"].sum() - dissolved["area_m2"].sum()
+        )
+        # Write the dissolved (unioned) geometry/area back onto the surviving
+        # representative row -- a partial (not fully nested) overlap would otherwise
+        # silently lose whichever part of the smaller geometry sits outside the
+        # larger one, understating this candidate's true area.
+        cands.loc[dissolved.index, "geometry"] = dissolved.geometry.to_numpy()
+        cands.loc[dissolved.index, "area_m2"] = dissolved["area_m2"].to_numpy()
+        exempt.loc[dissolved.index] = True
+        stats["n_osm_oversize_exempted"] = int(len(dissolved))
+        stats["osm_oversize_exempted_area_m2"] = float(dissolved["area_m2"].sum())
+        if stats["n_osm_oversize_dedup_dropped"]:
+            log.warning(
+                "OSM-oversize dedup: %d/%d geometrically-overlapping OSM-sourced "
+                "oversize candidates (%.2f km2) dropped as redundant matches for an "
+                "already-counted installation",
+                stats["n_osm_oversize_dedup_dropped"], len(osm_over),
+                stats["osm_oversize_dedup_dropped_area_m2"] / 1e6,
+            )
+    drop = over & ~exempt
+    stats["n_oversize_excluded"] = int(drop.sum())
+    stats["oversize_area_m2"] = float(cands.loc[drop, "area_m2"].sum())
+    if stats["n_oversize_excluded"]:
+        log.warning(
+            "Excluding %d/%d oversize candidates (> %.0f m2) from capacity: %.1f%% of "
+            "candidate area, largest %.2f km2 -- separately, %d OSM-verified oversize "
+            "candidates (%.2f km2) EXEMPTED from this exclusion instead (see above)",
+            stats["n_oversize_excluded"], len(cands), max_candidate_m2,
+            100.0 * stats["oversize_area_m2"] / max(float(cands["area_m2"].sum()), 1e-9),
+            float(cands.loc[drop, "area_m2"].max()) / 1e6,
+            stats["n_osm_oversize_exempted"], stats["osm_oversize_exempted_area_m2"] / 1e6,
+        )
+    return cands[~drop].reset_index(drop=True), stats
+
+
 def _completeness_flag(density_km2: pd.Series) -> pd.Series:
     """'below'/'in'/'above' the calibration quadrats' building-density range -- see
     `CALIBRATED_BLDG_DENSITY_KM2`. Below-range is the common case (rural Pakistan is far
@@ -641,13 +761,15 @@ def _candidate_uncertainty(
         cands["glint_consistent"].to_numpy() if "glint_consistent" in cands.columns else None
     )
     validated = np.zeros(len(cands), bool) if glint is None else np.asarray(glint) >= 2
-    rooftop = (
-        cands["placement"].astype(str).to_numpy() == "rooftop"
-        if "placement" in cands.columns
-        else np.zeros(len(cands), bool)
+    placement_col = (
+        cands["placement"].astype(str).to_numpy() if "placement" in cands.columns else None
     )
-    p_pt = cc.candidate_p_real(area, table, glint_consistent=glint)
-    r_pt = cc.candidate_recall(area, table, floor=recall_floor)
+    rooftop = (
+        placement_col == "rooftop" if placement_col is not None else np.zeros(len(cands), bool)
+    )
+    grp = np.where(rooftop, "rooftop", "ground")
+    p_pt = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement_col)
+    r_pt = cc.candidate_recall(area, table, floor=recall_floor, placement=placement_col)
 
     # Same population process_cell counts into the cell totals: assigned by
     # representative point to a manifest cell.
@@ -656,24 +778,38 @@ def _candidate_uncertainty(
         log.info("Uncertainty: %d candidates outside manifest cells ignored", (~keep).sum())
     df = pd.DataFrame({
         "cell": cell[keep], "b": bins[keep], "v": validated[keep],
-        "roof": rooftop[keep], "area": area[keep],
+        "roof": rooftop[keep], "grp": grp[keep], "area": area[keep],
         "rc_pt": (area * p_pt / r_pt)[keep],
     })
     if df.empty:
         return None
 
-    draws = cc.posterior_draws(table, n_draws=n_draws)
-    prior = np.clip(draws["p_real"], 1e-6, 1 - 1e-6)
-    odds = prior / (1.0 - prior) * draws["lr"]
-    w = np.stack([draws["p_real"], odds / (1.0 + odds)])  # (validated?, bin, draw)
-    r_dr = np.maximum(draws["recall"], recall_floor)
+    # Placement-aware draws mirror the point estimate above (candidate_p_real/
+    # candidate_recall): each group's credible interval is drawn from its OWN
+    # placement subtable when one exists (derive_placement_tables), rather than one
+    # pooled draw applied to every candidate regardless of placement.
+    def _group_weights(bins_table: dict) -> tuple[np.ndarray, np.ndarray]:
+        d = cc.posterior_draws(bins_table, n_draws=n_draws)
+        prior_g = np.clip(d["p_real"], 1e-6, 1 - 1e-6)
+        odds_g = prior_g / (1.0 - prior_g) * d["lr"]
+        return np.stack([d["p_real"], odds_g / (1.0 + odds_g)]), np.maximum(d["recall"], recall_floor)
+
+    if "placement_bins" in table:
+        w_by_group = {
+            g: _group_weights({**table, "bins": table["placement_bins"][g]})
+            for g in cc.PLACEMENT_GROUPS
+        }
+    else:
+        w_pooled = _group_weights(table)
+        w_by_group = {g: w_pooled for g in cc.PLACEMENT_GROUPS}
 
     cells = np.unique(df["cell"].to_numpy())
     pos = {c: i for i, c in enumerate(cells)}
     mats = {k: np.zeros((len(cells), n_draws)) for k in ("cal_all", "rc_all", "cal_roof", "rc_roof")}
     for roof_only, cal_key, rc_key in ((False, "cal_all", "rc_all"), (True, "cal_roof", "rc_roof")):
         sub = df[df.roof] if roof_only else df
-        for (c, b, v), a in sub.groupby(["cell", "b", "v"])["area"].sum().items():
+        for (c, b, v, g), a in sub.groupby(["cell", "b", "v", "grp"])["area"].sum().items():
+            w, r_dr = w_by_group[g]
             wa = a * w[int(v), b]
             mats[cal_key][pos[c]] += wa
             mats[rc_key][pos[c]] += wa / r_dr[b]
@@ -1013,24 +1149,14 @@ def run_density(
             plausibility_note,
         )
 
-    # Drop blobs before anything consumes them. A multi-km2 contiguous polygon is a merged
-    # false-positive sheet or a whole plant site, not one installation's panel area, and
-    # unfiltered they dominated the Pakistan country total (see postprocess.MAX_CANDIDATE_M2).
-    # Kept in candidates.parquet for the human-validated leads product; excluded here only.
-    n_oversize, oversize_area_m2 = 0, 0.0
-    if max_candidate_m2 and not cands.empty:
-        over = cands["area_m2"].to_numpy(float) > max_candidate_m2
-        n_oversize = int(over.sum())
-        oversize_area_m2 = float(cands.loc[over, "area_m2"].sum())
-        if n_oversize:
-            log.warning(
-                "Excluding %d/%d oversize candidates (> %.0f m2) from capacity: %.1f%% of "
-                "candidate area, largest %.2f km2",
-                n_oversize, len(cands), max_candidate_m2,
-                100.0 * oversize_area_m2 / max(float(cands["area_m2"].sum()), 1e-9),
-                float(cands["area_m2"].max()) / 1e6,
-            )
-            cands = cands[~over].reset_index(drop=True)
+    # Drop blobs before anything consumes them (see capacity_relevant_candidates).
+    cands, oversize_stats = capacity_relevant_candidates(cands, max_candidate_m2)
+    n_oversize = oversize_stats["n_oversize_excluded"]
+    oversize_area_m2 = oversize_stats["oversize_area_m2"]
+    n_osm_oversize_exempted = oversize_stats["n_osm_oversize_exempted"]
+    osm_oversize_exempted_area_m2 = oversize_stats["osm_oversize_exempted_area_m2"]
+    n_osm_oversize_dedup_dropped = oversize_stats["n_osm_oversize_dedup_dropped"]
+    osm_oversize_dedup_dropped_area_m2 = oversize_stats["osm_oversize_dedup_dropped_area_m2"]
     # Cached partials carry the per-building/footprint columns from whatever candidate set
     # was in force when they were written; only the candidate-population columns
     # (`_CAND_COLS`) are rederived from `cands` every run, force or not. If `candidates.
@@ -1085,6 +1211,8 @@ def run_density(
             cands["p_real"] = cc.candidate_p_real(
                 cands["area_m2"].to_numpy(), table,
                 glint_consistent=None if glint_cons is None else glint_cons.to_numpy(),
+                placement=cands["placement"].astype(str).to_numpy()
+                if "placement" in cands.columns else None,
             )
         log.info("Calibration table %s (%s): est_mwp_cal is precision-weighted", cal_path, cal_status)
     else:
@@ -1183,6 +1311,10 @@ def run_density(
         "max_candidate_m2": max_candidate_m2,
         "n_oversize_excluded": n_oversize,
         "oversize_area_m2": oversize_area_m2,
+        "n_osm_oversize_exempted": n_osm_oversize_exempted,
+        "osm_oversize_exempted_area_m2": osm_oversize_exempted_area_m2,
+        "n_osm_oversize_dedup_dropped": n_osm_oversize_dedup_dropped,
+        "osm_oversize_dedup_dropped_area_m2": osm_oversize_dedup_dropped_area_m2,
         "did_full_rebuild": did_full_rebuild,
         "n_cell_failures": n_cell_failures,
         "candidates_fingerprint_written": did_full_rebuild and n_cell_failures == 0,

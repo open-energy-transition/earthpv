@@ -129,6 +129,21 @@ def load_mapped_reference_attrs(aoi: str, cfg: dict, settings) -> gpd.GeoDataFra
         return gpd.GeoDataFrame({c: [] for c in cols}, geometry="geometry", crs="EPSG:4326")
     out = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs="EPSG:4326")
     out["id"] = out["id"].astype(str)  # belt-and-suspenders: one dtype regardless of source
+    # Pooling the rooftopsenti cache with every `data/labels/*_overpass_solar.parquet`
+    # pull (the national pull AND every calibration quadrat's own pull, which can cover
+    # overlapping ground) means the SAME real installation can arrive as more than one
+    # feature -- an OSM `power=plant` perimeter with a nested `power=generator` way, two
+    # duplicate ways from independent mapping passes, or a quadrat pull re-covering
+    # ground the national pull already has. `replace_with_osm_geometry`'s nearest-match
+    # then has no way to prefer the correct footprint over a smaller nested fragment
+    # (measured 2026-08-10: Sukkur solar farm matched a 44,948 m2 fragment, 1.7% of its
+    # true 2.6 km2 footprint, because of 21 overlapping un-dissolved elements at that
+    # site -- see labels.dissolve_overlapping's docstring). Dissolving here, before any
+    # matching happens, removes the fragments rather than leaving downstream code to
+    # pick among them.
+    from earthpv.labels import dissolve_overlapping
+
+    out = dissolve_overlapping(out, group_col="placement")
     return out
 
 

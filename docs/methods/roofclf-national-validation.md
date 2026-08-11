@@ -112,3 +112,37 @@ into a national precision estimate with a sample size -- a single batch is a sta
 a conclusion; **CLAUDE.md's roofclf section should be updated with the pooled result**
 once enough batches exist to say something the 17-quadrat LOQO number doesn't already
 say.
+
+## The first batch drew zero domain-matched cells -- fixed 2026-08-10
+
+`--random-cells` draws uniformly from every scored cell with >= 1 flagged building
+nationally (3,417 of 4,470), **not** from `sub400_capacity.national_cell_domain`'s 163
+cells that the published capacity figure is actually restricted to (only 136 of those
+163 have >= 1 flagged building). The first batch (20 cells, seed 1,
+`results/pakistan_roofclf_validation/`) landed entirely outside the domain by chance --
+every cell in it has building density far below the calibrated 553-5,258/km² range --
+so a full review of it would measure precision on a population that contributes exactly
+0 MWp to the atlas, not the population the number describes.
+
+Two fresh, explicitly stratified batches were drawn the same session (`--cell` with an
+externally-computed cell list stands in for a domain-aware `--random-cells`, since the
+script has no domain flag itself):
+
+- `results/pakistan_roofclf_validation_domain/` -- 20 cells drawn uniformly from the
+  136 domain cells with >= 1 flagged building (seed 20260810). 86,733 buildings, 113
+  tiles -- much larger per cell than the original batch, since domain cells are dense
+  urban tiles, not sparse rural ones.
+- `results/pakistan_roofclf_validation_outdomain/` -- 20 cells drawn uniformly from the
+  3,281 qualifying cells OUTSIDE the domain (seed 20260811), kept as a second,
+  explicitly-labeled population rather than silently mixed with the domain batch: a
+  reviewer's precision estimate on THIS batch says something about the ~3,459 MWp of
+  roofclf-flagged capacity currently excluded from every published figure (see
+  CLAUDE.md's "75.5% of buildings are outside the domain" note), not about the number
+  the atlas reports.
+
+Neither batch has been reviewed yet -- generating the tiles is not the validation;
+someone needs to open them in JOSM per the steps above and log real/false-positive
+counts. Until that happens, `docs/methods/calibration-quadrats.md`'s and CLAUDE.md's
+precision figures still rest entirely on the 13-19 hand-picked quadrats, and the
+domain-restricted capacity numbers (sub-400 central/AND-gate, >= 400 m² roofclf
+rooftop) have no unbiased-sample check behind them at all.

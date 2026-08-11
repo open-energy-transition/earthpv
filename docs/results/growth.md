@@ -7,6 +7,14 @@ capacity estimate, that same checkpoint's fraction head reaching below its 400 m
 detection floor, and a model-free spectral index computed directly on each building's
 own reflectance.
 
+**The segmentation instrument's absolute numbers below predate the 2026-08-11
+ground-mount/placement-split fixes** ([Capacity map](capacity.md) has the current
+methodology and numbers) -- this page's "current" epoch was inferred and aggregated
+separately, before those fixes, and has not been re-run against them. The *direction*
+of the finding (large, boom-driven growth, concentrated in Punjab's urban corridor) is
+not expected to change; the absolute MWp figures below should be read as pre-fix and
+not compared directly to the evidence atlas's own current total.
+
 <div class="embed" markdown>
 <iframe src="../../assets/interactive/pakistan_growth_atlas.html" title="Pakistan PV growth atlas: segmentation, fraction and SPPI epoch-diff" loading="lazy"></iframe>
 </div>

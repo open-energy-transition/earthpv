@@ -1576,6 +1576,123 @@ counterpart, same shape as `build_small_pv_josm_leads.py`: ranks individual roof
 size × modelled yield, drops anything near an existing candidate or OSM solar feature,
 caps per cell for a human to spot-check before treating any of it as validated.
 
+### Ground-mount double-counting and land-constant calibration, 2026-08-10/11
+
+**A full pipeline review (this file's own "Which segmentation checkpoint" audit plus a
+fresh ground-mount-specific pass) found and fixed several compounding overstatements in
+the ground-mount half of the >= 400 m² total, and separately resolved the "still-open"
+recall/candidates provenance question from 2026-08-06.** Full derivation and every
+measured number: `docs/issues/pakistan-calibration-boxes.md`'s "Correction and full fix"
+and "Placement-split calibration" sections. Summary:
+
+- **OSM ground-mount polygons overlap and were double-counted.** A `power=plant`
+  perimeter with a nested `power=generator` way, or duplicate mapping passes, describe
+  ONE real installation as multiple features; summing their areas double-counts it
+  (measured at Quaid-e-Azam Solar Park: 77% of the dissolved `generator` footprint sits
+  inside the `plant` perimeter already covering it). New `labels.dissolve_overlapping`
+  merges geometrically-overlapping same-placement polygons into one feature per
+  connected cluster before ANY capacity computation touches them -- wired into
+  `export.load_mapped_reference_attrs` (feeds `postprocess.replace_with_osm_geometry`)
+  and `atlas.build_evidence_atlas`'s own Verified-tier OSM sum. Nationally: ground-mount
+  OSM area 55.95 -> 42.32 km² (-24.4%), rooftop 6.21 -> 6.08 km² (-2.1%).
+- **Dissolving the OSM reference, on its own, made a DIFFERENT bug worse before it was
+  caught.** A bigger, dissolved reference polygon sits within match distance of MORE
+  nearby candidates than the small fragments it replaced, so more candidates
+  independently matched (and each fully inherited) the same installation's area:
+  duplicate `osm_matched_id` groups nearly tripled (16, up from a pre-existing 3.27 km²
+  /10.3% baseline) before a fix. `postprocess.replace_with_osm_geometry` now keeps only
+  the closest match per OSM feature (`pandas.groupby(...).idxmin()`, not a naive
+  `dist == minimum` equality test -- ties at `dist_m == 0.0` broke that and left 13 of
+  16 duplicates unresolved on the first attempt); every other candidate that matched the
+  same feature keeps its own original, unsubstituted geometry rather than being dropped,
+  since it may be a genuinely separate detection.
+- **`postprocess.MAX_CANDIDATE_M2`'s oversize exclusion was refactored into
+  `density.capacity_relevant_candidates`**, shared by `run_density` and
+  `atlas.build_evidence_atlas` so both use an IDENTICAL population: a `geometry_source
+  == "osm"` oversize candidate (a real, human-mapped footprint, not a
+  `polygonize_chips`-merged blob) is exempted from the exclusion after deduping
+  overlapping OSM-oversize candidates via `dissolve_overlapping` (fixing Quaid-e-Azam
+  Solar Park's own outer-envelope/member-way pair, which the original keep-largest dedup
+  would have undercounted by 23%, the part of the member way outside the envelope).
+- **`capacity_calibration.DEFAULT_KWP_PER_M2_LAND` was calibrated against real plants for
+  the first time**, moving 0.07 -> **0.05** kWp/m² (geometric mean of Quaid-e-Azam Solar
+  Park: 400 MW / 8,904,839 m² dissolved footprint = 0.0449, and the Sukkur solar farm:
+  150 MW confirmed combined 3-phase capacity / 2,606,013 m² = 0.0576 -- the OSM tag on
+  Sukkur's matched way names only one 50 MW phase, so using it alone would have been a
+  3x undercount). `KWP_LAND_CI90` moved to (0.035, 0.075). Re-verified against a fresh
+  Overpass re-pull of both boxes (see below): the dissolved footprint area came out
+  byte-identical despite OSM fragmenting each site into many more raw features,
+  confirming the dissolve fix is robust to exactly the kind of re-mapping that motivated
+  the re-pull.
+- **Precision/recall calibration is now split by placement**
+  (`capacity_calibration.derive_placement_tables`, new): pooling rooftop and ground-mount
+  into one set of area bins let ground-mount borrow rooftop's much higher OSM
+  corroboration rate in the same bin (measured: ~1% of surviving ground candidates sit
+  within 100 m of any OSM feature nationally vs ~14% for rooftop). Ground bins fall back
+  to `p_unmapped = 0.0` ("interim-mapped-only-by-placement", an honest floor) rather than
+  inheriting the pooled glint-derived value, since the existing glint sample
+  (`data/glint/pakistan_cand_targets.parquet`, pulled 2026-07-19) predates three
+  subsequent candidate-population regenerations and cannot be reliably re-attributed by
+  placement. `density.py`'s `candidate_p_real`/`candidate_recall` (point estimate) and
+  `_candidate_uncertainty` (credible-interval draws) both select each candidate's own
+  placement subtable when one exists, falling back to the pooled table otherwise.
+  Also fixed the same day: `calibrate-candidates`'s `cands`/`recall_cands` previously
+  measured precision/recall against the RAW candidate file including oversize blobs
+  `density.py` itself excludes from capacity -- now filtered through the same
+  `capacity_relevant_candidates` both consumers share.
+- **All 21 registered calibration areas (19 rooftop/mixed quadrats + 2 ground-mount
+  boxes) were re-pulled from live Overpass**, at the owner's request
+  (`scripts/refresh_calibration_areas.py`, new -- writes dated
+  `<stem>_overpass_solar_<date>.parquet` files that never overwrite the pull they
+  supersede, resumable if interrupted). Re-derived the calibration table against the
+  fully refreshed set: 15,465 pooled installations, up from the single-box 3,832 the
+  previously-published table used.
+
+**Result, `density --force` (2h18m, 0 cell failures, fingerprint written) +
+`check-density`**: national `est_mwp_rc` **5,077.9 -> 4,051.9 MWp** (-20.2%): rooftop
+**2,229.9 -> 2,916.3 MWp (+30.8%)**, ground-mount **2,848.0 -> 1,135.6 MWp (-60.1%)** --
+pooling had been dragging rooftop's own p_real down toward ground's, and ground's up
+toward rooftop's, in every shared bin, so unpooling moved both, in opposite directions,
+as predicted going in. **This also resolves the "still-open" provenance question left
+by the 2026-08-06 recall/candidates re-derivation attempt above**: that attempt moved
+the total to 2,327.2 MWp but failed `check-density`'s ground:rooftop ratio check for
+Khyber Pakhtunkhwa and Balochistan and was reverted, unable to isolate why. The
+placement-split fix is exactly the missing piece -- re-run against the fully current
+candidates AND the full 19-quadrat recall reference, KP's ratio moved 3.35-8x ->
+**0.49x** and Balochistan's 3.90-18x -> **2.01x**, both now comfortably inside the
+3.0/5.0 warn/fail band. **`check-density` still reports FAIL, but on a different,
+checked-and-confirmed-genuine mechanism**: 3 regions (Khyber Pakhtunkhwa, Balochistan,
+Islamabad Capital Territory) now fail the single-cell-concentration check instead,
+because shrinking the ground-mount over-inflation that used to dominate their totals
+mechanically raised the visible concentration share of whatever legitimate signal
+remained. Checked, not asserted: all three flagged cells are the calibration quadrats'
+own cities (Peshawar, Quetta, and Islamabad's own urban core in a 10-cell federal
+territory) -- see the doc above for the full per-region table. Published anyway, per
+this project's own precedent for a checked-genuine plausibility failure (the original
+2026-07-30 KP/Balochistan ratio finding).
+
+Evidence atlas rebuilt: Verified **7,290.8 -> 5,466.9 MWp**, Best estimate
+**14,242.6 -> 11,229.7 MWp** -- both net DECREASES despite rooftop capacity rising,
+because ground-mount (54% of the old Verified tier) fell by more. `roofclf-score-national`
+and roofclf's own model were untouched (`sub400-capacity`/`ge400-roof-capacity` re-run
+for freshness against the corrected `candidates.parquet` but moved by <0.1%, as expected
+since neither depends on the mechanisms fixed here). `atlas.CALIBRATION_BOXES["pakistan"]`
+also gained two quadrats that existed on disk but were never listed
+(`islamabad_northeast_calib_3p34km2`, one of the 13 quadrats the coverage-ratio/precision
+fits actually trust, and `hasal_calib_1p00km2`) -- `_load_calib_boxes` now warns instead
+of silently skipping a missing stem. Old atlas backed up to
+`/tmp/pakistan_evidence_atlas_PRE_20260811_placement_split_backup.html` (not under
+version control, session-local only).
+
+Also generated, not yet reviewed by a human: two domain-stratified random-cell JOSM
+validation batches (`results/pakistan_roofclf_validation_domain/`,
+`..._outdomain/` -- the pre-existing seed-1 batch had drawn zero cells inside the
+163-cell calibrated domain, see `docs/methods/roofclf-national-validation.md`) and a
+KP/Balochistan largest-ground-mount-candidate JOSM layer
+(`results/pakistan_groundmount_kp_balochistan_josm.geojson`,
+`scripts/export_groundmount_kp_balochistan_josm.py`, new). None of these substitute for
+the actual visual review; they exist so that review can happen.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**

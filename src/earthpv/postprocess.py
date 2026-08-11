@@ -156,6 +156,49 @@ def replace_with_osm_geometry(
     # country-scale run.
     import shapely
 
+    # More than one candidate can independently match the SAME OSM feature -- and each
+    # would get an IDENTICAL substituted geometry, so keeping more than one per feature
+    # double-counts its area once per extra match. This got MORE likely, not less, once
+    # `load_mapped_reference_attrs` started dissolving overlapping OSM polygons first
+    # (2026-08-10): a bigger, unioned reference polygon sits within `max_distance_m` of
+    # more nearby candidates than the smaller un-dissolved fragments it replaced.
+    # Measured on the national candidate set immediately after wiring that dissolve in:
+    # duplicate matches nearly tripled (10.3% of OSM-replaced area -> 20.78 km2). Keep
+    # the closest match (smallest `dist_m`) per OSM feature; every other candidate that
+    # matched it stays UNSUBSTITUTED (its own original, model-polygonized geometry/area)
+    # rather than being dropped -- it may be a genuinely separate detection (e.g. two
+    # disconnected patches of one large plant), which is real signal for the
+    # human-reviewed leads product even though only one of them should carry the
+    # authoritative OSM footprint for capacity purposes.
+    orig_geometry = cands["geometry"].to_numpy().copy()
+    orig_area = cands["area_m2"].to_numpy(float).copy()
+    matched_idx = np.flatnonzero(matched)
+    # A plain "dist == this id's minimum" comparison is not a tie-break -- two
+    # candidates can both sit exactly on top of the same OSM polygon (dist_m == 0.0
+    # for both), and both would then satisfy the equality and both survive as
+    # "closest," reproducing the very duplicate this is meant to remove (caught by
+    # testing against the current national candidates: 3/16 duplicate groups fixed,
+    # 13 remained, all tied at dist_m == 0.0). `idxmin` breaks a tie by position
+    # (first occurrence) instead, giving exactly one winner per matched id.
+    dist_by_id = pd.Series(
+        match["dist_m"].to_numpy(float)[matched_idx], index=matched_idx
+    ).groupby(match["matched_id"].to_numpy()[matched_idx])
+    winners = set(dist_by_id.idxmin())
+    is_best = np.array([i in winners for i in range(len(cands))])
+    n_dup_dropped = int(matched.sum() - is_best.sum())
+    if n_dup_dropped:
+        dup_area_m2 = sum(
+            geodesic_area_m2(g) for g in match.loc[matched & ~is_best, "geometry"]
+        )
+        log.warning(
+            "OSM geometry replacement: %d candidates matched an OSM feature another "
+            "candidate already claimed more closely -- kept unsubstituted (own "
+            "model geometry) rather than duplicating %.2f km2 of that feature's area "
+            "a second time.",
+            n_dup_dropped, dup_area_m2 / 1e6,
+        )
+    matched = is_best
+
     osm_geoms = shapely.make_valid(match.loc[matched, "geometry"].to_numpy())
     cands.loc[matched, "geometry"] = osm_geoms
     cands.loc[matched, "area_m2"] = [
@@ -165,6 +208,13 @@ def replace_with_osm_geometry(
     cands.loc[matched, "osm_matched_id"] = match.loc[matched, "matched_id"].to_numpy()
     cands.loc[matched, "osm_match_dist_m"] = match.loc[matched, "dist_m"].to_numpy()
     cands.loc[matched, "osm_match_timestamp"] = match.loc[matched, "timestamp"].to_numpy()
+    # Restore original geometry/area exactly for every non-kept duplicate match --
+    # `cands` was never mutated for those rows, so this is a no-op for them and only
+    # documents the invariant (belt-and-suspenders against a future edit above
+    # touching rows outside `matched`).
+    unmatched_now = ~matched
+    cands.loc[unmatched_now, "geometry"] = orig_geometry[unmatched_now]
+    cands.loc[unmatched_now, "area_m2"] = orig_area[unmatched_now]
 
     ts = pd.to_datetime(match.loc[matched, "timestamp"], errors="coerce", utc=True)
     known = ts.notna()

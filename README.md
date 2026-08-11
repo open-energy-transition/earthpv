@@ -100,7 +100,7 @@ for what was tried and why the main workflow above is what shipped.
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (7,869 MWp, hand-mapped or two detectors agreeing) and Best estimate (15,843 MWp, the project's own defensible figure) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (5,467 MWp, hand-mapped or two detectors agreeing) and Best estimate (11,230 MWp, the project's own defensible figure) -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -157,11 +157,18 @@ above, with a stated standard of proof:
 
 | | |
 | --- | --- |
-| **7,869 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
-| **15,843 MWp** | Best estimate: this project's own highest defensible figure |
-| **+2,598 MWp** | Rooftop growth measured since the 2021/22 pre-boom epoch (segmentation, recall-corrected) |
-| **16,085** | individual installations hand-mapped in OpenStreetMap |
+| **5,467 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree |
+| **11,230 MWp** | Best estimate: this project's own highest defensible figure |
+| **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
 | **400 m²** | per-object segmentation floor at Sentinel-2's 10 m resolution; roofclf/SPPI reach below it |
+
+Both figures fell from their previous published values (7,869 / 15,843 MWp) on
+2026-08-11, mainly because ground-mount capacity had been double-counted at overlapping
+OSM features and overstated by an area/module-density constant that had never been
+checked against a real plant until this pass (see
+[Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for
+the full account) -- both are net decreases even though the rooftop half of the
+estimate rose.
 
 Every number above carries the same caveat: **this is a screening and estimation layer,
 not a register**. No human has validated most of it at scale, and the sub-400 m² share of

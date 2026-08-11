@@ -22,8 +22,8 @@ Interactive. Switch tier with the tabs, hover a cell for its value.
 
 | Tier | Pakistan | What it admits as evidence |
 | --- | ---: | --- |
-| Verified | 7,869 MWp | Every installation a person has drawn in OpenStreetMap (16,085 of them), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **15,843 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (7,356 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells -- the project's own pick. |
+| Verified | 5,467 MWp | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
+| **Best estimate** | **11,230 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (5,336 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells -- the project's own pick. |
 
 Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
@@ -112,32 +112,57 @@ density-matched cells (no roofclf evidence there) and its ground-mount total is
 unaffected everywhere (roofclf has no footprint to score for ground-mount). See
 "Segmentation vs. roofclf on large rooftops" below for the full comparison.
 
+**A fifth change, 2026-08-11: ground-mount was overstated by two independent
+mechanisms, both fixed, plus the "still-open" recall question below is now resolved.**
+A full pipeline review found that OSM ground-mount solar features overlap (a
+`power=plant` perimeter with a nested `power=generator` way, or duplicate mapping
+passes) -- summing them double-counted real installations, measured at Quaid-e-Azam
+Solar Park where 77% of the dissolved `generator` footprint already sat inside its own
+`plant` perimeter. A new `labels.dissolve_overlapping` step merges overlapping features
+before any capacity computation touches them (nationally: ground-mount OSM area
+55.95 &rarr; 42.32 km<sup>2</sup>, -24.4%), wired into both the OSM-geometry-replacement
+step and the atlas's own Verified-tier sum. Separately, the ground-mount site-area
+conversion constant (`DEFAULT_KWP_PER_M2_LAND`) had never been checked against a real
+plant -- calibrated against Quaid-e-Azam Solar Park (400 MW / 8,904,839 m<sup>2</sup>)
+and the Sukkur solar farm (150 MW combined / 2,606,013 m<sup>2</sup>), it moved
+0.07 &rarr; 0.05 kWp/m<sup>2</sup>. Combined with the recall/precision fix below and a
+placement-split calibration (rooftop and ground-mount no longer share one set of area
+bins -- pooling let ground-mount borrow rooftop's much higher OpenStreetMap
+corroboration rate in the same size bin), the national segmentation total fell
+**5,078 &rarr; 4,052 MWp**: rooftop rose **2,230 &rarr; 2,916 MWp** (+31%, it had been
+diluted by ground-mount's low corroboration in shared bins) and ground-mount fell
+**2,848 &rarr; 1,136 MWp** (-60%). Full derivation, including why `check-density`'s
+ground:rooftop ratio check for Khyber Pakhtunkhwa and Balochistan now passes (0.49x and
+2.01x, both previously 3-18x) while a *different* plausibility check flags three
+regions for legitimate, checked reasons (their own calibration-quadrat cities --
+Peshawar, Quetta, Islamabad -- naturally dominate otherwise sparse regions once the
+ground-mount over-inflation that used to mask that concentration was removed):
+`docs/issues/pakistan-calibration-boxes.md`.
+
 !!! warning "This is a research methodology under active validation, not a finished census"
-    All 17 ground-truth calibration quadrats are now **Rule-1 complete** (every
-    visible panel independently verified, as of 2026-08-05), and the density-matched
-    calibration covers 92 of Pakistan's 4,463 grid cells. roofclf's own measured skill
-    still varies by quadrat (AUC 0.76 to 0.94 across the 17) and its predicted rate does
-    not reliably separate well-calibrated cells from over-predicting ones -- see
+    All 19 ground-truth calibration quadrats are now **Rule-1 complete** (every
+    visible panel independently verified) and re-pulled from live OpenStreetMap
+    2026-08-10/11, and the density-matched calibration covers 136-163 of Pakistan's
+    4,463 grid cells (the atlas's own domain-cell count vs. the wider density-only
+    figure -- see `docs/methods/density.md` for why they differ). roofclf's own
+    measured skill still varies by quadrat and its predicted rate does not reliably
+    separate well-calibrated cells from over-predicting ones -- see
     [Capacity density](../methods/density.md) for what is independently corroborated
     and what is still open.
 
-    **Segmentation's own &ge;400 m<sup>2</sup> total (5,078 MWp) is a separate, still-open
-    provenance question outside the density-matched domain, not touched by the 2026-08
-    fixes above.** It is computed from a `candidates.parquet` snapshot that predates the
-    2026-07-29 OSM-geometry replacement (`postprocess.replace_with_osm_geometry`), which
-    cut matched-candidate area by roughly a third by swapping coarse model polygons for
-    the real mapped footprint, and from a recall table fit before the current
-    16,085-installation national OSM pull existed. A combined re-derivation (current
-    candidates + recall re-measured against all 18 Rule-1-complete quadrats) was carried
-    out 2026-08-06: it moved the total to 2,327.2 MWp (roof 640.2, ground 1,686.9) -- but
-    `check-density` failed on the result (Khyber Pakhtunkhwa and Balochistan both crossed
-    from suspect to fail on their ground:rooftop ratio), so it was **not published**.
-    Segmentation's *ground-mount* total (2,848 MWp) still comes from the original,
-    passing 5,078 MWp snapshot everywhere, and so does its *rooftop* total outside the
-    92 density-matched cells -- only inside those cells has rooftop now moved to the
-    roofclf-based instrument described above, which does not depend on this open
-    question. See CLAUDE.md's Density stage section for the full derivation, the failure
-    numbers, and where the reverted attempt is kept for whoever root-causes it next.
+    **Segmentation's own &ge;400 m<sup>2</sup> total is now current, not a stale
+    snapshot.** The previous version of this warning described an open provenance gap:
+    the published 5,078 MWp figure predated the 2026-07-29 OSM-geometry replacement and
+    used a recall table fit before the current national OSM pull existed, and a
+    2026-08-06 attempt to fix both together (moving the total to 2,327.2 MWp) failed
+    `check-density`'s ground:rooftop ratio check for Khyber Pakhtunkhwa and Balochistan
+    and was not published. The 2026-08-11 fix above re-derives against the fully
+    current candidates AND the full 19-quadrat recall reference, AND fixes the
+    root-cause mechanism the 2026-08-06 attempt could not isolate (pooling rooftop and
+    ground-mount into one calibration, rather than a missing regional stratum) --
+    `est_mwp_rc` now stands at 4,052 MWp (roof 2,916, ground 1,136), fingerprint-verified
+    against the current `candidates.parquet`, with `check-density`'s ratio check
+    passing where it previously failed.
 
 ## Segmentation vs. roofclf on large rooftops
 
@@ -156,7 +181,7 @@ has no building footprint for roofclf to score, so it stays segmentation-only ev
 
 ## Segmentation: the part of this that outlines panels
 
-The &ge;400 m<sup>2</sup> segmentation total (5,078 MWp, [1,841 to 2,930] rooftop-only
+The &ge;400 m<sup>2</sup> segmentation total (4,052 MWp, [1,894 to 3,402] rooftop-only
 credible interval once split by placement) is still the source for ground-mount capacity
 everywhere and for rooftop capacity outside the density-matched domain (see above for the
 in-domain rooftop swap). A recall-first TerraMind checkpoint reads a year of Sentinel-2

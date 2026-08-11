@@ -52,12 +52,12 @@ anything into the evaluate numbers here.
 
 ## The full pipeline
 
-Ordered by dependency. Every stage after `train` needs a checkpoint path. **Steps 1-14
+Ordered by dependency. Every stage after `train` needs a checkpoint path. **Steps 1-15
 are the project's default, main workflow** -- segmentation for individual arrays
-&ge; 400 m&sup2; (steps 6-9), `roofclf` for every building below that floor (steps
-10-13, including the essential random-cell manual validation at step 12), combined by
-step 14 into the **evidence atlas**, which is this project's primary output. Step 15
-(Germany calibration) and everything under [How it
+&ge; 400 m&sup2; (steps 6-9), `roofclf` for every building below that floor plus its own
+&ge; 400 m&sup2; rooftop replacement (steps 10-14, including the essential random-cell
+manual validation at step 12), combined by step 15 into the **evidence atlas**, which is
+this project's primary output. Step 16 (Germany calibration) and everything under [How it
 works](how-it-works.md#experiments) are optional extras, not alternative main paths.
 
 === "1. Labels"
@@ -184,9 +184,9 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     (`*_total`, `*_roofcand`, `est_mwp_rc`) are rederived on every run.
 
     If your AOI has no mapped [calibration quadrats](calibration-mapping-protocol.md)
-    yet, stop here and run step 14 without any `--sub400-*` flag: that gives the
-    &ge; 400 m&sup2;-only atlas, which is still this workflow's output for that country
-    -- steps 10-13 need quadrats to exist first.
+    yet, stop here and run step 15 without any `--sub400-*`/`--ge400-roof-cells` flag:
+    that gives the &ge; 400 m&sup2;-only atlas, which is still this workflow's output
+    for that country -- steps 10-14 need quadrats to exist first.
 
 === "10. Roof classifier"
 
@@ -239,6 +239,15 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     batch -- the point is repetition over time, building up a precision estimate on a
     population the quadrats cannot represent by construction.
 
+    **`--random-cells` draws from every scored cell nationally, not from the
+    density-matched domain step 13/14 actually restrict capacity to** -- a batch can
+    land entirely outside it by chance (measured 2026-08-10: the first-ever batch did).
+    Draw a domain-aware batch instead by passing an explicit `--cell` list computed from
+    `sub400_capacity.national_cell_domain`; see [Random-cell manual
+    validation](methods/roofclf-national-validation.md) (its "first batch drew zero
+    domain-matched cells" section) for the exact recipe and why both an in-domain and an
+    out-of-domain batch matter.
+
 === "13. Sub-400 m² capacity"
 
     Restrict the national scoring to cells whose building density matches the
@@ -259,7 +268,25 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     and [Capacity density](methods/density.md) for exactly what it does and does not
     claim.
 
-=== "14. Evidence atlas"
+=== "14. ≥400 m² rooftop capacity (roofclf)"
+
+    roofclf replaces segmentation's own rooftop estimate for &ge; 400 m&sup2; buildings
+    inside the SAME density-matched domain step 13 uses (roofclf measured AUC 0.896 vs
+    segmentation's 0.73-0.78 on identical buildings -- segmentation is a weak instrument
+    for small PV including small PV on large buildings). Ground-mount is untouched --
+    roofclf has no footprint to score there. No GPU.
+
+    ```bash
+    pixi run earthpv ge400-roof-capacity --aoi pakistan \
+        --osm-solar data/labels/pakistan_overpass_solar.parquet
+    ```
+
+    Writes `ge400_roof_incremental_buildings.parquet` to
+    `data/roofclf_national_with_sppi/<aoi>/density/`, feeding
+    `--ge400-roof-cells` in the next step. Also **not a national figure** -- same
+    domain-restriction caveat as step 13.
+
+=== "15. Evidence atlas"
 
     Combine both halves into the **main workflow's primary output**: two tiers by
     *standard of proof*, de-duplicated against each other and against hand-mapped OSM.
@@ -268,19 +295,31 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     pixi run earthpv atlas --aoi pakistan \
         --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
         --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-        --osm-solar data/labels/pakistan_overpass_solar.parquet
+        --ge400-roof-cells     data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
+        --osm-solar data/labels/pakistan_overpass_solar.parquet \
+        --out docs/assets/interactive/pakistan_evidence_atlas.html
     ```
 
-    Writes the self-contained interactive HTML atlas at
-    `data/predictions/<aoi>/density/<aoi>_pv_evidence_atlas.html` by default. **Verified**
+    **`--ge400-roof-cells` is easy to omit by accident and changes the headline number
+    by double digits of percent** (measured 2026-08-10: omitting it dropped Best
+    estimate 14.6%) -- it is a separate step (14) from the rest of the atlas's inputs,
+    unlike `--sub400-*`, which both come from step 13. `--out` matters too: without it,
+    the atlas writes to `data/predictions/<aoi>/density/<aoi>_pv_evidence_atlas.html`,
+    not this project's actual published location
+    (`docs/assets/interactive/pakistan_evidence_atlas.html`, what the docs site and
+    README screenshot read).
+
+    **Verified**
     is hand-mapped OSM plus roofclf-and-SPPI agreement; **Best estimate** adds
-    recall-corrected &ge; 400 m&sup2; detections plus roofclf-alone density, with the
-    OSM/detection overlap removed rather than double-counted. Without a mapped quadrat
-    yet (step 10's prerequisite), omit both `--sub400-*` flags for the &ge; 400 m&sup2;
+    recall-corrected &ge; 400 m&sup2; detections (roofclf's own estimate inside the
+    density-matched domain from step 14, segmentation's recall-corrected estimate
+    everywhere else) plus roofclf-alone density, with the OSM/detection overlap removed
+    rather than double-counted. Without a mapped quadrat yet (step 10's prerequisite),
+    omit `--sub400-*`/`--ge400-roof-cells` entirely for the &ge; 400 m&sup2;
     segmentation-only atlas -- still this workflow's output, just missing its sub-400
     m&sup2; half until quadrats exist.
 
-=== "15. Germany calibration (optional)"
+=== "16. Germany calibration (optional)"
 
     Optional, Germany only, and not part of the main workflow above. Cross-check
     against the legally complete MaStR register.

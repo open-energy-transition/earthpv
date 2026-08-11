@@ -16,8 +16,8 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">15,843 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
-<div class="stat"><span class="value">7,356 / 4,874 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop + segmentation ground-mount) vs. <400 m&sup2; rooftop classifier </span></div>
+<div class="stat"><span class="value">11,230 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
+<div class="stat"><span class="value">5,336 / 3,907 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop + segmentation ground-mount) vs. <400 m&sup2; rooftop classifier </span></div>
 <div class="stat"><span class="value">2</span><span class="label">detectors in the main workflow: segmentation (ground-mount, and rooftop outside the calibrated domain) and roofclf (rooftop &ge;400 m&sup2; in-domain, plus &lt;400 m&sup2; everywhere), cross-checked with SPPI</span></div>
 </div>
 
