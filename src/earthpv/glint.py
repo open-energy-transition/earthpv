@@ -421,7 +421,7 @@ def _read_target_array(src, geometry, lon: float, lat: float):
     geometry in the array's CRS — the pixel-level analogue of `_read_target_stats`,
     which collapses to aggregate stats. For building a glint-composite image to
     visually/quantitatively check label-vs-imagery alignment (see
-    docs/issues/glint-alignment-check.md)."""
+    scripts/glint_alignment_check.py)."""
     win, geom_native = _target_window(src, geometry, lon, lat)
     arr = src.read(1, window=win, boundless=True, fill_value=0).astype(float)
     arr[arr == 0] = np.nan

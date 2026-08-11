@@ -1,5 +1,14 @@
 # Calibration quadrat imagery dating: an unrecorded gap, and what closing it would cost (2026-08-01)
 
+!!! note "OPEN (as of 2026-08-11)"
+
+    Still unresolved: `imagery_layer` and `imagery_date` are empty for all 23 quadrats. Two
+    things have changed since this was written. The magnitude of the bias has been bounded
+    (5.8% of apparent false positives pooled, but 68.4% in coastal Karachi, 23.7% in Quetta
+    and 11.7% in Lahore), and Rule 1's definition in
+    [the mapping protocol](../calibration-mapping-protocol.md) was amended to state that a
+    completeness declaration holds only as of the mapping imagery's capture date.
+
 ## The known issue
 
 `docs/calibration-mapping-protocol.md`'s "Imagery and dating (critical)" section already

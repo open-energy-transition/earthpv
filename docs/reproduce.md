@@ -57,8 +57,8 @@ are the project's default, main workflow** -- segmentation for individual arrays
 &ge; 400 m&sup2; (steps 6-9), `roofclf` for every building below that floor plus its own
 &ge; 400 m&sup2; rooftop replacement (steps 10-14, including the essential random-cell
 manual validation at step 12), combined by step 15 into the **evidence atlas**, which is
-this project's primary output. Step 16 (Germany calibration) and everything under [How it
-works](how-it-works.md#experiments) are optional extras, not alternative main paths.
+this project's primary output. Step 16 (Germany calibration and validation) and everything in
+the [experiments register](experiments.md) are optional extras, not alternative main paths.
 
 === "1. Labels"
 
@@ -331,16 +331,28 @@ works](how-it-works.md#experiments) are optional extras, not alternative main pa
     segmentation-only atlas -- still this workflow's output, just missing its sub-400
     m&sup2; half until quadrats exist.
 
-=== "16. Germany calibration (optional)"
+=== "16. Germany calibration and validation (optional)"
 
-    Optional, Germany only, and not part of the main workflow above. Cross-check
-    against the legally complete MaStR register.
+    Optional, Germany only, and not part of the main workflow above. Germany is the one
+    place with a legally complete register, so it is where the method's assumptions can be
+    checked against ground truth rather than against another estimate.
 
     ```bash
-    pixi run earthpv mastr        # download and aggregate MaStR
-    pixi run earthpv calibrate --aoi germany
-    pixi run earthpv pv-yield --aoi germany   # pvlib GWh/yr cross-check
+    pixi run earthpv mastr        # once: download and aggregate MaStR (multi-GB, hours)
+    pixi run earthpv calibrate --aoi germany       # calibrate a prob raster per Gemeinde
+    pixi run earthpv pv-yield --aoi germany        # pvlib GWh/yr cross-check
+
+    # Validate the methodology itself: how much capacity sits below the detection floor,
+    # how transferable that share is, and whether OSM can serve as a reference at all.
+    pixi run earthpv validate-mastr --aoi germany \
+      --solar-path <a national OSM solar pull for Germany>
     ```
+
+    `validate-mastr`'s register-internal checks need no imagery and run in under a minute.
+    Its end-to-end per-municipality comparison needs a German `density` run, which is
+    currently blocked on composites and a small-roof building layer; it reports its own
+    coverage and refuses to call a partial-coverage result national. See
+    [Validation against MaStR](methods/mastr-validation.md).
 
 Areas and their parameters live in `configs/aoi.yaml`; model and training configs in
 `configs/*.yaml`.
@@ -616,7 +628,7 @@ be poor, and snow at high latitudes changes the background entirely. Test with
 `new_region.py check --window` before composing.
 
 **Roof type.** Pakistan's dominant urban roof is flat concrete, which is why the roof-axis
-orientation prior [failed there](how-it-works.md#experiments) and why fitted panel tilts are bimodal. A
+orientation prior [failed there](experiments.md) and why fitted panel tilts are bimodal. A
 region of pitched tile roofs behaves differently, and some priors that failed in Pakistan
 may work.
 

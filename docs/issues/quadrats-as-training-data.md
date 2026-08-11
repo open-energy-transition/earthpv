@@ -1,5 +1,13 @@
 # Use calibration quadrats as training data, not just post-hoc correction
 
+!!! success "SHIPPED (as of 2026-08-11)"
+
+    This became `roofclf`, now half the main workflow. The feature design proposed here was
+    not what shipped: temporal features, spike counts and NDVI trajectory were each measured
+    and rejected, and the deployed feature set is footprint size plus reflectance. The
+    stratum-holdout acceptance criterion was replaced by leave-one-quadrat-out over 23
+    quadrats.
+
 **Labels:** enhancement, model, calibration
 
 ## Problem

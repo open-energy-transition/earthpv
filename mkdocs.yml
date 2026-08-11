@@ -91,34 +91,45 @@ extra:
 
 nav:
   - Home: index.md
+  # Results first: the pipeline's output is what most readers came for.
   - Results:
       - Capacity map: results/capacity.md
-      #- Growth: results/growth.md
-      - Panel pose from glint: results/pv-pose.md
       - Mapping leads: results/leads.md
+      - Growth map: results/growth.md
+      - Panel pose from glint: results/pv-pose.md
       - Gujarat capacity map: results/gujarat.md
-  - Setup New Country: reproduce.md
+  # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
       - Detection model: methods/detection.md
       - Capacity density: methods/density.md
-      - Solar glint: methods/glint.md
-      - Glint image gallery: glint_examples.md
       - Calibration: methods/calibration.md
+      - Validation against MaStR: methods/mastr-validation.md
       - Calibration quadrats overview: methods/calibration-quadrats.md
       - Quadrat protocol: calibration-mapping-protocol.md
       - Roofclf random-cell validation: methods/roofclf-national-validation.md
-  - Notes:
-      - notes/index.md
-      - Calibration boxes: issues/pakistan-calibration-boxes.md
-      - Epoch jump as recall signal: issues/epoch-jump-recall-signal.md
+      - Solar glint: methods/glint.md
+      - Glint image gallery: glint_examples.md
+  - Setup New Country: reproduce.md
+  # History last: what was tried, and what is still undecided. Every page under
+  # Experiments carries a status banner, because several describe a pipeline that has
+  # since been replaced.
+  - Experiments:
+      - experiments.md
+      - Calibration boxes log: issues/pakistan-calibration-boxes.md
+      - Quadrats as training data: issues/quadrats-as-training-data.md
+      - Roofclf national deployment: issues/roofclf-national-deployment-and-temporal-features.md
+      - Roofclf cell-edge false positives: issues/roofclf-cell-edge-false-positives.md
+      - Quadrat-supervised fraction retrain: issues/quadrat-supervision-fraction-retrain.md
+      - Fraction-head hard-negative retrain: issues/fraction-head-hard-negative-retrain.md
+      - SPPI spectral index: issues/sppi-spectral-index-evaluation.md
+      - Boom-window stacking: issues/boom-window-stacking-experiment.md
       - Standard pose matched filter: issues/standard-pose-matched-filter.md
       - Glint spike-rate estimator: issues/glint-spike-rate-density-estimator.md
       - Glint tile-batched coverage: issues/glint-tile-batched-coverage.md
       - Glint-validated training labels: issues/glint-validated-training-labels.md
-      - Quadrats as training data: issues/quadrats-as-training-data.md
-      - Quadrat-supervised fraction retrain: issues/quadrat-supervision-fraction-retrain.md
-      - Roof classifier national deployment: issues/roofclf-national-deployment-and-temporal-features.md
-      - Roof classifier cell-edge false positives: issues/roofclf-cell-edge-false-positives.md
+      - Epoch jump as recall signal: issues/epoch-jump-recall-signal.md
       - Calibration imagery dating: issues/calibration-imagery-dating.md
+  - Open questions: open-questions.md
+  - About:
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md

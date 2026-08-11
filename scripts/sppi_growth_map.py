@@ -12,7 +12,7 @@ trained detector's probability).
 **Read `mean_delta_sppi`/`n_onset_buildings` as corroborating evidence, not a capacity
 number.** SPPI's *level* carries a documented adopter-propensity confound (a static
 spectral index alone scores ~0.82 AUC before any panel exists -- see
-docs/issues/small-pv-step-signal.md); differencing removes the *level* confound the same
+docs/experiments.md); differencing removes the *level* confound the same
 way `postprocess.add_epoch_prior` already leans on for the segmentation probability, but
 the pre-boom composites both this and the segmentation growth map depend on were built
 2026-07-25, one day BEFORE the imagery.py Collection-1 baseline-offset fix (see CLAUDE.md

@@ -1,5 +1,11 @@
 # Glint spike-rate as a statistical density estimator for sub-pixel PV
 
+!!! note "OPEN (as of 2026-08-11)"
+
+    v1 is implemented and is unusable below 500 m². The verified-negative sample this doc
+    waits on now exists, since all 23 calibration quadrats are Rule-1 complete, but the
+    follow-up measurement has not been run.
+
 **Labels:** enhancement, density, villages
 
 ## Problem

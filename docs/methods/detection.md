@@ -97,5 +97,5 @@ drops toward residential scale.
 | `configs/terramind_pv.yaml` | production, 10-band segmentation |
 | `configs/terramind_pv_fraction.yaml` | per-pixel PV coverage fraction regression |
 | `configs/terramind_pv_fraction_pakistan.yaml` | fraction head retrained in domain |
-| `configs/terramind_pv_seasonal.yaml` | 20-band two-season stack ([negative result](../how-it-works.md#experiments)) |
+| `configs/terramind_pv_seasonal.yaml` | 20-band two-season stack ([negative result](../experiments.md)) |
 | `configs/terramind_pv_v3india.yaml` | Germany plus Pakistan plus India combined |

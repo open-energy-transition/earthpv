@@ -79,12 +79,22 @@ def have_firefox() -> str | None:
 
 
 def dark_profile() -> Path:
-    """A throwaway Firefox profile pinned to a dark system theme (see module docstring)."""
+    """A throwaway Firefox profile pinned to a dark system theme (see module docstring).
+
+    Also pins `ui.prefersReducedMotion`, which fixes a defect the committed PNGs carried
+    for months: the atlas pages animate their hero figure with a count-up, and
+    `--screenshot` fires while that animation is still running, so the captured hero read
+    885 against a real total of 11,230 (and 4,818 against 16,441 after the numbers moved).
+    Every one of these templates already short-circuits its count-up to the final value
+    when reduced motion is requested, so asking for it is enough -- no extra wait, and no
+    template change.
+    """
     prof = STAGE / "profile-dark"
     shutil.rmtree(prof, ignore_errors=True)
     prof.mkdir(parents=True)
     (prof / "user.js").write_text(
         'user_pref("ui.systemUsesDarkTheme", 1);\n'
+        'user_pref("ui.prefersReducedMotion", 1);\n'
         'user_pref("browser.shell.checkDefaultBrowser", false);\n'
     )
     return prof

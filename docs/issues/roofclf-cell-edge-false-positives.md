@@ -1,5 +1,15 @@
 # Cell-edge false positives in the roof classifier
 
+!!! success "SHIPPED (as of 2026-08-11)"
+
+    Both bugs are fixed and the full downstream re-run (refit, national scoring, sub-400
+    capacity, evidence atlas) completed 2026-08-06. The MWp figures in the outcome table
+    below were invalidated the same day by the coverage-ratio fix and have moved several
+    times since; current numbers are on [Capacity](../results/capacity.md). One residual
+    item is still open and tracked in [Open questions](../open-questions.md): a building
+    with no valid pixel in its own cell's tile scores NaN rather than being rescued by a
+    targeted re-read.
+
 Status: **both bugs (cell-edge fill and composite-tile grid-origin overlap) root-caused
 and fixed in code, 2026-08-06. The full re-run (refit -> national scoring -> sub-400
 capacity -> evidence atlas) was kicked off the same day; see the bottom of this doc for

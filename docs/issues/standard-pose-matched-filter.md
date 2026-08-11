@@ -1,5 +1,11 @@
 # Standard-pose glint matched filter (assessed against real data -- not recommended as a general detector)
 
+!!! info "CLOSED (as of 2026-08-11)"
+
+    Assessed and not recommended; nothing has revisited it since. One point of staleness:
+    the results cited here come from the 1 km² Lahore calibration box, which was retired in
+    August 2026 and replaced by a hand-drawn 6.61 km² boundary.
+
 ## The idea, as discussed
 
 Use the population's dominant (tilt, azimuth) as a forward model: predict the small

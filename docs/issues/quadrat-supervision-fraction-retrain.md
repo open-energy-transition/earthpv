@@ -1,5 +1,14 @@
 ## Quadrat-supervised fraction retrain, and what its holdout says (2026-08-04/05)
 
+!!! info "CLOSED, negative result (as of 2026-08-11)"
+
+    Neither quadrat-supervised checkpoint was promoted; `fraction_pakistan_v1` remains the
+    fraction-head checkpoint of record. Two details below are out of date: the warning box
+    about `karachi_coast` losing Rule-1 status describes a withdrawal that was itself
+    superseded, and all 23 quadrats now carry Rule-1; and the domain restriction quoted as
+    93 of 4,473 cells now covers 1,680 cells. Current numbers are on
+    [Capacity](../results/capacity.md).
+
 !!! warning "The holdout quadrat was replaced hours after this was written"
     Every number below describes `karachi_coast_calib_700m`, the 0.49 km² box. On
     **2026-08-05** that boundary was replaced by a hand-drawn 2.16 km² one

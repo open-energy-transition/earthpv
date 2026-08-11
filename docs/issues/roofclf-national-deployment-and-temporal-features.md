@@ -1,5 +1,20 @@
 ## Fraction-head retrain, roofclf national deployment, epoch-jump/step-change features (2026-07-29)
 
+!!! warning "SUPERSEDED (as of 2026-08-11)"
+
+    The central decision recorded here -- that roofclf's national output stays a
+    per-building ranking signal and is not folded into `density.py` or the published
+    capacity atlas -- has since been reversed. roofclf is now the sub-400 m² half of the
+    main workflow, and inside the calibrated domain it also replaces segmentation's own
+    rooftop estimate for buildings at or above 400 m²; the per-stratum precision
+    correction this doc leaves as future work was built
+    (`coverage_ratio_by_size_and_density`). The national figures below are stale: the
+    building counts predate the cell-edge fix (81.76M rows -> 75.70M), and the 0.4555 and
+    0.3064 deployment thresholds are now 0.2443, fit on 23 quadrats rather than 9. Current
+    numbers are on [Capacity](../results/capacity.md). What remains valid and worth
+    reading is the epoch-jump and step-change feature work, which is the record of why
+    neither feature was adopted.
+
 Implementation of last turn's three recommendations: (1) retrain with the 9 calibration
 quadrats' positives, (2) deploy `roofclf` beyond evaluation, (3) fold epoch-jump/
 step-change into `roofclf` as features. See the approved plan at the time

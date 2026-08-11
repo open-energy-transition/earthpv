@@ -1048,21 +1048,29 @@ and the blob filter, Gilgit-Baltistan -- Karakoram rock and glacier -- was credi
 suspect, which is the honest answer for three sparsely built desert and high-mountain
 regions.
 
-!!! warning "Gilgit-Baltistan is now exempted from check 1, not fixed (2026-07-29)"
-    A fresh `--force` recompute surfaced Gilgit-Baltistan at 110 MWp ground-mount against
-    **0.000 MWp** rooftop -- worse than the pre-fix example just above, on the same
-    candidates unchanged since 2026-07-16. An isolating segmentation-instrument rerun
-    (no fraction swap) reproduced the **identical** 0.000/109.982 MWp numbers, confirming
-    this is a `density.py` regression in `no_building`-placement aggregation, not anything
-    to do with the fraction head (full trace:
-    [density-force-recompute-plausibility-fail](../issues/density-force-recompute-plausibility-fail.md)).
-    `RATIO_CHECK_EXEMPT_REGIONS` in `plausibility.py` now excludes Gilgit-Baltistan from
-    check 1 specifically (its real rooftop base rate is near zero, so the ratio is
-    structurally uninformative there regardless of any bug) -- `check-density` passes
-    again as a result (0 fail, 3 suspect) on both instruments. **This unblocks the gate,
-    it does not resolve the open question of whether the 110 MWp ground-mount figure
-    itself is correct** -- locating the exact cause in `density.py`/`postprocess.py`'s
-    aggregation code is still open.
+!!! warning "The ground-to-rooftop ratio failures were root-caused in 2026-08-11, and the gate now fails on a different check"
+    For most of 2026-07 and 2026-08 a fresh `--force` recompute pushed Khyber Pakhtunkhwa
+    and Balochistan past check 1, and Gilgit-Baltistan read 110 MWp of ground-mount against
+    **0.000 MWp** of rooftop. That was diagnosed at the time as a `density.py` regression in
+    `no_building`-placement aggregation. It was not. The actual cause was **pooling rooftop
+    and ground-mount into one precision/recall table**, which let ground-mount borrow
+    rooftop's much higher OSM corroboration rate in every shared size bin (measured: ~1% of
+    surviving ground candidates sit within 100 m of any OSM feature, against ~14% for
+    rooftop). Splitting the calibration by placement, dissolving overlapping OSM
+    ground-mount polygons, and calibrating the land constant against two real plants
+    (0.07 to 0.05 kWp/m²) moved Khyber Pakhtunkhwa's ratio from 3.35-8x to **0.49x** and
+    Balochistan's from 3.90-18x to **2.01x**, both comfortably inside the warn and fail
+    bands. Gilgit-Baltistan remains exempted from check 1 via
+    `RATIO_CHECK_EXEMPT_REGIONS`, on the separate and still-valid ground that its real
+    rooftop base rate is near zero and the ratio is structurally uninformative there.
+
+    `check-density` still reports **3 failures** on the published state, but on the
+    single-cell concentration check rather than the ratio check, and for an understood
+    reason: shrinking a real ground-mount overstatement mechanically raised the visible
+    concentration share of whatever legitimate signal remained. All three flagged cells are
+    the calibration quadrats' own cities. Published anyway, per this project's precedent for
+    a checked-genuine plausibility failure. See
+    [Open questions](../open-questions.md#known-defects-carried-on-purpose).
 
 ## Running it
 

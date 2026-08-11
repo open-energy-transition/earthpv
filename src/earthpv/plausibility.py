@@ -57,9 +57,12 @@ MAX_CELL_SHARE = 0.25
 # base rate is close to zero (sparse Karakoram settlement), so any ground-mount signal at
 # all there — bug or genuine remote solar — reads as an extreme ratio; the ratio check is
 # structurally uninformative for it rather than a useful signal. This does NOT mean its
-# absolute ground-mount number is trusted — see docs/issues/density-force-recompute-
-# plausibility-fail.md for the still-open question of whether that number itself is a
-# density.py regression.
+# absolute ground-mount number is trusted. The ratio failures that originally motivated
+# this exemption in KP/Balochistan were root-caused in 2026-08-11 as pooled rooftop and
+# ground-mount precision/recall (fixed via capacity_calibration.derive_placement_tables;
+# KP moved 3.35-8x -> 0.49x), and this exemption survives on its own separate ground: a
+# near-zero rooftop base rate makes the ratio uninformative here regardless. See
+# docs/open-questions.md.
 RATIO_CHECK_EXEMPT_REGIONS = {"Gilgit-Baltistan"}
 
 _STATUS_ORDER = {"fail": 0, "suspect": 1, "ok": 2}

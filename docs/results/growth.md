@@ -1,5 +1,14 @@
 # Pakistan growth map
 
+!!! info "A secondary product, not part of the main workflow"
+
+    The [main workflow](../how-it-works.md) answers "how much PV is there now" and produces
+    the [capacity map](capacity.md). This page answers a different question, "when did it
+    appear", and is built partly on the fraction head, an instrument that was measured and
+    deliberately not promoted into any published capacity figure (see
+    [Experiments](../experiments.md)). Read it for the direction and the spatial pattern of
+    the boom, not for capacity numbers comparable to the evidence atlas's own.
+
 Pakistan's rooftop PV stock is dominated by a post-2022 import boom. Three independent
 instruments diff the same pre-boom (2021/22) and current Sentinel-2 imagery to show
 where that growth actually landed: a trained segmentation model's own recall-corrected

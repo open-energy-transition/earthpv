@@ -1234,6 +1234,355 @@ def build_growth_atlas(
     return out
 
 
+# --------------------------------------------------------------------------------------
+# Evidence-atlas uncertainty
+# --------------------------------------------------------------------------------------
+EVIDENCE_N_DRAWS = 1000
+EVIDENCE_DRAWS_SEED = 20260811
+
+# The ONLY term in the evidence atlas's intervals that is a stated judgement rather than a
+# measurement, applied to the out-of-domain AND-gate component alone (a uniform
+# multiplicative factor on it). It exists because that component is a strict
+# extrapolation: every out-of-domain cell nationally sits BELOW the calibrated
+# building-density band (measured 2026-08-11 -- all of them below, none above), median
+# out-of-domain density ~6x sparser than the least-dense calibration quadrat, so no
+# quadrat anywhere in this project constrains its coverage ratio in either direction.
+# `coverage_ratio_bootstrap_factors` cannot price this: resampling the 15 urban/semi-urban
+# quadrats measures how much the answer moves within the kind of place that HAS been
+# mapped, which is a different question from whether that fit transfers to rural roofs at
+# all. Skewed down rather than symmetric because the plausible failure is over-crediting
+# sparse rural roofs the classifier was never calibrated on, not under-crediting them.
+# Deliberately visible and configurable (`extrapolation_ci90`), and reported separately in
+# `totals.uncertainty.components` so a reader can see the Best interval with and without
+# it -- the alternative (leaving this component out of the interval entirely) would report
+# a *narrower* Best interval precisely because part of it is less well founded, which is
+# the wrong direction.
+OUTDOMAIN_EXTRAPOLATION_CI90 = (0.25, 1.25)
+
+# Which atlas component each `density` estimator backs, so a missing interval can be checked
+# against whether that component actually carries any capacity in this run.
+_SEG_COMPONENT = {
+    "est_mwp_rc_roof": "seg_roof_outdomain",
+    "est_mwp_rc_ground": "seg_ground",
+}
+
+
+def _segmentation_total_factors(
+    density_dir: Path, meta: dict, keys: tuple[str, ...], n_draws: int, seed: int
+) -> tuple[dict[str, np.ndarray], str, list[str]]:
+    """Relative (draw / point) factors for `density`'s own >= 400 m2 estimators.
+
+    Prefers `density/total_draws.parquet`, the exact national draw vectors `aggregate`
+    writes (each already carries both the bin-level calibration posterior AND the
+    area->capacity constant, since `_composed_mwp_draws` applies the kWp draws itself --
+    so a caller must NOT multiply these by a kWp factor a second time). Falls back to a
+    lognormal matched to `meta`'s `*_lo`/`*_hi` for density runs that predate that file,
+    which is an approximation in one specific way worth knowing: it reproduces the
+    published 90% interval and the published point estimate, but assumes the shape between
+    them is lognormal and drops the correlation between the roof and ground estimators
+    (they are drawn independently in the fallback, which slightly narrows their sum).
+
+    Returns `(factors, method, unresolved)`. `unresolved` lists estimators for which neither
+    source carried an interval -- their factor is all-ones, which is NOT "no uncertainty" but
+    "uncertainty this function could not find", and the caller must substitute something
+    rather than accept a zero-width interval. Density runs before 2026-08-11 have no
+    `est_mwp_rc_ground_lo/hi` pair in `meta`, and ground-mount converts at the widest prior
+    in the pipeline, so that case is real and was silently dropping the largest single term
+    from the Best tier's interval before this was returned explicitly.
+    """
+    from earthpv.capacity_calibration import CI_PCT, _lognormal_draws
+
+    draws_path = Path(density_dir) / "total_draws.parquet"
+    out: dict[str, np.ndarray] = {}
+    if draws_path.exists():
+        d = pd.read_parquet(draws_path)
+        absent = [k for k in keys if k not in d.columns]
+        if not absent:
+            idx = np.arange(n_draws) % len(d)
+            for k in keys:
+                v = d[k].to_numpy(float)[idx]
+                point = float(meta.get(f"total_{k}", 0.0))
+                out[k] = v / point if point else np.ones(n_draws)
+            return out, f"exact draws from {draws_path.name} ({len(d)} replicates)", []
+        log.warning(
+            "%s exists but lacks %s -- falling back to a lognormal matched to meta's "
+            "credible intervals", draws_path, absent,
+        )
+
+    rng = np.random.default_rng(seed)
+    unresolved: list[str] = []
+    for k in keys:
+        point = float(meta.get(f"total_{k}", 0.0))
+        lo = meta.get(f"total_{k}_lo")
+        hi = meta.get(f"total_{k}_hi")
+        if not point or lo is None or hi is None or not 0 < float(lo) < float(hi):
+            out[k] = np.ones(n_draws)
+            unresolved.append(k)
+            continue
+        out[k] = _lognormal_draws(rng, 1.0, (float(lo) / point, float(hi) / point), n_draws)
+    return out, (
+        f"lognormal matched to meta's {CI_PCT[0]:.0f}/{CI_PCT[1]:.0f} intervals "
+        f"({draws_path.name} absent -- re-run `earthpv density` for exact draws)"
+    ), unresolved
+
+
+def _aligned_coverage_factors(
+    boot: dict, n_draws: int, label: str
+) -> tuple[np.ndarray, dict | None]:
+    """Coverage-ratio bootstrap factors from a capacity summary, stretched to `n_draws`.
+
+    Indexing is `arange(n_draws) % n_boot`, the SAME index for every component, which is
+    the whole point: all four capacity functions resample the same quadrat list under the
+    same fixed seed (`sub400_capacity.COVERAGE_BOOTSTRAP_SEED`), so replicate b means the
+    same resampled quadrat set everywhere, and reusing one index vector keeps those
+    components' errors correlated when they are added. Drawing each component's factors
+    independently would treat four estimates built from ONE calibration set as
+    independent and report a Best interval narrower than the evidence supports.
+
+    Returns ones (and None) when a summary carries no bootstrap -- an older artifact, or
+    `--coverage-boot 0`. That is a silently NARROWER interval, so the caller records which
+    components were missing in `totals.uncertainty.coverage_bootstrap_missing`.
+    """
+    factors = (boot or {}).get("factors") or []
+    if not factors:
+        log.warning(
+            "Evidence atlas: %s has no coverage-ratio bootstrap -- its interval will omit "
+            "quadrat-resampling uncertainty (re-run its capacity function to add it)", label,
+        )
+        return np.ones(n_draws), None
+    arr = np.asarray(factors, dtype=float)
+    return arr[np.arange(n_draws) % len(arr)], {
+        "n_boot": int(len(arr)),
+        "factor_ci90": (boot or {}).get("factor_ci90"),
+        # Reported because it is NOT always ~1.0, and the direction is a finding rather than
+        # a defect: the point fit uses every calibrated quadrat, while a resample often omits
+        # whichever ones carry the highest coverage in the largest size bins, so a mean below
+        # 1 says the published point sits at the high end of what equally plausible quadrat
+        # sets produce (measured 2026-08-11: 0.99 for both sub-400 m2 components, 0.93 for
+        # the >= 400 m2 rooftop one). Deliberately NOT bias-corrected away -- the factor of
+        # 1.0 still falls inside every component's own interval, so the published number
+        # stays inside its reported range while the skew remains visible.
+        "factor_mean": (boot or {}).get("factor_mean"),
+        "seed": (boot or {}).get("seed"),
+    }
+
+
+def _capacity_summary_for(buildings_path: Path | None, method: str) -> dict:
+    """The `*_summary.json` a capacity function wrote next to its building parquet, found by
+    its own `method` field rather than by filename.
+
+    Filenames are not derivable from each other here (`sub400_outdomain_and_gate_
+    incremental_buildings.parquet` sits beside `sub400_outdomain_summary.json`), and
+    hard-coding the pairs would break silently the next time one is renamed -- picking the
+    sidecar whose recorded `method` matches cannot mismatch. Returns `{}` when the parquet
+    path is None or no sidecar matches, which downstream reads as "no bootstrap for this
+    component" (a warning, not an error, since older artifacts predate it).
+    """
+    if buildings_path is None:
+        return {}
+    for path in sorted(Path(buildings_path).parent.glob("*_summary.json")):
+        try:
+            d = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError) as e:  # noqa: PERF203
+            log.warning("Evidence atlas: could not read %s (%s)", path, e)
+            continue
+        if d.get("method") == method:
+            return d
+    log.warning(
+        "Evidence atlas: no *_summary.json with method=%s beside %s -- that component's "
+        "coverage-ratio uncertainty will be omitted from the tier intervals",
+        method, buildings_path,
+    )
+    return {}
+
+
+def _ci(draws: np.ndarray) -> list[float]:
+    from earthpv.capacity_calibration import CI_PCT
+
+    return [round(float(v), 1) for v in np.percentile(draws, CI_PCT)]
+
+
+def _evidence_uncertainty(
+    *,
+    density_dir: Path,
+    meta: dict,
+    kwp_mod: float,
+    kwp_land: float,
+    components: dict[str, float],
+    boots: dict[str, dict],
+    total_verified: float,
+    total_best: float,
+    n_draws: int = EVIDENCE_N_DRAWS,
+    seed: int = EVIDENCE_DRAWS_SEED,
+    extrapolation_ci90: tuple[float, float] = OUTDOMAIN_EXTRAPOLATION_CI90,
+) -> dict:
+    """90% intervals for the evidence atlas's two tier totals, composed from every
+    uncertainty this pipeline actually measures.
+
+    Until 2026-08-11 the evidence atlas -- the project's documented primary output --
+    reported Verified and Best as bare point estimates, while the older
+    `build_atlas`/`_build_estimator_atlas` path had carried credible intervals all along.
+    That was the wrong way round: the two headline figures moved by 20-35% five times in
+    the week before this was written, purely from recalibration (placement-split
+    precision, dissolved OSM, a widened density domain, one added quadrat), and a reader
+    had no way to see that from the page.
+
+    Each tier is built as a sum of components, each multiplied by its own relative-error
+    factor, sharing draws where the underlying errors are shared:
+
+    - **The two area->capacity constants** (`capacity_calibration.kwp_draws`, lognormal on
+      the published `KWP_MODULE_CI90`/`KWP_LAND_CI90`). ONE module draw vector multiplies
+      every module-area component and one land vector every site-area component, because
+      it is the same physical constant in all of them -- drawing per component would
+      cancel out most of its effect, which is exactly wrong for a constant that applies
+      to the whole country at once.
+    - **Segmentation's >= 400 m2 recall/precision posterior** (`_segmentation_total_
+      factors`). Already includes its own kWp uncertainty, so those components are NOT
+      multiplied by the kWp factors again.
+    - **The coverage ratio's quadrat-resampling error** (`_aligned_coverage_factors`), on
+      all four roofclf-based components, correlated across them.
+    - **The out-of-domain extrapolation** (`OUTDOMAIN_EXTRAPOLATION_CI90`), a stated
+      judgement, on that one component only.
+
+    Two things this interval does NOT cover, and no arithmetic here can fix: the
+    calibration quadrats are purposive rather than a probability sample, so this is not a
+    design-based national margin of error; and Rule-1 completeness is relative to the
+    mapping imagery's epoch, not the composite's, which biases measured precision and
+    `base_rate` low in a direction this says nothing about. Both are stated on the page.
+
+    `components` are the point MWp values, keyed as in the returned breakdown. The invariant
+    the caller can rely on: the component points sum to each published tier total, up to an
+    explicit `best_floor_offset` carrying `mwp_best`'s per-cell floor at `mwp_verified`
+    (a deterministic correction, applied to every draw rather than given an error of its
+    own). This is asserted, not assumed -- a mismatch means a component was added to the
+    atlas and not to this function, and would silently report an interval for a different
+    quantity than the number beside it.
+    """
+    from earthpv import capacity_calibration as cc
+
+    kwp = cc.kwp_draws(n_draws=n_draws, module=kwp_mod, land=kwp_land, seed=seed)
+    f_mod = kwp["module"] / kwp_mod
+    f_land = kwp["land"] / kwp_land
+
+    seg_keys = ("est_mwp_rc_roof", "est_mwp_rc_ground")
+    f_seg, seg_method, seg_unresolved = _segmentation_total_factors(
+        density_dir, meta, seg_keys, n_draws, seed + 1
+    )
+    # An estimator whose interval could not be found must not silently contribute a
+    # zero-width one. Substitute the area->capacity prior for its own placement -- the
+    # single largest term in it -- using the SAME draw vector the hand-mapped components
+    # use, since it is literally the same constant. This still omits that estimator's
+    # calibration posterior (precision/recall), so the substitution is recorded as a
+    # degradation, not treated as equivalent.
+    seg_degraded: list[str] = []
+    for key, fallback in (
+        ("est_mwp_rc_roof", f_mod), ("est_mwp_rc_ground", f_land),
+    ):
+        if key in seg_unresolved and components.get(_SEG_COMPONENT[key], 0.0):
+            f_seg[key] = fallback
+            seg_degraded.append(key)
+            log.warning(
+                "Evidence atlas: %s has no interval in meta (older density run) -- "
+                "substituting the kWp/m2 prior alone for it, which omits its "
+                "precision/recall posterior. Re-run `earthpv density` to fix properly.",
+                key,
+            )
+
+    cov: dict[str, np.ndarray] = {}
+    cov_meta: dict[str, dict] = {}
+    missing: list[str] = []
+    for key in ("small_low", "small_central", "small_outdomain", "ge400_roof"):
+        f, info = _aligned_coverage_factors(boots.get(key, {}), n_draws, key)
+        cov[key] = f
+        if info is None:
+            missing.append(key)
+        else:
+            cov_meta[key] = info
+
+    rng = np.random.default_rng(seed + 2)
+    f_extrap = rng.uniform(extrapolation_ci90[0], extrapolation_ci90[1], n_draws)
+
+    c = components
+    # Verified: hand-mapped OSM (exact areas, so only the conversion constant moves) plus
+    # the AND-gate's coverage-ratio-weighted small-PV.
+    verified_parts = {
+        "osm_roof": c["osm_roof"] * f_mod,
+        "osm_ground": c["osm_ground"] * f_land,
+        "small_low": c["small_low"] * cov["small_low"] * f_mod,
+    }
+    # Best: the OSM the model did not already find, its own >= 400 m2 estimate (roofclf
+    # in-domain, segmentation outside it, segmentation ground everywhere) and the two
+    # roofclf-alone small-PV components.
+    best_parts = {
+        "osm_unmatched_roof": c["osm_unmatched_roof"] * f_mod,
+        "osm_unmatched_ground": c["osm_unmatched_ground"] * f_land,
+        "ge400_roof": c["ge400_roof"] * cov["ge400_roof"] * f_mod,
+        "seg_roof_outdomain": c["seg_roof_outdomain"] * f_seg["est_mwp_rc_roof"],
+        "seg_ground": c["seg_ground"] * f_seg["est_mwp_rc_ground"],
+        "small_central": c["small_central"] * cov["small_central"] * f_mod,
+        "small_outdomain": c["small_outdomain"] * cov["small_outdomain"] * f_mod * f_extrap,
+    }
+
+    v_point = sum(components[k] for k in ("osm_roof", "osm_ground", "small_low"))
+    b_point = sum(components[k] for k in best_parts)
+    floor_offset = total_best - b_point
+    for name, point, target in (
+        ("mwp_verified", v_point, total_verified), ("mwp_best", b_point + floor_offset, total_best),
+    ):
+        if abs(point - target) > 0.5:
+            raise AssertionError(
+                f"Evidence-atlas uncertainty: {name} components sum to {point:.1f} MWp but "
+                f"the published total is {target:.1f} MWp. A component was added to the "
+                "atlas without being added to _evidence_uncertainty, so the interval would "
+                "describe a different quantity than the number next to it."
+            )
+
+    v_draws = sum(verified_parts.values())
+    b_draws = sum(best_parts.values()) + floor_offset
+    # Best is defined as "the highest defensible figure", so it cannot read below Verified
+    # in a draw any more than it can in a cell (`n_cells_best_floored`). Rarely binds --
+    # nationally the two are far apart -- but reported rather than applied silently.
+    n_below = int((b_draws < v_draws).sum())
+    b_draws = np.maximum(b_draws, v_draws)
+
+    # The Best interval WITHOUT the extrapolation judgement, so its contribution is visible
+    # rather than baked in: same draws, that one component held at its point value.
+    b_draws_no_extrap = (
+        sum(v for k, v in best_parts.items() if k != "small_outdomain")
+        + c["small_outdomain"] * cov["small_outdomain"] * f_mod
+        + floor_offset
+    )
+
+    return {
+        "n_draws": n_draws,
+        "ci_pct": list(cc.CI_PCT),
+        "mwp_verified_ci": _ci(v_draws),
+        "mwp_best_ci": _ci(b_draws),
+        "mwp_best_ci_without_extrapolation": _ci(np.maximum(b_draws_no_extrap, v_draws)),
+        "best_floor_offset_mwp": round(float(floor_offset), 1),
+        "n_draws_best_below_verified": n_below,
+        "components": {
+            k: {"mwp": round(float(components[k]), 1), "ci": _ci(v)}
+            for parts in (verified_parts, best_parts) for k, v in parts.items()
+        },
+        "segmentation_factor_method": seg_method,
+        "segmentation_estimators_without_interval": seg_unresolved,
+        "segmentation_estimators_using_kwp_prior_only": seg_degraded,
+        "coverage_bootstrap": cov_meta,
+        "coverage_bootstrap_missing": missing,
+        "kwp_module_ci90": list(cc.KWP_MODULE_CI90),
+        "kwp_land_ci90": list(cc.KWP_LAND_CI90),
+        "outdomain_extrapolation_ci90": list(extrapolation_ci90),
+        "not_covered": [
+            "purposive (not probability-sampled) calibration quadrats -- this is not a "
+            "design-based national margin of error",
+            "Rule-1 completeness is relative to the mapping imagery's epoch, not the "
+            "Sentinel-2 composite's, which biases measured precision and base_rate low",
+            "roofclf's own threshold transfer between density regimes",
+        ],
+    }
+
+
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
@@ -1392,7 +1741,8 @@ def build_evidence_atlas(
             "of this %d-cell grid -- excluded from the map/totals below.",
             n_unmatched_osm, len(joined_osm), len(grid),
         )
-    osm_by_cell = joined_osm.dropna(subset=["cell"]).groupby("cell").apply(
+    in_grid_osm = joined_osm.dropna(subset=["cell"])
+    osm_by_cell = in_grid_osm.groupby("cell").apply(
         lambda d: pd.Series({
             "osm_mwp": d["kwp"].sum() / 1000,
             "osm_mwp_unmatched": d.loc[~d["matched"], "kwp"].sum() / 1000,
@@ -1400,6 +1750,22 @@ def build_evidence_atlas(
         }),
         include_groups=False,
     )
+    # Same population, split by which kWp/m2 constant converted it, for the uncertainty
+    # composition below: rooftop is module area, everything else is site area, and the two
+    # constants have their own (very different) priors. Derived from `in_grid_osm` rather
+    # than `osm` so these parts sum to the cell-aggregated totals exactly, excluding the
+    # features that fell outside the grid.
+    _osm_roof_m = in_grid_osm["placement"] == "rooftop"
+    osm_parts = {
+        "osm_roof": float(in_grid_osm.loc[_osm_roof_m, "kwp"].sum()) / 1000,
+        "osm_ground": float(in_grid_osm.loc[~_osm_roof_m, "kwp"].sum()) / 1000,
+        "osm_unmatched_roof": float(
+            in_grid_osm.loc[_osm_roof_m & ~in_grid_osm["matched"], "kwp"].sum()
+        ) / 1000,
+        "osm_unmatched_ground": float(
+            in_grid_osm.loc[~_osm_roof_m & ~in_grid_osm["matched"], "kwp"].sum()
+        ) / 1000,
+    }
 
     by_low = _join_buildings_to_grid_cells(
         gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
@@ -1436,6 +1802,7 @@ def build_evidence_atlas(
     # (see docstring); outside it, segmentation's own est_mwp_rc_roof is the only
     # evidence-backed number, so it stays. Falls back to the pre-2026-08-07 combined
     # est_mwp_rc when no ge400 rooftop path is given (e.g. an AOI with no roofclf yet).
+    ge400_domain_cells: set[str] = set()
     if ge400_roof_buildings_path is not None:
         by_ge400_roof = _join_buildings_to_grid_cells(
             gpd.read_parquet(ge400_roof_buildings_path), "est_kwp_ge400_roof", grid
@@ -1525,6 +1892,47 @@ def build_evidence_atlas(
     total_best = float(grid.mwp_best.sum())
     total_large = float(grid.mwp_large.sum())
 
+    # --- 90% intervals on both tiers. The point estimates above have moved 20-35% several
+    #     times purely from recalibration; reporting them bare was the atlas's single
+    #     largest presentational gap. See `_evidence_uncertainty` for what is and is not
+    #     inside these numbers.
+    _in_ge400 = grid["cell"].isin(ge400_domain_cells)
+    unc_components = {
+        **osm_parts,
+        # `mwp_large_roof` is roofclf inside the ge400 domain and segmentation outside it
+        # (see above); the two carry completely different uncertainty, so they are split
+        # here on exactly the same mask that built the column.
+        "ge400_roof": float(grid.loc[_in_ge400, "mwp_large_roof"].sum()),
+        "seg_roof_outdomain": float(grid.loc[~_in_ge400, "mwp_large_roof"].sum()),
+        "seg_ground": float(grid.est_mwp_rc_ground.sum()),
+        "small_low": float(grid.small_low.sum()),
+        "small_central": float(grid.small_central.sum()),
+        "small_outdomain": float(grid.small_outdomain.sum()),
+    }
+    uncertainty = _evidence_uncertainty(
+        density_dir=density_dir, meta=meta, kwp_mod=kwp_mod, kwp_land=kwp_land,
+        components=unc_components,
+        boots={
+            "small_low": _capacity_summary_for(
+                low_buildings_path, "domain_restricted_and_gate_sub400_capacity"
+            ).get("coverage_ratio_bootstrap", {}),
+            "small_central": _capacity_summary_for(
+                central_buildings_path, "domain_restricted_sub400_capacity"
+            ).get("coverage_ratio_bootstrap", {}),
+            "small_outdomain": _capacity_summary_for(
+                sub400_outdomain_buildings_path, "out_of_domain_and_gate_sub400_capacity"
+            ).get("coverage_ratio_bootstrap", {}),
+            "ge400_roof": _capacity_summary_for(
+                ge400_roof_buildings_path, "domain_restricted_ge400_roof_capacity"
+            ).get("coverage_ratio_bootstrap", {}),
+        },
+        total_verified=total_verified, total_best=total_best,
+    )
+    log.info(
+        "Evidence atlas: Verified %.1f MWp (90%% %.0f-%.0f), Best %.1f MWp (90%% %.0f-%.0f)",
+        total_verified, *uncertainty["mwp_verified_ci"], total_best, *uncertainty["mwp_best_ci"],
+    )
+
     calib_boxes = _load_calib_boxes(aoi, labels_dir)
     n_calib_rule1 = sum(1 for b in calib_boxes if b["status"] == "rule1")
 
@@ -1553,6 +1961,9 @@ def build_evidence_atlas(
             "kwp_per_m2": kwp_mod,
             "n_calib_boxes": len(calib_boxes),
             "n_calib_rule1": n_calib_rule1,
+            "mwp_verified_ci": uncertainty["mwp_verified_ci"],
+            "mwp_best_ci": uncertainty["mwp_best_ci"],
+            "uncertainty": uncertainty,
         },
     }
 
@@ -1574,6 +1985,26 @@ def build_evidence_atlas(
             "for what's independently corroborated and what's still open."
         ),
         "__CONFIDENCE_HTML__": (
+            "<p><b>Both headline figures carry a 90% range, and it is wide.</b> Verified "
+            f"is <b>{total_verified:,.0f} MWp</b> with a 90% range of "
+            f"<b>{uncertainty['mwp_verified_ci'][0]:,.0f}&ndash;"
+            f"{uncertainty['mwp_verified_ci'][1]:,.0f}</b>; Best estimate is "
+            f"<b>{total_best:,.0f} MWp</b> with a range of "
+            f"<b>{uncertainty['mwp_best_ci'][0]:,.0f}&ndash;"
+            f"{uncertainty['mwp_best_ci'][1]:,.0f}</b>. Four things are inside those "
+            "ranges: the two area-to-capacity constants (how many kWp a square metre of "
+            "panel, or of solar-farm site, actually carries); the segmentation model's "
+            "own measured precision and recall by installation size; the "
+            "roof-coverage ratio's sensitivity to <i>which</i> ground-truth quadrats were "
+            "mapped, measured by resampling the quadrats themselves rather than the "
+            "buildings inside them; and, for the small-PV contribution in cells with no "
+            "nearby calibration at all, an explicit and deliberately wide allowance for "
+            "extrapolating a city-calibrated relationship onto rural roofs. Two things are "
+            "<i>not</i> inside them, and no arithmetic can put them there: the quadrats "
+            "were hand-picked rather than randomly sampled, so this is not a formal "
+            "national margin of error, and ground-truth completeness is relative to the "
+            "date of the mapping imagery rather than the satellite composite, which biases "
+            "the measured precision downward by an unknown amount.</p>"
             "<p><b>Read this as promising preliminary results from an ongoing "
             "methodology, not a finished capacity census.</b> What's genuinely novel "
             "here &mdash; a reproducible pipeline using free satellite imagery and "

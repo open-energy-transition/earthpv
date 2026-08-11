@@ -106,6 +106,8 @@
   .kpi .v { font-size: 25px; font-weight: 780; letter-spacing: -0.01em; color: var(--accent);
     font-variant-numeric: tabular-nums; }
   .kpi .v small { font-size: 0.52em; font-weight: 650; color: var(--ink-2); margin-left: 4px; }
+  .kpi .r { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); margin-top: 4px;
+    font-variant-numeric: tabular-nums; }
   .kpi .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
     text-transform: uppercase; color: var(--muted); margin-top: 7px; line-height: 1.5; }
 
@@ -192,6 +194,8 @@
     margin-left: 6px; }
   .hero-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+  .hero-ci { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); margin-top: 7px;
+    font-variant-numeric: tabular-nums; }
   .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
   .hero-desc b { color: var(--ink); font-weight: 660; }
 
@@ -290,8 +294,10 @@
 
   <div class="kpis">
     <div class="kpi"><div class="v" id="kVerified">0<small>MWp</small></div>
+      <div class="r" id="kVerifiedCi"></div>
       <div class="k">Verified: mapped by people, or agreed by two detectors</div></div>
     <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
+      <div class="r" id="kBestCi"></div>
       <div class="k">Best estimate, the highest defensible figure</div></div>
     <div class="kpi"><div class="v" id="kOsm">0</div>
       <div class="k">Installations hand-mapped in OpenStreetMap</div></div>
@@ -347,6 +353,7 @@
         <div class="card">
           <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
           <div class="hero-label" id="heroLabel">Selected tier, nationwide</div>
+          <div class="hero-ci" id="heroCi"></div>
           <div class="hero-desc" id="heroDesc"></div>
           <div class="tiles" id="tiles"></div>
         </div>
@@ -739,6 +746,13 @@
 
   document.getElementById("kVerified").innerHTML = `${fmt(T.mwp_verified)}<small>MWp</small>`;
   document.getElementById("kBest").innerHTML = `${fmt(T.mwp_best)}<small>MWp</small>`;
+
+  // Credible ranges. Absent for an atlas built before intervals existed, or for an AOI
+  // whose density run has no recall correction -- render nothing rather than "0-0".
+  const ciText = (ci) => (Array.isArray(ci) && ci.length === 2)
+    ? `90% range ${fmt(ci[0])}–${fmt(ci[1])}` : "";
+  document.getElementById("kVerifiedCi").textContent = ciText(T.mwp_verified_ci);
+  document.getElementById("kBestCi").textContent = ciText(T.mwp_best_ci);
   document.getElementById("kOsm").textContent = fmt(T.osm_n);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
 
@@ -768,6 +782,7 @@
     const view = VIEWS[i];
     countUp("heroNum", T[TOTAL_KEY[i]], 700);
     document.getElementById("heroLabel").textContent = `${view.label}, nationwide`;
+    document.getElementById("heroCi").textContent = ciText(T[TOTAL_KEY[i] + "_ci"]);
     document.getElementById("heroDesc").innerHTML = `<b>${view.name}.</b> ${view.desc}`;
     document.getElementById("tiles").innerHTML = view.tiles.map(([key, label]) =>
       `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");

@@ -60,7 +60,7 @@ aois:
   # import boom) instead of a same-year weather season -- the seasonal test had no real
   # adoption change between its two windows to learn from; this one does, by
   # construction, since almost every currently-mapped Punjab installation postdates it
-  # (fitted onsets cluster 2022-2024, docs/issues/small-pv-step-signal.md). Composites
+  # (fitted onsets cluster 2022-2024, docs/experiments.md). Composites
   # live under data/composites/punjab_boom (own tree, not data/composites/punjab, so the
   # seasonal experiment's stale composite_1 -- built before the 2026-07-26 Collection-1
   # radiometric-offset fix in imagery.py -- is never silently reused): composite_0 is

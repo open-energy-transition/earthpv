@@ -646,6 +646,14 @@ def sub400_capacity_cmd(
     ratio_hi: float = typer.Option(
         None, help="Upper bound of that same band (default DEFAULT_RATIO_HI = 2.0)"
     ),
+    coverage_boot: int = typer.Option(
+        None, help="Bootstrap replicates for the coverage ratio's quadrat-resampling "
+        "uncertainty, the dominant measurable error on every sub-400 m2 figure here "
+        "(default sub400_capacity.DEFAULT_COVERAGE_N_BOOT = 200; 0 disables). The "
+        "resampling unit is the QUADRAT, not the building -- see "
+        "`coverage_ratio_bootstrap_factors` for why a building-level bootstrap would be "
+        "dishonestly narrow. Adds roughly 30-60 s per output."
+    ),
     sppi_min_precision: float = typer.Option(
         0.5, help="Precision target for the AND-gate's pooled SPPI threshold"
     ),
@@ -714,6 +722,7 @@ def sub400_capacity_cmd(
         ratio_hi=DEFAULT_RATIO_HI if ratio_hi is None else ratio_hi,
         osm_solar_path=osm_solar,
         size_floor_m2=parsed_size_floor_m2,
+        **({} if coverage_boot is None else {"n_coverage_boot": coverage_boot}),
     )
 
     central, central_summary = domain_restricted_capacity(**kwargs)
@@ -796,6 +805,13 @@ def ge400_roof_capacity_cmd(
     min_area_m2: float = typer.Option(400.0, help="Rooftop-building size floor (matches the segmentation detection floor)"),
     ratio_lo: float = typer.Option(None, help="Lower bound of roofclf's rate_ratio calibrated-quadrat band"),
     ratio_hi: float = typer.Option(None, help="Upper bound of that same band"),
+    coverage_boot: int = typer.Option(
+        None, help="Bootstrap replicates for the coverage ratio's quadrat-resampling "
+        "uncertainty (default sub400_capacity.DEFAULT_COVERAGE_N_BOOT = 200). The seed is "
+        "fixed and shared with `sub400-capacity` so replicate b is the same resampled "
+        "quadrat set in both -- `earthpv atlas` relies on that to keep these components' "
+        "errors correlated. 0 disables it (no interval for this component in the atlas)."
+    ),
 ) -> None:
     """roofclf-based capacity for >= 400 m2 ROOFTOP buildings -- REPLACES segmentation's
     own est_mwp_rc_roof inside the density-matched domain (roofclf measured AUC 0.896 vs
@@ -830,7 +846,7 @@ def ge400_roof_capacity_cmd(
         roofclf_dir=roofclf_dir, folds_path=folds_path, buildings_path=buildings_path,
         cell_density_path=cell_density_path, threshold=threshold, osm_solar_path=osm_solar,
         max_distance_m=max_distance_m, min_area_m2=min_area_m2,
-        ratio_lo=ratio_lo, ratio_hi=ratio_hi,
+        ratio_lo=ratio_lo, ratio_hi=ratio_hi, n_coverage_boot=coverage_boot,
     )
     flagged.to_parquet(out_dir / "ge400_roof_incremental_buildings.parquet")
     (out_dir / "ge400_roof_summary.json").write_text(json.dumps(summary, indent=2))
@@ -1470,6 +1486,72 @@ def calibrate(
         kwp_per_m2=kwp_per_m2, completeness_threshold=completeness_threshold,
         min_mastr_kw=min_mastr_kw, limit=limit, out_dir=out_dir,
     )
+
+
+@app.command("validate-mastr")
+def validate_mastr_cmd(
+    aoi: str = typer.Option("germany", help="AOI to validate (MaStR is Germany-only)"),
+    density_dir: Path = typer.Option(
+        None, help="Density run to compare against MaStR (default "
+        "data/predictions/<aoi>/density). Skipped with a warning when absent -- the "
+        "register-internal checks need no imagery and always run."
+    ),
+    calib_dir: Path = typer.Option(
+        Path("data/calibration"),
+        help="Holds mastr_gemeinden.parquet / vg250_gem.parquet, and caches "
+        "mastr_rooftop_counts.parquet (delete it to re-query the sqlite)"
+    ),
+    sqlite_path: Path = typer.Option(
+        None, help="open-mastr sqlite (default ~/.open-MaStR/data/sqlite/open-mastr.db). "
+        "Run `earthpv mastr` first if it does not exist."
+    ),
+    solar_path: Path = typer.Option(
+        None, help="A national OSM solar pull for this AOI, for the OSM-completeness check "
+        "(e.g. the sibling project's <region>/osm/solar.parquet). Omit to skip it."
+    ),
+    cutoff: str = typer.Option("2025-09-30", help="MaStR commissioning cutoff"),
+    skip_osm: bool = typer.Option(False, help="Skip the OSM-completeness check"),
+    out: Path = typer.Option(None, help="Report JSON (default results/<aoi>_mastr_validation.json)"),
+) -> None:
+    """Validate the capacity methodology against Germany's complete MaStR register.
+
+    Answers three things no Pakistani artifact can, because MaStR is legally complete where
+    the calibration quadrats are a purposive sample: how much rooftop capacity really sits
+    below the >= 400 m2 detection floor, how transferable that share is between places, and
+    whether OSM is complete enough to be used as a reference for small PV at all. Plus the
+    end-to-end per-municipality comparison of a `density` run against the register, which
+    reports its own imagery coverage and refuses to call a partial-coverage result national.
+    """
+    import json
+
+    from earthpv.mastr_validation import DEFAULT_MASTR_SQLITE, run_mastr_validation
+
+    path = run_mastr_validation(
+        aoi=aoi, density_dir=density_dir, calib_dir=calib_dir,
+        sqlite_path=sqlite_path or DEFAULT_MASTR_SQLITE,
+        solar_path=solar_path, cutoff=cutoff, out=out, skip_osm=skip_osm,
+    )
+    report = json.loads(Path(path).read_text())
+    fl = report["detection_floor"]
+    typer.echo(
+        f"Below the {fl['seg_floor_kwp']:.0f} kWp detection floor: "
+        f"{fl['share_below_seg_floor']:.1%} of rooftop CAPACITY, "
+        f"{fl['count_share_below_seg_floor']:.1%} of rooftop INSTALLATIONS "
+        f"({fl['n_rooftop_units']:,} units, {fl['total_kw_rooftop'] / 1e6:.1f} GWp)"
+    )
+    tr = report["share_transferability"]["seg_floor"]
+    typer.echo(
+        f"That share across municipalities: median {tr['quantiles']['p50']:.2f}, "
+        f"5-95% {tr['quantiles']['p5']:.2f}-{tr['quantiles']['p95']:.2f} "
+        f"(capacity-weighted mean {tr['capacity_weighted_mean']:.3f})"
+    )
+    if "osm_as_reference" in report:
+        o = report["osm_as_reference"]
+        typer.echo(
+            f"OSM as a complete reference: {o['national_count_completeness']:.1%} of "
+            f"registered rooftop units are mapped -- {o['verdict'].split(':')[0]}"
+        )
+    typer.echo(f"-> {path}")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,14 @@
 ## Ground-truth calibration boxes
 
+!!! note "OPEN, live log (as of 2026-08-11)"
+
+    This is the running log of calibration-area mapping, and it lags the current state.
+    It stops at 21 calibration areas; there are now 23, all Rule-1 complete -- see
+    [Calibration quadrats](../methods/calibration-quadrats.md) and
+    `results/calibration_quadrats.csv` for current per-area status. The atlas totals and
+    the `est_mwp_rc` figure quoted here were superseded several times after they were
+    written; current headline numbers are on [Capacity](../results/capacity.md).
+
 Small, hand-verified areas where *all* rooftop PV has been mapped from high-resolution
 imagery (not just OSM's usual partial coverage) -- fetched fresh via `earthpv
 overpass-labels --bbox` rather than the Overture snapshot, since a just-finished mapping
@@ -262,7 +271,7 @@ finished quadrats, until that happens.
 !!! note "Superseded 2026-08-05"
     This square was replaced by a hand-drawn 4.34 km² boundary that fully contains it
     (`sundar_calib_4p34km2`); files retired to `data/labels/retired/`. See
-    [the 2026-08-05 batch](#boundary-replacements-and-additions-2026-08-05-continued).
+    [the 2026-08-05 batch](#box-1-replaced-lahore-dha-phase-5-hand-drawn-661-km2-2026-08-05).
     Everything below describes the retired square.
 
 bbox `74.166838,31.281673,74.17735,31.290656`
@@ -491,7 +500,7 @@ a 2,099-building live VIDA fetch), pending the composite/VIDA join
 !!! note "Superseded 2026-08-05"
     This square was replaced by a hand-drawn 4.39 km² boundary that fully contains it
     (`peshawar_west_calib_4p39km2`); files retired to `data/labels/retired/`. See
-    [the 2026-08-05 batch](#boundary-replacements-and-additions-2026-08-05-continued).
+    [the 2026-08-05 batch](#box-1-replaced-lahore-dha-phase-5-hand-drawn-661-km2-2026-08-05).
     Everything below describes the retired square, including its "largest quadrat in the
     set" claim, which the replacement and the Lahore box both overtook.
 
@@ -792,8 +801,10 @@ km² raw vs. **8.90 km² dissolved** at QASP (6 overlapping elements -> 1). Both
 `*_overpass_solar.parquet` now hold one dissolved-footprint row rather than the raw pull.
 
 **Checking both sites against the current `candidates.parquet` surfaced a real,
-previously undocumented pipeline bug** -- see `docs/issues/osm-replacement-and-sppi-capacity.md`'s
-new Part 3 for the full mechanism and reproduction. Short version: at Quaid-e-Azam Solar
+previously undocumented pipeline bug**, since fixed: `replace_with_osm_geometry` now keeps
+only the closest match per OSM feature via `groupby(...).idxmin()`, and
+`labels.dissolve_overlapping` merges nested `plant`/`generator` ways before any capacity
+computation sees them. Short version of the original bug: at Quaid-e-Azam Solar
 Park, two *different* model-detected candidates each independently matched their own
 nearest OSM feature via `postprocess.replace_with_osm_geometry` -- one to the outer
 envelope (8,904,839 m²), one to a member way **100% contained inside it**

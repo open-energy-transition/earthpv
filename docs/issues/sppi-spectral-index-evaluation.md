@@ -1,5 +1,15 @@
 ## SPPI physics-based PV index: tested, not adopted for detection (2026-07-29)
 
+!!! warning "SUPERSEDED in its title claim (as of 2026-08-11)"
+
+    SPPI is now deployed nationally, as the corroborating half of the roofclf-AND-SPPI
+    gate that defines the evidence atlas's Verified tier. Two of this doc's conclusions do
+    still hold: SPPI cannot serve as a standalone capacity instrument, and adding it as a
+    roofclf feature changes nothing. Its segmentation comparison figures should not be
+    reused -- they came from a non-production raster scored over an all-sizes population,
+    and a later audit measured the production checkpoint at 0.761-0.775 AUC on buildings
+    at or above 400 m².
+
 Evaluation of He et al. 2026, "Spectral-Feature-Driven photovoltaic Detection: A universal
 Physics-Based index for rapid Localization" (Int. J. Applied Earth Obs. Geoinf. 147, 105164,
 doi:10.1016/j.jag.2026.105164) -- `todo.md` item 12. Reproduce with

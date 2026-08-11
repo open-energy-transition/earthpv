@@ -1,5 +1,12 @@
 # Boom-window (2021 vs current) stacking experiment -- inconclusive, not a repeat of the seasonal negative
 
+!!! note "OPEN, inconclusive (as of 2026-08-11)"
+
+    Training collapsed on 332 chips, so this experiment did not test its hypothesis either
+    way, and nothing is scheduled to retry it. One reference below is broken:
+    `docs/issues/small-pv-step-signal.md` does not exist, and that material is summarised
+    in [Experiments](../experiments.md).
+
 ## Motivation
 
 The two-season stacking experiment (`docs/how-it-works.md`'s "Two-season stacking"
@@ -9,7 +16,8 @@ recall improvement. That result does not test whether stacking the model input h
 general -- it tests whether it helps when there is essentially **no real adoption change**
 between the two layers, since both are from the same year. Pakistan's rooftop PV stock is
 dominated by a post-2022 import boom (fitted onsets cluster 2022-2024,
-`docs/issues/small-pv-step-signal.md`), so a **2021-vs-current** stack has a real change
+the step-detection result summarised in `docs/experiments.md`), so a **2021-vs-current**
+stack has a real change
 signal to learn from that the seasonal pair never had. This experiment re-runs the same
 architecture with only the contrast window changed, to isolate that variable.
 

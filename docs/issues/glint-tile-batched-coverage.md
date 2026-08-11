@@ -1,5 +1,11 @@
 ## Status (2026-07-21): country-scale revalidation -- flags hold up, scene counts don't
 
+!!! note "OPEN (as of 2026-08-11)"
+
+    The 22x tile batching shipped and is still in use. The silent scene-loss bug this doc
+    ends on is unfixed, so any scene-count comparison drawn from that study remains
+    untrustworthy. Tracked in [Open questions](../open-questions.md).
+
 Ran `scripts/glint_revalidate_pakistan.py`: the same 500 OSM-confirmed Pakistan
 targets used for the original per-target study (`pakistan_summary.csv`,
 `pakistan_stats_by_size.csv`), re-pulled through `tile_scene_series_batch` (33

@@ -20,10 +20,21 @@ Interactive. Switch tier with the tabs, hover a cell for its value.
 
 ## Two tiers, one country
 
-| Tier | Pakistan | What it admits as evidence |
-| --- | ---: | --- |
-| Verified | 6,139 MWp | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **16,441 MWp** | Verified, plus &ge;400 m<sup>2</sup> capacity (7,860 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 278 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
+| Tier | Pakistan | 90% range | What it admits as evidence |
+| --- | ---: | ---: | --- |
+| Verified | 6,139 MWp | 5,096 &ndash; 7,498 | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
+| **Best estimate** | **16,441 MWp** | 12,883 &ndash; 19,147 | Verified, plus &ge;400 m<sup>2</sup> capacity (7,860 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 278 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
+
+The ranges are new as of 2026-08-11 and are composed from four measured sources plus one
+stated judgement: the two area-to-capacity constants' priors, segmentation's own
+precision/recall posterior by installation size, the coverage ratio's sensitivity to *which*
+calibration quadrats happen to have been mapped (measured by resampling the quadrats
+themselves, not the buildings inside them), and an explicit allowance for extrapolating a
+city-calibrated coverage ratio onto rural roofs. They do **not** include a design-based
+sampling error, because the quadrats were hand-picked rather than randomly drawn -- see
+"How confident should you be in this?" on the atlas page, and
+[validation against MaStR](../methods/mastr-validation.md) for what a complete register can
+and cannot settle here.
 
 Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
 them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at

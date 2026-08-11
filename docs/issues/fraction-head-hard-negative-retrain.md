@@ -1,5 +1,15 @@
 ## Fraction-head hard-negative retrain (2026-08-03)
 
+!!! info "CLOSED, mixed result (as of 2026-08-11)"
+
+    The checkpoint swap shipped -- `fraction_pakistan_hardneg` became the fraction-head
+    checkpoint of record -- but it was never promoted into a published sub-400 m² number,
+    because the improvement splits by regime: better on industrial and large arrays, worse
+    on dense small rooftops. The fraction head as a whole is now off the main path, which
+    is segmentation plus roofclf. The `check-density` failure attributed here to a
+    candidate-population mismatch has since been root-caused as the pooled
+    precision/recall problem and fixed; see [Capacity](../results/capacity.md).
+
 `fraction_pakistan_v1` (the deployed sub-400 m² checkpoint) has one known failure mode:
 large OSM-unmapped buildings that read as bright/reflective and score falsely high.
 `hard_negatives.py::run_hard_negatives` mines candidates for exactly this population
@@ -194,9 +204,10 @@ construction; the `auc` column is the more robust half of this comparison.
 **The `*_rc` / roof capacity figures from this density pass are not new results.** It
 reports `total_est_mwp_rc` 2,847.2 and `total_est_mwp_rc_roof` **570.9** MWp, and
 `check-density` fails 2 / suspect 3 (KP 8x, Balochistan 18x) -- byte-for-byte the same
-signature as `density_TRUE_CURRENT_STATE_FAILING_20260730`, the documented
-candidate-population mismatch in
-`density-force-recompute-plausibility-fail.md`. The fraction head only drives the
+signature as `density_TRUE_CURRENT_STATE_FAILING_20260730`, which was diagnosed at the time
+as a candidate-population mismatch and has since been root-caused as pooled rooftop and
+ground-mount precision/recall (fixed 2026-08-11; KP's ratio moved to 0.49x). The fraction
+head only drives the
 `*_exp` instrument, so it cannot be the cause, and this run reproducing that failure
 independently is further confirmation the bug is a property of the current
 `candidates.parquet`, not of any instrument swap.

@@ -157,12 +157,13 @@ DEFAULT_COVERAGE_MIN_BIN_N = 25
 
 
 def coverage_ratio_by_size(
-    buildings_path: Path,
+    buildings_path: Path | None,
     quadrats: list[str],
     threshold: float,
     sppi_min_precision: float | None = None,
     n_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
+    df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Measured (true mapped PV area / roof area) on the buildings roofclf (optionally AND
     SPPI) flags in `quadrats`, binned by each flagged building's OWN `roof_area_m2` -- the
@@ -200,8 +201,13 @@ def coverage_ratio_by_size(
     Returns one row per bin: `bin_lo`, `bin_hi`, `n_flagged`, `roof_area_m2` (summed),
     `true_pv_area_m2` (summed), `coverage_ratio`. Feed straight to
     `apply_size_coverage_ratio`.
+
+    `df` skips the parquet read and fits the table from an already-loaded frame instead
+    (`buildings_path` may then be None). Only `coverage_ratio_bootstrap_factors` uses it,
+    to refit this table a few hundred times over resampled quadrat sets without paying
+    for a few hundred `read_parquet` calls; every production caller still passes a path.
     """
-    df = gpd.read_parquet(buildings_path)
+    df = gpd.read_parquet(buildings_path) if df is None else df
     sub = df[df.quadrat.isin(quadrats)]
     if sub.empty:
         raise ValueError(f"None of {quadrats} found in {buildings_path}")
@@ -336,7 +342,7 @@ def quadrat_building_density_km2(quadrat_profile_path: Path, quadrats: list[str]
 
 
 def coverage_ratio_by_size_and_density(
-    buildings_path: Path,
+    buildings_path: Path | None,
     quadrats: list[str],
     threshold: float,
     quadrat_density: pd.Series,
@@ -344,6 +350,7 @@ def coverage_ratio_by_size_and_density(
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
     n_size_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
+    df: pd.DataFrame | None = None,
 ) -> dict:
     """`coverage_ratio_by_size`, fit independently within each of `n_density_bands`
     building-density strata instead of once over all calibrated quadrats pooled together --
@@ -381,7 +388,7 @@ def coverage_ratio_by_size_and_density(
 
     pooled_table = coverage_ratio_by_size(
         buildings_path, quadrats, threshold, sppi_min_precision=sppi_min_precision,
-        n_bins=n_size_bins, min_bin_n=min_bin_n,
+        n_bins=n_size_bins, min_bin_n=min_bin_n, df=df,
     )
     band_idx = np.clip(
         np.searchsorted(edges, quadrat_density.to_numpy(float), side="right") - 1, 0, len(edges) - 2
@@ -393,7 +400,7 @@ def coverage_ratio_by_size_and_density(
             continue
         table = coverage_ratio_by_size(
             buildings_path, band_quadrats, threshold, sppi_min_precision=sppi_min_precision,
-            n_bins=n_size_bins, min_bin_n=min_bin_n,
+            n_bins=n_size_bins, min_bin_n=min_bin_n, df=df,
         )
         n_flagged_band = int(table.n_flagged.sum())
         used_pooled_fallback = n_flagged_band < min_bin_n
@@ -440,6 +447,177 @@ def apply_stratified_coverage_ratio(
             continue
         table = pd.DataFrame(band["coverage_table"])
         out[m] = apply_size_coverage_ratio(roof_area_m2[m], table)
+    return out
+
+
+# Bootstrap replicates behind `coverage_ratio_bootstrap_factors`. 200 is enough for a
+# stable 5/95 interval (the 5th/95th order statistics of 200 draws) and costs roughly
+# 30-60 s per capacity function, which is noise next to the per-cell parquet reads those
+# functions already do.
+DEFAULT_COVERAGE_N_BOOT = 200
+
+# Fixed, and deliberately SHARED by every capacity function that calls this. Replicate b
+# must mean "the same resampled quadrat set" in `domain_restricted_capacity`,
+# `domain_restricted_and_gate_capacity`, `out_of_domain_and_gate_capacity` and
+# `roofclf_ge400_capacity.domain_restricted_ge400_roof_capacity` alike -- all four fit
+# their coverage ratio on the SAME quadrats, so their errors are strongly positively
+# correlated, and `atlas.build_evidence_atlas` adds their draws replicate-by-replicate to
+# keep that correlation instead of pretending four estimates built from one calibration
+# set are independent (which would understate the Best tier's interval). Changing this
+# constant silently breaks that alignment for any summary written before the change.
+COVERAGE_BOOTSTRAP_SEED = 20260811
+
+
+def coverage_ratio_bootstrap_factors(
+    buildings_path: Path,
+    quadrats: list[str],
+    threshold: float,
+    quadrat_density: pd.Series,
+    stratified: dict,
+    roof_area_m2: np.ndarray,
+    cell_density_km2: np.ndarray,
+    sppi_min_precision: float | None = None,
+    n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
+    n_boot: int = DEFAULT_COVERAGE_N_BOOT,
+    seed: int = COVERAGE_BOOTSTRAP_SEED,
+) -> dict:
+    """Dimensionless multiplicative uncertainty on a capacity total, from resampling the
+    CALIBRATION QUADRATS behind its coverage-ratio fit.
+
+    **The resampling unit is the quadrat, not the building.** Buildings inside one quadrat
+    share a mapper, a settlement pattern, a roof-material mix and one background-imagery
+    epoch, so a building-level bootstrap would treat ~100k highly correlated rows as ~100k
+    independent observations and report an interval far too narrow to be honest. The
+    variation that has actually moved this project's published numbers has always been
+    quadrat *composition*: adding one quadrat (Malok, 2026-08-11) moved the trusted set
+    from 13 to 15 and every capacity component by 1-8% at once, and dropping Multan from
+    that set moved the coverage ratio on its own. That is the sampling variability this
+    function measures -- "if a different, equally plausible handful of quadrats had been
+    mapped, how different would this total be?".
+
+    Each replicate resamples `quadrats` with replacement, refits
+    `coverage_ratio_by_size_and_density` on the resampled set (a quadrat drawn twice
+    genuinely counts twice: its rows are duplicated under distinct synthetic labels rather
+    than deduplicated by `isin`, which would silently turn the bootstrap into an
+    m-out-of-n subsample), re-prices the SAME target population
+    (`roof_area_m2`/`cell_density_km2`, passed in by the caller after all of its own
+    filtering), and records the resulting total as a ratio to the point-estimate total.
+    Returning a dimensionless factor rather than MWp is what lets `atlas.build_evidence_
+    atlas` compose these without re-reading a single quadrat: the area->capacity constant
+    cancels, so the factor is valid whatever kWp/m2 the caller applied.
+
+    What this does NOT cover, and must not be read as covering: the quadrats are purposive,
+    not a probability sample, so this is variability *within* the kind of place that has
+    been mapped, not a design-based national margin of error. It says nothing about the
+    out-of-domain extrapolation (no quadrat exists in that density range at all -- see
+    `out_of_domain_and_gate_capacity`), nor about roofclf's own threshold-transfer bias,
+    nor about whether the mapping imagery was contemporaneous with the composite.
+
+    `stratified` is the point fit the caller already computed (reused rather than refit, so
+    the returned factors are guaranteed to be relative to the total the caller published).
+    Degenerate replicates -- a resample whose fit raises, e.g. one that draws a single
+    quadrat with no flagged building at all -- are dropped and counted, not silently
+    treated as a factor of 1.0.
+    """
+    empty = {
+        "n_boot": 0, "n_boot_requested": int(n_boot), "n_degenerate_replicates": 0,
+        "seed": int(seed), "resample_unit": "quadrat", "n_quadrats": len(set(quadrats)),
+        "factors": [], "factor_ci90": None, "factor_mean": None,
+    }
+    roof_area_m2 = np.asarray(roof_area_m2, dtype=float)
+    cell_density_km2 = np.asarray(cell_density_km2, dtype=float)
+    if n_boot <= 0 or len(roof_area_m2) == 0:
+        return empty
+
+    point_total = float(
+        (roof_area_m2 * apply_stratified_coverage_ratio(
+            roof_area_m2, cell_density_km2, stratified
+        )).sum()
+    )
+    if point_total <= 0:
+        return empty
+
+    df = gpd.read_parquet(buildings_path)
+    if sppi_min_precision is not None and "sppi" not in df.columns:
+        from earthpv.sppi import add_sppi
+
+        df = add_sppi(df)
+    # Drop geometry and everything the fit path does not read: the per-replicate concat
+    # below copies these rows a few hundred times, and carrying polygons through that is
+    # the difference between seconds and minutes.
+    keep_cols = [
+        c for c in ("quadrat", "roof_area_m2", "pv_area_true_m2", "p_oof", "has_pv", "sppi")
+        if c in df.columns
+    ]
+    slim = pd.DataFrame(df[keep_cols])
+    uniq = list(dict.fromkeys(quadrats))
+    by_quadrat = {q: slim[slim.quadrat == q] for q in uniq}
+
+    rng = np.random.default_rng(seed)
+    factors: list[float] = []
+    n_degenerate = 0
+    prev_level = log.level
+    # Each replicate logs its own fitted table at INFO (3 tables x n_boot = ~600 lines of
+    # noise that says nothing a caller can act on); the point fit was already logged.
+    log.setLevel(logging.WARNING)
+    try:
+        for _ in range(n_boot):
+            pick = rng.integers(0, len(uniq), size=len(uniq))
+            frames, dens = [], {}
+            for k, i in enumerate(pick):
+                q = uniq[int(i)]
+                label = f"{q}#{k}"
+                frame = by_quadrat[q].copy()
+                frame["quadrat"] = label
+                frames.append(frame)
+                dens[label] = float(quadrat_density[q])
+            rep_density = pd.Series(dens)
+            try:
+                rep_stratified = coverage_ratio_by_size_and_density(
+                    None, list(rep_density.index), threshold, rep_density,
+                    sppi_min_precision=sppi_min_precision,
+                    n_density_bands=n_density_bands,
+                    df=pd.concat(frames, ignore_index=True),
+                )
+                rep_total = float(
+                    (roof_area_m2 * apply_stratified_coverage_ratio(
+                        roof_area_m2, cell_density_km2, rep_stratified
+                    )).sum()
+                )
+            except Exception as e:  # noqa: BLE001 -- a degenerate resample must not kill the run
+                n_degenerate += 1
+                log.warning("Coverage-ratio bootstrap: replicate dropped (%s)", e)
+                continue
+            factors.append(rep_total / point_total)
+    finally:
+        log.setLevel(prev_level)
+
+    if not factors:
+        log.warning(
+            "Coverage-ratio bootstrap: every one of %d replicates was degenerate -- no "
+            "interval reported for this component", n_boot,
+        )
+        return {**empty, "n_degenerate_replicates": n_degenerate}
+
+    from earthpv.capacity_calibration import CI_PCT
+
+    arr = np.asarray(factors, dtype=float)
+    lo, hi = (float(v) for v in np.percentile(arr, CI_PCT))
+    out = {
+        "n_boot": len(factors),
+        "n_boot_requested": int(n_boot),
+        "n_degenerate_replicates": n_degenerate,
+        "seed": int(seed),
+        "resample_unit": "quadrat",
+        "n_quadrats": len(uniq),
+        "factors": [round(float(f), 6) for f in arr],
+        "factor_ci90": [round(lo, 4), round(hi, 4)],
+        "factor_mean": round(float(arr.mean()), 4),
+    }
+    log.info(
+        "Coverage-ratio quadrat bootstrap: %d replicates over %d quadrats, factor "
+        "%.3f-%.3f (90%%), mean %.3f", len(factors), len(uniq), lo, hi, arr.mean(),
+    )
     return out
 
 
@@ -538,6 +716,7 @@ def domain_restricted_capacity(
     osm_solar_path: Path | None = None,
     quadrat_profile_path: Path = Path("results/calibration_quadrats.csv"),
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
+    n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The module's actually-recommended output (see module docstring's 2026-07-30 note):
@@ -685,6 +864,11 @@ def domain_restricted_capacity(
         float(np.average(incremental["coverage_ratio"], weights=incremental.roof_area_m2))
         if len(incremental) else float("nan")
     )
+    cov_boot = coverage_ratio_bootstrap_factors(
+        buildings_path, quadrats, threshold, quadrat_density, stratified,
+        incremental.roof_area_m2.to_numpy(float), incremental_cell_density,
+        n_density_bands=n_density_bands, n_boot=n_coverage_boot,
+    )
 
     summary = {
         "method": "domain_restricted_sub400_capacity",
@@ -695,6 +879,11 @@ def domain_restricted_capacity(
         "calibration_coverage_ratio_area_weighted_mean": (
             round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None
         ),
+        # Quadrat-resampling uncertainty on this component, as dimensionless multiplicative
+        # factors (`coverage_ratio_bootstrap_factors`). `atlas.build_evidence_atlas` reads
+        # `factors` replicate-by-replicate so components sharing a calibration set keep
+        # their correlation; read `factor_ci90` for this component on its own.
+        "coverage_ratio_bootstrap": cov_boot,
         "n_domain_cells": len(in_domain_cells),
         "n_national_cells": int(len(all_cells)),
         "n_buildings_in_domain": n_buildings_in_domain,
@@ -744,6 +933,7 @@ def domain_restricted_and_gate_capacity(
     osm_solar_path: Path | None = None,
     quadrat_profile_path: Path = Path("results/calibration_quadrats.csv"),
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
+    n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The sub-400 bracket's LOW end: `domain_restricted_capacity`'s same 93-cell
@@ -889,6 +1079,12 @@ def domain_restricted_and_gate_capacity(
         float(np.average(incremental["coverage_ratio"], weights=incremental.roof_area_m2))
         if len(incremental) else float("nan")
     )
+    cov_boot = coverage_ratio_bootstrap_factors(
+        buildings_path, quadrats, threshold, quadrat_density, stratified,
+        incremental.roof_area_m2.to_numpy(float), incremental_cell_density,
+        sppi_min_precision=sppi_min_precision,
+        n_density_bands=n_density_bands, n_boot=n_coverage_boot,
+    )
 
     summary = {
         "method": "domain_restricted_and_gate_sub400_capacity",
@@ -907,6 +1103,11 @@ def domain_restricted_and_gate_capacity(
         "and_gate_coverage_ratio_area_weighted_mean": (
             round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None
         ),
+        # Quadrat-resampling uncertainty on this component, as dimensionless multiplicative
+        # factors (`coverage_ratio_bootstrap_factors`). `atlas.build_evidence_atlas` reads
+        # `factors` replicate-by-replicate so components sharing a calibration set keep
+        # their correlation; read `factor_ci90` for this component on its own.
+        "coverage_ratio_bootstrap": cov_boot,
         "n_domain_cells": len(in_domain_cells),
         "n_national_cells": int(len(all_cells)),
         "n_flagged_in_domain": int(len(flagged)),
@@ -956,6 +1157,7 @@ def out_of_domain_and_gate_capacity(
     osm_solar_path: Path | None = None,
     quadrat_profile_path: Path = Path("results/calibration_quadrats.csv"),
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
+    n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """`domain_restricted_and_gate_capacity`'s mirror image: the SAME roofclf-AND-SPPI
@@ -1093,6 +1295,18 @@ def out_of_domain_and_gate_capacity(
         float(np.average(incremental["coverage_ratio"], weights=incremental.roof_area_m2))
         if len(incremental) else float("nan")
     )
+    # Same quadrat bootstrap as the in-domain functions, and it means LESS here: it
+    # measures how much the answer moves if a different set of the SAME urban/semi-urban
+    # quadrats had been mapped, which is not the dominant uncertainty for a population
+    # that has no calibration quadrat in its density range at all. The extrapolation
+    # itself is priced separately, in `atlas.build_evidence_atlas`
+    # (`OUTDOMAIN_EXTRAPOLATION_CI90`), and is much wider than this.
+    cov_boot = coverage_ratio_bootstrap_factors(
+        buildings_path, quadrats, threshold, quadrat_density, stratified,
+        incremental.roof_area_m2.to_numpy(float), incremental_cell_density,
+        sppi_min_precision=sppi_min_precision,
+        n_density_bands=n_density_bands, n_boot=n_coverage_boot,
+    )
 
     summary = {
         "method": "out_of_domain_and_gate_sub400_capacity",
@@ -1102,6 +1316,11 @@ def out_of_domain_and_gate_capacity(
         "and_gate_coverage_ratio_area_weighted_mean": (
             round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None
         ),
+        # Quadrat-resampling uncertainty on this component, as dimensionless multiplicative
+        # factors (`coverage_ratio_bootstrap_factors`). `atlas.build_evidence_atlas` reads
+        # `factors` replicate-by-replicate so components sharing a calibration set keep
+        # their correlation; read `factor_ci90` for this component on its own.
+        "coverage_ratio_bootstrap": cov_boot,
         "n_out_domain_cells": len(out_domain_cells),
         "n_out_domain_cells_below_calibrated_band": n_below,
         "n_out_domain_cells_above_calibrated_band": n_above,

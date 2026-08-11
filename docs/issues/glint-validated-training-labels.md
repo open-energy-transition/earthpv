@@ -1,5 +1,12 @@
 # Feed glint-validated candidates back as training labels (active learning)
 
+!!! note "OPEN, never implemented (as of 2026-08-11)"
+
+    This remains a proposal. The hard-negative half of the idea shipped by a different
+    route: `hard_negatives.py` mines confirmed negatives bi-temporally rather than by
+    glint. The glint route is blocked in practice by the unresolved scene-coverage bug in
+    [Tile-batched glint coverage](glint-tile-batched-coverage.md).
+
 **Labels:** enhancement, model, glint, active-learning
 
 ## Problem

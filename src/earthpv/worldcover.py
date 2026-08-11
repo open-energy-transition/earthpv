@@ -15,8 +15,7 @@ class 60 (bare/sparse vegetation); `pakistan-pv-003319` (the S1-bright
 Gilgit-Baltistan/mountain FP) reads 85% class 60; the broken-composite river cluster
 at (31.245, 72.379) reads 100% class 40 (cropland) -- WorldCover correctly does NOT
 call that one bare or water, consistent with its false positives being caused by the
-corrupted composite bands (see the density-force-recompute issue doc), not a land-
-cover confusion this check could ever have fixed.
+corrupted composite bands, not a land-cover confusion this check could ever have fixed.
 
 **Caveat this module cannot avoid: some real PV is legitimately built on bare ground.**
 Ground-mount arrays are frequently sited on bare/marginal land on purpose (that is

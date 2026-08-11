@@ -16,9 +16,9 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">11,230 MWp</span><span class="label">Pakistan pilot, best estimate across every standard of proof</span></div>
-<div class="stat"><span class="value">5,336 / 3,907 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop + segmentation ground-mount) vs. <400 m&sup2; rooftop classifier </span></div>
-<div class="stat"><span class="value">2</span><span class="label">detectors in the main workflow: segmentation (ground-mount, and rooftop outside the calibrated domain) and roofclf (rooftop &ge;400 m&sup2; in-domain, plus &lt;400 m&sup2; everywhere), cross-checked with SPPI</span></div>
+<div class="stat"><span class="value">16,441 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,883 to 19,147); 6,139 MWp verified by hand-mapping or two agreeing detectors</span></div>
+<div class="stat"><span class="value">7,860 / 6,531 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop plus segmentation ground-mount) against &lt;400 m&sup2; from the rooftop classifier</span></div>
+<div class="stat"><span class="value">65.5%</span><span class="label">of Germany's rooftop capacity sits below the &ge;400 m&sup2; detection floor, measured against its complete MaStR register: the reason there are two detectors</span></div>
 </div>
 
 ## Build PV capacity maps for every country
@@ -45,14 +45,17 @@ them into this project's primary output:
   earlier work with free 10 m imagery could only find isolated solar farms.
 - **roofclf**, cross-checked with **SPPI**, answers the question below that floor: not
   "where is the polygon" but "does this *building* carry PV." **roofclf**, a per-building
-  classifier trained on exhaustively mapped quadrats, reaches 0.874 AUC on roofs under
-  500 m<sup>2</sup>, where segmentation scores 0.50. **SPPI**, a zero-training spectral
-  index, reaches 0.823 AUC with no labels at all and corroborates roofclf's Verified tier.
-  See [Capacity density](methods/density.md).
+  classifier trained on 23 exhaustively mapped ground-truth quadrats, reaches 0.857 AUC
+  (0.830 with roof size controlled for), where the segmentation raster scores close to
+  chance on the same small buildings. **SPPI**, a zero-training spectral index, reaches
+  0.823 AUC with no labels at all; requiring it to *agree* with roofclf is what defines the
+  Verified tier. See [Capacity density](methods/density.md).
 - Both halves converge on the **evidence atlas**: two tiers by *standard of proof* --
   **Verified** (hand-mapped OpenStreetMap, or roofclf and SPPI agreeing) and **Best
   estimate** (this project's own highest defensible figure) -- with the overlap between
-  OSM and detections removed rather than double-counted. Command sequence:
+  OSM and detections removed rather than double-counted, and a 90% range on each tier
+  covering the conversion constants, the model's measured precision and recall, and how
+  much the answer moves if a different set of quadrats had been mapped. Command sequence:
   [The full pipeline](reproduce.md#the-full-pipeline).
 
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
@@ -68,10 +71,12 @@ leads ranking as a boost-only signal, never required for the evidence atlas. **G
 diffs a pre-boom (2021/22) composite against the current one to show where capacity
 actually appeared, not just where it stands today -- see [Growth](results/growth.md). A
 fraction-head expected-area instrument, SPPI as a standalone detector, an older
-Low/Central/High/All-PV bracket atlas, a Germany MaStR cross-check and a rooftop
-potential/saturation atlas exist too; see
-[Experiments](how-it-works.md#experiments) for what was tried and why the two detectors
-above are what shipped as the default.
+Low/Central/High/All-PV bracket atlas and a rooftop potential/saturation atlas exist too.
+A [Germany MaStR cross-check](methods/mastr-validation.md) tests the assumptions the whole
+chain rests on against a legally complete register, which is what puts a measured number on
+the detection-floor claim above. See [Experiments](experiments.md) for everything that was
+tried and why these two detectors are what shipped, and
+[Open questions](open-questions.md) for what is still unresolved.
 
 **The map improves itself.** Detections go to mappers as a MapRoulette challenge;
 verified installations come back as in-domain training labels. That
@@ -97,9 +102,12 @@ mapping community before running anything.
 | If you want to | Read |
 | --- | --- |
 | See the capacity numbers and interrogate them | [Capacity map](results/capacity.md) |
-| See where solar capacity appeared since the pre-boom epoch | [Growth](results/growth.md) |
-| Understand the workflow, architecture, methods and what's been tried | [How it works](how-it-works.md) |
+| Understand the pipeline as it runs today | [How it works](how-it-works.md) |
 | Know how detection and density actually work | [Detection](methods/detection.md), [Density](methods/density.md) |
+| Check the method against a legally complete register | [Validation against MaStR](methods/mastr-validation.md) |
+| See what was tried and what it cost, including the failures | [Experiments](experiments.md) |
+| Know what is still unresolved before you cite a number | [Open questions](open-questions.md) |
+| Help by mapping | [Mapping leads](results/leads.md), [Quadrat protocol](calibration-mapping-protocol.md) |
 | Run the whole thing yourself, or bring it to another country | [Setup New Country](reproduce.md) |
 | Join the effort | [Community](#community) |
 | Read the one-page version | the [README](https://github.com/open-energy-transition/earthpv#readme) in the repository |
@@ -173,15 +181,23 @@ high-resolution layers, and map what is real. Tag conventionally
 (`generator:source=solar`, or `power=plant` with `plant:source=solar`) so the next label
 pull finds it.
 
-**Map a quadrat.** Exhaustively mapping every installation inside a 1 km<sup>2</sup> box is
-worth far more per hour than scattered mapping, because it measures what the model misses
-rather than only confirming what it finds. The protocol is in
-[Quadrat mapping protocol](calibration-mapping-protocol.md). Multan is the current highest
-priority: confirmed solar-dense, with zero OpenStreetMap solar features today.
+**Map a quadrat.** Exhaustively mapping every installation inside a drawn boundary is worth
+far more per hour than scattered mapping, because it measures what the model *misses* rather
+than only confirming what it finds. 23 quadrats covering 63.9 km<sup>2</sup> exist so far;
+the protocol is in [Quadrat mapping protocol](calibration-mapping-protocol.md).
+
+The highest-value next quadrat is a **sparse rural** one. A quadrat only widens the
+calibrated domain if its *own* average building density falls below the current floor, and a
+boundary traced around a village never does, because it is the farmland between settlements
+that pulls the average down. Sizing a box to include that open land on purpose is what took
+the calibrated domain from 163 cells to over 1,600.
 
 **Review a calibration sample.** `earthpv calibrate-sample` emits a stratified sample of
 unmapped candidates for human verdicts. Twenty verdicts in the 100 to 500 m<sup>2</sup> bin
-would collapse the widest uncertainty in the national capacity estimate.
+would collapse the widest remaining term in the calibration table. Two random-cell
+validation batches are also generated and waiting for review, which measures precision
+against an unbiased population rather than the curated quadrats: see
+[roofclf random-cell validation](methods/roofclf-national-validation.md).
 
 **Run it somewhere new.** [Running on a new region](reproduce.md#running-on-a-new-region)
 needs nothing pre-downloaded. Target countries for the programme are Mexico, Japan, Korea,

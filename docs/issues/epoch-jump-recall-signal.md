@@ -1,5 +1,20 @@
 # Epoch-jump as a recall signal for density (draft, not yet implemented)
 
+!!! warning "SUPERSEDED by measurement (as of 2026-08-11)"
+
+    This is a design note for a recall *rescue* built on the epoch comparison, and that
+    plumbing was never built. The reason it was not pursued is that the underlying signal
+    was subsequently measured as a `roofclf` feature and found to add nothing: the
+    probability-delta form moved held-out AUC from 0.8736 to 0.8736, exactly zero effect,
+    and the cheaper reflectance-delta form made it worse (0.8608) while crashing on one
+    quadrat. See
+    [roofclf national deployment and temporal features](roofclf-national-deployment-and-temporal-features.md)
+    for those tables and [Experiments](../experiments.md) for where it sits in the register.
+
+    The motivation section below also argues from a national total of roughly 18.3 GWp,
+    which was retired long ago; `est_mwp_rc` currently stands near 4,052 MWp. Read this as
+    a record of a rejected design, not as a proposal.
+
 ## Motivation
 
 `postprocess.add_epoch_prior` already runs the trained segmentation checkpoint over

@@ -868,14 +868,28 @@ def _unc_mwp_ci(unc: dict, cell_list: list[str]) -> dict:
 
     rows = [unc["pos"][c] for c in cell_list if c in unc["pos"]]
     out = {}
+    draws = {}
     for all_key, roof_key, name in (
         ("rc_all", "rc_roof", "est_mwp_rc"),
         ("rc_roof", "rc_roof", "est_mwp_rc_roof"),
         ("cal_all", "cal_roof", "est_mwp_cal_total"),
     ):
         tot = _composed_mwp_draws(unc, all_key, roof_key, rows)
+        draws[name] = tot
         lo, hi = np.percentile(tot, CI_PCT)
         out[f"{name}_lo"], out[f"{name}_hi"] = round(float(lo), 4), round(float(hi), 4)
+    # Ground-mount as its own interval, differenced per draw rather than from the two
+    # summary intervals (which cannot be subtracted -- the roof and total draws are the
+    # same draws, so their difference is exact here and would be nonsense from quantiles).
+    # It needs its own entry because it converts at the LAND constant, whose prior is by far
+    # the widest in the pipeline (0.035-0.075 kWp/m2, +-43% against the module constant's
+    # +-17%): a consumer that finds no `est_mwp_rc_ground_lo/hi` and falls back to "no
+    # uncertainty" silently drops the largest single term in its own total. That is exactly
+    # what `atlas.build_evidence_atlas` was doing before this was added.
+    ground = draws["est_mwp_rc"] - draws["est_mwp_rc_roof"]
+    lo, hi = np.percentile(ground, CI_PCT)
+    out["est_mwp_rc_ground_lo"] = round(float(lo), 4)
+    out["est_mwp_rc_ground_hi"] = round(float(hi), 4)
     return out
 
 
@@ -1017,6 +1031,23 @@ def aggregate(
         grid[["est_mwp_rc_lo", "est_mwp_rc_hi"]] = (
             grid[["est_mwp_rc_lo", "est_mwp_rc_hi"]].fillna(0.0)
         )
+        # National draw VECTORS (1000 floats per estimator), not the (n_cells x n_draws)
+        # matrix. Bin-level calibration draws are fully correlated across cells, so a
+        # consumer that needs to combine this run's >= 400 m2 estimate with another
+        # instrument's uncertainty needs the national vector -- and cannot reconstruct it
+        # from the per-cell `est_mwp_rc_lo/hi` columns above, because summing per-cell
+        # quantiles is precisely the error `_unc_mwp_ci`'s docstring warns about (it gave
+        # [4854, 8465] against the correct [5034, 8239] on the Pakistan run). Written so
+        # `atlas.build_evidence_atlas` can compose tier intervals exactly instead of
+        # falling back to a lognormal matched to meta's lo/hi.
+        all_rows = list(range(len(unc["cells"])))
+        draws = pd.DataFrame({
+            "est_mwp_rc": _composed_mwp_draws(unc, "rc_all", "rc_roof", all_rows),
+            "est_mwp_rc_roof": _composed_mwp_draws(unc, "rc_roof", "rc_roof", all_rows),
+            "est_mwp_cal_total": _composed_mwp_draws(unc, "cal_all", "cal_roof", all_rows),
+        })
+        draws["est_mwp_rc_ground"] = draws.est_mwp_rc - draws.est_mwp_rc_roof
+        draws.to_parquet(out_dir / "total_draws.parquet")
     grid.to_parquet(out_dir / "grid.geoparquet")
     grid.drop(columns="geometry").to_csv(out_dir / "grid.csv", index=False)
 

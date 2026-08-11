@@ -1952,6 +1952,248 @@ khairpur_and_correction_backup.html`, `data/roofclf_national_with_sppi/pakistan/
 density_PRE_20260811_khairpur_and_correction_backup/`, `data/roofclf_PRE_20260811_
 wide_correction_and_khairpur_backup/` (all session-local).
 
+### The evidence atlas now reports 90% intervals on both tiers, 2026-08-11
+
+**The project's documented primary output was reporting two bare point estimates, while
+the older, superseded `build_atlas`/`_build_estimator_atlas` path had carried credible
+intervals all along.** That was backwards, and the entries above are the argument for
+fixing it: Verified and Best each moved 20-35% five separate times in this one session
+(placement-split calibration, dissolved OSM, Malok, two domain widenings), purely from
+recalibration, and a reader of the page had no way to see that the numbers were that
+soft. `atlas._evidence_uncertainty` now composes a 90% interval per tier from every
+uncertainty this pipeline actually measures, and the page shows it under each KPI and in
+the hero. Point estimates are **byte-identical** -- verified by diffing the rebuilt
+atlas's embedded totals against the pre-change published atlas (`mwp_verified` 6,138.6,
+`mwp_best` 16,441.4, every component unchanged) -- this pass adds intervals and changes
+no published figure. Result: **Verified 6,138.6 MWp (90% 5,096-7,498), Best 16,441.4 MWp
+(90% 12,883-19,147)**.
+
+Five things about how it is composed that matter more than the numbers:
+
+- **Correlated terms share one draw vector, deliberately.** One module-constant draw
+  multiplies every module-area component and one land draw every site-area component,
+  because it is the same physical constant in all of them -- drawing per component would
+  cancel most of its effect out, which is exactly wrong for a constant applied to a whole
+  country at once. Same reasoning for the coverage ratio: all four roofclf-based
+  components (`sub400` central, `sub400` AND-gate, out-of-domain AND-gate, >= 400 m²
+  rooftop) are fit on the SAME quadrats, so `sub400_capacity.COVERAGE_BOOTSTRAP_SEED` is a
+  fixed shared constant and `atlas._aligned_coverage_factors` indexes every component with
+  the same `arange(n_draws) % n_boot`, so replicate b means the same resampled quadrat set
+  everywhere. Treating four estimates built from one calibration set as independent would
+  report a Best interval narrower than the evidence supports.
+- **The coverage ratio's error is measured by resampling QUADRATS, not buildings**
+  (`sub400_capacity.coverage_ratio_bootstrap_factors`, 200 replicates, ~7 s). A
+  building-level bootstrap over ~100k rows that share a mapper, a settlement pattern and
+  one imagery epoch would report an interval far too narrow to be honest; quadrat
+  composition is the thing that has demonstrably moved these numbers (Malok alone shifted
+  the trusted set 13 -> 15 and every component 1-8%). Returns dimensionless multiplicative
+  factors so the atlas composes them without touching quadrat data and the kWp constant
+  cancels. A quadrat drawn twice genuinely counts twice -- its rows are duplicated under
+  synthetic labels rather than deduplicated by `isin`, which would silently degrade the
+  bootstrap into an m-out-of-n subsample. Measured factor CI90: central 0.885-1.151, AND-gate
+  0.848-1.169, out-of-domain 0.726-1.203, >= 400 m² rooftop 0.650-1.105.
+- **The bootstrap mean is NOT 1.0 for the >= 400 m² component (0.934) and that is a finding,
+  not a defect** -- the point fit uses every calibrated quadrat, while a resample often
+  omits whichever ones carry the highest coverage in the largest size bins, so the
+  published point sits at the high end of what equally plausible quadrat sets produce.
+  Deliberately not bias-corrected away; a factor of 1.0 still falls inside every
+  component's own interval, so the published number stays inside its reported range while
+  the skew stays visible (`factor_mean` in the atlas's `totals.uncertainty`).
+- **One term is a stated judgement, not a measurement, and is isolated so it can be
+  audited**: `atlas.OUTDOMAIN_EXTRAPOLATION_CI90 = (0.25, 1.25)`, a uniform factor on the
+  out-of-domain AND-gate component alone, because all 2,783 out-of-domain cells sit BELOW
+  the calibrated density band and no quadrat constrains their coverage ratio in either
+  direction. Skewed down rather than symmetric (the plausible failure is over-crediting
+  rural roofs). `mwp_best_ci_without_extrapolation` is reported alongside so its
+  contribution is visible -- and measured, it is negligible: 12,981-19,345 without it
+  against 12,883-19,147 with it, because the component is only 278 of 16,441 MWp. **The
+  Best interval is dominated by the >= 400 m² rooftop coverage ratio (6,427 MWp, 4,055-7,668)
+  and the sub-400 m² central component (6,531 MWp, 5,266-7,975), not by the extrapolation
+  everyone would suspect first.**
+- **A silent zero-width interval was found and fixed on the way.** `meta.json` carried
+  `total_est_mwp_rc_lo/hi` and `..._rc_roof_lo/hi` but never a `..._rc_ground` pair, so
+  ground-mount (1,135.6 MWp) was contributing an interval of exactly zero width -- on the
+  component whose conversion constant has by far the WIDEST prior in the pipeline (land
+  0.035-0.075, +-43%, against module's +-17%). `density._unc_mwp_ci` now emits
+  `est_mwp_rc_ground_lo/hi`, differenced per draw (the two summary intervals cannot be
+  subtracted; the draws can, and are the same draws, so it is exact). Until a density
+  re-run exists, the atlas substitutes the land prior alone for it, logs a warning, and
+  records it in `segmentation_estimators_using_kwp_prior_only` -- an explicit degradation
+  rather than a silent one. That alone widened Best from 12,999-19,118 to 12,926-19,293
+  under the lognormal fallback, and to 12,883-19,147 once the exact draws landed.
+
+Also added, for exactness on the next density run: `density.aggregate` writes
+`density/total_draws.parquet`, the national draw VECTORS (1000 floats per estimator, not
+the n_cells x n_draws matrix) for `est_mwp_rc`/`_roof`/`_ground`/`cal_total`.
+`atlas._segmentation_total_factors` prefers it and falls back to a lognormal matched to
+meta's lo/hi, reporting which path it used in `segmentation_factor_method`. The fallback is
+what the current atlas uses (no density run has written the file yet); it reproduces the
+published point and interval but assumes a lognormal shape between them and drops the
+roof/ground correlation, which slightly narrows their sum.
+
+`_evidence_uncertainty` **asserts** that its component point values sum to each published
+tier total (up to an explicit `best_floor_offset_mwp` carrying `mwp_best`'s per-cell floor
+at `mwp_verified`, 739.4 MWp here, treated as deterministic). That assertion is the guard
+against the failure mode this whole function invites: someone adds a component to the atlas
+and not to the uncertainty composition, and the page then shows an interval for a different
+quantity than the number beside it.
+
+CLI: `--coverage-boot N` on both `sub400-capacity` and `ge400-roof-capacity` (default 200,
+0 disables -- and disabling it makes the atlas interval silently NARROWER, which is why
+`totals.uncertainty.coverage_bootstrap_missing` records any component that arrives without
+one). Backups: `results/pakistan_pv_evidence_atlas_PRE_20260811_uncertainty_backup.html`,
+`data/roofclf_national_with_sppi/pakistan/density_PRE_20260811_uncertainty_backup/`.
+
+### Validating against a complete register: Germany and MaStR, 2026-08-11
+
+**New module `mastr_validation.py` + `earthpv validate-mastr`, and the first
+externally-verifiable check on the claim this project's whole two-detector architecture
+rests on.** Full writeup: `docs/methods/mastr-validation.md`. `calibrate.py` already
+calibrated a probability *raster* against MaStR; nothing had ever checked the parts
+downstream of it. Germany matters because MaStR registration is legally mandatory, so
+per-municipality rooftop capacity there is the answer rather than a sample -- the one thing
+21 purposive, owner-attested, epoch-relative Pakistani quadrats can never be.
+
+- **The detection-floor claim holds, and is now measured at the right threshold.** The
+  project has been quoting MaStR's "72.6% of rooftop capacity is in units <= 100 kWp" as a
+  proxy. 400 m² of module at 0.18 kWp/m² is **72 kWp**, and the exact share below that is
+  **65.5% of rooftop capacity** (and 97.2% of installations), on 4,411,015 rooftop units
+  totalling 74.8 GWp. So an instrument that only sees above the floor is describing roughly
+  a third of what a "rooftop solar" headline implies. The <= 100 kWp row reproduces 72.6%
+  exactly, which is the check that this module's filters match
+  `mastr.aggregate_gemeinden`'s. **Quote the capacity share, not the count share** -- 97.2%
+  of installations against 65.5% of capacity is a factor-of-relevance difference and the
+  count version overstates the gap badly.
+- **That share is much less transferable than the tidy national percentage suggests.** The
+  project transfers it to Pakistan as a constant (the MaStR-shape transfer, implying ~5.9
+  GWp). Across 10,675 German municipalities with >= 100 kW: median 0.762, **5th-95th
+  percentile 0.249-1.000**, SD 0.235, p90/p10 ratio 2.69. And it is not just noise --
+  **Spearman -0.42 against a municipality's own total capacity**: capacity concentrates
+  where large industrial roofs are, and those have a lower small-PV share, so the
+  unweighted mean over municipalities (0.724) sits 7 points ABOVE the capacity-weighted
+  national figure (0.655). Any transfer reasoning from "a typical place" rather than from a
+  capacity-weighted total is biased upward.
+- **German OSM cannot serve as the complete reference, measured non-circularly.** The trap
+  worth recording: `data/calibration/completeness.parquet`'s `completeness` column IS
+  `0.18 * osm_area / kw_rooftop`, so selecting "well-mapped" municipalities with it and
+  then measuring `kw_rooftop / osm_area` to test that same 0.18 is selecting on the
+  estimator. Measuring completeness by unit COUNT instead (no area, no constant):
+  **3.6% of registered German rooftop units are mapped in OSM**, and the well-mapped tail
+  is both thin and useless for calibration -- 55 municipalities at >= 30% completeness, 18
+  at >= 50%, 3 at >= 80%, with the pooled implied kWp/m² swinging **0.239 -> 0.083 -> 0.069**
+  across those cutoffs and per-municipality values spanning 0.02-0.99 against the project's
+  0.18. That is not sampling noise around a true value: nothing in OSM says whether a
+  `generator:source=solar` polygon outlines the array or the whole roof, so the ratio
+  measures mapper convention. **`DEFAULT_KWP_PER_M2_MODULE` therefore stays as calibrated;
+  this route is a measured negative result, not a blocked one.** Two things travel beyond
+  Germany: "Germany is well mapped in OSM" is true of buildings and false of rooftop PV,
+  and the same array-vs-roof ambiguity applies to Pakistan's own OSM reference, which is
+  used both as a recall denominator and as the Verified tier's population.
+- **The end-to-end per-municipality comparison is written and wired but cannot run yet**,
+  and the blockers are data acquisition, not code: `data/composites/germany/` is absent
+  (the sibling project has **14 of the 76** MGRS tiles Germany needs, and
+  `data/predictions/germany/prob/` holds 4 tiles in a per-MGRS-tile layout `density` cannot
+  read); `data/vida/DEU.parquet` is absent so there is no small-roof building layer for
+  `roofclf`; and all 21 calibration quadrats are Pakistani, which the 3.6% figure above
+  means German quadrats must be *mapped* rather than derived from an OSM pull.
+  `validate_density_against_mastr` reports its own coverage and **refuses to call a
+  partial-coverage result national** -- not hypothetical, since a 4-of-76-tile run would
+  produce a national sum ~5% of truth and a slope that reads as catastrophic model failure
+  rather than as missing imagery.
+
+**This project's first test file, `tests/test_mastr_validation.py`**, exists because the
+harness above is otherwise entirely unexercised: it feeds the register back through it
+synthetically (a grid carrying exactly MaStR's capacity must return slope 1.0, half of it
+0.5, a 200-municipality grid must be refused as non-national), which pins the units, the
+origin-forced fit, the kW->MWp conversion and the coverage guard. It immediately earned its
+keep by catching a real bug: a Spearman over a constant column returns NaN, and
+`json.dumps` writes a bare `NaN` that strict JSON parsers reject, so the report file would
+have been unreadable in exactly the degenerate case a fixture always produces (fixed via
+`mastr_validation._num`). Run it with
+`.pixi/envs/default/bin/python tests/test_mastr_validation.py` (pytest is still not a
+declared dependency, so the file also runs as a plain script).
+
+One drive-by fix in the same pass: `scripts/screenshot_pages.py` now pins
+`ui.prefersReducedMotion` in its throwaway Firefox profile. The atlas templates animate
+their hero figure with a count-up and `--screenshot` fires mid-animation, so **every
+committed atlas PNG has been showing a wrong hero number for months** (the previous one
+read 885 against a real 11,230; the first re-shoot this session read 4,818 against 16,441).
+Each template already short-circuits its count-up to the final value under reduced motion,
+so asking for it is the whole fix -- no wait, no template change.
+`docs/assets/figures/pakistan_evidence_atlas.png` is re-shot and correct;
+**the other pages' PNGs still carry the old defect until `pixi run docs-screenshots` is
+re-run for them.**
+
+### Documentation restructured around the shipped workflow, 2026-08-11
+
+**At the owner's request: make the current success workflow the main content, update the
+experiments page and the closed issues, and delete what is no longer relevant.** The site
+had accumulated the standard failure mode of a research log used as documentation -- a
+438-line `how-it-works.md` with the experiment register buried two thirds down, a
+`docs/notes/index.md` status table whose rows had gone factually wrong, five issue docs
+absent from nav entirely, and several write-ups whose headline claim had since been
+reversed with nothing on the page saying so.
+
+Structure now runs **Results -> How it works -> Setup -> Experiments -> Open questions**,
+in that nav order deliberately: the output first, the working pipeline second, the history
+last.
+
+- **`docs/experiments.md` (new)** is the canonical register, split out of
+  `how-it-works.md` (179 lines cut) and expanded to cover every experiment including the
+  ones that previously only existed inside an issue doc. 38 rows with a verdict each
+  (`shipped` / `partial` / `rejected` / `superseded`, reusing `extra.css`'s existing
+  `.outcome` badge classes), then prose sections for what worked and why, and a table
+  linking every deep write-up. `how-it-works.md` is now purely a description of the
+  pipeline as it runs.
+- **`docs/open-questions.md` (new)** replaces the deleted `notes/index.md`. 12 ranked open
+  items plus a "known defects carried on purpose" section (the 3 `check-density`
+  concentration failures, the `buildings.geoparquet` 46.4% structural gap, NaN-scored
+  buildings in tile-overlap strips, the two deleted checkpoints). The rule stated on the
+  page: an item belongs here only if a concrete next step exists and has not been taken,
+  and when it closes its row is deleted rather than annotated, moving to the experiments
+  register with a verdict.
+- **Every one of the 14 surviving `docs/issues/*.md` now carries a dated status banner**
+  (`!!! success` shipped / `!!! info` closed negative / `!!! warning` superseded /
+  `!!! note` open) stating what state the doc describes and what has changed since. This
+  was the single largest honesty gap: `roofclf-national-deployment-and-temporal-features.md`
+  still led with "roofclf's national output is not folded into density.py or the published
+  capacity atlas", a decision reversed on 2026-08-07, and `sppi-spectral-index-evaluation.md`
+  was titled "not adopted for detection" while SPPI defines the Verified tier.
+- **Three docs deleted**, on the rule "remove only where every operative claim is now false
+  AND the evidence is preserved elsewhere": `notes/index.md`,
+  `issues/osm-replacement-and-sppi-capacity.md` (all three parts superseded; Part 3's
+  duplicate-match bug fixed via `groupby(...).idxmin()`, Part 2's "not yet national" false
+  since SPPI went national) and `issues/density-force-recompute-plausibility-fail.md` (its
+  stated cause -- a `no_building` aggregation regression -- was displaced by the measured
+  pooled-calibration cause, and its closing "check-density now passes" is false of the
+  published state). Their residual open items moved to `open-questions.md`.
+- **`docs/methods/density.md`'s Gilgit-Baltistan admonition was rewritten**: it still
+  asserted the ratio failures were an unlocated `density.py` regression. Corrected to the
+  measured cause, with the still-valid separate justification for the GB exemption and the
+  current 3-concentration-failure state.
+
+**Every reference to a deleted or nonexistent doc was retargeted, not left dangling**, and
+this surfaced two paths that had never existed at all:
+`docs/issues/small-pv-step-signal.md` (referenced from `scripts/sppi_growth_map.py`,
+`configs/aoi.yaml` and `boom-window-stacking-experiment.md`) and
+`docs/issues/glint-alignment-check.md` (referenced from `src/earthpv/glint.py`, where the
+real artifact is `scripts/glint_alignment_check.py`). Also fixed: two links in
+`pakistan-calibration-boxes.md` to a slug that never existed, and three links to the moved
+`how-it-works.md#experiments` anchor. `mkdocs build --strict` now runs with **zero**
+warnings, zero orphaned pages and zero broken anchors, where before it reported 6 orphans
+and 2 bad anchors.
+
+Numbers refreshed throughout from the artifacts rather than copied forward: **23 quadrats,
+all Rule-1, 63.9 km², 15,494 installations, 104,423 buildings**; roofclf **0.857 AUC /
+0.830 within size band** at threshold **0.2443**; atlas **Verified 6,138.6 (90%
+5,096-7,498) / Best 16,441.4 (90% 12,883-19,147)**. `docs/index.md`'s stat strip was
+carrying 11,230 MWp and 0.874 AUC, and `README.md` 5,467 / 11,230 -- both several
+recalibrations stale. The MaStR **65.5%** figure is now the headline justification for
+running two detectors, on `index.md`, `README.md` and
+`docs/methods/mastr-validation.md`, replacing the ~72.6% proxy.
+`docs/results/growth.md` was un-commented back into nav with an admonition marking it a
+secondary product built partly on the unpromoted fraction head.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**
