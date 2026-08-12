@@ -14,8 +14,8 @@ module. This module cross-checks two things:
 2. `expected_annual_yield` converts each region's estimated MWp into expected annual
    generation (GWh/yr) via PVGIS-modelled specific yield at representative coordinates,
    so the capacity estimate can be cross-checked against known Pakistani generation
-   anchors (NEPRA net-metering totals, TransitionZero's 27.5 GW distributed-solar
-   study — see README.md) independently of the detection pipeline entirely.
+   anchors (NEPRA net-metering totals, an independent 27.5 GW distributed-solar study —
+   see README.md) independently of the detection pipeline entirely.
 
 Both are sanity checks, not silent replacements: the density-stage constants are left
 as-is; this module only surfaces the comparison. For a check that gates the output, see

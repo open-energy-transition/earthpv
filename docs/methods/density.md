@@ -1108,7 +1108,7 @@ Each step exists because the previous one had a measurable gap.
    is the purpose-built estimator for it.
 4. **Calibration anchors.** Germany's MaStR register established a stable 2.4 to 2.5 times
    aggregate over-prediction, consistent from chip level to municipality level and
-   therefore correctable. Pakistan was cross-checked against TransitionZero's 27.5 GW
+   therefore correctable. Pakistan was cross-checked against an independent 27.5 GW
    distributed-solar study with a coverage-share-disentangled calibration, separating
    scale error inside imaged cells from cells never imaged at all.
 5. **Coverage expansion.** That comparison showed the missing-coverage term dominated.

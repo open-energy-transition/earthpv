@@ -1,10 +1,15 @@
-"""Compare our PV estimate against three external, non-imagery-derived proxies:
+"""Compare this project's evidence-atlas estimate against three external, non-imagery
+proxies, none derived from this project's own model or labels:
 
-1. **TransitionZero** (`data/estimated_rooftop_solar_capacity.json`) -- another modelled
-   rooftop-solar estimate, in units that don't match ours (confirmed 2026-07-16, see
-   `docs/methods/density.md` / memory). Compared as percent-of-national-total per spatial
-   unit, which sidesteps the unit mismatch and asks "do the two models agree on where PV
-   concentrates" rather than "whose number is bigger."
+1. **An independent rooftop-solar hex dataset** (`data/estimated_rooftop_solar_capacity.json`)
+   -- another modelled rooftop-solar estimate, in units that don't match this project's
+   (confirmed 2026-07-16, see `docs/methods/density.md` / memory). Compared as
+   percent-of-national-total per spatial unit, which sidesteps the unit mismatch and asks
+   "do the two estimates agree on where PV concentrates" rather than "whose number is
+   bigger" -- and neither side is treated as ground truth: this is a spatial-agreement
+   check between two independent, imperfect estimates, not a validation of one against
+   the other. See `scripts/pv_reference_share_comparison.py` for the same comparison as
+   its own standalone page, with more detail on the method.
 2. **VIIRS annual nighttime-lights radiance** (2023 composite, 500 m, Zenodo mirror of the
    Earth Observation Group's public-domain product) -- a proxy for electrification/urban
    activity. Solar panels aren't visible in this data; the question is whether PV density
@@ -15,9 +20,16 @@
 
 Neither nightlights nor RWI existed anywhere in this codebase before this script; both are
 fetched fresh from public, no-login sources (Zenodo CC-BY, HDX). This is a standalone,
-scratch-style analysis in the spirit of `scripts/pv_density_vs_transitionzero.py` -- not a
-pipeline stage -- so it re-downloads/re-derives everything each run rather than caching to
-`data/`.
+scratch-style analysis, not a pipeline stage, so it re-downloads/re-derives everything each
+run rather than caching to `data/`.
+
+This project's own side of all three comparisons is the evidence atlas's Best-estimate
+per cell (`mwp_best`, read from `docs/assets/interactive/pakistan_evidence_atlas.html`'s
+embedded data, via `pv_reference_share_comparison.load_atlas_cells`), not the older,
+segmentation-only `est_mwp_rc` -- so this always reflects whatever is actually published,
+not a `density/` snapshot that may have moved on since. `density/grid.geoparquet` is still
+read for its geometry and `roof_area_m2` (the confound the nightlights/RWI partial
+correlations control for), neither of which the atlas embeds.
 
 Usage:
   .pixi/envs/default/bin/python scripts/build_pv_external_comparison.py [--skip-download]
@@ -29,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import tempfile
 import urllib.request
 from pathlib import Path
@@ -39,11 +52,12 @@ import pandas as pd
 import rasterio
 from rasterio.windows import from_bounds, transform as win_transform
 from scipy import stats
-from shapely.geometry import shape
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from pv_reference_share_comparison import build_comparison, load_atlas_cells, load_reference  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DENSITY_DIR = ROOT / "data/predictions/pakistan/density"
-TZ_PATH = ROOT / "data/estimated_rooftop_solar_capacity.json"
 OUT = ROOT / "results" / "pakistan_pv_external_comparison.html"
 SIBLING = ROOT / "scripts" / "build_pakistan_pv_overview.py"
 
@@ -135,9 +149,22 @@ def simplify_rings(geom, tol: float) -> list:
 
 def prepare_data() -> dict:
     grid = gpd.read_parquet(DENSITY_DIR / "grid.geoparquet").reset_index(drop=True)
-    meta = json.loads((DENSITY_DIR / "meta.json").read_text())
-    total_rc = meta["total_est_mwp_rc"]
-    grid["our_share_pct"] = grid.est_mwp_rc / total_rc * 100.0
+
+    # This project's side of every comparison below is the published evidence atlas's
+    # Best-estimate per cell, not density/grid.geoparquet's own (older, segmentation-only)
+    # est_mwp_rc -- matched onto this grid's geometry/roof-area columns (which the atlas
+    # does not embed) by rounding both sides' cell-corner coordinates to the atlas's own
+    # 3 decimal places.
+    atlas_cells, totals, provinces = load_atlas_cells()
+    total_best = totals["mwp_best"]
+    grid["lon0_r"], grid["lat0_r"] = grid.lon0.round(3), grid.lat0.round(3)
+    atlas_cells["lon0_r"], atlas_cells["lat0_r"] = atlas_cells.lon0.round(3), atlas_cells.lat0.round(3)
+    grid = grid.merge(atlas_cells[["lon0_r", "lat0_r", "mwp_best"]], on=["lon0_r", "lat0_r"], how="left")
+    n_unmatched = int(grid.mwp_best.isna().sum())
+    if n_unmatched:
+        print(f"  warning: {n_unmatched} of {len(grid)} density cells found no matching atlas cell")
+    grid["mwp_best"] = grid.mwp_best.fillna(0.0)
+    grid["our_share_pct"] = grid.mwp_best / total_best * 100.0
 
     print("Zonal nightlights...")
     grid["ntl_mean"] = zonal_ntl(grid)
@@ -146,7 +173,7 @@ def prepare_data() -> dict:
     grid["rwi_mean"] = rwi_mean
     grid["rwi_n"] = rwi_n.fillna(0)
 
-    log_mwp = np.log1p(grid.est_mwp_rc.values)
+    log_mwp = np.log1p(grid.mwp_best.values)
     log_roof = np.log1p(grid.roof_area_m2.values)
     log_ntl = np.log1p(grid.ntl_mean.values)
 
@@ -154,66 +181,44 @@ def prepare_data() -> dict:
     ntl_stats["partial_vs_roof_area"] = partial_corr(log_mwp, log_ntl, log_roof)
 
     covered = grid[grid.rwi_n > 0]
-    rwi_stats = corr_block(covered.rwi_mean.values, np.log1p(covered.est_mwp_rc.values))
+    rwi_stats = corr_block(covered.rwi_mean.values, np.log1p(covered.mwp_best.values))
     rwi_stats["partial_vs_roof_area"] = partial_corr(
-        np.log1p(covered.est_mwp_rc.values), covered.rwi_mean.values, np.log1p(covered.roof_area_m2.values))
+        np.log1p(covered.mwp_best.values), covered.rwi_mean.values, np.log1p(covered.roof_area_m2.values))
     rwi_stats["n_covered"] = int(len(covered))
     rwi_stats["n_total"] = int(len(grid))
 
-    print("TransitionZero share-diff...")
-    raw = json.loads(TZ_PATH.read_text())
-    tz_rows = []
-    for r in raw:
-        geom = shape(json.loads(r["geojson"]))
-        val = float(r["value"][0]) if r["value"] else 0.0
-        tz_rows.append({"name": r["name"], "value": val, "geometry": geom})
-    tz = gpd.GeoDataFrame(tz_rows, geometry="geometry", crs="EPSG:4326")
-    tz["tz_share_pct"] = tz.value / tz.value.sum() * 100.0
-    reps = gpd.GeoDataFrame({"our_share_pct": grid.our_share_pct},
-                             geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs="EPSG:4326")
-    hits = gpd.sjoin(reps, tz[["name", "geometry"]], predicate="within", how="left")
-    our_by_hex = hits.dropna(subset=["name"]).groupby("name").our_share_pct.sum()
-    tz = tz.set_index("name")
-    tz["our_share_pct"] = our_by_hex.reindex(tz.index).fillna(0.0)
-    tz["share_diff_pp"] = tz.our_share_pct - tz.tz_share_pct
-    matched = int((our_by_hex.reindex(tz.index).fillna(0.0) > 0).sum())
-    tz_stats = corr_block(tz.tz_share_pct.values, tz.our_share_pct.values)
-    tz_stats.update({"n_hex": len(tz), "matched": matched,
-                      "diff_min": round(float(tz.share_diff_pp.min()), 4),
-                      "diff_max": round(float(tz.share_diff_pp.max()), 4)})
+    print("External-reference share-diff...")
+    reference = load_reference()
+    reference = build_comparison(atlas_cells, total_best, reference)
+    matched = int((reference.our_share_pct > 0).sum())
+    ref_stats = corr_block(reference.ext_share_pct.values, reference.our_share_pct.values)
+    ref_stats.update({"n_hex": len(reference), "matched": matched,
+                       "diff_min": round(float(reference.share_diff_pp.min()), 4),
+                       "diff_max": round(float(reference.share_diff_pp.max()), 4)})
 
-    regions = gpd.read_parquet(DENSITY_DIR / "regions.geoparquet")
-    provinces = regions[regions.level == "region"]
-
-    province_rings = [{"name": row["name"], "rings": simplify_rings(row.geometry, 0.01)}
-                       for _, row in provinces.iterrows()]
+    province_rings = [{"name": p["name"], "rings": p["rings"]} for p in provinces]
 
     cells = [{
         "lon0": round(row.lon0, 4), "lat0": round(row.lat0, 4),
-        "mwp": round(float(row.est_mwp_rc), 4), "share": round(float(row.our_share_pct), 6),
+        "mwp": round(float(row.mwp_best), 4), "share": round(float(row.our_share_pct), 6),
         "ntl": round(float(row.ntl_mean), 4),
         "rwi": (round(float(row.rwi_mean), 4) if row.rwi_n > 0 else None),
         "nb": int(row.n_buildings),
     } for row in grid.itertuples()]
 
-    tz_features = [{
+    reference_features = [{
         "name": name, "rings": simplify_rings(row.geometry, 0.002),
-        "tz_pct": round(float(row.tz_share_pct), 4), "our_pct": round(float(row.our_share_pct), 4),
+        "ext_pct": round(float(row.ext_share_pct), 4), "our_pct": round(float(row.our_share_pct), 4),
         "diff_pp": round(float(row.share_diff_pp), 4),
-    } for name, row in tz.iterrows()]
-
-    prov_table = [{"name": row["name"], "mwp": round(float(row.est_mwp_rc), 1),
-                   "n_buildings": int(row.n_buildings)}
-                  for _, row in provinces.sort_values("est_mwp_rc", ascending=False).iterrows()]
+    } for name, row in reference.iterrows()]
 
     return {
         "bounds": grid.total_bounds.tolist(),
-        "total_rc": total_rc,
+        "total_best": round(total_best, 1),
         "provinces": province_rings,
-        "prov_table": prov_table,
         "cells": cells,
-        "tz": tz_features,
-        "stats": {"tz": tz_stats, "ntl": ntl_stats, "rwi": rwi_stats},
+        "reference": reference_features,
+        "stats": {"reference": ref_stats, "ntl": ntl_stats, "rwi": rwi_stats},
     }
 
 
@@ -254,38 +259,41 @@ __CSS__
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">EarthPV &middot; Sentinel-2 &middot; TerraMind &middot; TransitionZero &middot; VIIRS &middot; Meta Data for Good</p>
-    <h1>Does our PV map agree with everyone else's proxies?</h1>
+    <p class="eyebrow">EarthPV &middot; Sentinel-2 &middot; TerraMind &middot; VIIRS &middot; Meta Data for Good &middot; an independent reference estimate</p>
+    <h1>Does this project's PV map agree with independent proxies?</h1>
     <p class="lede">Three external, independently-produced layers, none derived from this
-    project's own imagery or model, checked against our per-cell PV capacity
-    (<code>est_mwp_rc</code>, the recall-corrected headline metric, &ge;400 m&sup2; scope).
-    <b>TransitionZero</b> is another rooftop-solar model &mdash; a check of whether two
-    independent models place PV in the same places. <b>Night lights</b> (VIIRS) and
-    <b>Relative Wealth Index</b> (Meta) aren't solar products at all &mdash; they're proxies
-    for electrification and household wealth, so agreement with them is a plausibility check
-    on <em>where PV should be</em>, not a validation of <em>how much</em> is there.</p>
+    project's own imagery or model, checked against this project's per-cell PV capacity
+    (<code>mwp_best</code>, the evidence atlas's Best-estimate tier). None of these three
+    is treated as ground truth -- each answers a different, narrower question about
+    whether this project's estimate is <em>plausible</em>, not whether it is right.
+    An <b>independent rooftop-solar estimate</b> is another model of the same country
+    &mdash; a check of whether two independently-built estimates place PV in the same
+    places. <b>Night lights</b> (VIIRS) and <b>Relative Wealth Index</b> (Meta) aren't
+    solar products at all &mdash; they're proxies for electrification and household
+    wealth, so agreement with them is a plausibility check on <em>where PV should be</em>,
+    not a validation of <em>how much</em> is there.</p>
   </header>
 
   <div class="kpis">
-    <div class="kpi"><div class="v" id="kTz">0</div>
-      <div class="k">Rank correlation with TransitionZero's own spatial share</div></div>
+    <div class="kpi"><div class="v" id="kRef">0</div>
+      <div class="k">Rank correlation with the independent reference's own spatial share</div></div>
     <div class="kpi"><div class="v" id="kNtl">0</div>
       <div class="k">Log-log correlation with nighttime-lights radiance</div></div>
     <div class="kpi"><div class="v" id="kRwi">0</div>
       <div class="k">Correlation with Meta's Relative Wealth Index</div></div>
     <div class="kpi"><div class="v" id="kTotal">0<small>MWp</small></div>
-      <div class="k">Our national total, recall-corrected (est_mwp_rc)</div></div>
+      <div class="k">This project's national total, Best estimate</div></div>
   </div>
 
   <section class="sec" id="compare">
     <div class="sec-head">
       <div>
         <div class="sec-label">Comparison</div>
-        <div class="sec-title">Where our PV estimate agrees, and where it doesn't</div>
+        <div class="sec-title">Where this project's PV estimate agrees, and where it doesn't</div>
       </div>
       <div class="switch" role="group" aria-label="Comparison layer">
         <button class="tab" id="tab0" type="button" data-i="0">
-          <span class="tt1">TransitionZero</span><span class="tt2">another rooftop-solar model</span>
+          <span class="tt1">Independent reference</span><span class="tt2">another rooftop-solar estimate</span>
         </button>
         <button class="tab" id="tab1" type="button" data-i="1">
           <span class="tt1">Night lights</span><span class="tt2">VIIRS 2023 annual radiance</span>
@@ -310,7 +318,7 @@ __CSS__
           </div>
           <div class="cap" id="legcap"></div>
           <div class="large-key" id="ringKey" style="display:none">
-            <span class="sw"></span>our PV capacity: ring size
+            <span class="sw"></span>this project’s PV capacity: ring size
           </div>
         </div>
       </section>
@@ -339,25 +347,26 @@ __CSS__
     </div>
 
     <details class="xdetails">
-      <summary><span><span class="xt">TransitionZero: units don't match, so this compares rank, not magnitude</span>
+      <summary><span><span class="xt">Independent reference: units don't match, so this compares rank, not magnitude</span>
         <span class="xs">percent-of-national-total per hexagon</span></span><span class="xi">+</span></summary>
       <div class="xbody">
-        <p>TransitionZero's file (<code>data/estimated_rooftop_solar_capacity.json</code>, 3,303 H3
+        <p>The reference file (<code>data/estimated_rooftop_solar_capacity.json</code>, 3,303 H3
         resolution-5 hexagons, &asymp;252 km&sup2; each) sums to a value not in comparable absolute
-        units or scope to our MWp figure (confirmed 2026-07-16) &mdash; a different methodology
-        and, likely, a different definition of what counts as rooftop solar. Diffing raw
-        magnitudes would be meaningless, so both datasets are normalized to <b>percent of
-        national total per spatial unit</b> before comparing: this asks "do the two models
-        agree on <em>where</em> PV concentrates," which is answerable, rather than "whose number
-        is bigger," which isn't. Rank (Spearman) correlation is the headline statistic for
-        exactly this reason &mdash; it's invariant to any monotonic rescaling either side's
-        units might need.</p>
-        <p>Only <span id="xTzMatched">-</span> of 3,303 hexagons receive any of our grid cells at
-        all: our own compositing only covers building-populated cells (&asymp;54% of the
-        country's area), so a large share of the "no overlap" hexagons are a coverage gap, not a
-        disagreement &mdash; see <code>docs/methods/density.md</code> for the earlier measurement
-        that most of the apparent gap (51.9 of 52.2 percentage points) is cells we <em>have</em>
-        inferred but which score near-zero, not cells we've never looked at.</p>
+        units or scope to this project's MWp figure (confirmed 2026-07-16) &mdash; a different
+        methodology and, likely, a different definition of what counts as rooftop solar. Neither
+        estimate is treated as ground truth here. Diffing raw magnitudes would be meaningless, so
+        both datasets are normalized to <b>percent of national total per spatial unit</b> before
+        comparing: this asks "do the two estimates agree on <em>where</em> PV concentrates," which
+        is answerable, rather than "whose number is bigger," which isn't. Rank (Spearman)
+        correlation is the headline statistic for exactly this reason &mdash; it's invariant to
+        any monotonic rescaling either side's units might need.</p>
+        <p>Only <span id="xRefMatched">-</span> of 3,303 hexagons receive any of this project's
+        grid cells at all: this project's own compositing only covers building-populated cells
+        (&asymp;54% of the country's area), so a large share of the "no overlap" hexagons are a
+        coverage gap, not a disagreement &mdash; see <code>docs/methods/density.md</code> for the
+        earlier measurement that most of the apparent gap (51.9 of 52.2 percentage points) is
+        cells this project <em>has</em> inferred but which score near-zero, not cells never
+        looked at.</p>
       </div>
     </details>
 
@@ -393,7 +402,7 @@ __CSS__
         adjacent but not derived from this project's Sentinel-2 pipeline or its PV labels),
         downloaded from HDX's public, no-login mirror. Values are <em>relative</em> within
         India+Pakistan (this file's own scope), centered near <span id="xRwiMedian">-</span> for
-        our grid's covered cells, not an absolute wealth measure.</p>
+        this project’s grid’s covered cells, not an absolute wealth measure.</p>
         <p><span id="xRwiCovered">-</span> of <span id="xRwiTotal">-</span> cells have &ge;1 RWI
         tile centroid. Correlation with wealth is real but modest (<span id="xRwiRaw">-</span>
         raw, <span id="xRwiPartial">-</span> after controlling for building footprint area) &mdash;
@@ -407,24 +416,25 @@ __CSS__
       <summary><span><span class="xt">Data &amp; methods</span>
         <span class="xs">what's under the hood</span></span><span class="xi">+</span></summary>
       <div class="xbody">
-        <p>Our own layer: <code>data/predictions/pakistan/density/grid.geoparquet</code>,
-        <code>est_mwp_rc</code> per 0.1&deg; cell (the currently-published density run). VIIRS:
+        <p>This project's own layer: the published evidence atlas's <code>mwp_best</code> per
+        0.1&deg; cell, matched onto <code>data/predictions/pakistan/density/grid.geoparquet</code>'s
+        geometry and <code>roof_area_m2</code> (which the atlas doesn't embed). VIIRS:
         <a href="https://zenodo.org/records/17294744">zenodo.org/records/17294744</a> (Zhao et al.,
         annual VNL v2.1 time series, CC-BY 4.0), 2023 file, zonal-mean radiance per cell via a
         single windowed raster read (no third-party zonal-stats package needed since cells are
         regular 0.1&deg; boxes). RWI:
         <a href="https://data.humdata.org/dataset/relative-wealth-index">HDX Relative Wealth
         Index</a>, India+Pakistan file, point-in-polygon joined to cells, cell mean over all tile
-        centroids that fall inside it. TransitionZero: as documented above. All three external
-        datasets were fetched fresh for this comparison; none were previously used in this
-        codebase.</p>
+        centroids that fall inside it. Independent reference: as documented above. All three
+        external datasets were fetched fresh for this comparison; none were previously used in
+        this codebase.</p>
       </div>
     </details>
   </section>
 
   <div class="foot" id="foot">Generated by scripts/build_pv_external_comparison.py.
-    Our layer: est_mwp_rc, data/predictions/pakistan/density (current published run).
-    External sources: TransitionZero (data/estimated_rooftop_solar_capacity.json),
+    This project's layer: mwp_best, the published evidence atlas's Best-estimate tier.
+    External sources: an independent rooftop-solar reference (data/estimated_rooftop_solar_capacity.json),
     VIIRS VNL v2.1 2023 (Zenodo 17294744, CC-BY), Meta RWI (HDX, India+Pakistan file).</div>
 </div>
 
@@ -474,18 +484,18 @@ __CSS__
 
   const VIEWS = [
     {
-      key: "tz", label: "TransitionZero",
-      mapTitle: "Share-of-national-total difference, per TZ hexagon",
-      mapSub: `${DATA.stats.tz.n_hex.toLocaleString()} H3 hexagons`,
-      legCap: "our share &minus; TZ share (percentage points)",
+      key: "reference", label: "Independent reference",
+      mapTitle: "Share-of-national-total difference, per reference hexagon",
+      mapSub: `${DATA.stats.reference.n_hex.toLocaleString()} H3 hexagons`,
+      legCap: "this project\u2019s share &minus; reference share (percentage points)",
       heroLabel: "Rank correlation (Spearman)", heroSuffix: "",
-      heroDesc: `Positive = we place more of the national share there than TransitionZero does; negative = less. ${DATA.stats.tz.matched.toLocaleString()} of ${DATA.stats.tz.n_hex.toLocaleString()} hexagons received &ge;1 of our grid cells.`,
+      heroDesc: `Positive = this project assigns a larger share of the national total to that hexagon than the independent reference does; negative = smaller. ${DATA.stats.reference.matched.toLocaleString()} of ${DATA.stats.reference.n_hex.toLocaleString()} hexagons received &ge;1 of this project\u2019s grid cells.`,
       corrLabel: ["Pearson (share %)", "Spearman (rank)"],
     },
     {
       key: "ntl", label: "Night lights",
       mapTitle: "VIIRS 2023 annual radiance, per cell",
-      mapSub: "0.1&deg; cells &middot; log scale &middot; ring = our MWp",
+      mapSub: "0.1&deg; cells &middot; log scale &middot; ring = this project’s MWp",
       legCap: "mean radiance (0&ndash;2000 scale)",
       heroLabel: "Log-log correlation (Pearson)", heroSuffix: "",
       heroDesc: `Correlation between log(1+radiance) and log(1+MWp) per cell. Partial correlation controlling for each cell's building footprint area: ${DATA.stats.ntl.partial_vs_roof_area}.`,
@@ -494,14 +504,14 @@ __CSS__
     {
       key: "rwi", label: "Wealth index",
       mapTitle: "Meta Relative Wealth Index, per cell",
-      mapSub: "0.1&deg; cells &middot; ring = our MWp",
+      mapSub: "0.1&deg; cells &middot; ring = this project’s MWp",
       legCap: "relative wealth index (unitless)",
       heroLabel: "Correlation (Pearson)", heroSuffix: "",
       heroDesc: `${DATA.stats.rwi.n_covered.toLocaleString()} of ${DATA.stats.rwi.n_total.toLocaleString()} cells have RWI tile coverage. Partial correlation controlling for building footprint area: ${DATA.stats.rwi.partial_vs_roof_area}.`,
       corrLabel: ["Pearson", "Spearman (rank)"],
     },
   ];
-  const hashIdx = { "#tz": 0, "#ntl": 1, "#rwi": 2 }[location.hash];
+  const hashIdx = { "#reference": 0, "#ntl": 1, "#rwi": 2 }[location.hash];
   let sel = hashIdx !== undefined ? hashIdx : 0;
 
   function renderMap() {
@@ -523,18 +533,18 @@ __CSS__
     const cw = (0.1 / lonspan * W) + 0.4, ch = (0.1 / latspan * H) + 0.4;
     const maxMwp = Math.max(1, ...DATA.cells.map(c => c.mwp));
 
-    if (view.key === "tz") {
-      const diffMin = DATA.stats.tz.diff_min, diffMax = DATA.stats.tz.diff_max;
+    if (view.key === "reference") {
+      const diffMin = DATA.stats.reference.diff_min, diffMax = DATA.stats.reference.diff_max;
       const midColor = dark ? DIV_MID_DARK : DIV_MID_LIGHT;
       const gHex = el("g", {});
-      for (const f of DATA.tz) {
+      for (const f of DATA.reference) {
         const color = f.diff_pp >= 0
           ? mix2(midColor, DIV_HI, diffMax > 0 ? f.diff_pp / diffMax : 0)
           : mix2(midColor, DIV_LO, diffMin < 0 ? f.diff_pp / diffMin : 0);
         const p = el("path", { d: ringPath(f.rings), fill: color, class: "cell", tabindex: "0" });
         p.addEventListener("pointerenter", (e) => showTip(e, [
           `<b>${f.diff_pp >= 0 ? "+" : ""}${f.diff_pp.toFixed(3)} pp</b>`,
-          `our share ${f.our_pct.toFixed(3)}% &middot; TZ share ${f.tz_pct.toFixed(3)}%`]));
+          `this project ${f.our_pct.toFixed(3)}% &middot; reference ${f.ext_pct.toFixed(3)}%`]));
         p.addEventListener("pointerleave", hideTip);
         gHex.appendChild(p);
       }
@@ -584,7 +594,7 @@ __CSS__
           width: cw.toFixed(1), height: ch.toFixed(1), fill: color, class: "cell", tabindex: "0" });
         rect.addEventListener("pointerenter", (e) => showTip(e, [
           `<b>${key === "ntl" ? v.toFixed(3) + " radiance" : v.toFixed(3) + " RWI"}</b>`,
-          `our capacity: ${c.mwp.toFixed(2)} MWp`]));
+          `this project’s capacity: ${c.mwp.toFixed(2)} MWp`]));
         rect.addEventListener("pointerleave", hideTip);
         gC.appendChild(rect);
         if (c.mwp > 0) {
@@ -625,9 +635,9 @@ __CSS__
     const plotW = Wc - padL - padR, plotH = Hc - padT - padB;
 
     let pts, xLabel, yLabel, logX = true, logY = true;
-    if (view.key === "tz") {
-      pts = DATA.tz.map(f => [f.tz_pct, f.our_pct]);
-      xLabel = "TZ share %"; yLabel = "our share %"; logX = false; logY = false;
+    if (view.key === "reference") {
+      pts = DATA.reference.map(f => [f.ext_pct, f.our_pct]);
+      xLabel = "reference share %"; yLabel = "this project\u2019s share %"; logX = false; logY = false;
     } else if (view.key === "ntl") {
       pts = DATA.cells.map(c => [c.ntl, c.mwp]);
       xLabel = "log(1+radiance)"; yLabel = "log(1+MWp)";
@@ -661,12 +671,12 @@ __CSS__
     document.getElementById("mapSub").innerHTML = view.mapSub;
     document.getElementById("heroLabel").innerHTML = view.heroLabel;
     document.getElementById("heroDesc").innerHTML = view.heroDesc;
-    document.getElementById("scatterTitle").innerHTML = `${view.label}: our capacity vs. comparison layer, per cell`;
+    document.getElementById("scatterTitle").innerHTML = `${view.label}: this project’s capacity vs. comparison layer, per cell`;
     const stats = DATA.stats[view.key];
-    document.getElementById("heroNum").textContent = view.key === "tz" ? stats.spearman : stats.pearson;
+    document.getElementById("heroNum").textContent = view.key === "reference" ? stats.spearman : stats.pearson;
     const badge = document.getElementById("corrBadge");
     badge.innerHTML = "";
-    const vals = view.key === "tz" ? [stats.pearson, stats.spearman] : [stats.pearson, stats.spearman];
+    const vals = view.key === "reference" ? [stats.pearson, stats.spearman] : [stats.pearson, stats.spearman];
     view.corrLabel.forEach((lbl, i) => {
       const c = document.createElement("div"); c.className = "c";
       c.innerHTML = `<div class="v">${vals[i]}</div><div class="k">${lbl}</div>`;
@@ -686,12 +696,12 @@ __CSS__
   });
   document.getElementById(`tab${sel}`).setAttribute("aria-pressed", "true");
 
-  document.getElementById("kTz").textContent = DATA.stats.tz.spearman;
+  document.getElementById("kRef").textContent = DATA.stats.reference.spearman;
   document.getElementById("kNtl").textContent = DATA.stats.ntl.pearson;
   document.getElementById("kRwi").textContent = DATA.stats.rwi.pearson;
-  document.getElementById("kTotal").innerHTML = `${DATA.total_rc.toLocaleString(undefined, {maximumFractionDigits: 0})}<small>MWp</small>`;
+  document.getElementById("kTotal").innerHTML = `${DATA.total_best.toLocaleString(undefined, {maximumFractionDigits: 0})}<small>MWp</small>`;
 
-  document.getElementById("xTzMatched").textContent = DATA.stats.tz.matched.toLocaleString();
+  document.getElementById("xRefMatched").textContent = DATA.stats.reference.matched.toLocaleString();
   document.getElementById("xNtlRaw").textContent = DATA.stats.ntl.pearson;
   document.getElementById("xNtlPartial").textContent = DATA.stats.ntl.partial_vs_roof_area;
   document.getElementById("xRwiCovered").textContent = DATA.stats.rwi.n_covered.toLocaleString();

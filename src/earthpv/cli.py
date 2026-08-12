@@ -1185,7 +1185,8 @@ def pv_yield(
 ) -> None:
     """pvlib double-check: CEC module-database sanity check + PVGIS-modelled annual
     yield per region, converting est_mwp to expected GWh/yr for cross-checking against
-    known generation figures (NEPRA net-metering, TransitionZero)."""
+    known generation figures (NEPRA net-metering, independent distributed-solar
+    estimates)."""
     from earthpv.pv_capacity import run_pv_capacity_check
 
     run_pv_capacity_check(aoi=aoi, pred_dir=pred_dir, kwp_per_m2=kwp_per_m2)

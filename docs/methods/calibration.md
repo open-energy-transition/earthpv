@@ -80,10 +80,13 @@ does the zonal join, and `earthpv pv-yield` cross-checks modelled generation wit
 The measured 2.4 to 2.5 times aggregate over-prediction is stable from chip level to
 municipality level, which is what makes it a correction rather than noise.
 
-**Pakistan, TransitionZero.** Their 27.5 GW distributed-solar study is the only comparable
-independent estimate. The comparison needs care: the units do not match ours, and what
-first read as a 52 percentage point coverage gap turned out to be 99.4 percent
-already-inferred-zero cells, leaving a true gap of 0.33 percentage points.
+**Pakistan, an independent rooftop-solar estimate.** A separately produced 27.5 GW
+distributed-solar study is the only comparable independent estimate. The comparison
+needs care: the units do not match ours, and what first read as a 52 percentage point
+coverage gap turned out to be 99.4 percent already-inferred-zero cells, leaving a true
+gap of 0.33 percentage points. See
+[`scripts/pv_reference_share_comparison.py`](https://github.com/open-energy-transition/earthpv/blob/main/scripts/pv_reference_share_comparison.py)
+for the current version of this comparison, run against the published evidence atlas.
 
 **Trade data.** Panel import volumes, over 13 GW in 2024 alone, bound the national total
 from above and are the reason a country-wide estimate in the teens of GWp is plausible at
