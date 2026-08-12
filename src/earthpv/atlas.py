@@ -1982,25 +1982,23 @@ def build_evidence_atlas(
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Solar PV — Counted Two Ways",
-        "__H1__": f"{title}'s solar, counted two ways",
+        "__PAGE_TITLE__": f"{title} Solar PV — Evidence Atlas",
+        "__H1__": f"{title}'s solar capacity, mapped and modeled",
         "__AOI_TITLE__": title,
         "__KWP_MOD__": str(kwp_mod),
         "__LEDE_HTML__": (
-            "The same country, the same imagery, two different standards of proof. "
-            "<b>Verified</b> counts only PV a person has drawn in OpenStreetMap plus the "
-            "small rooftops where two independent detectors agree. <b>Best</b> adds the "
-            "satellite model's own recall-corrected detections and its per-building "
-            "density estimate: the highest figure this project is willing to defend. "
+            "The same country, the same imagery, one defensible estimate. "
+            "<b>Best estimate</b> combines every PV installation a person has drawn in "
+            "OpenStreetMap, the satellite model's own recall-corrected detections, and "
+            "its per-building density estimate for small rooftops: the highest figure "
+            "this project is willing to defend. "
             "This is a research methodology under active validation, not a finished "
             "census &mdash; see &ldquo;How confident should you be in this?&rdquo; below "
             "for what's independently corroborated and what's still open."
         ),
         "__CONFIDENCE_HTML__": (
-            "<p><b>Both headline figures carry a 90% range, and it is wide.</b> Verified "
-            f"is <b>{total_verified:,.0f} MWp</b> with a 90% range of "
-            f"<b>{uncertainty['mwp_verified_ci'][0]:,.0f}&ndash;"
-            f"{uncertainty['mwp_verified_ci'][1]:,.0f}</b>; Best estimate is "
+            "<p><b>The headline figure carries a 90% range, and it is wide.</b> "
+            "Best estimate is "
             f"<b>{total_best:,.0f} MWp</b> with a range of "
             f"<b>{uncertainty['mwp_best_ci'][0]:,.0f}&ndash;"
             f"{uncertainty['mwp_best_ci'][1]:,.0f}</b>. Four things are inside those "
@@ -2045,7 +2043,7 @@ def build_evidence_atlas(
             "counts customers who completed formal registration paperwork). Chinese "
             "customs export data separately puts cumulative panel imports into Pakistan "
             "at roughly 50 GW by mid-2025, a much looser ceiling on the whole market, "
-            "utility-scale included. This page's Verified and Best tiers sit inside that "
+            "utility-scale included. This page's headline figure sits inside that "
             "bracket &mdash; two independent, non-satellite data sources landing in a "
             "mutually consistent range is real corroboration for the order of magnitude, "
             "even though it cannot confirm any single number here precisely.</p>"

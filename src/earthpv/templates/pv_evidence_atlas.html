@@ -98,7 +98,7 @@
   .sec-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
 
   /* ── kpi strip ───────────────────────────────────────────────────── */
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 26px; }
   @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
   .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
@@ -110,20 +110,6 @@
     font-variant-numeric: tabular-nums; }
   .kpi .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
     text-transform: uppercase; color: var(--muted); margin-top: 7px; line-height: 1.5; }
-
-  /* ── view selector ──────────────────────────────────────────────── */
-  .switch { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
-  .tab {
-    font-family: var(--font-mono); font-size: 12.5px; padding: 9px 14px;
-    background: var(--panel); border: 1px solid var(--card-ring); border-radius: 8px;
-    color: var(--ink-2); cursor: pointer; transition: border-color .15s, color .15s; text-align: left;
-  }
-  .tab .tt1 { display: block; font-weight: 650; }
-  .tab .tt2 { display: block; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
-    color: var(--muted); margin-top: 2px; }
-  .tab:hover { color: var(--ink); border-color: var(--accent-dim); }
-  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .tab[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 
   .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; margin-top: 16px; }
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
@@ -293,9 +279,6 @@
   </header>
 
   <div class="kpis">
-    <div class="kpi"><div class="v" id="kVerified">0<small>MWp</small></div>
-      <div class="r" id="kVerifiedCi"></div>
-      <div class="k">Verified: mapped by people, or agreed by two detectors</div></div>
     <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
       <div class="r" id="kBestCi"></div>
       <div class="k">Best estimate, the highest defensible figure</div></div>
@@ -309,22 +292,14 @@
     <div class="sec-head">
       <div>
         <div class="sec-label">Capacity</div>
-        <div class="sec-title">How much PV, by 0.1&deg; cell, by standard of proof</div>
-      </div>
-      <div class="switch" role="group" aria-label="Evidence tier">
-        <button class="tab" id="tab0" type="button" data-i="0">
-          <span class="tt1">Verified</span><span class="tt2">hand-mapped + two detectors agree</span>
-        </button>
-        <button class="tab" id="tab1" type="button" data-i="1">
-          <span class="tt1">Best estimate</span><span class="tt2">+ calibrated detections + density</span>
-        </button>
+        <div class="sec-title">How much PV, by 0.1&deg; cell</div>
       </div>
     </div>
 
     <div class="grid">
       <section class="card map-card">
         <div class="map-head">
-          <div class="map-title">Capacity per cell at the selected standard of proof</div>
+          <div class="map-title">Capacity per cell, best estimate</div>
           <div class="map-sub">≈11 km × 11 km cells · log scale</div>
         </div>
         <div id="mapmount"></div>
@@ -333,7 +308,7 @@
             <div class="bar" id="legbar"></div>
             <div class="ticks" id="legticks"></div>
           </div>
-          <div class="cap" id="legcap">MWp&nbsp;/&nbsp;cell, selected tier</div>
+          <div class="cap" id="legcap">MWp&nbsp;/&nbsp;cell</div>
           <div class="large-key">
             <span class="sw"></span>hand-mapped OSM PV: ring size, always shown
           </div>
@@ -341,7 +316,7 @@
             <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
           </div>
           <div class="extended-key" id="extendedKey" style="margin-left:14px">
-            <span class="sw"></span>Best tier only: extrapolated beyond calibration (dotted outline)
+            <span class="sw"></span>extrapolated beyond calibration (dotted outline)
           </div>
           <div class="calib-key" style="margin-left:14px">
             <span class="sw"></span>hand-checked calibration area (hover for detail)
@@ -352,19 +327,19 @@
       <aside>
         <div class="card">
           <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
-          <div class="hero-label" id="heroLabel">Selected tier, nationwide</div>
+          <div class="hero-label">Best estimate, nationwide</div>
           <div class="hero-ci" id="heroCi"></div>
           <div class="hero-desc" id="heroDesc"></div>
           <div class="tiles" id="tiles"></div>
         </div>
 
         <div class="card rank" style="margin-top:14px;">
-          <h3 id="rankH">Provinces, ranked by selected tier</h3>
+          <h3>Provinces, ranked by capacity</h3>
           <div id="ranks"></div>
           <details class="tablewrap">
             <summary>Full province figures</summary>
             <div style="overflow-x:auto;"><table id="ptable">
-              <thead><tr><th>Province</th><th>Verified</th><th>Best estimate</th>
+              <thead><tr><th>Province</th><th>Best estimate</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
                 <th>Small PV, checked cells</th>
                 <th>Small PV, extrapolated</th></tr></thead>
@@ -393,28 +368,21 @@
     </details>
 
     <details class="xdetails">
-      <summary><span><span class="xt">What each tier admits as evidence</span>
-        <span class="xs">Verified / Best estimate, defined</span></span><span class="xi">+</span></summary>
+      <summary><span><span class="xt">What this number admits as evidence</span>
+        <span class="xs">Best estimate, defined</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <dl class="viewdefs">
-          <dt><span class="tag low">Verified</span> nothing here rests on a single model</dt>
-          <dd><b>Every PV installation drawn by a person in OpenStreetMap</b>
-          (<span id="dOsmN">0</span> of them), <b>plus</b> the sub-400 m² buildings where
-          two independent instruments agree &mdash; roofclf, a per-building size and
-          reflectance classifier, and SPPI, a zero-training spectral index. Requiring
-          agreement raises measured precision on held-out hand-mapped quadrats, at the
-          cost of recall. This is a <b>floor and it is known to be one</b>: OpenStreetMap
-          coverage is incomplete and uneven, and the small-PV term only applies inside
-          the checked cells.</dd>
-
           <dt><span class="tag central">Best estimate</span> this project's own pick</dt>
-          <dd>The hand-mapped population <b>plus the satellite model's own &ge;400 m²
+          <dd><b>Every PV installation drawn by a person in OpenStreetMap</b>
+          (<span id="dOsmN">0</span> of them), <b>plus the satellite model's own &ge;400 m²
           detections</b>, precision-calibrated and recall-corrected, <b>plus</b> the
-          roofclf per-building density estimate inside the same checked cells. The
-          model's detections and the OSM mapping overlap heavily, so the overlap is
-          removed rather than added twice (see the next section). This is the highest
-          number the project defends; it is still incomplete, because the small-PV term
-          covers only a fraction of national buildings.</dd>
+          roofclf per-building density estimate for sub-400 m² buildings inside checked
+          cells &mdash; roofclf, a per-building size and reflectance classifier,
+          cross-checked with SPPI, a zero-training spectral index, where calibration
+          coverage is thin. The model's detections and the OSM mapping overlap heavily,
+          so the overlap is removed rather than added twice (see the next section). This
+          is the highest number the project defends; it is still incomplete, because the
+          small-PV term covers only a fraction of national buildings.</dd>
         </dl>
       </div>
     </details>
@@ -440,12 +408,11 @@
       <div class="xbody">
         <p>Installations under 400 m² are below the satellite detector's practical floor at
         10 m resolution, so they are estimated per building instead. The calibrated estimate
-        used in <b>both tiers</b> is only reported <b>inside the dashed outline</b>: the
-        <span id="dDomain">0</span> cells whose building density falls inside the range
-        covered by the hand-mapped calibration quadrats.</p>
-        <p>Outside that outline, Verified still reads zero &mdash; not because small solar
-        is absent there, but because there is no calibration evidence either way. <b>Best</b>
-        adds one more thing in those cells (the <b>dotted outline</b>,
+        is only reported <b>inside the dashed outline</b>: the <span id="dDomain">0</span>
+        cells whose building density falls inside the range covered by the hand-mapped
+        calibration quadrats.</p>
+        <p>Outside that outline there is no calibration evidence either way, so Best estimate
+        adds one more thing in those cells instead (the <b>dotted outline</b>,
         <span id="dExtended">0</span> cells, <span id="dOutdomainMwp">0</span> MWp
         nationally): buildings where roofclf and SPPI still independently agree, priced
         with the same coverage ratios measured on the calibrated cells. This exists because
@@ -496,34 +463,24 @@
 
   /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
      small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended] */
-  const IDX = [2, 3];
+  const BEST_IDX = 3;
   const OSM_IDX = 4;
   const OUTDOMAIN_IDX = 11;
   const EXTENDED_IDX = 12;
   const T = DATA.totals;
   const fmt = n => Math.round(n).toLocaleString("en-US");
 
-  const VIEWS = [
-    { key: "verified", label: "Verified", vmax: 3,
-      name: "Verified: hand-mapped OSM PV, plus small rooftops two detectors both flag",
-      desc: "No single model is trusted on its own here. Every installation is either drawn by a person or flagged independently by roofclf and SPPI.",
-      tiles: [
-        ["osm_mwp", "Hand-mapped OSM PV, MWp"],
-        ["small_low", "Two detectors agree, MWp"],
-        ["osm_n", "OSM installations"],
-        ["n_domain_cells", "Cells with small-PV calibration"],
-      ] },
-    { key: "best", label: "Best estimate", vmax: 8,
-      name: "Best estimate: mapped PV, plus calibrated detections, plus per-building density",
-      desc: "Adds the model's own recall-corrected detections above 400 m² and its per-building estimate below, with the mapped-and-detected overlap removed.",
-      tiles: [
-        ["mwp_large", "Model detections &ge;400 m², MWp"],
-        ["osm_mwp_unmatched", "Mapped but never detected, MWp"],
-        ["small_central", "Small PV, checked cells, MWp"],
-        ["small_outdomain", "Small PV, unchecked cells (extrapolated), MWp"],
-      ] },
-  ];
-  let sel = 1;
+  const VIEW = {
+    label: "Best estimate", vmax: 8,
+    name: "Best estimate: mapped PV, plus calibrated detections, plus per-building density",
+    desc: "Adds the model's own recall-corrected detections above 400 m² and its per-building estimate below, with the mapped-and-detected overlap removed.",
+    tiles: [
+      ["mwp_large", "Model detections &ge;400 m², MWp"],
+      ["osm_mwp_unmatched", "Mapped but never detected, MWp"],
+      ["small_central", "Small PV, checked cells, MWp"],
+      ["small_outdomain", "Small PV, unchecked cells (extrapolated), MWp"],
+    ],
+  };
 
   function proj(lon, lat) {
     return [ (lon - b0) / lonspan * W, (b3 - lat) / latspan * H ];
@@ -561,7 +518,7 @@
   function renderMap(){
     const dark = isDark();
     const stops = dark ? RAMP_DARK : RAMP_LIGHT;
-    const view = VIEWS[sel], mi = IDX[sel];
+    const view = VIEW, mi = BEST_IDX;
     const VMIN = 0.02, VMAX = Math.max(view.vmax, 0.1, ...DATA.cells.map(c => c[mi]));
     const lVMIN = Math.log(VMIN), lVMAX = Math.log(VMAX);
     const tOf = (v) => (Math.log(Math.max(v, VMIN)) - lVMIN) / (lVMAX - lVMIN);
@@ -624,7 +581,7 @@
       svg.appendChild(gD);
     }
 
-    if (sel === 1 && DATA.cells.some(c => c[EXTENDED_IDX])) {
+    if (DATA.cells.some(c => c[EXTENDED_IDX])) {
       const gE = el("g", {class:"extended-ring"});
       for (const c of DATA.cells){
         if (!c[EXTENDED_IDX]) continue;
@@ -688,9 +645,7 @@
       const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
-      const rows = VIEWS.map((v, i) =>
-        `<div class="rowt${i===sel?' sel':''}"><span>${v.label}</span><span>${c[IDX[i]].toFixed(1)} MWp</span></div>`
-      ).join("");
+      const rows = `<div class="rowt sel"><span>${VIEW.label}</span><span>${c[BEST_IDX].toFixed(1)} MWp</span></div>`;
       tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
         + rows
         + `<div class="rowt large-flag"><span>&#9675; Hand-mapped in OSM</span><span>${c[OSM_IDX].toFixed(1)} MWp</span></div>`
@@ -729,7 +684,7 @@
     const ticks = [VMIN, Math.sqrt(VMIN*VMAX), VMAX].map(v => Math.round(v*100)/100);
     document.getElementById("legticks").innerHTML =
       ticks.map(v => `<span style="left:${(tOf(v)*100).toFixed(1)}%">${v}</span>`).join("");
-    document.getElementById("legcap").textContent = `MWp per cell, ${view.label} tier`;
+    document.getElementById("legcap").textContent = `MWp per cell`;
   }
 
   function countUp(id, target, dur){
@@ -744,54 +699,38 @@
     requestAnimationFrame(step);
   }
 
-  document.getElementById("kVerified").innerHTML = `${fmt(T.mwp_verified)}<small>MWp</small>`;
   document.getElementById("kBest").innerHTML = `${fmt(T.mwp_best)}<small>MWp</small>`;
 
-  // Credible ranges. Absent for an atlas built before intervals existed, or for an AOI
+  // Credible range. Absent for an atlas built before intervals existed, or for an AOI
   // whose density run has no recall correction -- render nothing rather than "0-0".
   const ciText = (ci) => (Array.isArray(ci) && ci.length === 2)
     ? `90% range ${fmt(ci[0])}–${fmt(ci[1])}` : "";
-  document.getElementById("kVerifiedCi").textContent = ciText(T.mwp_verified_ci);
   document.getElementById("kBestCi").textContent = ciText(T.mwp_best_ci);
   document.getElementById("kOsm").textContent = fmt(T.osm_n);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
 
-  const TOTAL_KEY = ["mwp_verified", "mwp_best"];
-  const PROV_KEY = ["mwp_verified", "mwp_best"];
-
   function drawTable() {
-    const provs = [...DATA.provinces].sort((a,b) => b[PROV_KEY[sel]] - a[PROV_KEY[sel]]);
-    const maxP = provs.length ? Math.max(...provs.map(p => p[PROV_KEY[sel]]), 1) : 1;
+    const provs = [...DATA.provinces].sort((a,b) => b.mwp_best - a.mwp_best);
+    const maxP = provs.length ? Math.max(...provs.map(p => p.mwp_best), 1) : 1;
     document.getElementById("ranks").innerHTML = provs.map(p => {
       const nm = p.name;
-      const v = p[PROV_KEY[sel]];
+      const v = p.mwp_best;
       return `<div class="row"><div class="top"><span class="nm">${nm}</span>`
         + `<span class="vl">${fmt(v)} MWp</span></div>`
         + `<div class="track"><div class="fill" style="width:${(v/maxP*100).toFixed(1)}%"></div></div></div>`;
     }).join("");
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
-      `<tr><td>${p.name}</td><td>${fmt(p.mwp_verified)}</td><td>${fmt(p.mwp_best)}</td>`
+      `<tr><td>${p.name}</td><td>${fmt(p.mwp_best)}</td>`
       + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
       + `<td>${fmt(p.small_outdomain)}</td></tr>`).join("");
   }
 
-  function setView(i) {
-    sel = i;
-    ["tab0", "tab1"].forEach((id, j) =>
-      document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
-    const view = VIEWS[i];
-    countUp("heroNum", T[TOTAL_KEY[i]], 700);
-    document.getElementById("heroLabel").textContent = `${view.label}, nationwide`;
-    document.getElementById("heroCi").textContent = ciText(T[TOTAL_KEY[i] + "_ci"]);
-    document.getElementById("heroDesc").innerHTML = `<b>${view.name}.</b> ${view.desc}`;
-    document.getElementById("tiles").innerHTML = view.tiles.map(([key, label]) =>
-      `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
-    document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
-    document.getElementById("extendedKey").style.display = i === 1 ? "" : "none";
-    renderMap(); drawTable();
-  }
-  ["tab0", "tab1"].forEach((id, i) =>
-    document.getElementById(id).addEventListener("click", () => setView(i)));
+  countUp("heroNum", T.mwp_best, 700);
+  document.getElementById("heroCi").textContent = ciText(T.mwp_best_ci);
+  document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
+  document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
+    `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
+  renderMap(); drawTable();
 
   document.getElementById("dOsmN").textContent = fmt(T.osm_n);
   document.getElementById("dOsmN2").textContent = fmt(T.osm_n);
@@ -820,6 +759,5 @@
   });
 
   updateThemeBtn();
-  setView(sel);
 })();
 </script>

@@ -149,7 +149,7 @@ secondary product, or a documented negative result:
 | --- | --- | --- | --- |
 | **Segmentation raster** (`infer`) | **Yes -- every mapping lead; all ground-mount capacity; rooftop &ge; 400 m² outside roofclf's calibrated cells** | Yes, the primary one | per-pixel PV probability; the only instrument with a polygon and a defended ≥ 400 m² floor |
 | **[roofclf](methods/roofclf.md)** | **Yes -- every rooftop < 400 m², plus rooftop &ge; 400 m² inside its calibrated cells, where it replaces segmentation** | No, a separate lightweight classifier | per-building "does this roof carry PV," trained on exhaustively mapped calibration quadrats |
-| **SPPI** | Partially -- cross-checks roofclf for the evidence atlas's Verified tier | No, a fixed spectral formula | a zero-training index, cross-validated against the same ground truth as roofclf |
+| **SPPI** | Partially -- cross-checks roofclf as an internal floor for the evidence atlas | No, a fixed spectral formula | a zero-training index, cross-validated against the same ground truth as roofclf |
 | **Glint matched filter** | Optional -- boosts the leads ranking only | No | specular-flash geometry consistent with one fixed panel plane; a physical corroboration, not a probability |
 | **Fraction head** | Optional, not promoted (see below) | Yes, a separately trained checkpoint | per-pixel PV *coverage fraction*; drops the polygon, aims at sub-400 m² signal a segmentation threshold cannot see |
 
@@ -173,9 +173,11 @@ neither is part of the main workflow, and the main workflow does not need them t
 - SPPI beats roofclf on nothing (median AUC 0.823 against 0.857) and adds nothing as a
   roofclf feature, but an AND-gate (roofclf **and** SPPI agreeing) raises precision by
   4 points at matched recall in the three quadrats where roofclf alone overestimates.
-  That AND-gate is exactly what the Verified tier of [the evidence
-  atlas](#the-outputs-leads-the-evidence-atlas-and-what-else-comes-out) uses -- SPPI's one
-  load-bearing role in the main workflow, short of being a standalone instrument in it.
+  That AND-gate is what [the evidence
+  atlas](#the-outputs-leads-the-evidence-atlas-and-what-else-comes-out) uses as an internal
+  floor so the headline figure never reads below what a person has actually mapped plus
+  that stricter population -- SPPI's one load-bearing role in the main workflow, short of
+  being a standalone instrument in it.
 
 Glint is the one instrument in the "boosts only" lane: it can raise `rank_score`, never
 lower it, because a missing glint on a real array (bad viewing geometry, wrong season)
@@ -225,12 +227,13 @@ the same underlying artifacts:
 - **MapRoulette leads → OpenStreetMap** (main workflow). Every candidate, ranked, with a
   human verifying each one before it becomes a map edit. False positives are cheap here.
 - **The evidence atlas** (main workflow, and this project's **primary output**). Reports
-  tiers by *standard of proof* rather than point estimates on one scale: **Verified**
-  (hand-mapped OSM plus the roofclf-and-SPPI agreement set) and **Best estimate**
-  (segmentation's ground-mount detections, plus rooftop &ge; 400 m² from roofclf inside
-  its calibrated cells and from segmentation elsewhere, plus roofclf-alone density
-  below 400 m², plus a smaller roofclf-and-SPPI extension outside the calibrated cells
-  -- OSM overlap removed rather than double-counted throughout). A third tier,
+  **Best estimate**, this project's own highest defensible figure: hand-mapped OSM
+  installations, plus segmentation's ground-mount detections, plus rooftop &ge; 400 m²
+  from roofclf inside its calibrated cells and from segmentation elsewhere, plus
+  roofclf-alone density below 400 m², plus a smaller roofclf-and-SPPI extension outside
+  the calibrated cells -- OSM overlap removed rather than double-counted throughout, and
+  floored per cell at what a person has actually mapped plus the stricter
+  roofclf-and-SPPI agreement population. An earlier, looser tier,
   **Ceiling** (a flat-precision, uncalibrated upper bound), was removed 2026-08-06: a
   later roofclf refit's lower deployment threshold roughly doubled it with no
   accompanying validation, so it had stopped being a meaningful bound.

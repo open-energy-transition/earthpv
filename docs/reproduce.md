@@ -264,7 +264,8 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     Writes three building-level parquets to `data/roofclf_national_with_sppi/<aoi>/
     density/`: `sub400_central_incremental_buildings.parquet` (roofclf alone, the
     evidence atlas's Best-estimate small-PV component), `sub400_low_incremental_
-    buildings.parquet` (roofclf AND SPPI agreeing, the Verified component), and (added
+    buildings.parquet` (roofclf AND SPPI agreeing, used as an internal floor on
+    Best estimate), and (added
     2026-08-11) `sub400_outdomain_and_gate_incremental_buildings.parquet` (roofclf AND
     SPPI agreeing OUTSIDE the density-matched domain -- an extrapolation, feeds Best
     only, see step 15). The first two describe only the density-matched cells and must
@@ -293,8 +294,8 @@ the [experiments register](experiments.md) are optional extras, not alternative 
 
 === "15. Evidence atlas"
 
-    Combine both halves into the **main workflow's primary output**: two tiers by
-    *standard of proof*, de-duplicated against each other and against hand-mapped OSM.
+    Combine both halves into the **main workflow's primary output**: Best estimate,
+    de-duplicated against hand-mapped OSM.
 
     ```bash
     pixi run earthpv atlas --aoi pakistan \
@@ -323,12 +324,12 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     (`docs/assets/interactive/pakistan_evidence_atlas.html`, what the docs site and
     README screenshot read).
 
-    **Verified**
-    is hand-mapped OSM plus roofclf-and-SPPI agreement; **Best estimate** adds
+    **Best estimate** combines hand-mapped OSM installations with
     recall-corrected &ge; 400 m&sup2; detections (roofclf's own estimate inside the
     density-matched domain from step 14, segmentation's recall-corrected estimate
     everywhere else) plus roofclf-alone density, with the OSM/detection overlap removed
-    rather than double-counted. Without a mapped quadrat yet (step 10's prerequisite),
+    rather than double-counted, and floored per cell at hand-mapped OSM plus the
+    stricter roofclf-and-SPPI agreement population. Without a mapped quadrat yet (step 10's prerequisite),
     omit `--sub400-*`/`--ge400-roof-cells` entirely for the &ge; 400 m&sup2;
     segmentation-only atlas -- still this workflow's output, just missing its sub-400
     m&sup2; half until quadrats exist.

@@ -161,8 +161,8 @@ Everything downstream of `data/roofclf_national_20260805/`, in order:
    -> `data/sub400_20260806/sub400_{central,low}.parquet`.
 3. `atlas.build_evidence_atlas` -> `docs/assets/interactive/pakistan_evidence_atlas.html`
    (canonical location as of 2026-08-06 -- this is the project's primary output, so it
-   lives directly under `docs/`, not `results/`). The Verified and Best-estimate tiers
-   both take a small-PV component from those parquets.
+   lives directly under `docs/`, not `results/`). Best estimate takes its small-PV
+   component from those parquets.
 4. `pixi run small-pv-leads` and `pixi run roofclf-tiles` (the JOSM layers that surfaced
    this).
 5. `roofclf.run_roof_classifier`, to refit `model_full.json` on quadrat features that no
@@ -232,11 +232,11 @@ capacity -> evidence atlas end to end (as a detached `systemd-run --user` unit,
 |---|---|---|---|
 | national building rows | 81,762,684 | 75,703,524 | -6.0M (-7.4%, both bugs combined) |
 | domain-restricted roofclf-only (Best-estimate component) | -- | 10,502.9 MWp | -- |
-| domain-restricted AND-gate (Verified component) | -- | 5,600.1 MWp | -- |
-| evidence atlas: Verified tier | 13,697.1 MWp | 10,634 MWp | -22.4% |
+| domain-restricted AND-gate (internal floor component) | -- | 5,600.1 MWp | -- |
+| evidence atlas: hand-mapped-plus-AND-gate floor | 13,697.1 MWp | 10,634 MWp | -22.4% |
 | evidence atlas: Best-estimate tier | 21,354.8 MWp | 18,879 MWp | -11.6% |
 
-Both tiers fell, in the direction the diagnosis predicted (removing false-positive-driven
+Both figures fell, in the direction the diagnosis predicted (removing false-positive-driven
 over-counting), by double digits. The refit itself moved little (18 quadrats, 91,840
 buildings, median fold AUC 0.8824 vs the pre-fix 0.8876, deployment threshold 0.2405 vs
 0.2407) -- almost all of the movement is the national scoring and downstream capacity

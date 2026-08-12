@@ -16,19 +16,17 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">16,441 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,883 to 19,147); 6,139 MWp verified by hand-mapping or two agreeing detectors</span></div>
+<div class="stat"><span class="value">16,441 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,883 to 19,147)</span></div>
 <div class="stat"><span class="value">7,860 / 6,531 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
-<div class="stat"><span class="value">65.5%</span><span class="label">of Germany's rooftop capacity sits below the &ge;400 m&sup2; detection floor, measured against its complete MaStR register: the reason there are two detectors</span></div>
 </div>
 
 ## Build PV capacity maps for every country
 
 <div class="embed" markdown>
-<iframe src="assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: Verified and Best estimate" loading="lazy"></iframe>
+<iframe src="assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell" loading="lazy"></iframe>
 </div>
 <p class="embed-note">
-Interactive -- this project's primary output. Switch tier with the tabs, hover a cell
-for its value.
+Interactive -- this project's primary output. Hover a cell for its value.
 <a href="assets/interactive/pakistan_evidence_atlas.html" target="_blank">Open full screen</a> ·
 <a href="results/capacity.md">Full capacity page</a>.
 </p>
@@ -54,8 +52,9 @@ m<sup>2</sup> floor into large rooftops too, wherever it has been calibrated to 
   (0.830 with roof size controlled for), where the segmentation raster scores close to
   chance on the same small buildings -- it covers every rooftop **below** 400
   m<sup>2</sup>, where segmentation is trained blind. **SPPI**, a zero-training spectral
-  index, reaches 0.823 AUC with no labels at all; requiring it to *agree* with roofclf is
-  what defines the Verified tier. Segmentation's blind spot turns out to be *installation*
+  index, reaches 0.823 AUC with no labels at all; requiring it to *agree* with roofclf
+  raises measured precision on held-out quadrats, at the cost of recall. Segmentation's
+  blind spot turns out to be *installation*
   size, not building size, so as of 2026-08-07 roofclf's own rooftop estimate (measured
   better, 0.896 AUC against segmentation's 0.73-0.78 on identical buildings) also
   **replaces** segmentation's rooftop total at or above 400 m<sup>2</sup> inside the
@@ -64,12 +63,13 @@ m<sup>2</sup> floor into large rooftops too, wherever it has been calibrated to 
   evidence-backed number there. See [The rooftop classifier](methods/roofclf.md) for how
   that instrument works end to end, and [Capacity density](methods/density.md) for what
   it adds up to.
-- Both instruments converge on the **evidence atlas**: two tiers by *standard of proof* --
-  **Verified** (hand-mapped OpenStreetMap, or roofclf and SPPI agreeing) and **Best
-  estimate** (this project's own highest defensible figure) -- with the overlap between
-  OSM and detections removed rather than double-counted, and a 90% range on each tier
-  covering the conversion constants, the model's measured precision and recall, and how
-  much the answer moves if a different set of quadrats had been mapped. Command sequence:
+- Both instruments converge on the **evidence atlas**: **Best estimate**, this project's
+  own highest defensible figure, combining every installation hand-mapped in
+  OpenStreetMap, the model's own recall-corrected detections, and roofclf/SPPI's
+  per-building density estimate for small rooftops -- with the overlap between OSM and
+  detections removed rather than double-counted, and a 90% range covering the conversion
+  constants, the model's measured precision and recall, and how much the answer moves if
+  a different set of quadrats had been mapped. Command sequence:
   [The full pipeline](reproduce.md#the-full-pipeline).
 
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
@@ -87,8 +87,8 @@ actually appeared, not just where it stands today -- see [Growth](results/growth
 fraction-head expected-area instrument, SPPI as a standalone detector, an older
 Low/Central/High/All-PV bracket atlas and a rooftop potential/saturation atlas exist too.
 A [Germany MaStR cross-check](methods/mastr-validation.md) tests the assumptions the whole
-chain rests on against a legally complete register, which is what puts a measured number on
-the detection-floor claim above. See [Experiments](experiments.md) for everything that was
+chain rests on against a legally complete register, and is why this project runs two
+detectors rather than relying on segmentation alone. See [Experiments](experiments.md) for everything that was
 tried and why these two detectors are what shipped, and
 [Open questions](open-questions.md) for what is still unresolved.
 

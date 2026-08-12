@@ -41,8 +41,8 @@ spectral signature to differ from a PV-free roof of the same kind.
 
 ## The flow, end to end
 
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 23 folds at 0.857 AUC and 0.830 within roof-size band, and a deployment threshold of 0.2443 at precision 0.50 and recall 0.66. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,680 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: a Verified tier of 2,929 MWp where roofclf and SPPI agree, and a Best estimate tier of 6,531 plus 6,427 plus 278 MWp.](../assets/figures/roofclf_flow.svg#only-light)
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 23 folds at 0.857 AUC and 0.830 within roof-size band, and a deployment threshold of 0.2443 at precision 0.50 and recall 0.66. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,680 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: a Verified tier of 2,929 MWp where roofclf and SPPI agree, and a Best estimate tier of 6,531 plus 6,427 plus 278 MWp.](../assets/figures/roofclf_flow.dark.svg#only-dark)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 23 folds at 0.857 AUC and 0.830 within roof-size band, and a deployment threshold of 0.2443 at precision 0.50 and recall 0.66. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,680 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,531 plus 6,427 plus 278 MWp, floored per cell at hand-mapped OSM plus the stricter 2,929 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 23 folds at 0.857 AUC and 0.830 within roof-size band, and a deployment threshold of 0.2443 at precision 0.50 and recall 0.66. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,680 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,531 plus 6,427 plus 278 MWp, floored per cell at hand-mapped OSM plus the stricter 2,929 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
 
 The six stages below follow the chart from top to bottom.
 
@@ -247,22 +247,22 @@ The coverage ratio is now fitted per roof-size bin and per building-density band
 
 | Component | Population | MWp |
 | --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Verified tier | 2,929 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,929 |
 | Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 6,531 |
 | At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 6,427 |
 | Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Best estimate only | 278 |
 
-The published atlas totals, which also carry hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, are **Verified 6,138.6 MWp (90%
-interval 5,096 to 7,498)** and **Best estimate 16,441.4 MWp (90% 12,883 to 19,147)**.
+The published atlas total, which also carries hand-mapped OSM and the segmentation model's
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 16,441.4 MWp (90%
+range 12,883 to 19,147)**.
 
 Three things about that table are worth stating plainly:
 
 - **SPPI is a second opinion, not a feature.** Adding SPPI as a roofclf input changes AUC
   from 0.8736 to 0.8734, which is nothing. Requiring the two to *agree* raises precision
   from 0.53 to 0.63 on the same quadrats, at 0.46 recall instead of 0.73. They share no
-  training data, which is why agreement between them is evidence and why it defines the
-  Verified tier.
+  training data, which is why agreement between them is evidence and why it sets the
+  internal floor under the atlas's headline figure.
 - **At or above 400 m<sup>2</sup>, roofclf replaces segmentation rather than adding to
   it**, inside the calibrated domain only. Measured on the identical 92 cells at the time
   of the swap, roofclf's rooftop estimate came to 2.18 times segmentation's. Outside the
@@ -271,7 +271,7 @@ Three things about that table are worth stating plainly:
 - **The out-of-domain row is a labelled extrapolation.** All of those cells sit *below* the
   calibrated density band, with a median density roughly six times sparser than the least
   dense quadrat, so a coverage ratio measured on urban quadrats is being applied to rural
-  ground where nothing constrains it. It feeds Best estimate only, never Verified, and it
+  ground where nothing constrains it. It feeds Best estimate only, and it
   is drawn with its own outline on the atlas map. It exists because the JOSM validation
   pass meant to test that population could not be done: the available reference imagery is
   too old to confirm or refute recent installations there.

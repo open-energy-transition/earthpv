@@ -856,7 +856,7 @@ def build_architecture_svg(t: Theme) -> str:
     box("f3", xf[2], 786, wf, 94, "PyPSA-Earth grid CSV",
         ["0.1° cell capacity for", "power-system modelling"], stroke=t.s3)
     box("f4", xf[3], 786, wf, 94, "Evidence atlas",
-        ["Verified / Best estimate /", "Ceiling tiers, sub-400 m²", "plus ≥ 400 m²"], stroke=t.s2)
+        ["Best estimate, sub-400 m²", "plus ≥ 400 m²"], stroke=t.s2)
 
     note("Building footprints also feed roofclf and the sub-400 m² bracket directly (arrows omitted for clarity).", 936)
     note("Solid grey = the main trunk. Blue = load-bearing instruments. Orange = glint, corroborates only. Aqua = auxiliary instruments not (yet) in the headline number.", 954)
@@ -1044,25 +1044,22 @@ def build_roofclf_svg(t: Theme) -> str:
     note("Panels cover only part of a flagged roof. Assuming otherwise overstated this "
          "estimate by 2.4 to 2.7x until the coverage ratio replaced precision as the multiplier.", 856)
 
-    # Lane F - atlas tiers
+    # Lane F - into the atlas
     lane_label("6. Into the evidence atlas", 886)
-    xf, wf = _row_x(2, gap=60)
-    box("f1", xf[0], 894, wf, 94, "Verified tier",
-        [f"roofclf AND SPPI agreeing: {cap['verified_sub400']:,} MWp",
-         "below 400 m2. Two instruments that", "share no training data must agree"], stroke=t.s2)
-    box("f2", xf[1], 894, wf, 94, "Best estimate tier",
-        [f"roofclf alone in domain {cap['best_sub400']:,} MWp, plus",
-         f"{cap['best_ge400_roof']:,} MWp of >= 400 m2 roofs, plus",
-         f"{cap['best_outdomain']} MWp extrapolated outside it"], stroke=t.s1)
+    xf, wf = _row_x(1, gap=60)
+    box("f1", xf[0], 894, wf, 94, "Best estimate",
+        [f"roofclf alone in domain {cap['best_sub400']:,} MWp, plus {cap['best_ge400_roof']:,} MWp of "
+         f">= 400 m2 roofs, plus {cap['best_outdomain']} MWp extrapolated outside it -- floored per cell "
+         f"at hand-mapped OSM plus the stricter {cap['verified_sub400']:,} MWp roofclf-AND-SPPI population, "
+         "two instruments that share no training data"], stroke=t.s1)
 
     note("roofclf also REPLACES the segmentation model's own rooftop estimate for buildings "
          "at or above 400 m2 inside the same domain, where it measures better.", 1020)
-    # Colour names have to hold in both themes, so the legend says warm / teal / blue
-    # rather than orange / aqua: the same three slots render amber, aqua and light blue
-    # against the dark surface.
+    # Colour names have to hold in both themes, so the legend says warm / teal
+    # rather than orange / aqua: the same slots render amber and aqua against the dark
+    # surface.
     note("Warm outline = the roofclf trunk. Teal = the calibration steps that decide where "
-         "roofclf is allowed to speak at all. Blue = the tier where a second, independent "
-         "instrument has to agree.", 1038)
+         "roofclf is allowed to speak at all.", 1038)
 
     for a, b in (("a1", "b1"), ("a2", "b1"), ("a2", "b2"), ("a3", "b2")):
         arrow(a, b, t.ink_dim)
@@ -1074,8 +1071,7 @@ def build_roofclf_svg(t: Theme) -> str:
     arrow("d1", "e1", t.s3)
     arrow("e1", "e2", t.s3, from_side="right", to_side="left")
     arrow("e2", "e3", t.s3, from_side="right", to_side="left")
-    arrow("e3", "f2", t.s1)
-    arrow("e3", "f1", t.s2)
+    arrow("e3", "f1", t.s1)
 
     markers = _svg_markers(t)
     return (

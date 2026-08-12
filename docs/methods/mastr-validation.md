@@ -113,8 +113,8 @@ blocked one.**
 Two consequences travel beyond Germany. "Germany is well mapped in OSM" is true of
 buildings and false of rooftop PV, and the two are easy to conflate. And the same
 array-versus-roof ambiguity applies to this project's Pakistani OSM reference, which is
-used both as a recall denominator and as the Verified tier's own population &mdash; it is
-not exempt.
+used both as a recall denominator and as the evidence atlas's own hand-mapped population
+&mdash; it is not exempt.
 
 ## The end-to-end comparison, and what still blocks it
 

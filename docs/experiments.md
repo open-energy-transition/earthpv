@@ -25,12 +25,12 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | Building prior from VIDA Open Buildings | <span class="outcome works">shipped</span> | Makes "no building nearby" a usable false-positive signal. |
 | Quadrats as training data, not just correction | <span class="outcome works">shipped</span> | Became `roofclf`, now half the main workflow. |
 | [roofclf, a per-building classifier](methods/roofclf.md) | <span class="outcome works">shipped</span> | 0.857 AUC (0.830 within size band) on 23 quadrats where segmentation scores near chance. |
-| SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf defines the Verified tier. |
+| SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf sets an internal floor on the atlas's headline figure. |
 | Coverage ratio stratified by size and density | <span class="outcome works">shipped</span> | Replaced precision as the multiplier, and a flat ratio with a measured per-stratum one. |
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
 | Recall correction and credible intervals | <span class="outcome works">shipped</span> | Turned a structural floor into an estimate with a stated interval. |
-| Quadrat-bootstrap uncertainty on the atlas | <span class="outcome works">shipped</span> | Both headline tiers now carry a 90% range. |
+| Quadrat-bootstrap uncertainty on the atlas | <span class="outcome works">shipped</span> | The headline figure now carries a 90% range. |
 | Solar-glint corroboration | <span class="outcome works">shipped</span> | Calibrated likelihood ratios per size bucket, reward-only, never demoting. |
 | Tile-major glint fetching | <span class="outcome works">shipped</span> | 22x faster, numerically identical output. |
 | Pre-boom epoch check | <span class="outcome works">shipped</span> | A persistent 2021 signal demotes a candidate. |
@@ -92,7 +92,8 @@ Quetta), and as an extra column in `roofclf` it does nothing at all (0.8736 to 0
 What it is good for is **disagreeing**: requiring roofclf and SPPI to agree lifts precision
 from 0.496 to 0.540 at matched recall, and the gain concentrates in exactly the low-adoption
 places where roofclf alone is known to over-predict. That is why agreement between the two
-defines the Verified tier rather than either model on its own.
+sets the internal floor under the evidence atlas's headline figure, rather than either
+model on its own.
 
 ### The vegetation veto, and why the obvious version fails
 

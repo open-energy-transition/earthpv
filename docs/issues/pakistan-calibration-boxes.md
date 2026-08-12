@@ -1002,7 +1002,7 @@ dissolve_overlapping` (new function) merges geometrically-overlapping polygons w
 the same `placement` group into one feature per connected cluster, recomputing area
 geodesically on the union, before ANY matching happens. `export.
 load_mapped_reference_attrs` (feeds `postprocess.replace_with_osm_geometry`) and
-`atlas.build_evidence_atlas`'s own OSM Verified-tier sum both now dissolve first.
+`atlas.build_evidence_atlas`'s own OSM hand-mapped sum both now dissolve first.
 Measured nationally: ground-mount OSM area 55.95 -> 42.32 km² (-24.4%, the QASP
 generator/plant nesting), rooftop 6.21 -> 6.08 km² (-2.1%).
 

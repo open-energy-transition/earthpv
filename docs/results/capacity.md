@@ -1,10 +1,8 @@
 # Pakistan capacity map
 
-How much rooftop solar does Pakistan actually have? The honest answer depends on how much
-proof you require, so this atlas gives two, not one: what a person has actually drawn in
-OpenStreetMap, and this project's own best defensible estimate. Both read the same
-underlying detections from two instruments, split by placement and by calibration
-coverage rather than cleanly by size: a segmentation model that outlines individual
+How much rooftop solar does Pakistan actually have? This atlas gives this project's own
+best defensible estimate, reading detections from two instruments, split by placement and
+by calibration coverage rather than cleanly by size: a segmentation model that outlines individual
 arrays directly (every mapping lead, all ground-mount capacity at any size, and rooftop
 capacity 400 m<sup>2</sup> and larger outside the cells covered below), and **roofclf**,
 a per-building classifier cross-checked against the zero-training **SPPI** index, which
@@ -18,34 +16,42 @@ threshold roughly doubled it with no accompanying validation, so it had stopped 
 meaningful bound.
 
 <div class="embed" markdown>
-<iframe src="../../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: Verified and Best estimate" loading="lazy"></iframe>
+<iframe src="../../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell" loading="lazy"></iframe>
 </div>
 <p class="embed-note">
-Interactive. Switch tier with the tabs, hover a cell for its value.
+Interactive. Hover a cell for its value.
 <a href="../../assets/interactive/pakistan_evidence_atlas.html" target="_blank">Open full screen</a>.
 </p>
 
-## Two tiers, one country
+## The headline figure
 
-| Tier | Pakistan | 90% range | What it admits as evidence |
-| --- | ---: | ---: | --- |
-| Verified | 6,139 MWp | 5,096 &ndash; 7,498 | Every installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see "Ground-mount fixes" below), plus sub-400 m<sup>2</sup> buildings where **roofclf and SPPI both agree** -- two independent detectors, not one model trusted alone. |
-| **Best estimate** | **16,441 MWp** | 12,883 &ndash; 19,147 | Verified, plus &ge;400 m<sup>2</sup> capacity (7,860 MWp: roofclf's own rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop detections everywhere else, segmentation's ground-mount detections throughout -- see "Segmentation vs. roofclf on large rooftops" below), plus the roofclf per-building density estimate for sub-400 m<sup>2</sup> buildings inside the same cells, plus 278 MWp of roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see "A sixth change" below -- the project's own pick. |
+**Best estimate: 16,441 MWp** (90% range 12,883 &ndash; 19,147). It combines every
+installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
+"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (7,860 MWp: roofclf's own
+rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
+detections everywhere else, segmentation's ground-mount detections throughout -- see
+"Segmentation vs. roofclf on large rooftops" below), the roofclf per-building density
+estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 278 MWp of
+roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see
+"A sixth change" below.
 
-The ranges are new as of 2026-08-11 and are composed from four measured sources plus one
+The range is new as of 2026-08-11 and is composed from four measured sources plus one
 stated judgement: the two area-to-capacity constants' priors, segmentation's own
 precision/recall posterior by installation size, the coverage ratio's sensitivity to *which*
 calibration quadrats happen to have been mapped (measured by resampling the quadrats
 themselves, not the buildings inside them), and an explicit allowance for extrapolating a
-city-calibrated coverage ratio onto rural roofs. They do **not** include a design-based
+city-calibrated coverage ratio onto rural roofs. It does **not** include a design-based
 sampling error, because the quadrats were hand-picked rather than randomly drawn -- see
 "How confident should you be in this?" on the atlas page, and
 [validation against MaStR](../methods/mastr-validation.md) for what a complete register can
 and cannot settle here.
 
-Both tiers fold in the same &ge;400 m<sup>2</sup> segmentation total; what changes between
-them is how much of the sub-400 m<sup>2</sup> population each is willing to trust, and at
-what precision. Neither double-counts, on either axis: OpenStreetMap-mapped installations
+The sub-400 m<sup>2</sup> population is split into two populations of differing strictness:
+a more permissive one (roofclf alone, feeding the figure above directly) and a stricter one
+requiring **roofclf and SPPI to both agree** -- two independent detectors, not one model
+trusted alone -- used internally as a floor so the headline figure never reads below what a
+person has actually mapped plus that stricter population (see "Best is now floored" below).
+Neither double-counts, on either axis: OpenStreetMap-mapped installations
 are matched by location and removed from the model-detected side before summing, **and**
 (fixed 2026-08-06) the sub-400 m<sup>2</sup> instrument itself drops any building within 30 m
 of an OpenStreetMap solar feature, not just those near an existing segmentation candidate --
@@ -53,8 +59,9 @@ without that second check, a building OSM had already mapped but segmentation mi
 entirely could be counted twice (measured before the fix: 3.3-3.8% of the sub-400 m<sup>2</sup>
 component's MWp, 343-438 MWp).
 
-**Both tiers moved 2026-08-06 with three further fixes, none of them a new measurement --
-each replaces an assumption with something already sitting in the calibration quadrats'
+**Both sub-400 m<sup>2</sup> populations moved 2026-08-06 with three further fixes, none of
+them a new measurement -- each replaces an assumption with something already sitting in the
+calibration quadrats'
 own ground truth:**
 
 - **Sub-400 m<sup>2</sup> capacity no longer assumes a flagged roof is fully covered by
@@ -114,10 +121,11 @@ own ground truth:**
   installations against 3,022 found by a direct 30 m proximity check. The mapped-but-
   unmatched component fell 3,298 &rarr; 1,398 MWp accordingly -- that MWp was never
   missing, the model had already found it.
-- **Best is now floored at Verified, per cell.** Best subtracts a cell's matched OSM
+- **Best is now floored, per cell, at what a person has actually mapped plus the stricter
+  sub-400 m<sup>2</sup> (AND-gate) population.** Best subtracts a cell's matched OSM
   value and substitutes the model's own estimate, which is occasionally smaller than
-  what it replaced -- Pakistan's largest solar park read Verified 866 MWp against Best
-  243 MWp before this fix. 62 of 4,463 cells needed the floor.
+  what it replaced -- Pakistan's largest solar park read 866 MWp on that floor against
+  243 MWp for Best before this fix. 62 of 4,463 cells needed the floor.
 
 **A fourth change, 2026-08-07: roofclf now replaces segmentation's own rooftop estimate
 for &ge;400 m<sup>2</sup> buildings inside the density-matched cells.** Measured on the
@@ -139,7 +147,7 @@ Solar Park where 77% of the dissolved `generator` footprint already sat inside i
 `plant` perimeter. A new `labels.dissolve_overlapping` step merges overlapping features
 before any capacity computation touches them (nationally: ground-mount OSM area
 55.95 &rarr; 42.32 km<sup>2</sup>, -24.4%), wired into both the OSM-geometry-replacement
-step and the atlas's own Verified-tier sum. Separately, the ground-mount site-area
+step and the atlas's own hand-mapped-OSM sum. Separately, the ground-mount site-area
 conversion constant (`DEFAULT_KWP_PER_M2_LAND`) had never been checked against a real
 plant -- calibrated against Quaid-e-Azam Solar Park (400 MW / 8,904,839 m<sup>2</sup>)
 and the Sukkur solar farm (150 MW combined / 2,606,013 m<sup>2</sup>), it moved
@@ -198,7 +206,7 @@ every one of those 4,300 cells sits below the calibrated density band (median
 87 bldg/km<sup>2</sup> against a calibrated floor around 553/km<sup>2</sup>) -- none
 above it -- so the fit is being applied to a settlement-density regime with no
 calibration quadrat anywhere in it. It adds **1,224 MWp** (217,751 buildings across 2,983
-cells) to Best only, never Verified, moving Best **11,230 &rarr; 12,410 MWp**. On the map
+cells) to Best only, moving it **11,230 &rarr; 12,410 MWp**. On the map
 these cells get their own dotted marker, distinct from the dashed calibrated-domain
 outline, so the two standards of evidence are never visually conflated. Full derivation
 in `sub400_capacity.out_of_domain_and_gate_capacity`'s docstring.
@@ -222,9 +230,9 @@ enough that Multan **dropped out** of the trusted 13-quadrat precision/coverage-
 (rate_ratio crossed from just-under to just-over 2.0) while Sialkot, Hasal and Malok
 **newly qualified** -- net 13 &rarr; 15. Losing an industrial estate with historically
 high coverage lowered every domain-restricted figure: sub-400 central (Best) 3,907 &rarr;
-**3,870 MWp**, sub-400 AND-gate (Verified) 2,257 &rarr; **2,091 MWp**, out-of-domain
+**3,870 MWp**, sub-400 AND-gate 2,257 &rarr; **2,091 MWp**, out-of-domain
 extension (Best only) 1,224 &rarr; **1,149 MWp**, &ge;400 m<sup>2</sup> roofclf rooftop
-&rarr; **3,156 MWp**. Evidence atlas: Verified 5,467 &rarr; **5,300 MWp**, Best 12,410
+&rarr; **3,156 MWp**. Evidence atlas: Best 12,410
 &rarr; **11,998 MWp**. The density-matched domain itself is unchanged (still 553.4-5,258.0
 bldg/km<sup>2</sup>, still 136-163 cells) -- this move is entirely recalibration from a
 richer quadrat set, not a domain-size effect. `docs/calibration-mapping-protocol.md`'s
@@ -253,10 +261,10 @@ The floor moved **553.40 -> 277.75** bldg/km<sup>2</sup>, growing the domain fro
 to 646** of Pakistan's 4,463 cells (3.7% -> 14.5% of cells, 24.5% -> 48.9% of national
 buildings) -- by far the largest jump in this constant's history, from one quadrat,
 because it targeted the mechanism directly. Re-ran the full chain again: sub-400 central
-(Best) 3,870 &rarr; **5,557 MWp**, sub-400 AND-gate (Verified) 2,090 &rarr; **2,676
+(Best) 3,870 &rarr; **5,557 MWp**, sub-400 AND-gate 2,090 &rarr; **2,676
 MWp**, out-of-domain extension (now describing a smaller remaining population) 1,149
 &rarr; **575 MWp**, &ge;400 m<sup>2</sup> roofclf rooftop &rarr; **5,049 MWp**. Evidence
-atlas: Verified 5,300 &rarr; **5,886 MWp** (+11.0%), Best 11,998 &rarr; **14,462 MWp**
+atlas: Best 11,998 &rarr; **14,462 MWp**
 (+20.5%) -- real increases from new calibration coverage this time, not the
 recalibration-only move of the seventh change. **Generalizable lesson for the next
 quadrat**: to widen this domain further, size and place a boundary so its own average
@@ -284,10 +292,10 @@ mapping. Combined, the two quadrats moved the floor **277.75 -> 141.00** bldg/km
 growing the domain **646 -> 1,680** of Pakistan's 4,463 cells (14.5% -> 37.6% of cells,
 48.9% -> 78.6% of national buildings) -- the largest cumulative widening yet, in two
 verified steps. Re-ran the full chain once more: sub-400 central (Best) 5,557 &rarr;
-**6,531 MWp**, sub-400 AND-gate (Verified) 2,676 &rarr; **2,929 MWp**, out-of-domain
+**6,531 MWp**, sub-400 AND-gate 2,676 &rarr; **2,929 MWp**, out-of-domain
 extension (a much smaller remaining population now) 575 &rarr; **278 MWp**, &ge;400
-m<sup>2</sup> roofclf rooftop &rarr; **6,427 MWp**. Evidence atlas: Verified 5,886 &rarr;
-**6,139 MWp** (+4.3%), Best 14,462 &rarr; **16,441 MWp** (+13.7%).
+m<sup>2</sup> roofclf rooftop &rarr; **6,427 MWp**. Evidence atlas: Best 14,462 &rarr;
+**16,441 MWp** (+13.7%).
 
 ## What this map cannot tell you, and what an independent estimate confirms it can
 
@@ -299,9 +307,9 @@ covered instead by `roofclf`, a per-building classifier cross-checked against th
 zero-training SPPI index, restricted to the cells whose building density resembles the
 hand-mapped calibration quadrats it was measured on. That restriction is deliberate --
 it is what keeps the sub-400 m<sup>2</sup> numbers honest -- but it also means the total
-depends on calibration coverage, not on a direct count, and the 90% ranges on both tiers
-above exist specifically to keep that uncertainty visible rather than hidden behind one
-bare number.
+depends on calibration coverage, not on a direct count, and the 90% range on the headline
+figure above exists specifically to keep that uncertainty visible rather than hidden behind
+one bare number.
 
 **Given that, a natural question is whether the map is even pointed at the right places
 -- and a comparison against an independent, separately produced national rooftop-solar
@@ -407,7 +415,7 @@ pixi run earthpv sub400-capacity --aoi pakistan \
 pixi run earthpv ge400-roof-capacity --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet
 
-# Evidence atlas (Verified / Best estimate), combining all three.
+# Evidence atlas (Best estimate), combining all three.
 # (--sub400-high-cells is no longer accepted here -- the Ceiling tier was removed
 # 2026-08-06; it still exists for the older bracket atlas, see build_sub400_bracket_atlas.)
 pixi run earthpv atlas --aoi pakistan \

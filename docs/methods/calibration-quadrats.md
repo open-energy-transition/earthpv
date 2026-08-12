@@ -100,7 +100,7 @@ building count, not PV) still moved `density.CALIBRATED_BLDG_DENSITY_KM2`'s floo
 553.40 to 277.75, growing the domain from 163 to 646 of Pakistan's 4,463 cells.
 **Khairpur Rural**, added the same day for geographic diversity (Sindh, not Punjab),
 pushed the floor down again to 141.00 bldg/km<sup>2</sup> (646 -> 1,680 cells) -- see
-[Capacity](../results/capacity.md#two-tiers-one-country)'s "eighth change" and
+[Capacity](../results/capacity.md#the-headline-figure)'s "eighth change" and
 subsequent correction/ninth-change entry for the full derivation.
 
 | quadrat | province | stratum | Rule-1 | buildings | PV buildings | base rate | installations | median install m² | % sub-400 m² | packing (nn_median_m) |

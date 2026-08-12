@@ -42,21 +42,23 @@ size, combined into one product:
   atlas built before this was noticed is flagged in `docs/results/gujarat.md`.)
 - **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `sub400-capacity` →
   `ge400-roof-capacity`) -- a per-building "does this roof carry PV?" classifier, cross-checked
-  with the zero-training **SPPI** spectral index for the atlas's Verified tier (roofclf AND
-  SPPI agreeing). Covers every building **< 400 m²** and, since 2026-08-07, also **replaces**
-  segmentation's own rooftop estimate for buildings **≥ 400 m²** inside a density-calibrated
-  domain of cells, where it measures better (AUC ~0.76-0.78 vs segmentation's ~0.50-0.78,
-  strongly conditional on quadrat). Both capacity functions are domain-restricted and refuse to
-  rescale to a national total on their own; an AND-gate variant additionally covers cells
-  *outside* the calibrated domain as an explicitly-flagged extrapolation (see "Density stage"
-  below).
-- **`atlas.build_evidence_atlas`** combines both into two tiers by *standard of proof* --
-  **Verified** (hand-mapped OSM, or roofclf+SPPI agreement) and **Best estimate** (adds
-  segmentation's ground-mount detections, roofclf's rooftop replacement in-domain plus
-  segmentation's own recall-corrected rooftop out-of-domain, roofclf-alone density below
-  400 m², and roofclf+SPPI agreement outside the domain as a marked extrapolation) --
-  de-duplicated against each other and against OSM. Reports a 90% credible interval on both
-  tiers (see "Density stage").
+  with the zero-training **SPPI** spectral index (roofclf AND SPPI agreeing) as an internal
+  floor under the atlas's headline figure. Covers every building **< 400 m²** and, since
+  2026-08-07, also **replaces** segmentation's own rooftop estimate for buildings **≥ 400 m²**
+  inside a density-calibrated domain of cells, where it measures better (AUC ~0.76-0.78 vs
+  segmentation's ~0.50-0.78, strongly conditional on quadrat). Both capacity functions are
+  domain-restricted and refuse to rescale to a national total on their own; an AND-gate variant
+  additionally covers cells *outside* the calibrated domain as an explicitly-flagged
+  extrapolation (see "Density stage" below).
+- **`atlas.build_evidence_atlas`** combines both into **Best estimate**, this project's own
+  highest defensible figure (hand-mapped OSM, plus segmentation's ground-mount detections,
+  roofclf's rooftop replacement in-domain plus segmentation's own recall-corrected rooftop
+  out-of-domain, roofclf-alone density below 400 m², and roofclf+SPPI agreement outside the
+  domain as a marked extrapolation) -- de-duplicated against each other and against OSM, and
+  floored per cell at hand-mapped OSM plus the stricter roofclf+SPPI agreement population
+  (internally still called "Verified" in the code, but no longer surfaced anywhere in the
+  published atlas, docs, or README -- 2026-08-12 decision). Reports a 90% credible interval on
+  the headline figure (see "Density stage").
 
 The end-to-end command sequence is in `docs/reproduce.md`'s "The full pipeline"; the short
 version:
@@ -312,27 +314,28 @@ average in enough non-built land on purpose. `docs/methods/calibration-quadrats.
 `docs/methods/density.md` have the full derivation and every historical widening step.
 
 Current domain-restricted capacity figures: sub-400 central (feeds Best estimate) **6,531.3
-MWp**, sub-400 AND-gate (feeds Verified) **2,928.8 MWp**, ≥ 400 m² roofclf rooftop replacement
-(in-domain) **6,427.2 MWp**.
+MWp**, sub-400 AND-gate (the internal floor population) **2,928.8 MWp**, ≥ 400 m² roofclf
+rooftop replacement (in-domain) **6,427.2 MWp**.
 
 **Outside the calibrated domain, roofclf-AND-SPPI agreement is used as a substitute standard of
-evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`), folded into the Best-estimate
-tier only (never Verified), because manual JOSM review of that population is currently blocked
+evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`), folded into Best estimate
+only, because manual JOSM review of that population is currently blocked
 by stale reference imagery (see "Main workflow" above). This is a strict, explicitly-flagged
 extrapolation of a coverage-ratio fit measured on urban/semi-urban quadrats across a much
 sparser rural remainder with no calibration coverage of its own -- the atlas template, a
 distinct dotted-outline map marker (`is_extended`), and the function's own docstring all carry
 that caveat forward. Current figure: **+278.0 MWp** (the remaining ~2,783 out-of-domain cells).
 
-**The evidence atlas reports a 90% credible interval on both tiers**
+**The evidence atlas reports a 90% credible interval on its headline figure**
 (`atlas._evidence_uncertainty`), composing every measured uncertainty source (module/land kWp
 priors, coverage-ratio quadrat bootstrap, an explicit stated judgement band on the out-of-domain
 extrapolation alone, `KWP_LAND_CI90` for ground-mount) with correlated terms sharing one draw
 vector where the underlying constant or calibration set is shared. It asserts its component
-point values sum to each published tier total as a guard against silently adding a component to
-the atlas without adding it to the uncertainty composition. **Current published result: Verified
-6,138.6 MWp (90% CI 5,096-7,498), Best estimate 16,441.4 MWp (90% CI 12,883-19,147).** CLI:
-`--coverage-boot N` on `sub400-capacity`/`ge400-roof-capacity` (default 200; 0 disables and
+point values sum to the published total as a guard against silently adding a component to
+the atlas without adding it to the uncertainty composition (the code still separately tracks
+the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
+published). **Current published result: Best estimate 16,441.4 MWp (90% CI 12,883-19,147).**
+CLI: `--coverage-boot N` on `sub400-capacity`/`ge400-roof-capacity` (default 200; 0 disables and
 narrows the reported interval).
 
 Full derivation, every historical recalibration step, and every rejected instrument:

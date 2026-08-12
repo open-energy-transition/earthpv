@@ -3,7 +3,7 @@
 !!! warning "SUPERSEDED in its title claim (as of 2026-08-11)"
 
     SPPI is now deployed nationally, as the corroborating half of the roofclf-AND-SPPI
-    gate that defines the evidence atlas's Verified tier. Two of this doc's conclusions do
+    gate that sets an internal floor on the evidence atlas's headline figure. Two of this doc's conclusions do
     still hold: SPPI cannot serve as a standalone capacity instrument, and adding it as a
     roofclf feature changes nothing. Its segmentation comparison figures should not be
     reused -- they came from a non-production raster scored over an all-sizes population,

@@ -76,11 +76,11 @@ the only evidence-backed number there. See
 ≥ 400 m² detections (rooftop and ground-mount, every cell); `roof-classifier` →
 `roofclf-score-national` → `sub400-capacity` builds roofclf's < 400 m² population, and
 `ge400-roof-capacity` builds its ≥ 400 m² rooftop replacement inside the calibrated
-cells; `earthpv atlas` combines all of it into two tiers by *standard of proof* rather
-than one point estimate -- **Verified** (hand-mapped OpenStreetMap, or roofclf and SPPI
-agreeing) and **Best estimate** (this project's own highest defensible figure) -- with
+cells; `earthpv atlas` combines all of it into **Best estimate**, this project's own
+highest defensible figure, hand-mapped OpenStreetMap installations plus the model's own
+recall-corrected detections plus roofclf/SPPI's per-building density estimate -- with
 the overlap between OSM and detections removed rather than double-counted, and a 90%
-range on each tier. Full command sequence:
+range on the total. Full command sequence:
 [The full pipeline](https://open-energy-transition.github.io/earthpv/reproduce/#the-full-pipeline).
 
 **Why two detectors, checked against a complete register.** Germany's MaStR register is
@@ -97,7 +97,8 @@ problem rather than a shape the segmentation model can outline, so everything un
 floor comes from `roofclf` instead, restricted to cells whose building density resembles
 the hand-mapped calibration quadrats it was measured on. That restriction keeps the
 sub-400 m² numbers honest, but it also means the total tracks calibration coverage, not a
-direct count, which is why both tiers carry a 90% range rather than one bare number.
+direct count, which is why the headline figure carries a 90% range rather than one bare
+number.
 Checked against that limitation directly: an independent, separately produced national
 rooftop-solar estimate agrees closely with this project's on **where** capacity
 concentrates -- normalizing both to percent of national total per spatial unit (their
@@ -137,12 +138,14 @@ for what was tried and why the main workflow above is what shipped.
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: two tiers by standard of proof for Pakistan's rooftop solar capacity -- Verified (6,139 MWp, hand-mapped or two detectors agreeing) and Best estimate (16,441 MWp, the project's own defensible figure), each with a 90 percent range beneath it -- above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 16,441 MWp (90 percent range 12,883 to 19,147) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
-<p align="center"><em>Two tiers by standard of proof, not by point estimate: what a person
-mapped or two detectors agree on, and this project's own best defensible figure.
+<p align="center"><em>This project's own highest defensible figure, not a bare point
+estimate: hand-mapped OpenStreetMap installations, the model's own recall-corrected
+detections, and a per-building density estimate for small rooftops, with a 90 percent
+range attached.
 <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">Open the
 interactive version</a>.</em></p>
 
@@ -190,24 +193,23 @@ Nobody can check those numbers, because the maps behind them are built on commer
 high-resolution imagery that cannot be shared and that most licences forbid processing
 with AI. earthpv's own numbers come from
 [the main workflow](#the-main-workflow-two-detectors-split-by-placement-and-calibration-coverage-one-evidence-atlas)
-above, with a stated standard of proof:
+above:
 
 | | |
 | --- | --- |
-| **6,139 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree (90% range 5,096 &ndash; 7,498) |
 | **16,441 MWp** | Best estimate: this project's own highest defensible figure (90% range 12,883 &ndash; 19,147) |
 | **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
 | **400 m²** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
 
-Both tiers carry a 90% range as of 2026-08-11, composed from the area-to-capacity
-constants' priors, segmentation's measured precision and recall by installation size, the
-coverage ratio's sensitivity to which calibration quadrats happen to have been mapped, and
-an explicit allowance for extrapolating a city-calibrated relationship onto rural roofs.
-The ranges are wide on purpose: these two figures moved by 20-35% five times in a single
-week from recalibration alone, and reporting them bare had been hiding that. They are not
-a design-based margin of error -- the quadrats behind them are hand-picked, not randomly
-sampled. See
+The headline figure carries a 90% range as of 2026-08-11, composed from the
+area-to-capacity constants' priors, segmentation's measured precision and recall by
+installation size, the coverage ratio's sensitivity to which calibration quadrats happen
+to have been mapped, and an explicit allowance for extrapolating a city-calibrated
+relationship onto rural roofs. The range is wide on purpose: this figure moved by 20-35%
+five times in a single week from recalibration alone, and reporting it bare had been
+hiding that. It is not a design-based margin of error -- the quadrats behind it are
+hand-picked, not randomly sampled. See
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for the
 derivation and
 [Validation against MaStR](https://open-energy-transition.github.io/earthpv/methods/mastr-validation/)
@@ -218,7 +220,7 @@ not a register**. No human has validated most of it at scale, and the sub-400 m�
 Best estimate in particular is restricted to a small, density-matched slice of the
 country, not a national measurement. See
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for how
-each tier is derived and what it does and does not claim.
+the estimate is derived and what it does and does not claim.
 
 ## The OpenStreetMap mapping loop
 
