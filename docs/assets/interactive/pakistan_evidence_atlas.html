@@ -83,7 +83,7 @@
     font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
   }
   .lede {
-    margin: 14px 0 0; max-width: 72ch; color: var(--ink-2);
+    margin: 44px 0 0; max-width: 72ch; color: var(--ink-2);
     font-size: clamp(15px, 1.5vw, 17px);
   }
   .lede b { color: var(--ink); font-weight: 640; }
@@ -266,19 +266,8 @@
 <div class="wrap">
   <header>
     <p class="eyebrow">EarthPV · Sentinel-2 · OpenStreetMap · TerraMind · roofclf · SPPI</p>
-    <h1>Pakistan's solar capacity, mapped and modeled</h1>
-    <p class="lede">The same country, the same imagery, one defensible estimate. <b>Best estimate</b> combines every PV installation a person has drawn in OpenStreetMap, the satellite model's own recall-corrected detections, and its per-building density estimate for small rooftops: the highest figure this project is willing to defend. This is a research methodology under active validation, not a finished census. See &ldquo;How confident should you be in this?&rdquo; below for what's independently corroborated and what's still open.</p>
+    <h1>Pakistan's Solar Capacity</h1>
   </header>
-
-  <div class="kpis">
-    <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
-      <div class="r" id="kBestCi"></div>
-      <div class="k">Best estimate, the highest defensible figure</div></div>
-    <div class="kpi"><div class="v" id="kOsm">0</div>
-      <div class="k">Installations hand-mapped in OpenStreetMap</div></div>
-    <div class="kpi"><div class="v" id="kDomain">0</div>
-      <div class="k">of 0.1&deg; cells have density-matched sub-400 m&sup2; calibration</div></div>
-  </div>
 
   <section class="sec" id="capacity">
     <div class="grid">
@@ -339,6 +328,18 @@
       </aside>
     </div>
   </section>
+
+  <p class="lede">The same country, the same imagery, one defensible estimate. <b>Best estimate</b> combines every PV installation a person has drawn in OpenStreetMap, the satellite model's own recall-corrected detections, and its per-building density estimate for small rooftops: the highest figure this project is willing to defend. This is a research methodology under active validation, not a finished census. See &ldquo;How confident should you be in this?&rdquo; below for what's independently corroborated and what's still open.</p>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
+      <div class="r" id="kBestCi"></div>
+      <div class="k">Best estimate, the highest defensible figure</div></div>
+    <div class="kpi"><div class="v" id="kOsm">0</div>
+      <div class="k">Installations hand-mapped in OpenStreetMap</div></div>
+    <div class="kpi"><div class="v" id="kDomain">0</div>
+      <div class="k">of 0.1&deg; cells have density-matched sub-400 m&sup2; calibration</div></div>
+  </div>
 
   <section class="sec" id="background">
     <div class="sec-head">

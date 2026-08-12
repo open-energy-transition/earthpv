@@ -1984,7 +1984,7 @@ def build_evidence_atlas(
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title} Solar PV: Evidence Atlas",
-        "__H1__": f"{title}'s solar capacity, mapped and modeled",
+        "__H1__": f"{title}'s Solar Capacity",
         "__AOI_TITLE__": title,
         "__LEDE_HTML__": (
             "The same country, the same imagery, one defensible estimate. "
