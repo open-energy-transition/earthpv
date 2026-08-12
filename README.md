@@ -91,6 +91,24 @@ of what a "rooftop solar" headline implies, which is the whole argument for the 
 detector. See
 [Validation against MaStR](https://open-energy-transition.github.io/earthpv/methods/mastr-validation/).
 
+**The absolute total is a modelled estimate, not a metered figure -- Sentinel-2's 10 m
+pixels make that unavoidable.** An individual array below roughly 400 m² is a mixed-pixel
+problem rather than a shape the segmentation model can outline, so everything under that
+floor comes from `roofclf` instead, restricted to cells whose building density resembles
+the hand-mapped calibration quadrats it was measured on. That restriction keeps the
+sub-400 m² numbers honest, but it also means the total tracks calibration coverage, not a
+direct count, which is why both tiers carry a 90% range rather than one bare number.
+Checked against that limitation directly: an independent, separately produced national
+rooftop-solar estimate agrees closely with this project's on **where** capacity
+concentrates -- normalizing both to percent of national total per spatial unit (their
+absolute magnitudes aren't comparable), the median difference across 3,303 spatial units
+is 0.005 percentage points and rank correlation is 0.71-0.83. It disagrees more on how
+much weight the very largest sites deserve (a handful of hotspot cells drive most of the
+remaining gap, consistently in the same direction), which is a real, stated limitation,
+not a hidden one. See
+[Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for the
+full comparison and `scripts/pv_reference_share_comparison.py` to reproduce it.
+
 ### Optional, supplementary instruments
 
 Everything below is evidence toward the main workflow, a secondary product built from

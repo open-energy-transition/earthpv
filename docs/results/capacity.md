@@ -289,6 +289,53 @@ extension (a much smaller remaining population now) 575 &rarr; **278 MWp**, &ge;
 m<sup>2</sup> roofclf rooftop &rarr; **6,427 MWp**. Evidence atlas: Verified 5,886 &rarr;
 **6,139 MWp** (+4.3%), Best 14,462 &rarr; **16,441 MWp** (+13.7%).
 
+## What this map cannot tell you, and what an independent estimate confirms it can
+
+**The absolute total is a modelled estimate, not a metered figure, and resolution is
+the reason.** Sentinel-2's 10 m pixels make an individual array smaller than roughly
+400 m<sup>2</sup> a mixed-pixel problem rather than a shape you can outline -- the
+segmentation model is not even trained to try below that floor. Everything under it is
+covered instead by `roofclf`, a per-building classifier cross-checked against the
+zero-training SPPI index, restricted to the cells whose building density resembles the
+hand-mapped calibration quadrats it was measured on. That restriction is deliberate --
+it is what keeps the sub-400 m<sup>2</sup> numbers honest -- but it also means the total
+depends on calibration coverage, not on a direct count, and the 90% ranges on both tiers
+above exist specifically to keep that uncertainty visible rather than hidden behind one
+bare number.
+
+**Given that, a natural question is whether the map is even pointed at the right places
+-- and a comparison against an independent, separately produced national rooftop-solar
+estimate says yes, at the level that matters.** The two are not in comparable absolute
+units (different methodology, different sensor resolution, likely a different working
+definition of what counts as rooftop solar), so diffing raw magnitudes would answer a
+question neither side can actually settle. Both were instead normalized to **percent of
+the national total per spatial unit** and compared: not "whose number is bigger," but
+"do the two agree on *where* PV concentrates."
+
+They do, for most of the country. Across the reference's 3,303 hexagons, the median
+absolute difference in national-share allocation is **0.005 percentage points**, and
+64% of hexagons land within &plusmn;0.02pp of each other. Rank correlation (Spearman) is
+**0.83** including the many hexagons both sides agree carry essentially nothing, or
+**0.71** restricted to just the hexagons this project actually places a detection in --
+either way, strong agreement on the geography.
+
+That agreement is not uniform, though, and the exception is worth stating plainly: a
+small number of hexagons account for almost all of the remaining difference, and every
+one of the largest ones runs the same direction -- this project's estimate concentrates
+more of the national share into a handful of hotspot cells than the independent
+reference does (up to +5.0pp in the single largest case), never the reverse by nearly as
+much (the most negative hexagon is -0.16pp). That skew is why the straightforward
+linear correlation on share is a moderate 0.44 (a log-compressed version, less sensitive
+to those few large values, rises to 0.54) even though the rank correlation and the
+typical hexagon's near-exact agreement both say the two models are looking at the same
+country. Read it as two independently-built estimates agreeing closely on geography and
+disagreeing about how much weight the largest sites deserve -- not as a validation of
+one against the other, since neither is ground truth here.
+
+Reproducible with `scripts/pv_reference_share_comparison.py`, which reads this project's
+side straight out of the published Best-estimate figures per grid cell and normalizes
+both sides the same way described above.
+
 ## Segmentation vs. roofclf on large rooftops
 
 Measured on the calibration quadrats' own &ge;400 m<sup>2</sup> buildings (5,004 of them,

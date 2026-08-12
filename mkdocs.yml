@@ -93,17 +93,17 @@ nav:
   - Home: index.md
   # Results first: the pipeline's output is what most readers came for.
   - Results:
-      - Capacity map: results/capacity.md
-      - Mapping leads: results/leads.md
-      - Growth map: results/growth.md
-      - Panel pose from glint: results/pv-pose.md
-      - Gujarat capacity map: results/gujarat.md
+      - Pakistan PV Capacity map: results/capacity.md
+#      - Mapping leads: results/leads.md
+#      - Growth map: results/growth.md
+      - Pakistan Panel pose from glint: results/pv-pose.md
+#      - Gujarat capacity map: results/gujarat.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
       - Detection model: methods/detection.md
       - Rooftop classifier (roofclf): methods/roofclf.md
-      - Capacity density: methods/density.md
+#      - Capacity density: methods/density.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md
       - Calibration quadrats overview: methods/calibration-quadrats.md
