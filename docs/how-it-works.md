@@ -1,7 +1,8 @@
 # How it works
 
-This page describes the pipeline as it runs today: **two detectors, one per size regime,
-combined into one evidence atlas**. [Workflow](#workflow) tells the human story of how a
+This page describes the pipeline as it runs today: **two detectors, split by placement
+and calibration coverage rather than by size alone, combined into one evidence atlas**.
+[Workflow](#workflow) tells the human story of how a
 Sentinel-2 pixel becomes a verified OpenStreetMap feature. [Architecture](#architecture) is
 the technical complement, covering what reads what, stage by stage, and
 [what is optional](#the-main-workflow-and-whats-optional) alongside the default path.
@@ -146,8 +147,8 @@ secondary product, or a documented negative result:
 
 | Instrument | Part of the main workflow? | Needs the trained checkpoint? | What it outputs |
 | --- | --- | --- | --- |
-| **Segmentation raster** (`infer`) | **Yes -- the &ge; 400 m² half** | Yes, the primary one | per-pixel PV probability; the only instrument with a polygon and a defended ≥ 400 m² floor |
-| **[roofclf](methods/roofclf.md)** | **Yes -- the < 400 m² half** | No, a separate lightweight classifier | per-building "does this roof carry PV," trained on exhaustively mapped calibration quadrats |
+| **Segmentation raster** (`infer`) | **Yes -- every mapping lead; all ground-mount capacity; rooftop &ge; 400 m² outside roofclf's calibrated cells** | Yes, the primary one | per-pixel PV probability; the only instrument with a polygon and a defended ≥ 400 m² floor |
+| **[roofclf](methods/roofclf.md)** | **Yes -- every rooftop < 400 m², plus rooftop &ge; 400 m² inside its calibrated cells, where it replaces segmentation** | No, a separate lightweight classifier | per-building "does this roof carry PV," trained on exhaustively mapped calibration quadrats |
 | **SPPI** | Partially -- cross-checks roofclf for the evidence atlas's Verified tier | No, a fixed spectral formula | a zero-training index, cross-validated against the same ground truth as roofclf |
 | **Glint matched filter** | Optional -- boosts the leads ranking only | No | specular-flash geometry consistent with one fixed panel plane; a physical corroboration, not a probability |
 | **Fraction head** | Optional, not promoted (see below) | Yes, a separately trained checkpoint | per-pixel PV *coverage fraction*; drops the polygon, aims at sub-400 m² signal a segmentation threshold cannot see |
@@ -191,16 +192,25 @@ See [Solar glint](methods/glint.md) and [Panel pose from glint](results/pv-pose.
   forever.
 - **`density`** aggregates the same candidates into per-building, per-cell and
   per-region MWp using three metrics (`*_det`, `*_exp`, `*_cal`) described in
-  [Capacity density](methods/density.md). This is the **main workflow's ≥ 400 m² half**;
-  below that floor the recall correction cannot rescue what was never detected.
-- **`roof-classifier` → `roofclf-score-national` → `sub400-capacity`** is the **main
-  workflow's < 400 m² half**: fit `roofclf` on the calibration quadrats, score every
-  VIDA building nationally, then restrict to the 1,680 of 4,463 cells whose building
-  density matches the quadrats and intersect roofclf with SPPI, explicitly refusing to
-  rescale that figure to a national total. It is a separate module
-  (`sub400_capacity.py`), not merged into `density.py`, but both feed the same evidence
-  atlas. [The rooftop classifier](methods/roofclf.md) walks the whole path, from a
-  hand-mapped square kilometre to the two atlas numbers, with a flow chart.
+  [Capacity density](methods/density.md). This is segmentation's own **≥ 400 m² total**,
+  rooftop and ground-mount; below that floor the recall correction cannot rescue what
+  was never detected, and `ge400-roof-capacity` below supersedes its rooftop component
+  wherever roofclf has been calibrated.
+- **`roof-classifier` → `roofclf-score-national` → `sub400-capacity`** fits `roofclf` on
+  the calibration quadrats, scores every VIDA building nationally, then restricts to the
+  1,680 of 4,463 cells whose building density matches the quadrats and intersects
+  roofclf with SPPI, explicitly refusing to rescale that figure to a national total. It
+  covers roofclf's **< 400 m² population**, a separate module (`sub400_capacity.py`) not
+  merged into `density.py`.
+- **`ge400-roof-capacity`** applies the same domain restriction and coverage-ratio
+  conversion to buildings roofclf flags at **or above** 400 m², and its output
+  *replaces* `density`'s own rooftop estimate for those buildings, inside those same
+  cells only -- measured better there (0.896 AUC against segmentation's 0.73-0.78 on
+  identical buildings). Outside the calibrated cells, and for every ground-mount
+  candidate, `density`'s own segmentation-based figure stays authoritative. Both
+  functions feed the same evidence atlas.
+  [The rooftop classifier](methods/roofclf.md) walks the whole path, from a hand-mapped
+  square kilometre to the atlas numbers, with a flow chart.
 - **`check-density`** (`plausibility.py`) is the only automated check between `density`
   and publishing: a ground-mount-to-rooftop capacity ratio per region and a
   single-cell concentration check, both tuned so the pre-fix 18.3 GWp Pakistan run
@@ -217,11 +227,13 @@ the same underlying artifacts:
 - **The evidence atlas** (main workflow, and this project's **primary output**). Reports
   tiers by *standard of proof* rather than point estimates on one scale: **Verified**
   (hand-mapped OSM plus the roofclf-and-SPPI agreement set) and **Best estimate**
-  (recall-corrected ≥ 400 m² detections plus roofclf-alone density, OSM overlap removed
-  rather than double-counted). A third tier, **Ceiling** (a flat-precision, uncalibrated
-  upper bound), was removed 2026-08-06: a later roofclf refit's lower deployment
-  threshold roughly doubled it with no accompanying validation, so it had stopped being
-  a meaningful bound.
+  (segmentation's ground-mount detections, plus rooftop &ge; 400 m² from roofclf inside
+  its calibrated cells and from segmentation elsewhere, plus roofclf-alone density
+  below 400 m², plus a smaller roofclf-and-SPPI extension outside the calibrated cells
+  -- OSM overlap removed rather than double-counted throughout). A third tier,
+  **Ceiling** (a flat-precision, uncalibrated upper bound), was removed 2026-08-06: a
+  later roofclf refit's lower deployment threshold roughly doubled it with no
+  accompanying validation, so it had stopped being a meaningful bound.
 - **PyPSA-Earth grid CSV** (a byproduct of the main workflow's `density` stage, no extra
   computation). No human in the loop, so every candidate is reweighted by a *measured*
   probability of being real (`configs/calibration/`) before its area counts. See
@@ -238,10 +250,10 @@ the same underlying artifacts:
 | Stage | Main workflow? | Module | Read next |
 | --- | --- | --- | --- |
 | Labels, buildings | Yes | `labels.py`, `overture.py`, `buildings.py` | [Scale to a new country](reproduce.md#scale-to-a-new-country) |
-| Chips, train, infer | Yes -- ≥ 400 m² half | `chips.py`, `train.py`, `infer.py` | [Detection model](methods/detection.md) |
-| postprocess, export | Yes -- ≥ 400 m² half | `postprocess.py`, `export.py` | [Mapping leads](results/leads.md) |
-| density, calibration | Yes -- ≥ 400 m² half | `density.py`, `capacity_calibration.py` | [Capacity density](methods/density.md), [Calibration](methods/calibration.md) |
-| roofclf, SPPI | Yes -- < 400 m² half | `roofclf.py`, `sub400_capacity.py` | [The rooftop classifier](methods/roofclf.md), [Calibration quadrats](methods/calibration-quadrats.md) |
+| Chips, train, infer | Yes -- the segmentation checkpoint every polygon comes from | `chips.py`, `train.py`, `infer.py` | [Detection model](methods/detection.md) |
+| postprocess, export | Yes -- every mapping lead, any size | `postprocess.py`, `export.py` | [Mapping leads](results/leads.md) |
+| density, calibration | Yes -- segmentation's ≥ 400 m² total, rooftop and ground-mount | `density.py`, `capacity_calibration.py` | [Capacity density](methods/density.md), [Calibration](methods/calibration.md) |
+| roofclf, SPPI | Yes -- < 400 m² rooftop, plus ≥ 400 m² rooftop inside the calibrated cells | `roofclf.py`, `sub400_capacity.py`, `roofclf_ge400_capacity.py` | [The rooftop classifier](methods/roofclf.md), [Calibration quadrats](methods/calibration-quadrats.md) |
 | Plausibility gate | Yes | `plausibility.py` | this page's [Combine, rank, and gate](#combine-rank-and-gate) section |
 | Atlas | Yes -- the evidence atlas, the primary output | `atlas.py` | [Capacity map](results/capacity.md), [Growth](results/growth.md) |
 | Glint | Optional -- boosts leads ranking only | `glint.py` | [Solar glint](methods/glint.md), [Panel pose](results/pv-pose.md) |

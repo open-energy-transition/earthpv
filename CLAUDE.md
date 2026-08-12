@@ -23,22 +23,33 @@ Punjab, Pakistan. Read
 ## Main workflow (default pipeline, primary output)
 
 **As of 2026-08-06, this is the project's default, documented workflow, and the evidence
-atlas is its primary output.** Two detectors, one per size regime, combined into one
-product:
+atlas is its primary output.** Two detectors, split by placement and by calibration
+coverage rather than cleanly by size, combined into one product:
 
-- **Segmentation** (`infer` → `postprocess` → `density`) for individual arrays
-  **≥ 400 m²** -- the TerraMind fine-tune, outlining panels directly.
-- **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `sub400-capacity`) for
-  every building **< 400 m²** -- a per-building "does this roof carry PV?" classifier,
+- **Segmentation** (`infer` → `postprocess` → `density`) -- the TerraMind fine-tune,
+  outlining panels directly. Produces every mapping lead regardless of size, and is the
+  only instrument for ground-mount at any size (`roofclf` has no footprint to classify
+  there). It also remains the authoritative rooftop instrument for individual arrays
+  **≥ 400 m²** everywhere `roofclf` (below) has not been calibrated to replace it.
+- **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `sub400-capacity` →
+  `ge400-roof-capacity`) -- a per-building "does this roof carry PV?" classifier,
   cross-checked with the zero-training **SPPI** spectral index for the atlas's Verified
-  tier (roofclf AND SPPI agreeing).
+  tier (roofclf AND SPPI agreeing). Covers every building **< 400 m²** (`sub400-capacity`)
+  and, as of 2026-08-07, also **replaces** segmentation's own rooftop estimate for
+  buildings **≥ 400 m²** (`ge400-roof-capacity`) inside the same density-matched cells,
+  where it measures better (AUC 0.896 vs segmentation's 0.73-0.78 on identical
+  buildings) -- see "roofclf now replaces segmentation's own rooftop estimate" below.
+  Both capacity functions are domain-restricted to the same cells and refuse to rescale
+  to a national total on their own.
 - **`atlas.build_evidence_atlas`** (`earthpv atlas --sub400-central-cells
-  --sub400-low-cells --sub400-outdomain-cells --osm-solar`) combines both into two tiers
-  by *standard of proof* -- **Verified** (hand-mapped OSM, or roofclf+SPPI agreement) and
-  **Best estimate** (recall-corrected ≥ 400 m² detections plus roofclf-alone density,
-  plus roofclf+SPPI agreement outside the density-matched domain as a clearly-marked
-  extrapolation -- see "Out-of-domain AND-gate" below) -- de-duplicated against each
-  other and against OSM so nothing is counted twice.
+  --sub400-low-cells --sub400-outdomain-cells --ge400-roof-cells --osm-solar`) combines
+  both into two tiers by *standard of proof* -- **Verified** (hand-mapped OSM, or
+  roofclf+SPPI agreement) and **Best estimate** (segmentation's ground-mount detections,
+  roofclf's rooftop replacement inside its calibrated cells plus segmentation's own
+  recall-corrected rooftop detections outside them, plus roofclf-alone density below
+  400 m², plus roofclf+SPPI agreement outside the density-matched domain as a
+  clearly-marked extrapolation -- see "Out-of-domain AND-gate" below) -- de-duplicated
+  against each other and against OSM so nothing is counted twice.
 
 The end-to-end command sequence is in `docs/reproduce.md`'s "The full pipeline"; the
 short version:
@@ -58,11 +69,13 @@ earthpv roofclf-score-national --aoi <aoi>          # long: hours at country sca
 # docs/methods/roofclf-national-validation.md.
 pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
 
-earthpv sub400-capacity --aoi <aoi> --osm-solar <national OSM solar pull>
+earthpv sub400-capacity     --aoi <aoi> --osm-solar <national OSM solar pull>
+earthpv ge400-roof-capacity --aoi <aoi> --osm-solar <national OSM solar pull>
 earthpv atlas --aoi <aoi> \
   --sub400-central-cells   data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
   --sub400-low-cells       data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
   --sub400-outdomain-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
+  --ge400-roof-cells       data/roofclf_national_with_sppi/<aoi>/density/ge400_roof_incremental_buildings.parquet \
   --osm-solar <national OSM solar pull>
 ```
 

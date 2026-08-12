@@ -17,7 +17,7 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 
 <div class="stats" markdown>
 <div class="stat"><span class="value">16,441 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,883 to 19,147); 6,139 MWp verified by hand-mapping or two agreeing detectors</span></div>
-<div class="stat"><span class="value">7,860 / 6,531 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop plus segmentation ground-mount) against &lt;400 m&sup2; from the rooftop classifier</span></div>
+<div class="stat"><span class="value">7,860 / 6,531 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
 <div class="stat"><span class="value">65.5%</span><span class="label">of Germany's rooftop capacity sits below the &ge;400 m&sup2; detection floor, measured against its complete MaStR register: the reason there are two detectors</span></div>
 </div>
 
@@ -35,23 +35,36 @@ for its value.
 
 ## What is new here
 
-**The main workflow: two detectors, one per size regime, one evidence atlas.** No single
-instrument sees rooftop solar from a commercial rooftop down to a household system, so
-earthpv's default pipeline runs two, each measured against ground truth, and combines
-them into this project's primary output:
+**The main workflow: two detectors, split by placement and calibration coverage, one
+evidence atlas.** No single instrument sees rooftop solar from a commercial rooftop down
+to a household system, so earthpv's default pipeline runs two, each measured against
+ground truth, and combines them into this project's primary output. The split is **not**
+a clean size boundary -- roofclf's reach now extends past its original sub-400
+m<sup>2</sup> floor into large rooftops too, wherever it has been calibrated to do so:
 
 - **Segmentation** outlines individual arrays **&ge;400 m<sup>2</sup>** directly -- a
   fine-tuned TerraMind reaching commercial rooftops and large residential arrays, where
-  earlier work with free 10 m imagery could only find isolated solar farms.
-- **roofclf**, cross-checked with **SPPI**, answers the question below that floor: not
-  "where is the polygon" but "does this *building* carry PV." **roofclf**, a per-building
+  earlier work with free 10 m imagery could only find isolated solar farms. Every
+  mapping lead comes from this model regardless of building size, and it remains the
+  only instrument for ground-mount at any size, since roofclf has no building footprint
+  to classify there.
+- **roofclf**, cross-checked with **SPPI**, answers a different question: not "where is
+  the polygon" but "does this *building* carry PV." **roofclf**, a per-building
   classifier trained on 23 exhaustively mapped ground-truth quadrats, reaches 0.857 AUC
   (0.830 with roof size controlled for), where the segmentation raster scores close to
-  chance on the same small buildings. **SPPI**, a zero-training spectral index, reaches
-  0.823 AUC with no labels at all; requiring it to *agree* with roofclf is what defines the
-  Verified tier. See [The rooftop classifier](methods/roofclf.md) for how that half works
-  end to end, and [Capacity density](methods/density.md) for what it adds up to.
-- Both halves converge on the **evidence atlas**: two tiers by *standard of proof* --
+  chance on the same small buildings -- it covers every rooftop **below** 400
+  m<sup>2</sup>, where segmentation is trained blind. **SPPI**, a zero-training spectral
+  index, reaches 0.823 AUC with no labels at all; requiring it to *agree* with roofclf is
+  what defines the Verified tier. Segmentation's blind spot turns out to be *installation*
+  size, not building size, so as of 2026-08-07 roofclf's own rooftop estimate (measured
+  better, 0.896 AUC against segmentation's 0.73-0.78 on identical buildings) also
+  **replaces** segmentation's rooftop total at or above 400 m<sup>2</sup> inside the
+  cells its calibration quadrats cover -- outside those cells segmentation's own
+  recall-corrected rooftop figure stays authoritative, since it is the only
+  evidence-backed number there. See [The rooftop classifier](methods/roofclf.md) for how
+  that instrument works end to end, and [Capacity density](methods/density.md) for what
+  it adds up to.
+- Both instruments converge on the **evidence atlas**: two tiers by *standard of proof* --
   **Verified** (hand-mapped OpenStreetMap, or roofclf and SPPI agreeing) and **Best
   estimate** (this project's own highest defensible figure) -- with the overlap between
   OSM and detections removed rather than double-counted, and a 90% range on each tier

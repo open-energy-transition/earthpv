@@ -3,12 +3,19 @@
 How much rooftop solar does Pakistan actually have? The honest answer depends on how much
 proof you require, so this atlas gives two, not one: what a person has actually drawn in
 OpenStreetMap, and this project's own best defensible estimate. Both read the same
-underlying detections -- a segmentation model for individual arrays 400 m<sup>2</sup> and
-larger, plus two independent per-building instruments (**roofclf**, **SPPI**) for
-everything smaller that the segmentation model is trained blind to. A third, looser
-tier (an explicit, uncalibrated ceiling) was published here through early August 2026 and
-was retired 2026-08-06: a roofclf refit's lower deployment threshold roughly doubled it
-with no accompanying validation, so it had stopped being a meaningful bound.
+underlying detections from two instruments, split by placement and by calibration
+coverage rather than cleanly by size: a segmentation model that outlines individual
+arrays directly (every mapping lead, all ground-mount capacity at any size, and rooftop
+capacity 400 m<sup>2</sup> and larger outside the cells covered below), and **roofclf**,
+a per-building classifier cross-checked against the zero-training **SPPI** index, which
+covers every rooftop below 400 m<sup>2</sup> -- where segmentation is trained blind -- and
+now also *replaces* segmentation's own rooftop estimate at or above 400 m<sup>2</sup>
+inside the cells its calibration quadrats cover, where it measures better. See
+"Segmentation vs. roofclf on large rooftops" below for the comparison that motivated the
+swap. A third, looser tier (an explicit, uncalibrated ceiling) was published here through
+early August 2026 and was retired 2026-08-06: a roofclf refit's lower deployment
+threshold roughly doubled it with no accompanying validation, so it had stopped being a
+meaningful bound.
 
 <div class="embed" markdown>
 <iframe src="../../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: Verified and Best estimate" loading="lazy"></iframe>

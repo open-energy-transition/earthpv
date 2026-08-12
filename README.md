@@ -36,42 +36,51 @@ on imagery or licences that only exist in one country.
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
 [Scaling worldwide](#scaling-worldwide).
 
-## The main workflow: two detectors, one per size regime, one evidence atlas
+## The main workflow: two detectors, split by placement and calibration coverage, one evidence atlas
 
 This is earthpv's default pipeline and primary output. No single instrument covers
 rooftop solar at every scale, so it runs two, each measured against ground truth, and
-combines them into one product:
+combines them into one product. The split is **not** a clean size boundary: roofclf's
+reach now extends past its original sub-400 m² floor into large rooftops too, wherever
+it has been calibrated to do so.
 
-**Segmentation, for individual arrays ≥ 400 m².** A fine-tuned TerraMind-tiny outlines
-panels directly, exported as ranked GeoParquet, GeoJSON and a MapRoulette challenge for
-human validation. Recall on the Germany validation states is 0.83 to 0.95 depending on
-array size; recall on Punjab rooftops went from 0.18 to 0.55 once verified in-domain
-training data closed the loop.
+**Segmentation, the source of every mapping lead, and of ground-mount capacity at any
+size.** A fine-tuned TerraMind-tiny outlines panels directly, exported as ranked
+GeoParquet, GeoJSON and a MapRoulette challenge for human validation, regardless of
+array size. Recall on the Germany validation states is 0.83 to 0.95 depending on array
+size; recall on Punjab rooftops went from 0.18 to 0.55 once verified in-domain training
+data closed the loop. roofclf has no building footprint to classify a ground-mounted
+array against, so segmentation remains the only instrument for ground-mount at any size,
+and it stays the authoritative *rooftop* instrument too, everywhere roofclf has not been
+calibrated (see next).
 
-**roofclf, for everything smaller -- and now for large rooftops too.** At 10 m
-resolution, a 100 m² array is a handful of mixed pixels -- not enough to draw a polygon
-around, but enough to ask whether a *building* carries PV. **roofclf** is a per-building
-classifier trained on 23 exhaustively mapped ground-truth quadrats (0.857 AUC, 0.830 with
-roof size controlled for, where the segmentation raster scores close to chance on the same
-small buildings), cross-checked against **SPPI**, a zero-training five-band spectral index
-(He et al. 2026) that needs no labels at all (0.823 AUC on the same quadrats). They agree
-often enough to raise measured precision from 0.53 to 0.63 when both flag a building, and
-the gain concentrates in exactly the low-adoption places where roofclf alone is known to
-over-predict. Segmentation's blind spot turns out not to
+**roofclf, for every rooftop below 400 m² -- and, where calibrated, for large rooftops
+too.** At 10 m resolution, a 100 m² array is a handful of mixed pixels -- not enough to
+draw a polygon around, but enough to ask whether a *building* carries PV. **roofclf** is
+a per-building classifier trained on 23 exhaustively mapped ground-truth quadrats (0.857
+AUC, 0.830 with roof size controlled for, where the segmentation raster scores close to
+chance on the same small buildings), cross-checked against **SPPI**, a zero-training
+five-band spectral index (He et al. 2026) that needs no labels at all (0.823 AUC on the
+same quadrats). They agree often enough to raise measured precision from 0.53 to 0.63
+when both flag a building, and the gain concentrates in exactly the low-adoption places
+where roofclf alone is known to over-predict. Segmentation's blind spot turns out not to
 be building size but *installation* size -- a small array on a large roof is invisible to
 it too -- so as of 2026-08-07 roofclf's own rooftop estimate (AUC 0.896 vs segmentation's
-0.73-0.78 on the identical ≥ 400 m² buildings) replaces segmentation's rooftop total
-inside the density-matched cells; segmentation remains the only instrument for
-ground-mount, which has no building footprint to classify. See
+0.73-0.78 on the identical ≥ 400 m² buildings) also *replaces* segmentation's rooftop
+total at or above 400 m² inside the cells its calibration quadrats cover. Outside those
+cells segmentation's own recall-corrected rooftop figure stays authoritative, since it is
+the only evidence-backed number there. See
 [Capacity density](https://open-energy-transition.github.io/earthpv/methods/density/).
 
-**Both halves converge on the evidence atlas.** `density` aggregates segmentation's
-≥ 400 m² detections; `roof-classifier` → `roofclf-score-national` → `sub400-capacity`
-does the same for roofclf's < 400 m² population; `earthpv atlas` combines them into two
-tiers by *standard of proof* rather than one point estimate -- **Verified** (hand-mapped
-OpenStreetMap, or roofclf and SPPI agreeing) and **Best estimate** (this project's own
-highest defensible figure) -- with the overlap between OSM and detections removed rather
-than double-counted, and a 90% range on each tier. Full command sequence:
+**Both instruments converge on the evidence atlas.** `density` aggregates segmentation's
+≥ 400 m² detections (rooftop and ground-mount, every cell); `roof-classifier` →
+`roofclf-score-national` → `sub400-capacity` builds roofclf's < 400 m² population, and
+`ge400-roof-capacity` builds its ≥ 400 m² rooftop replacement inside the calibrated
+cells; `earthpv atlas` combines all of it into two tiers by *standard of proof* rather
+than one point estimate -- **Verified** (hand-mapped OpenStreetMap, or roofclf and SPPI
+agreeing) and **Best estimate** (this project's own highest defensible figure) -- with
+the overlap between OSM and detections removed rather than double-counted, and a 90%
+range on each tier. Full command sequence:
 [The full pipeline](https://open-energy-transition.github.io/earthpv/reproduce/#the-full-pipeline).
 
 **Why two detectors, checked against a complete register.** Germany's MaStR register is
@@ -162,7 +171,7 @@ Pakistan's installed solar capacity is reported anywhere between
 Nobody can check those numbers, because the maps behind them are built on commercial
 high-resolution imagery that cannot be shared and that most licences forbid processing
 with AI. earthpv's own numbers come from
-[the main workflow](#the-main-workflow-two-detectors-one-per-size-regime-one-evidence-atlas)
+[the main workflow](#the-main-workflow-two-detectors-split-by-placement-and-calibration-coverage-one-evidence-atlas)
 above, with a stated standard of proof:
 
 | | |
@@ -170,7 +179,7 @@ above, with a stated standard of proof:
 | **6,139 MWp** | Verified: hand-mapped in OpenStreetMap, or two independent detectors agree (90% range 5,096 &ndash; 7,498) |
 | **16,441 MWp** | Best estimate: this project's own highest defensible figure (90% range 12,883 &ndash; 19,147) |
 | **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
-| **400 m²** | per-object segmentation floor at Sentinel-2's 10 m resolution; roofclf/SPPI reach below it |
+| **400 m²** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
 
 Both tiers carry a 90% range as of 2026-08-11, composed from the area-to-capacity
@@ -239,12 +248,13 @@ pixi run -e ml earthpv evaluate --aoi freiburg --checkpoint data/models/last.ckp
 ```
 
 The main workflow is `labels → chips → train → evaluate → compose → infer →
-postprocess → export` for the ≥ 400 m² segmentation half, `density → check-density` to
-turn its detections into capacity, and `roof-classifier → roofclf-score-national →
-sub400-capacity → atlas` for the < 400 m² roofclf half and the evidence atlas that
-combines both -- this project's primary output. Every stage is resumable and safe to
-re-run. The full runbook, including how to bring up a country that has never been
-touched, is in
+postprocess → export` to produce every mapping lead and, via `density →
+check-density`, segmentation's own ≥ 400 m² capacity; then `roof-classifier →
+roofclf-score-national → sub400-capacity` for roofclf's < 400 m² population and
+`ge400-roof-capacity` for its ≥ 400 m² rooftop replacement inside the calibrated cells;
+`atlas` combines all of it into the evidence atlas -- this project's primary output.
+Every stage is resumable and safe to re-run. The full runbook, including how to bring up
+a country that has never been touched, is in
 [Setup a new country](https://open-energy-transition.github.io/earthpv/reproduce/#the-full-pipeline).
 
 ## What did not work
