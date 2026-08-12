@@ -45,6 +45,7 @@ own docstring for the exact mechanism and the fix. The `<100` and `100-500` m² 
 have only 2 and 7 validated installations in the whole 500-target sample, so a couple of
 cells reuse an installation already shown elsewhere in that column at a second clean
 spike date rather than leaving a cell blank; those are marked `(repeat)` in the caption.
+Each caption's third line gives that crop's own coordinates.
 
 ![Sentinel-2 glint examples, three per size bucket, eighteen crops total](glint_examples_S2/sentinel2_glint_grid.png)
 
@@ -53,8 +54,8 @@ the bright cluster is a handful of saturated pixels against a dark, uniform back
 in every bucket, but it only reliably *fills* the installation's footprint once that
 footprint is many pixels wide, which is exactly why per-installation detection climbs
 from 6% below 100 m² to 73% above 50,000 m² ([sensitivity curve](results/pv-pose.md)). The
->50k m² column (rightmost) shows this most clearly: the glint traces the actual winding
-layout of a utility-scale plant, pixel by pixel.
+>50k m² column (rightmost) shows this most clearly: the glint traces the actual outline
+of a utility-scale installation, pixel by pixel.
 
 Reproducible end-to-end from cached validation data (no fresh Sentinel-2 pulls needed to
 rank the candidates, only to cross-check clouds and fetch the eighteen display crops):

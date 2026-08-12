@@ -94,6 +94,7 @@ nav:
   # Results first: the pipeline's output is what most readers came for.
   - Results:
       - Pakistan PV Capacity map: results/capacity.md
+      - Pakistan Capacity by installation size: results/capacity-by-size.md
 #      - Mapping leads: results/leads.md
 #      - Growth map: results/growth.md
       - Pakistan Panel pose from glint: results/pv-pose.md

@@ -21,6 +21,8 @@ meaningful bound.
 <p class="embed-note">
 Interactive. Hover a cell for its value.
 <a href="../../assets/interactive/pakistan_evidence_atlas.html" target="_blank">Open full screen</a>.
+See also: [capacity by installation size](capacity-by-size.md), the same total split
+rooftop vs ground-mount by how large each installation is, instead of by geography.
 </p>
 
 ## The headline figure

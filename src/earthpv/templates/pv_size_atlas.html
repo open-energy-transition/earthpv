@@ -1,0 +1,554 @@
+<meta charset="utf-8">
+<title>__PAGE_TITLE__</title>
+<script id="pv" type="application/json">__PV_DATA_JSON__</script>
+
+<style>
+  :root {
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+    /* dark = the primary "night lights" world */
+    --page: #100d09;
+    --panel: #1a160f;
+    --panel-2: #221d14;
+    --land: #241f16;
+    --map-bg: #0c0a07;
+    --ink: #f7f1e6;
+    --ink-2: #c9bda4;
+    --muted: #93866c;
+    --hair: rgba(247,183,51,0.14);
+    --accent: #f5a623;
+    --accent-dim: #b5610f;
+    --large: #4fb2e8;
+    --large-dim: #2f6f96;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+    color-scheme: dark;
+    scrollbar-color: #4a3a1c #14100b;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+      --land: #e6dcc7; --map-bg: #efe8d8;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+      --hair: rgba(120,80,20,0.16);
+      --accent: #c25e12; --accent-dim: #db7f24; --large: #1c6fa8; --large-dim: #6fa9cf;
+      --card-ring: rgba(120,80,20,0.14);
+      --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+      color-scheme: light;
+      scrollbar-color: #c3b492 #ece4d2;
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+    --land: #e6dcc7; --map-bg: #efe8d8;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+    --hair: rgba(120,80,20,0.16);
+    --accent: #c25e12; --accent-dim: #db7f24; --large: #1c6fa8; --large-dim: #6fa9cf;
+    --card-ring: rgba(120,80,20,0.14);
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+    color-scheme: light;
+    scrollbar-color: #c3b492 #ece4d2;
+  }
+  :root[data-theme="dark"] {
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
+    --land: #241f16; --map-bg: #0c0a07;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --hair: rgba(247,183,51,0.14);
+    --accent: #f5a623; --accent-dim: #b5610f; --large: #4fb2e8; --large-dim: #2f6f96;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+    color-scheme: dark;
+    scrollbar-color: #4a3a1c #14100b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: clamp(20px, 3.5vw, 48px); }
+
+  header { margin-bottom: 6px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 {
+    font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
+    font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
+  }
+  .lede {
+    margin: 14px 0 0; max-width: 72ch; color: var(--ink-2);
+    font-size: clamp(15px, 1.5vw, 17px);
+  }
+  .lede b { color: var(--ink); font-weight: 640; }
+  .lede a { color: var(--accent); }
+
+  /* ── section scaffolding ─────────────────────────────────────────── */
+  .sec { margin-top: 44px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .sec-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent); }
+  .sec-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 0; }
+  .sec-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+
+  /* ── kpi strip ───────────────────────────────────────────────────── */
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 26px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
+  .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
+    padding: 15px 16px; box-shadow: var(--shadow); }
+  .kpi .v { font-size: 25px; font-weight: 780; letter-spacing: -0.01em; color: var(--accent);
+    font-variant-numeric: tabular-nums; }
+  .kpi .v small { font-size: 0.52em; font-weight: 650; color: var(--ink-2); margin-left: 4px; }
+  .kpi .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+  .kpi.roof .v { color: var(--accent); }
+  .kpi.ground .v { color: var(--large); }
+
+  .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; margin-top: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border-radius: 16px; padding: 18px;
+    box-shadow: var(--shadow); border: 1px solid var(--card-ring);
+  }
+  .chart-card { padding: 14px 18px; position: relative; overflow: hidden; }
+
+  .map-head { display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin: 4px 6px 12px; flex-wrap: wrap; }
+  .map-title { font-weight: 640; font-size: 15px; }
+  .map-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
+    letter-spacing: 0.02em; }
+
+  svg.bars { width: 100%; height: auto; display: block; }
+  .axis-line { stroke: var(--hair); stroke-width: 1; }
+  .gridline { stroke: var(--hair); stroke-width: 1; }
+  .axis-label { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+  .bin-label { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink-2); }
+  .bar-rect { cursor: pointer; }
+
+  .legend { display: flex; align-items: center; gap: 16px; margin: 14px 6px 2px;
+    flex-wrap: wrap; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+  .legend .lk { display: flex; align-items: center; gap: 6px; }
+  .legend .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .legend .sw.roof { background: var(--accent); }
+  .legend .sw.ground { background: var(--large); }
+  .legend .sw.extrap { background: repeating-linear-gradient(45deg,
+    var(--accent-dim) 0 3px, var(--panel) 3px 6px); border: 1px solid var(--accent-dim); }
+
+  .hero-num { font-size: clamp(36px, 5.4vw, 54px); font-weight: 800; letter-spacing: -0.03em;
+    line-height: 0.95; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hero-unit { font-size: 0.34em; font-weight: 700; color: var(--ink-2); letter-spacing: 0;
+    margin-left: 6px; }
+  .hero-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+  .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); }
+  .hero-desc b { color: var(--ink); font-weight: 660; }
+
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
+    border: 1px solid var(--card-ring); }
+  .tile.ground-tile { border-color: var(--large); }
+  .tile .v { font-size: 22px; font-weight: 740; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums; }
+  .tile.ground-tile .v { color: var(--large); }
+  .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  .rank { margin-top: 4px; }
+  .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
+
+  details.tablewrap { margin-top: 14px; }
+  details.tablewrap summary { font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--hair);
+    font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-family: var(--font-mono); font-weight: 500; color: var(--muted);
+    font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  .tip { position: fixed; pointer-events: none; z-index: 20; opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px)); transition: opacity .1s;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 9px 11px; box-shadow: var(--shadow);
+    font-size: 12px; min-width: 170px; }
+  .tip .th { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+    letter-spacing: 0.05em; margin-bottom: 5px; }
+  .tip .rowt { display: flex; justify-content: space-between; gap: 14px; }
+  .tip .rowt span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    color: var(--ink); }
+  .tip .rowt span:first-child { color: var(--ink-2); }
+
+  .foot { margin-top: 34px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.03em; line-height: 1.7; }
+  .theme-btn { position: fixed; top: 14px; right: 14px; z-index: 30;
+    background: var(--panel); color: var(--ink-2); border: 1px solid var(--card-ring);
+    border-radius: 999px; padding: 7px 12px; font-family: var(--font-mono); font-size: 11px;
+    cursor: pointer; letter-spacing: 0.04em; }
+  .theme-btn:focus-visible, summary:focus-visible { outline: 2px solid var(--accent);
+    outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  .tag { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
+  .tag.central { background: rgba(245,166,35,0.22); color: var(--accent); }
+  .tag.large { background: rgba(79,178,232,0.18); color: var(--large); }
+
+  /* ── expandable background sections ─────────────────────────────── */
+  .xdetails { background: var(--panel); border: 1px solid var(--card-ring);
+    border-radius: 14px; margin-top: 12px; overflow: hidden; }
+  .xdetails summary { list-style: none; cursor: pointer; padding: 15px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .xdetails summary::-webkit-details-marker { display: none; }
+  .xdetails summary .xt { font-weight: 650; font-size: 14px; }
+  .xdetails summary .xs { display: block; font-family: var(--font-mono); font-size: 10.5px;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 3px;
+    font-weight: 500; }
+  .xdetails summary .xi { font-family: var(--font-mono); color: var(--accent); font-size: 17px;
+    flex: none; }
+  .xdetails[open] summary .xi { transform: rotate(45deg); }
+  .xdetails .xbody { padding: 0 18px 18px; color: var(--ink-2); font-size: 13.5px; line-height: 1.65; }
+  .xdetails .xbody p { margin: 0 0 12px; }
+  .xdetails .xbody p:last-child { margin-bottom: 0; }
+  .xdetails .xbody b { color: var(--ink); font-weight: 650; }
+  .xdetails .xbody a { color: var(--accent); }
+  dl.viewdefs { margin: 0; }
+  dl.viewdefs dt { font-weight: 640; font-size: 13.5px; margin-top: 14px; display: flex;
+    align-items: center; gap: 8px; }
+  dl.viewdefs dt:first-child { margin-top: 0; }
+  dl.viewdefs dd { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
+</style>
+
+<button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">Dark mode</button>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">EarthPV · Sentinel-2 · OpenStreetMap · TerraMind · roofclf · SPPI</p>
+    <h1>__H1__</h1>
+    <p class="lede">The same Best-estimate total the <a href="pakistan_evidence_atlas.html">evidence
+    atlas</a> reports per 0.1&deg; cell, sliced a different way: by <b>installation size</b>
+    instead of by geography, and by <b>rooftop vs ground-mount</b> instead of by placement mix.
+    Nothing here is a new estimate &mdash; every MWp below comes from the same six
+    components, the same calibration, the same domain restriction as the main atlas; this
+    page only re-bins them. See &ldquo;What this page is (and is not)&rdquo; below.</p>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
+      <div class="k">Best estimate, nationwide (matches the evidence atlas)</div></div>
+    <div class="kpi roof"><div class="v" id="kRoof">0<small>MWp</small></div>
+      <div class="k">Rooftop, all sizes combined</div></div>
+    <div class="kpi ground"><div class="v" id="kGround">0<small>MWp</small></div>
+      <div class="k">Ground-mount, all sizes combined</div></div>
+  </div>
+
+  <section class="sec" id="capacity">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Capacity</div>
+        <div class="sec-title">How much PV, by installation size</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card chart-card">
+        <div class="map-head">
+          <div class="map-title">Capacity per size bin, rooftop vs ground-mount</div>
+          <div class="map-sub">linear scale · MWp</div>
+        </div>
+        <div id="chartmount"></div>
+        <div class="legend">
+          <div class="lk"><span class="sw roof"></span>rooftop</div>
+          <div class="lk"><span class="sw ground"></span>ground-mount</div>
+          <div class="lk"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="card">
+          <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
+          <div class="hero-label">Best estimate, nationwide</div>
+          <div class="hero-desc">Split by placement across every size bin below. <b>Rooftop</b>
+          dominates the small end (households, commercial roofs); <b>ground-mount</b> dominates
+          the largest bin (utility-scale plants).</div>
+          <div class="tiles" id="tiles"></div>
+        </div>
+
+        <div class="card rank" style="margin-top:14px;">
+          <h3>Full size-bin figures</h3>
+          <details class="tablewrap" open>
+            <summary>All bins</summary>
+            <div style="overflow-x:auto;"><table id="btable">
+              <thead><tr><th>Size bin</th><th>Rooftop MWp</th><th>Ground MWp</th>
+                <th>Rooftop n</th><th>Ground n</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+          </details>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="sec" id="background">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Background</div>
+        <div class="sec-title">How to read this page</div>
+      </div>
+    </div>
+
+    <details class="xdetails" open>
+      <summary><span><span class="xt">What this page is (and is not)</span>
+        <span class="xs">a re-binning, not a second estimate</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <p>This is the <a href="pakistan_evidence_atlas.html">evidence atlas</a>'s own
+        Best-estimate total, decomposed by installation size and placement instead of by
+        0.1&deg; grid cell. Every MWp here is computed by the identical formula the main
+        atlas uses for the same six components (hand-mapped OpenStreetMap installations the
+        model never found, the model's own recall-corrected detections above and below the
+        density-matched domain, and roofclf's per-building density estimate for small
+        rooftops) &mdash; nothing is recomputed by a different method, and the grand total
+        matches the evidence atlas's headline figure for the same run.</p>
+        <p><b>It does not carry its own credible interval.</b> The main atlas's 90% range
+        applies to the same total; this page exists to show its shape by size and placement,
+        not to re-derive its uncertainty. Read the two pages together, not as competing
+        numbers.</p>
+      </div>
+    </details>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">Where the size bins come from</span>
+        <span class="xs">six populations, one re-binning</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <dl class="viewdefs">
+          <dt><span class="tag large">Ground-mount</span> segmentation, every size, no domain restriction</dt>
+          <dd>roofclf has no building footprint to score for a free-standing array, so
+          ground-mount is segmentation's own instrument at every scale, from the smallest
+          detected candidate up through utility plants like Quaid-e-Azam Solar Park.</dd>
+
+          <dt><span class="tag central">Rooftop, &ge;400 m&sup2;</span> roofclf in-domain, segmentation elsewhere</dt>
+          <dd>Inside the density-matched domain, roofclf's own building-level estimate
+          replaces segmentation's; outside it, segmentation's recall-corrected rooftop total
+          is the only evidence-backed figure. A candidate is counted by exactly one of the
+          two, never both, by cell.</dd>
+
+          <dt><span class="tag central">Rooftop, &lt;400 m&sup2;</span> roofclf, cross-checked with SPPI</dt>
+          <dd>Below the segmentation model's practical floor, every rooftop's PV is
+          estimated per building. Inside the domain this is roofclf alone, calibrated
+          against hand-mapped quadrats; outside it (no calibration quadrat in that density
+          range) it falls back to roofclf-AND-SPPI agreement, a strict, marked
+          extrapolation &mdash; the hatched portion of the small rooftop bars.</dd>
+
+          <dt><span class="tag large">Hand-mapped, unmatched</span> OpenStreetMap installations the model missed</dt>
+          <dd>Sized by their own real OSM geometry, split rooftop/ground-mount by the
+          mapped placement tag, added wherever the model's own detections don't already
+          carry that installation's geometry (see the evidence atlas's own "How double
+          counting is avoided" section).</dd>
+        </dl>
+      </div>
+    </details>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">Data &amp; methods</span>
+        <span class="xs">what's under the hood</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <p>Same imagery, same calibration, same domain restriction as the
+        <a href="pakistan_evidence_atlas.html">evidence atlas</a> for this AOI and run.
+        Size bins are fixed-width display buckets, independent of the calibration table's
+        own lookup bins (those govern the precision/recall correction per candidate, not
+        how this chart groups results). Full derivations and caveats live in this
+        project's methodology notes (<code>docs/methods/density.md</code>).</p>
+      </div>
+    </details>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="off"></div>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById("pv").textContent);
+  const T = DATA.totals;
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+
+  function isDark(){
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr) return attr === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function el(n, a){ const e = document.createElementNS(SVGNS, n); for (const kk in a) e.setAttribute(kk, a[kk]); return e; }
+
+  function renderChart(){
+    const mount = document.getElementById("chartmount");
+    mount.innerHTML = "";
+    const bins = DATA.bins;
+    const n = bins.length;
+
+    const W = 900, MARGIN = {top: 16, right: 12, bottom: 74, left: 54};
+    const plotW = W - MARGIN.left - MARGIN.right;
+    const plotH = 320;
+    const H = plotH + MARGIN.top + MARGIN.bottom;
+
+    const groupW = plotW / n;
+    const barW = Math.min(30, groupW * 0.34);
+    const barGap = 6;
+
+    const maxVal = Math.max(1, ...bins.flatMap(b => [b.roof_mwp, b.ground_mwp]));
+    const yOf = v => plotH - (v / maxVal) * plotH;
+
+    const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, class: "bars", role: "img",
+      "aria-label": "Grouped bar chart of PV capacity by installation size, rooftop vs ground-mount"});
+
+    const gPlot = el("g", {transform: `translate(${MARGIN.left},${MARGIN.top})`});
+    svg.appendChild(gPlot);
+
+    // gridlines + y ticks, 5 steps
+    const ticks = 5;
+    for (let i = 0; i <= ticks; i++){
+      const v = maxVal * i / ticks;
+      const y = yOf(v);
+      gPlot.appendChild(el("line", {x1: 0, x2: plotW, y1: y.toFixed(1), y2: y.toFixed(1), class: "gridline"}));
+      const t = el("text", {x: -8, y: (y + 3).toFixed(1), class: "axis-label", "text-anchor": "end"});
+      t.textContent = fmt(v);
+      gPlot.appendChild(t);
+    }
+    gPlot.appendChild(el("line", {x1: 0, x2: plotW, y1: plotH, y2: plotH, class: "axis-line"}));
+
+    const tip = document.getElementById("tip");
+    function showTip(e, label, series, mwp, nInst, extrap){
+      tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      tip.innerHTML = `<div class="th">${label} &mdash; ${series}</div>`
+        + `<div class="rowt"><span>Capacity</span><span>${fmt(mwp)} MWp</span></div>`
+        + `<div class="rowt"><span>Installations</span><span>${fmt(nInst)}</span></div>`
+        + (extrap > 0 ? `<div class="rowt"><span>of which extrapolated</span><span>${fmt(extrap)} MWp</span></div>` : "");
+    }
+    function moveTip(e){ tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; }
+    function hideTip(){ tip.style.opacity = 0; }
+
+    bins.forEach((b, i) => {
+      const gx = i * groupW;
+      const roofX = gx + groupW / 2 - barGap / 2 - barW;
+      const groundX = gx + groupW / 2 + barGap / 2;
+
+      // rooftop bar, with an extrapolated top segment if present
+      const roofH = (b.roof_mwp / maxVal) * plotH;
+      const roofY = plotH - roofH;
+      const extrapH = (b.roof_extrapolated_mwp / maxVal) * plotH;
+      if (roofH > 0){
+        if (extrapH > 0 && extrapH < roofH){
+          const baseH = roofH - extrapH;
+          const baseRect = el("rect", {x: roofX.toFixed(1), y: (plotH - baseH).toFixed(1),
+            width: barW.toFixed(1), height: baseH.toFixed(1), class: "bar-rect roof", fill: "var(--accent)"});
+          const extrapRect = el("rect", {x: roofX.toFixed(1), y: roofY.toFixed(1),
+            width: barW.toFixed(1), height: extrapH.toFixed(1), class: "bar-rect roof",
+            fill: "url(#extrapHatch)"});
+          [baseRect, extrapRect].forEach(r => {
+            r.addEventListener("pointerenter", e => showTip(e, b.label, "rooftop", b.roof_mwp, b.roof_n, b.roof_extrapolated_mwp));
+            r.addEventListener("pointermove", moveTip);
+            r.addEventListener("pointerleave", hideTip);
+          });
+          gPlot.appendChild(baseRect); gPlot.appendChild(extrapRect);
+        } else {
+          const rect = el("rect", {x: roofX.toFixed(1), y: roofY.toFixed(1),
+            width: barW.toFixed(1), height: roofH.toFixed(1), class: "bar-rect roof",
+            fill: extrapH >= roofH && roofH > 0 ? "url(#extrapHatch)" : "var(--accent)"});
+          rect.addEventListener("pointerenter", e => showTip(e, b.label, "rooftop", b.roof_mwp, b.roof_n, b.roof_extrapolated_mwp));
+          rect.addEventListener("pointermove", moveTip);
+          rect.addEventListener("pointerleave", hideTip);
+          gPlot.appendChild(rect);
+        }
+      }
+
+      // ground-mount bar
+      const groundH = (b.ground_mwp / maxVal) * plotH;
+      if (groundH > 0){
+        const rect = el("rect", {x: groundX.toFixed(1), y: (plotH - groundH).toFixed(1),
+          width: barW.toFixed(1), height: groundH.toFixed(1), class: "bar-rect ground", fill: "var(--large)"});
+        rect.addEventListener("pointerenter", e => showTip(e, b.label, "ground-mount", b.ground_mwp, b.ground_n, 0));
+        rect.addEventListener("pointermove", moveTip);
+        rect.addEventListener("pointerleave", hideTip);
+        gPlot.appendChild(rect);
+      }
+
+      // x-axis bin label, angled to fit
+      const lbl = el("text", {
+        x: (gx + groupW / 2).toFixed(1), y: (plotH + 18).toFixed(1),
+        class: "bin-label", "text-anchor": "end",
+        transform: `rotate(-32 ${(gx + groupW / 2).toFixed(1)} ${(plotH + 18).toFixed(1)})`,
+      });
+      lbl.textContent = b.label;
+      gPlot.appendChild(lbl);
+    });
+
+    // hatch pattern for the extrapolated slice, defined once
+    const defs = el("defs", {});
+    const dark = isDark();
+    const pattern = el("pattern", {id: "extrapHatch", patternUnits: "userSpaceOnUse",
+      width: 6, height: 6, patternTransform: "rotate(45)"});
+    pattern.appendChild(el("rect", {width: 6, height: 6, fill: dark ? "#3c2a12" : "#f2e3bf"}));
+    pattern.appendChild(el("rect", {width: 3, height: 6, fill: "var(--accent-dim)"}));
+    defs.appendChild(pattern);
+    svg.insertBefore(defs, svg.firstChild);
+
+    mount.appendChild(svg);
+  }
+
+  function drawTable(){
+    document.querySelector("#btable tbody").innerHTML = DATA.bins.map(b =>
+      `<tr><td>${b.label}</td><td>${fmt(b.roof_mwp)}</td><td>${fmt(b.ground_mwp)}</td>`
+      + `<td>${fmt(b.roof_n)}</td><td>${fmt(b.ground_n)}</td></tr>`).join("");
+  }
+
+  function countUp(id, target, dur){
+    const e = document.getElementById(id);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches){ e.textContent = fmt(target); return; }
+    const t0 = performance.now();
+    function step(now){
+      const p = Math.min(1, (now - t0)/dur), e2 = 1 - Math.pow(1-p, 3);
+      e.textContent = fmt(target * e2);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  document.getElementById("kBest").innerHTML = `${fmt(T.mwp_best)}<small>MWp</small>`;
+  document.getElementById("kRoof").innerHTML = `${fmt(T.mwp_roof)}<small>MWp</small>`;
+  document.getElementById("kGround").innerHTML = `${fmt(T.mwp_ground)}<small>MWp</small>`;
+
+  countUp("heroNum", T.mwp_best, 700);
+  document.getElementById("tiles").innerHTML =
+    `<div class="tile"><div class="v">${fmt(T.mwp_roof)}</div><div class="k">Rooftop, MWp</div></div>`
+    + `<div class="tile ground-tile"><div class="v">${fmt(T.mwp_ground)}</div><div class="k">Ground-mount, MWp</div></div>`;
+
+  renderChart();
+  drawTable();
+
+  document.getElementById("foot").innerHTML =
+    `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf/SPPI per-building `
+    + `classifiers · ${T.n_bins} size bins · same run as the evidence atlas · `
+    + `see docs/methods/density.md for full derivations and caveats.`;
+
+  const btn = document.getElementById("themeBtn");
+  function updateThemeBtn(){ btn.textContent = isDark() ? "Light mode" : "Dark mode"; }
+  btn.addEventListener("click", () => {
+    const cur = isDark();
+    document.documentElement.setAttribute("data-theme", cur ? "light" : "dark");
+    updateThemeBtn();
+    renderChart();
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!document.documentElement.getAttribute("data-theme")) { updateThemeBtn(); renderChart(); }
+  });
+
+  updateThemeBtn();
+})();
+</script>

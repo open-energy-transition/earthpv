@@ -1144,6 +1144,69 @@ def atlas(
         build_atlas(aoi, density_dir, out=out, zoom_out_frac=zoom_out)
 
 
+@app.command("atlas-by-size")
+def atlas_by_size(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs the same inputs "
+        "as `earthpv atlas`'s evidence atlas"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    out: Path = typer.Option(
+        None, help="Output HTML (default <pred_dir>/<aoi>/density/<aoi>_pv_size_atlas.html)"
+    ),
+    osm_solar: Path = typer.Option(
+        ..., help="National OSM/Overpass solar pull (e.g. "
+        "data/labels/<aoi>_overpass_solar.parquet) -- same input `earthpv atlas` takes "
+        "as --osm-solar.",
+    ),
+    sub400_low_cells: Path = typer.Option(
+        ..., help="Building-level parquet from "
+        "`sub400_capacity.domain_restricted_and_gate_capacity` -- same input `earthpv "
+        "atlas` takes as --sub400-low-cells. Never shown as its own bin here (it never "
+        "feeds Best estimate on its own); required only to replicate the evidence "
+        "atlas's per-cell 'Best floored at Verified' correction, so this page's total "
+        "doesn't silently undercount the published one.",
+    ),
+    sub400_central_cells: Path = typer.Option(
+        ..., help="Building-level parquet from "
+        "`sub400_capacity.domain_restricted_capacity` (columns: cell, geometry, "
+        "roof_area_m2, est_kwp_sub400) -- same input `earthpv atlas` takes as "
+        "--sub400-central-cells.",
+    ),
+    ge400_roof_cells: Path = typer.Option(
+        ..., help="Building-level parquet from `roofclf_ge400_capacity."
+        "domain_restricted_ge400_roof_capacity` (columns: cell, geometry, roof_area_m2, "
+        "est_kwp_ge400_roof) -- same input `earthpv atlas` takes as --ge400-roof-cells. "
+        "Its own cell coverage also defines the density-matched domain here, exactly as "
+        "in the evidence atlas.",
+    ),
+    sub400_outdomain_cells: Path = typer.Option(
+        None, help="Building-level parquet from "
+        "`sub400_capacity.out_of_domain_and_gate_capacity` -- same input `earthpv atlas` "
+        "takes as --sub400-outdomain-cells. Optional; rendered as a visually distinct "
+        "extrapolated slice within the small-rooftop bars.",
+    ),
+) -> None:
+    """Alternate lens on the evidence atlas's Best-estimate total: the SAME six
+    components, re-binned by installation size and rooftop-vs-ground-mount placement
+    instead of by 0.1-degree cell. Needs the same inputs as `earthpv atlas`'s evidence
+    atlas, plus this run's own candidates.parquet, found automatically at
+    <pred_dir>/<aoi>/candidates.parquet -- run `earthpv atlas --osm-solar ...` for the
+    geographic view first if you have not already, so the two pages describe the same
+    run."""
+    import logging
+
+    from earthpv.atlas import build_size_distribution_atlas
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    density_dir = Path(pred_dir) / aoi / "density"
+    candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
+    build_size_distribution_atlas(
+        aoi, density_dir, osm_solar, candidates_path,
+        sub400_low_cells, sub400_central_cells, ge400_roof_cells,
+        sub400_outdomain_buildings_path=sub400_outdomain_cells,
+        out=out,
+    )
+
+
 @app.command()
 def dashboard(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan); needs a `dashboard:` block in configs/aoi.yaml"),

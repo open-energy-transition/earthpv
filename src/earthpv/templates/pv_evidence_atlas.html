@@ -133,46 +133,49 @@
   .city-dot { fill: var(--ink); opacity: 0.55; }
   .city-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 21px;
     paint-order: stroke; stroke: var(--map-bg); stroke-width: 2.4px; opacity: 0.9; }
-  .domain-ring-rect { fill: none; stroke: var(--domain); stroke-width: 1;
-    stroke-dasharray: 2 1.5; opacity: 0.85; pointer-events: none; }
-  .extended-ring-rect { fill: none; stroke: var(--extended); stroke-width: 1;
-    stroke-dasharray: 1 2; opacity: 0.85; pointer-events: none; }
+  .domain-ring-rect { fill: none; stroke: var(--domain); stroke-width: 1.3;
+    stroke-dasharray: 2.5 1.8; opacity: 0.95; pointer-events: none; }
+  .extended-ring-rect { fill: none; stroke: var(--extended); stroke-width: 1.3;
+    stroke-dasharray: 1.3 2; opacity: 0.95; pointer-events: none; }
   .large-dot { fill: none; stroke: var(--large); opacity: 0.9; pointer-events: none; }
   .tip .rowt.domain-flag span:first-child { color: var(--domain); }
   .tip .rowt.extended-flag span:first-child { color: var(--extended); }
   .tip .rowt.large-flag span:first-child { color: var(--large); }
-  .legend .domain-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
+
+  /* ── legend: a "scale" row (colour bar + ticks + caption) stacked above a
+     separate "keys" row (ring / dashed / dotted / dot swatches), each row its
+     own flex group so the keys always line up with each other instead of some
+     riding along the scale row depending on how much space wraps where. ── */
+  .legend { display: flex; flex-direction: column; gap: 10px; margin: 14px 6px 2px; }
+  .legend-scale { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .legend .lg-col { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 220px; }
+  .legend .bar { height: 12px; width: min(650px, 96%); border-radius: 6px; }
+  .legend .ticks { position: relative; height: 14px; width: min(650px, 96%);
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .legend .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .legend .ticks span:first-child { transform: translateX(0); }
+  .legend .ticks span:last-child { transform: translateX(-100%); }
+  .legend .ticks span::before { content: ""; position: absolute; top: -4px; left: 50%;
+    width: 1px; height: 3px; background: var(--muted); }
+  .legend .cap { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2);
+    letter-spacing: 0.03em; flex: none; }
+
+  .legend-keys { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .legend-keys > div { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono);
     font-size: 10.5px; color: var(--ink-2); }
-  .legend .domain-key .sw { width: 10px; height: 10px; border: 1px dashed var(--domain);
-    border-radius: 2px; }
-  .legend .extended-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
-    font-size: 10.5px; color: var(--ink-2); }
-  .legend .extended-key .sw { width: 10px; height: 10px; border: 1px dotted var(--extended);
-    border-radius: 2px; }
-  .legend .large-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
-    font-size: 10.5px; color: var(--ink-2); }
-  .legend .large-key .sw { width: 10px; height: 10px; border: 1.4px solid var(--large);
+  .legend .large-key .sw { width: 13px; height: 13px; border: 2px solid var(--large);
     border-radius: 50%; }
+  .legend .domain-key .sw { width: 13px; height: 13px; border: 2px dashed var(--domain);
+    border-radius: 3px; }
+  .legend .extended-key .sw { width: 13px; height: 13px; border: 2px dotted var(--extended);
+    border-radius: 3px; }
+  .legend .calib-key .sw { width: 11px; height: 11px; border-radius: 50%;
+    background: var(--domain); }
+
   .calib-ring { fill: none; stroke: var(--domain); stroke-width: 1.4;
     stroke-dasharray: 3 2; opacity: 0.95; }
   .calib-dot { fill: var(--domain); stroke: var(--map-bg); stroke-width: 1.2;
     cursor: pointer; }
-  .legend .calib-key { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono);
-    font-size: 10.5px; color: var(--ink-2); }
-  .legend .calib-key .sw { width: 9px; height: 9px; border-radius: 50%;
-    background: var(--domain); }
-
-  .legend { display: flex; align-items: center; gap: 12px; margin: 12px 6px 2px;
-    flex-wrap: wrap; }
-  .legend .bar { height: 12px; width: min(260px, 50vw); border-radius: 6px; }
-  .legend .ticks { position: relative; height: 14px; width: min(260px, 50vw);
-    font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
-  .legend .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
-  .legend .ticks span::before { content: ""; position: absolute; top: -4px; left: 50%;
-    width: 1px; height: 3px; background: var(--muted); }
-  .legend .cap { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2);
-    letter-spacing: 0.03em; }
-  .legend .lg-col { display: flex; flex-direction: column; }
 
   .hero-num { font-size: clamp(36px, 5.4vw, 54px); font-weight: 800; letter-spacing: -0.03em;
     line-height: 0.95; color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -238,12 +241,6 @@
     outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-  .tag { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
-    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
-  .tag.low { background: rgba(245,166,35,0.14); color: var(--accent-dim); }
-  .tag.central { background: rgba(245,166,35,0.22); color: var(--accent); }
-  .tag.large { background: rgba(79,178,232,0.18); color: var(--large); }
-
   /* ── expandable background sections ─────────────────────────────── */
   .xdetails { background: var(--panel); border: 1px solid var(--card-ring);
     border-radius: 14px; margin-top: 12px; overflow: hidden; }
@@ -262,11 +259,6 @@
   .xdetails .xbody p:last-child { margin-bottom: 0; }
   .xdetails .xbody b { color: var(--ink); font-weight: 650; }
   .xdetails .xbody a { color: var(--accent); }
-  dl.viewdefs { margin: 0; }
-  dl.viewdefs dt { font-weight: 640; font-size: 13.5px; margin-top: 14px; display: flex;
-    align-items: center; gap: 8px; }
-  dl.viewdefs dt:first-child { margin-top: 0; }
-  dl.viewdefs dd { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); }
 </style>
 
 <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">Dark mode</button>
@@ -289,37 +281,34 @@
   </div>
 
   <section class="sec" id="capacity">
-    <div class="sec-head">
-      <div>
-        <div class="sec-label">Capacity</div>
-        <div class="sec-title">How much PV, by 0.1&deg; cell</div>
-      </div>
-    </div>
-
     <div class="grid">
       <section class="card map-card">
         <div class="map-head">
-          <div class="map-title">Capacity per cell, best estimate</div>
+          <div class="map-title">__AOI_TITLE__ PV capacity, best estimate, by 0.1&deg; cell</div>
           <div class="map-sub">≈11 km × 11 km cells · log scale</div>
         </div>
         <div id="mapmount"></div>
         <div class="legend">
-          <div class="lg-col">
-            <div class="bar" id="legbar"></div>
-            <div class="ticks" id="legticks"></div>
+          <div class="legend-scale">
+            <div class="lg-col">
+              <div class="bar" id="legbar"></div>
+              <div class="ticks" id="legticks"></div>
+            </div>
+            <div class="cap" id="legcap">MWp&nbsp;/&nbsp;cell</div>
           </div>
-          <div class="cap" id="legcap">MWp&nbsp;/&nbsp;cell</div>
-          <div class="large-key">
-            <span class="sw"></span>hand-mapped OSM PV: ring size, always shown
-          </div>
-          <div class="domain-key" id="domainKey" style="margin-left:14px">
-            <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
-          </div>
-          <div class="extended-key" id="extendedKey" style="margin-left:14px">
-            <span class="sw"></span>extrapolated beyond calibration (dotted outline)
-          </div>
-          <div class="calib-key" style="margin-left:14px">
-            <span class="sw"></span>hand-checked calibration area (hover for detail)
+          <div class="legend-keys">
+            <div class="large-key">
+              <span class="sw"></span>hand-mapped OSM PV: ring size, always shown
+            </div>
+            <div class="domain-key" id="domainKey">
+              <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
+            </div>
+            <div class="extended-key" id="extendedKey">
+              <span class="sw"></span>extrapolated beyond calibration (dotted outline)
+            </div>
+            <div class="calib-key">
+              <span class="sw"></span>hand-checked calibration area (hover for detail)
+            </div>
           </div>
         </div>
       </section>
@@ -366,83 +355,6 @@
         __CONFIDENCE_HTML__
       </div>
     </details>
-
-    <details class="xdetails">
-      <summary><span><span class="xt">What this number admits as evidence</span>
-        <span class="xs">Best estimate, defined</span></span><span class="xi">+</span></summary>
-      <div class="xbody">
-        <dl class="viewdefs">
-          <dt><span class="tag central">Best estimate</span> this project's own pick</dt>
-          <dd><b>Every PV installation drawn by a person in OpenStreetMap</b>
-          (<span id="dOsmN">0</span> of them), <b>plus the satellite model's own &ge;400 m²
-          detections</b>, precision-calibrated and recall-corrected, <b>plus</b> the
-          roofclf per-building density estimate for sub-400 m² buildings inside checked
-          cells &mdash; roofclf, a per-building size and reflectance classifier,
-          cross-checked with SPPI, a zero-training spectral index, where calibration
-          coverage is thin. The model's detections and the OSM mapping overlap heavily,
-          so the overlap is removed rather than added twice (see the next section). This
-          is the highest number the project defends; it is still incomplete, because the
-          small-PV term covers only a fraction of national buildings.</dd>
-        </dl>
-      </div>
-    </details>
-
-    <details class="xdetails">
-      <summary><span><span class="xt">How double counting is avoided</span>
-        <span class="xs">the mapped and the detected are largely the same installations</span></span><span class="xi">+</span></summary>
-      <div class="xbody">
-        <p>OpenStreetMap and the satellite detector are looking at the same country, so
-        naively adding them would count many installations twice. Each model detection
-        carries the identity of the OSM feature it matched, if any:
-        <b><span id="dMatched">0</span> of the <span id="dOsmN2">0</span> hand-mapped
-        installations were also found by the model</b>, and those detections already
-        carry the OSM geometry. The Best estimate therefore adds only the
-        <b><span id="dUnmatched">0</span> MWp of hand-mapped PV the model never
-        found</b>, on top of the model's own recall-corrected total.</p>
-      </div>
-    </details>
-
-    <details class="xdetails">
-      <summary><span><span class="xt">Where the small-PV numbers apply</span>
-        <span class="xs">reading the dashed and dotted outlines on the map</span></span><span class="xi">+</span></summary>
-      <div class="xbody">
-        <p>Installations under 400 m² are below the satellite detector's practical floor at
-        10 m resolution, so they are estimated per building instead. The calibrated estimate
-        is only reported <b>inside the dashed outline</b>: the <span id="dDomain">0</span>
-        cells whose building density falls inside the range covered by the hand-mapped
-        calibration quadrats.</p>
-        <p>Outside that outline there is no calibration evidence either way, so Best estimate
-        adds one more thing in those cells instead (the <b>dotted outline</b>,
-        <span id="dExtended">0</span> cells, <span id="dOutdomainMwp">0</span> MWp
-        nationally): buildings where roofclf and SPPI still independently agree, priced
-        with the same coverage ratios measured on the calibrated cells. This exists because
-        a manual imagery check of that population turned out to be blocked by reference
-        imagery too old to confirm recently-installed panels &mdash; agreement between two
-        differently-built detectors is the fallback evidence standard, not a replacement for
-        looking. Every calibration quadrat behind that coverage ratio sits inside the dashed
-        outline, so this is a genuine extrapolation to a less dense, more rural building
-        population, not an interpolation &mdash; treat it as the more speculative half of
-        Best, not as validated as anything inside the dashed line.</p>
-      </div>
-    </details>
-
-    <details class="xdetails">
-      <summary><span><span class="xt">Data &amp; methods</span>
-        <span class="xs">what's under the hood</span></span><span class="xi">+</span></summary>
-      <div class="xbody">
-        <p>Imagery is Sentinel-2 L2A, dry-season composites. <b>Hand-mapped PV</b> is the
-        national OpenStreetMap solar pull, areas measured geodesically, converted at
-        __KWP_MOD__ kWp/m² for rooftop module area and the land constant for everything
-        else. <b>Detections &ge;400 m²</b> come from a TerraMind geospatial foundation
-        model fine-tuned for segmentation, trained on Germany and inferred on this AOI,
-        then precision-calibrated and recall-corrected. <b>Sub-400 m² capacity</b> comes
-        from two per-building instruments (roofclf, a size and reflectance classifier;
-        SPPI, a zero-training spectral index) trained and validated on hand-mapped 1 km²
-        quadrats, restricted to cells whose building density matches those quadrats.
-        Building footprints are VIDA Open Buildings. Full derivations and caveats live in this project's
-        methodology notes (<code>docs/methods/density.md</code>).</p>
-      </div>
-    </details>
   </section>
 
   <div class="foot" id="foot"></div>
@@ -472,8 +384,8 @@
 
   const VIEW = {
     label: "Best estimate", vmax: 8,
-    name: "Best estimate: mapped PV, plus calibrated detections, plus per-building density",
-    desc: "Adds the model's own recall-corrected detections above 400 m² and its per-building estimate below, with the mapped-and-detected overlap removed.",
+    name: "Total photovoltaic capacity detectable with Sentinel-2",
+    desc: "Individual arrays are outlined directly down to about 400 m² (the practical floor for Sentinel-2's 10 m pixels); below that, where a single array can no longer be resolved as its own shape, per-building density estimates take over instead. Open-source pipeline and methodology: <a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
     tiles: [
       ["mwp_large", "Model detections &ge;400 m², MWp"],
       ["osm_mwp_unmatched", "Mapped but never detected, MWp"],
@@ -731,14 +643,6 @@
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
     `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
   renderMap(); drawTable();
-
-  document.getElementById("dOsmN").textContent = fmt(T.osm_n);
-  document.getElementById("dOsmN2").textContent = fmt(T.osm_n);
-  document.getElementById("dMatched").textContent = fmt(T.n_osm_matched);
-  document.getElementById("dUnmatched").textContent = fmt(T.osm_mwp_unmatched);
-  document.getElementById("dDomain").textContent = fmt(T.n_domain_cells);
-  document.getElementById("dExtended").textContent = fmt(T.n_extended_cells);
-  document.getElementById("dOutdomainMwp").textContent = fmt(T.small_outdomain);
 
   document.getElementById("foot").innerHTML =
     `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf/SPPI per-building `

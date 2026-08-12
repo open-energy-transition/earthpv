@@ -74,13 +74,30 @@ PAD_M = 120.0  # context padding around the installation footprint
 MAX_SPIKE_DATES_TRIED = 6  # per target, brightest-first, before giving up on it
 OUT_DIR = Path("docs/glint_examples_S2")
 
+# `pk_0429` and `pk_0491` are the same real-world installation at Hub, Balochistan
+# (centroids ~5 m apart) scored as two separate targets in the 500-target study -- a
+# duplicate-geometry bug in `data/glint/pakistan_targets.parquet` upstream of this
+# script, not something to fix here. Both previously filled the `>50k` column's top two
+# slots with what is visually the same crop. Worse, that crop's brightest clean-by-SCL
+# spike (2025-11-26) sits right next to the Hub Power Station, whose smoke plume drifts
+# over part of the target on that date -- a confound the SCL cloud gate doesn't catch
+# (industrial smoke isn't classified as cloud) and that makes a poor example of PV
+# glint regardless of duplication. Excluded by pid, not by geometry, so this doesn't
+# mask a genuinely distinct future duplicate -- see the spatial-proximity check in
+# `select_bucket` for that.
+EXCLUDED_PIDS = {"pk_0429", "pk_0491"}
+# Two candidates within this distance of each other are treated as the same physical
+# installation for gallery-selection purposes, even under different pids (see
+# EXCLUDED_PIDS above for why a pid-only distinctness check missed exactly this case).
+DEDUP_DISTANCE_DEG = 0.005  # ~500 m at Pakistan's latitudes
+
 
 def candidate_pool() -> pd.DataFrame:
     """Every validated installation, ranked strongest-first within each bucket."""
     summary = pd.read_csv(DATA_DIR / "glint" / "pakistan_summary.csv")
     targets = gpd.read_parquet(DATA_DIR / "glint" / "pakistan_targets.parquet")
     merged = summary.merge(targets[["pid", "geometry"]], on="pid")
-    validated = merged[merged.validated].copy()
+    validated = merged[merged.validated & ~merged.pid.isin(EXCLUDED_PIDS)].copy()
     validated["bucket"] = pd.Categorical(validated["bucket"].astype(str), categories=BUCKETS, ordered=True)
     return validated.sort_values(["bucket", "n_consistent", "n_spikes"], ascending=[True, False, False])
 
@@ -164,6 +181,22 @@ def pick_clean_example(row, already_used: dict) -> tuple | None:
     return None
 
 
+def _near_any_chosen(pid: str, geometry, chosen: list[dict], threshold_deg: float) -> bool:
+    """True if `geometry`'s centroid sits within `threshold_deg` of an already-chosen
+    example's centroid FROM A DIFFERENT pid -- the same real-world installation can be
+    stored as two distinct pids (see `EXCLUDED_PIDS`'s comment for the case this
+    generalizes), so a pid-only distinctness check alone can still seat the same site
+    twice. Excludes `chosen` entries with this candidate's OWN pid, or the intentional
+    same-pid "repeat" fallback (a second clean date on an already-chosen installation,
+    when the bucket has too few distinct ones) would always measure zero distance to
+    itself and never be allowed to run."""
+    cx, cy = geometry.centroid.x, geometry.centroid.y
+    return any(
+        ((cx - c["geometry"].centroid.x) ** 2 + (cy - c["geometry"].centroid.y) ** 2) ** 0.5 < threshold_deg
+        for c in chosen if c["pid"] != pid
+    )
+
+
 def select_bucket(pool: pd.DataFrame, bucket: str, want: int = N_PER_BUCKET) -> list[dict]:
     """Up to `want` clean examples for one bucket: distinct installations first,
     falling back to a second clean date on an already-chosen one only if the bucket's
@@ -177,6 +210,10 @@ def select_bucket(pool: pd.DataFrame, bucket: str, want: int = N_PER_BUCKET) -> 
             if len(chosen) >= want:
                 return
             if not allow_repeat and row.pid in used_dates:
+                continue
+            if _near_any_chosen(row.pid, row.geometry, chosen, DEDUP_DISTANCE_DEG):
+                log.info("  %s: within %.0f m of an already-chosen example, skipping",
+                          row.pid, DEDUP_DISTANCE_DEG * 111_000)
                 continue
             found = pick_clean_example(row, used_dates)
             if found is None:
@@ -227,9 +264,11 @@ def main():
             rgb = read_rgb(ex["item"], ex["geometry"], ex["provider"])
             ax.imshow(rgb)
             tag = " (repeat)" if ex["repeat"] else ""
+            lon, lat = ex["geometry"].centroid.x, ex["geometry"].centroid.y
             title = (
                 f"{bucket} m² — actual {ex['area_m2']:.0f} m²\n"
-                f"{ex['when']:%Y-%m-%d}  n_consistent={ex['n_consistent']}{tag}"
+                f"{ex['when']:%Y-%m-%d}  n_consistent={ex['n_consistent']}{tag}\n"
+                f"{lat:.4f}°N {lon:.4f}°E"
             )
             ax.set_title(title, fontsize=9)
             ax.set_xticks([])
