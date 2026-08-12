@@ -306,10 +306,20 @@ def read_estimator_totals():
 
 
 def read_calibration_recall():
-    """Measured per-size-bin model recall + credible band from the calibration table."""
+    """Measured per-size-bin model recall + credible band from the calibration table's
+    pooled `bins:` list.
+
+    Stops at `placement_bins:`, which repeats the same six size labels twice more
+    (rooftop, then ground) further down the same file -- a plain per-line `.strip()`
+    used to erase the indentation that distinguishes them from the pooled list, so this
+    was silently reading 18 bins as one series instead of 6, and the resulting bar chart
+    was three copies of the same six labels crowded into one axis.
+    """
     text = (ROOT / "configs/calibration/pakistan_candidate_precision.yaml").read_text()
     bins, cur = [], None
     for line in text.splitlines():
+        if line.startswith("placement_bins:"):
+            break
         s = line.strip()
         if s.startswith("- label:"):
             cur = {"label": s.split(":", 1)[1].strip()}
