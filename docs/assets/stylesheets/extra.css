@@ -390,6 +390,16 @@
   max-width: 100%;
 }
 
+/* A full-bleed page with no heading of its own gets Material's usual fallback: an
+   auto-generated `<h1>` from the page/nav title, injected right before the content.
+   That's redundant here (the embedded page already has its own title inside the
+   iframe) and breaks the full-bleed illusion, so drop it specifically when it
+   directly precedes a `.page-full-bleed` block -- never touches a real heading on
+   an ordinary page. */
+.md-typeset h1:has(+ .page-full-bleed) {
+  display: none;
+}
+
 .page-full-bleed {
   margin: 0.8rem 0 0;
   border-radius: 12px;

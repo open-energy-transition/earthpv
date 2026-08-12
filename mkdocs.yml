@@ -90,7 +90,14 @@ extra:
       name: Open Energy Transition
 
 nav:
-  - Home: index.md
+  # The capacity map itself is the landing page (index.md = site root), full-bleed
+  # (hide: [navigation, toc] in its front matter) so it reads as part of the site
+  # rather than an escape hatch to a bare standalone file. Reused here rather than
+  # duplicated under capacity-maps/ -- add new countries as their own pages under
+  # capacity-maps/<country>.md as they get their own atlas.
+  - PV Capacity Maps:
+      - Pakistan: index.md
+  - Overview: overview.md
   # Results first: the pipeline's output is what most readers came for.
   - Results:
       - Pakistan PV Capacity map: results/capacity.md
