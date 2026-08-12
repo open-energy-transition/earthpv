@@ -50,6 +50,30 @@ from matplotlib.ticker import FuncFormatter  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "assets" / "figures"
 
+_MISSING_REPORTED: set[str] = set()
+
+
+def source(rel: str) -> Path | None:
+    """One generated figure's input file, or None when this machine does not have it.
+
+    `results/` is gitignored in its entirety, so a fresh checkout -- the docs CI above
+    all -- carries none of the pipeline outputs these charts read, and an unguarded
+    `open()` there fails the whole run before any figure is written. A missing source
+    now skips just the figures that need it, says so, and leaves the committed SVG under
+    `docs/assets/figures/` in place: the same degrade-and-announce behaviour
+    `sync_interactive()` and `crop_hero_map()` have always had.
+
+    Deliberately NOT used for inputs under `configs/`, which are tracked -- a missing
+    file there is a real error and should still stop the run.
+    """
+    p = ROOT / rel
+    if p.exists():
+        return p
+    if rel not in _MISSING_REPORTED:
+        _MISSING_REPORTED.add(rel)
+        print(f"  {rel} missing, skipping the figures that read it")
+    return None
+
 
 # --------------------------------------------------------------------------- theme
 
@@ -142,7 +166,9 @@ RECALL = {
 
 
 def read_glint_by_size():
-    path = ROOT / "results/glint_validation_pakistan/pakistan_stats_by_size.csv"
+    path = source("results/glint_validation_pakistan/pakistan_stats_by_size.csv")
+    if path is None:
+        return None
     rows = list(csv.DictReader(path.open()))
     return {
         "buckets": [r["bucket"] for r in rows],
@@ -154,7 +180,9 @@ def read_glint_by_size():
 
 def read_glint_observability():
     """Per-quadrat glint observability ceiling (scripts/glint_observability_ceiling.py)."""
-    path = ROOT / "results/glint_observability_by_quadrat.csv"
+    path = source("results/glint_observability_by_quadrat.csv")
+    if path is None:
+        return None
     rows = [r for r in csv.DictReader(path.open()) if int(r["n_scenes"]) > 0]
     rows.sort(key=lambda r: -float(r["ever_textbook_south"]))
     return rows
@@ -162,7 +190,9 @@ def read_glint_observability():
 
 def read_glint_date_auc():
     """Standalone and incremental AUC for the glint-date feature (Step 2)."""
-    base = ROOT / "results/glint_date_feature"
+    base = source("results/glint_date_feature")
+    if base is None:
+        return None
     standalone = list(csv.DictReader((base / "standalone_auc.csv").open()))
     inc = list(csv.DictReader((base / "incremental_auc.csv").open()))
     means: dict[str, list[float]] = {}
@@ -175,6 +205,8 @@ def fig_glint_observability(t: Theme):
     """Why a predicted glint date cannot rescue small-PV detection: almost no installed
     pose can ever glint into Sentinel-2's near-nadir view."""
     rows = read_glint_observability()
+    if rows is None:
+        return
     fig, ax = new_fig(t, 6.9, 4.2)
     y = range(len(rows))
     ever = [100 * float(r["ever_textbook_south"]) for r in rows]
@@ -204,7 +236,10 @@ def fig_glint_pose_window(t: Theme):
     panels are actually installed."""
     import json as _json
 
-    data = _json.loads((ROOT / "results/glint_observability_summary.json").read_text())
+    path = source("results/glint_observability_summary.json")
+    if path is None:
+        return
+    data = _json.loads(path.read_text())
     scenes = data["per_quadrat_scenes"].get("lahore") or next(
         iter(data["per_quadrat_scenes"].values()))
     fig, ax = new_fig(t, 6.4, 3.9)
@@ -231,7 +266,10 @@ def fig_glint_pose_window(t: Theme):
 
 def fig_glint_date_auc(t: Theme):
     """The measured outcome: a glint-date feature adds nothing to roofclf."""
-    standalone, inc_means = read_glint_date_auc()
+    read = read_glint_date_auc()
+    if read is None:
+        return
+    standalone, inc_means = read
     fig, ax = new_fig(t, 6.6, 3.2)
     order = ["baseline (size+reflectance)", "+ glint_ratio", "+ glint_excess",
              "+ glint_max both bands"]
@@ -257,7 +295,10 @@ def fig_glint_date_auc(t: Theme):
 
 def read_estimator_totals():
     """Pull the six capacity estimates out of the atlas page's embedded JSON."""
-    html = (ROOT / "results/pakistan_pv_estimator_atlas.html").read_text()
+    path = source("results/pakistan_pv_estimator_atlas.html")
+    if path is None:
+        return None
+    html = path.read_text()
     m = re.search(r'id="pvdata"[^>]*>(.*?)</script>', html, flags=re.S)
     if not m:
         raise SystemExit("could not locate the atlas data block")
@@ -315,6 +356,8 @@ def fig_recall_by_size(t: Theme):
 
 def fig_glint_by_size(t: Theme):
     d = read_glint_by_size()
+    if d is None:
+        return
     fig, ax = new_fig(t, 6.8, 3.3)
     x = range(len(d["buckets"]))
     w = 0.34
@@ -358,6 +401,8 @@ ESTIMATORS = [
 
 def fig_capacity_estimators(t: Theme):
     tot = read_estimator_totals()
+    if tot is None:
+        return
     fig, ax = new_fig(t, 7.6, 3.6)
     labels = [e[0] for e in ESTIMATORS]
     ends = [max(tot["m"][e[1]], tot[e[2]][1] if e[2] else 0) / 1000.0 for e in ESTIMATORS]
@@ -468,8 +513,11 @@ def fig_size_spectrum(t: Theme):
 
 
 def read_pose_points():
-    """Fitted (tilt, azimuth) pairs, read out of the tracked pose survey page."""
-    html = (ROOT / "results/glint_validation_pakistan/pv_pose_country2000.html").read_text()
+    """Fitted (tilt, azimuth) pairs, read out of the pose survey page."""
+    path = source("results/glint_validation_pakistan/pv_pose_country2000.html")
+    if path is None:
+        return None
+    html = path.read_text()
     m = re.search(r'id="pvdata"[^>]*>(.*?)</script>', html, flags=re.S)
     if not m:
         raise SystemExit("could not locate the pose data block")
@@ -481,6 +529,8 @@ def fig_pv_pose(t: Theme):
     import math
 
     d = read_pose_points()
+    if d is None:
+        return
     fig = plt.figure(figsize=(6.4, 5.6))
     fig.patch.set_facecolor(t.surface)
     ax = fig.add_subplot(projection="polar")

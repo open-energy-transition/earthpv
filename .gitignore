@@ -8,4 +8,25 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 site/
-results/
+
+# Pipeline outputs are not tracked, with one deliberate exception: the small files
+# scripts/build_docs_figures.py reads its numbers from. Tracking those is what lets the
+# docs CI regenerate every figure from the same sources on a bare checkout, instead of
+# skipping them and publishing whatever SVG was last committed from a local run.
+#
+# `results/*` rather than `results/`: git does not descend into an ignored DIRECTORY, so
+# a negation for a file inside one never fires. Each exception below therefore un-ignores
+# the directory, re-ignores its contents, then names the file.
+results/*
+!results/glint_observability_by_quadrat.csv
+!results/glint_observability_summary.json
+!results/pakistan_pv_estimator_atlas.html
+!results/pakistan_pv_density_scientific.png
+!results/glint_date_feature/
+results/glint_date_feature/*
+!results/glint_date_feature/standalone_auc.csv
+!results/glint_date_feature/incremental_auc.csv
+!results/glint_validation_pakistan/
+results/glint_validation_pakistan/*
+!results/glint_validation_pakistan/pakistan_stats_by_size.csv
+!results/glint_validation_pakistan/pv_pose_country2000.html

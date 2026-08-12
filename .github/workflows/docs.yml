@@ -35,8 +35,12 @@ jobs:
       - name: Install build dependencies
         run: pip install mkdocs-material matplotlib pillow
 
-      # Figures and embedded pages are generated from tracked sources under
-      # results/ and configs/, so the published site can never drift from them.
+      # Regenerates every figure whose source is in the checkout: the hand-authored
+      # diagrams, and the charts driven by configs/. `results/` is gitignored, so the
+      # charts and interactive pages that read pipeline outputs are skipped here with a
+      # notice and served from the SVGs committed under docs/assets/. Run
+      # `pixi run docs-figures` locally, where results/ exists, before pushing a change
+      # that should move one of those.
       - name: Regenerate figures and interactive pages
         run: python scripts/build_docs_figures.py
 

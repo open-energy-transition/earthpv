@@ -1,0 +1,7 @@
+feature,n,auc,auc_within_size
+glint_max,13500,0.5744,0.488
+glint_max_b08,13500,0.4404,0.4236
+glint_ratio,13500,0.6131,0.5283
+glint_excess,13500,0.6007,0.5139
+brightness,13500,0.4421,0.4385
+b03_mean,13500,0.5011,0.4593

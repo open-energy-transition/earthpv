@@ -1,0 +1,9 @@
+features,split,n_train,n_test,auc,auc_within_size
+baseline (size+reflectance),train W / test E,6750,6750,0.8757,0.7732
+baseline (size+reflectance),train E / test W,6750,6750,0.9093,0.8019
++ glint_ratio,train W / test E,6750,6750,0.8762,0.7747
++ glint_ratio,train E / test W,6750,6750,0.9101,0.8009
++ glint_excess,train W / test E,6750,6750,0.8762,0.7747
++ glint_excess,train E / test W,6750,6750,0.9102,0.801
++ glint_max both bands,train W / test E,6750,6750,0.8763,0.7747
++ glint_max both bands,train E / test W,6750,6750,0.9103,0.801
