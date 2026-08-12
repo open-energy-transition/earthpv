@@ -193,7 +193,9 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     The **< 400 m&sup2; half** of the main workflow: a per-building "does this roof
     carry PV?" classifier, fit on the exhaustively mapped calibration quadrats (the only
     source where a no-PV building is a real negative -- see the
-    [quadrat protocol](calibration-mapping-protocol.md)). No GPU.
+    [quadrat protocol](calibration-mapping-protocol.md)). No GPU. [The rooftop
+    classifier](methods/roofclf.md) explains what steps 10 to 14 are doing and why, with
+    a flow chart.
 
     ```bash
     pixi run earthpv roof-classifier --aoi pakistan

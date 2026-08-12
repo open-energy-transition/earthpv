@@ -469,6 +469,60 @@ def _read_target_stats(src, geometry, lon: float, lat: float) -> tuple[float, fl
     )
 
 
+# Sentinel-2 L2A Scene Classification Layer classes that mean "this pixel is cloud, or
+# cloud-adjacent". 8 cloud medium probability, 9 cloud high probability, 10 thin cirrus --
+# the three that BRIGHTEN a pixel and therefore forge a glint spike. 3 (cloud shadow) is
+# included because it does not brighten anything itself but is direct evidence of cloud in
+# the immediate neighbourhood, which is what the ring test below actually asks about.
+#
+# Deliberately NOT included: 1 (saturated/defective) and 11 (snow/ice). A real specular
+# glint routinely saturates the sensor, and SCL has no way to tell that from a defect, so
+# treating class 1 as cloud would reject exactly the events this detector exists to find.
+# Snow is a genuine bright false-positive source in Gilgit-Baltistan but it is a different
+# problem from clouds, is persistent rather than per-date (so the clear-scene baseline
+# already absorbs it), and folding it in here would quietly change what "cloud" means.
+SCL_CLOUD_CLASSES = (3, 8, 9, 10)
+
+
+def _read_target_scl(src, geometry, lon: float, lat: float) -> tuple[float, float, int]:
+    """(cloud fraction inside geometry, cloud fraction in the annulus, n valid SCL pixels)
+    from an ALREADY-OPEN SCL dataset.
+
+    Deliberately computed on SCL's own native 20 m grid with no resampling onto the 10 m
+    reflectance grid. `glint_cell_pixel_scl_coherence_pilot.py` does resample, and has to,
+    because it masks individual 10 m pixels and a half-pixel misalignment would mask the
+    wrong ones. Here the question is only "was there cloud over this target, or around it,
+    on this date", which is an aggregate over the same ground either way -- so resampling
+    would add a failure mode (nearest-neighbour on an off-grid window) for no gain.
+
+    Mirrors `_read_target_stats`'s geometry handling exactly, including its
+    `all_touched` fallback: at 20 m a small rooftop target selects no pixel centre at all,
+    and a target whose SCL read silently covered zero pixels would report 0.0 cloud
+    fraction, i.e. "definitely clear", which is the most dangerous possible default here.
+    """
+    import rasterio.features
+
+    win, geom_native = _target_window(src, geometry, lon, lat)
+    arr = src.read(1, window=win, boundless=True, fill_value=0)
+    wt = src.window_transform(win)
+    inside = rasterio.features.geometry_mask(
+        [geom_native], arr.shape, wt, invert=True, all_touched=False
+    )
+    if not inside.any():
+        inside = rasterio.features.geometry_mask(
+            [geom_native], arr.shape, wt, invert=True, all_touched=True
+        )
+    ring = ~rasterio.features.geometry_mask(
+        [geom_native.buffer(30)], arr.shape, wt, invert=True
+    )
+    cloud = np.isin(arr, SCL_CLOUD_CLASSES)
+    valid = arr != 0  # 0 is SCL's own nodata
+    def _frac(sel) -> float:
+        n = int((sel & valid).sum())
+        return float(cloud[sel & valid].mean()) if n else np.nan
+    return _frac(inside), _frac(ring), int((inside & valid).sum())
+
+
 def _polygon_band_stats(
     item, band: str, geometry, lon: float, lat: float, provider: str,
 ) -> tuple[float, float, int]:
@@ -482,8 +536,27 @@ def _polygon_band_stats(
     return p98 + offset, ring + offset, npx
 
 
+def _scl_cloud_row(
+    item, geometry, lon: float, lat: float, provider: str,
+) -> dict:
+    """Per-target SCL cloud fractions for one scene, as row columns. Failure to read SCL
+    returns NaN rather than 0.0, so `annotate_spikes` treats it as "unknown" and falls back
+    to the geometric ring test instead of silently certifying the scene cloud-free."""
+    import rasterio
+
+    try:
+        href = item.assets[_band_asset_key("SCL", provider)].href
+        with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
+            tgt, ring, npx = _read_target_scl(src, geometry, lon, lat)
+        return {"scl_cloud_frac": tgt, "scl_ring_cloud_frac": ring, "scl_npx": npx}
+    except Exception as e:  # noqa: BLE001 — a missing/unreadable SCL must not drop the scene
+        log.debug("SCL read failed for %s: %s", item.id, e)
+        return {"scl_cloud_frac": np.nan, "scl_ring_cloud_frac": np.nan, "scl_npx": 0}
+
+
 def _scene_row(
     item, geometry, lon: float, lat: float, bands: tuple[str, ...], provider: str,
+    use_scl: bool = True,
 ) -> dict | None:
     try:
         ta = _cached_tile_angles(item, provider)
@@ -496,6 +569,8 @@ def _scene_row(
             p98, ring, npx = _polygon_band_stats(item, band, geometry, lon, lat, provider)
             row[f"p98_{band}"], row[f"ring_{band}"] = p98, ring
             row["npx"] = npx
+        if use_scl:
+            row.update(_scl_cloud_row(item, geometry, lon, lat, provider))
         return row
     except Exception as e:  # noqa: BLE001 — per-scene failures shouldn't kill the pull
         log.debug("scene %s (%s) failed: %s", item.id, provider, e)
@@ -504,7 +579,7 @@ def _scene_row(
 
 def _scene_series_via(
     provider: str, geometry, lon: float, lat: float, start: datetime, end: datetime,
-    bands: tuple[str, ...], max_cloud: int, n_threads: int,
+    bands: tuple[str, ...], max_cloud: int, n_threads: int, use_scl: bool = True,
 ) -> pd.DataFrame:
     items = _search_items(provider, lon, lat, start, end, max_cloud)
     if not items:
@@ -518,7 +593,8 @@ def _scene_series_via(
         keep.append(it)
     rows = []
     with ThreadPoolExecutor(n_threads) as ex:
-        futs = [ex.submit(_scene_row, it, geometry, lon, lat, bands, provider) for it in keep]
+        futs = [ex.submit(_scene_row, it, geometry, lon, lat, bands, provider, use_scl)
+                for it in keep]
         for f in as_completed(futs):
             r = f.result()
             if r:
@@ -529,6 +605,7 @@ def _scene_series_via(
 def scene_series(
     geometry, start: datetime, end: datetime,
     bands: tuple[str, ...] = GLINT_BANDS, max_cloud: int = 80, n_threads: int = 8,
+    use_scl: bool = True,
 ) -> pd.DataFrame:
     """Per-scene reflectance + sun/view-angle time series for one polygon.
 
@@ -579,7 +656,7 @@ def _search_items_bbox(provider: str, bbox: tuple[float, float, float, float],
 
 def _read_targets_from_item(
     item, band: str, targets: list[tuple[str, object, float, float]], provider: str,
-    return_array: bool = False, apply_offset: bool = True,
+    return_array: bool = False, apply_offset: bool = True, scl: bool = False,
 ) -> dict[str, tuple[float, float, int]] | dict[str, np.ndarray]:
     """Open one band asset once, read every target's window from it — the batched
     analogue of `_polygon_band_stats`, sharing one dataset handle (and its HTTP
@@ -611,17 +688,28 @@ def _read_targets_from_item(
     later sequential per-cell loop — the first ~12 cells' reads landed inside the
     token's lifetime, every cell after that got 0 readable scenes, silently, because
     the per-target try/except caught the now-expired-token error as ordinary
-    missing data rather than the true cause)."""
+    missing data rather than the true cause).
+
+    `scl=True` returns `(cloud fraction in geometry, cloud fraction in the annulus, n valid
+    SCL pixels)` per target via `_read_target_scl` instead of reflectance percentiles, and
+    forces the BOA offset off (SCL is integer class codes; an offset would corrupt them).
+    It shares this function rather than getting its own loop specifically so that the
+    asset-open guard above -- which exists because an expired SAS token fails at
+    `rasterio.open()`, before any per-target handler runs, and once cost a 45-minute
+    country-scale run -- covers the SCL read too.
+    """
     import rasterio
 
     href = item.assets[_band_asset_key(band, provider)].href
-    offset = _boa_offset(item, provider) if apply_offset else 0.0
+    offset = 0.0 if (scl or not apply_offset) else _boa_offset(item, provider)
     out = {}
     try:
         with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
             for pid, geometry, lon, lat in targets:
                 try:
-                    if return_array:
+                    if scl:
+                        out[pid] = _read_target_scl(src, geometry, lon, lat)
+                    elif return_array:
                         arr, wt, _gn = _read_target_array(src, geometry, lon, lat)
                         out[pid] = (arr + offset, wt, src.crs)
                     else:
@@ -641,6 +729,7 @@ def tile_scene_series_batch(
     targets: pd.DataFrame, start: datetime, end: datetime,
     bands: tuple[str, ...] = GLINT_BANDS, max_cloud: int = 80,
     tile_deg: float = 1.0, max_workers: int = 6, keep_items: bool = False,
+    use_scl: bool = True,
 ) -> dict[str, pd.DataFrame]:
     """Tile-major batched analogue of `scene_series`, for many targets at once.
 
@@ -719,6 +808,12 @@ def tile_scene_series_batch(
                 band: _read_targets_from_item(item, band, member_targets, provider)
                 for band in bands
             }
+            # One extra asset read per scene (+50% at the default two bands), which buys
+            # the only per-pixel cloud evidence in the pipeline. See `annotate_spikes`.
+            scl_results = (
+                _read_targets_from_item(item, "SCL", member_targets, provider, scl=True)
+                if use_scl else {}
+            )
             out = []
             for pid, geometry, lon, lat in member_targets:
                 try:
@@ -731,6 +826,11 @@ def tile_scene_series_batch(
                         p98, ring, npx = band_results[band][pid]
                         row[f"p98_{band}"], row[f"ring_{band}"] = p98, ring
                         row["npx"] = npx  # last band wins, matching `_scene_row`
+                    if use_scl:
+                        s_t, s_r, s_n = scl_results.get(pid) or (np.nan, np.nan, 0)
+                        row["scl_cloud_frac"] = s_t
+                        row["scl_ring_cloud_frac"] = s_r
+                        row["scl_npx"] = s_n
                     if keep_items:
                         row["_item"], row["_provider"] = item, provider
                     out.append(row)
@@ -771,15 +871,43 @@ def _refl(dn):
     return np.clip((np.asarray(dn, dtype=float) - 1000.0) / 10000.0, 0, None)
 
 
+MAX_RING_CLOUD_FRAC = 0.20
+
+
 def annotate_spikes(
     df: pd.DataFrame, bands: tuple[str, ...] = GLINT_BANDS,
     self_referenced: bool = False, ring_k_sigma: float = 3.0,
+    max_ring_cloud_frac: float = MAX_RING_CLOUD_FRAC,
 ) -> pd.DataFrame:
     """Per-scene reflectance + clear/spike flags + required glint orientation.
 
     A spike is a scene where in-polygon reflectance in every band jumps far above its
-    own clear-scene baseline. Two ways to rule out clouds/haze (which brighten the
+    own clear-scene baseline. Three ways to rule out clouds/haze (which brighten the
     neighbourhood too, not just the target):
+
+    - **Per-pixel cloud flags** (added 2026-08-11, the strongest of the three, active
+      whenever the input carries a `scl_ring_cloud_frac` column): Sentinel-2 L2A ships a
+      Scene Classification Layer marking cloud, cirrus and cloud shadow PER PIXEL, and
+      until this was wired in the glint path consulted no per-pixel cloud information at
+      all -- only the whole-scene `eo:cloud_cover` STAC property, at a default cutoff of
+      **80**, which admits a 79%-cloudy scene and then leans entirely on the geometric
+      tests below. A scene reported as 15% cloudy can still have a cloud sitting exactly
+      over one target, which is the reported false-positive mode this closes.
+
+      **The gate is on the ANNULUS, not the target.** A cloud is a spatially extended
+      object: if cloud is what brightened the target, the surrounding annulus is almost
+      certainly cloudy too. A real specular glint is confined to the panel and leaves the
+      ring clear. Gating on the target's own cloud fraction would be actively harmful,
+      because SCL classifies bright saturated pixels as cloud and a genuine glint often
+      *is* saturated, so the target-side flag cannot separate "cloud over the panel" from
+      "the panel is glinting". `scl_cloud_frac` is still recorded, for measurement and for
+      anyone who wants to study that confusion, but it does not veto anything.
+
+      A cloudy scene is excluded from the clear-sky baseline as well as from the spikes,
+      since a cloud-brightened date would otherwise inflate the baseline and mask real
+      glints. NaN (SCL unreadable, or an older cached series) counts as "unknown" and does
+      not veto, so this degrades to the pre-2026-08-11 behaviour rather than silently
+      discarding every scene it cannot classify.
 
     - **Spatial** (default, `self_referenced=False`): the surrounding annulus must
       stay dim *right now* — `a > 1.5 * r` on this date. Requires the ring to be
@@ -800,24 +928,62 @@ def annotate_spikes(
       baseline either way — clouds/haze don't care whether the roof next door is
       bright or dark).
 
-    Adds `a_*`/`r_*` (in-polygon / annulus reflectance), `clear`, `spike`, and
-    `glint_tilt`/`glint_az` (the orientation that scene's geometry would require)
-    columns. Rows missing reflectance stats are dropped; empty input (or
+    Adds `a_*`/`r_*` (in-polygon / annulus reflectance), `clear`, `spike`,
+    `cloud_free` and `glint_tilt`/`glint_az` (the orientation that scene's geometry would
+    require) columns. Rows missing reflectance stats are dropped; empty input (or
     all-missing) returns empty.
     """
     need = [f"p98_{b}" for b in bands] + [f"ring_{b}" for b in bands]
     d = df.dropna(subset=need).copy()
     if d.empty:
+        # Return the empty frame WITH the columns this function promises, not the bare
+        # input. Callers reasonably write `annotated.clear.sum()` or
+        # `annotated[annotated.spike]`, and handing back a frame missing those columns
+        # turns "this target had no usable scenes" into an AttributeError several frames
+        # away from the cause. Both `fit_best_orientation` and a measurement script hit
+        # exactly that. `spike_fit` never did, because it checks `.empty` first.
+        for col in ("clear", "spike", "cloud_free"):
+            d[col] = pd.Series(dtype=bool)
+        for col in ("glint_tilt", "glint_az",
+                    *(f"a_{b}" for b in bands), *(f"r_{b}" for b in bands)):
+            d[col] = pd.Series(dtype=float)
         return d
     for b in bands:
         d[f"a_{b}"] = _refl(d[f"p98_{b}"])
         d[f"r_{b}"] = _refl(d[f"ring_{b}"])
 
+    # Per-pixel cloud veto (see docstring). NaN is "unknown", which must not veto: the
+    # `> max` comparison is deliberately written so NaN yields False here.
+    if "scl_ring_cloud_frac" in d.columns:
+        ring_cloud = pd.to_numeric(d["scl_ring_cloud_frac"], errors="coerce")
+        d["cloud_free"] = ~(ring_cloud > max_ring_cloud_frac)
+        n_vetoed = int((~d["cloud_free"]).sum())
+        if n_vetoed:
+            log.debug(
+                "SCL cloud veto: %d of %d scenes have >%.0f%% cloud in the annulus",
+                n_vetoed, len(d), 100 * max_ring_cloud_frac,
+            )
+    else:
+        d["cloud_free"] = True
+
     stable = np.ones(len(d), bool)
     for b in bands:
         med = d[f"r_{b}"].median()
         stable &= d[f"r_{b}"].between(0.5 * med, 1.6 * med + 0.03)
-    d["clear"] = stable
+    d["clear"] = stable & d["cloud_free"].to_numpy()
+
+    # A target sitting under persistent cloud can lose most of its series to the veto,
+    # leaving too few clear dates to define a baseline at all. That fails safe (an empty
+    # `clear` set gives a NaN baseline, and every `>` comparison against NaN is False, so
+    # nothing is flagged) but it fails SILENTLY, which reads identically to "checked, no
+    # glint here" -- so say so.
+    n_clear = int(d["clear"].sum())
+    if n_clear < 5:
+        log.warning(
+            "Only %d clear scenes of %d after the cloud/stability filters: too few for a "
+            "trustworthy baseline, so this target's spikes (if any) are not reliable",
+            n_clear, len(d),
+        )
 
     base = {b: d.loc[d.clear, f"a_{b}"].median() for b in bands}
     sig = {
@@ -852,7 +1018,17 @@ def fit_best_orientation(
     """Among an `annotate_spikes` frame's spike dates, the (tilt, az, n_consistent)
     that the largest number of them agree on via the specular condition — the
     geometric signature a coincidental bright pixel wouldn't have. None with fewer
-    than 2 spikes (a single spike can't be checked for self-consistency)."""
+    than 2 spikes (a single spike can't be checked for self-consistency).
+
+    Returns None rather than raising when handed an empty frame. `annotate_spikes`
+    short-circuits on all-missing input and returns the input frame unchanged, i.e.
+    WITHOUT a `spike` column, so the documented composition
+    `fit_best_orientation(annotate_spikes(series))` used to raise `AttributeError` for any
+    target whose whole series lacked reflectance stats. `spike_fit` never hit it because it
+    guards emptiness itself before calling here; a direct caller did.
+    """
+    if annotated.empty or "spike" not in annotated.columns:
+        return None
     sp = annotated[annotated.spike]
     if len(sp) < 2:
         return None
@@ -872,6 +1048,7 @@ def fit_best_orientation(
 def spike_fit(
     df: pd.DataFrame, bands: tuple[str, ...] = GLINT_BANDS, tol_deg: float = 3.0,
     self_referenced: bool = False, ring_k_sigma: float = 3.0,
+    max_ring_cloud_frac: float = MAX_RING_CLOUD_FRAC,
 ) -> dict:
     """Detect glint spikes in a `scene_series` time series and fit one panel orientation.
 
@@ -880,15 +1057,21 @@ def spike_fit(
     dense urban contexts where a spatial ring is never meaningfully darker than the
     roof it surrounds.
 
-    Returns a dict with n_scenes/n_clear/n_spikes/fit_tilt/fit_az/n_consistent — the
-    last two are NaN/0 with fewer than 2 spikes (a single spike can't be checked for
-    self-consistency and is not distinguishable from a one-off bright pixel).
+    Returns a dict with n_scenes/n_clear/n_spikes/n_cloud_vetoed/fit_tilt/fit_az/
+    n_consistent — `fit_tilt`/`fit_az`/`n_consistent` are NaN/0 with fewer than 2 spikes (a
+    single spike can't be checked for self-consistency and is not distinguishable from a
+    one-off bright pixel). `n_cloud_vetoed` counts scenes dropped by the per-pixel SCL cloud
+    gate, and is 0 both when nothing was cloudy and when the series has no SCL column at
+    all (an older cached pull) -- check it against `n_scenes` before reading a low spike
+    count as evidence of no PV.
     """
-    d = annotate_spikes(df, bands, self_referenced=self_referenced, ring_k_sigma=ring_k_sigma)
+    d = annotate_spikes(df, bands, self_referenced=self_referenced,
+                        ring_k_sigma=ring_k_sigma, max_ring_cloud_frac=max_ring_cloud_frac)
     if d.empty:
-        return dict(n_scenes=0, n_clear=0, n_spikes=0, fit_tilt=np.nan, fit_az=np.nan,
-                     n_consistent=0)
+        return dict(n_scenes=0, n_clear=0, n_spikes=0, n_cloud_vetoed=0,
+                     fit_tilt=np.nan, fit_az=np.nan, n_consistent=0)
     res = dict(n_scenes=len(d), n_clear=int(d.clear.sum()), n_spikes=int(d.spike.sum()),
+                n_cloud_vetoed=int((~d["cloud_free"]).sum()),
                 fit_tilt=np.nan, fit_az=np.nan, n_consistent=0)
     fit = fit_best_orientation(d, tol_deg)
     if fit is not None:

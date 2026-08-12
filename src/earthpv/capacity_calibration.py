@@ -240,6 +240,7 @@ def derive_table(
     mapped: gpd.GeoDataFrame | None,
     aoi: str,
     glint_sample: pd.DataFrame | None = None,
+    sensitivity_override: dict[str, float] | None = None,
     min_distance_m: float = 100.0,
     manual_reviews: pd.DataFrame | None = None,
     recall_reference: gpd.GeoDataFrame | None = None,
@@ -318,7 +319,18 @@ def derive_table(
         in_bin = idx == b
         n = int(in_bin.sum())
         n_mapped = int(is_mapped[in_bin].sum())
+        # Glint sensitivity for this bin. The study constant is a rate measured on the
+        # 500-target OSM-confirmed population; `sensitivity_override` replaces it with the
+        # rate predicted for THIS candidate population's own glint opportunity (see
+        # `glint_opportunity.population_sensitivity`). Measured 2026-08-12: within a single
+        # size bin the validated rate varies about 2x between the lowest and highest
+        # opportunity tertile (5k-50k m2: 0.036 -> 0.538), so dividing a candidate `v_b` by
+        # a study `S_b` measured at different exposure biases the inversion.
         sens = float(SENSITIVITY[b])
+        sens_source = "study"
+        if sensitivity_override and label in sensitivity_override:
+            sens = float(sensitivity_override[label])
+            sens_source = "opportunity_adjusted"
 
         p_u: float | None = None
         source = "none"
@@ -345,6 +357,8 @@ def derive_table(
             "n_mapped": n_mapped,
             "mapped_frac": round(n_mapped / n, 4) if n else 0.0,
             "sensitivity": sens,
+            "sensitivity_source": sens_source,
+            "sensitivity_study": float(SENSITIVITY[b]),
             "sensitivity_n": int(SENSITIVITY_N[b]),
             "sensitivity_validated": int(SENSITIVITY_VALIDATED_N[b]),
             "glint_sample_n": n_sample,

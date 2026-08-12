@@ -8,14 +8,61 @@ built and how it is budgeted.
 ## The measurement
 
 For each target, pull roughly two years of per-scene Sentinel-2 L2A statistics in bands
-B03 and B08, scene cloud cover at most 80 percent. The statistic per scene is the 98th
-percentile reflectance inside the polygon against a 30 m annulus around it. Sub-pixel
-polygons fall back to an `all_touched` mask so even a feature under 100 m<sup>2</sup> reads
-its brightest touched pixel.
+B03 and B08, plus the Scene Classification Layer for the cloud check below, scene cloud
+cover at most 80 percent. The statistic per scene is the 98th percentile reflectance inside
+the polygon against a 30 m annulus around it. Sub-pixel polygons fall back to an
+`all_touched` mask so even a feature under 100 m<sup>2</sup> reads its brightest touched
+pixel. The third asset read costs roughly 50 percent more network time per scene than the
+two reflectance bands alone.
 
 **Detected** means at least one spike: simultaneously bright in B03 and B08 inside the
-polygon while the surrounding annulus stays stable, which rules out haze and cloud
-brightening.
+polygon while the surrounding annulus stays stable, which rules out haze and
+neighbourhood-wide cloud brightening.
+
+## Ruling out clouds
+
+A bright cloud on a single date has the same shape as a glint: one scene far above the
+target's own baseline. Three filters separate them, and the third was added on 2026-08-11
+after cloud false positives were reported from manual review.
+
+**Scene-level cloud cover.** The STAC search drops scenes above 80 percent
+`eo:cloud_cover`. This is a weak filter and is not doing most of the work: a scene reported
+as 15 percent cloudy can still have a cloud sitting directly over one target, and measured
+across 4,616 real scene rows the spike rate does **not** rise with scene cloudiness (4.4,
+5.4, 5.5, 2.2 and 2.6 percent across the 0-10, 10-30, 30-50, 50-70 and 70-100 percent
+bands). Whole-scene metadata is simply the wrong instrument for a per-target question.
+
+**The annulus.** The 30 m ring around the target must stay dim, or stay near its own
+history in the self-referenced mode. This is what has been carrying the load, and it works
+because cloud brightens a neighbourhood while a glint is confined to one glass plane.
+
+**Per-pixel cloud flags, from the imagery itself.** Sentinel-2 L2A ships a **Scene
+Classification Layer** (SCL) alongside the reflectance bands, labelling every pixel:
+classes 8 and 9 are cloud at medium and high probability, 10 is thin cirrus and 3 is cloud
+shadow. SCL is native 20 m where B03 and B08 are 10 m, and the cloud fraction is computed
+on SCL's own grid with no resampling, because the question here is the aggregate "was there
+cloud over or around this target" rather than which individual 10 m pixel to mask. `earthpv` already used it to build the segmentation composites; the glint path did
+not consult it until 2026-08-11 and now reads it per scene per target, recording
+`scl_cloud_frac` (inside the polygon), `scl_ring_cloud_frac` (in the annulus) and
+`scl_npx`. A scene with more than 20 percent cloud in the annulus is dropped from the spike
+set **and** from the clear-sky baseline, since a cloud-brightened date would otherwise
+inflate the baseline and hide real glints.
+
+!!! warning "The gate is on the annulus, not on the target, and that is deliberate"
+
+    SCL classifies bright saturated pixels as cloud, and a genuine specular glint often
+    *is* saturated. Gating on the target's own cloud flag would therefore throw away
+    exactly the events this detector exists to find. Cloud is spatially extended, so if
+    cloud is what brightened a target, its surroundings are almost certainly cloudy too;
+    the ring is the discriminator that a per-pixel flag can answer honestly.
+    `scl_cloud_frac` is still recorded so this confusion can be studied, but it vetoes
+    nothing.
+
+A scene whose SCL cannot be read reports NaN and does not veto, so a series pulled before
+this existed behaves exactly as it did. `spike_fit` returns `n_cloud_vetoed` next to
+`n_scenes`: read a low spike count together with it, because a target under persistent
+cloud loses scenes rather than being shown to have no PV. Below five surviving clear
+scenes the code says so in a warning rather than reporting a confident zero.
 
 **Validated** means one fixed panel orientation, a single tilt and azimuth, explains at
 least two spike dates through the specular reflection condition within a 3 degree
@@ -100,10 +147,183 @@ bin holds under 10 percent of fitted installations and the top five bins under 2
 Two narrower versions survive the data, per-locality pose calibration and a top-K
 triage pre-filter, and both are open work.
 
+## Opportunity: how many chances did this target actually get?
+
+**Measured 2026-08-12, and it changes a number already in the published calibration.**
+
+The capacity pipeline inverts the glint instrument to estimate what share of unmapped
+candidates are real: a size bin's *sensitivity* (the rate at which glint validates
+OSM-confirmed PV in that bin) divides the rate at which the same bin's unmapped candidates
+validate. That sensitivity was a per-bin constant, pooled across locations.
+
+It should not be. The number of chances a target gets to glint varies enormously, for two
+measured reasons: scene count (156 to 530 scenes in two years across the calibration
+quadrats, depending on how many relative orbits cover the point) and pose compatibility (6.7
+to 23.6 percent of a plausible installed population, per the section below). Multiplying
+those gives an **expected opportunity count** `E`, which across the 499 study targets has a
+mean of 6.0 and a range of 1.8 to 25.4.
+
+Splitting each size bin into equal-count opportunity tertiles shows the effect directly:
+
+| Size bin | low `E` | mid `E` | high `E` | pooled constant |
+| --- | ---: | ---: | ---: | ---: |
+| &lt;100 m<sup>2</sup> | 0.026 | 0.000 | 0.037 | 0.025 |
+| 100-500 | 0.000 | 0.000 | **0.259** | 0.088 |
+| 500-1k | 0.037 | 0.214 | **0.240** | 0.162 |
+| 1k-5k | 0.241 | 0.357 | 0.321 | 0.306 |
+| 5k-50k | 0.036 | 0.321 | **0.538** | 0.293 |
+| &gt;50k | 0.129 | 0.133 | **0.516** | 0.261 |
+
+Sensitivity varies about **2x with opportunity inside a single size bin**, which is the same
+order as the variation *between* bins that the calibration already takes seriously. The
+`<100 m²` row staying flat is the sanity check: a sub-pixel array does not glint however many
+chances it gets.
+
+`earthpv.glint_opportunity` replaces the constant with a one-parameter model:
+
+    E_i = sum over clear scenes of P(pose glints | pose prior)
+    k_i ~ Poisson(q_b * E_i),   validated = P(k_i >= 2)
+
+`q_b`, the per-opportunity glint probability, is a property of the panels and the sensor
+rather than of where a target sits, so it transfers between locations in a way a pooled
+sensitivity does not. Fitted per bin it is monotone in size (0.056, 0.085, 0.088, 0.146,
+0.169, 0.172), which is what the physics predicts: a larger array fills more of a 10 m pixel,
+so its specular return survives mixing. Applied back to the study's own population the model
+reproduces the study constants (0.306 against 0.293, 0.293 against 0.275), confirming it is
+the same quantity at higher resolution rather than a different one.
+
+`capacity_calibration.derive_table` now takes a `sensitivity_override`, and records both the
+value used and the study constant it replaced, so an inverted precision can always be traced
+back to which sensitivity produced it.
+
+!!! note "What this makes possible, and its one hard limit"
+
+    Predicting sensitivity per target is what allows glint's *absence* to become evidence
+    rather than merely no information. A target with 25 expected opportunities in the 5k-50k
+    bin has a 92 percent chance of validating if it really is PV, so silence there means
+    something; a target with 3 opportunities has a 9 percent chance, so silence means
+    nothing. The limit is that reaching usable sensitivity requires both a large array and
+    high opportunity, and most rooftops are neither.
+
+## Can a predicted glint date boost the roof classifier?
+
+**Tested 2026-08-11. No, and the reason is geometric rather than fixable by better
+processing.**
+
+The idea is a good one and worth writing down properly. `roofclf` reads a dry-season
+*median* composite, and a median over roughly a dozen scenes is built to suppress exactly
+the transient specular events that mark a panel. So one would expect that reading the few
+dates when panels are geometrically able to glint should raise the signal-to-noise ratio,
+most of all in a dense urban block where many installations would brighten at once.
+
+### Step 1: how many rooftops could ever glint
+
+The glint condition is narrow. Sentinel-2 views near-nadir, so the pose that reflects
+sunlight into the sensor is roughly tilt = half the solar zenith, azimuth = the solar
+azimuth at the 10:30 overpass. Both are fixed by the calendar, which means each place has a
+**band of observable poses**, and a panel whose installed pose falls outside that band
+cannot glint into Sentinel-2 on any date, ever.
+
+`scripts/glint_observability_ceiling.py` measures the band per calibration quadrat from real
+granule sun and view angles, over two years, reading no pixels at all.
+
+![The pose that glints on each real Lahore scene traces a narrow arc from about 110 degrees azimuth at 12 degrees tilt to about 155 degrees at 30 degrees, while the assumed installed population is a broad cloud centred on 180 degrees azimuth and 25 degrees tilt. The two barely overlap.](../assets/figures/glint_pose_window.svg#only-light)
+![The pose that glints on each real Lahore scene traces a narrow arc from about 110 degrees azimuth at 12 degrees tilt to about 155 degrees at 30 degrees, while the assumed installed population is a broad cloud centred on 180 degrees azimuth and 25 degrees tilt. The two barely overlap.](../assets/figures/glint_pose_window.dark.svg#only-dark)
+
+That picture is the whole finding. The amber locus is every pose that glints on some real
+scene; the blue cloud is where panels are actually mounted. A south-facing array at tilt 30
+degrees, which is textbook practice at this latitude, has a **minimum misalignment of 8.6
+degrees** across the entire two-year archive. It never glints. Tilt it to 20 degrees and it
+reaches 0.3 degrees, so it does.
+
+![Horizontal bars per calibration quadrat showing the share of an assumed installed population that could ever glint, from 7 percent at Lahore and Malok to 24 percent at Sialkot, with a much smaller amber bar in every row showing that the single best date reaches only 1 to 2 percent.](../assets/figures/glint_observability.svg#only-light)
+![Horizontal bars per calibration quadrat showing the share of an assumed installed population that could ever glint, from 7 percent at Lahore and Malok to 24 percent at Sialkot, with a much smaller amber bar in every row showing that the single best date reaches only 1 to 2 percent.](../assets/figures/glint_observability.dark.svg#only-dark)
+
+Across the 23 quadrats, the share of a plausible south-facing installed population that
+could ever glint has a **median of 13.2 percent** and a range of 6.7 to 23.6 percent. The
+single best date reaches only **1.0 to 1.8 percent**. So the "one optimal date" framing
+fails specifically: even the union over two years of archive is a minority of rooftops, and
+any one date is a rounding error.
+
+| Assumed installed pose | Share that could ever glint (median across quadrats) |
+| --- | --- |
+| Flat roofs, no frame (tilt 10 &plusmn; 6) | 10.1% |
+| Shallow south (tilt 18 &plusmn; 7) | 14.3% |
+| Textbook south (tilt 25 &plusmn; 8) | 13.2% |
+| Steep south (tilt 30 &plusmn; 6) | 9.5% |
+| Any orientation (azimuth 180 &plusmn; 70) | 7.6% |
+
+!!! warning "The installed pose has to be assumed, and the pose survey cannot supply it"
+
+    This project's [192-installation pose survey](../results/pv-pose.md) looks like the
+    obvious input here, and it is not usable for it: those poses were *fitted from observed
+    glints*, so every one of them satisfies the glint condition by construction. Measured
+    directly, the survey's de-mirrored azimuths sit inside the observable band, which is
+    what censoring predicts rather than what installer practice predicts. The table above
+    therefore reports a grid of assumptions, and the spread between its rows is the real
+    uncertainty. Note also that the survey stores each fit **plus its mirror image** (96 of
+    192 rows), because the specular condition at near-nadir view is degenerate in azimuth.
+
+The variation between quadrats is not mainly latitude. It tracks **how many relative orbits
+cover the point**: Sialkot has 530 scenes in two years and a 24 percent ceiling, Lahore has
+156 and a 7 percent ceiling. More overlapping orbits means more view azimuths, which widens
+the band. That is worth knowing because it is not improvable by processing either.
+
+### Step 2: what the feature is actually worth
+
+`scripts/glint_date_roofclf_feature.py` takes the Lahore quadrat, the densest ground truth
+in the project and exactly the dense-urban case the idea targets: 6.61 km<sup>2</sup>,
+13,500 buildings, 3,432 of them carrying mapped PV. It pulls the top glint-window scenes,
+takes the per-building maximum across them, and forms both a ratio and an excess against the
+same building's composite brightness. Buildings are then split west and east, because
+neighbours 20 m apart share pixels and roof material and a random fold would report the
+optimism of memorising neighbourhoods.
+
+Standalone, the feature does separate PV from non-PV: `glint_ratio` reaches 0.613 AUC,
+better than plain composite brightness at 0.442. But **within roof-size band it falls to
+0.528**, which says almost all of that separation was roof size, not glint.
+
+![Four bars of size-controlled AUC on a spatial holdout: roofclf as it is at 0.7875, and three glint-date variants at 0.7878, 0.7879 and 0.7879, visually indistinguishable.](../assets/figures/glint_date_auc.svg#only-light)
+![Four bars of size-controlled AUC on a spatial holdout: roofclf as it is at 0.7875, and three glint-date variants at 0.7878, 0.7879 and 0.7879, visually indistinguishable.](../assets/figures/glint_date_auc.dark.svg#only-dark)
+
+Added on top of the features `roofclf` already has, size-controlled AUC moves from
+**0.7875 to 0.7879**, and plain AUC from 0.8925 to 0.8933. That is the same nothing that
+[epoch-jump and step-change](../issues/roofclf-national-deployment-and-temporal-features.md)
+returned, and for the same underlying reason: at most a few percent of the buildings can
+carry the signal at all, so the classifier has nothing to learn from.
+
+### What it looks like in the imagery
+
+Numbers this small are easy to distrust, so here is the imagery underneath them. These are
+the five Lahore buildings where the hypothesis had its **best** chance: confirmed mapped PV,
+and the largest measured brightening between the composite and the glint window. Both rows
+share one colour stretch, and the baseline is the nearest clear scene five days earlier, so
+seasonal and atmospheric change cannot masquerade as an effect.
+
+![Two rows of five Sentinel-2 crops each, the same buildings on an ordinary clear date and on the predicted glint date, mapped PV outlined in amber. No outlined roof flares or brightens on the lower row; if anything the glint-date scene is slightly hazier overall.](../glint_examples_S2_glintdate/glint_date_vs_ordinary.png)
+
+If the idea worked, the bottom row would show those outlined roofs flaring. It does not.
+Choosing the best cases rather than a random sample is deliberate, because a random sample
+could always be answered with "you did not pick the ones that glint".
+
+### What survives
+
+The negative result is specific, not general, and two narrower versions are untouched by it.
+**Per-locality pose calibration** still makes sense: if a subdivision's installer used one
+pose, the glint dates for *that* pose are predictable, and the question becomes whether the
+locality's own pose happens to fall in the observable band rather than whether a national
+average does. And glint remains what it already was, a **corroborating** signal on
+individual large arrays, where detection reaches 73 percent above 50,000 m<sup>2</sup>. What
+does not work is using it to lift the small-rooftop classifier, because the physics puts the
+overwhelming majority of small rooftops permanently outside the observable band.
+
 ## Research scripts
 
 | Script | What it answers |
 | --- | --- |
+| `glint_observability_ceiling.py` | per-quadrat ceiling on how many rooftops could ever glint, and the optimal date |
+| `glint_date_roofclf_feature.py` | whether glint-date imagery adds anything to `roofclf` (measured: no) |
+| `glint_date_gallery.py` | the before/after imagery behind that result |
 | `glint_validation.py`, `glint_validate_pakistan.py` | the core empirical validation, the latter at country scale stratified by size |
 | `glint_candidate_precision.py` | stratified glint sample of unmapped candidates, feeding `calibrate-candidates` |
 | `glint_iou_experiment.py`, `glint_pixel_refine.py` | can glint move pixel IoU rather than just re-rank? Threshold gating no; per-pixel spike-amplitude trim, a narrow win |

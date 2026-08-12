@@ -2194,6 +2194,209 @@ running two detectors, on `index.md`, `README.md` and
 `docs/results/growth.md` was un-commented back into nav with an admonition marking it a
 secondary product built partly on the unpromoted fraction head.
 
+### Glint now uses per-pixel SCL cloud flags, 2026-08-11
+
+**Cloud false positives were reported from manual review of glint detections. The imagery
+already carried the mask to fix it and the production glint path was not reading it.**
+Sentinel-2 L2A ships the Scene Classification Layer (SCL) alongside the reflectance bands
+(8 cloud medium, 9 cloud high, 10 thin cirrus, 3 cloud shadow); `imagery.py` has always
+used it to build the segmentation composites, and `scripts/glint_cell_pixel_scl_coherence_
+pilot.py` prototyped per-pixel SCL masking for glint in particular, its header noting
+"clouds still looked like a big issue". `glint.py` itself consulted **no** per-pixel cloud
+information at all -- only the whole-scene `eo:cloud_cover` STAC property at a default
+cutoff of **80**, i.e. it accepted 79%-cloudy scenes and leaned entirely on the annulus.
+
+**Measured first, on 4,616 cached scene rows (`data/glint/detail.parquet`), and it
+reframes the problem: the spike rate does NOT rise with scene cloudiness** -- 4.37% /
+5.35% / 5.47% / 2.24% / 2.62% across the 0-10 / 10-30 / 30-50 / 50-70 / 70-100%
+`eo:cloud_cover` bands, and spike scenes are marginally *less* cloudy than average (median
+12.7 vs 15.8). So the false positives are not cloudy scenes slipping past a threshold;
+they are **localized** cloud over one target in an otherwise ordinary scene, which
+whole-scene metadata cannot see even in principle. Raising or lowering `max_cloud` would
+not have helped, and per-pixel data was the only way through.
+
+Implemented: `_read_target_scl` + `SCL_CLOUD_CLASSES`, wired into BOTH read paths
+(`_scene_row` for the per-target path, `tile_scene_series_batch`'s `_process_item` for the
+country-scale batched one) behind `use_scl=True`, recording `scl_cloud_frac`,
+`scl_ring_cloud_frac` and `scl_npx` per scene. `annotate_spikes` gained
+`max_ring_cloud_frac` (default `MAX_RING_CLOUD_FRAC = 0.20`) and a `cloud_free` column;
+`spike_fit` now returns `n_cloud_vetoed`. Both existing batch call sites
+(`postprocess.add_glint_prior`, `roofclf_glint`) pass keyword args, so they inherit the
+default with no change.
+
+Four design decisions worth not undoing:
+
+- **The gate is on the ANNULUS, not the target.** SCL classifies bright saturated pixels as
+  cloud and a real specular glint often *is* saturated, so a target-side veto would discard
+  exactly the events this detector exists to find. Cloud is spatially extended: if cloud
+  brightened the target, its surroundings are almost certainly cloudy too. `scl_cloud_frac`
+  is recorded for study but vetoes nothing.
+- **Classes 1 (saturated/defective) and 11 (snow) are deliberately NOT treated as cloud**,
+  for the same saturation reason and because snow is persistent rather than per-date (the
+  clear-scene baseline already absorbs it) and is a different problem.
+- **A vetoed scene leaves the clear-sky baseline too**, not just the spike set, or a
+  cloud-brightened date would inflate the baseline and mask real glints.
+- **NaN means unknown and never vetoes**, so a series pulled before this existed behaves
+  exactly as it did, and an unreadable SCL degrades to the old geometric tests rather than
+  silently discarding the scene. Below 5 surviving clear scenes `annotate_spikes` warns
+  rather than reporting a confident zero.
+
+Cost: one extra asset read per scene, about +50% network time at the default two bands.
+
+**Two latent bugs fell out, both found by the measurement harness rather than by reading:**
+(a) `annotate_spikes` short-circuits on all-missing input and used to return the bare input
+frame, i.e. WITHOUT `clear`/`spike`, so the documented composition
+`fit_best_orientation(annotate_spikes(series))` raised `AttributeError` for any target whose
+series had no usable reflectance stats -- `spike_fit` never hit it because it checks
+`.empty` first. Now the empty return carries every column the function promises, and
+`fit_best_orientation` guards the case as well. (b) A cautionary one about this project's
+own read path: a **pandas index-alignment bug in the measurement script** (a GeoSeries built
+with a fresh 0-11 index assigned into a frame still carrying its original 12-23 index)
+produced all-NaN geometries, and every read then returned `(nan, nan, 0)` -- which is
+indistinguishable from "the detector correctly found nothing". It was caught only because a
+target with 24 known spikes reported zero. Any glint result where `npx` is 0 across a whole
+series should be read as a plumbing failure, not as an absence of PV.
+
+### Optimal-imagery-date glint boost for roofclf: tested, negative, 2026-08-11
+
+**Owner's idea: pick the Sentinel-2 date when panels are geometrically able to glint and
+feed that imagery to `roofclf`, so that in dense urban blocks many installations brighten at
+once and the signal-to-noise ratio rises. Well motivated -- `roofclf` reads a dry-season
+MEDIAN composite, which is built to suppress exactly the transient specular events that mark
+a panel -- and it is also the right correction to the earlier cell-aggregate glint failure
+(that used a 90th-percentile statistic over a whole 300 m cell, which only moves if ~10% of
+the cell brightens; this is a per-building feature instead). Measured in two steps, both
+negative, with the reason being geometry rather than anything fixable by processing.**
+
+**Step 1, the ceiling (`scripts/glint_observability_ceiling.py`, geometry only, no pixel
+reads).** Sentinel-2 views near-nadir, so the pose that reflects the sun into the sensor is
+roughly tilt = sun_zenith/2, azimuth = sun azimuth at the ~10:30 overpass: a narrow locus,
+fixed by the calendar. Measured from real granule angles over 2 years at all 23 quadrats:
+only a **median 13.2% of a plausible south-facing installed population (range 6.7-23.6%)**
+can ever satisfy it, and the **single best date reaches 1.0-1.8%**, which kills the "one
+optimal date" framing specifically. A textbook south-facing array at tilt 30 (i.e. tilt =
+latitude, standard practice) has a minimum misalignment of **8.6 deg across the entire
+archive** -- it never glints; at tilt 20 it reaches 0.3 deg and does. Sensitivity across
+assumed pose priors: 7.6-14.3% median, so the conclusion is not an artifact of one
+assumption.
+
+Three things worth keeping from Step 1:
+
+- **The installed pose distribution has to be ASSUMED and the project's own pose survey
+  cannot supply it.** Those 192 poses were fitted FROM observed glints, so every one
+  satisfies the glint condition by construction; measured here, the survey's azimuths sit
+  inside the observable band, which is what censoring predicts rather than installer
+  practice. Also found while reading it: the survey stores each fit **plus its mirror
+  image** (96 of 192 rows, azimuth mean exactly 180.000) because the specular condition at
+  near-nadir view is degenerate in azimuth. De-mirrored, the survey median is tilt 14.8 /
+  az 163.7.
+- **The between-quadrat spread is driven by how many relative orbits cover the point, not by
+  latitude**: Sialkot 530 scenes -> 23.6% ceiling, Lahore 156 scenes -> 7.5%. More orbits
+  means more view azimuths, which widens the band. Also not improvable by processing.
+- **An earlier estimate of 29% was wrong and is superseded.** It pooled granule geometry
+  across DIFFERENT target locations, but a building only ever sees the geometry at its own
+  position. Per-location, Lahore is 7.5%. Two other harness bugs of the same family were
+  caught the same way: deduping scenes by DATE rather than by minute collapses same-day
+  different-orbit scenes and understated the ceiling ~4x, and a pandas index-alignment slip
+  (GeoSeries with a fresh 0-11 index assigned into a frame indexed 12-23) produced all-NaN
+  geometries whose reads returned `(nan, nan, 0)` -- indistinguishable from "the detector
+  correctly found nothing", caught only because a target with 24 known spikes reported zero.
+
+**Step 2, the feature (`scripts/glint_date_roofclf_feature.py`).** Lahore quadrat, 6.61 km2,
+13,500 buildings, 3,432 with mapped PV -- the densest ground truth in the project and exactly
+the dense-urban case the idea targets. Top glint-window scenes pulled (SCL-gated for cloud),
+per-building max across them, formed as both a ratio and an excess over the same building's
+composite brightness, evaluated on a **west/east spatial holdout** (neighbours 20 m apart
+share pixels and roof material, so a random fold would report the optimism of memorising
+neighbourhoods). Standalone the feature does separate PV, 0.613 AUC -- but **0.528 within
+roof-size band**, i.e. nearly all of it was size. Incremental on top of `MODEL_FEATURES`:
+size-controlled AUC **0.7875 -> 0.7879**, plain AUC 0.8925 -> 0.8933. The same nothing
+epoch-jump and step-change returned, for the same reason: at most a few percent of buildings
+can carry the signal, so there is nothing to learn.
+
+Documented with three generated figures (`glint_pose_window`, `glint_observability`,
+`glint_date_auc`, light+dark via `build_docs_figures.py`) and a real before/after gallery
+(`scripts/glint_date_gallery.py` -> `docs/glint_examples_S2_glintdate/`) showing the five
+best-case Lahore buildings on the predicted glint date against the nearest clear scene 5 days
+earlier, one shared colour stretch: **nothing flares**. Best cases rather than a random
+sample deliberately, since a random sample invites "you did not pick the ones that glint".
+Full writeup: `docs/methods/glint.md`'s "Can a predicted glint date boost the roof
+classifier?".
+
+**What survives and should NOT be read as killed by this**: per-locality pose calibration
+(if one installer did a subdivision, that locality's own pose may fall in the observable band
+even though a national average does not), and glint's existing role corroborating individual
+large arrays, where detection reaches 73% above 50,000 m2. What is dead is using glint to
+lift the small-rooftop classifier.
+
+### Glint opportunity normalisation (shipped) and glint-mined hard negatives (rejected), 2026-08-12
+
+**Two follow-ups to the glint work, one a real win and one a clean negative.**
+
+**1. Opportunity-normalised glint sensitivity -- SHIPPED (`src/earthpv/glint_opportunity.py`).**
+`capacity_calibration`'s glint inversion divides a candidate bin's validation rate by that
+bin's *sensitivity*, taken as a per-bin constant from the 500-target OSM-confirmed study.
+Measured 2026-08-12: sensitivity is not a constant of the bin, it is a function of how many
+chances a target got, and pooling divides two rates measured under different exposure.
+Expected opportunity `E` (scene count x pose-compatible fraction) has mean 6.0 and range
+1.8-25.4 across the 499 study targets. Splitting each size bin into opportunity tertiles:
+5k-50k m2 goes 0.036 / 0.321 / **0.538**, >50k goes 0.129 / 0.133 / **0.516**, 100-500 goes
+0.000 / 0.000 / **0.259** -- roughly **2x variation inside a single bin**, the same order as
+the between-bin variation the calibration already takes seriously. `<100 m2` stays flat
+(0.026 / 0.000 / 0.037), the correct sanity check: a sub-pixel array does not glint however
+many chances it gets.
+
+Model: `k_i ~ Poisson(q_b * E_i)`, validated = `P(k >= 2)`. `q_b` is per-opportunity glint
+probability -- a property of panels and sensor, not of location, so it transfers. Fitted `q`
+is monotone in size (0.056, 0.085, 0.088, 0.146, 0.169, 0.172), which the physics predicts.
+Three validations: recovers a known `q` in simulation at 0.002/0.01/0.05; reproduces the
+study constants when applied to the study's own population (0.306 -> 0.293, 0.293 -> 0.275),
+i.e. same quantity at higher resolution; and the tertile response above confirms the premise
+before anything was wired. `derive_table` gained `sensitivity_override` and now records both
+the value used and the study constant it replaced.
+
+**2. Glint-mined roofclf hard negatives -- REJECTED, and the reason is quantity not quality
+(`scripts/glint_mine_hard_negatives.py`, `scripts/glint_hardneg_retrain.py`).** The
+2026-08-09 n=6 retrain concluded more examples of the bright-roof pattern were needed and
+that no roofclf-side miner existed. Built one: flagged buildings >= 1000 m2, not OSM-mapped,
+not found by segmentation, at high-opportunity cells, that never glint.
+
+- **Feasibility is narrow and was measured first.** Contamination of a glint-absence-mined
+  set is only acceptable for large roofs at high opportunity; below 1,000 m2 it would be
+  28-40% real PV. The best available cells reach `E` 15.3, not the ~25 needed for a clean
+  set. Mined 2 cells (including `0061_0012`, which holds the six known bright-roof false
+  positives): 1,282 flagged >= 1000 m2 -> 652 after OSM/segmentation exclusion -> 400 capped
+  -> **131 reaching usable sensitivity -> 126 mined negatives**, 4 glint-validated as real PV.
+- **The mined set turned out far cleaner than estimated, and the correction is worth
+  keeping.** I estimated 28% contamination using roofclf's NATIONAL precision (0.526) as the
+  prior. The observed validation rate measures it directly instead: 4/131 = 3.05%, which
+  against sensitivity 0.65 and false-rate 0.01 implies the real-PV share of this filtered
+  population is **3.2%**, so contamination is **1.15%**. The mining filters do most of the
+  work -- segmentation has 0.83-0.95 recall above 400 m2, so a large array it missed that
+  OSM also never mapped is very unlikely to be real. **Do not use a population's pooled
+  precision as the prior for a heavily filtered subset of it.**
+- **Result: nothing generalises.** LOQO median AUC 0.8568 -> 0.8571, within-size
+  0.8299 -> 0.8294. By size regime on held-out quadrat buildings: all sizes 0.8708 ->
+  0.8707, >= 400 m2 0.8894 -> 0.8897, >= 1000 m2 0.9195 -> 0.9194. The model DOES respond
+  locally -- the mined buildings' own mean score falls 0.5634 -> 0.4815 and the share
+  clearing the deployment threshold falls 97.6% -> 89.7% -- but that is memorisation of the
+  neighbourhood it was shown, not transferable skill. Same shape as the n=6 result at 21x
+  the scale, now with labels clean enough (1.2% contamination) that noise is ruled out as the
+  explanation.
+- **What this means for anyone continuing**: 126 rows is 0.12% of a 104,423-row table, so
+  the binding constraint is volume. Glint mining yields ~126 negatives per 2 cells at ~45
+  minutes of network each, and only for >= 1000 m2 roofs -- which is NOT where roofclf's
+  documented failure mode lives (small bright roofs, where a mined set would be 28-40% real
+  PV). Scaling this to the tens of thousands of negatives that might move a fit is possible
+  but would take days of pulls for a population the classifier is already good at
+  (>= 1000 m2 AUC is 0.92). The bright-roof problem needs a different instrument.
+
+One efficiency bug worth not repeating: the miner originally computed opportunity per
+BUILDING, which is 400 STAC searches for 2 distinct answers -- every building in a 0.1 deg
+cell sees the same scenes and `TileAngles.at` moves by a fraction of a degree across 11 km,
+far below the 6 deg tolerance it feeds. Per-cell computation took that step from ~an hour to
+90 seconds.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**

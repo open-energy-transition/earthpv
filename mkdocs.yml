@@ -102,6 +102,7 @@ nav:
   - How it works:
       - how-it-works.md
       - Detection model: methods/detection.md
+      - Rooftop classifier (roofclf): methods/roofclf.md
       - Capacity density: methods/density.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md

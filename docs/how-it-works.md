@@ -147,7 +147,7 @@ secondary product, or a documented negative result:
 | Instrument | Part of the main workflow? | Needs the trained checkpoint? | What it outputs |
 | --- | --- | --- | --- |
 | **Segmentation raster** (`infer`) | **Yes -- the &ge; 400 m² half** | Yes, the primary one | per-pixel PV probability; the only instrument with a polygon and a defended ≥ 400 m² floor |
-| **roofclf** | **Yes -- the < 400 m² half** | No, a separate lightweight classifier | per-building "does this roof carry PV," trained on exhaustively mapped calibration quadrats |
+| **[roofclf](methods/roofclf.md)** | **Yes -- the < 400 m² half** | No, a separate lightweight classifier | per-building "does this roof carry PV," trained on exhaustively mapped calibration quadrats |
 | **SPPI** | Partially -- cross-checks roofclf for the evidence atlas's Verified tier | No, a fixed spectral formula | a zero-training index, cross-validated against the same ground truth as roofclf |
 | **Glint matched filter** | Optional -- boosts the leads ranking only | No | specular-flash geometry consistent with one fixed panel plane; a physical corroboration, not a probability |
 | **Fraction head** | Optional, not promoted (see below) | Yes, a separately trained checkpoint | per-pixel PV *coverage fraction*; drops the polygon, aims at sub-400 m² signal a segmentation threshold cannot see |
@@ -195,10 +195,12 @@ See [Solar glint](methods/glint.md) and [Panel pose from glint](results/pv-pose.
   below that floor the recall correction cannot rescue what was never detected.
 - **`roof-classifier` → `roofclf-score-national` → `sub400-capacity`** is the **main
   workflow's < 400 m² half**: fit `roofclf` on the calibration quadrats, score every
-  VIDA building nationally, then restrict to the ~93 cells whose building density
-  matches the quadrats and intersect roofclf with SPPI, explicitly refusing to rescale
-  that figure to a national total. It is a separate module (`sub400_capacity.py`), not
-  merged into `density.py`, but both feed the same evidence atlas.
+  VIDA building nationally, then restrict to the 1,680 of 4,463 cells whose building
+  density matches the quadrats and intersect roofclf with SPPI, explicitly refusing to
+  rescale that figure to a national total. It is a separate module
+  (`sub400_capacity.py`), not merged into `density.py`, but both feed the same evidence
+  atlas. [The rooftop classifier](methods/roofclf.md) walks the whole path, from a
+  hand-mapped square kilometre to the two atlas numbers, with a flow chart.
 - **`check-density`** (`plausibility.py`) is the only automated check between `density`
   and publishing: a ground-mount-to-rooftop capacity ratio per region and a
   single-cell concentration check, both tuned so the pre-fix 18.3 GWp Pakistan run
@@ -239,7 +241,7 @@ the same underlying artifacts:
 | Chips, train, infer | Yes -- ≥ 400 m² half | `chips.py`, `train.py`, `infer.py` | [Detection model](methods/detection.md) |
 | postprocess, export | Yes -- ≥ 400 m² half | `postprocess.py`, `export.py` | [Mapping leads](results/leads.md) |
 | density, calibration | Yes -- ≥ 400 m² half | `density.py`, `capacity_calibration.py` | [Capacity density](methods/density.md), [Calibration](methods/calibration.md) |
-| roofclf, SPPI | Yes -- < 400 m² half | `roofclf.py`, `sub400_capacity.py` | [Calibration quadrats](methods/calibration-quadrats.md), [Roof classifier national deployment](issues/roofclf-national-deployment-and-temporal-features.md) |
+| roofclf, SPPI | Yes -- < 400 m² half | `roofclf.py`, `sub400_capacity.py` | [The rooftop classifier](methods/roofclf.md), [Calibration quadrats](methods/calibration-quadrats.md) |
 | Plausibility gate | Yes | `plausibility.py` | this page's [Combine, rank, and gate](#combine-rank-and-gate) section |
 | Atlas | Yes -- the evidence atlas, the primary output | `atlas.py` | [Capacity map](results/capacity.md), [Growth](results/growth.md) |
 | Glint | Optional -- boosts leads ranking only | `glint.py` | [Solar glint](methods/glint.md), [Panel pose](results/pv-pose.md) |

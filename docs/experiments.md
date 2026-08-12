@@ -24,7 +24,7 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | In-domain Pakistani training chips | <span class="outcome works">shipped</span> | Tripled large-array recall in Punjab, 0.18 to 0.55. The single biggest lever found. |
 | Building prior from VIDA Open Buildings | <span class="outcome works">shipped</span> | Makes "no building nearby" a usable false-positive signal. |
 | Quadrats as training data, not just correction | <span class="outcome works">shipped</span> | Became `roofclf`, now half the main workflow. |
-| roofclf, a per-building classifier | <span class="outcome works">shipped</span> | 0.857 AUC (0.830 within size band) on 23 quadrats where segmentation scores near chance. |
+| [roofclf, a per-building classifier](methods/roofclf.md) | <span class="outcome works">shipped</span> | 0.857 AUC (0.830 within size band) on 23 quadrats where segmentation scores near chance. |
 | SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf defines the Verified tier. |
 | Coverage ratio stratified by size and density | <span class="outcome works">shipped</span> | Replaced precision as the multiplier, and a flat ratio with a measured per-stratum one. |
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
@@ -53,6 +53,9 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | Two-endmember spectral unmixing | <span class="outcome negative">rejected</span> | 0.659 AUC, worse than both SPPI and roofclf, with a 92x scale spread. |
 | Epoch jump / step change as roofclf features | <span class="outcome negative">rejected</span> | Measured at exactly zero effect, and worse in the reflectance variant. |
 | SPPI as a roofclf input feature | <span class="outcome negative">rejected</span> | 0.8736 to 0.8734 AUC. It helps by disagreeing, not by being a column. |
+| Glint-date imagery as a roofclf feature | <span class="outcome negative">rejected</span> | Only 7-24% of rooftops can ever glint into a near-nadir view; size-controlled AUC moves 0.7875 to 0.7879. |
+| Opportunity-normalised glint sensitivity | <span class="outcome works">shipped</span> | Sensitivity varies ~2x with opportunity inside a size bin; now modelled per target instead of pooled. |
+| Glint-mined roofclf hard negatives | <span class="outcome negative">rejected</span> | 126 negatives at 1.2% contamination moved held-out AUC by 0.0003. Quantity, not quality, is the binding constraint. |
 | OSM as a complete reference in Germany | <span class="outcome negative">rejected</span> | 3.6% complete by unit count; implied kWp/m² unstable by more than the constant itself. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
 | Low/Central/High/All-PV bracket atlas | <span class="outcome open">superseded</span> | Replaced by the two-tier evidence atlas, which sorts by standard of proof instead. |
@@ -169,6 +172,31 @@ the 20 m bands to 10 m, multi-image super-resolution from repeated overpasses, a
 internal-learning single-image super-resolution. None improved detection, and the last carries
 an obvious hallucination risk on a task whose whole output is "is there a panel here".
 Scripts are kept for reference.
+
+### Choosing the imagery date so panels glint
+
+A well-motivated idea that the geometry refuses. `roofclf` reads a dry-season median
+composite, and a median is built to suppress exactly the transient specular events that mark
+a panel, so reading the dates when panels *should* glint ought to raise the signal-to-noise
+ratio, especially in dense blocks where many would brighten at once.
+
+Measured two ways. First the ceiling, from real granule sun and view angles over two years
+at all 23 quadrats: because Sentinel-2 views near-nadir, the pose that reflects sunlight into
+the sensor is a narrow locus, and only a **median 13.2% of a plausible south-facing installed
+population (range 6.7 to 23.6%)** can land on it at all. A textbook south-facing array at
+tilt 30 misses by 8.6 degrees on every scene in the archive. The single best date reaches
+**1.0 to 1.8%** of rooftops, so the "one optimal date" framing fails specifically.
+
+Then the feature itself, on the Lahore quadrat (13,500 buildings, 3,432 with mapped PV, the
+densest ground truth here and exactly the dense-urban case the idea targets). It separates PV
+standalone at 0.613 AUC, but **0.528 within roof-size band**, i.e. nearly all of that was
+size. Added to `roofclf`'s own features under a spatial holdout, size-controlled AUC moves
+**0.7875 to 0.7879**.
+
+Full derivation, the pose-window figure and before/after imagery of the best-case buildings:
+[Solar glint](methods/glint.md#can-a-predicted-glint-date-boost-the-roof-classifier). Two
+narrower versions survive untouched: per-locality pose calibration, and glint's existing role
+corroborating individual large arrays.
 
 ### Temporal features for roofclf
 

@@ -49,7 +49,8 @@ them into this project's primary output:
   (0.830 with roof size controlled for), where the segmentation raster scores close to
   chance on the same small buildings. **SPPI**, a zero-training spectral index, reaches
   0.823 AUC with no labels at all; requiring it to *agree* with roofclf is what defines the
-  Verified tier. See [Capacity density](methods/density.md).
+  Verified tier. See [The rooftop classifier](methods/roofclf.md) for how that half works
+  end to end, and [Capacity density](methods/density.md) for what it adds up to.
 - Both halves converge on the **evidence atlas**: two tiers by *standard of proof* --
   **Verified** (hand-mapped OpenStreetMap, or roofclf and SPPI agreeing) and **Best
   estimate** (this project's own highest defensible figure) -- with the overlap between

@@ -44,6 +44,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -149,6 +150,109 @@ def read_glint_by_size():
         "detected": [float(r["pct_detected"]) for r in rows],
         "validated": [float(r["pct_validated"]) for r in rows],
     }
+
+
+def read_glint_observability():
+    """Per-quadrat glint observability ceiling (scripts/glint_observability_ceiling.py)."""
+    path = ROOT / "results/glint_observability_by_quadrat.csv"
+    rows = [r for r in csv.DictReader(path.open()) if int(r["n_scenes"]) > 0]
+    rows.sort(key=lambda r: -float(r["ever_textbook_south"]))
+    return rows
+
+
+def read_glint_date_auc():
+    """Standalone and incremental AUC for the glint-date feature (Step 2)."""
+    base = ROOT / "results/glint_date_feature"
+    standalone = list(csv.DictReader((base / "standalone_auc.csv").open()))
+    inc = list(csv.DictReader((base / "incremental_auc.csv").open()))
+    means: dict[str, list[float]] = {}
+    for r in inc:
+        means.setdefault(r["features"], []).append(float(r["auc_within_size"]))
+    return standalone, {k: sum(v) / len(v) for k, v in means.items()}
+
+
+def fig_glint_observability(t: Theme):
+    """Why a predicted glint date cannot rescue small-PV detection: almost no installed
+    pose can ever glint into Sentinel-2's near-nadir view."""
+    rows = read_glint_observability()
+    fig, ax = new_fig(t, 6.9, 4.2)
+    y = range(len(rows))
+    ever = [100 * float(r["ever_textbook_south"]) for r in rows]
+    best = [100 * float(r["best_date_lit_frac"]) for r in rows]
+    ax.barh(list(y), ever, 0.62, color=t.s2, label="could ever glint, any date", zorder=3)
+    ax.barh(list(y), best, 0.62, color=t.s1, label="glint on the single best date", zorder=4)
+    for i, (e, b) in enumerate(zip(ever, best)):
+        ax.text(e + 0.4, i, f"{e:.0f}%", va="center", color=t.ink, fontsize=8.5)
+    ax.set_yticks(list(y))
+    ax.set_yticklabels([r["quadrat"].replace("_", " ") for r in rows], fontsize=8.5)
+    ax.invert_yaxis()
+    ax.set_xlim(0, max(ever) * 1.18)
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%"))
+    style_axes(ax, t, xgrid=True)
+    leg = ax.legend(frameon=False, loc="lower right", fontsize=9)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "Almost no rooftop can ever glint into Sentinel-2",
+           "Share of an assumed south-facing installed population (tilt 25+-8 deg) whose pose "
+           "satisfies the specular condition on any scene in two years, per calibration "
+           "quadrat, from real granule sun and view angles")
+    save(fig, t, "glint_observability")
+
+
+def fig_glint_pose_window(t: Theme):
+    """The observable pose band itself: required tilt/azimuth per scene against where
+    panels are actually installed."""
+    import json as _json
+
+    data = _json.loads((ROOT / "results/glint_observability_summary.json").read_text())
+    scenes = data["per_quadrat_scenes"].get("lahore") or next(
+        iter(data["per_quadrat_scenes"].values()))
+    fig, ax = new_fig(t, 6.4, 3.9)
+    ax.scatter(scenes["req_az"], scenes["req_tilt"], s=16, color=t.s1, alpha=0.85,
+               zorder=4, label="pose that glints on some real Sentinel-2 scene")
+    # The installed population this would have to overlap to be useful.
+    rng = np.random.default_rng(0)
+    ax.scatter(rng.normal(180, 25, 900), rng.normal(25, 8, 900).clip(0, 60), s=7,
+               color=t.s2, alpha=0.30, zorder=3, label="assumed installed poses (south, tilt~25)")
+    ax.set_xlabel("panel azimuth (deg from north)", color=t.ink_dim, fontsize=9)
+    ax.set_ylabel("panel tilt (deg)", color=t.ink_dim, fontsize=9)
+    ax.set_xlim(60, 300)
+    ax.set_ylim(0, 55)
+    style_axes(ax, t, xgrid=True, ygrid=True)
+    leg = ax.legend(frameon=False, loc="upper right", fontsize=8.5)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "The glint window barely overlaps how panels are actually mounted",
+           "Each amber point is the one panel pose that would reflect the sun into the sensor "
+           "on one real Lahore scene. A panel only glints if its installed pose lands on that "
+           "narrow locus.")
+    save(fig, t, "glint_pose_window")
+
+
+def fig_glint_date_auc(t: Theme):
+    """The measured outcome: a glint-date feature adds nothing to roofclf."""
+    standalone, inc_means = read_glint_date_auc()
+    fig, ax = new_fig(t, 6.6, 3.2)
+    order = ["baseline (size+reflectance)", "+ glint_ratio", "+ glint_excess",
+             "+ glint_max both bands"]
+    labels = ["roofclf as it is\n(size + reflectance)", "+ glint / composite\nratio",
+              "+ glint excess\nover composite", "+ glint max,\nboth bands"]
+    vals = [inc_means[k] for k in order if k in inc_means]
+    x = range(len(vals))
+    colors = [t.s3] + [t.s1] * (len(vals) - 1)
+    ax.bar(list(x), vals, 0.5, color=colors, zorder=3)
+    for i, v in enumerate(vals):
+        ax.text(i, v + 0.004, f"{v:.4f}", ha="center", color=t.ink, fontsize=9.5)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels[:len(vals)], fontsize=8.5)
+    lo = min(vals)
+    ax.set_ylim(lo - 0.03, max(vals) + 0.03)
+    ax.set_ylabel("size-controlled AUC, spatial holdout", color=t.ink_dim, fontsize=9)
+    style_axes(ax, t, ygrid=True)
+    titled(fig, t, "Glint-date imagery adds nothing to the roof classifier",
+           "Lahore quadrat, 13,500 buildings, trained on one half and tested on the other. "
+           "Every glint-date feature moves size-controlled AUC by less than 0.0005.")
+    save(fig, t, "glint_date_auc")
 
 
 def read_estimator_totals():
@@ -543,31 +647,56 @@ def _esc(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _svg_box(parts, boxes, t: Theme, key, x, y, w, h, title, lines, stroke=None):
+    """Draw one labelled card and remember its rectangle under `key`.
+
+    Shared by both generated diagrams (architecture, roofclf) so a palette or padding
+    change lands on both at once; the arrow routing is what actually differs between
+    them, and that stays local to each builder.
+    """
+    boxes[key] = (x, y, w, h)
+    s = stroke or t.rule
+    sw = 1.8 if stroke else 1.1
+    parts.append(f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="8" '
+                 f'fill="{t.card}" stroke="{s}" stroke-width="{sw}"/>')
+    parts.append(f'<text x="{x + 16:.0f}" y="{y + 23:.0f}" font-size="12.2" '
+                 f'font-weight="600" fill="{t.ink}">{_esc(title)}</text>')
+    for i, ln in enumerate(lines):
+        parts.append(f'<text x="{x + 16:.0f}" y="{y + 23 + 17 * (i + 1):.0f}" '
+                     f'font-size="10.1" fill="{t.ink_dim}">{_esc(ln)}</text>')
+
+
+def _svg_anchor(boxes, k, side):
+    x, y, w, h = boxes[k]
+    return {
+        "top": (x + w / 2, y),
+        "bottom": (x + w / 2, y + h),
+        "left": (x, y + h / 2),
+        "right": (x + w, y + h / 2),
+    }[side]
+
+
+def _svg_markers(t: Theme) -> list[str]:
+    """Arrowhead markers, one per series colour. Ids carry the theme name because both
+    SVGs of a pair can end up in one DOM (the light/dark image pair) and a duplicated
+    marker id would make one of them pick the other's colour."""
+    return [
+        f'<marker id="ah-{color.lstrip("#")}-{t.name}" viewBox="0 0 10 10" refX="9" '
+        f'refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
+        f'<path d="M0,0 L10,5 L0,10 z" fill="{color}"/></marker>'
+        for color in (t.ink_dim, t.s1, t.s2, t.s3)
+    ]
+
+
 def build_architecture_svg(t: Theme) -> str:
-    card = t.card
     boxes: dict[str, tuple[float, float, float, float]] = {}
     parts: list[str] = []
 
     def box(key, x, y, w, h, title, lines, stroke=None):
-        boxes[key] = (x, y, w, h)
-        s = stroke or t.rule
-        sw = 1.8 if stroke else 1.1
-        parts.append(f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="8" '
-                     f'fill="{card}" stroke="{s}" stroke-width="{sw}"/>')
-        parts.append(f'<text x="{x + 16:.0f}" y="{y + 23:.0f}" font-size="12.2" '
-                     f'font-weight="600" fill="{t.ink}">{_esc(title)}</text>')
-        for i, ln in enumerate(lines):
-            parts.append(f'<text x="{x + 16:.0f}" y="{y + 23 + 17 * (i + 1):.0f}" '
-                         f'font-size="10.1" fill="{t.ink_dim}">{_esc(ln)}</text>')
+        _svg_box(parts, boxes, t, key, x, y, w, h, title, lines, stroke)
 
     def anchor(k, side):
-        x, y, w, h = boxes[k]
-        return {
-            "top": (x + w / 2, y),
-            "bottom": (x + w / 2, y + h),
-            "left": (x, y + h / 2),
-            "right": (x + w, y + h / 2),
-        }[side]
+        return _svg_anchor(boxes, k, side)
 
     def arrow(k1, k2, color, *, dashed=False, from_side="bottom", to_side="top",
               route=None, label=None):
@@ -694,15 +823,7 @@ def build_architecture_svg(t: Theme) -> str:
     arrow("f1", "a2", t.s2, dashed=True, from_side="left", to_side="bottom", route="loop-left",
           label="verified leads become new training labels")
 
-    markers = []
-    for name, color in (("dim", t.ink_dim), ("s1", t.s1), ("s2", t.s2), ("s3", t.s3)):
-        markers.append(
-            f'<marker id="ah-{color.lstrip("#")}-{t.name}" viewBox="0 0 10 10" refX="9" '
-            f'refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
-            f'<path d="M0,0 L10,5 L0,10 z" fill="{color}"/></marker>'
-        )
-
-    body = "".join(markers) + "".join(parts)
+    markers = _svg_markers(t)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{ARCH_W}" height="988" '
         f'viewBox="0 0 {ARCH_W} 988" font-family="DejaVu Sans, system-ui, sans-serif">'
@@ -718,6 +839,200 @@ def write_architecture_diagram():
         svg = build_architecture_svg(t)
         suffix = ".svg" if t.name == "light" else ".dark.svg"
         path = OUT / f"architecture{suffix}"
+        path.write_text(svg)
+        print(f"  wrote {path.relative_to(ROOT)}")
+
+
+# ---------------------------------------------------- generated roofclf flow chart
+#
+# The architecture diagram shows roofclf as one box among five instruments, which is the
+# right altitude there and useless for someone trying to follow what roofclf actually
+# does. This one zooms into that single box: quadrat labels in at the top, two atlas
+# numbers out at the bottom, one lane per stage of docs/methods/roofclf.md.
+#
+# Figures on this site read their numbers from files wherever a file exists, but data/ is
+# gitignored and the docs CI has none of it, so the counts below are transcribed from the
+# run that produced the published atlas and named here with their source file. Refresh
+# them together with the prose on the roofclf page after a refit.
+ROOFCLF_W = 1200
+ROOFCLF_H = 1064
+# data/roofclf/summary.json
+ROOFCLF_STATS = {
+    "n_quadrats": 23,
+    "auc": 0.857,
+    "auc_within_size": 0.830,
+    "threshold": 0.2443,
+    "precision": 0.50,
+    "recall": 0.66,
+}
+# data/roofclf_national_with_sppi/pakistan/density/*_summary.json
+ROOFCLF_CAPACITY = {
+    "n_domain_cells": 1680,
+    "n_national_cells": 4463,
+    "verified_sub400": 2929,
+    "best_sub400": 6531,
+    "best_ge400_roof": 6427,
+    "best_outdomain": 278,
+}
+
+
+def build_roofclf_svg(t: Theme) -> str:
+    boxes: dict[str, tuple[float, float, float, float]] = {}
+    parts: list[str] = []
+    s = ROOFCLF_STATS
+    cap = ROOFCLF_CAPACITY
+
+    def box(key, x, y, w, h, title, lines, stroke=None):
+        _svg_box(parts, boxes, t, key, x, y, w, h, title, lines, stroke)
+
+    def arrow(k1, k2, color, *, from_side="bottom", to_side="top"):
+        """Lane-to-lane connector. A vertical hop turns 12 px below the source box rather
+        than halfway down the gap, because halfway is exactly where the next lane's label
+        and the previous lane's footnote sit -- routing high keeps the gap's text band
+        clear."""
+        sx, sy = _svg_anchor(boxes, k1, from_side)
+        tx, ty = _svg_anchor(boxes, k2, to_side)
+        if from_side in ("left", "right") and abs(sy - ty) < 1:
+            path = f"M{sx:.0f},{sy:.0f} H{tx:.0f}"
+        else:
+            turn = sy + 12
+            path = f"M{sx:.0f},{sy:.0f} V{turn:.0f} H{tx:.0f} V{ty:.0f}"
+        parts.append(f'<path d="{path}" stroke="{color}" stroke-width="1.7" fill="none" '
+                     f'marker-end="url(#ah-{color.lstrip("#")}-{t.name})"/>')
+
+    # Lane labels and footnotes are collected separately and emitted last, each on its own
+    # surface-coloured plate. This flow has six lanes stacked in one column, so a connector
+    # dropping from lane N to lane N+1 necessarily crosses the text in the gap between them;
+    # painting that text over the lines is what keeps it readable.
+    overlay: list[str] = []
+
+    def _plate(text, x, y, size, above, below):
+        w = len(text) * size * 0.54
+        overlay.append(f'<rect x="{x - 4:.0f}" y="{y - above:.0f}" width="{w:.0f}" '
+                       f'height="{above + below:.0f}" fill="{t.surface}"/>')
+
+    def lane_label(text, y):
+        _plate(text, ARCH_MARGIN, y, 11.3, 11, 4)
+        overlay.append(f'<text x="{ARCH_MARGIN}" y="{y:.0f}" font-size="11.3" '
+                       f'font-weight="600" fill="{t.ink_dim}">{_esc(text)}</text>')
+
+    def note(text, y):
+        _plate(text, ARCH_MARGIN, y, 9.6, 9, 4)
+        overlay.append(f'<text x="{ARCH_MARGIN}" y="{y:.0f}" font-size="9.6" font-style="italic" '
+                       f'fill="{t.ink_dim}">{_esc(text)}</text>')
+
+    title = "roofclf: from a hand-mapped square kilometre to a national capacity number"
+    subtitle = ("One question per building: does this roof carry PV. Asked exactly where the "
+                "segmentation model cannot outline anything.")
+    parts.append(f'<text x="{ARCH_MARGIN}" y="38" font-size="17.5" font-weight="600" '
+                 f'fill="{t.ink}">{_esc(title)}</text>')
+    parts.append(f'<text x="{ARCH_MARGIN}" y="60" font-size="12" fill="{t.ink_dim}">'
+                 f'{_esc(subtitle)}</text>')
+
+    # Lane A - inputs
+    lane_label("1. Inputs, per calibration quadrat", 92)
+    xa, wa = _row_x(3, gap=50)
+    box("a1", xa[0], 100, wa, 86, "Calibration quadrat",
+        ["a boundary a mapper declared", "Rule-1 complete: every visible", "panel inside it is mapped"])
+    box("a2", xa[1], 100, wa, 86, "VIDA building footprints",
+        ["every roof inside the boundary,", "including the sub-pixel ones", "OSM has never mapped"])
+    box("a3", xa[2], 100, wa, 86, "Sentinel-2 composite",
+        ["the same 10-band dry-season", "median the segmentation model", "reads. No new imagery"])
+
+    # Lane B - the table
+    lane_label("2. One row per building (roofclf.building_table)", 232)
+    xb, wb = _row_x(2, gap=80)
+    box("b1", xb[0], 240, wb, 92, "Label: has_pv",
+        ["mapped PV covering 5% or more of", "the footprint is a positive; every", "other roof is a TRUE negative"])
+    box("b2", xb[1], 240, wb, 92, "Features",
+        ["log roof area, plus the 10 band", "means over the polygon and NDVI,", "NDBI, brightness and two ratios"])
+    note("A no-PV building only counts as a negative because the quadrat is exhaustively "
+         "mapped. Ordinary OpenStreetMap cannot supply that below 400 m2.", 362)
+
+    # Lane C - fit and measure
+    lane_label("3. Fit and measure honestly (earthpv roof-classifier)", 394)
+    xc, wc = _row_x(3, gap=30)
+    box("c1", xc[0], 402, wc, 104, "L2 logistic regression",
+        ["scipy L-BFGS on standardised", "features. Linear on purpose: the", "output is summed, not thresholded"], stroke=t.s1)
+    box("c2", xc[1], 402, wc, 104, "Leave one quadrat out",
+        [f"{s['n_quadrats']} folds, each scored by a model", f"that never saw it: {s['auc']:.3f} AUC,",
+         f"{s['auc_within_size']:.3f} within roof-size band"], stroke=t.s1)
+    box("c3", xc[2], 402, wc, 104, "Deployment threshold",
+        [f"p >= {s['threshold']:.4f}, chosen on pooled", f"held-out scores for precision {s['precision']:.2f}",
+         f"at recall {s['recall']:.2f}"], stroke=t.s1)
+    note("Folds are spatial by construction. A random split would put neighbouring roofs in "
+         "train and test and report skill the model does not have.", 540)
+
+    # Lane D - national scoring
+    lane_label("4. Score the country (earthpv roofclf-score-national)", 572)
+    dw, dx = ROOFCLF_W - 2 * ARCH_MARGIN, ARCH_MARGIN
+    box("d1", dx, 580, dw, 88, "Every VIDA building, one 0.1 degree cell at a time",
+        ["75.7M buildings get a p_roofclf, and SPPI from the same five bands at no extra read cost.",
+         "Composite fill pixels are masked out, and overlapping tiles are deduped onto one canonical cell,",
+         "because both once turned into millions of false positives along cell edges."], stroke=t.s1)
+
+    # Lane E - probability to capacity
+    lane_label("5. Probability to capacity (earthpv sub400-capacity, ge400-roof-capacity)", 706)
+    xe, we = _row_x(3, gap=30)
+    box("e1", xe[0], 714, we, 108, "Restrict to a known domain",
+        ["keep only cells whose building", "density falls in the quadrats'",
+         f"own range: {cap['n_domain_cells']:,} of {cap['n_national_cells']:,} cells"], stroke=t.s3)
+    box("e2", xe[1], 714, we, 108, "Remove what is already counted",
+        ["drop any flagged building within", "30 m of an existing detection or", "a mapped OSM installation"], stroke=t.s3)
+    box("e3", xe[2], 714, we, 108, "Roof area to MWp",
+        ["a coverage ratio measured per", "roof-size bin and density band,", "then the module kWp constant"], stroke=t.s3)
+    note("Panels cover only part of a flagged roof. Assuming otherwise overstated this "
+         "estimate by 2.4 to 2.7x until the coverage ratio replaced precision as the multiplier.", 856)
+
+    # Lane F - atlas tiers
+    lane_label("6. Into the evidence atlas", 886)
+    xf, wf = _row_x(2, gap=60)
+    box("f1", xf[0], 894, wf, 94, "Verified tier",
+        [f"roofclf AND SPPI agreeing: {cap['verified_sub400']:,} MWp",
+         "below 400 m2. Two instruments that", "share no training data must agree"], stroke=t.s2)
+    box("f2", xf[1], 894, wf, 94, "Best estimate tier",
+        [f"roofclf alone in domain {cap['best_sub400']:,} MWp, plus",
+         f"{cap['best_ge400_roof']:,} MWp of >= 400 m2 roofs, plus",
+         f"{cap['best_outdomain']} MWp extrapolated outside it"], stroke=t.s1)
+
+    note("roofclf also REPLACES the segmentation model's own rooftop estimate for buildings "
+         "at or above 400 m2 inside the same domain, where it measures better.", 1020)
+    # Colour names have to hold in both themes, so the legend says warm / teal / blue
+    # rather than orange / aqua: the same three slots render amber, aqua and light blue
+    # against the dark surface.
+    note("Warm outline = the roofclf trunk. Teal = the calibration steps that decide where "
+         "roofclf is allowed to speak at all. Blue = the tier where a second, independent "
+         "instrument has to agree.", 1038)
+
+    for a, b in (("a1", "b1"), ("a2", "b1"), ("a2", "b2"), ("a3", "b2")):
+        arrow(a, b, t.ink_dim)
+    arrow("b1", "c1", t.ink_dim)
+    arrow("b2", "c1", t.ink_dim)
+    arrow("c1", "c2", t.s1, from_side="right", to_side="left")
+    arrow("c2", "c3", t.s1, from_side="right", to_side="left")
+    arrow("c3", "d1", t.s1)
+    arrow("d1", "e1", t.s3)
+    arrow("e1", "e2", t.s3, from_side="right", to_side="left")
+    arrow("e2", "e3", t.s3, from_side="right", to_side="left")
+    arrow("e3", "f2", t.s1)
+    arrow("e3", "f1", t.s2)
+
+    markers = _svg_markers(t)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{ROOFCLF_W}" height="{ROOFCLF_H}" '
+        f'viewBox="0 0 {ROOFCLF_W} {ROOFCLF_H}" font-family="DejaVu Sans, system-ui, sans-serif">'
+        f'<defs>{"".join(markers)}</defs>'
+        f'<rect width="{ROOFCLF_W}" height="{ROOFCLF_H}" rx="10" fill="{t.surface}"/>'
+        f'{"".join(parts)}{"".join(overlay)}</svg>'
+    )
+
+
+def write_roofclf_diagram():
+    OUT.mkdir(parents=True, exist_ok=True)
+    for t in THEMES:
+        svg = build_roofclf_svg(t)
+        suffix = ".svg" if t.name == "light" else ".dark.svg"
+        path = OUT / f"roofclf_flow{suffix}"
         path.write_text(svg)
         print(f"  wrote {path.relative_to(ROOT)}")
 
@@ -898,10 +1213,14 @@ def main():
         fig_model_recall_bins(t)
         fig_size_spectrum(t)
         fig_pv_pose(t)
+        fig_glint_observability(t)
+        fig_glint_pose_window(t)
+        fig_glint_date_auc(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")
     write_architecture_diagram()
+    write_roofclf_diagram()
     print("logo")
     derive_logo()
     print("rasters")

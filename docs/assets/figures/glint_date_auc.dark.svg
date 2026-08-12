@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="477.417891pt" height="310.890695pt" viewBox="0 0 477.417891 310.890695" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-08-11T23:36:41.498636</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.0, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 310.890695 
+L 477.417891 310.890695 
+L 477.417891 0 
+L 0 0 
+z
+" style="fill: #100d09"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 72.36 274.026047 
+L 440.64 274.026047 
+L 440.64 96.618047 
+L 72.36 96.618047 
+z
+" style="fill: #100d09"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(84.537958 284.835549)">roofclf as it is</text>
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(71.381551 295.037873)">(size + reflectance)</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(168.155647 284.835549)">+ glint / composite</text>
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(198.872522 295.037873)">ratio</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3"/>
+     <g id="text_3">
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(274.285056 284.835549)">+ glint excess</text>
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(271.448181 295.037873)">over composite</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4"/>
+     <g id="text_4">
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(373.693488 284.835549)">+ glint max,</text>
+      <text style="font-size: 8.5px; font-family: 'DejaVu Sans'; fill: #c9bda4" transform="translate(376.068839 295.037873)">both bands</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_5">
+      <path d="M 72.36 266.817927 
+L 440.64 266.817927 
+" clip-path="url(#p9ce33caf4f)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_6"/>
+     <g id="text_5">
+      <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #c9bda4" x="68.86" y="270.236873" transform="rotate(-0 68.86 270.236873)">0.76</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_7">
+      <path d="M 72.36 237.397032 
+L 440.64 237.397032 
+" clip-path="url(#p9ce33caf4f)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_8"/>
+     <g id="text_6">
+      <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #c9bda4" x="68.86" y="240.815977" transform="rotate(-0 68.86 240.815977)">0.77</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_9">
+      <path d="M 72.36 207.976136 
+L 440.64 207.976136 
+" clip-path="url(#p9ce33caf4f)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_10"/>
+     <g id="text_7">
+      <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #c9bda4" x="68.86" y="211.395082" transform="rotate(-0 68.86 211.395082)">0.78</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_11">
+      <path d="M 72.36 178.555241 
+L 440.64 178.555241 
+" clip-path="url(#p9ce33caf4f)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_12"/>
+     <g id="text_8">
+      <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #c9bda4" x="68.86" y="181.974186" transform="rotate(-0 68.86 181.974186)">0.79</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_13">
+      <path d="M 72.36 149.134345 
+L 440.64 149.134345 
+" clip-path="url(#p9ce33caf4f)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_14"/>
+     <g id="text_9">
+      <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #c9bda4" x="68.86" y="152.553291" transform="rotate(-0 68.86 152.553291)">0.80</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_15">
+      <path d="M 72.36 119.71345 
+L 440.64 119.71345 
+" clip-path="url(#p9ce33caf4f)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_16"/>
+     <g id="text_10">
+      <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #c9bda4" x="68.86" y="123.132395" transform="rotate(-0 68.86 123.132395)">0.81</text>
+     </g>
+    </g>
+    <g id="text_11">
+     <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #c9bda4" x="42.658828" y="185.322047" transform="rotate(-90 42.658828 185.322047)">size-controlled AUC, spatial holdout</text>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M 89.1 2502.805987 
+L 136.928571 2502.805987 
+L 136.928571 185.76336 
+L 89.1 185.76336 
+z
+" clip-path="url(#p9ce33caf4f)" style="fill: #2fd9c4"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 184.757143 2502.805987 
+L 232.585714 2502.805987 
+L 232.585714 185.027838 
+L 184.757143 185.027838 
+z
+" clip-path="url(#p9ce33caf4f)" style="fill: #f5a623"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 280.414286 2502.805987 
+L 328.242857 2502.805987 
+L 328.242857 184.880733 
+L 280.414286 184.880733 
+z
+" clip-path="url(#p9ce33caf4f)" style="fill: #f5a623"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 376.071429 2502.805987 
+L 423.9 2502.805987 
+L 423.9 184.880733 
+L 376.071429 184.880733 
+z
+" clip-path="url(#p9ce33caf4f)" style="fill: #f5a623"/>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #f7f1e6" x="113.014286" y="173.995002" transform="rotate(-0 113.014286 173.995002)">0.7875</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #f7f1e6" x="208.671429" y="173.25948" transform="rotate(-0 208.671429 173.25948)">0.7878</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #f7f1e6" x="304.328571" y="173.112375" transform="rotate(-0 304.328571 173.112375)">0.7879</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #f7f1e6" x="399.985714" y="173.112375" transform="rotate(-0 399.985714 173.112375)">0.7879</text>
+   </g>
+  </g>
+  <g id="text_16">
+   <text style="font-weight: 700; font-size: 12.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #f7f1e6" x="12.96" y="22.458047" transform="rotate(-0 12.96 22.458047)">Glint-date imagery adds nothing to the roof classifier</text>
+  </g>
+  <g id="text_17">
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c9bda4" x="12.96" y="38.190047" transform="rotate(-0 12.96 38.190047)">Lahore quadrat, 13,500 buildings, trained on one half and tested on the other. Every glint-date</text>
+  </g>
+  <g id="text_18">
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c9bda4" x="12.96" y="51.870047" transform="rotate(-0 12.96 51.870047)">feature moves size-controlled AUC by less than 0.0005.</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p9ce33caf4f">
+   <rect x="72.36" y="96.618047" width="368.28" height="177.408"/>
+  </clipPath>
+ </defs>
+</svg>
