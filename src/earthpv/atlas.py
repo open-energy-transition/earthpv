@@ -183,6 +183,18 @@ CALIBRATION_BOXES: dict[str, list] = {
         # cells. 3 installations (all ground-mount), base_rate 0.53%, rate_ratio (4.36)
         # excluded from the trusted precision subset like Muzaffargarh Rural Wide.
         {"name": "Khairpur Rural", "stem": "khairpur_rural_calib_2km", "status": "rule1"},
+        # Added 2026-08-12: a mapper-drawn 2x2 km boundary (3.98 km2 geodesic) in Sanghar
+        # District, Sindh -- 115 km from the nearest existing quadrat (Khairpur Rural), and
+        # the first quadrat in Sanghar. Overpass pull cleanly cross-checked (465 features
+        # written, confirming query saw 465 -- no truncation, no empty-response retry
+        # needed): 464 installations inside the boundary after the representative-point
+        # filter, 99.8% below the 400 m2 floor (median 30.2 m2), packing distance 24.4 m --
+        # a dense small-rooftop population close in character to Sialkot/Hasal. Declared
+        # Rule-1 complete by the owner. Not yet in a roofclf refit, so
+        # results/calibration_quadrats.csv carries it with n_buildings/n_pv_buildings/
+        # base_rate/nn_median_m blank rather than guessed -- those need `roofclf` re-run
+        # with this quadrat included, same as any other newly added box.
+        {"name": "Sanghar", "stem": "sanghar_calib_3p98km2", "status": "rule1"},
     ],
 }
 

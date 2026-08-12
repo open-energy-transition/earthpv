@@ -2410,6 +2410,54 @@ cell sees the same scenes and `TileAngles.at` moves by a fraction of a degree ac
 far below the 6 deg tolerance it feeds. Per-cell computation took that step from ~an hour to
 90 seconds.
 
+### A 24th calibration quadrat: Sanghar, 2026-08-12
+
+**Added via a hand-drawn boundary the owner supplied
+(`data/labels/calibration_boundaries/sanghar_2x2.geojson`), the same drawn-boundary path
+Malok and Muzaffargarh Rural Wide used.** `scripts/new_calibration_quadrat.py --name
+sanghar --geojson data/labels/calibration_boundaries/sanghar_2x2.geojson` ran the
+protocol's mechanical steps in order: geometry normalised through `roofclf.load_boundary`
+(a clean, already-closed 4-vertex polygon, no repair needed), overlap-checked against all
+23 existing quadrats (clear -- nearest is Khairpur Rural, 115 km away, so this is also the
+first quadrat in Sanghar District and genuinely geographically distinct from the
+Muzaffargarh/Khairpur cluster the last two additions sat in), then a live Overpass pull
+cross-checked against a confirming query of the same bbox (465 features written, 465 seen
+-- clean on the first attempt, no truncation retry needed). 3.98 km<sup>2</sup> (the
+supplied box was drawn as "2 x 2" but a lon/lat rectangle is not a geodesic square, hence
+the `_calib_3p98km2` stem), 464 installations after the representative-point filter, 99.8%
+below the 400 m<sup>2</sup> floor (median 30.2 m<sup>2</sup>), packing distance 24.4 m --
+a dense small-rooftop population, closer in character to Sialkot/Hasal than to the
+Muzaffargarh/Khairpur rural-extension pair.
+
+**Declared Rule-1 complete by the owner directly, at the same time as this addition.**
+Registered in `results/calibration_quadrats.csv` (`rule1_complete=True`, province Sindh,
+`stratum` left at the default "unclassified pending mapper review" -- no stratum
+classification was supplied, and one is never guessed here) and in
+`atlas.py::CALIBRATION_BOXES["pakistan"]`. `imagery_layer`/`imagery_date` are blank, same
+open gap every other quadrat in this file carries (`docs/issues/calibration-imagery-dating.md`).
+
+**Not yet in a `roofclf` refit, so its building-derived columns are deliberately blank,
+not guessed.** `n_buildings`, `n_pv_buildings`, `base_rate` and `nn_median_m` in
+`results/calibration_quadrats.csv` need the VIDA join `roofclf.building_table` performs,
+which only happens inside an actual `roofclf` fit -- regenerating
+`results/calibration_quadrats.csv` via `scripts/build_calibration_quadrats_csv.py
+--folds data/roofclf/folds.csv` (done, to pick up Sanghar's geometry/solar-pull columns)
+left those four blank for exactly this reason, per that script's own documented
+behaviour, rather than carrying over nothing-to-carry from a previous value. The same
+regeneration also refreshed the other 23 quadrats' `base_rate`/`n_buildings`/etc. to match
+the current (2026-08-11) `data/roofclf/folds.csv` -- `results/calibration_quadrats.csv`
+was quietly stale against it before this (e.g. Quetta's own base rate read 2.99% there
+against the fold table's actual 4.72%), a pre-existing drift this session's regeneration
+fixed as a side effect, not something Sanghar's addition caused.
+
+**Natural next step, not done here**: fold Sanghar into the next `roofclf` refit (adds a
+24th fold to leave-one-quadrat-out) and re-run `select_calibrated_quadrats` to see whether
+its own `rate_ratio` lands inside the trusted [0.5, 2.0] precision band, then re-derive
+`sub400-capacity`/`ge400-roof-capacity`/the evidence atlas if it does or if its own
+building density moves `density.CALIBRATED_BLDG_DENSITY_KM2`'s range. A single quadrat
+addition does not by itself justify a multi-hour national re-run; that is a separate,
+larger action for whoever next revisits capacity numbers.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126**

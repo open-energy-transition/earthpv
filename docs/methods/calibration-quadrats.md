@@ -75,13 +75,17 @@ explicitly re-declared for it the same day, so this quadrat reads `yes` like the
 sixteen. The rule for the *next* extension is the same: re-assert, never infer.
 
 **Known gap: this table was not regenerated when Hasal, Islamabad Northeast, or the four
-quadrats below were added (2026-08-10/11), so it undercounts the current 23-quadrat set
-by six.** `results/calibration_quadrats.csv` is current; this page is a hand-maintained
+quadrats below were added (2026-08-10/11), so it undercounts the current 24-quadrat set
+by seven.** `results/calibration_quadrats.csv` is current; this page is a hand-maintained
 snapshot of it and has fallen behind more than once before (see CLAUDE.md's per-quadrat
 history for the full account). The four rows added below (Muzaffargarh Rural, Malok,
 Muzaffargarh Rural Wide, Khairpur Rural) are inserted in the same base-rate-ascending
-order the rest of the table follows, but Hasal and Islamabad Northeast are not yet
-reflected -- do not read this table as exhaustive.
+order the rest of the table follows, but Hasal, Islamabad Northeast and Sanghar
+(`sanghar_calib_3p98km2`, added 2026-08-12, Rule-1, Sindh -- 464 installations, median
+30.2 m², 99.8% below the 400 m² floor, packing 24.4 m) are not yet reflected, the last
+because it has no `n_buildings`/`n_pv_buildings`/`base_rate` yet (needs a `roofclf`
+re-run that includes it) and therefore no base rate to sort it by -- do not read this
+table as exhaustive.
 
 **Correction: Muzaffargarh Rural Wide was never confirmed at a base rate of zero --
 that declaration was wrong and has been corrected.** The row below originally read 0
