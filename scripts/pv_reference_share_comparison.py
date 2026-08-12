@@ -444,9 +444,22 @@ def main() -> None:
     print(f"External reference: {len(ref):,} hexagons, {matched:,} received >=1 of this project's cells")
     print(f"share_diff_pp range: {ref.share_diff_pp.min():+.3f} to {ref.share_diff_pp.max():+.3f}")
 
+    # The grid cell extent alone is NOT the map extent: the province outline follows the
+    # real coastline/border at full precision, while cells only exist where compose.py
+    # actually built a composite (building-populated 0.1deg cells), so the outline can
+    # reach farther than the southernmost/northernmost cell -- measured here, the outline
+    # dips to 23.731 N (Sindh's coast) against the cell grid's own 24.009 N southern edge,
+    # 31 km the cell-only bounds below used to leave outside the viewBox, silently
+    # clipping the coastline (and Karachi's own cells near it) off the bottom of the map.
+    # The fix is the union of both extents, not a bigger fixed margin -- a margin would
+    # under- or over-correct depending on the AOI.
+    outline_lons = [lon for o in outline for ring in o["rings"] for lon, lat in ring]
+    outline_lats = [lat for o in outline for ring in o["rings"] for lon, lat in ring]
     bounds = [
-        round(float(cells.lon0.min()), 3), round(float(cells.lat0.min()), 3),
-        round(float(cells.lon0.max()) + 0.1, 3), round(float(cells.lat0.max()) + 0.1, 3),
+        round(min(float(cells.lon0.min()), min(outline_lons, default=float("inf"))), 3),
+        round(min(float(cells.lat0.min()), min(outline_lats, default=float("inf"))), 3),
+        round(max(float(cells.lon0.max()) + 0.1, max(outline_lons, default=float("-inf"))), 3),
+        round(max(float(cells.lat0.max()) + 0.1, max(outline_lats, default=float("-inf"))), 3),
     ]
     html = render_html(cells, totals, ref, bounds, outline)
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
