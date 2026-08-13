@@ -47,7 +47,9 @@ lives: 68.4% in coastal Karachi, 23.7% in Quetta, 11.7% in Lahore. The
 `imagery_layer`/`imagery_date` fields exist in `results/calibration_quadrats.csv` and are
 still empty for all 23 quadrats, which is why the per-quadrat magnitude is unknown rather
 than merely unstated. Backfilling them against Esri Wayback is the cheap first step;
-[Calibration imagery dating](issues/calibration-imagery-dating.md) has the full costing.
+[Calibration imagery dating](issues/calibration-imagery-dating.md) has the full costing. Another 
+starting point is the Maxar Open Data Program, which provides dated imagery over several areas
+in Pakistan (see [Open Issue #3](https://github.com/open-energy-transition/earthpv/issues/3))
 
 ### 4. Small ground-mounted installations have no instrument at all
 
