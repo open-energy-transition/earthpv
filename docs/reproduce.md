@@ -304,8 +304,26 @@ the [experiments register](experiments.md) are optional extras, not alternative 
         --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
         --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
         --osm-solar data/labels/pakistan_overpass_solar.parquet \
+        --pose-summary-csv data/glint/country2000_summary.csv \
+        --pose-history-note "(a 4x-larger, chunked-tile-batch re-run of the original 500-target study)" \
+        --pose-data-note "(2000-target stratified country study, chunked tile-batch pull)" \
         --out docs/assets/interactive/pakistan_evidence_atlas.html
     ```
+
+    **Two new sections, both optional (added 2026-08-13).** A "Capacity per size bin,
+    rooftop vs ground-mount" chart (the same re-binning `atlas-by-size` publishes as its
+    own page, computed from this run's own inputs so the two numbers can't drift by
+    construction) is embedded natively whenever `--ge400-roof-cells` is given -- no
+    separate flag needed. `--pose-summary-csv` additionally embeds the panel-pose
+    survey (`docs/results/pv-pose.md`, `earthpv.pose.compute_pose_survey_data` -- same
+    glint-validation summary CSV `build_pose_survey_page` takes) natively too, not as
+    an iframe: it keeps its own serif styling, but every one of its CSS custom
+    properties and classes is namespaced under `.pose-native` so nothing leaks onto the
+    rest of the page (an earlier iframe version was dropped because a nested scrollbar
+    on a sub-page read worse than the CSS-scoping work). `--pose-history-note`/
+    `--pose-data-note` are optional strings passed straight through, matching
+    `build_pose_survey_page`'s own parameters. Omitting `--pose-summary-csv` writes the
+    page with no pose section at all.
 
     **`--sub400-outdomain-cells` (added 2026-08-11) is optional** -- roofclf-AND-SPPI
     agreement outside the density-matched domain, folded into Best only as a strict,

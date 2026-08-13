@@ -444,21 +444,13 @@ new MutationObserver(renderAll).observe(document.documentElement, { attributes: 
 """
 
 
-def build_pose_survey_page(
-    summary_csv: Path,
-    out: Path,
-    country: str,
-    history_note: str = "",
-    data_note: str = "",
-) -> Path:
-    """Build a self-contained panel-pose survey HTML page from a glint-validation
-    summary CSV. `history_note`, if given, is appended after "two years of imagery"
-    in the intro paragraph (e.g. Pakistan's " (a 4x-larger, chunked-tile-batch re-run
-    of the original 500-target study)") -- leave empty for a country's first survey.
-    `data_note`, if given, is appended after the summary CSV path in the footer
-    (e.g. Pakistan's " (2000-target stratified country study, chunked tile-batch
-    pull)").
-    """
+def compute_pose_survey_data(
+    summary_csv: Path, country: str, history_note: str = "", data_note: str = "",
+) -> dict:
+    """Everything the pose survey needs -- chart data plus every derived stat --
+    computed once and shared by `build_pose_survey_page` (the standalone page) and
+    `build_evidence_atlas` (which embeds the identical section natively, see
+    `earthpv.atlas`). `history_note`/`data_note`: see `build_pose_survey_page`."""
     s = pd.read_csv(summary_csv)
     fit = s[s.n_consistent >= 2].copy().reset_index(drop=True)
 
@@ -491,32 +483,69 @@ def build_pose_survey_page(
         g = s[s.bucket == label]
         strip.append([label, round(100 * g.detected.mean(), 1), round(100 * g.validated.mean(), 1)])
 
-    data = {
+    return {
         "points": points,
         "wedge": wedge,
         "hard_edges": [round(az_min, 1), round(az_max, 1)],
         "strip": strip,
+        "stats": {
+            "country": country,
+            "n_fitted": len(fit),
+            "n_total": len(s),
+            "n_ge1000": len(ge1000),
+            "pct_ge1000": pct_ge1000,
+            "pct_onespike": pct_onespike,
+            "pct_nosignal": pct_nosignal,
+            "az_min": round(az_min, 1),
+            "az_max": round(az_max, 1),
+            "tilt_q25": round(float(fit.fit_tilt.quantile(.25)), 1),
+            "tilt_q75": round(float(fit.fit_tilt.quantile(.75)), 1),
+            "wedge_deg": wedge_span,
+            "summary_path": str(summary_csv),
+            "history_note": history_note,
+            "data_note": data_note,
+        },
     }
+
+
+def build_pose_survey_page(
+    summary_csv: Path,
+    out: Path,
+    country: str,
+    history_note: str = "",
+    data_note: str = "",
+) -> Path:
+    """Build a self-contained panel-pose survey HTML page from a glint-validation
+    summary CSV. `history_note`, if given, is appended after "two years of imagery"
+    in the intro paragraph (e.g. Pakistan's " (a 4x-larger, chunked-tile-batch re-run
+    of the original 500-target study)") -- leave empty for a country's first survey.
+    `data_note`, if given, is appended after the summary CSV path in the footer
+    (e.g. Pakistan's " (2000-target stratified country study, chunked tile-batch
+    pull)").
+    """
+    d = compute_pose_survey_data(summary_csv, country, history_note, data_note)
+    st = d["stats"]
+    data = {"points": d["points"], "wedge": d["wedge"], "hard_edges": d["hard_edges"], "strip": d["strip"]}
 
     html = TEMPLATE
     for key, value in {
-        "__PAGE_TITLE__": f"Fitted Panel Pose — {country} Glint Survey (n={len(s)})",
-        "__EYEBROW__": f"Glint-derived orientation survey · {country} · n={len(s)}",
+        "__PAGE_TITLE__": f"Fitted Panel Pose — {country} Glint Survey (n={st['n_total']})",
+        "__EYEBROW__": f"Glint-derived orientation survey · {country} · n={st['n_total']}",
         "__H1__": f"Which way do solar panels in {country} actually face?",
         "__COUNTRY__": country,
         "__DEK_HISTORY__": f" {history_note}" if history_note else "",
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__N_FITTED__": str(len(fit)),
-        "__N_TOTAL__": str(len(s)),
-        "__N_GE1000__": str(len(ge1000)),
-        "__PCT_GE1000__": f"{pct_ge1000:.1f}",
-        "__PCT_ONESPIKE__": f"{pct_onespike:.1f}",
-        "__PCT_NOSIGNAL__": f"{pct_nosignal:.1f}",
-        "__AZ_MIN__": f"{az_min:.1f}",
-        "__AZ_MAX__": f"{az_max:.1f}",
-        "__TILT_Q25__": f"{fit.fit_tilt.quantile(.25):.1f}",
-        "__TILT_Q75__": f"{fit.fit_tilt.quantile(.75):.1f}",
-        "__WEDGE_DEG__": f"{wedge_span:.0f}",
+        "__N_FITTED__": str(st["n_fitted"]),
+        "__N_TOTAL__": str(st["n_total"]),
+        "__N_GE1000__": str(st["n_ge1000"]),
+        "__PCT_GE1000__": f"{st['pct_ge1000']:.1f}",
+        "__PCT_ONESPIKE__": f"{st['pct_onespike']:.1f}",
+        "__PCT_NOSIGNAL__": f"{st['pct_nosignal']:.1f}",
+        "__AZ_MIN__": f"{st['az_min']:.1f}",
+        "__AZ_MAX__": f"{st['az_max']:.1f}",
+        "__TILT_Q25__": f"{st['tilt_q25']:.1f}",
+        "__TILT_Q75__": f"{st['tilt_q75']:.1f}",
+        "__WEDGE_DEG__": f"{st['wedge_deg']:.0f}",
         "__SUMMARY_PATH__": str(summary_csv),
         "__DATA_NOTE__": f" {data_note}" if data_note else "",
     }.items():
@@ -525,5 +554,6 @@ def build_pose_survey_page(
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html)
-    print(f"n_fitted={len(fit)}/{len(s)} az=[{az_min:.1f},{az_max:.1f}] wedge={wedge_span:.0f}deg -> {out}")
+    print(f"n_fitted={st['n_fitted']}/{st['n_total']} az=[{st['az_min']:.1f},{st['az_max']:.1f}] "
+          f"wedge={st['wedge_deg']:.0f}deg -> {out}")
     return out

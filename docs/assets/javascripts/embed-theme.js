@@ -1,19 +1,18 @@
 /* Keep the embedded interactive pages on the same theme as the site.
  *
  * The result pages (`src/earthpv/templates/pv_evidence_atlas.html`,
- * `pv_growth_atlas.html`, `src/earthpv/pose.py`) are standalone documents with their
- * own light/dark switch: they read `data-theme` off their own <html>, falling back to
- * `prefers-color-scheme`. Material's switch is separate and writes
+ * `pv_growth_atlas.html`, `src/earthpv/pose.py`) are standalone documents with no
+ * light/dark switch of their own: they read `data-theme` off their own <html>, falling
+ * back to `prefers-color-scheme`. Material's switch is separate and writes
  * `data-md-color-scheme` on <body>. Left alone, the two disagree the moment a reader
  * uses the site toggle without also changing the operating system preference -- a dark
  * page with a cream atlas glued into the middle of it.
  *
  * They are served from the same origin (docs/assets/interactive/), so this reaches into
- * each frame and drives its own toggle. Clicking `#themeBtn` rather than just setting
- * the attribute is deliberate: the atlas pages recolour their SVG map from JS inside
- * that click handler, and only the pose page observes the attribute directly. Clicking
- * therefore works for all three, where setting the attribute would leave the atlas maps
- * painted in the previous theme's colours.
+ * each frame and sets `data-theme` directly. The evidence atlas and the pose page
+ * observe that attribute themselves (a MutationObserver re-renders the SVG on change);
+ * `pv_growth_atlas.html` still drives its recolour off a `#themeBtn` click handler, so
+ * for that page only, `syncFrame` clicks the button instead of setting the attribute.
  */
 (function () {
   "use strict";

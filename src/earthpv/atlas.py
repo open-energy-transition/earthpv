@@ -1603,6 +1603,8 @@ def build_evidence_atlas(
     out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
     ge400_roof_buildings_path: Path | None = None,
     sub400_outdomain_buildings_path: Path | None = None,
+    pose_summary_csv: Path | None = None,
+    pose_history_note: str = "", pose_data_note: str = "",
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -1698,8 +1700,39 @@ def build_evidence_atlas(
       defensible figure," so it can never legitimately read below Verified in the same
       cell; `np.maximum(mwp_best, mwp_verified)` enforces that ordering after both are
       computed, and `n_cells_best_floored` records how often it had to.
+
+    **Two more sections, both optional and both re-using data this call already has
+    (added 2026-08-13):**
+
+    - **A "Capacity per size bin, rooftop vs ground-mount" chart**, the same one
+      `build_size_distribution_atlas` publishes as its own page, embedded natively
+      (same SVG/CSS, no iframe) since it already shares this template's colour tokens.
+      Computed via `_size_distribution_data` with the exact same six inputs this
+      function itself takes, so the two numbers are the same calculation, not two
+      independent ones re-verified against each other -- unlike the standalone page,
+      which is built from a separate CLI invocation and can drift by the residual
+      `docs/results/capacity-by-size.md` documents (candidates that fall just outside
+      every grid cell's polygon). Only rendered when `ge400_roof_buildings_path` is
+      given, matching every other roofclf-dependent section on this page; an AOI with
+      no roofclf national scoring yet (e.g. Gujarat) gets the map without this chart
+      rather than a chart of zeroes.
+    - **The panel-pose survey** (`pose.py`, glint-derived tilt/azimuth), embedded
+      NATIVELY (2026-08-13, superseding an earlier iframe version -- an iframe forced a
+      second internal scrollbar on a sub-page, which read as a worse experience than
+      the extra CSS-scoping work needed to inline it properly). It keeps its own serif
+      "voice", distinct from this page's night-lights palette, exactly as the
+      standalone page does -- but every one of its CSS custom properties and classes is
+      declared under the `.pose-native` container (`--pose-*`, `.pose-*`) rather than on
+      `:root`/bare tag selectors, so nothing it defines leaks onto the rest of this
+      page (its original standalone-page CSS styled bare `body`/`h1`/`header`/`footer`/
+      `svg text`, which would otherwise repaint this atlas's own map and KPI strip).
+      `pose_summary_csv` is the same glint-validation summary CSV
+      `build_pose_survey_page` takes; `pose.compute_pose_survey_data` (shared with that
+      function) computes chart data and every stat once. Omit it and no pose section is
+      written at all.
     """
     density_dir = Path(density_dir)
+    out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
     meta = json.loads((density_dir / "meta.json").read_text())
     if "est_mwp_rc" not in grid.columns:
@@ -1980,6 +2013,42 @@ def build_evidence_atlas(
         },
     }
 
+    # Second lens on the same Best-estimate total: by installation size and placement
+    # instead of by cell. Same computation `build_size_distribution_atlas` publishes as
+    # its own page (see `_size_distribution_data`'s docstring) -- only available once
+    # roofclf's >= 400 m2 replacement exists, same gate every other roofclf-dependent
+    # section on this page uses.
+    if ge400_roof_buildings_path is not None:
+        size_data = _size_distribution_data(
+            aoi, density_dir, osm_solar_path, candidates_path,
+            low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
+            sub400_outdomain_buildings_path,
+        )
+        size_best = size_data["totals"]["mwp_best"]
+        if abs(size_best - total_best) > max(1.0, total_best * 0.02):
+            log.warning(
+                "Evidence atlas: size-bin re-binning totals %.1f MWp vs this page's own "
+                "%.1f MWp (%.1f%% apart) -- investigate before trusting the embedded "
+                "chart; see _size_distribution_data's docstring for the residual this is "
+                "normally expected to stay within.",
+                size_best, total_best, abs(size_best - total_best) / max(total_best, 1) * 100,
+            )
+        data["bins"] = size_data["bins"]
+        data["totals"]["mwp_roof"] = size_data["totals"]["mwp_roof"]
+        data["totals"]["mwp_ground"] = size_data["totals"]["mwp_ground"]
+
+    # The panel-pose survey (glint-derived tilt/azimuth, `pose.py`) is embedded
+    # natively -- see this function's docstring for why its CSS is namespaced under
+    # `.pose-native` rather than living on `:root`/bare tag selectors like the
+    # standalone page's own copy. Optional; an AOI with no glint-validation summary
+    # yet gets no section at all rather than an empty one.
+    if pose_summary_csv is not None:
+        from earthpv import pose as pose_mod
+
+        data["pose"] = pose_mod.compute_pose_survey_data(
+            pose_summary_csv, title, pose_history_note, pose_data_note,
+        )
+
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -2051,7 +2120,6 @@ def build_evidence_atlas(
     }.items():
         html = html.replace(key, value)
 
-    out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
     out.write_text(html)
     log.info(
         "Wrote evidence atlas (verified %.0f / best %.0f MWp, "
@@ -2105,20 +2173,22 @@ def _size_bin_display_labels(edges: list[float] = SIZE_BIN_EDGES_M2) -> list[str
     return labels
 
 
-def build_size_distribution_atlas(
+def _size_distribution_data(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
     low_buildings_path: Path, central_buildings_path: Path, ge400_roof_buildings_path: Path,
     sub400_outdomain_buildings_path: Path | None = None,
-    out: Path | None = None,
-) -> Path:
+) -> dict:
     """Re-bins `build_evidence_atlas`'s Best-estimate total by installation size and
-    placement (rooftop / ground-mount) instead of by 0.1-degree cell.
+    placement (rooftop / ground-mount) instead of by 0.1-degree cell. Shared by
+    `build_size_distribution_atlas` (its own standalone page) and `build_evidence_atlas`
+    (which embeds the same chart as a second lens on its own map).
 
     Does NOT recompute capacity by any new method -- every MWp here comes from the
     identical formula `build_evidence_atlas`/`density.py` already use, so the grand
-    total should equal the published Best estimate for the same run (logged below; the
-    caller should treat a mismatch against a published atlas as a bug, not a footnote).
+    total should equal the published Best estimate for the same run (both callers log
+    a comparison; the caller should treat a mismatch against a published atlas as a
+    bug, not a footnote).
 
     Six populations carry every MWp shown, each with a real per-object size field --
     exactly `build_evidence_atlas`'s `best_parts`:
@@ -2166,7 +2236,6 @@ def build_size_distribution_atlas(
 
     density_dir = Path(density_dir)
     meta = json.loads((density_dir / "meta.json").read_text())
-    title = aoi.replace("_", " ").title()
     kwp_mod = meta.get("kwp_per_m2_module", cc.DEFAULT_KWP_PER_M2_MODULE)
     kwp_land = meta.get("kwp_per_m2_land", cc.DEFAULT_KWP_PER_M2_LAND)
     edges = SIZE_BIN_EDGES_M2
@@ -2379,7 +2448,7 @@ def build_size_distribution_atlas(
         for i in range(n_bins)
     ]
 
-    data = {
+    return {
         "bins": bins,
         "totals": {
             "mwp_best": round(total, 1),
@@ -2387,7 +2456,26 @@ def build_size_distribution_atlas(
             "mwp_ground": round(total_ground, 1),
             "n_bins": n_bins,
         },
+        "n_cells_floored": len(shortfalls),
     }
+
+
+def build_size_distribution_atlas(
+    aoi: str, density_dir: Path,
+    osm_solar_path: Path, candidates_path: Path,
+    low_buildings_path: Path, central_buildings_path: Path, ge400_roof_buildings_path: Path,
+    sub400_outdomain_buildings_path: Path | None = None,
+    out: Path | None = None,
+) -> Path:
+    """Standalone size-distribution page. See `_size_distribution_data` for what's
+    actually computed -- this just templates it into its own HTML file."""
+    title = aoi.replace("_", " ").title()
+    size_data = _size_distribution_data(
+        aoi, density_dir, osm_solar_path, candidates_path,
+        low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
+        sub400_outdomain_buildings_path,
+    )
+    data = {"bins": size_data["bins"], "totals": size_data["totals"]}
 
     html = SIZE_TEMPLATE.read_text()
     for key, value in {
@@ -2399,12 +2487,13 @@ def build_size_distribution_atlas(
 
     out = Path(out) if out else density_dir / f"{aoi}_pv_size_atlas.html"
     out.write_text(html)
+    t = size_data["totals"]
     log.info(
         "Wrote size-distribution atlas (roof %.0f + ground %.0f = %.0f MWp across "
         "%d bins, %d cells floored at Verified) -> %s -- compare this total against "
         "the published evidence atlas's Best estimate for the same run; a mismatch is "
         "a bug, not a footnote.",
-        total_roof, total_ground, total, n_bins, len(shortfalls), out,
+        t["mwp_roof"], t["mwp_ground"], t["mwp_best"], t["n_bins"], size_data["n_cells_floored"], out,
     )
     return out
 

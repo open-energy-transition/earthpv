@@ -1096,6 +1096,23 @@ def atlas(
         "Ground-mount is unaffected either way. Optional -- omitting it keeps the "
         "pre-2026-08-07 segmentation-only rooftop total.",
     ),
+    pose_summary_csv: Path = typer.Option(
+        None, help="Glint-validation summary CSV -- same input `earthpv.pose."
+        "build_pose_survey_page` takes (one row per target, `n_spikes`/`n_consistent`/ "
+        "`fit_tilt`/`fit_az`/etc). Only used with the EVIDENCE atlas (--osm-solar). "
+        "Embeds the panel-pose survey (fitted tilt/azimuth from Sentinel-2 glint) as a "
+        "native section, not an iframe -- CSS-namespaced under `.pose-native` so its "
+        "own serif styling can't leak onto the rest of the page. Optional -- omitting "
+        "it writes the evidence atlas with no pose section.",
+    ),
+    pose_history_note: str = typer.Option(
+        "", help="Passed through to `earthpv.pose.compute_pose_survey_data` -- see "
+        "`build_pose_survey_page`'s docstring.",
+    ),
+    pose_data_note: str = typer.Option(
+        "", help="Passed through to `earthpv.pose.compute_pose_survey_data` -- see "
+        "`build_pose_survey_page`'s docstring.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
@@ -1127,6 +1144,9 @@ def atlas(
                 out=out, zoom_out_frac=zoom_out,
                 ge400_roof_buildings_path=ge400_roof_cells,
                 sub400_outdomain_buildings_path=sub400_outdomain_cells,
+                pose_summary_csv=pose_summary_csv,
+                pose_history_note=pose_history_note,
+                pose_data_note=pose_data_note,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
