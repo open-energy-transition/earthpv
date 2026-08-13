@@ -1148,3 +1148,54 @@ kind of re-mapping that motivated re-pulling everything in the first place. The 
 17 quadrats' installation counts moved by single digits to low tens of percent (e.g.
 Sukkur's rooftop/mixed quadrat 1105 -> 1115, Sundar 132 -> 134), consistent with
 ongoing incremental OSM mapping rather than any systematic gap.
+
+### Box 14 -- Bahawalnagar Rural, hand-drawn ~4.00 km2 around (29.5002, 72.8716) -- 2026-08-13
+
+Proposed the same session as a deliberately-rural extension candidate for widening
+`density.CALIBRATED_BLDG_DENSITY_KM2`'s floor (141.00 bldg/km<sup>2</sup> at the time,
+set by Khairpur Rural): a plain geodesic square at (29.50, 72.87), side 2000 m,
+pre-checked against national VIDA buildings and measured **49.5 bldg/km<sup>2</sup>**,
+comfortably below the floor, following the pattern that worked for Muzaffargarh Rural
+Wide and Khairpur Rural (mix farmland with a small settlement; do not trace tightly
+around a village's own built-up extent, which is what sank Muzaffargarh Rural 1km and
+Malok).
+
+**The owner re-drew the boundary in JOSM, shifted east, mapped every installation
+inside it, and exported the result to
+`data/labels/calibration_boundaries/bahawalnagar_rural_calib_2km_boundary.geojson`**
+(same filename as the original proposal, overwritten). Reprocessed via
+`scripts/new_calibration_quadrat.py --name bahawalnagar_rural --geojson
+data/labels/calibration_boundaries/bahawalnagar_rural_calib_2km_boundary.geojson`
+(drawn mode, since the shifted boundary is no longer the exact square the original
+`--lat/--lon/--side-m` command produced). Drawn mode tags a quadrat by its measured
+geodesic area, not by side length, so the stem changed to
+`bahawalnagar_rural_calib_4p00km2` -- the original `bahawalnagar_rural_calib_2km`
+boundary/parquet were deleted as superseded (the geojson was already gone, evidently
+removed as part of the same edit; the orphaned parquet was cleaned up here). Confirmed
+clear of all 23 other quadrats (nearest is Hasal, 39.19 km) and correctly resolves to
+Bahawalnagar District, Punjab via the admin lookup.
+
+Live Overpass pull: **9 installations**, cross-confirmed (a second query also saw 9,
+so the pull is not a silent partial response). 6 rooftop / 3 ground, 100% below the
+400 m² floor (max 67.3 m², median 26.9 m²), packing `nn_median_m` **74.8 m** -- sparser
+than every quadrat in the table except Muzaffargarh Rural (292.6 m), consistent with
+genuinely rural, sparsely-built farmland rather than a village core. The owner declared
+it **Rule-1 complete** (every installation inside the boundary mapped).
+
+**Own building density, measured directly against national VIDA (independent of any
+roofclf run): 494 buildings / 4.00 km<sup>2</sup> = 123.5 bldg/km<sup>2</sup>.** Lower
+than the pre-check's 49.5 because the owner's shift east landed on somewhat denser
+ground than the original square, but still below the current 141.00 floor -- so, per
+the project's own rule, this quadrat *does* qualify to lower it further, just by a
+smaller margin than originally hoped. **Not yet done**: `CALIBRATED_BLDG_DENSITY_KM2`
+is a hand-maintained constant (`density.py`), and lowering it without re-running the
+national `roofclf-score-national`/`sub400-capacity`/`ge400-roof-capacity` pass would
+describe a domain wider than the one the currently-published capacity figures actually
+cover -- exactly the kind of drift `_size_distribution_data`'s residual check exists to
+catch elsewhere. Added to `results/calibration_quadrats.csv` (`n_installations`,
+`median_install_m2`, `frac_sub400` populated from the pull directly; `n_buildings`/
+`n_pv_buildings`/`base_rate`/`nn_median_m` left blank, matching Sanghar's precedent,
+since both need a `roofclf` fold table that includes this quadrat) and to
+[Calibration quadrats](../methods/calibration-quadrats.md)'s "Known gap" count. Folding
+it into an actual `roofclf` refit and deciding whether to widen the domain constant are
+follow-up steps, not done here.

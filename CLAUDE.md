@@ -412,10 +412,15 @@ each standalone artifact page.
 
 ### Calibration quadrats
 
-**24 quadrats as of 2026-08-12 (Sanghar, the most recent addition), spanning Pakistan** --
-purposive selections (industrial estates, dense residential blocks) plus several
+**25 quadrats as of 2026-08-13 (Bahawalnagar Rural, the most recent addition), spanning
+Pakistan** -- purposive selections (industrial estates, dense residential blocks) plus several
 deliberately-rural extensions used to widen the density-calibration domain (see "Density stage"
-above). All are declared **Rule-1 complete** by the owner (every visible panel mapped) --
+above). Bahawalnagar Rural's own building density (123.5 bldg/km², measured directly against
+VIDA) sits below the current domain floor (141.00 bldg/km², set by Khairpur Rural) but has not
+yet been folded into `density.CALIBRATED_BLDG_DENSITY_KM2` -- that needs a `roofclf` re-fit and
+national rescoring first, not just the constant edit; see
+`docs/issues/pakistan-calibration-boxes.md`'s Box 14. All are declared **Rule-1 complete** by
+the owner (every visible panel mapped) --
 **Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own
 (usually unrecorded) capture date, not against the Sentinel-2 composite's epoch, so the newest
 installations are structurally missed regardless of mapping effort. This makes precision and
