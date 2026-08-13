@@ -30,7 +30,7 @@ results/glint_date_feature/*
 results/glint_validation_pakistan/*
 !results/glint_validation_pakistan/pakistan_stats_by_size.csv
 !results/glint_validation_pakistan/pv_pose_country2000.html
-!labels/calibration_boundaries/*
+!data/labels/calibration_boundaries/*
 
 # Generated reports kept in the repo on request, as a durable artifact rather than a
 # figure-script input -- regenerate with scripts/pv_reference_share_comparison.py.
