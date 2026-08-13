@@ -27,13 +27,13 @@ rooftop vs ground-mount by how large each installation is, instead of by geograp
 
 ## The headline figure
 
-**Best estimate: 16,441 MWp** (90% range 12,883 &ndash; 19,147). It combines every
+**Best estimate: 15,972 MWp** (90% range 12,474 &ndash; 18,952). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
-"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (7,860 MWp: roofclf's own
+"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (7,973 MWp: roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
 detections everywhere else, segmentation's ground-mount detections throughout -- see
 "Segmentation vs. roofclf on large rooftops" below), the roofclf per-building density
-estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 278 MWp of
+estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 149 MWp of
 roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see
 "A sixth change" below.
 
@@ -298,6 +298,24 @@ verified steps. Re-ran the full chain once more: sub-400 central (Best) 5,557 &r
 extension (a much smaller remaining population now) 575 &rarr; **278 MWp**, &ge;400
 m<sup>2</sup> roofclf rooftop &rarr; **6,427 MWp**. Evidence atlas: Best 14,462 &rarr;
 **16,441 MWp** (+13.7%).
+
+**A tenth change, 2026-08-13: a third widening quadrat, plus a full `roofclf` refit and
+national rescoring.** `bahawalnagar_rural_calib_4p00km2` (Bahawalnagar District, Punjab --
+hand-drawn in JOSM by the owner, shifted east from an originally-proposed plain square
+after a VIDA pre-check) measured **123.5 bldg/km<sup>2</sup>** own density, below the
+141.00 floor the second quadrat had set, moving the floor **141.00 -> 123.5**
+bldg/km<sup>2</sup> and growing the domain **1,680 -> 1,868** of Pakistan's 4,463 cells
+(37.6% -> 41.9% of cells, 78.6% -> 82.1% of national buildings). Unlike the eighth/ninth
+changes, this one also re-fit `roofclf` on all 25 quadrats (median LOQO AUC 0.857 ->
+**0.876**) and re-scored all ~75.7M VIDA buildings nationally with the refit model and the
+widened domain together, in one pass, rather than bumping the constant against stale
+scores. Re-ran the full chain: sub-400 central (Best) 6,531 &rarr; **6,081 MWp**, sub-400
+AND-gate 2,929 &rarr; **2,094 MWp**, out-of-domain extension 278 &rarr; **149 MWp**,
+&ge;400 m<sup>2</sup> roofclf rooftop 6,427 &rarr; **6,540 MWp**. Evidence atlas: Best
+16,441 &rarr; **15,972 MWp** (-2.9%) -- a net decrease this time, since the refit and a
+refreshed coverage-ratio bootstrap (now over 16 trusted quadrats, still excluding
+Bahawalnagar Rural itself on `rate_ratio` grounds, 2.187, just outside the trusted
+[0.5, 2.0] band) moved several components down even as the domain grew.
 
 ## What this map cannot tell you, and what an independent estimate confirms it can
 

@@ -5,7 +5,7 @@
     `roofclf` is the instrument that covers everything **below** the segmentation
     model's 400 m<sup>2</sup> detection floor, and (inside its calibrated domain) it now
     also replaces segmentation's own rooftop estimate above that floor. Numbers on this
-    page come from the 23-quadrat fit in `data/roofclf/summary.json` and the capacity run
+    page come from the 25-quadrat fit in `data/roofclf/summary.json` and the capacity run
     behind the published [evidence atlas](../results/capacity.md).
 
 ## What it is, in one paragraph
@@ -41,8 +41,8 @@ spectral signature to differ from a PV-free roof of the same kind.
 
 ## The flow, end to end
 
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 23 folds at 0.857 AUC and 0.830 within roof-size band, and a deployment threshold of 0.2443 at precision 0.50 and recall 0.66. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,680 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,531 plus 6,427 plus 278 MWp, floored per cell at hand-mapped OSM plus the stricter 2,929 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 23 folds at 0.857 AUC and 0.830 within roof-size band, and a deployment threshold of 0.2443 at precision 0.50 and recall 0.66. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,680 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,531 plus 6,427 plus 278 MWp, floored per cell at hand-mapped OSM plus the stricter 2,929 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 25 folds at 0.876 AUC and 0.831 within roof-size band, and a deployment threshold of 0.251 at precision 0.50 and recall 0.64. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,868 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,081 plus 6,540 plus 149 MWp, floored per cell at hand-mapped OSM plus the stricter 2,094 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 25 folds at 0.876 AUC and 0.831 within roof-size band, and a deployment threshold of 0.251 at precision 0.50 and recall 0.64. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 1,868 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,081 plus 6,540 plus 149 MWp, floored per cell at hand-mapped OSM plus the stricter 2,094 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
 
 The six stages below follow the chart from top to bottom.
 
@@ -59,8 +59,8 @@ inside it, a roof with no mapped PV is a genuine negative. That is exactly the s
 missing in the failure regime, which is why the quadrats are spent on training rather than
 only on after-the-fact correction.
 
-Twenty-three quadrats now carry Rule-1, spanning 63.9 km<sup>2</sup>, 15,494 mapped
-installations and 104,423 buildings.
+Twenty-five quadrats now carry Rule-1, spanning 71.9 km<sup>2</sup>, 16,293 mapped
+installations and 118,341 buildings.
 
 !!! warning "Rule-1 is relative to the mapping imagery, not to the model's imagery"
 
@@ -118,8 +118,8 @@ train and test and report skill the model does not have.
 
 | Measure | Value | Read it as |
 | --- | --- | --- |
-| Median fold AUC | **0.857** | ranking skill on a quadrat the model has never seen |
-| Median fold AUC within roof-size band | **0.830** | the same, with size removed as a discriminator |
+| Median fold AUC | **0.876** | ranking skill on a quadrat the model has never seen |
+| Median fold AUC within roof-size band | **0.831** | the same, with size removed as a discriminator |
 | Segmentation raster, within size band | **0.500** | chance. The 400 m<sup>2</sup> floor, measured |
 | Fraction head, unconditional | 0.634 | better than segmentation, still well behind |
 
@@ -131,7 +131,7 @@ chance from that propensity alone, and in the ablation below `area_only` reaches
 without the imagery contributing anything at all. `auc_within_size` scores inside roof-area
 bands and weights by band size, which removes size as a discriminator entirely. What is
 left is the pixels separating a PV roof from a PV-free roof **of the same size**. Quote
-0.830, not 0.857.
+0.831, not 0.876.
 
 ### What the pixels actually add
 
@@ -139,30 +139,31 @@ Leave-one-quadrat-out median AUC per feature block:
 
 | Feature block | AUC | AUC on buildings below 500 m<sup>2</sup> |
 | --- | --- | --- |
-| Size only | 0.744 | 0.716 |
-| Reflectance only | 0.842 | 0.840 |
-| **Size plus reflectance (shipped)** | **0.857** | **0.856** |
-| Plus footprint shape | 0.859 | 0.858 |
-| Plus the segmentation and fraction rasters | 0.858 | 0.858 |
+| Size only | 0.744 | 0.726 |
+| Reflectance only | 0.839 | 0.839 |
+| **Size plus reflectance (shipped)** | **0.876** | **0.875** |
+| Plus footprint shape | 0.876 | 0.875 |
+| Plus the segmentation and fraction rasters | 0.875 | 0.867 |
 
 Reflectance alone beats size alone by a wide margin, which is the result that matters: the
 model is reading roofs, not guessing from a size prior. The last two rows move the number
-by about 0.002, well inside fold noise, so neither block is switched on. Adding the
+by no more than about 0.001, well inside fold noise, so neither block is switched on. Adding the
 segmentation raster in particular has no case: it is trained with sub-400 m<sup>2</sup>
 arrays burned as `ignore`, so its probability there is noise a fit can only chase.
 
 ### Folds are not one population, and should never be pooled
 
 Skill has to be read per quadrat. Industrial estates and dense residential neighbourhoods
-are not the same problem, and the folds say so: the best fold reaches 0.98 and the worst
-0.65 (Khairpur, a rural box with three mapped installations, where AUC is barely defined).
-Mardan at 0.765 is the weakest fold with a real sample behind it and is excluded by name
-from the capacity calibration.
+are not the same problem, and the folds say so: the best fold reaches 0.98
+(Muzaffargarh Rural Wide, 9 mapped installations) and the worst 0.66 (Khairpur Rural, a
+rural box with three mapped installations, where AUC is barely defined). Mardan at 0.766
+is the weakest fold with a real sample behind it and is excluded by name from the
+capacity calibration.
 
 !!! danger "Ranking transfers between places. Absolute rates do not."
 
     `rate_ratio`, the model's predicted adoption rate divided by the true one, spans
-    **0.33 to 4.36** across the 23 quadrats. The predicted rate is nearly flat (mean about
+    **0.33 to 4.40** across the 25 quadrats. The predicted rate is nearly flat (mean about
     0.14) while the true base rate spans under 1% to over 25%, so the ratio is close to
     `constant / base_rate` by arithmetic. Any published adoption rate or capacity needs a
     per-stratum correction first. Everything in stage 5 exists because of this.
@@ -173,14 +174,15 @@ A national scorer needs one operating point, and it is chosen for **precision**,
 balanced sensitivity: this signal contributes to a capacity number that no human reviews,
 so a false positive is expensive here in a way it is not in the mapping-leads queue.
 
-`p_roofclf >= 0.2443` is the smallest threshold holding precision at 0.50 on the pooled
-out-of-fold scores, and it catches 66% of PV-carrying buildings there. Both numbers are
-still leave-one-quadrat-out measurements: one threshold instead of 23 per-fold ones, but
+`p_roofclf >= 0.251` is the smallest threshold holding precision at 0.50 on the pooled
+out-of-fold scores, and it catches 64% of PV-carrying buildings there. Both numbers are
+still leave-one-quadrat-out measurements: one threshold instead of 25 per-fold ones, but
 no building ever scored by a model that saw its own quadrat.
 
 The threshold moves whenever the quadrat set changes, and it has moved a lot: 0.4555 at
-nine quadrats, 0.3064 once Quetta was dropped, 0.2443 today. Anything downstream that
-hard-codes it is a bug.
+nine quadrats, 0.3064 once Quetta was dropped, 0.2443 at 23 quadrats, **0.251 today** (25
+quadrats, after Sanghar and Bahawalnagar Rural were added and the model refit
+2026-08-13). Anything downstream that hard-codes it is a bug.
 
 ## 5. Scoring a country
 
@@ -214,9 +216,9 @@ one exists because skipping it produced a number that was wrong by a factor rath
 a few percent.
 
 **Restrict the domain.** roofclf only counts buildings in cells whose building density
-falls inside the range spanned by the calibration quadrats themselves, currently 141 to
-5,258 buildings per km<sup>2</sup>. That is 1,680 of Pakistan's 4,463 cells, 37.6% of cells
-and 78.6% of national buildings. The restriction is the whole answer to the `rate_ratio`
+falls inside the range spanned by the calibration quadrats themselves, currently 123.5 to
+5,258 buildings per km<sup>2</sup>. That is 1,868 of Pakistan's 4,463 cells, 41.9% of cells
+and 82.1% of national buildings. The restriction is the whole answer to the `rate_ratio`
 problem above: rather than correcting a rate the evidence cannot support, the module
 refuses to speak where no quadrat resembles the ground. **Rescaling the domain figure by
 its share of cells or buildings to get a national total is exactly the error this design
@@ -227,7 +229,9 @@ subtle: a quadrat extends the range only if **its own** average density falls ou
 current band. A boundary traced around a village, the natural way to draw one, is dense by
 construction no matter how empty the surrounding cell is. Two quadrats deliberately drawn
 to include farmland alongside a settlement took the lower edge from 553 to 141
-buildings/km<sup>2</sup> and grew the domain from 646 to 1,680 cells.
+buildings/km<sup>2</sup> and grew the domain from 646 to 1,680 cells; a third,
+Bahawalnagar Rural (hand-drawn in JOSM, own density 123.5 buildings/km<sup>2</sup>), pushed
+it down again to 1,868 cells (2026-08-13).
 
 **Remove what is already counted.** A flagged building within 30 m of an existing
 segmentation candidate, or of a mapped OpenStreetMap installation, is dropped. Anything
@@ -247,14 +251,14 @@ The coverage ratio is now fitted per roof-size bin and per building-density band
 
 | Component | Population | MWp |
 | --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,929 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 6,531 |
-| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 6,427 |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Best estimate only | 278 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,094 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 6,081 |
+| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 6,540 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Best estimate only | 149 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 16,441.4 MWp (90%
-range 12,883 to 19,147)**.
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 15,971.9 MWp (90%
+range 12,474 to 18,952)**.
 
 Three things about that table are worth stating plainly:
 

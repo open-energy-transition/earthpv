@@ -16,8 +16,8 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">16,441 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,883 to 19,147)</span></div>
-<div class="stat"><span class="value">7,860 / 6,531 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
+<div class="stat"><span class="value">15,972 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,474 to 18,952)</span></div>
+<div class="stat"><span class="value">7,973 / 6,081 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
 </div>
 
 ## Build PV capacity maps for every country
@@ -194,18 +194,19 @@ pull finds it.
 
 **Map a quadrat.** Exhaustively mapping every installation inside a drawn boundary is worth
 far more per hour than scattered mapping, because it measures what the model *misses* rather
-than only confirming what it finds. 23 quadrats covering 63.9 km<sup>2</sup> exist so far;
+than only confirming what it finds. 25 quadrats covering 71.9 km<sup>2</sup> exist so far;
 the protocol is in [Quadrat mapping protocol](calibration-mapping-protocol.md).
 
 The highest-value next quadrat is a **sparse rural** one. A quadrat only widens the
 calibrated domain if its *own* average building density falls below the current floor, and a
 boundary traced around a village never does, because it is the farmland between settlements
 that pulls the average down. Sizing a box to include that open land on purpose is what took
-the calibrated domain from 163 cells to over 1,600.
+the calibrated domain from 163 cells to over 1,800 (most recently Bahawalnagar Rural,
+2026-08-13).
 
 **Review a calibration sample.** `earthpv calibrate-sample` emits a stratified sample of
 unmapped candidates for human verdicts. Twenty verdicts in the 100 to 500 m<sup>2</sup> bin
-would collapse the widest remaining term in the calibration table. Two random-cell
+would collapse the widest remaining term in the calibration table. Several random-cell
 validation batches are also generated and waiting for review, which measures precision
 against an unbiased population rather than the curated quadrats: see
 [roofclf random-cell validation](methods/roofclf-national-validation.md).
