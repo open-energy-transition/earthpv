@@ -200,7 +200,7 @@ See [Solar glint](methods/glint.md) and [Panel pose from glint](results/pv-pose.
   wherever roofclf has been calibrated.
 - **`roof-classifier` → `roofclf-score-national` → `sub400-capacity`** fits `roofclf` on
   the calibration quadrats, scores every VIDA building nationally, then restricts to the
-  1,868 of 4,463 cells whose building density matches the quadrats and intersects
+  2,957 of 4,463 cells whose building density matches the quadrats and intersects
   roofclf with SPPI, explicitly refusing to rescale that figure to a national total. It
   covers roofclf's **< 400 m² population**, a separate module (`sub400_capacity.py`) not
   merged into `density.py`.

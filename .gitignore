@@ -20,6 +20,9 @@ site/
 results/*
 !results/glint_observability_by_quadrat.csv
 !results/glint_observability_summary.json
+!results/glint_pose_by_region.csv
+!results/glint_pose_by_region_combined.csv
+!results/pakistan_glint_pose_regional.html
 !results/pakistan_pv_estimator_atlas.html
 !results/pakistan_pv_density_scientific.png
 !results/glint_date_feature/

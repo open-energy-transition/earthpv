@@ -74,21 +74,26 @@ withheld here pending the owner looking at the extended area specifically -- the
 explicitly re-declared for it the same day, so this quadrat reads `yes` like the other
 sixteen. The rule for the *next* extension is the same: re-assert, never infer.
 
-**Known gap: this table was not regenerated when Hasal, Islamabad Northeast, Sanghar, or
-Bahawalnagar Rural were added (2026-08-10/13), so it undercounts the current 25-quadrat
-set by eight.** `results/calibration_quadrats.csv` is current; this page is a
-hand-maintained snapshot of it and has fallen behind more than once before (see
-CLAUDE.md's per-quadrat history for the full account). The four rows added below
-(Muzaffargarh Rural, Malok, Muzaffargarh Rural Wide, Khairpur Rural) are inserted in the
-same base-rate-ascending order the rest of the table follows, but Hasal, Islamabad
-Northeast, Sanghar (`sanghar_calib_3p98km2`, added 2026-08-12, Rule-1, Sindh -- 464
-installations, median 30.2 m², 99.8% below the 400 m² floor, packing 24.4 m) and
+**Known gap: this table was not regenerated when Hasal, Islamabad Northeast, Sanghar,
+Bahawalnagar Rural, Nasirabad Rural, or Tank Rural were added (2026-08-10/13), so it
+undercounts the current 27-quadrat set by ten.** `results/calibration_quadrats.csv` is
+current; this page is a hand-maintained snapshot of it and has fallen behind more than
+once before (see CLAUDE.md's per-quadrat history for the full account). The four rows
+added below (Muzaffargarh Rural, Malok, Muzaffargarh Rural Wide, Khairpur Rural) are
+inserted in the same base-rate-ascending order the rest of the table follows, but Hasal,
+Islamabad Northeast, Sanghar (`sanghar_calib_3p98km2`, added 2026-08-12, Rule-1, Sindh --
+464 installations, median 30.2 m², 99.8% below the 400 m² floor, packing 24.4 m),
 Bahawalnagar Rural (`bahawalnagar_rural_calib_4p00km2`, added 2026-08-13, Rule-1,
 Punjab -- 9 installations, median 26.9 m², 100% below the 400 m² floor, packing 74.8 m;
-see [Calibration boxes](../issues/pakistan-calibration-boxes.md)'s Box 14) are not yet
-reflected, none of them because none has `n_buildings`/`n_pv_buildings`/`base_rate` yet
-(needs a `roofclf` re-run that includes it) and therefore no base rate to sort it by --
-do not read this table as exhaustive.
+see [Calibration boxes](../issues/pakistan-calibration-boxes.md)'s Box 14), Nasirabad
+Rural (`nasirabad_rural_calib_2km`, added 2026-08-13, Rule-1, Balochistan --
+**0 installations**, a confirmed true-negative box, not an unswept one; see Box 15 for
+why that declaration is trusted where Muzaffargarh Rural Wide's original zero was not),
+and Tank Rural (`tank_rural_calib_2km`, added 2026-08-13, Rule-1, Khyber Pakhtunkhwa --
+10 installations, median 26.0 m², 100% below the 400 m² floor, packing 52.2 m; Box 16)
+are not yet reflected, none of them because none has `n_buildings`/`n_pv_buildings`/
+`base_rate` yet (needs a `roofclf` re-run that includes it) and therefore no base rate to
+sort it by -- do not read this table as exhaustive.
 
 **Correction: Muzaffargarh Rural Wide was never confirmed at a base rate of zero --
 that declaration was wrong and has been corrected.** The row below originally read 0

@@ -16,8 +16,8 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">15,972 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,474 to 18,952)</span></div>
-<div class="stat"><span class="value">7,973 / 6,081 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
+<div class="stat"><span class="value">16,609 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,912 to 19,671)</span></div>
+<div class="stat"><span class="value">8,458 / 6,372 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
 </div>
 
 ## Build PV capacity maps for every country
@@ -194,15 +194,15 @@ pull finds it.
 
 **Map a quadrat.** Exhaustively mapping every installation inside a drawn boundary is worth
 far more per hour than scattered mapping, because it measures what the model *misses* rather
-than only confirming what it finds. 25 quadrats covering 71.9 km<sup>2</sup> exist so far;
+than only confirming what it finds. 27 quadrats covering 79.9 km<sup>2</sup> exist so far;
 the protocol is in [Quadrat mapping protocol](calibration-mapping-protocol.md).
 
 The highest-value next quadrat is a **sparse rural** one. A quadrat only widens the
 calibrated domain if its *own* average building density falls below the current floor, and a
 boundary traced around a village never does, because it is the farmland between settlements
 that pulls the average down. Sizing a box to include that open land on purpose is what took
-the calibrated domain from 163 cells to over 1,800 (most recently Bahawalnagar Rural,
-2026-08-13).
+the calibrated domain from 163 cells to 2,957 (most recently Nasirabad Rural,
+2026-08-13, own density 48.5 bldg/km<sup>2</sup>).
 
 **Review a calibration sample.** `earthpv calibrate-sample` emits a stratified sample of
 unmapped candidates for human verdicts. Twenty verdicts in the 100 to 500 m<sup>2</sup> bin

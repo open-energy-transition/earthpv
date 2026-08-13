@@ -385,9 +385,21 @@
    CSS selector rather than a custom theme_dir/main.html override: overriding
    Material's own template blocks would couple this site to Material's internal
    naming across version bumps, where a `:has()` selector (supported by every
-   evergreen browser since 2023) does not. */
+   evergreen browser since 2023) does not.
+   `.md-main__inner` and `.md-grid` are the same element here, so this also zeroes
+   Material's 1.5rem top margin on it -- harmless breathing room on a normal prose
+   page, but it stacks with `.md-content__inner`'s own 0.6rem padding-top and
+   `.page-full-bleed`'s margin below into a visibly dead empty band above a page
+   that's supposed to read as edge-to-edge (measured ~95px combined, 2026-08-14). */
 .md-grid:has(.page-full-bleed) {
   max-width: 100%;
+  margin-top: 0;
+}
+
+/* The other half of that same stack: `.md-content__inner`'s default padding-top,
+   zeroed the same way and for the same reason, scoped to full-bleed pages only. */
+.md-content:has(.page-full-bleed) .md-content__inner {
+  padding-top: 0;
 }
 
 /* A full-bleed page with no heading of its own gets Material's usual fallback: an
@@ -401,7 +413,7 @@
 }
 
 .page-full-bleed {
-  margin: 0.8rem 0 0;
+  margin: 0;
   border-radius: 12px;
 }
 

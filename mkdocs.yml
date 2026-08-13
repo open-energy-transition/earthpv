@@ -139,6 +139,7 @@ nav:
       - Glint-validated training labels: issues/glint-validated-training-labels.md
       - Epoch jump as recall signal: issues/epoch-jump-recall-signal.md
       - Calibration imagery dating: issues/calibration-imagery-dating.md
+      - Small ground-mount instrument: issues/small-ground-mount-instrument.md
   - Open questions: open-questions.md
   - About:
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md

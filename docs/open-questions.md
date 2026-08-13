@@ -65,6 +65,18 @@ Punjab and Sindh farmland. Note that the rural quadrats' near-zero PV findings d
 bound this, because those are building-scoped measurements and a tubewell array sits on bare
 ground.
 
+**No longer just a plausible concern -- externally quantified, 2026-08-13.**
+TransitionZero's satellite estimate (5.64 GW ground-mounted, mostly tube-wells) and
+PRIED's independent household survey (5.04 GW agricultural) converge to within 12% of
+each other despite disagreeing on the national total by ~6 GW -- and this project's own
+published ground-mount total, *everything* combined (utility, industrial, agricultural),
+is 2.2 GW. This is now the single largest, most confidently-explainable component of the
+gap to those external estimates. Five of this project's own rural calibration quadrats
+already have 15 hand-mapped small ground-mount installations (13.4-285.6 m²) sitting
+unused by either existing instrument. See
+[Small ground-mounted instrument](issues/small-ground-mount-instrument.md) for the full
+evidence and a first sketch of what building one would need.
+
 ### 5. Manual review of the small size bins
 
 In the 100 to 500 m² band, `p_real` is only pinned to [0.10, 0.89]. `earthpv

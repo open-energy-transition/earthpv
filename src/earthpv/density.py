@@ -122,7 +122,7 @@ _CAND_COLS = [
 # restriction (`sub400_capacity.national_cell_domain`) -- widening it here widens both
 # simultaneously.
 #
-# The lower edge moved 553.40 -> 277.75 -> 141.00 -> 123.5 across three widenings,
+# The lower edge moved 553.40 -> 277.75 -> 141.00 -> 123.5 -> 48.5 across four widenings,
 # 2026-08-11/13. `muzaffargarh_rural_wide_calib_2km` (4 km2, deliberately drawn to
 # include open farmland alongside a village rather than tracing a settlement's built-up
 # edge -- see CLAUDE.md for why two earlier attempts at a range-extending quadrat both
@@ -134,11 +134,19 @@ _CAND_COLS = [
 # shifted east from an originally-proposed plain square after a VIDA pre-check),
 # measured 123.5 bldg/km2 -- lower than the pre-check's own square (49.5, at a
 # location the owner's edit moved away from) but still below the floor it was meant to
-# test, so it counts as a genuine widening by the same rule the first two used. All
-# three are genuine widenings, not recalibrations: together they grew the roofclf
-# domain restriction from 163 to 1,868 of Pakistan's 4,463 national cells (3.7% ->
-# 41.9% of cells, 24.5% -> 82.1% of national buildings).
-CALIBRATED_BLDG_DENSITY_KM2 = (123.5, 5258.00)
+# test, so it counts as a genuine widening by the same rule the first two used. A
+# fourth, `nasirabad_rural_calib_2km` (4 km2, Nasirabad District, Balochistan -- this
+# project's first confirmed-ZERO-installation Rule-1 quadrat, own density measured at
+# 48.5 independent of that; see docs/issues/pakistan-calibration-boxes.md's Box 15 for
+# why the zero is trusted), pushed the floor down again to 48.5, past a fifth quadrat
+# added the same day, `tank_rural_calib_2km` (Tank District, Khyber Pakhtunkhwa, 55.75
+# bldg/km2, inside the range but not itself the new floor). All four are genuine
+# widenings, not recalibrations: together they grew the roofclf domain restriction from
+# 163 to 2,957 of Pakistan's 4,463 national cells (3.7% -> 66.3% of cells, 24.5% ->
+# 94.7% of national buildings) -- by far the largest single jump, since Pakistan's
+# national building-density distribution turns out to have a lot of mass between 48.5
+# and 123.5 bldg/km2.
+CALIBRATED_BLDG_DENSITY_KM2 = (48.5, 5258.00)
 
 
 def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:

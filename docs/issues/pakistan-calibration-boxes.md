@@ -1199,3 +1199,94 @@ since both need a `roofclf` fold table that includes this quadrat) and to
 [Calibration quadrats](../methods/calibration-quadrats.md)'s "Known gap" count. Folding
 it into an actual `roofclf` refit and deciding whether to widen the domain constant are
 follow-up steps, not done here.
+
+### Box 15 -- Nasirabad Rural, geodesic square 4.00 km2 around (28.65, 68.15) -- 2026-08-13 -- first confirmed-zero Rule-1 quadrat
+
+Suggested the same session as a further rural-extension candidate, same recipe as
+Bahawalnagar Rural: pre-checked against national VIDA buildings before mapping,
+measured **48.5 bldg/km<sup>2</sup>** (194 buildings in 4 km<sup>2</sup>), below the
+123.5 floor Bahawalnagar Rural had just set. Also the first quadrat drawn from
+Balochistan's rural interior rather than its one existing quadrat (Quetta, urban,
+anchors the upper end of the density range) -- Nasirabad District, on the flat,
+canal-irrigated Kacchi plain, distinct from the mountainous arid terrain that covers
+most of the province. Confirmed clear of all 25 existing quadrats via
+`scripts/new_calibration_quadrat.py --dry-run` (nearest: Sukkur, 123.9 km) before
+anything was written.
+
+**The owner mapped the box and found zero installations -- confirmed as a genuine
+completeness pass, not the Muzaffargarh Rural Wide mistake.** This project has been
+burned by exactly this scenario once already:
+[Muzaffargarh Rural Wide's original "0 installations"](../methods/calibration-quadrats.md)
+was based on 8 independent Overpass queries all returning zero, which established "0
+OSM-mapped installations as of that pull," not "mapping is complete" -- the owner later
+swept the actual imagery by eye and found real, unmapped PV. Before registering this box
+the same way, the owner was asked directly whether "I could not find a single PV
+installation" meant a visual sweep of the high-res background imagery or just an
+OSM/Overpass check, and confirmed **a visual sweep of the whole box** -- the actual Rule-1
+claim, not the OSM-data claim that misled the Muzaffargarh declaration. The live Overpass
+pull independently agrees: 6 confirmed zero-element responses across ~10 minutes and at
+least 2 mirrors (the pipeline's own 4-retry loop plus 2 additional manual confirming
+queries, one of which hit rate-limiting/timeouts on the other two mirrors after repeated
+hammering -- expected, not a data quality signal), comparable to the 8-zero bar that
+(wrongly) satisfied the Muzaffargarh case, but this time backed by an actual completeness
+declaration rather than resting on the Overpass result alone.
+
+`build_overpass_labels` refuses to accept an empty pull automatically by design (raises
+after retries exhausted, exactly to force this kind of manual confirmation rather than
+silently writing an empty quadrat) -- so
+`nasirabad_rural_calib_2km_overpass_solar.parquet` was written by hand, schema-matched
+to an existing quadrat's pull (same column dtypes and CRS), 0 rows. Registered
+**Rule-1 complete** in `results/calibration_quadrats.csv` on the strength of the owner's
+declaration.
+
+**Checked against the codebase before registering: nothing breaks on a zero-positive
+quadrat.** `roofclf.auc()` is a hand-rolled rank-based implementation (not sklearn's
+`roc_auc_score`) that explicitly returns NaN when either class is empty
+(`if n1 == 0 or n0 == 0: return nan`) rather than raising -- the same degradation
+Khairpur Rural's near-undefined AUC (3 installations) already exercises, just complete
+this time. `rate_ratio` floors its denominator (`max(base_rate, 1e-9)`) so a zero base
+rate produces a very large finite number rather than a crash, which will trivially fail
+`select_calibrated_quadrats`'s `[0.5, 2.0]` trust band -- the same mechanical exclusion
+Hasal, Rahim Yar Khan, and Bahawalnagar Rural already sit outside for unrelated reasons,
+not special-cased zero-detection logic, but sufficient. `build_calibration_quadrats_csv.py`
+already guards `n_installations=0` explicitly (`if len(a) else 0.0`/`np.nan`). Not yet
+folded into a `roofclf` refit -- `n_buildings`/`base_rate`/`nn_median_m` are blank in
+`results/calibration_quadrats.csv` pending one, same as Sanghar and Bahawalnagar Rural.
+
+### Box 16 -- Tank Rural, geodesic square 4.00 km2 around (32.20, 70.30) -- 2026-08-13
+
+The second of the two candidates suggested the same session as Nasirabad Rural, in
+Tank District, southern Khyber Pakhtunkhwa -- KP's first rural-extension quadrat; its
+three existing quadrats (Peshawar x2, Mardan) all sit in the dense Peshawar valley,
+which measured well above the domain floor everywhere tried before this spot. Own
+density (measured directly against VIDA, independent of any OSM pull) **55.75
+bldg/km<sup>2</sup>** (223 buildings in 4 km<sup>2</sup>) -- below the 123.5 floor
+Bahawalnagar Rural had set, though not as low as Nasirabad Rural's 48.5, so it does not
+move the floor further on its own (see the density-domain update below). Confirmed
+clear of all 26 existing quadrats via `scripts/new_calibration_quadrat.py --dry-run`
+(nearest: Muzaffargarh Rural, 192.3 km) before anything was written.
+
+The owner mapped the box and reported finding real installations this time -- **10
+installations**, cross-confirmed (a second independent query also saw 10, despite two
+of the three Overpass mirrors timing out during the confirming pass; the third
+succeeded, which is what the cross-check is for). 7 rooftop / 3 ground-mount, 100%
+below the 400 m<sup>2</sup> floor (max 285.6 m<sup>2</sup>, median 26.0 m<sup>2</sup>),
+packing `nn_median_m` **52.2 m** -- denser installation spacing than Nasirabad's
+(vacuously undefined, zero installations) or Bahawalnagar's (74.8 m), consistent with a
+genuinely mixed rather than uniformly sparse rural regime. Registered **Rule-1
+complete** on the owner's declaration. Not yet folded into a `roofclf` refit --
+`n_buildings`/`base_rate`/`nn_median_m` are blank in `results/calibration_quadrats.csv`
+pending one, same as every quadrat added this session.
+
+### Density domain widened again, 2026-08-13: Nasirabad Rural's 48.5 bldg/km2 is the new floor
+
+Both Box 15 and Box 16 were registered before a refit, so neither had been folded into
+`density.CALIBRATED_BLDG_DENSITY_KM2` yet (deliberately deferred at the time -- see Box
+15's closing note). Folding both into one refit + national rescoring pass is also the
+right moment to apply the domain widening: Nasirabad Rural's own density, 48.5
+bldg/km<sup>2</sup>, is now the minimum across every Rule-1-complete quadrat, lower than
+the 123.5 floor Bahawalnagar Rural set. The floor moves **123.5 -> 48.5**
+bldg/km<sup>2</sup>; Tank Rural (55.75 bldg/km<sup>2</sup>) sits inside the new range but
+does not itself move the boundary, since Nasirabad's is lower. See
+`docs/methods/density.md` for the updated domain cell/building counts once the national
+rescoring pass this widening motivates has run.

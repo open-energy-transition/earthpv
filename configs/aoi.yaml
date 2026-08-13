@@ -120,12 +120,17 @@ aois:
   # (no `source_region` key here on purpose). Gujarat chosen as the pilot state — it has
   # India's highest rooftop-solar penetration (Surya Gujarat / net-metering programs),
   # concentrated in mid-size cities (Ahmedabad, Surat, Vadodara, Rajkot) rather than
-  # spread thin like utility-scale-heavy states (e.g. Rajasthan). Detection uses the
-  # existing Germany-trained checkpoint (data/models/v2_combined) unchanged, same as the
-  # original Punjab bootstrap — no India-specific retraining yet.
+  # spread thin like utility-scale-heavy states (e.g. Rajasthan).
+  # 2026-08-14: first India-inclusive retrain (`terramind_pv_v4_all.yaml`) adds Gujarat's
+  # 760 chips (built 2026-07-12, never previously trained on) to the combined corpus. A
+  # geographic val holdout was carved out of the existing chip index (no rebuild) for
+  # this: the Surat-Bharuch-Vadodara corridor, lon 72.7-73.9E / lat 21.0-23.0N, 128 of 760
+  # chips (16.8%, 62 with PV) -- so this run is the first with an India-specific
+  # validation signal, not just Germany/Pakistan health checks.
   gujarat:
     bbox: [68.0, 20.0, 74.6, 24.8]
     division: { name: Gujarat, country: IN, subtype: region }
+    val_box: [72.7, 21.0, 73.9, 23.0]  # lon0, lat0, lon1, lat1 -- descriptive only, chips.py doesn't read this key; the split column in data/chips/gujarat/index.parquet was patched directly (see note above)
 
   # The 9 Rule-1-complete calibration quadrats (docs/calibration-mapping-protocol.md),
   # added as fraction-head training AOIs (2026-07-29): each is a tiny 1 km^2-ish box

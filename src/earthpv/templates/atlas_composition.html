@@ -1,0 +1,383 @@
+<title>What the Best Estimate Is Built From</title>
+<style>
+.acmp-root {
+  color-scheme: dark;
+  --surface-0:      #100e0b;
+  --surface-1:      #1a1712;
+  --surface-2:      #211d17;
+  --line:           #35301F;
+  --line-soft:      #26221a;
+  --text-primary:   #f3efe4;
+  --text-secondary: #b9b19c;
+  --text-muted:     #837c6c;
+  --osm:            #399260;
+  --seg:            #3f7fd6;
+  --roofclf:        #b87d1e;
+  --sppi:           #9c6fd1;
+  --shadow: 0 1px 0 rgba(0,0,0,0.4), 0 12px 32px -16px rgba(0,0,0,0.6);
+}
+@media (prefers-color-scheme: light) {
+  :root:where(:not([data-theme="dark"])) .acmp-root {
+    color-scheme: light;
+    --surface-0:      #faf8f3;
+    --surface-1:      #ffffff;
+    --surface-2:      #f2efe6;
+    --line:           #e3ddcb;
+    --line-soft:      #ece7d9;
+    --text-primary:   #211d17;
+    --text-secondary: #5b5646;
+    --text-muted:     #8a8471;
+    --osm:            #227a45;
+    --seg:            #2a68c4;
+    --roofclf:        #96620a;
+    --sppi:           #7550b0;
+    --shadow: 0 1px 0 rgba(0,0,0,0.03), 0 12px 32px -18px rgba(0,0,0,0.18);
+  }
+}
+:root[data-theme="light"] .acmp-root {
+  color-scheme: light;
+  --surface-0:      #faf8f3;
+  --surface-1:      #ffffff;
+  --surface-2:      #f2efe6;
+  --line:           #e3ddcb;
+  --line-soft:      #ece7d9;
+  --text-primary:   #211d17;
+  --text-secondary: #5b5646;
+  --text-muted:     #8a8471;
+  --osm:            #227a45;
+  --seg:            #2a68c4;
+  --roofclf:        #96620a;
+  --sppi:           #7550b0;
+  --shadow: 0 1px 0 rgba(0,0,0,0.03), 0 12px 32px -18px rgba(0,0,0,0.18);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+.acmp-root {
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  padding: 48px 20px 80px;
+}
+.acmp-wrap { max-width: 960px; margin: 0 auto; }
+.mono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--roofclf); margin: 0 0 10px;
+}
+h1 {
+  font-size: 29px; line-height: 1.22; font-weight: 650; margin: 0 0 12px; text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+.lede {
+  font-size: 16px; line-height: 1.6; color: var(--text-secondary); max-width: 68ch; margin: 0 0 32px;
+}
+.lede code { color: var(--text-primary); }
+
+.kpis {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 12px;
+  overflow: hidden; margin-bottom: 32px; box-shadow: var(--shadow);
+}
+.kpi { background: var(--surface-1); padding: 18px 16px; }
+.kpi .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.kpi .value { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+.kpi .sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; }
+.kpi .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+.card {
+  background: var(--surface-1); border: 1px solid var(--line); border-radius: 14px;
+  padding: 26px 26px 22px; box-shadow: var(--shadow); margin-bottom: 24px;
+}
+.card h2 { font-size: 15px; font-weight: 650; margin: 0 0 2px; }
+.card .card-sub { font-size: 12.5px; color: var(--text-muted); margin: 0 0 18px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 18px; }
+.legend-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-secondary); }
+.legend-swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+.stack-wrap { position: relative; margin-bottom: 6px; }
+.stack {
+  display: flex; width: 100%; height: 40px; border-radius: 6px; overflow: hidden;
+  background: var(--surface-1);
+}
+.seg {
+  height: 100%; position: relative; cursor: pointer;
+  border-right: 2px solid var(--surface-1);
+  transition: filter 0.1s ease;
+}
+.seg:last-child { border-right: none; }
+.seg:hover, .seg.hovered { filter: brightness(1.12); }
+.seg .seg-label {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 650; color: rgba(0,0,0,0.72); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.seg.texture::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 7px);
+}
+.stack-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+.tooltip {
+  position: absolute; pointer-events: none; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 13px;
+  font-size: 12.5px; line-height: 1.55; box-shadow: var(--shadow); opacity: 0;
+  transition: opacity 0.08s ease; min-width: 200px; max-width: 280px; z-index: 5;
+}
+.tooltip .t-title { font-weight: 650; margin-bottom: 6px; color: var(--text-primary); font-size: 12.5px; }
+.tooltip .t-row { display: flex; justify-content: space-between; gap: 14px; }
+.tooltip .t-row .k { color: var(--text-muted); }
+.tooltip .t-row .v { color: var(--text-primary); }
+.tooltip .t-desc { margin-top: 6px; color: var(--text-secondary); font-size: 11.5px; line-height: 1.5; }
+
+.method-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px;
+}
+.method-card {
+  background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 10px; padding: 13px 14px;
+}
+.method-card .m-name { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 650; margin-bottom: 8px; }
+.method-card .m-pct { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.method-card .m-mwp { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table-scroll { overflow-x: auto; }
+table.data-table th, table.data-table td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+table.data-table th:first-child, table.data-table td:first-child { text-align: left; white-space: normal; min-width: 220px; }
+table.data-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
+table.data-table td { color: var(--text-secondary); }
+table.data-table td.label-cell { color: var(--text-primary); }
+table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(--text-primary); border-bottom: none; }
+.swatch-inline { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+
+.note {
+  background: var(--surface-1); border: 1px solid var(--line); border-radius: 14px;
+  padding: 20px 24px; box-shadow: var(--shadow);
+}
+.note h2 { font-size: 14.5px; font-weight: 650; margin: 0 0 10px; }
+.note p { font-size: 14px; line-height: 1.65; color: var(--text-secondary); margin: 0 0 10px; }
+.note p:last-child { margin-bottom: 0; }
+.note .foot { font-size: 12px; color: var(--text-muted); margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+
+@media (max-width: 640px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .method-grid { grid-template-columns: repeat(2, 1fr); }
+  h1 { font-size: 23px; }
+}
+</style>
+
+<div class="acmp-root">
+  <div class="acmp-wrap">
+    <div class="eyebrow">Pakistan evidence atlas &middot; composition</div>
+    <h1>What the Best estimate is built from</h1>
+    <p class="lede" id="lede">Loading…</p>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card">
+      <h2>Best estimate — 8 components, 4 methods</h2>
+      <p class="card-sub">Segments grouped by method, in proportion to MWp &middot; hover a segment for detail</p>
+      <div class="legend" id="legendBest"></div>
+      <div class="stack-wrap" id="stackWrapBest">
+        <div class="stack" id="stackBest"></div>
+        <div class="tooltip" id="tooltipBest"></div>
+      </div>
+      <div class="stack-scale"><span>0 MWp</span><span id="bestScaleMax"></span></div>
+      <div class="method-grid" id="methodGridBest"></div>
+    </div>
+
+    <div class="card">
+      <h2>Verified (the internal floor) — for comparison</h2>
+      <p class="card-sub">A stricter accounting: full hand-mapped OSM (not just what the model missed) plus only the roofclf+SPPI AND-gate</p>
+      <div class="legend" id="legendVerified"></div>
+      <div class="stack-wrap" id="stackWrapVerified">
+        <div class="stack" id="stackVerified" style="height:28px"></div>
+        <div class="tooltip" id="tooltipVerified"></div>
+      </div>
+      <div class="stack-scale"><span>0 MWp</span><span id="verifiedScaleMax"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Every component, both tiers</h2>
+      <p class="card-sub">Point MWp, share of its own tier, and 90% credible interval where one exists</p>
+      <div class="table-scroll">
+        <table class="data-table" id="dataTable">
+          <thead>
+            <tr><th>Component</th><th>Method</th><th>MWp</th><th>% of tier</th><th>90% CI (MWp)</th></tr>
+          </thead>
+          <tbody id="dataTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="note">
+      <h2>Reading this breakdown</h2>
+      <p>
+        <strong>roofclf alone accounts for roughly four-fifths of the Best estimate</strong> —
+        its own ≥ 400 m² replacement inside the density-calibrated domain and its sub-400 m²
+        "central" estimate together dwarf every other source. Direct OSM mapping and TerraMind
+        segmentation (ground-mount everywhere, plus rooftop outside the calibrated domain)
+        split roughly the remaining fifth. <strong>SPPI's role in Best is deliberately small</strong>:
+        it only appears in the out-of-domain extrapolation, a strict, explicitly-flagged
+        judgement band with no calibration quadrat of its own — never blended into the
+        in-domain roofclf estimate. SPPI's larger role is in <strong>Verified</strong>, the
+        stricter floor, where roofclf-AND-SPPI agreement is almost as large as all of hand-mapped
+        OSM combined.
+      </p>
+      <div class="foot" id="footNote"></div>
+    </div>
+  </div>
+</div>
+
+<script id="acmp-data" type="application/json">__PV_COMPOSITION_JSON__</script>
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('acmp-data').textContent);
+  const fmt1 = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const fmt0 = (n) => Math.round(n).toLocaleString('en-US');
+  const pct = (n) => n.toFixed(1) + '%';
+
+  function color(method) { return DATA.colors[method][isDark() ? 'dark' : 'light']; }
+  function isDark() {
+    const attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'dark') return true;
+    if (attr === 'light') return false;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  document.getElementById('lede').innerHTML = `
+    Every MWp in the atlas's headline <strong>Best</strong> figure traces back to one of four
+    methods: hand-mapped OSM the model had not already found, the TerraMind segmentation model,
+    roofclf's own per-building classifier, or roofclf cross-checked against the SPPI spectral
+    index. This page decomposes <code>${fmt1(DATA.mwp_best)} MWp</code> into those eight
+    underlying components, sourced directly from the published atlas's own uncertainty
+    composition (<code>atlas.py::_evidence_uncertainty</code>) — not a re-measurement.
+  `;
+
+  // ---- KPIs ----
+  const ge400 = DATA.best_rows.find((r) => r.key === 'ge400_roof');
+  const osmBest = DATA.best_by_method.find((m) => m.method === 'osm');
+  const sppiBest = DATA.best_by_method.find((m) => m.method === 'sppi');
+  const smallLow = DATA.verified_rows.find((r) => r.key === 'small_low');
+  const kpis = [
+    {
+      label: 'Best estimate', value: `${fmt1(DATA.mwp_best)}`,
+      sub: `MWp &middot; 90% CI ${fmt0(DATA.mwp_best_ci[0])}–${fmt0(DATA.mwp_best_ci[1])}`, dot: null,
+    },
+    {
+      label: 'Largest single component', value: `${fmt1(ge400.mwp)}`,
+      sub: `MWp &middot; roofclf ≥ 400 m² (${pct(ge400.pct)} of Best)`, dot: 'roofclf',
+    },
+    {
+      label: 'Hand-mapped OSM share', value: `${fmt1(osmBest.mwp)}`,
+      sub: `MWp &middot; ${pct(osmBest.pct)} of Best`, dot: 'osm',
+    },
+    {
+      label: 'SPPI-corroborated', value: `${fmt1(sppiBest.mwp)}`,
+      sub: `MWp in Best (${pct(sppiBest.pct)}) &middot; +${fmt1(smallLow.mwp)} in Verified's floor`, dot: 'sppi',
+    },
+  ];
+  document.getElementById('kpis').innerHTML = kpis.map((k) => `
+    <div class="kpi">
+      <div class="label">${k.label}</div>
+      <div class="value">${k.dot ? `<span class="dot" style="background:${color(k.dot)}"></span>` : ''}${k.value}</div>
+      <div class="sub">${k.sub}</div>
+    </div>
+  `).join('');
+
+  // ---- Legends ----
+  function renderLegend(elId, methods) {
+    document.getElementById(elId).innerHTML = methods.map((m) => `
+      <div class="legend-item"><span class="legend-swatch" style="background:${color(m)}"></span>${DATA.method_meta[m].name}</div>
+    `).join('');
+  }
+  renderLegend('legendBest', DATA.method_order);
+  renderLegend('legendVerified', ['osm', 'sppi']);
+
+  // ---- Stacked bars ----
+  function renderStack(stackId, tooltipId, rows, total, labelThresholdPct) {
+    const stack = document.getElementById(stackId);
+    const tooltip = document.getElementById(tooltipId);
+    stack.innerHTML = rows.map((r, i) => {
+      const w = (r.mwp / total * 100).toFixed(3);
+      const texture = r.key === 'floor_offset' ? ' texture' : '';
+      const label = r.pct >= labelThresholdPct
+        ? `<div class="seg-label">${pct(r.pct)}</div>` : '';
+      return `<div class="seg${texture}" data-i="${i}" style="width:${w}%;background:${color(r.method)}">${label}</div>`;
+    }).join('');
+
+    stack.querySelectorAll('.seg').forEach((el) => {
+      const r = rows[+el.dataset.i];
+      el.addEventListener('mouseenter', (evt) => {
+        const ciText = r.ci ? `${fmt1(r.ci[0])} – ${fmt1(r.ci[1])}` : 'deterministic correction, no drawn interval';
+        tooltip.innerHTML = `
+          <div class="t-title">${DATA.method_meta[r.method].name}</div>
+          <div class="t-row"><span class="k">MWp</span><span class="v mono">${fmt1(r.mwp)}</span></div>
+          <div class="t-row"><span class="k">Share of tier</span><span class="v mono">${pct(r.pct)}</span></div>
+          <div class="t-row"><span class="k">90% CI</span><span class="v mono">${ciText}</span></div>
+          <div class="t-desc">${r.label}</div>
+        `;
+        const wrapRect = el.closest('.stack-wrap').getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const relX = elRect.left - wrapRect.left + elRect.width / 2;
+        tooltip.style.left = Math.max(0, Math.min(relX - 100, wrapRect.width - 210)) + 'px';
+        tooltip.style.top = (elRect.bottom - wrapRect.top + 8) + 'px';
+        tooltip.style.opacity = 1;
+      });
+      el.addEventListener('mouseleave', () => { tooltip.style.opacity = 0; });
+    });
+  }
+  renderStack('stackBest', 'tooltipBest', DATA.best_rows, DATA.mwp_best, 8);
+  renderStack('stackVerified', 'tooltipVerified', DATA.verified_rows, DATA.mwp_verified, 8);
+  document.getElementById('bestScaleMax').textContent = `${fmt0(DATA.mwp_best)} MWp`;
+  document.getElementById('verifiedScaleMax').textContent = `${fmt0(DATA.mwp_verified)} MWp`;
+
+  // ---- Method summary cards (Best only) ----
+  document.getElementById('methodGridBest').innerHTML = DATA.best_by_method.map((m) => `
+    <div class="method-card">
+      <div class="m-name"><span class="legend-swatch" style="background:${color(m.method)}"></span>${m.name}</div>
+      <div class="m-pct">${pct(m.pct)}</div>
+      <div class="m-mwp">${fmt1(m.mwp)} MWp</div>
+    </div>
+  `).join('');
+
+  // ---- Table ----
+  function tableRows(rows, tierLabel, total) {
+    let html = `<tr class="tier-row"><td colspan="5">${tierLabel} — ${fmt1(total)} MWp</td></tr>`;
+    html += rows.map((r) => {
+      const ciText = r.ci ? `${fmt1(r.ci[0])} – ${fmt1(r.ci[1])}` : '—';
+      return `<tr>
+        <td class="label-cell">${r.label}</td>
+        <td><span class="swatch-inline" style="background:${color(r.method)}"></span>${DATA.method_meta[r.method].name}</td>
+        <td class="mono">${fmt1(r.mwp)}</td>
+        <td class="mono">${pct(r.pct)}</td>
+        <td class="mono">${ciText}</td>
+      </tr>`;
+    }).join('');
+    return html;
+  }
+  document.getElementById('dataTableBody').innerHTML =
+    tableRows(DATA.best_rows, 'Best estimate', DATA.mwp_best) +
+    tableRows(DATA.verified_rows, 'Verified (floor)', DATA.mwp_verified);
+
+  // ---- Footer ----
+  document.getElementById('footNote').innerHTML = `
+    Source: <code>docs/assets/interactive/pakistan_evidence_atlas.html</code>'s own embedded
+    uncertainty composition, recomputed by <code>scripts/build_atlas_composition.py</code>
+    — every row here is asserted (not just presented) to sum to its published tier total.
+    Credible intervals are ${DATA.ci_pct[0]}–${DATA.ci_pct[1]} percentile over ${DATA.n_draws}
+    draws. ${DATA.n_calib_boxes} calibration quadrats, ${DATA.n_domain_cells}/${DATA.n_cells}
+    national cells inside the density-calibrated domain. Not covered by these intervals:
+    the calibration quadrats are purposive, not a probability sample, and Rule-1 completeness
+    is relative to the mapping imagery's own epoch, which biases measured precision low —
+    both stated on the full atlas page, not just here.
+  `;
+})();
+</script>

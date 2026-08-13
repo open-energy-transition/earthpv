@@ -5,7 +5,7 @@ The [capacity map](capacity.md) reports the evidence atlas's Best-estimate total
 size, split rooftop vs ground-mount, instead of by geography. It is not a second
 estimate -- every MWp here comes from the identical six components and calibration the
 main atlas uses, re-binned rather than recomputed. The two pages' totals match for the
-same run to within 0.02% (currently 15,971.9 vs 15,974 MWp) -- the residual is a
+same run to within 0.02% (currently 16,608.7 vs 16,611 MWp) -- the residual is a
 handful of candidates whose location falls just outside every grid cell's polygon and
 so never enters a per-cell total on either page, not an uncounted source of error.
 

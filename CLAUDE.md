@@ -301,9 +301,10 @@ components since they are fit on the same quadrats (`sub400_capacity.COVERAGE_BO
 fit from the density span of every Rule-1-complete calibration quadrat -- **NOT** from
 `select_calibrated_quadrats`'s separate precision-trust selection (a quadrat's density is real
 ground truth regardless of whether its *precision* is trusted for the coverage-ratio fit).
-Currently **(123.5, 5,258.00) bldg/km²** (widened 2026-08-13 by `bahawalnagar_rural_calib_4p00km2`,
-own density 123.5 bldg/km², below the prior 141.00 floor set by Khairpur Rural), covering
-**1,868 of 4,463 national cells (41.9%, 82.1% of national buildings)**.
+Currently **(48.5, 5,258.00) bldg/km²** (widened again 2026-08-13, same day, by
+`nasirabad_rural_calib_2km`, own density 48.5 bldg/km², below the 123.5 floor
+`bahawalnagar_rural_calib_4p00km2` had just set hours earlier), covering
+**2,957 of 4,463 national cells (66.3%, 94.7% of national buildings)**.
 `--ratio-lo`/`--ratio-hi` on the CLI do **not** affect this
 domain at all -- they tune `select_calibrated_quadrats`'s independent precision-trust band,
 a real footgun if conflated. **The generalizable lesson for widening this domain further**: a
@@ -315,10 +316,10 @@ that pulls a country average down; a range-extending quadrat has to be sized and
 average in enough non-built land on purpose. `docs/methods/calibration-quadrats.md` and
 `docs/methods/density.md` have the full derivation and every historical widening step.
 
-Current domain-restricted capacity figures (post 2026-08-13 `roofclf` refit + national
-rescoring including `bahawalnagar_rural_calib_4p00km2`): sub-400 central (feeds Best estimate)
-**6,081.1 MWp**, sub-400 AND-gate (the internal floor population) **2,093.9 MWp**, ≥ 400 m²
-roofclf rooftop replacement (in-domain) **6,540.1 MWp**.
+Current domain-restricted capacity figures (post 2026-08-13 second `roofclf` refit + national
+rescoring, 27 quadrats including `nasirabad_rural_calib_2km` and `tank_rural_calib_2km`):
+sub-400 central (feeds Best estimate) **6,372.1 MWp**, sub-400 AND-gate (the internal floor
+population) **2,179.7 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **7,030.8 MWp**.
 
 **Outside the calibrated domain, roofclf-AND-SPPI agreement is used as a substitute standard of
 evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`), folded into Best estimate
@@ -327,7 +328,7 @@ by stale reference imagery (see "Main workflow" above). This is a strict, explic
 extrapolation of a coverage-ratio fit measured on urban/semi-urban quadrats across a much
 sparser rural remainder with no calibration coverage of its own -- the atlas template, a
 distinct dotted-outline map marker (`is_extended`), and the function's own docstring all carry
-that caveat forward. Current figure: **+148.5 MWp** (the remaining 2,595 out-of-domain cells).
+that caveat forward. Current figure: **+61.7 MWp** (the remaining 1,506 out-of-domain cells).
 
 **The evidence atlas reports a 90% credible interval on its headline figure**
 (`atlas._evidence_uncertainty`), composing every measured uncertainty source (module/land kWp
@@ -337,7 +338,7 @@ vector where the underlying constant or calibration set is shared. It asserts it
 point values sum to the published total as a guard against silently adding a component to
 the atlas without adding it to the uncertainty composition (the code still separately tracks
 the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
-published). **Current published result: Best estimate 15,971.9 MWp (90% CI 12,474-18,952).**
+published). **Current published result: Best estimate 16,608.7 MWp (90% CI 12,912-19,671).**
 CLI: `--coverage-boot N` on `sub400-capacity`/`ge400-roof-capacity` (default 200; 0 disables and
 narrows the reported interval).
 
@@ -415,14 +416,22 @@ each standalone artifact page.
 
 ### Calibration quadrats
 
-**25 quadrats as of 2026-08-13 (Bahawalnagar Rural, the most recent addition), spanning
+**27 quadrats as of 2026-08-13 (Tank Rural, the most recent addition), spanning
 Pakistan** -- purposive selections (industrial estates, dense residential blocks) plus several
 deliberately-rural extensions used to widen the density-calibration domain (see "Density stage"
 above). Bahawalnagar Rural's own building density (123.5 bldg/km², measured directly against
 VIDA) came in below the prior domain floor (141.00 bldg/km², set by Khairpur Rural), so
 `density.CALIBRATED_BLDG_DENSITY_KM2` was widened to (123.5, 5,258.00) alongside a fresh
 `roofclf` re-fit and national rescoring that includes it (2026-08-13); see
-`docs/issues/pakistan-calibration-boxes.md`'s Box 14. All are declared **Rule-1 complete** by
+`docs/issues/pakistan-calibration-boxes.md`'s Box 14. **Nasirabad Rural is this project's
+first confirmed-zero quadrat** (48.5 bldg/km² own density, 0 installations after the owner
+visually swept the imagery, not just an OSM/Overpass check -- the exact distinction that
+made Muzaffargarh Rural Wide's original "confirmed zero" wrong; see Box 15) -- its density
+is lower than Bahawalnagar Rural's, so the floor moves again, to 48.5. Tank Rural (Khyber
+Pakhtunkhwa, 55.75 bldg/km², 10 installations) sits inside the widened range without moving
+it further, and is KP's first rural-extension quadrat (Box 16). Both are folded into a
+fresh `roofclf` refit and national rescoring alongside this second widening (2026-08-13).
+All are declared **Rule-1 complete** by
 the owner (every visible panel mapped) --
 **Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own
 (usually unrecorded) capture date, not against the Sentinel-2 composite's epoch, so the newest
