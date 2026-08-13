@@ -27,13 +27,13 @@ rooftop vs ground-mount by how large each installation is, instead of by geograp
 
 ## The headline figure
 
-**Best estimate: 15,972 MWp** (90% range 12,474 &ndash; 18,952). It combines every
+**Best estimate: 16,609 MWp** (90% range 12,912 &ndash; 19,671). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
-"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (7,973 MWp: roofclf's own
+"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,458 MWp: roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
 detections everywhere else, segmentation's ground-mount detections throughout -- see
 "Segmentation vs. roofclf on large rooftops" below), the roofclf per-building density
-estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 149 MWp of
+estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 62 MWp of
 roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see
 "A sixth change" below.
 
@@ -317,6 +317,32 @@ refreshed coverage-ratio bootstrap (now over 16 trusted quadrats, still excludin
 Bahawalnagar Rural itself on `rate_ratio` grounds, 2.187, just outside the trusted
 [0.5, 2.0] band) moved several components down even as the domain grew.
 
+**An eleventh change, same day: two more quadrats (one of them this project's first
+confirmed-zero), a fourth widening, and a second refit within 2026-08-13.**
+`nasirabad_rural_calib_2km` (Nasirabad District, Balochistan -- Balochistan's first rural
+quadrat, its only other one being urban Quetta) measured **48.5 bldg/km<sup>2</sup>** own
+density, below the 123.5 floor the tenth change had just set hours earlier, moving the
+floor **123.5 -> 48.5** bldg/km<sup>2</sup> and growing the domain **1,868 -> 2,957** of
+Pakistan's 4,463 cells (41.9% -> 66.3% of cells, 82.1% -> 94.7% of national buildings) --
+by far the largest single jump in this constant's history, since Pakistan's national
+building-density distribution turns out to have a lot of mass between 48.5 and 123.5.
+Nasirabad Rural is also this project's first confirmed-**zero**-installation Rule-1
+quadrat: the owner visually swept the imagery (not merely checked OSM/Overpass, the
+distinction that made Muzaffargarh Rural Wide's original "confirmed zero" wrong) and
+found none, independently corroborated by 6 consecutive zero-element Overpass responses
+across ~10 minutes and multiple mirrors. `tank_rural_calib_2km` (Tank District, Khyber
+Pakhtunkhwa -- KP's first rural quadrat, its three others all sitting in the dense
+Peshawar valley) measured 55.75 bldg/km<sup>2</sup>, inside the widened range but not
+itself the new floor, with 10 real mapped installations. Both folded into a second
+`roofclf` refit the same day, 27 quadrats (median LOQO AUC 0.879). Re-ran the full chain:
+sub-400 central (Best) 6,081 &rarr; **6,372 MWp**, sub-400 AND-gate 2,094 &rarr; **2,180
+MWp**, out-of-domain extension 149 &rarr; **62 MWp** (the out-of-domain population itself
+shrank from 2,595 to 1,506 cells as the domain absorbed most of it), &ge;400 m<sup>2</sup>
+roofclf rooftop 6,540 &rarr; **7,031 MWp**. Evidence atlas: Best 15,972 &rarr; **16,609
+MWp** (+4.0%) -- an increase this time, unlike the tenth change: the domain widened far
+more dramatically than the refit/coverage-ratio recalibration pulled individual
+components down.
+
 ## What this map cannot tell you, and what an independent estimate confirms it can
 
 **The absolute total is a modelled estimate, not a metered figure, and resolution is
@@ -342,23 +368,23 @@ the national total per spatial unit** and compared: not "whose number is bigger,
 
 They do, for most of the country. Across the reference's 3,303 hexagons, the median
 absolute difference in national-share allocation is **0.005 percentage points**, and
-64% of hexagons land within &plusmn;0.02pp of each other. Rank correlation (Spearman) is
-**0.83** including the many hexagons both sides agree carry essentially nothing, or
-**0.71** restricted to just the hexagons this project actually places a detection in --
-either way, strong agreement on the geography.
+64% of hexagons land within &plusmn;0.02pp of each other (83% within &plusmn;0.05pp).
+Rank correlation (Spearman) is **0.84** including the many hexagons both sides agree
+carry essentially nothing, or **0.75** restricted to just the 1,759 hexagons (53%) this
+project actually places a detection in -- either way, strong agreement on the geography.
 
 That agreement is not uniform, though, and the exception is worth stating plainly: a
 small number of hexagons account for almost all of the remaining difference, and every
-one of the largest ones runs the same direction -- this project's estimate concentrates
-more of the national share into a handful of hotspot cells than the independent
-reference does (up to +5.0pp in the single largest case), never the reverse by nearly as
-much (the most negative hexagon is -0.16pp). That skew is why the straightforward
-linear correlation on share is a moderate 0.44 (a log-compressed version, less sensitive
-to those few large values, rises to 0.54) even though the rank correlation and the
-typical hexagon's near-exact agreement both say the two models are looking at the same
-country. Read it as two independently-built estimates agreeing closely on geography and
-disagreeing about how much weight the largest sites deserve -- not as a validation of
-one against the other, since neither is ground truth here.
+one of the twenty largest discrepancies runs the same direction -- this project's
+estimate concentrates more of the national share into a handful of hotspot cells than
+the independent reference does (up to +4.5pp in the single largest case), never the
+reverse by nearly as much (the most negative hexagon is -0.16pp). That skew is why the
+straightforward linear correlation on share is a moderate 0.45 (a log-compressed
+version, less sensitive to those few large values, rises to 0.54) even though the rank
+correlation and the typical hexagon's near-exact agreement both say the two models are
+looking at the same country. Read it as two independently-built estimates agreeing
+closely on geography and disagreeing about how much weight the largest sites deserve --
+not as a validation of one against the other, since neither is ground truth here.
 
 Reproducible with `scripts/pv_reference_share_comparison.py`, which reads this project's
 side straight out of the published Best-estimate figures per grid cell and normalizes

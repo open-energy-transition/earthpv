@@ -103,7 +103,7 @@ Checked against that limitation directly: an independent, separately produced na
 rooftop-solar estimate agrees closely with this project's on **where** capacity
 concentrates -- normalizing both to percent of national total per spatial unit (their
 absolute magnitudes aren't comparable), the median difference across 3,303 spatial units
-is 0.005 percentage points and rank correlation is 0.71-0.83. It disagrees more on how
+is 0.005 percentage points and rank correlation is 0.75-0.84. It disagrees more on how
 much weight the very largest sites deserve (a handful of hotspot cells drive most of the
 remaining gap, consistently in the same direction), which is a real, stated limitation,
 not a hidden one. See
@@ -138,7 +138,7 @@ for what was tried and why the main workflow above is what shipped.
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 15,972 MWp (90 percent range 12,474 to 18,952) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 16,609 MWp (90 percent range 12,912 to 19,671) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -197,7 +197,7 @@ above:
 
 | | |
 | --- | --- |
-| **15,972 MWp** | Best estimate: this project's own highest defensible figure (90% range 12,474 &ndash; 18,952) |
+| **16,609 MWp** | Best estimate: this project's own highest defensible figure (90% range 12,912 &ndash; 19,671) |
 | **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
 | **400 m²** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
