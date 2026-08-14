@@ -183,6 +183,10 @@
     text-transform: uppercase; color: var(--muted); margin-top: 8px; }
   .hero-ci { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); margin-top: 7px;
     font-variant-numeric: tabular-nums; }
+  /* How old is this: the Sentinel-2 composite window the model actually read, and when
+     this specific page was last built -- two different ages, so two different numbers. */
+  .hero-freshness { font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    margin-top: 6px; font-variant-numeric: tabular-nums; }
   .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
   .hero-desc b { color: var(--ink); font-weight: 660; }
 
@@ -200,6 +204,75 @@
   .tile.large-tile .v { color: var(--large); }
   .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  /* Composition-by-method stacked bars (Best + Verified) -- same 4 method colors and
+     mark specs as results/pakistan_atlas_composition.html, reusing THIS page's own
+     tokens instead of a separate palette: roofclf alone is --accent (it supplies most
+     of Best, so it gets the primary hue), segmentation is --large (already this
+     page's own "model detections >=400 m2" color), OSM is --domain, and roofclf+SPPI
+     is --extended (already this page's "extrapolated beyond calibration" color --
+     small_outdomain literally is that extrapolation). */
+  .comp-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 14px 0 12px; }
+  .comp-legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
+    font-size: 11px; color: var(--ink-2); }
+  .comp-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; display: inline-block; }
+  .comp-swatch.osm { background: var(--domain); }
+  .comp-swatch.seg { background: var(--large); }
+  .comp-swatch.roofclf { background: var(--accent); }
+  .comp-swatch.sppi { background: var(--extended); }
+  .comp-stack-wrap { position: relative; }
+  .comp-row-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin: 16px 0 6px; }
+  .comp-stack { display: flex; width: 100%; height: 34px; border-radius: 6px; overflow: hidden;
+    background: var(--panel-2); }
+  .comp-stack.small { height: 26px; }
+  .comp-seg { height: 100%; position: relative; cursor: pointer;
+    border-right: 2px solid var(--panel-2); transition: filter 0.1s ease; }
+  .comp-seg:last-child { border-right: none; }
+  .comp-seg:hover { filter: brightness(1.15); }
+  .comp-seg .comp-seg-label { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 11.5px; font-weight: 700; color: rgba(0,0,0,0.72);
+    white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
+  .comp-seg.texture::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 7px); }
+  .comp-scale { display: flex; justify-content: space-between; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--muted); margin-top: 6px; }
+  .comp-tip { position: absolute; pointer-events: none; background: var(--panel);
+    border: 1px solid var(--card-ring); border-radius: 8px; padding: 10px 13px;
+    font-size: 12px; line-height: 1.55; box-shadow: var(--shadow); opacity: 0;
+    transition: opacity 0.08s ease; min-width: 200px; max-width: 280px; z-index: 5; }
+  .comp-tip .t-title { font-weight: 700; margin-bottom: 6px; color: var(--ink); font-size: 12px; }
+  .comp-tip .t-row { display: flex; justify-content: space-between; gap: 14px; }
+  .comp-tip .t-row .k { color: var(--muted); }
+  .comp-tip .t-row .v { color: var(--ink); font-family: var(--font-mono); }
+  .comp-tip .t-desc { margin-top: 6px; color: var(--ink-2); font-size: 11px; line-height: 1.5; }
+  .comp-methods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+  @media (max-width: 700px) { .comp-methods { grid-template-columns: repeat(2, 1fr); } }
+  .comp-method-card { background: var(--panel-2); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 12px 13px; }
+  .comp-method-card .m-name { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
+    font-size: 10.5px; letter-spacing: 0.04em; color: var(--ink-2); margin-bottom: 8px; }
+  .comp-method-card .m-pct { font-size: 19px; font-weight: 740; letter-spacing: -0.01em; }
+  .comp-method-card .m-mwp { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── downloads: a point-in-time data release, plus a live-OSM Overpass escape
+     hatch for anything the release has already gone stale on ── */
+  .dl-list { display: flex; flex-direction: column; gap: 9px; }
+  .dl-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+    padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--card-ring);
+    border-radius: 10px; }
+  .dl-main { min-width: 0; }
+  .dl-name { font-weight: 640; font-size: 13.5px; }
+  .dl-note { font-size: 12px; color: var(--ink-2); margin-top: 4px; line-height: 1.5; }
+  .dl-link { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .dl-link a { color: var(--accent); font-family: var(--font-mono); font-size: 12px;
+    font-weight: 650; text-decoration: none; white-space: nowrap; }
+  .dl-link a:hover { text-decoration: underline; }
+  .dl-size { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .dl-query-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+  .dl-query { background: var(--panel-2); border: 1px solid var(--card-ring); border-radius: 8px;
+    padding: 12px 14px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2);
+    overflow-x: auto; white-space: pre; line-height: 1.5; }
 
   .rank { margin-top: 4px; }
   .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
@@ -422,6 +495,7 @@
           <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
           <div class="hero-label">Best estimate, nationwide</div>
           <div class="hero-ci" id="heroCi"></div>
+          <div class="hero-freshness" id="heroFreshness"></div>
           <div class="hero-desc" id="heroDesc"></div>
           <div class="tiles" id="tiles"></div>
         </div>
@@ -498,6 +572,45 @@
           </details>
         </div>
       </aside>
+    </div>
+  </section>
+
+  <section class="sec" id="composition">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Capacity</div>
+        <div class="sec-title">The same total, by method</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="map-head">
+        <div class="map-title">Best estimate &mdash; 8 components, 4 methods</div>
+        <div class="map-sub" id="compSub"></div>
+      </div>
+      <div class="comp-legend" id="compLegend"></div>
+
+      <div class="comp-stack-wrap">
+        <div class="comp-stack" id="compStackBest"></div>
+        <div class="comp-tip" id="compTipBest"></div>
+      </div>
+      <div class="comp-scale"><span>0 MWp</span><span id="compScaleBest"></span></div>
+
+      <div class="comp-row-label" id="compVerifiedLabel"></div>
+      <div class="comp-stack-wrap">
+        <div class="comp-stack small" id="compStackVerified"></div>
+        <div class="comp-tip" id="compTipVerified"></div>
+      </div>
+      <div class="comp-scale"><span>0 MWp</span><span id="compScaleVerified"></span></div>
+
+      <div class="comp-methods" id="compMethods"></div>
+      <div class="hero-desc" style="margin-top:16px;">roofclf alone (its own
+      &ge;400 m&sup2; replacement plus the sub-400 m&sup2; central estimate) supplies
+      most of Best by itself; direct OSM mapping and segmentation split roughly the
+      rest. roofclf-AND-SPPI agreement is a deliberately small sliver of Best (the
+      out-of-domain extrapolation only) but nearly as large as all of OSM inside
+      Verified, the stricter floor. Full breakdown with credible intervals:
+      <a href="pakistan_atlas_composition.html" target="_blank" rel="noopener">capacity composition</a>.</div>
     </div>
   </section>
 
@@ -613,6 +726,38 @@
         <span class="xs">preliminary results, sampling caveats, independent corroboration</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         __CONFIDENCE_HTML__
+      </div>
+    </details>
+  </section>
+
+  <section class="sec" id="downloads">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Data</div>
+        <div class="sec-title">Download the data behind this atlas</div>
+      </div>
+      <div class="sec-sub" id="dlRelease"></div>
+    </div>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">Download the underlying data</span>
+        <span class="xs">capacity parquets, calibration boundaries, pose survey, raw detections, model checkpoint</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <div class="dl-list" id="dlList"></div>
+        <div class="dl-query-label">Live OSM PV, not this snapshot &mdash; Overpass query</div>
+        <div class="dl-query">[out:json][timeout:180];
+area["name"="__AOI_TITLE__"]["admin_level"="2"]-&gt;.searchArea;
+(
+  nwr["generator:source"="solar"](area.searchArea);
+  nwr["plant:source"="solar"](area.searchArea);
+);
+out meta geom;</div>
+        <div class="hero-desc" style="margin-top:10px;">Paste into
+        <a href="https://overpass-turbo.eu/" target="_blank" rel="noopener">overpass-turbo.eu</a>
+        for an interactive map and GeoJSON export, or POST it as the <code>data</code> parameter
+        to <code>https://overpass-api.de/api/interpreter</code> from a script. The raw-detections
+        download above predates this page and will go stale as mappers keep editing; this query
+        always reflects live OSM state.</div>
       </div>
     </details>
   </section>
@@ -989,6 +1134,140 @@
       + `<td>${fmt(b.roof_n)}</td><td>${fmt(b.ground_n)}</td></tr>`).join("");
   }
 
+  // ── composition by method (8 components, 4 methods) ──────────────────────────────
+  // Same breakdown results/pakistan_atlas_composition.html renders standalone, from
+  // the SAME embedded uncertainty.components this page already carries -- no new
+  // data, just a second view onto it, so the two pages can never drift apart.
+  const COMP_METHOD_META = {
+    osm:     { name: "OSM (hand-mapped)", cls: "osm" },
+    seg:     { name: "TerraMind segmentation", cls: "seg" },
+    roofclf: { name: "roofclf (alone)", cls: "roofclf" },
+    sppi:    { name: "roofclf + SPPI", cls: "sppi" },
+  };
+  const COMP_METHOD_ORDER = ["osm", "seg", "roofclf", "sppi"];
+
+  function compRows(){
+    const C = T.uncertainty.components;
+    const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
+    const best = [
+      { key: "osm_unmatched_roof", method: "osm", mwp: C.osm_unmatched_roof.mwp, ci: C.osm_unmatched_roof.ci,
+        label: "OSM hand-mapped — rooftop (not already found by the model)" },
+      { key: "osm_unmatched_ground", method: "osm", mwp: C.osm_unmatched_ground.mwp, ci: C.osm_unmatched_ground.ci,
+        label: "OSM hand-mapped — ground-mount (not already found by the model)" },
+      { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
+        label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)" },
+      { key: "seg_roof_outdomain", method: "seg", mwp: C.seg_roof_outdomain.mwp, ci: C.seg_roof_outdomain.ci,
+        label: "TerraMind segmentation — rooftop, outside the calibrated domain" },
+      { key: "seg_ground", method: "seg", mwp: C.seg_ground.mwp, ci: C.seg_ground.ci,
+        label: "TerraMind segmentation — ground-mount (every cell; roofclf has no footprint there)" },
+      { key: "ge400_roof", method: "roofclf", mwp: C.ge400_roof.mwp, ci: C.ge400_roof.ci,
+        label: "roofclf — ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain" },
+      { key: "small_central", method: "roofclf", mwp: C.small_central.mwp, ci: C.small_central.ci,
+        label: "roofclf alone — sub-400 m² rooftop, density-calibrated coverage ratio" },
+      { key: "small_outdomain", method: "sppi", mwp: C.small_outdomain.mwp, ci: C.small_outdomain.ci,
+        label: "roofclf + SPPI agreement — sub-400 m², extrapolated outside the calibrated domain" },
+    ];
+    const verified = [
+      { key: "osm_roof", method: "osm", mwp: C.osm_roof.mwp, ci: C.osm_roof.ci,
+        label: "OSM hand-mapped — rooftop (all of it, matched or not)" },
+      { key: "osm_ground", method: "osm", mwp: C.osm_ground.mwp, ci: C.osm_ground.ci,
+        label: "OSM hand-mapped — ground-mount (all of it, matched or not)" },
+      { key: "small_low", method: "sppi", mwp: C.small_low.mwp, ci: C.small_low.ci,
+        label: "roofclf + SPPI agreement — sub-400 m², inside the calibrated domain" },
+    ];
+    return { best, verified };
+  }
+
+  function compMethodTotals(rows, total){
+    const sums = {}; COMP_METHOD_ORDER.forEach(m => sums[m] = 0);
+    rows.forEach(r => sums[r.method] += r.mwp);
+    return COMP_METHOD_ORDER.filter(m => sums[m] > 0).map(m =>
+      ({ method: m, ...COMP_METHOD_META[m], mwp: sums[m], pct: 100 * sums[m] / total }));
+  }
+
+  function renderCompStack(stackId, tipId, rows, total, labelThresholdPct){
+    const stack = document.getElementById(stackId);
+    const tip = document.getElementById(tipId);
+    stack.innerHTML = rows.map((r, i) => {
+      const w = (r.mwp / total * 100).toFixed(3);
+      const pct = 100 * r.mwp / total;
+      const label = pct >= labelThresholdPct ? `<div class="comp-seg-label">${pct.toFixed(0)}%</div>` : "";
+      return `<div class="comp-seg${r.texture ? " texture" : ""}" data-i="${i}" `
+        + `style="width:${w}%;background:var(--${r.method === "roofclf" ? "accent" : r.method === "seg" ? "large" : r.method === "sppi" ? "extended" : "domain"})">${label}</div>`;
+    }).join("");
+    stack.querySelectorAll(".comp-seg").forEach(el => {
+      const r = rows[+el.dataset.i];
+      el.addEventListener("pointerenter", () => {
+        const pct = 100 * r.mwp / total;
+        const ciText2 = r.ci ? `${fmt(r.ci[0])} – ${fmt(r.ci[1])}` : "deterministic, no drawn interval";
+        tip.innerHTML = `<div class="t-title">${COMP_METHOD_META[r.method].name}</div>`
+          + `<div class="t-row"><span class="k">MWp</span><span class="v">${fmt(r.mwp)}</span></div>`
+          + `<div class="t-row"><span class="k">Share of tier</span><span class="v">${pct.toFixed(1)}%</span></div>`
+          + `<div class="t-row"><span class="k">90% CI</span><span class="v">${ciText2}</span></div>`
+          + `<div class="t-desc">${r.label}</div>`;
+        const wrapRect = el.closest(".comp-stack-wrap").getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const relX = elRect.left - wrapRect.left + elRect.width / 2;
+        tip.style.left = Math.max(0, Math.min(relX - 100, wrapRect.width - 210)) + "px";
+        tip.style.top = (elRect.bottom - wrapRect.top + 8) + "px";
+        tip.style.opacity = 1;
+      });
+      el.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+    });
+  }
+
+  function renderComposition(){
+    const { best, verified } = compRows();
+    document.getElementById("compSub").textContent =
+      "Segments grouped by method, in proportion to MWp · hover a segment for detail";
+    document.getElementById("compLegend").innerHTML = COMP_METHOD_ORDER.map(m =>
+      `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}</div>`).join("");
+    document.getElementById("compVerifiedLabel").textContent =
+      `Verified (the floor) — ${fmt(T.mwp_verified)} MWp, for comparison`;
+
+    renderCompStack("compStackBest", "compTipBest", best, T.mwp_best, 8);
+    renderCompStack("compStackVerified", "compTipVerified", verified, T.mwp_verified, 8);
+    document.getElementById("compScaleBest").textContent = `${fmt(T.mwp_best)} MWp`;
+    document.getElementById("compScaleVerified").textContent = `${fmt(T.mwp_verified)} MWp`;
+
+    const methodTotals = compMethodTotals(best, T.mwp_best);
+    document.getElementById("compMethods").innerHTML = methodTotals.map(m => `
+      <div class="comp-method-card">
+        <div class="m-name"><span class="comp-swatch ${m.cls}"></span>${m.name}</div>
+        <div class="m-pct">${m.pct.toFixed(1)}%</div>
+        <div class="m-mwp">${fmt(m.mwp)} MWp</div>
+      </div>`).join("");
+  }
+
+  // ── downloads: a point-in-time data release (see build_evidence_atlas's docstring
+  // for why this is a static manifest passed in by the caller, not derived here) ──
+  function fmtBytes(n){
+    if (!n && n !== 0) return "";
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + " MB";
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + " KB";
+    return n + " B";
+  }
+
+  function renderDownloads(){
+    const items = T.downloads;
+    document.getElementById("dlList").innerHTML = items.map(d => `
+      <div class="dl-item">
+        <div class="dl-main">
+          <div class="dl-name">${d.label}</div>
+          <div class="dl-note">${d.note || ""}</div>
+        </div>
+        <div class="dl-link">
+          <a href="${d.url}" target="_blank" rel="noopener">${d.file}</a>
+          <span class="dl-size">${fmtBytes(d.size_bytes)}</span>
+        </div>
+      </div>`).join("");
+    const releasePage = items[0].url.replace(/\/releases\/download\/([^/]+)\/.*/, "/releases/tag/$1");
+    document.getElementById("dlRelease").innerHTML =
+      releasePage !== items[0].url
+        ? `<a href="${releasePage}" target="_blank" rel="noopener">view release on GitHub</a>`
+        : "";
+  }
+
   // ── panel-pose survey (ported from pose.py's TEMPLATE, native this time) ─────────
   // Reads colours off `.pose-native` itself, not `:root` -- its custom properties live
   // there (see the CSS above), so `getComputedStyle(document.documentElement)` would
@@ -1238,6 +1517,10 @@
 
   countUp("heroNum", T.mwp_best, 700);
   document.getElementById("heroCi").textContent = ciText(T.mwp_best_ci);
+  document.getElementById("heroFreshness").textContent = [
+    T.imagery_date_range ? `Sentinel-2 imagery: ${T.imagery_date_range}` : null,
+    T.generated_at ? `atlas generated ${T.generated_at}` : null,
+  ].filter(Boolean).join(" · ");
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
     `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
@@ -1252,6 +1535,22 @@
     renderSizeChart(); drawSizeTable();
   } else if (sizeSection) {
     sizeSection.style.display = "none";
+  }
+
+  const hasComposition = !!(T.uncertainty && T.uncertainty.components);
+  const compSection = document.getElementById("composition");
+  if (hasComposition) {
+    renderComposition();
+  } else if (compSection) {
+    compSection.style.display = "none";
+  }
+
+  const hasDownloads = Array.isArray(T.downloads) && T.downloads.length > 0;
+  const downloadsSection = document.getElementById("downloads");
+  if (hasDownloads) {
+    renderDownloads();
+  } else if (downloadsSection) {
+    downloadsSection.style.display = "none";
   }
 
   const hasPose = !!DATA.pose;

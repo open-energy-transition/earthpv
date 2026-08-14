@@ -1605,6 +1605,9 @@ def build_evidence_atlas(
     sub400_outdomain_buildings_path: Path | None = None,
     pose_summary_csv: Path | None = None,
     pose_history_note: str = "", pose_data_note: str = "",
+    imagery_date_range: str | None = None,
+    downloads: list[dict] | None = None,
+    data_release_url: str | None = None,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -1730,6 +1733,28 @@ def build_evidence_atlas(
       `build_pose_survey_page` takes; `pose.compute_pose_survey_data` (shared with that
       function) computes chart data and every stat once. Omit it and no pose section is
       written at all.
+
+    **`imagery_date_range` (added 2026-08-14): a free-text label for the Sentinel-2
+    scene window the composites were built from** (e.g. "Oct 2025 - Jun 2026"), shown
+    in the page footer next to a `generated_at` timestamp (always stamped, this
+    function's own run date) -- so a reader can tell how stale the underlying imagery
+    and the atlas build itself are without having to ask. There is no single
+    pipeline-tracked source for this yet: composites for one AOI can mix cells built by
+    `earthpv compose` (whatever `--window` that run used, `imagery.annual_composite`'s
+    own default otherwise) with cells reused from a `source_region` cache built by a
+    different project on its own schedule, so this is passed in by the caller rather
+    than derived here. Omit it and the footer shows the generation date alone.
+
+    **`downloads` / `data_release_url` (added 2026-08-14): a Downloads section linking to a
+    point-in-time data release** (parquets, calibration boundaries, the pose survey, raw
+    detections, model checkpoint) hosted as GitHub Release assets, since `data/` itself is
+    gitignored and several of these files are well over what git handles comfortably.
+    `downloads` is a list of `{"file", "label", "note", "size_bytes"}` dicts (see
+    `configs/pakistan_atlas_downloads.json` for the Pakistan manifest); `data_release_url` is
+    the release's asset base URL (`.../releases/download/<tag>`), joined with each `file` to
+    build the actual link. Omit either and no Downloads section is written -- this is a frozen
+    snapshot the atlas does not regenerate on its own, so an AOI with no release yet should not
+    show a section pointing at nothing.
     """
     density_dir = Path(density_dir)
     out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
@@ -2010,8 +2035,16 @@ def build_evidence_atlas(
             "mwp_verified_ci": uncertainty["mwp_verified_ci"],
             "mwp_best_ci": uncertainty["mwp_best_ci"],
             "uncertainty": uncertainty,
+            "generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+            "imagery_date_range": imagery_date_range,
         },
     }
+
+    if downloads and data_release_url:
+        base = data_release_url.rstrip("/")
+        data["totals"]["downloads"] = [
+            {**d, "url": f"{base}/{d['file']}"} for d in downloads
+        ]
 
     # Second lens on the same Best-estimate total: by installation size and placement
     # instead of by cell. Same computation `build_size_distribution_atlas` publishes as
@@ -2052,8 +2085,8 @@ def build_evidence_atlas(
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Solar PV: Evidence Atlas",
-        "__H1__": f"{title}'s Solar Capacity",
+        "__PAGE_TITLE__": f"{title}'s Solar Capacity Atlas",
+        "__H1__": f"{title}'s Solar Capacity Atlas",
         "__AOI_TITLE__": title,
         "__LEDE_HTML__": (
             "The same country, the same imagery, one defensible estimate. "

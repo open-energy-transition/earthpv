@@ -1113,9 +1113,30 @@ def atlas(
         "", help="Passed through to `earthpv.pose.compute_pose_survey_data` -- see "
         "`build_pose_survey_page`'s docstring.",
     ),
+    imagery_date_range: str = typer.Option(
+        None, help="Only used with the EVIDENCE atlas (--osm-solar). Free-text label "
+        "for the Sentinel-2 scene window the composites were built from (e.g. "
+        "'Oct 2025 - Jun 2026'), shown in the page footer next to an always-stamped "
+        "'generated on <today>' -- see build_evidence_atlas's docstring for why this "
+        "is passed in rather than derived automatically.",
+    ),
+    downloads_manifest: Path = typer.Option(
+        None, help="Only used with the EVIDENCE atlas (--osm-solar). JSON file: a list "
+        "of {'file', 'label', 'note', 'size_bytes'} dicts describing a point-in-time "
+        "data release's assets (see configs/pakistan_atlas_downloads.json). Pass "
+        "together with --data-release-url to write a Downloads section; omitting "
+        "either omits the section entirely.",
+    ),
+    data_release_url: str = typer.Option(
+        None, help="Only used with the EVIDENCE atlas (--osm-solar), together with "
+        "--downloads-manifest. Base URL for the release's assets (e.g. "
+        "'https://github.com/<org>/<repo>/releases/download/<tag>'), joined with each "
+        "manifest entry's 'file' to build its download link.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
+    import json
     import logging
 
     from earthpv.atlas import (
@@ -1138,6 +1159,10 @@ def atlas(
                     "the Ceiling tier was removed 2026-08-06)"
                 )
             candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
+            downloads = (
+                json.loads(Path(downloads_manifest).read_text())
+                if downloads_manifest else None
+            )
             build_evidence_atlas(
                 aoi, density_dir, osm_solar, candidates_path,
                 sub400_low_cells, sub400_central_cells,
@@ -1147,6 +1172,9 @@ def atlas(
                 pose_summary_csv=pose_summary_csv,
                 pose_history_note=pose_history_note,
                 pose_data_note=pose_data_note,
+                imagery_date_range=imagery_date_range,
+                downloads=downloads,
+                data_release_url=data_release_url,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):

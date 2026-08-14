@@ -1,0 +1,68 @@
+[
+  {
+    "file": "pakistan_capacity_by_cell.parquet",
+    "label": "Capacity per grid cell",
+    "note": "PyPSA-ready region/cell aggregate: n_buildings, roof_area_m2, est_mwp_rc and friends. 4,463 rows.",
+    "size_bytes": 487796
+  },
+  {
+    "file": "pakistan_capacity_by_building.parquet",
+    "label": "Capacity per building",
+    "note": "One row per building carrying a segmentation detection. Sums to ~46% less than the cell table -- see the data dictionary. 91,424 rows.",
+    "size_bytes": 13739420
+  },
+  {
+    "file": "pakistan_roofclf_ge400_roof_buildings.parquet",
+    "label": "roofclf ≥ 400 m² rooftop replacement",
+    "note": "In-domain replacement for segmentation's own rooftop estimate. 187,827 rows.",
+    "size_bytes": 31959950
+  },
+  {
+    "file": "pakistan_roofclf_sub400_central_buildings.parquet",
+    "label": "roofclf sub-400 m², central estimate",
+    "note": "In-domain, feeds Best estimate. 979,780 rows.",
+    "size_bytes": 112944760
+  },
+  {
+    "file": "pakistan_roofclf_sub400_low_buildings.parquet",
+    "label": "roofclf+SPPI sub-400 m², stricter floor",
+    "note": "In-domain, the internal floor population. 306,057 rows.",
+    "size_bytes": 34033145
+  },
+  {
+    "file": "pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet",
+    "label": "roofclf+SPPI sub-400 m², out-of-domain",
+    "note": "Explicitly-flagged extrapolation beyond the calibrated domain. 12,271 rows.",
+    "size_bytes": 1410497
+  },
+  {
+    "file": "pakistan_raw_detections_unreviewed.parquet",
+    "label": "Raw model detections (unreviewed)",
+    "note": "TerraMind segmentation's own ≥400 m² candidate polygons, before human review. 6,566 rows.",
+    "size_bytes": 2539820
+  },
+  {
+    "file": "pakistan_calibration_quadrat_boundaries.zip",
+    "label": "Calibration quadrat boundaries",
+    "note": "GeoJSON boundary for every calibration quadrat used to fit roofclf and the density-calibration domain.",
+    "size_bytes": 7749
+  },
+  {
+    "file": "pakistan_glint_pose_survey.csv",
+    "label": "Panel pose survey (glint)",
+    "note": "Sentinel-2 specular-glint detections and fitted tilt/azimuth, 2,000 surveyed targets.",
+    "size_bytes": 148811
+  },
+  {
+    "file": "terramind_pv_segmentation_checkpoint.ckpt",
+    "label": "TerraMind segmentation checkpoint",
+    "note": "The terramind_v1_tiny fine-tune used to produce this release's detections and capacity numbers.",
+    "size_bytes": 98649447
+  },
+  {
+    "file": "DATA_DICTIONARY.md",
+    "label": "Data dictionary",
+    "note": "Column definitions, units, and known caveats for every file in this release.",
+    "size_bytes": 6437
+  }
+]

@@ -23,6 +23,9 @@ Interactive. Hover a cell for its value.
 <a href="../../assets/interactive/pakistan_evidence_atlas.html" target="_blank">Open full screen</a>.
 See also: [capacity by installation size](capacity-by-size.md), the same total split
 rooftop vs ground-mount by how large each installation is, instead of by geography.
+Want the underlying data? See "Download the underlying data" at the bottom of the atlas
+for capacity parquets, calibration boundaries, the pose survey, raw detections, and the
+model checkpoint.
 </p>
 
 ## The headline figure

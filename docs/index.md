@@ -1,5 +1,5 @@
 ---
-title: Pakistan — PV Capacity Map
+title: "Pakistan: PV Capacity Map"
 hide:
   - navigation
   - toc

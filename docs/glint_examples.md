@@ -40,7 +40,7 @@ for the exact date each one's own reflectance spike was measured: the frame, out
 ~2-year, 130-280 scene archive per site, where the glint actually happened. Every
 candidate date is cross-checked live against Sentinel-2's per-pixel cloud layer
 (`glint._scl_cloud_row`) before it is accepted, specifically because an earlier version of
-this grid showed one cloud misread as a glint — see `scripts/glint_s2_example_grid.py`'s
+this grid showed one cloud misread as a glint -- see `scripts/glint_s2_example_grid.py`'s
 own docstring for the exact mechanism and the fix. The `<100` and `100-500` m² buckets
 have only 2 and 7 validated installations in the whole 500-target sample, so a couple of
 cells reuse an installation already shown elsewhere in that column at a second clean

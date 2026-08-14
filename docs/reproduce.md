@@ -307,8 +307,33 @@ the [experiments register](experiments.md) are optional extras, not alternative 
         --pose-summary-csv data/glint/country2000_summary.csv \
         --pose-history-note "(a 4x-larger, chunked-tile-batch re-run of the original 500-target study)" \
         --pose-data-note "(2000-target stratified country study, chunked tile-batch pull)" \
+        --imagery-date-range "Oct 2025 - Jun 2026" \
+        --downloads-manifest configs/pakistan_atlas_downloads.json \
+        --data-release-url https://github.com/open-energy-transition/earthpv/releases/download/pakistan-atlas-data-2026-08-14 \
         --out docs/assets/interactive/pakistan_evidence_atlas.html
     ```
+
+    **`--downloads-manifest`/`--data-release-url` (added 2026-08-14) write a collapsed
+    "Download the underlying data" section at the very bottom of the page** -- capacity
+    parquets, calibration boundaries, the pose survey, raw detections, and the model
+    checkpoint, hosted as assets on a dated GitHub Release rather than in `data/` itself
+    (which is gitignored). `--downloads-manifest` is a JSON file of `{file, label, note,
+    size_bytes}` dicts (see `configs/pakistan_atlas_downloads.json` for the Pakistan
+    manifest); `--data-release-url` is the release's asset base URL, joined with each
+    entry's `file` to build its link. Both are a frozen, point-in-time snapshot -- the
+    manifest is not regenerated automatically when the pipeline reruns, so a fresh data
+    drop needs a new GitHub Release plus an updated manifest and `--data-release-url`.
+    Omitting either flag omits the section entirely. The section also always shows a
+    short Overpass query for the current, live state of OSM-mapped PV, since the raw
+    detections in the release will go stale as mappers keep editing.
+
+    **`--imagery-date-range` (added 2026-08-14) is a free-text label, not a derived
+    value** -- composites for this AOI mix cells `earthpv compose` fetched directly
+    with cells reused from a `source_region` cache built by a different project on its
+    own schedule (see `CLAUDE.md`'s "Data reuse" section), so there is nowhere in the
+    pipeline that already knows the combined answer; it has to be supplied by whoever
+    last checked. The page always stamps its own build date regardless of whether this
+    is given.
 
     **Two new sections, both optional (added 2026-08-13).** A "Capacity per size bin,
     rooftop vs ground-mount" chart (the same re-binning `atlas-by-size` publishes as its
