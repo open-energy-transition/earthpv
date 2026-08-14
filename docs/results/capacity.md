@@ -37,6 +37,17 @@ estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 62 MWp o
 roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see
 "A sixth change" below.
 
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 10 percent OpenStreetMap, 9 percent TerraMind segmentation, 81 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 16.6 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 10 percent OpenStreetMap, 9 percent TerraMind segmentation, 81 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 16.6 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+
+roofclf alone -- its own &ge;400 m<sup>2</sup> replacement plus the sub-400 m<sup>2</sup>
+central estimate -- supplies about four-fifths of Best by itself; direct OSM mapping and
+segmentation split roughly the remaining fifth, and roofclf-AND-SPPI agreement is a
+deliberately small sliver (the out-of-domain extrapolation only). SPPI's larger role is in
+Verified, where it is nearly as large as all of hand-mapped OSM. Full per-component
+breakdown, with credible intervals on every slice:
+[capacity composition](../assets/interactive/pakistan_atlas_composition.html){ target="_blank" }.
+
 The range is new as of 2026-08-11 and is composed from four measured sources plus one
 stated judgement: the two area-to-capacity constants' priors, segmentation's own
 precision/recall posterior by installation size, the coverage ratio's sensitivity to *which*

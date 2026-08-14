@@ -187,6 +187,11 @@
   .hero-desc b { color: var(--ink); font-weight: 660; }
 
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  /* The hero tiles show one more addend than #sizeTiles (model >=400m2, model <400m2,
+     PLUS the OSM contribution Best also includes) -- three tiles that sum exactly to
+     the headline number above them, not two that silently omit a third of it. */
+  #tiles { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 480px) { #tiles { grid-template-columns: 1fr; } }
   .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
     border: 1px solid var(--card-ring); }
   .tile.large-tile { border-color: var(--large); }
@@ -636,6 +641,16 @@
   const EXTENDED_IDX = 12;
   const T = DATA.totals;
   T.small_all = (T.small_central || 0) + (T.small_outdomain || 0);
+  // The two model-detection tiles below never summed to the headline number on their
+  // own -- Best also folds in OSM installations the model hadn't already found
+  // (`osm_mwp_unmatched`) plus a per-cell floor correction (cells where Best would
+  // otherwise have read BELOW hand-mapped OSM, `best_floor_offset_mwp`), and neither
+  // had a tile of its own. Both are literally OSM-sourced capacity -- the floor
+  // correction is cells snapped up to their own mapped OSM value -- so they are one
+  // tile, matching how `results/pakistan_atlas_composition.html` accounts for the same
+  // total. Third tile added 2026-08-14; the three now sum to `mwp_best` exactly.
+  T.osm_contribution = (T.osm_mwp_unmatched || 0)
+    + ((T.uncertainty && T.uncertainty.best_floor_offset_mwp) || 0);
   const fmt = n => Math.round(n).toLocaleString("en-US");
 
   const VIEW = {
@@ -645,6 +660,7 @@
     tiles: [
       ["mwp_large", "Model detections &ge;400 m², MWp"],
       ["small_all", "Model detections &lt;400 m², MWp"],
+      ["osm_contribution", "OSM hand-mapped, not in a model detection, MWp"],
     ],
   };
 
