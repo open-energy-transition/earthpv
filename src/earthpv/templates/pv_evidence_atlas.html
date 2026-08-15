@@ -48,7 +48,8 @@
     --land: #e6dcc7; --map-bg: #efe8d8;
     --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
     --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
-    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --bloom: 0;
+    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
+    --extended: #9b47b8; --bloom: 0;
     --card-ring: rgba(120,80,20,0.14);
     --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
     color-scheme: light;
@@ -169,8 +170,20 @@
     letter-spacing: 0.03em; flex: none; }
 
   .legend-keys { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .legend-keys > div { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono);
-    font-size: 10.5px; color: var(--ink-2); }
+  .legend-keys > div, .legend-keys > button { display: flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+  /* The two outline overlays are opt-in (both start off), so their legend entries are
+     the control as well as the key -- a pressed-state button rather than static text.
+     Unpressed they read dimmed, so "off" is visible without a second affordance. */
+  .legend-keys > button.key-toggle { background: none; border: 1px solid transparent;
+    border-radius: 5px; padding: 3px 7px; margin: -3px 0; cursor: pointer;
+    text-align: left; letter-spacing: inherit; opacity: 0.62; transition: opacity 0.12s ease,
+    border-color 0.12s ease, background 0.12s ease; }
+  .legend-keys > button.key-toggle:hover { opacity: 0.86; background: var(--hair); }
+  .legend-keys > button.key-toggle:focus-visible { outline: 2px solid var(--accent);
+    outline-offset: 2px; }
+  .legend-keys > button.key-toggle[aria-pressed="true"] { opacity: 1;
+    border-color: var(--prov-stroke); background: var(--hair); }
   .legend .domain-key .sw { width: 13px; height: 13px; border: 2px dashed var(--domain);
     border-radius: 3px; }
   .legend .extended-key .sw { width: 13px; height: 13px; border: 2px dotted var(--extended);
@@ -476,12 +489,14 @@
             <div class="cap" id="legcap">MWp&nbsp;/&nbsp;cell</div>
           </div>
           <div class="legend-keys">
-            <div class="domain-key" id="domainKey">
+            <button type="button" class="domain-key key-toggle" id="domainKey"
+                    aria-pressed="false" title="Show or hide the dashed outline">
               <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
-            </div>
-            <div class="extended-key" id="extendedKey">
+            </button>
+            <button type="button" class="extended-key key-toggle" id="extendedKey"
+                    aria-pressed="false" title="Show or hide the dotted outline">
               <span class="sw"></span>extrapolated beyond calibration (dotted outline)
-            </div>
+            </button>
             <div class="calib-key">
               <span class="sw"></span>hand-checked calibration area (hover for detail)
             </div>
@@ -953,7 +968,7 @@ out meta geom;</div>
     }
     svg.appendChild(gC);
 
-    if (DATA.cells.some(c => c[9])) {
+    if (SHOW.domain && DATA.cells.some(c => c[9])) {
       const gD = el("g", {class:"domain-ring"});
       for (const c of DATA.cells){
         if (!c[9]) continue;
