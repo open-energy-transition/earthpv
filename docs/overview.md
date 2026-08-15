@@ -45,8 +45,8 @@ m<sup>2</sup> floor into large rooftops too, wherever it has been calibrated to 
   to classify there.
 - **roofclf**, cross-checked with **SPPI**, answers a different question: not "where is
   the polygon" but "does this *building* carry PV." **roofclf**, a per-building
-  classifier trained on 23 exhaustively mapped ground-truth quadrats, reaches 0.857 AUC
-  (0.830 with roof size controlled for), where the segmentation raster scores close to
+  classifier trained on 27 exhaustively mapped ground-truth quadrats, reaches 0.879 AUC
+  (0.834 with roof size controlled for), where the segmentation raster scores close to
   chance on the same small buildings -- it covers every rooftop **below** 400
   m<sup>2</sup>, where segmentation is trained blind. **SPPI**, a zero-training spectral
   index, reaches 0.823 AUC with no labels at all; requiring it to *agree* with roofclf

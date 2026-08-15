@@ -57,11 +57,11 @@ calibrated (see next).
 **roofclf, for every rooftop below 400 m² -- and, where calibrated, for large rooftops
 too.** At 10 m resolution, a 100 m² array is a handful of mixed pixels -- not enough to
 draw a polygon around, but enough to ask whether a *building* carries PV. **roofclf** is
-a per-building classifier trained on 23 exhaustively mapped ground-truth quadrats (0.857
-AUC, 0.830 with roof size controlled for, where the segmentation raster scores close to
+a per-building classifier trained on 27 exhaustively mapped ground-truth quadrats (0.879
+AUC, 0.834 with roof size controlled for, where the segmentation raster scores close to
 chance on the same small buildings), cross-checked against **SPPI**, a zero-training
-five-band spectral index (He et al. 2026) that needs no labels at all (0.823 AUC on the
-same quadrats). They agree often enough to raise measured precision from 0.53 to 0.63
+five-band spectral index (He et al. 2026) that needs no labels at all (0.823 AUC in its
+own nine-quadrat evaluation, where roofclf scored 0.874 on the identical buildings). They agree often enough to raise measured precision from 0.53 to 0.63
 when both flag a building, and the gain concentrates in exactly the low-adoption places
 where roofclf alone is known to over-predict. Segmentation's blind spot turns out not to
 be building size but *installation* size -- a small array on a large roof is invisible to

@@ -1,6 +1,6 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-08-11. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-08-15. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
@@ -20,7 +20,7 @@ tripled large-array recall; nothing architectural has come close.
 ### 2. The calibration quadrats are purposive, not a probability sample
 
 This is the single largest caveat on every capacity number the project publishes, and no
-amount of additional modelling removes it. All 23 quadrats were chosen by a researcher to
+amount of additional modelling removes it. All 27 quadrats were chosen by a researcher to
 span landscape types, not drawn at random from a defined national frame, so the intervals on
 the [evidence atlas](results/capacity.md) are not a design-based margin of error and cannot
 be made into one by adding more purposive quadrats.
@@ -45,7 +45,7 @@ The magnitude is bounded but not resolved. Pooled over 13 quadrats the effect is
 apparent false positives, but per quadrat it dominates exactly where the sub-400 m² work
 lives: 68.4% in coastal Karachi, 23.7% in Quetta, 11.7% in Lahore. The
 `imagery_layer`/`imagery_date` fields exist in `results/calibration_quadrats.csv` and are
-still empty for all 23 quadrats, which is why the per-quadrat magnitude is unknown rather
+still empty for all 27 quadrats, which is why the per-quadrat magnitude is unknown rather
 than merely unstated. Backfilling them against Esri Wayback is the cheap first step;
 [Calibration imagery dating](issues/calibration-imagery-dating.md) has the full costing. Another 
 starting point is the Maxar Open Data Program, which provides dated imagery over several areas

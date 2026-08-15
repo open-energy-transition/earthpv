@@ -24,7 +24,7 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | In-domain Pakistani training chips | <span class="outcome works">shipped</span> | Tripled large-array recall in Punjab, 0.18 to 0.55. The single biggest lever found. |
 | Building prior from VIDA Open Buildings | <span class="outcome works">shipped</span> | Makes "no building nearby" a usable false-positive signal. |
 | Quadrats as training data, not just correction | <span class="outcome works">shipped</span> | Became `roofclf`, now half the main workflow. |
-| [roofclf, a per-building classifier](methods/roofclf.md) | <span class="outcome works">shipped</span> | 0.857 AUC (0.830 within size band) on 23 quadrats where segmentation scores near chance. |
+| [roofclf, a per-building classifier](methods/roofclf.md) | <span class="outcome works">shipped</span> | 0.879 AUC (0.834 within size band) on 27 quadrats where segmentation scores near chance. |
 | SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf sets an internal floor on the atlas's headline figure. |
 | Coverage ratio stratified by size and density | <span class="outcome works">shipped</span> | Replaced precision as the multiplier, and a flat ratio with a measured per-stratum one. |
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
@@ -80,8 +80,8 @@ The decisive finding of this project is that below roughly 400 m² the question 
 Segmentation asks "where is the polygon", and at 10 m ground sampling distance a 50 m²
 rooftop array does not have one. `roofclf` asks "does this *building* carry PV", which turns
 an unresolvable localisation problem into a per-footprint classification problem with a
-strong size prior and reflectance features. On the 23 mapped quadrats it reaches **0.857
-AUC**, and **0.830** with roof size controlled for, where the segmentation raster scores
+strong size prior and reflectance features. On the 27 mapped quadrats it reaches **0.879
+AUC**, and **0.834** with roof size controlled for, where the segmentation raster scores
 close to chance on the same buildings. That gap, not any architectural change to the
 segmenter, is why the pipeline now runs two detectors.
 

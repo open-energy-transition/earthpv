@@ -170,7 +170,8 @@ neither is part of the main workflow, and the main workflow does not need them t
   `density.py`'s current candidate population broke `check-density` for reasons traced
   to a pre-existing ground-mount aggregation issue, not the fraction head itself. It is
   not in the published atlas.
-- SPPI beats roofclf on nothing (median AUC 0.823 against 0.857) and adds nothing as a
+- SPPI beats roofclf on nothing (median AUC 0.823 against 0.874 on the same nine-quadrat
+  evaluation; roofclf reaches 0.879 on the full 27-quadrat set it is fitted on) and adds nothing as a
   roofclf feature, but an AND-gate (roofclf **and** SPPI agreeing) raises precision by
   4 points at matched recall in the three quadrats where roofclf alone overestimates.
   That AND-gate is what [the evidence
