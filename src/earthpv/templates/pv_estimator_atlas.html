@@ -372,13 +372,65 @@ function drawMap() {
     }
     ctx.restore();
   }
-  // cities
+  // Cities: opaque white on an opaque dark casing, placed to avoid collisions.
+  //
+  // This map is a warm amber ramp with an additive bloom on its hottest cells, so a
+  // translucent warm off-white label (what this used to draw, with no casing at all)
+  // disappears into exactly the places worth labelling. White + a dark stroked casing
+  // reads over the bloom and over the empty land alike. Placement mirrors the SVG atlases'
+  // `placeCityLabels`: candidates in population order, first fit wins, and a name that
+  // fits nowhere is dropped rather than stacked on top of its neighbour. Canvas can
+  // measure text directly, so unlike the SVG version this needs no width estimate.
   ctx.font = "15px ui-monospace, Menlo, monospace"; ctx.textBaseline = "middle";
-  for (const [name, lon, lat] of D.cities) {
-    ctx.fillStyle = "rgba(233,229,220,0.55)";
-    ctx.beginPath(); ctx.arc(px(lon), py(lat), 1.6, 0, 7); ctx.fill();
-    ctx.fillStyle = "rgba(233,229,220,0.62)";
-    ctx.fillText(name, px(lon) + 5, py(lat));
+  {
+    const pts = D.cities.map(([name, lon, lat]) => ({name, x: px(lon), y: py(lat)}));
+    for (const c of pts) {
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "rgba(8,6,4,0.94)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(c.x, c.y, 1.8, 0, 7); ctx.fill(); ctx.stroke();
+    }
+    const taken = pts.map(c => ({x: c.x - 4, y: c.y - 4, w: 8, h: 8}));
+    // The scale legend is an absolutely-positioned HTML overlay, not part of the canvas,
+    // so nothing the canvas draws knows it is there -- it used to sit squarely on top of
+    // "Karachi", which rendered as "arachi". Measure it and treat it as one more obstacle,
+    // in the same logical W x H space px()/py() draw into.
+    const legend = document.querySelector(".maplegend");
+    if (legend) {
+      const cr = cv.getBoundingClientRect(), lr = legend.getBoundingClientRect();
+      if (cr.width > 0 && cr.height > 0) {
+        const sx = W / cr.width, sy = H / cr.height;
+        taken.push({
+          x: (lr.left - cr.left) * sx - 4, y: (lr.top - cr.top) * sy - 4,
+          w: lr.width * sx + 8, h: lr.height * sy + 8,
+        });
+      }
+    }
+    const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    // Two rings: the tight one keeps a label visually tied to its dot, the wide one exists
+    // so a city can escape a large obstacle (the legend panel) instead of being dropped.
+    const CAND = [[6, 0, "left"], [-6, 0, "right"], [6, -12, "left"], [-6, -12, "right"],
+                  [6, 12, "left"], [-6, 12, "right"], [0, -14, "center"], [0, 14, "center"],
+                  [0, -30, "center"], [0, 30, "center"], [26, -26, "left"], [-26, -26, "right"],
+                  [26, 26, "left"], [-26, 26, "right"], [0, -46, "center"], [0, 46, "center"]];
+    const h = 13;
+    for (const c of pts) {
+      const w = ctx.measureText(c.name).width;
+      for (const [dx, dy, align] of CAND) {
+        const x = c.x + dx, y = c.y + dy;
+        const left = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+        const box = {x: left - 2, y: y - h / 2 - 2, w: w + 4, h: h + 4};
+        if (taken.some(q => hit(box, q))) continue;
+        ctx.textAlign = align;
+        ctx.strokeStyle = "rgba(8,6,4,0.94)"; ctx.lineWidth = 3.2;
+        ctx.lineJoin = "round"; ctx.miterLimit = 2;
+        ctx.strokeText(c.name, x, y);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(c.name, x, y);
+        taken.push(box);
+        break;
+      }
+    }
+    ctx.textAlign = "start";
   }
 }
 
