@@ -30,6 +30,7 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
 | Recall correction and credible intervals | <span class="outcome works">shipped</span> | Turned a structural floor into an estimate with a stated interval. |
+| Recall correction for roofclf, not just segmentation | <span class="outcome works">shipped</span> | The roofclf half was counting only the roofs it flagged; correcting it moved Best 16.6 to 18.3 GWp. |
 | Quadrat-bootstrap uncertainty on the atlas | <span class="outcome works">shipped</span> | The headline figure now carries a 90% range. |
 | Solar-glint corroboration | <span class="outcome works">shipped</span> | Calibrated likelihood ratios per size bucket, reward-only, never demoting. |
 | Tile-major glint fetching | <span class="outcome works">shipped</span> | 22x faster, numerically identical output. |
@@ -94,6 +95,38 @@ from 0.496 to 0.540 at matched recall, and the gain concentrates in exactly the 
 places where roofclf alone is known to over-predict. That is why agreement between the two
 sets the internal floor under the evidence atlas's headline figure, rather than either
 model on its own.
+
+### One estimator, applied to both halves
+
+The segmentation half of the atlas has estimated the whole population since the
+recall-corrected estimator shipped: each surviving detection stands in for 1/recall real
+installations of its size class. The roofclf half did not. It multiplied flagged roof area
+by the coverage ratio, which is measured as true mapped PV area over *flagged* roof area --
+a quantity that describes the roofs roofclf caught and books zero for every installation on
+a roof it missed. Two halves of one published number, built on two different estimators,
+and the uncorrected one was four-fifths of the total.
+
+Measuring the missing term needed no new data, only the quadrat labels already on disk: the
+share of true mapped PV **area** sitting on a flagged building, per roof-size bin and per
+building-density stratum, fit from the same 16 trusted quadrats at the same deployment
+threshold as the coverage ratio. It comes to **0.808 below 400 m<sup>2</sup>** and **0.978
+at or above** it, rising monotonically with roof size from 0.34 in the smallest decile of
+PV-carrying roofs to 0.99 in the largest. Area rather than count is the whole point: under a
+count recall, missing a 300 m<sup>2</sup> array and a 20 m<sup>2</sup> one cost the same,
+and in MWp they differ fifteenfold.
+
+Correcting the two Best-estimate roofclf components moved them 6,372 to 7,890 MWp and 7,031
+to 7,189 MWp, and the published Best estimate 16,609 to 18,280 MWp. The internal floor did
+not move and was not meant to: a tier defined by two independent detectors agreeing stops
+being a floor the moment it extrapolates to what neither of them saw.
+
+Two details make the number defensible rather than merely larger. The coverage ratio and the
+recall are refit inside the *same* bootstrap replicates instead of bootstrapped separately,
+because they come from the same quadrats and the same labels and their errors move together
+-- a quadrat whose mapping is stale depresses one and inflates the other at once. And the
+correction is a lower bound on itself in three measurable ways, the largest being that Rule
+1 certifies completeness only as of the mapping imagery's epoch, which removes recent
+installations from the recall denominator only when they sit on an unflagged roof.
 
 ### The vegetation veto, and why the obvious version fails
 

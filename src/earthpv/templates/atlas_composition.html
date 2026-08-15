@@ -231,6 +231,16 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
         stricter floor, where roofclf-AND-SPPI agreement is almost as large as all of hand-mapped
         OSM combined.
       </p>
+      <p>
+        <strong>The two roofclf slices in Best are recall-corrected; the floor's is not.</strong>
+        Both Best-estimate roofclf components divide by the measured share of real installed
+        panel area that the classifier actually flags (0.81 below 400 m², 0.98 at or above it),
+        so they estimate the whole population of each size class rather than only the roofs the
+        classifier caught &mdash; the same correction the segmentation slices have always
+        carried. The roofclf-AND-SPPI slices are deliberately left uncorrected: a floor built by
+        requiring two independent detectors to agree stops being a floor the moment it
+        extrapolates to installations neither of them saw.
+      </p>
       <div class="foot" id="footNote"></div>
     </div>
   </div>

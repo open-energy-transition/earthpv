@@ -657,6 +657,18 @@ def sub400_capacity_cmd(
     sppi_min_precision: float = typer.Option(
         0.5, help="Precision target for the AND-gate's pooled SPPI threshold"
     ),
+    recall_correct: bool = typer.Option(
+        True,
+        help="Divide the roofclf-only (central) estimate by the measured share of true PV "
+        "AREA that roofclf actually flags in each size/density stratum "
+        "(sub400_capacity.area_recall_by_size_and_density) -- the same Horvitz-Thompson "
+        "correction density.py's est_mwp_rc applies to segmentation candidates. Without "
+        "it the estimate books zero MWp for every installation on a roof roofclf missed "
+        "(19.2% of mapped sub-400 m2 PV area on the current calibration set, and 71-73% "
+        "in the smallest size deciles). Never applied to the AND-gate tiers, which are "
+        "floors -- see domain_restricted_and_gate_capacity's docstring. "
+        "--no-recall-correct reproduces the pre-2026-08-15 figure exactly.",
+    ),
     size_floor_m2: str = typer.Option(
         "0,50", help="Comma-separated per-density-band m2 floor, one value per "
         "n-density-bands (default '0,50': no floor in the sparser calibration band, "
@@ -725,7 +737,10 @@ def sub400_capacity_cmd(
         **({} if coverage_boot is None else {"n_coverage_boot": coverage_boot}),
     )
 
-    central, central_summary = domain_restricted_capacity(**kwargs)
+    # `recall_correct` is deliberately NOT in the shared kwargs: the two AND-gate
+    # functions below take no such parameter, because a floor tier must not extrapolate
+    # to installations neither detector flagged.
+    central, central_summary = domain_restricted_capacity(**kwargs, recall_correct=recall_correct)
     central.to_parquet(out_dir / "sub400_central_incremental_buildings.parquet")
     (out_dir / "sub400_central_summary.json").write_text(json.dumps(central_summary, indent=2))
 
@@ -812,6 +827,13 @@ def ge400_roof_capacity_cmd(
         "quadrat set in both -- `earthpv atlas` relies on that to keep these components' "
         "errors correlated. 0 disables it (no interval for this component in the atlas)."
     ),
+    recall_correct: bool = typer.Option(
+        True,
+        help="Divide by roofclf's measured PV-area recall per size/density stratum -- see "
+        "`sub400-capacity --help`. Small at this size (0.982 measured on the trusted "
+        "quadrats' own >= 400 m2 buildings, vs 0.808 sub-400 m2), but applied for the same "
+        "reason and priced in the same bootstrap replicates.",
+    ),
 ) -> None:
     """roofclf-based capacity for >= 400 m2 ROOFTOP buildings -- REPLACES segmentation's
     own est_mwp_rc_roof inside the density-matched domain (roofclf measured AUC 0.896 vs
@@ -847,6 +869,7 @@ def ge400_roof_capacity_cmd(
         cell_density_path=cell_density_path, threshold=threshold, osm_solar_path=osm_solar,
         max_distance_m=max_distance_m, min_area_m2=min_area_m2,
         ratio_lo=ratio_lo, ratio_hi=ratio_hi, n_coverage_boot=coverage_boot,
+        recall_correct=recall_correct,
     )
     flagged.to_parquet(out_dir / "ge400_roof_incremental_buildings.parquet")
     (out_dir / "ge400_roof_summary.json").write_text(json.dumps(summary, indent=2))
@@ -1342,15 +1365,27 @@ def calibrate_candidates(
         "own consumer never sees. See capacity_relevant_candidates.",
     ),
     by_placement: bool = typer.Option(
-        False,
-        help="Also derive separate rooftop/ground precision+recall tables "
+        True,
+        help="Derive separate rooftop/ground precision+recall tables "
         "(table['placement_bins'], capacity_calibration.derive_placement_tables) -- "
         "pooling both placements into one set of area bins lets ground-mount borrow "
         "rooftop's much higher mapped fraction in the same bin (measured 2026-08-10: "
         "~1% of surviving ground candidates are OSM-corroborated within 100 m vs ~14% "
-        "for rooftop). `density.py` uses the split automatically when present.",
+        "for rooftop). `density.py` uses the split automatically when present. ON BY "
+        "DEFAULT since 2026-08-15: it was opt-in until then, and a table regenerated "
+        "without it silently reverted the published placement split -- see the note in "
+        "`derive_placement_tables`. Pass --no-by-placement only to reproduce a "
+        "pre-2026-08-10 pooled table deliberately.",
     ),
     out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
+    allow_downgrade: bool = typer.Option(
+        False,
+        help="Permit overwriting an existing table that carries evidence this run does "
+        "not (a placement split, a glint calibration, manual reviews). Off by default: "
+        "re-deriving without --glint-sample/--calibration-box/--by-placement silently "
+        "replaced the published Pakistan table on 2026-08-14, and nothing errored. See "
+        "capacity_calibration._table_evidence.",
+    ),
 ) -> None:
     """Derive the capacity-atlas candidate-precision table (p_real + recall per area bin).
 
@@ -1448,7 +1483,7 @@ def calibrate_candidates(
         manual_reviews=reviews, recall_reference=ref, recall_reference_name=ref_name,
         by_placement=by_placement, mapped_attrs=mapped_attrs,
     )
-    cc.write_table(table, out or cc.default_table_path(aoi))
+    cc.write_table(table, out or cc.default_table_path(aoi), allow_downgrade=allow_downgrade)
     for row in table["bins"]:
         rec = "recall=  n/a" if row["recall"] is None else f"recall={row['recall']:.3f}"
         typer.echo(

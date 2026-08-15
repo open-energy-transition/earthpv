@@ -15,6 +15,7 @@ Every component is tagged with which of four methods produced it:
     everywhere (roofclf has no footprint to classify there) and >= 400 m2 rooftop
     outside the density-calibrated domain.
   - roofclf alone: the per-building classifier's own density-calibrated coverage-ratio
+    and recall-corrected
     estimate, for >= 400 m2 rooftop inside the calibrated domain (replacing
     segmentation there) and the sub-400 m2 "central" estimate.
   - roofclf + SPPI: the classifier's AND-gate agreement with the zero-training SPPI
@@ -50,7 +51,7 @@ LABEL = {
     "seg_roof_outdomain": "TerraMind segmentation — rooftop, outside the calibrated domain",
     "seg_ground": "TerraMind segmentation — ground-mount (every cell; roofclf has no footprint there)",
     "ge400_roof": "roofclf — ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain",
-    "small_central": "roofclf alone — sub-400 m² rooftop, density-calibrated coverage ratio",
+    "small_central": "roofclf alone — sub-400 m² rooftop, coverage ratio and recall, density-calibrated",
     "small_outdomain": "roofclf + SPPI agreement — sub-400 m², extrapolated outside the calibrated domain",
     "osm_roof": "OSM hand-mapped — rooftop (all of it, matched or not)",
     "osm_ground": "OSM hand-mapped — ground-mount (all of it, matched or not)",
@@ -60,7 +61,7 @@ LABEL = {
 METHOD_META = {
     "osm": {"name": "OSM (hand-mapped)", "desc": "Human-mapped installations from OpenStreetMap solar tagging."},
     "seg": {"name": "TerraMind segmentation", "desc": "The fine-tuned pixel-segmentation model, outlining panels directly."},
-    "roofclf": {"name": "roofclf (alone)", "desc": "Per-building classifier, density-calibrated coverage ratio, no spectral cross-check."},
+    "roofclf": {"name": "roofclf (alone)", "desc": "Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},
     "sppi": {"name": "roofclf + SPPI", "desc": "roofclf AND the zero-training SPPI spectral index agreeing — a stricter, cross-validated signal."},
 }
 

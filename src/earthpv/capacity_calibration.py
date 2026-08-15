@@ -712,8 +712,43 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
     return {"p_real": m + (1.0 - m) * p_u, "recall": recall, "lr": sens / f}
 
 
-def write_table(table: dict, path: Path) -> Path:
+# Evidence a table can only LOSE by being re-derived with fewer inputs than the one it
+# replaces. `write_table` refuses such an overwrite unless the caller says so explicitly.
+# Not hypothetical: `configs/calibration/pakistan_candidate_precision.yaml` was
+# regenerated 2026-08-14 without `--by-placement` and without the glint sample and the
+# calibration boxes, quietly replacing the placement-split, glint-calibrated table the
+# published atlas was actually built from with a pooled, mapped-only one derived from a
+# different candidate population. Nothing errored; the loss was only visible by diffing
+# the file against a backup.
+def _table_evidence(table: dict) -> set[str]:
+    evidence = set()
+    if "placement_bins" in table:
+        evidence.add("placement_bins")
+    if table.get("status") == "glint-calibrated":
+        evidence.add("glint-calibrated")
+    if any(b.get("manual_n") for b in table.get("bins", [])):
+        evidence.add("manual-reviews")
+    return evidence
+
+
+def write_table(table: dict, path: Path, allow_downgrade: bool = False) -> Path:
     path = Path(path)
+    if path.exists() and not allow_downgrade:
+        try:
+            existing = yaml.safe_load(path.read_text())
+        except Exception as e:  # noqa: BLE001 -- an unreadable old table must not block a write
+            log.warning("Could not read %s to check for an evidence downgrade (%s)", path, e)
+            existing = None
+        if existing:
+            lost = _table_evidence(existing) - _table_evidence(table)
+            if lost:
+                raise ValueError(
+                    f"{path} already carries {sorted(lost)} and the table about to replace "
+                    f"it does not. Re-derive with the inputs that produced it (--by-placement, "
+                    "--glint-sample, --calibration-box, --manual-reviews as applicable), or "
+                    "pass --allow-downgrade to overwrite deliberately. See "
+                    "capacity_calibration._table_evidence."
+                )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(table, sort_keys=False))
     log.info("Wrote calibration table (%s) -> %s", table["status"], path)

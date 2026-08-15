@@ -310,10 +310,12 @@
         Best-estimate total, decomposed by installation size and placement instead of by
         0.1&deg; grid cell. Every MWp here is computed by the identical formula the main
         atlas uses for the same six components (hand-mapped OpenStreetMap installations the
-        model never found, the model's own recall-corrected detections above and below the
-        density-matched domain, and roofclf's per-building density estimate for small
-        rooftops) &mdash; nothing is recomputed by a different method, and the grand total
-        matches the evidence atlas's headline figure for the same run.</p>
+        model never found, segmentation's own detections above and below the
+        density-matched domain, and roofclf's per-building estimate for small
+        rooftops &mdash; both model instruments recall-corrected, each standing in for the
+        installations of its size class it is measured to miss) &mdash; nothing is
+        recomputed by a different method, and the grand total matches the evidence atlas's
+        headline figure for the same run.</p>
         <p><b>It does not carry its own credible interval.</b> The main atlas's 90% range
         applies to the same total; this page exists to show its shape by size and placement,
         not to re-derive its uncertainty. Read the two pages together, not as competing
@@ -340,9 +342,11 @@
           <dt><span class="tag central">Rooftop, &lt;400 m&sup2;</span> roofclf, cross-checked with SPPI</dt>
           <dd>Below the segmentation model's practical floor, every rooftop's PV is
           estimated per building. Inside the domain this is roofclf alone, calibrated
-          against hand-mapped quadrats; outside it (no calibration quadrat in that density
-          range) it falls back to roofclf-AND-SPPI agreement, a strict, marked
-          extrapolation &mdash; the hatched portion of the small rooftop bars.</dd>
+          against hand-mapped quadrats for both how much of a flagged roof is panel and
+          what share of real installations get flagged at all; outside it (no calibration
+          quadrat in that density range) it falls back to roofclf-AND-SPPI agreement, a
+          strict, marked extrapolation carrying neither correction &mdash; the hatched
+          portion of the small rooftop bars.</dd>
 
           <dt><span class="tag large">Hand-mapped, unmatched</span> OpenStreetMap installations the model missed</dt>
           <dd>Sized by their own real OSM geometry, split rooftop/ground-mount by the

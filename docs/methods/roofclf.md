@@ -41,8 +41,8 @@ spectral signature to differ from a PV-free roof of the same kind.
 
 ## The flow, end to end
 
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.879 AUC and 0.834 within roof-size band, and a deployment threshold of 0.2511 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,372 plus 7,031 plus 62 MWp, floored per cell at hand-mapped OSM plus the stricter 2,180 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.879 AUC and 0.834 within roof-size band, and a deployment threshold of 0.2511 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 6,372 plus 7,031 plus 62 MWp, floored per cell at hand-mapped OSM plus the stricter 2,180 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.879 AUC and 0.834 within roof-size band, and a deployment threshold of 0.2511 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 7,890 plus 7,189 plus 62 MWp, floored per cell at hand-mapped OSM plus the stricter 2,180 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.879 AUC and 0.834 within roof-size band, and a deployment threshold of 0.2511 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 7,890 plus 7,189 plus 62 MWp, floored per cell at hand-mapped OSM plus the stricter 2,180 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
 
 The six stages below follow the chart from top to bottom.
 
@@ -259,13 +259,22 @@ The coverage ratio is now fitted per roof-size bin and per building-density band
 | Component | Population | MWp |
 | --- | --- | --- |
 | Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,180 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 6,372 |
-| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 7,031 |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Best estimate only | 149 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 7,890 |
+| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 7,189 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Best estimate only | 62 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 16,608.7 MWp (90%
-range 12,912 to 19,671)**.
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 18,279.6 MWp (90%
+range 14,401 to 21,846)**.
+
+The two Best-estimate roofclf rows are **recall-corrected as of 2026-08-15**: the coverage
+ratio prices the PV on roofs roofclf flagged, and dividing by the measured share of true
+mapped PV area that lands on a flagged roof (0.808 sub-400 m<sup>2</sup>, 0.978 at or above
+400 m<sup>2</sup>, per size bin and density stratum) extends that to the roofs it missed --
+the same correction the segmentation half has always used. The floor row is deliberately
+left uncorrected, because a floor that extrapolates to installations neither detector saw
+is not a floor. See [the capacity map](../results/capacity.md)'s "A twelfth change" for the
+full derivation and the three ways the correction is a lower bound on itself.
 
 Three things about that table are worth stating plainly:
 

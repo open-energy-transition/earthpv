@@ -249,6 +249,20 @@ much higher OSM corroboration rate in the same bin. Ground bins fall back to
 `density.candidate_p_real`/`candidate_recall` and `_candidate_uncertainty` both select each
 candidate's own placement subtable when one exists.
 
+**The checked-in calibration YAML is load-bearing and was silently regressed once.**
+`calibrate-candidates --by-placement` was opt-in until 2026-08-15, and a 2026-08-14 re-run
+without it (and without `--glint-sample`/`--calibration-box`) replaced
+`configs/calibration/pakistan_candidate_precision.yaml` with a pooled, mapped-only table derived
+from a different candidate population -- nothing errored, and the published atlas's own numbers
+came from the 2026-08-11 table, which was restored 2026-08-15. Three guards now exist:
+`--by-placement` **defaults to True**; `capacity_calibration.write_table` **refuses** to
+overwrite a table carrying evidence the new one lacks (placement split, glint calibration,
+manual reviews) unless `--allow-downgrade` is passed; and `density.py` warns when it loads a
+table with no `placement_bins` for an AOI whose candidates span both placements. Reproducing
+Pakistan's table needs the calibration boxes and the glint sample, not a bare re-run -- its
+`recall_reference` field records which (18,276 features = the pre-pipeline snapshot's 2,811 plus
+19 calibration boxes).
+
 **OSM reference polygons are dissolved before use** (`labels.dissolve_overlapping`): a
 `power=plant` perimeter with a nested `power=generator` way, or duplicate mapping passes, would
 otherwise double-count one real installation's area. Wired into
@@ -297,6 +311,23 @@ quadrat composition, not per-building noise, is what has repeatedly moved these 
 bootstrap replicates, and the same replicate index is shared across all four roofclf-based atlas
 components since they are fit on the same quadrats (`sub400_capacity.COVERAGE_BOOTSTRAP_SEED`).
 
+**roofclf's own misses are corrected for too, since 2026-08-15**
+(`sub400_capacity.area_recall_by_size_and_density`). The coverage ratio prices the PV on roofs
+roofclf *flagged*; on its own it books zero MWp for every installation on a roof roofclf missed.
+Dividing by the measured share of true mapped PV **area** that lands on flagged buildings, per
+size bin and density stratum, is the same Horvitz-Thompson step `density.py`'s `est_mwp_rc` has
+always applied to segmentation candidates -- the two halves of the atlas now use one estimator
+rather than two. Measured on the 16 rate_ratio-trusted quadrats: **0.808 for sub-400 m² buildings
+(0.34-0.99 across size deciles) and 0.978 for ≥ 400 m² ones**, moving sub-400 central 6,372.1 →
+**7,890.2 MWp** and the ≥ 400 m² roofclf rooftop replacement 7,030.8 → **7,189.4 MWp**. Both
+tables are refit inside the SAME bootstrap replicates, so one factor vector prices
+`coverage_ratio / area_recall` together and their (strongly dependent) errors are never
+multiplied as if independent. **Deliberately NOT applied to either AND-gate tier** -- those are
+floors, and a floor that extrapolates to installations neither detector saw is not a floor. The
+correction is a lower bound in two further ways documented in `area_recall_by_size`'s docstring:
+Rule-1 epoch staleness biases measured recall up, and the national population it is applied to is
+already deduped against segmentation and OSM while recall is measured over a whole quadrat.
+
 **The density-calibration domain is a building-density band, `density.CALIBRATED_BLDG_DENSITY_KM2`**,
 fit from the density span of every Rule-1-complete calibration quadrat -- **NOT** from
 `select_calibrated_quadrats`'s separate precision-trust selection (a quadrat's density is real
@@ -317,9 +348,10 @@ average in enough non-built land on purpose. `docs/methods/calibration-quadrats.
 `docs/methods/density.md` have the full derivation and every historical widening step.
 
 Current domain-restricted capacity figures (post 2026-08-13 second `roofclf` refit + national
-rescoring, 27 quadrats including `nasirabad_rural_calib_2km` and `tank_rural_calib_2km`):
-sub-400 central (feeds Best estimate) **6,372.1 MWp**, sub-400 AND-gate (the internal floor
-population) **2,179.7 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **7,030.8 MWp**.
+rescoring, 27 quadrats including `nasirabad_rural_calib_2km` and `tank_rural_calib_2km`; the two
+recall-corrected figures as of 2026-08-15): sub-400 central (feeds Best estimate)
+**7,890.2 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by design)
+**2,179.7 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **7,189.4 MWp**.
 
 **Outside the calibrated domain, roofclf-AND-SPPI agreement is used as a substitute standard of
 evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`), folded into Best estimate
@@ -338,9 +370,12 @@ vector where the underlying constant or calibration set is shared. It asserts it
 point values sum to the published total as a guard against silently adding a component to
 the atlas without adding it to the uncertainty composition (the code still separately tracks
 the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
-published). **Current published result: Best estimate 16,608.7 MWp (90% CI 12,912-19,671).**
+published). **Current published result: Best estimate 18,279.6 MWp (90% CI 14,401-21,846)**
+(2026-08-15, up from 16,608.7 / 12,912-19,671 on the roofclf recall correction above; the
+floor is unchanged at 5,389.5 MWp, as intended -- the correction never touches it).
 CLI: `--coverage-boot N` on `sub400-capacity`/`ge400-roof-capacity` (default 200; 0 disables and
-narrows the reported interval).
+narrows the reported interval), `--no-recall-correct` on either to reproduce the
+pre-2026-08-15 flagged-population-only figures exactly.
 
 Full derivation, every historical recalibration step, and every rejected instrument:
 `docs/methods/density.md`, `docs/experiments.md`.

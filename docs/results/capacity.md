@@ -30,9 +30,9 @@ model checkpoint.
 
 ## The headline figure
 
-**Best estimate: 16,609 MWp** (90% range 12,912 &ndash; 19,671). It combines every
+**Best estimate: 18,280 MWp** (90% range 14,401 &ndash; 21,846). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
-"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,458 MWp: roofclf's own
+"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,616 MWp: roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
 detections everywhere else, segmentation's ground-mount detections throughout -- see
 "Segmentation vs. roofclf on large rooftops" below), the roofclf per-building density
@@ -40,8 +40,8 @@ estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 62 MWp o
 roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see
 "A sixth change" below.
 
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 10 percent OpenStreetMap, 9 percent TerraMind segmentation, 81 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 16.6 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 10 percent OpenStreetMap, 9 percent TerraMind segmentation, 81 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 16.6 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation, 82 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 18.3 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation, 82 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 18.3 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
 roofclf alone -- its own &ge;400 m<sup>2</sup> replacement plus the sub-400 m<sup>2</sup>
 central estimate -- supplies about four-fifths of Best by itself; direct OSM mapping and
@@ -56,9 +56,11 @@ stated judgement: the two area-to-capacity constants' priors, segmentation's own
 precision/recall posterior by installation size, the coverage ratio's sensitivity to *which*
 calibration quadrats happen to have been mapped (measured by resampling the quadrats
 themselves, not the buildings inside them), and an explicit allowance for extrapolating a
-city-calibrated coverage ratio onto rural roofs. It does **not** include a design-based
-sampling error, because the quadrats were hand-picked rather than randomly drawn -- see
-"How confident should you be in this?" on the atlas page, and
+city-calibrated coverage ratio onto rural roofs. Since 2026-08-15 the same quadrat resample
+also carries roofclf's own measured recall (see "A twelfth change" below), which is why the
+range widened alongside the point estimate rather than simply shifting with it. It does
+**not** include a design-based sampling error, because the quadrats were hand-picked rather
+than randomly drawn -- see "How confident should you be in this?" on the atlas page, and
 [validation against MaStR](../methods/mastr-validation.md) for what a complete register can
 and cannot settle here.
 
@@ -356,6 +358,55 @@ roofclf rooftop 6,540 &rarr; **7,031 MWp**. Evidence atlas: Best 15,972 &rarr; *
 MWp** (+4.0%) -- an increase this time, unlike the tenth change: the domain widened far
 more dramatically than the refit/coverage-ratio recalibration pulled individual
 components down.
+
+**A twelfth change, 2026-08-15: the roofclf half was only ever counting the roofs it
+flagged.** Every roofclf capacity figure above multiplies flagged roof area by the measured
+coverage ratio -- true mapped PV area divided by *flagged* roof area. That answers "of the
+roofs we flagged, how much is panel", and books zero for every installation sitting on a
+roof roofclf missed. Segmentation has never been read that way: since the recall-corrected
+estimator shipped, each surviving detection stands in for 1/recall real installations of
+its size class, so the number describes the whole population rather than the detected part.
+The two halves of this atlas were being built on two different estimators, and only the
+roofclf half -- four-fifths of Best -- was missing the correction.
+
+It is now measured the same way the coverage ratio is: the share of the calibration
+quadrats' true mapped PV **area** that lands on a flagged building, per roof-size bin and
+per building-density stratum, from the same 16 trusted quadrats at the same deployment
+threshold. Area, not count -- missing one 300 m<sup>2</sup> array and one 20 m<sup>2</sup>
+array cost the same under a count and differ fifteenfold in MWp. Measured: **0.808 for
+sub-400 m<sup>2</sup> buildings and 0.978 for &ge;400 m<sup>2</sup> ones**, rising
+monotonically with roof size (0.34 in the smallest decile of PV-carrying roofs to 0.99 in
+the largest) -- so a single pooled number would have badly under-corrected exactly the
+small roofs this instrument exists to cover. That the &ge;400 m<sup>2</sup> figure is near
+1.0 is the expected shape rather than a null result: roofclf replaced segmentation on large
+rooftops precisely because it barely misses at that size.
+
+Moved: sub-400 central 6,372 &rarr; **7,890 MWp**, &ge;400 m<sup>2</sup> roofclf rooftop
+7,031 &rarr; **7,189 MWp**. Evidence atlas: Best 16,609 &rarr; **18,280 MWp** (+10.1%),
+90% range 12,912-19,671 &rarr; **14,401-21,846**. Both tables are refit inside the *same*
+bootstrap replicates rather than bootstrapped separately, since they are fit on the same
+quadrats from the same labels and their errors are strongly dependent -- a quadrat whose
+mapping is stale depresses the measured coverage ratio and inflates the measured recall at
+once.
+
+**Neither the floor nor the two AND-gate populations moved, deliberately.** Verified is
+unchanged at 5,390 MWp. A tier built by requiring two independent detectors to agree, and
+then counting only what they jointly flagged, stops being a floor the moment it
+extrapolates to installations neither of them saw; the out-of-domain component would
+additionally compound one extrapolation with another. Both are left uncorrected, and the
+code takes no parameter that would change that.
+
+**The correction is a lower bound on itself, in three separate ways**, all of them
+measurable rather than rhetorical. Rule 1 certifies completeness only as of the mapping
+imagery's own epoch, so an array installed after that imagery is missing from the labels on
+flagged and unflagged roofs alike -- which removes it from the recall denominator only when
+it sits on an unflagged roof, biasing measured recall up and this correction down. The
+national population being corrected has already been deduplicated against segmentation and
+OpenStreetMap while recall is measured over a whole quadrat, and a large obvious array is
+both the kind roofclf flags and the kind another instrument already found, so the
+incremental share of missed PV is if anything larger than assumed. And a bin measured below
+0.10 is floored there rather than trusted, capping the inflation at tenfold; on the current
+calibration set nothing comes close to binding it.
 
 ## What this map cannot tell you, and what an independent estimate confirms it can
 

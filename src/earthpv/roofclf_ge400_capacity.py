@@ -51,6 +51,7 @@ def domain_restricted_ge400_roof_capacity(
     quadrat_profile_path: Path = Path("results/calibration_quadrats.csv"),
     n_density_bands: int | None = None,
     n_coverage_boot: int | None = None,
+    recall_correct: bool = True,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """roofclf-scored, coverage-ratio-weighted capacity for >= 400 m2 rooftop buildings,
     restricted to the density-matched domain (same ~92 cells `sub400_capacity` uses).
@@ -71,6 +72,17 @@ def domain_restricted_ge400_roof_capacity(
     `apply_stratified_coverage_ratio`) and looked up by each building's OWN cell's
     density, not a single pooled fit applied uniformly across the whole domain.
 
+    **Area-recall corrected (2026-08-15, `recall_correct`, default True).** The coverage
+    ratio prices the PV on roofs roofclf FLAGGED; dividing by
+    `sub400_capacity.area_recall_by_size_and_density` extends that to the roofs it missed,
+    the same Horvitz-Thompson step `density.py` has always applied to segmentation
+    candidates. The correction is small here and large below 400 m2, which is itself the
+    expected shape: measured on the trusted quadrats' own >= 400 m2 buildings, roofclf's
+    area recall is 0.982, against 0.808 for sub-400 m2 -- this instrument was chosen for
+    this population precisely because it barely misses at this size. Reporting it anyway
+    matters for the atlas's interval, since the same quadrat resample now moves this
+    component and the sub-400 m2 one together.
+
     Returns `(flagged_buildings, summary)`. `flagged_buildings` carries `est_kwp_ge400_
     roof` per building (for `atlas.py`'s per-cell aggregation via
     `_join_buildings_to_grid_cells`, the same path `small_low`/`small_central` already
@@ -85,7 +97,8 @@ def domain_restricted_ge400_roof_capacity(
     from earthpv.export import new_lead_mask
     from earthpv.sub400_capacity import (
         DEFAULT_COVERAGE_N_BOOT, DEFAULT_N_DENSITY_STRATA, DEFAULT_RATIO_HI, DEFAULT_RATIO_LO,
-        apply_stratified_coverage_ratio, coverage_ratio_by_size_and_density,
+        apply_stratified_area_recall, apply_stratified_coverage_ratio,
+        area_recall_by_size_and_density, coverage_ratio_by_size_and_density,
         coverage_ratio_bootstrap_factors,
         national_cell_domain, quadrat_building_density_km2, select_calibrated_quadrats,
     )
@@ -101,6 +114,9 @@ def domain_restricted_ge400_roof_capacity(
     stratified = coverage_ratio_by_size_and_density(
         buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
     )
+    recall_stratified = area_recall_by_size_and_density(
+        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
+    ) if recall_correct else None
 
     parts = []
     for cell in sorted(in_domain_cells):
@@ -139,24 +155,36 @@ def domain_restricted_ge400_roof_capacity(
         flagged["coverage_ratio"] = apply_stratified_coverage_ratio(
             flagged["roof_area_m2"].to_numpy(float), flagged_cell_density, stratified
         )
+        flagged["area_recall"] = (
+            apply_stratified_area_recall(
+                flagged["roof_area_m2"].to_numpy(float), flagged_cell_density, recall_stratified
+            ) if recall_correct else np.ones(len(flagged))
+        )
         flagged["est_kwp_ge400_roof"] = (
             flagged["roof_area_m2"].to_numpy(float)
             * DEFAULT_KWP_PER_M2_MODULE
             * flagged["coverage_ratio"].to_numpy()
+            / flagged["area_recall"].to_numpy()
         )
         mean_coverage_ratio = float(
             np.average(flagged["coverage_ratio"], weights=flagged["roof_area_m2"])
         )
+        # Capacity-weighted: the factor this component's published total was divided by.
+        weighted = flagged["roof_area_m2"] * flagged["coverage_ratio"]
+        effective_area_recall = float(weighted.sum() / (weighted / flagged["area_recall"]).sum())
         cov_boot = coverage_ratio_bootstrap_factors(
             buildings_path, quadrats, threshold, quadrat_density, stratified,
             flagged["roof_area_m2"].to_numpy(float), flagged_cell_density,
             n_density_bands=n_density_bands,
             n_boot=DEFAULT_COVERAGE_N_BOOT if n_coverage_boot is None else n_coverage_boot,
+            recall_stratified=recall_stratified,
         )
     else:
         flagged["coverage_ratio"] = np.array([])
+        flagged["area_recall"] = np.array([])
         flagged["est_kwp_ge400_roof"] = np.array([])
         mean_coverage_ratio = float("nan")
+        effective_area_recall = float("nan")
         cov_boot = {"n_boot": 0, "factors": [], "factor_ci90": None}
     total_mwp = float(flagged["est_kwp_ge400_roof"].sum()) / 1000.0 if not flagged.empty else 0.0
 
@@ -166,6 +194,12 @@ def domain_restricted_ge400_roof_capacity(
         "calibration_coverage_ratio_by_size_and_density": stratified,
         "calibration_coverage_ratio_area_weighted_mean": (
             round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None
+        ),
+        "recall_correction_applied": bool(recall_correct),
+        "calibration_area_recall_by_size_and_density": recall_stratified,
+        "calibration_effective_area_recall": (
+            round(effective_area_recall, 4)
+            if effective_area_recall == effective_area_recall else None
         ),
         # Quadrat-resampling uncertainty on this component, as dimensionless multiplicative
         # factors (`sub400_capacity.coverage_ratio_bootstrap_factors`). Replicate b here is

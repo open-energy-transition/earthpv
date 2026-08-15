@@ -1269,6 +1269,24 @@ def run_density(
                 if "placement" in cands.columns else None,
             )
         log.info("Calibration table %s (%s): est_mwp_cal is precision-weighted", cal_path, cal_status)
+        # A table with no `placement_bins` prices ground-mount off rooftop's much higher
+        # OSM corroboration in the same area bin -- the exact pooling the 2026-08-10
+        # placement split exists to undo, and the single largest error ever found in this
+        # stage (ground-mount was overstated 60%). `calibrate-candidates --by-placement`
+        # was opt-in until 2026-08-15, so a table regenerated in between looks fine and
+        # silently reverts the fix. Warn rather than refuse: an AOI whose candidates are
+        # all one placement (or whose reference carries no placement column) legitimately
+        # has no split to make.
+        if "placement_bins" not in table and not cands.empty and "placement" in cands.columns:
+            groups = set(cc._placement_group(cands["placement"].astype(str).to_numpy()))
+            if len(groups) > 1:
+                log.warning(
+                    "Calibration table %s has no placement_bins, but this AOI's candidates "
+                    "span %s -- ground-mount will borrow rooftop's mapped fraction in every "
+                    "shared area bin. Re-run `earthpv calibrate-candidates --aoi %s "
+                    "--by-placement` (the default since 2026-08-15) before publishing.",
+                    cal_path, sorted(groups), aoi,
+                )
     else:
         log.warning(
             "No calibration table at %s — est_mwp_cal will equal est_mwp_det; "

@@ -994,23 +994,30 @@ def write_architecture_diagram():
 # them together with the prose on the roofclf page after a refit.
 ROOFCLF_W = 1200
 ROOFCLF_H = 1064
-# data/roofclf/summary.json
+# Transcribed by hand from `data/roofclf/summary.json` and
+# `data/roofclf_national_with_sppi/<aoi>/density/*_summary.json`, because `data/` is
+# gitignored and the docs CI cannot read either. That makes these the one place in this
+# script that CAN drift from the pipeline, and they have: they sat two revisions behind
+# their own alt text until 2026-08-15. Re-transcribe them in the same commit as any
+# pipeline run that moves the atlas, and check the numbers in `docs/methods/roofclf.md`'s
+# image alt text against them.
+# data/roofclf/summary.json (27-quadrat refit, 2026-08-13)
 ROOFCLF_STATS = {
-    "n_quadrats": 23,
-    "auc": 0.857,
-    "auc_within_size": 0.830,
-    "threshold": 0.2443,
+    "n_quadrats": 27,
+    "auc": 0.879,
+    "auc_within_size": 0.834,
+    "threshold": 0.2511,
     "precision": 0.50,
-    "recall": 0.66,
+    "recall": 0.63,
 }
-# data/roofclf_national_with_sppi/pakistan/density/*_summary.json
+# data/roofclf_national_with_sppi/pakistan/density/*_summary.json (recall-corrected, 2026-08-15)
 ROOFCLF_CAPACITY = {
-    "n_domain_cells": 1680,
+    "n_domain_cells": 2957,
     "n_national_cells": 4463,
-    "verified_sub400": 2929,
-    "best_sub400": 6531,
-    "best_ge400_roof": 6427,
-    "best_outdomain": 278,
+    "verified_sub400": 2180,
+    "best_sub400": 7890,
+    "best_ge400_roof": 7189,
+    "best_outdomain": 62,
 }
 
 
