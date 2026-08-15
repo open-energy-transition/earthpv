@@ -416,16 +416,7 @@
   .pose-native .pose-callout p { margin: 0 0 10px; font-size: 14px; }
   .pose-native .pose-callout p:last-child { margin-bottom: 0; }
   .pose-native .pose-fig { font-weight: 600; color: var(--pose-ink); }
-  .pose-native .pose-lower { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr;
-    gap: 18px; }
-  @media (max-width: 760px) { .pose-native .pose-lower { grid-template-columns: 1fr; } }
-  .pose-native .pose-hist-panel { padding: 16px 18px 12px; }
-  .pose-native .pose-hist-title { font-size: 11.5px; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--pose-ink-dim); margin-bottom: 10px; }
   .pose-native svg text { fill: var(--pose-ink-dim); }
-  .pose-native .pose-strip-panel { margin-top: 18px; padding: 16px 18px 14px; }
-  .pose-native .pose-strip-title { font-size: 11.5px; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--pose-ink-dim); margin-bottom: 12px; }
   .pose-native .pose-footnote { margin-top: 16px; font-size: 12px; color: var(--pose-ink-faint);
     line-height: 1.6; }
 
@@ -550,6 +541,17 @@
           <div class="lk"><span class="sw ground"></span>ground-mount</div>
           <div class="lk"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
         </div>
+        <div class="hero-desc" style="margin-top:14px;"><b>Ground-mount below 400
+        m&sup2; reads exactly zero, not empty.</b> Segmentation is the only instrument
+        that detects ground-mount at any size, and it has a practical resolution floor
+        around 400 m&sup2; at Sentinel-2's 10 m pixel size -- it is not trained to
+        positively identify anything smaller. roofclf, the instrument that does cover
+        installations below 400 m&sup2;, is a per-building classifier: it needs a
+        building footprint to score, which a ground-mount site by definition doesn't
+        have. No instrument in this pipeline currently covers small ground-mount, so
+        this chart cannot show it as anything but zero -- that is a gap in
+        instrumentation, not evidence that small ground-mount installations don't
+        exist.</div>
       </section>
 
       <aside>
@@ -686,24 +688,6 @@
           </p>
         </div>
       </div>
-    </div>
-
-    <div class="pose-lower">
-      <div class="pose-panel pose-hist-panel">
-        <div class="pose-hist-title pose-mono">Tilt distribution</div>
-        <svg id="pose-hist-tilt" viewBox="0 0 460 200" style="width:100%;height:auto;display:block;"></svg>
-      </div>
-      <div class="pose-panel pose-hist-panel">
-        <div class="pose-hist-title pose-mono">Azimuth distribution
-          <span style="opacity:.6">(180&deg; = geometric ceiling)</span></div>
-        <svg id="pose-hist-az" viewBox="0 0 460 200" style="width:100%;height:auto;display:block;"></svg>
-      </div>
-    </div>
-
-    <div class="pose-panel pose-strip-panel">
-      <div class="pose-strip-title pose-mono">For context -- validation rate by installation
-        size (all <span class="pz-ntotal">0</span>, not just the fitted <span class="pz-nfitted">0</span>)</div>
-      <svg id="pose-strip" viewBox="0 0 1000 150" style="width:100%;height:auto;display:block;"></svg>
     </div>
 
     <p class="pose-footnote">
@@ -1356,107 +1340,8 @@ out meta geom;</div>
     });
   }
 
-  function poseBar(svg, x, y, w, h, fill){
-    const r = el("rect", {x, y: y - h, width: w, height: Math.max(h, 0), fill});
-    svg.appendChild(r);
-  }
-  function poseText(svg, x, y, s, opts = {}){
-    const t = el("text", {x, y, "font-size": opts.size || 10.5, "text-anchor": opts.anchor || "middle", class: "pose-mono"});
-    if (opts.fill) t.style.fill = opts.fill;
-    t.textContent = s;
-    svg.appendChild(t);
-  }
-
-  function renderPoseHistTilt(){
-    const svg = document.getElementById("pose-hist-tilt");
-    if (!svg) return;
-    svg.innerHTML = "";
-    const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const binSize = 3, maxTilt = 30;
-    const bins = Array.from({length: maxTilt / binSize}, () => ({gen: 0, plant: 0}));
-    DATA.pose.points.forEach(d => {
-      const i = Math.min(Math.floor(d.t / binSize), bins.length - 1);
-      bins[i][d.k === "generator" ? "gen" : "plant"]++;
-    });
-    const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
-    const bw = plotW / bins.length;
-    const sun = poseCss("--pose-accent-sun"), glint = poseCss("--pose-accent-glint"), inkFaint = poseCss("--pose-ink-faint");
-    bins.forEach((b, i) => {
-      const x = padL + i * bw + bw * 0.12;
-      const w = bw * 0.76;
-      const totalH = (b.gen + b.plant) / maxCount * plotH;
-      const genH = b.gen / maxCount * plotH;
-      const baseY = padT + plotH;
-      poseBar(svg, x, baseY - genH, w, genH, sun);
-      poseBar(svg, x, baseY - totalH, w, totalH - genH, glint);
-      if (i % 2 === 0) poseText(svg, x + w / 2, H - 8, (i * binSize) + "°", {size: 9.5, fill: inkFaint});
-    });
-    svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: poseCss("--pose-rule")}));
-  }
-
-  function renderPoseHistAz(){
-    const svg = document.getElementById("pose-hist-az");
-    if (!svg) return;
-    svg.innerHTML = "";
-    const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const lo = 60, hi = 200, binSize = 10;
-    const nbins = (hi - lo) / binSize;
-    const bins = Array.from({length: nbins}, () => ({gen: 0, plant: 0}));
-    DATA.pose.points.forEach(d => {
-      const i = Math.min(Math.max(Math.floor((d.az - lo) / binSize), 0), nbins - 1);
-      bins[i][d.k === "generator" ? "gen" : "plant"]++;
-    });
-    const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
-    const bw = plotW / nbins;
-    const sun = poseCss("--pose-accent-sun"), glint = poseCss("--pose-accent-glint"),
-      inkFaint = poseCss("--pose-ink-faint"), exclLine = poseCss("--pose-excluded-line");
-    bins.forEach((b, i) => {
-      const x = padL + i * bw + bw * 0.12;
-      const w = bw * 0.76;
-      const totalH = (b.gen + b.plant) / maxCount * plotH;
-      const genH = b.gen / maxCount * plotH;
-      const baseY = padT + plotH;
-      poseBar(svg, x, baseY - genH, w, genH, sun);
-      poseBar(svg, x, baseY - totalH, w, totalH - genH, glint);
-      if (i % 2 === 0) poseText(svg, x + w / 2, H - 8, lo + i * binSize, {size: 9.5, fill: inkFaint});
-    });
-    const xCeil = padL + ((180 - lo) / (hi - lo)) * plotW;
-    svg.appendChild(el("line", {x1: xCeil, x2: xCeil, y1: padT, y2: padT + plotH,
-      stroke: exclLine, "stroke-width": 1.5, "stroke-dasharray": "4,3"}));
-    svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: poseCss("--pose-rule")}));
-  }
-
-  function renderPoseStrip(){
-    const svg = document.getElementById("pose-strip");
-    if (!svg) return;
-    svg.innerHTML = "";
-    const rows = DATA.pose.strip;
-    const W = 1000, H = 150, padL = 50, padR = 20, padT = 14, padB = 28;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const groupW = plotW / rows.length;
-    const inkDim = poseCss("--pose-ink-dim"), inkFaint = poseCss("--pose-ink-faint"),
-      glint = poseCss("--pose-accent-glint"), rule = poseCss("--pose-rule");
-    rows.forEach(([label, det, val], i) => {
-      const gx = padL + i * groupW;
-      const bw = groupW * 0.28;
-      const hDet = det / 100 * plotH, hVal = val / 100 * plotH;
-      const baseY = padT + plotH;
-      poseBar(svg, gx + groupW * 0.22, baseY - hDet, bw, hDet, inkFaint);
-      poseBar(svg, gx + groupW * 0.52, baseY - hVal, bw, hVal, glint);
-      poseText(svg, gx + groupW / 2, H - 8, label, {size: 11});
-    });
-    svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: rule}));
-    [0, 25, 50, 75].forEach(p => {
-      const y = padT + plotH - (p / 100) * plotH;
-      poseText(svg, padL - 10, y + 3, p + "%", {size: 10, anchor: "end", fill: inkFaint});
-    });
-    poseText(svg, padL, 10, "grey = detected (≥ 1 spike)   teal = validated (≥ 2 consistent)", {size: 10.5, anchor: "start", fill: inkDim});
-  }
-
   function renderPoseAll(){
-    renderPosePolar(); renderPoseHistTilt(); renderPoseHistAz(); renderPoseStrip();
+    renderPosePolar();
   }
 
   function fillPoseStats(){
