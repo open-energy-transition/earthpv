@@ -140,6 +140,7 @@ nav:
       - Epoch jump as recall signal: issues/epoch-jump-recall-signal.md
       - Calibration imagery dating: issues/calibration-imagery-dating.md
       - Small ground-mount instrument: issues/small-ground-mount-instrument.md
+      - Calibration density mismatch: issues/roofclf-calibration-density-mismatch.md
   - Open questions: open-questions.md
   - About:
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md

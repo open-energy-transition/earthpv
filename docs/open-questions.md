@@ -17,7 +17,36 @@ More human-verified Pakistani installations, retrain, measure. Every shipped imp
 [the experiments register](experiments.md) is smaller than this one. In-domain training chips
 tripled large-array recall; nothing architectural has come close.
 
-### 2. The calibration quadrats are purposive, not a probability sample
+### 2. The correction that prices most of the atlas is fit outside the density range it is applied to
+
+`coverage_ratio` and `area_recall` multiply both roofclf components, which are 15,080 MWp or
+83% of the published Best estimate. Both are fit on the quadrats `select_calibrated_quadrats`
+returns, and those span 872 to 4,195 bldg/km2. The cells they are applied to do not: **84.1%
+of in-domain buildings sit in cells sparser than every quadrat in the fit**, at a
+building-weighted median of 252 bldg/km2, and **9,842 MWp, 54% of the published Best
+estimate, is priced by a multiplier fit entirely on denser ground**. The density
+stratification meant to absorb this is close to degenerate at deployment: two bands, and band
+0 is fit from 8 quadrats spanning 872 to 1,758 bldg/km2 and then applied to 92.1% of national
+buildings, everything in the domain from 48.5 up to 1,737.
+
+**Measured 2026-08-16.** The trust gate is not density-neutral: Spearman(density, rate_ratio)
+is -0.577, the sparse density tercile passes at 0.44 against 1.00 for the middle one, and all
+five sparse quadrats it drops fail above the ceiling rather than below the floor. Relaxing
+`ratio_hi` moves the roofclf half by -8.4% (-1,270 MWp), non-monotonically, because admitting
+a quadrat moves the band split. That is 20 times the component dropped from the atlas on
+2026-08-15 for being unmeasured where applied. The published 90% interval does not cover any
+of this, because every quadrat the bootstrap can resample sits in the wrong band.
+
+The fix is mapping in an identified band, 300 to 600 bldg/km2 first, then 150 to 300; together
+those hold two thirds of the exposure. Three things are cheaper and worth doing first:
+backfill the missing `n_buildings` for `nasirabad_rural` and `tank_rural` (189 and 225, which
+currently bars them from the fit outright, including the very quadrat that set the domain's
+48.5 floor), record the fit's own density support next to the domain in the capacity
+summaries, and settle the gate band explicitly now that its confounding is measured. Full
+derivation, the sweep table and the reproduction script:
+[roofclf calibration density mismatch](issues/roofclf-calibration-density-mismatch.md).
+
+### 3. The calibration quadrats are purposive, not a probability sample
 
 This is the single largest caveat on every capacity number the project publishes, and no
 amount of additional modelling removes it. All 27 quadrats were chosen by a researcher to
@@ -32,7 +61,7 @@ post-stratify the existing quadrats on auxiliary variables known for the whole p
 (building density, roof-size distribution, nightlights, region) to get a design-consistent
 national total with a variance estimate.
 
-### 3. Ground-truth completeness is relative to the mapping imagery, not the satellite composite
+### 4. Ground-truth completeness is relative to the mapping imagery, not the satellite composite
 
 Quadrats are mapped against OpenStreetMap's background imagery, whose capture date is
 generally older than the Sentinel-2 composite the model reads. So Rule 1 certifies
@@ -51,7 +80,7 @@ than merely unstated. Backfilling them against Esri Wayback is the cheap first s
 starting point is the Maxar Open Data Program, which provides dated imagery over several areas
 in Pakistan (see [Open Issue #3](https://github.com/open-energy-transition/earthpv/issues/3))
 
-### 4. Small ground-mounted installations have no instrument at all
+### 5. Small ground-mounted installations have no instrument at all
 
 Both sub-400 m² instruments are per-*building* classifiers: they score a footprint. A small
 free-standing ground array has no footprint to score, and the segmentation model was trained
@@ -71,20 +100,31 @@ PRIED's independent household survey (5.04 GW agricultural) converge to within 1
 each other despite disagreeing on the national total by ~6 GW -- and this project's own
 published ground-mount total, *everything* combined (utility, industrial, agricultural),
 is 2.2 GW. This is now the single largest, most confidently-explainable component of the
-gap to those external estimates. Five of this project's own rural calibration quadrats
-already have 15 hand-mapped small ground-mount installations (13.4-285.6 m²) sitting
-unused by either existing instrument. See
-[Small ground-mounted instrument](issues/small-ground-mount-instrument.md) for the full
-evidence and a first sketch of what building one would need.
+gap to those external estimates.
 
-### 5. Manual review of the small size bins
+**Measured 2026-08-16, and the open part narrowed.** The quadrats hold 262 strict
+sub-400 m² ground-mount installations, not the 15 a five-quadrat hand count found, and
+**98.5% of them sit within 30 m of a VIDA building** (98.5% too on an independent national
+OSM sample, against 39.9% for random points in the same cells). So the candidate universe
+does not have to be invented: a 30 m ring around the building index `roofclf` already scores
+covers a tenth of the country and keeps the population. What does not work is detection at
+that unit, which lands under 1% precision at 30% recall in every stratum tested. What
+stays genuinely open is the size of the prize: a density-stratified estimate puts it at
+1,492 MWp with a 90% interval of 435-3,526 MWp, and the whole spread sits in the
+`< 150 bldg/km²` stratum, which holds 22.9% of national buildings and is represented by four
+quadrats covering 16 km², all drawn around villages rather than in farmland. Mapping cropland
+quadrats is the step that resolves it. See
+[Small ground-mounted instrument](issues/small-ground-mount-instrument.md) for the full
+measurements and what they rule in and out.
+
+### 6. Manual review of the small size bins
 
 In the 100 to 500 m² band, `p_real` is only pinned to [0.10, 0.89]. `earthpv
 calibrate-sample` emits a stratified sample of unmapped candidates for human verdicts, and
 roughly twenty verdicts per bin would collapse the widest remaining term in the calibration
 table.
 
-### 6. The out-of-domain population cannot currently be validated by eye
+### 7. The out-of-domain population cannot currently be validated by eye
 
 The published Best estimate no longer carries this component: it was dropped 2026-08-15,
 precisely because it was the one part of the total that could not be validated where it was
@@ -94,11 +134,11 @@ outside it and are now reported as nothing rather than as an extrapolation. The 
 validation batch built to test whether the domain could be widened with evidence
 (`results/pakistan_roofclf_validation_outdomain/`) turned out not to be reviewable, because
 the reference imagery there is too old to confirm or refute recently-installed small PV.
-This is item 3 blocking item 6. Contemporaneous high-resolution imagery would unblock both;
+This is item 4 blocking item 7. Contemporaneous high-resolution imagery would unblock both;
 free options worth checking first are Planet/NICFI monthly basemaps, which cover roughly to
 30 degrees north and so include Sindh but not Punjab.
 
-### 7. Two random-cell validation batches are generated but unreviewed
+### 8. Two random-cell validation batches are generated but unreviewed
 
 `results/pakistan_roofclf_validation_domain/` and `..._outdomain/` were drawn to measure
 roofclf's precision against an unbiased population rather than the curated quadrats. Neither
@@ -107,28 +147,28 @@ has been through JOSM review. The protocol is in
 belong in `results/roofclf_random_validation_log.csv` so precision against that population
 accumulates across batches.
 
-### 8. A per-locality pose calibration
+### 9. A per-locality pose calibration
 
 The [panel pose survey](results/pv-pose.md) fits a national pose distribution from glint.
 Fitting a *local* pose from whatever installations a subdivision already has, rather than
 assuming a national standard, is untried and would improve the yield modelling that turns
 capacity into energy.
 
-### 9. Sentinel-1 backscatter variance as a false-positive filter
+### 10. Sentinel-1 backscatter variance as a false-positive filter
 
 Distinct from the corner-reflector hypothesis that failed. Multi-temporal backscatter
 variance separates permanent structures from seasonally changing fields, and greenhouse metal
 frames give a bright return, the opposite of PV. Cheap, and not ruled out by the negative
 result on corner reflection.
 
-### 10. Per-pixel glint anomaly counting
+### 11. Per-pixel glint anomaly counting
 
 The statistic the [cell-aggregate glint test](issues/glint-spike-rate-density-estimator.md)
 should have used. A 90th-percentile statistic over a whole cell only moves if roughly 10% of
 the cell brightens at once; scoring each pixel against its own baseline does not have that
 problem. Prototyped, never evaluated.
 
-### 11. Glint scene coverage is silently incomplete
+### 12. Glint scene coverage is silently incomplete
 
 The tile-major glint fetch is 22x faster and numerically identical, but revalidation found
 that token expiry silently drops scenes for a large share of targets rather than erroring.
@@ -137,7 +177,7 @@ full study after a proper token-refresh fix is the only way to get a scene-count
 that means what it appears to mean. See
 [Glint tile-batched coverage](issues/glint-tile-batched-coverage.md).
 
-### 12. Growth as a product
+### 13. Growth as a product
 
 Per-epoch density estimates would make capacity a time series, so the 2022 to 2026 boom
 becomes measurable per district and independently checkable against NEPRA net-metering
