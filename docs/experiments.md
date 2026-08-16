@@ -60,6 +60,7 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | OSM as a complete reference in Germany | <span class="outcome negative">rejected</span> | 3.6% complete by unit count; implied kWp/m² unstable by more than the constant itself. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
 | Low/Central/High/All-PV bracket atlas | <span class="outcome open">superseded</span> | Replaced by the two-tier evidence atlas, which sorts by standard of proof instead. |
+| Out-of-domain AND-gate extrapolation | <span class="outcome open">superseded</span> | Published 2026-08-11 to 2026-08-15, then dropped: the one Best-estimate component not measured where it was applied, and unreviewable by eye under stale imagery. -62 MWp. |
 | The Ceiling tier | <span class="outcome open">superseded</span> | A threshold change roughly doubled it with no new validation, so it stopped bounding anything. |
 | National dashboard bundle | <span class="outcome open">superseded</span> | Replaced by plain per-artifact result pages; the CLI still works. |
 

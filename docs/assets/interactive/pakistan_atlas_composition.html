@@ -182,7 +182,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     <div class="kpis" id="kpis"></div>
 
     <div class="card">
-      <h2>Best estimate — 8 components, 4 methods</h2>
+      <h2 id="bestTitle">Best estimate</h2>
       <p class="card-sub">Segments grouped by method, in proportion to MWp &middot; hover a segment for detail</p>
       <div class="legend" id="legendBest"></div>
       <div class="stack-wrap" id="stackWrapBest">
@@ -246,7 +246,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
   </div>
 </div>
 
-<script id="acmp-data" type="application/json">{"mwp_best":18279.6,"mwp_best_ci":[14400.5,21845.7],"mwp_verified":5389.5,"mwp_verified_ci":[4493.5,6556.6],"best_rows":[{"key":"osm_unmatched_roof","label":"OSM hand-mapped \u2014 rooftop (not already found by the model)","method":"osm","mwp":627.9,"ci":[529.5,735.6],"pct":3.434976695332502},{"key":"osm_unmatched_ground","label":"OSM hand-mapped \u2014 ground-mount (not already found by the model)","method":"osm","mwp":404.8,"ci":[281.5,586.3],"pct":2.21449047025099},{"key":"floor_offset","label":"OSM floor correction (cells where the model fell short of hand-mapped OSM)","method":"osm","mwp":678.8,"ci":null,"pct":3.713429177881354},{"key":"seg_roof_outdomain","label":"TerraMind segmentation \u2014 rooftop, outside the calibrated domain","method":"seg","mwp":291.2,"ci":[189.2,339.7],"pct":1.5930326702991313},{"key":"seg_ground","label":"TerraMind segmentation \u2014 ground-mount (every cell; roofclf has no footprint there)","method":"seg","mwp":1135.6,"ci":[747.3,1724.5],"pct":6.2123897678286175},{"key":"ge400_roof","label":"roofclf \u2014 \u2265 400 m\u00b2 rooftop, replacing segmentation inside the calibrated domain","method":"roofclf","mwp":7189.4,"ci":[4551.2,8819.7],"pct":39.33018227969978},{"key":"small_central","label":"roofclf alone \u2014 sub-400 m\u00b2 rooftop, coverage ratio and recall, density-calibrated","method":"roofclf","mwp":7890.2,"ci":[6193.2,9856.4],"pct":43.163964200529556},{"key":"small_outdomain","label":"roofclf + SPPI agreement \u2014 sub-400 m\u00b2, extrapolated outside the calibrated domain","method":"sppi","mwp":61.7,"ci":[18.2,77.4],"pct":0.33753473817807833}],"verified_rows":[{"key":"osm_roof","label":"OSM hand-mapped \u2014 rooftop (all of it, matched or not)","method":"osm","mwp":1093.6,"ci":[922.3,1281.2],"pct":20.2913071713517},{"key":"osm_ground","label":"OSM hand-mapped \u2014 ground-mount (all of it, matched or not)","method":"osm","mwp":2116.2,"ci":[1471.9,3065.1],"pct":39.26523796270526},{"key":"small_low","label":"roofclf + SPPI agreement \u2014 sub-400 m\u00b2, inside the calibrated domain","method":"sppi","mwp":2179.7,"ci":[1730.0,2722.7],"pct":40.44345486594303}],"best_by_method":[{"method":"osm","name":"OSM (hand-mapped)","desc":"Human-mapped installations from OpenStreetMap solar tagging.","mwp":1711.5,"pct":9.362896343464847},{"method":"seg","name":"TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly.","mwp":1426.8,"pct":7.805422438127749},{"method":"roofclf","name":"roofclf (alone)","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check.","mwp":15079.599999999999,"pct":82.49414648022932},{"method":"sppi","name":"roofclf + SPPI","desc":"roofclf AND the zero-training SPPI spectral index agreeing \u2014 a stricter, cross-validated signal.","mwp":61.7,"pct":0.33753473817807833}],"verified_by_method":[{"method":"osm","name":"OSM (hand-mapped)","desc":"Human-mapped installations from OpenStreetMap solar tagging.","mwp":3209.7999999999997,"pct":59.55654513405696},{"method":"sppi","name":"roofclf + SPPI","desc":"roofclf AND the zero-training SPPI spectral index agreeing \u2014 a stricter, cross-validated signal.","mwp":2179.7,"pct":40.44345486594303}],"colors":{"osm":{"dark":"#399260","light":"#227a45"},"seg":{"dark":"#3f7fd6","light":"#2a68c4"},"roofclf":{"dark":"#b87d1e","light":"#96620a"},"sppi":{"dark":"#9c6fd1","light":"#7550b0"}},"method_order":["osm","seg","roofclf","sppi"],"method_meta":{"osm":{"name":"OSM (hand-mapped)","desc":"Human-mapped installations from OpenStreetMap solar tagging."},"seg":{"name":"TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly."},"roofclf":{"name":"roofclf (alone)","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},"sppi":{"name":"roofclf + SPPI","desc":"roofclf AND the zero-training SPPI spectral index agreeing \u2014 a stricter, cross-validated signal."}},"n_draws":1000,"ci_pct":[5.0,95.0],"n_calib_boxes":24,"n_domain_cells":2381,"n_cells":4463}</script>
+<script id="acmp-data" type="application/json">{"mwp_best":18218.4,"mwp_best_ci":[14346.0,21768.1],"mwp_verified":5389.5,"mwp_verified_ci":[4493.5,6556.6],"best_rows":[{"key":"osm_unmatched_roof","label":"OSM hand-mapped \u2014 rooftop (not already found by the model)","method":"osm","mwp":627.9,"ci":[529.5,735.6],"pct":3.4465156105914896},{"key":"osm_unmatched_ground","label":"OSM hand-mapped \u2014 ground-mount (not already found by the model)","method":"osm","mwp":404.8,"ci":[281.5,586.3],"pct":2.2219294778904843},{"key":"floor_offset","label":"OSM floor correction (cells where the model fell short of hand-mapped OSM)","method":"osm","mwp":679.3,"ci":null,"pct":3.7286479603038685},{"key":"seg_roof_outdomain","label":"TerraMind segmentation \u2014 rooftop, outside the calibrated domain","method":"seg","mwp":291.2,"ci":[189.2,339.7],"pct":1.5983840512888068},{"key":"seg_ground","label":"TerraMind segmentation \u2014 ground-mount (every cell; roofclf has no footprint there)","method":"seg","mwp":1135.6,"ci":[747.3,1724.5],"pct":6.233258683528739},{"key":"ge400_roof","label":"roofclf \u2014 \u2265 400 m\u00b2 rooftop, replacing segmentation inside the calibrated domain","method":"roofclf","mwp":7189.4,"ci":[4551.2,8819.7],"pct":39.462301848680454},{"key":"small_central","label":"roofclf alone \u2014 sub-400 m\u00b2 rooftop, coverage ratio and recall, density-calibrated","method":"roofclf","mwp":7890.2,"ci":[6193.2,9856.4],"pct":43.30896236771615}],"verified_rows":[{"key":"osm_roof","label":"OSM hand-mapped \u2014 rooftop (all of it, matched or not)","method":"osm","mwp":1093.6,"ci":[922.3,1281.2],"pct":20.2913071713517},{"key":"osm_ground","label":"OSM hand-mapped \u2014 ground-mount (all of it, matched or not)","method":"osm","mwp":2116.2,"ci":[1471.9,3065.1],"pct":39.26523796270526},{"key":"small_low","label":"roofclf + SPPI agreement \u2014 sub-400 m\u00b2, inside the calibrated domain","method":"sppi","mwp":2179.7,"ci":[1730.0,2722.7],"pct":40.44345486594303}],"best_by_method":[{"method":"osm","name":"OSM (hand-mapped)","desc":"Human-mapped installations from OpenStreetMap solar tagging.","mwp":1712.0,"pct":9.397093048785843},{"method":"seg","name":"TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly.","mwp":1426.8,"pct":7.831642734817547},{"method":"roofclf","name":"roofclf (alone)","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check.","mwp":15079.599999999999,"pct":82.77126421639659}],"verified_by_method":[{"method":"osm","name":"OSM (hand-mapped)","desc":"Human-mapped installations from OpenStreetMap solar tagging.","mwp":3209.7999999999997,"pct":59.55654513405696},{"method":"sppi","name":"roofclf + SPPI","desc":"roofclf AND the zero-training SPPI spectral index agreeing \u2014 a stricter, cross-validated signal.","mwp":2179.7,"pct":40.44345486594303}],"colors":{"osm":{"dark":"#399260","light":"#227a45"},"seg":{"dark":"#3f7fd6","light":"#2a68c4"},"roofclf":{"dark":"#b87d1e","light":"#96620a"},"sppi":{"dark":"#9c6fd1","light":"#7550b0"}},"method_order":["osm","seg","roofclf","sppi"],"method_meta":{"osm":{"name":"OSM (hand-mapped)","desc":"Human-mapped installations from OpenStreetMap solar tagging."},"seg":{"name":"TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly."},"roofclf":{"name":"roofclf (alone)","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},"sppi":{"name":"roofclf + SPPI","desc":"roofclf AND the zero-training SPPI spectral index agreeing \u2014 a stricter, cross-validated signal."}},"n_draws":1000,"ci_pct":[5.0,95.0],"n_calib_boxes":24,"n_domain_cells":2381,"n_cells":4463}</script>
 <script>
 (function () {
   const DATA = JSON.parse(document.getElementById('acmp-data').textContent);
@@ -262,13 +262,28 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   }
 
+  // Methods and component count are read off the published rows, not asserted: an atlas
+  // built without an optional component (the out-of-domain extrapolation is the only one
+  // SPPI contributes to Best) decomposes into fewer of both.
+  const LEDE_METHOD_PHRASE = {
+    osm: "hand-mapped OSM the model had not already found",
+    seg: "the TerraMind segmentation model",
+    roofclf: "roofclf's own per-building classifier",
+    sppi: "roofclf cross-checked against the SPPI spectral index",
+  };
+  const ledeMethods = DATA.method_order.filter(
+    (m) => DATA.best_rows.some((r) => r.method === m)).map((m) => LEDE_METHOD_PHRASE[m]);
+  const NUMWORD = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+                   'nine', 'ten', 'eleven', 'twelve'];
+  const numword = (n) => NUMWORD[n] || String(n);
   document.getElementById('lede').innerHTML = `
-    Every MWp in the atlas's headline <strong>Best</strong> figure traces back to one of four
-    methods: hand-mapped OSM the model had not already found, the TerraMind segmentation model,
-    roofclf's own per-building classifier, or roofclf cross-checked against the SPPI spectral
-    index. This page decomposes <code>${fmt1(DATA.mwp_best)} MWp</code> into those eight
-    underlying components, sourced directly from the published atlas's own uncertainty
-    composition (<code>atlas.py::_evidence_uncertainty</code>) — not a re-measurement.
+    Every MWp in the atlas's headline <strong>Best</strong> figure traces back to one of
+    ${numword(ledeMethods.length)} methods:
+    ${ledeMethods.slice(0, -1).join(', ')} or ${ledeMethods[ledeMethods.length - 1]}.
+    This page decomposes <code>${fmt1(DATA.mwp_best)} MWp</code> into those
+    ${numword(DATA.best_rows.length)} underlying components, sourced directly from the
+    published atlas's own uncertainty composition
+    (<code>atlas.py::_evidence_uncertainty</code>) — not a re-measurement.
   `;
 
   // ---- KPIs ----
@@ -289,9 +304,15 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
       label: 'Hand-mapped OSM share', value: `${fmt1(osmBest.mwp)}`,
       sub: `MWp &middot; ${pct(osmBest.pct)} of Best`, dot: 'osm',
     },
-    {
+    // SPPI is absent from Best whenever the atlas was built without the out-of-domain
+    // extrapolation (its only Best component), so this KPI reports the floor alone rather
+    // than dereferencing a method that contributed nothing.
+    sppiBest ? {
       label: 'SPPI-corroborated', value: `${fmt1(sppiBest.mwp)}`,
       sub: `MWp in Best (${pct(sppiBest.pct)}) &middot; +${fmt1(smallLow.mwp)} in Verified's floor`, dot: 'sppi',
+    } : {
+      label: 'SPPI-corroborated', value: `${fmt1(smallLow.mwp)}`,
+      sub: `MWp, all of it in Verified's floor &middot; nothing in Best`, dot: 'sppi',
     },
   ];
   document.getElementById('kpis').innerHTML = kpis.map((k) => `
@@ -308,7 +329,13 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
       <div class="legend-item"><span class="legend-swatch" style="background:${color(m)}"></span>${DATA.method_meta[m].name}</div>
     `).join('');
   }
-  renderLegend('legendBest', DATA.method_order);
+  // Counted from the rows the atlas actually published: an optional component it was
+  // built without (the out-of-domain extrapolation, say) must not be announced here.
+  const bestMethods = new Set(DATA.best_rows.map((r) => r.method));
+  document.getElementById('bestTitle').textContent =
+    `Best estimate — ${DATA.best_rows.length} components, ${bestMethods.size} `
+    + `method${bestMethods.size === 1 ? '' : 's'}`;
+  renderLegend('legendBest', DATA.method_order.filter((m) => bestMethods.has(m)));
   renderLegend('legendVerified', ['osm', 'sppi']);
 
   // ---- Stacked bars ----

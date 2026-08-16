@@ -1505,6 +1505,13 @@ def _evidence_uncertainty(
     cov_meta: dict[str, dict] = {}
     missing: list[str] = []
     for key in ("small_low", "small_central", "small_outdomain", "ge400_roof"):
+        # A component the atlas was never given (no `--sub400-outdomain-cells`, say)
+        # contributes exactly zero MWp, so its coverage-ratio bootstrap cannot move the
+        # published interval -- asking for it would only warn about a calibration nothing
+        # in the number depends on.
+        if not components.get(key):
+            cov[key] = np.ones(n_draws)
+            continue
         f, info = _aligned_coverage_factors(boots.get(key, {}), n_draws, key)
         cov[key] = f
         if info is None:
@@ -1533,8 +1540,14 @@ def _evidence_uncertainty(
         "seg_roof_outdomain": c["seg_roof_outdomain"] * f_seg["est_mwp_rc_roof"],
         "seg_ground": c["seg_ground"] * f_seg["est_mwp_rc_ground"],
         "small_central": c["small_central"] * cov["small_central"] * f_mod,
-        "small_outdomain": c["small_outdomain"] * cov["small_outdomain"] * f_mod * f_extrap,
     }
+    # Only carried when the out-of-domain extrapolation was actually supplied: a zero
+    # component would otherwise publish an empty slice, an all-zero table column and a
+    # legend key for a quantity this atlas does not report.
+    if c["small_outdomain"]:
+        best_parts["small_outdomain"] = (
+            c["small_outdomain"] * cov["small_outdomain"] * f_mod * f_extrap
+        )
 
     v_point = sum(components[k] for k in ("osm_roof", "osm_ground", "small_low"))
     b_point = sum(components[k] for k in best_parts)

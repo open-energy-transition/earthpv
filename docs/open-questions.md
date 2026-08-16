@@ -86,9 +86,12 @@ table.
 
 ### 6. The out-of-domain population cannot currently be validated by eye
 
-The Best-estimate tier includes a small extrapolated component for cells outside the
-density-calibrated domain, priced with an explicit and deliberately wide allowance. The JOSM
-validation batch built to test whether that domain could be widened with evidence
+The published Best estimate no longer carries this component: it was dropped 2026-08-15,
+precisely because it was the one part of the total that could not be validated where it was
+applied. The question it leaves open is not the headline figure but the coverage of the
+domain itself -- roughly a third of the country's cells (holding ~5% of its buildings) are
+outside it and are now reported as nothing rather than as an extrapolation. The JOSM
+validation batch built to test whether the domain could be widened with evidence
 (`results/pakistan_roofclf_validation_outdomain/`) turned out not to be reviewable, because
 the reference imagery there is too old to confirm or refute recently-installed small PV.
 This is item 3 blocking item 6. Contemporaneous high-resolution imagery would unblock both;

@@ -16,7 +16,7 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">18,280 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 14,401 to 21,846)</span></div>
+<div class="stat"><span class="value">18,218 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 14,346 to 21,768)</span></div>
 <div class="stat"><span class="value">8,616 / 7,890 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
 </div>
 

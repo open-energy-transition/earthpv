@@ -48,13 +48,14 @@ size, combined into one product:
   inside a density-calibrated domain of cells, where it measures better (AUC ~0.76-0.78 vs
   segmentation's ~0.50-0.78, strongly conditional on quadrat). Both capacity functions are
   domain-restricted and refuse to rescale to a national total on their own; an AND-gate variant
-  additionally covers cells *outside* the calibrated domain as an explicitly-flagged
-  extrapolation (see "Density stage" below).
+  can additionally cover cells *outside* the calibrated domain as an explicitly-flagged
+  extrapolation, but that component is **no longer published** (dropped from the atlas
+  2026-08-15; see "Density stage" below).
 - **`atlas.build_evidence_atlas`** combines both into **Best estimate**, this project's own
   highest defensible figure (hand-mapped OSM, plus segmentation's ground-mount detections,
   roofclf's rooftop replacement in-domain plus segmentation's own recall-corrected rooftop
-  out-of-domain, roofclf-alone density below 400 m², and roofclf+SPPI agreement outside the
-  domain as a marked extrapolation) -- de-duplicated against each other and against OSM, and
+  out-of-domain, and roofclf-alone density below 400 m²) -- de-duplicated against each other
+  and against OSM, and
   floored per cell at hand-mapped OSM plus the stricter roofclf+SPPI agreement population
   (internally still called "Verified" in the code, but no longer surfaced anywhere in the
   published atlas, docs, or README -- 2026-08-12 decision). Reports a 90% credible interval on
@@ -80,11 +81,11 @@ pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
 
 earthpv sub400-capacity     --aoi <aoi> --osm-solar <national OSM solar pull>
 earthpv ge400-roof-capacity --aoi <aoi> --osm-solar <national OSM solar pull>
+# NOTE: --sub400-outdomain-cells is deliberately NOT passed (2026-08-15) -- see "Density stage".
 earthpv atlas --aoi <aoi> \
-  --sub400-central-cells   data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
-  --sub400-low-cells       data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
-  --sub400-outdomain-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
-  --ge400-roof-cells       data/roofclf_national_with_sppi/<aoi>/density/ge400_roof_incremental_buildings.parquet \
+  --sub400-central-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
+  --sub400-low-cells     data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
+  --ge400-roof-cells     data/roofclf_national_with_sppi/<aoi>/density/ge400_roof_incremental_buildings.parquet \
   --osm-solar <national OSM solar pull>
 ```
 
@@ -97,8 +98,9 @@ writes JOSM-reviewable GeoJSON tiles into `results/<aoi>_roofclf_validation/`. R
 logged to `results/roofclf_random_validation_log.csv`. Full protocol:
 `docs/methods/roofclf-national-validation.md`. **Known limitation**: out-of-domain random cells
 have so far turned out to sit under stale JOSM reference imagery, too old to confirm or refute
-recently-installed small PV -- this is what motivated the out-of-domain AND-gate substitute (see
-"Density stage" below), not a fixable review-process bug.
+recently-installed small PV -- this is what motivated the out-of-domain AND-gate substitute, and
+then (2026-08-15) its removal from the published atlas (see "Density stage" below), not a fixable
+review-process bug.
 
 A country with no mapped calibration quadrats yet gets the ≥ 400 m² segmentation-only atlas
 (`earthpv atlas --aoi <aoi>`, no `--sub400-*`) until quadrats exist to fit `roofclf` -- that is
@@ -353,26 +355,30 @@ recall-corrected figures as of 2026-08-15): sub-400 central (feeds Best estimate
 **7,890.2 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by design)
 **2,179.7 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **7,189.4 MWp**.
 
-**Outside the calibrated domain, roofclf-AND-SPPI agreement is used as a substitute standard of
-evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`), folded into Best estimate
-only, because manual JOSM review of that population is currently blocked
-by stale reference imagery (see "Main workflow" above). This is a strict, explicitly-flagged
-extrapolation of a coverage-ratio fit measured on urban/semi-urban quadrats across a much
-sparser rural remainder with no calibration coverage of its own -- the atlas template, a
-distinct dotted-outline map marker (`is_extended`), and the function's own docstring all carry
-that caveat forward. Current figure: **+61.7 MWp** (the remaining 1,506 out-of-domain cells).
+**Outside the calibrated domain, roofclf-AND-SPPI agreement CAN be used as a substitute standard
+of evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`, `--sub400-outdomain-cells`),
+but **is no longer published: the owner dropped it from the atlas 2026-08-15**, since it was the
+one Best-estimate component not measured where it was applied (a coverage-ratio fit from
+urban/semi-urban quadrats extrapolated across a much sparser rural remainder with no calibration
+coverage of its own) and manual JOSM review of that population is blocked by stale reference
+imagery (see "Main workflow" above). It was worth +61.7 MWp over 1,506 out-of-domain cells.
+Everything that reported it degrades to absent rather than zero -- the component is omitted from
+`_evidence_uncertainty` outright, and the atlas/composition templates drop the dotted
+`is_extended` outline, the "Small PV, extrapolated" province column, the size chart's third
+legend key and the SPPI-in-Best slice. Pass the flag and it all comes back.
 
 **The evidence atlas reports a 90% credible interval on its headline figure**
 (`atlas._evidence_uncertainty`), composing every measured uncertainty source (module/land kWp
 priors, coverage-ratio quadrat bootstrap, an explicit stated judgement band on the out-of-domain
-extrapolation alone, `KWP_LAND_CI90` for ground-mount) with correlated terms sharing one draw
+extrapolation alone when it is supplied, `KWP_LAND_CI90` for ground-mount) with correlated terms sharing one draw
 vector where the underlying constant or calibration set is shared. It asserts its component
 point values sum to the published total as a guard against silently adding a component to
 the atlas without adding it to the uncertainty composition (the code still separately tracks
 the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
-published). **Current published result: Best estimate 18,279.6 MWp (90% CI 14,401-21,846)**
-(2026-08-15, up from 16,608.7 / 12,912-19,671 on the roofclf recall correction above; the
-floor is unchanged at 5,389.5 MWp, as intended -- the correction never touches it).
+published). **Current published result: Best estimate 18,218.4 MWp (90% CI 14,346-21,768)**
+(2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction above, then -61.7 on dropping
+the out-of-domain extrapolation; the floor is unchanged at 5,389.5 MWp throughout, as intended --
+neither change touches it).
 CLI: `--coverage-boot N` on `sub400-capacity`/`ge400-roof-capacity` (default 200; 0 disables and
 narrows the reported interval), `--no-recall-correct` on either to reproduce the
 pre-2026-08-15 flagged-population-only figures exactly.

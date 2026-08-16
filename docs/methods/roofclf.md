@@ -261,11 +261,13 @@ The coverage ratio is now fitted per roof-size bin and per building-density band
 | Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,180 |
 | Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 7,890 |
 | At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 7,189 |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Best estimate only | 62 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 62 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 18,279.6 MWp (90%
-range 14,401 to 21,846)**.
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 18,218.4 MWp (90%
+range 14,346 to 21,768)** -- the first three rows only. The fourth was dropped from the
+published atlas on 2026-08-15 (see the last bullet below); its capacity function and CLI
+flag remain for anyone who wants that estimate explicitly.
 
 The two Best-estimate roofclf rows are **recall-corrected as of 2026-08-15**: the coverage
 ratio prices the PV on roofs roofclf flagged, and dividing by the measured share of true
@@ -288,13 +290,15 @@ Three things about that table are worth stating plainly:
   of the swap, roofclf's rooftop estimate came to 2.18 times segmentation's. Outside the
   domain, segmentation's own recall-corrected number stays authoritative, because it is the
   only evidence-backed figure there.
-- **The out-of-domain row is a labelled extrapolation.** All of those cells sit *below* the
-  calibrated density band, with a median density roughly six times sparser than the least
-  dense quadrat, so a coverage ratio measured on urban quadrats is being applied to rural
-  ground where nothing constrains it. It feeds Best estimate only, and it
-  is drawn with its own outline on the atlas map. It exists because the JOSM validation
-  pass meant to test that population could not be done: the available reference imagery is
-  too old to confirm or refute recent installations there.
+- **The out-of-domain row is a labelled extrapolation, and is no longer published
+  (2026-08-15).** All of those cells sit *below* the calibrated density band, with a median
+  density roughly six times sparser than the least dense quadrat, so a coverage ratio
+  measured on urban quadrats was being applied to rural ground where nothing constrains it,
+  and the JOSM pass meant to test that population could not be done: the reference imagery
+  there is too old to confirm or refute recent installations. It fed Best estimate only,
+  drawn with its own dotted outline; dropping it moved the headline 18,280 to 18,218 MWp
+  and left the floor untouched. Everything the atlas now reports is measured where it is
+  applied.
 
 ## What roofclf cannot do
 

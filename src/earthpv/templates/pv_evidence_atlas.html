@@ -184,6 +184,13 @@
     outline-offset: 2px; }
   .legend-keys > button.key-toggle[aria-pressed="true"] { opacity: 1;
     border-color: var(--prov-stroke); background: var(--hair); }
+  /* Trailing eye: says "this line is a switch" and, struck through while unpressed,
+     says the overlay it keys is currently not on the map. The slash is the only part
+     that moves, so the icon never changes size or shifts the label. */
+  .legend-keys > button.key-toggle .eye { width: 14px; height: 14px; flex: none;
+    margin-left: 2px; fill: none; stroke: currentColor; stroke-width: 1.7;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .legend-keys > button.key-toggle[aria-pressed="true"] .eye-slash { display: none; }
   .legend .domain-key .sw { width: 13px; height: 13px; border: 2px dashed var(--domain);
     border-radius: 3px; }
   .legend .extended-key .sw { width: 13px; height: 13px; border: 2px dotted var(--extended);
@@ -490,12 +497,22 @@
           </div>
           <div class="legend-keys">
             <button type="button" class="domain-key key-toggle" id="domainKey"
-                    aria-pressed="false" title="Show or hide the dashed outline">
+                    aria-pressed="false" title="Show the dashed outline on the map">
               <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
+              <svg class="eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M1.9 12S5.6 5.8 12 5.8 22.1 12 22.1 12 18.4 18.2 12 18.2 1.9 12 1.9 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-slash" x1="4.2" y1="19.8" x2="19.8" y2="4.2"/>
+              </svg>
             </button>
             <button type="button" class="extended-key key-toggle" id="extendedKey"
-                    aria-pressed="false" title="Show or hide the dotted outline">
+                    aria-pressed="false" title="Show the dotted outline on the map">
               <span class="sw"></span>extrapolated beyond calibration (dotted outline)
+              <svg class="eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M1.9 12S5.6 5.8 12 5.8 22.1 12 22.1 12 18.4 18.2 12 18.2 1.9 12 1.9 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-slash" x1="4.2" y1="19.8" x2="19.8" y2="4.2"/>
+              </svg>
             </button>
             <div class="calib-key">
               <span class="sw"></span>hand-checked calibration area (hover for detail)
@@ -523,7 +540,7 @@
               <thead><tr><th>Province</th><th>Best estimate</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
                 <th>Small PV, checked cells</th>
-                <th>Small PV, extrapolated</th></tr></thead>
+                <th id="thOutdomain">Small PV, extrapolated</th></tr></thead>
               <tbody></tbody>
             </table></div>
           </details>
@@ -562,7 +579,7 @@
         <div class="chart-legend">
           <div class="lk"><span class="sw roof"></span>rooftop</div>
           <div class="lk"><span class="sw ground"></span>ground-mount</div>
-          <div class="lk"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
+          <div class="lk" id="extrapKey"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
         </div>
         <div class="hero-desc" style="margin-top:14px;"><b>Ground-mount below 400
         m&sup2; reads exactly zero, not empty.</b> Segmentation is the only instrument
@@ -610,7 +627,7 @@
 
     <div class="card">
       <div class="map-head">
-        <div class="map-title">Best estimate &mdash; 8 components, 4 methods</div>
+        <div class="map-title" id="compTitle">Best estimate</div>
         <div class="map-sub" id="compSub"></div>
       </div>
       <div class="comp-legend" id="compLegend"></div>
@@ -632,9 +649,7 @@
       <div class="hero-desc" style="margin-top:16px;">roofclf alone (its own
       &ge;400 m&sup2; replacement plus the sub-400 m&sup2; central estimate) supplies
       most of Best by itself; direct OSM mapping and segmentation split roughly the
-      rest. roofclf-AND-SPPI agreement is a deliberately small sliver of Best (the
-      out-of-domain extrapolation only) but nearly as large as all of OSM inside
-      Verified, the stricter floor. Full breakdown with credible intervals:
+      rest. Full breakdown with credible intervals:
       <a href="pakistan_atlas_composition.html" target="_blank" rel="noopener">capacity composition</a>.</div>
     </div>
   </section>
@@ -782,8 +797,17 @@ out meta geom;</div>
   const meanlat = (b1 + b3) / 2, k = Math.cos(meanlat * Math.PI / 180);
   const W = 1000, H = Math.round(W * latspan / (lonspan * k));
 
-  const RAMP_DARK = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
-  const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
+  /* Capacity ramp. The cell values are log-scaled over four decades, and ~70% of lit
+     cells land between t=0.15 and t=0.65, so a ramp that only travels in lightness spends
+     most of its perceptual range on the sparse top decade and leaves the crowded middle
+     looking flat. These extend the amber past red into deep magenta at the dim end, which
+     lengthens the path through OKLab rather than just redistributing it: measured against
+     this AOI's own cell distribution, the step between neighbouring percentiles grows
+     1.23x (dark) / 1.36x (light) overall, and no percentile band gets worse by more than
+     the top pair's rounding. Lightness stays monotone (adjacent dL >= 0.09) so the ramp
+     still reads as an ordered scale in greyscale and under CVD. */
+  const RAMP_DARK = ["#2e0c37","#700048","#b1172c","#d95c0b","#f09708","#fcce55","#fdf9d2"];
+  const RAMP_LIGHT = ["#eee0ab","#edb03b","#df750d","#ca2823","#930348","#5c0050","#2c0639"];
 
   /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
      small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended] */
@@ -904,6 +928,11 @@ out meta geom;</div>
     }
   }
 
+  /* Which of the two evidence-provenance overlays are drawn. Both start off: the map's
+     job on first read is the capacity choropleth, and two full-country grids of outlines
+     over it obscure that. The legend entries double as the switches (see wireKeyToggles). */
+  const SHOW = {domain: false, extended: false};
+
   function ringPath(rings){
     let d = "";
     for (const ring of rings){
@@ -982,7 +1011,7 @@ out meta geom;</div>
       svg.appendChild(gD);
     }
 
-    if (DATA.cells.some(c => c[EXTENDED_IDX])) {
+    if (SHOW.extended && DATA.cells.some(c => c[EXTENDED_IDX])) {
       const gE = el("g", {class:"extended-ring"});
       for (const c of DATA.cells){
         if (!c[EXTENDED_IDX]) continue;
@@ -1080,6 +1109,27 @@ out meta geom;</div>
     document.getElementById("legticks").innerHTML =
       ticks.map(v => `<span style="left:${(tOf(v)*100).toFixed(1)}%">${v}</span>`).join("");
     document.getElementById("legcap").textContent = `MWp per cell`;
+  }
+
+  /* The legend's two outline entries are also their own on/off switches. An AOI whose
+     cells never carry the flag (no roofclf half at all, or nothing extrapolated) gets no
+     switch rather than one that toggles an empty overlay. */
+  function wireKeyToggles(){
+    const keys = [
+      ["domainKey", "domain", (c) => c[9], "dashed"],
+      ["extendedKey", "extended", (c) => c[EXTENDED_IDX], "dotted"],
+    ];
+    for (const [id, flag, has, style] of keys){
+      const btn = document.getElementById(id);
+      if (!btn) continue;
+      if (!DATA.cells.some(has)){ btn.style.display = "none"; continue; }
+      const sync = () => {
+        btn.setAttribute("aria-pressed", SHOW[flag] ? "true" : "false");
+        btn.title = `${SHOW[flag] ? "Hide" : "Show"} the ${style} outline on the map`;
+      };
+      sync();
+      btn.addEventListener("click", () => { SHOW[flag] = !SHOW[flag]; sync(); renderMap(); });
+    }
   }
 
   // Second lens on the same Best-estimate total: `DATA.bins` is only present when
@@ -1216,34 +1266,38 @@ out meta geom;</div>
 
   function compRows(){
     const C = T.uncertainty.components;
+    // A component the atlas was not given at all is absent, not zero (see
+    // `_evidence_uncertainty`) -- read every one through this and drop the empties, so a
+    // run without, say, the out-of-domain extrapolation shows no slice for it.
+    const comp = (k) => C[k] || {mwp: 0, ci: null};
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
-      { key: "osm_unmatched_roof", method: "osm", mwp: C.osm_unmatched_roof.mwp, ci: C.osm_unmatched_roof.ci,
+      { key: "osm_unmatched_roof", method: "osm", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
         label: "OSM hand-mapped — rooftop (not already found by the model)" },
-      { key: "osm_unmatched_ground", method: "osm", mwp: C.osm_unmatched_ground.mwp, ci: C.osm_unmatched_ground.ci,
+      { key: "osm_unmatched_ground", method: "osm", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
         label: "OSM hand-mapped — ground-mount (not already found by the model)" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
         label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)" },
-      { key: "seg_roof_outdomain", method: "seg", mwp: C.seg_roof_outdomain.mwp, ci: C.seg_roof_outdomain.ci,
+      { key: "seg_roof_outdomain", method: "seg", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
         label: "TerraMind segmentation — rooftop, outside the calibrated domain" },
-      { key: "seg_ground", method: "seg", mwp: C.seg_ground.mwp, ci: C.seg_ground.ci,
+      { key: "seg_ground", method: "seg", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
         label: "TerraMind segmentation — ground-mount (every cell; roofclf has no footprint there)" },
-      { key: "ge400_roof", method: "roofclf", mwp: C.ge400_roof.mwp, ci: C.ge400_roof.ci,
+      { key: "ge400_roof", method: "roofclf", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
         label: "roofclf — ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain" },
-      { key: "small_central", method: "roofclf", mwp: C.small_central.mwp, ci: C.small_central.ci,
+      { key: "small_central", method: "roofclf", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
         label: "roofclf alone — sub-400 m² rooftop, coverage ratio and recall, density-calibrated" },
-      { key: "small_outdomain", method: "sppi", mwp: C.small_outdomain.mwp, ci: C.small_outdomain.ci,
+      { key: "small_outdomain", method: "sppi", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
         label: "roofclf + SPPI agreement — sub-400 m², extrapolated outside the calibrated domain" },
     ];
     const verified = [
-      { key: "osm_roof", method: "osm", mwp: C.osm_roof.mwp, ci: C.osm_roof.ci,
+      { key: "osm_roof", method: "osm", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
         label: "OSM hand-mapped — rooftop (all of it, matched or not)" },
-      { key: "osm_ground", method: "osm", mwp: C.osm_ground.mwp, ci: C.osm_ground.ci,
+      { key: "osm_ground", method: "osm", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
         label: "OSM hand-mapped — ground-mount (all of it, matched or not)" },
-      { key: "small_low", method: "sppi", mwp: C.small_low.mwp, ci: C.small_low.ci,
+      { key: "small_low", method: "sppi", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
         label: "roofclf + SPPI agreement — sub-400 m², inside the calibrated domain" },
     ];
-    return { best, verified };
+    return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
   }
 
   function compMethodTotals(rows, total){
@@ -1286,9 +1340,15 @@ out meta geom;</div>
 
   function renderComposition(){
     const { best, verified } = compRows();
+    // Counted from the rows that actually survived, not written into the markup: an atlas
+    // built without an optional component must not still announce it in its own title.
+    const nMethods = new Set(best.map(r => r.method)).size;
+    document.getElementById("compTitle").innerHTML =
+      `Best estimate &mdash; ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
     document.getElementById("compSub").textContent =
       "Segments grouped by method, in proportion to MWp · hover a segment for detail";
-    document.getElementById("compLegend").innerHTML = COMP_METHOD_ORDER.map(m =>
+    const shownMethods = new Set([...best, ...verified].map(r => r.method));
+    document.getElementById("compLegend").innerHTML = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
       `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}</div>`).join("");
     document.getElementById("compVerifiedLabel").textContent =
       `Verified (the floor) — ${fmt(T.mwp_verified)} MWp, for comparison`;
@@ -1468,7 +1528,14 @@ out meta geom;</div>
   document.getElementById("kOsm").textContent = fmt(T.osm_n);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
 
+  // The out-of-domain extrapolation is optional evidence: when the atlas was built
+  // without it, every surface that would report it (this column, the size chart's third
+  // legend key, the map's dotted outline, the composition's SPPI-in-Best slice) drops out
+  // rather than reporting a column of zeroes as if it were a measurement.
+  const HAS_OUTDOMAIN = (T.small_outdomain || 0) > 0;
+
   function drawTable() {
+    if (!HAS_OUTDOMAIN) document.getElementById("thOutdomain").style.display = "none";
     const provs = [...DATA.provinces].sort((a,b) => b.mwp_best - a.mwp_best);
     const maxP = provs.length ? Math.max(...provs.map(p => p.mwp_best), 1) : 1;
     document.getElementById("ranks").innerHTML = provs.map(p => {
@@ -1481,7 +1548,7 @@ out meta geom;</div>
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
       `<tr><td>${p.name}</td><td>${fmt(p.mwp_best)}</td>`
       + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
-      + `<td>${fmt(p.small_outdomain)}</td></tr>`).join("");
+      + (HAS_OUTDOMAIN ? `<td>${fmt(p.small_outdomain)}</td>` : "") + `</tr>`).join("");
   }
 
   countUp("heroNum", T.mwp_best, 700);
@@ -1494,6 +1561,7 @@ out meta geom;</div>
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
     `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
   renderMap(); drawTable();
+  wireKeyToggles();
 
   const hasSizeBins = Array.isArray(DATA.bins) && DATA.bins.length > 0;
   const sizeSection = document.getElementById("sizebins");
@@ -1501,6 +1569,7 @@ out meta geom;</div>
     document.getElementById("sizeTiles").innerHTML =
       `<div class="tile"><div class="v">${fmt(T.mwp_roof)}</div><div class="k">Rooftop, MWp</div></div>`
       + `<div class="tile ground-tile"><div class="v">${fmt(T.mwp_ground)}</div><div class="k">Ground-mount, MWp</div></div>`;
+    if (!HAS_OUTDOMAIN) document.getElementById("extrapKey").style.display = "none";
     renderSizeChart(); drawSizeTable();
   } else if (sizeSection) {
     sizeSection.style.display = "none";

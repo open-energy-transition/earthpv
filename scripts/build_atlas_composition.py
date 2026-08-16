@@ -102,6 +102,11 @@ def build_rows(totals: dict) -> tuple[list[dict], list[dict]]:
     for k in best_keys:
         if k == "floor_offset":
             mwp, ci = floor_offset, None
+        elif k not in comp:
+            # An optional component the atlas was not built with (the out-of-domain
+            # extrapolation, say) is absent rather than zero -- skip it instead of drawing
+            # an empty slice for a quantity the atlas does not report.
+            continue
         else:
             mwp, ci = comp[k]["mwp"], comp[k]["ci"]
         best_rows.append({

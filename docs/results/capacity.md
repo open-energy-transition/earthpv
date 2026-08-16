@@ -30,24 +30,24 @@ model checkpoint.
 
 ## The headline figure
 
-**Best estimate: 18,280 MWp** (90% range 14,401 &ndash; 21,846). It combines every
+**Best estimate: 18,218 MWp** (90% range 14,346 &ndash; 21,768). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
 "Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,616 MWp: roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
 detections everywhere else, segmentation's ground-mount detections throughout -- see
-"Segmentation vs. roofclf on large rooftops" below), the roofclf per-building density
-estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 62 MWp of
-roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see
-"A sixth change" below.
+"Segmentation vs. roofclf on large rooftops" below) and the roofclf per-building density
+estimate for sub-400 m<sup>2</sup> buildings inside the same cells. Every component is
+therefore measured inside the density-calibrated domain: the out-of-domain
+roofclf-AND-SPPI extrapolation that used to add 62 MWp was dropped from the published
+atlas on 2026-08-15 (see "A thirteenth change" below).
 
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation, 82 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 18.3 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation, 82 percent roofclf alone and under 1 percent roofclf-and-SPPI, totalling 18.3 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.2 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.2 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
 roofclf alone -- its own &ge;400 m<sup>2</sup> replacement plus the sub-400 m<sup>2</sup>
 central estimate -- supplies about four-fifths of Best by itself; direct OSM mapping and
-segmentation split roughly the remaining fifth, and roofclf-AND-SPPI agreement is a
-deliberately small sliver (the out-of-domain extrapolation only). SPPI's larger role is in
-Verified, where it is nearly as large as all of hand-mapped OSM. Full per-component
+segmentation split the remaining fifth. SPPI no longer contributes to Best at all; its
+role is in the internal floor, where it is nearly as large as all of hand-mapped OSM. Full per-component
 breakdown, with credible intervals on every slice:
 [capacity composition](../assets/interactive/pakistan_atlas_composition.html){ target="_blank" }.
 
@@ -408,6 +408,20 @@ incremental share of missed PV is if anything larger than assumed. And a bin mea
 0.10 is floored there rather than trusted, capping the inflation at tenfold; on the current
 calibration set nothing comes close to binding it.
 
+**A thirteenth change, 2026-08-15: the out-of-domain extrapolation was dropped from the
+published atlas.** The roofclf-AND-SPPI agreement measured *outside* the density-calibrated
+domain (the "sixth change" above) was the one component of Best that was not measured
+where it was applied: a coverage ratio fit on urban and semi-urban quadrats, carried across
+a much sparser rural remainder that has no calibration coverage of its own and, because
+its reference imagery is too old to confirm recently-installed small PV, cannot be checked
+by eye either. It is no longer reported. Best 18,280 &rarr; **18,218 MWp** (-62 MWp, 0.3%),
+90% range 14,401-21,846 &rarr; **14,346-21,768**; the floor is unchanged at 5,390 MWp,
+which never included it. Every surface that reported it -- the map's dotted outline, the
+province table's "Small PV, extrapolated" column, the size chart's third legend key and
+the composition breakdown's SPPI-in-Best slice -- now drops out rather than reporting
+zeroes, and the atlas is built without `--sub400-outdomain-cells`. The capacity function
+and the CLI flag both still exist for anyone who wants that estimate explicitly.
+
 ## What this map cannot tell you, and what an independent estimate confirms it can
 
 **The absolute total is a modelled estimate, not a metered figure, and resolution is
@@ -531,16 +545,17 @@ pixi run earthpv ge400-roof-capacity --aoi pakistan \
 # 2026-08-06; it still exists for the older bracket atlas, see build_sub400_bracket_atlas.)
 pixi run earthpv atlas --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet \
-    --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-    --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
-    --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
-    --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet
+    --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
+    --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
+    --ge400-roof-cells     data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet
 ```
 
-`--sub400-outdomain-cells` is optional (added 2026-08-11) -- omitting it reproduces the
-pre-2026-08-11 Best-estimate total exactly, folding in nothing for cells outside the
-density-matched domain. Passing it adds roofclf-AND-SPPI agreement in those cells to
-Best only, marked as a strict extrapolation (see "A sixth change" above).
+`--sub400-outdomain-cells` is deliberately not passed (see "A thirteenth change" above):
+the published atlas reports only components measured where they are applied. The flag
+still exists -- passing
+`data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet`
+adds roofclf-AND-SPPI agreement outside the density-matched domain to Best, as a strict
+extrapolation marked with its own dotted cell outline (see "A sixth change" above).
 
 Neither `density` nor `roofclf-score-national` needs a GPU or retraining; both run on
 rasters already on disk, each taking roughly two hours single-process for all of

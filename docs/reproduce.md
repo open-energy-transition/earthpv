@@ -267,11 +267,11 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     buildings.parquet` (roofclf AND SPPI agreeing, used as an internal floor on
     Best estimate), and (added
     2026-08-11) `sub400_outdomain_and_gate_incremental_buildings.parquet` (roofclf AND
-    SPPI agreeing OUTSIDE the density-matched domain -- an extrapolation, feeds Best
-    only, see step 15). The first two describe only the density-matched cells and must
-    not be rescaled by their share of the country; the third describes the rest of the
-    country and is even less certain, since no calibration quadrat sits in that density
-    range at all. See `sub400_capacity.py`'s module docstring and [Capacity
+    SPPI agreeing OUTSIDE the density-matched domain -- an extrapolation, no longer fed
+    into the published atlas as of 2026-08-15, see step 15). The first two describe only
+    the density-matched cells and must not be rescaled by their share of the country; the
+    third describes the rest of the country and is even less certain, since no calibration
+    quadrat sits in that density range at all. See `sub400_capacity.py`'s module docstring and [Capacity
     density](methods/density.md) for exactly what each does and does not claim.
 
 === "14. ≥400 m² rooftop capacity (roofclf)"
@@ -301,7 +301,6 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     pixi run earthpv atlas --aoi pakistan \
         --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
         --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-        --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
         --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
         --osm-solar data/labels/pakistan_overpass_solar.parquet \
         --pose-summary-csv data/glint/country2000_summary.csv \
@@ -350,13 +349,17 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     `build_pose_survey_page`'s own parameters. Omitting `--pose-summary-csv` writes the
     page with no pose section at all.
 
-    **`--sub400-outdomain-cells` (added 2026-08-11) is optional** -- roofclf-AND-SPPI
-    agreement outside the density-matched domain, folded into Best only as a strict,
-    clearly-marked extrapolation (measured 2026-08-11: +1,224 MWp, since every cell
-    outside the domain sits below the calibrated density band with no quadrat evidence
-    in that range). Omitting it reproduces the pre-2026-08-11 Best total exactly. Both
-    `sub400-*` and this flag's input come from step 13's `earthpv sub400-capacity`,
-    which now writes all three building-level parquets in one run.
+    **`--sub400-outdomain-cells` (added 2026-08-11) is optional, and the published
+    atlas no longer passes it (2026-08-15)** -- it adds roofclf-AND-SPPI agreement
+    outside the density-matched domain to Best as a strict, clearly-marked extrapolation
+    (worth +61.7 MWp at the time it was dropped). It was the only Best-estimate component
+    not measured where it was applied: every cell outside the domain sits below the
+    calibrated density band with no quadrat evidence in that range, and the JOSM pass
+    meant to check that population is blocked by stale reference imagery. Pass it and the
+    component returns, along with the map's dotted outline, the extra province-table
+    column and the composition's SPPI-in-Best slice. Both `sub400-*` and this flag's
+    input come from step 13's `earthpv sub400-capacity`, which writes all three
+    building-level parquets in one run.
 
     **`--ge400-roof-cells` is easy to omit by accident and changes the headline number
     by double digits of percent** (measured 2026-08-10: omitting it dropped Best
