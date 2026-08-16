@@ -797,17 +797,8 @@ out meta geom;</div>
   const meanlat = (b1 + b3) / 2, k = Math.cos(meanlat * Math.PI / 180);
   const W = 1000, H = Math.round(W * latspan / (lonspan * k));
 
-  /* Capacity ramp. The cell values are log-scaled over four decades, and ~70% of lit
-     cells land between t=0.15 and t=0.65, so a ramp that only travels in lightness spends
-     most of its perceptual range on the sparse top decade and leaves the crowded middle
-     looking flat. These extend the amber past red into deep magenta at the dim end, which
-     lengthens the path through OKLab rather than just redistributing it: measured against
-     this AOI's own cell distribution, the step between neighbouring percentiles grows
-     1.23x (dark) / 1.36x (light) overall, and no percentile band gets worse by more than
-     the top pair's rounding. Lightness stays monotone (adjacent dL >= 0.09) so the ramp
-     still reads as an ordered scale in greyscale and under CVD. */
-  const RAMP_DARK = ["#2e0c37","#700048","#b1172c","#d95c0b","#f09708","#fcce55","#fdf9d2"];
-  const RAMP_LIGHT = ["#eee0ab","#edb03b","#df750d","#ca2823","#930348","#5c0050","#2c0639"];
+  const RAMP_DARK = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
+  const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
 
   /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
      small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended] */
