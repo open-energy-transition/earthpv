@@ -168,6 +168,14 @@ should have used. A 90th-percentile statistic over a whole cell only moves if ro
 the cell brightens at once; scoring each pixel against its own baseline does not have that
 problem. Prototyped, never evaluated.
 
+One piece of evidence now bears on it, and it cuts against the optimistic reading. A
+pixel-level PSF matched filter, the most favourable per-pixel statistic available since it
+is the optimal linear detector for a known shape, [loses to the aggregate p98-minus-annulus
+statistic](issues/glint-psf-matched-filter.md) on verified positives and negatives. Per-pixel
+work is not automatically better than an aggregate here, because the glinting patch's shape
+and position are unknown and vary by date. A per-pixel counting statistic that does not
+assume a shape is still untested and remains the open item.
+
 ### 12. Glint scene coverage is silently incomplete
 
 The tile-major glint fetch is 22x faster and numerically identical, but revalidation found

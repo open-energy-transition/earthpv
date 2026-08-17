@@ -147,6 +147,27 @@ bin holds under 10 percent of fitted installations and the top five bins under 2
 Two narrower versions survive the data, per-locality pose calibration and a top-K
 triage pre-filter, and both are open work.
 
+## The point-spread function, and the false-spike floor (2026-08-17)
+
+Sentinel-2's effective PSF at 10 m is now measured directly from glinting installations:
+**sigma 0.65 px, 90% CI 0.60 to 0.70**, fitted over 68 targets below 500 m2 by forward-
+modelling each target's polygon at 1 m, blurring it and block-averaging onto each scene's
+own grid at its true sub-pixel position. ESA's stated MTF at Nyquist implies 0.49 to 0.62 px,
+and the small excess is covered by a measured per-scene source displacement of 0.72 px.
+
+Matched filtering on that PSF is [rejected](../issues/glint-psf-matched-filter.md): it loses
+to the p98-minus-annulus statistic already in use, because the glinting patch is not the
+whole array and moves between dates, so neither the shape nor the position a matched filter
+requires is known. The same study measured a fitted sigma rising from 0.65 to 2.20 px with
+installation area, which is the direct evidence for that.
+
+The study's operational output is the **false-spike rate on verified negatives: 2.0%**
+(12 of 600 buildings inside Rule-1 complete quadrats carrying no mapped PV, over two years),
+against 8.7 to 20.3% previously measured on merely model-negative controls. Disabling the
+per-pixel SCL veto raises it to 4.5%, so that veto accounts for about half the improvement
+and unmapped real PV in the old controls for the rest. Against true detection rates the
+instrument separates by 14.9x at 100 to 500 m2 and 7.9x below 100 m2.
+
 ## Opportunity: how many chances did this target actually get?
 
 **Measured 2026-08-12, and it changes a number already in the published calibration.**
@@ -415,6 +436,8 @@ the latitude-band bars, matching this project's other interactive result pages.
 | `glint_pose_by_region.py` | re-cuts a glint study by latitude band and province -- detection/validation rate and fitted tilt/azimuth all shift with latitude |
 | `glint_orientation_region_topup.py` | targeted random top-up of the thin latitude bands/provinces `glint_pose_by_region.py` found, poolable with country2000 |
 | `build_glint_pose_regional_atlas.py` | night-lights-style atlas page for the regional re-cut -- province choropleth + per-target points + latitude-band bars |
+| `glint_psf_photometry.py` | measures the effective PSF by forward-modelling each footprint, then tests matched filtering against the aperture statistic (measured: worse) |
+| `glint_psf_negatives.py` | draws and pulls the Rule-1-verified negative control set behind the 2.0% false-spike rate |
 | `glint_skyfield_check.py` | independent astronomy cross-check of the geometry fit |
 | `s1_corner_reflector_test.py` | the Sentinel-1 dihedral hypothesis, negative |
 | `glint_s2_example_grid.py` | builds the [Sentinel-2 image gallery](../glint_examples.md) |

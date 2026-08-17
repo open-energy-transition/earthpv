@@ -50,6 +50,8 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | Missed-installation glint recovery | <span class="outcome negative">rejected</span> | Control false-validation rate exceeded the recovery rate. |
 | Roof-axis orientation prior | <span class="outcome negative">rejected</span> | Flat concrete roofs do not constrain a tilt frame's azimuth. |
 | Standard-pose matched filter | <span class="outcome negative">rejected</span> | The densest pose bin covers under 10% of installations. |
+| [Glint PSF matched filter](issues/glint-psf-matched-filter.md) | <span class="outcome negative">rejected</span> | The PSF is real and measured, but every filter variant scores below the aperture statistic it would replace. |
+| [Verified-negative false-spike rate](issues/glint-psf-matched-filter.md) | <span class="outcome works">shipped</span> | 2.0% against 8.7-20.3% on model-negative controls, which reopens the spike-rate density estimator. |
 | Super-resolution, three variants | <span class="outcome negative">rejected</span> | No gain, and hallucination risk on a detection task. |
 | Two-endmember spectral unmixing | <span class="outcome negative">rejected</span> | 0.659 AUC, worse than both SPPI and roofclf, with a 92x scale spread. |
 | Epoch jump / step change as roofclf features | <span class="outcome negative">rejected</span> | Measured at exactly zero effect, and worse in the reflectance variant. |
@@ -201,6 +203,48 @@ needs to do: Germany's control false-validation rate of 20.8% is uncomfortably c
 37.2% rate on missed installations, and Lahore's control rate of 8.7% is *higher* than its
 5.3% missed rate, which is worse than chance.
 
+### A measured glint PSF, and the control set that mattered more (2026-08-17)
+
+The astronomical version of the sub-pixel problem: measure the instrument's point-spread
+function from strongly-validated glints, then matched-filter against it, the way stellar
+photometry pulls faint sources out of noise. Full write-up:
+[Glint PSF and matched filtering](issues/glint-psf-matched-filter.md).
+
+The PSF part works. Fitting a forward model (polygon rasterised at 1 m, Gaussian-blurred,
+block-averaged onto each scene's own grid at the target's true sub-pixel position) over 68
+targets below 500 m2 gives **sigma 0.65 px, 90% CI 0.60 to 0.70**, against an optical theory
+range of 0.49 to 0.62 px implied by ESA's stated MTF. The residual excess is covered by a
+measured per-scene source displacement of 0.72 px median, so the fitted kernel is an
+effective one that already contains co-registration.
+
+The detector part does not. Every variant tested, centroid-pinned, offset-fitted, and
+point-source, scores **below** the p98-minus-annulus statistic already in the pipeline
+(AUC 0.485 to 0.620 against 0.648 to 0.655), significantly so over all sizes. The reason is
+visible in the fit itself: sigma climbs from 0.65 to 2.20 px with installation area while
+variance explained collapses from 0.49 to 0.06, because a specular glint comes from whichever
+patch satisfies the mirror condition on that date rather than from the whole array. Matched
+filtering is optimal for a known shape at a known position and a glint has neither, which is
+the one property stars have that makes the analogy work.
+
+The valuable result was the control set built to test it. 600 verified negatives, buildings
+inside the 27 Rule-1 complete quadrats carrying `has_pv == 0`, give a false-spike rate of
+**2.0%**, against the 8.7 to 20.3% previously measured on merely model-negative controls. An
+ablation puts the per-pixel SCL cloud veto at half of that improvement (4.5% with it
+disabled) and unmapped real PV in the old controls at the rest. Against true detection rates
+the instrument separates by 15x at 100 to 500 m2 and 7.9x below 100 m2, so
+[the spike-rate density estimator](issues/glint-spike-rate-density-estimator.md)'s stated
+blocker, that false rate equals or exceeds true rate below 500 m2, does not hold against
+verified negatives.
+
+Whether that is enough to *build* a density estimator on is a separate question, and the
+answer is not yet. Inverting an observed spike rate to an adoption rate divides by
+(d - f), so the estimate's precision is set by how well the two calibration constants are
+known rather than by how many buildings are scanned. On the present calibration (382
+positives, 100 to 200 negatives per size class) the 90% interval on a 10% adoption rate is
+about +/-9 pp at 100 to 500 m2 and unbounded below 100 m2, and it barely narrows with more
+buildings scanned. Roughly 3,000 of each per size class would bring it to +/-3 pp. See
+[the write-up](issues/glint-psf-matched-filter.md) for the propagation.
+
 ### Super-resolution
 
 Three feasibility tests, run in sequence by `scripts/run_sr_experiments.sh`: guided fusion of
@@ -310,6 +354,7 @@ them were written before the thing they describe was replaced.
 | [SPPI spectral index evaluation](issues/sppi-spectral-index-evaluation.md) | What SPPI can and cannot do, and why it is used only as a second opinion |
 | [Boom-window stacking](issues/boom-window-stacking-experiment.md) | Why the 2021-versus-current retrain is inconclusive rather than negative |
 | [Standard-pose matched filter](issues/standard-pose-matched-filter.md) | Assessed against real pose data and not recommended |
+| [Glint PSF and matched filtering](issues/glint-psf-matched-filter.md) | The measured Sentinel-2 glint PSF, why filtering on it loses to the aperture statistic, and the verified-negative false-spike rate |
 | [Glint spike-rate estimator](issues/glint-spike-rate-density-estimator.md) | Glint as a statistical density estimator, and the floor it hits |
 | [Glint tile-batched coverage](issues/glint-tile-batched-coverage.md) | The 22x speedup, and the silent scene-loss bug it uncovered |
 | [Glint-validated training labels](issues/glint-validated-training-labels.md) | A proposal to feed corroborated detections back as labels |
