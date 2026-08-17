@@ -41,3 +41,12 @@ results/glint_validation_pakistan/*
 # Generated reports kept in the repo on request, as a durable artifact rather than a
 # figure-script input -- regenerate with scripts/pv_reference_share_comparison.py.
 !results/pakistan_pv_reference_comparison.html
+
+# The random-cell manual-validation record (docs/methods/roofclf-national-validation.md)
+# is the only durable evidence that a national roofclf scoring pass was actually reviewed
+# against an unbiased sample -- it must be tracked, not silently dropped by `results/*`.
+!results/roofclf_random_validation_log.csv
+!results/pakistan_roofclf_parcel_validation/
+results/pakistan_roofclf_parcel_validation/*
+!results/pakistan_roofclf_parcel_validation/*.geojson
+!results/pakistan_roofclf_parcel_validation/*.mapcss

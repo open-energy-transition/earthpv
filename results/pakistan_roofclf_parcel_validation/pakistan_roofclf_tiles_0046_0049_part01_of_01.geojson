@@ -1,0 +1,193 @@
+{
+ "type": "FeatureCollection",
+ "name": "pakistan_roofclf_tiles_0046_0049_part01_of_01",
+ "earthpv": {
+  "purpose": "every roofclf-flagged (< 400 m2) building in this tile -- complete, not sampled",
+  "generated_utc": "2026-08-17T00:34:30Z",
+  "tile_bbox": [
+   65.492584,
+   28.612765,
+   65.533438,
+   28.629907
+  ],
+  "n_features": 4,
+  "warning": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit",
+  "region": "0046_0049",
+  "threshold": 0.2535,
+  "roofclf_dir": "data/roofclf_national_parcel/pakistan/prob",
+  "part": 1,
+  "n_parts": 1,
+  "selection": "random",
+  "seed": 20260817
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 0,
+    "cell": "0046_0049",
+    "roof_area_m2": 255.8,
+    "p_roofclf": 0.259433,
+    "sppi": -0.054418,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       65.5332739836181,
+       28.629900605566323
+      ],
+      [
+       65.53328069663992,
+       28.62978318801075
+      ],
+      [
+       65.53334223248581,
+       28.629785898444634
+      ],
+      [
+       65.53334558899672,
+       28.629727189619118
+      ],
+      [
+       65.5334380364074,
+       28.629731261599012
+      ],
+      [
+       65.53342798088343,
+       28.62990738858725
+      ],
+      [
+       65.5332739836181,
+       28.629900605566323
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 1,
+    "cell": "0046_0049",
+    "roof_area_m2": 42.6,
+    "p_roofclf": 0.34243,
+    "sppi": -0.033517,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       65.4927503254341,
+       28.6198121410918
+      ],
+      [
+       65.4927447919126,
+       28.619835482399402
+      ],
+      [
+       65.49258381988,
+       28.619805770137905
+      ],
+      [
+       65.4925893534366,
+       28.619782428834796
+      ],
+      [
+       65.4927503254341,
+       28.6198121410918
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 2,
+    "cell": "0046_0049",
+    "roof_area_m2": 47.4,
+    "p_roofclf": 0.353477,
+    "sppi": -0.033517,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       65.4927790283746,
+       28.6197610889938
+      ],
+      [
+       65.4927737436175,
+       28.619785080546
+      ],
+      [
+       65.49259828166852,
+       28.619754987980798
+      ],
+      [
+       65.4926035664656,
+       28.6197309964331
+      ],
+      [
+       65.4927790283746,
+       28.6197610889938
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 3,
+    "cell": "0046_0049",
+    "roof_area_m2": 21.9,
+    "p_roofclf": 0.267388,
+    "sppi": -0.026187,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       65.5074202215222,
+       28.6127966756314
+      ],
+      [
+       65.5073694456134,
+       28.6128198957056
+      ],
+      [
+       65.5073510423998,
+       28.6127885589462
+      ],
+      [
+       65.5074018182987,
+       28.612765338879502
+      ],
+      [
+       65.5074202215222,
+       28.6127966756314
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

@@ -100,7 +100,16 @@ logged to `results/roofclf_random_validation_log.csv`. Full protocol:
 have so far turned out to sit under stale JOSM reference imagery, too old to confirm or refute
 recently-installed small PV -- this is what motivated the out-of-domain AND-gate substitute, and
 then (2026-08-15) its removal from the published atlas (see "Density stage" below), not a fixable
-review-process bug.
+review-process bug. **2026-08-17: this now also blocks purpose-drawn quadrats, not just randomly
+sampled review cells.** Three low-density boxes drawn to widen the domain (Dera Ghazi Khan
+11.8 bldg/km², Waziristan 16.9, Jamshoro 30.9) were swept and all came back at zero
+installations against 83 roofclf-AND-SPPI flagged buildings / 475.4 kWp claimed -- but under
+imagery the owner reports as very old, so the zeros are uninterpretable in both directions and
+none was registered. Registering them would have moved the floor to 11.8 (66.3% -> 95.6% of
+cells) and pulled the sparse band's coverage ratio toward zero on evidence that does not
+support it: the Muzaffargarh Rural Wide mistake again, caught before a refit. **The gate on
+widening the density domain further is therefore imagery date, not mapping effort** -- check
+`imagery_layer`/`imagery_date` before drawing, not after mapping. See Box 17.
 
 A country with no mapped calibration quadrats yet gets the ≥ 400 m² segmentation-only atlas
 (`earthpv atlas --aoi <aoi>`, no `--sub400-*`) until quadrats exist to fit `roofclf` -- that is
@@ -491,7 +500,7 @@ each standalone artifact page.
 
 ### Calibration quadrats
 
-**27 quadrats as of 2026-08-13 (Tank Rural, the most recent addition), spanning
+**28 quadrats as of 2026-08-17 (Kalat Rural, the most recent addition), spanning
 Pakistan** -- purposive selections (industrial estates, dense residential blocks) plus several
 deliberately-rural extensions used to widen the density-calibration domain (see "Density stage"
 above). Bahawalnagar Rural's own building density (123.5 bldg/km², measured directly against
@@ -506,6 +515,19 @@ is lower than Bahawalnagar Rural's, so the floor moves again, to 48.5. Tank Rura
 Pakhtunkhwa, 55.75 bldg/km², 10 installations) sits inside the widened range without moving
 it further, and is KP's first rural-extension quadrat (Box 16). Both are folded into a
 fresh `roofclf` refit and national rescoring alongside this second widening (2026-08-13).
+**Kalat Rural (2026-08-17, Box 17) is registered and Rule-1 but must be kept OUT of any
+`roofclf` refit until `building_table`'s roof term gets a placement/size guard.** It was
+sited deliberately to include ground-mount, and 22,064 m² of its 28,412 m² of mapped PV is
+ground-mount at or above the 400 m² floor -- against 18,919 m² of VIDA roof area in the whole
+box. `parcel_pv_area` skips such installations (its rule 3); the roof term does not, so
+**69 of the 89 buildings it labels has-PV are labelled solely because a ≥ 400 m² ground array
+clips them** (21.24% base rate at 46.5 bldg/km², higher than Mardan's). Folding it in would
+fit the sparse band's coverage ratio on ground-mount and double-count against segmentation's
+`est_mwp_rc_ground`. `roofclf.discover_quadrats` globs the label directory, so the next
+`earthpv roof-classifier` run picks it up automatically -- see `docs/open-questions.md`'s
+item 2. Its move also cost it its purpose: sited at 25.9 bldg/km² and moved to 46.5, it now
+sits 1.7 below the domain floor and widens it from 2,957 to 2,997 cells (66.3% -> 67.2%)
+instead of the 3,609 (80.9%) the original location would have reached.
 All are declared **Rule-1 complete** by
 the owner (every visible panel mapped) --
 **Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own

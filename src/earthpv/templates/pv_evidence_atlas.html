@@ -1595,7 +1595,12 @@ out meta geom;</div>
     `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf/SPPI per-building `
     + `classifiers · ${fmt(T.n_cells)} cells × 0.1° · ${T.kwp_per_m2} kWp/m² of module area · `
     + `Sentinel-2 L2A dry-season composites · buildings from VIDA Open Buildings · `
-    + `see docs/methods/density.md for full derivations and caveats.`;
+    + `see docs/methods/density.md for full derivations and caveats.<br>`
+    + `Contains information &copy; OpenStreetMap contributors, `
+    + `<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL</a> · `
+    + `building footprints &copy; VIDA Open Buildings, `
+    + `<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. `
+    + `Downloaded data on this page is released under the same ODbL terms as its OpenStreetMap source.`;
 
   // No theme button of our own: the docs site's Material nav toggle is the only
   // control, driven in via `data-theme` on <html> (see embed-theme.js). Re-render

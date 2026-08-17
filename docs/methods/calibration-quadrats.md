@@ -75,8 +75,8 @@ explicitly re-declared for it the same day, so this quadrat reads `yes` like the
 sixteen. The rule for the *next* extension is the same: re-assert, never infer.
 
 **Known gap: this table was not regenerated when Hasal, Islamabad Northeast, Sanghar,
-Bahawalnagar Rural, Nasirabad Rural, or Tank Rural were added (2026-08-10/13), so it
-undercounts the current 27-quadrat set by ten.** `results/calibration_quadrats.csv` is
+Bahawalnagar Rural, Nasirabad Rural, Tank Rural or Kalat Rural were added (2026-08-10/17),
+so it undercounts the current 28-quadrat set by eleven.** `results/calibration_quadrats.csv` is
 current; this page is a hand-maintained snapshot of it and has fallen behind more than
 once before (see CLAUDE.md's per-quadrat history for the full account). The four rows
 added below (Muzaffargarh Rural, Malok, Muzaffargarh Rural Wide, Khairpur Rural) are
@@ -89,11 +89,23 @@ see [Calibration boxes](../issues/pakistan-calibration-boxes.md)'s Box 14), Nasi
 Rural (`nasirabad_rural_calib_2km`, added 2026-08-13, Rule-1, Balochistan --
 **0 installations**, a confirmed true-negative box, not an unswept one; see Box 15 for
 why that declaration is trusted where Muzaffargarh Rural Wide's original zero was not),
-and Tank Rural (`tank_rural_calib_2km`, added 2026-08-13, Rule-1, Khyber Pakhtunkhwa --
-10 installations, median 26.0 m², 100% below the 400 m² floor, packing 52.2 m; Box 16)
-are not yet reflected, none of them because none has `n_buildings`/`n_pv_buildings`/
+Tank Rural (`tank_rural_calib_2km`, added 2026-08-13, Rule-1, Khyber Pakhtunkhwa --
+10 installations, median 26.0 m², 100% below the 400 m² floor, packing 52.2 m; Box 16),
+and Kalat Rural (`kalat_rural_calib_3km`, added 2026-08-17, Rule-1, Balochistan --
+52 installations, median 429.3 m², only 40.4% below the 400 m² floor, 45 ground / 7
+rooftop, packing 47.0 m; Box 17) are not yet reflected, none of them because none has
+`n_buildings`/`n_pv_buildings`/
 `base_rate` yet (needs a `roofclf` re-run that includes it) and therefore no base rate to
 sort it by -- do not read this table as exhaustive.
+
+**Kalat Rural must not enter a `roofclf` fit before `building_table`'s roof term gets a
+placement/size guard.** It is the first quadrat whose mapped PV is dominated by ground-mount
+at or above the 400 m² floor (22,064 m² of 28,412 m², against 18,919 m² of roof area in the
+whole box), and while `parcel_pv_area` skips such installations, the roof term does not:
+69 of the 89 buildings it would label has-PV are labelled solely because a ≥ 400 m² ground
+array clips them. `roofclf.discover_quadrats` globs the label directory, so the next
+`earthpv roof-classifier` run picks the box up automatically. See
+[Calibration boxes](../issues/pakistan-calibration-boxes.md)'s Box 17 for the measurement.
 
 **Correction: Muzaffargarh Rural Wide was never confirmed at a base rate of zero --
 that declaration was wrong and has been corrected.** The row below originally read 0

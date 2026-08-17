@@ -51,16 +51,25 @@ role is in the internal floor, where it is nearly as large as all of hand-mapped
 breakdown, with credible intervals on every slice:
 [capacity composition](../assets/interactive/pakistan_atlas_composition.html){ target="_blank" }.
 
-The range is new as of 2026-08-11 and is composed from four measured sources plus one
-stated judgement: the two area-to-capacity constants' priors, segmentation's own
-precision/recall posterior by installation size, the coverage ratio's sensitivity to *which*
-calibration quadrats happen to have been mapped (measured by resampling the quadrats
-themselves, not the buildings inside them), and an explicit allowance for extrapolating a
-city-calibrated coverage ratio onto rural roofs. Since 2026-08-15 the same quadrat resample
-also carries roofclf's own measured recall (see "A twelfth change" below), which is why the
-range widened alongside the point estimate rather than simply shifting with it. It does
-**not** include a design-based sampling error, because the quadrats were hand-picked rather
-than randomly drawn -- see "How confident should you be in this?" on the atlas page, and
+The range is new as of 2026-08-11 and is composed from three measured sources: the two
+area-to-capacity constants' priors, segmentation's own precision/recall posterior by
+installation size, and the coverage ratio's sensitivity to *which* calibration quadrats
+happen to have been mapped (measured by resampling the quadrats themselves, not the
+buildings inside them). A fourth source, an explicit allowance for extrapolating a
+city-calibrated coverage ratio onto rural roofs, was dropped on 2026-08-15 along with the
+out-of-domain component it covered (see "A thirteenth change" below) and is no longer part
+of the range. Since 2026-08-15 the same quadrat resample also carries roofclf's own measured
+recall (see "A twelfth change" below), which is why the range widened alongside the point
+estimate rather than simply shifting with it. It does **not** include a design-based
+sampling error, because the quadrats were hand-picked rather than randomly drawn. **It also
+does not cover the gap between where the coverage-ratio/area-recall correction is fit and
+where it is applied**: measured 2026-08-16, 54% of the published Best estimate is priced by
+a multiplier whose sparsest supporting quadrat (872 bldg/km<sup>2</sup>) is several times
+denser than most of the cells it prices, and the bootstrap behind the range above resamples
+only quadrats on the dense side of that gap, so it measures sampling noise within the fit
+and is silent about transfer to the sparser cells the number actually reports for -- see
+[Calibration density mismatch](../issues/roofclf-calibration-density-mismatch.md) for the
+full measurement. See "How confident should you be in this?" on the atlas page, and
 [validation against MaStR](../methods/mastr-validation.md) for what a complete register can
 and cannot settle here.
 

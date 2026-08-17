@@ -1,0 +1,73 @@
+{
+ "type": "FeatureCollection",
+ "name": "pakistan_roofclf_tiles_0091_0009_part01_of_01",
+ "earthpv": {
+  "purpose": "every roofclf-flagged (< 400 m2) building in this tile -- complete, not sampled",
+  "generated_utc": "2026-08-17T00:34:31Z",
+  "tile_bbox": [
+   70.010183,
+   24.692519,
+   70.01036,
+   24.692621
+  ],
+  "n_features": 1,
+  "warning": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit",
+  "region": "0091_0009",
+  "threshold": 0.2535,
+  "roofclf_dir": "data/roofclf_national_parcel/pakistan/prob",
+  "part": 1,
+  "n_parts": 1,
+  "selection": "random",
+  "seed": 20260817
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 0,
+    "cell": "0091_0009",
+    "roof_area_m2": 114.3,
+    "p_roofclf": 0.271203,
+    "sppi": -0.076945,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       70.01023480000002,
+       24.6925226
+      ],
+      [
+       70.0102308,
+       24.6925594
+      ],
+      [
+       70.0103605,
+       24.692571100000002
+      ],
+      [
+       70.0103552,
+       24.6926207
+      ],
+      [
+       70.0101833,
+       24.692605200000003
+      ],
+      [
+       70.0101926,
+       24.692518800000002
+      ],
+      [
+       70.01023480000002,
+       24.6925226
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

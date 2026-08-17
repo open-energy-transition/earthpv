@@ -204,12 +204,15 @@ above:
 
 The headline figure carries a 90% range as of 2026-08-11, composed from the
 area-to-capacity constants' priors, segmentation's measured precision and recall by
-installation size, the coverage ratio's sensitivity to which calibration quadrats happen
-to have been mapped, and an explicit allowance for extrapolating a city-calibrated
-relationship onto rural roofs. The range is wide on purpose: this figure moved by 20-35%
-five times in a single week from recalibration alone, and reporting it bare had been
-hiding that. It is not a design-based margin of error -- the quadrats behind it are
-hand-picked, not randomly sampled. See
+installation size, and the coverage ratio's sensitivity to which calibration quadrats happen
+to have been mapped. The range is wide on purpose: this figure moved by 20-35% five times in
+a single week from recalibration alone, and reporting it bare had been hiding that. It is not
+a design-based margin of error -- the quadrats behind it are hand-picked, not randomly
+sampled, and it does not cover the gap between where the roofclf coverage-ratio correction is
+fit and where it is applied: about half of Best is priced by a multiplier measured on
+quadrats several times denser than most of the cells it prices (see [Calibration density
+mismatch](https://open-energy-transition.github.io/earthpv/issues/roofclf-calibration-density-mismatch/)).
+See
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for the
 derivation and
 [Validation against MaStR](https://open-energy-transition.github.io/earthpv/methods/mastr-validation/)
@@ -342,3 +345,14 @@ Build it locally with `pixi run docs-figures && pixi run -e docs docs-serve`.
 Code MIT. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
 and Overture Maps; labels from OpenStreetMap contributors under ODbL; administrative
 boundaries from geoBoundaries under CC-BY.
+
+**Published data outputs** (the evidence atlas, capacity parquets, raw detections and any
+other derived dataset offered for download, e.g. under "Download the underlying data" on the
+atlas page or as a GitHub Release asset) are derivative databases of OpenStreetMap's
+ODbL-licensed solar labels and, via VIDA Open Buildings, of Microsoft/Google building
+footprints. Under ODbL's share-alike clause, **these data releases are themselves licensed
+under the [Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/odbl/1-0/)**,
+with attribution to &copy; OpenStreetMap contributors required on any use, alongside VIDA Open
+Buildings (CC BY 4.0) for the footprints and, for anything derived from the Germany/MaStR
+validation, the Marktstammdatenregister (Bundesnetzagentur, [Datenlizenz Deutschland -- Namensnennung -- Version
+2.0](https://www.govdata.de/dl-de/by-2-0)).
