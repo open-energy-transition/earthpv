@@ -135,6 +135,25 @@ L2 = 1.0
 # the population below the segmentation model's detection floor.
 MIN_PV_AREA_FOR_PACKING = 400.0
 
+# --------------------------------------------------------------------------------------
+# Parcel label (2026-08-16): the yard, not just the roof
+# --------------------------------------------------------------------------------------
+# Depth of the yard ring around each footprint. 20 m because that is where the population
+# is: 93.9% of strict sub-400 m2 ground-mount installations in the quadrats, and 91.0% of
+# every OSM ground-tagged generator under 400 m2 nationally, sit within 10 m of a VIDA
+# footprint, 98.5% within 30 m (`scripts/small_ground_mount_assessment.py census|national`,
+# written up in docs/issues/small-ground-mount-instrument.md). 20 m keeps ~96% of them
+# while staying inside the 30 m radius `sub400_capacity`'s OSM/candidate dedup already
+# uses, so nothing this ring picks up can be double-counted against a feature those
+# masks exclude.
+YARD_RING_M = 20.0
+# Off-roof PV belonging to an installation at or above this area is NOT attributed to a
+# building. Above the segmentation floor, ground-mount is segmentation's job and the atlas
+# already counts it (`density.py`'s ground-mount half); attributing it here as well would
+# double-count one installation across two instruments. Same value as
+# MIN_PV_AREA_FOR_PACKING / chips.MIN_PV_AREA, deliberately.
+YARD_MAX_INSTALLATION_M2 = 400.0
+
 
 # --------------------------------------------------------------------------------------
 # Quadrat discovery and labels
@@ -400,6 +419,205 @@ def zonal_mean_max(
     return means, maxes
 
 
+def yard_features(
+    bu_utm: gpd.GeoDataFrame, arr: np.ndarray, transform, nodata: float | None = COMPOSITE_FILL,
+    ring_m: float = YARD_RING_M, extra_mask: np.ndarray | None = None,
+) -> dict[str, np.ndarray]:
+    """Zonal statistics over each building's YARD -- the land around it, out to `ring_m`.
+
+    The counterpart to `zonal_mean_max`'s roof block, and the feature half of the parcel
+    label (see `parcel_pv_area`). A sub-400 m2 ground-mounted array beside a house is
+    invisible to every roof-scoped feature this module has, and segmentation is at chance
+    on it (0.534 AUC against matched controls), while SPPI over the same yard pixels
+    reaches 0.833 -- so this is where that signal enters.
+
+    **The yard is partitioned, not buffered.** Each background pixel is assigned to the
+    NEAREST footprint by a distance-transform Voronoi, so no pixel is credited to two
+    buildings. Buffering each footprint by 20 m instead would double-count almost every
+    pixel in a dense quadrat, where overlapping buffers are the rule rather than the
+    exception, and would let one array raise the yard statistics of every neighbour it
+    happens to fall near.
+
+    **Buildings with no yard pixel get imputed features and `has_yard = 0`.** In a dense
+    block a footprint can be entirely surrounded by other footprints; 62% of the quadrat
+    building population has no yard pixel at all. Dropping those rows is not an option
+    (they are most of the country's flagged population), and leaving NaN would take them
+    out of the fit at training time and out of `score_buildings_national`'s `valid` mask at
+    deployment. They are imputed at the LOCAL median -- this quadrat's or this cell's own
+    yard-bearing buildings -- for the same reason `local_zscore` re-centres locally rather
+    than nationally, and flagged with `has_yard` so the fit can condition on the fallback
+    instead of reading it as a measurement. This is the imputation the measured 0.747 AUC
+    in docs/issues/small-ground-mount-instrument.md was obtained under.
+
+    `extra_mask` further restricts which pixels may enter a ring (a quadrat boundary, say).
+    Returns one array per feature name in `YARD_FEATURES` plus the raw `yard_area_m2`.
+    """
+    from scipy import ndimage
+
+    from earthpv.sppi import compute_sppi
+
+    if arr.ndim == 2:
+        arr = arr[None]
+    h, w = arr.shape[-2:]
+    px_m = abs(transform.a)
+    n = len(bu_utm)
+    names = ([f"yard_{b}_mean" for b in BAND_NAMES]
+             + ["yard_ndvi", "yard_ndbi", "yard_brightness", "yard_swir_vis_ratio",
+                "yard_blue_red_ratio", "yard_sppi_mean", "yard_sppi_max"])
+
+    bid = rasterio.features.rasterize(
+        ((g, i + 1) for i, g in enumerate(bu_utm.geometry)),
+        out_shape=(h, w), transform=transform, fill=0, dtype="int32", all_touched=True,
+    )
+    if not (bid > 0).any():
+        # No footprint rasterized at all (a window smaller than one pixel, or an empty
+        # frame). Every building is yardless; say so rather than dividing by zero.
+        out = {k: np.zeros(n) for k in names}
+        out["yard_area_m2"] = np.zeros(n)
+        out["has_yard"] = np.zeros(n)
+        return out
+
+    valid = np.ones((h, w), dtype=bool) if nodata is None else ~np.all(arr == nodata, axis=0)
+    if extra_mask is not None:
+        valid &= extra_mask
+    dist, (iy, ix) = ndimage.distance_transform_edt(
+        bid == 0, sampling=px_m, return_indices=True
+    )
+    ring = np.where((bid == 0) & (dist <= ring_m) & valid, bid[iy, ix], 0)
+    flat = ring.ravel()
+    counts = np.bincount(flat, minlength=n + 1)[1:]
+
+    def zmean(a: np.ndarray) -> np.ndarray:
+        s = np.bincount(flat, weights=a.ravel().astype("float64"), minlength=n + 1)[1:]
+        with np.errstate(invalid="ignore", divide="ignore"):
+            return np.where(counts > 0, s / np.maximum(counts, 1), np.nan)
+
+    def zmax(a: np.ndarray) -> np.ndarray:
+        m = np.full(n + 1, -np.inf)
+        np.maximum.at(m, flat, a.ravel().astype("float64"))
+        return np.where(counts > 0, m[1:], np.nan)
+
+    band = {b: zmean(arr[i]) for i, b in enumerate(BAND_NAMES)}
+    eps = 1e-6
+    r, nir, sw = band[BAND_NAMES[_I_RED]], band[BAND_NAMES[_I_NIR]], band[BAND_NAMES[_I_SWIR1]]
+    sppi_px = compute_sppi(arr[0], arr[1], arr[6], arr[8], arr[9])
+    out = {f"yard_{b}_mean": band[b] for b in BAND_NAMES}
+    out["yard_ndvi"] = (nir - r) / (nir + r + eps)
+    out["yard_ndbi"] = (sw - nir) / (sw + nir + eps)
+    # Plain mean, not nanmean: a yardless building is NaN in every band at once, so NaN
+    # propagating here is the correct answer and nanmean would only add an empty-slice
+    # warning on its way to the same value. The imputation below is what resolves it.
+    out["yard_brightness"] = np.stack([band[b] for b in BAND_NAMES]).mean(axis=0)
+    out["yard_swir_vis_ratio"] = sw / (
+        np.stack([band[BAND_NAMES[i]] for i in (_I_BLUE, _I_GREEN, _I_RED)]).mean(axis=0) + eps
+    )
+    out["yard_blue_red_ratio"] = band[BAND_NAMES[_I_BLUE]] / (r + eps)
+    out["yard_sppi_mean"] = zmean(sppi_px)
+    out["yard_sppi_max"] = zmax(sppi_px)
+
+    has_yard = (counts > 0).astype(float)
+    for k in names:
+        v = out[k]
+        if not np.isfinite(v).any():
+            out[k] = np.zeros(n)
+            continue
+        out[k] = np.where(np.isfinite(v), v, np.nanmedian(v))
+    out["yard_area_m2"] = counts * px_m * px_m
+    out["has_yard"] = has_yard
+    return out
+
+
+def parcel_pv_area(
+    bu: gpd.GeoDataFrame, bu_utm: gpd.GeoDataFrame, pv: gpd.GeoDataFrame,
+    ring_m: float = YARD_RING_M, max_installation_m2: float = YARD_MAX_INSTALLATION_M2,
+) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Mapped PV area that sits OFF every footprint, attributed to its nearest building.
+
+    The label half of the parcel widening. `building_table`'s roof term is the geometric
+    intersection of mapped PV with each footprint, so an array two metres off the wall
+    contributes exactly zero to `pv_area_true_m2` -- and therefore zero to the coverage
+    ratio and zero to the area recall -- on a building this classifier very often flags
+    anyway (29.4% of them, against a 9.9% background). That is an accounting gap, not a
+    detection gap: 168 of 253 such buildings in the quadrats carry rooftop PV too and are
+    already in the atlas.
+
+    Three rules keep this from double-counting anything:
+
+    1. **Off-roof only.** Each installation's geometry has every footprint it intersects
+       subtracted from it first, so the roof term and this term partition one polygon and
+       never both bill the same square metre.
+    2. **One owner.** The remainder goes whole to the single nearest building, not to every
+       building within the ring.
+    3. **Below the segmentation floor only.** An installation of `max_installation_m2` or
+       more is skipped entirely: above that floor ground-mount is segmentation's instrument
+       and the atlas already counts it, so attributing it here too would count one plant in
+       two components.
+
+    Off-roof PV further than `ring_m` from any building is dropped and reported in the
+    returned counters rather than silently absorbed -- it is the ~1.5% tail with no host
+    building, and the honest thing is for it to remain missing.
+
+    **Two different things land in this term, and they are returned separately.** An OSM
+    installation tagged `placement=ground` beside a house is the small ground-mount array
+    this widening exists for. But a `placement=rooftop` array whose polygon extends past
+    its VIDA footprint is not ground-mount at all -- VIDA outlines are imagery-derived and
+    routinely undersized or a metre or two off, so part of a genuinely roof-mounted array
+    falls outside the polygon and the roof-only intersection simply loses it. Both belong
+    in `pv_area_true_m2` (both are real PV on that parcel, and the denominator is the same
+    VIDA roof area either way), but only the first is ground-mount, and the atlas's
+    rooftop/ground-mount split is only honest if the two can be told apart. Measured on
+    the quadrats, the overhang term is much the larger of the two -- see the summary
+    `run_roof_classifier` writes.
+
+    Returns `(ground_yard_m2, overhang_yard_m2, counters)`, both per building.
+    """
+    from earthpv.labels import geodesic_area_m2
+
+    n = len(bu)
+    ground, overhang = np.zeros(n), np.zeros(n)
+    info = {"n_attributed": 0, "n_orphan": 0, "orphan_area_m2": 0.0, "n_oversize_skipped": 0}
+    if pv.empty or n == 0:
+        return ground, overhang, info
+
+    areas = np.array([geodesic_area_m2(g) for g in pv.geometry])
+    keep = areas < max_installation_m2
+    info["n_oversize_skipped"] = int((~keep).sum())
+    if not keep.any():
+        return ground, overhang, info
+    small = pv.geometry.to_numpy()[keep]
+    is_ground = (
+        pv["placement"].to_numpy()[keep] == "ground" if "placement" in pv.columns
+        else np.zeros(int(keep.sum()), dtype=bool)
+    )
+
+    # Subtract the footprints in EPSG:4326, where both layers already live, then measure
+    # geodesically -- `labels.geodesic_area_m2`, never `.area` on lat/lon (CLAUDE.md).
+    sidx = bu.sindex
+    offs, offs_ground = [], []
+    for g, gnd in zip(small, is_ground):
+        hits = sidx.query(g, predicate="intersects")
+        off = (g if len(hits) == 0
+               else g.difference(shapely.union_all(bu.geometry.to_numpy()[hits])))
+        if not off.is_empty and off.area > 0:
+            offs.append(off)
+            offs_ground.append(bool(gnd))
+    if not offs:
+        return ground, overhang, info
+
+    off_gs = gpd.GeoSeries(offs, crs="EPSG:4326")
+    off_utm = off_gs.to_crs(bu_utm.crs)
+    off_areas = np.array([geodesic_area_m2(g) for g in off_gs])
+    nearest = bu_utm.sindex.nearest(off_utm, return_all=False)[1]
+    for j, (g_utm, bi) in enumerate(zip(off_utm.to_numpy(), nearest)):
+        if g_utm.distance(bu_utm.geometry.iloc[bi]) <= ring_m:
+            (ground if offs_ground[j] else overhang)[bi] += off_areas[j]
+            info["n_attributed"] += 1
+        else:
+            info["n_orphan"] += 1
+            info["orphan_area_m2"] += float(off_areas[j])
+    return ground, overhang, info
+
+
 def shape_features(geoms_utm: gpd.GeoSeries) -> dict[str, np.ndarray]:
     """Compactness, rectangularity and aspect ratio from each building's OWN footprint
     geometry -- no new imagery, using shape the VIDA polygon already carries and roofclf
@@ -507,8 +725,19 @@ def building_table(
     stem: str, iso3: str, composites: Path, seg_prob_dir: Path | None,
     frac_prob_dir: Path | None, labels_dir: Path = Path("data/labels"), con=None,
     include_epoch_jump: bool = False, preboom_prob_dir: Path | None = None,
+    parcel_label: bool = False,
 ) -> pd.DataFrame:
-    """One row per VIDA building in the quadrat, labelled and featurised."""
+    """One row per VIDA building in the quadrat, labelled and featurised.
+
+    `parcel_label` (2026-08-16) widens both the label and the feature set from the roof to
+    the whole parcel: `pv_area_true_m2` gains the off-roof PV within `YARD_RING_M`
+    (`parcel_pv_area`), and the table gains the yard block (`yard_features`). The roof-only
+    term stays available as `pv_area_roof_m2`, and the yard term as `pv_area_yard_m2`, so a
+    table built this way still reproduces every pre-widening figure exactly. Off by default:
+    every published atlas number to date is a roof-only measurement. See
+    docs/issues/small-ground-mount-instrument.md for what motivates it and what it cannot fix
+    (the calibration for the sparse stratum this most affects rests on four quadrats).
+    """
     from earthpv.buildings import fetch_vida_buildings
     from earthpv.labels import geodesic_area_m2
     from earthpv.local_source import composite_index
@@ -561,12 +790,38 @@ def building_table(
     bu_utm = bu.to_crs(crs)
     means, maxes = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
 
+    # The parcel widening. Both terms are kept separately so this table alone can
+    # reproduce the roof-only figures it supersedes.
+    pv_area_roof = pv_area.copy()
+    pv_area_yard_ground = np.zeros(len(bu))
+    pv_area_yard_overhang = np.zeros(len(bu))
+    if parcel_label:
+        pv_area_yard_ground, pv_area_yard_overhang, yard_info = parcel_pv_area(bu, bu_utm, pv)
+        pv_area = pv_area_roof + pv_area_yard_ground + pv_area_yard_overhang
+        frac_true = np.divide(pv_area, np.maximum(roof, 1e-6))
+        log.info(
+            "quadrat %s: parcel label adds %.0f m2 of off-roof PV (%.0f ground-tagged, "
+            "%.0f rooftop overhanging its VIDA footprint) on %d buildings "
+            "(%d installations attributed, %d orphaned beyond %.0f m totalling %.0f m2, "
+            "%d at/above the %.0f m2 segmentation floor left to segmentation)",
+            name, pv_area_yard_ground.sum() + pv_area_yard_overhang.sum(),
+            pv_area_yard_ground.sum(), pv_area_yard_overhang.sum(),
+            int(((pv_area_yard_ground + pv_area_yard_overhang) > 0).sum()),
+            yard_info["n_attributed"], yard_info["n_orphan"], YARD_RING_M,
+            yard_info["orphan_area_m2"], yard_info["n_oversize_skipped"],
+            YARD_MAX_INSTALLATION_M2,
+        )
+
     out = gpd.GeoDataFrame({
         "quadrat": name,
         "geometry": bu.geometry.to_numpy(),
         "roof_area_m2": roof,
         "bf_confidence": bu.get("bf_confidence", pd.Series(np.nan, index=bu.index)).to_numpy(),
         "pv_area_true_m2": pv_area,
+        "pv_area_roof_m2": pv_area_roof,
+        "pv_area_yard_m2": pv_area_yard_ground + pv_area_yard_overhang,
+        "pv_area_yard_ground_m2": pv_area_yard_ground,
+        "pv_area_yard_overhang_m2": pv_area_yard_overhang,
         "pv_frac_true": frac_true,
         "has_pv": (frac_true >= MIN_PV_OVERLAP_FRAC).astype(int),
         # A per-quadrat constant (same value every row), not a per-building feature --
@@ -592,6 +847,18 @@ def building_table(
     for k, v in shape_features(bu_utm.geometry).items():
         out[k] = v
     out["brightness_zscore"] = local_zscore(out["brightness"].to_numpy())
+
+    if parcel_label:
+        # Restricted to the quadrat's own boundary: a ring pixel outside it is not
+        # Rule-1 mapped, so PV there would read as a feature with no matching label.
+        inbnd = rasterio.features.rasterize(
+            [(gpd.GeoSeries([boundary], crs="EPSG:4326").to_crs(crs).iloc[0], 1)],
+            out_shape=arr.shape[-2:], transform=transform, fill=0, dtype="uint8",
+        ).astype(bool)
+        for k, v in yard_features(bu_utm, arr, transform, extra_mask=inbnd).items():
+            out[k] = v
+        log.info("quadrat %s: %.0f%% of buildings have at least one yard pixel",
+                 name, 100 * out["has_yard"].mean())
 
     if include_epoch_jump:
         # Raw pre-boom reflectance delta per band -- the free variant from
@@ -672,20 +939,44 @@ SHAPE_FEATURES = ["compactness", "rectangularity", "aspect_ratio"]
 # of a nationally-pooled absolute value -- targets the bright-roof false-positive mode
 # specifically. See `_ABLATIONS`'s `plus_local_contrast`.
 LOCAL_CONTRAST_FEATURES = ["brightness_zscore"]
+# The yard block (`yard_features`), present only under `parcel_label`. Same shape as the
+# roof block plus SPPI, which is the strongest single spectral discriminator for a yard
+# array (0.833 AUC per pixel against matched controls) and needs no training. Measured to
+# be a clean negative for the ROOF task (0.8711 -> 0.8709), so this list must never be
+# folded into MODEL_FEATURES unconditionally -- it earns its place only against a label
+# that includes the yard.
+YARD_FEATURES = (
+    [f"yard_{b}_mean" for b in BAND_NAMES]
+    + ["yard_ndvi", "yard_ndbi", "yard_brightness", "yard_swir_vis_ratio",
+       "yard_blue_red_ratio", "yard_sppi_mean", "yard_sppi_max", "log_yard_area", "has_yard"]
+)
 # Default model input: footprint size plus footprint reflectance. Set by the ablation, not
 # by preference.
 MODEL_FEATURES = ["log_roof_area", "bf_confidence"] + SPECTRAL_FEATURES
+PARCEL_MODEL_FEATURES = MODEL_FEATURES + YARD_FEATURES
 FEATURES = (
     MODEL_FEATURES + PROB_FEATURES + SHAPE_FEATURES + LOCAL_CONTRAST_FEATURES
 )  # every column the table carries
 
 
-def design_matrix(df: pd.DataFrame, feats: list[str] | None = None) -> np.ndarray:
+def _with_derived(df: pd.DataFrame) -> pd.DataFrame:
+    """Columns the feature lists name but the table stores in raw form. Shared by
+    `design_matrix` and `_subset_matrix` so a fit and an ablation cannot derive them
+    differently."""
     d = df.copy()
     d["log_roof_area"] = np.log10(d.roof_area_m2.clip(lower=1.0))
     d["bf_confidence"] = d.bf_confidence.fillna(d.bf_confidence.median() if
                                                 d.bf_confidence.notna().any() else 0.0)
-    return d[feats or MODEL_FEATURES].to_numpy(dtype="float64")
+    if "yard_area_m2" in d.columns:
+        # 0 m2 of yard is a real measurement (a fully enclosed footprint), not missing
+        # data, and log10(max(0,1)) = 0 puts it at the bottom of the scale where it
+        # belongs. `has_yard` carries the "this is the floor, not a small yard" flag.
+        d["log_yard_area"] = np.log10(d.yard_area_m2.clip(lower=1.0))
+    return d
+
+
+def design_matrix(df: pd.DataFrame, feats: list[str] | None = None) -> np.ndarray:
+    return _with_derived(df)[feats or MODEL_FEATURES].to_numpy(dtype="float64")
 
 
 # --------------------------------------------------------------------------------------
@@ -897,6 +1188,12 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
     `GLINT_FEATURES` -- see that constant's comment.
     """
     ablations = dict(_ABLATIONS)
+    if "has_yard" in table.columns:
+        # Under `parcel_label` the label itself has changed, so `size_plus_spectral` here
+        # is no longer the shipped model -- it is the roof-only model measured against a
+        # parcel label, i.e. exactly the "does the yard block earn its place" contrast.
+        ablations["plus_yard"] = list(PARCEL_MODEL_FEATURES)
+        ablations["yard_only"] = ["log_roof_area", "bf_confidence"] + list(YARD_FEATURES)
     if all(c in table.columns for c in GLINT_FEATURES):
         ablations["plus_glint"] = list(MODEL_FEATURES) + list(GLINT_FEATURES)
         ablations["plus_everything"] = (
@@ -924,12 +1221,7 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
 
 
 def _subset_matrix(df: pd.DataFrame, feats: list[str]) -> np.ndarray:
-    d = df.copy()
-    d["log_roof_area"] = np.log10(d.roof_area_m2.clip(lower=1.0))
-    d["bf_confidence"] = d.bf_confidence.fillna(
-        d.bf_confidence.median() if d.bf_confidence.notna().any() else 0.0
-    )
-    return d[feats].to_numpy(dtype="float64")
+    return _with_derived(df)[feats].to_numpy(dtype="float64")
 
 
 def exp_scale_anchor(table: pd.DataFrame) -> pd.DataFrame:
@@ -968,6 +1260,53 @@ def save_model(model: dict, feats: list[str], path: Path) -> None:
         "converged": model["converged"], "features": feats,
     }
     Path(path).write_text(json.dumps(payload, indent=2))
+
+
+def model_fingerprint(model: dict, feats: list[str]) -> str:
+    """Short stable hash of a fitted model's feature list and coefficients.
+
+    Written next to a national scoring run (`score_buildings_national`) and checked by the
+    capacity functions, so a scoring output can be matched to the calibration table it was
+    produced from. Two national scorings now coexist on disk (the roof-only one every
+    published figure uses, and a parcel-label one), and pairing the wrong two is a silent
+    error: both directories hold the same columns, the numbers just quietly describe
+    different populations. That is the same failure mode as the silently-regressed
+    calibration YAML in CLAUDE.md's Density stage section, so it gets a guard rather than a
+    convention.
+    """
+    import hashlib
+
+    payload = json.dumps(
+        {"features": list(feats),
+         "w": [round(float(x), 10) for x in np.asarray(model["w"]).ravel()],
+         "mu": [round(float(x), 10) for x in np.asarray(model["mu"]).ravel()],
+         "sd": [round(float(x), 10) for x in np.asarray(model["sd"]).ravel()]},
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+def check_scoring_matches_calibration(roofclf_dir: Path, calib_dir: Path) -> None:
+    """Raise if a national scoring directory was produced by a different model than the
+    calibration directory's `model_full.json`. Silent (a debug log) when the scoring run
+    predates `_model.json`, since it cannot be checked and refusing would break every
+    existing output."""
+    manifest = Path(roofclf_dir) / "_model.json"
+    model_path = Path(calib_dir) / "model_full.json"
+    if not manifest.exists() or not model_path.exists():
+        log.debug("No model fingerprint to check for %s against %s", roofclf_dir, calib_dir)
+        return
+    scored = json.loads(manifest.read_text()).get("fingerprint")
+    model, feats = load_model(model_path)
+    expected = model_fingerprint(model, feats)
+    if scored != expected:
+        raise ValueError(
+            f"{roofclf_dir} was scored with model fingerprint {scored}, but {model_path} "
+            f"fingerprints {expected}. These are different models -- the coverage ratio and "
+            f"area recall from this calibration table do not describe that scored "
+            f"population. Rescore nationally with this model, or point --calib-dir at the "
+            f"calibration the scoring actually came from."
+        )
 
 
 def load_model(path: Path) -> tuple[dict, list[str]]:
@@ -1094,6 +1433,21 @@ def score_buildings_national(
     con = overture.connect()
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # The saved model's own feature list decides this: a parcel-label model
+    # (`PARCEL_MODEL_FEATURES`) needs the yard block computed per cell, a roof-only one
+    # must not pay for it. No flag to keep in sync, so a model can never be deployed
+    # against features it was not fit on.
+    # Fingerprint first, so the manifest exists even if the run is interrupted partway --
+    # a resumed run appends cells to the same directory and must not be checkable only
+    # once it has finished.
+    (out_dir / "_model.json").write_text(json.dumps({
+        "fingerprint": model_fingerprint(model, feats), "features": list(feats),
+        "aoi": aoi, "composites": str(composites),
+    }, indent=2))
+    need_yard = any(f in set(YARD_FEATURES) for f in feats)
+    if need_yard:
+        log.info("Model asks for the yard block -- computing the %.0f m parcel ring per cell",
+                 YARD_RING_M)
 
     n_cells, n_buildings, n_flagged_05, n_unscored_nodata = 0, 0, 0, 0
     for m in manifest.itertuples():
@@ -1146,6 +1500,14 @@ def score_buildings_national(
         for k, v in shape_features(bu_utm.geometry).items():
             feat_df[k] = v
         feat_df["brightness_zscore"] = local_zscore(feat_df["brightness"].to_numpy())
+        if need_yard:
+            # Cell-edge yards are truncated at the read window, exactly as roof statistics
+            # already are: `read_window` returns this cell's own box, so a building on the
+            # boundary sees only the part of its ring inside it. It shrinks `yard_area_m2`
+            # for a thin border strip rather than fabricating pixels, and `has_yard`
+            # remains true, which is the conservative failure.
+            for k, v in yard_features(bu_utm, arr, transform).items():
+                feat_df[k] = v
 
         # A building with no valid composite pixel keeps its row -- building counts and
         # `potential.large_roof_buildings` read this table for footprints alone, so
@@ -1206,7 +1568,28 @@ def run_roof_classifier(
     labels_dir: Path = Path("data/labels"),
     out_dir: Path = Path("data/roofclf"),
     l2: float = L2,
+    parcel_label: bool = False,
+    include_yard_features: bool = False,
+    table_path: Path | None = None,
 ) -> Path:
+    """Fit, evaluate and persist the classifier. See the CLI command for the options.
+
+    `include_yard_features` puts `YARD_FEATURES` in the model. Measured 2026-08-16 and left
+    OFF: against the PARCEL label itself -- the label the yard block exists to serve -- it
+    scores median fold AUC 0.8712 against 0.8734 for the roof-only feature set, and yard
+    features alone reach only 0.7538 against a 0.7382 size-only baseline. The reason is
+    visible in `summary["parcel_pv_area_m2"]`: 80% of what the parcel label adds is mapped
+    ROOFTOP PV overhanging an undersized VIDA footprint, which roof features already see,
+    and the genuinely ground-mounted term is 1.7% of quadrat PV area -- too little to move
+    a 118,755-row fit even when a yard block describes it well in isolation
+    (docs/issues/small-ground-mount-instrument.md measures 0.747 AUC for it against a
+    ground-mount-only label of 253 positives).
+
+    `table_path` refits from an existing `buildings.geoparquet` instead of rebuilding every
+    quadrat table, for exactly this kind of feature-set comparison: the tables cost about
+    ten minutes and do not depend on the feature list or on `l2`. It is an error to pass it
+    with a `parcel_label` the stored table was not built under, and this checks.
+    """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     from earthpv import overture
     from earthpv.buildings import _iso3_for
@@ -1223,27 +1606,59 @@ def run_roof_classifier(
         raise FileNotFoundError(f"No calibration quadrats found in {labels_dir}")
     log.info("Quadrats: %s", ", ".join(names))
 
-    con = overture.connect()
-    parts = [
-        building_table(n, iso3, composites, seg_prob_dir, frac_prob_dir, labels_dir, con)
-        for n in names
-    ]
-    # Keep geometry so the per-building predictions are mappable (QGIS, the docs figure).
-    table = gpd.GeoDataFrame(
-        pd.concat([p for p in parts if not p.empty], ignore_index=True),
-        geometry="geometry", crs="EPSG:4326",
-    )
+    feats = list(PARCEL_MODEL_FEATURES if include_yard_features else MODEL_FEATURES)
+    if table_path is not None:
+        table = gpd.read_parquet(table_path)
+        stored_parcel = "pv_area_yard_m2" in table.columns
+        if stored_parcel != parcel_label:
+            raise ValueError(
+                f"{table_path} was built with parcel_label={stored_parcel}, but this call "
+                f"asks for parcel_label={parcel_label}. The label is baked into the stored "
+                f"pv_area_true_m2/has_pv columns and cannot be changed by a refit."
+            )
+        log.info("Refitting from %s (%d rows, %d quadrats) -- tables not rebuilt",
+                 table_path, len(table), table.quadrat.nunique())
+    else:
+        con = overture.connect()
+        parts = [
+            building_table(n, iso3, composites, seg_prob_dir, frac_prob_dir, labels_dir, con,
+                           parcel_label=parcel_label)
+            for n in names
+        ]
+        # Keep geometry so the per-building predictions are mappable (QGIS, the docs figure).
+        table = gpd.GeoDataFrame(
+            pd.concat([p for p in parts if not p.empty], ignore_index=True),
+            geometry="geometry", crs="EPSG:4326",
+        )
+    if include_yard_features and "has_yard" not in table.columns:
+        raise ValueError("include_yard_features needs a table built with parcel_label=True")
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    folds, summary, oof = evaluate(table, l2=l2)
+    folds, summary, oof = evaluate(table, l2=l2, feats=feats)
     table["p_oof"] = oof  # scored by a model that never saw this building's quadrat
     table.to_parquet(out_dir / "buildings.geoparquet")
+    # Downstream (`sub400_capacity`, `roofclf_ge400_capacity`) reads this table's
+    # `pv_area_true_m2` for both the coverage ratio and the area recall, so which label it
+    # was built under decides what those corrections mean. Record it where a reader of the
+    # summary cannot miss it rather than leaving it to be inferred from the feature list.
+    summary["parcel_label"] = bool(parcel_label)
+    summary["yard_features_in_model"] = bool(include_yard_features)
+    if parcel_label:
+        summary["parcel_pv_area_m2"] = {
+            "roof": round(float(table.pv_area_roof_m2.sum()), 1),
+            "yard_ground_tagged": round(float(table.pv_area_yard_ground_m2.sum()), 1),
+            "yard_rooftop_overhang": round(float(table.pv_area_yard_overhang_m2.sum()), 1),
+        }
+        summary["n_pv_roof_only_label"] = int(
+            (table.pv_area_roof_m2 / table.roof_area_m2.clip(lower=1e-6)
+             >= MIN_PV_OVERLAP_FRAC).sum()
+        )
 
     # Deployment artifact: ONE fit on every labelled building pooled (not per-fold --
     # LOQO above is for honest skill measurement; a national scorer needs a single
     # model), persisted so `score_buildings_national` never needs to refit.
-    full_model = fit_logistic(design_matrix(table, MODEL_FEATURES), table.has_pv.to_numpy(float), l2)
-    save_model(full_model, MODEL_FEATURES, out_dir / "model_full.json")
+    full_model = fit_logistic(design_matrix(table, feats), table.has_pv.to_numpy(float), l2)
+    save_model(full_model, feats, out_dir / "model_full.json")
     # Deployment threshold: precision-targeted (not Youden's J -- this session's SPPI
     # validation measured that a balanced-sensitivity criterion trades away far too much
     # precision for a capacity-contributing detector), on the pooled out-of-fold scores,

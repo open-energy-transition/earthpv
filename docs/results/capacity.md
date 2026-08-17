@@ -30,9 +30,9 @@ model checkpoint.
 
 ## The headline figure
 
-**Best estimate: 18,218 MWp** (90% range 14,346 &ndash; 21,768). It combines every
+**Best estimate: 19,746 MWp** (90% range 16,051 &ndash; 23,520). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
-"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,616 MWp: roofclf's own
+"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,832 MWp: roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
 detections everywhere else, segmentation's ground-mount detections throughout -- see
 "Segmentation vs. roofclf on large rooftops" below) and the roofclf per-building density
@@ -41,8 +41,8 @@ therefore measured inside the density-calibrated domain: the out-of-domain
 roofclf-AND-SPPI extrapolation that used to add 62 MWp was dropped from the published
 atlas on 2026-08-15 (see "A thirteenth change" below).
 
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.2 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 60 percent OpenStreetMap hand-mapped and 40 percent roofclf-and-SPPI agreement, totalling 5.4 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.2 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 55 percent OpenStreetMap hand-mapped and 45 percent roofclf-and-SPPI agreement, totalling 5.9 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 7 percent TerraMind segmentation and 84 percent roofclf alone, totalling 19.7 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 55 percent OpenStreetMap hand-mapped and 45 percent roofclf-and-SPPI agreement, totalling 5.9 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 7 percent TerraMind segmentation and 84 percent roofclf alone, totalling 19.7 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
 roofclf alone -- its own &ge;400 m<sup>2</sup> replacement plus the sub-400 m<sup>2</sup>
 central estimate -- supplies about four-fifths of Best by itself; direct OSM mapping and
@@ -421,6 +421,51 @@ province table's "Small PV, extrapolated" column, the size chart's third legend 
 the composition breakdown's SPPI-in-Best slice -- now drops out rather than reporting
 zeroes, and the atlas is built without `--sub400-outdomain-cells`. The capacity function
 and the CLI flag both still exist for anyone who wants that estimate explicitly.
+
+**A fourteenth change, 2026-08-17: roofclf now counts the PV in a building's yard, not only
+on its roof.** `pv_area_true_m2` was the geometric intersection of mapped PV with the VIDA
+footprint, so an array standing two metres off the wall contributed zero to the coverage
+ratio and zero to the area recall -- on a building roofclf usually flags anyway. The
+[parcel label](../methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) adds mapped PV
+within 20 m of a footprint, attributed whole to its single nearest building, for
+installations below the 400 m<sup>2</sup> segmentation floor only, since above that floor
+ground-mount is segmentation's instrument and the atlas already counts it there. Each
+installation's footprint intersections are subtracted before the remainder is measured, so
+the roof and yard terms partition one polygon rather than both billing the same square metre.
+
+**Most of what it recovers is not ground-mount, and the split is reported rather than
+assumed.** Across the 27 quadrats the widening adds 146,766 m<sup>2</sup>: 29,764 (20%) is
+OSM `placement=ground`, and 117,003 (80%) is mapped *rooftop* PV whose polygon extends past
+an imagery-derived VIDA outline that is undersized or a metre or two off. The second is a
+real undercount rather than ground-mount, and correcting it is self-consistent, because the
+same undersizing shrinks the calibration denominator and the national flagged roof area
+alike. Both capacity summaries now carry a `parcel_label_composition` block, so the share of
+a "rooftop" figure that is actually a yard array can be read rather than guessed: 1.03% of
+the flagged PV area is ground-tagged.
+
+Refit, rescored nationally over all 4,470 cells and 75.7M buildings, and re-run through the
+capacity chain: sub-400 m<sup>2</sup> central 7,890 &rarr; **9,202 MWp**, the &ge;400
+m<sup>2</sup> roofclf rooftop replacement 7,189 &rarr; **7,405 MWp**, Best
+18,218 &rarr; **19,746 MWp** (+1,528 MWp, 8.4%), 90% range 14,346-21,768 &rarr;
+**16,051-23,520**. About two thirds of the sub-400 m<sup>2</sup> move is a larger flagged
+population (1.24M to 1.36M buildings in-domain, since the widened label carries 5% more
+positives and the precision-targeted threshold recalibrates to them) and one third the
+higher coverage ratio. The label costs a little skill, as a harder target should: median
+fold AUC 0.8786 &rarr; 0.8735.
+
+**Unlike the twelfth change, this one moves the floor too**, 5,390 &rarr; **5,857 MWp**. That
+is deliberate and does not weaken what the floor means. The recall correction was kept out of
+the AND-gate tiers because it extrapolates to installations neither detector saw, which a
+floor may not do; the parcel label does the opposite, pricing the buildings both detectors
+already agree on more completely, from PV that is mapped and measured on those same parcels.
+
+The *feature* half of the same idea was measured and rejected. A yard feature block (the same
+zonal statistics over a distance-transform Voronoi ring around each footprint, SPPI included)
+loses to the roof-only feature set even against the parcel label it was built to serve: 0.8712
+against 0.8734 median fold AUC. It survives behind `--yard-features` for re-measurement once
+cropland calibration quadrats exist, since the term it exists to explain is 1.6% of quadrat PV
+area today. See [small ground-mounted PV](../issues/small-ground-mount-instrument.md) for what
+that instrument can and cannot reach.
 
 ## What this map cannot tell you, and what an independent estimate confirms it can
 

@@ -313,6 +313,40 @@ quadrat composition, not per-building noise, is what has repeatedly moved these 
 bootstrap replicates, and the same replicate index is shared across all four roofclf-based atlas
 components since they are fit on the same quadrats (`sub400_capacity.COVERAGE_BOOTSTRAP_SEED`).
 
+**The parcel label (`roof-classifier --parcel-label`, 2026-08-16) counts PV in the yard, not
+just on the roof.** `pv_area_true_m2` was the intersection of mapped PV with the VIDA
+footprint, so an array two metres off the wall booked zero coverage ratio and zero area recall
+on a building roofclf usually flags anyway. `roofclf.parcel_pv_area` adds mapped PV within
+`YARD_RING_M` (20 m) of a footprint, attributed whole to its single nearest building, for
+installations below the 400 m² segmentation floor only (above it, ground-mount is
+segmentation's and the atlas already counts it). **80% of what this recovers turns out not to
+be ground-mount at all**: across the 27 quadrats it adds 146,766 m², of which 29,764 (20%) is
+OSM `placement=ground` and 117,003 (80%) is mapped *rooftop* PV whose polygon extends past an
+undersized, imagery-derived VIDA outline. Both belong in the numerator -- the overhang term is
+self-consistent, since the same undersizing shrinks the calibration denominator and the
+national flagged roof area alike -- but only the ground term makes the atlas's "rooftop" line
+partly ground-mount, so `sub400_capacity.parcel_label_composition` reports the split in both
+capacity summaries and it is what to quote for the placement claim. **The yard *feature* block
+(`roofclf.yard_features`, zonal statistics over a distance-transform Voronoi ring, SPPI
+included) does NOT ship**: against the parcel label itself it scores median fold AUC 0.8712
+against 0.8734 for the roof-only feature set, because the term it exists to explain is 1.6% of
+quadrat PV area. Available behind `--yard-features` for re-measurement once cropland quadrats
+exist. The label is off by default; a parcel-label model needs its own national rescoring, and
+`roofclf.check_scoring_matches_calibration` refuses to pair one national scoring with another
+calibration's coverage ratio. **Scored nationally, validated and PUBLISHED 2026-08-17**: sub-400
+central 7,890.2 -> 9,201.7 MWp, the sub-400 AND-gate 2,179.7 -> 2,647.0, the >= 400 m² roofclf
+rooftop replacement 7,189.4 -> 7,405.0, Best estimate 18,218.4 -> 19,745.9 (90% CI
+16,051-23,520) and, unlike the recall correction, the internal floor too (5,389.5 -> 5,856.8 --
+legitimate for a floor, since it prices agreed-on buildings more completely rather than
+extrapolating to unseen ones). Random-cell validation was run by the owner (20 cells, seed
+20260817, tiles in `results/pakistan_roofclf_parcel_validation/`) before promotion; **the
+per-cell counts are still missing from `results/roofclf_random_validation_log.csv`, which is
+header-only** -- that log is the only durable record of the review and should be filled in.
+The parcel calibration and scoring now occupy the canonical paths (`data/roofclf/`,
+`data/roofclf_national_with_sppi/pakistan/{prob,density}`); the roof-only versions are kept as
+`*_PRE_20260817_parcel_label` so every pre-widening figure stays reproducible. Full derivation:
+`docs/methods/roofclf.md`'s "The parcel label", `docs/issues/small-ground-mount-instrument.md`.
+
 **roofclf's own misses are corrected for too, since 2026-08-15**
 (`sub400_capacity.area_recall_by_size_and_density`). The coverage ratio prices the PV on roofs
 roofclf *flagged*; on its own it books zero MWp for every installation on a roof roofclf missed.

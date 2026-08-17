@@ -100,7 +100,8 @@ def domain_restricted_ge400_roof_capacity(
         apply_stratified_area_recall, apply_stratified_coverage_ratio,
         area_recall_by_size_and_density, coverage_ratio_by_size_and_density,
         coverage_ratio_bootstrap_factors,
-        national_cell_domain, quadrat_building_density_km2, select_calibrated_quadrats,
+        national_cell_domain, parcel_label_composition, quadrat_building_density_km2,
+        select_calibrated_quadrats,
     )
 
     ratio_lo = DEFAULT_RATIO_LO if ratio_lo is None else ratio_lo
@@ -191,6 +192,10 @@ def domain_restricted_ge400_roof_capacity(
     summary = {
         "method": "domain_restricted_ge400_roof_capacity",
         "calibration_quadrats": quadrats,
+        # See `sub400_capacity.parcel_label_composition`: None under the roof-only label,
+        # and under the parcel label the share of this "rooftop" figure that is in fact
+        # ground-tagged PV standing in the building's yard.
+        "parcel_label_composition": parcel_label_composition(buildings_path, quadrats, threshold),
         "calibration_coverage_ratio_by_size_and_density": stratified,
         "calibration_coverage_ratio_area_weighted_mean": (
             round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None

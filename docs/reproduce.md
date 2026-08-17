@@ -207,6 +207,13 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     never pooled -- see [Capacity density](methods/density.md) for why a pooled number
     here would be misleading.
 
+    Add `--parcel-label` to count mapped PV in each building's 20 m yard as well as on its
+    roof ([the parcel label](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16)).
+    It changes what every downstream coverage-ratio and area-recall correction measures, so
+    use a separate `--out-dir` and rescore nationally against that model before running
+    `sub400-capacity`. `--table-path <buildings.geoparquet>` refits from an existing table
+    without rebuilding all 27 quadrats, which is the cheap way to compare feature sets.
+
 === "11. Score roofclf nationally"
 
     Apply the fitted model to every VIDA building in the AOI. No GPU, but the long pole

@@ -1,5 +1,39 @@
 # Small ground-mounted PV has no instrument: measured, 2026-08-16
 
+!!! note "PARTLY ADDRESSED (2026-08-16): the accounting fix shipped, the instrument did not"
+
+    Option 2 below ("widen `roofclf`'s label rather than add a detector") was implemented
+    the same day, on the owner's instruction, ahead of the cropland quadrats this page
+    recommends first. `earthpv roof-classifier --parcel-label` now counts mapped PV within
+    20 m of a footprint, attributed to its nearest building, below the 400 m<sup>2</sup>
+    segmentation floor. Option 3 still stands: no standalone detector was built, and the
+    AND-gate measured below was not shipped.
+
+    Two results from implementing it, both of which change how the fix should be read:
+
+    - **Most of what the parcel label adds is not ground-mount.** Across the 27 quadrats
+      it adds 146,766 m<sup>2</sup>, of which 29,764 m<sup>2</sup> (20%) is OSM
+      `placement=ground` and 117,003 m<sup>2</sup> (80%) is mapped ROOFTOP PV whose polygon
+      extends past an imagery-derived VIDA footprint. The second is a real undercount in
+      the roof-only label, and correcting it is self-consistent (the same undersizing
+      shrinks the calibration denominator and the national flagged roof area), but it is
+      not the gap this page is about.
+    - **The yard feature block still does not earn its place, even against the widened
+      label.** Median fold AUC 0.8712 with it against 0.8734 without. It ships off.
+
+    Scored nationally, validated and published 2026-08-17, the widening moves Best estimate
+    18,218.4 to 19,745.9 MWp. That increase should not be read as a ground-mount figure: of
+    the PV area the parcel label now prices on flagged buildings, 1.03% is ground-tagged and
+    4.84% is rooftop overhang, and roughly two thirds of the sub-400 m<sup>2</sup> move comes
+    from the larger flagged population rather than from the widened area term at all. **The
+    small ground-mount gap this page is about is therefore still open**: the published atlas
+    now counts yard arrays it can see beside a flagged building, and still has no instrument
+    for a field-sited array with no building to attach to.
+
+    The capacity range below (0.4 to 3.5 GWp) is unchanged by any of this and still rests
+    on four settlement-drawn quadrats over 16 km<sup>2</sup>. Cropland quadrats remain the
+    binding input.
+
 !!! note "OPEN, now with measurements (as of 2026-08-16)"
 
     The 2026-08-13 version of this page established the gap on structural grounds and sized
@@ -13,7 +47,8 @@
 
     **One-line verdict:** the candidate universe problem is solved (the VIDA building index
     already brackets the population), the detection problem is not (under 1% precision at 30%
-    recall), and the size of the prize cannot be pinned down better than 0.4 to 3.5 GWp
+    recall, and 2% for a yard-SPPI/roofclf AND-gate, added 2026-08-16), and the size of the
+    prize cannot be pinned down better than 0.4 to 3.5 GWp
     until somebody maps cropland quadrats, because 23% of the national building population
     sits in a density stratum currently represented by four quadrats and 16 km<sup>2</sup>.
 
@@ -168,6 +203,41 @@ moves AUC +0.043 overall and +0.069 on the no-rooftop-PV subset (0.678 to 0.747)
 features alone cannot help. The two best single features are `log_yard_area` (0.697) and
 `yard_sppi_max` (0.692).
 
+### Making SPPI and roofclf agree does not rescue it either
+
+The atlas's sub-400 m<sup>2</sup> rooftop floor is an AND-gate: a building counts only where
+`roofclf` and SPPI agree. Transferring that construction here is the obvious next question, so
+it was measured rather than assumed
+(`small_ground_mount_assessment.py andgate`). Both scores are rank-normalised within quadrat
+first, since SPPI's absolute scale spans 18x across quadrats and a national absolute cut would
+be gating on quadrat brightness. The `roofclf` side is the roof-only leave-one-quadrat-out
+logistic from the table above, which is generous to it: that model is fit on this label,
+whereas the deployed classifier never saw it. Scoped to the 45,183 buildings that have at
+least one yard pixel, which is the only population a yard gate can score and which carries a
+base rate of 0.378%, 4x the all-buildings rate:
+
+| gate | flagged | true | precision | recall | lift |
+|---|---|---|---|---|---|
+| roofclf p90 | 6,983 | 41 | 0.59% | 0.240 | 1.6x |
+| yard-SPPI p90 | 4,534 | 56 | 1.24% | 0.327 | 3.3x |
+| **AND p90** | 1,164 | 22 | 1.89% | 0.129 | 5.0x |
+| OR p90 | 10,353 | 75 | 0.72% | 0.439 | 1.9x |
+| AND p95 | 440 | 9 | 2.05% | 0.053 | 5.4x |
+| AND p98 | 132 | 3 | 2.27% | 0.018 | 6.0x |
+
+The AND-gate does what an AND-gate does, trading recall for a 5 to 6x lift, and it lands at
+**2%** precision. Sweeping both thresholds independently for the best precision at any
+operating point holding 20% recall gives 2.11%, at roofclf p61 and SPPI p94: the optimum
+reaches that precision by turning the `roofclf` side effectively off, and what is left is
+yard-SPPI alone.
+
+That is the mechanism, and it is worth stating because it does not contradict the rooftop
+result. The rooftop AND-gate works because `roofclf` and SPPI are two readings of the **same
+surface**, so their disagreements are informative. Move the array two metres off the wall and
+`roofclf` is still reading the roof while the evidence is in the yard, so the second vote is
+not a second opinion, it is a weakly-correlated nuisance that mostly deletes true positives.
+No threshold pair fixes that, because the problem is what the feature block is pointed at.
+
 ### The yard block does not help the rooftop task
 
 Tested in case the change paid for itself on `roofclf`'s existing job. It does not: rooftop
@@ -238,7 +308,9 @@ amount of modelling on the current quadrat set narrows it.
    moves only when a quadrat's own average density reads below it, and CLAUDE.md's own note
    says such a quadrat "has to be sized and placed to average in enough non-built land on
    purpose", which is exactly what a cropland quadrat is.
-2. **If an instrument is built, widen `roofclf`'s label rather than add a detector.** Add the
+2. **If an instrument is built, widen `roofclf`'s label rather than add a detector.**
+   *(Implemented 2026-08-16 -- see the banner at the top of this page for what it turned out
+   to measure.)* Add the
    yard block to `roofclf.building_table` and let `pv_area_true_m2` count PV in the parcel
    rather than only on the roof. The candidate universe, the national scoring loop, the
    coverage ratio, the area recall, the density-domain restriction, the quadrat bootstrap and

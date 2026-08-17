@@ -150,6 +150,43 @@ def density_regime_precision(
     return result
 
 
+def parcel_label_composition(
+    buildings_path: Path, quadrats: list[str], threshold: float
+) -> dict | None:
+    """What the parcel label actually added, on the population the coverage ratio is fit on.
+
+    Returns None for a roof-only calibration table (no `pv_area_yard_m2` column), so every
+    caller can attach this to its summary unconditionally.
+
+    This exists because the two things `roofclf.parcel_pv_area` picks up mean different
+    things downstream and the atlas reports them under one heading. Measured on the 27
+    quadrats, the OSM `placement=ground` term -- genuine small ground-mounted arrays, the
+    thing the widening was built for -- is the minority of it; most is mapped rooftop PV
+    whose polygon extends past an imagery-derived VIDA outline. Both are real PV on the
+    parcel and both belong in `pv_area_true_m2` (the overhang term is self-consistent: an
+    undersized footprint shrinks the calibration denominator and the national flagged roof
+    area by the same bias, so the ratio transfers), but only the ground term makes the
+    "rooftop" capacity line partly ground-mount. `yard_ground_share_of_flagged` is the
+    number to quote for that, and it is what keeps the atlas's placement split honest.
+    """
+    df = gpd.read_parquet(buildings_path)
+    if "pv_area_yard_m2" not in df.columns:
+        return None
+    sub = df[df.quadrat.isin(quadrats)]
+    flagged = sub[sub.p_oof.to_numpy(float) >= threshold]
+    total = float(flagged.pv_area_true_m2.sum())
+    ground = float(flagged.pv_area_yard_ground_m2.sum())
+    overhang = float(flagged.pv_area_yard_overhang_m2.sum())
+    return {
+        "flagged_pv_area_m2": round(total, 1),
+        "roof_m2": round(float(flagged.pv_area_roof_m2.sum()), 1),
+        "yard_ground_tagged_m2": round(ground, 1),
+        "yard_rooftop_overhang_m2": round(overhang, 1),
+        "yard_ground_share_of_flagged": round(ground / total, 4) if total else 0.0,
+        "yard_total_share_of_flagged": round((ground + overhang) / total, 4) if total else 0.0,
+    }
+
+
 # Quantile bin count / minimum flagged buildings per bin for `coverage_ratio_by_size` --
 # see that function's docstring for why quantile (equal-count) bins, not equal-width ones.
 DEFAULT_COVERAGE_N_SIZE_BINS = 10
@@ -1134,6 +1171,9 @@ def domain_restricted_capacity(
     summary = {
         "method": "domain_restricted_sub400_capacity",
         "calibration_quadrats": quadrats,
+        # None for a roof-only calibration table; present (and worth reading before
+        # quoting this component as "rooftop") for a parcel-label one.
+        "parcel_label_composition": parcel_label_composition(buildings_path, quadrats, threshold),
         "calibration_precision": precision_info["precision"],
         "calibration_recall": precision_info["recall"],
         "calibration_coverage_ratio_by_size_and_density": stratified,

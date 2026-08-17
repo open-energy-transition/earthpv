@@ -56,6 +56,9 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | Two-endmember spectral unmixing | <span class="outcome negative">rejected</span> | 0.659 AUC, worse than both SPPI and roofclf, with a 92x scale spread. |
 | Epoch jump / step change as roofclf features | <span class="outcome negative">rejected</span> | Measured at exactly zero effect, and worse in the reflectance variant. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
+| [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
+| [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
+| Yard feature block in the roofclf model | <span class="outcome negative">rejected</span> | Loses to roof-only features even against the parcel label it was built for: 0.8712 against 0.8734. |
 | SPPI as a roofclf input feature | <span class="outcome negative">rejected</span> | 0.8736 to 0.8734 AUC. It helps by disagreeing, not by being a column. |
 | Glint-date imagery as a roofclf feature | <span class="outcome negative">rejected</span> | Only 7-24% of rooftops can ever glint into a near-nadir view; size-controlled AUC moves 0.7875 to 0.7879. |
 | Opportunity-normalised glint sensitivity | <span class="outcome works">shipped</span> | Sensitivity varies ~2x with opportunity inside a size bin; now modelled per target instead of pooled. |
@@ -235,15 +238,6 @@ the instrument separates by 15x at 100 to 500 m2 and 7.9x below 100 m2, so
 [the spike-rate density estimator](issues/glint-spike-rate-density-estimator.md)'s stated
 blocker, that false rate equals or exceeds true rate below 500 m2, does not hold against
 verified negatives.
-
-Whether that is enough to *build* a density estimator on is a separate question, and the
-answer is not yet. Inverting an observed spike rate to an adoption rate divides by
-(d - f), so the estimate's precision is set by how well the two calibration constants are
-known rather than by how many buildings are scanned. On the present calibration (382
-positives, 100 to 200 negatives per size class) the 90% interval on a 10% adoption rate is
-about +/-9 pp at 100 to 500 m2 and unbounded below 100 m2, and it barely narrows with more
-buildings scanned. Roughly 3,000 of each per size class would bring it to +/-3 pp. See
-[the write-up](issues/glint-psf-matched-filter.md) for the propagation.
 
 ### Super-resolution
 

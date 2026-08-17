@@ -14,6 +14,15 @@
     applied to, and the filter that produced that quadrat set, while described as a
     precision filter, selects on density at a rank correlation of -0.58.
 
+    **Figures on this page are as measured on 2026-08-16 and have since moved**, with the
+    2026-08-17 [parcel label](../methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16):
+    Best estimate is now 19,745.9 MWp, sub-400 m<sup>2</sup> central 9,201.7 and the >= 400
+    m<sup>2</sup> replacement 7,405.0, so the two components this page is about now total
+    16,606.7 MWp, or 84% of Best. They are left as measured rather than restated, because the
+    audit script reproduces *those* totals. Nothing about the finding changes -- the parcel
+    label raises the same multiplier without touching where it is fit, so if anything slightly
+    more rides on the mismatch than when this was written.
+
 ## What the multiplier is and how much rides on it
 
 The roofclf half of the atlas is two components that share one formula:

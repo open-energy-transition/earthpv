@@ -41,8 +41,8 @@ spectral signature to differ from a PV-free roof of the same kind.
 
 ## The flow, end to end
 
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.879 AUC and 0.834 within roof-size band, and a deployment threshold of 0.2511 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 7,890 plus 7,189 plus 62 MWp, floored per cell at hand-mapped OSM plus the stricter 2,180 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.879 AUC and 0.834 within roof-size band, and a deployment threshold of 0.2511 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 7,890 plus 7,189 plus 62 MWp, floored per cell at hand-mapped OSM plus the stricter 2,180 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.874 AUC and 0.831 within roof-size band, and a deployment threshold of 0.2535 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 9,202 plus 7,405 MWp, floored per cell at hand-mapped OSM plus the stricter 2,647 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.874 AUC and 0.831 within roof-size band, and a deployment threshold of 0.2535 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 9,202 plus 7,405 MWp, floored per cell at hand-mapped OSM plus the stricter 2,647 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
 
 The six stages below follow the chart from top to bottom.
 
@@ -102,6 +102,100 @@ Two feature blocks are computed and left switched off by default, because the ab
 not support them: footprint shape (compactness, rectangularity, aspect ratio) and the
 segmentation and fraction rasters as inputs. See [the ablation](#what-the-pixels-actually-add)
 below.
+
+### The parcel label (`--parcel-label`, 2026-08-16)
+
+The roof term above is the geometric intersection of mapped PV with the footprint, so an
+array two metres off the wall contributes exactly zero to `pv_area_true_m2`, and therefore
+zero to the coverage ratio and zero to the area recall, on a building this classifier
+usually flags anyway. `--parcel-label` closes that by adding the mapped PV that sits off
+every footprint but within 20 m of one, attributed whole to its single nearest building.
+
+Three rules stop it double-counting. Each installation has the footprints it intersects
+subtracted before the remainder is measured, so the roof and yard terms partition one
+polygon. The remainder goes to one building, not to every building in range. And anything
+at or above 400 m<sup>2</sup> is skipped entirely, because above that floor ground-mount
+belongs to segmentation and the atlas already counts it there. The 20 m ring also sits
+inside the 30 m radius the OSM and candidate dedup masks already use, so nothing it picks
+up can survive a dedup that a nearby mapped feature should have removed.
+
+**Two different things arrive in that term, and the table keeps them apart.** Measured
+across the 27 quadrats:
+
+| Term | Area | Share of parcel PV |
+| --- | --- | --- |
+| `pv_area_roof_m2` | 1,763,024 m<sup>2</sup> | 92.3% |
+| `pv_area_yard_ground_m2` (OSM `placement=ground`) | 29,764 m<sup>2</sup> | 1.6% |
+| `pv_area_yard_overhang_m2` (rooftop PV past its VIDA outline) | 117,003 m<sup>2</sup> | 6.1% |
+
+Only the middle row is the small ground-mounted PV the widening was built for. Most of what
+it adds is mapped rooftop PV whose polygon extends past an imagery-derived VIDA footprint,
+which is a real undercount in the roof-only label rather than ground-mount: VIDA outlines
+are routinely undersized or a metre or two off. Including it is self-consistent, because an
+undersized footprint shrinks the calibration denominator and the national flagged roof area
+by the same bias, so the ratio still transfers. But it means the resulting capacity figure
+is not "rooftop plus ground-mount" in the proportion the headline suggests, and both
+capacity summaries carry a `parcel_label_composition` block reporting the split for exactly
+that reason.
+
+What the label costs and what it moves, both measured on the same 27 quadrats:
+
+| | roof-only | parcel |
+| --- | --- | --- |
+| median fold AUC | 0.8786 | 0.8735 |
+| within-size AUC | 0.8342 | 0.8312 |
+| deployment threshold (precision 0.5) | 0.2511, recall 0.634 | 0.2535, recall 0.633 |
+| `rate_ratio`-trusted quadrats | 16 | 17 |
+| sub-400 m<sup>2</sup> pooled coverage ratio | 0.1935 | 0.2096 |
+| sub-400 m<sup>2</sup> pooled area recall | 0.8179 | 0.8041 |
+| >= 400 m<sup>2</sup> pooled coverage ratio | 0.2313 | 0.2303 |
+
+The small AUC cost is expected rather than a regression: the parcel label is a harder target,
+adding 817 positives whose evidence lies partly outside the footprint the features describe.
+The capacity effect runs the other way, and almost entirely through the sub-400 m<sup>2</sup>
+half: a coverage ratio 8.3% higher divided by an area recall 1.7% lower.
+
+Scored nationally (4,470 cells, 75.7M buildings) and run through the full capacity chain, it
+moves every roofclf-derived component:
+
+| Component | roof-only | parcel |
+| --- | --- | --- |
+| sub-400 m<sup>2</sup> central | 7,890.2 MWp | 9,201.7 MWp |
+| sub-400 m<sup>2</sup> AND-gate (the internal floor's small-PV half) | 2,179.7 MWp | 2,647.0 MWp |
+| >= 400 m<sup>2</sup> roofclf rooftop replacement | 7,189.4 MWp | 7,405.0 MWp |
+| Best estimate | 18,218.4 MWp | 19,745.9 MWp |
+| Best estimate 90% CI | 14,346 to 21,768 | 16,051 to 23,520 |
+
+About two thirds of the sub-400 m<sup>2</sup> move is the larger flagged population (1.24M to
+1.36M buildings in-domain, since the widened label has 5% more positives and the
+precision-targeted threshold recalibrates to them) and one third the higher coverage ratio.
+
+**Unlike the 2026-08-15 recall correction, this one moves the internal floor too**, from
+5,389.5 to 5,856.8 MWp. That is intended and does not weaken the floor's meaning. The recall
+correction was kept out of the AND-gate tiers because it extrapolates to installations neither
+detector saw, which a floor may not do. The parcel label does the opposite: it prices the
+buildings both detectors already agree on more completely, using PV that is mapped and
+measured on those same parcels.
+
+!!! note "Published 2026-08-17"
+
+    These are the published figures. The parcel label passed its
+    [random-cell manual validation](roofclf-national-validation.md) (20 cells, seed 20260817,
+    tiles in `results/pakistan_roofclf_parcel_validation/`), reviewed by the repository owner,
+    and the calibration and national scoring were promoted to the canonical paths
+    (`data/roofclf/`, `data/roofclf_national_with_sppi/<aoi>/`). The roof-only versions they
+    replaced are kept alongside as `*_PRE_20260817_parcel_label`, so every pre-widening figure
+    remains reproducible.
+
+**The yard feature block does not ship.** `yard_features` computes the same statistics over
+the yard that the roof block computes over the footprint, partitioned by a distance-transform
+Voronoi so no pixel is credited to two buildings, plus SPPI, the strongest single spectral
+discriminator for a yard array. Against the parcel label itself it still loses to the
+roof-only feature set (median fold AUC 0.8712 against 0.8734, and 0.7538 for the yard block
+alone against a 0.7382 size-only baseline). The reason is in the table above: 80% of what
+the parcel label adds is rooftop PV that roof features already see, and the ground-mounted
+term is 1.6% of quadrat PV area, too small to move a 118,755-row fit. It stays available
+behind `--yard-features` for re-measurement once cropland quadrats exist.
 
 ## 3. The model, and how skill is measured
 
@@ -258,14 +352,14 @@ The coverage ratio is now fitted per roof-size bin and per building-density band
 
 | Component | Population | MWp |
 | --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,180 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 7,890 |
-| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 7,189 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,647 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 9,202 |
+| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 7,405 |
 | Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 62 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 18,218.4 MWp (90%
-range 14,346 to 21,768)** -- the first three rows only. The fourth was dropped from the
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 19,745.9 MWp (90%
+range 16,051 to 23,520)** -- the first three rows only. The fourth was dropped from the
 published atlas on 2026-08-15 (see the last bullet below); its capacity function and CLI
 flag remain for anyone who wants that estimate explicitly.
 

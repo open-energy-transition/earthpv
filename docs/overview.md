@@ -16,8 +16,8 @@ pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 </div>
 
 <div class="stats" markdown>
-<div class="stat"><span class="value">18,218 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 14,346 to 21,768)</span></div>
-<div class="stat"><span class="value">8,616 / 7,890 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
+<div class="stat"><span class="value">19,746 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 16,051 to 23,520)</span></div>
+<div class="stat"><span class="value">8,832 / 9,202 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
 </div>
 
 ## Build PV capacity maps for every country

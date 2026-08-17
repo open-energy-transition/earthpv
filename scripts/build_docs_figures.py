@@ -1001,23 +1001,22 @@ ROOFCLF_H = 1064
 # their own alt text until 2026-08-15. Re-transcribe them in the same commit as any
 # pipeline run that moves the atlas, and check the numbers in `docs/methods/roofclf.md`'s
 # image alt text against them.
-# data/roofclf/summary.json (27-quadrat refit, 2026-08-13)
+# data/roofclf/summary.json (27-quadrat parcel-label refit, 2026-08-17)
 ROOFCLF_STATS = {
     "n_quadrats": 27,
-    "auc": 0.879,
-    "auc_within_size": 0.834,
-    "threshold": 0.2511,
+    "auc": 0.874,
+    "auc_within_size": 0.831,
+    "threshold": 0.2535,
     "precision": 0.50,
     "recall": 0.63,
 }
-# data/roofclf_national_with_sppi/pakistan/density/*_summary.json (recall-corrected, 2026-08-15)
+# data/roofclf_national_with_sppi/pakistan/density/*_summary.json (parcel label, 2026-08-17)
 ROOFCLF_CAPACITY = {
     "n_domain_cells": 2957,
     "n_national_cells": 4463,
-    "verified_sub400": 2180,
-    "best_sub400": 7890,
-    "best_ge400_roof": 7189,
-    "best_outdomain": 62,
+    "verified_sub400": 2647,
+    "best_sub400": 9202,
+    "best_ge400_roof": 7405,
 }
 
 
@@ -1134,7 +1133,7 @@ def build_roofclf_svg(t: Theme) -> str:
     xf, wf = _row_x(1, gap=60)
     box("f1", xf[0], 894, wf, 94, "Best estimate",
         [f"roofclf alone in domain {cap['best_sub400']:,} MWp, plus {cap['best_ge400_roof']:,} MWp of "
-         f">= 400 m2 roofs, plus {cap['best_outdomain']} MWp extrapolated outside it -- floored per cell "
+         f">= 400 m2 roofs -- floored per cell "
          f"at hand-mapped OSM plus the stricter {cap['verified_sub400']:,} MWp roofclf-AND-SPPI population, "
          "two instruments that share no training data"], stroke=t.s1)
 

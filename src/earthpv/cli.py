@@ -541,6 +541,27 @@ def roof_classifier_cmd(
     ),
     labels_dir: Path = typer.Option(Path("data/labels")),
     out_dir: Path = typer.Option(Path("data/roofclf")),
+    parcel_label: bool = typer.Option(
+        False, "--parcel-label/--no-parcel-label",
+        help="Score the PARCEL, not just the roof: widen pv_area_true_m2 to include "
+        "mapped PV within 20 m of the footprint (below the 400 m2 segmentation floor) "
+        "and add the yard feature block. Changes what every downstream coverage-ratio "
+        "and area-recall correction measures, so use a separate --out-dir and rescore "
+        "nationally before feeding sub400-capacity. Default off = the roof-only label "
+        "every published atlas figure was built on.",
+    ),
+    yard_features: bool = typer.Option(
+        False, "--yard-features/--no-yard-features",
+        help="Also put the yard feature block IN the model (needs --parcel-label). "
+        "Measured 2026-08-16 and left off: it loses to the roof-only feature set even "
+        "against the parcel label (0.8712 vs 0.8734 median fold AUC). Kept for "
+        "re-measurement, not for deployment.",
+    ),
+    table_path: Path = typer.Option(
+        None, help="Refit from an existing buildings.geoparquet instead of rebuilding "
+        "every quadrat table (about ten minutes). For feature-set comparisons: the table "
+        "does not depend on the feature list.",
+    ),
 ) -> None:
     """Per-building PV classifier on the fully-mapped quadrats: the sub-400 m2 instrument.
 
@@ -548,13 +569,18 @@ def roof_classifier_cmd(
     question at one mixed pixel. Reports leave-one-quadrat-out AUC against the segmentation
     and fraction-head baselines, and measures the absolute-scale anchor that
     `density --exp-scale` needs.
+
+    With `--parcel-label` the question becomes "does this parcel carry PV?", which is what
+    closes the accounting gap on small ground-mounted arrays beside a building -- see
+    docs/issues/small-ground-mount-instrument.md.
     """
     from earthpv.roofclf import run_roof_classifier
 
     run_roof_classifier(
         aoi=aoi, quadrats=list(quadrat) if quadrat else None, composites=composites,
         seg_prob_dir=seg_prob_dir, frac_prob_dir=frac_prob_dir, labels_dir=labels_dir,
-        out_dir=out_dir,
+        out_dir=out_dir, parcel_label=parcel_label, include_yard_features=yard_features,
+        table_path=table_path,
     )
 
 
@@ -711,6 +737,11 @@ def sub400_capacity_cmd(
     out_dir = Path(out_dir) if out_dir else roofclf_dir.parent / "density"
     out_dir.mkdir(parents=True, exist_ok=True)
     calib_dir = Path(calib_dir)
+    # Two national scorings can coexist (roof-only and parcel-label); pairing one with the
+    # other's calibration is silently wrong rather than an error, so check the fingerprint.
+    from earthpv.roofclf import check_scoring_matches_calibration
+
+    check_scoring_matches_calibration(roofclf_dir, calib_dir)
     candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
     folds_path = calib_dir / "folds.csv"
     buildings_path = calib_dir / "buildings.geoparquet"
@@ -851,6 +882,9 @@ def ge400_roof_capacity_cmd(
     out_dir = Path(out_dir) if out_dir else roofclf_dir.parent / "density"
     out_dir.mkdir(parents=True, exist_ok=True)
     calib_dir = Path(calib_dir)
+    from earthpv.roofclf import check_scoring_matches_calibration
+
+    check_scoring_matches_calibration(roofclf_dir, calib_dir)
     folds_path = calib_dir / "folds.csv"
     buildings_path = calib_dir / "buildings.geoparquet"
 

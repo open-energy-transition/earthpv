@@ -20,6 +20,8 @@ Stages, each runnable on its own:
     parcels     builds one row per in-boundary VIDA building carrying three feature blocks
                 (roof, yard, both) plus a ground-mount label, to `data/ground_mount/`
     evaluate    leave-one-quadrat-out AUC and precision-at-recall on that table
+    andgate     whether requiring yard-SPPI and roofclf to agree, the way the atlas's
+                sub-400 m2 rooftop floor does, rescues precision here
 
 Definitions that matter and are easy to get wrong:
 
@@ -433,6 +435,69 @@ def cmd_evaluate(_args) -> None:
     _capacity_scale(df, dens)
 
 
+# --------------------------------------------------------------------------------------
+def cmd_andgate(_args) -> None:
+    """Does agreement between yard-SPPI and roofclf rescue precision? (No.)
+
+    The atlas's sub-400 m2 rooftop floor is an AND-gate: roofclf and SPPI have to agree.
+    The obvious transfer of that idea to ground-mount is to AND a yard-SPPI flag with a
+    roofclf flag on the host building. Measured here rather than assumed, because the two
+    instruments read different surfaces in this configuration (roofclf reads the roof, the
+    evidence is in the yard) and so are not the same kind of second opinion they are on the
+    rooftop task.
+
+    Both scores are rank-normalised WITHIN quadrat before gating: SPPI's absolute scale
+    spans 18x across quadrats (`docs/issues/sppi-spectral-index-evaluation.md`), so a
+    national absolute threshold would gate on quadrat brightness rather than on PV. The
+    roofclf stand-in is the roof-only leave-one-quadrat-out logistic used in `evaluate`,
+    not the deployed national scores, so this is an upper bound on what the real classifier
+    contributes: it is fit on this label.
+
+    Scoped to buildings with at least one yard pixel, the only ones a yard gate can score.
+    """
+    df = pd.read_parquet(OUT / "parcels.parquet")
+    df["log_roof_area"] = np.log10(df.roof_area_m2.clip(lower=1.0))
+    roof = (["log_roof_area", "bf_confidence"] + [f"roof_{b}" for b in BAND_NAMES]
+            + [f"roof_{d}" for d in DERIV])
+    df["roofclf_like"] = _loqo(df, roof, "has_gm")
+    for c in ("roofclf_like", "yard_sppi_max"):
+        df[c + "_r"] = df.groupby("quadrat", group_keys=False)[c].rank(pct=True)
+
+    d = df[np.isfinite(df.roofclf_like_r) & np.isfinite(df.yard_sppi_max_r)]
+    y = d.has_gm.to_numpy(bool)
+    a_r, b_r = d.roofclf_like_r.to_numpy(), d.yard_sppi_max_r.to_numpy()
+    print(f"{len(d):,} buildings with yard pixels, {int(y.sum())} positives, "
+          f"base rate {y.mean():.5f}")
+    print(f"{'gate':>20s} {'flagged':>9s} {'TP':>4s} {'prec':>8s} {'recall':>7s} {'lift':>6s}")
+    for q in (0.90, 0.95, 0.98, 0.99):
+        a, b = a_r >= q, b_r >= q
+        for name, m in ((f"roofclf p{q*100:.0f}", a), (f"yard-SPPI p{q*100:.0f}", b),
+                        (f"AND p{q*100:.0f}", a & b), (f"OR p{q*100:.0f}", a | b)):
+            if not m.any():
+                continue
+            prec = y[m].mean()
+            print(f"{name:>20s} {m.sum():9,d} {int(y[m].sum()):4d} {prec:8.4f} "
+                  f"{y[m].sum()/y.sum():7.3f} {prec/y.mean():6.1f}x")
+
+    # Best AND anywhere on the two-threshold surface, at a recall a capacity component
+    # could live with. Reported with its own thresholds: where the optimum puts them is
+    # the actual finding.
+    best = None
+    for qa in np.arange(0.50, 0.99, 0.01):
+        for qb in np.arange(0.50, 0.99, 0.01):
+            m = (a_r >= qa) & (b_r >= qb)
+            if m.sum() == 0 or y[m].sum() / y.sum() < 0.20:
+                continue
+            if best is None or y[m].mean() > best[0]:
+                best = (y[m].mean(), y[m].sum() / y.sum(), qa, qb, int(m.sum()))
+    if best is None:
+        print("\nno AND operating point reaches 20% recall")
+    else:
+        print(f"\nbest AND at >=20% recall: precision {best[0]:.4f} recall {best[1]:.3f} "
+              f"at roofclf p{best[2]*100:.0f} / SPPI p{best[3]*100:.0f} "
+              f"({best[4]:,} flagged)")
+
+
 def _quadrat_area_km2(df: pd.DataFrame) -> pd.Series:
     """Quadrat areas in km2, read back from the boundary files."""
     out = {}
@@ -502,7 +567,7 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name, fn in (("census", cmd_census), ("national", cmd_national),
                      ("searchspace", cmd_searchspace), ("parcels", cmd_parcels),
-                     ("evaluate", cmd_evaluate)):
+                     ("evaluate", cmd_evaluate), ("andgate", cmd_andgate)):
         sub.add_parser(name).set_defaults(fn=fn)
     args = ap.parse_args()
     args.fn(args)
