@@ -3,8 +3,8 @@
 The 10-band stack (config.LOCAL_BANDS) mixes native-10 m bands (B02,B03,B04,B08) with
 native-20 m bands (B05,B06,B07,B8A,B11,B12) that arrive at the 10 m grid pre-resampled
 (naive bilinear/nearest at the compose stage). SWIR (B11/B12) is among the strongest
-PV/soil/roof discriminators, so a guided pansharpening-style fusion — using the real
-10 m bands as a spatial-detail donor — could sharpen it for free (no new imagery, no
+PV/soil/roof discriminators, so a guided pansharpening-style fusion - using the real
+10 m bands as a spatial-detail donor - could sharpen it for free (no new imagery, no
 retraining input format change, just a preprocessing step compose already has all the
 bands for).
 
@@ -12,14 +12,14 @@ Two measurements, both offline on existing chip tifs (data/chips/<aoi>/{images,m
 
 1. **Wald-protocol fidelity**: B08 is a *native* 10 m band, so it doubles as ground
    truth for a controlled test. Simulate "B08 as if it were 20 m" (block-mean downsample
-   + bilinear upsample back to the 10 m grid — the same degradation a real 20 m band
+   + bilinear upsample back to the 10 m grid - the same degradation a real 20 m band
    would show), then reconstruct it with SFIM fusion (Liu 2000: fused = naive_upsampled
    * guide / lowpass(guide), using B04 as the detail donor) and compare RMSE/SSIM against
    the naive upsample, against the REAL B08. This validates the fusion algorithm itself
    without touching a real 20 m band.
 2. **Practical separability**: apply the identical fusion to the real B11 (already
    arrives naive-resampled in the chip tif) and check whether it increases the
-   PV-vs-background pixel separation (Cohen's d) using each chip's own label mask —
+   PV-vs-background pixel separation (Cohen's d) using each chip's own label mask -
    the thing that would actually matter for detection.
 
 No new imagery, no retraining: this is a fast, offline, resumable-free single pass over
@@ -56,7 +56,7 @@ EPS = 1e-3
 
 
 def _downup(a: np.ndarray, factor: int = 2) -> tuple[np.ndarray, tuple[int, int]]:
-    """Block-mean downsample by `factor` then bilinear upsample back — simulates the
+    """Block-mean downsample by `factor` then bilinear upsample back - simulates the
     resolution loss (not just the resampling) a native-20 m band actually has."""
     h, w = a.shape
     h2, w2 = h - h % factor, w - w % factor
@@ -172,10 +172,10 @@ if __name__ == "__main__":
           f"(Cohen's d, {len(sep)}/{len(df)} chips had both classes):")
     print(f"  naive={sep.sep_naive_d.mean():.3f}  fused={sep.sep_fused_d.mean():.3f}")
     verdict = (
-        "POSITIVE — fusion improves both fidelity and separability; worth landing as a "
+        "POSITIVE - fusion improves both fidelity and separability; worth landing as a "
         "compose option."
         if df.rmse_fused.mean() < df.rmse_naive.mean() and sep.sep_fused_d.mean() > sep.sep_naive_d.mean()
-        else "NEGATIVE/MIXED — naive resampling is already adequate; not worth the added "
+        else "NEGATIVE/MIXED - naive resampling is already adequate; not worth the added "
              "compose complexity."
     )
     print(f"\nVerdict: {verdict}")

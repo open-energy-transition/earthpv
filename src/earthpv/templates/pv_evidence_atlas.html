@@ -1264,29 +1264,29 @@ out meta geom;</div>
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
       { key: "osm_unmatched_roof", method: "osm", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
-        label: "OSM hand-mapped — rooftop (not already found by the model)" },
+        label: "OSM hand-mapped - rooftop (not already found by the model)" },
       { key: "osm_unmatched_ground", method: "osm", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
-        label: "OSM hand-mapped — ground-mount (not already found by the model)" },
+        label: "OSM hand-mapped - ground-mount (not already found by the model)" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
         label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)" },
       { key: "seg_roof_outdomain", method: "seg", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
-        label: "TerraMind segmentation — rooftop, outside the calibrated domain" },
+        label: "TerraMind segmentation - rooftop, outside the calibrated domain" },
       { key: "seg_ground", method: "seg", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
-        label: "TerraMind segmentation — ground-mount (every cell; roofclf has no footprint there)" },
+        label: "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)" },
       { key: "ge400_roof", method: "roofclf", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
-        label: "roofclf — ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain" },
+        label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain" },
       { key: "small_central", method: "roofclf", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
-        label: "roofclf alone — sub-400 m² rooftop, coverage ratio and recall, density-calibrated" },
+        label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated" },
       { key: "small_outdomain", method: "sppi", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
-        label: "roofclf + SPPI agreement — sub-400 m², extrapolated outside the calibrated domain" },
+        label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain" },
     ];
     const verified = [
       { key: "osm_roof", method: "osm", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
-        label: "OSM hand-mapped — rooftop (all of it, matched or not)" },
+        label: "OSM hand-mapped - rooftop (all of it, matched or not)" },
       { key: "osm_ground", method: "osm", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
-        label: "OSM hand-mapped — ground-mount (all of it, matched or not)" },
+        label: "OSM hand-mapped - ground-mount (all of it, matched or not)" },
       { key: "small_low", method: "sppi", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
-        label: "roofclf + SPPI agreement — sub-400 m², inside the calibrated domain" },
+        label: "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain" },
     ];
     return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
   }
@@ -1342,7 +1342,7 @@ out meta geom;</div>
     document.getElementById("compLegend").innerHTML = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
       `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}</div>`).join("");
     document.getElementById("compVerifiedLabel").textContent =
-      `Verified (the floor) — ${fmt(T.mwp_verified)} MWp, for comparison`;
+      `Verified (the floor) - ${fmt(T.mwp_verified)} MWp, for comparison`;
 
     renderCompStack("compStackBest", "compTipBest", best, T.mwp_best, 8);
     renderCompStack("compStackVerified", "compTipVerified", verified, T.mwp_verified, 8);

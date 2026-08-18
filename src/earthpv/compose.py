@@ -1,8 +1,8 @@
 """Build Sentinel-2 composites for an AOI's building-populated cells via STAC.
 
 For regions with no local composites (e.g. Punjab), rooftop PV can only exist where
-there are roofs, so we composite only 0.1 deg cells that contain buildings — the
-meaningful search space — prioritised by building density (cities first). Output
+there are roofs, so we composite only 0.1 deg cells that contain buildings - the
+meaningful search space - prioritised by building density (cities first). Output
 COGs mirror the rooftopsenti layout (`<cell>/composite_0.tif`) so CompositeIndex
 and infer consume them unchanged. Resumable: existing cells are skipped.
 """
@@ -38,11 +38,11 @@ def _fold_name(s: str) -> str:
 
 def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame | None:
     """Boundary polygon for the AOI. Prefer the AOI-named region (e.g. punjab_500)
-    over source_region — source_region supplies imagery/buildings and may cover a
+    over source_region - source_region supplies imagery/buildings and may cover a
     different, larger area (e.g. pakistan_500 = Balochistan+Sindh).
 
     AOIs with no local rooftopsenti dataset at all (e.g. a fresh country/state with no
-    source_region) fall back to geoBoundaries ADM1, filtered to `division.name` — this
+    source_region) fall back to geoBoundaries ADM1, filtered to `division.name` - this
     is what keeps e.g. a "gujarat" AOI's cells from spilling into neighbouring states
     when only a loose bbox is configured.
     """
@@ -86,8 +86,8 @@ def _solar_label_cells(
     building pass so nothing outside the AOI leaks in.
 
     AOIs with no local source_region (no rooftopsenti OSM solar dataset downloaded)
-    have no efficient local label source — direct Overture S3 label queries time out
-    from this machine (see CLAUDE.md) — so this degrades to no label cells rather than
+    have no efficient local label source - direct Overture S3 label queries time out
+    from this machine (see CLAUDE.md) - so this degrades to no label cells rather than
     attempting one. Inference coverage (via building density) is unaffected either way.
     """
     if not cfg.get("source_region"):
@@ -116,13 +116,13 @@ def populated_cells(
     """0.1 deg cells within the AOI to composite, sorted by building density.
 
     A cell is selected if it has >= min_buildings buildings OR (when include_labels)
-    it contains an OSM solar polygon — so density coverage for finding new arrays is
+    it contains an OSM solar polygon - so density coverage for finding new arrays is
     unioned with full imagery coverage over every already-mapped one. Buildings are
     clipped to the AOI polygon (not just its bbox) so neighbouring provinces' cities
     in the shared building set don't leak in.
 
     `use_vida=True` forces VIDA Open Buildings for cell selection even when the AOI has
-    a `source_region` — the local rooftopsenti building set is Overture-only, filtered
+    a `source_region` - the local rooftopsenti building set is Overture-only, filtered
     to >= 500 m2, so it silently undercounts by 2-3 orders of magnitude wherever small
     (mostly residential) structures dominate and aren't individually mapped in OSM.
     VIDA is imagery-derived and doesn't have that gap.
@@ -145,7 +145,7 @@ def populated_cells(
         bx_all, by_all = rep.x.values, rep.y.values
     else:
         # No local rooftopsenti dataset for this AOI (e.g. a new country/state), or VIDA
-        # was explicitly requested — fetch VIDA Open Buildings directly, bbox-pruned, the
+        # was explicitly requested - fetch VIDA Open Buildings directly, bbox-pruned, the
         # same source density.py already uses per-cell. Uses the local cached parquet
         # (data/vida/<iso3>.parquet) if present, else a bbox-pruned remote scan.
         #
@@ -273,7 +273,7 @@ def run_compose(
                 res = annual_composite(bbox, date_range=window, geobox=gbox, max_cloud=60)
             else:
                 res = annual_composite(bbox, date_range=window) if window else annual_composite(bbox)
-        except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
+        except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
             log.warning("cell %s failed: %s", name, e)
             return False
         if res is None:

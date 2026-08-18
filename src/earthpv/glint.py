@@ -5,7 +5,7 @@ glint when the panel normal bisects the sun and view vectors (both pointing
 up from the ground), n ~ (s + v)/|s + v|. Sentinel-2 views near-nadir
 (view zenith 0..~12 deg), so a fixed panel glints only when its tilt is close
 to half the solar zenith and its azimuth close to the solar azimuth at the
-~10:30 local overpass — narrow, predictable date windows.
+~10:30 local overpass - narrow, predictable date windows.
 
 This module provides
 - the specular geometry (required orientation / misalignment angle),
@@ -103,7 +103,7 @@ def misalignment_deg(
 
 @lru_cache(maxsize=1)
 def _sky():
-    """(timescale, earth, sun) — ephemeris cached under data/skyfield/."""
+    """(timescale, earth, sun) - ephemeris cached under data/skyfield/."""
     from skyfield.api import Loader
 
     SKYFIELD_DIR.mkdir(parents=True, exist_ok=True)
@@ -317,8 +317,8 @@ def parse_tile_angles(xml_text: str, band_id: int = 3) -> TileAngles:
 # 503 storms and SAS-token expiries under sustained load; Earth Search (AWS Open Data)
 # needs no auth/tokens and lives in a different failure domain. Unlike imagery.py's
 # per-cell composite (which needs every scene, so it falls back for the whole cell),
-# scene_series tolerates losing individual scenes — spike detection just needs "enough"
-# dates — so the fallback triggers only when a provider yields nothing at all.
+# scene_series tolerates losing individual scenes - spike detection just needs "enough"
+# dates - so the fallback triggers only when a provider yields nothing at all.
 
 ES_STAC_URL = "https://earth-search.aws.element84.com/v1"
 # Earth Search keys assets by common band name, not B-number; also exposes the same
@@ -397,7 +397,7 @@ def _cached_tile_angles(item, provider: str) -> TileAngles:
 
 
 def _target_window(src, geometry, lon: float, lat: float):
-    """Window position/size + the target geometry in the dataset's native CRS —
+    """Window position/size + the target geometry in the dataset's native CRS -
     shared by `_read_target_stats` (aggregate percentile/median) and
     `_read_target_array` (raw pixel array, for glint-composite/alignment-check
     imagery). Depends only on the target's own footprint, not on scene content."""
@@ -418,7 +418,7 @@ def _target_window(src, geometry, lon: float, lat: float):
 
 def _read_target_array(src, geometry, lon: float, lat: float):
     """Raw windowed DN array (NaN for nodata) + its affine transform + the target
-    geometry in the array's CRS — the pixel-level analogue of `_read_target_stats`,
+    geometry in the array's CRS - the pixel-level analogue of `_read_target_stats`,
     which collapses to aggregate stats. For building a glint-composite image to
     visually/quantitatively check label-vs-imagery alignment (see
     scripts/glint_alignment_check.py)."""
@@ -429,13 +429,13 @@ def _read_target_array(src, geometry, lon: float, lat: float):
 
 
 def _read_target_stats(src, geometry, lon: float, lat: float) -> tuple[float, float, int]:
-    """(p98 inside geometry, annulus median, n inside pixels), raw DN (no BOA offset —
+    """(p98 inside geometry, annulus median, n inside pixels), raw DN (no BOA offset -
     that's a per-item constant, applied by the caller, not per-read), from an ALREADY
     -OPEN band dataset.
 
     Extracted from `_polygon_band_stats` so the tile-batched reader (opens the dataset
     once, calls this per target) and the original per-target path share one
-    implementation of the per-pixel math — the window read/mask/percentile logic is
+    implementation of the per-pixel math - the window read/mask/percentile logic is
     unavoidably per-target (each target has its own location), only the dataset open
     (and its HTTP session) is shared in the batched path.
     """
@@ -450,7 +450,7 @@ def _read_target_stats(src, geometry, lon: float, lat: float) -> tuple[float, fl
     if not inside.any():
         # Sub-pixel installation (common for small rooftop generators): the
         # strict mask selects no pixel centres. Fall back to every pixel the
-        # polygon touches — p98 then reads the brightest touched pixel, which
+        # polygon touches - p98 then reads the brightest touched pixel, which
         # is exactly where a glint from a small array shows up.
         inside = rasterio.features.geometry_mask(
             [geom_native], arr.shape, wt, invert=True, all_touched=True
@@ -549,7 +549,7 @@ def _scl_cloud_row(
         with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
             tgt, ring, npx = _read_target_scl(src, geometry, lon, lat)
         return {"scl_cloud_frac": tgt, "scl_ring_cloud_frac": ring, "scl_npx": npx}
-    except Exception as e:  # noqa: BLE001 — a missing/unreadable SCL must not drop the scene
+    except Exception as e:  # noqa: BLE001 - a missing/unreadable SCL must not drop the scene
         log.debug("SCL read failed for %s: %s", item.id, e)
         return {"scl_cloud_frac": np.nan, "scl_ring_cloud_frac": np.nan, "scl_npx": 0}
 
@@ -572,7 +572,7 @@ def _scene_row(
         if use_scl:
             row.update(_scl_cloud_row(item, geometry, lon, lat, provider))
         return row
-    except Exception as e:  # noqa: BLE001 — per-scene failures shouldn't kill the pull
+    except Exception as e:  # noqa: BLE001 - per-scene failures shouldn't kill the pull
         log.debug("scene %s (%s) failed: %s", item.id, provider, e)
         return None
 
@@ -613,7 +613,7 @@ def scene_series(
     each band, plus the point's true sun/view angles from that scene's MTD_TL.xml.
     Tries Planetary Computer first (fastest from here when healthy) and falls back to
     Earth Search (AWS Open Data, no auth/tokens, different failure domain) only if PC
-    returns no scenes at all — individual PC scene-read failures (503 storms) are
+    returns no scenes at all - individual PC scene-read failures (503 storms) are
     already tolerated per-scene by `_scene_row`, so they don't trigger this. Empty
     DataFrame if neither archive has usable scenes in range.
     """
@@ -631,11 +631,11 @@ def scene_series(
 # --------------------------------------------------------------------------------------
 # Tile-batched fetch: the same per-target output as `scene_series`, for many targets at
 # once. One STAC search + one set of asset opens per spatial group, shared by every
-# target that falls in it, instead of one of each per target — the actual bottleneck at
+# target that falls in it, instead of one of each per target - the actual bottleneck at
 # scale is re-discovering the same scene list and re-opening the same COGs for every
 # candidate in a cluster, not the per-pixel math (see
 # docs/issues/glint-tile-batched-coverage.md). Feeds both `postprocess.add_glint_prior`
-# (detection) and `scripts/glint_spike_rate_estimator.py` (density) — same fetch, same
+# (detection) and `scripts/glint_spike_rate_estimator.py` (density) - same fetch, same
 # output schema, so neither's scoring/inversion logic needs to change.
 # --------------------------------------------------------------------------------------
 def _tile_key(lon: float, lat: float, tile_deg: float) -> tuple[int, int]:
@@ -658,7 +658,7 @@ def _read_targets_from_item(
     item, band: str, targets: list[tuple[str, object, float, float]], provider: str,
     return_array: bool = False, apply_offset: bool = True, scl: bool = False,
 ) -> dict[str, tuple[float, float, int]] | dict[str, np.ndarray]:
-    """Open one band asset once, read every target's window from it — the batched
+    """Open one band asset once, read every target's window from it - the batched
     analogue of `_polygon_band_stats`, sharing one dataset handle (and its HTTP
     session/connection) across all targets instead of reopening per target.
 
@@ -666,7 +666,7 @@ def _read_targets_from_item(
     tile-batch run (many groups, each with its own STAC search) can outlive a
     Planetary Computer SAS token's ~30-45 min lifetime (the same failure documented
     for `compose_loop.sh`), and re-reading an EXPIRED token's URL fails at
-    `rasterio.open()` — before any per-target try/except runs. Missed in the
+    `rasterio.open()` - before any per-target try/except runs. Missed in the
     original implementation: it crashed a 500-target country-wide revalidation run
     45 minutes in (`RasterioIOError: HTTP response code: 403`), losing the whole
     run's progress since `tile_scene_series_batch` has no cross-group checkpointing.
@@ -675,9 +675,9 @@ def _read_targets_from_item(
 
     `return_array=True` returns `(reflectance-offset-applied raw window array, its
     affine window transform, the dataset's native CRS)` per target instead of
-    collapsed stats — for a caller that needs pixel-level data (e.g. a per-pixel
+    collapsed stats - for a caller that needs pixel-level data (e.g. a per-pixel
     anomaly count) and a way to place each pixel back on the map. `apply_offset=False`
-    skips the BOA reflectance offset entirely — required for a classification band
+    skips the BOA reflectance offset entirely - required for a classification band
     like SCL, where the Earth Search radiometric-offset correction (`_boa_offset`)
     would corrupt the integer class codes rather than correct a reflectance DN.
     Must still be called from the SAME pass that
@@ -685,7 +685,7 @@ def _read_targets_from_item(
     only fresh right after the search that produced it (see
     `scripts/glint_cell_pixel_anomaly_pilot.py`'s first version, which cached
     `tile_scene_series_batch(keep_items=True)`'s item refs and re-opened them in a
-    later sequential per-cell loop — the first ~12 cells' reads landed inside the
+    later sequential per-cell loop - the first ~12 cells' reads landed inside the
     token's lifetime, every cell after that got 0 readable scenes, silently, because
     the per-target try/except caught the now-expired-token error as ordinary
     missing data rather than the true cause).
@@ -715,10 +715,10 @@ def _read_targets_from_item(
                     else:
                         p98, ring, npx = _read_target_stats(src, geometry, lon, lat)
                         out[pid] = (p98 + offset, ring + offset, npx)
-                except Exception as e:  # noqa: BLE001 — one bad target must not kill the batch
+                except Exception as e:  # noqa: BLE001 - one bad target must not kill the batch
                     log.debug("target %s failed on %s: %s", pid, href, e)
                     out[pid] = None if return_array else (np.nan, np.nan, 0)
-    except Exception as e:  # noqa: BLE001 — an unopenable asset (expired token, 503
+    except Exception as e:  # noqa: BLE001 - an unopenable asset (expired token, 503
         log.debug("failed to open %s: %s", href, e)  # storm) must not kill the batch
         for pid, _geometry, _lon, _lat in targets:
             out[pid] = None if return_array else (np.nan, np.nan, 0)
@@ -735,7 +735,7 @@ def tile_scene_series_batch(
 
     `targets` needs columns `pid`, `geometry` (WGS84 point or small polygon), `lon`,
     `lat`. Groups targets into `tile_deg`-degree bins (a plain lon/lat grid, not a
-    literal MGRS tile lookup — cheaper to compute and just as effective an
+    literal MGRS tile lookup - cheaper to compute and just as effective an
     amortization proxy: correctness of each target's read comes from its own
     coordinate transform into whichever scene's native CRS covers it, not from the
     grouping, so an imperfect group/tile alignment only costs a few wasted item-opens
@@ -746,12 +746,12 @@ def tile_scene_series_batch(
 
     Returns `{pid: DataFrame}`, one row per scene, with the SAME columns
     `scene_series`/`_scene_row` produce (`time`, `cloud`, sun/view angles,
-    `p98_<band>`/`ring_<band>` per band, `npx`) — every downstream consumer
+    `p98_<band>`/`ring_<band>` per band, `npx`) - every downstream consumer
     (`spike_fit`, `annotate_spikes`, `add_glint_prior`) is unchanged. Missing pids (no
     scenes found in range) come back as empty DataFrames, matching `scene_series`.
 
     `keep_items=True` adds `_item`/`_provider` columns (the STAC item object + which
-    catalog it came from) alongside the stats — for a consumer that needs to go back
+    catalog it came from) alongside the stats - for a consumer that needs to go back
     and re-read pixel-level data for specific scenes afterward (e.g. building a glint
     composite image, see `scripts/glint_alignment_check.py`), without a second search.
     Off by default: item objects aren't parquet/CSV-serializable, and no production
@@ -770,14 +770,14 @@ def tile_scene_series_batch(
         provider = "planetary-computer"
         try:
             items = _search_items_bbox(provider, bbox, start, end, max_cloud)
-        except Exception as e:  # noqa: BLE001 — one bad group search must not kill the run
+        except Exception as e:  # noqa: BLE001 - one bad group search must not kill the run
             log.warning("tile-batch group %d: PC search failed (%s), trying Earth Search", gi, e)
             items = []
         if not items:
             provider = "earth-search"
             try:
                 items = _search_items_bbox(provider, bbox, start, end, max_cloud)
-            except Exception as e:  # noqa: BLE001 — same: skip the group, not the whole run
+            except Exception as e:  # noqa: BLE001 - same: skip the group, not the whole run
                 log.warning("tile-batch group %d: Earth Search also failed (%s), skipping", gi, e)
                 items = []
         if not items:
@@ -785,7 +785,7 @@ def tile_scene_series_batch(
             continue
         # Do NOT dedupe items by date here: near a real tile-overlap seam, two items
         # sharing a date-minute key can cover DIFFERENT (only partially-overlapping)
-        # footprints — a group-wide "keep the alphabetically-first id" tie-break can
+        # footprints - a group-wide "keep the alphabetically-first id" tie-break can
         # silently keep the item that does NOT cover a given target while dropping the
         # one that does, since `TileAngles.at()` always returns an angle via its
         # nearest-finite-node fallback even for a point outside real coverage (masking
@@ -801,7 +801,7 @@ def tile_scene_series_batch(
         def _process_item(item):
             try:
                 ta = _cached_tile_angles(item, provider)
-            except Exception as e:  # noqa: BLE001 — one bad scene shouldn't kill the group
+            except Exception as e:  # noqa: BLE001 - one bad scene shouldn't kill the group
                 log.debug("tile-angles failed for %s: %s", item.id, e)
                 return []
             band_results = {
@@ -834,7 +834,7 @@ def tile_scene_series_batch(
                     if keep_items:
                         row["_item"], row["_provider"] = item, provider
                     out.append(row)
-                except Exception as e:  # noqa: BLE001 — per-target failures shouldn't
+                except Exception as e:  # noqa: BLE001 - per-target failures shouldn't
                     log.debug("target %s on %s failed: %s", pid, item.id, e)  # kill the scene
             return out
 
@@ -843,13 +843,13 @@ def tile_scene_series_batch(
             for f in as_completed(futs):
                 try:
                     rows = f.result()
-                except Exception as e:  # noqa: BLE001 — one bad item must not kill the group
+                except Exception as e:  # noqa: BLE001 - one bad item must not kill the group
                     log.debug("item %s failed: %s", futs[f].id, e)
                     continue
                 for row in rows:
                     all_rows[row["pid"]].append(row)
 
-    # Per-target, per-date dedup: keep whichever item actually had data (max npx) —
+    # Per-target, per-date dedup: keep whichever item actually had data (max npx) -
     # the correctness fix described above. Applied here (once, in pandas) rather than
     # per-target during the fetch, since "best of several items for this date" can only
     # be decided once every item's read is in.
@@ -910,7 +910,7 @@ def annotate_spikes(
       discarding every scene it cannot classify.
 
     - **Spatial** (default, `self_referenced=False`): the surrounding annulus must
-      stay dim *right now* — `a > 1.5 * r` on this date. Requires the ring to be
+      stay dim *right now* - `a > 1.5 * r` on this date. Requires the ring to be
       darker than the target in absolute terms, which holds for the rural/mixed
       imagery this was validated on but breaks down in dense urban blocks: with
       ~2,500 buildings/km² of similar-brightness rooftops, the ring is *never*
@@ -919,13 +919,13 @@ def annotate_spikes(
       ratio over a full year on a confirmed 503 m² Lahore rooftop, ~480 m² of it
       mapped PV, was 1.09).
     - **Self-referenced** (`self_referenced=True`): instead of comparing the target to
-      its neighbours *now*, compare the ring to *its own* history — the ring must
+      its neighbours *now*, compare the ring to *its own* history - the ring must
       stay within `ring_k_sigma` of its own clear-day baseline. This never depends on
       the ring's absolute brightness, only on whether it moved, so it targets exactly
       the dense-urban failure mode above (no need for the target to outshine
       permanently-bright neighbours) while keeping the same protection against
       neighbourhood-wide brightening (a hazy day moves the ring away from its own
-      baseline either way — clouds/haze don't care whether the roof next door is
+      baseline either way - clouds/haze don't care whether the roof next door is
       bright or dark).
 
     Adds `a_*`/`r_*` (in-polygon / annulus reflectance), `clear`, `spike`,
@@ -1016,7 +1016,7 @@ def fit_best_orientation(
     annotated: pd.DataFrame, tol_deg: float = 3.0,
 ) -> tuple[float, float, int] | None:
     """Among an `annotate_spikes` frame's spike dates, the (tilt, az, n_consistent)
-    that the largest number of them agree on via the specular condition — the
+    that the largest number of them agree on via the specular condition - the
     geometric signature a coincidental bright pixel wouldn't have. None with fewer
     than 2 spikes (a single spike can't be checked for self-consistency).
 
@@ -1053,12 +1053,12 @@ def spike_fit(
     """Detect glint spikes in a `scene_series` time series and fit one panel orientation.
 
     `self_referenced` swaps the spatial "ring must be dim now" check for a temporal
-    one ("ring must be near its own baseline now") — see `annotate_spikes`. Use it in
+    one ("ring must be near its own baseline now") - see `annotate_spikes`. Use it in
     dense urban contexts where a spatial ring is never meaningfully darker than the
     roof it surrounds.
 
     Returns a dict with n_scenes/n_clear/n_spikes/n_cloud_vetoed/fit_tilt/fit_az/
-    n_consistent — `fit_tilt`/`fit_az`/`n_consistent` are NaN/0 with fewer than 2 spikes (a
+    n_consistent - `fit_tilt`/`fit_az`/`n_consistent` are NaN/0 with fewer than 2 spikes (a
     single spike can't be checked for self-consistency and is not distinguishable from a
     one-off bright pixel). `n_cloud_vetoed` counts scenes dropped by the per-pixel SCL cloud
     gate, and is 0 both when nothing was cloudy and when the series has no SCL column at

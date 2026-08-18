@@ -4,11 +4,11 @@ Mirrors `scripts/merge_chip_index.py`'s train-row-oversampling logic exactly (va
 rows are never duplicated), but as a SEPARATE script rather than an edit to that
 one: the shared merger hardcodes both its input path pattern
 (`data/chips/<aoi>/index.parquet`) and its output path
-(`data/chips/combined/index.parquet`) — the index the *production segmentation*
+(`data/chips/combined/index.parquet`) - the index the *production segmentation*
 configs (`terramind_pv.yaml`, `terramind_pv_v3india.yaml`) depend on. Fraction
 chips don't all live under that same input pattern either (Germany's usable set
 is `data/chips_unfiltered/germany_fraction`, not `data/chips/germany_fraction`,
-which is the too-small well-mapped-filtered variant — see
+which is the too-small well-mapped-filtered variant - see
 `configs/terramind_pv_fraction.yaml`'s comment), so reusing the shared script
 as-is would need path overrides anyway.
 

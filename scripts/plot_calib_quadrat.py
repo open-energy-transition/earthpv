@@ -117,7 +117,7 @@ def main() -> None:
     bu.boundary.plot(ax=axes[0], color=BLD_EDGE, linewidth=0.35, alpha=0.85)
     pv_utm.boundary.plot(ax=axes[0], color=PV_EDGE, linewidth=1.0)
     axes[0].set_title(
-        f"Sentinel-2, 10 m — {len(pv_utm)} mapped installations\n"
+        f"Sentinel-2, 10 m - {len(pv_utm)} mapped installations\n"
         f"median {med:.0f} m²; {below:.1f}% below the 400 m² floor",
         fontsize=10, color=INK, loc="left", pad=8,
     )
@@ -136,7 +136,7 @@ def main() -> None:
         seg_mean_per_building * bu.roof_area_m2.to_numpy(), bu.roof_area_m2.to_numpy()
     ).sum())
     axes[1].set_title(
-        f"Segmentation model P(PV) — max {seg.max():.2f}\n"
+        f"Segmentation model P(PV) - max {seg.max():.2f}\n"
         f"predicts {seg_pred_m2:,.0f} m² vs {pv_area.sum():,.0f} m² mapped; "
         f"AUC {f.auc_seg_baseline:.3f}",
         fontsize=10, color=INK, loc="left", pad=8,
@@ -161,7 +161,7 @@ def main() -> None:
 
     cax = fig.add_axes([0.355, 0.075, 0.60, 0.022])
     cb = fig.colorbar(im, cax=cax, orientation="horizontal")
-    cb.set_label("P(PV)  —  same scale in both right-hand panels", color=DIM, fontsize=8)
+    cb.set_label("P(PV)  -  same scale in both right-hand panels", color=DIM, fontsize=8)
     cb.ax.tick_params(colors=DIM, labelsize=7.5)
     cb.outline.set_edgecolor(RULE)
 

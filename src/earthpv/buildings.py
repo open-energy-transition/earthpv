@@ -88,7 +88,7 @@ def fetch_vida_building_points(bbox: Bbox, iso3: str, con=None) -> pd.DataFrame:
     For country-scale scans (Pakistan has 76M+ VIDA buildings) `fetch_vida_buildings`
     OOMs: decoding tens of millions of WKB polygons into shapely objects costs far more
     memory than the buildings themselves. This is for callers that only need a point
-    per building (e.g. binning into cells for density-based cell selection) — it reads
+    per building (e.g. binning into cells for density-based cell selection) - it reads
     the parquet's own `bbox` struct (already used for row-group pruning) and returns its
     center, never touching the `geometry` column or DuckDB's spatial/GEOS layer at all.
     """

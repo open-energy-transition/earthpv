@@ -1,10 +1,10 @@
 """Calibrate/validate PV density model output against German MaStR ground truth.
 
 Works on *any* per-cell probability raster (segmentation prob or fraction-regression
-output — both are uint8/255-encoded, see infer.py) zonal-summed per municipality
+output - both are uint8/255-encoded, see infer.py) zonal-summed per municipality
 (Gemeinde, keyed by AGS) and compared against MaStR-reported rooftop PV capacity.
 This is deliberately separate from density.py: that stage's `cell_manifest` assumes
-~0.1deg cells, while Germany's local composites are 110 km MGRS tiles — a zonal join
+~0.1deg cells, while Germany's local composites are 110 km MGRS tiles - a zonal join
 straight from raster to municipality polygon is simpler and correct for both.
 
 Also derives an OSM/MaStR completeness ratio per Gemeinde, used to build a
@@ -62,7 +62,7 @@ def fetch_gemeinden(cache_dir: Path = Path("data/calibration")) -> gpd.GeoDataFr
     if not zip_path.exists():
         log.info("Downloading VG250 from %s", VG250_URL)
         tmp = zip_path.with_suffix(".zip.tmp")
-        urllib.request.urlretrieve(VG250_URL, tmp)  # noqa: S310 — fixed, trusted BKG URL
+        urllib.request.urlretrieve(VG250_URL, tmp)  # noqa: S310 - fixed, trusted BKG URL
         tmp.rename(zip_path)
 
     extract_dir = cache_dir / "vg250_extracted"
@@ -74,7 +74,7 @@ def fetch_gemeinden(cache_dir: Path = Path("data/calibration")) -> gpd.GeoDataFr
         raise FileNotFoundError(f"No .gpkg found in extracted VG250 archive at {extract_dir}")
     gdf = gpd.read_file(gpkgs[0], layer="vg250_gem")
 
-    # GF (Geofaktor) == 4: land area including structures — excludes water-only geometry
+    # GF (Geofaktor) == 4: land area including structures - excludes water-only geometry
     # duplicates for coastal/lake municipalities. Degrade gracefully if the column/value
     # differs in a future VG250 release rather than dropping all rows.
     if "GF" in gdf.columns and (gdf["GF"] == 4).any():
@@ -114,7 +114,7 @@ def zonal_model_area(
 ) -> pd.DataFrame:
     """Expected PV area (m2) per Gemeinde: sum of per-pixel value (>= min_prob) x 100 m2.
 
-    Only Gemeinden fully covered by a SINGLE raster are processed — Germany's MGRS
+    Only Gemeinden fully covered by a SINGLE raster are processed - Germany's MGRS
     composites overlap by ~10 km, so a straddling Gemeinde would otherwise be double- or
     partially-counted. Dropped counts are logged, not silently absorbed.
     """
@@ -281,7 +281,7 @@ def run_calibrate(
     out_dir = Path(out_dir)
     try:
         gemeinden = fetch_gemeinden(out_dir)
-    except Exception as e:  # noqa: BLE001 — degrade to the coarser fallback, don't abort
+    except Exception as e:  # noqa: BLE001 - degrade to the coarser fallback, don't abort
         log.warning("VG250 fetch failed (%s); falling back to Kreis-level boundaries", e)
         gemeinden = fetch_kreise_fallback(out_dir)
     if limit:
@@ -295,7 +295,7 @@ def run_calibrate(
     labels_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
     labels = load_solar_labels(labels_dir)
     # Completeness (OSM rooftop area vs MaStR kW) and the well-mapped flag are properties
-    # of the LABELS, independent of which raster tiles happen to be inferred yet — compute
+    # of the LABELS, independent of which raster tiles happen to be inferred yet - compute
     # them over the FULL national Gemeinde set so `well_mapped.parquet` is usable as a
     # chips.py region_filter for training anywhere, not just wherever prob rasters exist.
     completeness = osm_completeness(gemeinden, labels, mastr_df, kwp_per_m2=kwp_per_m2)
@@ -328,7 +328,7 @@ def run_calibrate(
     }, indent=2))
     try:
         _scatter_plot(joined, kwp_per_m2, out_dir / "calibration_scatter.png")
-    except Exception as e:  # noqa: BLE001 — plotting must not fail the run
+    except Exception as e:  # noqa: BLE001 - plotting must not fail the run
         log.warning("Scatter plot failed: %s", e)
 
     log.info("Calibration: %s", json.dumps(calibration, indent=2))

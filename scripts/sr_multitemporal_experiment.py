@@ -3,7 +3,7 @@
 Multi-image super-resolution only has something to reconstruct if repeat acquisitions
 sample the scene at different sub-pixel phases. Sentinel-2 L2A tiles are orthorectified
 onto a fixed UTM grid, so the achievable gain is an open empirical question, not a given
-— this script measures it directly rather than assuming a number, network-bound like the
+- this script measures it directly rather than assuming a number, network-bound like the
 glint pulls (reuses their STAC-search machinery: `earthpv.glint._search_items` /
 `_band_asset_key` / `_boa_offset`).
 
@@ -11,27 +11,27 @@ Per test point (~5 building-dense locations, reused from a chip index so they're
 scenes with structure), pull N clear single-date scenes over ~1 year of B08 at native
 10 m, then:
 
-1. **Sub-pixel phase diversity** — FFT phase-correlation shift of every scene against a
+1. **Sub-pixel phase diversity** - FFT phase-correlation shift of every scene against a
    reference, with a parabolic sub-pixel refinement. If the fractional part clusters at
    ~0 across pairs, revisits are already phase-locked (no MISR headroom); if it spreads
    across (0,1), there is real sub-pixel sampling diversity to exploit.
 2. **Leave-one-out self-consistency** (the decisive, ground-truth-free test): fuse all
    scenes but one via drizzle (each scene splatted onto a 2x grid at its estimated
    sub-pixel offset, then averaged), degrade the fused estimate back to native
-   resolution, and compare it against the held-out real scene — versus a plain
+   resolution, and compare it against the held-out real scene - versus a plain
    temporal-mean-of-the-rest baseline that uses the same scenes with no sub-pixel
    placement. If drizzle doesn't beat the mean baseline at predicting an independent
    real observation, its extra sharpness is arranging noise, not resolving structure.
 3. Laplacian-variance sharpness of the full-stack fusion vs a single-scene bicubic 2x,
-   reported descriptively (sharpness alone can't distinguish real detail from noise —
+   reported descriptively (sharpness alone can't distinguish real detail from noise -
    point 2 is what does that).
 
 Synthetic validation (real Sentinel-2 chip texture as ground truth, known injected
-shifts) caught two real sign bugs before any network calls were spent — see
-`phase_shift`'s and the LOO alignment's docstrings/comments — and confirmed the fixed
+shifts) caught two real sign bugs before any network calls were spent - see
+`phase_shift`'s and the LOO alignment's docstrings/comments - and confirmed the fixed
 pipeline discriminates correctly: it favors fusion (beats the mean baseline) when real
 sub-pixel diversity is injected, and penalizes it (loses badly to the mean baseline) when
-all synthetic scenes share the same phase — spline resampling has a real interpolation
+all synthetic scenes share the same phase - spline resampling has a real interpolation
 cost that only pays for itself when there's real sub-pixel content to recover. That
 asymmetry is a feature, not noise: it's exactly the discrimination this test needs on
 real data, where whether that content exists is the open question.
@@ -99,14 +99,14 @@ def pull_series(lon: float, lat: float, start, end, n: int) -> list[np.ndarray]:
                 a = f.result()
                 if np.isfinite(a).mean() > 0.9:  # drop scenes with a lot of nodata/cloud mask
                     arrays.append(a)
-            except Exception as e:  # noqa: BLE001 — one bad scene shouldn't kill the point
+            except Exception as e:  # noqa: BLE001 - one bad scene shouldn't kill the point
                 log.debug("scene read failed: %s", e)
     return arrays
 
 
 def phase_shift(ref: np.ndarray, img: np.ndarray) -> tuple[float, float]:
     """Sub-pixel (row, col) shift of `img` relative to `ref` via FFT phase correlation
-    with a parabolic peak refinement. A 2D Hann window is applied before the FFT —
+    with a parabolic peak refinement. A 2D Hann window is applied before the FFT -
     real (non-periodic) image content otherwise produces strong edge artifacts in the
     correlation that swamp the true peak (verified against a synthetic known-shift
     test: unwindowed estimates were essentially uncorrelated with the true shift)."""
@@ -143,8 +143,8 @@ def fuse_subpixel(scenes: list[np.ndarray], shifts: list[tuple[float, float]], f
 
     An earlier version of this function did nearest-cell "drizzle" splatting, which
     leaves holes wherever no scene's rounded phase lands on a given HR cell (~25-50%
-    coverage with only a handful of scenes even given true sub-pixel diversity — the
-    4 finer sub-lattices of a 2x grid need scenes landing in all 4 phase quadrants) —
+    coverage with only a handful of scenes even given true sub-pixel diversity - the
+    4 finer sub-lattices of a 2x grid need scenes landing in all 4 phase quadrants) -
     verified against a synthetic known-shift test where it lost to plain bicubic
     despite correct shifts and real sub-pixel diversity by construction. Per-scene
     spline resampling has no holes and is the standard non-uniform-interpolation MISR
@@ -197,7 +197,7 @@ def run_point(lon: float, lat: float, n_scenes: int) -> dict | None:
     # Align the held-out scene INTO the reference frame for a fair comparison: since
     # held_out(n) = ref_content(n - held_shift) (phase_shift's convention, verified
     # against scipy.ndimage.shift with known synthetic shifts), recovering
-    # ref_content requires shifting by -held_shift, not +held_shift — an earlier
+    # ref_content requires shifting by -held_shift, not +held_shift - an earlier
     # version of this line had the wrong sign here too (doubles the offset instead
     # of removing it), caught by re-running the same synthetic check end-to-end.
     from scipy.ndimage import shift as ndi_shift
@@ -255,7 +255,7 @@ def main(
     df.to_csv(out, index=False)
     print(f"\n=== SR option 2: multi-image super-resolution feasibility, n={len(df)} points ===")
     if df.empty:
-        print("No usable points (network/cloud issues) — inconclusive.")
+        print("No usable points (network/cloud issues) - inconclusive.")
         raise typer.Exit()
     print(f"Sub-pixel phase diversity: mean fractional shift = {df.frac_shift_mean.mean():.3f} "
           f"(std {df.frac_shift_std.mean():.3f}); 0 = phase-locked, 0.25-0.5 = genuine diversity")
@@ -265,10 +265,10 @@ def main(
     print(f"Descriptive sharpness (Laplacian variance): fused={df.sharpness_fused.mean():.1f} "
           f"vs bicubic-single={df.sharpness_bicubic_single.mean():.1f}")
     verdict = (
-        "POSITIVE — sub-pixel fusion beats the naive mean at predicting a held-out real "
+        "POSITIVE - sub-pixel fusion beats the naive mean at predicting a held-out real "
         "scene: there is real sub-pixel information to exploit."
         if df.rmse_fused_loo.mean() < df.rmse_mean_baseline_loo.mean()
-        else "NEGATIVE — sub-pixel fusion does not beat plain temporal averaging on "
+        else "NEGATIVE - sub-pixel fusion does not beat plain temporal averaging on "
              "held-out data: the extra sharpness is not resolving real sub-pixel structure."
     )
     print(f"\nVerdict: {verdict}")

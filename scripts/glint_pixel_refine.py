@@ -1,13 +1,13 @@
 """Per-pixel spike-date refinement: can glint sharpen masks, not just rank them?
 
 `glint_iou_experiment.py` showed threshold games (gated lowering/raising) cannot beat
-the 0.3 baseline — but 26% of FP pixels sit in the 99 glint-validated windows and 56%
+the 0.3 baseline - but 26% of FP pixels sit in the 99 glint-validated windows and 56%
 in the 184 detected ones. This tests a stronger use of the same physics: on a spike
 date the *panel pixels themselves* brighten 2-3x over their own clear-day baseline,
 so a per-pixel amplitude map localizes the panels inside the window. Strategies:
 
-  trim   pred = model & (amp >= t)        — cut model FP halo that never glints
-  union  pred = model | (amp >= t_hi)     — add glint-bright pixels the model missed
+  trim   pred = model & (amp >= t)        - cut model FP halo that never glints
+  union  pred = model | (amp >= t_hi)     - add glint-bright pixels the model missed
   both   trim + union
 
 Pull stage (network): for each glint-detected target, read the B08 window for its
@@ -106,7 +106,7 @@ def _searched_items(lon: float, lat: float) -> tuple[list, str]:
 
 
 def _items_near(items: list, t, tol_s: float = 1800.0) -> list:
-    """Items whose acquisition is within tol_s of t — the stored series `time` is the
+    """Items whose acquisition is within tol_s of t - the stored series `time` is the
     MTD mid-swath sensing time, which drifts up to ~7 min from the STAC item datetime
     (granule start), so exact key matching would silently drop scenes. Neighbouring
     acquisitions are days apart, so 30 min is unambiguous."""
@@ -144,7 +144,7 @@ def _pull_one(row) -> str:
             for it in _items_near(items, t):
                 try:
                     arr = _read_scene_window(it, provider, grid_t, grid_shape, grid_crs)
-                except Exception as e:  # noqa: BLE001 — a failed scene read just gets skipped
+                except Exception as e:  # noqa: BLE001 - a failed scene read just gets skipped
                     log.debug("%s %s read failed: %s", row.pid, t, e)
                     continue
                 if np.isfinite(arr).mean() > 0.5:
@@ -191,7 +191,7 @@ def pull():
         for f in as_completed(futs):
             try:
                 msg = f.result()
-            except Exception as e:  # noqa: BLE001 — one bad target must not kill the run
+            except Exception as e:  # noqa: BLE001 - one bad target must not kill the run
                 msg = f"{futs[f]} FAILED: {e}"
             done += 1
             log.info("[%d/%d] %s", done, len(futs), msg)

@@ -128,7 +128,7 @@ def _build_old_composite(now_path: Path, tile_bounds: tuple, date_range: tuple[s
         gbox = GeoBox((base.height, base.width), base.transform, base.crs)
     try:
         res = annual_composite(tile_bounds, date_range=date_range, geobox=gbox)
-    except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
+    except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
         log.warning("cell %s: %s composite failed: %s", now_path.parent.name, year_tag, e)
         return None
     if res is None:

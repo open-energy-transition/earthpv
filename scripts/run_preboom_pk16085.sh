@@ -4,7 +4,7 @@
 # 2021-2022 solar-import boom is very unlikely to be real PV -- it's a persistent
 # bright roof/soil/water false positive, not a genuine post-boom installation.
 # postprocess.add_epoch_prior downweights rank_score accordingly; it never drops a
-# candidate (recall-first — the epoch-diff is evidence for re-ranking, not a filter).
+# candidate (recall-first - the epoch-diff is evidence for re-ranking, not a filter).
 #
 # Sequence (resumable via marker files under data/.preboom_pk16085, same idiom as
 # run_after_train_pk16085.sh):

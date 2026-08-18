@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Waits for the running country-wide density recompute (earthpv-density-cal, CPU-heavy)
 # to finish, then runs the three super-resolution feasibility tests in sequence:
-#   1. sr_band_fusion_experiment.py   — guided 20m-band fusion (CPU, offline, local chips)
-#   2. sr_multitemporal_experiment.py — multi-image SR feasibility (network, STAC pulls)
-#   3. sr_hallucination_experiment.py — internal-learning SISR hallucination risk (GPU)
+#   1. sr_band_fusion_experiment.py   - guided 20m-band fusion (CPU, offline, local chips)
+#   2. sr_multitemporal_experiment.py - multi-image SR feasibility (network, STAC pulls)
+#   3. sr_hallucination_experiment.py - internal-learning SISR hallucination risk (GPU)
 #
 # Resumable via marker files under data/.sr_experiments/ (same idiom as
-# run_after_train_pk16085.sh / run_preboom_pipeline.sh) — safe to relaunch after a kill.
+# run_after_train_pk16085.sh / run_preboom_pipeline.sh) - safe to relaunch after a kill.
 #
 # Run detached, its own systemd unit (isolates it from other running jobs' OOM/crash):
 #   systemd-run --user --collect --unit=earthpv-sr-experiments -p Restart=on-failure \
@@ -58,5 +58,5 @@ else
   log "STEP3: already done, skipping"
 fi
 
-log "SR EXPERIMENTS COMPLETE — see data/sr_band_fusion_experiment.csv, "
+log "SR EXPERIMENTS COMPLETE - see data/sr_band_fusion_experiment.csv, "
 log "data/sr_multitemporal_experiment.csv, data/sr_hallucination_experiment.csv"

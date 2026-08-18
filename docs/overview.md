@@ -13,13 +13,6 @@ human-in-the-loop validation in OpenStreetMap can make global photovoltaic mappi
 scalable, verifiable, and cost-effective than existing methods. Pakistan is the first
 pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 
-</div>
-
-<div class="stats" markdown>
-<div class="stat"><span class="value">19,746 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 16,051 to 23,520)</span></div>
-<div class="stat"><span class="value">8,832 / 9,202 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
-</div>
-
 ## Build PV capacity maps for every country
 
 This project's primary output is the [Pakistan capacity map](index.md) -- Best estimate

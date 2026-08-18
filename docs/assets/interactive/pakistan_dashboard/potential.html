@@ -263,7 +263,7 @@
       use any PV-presence probability. It starts from every building footprint
       &ge; 200&nbsp;m&sup2; nationwide (from the same per-building roof-classifier
       scoring run that also predicts PV presence elsewhere in this project, but here
-      only its <b>roof_area_m2</b> column is used — pure building geometry, not a
+      only its <b>roof_area_m2</b> column is used - pure building geometry, not a
       prediction). From each cell's total large-roof area, the model's own
       probability-weighted expected PV area is subtracted (an upper-leaning estimate of
       what's already covered, so a roof with any sub-threshold PV signal is
@@ -271,14 +271,14 @@
       an <b>uncovered</b> large-roof area. That area converts to peak capacity at the
       same 0.18 kWp/m&sup2; module constant used throughout this project, then to
       annual energy via PVGIS-modelled specific yield (kWh/kWp/yr) interpolated from a
-      coarse, cached probe grid across the country — irradiance is smooth at country
+      coarse, cached probe grid across the country - irradiance is smooth at country
       scale, so a few dozen points are enough.</p>
 
       <h4>Why 200 m² and not the model's 400 m² detection floor</h4>
       <p>The segmentation model that finds existing PV is trained with everything below
       400&nbsp;m&sup2; burned as "ignore," so it has essentially no discriminating
       signal in the 200&ndash;400&nbsp;m&sup2; band. That band's "potential" therefore
-      reads as almost entirely uncovered regardless of whether PV is actually there —
+      reads as almost entirely uncovered regardless of whether PV is actually there -
       expected, not a bug, and worth knowing when comparing this map to the 400&nbsp;m²
       candidate population reported elsewhere on this site. 200&nbsp;m&sup2; was chosen
       deliberately to reach further into the realistic rooftop-opportunity space

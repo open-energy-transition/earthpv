@@ -45,24 +45,24 @@ METHOD = {
 VERIFIED_METHOD = {"osm_roof": "osm", "osm_ground": "osm", "small_low": "sppi"}
 
 LABEL = {
-    "osm_unmatched_roof": "OSM hand-mapped — rooftop (not already found by the model)",
-    "osm_unmatched_ground": "OSM hand-mapped — ground-mount (not already found by the model)",
+    "osm_unmatched_roof": "OSM hand-mapped - rooftop (not already found by the model)",
+    "osm_unmatched_ground": "OSM hand-mapped - ground-mount (not already found by the model)",
     "floor_offset": "OSM floor correction (cells where the model fell short of hand-mapped OSM)",
-    "seg_roof_outdomain": "TerraMind segmentation — rooftop, outside the calibrated domain",
-    "seg_ground": "TerraMind segmentation — ground-mount (every cell; roofclf has no footprint there)",
-    "ge400_roof": "roofclf — ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain",
-    "small_central": "roofclf alone — sub-400 m² rooftop, coverage ratio and recall, density-calibrated",
-    "small_outdomain": "roofclf + SPPI agreement — sub-400 m², extrapolated outside the calibrated domain",
-    "osm_roof": "OSM hand-mapped — rooftop (all of it, matched or not)",
-    "osm_ground": "OSM hand-mapped — ground-mount (all of it, matched or not)",
-    "small_low": "roofclf + SPPI agreement — sub-400 m², inside the calibrated domain",
+    "seg_roof_outdomain": "TerraMind segmentation - rooftop, outside the calibrated domain",
+    "seg_ground": "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)",
+    "ge400_roof": "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain",
+    "small_central": "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated",
+    "small_outdomain": "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain",
+    "osm_roof": "OSM hand-mapped - rooftop (all of it, matched or not)",
+    "osm_ground": "OSM hand-mapped - ground-mount (all of it, matched or not)",
+    "small_low": "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain",
 }
 
 METHOD_META = {
     "osm": {"name": "OSM (hand-mapped)", "desc": "Human-mapped installations from OpenStreetMap solar tagging."},
     "seg": {"name": "TerraMind segmentation", "desc": "The fine-tuned pixel-segmentation model, outlining panels directly."},
     "roofclf": {"name": "roofclf (alone)", "desc": "Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},
-    "sppi": {"name": "roofclf + SPPI", "desc": "roofclf AND the zero-training SPPI spectral index agreeing — a stricter, cross-validated signal."},
+    "sppi": {"name": "roofclf + SPPI", "desc": "roofclf AND the zero-training SPPI spectral index agreeing - a stricter, cross-validated signal."},
 }
 
 # Fixed categorical order (never cycled): most-directly-measured to

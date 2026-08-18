@@ -33,7 +33,7 @@ NEAR_BUILDING_M = 30.0
 # over millions of pixels, i.e. 1.0. On the Pakistan country run the 428 candidates above
 # this size carried 58% of all candidate area and the ten largest carried 27%, so the
 # country capacity total was effectively a handful of blobs. Above this area a candidate
-# is either such a blob or an entire plant *site* (whose area is not module area either) —
+# is either such a blob or an entire plant *site* (whose area is not module area either) -
 # both wrong to convert as one installation's panel area.
 #
 # Flagged, never dropped: the leads product is recall-first and a human validates every
@@ -102,7 +102,7 @@ def flag_oversize(
         log.warning(
             "%d/%d candidates exceed %.0f m2: %.1f%% of total candidate area, largest "
             "%.2f km2. Flagged `oversize` (kept as mapping leads); the density stage "
-            "excludes them from capacity — see MAX_CANDIDATE_M2.",
+            "excludes them from capacity - see MAX_CANDIDATE_M2.",
             n_over, len(cands), max_area_m2,
             100.0 * area[area > max_area_m2].sum() / max(area.sum(), 1e-9),
             area.max() / 1e6,
@@ -296,7 +296,7 @@ def _join_buildings_chunked(
     """`_join_buildings_metric` per coarse spatial chunk of candidates.
 
     `_join_buildings_metric`'s own bbox buffer only prunes the buildings table when
-    the CANDIDATES passed to it are already spatially tight — for a country-scale
+    the CANDIDATES passed to it are already spatially tight - for a country-scale
     candidate set (spanning the whole VIDA extent in one call) it degenerates to
     reprojecting the ENTIRE buildings table (millions of rows) at once, which is what
     killed a whole-Pakistan postprocess run. Chunking candidates first keeps each
@@ -331,15 +331,15 @@ def add_epoch_prior(cands: gpd.GeoDataFrame, preboom_prob_dir: Path) -> gpd.GeoD
     """Down-weight candidates that were already bright in the pre-boom (2021/22) epoch.
 
     Pakistan's rooftop PV stock is dominated by the post-2022 import boom, so a feature
-    with high probability in BOTH epochs — a bright riverbed, rock outcrop, industrial
-    roof, greenhouse — is likely a persistent false positive rather than new PV; one
+    with high probability in BOTH epochs - a bright riverbed, rock outcrop, industrial
+    roof, greenhouse - is likely a persistent false positive rather than new PV; one
     bright only in the current epoch is plausibly genuine. Cells with no pre-boom raster
     (no scenes in that window) are left neutral (`preboom_prob=0`) rather than penalised,
-    since we can't check them. Nothing is dropped — same recall-first ranking-only
+    since we can't check them. Nothing is dropped - same recall-first ranking-only
     contract as `building_prior`.
 
     `epoch_checked` records whether a candidate actually got a pre-boom read (`True`) vs.
-    fell back to the neutral default because no pre-boom raster covered it (`False`) — the
+    fell back to the neutral default because no pre-boom raster covered it (`False`) - the
     two cases both leave `preboom_prob=0`/`epoch_prior=1`, which otherwise makes "confirmed
     dim pre-boom" indistinguishable from "never checked" (only 40% of Pakistan candidates
     had pre-boom coverage as of the 2026-07-21 country-scale run, see
@@ -413,16 +413,16 @@ def add_glint_prior(
     (see `earthpv.glint`). Validated against known German and Punjab installations:
     self-consistent multi-date glint recovers the true panel orientation cleanly, but
     **absence of glint is common even for real arrays** (wrong orientation for this
-    geometry — ~30% of confirmed installations showed zero spikes over 2 years), so
+    geometry - ~30% of confirmed installations showed zero spikes over 2 years), so
     this is reward-only: candidates with no or inconsistent glint are left unchanged,
     never down-weighted.
 
     Query targeting (the pull is the scarce resource, so spend it where a result can
     change a decision): candidates in area buckets without meaningful discrimination
-    (LR < `min_lr`, which at the default 1.2 excludes everything < 500 m2 — the
+    (LR < `min_lr`, which at the default 1.2 excludes everything < 500 m2 - the
     100-500 m2 bucket measures LR 1.01, i.e. a validated fit there is barely more
     likely on real PV than on a control roof) are skipped entirely, and the
-    `skip_top` highest-ranked candidates are skipped too — they reach human
+    `skip_top` highest-ranked candidates are skipped too - they reach human
     validation regardless, so corroborating them adds nothing. The budget of `top_n`
     pulls then goes to the best-ranked eligible candidates below that band.
 
@@ -433,19 +433,19 @@ def add_glint_prior(
 
     Fetched tile-major (`glint.tile_scene_series_batch`, `tile_deg`-degree bins): one
     STAC search and one set of asset opens per spatial group, shared by every eligible
-    candidate that falls in it, instead of per-candidate — candidates cluster heavily
+    candidate that falls in it, instead of per-candidate - candidates cluster heavily
     by tile, so this amortizes the network cost that used to cap `top_n` at a few
     hundred (measured ~20x on a 6-candidate real cluster; see
     docs/issues/glint-tile-batched-coverage.md). `top_n` can now be set far higher.
 
     `self_referenced` (see `glint.annotate_spikes`) swaps the spike criterion's
     "annulus must be dim right now" check for "annulus must be near its own
-    baseline right now" — for dense urban blocks where every candidate's annulus is
+    baseline right now" - for dense urban blocks where every candidate's annulus is
     itself lined with similarly-bright rooftops, so it's never meaningfully darker
     than the candidate in absolute terms (confirmed: a confirmed, heavily-panelled
     Lahore rooftop never exceeded a 1.09x ratio against its spatial annulus over a
     full year, against the 1.5x default threshold). Verified to match the default
-    mode almost exactly on installations it already detects — this is a genuinely
+    mode almost exactly on installations it already detects - this is a genuinely
     different criterion for the same evidence, not a laxer one.
     """
     cands = cands.reset_index(drop=True).copy()
@@ -483,7 +483,7 @@ def add_glint_prior(
 
     # Tile-major batched fetch (docs/issues/glint-tile-batched-coverage.md): one STAC
     # search + one set of asset opens per spatial group, shared by every eligible
-    # candidate in it, instead of one of each per candidate — the actual cost driver at
+    # candidate in it, instead of one of each per candidate - the actual cost driver at
     # scale. Output schema is identical to the old per-candidate `scene_series` loop,
     # so the boost/scoring logic below is unchanged.
     sel_geom = cands.geometry.iloc[idx].reset_index(drop=True)
@@ -520,7 +520,7 @@ def _add_ranking(cands: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Blend model confidence with a building prior into a `rank_score` for triage.
 
     The prior rewards sitting on (overlap) or beside (small gap) a footprint, but
-    never drops to zero — a high-confidence detection with no nearby building (an
+    never drops to zero - a high-confidence detection with no nearby building (an
     unmapped roof or a ground-mount farm, both valid targets) still surfaces. So this
     only re-orders the human-validation queue; it never removes a candidate.
     """
@@ -575,7 +575,7 @@ def _resolve_buildings(
 ) -> gpd.GeoDataFrame | None:
     """Best available footprint set for the candidate extent.
 
-    VIDA (imagery-derived, includes small/unmapped buildings — the strongest prior)
+    VIDA (imagery-derived, includes small/unmapped buildings - the strongest prior)
     is tried first and cached; the rooftopsenti local set (Overture, >= 500 m2) is
     the fallback. Both feed the same metric join.
     """
@@ -599,7 +599,7 @@ def run_postprocess(
     osm_replace: bool = True, osm_match_distance_m: float = NEAR_BUILDING_M,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
-    farther than this — isolated detections (cropland glare, bare soil, water glint)
+    farther than this - isolated detections (cropland glare, bare soil, water glint)
     are the dominant false-positive mode away from any structure. Only applies where
     a real distance was resolved (`_join_buildings_metric`, i.e. VIDA/local buildings
     available); candidates with no distance signal at all (`-1`, e.g. the Overture
@@ -607,7 +607,7 @@ def run_postprocess(
     dropped on missing information.
 
     `osm_replace` swaps a candidate's polygonized blob for the real OSM footprint where
-    one is mapped within `osm_match_distance_m` (see `replace_with_osm_geometry`) —
+    one is mapped within `osm_match_distance_m` (see `replace_with_osm_geometry`) -
     runs before the building join so placement classification sees the corrected
     geometry too, and before `_add_ranking` so `rank_score` sees the corrected area."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

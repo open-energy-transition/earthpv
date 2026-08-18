@@ -10,7 +10,7 @@ Method, in the order the signal is built up:
 
 1. **Common-mode removal (spatial).** Per date and band, subtract the median over
    *reference* pixels (built-up, no mapped PV). This kills atmosphere, sun-angle,
-   BOA-offset residue and seasonal illumination — everything shared by the scene —
+   BOA-offset residue and seasonal illumination - everything shared by the scene -
    without needing any radiative-transfer model. Same idea as glint.py's annulus
    reference, applied scene-wide.
 2. **Co-registration guard.** A 1-pixel geolocation wobble smears a 1-pixel target,
@@ -20,7 +20,7 @@ Method, in the order the signal is built up:
    *measured*, not assumed: mean(post) - mean(pre) spectra at training PV pixels minus
    the same at reference pixels, giving a 10-band direction; every date is projected
    onto it to get one scalar per pixel per date. Learned on a spatially disjoint
-   training half, evaluated on the held-out half — a fixed physical index (brightness,
+   training half, evaluated on the held-out half - a fixed physical index (brightness,
    NDVI, blue/SWIR) is reported alongside as a baseline.
 4. **Deseasonalise + breakpoint scan (time).** Per pixel, regress out annual +
    semiannual harmonics and per-relative-orbit offsets, then scan every candidate
@@ -89,7 +89,7 @@ def _fraction_raster(gdf: gpd.GeoDataFrame, grid: dict, subpx: int = 10) -> np.n
 
 
 def _dilate(mask: np.ndarray, r: int) -> np.ndarray:
-    """Binary dilation by a (2r+1) square — pure numpy, avoids a scipy dependency."""
+    """Binary dilation by a (2r+1) square - pure numpy, avoids a scipy dependency."""
     out = mask.copy()
     for dy in range(-r, r + 1):
         for dx in range(-r, r + 1):
@@ -130,7 +130,7 @@ def _phase_shift(ref: np.ndarray, img: np.ndarray) -> tuple[float, float]:
 
 
 def _design(dates: pd.Series, orbits: pd.Series) -> np.ndarray:
-    """[1, sin/cos annual, sin/cos semiannual, per-orbit dummies] — the nuisance model.
+    """[1, sin/cos annual, sin/cos semiannual, per-orbit dummies] - the nuisance model.
 
     Phenology and per-relative-orbit view-geometry offsets are the two systematic
     effects that survive common-mode removal (they are pixel-specific, not scene-wide),

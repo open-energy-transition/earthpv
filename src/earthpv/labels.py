@@ -26,7 +26,7 @@ _GEOD = Geod(ellps="WGS84")
 
 
 def geodesic_area_m2(geom) -> float:
-    """Unsigned geodesic area — CRS-free, works globally."""
+    """Unsigned geodesic area - CRS-free, works globally."""
     if geom is None or geom.is_empty or geom.geom_type not in ("Polygon", "MultiPolygon"):
         return 0.0
     area, _ = _GEOD.geometry_area_perimeter(geom)
@@ -39,9 +39,9 @@ def dissolve_overlapping(
     """Merge polygons that geometrically intersect into one feature per connected
     cluster, recomputing area geodesically on the union.
 
-    Two OSM tags can describe the same real installation — a `power=plant` perimeter
+    Two OSM tags can describe the same real installation - a `power=plant` perimeter
     and a nested `power=generator` way, or two overlapping ways from independent
-    mapping passes — as separate FEATURES. Summing their individual `area_m2`s
+    mapping passes - as separate FEATURES. Summing their individual `area_m2`s
     double-counts the physical PV they share. Measured 2026-08-10 at Quaid-e-Azam
     Solar Park: 77% of the dissolved `generator` footprint sits inside the `plant`
     perimeter already covering it; nationally, ground-mount OSM area shrinks 24.4%
@@ -49,19 +49,19 @@ def dissolve_overlapping(
     mode: `postprocess.replace_with_osm_geometry`'s nearest-match picks whichever
     fragment happens to be closest, which can be a small nested member way instead of
     the real installation's outer footprint (Sukkur solar farm matched a 44,948 m²
-    fragment — 1.7% of its true 2.6 km² footprint — because the national OSM pull had
+    fragment - 1.7% of its true 2.6 km² footprint - because the national OSM pull had
     21 overlapping, un-dissolved elements at that site). Dissolving first removes the
     fragments before matching ever runs.
 
-    `group_col`, if given and present, keeps clusters within the same value only —
+    `group_col`, if given and present, keeps clusters within the same value only -
     rooftop and ground-mount should never merge into each other even if their
     footprints happen to touch (a rooftop array directly above a ground-mount plant's
-    substation, say). Non-polygon rows (points — an OSM `generator:source=solar` node
+    substation, say). Non-polygon rows (points - an OSM `generator:source=solar` node
     with no mapped footprint) pass through unchanged; there is nothing to dissolve and
     their area stays whatever it already was (typically 0).
 
     Every other column keeps the value of the LARGEST (by pre-dissolve `area_m2`, or
-    planar `.area` if that column is absent) contributing row per cluster — an
+    planar `.area` if that column is absent) contributing row per cluster - an
     `osm_matched_id`-style identifier from a dissolved pair should point at something
     real, not an arbitrary concatenation. A new `n_dissolved` column records cluster
     size (1 for anything that didn't merge) so the effect is auditable rather than
@@ -144,7 +144,7 @@ def classify_placement(
     iso3: str | None = None,
 ) -> gpd.GeoDataFrame:
     """`iso3` switches the building source to a local VIDA country parquet
-    (data/vida/<iso3>.parquet) — required where Overture's remote S3 is unusable
+    (data/vida/<iso3>.parquet) - required where Overture's remote S3 is unusable
     (direct queries time out from this machine, see CLAUDE.md) and no rooftopsenti
     building cache exists, e.g. India."""
     solar = solar.copy()
@@ -206,7 +206,7 @@ def build_labels(aoi: str, out_dir: Path) -> Path:
     log.info("Fetched %d solar features (%d polygons)", len(solar), (solar.geom_type != "Point").sum())
     if solar.empty:
         raise RuntimeError(
-            "No solar features returned — check that Overture source_tags carry "
+            "No solar features returned - check that Overture source_tags carry "
             "generator:source (fallback: Overpass API)."
         )
 

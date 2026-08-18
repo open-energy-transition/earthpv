@@ -14,7 +14,7 @@ module. This module cross-checks two things:
 2. `expected_annual_yield` converts each region's estimated MWp into expected annual
    generation (GWh/yr) via PVGIS-modelled specific yield at representative coordinates,
    so the capacity estimate can be cross-checked against known Pakistani generation
-   anchors (NEPRA net-metering totals, an independent 27.5 GW distributed-solar study —
+   anchors (NEPRA net-metering totals, an independent 27.5 GW distributed-solar study -
    see README.md) independently of the detection pipeline entirely.
 
 Both are sanity checks, not silent replacements: the density-stage constants are left
@@ -69,12 +69,12 @@ def specific_yield_kwh_per_kwp(
     lat: float, lon: float, year: int = 2020, loss_pct: float = DEFAULT_SYSTEM_LOSS_PCT,
 ) -> float | None:
     """Modelled annual kWh/kWp for a fixed-tilt (tilt=|lat|, equator-facing) rooftop
-    system via PVGIS's PVcalc — a standard, widely-used tool for exactly this
+    system via PVGIS's PVcalc - a standard, widely-used tool for exactly this
     capacity-to-generation reconciliation, so this doesn't hand-roll a ModelChain.
     `PVGIS-ERA5` is used (not `PVGIS-SARAH3`, which doesn't cover Pakistan's longitude).
 
     Returns None (rather than raising) if PVGIS is unreachable, so one bad lookup
-    doesn't kill a batch of regions — this machine has documented restrictions
+    doesn't kill a batch of regions - this machine has documented restrictions
     reaching some external APIs (see the Overture-S3 timeout note in CLAUDE.md).
     """
     try:
@@ -84,7 +84,7 @@ def specific_yield_kwh_per_kwp(
             peakpower=1, loss=loss_pct, outputformat="json",
         )
         return float(data["P"].sum() / 1000.0)
-    except Exception as e:  # noqa: BLE001 — network/API best-effort
+    except Exception as e:  # noqa: BLE001 - network/API best-effort
         log.warning("PVGIS lookup failed for (%.3f, %.3f): %s", lat, lon, e)
         return None
 
@@ -94,7 +94,7 @@ def expected_annual_yield(
 ) -> pd.DataFrame:
     """One row per admin region from `density.py`'s `regions.geoparquet`, adding
     `kwh_per_kwp_yr` (PVGIS specific yield at the region's centroid) and
-    `expected_gwh_det/exp` = est_mwp_{det,exp} * kwh_per_kwp_yr / 1000 — an
+    `expected_gwh_det/exp` = est_mwp_{det,exp} * kwh_per_kwp_yr / 1000 - an
     independent cross-check on installed-capacity-implied generation.
     """
     regions = gpd.read_parquet(regions_geoparquet)
@@ -196,7 +196,7 @@ def run_pv_capacity_check(
     density_dir = Path(pred_dir) / aoi / "density"
     regions_path = density_dir / "regions.geoparquet"
     if not regions_path.exists():
-        raise FileNotFoundError(f"{regions_path} missing — run `earthpv density --aoi {aoi}` first")
+        raise FileNotFoundError(f"{regions_path} missing - run `earthpv density --aoi {aoi}` first")
 
     module_check = check_kwp_per_m2(kwp_per_m2)
     yields = expected_annual_yield(regions_path, kwp_per_m2)

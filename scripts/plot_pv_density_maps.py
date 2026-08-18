@@ -131,7 +131,7 @@ def build_scientific() -> Path:
 
     # fig-level text, not ax.set_title + ax.text(1.0x) -- the latter two don't share a
     # coordinate space (points-based title pad vs axes-fraction text) and collide.
-    fig.text(0.09, 0.985, "Rooftop and ground-mount solar PV capacity — Pakistan",
+    fig.text(0.09, 0.985, "Rooftop and ground-mount solar PV capacity - Pakistan",
              fontsize=22, family=SERIF, weight="medium", ha="left", va="top")
     fig.text(
         0.09, 0.965,
@@ -230,7 +230,7 @@ def build_poster() -> Path:
     hi = meta.get("total_est_mwp_rc_hi")
     lp.text(0.0, 0.60, f"{hero:,.0f}", fontsize=90, family=MONO, weight="bold",
             color="#F5B63E", ha="left", va="top", transform=lp.transAxes)
-    lp.text(0.0, 0.505, "MWp — recall-corrected, all PV", fontsize=17, family=SANS,
+    lp.text(0.0, 0.505, "MWp - recall-corrected, all PV", fontsize=17, family=SANS,
             color="#9B958A", ha="left", va="top", transform=lp.transAxes)
     if lo and hi:
         lp.text(0.0, 0.475, f"90% credible band  {lo:,.0f} – {hi:,.0f} MWp", fontsize=14,

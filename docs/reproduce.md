@@ -60,6 +60,10 @@ manual validation at step 12), combined by step 15 into the **evidence atlas**, 
 this project's primary output. Step 16 (Germany calibration and validation) and everything in
 the [experiments register](experiments.md) are optional extras, not alternative main paths.
 
+![The earthpv processing pipeline: Sentinel-2 L2A imagery plus OSM/Overture solar labels and building footprints feed into compose and labels, which produce the 10-band composites and label parquet that chips turns into jittered 224 px training windows; train fine-tunes TerraMind on those with a recall-first Tversky loss, evaluate picks the best checkpoint by a recall gate on held-out tiles, and infer applies it with Hann overlap-add windows to produce probability rasters; postprocess polygonizes and joins to building footprints for a rank_score, feeding both export (rank-sorted MapRoulette leads for human validation in OSM) and density (calibrated per-building/grid/region MWp) which produces the PV capacity atlas; a separate pre-boom epoch (Oct 2021 - Jan 2022) composite feeds a two-epoch change-detection feedback loop, and validated arrays a human maps in OSM become labels for the next training round, closing the loop.](pipeline.svg)
+
+
+
 === "1. Labels"
 
     Building footprints and OpenStreetMap solar polygons for an area.

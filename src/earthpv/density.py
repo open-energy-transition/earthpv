@@ -2,7 +2,7 @@
 
 The `infer -> postprocess -> export` chain produces *individual installation
 candidates* for human OSM validation. This stage instead answers "how much PV sits
-on the buildings of each area" — the input energy-system models (PyPSA / PyPSA-Earth)
+on the buildings of each area" - the input energy-system models (PyPSA / PyPSA-Earth)
 actually consume. It runs entirely on the artifacts already on disk (per-cell
 probability rasters + `candidates.parquet` + the VIDA building footprints); no GPU,
 no retraining.
@@ -20,7 +20,7 @@ recall-first (many false positives) and neither number is unconditionally honest
 With a calibration table (capacity_calibration) two more estimators join at the
 cell/region level: **calibrated** (`*_cal`, candidates weighted by a measured
 P(real | size, glint)) and **recall-corrected** (`*_rc`, the calibrated area further
-divided by the model's measured per-size-bin recall — a Horvitz-Thompson estimate of
+divided by the model's measured per-size-bin recall - a Horvitz-Thompson estimate of
 the whole >= detection-floor population, with 90% credible intervals from posterior
 draws over every calibration count; see `_candidate_uncertainty`).
 
@@ -37,9 +37,9 @@ site, and converting it as one installation's panel area is what let a handful o
 dominate a country total.
 
 Three layers are written to `data/predictions/<aoi>/density/`:
-  buildings.geoparquet  — one row per building carrying a PV signal
-  grid.geoparquet/.csv  — one row per 0.1 deg cell (the pipeline's native grid)
-  regions.*             — one row per Overture province (and optionally district)
+  buildings.geoparquet  - one row per building carrying a PV signal
+  grid.geoparquet/.csv  - one row per 0.1 deg cell (the pipeline's native grid)
+  regions.*             - one row per Overture province (and optionally district)
 
 Double counting is avoided at the source: adjacent per-cell rasters overlap by a
 few pixels, so every building is assigned to exactly one cell by its representative
@@ -581,7 +581,7 @@ def process_cell(
         bu = bu[in_box.to_numpy()].reset_index(drop=True)
 
     # Candidates intersecting the cell, for the per-building detected area. Cell-level
-    # candidate-population totals are NOT computed here — `candidate_cell_totals` derives
+    # candidate-population totals are NOT computed here - `candidate_cell_totals` derives
     # them from the whole candidate frame at aggregate time, so they always reflect the
     # current oversize filter rather than whatever was in force when a partial was written.
     box_geom = shapely_box(lon0, lat0, lon0 + CELL_DEG, lat0 + CELL_DEG)
@@ -676,7 +676,7 @@ def fetch_geoboundaries(iso3: str, level: str) -> gpd.GeoDataFrame | None:
         meta = json.load(urllib.request.urlopen(
             GEOBOUNDARIES_API.format(iso3=iso3, level=level), timeout=60))
         gj = json.load(urllib.request.urlopen(meta["gjDownloadURL"], timeout=120))
-    except Exception as e:  # noqa: BLE001 — network failures degrade to no layer
+    except Exception as e:  # noqa: BLE001 - network failures degrade to no layer
         log.warning("geoBoundaries %s/%s fetch failed: %s", iso3, level, e)
         return None
     feats = gj.get("features", [])
@@ -714,7 +714,7 @@ def load_admin(
         if (gdf is None or gdf.empty) and country is not None:
             try:
                 gdf = overture.fetch_regions(country, settings, subtype=subtype)
-            except Exception as e:  # noqa: BLE001 — Overture S3 timeouts must not kill the run
+            except Exception as e:  # noqa: BLE001 - Overture S3 timeouts must not kill the run
                 log.warning("Overture %s fetch failed (%s)", kind, e)
                 gdf = None
         if gdf is None or gdf.empty:
@@ -752,7 +752,7 @@ def _candidate_uncertainty(
         pv_area_rc = sum(area * p_real / max(recall, recall_floor))
 
     estimates the *whole* >= detection-floor population, not just the detected part.
-    It lives on the candidate population — comparable to the `*_total` cell columns
+    It lives on the candidate population - comparable to the `*_total` cell columns
     (`*_roofcand` for the rooftop-placed subset), NOT to the footprint-intersected
     `*_roof` columns; per-building recall inflation would be meaningless (the missed
     installations sit on other, unknown buildings).
@@ -1191,7 +1191,7 @@ def run_density(
     prob_dir = Path(pred_dir) / aoi / "prob"
     cand_path = Path(pred_dir) / aoi / "candidates.parquet"
     if not cand_path.exists():
-        raise FileNotFoundError(f"{cand_path} missing — run `earthpv postprocess --aoi {aoi}` first")
+        raise FileNotFoundError(f"{cand_path} missing - run `earthpv postprocess --aoi {aoi}` first")
     cands = gpd.read_parquet(cand_path)
     cand_fp = _candidates_fingerprint(cand_path, len(cands))
     if plausibility_note:
@@ -1249,7 +1249,7 @@ def run_density(
         _ = cands.sindex  # build once, reused per cell
 
     # Capacity-atlas calibration: weight each candidate by P(real | size, glint).
-    # This is the split from the leads product — rank_score is never consumed here,
+    # This is the split from the leads product - rank_score is never consumed here,
     # and the leads path never consumes p_real. Without a table, p_real = 1 and
     # est_mwp_cal degenerates to est_mwp_det.
     from earthpv import capacity_calibration as cc
@@ -1289,7 +1289,7 @@ def run_density(
                 )
     else:
         log.warning(
-            "No calibration table at %s — est_mwp_cal will equal est_mwp_det; "
+            "No calibration table at %s - est_mwp_cal will equal est_mwp_det; "
             "run `earthpv calibrate-candidates --aoi %s` first for a calibrated atlas",
             cal_path, aoi,
         )
@@ -1316,7 +1316,7 @@ def run_density(
         exp_paths = dict(zip(frac_man.cell, frac_man.path))
         n_cov = sum(1 for c in manifest.cell if c in exp_paths)
         log.info(
-            "Expected-area instrument: fraction head %s — %d/%d manifest cells covered "
+            "Expected-area instrument: fraction head %s - %d/%d manifest cells covered "
             "(%.1f%%), exp_scale=%.3f",
             fraction_prob_dir, n_cov, len(manifest), 100.0 * n_cov / max(len(manifest), 1),
             exp_scale,
@@ -1325,7 +1325,7 @@ def run_density(
             log.warning(
                 "%d cells have no fraction raster: their pv_area_exp_* is ABSENT, not zero "
                 "(exp_covered=0). Country exp totals from this run cover only the %.1f%% of "
-                "cells listed above — do not read them as national.",
+                "cells listed above - do not read them as national.",
                 len(manifest) - n_cov, 100.0 * n_cov / max(len(manifest), 1),
             )
         if exp_scale == 1.0:
@@ -1333,7 +1333,7 @@ def run_density(
                 "exp_scale=1.0: the fraction head's absolute scale is NOT established. The "
                 "German MaStR bench puts it 2.5x high on all Gemeinden (slope 0.394) and "
                 "8-13x high on the well-mapped subset (0.077-0.129). Treat these areas as a "
-                "ranking layer until anchored — see `earthpv roof-classifier` for a "
+                "ranking layer until anchored - see `earthpv roof-classifier` for a "
                 "quadrat-based absolute anchor."
             )
     n_cell_failures = 0
@@ -1343,7 +1343,7 @@ def run_density(
                 row, cands, con, iso3, min_prob, min_building_exp_m2, cells_dir, force,
                 exp_source=exp_source, exp_path=exp_paths.get(row.cell), exp_scale=exp_scale,
             )
-        except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
+        except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
             log.warning("cell %s failed: %s", row.cell, e)
             n_cell_failures += 1
 
@@ -1417,7 +1417,7 @@ def run_density(
         from earthpv.atlas import build_atlas
 
         build_atlas(aoi, out_dir)
-    except Exception as e:  # noqa: BLE001 — a map rendering issue must not fail the run
+    except Exception as e:  # noqa: BLE001 - a map rendering issue must not fail the run
         log.warning("atlas generation failed: %s", e)
 
     log.info("Wrote density outputs -> %s", out_dir)

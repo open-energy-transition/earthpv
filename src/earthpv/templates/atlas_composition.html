@@ -194,7 +194,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     </div>
 
     <div class="card">
-      <h2>Verified (the internal floor) — for comparison</h2>
+      <h2>Verified (the internal floor) - for comparison</h2>
       <p class="card-sub">A stricter accounting: full hand-mapped OSM (not just what the model missed) plus only the roofclf+SPPI AND-gate</p>
       <div class="legend" id="legendVerified"></div>
       <div class="stack-wrap" id="stackWrapVerified">
@@ -220,13 +220,13 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     <div class="note">
       <h2>Reading this breakdown</h2>
       <p>
-        <strong>roofclf alone accounts for roughly four-fifths of the Best estimate</strong> —
+        <strong>roofclf alone accounts for roughly four-fifths of the Best estimate</strong> -
         its own ≥ 400 m² replacement inside the density-calibrated domain and its sub-400 m²
         "central" estimate together dwarf every other source. Direct OSM mapping and TerraMind
         segmentation (ground-mount everywhere, plus rooftop outside the calibrated domain)
         split roughly the remaining fifth. <strong>SPPI's role in Best is deliberately small</strong>:
         it only appears in the out-of-domain extrapolation, a strict, explicitly-flagged
-        judgement band with no calibration quadrat of its own — never blended into the
+        judgement band with no calibration quadrat of its own - never blended into the
         in-domain roofclf estimate. SPPI's larger role is in <strong>Verified</strong>, the
         stricter floor, where roofclf-AND-SPPI agreement is almost as large as all of hand-mapped
         OSM combined.
@@ -283,7 +283,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     This page decomposes <code>${fmt1(DATA.mwp_best)} MWp</code> into those
     ${numword(DATA.best_rows.length)} underlying components, sourced directly from the
     published atlas's own uncertainty composition
-    (<code>atlas.py::_evidence_uncertainty</code>) — not a re-measurement.
+    (<code>atlas.py::_evidence_uncertainty</code>) - not a re-measurement.
   `;
 
   // ---- KPIs ----
@@ -333,7 +333,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
   // built without (the out-of-domain extrapolation, say) must not be announced here.
   const bestMethods = new Set(DATA.best_rows.map((r) => r.method));
   document.getElementById('bestTitle').textContent =
-    `Best estimate — ${DATA.best_rows.length} components, ${bestMethods.size} `
+    `Best estimate - ${DATA.best_rows.length} components, ${bestMethods.size} `
     + `method${bestMethods.size === 1 ? '' : 's'}`;
   renderLegend('legendBest', DATA.method_order.filter((m) => bestMethods.has(m)));
   renderLegend('legendVerified', ['osm', 'sppi']);
@@ -387,9 +387,9 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
 
   // ---- Table ----
   function tableRows(rows, tierLabel, total) {
-    let html = `<tr class="tier-row"><td colspan="5">${tierLabel} — ${fmt1(total)} MWp</td></tr>`;
+    let html = `<tr class="tier-row"><td colspan="5">${tierLabel} - ${fmt1(total)} MWp</td></tr>`;
     html += rows.map((r) => {
-      const ciText = r.ci ? `${fmt1(r.ci[0])} – ${fmt1(r.ci[1])}` : '—';
+      const ciText = r.ci ? `${fmt1(r.ci[0])} – ${fmt1(r.ci[1])}` : '-';
       return `<tr>
         <td class="label-cell">${r.label}</td>
         <td><span class="swatch-inline" style="background:${color(r.method)}"></span>${DATA.method_meta[r.method].name}</td>
@@ -408,12 +408,12 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
   document.getElementById('footNote').innerHTML = `
     Source: <code>docs/assets/interactive/pakistan_evidence_atlas.html</code>'s own embedded
     uncertainty composition, recomputed by <code>scripts/build_atlas_composition.py</code>
-    — every row here is asserted (not just presented) to sum to its published tier total.
+    - every row here is asserted (not just presented) to sum to its published tier total.
     Credible intervals are ${DATA.ci_pct[0]}–${DATA.ci_pct[1]} percentile over ${DATA.n_draws}
     draws. ${DATA.n_calib_boxes} calibration quadrats, ${DATA.n_domain_cells}/${DATA.n_cells}
     national cells inside the density-calibrated domain. Not covered by these intervals:
     the calibration quadrats are purposive, not a probability sample, and Rule-1 completeness
-    is relative to the mapping imagery's own epoch, which biases measured precision low —
+    is relative to the mapping imagery's own epoch, which biases measured precision low -
     both stated on the full atlas page, not just here.
   `;
 })();

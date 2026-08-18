@@ -529,7 +529,7 @@ def build_pose_survey_page(
 
     html = TEMPLATE
     for key, value in {
-        "__PAGE_TITLE__": f"Fitted Panel Pose — {country} Glint Survey (n={st['n_total']})",
+        "__PAGE_TITLE__": f"Fitted Panel Pose - {country} Glint Survey (n={st['n_total']})",
         "__EYEBROW__": f"Glint-derived orientation survey · {country} · n={st['n_total']}",
         "__H1__": f"Which way do solar panels in {country} actually face?",
         "__COUNTRY__": country,

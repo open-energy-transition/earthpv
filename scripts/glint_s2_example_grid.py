@@ -1,12 +1,12 @@
 """Build a 3x6 example grid of real Sentinel-2 glint spikes, three per size bucket.
 
 Companion to `docs/glint_examples_HR/` (high-resolution ESRI World Imagery screenshots
-showing the same physical phenomenon — the blown-out white/rainbow sheen off a PV
+showing the same physical phenomenon - the blown-out white/rainbow sheen off a PV
 panel's glass when the sun reflects straight into the sensor). This script renders the
 Sentinel-2-resolution analogue: for each of the 6 size buckets in the 500-target
 Pakistan validation study, picks up to 3 of the most strongly-validated real
 installations (highest `n_consistent`), finds each one's brightest CLOUD-FREE spike
-date, then fetches a true-color (B04/B03/B02) crop for that exact date — the frame
+date, then fetches a true-color (B04/B03/B02) crop for that exact date - the frame
 where the glint actually happened.
 
 **Cloud screening, added because a prior version of this grid showed one cloud, not a
@@ -266,7 +266,7 @@ def main():
             tag = " (repeat)" if ex["repeat"] else ""
             lon, lat = ex["geometry"].centroid.x, ex["geometry"].centroid.y
             title = (
-                f"{bucket} m² — actual {ex['area_m2']:.0f} m²\n"
+                f"{bucket} m² - actual {ex['area_m2']:.0f} m²\n"
                 f"{ex['when']:%Y-%m-%d}  n_consistent={ex['n_consistent']}{tag}\n"
                 f"{lat:.4f}°N {lon:.4f}°E"
             )
@@ -275,7 +275,7 @@ def main():
             ax.set_yticks([])
 
     fig.suptitle(
-        "Solar glint at Sentinel-2 resolution — real OSM-confirmed Pakistan installations,\n"
+        "Solar glint at Sentinel-2 resolution - real OSM-confirmed Pakistan installations,\n"
         "true colour (B04/B03/B02), each cropped to its own brightest cloud-screened spike date "
         "(one column per size bucket, strongest example on top)",
         fontsize=12,

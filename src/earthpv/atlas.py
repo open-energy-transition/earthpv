@@ -12,7 +12,7 @@ Two templates, chosen automatically by what the density run actually computed:
   capacity_calibration table (`earthpv calibrate-candidates` before `density`).
 - **Simple atlas** (`templates/pv_atlas.html`, the fallback): a single-metric
   night-lights map (est_mwp_cal if calibrated, else est_mwp_det, bracketed by
-  expected) for runs without recall-correction — e.g. Germany, or a partial/
+  expected) for runs without recall-correction - e.g. Germany, or a partial/
   validation-only density run that skipped calibration.
 
 `density` calls `build_atlas` at the end of every run; the `earthpv atlas` CLI
@@ -338,12 +338,12 @@ def _build_simple_atlas(
         bracket = (
             f'Detected (raw threshold) floor: <b>{det_total:,}</b> MWp; probability-weighted '
             'expectation: <b id="expNum">0</b> MWp. The calibrated number weights each '
-            "candidate by its measured P(real | size, glint) — the floor and ceiling bracket it."
+            "candidate by its measured P(real | size, glint) - the floor and ceiling bracket it."
         )
         howto = (
-            "<b>How to read it.</b> Colour is <b>calibrated</b> panel area — each candidate "
+            "<b>How to read it.</b> Colour is <b>calibrated</b> panel area - each candidate "
             "weighted by its measured probability of being real PV (size-binned OSM-mapped "
-            "fraction + glint corroboration) — converted to peak capacity at "
+            "fraction + glint corroboration) - converted to peak capacity at "
             f"{data['totals']['kwp_per_m2']} kWp/m². Detected and expected bracket it as "
             "floor and ceiling. Cells with no detected PV are drawn as bare land; treat cell "
             "values as indicative, not metered."
@@ -360,7 +360,7 @@ def _build_simple_atlas(
         word, label, col = "detected", "Detected", "Det"
         bracket = (
             'Probability-weighted expectation: <b id="expNum">0</b> MWp. The two numbers '
-            "bracket the truth — the model is tuned for recall, so detections are a floor "
+            "bracket the truth - the model is tuned for recall, so detections are a floor "
             "and the expectation leans high."
         )
         howto = (
@@ -382,7 +382,7 @@ def _build_simple_atlas(
         "A recall-first segmentation model reads a year of Sentinel-2 imagery across every "
         f"building-populated cell of {title} and marks the pixels that look like photovoltaic "
         "panels. Aggregated to each building and then to a <b>0.1° grid</b>, the "
-        f"{word} panel area becomes an estimate of installed rooftop capacity — the input "
+        f"{word} panel area becomes an estimate of installed rooftop capacity - the input "
         "an energy-system model needs. The map glows where that capacity concentrates."
     )
     det_total_note = round(float(grid.est_mwp_det.sum()))
@@ -821,7 +821,7 @@ def _build_estimator_atlas(
         "depends on how honestly you count: the same probability rasters support "
         "<b>six defensible estimates</b>, from a raw-detection floor to a "
         "recall-corrected estimate of the whole detectable population. Switch "
-        "between them — the map, the hero number and the province ranking follow."
+        "between them - the map, the hero number and the province ranking follow."
     )
     if data["totals"].get("kwpLand"):
         lede += (
@@ -831,7 +831,7 @@ def _build_estimator_atlas(
     html = ESTIMATOR_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} PV Capacity — Six Estimates, One Map",
+        "__PAGE_TITLE__": f"{title} PV Capacity - Six Estimates, One Map",
         "__EYEBROW__": f"earthpv · Sentinel-2 × TerraMind · 0.1° grid · {run_date}",
         "__H1__": f"{title}'s solar boom, at six exposures",
         "__LEDE_HTML__": lede,
@@ -2575,7 +2575,7 @@ def build_size_distribution_atlas(
     html = SIZE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Solar PV — Capacity by Installation Size",
+        "__PAGE_TITLE__": f"{title} Solar PV - Capacity by Installation Size",
         "__H1__": f"{title}'s solar, by installation size",
     }.items():
         html = html.replace(key, value)

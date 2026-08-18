@@ -899,7 +899,7 @@ def build_architecture_svg(t: Theme) -> str:
         ["TerraTorch + Lightning,", "checkpoint monitors val mIoU"])
 
     # Lane C - inference signals
-    lane_label("Inference — five instruments, same Sentinel-2 imagery", 372)
+    lane_label("Inference - five instruments, same Sentinel-2 imagery", 372)
     xc, wc = _row_x(5, gap=20)
     box("c1", xc[0], 378, wc, 106, "Segmentation raster", ["infer: per-pixel PV", "probability, primary", "≥ 400 m² instrument"], stroke=t.s1)
     box("c2", xc[1], 378, wc, 106, "Fraction head", ["alt checkpoint: per-pixel", "PV coverage fraction,", "drops the polygon"], stroke=t.s3)

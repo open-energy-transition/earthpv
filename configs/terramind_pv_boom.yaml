@@ -1,8 +1,8 @@
-# TerraTorch fine-tuning config for PV segmentation — BOOM-WINDOW stack (20-band).
+# TerraTorch fine-tuning config for PV segmentation - BOOM-WINDOW stack (20-band).
 # Same architecture as configs/terramind_pv_seasonal.yaml (that experiment stacked a
 # same-year weather contrast and found no improvement); this one stacks the actual
 # pre-boom epoch (2021-10 to 2022-01, before Pakistan's solar import boom) against the
-# current composite instead, so — unlike the seasonal pair — there is a real adoption
+# current composite instead, so - unlike the seasonal pair - there is a real adoption
 # change between the two layers for the model to learn from. See configs/aoi.yaml's
 # `punjab_boom` AOI and scripts/build_punjab_boom_composites.py.
 #

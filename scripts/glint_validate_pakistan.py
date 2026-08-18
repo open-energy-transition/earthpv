@@ -121,7 +121,7 @@ def pull():
         for f in as_completed(futs):
             try:
                 msg = f.result()
-            except Exception as e:  # noqa: BLE001 — one bad target must not kill the run
+            except Exception as e:  # noqa: BLE001 - one bad target must not kill the run
                 msg = f"{futs[f]} FAILED: {e}"
             done += 1
             log.info("[%d/%d] %s", done, len(todo), msg)

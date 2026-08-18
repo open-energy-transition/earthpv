@@ -8,7 +8,7 @@ overture_release: "2026-06-17.0"
 local_root: /run/media/tobi/aidisc/rooftopsenti/data
 
 # Solar arrays smaller than this (m²) are kept in labels but flagged; the
-# headline detection target is > 400 m² (MIN_PV_AREA in chips.py) — smaller
+# headline detection target is > 400 m² (MIN_PV_AREA in chips.py) - smaller
 # installations are covered by the density stage's aggregate estimate instead.
 min_array_area_m2: 100.0
 # Fraction of a solar polygon that must fall on a building footprint to count as rooftop.
@@ -117,7 +117,7 @@ aois:
 
   # India pilot: no rooftopsenti local dataset exists for India (unlike PK/DE), so this
   # is the first AOI exercising compose.py's VIDA-buildings + geoBoundaries fallbacks
-  # (no `source_region` key here on purpose). Gujarat chosen as the pilot state — it has
+  # (no `source_region` key here on purpose). Gujarat chosen as the pilot state - it has
   # India's highest rooftop-solar penetration (Surya Gujarat / net-metering programs),
   # concentrated in mid-size cities (Ahmedabad, Surat, Vadodara, Rajkot) rather than
   # spread thin like utility-scale-heavy states (e.g. Rajasthan).

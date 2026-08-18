@@ -148,7 +148,7 @@ def _scene_row(item, geometry, lon: float, lat: float) -> dict | None:
             inside, ring, npx = _polygon_vs_annulus(item.assets[pol].href, geometry, lon, lat)
             row[f"{pol}_inside"], row[f"{pol}_ring"], row[f"{pol}_npx"] = inside, ring, npx
         return row
-    except Exception as e:  # noqa: BLE001 — per-scene failures shouldn't kill the pull
+    except Exception as e:  # noqa: BLE001 - per-scene failures shouldn't kill the pull
         log.debug("scene %s failed: %s", item.id, e)
         return None
 
@@ -196,7 +196,7 @@ def pull():
         for f in as_completed(futs):
             try:
                 msg = f.result()
-            except Exception as e:  # noqa: BLE001 — one bad target must not kill the run
+            except Exception as e:  # noqa: BLE001 - one bad target must not kill the run
                 msg = f"{futs[f]} FAILED: {e}"
             done += 1
             log.info("[%d/%d] %s", done, len(todo), msg)

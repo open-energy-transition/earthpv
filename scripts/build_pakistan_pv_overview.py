@@ -1178,7 +1178,7 @@ def main() -> None:
 
     html = TEMPLATE
     replacements = {
-        "__PAGE_TITLE__": "Pakistan Solar PV — National Overview",
+        "__PAGE_TITLE__": "Pakistan Solar PV - National Overview",
         "__PV_JSON__": json.dumps(bracket, separators=(",", ":")),
         "__POSE_JSON__": json.dumps(pose, separators=(",", ":")),
         "__POSE_N_TOTAL__": str(stats["n_total"]),

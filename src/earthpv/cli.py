@@ -34,11 +34,11 @@ def overpass_labels(
     iso3: str = typer.Option(
         None, help="Use the local VIDA building parquet (data/vida/<ISO3>.parquet) for "
         "placement classification instead of Overture's remote S3 (which times out "
-        "from this machine) — needed for countries without a rooftopsenti cache"
+        "from this machine) - needed for countries without a rooftopsenti cache"
     ),
 ) -> None:
     """Fetch fresh OSM solar-PV mappings directly via Overpass (bypasses Overture's
-    periodic-snapshot lag — use for a region that was just hand-mapped)."""
+    periodic-snapshot lag - use for a region that was just hand-mapped)."""
     from earthpv.overpass import build_overpass_labels
 
     parsed_bbox = tuple(float(x) for x in bbox.split(",")) if bbox else None
@@ -92,7 +92,7 @@ def compose(
     ),
     use_vida: bool = typer.Option(
         False, help="Force VIDA Open Buildings for cell selection even if the AOI has a "
-        "source_region — the local Overture-only set (>=500 m2) undercounts small/unmapped "
+        "source_region - the local Overture-only set (>=500 m2) undercounts small/unmapped "
         "buildings by orders of magnitude in some regions"
     ),
 ) -> None:
@@ -182,7 +182,7 @@ def postprocess(
     ),
     preboom_prob_dir: Path = typer.Option(
         None, help="Probability rasters from a pre-boom/contrast epoch (e.g. "
-        "data/predictions_preboom/<aoi>/prob) — candidates already bright there get "
+        "data/predictions_preboom/<aoi>/prob) - candidates already bright there get "
         "down-weighted in rank_score as likely persistent false positives, not dropped"
     ),
     check_glint: bool = typer.Option(
@@ -198,7 +198,7 @@ def postprocess(
     ),
     glint_skip_top: int = typer.Option(
         100, help="Skip the this-many highest-ranked candidates before spending the "
-        "glint budget — they reach human validation regardless, so the check adds "
+        "glint budget - they reach human validation regardless, so the check adds "
         "nothing there; 0 restores the old check-from-the-top behavior"
     ),
     glint_tile_deg: float = typer.Option(
@@ -208,7 +208,7 @@ def postprocess(
     ),
     glint_self_referenced: bool = typer.Option(
         False, help="Compare each candidate's surrounding annulus to its OWN history "
-        "instead of requiring it to be dim right now — for dense urban blocks where "
+        "instead of requiring it to be dim right now - for dense urban blocks where "
         "the annulus is itself lined with similarly-bright rooftops and the default "
         "spatial check never fires (see earthpv.glint.annotate_spikes)"
     ),
@@ -246,7 +246,7 @@ def export(
     min_distance_m: float = typer.Option(
         0.0, help="With --exclude-mapped, drop candidates within this many metres of "
         "an already-mapped OSM solar feature, not just ones that literally overlap it "
-        "— catches candidates offset from a mapped point (a common generator:source=solar "
+        "- catches candidates offset from a mapped point (a common generator:source=solar "
         "node) that would otherwise never 'intersect' and wrongly surface as new"
     ),
     epoch_clean: bool = typer.Option(
@@ -256,7 +256,7 @@ def export(
     ),
     epoch_fp_max_prior: float = typer.Option(
         0.5, help="With --epoch-clean, drop checked candidates whose epoch_prior "
-        "(1 - pre-boom probability) is below this — 0.5 matches the 'likely persistent "
+        "(1 - pre-boom probability) is below this - 0.5 matches the 'likely persistent "
         "FP' judgement shown to MapRoulette mappers"
     ),
     veg_max_ndvi: float = typer.Option(
@@ -266,7 +266,7 @@ def export(
         "annual instrument below"
     ),
     annual_ndvi: Path = typer.Option(
-        None, help="annual_ndvi.parquet from scripts/veg_annual_ndvi.py analyze — vetoes "
+        None, help="annual_ndvi.parquet from scripts/veg_annual_ndvi.py analyze - vetoes "
         "leads whose year-long p95 NDVI exceeds --annual-ndvi-max (a crop cycle; PV "
         "never greens up)"
     ),
@@ -458,7 +458,7 @@ def density(
     ),
     kwp_per_m2_land: float = typer.Option(
         None,
-        help="kWp per m2 of GROUND-MOUNT site area — a detected plant polygon is site, not "
+        help="kWp per m2 of GROUND-MOUNT site area - a detected plant polygon is site, not "
         "module, so only its ground-cover ratio counts "
         "(default capacity_calibration.DEFAULT_KWP_PER_M2_LAND)",
     ),
@@ -929,7 +929,7 @@ def check_density_cmd(
     ),
     max_cell_share: float = typer.Option(
         None, help="Fail a region if one 0.1-deg cell exceeds this share of its total "
-        "(default 0.25) — the signature of a single merged blob"
+        "(default 0.25) - the signature of a single merged blob"
     ),
     strict: bool = typer.Option(
         True, help="Exit non-zero when any region fails, so this can gate CI"
@@ -1088,7 +1088,7 @@ def atlas(
     zoom_out: float = typer.Option(
         0.0, help="Pad the map bounds by this fraction of their own span (e.g. 0.10 = "
         "10% less zoom: draws the country 10% smaller, showing that much more "
-        "surrounding context) — cells/provinces/cities are unchanged, just rescaled"
+        "surrounding context) - cells/provinces/cities are unchanged, just rescaled"
     ),
     sub400_cells: Path = typer.Option(
         None, help="Building-level domain-restricted parquet from "
@@ -1387,7 +1387,7 @@ def calibrate_candidates(
         "data/labels/lahore_calib_6p61km2_overpass_solar.parquet. Unlike the country snapshot "
         "(only as complete as OSM happens to be), every real installation inside a "
         "quadrat is known, so this measures TRUE recall, not recall-against-what's-mapped "
-        "— pooled into the recall reference. Repeat the flag for more than one box",
+        "- pooled into the recall reference. Repeat the flag for more than one box",
     ),
     min_distance_m: float = typer.Option(100.0, help="Mapped-candidate distance (match export)"),
     max_candidate_m2: float = typer.Option(
@@ -1480,7 +1480,7 @@ def calibrate_candidates(
         else:
             raise typer.BadParameter("recall_reference must be snapshot | all | none")
         if ref is None or ref.empty:
-            typer.echo(f"recall reference '{recall_reference}' empty — skipping recall")
+            typer.echo(f"recall reference '{recall_reference}' empty - skipping recall")
             ref, ref_name = None, "none"
         else:
             n0 = len(ref)
@@ -1584,7 +1584,7 @@ def calibrate_sample(
     """Stratified sample of UNMAPPED candidates for manual high-res review.
 
     Fill the `verdict` property (yes/no) in JOSM/QGIS against current imagery, then
-    feed the file back via `earthpv calibrate-candidates --manual-reviews <file>` —
+    feed the file back via `earthpv calibrate-candidates --manual-reviews <file>` -
     each bin with >= 20 verdicts gets a directly-measured P(real | unmapped) instead
     of a glint extrapolation. This is the calibration path for the < 1000 m2 bins
     that hold most residential candidates."""
@@ -1629,7 +1629,7 @@ def calibrate_sample(
     out = out or Path(pred_dir) / aoi / "calibration_review_sample.geojson"
     sample[cols].to_file(out, driver="GeoJSON")
     typer.echo(
-        f"wrote {out} ({len(sample)} candidates) — review `verdict` (yes/no) against "
+        f"wrote {out} ({len(sample)} candidates) - review `verdict` (yes/no) against "
         f"high-res imagery, then run:\n  earthpv calibrate-candidates --aoi {aoi} "
         f"--manual-reviews {out}"
     )

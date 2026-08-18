@@ -4,13 +4,13 @@ for the vegetation NDVI veto (`scripts/veg_annual_ndvi.py pull` ->
 `data/veg/<aoi>/<candidate_id>.parquet`).
 
 Why this works with no new pull: `glint.spike_fit`/`annotate_spikes` are fully
-band-name-parameterized — they need `sun_zen`/`sun_az`/`view_zen`/`view_az`
+band-name-parameterized - they need `sun_zen`/`sun_az`/`view_zen`/`view_az`
 (per-scene sun/view geometry, always fetched regardless of which reflectance bands
 were requested) plus whatever `p98_<band>`/`ring_<band>` columns exist. The NDVI
 pull requested B04/B08 (red/NIR, for NDVI) instead of the glint default B03/B08
-(green/NIR), but the physics `spike_fit` runs — MAD-based per-band spike detection
+(green/NIR), but the physics `spike_fit` runs - MAD-based per-band spike detection
 against each series' own clear-day baseline, then the specular geometric
-consistency fit (`required_orientation`/`misalignment_deg`) — depends only on sun
+consistency fit (`required_orientation`/`misalignment_deg`) - depends only on sun
 zenith/azimuth and view zenith/azimuth, not on which visible band supplied the
 reflectance. B04 (665 nm) shows the same specular brightening a real glint event
 produces as B03 (560 nm) would; substituting it costs nothing and needed no
@@ -20,11 +20,11 @@ Runs BOTH spike criteria on the same downloaded series (no extra reads) and keep
 whichever gets more mutually-consistent spike dates: the default spatial ring
 check (works everywhere it has discrimination) and the self-referenced check
 (`self_referenced=True`, verified needed for dense urban blocks where a spatial
-ring is never meaningfully darker than the roof it surrounds — see README's
+ring is never meaningfully darker than the roof it surrounds - see README's
 "Solar-glint corroboration" section).
 
 Expectation to set, not hide: glint absence is common even for real arrays (~30%
-of confirmed installations show zero spikes over 2 years — wrong orientation for
+of confirmed installations show zero spikes over 2 years - wrong orientation for
 this geometry, cloud cover, or simply too small/dim). An orientation/tilt estimate
 is only possible for the subset that DOES glint consistently; this script reports
 that fraction explicitly rather than implying universal coverage.
@@ -32,7 +32,7 @@ that fraction explicitly rather than implying universal coverage.
 Resumable/incremental by construction: it only reads whatever series already
 exist under data/veg/<aoi>/, so re-running later as the still-in-progress annual
 pull (`veg_annual_ndvi.py pull`) covers more leads picks up more without
-recomputing anything already done — recomputation here is a few ms per lead in
+recomputing anything already done - recomputation here is a few ms per lead in
 pure pandas, so there's no reason to cache partials.
 
 Usage:
@@ -60,7 +60,7 @@ from earthpv.config import DATA_DIR  # noqa: E402
 log = logging.getLogger("glint_orientation")
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
-BANDS = ("B04", "B08")  # matches veg_annual_ndvi.py's pull — see module docstring
+BANDS = ("B04", "B08")  # matches veg_annual_ndvi.py's pull - see module docstring
 TOL_DEG = 3.0
 MIN_CONSISTENT = 2  # a single spike can't be checked for self-consistency
 
@@ -98,7 +98,7 @@ def analyze(
     series_dir = DATA_DIR / "veg" / aoi
     files = sorted(series_dir.glob("*.parquet"))
     if not files:
-        raise SystemExit(f"no series under {series_dir} — run "
+        raise SystemExit(f"no series under {series_dir} - run "
                           f"`scripts/veg_annual_ndvi.py pull --aoi {aoi}` first")
 
     leads_path = leads_file or Path(pred_dir) / aoi / f"{aoi}_pv_new_leads_clean.geojson"
@@ -133,7 +133,7 @@ def analyze(
     log.info("Processed %d leads (of %d leads total, %s pull still filling in the rest) "
              "-> %s", n, len(leads) if leads is not None else "?", "in progress"
              if leads is not None and n < len(leads) else "complete", dst)
-    log.info("Orientation recovered for %d/%d (%.1f%%) — n_consistent >= %d on either "
+    log.info("Orientation recovered for %d/%d (%.1f%%) - n_consistent >= %d on either "
              "criterion; the rest never glinted consistently in a year of scenes "
              "(expected: absence of glint is common even for real PV)",
              len(fitted), n, 100 * len(fitted) / n if n else 0, MIN_CONSISTENT)

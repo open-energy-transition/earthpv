@@ -1,14 +1,14 @@
 """Build glint-validation target sets for the density-improvement experiment.
 
 Density (`density.py`) reports two numbers per building/region: `pv_area_det` (the
-precision-honest floor — only pixels crossing the 0.3 threshold) and `pv_area_exp`
+precision-honest floor - only pixels crossing the 0.3 threshold) and `pv_area_exp`
 (a probability-weighted ceiling). The true regional PV area sits somewhere between
 them, driven mostly by installations the model recall-misses entirely (README:
-Germany 83-95% per-installation recall, Punjab 14-55% — the *missed* fraction is not
+Germany 83-95% per-installation recall, Punjab 14-55% - the *missed* fraction is not
 random, and it disproportionately determines how far `pv_area_det` undershoots truth).
 
 Question: can a glint check on the missed candidates recover some of that gap, at an
-acceptable false-positive cost — i.e. can `pv_area_det + recovered_area` be a better
+acceptable false-positive cost - i.e. can `pv_area_det + recovered_area` be a better
 density estimate than `pv_area_det` alone? This script builds two matched samples per
 region (`missed` true installations the model's own detected-candidate mask does not
 overlap, and `control` non-PV buildings) so a later glint pull can measure the

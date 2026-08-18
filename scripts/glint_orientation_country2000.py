@@ -114,7 +114,7 @@ def pull(max_workers: int = typer.Option(8)):
             chunk_series = glint.tile_scene_series_batch(
                 chunk, *DATE_RANGE, bands=BANDS, tile_deg=TILE_DEG, max_workers=max_workers,
             )
-        except Exception as e:  # noqa: BLE001 — one bad chunk must not kill the whole pull
+        except Exception as e:  # noqa: BLE001 - one bad chunk must not kill the whole pull
             log.warning("chunk %d/%d FAILED: %s -- will retry on next run", i + 1, n_chunks, e)
             continue
         n_scenes = [len(d) for d in chunk_series.values() if not d.empty]
