@@ -2101,18 +2101,6 @@ def build_evidence_atlas(
         "__PAGE_TITLE__": f"{title}'s Solar Capacity Atlas",
         "__H1__": f"{title}'s Solar Capacity Atlas",
         "__AOI_TITLE__": title,
-        "__LEDE_HTML__": (
-            "The same country, the same imagery, one defensible estimate. "
-            "<b>Best estimate</b> combines every PV installation a person has drawn in "
-            "OpenStreetMap, the satellite model's own detections, and a per-building "
-            "estimate for small rooftops: the highest figure this project is willing to "
-            "defend. Both model-based halves are <b>recall-corrected</b> &mdash; each "
-            "stands in for the installations of its own size class that the instrument "
-            "is measured to miss, not only the ones it caught. "
-            "This is a research methodology under active validation, not a finished "
-            "census. See &ldquo;How confident should you be in this?&rdquo; below "
-            "for what's independently corroborated and what's still open."
-        ),
         "__CONFIDENCE_HTML__": (
             "<p><b>The headline figure carries a 90% range, and it is wide.</b> "
             "Best estimate is "
@@ -2122,9 +2110,9 @@ def build_evidence_atlas(
             "ranges: the two area-to-capacity constants (how many kWp a square metre of "
             "panel, or of solar-farm site, actually carries); the segmentation model's "
             "own measured precision and recall by installation size; and the sensitivity of "
-            "<i>both</i> per-building corrections &mdash; how much of a flagged roof is "
+            "<i>both</i> per-building corrections -- how much of a flagged roof is "
             "actually panel, and what share of real installations the classifier flags at "
-            "all &mdash; to <i>which</i> ground-truth quadrats happened to be mapped, "
+            "all -- to <i>which</i> ground-truth quadrats happened to be mapped, "
             "measured by resampling the quadrats themselves rather than the buildings "
             "inside them, and resampled together because they are fit on the same "
             "quadrats and move together."
@@ -2138,7 +2126,7 @@ def build_evidence_atlas(
             ) +
             " Three things are <i>not</i> inside them, and no arithmetic can put them "
             "there. The quadrats were hand-picked rather than randomly sampled, so this "
-            "is not a formal national margin of error &mdash; and not by choice: a "
+            "is not a formal national margin of error -- and not by choice: a "
             "genuine probability sample needs every drawn cell to be checkable against "
             "reference imagery recent enough to confirm or refute a small installation, "
             "and random draws outside the calibrated domain have so far landed on JOSM "
@@ -2148,7 +2136,7 @@ def build_evidence_atlas(
             "exists. Ground-truth completeness is "
             "relative to the date of the mapping imagery rather than the satellite "
             "composite, which biases the measured precision downward and the measured "
-            "recall upward by an unknown amount &mdash; both in the direction that makes "
+            "recall upward by an unknown amount -- both in the direction that makes "
             "this page's figure a floor rather than a ceiling. And roughly four-fifths of "
             "Best (the two roofclf-derived components together) shares one coverage-ratio "
             "/ area-recall correction whose sparsest supporting quadrat sits at 872 "

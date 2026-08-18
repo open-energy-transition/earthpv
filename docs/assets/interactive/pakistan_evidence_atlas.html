@@ -84,12 +84,6 @@
     font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
     font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
   }
-  .lede {
-    margin: 44px 0 0; max-width: 72ch; color: var(--ink-2);
-    font-size: clamp(15px, 1.5vw, 17px);
-  }
-  .lede b { color: var(--ink); font-weight: 640; }
-
   /* ── section scaffolding ─────────────────────────────────────────── */
   .sec { margin-top: 44px; }
   .sec-head { display: flex; align-items: baseline; justify-content: space-between;
@@ -392,9 +386,6 @@
   }
   .pose-native .pose-mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code",
     "Roboto Mono", Consolas, monospace; }
-  .pose-native .pose-dek { font-size: 15.5px; color: var(--pose-ink-dim); max-width: 68ch;
-    margin: 0 0 20px; }
-  .pose-native .pose-dek .pose-mono { font-size: 14px; }
   .pose-native .pose-grid { display: grid;
     grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
   @media (max-width: 860px) { .pose-native .pose-grid { grid-template-columns: 1fr; } }
@@ -549,8 +540,6 @@
     </div>
   </section>
 
-  <p class="lede">The same country, the same imagery, one defensible estimate. <b>Best estimate</b> combines every PV installation a person has drawn in OpenStreetMap, the satellite model's own detections, and a per-building estimate for small rooftops: the highest figure this project is willing to defend. Both model-based halves are <b>recall-corrected</b> &mdash; each stands in for the installations of its own size class that the instrument is measured to miss, not only the ones it caught. This is a research methodology under active validation, not a finished census. See &ldquo;How confident should you be in this?&rdquo; below for what's independently corroborated and what's still open.</p>
-
   <div class="kpis">
     <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
       <div class="r" id="kBestCi"></div>
@@ -661,15 +650,6 @@
         <div class="sec-title">Fitted tilt &amp; azimuth, from Sentinel-2 glint</div>
       </div>
     </div>
-    <p class="pose-dek">
-      Fitted tilt and azimuth for <span class="pose-mono pz-nfitted">0</span> installations whose
-      historical Sentinel-2 specular reflections agree on a single fixed panel orientation --
-      out of <span class="pose-mono pz-ntotal">0</span> installations checked, stratified by size,
-      across two years of imagery<span class="pz-dek-history"></span>.
-      <b>This is not a neutral sample of installed pose</b> -- read the envelope note before
-      trusting the shape.
-    </p>
-
     <div class="pose-grid">
       <div class="pose-panel pose-chart-panel">
         <div class="pose-chart-head">
@@ -747,7 +727,7 @@
       <summary><span><span class="xt">How confident should you be in this?</span>
         <span class="xs">preliminary results, sampling caveats, independent corroboration</span></span><span class="xi">+</span></summary>
       <div class="xbody">
-        <p><b>The headline figure carries a 90% range, and it is wide.</b> Best estimate is <b>19,746 MWp</b> with a range of <b>16,051&ndash;23,520</b>. Three things are inside those ranges: the two area-to-capacity constants (how many kWp a square metre of panel, or of solar-farm site, actually carries); the segmentation model's own measured precision and recall by installation size; and the sensitivity of <i>both</i> per-building corrections &mdash; how much of a flagged roof is actually panel, and what share of real installations the classifier flags at all &mdash; to <i>which</i> ground-truth quadrats happened to be mapped, measured by resampling the quadrats themselves rather than the buildings inside them, and resampled together because they are fit on the same quadrats and move together. Three things are <i>not</i> inside them, and no arithmetic can put them there. The quadrats were hand-picked rather than randomly sampled, so this is not a formal national margin of error &mdash; and not by choice: a genuine probability sample needs every drawn cell to be checkable against reference imagery recent enough to confirm or refute a small installation, and random draws outside the calibrated domain have so far landed on JOSM reference imagery too old to do that, in both directions (a zero can mean no panels or an installation newer than the imagery). Purposive selection was the fallback that let quadrats be sited where recent imagery actually exists. Ground-truth completeness is relative to the date of the mapping imagery rather than the satellite composite, which biases the measured precision downward and the measured recall upward by an unknown amount &mdash; both in the direction that makes this page's figure a floor rather than a ceiling. And roughly four-fifths of Best (the two roofclf-derived components together) shares one coverage-ratio / area-recall correction whose sparsest supporting quadrat sits at 872 buildings/km&sup2;, while measured 2026-08-16, 84% of the buildings that correction is applied to sit below that density, some three to four times sparser; the bootstrap above resamples only quadrats on the dense side of that gap, so it is silent about transfer to the sparser cells the correction is actually priced for.</p><p><b>Read this as promising preliminary results from an ongoing methodology, not a finished capacity census.</b> What's genuinely novel here (a reproducible pipeline using free satellite imagery and open-source geospatial AI to estimate distributed solar deployment where official statistics are sparse) is true regardless of whether any single number on this page holds up exactly. Treat the numbers as the current state of an experiment being actively tested, not a settled fact.</p><p><b>The calibration quadrats are hand-picked, not randomly sampled.</b> All <b>24</b> ground-truth quadrats behind the small-PV instruments were chosen by a researcher to cover a spread of landscape types (planned housing, dense informal urban, industrial, arid/bare-land), not drawn at random from a defined national frame. Only <b>24</b> of them have been through a full human completeness pass strict enough to trust their negatives (see the teal markers on the map). Purposive sampling at any size (whether this many quadrats or several times more) does not by itself support a formal national margin of error; that would need a probability sample drawn from the national building-density frame, which does not yet exist. More quadrats have real value (each new one has surfaced a genuinely new failure mode so far), but count alone does not resolve this.</p><p><b>Independent, non-imagery data points land in the same order of magnitude.</b> Pakistan's NEPRA net-metering register (a government administrative record with no connection to this pipeline) puts registered rooftop solar at 5.3-6.3 GW nationally (a floor, since it only counts customers who completed formal registration paperwork). Chinese customs export data separately puts cumulative panel imports into Pakistan at roughly 50 GW by mid-2025, a much looser ceiling on the whole market, utility-scale included. This page's headline figure sits inside that bracket: two independent, non-satellite data sources landing in a mutually consistent range is real corroboration for the order of magnitude, even though it cannot confirm any single number here precisely.</p>
+        <p><b>The headline figure carries a 90% range, and it is wide.</b> Best estimate is <b>19,746 MWp</b> with a range of <b>16,051&ndash;23,520</b>. Three things are inside those ranges: the two area-to-capacity constants (how many kWp a square metre of panel, or of solar-farm site, actually carries); the segmentation model's own measured precision and recall by installation size; and the sensitivity of <i>both</i> per-building corrections -- how much of a flagged roof is actually panel, and what share of real installations the classifier flags at all -- to <i>which</i> ground-truth quadrats happened to be mapped, measured by resampling the quadrats themselves rather than the buildings inside them, and resampled together because they are fit on the same quadrats and move together. Three things are <i>not</i> inside them, and no arithmetic can put them there. The quadrats were hand-picked rather than randomly sampled, so this is not a formal national margin of error -- and not by choice: a genuine probability sample needs every drawn cell to be checkable against reference imagery recent enough to confirm or refute a small installation, and random draws outside the calibrated domain have so far landed on JOSM reference imagery too old to do that, in both directions (a zero can mean no panels or an installation newer than the imagery). Purposive selection was the fallback that let quadrats be sited where recent imagery actually exists. Ground-truth completeness is relative to the date of the mapping imagery rather than the satellite composite, which biases the measured precision downward and the measured recall upward by an unknown amount -- both in the direction that makes this page's figure a floor rather than a ceiling. And roughly four-fifths of Best (the two roofclf-derived components together) shares one coverage-ratio / area-recall correction whose sparsest supporting quadrat sits at 872 buildings/km&sup2;, while measured 2026-08-16, 84% of the buildings that correction is applied to sit below that density, some three to four times sparser; the bootstrap above resamples only quadrats on the dense side of that gap, so it is silent about transfer to the sparser cells the correction is actually priced for.</p><p><b>Read this as promising preliminary results from an ongoing methodology, not a finished capacity census.</b> What's genuinely novel here (a reproducible pipeline using free satellite imagery and open-source geospatial AI to estimate distributed solar deployment where official statistics are sparse) is true regardless of whether any single number on this page holds up exactly. Treat the numbers as the current state of an experiment being actively tested, not a settled fact.</p><p><b>The calibration quadrats are hand-picked, not randomly sampled.</b> All <b>24</b> ground-truth quadrats behind the small-PV instruments were chosen by a researcher to cover a spread of landscape types (planned housing, dense informal urban, industrial, arid/bare-land), not drawn at random from a defined national frame. Only <b>24</b> of them have been through a full human completeness pass strict enough to trust their negatives (see the teal markers on the map). Purposive sampling at any size (whether this many quadrats or several times more) does not by itself support a formal national margin of error; that would need a probability sample drawn from the national building-density frame, which does not yet exist. More quadrats have real value (each new one has surfaced a genuinely new failure mode so far), but count alone does not resolve this.</p><p><b>Independent, non-imagery data points land in the same order of magnitude.</b> Pakistan's NEPRA net-metering register (a government administrative record with no connection to this pipeline) puts registered rooftop solar at 5.3-6.3 GW nationally (a floor, since it only counts customers who completed formal registration paperwork). Chinese customs export data separately puts cumulative panel imports into Pakistan at roughly 50 GW by mid-2025, a much looser ceiling on the whole market, utility-scale included. This page's headline figure sits inside that bracket: two independent, non-satellite data sources landing in a mutually consistent range is real corroboration for the order of magnitude, even though it cannot confirm any single number here precisely.</p>
       </div>
     </details>
   </section>
@@ -766,7 +746,7 @@
         <span class="xs">capacity parquets, calibration boundaries, pose survey, raw detections, model checkpoint</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <div class="dl-list" id="dlList"></div>
-        <div class="dl-query-label">Live OSM PV, not this snapshot &mdash; Overpass query</div>
+        <div class="dl-query-label">Live OSM PV, not this snapshot -- Overpass query</div>
         <div class="dl-query">[out:json][timeout:180];
 area["name"="Pakistan"]["admin_level"="2"]-&gt;.searchArea;
 (
@@ -1165,7 +1145,7 @@ out meta geom;</div>
     const tip = document.getElementById("tip");
     function showTip(e, label, series, mwp, nInst, extrap){
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
-      tip.innerHTML = `<div class="th">${label} &mdash; ${series}</div>`
+      tip.innerHTML = `<div class="th">${label} -- ${series}</div>`
         + `<div class="rowt"><span>Capacity</span><span>${fmt(mwp)} MWp</span></div>`
         + `<div class="rowt"><span>Installations</span><span>${fmt(nInst)}</span></div>`
         + (extrap > 0 ? `<div class="rowt"><span>of which extrapolated</span><span>${fmt(extrap)} MWp</span></div>` : "");
@@ -1335,7 +1315,7 @@ out meta geom;</div>
     // built without an optional component must not still announce it in its own title.
     const nMethods = new Set(best.map(r => r.method)).size;
     document.getElementById("compTitle").innerHTML =
-      `Best estimate &mdash; ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
+      `Best estimate -- ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
     document.getElementById("compSub").textContent =
       "Segments grouped by method, in proportion to MWp · hover a segment for detail";
     const shownMethods = new Set([...best, ...verified].map(r => r.method));
@@ -1483,14 +1463,12 @@ out meta geom;</div>
     const st = DATA.pose.stats;
     const set = (cls, html) => document.querySelectorAll("." + cls).forEach(e => e.innerHTML = html);
     set("pz-nfitted", fmt(st.n_fitted));
-    set("pz-ntotal", fmt(st.n_total));
     set("pz-pct-ge1000", st.pct_ge1000.toFixed(1));
     set("pz-pct-onespike", st.pct_onespike.toFixed(1));
     set("pz-pct-nosignal", st.pct_nosignal.toFixed(1));
     set("pz-az-range", `${st.az_min.toFixed(1)}&deg; &ndash; ${st.az_max.toFixed(1)}&deg;`);
     set("pz-tilt-iqr", `${st.tilt_q25.toFixed(1)}&deg; &ndash; ${st.tilt_q75.toFixed(1)}&deg;`);
     set("pz-wedge-deg", st.wedge_deg.toFixed(0));
-    set("pz-dek-history", st.history_note ? " " + st.history_note : "");
     set("pz-summary-path", st.summary_path);
     set("pz-data-note", st.data_note ? " " + st.data_note : "");
     set("pz-ge1000-note",

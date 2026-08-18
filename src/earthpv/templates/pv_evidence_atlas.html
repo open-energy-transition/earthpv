@@ -84,12 +84,6 @@
     font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
     font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
   }
-  .lede {
-    margin: 44px 0 0; max-width: 72ch; color: var(--ink-2);
-    font-size: clamp(15px, 1.5vw, 17px);
-  }
-  .lede b { color: var(--ink); font-weight: 640; }
-
   /* ── section scaffolding ─────────────────────────────────────────── */
   .sec { margin-top: 44px; }
   .sec-head { display: flex; align-items: baseline; justify-content: space-between;
@@ -392,9 +386,6 @@
   }
   .pose-native .pose-mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code",
     "Roboto Mono", Consolas, monospace; }
-  .pose-native .pose-dek { font-size: 15.5px; color: var(--pose-ink-dim); max-width: 68ch;
-    margin: 0 0 20px; }
-  .pose-native .pose-dek .pose-mono { font-size: 14px; }
   .pose-native .pose-grid { display: grid;
     grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
   @media (max-width: 860px) { .pose-native .pose-grid { grid-template-columns: 1fr; } }
@@ -549,8 +540,6 @@
     </div>
   </section>
 
-  <p class="lede">__LEDE_HTML__</p>
-
   <div class="kpis">
     <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
       <div class="r" id="kBestCi"></div>
@@ -661,15 +650,6 @@
         <div class="sec-title">Fitted tilt &amp; azimuth, from Sentinel-2 glint</div>
       </div>
     </div>
-    <p class="pose-dek">
-      Fitted tilt and azimuth for <span class="pose-mono pz-nfitted">0</span> installations whose
-      historical Sentinel-2 specular reflections agree on a single fixed panel orientation --
-      out of <span class="pose-mono pz-ntotal">0</span> installations checked, stratified by size,
-      across two years of imagery<span class="pz-dek-history"></span>.
-      <b>This is not a neutral sample of installed pose</b> -- read the envelope note before
-      trusting the shape.
-    </p>
-
     <div class="pose-grid">
       <div class="pose-panel pose-chart-panel">
         <div class="pose-chart-head">
@@ -766,7 +746,7 @@
         <span class="xs">capacity parquets, calibration boundaries, pose survey, raw detections, model checkpoint</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <div class="dl-list" id="dlList"></div>
-        <div class="dl-query-label">Live OSM PV, not this snapshot &mdash; Overpass query</div>
+        <div class="dl-query-label">Live OSM PV, not this snapshot -- Overpass query</div>
         <div class="dl-query">[out:json][timeout:180];
 area["name"="__AOI_TITLE__"]["admin_level"="2"]-&gt;.searchArea;
 (
@@ -1165,7 +1145,7 @@ out meta geom;</div>
     const tip = document.getElementById("tip");
     function showTip(e, label, series, mwp, nInst, extrap){
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
-      tip.innerHTML = `<div class="th">${label} &mdash; ${series}</div>`
+      tip.innerHTML = `<div class="th">${label} -- ${series}</div>`
         + `<div class="rowt"><span>Capacity</span><span>${fmt(mwp)} MWp</span></div>`
         + `<div class="rowt"><span>Installations</span><span>${fmt(nInst)}</span></div>`
         + (extrap > 0 ? `<div class="rowt"><span>of which extrapolated</span><span>${fmt(extrap)} MWp</span></div>` : "");
@@ -1335,7 +1315,7 @@ out meta geom;</div>
     // built without an optional component must not still announce it in its own title.
     const nMethods = new Set(best.map(r => r.method)).size;
     document.getElementById("compTitle").innerHTML =
-      `Best estimate &mdash; ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
+      `Best estimate -- ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
     document.getElementById("compSub").textContent =
       "Segments grouped by method, in proportion to MWp · hover a segment for detail";
     const shownMethods = new Set([...best, ...verified].map(r => r.method));
@@ -1483,14 +1463,12 @@ out meta geom;</div>
     const st = DATA.pose.stats;
     const set = (cls, html) => document.querySelectorAll("." + cls).forEach(e => e.innerHTML = html);
     set("pz-nfitted", fmt(st.n_fitted));
-    set("pz-ntotal", fmt(st.n_total));
     set("pz-pct-ge1000", st.pct_ge1000.toFixed(1));
     set("pz-pct-onespike", st.pct_onespike.toFixed(1));
     set("pz-pct-nosignal", st.pct_nosignal.toFixed(1));
     set("pz-az-range", `${st.az_min.toFixed(1)}&deg; &ndash; ${st.az_max.toFixed(1)}&deg;`);
     set("pz-tilt-iqr", `${st.tilt_q25.toFixed(1)}&deg; &ndash; ${st.tilt_q75.toFixed(1)}&deg;`);
     set("pz-wedge-deg", st.wedge_deg.toFixed(0));
-    set("pz-dek-history", st.history_note ? " " + st.history_note : "");
     set("pz-summary-path", st.summary_path);
     set("pz-data-note", st.data_note ? " " + st.data_note : "");
     set("pz-ge1000-note",
