@@ -1,6 +1,6 @@
 aoi: gujarat
 status: interim-mapped-only
-derived: '2026-08-07'
+derived: '2026-08-14'
 min_distance_m: 100.0
 false_floor: 0.087
 false_n: 69
@@ -20,10 +20,12 @@ bin_edges_m2:
 - 50000.0
 bins:
 - label: <100
-  n_candidates: 45
+  n_candidates: 61
   n_mapped: 2
-  mapped_frac: 0.0444
+  mapped_frac: 0.0328
   sensitivity: 0.025
+  sensitivity_source: study
+  sensitivity_study: 0.025
   sensitivity_n: 80
   sensitivity_validated: 2
   glint_sample_n: 0
@@ -36,14 +38,16 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0444
-  p_real_lo: 0.013
-  p_real_hi: 0.1133
+  p_real: 0.0328
+  p_real_lo: 0.0096
+  p_real_hi: 0.0852
 - label: 100-500
-  n_candidates: 170
-  n_mapped: 3
-  mapped_frac: 0.0176
+  n_candidates: 162
+  n_mapped: 1
+  mapped_frac: 0.0062
   sensitivity: 0.088
+  sensitivity_source: study
+  sensitivity_study: 0.088
   sensitivity_n: 80
   sensitivity_validated: 7
   glint_sample_n: 0
@@ -56,14 +60,16 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0176
-  p_real_lo: 0.0063
-  p_real_hi: 0.0417
+  p_real: 0.0062
+  p_real_lo: 0.0011
+  p_real_hi: 0.0241
 - label: 500-1k
-  n_candidates: 167
-  n_mapped: 2
-  mapped_frac: 0.012
+  n_candidates: 179
+  n_mapped: 1
+  mapped_frac: 0.0056
   sensitivity: 0.162
+  sensitivity_source: study
+  sensitivity_study: 0.162
   sensitivity_n: 80
   sensitivity_validated: 13
   glint_sample_n: 0
@@ -76,14 +82,16 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.012
-  p_real_lo: 0.0035
-  p_real_hi: 0.0327
+  p_real: 0.0056
+  p_real_lo: 0.001
+  p_real_hi: 0.0219
 - label: 1k-5k
-  n_candidates: 780
-  n_mapped: 15
-  mapped_frac: 0.0192
+  n_candidates: 889
+  n_mapped: 10
+  mapped_frac: 0.0112
   sensitivity: 0.306
+  sensitivity_source: study
+  sensitivity_study: 0.306
   sensitivity_n: 85
   sensitivity_validated: 26
   glint_sample_n: 0
@@ -96,14 +104,16 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0192
-  p_real_lo: 0.0126
-  p_real_hi: 0.0289
+  p_real: 0.0112
+  p_real_lo: 0.0066
+  p_real_hi: 0.0184
 - label: 5k-50k
-  n_candidates: 2416
-  n_mapped: 80
-  mapped_frac: 0.0331
+  n_candidates: 2573
+  n_mapped: 104
+  mapped_frac: 0.0404
   sensitivity: 0.293
+  sensitivity_source: study
+  sensitivity_study: 0.293
   sensitivity_n: 82
   sensitivity_validated: 24
   glint_sample_n: 0
@@ -116,14 +126,16 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0331
-  p_real_lo: 0.0274
-  p_real_hi: 0.0396
+  p_real: 0.0404
+  p_real_lo: 0.0343
+  p_real_hi: 0.0472
 - label: '>50k'
-  n_candidates: 1238
-  n_mapped: 245
-  mapped_frac: 0.1979
+  n_candidates: 619
+  n_mapped: 191
+  mapped_frac: 0.3086
   sensitivity: 0.261
+  sensitivity_source: study
+  sensitivity_study: 0.261
   sensitivity_n: 92
   sensitivity_validated: 24
   glint_sample_n: 0
@@ -136,9 +148,9 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.1979
-  p_real_lo: 0.1799
-  p_real_hi: 0.2179
+  p_real: 0.3086
+  p_real_lo: 0.279
+  p_real_hi: 0.341
 provenance: "p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from manual\
   \ review of unmapped candidates where sampled (n>=20), else glint inversion p_u(b)\
   \ = clip((v_b - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed\

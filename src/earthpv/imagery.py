@@ -5,7 +5,7 @@ TerraMind S2L2A bands at 10 m, plus an annual median (median over seasons).
 
 `annual_composite` (the compose-stage entry point) falls back to Element84's
 Earth Search catalog (AWS Open Data, same L2A scenes as COGs) when Planetary
-Computer errors out — PC is ~4x faster from here (West Europe region) when
+Computer errors out - PC is ~4x faster from here (West Europe region) when
 healthy, but has multi-hour 503 storms and SAS-token expiries under sustained
 load; Earth Search needs no auth/tokens and lives in a different failure domain.
 """
@@ -211,7 +211,7 @@ def annual_composite(
 
     Tries Planetary Computer first (fastest from here when healthy), and hands the
     cell to Earth Search (AWS) if PC errors out, comes back empty, or is simply
-    struggling — `PC_TIMEOUT_S` bounds how long we wait, since a SAS-token/503 storm
+    struggling - `PC_TIMEOUT_S` bounds how long we wait, since a SAS-token/503 storm
     degrades individual band reads (retried and swallowed by `fail_on_error=False`)
     without ever raising, so a struggling cell would otherwise silently take minutes
     instead of erroring outright. Different hosting from PC, so its recurring
@@ -232,7 +232,7 @@ def annual_composite(
         return _annual_composite_via(
             "earth-search", bbox, date_range, max_cloud, max_items, geobox
         )
-    except Exception as e:  # noqa: BLE001 — any PC failure is grounds for fallback
+    except Exception as e:  # noqa: BLE001 - any PC failure is grounds for fallback
         log.warning(
             "Planetary Computer failed for bbox=%s (%s); falling back to Earth Search",
             bbox, e,
@@ -242,7 +242,7 @@ def annual_composite(
         )
     if result is None:
         # PC has no scenes for this window; ES mirrors the same ESA archive but
-        # ingestion lags differ — cheap second opinion before declaring no-data.
+        # ingestion lags differ - cheap second opinion before declaring no-data.
         log.info("Planetary Computer returned no scenes for bbox=%s; trying Earth Search", bbox)
         return _annual_composite_via(
             "earth-search", bbox, date_range, max_cloud, max_items, geobox

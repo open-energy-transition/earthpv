@@ -147,6 +147,27 @@ bin holds under 10 percent of fitted installations and the top five bins under 2
 Two narrower versions survive the data, per-locality pose calibration and a top-K
 triage pre-filter, and both are open work.
 
+## The point-spread function, and the false-spike floor (2026-08-17)
+
+Sentinel-2's effective PSF at 10 m is now measured directly from glinting installations:
+**sigma 0.65 px, 90% CI 0.60 to 0.70**, fitted over 68 targets below 500 m2 by forward-
+modelling each target's polygon at 1 m, blurring it and block-averaging onto each scene's
+own grid at its true sub-pixel position. ESA's stated MTF at Nyquist implies 0.49 to 0.62 px,
+and the small excess is covered by a measured per-scene source displacement of 0.72 px.
+
+Matched filtering on that PSF is [rejected](../issues/glint-psf-matched-filter.md): it loses
+to the p98-minus-annulus statistic already in use, because the glinting patch is not the
+whole array and moves between dates, so neither the shape nor the position a matched filter
+requires is known. The same study measured a fitted sigma rising from 0.65 to 2.20 px with
+installation area, which is the direct evidence for that.
+
+The study's operational output is the **false-spike rate on verified negatives: 2.0%**
+(12 of 600 buildings inside Rule-1 complete quadrats carrying no mapped PV, over two years),
+against 8.7 to 20.3% previously measured on merely model-negative controls. Disabling the
+per-pixel SCL veto raises it to 4.5%, so that veto accounts for about half the improvement
+and unmapped real PV in the old controls for the rest. Against true detection rates the
+instrument separates by 14.9x at 100 to 500 m2 and 7.9x below 100 m2.
+
 ## Opportunity: how many chances did this target actually get?
 
 **Measured 2026-08-12, and it changes a number already in the published calibration.**
@@ -317,6 +338,90 @@ individual large arrays, where detection reaches 73 percent above 50,000 m<sup>2
 does not work is using it to lift the small-rooftop classifier, because the physics puts the
 overwhelming majority of small rooftops permanently outside the observable band.
 
+### Detection rate, validation rate, and fitted pose all shift with latitude (2026-08-14)
+
+The country2000 study (`data/glint/country2000_summary.csv`) was stratified by
+installation size, not region, so it had never been cut geographically until
+`scripts/glint_pose_by_region.py` did it directly against data already on disk -- no new
+Overpass pull, no new Planetary Computer read. The motivation is physical, not
+exploratory: Sentinel-2 crosses a given latitude at a fixed local time, so the specular-
+reflection condition this whole page is built on is latitude-dependent in principle, and
+Pakistan spans roughly 24-37N.
+
+Three of six 2-degree latitude bands have enough targets to trust (n >= several hundred);
+the rest (26-28N, 28-30N, 34-37N, each under 40 targets) are noted but not read as signal.
+Within the well-sampled bands:
+
+| lat band | n | detected % | validated % | median tilt | az range |
+|---|---:|---:|---:|---:|---|
+| 24-26N (coastal Sindh) | 435 | 39.5 | 21.1 | 9.7&deg; | 81.7&deg;-177.0&deg; |
+| 30-32N (central Punjab) | 959 | 29.6 | 13.6 | 14.6&deg; | 105.6&deg;-179.4&deg; |
+| 32-34N (upper Punjab) | 519 | 21.8 | 11.0 | 18.8&deg; | 129.7&deg;-180.1&deg; |
+
+Two things move together and cleanly, in the direction each has an independent reason to:
+
+- **Median fitted tilt rises with latitude** (9.7&deg; -> 14.6&deg; -> 18.8&deg;), tracking
+  the standard solar-engineering convention that a fixed panel's optimal tilt increases
+  with latitude. This is not a sensor artifact -- it is real installations plausibly
+  mounted closer to their theoretical optimum, and it is a sanity check on the fitting
+  method itself: if tilt did *not* track latitude this way, that would be the more
+  worrying result.
+- **The fitted azimuth range's lower edge shifts with latitude** (81.7&deg; -> 105.6&deg;
+  -> 129.7&deg;, i.e. the observable wedge narrows and rotates further from due-east as
+  latitude increases), consistent with the fixed local-overpass-time geometry this page's
+  wedge derivation already depends on (see "Why the plot only fills part of the circle" on
+  the [pose survey page](../results/pv-pose.md)). This has a direct consequence for
+  `pose.py`: the *same* wedge is currently applied nationally, computed from the pooled
+  pan-Pakistan azimuth range, and this result says that pools together installations
+  facing genuinely different observable ranges rather than one national truth.
+- **Detection and validation rate both decline with latitude** (39.5% -> 29.6% -> 21.8%
+  detected; 21.1% -> 13.6% -> 11.0% validated). Read cautiously: this is consistent with
+  the wedge narrowing at higher latitude (fewer installations fall inside an observable
+  range at all), but installation type, mounting convention, and building stock also
+  differ by region and are not controlled for here -- the province cut below shows exactly
+  this kind of confound.
+
+**Province cut surfaces at least one difference latitude alone does not explain.**
+Islamabad Capital Territory (n=300, at a latitude similar to upper Punjab) validates at
+only 4.7%, well below Punjab's and Sindh's pooled rates -- not predicted by the latitude
+trend above, and more likely a real difference in ICT's building stock/mounting
+convention (planned-housing developments, different roof geometry) than a sensor effect.
+
+**Not recommended from this: a full national exhaustive glint pass.** Direct per-target
+checking costs ~1 min/target, so scoring every building nationally (tens of millions) the
+way `roofclf-score-national` does is not viable for this instrument, and was never the
+proposal.
+
+### A targeted random top-up, and an atlas page (2026-08-14)
+
+The thin bands/provinces above (26-28N, 28-30N, 34-37N; Khyber Pakhtunkhwa,
+Balochistan, Gilgit-Baltistan, Azad Kashmir) got a follow-up: `scripts/glint_orientation_
+region_topup.py` drew 401 more targets at random from the same source
+(`data/labels/pakistan_overpass_solar.parquet`), restricted to exactly those strata and
+excluding every `osm_id` country2000 already pulled, then ran the same tile-batched fetch
+(150-target chunks, same date range) so the two pulls are directly poolable. All 401
+completed with healthy scene counts (chunk medians 293-380, no zero-scene targets).
+Merged into `data/glint/pakistan_combined_summary.csv` (2,401 targets total).
+
+**The well-sampled bands replicate closely** (24-26N: 435->490 targets, 39.5%->36.7%
+detected; 30-32N: 959->982, 29.6%->29.1%; 32-34N: 519->605, 21.8%->20.8% -- tilt and
+azimuth trends unchanged), which is reassuring: the top-up did not need to touch these,
+and it did not disturb them.
+
+**The top-up genuinely moved the thin groups, and not always the way a hopeful redraw
+would.** Khyber Pakhtunkhwa grew from 53 to 253 targets, but its validation rate fell
+from 11.3% to 7.5% -- the original small sample was optimistic by chance. Balochistan
+(34 -> 114 targets) fell similarly, 26.5% -> 16.7%. Both are now bigger, more trustworthy
+*rate* estimates, but neither has enough *fitted* (pose-worthy) targets yet to report
+tilt/azimuth (Balochistan: 19 fitted; Khyber Pakhtunkhwa: 19; the reliability threshold is
+20). Azad Kashmir (8 installations nationally) and Gilgit-Baltistan (2) remain a full
+census, not a sample -- there is nothing left to draw.
+
+A night-lights-style atlas page (`scripts/build_glint_pose_regional_atlas.py` ->
+`results/pakistan_glint_pose_regional.html`) plots every one of the 2,401 targets on a
+province choropleth (validation rate, dashed outline where too thin to trust) alongside
+the latitude-band bars, matching this project's other interactive result pages.
+
 ## Research scripts
 
 | Script | What it answers |
@@ -328,6 +433,11 @@ overwhelming majority of small rooftops permanently outside the observable band.
 | `glint_candidate_precision.py` | stratified glint sample of unmapped candidates, feeding `calibrate-candidates` |
 | `glint_iou_experiment.py`, `glint_pixel_refine.py` | can glint move pixel IoU rather than just re-rank? Threshold gating no; per-pixel spike-amplitude trim, a narrow win |
 | `glint_density_*.py`, `glint_cell_density_*.py` | two attempts at regional density from glint, both negative |
+| `glint_pose_by_region.py` | re-cuts a glint study by latitude band and province -- detection/validation rate and fitted tilt/azimuth all shift with latitude |
+| `glint_orientation_region_topup.py` | targeted random top-up of the thin latitude bands/provinces `glint_pose_by_region.py` found, poolable with country2000 |
+| `build_glint_pose_regional_atlas.py` | night-lights-style atlas page for the regional re-cut -- province choropleth + per-target points + latitude-band bars |
+| `glint_psf_photometry.py` | measures the effective PSF by forward-modelling each footprint, then tests matched filtering against the aperture statistic (measured: worse) |
+| `glint_psf_negatives.py` | draws and pulls the Rule-1-verified negative control set behind the 2.0% false-spike rate |
 | `glint_skyfield_check.py` | independent astronomy cross-check of the geometry fit |
 | `s1_corner_reflector_test.py` | the Sentinel-1 dihedral hypothesis, negative |
 | `glint_s2_example_grid.py` | builds the [Sentinel-2 image gallery](../glint_examples.md) |

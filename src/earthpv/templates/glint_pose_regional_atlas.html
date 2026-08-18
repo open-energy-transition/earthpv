@@ -1,0 +1,440 @@
+<meta charset="utf-8">
+<title>Pakistan Glint/Pose: Regional Differences</title>
+<script id="pv" type="application/json">__PV_DATA_JSON__</script>
+
+<style>
+  :root {
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
+    --land: #241f16; --map-bg: #0c0a07;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623; --accent-dim: #b5610f;
+    --domain: #2fd9c4; --large: #4fb2e8; --dim-flag: #857a61;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+    color-scheme: dark; scrollbar-color: #4a3a1c #14100b;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+      --land: #e6dcc7; --map-bg: #efe8d8;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+      --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+      --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --dim-flag: #a99b7c;
+      --card-ring: rgba(120,80,20,0.14);
+      --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+      color-scheme: light; scrollbar-color: #c3b492 #ece4d2;
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+    --land: #e6dcc7; --map-bg: #efe8d8;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+    --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --dim-flag: #a99b7c;
+    --card-ring: rgba(120,80,20,0.14);
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+    color-scheme: light; scrollbar-color: #c3b492 #ece4d2;
+  }
+  :root[data-theme="dark"] {
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
+    --land: #241f16; --map-bg: #0c0a07;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #4fb2e8; --dim-flag: #857a61;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+    color-scheme: dark; scrollbar-color: #4a3a1c #14100b;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased; line-height: 1.5; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: clamp(20px, 3.5vw, 48px); }
+  header { margin-bottom: 6px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px; }
+  h1 { font-size: clamp(26px, 4.4vw, 42px); line-height: 1.05; margin: 0;
+    font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 30ch; }
+  .lede { margin: 16px 0 0; max-width: 76ch; color: var(--ink-2); font-size: clamp(15px, 1.5vw, 17px); }
+  .lede b { color: var(--ink); font-weight: 640; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
+    padding: 15px 16px; box-shadow: var(--shadow); }
+  .kpi .v { font-size: 24px; font-weight: 780; letter-spacing: -0.01em; color: var(--accent);
+    font-variant-numeric: tabular-nums; }
+  .kpi .v small { font-size: 0.5em; font-weight: 650; color: var(--ink-2); margin-left: 4px; }
+  .kpi .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+
+  .grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: start; margin-top: 26px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border-radius: 16px; padding: 18px; box-shadow: var(--shadow);
+    border: 1px solid var(--card-ring); }
+  .map-card { padding: 14px; position: relative; overflow: hidden; }
+  .map-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    margin: 4px 6px 12px; flex-wrap: wrap; }
+  .map-title { font-weight: 640; font-size: 15px; }
+  .map-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); letter-spacing: 0.02em; }
+  svg.map { width: 100%; height: auto; display: block; }
+  .prov-fill { fill: var(--land); }
+  .prov-line { fill: none; stroke: var(--prov-stroke); stroke-width: 1; stroke-linejoin: round; }
+  .prov-unreliable { stroke-dasharray: 3 2.5; }
+  .pt-detected { fill: var(--accent); opacity: 0.55; }
+  .pt-validated { fill: var(--domain); opacity: 0.85; }
+  .pt-none { fill: var(--dim-flag); opacity: 0.25; }
+
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 14px 6px 2px;
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+  .legend .lk { display: flex; align-items: center; gap: 6px; }
+  .legend .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .legend .sw.detected { background: var(--accent); opacity: .6; }
+  .legend .sw.validated { background: var(--domain); }
+  .legend .sw.none { background: var(--dim-flag); opacity: .35; }
+  .legend .sw.dashed { width: 13px; height: 13px; border-radius: 3px; border: 2px dashed var(--dim-flag); background: none; }
+
+  .hero-num { font-size: clamp(32px, 5vw, 46px); font-weight: 800; letter-spacing: -0.03em;
+    line-height: 0.95; color: var(--domain); font-variant-numeric: tabular-nums; }
+  .hero-unit { font-size: 0.34em; font-weight: 700; color: var(--ink-2); margin-left: 6px; }
+  .hero-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+  .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); }
+  .hero-desc b { color: var(--ink); font-weight: 660; }
+
+  svg.bars { width: 100%; height: auto; display: block; }
+  .axis-line { stroke: var(--hair); stroke-width: 1; }
+  .gridline { stroke: var(--hair); stroke-width: 1; }
+  .axis-label { font-family: var(--font-mono); font-size: 10px; fill: var(--muted); }
+  .bin-label { font-family: var(--font-mono); font-size: 10px; fill: var(--ink-2); }
+  .bar-unreliable { opacity: 0.35; }
+
+  .rank { margin-top: 14px; }
+  .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
+
+  details.tablewrap { margin-top: 14px; }
+  details.tablewrap summary { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--hair);
+    font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-family: var(--font-mono); font-weight: 500; color: var(--muted); font-size: 10px;
+    letter-spacing: 0.05em; text-transform: uppercase; }
+  tr.unreliable td { color: var(--muted); }
+
+  .tip { position: fixed; pointer-events: none; z-index: 20; opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px)); transition: opacity .1s;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 9px 11px; box-shadow: var(--shadow);
+    font-size: 12px; min-width: 160px; }
+  .tip .th { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+    letter-spacing: 0.05em; margin-bottom: 5px; }
+  .tip .rowt { display: flex; justify-content: space-between; gap: 14px; }
+  .tip .rowt span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+  .tip .rowt span:first-child { color: var(--ink-2); }
+
+  .foot { margin-top: 34px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.03em; line-height: 1.7; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  .xdetails { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
+    margin-top: 12px; overflow: hidden; }
+  .xdetails summary { list-style: none; cursor: pointer; padding: 15px 18px; display: flex;
+    align-items: center; justify-content: space-between; gap: 12px; }
+  .xdetails summary::-webkit-details-marker { display: none; }
+  .xdetails summary .xt { font-weight: 650; font-size: 14px; }
+  .xdetails summary .xs { display: block; font-family: var(--font-mono); font-size: 10.5px;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 3px; font-weight: 500; }
+  .xdetails summary .xi { font-family: var(--font-mono); color: var(--accent); font-size: 17px; flex: none; }
+  .xdetails[open] summary .xi { transform: rotate(45deg); }
+  .xdetails .xbody { padding: 0 18px 18px; color: var(--ink-2); font-size: 13.5px; line-height: 1.65; }
+  .xdetails .xbody p { margin: 0 0 12px; }
+  .xdetails .xbody p:last-child { margin-bottom: 0; }
+  .xdetails .xbody b { color: var(--ink); font-weight: 650; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">EarthPV &middot; Sentinel-2 glint &middot; regional re-cut</p>
+    <h1>Does panel pose and glint validation shift regionally across Pakistan?</h1>
+    <p class="lede">Re-cutting a glint/orientation study by latitude band and province instead of by
+    installation size (how it was originally drawn). <b>Not a new national estimate</b> -- a
+    diagnostic on an existing instrument, checking whether detection rate, validation rate, and
+    fitted panel tilt/azimuth vary geographically. See
+    <a href="https://github.com/open-energy-transition/earthpv" target="_blank" rel="noopener">github.com/open-energy-transition/earthpv</a>,
+    <code>docs/methods/glint.md</code>.</p>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kTotal">0</div>
+      <div class="k">targets analyzed (2,000 original + a targeted random top-up)</div></div>
+    <div class="kpi"><div class="v" id="kDetected">0<small>%</small></div>
+      <div class="k">detected (&ge;1 glint spike) nationally</div></div>
+    <div class="kpi"><div class="v" id="kValidated">0<small>%</small></div>
+      <div class="k">validated (&ge;2 self-consistent spikes, fitted a pose)</div></div>
+    <div class="kpi"><div class="v" id="kReliable">0</div>
+      <div class="k">of the region/latitude groups below have enough fitted targets (&ge;20) to trust</div></div>
+  </div>
+
+  <section class="sec" style="margin-top:6px;">
+    <div class="grid">
+      <section class="card map-card">
+        <div class="map-head">
+          <div class="map-title">Validation rate by province, and every target's own outcome</div>
+          <div class="map-sub">dashed outline = too few fitted targets to trust</div>
+        </div>
+        <div id="mapmount"></div>
+        <div class="legend">
+          <div class="lk"><span class="sw validated"></span>validated (fitted a pose)</div>
+          <div class="lk"><span class="sw detected"></span>detected, not validated</div>
+          <div class="lk"><span class="sw none"></span>no glint signal</div>
+          <div class="lk"><span class="sw dashed"></span>region below trust threshold</div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="card">
+          <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">% validated</span></div>
+          <div class="hero-label">Nationally, all 2,401 targets pooled</div>
+          <div class="hero-desc" id="heroDesc"></div>
+        </div>
+
+        <div class="card rank" style="margin-top:14px;">
+          <h3>By latitude band</h3>
+          <div id="latchart"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="card" style="margin-top:22px;">
+    <h3 style="font-size:14px;font-weight:640;margin:2px 2px 12px;">Full region figures</h3>
+    <details class="tablewrap" open>
+      <summary>Latitude bands + provinces</summary>
+      <div style="overflow-x:auto;"><table id="rtable">
+        <thead><tr><th>Group</th><th>n targets</th><th>Detected %</th><th>Validated %</th>
+          <th>Median tilt</th><th>Azimuth range</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </details>
+  </div>
+
+  <section class="sec" style="margin-top:34px;">
+    <details class="xdetails" open>
+      <summary><span><span class="xt">What this page is (and is not)</span>
+        <span class="xs">a diagnostic re-cut, not a new estimate</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <p>The underlying 2,000-target study was stratified by installation <b>size</b>, not
+        region -- this is the first time it has been cut geographically. A targeted random
+        top-up (401 more targets, drawn only from the provinces/latitude bands that were too
+        thin to trust) was added afterward from the same source population
+        (<code>data/labels/pakistan_overpass_solar.parquet</code>), same fetch mechanism, same
+        date range, so the two pulls are directly poolable.</p>
+        <p><b>The top-up did not simply confirm the original small samples -- it's an honest
+        re-measurement, and in Khyber Pakhtunkhwa and Balochistan the pooled rate came out
+        lower than the original small sample suggested.</b> That is exactly what a bigger,
+        less noisy sample is supposed to do when the first draw was optimistic by chance; it
+        is not a failure of the top-up.</p>
+        <p><b>Two territories remain data-limited by the underlying population, not by
+        sampling effort.</b> Azad Kashmir has 8 OSM-mapped solar installations in the entire
+        country and Gilgit-Baltistan has 2 -- every one of them is already in this sample (a
+        full census, not a sample), and no redraw changes that.</p>
+        <p>Two prior attempts at a <i>regional density</i> signal from glint both went
+        negative. This is a different question -- not "does glint density track PV density
+        regionally" but "does detection rate, validation rate, or fitted pose shift with
+        latitude" -- so that negative history does not predict the answer here.</p>
+      </div>
+    </details>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="off"></div>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById("pv").textContent);
+  const [b0, b1, b2, b3] = DATA.bounds;
+  const lonspan = b2 - b0, latspan = b3 - b1;
+  const meanlat = (b1 + b3) / 2, k = Math.cos(meanlat * Math.PI / 180);
+  const W = 1000, H = Math.round(W * latspan / (lonspan * k));
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+
+  function isDark(){
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr) return attr === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function el(n, a){ const e = document.createElementNS(SVGNS, n); for (const kk in a) e.setAttribute(kk, a[kk]); return e; }
+  function proj(lon, lat){ return [ (lon - b0) / lonspan * W, (b3 - lat) / latspan * H ]; }
+  function ringPath(rings){
+    let d = "";
+    for (const ring of rings){
+      for (let i=0;i<ring.length;i++){
+        const p = proj(ring[i][0], ring[i][1]);
+        d += (i===0?"M":"L") + p[0].toFixed(1) + " " + p[1].toFixed(1);
+      }
+      d += "Z";
+    }
+    return d;
+  }
+
+  function renderMap(){
+    const mount = document.getElementById("mapmount");
+    mount.innerHTML = "";
+    const svg = el("svg", {viewBox:`0 0 ${W} ${H}`, class:"map", role:"img",
+      "aria-label":"Choropleth map of Pakistan showing glint validation rate per province, with every target plotted"});
+    svg.appendChild(el("rect", {x:0,y:0,width:W,height:H,fill:"var(--map-bg)"}));
+
+    const gLand = el("g", {});
+    for (const p of DATA.provinces) gLand.appendChild(el("path", {d:ringPath(p.rings), class:"prov-fill"}));
+    svg.appendChild(gLand);
+
+    const gS = el("g", {});
+    for (const p of DATA.provinces) {
+      const line = el("path", {d:ringPath(p.rings), class:"prov-line" + (p.reliable ? "" : " prov-unreliable")});
+      line.__p = p;
+      gS.appendChild(line);
+    }
+    svg.appendChild(gS);
+
+    const gPts = el("g", {});
+    for (const pt of DATA.points) {
+      const xy = proj(pt.lon, pt.lat);
+      const cls = pt.validated ? "pt-validated" : (pt.detected ? "pt-detected" : "pt-none");
+      const r = pt.validated ? 2.6 : (pt.detected ? 2.0 : 1.3);
+      const c = el("circle", {cx: xy[0].toFixed(1), cy: xy[1].toFixed(1), r, class: cls});
+      c.__pt = pt;
+      gPts.appendChild(c);
+    }
+    svg.appendChild(gPts);
+
+    const tip = document.getElementById("tip");
+    function showAt(e, html){
+      tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      tip.innerHTML = html;
+    }
+    gS.addEventListener("pointermove", (e) => {
+      const p = e.target.__p; if (!p) { tip.style.opacity = 0; return; }
+      showAt(e, `<div class="th">${p.name}</div>`
+        + `<div class="rowt"><span>n targets</span><span>${fmt(p.n_targets)}</span></div>`
+        + `<div class="rowt"><span>detected</span><span>${p.pct_detected.toFixed(1)}%</span></div>`
+        + `<div class="rowt"><span>validated</span><span>${p.pct_validated.toFixed(1)}%</span></div>`
+        + (p.reliable ? "" : `<div class="rowt"><span>reliability</span><span>too few fitted</span></div>`));
+    });
+    gS.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+    gPts.addEventListener("pointerenter", (e) => {
+      const pt = e.target.__pt; if (!pt) return;
+      showAt(e, `<div class="th">${pt.placement}</div>`
+        + `<div class="rowt"><span>detected</span><span>${pt.detected ? "yes" : "no"}</span></div>`
+        + `<div class="rowt"><span>validated</span><span>${pt.validated ? "yes" : "no"}</span></div>`);
+    }, true);
+    gPts.addEventListener("pointerleave", () => { tip.style.opacity = 0; }, true);
+
+    mount.appendChild(svg);
+  }
+
+  function renderLatChart(){
+    const mount = document.getElementById("latchart");
+    mount.innerHTML = "";
+    const bands = DATA.lat_bands;
+    const n = bands.length;
+    const W2 = 460, MARGIN = {top: 10, right: 8, bottom: 46, left: 34};
+    const plotW = W2 - MARGIN.left - MARGIN.right;
+    const plotH = 210;
+    const H2 = plotH + MARGIN.top + MARGIN.bottom;
+    const groupW = plotW / n;
+    const barW = Math.min(16, groupW * 0.32);
+    const barGap = 4;
+    const maxVal = Math.max(1, ...bands.flatMap(b => [b.pct_detected, b.pct_validated]));
+    const yOf = v => plotH - (v / maxVal) * plotH;
+
+    const svg = el("svg", {viewBox: `0 0 ${W2} ${H2}`, class: "bars", role: "img",
+      "aria-label": "Bar chart of detection and validation rate by latitude band"});
+    const gPlot = el("g", {transform: `translate(${MARGIN.left},${MARGIN.top})`});
+    svg.appendChild(gPlot);
+
+    [0, 0.5, 1].forEach(f => {
+      const v = maxVal * f, y = yOf(v);
+      gPlot.appendChild(el("line", {x1: 0, x2: plotW, y1: y.toFixed(1), y2: y.toFixed(1), class: "gridline"}));
+      const t = el("text", {x: -6, y: (y + 3).toFixed(1), class: "axis-label", "text-anchor": "end"});
+      t.textContent = Math.round(v) + "%";
+      gPlot.appendChild(t);
+    });
+    gPlot.appendChild(el("line", {x1: 0, x2: plotW, y1: plotH, y2: plotH, class: "axis-line"}));
+
+    const tip = document.getElementById("tip");
+    bands.forEach((b, i) => {
+      const gx = i * groupW;
+      const x1 = gx + groupW / 2 - barGap / 2 - barW;
+      const x2 = gx + groupW / 2 + barGap / 2;
+      const hDet = (b.pct_detected / maxVal) * plotH;
+      const hVal = (b.pct_validated / maxVal) * plotH;
+      const cls = b.reliable ? "" : " bar-unreliable";
+      const r1 = el("rect", {x: x1.toFixed(1), y: (plotH - hDet).toFixed(1), width: barW.toFixed(1),
+        height: hDet.toFixed(1), fill: "var(--accent)", class: "bar-rect" + cls});
+      const r2 = el("rect", {x: x2.toFixed(1), y: (plotH - hVal).toFixed(1), width: barW.toFixed(1),
+        height: hVal.toFixed(1), fill: "var(--domain)", class: "bar-rect" + cls});
+      [r1, r2].forEach(r => {
+        r.addEventListener("pointerenter", (e) => {
+          tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+          tip.innerHTML = `<div class="th">${b.label}${b.reliable ? "" : " (too thin to trust)"}</div>`
+            + `<div class="rowt"><span>n targets</span><span>${fmt(b.n_targets)}</span></div>`
+            + `<div class="rowt"><span>detected</span><span>${b.pct_detected.toFixed(1)}%</span></div>`
+            + `<div class="rowt"><span>validated</span><span>${b.pct_validated.toFixed(1)}%</span></div>`
+            + (b.median_tilt !== null ? `<div class="rowt"><span>median tilt</span><span>${b.median_tilt.toFixed(1)}&deg;</span></div>` : "");
+        });
+        r.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+      });
+      gPlot.appendChild(r1); gPlot.appendChild(r2);
+      const lbl = el("text", {x: (gx + groupW / 2).toFixed(1), y: (plotH + 16).toFixed(1),
+        class: "bin-label", "text-anchor": "middle"});
+      lbl.textContent = b.label;
+      gPlot.appendChild(lbl);
+    });
+
+    mount.appendChild(svg);
+  }
+
+  function drawTable(){
+    const rows = [...DATA.lat_bands.map(b => ({...b, group: "lat " + b.label})),
+                  ...DATA.provinces.map(p => ({...p, group: p.name}))];
+    document.querySelector("#rtable tbody").innerHTML = rows.map(r =>
+      `<tr class="${r.reliable ? "" : "unreliable"}"><td>${r.group}</td><td>${fmt(r.n_targets)}</td>`
+      + `<td>${r.pct_detected.toFixed(1)}</td><td>${r.pct_validated.toFixed(1)}</td>`
+      + `<td>${r.median_tilt != null ? r.median_tilt.toFixed(1) + "&deg;" : "&ndash;"}</td>`
+      + `<td>${r.az_min != null ? r.az_min.toFixed(1) + "&deg;&ndash;" + r.az_max.toFixed(1) + "&deg;" : "&ndash;"}</td></tr>`
+    ).join("");
+  }
+
+  const T = DATA.totals;
+  document.getElementById("kTotal").textContent = fmt(T.n_targets);
+  document.getElementById("kDetected").innerHTML = `${T.pct_detected}<small>%</small>`;
+  document.getElementById("kValidated").innerHTML = `${T.pct_validated}<small>%</small>`;
+  document.getElementById("kReliable").innerHTML = `${T.n_reliable_groups}<small>/ ${T.n_groups}</small>`;
+  document.getElementById("heroNum").textContent = T.pct_validated;
+  document.getElementById("heroDesc").innerHTML =
+    `<b>${fmt(T.n_targets)} OSM-confirmed installations checked</b> across two years of Sentinel-2 imagery `
+    + `(${fmt(T.n_country2000)} original, size-stratified + ${fmt(T.n_topup)} targeted random top-up). `
+    + `Detection and validation both decline at higher latitude in the well-sampled bands; fitted tilt rises `
+    + `with latitude, tracking standard solar-engineering convention.`;
+  document.getElementById("foot").innerHTML =
+    `Sentinel-2 L2A specular-glint spike detection, tile-batched Planetary Computer fetch &middot; `
+    + `${fmt(T.n_targets)} OSM-confirmed installations &middot; see docs/methods/glint.md for full derivation.`;
+
+  renderMap(); renderLatChart(); drawTable();
+
+  new MutationObserver(() => { renderMap(); renderLatChart(); }).observe(document.documentElement, {
+    attributes: true, attributeFilter: ["data-theme"],
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!document.documentElement.getAttribute("data-theme")) { renderMap(); renderLatChart(); }
+  });
+})();
+</script>

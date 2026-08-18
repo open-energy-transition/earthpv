@@ -80,7 +80,7 @@ def source(rel: str) -> Path | None:
 
 @dataclass(frozen=True)
 class Theme:
-    """One rendering mode. Series hues are the three atlas slots, per mode."""
+    """One rendering mode. Series hues are the atlas slots, per mode."""
 
     name: str
     surface: str
@@ -92,6 +92,7 @@ class Theme:
     s1: str
     s2: str
     s3: str
+    s4: str
 
 
 # `surface` is the page background these charts sit directly on, and `card` the panel
@@ -99,10 +100,14 @@ class Theme:
 # docs/assets/stylesheets/extra.css. `rule` is that stylesheet's hairline flattened
 # against the surface and pushed a little harder, since a gridline has to read on its
 # own where a table border has cell text next to it.
+# s4 (violet) is only used by fig_capacity_composition -- it is the same hue as
+# `results/pakistan_atlas_composition.html`'s "roofclf + SPPI" category, already run
+# through the palette validator's CVD/contrast checks there, reused here rather than
+# re-derived so the two pages never disagree on what that category looks like.
 LIGHT = Theme("light", "#f1ebdd", "#2a2216", "#5f5540", "#857a61", "#cfc0a5", "#faf6ec",
-              "#c25e12", "#1c6fa8", "#1f9b8a")
+              "#c25e12", "#1c6fa8", "#1f9b8a", "#7550b0")
 DARK = Theme("dark", "#100d09", "#f7f1e6", "#c9bda4", "#93866c", "#3a2d16", "#1a160f",
-             "#f5a623", "#4fb2e8", "#2fd9c4")
+             "#f5a623", "#4fb2e8", "#2fd9c4", "#9c6fd1")
 THEMES = (LIGHT, DARK)
 
 
@@ -454,6 +459,79 @@ def fig_capacity_estimators(t: Theme):
            f"Pakistan, {tot['n_cells']:,} grid cells, {conv}, run {tot['run_date']}. "
            "Whiskers are 90% credible intervals.")
     save(fig, t, "capacity_estimators")
+
+
+def read_atlas_composition():
+    """Best/Verified capacity by method, from the composition breakdown's own embedded
+    JSON (scripts/build_atlas_composition.py's output) -- itself sourced from the
+    published evidence atlas's uncertainty composition, so this figure, that page, and
+    the atlas headline can never quietly drift apart from each other."""
+    path = source("results/pakistan_atlas_composition.html")
+    if path is None:
+        return None
+    html = path.read_text()
+    m = re.search(
+        r'<script id="acmp-data" type="application/json">(.*?)</script>', html, flags=re.S,
+    )
+    if not m:
+        raise SystemExit("could not locate the acmp-data block")
+    return json.loads(m.group(1))
+
+
+# Fixed order (never cycled): most-directly-measured method to least-direct, matching
+# results/pakistan_atlas_composition.html's own ordering and the project's own trust
+# hierarchy for these four sources.
+COMPOSITION_METHODS = ["osm", "seg", "roofclf", "sppi"]
+COMPOSITION_SLOT = {"osm": "s3", "seg": "s2", "roofclf": "s1", "sppi": "s4"}
+COMPOSITION_LABEL = {
+    "osm": "OSM (hand-mapped)", "seg": "TerraMind segmentation",
+    "roofclf": "roofclf (alone)", "sppi": "roofclf + SPPI",
+}
+
+
+def fig_capacity_composition(t: Theme):
+    d = read_atlas_composition()
+    if d is None:
+        return
+    fig, ax = new_fig(t, 7.6, 2.6)
+    by_method = {"Best estimate": d["best_by_method"], "Verified (floor)": d["verified_by_method"]}
+    totals = {"Best estimate": d["mwp_best"], "Verified (floor)": d["mwp_verified"]}
+    rows = ["Verified (floor)", "Best estimate"]  # bottom-to-top plot order
+    xmax = max(totals.values()) / 1000.0
+    for y, row in enumerate(rows):
+        left = 0.0
+        by_key = {m["method"]: m for m in by_method[row]}
+        for method in COMPOSITION_METHODS:
+            m = by_key.get(method)
+            if m is None or m["mwp"] <= 0:
+                continue
+            v = m["mwp"] / 1000.0
+            color = getattr(t, COMPOSITION_SLOT[method])
+            ax.barh(y, v, left=left, height=0.5, color=color, zorder=3)
+            if m["pct"] >= 8:
+                ax.text(left + v / 2, y, f"{m['pct']:.0f}%", ha="center", va="center",
+                        color=t.surface, fontsize=8.5, fontweight="bold")
+            left += v
+        ax.text(left + xmax * 0.015, y, f"{totals[row] / 1000.0:.1f} GWp",
+                va="center", ha="left", color=t.ink, fontsize=9.5, fontweight="bold")
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels(rows, fontsize=9.5)
+    ax.set_ylim(-0.65, len(rows) - 0.35)
+    ax.set_xlim(0, xmax * 1.18)
+    ax.set_xlabel("GWp", color=t.ink_dim, fontsize=9)
+    style_axes(ax, t, xgrid=True)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=getattr(t, COMPOSITION_SLOT[m]))
+               for m in COMPOSITION_METHODS]
+    labels = [COMPOSITION_LABEL[m] for m in COMPOSITION_METHODS]
+    leg = ax.legend(handles, labels, frameon=False, loc="upper center", fontsize=9,
+                     ncol=4, bbox_to_anchor=(0.42, -0.32), handlelength=1.1,
+                     columnspacing=1.2)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "roofclf alone supplies most of the Best-estimate headline",
+           "Pakistan evidence atlas, both published tiers decomposed by the method "
+           "that produced each MWp.")
+    save(fig, t, "capacity_composition")
 
 
 def fig_model_recall_bins(t: Theme):
@@ -821,7 +899,7 @@ def build_architecture_svg(t: Theme) -> str:
         ["TerraTorch + Lightning,", "checkpoint monitors val mIoU"])
 
     # Lane C - inference signals
-    lane_label("Inference — five instruments, same Sentinel-2 imagery", 372)
+    lane_label("Inference - five instruments, same Sentinel-2 imagery", 372)
     xc, wc = _row_x(5, gap=20)
     box("c1", xc[0], 378, wc, 106, "Segmentation raster", ["infer: per-pixel PV", "probability, primary", "≥ 400 m² instrument"], stroke=t.s1)
     box("c2", xc[1], 378, wc, 106, "Fraction head", ["alt checkpoint: per-pixel", "PV coverage fraction,", "drops the polygon"], stroke=t.s3)
@@ -916,23 +994,29 @@ def write_architecture_diagram():
 # them together with the prose on the roofclf page after a refit.
 ROOFCLF_W = 1200
 ROOFCLF_H = 1064
-# data/roofclf/summary.json
+# Transcribed by hand from `data/roofclf/summary.json` and
+# `data/roofclf_national_with_sppi/<aoi>/density/*_summary.json`, because `data/` is
+# gitignored and the docs CI cannot read either. That makes these the one place in this
+# script that CAN drift from the pipeline, and they have: they sat two revisions behind
+# their own alt text until 2026-08-15. Re-transcribe them in the same commit as any
+# pipeline run that moves the atlas, and check the numbers in `docs/methods/roofclf.md`'s
+# image alt text against them.
+# data/roofclf/summary.json (27-quadrat parcel-label refit, 2026-08-17)
 ROOFCLF_STATS = {
-    "n_quadrats": 23,
-    "auc": 0.857,
-    "auc_within_size": 0.830,
-    "threshold": 0.2443,
+    "n_quadrats": 27,
+    "auc": 0.874,
+    "auc_within_size": 0.831,
+    "threshold": 0.2535,
     "precision": 0.50,
-    "recall": 0.66,
+    "recall": 0.63,
 }
-# data/roofclf_national_with_sppi/pakistan/density/*_summary.json
+# data/roofclf_national_with_sppi/pakistan/density/*_summary.json (parcel label, 2026-08-17)
 ROOFCLF_CAPACITY = {
-    "n_domain_cells": 1680,
+    "n_domain_cells": 2957,
     "n_national_cells": 4463,
-    "verified_sub400": 2929,
-    "best_sub400": 6531,
-    "best_ge400_roof": 6427,
-    "best_outdomain": 278,
+    "verified_sub400": 2647,
+    "best_sub400": 9202,
+    "best_ge400_roof": 7405,
 }
 
 
@@ -1049,7 +1133,7 @@ def build_roofclf_svg(t: Theme) -> str:
     xf, wf = _row_x(1, gap=60)
     box("f1", xf[0], 894, wf, 94, "Best estimate",
         [f"roofclf alone in domain {cap['best_sub400']:,} MWp, plus {cap['best_ge400_roof']:,} MWp of "
-         f">= 400 m2 roofs, plus {cap['best_outdomain']} MWp extrapolated outside it -- floored per cell "
+         f">= 400 m2 roofs -- floored per cell "
          f"at hand-mapped OSM plus the stricter {cap['verified_sub400']:,} MWp roofclf-AND-SPPI population, "
          "two instruments that share no training data"], stroke=t.s1)
 
@@ -1170,6 +1254,7 @@ INTERACTIVE = [
     ("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose.html"),
     ("results/pakistan_pv_density/pakistan_pv_density_map.html", "pakistan_density_map.html"),
     ("results/pakistan_pv_growth_atlas.html", "pakistan_growth_atlas.html"),
+    ("results/pakistan_atlas_composition.html", "pakistan_atlas_composition.html"),
 ]
 
 
@@ -1266,6 +1351,7 @@ def main():
         fig_recall_by_size(t)
         fig_glint_by_size(t)
         fig_capacity_estimators(t)
+        fig_capacity_composition(t)
         fig_model_recall_bins(t)
         fig_size_spectrum(t)
         fig_pv_pose(t)

@@ -3,7 +3,7 @@
 Pakistan's rooftop PV stock is dominated by the post-2022 import boom (README.md,
 "Planned: two-epoch change detection"). Once `density` has been run once per epoch
 (current: data/predictions/<aoi>/density, pre-boom: data/predictions_preboom/<aoi>/
-density — see scripts/run_preboom_pipeline.sh), this script joins the two grid/region
+density - see scripts/run_preboom_pipeline.sh), this script joins the two grid/region
 aggregates on cell/region id and writes the delta as the spatially-resolved growth map.
 """
 

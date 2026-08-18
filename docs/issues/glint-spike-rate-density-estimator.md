@@ -1,10 +1,15 @@
 # Glint spike-rate as a statistical density estimator for sub-pixel PV
 
-!!! note "OPEN (as of 2026-08-11)"
+!!! note "OPEN, and unblocked (as of 2026-08-17)"
 
-    v1 is implemented and is unusable below 500 m². The verified-negative sample this doc
-    waits on now exists, since all 23 calibration quadrats are Rule-1 complete, but the
-    follow-up measurement has not been run.
+    The verified-negative measurement this doc waited on **has now been run**, and it
+    reverses the blocking finding below. Against 600 Rule-1-verified negatives the
+    false-spike rate is **2.0%**, not the 8.7 to 20.3% measured on model-negative controls,
+    and the true detection rate exceeds it by 7.9x below 100 m² and 14.9x at 100 to 500 m².
+    The inversion is therefore defined in the size regime this estimator exists to serve.
+    See [Glint PSF and matched filtering](glint-psf-matched-filter.md), Result 4, for the
+    measurement and its limitations. What remains unbuilt is the estimator itself: v1 is
+    implemented but has not been re-run or validated against held-out quadrats since.
 
 **Labels:** enhancement, density, villages
 
@@ -67,7 +72,14 @@ corroboration experiment's control buildings:
 
 i.e. **below ~500 m², the instrument's false rate currently equals or exceeds
 its true-detection rate -- the inversion is undefined exactly where the
-estimator matters most.** It works today for the 500 m²–50k m² range
+estimator matters most.**
+
+!!! warning "Superseded by the verified-negative measurement (2026-08-17)"
+
+    Caveat (a) below turned out to be the whole story. Measured against 600 Rule-1-verified
+    negatives, the false rate is 2.0%, roughly a quarter of the lower end of the range in
+    this table, and the true rate exceeds it by 8 to 15x across every bin below 5k m².
+    The rest of this section records what was believed between 2026-07-18 and 2026-08-17. It works today for the 500 m²–50k m² range
 (validated: d 16–31% vs f 8.7%). Two caveats cut in opposite directions:
 (a) the "controls" were only model-negative, not verified-negative -- real
 unmapped PV among them inflates f, so the true floor may be lower (quadrat

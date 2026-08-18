@@ -1199,3 +1199,219 @@ since both need a `roofclf` fold table that includes this quadrat) and to
 [Calibration quadrats](../methods/calibration-quadrats.md)'s "Known gap" count. Folding
 it into an actual `roofclf` refit and deciding whether to widen the domain constant are
 follow-up steps, not done here.
+
+### Box 15 -- Nasirabad Rural, geodesic square 4.00 km2 around (28.65, 68.15) -- 2026-08-13 -- first confirmed-zero Rule-1 quadrat
+
+Suggested the same session as a further rural-extension candidate, same recipe as
+Bahawalnagar Rural: pre-checked against national VIDA buildings before mapping,
+measured **48.5 bldg/km<sup>2</sup>** (194 buildings in 4 km<sup>2</sup>), below the
+123.5 floor Bahawalnagar Rural had just set. Also the first quadrat drawn from
+Balochistan's rural interior rather than its one existing quadrat (Quetta, urban,
+anchors the upper end of the density range) -- Nasirabad District, on the flat,
+canal-irrigated Kacchi plain, distinct from the mountainous arid terrain that covers
+most of the province. Confirmed clear of all 25 existing quadrats via
+`scripts/new_calibration_quadrat.py --dry-run` (nearest: Sukkur, 123.9 km) before
+anything was written.
+
+**The owner mapped the box and found zero installations -- confirmed as a genuine
+completeness pass, not the Muzaffargarh Rural Wide mistake.** This project has been
+burned by exactly this scenario once already:
+[Muzaffargarh Rural Wide's original "0 installations"](../methods/calibration-quadrats.md)
+was based on 8 independent Overpass queries all returning zero, which established "0
+OSM-mapped installations as of that pull," not "mapping is complete" -- the owner later
+swept the actual imagery by eye and found real, unmapped PV. Before registering this box
+the same way, the owner was asked directly whether "I could not find a single PV
+installation" meant a visual sweep of the high-res background imagery or just an
+OSM/Overpass check, and confirmed **a visual sweep of the whole box** -- the actual Rule-1
+claim, not the OSM-data claim that misled the Muzaffargarh declaration. The live Overpass
+pull independently agrees: 6 confirmed zero-element responses across ~10 minutes and at
+least 2 mirrors (the pipeline's own 4-retry loop plus 2 additional manual confirming
+queries, one of which hit rate-limiting/timeouts on the other two mirrors after repeated
+hammering -- expected, not a data quality signal), comparable to the 8-zero bar that
+(wrongly) satisfied the Muzaffargarh case, but this time backed by an actual completeness
+declaration rather than resting on the Overpass result alone.
+
+`build_overpass_labels` refuses to accept an empty pull automatically by design (raises
+after retries exhausted, exactly to force this kind of manual confirmation rather than
+silently writing an empty quadrat) -- so
+`nasirabad_rural_calib_2km_overpass_solar.parquet` was written by hand, schema-matched
+to an existing quadrat's pull (same column dtypes and CRS), 0 rows. Registered
+**Rule-1 complete** in `results/calibration_quadrats.csv` on the strength of the owner's
+declaration.
+
+**Checked against the codebase before registering: nothing breaks on a zero-positive
+quadrat.** `roofclf.auc()` is a hand-rolled rank-based implementation (not sklearn's
+`roc_auc_score`) that explicitly returns NaN when either class is empty
+(`if n1 == 0 or n0 == 0: return nan`) rather than raising -- the same degradation
+Khairpur Rural's near-undefined AUC (3 installations) already exercises, just complete
+this time. `rate_ratio` floors its denominator (`max(base_rate, 1e-9)`) so a zero base
+rate produces a very large finite number rather than a crash, which will trivially fail
+`select_calibrated_quadrats`'s `[0.5, 2.0]` trust band -- the same mechanical exclusion
+Hasal, Rahim Yar Khan, and Bahawalnagar Rural already sit outside for unrelated reasons,
+not special-cased zero-detection logic, but sufficient. `build_calibration_quadrats_csv.py`
+already guards `n_installations=0` explicitly (`if len(a) else 0.0`/`np.nan`). Not yet
+folded into a `roofclf` refit -- `n_buildings`/`base_rate`/`nn_median_m` are blank in
+`results/calibration_quadrats.csv` pending one, same as Sanghar and Bahawalnagar Rural.
+
+### Box 16 -- Tank Rural, geodesic square 4.00 km2 around (32.20, 70.30) -- 2026-08-13
+
+The second of the two candidates suggested the same session as Nasirabad Rural, in
+Tank District, southern Khyber Pakhtunkhwa -- KP's first rural-extension quadrat; its
+three existing quadrats (Peshawar x2, Mardan) all sit in the dense Peshawar valley,
+which measured well above the domain floor everywhere tried before this spot. Own
+density (measured directly against VIDA, independent of any OSM pull) **55.75
+bldg/km<sup>2</sup>** (223 buildings in 4 km<sup>2</sup>) -- below the 123.5 floor
+Bahawalnagar Rural had set, though not as low as Nasirabad Rural's 48.5, so it does not
+move the floor further on its own (see the density-domain update below). Confirmed
+clear of all 26 existing quadrats via `scripts/new_calibration_quadrat.py --dry-run`
+(nearest: Muzaffargarh Rural, 192.3 km) before anything was written.
+
+The owner mapped the box and reported finding real installations this time -- **10
+installations**, cross-confirmed (a second independent query also saw 10, despite two
+of the three Overpass mirrors timing out during the confirming pass; the third
+succeeded, which is what the cross-check is for). 7 rooftop / 3 ground-mount, 100%
+below the 400 m<sup>2</sup> floor (max 285.6 m<sup>2</sup>, median 26.0 m<sup>2</sup>),
+packing `nn_median_m` **52.2 m** -- denser installation spacing than Nasirabad's
+(vacuously undefined, zero installations) or Bahawalnagar's (74.8 m), consistent with a
+genuinely mixed rather than uniformly sparse rural regime. Registered **Rule-1
+complete** on the owner's declaration. Not yet folded into a `roofclf` refit --
+`n_buildings`/`base_rate`/`nn_median_m` are blank in `results/calibration_quadrats.csv`
+pending one, same as every quadrat added this session.
+
+### Density domain widened again, 2026-08-13: Nasirabad Rural's 48.5 bldg/km2 is the new floor
+
+Both Box 15 and Box 16 were registered before a refit, so neither had been folded into
+`density.CALIBRATED_BLDG_DENSITY_KM2` yet (deliberately deferred at the time -- see Box
+15's closing note). Folding both into one refit + national rescoring pass is also the
+right moment to apply the domain widening: Nasirabad Rural's own density, 48.5
+bldg/km<sup>2</sup>, is now the minimum across every Rule-1-complete quadrat, lower than
+the 123.5 floor Bahawalnagar Rural set. The floor moves **123.5 -> 48.5**
+bldg/km<sup>2</sup>; Tank Rural (55.75 bldg/km<sup>2</sup>) sits inside the new range but
+does not itself move the boundary, since Nasirabad's is lower. See
+`docs/methods/density.md` for the updated domain cell/building counts once the national
+rescoring pass this widening motivates has run.
+
+### Box 17 -- Kalat Rural, geodesic square 9.01 km2 around (28.792663, 66.615940) -- 2026-08-17
+
+One of four low-density sites proposed this session to widen
+`density.CALIBRATED_BLDG_DENSITY_KM2`'s floor below 48.5 bldg/km<sup>2</sup>, where
+**1,506 of 4,463 national cells (4.03M buildings) still sit outside the domain**, and where
+roofclf-AND-SPPI still flags 14,038 buildings / 75.3 MWp with no calibration under it (the
+component dropped from the atlas 2026-08-15). The four were sited one per major province on
+a density ladder, each a 3 km geodesic square: Dera Ghazi Khan Rural (11.8 bldg/km<sup>2</sup>,
+the intended floor-setter), Waziristan Rural (17.2), **Kalat Rural (25.9)** and Jamshoro Rural
+(30.9). 3 km rather than the protocol's 2 km because at these densities a 2 km box holds
+around 50 buildings; all four together hold 772, fewer than Faisalabad's 1 km<sup>2</sup> box.
+
+**Only Kalat became a quadrat. The other three were swept, came back empty, and were
+discarded rather than registered as confirmed zeros, because the owner reports the JOSM
+reference imagery over all three as very old.** That is the correct call and it is worth
+recording precisely, because the empty result looked like a strong finding before the imagery
+question was asked. What the model claims in those three boxes:
+
+| proposed box | bldg/km<sup>2</sup> | buildings | roofclf-AND-SPPI flagged | claimed | segmentation candidates | found by sweep |
+|---|---:|---:|---:|---:|---:|---:|
+| Dera Ghazi Khan Rural | 11.8 | 106 | 9 | 19.1 kWp | 0 | 0 |
+| Waziristan Rural | 16.9 | 152 | 61 | 417.7 kWp | 0 | 0 |
+| Jamshoro Rural | 30.9 | 278 | 13 | 38.6 kWp | 0 | 0 |
+
+83 flagged buildings and 475.4 kWp with nothing under them reads like a direct falsification of
+the out-of-domain AND gate, and it is **not one**: Rule-1 is epoch-relative, so against imagery
+older than the Sentinel-2 composite an empty sweep cannot separate "the gate is firing on bare
+ground" from "the panels went up after the picture was taken". Registering the three as
+confirmed zeros would have pushed the domain floor to 11.8 bldg/km<sup>2</sup> (2,957 -> 4,266
+cells, 66.3% -> 95.6%; 94.67% -> 99.74% of national buildings) and dragged the sparse density
+band's coverage ratio toward zero on evidence that does not support it -- the same mistake, in
+the same direction, as Muzaffargarh Rural Wide's original zero (see the correction above),
+caught before it entered a refit rather than after.
+
+This is the third time stale reference imagery has blocked validation of the out-of-domain
+population, and the first time it has blocked purpose-drawn quadrats rather than randomly drawn
+review cells. It is the reason the out-of-domain AND gate was dropped from the atlas on
+2026-08-15 and the reason it stays dropped. Their coordinates are recorded here rather than
+kept as files, so the sites can be re-drawn if the imagery over any of them refreshes: Dera
+Ghazi Khan Rural (29.331582, 69.684320), Waziristan Rural (32.736105, 69.572562), Jamshoro
+Rural (25.658722, 67.775397), all 3 km geodesic squares. **The gating question for any of them
+is imagery date, not mapping effort**, which makes populating `imagery_layer`/`imagery_date`
+(never yet filled for any quadrat, see
+[Calibration imagery dating](calibration-imagery-dating.md)) the prerequisite rather than a
+nicety.
+
+**The owner moved the box roughly 8 km south-southeast before mapping, deliberately, to bring
+more ground-mount PV inside it, and this changed what the quadrat measures.** Own density
+(VIDA, `representative_point().within(boundary)`, the same rule `roofclf.building_table` uses)
+**46.5 bldg/km<sup>2</sup>** (419 buildings in 9.0113 km<sup>2</sup>), against 25.9 at the
+proposed location. It is still below the 48.5 floor, but only by 1.7, so it does **not**
+meaningfully widen the domain: floor 48.5 -> 46.5 moves coverage from 2,957 to 2,997 cells
+(66.3% -> 67.2%) and from 94.67% to 94.94% of national buildings, against the 3,609 cells
+(80.9%, 98.04%) the proposed location would have reached. The box sits inside cell
+`0057_0050`, whose own average is 18.98 bldg/km<sup>2</sup>, so it is a dense settlement pocket
+inside a sparse cell -- the exact pattern `docs/methods/calibration-quadrats.md` warns about,
+where a boundary traced around built-up extent reads far denser than the countryside it sits in.
+Confirmed clear of all 27 existing quadrats (nearest: Nasirabad Rural, 150.71 km).
+
+The first JOSM export carried a second feature, a 1,975 m<sup>2</sup> `power=generator` way
+whose centroid was 8.23 km outside the boundary, left over from the proposed location.
+`roofclf.load_boundary` unions every feature in the file, so registering it as-is would have
+produced a two-part MultiPolygon boundary: the square plus a 0.002 km<sup>2</sup> fleck 8 km
+away, which is then what every downstream stage masks on. The owner removed it and the file
+now loads as a single valid polygon. Worth remembering as a general hazard of the drawn-boundary
+path: `--geojson` accepts any file JOSM writes, and a working layer usually holds more than
+the boundary.
+
+**52 installations**, cross-confirmed (a second independent query also saw 54 raw features,
+52 inside the boundary). Registered **Rule-1 complete** on the owner's declaration ("I have
+mapped all in JOSM I could find"), which is a visual sweep, not an Overpass check -- the
+distinction that made Muzaffargarh Rural Wide's original zero wrong (Box 15).
+
+The profile is unlike any other rural quadrat in the set, and the reason is the move:
+
+| | Kalat Rural | Bahawalnagar Rural | Tank Rural |
+|---|---:|---:|---:|
+| installations | 52 | 9 | 10 |
+| median install | 429.3 m<sup>2</sup> | 26.9 m<sup>2</sup> | 26.0 m<sup>2</sup> |
+| below the 400 m<sup>2</sup> floor | **40.4%** | 100% | 100% |
+| placement | **45 ground / 7 rooftop** | -- | 3 ground / 7 rooftop |
+| packing `nn_median_m` | 47.0 m | 74.8 m | 52.2 m |
+
+Mapped PV totals 28,412 m<sup>2</sup> against 18,919 m<sup>2</sup> of VIDA roof area for the
+whole quadrat: **there is 1.5x more PV here than there is roof**, and 22,064 m<sup>2</sup> of it
+is ground-mount at or above the 400 m<sup>2</sup> segmentation floor.
+
+**This makes the box unusable as a rooftop calibration quadrat in its current form, and the
+reason is a real gap in `building_table`, not in the mapping.** `parcel_pv_area`'s rule 3
+skips any installation at or above `YARD_MAX_INSTALLATION_M2` (400 m<sup>2</sup>), because
+above that floor ground-mount is segmentation's instrument and the atlas already counts it.
+The **roof** term has no such guard: it intersects every mapped PV polygon with every
+footprint, whatever its placement or size. Measured on this quadrat:
+
+| PV group | installations | buildings labelled has-PV | roof-intersection area |
+|---|---:|---:|---:|
+| ground, >= 400 m<sup>2</sup> | 29 | 69 | 3,506.9 m<sup>2</sup> |
+| ground, < 400 m<sup>2</sup> | 16 | 9 | 264.6 m<sup>2</sup> |
+| rooftop, >= 400 m<sup>2</sup> | 2 | 5 | 540.4 m<sup>2</sup> |
+| rooftop, < 400 m<sup>2</sup> | 5 | 6 | 479.5 m<sup>2</sup> |
+| **total** | **52** | **89 of 419 (21.24%)** | **4,791.4 m<sup>2</sup>** |
+
+**69 of the 89 buildings (78%) would be labelled has-PV solely because a >= 400 m<sup>2</sup>
+ground array clips them**, on 3,824 m<sup>2</sup> of roof whose median footprint is 29
+m<sup>2</sup> -- sheds and animal pens standing inside a ground-mount site, not hosts. The
+resulting 21.24% base rate would read higher than Mardan's (16.0%) in a 46.5
+bldg/km<sup>2</sup> rural box. Because the sparse density band's coverage ratio is
+extrapolated across millions of rural buildings, folding this quadrat in as-is would inflate
+national sub-400 rooftop capacity *and* double-count against segmentation's own
+`est_mwp_rc_ground`, which already prices those same 29 arrays. In every earlier quadrat this
+was harmless because ground-mount above the floor was rare; here it is 78% of the mapped PV
+area, which is precisely what the move was for.
+
+Status: registered, Rule-1, and **deliberately not folded into a `roofclf` refit**.
+`n_buildings`/`base_rate`/`nn_median_m` are blank in `results/calibration_quadrats.csv`
+pending one, and `roofclf.discover_quadrats` globs `data/labels/*_calib_*_boundary.geojson`,
+so the next `earthpv roof-classifier` run picks this box up automatically -- extend
+`parcel_pv_area`'s rule 3 to the roof term first, or exclude this stem, or the numbers above
+enter the fit silently. The open item is in `docs/open-questions.md`.
+
+What the quadrat **is** good for, and it is not a small thing: 29 mapped ground-mount arrays
+between 400 m<sup>2</sup> and 1,998 m<sup>2</sup> in a rural setting. Outside the two solar-farm
+boxes (Quaid-e-Azam, Sukkur, both utility scale) this project has almost no ground truth at
+that size, and `docs/issues/small-ground-mount-instrument.md` is open for exactly that reason.

@@ -4,7 +4,7 @@ Cross-references `pakistan_pv_candidates.geojson` against a fresh Overpass query
 `generator:source=solar` / `plant:source=solar` features across Pakistan's bbox. A
 candidate that sits right on top of an already-mapped OSM solar feature is confirmed
 real (mapped rooftop/plant); one with no nearby OSM feature at all is either a genuine
-new lead or a false positive — this script doesn't decide which, it just gives you the
+new lead or a false positive - this script doesn't decide which, it just gives you the
 distance-to-nearest-real-feature so you can triage: candidates far from ANY OSM solar
 feature AND far from other supporting evidence are the ones most worth checking first
 in an editor.
@@ -60,13 +60,13 @@ def main() -> None:
         osm = fetch_solar_overpass(bbox=PAKISTAN_BBOX, timeout=args.timeout)
         log.info("Overpass returned %d live OSM solar features", len(osm))
         if osm.empty:
-            raise RuntimeError("Overpass returned zero features — check connectivity/query before trusting a 'no matches' result.")
+            raise RuntimeError("Overpass returned zero features - check connectivity/query before trusting a 'no matches' result.")
 
         # Pakistan spans multiple UTM zones (41N-43N), so a single flat projection
-        # introduces real (if modest — up to ~2km at 100km+ range) distance error.
+        # introduces real (if modest - up to ~2km at 100km+ range) distance error.
         # Use a metric CRS only to find the nearest candidate cheaply via the spatial
         # index, then report the actual distance via geodesic calculation (matches
-        # this codebase's established convention — see labels.py::geodesic_area_m2 —
+        # this codebase's established convention - see labels.py::geodesic_area_m2 -
         # of never trusting a flat projection for real-world distances/areas).
         utm = "EPSG:32643"
         cands_m = cands.to_crs(utm)
@@ -108,7 +108,7 @@ def main() -> None:
         log.info("Wrote %s (adds osm_match / osm_nearest_dist_m / osm_nearest_id columns)", args.out)
 
     # Filtered file: drop already-mapped candidates entirely, leaving only the ones
-    # with no live OSM solar feature nearby — new leads or false positives, for
+    # with no live OSM solar feature nearby - new leads or false positives, for
     # further triage without already-confirmed detections cluttering the view.
     unmatched_only = cands[~cands["osm_match"]].reset_index(drop=True)
     args.unmatched_out.parent.mkdir(parents=True, exist_ok=True)
@@ -120,7 +120,7 @@ def main() -> None:
 
     # Rank-based combined score rather than raw units (distance spans 0-149,000m while
     # confidence spans 0-1, so a naive product/sum would be dominated by distance alone).
-    # Lowest combined rank = lowest confidence AND farthest from any real OSM feature —
+    # Lowest combined rank = lowest confidence AND farthest from any real OSM feature -
     # the candidates with the least model conviction and the least corroborating evidence,
     # i.e. the likeliest actual false positives to check first.
     conf_rank = cands["confidence"].rank(ascending=True)

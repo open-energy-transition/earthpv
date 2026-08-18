@@ -1,7 +1,7 @@
 """Direct OpenStreetMap solar-PV fetch via the Overpass API.
 
 Overture Maps' periodic snapshot (`overture_release` in aoi.yaml) lags live OSM edits
-by weeks to months — a mapper who just finished surveying a city's rooftop PV won't
+by weeks to months - a mapper who just finished surveying a city's rooftop PV won't
 show up there yet. Overpass queries live OSM state directly, at the cost of being a
 single public API (rate-limited, no bbox row-group pruning). Output matches
 `overture.fetch_solar`'s schema (id, class, generator_source, plant_source,
@@ -97,7 +97,7 @@ def _run_query(query: str, timeout: int) -> dict:
                 # mirror instead of returning a truncated element list as if it were whole.
                 raise OverpassTruncated(f"{url} returned a partial result: {remark}")
             return data
-        except Exception as e:  # noqa: BLE001 — try the next mirror
+        except Exception as e:  # noqa: BLE001 - try the next mirror
             log.warning("Overpass endpoint %s failed: %s", url, e)
             last_err = e
     raise RuntimeError(f"All Overpass endpoints failed: {last_err}")
@@ -149,7 +149,7 @@ def fetch_solar_overpass(
 
     Exactly one of `bbox` or `place` must be given; `place` is resolved by Overpass's
     own `area["name"=...]` matching (works for most well-known cities/regions without
-    a separate geocoding step — ambiguous or unmapped names return zero results rather
+    a separate geocoding step - ambiguous or unmapped names return zero results rather
     than raising, so check the row count).
     """
     if bool(bbox) == bool(place):
@@ -204,7 +204,7 @@ def build_overpass_labels(
 
     `iso3` routes the placement classification's building lookups to the local VIDA
     parquet (data/vida/<iso3>.parquet) instead of Overture's remote S3, which times
-    out from this machine — required for countries with no rooftopsenti cache."""
+    out from this machine - required for countries with no rooftopsenti cache."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     from earthpv import overture
     from earthpv.config import Settings
@@ -215,7 +215,7 @@ def build_overpass_labels(
     if solar.empty:
         raise RuntimeError(
             f"Overpass returned no solar features for {'place=' + repr(place) if place else 'bbox=' + repr(bbox)} "
-            "— check the name/bbox, or the region genuinely has no generator:source=solar / "
+            "- check the name/bbox, or the region genuinely has no generator:source=solar / "
             "plant:source=solar tags yet."
         )
 

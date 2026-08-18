@@ -13,13 +13,6 @@ human-in-the-loop validation in OpenStreetMap can make global photovoltaic mappi
 scalable, verifiable, and cost-effective than existing methods. Pakistan is the first
 pilot, not the destination -- see [Scaling worldwide](#scaling-worldwide).
 
-</div>
-
-<div class="stats" markdown>
-<div class="stat"><span class="value">16,441 MWp</span><span class="label">Pakistan pilot, best estimate (90% range 12,883 to 19,147)</span></div>
-<div class="stat"><span class="value">7,860 / 6,531 MWp</span><span class="label">capacity &ge;400 m&sup2; (roofclf rooftop where calibrated, segmentation rooftop and ground-mount elsewhere) against &lt;400 m&sup2; from roofclf alone</span></div>
-</div>
-
 ## Build PV capacity maps for every country
 
 This project's primary output is the [Pakistan capacity map](index.md) -- Best estimate
@@ -45,8 +38,8 @@ m<sup>2</sup> floor into large rooftops too, wherever it has been calibrated to 
   to classify there.
 - **roofclf**, cross-checked with **SPPI**, answers a different question: not "where is
   the polygon" but "does this *building* carry PV." **roofclf**, a per-building
-  classifier trained on 23 exhaustively mapped ground-truth quadrats, reaches 0.857 AUC
-  (0.830 with roof size controlled for), where the segmentation raster scores close to
+  classifier trained on 27 exhaustively mapped ground-truth quadrats, reaches 0.879 AUC
+  (0.834 with roof size controlled for), where the segmentation raster scores close to
   chance on the same small buildings -- it covers every rooftop **below** 400
   m<sup>2</sup>, where segmentation is trained blind. **SPPI**, a zero-training spectral
   index, reaches 0.823 AUC with no labels at all; requiring it to *agree* with roofclf
@@ -194,18 +187,19 @@ pull finds it.
 
 **Map a quadrat.** Exhaustively mapping every installation inside a drawn boundary is worth
 far more per hour than scattered mapping, because it measures what the model *misses* rather
-than only confirming what it finds. 23 quadrats covering 63.9 km<sup>2</sup> exist so far;
+than only confirming what it finds. 27 quadrats covering 79.9 km<sup>2</sup> exist so far;
 the protocol is in [Quadrat mapping protocol](calibration-mapping-protocol.md).
 
 The highest-value next quadrat is a **sparse rural** one. A quadrat only widens the
 calibrated domain if its *own* average building density falls below the current floor, and a
 boundary traced around a village never does, because it is the farmland between settlements
 that pulls the average down. Sizing a box to include that open land on purpose is what took
-the calibrated domain from 163 cells to over 1,600.
+the calibrated domain from 163 cells to 2,957 (most recently Nasirabad Rural,
+2026-08-13, own density 48.5 bldg/km<sup>2</sup>).
 
 **Review a calibration sample.** `earthpv calibrate-sample` emits a stratified sample of
 unmapped candidates for human verdicts. Twenty verdicts in the 100 to 500 m<sup>2</sup> bin
-would collapse the widest remaining term in the calibration table. Two random-cell
+would collapse the widest remaining term in the calibration table. Several random-cell
 validation batches are also generated and waiting for review, which measures precision
 against an unbiased population rather than the curated quadrats: see
 [roofclf random-cell validation](methods/roofclf-national-validation.md).

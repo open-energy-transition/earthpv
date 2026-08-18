@@ -1,5 +1,5 @@
 """Empirical glint-method validation on the Lahore calibration box's fully-mapped
-ground truth — a genuinely different check from the country-scale 500-target study
+ground truth - a genuinely different check from the country-scale 500-target study
 (`scripts/glint_validate_pakistan.py`): every installation here is independently known
 complete (docs/calibration-mapping-protocol.md Rule 1), so this isn't a fresh SAMPLE of
 OSM-mapped installations, it's the ENTIRE population of a small area, letting us ask
@@ -9,16 +9,16 @@ micro-area?" rather than "does glint work on a representative national sample?"
 Efficient by construction: every installation sits inside one small box (1 km2 when this
 was written; 6.61 km2 and ~5,695 installations since the 2026-08-05 extension, still well
 inside one 1-degree tile group), i.e. one single tile group for
-`glint.tile_scene_series_batch` — one STAC search,
+`glint.tile_scene_series_batch` - one STAC search,
 shared per-scene band opens across every target, immediate read (no deferred re-read
 of retained items), so this does NOT hit the SAS-token-staleness bug the tile-batched
-country-scale revalidation did (docs/issues/glint-tile-batched-coverage.md) — that bug
+country-scale revalidation did (docs/issues/glint-tile-batched-coverage.md) - that bug
 needs either many groups (queued retries) or a keep_items=True + later separate read
 pass; neither applies here.
 
 Reuses `glint_validation.analyze_point` (spike detection + orientation-consistency fit)
 unchanged on the batched output, which shares tile_scene_series_batch's exact column
-schema with plain per-target `scene_series` — no new spike-detection logic.
+schema with plain per-target `scene_series` - no new spike-detection logic.
 
 Usage:
   .pixi/envs/default/bin/python scripts/glint_validate_calibration_box.py

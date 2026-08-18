@@ -12,7 +12,7 @@ Two templates, chosen automatically by what the density run actually computed:
   capacity_calibration table (`earthpv calibrate-candidates` before `density`).
 - **Simple atlas** (`templates/pv_atlas.html`, the fallback): a single-metric
   night-lights map (est_mwp_cal if calibrated, else est_mwp_det, bracketed by
-  expected) for runs without recall-correction — e.g. Germany, or a partial/
+  expected) for runs without recall-correction - e.g. Germany, or a partial/
   validation-only density run that skipped calibration.
 
 `density` calls `build_atlas` at the end of every run; the `earthpv atlas` CLI
@@ -338,12 +338,12 @@ def _build_simple_atlas(
         bracket = (
             f'Detected (raw threshold) floor: <b>{det_total:,}</b> MWp; probability-weighted '
             'expectation: <b id="expNum">0</b> MWp. The calibrated number weights each '
-            "candidate by its measured P(real | size, glint) — the floor and ceiling bracket it."
+            "candidate by its measured P(real | size, glint) - the floor and ceiling bracket it."
         )
         howto = (
-            "<b>How to read it.</b> Colour is <b>calibrated</b> panel area — each candidate "
+            "<b>How to read it.</b> Colour is <b>calibrated</b> panel area - each candidate "
             "weighted by its measured probability of being real PV (size-binned OSM-mapped "
-            "fraction + glint corroboration) — converted to peak capacity at "
+            "fraction + glint corroboration) - converted to peak capacity at "
             f"{data['totals']['kwp_per_m2']} kWp/m². Detected and expected bracket it as "
             "floor and ceiling. Cells with no detected PV are drawn as bare land; treat cell "
             "values as indicative, not metered."
@@ -360,7 +360,7 @@ def _build_simple_atlas(
         word, label, col = "detected", "Detected", "Det"
         bracket = (
             'Probability-weighted expectation: <b id="expNum">0</b> MWp. The two numbers '
-            "bracket the truth — the model is tuned for recall, so detections are a floor "
+            "bracket the truth - the model is tuned for recall, so detections are a floor "
             "and the expectation leans high."
         )
         howto = (
@@ -382,7 +382,7 @@ def _build_simple_atlas(
         "A recall-first segmentation model reads a year of Sentinel-2 imagery across every "
         f"building-populated cell of {title} and marks the pixels that look like photovoltaic "
         "panels. Aggregated to each building and then to a <b>0.1° grid</b>, the "
-        f"{word} panel area becomes an estimate of installed rooftop capacity — the input "
+        f"{word} panel area becomes an estimate of installed rooftop capacity - the input "
         "an energy-system model needs. The map glows where that capacity concentrates."
     )
     det_total_note = round(float(grid.est_mwp_det.sum()))
@@ -821,7 +821,7 @@ def _build_estimator_atlas(
         "depends on how honestly you count: the same probability rasters support "
         "<b>six defensible estimates</b>, from a raw-detection floor to a "
         "recall-corrected estimate of the whole detectable population. Switch "
-        "between them — the map, the hero number and the province ranking follow."
+        "between them - the map, the hero number and the province ranking follow."
     )
     if data["totals"].get("kwpLand"):
         lede += (
@@ -831,7 +831,7 @@ def _build_estimator_atlas(
     html = ESTIMATOR_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} PV Capacity — Six Estimates, One Map",
+        "__PAGE_TITLE__": f"{title} PV Capacity - Six Estimates, One Map",
         "__EYEBROW__": f"earthpv · Sentinel-2 × TerraMind · 0.1° grid · {run_date}",
         "__H1__": f"{title}'s solar boom, at six exposures",
         "__LEDE_HTML__": lede,
@@ -1505,6 +1505,13 @@ def _evidence_uncertainty(
     cov_meta: dict[str, dict] = {}
     missing: list[str] = []
     for key in ("small_low", "small_central", "small_outdomain", "ge400_roof"):
+        # A component the atlas was never given (no `--sub400-outdomain-cells`, say)
+        # contributes exactly zero MWp, so its coverage-ratio bootstrap cannot move the
+        # published interval -- asking for it would only warn about a calibration nothing
+        # in the number depends on.
+        if not components.get(key):
+            cov[key] = np.ones(n_draws)
+            continue
         f, info = _aligned_coverage_factors(boots.get(key, {}), n_draws, key)
         cov[key] = f
         if info is None:
@@ -1533,8 +1540,14 @@ def _evidence_uncertainty(
         "seg_roof_outdomain": c["seg_roof_outdomain"] * f_seg["est_mwp_rc_roof"],
         "seg_ground": c["seg_ground"] * f_seg["est_mwp_rc_ground"],
         "small_central": c["small_central"] * cov["small_central"] * f_mod,
-        "small_outdomain": c["small_outdomain"] * cov["small_outdomain"] * f_mod * f_extrap,
     }
+    # Only carried when the out-of-domain extrapolation was actually supplied: a zero
+    # component would otherwise publish an empty slice, an all-zero table column and a
+    # legend key for a quantity this atlas does not report.
+    if c["small_outdomain"]:
+        best_parts["small_outdomain"] = (
+            c["small_outdomain"] * cov["small_outdomain"] * f_mod * f_extrap
+        )
 
     v_point = sum(components[k] for k in ("osm_roof", "osm_ground", "small_low"))
     b_point = sum(components[k] for k in best_parts)
@@ -1605,6 +1618,9 @@ def build_evidence_atlas(
     sub400_outdomain_buildings_path: Path | None = None,
     pose_summary_csv: Path | None = None,
     pose_history_note: str = "", pose_data_note: str = "",
+    imagery_date_range: str | None = None,
+    downloads: list[dict] | None = None,
+    data_release_url: str | None = None,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -1730,6 +1746,28 @@ def build_evidence_atlas(
       `build_pose_survey_page` takes; `pose.compute_pose_survey_data` (shared with that
       function) computes chart data and every stat once. Omit it and no pose section is
       written at all.
+
+    **`imagery_date_range` (added 2026-08-14): a free-text label for the Sentinel-2
+    scene window the composites were built from** (e.g. "Oct 2025 - Jun 2026"), shown
+    in the page footer next to a `generated_at` timestamp (always stamped, this
+    function's own run date) -- so a reader can tell how stale the underlying imagery
+    and the atlas build itself are without having to ask. There is no single
+    pipeline-tracked source for this yet: composites for one AOI can mix cells built by
+    `earthpv compose` (whatever `--window` that run used, `imagery.annual_composite`'s
+    own default otherwise) with cells reused from a `source_region` cache built by a
+    different project on its own schedule, so this is passed in by the caller rather
+    than derived here. Omit it and the footer shows the generation date alone.
+
+    **`downloads` / `data_release_url` (added 2026-08-14): a Downloads section linking to a
+    point-in-time data release** (parquets, calibration boundaries, the pose survey, raw
+    detections, model checkpoint) hosted as GitHub Release assets, since `data/` itself is
+    gitignored and several of these files are well over what git handles comfortably.
+    `downloads` is a list of `{"file", "label", "note", "size_bytes"}` dicts (see
+    `configs/pakistan_atlas_downloads.json` for the Pakistan manifest); `data_release_url` is
+    the release's asset base URL (`.../releases/download/<tag>`), joined with each `file` to
+    build the actual link. Omit either and no Downloads section is written -- this is a frozen
+    snapshot the atlas does not regenerate on its own, so an AOI with no release yet should not
+    show a section pointing at nothing.
     """
     density_dir = Path(density_dir)
     out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
@@ -2010,8 +2048,16 @@ def build_evidence_atlas(
             "mwp_verified_ci": uncertainty["mwp_verified_ci"],
             "mwp_best_ci": uncertainty["mwp_best_ci"],
             "uncertainty": uncertainty,
+            "generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+            "imagery_date_range": imagery_date_range,
         },
     }
+
+    if downloads and data_release_url:
+        base = data_release_url.rstrip("/")
+        data["totals"]["downloads"] = [
+            {**d, "url": f"{base}/{d['file']}"} for d in downloads
+        ]
 
     # Second lens on the same Best-estimate total: by installation size and placement
     # instead of by cell. Same computation `build_size_distribution_atlas` publishes as
@@ -2052,45 +2098,85 @@ def build_evidence_atlas(
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Solar PV: Evidence Atlas",
-        "__H1__": f"{title}'s Solar Capacity",
+        "__PAGE_TITLE__": f"{title}'s Solar Capacity Atlas",
+        "__H1__": f"{title}'s Solar Capacity Atlas",
         "__AOI_TITLE__": title,
-        "__LEDE_HTML__": (
-            "The same country, the same imagery, one defensible estimate. "
-            "<b>Best estimate</b> combines every installation mapped in "
-            "OpenStreetMap, the model's own detections, and a per-building "
-            "estimate for small rooftops, the highest figure this project is "
-            "willing to defend. Both model-based halves are <b>recall-corrected</b>: "
-            "each accounts for installations of its size class that the "
-            "instrument is known to miss, not just the ones it caught. "
-            "This is an active research methodology, not a finished census. "
-            "See &ldquo;How confident should you be in this?&rdquo; below "
-            "for what's independently corroborated and what's still open."
-        ),
         "__CONFIDENCE_HTML__": (
-        "<p><b>The headline figure carries a 90% range, and it is wide.</b> "
-        "Best estimate is "
-        f"<b>{total_best:,.0f} MWp</b> with a range of "
-        f"<b>{uncertainty['mwp_best_ci'][0]:,.0f}&ndash;"
-        f"{uncertainty['mwp_best_ci'][1]:,.0f}</b>. Four things are inside those "
-        "ranges: the two area-to-capacity constants (how many kWp a square metre of "
-        "panel, or of solar-farm site, actually carries); the segmentation model's "
-        "own measured precision and recall by installation size; the sensitivity of "
-        "<i>both</i> per-building corrections (how much of a flagged roof is "
-        "actually panel, and what share of real installations the classifier flags "
-        "at all) to <i>which</i> ground-truth quadrats happened to be mapped, "
-        "resampling the quadrats themselves rather than the buildings inside them, "
-        "together, since both are fit on the same quadrats; and an explicit, "
-        "deliberately wide allowance for extrapolating a city-calibrated "
-        "relationship onto rural roofs, covering the small-PV contribution in cells "
-        "with no nearby calibration at all. Two things are <i>not</i> inside them, "
-        "and no arithmetic can put them there: the quadrats were hand-picked rather "
-        "than randomly sampled, so this is not a formal national margin of error, "
-        "and ground-truth completeness is relative to the mapping imagery's date "
-        "rather than the satellite composite's, which biases measured precision "
-        "downward and measured recall upward by an unknown amount, both in the "
-        "direction that makes this page's figure a floor rather than a "
-        "ceiling.</p>"
+            "<p><b>The headline figure carries a 90% range, and it is wide.</b> "
+            "Best estimate is "
+            f"<b>{total_best:,.0f} MWp</b> with a range of "
+            f"<b>{uncertainty['mwp_best_ci'][0]:,.0f}&ndash;"
+            f"{uncertainty['mwp_best_ci'][1]:,.0f}</b>. Three things are inside those "
+            "ranges: the two area-to-capacity constants (how many kWp a square metre of "
+            "panel, or of solar-farm site, actually carries); the segmentation model's "
+            "own measured precision and recall by installation size; and the sensitivity of "
+            "<i>both</i> per-building corrections -- how much of a flagged roof is "
+            "actually panel, and what share of real installations the classifier flags at "
+            "all -- to <i>which</i> ground-truth quadrats happened to be mapped, "
+            "measured by resampling the quadrats themselves rather than the buildings "
+            "inside them, and resampled together because they are fit on the same "
+            "quadrats and move together."
+            + (
+                " A fourth source, an explicit allowance for extrapolating a "
+                "city-calibrated relationship onto rural roofs outside any calibrated "
+                "cell, is also included below because this build still carries that "
+                "out-of-domain component."
+                if int(grid["is_extended"].sum()) > 0 else
+                ""
+            ) +
+            " Three things are <i>not</i> inside them, and no arithmetic can put them "
+            "there. The quadrats were hand-picked rather than randomly sampled, so this "
+            "is not a formal national margin of error -- and not by choice: a "
+            "genuine probability sample needs every drawn cell to be checkable against "
+            "reference imagery recent enough to confirm or refute a small installation, "
+            "and random draws outside the calibrated domain have so far landed on JOSM "
+            "reference imagery too old to do that, in both directions (a zero can mean "
+            "no panels or an installation newer than the imagery). Purposive selection "
+            "was the fallback that let quadrats be sited where recent imagery actually "
+            "exists. Ground-truth completeness is "
+            "relative to the date of the mapping imagery rather than the satellite "
+            "composite, which biases the measured precision downward and the measured "
+            "recall upward by an unknown amount -- both in the direction that makes "
+            "this page's figure a floor rather than a ceiling. And roughly four-fifths of "
+            "Best (the two roofclf-derived components together) shares one coverage-ratio "
+            "/ area-recall correction whose sparsest supporting quadrat sits at 872 "
+            "buildings/km&sup2;, while measured 2026-08-16, 84% of the buildings that "
+            "correction is applied to sit below that density, some three to four times "
+            "sparser; the bootstrap above resamples only quadrats on the dense side of "
+            "that gap, so it is silent about transfer to the sparser cells the correction "
+            "is actually priced for.</p>"
+            "<p><b>Read this as promising preliminary results from an ongoing "
+            "methodology, not a finished capacity census.</b> What's genuinely novel "
+            "here (a reproducible pipeline using free satellite imagery and "
+            "open-source geospatial AI to estimate distributed solar deployment where "
+            "official statistics are sparse) is true regardless of whether any "
+            "single number on this page holds up exactly. Treat the numbers as the "
+            "current state of an experiment being actively tested, not a settled "
+            "fact.</p>"
+            "<p><b>The calibration quadrats are hand-picked, not randomly sampled.</b> "
+            f"All <b>{data['totals']['n_calib_boxes']}</b> ground-truth quadrats behind "
+            "the small-PV instruments were chosen by a researcher to cover a spread of "
+            "landscape types (planned housing, dense informal urban, industrial, "
+            "arid/bare-land), not drawn at random from a defined national frame. Only "
+            f"<b>{data['totals']['n_calib_rule1']}</b> of them have been through a full "
+            "human completeness pass strict enough to trust their negatives (see the "
+            "teal markers on the map). Purposive sampling at any size (whether "
+            "this many quadrats or several times more) does not by itself support "
+            "a formal national margin of error; that would need a probability sample "
+            "drawn from the national building-density frame, which does not yet exist. "
+            "More quadrats have real value (each new one has surfaced a genuinely new "
+            "failure mode so far), but count alone does not resolve this.</p>"
+            "<p><b>Independent, non-imagery data points land in the same order of "
+            "magnitude.</b> Pakistan's NEPRA net-metering register (a government "
+            "administrative record with no connection to this pipeline) puts "
+            "registered rooftop solar at 5.3-6.3 GW nationally (a floor, since it only "
+            "counts customers who completed formal registration paperwork). Chinese "
+            "customs export data separately puts cumulative panel imports into Pakistan "
+            "at roughly 50 GW by mid-2025, a much looser ceiling on the whole market, "
+            "utility-scale included. This page's headline figure sits inside that "
+            "bracket: two independent, non-satellite data sources landing in a "
+            "mutually consistent range is real corroboration for the order of magnitude, "
+            "even though it cannot confirm any single number here precisely.</p>"
         ),
     }.items():
         html = html.replace(key, value)
@@ -2173,11 +2259,17 @@ def _size_distribution_data(
       (`seg_roof_outdomain`) -- roofclf replaces segmentation's own rooftop estimate
       INSIDE that domain, so counting both there would double it.
     - `ge400_roof_buildings_path` (roofclf's own >= 400 m2 rooftop replacement,
-      in-domain).
-    - `central_buildings_path` (roofclf alone, < 400 m2, in-domain).
+      in-domain). Under the parcel label, a flat quadrat-measured share of each
+      building's MWp (`est_kwp_ge400_roof_ground`) is OSM `placement=ground` PV in the
+      yard rather than on the roof and is split into `ground_mwp`, not `roof_mwp` --
+      see `parcel_label_composition`. 0 under a roof-only calibration table.
+    - `central_buildings_path` (roofclf alone, < 400 m2, in-domain). Same split, via
+      `est_kwp_sub400_ground`.
     - `sub400_outdomain_buildings_path` (roofclf+SPPI agreement, < 400 m2,
       extrapolated outside the domain) -- optional, matches `earthpv atlas`'s own
-      `--sub400-outdomain-cells`; rendered as a visually distinct slice.
+      `--sub400-outdomain-cells`; rendered as a visually distinct slice. Not split by
+      the parcel-label ground share (this component doesn't track it; it is also
+      unpublished as of 2026-08-15, see CLAUDE.md's "Density stage").
     - hand-mapped OSM installations the model never detected
       (`osm_unmatched_roof`/`osm_unmatched_ground`).
 
@@ -2279,20 +2371,36 @@ def _size_distribution_data(
     seg_roof_all_by_cell = _cell_sum(cell_of[is_roof], seg_roof_mwp_arr[is_roof])
 
     # --- roofclf's own >= 400 m2 rooftop replacement, in-domain ----------------------
+    # A flat, quadrat-measured share of each building's priced capacity is actually OSM
+    # `placement=ground` PV in the yard, not on the roof (`parcel_label_composition`,
+    # `est_kwp_ge400_roof_ground` -- 0 under a roof-only calibration table). Split the
+    # MWp by that share; `roof_n`/`ground_n` stay whole-building counts under roof_n,
+    # since this isn't a distinct ground-mount OBJECT the way a segmentation/OSM ground
+    # candidate is -- one building's estimate is just partly ground-tagged area.
     if not ge400.empty:
-        _size_bin_add(
-            ge400["roof_area_m2"].to_numpy(float), ge400["est_kwp_ge400_roof"].to_numpy(float) / 1000.0,
-            roof=True,
+        ge400_ground_kwp = (
+            ge400["est_kwp_ge400_roof_ground"].to_numpy(float)
+            if "est_kwp_ge400_roof_ground" in ge400.columns else np.zeros(len(ge400))
         )
+        ge400_roof_kwp = ge400["est_kwp_ge400_roof"].to_numpy(float) - ge400_ground_kwp
+        area_v = ge400["roof_area_m2"].to_numpy(float)
+        _size_bin_add(area_v, ge400_roof_kwp / 1000.0, roof=True)
+        s, _ = _size_bin_sum(area_v, ge400_ground_kwp / 1000.0, edges)
+        ground_mwp[:] += s
 
     # --- roofclf alone, < 400 m2, in-domain ------------------------------------------
     central = gpd.read_parquet(central_buildings_path)
     central_by_cell = pd.Series(dtype=float)
     if not central.empty:
-        _size_bin_add(
-            central["roof_area_m2"].to_numpy(float), central["est_kwp_sub400"].to_numpy(float) / 1000.0,
-            roof=True,
+        central_ground_kwp = (
+            central["est_kwp_sub400_ground"].to_numpy(float)
+            if "est_kwp_sub400_ground" in central.columns else np.zeros(len(central))
         )
+        central_roof_kwp = central["est_kwp_sub400"].to_numpy(float) - central_ground_kwp
+        area_v = central["roof_area_m2"].to_numpy(float)
+        _size_bin_add(area_v, central_roof_kwp / 1000.0, roof=True)
+        s, _ = _size_bin_sum(area_v, central_ground_kwp / 1000.0, edges)
+        ground_mwp[:] += s
         central_by_cell = _join_buildings_to_grid_cells(central, "est_kwp_sub400", grid) / 1000.0
 
     # --- roofclf+SPPI, < 400 m2, extrapolated outside the domain --------------------
@@ -2455,7 +2563,7 @@ def build_size_distribution_atlas(
     html = SIZE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Solar PV — Capacity by Installation Size",
+        "__PAGE_TITLE__": f"{title} Solar PV - Capacity by Installation Size",
         "__H1__": f"{title}'s solar, by installation size",
     }.items():
         html = html.replace(key, value)

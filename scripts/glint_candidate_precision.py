@@ -2,14 +2,14 @@
 
 The 500-target study (glint_validate_pakistan.py) measured the glint instrument's
 sensitivity S_b on OSM-confirmed (true) installations. This script points the same
-instrument at a stratified sample of *unmapped model candidates* — the population
-whose real-PV fraction is unknown — so `earthpv calibrate-candidates` can invert the
+instrument at a stratified sample of *unmapped model candidates* - the population
+whose real-PV fraction is unknown - so `earthpv calibrate-candidates` can invert the
 observed validated rate v_b through S_b and the control false floor f into a
 candidate precision per size bin: p_u(b) = clip((v_b - f) / (S_b - f), 0, 1).
 See src/earthpv/capacity_calibration.py for the estimator this feeds.
 
 Only bins where the instrument discriminates (>= 500 m2) are sampled. Mapped
-candidates are excluded (their realness is already known — they enter the table via
+candidates are excluded (their realness is already known - they enter the table via
 the mapped fraction instead).
 
 Resumable: each candidate's scene series lands in data/glint/<aoi>_cand/<pid>.parquet;
@@ -83,7 +83,7 @@ def sample(
     _, cfg = resolve_aoi(aoi, settings)
     mapped = _load_mapped_reference(aoi, cfg, settings)
     if mapped is None or mapped.empty:
-        raise typer.Exit("no mapped OSM reference — cannot restrict to unmapped candidates")
+        raise typer.Exit("no mapped OSM reference - cannot restrict to unmapped candidates")
     unmapped = cands[new_lead_mask(cands, mapped, min_distance_m=min_distance_m)]
     unmapped = unmapped.reset_index(drop=True)
     unmapped["bucket"] = pd.Categorical.from_codes(
@@ -162,7 +162,7 @@ def pull(
             for f in as_completed(futs):
                 try:
                     msg = f.result()
-                except Exception as e:  # noqa: BLE001 — one bad target must not kill the run
+                except Exception as e:  # noqa: BLE001 - one bad target must not kill the run
                     msg = f"{futs[f]} FAILED: {e}"
                 done += 1
                 log.info("[%d/%d] %s", done, len(todo), msg)
@@ -196,7 +196,7 @@ def analyze(aoi: str = typer.Option("pakistan"), tol_deg: float = 3.0):
     out = OUT_DIR / f"{aoi}_candidate_glint_sample.csv"
     per_bin.to_csv(out, index=False)
     print(per_bin.to_string(index=False))
-    print(f"\nwrote {out} — feed it to:\n"
+    print(f"\nwrote {out} - feed it to:\n"
           f"  earthpv calibrate-candidates --aoi {aoi} --glint-sample {out}")
 
 

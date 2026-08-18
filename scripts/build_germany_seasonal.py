@@ -2,7 +2,7 @@
 
 Germany's summer base imagery ALREADY exists locally as the rooftopsenti per-MGRS
 composites, so the base layer is *cropped from those* (a local window read, no
-download) — only the winter contrast is fetched from STAC, halving the network cost.
+download) - only the winter contrast is fetched from STAC, halving the network cost.
 We build only the 0.1-degree cells that contain PV labels (the chip-sampling
 footprint). Output mirrors the composed-AOI layout
 (data/composites/germany/composites/<ix>_<iy>/), which chips.py/infer.py already
@@ -86,7 +86,7 @@ def _build_cell(cell) -> str | None:
                 log.warning("%s: no winter scenes, skip", name)
                 return None
             _write(contrast, *res)
-    except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
+    except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
         log.warning("%s failed: %s", name, e)
         return None
     log.info("%s: done (%d positives)", name, int(cell.n))

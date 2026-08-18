@@ -2,7 +2,7 @@
 
 Countryside green-field false positives (measured 2026-07-23 on the pk16085
 Pakistan leads): in the dry-season composite the model actually read, those
-leads are NOT green — median NDVI 0.10, spectrally indistinguishable from real
+leads are NOT green - median NDVI 0.10, spectrally indistinguishable from real
 PV, because the fields were dark fallow/harvested/flooded-paddy soil when the
 median was built. The "green field" a validator sees in high-res imagery is a
 season mismatch, so no single-composite spectral test can remove them. What
@@ -11,18 +11,18 @@ point in the year, PV panels never do.
 
 Two instruments, by cost:
 
-- `composite_max_ndvi` — max mean-NDVI across the composite epochs already on
+- `composite_max_ndvi` - max mean-NDVI across the composite epochs already on
   disk (current + pre-boom). Free and local, but two dry-season medians
   undersample the crop cycle: catches ~17% of countryside FP suspects at ~2%
   cost to OSM-confirmed PV (thresold 0.35). The interim filter.
-- `scripts/veg_annual_ndvi.py` — samples a year of Sentinel-2 scenes per lead
+- `scripts/veg_annual_ndvi.py` - samples a year of Sentinel-2 scenes per lead
   (the glint pipeline's fetcher, B04/B08) and reports p95 NDVI over the year;
   crossing ~0.4 means a crop cycle. Network-bound, resumable; the proper
   instrument. Cloud contamination biases NDVI *down*, so the veto is
   conservative with respect to residual cloud.
 
 Both feed `export`: vetoed leads are dropped from the cleaned leads file and
-written to `hard_negatives_veg.parquet` — ready for
+written to `hard_negatives_veg.parquet` - ready for
 `earthpv hard-negative-chips --centers` so the confusion class (dark fallow /
 paddy soil, absent from German training negatives) enters the next retrain.
 """
@@ -96,7 +96,7 @@ def composite_max_ndvi(
 ) -> np.ndarray:
     """Max mean-NDVI per geometry across every composite epoch on disk.
 
-    NaN where no composite covers the geometry — the caller must treat NaN as
+    NaN where no composite covers the geometry - the caller must treat NaN as
     "unchecked", never as a veto. Groups geometries per tile so each COG is
     opened once per epoch.
     """

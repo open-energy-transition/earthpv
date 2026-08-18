@@ -87,7 +87,7 @@ def _scene_row(item, geometry, lon: float, lat: float, provider: str) -> dict | 
             row[f"p90_{band}"], row[f"ring_{band}"] = p90, ring
             row["npx"] = npx
         return row
-    except Exception as e:  # noqa: BLE001 — per-scene failures shouldn't kill the pull
+    except Exception as e:  # noqa: BLE001 - per-scene failures shouldn't kill the pull
         log.debug("scene %s failed: %s", item.id, e)
         return None
 
@@ -132,7 +132,7 @@ def main() -> None:
         for f in as_completed(futs):
             try:
                 msg = f.result()
-            except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
+            except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
                 msg = f"{futs[f]} FAILED: {e}"
             done += 1
             log.info("[%d/%d] %s", done, len(todo), msg)

@@ -3,14 +3,14 @@ fetch (and, for reference, the new self-referenced ring option) to confirm the
 tile-major rewrite (`glint.tile_scene_series_batch`, see
 docs/issues/glint-tile-batched-coverage.md) and the self-referenced spike criterion
 (`glint.annotate_spikes`) still reproduce the original per-target `scene_series`
-pull's results at full country scale — not just the small, single-tile clusters
+pull's results at full country scale - not just the small, single-tile clusters
 (6 candidates, 8 spot-checked installations, one Lahore block) validated so far this
 session.
 
 This is also the first real stress test of tile-batching's *grouping*, not just its
 per-target correctness: the original 500 targets are OSM-confirmed installations
 spread across all of Pakistan, so 1-degree binning produces many small, scattered
-groups (unlike the single-tile clusters tested so far) — a different regime the
+groups (unlike the single-tile clusters tested so far) - a different regime the
 grouping logic hasn't been exercised at before.
 
 Compares against the original `data/glint/pakistan_summary.csv` (n_scenes/n_spikes/

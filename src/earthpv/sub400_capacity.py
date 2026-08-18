@@ -150,6 +150,43 @@ def density_regime_precision(
     return result
 
 
+def parcel_label_composition(
+    buildings_path: Path, quadrats: list[str], threshold: float
+) -> dict | None:
+    """What the parcel label actually added, on the population the coverage ratio is fit on.
+
+    Returns None for a roof-only calibration table (no `pv_area_yard_m2` column), so every
+    caller can attach this to its summary unconditionally.
+
+    This exists because the two things `roofclf.parcel_pv_area` picks up mean different
+    things downstream and the atlas reports them under one heading. Measured on the 27
+    quadrats, the OSM `placement=ground` term -- genuine small ground-mounted arrays, the
+    thing the widening was built for -- is the minority of it; most is mapped rooftop PV
+    whose polygon extends past an imagery-derived VIDA outline. Both are real PV on the
+    parcel and both belong in `pv_area_true_m2` (the overhang term is self-consistent: an
+    undersized footprint shrinks the calibration denominator and the national flagged roof
+    area by the same bias, so the ratio transfers), but only the ground term makes the
+    "rooftop" capacity line partly ground-mount. `yard_ground_share_of_flagged` is the
+    number to quote for that, and it is what keeps the atlas's placement split honest.
+    """
+    df = gpd.read_parquet(buildings_path)
+    if "pv_area_yard_m2" not in df.columns:
+        return None
+    sub = df[df.quadrat.isin(quadrats)]
+    flagged = sub[sub.p_oof.to_numpy(float) >= threshold]
+    total = float(flagged.pv_area_true_m2.sum())
+    ground = float(flagged.pv_area_yard_ground_m2.sum())
+    overhang = float(flagged.pv_area_yard_overhang_m2.sum())
+    return {
+        "flagged_pv_area_m2": round(total, 1),
+        "roof_m2": round(float(flagged.pv_area_roof_m2.sum()), 1),
+        "yard_ground_tagged_m2": round(ground, 1),
+        "yard_rooftop_overhang_m2": round(overhang, 1),
+        "yard_ground_share_of_flagged": round(ground / total, 4) if total else 0.0,
+        "yard_total_share_of_flagged": round((ground + overhang) / total, 4) if total else 0.0,
+    }
+
+
 # Quantile bin count / minimum flagged buildings per bin for `coverage_ratio_by_size` --
 # see that function's docstring for why quantile (equal-count) bins, not equal-width ones.
 DEFAULT_COVERAGE_N_SIZE_BINS = 10
@@ -262,13 +299,20 @@ def coverage_ratio_by_size(
     return table
 
 
+def _lookup_by_size(roof_area_m2: np.ndarray, bin_table: pd.DataFrame, column: str) -> np.ndarray:
+    """Per-building value from a `bin_lo`/`bin_hi` size table, by the building's own roof
+    area. Shared by `apply_size_coverage_ratio` and `apply_size_area_recall` so the two
+    size-binned corrections cannot drift apart in how they resolve a bin edge."""
+    edges = np.concatenate([[bin_table.bin_lo.iloc[0]], bin_table.bin_hi.to_numpy()])
+    idx = np.clip(np.searchsorted(edges, roof_area_m2, side="right") - 1, 0, len(bin_table) - 1)
+    return bin_table[column].to_numpy()[idx]
+
+
 def apply_size_coverage_ratio(roof_area_m2: np.ndarray, bin_table: pd.DataFrame) -> np.ndarray:
     """Per-building coverage ratio looked up from `coverage_ratio_by_size`'s bin table by
     each building's own `roof_area_m2` -- the size-dependent replacement for multiplying
     every building by one flat ratio regardless of how big its roof is."""
-    edges = np.concatenate([[bin_table.bin_lo.iloc[0]], bin_table.bin_hi.to_numpy()])
-    idx = np.clip(np.searchsorted(edges, roof_area_m2, side="right") - 1, 0, len(bin_table) - 1)
-    return bin_table.coverage_ratio.to_numpy()[idx]
+    return _lookup_by_size(roof_area_m2, bin_table, "coverage_ratio")
 
 
 # Number of building-density strata `coverage_ratio_by_size_and_density` splits the
@@ -383,10 +427,29 @@ def coverage_ratio_by_size_and_density(
     "n_flagged", "coverage_table": <records>}, ...], "pooled_fallback": <records>}`. Feed
     straight to `apply_stratified_coverage_ratio`.
     """
+    return _stratify_by_density(
+        coverage_ratio_by_size, "coverage_table", buildings_path, quadrats, threshold,
+        quadrat_density, sppi_min_precision, n_density_bands, n_size_bins, min_bin_n, df,
+        n_col="n_flagged",
+    )
+
+
+def _stratify_by_density(
+    fit, table_key: str, buildings_path: Path | None, quadrats: list[str], threshold: float,
+    quadrat_density: pd.Series, sppi_min_precision: float | None, n_density_bands: int,
+    n_size_bins: int, min_bin_n: int, df: pd.DataFrame | None, n_col: str,
+) -> dict:
+    """Fit `fit` (a size-binned table function) once per building-density band of
+    `quadrats`, with a pooled fallback for any band whose own calibration population is
+    thinner than `min_bin_n`. Shared by `coverage_ratio_by_size_and_density` and
+    `area_recall_by_size_and_density` so the two corrections a building is multiplied and
+    divided by are stratified identically -- if they used different band edges, a national
+    cell could sit in the dense band for one and the sparse band for the other.
+    """
     quadrat_density = quadrat_density.loc[quadrats]
     edges = _density_band_edges(quadrat_density, n_density_bands)
 
-    pooled_table = coverage_ratio_by_size(
+    pooled_table = fit(
         buildings_path, quadrats, threshold, sppi_min_precision=sppi_min_precision,
         n_bins=n_size_bins, min_bin_n=min_bin_n, df=df,
     )
@@ -398,24 +461,24 @@ def coverage_ratio_by_size_and_density(
         band_quadrats = quadrat_density.index[band_idx == i].tolist()
         if not band_quadrats:
             continue
-        table = coverage_ratio_by_size(
+        table = fit(
             buildings_path, band_quadrats, threshold, sppi_min_precision=sppi_min_precision,
             n_bins=n_size_bins, min_bin_n=min_bin_n, df=df,
         )
-        n_flagged_band = int(table.n_flagged.sum())
-        used_pooled_fallback = n_flagged_band < min_bin_n
+        n_band = int(table[n_col].sum())
+        used_pooled_fallback = n_band < min_bin_n
         if used_pooled_fallback:
             log.warning(
-                "Density band %d (%s, density %.1f-%.1f/km2) has only %d flagged buildings "
-                "total -- falling back to the pooled coverage-ratio-by-size fit for this band",
-                i, band_quadrats, edges[i], edges[i + 1], n_flagged_band,
+                "Density band %d (%s, density %.1f-%.1f/km2) has only %d calibration rows "
+                "(%s) -- falling back to the pooled %s fit for this band",
+                i, band_quadrats, edges[i], edges[i + 1], n_band, n_col, table_key,
             )
             table = pooled_table
         bands.append({
             "density_lo": float(edges[i]), "density_hi": float(edges[i + 1]),
-            "quadrats": band_quadrats, "n_flagged": n_flagged_band,
+            "quadrats": band_quadrats, "n_flagged": n_band,
             "used_pooled_fallback": used_pooled_fallback,
-            "coverage_table": table.to_dict("records"),
+            table_key: table.to_dict("records"),
         })
     result = {
         "band_edges": [float(e) for e in edges],
@@ -423,8 +486,8 @@ def coverage_ratio_by_size_and_density(
         "pooled_fallback": pooled_table.to_dict("records"),
     }
     log.info(
-        "Coverage ratio by size and density (%d bands from %d quadrats): %s",
-        len(bands), len(quadrats),
+        "%s by size and density (%d bands from %d quadrats): %s",
+        table_key, len(bands), len(quadrats),
         [(b["density_lo"], b["density_hi"], b["quadrats"], b["used_pooled_fallback"]) for b in bands],
     )
     return result
@@ -438,6 +501,16 @@ def apply_stratified_coverage_ratio(
     that band's size-binned table (`apply_size_coverage_ratio`) picks the ratio by roof size
     -- the two covariates stack rather than substitute for each other.
     """
+    return _apply_stratified(roof_area_m2, cell_density_km2, stratified, "coverage_table", "coverage_ratio")
+
+
+def _apply_stratified(
+    roof_area_m2: np.ndarray, cell_density_km2: np.ndarray, stratified: dict,
+    table_key: str, column: str,
+) -> np.ndarray:
+    """Shared band-then-size lookup behind `apply_stratified_coverage_ratio` and
+    `apply_stratified_area_recall`: a cell's own density picks the band, the building's own
+    roof size picks the bin within it."""
     edges = np.array(stratified["band_edges"])
     band_idx = np.clip(np.searchsorted(edges, cell_density_km2, side="right") - 1, 0, len(stratified["bands"]) - 1)
     out = np.empty(len(roof_area_m2), dtype=float)
@@ -445,9 +518,184 @@ def apply_stratified_coverage_ratio(
         m = band_idx == i
         if not m.any():
             continue
-        table = pd.DataFrame(band["coverage_table"])
-        out[m] = apply_size_coverage_ratio(roof_area_m2[m], table)
+        out[m] = _lookup_by_size(roof_area_m2[m], pd.DataFrame(band[table_key]), column)
     return out
+
+
+# --------------------------------------------------------------------------------------
+# roofclf's own missed installations: the recall half of the correction (2026-08-15)
+# --------------------------------------------------------------------------------------
+# A bin measured below this cannot pin its own denominator down, and 1/recall there would
+# inflate a handful of flagged buildings into an unbounded national total. Mirrors
+# `capacity_calibration.DEFAULT_RECALL_FLOOR`'s role for segmentation (there 0.05, a 20x
+# cap; here 0.10, a 10x cap, because roofclf's measured area recall is an order of
+# magnitude higher -- the lowest decile on the current 17-quadrat set is 0.268, so this
+# floor does not bind anywhere today and exists only to bound a future degenerate refit).
+AREA_RECALL_FLOOR = 0.10
+
+
+def area_recall_by_size(
+    buildings_path: Path | None,
+    quadrats: list[str],
+    threshold: float,
+    sppi_min_precision: float | None = None,
+    n_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
+    min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
+    df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Share of the quadrats' true mapped PV **area** that sits on a building roofclf
+    actually flags, binned by roof size -- the denominator correction the coverage ratio
+    alone cannot make.
+
+    `coverage_ratio_by_size` answers "of the roof area we flagged, how much is panel?".
+    Multiplying a national flagged population by it therefore estimates *the PV on roofs
+    roofclf flagged*, and silently books zero for every installation on a roof it missed.
+    Segmentation has never been read that way: `capacity_calibration`'s recall table and
+    `density.py`'s `est_mwp_rc` divide each surviving candidate by the measured recall of
+    its size class precisely so the estimate describes the whole population rather than the
+    detected part. This is the same Horvitz-Thompson correction for the other instrument,
+    fit on the same quadrats, at the same time, so the two halves of the atlas are built on
+    one estimator rather than two.
+
+    Measured on the 17 rate_ratio-trusted quadrats at the 2026-08-13 refit's deployment
+    threshold: pooled area recall is 0.808 for sub-400 m2 buildings and 0.982 for
+    >= 400 m2 ones, and it rises monotonically with roof size across the sub-400 m2 range
+    (0.29 in the smallest decile of PV-carrying roofs to 0.91 in the largest) -- so, exactly
+    like the coverage ratio, a single pooled number would over-correct the largest roofs and
+    badly under-correct the smallest.
+
+    **Area, not count.** A count recall (roofclf's own `deployment_threshold_stats`, 0.634)
+    answers "how many PV buildings did we flag", which is not the quantity a capacity total
+    needs: missing one 300 m2 array and missing one 20 m2 array cost the same under a count
+    and differ 15-fold in MWp. The numerator and denominator here are both `pv_area_true_m2`.
+
+    **One assumption, with a known sign.** The national population this is applied to has
+    already been deduped against segmentation candidates and OSM features, while recall is
+    measured over a quadrat's whole building population, deduped or not (the calibration
+    table carries no proximity flag to condition on). Dividing the former by the latter
+    assumes roofclf's misses split between "already counted by another component" and
+    "incremental" in the same proportion its hits do. Where that fails it fails
+    conservatively: a large, obvious array is both the kind roofclf flags and the kind
+    segmentation or an OSM mapper already found, so flagged PV is if anything
+    over-represented among the already-counted, which makes the incremental share of MISSED
+    PV larger than assumed and this correction an underestimate.
+
+    **This correction is conservative by construction.** Rule 1 certifies completeness only
+    as of the mapping imagery's own epoch (`docs/calibration-mapping-protocol.md`), so an
+    array present in the composite but installed after that imagery is missing from
+    `pv_area_true_m2` on flagged and unflagged buildings alike. On a flagged building it
+    leaves both numerator and denominator; on an unflagged one it leaves only the
+    denominator -- which biases measured recall UP and this correction DOWN. It is a floor
+    on the correction, not a point estimate of it.
+
+    Bins are quantiles of the PV-CARRYING population's roof area (equal-count in
+    installations, not in buildings), since a bin's recall is measured from the
+    installations in it -- a bin with fewer than `min_bin_n` PV-carrying buildings falls
+    back to the pooled recall across all of `quadrats`, the same degradation
+    `coverage_ratio_by_size` applies. Returns `bin_lo`, `bin_hi`, `n_pv_buildings`,
+    `n_pv_flagged`, `true_pv_area_m2`, `flagged_pv_area_m2`, `area_recall`. `df` is the
+    same bootstrap escape hatch `coverage_ratio_by_size` documents.
+    """
+    df = gpd.read_parquet(buildings_path) if df is None else df
+    sub = df[df.quadrat.isin(quadrats)]
+    if sub.empty:
+        raise ValueError(f"None of {quadrats} found in {buildings_path}")
+    pred = sub.p_oof.to_numpy(float) >= threshold
+    if sppi_min_precision is not None:
+        from earthpv.sppi import add_sppi, pooled_precision_threshold
+
+        if "sppi" not in df.columns:
+            df = add_sppi(df)
+            sub = df[df.quadrat.isin(quadrats)]
+        sppi_thresh = pooled_precision_threshold(df, quadrats, min_precision=sppi_min_precision)
+        pred = pred & (sub.sppi.to_numpy(float) >= sppi_thresh)
+
+    true = sub.pv_area_true_m2.to_numpy(float)
+    roof = sub.roof_area_m2.to_numpy(float)
+    has_pv = true > 0
+    if not has_pv.any() or true.sum() <= 0:
+        log.warning(
+            "area_recall_by_size: no mapped PV in quadrats=%s -- returning area_recall=1.0 "
+            "(no correction), since a recall this population cannot measure must not be "
+            "invented", quadrats,
+        )
+        return pd.DataFrame([{
+            "bin_lo": -np.inf, "bin_hi": np.inf, "n_pv_buildings": 0, "n_pv_flagged": 0,
+            "true_pv_area_m2": 0.0, "flagged_pv_area_m2": 0.0, "area_recall": 1.0,
+        }])
+    overall_recall = float(true[pred].sum() / true.sum())
+
+    edges = np.unique(np.quantile(roof[has_pv], np.linspace(0.0, 1.0, n_bins + 1)))
+    if len(edges) < 3:
+        edges = np.array([roof[has_pv].min(), roof[has_pv].max()])
+    edges[0], edges[-1] = -np.inf, np.inf
+    bin_idx = np.clip(np.searchsorted(edges, roof, side="right") - 1, 0, len(edges) - 2)
+
+    rows = []
+    for i in range(len(edges) - 1):
+        m = bin_idx == i
+        n_pv = int((m & has_pv).sum())
+        true_sum = float(true[m].sum())
+        flagged_sum = float(true[m & pred].sum())
+        recall = flagged_sum / true_sum if true_sum > 0 and n_pv >= min_bin_n else overall_recall
+        rows.append({
+            "bin_lo": float(edges[i]), "bin_hi": float(edges[i + 1]),
+            "n_pv_buildings": n_pv, "n_pv_flagged": int((m & has_pv & pred).sum()),
+            "true_pv_area_m2": round(true_sum, 1), "flagged_pv_area_m2": round(flagged_sum, 1),
+            "area_recall": round(max(recall, AREA_RECALL_FLOOR), 4),
+        })
+    table = pd.DataFrame(rows)
+    log.info(
+        "Area recall by size (%d bins, %d quadrats, sppi_min_precision=%s, overall=%.4f):\n%s",
+        len(table), len(quadrats), sppi_min_precision, overall_recall, table.to_string(index=False),
+    )
+    return table
+
+
+def apply_size_area_recall(roof_area_m2: np.ndarray, bin_table: pd.DataFrame) -> np.ndarray:
+    """Per-building area recall from `area_recall_by_size`'s bin table, by roof size."""
+    return _lookup_by_size(roof_area_m2, bin_table, "area_recall")
+
+
+def area_recall_by_size_and_density(
+    buildings_path: Path | None,
+    quadrats: list[str],
+    threshold: float,
+    quadrat_density: pd.Series,
+    sppi_min_precision: float | None = None,
+    n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
+    n_size_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
+    min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
+    df: pd.DataFrame | None = None,
+) -> dict:
+    """`area_recall_by_size`, stratified by building density exactly as
+    `coverage_ratio_by_size_and_density` stratifies the coverage ratio -- same band edges
+    (`_density_band_edges` over the same quadrats), same equal-count-of-quadrats logic, same
+    pooled fallback for a band too thin to fit on its own. Both corrections therefore see
+    the same definition of "dense" and "sparse", which matters because they are multiplied
+    together per building.
+
+    Measured spread across the 17 trusted quadrats is wide (pooled sub-400 m2 area recall
+    ranges 0.26 in Malok to 0.94 in Islamabad North), and that variability is priced by
+    resampling quadrats in `coverage_ratio_bootstrap_factors`, not swept into a point value.
+
+    Returns the same shape `coverage_ratio_by_size_and_density` does, with `recall_table`
+    in place of `coverage_table`. Feed to `apply_stratified_area_recall`.
+    """
+    return _stratify_by_density(
+        area_recall_by_size, "recall_table", buildings_path, quadrats, threshold,
+        quadrat_density, sppi_min_precision, n_density_bands, n_size_bins, min_bin_n, df,
+        n_col="n_pv_buildings",
+    )
+
+
+def apply_stratified_area_recall(
+    roof_area_m2: np.ndarray, cell_density_km2: np.ndarray, stratified: dict
+) -> np.ndarray:
+    """Per-building area recall from `area_recall_by_size_and_density`'s output. Divide a
+    building's coverage-ratio-weighted capacity by this to estimate the whole population of
+    its size/density stratum rather than only the flagged part of it."""
+    return _apply_stratified(roof_area_m2, cell_density_km2, stratified, "recall_table", "area_recall")
 
 
 # Bootstrap replicates behind `coverage_ratio_bootstrap_factors`. 200 is enough for a
@@ -480,9 +728,22 @@ def coverage_ratio_bootstrap_factors(
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
     n_boot: int = DEFAULT_COVERAGE_N_BOOT,
     seed: int = COVERAGE_BOOTSTRAP_SEED,
+    recall_stratified: dict | None = None,
 ) -> dict:
     """Dimensionless multiplicative uncertainty on a capacity total, from resampling the
     CALIBRATION QUADRATS behind its coverage-ratio fit.
+
+    `recall_stratified`, when given (`area_recall_by_size_and_density`'s point fit), prices
+    the recall correction in the SAME replicates rather than in a second bootstrap of its
+    own: each replicate refits both tables on one resampled quadrat set and re-prices the
+    target population with both, so the factor returned describes
+    `coverage_ratio / area_recall` as a single quantity. That is the honest composition --
+    the two are fit on the same quadrats from the same labels, so their errors are strongly
+    dependent (a quadrat whose mapping is stale depresses the measured coverage ratio and
+    inflates the measured recall at once), and multiplying two independently-bootstrapped
+    factors would both mis-state the width and lose the sign of that dependence. It also
+    means `atlas.build_evidence_atlas` needs no change: it keeps reading one
+    `coverage_ratio_bootstrap` per component.
 
     **The resampling unit is the quadrat, not the building.** Buildings inside one quadrat
     share a mapper, a settlement pattern, a roof-material mix and one background-imagery
@@ -529,11 +790,13 @@ def coverage_ratio_bootstrap_factors(
     if n_boot <= 0 or len(roof_area_m2) == 0:
         return empty
 
-    point_total = float(
-        (roof_area_m2 * apply_stratified_coverage_ratio(
-            roof_area_m2, cell_density_km2, stratified
-        )).sum()
-    )
+    def _priced(cov_fit: dict, rec_fit: dict | None) -> float:
+        w = roof_area_m2 * apply_stratified_coverage_ratio(roof_area_m2, cell_density_km2, cov_fit)
+        if rec_fit is not None:
+            w = w / apply_stratified_area_recall(roof_area_m2, cell_density_km2, rec_fit)
+        return float(w.sum())
+
+    point_total = _priced(stratified, recall_stratified)
     if point_total <= 0:
         return empty
 
@@ -573,17 +836,20 @@ def coverage_ratio_bootstrap_factors(
                 dens[label] = float(quadrat_density[q])
             rep_density = pd.Series(dens)
             try:
+                rep_df = pd.concat(frames, ignore_index=True)
                 rep_stratified = coverage_ratio_by_size_and_density(
                     None, list(rep_density.index), threshold, rep_density,
                     sppi_min_precision=sppi_min_precision,
                     n_density_bands=n_density_bands,
-                    df=pd.concat(frames, ignore_index=True),
+                    df=rep_df,
                 )
-                rep_total = float(
-                    (roof_area_m2 * apply_stratified_coverage_ratio(
-                        roof_area_m2, cell_density_km2, rep_stratified
-                    )).sum()
+                rep_recall = None if recall_stratified is None else area_recall_by_size_and_density(
+                    None, list(rep_density.index), threshold, rep_density,
+                    sppi_min_precision=sppi_min_precision,
+                    n_density_bands=n_density_bands,
+                    df=rep_df,
                 )
+                rep_total = _priced(rep_stratified, rep_recall)
             except Exception as e:  # noqa: BLE001 -- a degenerate resample must not kill the run
                 n_degenerate += 1
                 log.warning("Coverage-ratio bootstrap: replicate dropped (%s)", e)
@@ -610,13 +876,14 @@ def coverage_ratio_bootstrap_factors(
         "seed": int(seed),
         "resample_unit": "quadrat",
         "n_quadrats": len(uniq),
+        "prices": "coverage_ratio / area_recall" if recall_stratified is not None else "coverage_ratio",
         "factors": [round(float(f), 6) for f in arr],
         "factor_ci90": [round(lo, 4), round(hi, 4)],
         "factor_mean": round(float(arr.mean()), 4),
     }
     log.info(
-        "Coverage-ratio quadrat bootstrap: %d replicates over %d quadrats, factor "
-        "%.3f-%.3f (90%%), mean %.3f", len(factors), len(uniq), lo, hi, arr.mean(),
+        "Quadrat bootstrap (%s): %d replicates over %d quadrats, factor "
+        "%.3f-%.3f (90%%), mean %.3f", out["prices"], len(factors), len(uniq), lo, hi, arr.mean(),
     )
     return out
 
@@ -718,6 +985,7 @@ def domain_restricted_capacity(
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
     n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
+    recall_correct: bool = True,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The module's actually-recommended output (see module docstring's 2026-07-30 note):
     combines four corrections, each individually insufficient on its own when measured:
@@ -745,6 +1013,18 @@ def domain_restricted_capacity(
        the fully pooled fit for any density band too thin to trust on its own -- see that
        function's docstring. `calibration_precision`/`calibration_recall` are still reported
        in the summary for diagnostic comparison, but no longer drive the MWp figure.
+    4. **Area-recall correction** (`recall_correct`, default True, added 2026-08-15) --
+       divide each building's coverage-ratio-weighted capacity by
+       `area_recall_by_size_and_density`'s measured share of true PV area that roofclf
+       actually flags in that size/density stratum. Correction 3 estimates the PV on roofs
+       roofclf FLAGGED; without this one the estimate books zero for every installation on
+       a roof it missed, which on the current 17-quadrat calibration is 19.2% of mapped
+       sub-400 m2 PV area pooled and 71-73% in the smallest deciles. This is the same
+       Horvitz-Thompson correction `density.py`'s `est_mwp_rc` has always applied to
+       segmentation candidates (`capacity_calibration`'s recall table), applied to the
+       other instrument at last -- see `area_recall_by_size`'s docstring, including why the
+       correction is a floor rather than a point estimate. Set False to reproduce the
+       pre-2026-08-15 flagged-population-only figure exactly.
 
     `osm_solar_path`, when given, adds a FIFTH exclusion: buildings within `max_distance_m`
     of an already hand-mapped OSM solar feature. Without it, "incremental" only means "no
@@ -788,10 +1068,15 @@ def domain_restricted_capacity(
     n_buildings_national = int(all_cells.n_buildings.sum())
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
     precision_info = density_regime_precision(buildings_path, quadrats, threshold)
+    composition = parcel_label_composition(buildings_path, quadrats, threshold)
+    ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
     stratified = coverage_ratio_by_size_and_density(
         buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
     )
+    recall_stratified = area_recall_by_size_and_density(
+        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
+    ) if recall_correct else None
 
     # Read only the ~93 in-domain per-cell parquets, not all 4,473 -- files are named
     # <cell>.parquet by `score_buildings_national`, so this is a filename filter, not a
@@ -854,35 +1139,67 @@ def domain_restricted_capacity(
     incremental["coverage_ratio"] = apply_stratified_coverage_ratio(
         incremental.roof_area_m2.to_numpy(float), incremental_cell_density, stratified
     )
+    incremental["area_recall"] = (
+        apply_stratified_area_recall(
+            incremental.roof_area_m2.to_numpy(float), incremental_cell_density, recall_stratified
+        ) if recall_correct else np.ones(len(incremental))
+    )
     incremental["est_kwp_sub400"] = (
         incremental.roof_area_m2.to_numpy(float)
         * DEFAULT_KWP_PER_M2_MODULE
         * incremental["coverage_ratio"].to_numpy()
+        / incremental["area_recall"].to_numpy()
     )
+    # Per `parcel_label_composition`, a flat fraction of every parcel-label building's
+    # priced capacity is OSM `placement=ground` PV standing in the yard, not on the roof
+    # -- measured pooled over the quadrats, not per building (no ground-truth PV exists on
+    # the national population this table scores). `ground_share` is 0.0 for a roof-only
+    # calibration table, so this column always exists and downstream size-by-placement
+    # charts (`atlas._size_distribution_data`) don't need a column-presence check.
+    incremental["est_kwp_sub400_ground"] = incremental["est_kwp_sub400"] * ground_share
     total_mwp = float(incremental.est_kwp_sub400.sum()) / 1000.0
     mean_coverage_ratio = (
         float(np.average(incremental["coverage_ratio"], weights=incremental.roof_area_m2))
         if len(incremental) else float("nan")
     )
+    # Capacity-weighted, so it reads as the factor the published total was actually divided
+    # by, not as an unweighted average over a population dominated by tiny roofs.
+    effective_area_recall = (
+        float(
+            (incremental.roof_area_m2 * incremental.coverage_ratio).sum()
+            / (incremental.roof_area_m2 * incremental.coverage_ratio / incremental.area_recall).sum()
+        ) if len(incremental) and total_mwp > 0 else float("nan")
+    )
     cov_boot = coverage_ratio_bootstrap_factors(
         buildings_path, quadrats, threshold, quadrat_density, stratified,
         incremental.roof_area_m2.to_numpy(float), incremental_cell_density,
         n_density_bands=n_density_bands, n_boot=n_coverage_boot,
+        recall_stratified=recall_stratified,
     )
 
     summary = {
         "method": "domain_restricted_sub400_capacity",
         "calibration_quadrats": quadrats,
+        # None for a roof-only calibration table; present (and worth reading before
+        # quoting this component as "rooftop") for a parcel-label one.
+        "parcel_label_composition": composition,
         "calibration_precision": precision_info["precision"],
         "calibration_recall": precision_info["recall"],
         "calibration_coverage_ratio_by_size_and_density": stratified,
         "calibration_coverage_ratio_area_weighted_mean": (
             round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None
         ),
+        "recall_correction_applied": bool(recall_correct),
+        "calibration_area_recall_by_size_and_density": recall_stratified,
+        "calibration_effective_area_recall": (
+            round(effective_area_recall, 4)
+            if effective_area_recall == effective_area_recall else None
+        ),
         # Quadrat-resampling uncertainty on this component, as dimensionless multiplicative
-        # factors (`coverage_ratio_bootstrap_factors`). `atlas.build_evidence_atlas` reads
-        # `factors` replicate-by-replicate so components sharing a calibration set keep
-        # their correlation; read `factor_ci90` for this component on its own.
+        # factors (`coverage_ratio_bootstrap_factors`), pricing the coverage ratio and the
+        # area-recall correction together in one set of replicates. `atlas.build_evidence_
+        # atlas` reads `factors` replicate-by-replicate so components sharing a calibration
+        # set keep their correlation; read `factor_ci90` for this component on its own.
         "coverage_ratio_bootstrap": cov_boot,
         "n_domain_cells": len(in_domain_cells),
         "n_national_cells": int(len(all_cells)),
@@ -977,6 +1294,16 @@ def domain_restricted_and_gate_capacity(
     docstring point 3 -- `coverage_ratio_by_size_and_density`/
     `apply_stratified_coverage_ratio` replace the single pooled size-binned fit with one
     fit per building-density stratum, each still size-binned internally.
+
+    **No area-recall correction here, deliberately (2026-08-15).**
+    `domain_restricted_capacity` now divides by `area_recall_by_size_and_density` to
+    estimate the whole population rather than the flagged part of it. This function does
+    not, and takes no `recall_correct` parameter, because its output is used as a FLOOR --
+    the atlas's per-cell minimum alongside hand-mapped OSM. A floor that extrapolates to
+    installations no instrument saw is not a floor. Requiring two independent detectors to
+    agree and then counting only what they jointly flagged is the whole point of this
+    tier; correcting it back up to the population would collapse the distinction between
+    it and `domain_restricted_capacity`.
     """
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask
@@ -1192,6 +1519,12 @@ def out_of_domain_and_gate_capacity(
     Returns `(incremental_buildings, summary)` with the same shape as
     `domain_restricted_and_gate_capacity`; `summary["scope"]` restates this caveat so it
     travels with the number wherever it is logged or displayed.
+
+    **No area-recall correction here either (2026-08-15)**, for a second reason on top of
+    the AND-gate one: this component already extrapolates a coverage ratio measured on
+    urban/semi-urban quadrats across cells with no calibration coverage at all. Dividing
+    that by a recall measured on the same non-representative quadrats would compound one
+    extrapolation with another and widen the claim without widening the evidence.
     """
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask

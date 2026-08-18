@@ -4,21 +4,21 @@ The pipeline serves two products from one recall-first model. The *leads* produc
 (postprocess -> export -> MapRoulette) tolerates false positives because humans
 validate every candidate. The *capacity atlas* (density stage) has no human in the
 loop, so raw candidate area systematically overstates MWp. This module estimates
-P(real PV | model candidate) per area bin — `p_real` — which density uses to weight
+P(real PV | model candidate) per area bin - `p_real` - which density uses to weight
 candidate area into the calibrated `est_mwp_cal` estimator. The leads product never
 consumes this table, and this module never consumes `rank_score`: that is the
 separation between the two products.
 
 `p_real` per bin combines independent evidence sources, in order of directness:
 
-- **mapped fraction** — candidates within `min_distance_m` (default 100 m, matching
+- **mapped fraction** - candidates within `min_distance_m` (default 100 m, matching
   the new-leads export filter) of an already-mapped OSM solar feature are taken as
   real. Computed offline from data that always exists.
-- **manual review of the unmapped remainder** — a human verdict (high-res imagery)
+- **manual review of the unmapped remainder** - a human verdict (high-res imagery)
   on a stratified per-bin sample of unmapped candidates measures P(real | unmapped)
   directly. This is the only instrument that works below ~500 m2, where glint has no
   discrimination; `earthpv calibrate-sample` emits the review file.
-- **glint inversion on the unmapped remainder** — the glint instrument validates a
+- **glint inversion on the unmapped remainder** - the glint instrument validates a
   true array in bin b with probability S_b (sensitivity, measured on 500
   OSM-confirmed Pakistan installations: results/glint_validation_pakistan/) and a
   no-PV building with probability f = 6/69 (Lahore controls). If a stratified
@@ -37,7 +37,7 @@ Bins where p_u is unmeasurable fall back to the nearest measurable bin's p_u
 an honest lower bound (status `interim-mapped-only`).
 
 **Model recall per bin** (v2): the same mapped OSM reference, in the reverse
-direction — the fraction of independently-mapped installations of bin b that the
+direction - the fraction of independently-mapped installations of bin b that the
 model matched with any candidate. It feeds density's recall-corrected
 (Horvitz–Thompson) estimator: each surviving candidate stands in for 1/recall(b)
 real installations of its size class, so `est_mwp_rc = sum(area * p_real / recall)`
@@ -50,10 +50,10 @@ never-imaged installations); the CLI handles both.
 are stored alongside it. `posterior_draws` samples Jeffreys-prior Beta posteriors
 for all of them (mapped fraction, glint sample rate, sensitivity, false floor,
 manual verdicts, recall) and pushes them through the same estimator, giving per-bin
-and — in density — per-region/-country credible intervals instead of bare points.
+and - in density - per-region/-country credible intervals instead of bare points.
 
 The derived table is written to `configs/calibration/<aoi>_candidate_precision.yaml`
-(checked in — `data/` is gitignored) with full provenance.
+(checked in - `data/` is gitignored) with full provenance.
 """
 
 from __future__ import annotations
@@ -222,7 +222,7 @@ def coverage_filter(features: gpd.GeoDataFrame, prob_dir: Path) -> gpd.GeoDataFr
 
 def _nearest_measured(bins: list[dict], key_source: str) -> None:
     """Fill unmeasured bins from the nearest measured bin (prefer the larger
-    neighbour on ties — conservative for both p_u and recall)."""
+    neighbour on ties - conservative for both p_u and recall)."""
     val_key = {"p_unmapped_source": "p_unmapped", "recall_source": "recall"}[key_source]
     measured = [i for i, r in enumerate(bins) if r[key_source] in ("measured", "manual")]
     for i, row in enumerate(bins):
@@ -282,7 +282,7 @@ def derive_table(
     if mapped is not None and not mapped.empty:
         is_mapped = ~new_lead_mask(cands, mapped, min_distance_m=min_distance_m)
     else:
-        log.warning("No mapped OSM reference — mapped fraction is 0 everywhere")
+        log.warning("No mapped OSM reference - mapped fraction is 0 everywhere")
         is_mapped = np.zeros(len(cands), dtype=bool)
 
     sample_by_bin: dict[str, tuple[int, int]] = {}
@@ -414,7 +414,7 @@ def derive_table(
             "direct rates; for glint bins a uniform-prior binomial-mixture likelihood "
             "k ~ Binom(n, p_u*S + (1-p_u)*f), which stays honestly flat where S ~ f). "
             "The p_real point clips p_u at 0, so where the observed glint rate sits "
-            "below the false floor the floor-leaning point can fall below p_real_lo — "
+            "below the false floor the floor-leaning point can fall below p_real_lo - "
             "the interval, not the point, is the uncertainty statement. "
             "interim-mapped-only means p_u=0 everywhere: an honest lower bound."
         ),
@@ -468,12 +468,12 @@ def derive_placement_tables(
     `p_real` for a mid-size bin is dominated by rooftop's much better corroboration
     and applied unchanged to ground candidates that have almost none of their own.
 
-    `mapped_frac` and `recall` are pure geometric OSM matches — no glint needed — so
+    `mapped_frac` and `recall` are pure geometric OSM matches - no glint needed - so
     both are split by placement directly, using `mapped_attrs` (must carry a
     `placement` column; `export.load_mapped_reference_attrs`'s output, NOT the
     boolean-only `mapped` `derive_table` itself uses) and, where given,
     `recall_reference`'s own `placement` column. Either falls back to the unrestricted
-    (pooled) population with a warning if it lacks a `placement` column — a rooftop
+    (pooled) population with a warning if it lacks a `placement` column - a rooftop
     candidate matching a ground reference feature 100 m away is a rare, not a
     systematic, error, so this is a fallback worth having rather than refusing to run.
 
@@ -510,7 +510,7 @@ def derive_placement_tables(
     )
     if recall_groups is None and recall_reference is not None and not recall_reference.empty:
         log.warning(
-            "recall_cands has no `placement` column — recall split by placement will "
+            "recall_cands has no `placement` column - recall split by placement will "
             "use the unrestricted candidate population for both groups"
         )
 
@@ -520,7 +520,7 @@ def derive_placement_tables(
             ref_groups = _placement_group(recall_reference["placement"].to_numpy())
         else:
             log.warning(
-                "recall_reference has no `placement` column — recall split by "
+                "recall_reference has no `placement` column - recall split by "
                 "placement will pool both groups against the same reference"
             )
 
@@ -530,7 +530,7 @@ def derive_placement_tables(
             mapped_groups = _placement_group(mapped_attrs["placement"].to_numpy())
         else:
             log.warning(
-                "mapped_attrs has no `placement` column — mapped_frac split by "
+                "mapped_attrs has no `placement` column - mapped_frac split by "
                 "placement will use the unrestricted reference for both groups"
             )
 
@@ -653,7 +653,7 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
     Returns arrays shaped (n_bins, n_draws): `p_real`, `recall` (1.0 where
     unmeasured), and `lr` (per-draw glint likelihood ratio S_b/f, for the same
     posterior update `candidate_p_real` applies to glint-validated candidates).
-    Reproducible from the YAML alone — all counts are stored in the table. Tables
+    Reproducible from the YAML alone - all counts are stored in the table. Tables
     from before the counts existed degrade to point-mass draws.
     """
     rng = np.random.default_rng(table.get("seed", SEED) if seed is None else seed)
@@ -700,7 +700,7 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
         if row.get("recall_source") == "measured":
             recall[i] = beta_or_point(row["recall_matched"], row["recall_n"], row["recall"])
 
-    # Extrapolated bins copy the source bin's draws (fully correlated — they carry
+    # Extrapolated bins copy the source bin's draws (fully correlated - they carry
     # no independent information).
     label_to_i = {row["label"]: i for i, row in enumerate(bins)}
     for i, row in enumerate(bins):
@@ -712,8 +712,43 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
     return {"p_real": m + (1.0 - m) * p_u, "recall": recall, "lr": sens / f}
 
 
-def write_table(table: dict, path: Path) -> Path:
+# Evidence a table can only LOSE by being re-derived with fewer inputs than the one it
+# replaces. `write_table` refuses such an overwrite unless the caller says so explicitly.
+# Not hypothetical: `configs/calibration/pakistan_candidate_precision.yaml` was
+# regenerated 2026-08-14 without `--by-placement` and without the glint sample and the
+# calibration boxes, quietly replacing the placement-split, glint-calibrated table the
+# published atlas was actually built from with a pooled, mapped-only one derived from a
+# different candidate population. Nothing errored; the loss was only visible by diffing
+# the file against a backup.
+def _table_evidence(table: dict) -> set[str]:
+    evidence = set()
+    if "placement_bins" in table:
+        evidence.add("placement_bins")
+    if table.get("status") == "glint-calibrated":
+        evidence.add("glint-calibrated")
+    if any(b.get("manual_n") for b in table.get("bins", [])):
+        evidence.add("manual-reviews")
+    return evidence
+
+
+def write_table(table: dict, path: Path, allow_downgrade: bool = False) -> Path:
     path = Path(path)
+    if path.exists() and not allow_downgrade:
+        try:
+            existing = yaml.safe_load(path.read_text())
+        except Exception as e:  # noqa: BLE001 -- an unreadable old table must not block a write
+            log.warning("Could not read %s to check for an evidence downgrade (%s)", path, e)
+            existing = None
+        if existing:
+            lost = _table_evidence(existing) - _table_evidence(table)
+            if lost:
+                raise ValueError(
+                    f"{path} already carries {sorted(lost)} and the table about to replace "
+                    f"it does not. Re-derive with the inputs that produced it (--by-placement, "
+                    "--glint-sample, --calibration-box, --manual-reviews as applicable), or "
+                    "pass --allow-downgrade to overwrite deliberately. See "
+                    "capacity_calibration._table_evidence."
+                )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(table, sort_keys=False))
     log.info("Wrote calibration table (%s) -> %s", table["status"], path)
@@ -725,7 +760,7 @@ def load_table(path: Path) -> dict:
     edges = tuple(float(e) for e in table["bin_edges_m2"])
     if edges != tuple(float(e) for e in BIN_EDGES_M2):
         raise ValueError(
-            f"{path}: bin_edges_m2 {edges} do not match the study edges {BIN_EDGES_M2} — "
+            f"{path}: bin_edges_m2 {edges} do not match the study edges {BIN_EDGES_M2} - "
             "re-derive with `earthpv calibrate-candidates`"
         )
     return table
@@ -741,7 +776,7 @@ def candidate_p_real(
     """Per-candidate P(real): the bin prior, Bayes-updated where glint evidence exists.
 
     A glint-validated candidate (>= `min_consistent` mutually-consistent spike dates)
-    gets posterior odds = prior odds * LR with LR = S_b / f — the same measured
+    gets posterior odds = prior odds * LR with LR = S_b / f - the same measured
     evidence weight the leads-side rank boost uses. Candidates without a validated
     fit keep the prior: absence of glint is weak evidence (~70% of real arrays never
     validate), mirroring the reward-only convention of `add_glint_prior`.
@@ -780,7 +815,7 @@ def candidate_recall(
 ) -> np.ndarray:
     """Per-candidate model recall for its size bin, clamped to `floor`.
 
-    Bins whose recall was never measured (recall None / absent — pre-v2 tables)
+    Bins whose recall was never measured (recall None / absent - pre-v2 tables)
     return 1.0: no correction rather than a made-up one. `placement` selects the
     candidate's own placement group's subtable when `table` carries
     `placement_bins` -- see `candidate_p_real`.

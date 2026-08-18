@@ -3,8 +3,8 @@
 Everywhere else in this pipeline, glint only re-scores candidates the segmentation
 model already proposed (`postprocess.add_glint_prior`) or samples a stratified subset
 of buildings to estimate an adoption *rate* (`glint_spike_rate_estimator.py`). Neither
-of those tests whether scanning glint over *every* target in an area — with no model
-in the loop at all — recovers real installations at a usable precision/recall, which is
+of those tests whether scanning glint over *every* target in an area - with no model
+in the loop at all - recovers real installations at a usable precision/recall, which is
 the actual question for "can glint alone find PV". This script runs that test
 exhaustively over a small, real, actively-being-mapped neighbourhood, using the
 tile-batched fetch (`glint.tile_scene_series_batch`) built for exactly this kind of
@@ -13,21 +13,21 @@ locally-clustered, many-target scan.
 Two target-geometry modes, `--geometry {buildings,pv-polygons}`:
 
 - `buildings` (VIDA footprints): tests recall AND lets unmapped buildings surface as
-  candidate new leads, but dilutes the signal — a small PV array on a much larger
+  candidate new leads, but dilutes the signal - a small PV array on a much larger
   roof gets averaged in with a lot of non-PV roof material, especially damaging at
   Sentinel-2 resolution where a small building is only 1-4 pixels to begin with.
 - `pv-polygons` (the actual mapped installation footprints, from the same fresh
   Overpass pull): the geometry the original 500-target country-wide validation study
   used, so this is the fair, dilution-free apples-to-apples recall comparison against
-  that study's numbers — at the cost of not being able to test unmapped locations
+  that study's numbers - at the cost of not being able to test unmapped locations
   (there's no ground-truth polygon for something nobody has mapped yet).
 
-Ground truth is a *fresh* Overpass pull (bypasses Overture's snapshot lag — this area
+Ground truth is a *fresh* Overpass pull (bypasses Overture's snapshot lag - this area
 is mid-mapping, so a stale snapshot would undercount). In `buildings` mode, a building
 counts as mapped PV if it intersects (or sits within `MATCH_DIST_M` of) a live
 `generator:source=solar` / `plant:source=solar` feature; because the area is only
-mostly (not completely) mapped, "false positive" there has two readings — a real false
-alarm, or a genuine installation the mapping team hasn't reached yet — so the script
+mostly (not completely) mapped, "false positive" there has two readings - a real false
+alarm, or a genuine installation the mapping team hasn't reached yet - so the script
 reports both the strict metric and the list of glint-flagged-but-unmapped buildings as
 candidate new leads. In `pv-polygons` mode every target is mapped PV by construction,
 so the report reduces to a clean recall number.
@@ -168,12 +168,12 @@ def report(out: pd.DataFrame, geometry: str) -> None:
         print(f"  (no mapped PV {kind} in this area)")
 
     if unmapped.empty:
-        print(f"\n(geometry={geometry}: every target is mapped PV by construction — "
+        print(f"\n(geometry={geometry}: every target is mapped PV by construction - "
               "no unmapped/false-positive/new-leads comparison to report)")
         return
 
     print(f"\n'False'-positive rate on {kind} NOT mapped as PV (some of these may be "
-          "real, unmapped installations — see the leads list below):")
+          "real, unmapped installations - see the leads list below):")
     agg = unmapped.groupby("bucket", observed=True).agg(
         n=("pid", "size"), detected=("detected", "mean"), validated=("validated", "mean")
     )
@@ -182,7 +182,7 @@ def report(out: pd.DataFrame, geometry: str) -> None:
           f"validated={unmapped.validated.mean():.3f}  (n={len(unmapped)})")
 
     leads = unmapped[unmapped.validated].sort_values("n_consistent", ascending=False)
-    print(f"\n{len(leads)} unmapped {kind} validated glint (n_consistent >= 2) — "
+    print(f"\n{len(leads)} unmapped {kind} validated glint (n_consistent >= 2) - "
           "candidate new leads for the mapping team:")
     if not leads.empty:
         cols = ["pid", "area_m2", "n_scenes", "n_spikes", "n_consistent"]
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     ap.add_argument("--buildings", type=Path, help="Required when --geometry buildings")
     ap.add_argument("--overpass", type=Path, required=True)
     ap.add_argument("--bbox", type=str, default=None,
-                     help="minlon,minlat,maxlon,maxlat — restrict targets to this box "
+                     help="minlon,minlat,maxlon,maxlat - restrict targets to this box "
                      "(applies to both geometry modes; omit to use the whole --overpass/"
                      "--buildings file's extent)")
     ap.add_argument("--lookback-days", type=int, default=365)
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     ap.add_argument("--out-prefix", type=Path, default=Path("data/glint/direct_detect"))
     ap.add_argument("--self-referenced", action="store_true",
                      help="Compare each target's annulus to its own history instead of "
-                     "requiring it to be dim right now — for dense urban blocks (see "
+                     "requiring it to be dim right now - for dense urban blocks (see "
                      "earthpv.glint.annotate_spikes)")
     args = ap.parse_args()
     if args.geometry == "buildings" and args.buildings is None:

@@ -2,7 +2,7 @@
 
 The `infer -> postprocess -> export` chain produces *individual installation
 candidates* for human OSM validation. This stage instead answers "how much PV sits
-on the buildings of each area" — the input energy-system models (PyPSA / PyPSA-Earth)
+on the buildings of each area" - the input energy-system models (PyPSA / PyPSA-Earth)
 actually consume. It runs entirely on the artifacts already on disk (per-cell
 probability rasters + `candidates.parquet` + the VIDA building footprints); no GPU,
 no retraining.
@@ -20,7 +20,7 @@ recall-first (many false positives) and neither number is unconditionally honest
 With a calibration table (capacity_calibration) two more estimators join at the
 cell/region level: **calibrated** (`*_cal`, candidates weighted by a measured
 P(real | size, glint)) and **recall-corrected** (`*_rc`, the calibrated area further
-divided by the model's measured per-size-bin recall — a Horvitz-Thompson estimate of
+divided by the model's measured per-size-bin recall - a Horvitz-Thompson estimate of
 the whole >= detection-floor population, with 90% credible intervals from posterior
 draws over every calibration count; see `_candidate_uncertainty`).
 
@@ -37,9 +37,9 @@ site, and converting it as one installation's panel area is what let a handful o
 dominate a country total.
 
 Three layers are written to `data/predictions/<aoi>/density/`:
-  buildings.geoparquet  — one row per building carrying a PV signal
-  grid.geoparquet/.csv  — one row per 0.1 deg cell (the pipeline's native grid)
-  regions.*             — one row per Overture province (and optionally district)
+  buildings.geoparquet  - one row per building carrying a PV signal
+  grid.geoparquet/.csv  - one row per 0.1 deg cell (the pipeline's native grid)
+  regions.*             - one row per Overture province (and optionally district)
 
 Double counting is avoided at the source: adjacent per-cell rasters overlap by a
 few pixels, so every building is assigned to exactly one cell by its representative
@@ -122,17 +122,31 @@ _CAND_COLS = [
 # restriction (`sub400_capacity.national_cell_domain`) -- widening it here widens both
 # simultaneously.
 #
-# The lower edge moved 553.40 -> 277.75 -> 141.00 in two steps on 2026-08-11.
-# `muzaffargarh_rural_wide_calib_2km` (4 km2, deliberately drawn to include open
-# farmland alongside a village rather than tracing a settlement's built-up edge -- see
-# CLAUDE.md for why two earlier attempts at a range-extending quadrat both landed INSIDE
-# the existing range instead) set the first new floor at 277.75. A second quadrat picked
-# the same way, `khairpur_rural_calib_2km` (4 km2, Khairpur District, Sindh -- chosen
-# for geographic diversity from the Muzaffargarh-area quadrats), measured 141.00,
-# pushing the floor down again. Both are genuine widenings, not recalibrations: together
-# they grew the roofclf domain restriction from 163 to 1,680 of Pakistan's 4,463
-# national cells (3.7% -> 37.6% of cells, 24.5% -> 78.6% of national buildings).
-CALIBRATED_BLDG_DENSITY_KM2 = (141.00, 5258.00)
+# The lower edge moved 553.40 -> 277.75 -> 141.00 -> 123.5 -> 48.5 across four widenings,
+# 2026-08-11/13. `muzaffargarh_rural_wide_calib_2km` (4 km2, deliberately drawn to
+# include open farmland alongside a village rather than tracing a settlement's built-up
+# edge -- see CLAUDE.md for why two earlier attempts at a range-extending quadrat both
+# landed INSIDE the existing range instead) set the first new floor at 277.75. A second
+# quadrat picked the same way, `khairpur_rural_calib_2km` (4 km2, Khairpur District,
+# Sindh -- chosen for geographic diversity from the Muzaffargarh-area quadrats),
+# measured 141.00, pushing the floor down again. A third, `bahawalnagar_rural_calib_
+# 4p00km2` (4 km2, Bahawalnagar District, Punjab -- hand-drawn in JOSM by the owner,
+# shifted east from an originally-proposed plain square after a VIDA pre-check),
+# measured 123.5 bldg/km2 -- lower than the pre-check's own square (49.5, at a
+# location the owner's edit moved away from) but still below the floor it was meant to
+# test, so it counts as a genuine widening by the same rule the first two used. A
+# fourth, `nasirabad_rural_calib_2km` (4 km2, Nasirabad District, Balochistan -- this
+# project's first confirmed-ZERO-installation Rule-1 quadrat, own density measured at
+# 48.5 independent of that; see docs/issues/pakistan-calibration-boxes.md's Box 15 for
+# why the zero is trusted), pushed the floor down again to 48.5, past a fifth quadrat
+# added the same day, `tank_rural_calib_2km` (Tank District, Khyber Pakhtunkhwa, 55.75
+# bldg/km2, inside the range but not itself the new floor). All four are genuine
+# widenings, not recalibrations: together they grew the roofclf domain restriction from
+# 163 to 2,957 of Pakistan's 4,463 national cells (3.7% -> 66.3% of cells, 24.5% ->
+# 94.7% of national buildings) -- by far the largest single jump, since Pakistan's
+# national building-density distribution turns out to have a lot of mass between 48.5
+# and 123.5 bldg/km2.
+CALIBRATED_BLDG_DENSITY_KM2 = (48.5, 5258.00)
 
 
 def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:
@@ -567,7 +581,7 @@ def process_cell(
         bu = bu[in_box.to_numpy()].reset_index(drop=True)
 
     # Candidates intersecting the cell, for the per-building detected area. Cell-level
-    # candidate-population totals are NOT computed here — `candidate_cell_totals` derives
+    # candidate-population totals are NOT computed here - `candidate_cell_totals` derives
     # them from the whole candidate frame at aggregate time, so they always reflect the
     # current oversize filter rather than whatever was in force when a partial was written.
     box_geom = shapely_box(lon0, lat0, lon0 + CELL_DEG, lat0 + CELL_DEG)
@@ -662,7 +676,7 @@ def fetch_geoboundaries(iso3: str, level: str) -> gpd.GeoDataFrame | None:
         meta = json.load(urllib.request.urlopen(
             GEOBOUNDARIES_API.format(iso3=iso3, level=level), timeout=60))
         gj = json.load(urllib.request.urlopen(meta["gjDownloadURL"], timeout=120))
-    except Exception as e:  # noqa: BLE001 — network failures degrade to no layer
+    except Exception as e:  # noqa: BLE001 - network failures degrade to no layer
         log.warning("geoBoundaries %s/%s fetch failed: %s", iso3, level, e)
         return None
     feats = gj.get("features", [])
@@ -700,7 +714,7 @@ def load_admin(
         if (gdf is None or gdf.empty) and country is not None:
             try:
                 gdf = overture.fetch_regions(country, settings, subtype=subtype)
-            except Exception as e:  # noqa: BLE001 — Overture S3 timeouts must not kill the run
+            except Exception as e:  # noqa: BLE001 - Overture S3 timeouts must not kill the run
                 log.warning("Overture %s fetch failed (%s)", kind, e)
                 gdf = None
         if gdf is None or gdf.empty:
@@ -738,7 +752,7 @@ def _candidate_uncertainty(
         pv_area_rc = sum(area * p_real / max(recall, recall_floor))
 
     estimates the *whole* >= detection-floor population, not just the detected part.
-    It lives on the candidate population — comparable to the `*_total` cell columns
+    It lives on the candidate population - comparable to the `*_total` cell columns
     (`*_roofcand` for the rooftop-placed subset), NOT to the footprint-intersected
     `*_roof` columns; per-building recall inflation would be meaningless (the missed
     installations sit on other, unknown buildings).
@@ -1177,7 +1191,7 @@ def run_density(
     prob_dir = Path(pred_dir) / aoi / "prob"
     cand_path = Path(pred_dir) / aoi / "candidates.parquet"
     if not cand_path.exists():
-        raise FileNotFoundError(f"{cand_path} missing — run `earthpv postprocess --aoi {aoi}` first")
+        raise FileNotFoundError(f"{cand_path} missing - run `earthpv postprocess --aoi {aoi}` first")
     cands = gpd.read_parquet(cand_path)
     cand_fp = _candidates_fingerprint(cand_path, len(cands))
     if plausibility_note:
@@ -1235,7 +1249,7 @@ def run_density(
         _ = cands.sindex  # build once, reused per cell
 
     # Capacity-atlas calibration: weight each candidate by P(real | size, glint).
-    # This is the split from the leads product — rank_score is never consumed here,
+    # This is the split from the leads product - rank_score is never consumed here,
     # and the leads path never consumes p_real. Without a table, p_real = 1 and
     # est_mwp_cal degenerates to est_mwp_det.
     from earthpv import capacity_calibration as cc
@@ -1255,9 +1269,27 @@ def run_density(
                 if "placement" in cands.columns else None,
             )
         log.info("Calibration table %s (%s): est_mwp_cal is precision-weighted", cal_path, cal_status)
+        # A table with no `placement_bins` prices ground-mount off rooftop's much higher
+        # OSM corroboration in the same area bin -- the exact pooling the 2026-08-10
+        # placement split exists to undo, and the single largest error ever found in this
+        # stage (ground-mount was overstated 60%). `calibrate-candidates --by-placement`
+        # was opt-in until 2026-08-15, so a table regenerated in between looks fine and
+        # silently reverts the fix. Warn rather than refuse: an AOI whose candidates are
+        # all one placement (or whose reference carries no placement column) legitimately
+        # has no split to make.
+        if "placement_bins" not in table and not cands.empty and "placement" in cands.columns:
+            groups = set(cc._placement_group(cands["placement"].astype(str).to_numpy()))
+            if len(groups) > 1:
+                log.warning(
+                    "Calibration table %s has no placement_bins, but this AOI's candidates "
+                    "span %s -- ground-mount will borrow rooftop's mapped fraction in every "
+                    "shared area bin. Re-run `earthpv calibrate-candidates --aoi %s "
+                    "--by-placement` (the default since 2026-08-15) before publishing.",
+                    cal_path, sorted(groups), aoi,
+                )
     else:
         log.warning(
-            "No calibration table at %s — est_mwp_cal will equal est_mwp_det; "
+            "No calibration table at %s - est_mwp_cal will equal est_mwp_det; "
             "run `earthpv calibrate-candidates --aoi %s` first for a calibrated atlas",
             cal_path, aoi,
         )
@@ -1284,7 +1316,7 @@ def run_density(
         exp_paths = dict(zip(frac_man.cell, frac_man.path))
         n_cov = sum(1 for c in manifest.cell if c in exp_paths)
         log.info(
-            "Expected-area instrument: fraction head %s — %d/%d manifest cells covered "
+            "Expected-area instrument: fraction head %s - %d/%d manifest cells covered "
             "(%.1f%%), exp_scale=%.3f",
             fraction_prob_dir, n_cov, len(manifest), 100.0 * n_cov / max(len(manifest), 1),
             exp_scale,
@@ -1293,7 +1325,7 @@ def run_density(
             log.warning(
                 "%d cells have no fraction raster: their pv_area_exp_* is ABSENT, not zero "
                 "(exp_covered=0). Country exp totals from this run cover only the %.1f%% of "
-                "cells listed above — do not read them as national.",
+                "cells listed above - do not read them as national.",
                 len(manifest) - n_cov, 100.0 * n_cov / max(len(manifest), 1),
             )
         if exp_scale == 1.0:
@@ -1301,7 +1333,7 @@ def run_density(
                 "exp_scale=1.0: the fraction head's absolute scale is NOT established. The "
                 "German MaStR bench puts it 2.5x high on all Gemeinden (slope 0.394) and "
                 "8-13x high on the well-mapped subset (0.077-0.129). Treat these areas as a "
-                "ranking layer until anchored — see `earthpv roof-classifier` for a "
+                "ranking layer until anchored - see `earthpv roof-classifier` for a "
                 "quadrat-based absolute anchor."
             )
     n_cell_failures = 0
@@ -1311,7 +1343,7 @@ def run_density(
                 row, cands, con, iso3, min_prob, min_building_exp_m2, cells_dir, force,
                 exp_source=exp_source, exp_path=exp_paths.get(row.cell), exp_scale=exp_scale,
             )
-        except Exception as e:  # noqa: BLE001 — one bad cell must not kill the run
+        except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
             log.warning("cell %s failed: %s", row.cell, e)
             n_cell_failures += 1
 
@@ -1385,7 +1417,7 @@ def run_density(
         from earthpv.atlas import build_atlas
 
         build_atlas(aoi, out_dir)
-    except Exception as e:  # noqa: BLE001 — a map rendering issue must not fail the run
+    except Exception as e:  # noqa: BLE001 - a map rendering issue must not fail the run
         log.warning("atlas generation failed: %s", e)
 
     log.info("Wrote density outputs -> %s", out_dir)

@@ -1,8 +1,8 @@
 """Export PV candidates for OSM validation workflows.
 
 Outputs:
-- candidates.geoparquet / candidates.geojson — full attribute set
-- maproulette.geojson — line-delimited FeatureCollections (one task per candidate)
+- candidates.geoparquet / candidates.geojson - full attribute set
+- maproulette.geojson - line-delimited FeatureCollections (one task per candidate)
   with imagery links, ready to upload as a MapRoulette challenge.
 """
 
@@ -23,7 +23,7 @@ def _epoch_note(row, has_epoch: bool) -> str:
     """Human-readable pre-boom/post-boom note for the MapRoulette instruction text.
 
     `epoch_prior`/`preboom_prob` (postprocess.add_epoch_prior) already feed rank_score,
-    but silently — a mapper doing the actual validation never saw why a candidate was
+    but silently - a mapper doing the actual validation never saw why a candidate was
     ranked where it was. Only speaks up when `epoch_checked` is True (a pre-boom raster
     actually covered this candidate); otherwise the pre-/post-boom contrast is unknown,
     not confirmed either way, so saying nothing is more honest than a false "new" claim.
@@ -47,7 +47,7 @@ def _imagery_links(lon: float, lat: float) -> dict[str, str]:
 
 
 def _load_mapped_reference(aoi: str, cfg: dict, settings) -> gpd.GeoDataFrame | None:
-    """Every already-known OSM solar polygon for this AOI — the rooftopsenti-cached
+    """Every already-known OSM solar polygon for this AOI - the rooftopsenti-cached
     snapshot (source_region/osm/*.parquet) plus any fresher Overpass-fetched labels
     (data/labels/*_overpass_solar.parquet) sitting in the same country. Used to hold
     back candidates that are already mapped, so a human-validation queue only ever
@@ -155,7 +155,7 @@ def match_mapped_polygons(
     Unlike `new_lead_mask` (a boolean "is anything nearby"), this returns WHICH mapped
     feature matched and how far, so the caller can substitute the real OSM geometry for
     the model's coarse polygonized blob. Only polygon/multipolygon mapped features are
-    considered — a point can't replace an area. Same chunked local-UTM nearest-neighbor
+    considered - a point can't replace an area. Same chunked local-UTM nearest-neighbor
     pattern as `new_lead_mask`/`postprocess._join_buildings_chunked` (proven at country
     scale), kept as its own function rather than a shared refactor of `new_lead_mask`
     itself, since that function is load-bearing for the published recall/precision
@@ -236,7 +236,7 @@ def new_lead_mask(
     """Boolean mask: True where a candidate is NOT near an already-mapped feature.
 
     `min_distance_m=0` is the original zero-buffer `intersects` convention (a
-    candidate must literally overlap the mapped geometry) — same as the Lahore
+    candidate must literally overlap the mapped geometry) - same as the Lahore
     recall check, but it misses candidates whose model-drawn footprint is offset
     from a mapped feature that is just a point (a common OSM `generator:source=solar`
     node), which never "intersects" a polygon that doesn't happen to contain it. A
@@ -341,10 +341,10 @@ def run_export(
             leads.to_file(nl, driver="GeoJSON")
 
     if any_filter:
-        # Precision-leaning EXTRA artifact — the only export that drops candidates.
+        # Precision-leaning EXTRA artifact - the only export that drops candidates.
         # The default new_leads file keeps the recall-first contract; this cleaned
         # queue trades a little real PV for far fewer wasted validations. Every
-        # veto requires positive evidence — a lead no instrument could check is
+        # veto requires positive evidence - a lead no instrument could check is
         # always kept (absence of evidence is not a verdict).
         leads = leads.reset_index(drop=True)
         drop = np.zeros(len(leads), dtype=bool)
@@ -361,7 +361,7 @@ def run_export(
             # Caveat: genuinely old unmapped PV is dropped too.
             if not {"epoch_checked", "epoch_prior"} <= set(leads.columns):
                 log.warning(
-                    "epoch-clean requested but candidates carry no epoch columns — rerun "
+                    "epoch-clean requested but candidates carry no epoch columns - rerun "
                     "`earthpv postprocess` with --preboom-prob-dir first; veto skipped"
                 )
             else:
@@ -386,7 +386,7 @@ def run_export(
 
         if annual_ndvi is not None:
             # Year-long scene sampling (scripts/veg_annual_ndvi.py): a p95 NDVI
-            # above the threshold means the footprint greened up at some point —
+            # above the threshold means the footprint greened up at some point -
             # a crop cycle, which PV never shows.
             tbl = pd.read_parquet(annual_ndvi) if str(annual_ndvi).endswith(".parquet") \
                 else pd.read_csv(annual_ndvi)

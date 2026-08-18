@@ -11,6 +11,7 @@ copyright: >-
 
 theme:
   name: material
+  custom_dir: docs/overrides
   language: en
   logo: assets/figures/earthpv-logo-mark-white.png
   favicon: assets/figures/favicon.png
@@ -119,6 +120,7 @@ nav:
       - Roofclf random-cell validation: methods/roofclf-national-validation.md
       - Solar glint: methods/glint.md
       - Glint image gallery: glint_examples.md
+      - Validity and limitations: methods/validity.md
   - Setup New Country: reproduce.md
   # History last: what was tried, and what is still undecided. Every page under
   # Experiments carries a status banner, because several describe a pipeline that has
@@ -135,10 +137,13 @@ nav:
       - Boom-window stacking: issues/boom-window-stacking-experiment.md
       - Standard pose matched filter: issues/standard-pose-matched-filter.md
       - Glint spike-rate estimator: issues/glint-spike-rate-density-estimator.md
+      - Glint PSF and matched filtering: issues/glint-psf-matched-filter.md
       - Glint tile-batched coverage: issues/glint-tile-batched-coverage.md
       - Glint-validated training labels: issues/glint-validated-training-labels.md
       - Epoch jump as recall signal: issues/epoch-jump-recall-signal.md
       - Calibration imagery dating: issues/calibration-imagery-dating.md
+      - Small ground-mount instrument: issues/small-ground-mount-instrument.md
+      - Calibration density mismatch: issues/roofclf-calibration-density-mismatch.md
   - Open questions: open-questions.md
   - About:
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md

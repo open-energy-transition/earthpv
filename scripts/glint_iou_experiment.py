@@ -3,8 +3,8 @@
 The pipeline polygonizes at a recall-oriented threshold (0.3) and uses glint only as
 a rank_score bonus (`postprocess.add_glint_prior`), which cannot move IoU. Hypothesis:
 where the glint physics *confirms* PV, the model's probability field is systematically
-under-thresholded (partial roofs, mixed pixels), so lowering the threshold locally —
-only inside glint-confirmed windows — recovers true-positive pixels at little false-
+under-thresholded (partial roofs, mixed pixels), so lowering the threshold locally -
+only inside glint-confirmed windows - recovers true-positive pixels at little false-
 positive cost, while lowering it everywhere would drown IoU in false positives.
 
 Measured entirely offline on the 500-target OSM validation sample: per-target windows
@@ -83,7 +83,7 @@ def read_window(tif: str, geom_wgs84) -> tuple[np.ndarray, np.ndarray] | None:
         except rasterio.errors.WindowError:
             # Representative-point sjoin matched this raster's WGS84 bbox, but the
             # target polygon itself (its own bounds, padded) falls just outside the
-            # raster's actual pixel grid — a rounding/edge case, not a real target.
+            # raster's actual pixel grid - a rounding/edge case, not a real target.
             return None
         win = win.round_offsets().round_lengths()
         if win.width <= 0 or win.height <= 0:
@@ -104,7 +104,7 @@ def pred_plain(prob: np.ndarray, t: float) -> np.ndarray:
 
 def pred_hyst(prob: np.ndarray, t_low: float, t_seed: float = T_BASE) -> np.ndarray:
     """Pixels >= t_low, but only in connected components that contain a >= t_seed pixel
-    — grows existing detections outward without conjuring detached blobs."""
+    - grows existing detections outward without conjuring detached blobs."""
     lab, n = ndimage.label(prob >= t_low)
     if n == 0:
         return prob >= t_seed
@@ -117,9 +117,9 @@ def pred_hyst(prob: np.ndarray, t_low: float, t_seed: float = T_BASE) -> np.ndar
 
 def strategies() -> list[tuple[str, str | None, str, float]]:
     """(name, gate column or None, kind, t). Kinds:
-    plain — threshold t on gated targets, T_BASE on the rest (lowering direction);
-    hyst  — like plain but grown only from >= T_BASE seed components;
-    raise — threshold t on UNgated targets, T_BASE stays on gated ones (glint
+    plain - threshold t on gated targets, T_BASE on the rest (lowering direction);
+    hyst  - like plain but grown only from >= T_BASE seed components;
+    raise - threshold t on UNgated targets, T_BASE stays on gated ones (glint
             protects confirmed installations from a global precision raise)."""
     out: list[tuple[str, str | None, str, float]] = [("t=0.30 baseline", None, "plain", T_BASE)]
     for t in (0.20, 0.15, 0.10, 0.05):

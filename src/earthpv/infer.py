@@ -36,7 +36,7 @@ def _allow_custom_losses() -> None:
         import segmentation_models_pytorch as smp
 
         globals_.append(smp.losses.TverskyLoss)
-    except Exception:  # noqa: BLE001 — best-effort; dice/ce checkpoints don't need it
+    except Exception:  # noqa: BLE001 - best-effort; dice/ce checkpoints don't need it
         pass
     torch.serialization.add_safe_globals(globals_)
 

@@ -1,6 +1,6 @@
 <meta charset="utf-8">
-<title>Pakistan Solar PV — Capacity by Installation Size</title>
-<script id="pv" type="application/json">{"bins":[{"label":"<100 m\u00b2","roof_mwp":695.34,"ground_mwp":0.45,"roof_extrapolated_mwp":74.69,"roof_n":273514,"ground_n":127},{"label":"100\u2013400 m\u00b2","roof_mwp":6266.78,"ground_mwp":9.12,"roof_extrapolated_mwp":203.29,"roof_n":865725,"ground_n":633},{"label":"400\u20131k m\u00b2","roof_mwp":3112.5,"ground_mwp":51.85,"roof_extrapolated_mwp":0.0,"roof_n":142773,"ground_n":1273},{"label":"1k\u20135k m\u00b2","roof_mwp":3053.88,"ground_mwp":337.94,"roof_extrapolated_mwp":0.0,"roof_n":35756,"ground_n":2848},{"label":"5k\u201320k m\u00b2","roof_mwp":831.94,"ground_mwp":317.77,"roof_extrapolated_mwp":0.0,"roof_n":1934,"ground_n":2140},{"label":"20k\u2013100k m\u00b2","roof_mwp":240.22,"ground_mwp":530.73,"roof_extrapolated_mwp":0.0,"roof_n":67,"ground_n":916},{"label":"\u2265100k m\u00b2","roof_mwp":6.22,"ground_mwp":989.27,"roof_extrapolated_mwp":0.0,"roof_n":0,"ground_n":33}],"totals":{"mwp_best":16444.0,"mwp_roof":14206.9,"mwp_ground":2237.1,"n_bins":7}}</script>
+<title>Pakistan Solar PV - Capacity by Installation Size</title>
+<script id="pv" type="application/json">{"bins":[{"label":"<100 m\u00b2","roof_mwp":1266.45,"ground_mwp":13.24,"roof_extrapolated_mwp":0.0,"roof_n":220549,"ground_n":127},{"label":"100\u2013400 m\u00b2","roof_mwp":7993.38,"ground_mwp":91.11,"roof_extrapolated_mwp":0.0,"roof_n":870811,"ground_n":633},{"label":"400\u20131k m\u00b2","roof_mwp":3593.35,"ground_mwp":87.84,"roof_extrapolated_mwp":0.0,"roof_n":158851,"ground_n":1273},{"label":"1k\u20135k m\u00b2","roof_mwp":3392.08,"ground_mwp":369.77,"roof_extrapolated_mwp":0.0,"roof_n":40021,"ground_n":2848},{"label":"5k\u201320k m\u00b2","roof_mwp":886.31,"ground_mwp":321.48,"roof_extrapolated_mwp":0.0,"roof_n":2110,"ground_n":2140},{"label":"20k\u2013100k m\u00b2","roof_mwp":239.25,"ground_mwp":517.41,"roof_extrapolated_mwp":0.0,"roof_n":75,"ground_n":916},{"label":"\u2265100k m\u00b2","roof_mwp":5.38,"ground_mwp":971.53,"roof_extrapolated_mwp":0.0,"roof_n":0,"ground_n":33}],"totals":{"mwp_best":19748.6,"mwp_roof":17376.2,"mwp_ground":2372.4,"n_bins":7}}</script>
 
 <style>
   :root {
@@ -310,10 +310,12 @@
         Best-estimate total, decomposed by installation size and placement instead of by
         0.1&deg; grid cell. Every MWp here is computed by the identical formula the main
         atlas uses for the same six components (hand-mapped OpenStreetMap installations the
-        model never found, the model's own recall-corrected detections above and below the
-        density-matched domain, and roofclf's per-building density estimate for small
-        rooftops) &mdash; nothing is recomputed by a different method, and the grand total
-        matches the evidence atlas's headline figure for the same run.</p>
+        model never found, segmentation's own detections above and below the
+        density-matched domain, and roofclf's per-building estimate for small
+        rooftops &mdash; both model instruments recall-corrected, each standing in for the
+        installations of its size class it is measured to miss) &mdash; nothing is
+        recomputed by a different method, and the grand total matches the evidence atlas's
+        headline figure for the same run.</p>
         <p><b>It does not carry its own credible interval.</b> The main atlas's 90% range
         applies to the same total; this page exists to show its shape by size and placement,
         not to re-derive its uncertainty. Read the two pages together, not as competing
@@ -340,9 +342,11 @@
           <dt><span class="tag central">Rooftop, &lt;400 m&sup2;</span> roofclf, cross-checked with SPPI</dt>
           <dd>Below the segmentation model's practical floor, every rooftop's PV is
           estimated per building. Inside the domain this is roofclf alone, calibrated
-          against hand-mapped quadrats; outside it (no calibration quadrat in that density
-          range) it falls back to roofclf-AND-SPPI agreement, a strict, marked
-          extrapolation &mdash; the hatched portion of the small rooftop bars.</dd>
+          against hand-mapped quadrats for both how much of a flagged roof is panel and
+          what share of real installations get flagged at all; outside it (no calibration
+          quadrat in that density range) it falls back to roofclf-AND-SPPI agreement, a
+          strict, marked extrapolation carrying neither correction &mdash; the hatched
+          portion of the small rooftop bars.</dd>
 
           <dt><span class="tag large">Hand-mapped, unmatched</span> OpenStreetMap installations the model missed</dt>
           <dd>Sized by their own real OSM geometry, split rooftop/ground-mount by the

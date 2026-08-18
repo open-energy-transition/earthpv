@@ -1,0 +1,9597 @@
+{
+ "type": "FeatureCollection",
+ "name": "pakistan_roofclf_tiles_0105_0102_part01_of_15",
+ "earthpv": {
+  "purpose": "every roofclf-flagged (< 400 m2) building in this tile -- complete, not sampled",
+  "generated_utc": "2026-08-17T00:34:31Z",
+  "tile_bbox": [
+   71.341218,
+   33.908976,
+   71.390963,
+   33.958995
+  ],
+  "n_features": 195,
+  "warning": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit",
+  "region": "0105_0102",
+  "threshold": 0.2535,
+  "roofclf_dir": "data/roofclf_national_parcel/pakistan/prob",
+  "part": 1,
+  "n_parts": 15,
+  "selection": "random",
+  "seed": 20260817
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 0,
+    "cell": "0105_0102",
+    "roof_area_m2": 111.0,
+    "p_roofclf": 0.356157,
+    "sppi": -0.042934,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3792804627394,
+       33.9109851547237
+      ],
+      [
+       71.3792628233842,
+       33.9110477572314
+      ],
+      [
+       71.3792421111384,
+       33.9110437003007
+      ],
+      [
+       71.3792264820712,
+       33.9110991681275
+      ],
+      [
+       71.3791506344374,
+       33.9110843117345
+      ],
+      [
+       71.3791839029762,
+       33.9109662414181
+      ],
+      [
+       71.3792804627394,
+       33.9109851547237
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 1,
+    "cell": "0105_0102",
+    "roof_area_m2": 231.5,
+    "p_roofclf": 0.273325,
+    "sppi": -0.069202,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3764592851854,
+       33.9154112418575
+      ],
+      [
+       71.3763040947236,
+       33.9154211902064
+      ],
+      [
+       71.3762907629905,
+       33.9152766329561
+      ],
+      [
+       71.3764459531936,
+       33.915266684635
+      ],
+      [
+       71.3764592851854,
+       33.9154112418575
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 2,
+    "cell": "0105_0102",
+    "roof_area_m2": 339.8,
+    "p_roofclf": 0.260616,
+    "sppi": -0.087519,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3692452184048,
+       33.9106537041955
+      ],
+      [
+       71.3692379324438,
+       33.910746417119
+      ],
+      [
+       71.3688823109071,
+       33.9107269890971
+      ],
+      [
+       71.3688895972547,
+       33.9106342761781
+      ],
+      [
+       71.3692452184048,
+       33.9106537041955
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 3,
+    "cell": "0105_0102",
+    "roof_area_m2": 559.6,
+    "p_roofclf": 0.295457,
+    "sppi": -0.098607,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3655387997807,
+       33.9115037048323
+      ],
+      [
+       71.3655125689848,
+       33.9117346033706
+      ],
+      [
+       71.3652784681526,
+       33.91171611616231
+      ],
+      [
+       71.3653046995807,
+       33.9114852176466
+      ],
+      [
+       71.3655387997807,
+       33.9115037048323
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 4,
+    "cell": "0105_0102",
+    "roof_area_m2": 206.1,
+    "p_roofclf": 0.3272,
+    "sppi": -0.065769,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3657896038474,
+       33.9123195510806
+      ],
+      [
+       71.3657890031086,
+       33.9124135931281
+      ],
+      [
+       71.3655754477989,
+       33.9124126446616
+      ],
+      [
+       71.3655760487728,
+       33.9123186026051
+      ],
+      [
+       71.3657896038474,
+       33.9123195510806
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 5,
+    "cell": "0105_0102",
+    "roof_area_m2": 255.0,
+    "p_roofclf": 0.261091,
+    "sppi": -0.065534,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3662032963533,
+       33.9142908066066
+      ],
+      [
+       71.3661987552569,
+       33.9143774947156
+      ],
+      [
+       71.3660486023792,
+       33.914372027237505
+      ],
+      [
+       71.3660471485835,
+       33.9143997787936
+      ],
+      [
+       71.3659441328341,
+       33.9143960276026
+      ],
+      [
+       71.3659501280169,
+       33.9142815879358
+      ],
+      [
+       71.3662032963533,
+       33.9142908066066
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 6,
+    "cell": "0105_0102",
+    "roof_area_m2": 313.3,
+    "p_roofclf": 0.274356,
+    "sppi": -0.082097,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3684924849829,
+       33.9168094275543
+      ],
+      [
+       71.3684379421927,
+       33.91681573587871
+      ],
+      [
+       71.3684324124133,
+       33.9167825042349
+      ],
+      [
+       71.3682902380459,
+       33.916798947755595
+      ],
+      [
+       71.3682957677722,
+       33.916832179408104
+      ],
+      [
+       71.3682502473,
+       33.9168374441536
+      ],
+      [
+       71.3682447175907,
+       33.9168042124982
+      ],
+      [
+       71.36818853567101,
+       33.91681071028601
+      ],
+      [
+       71.3681736827234,
+       33.91672144866111
+      ],
+      [
+       71.368472101934,
+       33.9166869343375
+      ],
+      [
+       71.3684924849829,
+       33.9168094275543
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 7,
+    "cell": "0105_0102",
+    "roof_area_m2": 598.1,
+    "p_roofclf": 0.284625,
+    "sppi": -0.085684,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3687621677583,
+       33.9179315817832
+      ],
+      [
+       71.36920135848212,
+       33.918035657706
+      ],
+      [
+       71.369168715274,
+       33.9181314005157
+      ],
+      [
+       71.3688385019698,
+       33.9180531493777
+      ],
+      [
+       71.368801325706,
+       33.9181621861793
+      ],
+      [
+       71.36869234768751,
+       33.918136361271095
+      ],
+      [
+       71.3687621677583,
+       33.9179315817832
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 8,
+    "cell": "0105_0102",
+    "roof_area_m2": 274.5,
+    "p_roofclf": 0.431018,
+    "sppi": -0.043497,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3694846,
+       33.9174556
+      ],
+      [
+       71.3694809,
+       33.9175863
+      ],
+      [
+       71.3692763,
+       33.9175823
+      ],
+      [
+       71.36928,
+       33.9174516
+      ],
+      [
+       71.3694846,
+       33.9174556
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 9,
+    "cell": "0105_0102",
+    "roof_area_m2": 381.5,
+    "p_roofclf": 0.526535,
+    "sppi": -0.063996,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3642266,
+       33.9186861
+      ],
+      [
+       71.364228,
+       33.9186811
+      ],
+      [
+       71.3643247,
+       33.9187005
+      ],
+      [
+       71.364293,
+       33.918810400000005
+      ],
+      [
+       71.3639626,
+       33.9187442
+      ],
+      [
+       71.3639928,
+       33.9186393
+      ],
+      [
+       71.3642266,
+       33.9186861
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 10,
+    "cell": "0105_0102",
+    "roof_area_m2": 251.4,
+    "p_roofclf": 0.284573,
+    "sppi": -0.077955,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3664309877242,
+       33.9208950952483
+      ],
+      [
+       71.3661512763421,
+       33.9209232289722
+      ],
+      [
+       71.3661387809468,
+       33.9208368882198
+      ],
+      [
+       71.3664184920538,
+       33.9208087545357
+      ],
+      [
+       71.3664309877242,
+       33.9208950952483
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 11,
+    "cell": "0105_0102",
+    "roof_area_m2": 232.4,
+    "p_roofclf": 0.317886,
+    "sppi": -0.056356,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3731383271758,
+       33.9206918443722
+      ],
+      [
+       71.373096292938,
+       33.9207756132724
+      ],
+      [
+       71.3728661712352,
+       33.92069536072011
+      ],
+      [
+       71.3729082056682,
+       33.9206115918907
+      ],
+      [
+       71.3731383271758,
+       33.9206918443722
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 12,
+    "cell": "0105_0102",
+    "roof_area_m2": 214.3,
+    "p_roofclf": 0.429185,
+    "sppi": -0.04473,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3716627903745,
+       33.9195864689606
+      ],
+      [
+       71.371622924849,
+       33.91967774156091
+      ],
+      [
+       71.3714208422825,
+       33.9196163967186
+      ],
+      [
+       71.3714607080033,
+       33.919525124175
+      ],
+      [
+       71.3716627903745,
+       33.9195864689606
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 13,
+    "cell": "0105_0102",
+    "roof_area_m2": 325.7,
+    "p_roofclf": 0.264192,
+    "sppi": -0.085903,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3777714801642,
+       33.9169701090511
+      ],
+      [
+       71.3781705355439,
+       33.917015093128306
+      ],
+      [
+       71.3781578644897,
+       33.917093221874495
+      ],
+      [
+       71.3777588087471,
+       33.9170482377719
+      ],
+      [
+       71.3777714801642,
+       33.9169701090511
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 14,
+    "cell": "0105_0102",
+    "roof_area_m2": 293.1,
+    "p_roofclf": 0.370902,
+    "sppi": -0.06586,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3781058303416,
+       33.9211155959307
+      ],
+      [
+       71.3780983361981,
+       33.921343247511906
+      ],
+      [
+       71.3781204010344,
+       33.92134375231671
+      ],
+      [
+       71.3781191490314,
+       33.92138178503309
+      ],
+      [
+       71.3780215224966,
+       33.921379551481
+      ],
+      [
+       71.3780227745432,
+       33.9213415187636
+      ],
+      [
+       71.3779892743048,
+       33.9213407523086
+      ],
+      [
+       71.3779967687397,
+       33.9211131007213
+      ],
+      [
+       71.3781058303416,
+       33.9211155959307
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 15,
+    "cell": "0105_0102",
+    "roof_area_m2": 180.0,
+    "p_roofclf": 0.325707,
+    "sppi": -0.054695,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3823150800464,
+       33.9211526425045
+      ],
+      [
+       71.3822894978181,
+       33.9213365124291
+      ],
+      [
+       71.3821953271223,
+       33.9213274066091
+      ],
+      [
+       71.3822209095526,
+       33.9211435366953
+      ],
+      [
+       71.3823150800464,
+       33.9211526425045
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 16,
+    "cell": "0105_0102",
+    "roof_area_m2": 60.4,
+    "p_roofclf": 0.319047,
+    "sppi": -0.029459,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3832856863093,
+       33.9219230910692
+      ],
+      [
+       71.3831998754935,
+       33.92195358602681
+      ],
+      [
+       71.3831702023612,
+       33.92189555703149
+      ],
+      [
+       71.3832560131319,
+       33.9218650620964
+      ],
+      [
+       71.3832856863093,
+       33.9219230910692
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 17,
+    "cell": "0105_0102",
+    "roof_area_m2": 436.6,
+    "p_roofclf": 0.647056,
+    "sppi": -0.039963,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3826398477609,
+       33.9218855603229
+      ],
+      [
+       71.3826642219471,
+       33.922039214792
+      ],
+      [
+       71.3828538420814,
+       33.9220183103149
+      ],
+      [
+       71.3828675577833,
+       33.9221047723795
+      ],
+      [
+       71.3825720557363,
+       33.922137349582
+      ],
+      [
+       71.3825339663221,
+       33.92189723297441
+      ],
+      [
+       71.3826398477609,
+       33.9218855603229
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 18,
+    "cell": "0105_0102",
+    "roof_area_m2": 92.1,
+    "p_roofclf": 0.276157,
+    "sppi": -0.041431,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3826398477609,
+       33.9218855603229
+      ],
+      [
+       71.3825339663221,
+       33.92189723297441
+      ],
+      [
+       71.3825207478315,
+       33.9218139029002
+      ],
+      [
+       71.3826266291703,
+       33.921802230264404
+      ],
+      [
+       71.3826398477609,
+       33.9218855603229
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 19,
+    "cell": "0105_0102",
+    "roof_area_m2": 379.7,
+    "p_roofclf": 0.278236,
+    "sppi": -0.079686,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3830557366109,
+       33.915897265951
+      ],
+      [
+       71.3833864804673,
+       33.915989530209
+      ],
+      [
+       71.3833550150794,
+       33.9160679312262
+      ],
+      [
+       71.3831155536363,
+       33.9160011312118
+      ],
+      [
+       71.3830832501558,
+       33.9160816197539
+      ],
+      [
+       71.3829919673837,
+       33.9160561554179
+      ],
+      [
+       71.3830557366109,
+       33.915897265951
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 20,
+    "cell": "0105_0102",
+    "roof_area_m2": 335.7,
+    "p_roofclf": 0.253864,
+    "sppi": -0.083861,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3848812201665,
+       33.9124236676194
+      ],
+      [
+       71.3848724592993,
+       33.9125118424478
+      ],
+      [
+       71.3847149563222,
+       33.9125009641855
+      ],
+      [
+       71.3847121683455,
+       33.9125290235703
+      ],
+      [
+       71.3846722130805,
+       33.9125262639469
+      ],
+      [
+       71.3846750010701,
+       33.9124982045623
+      ],
+      [
+       71.3845166575458,
+       33.912487267986606
+      ],
+      [
+       71.3845254187804,
+       33.9123990931675
+      ],
+      [
+       71.3848812201665,
+       33.9124236676194
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 21,
+    "cell": "0105_0102",
+    "roof_area_m2": 293.2,
+    "p_roofclf": 0.281498,
+    "sppi": -0.076493,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3877246373135,
+       33.92627082277
+      ],
+      [
+       71.3877168870352,
+       33.9264162929627
+      ],
+      [
+       71.3876654118449,
+       33.9264143872171
+      ],
+      [
+       71.3876673888254,
+       33.92637728038
+      ],
+      [
+       71.3874732941701,
+       33.9263700942931
+      ],
+      [
+       71.3874790678025,
+       33.9262617309357
+      ],
+      [
+       71.3877246373135,
+       33.92627082277
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 22,
+    "cell": "0105_0102",
+    "roof_area_m2": 281.4,
+    "p_roofclf": 0.361693,
+    "sppi": -0.037927,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3861725230703,
+       33.92480736616099
+      ],
+      [
+       71.3861728741306,
+       33.92488038672829
+      ],
+      [
+       71.3857972198454,
+       33.9248816412139
+      ],
+      [
+       71.385796869106,
+       33.9248086206314
+      ],
+      [
+       71.3861725230703,
+       33.92480736616099
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 23,
+    "cell": "0105_0102",
+    "roof_area_m2": 1220.7,
+    "p_roofclf": 0.358354,
+    "sppi": -0.095455,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3835256,
+       33.9259503
+      ],
+      [
+       71.3832969,
+       33.9258913
+      ],
+      [
+       71.3832871,
+       33.925917600000005
+      ],
+      [
+       71.3831449,
+       33.92588080000001
+      ],
+      [
+       71.3831546,
+       33.9258546
+      ],
+      [
+       71.382977,
+       33.9258087
+      ],
+      [
+       71.3830041,
+       33.9257359
+      ],
+      [
+       71.3830264,
+       33.9257416
+      ],
+      [
+       71.3830378,
+       33.925711
+      ],
+      [
+       71.3834372,
+       33.925814100000004
+      ],
+      [
+       71.3835799,
+       33.9254298
+      ],
+      [
+       71.3837068,
+       33.9254625
+      ],
+      [
+       71.3835256,
+       33.9259503
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 24,
+    "cell": "0105_0102",
+    "roof_area_m2": 298.3,
+    "p_roofclf": 0.315262,
+    "sppi": -0.068798,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3841354474063,
+       33.929243721379
+      ],
+      [
+       71.3840394182752,
+       33.9292661959688
+      ],
+      [
+       71.3840310552515,
+       33.9292413665236
+      ],
+      [
+       71.3838536389122,
+       33.92928288868931
+      ],
+      [
+       71.3838384167994,
+       33.929237694597205
+      ],
+      [
+       71.3838246248258,
+       33.92924092243041
+      ],
+      [
+       71.383810311524,
+       33.9291984265065
+      ],
+      [
+       71.3840975486862,
+       33.9291312020017
+      ],
+      [
+       71.3841354474063,
+       33.929243721379
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 25,
+    "cell": "0105_0102",
+    "roof_area_m2": 315.9,
+    "p_roofclf": 0.267925,
+    "sppi": -0.073003,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3849776100042,
+       33.92890804082331
+      ],
+      [
+       71.3845859037214,
+       33.9289714228192
+      ],
+      [
+       71.3845673206623,
+       33.9288916212592
+      ],
+      [
+       71.38468740667051,
+       33.9288721902882
+      ],
+      [
+       71.38469446605701,
+       33.928902505376
+      ],
+      [
+       71.3847466932818,
+       33.9288940545124
+      ],
+      [
+       71.3847396338778,
+       33.9288637394283
+      ],
+      [
+       71.3849590266005,
+       33.9288282393367
+      ],
+      [
+       71.3849776100042,
+       33.92890804082331
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 26,
+    "cell": "0105_0102",
+    "roof_area_m2": 107.1,
+    "p_roofclf": 0.455516,
+    "sppi": -0.025723,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3865874966471,
+       33.92959092714949
+      ],
+      [
+       71.38656669609271,
+       33.929639453647
+      ],
+      [
+       71.3863759091225,
+       33.9295826293576
+      ],
+      [
+       71.3863967097753,
+       33.9295341028882
+      ],
+      [
+       71.3865874966471,
+       33.92959092714949
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 27,
+    "cell": "0105_0102",
+    "roof_area_m2": 302.5,
+    "p_roofclf": 0.425211,
+    "sppi": -0.049015,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3838578821658,
+       33.9324585545497
+      ],
+      [
+       71.3838527140097,
+       33.9325434940973
+      ],
+      [
+       71.3836927232699,
+       33.9325367303833
+      ],
+      [
+       71.383688034448,
+       33.9326137895393
+      ],
+      [
+       71.3835903490668,
+       33.93260965972619
+      ],
+      [
+       71.3836002063901,
+       33.9324476610218
+      ],
+      [
+       71.3838578821658,
+       33.9324585545497
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 28,
+    "cell": "0105_0102",
+    "roof_area_m2": 244.1,
+    "p_roofclf": 0.388808,
+    "sppi": -0.05781,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3829766849207,
+       33.9314361456317
+      ],
+      [
+       71.3829688068557,
+       33.9315416084853
+      ],
+      [
+       71.3827929689825,
+       33.9315324819312
+      ],
+      [
+       71.3827926843382,
+       33.9315362923282
+      ],
+      [
+       71.3827454660683,
+       33.93153384150391
+      ],
+      [
+       71.382753629056,
+       33.9314245682541
+      ],
+      [
+       71.3829766849207,
+       33.9314361456317
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 29,
+    "cell": "0105_0102",
+    "roof_area_m2": 656.2,
+    "p_roofclf": 0.332971,
+    "sppi": -0.0786,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3832817420076,
+       33.9351865181384
+      ],
+      [
+       71.383032298067,
+       33.9352098162268
+      ],
+      [
+       71.3830463217918,
+       33.9353141321271
+      ],
+      [
+       71.38301598649231,
+       33.9353169654135
+      ],
+      [
+       71.3830166982423,
+       33.93532225979331
+      ],
+      [
+       71.382915540133,
+       33.935331707803904
+      ],
+      [
+       71.3829088876518,
+       33.9352822226072
+      ],
+      [
+       71.3829741418918,
+       33.93527612797391
+      ],
+      [
+       71.3829660590159,
+       33.9352160028739
+      ],
+      [
+       71.3827208557969,
+       33.9352389042411
+      ],
+      [
+       71.3827105700305,
+       33.9351623909937
+      ],
+      [
+       71.3827783700851,
+       33.9351560586907
+      ],
+      [
+       71.3827756618744,
+       33.93513591307751
+      ],
+      [
+       71.3832687474267,
+       33.9350898593612
+      ],
+      [
+       71.3832817420076,
+       33.9351865181384
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 30,
+    "cell": "0105_0102",
+    "roof_area_m2": 445.6,
+    "p_roofclf": 0.278991,
+    "sppi": -0.072214,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3900368499941,
+       33.9357298634381
+      ],
+      [
+       71.389916801182,
+       33.9359589467546
+      ],
+      [
+       71.3897575818557,
+       33.9359009791874
+      ],
+      [
+       71.389877631032,
+       33.9356718960094
+      ],
+      [
+       71.3900368499941,
+       33.9357298634381
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 31,
+    "cell": "0105_0102",
+    "roof_area_m2": 984.6,
+    "p_roofclf": 0.444439,
+    "sppi": -0.08309,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3901638284418,
+       33.93584642566041
+      ],
+      [
+       71.3901591498491,
+       33.9358794252876
+      ],
+      [
+       71.390350558416,
+       33.93589827859629
+      ],
+      [
+       71.3903427590485,
+       33.9359532908825
+      ],
+      [
+       71.3904353562097,
+       33.9359624113799
+      ],
+      [
+       71.3904204380722,
+       33.9360676360708
+      ],
+      [
+       71.3903570583782,
+       33.936061393404096
+      ],
+      [
+       71.3903407056147,
+       33.93617673635521
+      ],
+      [
+       71.3899992282631,
+       33.9361431015308
+      ],
+      [
+       71.3900216394161,
+       33.9359850306202
+      ],
+      [
+       71.3900780772086,
+       33.9359905896994
+      ],
+      [
+       71.3900994160186,
+       33.9358400811132
+      ],
+      [
+       71.3901638284418,
+       33.93584642566041
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 32,
+    "cell": "0105_0102",
+    "roof_area_m2": 319.7,
+    "p_roofclf": 0.329807,
+    "sppi": -0.073704,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3876938,
+       33.9323513
+      ],
+      [
+       71.3877014,
+       33.9324759
+      ],
+      [
+       71.3875944,
+       33.9324805
+      ],
+      [
+       71.3875925,
+       33.9324496
+      ],
+      [
+       71.3874033,
+       33.9324576
+      ],
+      [
+       71.3873976,
+       33.9323638
+      ],
+      [
+       71.3876938,
+       33.9323513
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 33,
+    "cell": "0105_0102",
+    "roof_area_m2": 391.2,
+    "p_roofclf": 0.392723,
+    "sppi": -0.057585,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3896165863848,
+       33.9306536186287
+      ],
+      [
+       71.38956665844,
+       33.9307330241864
+      ],
+      [
+       71.3892157215275,
+       33.9305797034469
+      ],
+      [
+       71.3892381646836,
+       33.930544010043
+      ],
+      [
+       71.3891912711904,
+       33.9305235226366
+      ],
+      [
+       71.3892187562553,
+       33.9304798106186
+      ],
+      [
+       71.3896165863848,
+       33.9306536186287
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 34,
+    "cell": "0105_0102",
+    "roof_area_m2": 110.7,
+    "p_roofclf": 0.499294,
+    "sppi": -0.032645,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3798629771977,
+       33.942268795038004
+      ],
+      [
+       71.3797530621194,
+       33.9422960909474
+      ],
+      [
+       71.379720812932,
+       33.9422058845643
+      ],
+      [
+       71.3798307279082,
+       33.94217858868791
+      ],
+      [
+       71.3798629771977,
+       33.942268795038004
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 35,
+    "cell": "0105_0102",
+    "roof_area_m2": 316.8,
+    "p_roofclf": 0.253563,
+    "sppi": -0.086232,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3831481708176,
+       33.9381944895412
+      ],
+      [
+       71.3828475387025,
+       33.9381976305876
+      ],
+      [
+       71.3828459942956,
+       33.9380949295897
+      ],
+      [
+       71.3831466260501,
+       33.93809178856271
+      ],
+      [
+       71.3831481708176,
+       33.9381944895412
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 36,
+    "cell": "0105_0102",
+    "roof_area_m2": 175.9,
+    "p_roofclf": 0.280477,
+    "sppi": -0.046932,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3735798587738,
+       33.9368730741751
+      ],
+      [
+       71.3734267888553,
+       33.936923204264595
+      ],
+      [
+       71.3733810453484,
+       33.936826167763094
+      ],
+      [
+       71.3735341151269,
+       33.936776037736
+      ],
+      [
+       71.3735798587738,
+       33.9368730741751
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 37,
+    "cell": "0105_0102",
+    "roof_area_m2": 194.3,
+    "p_roofclf": 0.261347,
+    "sppi": -0.046042,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3753050754535,
+       33.93968812156869
+      ],
+      [
+       71.3753225171029,
+       33.9397920554737
+      ],
+      [
+       71.3751437295878,
+       33.939812897909604
+      ],
+      [
+       71.3751262881486,
+       33.9397089639704
+      ],
+      [
+       71.3753050754535,
+       33.93968812156869
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 38,
+    "cell": "0105_0102",
+    "roof_area_m2": 246.4,
+    "p_roofclf": 0.359118,
+    "sppi": -0.055861,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3727389732131,
+       33.942122725580006
+      ],
+      [
+       71.37273418486892,
+       33.9422400004167
+      ],
+      [
+       71.3726797858047,
+       33.942238457532
+      ],
+      [
+       71.3726810080428,
+       33.9422085232873
+      ],
+      [
+       71.3725059284549,
+       33.942203557454505
+      ],
+      [
+       71.3725076442737,
+       33.9421615368567
+      ],
+      [
+       71.3724563798927,
+       33.9421600827818
+      ],
+      [
+       71.3724582304616,
+       33.9421147627837
+      ],
+      [
+       71.3727389732131,
+       33.942122725580006
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 39,
+    "cell": "0105_0102",
+    "roof_area_m2": 619.7,
+    "p_roofclf": 0.335038,
+    "sppi": -0.069565,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3768260783648,
+       33.941630961947
+      ],
+      [
+       71.3768668172852,
+       33.9416190114511
+      ],
+      [
+       71.3768876930066,
+       33.941668445797596
+      ],
+      [
+       71.3765115522024,
+       33.941778783634
+      ],
+      [
+       71.3764906766619,
+       33.9417293492123
+      ],
+      [
+       71.3766834833125,
+       33.9416727911422
+      ],
+      [
+       71.37663351137462,
+       33.94155445521001
+      ],
+      [
+       71.3764407049485,
+       33.9416110131945
+      ],
+      [
+       71.3764176777679,
+       33.9415564833215
+      ],
+      [
+       71.3767530788998,
+       33.9414580962743
+      ],
+      [
+       71.3768260783648,
+       33.941630961947
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 40,
+    "cell": "0105_0102",
+    "roof_area_m2": 235.4,
+    "p_roofclf": 0.267444,
+    "sppi": -0.061106,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.37605842398,
+       33.9421680413619
+      ],
+      [
+       71.3760332506584,
+       33.9420642561467
+      ],
+      [
+       71.3758889236624,
+       33.942088573153306
+      ],
+      [
+       71.375878121917,
+       33.9420440390447
+      ],
+      [
+       71.3761277482403,
+       33.9420019805197
+      ],
+      [
+       71.3761637235499,
+       33.94215029979
+      ],
+      [
+       71.37605842398,
+       33.9421680413619
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 41,
+    "cell": "0105_0102",
+    "roof_area_m2": 330.2,
+    "p_roofclf": 0.335097,
+    "sppi": -0.053469,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3759157418443,
+       33.9415380974261
+      ],
+      [
+       71.3758953083442,
+       33.9415378709445
+      ],
+      [
+       71.375894831612,
+       33.9415677485887
+      ],
+      [
+       71.375812062997,
+       33.9415668311613
+      ],
+      [
+       71.3758094017393,
+       33.9417336075043
+      ],
+      [
+       71.3756499816359,
+       33.9417318403095
+      ],
+      [
+       71.3756524644746,
+       33.941576263356
+      ],
+      [
+       71.3757727879366,
+       33.9415775971849
+      ],
+      [
+       71.3757734434264,
+       33.9415365201433
+      ],
+      [
+       71.3758636503935,
+       33.9415375200463
+      ],
+      [
+       71.375864662101,
+       33.9414741160235
+      ],
+      [
+       71.375916753515,
+       33.94147469340441
+      ],
+      [
+       71.3759157418443,
+       33.9415380974261
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 42,
+    "cell": "0105_0102",
+    "roof_area_m2": 1139.7,
+    "p_roofclf": 0.287815,
+    "sppi": -0.075949,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3790381095106,
+       33.9432237238834
+      ],
+      [
+       71.378764484363,
+       33.9432849949602
+      ],
+      [
+       71.3787373590746,
+       33.9432008506107
+      ],
+      [
+       71.3789165615236,
+       33.9431607230749
+      ],
+      [
+       71.378838893291,
+       33.94291979183039
+      ],
+      [
+       71.378632517201,
+       33.942966004106
+      ],
+      [
+       71.3786676972449,
+       33.943075135587996
+      ],
+      [
+       71.37856368865552,
+       33.9430984253243
+      ],
+      [
+       71.3785576161461,
+       33.9430795878371
+      ],
+      [
+       71.378503046712,
+       33.943091807054
+      ],
+      [
+       71.3784954862184,
+       33.9430683536435
+      ],
+      [
+       71.37842661714,
+       33.9430837748041
+      ],
+      [
+       71.378385722166,
+       33.9429569139183
+      ],
+      [
+       71.3788059942301,
+       33.9428628059763
+      ],
+      [
+       71.3787902585463,
+       33.9428139927052
+      ],
+      [
+       71.3788982312799,
+       33.9427898150321
+      ],
+      [
+       71.3790381095106,
+       33.9432237238834
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 43,
+    "cell": "0105_0102",
+    "roof_area_m2": 347.6,
+    "p_roofclf": 0.259788,
+    "sppi": -0.072256,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3737066794848,
+       33.9429628264965
+      ],
+      [
+       71.3737074980129,
+       33.9430719032972
+      ],
+      [
+       71.3737546557256,
+       33.9430716574743
+      ],
+      [
+       71.3737549219727,
+       33.9431071345701
+      ],
+      [
+       71.3737077642404,
+       33.94310738039359
+      ],
+      [
+       71.3737083953946,
+       33.943191486482
+      ],
+      [
+       71.3737651965265,
+       33.943191190384404
+      ],
+      [
+       71.3737657461401,
+       33.9432644233843
+      ],
+      [
+       71.3736160207532,
+       33.9432652038334
+      ],
+      [
+       71.3736137556065,
+       33.9429633108301
+      ],
+      [
+       71.3737066794848,
+       33.9429628264965
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 44,
+    "cell": "0105_0102",
+    "roof_area_m2": 1348.5,
+    "p_roofclf": 0.450993,
+    "sppi": -0.095562,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3642843944039,
+       33.94317642993
+      ],
+      [
+       71.3642627686527,
+       33.9430672277994
+      ],
+      [
+       71.3643016535227,
+       33.9430618788312
+      ],
+      [
+       71.3642971976146,
+       33.9430393781361
+      ],
+      [
+       71.3642203220047,
+       33.9430499530633
+      ],
+      [
+       71.3641984563344,
+       33.9429395387808
+      ],
+      [
+       71.3647513135411,
+       33.9428634872429
+      ],
+      [
+       71.3647992623039,
+       33.9431056040837
+      ],
+      [
+       71.3642843944039,
+       33.94317642993
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 45,
+    "cell": "0105_0102",
+    "roof_area_m2": 208.7,
+    "p_roofclf": 0.542441,
+    "sppi": -0.036514,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3686341713608,
+       33.9396821943196
+      ],
+      [
+       71.3686339023323,
+       33.9398676172236
+      ],
+      [
+       71.368534295975,
+       33.93986751679439
+      ],
+      [
+       71.3685343822971,
+       33.9398080670322
+      ],
+      [
+       71.3685027412509,
+       33.9398080351124
+      ],
+      [
+       71.3685028275136,
+       33.9397486429858
+      ],
+      [
+       71.36853446853792,
+       33.93974867490701
+      ],
+      [
+       71.3685345652203,
+       33.9396820938818
+      ],
+      [
+       71.3686341713608,
+       33.9396821943196
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 46,
+    "cell": "0105_0102",
+    "roof_area_m2": 464.0,
+    "p_roofclf": 0.383188,
+    "sppi": -0.062716,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3678705,
+       33.9390599
+      ],
+      [
+       71.3679081,
+       33.9392232
+      ],
+      [
+       71.3678016,
+       33.9392403
+      ],
+      [
+       71.3677886,
+       33.9391839
+      ],
+      [
+       71.3676812,
+       33.9392011
+      ],
+      [
+       71.3676942,
+       33.93925749999999
+      ],
+      [
+       71.367604,
+       33.9392719
+      ],
+      [
+       71.3675663,
+       33.9391086
+      ],
+      [
+       71.3678705,
+       33.9390599
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 47,
+    "cell": "0105_0102",
+    "roof_area_m2": 246.1,
+    "p_roofclf": 0.265775,
+    "sppi": -0.068644,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.36984023892441,
+       33.9392102910093
+      ],
+      [
+       71.3697922283676,
+       33.9393878268335
+      ],
+      [
+       71.3697296373079,
+       33.9393760683364
+      ],
+      [
+       71.3697516465047,
+       33.9392946819405
+      ],
+      [
+       71.3696297557817,
+       33.9392717831691
+      ],
+      [
+       71.3696557574011,
+       33.9391756337794
+      ],
+      [
+       71.36984023892441,
+       33.9392102910093
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 48,
+    "cell": "0105_0102",
+    "roof_area_m2": 220.4,
+    "p_roofclf": 0.264948,
+    "sppi": -0.06549,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3712,
+       33.9391123
+      ],
+      [
+       71.3710775,
+       33.9391236
+      ],
+      [
+       71.37107530000002,
+       33.9391074
+      ],
+      [
+       71.3709944,
+       33.9391149
+      ],
+      [
+       71.3709818,
+       33.9390203
+      ],
+      [
+       71.3711853,
+       33.9390016
+      ],
+      [
+       71.3712,
+       33.9391123
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 49,
+    "cell": "0105_0102",
+    "roof_area_m2": 219.8,
+    "p_roofclf": 0.334049,
+    "sppi": -0.039448,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.37031749432072,
+       33.9384504152768
+      ],
+      [
+       71.3699122059708,
+       33.9385054861383
+      ],
+      [
+       71.3699021338021,
+       33.93845399085689
+      ],
+      [
+       71.3703074219182,
+       33.9383989200383
+      ],
+      [
+       71.37031749432072,
+       33.9384504152768
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 50,
+    "cell": "0105_0102",
+    "roof_area_m2": 154.6,
+    "p_roofclf": 0.342856,
+    "sppi": -0.033604,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3698353257278,
+       33.93835499172909
+      ],
+      [
+       71.3698590550234,
+       33.9385053668177
+      ],
+      [
+       71.3697605634053,
+       33.9385161638376
+      ],
+      [
+       71.3697368342778,
+       33.938365788723
+      ],
+      [
+       71.3698353257278,
+       33.93835499172909
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 51,
+    "cell": "0105_0102",
+    "roof_area_m2": 220.2,
+    "p_roofclf": 0.304222,
+    "sppi": -0.05826,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3674364734345,
+       33.9366334871946
+      ],
+      [
+       71.3671752938424,
+       33.936678252580606
+      ],
+      [
+       71.367155836131,
+       33.93659938342131
+      ],
+      [
+       71.3674170154976,
+       33.936554618087
+      ],
+      [
+       71.3674364734345,
+       33.9366334871946
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 52,
+    "cell": "0105_0102",
+    "roof_area_m2": 482.9,
+    "p_roofclf": 0.276545,
+    "sppi": -0.077443,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3662047890847,
+       33.9367557828547
+      ],
+      [
+       71.3663222985448,
+       33.9371296963271
+      ],
+      [
+       71.3662731969744,
+       33.9371404166872
+      ],
+      [
+       71.36617748237,
+       33.9368358538775
+      ],
+      [
+       71.36594165243132,
+       33.936887342340995
+      ],
+      [
+       71.3659746487932,
+       33.93699233758801
+      ],
+      [
+       71.3659210935244,
+       33.9370040301777
+      ],
+      [
+       71.36586630277301,
+       33.9368296841357
+      ],
+      [
+       71.3662047890847,
+       33.9367557828547
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 53,
+    "cell": "0105_0102",
+    "roof_area_m2": 561.6,
+    "p_roofclf": 0.323262,
+    "sppi": -0.084347,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3674734136947,
+       33.9378436801647
+      ],
+      [
+       71.3671833009431,
+       33.937880294346
+      ],
+      [
+       71.3671866642272,
+       33.937898807821
+      ],
+      [
+       71.367164171574,
+       33.9379016465158
+      ],
+      [
+       71.3671895355376,
+       33.93804126444731
+      ],
+      [
+       71.367087666692,
+       33.9380541208015
+      ],
+      [
+       71.3670427261401,
+       33.9378067400185
+      ],
+      [
+       71.3674571997884,
+       33.9377544308926
+      ],
+      [
+       71.3674734136947,
+       33.9378436801647
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 54,
+    "cell": "0105_0102",
+    "roof_area_m2": 387.7,
+    "p_roofclf": 0.323288,
+    "sppi": -0.052172,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3636503124676,
+       33.93516217716561
+      ],
+      [
+       71.3636442420847,
+       33.935188197885296
+      ],
+      [
+       71.3639105911331,
+       33.93523136722631
+      ],
+      [
+       71.3638844483041,
+       33.935343429917
+      ],
+      [
+       71.3635705133864,
+       33.9352925479004
+      ],
+      [
+       71.3636027270168,
+       33.9351544645408
+      ],
+      [
+       71.3636503124676,
+       33.93516217716561
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 55,
+    "cell": "0105_0102",
+    "roof_area_m2": 262.6,
+    "p_roofclf": 0.349858,
+    "sppi": -0.060324,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3654523876976,
+       33.935773251429
+      ],
+      [
+       71.3653510989004,
+       33.9357864434166
+      ],
+      [
+       71.3653280843616,
+       33.935663676880495
+      ],
+      [
+       71.3652840262537,
+       33.9356694150376
+      ],
+      [
+       71.36526783665292,
+       33.9355830543068
+      ],
+      [
+       71.3654131832773,
+       33.9355641242124
+      ],
+      [
+       71.3654523876976,
+       33.935773251429
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 56,
+    "cell": "0105_0102",
+    "roof_area_m2": 316.7,
+    "p_roofclf": 0.648496,
+    "sppi": -0.025193,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.366698463748,
+       33.9345965204448
+      ],
+      [
+       71.3663283232206,
+       33.9346290784395
+      ],
+      [
+       71.3663178804619,
+       33.93454659464949
+      ],
+      [
+       71.3666880206397,
+       33.9345140367009
+      ],
+      [
+       71.366698463748,
+       33.9345965204448
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 57,
+    "cell": "0105_0102",
+    "roof_area_m2": 201.6,
+    "p_roofclf": 0.447202,
+    "sppi": -0.031523,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3664241536598,
+       33.9346562042379
+      ],
+      [
+       71.3664482869584,
+       33.93486934311039
+      ],
+      [
+       71.3663568932683,
+       33.93487653268781
+      ],
+      [
+       71.3663327601935,
+       33.9346633937879
+      ],
+      [
+       71.3664241536598,
+       33.9346562042379
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 58,
+    "cell": "0105_0102",
+    "roof_area_m2": 190.6,
+    "p_roofclf": 0.426935,
+    "sppi": -0.033582,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3639376990548,
+       33.9336204491605
+      ],
+      [
+       71.3637722353351,
+       33.93363239193069
+      ],
+      [
+       71.3637606557379,
+       33.93352092587849
+      ],
+      [
+       71.36392611924552,
+       33.9335089831351
+      ],
+      [
+       71.3639376990548,
+       33.9336204491605
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 59,
+    "cell": "0105_0102",
+    "roof_area_m2": 635.9,
+    "p_roofclf": 0.32621,
+    "sppi": -0.068569,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3649499,
+       33.9311898
+      ],
+      [
+       71.3649348,
+       33.9310626
+      ],
+      [
+       71.3641815,
+       33.9311247
+      ],
+      [
+       71.36412000000001,
+       33.93112980000001
+      ],
+      [
+       71.3641126,
+       33.9310669
+      ],
+      [
+       71.3649807,
+       33.93099529999999
+      ],
+      [
+       71.3650033,
+       33.9311854
+      ],
+      [
+       71.3649499,
+       33.9311898
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 60,
+    "cell": "0105_0102",
+    "roof_area_m2": 108.0,
+    "p_roofclf": 0.31748,
+    "sppi": -0.029428,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3687247380249,
+       33.9315598922706
+      ],
+      [
+       71.3685907605119,
+       33.93157093782689
+      ],
+      [
+       71.368581523063,
+       33.931493086224705
+      ],
+      [
+       71.3687155004563,
+       33.9314820406836
+      ],
+      [
+       71.3687247380249,
+       33.9315598922706
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 61,
+    "cell": "0105_0102",
+    "roof_area_m2": 179.8,
+    "p_roofclf": 0.28494,
+    "sppi": -0.047093,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3714100079761,
+       33.9335146329525
+      ],
+      [
+       71.3712939672247,
+       33.9335341852716
+      ],
+      [
+       71.3712587728677,
+       33.9333890626963
+      ],
+      [
+       71.3713748134366,
+       33.9333695104177
+      ],
+      [
+       71.3714100079761,
+       33.9335146329525
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 62,
+    "cell": "0105_0102",
+    "roof_area_m2": 221.9,
+    "p_roofclf": 0.347844,
+    "sppi": -0.038833,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.36995494670802,
+       33.9331632468256
+      ],
+      [
+       71.3699220570535,
+       33.9332561440234
+      ],
+      [
+       71.3697078387954,
+       33.93320344945089
+      ],
+      [
+       71.3697407286696,
+       33.9331105523005
+      ],
+      [
+       71.36995494670802,
+       33.9331632468256
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 63,
+    "cell": "0105_0102",
+    "roof_area_m2": 214.7,
+    "p_roofclf": 0.351671,
+    "sppi": -0.054334,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3723892346027,
+       33.9358531995231
+      ],
+      [
+       71.3724328250214,
+       33.936024370713
+      ],
+      [
+       71.3723158170503,
+       33.93604507200651
+      ],
+      [
+       71.3722722268505,
+       33.9358739007662
+      ],
+      [
+       71.3723892346027,
+       33.9358531995231
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 64,
+    "cell": "0105_0102",
+    "roof_area_m2": 240.5,
+    "p_roofclf": 0.367401,
+    "sppi": -0.054679,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3731312436655,
+       33.9358618647782
+      ],
+      [
+       71.3729162964241,
+       33.9359216213488
+      ],
+      [
+       71.3728805134263,
+       33.9358321985865
+      ],
+      [
+       71.373001185236,
+       33.9357986511938
+      ],
+      [
+       71.3729932229869,
+       33.93577875334
+      ],
+      [
+       71.373087498208,
+       33.93575254423921
+      ],
+      [
+       71.3731312436655,
+       33.9358618647782
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 65,
+    "cell": "0105_0102",
+    "roof_area_m2": 145.3,
+    "p_roofclf": 0.284003,
+    "sppi": -0.04394,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.372209157944,
+       33.9352485222625
+      ],
+      [
+       71.37220648564,
+       33.9353800645965
+      ],
+      [
+       71.3720988600264,
+       33.93537854552681
+      ],
+      [
+       71.3721015324966,
+       33.935247003188
+      ],
+      [
+       71.372209157944,
+       33.9352485222625
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 66,
+    "cell": "0105_0102",
+    "roof_area_m2": 472.2,
+    "p_roofclf": 0.351451,
+    "sppi": -0.082696,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.372776049675,
+       33.93377180518501
+      ],
+      [
+       71.3728801523306,
+       33.9341970853256
+      ],
+      [
+       71.3727762330789,
+       33.934214758916504
+      ],
+      [
+       71.3726721309075,
+       33.933789478668
+      ],
+      [
+       71.372776049675,
+       33.93377180518501
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 67,
+    "cell": "0105_0102",
+    "roof_area_m2": 334.3,
+    "p_roofclf": 0.321895,
+    "sppi": -0.048907,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3782803,
+       33.9348214
+      ],
+      [
+       71.3781269,
+       33.9347953
+      ],
+      [
+       71.3781148,
+       33.9348449
+      ],
+      [
+       71.3780652,
+       33.9348365
+      ],
+      [
+       71.3781071,
+       33.9346653
+      ],
+      [
+       71.37818490000001,
+       33.9346785
+      ],
+      [
+       71.3781753,
+       33.9347181
+      ],
+      [
+       71.3781875,
+       33.9347202
+      ],
+      [
+       71.3782072,
+       33.9346395
+      ],
+      [
+       71.3783201,
+       33.9346588
+      ],
+      [
+       71.3782803,
+       33.9348214
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 68,
+    "cell": "0105_0102",
+    "roof_area_m2": 423.5,
+    "p_roofclf": 0.274949,
+    "sppi": -0.076139,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3754517841673,
+       33.9313127606258
+      ],
+      [
+       71.3750652831362,
+       33.9313772758811
+      ],
+      [
+       71.3750406160164,
+       33.93127459693011
+      ],
+      [
+       71.375427116611,
+       33.9312100817687
+      ],
+      [
+       71.3754517841673,
+       33.9313127606258
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 69,
+    "cell": "0105_0102",
+    "roof_area_m2": 303.8,
+    "p_roofclf": 0.374919,
+    "sppi": -0.068287,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3774441763319,
+       33.9270235792315
+      ],
+      [
+       71.3774546766161,
+       33.927071578221195
+      ],
+      [
+       71.3774278998361,
+       33.927075648660605
+      ],
+      [
+       71.3774390968102,
+       33.9271268323679
+      ],
+      [
+       71.3774658736052,
+       33.92712276192481
+      ],
+      [
+       71.3774780874163,
+       33.927178593645905
+      ],
+      [
+       71.3774513106048,
+       33.9271826640925
+      ],
+      [
+       71.3774637228755,
+       33.9272394030044
+      ],
+      [
+       71.3773415147051,
+       33.9272579802645
+      ],
+      [
+       71.3772951916825,
+       33.9270462268707
+      ],
+      [
+       71.3774441763319,
+       33.9270235792315
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 70,
+    "cell": "0105_0102",
+    "roof_area_m2": 188.1,
+    "p_roofclf": 0.310417,
+    "sppi": -0.069601,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3674067393988,
+       33.9289139241888
+      ],
+      [
+       71.3673207179533,
+       33.9289115804654
+      ],
+      [
+       71.3673290648242,
+       33.9286987107119
+      ],
+      [
+       71.3674150860569,
+       33.9287010544387
+      ],
+      [
+       71.3674067393988,
+       33.9289139241888
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 71,
+    "cell": "0105_0102",
+    "roof_area_m2": 210.6,
+    "p_roofclf": 0.28952,
+    "sppi": -0.069845,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3650675733959,
+       33.9289032494921
+      ],
+      [
+       71.3650547014557,
+       33.929006363272904
+      ],
+      [
+       71.3648577473248,
+       33.9289892792134
+      ],
+      [
+       71.3648706195025,
+       33.9288861654429
+      ],
+      [
+       71.3650675733959,
+       33.9289032494921
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 72,
+    "cell": "0105_0102",
+    "roof_area_m2": 194.7,
+    "p_roofclf": 0.284962,
+    "sppi": -0.04759,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3612942,
+       33.9291114
+      ],
+      [
+       71.3611838,
+       33.92924949999999
+      ],
+      [
+       71.3610886,
+       33.92919669999999
+      ],
+      [
+       71.3611991,
+       33.9290585
+      ],
+      [
+       71.3612942,
+       33.9291114
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 73,
+    "cell": "0105_0102",
+    "roof_area_m2": 168.5,
+    "p_roofclf": 0.291333,
+    "sppi": -0.042693,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.35995695994481,
+       33.9277521234551
+      ],
+      [
+       71.359891006675,
+       33.9277687289054
+      ],
+      [
+       71.3599215177433,
+       33.9278529362643
+      ],
+      [
+       71.35986113098521,
+       33.9278681401685
+      ],
+      [
+       71.3598020300416,
+       33.9277050272598
+      ],
+      [
+       71.3599283699151,
+       33.9276732179557
+      ],
+      [
+       71.35995695994481,
+       33.9277521234551
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 74,
+    "cell": "0105_0102",
+    "roof_area_m2": 313.9,
+    "p_roofclf": 0.258893,
+    "sppi": -0.066416,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3596493,
+       33.9289799
+      ],
+      [
+       71.3597253,
+       33.9289803
+      ],
+      [
+       71.35972450000001,
+       33.9290874
+      ],
+      [
+       71.35983,
+       33.929088
+      ],
+      [
+       71.3598289,
+       33.92922730000001
+      ],
+      [
+       71.359667,
+       33.9292264
+      ],
+      [
+       71.3596684,
+       33.9290375
+      ],
+      [
+       71.3596222,
+       33.9290372
+      ],
+      [
+       71.3596224,
+       33.9290048
+      ],
+      [
+       71.3596491,
+       33.9290049
+      ],
+      [
+       71.3596493,
+       33.9289799
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 75,
+    "cell": "0105_0102",
+    "roof_area_m2": 210.2,
+    "p_roofclf": 0.320247,
+    "sppi": -0.061484,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.358325202178,
+       33.9286607328771
+      ],
+      [
+       71.3581354164788,
+       33.9287379777756
+      ],
+      [
+       71.3580843536955,
+       33.9286508018015
+      ],
+      [
+       71.358274139257,
+       33.92857355698721
+      ],
+      [
+       71.358325202178,
+       33.9286607328771
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 76,
+    "cell": "0105_0102",
+    "roof_area_m2": 645.4,
+    "p_roofclf": 0.531089,
+    "sppi": -0.054803,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3579658348013,
+       33.9287214218855
+      ],
+      [
+       71.3577458527992,
+       33.9287314902592
+      ],
+      [
+       71.3577479679986,
+       33.9287636035264
+      ],
+      [
+       71.3576590326212,
+       33.9287676739061
+      ],
+      [
+       71.3576569174544,
+       33.928735560636
+      ],
+      [
+       71.3573958011254,
+       33.9287475109882
+      ],
+      [
+       71.3573888840572,
+       33.92864248830689
+      ],
+      [
+       71.3579589170388,
+       33.928616399265
+      ],
+      [
+       71.3579658348013,
+       33.9287214218855
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 77,
+    "cell": "0105_0102",
+    "roof_area_m2": 275.5,
+    "p_roofclf": 0.275587,
+    "sppi": -0.084455,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3563689,
+       33.9280621
+      ],
+      [
+       71.3560726,
+       33.9280799
+      ],
+      [
+       71.3560647,
+       33.927989800000006
+      ],
+      [
+       71.35636100000002,
+       33.9279719
+      ],
+      [
+       71.3563689,
+       33.9280621
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 78,
+    "cell": "0105_0102",
+    "roof_area_m2": 388.3,
+    "p_roofclf": 0.312679,
+    "sppi": -0.068425,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3595664,
+       33.92547830000001
+      ],
+      [
+       71.35948340000002,
+       33.92563019999999
+      ],
+      [
+       71.3596153,
+       33.9256803
+      ],
+      [
+       71.35964050000001,
+       33.9256342
+      ],
+      [
+       71.3596796,
+       33.92564899999999
+      ],
+      [
+       71.3596182,
+       33.9257612
+      ],
+      [
+       71.3593636,
+       33.9256645
+      ],
+      [
+       71.3594827,
+       33.9254465
+      ],
+      [
+       71.3595664,
+       33.92547830000001
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 79,
+    "cell": "0105_0102",
+    "roof_area_m2": 185.3,
+    "p_roofclf": 0.313742,
+    "sppi": -0.059422,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3553360747281,
+       33.9261179652155
+      ],
+      [
+       71.355358605219,
+       33.9261179624165
+      ],
+      [
+       71.3553586018286,
+       33.92609901203681
+      ],
+      [
+       71.3556969408257,
+       33.9260989695131
+      ],
+      [
+       71.355696944854,
+       33.9261209985351
+      ],
+      [
+       71.35560699277971,
+       33.9261210099329
+      ],
+      [
+       71.35560699985692,
+       33.92615992837611
+      ],
+      [
+       71.3553360822312,
+       33.9261599623119
+      ],
+      [
+       71.3553360747281,
+       33.9261179652155
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 80,
+    "cell": "0105_0102",
+    "roof_area_m2": 631.9,
+    "p_roofclf": 0.36589,
+    "sppi": -0.082417,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3530205757866,
+       33.9246154807286
+      ],
+      [
+       71.3527079986871,
+       33.9246721539247
+      ],
+      [
+       71.3527214956212,
+       33.9247238855763
+      ],
+      [
+       71.3528699023348,
+       33.924696978133
+      ],
+      [
+       71.3528641308778,
+       33.9246748571879
+      ],
+      [
+       71.3529473391581,
+       33.9246597707113
+      ],
+      [
+       71.3529531106353,
+       33.9246818916509
+      ],
+      [
+       71.3529781969376,
+       33.924677343246
+      ],
+      [
+       71.35299860858852,
+       33.9247555769053
+      ],
+      [
+       71.3529415610371,
+       33.9247659202091
+      ],
+      [
+       71.3529571310127,
+       33.924825596759895
+      ],
+      [
+       71.3527062371612,
+       33.924871086044
+      ],
+      [
+       71.3526458207259,
+       33.9246395190063
+      ],
+      [
+       71.3530096372905,
+       33.92457355570001
+      ],
+      [
+       71.3530205757866,
+       33.9246154807286
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 81,
+    "cell": "0105_0102",
+    "roof_area_m2": 284.7,
+    "p_roofclf": 0.284849,
+    "sppi": -0.064049,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3531057752628,
+       33.9249047972601
+      ],
+      [
+       71.3527636649757,
+       33.9249403136274
+      ],
+      [
+       71.3527517327744,
+       33.924860440506
+      ],
+      [
+       71.3530938427511,
+       33.924824924186495
+      ],
+      [
+       71.3531057752628,
+       33.9249047972601
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 82,
+    "cell": "0105_0102",
+    "roof_area_m2": 123.3,
+    "p_roofclf": 0.266744,
+    "sppi": -0.056109,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3488042124955,
+       33.92454127933791
+      ],
+      [
+       71.3485885371792,
+       33.9245758828507
+      ],
+      [
+       71.3485761296447,
+       33.9245221415267
+      ],
+      [
+       71.3487918048328,
+       33.9244875380409
+      ],
+      [
+       71.3488042124955,
+       33.92454127933791
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 83,
+    "cell": "0105_0102",
+    "roof_area_m2": 788.8,
+    "p_roofclf": 0.304953,
+    "sppi": -0.082456,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3495806917993,
+       33.9249527342144
+      ],
+      [
+       71.34957971114602,
+       33.9249148486658
+      ],
+      [
+       71.3497959756668,
+       33.9249109583552
+      ],
+      [
+       71.3498002758317,
+       33.9250770697228
+      ],
+      [
+       71.3498496818978,
+       33.9250761809161
+      ],
+      [
+       71.3498510091816,
+       33.925127451227695
+      ],
+      [
+       71.3496186871907,
+       33.9251316304938
+      ],
+      [
+       71.3496205705831,
+       33.925204389566005
+      ],
+      [
+       71.3494886135729,
+       33.9252067631649
+      ],
+      [
+       71.3494820842815,
+       33.9249545079076
+      ],
+      [
+       71.3495806917993,
+       33.9249527342144
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 84,
+    "cell": "0105_0102",
+    "roof_area_m2": 702.3,
+    "p_roofclf": 0.329301,
+    "sppi": -0.075937,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3543193430844,
+       33.9271379574665
+      ],
+      [
+       71.3542220794449,
+       33.92716541769901
+      ],
+      [
+       71.3542128627119,
+       33.927142732777
+      ],
+      [
+       71.353840090584,
+       33.9272479758533
+      ],
+      [
+       71.3538493072329,
+       33.9272706608065
+      ],
+      [
+       71.353747763138,
+       33.9272993290584
+      ],
+      [
+       71.3536981017237,
+       33.9271770968215
+      ],
+      [
+       71.3542696809749,
+       33.92701572548789
+      ],
+      [
+       71.3543193430844,
+       33.9271379574665
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 85,
+    "cell": "0105_0102",
+    "roof_area_m2": 304.7,
+    "p_roofclf": 0.326578,
+    "sppi": -0.081867,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3501156369569,
+       33.9299913925075
+      ],
+      [
+       71.3501172959505,
+       33.9301034994293
+      ],
+      [
+       71.3500156959141,
+       33.9301045440853
+      ],
+      [
+       71.3500159645201,
+       33.93012269657769
+      ],
+      [
+       71.3499656043511,
+       33.9301232143524
+      ],
+      [
+       71.3499653357559,
+       33.93010506185951
+      ],
+      [
+       71.34986058735971,
+       33.9301061387563
+      ],
+      [
+       71.3498589287024,
+       33.92999403181691
+      ],
+      [
+       71.3501156369569,
+       33.9299913925075
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 86,
+    "cell": "0105_0102",
+    "roof_area_m2": 185.7,
+    "p_roofclf": 0.253757,
+    "sppi": -0.047291,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3484076460842,
+       33.9304700811221
+      ],
+      [
+       71.3484018460219,
+       33.9305486539316
+      ],
+      [
+       71.3482101703704,
+       33.930538822596
+      ],
+      [
+       71.3482118472081,
+       33.9305161073626
+      ],
+      [
+       71.3481586060144,
+       33.9305133764866
+      ],
+      [
+       71.34816272945082,
+       33.9304575189121
+      ],
+      [
+       71.3484076460842,
+       33.9304700811221
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 87,
+    "cell": "0105_0102",
+    "roof_area_m2": 589.7,
+    "p_roofclf": 0.362164,
+    "sppi": -0.056822,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3481566707546,
+       33.9302991406709
+      ],
+      [
+       71.3481568181844,
+       33.9303377386243
+      ],
+      [
+       71.3485727849128,
+       33.930336633938694
+      ],
+      [
+       71.3485731445852,
+       33.9304306769229
+      ],
+      [
+       71.3480187678783,
+       33.9304321488977
+      ],
+      [
+       71.3480182614489,
+       33.930299507930606
+      ],
+      [
+       71.3481566707546,
+       33.9302991406709
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 88,
+    "cell": "0105_0102",
+    "roof_area_m2": 1068.1,
+    "p_roofclf": 0.354704,
+    "sppi": -0.068976,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3484403,
+       33.9307715
+      ],
+      [
+       71.3484425,
+       33.9308977
+      ],
+      [
+       71.3480883,
+       33.9309021
+      ],
+      [
+       71.3480901,
+       33.931006999999994
+      ],
+      [
+       71.3483645,
+       33.9310036
+      ],
+      [
+       71.3483655,
+       33.93105630000001
+      ],
+      [
+       71.3479151,
+       33.9310619
+      ],
+      [
+       71.3479142,
+       33.9310102
+      ],
+      [
+       71.3478433,
+       33.931011100000006
+      ],
+      [
+       71.3478398,
+       33.93081649999999
+      ],
+      [
+       71.348412,
+       33.9308094
+      ],
+      [
+       71.3484113,
+       33.93077180000001
+      ],
+      [
+       71.3484403,
+       33.9307715
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 89,
+    "cell": "0105_0102",
+    "roof_area_m2": 228.7,
+    "p_roofclf": 0.387564,
+    "sppi": -0.038356,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34846482150228,
+       33.93180913761379
+      ],
+      [
+       71.34857471124478,
+       33.93181161355221
+      ],
+      [
+       71.34857289634424,
+       33.931867208529624
+      ],
+      [
+       71.34867054111278,
+       33.93186940857362
+      ],
+      [
+       71.34866901265994,
+       33.931916108236706
+      ],
+      [
+       71.34871342442177,
+       33.93191710888196
+      ],
+      [
+       71.34871258578761,
+       33.93194279833297
+      ],
+      [
+       71.34846064297383,
+       33.931937136419386
+      ],
+      [
+       71.34846482150228,
+       33.93180913761379
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 90,
+    "cell": "0105_0102",
+    "roof_area_m2": 772.6,
+    "p_roofclf": 0.522388,
+    "sppi": -0.043159,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3484614933037,
+       33.931689590152494
+      ],
+      [
+       71.3484579413929,
+       33.9317849770453
+      ],
+      [
+       71.34829635720432,
+       33.9317807963458
+      ],
+      [
+       71.3482891977795,
+       33.9319730534563
+      ],
+      [
+       71.34845078233242,
+       33.93197723414959
+      ],
+      [
+       71.3484488922031,
+       33.9320279936866
+      ],
+      [
+       71.348421181414,
+       33.932027276738395
+      ],
+      [
+       71.3484179874486,
+       33.9321130500878
+      ],
+      [
+       71.3481894843281,
+       33.9321071379052
+      ],
+      [
+       71.3482052806405,
+       33.931682961001
+      ],
+      [
+       71.3484614933037,
+       33.931689590152494
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 91,
+    "cell": "0105_0102",
+    "roof_area_m2": 290.8,
+    "p_roofclf": 0.317233,
+    "sppi": -0.069837,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3508188682835,
+       33.93294700855691
+      ],
+      [
+       71.350811191704,
+       33.9330411011627
+      ],
+      [
+       71.3505112878405,
+       33.93302410085751
+      ],
+      [
+       71.350518964751,
+       33.9329300082563
+      ],
+      [
+       71.3508188682835,
+       33.93294700855691
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 92,
+    "cell": "0105_0102",
+    "roof_area_m2": 645.6,
+    "p_roofclf": 0.395454,
+    "sppi": -0.057795,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3496034239899,
+       33.9349290082018
+      ],
+      [
+       71.3495943585842,
+       33.9350096139079
+      ],
+      [
+       71.3492431224843,
+       33.9349821690246
+      ],
+      [
+       71.3492397413441,
+       33.9350122315432
+      ],
+      [
+       71.349198563784,
+       33.9350090139448
+      ],
+      [
+       71.3492019449386,
+       33.9349789514267
+      ],
+      [
+       71.3488358034771,
+       33.9349503406512
+      ],
+      [
+       71.3488448695987,
+       33.9348697349706
+      ],
+      [
+       71.3496034239899,
+       33.9349290082018
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 93,
+    "cell": "0105_0102",
+    "roof_area_m2": 380.1,
+    "p_roofclf": 0.344235,
+    "sppi": -0.063239,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3589489464816,
+       33.9361789887507
+      ],
+      [
+       71.3589739187645,
+       33.9362445092718
+      ],
+      [
+       71.3591221137527,
+       33.9362052686722
+      ],
+      [
+       71.3591652226046,
+       33.9363183738731
+      ],
+      [
+       71.3589224661493,
+       33.9363826533464
+      ],
+      [
+       71.3588543853556,
+       33.9362040275064
+      ],
+      [
+       71.3589489464816,
+       33.9361789887507
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 94,
+    "cell": "0105_0102",
+    "roof_area_m2": 134.6,
+    "p_roofclf": 0.380281,
+    "sppi": -0.02815,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3595922667593,
+       33.93626813263289
+      ],
+      [
+       71.3596399819379,
+       33.936259620439
+      ],
+      [
+       71.3596599371544,
+       33.9363373327883
+      ],
+      [
+       71.3595332567876,
+       33.9363599320115
+      ],
+      [
+       71.3595045304222,
+       33.9362480611559
+      ],
+      [
+       71.3595834954732,
+       33.936233974158
+      ],
+      [
+       71.3595922667593,
+       33.93626813263289
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 95,
+    "cell": "0105_0102",
+    "roof_area_m2": 279.3,
+    "p_roofclf": 0.396017,
+    "sppi": -0.040973,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3596971730431,
+       33.9364622094977
+      ],
+      [
+       71.3594811752535,
+       33.9364981147499
+      ],
+      [
+       71.3594540095622,
+       33.9363845790986
+      ],
+      [
+       71.3595356134362,
+       33.9363710141619
+      ],
+      [
+       71.3595326545359,
+       33.9363586478315
+      ],
+      [
+       71.3596670481632,
+       33.936336307578
+      ],
+      [
+       71.3596971730431,
+       33.9364622094977
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 96,
+    "cell": "0105_0102",
+    "roof_area_m2": 168.8,
+    "p_roofclf": 0.353754,
+    "sppi": -0.014806,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3595411381063,
+       33.9361273834746
+      ],
+      [
+       71.3594252381747,
+       33.936155930196
+      ],
+      [
+       71.3594064300938,
+       33.9361028792325
+      ],
+      [
+       71.3593707083444,
+       33.9361116776472
+      ],
+      [
+       71.35934968944831,
+       33.9360523905962
+      ],
+      [
+       71.3595013109728,
+       33.9360150455101
+      ],
+      [
+       71.3595411381063,
+       33.9361273834746
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 97,
+    "cell": "0105_0102",
+    "roof_area_m2": 86.5,
+    "p_roofclf": 0.292771,
+    "sppi": -0.043295,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3594545906294,
+       33.9357739164967
+      ],
+      [
+       71.359506484259,
+       33.9358869980069
+      ],
+      [
+       71.3594414196469,
+       33.9359077419273
+      ],
+      [
+       71.3593895724296,
+       33.935794761371604
+      ],
+      [
+       71.3594545906294,
+       33.9357739164967
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 98,
+    "cell": "0105_0102",
+    "roof_area_m2": 75.3,
+    "p_roofclf": 0.265718,
+    "sppi": -0.037402,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3594766176306,
+       33.9357269495786
+      ],
+      [
+       71.3594425058192,
+       33.9357397949961
+      ],
+      [
+       71.3594545359465,
+       33.9357619898208
+      ],
+      [
+       71.3593898287049,
+       33.935786356465
+      ],
+      [
+       71.3593522413926,
+       33.9357170101095
+      ],
+      [
+       71.35945106039212,
+       33.9356797980766
+      ],
+      [
+       71.3594766176306,
+       33.9357269495786
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 99,
+    "cell": "0105_0102",
+    "roof_area_m2": 789.3,
+    "p_roofclf": 0.609144,
+    "sppi": -0.046385,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3564682494151,
+       33.9341013138896
+      ],
+      [
+       71.3564234519305,
+       33.934182378437
+      ],
+      [
+       71.3563995144766,
+       33.9341731878743
+      ],
+      [
+       71.3563899904396,
+       33.9341904223332
+      ],
+      [
+       71.3563299711245,
+       33.9341673784455
+      ],
+      [
+       71.3563394951712,
+       33.93415014399051
+      ],
+      [
+       71.3562686382191,
+       33.934122939033
+      ],
+      [
+       71.3561810730877,
+       33.9342813939805
+      ],
+      [
+       71.3562965768296,
+       33.9343257406893
+      ],
+      [
+       71.3562490367312,
+       33.934411767627296
+      ],
+      [
+       71.3560108092122,
+       33.934320301958
+      ],
+      [
+       71.3561907125369,
+       33.9339947557778
+      ],
+      [
+       71.3564682494151,
+       33.9341013138896
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 100,
+    "cell": "0105_0102",
+    "roof_area_m2": 234.9,
+    "p_roofclf": 0.273369,
+    "sppi": -0.059339,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3584474282019,
+       33.9309645201969
+      ],
+      [
+       71.358213872997,
+       33.9310059559835
+      ],
+      [
+       71.3581899286809,
+       33.9309121796942
+      ],
+      [
+       71.358423483647,
+       33.9308707439629
+      ],
+      [
+       71.3584474282019,
+       33.9309645201969
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 101,
+    "cell": "0105_0102",
+    "roof_area_m2": 248.2,
+    "p_roofclf": 0.268123,
+    "sppi": -0.048928,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3595254584581,
+       33.9306684002221
+      ],
+      [
+       71.3593728093589,
+       33.93068355420711
+      ],
+      [
+       71.3593504850946,
+       33.9305273023439
+      ],
+      [
+       71.3595031339221,
+       33.9305121483981
+      ],
+      [
+       71.3595254584581,
+       33.9306684002221
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 102,
+    "cell": "0105_0102",
+    "roof_area_m2": 310.4,
+    "p_roofclf": 0.284289,
+    "sppi": -0.061651,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.358987342541,
+       33.9308774920163
+      ],
+      [
+       71.3587073575246,
+       33.9309227665166
+      ],
+      [
+       71.35868312053701,
+       33.9308186216004
+      ],
+      [
+       71.3589631052317,
+       33.93077334716819
+      ],
+      [
+       71.358987342541,
+       33.9308774920163
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 103,
+    "cell": "0105_0102",
+    "roof_area_m2": 651.9,
+    "p_roofclf": 0.257196,
+    "sppi": -0.085143,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3590206117429,
+       33.9319975946764
+      ],
+      [
+       71.3590635501381,
+       33.9321970537551
+      ],
+      [
+       71.3595947452476,
+       33.932117599849
+      ],
+      [
+       71.359614319072,
+       33.9322085219673
+      ],
+      [
+       71.3590374391172,
+       33.9322948091223
+      ],
+      [
+       71.3589749275836,
+       33.9320044277998
+      ],
+      [
+       71.3590206117429,
+       33.9319975946764
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 104,
+    "cell": "0105_0102",
+    "roof_area_m2": 303.6,
+    "p_roofclf": 0.380355,
+    "sppi": -0.054432,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3595003304374,
+       33.9330862795491
+      ],
+      [
+       71.3591548086346,
+       33.93310945505699
+      ],
+      [
+       71.3591463595836,
+       33.93302193334111
+      ],
+      [
+       71.3594643935937,
+       33.93300060159731
+      ],
+      [
+       71.3594673475525,
+       33.93303119981049
+      ],
+      [
+       71.3594948350064,
+       33.93302935608361
+      ],
+      [
+       71.3595003304374,
+       33.9330862795491
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 105,
+    "cell": "0105_0102",
+    "roof_area_m2": 429.4,
+    "p_roofclf": 0.329719,
+    "sppi": -0.067288,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3606806072555,
+       33.9325262857511
+      ],
+      [
+       71.3606982996394,
+       33.93269790953989
+      ],
+      [
+       71.3610013225523,
+       33.9326762050674
+      ],
+      [
+       71.3610103371544,
+       33.9327636472734
+      ],
+      [
+       71.3606492077371,
+       33.9327895136389
+      ],
+      [
+       71.3606225012299,
+       33.932530447591006
+      ],
+      [
+       71.3606806072555,
+       33.9325262857511
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 106,
+    "cell": "0105_0102",
+    "roof_area_m2": 238.9,
+    "p_roofclf": 0.279206,
+    "sppi": -0.054768,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3613444145695,
+       33.9303794829787
+      ],
+      [
+       71.3611214098563,
+       33.930442487992
+      ],
+      [
+       71.3610833313619,
+       33.9303488396007
+      ],
+      [
+       71.361306335868,
+       33.9302858346668
+      ],
+      [
+       71.3613444145695,
+       33.9303794829787
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 107,
+    "cell": "0105_0102",
+    "roof_area_m2": 197.0,
+    "p_roofclf": 0.307707,
+    "sppi": -0.043344,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3626711350331,
+       33.9311359506558
+      ],
+      [
+       71.3624849951181,
+       33.9311756477373
+      ],
+      [
+       71.3624552800499,
+       33.931078835159
+      ],
+      [
+       71.3626414197733,
+       33.9310391381302
+      ],
+      [
+       71.3626711350331,
+       33.9311359506558
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 108,
+    "cell": "0105_0102",
+    "roof_area_m2": 198.0,
+    "p_roofclf": 0.296711,
+    "sppi": -0.067196,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3622223045164,
+       33.9316931677338
+      ],
+      [
+       71.3620995813239,
+       33.9317502747712
+      ],
+      [
+       71.3620192974702,
+       33.93163039866359
+      ],
+      [
+       71.36214202055442,
+       33.9315732917107
+      ],
+      [
+       71.3622223045164,
+       33.9316931677338
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 109,
+    "cell": "0105_0102",
+    "roof_area_m2": 292.0,
+    "p_roofclf": 0.323956,
+    "sppi": -0.043707,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3637369540991,
+       33.9325445835374
+      ],
+      [
+       71.3632224202895,
+       33.93261859072331
+      ],
+      [
+       71.3632112980494,
+       33.9325648632727
+      ],
+      [
+       71.3637258315506,
+       33.9324908561451
+      ],
+      [
+       71.3637369540991,
+       33.9325445835374
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 110,
+    "cell": "0105_0102",
+    "roof_area_m2": 308.1,
+    "p_roofclf": 0.305394,
+    "sppi": -0.052856,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3638729329433,
+       33.932850143882206
+      ],
+      [
+       71.3633184593495,
+       33.932936799684
+      ],
+      [
+       71.3633066884063,
+       33.9328844691521
+      ],
+      [
+       71.363861161679,
+       33.9327978134167
+      ],
+      [
+       71.3638729329433,
+       33.932850143882206
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 111,
+    "cell": "0105_0102",
+    "roof_area_m2": 379.0,
+    "p_roofclf": 0.603803,
+    "sppi": -0.031488,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3599799626361,
+       33.9364152008494
+      ],
+      [
+       71.3596971730431,
+       33.9364622094977
+      ],
+      [
+       71.3596617040595,
+       33.9363139727414
+      ],
+      [
+       71.3598818525475,
+       33.9362773771208
+      ],
+      [
+       71.3599062378745,
+       33.9363792905445
+      ],
+      [
+       71.3599688785887,
+       33.9363688776019
+      ],
+      [
+       71.3599799626361,
+       33.9364152008494
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 112,
+    "cell": "0105_0102",
+    "roof_area_m2": 551.8,
+    "p_roofclf": 0.356157,
+    "sppi": -0.07467,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.362416083088,
+       33.9349673521787
+      ],
+      [
+       71.36240774629911,
+       33.9350971237527
+      ],
+      [
+       71.3624257486579,
+       33.9350979272414
+      ],
+      [
+       71.3624227126407,
+       33.93514518638771
+      ],
+      [
+       71.3625109113553,
+       33.935149122867806
+      ],
+      [
+       71.3625091676107,
+       33.9351762667227
+      ],
+      [
+       71.362655771323,
+       33.9351828097893
+      ],
+      [
+       71.3626480639449,
+       33.93530278911211
+      ],
+      [
+       71.3623348874398,
+       33.9352888115447
+      ],
+      [
+       71.3623557119985,
+       33.9349646576481
+      ],
+      [
+       71.362416083088,
+       33.9349673521787
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 113,
+    "cell": "0105_0102",
+    "roof_area_m2": 238.3,
+    "p_roofclf": 0.288812,
+    "sppi": -0.033474,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3593049733141,
+       33.9363334392633
+      ],
+      [
+       71.3593437006958,
+       33.9364350479551
+      ],
+      [
+       71.3594045719258,
+       33.936418929696
+      ],
+      [
+       71.3594343557173,
+       33.936497072837
+      ],
+      [
+       71.3592825426508,
+       33.9365372717754
+      ],
+      [
+       71.359214031692,
+       33.93635751986889
+      ],
+      [
+       71.3593049733141,
+       33.9363334392633
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 114,
+    "cell": "0105_0102",
+    "roof_area_m2": 310.4,
+    "p_roofclf": 0.310009,
+    "sppi": -0.048584,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3589325,
+       33.9373255
+      ],
+      [
+       71.3587553,
+       33.937325
+      ],
+      [
+       71.3587551,
+       33.937356799999996
+      ],
+      [
+       71.3585305,
+       33.9373561
+      ],
+      [
+       71.3585309,
+       33.9372668
+      ],
+      [
+       71.3589327,
+       33.937268
+      ],
+      [
+       71.3589325,
+       33.9373255
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 115,
+    "cell": "0105_0102",
+    "roof_area_m2": 377.9,
+    "p_roofclf": 0.446486,
+    "sppi": -0.054824,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3583798202633,
+       33.9371173559113
+      ],
+      [
+       71.3583832988656,
+       33.9371545399465
+      ],
+      [
+       71.3588434583542,
+       33.9371246324712
+      ],
+      [
+       71.3588484498534,
+       33.937177985277295
+      ],
+      [
+       71.3582549793844,
+       33.93721655682
+      ],
+      [
+       71.358246509706,
+       33.9371260199332
+      ],
+      [
+       71.3583798202633,
+       33.9371173559113
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 116,
+    "cell": "0105_0102",
+    "roof_area_m2": 309.3,
+    "p_roofclf": 0.340946,
+    "sppi": -0.049125,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3588379636912,
+       33.9364668900923
+      ],
+      [
+       71.3587598519716,
+       33.9364894832637
+      ],
+      [
+       71.3587812491263,
+       33.936540877266104
+      ],
+      [
+       71.3586711916804,
+       33.936572710377504
+      ],
+      [
+       71.358602761083,
+       33.9364083456088
+      ],
+      [
+       71.3587909299816,
+       33.936353919427994
+      ],
+      [
+       71.3588379636912,
+       33.9364668900923
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 117,
+    "cell": "0105_0102",
+    "roof_area_m2": 219.2,
+    "p_roofclf": 0.316116,
+    "sppi": -0.050184,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3583125093093,
+       33.936785409973
+      ],
+      [
+       71.3582742953336,
+       33.9367861270573
+      ],
+      [
+       71.35827480457,
+       33.93680498041321
+      ],
+      [
+       71.3581022114417,
+       33.9368082189745
+      ],
+      [
+       71.358099665,
+       33.9367139353527
+      ],
+      [
+       71.3582483917788,
+       33.93671114464531
+      ],
+      [
+       71.3582474335297,
+       33.9366756670154
+      ],
+      [
+       71.358309513605,
+       33.9366745020932
+      ],
+      [
+       71.3583125093093,
+       33.936785409973
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 118,
+    "cell": "0105_0102",
+    "roof_area_m2": 232.5,
+    "p_roofclf": 0.367222,
+    "sppi": -0.050481,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3578944976321,
+       33.93702290991649
+      ],
+      [
+       71.3576611001303,
+       33.9370439466018
+      ],
+      [
+       71.3576486453023,
+       33.9369479461391
+      ],
+      [
+       71.3578820425476,
+       33.9369269094881
+      ],
+      [
+       71.3578944976321,
+       33.93702290991649
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 119,
+    "cell": "0105_0102",
+    "roof_area_m2": 114.6,
+    "p_roofclf": 0.304475,
+    "sppi": -0.03523,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3591256360497,
+       33.9385119526191
+      ],
+      [
+       71.3591198685822,
+       33.9386094279095
+      ],
+      [
+       71.3590575694054,
+       33.9386068671359
+      ],
+      [
+       71.3590600310441,
+       33.9385652638025
+      ],
+      [
+       71.3589691658287,
+       33.9385615287787
+      ],
+      [
+       71.3589724717887,
+       33.9385056568213
+      ],
+      [
+       71.3591256360497,
+       33.9385119526191
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 120,
+    "cell": "0105_0102",
+    "roof_area_m2": 343.1,
+    "p_roofclf": 0.494254,
+    "sppi": -0.036876,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3589007924363,
+       33.9382629583153
+      ],
+      [
+       71.3588994218017,
+       33.9382956446791
+      ],
+      [
+       71.3589459610545,
+       33.93829700040009
+      ],
+      [
+       71.3589413708475,
+       33.93840646723329
+      ],
+      [
+       71.35918562875,
+       33.938413582332
+      ],
+      [
+       71.359183221297,
+       33.9384709989392
+      ],
+      [
+       71.3588342459536,
+       33.93846083333751
+      ],
+      [
+       71.3588426146402,
+       33.9382612635297
+      ],
+      [
+       71.3589007924363,
+       33.9382629583153
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 121,
+    "cell": "0105_0102",
+    "roof_area_m2": 346.8,
+    "p_roofclf": 0.39098,
+    "sppi": -0.04384,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.35966336981382,
+       33.93989635095401
+      ],
+      [
+       71.3596529846503,
+       33.9399840550801
+      ],
+      [
+       71.3592711879431,
+       33.9399526488812
+      ],
+      [
+       71.35928157349882,
+       33.9398649447705
+      ],
+      [
+       71.35966336981382,
+       33.93989635095401
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 122,
+    "cell": "0105_0102",
+    "roof_area_m2": 406.3,
+    "p_roofclf": 0.272251,
+    "sppi": -0.083156,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3586987731314,
+       33.9404547707556
+      ],
+      [
+       71.3586812601199,
+       33.94062264801481
+      ],
+      [
+       71.35877365653651,
+       33.94062934373001
+      ],
+      [
+       71.3587623398447,
+       33.94073782482119
+      ],
+      [
+       71.3585639607431,
+       33.9407234487541
+      ],
+      [
+       71.3585927909054,
+       33.9404470904177
+      ],
+      [
+       71.3586987731314,
+       33.9404547707556
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 123,
+    "cell": "0105_0102",
+    "roof_area_m2": 504.9,
+    "p_roofclf": 0.549966,
+    "sppi": -0.048081,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3563585616062,
+       33.9423142147018
+      ],
+      [
+       71.3562356481446,
+       33.9423289528595
+      ],
+      [
+       71.3562265369718,
+       33.942276170385
+      ],
+      [
+       71.3561252739136,
+       33.942288312414
+      ],
+      [
+       71.3561343850261,
+       33.942341094898694
+      ],
+      [
+       71.356009394722,
+       33.942356081847095
+      ],
+      [
+       71.3559829119592,
+       33.942202660433395
+      ],
+      [
+       71.3563320782384,
+       33.9421607933888
+      ],
+      [
+       71.3563585616062,
+       33.9423142147018
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 124,
+    "cell": "0105_0102",
+    "roof_area_m2": 884.1,
+    "p_roofclf": 0.470069,
+    "sppi": -0.076654,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3595262,
+       33.9416413
+      ],
+      [
+       71.3595231,
+       33.9418991
+      ],
+      [
+       71.3594075,
+       33.9418982
+      ],
+      [
+       71.3594094,
+       33.9417434
+      ],
+      [
+       71.3588624,
+       33.94173880000001
+      ],
+      [
+       71.3588637,
+       33.9416357
+      ],
+      [
+       71.3595262,
+       33.9416413
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 125,
+    "cell": "0105_0102",
+    "roof_area_m2": 365.9,
+    "p_roofclf": 0.315245,
+    "sppi": -0.055197,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.360730581116,
+       33.9425318022392
+      ],
+      [
+       71.3607274645736,
+       33.9427030209062
+      ],
+      [
+       71.36051919490201,
+       33.9427003874287
+      ],
+      [
+       71.3605223118624,
+       33.942529168748706
+      ],
+      [
+       71.360730581116,
+       33.9425318022392
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 126,
+    "cell": "0105_0102",
+    "roof_area_m2": 351.2,
+    "p_roofclf": 0.376284,
+    "sppi": -0.079967,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3613391132816,
+       33.9428979053355
+      ],
+      [
+       71.3613405253067,
+       33.9429851225199
+      ],
+      [
+       71.360947974004,
+       33.9429895364593
+      ],
+      [
+       71.36094656238,
+       33.9429023192534
+      ],
+      [
+       71.3613391132816,
+       33.9428979053355
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 127,
+    "cell": "0105_0102",
+    "roof_area_m2": 208.4,
+    "p_roofclf": 0.257288,
+    "sppi": -0.059747,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.361397,
+       33.9427464
+      ],
+      [
+       71.3613096,
+       33.9427469
+      ],
+      [
+       71.3613109,
+       33.9429053
+      ],
+      [
+       71.3612485,
+       33.9429056
+      ],
+      [
+       71.3612481,
+       33.9428684
+      ],
+      [
+       71.3612175,
+       33.9428685
+      ],
+      [
+       71.36121620000002,
+       33.94271020000001
+      ],
+      [
+       71.3613967,
+       33.9427092
+      ],
+      [
+       71.361397,
+       33.9427464
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 128,
+    "cell": "0105_0102",
+    "roof_area_m2": 240.2,
+    "p_roofclf": 0.356087,
+    "sppi": -0.055327,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3618235309308,
+       33.9421138519939
+      ],
+      [
+       71.3618205380895,
+       33.9421959366733
+      ],
+      [
+       71.3615354668702,
+       33.9421887164047
+      ],
+      [
+       71.361538459986,
+       33.94210663172041
+      ],
+      [
+       71.3618235309308,
+       33.9421138519939
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 129,
+    "cell": "0105_0102",
+    "roof_area_m2": 78.4,
+    "p_roofclf": 0.302775,
+    "sppi": -0.034375,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.36158736546871,
+       33.94206464127371
+      ],
+      [
+       71.3615874756114,
+       33.9420312222863
+      ],
+      [
+       71.3616705438965,
+       33.9420314124357
+      ],
+      [
+       71.36167030687392,
+       33.9421033502364
+      ],
+      [
+       71.3615438600244,
+       33.94210306077241
+      ],
+      [
+       71.361543986994,
+       33.94206454195601
+      ],
+      [
+       71.36158736546871,
+       33.94206464127371
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 130,
+    "cell": "0105_0102",
+    "roof_area_m2": 707.5,
+    "p_roofclf": 0.263106,
+    "sppi": -0.086819,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3608242,
+       33.94067429999999
+      ],
+      [
+       71.3608243,
+       33.9407317
+      ],
+      [
+       71.3606798,
+       33.9407318
+      ],
+      [
+       71.3606799,
+       33.9408085
+      ],
+      [
+       71.3608463,
+       33.9408083
+      ],
+      [
+       71.3608466,
+       33.9410462
+      ],
+      [
+       71.360752,
+       33.9410463
+      ],
+      [
+       71.3607519,
+       33.94098090000001
+      ],
+      [
+       71.36055,
+       33.94098100000001
+      ],
+      [
+       71.36054990000001,
+       33.9408576
+      ],
+      [
+       71.3606267,
+       33.940857599999994
+      ],
+      [
+       71.3606265,
+       33.94067449999999
+      ],
+      [
+       71.3608242,
+       33.94067429999999
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 131,
+    "cell": "0105_0102",
+    "roof_area_m2": 218.9,
+    "p_roofclf": 0.275606,
+    "sppi": -0.047648,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3600858452737,
+       33.9400424561172
+      ],
+      [
+       71.3600662769391,
+       33.94022297791471
+      ],
+      [
+       71.3599490277204,
+       33.9402141488172
+      ],
+      [
+       71.359968596302,
+       33.9400336270275
+      ],
+      [
+       71.3600858452737,
+       33.9400424561172
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 132,
+    "cell": "0105_0102",
+    "roof_area_m2": 314.2,
+    "p_roofclf": 0.311809,
+    "sppi": -0.076612,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3620685702149,
+       33.94281016630091
+      ],
+      [
+       71.3620398959079,
+       33.9429151239609
+      ],
+      [
+       71.3617624016678,
+       33.9428624632023
+      ],
+      [
+       71.3617910763058,
+       33.9427575055924
+      ],
+      [
+       71.3620685702149,
+       33.94281016630091
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 133,
+    "cell": "0105_0102",
+    "roof_area_m2": 243.4,
+    "p_roofclf": 0.324352,
+    "sppi": -0.063262,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3561119467446,
+       33.9458213229101
+      ],
+      [
+       71.3558615493213,
+       33.9458724470307
+      ],
+      [
+       71.3558352674691,
+       33.9457830375824
+      ],
+      [
+       71.3560856646523,
+       33.9457319135252
+      ],
+      [
+       71.3561119467446,
+       33.9458213229101
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 134,
+    "cell": "0105_0102",
+    "roof_area_m2": 508.0,
+    "p_roofclf": 0.33348,
+    "sppi": -0.073442,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3500244954358,
+       33.9448429162014
+      ],
+      [
+       71.3500387897482,
+       33.9448849559325
+      ],
+      [
+       71.349945588668,
+       33.9449069676749
+      ],
+      [
+       71.3499947723049,
+       33.9450516173897
+      ],
+      [
+       71.3502218459019,
+       33.9449979881729
+      ],
+      [
+       71.3502502929054,
+       33.9450816502812
+      ],
+      [
+       71.3499989629503,
+       33.945141008242
+      ],
+      [
+       71.3499851971572,
+       33.9451005229793
+      ],
+      [
+       71.3499139673653,
+       33.9451173455971
+      ],
+      [
+       71.3498358086841,
+       33.9448874791595
+      ],
+      [
+       71.3500244954358,
+       33.9448429162014
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 135,
+    "cell": "0105_0102",
+    "roof_area_m2": 154.8,
+    "p_roofclf": 0.285613,
+    "sppi": -0.048798,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3534364097594,
+       33.9398947023386
+      ],
+      [
+       71.3534351025578,
+       33.940021733868996
+      ],
+      [
+       71.35331632299902,
+       33.9400208847245
+      ],
+      [
+       71.3533176303773,
+       33.939893853188
+      ],
+      [
+       71.3534364097594,
+       33.9398947023386
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 136,
+    "cell": "0105_0102",
+    "roof_area_m2": 228.2,
+    "p_roofclf": 0.409769,
+    "sppi": -0.051529,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3532845002595,
+       33.9398970046971
+      ],
+      [
+       71.3532836932675,
+       33.9400028215256
+      ],
+      [
+       71.3530734766133,
+       33.9400017076601
+      ],
+      [
+       71.3530742838658,
+       33.93989589082631
+      ],
+      [
+       71.3532845002595,
+       33.9398970046971
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 137,
+    "cell": "0105_0102",
+    "roof_area_m2": 310.9,
+    "p_roofclf": 0.318668,
+    "sppi": -0.061896,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3537751438451,
+       33.94059877034551
+      ],
+      [
+       71.35377880288982,
+       33.940702259994694
+      ],
+      [
+       71.3534861985554,
+       33.9407094462932
+      ],
+      [
+       71.353482539864,
+       33.9406059566204
+      ],
+      [
+       71.3537751438451,
+       33.94059877034551
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 138,
+    "cell": "0105_0102",
+    "roof_area_m2": 306.8,
+    "p_roofclf": 0.269148,
+    "sppi": -0.064921,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3556838048945,
+       33.9391573814451
+      ],
+      [
+       71.35537988105621,
+       33.9391862906034
+      ],
+      [
+       71.3553665813425,
+       33.9390891574808
+      ],
+      [
+       71.3556705048436,
+       33.9390602483694
+      ],
+      [
+       71.3556838048945,
+       33.9391573814451
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 139,
+    "cell": "0105_0102",
+    "roof_area_m2": 133.9,
+    "p_roofclf": 0.256951,
+    "sppi": -0.054651,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.355479569188,
+       33.9371277705789
+      ],
+      [
+       71.3555065245967,
+       33.93736387996561
+      ],
+      [
+       71.3554517207126,
+       33.9373682265934
+      ],
+      [
+       71.3554247654524,
+       33.9371321171883
+      ],
+      [
+       71.355479569188,
+       33.9371277705789
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 140,
+    "cell": "0105_0102",
+    "roof_area_m2": 229.9,
+    "p_roofclf": 0.492039,
+    "sppi": -0.018075,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.354233,
+       33.9366632
+      ],
+      [
+       71.3542315,
+       33.93672130000001
+      ],
+      [
+       71.3542602,
+       33.93672190000001
+      ],
+      [
+       71.354259,
+       33.93676730000001
+      ],
+      [
+       71.3540927,
+       33.93676419999999
+      ],
+      [
+       71.354094,
+       33.936718799999994
+      ],
+      [
+       71.3539764,
+       33.9367165
+      ],
+      [
+       71.353978,
+       33.9366583
+      ],
+      [
+       71.354233,
+       33.9366632
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 141,
+    "cell": "0105_0102",
+    "roof_area_m2": 442.4,
+    "p_roofclf": 0.274246,
+    "sppi": -0.052694,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3538899681047,
+       33.936410907837704
+      ],
+      [
+       71.3538876939016,
+       33.9364843182171
+      ],
+      [
+       71.3540271909514,
+       33.9364873204371
+      ],
+      [
+       71.3540229166448,
+       33.9366253006317
+      ],
+      [
+       71.3537653723515,
+       33.93661975772229
+      ],
+      [
+       71.35376632117021,
+       33.936589131608194
+      ],
+      [
+       71.353793980309,
+       33.9365897269186
+      ],
+      [
+       71.3537952164257,
+       33.9365498269287
+      ],
+      [
+       71.3537675573001,
+       33.93654923161759
+      ],
+      [
+       71.3537719213811,
+       33.93640836713771
+      ],
+      [
+       71.3538899681047,
+       33.936410907837704
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 142,
+    "cell": "0105_0102",
+    "roof_area_m2": 211.3,
+    "p_roofclf": 0.28627,
+    "sppi": -0.060285,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3534225764635,
+       33.9373722868421
+      ],
+      [
+       71.3534208248151,
+       33.9373969700225
+      ],
+      [
+       71.3534481133609,
+       33.9373983153654
+      ],
+      [
+       71.3534445927118,
+       33.9374479264535
+      ],
+      [
+       71.3532490400283,
+       33.9374382854495
+      ],
+      [
+       71.3532507934048,
+       33.9374135786168
+      ],
+      [
+       71.3532119517549,
+       33.937411663635
+      ],
+      [
+       71.3532101983672,
+       33.9374363704672
+      ],
+      [
+       71.3531463846869,
+       33.937433224280696
+      ],
+      [
+       71.3531516572356,
+       33.93735893001401
+      ],
+      [
+       71.3534225764635,
+       33.9373722868421
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 143,
+    "cell": "0105_0102",
+    "roof_area_m2": 551.1,
+    "p_roofclf": 0.400019,
+    "sppi": -0.059553,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3513518204353,
+       33.9365855347375
+      ],
+      [
+       71.3508368915956,
+       33.9365943139297
+      ],
+      [
+       71.3508343327031,
+       33.9364900305083
+      ],
+      [
+       71.3513492609159,
+       33.9364812513539
+      ],
+      [
+       71.3513518204353,
+       33.9365855347375
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 144,
+    "cell": "0105_0102",
+    "roof_area_m2": 442.3,
+    "p_roofclf": 0.487303,
+    "sppi": -0.022173,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.343995123471,
+       33.9406434194067
+      ],
+      [
+       71.3435882277845,
+       33.9406922157393
+      ],
+      [
+       71.3435703031411,
+       33.9405883847176
+      ],
+      [
+       71.3439771983502,
+       33.940539588464
+      ],
+      [
+       71.343995123471,
+       33.9406434194067
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 145,
+    "cell": "0105_0102",
+    "roof_area_m2": 349.8,
+    "p_roofclf": 0.275581,
+    "sppi": -0.057496,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3443791993935,
+       33.9403900051112
+      ],
+      [
+       71.344391449271,
+       33.9404864970998
+      ],
+      [
+       71.3445196499575,
+       33.940475191072
+      ],
+      [
+       71.3445318225362,
+       33.9405710727824
+      ],
+      [
+       71.3442922164228,
+       33.9405922035639
+      ],
+      [
+       71.3442677943527,
+       33.94039982981409
+      ],
+      [
+       71.3443791993935,
+       33.9403900051112
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 146,
+    "cell": "0105_0102",
+    "roof_area_m2": 252.4,
+    "p_roofclf": 0.282414,
+    "sppi": -0.037971,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3444732181463,
+       33.939872948807995
+      ],
+      [
+       71.3442318911751,
+       33.9398988142837
+      ],
+      [
+       71.3442164133915,
+       33.9397984958143
+      ],
+      [
+       71.3444577400877,
+       33.93977263038019
+      ],
+      [
+       71.3444732181463,
+       33.939872948807995
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 147,
+    "cell": "0105_0102",
+    "roof_area_m2": 484.5,
+    "p_roofclf": 0.266918,
+    "sppi": -0.070859,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3463320582974,
+       33.9403297913461
+      ],
+      [
+       71.3469326378088,
+       33.9403334706859
+      ],
+      [
+       71.3469321820131,
+       33.940385174452
+      ],
+      [
+       71.346687318148,
+       33.94038367469909
+      ],
+      [
+       71.3466869170267,
+       33.9404291619164
+      ],
+      [
+       71.3463312008256,
+       33.9404269823495
+      ],
+      [
+       71.3463320582974,
+       33.9403297913461
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 148,
+    "cell": "0105_0102",
+    "roof_area_m2": 430.2,
+    "p_roofclf": 0.473499,
+    "sppi": -0.055674,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34793425888772,
+       33.9416313284793
+      ],
+      [
+       71.3479367392815,
+       33.9416598408902
+      ],
+      [
+       71.3478786784929,
+       33.9416633494749
+      ],
+      [
+       71.34787745609131,
+       33.9416492977201
+      ],
+      [
+       71.3477138939519,
+       33.94165918155
+      ],
+      [
+       71.3477084192512,
+       33.9415962472982
+      ],
+      [
+       71.3476834192623,
+       33.9415977579923
+      ],
+      [
+       71.347678058446,
+       33.94153613256189
+      ],
+      [
+       71.3480315177853,
+       33.9415147733314
+      ],
+      [
+       71.3480410957929,
+       33.941624872307
+      ],
+      [
+       71.34793425888772,
+       33.9416313284793
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 149,
+    "cell": "0105_0102",
+    "roof_area_m2": 532.1,
+    "p_roofclf": 0.256995,
+    "sppi": -0.072642,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34126165719054,
+       33.94840335615576
+      ],
+      [
+       71.3412179038621,
+       33.948229509042676
+      ],
+      [
+       71.34130014849708,
+       33.94821526039549
+      ],
+      [
+       71.3412907802103,
+       33.94817803689815
+      ],
+      [
+       71.34137045581596,
+       33.94816423794548
+      ],
+      [
+       71.34138709021771,
+       33.94823033227175
+      ],
+      [
+       71.34146419564254,
+       33.94821697845482
+      ],
+      [
+       71.34147868366989,
+       33.94827454444816
+      ],
+      [
+       71.34156349963722,
+       33.94825985525702
+      ],
+      [
+       71.34158549997497,
+       33.94834727022459
+      ],
+      [
+       71.34126165719054,
+       33.94840335615576
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 150,
+    "cell": "0105_0102",
+    "roof_area_m2": 586.6,
+    "p_roofclf": 0.300243,
+    "sppi": -0.062768,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3463802217466,
+       33.9308306992593
+      ],
+      [
+       71.3463761377266,
+       33.9309269641326
+      ],
+      [
+       71.3457829100698,
+       33.9309094756703
+      ],
+      [
+       71.3457869947595,
+       33.9308132107883
+      ],
+      [
+       71.3463802217466,
+       33.9308306992593
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 151,
+    "cell": "0105_0102",
+    "roof_area_m2": 402.1,
+    "p_roofclf": 0.335654,
+    "sppi": -0.05259,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34182830000002,
+       33.93005010000001
+      ],
+      [
+       71.3418527,
+       33.92991030000001
+      ],
+      [
+       71.3421671,
+       33.9299484
+      ],
+      [
+       71.3421509,
+       33.9300407
+      ],
+      [
+       71.3420338,
+       33.9300265
+      ],
+      [
+       71.34202560000001,
+       33.930074000000005
+      ],
+      [
+       71.34182830000002,
+       33.93005010000001
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 152,
+    "cell": "0105_0102",
+    "roof_area_m2": 569.2,
+    "p_roofclf": 0.379492,
+    "sppi": -0.068886,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3438309290133,
+       33.926894604103595
+      ],
+      [
+       71.3438285472296,
+       33.9269902112005
+      ],
+      [
+       71.3432485369501,
+       33.9269801691599
+      ],
+      [
+       71.3432509193838,
+       33.9268845620469
+      ],
+      [
+       71.3438309290133,
+       33.926894604103595
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 153,
+    "cell": "0105_0102",
+    "roof_area_m2": 183.4,
+    "p_roofclf": 0.366388,
+    "sppi": -0.061477,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3468569159839,
+       33.92743405221301
+      ],
+      [
+       71.3468563952953,
+       33.9275196097964
+      ],
+      [
+       71.34664751009,
+       33.9275187262657
+      ],
+      [
+       71.3466480309871,
+       33.9274331686742
+      ],
+      [
+       71.3468569159839,
+       33.92743405221301
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 154,
+    "cell": "0105_0102",
+    "roof_area_m2": 106.2,
+    "p_roofclf": 0.273091,
+    "sppi": -0.019846,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34662915708132,
+       33.925131152335894
+      ],
+      [
+       71.34662731962862,
+       33.92505551229292
+      ],
+      [
+       71.3467640567327,
+       33.92505322530288
+      ],
+      [
+       71.34676589418541,
+       33.92512886534788
+      ],
+      [
+       71.34662915708132,
+       33.925131152335894
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 155,
+    "cell": "0105_0102",
+    "roof_area_m2": 203.4,
+    "p_roofclf": 0.284204,
+    "sppi": -0.048926,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3479648455879,
+       33.924551956335804
+      ],
+      [
+       71.3475900916731,
+       33.924566355066695
+      ],
+      [
+       71.3475871731305,
+       33.9245135658115
+      ],
+      [
+       71.34796192681542,
+       33.9244991670991
+      ],
+      [
+       71.3479648455879,
+       33.924551956335804
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 156,
+    "cell": "0105_0102",
+    "roof_area_m2": 849.3,
+    "p_roofclf": 0.304414,
+    "sppi": -0.095156,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3483206023626,
+       33.9234595506988
+      ],
+      [
+       71.3480704252413,
+       33.923475286901706
+      ],
+      [
+       71.3480761093567,
+       33.9235380881454
+      ],
+      [
+       71.3477141415553,
+       33.9235608551134
+      ],
+      [
+       71.3477189267196,
+       33.9236137266201
+      ],
+      [
+       71.3476424405399,
+       33.92361853729499
+      ],
+      [
+       71.3476376554221,
+       33.9235656657834
+      ],
+      [
+       71.3473671427246,
+       33.9235826795589
+      ],
+      [
+       71.3473614591233,
+       33.92351987826131
+      ],
+      [
+       71.3473267745969,
+       33.9235220596847
+      ],
+      [
+       71.3473230548987,
+       33.9234809584018
+      ],
+      [
+       71.3473831220293,
+       33.9234771805783
+      ],
+      [
+       71.3473838107835,
+       33.9234847910001
+      ],
+      [
+       71.3483175710289,
+       33.9234260598788
+      ],
+      [
+       71.3483206023626,
+       33.9234595506988
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 157,
+    "cell": "0105_0102",
+    "roof_area_m2": 1520.1,
+    "p_roofclf": 0.42626,
+    "sppi": -0.074312,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3466675,
+       33.91902110000001
+      ],
+      [
+       71.3466629,
+       33.9189619
+      ],
+      [
+       71.3467336,
+       33.9189581
+      ],
+      [
+       71.3467529,
+       33.9192039
+      ],
+      [
+       71.3468595,
+       33.9191981
+      ],
+      [
+       71.3468625,
+       33.9192359
+      ],
+      [
+       71.3468004,
+       33.9192392
+      ],
+      [
+       71.3468027,
+       33.9192687
+      ],
+      [
+       71.3469494,
+       33.919260699999995
+      ],
+      [
+       71.3469587,
+       33.9193798
+      ],
+      [
+       71.3471732,
+       33.9193682
+      ],
+      [
+       71.347181,
+       33.9194677
+      ],
+      [
+       71.3466169,
+       33.9194984
+      ],
+      [
+       71.3465799,
+       33.91902580000001
+      ],
+      [
+       71.3466675,
+       33.91902110000001
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 158,
+    "cell": "0105_0102",
+    "roof_area_m2": 142.4,
+    "p_roofclf": 0.2537,
+    "sppi": -0.070662,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3447610555782,
+       33.9181653941995
+      ],
+      [
+       71.3445028554607,
+       33.9182622549927
+      ],
+      [
+       71.3444787367855,
+       33.9182175692976
+      ],
+      [
+       71.3447369368019,
+       33.91812070855881
+      ],
+      [
+       71.3447610555782,
+       33.9181653941995
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 159,
+    "cell": "0105_0102",
+    "roof_area_m2": 111.2,
+    "p_roofclf": 0.339514,
+    "sppi": -0.04586,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3446532055304,
+       33.9183349928595
+      ],
+      [
+       71.3445612387525,
+       33.9183649677823
+      ],
+      [
+       71.3445132902732,
+       33.9182627202959
+      ],
+      [
+       71.3446052569621,
+       33.9182327454121
+      ],
+      [
+       71.3446532055304,
+       33.9183349928595
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 160,
+    "cell": "0105_0102",
+    "roof_area_m2": 200.1,
+    "p_roofclf": 0.279626,
+    "sppi": -0.053776,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3456776079083,
+       33.91709646330641
+      ],
+      [
+       71.345467069697,
+       33.91716187740641
+      ],
+      [
+       71.3455146906573,
+       33.9172684080701
+      ],
+      [
+       71.3454677808191,
+       33.9172829828727
+      ],
+      [
+       71.345399109973,
+       33.9171293621941
+      ],
+      [
+       71.3456565578572,
+       33.91704937336
+      ],
+      [
+       71.3456776079083,
+       33.91709646330641
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 161,
+    "cell": "0105_0102",
+    "roof_area_m2": 150.7,
+    "p_roofclf": 0.279149,
+    "sppi": -0.047494,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3439827078824,
+       33.922764587743494
+      ],
+      [
+       71.3437939911054,
+       33.9227815418413
+      ],
+      [
+       71.3438003787594,
+       33.9228309545797
+      ],
+      [
+       71.3437396762155,
+       33.9228364079649
+      ],
+      [
+       71.3437273201816,
+       33.9227408252664
+      ],
+      [
+       71.3439767393368,
+       33.9227184178064
+      ],
+      [
+       71.3439827078824,
+       33.922764587743494
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 162,
+    "cell": "0105_0102",
+    "roof_area_m2": 328.7,
+    "p_roofclf": 0.261414,
+    "sppi": -0.069728,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3451029829073,
+       33.9227207371327
+      ],
+      [
+       71.3448015931377,
+       33.9227644892589
+      ],
+      [
+       71.344780041529,
+       33.9226613148696
+      ],
+      [
+       71.3450814309526,
+       33.9226175628103
+      ],
+      [
+       71.3451029829073,
+       33.9227207371327
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 163,
+    "cell": "0105_0102",
+    "roof_area_m2": 212.4,
+    "p_roofclf": 0.318057,
+    "sppi": -0.058539,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3453407188291,
+       33.9224740851098
+      ],
+      [
+       71.345120002335,
+       33.9225036377519
+      ],
+      [
+       71.3451023899112,
+       33.9224122217395
+      ],
+      [
+       71.3453231061785,
+       33.922382669136404
+      ],
+      [
+       71.3453407188291,
+       33.9224740851098
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 164,
+    "cell": "0105_0102",
+    "roof_area_m2": 126.8,
+    "p_roofclf": 0.284242,
+    "sppi": -0.065743,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34692507453,
+       33.920623159798104
+      ],
+      [
+       71.3469256442357,
+       33.9208845764834
+      ],
+      [
+       71.3468783504458,
+       33.9208846481083
+      ],
+      [
+       71.346877780885,
+       33.9206232314165
+      ],
+      [
+       71.34692507453,
+       33.920623159798104
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 165,
+    "cell": "0105_0102",
+    "roof_area_m2": 128.4,
+    "p_roofclf": 0.338896,
+    "sppi": -0.053173,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34657742458072,
+       33.9224135034217
+      ],
+      [
+       71.3463268103922,
+       33.9224640362518
+      ],
+      [
+       71.3463131210939,
+       33.9224168541357
+      ],
+      [
+       71.3465637351548,
+       33.9223663213367
+      ],
+      [
+       71.34657742458072,
+       33.9224135034217
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 166,
+    "cell": "0105_0102",
+    "roof_area_m2": 550.2,
+    "p_roofclf": 0.255398,
+    "sppi": -0.113067,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.34959806040271,
+       33.92125165413745
+      ],
+      [
+       71.34978824845722,
+       33.92128461410395
+      ],
+      [
+       71.34979522631716,
+       33.921256889139116
+      ],
+      [
+       71.34995457306555,
+       33.92128450424538
+      ],
+      [
+       71.349913779423,
+       33.921446588474794
+      ],
+      [
+       71.3495642446201,
+       33.921386013506535
+      ],
+      [
+       71.34959806040271,
+       33.92125165413745
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 167,
+    "cell": "0105_0102",
+    "roof_area_m2": 119.8,
+    "p_roofclf": 0.315903,
+    "sppi": -0.039798,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3490735461922,
+       33.9216726746046
+      ],
+      [
+       71.3490615278361,
+       33.92173863560151
+      ],
+      [
+       71.3491183470371,
+       33.92174583044541
+      ],
+      [
+       71.3491124766358,
+       33.921778049375504
+      ],
+      [
+       71.3489580885474,
+       33.921758499616
+      ],
+      [
+       71.3489759774373,
+       33.9216603196998
+      ],
+      [
+       71.3490735461922,
+       33.9216726746046
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 168,
+    "cell": "0105_0102",
+    "roof_area_m2": 207.3,
+    "p_roofclf": 0.450583,
+    "sppi": -0.038256,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3489948351982,
+       33.9213522107567
+      ],
+      [
+       71.3487752872717,
+       33.9213708733126
+      ],
+      [
+       71.3487641490947,
+       33.9212798085633
+      ],
+      [
+       71.3489836967923,
+       33.9212611460373
+      ],
+      [
+       71.3489948351982,
+       33.9213522107567
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 169,
+    "cell": "0105_0102",
+    "roof_area_m2": 277.6,
+    "p_roofclf": 0.273277,
+    "sppi": -0.095885,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3490647584455,
+       33.9169622261856
+      ],
+      [
+       71.3489408473262,
+       33.91705102901079
+      ],
+      [
+       71.3488113834482,
+       33.91692546911301
+      ],
+      [
+       71.3489352945339,
+       33.9168366664205
+      ],
+      [
+       71.3490647584455,
+       33.9169622261856
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 170,
+    "cell": "0105_0102",
+    "roof_area_m2": 279.2,
+    "p_roofclf": 0.3654,
+    "sppi": -0.050607,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3518761063899,
+       33.9179149001808
+      ],
+      [
+       71.3515916451127,
+       33.9179395316308
+      ],
+      [
+       71.35157985443502,
+       33.9178448890708
+      ],
+      [
+       71.3518643154046,
+       33.9178202576612
+      ],
+      [
+       71.3518761063899,
+       33.9179149001808
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 171,
+    "cell": "0105_0102",
+    "roof_area_m2": 316.0,
+    "p_roofclf": 0.273081,
+    "sppi": -0.081232,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3512113922681,
+       33.9188605158089
+      ],
+      [
+       71.3508845383705,
+       33.9189212166978
+      ],
+      [
+       71.3508605523178,
+       33.9188314491728
+      ],
+      [
+       71.3511874058979,
+       33.91877074836351
+      ],
+      [
+       71.3512113922681,
+       33.9188605158089
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 172,
+    "cell": "0105_0102",
+    "roof_area_m2": 495.0,
+    "p_roofclf": 0.255462,
+    "sppi": -0.083477,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3542980155208,
+       33.9193677012659
+      ],
+      [
+       71.3542889326396,
+       33.91928183707739
+      ],
+      [
+       71.3548464887238,
+       33.9192408443024
+      ],
+      [
+       71.3548555721555,
+       33.9193267084264
+      ],
+      [
+       71.3542980155208,
+       33.9193677012659
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 173,
+    "cell": "0105_0102",
+    "roof_area_m2": 263.5,
+    "p_roofclf": 0.363875,
+    "sppi": -0.058629,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3540274957109,
+       33.9212004761798
+      ],
+      [
+       71.3539764942716,
+       33.9211379103455
+      ],
+      [
+       71.3539376307533,
+       33.921159927532
+      ],
+      [
+       71.3539091726763,
+       33.9211250166173
+      ],
+      [
+       71.3541143621992,
+       33.92100877122459
+      ],
+      [
+       71.3541938218118,
+       33.9211062478536
+      ],
+      [
+       71.3540274957109,
+       33.9212004761798
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 174,
+    "cell": "0105_0102",
+    "roof_area_m2": 231.4,
+    "p_roofclf": 0.315084,
+    "sppi": -0.067555,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3544112994278,
+       33.9206627649331
+      ],
+      [
+       71.3541798723802,
+       33.9207408463231
+      ],
+      [
+       71.3541392273974,
+       33.9206571213883
+      ],
+      [
+       71.3543706542647,
+       33.9205790400813
+      ],
+      [
+       71.3544112994278,
+       33.9206627649331
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 175,
+    "cell": "0105_0102",
+    "roof_area_m2": 363.7,
+    "p_roofclf": 0.297251,
+    "sppi": -0.068712,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3540183093093,
+       33.9206664479157
+      ],
+      [
+       71.3540429745896,
+       33.9207037948057
+      ],
+      [
+       71.3540865246765,
+       33.92068380536111
+      ],
+      [
+       71.35415085905431,
+       33.9207812168873
+      ],
+      [
+       71.3541721890806,
+       33.9207714264138
+      ],
+      [
+       71.3542102552243,
+       33.920829063897
+      ],
+      [
+       71.3541889251887,
+       33.9208388543773
+      ],
+      [
+       71.354259238504,
+       33.920945318393095
+      ],
+      [
+       71.3541668970357,
+       33.920987703055395
+      ],
+      [
+       71.353969518127,
+       33.920688842984696
+      ],
+      [
+       71.3540183093093,
+       33.9206664479157
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 176,
+    "cell": "0105_0102",
+    "roof_area_m2": 313.2,
+    "p_roofclf": 0.317383,
+    "sppi": -0.064528,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3525108260316,
+       33.9219326332509
+      ],
+      [
+       71.352405596005,
+       33.92197239517219
+      ],
+      [
+       71.3523872633793,
+       33.9219386769689
+      ],
+      [
+       71.3522402257714,
+       33.921994235969
+      ],
+      [
+       71.3521932861429,
+       33.92190790205319
+      ],
+      [
+       71.3524455535564,
+       33.9218125812519
+      ],
+      [
+       71.3525108260316,
+       33.9219326332509
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 177,
+    "cell": "0105_0102",
+    "roof_area_m2": 647.8,
+    "p_roofclf": 0.262102,
+    "sppi": -0.10597,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.35931998403213,
+       33.92045172340276
+      ],
+      [
+       71.35935156407515,
+       33.9206982172408
+      ],
+      [
+       71.35909829018577,
+       33.92072057568409
+      ],
+      [
+       71.35906668958539,
+       33.92047408372552
+      ],
+      [
+       71.35931998403213,
+       33.92045172340276
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 178,
+    "cell": "0105_0102",
+    "roof_area_m2": 635.5,
+    "p_roofclf": 0.273992,
+    "sppi": -0.101995,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3581865224745,
+       33.921916548615
+      ],
+      [
+       71.3580848819077,
+       33.9219421867097
+      ],
+      [
+       71.3580445978616,
+       33.9218311969898
+      ],
+      [
+       71.3577608838799,
+       33.9219027612376
+      ],
+      [
+       71.357801167603,
+       33.9220137510634
+      ],
+      [
+       71.3577478668277,
+       33.9220271956141
+      ],
+      [
+       71.3576712663079,
+       33.9218161450107
+      ],
+      [
+       71.3578824230353,
+       33.9217628828607
+      ],
+      [
+       71.3579002920758,
+       33.9218121156178
+      ],
+      [
+       71.3579885798779,
+       33.921789845783096
+      ],
+      [
+       71.3579707107926,
+       33.9217406130409
+      ],
+      [
+       71.3581099210053,
+       33.9217054983239
+      ],
+      [
+       71.3581865224745,
+       33.921916548615
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 179,
+    "cell": "0105_0102",
+    "roof_area_m2": 410.6,
+    "p_roofclf": 0.356136,
+    "sppi": -0.067095,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3602194,
+       33.9204028
+      ],
+      [
+       71.3598868,
+       33.9204829
+      ],
+      [
+       71.3598483,
+       33.9203719
+      ],
+      [
+       71.3601809,
+       33.9202917
+      ],
+      [
+       71.3602194,
+       33.9204028
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 180,
+    "cell": "0105_0102",
+    "roof_area_m2": 348.7,
+    "p_roofclf": 0.599026,
+    "sppi": -0.036893,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3604904522717,
+       33.9174962994906
+      ],
+      [
+       71.3604718162831,
+       33.9173962776817
+      ],
+      [
+       71.3608035468137,
+       33.917353318015095
+      ],
+      [
+       71.3608221831743,
+       33.9174533397584
+      ],
+      [
+       71.3604904522717,
+       33.9174962994906
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 181,
+    "cell": "0105_0102",
+    "roof_area_m2": 751.9,
+    "p_roofclf": 0.350728,
+    "sppi": -0.087333,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3572411,
+       33.9198753
+      ],
+      [
+       71.3571919,
+       33.9201626
+      ],
+      [
+       71.3573294,
+       33.920179
+      ],
+      [
+       71.3573208,
+       33.92022909999999
+      ],
+      [
+       71.3571556,
+       33.9202095
+      ],
+      [
+       71.3571597,
+       33.920185399999994
+      ],
+      [
+       71.3569824,
+       33.92016430000001
+      ],
+      [
+       71.357036,
+       33.919851
+      ],
+      [
+       71.3572411,
+       33.9198753
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 182,
+    "cell": "0105_0102",
+    "roof_area_m2": 594.5,
+    "p_roofclf": 0.366963,
+    "sppi": -0.091896,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.361874242198,
+       33.9164066335729
+      ],
+      [
+       71.3619231614735,
+       33.9163985344311
+      ],
+      [
+       71.3619452692256,
+       33.9164913473446
+      ],
+      [
+       71.3616853483426,
+       33.9165343799743
+      ],
+      [
+       71.3616275510687,
+       33.9162917315216
+      ],
+      [
+       71.3618385520646,
+       33.9162567981664
+      ],
+      [
+       71.361874242198,
+       33.9164066335729
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 183,
+    "cell": "0105_0102",
+    "roof_area_m2": 265.8,
+    "p_roofclf": 0.344333,
+    "sppi": -0.065016,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3623197735885,
+       33.9131440002881
+      ],
+      [
+       71.3623190917231,
+       33.9131032403911
+      ],
+      [
+       71.3623732036405,
+       33.91310261114
+      ],
+      [
+       71.3623746230685,
+       33.9131874569967
+      ],
+      [
+       71.3624889918746,
+       33.913186126955
+      ],
+      [
+       71.3624897642836,
+       33.9132322935659
+      ],
+      [
+       71.3621714231529,
+       33.9132359954331
+      ],
+      [
+       71.3621699134839,
+       33.9131457428448
+      ],
+      [
+       71.3623197735885,
+       33.9131440002881
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 184,
+    "cell": "0105_0102",
+    "roof_area_m2": 742.3,
+    "p_roofclf": 0.264918,
+    "sppi": -0.098848,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.359852860897,
+       33.9104832468776
+      ],
+      [
+       71.3593899219008,
+       33.9105787080104
+      ],
+      [
+       71.3593427253701,
+       33.9104195984256
+      ],
+      [
+       71.3594709646218,
+       33.91039315483669
+      ],
+      [
+       71.3594906880355,
+       33.9104596464281
+      ],
+      [
+       71.3597057594229,
+       33.9104152972668
+      ],
+      [
+       71.3596641946395,
+       33.9102751750622
+      ],
+      [
+       71.3597838222692,
+       33.9102505068746
+      ],
+      [
+       71.359852860897,
+       33.9104832468776
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 185,
+    "cell": "0105_0102",
+    "roof_area_m2": 245.4,
+    "p_roofclf": 0.475946,
+    "sppi": -0.047122,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3520587031277,
+       33.9107465665315
+      ],
+      [
+       71.3520658358698,
+       33.9107103566494
+      ],
+      [
+       71.3523355933488,
+       33.9107472953414
+      ],
+      [
+       71.3523190533906,
+       33.910831262943
+      ],
+      [
+       71.3520359329366,
+       33.9107924944146
+      ],
+      [
+       71.3520453404215,
+       33.9107447367202
+      ],
+      [
+       71.3520587031277,
+       33.9107465665315
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 186,
+    "cell": "0105_0102",
+    "roof_area_m2": 1626.2,
+    "p_roofclf": 0.399294,
+    "sppi": -0.079276,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.351976,
+       33.9107783
+      ],
+      [
+       71.3518921,
+       33.91122459999999
+      ],
+      [
+       71.3521504,
+       33.9112583
+      ],
+      [
+       71.3522044,
+       33.9109712
+      ],
+      [
+       71.3520128,
+       33.9109462
+      ],
+      [
+       71.3520427,
+       33.910787
+      ],
+      [
+       71.3523383,
+       33.9108257
+      ],
+      [
+       71.3522397,
+       33.9113499
+      ],
+      [
+       71.351783,
+       33.911290300000005
+      ],
+      [
+       71.3518815,
+       33.910766
+      ],
+      [
+       71.351976,
+       33.9107783
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 187,
+    "cell": "0105_0102",
+    "roof_area_m2": 312.1,
+    "p_roofclf": 0.281562,
+    "sppi": -0.089354,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3487918451297,
+       33.90910241065821
+      ],
+      [
+       71.3487919316034,
+       33.9092574292606
+      ],
+      [
+       71.3487310555381,
+       33.9092574528552
+      ],
+      [
+       71.3487310246202,
+       33.9092019611335
+      ],
+      [
+       71.3485202923887,
+       33.9092020425712
+      ],
+      [
+       71.3485202371879,
+       33.9091025156753
+      ],
+      [
+       71.3487918451297,
+       33.90910241065821
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 188,
+    "cell": "0105_0102",
+    "roof_area_m2": 1015.5,
+    "p_roofclf": 0.262505,
+    "sppi": -0.093876,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.36996970787041,
+       33.95447320617897
+      ],
+      [
+       71.37047797833912,
+       33.95456028232547
+      ],
+      [
+       71.37043145745446,
+       33.95474711638654
+      ],
+      [
+       71.36992319506125,
+       33.954660071321555
+      ],
+      [
+       71.36996970787041,
+       33.95447320617897
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 189,
+    "cell": "0105_0102",
+    "roof_area_m2": 188.1,
+    "p_roofclf": 0.268061,
+    "sppi": -0.049032,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3798607951077,
+       33.9583261818227
+      ],
+      [
+       71.37982845795,
+       33.95841478325019
+      ],
+      [
+       71.3796389462476,
+       33.9583667556926
+      ],
+      [
+       71.37967128359,
+       33.9582781543067
+      ],
+      [
+       71.3798607951077,
+       33.9583261818227
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 190,
+    "cell": "0105_0102",
+    "roof_area_m2": 655.6,
+    "p_roofclf": 0.325993,
+    "sppi": -0.073058,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3819130787152,
+       33.952930461866
+      ],
+      [
+       71.3816769262882,
+       33.9529077724218
+      ],
+      [
+       71.38163656777182,
+       33.953199478955
+      ],
+      [
+       71.3815112088201,
+       33.9531874343382
+      ],
+      [
+       71.3815344892957,
+       33.9530191678311
+      ],
+      [
+       71.3815590098903,
+       33.9530215238078
+      ],
+      [
+       71.3815882190464,
+       33.9528104048334
+      ],
+      [
+       71.3819252090925,
+       33.9528427828791
+      ],
+      [
+       71.3819130787152,
+       33.952930461866
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 191,
+    "cell": "0105_0102",
+    "roof_area_m2": 485.7,
+    "p_roofclf": 0.276645,
+    "sppi": -0.075084,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.38525891461326,
+       33.95345672359353
+      ],
+      [
+       71.38525903196475,
+       33.95330218749552
+      ],
+      [
+       71.38530194729009,
+       33.953302212410115
+      ],
+      [
+       71.38530198537639,
+       33.95325205783809
+      ],
+      [
+       71.38534758291152,
+       33.95325208166269
+      ],
+      [
+       71.38534755587919,
+       33.95328767964216
+      ],
+      [
+       71.38540388224615,
+       33.953287709072505
+      ],
+      [
+       71.38540382142341,
+       33.95336780447178
+      ],
+      [
+       71.38564955245194,
+       33.95336793286544
+      ],
+      [
+       71.38564947736212,
+       33.95345692766105
+      ],
+      [
+       71.38525891461326,
+       33.95345672359353
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 192,
+    "cell": "0105_0102",
+    "roof_area_m2": 326.5,
+    "p_roofclf": 0.260263,
+    "sppi": -0.08596,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.38386412615209,
+       33.953420328555964
+      ],
+      [
+       71.38413167802103,
+       33.95339017945878
+      ],
+      [
+       71.3841245226037,
+       33.95334648832722
+      ],
+      [
+       71.38409028571965,
+       33.953350346314984
+      ],
+      [
+       71.38407660642028,
+       33.953266820161204
+      ],
+      [
+       71.38405009045688,
+       33.95326328879849
+      ],
+      [
+       71.3840575019362,
+       33.95322499786281
+      ],
+      [
+       71.38410685820935,
+       33.95321943613647
+      ],
+      [
+       71.38411242002016,
+       33.95319070138188
+      ],
+      [
+       71.38414561164421,
+       33.953393370331035
+      ],
+      [
+       71.38415287609224,
+       33.95335583908056
+      ],
+      [
+       71.38416444872162,
+       33.95342650178463
+      ],
+      [
+       71.38420557934904,
+       33.953431981887235
+      ],
+      [
+       71.38421504895511,
+       33.95348980344166
+      ],
+      [
+       71.3841873217361,
+       33.953492927881726
+      ],
+      [
+       71.38409682964071,
+       33.9534808762895
+      ],
+      [
+       71.38406063280253,
+       33.953484955128474
+      ],
+      [
+       71.38400633754527,
+       33.953477724172686
+      ],
+      [
+       71.38402443596436,
+       33.95347568475301
+      ],
+      [
+       71.38385770937194,
+       33.95345348036682
+      ],
+      [
+       71.38386412615209,
+       33.953420328555964
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 193,
+    "cell": "0105_0102",
+    "roof_area_m2": 375.7,
+    "p_roofclf": 0.304454,
+    "sppi": -0.072864,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.38544869664472,
+       33.95498551865822
+      ],
+      [
+       71.38544311665412,
+       33.95495383125118
+      ],
+      [
+       71.38541308683253,
+       33.95495746963133
+      ],
+      [
+       71.38539851698476,
+       33.954874691299764
+      ],
+      [
+       71.38547581117699,
+       33.95486532641099
+      ],
+      [
+       71.38547159160983,
+       33.954841364484565
+      ],
+      [
+       71.38543745129202,
+       33.954845500893384
+      ],
+      [
+       71.38543497560805,
+       33.954831442065476
+      ],
+      [
+       71.38548111629208,
+       33.954825854381255
+      ],
+      [
+       71.38547208784158,
+       33.95477455933008
+      ],
+      [
+       71.38556775700948,
+       33.95476296813341
+      ],
+      [
+       71.38557351096468,
+       33.954795643516086
+      ],
+      [
+       71.38552886593368,
+       33.95480105266895
+      ],
+      [
+       71.38553559758516,
+       33.95483928014467
+      ],
+      [
+       71.38563951470039,
+       33.95482669567589
+      ],
+      [
+       71.38566290337423,
+       33.954959578047145
+      ],
+      [
+       71.38544869664472,
+       33.95498551865822
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "feature_type": "roofclf_detection",
+    "candidate_id": 194,
+    "cell": "0105_0102",
+    "roof_area_m2": 176.9,
+    "p_roofclf": 0.265558,
+    "sppi": -0.062767,
+    "osm_matched": "no",
+    "do_not_upload": "earthpv model detection, NOT verified OSM data -- confirm against imagery before any OSM edit"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       71.3898401716736,
+       33.956941837493204
+      ],
+      [
+       71.3896509684591,
+       33.9569817321927
+      ],
+      [
+       71.3896249516447,
+       33.9568960529176
+      ],
+      [
+       71.38981415468672,
+       33.9568561582662
+      ],
+      [
+       71.3898401716736,
+       33.956941837493204
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% set social_image = config.site_url ~ "assets/figures/social-preview.png" %}
+  {% set headline = "Open, global photovoltaic mapping from free satellite imagery." %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="earthpv">
+  <meta property="og:title" content="earthpv">
+  <meta property="og:description" content="{{ headline }}">
+  <meta property="og:image" content="{{ social_image }}">
+  <meta property="og:url" content="{{ page.canonical_url or config.site_url }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="earthpv">
+  <meta name="twitter:description" content="{{ headline }}">
+  <meta name="twitter:image" content="{{ social_image }}">
+{% endblock %}

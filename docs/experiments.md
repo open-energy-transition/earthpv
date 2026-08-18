@@ -24,12 +24,13 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | In-domain Pakistani training chips | <span class="outcome works">shipped</span> | Tripled large-array recall in Punjab, 0.18 to 0.55. The single biggest lever found. |
 | Building prior from VIDA Open Buildings | <span class="outcome works">shipped</span> | Makes "no building nearby" a usable false-positive signal. |
 | Quadrats as training data, not just correction | <span class="outcome works">shipped</span> | Became `roofclf`, now half the main workflow. |
-| [roofclf, a per-building classifier](methods/roofclf.md) | <span class="outcome works">shipped</span> | 0.857 AUC (0.830 within size band) on 23 quadrats where segmentation scores near chance. |
+| [roofclf, a per-building classifier](methods/roofclf.md) | <span class="outcome works">shipped</span> | 0.879 AUC (0.834 within size band) on 27 quadrats where segmentation scores near chance. |
 | SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf sets an internal floor on the atlas's headline figure. |
 | Coverage ratio stratified by size and density | <span class="outcome works">shipped</span> | Replaced precision as the multiplier, and a flat ratio with a measured per-stratum one. |
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
 | Recall correction and credible intervals | <span class="outcome works">shipped</span> | Turned a structural floor into an estimate with a stated interval. |
+| Recall correction for roofclf, not just segmentation | <span class="outcome works">shipped</span> | The roofclf half was counting only the roofs it flagged; correcting it moved Best 16.6 to 18.3 GWp. |
 | Quadrat-bootstrap uncertainty on the atlas | <span class="outcome works">shipped</span> | The headline figure now carries a 90% range. |
 | Solar-glint corroboration | <span class="outcome works">shipped</span> | Calibrated likelihood ratios per size bucket, reward-only, never demoting. |
 | Tile-major glint fetching | <span class="outcome works">shipped</span> | 22x faster, numerically identical output. |
@@ -49,9 +50,15 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | Missed-installation glint recovery | <span class="outcome negative">rejected</span> | Control false-validation rate exceeded the recovery rate. |
 | Roof-axis orientation prior | <span class="outcome negative">rejected</span> | Flat concrete roofs do not constrain a tilt frame's azimuth. |
 | Standard-pose matched filter | <span class="outcome negative">rejected</span> | The densest pose bin covers under 10% of installations. |
+| [Glint PSF matched filter](issues/glint-psf-matched-filter.md) | <span class="outcome negative">rejected</span> | The PSF is real and measured, but every filter variant scores below the aperture statistic it would replace. |
+| [Verified-negative false-spike rate](issues/glint-psf-matched-filter.md) | <span class="outcome works">shipped</span> | 2.0% against 8.7-20.3% on model-negative controls, which reopens the spike-rate density estimator. |
 | Super-resolution, three variants | <span class="outcome negative">rejected</span> | No gain, and hallucination risk on a detection task. |
 | Two-endmember spectral unmixing | <span class="outcome negative">rejected</span> | 0.659 AUC, worse than both SPPI and roofclf, with a 92x scale spread. |
 | Epoch jump / step change as roofclf features | <span class="outcome negative">rejected</span> | Measured at exactly zero effect, and worse in the reflectance variant. |
+| [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
+| [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
+| [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
+| Yard feature block in the roofclf model | <span class="outcome negative">rejected</span> | Loses to roof-only features even against the parcel label it was built for: 0.8712 against 0.8734. |
 | SPPI as a roofclf input feature | <span class="outcome negative">rejected</span> | 0.8736 to 0.8734 AUC. It helps by disagreeing, not by being a column. |
 | Glint-date imagery as a roofclf feature | <span class="outcome negative">rejected</span> | Only 7-24% of rooftops can ever glint into a near-nadir view; size-controlled AUC moves 0.7875 to 0.7879. |
 | Opportunity-normalised glint sensitivity | <span class="outcome works">shipped</span> | Sensitivity varies ~2x with opportunity inside a size bin; now modelled per target instead of pooled. |
@@ -59,6 +66,7 @@ replaced, so its own write-up describes a pipeline that no longer exists.
 | OSM as a complete reference in Germany | <span class="outcome negative">rejected</span> | 3.6% complete by unit count; implied kWp/m² unstable by more than the constant itself. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
 | Low/Central/High/All-PV bracket atlas | <span class="outcome open">superseded</span> | Replaced by the two-tier evidence atlas, which sorts by standard of proof instead. |
+| Out-of-domain AND-gate extrapolation | <span class="outcome open">superseded</span> | Published 2026-08-11 to 2026-08-15, then dropped: the one Best-estimate component not measured where it was applied, and unreviewable by eye under stale imagery. -62 MWp. |
 | The Ceiling tier | <span class="outcome open">superseded</span> | A threshold change roughly doubled it with no new validation, so it stopped bounding anything. |
 | National dashboard bundle | <span class="outcome open">superseded</span> | Replaced by plain per-artifact result pages; the CLI still works. |
 
@@ -79,8 +87,8 @@ The decisive finding of this project is that below roughly 400 m² the question 
 Segmentation asks "where is the polygon", and at 10 m ground sampling distance a 50 m²
 rooftop array does not have one. `roofclf` asks "does this *building* carry PV", which turns
 an unresolvable localisation problem into a per-footprint classification problem with a
-strong size prior and reflectance features. On the 23 mapped quadrats it reaches **0.857
-AUC**, and **0.830** with roof size controlled for, where the segmentation raster scores
+strong size prior and reflectance features. On the 27 mapped quadrats it reaches **0.879
+AUC**, and **0.834** with roof size controlled for, where the segmentation raster scores
 close to chance on the same buildings. That gap, not any architectural change to the
 segmenter, is why the pipeline now runs two detectors.
 
@@ -94,6 +102,38 @@ from 0.496 to 0.540 at matched recall, and the gain concentrates in exactly the 
 places where roofclf alone is known to over-predict. That is why agreement between the two
 sets the internal floor under the evidence atlas's headline figure, rather than either
 model on its own.
+
+### One estimator, applied to both halves
+
+The segmentation half of the atlas has estimated the whole population since the
+recall-corrected estimator shipped: each surviving detection stands in for 1/recall real
+installations of its size class. The roofclf half did not. It multiplied flagged roof area
+by the coverage ratio, which is measured as true mapped PV area over *flagged* roof area --
+a quantity that describes the roofs roofclf caught and books zero for every installation on
+a roof it missed. Two halves of one published number, built on two different estimators,
+and the uncorrected one was four-fifths of the total.
+
+Measuring the missing term needed no new data, only the quadrat labels already on disk: the
+share of true mapped PV **area** sitting on a flagged building, per roof-size bin and per
+building-density stratum, fit from the same 16 trusted quadrats at the same deployment
+threshold as the coverage ratio. It comes to **0.808 below 400 m<sup>2</sup>** and **0.978
+at or above** it, rising monotonically with roof size from 0.34 in the smallest decile of
+PV-carrying roofs to 0.99 in the largest. Area rather than count is the whole point: under a
+count recall, missing a 300 m<sup>2</sup> array and a 20 m<sup>2</sup> one cost the same,
+and in MWp they differ fifteenfold.
+
+Correcting the two Best-estimate roofclf components moved them 6,372 to 7,890 MWp and 7,031
+to 7,189 MWp, and the published Best estimate 16,609 to 18,280 MWp. The internal floor did
+not move and was not meant to: a tier defined by two independent detectors agreeing stops
+being a floor the moment it extrapolates to what neither of them saw.
+
+Two details make the number defensible rather than merely larger. The coverage ratio and the
+recall are refit inside the *same* bootstrap replicates instead of bootstrapped separately,
+because they come from the same quadrats and the same labels and their errors move together
+-- a quadrat whose mapping is stale depresses one and inflates the other at once. And the
+correction is a lower bound on itself in three measurable ways, the largest being that Rule
+1 certifies completeness only as of the mapping imagery's epoch, which removes recent
+installations from the recall denominator only when they sit on an unflagged roof.
 
 ### The vegetation veto, and why the obvious version fails
 
@@ -165,6 +205,39 @@ misses entirely, glint-validate them, and add their area back. Tested on 43 miss
 needs to do: Germany's control false-validation rate of 20.8% is uncomfortably close to the
 37.2% rate on missed installations, and Lahore's control rate of 8.7% is *higher* than its
 5.3% missed rate, which is worse than chance.
+
+### A measured glint PSF, and the control set that mattered more (2026-08-17)
+
+The astronomical version of the sub-pixel problem: measure the instrument's point-spread
+function from strongly-validated glints, then matched-filter against it, the way stellar
+photometry pulls faint sources out of noise. Full write-up:
+[Glint PSF and matched filtering](issues/glint-psf-matched-filter.md).
+
+The PSF part works. Fitting a forward model (polygon rasterised at 1 m, Gaussian-blurred,
+block-averaged onto each scene's own grid at the target's true sub-pixel position) over 68
+targets below 500 m2 gives **sigma 0.65 px, 90% CI 0.60 to 0.70**, against an optical theory
+range of 0.49 to 0.62 px implied by ESA's stated MTF. The residual excess is covered by a
+measured per-scene source displacement of 0.72 px median, so the fitted kernel is an
+effective one that already contains co-registration.
+
+The detector part does not. Every variant tested, centroid-pinned, offset-fitted, and
+point-source, scores **below** the p98-minus-annulus statistic already in the pipeline
+(AUC 0.485 to 0.620 against 0.648 to 0.655), significantly so over all sizes. The reason is
+visible in the fit itself: sigma climbs from 0.65 to 2.20 px with installation area while
+variance explained collapses from 0.49 to 0.06, because a specular glint comes from whichever
+patch satisfies the mirror condition on that date rather than from the whole array. Matched
+filtering is optimal for a known shape at a known position and a glint has neither, which is
+the one property stars have that makes the analogy work.
+
+The valuable result was the control set built to test it. 600 verified negatives, buildings
+inside the 27 Rule-1 complete quadrats carrying `has_pv == 0`, give a false-spike rate of
+**2.0%**, against the 8.7 to 20.3% previously measured on merely model-negative controls. An
+ablation puts the per-pixel SCL cloud veto at half of that improvement (4.5% with it
+disabled) and unmapped real PV in the old controls at the rest. Against true detection rates
+the instrument separates by 15x at 100 to 500 m2 and 7.9x below 100 m2, so
+[the spike-rate density estimator](issues/glint-spike-rate-density-estimator.md)'s stated
+blocker, that false rate equals or exceeds true rate below 500 m2, does not hold against
+verified negatives.
 
 ### Super-resolution
 
@@ -275,6 +348,7 @@ them were written before the thing they describe was replaced.
 | [SPPI spectral index evaluation](issues/sppi-spectral-index-evaluation.md) | What SPPI can and cannot do, and why it is used only as a second opinion |
 | [Boom-window stacking](issues/boom-window-stacking-experiment.md) | Why the 2021-versus-current retrain is inconclusive rather than negative |
 | [Standard-pose matched filter](issues/standard-pose-matched-filter.md) | Assessed against real pose data and not recommended |
+| [Glint PSF and matched filtering](issues/glint-psf-matched-filter.md) | The measured Sentinel-2 glint PSF, why filtering on it loses to the aperture statistic, and the verified-negative false-spike rate |
 | [Glint spike-rate estimator](issues/glint-spike-rate-density-estimator.md) | Glint as a statistical density estimator, and the floor it hits |
 | [Glint tile-batched coverage](issues/glint-tile-batched-coverage.md) | The 22x speedup, and the silent scene-loss bug it uncovered |
 | [Glint-validated training labels](issues/glint-validated-training-labels.md) | A proposal to feed corroborated detections back as labels |

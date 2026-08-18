@@ -1,0 +1,14 @@
+group,n_targets,n_detected,pct_detected,n_validated,pct_validated,median_tilt_deg,az_min_deg,az_max_deg,pose_stats_reliable
+lat 24-26N,550,190,34.5,109,19.8,9.6,81.7,177.0,True
+lat 26-28N,58,11,19.0,1,1.7,,,,False
+lat 28-30N,240,16,6.7,11,4.6,,,,False
+lat 30-32N,1004,286,28.5,132,13.1,14.6,105.6,179.4,True
+lat 32-34N,781,151,19.3,85,10.9,18.8,129.7,180.1,True
+lat 34-37N,210,13,6.2,8,3.8,,,,False
+province Azad Kashmir,8,0,0.0,0,0.0,,,,False
+province Balochistan,196,31,15.8,29,14.8,12.2,86.4,174.7,True
+province Gilgit-Baltistan,2,0,0.0,0,0.0,,,,False
+province Islamabad Capital Territory,300,36,12.0,14,4.7,,,,False
+province Khyber Pakhtunkhwa,497,59,11.9,41,8.2,18.5,134.4,177.4,True
+province Punjab,1362,366,26.9,176,12.9,14.6,102.7,180.1,True
+province Sindh,478,175,36.6,86,18.0,9.2,81.7,177.0,True

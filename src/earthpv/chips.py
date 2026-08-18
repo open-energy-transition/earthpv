@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 
 CHIP_M = CHIP_SIZE * 10.0  # chip edge in metres
 # Arrays >= this are trained as positives; smaller ones are burned as ignore (no
-# positive or negative gradient). 400 m2 is ~4 Sentinel-2 pixels — the practical
+# positive or negative gradient). 400 m2 is ~4 Sentinel-2 pixels - the practical
 # floor for per-pixel supervision at 10 m GSD; it also matches the rooftop/ground
 # vs "small" split in local_source.load_solar_labels.
 MIN_PV_AREA = 400.0
@@ -96,7 +96,7 @@ def sample_chip_centers(
         coverage = coverage.intersection(union)
 
     # min_seed_area <= 0 means the fraction-regression task (called with 0.0 from
-    # build_chips), which also wants "small" (sub-MIN_PV_AREA) arrays as positive seeds —
+    # build_chips), which also wants "small" (sub-MIN_PV_AREA) arrays as positive seeds -
     # they're exactly the sub-pixel signal the regression task is meant to pick up.
     seed_placements = ["rooftop", "ground", "small"] if min_seed_area <= 0 else \
         ["rooftop", "ground"]
@@ -188,9 +188,9 @@ def _burn_mask(labels: gpd.GeoDataFrame, transform, crs, shape) -> np.ndarray:
 
 def _burn_fraction(labels: gpd.GeoDataFrame, transform, crs, shape, factor: int = 10) -> np.ndarray:
     """Sub-pixel PV coverage fraction per 10 m pixel: rasterize ALL placements (including
-    sub-MIN_PV_AREA "small" arrays — the whole point of the regression task) at `factor`x
+    sub-MIN_PV_AREA "small" arrays - the whole point of the regression task) at `factor`x
     resolution (~1 m with the default), then block-mean back down to the native grid.
-    `all_touched=False` at the hi-res grid keeps the area estimate honest — `all_touched=True`
+    `all_touched=False` at the hi-res grid keeps the area estimate honest - `all_touched=True`
     would inflate every polygon by a partial-pixel halo at 1 m too."""
     lab_utm = labels.to_crs(crs)
     polys = [
@@ -297,7 +297,7 @@ def build_chips(
     # fetched per chip from STAC on the base window's exact grid.
     stack_window = tuple(cfg["stack_window"]) if cfg.get("stack_window") else None
     # Imagery: prefer composites built by the `compose` stage for this AOI (mirrors
-    # infer.py) — e.g. punjab trains on its composed cells with pakistan_500 labels.
+    # infer.py) - e.g. punjab trains on its composed cells with pakistan_500 labels.
     fetch_contrast = False
     if composed.exists() and any(composed.glob("composites/*/composite_0.tif")):
         comp_idx = CompositeIndex(composed, layers=2 if stack_window else 1)
@@ -307,7 +307,7 @@ def build_chips(
     coverage = comp_idx.coverage
     # Labels: rooftopsenti's curated set when the AOI has one; fresh Overpass OSM
     # otherwise (also used when a source_region exists but the AOI-named Overpass
-    # file was fetched deliberately — the fresher source wins).
+    # file was fetched deliberately - the fresher source wins).
     if overpass_path.exists():
         labels = _overpass_labels(overpass_path)
         log.info("Using Overpass labels from %s", overpass_path)
@@ -375,7 +375,7 @@ def build_chips(
                 else:
                     mask = _burn_mask(win_labels, transform, crs, arr.shape[-2:])
                     _write_tif(mask_path, mask.astype("int16"), transform, crs, "int16")
-        except Exception as e:  # noqa: BLE001 — one bad chip must not kill the run
+        except Exception as e:  # noqa: BLE001 - one bad chip must not kill the run
             log.warning("chip %s failed: %s", cid, e)
             return None
         with rasterio.open(mask_path) as m:
@@ -598,7 +598,7 @@ def build_quadrat_fraction_chips(
                     frac[~inside] = IGNORE_VALUE
                     _write_tif(img_path, arr, transform, crs, "uint16")
                     _write_tif(mask_path, frac.astype("float32"), transform, crs, "float32")
-            except Exception as e:  # noqa: BLE001 — one bad chip must not kill the run
+            except Exception as e:  # noqa: BLE001 - one bad chip must not kill the run
                 log.warning("quadrat chip %s failed: %s", cid, e)
                 continue
             with rasterio.open(mask_path) as m:
@@ -619,7 +619,7 @@ def build_quadrat_fraction_chips(
 
     index = pd.DataFrame(records)
     if index.empty:
-        raise RuntimeError("no quadrat chips built — check boundaries/composite coverage")
+        raise RuntimeError("no quadrat chips built - check boundaries/composite coverage")
     index_path = out_dir / "index.parquet"
     index.to_parquet(index_path)
     log.info(
@@ -684,7 +684,7 @@ def build_hard_negative_chips(
                 _write_tif(img_path, arr, transform, crs, "uint16")
                 mask = _burn_mask(win_labels, transform, crs, arr.shape[-2:])
                 _write_tif(mask_path, mask.astype("int16"), transform, crs, "int16")
-        except Exception as e:  # noqa: BLE001 — one bad chip must not kill the run
+        except Exception as e:  # noqa: BLE001 - one bad chip must not kill the run
             log.warning("chip %s failed: %s", cid, e)
             return None
         with rasterio.open(mask_path) as m:

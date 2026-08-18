@@ -16,6 +16,7 @@
     --ink: #f7f1e6;
     --ink-2: #c9bda4;
     --muted: #93866c;
+    --city: #ffffff; --city-halo: rgba(8,6,4,0.94);
     --hair: rgba(247,183,51,0.14);
     --prov-stroke: rgba(247,183,51,0.26);
     --accent: #f5a623;
@@ -33,7 +34,7 @@
     :root {
       --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
       --land: #e6dcc7; --map-bg: #efe8d8;
-      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
       --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
       --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --extended: #9b47b8; --bloom: 0;
       --card-ring: rgba(120,80,20,0.14);
@@ -45,9 +46,10 @@
   :root[data-theme="light"] {
     --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
     --land: #e6dcc7; --map-bg: #efe8d8;
-    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
     --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
-    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --bloom: 0;
+    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
+    --extended: #9b47b8; --bloom: 0;
     --card-ring: rgba(120,80,20,0.14);
     --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
     color-scheme: light;
@@ -56,7 +58,7 @@
   :root[data-theme="dark"] {
     --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
     --land: #241f16; --map-bg: #0c0a07;
-    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c; --city: #ffffff; --city-halo: rgba(8,6,4,0.94);
     --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
     --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #4fb2e8; --extended: #c97fe0; --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
@@ -82,12 +84,6 @@
     font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
     font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
   }
-  .lede {
-    margin: 44px 0 0; max-width: 72ch; color: var(--ink-2);
-    font-size: clamp(15px, 1.5vw, 17px);
-  }
-  .lede b { color: var(--ink); font-weight: 640; }
-
   /* ── section scaffolding ─────────────────────────────────────────── */
   .sec { margin-top: 44px; }
   .sec-head { display: flex; align-items: baseline; justify-content: space-between;
@@ -130,9 +126,16 @@
   .cell { shape-rendering: crispEdges; }
   .prov-fill { fill: var(--land); }
   .prov-line { fill: none; stroke: var(--prov-stroke); stroke-width: 1; stroke-linejoin: round; }
-  .city-dot { fill: var(--ink); opacity: 0.55; }
-  .city-label { fill: var(--ink-2); font-family: var(--font-mono); font-size: 21px;
-    paint-order: stroke; stroke: var(--map-bg); stroke-width: 2.4px; opacity: 0.9; }
+  .city-dot { fill: var(--city); stroke: var(--city-halo); stroke-width: 1.4px; opacity: 0.9; }
+  /* City names sit on top of the choropleth, so they cannot borrow any colour FROM it:
+     --ink-2 is a warm light grey, which is a near-invisible match against the pale end of
+     the amber ramp (#ffcf5c, #fff1c2). The label is therefore a neutral extreme (white on
+     dark, near-black on light) carried by an opaque halo of the opposite extreme, which is
+     what makes it legible over the dark land and the brightest cell alike. Keep the halo
+     opaque -- a translucent one lets the cell colour bleed back through the casing. */
+  .city-label { fill: var(--city); font-family: var(--font-mono); font-size: 21px;
+    paint-order: stroke; stroke: var(--city-halo); stroke-width: 3.4px;
+    stroke-linejoin: round; opacity: 1; }
   .domain-ring-rect { fill: none; stroke: var(--domain); stroke-width: 1.3;
     stroke-dasharray: 2.5 1.8; opacity: 0.95; pointer-events: none; }
   .extended-ring-rect { fill: none; stroke: var(--extended); stroke-width: 1.3;
@@ -161,8 +164,27 @@
     letter-spacing: 0.03em; flex: none; }
 
   .legend-keys { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .legend-keys > div { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono);
-    font-size: 10.5px; color: var(--ink-2); }
+  .legend-keys > div, .legend-keys > button { display: flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+  /* The two outline overlays are opt-in (both start off), so their legend entries are
+     the control as well as the key -- a pressed-state button rather than static text.
+     Unpressed they read dimmed, so "off" is visible without a second affordance. */
+  .legend-keys > button.key-toggle { background: none; border: 1px solid transparent;
+    border-radius: 5px; padding: 3px 7px; margin: -3px 0; cursor: pointer;
+    text-align: left; letter-spacing: inherit; opacity: 0.62; transition: opacity 0.12s ease,
+    border-color 0.12s ease, background 0.12s ease; }
+  .legend-keys > button.key-toggle:hover { opacity: 0.86; background: var(--hair); }
+  .legend-keys > button.key-toggle:focus-visible { outline: 2px solid var(--accent);
+    outline-offset: 2px; }
+  .legend-keys > button.key-toggle[aria-pressed="true"] { opacity: 1;
+    border-color: var(--prov-stroke); background: var(--hair); }
+  /* Trailing eye: says "this line is a switch" and, struck through while unpressed,
+     says the overlay it keys is currently not on the map. The slash is the only part
+     that moves, so the icon never changes size or shifts the label. */
+  .legend-keys > button.key-toggle .eye { width: 14px; height: 14px; flex: none;
+    margin-left: 2px; fill: none; stroke: currentColor; stroke-width: 1.7;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .legend-keys > button.key-toggle[aria-pressed="true"] .eye-slash { display: none; }
   .legend .domain-key .sw { width: 13px; height: 13px; border: 2px dashed var(--domain);
     border-radius: 3px; }
   .legend .extended-key .sw { width: 13px; height: 13px; border: 2px dotted var(--extended);
@@ -183,10 +205,19 @@
     text-transform: uppercase; color: var(--muted); margin-top: 8px; }
   .hero-ci { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); margin-top: 7px;
     font-variant-numeric: tabular-nums; }
+  /* How old is this: the Sentinel-2 composite window the model actually read, and when
+     this specific page was last built -- two different ages, so two different numbers. */
+  .hero-freshness { font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    margin-top: 6px; font-variant-numeric: tabular-nums; }
   .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
   .hero-desc b { color: var(--ink); font-weight: 660; }
 
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  /* The hero tiles show one more addend than #sizeTiles (model >=400m2, model <400m2,
+     PLUS the OSM contribution Best also includes) -- three tiles that sum exactly to
+     the headline number above them, not two that silently omit a third of it. */
+  #tiles { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 480px) { #tiles { grid-template-columns: 1fr; } }
   .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
     border: 1px solid var(--card-ring); }
   .tile.large-tile { border-color: var(--large); }
@@ -195,6 +226,75 @@
   .tile.large-tile .v { color: var(--large); }
   .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  /* Composition-by-method stacked bars (Best + Verified) -- same 4 method colors and
+     mark specs as results/pakistan_atlas_composition.html, reusing THIS page's own
+     tokens instead of a separate palette: roofclf alone is --accent (it supplies most
+     of Best, so it gets the primary hue), segmentation is --large (already this
+     page's own "model detections >=400 m2" color), OSM is --domain, and roofclf+SPPI
+     is --extended (already this page's "extrapolated beyond calibration" color --
+     small_outdomain literally is that extrapolation). */
+  .comp-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 14px 0 12px; }
+  .comp-legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
+    font-size: 11px; color: var(--ink-2); }
+  .comp-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; display: inline-block; }
+  .comp-swatch.osm { background: var(--domain); }
+  .comp-swatch.seg { background: var(--large); }
+  .comp-swatch.roofclf { background: var(--accent); }
+  .comp-swatch.sppi { background: var(--extended); }
+  .comp-stack-wrap { position: relative; }
+  .comp-row-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin: 16px 0 6px; }
+  .comp-stack { display: flex; width: 100%; height: 34px; border-radius: 6px; overflow: hidden;
+    background: var(--panel-2); }
+  .comp-stack.small { height: 26px; }
+  .comp-seg { height: 100%; position: relative; cursor: pointer;
+    border-right: 2px solid var(--panel-2); transition: filter 0.1s ease; }
+  .comp-seg:last-child { border-right: none; }
+  .comp-seg:hover { filter: brightness(1.15); }
+  .comp-seg .comp-seg-label { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 11.5px; font-weight: 700; color: rgba(0,0,0,0.72);
+    white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
+  .comp-seg.texture::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 7px); }
+  .comp-scale { display: flex; justify-content: space-between; font-family: var(--font-mono);
+    font-size: 10.5px; color: var(--muted); margin-top: 6px; }
+  .comp-tip { position: absolute; pointer-events: none; background: var(--panel);
+    border: 1px solid var(--card-ring); border-radius: 8px; padding: 10px 13px;
+    font-size: 12px; line-height: 1.55; box-shadow: var(--shadow); opacity: 0;
+    transition: opacity 0.08s ease; min-width: 200px; max-width: 280px; z-index: 5; }
+  .comp-tip .t-title { font-weight: 700; margin-bottom: 6px; color: var(--ink); font-size: 12px; }
+  .comp-tip .t-row { display: flex; justify-content: space-between; gap: 14px; }
+  .comp-tip .t-row .k { color: var(--muted); }
+  .comp-tip .t-row .v { color: var(--ink); font-family: var(--font-mono); }
+  .comp-tip .t-desc { margin-top: 6px; color: var(--ink-2); font-size: 11px; line-height: 1.5; }
+  .comp-methods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+  @media (max-width: 700px) { .comp-methods { grid-template-columns: repeat(2, 1fr); } }
+  .comp-method-card { background: var(--panel-2); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 12px 13px; }
+  .comp-method-card .m-name { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
+    font-size: 10.5px; letter-spacing: 0.04em; color: var(--ink-2); margin-bottom: 8px; }
+  .comp-method-card .m-pct { font-size: 19px; font-weight: 740; letter-spacing: -0.01em; }
+  .comp-method-card .m-mwp { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── downloads: a point-in-time data release, plus a live-OSM Overpass escape
+     hatch for anything the release has already gone stale on ── */
+  .dl-list { display: flex; flex-direction: column; gap: 9px; }
+  .dl-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+    padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--card-ring);
+    border-radius: 10px; }
+  .dl-main { min-width: 0; }
+  .dl-name { font-weight: 640; font-size: 13.5px; }
+  .dl-note { font-size: 12px; color: var(--ink-2); margin-top: 4px; line-height: 1.5; }
+  .dl-link { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .dl-link a { color: var(--accent); font-family: var(--font-mono); font-size: 12px;
+    font-weight: 650; text-decoration: none; white-space: nowrap; }
+  .dl-link a:hover { text-decoration: underline; }
+  .dl-size { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .dl-query-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+  .dl-query { background: var(--panel-2); border: 1px solid var(--card-ring); border-radius: 8px;
+    padding: 12px 14px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2);
+    overflow-x: auto; white-space: pre; line-height: 1.5; }
 
   .rank { margin-top: 4px; }
   .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
@@ -286,9 +386,6 @@
   }
   .pose-native .pose-mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code",
     "Roboto Mono", Consolas, monospace; }
-  .pose-native .pose-dek { font-size: 15.5px; color: var(--pose-ink-dim); max-width: 68ch;
-    margin: 0 0 20px; }
-  .pose-native .pose-dek .pose-mono { font-size: 14px; }
   .pose-native .pose-grid { display: grid;
     grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
   @media (max-width: 860px) { .pose-native .pose-grid { grid-template-columns: 1fr; } }
@@ -338,16 +435,7 @@
   .pose-native .pose-callout p { margin: 0 0 10px; font-size: 14px; }
   .pose-native .pose-callout p:last-child { margin-bottom: 0; }
   .pose-native .pose-fig { font-weight: 600; color: var(--pose-ink); }
-  .pose-native .pose-lower { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr;
-    gap: 18px; }
-  @media (max-width: 760px) { .pose-native .pose-lower { grid-template-columns: 1fr; } }
-  .pose-native .pose-hist-panel { padding: 16px 18px 12px; }
-  .pose-native .pose-hist-title { font-size: 11.5px; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--pose-ink-dim); margin-bottom: 10px; }
   .pose-native svg text { fill: var(--pose-ink-dim); }
-  .pose-native .pose-strip-panel { margin-top: 18px; padding: 16px 18px 14px; }
-  .pose-native .pose-strip-title { font-size: 11.5px; text-transform: uppercase;
-    letter-spacing: 0.1em; color: var(--pose-ink-dim); margin-bottom: 12px; }
   .pose-native .pose-footnote { margin-top: 16px; font-size: 12px; color: var(--pose-ink-faint);
     line-height: 1.6; }
 
@@ -399,12 +487,24 @@
             <div class="cap" id="legcap">MWp&nbsp;/&nbsp;cell</div>
           </div>
           <div class="legend-keys">
-            <div class="domain-key" id="domainKey">
+            <button type="button" class="domain-key key-toggle" id="domainKey"
+                    aria-pressed="false" title="Show the dashed outline on the map">
               <span class="sw"></span>cells with sub-400 m² calibration (dashed outline)
-            </div>
-            <div class="extended-key" id="extendedKey">
+              <svg class="eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M1.9 12S5.6 5.8 12 5.8 22.1 12 22.1 12 18.4 18.2 12 18.2 1.9 12 1.9 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-slash" x1="4.2" y1="19.8" x2="19.8" y2="4.2"/>
+              </svg>
+            </button>
+            <button type="button" class="extended-key key-toggle" id="extendedKey"
+                    aria-pressed="false" title="Show the dotted outline on the map">
               <span class="sw"></span>extrapolated beyond calibration (dotted outline)
-            </div>
+              <svg class="eye" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M1.9 12S5.6 5.8 12 5.8 22.1 12 22.1 12 18.4 18.2 12 18.2 1.9 12 1.9 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line class="eye-slash" x1="4.2" y1="19.8" x2="19.8" y2="4.2"/>
+              </svg>
+            </button>
             <div class="calib-key">
               <span class="sw"></span>hand-checked calibration area (hover for detail)
             </div>
@@ -417,6 +517,7 @@
           <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
           <div class="hero-label">Best estimate, nationwide</div>
           <div class="hero-ci" id="heroCi"></div>
+          <div class="hero-freshness" id="heroFreshness"></div>
           <div class="hero-desc" id="heroDesc"></div>
           <div class="tiles" id="tiles"></div>
         </div>
@@ -430,7 +531,7 @@
               <thead><tr><th>Province</th><th>Best estimate</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
                 <th>Small PV, checked cells</th>
-                <th>Small PV, extrapolated</th></tr></thead>
+                <th id="thOutdomain">Small PV, extrapolated</th></tr></thead>
               <tbody></tbody>
             </table></div>
           </details>
@@ -438,8 +539,6 @@
       </aside>
     </div>
   </section>
-
-  <p class="lede">__LEDE_HTML__</p>
 
   <div class="kpis">
     <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
@@ -469,8 +568,19 @@
         <div class="chart-legend">
           <div class="lk"><span class="sw roof"></span>rooftop</div>
           <div class="lk"><span class="sw ground"></span>ground-mount</div>
-          <div class="lk"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
+          <div class="lk" id="extrapKey"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
         </div>
+        <div class="hero-desc" style="margin-top:14px;"><b>Ground-mount below 400
+        m&sup2; reads exactly zero, not empty.</b> Segmentation is the only instrument
+        that detects ground-mount at any size, and it has a practical resolution floor
+        around 400 m&sup2; at Sentinel-2's 10 m pixel size -- it is not trained to
+        positively identify anything smaller. roofclf, the instrument that does cover
+        installations below 400 m&sup2;, is a per-building classifier: it needs a
+        building footprint to score, which a ground-mount site by definition doesn't
+        have. No instrument in this pipeline currently covers small ground-mount, so
+        this chart cannot show it as anything but zero -- that is a gap in
+        instrumentation, not evidence that small ground-mount installations don't
+        exist.</div>
       </section>
 
       <aside>
@@ -496,6 +606,43 @@
     </div>
   </section>
 
+  <section class="sec" id="composition">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Capacity</div>
+        <div class="sec-title">The same total, by method</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="map-head">
+        <div class="map-title" id="compTitle">Best estimate</div>
+        <div class="map-sub" id="compSub"></div>
+      </div>
+      <div class="comp-legend" id="compLegend"></div>
+
+      <div class="comp-stack-wrap">
+        <div class="comp-stack" id="compStackBest"></div>
+        <div class="comp-tip" id="compTipBest"></div>
+      </div>
+      <div class="comp-scale"><span>0 MWp</span><span id="compScaleBest"></span></div>
+
+      <div class="comp-row-label" id="compVerifiedLabel"></div>
+      <div class="comp-stack-wrap">
+        <div class="comp-stack small" id="compStackVerified"></div>
+        <div class="comp-tip" id="compTipVerified"></div>
+      </div>
+      <div class="comp-scale"><span>0 MWp</span><span id="compScaleVerified"></span></div>
+
+      <div class="comp-methods" id="compMethods"></div>
+      <div class="hero-desc" style="margin-top:16px;">roofclf alone (its own
+      &ge;400 m&sup2; replacement plus the sub-400 m&sup2; central estimate) supplies
+      most of Best by itself; direct OSM mapping and segmentation split roughly the
+      rest. Full breakdown with credible intervals:
+      <a href="pakistan_atlas_composition.html" target="_blank" rel="noopener">capacity composition</a>.</div>
+    </div>
+  </section>
+
   <section class="sec pose-native" id="pose">
     <div class="sec-head">
       <div>
@@ -503,15 +650,6 @@
         <div class="sec-title">Fitted tilt &amp; azimuth, from Sentinel-2 glint</div>
       </div>
     </div>
-    <p class="pose-dek">
-      Fitted tilt and azimuth for <span class="pose-mono pz-nfitted">0</span> installations whose
-      historical Sentinel-2 specular reflections agree on a single fixed panel orientation --
-      out of <span class="pose-mono pz-ntotal">0</span> installations checked, stratified by size,
-      across two years of imagery<span class="pz-dek-history"></span>.
-      <b>This is not a neutral sample of installed pose</b> -- read the envelope note before
-      trusting the shape.
-    </p>
-
     <div class="pose-grid">
       <div class="pose-panel pose-chart-panel">
         <div class="pose-chart-head">
@@ -570,24 +708,6 @@
       </div>
     </div>
 
-    <div class="pose-lower">
-      <div class="pose-panel pose-hist-panel">
-        <div class="pose-hist-title pose-mono">Tilt distribution</div>
-        <svg id="pose-hist-tilt" viewBox="0 0 460 200" style="width:100%;height:auto;display:block;"></svg>
-      </div>
-      <div class="pose-panel pose-hist-panel">
-        <div class="pose-hist-title pose-mono">Azimuth distribution
-          <span style="opacity:.6">(180&deg; = geometric ceiling)</span></div>
-        <svg id="pose-hist-az" viewBox="0 0 460 200" style="width:100%;height:auto;display:block;"></svg>
-      </div>
-    </div>
-
-    <div class="pose-panel pose-strip-panel">
-      <div class="pose-strip-title pose-mono">For context -- validation rate by installation
-        size (all <span class="pz-ntotal">0</span>, not just the fitted <span class="pz-nfitted">0</span>)</div>
-      <svg id="pose-strip" viewBox="0 0 1000 150" style="width:100%;height:auto;display:block;"></svg>
-    </div>
-
     <p class="pose-footnote">
       Data: <span class="pose-mono pz-summary-path"></span><span class="pz-data-note"></span>.
       Validated = a single (tilt, azimuth) explains &ge; 2 independent spike dates via the
@@ -608,6 +728,38 @@
         <span class="xs">preliminary results, sampling caveats, independent corroboration</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         __CONFIDENCE_HTML__
+      </div>
+    </details>
+  </section>
+
+  <section class="sec" id="downloads">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Data</div>
+        <div class="sec-title">Download the data behind this atlas</div>
+      </div>
+      <div class="sec-sub" id="dlRelease"></div>
+    </div>
+
+    <details class="xdetails">
+      <summary><span><span class="xt">Download the underlying data</span>
+        <span class="xs">capacity parquets, calibration boundaries, pose survey, raw detections, model checkpoint</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <div class="dl-list" id="dlList"></div>
+        <div class="dl-query-label">Live OSM PV, not this snapshot -- Overpass query</div>
+        <div class="dl-query">[out:json][timeout:180];
+area["name"="__AOI_TITLE__"]["admin_level"="2"]-&gt;.searchArea;
+(
+  nwr["generator:source"="solar"](area.searchArea);
+  nwr["plant:source"="solar"](area.searchArea);
+);
+out meta geom;</div>
+        <div class="hero-desc" style="margin-top:10px;">Paste into
+        <a href="https://overpass-turbo.eu/" target="_blank" rel="noopener">overpass-turbo.eu</a>
+        for an interactive map and GeoJSON export, or POST it as the <code>data</code> parameter
+        to <code>https://overpass-api.de/api/interpreter</code> from a script. The raw-detections
+        download above predates this page and will go stale as mappers keep editing; this query
+        always reflects live OSM state.</div>
       </div>
     </details>
   </section>
@@ -636,6 +788,16 @@
   const EXTENDED_IDX = 12;
   const T = DATA.totals;
   T.small_all = (T.small_central || 0) + (T.small_outdomain || 0);
+  // The two model-detection tiles below never summed to the headline number on their
+  // own -- Best also folds in OSM installations the model hadn't already found
+  // (`osm_mwp_unmatched`) plus a per-cell floor correction (cells where Best would
+  // otherwise have read BELOW hand-mapped OSM, `best_floor_offset_mwp`), and neither
+  // had a tile of its own. Both are literally OSM-sourced capacity -- the floor
+  // correction is cells snapped up to their own mapped OSM value -- so they are one
+  // tile, matching how `results/pakistan_atlas_composition.html` accounts for the same
+  // total. Third tile added 2026-08-14; the three now sum to `mwp_best` exactly.
+  T.osm_contribution = (T.osm_mwp_unmatched || 0)
+    + ((T.uncertainty && T.uncertainty.best_floor_offset_mwp) || 0);
   const fmt = n => Math.round(n).toLocaleString("en-US");
 
   const VIEW = {
@@ -645,6 +807,7 @@
     tiles: [
       ["mwp_large", "Model detections &ge;400 m², MWp"],
       ["small_all", "Model detections &lt;400 m², MWp"],
+      ["osm_contribution", "OSM hand-mapped, not in a model detection, MWp"],
     ],
   };
 
@@ -668,6 +831,78 @@
 
   const SVGNS = "http://www.w3.org/2000/svg";
   function el(n, a){ const e = document.createElementNS(SVGNS, n); for (const kk in a) e.setAttribute(kk, a[kk]); return e; }
+
+  // City dots + collision-avoiding labels.
+  //
+  // The labels used to be drawn at one fixed offset (+8, +7) from every dot, which
+  // guarantees overlap wherever cities cluster -- in Pakistan, Lahore/Gujranwala/Faisalabad
+  // and Karachi/Hyderabad collide outright, and an overlapped label is worse than no label
+  // because neither name is readable. This tries a ring of candidate positions per city and
+  // takes the first that hits nothing already placed.
+  //
+  // Cities are drawn in DATA.cities order, which is population order, so when two compete
+  // the larger city keeps the better position and the smaller one moves. A label that fits
+  // nowhere is dropped rather than stacked; its dot still renders, so the place is still
+  // marked. With ~12 cities and 10 candidates each this always terminates well under a
+  // millisecond, and it is redone on every redraw because the projection changes with the
+  // viewport.
+  //
+  // Width is ESTIMATED from the monospace advance rather than measured with
+  // getComputedTextLength(): this runs while the <svg> is still detached (it is mounted
+  // further down), where the measured length is 0 and every label would "fit" everywhere.
+  // 0.62em is a deliberate slight over-estimate of the ~0.6em advance of the fonts in
+  // --font-mono, so the boxes are a shade generous rather than a shade tight.
+  const CITY_FONT_PX = 21, CITY_ADVANCE_EM = 0.62, CITY_PAD = 3;
+  // Two rings: the tight one keeps a label visually tied to its dot, the wide one exists so
+  // a city can escape a crowded neighbourhood instead of being dropped.
+  const CITY_CANDIDATES = [   // [dx, dy, text-anchor]
+    [9, 7, "start"], [9, -6, "start"], [-9, 7, "end"], [-9, -6, "end"],
+    [0, -11, "middle"], [0, 18, "middle"], [15, 16, "start"], [-15, 16, "end"],
+    [15, -14, "start"], [-15, -14, "end"],
+    [0, -30, "middle"], [0, 36, "middle"], [28, 30, "start"], [-28, 30, "end"],
+    [28, -28, "start"], [-28, -28, "end"],
+  ];
+
+  function placeCityLabels(g, cities, project, bbox){
+    const [b0, b1, b2, b3] = bbox;
+    const pts = [];
+    for (const [nm, lon, lat] of cities){
+      if (lon < b0 || lon > b2 || lat < b1 || lat > b3) continue;
+      const p = project(lon, lat);
+      pts.push({nm, x: p[0], y: p[1]});
+    }
+    // Dots first: every city keeps its marker even if its name has to be dropped.
+    for (const c of pts){
+      g.appendChild(el("circle", {cx: c.x.toFixed(1), cy: c.y.toFixed(1), r: 2.6, class: "city-dot"}));
+    }
+    // Seed the occupancy list with the dots themselves, so a name never sits on a marker.
+    const taken = pts.map(c => ({x: c.x - 4, y: c.y - 4, w: 8, h: 8}));
+    const overlaps = (a, b) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+    for (const c of pts){
+      const w = c.nm.length * CITY_FONT_PX * CITY_ADVANCE_EM;
+      const h = CITY_FONT_PX * 0.8;
+      for (const [dx, dy, anchor] of CITY_CANDIDATES){
+        const x = c.x + dx, y = c.y + dy;
+        const left = anchor === "end" ? x - w : anchor === "middle" ? x - w / 2 : x;
+        const box = {x: left - CITY_PAD, y: y - h - CITY_PAD, w: w + 2 * CITY_PAD, h: h + 2 * CITY_PAD};
+        if (taken.some(q => overlaps(box, q))) continue;
+        const t = el("text", {
+          x: x.toFixed(1), y: y.toFixed(1), class: "city-label", "text-anchor": anchor,
+        });
+        t.textContent = c.nm;
+        g.appendChild(t);
+        taken.push(box);
+        break;
+      }
+    }
+  }
+
+  /* Which of the two evidence-provenance overlays are drawn. Both start off: the map's
+     job on first read is the capacity choropleth, and two full-country grids of outlines
+     over it obscure that. The legend entries double as the switches (see wireKeyToggles). */
+  const SHOW = {domain: false, extended: false};
 
   function ringPath(rings){
     let d = "";
@@ -733,7 +968,7 @@
     }
     svg.appendChild(gC);
 
-    if (DATA.cells.some(c => c[9])) {
+    if (SHOW.domain && DATA.cells.some(c => c[9])) {
       const gD = el("g", {class:"domain-ring"});
       for (const c of DATA.cells){
         if (!c[9]) continue;
@@ -747,7 +982,7 @@
       svg.appendChild(gD);
     }
 
-    if (DATA.cells.some(c => c[EXTENDED_IDX])) {
+    if (SHOW.extended && DATA.cells.some(c => c[EXTENDED_IDX])) {
       const gE = el("g", {class:"extended-ring"});
       for (const c of DATA.cells){
         if (!c[EXTENDED_IDX]) continue;
@@ -780,13 +1015,7 @@
     svg.appendChild(gS);
 
     const gCity = el("g", {});
-    for (const [nm, lon, lat] of DATA.cities){
-      if (lon < b0 || lon > b2 || lat < b1 || lat > b3) continue;
-      const p = proj(lon, lat);
-      gCity.appendChild(el("circle", {cx:p[0].toFixed(1), cy:p[1].toFixed(1), r:2.6, class:"city-dot"}));
-      const t = el("text", {x:(p[0]+8).toFixed(1), y:(p[1]+7).toFixed(1), class:"city-label"});
-      t.textContent = nm; gCity.appendChild(t);
-    }
+    placeCityLabels(gCity, DATA.cities, proj, [b0, b1, b2, b3]);
     svg.appendChild(gCity);
 
     if (DATA.calibBoxes && DATA.calibBoxes.length){
@@ -853,6 +1082,27 @@
     document.getElementById("legcap").textContent = `MWp per cell`;
   }
 
+  /* The legend's two outline entries are also their own on/off switches. An AOI whose
+     cells never carry the flag (no roofclf half at all, or nothing extrapolated) gets no
+     switch rather than one that toggles an empty overlay. */
+  function wireKeyToggles(){
+    const keys = [
+      ["domainKey", "domain", (c) => c[9], "dashed"],
+      ["extendedKey", "extended", (c) => c[EXTENDED_IDX], "dotted"],
+    ];
+    for (const [id, flag, has, style] of keys){
+      const btn = document.getElementById(id);
+      if (!btn) continue;
+      if (!DATA.cells.some(has)){ btn.style.display = "none"; continue; }
+      const sync = () => {
+        btn.setAttribute("aria-pressed", SHOW[flag] ? "true" : "false");
+        btn.title = `${SHOW[flag] ? "Hide" : "Show"} the ${style} outline on the map`;
+      };
+      sync();
+      btn.addEventListener("click", () => { SHOW[flag] = !SHOW[flag]; sync(); renderMap(); });
+    }
+  }
+
   // Second lens on the same Best-estimate total: `DATA.bins` is only present when
   // `build_evidence_atlas` was given roofclf's >= 400 m2 replacement (see its
   // docstring) -- an AOI without it gets no section rather than a chart of zeroes.
@@ -895,7 +1145,7 @@
     const tip = document.getElementById("tip");
     function showTip(e, label, series, mwp, nInst, extrap){
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
-      tip.innerHTML = `<div class="th">${label} &mdash; ${series}</div>`
+      tip.innerHTML = `<div class="th">${label} -- ${series}</div>`
         + `<div class="rowt"><span>Capacity</span><span>${fmt(mwp)} MWp</span></div>`
         + `<div class="rowt"><span>Installations</span><span>${fmt(nInst)}</span></div>`
         + (extrap > 0 ? `<div class="rowt"><span>of which extrapolated</span><span>${fmt(extrap)} MWp</span></div>` : "");
@@ -971,6 +1221,150 @@
     document.querySelector("#btable tbody").innerHTML = DATA.bins.map(b =>
       `<tr><td>${b.label}</td><td>${fmt(b.roof_mwp)}</td><td>${fmt(b.ground_mwp)}</td>`
       + `<td>${fmt(b.roof_n)}</td><td>${fmt(b.ground_n)}</td></tr>`).join("");
+  }
+
+  // ── composition by method (8 components, 4 methods) ──────────────────────────────
+  // Same breakdown results/pakistan_atlas_composition.html renders standalone, from
+  // the SAME embedded uncertainty.components this page already carries -- no new
+  // data, just a second view onto it, so the two pages can never drift apart.
+  const COMP_METHOD_META = {
+    osm:     { name: "OSM (hand-mapped)", cls: "osm" },
+    seg:     { name: "TerraMind segmentation", cls: "seg" },
+    roofclf: { name: "roofclf (alone)", cls: "roofclf" },
+    sppi:    { name: "roofclf + SPPI", cls: "sppi" },
+  };
+  const COMP_METHOD_ORDER = ["osm", "seg", "roofclf", "sppi"];
+
+  function compRows(){
+    const C = T.uncertainty.components;
+    // A component the atlas was not given at all is absent, not zero (see
+    // `_evidence_uncertainty`) -- read every one through this and drop the empties, so a
+    // run without, say, the out-of-domain extrapolation shows no slice for it.
+    const comp = (k) => C[k] || {mwp: 0, ci: null};
+    const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
+    const best = [
+      { key: "osm_unmatched_roof", method: "osm", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
+        label: "OSM hand-mapped - rooftop (not already found by the model)" },
+      { key: "osm_unmatched_ground", method: "osm", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
+        label: "OSM hand-mapped - ground-mount (not already found by the model)" },
+      { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
+        label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)" },
+      { key: "seg_roof_outdomain", method: "seg", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
+        label: "TerraMind segmentation - rooftop, outside the calibrated domain" },
+      { key: "seg_ground", method: "seg", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
+        label: "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)" },
+      { key: "ge400_roof", method: "roofclf", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
+        label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain" },
+      { key: "small_central", method: "roofclf", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
+        label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated" },
+      { key: "small_outdomain", method: "sppi", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
+        label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain" },
+    ];
+    const verified = [
+      { key: "osm_roof", method: "osm", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
+        label: "OSM hand-mapped - rooftop (all of it, matched or not)" },
+      { key: "osm_ground", method: "osm", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
+        label: "OSM hand-mapped - ground-mount (all of it, matched or not)" },
+      { key: "small_low", method: "sppi", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
+        label: "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain" },
+    ];
+    return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
+  }
+
+  function compMethodTotals(rows, total){
+    const sums = {}; COMP_METHOD_ORDER.forEach(m => sums[m] = 0);
+    rows.forEach(r => sums[r.method] += r.mwp);
+    return COMP_METHOD_ORDER.filter(m => sums[m] > 0).map(m =>
+      ({ method: m, ...COMP_METHOD_META[m], mwp: sums[m], pct: 100 * sums[m] / total }));
+  }
+
+  function renderCompStack(stackId, tipId, rows, total, labelThresholdPct){
+    const stack = document.getElementById(stackId);
+    const tip = document.getElementById(tipId);
+    stack.innerHTML = rows.map((r, i) => {
+      const w = (r.mwp / total * 100).toFixed(3);
+      const pct = 100 * r.mwp / total;
+      const label = pct >= labelThresholdPct ? `<div class="comp-seg-label">${pct.toFixed(0)}%</div>` : "";
+      return `<div class="comp-seg${r.texture ? " texture" : ""}" data-i="${i}" `
+        + `style="width:${w}%;background:var(--${r.method === "roofclf" ? "accent" : r.method === "seg" ? "large" : r.method === "sppi" ? "extended" : "domain"})">${label}</div>`;
+    }).join("");
+    stack.querySelectorAll(".comp-seg").forEach(el => {
+      const r = rows[+el.dataset.i];
+      el.addEventListener("pointerenter", () => {
+        const pct = 100 * r.mwp / total;
+        const ciText2 = r.ci ? `${fmt(r.ci[0])} – ${fmt(r.ci[1])}` : "deterministic, no drawn interval";
+        tip.innerHTML = `<div class="t-title">${COMP_METHOD_META[r.method].name}</div>`
+          + `<div class="t-row"><span class="k">MWp</span><span class="v">${fmt(r.mwp)}</span></div>`
+          + `<div class="t-row"><span class="k">Share of tier</span><span class="v">${pct.toFixed(1)}%</span></div>`
+          + `<div class="t-row"><span class="k">90% CI</span><span class="v">${ciText2}</span></div>`
+          + `<div class="t-desc">${r.label}</div>`;
+        const wrapRect = el.closest(".comp-stack-wrap").getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const relX = elRect.left - wrapRect.left + elRect.width / 2;
+        tip.style.left = Math.max(0, Math.min(relX - 100, wrapRect.width - 210)) + "px";
+        tip.style.top = (elRect.bottom - wrapRect.top + 8) + "px";
+        tip.style.opacity = 1;
+      });
+      el.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+    });
+  }
+
+  function renderComposition(){
+    const { best, verified } = compRows();
+    // Counted from the rows that actually survived, not written into the markup: an atlas
+    // built without an optional component must not still announce it in its own title.
+    const nMethods = new Set(best.map(r => r.method)).size;
+    document.getElementById("compTitle").innerHTML =
+      `Best estimate -- ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
+    document.getElementById("compSub").textContent =
+      "Segments grouped by method, in proportion to MWp · hover a segment for detail";
+    const shownMethods = new Set([...best, ...verified].map(r => r.method));
+    document.getElementById("compLegend").innerHTML = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
+      `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}</div>`).join("");
+    document.getElementById("compVerifiedLabel").textContent =
+      `Verified (the floor) - ${fmt(T.mwp_verified)} MWp, for comparison`;
+
+    renderCompStack("compStackBest", "compTipBest", best, T.mwp_best, 8);
+    renderCompStack("compStackVerified", "compTipVerified", verified, T.mwp_verified, 8);
+    document.getElementById("compScaleBest").textContent = `${fmt(T.mwp_best)} MWp`;
+    document.getElementById("compScaleVerified").textContent = `${fmt(T.mwp_verified)} MWp`;
+
+    const methodTotals = compMethodTotals(best, T.mwp_best);
+    document.getElementById("compMethods").innerHTML = methodTotals.map(m => `
+      <div class="comp-method-card">
+        <div class="m-name"><span class="comp-swatch ${m.cls}"></span>${m.name}</div>
+        <div class="m-pct">${m.pct.toFixed(1)}%</div>
+        <div class="m-mwp">${fmt(m.mwp)} MWp</div>
+      </div>`).join("");
+  }
+
+  // ── downloads: a point-in-time data release (see build_evidence_atlas's docstring
+  // for why this is a static manifest passed in by the caller, not derived here) ──
+  function fmtBytes(n){
+    if (!n && n !== 0) return "";
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + " MB";
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + " KB";
+    return n + " B";
+  }
+
+  function renderDownloads(){
+    const items = T.downloads;
+    document.getElementById("dlList").innerHTML = items.map(d => `
+      <div class="dl-item">
+        <div class="dl-main">
+          <div class="dl-name">${d.label}</div>
+          <div class="dl-note">${d.note || ""}</div>
+        </div>
+        <div class="dl-link">
+          <a href="${d.url}" target="_blank" rel="noopener">${d.file}</a>
+          <span class="dl-size">${fmtBytes(d.size_bytes)}</span>
+        </div>
+      </div>`).join("");
+    const releasePage = items[0].url.replace(/\/releases\/download\/([^/]+)\/.*/, "/releases/tag/$1");
+    document.getElementById("dlRelease").innerHTML =
+      releasePage !== items[0].url
+        ? `<a href="${releasePage}" target="_blank" rel="noopener">view release on GitHub</a>`
+        : "";
   }
 
   // ── panel-pose survey (ported from pose.py's TEMPLATE, native this time) ─────────
@@ -1061,121 +1455,20 @@
     });
   }
 
-  function poseBar(svg, x, y, w, h, fill){
-    const r = el("rect", {x, y: y - h, width: w, height: Math.max(h, 0), fill});
-    svg.appendChild(r);
-  }
-  function poseText(svg, x, y, s, opts = {}){
-    const t = el("text", {x, y, "font-size": opts.size || 10.5, "text-anchor": opts.anchor || "middle", class: "pose-mono"});
-    if (opts.fill) t.style.fill = opts.fill;
-    t.textContent = s;
-    svg.appendChild(t);
-  }
-
-  function renderPoseHistTilt(){
-    const svg = document.getElementById("pose-hist-tilt");
-    if (!svg) return;
-    svg.innerHTML = "";
-    const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const binSize = 3, maxTilt = 30;
-    const bins = Array.from({length: maxTilt / binSize}, () => ({gen: 0, plant: 0}));
-    DATA.pose.points.forEach(d => {
-      const i = Math.min(Math.floor(d.t / binSize), bins.length - 1);
-      bins[i][d.k === "generator" ? "gen" : "plant"]++;
-    });
-    const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
-    const bw = plotW / bins.length;
-    const sun = poseCss("--pose-accent-sun"), glint = poseCss("--pose-accent-glint"), inkFaint = poseCss("--pose-ink-faint");
-    bins.forEach((b, i) => {
-      const x = padL + i * bw + bw * 0.12;
-      const w = bw * 0.76;
-      const totalH = (b.gen + b.plant) / maxCount * plotH;
-      const genH = b.gen / maxCount * plotH;
-      const baseY = padT + plotH;
-      poseBar(svg, x, baseY - genH, w, genH, sun);
-      poseBar(svg, x, baseY - totalH, w, totalH - genH, glint);
-      if (i % 2 === 0) poseText(svg, x + w / 2, H - 8, (i * binSize) + "°", {size: 9.5, fill: inkFaint});
-    });
-    svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: poseCss("--pose-rule")}));
-  }
-
-  function renderPoseHistAz(){
-    const svg = document.getElementById("pose-hist-az");
-    if (!svg) return;
-    svg.innerHTML = "";
-    const W = 460, H = 200, padL = 24, padB = 26, padT = 10, padR = 10;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const lo = 60, hi = 200, binSize = 10;
-    const nbins = (hi - lo) / binSize;
-    const bins = Array.from({length: nbins}, () => ({gen: 0, plant: 0}));
-    DATA.pose.points.forEach(d => {
-      const i = Math.min(Math.max(Math.floor((d.az - lo) / binSize), 0), nbins - 1);
-      bins[i][d.k === "generator" ? "gen" : "plant"]++;
-    });
-    const maxCount = Math.max(...bins.map(b => b.gen + b.plant), 1);
-    const bw = plotW / nbins;
-    const sun = poseCss("--pose-accent-sun"), glint = poseCss("--pose-accent-glint"),
-      inkFaint = poseCss("--pose-ink-faint"), exclLine = poseCss("--pose-excluded-line");
-    bins.forEach((b, i) => {
-      const x = padL + i * bw + bw * 0.12;
-      const w = bw * 0.76;
-      const totalH = (b.gen + b.plant) / maxCount * plotH;
-      const genH = b.gen / maxCount * plotH;
-      const baseY = padT + plotH;
-      poseBar(svg, x, baseY - genH, w, genH, sun);
-      poseBar(svg, x, baseY - totalH, w, totalH - genH, glint);
-      if (i % 2 === 0) poseText(svg, x + w / 2, H - 8, lo + i * binSize, {size: 9.5, fill: inkFaint});
-    });
-    const xCeil = padL + ((180 - lo) / (hi - lo)) * plotW;
-    svg.appendChild(el("line", {x1: xCeil, x2: xCeil, y1: padT, y2: padT + plotH,
-      stroke: exclLine, "stroke-width": 1.5, "stroke-dasharray": "4,3"}));
-    svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: poseCss("--pose-rule")}));
-  }
-
-  function renderPoseStrip(){
-    const svg = document.getElementById("pose-strip");
-    if (!svg) return;
-    svg.innerHTML = "";
-    const rows = DATA.pose.strip;
-    const W = 1000, H = 150, padL = 50, padR = 20, padT = 14, padB = 28;
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const groupW = plotW / rows.length;
-    const inkDim = poseCss("--pose-ink-dim"), inkFaint = poseCss("--pose-ink-faint"),
-      glint = poseCss("--pose-accent-glint"), rule = poseCss("--pose-rule");
-    rows.forEach(([label, det, val], i) => {
-      const gx = padL + i * groupW;
-      const bw = groupW * 0.28;
-      const hDet = det / 100 * plotH, hVal = val / 100 * plotH;
-      const baseY = padT + plotH;
-      poseBar(svg, gx + groupW * 0.22, baseY - hDet, bw, hDet, inkFaint);
-      poseBar(svg, gx + groupW * 0.52, baseY - hVal, bw, hVal, glint);
-      poseText(svg, gx + groupW / 2, H - 8, label, {size: 11});
-    });
-    svg.appendChild(el("line", {x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: rule}));
-    [0, 25, 50, 75].forEach(p => {
-      const y = padT + plotH - (p / 100) * plotH;
-      poseText(svg, padL - 10, y + 3, p + "%", {size: 10, anchor: "end", fill: inkFaint});
-    });
-    poseText(svg, padL, 10, "grey = detected (≥ 1 spike)   teal = validated (≥ 2 consistent)", {size: 10.5, anchor: "start", fill: inkDim});
-  }
-
   function renderPoseAll(){
-    renderPosePolar(); renderPoseHistTilt(); renderPoseHistAz(); renderPoseStrip();
+    renderPosePolar();
   }
 
   function fillPoseStats(){
     const st = DATA.pose.stats;
     const set = (cls, html) => document.querySelectorAll("." + cls).forEach(e => e.innerHTML = html);
     set("pz-nfitted", fmt(st.n_fitted));
-    set("pz-ntotal", fmt(st.n_total));
     set("pz-pct-ge1000", st.pct_ge1000.toFixed(1));
     set("pz-pct-onespike", st.pct_onespike.toFixed(1));
     set("pz-pct-nosignal", st.pct_nosignal.toFixed(1));
     set("pz-az-range", `${st.az_min.toFixed(1)}&deg; &ndash; ${st.az_max.toFixed(1)}&deg;`);
     set("pz-tilt-iqr", `${st.tilt_q25.toFixed(1)}&deg; &ndash; ${st.tilt_q75.toFixed(1)}&deg;`);
     set("pz-wedge-deg", st.wedge_deg.toFixed(0));
-    set("pz-dek-history", st.history_note ? " " + st.history_note : "");
     set("pz-summary-path", st.summary_path);
     set("pz-data-note", st.data_note ? " " + st.data_note : "");
     set("pz-ge1000-note",
@@ -1204,7 +1497,14 @@
   document.getElementById("kOsm").textContent = fmt(T.osm_n);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
 
+  // The out-of-domain extrapolation is optional evidence: when the atlas was built
+  // without it, every surface that would report it (this column, the size chart's third
+  // legend key, the map's dotted outline, the composition's SPPI-in-Best slice) drops out
+  // rather than reporting a column of zeroes as if it were a measurement.
+  const HAS_OUTDOMAIN = (T.small_outdomain || 0) > 0;
+
   function drawTable() {
+    if (!HAS_OUTDOMAIN) document.getElementById("thOutdomain").style.display = "none";
     const provs = [...DATA.provinces].sort((a,b) => b.mwp_best - a.mwp_best);
     const maxP = provs.length ? Math.max(...provs.map(p => p.mwp_best), 1) : 1;
     document.getElementById("ranks").innerHTML = provs.map(p => {
@@ -1217,15 +1517,20 @@
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
       `<tr><td>${p.name}</td><td>${fmt(p.mwp_best)}</td>`
       + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
-      + `<td>${fmt(p.small_outdomain)}</td></tr>`).join("");
+      + (HAS_OUTDOMAIN ? `<td>${fmt(p.small_outdomain)}</td>` : "") + `</tr>`).join("");
   }
 
   countUp("heroNum", T.mwp_best, 700);
   document.getElementById("heroCi").textContent = ciText(T.mwp_best_ci);
+  document.getElementById("heroFreshness").textContent = [
+    T.imagery_date_range ? `Sentinel-2 imagery: ${T.imagery_date_range}` : null,
+    T.generated_at ? `atlas generated ${T.generated_at}` : null,
+  ].filter(Boolean).join(" · ");
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
     `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
   renderMap(); drawTable();
+  wireKeyToggles();
 
   const hasSizeBins = Array.isArray(DATA.bins) && DATA.bins.length > 0;
   const sizeSection = document.getElementById("sizebins");
@@ -1233,9 +1538,26 @@
     document.getElementById("sizeTiles").innerHTML =
       `<div class="tile"><div class="v">${fmt(T.mwp_roof)}</div><div class="k">Rooftop, MWp</div></div>`
       + `<div class="tile ground-tile"><div class="v">${fmt(T.mwp_ground)}</div><div class="k">Ground-mount, MWp</div></div>`;
+    if (!HAS_OUTDOMAIN) document.getElementById("extrapKey").style.display = "none";
     renderSizeChart(); drawSizeTable();
   } else if (sizeSection) {
     sizeSection.style.display = "none";
+  }
+
+  const hasComposition = !!(T.uncertainty && T.uncertainty.components);
+  const compSection = document.getElementById("composition");
+  if (hasComposition) {
+    renderComposition();
+  } else if (compSection) {
+    compSection.style.display = "none";
+  }
+
+  const hasDownloads = Array.isArray(T.downloads) && T.downloads.length > 0;
+  const downloadsSection = document.getElementById("downloads");
+  if (hasDownloads) {
+    renderDownloads();
+  } else if (downloadsSection) {
+    downloadsSection.style.display = "none";
   }
 
   const hasPose = !!DATA.pose;
@@ -1251,7 +1573,12 @@
     `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf/SPPI per-building `
     + `classifiers · ${fmt(T.n_cells)} cells × 0.1° · ${T.kwp_per_m2} kWp/m² of module area · `
     + `Sentinel-2 L2A dry-season composites · buildings from VIDA Open Buildings · `
-    + `see docs/methods/density.md for full derivations and caveats.`;
+    + `see docs/methods/density.md for full derivations and caveats.<br>`
+    + `Contains information &copy; OpenStreetMap contributors, `
+    + `<a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL</a> · `
+    + `building footprints &copy; VIDA Open Buildings, `
+    + `<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. `
+    + `Downloaded data on this page is released under the same ODbL terms as its OpenStreetMap source.`;
 
   // No theme button of our own: the docs site's Material nav toggle is the only
   // control, driven in via `data-theme` on <html> (see embed-theme.js). Re-render

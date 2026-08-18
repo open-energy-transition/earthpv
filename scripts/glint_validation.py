@@ -117,13 +117,13 @@ def analyze_point(d: pd.DataFrame, tol_deg: float = 3.0) -> tuple[dict, pd.DataF
     Thin wrapper around `earthpv.glint.annotate_spikes`/`fit_best_orientation` that
     adds the two diagnostics only this validation script cares about (spike
     brightness multiple, and how many clear scenes the fitted orientation predicts
-    should glint) — `postprocess.py`'s `add_glint_prior` uses the shared
+    should glint) - `postprocess.py`'s `add_glint_prior` uses the shared
     `glint.spike_fit` directly since it doesn't need these for plotting.
     """
     d = glint.annotate_spikes(d, bands=BANDS)
     if d.empty:
         # All scenes lacked usable reflectance stats (e.g. sub-pixel target under the
-        # old strict mask) — report zeros instead of crashing on missing columns.
+        # old strict mask) - report zeros instead of crashing on missing columns.
         return dict(n_scenes=0, n_clear=0, n_spikes=0, base_B08=np.nan,
                     fit_tilt=np.nan, fit_az=np.nan, n_consistent=0, n_predicted=0,
                     med_spike_amp=np.nan), d

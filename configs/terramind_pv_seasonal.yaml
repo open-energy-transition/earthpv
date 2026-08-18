@@ -1,4 +1,4 @@
-# TerraTorch fine-tuning config for PV segmentation — TWO-SEASON stack (20-band).
+# TerraTorch fine-tuning config for PV segmentation - TWO-SEASON stack (20-band).
 # Input is [base-season 10 bands, contrast-season 10 bands]. The band list repeats
 # the 10 names: TerraTorch duplicates the pretrained S2L2A patch-embed weights into
 # both positions (verified), so each season starts from the same pretrained filters

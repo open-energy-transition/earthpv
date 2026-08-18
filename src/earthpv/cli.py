@@ -34,11 +34,11 @@ def overpass_labels(
     iso3: str = typer.Option(
         None, help="Use the local VIDA building parquet (data/vida/<ISO3>.parquet) for "
         "placement classification instead of Overture's remote S3 (which times out "
-        "from this machine) — needed for countries without a rooftopsenti cache"
+        "from this machine) - needed for countries without a rooftopsenti cache"
     ),
 ) -> None:
     """Fetch fresh OSM solar-PV mappings directly via Overpass (bypasses Overture's
-    periodic-snapshot lag — use for a region that was just hand-mapped)."""
+    periodic-snapshot lag - use for a region that was just hand-mapped)."""
     from earthpv.overpass import build_overpass_labels
 
     parsed_bbox = tuple(float(x) for x in bbox.split(",")) if bbox else None
@@ -92,7 +92,7 @@ def compose(
     ),
     use_vida: bool = typer.Option(
         False, help="Force VIDA Open Buildings for cell selection even if the AOI has a "
-        "source_region — the local Overture-only set (>=500 m2) undercounts small/unmapped "
+        "source_region - the local Overture-only set (>=500 m2) undercounts small/unmapped "
         "buildings by orders of magnitude in some regions"
     ),
 ) -> None:
@@ -182,7 +182,7 @@ def postprocess(
     ),
     preboom_prob_dir: Path = typer.Option(
         None, help="Probability rasters from a pre-boom/contrast epoch (e.g. "
-        "data/predictions_preboom/<aoi>/prob) — candidates already bright there get "
+        "data/predictions_preboom/<aoi>/prob) - candidates already bright there get "
         "down-weighted in rank_score as likely persistent false positives, not dropped"
     ),
     check_glint: bool = typer.Option(
@@ -198,7 +198,7 @@ def postprocess(
     ),
     glint_skip_top: int = typer.Option(
         100, help="Skip the this-many highest-ranked candidates before spending the "
-        "glint budget — they reach human validation regardless, so the check adds "
+        "glint budget - they reach human validation regardless, so the check adds "
         "nothing there; 0 restores the old check-from-the-top behavior"
     ),
     glint_tile_deg: float = typer.Option(
@@ -208,7 +208,7 @@ def postprocess(
     ),
     glint_self_referenced: bool = typer.Option(
         False, help="Compare each candidate's surrounding annulus to its OWN history "
-        "instead of requiring it to be dim right now — for dense urban blocks where "
+        "instead of requiring it to be dim right now - for dense urban blocks where "
         "the annulus is itself lined with similarly-bright rooftops and the default "
         "spatial check never fires (see earthpv.glint.annotate_spikes)"
     ),
@@ -246,7 +246,7 @@ def export(
     min_distance_m: float = typer.Option(
         0.0, help="With --exclude-mapped, drop candidates within this many metres of "
         "an already-mapped OSM solar feature, not just ones that literally overlap it "
-        "— catches candidates offset from a mapped point (a common generator:source=solar "
+        "- catches candidates offset from a mapped point (a common generator:source=solar "
         "node) that would otherwise never 'intersect' and wrongly surface as new"
     ),
     epoch_clean: bool = typer.Option(
@@ -256,7 +256,7 @@ def export(
     ),
     epoch_fp_max_prior: float = typer.Option(
         0.5, help="With --epoch-clean, drop checked candidates whose epoch_prior "
-        "(1 - pre-boom probability) is below this — 0.5 matches the 'likely persistent "
+        "(1 - pre-boom probability) is below this - 0.5 matches the 'likely persistent "
         "FP' judgement shown to MapRoulette mappers"
     ),
     veg_max_ndvi: float = typer.Option(
@@ -266,7 +266,7 @@ def export(
         "annual instrument below"
     ),
     annual_ndvi: Path = typer.Option(
-        None, help="annual_ndvi.parquet from scripts/veg_annual_ndvi.py analyze — vetoes "
+        None, help="annual_ndvi.parquet from scripts/veg_annual_ndvi.py analyze - vetoes "
         "leads whose year-long p95 NDVI exceeds --annual-ndvi-max (a crop cycle; PV "
         "never greens up)"
     ),
@@ -458,7 +458,7 @@ def density(
     ),
     kwp_per_m2_land: float = typer.Option(
         None,
-        help="kWp per m2 of GROUND-MOUNT site area — a detected plant polygon is site, not "
+        help="kWp per m2 of GROUND-MOUNT site area - a detected plant polygon is site, not "
         "module, so only its ground-cover ratio counts "
         "(default capacity_calibration.DEFAULT_KWP_PER_M2_LAND)",
     ),
@@ -541,6 +541,27 @@ def roof_classifier_cmd(
     ),
     labels_dir: Path = typer.Option(Path("data/labels")),
     out_dir: Path = typer.Option(Path("data/roofclf")),
+    parcel_label: bool = typer.Option(
+        False, "--parcel-label/--no-parcel-label",
+        help="Score the PARCEL, not just the roof: widen pv_area_true_m2 to include "
+        "mapped PV within 20 m of the footprint (below the 400 m2 segmentation floor) "
+        "and add the yard feature block. Changes what every downstream coverage-ratio "
+        "and area-recall correction measures, so use a separate --out-dir and rescore "
+        "nationally before feeding sub400-capacity. Default off = the roof-only label "
+        "every published atlas figure was built on.",
+    ),
+    yard_features: bool = typer.Option(
+        False, "--yard-features/--no-yard-features",
+        help="Also put the yard feature block IN the model (needs --parcel-label). "
+        "Measured 2026-08-16 and left off: it loses to the roof-only feature set even "
+        "against the parcel label (0.8712 vs 0.8734 median fold AUC). Kept for "
+        "re-measurement, not for deployment.",
+    ),
+    table_path: Path = typer.Option(
+        None, help="Refit from an existing buildings.geoparquet instead of rebuilding "
+        "every quadrat table (about ten minutes). For feature-set comparisons: the table "
+        "does not depend on the feature list.",
+    ),
 ) -> None:
     """Per-building PV classifier on the fully-mapped quadrats: the sub-400 m2 instrument.
 
@@ -548,13 +569,18 @@ def roof_classifier_cmd(
     question at one mixed pixel. Reports leave-one-quadrat-out AUC against the segmentation
     and fraction-head baselines, and measures the absolute-scale anchor that
     `density --exp-scale` needs.
+
+    With `--parcel-label` the question becomes "does this parcel carry PV?", which is what
+    closes the accounting gap on small ground-mounted arrays beside a building -- see
+    docs/issues/small-ground-mount-instrument.md.
     """
     from earthpv.roofclf import run_roof_classifier
 
     run_roof_classifier(
         aoi=aoi, quadrats=list(quadrat) if quadrat else None, composites=composites,
         seg_prob_dir=seg_prob_dir, frac_prob_dir=frac_prob_dir, labels_dir=labels_dir,
-        out_dir=out_dir,
+        out_dir=out_dir, parcel_label=parcel_label, include_yard_features=yard_features,
+        table_path=table_path,
     )
 
 
@@ -657,6 +683,18 @@ def sub400_capacity_cmd(
     sppi_min_precision: float = typer.Option(
         0.5, help="Precision target for the AND-gate's pooled SPPI threshold"
     ),
+    recall_correct: bool = typer.Option(
+        True,
+        help="Divide the roofclf-only (central) estimate by the measured share of true PV "
+        "AREA that roofclf actually flags in each size/density stratum "
+        "(sub400_capacity.area_recall_by_size_and_density) -- the same Horvitz-Thompson "
+        "correction density.py's est_mwp_rc applies to segmentation candidates. Without "
+        "it the estimate books zero MWp for every installation on a roof roofclf missed "
+        "(19.2% of mapped sub-400 m2 PV area on the current calibration set, and 71-73% "
+        "in the smallest size deciles). Never applied to the AND-gate tiers, which are "
+        "floors -- see domain_restricted_and_gate_capacity's docstring. "
+        "--no-recall-correct reproduces the pre-2026-08-15 figure exactly.",
+    ),
     size_floor_m2: str = typer.Option(
         "0,50", help="Comma-separated per-density-band m2 floor, one value per "
         "n-density-bands (default '0,50': no floor in the sparser calibration band, "
@@ -699,6 +737,11 @@ def sub400_capacity_cmd(
     out_dir = Path(out_dir) if out_dir else roofclf_dir.parent / "density"
     out_dir.mkdir(parents=True, exist_ok=True)
     calib_dir = Path(calib_dir)
+    # Two national scorings can coexist (roof-only and parcel-label); pairing one with the
+    # other's calibration is silently wrong rather than an error, so check the fingerprint.
+    from earthpv.roofclf import check_scoring_matches_calibration
+
+    check_scoring_matches_calibration(roofclf_dir, calib_dir)
     candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
     folds_path = calib_dir / "folds.csv"
     buildings_path = calib_dir / "buildings.geoparquet"
@@ -725,7 +768,10 @@ def sub400_capacity_cmd(
         **({} if coverage_boot is None else {"n_coverage_boot": coverage_boot}),
     )
 
-    central, central_summary = domain_restricted_capacity(**kwargs)
+    # `recall_correct` is deliberately NOT in the shared kwargs: the two AND-gate
+    # functions below take no such parameter, because a floor tier must not extrapolate
+    # to installations neither detector flagged.
+    central, central_summary = domain_restricted_capacity(**kwargs, recall_correct=recall_correct)
     central.to_parquet(out_dir / "sub400_central_incremental_buildings.parquet")
     (out_dir / "sub400_central_summary.json").write_text(json.dumps(central_summary, indent=2))
 
@@ -812,6 +858,13 @@ def ge400_roof_capacity_cmd(
         "quadrat set in both -- `earthpv atlas` relies on that to keep these components' "
         "errors correlated. 0 disables it (no interval for this component in the atlas)."
     ),
+    recall_correct: bool = typer.Option(
+        True,
+        help="Divide by roofclf's measured PV-area recall per size/density stratum -- see "
+        "`sub400-capacity --help`. Small at this size (0.982 measured on the trusted "
+        "quadrats' own >= 400 m2 buildings, vs 0.808 sub-400 m2), but applied for the same "
+        "reason and priced in the same bootstrap replicates.",
+    ),
 ) -> None:
     """roofclf-based capacity for >= 400 m2 ROOFTOP buildings -- REPLACES segmentation's
     own est_mwp_rc_roof inside the density-matched domain (roofclf measured AUC 0.896 vs
@@ -829,6 +882,9 @@ def ge400_roof_capacity_cmd(
     out_dir = Path(out_dir) if out_dir else roofclf_dir.parent / "density"
     out_dir.mkdir(parents=True, exist_ok=True)
     calib_dir = Path(calib_dir)
+    from earthpv.roofclf import check_scoring_matches_calibration
+
+    check_scoring_matches_calibration(roofclf_dir, calib_dir)
     folds_path = calib_dir / "folds.csv"
     buildings_path = calib_dir / "buildings.geoparquet"
 
@@ -847,6 +903,7 @@ def ge400_roof_capacity_cmd(
         cell_density_path=cell_density_path, threshold=threshold, osm_solar_path=osm_solar,
         max_distance_m=max_distance_m, min_area_m2=min_area_m2,
         ratio_lo=ratio_lo, ratio_hi=ratio_hi, n_coverage_boot=coverage_boot,
+        recall_correct=recall_correct,
     )
     flagged.to_parquet(out_dir / "ge400_roof_incremental_buildings.parquet")
     (out_dir / "ge400_roof_summary.json").write_text(json.dumps(summary, indent=2))
@@ -872,7 +929,7 @@ def check_density_cmd(
     ),
     max_cell_share: float = typer.Option(
         None, help="Fail a region if one 0.1-deg cell exceeds this share of its total "
-        "(default 0.25) — the signature of a single merged blob"
+        "(default 0.25) - the signature of a single merged blob"
     ),
     strict: bool = typer.Option(
         True, help="Exit non-zero when any region fails, so this can gate CI"
@@ -1031,7 +1088,7 @@ def atlas(
     zoom_out: float = typer.Option(
         0.0, help="Pad the map bounds by this fraction of their own span (e.g. 0.10 = "
         "10% less zoom: draws the country 10% smaller, showing that much more "
-        "surrounding context) — cells/provinces/cities are unchanged, just rescaled"
+        "surrounding context) - cells/provinces/cities are unchanged, just rescaled"
     ),
     sub400_cells: Path = typer.Option(
         None, help="Building-level domain-restricted parquet from "
@@ -1113,9 +1170,30 @@ def atlas(
         "", help="Passed through to `earthpv.pose.compute_pose_survey_data` -- see "
         "`build_pose_survey_page`'s docstring.",
     ),
+    imagery_date_range: str = typer.Option(
+        None, help="Only used with the EVIDENCE atlas (--osm-solar). Free-text label "
+        "for the Sentinel-2 scene window the composites were built from (e.g. "
+        "'Oct 2025 - Jun 2026'), shown in the page footer next to an always-stamped "
+        "'generated on <today>' -- see build_evidence_atlas's docstring for why this "
+        "is passed in rather than derived automatically.",
+    ),
+    downloads_manifest: Path = typer.Option(
+        None, help="Only used with the EVIDENCE atlas (--osm-solar). JSON file: a list "
+        "of {'file', 'label', 'note', 'size_bytes'} dicts describing a point-in-time "
+        "data release's assets (see configs/pakistan_atlas_downloads.json). Pass "
+        "together with --data-release-url to write a Downloads section; omitting "
+        "either omits the section entirely.",
+    ),
+    data_release_url: str = typer.Option(
+        None, help="Only used with the EVIDENCE atlas (--osm-solar), together with "
+        "--downloads-manifest. Base URL for the release's assets (e.g. "
+        "'https://github.com/<org>/<repo>/releases/download/<tag>'), joined with each "
+        "manifest entry's 'file' to build its download link.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
+    import json
     import logging
 
     from earthpv.atlas import (
@@ -1138,6 +1216,10 @@ def atlas(
                     "the Ceiling tier was removed 2026-08-06)"
                 )
             candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
+            downloads = (
+                json.loads(Path(downloads_manifest).read_text())
+                if downloads_manifest else None
+            )
             build_evidence_atlas(
                 aoi, density_dir, osm_solar, candidates_path,
                 sub400_low_cells, sub400_central_cells,
@@ -1147,6 +1229,9 @@ def atlas(
                 pose_summary_csv=pose_summary_csv,
                 pose_history_note=pose_history_note,
                 pose_data_note=pose_data_note,
+                imagery_date_range=imagery_date_range,
+                downloads=downloads,
+                data_release_url=data_release_url,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
@@ -1302,7 +1387,7 @@ def calibrate_candidates(
         "data/labels/lahore_calib_6p61km2_overpass_solar.parquet. Unlike the country snapshot "
         "(only as complete as OSM happens to be), every real installation inside a "
         "quadrat is known, so this measures TRUE recall, not recall-against-what's-mapped "
-        "— pooled into the recall reference. Repeat the flag for more than one box",
+        "- pooled into the recall reference. Repeat the flag for more than one box",
     ),
     min_distance_m: float = typer.Option(100.0, help="Mapped-candidate distance (match export)"),
     max_candidate_m2: float = typer.Option(
@@ -1314,15 +1399,27 @@ def calibrate_candidates(
         "own consumer never sees. See capacity_relevant_candidates.",
     ),
     by_placement: bool = typer.Option(
-        False,
-        help="Also derive separate rooftop/ground precision+recall tables "
+        True,
+        help="Derive separate rooftop/ground precision+recall tables "
         "(table['placement_bins'], capacity_calibration.derive_placement_tables) -- "
         "pooling both placements into one set of area bins lets ground-mount borrow "
         "rooftop's much higher mapped fraction in the same bin (measured 2026-08-10: "
         "~1% of surviving ground candidates are OSM-corroborated within 100 m vs ~14% "
-        "for rooftop). `density.py` uses the split automatically when present.",
+        "for rooftop). `density.py` uses the split automatically when present. ON BY "
+        "DEFAULT since 2026-08-15: it was opt-in until then, and a table regenerated "
+        "without it silently reverted the published placement split -- see the note in "
+        "`derive_placement_tables`. Pass --no-by-placement only to reproduce a "
+        "pre-2026-08-10 pooled table deliberately.",
     ),
     out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
+    allow_downgrade: bool = typer.Option(
+        False,
+        help="Permit overwriting an existing table that carries evidence this run does "
+        "not (a placement split, a glint calibration, manual reviews). Off by default: "
+        "re-deriving without --glint-sample/--calibration-box/--by-placement silently "
+        "replaced the published Pakistan table on 2026-08-14, and nothing errored. See "
+        "capacity_calibration._table_evidence.",
+    ),
 ) -> None:
     """Derive the capacity-atlas candidate-precision table (p_real + recall per area bin).
 
@@ -1383,7 +1480,7 @@ def calibrate_candidates(
         else:
             raise typer.BadParameter("recall_reference must be snapshot | all | none")
         if ref is None or ref.empty:
-            typer.echo(f"recall reference '{recall_reference}' empty — skipping recall")
+            typer.echo(f"recall reference '{recall_reference}' empty - skipping recall")
             ref, ref_name = None, "none"
         else:
             n0 = len(ref)
@@ -1420,7 +1517,7 @@ def calibrate_candidates(
         manual_reviews=reviews, recall_reference=ref, recall_reference_name=ref_name,
         by_placement=by_placement, mapped_attrs=mapped_attrs,
     )
-    cc.write_table(table, out or cc.default_table_path(aoi))
+    cc.write_table(table, out or cc.default_table_path(aoi), allow_downgrade=allow_downgrade)
     for row in table["bins"]:
         rec = "recall=  n/a" if row["recall"] is None else f"recall={row['recall']:.3f}"
         typer.echo(
@@ -1487,7 +1584,7 @@ def calibrate_sample(
     """Stratified sample of UNMAPPED candidates for manual high-res review.
 
     Fill the `verdict` property (yes/no) in JOSM/QGIS against current imagery, then
-    feed the file back via `earthpv calibrate-candidates --manual-reviews <file>` —
+    feed the file back via `earthpv calibrate-candidates --manual-reviews <file>` -
     each bin with >= 20 verdicts gets a directly-measured P(real | unmapped) instead
     of a glint extrapolation. This is the calibration path for the < 1000 m2 bins
     that hold most residential candidates."""
@@ -1532,7 +1629,7 @@ def calibrate_sample(
     out = out or Path(pred_dir) / aoi / "calibration_review_sample.geojson"
     sample[cols].to_file(out, driver="GeoJSON")
     typer.echo(
-        f"wrote {out} ({len(sample)} candidates) — review `verdict` (yes/no) against "
+        f"wrote {out} ({len(sample)} candidates) - review `verdict` (yes/no) against "
         f"high-res imagery, then run:\n  earthpv calibrate-candidates --aoi {aoi} "
         f"--manual-reviews {out}"
     )

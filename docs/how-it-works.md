@@ -170,7 +170,8 @@ neither is part of the main workflow, and the main workflow does not need them t
   `density.py`'s current candidate population broke `check-density` for reasons traced
   to a pre-existing ground-mount aggregation issue, not the fraction head itself. It is
   not in the published atlas.
-- SPPI beats roofclf on nothing (median AUC 0.823 against 0.857) and adds nothing as a
+- SPPI beats roofclf on nothing (median AUC 0.823 against 0.874 on the same nine-quadrat
+  evaluation; roofclf reaches 0.879 on the full 27-quadrat set it is fitted on) and adds nothing as a
   roofclf feature, but an AND-gate (roofclf **and** SPPI agreeing) raises precision by
   4 points at matched recall in the three quadrats where roofclf alone overestimates.
   That AND-gate is what [the evidence
@@ -200,7 +201,7 @@ See [Solar glint](methods/glint.md) and [Panel pose from glint](results/pv-pose.
   wherever roofclf has been calibrated.
 - **`roof-classifier` → `roofclf-score-national` → `sub400-capacity`** fits `roofclf` on
   the calibration quadrats, scores every VIDA building nationally, then restricts to the
-  1,680 of 4,463 cells whose building density matches the quadrats and intersects
+  2,957 of 4,463 cells whose building density matches the quadrats and intersects
   roofclf with SPPI, explicitly refusing to rescale that figure to a national total. It
   covers roofclf's **< 400 m² population**, a separate module (`sub400_capacity.py`) not
   merged into `density.py`.

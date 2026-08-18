@@ -60,6 +60,10 @@ manual validation at step 12), combined by step 15 into the **evidence atlas**, 
 this project's primary output. Step 16 (Germany calibration and validation) and everything in
 the [experiments register](experiments.md) are optional extras, not alternative main paths.
 
+![The earthpv processing pipeline: Sentinel-2 L2A imagery plus OSM/Overture solar labels and building footprints feed into compose and labels, which produce the 10-band composites and label parquet that chips turns into jittered 224 px training windows; train fine-tunes TerraMind on those with a recall-first Tversky loss, evaluate picks the best checkpoint by a recall gate on held-out tiles, and infer applies it with Hann overlap-add windows to produce probability rasters; postprocess polygonizes and joins to building footprints for a rank_score, feeding both export (rank-sorted MapRoulette leads for human validation in OSM) and density (calibrated per-building/grid/region MWp) which produces the PV capacity atlas; a separate pre-boom epoch (Oct 2021 - Jan 2022) composite feeds a two-epoch change-detection feedback loop, and validated arrays a human maps in OSM become labels for the next training round, closing the loop.](pipeline.svg)
+
+
+
 === "1. Labels"
 
     Building footprints and OpenStreetMap solar polygons for an area.
@@ -207,6 +211,13 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     never pooled -- see [Capacity density](methods/density.md) for why a pooled number
     here would be misleading.
 
+    Add `--parcel-label` to count mapped PV in each building's 20 m yard as well as on its
+    roof ([the parcel label](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16)).
+    It changes what every downstream coverage-ratio and area-recall correction measures, so
+    use a separate `--out-dir` and rescore nationally against that model before running
+    `sub400-capacity`. `--table-path <buildings.geoparquet>` refits from an existing table
+    without rebuilding all 27 quadrats, which is the cheap way to compare feature sets.
+
 === "11. Score roofclf nationally"
 
     Apply the fitted model to every VIDA building in the AOI. No GPU, but the long pole
@@ -267,11 +278,11 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     buildings.parquet` (roofclf AND SPPI agreeing, used as an internal floor on
     Best estimate), and (added
     2026-08-11) `sub400_outdomain_and_gate_incremental_buildings.parquet` (roofclf AND
-    SPPI agreeing OUTSIDE the density-matched domain -- an extrapolation, feeds Best
-    only, see step 15). The first two describe only the density-matched cells and must
-    not be rescaled by their share of the country; the third describes the rest of the
-    country and is even less certain, since no calibration quadrat sits in that density
-    range at all. See `sub400_capacity.py`'s module docstring and [Capacity
+    SPPI agreeing OUTSIDE the density-matched domain -- an extrapolation, no longer fed
+    into the published atlas as of 2026-08-15, see step 15). The first two describe only
+    the density-matched cells and must not be rescaled by their share of the country; the
+    third describes the rest of the country and is even less certain, since no calibration
+    quadrat sits in that density range at all. See `sub400_capacity.py`'s module docstring and [Capacity
     density](methods/density.md) for exactly what each does and does not claim.
 
 === "14. ≥400 m² rooftop capacity (roofclf)"
@@ -301,14 +312,38 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     pixi run earthpv atlas --aoi pakistan \
         --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
         --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-        --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
         --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
         --osm-solar data/labels/pakistan_overpass_solar.parquet \
         --pose-summary-csv data/glint/country2000_summary.csv \
         --pose-history-note "(a 4x-larger, chunked-tile-batch re-run of the original 500-target study)" \
         --pose-data-note "(2000-target stratified country study, chunked tile-batch pull)" \
+        --imagery-date-range "Oct 2025 - Jun 2026" \
+        --downloads-manifest configs/pakistan_atlas_downloads.json \
+        --data-release-url https://github.com/open-energy-transition/earthpv/releases/download/pakistan-atlas-data-2026-08-14 \
         --out docs/assets/interactive/pakistan_evidence_atlas.html
     ```
+
+    **`--downloads-manifest`/`--data-release-url` (added 2026-08-14) write a collapsed
+    "Download the underlying data" section at the very bottom of the page** -- capacity
+    parquets, calibration boundaries, the pose survey, raw detections, and the model
+    checkpoint, hosted as assets on a dated GitHub Release rather than in `data/` itself
+    (which is gitignored). `--downloads-manifest` is a JSON file of `{file, label, note,
+    size_bytes}` dicts (see `configs/pakistan_atlas_downloads.json` for the Pakistan
+    manifest); `--data-release-url` is the release's asset base URL, joined with each
+    entry's `file` to build its link. Both are a frozen, point-in-time snapshot -- the
+    manifest is not regenerated automatically when the pipeline reruns, so a fresh data
+    drop needs a new GitHub Release plus an updated manifest and `--data-release-url`.
+    Omitting either flag omits the section entirely. The section also always shows a
+    short Overpass query for the current, live state of OSM-mapped PV, since the raw
+    detections in the release will go stale as mappers keep editing.
+
+    **`--imagery-date-range` (added 2026-08-14) is a free-text label, not a derived
+    value** -- composites for this AOI mix cells `earthpv compose` fetched directly
+    with cells reused from a `source_region` cache built by a different project on its
+    own schedule (see `CLAUDE.md`'s "Data reuse" section), so there is nowhere in the
+    pipeline that already knows the combined answer; it has to be supplied by whoever
+    last checked. The page always stamps its own build date regardless of whether this
+    is given.
 
     **Two new sections, both optional (added 2026-08-13).** A "Capacity per size bin,
     rooftop vs ground-mount" chart (the same re-binning `atlas-by-size` publishes as its
@@ -325,13 +360,17 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     `build_pose_survey_page`'s own parameters. Omitting `--pose-summary-csv` writes the
     page with no pose section at all.
 
-    **`--sub400-outdomain-cells` (added 2026-08-11) is optional** -- roofclf-AND-SPPI
-    agreement outside the density-matched domain, folded into Best only as a strict,
-    clearly-marked extrapolation (measured 2026-08-11: +1,224 MWp, since every cell
-    outside the domain sits below the calibrated density band with no quadrat evidence
-    in that range). Omitting it reproduces the pre-2026-08-11 Best total exactly. Both
-    `sub400-*` and this flag's input come from step 13's `earthpv sub400-capacity`,
-    which now writes all three building-level parquets in one run.
+    **`--sub400-outdomain-cells` (added 2026-08-11) is optional, and the published
+    atlas no longer passes it (2026-08-15)** -- it adds roofclf-AND-SPPI agreement
+    outside the density-matched domain to Best as a strict, clearly-marked extrapolation
+    (worth +61.7 MWp at the time it was dropped). It was the only Best-estimate component
+    not measured where it was applied: every cell outside the domain sits below the
+    calibrated density band with no quadrat evidence in that range, and the JOSM pass
+    meant to check that population is blocked by stale reference imagery. Pass it and the
+    component returns, along with the map's dotted outline, the extra province-table
+    column and the composition's SPPI-in-Best slice. Both `sub400-*` and this flag's
+    input come from step 13's `earthpv sub400-capacity`, which writes all three
+    building-level parquets in one run.
 
     **`--ge400-roof-cells` is easy to omit by accident and changes the headline number
     by double digits of percent** (measured 2026-08-10: omitting it dropped Best

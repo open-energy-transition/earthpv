@@ -9,28 +9,28 @@ polygon sizes): overall AUC(VH) 0.73, size-conditional AUC 0.61-0.84 depending o
 band, weakest at the largest (>16,000 m2, where plant-scale ambiguity is already a
 known problem for other reasons) and strongest in the 1,600-16,000 m2 range that
 covers most of this project's target class. Real sits several dB brighter in both
-VV and VH — consistent with built/PV surfaces backscattering more than the dominant
+VV and VH - consistent with built/PV surfaces backscattering more than the dominant
 false-positive class this project actually has (bare terrain: dry riverbed, salt
 flat, bare rock, snow), not the corner-reflector-vs-bare-soil contrast a rigid
 metal structure like a substation would show (see subdetect's `s1_separability.py`
 for that case; cross-pol ratio was uninformative in both projects' tests, plain
 VV/VH level is what carries the signal).
 
-The threshold below is deliberately conservative — the two distributions overlap
+The threshold below is deliberately conservative - the two distributions overlap
 substantially (this is a coarser signal than the vegetation-cycle veto, whose
 default catches ~17% of FP suspects at ~2% cost to real PV): VH < -18 dB catches
 13.9% of the measured false positives at 6.8% cost to confirmed real PV (~2.1x
 enrichment). Tune `s1_vh_max_db` if a different cost/catch trade-off is wanted.
 
 **Optional by design.** Sentinel-1 composites are not fetched by earthpv's own
-`compose` stage — running this check needs a directory of already-built
+`compose` stage - running this check needs a directory of already-built
 `composites/<cell>/composite_s1.tif` RTC composites (VV, VH; same uint16 DN
 convention as `imagery.py`'s S2 composites) on the SAME 0.1 deg grid as
 `configs/aoi.yaml`'s `grid_origin`. For Pakistan this already exists in the
 sibling `subdetect` project (built for a different detector, same grid by
-construction — see that project's README). An AOI with no such directory simply
+construction - see that project's README). An AOI with no such directory simply
 skips this veto entirely, same "a lead no instrument could check is always kept"
-contract as every other veto in `export.py` — nobody is required to download
+contract as every other veto in `export.py` - nobody is required to download
 Sentinel-1 data to run the standard pipeline.
 """
 

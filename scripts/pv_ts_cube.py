@@ -2,7 +2,7 @@
 
 Why this exists: the production pipeline sees each cell as *two* dry-season median
 composites (`composite_0` = 2025/26, `composite_1` = 2021/22). Differencing two medians
-throws away almost all of the temporal information — and silently mixes the Sentinel-2
+throws away almost all of the temporal information - and silently mixes the Sentinel-2
 processing-baseline conventions (see "Radiometry" below). A rooftop array of 100 m2
 covers ~1 Sentinel-2 pixel (often a fraction of one), so the per-date signal is small;
 but with ~500 dates over 8 years the *step* in a pixel's reflectance when panels are
@@ -14,14 +14,14 @@ This module only *fetches and caches* the cube. Analysis lives in `pv_step_signa
 
 Radiometry (the landmine): ESA's processing baseline 04.00 (2022-01-25) added a +1000 DN
 BOA offset. Planetary Computer serves raw DNs, so pre-2022 scenes sit on a different
-convention than post-2022 ones — a naive multi-year difference sees a spurious +1000 step
+convention than post-2022 ones - a naive multi-year difference sees a spurious +1000 step
 at exactly the boom's start. Worse, the catalog carries BOTH the original (03.00) and the
 Collection-1-reprocessed (04.00/05.xx) version of the *same* acquisition, so
 `groupby="solar_day"` can median across conventions. Handled by: dedupe per acquisition
 keeping the highest baseline, then normalise every scene to *offset-removed* DN, i.e.
 reflectance = DN / 10000 for every date in the cube.
 
-Provider: Earth Search (AWS) is the default — Planetary Computer's STAC search was timing
+Provider: Earth Search (AWS) is the default - Planetary Computer's STAC search was timing
 out wholesale while this was written, and ES already serves offset-corrected COGs
 (`earthsearch:boa_offset_applied`), needs no token, and is fast for small windows.
 
@@ -56,7 +56,7 @@ ES_ASSET = {
     "SCL": "scl",
 }
 CUBE_ROOT = Path("data/ts")
-# SCL classes kept: 4 vegetation, 5 bare/built, 6 water, 7 unclassified — the same set
+# SCL classes kept: 4 vegetation, 5 bare/built, 6 water, 7 unclassified - the same set
 # the composite pipeline uses, so cube-derived stats stay comparable to composite ones.
 SCL_VALID = (4, 5, 6, 7)
 
@@ -194,7 +194,7 @@ def pull(name: str, bbox: tuple[float, float, float, float], start: str, end: st
             return f, 0
         try:
             arr, dates, meta = _load_tile_year(items, gbox, tile, provider)
-        except Exception as e:  # noqa: BLE001 — one bad tile-year must not kill the pull
+        except Exception as e:  # noqa: BLE001 - one bad tile-year must not kill the pull
             log.warning("%s %s %s failed: %s", name, tile, year, e)
             return f, -1
         # np.savez_compressed appends .npz unless the name already ends in it, so the
@@ -234,7 +234,7 @@ def load_cube(name: str, min_valid_frac: float = 0.5):
     """Concatenate every cached tile-year into one time-sorted cube.
 
     Returns (arr[T,B,H,W] float32 reflectance with invalid pixels NaN, meta DataFrame,
-    grid dict). Dates are kept per (tile, orbit) observation — the same solar day seen
+    grid dict). Dates are kept per (tile, orbit) observation - the same solar day seen
     from two MGRS tiles stays two rows, since they carry different view geometry.
     """
     import pandas as pd

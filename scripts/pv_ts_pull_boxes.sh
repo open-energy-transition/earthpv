@@ -30,7 +30,7 @@ pull faisalabad_box   "--boundary data/labels/faisalabad_calib_1km_boundary.geoj
 
 # Negative controls, same scene geometry as the Lahore box (same MGRS tile, ~5-15 km away):
 # irrigated cropland and a canal/park strip. Any "installation step" found here is a
-# false positive by construction — this is the stress test the epoch-jump issue doc asks for.
+# false positive by construction - this is the stress test the epoch-jump issue doc asks for.
 pull control_crop_lhr "--bbox 74.4600,31.3600,74.4760,31.3740"
 pull control_crop2_lhr "--bbox 74.3200,31.5600,74.3360,31.5740"
 echo "=== $(date '+%F %T') all box pulls done" >> "$LOG"

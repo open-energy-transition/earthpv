@@ -6,10 +6,10 @@ sample`'s stratified building sample). Parameterized by region so it works for `
 
 Fetched tile-major by default (`glint.tile_scene_series_batch`): one STAC search + one
 set of asset opens per `--tile-deg`-degree spatial bin, shared by every target in it,
-instead of one of each per target — the actual cost driver once a region has more than a
+instead of one of each per target - the actual cost driver once a region has more than a
 few dozen targets (see docs/issues/glint-tile-batched-coverage.md). `--no-batch` restores
 the original one-target-at-a-time path (kept for comparison/debugging, not because the
-batched path drops coverage — validated byte-identical per-scene stats on a real cluster,
+batched path drops coverage - validated byte-identical per-scene stats on a real cluster,
 see glint.py's `tile_scene_series_batch` docstring).
 
 Usage:
@@ -108,7 +108,7 @@ def main(
             for f in as_completed(futs):
                 try:
                     msg = f.result()
-                except Exception as e:  # noqa: BLE001 — one bad target must not kill the run
+                except Exception as e:  # noqa: BLE001 - one bad target must not kill the run
                     msg = f"{futs[f]} FAILED: {e}"
                 done += 1
                 log.info("[%d/%d] %s", done, len(todo), msg)

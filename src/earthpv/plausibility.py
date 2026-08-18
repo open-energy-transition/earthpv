@@ -2,7 +2,7 @@
 
 The leads product has a human on every candidate; the capacity atlas has nobody. A
 false-positive mode that survives `p_real` weighting therefore reaches the headline number
-unchallenged, and the failure is quiet — a province total simply comes out too large.
+unchallenged, and the failure is quiet - a province total simply comes out too large.
 These are the cheap, data-only sanity tests the pipeline can run against artifacts it has
 already written. `earthpv check-density` runs them and exits non-zero, so a regression
 fails CI instead of shipping to the site.
@@ -14,8 +14,8 @@ Two independent per-region signals, both from `density/`:
    read bright in a dry-season composite, and unlike a rooftop detection nothing constrains
    them to a plausible host. A region whose ground-mount estimate dwarfs its rooftop
    estimate is claiming utility-scale solar that would be independently documented if it
-   existed. This check exists because Pakistan's Gilgit-Baltistan — Karakoram rock and
-   glacier — scored 166 MWp all-PV against 0.8 MWp rooftop, a ratio near 200.
+   existed. This check exists because Pakistan's Gilgit-Baltistan - Karakoram rock and
+   glacier - scored 166 MWp all-PV against 0.8 MWp rooftop, a ratio near 200.
 
 2. **Single-cell concentration** (`top_cell_share`). `postprocess` merges every touching
    thresholded pixel into one polygon with no upper bound, so one blob can carry a whole
@@ -55,7 +55,7 @@ MAX_CELL_SHARE = 0.25
 # Regions exempted from check 1 (ground-mount vs rooftop balance) specifically, not from
 # check 2 (single-cell concentration) or from the report. Gilgit-Baltistan's real rooftop
 # base rate is close to zero (sparse Karakoram settlement), so any ground-mount signal at
-# all there — bug or genuine remote solar — reads as an extreme ratio; the ratio check is
+# all there - bug or genuine remote solar - reads as an extreme ratio; the ratio check is
 # structurally uninformative for it rather than a useful signal. This does NOT mean its
 # absolute ground-mount number is trusted. The ratio failures that originally motivated
 # this exemption in KP/Balochistan were root-caused in 2026-08-11 as pooled rooftop and
@@ -99,11 +99,11 @@ def _top_cell_shares(density_dir: Path, regions: gpd.GeoDataFrame, total_col: st
     empty = pd.DataFrame({"id": [], "top_cell": [], "top_cell_mwp": [], "top_cell_share": []})
     grid_path = density_dir / "grid.geoparquet"
     if not grid_path.exists():
-        log.warning("%s missing — skipping the concentration check", grid_path)
+        log.warning("%s missing - skipping the concentration check", grid_path)
         return empty
     grid = gpd.read_parquet(grid_path)
     if grid.empty or total_col not in grid.columns:
-        log.warning("grid layer has no %s — skipping the concentration check", total_col)
+        log.warning("grid layer has no %s - skipping the concentration check", total_col)
         return empty
     centroids = gpd.GeoDataFrame(
         grid[["cell", total_col]],
@@ -146,7 +146,7 @@ def check_density(
     regions_path = density_dir / "regions.geoparquet"
     if not regions_path.exists():
         raise FileNotFoundError(
-            f"{regions_path} missing — run `earthpv density --aoi {aoi}` first"
+            f"{regions_path} missing - run `earthpv density --aoi {aoi}` first"
         )
     meta_path = density_dir / "meta.json"
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
@@ -216,7 +216,7 @@ def check_density(
         big_enough = r.mwp_ground >= min_nonroof_mwp
         if exempt:
             notes.append(
-                f"check 1 (ground-mount:rooftop) exempted for {r.region} — "
+                f"check 1 (ground-mount:rooftop) exempted for {r.region} - "
                 f"ratio {r.nonroof_ratio:.0f}x not evaluated, see RATIO_CHECK_EXEMPT_REGIONS"
             )
         elif r.nonroof_ratio >= fail_ratio and big_enough:

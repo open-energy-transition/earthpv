@@ -4,7 +4,7 @@ Per-chip STAC fetch of the contrast season is ~5 min/chip (thousands of tiny rem
 windowed reads); compositing once per base tile and reading windows locally is far
 cheaper and reusable. For each base composite_0.tif this loads the contrast-season
 scenes onto that tile's geobox, medians them, and writes composite_1.tif beside a
-hardlink of the base — into data/composites/<aoi>, which chips/infer already prefer.
+hardlink of the base - into data/composites/<aoi>, which chips/infer already prefer.
 
 Usage: build_contrast_composites.py <aoi> <base_glob> <win_start> <win_end>
   e.g. ... germany '/…/germany_500/composites/*/composite_0.tif' 2025-11-01 2026-03-15

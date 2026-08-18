@@ -20,6 +20,9 @@ site/
 results/*
 !results/glint_observability_by_quadrat.csv
 !results/glint_observability_summary.json
+!results/glint_pose_by_region.csv
+!results/glint_pose_by_region_combined.csv
+!results/pakistan_glint_pose_regional.html
 !results/pakistan_pv_estimator_atlas.html
 !results/pakistan_pv_density_scientific.png
 !results/glint_date_feature/
@@ -32,7 +35,18 @@ results/glint_validation_pakistan/*
 !results/glint_validation_pakistan/pv_pose_country2000.html
 !data/labels/calibration_boundaries/*
 !results/calibration_quadrats_validation.geojson
+!results/pakistan_pv_reference_comparison.html
+!results/pakistan_pv_external_comparison.html
 
 # Generated reports kept in the repo on request, as a durable artifact rather than a
 # figure-script input -- regenerate with scripts/pv_reference_share_comparison.py.
 !results/pakistan_pv_reference_comparison.html
+
+# The random-cell manual-validation record (docs/methods/roofclf-national-validation.md)
+# is the only durable evidence that a national roofclf scoring pass was actually reviewed
+# against an unbiased sample -- it must be tracked, not silently dropped by `results/*`.
+!results/roofclf_random_validation_log.csv
+!results/pakistan_roofclf_parcel_validation/
+results/pakistan_roofclf_parcel_validation/*
+!results/pakistan_roofclf_parcel_validation/*.geojson
+!results/pakistan_roofclf_parcel_validation/*.mapcss

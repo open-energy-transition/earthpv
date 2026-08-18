@@ -23,28 +23,53 @@ Interactive. Hover a cell for its value.
 <a href="../../assets/interactive/pakistan_evidence_atlas.html" target="_blank">Open full screen</a>.
 See also: [capacity by installation size](capacity-by-size.md), the same total split
 rooftop vs ground-mount by how large each installation is, instead of by geography.
+Want the underlying data? See "Download the underlying data" at the bottom of the atlas
+for capacity parquets, calibration boundaries, the pose survey, raw detections, and the
+model checkpoint.
 </p>
 
 ## The headline figure
 
-**Best estimate: 16,441 MWp** (90% range 12,883 &ndash; 19,147). It combines every
+**Best estimate: 19,746 MWp** (90% range 16,051 &ndash; 23,520). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
-"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (7,860 MWp: roofclf's own
+"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,832 MWp: roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
 detections everywhere else, segmentation's ground-mount detections throughout -- see
-"Segmentation vs. roofclf on large rooftops" below), the roofclf per-building density
-estimate for sub-400 m<sup>2</sup> buildings inside the same cells, and 278 MWp of
-roofclf-AND-SPPI agreement **outside** those cells -- a clearly-marked extrapolation, see
-"A sixth change" below.
+"Segmentation vs. roofclf on large rooftops" below) and the roofclf per-building density
+estimate for sub-400 m<sup>2</sup> buildings inside the same cells. Every component is
+therefore measured inside the density-calibrated domain: the out-of-domain
+roofclf-AND-SPPI extrapolation that used to add 62 MWp was dropped from the published
+atlas on 2026-08-15 (see "A thirteenth change" below).
 
-The range is new as of 2026-08-11 and is composed from four measured sources plus one
-stated judgement: the two area-to-capacity constants' priors, segmentation's own
-precision/recall posterior by installation size, the coverage ratio's sensitivity to *which*
-calibration quadrats happen to have been mapped (measured by resampling the quadrats
-themselves, not the buildings inside them), and an explicit allowance for extrapolating a
-city-calibrated coverage ratio onto rural roofs. It does **not** include a design-based
-sampling error, because the quadrats were hand-picked rather than randomly drawn -- see
-"How confident should you be in this?" on the atlas page, and
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 55 percent OpenStreetMap hand-mapped and 45 percent roofclf-and-SPPI agreement, totalling 5.9 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 7 percent TerraMind segmentation and 84 percent roofclf alone, totalling 19.7 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 55 percent OpenStreetMap hand-mapped and 45 percent roofclf-and-SPPI agreement, totalling 5.9 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 7 percent TerraMind segmentation and 84 percent roofclf alone, totalling 19.7 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+
+roofclf alone -- its own &ge;400 m<sup>2</sup> replacement plus the sub-400 m<sup>2</sup>
+central estimate -- supplies about four-fifths of Best by itself; direct OSM mapping and
+segmentation split the remaining fifth. SPPI no longer contributes to Best at all; its
+role is in the internal floor, where it is nearly as large as all of hand-mapped OSM. Full per-component
+breakdown, with credible intervals on every slice:
+[capacity composition](../assets/interactive/pakistan_atlas_composition.html){ target="_blank" }.
+
+The range is new as of 2026-08-11 and is composed from three measured sources: the two
+area-to-capacity constants' priors, segmentation's own precision/recall posterior by
+installation size, and the coverage ratio's sensitivity to *which* calibration quadrats
+happen to have been mapped (measured by resampling the quadrats themselves, not the
+buildings inside them). A fourth source, an explicit allowance for extrapolating a
+city-calibrated coverage ratio onto rural roofs, was dropped on 2026-08-15 along with the
+out-of-domain component it covered (see "A thirteenth change" below) and is no longer part
+of the range. Since 2026-08-15 the same quadrat resample also carries roofclf's own measured
+recall (see "A twelfth change" below), which is why the range widened alongside the point
+estimate rather than simply shifting with it. It does **not** include a design-based
+sampling error, because the quadrats were hand-picked rather than randomly drawn. **It also
+does not cover the gap between where the coverage-ratio/area-recall correction is fit and
+where it is applied**: measured 2026-08-16, 54% of the published Best estimate is priced by
+a multiplier whose sparsest supporting quadrat (872 bldg/km<sup>2</sup>) is several times
+denser than most of the cells it prices, and the bootstrap behind the range above resamples
+only quadrats on the dense side of that gap, so it measures sampling noise within the fit
+and is silent about transfer to the sparser cells the number actually reports for -- see
+[Calibration density mismatch](../issues/roofclf-calibration-density-mismatch.md) for the
+full measurement. See "How confident should you be in this?" on the atlas page, and
 [validation against MaStR](../methods/mastr-validation.md) for what a complete register can
 and cannot settle here.
 
@@ -299,6 +324,158 @@ extension (a much smaller remaining population now) 575 &rarr; **278 MWp**, &ge;
 m<sup>2</sup> roofclf rooftop &rarr; **6,427 MWp**. Evidence atlas: Best 14,462 &rarr;
 **16,441 MWp** (+13.7%).
 
+**A tenth change, 2026-08-13: a third widening quadrat, plus a full `roofclf` refit and
+national rescoring.** `bahawalnagar_rural_calib_4p00km2` (Bahawalnagar District, Punjab --
+hand-drawn in JOSM by the owner, shifted east from an originally-proposed plain square
+after a VIDA pre-check) measured **123.5 bldg/km<sup>2</sup>** own density, below the
+141.00 floor the second quadrat had set, moving the floor **141.00 -> 123.5**
+bldg/km<sup>2</sup> and growing the domain **1,680 -> 1,868** of Pakistan's 4,463 cells
+(37.6% -> 41.9% of cells, 78.6% -> 82.1% of national buildings). Unlike the eighth/ninth
+changes, this one also re-fit `roofclf` on all 25 quadrats (median LOQO AUC 0.857 ->
+**0.876**) and re-scored all ~75.7M VIDA buildings nationally with the refit model and the
+widened domain together, in one pass, rather than bumping the constant against stale
+scores. Re-ran the full chain: sub-400 central (Best) 6,531 &rarr; **6,081 MWp**, sub-400
+AND-gate 2,929 &rarr; **2,094 MWp**, out-of-domain extension 278 &rarr; **149 MWp**,
+&ge;400 m<sup>2</sup> roofclf rooftop 6,427 &rarr; **6,540 MWp**. Evidence atlas: Best
+16,441 &rarr; **15,972 MWp** (-2.9%) -- a net decrease this time, since the refit and a
+refreshed coverage-ratio bootstrap (now over 16 trusted quadrats, still excluding
+Bahawalnagar Rural itself on `rate_ratio` grounds, 2.187, just outside the trusted
+[0.5, 2.0] band) moved several components down even as the domain grew.
+
+**An eleventh change, same day: two more quadrats (one of them this project's first
+confirmed-zero), a fourth widening, and a second refit within 2026-08-13.**
+`nasirabad_rural_calib_2km` (Nasirabad District, Balochistan -- Balochistan's first rural
+quadrat, its only other one being urban Quetta) measured **48.5 bldg/km<sup>2</sup>** own
+density, below the 123.5 floor the tenth change had just set hours earlier, moving the
+floor **123.5 -> 48.5** bldg/km<sup>2</sup> and growing the domain **1,868 -> 2,957** of
+Pakistan's 4,463 cells (41.9% -> 66.3% of cells, 82.1% -> 94.7% of national buildings) --
+by far the largest single jump in this constant's history, since Pakistan's national
+building-density distribution turns out to have a lot of mass between 48.5 and 123.5.
+Nasirabad Rural is also this project's first confirmed-**zero**-installation Rule-1
+quadrat: the owner visually swept the imagery (not merely checked OSM/Overpass, the
+distinction that made Muzaffargarh Rural Wide's original "confirmed zero" wrong) and
+found none, independently corroborated by 6 consecutive zero-element Overpass responses
+across ~10 minutes and multiple mirrors. `tank_rural_calib_2km` (Tank District, Khyber
+Pakhtunkhwa -- KP's first rural quadrat, its three others all sitting in the dense
+Peshawar valley) measured 55.75 bldg/km<sup>2</sup>, inside the widened range but not
+itself the new floor, with 10 real mapped installations. Both folded into a second
+`roofclf` refit the same day, 27 quadrats (median LOQO AUC 0.879). Re-ran the full chain:
+sub-400 central (Best) 6,081 &rarr; **6,372 MWp**, sub-400 AND-gate 2,094 &rarr; **2,180
+MWp**, out-of-domain extension 149 &rarr; **62 MWp** (the out-of-domain population itself
+shrank from 2,595 to 1,506 cells as the domain absorbed most of it), &ge;400 m<sup>2</sup>
+roofclf rooftop 6,540 &rarr; **7,031 MWp**. Evidence atlas: Best 15,972 &rarr; **16,609
+MWp** (+4.0%) -- an increase this time, unlike the tenth change: the domain widened far
+more dramatically than the refit/coverage-ratio recalibration pulled individual
+components down.
+
+**A twelfth change, 2026-08-15: the roofclf half was only ever counting the roofs it
+flagged.** Every roofclf capacity figure above multiplies flagged roof area by the measured
+coverage ratio -- true mapped PV area divided by *flagged* roof area. That answers "of the
+roofs we flagged, how much is panel", and books zero for every installation sitting on a
+roof roofclf missed. Segmentation has never been read that way: since the recall-corrected
+estimator shipped, each surviving detection stands in for 1/recall real installations of
+its size class, so the number describes the whole population rather than the detected part.
+The two halves of this atlas were being built on two different estimators, and only the
+roofclf half -- four-fifths of Best -- was missing the correction.
+
+It is now measured the same way the coverage ratio is: the share of the calibration
+quadrats' true mapped PV **area** that lands on a flagged building, per roof-size bin and
+per building-density stratum, from the same 16 trusted quadrats at the same deployment
+threshold. Area, not count -- missing one 300 m<sup>2</sup> array and one 20 m<sup>2</sup>
+array cost the same under a count and differ fifteenfold in MWp. Measured: **0.808 for
+sub-400 m<sup>2</sup> buildings and 0.978 for &ge;400 m<sup>2</sup> ones**, rising
+monotonically with roof size (0.34 in the smallest decile of PV-carrying roofs to 0.99 in
+the largest) -- so a single pooled number would have badly under-corrected exactly the
+small roofs this instrument exists to cover. That the &ge;400 m<sup>2</sup> figure is near
+1.0 is the expected shape rather than a null result: roofclf replaced segmentation on large
+rooftops precisely because it barely misses at that size.
+
+Moved: sub-400 central 6,372 &rarr; **7,890 MWp**, &ge;400 m<sup>2</sup> roofclf rooftop
+7,031 &rarr; **7,189 MWp**. Evidence atlas: Best 16,609 &rarr; **18,280 MWp** (+10.1%),
+90% range 12,912-19,671 &rarr; **14,401-21,846**. Both tables are refit inside the *same*
+bootstrap replicates rather than bootstrapped separately, since they are fit on the same
+quadrats from the same labels and their errors are strongly dependent -- a quadrat whose
+mapping is stale depresses the measured coverage ratio and inflates the measured recall at
+once.
+
+**Neither the floor nor the two AND-gate populations moved, deliberately.** Verified is
+unchanged at 5,390 MWp. A tier built by requiring two independent detectors to agree, and
+then counting only what they jointly flagged, stops being a floor the moment it
+extrapolates to installations neither of them saw; the out-of-domain component would
+additionally compound one extrapolation with another. Both are left uncorrected, and the
+code takes no parameter that would change that.
+
+**The correction is a lower bound on itself, in three separate ways**, all of them
+measurable rather than rhetorical. Rule 1 certifies completeness only as of the mapping
+imagery's own epoch, so an array installed after that imagery is missing from the labels on
+flagged and unflagged roofs alike -- which removes it from the recall denominator only when
+it sits on an unflagged roof, biasing measured recall up and this correction down. The
+national population being corrected has already been deduplicated against segmentation and
+OpenStreetMap while recall is measured over a whole quadrat, and a large obvious array is
+both the kind roofclf flags and the kind another instrument already found, so the
+incremental share of missed PV is if anything larger than assumed. And a bin measured below
+0.10 is floored there rather than trusted, capping the inflation at tenfold; on the current
+calibration set nothing comes close to binding it.
+
+**A thirteenth change, 2026-08-15: the out-of-domain extrapolation was dropped from the
+published atlas.** The roofclf-AND-SPPI agreement measured *outside* the density-calibrated
+domain (the "sixth change" above) was the one component of Best that was not measured
+where it was applied: a coverage ratio fit on urban and semi-urban quadrats, carried across
+a much sparser rural remainder that has no calibration coverage of its own and, because
+its reference imagery is too old to confirm recently-installed small PV, cannot be checked
+by eye either. It is no longer reported. Best 18,280 &rarr; **18,218 MWp** (-62 MWp, 0.3%),
+90% range 14,401-21,846 &rarr; **14,346-21,768**; the floor is unchanged at 5,390 MWp,
+which never included it. Every surface that reported it -- the map's dotted outline, the
+province table's "Small PV, extrapolated" column, the size chart's third legend key and
+the composition breakdown's SPPI-in-Best slice -- now drops out rather than reporting
+zeroes, and the atlas is built without `--sub400-outdomain-cells`. The capacity function
+and the CLI flag both still exist for anyone who wants that estimate explicitly.
+
+**A fourteenth change, 2026-08-17: roofclf now counts the PV in a building's yard, not only
+on its roof.** `pv_area_true_m2` was the geometric intersection of mapped PV with the VIDA
+footprint, so an array standing two metres off the wall contributed zero to the coverage
+ratio and zero to the area recall -- on a building roofclf usually flags anyway. The
+[parcel label](../methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) adds mapped PV
+within 20 m of a footprint, attributed whole to its single nearest building, for
+installations below the 400 m<sup>2</sup> segmentation floor only, since above that floor
+ground-mount is segmentation's instrument and the atlas already counts it there. Each
+installation's footprint intersections are subtracted before the remainder is measured, so
+the roof and yard terms partition one polygon rather than both billing the same square metre.
+
+**Most of what it recovers is not ground-mount, and the split is reported rather than
+assumed.** Across the 27 quadrats the widening adds 146,766 m<sup>2</sup>: 29,764 (20%) is
+OSM `placement=ground`, and 117,003 (80%) is mapped *rooftop* PV whose polygon extends past
+an imagery-derived VIDA outline that is undersized or a metre or two off. The second is a
+real undercount rather than ground-mount, and correcting it is self-consistent, because the
+same undersizing shrinks the calibration denominator and the national flagged roof area
+alike. Both capacity summaries now carry a `parcel_label_composition` block, so the share of
+a "rooftop" figure that is actually a yard array can be read rather than guessed: 1.03% of
+the flagged PV area is ground-tagged.
+
+Refit, rescored nationally over all 4,470 cells and 75.7M buildings, and re-run through the
+capacity chain: sub-400 m<sup>2</sup> central 7,890 &rarr; **9,202 MWp**, the &ge;400
+m<sup>2</sup> roofclf rooftop replacement 7,189 &rarr; **7,405 MWp**, Best
+18,218 &rarr; **19,746 MWp** (+1,528 MWp, 8.4%), 90% range 14,346-21,768 &rarr;
+**16,051-23,520**. About two thirds of the sub-400 m<sup>2</sup> move is a larger flagged
+population (1.24M to 1.36M buildings in-domain, since the widened label carries 5% more
+positives and the precision-targeted threshold recalibrates to them) and one third the
+higher coverage ratio. The label costs a little skill, as a harder target should: median
+fold AUC 0.8786 &rarr; 0.8735.
+
+**Unlike the twelfth change, this one moves the floor too**, 5,390 &rarr; **5,857 MWp**. That
+is deliberate and does not weaken what the floor means. The recall correction was kept out of
+the AND-gate tiers because it extrapolates to installations neither detector saw, which a
+floor may not do; the parcel label does the opposite, pricing the buildings both detectors
+already agree on more completely, from PV that is mapped and measured on those same parcels.
+
+The *feature* half of the same idea was measured and rejected. A yard feature block (the same
+zonal statistics over a distance-transform Voronoi ring around each footprint, SPPI included)
+loses to the roof-only feature set even against the parcel label it was built to serve: 0.8712
+against 0.8734 median fold AUC. It survives behind `--yard-features` for re-measurement once
+cropland calibration quadrats exist, since the term it exists to explain is 1.6% of quadrat PV
+area today. See [small ground-mounted PV](../issues/small-ground-mount-instrument.md) for what
+that instrument can and cannot reach.
+
 ## What this map cannot tell you, and what an independent estimate confirms it can
 
 **The absolute total is a modelled estimate, not a metered figure, and resolution is
@@ -324,23 +501,23 @@ the national total per spatial unit** and compared: not "whose number is bigger,
 
 They do, for most of the country. Across the reference's 3,303 hexagons, the median
 absolute difference in national-share allocation is **0.005 percentage points**, and
-64% of hexagons land within &plusmn;0.02pp of each other. Rank correlation (Spearman) is
-**0.83** including the many hexagons both sides agree carry essentially nothing, or
-**0.71** restricted to just the hexagons this project actually places a detection in --
-either way, strong agreement on the geography.
+64% of hexagons land within &plusmn;0.02pp of each other (83% within &plusmn;0.05pp).
+Rank correlation (Spearman) is **0.84** including the many hexagons both sides agree
+carry essentially nothing, or **0.75** restricted to just the 1,759 hexagons (53%) this
+project actually places a detection in -- either way, strong agreement on the geography.
 
 That agreement is not uniform, though, and the exception is worth stating plainly: a
 small number of hexagons account for almost all of the remaining difference, and every
-one of the largest ones runs the same direction -- this project's estimate concentrates
-more of the national share into a handful of hotspot cells than the independent
-reference does (up to +5.0pp in the single largest case), never the reverse by nearly as
-much (the most negative hexagon is -0.16pp). That skew is why the straightforward
-linear correlation on share is a moderate 0.44 (a log-compressed version, less sensitive
-to those few large values, rises to 0.54) even though the rank correlation and the
-typical hexagon's near-exact agreement both say the two models are looking at the same
-country. Read it as two independently-built estimates agreeing closely on geography and
-disagreeing about how much weight the largest sites deserve -- not as a validation of
-one against the other, since neither is ground truth here.
+one of the twenty largest discrepancies runs the same direction -- this project's
+estimate concentrates more of the national share into a handful of hotspot cells than
+the independent reference does (up to +4.5pp in the single largest case), never the
+reverse by nearly as much (the most negative hexagon is -0.16pp). That skew is why the
+straightforward linear correlation on share is a moderate 0.45 (a log-compressed
+version, less sensitive to those few large values, rises to 0.54) even though the rank
+correlation and the typical hexagon's near-exact agreement both say the two models are
+looking at the same country. Read it as two independently-built estimates agreeing
+closely on geography and disagreeing about how much weight the largest sites deserve --
+not as a validation of one against the other, since neither is ground truth here.
 
 Reproducible with `scripts/pv_reference_share_comparison.py`, which reads this project's
 side straight out of the published Best-estimate figures per grid cell and normalizes
@@ -422,16 +599,17 @@ pixi run earthpv ge400-roof-capacity --aoi pakistan \
 # 2026-08-06; it still exists for the older bracket atlas, see build_sub400_bracket_atlas.)
 pixi run earthpv atlas --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet \
-    --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
-    --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
-    --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
-    --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet
+    --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
+    --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
+    --ge400-roof-cells     data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet
 ```
 
-`--sub400-outdomain-cells` is optional (added 2026-08-11) -- omitting it reproduces the
-pre-2026-08-11 Best-estimate total exactly, folding in nothing for cells outside the
-density-matched domain. Passing it adds roofclf-AND-SPPI agreement in those cells to
-Best only, marked as a strict extrapolation (see "A sixth change" above).
+`--sub400-outdomain-cells` is deliberately not passed (see "A thirteenth change" above):
+the published atlas reports only components measured where they are applied. The flag
+still exists -- passing
+`data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet`
+adds roofclf-AND-SPPI agreement outside the density-matched domain to Best, as a strict
+extrapolation marked with its own dotted cell outline (see "A sixth change" above).
 
 Neither `density` nor `roofclf-score-national` needs a GPU or retraining; both run on
 rasters already on disk, each taking roughly two hours single-process for all of

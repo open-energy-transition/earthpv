@@ -1,12 +1,12 @@
 """Annual NDVI check for new leads -> green-field false-positive veto.
 
 The countryside FP diagnosis (src/earthpv/vegetation.py docstring): green-field
-leads are NOT green in the dry-season composite the model read — they were dark
+leads are NOT green in the dry-season composite the model read - they were dark
 fallow/harvested/flooded soil. The discriminating physics is the vegetation
 cycle, which two dry-season medians undersample badly. This script samples a
 full year of Sentinel-2 scenes per lead (the glint pipeline's per-target
 fetcher, B04/B08) and reports each lead's year-long NDVI distribution: a p95
-above ~0.4 means the footprint greened up at some point — a crop, never PV.
+above ~0.4 means the footprint greened up at some point - a crop, never PV.
 Residual cloud biases NDVI down, so the veto is conservative under cloud.
 
 Resumable: each lead's scene series lands in data/veg/<aoi>/<candidate_id>.parquet;
@@ -49,7 +49,7 @@ BANDS = ("B04", "B08")
 MAX_CLOUD = 70
 TARGET_THREADS = 4
 SCENE_THREADS = 6
-MONSOON_MONTHS = (6, 7, 8, 9)  # kharif greening window — must be inside the date range
+MONSOON_MONTHS = (6, 7, 8, 9)  # kharif greening window - must be inside the date range
 
 
 def _series_dir(aoi: str) -> Path:
@@ -60,7 +60,7 @@ def _leads(aoi: str, pred_dir: Path, leads_file: Path | None) -> gpd.GeoDataFram
     path = leads_file or Path(pred_dir) / aoi / f"{aoi}_pv_new_leads.geojson"
     leads = gpd.read_file(path)
     if "candidate_id" not in leads.columns:
-        raise SystemExit(f"{path} has no candidate_id — rerun `earthpv export` first")
+        raise SystemExit(f"{path} has no candidate_id - rerun `earthpv export` first")
     return leads
 
 
@@ -107,7 +107,7 @@ def pull(
                 done += 1
                 if done % 25 == 0 or done == len(todo):
                     log.info("[%d/%d] %s", done, len(todo), msg)
-            except Exception as e:  # noqa: BLE001 — one lead must not kill the pull
+            except Exception as e:  # noqa: BLE001 - one lead must not kill the pull
                 log.warning("lead failed: %s", e)
     log.info("pull complete: %d series under %s", done, series_dir)
 

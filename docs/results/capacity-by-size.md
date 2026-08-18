@@ -3,9 +3,9 @@
 The [capacity map](capacity.md) reports the evidence atlas's Best-estimate total per
 0.1&deg; grid cell. This page reports the *same* total a different way: by installation
 size, split rooftop vs ground-mount, instead of by geography. It is not a second
-estimate -- every MWp here comes from the identical six components and calibration the
+estimate -- every MWp here comes from the identical components and calibration the
 main atlas uses, re-binned rather than recomputed. The two pages' totals match for the
-same run to within 0.02% (currently 16,441.4 vs 16,444 MWp) -- the residual is a
+same run to within 0.02% (currently 19,745.9 vs 19,748.6 MWp) -- the residual is a
 handful of candidates whose location falls just outside every grid cell's polygon and
 so never enters a per-cell total on either page, not an uncounted source of error.
 
@@ -30,7 +30,7 @@ Quaid-e-Azam Solar Park), with almost nothing rooftop at that scale.
 
 ## Where each bin's capacity comes from
 
-Six populations, identical to the [capacity map](capacity.md)'s own "Two tiers, one
+Five populations, identical to the [capacity map](capacity.md)'s own "Two tiers, one
 country" breakdown, each re-binned by its own real size field instead of collapsed into
 one national number:
 
@@ -40,9 +40,11 @@ one national number:
 - **Rooftop, &ge;400 m&sup2;** -- roofclf's own building-level estimate inside the
   density-matched domain, segmentation's recall-corrected candidates outside it. A
   building is counted by exactly one of the two per cell, never both.
-- **Rooftop, &lt;400 m&sup2;** -- roofclf alone inside the domain; roofclf-AND-SPPI
-  agreement outside it, a marked extrapolation (the hatched slice at the top of the
-  100&ndash;400 m&sup2; rooftop bar).
+- **Rooftop, &lt;400 m&sup2;** -- roofclf alone inside the density-matched domain. The
+  roofclf-AND-SPPI agreement outside that domain was dropped from both this page and the
+  main atlas on 2026-08-15 (it was the one component not measured where it was applied);
+  passing `--sub400-outdomain-cells` still restores it, as a marked extrapolation drawn
+  as a hatched slice on the 100&ndash;400 m&sup2; rooftop bar.
 - **Hand-mapped OpenStreetMap, unmatched by the model** -- sized by each installation's
   own real geodesic area, split rooftop/ground-mount by its mapped placement tag.
 
@@ -76,7 +78,6 @@ pixi run earthpv atlas-by-size --aoi pakistan \
     --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
     --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
     --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
-    --sub400-outdomain-cells data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet \
     --out docs/assets/interactive/pakistan_size_distribution_atlas.html
 ```
 

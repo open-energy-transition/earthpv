@@ -2,7 +2,7 @@
 municipality (Gemeindeschluessel/AGS), for calibrating the PV-fraction density model.
 
 MaStR registration is legally mandatory for grid-connected PV, so per-municipality
-rooftop capacity is close to complete — the calibration target `calibrate.py` needs.
+rooftop capacity is close to complete - the calibration target `calibrate.py` needs.
 Acquired via `open-mastr` (bulk Gesamtdatenexport -> local sqlite), not the SOAP API,
 so no account/API key is required. Runs entirely in the default (no-torch) env.
 """
@@ -18,7 +18,7 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 # `ArtDerSolaranlage` values covering panels mounted on/at a building. NOTE: `Lage` (the
-# field originally targeted here) is entirely NULL in this MaStR export — verified
+# field originally targeted here) is entirely NULL in this MaStR export - verified
 # against the actual sqlite; ArtDerSolaranlage is the populated field that carries this
 # distinction instead. "Steckerfertige Solaranlage (sog. Balkonkraftwerk)" (balcony/
 # plug-in PV) is its own category here and is excluded: ~1.5M units but ~1.6 GWp total,
@@ -43,7 +43,7 @@ def download_mastr(refresh: bool = False) -> Path:
 def aggregate_gemeinden(sqlite_path: Path, cutoff: str = "2025-09-30") -> pd.DataFrame:
     """Rooftop/ground PV capacity (kW) per 8-digit Gemeindeschluessel (AGS), restricted
     to units commissioned by `cutoff` (the training composite's imagery window end) and
-    still in operation (or decommissioned after it) — units that never appear in the
+    still in operation (or decommissioned after it) - units that never appear in the
     imagery must not appear in the calibration target either."""
     import sqlalchemy as sa
 

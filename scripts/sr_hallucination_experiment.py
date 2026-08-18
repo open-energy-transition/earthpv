@@ -1,18 +1,18 @@
 """Does internal-learning deep single-image SR invent structure (SR option 3)?
 
-Deep single-image SR (SISR) has no second observation to fall back on — it upsamples
+Deep single-image SR (SISR) has no second observation to fall back on - it upsamples
 from a learned or self-taught prior, which for a detector whose remaining errors are
 precision-side (not recall-side) is exactly the wrong failure mode: it can synthesize
 panel-row-like regularity that was never there. This script measures that risk directly
-rather than asserting it, using ZSSR (Shocher et al. 2018) — a genuine self-supervised
+rather than asserting it, using ZSSR (Shocher et al. 2018) - a genuine self-supervised
 deep SISR method that needs no external pretrained weights or downloads: it trains a
 tiny CNN per-image on (downsampled, original) pairs built purely from augmentations of
 that one image, then applies the trained net to upsample the image itself. Being purely
 internal-prior-driven (no cross-image training set), ZSSR is the sharpest available test
 of "what does a deep upsampler invent when it only has this one image's own statistics
-to go on" — precisely the mechanism SISR papers point to for hallucination risk.
+to go on" - precisely the mechanism SISR papers point to for hallucination risk.
 
-Runs on `data/chips/<aoi>` positive (real PV) and negative (confirmed no PV) chips —
+Runs on `data/chips/<aoi>` positive (real PV) and negative (confirmed no PV) chips -
 same source the model itself trains on. For each chip: train ZSSR-lite (a handful of
 seconds on GPU), apply it to the chip's own B08 band, and compare against a bicubic 2x
 baseline via two metrics measuring "structure invented beyond plain sharpening":
@@ -21,7 +21,7 @@ baseline via two metrics measuring "structure invented beyond plain sharpening":
     bicubic_baseline, at the same location
 
 If invented structure is similar in magnitude on negative controls (no real PV to
-recover — any invented detail there IS hallucination by definition) and on positive
+recover - any invented detail there IS hallucination by definition) and on positive
 chips, that supports treating SISR's "sharpening" as prior-driven pattern completion
 rather than real recovery, regardless of ground truth; if it is much higher specifically
 on positive chips, that would argue the extra detail tracks real content instead.
@@ -56,7 +56,7 @@ EDGE_THRESH_SIGMA = 2.0  # "new edge" = gradient magnitude beyond this many stds
 
 
 class ZSSRNet(nn.Module):
-    """~40k-param residual CNN, matching ZSSR's own scale (deliberately tiny — a
+    """~40k-param residual CNN, matching ZSSR's own scale (deliberately tiny - a
     per-image internal-learning method has only one image's own statistics to fit,
     so a bigger net would just memorize noise)."""
 
@@ -76,7 +76,7 @@ class ZSSRNet(nn.Module):
 
 
 def _augment(img: np.ndarray, k: int) -> np.ndarray:
-    """8 dihedral augmentations (4 rotations x optional flip) — ZSSR's own augmentation
+    """8 dihedral augmentations (4 rotations x optional flip) - ZSSR's own augmentation
     set, needed because a single image alone has too few pixels to fit even a tiny CNN
     without it."""
     a = np.rot90(img, k % 4)
@@ -137,7 +137,7 @@ def hallucination_metrics(deep_out: np.ndarray, bicubic: np.ndarray) -> dict:
 def run(index_path: Path, n: int, seed: int, device: str) -> pd.DataFrame:
     idx = pd.read_parquet(index_path)
     band_ix = LOCAL_BANDS.index(BAND)
-    # chips.py kinds are positive / near_negative / background (no plain "negative") —
+    # chips.py kinds are positive / near_negative / background (no plain "negative") -
     # "background" (far from any mapped PV) is the true negative control; near_negative
     # (close to a positive, still labeled PV-free) is deliberately excluded here since a
     # model-invented panel there could coincidentally overlap real nearby PV context.
@@ -203,11 +203,11 @@ if __name__ == "__main__":
                   "(near 1 = invented detail is similar regardless of real PV -> "
                   "hallucination, not recovery; >>1 = extra detail tracks real content)")
             verdict = (
-                "CONFIRMED RISK — invented structure on no-PV negative controls is "
+                "CONFIRMED RISK - invented structure on no-PV negative controls is "
                 "comparable to positive chips: SISR is pattern-completing, not "
                 "recovering real detail. Do not feed this into detection."
                 if ratio < 2.0
-                else "WEAKER RISK than assumed — invented detail is markedly higher on "
+                else "WEAKER RISK than assumed - invented detail is markedly higher on "
                      "real-PV chips, suggesting some of it tracks genuine content. Still "
                      "would need per-candidate discrimination before trusting it."
             )

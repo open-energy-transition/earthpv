@@ -57,11 +57,11 @@ calibrated (see next).
 **roofclf, for every rooftop below 400 m² -- and, where calibrated, for large rooftops
 too.** At 10 m resolution, a 100 m² array is a handful of mixed pixels -- not enough to
 draw a polygon around, but enough to ask whether a *building* carries PV. **roofclf** is
-a per-building classifier trained on 23 exhaustively mapped ground-truth quadrats (0.857
-AUC, 0.830 with roof size controlled for, where the segmentation raster scores close to
+a per-building classifier trained on 27 exhaustively mapped ground-truth quadrats (0.879
+AUC, 0.834 with roof size controlled for, where the segmentation raster scores close to
 chance on the same small buildings), cross-checked against **SPPI**, a zero-training
-five-band spectral index (He et al. 2026) that needs no labels at all (0.823 AUC on the
-same quadrats). They agree often enough to raise measured precision from 0.53 to 0.63
+five-band spectral index (He et al. 2026) that needs no labels at all (0.823 AUC in its
+own nine-quadrat evaluation, where roofclf scored 0.874 on the identical buildings). They agree often enough to raise measured precision from 0.53 to 0.63
 when both flag a building, and the gain concentrates in exactly the low-adoption places
 where roofclf alone is known to over-predict. Segmentation's blind spot turns out not to
 be building size but *installation* size -- a small array on a large roof is invisible to
@@ -103,7 +103,7 @@ Checked against that limitation directly: an independent, separately produced na
 rooftop-solar estimate agrees closely with this project's on **where** capacity
 concentrates -- normalizing both to percent of national total per spatial unit (their
 absolute magnitudes aren't comparable), the median difference across 3,303 spatial units
-is 0.005 percentage points and rank correlation is 0.71-0.83. It disagrees more on how
+is 0.005 percentage points and rank correlation is 0.75-0.84. It disagrees more on how
 much weight the very largest sites deserve (a handful of hotspot cells drive most of the
 remaining gap, consistently in the same direction), which is a real, stated limitation,
 not a hidden one. See
@@ -138,7 +138,7 @@ for what was tried and why the main workflow above is what shipped.
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 16,441 MWp (90 percent range 12,883 to 19,147) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 19,746 MWp (90 percent range 16,051 to 23,520) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -197,19 +197,22 @@ above:
 
 | | |
 | --- | --- |
-| **16,441 MWp** | Best estimate: this project's own highest defensible figure (90% range 12,883 &ndash; 19,147) |
+| **19,746 MWp** | Best estimate: this project's own highest defensible figure (90% range 16,051 &ndash; 23,520) |
 | **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
 | **400 m²** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
 
 The headline figure carries a 90% range as of 2026-08-11, composed from the
 area-to-capacity constants' priors, segmentation's measured precision and recall by
-installation size, the coverage ratio's sensitivity to which calibration quadrats happen
-to have been mapped, and an explicit allowance for extrapolating a city-calibrated
-relationship onto rural roofs. The range is wide on purpose: this figure moved by 20-35%
-five times in a single week from recalibration alone, and reporting it bare had been
-hiding that. It is not a design-based margin of error -- the quadrats behind it are
-hand-picked, not randomly sampled. See
+installation size, and the coverage ratio's sensitivity to which calibration quadrats happen
+to have been mapped. The range is wide on purpose: this figure moved by 20-35% five times in
+a single week from recalibration alone, and reporting it bare had been hiding that. It is not
+a design-based margin of error -- the quadrats behind it are hand-picked, not randomly
+sampled, and it does not cover the gap between where the roofclf coverage-ratio correction is
+fit and where it is applied: about half of Best is priced by a multiplier measured on
+quadrats several times denser than most of the cells it prices (see [Calibration density
+mismatch](https://open-energy-transition.github.io/earthpv/issues/roofclf-calibration-density-mismatch/)).
+See
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for the
 derivation and
 [Validation against MaStR](https://open-energy-transition.github.io/earthpv/methods/mastr-validation/)
@@ -342,3 +345,14 @@ Build it locally with `pixi run docs-figures && pixi run -e docs docs-serve`.
 Code MIT. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
 and Overture Maps; labels from OpenStreetMap contributors under ODbL; administrative
 boundaries from geoBoundaries under CC-BY.
+
+**Published data outputs** (the evidence atlas, capacity parquets, raw detections and any
+other derived dataset offered for download, e.g. under "Download the underlying data" on the
+atlas page or as a GitHub Release asset) are derivative databases of OpenStreetMap's
+ODbL-licensed solar labels and, via VIDA Open Buildings, of Microsoft/Google building
+footprints. Under ODbL's share-alike clause, **these data releases are themselves licensed
+under the [Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/odbl/1-0/)**,
+with attribution to &copy; OpenStreetMap contributors required on any use, alongside VIDA Open
+Buildings (CC BY 4.0) for the footprints and, for anything derived from the Germany/MaStR
+validation, the Marktstammdatenregister (Bundesnetzagentur, [Datenlizenz Deutschland -- Namensnennung -- Version
+2.0](https://www.govdata.de/dl-de/by-2-0)).

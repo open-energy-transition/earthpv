@@ -1,0 +1,13 @@
+/* earthpv roofclf tile JOSM validation layer.
+   JOSM: Preferences -> Map Paint Styles -> + -> point at this file. */
+way[feature_type=roofclf_detection] {
+    color: #b06fe0;
+    width: 2;
+    fill-color: #b06fe0;
+    fill-opacity: 0.35;
+    z-index: 100;
+}
+way[feature_type=roofclf_detection][osm_matched=yes] {
+    color: #ffb000;
+    fill-color: #ffb000;
+}

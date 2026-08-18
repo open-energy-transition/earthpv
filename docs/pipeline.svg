@@ -15,7 +15,7 @@
   <rect x="0.5" y="0.5" width="979" height="999" rx="12" fill="#fcfcfb" stroke="#e1e0d9"/>
 
   <!-- title -->
-  <text x="50" y="42" font-size="20" font-weight="700" fill="#0b0b0b">earthpv — processing pipeline</text>
+  <text x="50" y="42" font-size="20" font-weight="700" fill="#0b0b0b">earthpv - processing pipeline</text>
   <text x="50" y="64" font-size="12" fill="#52514e">Rooftop-PV detection from Sentinel-2 by fine-tuning TerraMind; recall-first, human-validated.</text>
 
   <!-- ================= arrows (under nodes) ================= -->
