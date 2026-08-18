@@ -5,6 +5,8 @@ point. For the physics, the country-wide pose survey and the sensitivity curve, 
 [Panel pose from glint](../results/pv-pose.md). This page covers how the detector is
 built and how it is budgeted.
 
+![Solar glint validation geometry: a matched panel tilt reflects the sun straight into Sentinel-2's near-nadir sensor while a mismatched tilt sends it elsewhere, and the resulting time series shows a reflectance spike on the geometry-predicted date while the surrounding annulus stays flat.](../glint_geometry.png)
+
 ## The measurement
 
 For each target, pull roughly two years of per-scene Sentinel-2 L2A statistics in bands
