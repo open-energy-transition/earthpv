@@ -141,7 +141,6 @@
   .extended-ring-rect { fill: none; stroke: var(--extended); stroke-width: 1.3;
     stroke-dasharray: 1.3 2; opacity: 0.95; pointer-events: none; }
   .large-dot { fill: none; stroke: var(--large); opacity: 0.9; pointer-events: none; }
-  .tip .rowt.domain-flag span:first-child { color: var(--domain); }
   .tip .rowt.extended-flag span:first-child { color: var(--extended); }
   .tip .rowt.large-flag span:first-child { color: var(--large); }
 
@@ -781,11 +780,15 @@ out meta geom;</div>
   const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
 
   /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
-     small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended] */
+     small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended,
+     n_buildings, roof_cand_n, roof_cand_area_m2] */
   const BEST_IDX = 3;
   const OSM_IDX = 4;
   const OUTDOMAIN_IDX = 11;
   const EXTENDED_IDX = 12;
+  const BUILDINGS_IDX = 13;
+  const ROOF_CAND_N_IDX = 14;
+  const ROOF_CAND_AREA_IDX = 15;
   const T = DATA.totals;
   T.small_all = (T.small_central || 0) + (T.small_outdomain || 0);
   // The two model-detection tiles below never summed to the headline number on their
@@ -1041,6 +1044,9 @@ out meta geom;</div>
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
       const rows = `<div class="rowt sel"><span>${VIEW.label}</span><span>${c[BEST_IDX].toFixed(1)} MWp</span></div>`;
+      const nBuildings = c[BUILDINGS_IDX], nPv = c[10], nRoofCand = c[ROOF_CAND_N_IDX];
+      const roofRatio = nBuildings > 0 ? `${(nPv / nBuildings * 100).toFixed(1)}%` : "n/a";
+      const avgSize = nRoofCand > 0 ? `${Math.round(c[ROOF_CAND_AREA_IDX] / nRoofCand).toLocaleString()} m²` : "n/a";
       tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
         + rows
         + `<div class="rowt large-flag"><span>&#9675; Hand-mapped in OSM</span><span>${c[OSM_IDX].toFixed(1)} MWp</span></div>`
@@ -1048,7 +1054,8 @@ out meta geom;</div>
         + `<div class="rowt"><span>Model detections &ge;400 m²</span><span>${c[8].toFixed(1)} MWp</span></div>`
         + `<div class="rowt"><span>Small PV, roofclf alone</span><span>${c[7].toFixed(1)} MWp</span></div>`
         + (c[OUTDOMAIN_IDX] > 0 ? `<div class="rowt"><span>Small PV, extrapolated (Best only)</span><span>${c[OUTDOMAIN_IDX].toFixed(1)} MWp</span></div>` : "")
-        + (c[9] ? `<div class="rowt domain-flag"><span>&#9679; Small-PV calibration</span><span>checked</span></div>` : "")
+        + `<div class="rowt"><span>Rooftop PV per building</span><span>${roofRatio}</span></div>`
+        + `<div class="rowt"><span>Avg. installation size</span><span>${avgSize}</span></div>`
         + (c[EXTENDED_IDX] ? `<div class="rowt extended-flag"><span>&#9675; Small-PV extrapolated, not checked</span><span></span></div>` : "");
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
