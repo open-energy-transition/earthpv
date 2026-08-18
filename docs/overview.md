@@ -265,16 +265,10 @@ The full register, with a verdict and the measurement behind each, is
 [Experiments](experiments.md); what is still undecided is
 [Open questions](open-questions.md).
 
-One negative result worth singling out, because it constrains how anyone should read
-OpenStreetMap-derived PV numbers including this project's own: **German OSM is only 3.6%
-complete for rooftop PV by unit count**, measured against the MaStR register. "Germany is
-well mapped in OpenStreetMap" is true of buildings and false of rooftop solar.
-
 ## Where to go next
 
 | If you want to | Read |
 | --- | --- |
-| See the capacity numbers and interrogate them | [Capacity map](results/capacity.md) |
 | Understand the pipeline as it runs today | [How it works](how-it-works.md) |
 | Know how detection and density actually work | [Detection](methods/detection.md), [Density](methods/density.md) |
 | Check the method against a legally complete register | [Validation against MaStR](methods/mastr-validation.md) |
