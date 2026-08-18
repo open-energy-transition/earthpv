@@ -458,8 +458,9 @@ in place:
 ### Documentation site
 
 `mkdocs.yml` + `docs/` build the MkDocs Material site published to GitHub Pages by
-`.github/workflows/docs.yml` on every push to `main` that touches docs, results or the figure
-script. **Every figure and embedded interactive page under `docs/assets/` is generated** by
+`.github/workflows/docs.yml` on every push to `main` (i.e. every merged PR), not just commits
+that touch doc-related paths -- a path filter here previously skipped rebuilds and was dropped
+2026-08-18. **Every figure and embedded interactive page under `docs/assets/` is generated** by
 `scripts/build_docs_figures.py` (`pixi run docs-figures`), which reads its numbers from tracked
 files (`results/*.csv`, the atlas HTML's embedded JSON, calibration YAML) so the site cannot
 drift from them -- edit the sources, not the SVGs. Local preview:

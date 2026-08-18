@@ -1,14 +1,12 @@
 name: Documentation
 
 on:
+  # Every push to main (i.e. every merged PR) rebuilds and redeploys the site, not just
+  # commits that touch doc-related paths -- a merge that only changes pipeline code can
+  # still change a checked-in results/ figure or an embedded atlas HTML under docs/
+  # indirectly, and a path filter here has silently skipped a rebuild before.
   push:
     branches: [main]
-    paths:
-      - "docs/**"
-      - "mkdocs.yml"
-      - "scripts/build_docs_figures.py"
-      - "results/**"
-      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 permissions:
