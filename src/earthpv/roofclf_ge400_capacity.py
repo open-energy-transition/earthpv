@@ -111,6 +111,8 @@ def domain_restricted_ge400_roof_capacity(
     all_cells = pd.read_parquet(cell_density_path)
     in_domain_cells = national_cell_domain(cell_density_path)
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
+    composition = parcel_label_composition(buildings_path, quadrats, threshold)
+    ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
     stratified = coverage_ratio_by_size_and_density(
         buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
@@ -167,6 +169,11 @@ def domain_restricted_ge400_roof_capacity(
             * flagged["coverage_ratio"].to_numpy()
             / flagged["area_recall"].to_numpy()
         )
+        # See `sub400_capacity.domain_restricted_capacity`'s identical line: a flat,
+        # quadrat-pooled share of this "rooftop" figure is actually OSM `placement=ground`
+        # PV in the yard, per `parcel_label_composition`. 0.0 under a roof-only
+        # calibration table, so the column always exists.
+        flagged["est_kwp_ge400_roof_ground"] = flagged["est_kwp_ge400_roof"] * ground_share
         mean_coverage_ratio = float(
             np.average(flagged["coverage_ratio"], weights=flagged["roof_area_m2"])
         )
@@ -184,6 +191,7 @@ def domain_restricted_ge400_roof_capacity(
         flagged["coverage_ratio"] = np.array([])
         flagged["area_recall"] = np.array([])
         flagged["est_kwp_ge400_roof"] = np.array([])
+        flagged["est_kwp_ge400_roof_ground"] = np.array([])
         mean_coverage_ratio = float("nan")
         effective_area_recall = float("nan")
         cov_boot = {"n_boot": 0, "factors": [], "factor_ci90": None}
@@ -195,7 +203,7 @@ def domain_restricted_ge400_roof_capacity(
         # See `sub400_capacity.parcel_label_composition`: None under the roof-only label,
         # and under the parcel label the share of this "rooftop" figure that is in fact
         # ground-tagged PV standing in the building's yard.
-        "parcel_label_composition": parcel_label_composition(buildings_path, quadrats, threshold),
+        "parcel_label_composition": composition,
         "calibration_coverage_ratio_by_size_and_density": stratified,
         "calibration_coverage_ratio_area_weighted_mean": (
             round(mean_coverage_ratio, 4) if mean_coverage_ratio == mean_coverage_ratio else None

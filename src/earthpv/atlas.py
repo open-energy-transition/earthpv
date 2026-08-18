@@ -2138,7 +2138,14 @@ def build_evidence_atlas(
             ) +
             " Three things are <i>not</i> inside them, and no arithmetic can put them "
             "there. The quadrats were hand-picked rather than randomly sampled, so this "
-            "is not a formal national margin of error. Ground-truth completeness is "
+            "is not a formal national margin of error &mdash; and not by choice: a "
+            "genuine probability sample needs every drawn cell to be checkable against "
+            "reference imagery recent enough to confirm or refute a small installation, "
+            "and random draws outside the calibrated domain have so far landed on JOSM "
+            "reference imagery too old to do that, in both directions (a zero can mean "
+            "no panels or an installation newer than the imagery). Purposive selection "
+            "was the fallback that let quadrats be sited where recent imagery actually "
+            "exists. Ground-truth completeness is "
             "relative to the date of the mapping imagery rather than the satellite "
             "composite, which biases the measured precision downward and the measured "
             "recall upward by an unknown amount &mdash; both in the direction that makes "
@@ -2264,11 +2271,17 @@ def _size_distribution_data(
       (`seg_roof_outdomain`) -- roofclf replaces segmentation's own rooftop estimate
       INSIDE that domain, so counting both there would double it.
     - `ge400_roof_buildings_path` (roofclf's own >= 400 m2 rooftop replacement,
-      in-domain).
-    - `central_buildings_path` (roofclf alone, < 400 m2, in-domain).
+      in-domain). Under the parcel label, a flat quadrat-measured share of each
+      building's MWp (`est_kwp_ge400_roof_ground`) is OSM `placement=ground` PV in the
+      yard rather than on the roof and is split into `ground_mwp`, not `roof_mwp` --
+      see `parcel_label_composition`. 0 under a roof-only calibration table.
+    - `central_buildings_path` (roofclf alone, < 400 m2, in-domain). Same split, via
+      `est_kwp_sub400_ground`.
     - `sub400_outdomain_buildings_path` (roofclf+SPPI agreement, < 400 m2,
       extrapolated outside the domain) -- optional, matches `earthpv atlas`'s own
-      `--sub400-outdomain-cells`; rendered as a visually distinct slice.
+      `--sub400-outdomain-cells`; rendered as a visually distinct slice. Not split by
+      the parcel-label ground share (this component doesn't track it; it is also
+      unpublished as of 2026-08-15, see CLAUDE.md's "Density stage").
     - hand-mapped OSM installations the model never detected
       (`osm_unmatched_roof`/`osm_unmatched_ground`).
 
@@ -2370,20 +2383,36 @@ def _size_distribution_data(
     seg_roof_all_by_cell = _cell_sum(cell_of[is_roof], seg_roof_mwp_arr[is_roof])
 
     # --- roofclf's own >= 400 m2 rooftop replacement, in-domain ----------------------
+    # A flat, quadrat-measured share of each building's priced capacity is actually OSM
+    # `placement=ground` PV in the yard, not on the roof (`parcel_label_composition`,
+    # `est_kwp_ge400_roof_ground` -- 0 under a roof-only calibration table). Split the
+    # MWp by that share; `roof_n`/`ground_n` stay whole-building counts under roof_n,
+    # since this isn't a distinct ground-mount OBJECT the way a segmentation/OSM ground
+    # candidate is -- one building's estimate is just partly ground-tagged area.
     if not ge400.empty:
-        _size_bin_add(
-            ge400["roof_area_m2"].to_numpy(float), ge400["est_kwp_ge400_roof"].to_numpy(float) / 1000.0,
-            roof=True,
+        ge400_ground_kwp = (
+            ge400["est_kwp_ge400_roof_ground"].to_numpy(float)
+            if "est_kwp_ge400_roof_ground" in ge400.columns else np.zeros(len(ge400))
         )
+        ge400_roof_kwp = ge400["est_kwp_ge400_roof"].to_numpy(float) - ge400_ground_kwp
+        area_v = ge400["roof_area_m2"].to_numpy(float)
+        _size_bin_add(area_v, ge400_roof_kwp / 1000.0, roof=True)
+        s, _ = _size_bin_sum(area_v, ge400_ground_kwp / 1000.0, edges)
+        ground_mwp[:] += s
 
     # --- roofclf alone, < 400 m2, in-domain ------------------------------------------
     central = gpd.read_parquet(central_buildings_path)
     central_by_cell = pd.Series(dtype=float)
     if not central.empty:
-        _size_bin_add(
-            central["roof_area_m2"].to_numpy(float), central["est_kwp_sub400"].to_numpy(float) / 1000.0,
-            roof=True,
+        central_ground_kwp = (
+            central["est_kwp_sub400_ground"].to_numpy(float)
+            if "est_kwp_sub400_ground" in central.columns else np.zeros(len(central))
         )
+        central_roof_kwp = central["est_kwp_sub400"].to_numpy(float) - central_ground_kwp
+        area_v = central["roof_area_m2"].to_numpy(float)
+        _size_bin_add(area_v, central_roof_kwp / 1000.0, roof=True)
+        s, _ = _size_bin_sum(area_v, central_ground_kwp / 1000.0, edges)
+        ground_mwp[:] += s
         central_by_cell = _join_buildings_to_grid_cells(central, "est_kwp_sub400", grid) / 1000.0
 
     # --- roofclf+SPPI, < 400 m2, extrapolated outside the domain --------------------

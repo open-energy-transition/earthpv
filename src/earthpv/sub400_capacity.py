@@ -1068,6 +1068,8 @@ def domain_restricted_capacity(
     n_buildings_national = int(all_cells.n_buildings.sum())
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
     precision_info = density_regime_precision(buildings_path, quadrats, threshold)
+    composition = parcel_label_composition(buildings_path, quadrats, threshold)
+    ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
     stratified = coverage_ratio_by_size_and_density(
         buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
@@ -1148,6 +1150,13 @@ def domain_restricted_capacity(
         * incremental["coverage_ratio"].to_numpy()
         / incremental["area_recall"].to_numpy()
     )
+    # Per `parcel_label_composition`, a flat fraction of every parcel-label building's
+    # priced capacity is OSM `placement=ground` PV standing in the yard, not on the roof
+    # -- measured pooled over the quadrats, not per building (no ground-truth PV exists on
+    # the national population this table scores). `ground_share` is 0.0 for a roof-only
+    # calibration table, so this column always exists and downstream size-by-placement
+    # charts (`atlas._size_distribution_data`) don't need a column-presence check.
+    incremental["est_kwp_sub400_ground"] = incremental["est_kwp_sub400"] * ground_share
     total_mwp = float(incremental.est_kwp_sub400.sum()) / 1000.0
     mean_coverage_ratio = (
         float(np.average(incremental["coverage_ratio"], weights=incremental.roof_area_m2))
@@ -1173,7 +1182,7 @@ def domain_restricted_capacity(
         "calibration_quadrats": quadrats,
         # None for a roof-only calibration table; present (and worth reading before
         # quoting this component as "rooftop") for a parcel-label one.
-        "parcel_label_composition": parcel_label_composition(buildings_path, quadrats, threshold),
+        "parcel_label_composition": composition,
         "calibration_precision": precision_info["precision"],
         "calibration_recall": precision_info["recall"],
         "calibration_coverage_ratio_by_size_and_density": stratified,
