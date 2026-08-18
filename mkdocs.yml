@@ -11,6 +11,7 @@ copyright: >-
 
 theme:
   name: material
+  custom_dir: docs/overrides
   language: en
   logo: assets/figures/earthpv-logo-mark-white.png
   favicon: assets/figures/favicon.png
