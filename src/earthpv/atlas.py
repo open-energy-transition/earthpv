@@ -1825,19 +1825,6 @@ def build_evidence_atlas(
             "of this %d-cell grid -- excluded from the map/totals below.",
             n_unmatched_osm, len(joined_osm), len(grid),
         )
-    # Rooftop-placed candidates, per cell: the discrete detected-array population (each
-    # row one polygon this model outlined), for an "average installation size" that means
-    # the size of an actual array rather than one building's fragment of it -- distinct
-    # from `n_pv_buildings`/`pv_area_det_roof_m2` above, which are per-building and can
-    # split one large array's area across many buildings it happens to overlap.
-    roof_cand = cand[cand["placement"] == "rooftop"].copy()
-    roof_cand["geometry"] = roof_cand.geometry.representative_point()
-    joined_cand = gpd.sjoin(roof_cand, grid[["cell", "geometry"]], predicate="within", how="left")
-    in_grid_cand = joined_cand.dropna(subset=["cell"])
-    cand_by_cell = in_grid_cand.groupby("cell").agg(
-        roof_cand_n=("area_m2", "size"), roof_cand_area_m2=("area_m2", "sum"),
-    )
-
     in_grid_osm = joined_osm.dropna(subset=["cell"])
     osm_by_cell = in_grid_osm.groupby("cell").apply(
         lambda d: pd.Series({
@@ -1887,8 +1874,6 @@ def build_evidence_atlas(
     grid["small_low"] = grid["cell"].map(by_low).fillna(0.0)
     grid["small_central"] = grid["cell"].map(by_central).fillna(0.0)
     grid["small_outdomain"] = grid["cell"].map(by_outdomain).fillna(0.0)
-    grid["roof_cand_n"] = grid["cell"].map(cand_by_cell["roof_cand_n"]).fillna(0.0)
-    grid["roof_cand_area_m2"] = grid["cell"].map(cand_by_cell["roof_cand_area_m2"]).fillna(0.0)
     grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
     n_domain_cells = int(grid["in_domain"].sum())
     # Distinct from `in_domain`: these cells carry an EXTRAPOLATED small-PV contribution
@@ -1942,8 +1927,7 @@ def build_evidence_atlas(
          round(float(r.osm_mwp), 3), int(r.osm_n),
          round(float(r.small_low), 3), round(float(r.small_central), 3),
          round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings),
-         round(float(r.small_outdomain), 3), int(r.is_extended),
-         int(r.n_buildings), int(r.roof_cand_n), round(float(r.roof_cand_area_m2), 1)]
+         round(float(r.small_outdomain), 3), int(r.is_extended)]
         for r in grid.itertuples()
     ]
     bounds = [
