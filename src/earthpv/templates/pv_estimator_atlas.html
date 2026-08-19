@@ -304,6 +304,70 @@ const px = (lon) => (lon - x0) / (x1 - x0) * W;
 const py = (lat) => (y1 - lat) / (y1 - y0) * H;
 const cw = CELL / (x1 - x0) * W, ch = CELL / (y1 - y0) * H;
 
+/* ── satellite basemap ────────────────────────────────────────────────
+   Esri World Imagery, fetched at whatever tile zoom the current viewport
+   actually needs -- confirmed up to z19 over Pakistani cities (individual
+   rooftops visible), vs. a single fixed low zoom canvas-scaled on wheel-zoom,
+   which stays blurry no matter how far you zoom in regardless of provider.
+   Tiles are fetched only for the visible viewport, not the whole AOI, so
+   high zoom stays cheap. */
+const SAT_TILE_URL = (z, x, y) =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+const SAT_Z_MIN = 4, SAT_Z_MAX = 19; // 19: highest zoom Esri actually serves here -- beyond it tiles are a blank "not yet available" placeholder
+function lon2tile(lon, z) { return Math.floor((lon + 180) / 360 * 2 ** z); }
+function lat2tile(lat, z) {
+  return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z);
+}
+function tile2lon(x, z) { return x / 2 ** z * 360 - 180; }
+function tile2lat(y, z) { return Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI; }
+
+const view = { scale: 1, ox: 0, oy: 0 };
+const pxZ = (lon) => (px(lon) - W / 2) * view.scale + W / 2 + view.ox;
+const pyZ = (lat) => (py(lat) - H / 2) * view.scale + H / 2 + view.oy;
+// inverse of pxZ/pyZ -- turns a screen point back into lon/lat at the current zoom/pan
+const invLon = (sx) => x0 + ((sx - view.ox - W / 2) / view.scale + W / 2) / W * (x1 - x0);
+const invLat = (sy) => y1 - ((sy - view.oy - H / 2) / view.scale + H / 2) / H * (y1 - y0);
+
+// tile zoom that fits the whole AOI at scale 1; each doubling of view.scale earns
+// one more tile zoom level
+const SAT_BASE_Z = Math.log2(360 / ((x1 - x0) / W * 256));
+function satZoomForScale(scale) {
+  return Math.max(SAT_Z_MIN, Math.min(SAT_Z_MAX, Math.round(SAT_BASE_Z + Math.log2(scale))));
+}
+
+const tileCache = new Map(); // "z,x,y" -> { img, ready }
+function loadTile(z, x, y) {
+  const key = `${z},${x},${y}`;
+  let e = tileCache.get(key);
+  if (!e) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    const ready = new Promise((res) => { img.onload = res; img.onerror = res; });
+    img.src = SAT_TILE_URL(z, x, y);
+    e = { img, ready };
+    tileCache.set(key, e);
+  }
+  return e;
+}
+
+async function drawSatelliteLayer() {
+  const z = satZoomForScale(view.scale), n = 2 ** z;
+  const xMin = Math.max(0, lon2tile(invLon(0), z) - 1);
+  const xMax = Math.min(n - 1, lon2tile(invLon(W), z) + 1);
+  const yMin = Math.max(0, lat2tile(invLat(0), z) - 1);
+  const yMax = Math.min(n - 1, lat2tile(invLat(H), z) + 1);
+  const tiles = [];
+  for (let tx = xMin; tx <= xMax; tx++)
+    for (let ty = yMin; ty <= yMax; ty++) tiles.push([tx, ty, loadTile(z, tx, ty)]);
+  await Promise.all(tiles.map(([, , e]) => e.ready));
+  for (const [tx, ty, e] of tiles) {
+    if (!e.img.complete || e.img.naturalWidth === 0) continue;
+    const lonL = tile2lon(tx, z), lonR = tile2lon(tx + 1, z);
+    const latT = tile2lat(ty, z), latB = tile2lat(ty + 1, z);
+    ctx.drawImage(e.img, pxZ(lonL), pyZ(latT), pxZ(lonR) - pxZ(lonL), pyZ(latB) - pyZ(latT));
+  }
+}
+
 /* per-metric scale: roof-scope metrics top out much lower than all-PV-scope ones --
    sharing one scale crushed the roof-scope maps to near-black. Recomputed whenever
    the selected metric changes (see setMetric). */
@@ -325,27 +389,34 @@ function rampColor(t) { // t in [0,1]
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-function drawMap() {
+async function drawMap() {
   updateScale();
   const mi = METRICS[sel].i + 2;
   ctx.clearRect(0, 0, W, H);
-  // bare land pass
+  await drawSatelliteLayer();
+  const cwZ = cw * view.scale, chZ = ch * view.scale;
+  // bare land pass -- translucent so the satellite layer underneath still reads
+  // once zoomed in close enough to make out individual buildings
+  ctx.globalAlpha = 0.4;
   ctx.fillStyle = "#12141B";
-  for (const c of D.cells) ctx.fillRect(px(c[0]), py(c[1]) - ch, cw + 0.5, ch + 0.5);
+  for (const c of D.cells) ctx.fillRect(pxZ(c[0]), pyZ(c[1]) - chZ, cwZ + 0.5, chZ + 0.5);
+  ctx.globalAlpha = 1;
   // light pass -- all cell fills first, then all blooms, so a bloom is never
   // clipped by a neighbouring cell drawn after it
   const cores = [];
+  ctx.globalAlpha = 0.72;
   for (const c of D.cells) {
     const t = bright(c[mi]);
     const col = rampColor(t);
     if (!col) continue;
     ctx.fillStyle = col;
-    ctx.fillRect(px(c[0]), py(c[1]) - ch, cw + 0.5, ch + 0.5);
+    ctx.fillRect(pxZ(c[0]), pyZ(c[1]) - chZ, cwZ + 0.5, chZ + 0.5);
     if (t > 0.55) cores.push([c, t]);
   }
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "lighter";
   for (const [c, t] of cores) {
-    const cx = px(c[0]) + cw / 2, cy = py(c[1]) - ch / 2, r = cw * (1 + t * 2.2);
+    const cx = pxZ(c[0]) + cwZ / 2, cy = pyZ(c[1]) - chZ / 2, r = cwZ * (1 + t * 2.2);
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     g.addColorStop(0, `rgba(245,182,62,${0.28 * t})`); g.addColorStop(1, "rgba(245,182,62,0)");
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
@@ -355,7 +426,7 @@ function drawMap() {
   ctx.strokeStyle = "rgba(155,149,138,0.28)"; ctx.lineWidth = 0.8;
   for (const p of D.provinces) for (const ring of p.rings) {
     ctx.beginPath();
-    ring.forEach(([lon, lat], k) => k ? ctx.lineTo(px(lon), py(lat)) : ctx.moveTo(px(lon), py(lat)));
+    ring.forEach(([lon, lat], k) => k ? ctx.lineTo(pxZ(lon), pyZ(lat)) : ctx.moveTo(pxZ(lon), pyZ(lat)));
     ctx.stroke();
   }
   // calibration ground-truth quadrats -- dashed teal outline + marker, always visible
@@ -366,7 +437,7 @@ function drawMap() {
     for (const b of D.calibBoxes) {
       for (const ring of b.rings) {
         ctx.beginPath();
-        ring.forEach(([lon, lat], k) => k ? ctx.lineTo(px(lon), py(lat)) : ctx.moveTo(px(lon), py(lat)));
+        ring.forEach(([lon, lat], k) => k ? ctx.lineTo(pxZ(lon), pyZ(lat)) : ctx.moveTo(pxZ(lon), pyZ(lat)));
         ctx.stroke();
       }
     }
@@ -383,7 +454,7 @@ function drawMap() {
   // measure text directly, so unlike the SVG version this needs no width estimate.
   ctx.font = "15px ui-monospace, Menlo, monospace"; ctx.textBaseline = "middle";
   {
-    const pts = D.cities.map(([name, lon, lat]) => ({name, x: px(lon), y: py(lat)}));
+    const pts = D.cities.map(([name, lon, lat]) => ({name, x: pxZ(lon), y: pyZ(lat)}));
     for (const c of pts) {
       ctx.fillStyle = "#ffffff";
       ctx.strokeStyle = "rgba(8,6,4,0.94)"; ctx.lineWidth = 2;
@@ -448,9 +519,10 @@ mapbox.addEventListener("mousemove", (e) => {
   // point of the overlay, and would otherwise be indistinguishable at this scale
   let hitBox = null;
   if (D.calibBoxes && D.calibBoxes.length) {
+    const hitR = Math.min(80, 9 * view.scale); // grows with zoom -- at scale 1 the box is a dot, zoomed in it's most of the screen
     for (const b of D.calibBoxes) {
-      const bx = px(b.lon), by = py(b.lat);
-      if (Math.hypot(sx - bx, sy - by) < 9) { hitBox = b; break; }
+      const bx = pxZ(b.lon), by = pyZ(b.lat);
+      if (Math.hypot(sx - bx, sy - by) < hitR) { hitBox = b; break; }
     }
   }
   if (hitBox) {
@@ -467,8 +539,8 @@ mapbox.addEventListener("mousemove", (e) => {
     tt.style.top = Math.min(my + 14, r.height - tt.offsetHeight - 10) + "px";
     return;
   }
-  const lon = x0 + mx / r.width * (x1 - x0);
-  const lat = y1 - my / r.height * (y1 - y0);
+  const lon = invLon(sx);
+  const lat = invLat(sy);
   const c = cellIndex.get(`${Math.floor((lon-x0)/CELL)}_${Math.floor((lat-y0)/CELL)}`);
   if (!c) { tt.style.display = "none"; return; }
   const rows = METRICS.map((m) =>
@@ -481,6 +553,58 @@ mapbox.addEventListener("mousemove", (e) => {
   tt.style.top = Math.min(my + 14, r.height - tt.offsetHeight - 10) + "px";
 });
 mapbox.addEventListener("mouseleave", () => { tt.style.display = "none"; });
+
+/* ── zoom + pan ───────────────────────────────────────────────────────
+   Redraws are coalesced to one per animation frame so dragging stays smooth
+   even on AOIs with thousands of cells. */
+let drawPending = false;
+function scheduleDraw() {
+  if (drawPending) return;
+  drawPending = true;
+  requestAnimationFrame(() => { drawPending = false; drawMap(); });
+}
+cv.style.touchAction = "none";
+
+mapbox.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (W / r.width), my = (e.clientY - r.top) * (H / r.height);
+  const factor = Math.pow(1.0015, -e.deltaY);
+  const newScale = Math.min(20000, Math.max(1, view.scale * factor));
+  view.ox = mx - (mx - view.ox - W / 2) * (newScale / view.scale) - W / 2;
+  view.oy = my - (my - view.oy - H / 2) * (newScale / view.scale) - H / 2;
+  view.scale = newScale;
+  mapbox.style.cursor = view.scale > 1 ? "grab" : "";
+  scheduleDraw();
+}, { passive: false });
+
+let dragging = false, lastX = 0, lastY = 0;
+mapbox.addEventListener("pointerdown", (e) => {
+  if (view.scale <= 1) return;
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  mapbox.setPointerCapture(e.pointerId);
+  mapbox.style.cursor = "grabbing";
+});
+mapbox.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  const r = cv.getBoundingClientRect();
+  view.ox += (e.clientX - lastX) * (W / r.width);
+  view.oy += (e.clientY - lastY) * (H / r.height);
+  lastX = e.clientX; lastY = e.clientY;
+  scheduleDraw();
+});
+mapbox.addEventListener("pointerup", () => { dragging = false; mapbox.style.cursor = view.scale > 1 ? "grab" : ""; });
+mapbox.addEventListener("pointercancel", () => { dragging = false; });
+mapbox.addEventListener("dblclick", () => {
+  view.scale = 1; view.ox = 0; view.oy = 0;
+  mapbox.style.cursor = "";
+  scheduleDraw();
+});
+
+const satAttrib = document.createElement("div");
+satAttrib.style.cssText = "position:absolute;right:8px;bottom:6px;z-index:2;font:10px ui-monospace,Menlo,monospace;color:rgba(233,229,220,0.45);pointer-events:none;";
+satAttrib.textContent = "Imagery: Esri, Maxar, Earthstar Geographics -- scroll to zoom, drag to pan, double-click to reset";
+mapbox.appendChild(satAttrib);
 
 /* ── comparison chart ─────────────────────────────────────────────── */
 function drawChart() {
