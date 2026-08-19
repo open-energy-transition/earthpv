@@ -164,7 +164,7 @@
     letter-spacing: 0.03em; flex: none; }
 
   .legend-keys { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .legend-keys > div, .legend-keys > button { display: flex; align-items: center; gap: 6px;
+  .legend-keys > div, .legend-keys > button { display: flex; align-items: flex-start; gap: 6px;
     font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
   /* The two outline overlays are opt-in (both start off), so their legend entries are
      the control as well as the key -- a pressed-state button rather than static text.
@@ -182,14 +182,14 @@
      says the overlay it keys is currently not on the map. The slash is the only part
      that moves, so the icon never changes size or shifts the label. */
   .legend-keys > button.key-toggle .eye { width: 14px; height: 14px; flex: none;
-    margin-left: 2px; fill: none; stroke: currentColor; stroke-width: 1.7;
+    margin-left: 2px; margin-top: 1px; fill: none; stroke: currentColor; stroke-width: 1.7;
     stroke-linecap: round; stroke-linejoin: round; }
   .legend-keys > button.key-toggle[aria-pressed="true"] .eye-slash { display: none; }
-  .legend .domain-key .sw { width: 13px; height: 13px; border: 2px dashed var(--domain);
-    border-radius: 3px; }
-  .legend .extended-key .sw { width: 13px; height: 13px; border: 2px dotted var(--extended);
-    border-radius: 3px; }
-  .legend .calib-key .sw { width: 11px; height: 11px; border-radius: 50%;
+  .legend .domain-key .sw { width: 13px; height: 13px; margin-top: 1px;
+    border: 2px dashed var(--domain); border-radius: 3px; }
+  .legend .extended-key .sw { width: 13px; height: 13px; margin-top: 1px;
+    border: 2px dotted var(--extended); border-radius: 3px; }
+  .legend .calib-key .sw { width: 11px; height: 11px; margin-top: 2px; border-radius: 50%;
     background: var(--domain); }
 
   .calib-ring { fill: none; stroke: var(--domain); stroke-width: 1.4;
@@ -480,7 +480,7 @@
       <section class="card map-card">
         <div class="map-head">
           <div class="map-title">__AOI_TITLE__ PV capacity, best estimate, by 0.1&deg; cell</div>
-          <div class="map-sub">≈11 km × 11 km cells · log scale</div>
+          <div class="map-sub">11 km × 11 km cells · log scale</div>
         </div>
         <div id="mapmount"></div>
         <div class="legend">

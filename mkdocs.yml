@@ -96,7 +96,7 @@ nav:
   # rather than an escape hatch to a bare standalone file. Reused here rather than
   # duplicated under capacity-maps/ -- add new countries as their own pages under
   # capacity-maps/<country>.md as they get their own atlas.
-  - PV Capacity Maps:
+  - PV Capacity and Pose:
       - Pakistan: index.md
   - Overview: overview.md
   # Results first: the pipeline's output is what most readers came for.
