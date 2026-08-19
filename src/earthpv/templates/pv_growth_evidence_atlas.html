@@ -1,0 +1,758 @@
+<meta charset="utf-8">
+<title>__PAGE_TITLE__</title>
+<script id="pv" type="application/json">__PV_DATA_JSON__</script>
+
+<style>
+  :root {
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+    /* dark = the primary "night lights" world */
+    --page: #100d09;
+    --panel: #1a160f;
+    --panel-2: #221d14;
+    --land: #241f16;
+    --map-bg: #0c0a07;
+    --ink: #f7f1e6;
+    --city: #ffffff; --city-halo: rgba(8,6,4,0.94);
+    --ink-2: #c9bda4;
+    --muted: #93866c;
+    --hair: rgba(247,183,51,0.14);
+    --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623;
+    --accent-dim: #b5610f;
+    --domain: #2fd9c4;
+    --large: #4fb2e8;
+    --ground: #ef6a3d;
+    --bloom: 0.55;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+    color-scheme: dark;
+    scrollbar-color: #4a3a1c #14100b;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+      --land: #e6dcc7; --map-bg: #efe8d8;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
+      --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+      --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
+      --ground: #b34a1e; --bloom: 0;
+      --card-ring: rgba(120,80,20,0.14);
+      --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+      color-scheme: light;
+      scrollbar-color: #c3b492 #ece4d2;
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
+    --land: #e6dcc7; --map-bg: #efe8d8;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
+    --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
+    --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
+    --ground: #b34a1e; --bloom: 0;
+    --card-ring: rgba(120,80,20,0.14);
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
+    color-scheme: light;
+    scrollbar-color: #c3b492 #ece4d2;
+  }
+  :root[data-theme="dark"] {
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14;
+    --land: #241f16; --map-bg: #0c0a07;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c; --city: #ffffff; --city-halo: rgba(8,6,4,0.94);
+    --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
+    --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #4fb2e8;
+    --ground: #ef6a3d; --bloom: 0.55;
+    --card-ring: rgba(247,183,51,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
+    color-scheme: dark;
+    scrollbar-color: #4a3a1c #14100b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased; line-height: 1.5;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: clamp(20px, 3.5vw, 48px); }
+
+  header { margin-bottom: 18px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 {
+    font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
+    font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
+  }
+  .lede {
+    margin: 14px 0 0; max-width: 66ch; color: var(--ink-2);
+    font-size: clamp(15px, 1.5vw, 17px);
+  }
+  .lede b { color: var(--ink); font-weight: 640; }
+
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 22px 0 0; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
+    padding: 14px 16px; box-shadow: var(--shadow); }
+  .kpi .v { font-size: clamp(20px, 2.6vw, 28px); font-weight: 760; letter-spacing: -0.01em;
+    color: var(--accent); font-variant-numeric: tabular-nums; }
+  .kpi .v small { font-size: 0.5em; font-weight: 650; color: var(--ink-2); margin-left: 3px; }
+  .kpi .k { font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    margin-top: 6px; line-height: 1.4; }
+
+  /* ── view selector ──────────────────────────────────────────────── */
+  .switch { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; }
+  .tab {
+    font-family: var(--font-mono); font-size: 12.5px; padding: 9px 14px;
+    background: var(--panel); border: 1px solid var(--card-ring); border-radius: 8px;
+    color: var(--ink-2); cursor: pointer; transition: border-color .15s, color .15s; text-align: left;
+  }
+  .tab .tt1 { display: block; font-weight: 650; }
+  .tab .tt2 { display: block; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted); margin-top: 2px; }
+  .tab:hover { color: var(--ink); border-color: var(--accent-dim); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tab[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+  .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; margin-top: 22px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border-radius: 16px; padding: 18px;
+    box-shadow: var(--shadow); border: 1px solid var(--card-ring);
+  }
+  .map-card { padding: 14px; position: relative; overflow: hidden; }
+
+  .map-head { display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin: 4px 6px 12px; flex-wrap: wrap; }
+  .map-title { font-weight: 640; font-size: 15px; }
+  .map-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
+    letter-spacing: 0.02em; }
+
+  svg.map { width: 100%; height: auto; display: block; }
+  .cell { shape-rendering: crispEdges; }
+  .prov-fill { fill: var(--land); }
+  .prov-line { fill: none; stroke: var(--prov-stroke); stroke-width: 1; stroke-linejoin: round; }
+  .city-dot { fill: var(--city); stroke: var(--city-halo); stroke-width: 1.4px; opacity: 0.9; }
+  /* City names sit on top of the choropleth, so they cannot borrow any colour FROM it:
+     the label is a neutral extreme (white on dark, near-black on light) carried by an
+     opaque halo of the opposite extreme -- keep the halo opaque. */
+  .city-label { fill: var(--city); font-family: var(--font-mono); font-size: 21px;
+    paint-order: stroke; stroke: var(--city-halo); stroke-width: 3.4px;
+    stroke-linejoin: round; opacity: 1; }
+
+  /* legend */
+  .legend { display: flex; align-items: center; gap: 12px; margin: 12px 6px 2px;
+    flex-wrap: wrap; }
+  .legend .bar { height: 12px; width: min(260px, 50vw); border-radius: 6px; }
+  .legend .ticks { position: relative; height: 14px; width: min(260px, 50vw);
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .legend .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .legend .ticks span::before { content: ""; position: absolute; top: -4px; left: 50%;
+    width: 1px; height: 3px; background: var(--muted); }
+  .legend .cap { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2);
+    letter-spacing: 0.03em; }
+  .legend .lg-col { display: flex; flex-direction: column; }
+
+  /* hero stat */
+  .hero-num { font-size: clamp(40px, 6vw, 62px); font-weight: 800; letter-spacing: -0.03em;
+    line-height: 0.95; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hero-unit { font-size: 0.34em; font-weight: 700; color: var(--ink-2); letter-spacing: 0;
+    margin-left: 6px; }
+  .hero-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+  .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
+  .hero-desc b { color: var(--ink); font-weight: 660; }
+
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
+    border: 1px solid var(--card-ring); }
+  .tile .v { font-size: 20px; font-weight: 740; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums; }
+  .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  /* province bars */
+  .rank { margin-top: 4px; }
+  .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
+  .row { display: grid; grid-template-columns: 1fr; gap: 5px; margin-bottom: 11px; }
+  .row .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .row .nm { font-size: 13px; font-weight: 560; }
+  .row .vl { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; }
+  .track { height: 9px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
+
+  .note { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-top: 4px; }
+  .note b { color: var(--ink-2); font-weight: 620; }
+
+  details.tablewrap { margin-top: 14px; }
+  details.tablewrap summary { font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--hair);
+    font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-family: var(--font-mono); font-weight: 500; color: var(--muted);
+    font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  /* tooltip */
+  .tip { position: fixed; pointer-events: none; z-index: 20; opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px)); transition: opacity .1s;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 9px 11px; box-shadow: var(--shadow);
+    font-size: 12px; min-width: 160px; }
+  .tip .th { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+    letter-spacing: 0.05em; margin-bottom: 5px; }
+  .tip .rowt { display: flex; justify-content: space-between; gap: 14px; }
+  .tip .rowt span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    color: var(--ink); }
+  .tip .rowt span:first-child { color: var(--ink-2); }
+  .tip .rowt.sel span:first-child { color: var(--accent); }
+
+  .foot { margin-top: 22px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.03em; line-height: 1.7; }
+  .theme-btn { position: fixed; top: 14px; right: 14px; z-index: 30;
+    background: var(--panel); color: var(--ink-2); border: 1px solid var(--card-ring);
+    border-radius: 999px; padding: 7px 12px; font-family: var(--font-mono); font-size: 11px;
+    cursor: pointer; letter-spacing: 0.04em; }
+  .theme-btn:focus-visible, summary:focus-visible { outline: 2px solid var(--accent);
+    outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  /* method / background band */
+  .method { margin-top: 22px; }
+  .method h3 { font-size: 15px; font-weight: 640; margin: 2px 2px 6px; }
+  .method .method-lede { margin: 0 2px 14px; color: var(--ink-2); font-size: 13.5px; max-width: 74ch; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+  .formula { background: var(--panel-2); border: 1px solid var(--card-ring);
+    border-radius: 12px; padding: 12px 14px; }
+  .formula .fl { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 9px;
+    display: flex; align-items: center; gap: 8px; }
+  .formula .fl .dot { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+  .formula p { font-size: 13px; color: var(--ink-2); }
+  .formula b { color: var(--ink); font-weight: 650; }
+  .tag { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
+  .tag.high { background: rgba(201,189,164,0.16); color: var(--ink-2); }
+
+  details.xdetails { margin-top: 10px; border-top: 1px solid var(--hair); padding-top: 10px; }
+  details.xdetails summary { cursor: pointer; display: flex; justify-content: space-between;
+    align-items: center; list-style: none; padding: 4px 2px; }
+  details.xdetails summary::-webkit-details-marker { display: none; }
+  details.xdetails .xt { font-size: 13.5px; font-weight: 620; }
+  details.xdetails .xs { display: block; font-family: var(--font-mono); font-size: 10.5px;
+    color: var(--muted); margin-top: 2px; text-transform: none; letter-spacing: 0.02em; }
+  details.xdetails .xi { font-size: 18px; color: var(--muted); }
+  details.xdetails[open] .xi { transform: rotate(45deg); }
+  details.xdetails .xbody { padding: 8px 2px 4px; font-size: 13px; color: var(--ink-2); line-height: 1.65; }
+  details.xdetails .xbody b { color: var(--ink); font-weight: 640; }
+</style>
+
+<button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle light or dark theme">Dark mode</button>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">EarthPV · Sentinel-2 · TerraMind + roofclf · one instrument, two epochs</p>
+    <h1>__H1__</h1>
+    <p class="lede">__LEDE_HTML__</p>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kDeltaTotal">0<small>MWp</small></div>
+      <div class="k">Measured growth since the pre-boom epoch &mdash; atlas composition, both epochs through one instrument</div></div>
+    <div class="kpi"><div class="v" id="kPct">0<small>&times;</small></div>
+      <div class="k">Current total as a multiple of the pre-boom total</div></div>
+    <div class="kpi"><div class="v" id="kDeltaSub">0<small>MWp</small></div>
+      <div class="k">Growth on sub-400 m&sup2; roofs (roofclf) &mdash; invisible to the old segmentation-only growth map</div></div>
+    <div class="kpi"><div class="v" id="kDeltaRoof">0<small>MWp</small></div>
+      <div class="k">Growth on &ge; 400 m&sup2; rooftops (roofclf in-domain, segmentation elsewhere)</div></div>
+    <div class="kpi"><div class="v" id="kDeltaGround">0<small>MWp</small></div>
+      <div class="k">Ground-mount growth (segmentation, the only instrument for it)</div></div>
+  </div>
+
+  <div class="switch" role="group" aria-label="Growth component">
+    <button class="tab" id="tab0" type="button" data-i="0">
+      <span class="tt1">Total growth</span><span class="tt2">&Delta; MWp, atlas composition</span>
+    </button>
+    <button class="tab" id="tab1" type="button" data-i="1">
+      <span class="tt1">Sub-400 m&sup2;</span><span class="tt2">roofclf, &Delta; MWp</span>
+    </button>
+    <button class="tab" id="tab2" type="button" data-i="2">
+      <span class="tt1">Rooftop &ge; 400 m&sup2;</span><span class="tt2">roofclf / seg, &Delta; MWp</span>
+    </button>
+    <button class="tab" id="tab3" type="button" data-i="3">
+      <span class="tt1">Ground-mount</span><span class="tt2">segmentation, &Delta; MWp</span>
+    </button>
+    <button class="tab" id="tab4" type="button" data-i="4">
+      <span class="tt1">SPPI onset</span><span class="tt2">corroboration, no model</span>
+    </button>
+  </div>
+
+  <div class="grid">
+    <section class="card map-card">
+      <div class="map-head">
+        <div class="map-title" id="mapTitle">Growth per 0.1° cell</div>
+        <div class="map-sub">≈11 km × 11 km cells · log scale · positive growth only</div>
+      </div>
+      <div id="mapmount"></div>
+      <div class="legend">
+        <div class="lg-col">
+          <div class="bar" id="legbar"></div>
+          <div class="ticks" id="legticks"></div>
+        </div>
+        <div class="cap" id="legcap">selected view, per cell</div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit" id="heroUnit">MWp</span></div>
+        <div class="hero-label" id="heroLabel">Selected view, nationwide</div>
+        <div class="hero-desc" id="heroDesc"></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+
+      <div class="card rank" style="margin-top:22px;">
+        <h3 id="rankH">Provinces, ranked by selected view</h3>
+        <div id="ranks"></div>
+        <details class="tablewrap">
+          <summary>Full province figures</summary>
+          <div style="overflow-x:auto;"><table id="ptable">
+            <thead><tr><th>Province</th><th>&Delta; total</th><th>&Delta; sub-400</th>
+              <th>&Delta; roof &ge;400</th><th>&Delta; ground</th>
+              <th>Current MWp</th><th>Pre-boom MWp</th><th>SPPI onset MWp</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </details>
+      </div>
+    </aside>
+  </div>
+
+  <section class="card method">
+    <h3>One instrument, two epochs</h3>
+    <p class="method-lede">This page measures growth the way the evidence atlas measures
+    capacity: the same segmentation checkpoint infers both a pre-boom (2021-10 to 2022-01)
+    and a current dry-season composite, the same per-building classifier (roofclf) scores
+    both epochs' reflectance, and both epochs run through the identical placement-split
+    calibration. Each map is simply current minus pre-boom, per cell, component by
+    component. The previous growth map diffed two <i>different</i> checkpoints and had no
+    sub-400 m&sup2; instrument at all; it is superseded by this page.</p>
+    <div class="notes">
+      <div class="formula">
+        <div class="fl"><span class="dot" style="background:var(--accent)"></span>Total growth</div>
+        <p><b>The atlas composition, differenced.</b> Ground-mount (segmentation) plus
+        &ge; 400 m&sup2; rooftop (roofclf where the density-calibrated domain covers the
+        cell, segmentation elsewhere) plus sub-400 m&sup2; rooftop (roofclf), each
+        estimated per epoch exactly as the evidence atlas estimates them, then
+        differenced. Hand-mapped OSM capacity is excluded from <i>both</i> epochs: OSM
+        features carry no install dates, so they cannot be assigned to an epoch, and both
+        epochs' model components are de-duplicated against the same present-day OSM pull
+        so that exclusion cancels in the diff.</p>
+      </div>
+      <div class="formula">
+        <div class="fl"><span class="dot" style="background:var(--domain)"></span>Sub-400 m&sup2; (roofclf)</div>
+        <p><b>The half the old growth map could not see.</b> roofclf scores every VIDA
+        building's own reflectance in both epochs with one fitted model; flagged roofs
+        convert to capacity through the same size- and density-stratified coverage-ratio
+        and area-recall tables in both epochs. Those tables are measured on
+        current-epoch mapping &mdash; applying them to 2021/22 assumes they transfer, which
+        is untestable without pre-boom ground truth. That assumption's systematic part is
+        shared by both epochs and cancels in the diff; it is why this page publishes
+        <b>differences of a fixed instrument</b>, never a standalone historical level.</p>
+      </div>
+      <div class="formula">
+        <div class="fl"><span class="dot" style="background:var(--large)"></span>Rooftop &ge; 400 m&sup2;</div>
+        <p><b>roofclf inside the calibrated domain, segmentation outside it</b> &mdash; the
+        same split the evidence atlas uses, with the domain fixed to one shared national
+        cell-density table so no cell switches instrument between epochs. Segmentation's
+        rooftop estimate is recall- and precision-corrected per epoch with the identical
+        calibration YAML.</p>
+      </div>
+      <div class="formula">
+        <div class="fl"><span class="dot" style="background:var(--ground)"></span>Ground-mount (segmentation)</div>
+        <p><b>Segmentation is the only ground-mount instrument</b> (roofclf has no
+        footprint to classify there). Site area converts at the land constant with its
+        own calibrated prior, per epoch, and the placement-split calibration prevents
+        ground candidates borrowing rooftop precision. A plant that physically
+        <i>expanded</i> since 2021/22 can be under-credited: OSM geometry replacement
+        gives both epochs the same present-day footprint, biasing that plant's delta
+        toward zero (conservative).</p>
+      </div>
+      <div class="formula">
+        <div class="fl"><span class="dot" style="background:#57c344"></span>SPPI onset <span class="tag high">corroboration only</span></div>
+        <p><b>No model: a fixed five-band spectral formula</b> on the same building's
+        reflectance in both epochs. A building "onsets" when its SPPI crosses the has-PV
+        threshold between the composites. Its MWp figure converts 100% of onset roof area
+        with no precision weighting &mdash; an explicit outer ceiling from an independent
+        mechanism, shown so the model-based maps can be checked against something that
+        shares none of their machinery. Not part of the total.</p>
+      </div>
+    </div>
+    <details class="xdetails">
+      <summary><span><span class="xt">Why both epochs use one checkpoint, and which one</span>
+        <span class="xs">the first growth map's core flaw, and the deleted-checkpoint constraint</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        A growth diff is only meaningful if the instrument is identical on both sides:
+        any difference between two checkpoints' detection behaviour otherwise
+        masquerades as growth. The first growth map (2026-08-06) violated this &mdash;
+        its current epoch came from the production <code>v3_combined_india</code>
+        checkpoint and its pre-boom epoch from an undocumented <code>pk16085</code>
+        variant. Both of those checkpoints have since been deleted from disk, so the only
+        way to build a same-instrument pair today is the surviving
+        <code>v4_combined_all</code> checkpoint (epoch=41), which scores <b>both</b>
+        epochs here. Its current-epoch level differs slightly from the published evidence
+        atlas's (which still rests on v3's outputs); the delta, not the level, is this
+        page's product.
+      </div>
+    </details>
+    <details class="xdetails">
+      <summary><span><span class="xt">What the diff cannot see, and what it undercounts</span>
+        <span class="xs">negative cells, undated OSM, footprint snapshots, radiometry</span></span><span class="xi">+</span></summary>
+      <div class="xbody">
+        <b>Negative per-cell deltas are kept in the data</b> (clamping would bias the
+        national total up) but not colour-mapped; they are instrument noise from
+        independently re-polygonizing two raster generations, and their total mass is
+        reported in the footer as a scale for that noise. <b>Hand-mapped OSM capacity is
+        excluded from both epochs</b>, so growth inside already-OSM-mapped installations
+        is not measured here. <b>VIDA building footprints are a present-day snapshot</b>:
+        a building constructed after 2021/22 exists in both epochs' building tables, with
+        (correctly) no PV signal in the earlier one. <b>Both epochs' composites predate
+        the 2026-07-26 Collection-1 baseline-offset fix</b>; per-cell fallback-scene usage
+        differs between epochs, an unquantified radiometric confound shared with the
+        published atlas's own composites. <b>No composed credible interval yet</b>: the
+        calibration draws are shared between epochs and mostly cancel in the diff, but
+        the residual is not priced &mdash; point deltas only.
+      </div>
+    </details>
+  </section>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="off"></div>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById("pv").textContent);
+  const [b0, b1, b2, b3] = DATA.bounds;
+  const lonspan = b2 - b0, latspan = b3 - b1;
+  const meanlat = (b1 + b3) / 2, k = Math.cos(meanlat * Math.PI / 180);
+  const W = 1000, H = Math.round(W * latspan / (lonspan * k));
+
+  const RAMP_DARK   = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
+  const RAMP_LIGHT  = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
+  const RAMP_DARK_TEAL  = ["#0f2e2a","#124a41","#0f6b5c","#12937d","#2fd9c4","#7ff0e0","#d4fbf5"];
+  const RAMP_LIGHT_TEAL = ["#d8f3ee","#a9e6db","#6dd0bf","#3bb6a2","#1f9b8a","#157567","#0a4a41"];
+  const RAMP_DARK_BLUE  = ["#101d3a","#1c3163","#274a91","#3468bd","#4fb2e8","#8fd2f4","#d3eefb"];
+  const RAMP_LIGHT_BLUE = ["#dcecf8","#aed3ee","#79b4e0","#4b90c9","#1c6fa8","#144f7a","#0c3350"];
+  const RAMP_DARK_GROUND  = ["#3a1512","#6e2318","#a3341c","#cf4a24","#ef6a3d","#ff9d76","#ffd6c4"];
+  const RAMP_LIGHT_GROUND = ["#f9e0d3","#f2bda2","#e59470","#d16a42","#b34a1e","#8a3413","#5c1f09"];
+  const RAMP_DARK_GREEN  = ["#12300f","#1d4a17","#2a6b20","#3a932c","#57c344","#8fe57f","#d8f9cf"];
+  const RAMP_LIGHT_GREEN = ["#ddf3d8","#b3e5a8","#83cf72","#57b246","#3a8f2e","#276b20","#164612"];
+
+  /* cell tuple: [lon0, lat0, dTotal, dSub400, dRoof, dGround, curTotal, preTotal,
+     nOnset, onsetMwp, inDomain] */
+  const IDX = [2, 3, 4, 5, 9];
+  const VIEWS = [
+    { key: "total", label: "Total growth", unit: "MWp",
+      name: "Total measured growth: atlas composition, current minus pre-boom",
+      desc: "Ground-mount + rooftop ≥ 400 m² + sub-400 m², each component estimated per epoch exactly as the evidence atlas estimates it, differenced per cell. One identical instrument on both sides.",
+      vmax: 5, dark: RAMP_DARK, light: RAMP_LIGHT },
+    { key: "sub", label: "Sub-400 m² growth", unit: "MWp",
+      name: "Sub-400 m² rooftop growth: roofclf, current minus pre-boom",
+      desc: "The same fitted per-building classifier scores both epochs' reflectance; flagged roofs convert through identical coverage-ratio and area-recall tables. The component the old segmentation-only growth map was structurally blind to.",
+      vmax: 3, dark: RAMP_DARK_TEAL, light: RAMP_LIGHT_TEAL },
+    { key: "roof", label: "Rooftop ≥ 400 m² growth", unit: "MWp",
+      name: "Rooftop ≥ 400 m² growth: roofclf in-domain, segmentation out-of-domain",
+      desc: "The evidence atlas's own rooftop split, applied identically in both epochs (one fixed domain cell set), then differenced.",
+      vmax: 3, dark: RAMP_DARK_BLUE, light: RAMP_LIGHT_BLUE },
+    { key: "ground", label: "Ground-mount growth", unit: "MWp",
+      name: "Ground-mount growth: segmentation, current minus pre-boom",
+      desc: "Utility-scale plants and other ground arrays, converted at the calibrated land constant per epoch. Segmentation is the only instrument for this component.",
+      vmax: 5, dark: RAMP_DARK_GROUND, light: RAMP_LIGHT_GROUND },
+    { key: "sppi", label: "SPPI onset", unit: "MWp",
+      name: "SPPI onset capacity: uncalibrated ceiling from an independent mechanism",
+      desc: "A fixed five-band spectral formula on each building's own reflectance, both epochs, no model. An outer ceiling for corroboration — NOT part of the total (see the method notes).",
+      vmax: 5, dark: RAMP_DARK_GREEN, light: RAMP_LIGHT_GREEN },
+  ];
+  let sel = 0;
+
+  function proj(lon, lat) {
+    return [ (lon - b0) / lonspan * W, (b3 - lat) / latspan * H ];
+  }
+  function hex2rgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function ramp(t, stops){
+    t = Math.max(0, Math.min(1, t));
+    const n = stops.length - 1, f = t * n, i = Math.min(n-1, Math.floor(f)), r = f - i;
+    const a = hex2rgb(stops[i]), c = hex2rgb(stops[i+1]);
+    return `rgb(${Math.round(lerp(a[0],c[0],r))},${Math.round(lerp(a[1],c[1],r))},${Math.round(lerp(a[2],c[2],r))})`;
+  }
+
+  function isDark(){
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr) return attr === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function el(n, a){ const e = document.createElementNS(SVGNS, n); for (const kk in a) e.setAttribute(kk, a[kk]); return e; }
+
+  // City dots + collision-avoiding labels (same mechanism as the evidence atlas: a ring
+  // of candidate positions per city, population order keeps the larger city's spot, a
+  // label that fits nowhere is dropped, widths estimated because the svg is detached).
+  const CITY_FONT_PX = 21, CITY_ADVANCE_EM = 0.62, CITY_PAD = 3;
+  const CITY_CANDIDATES = [   // [dx, dy, text-anchor]
+    [9, 7, "start"], [9, -6, "start"], [-9, 7, "end"], [-9, -6, "end"],
+    [0, -11, "middle"], [0, 18, "middle"], [15, 16, "start"], [-15, 16, "end"],
+    [15, -14, "start"], [-15, -14, "end"],
+    [0, -30, "middle"], [0, 36, "middle"], [28, 30, "start"], [-28, 30, "end"],
+    [28, -28, "start"], [-28, -28, "end"],
+  ];
+
+  function placeCityLabels(g, cities, project, bbox){
+    const [b0, b1, b2, b3] = bbox;
+    const pts = [];
+    for (const [nm, lon, lat] of cities){
+      if (lon < b0 || lon > b2 || lat < b1 || lat > b3) continue;
+      const p = project(lon, lat);
+      pts.push({nm, x: p[0], y: p[1]});
+    }
+    for (const c of pts){
+      g.appendChild(el("circle", {cx: c.x.toFixed(1), cy: c.y.toFixed(1), r: 2.6, class: "city-dot"}));
+    }
+    const taken = pts.map(c => ({x: c.x - 4, y: c.y - 4, w: 8, h: 8}));
+    const overlaps = (a, b) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+    for (const c of pts){
+      const w = c.nm.length * CITY_FONT_PX * CITY_ADVANCE_EM;
+      const h = CITY_FONT_PX * 0.8;
+      for (const [dx, dy, anchor] of CITY_CANDIDATES){
+        const x = c.x + dx, y = c.y + dy;
+        const left = anchor === "end" ? x - w : anchor === "middle" ? x - w / 2 : x;
+        const box = {x: left - CITY_PAD, y: y - h - CITY_PAD, w: w + 2 * CITY_PAD, h: h + 2 * CITY_PAD};
+        if (taken.some(q => overlaps(box, q))) continue;
+        const t = el("text", {
+          x: x.toFixed(1), y: y.toFixed(1), class: "city-label", "text-anchor": anchor,
+        });
+        t.textContent = c.nm;
+        g.appendChild(t);
+        taken.push(box);
+        break;
+      }
+    }
+  }
+
+  function ringPath(rings){
+    let d = "";
+    for (const ring of rings){
+      for (let i=0;i<ring.length;i++){
+        const p = proj(ring[i][0], ring[i][1]);
+        d += (i===0?"M":"L") + p[0].toFixed(1) + " " + p[1].toFixed(1);
+      }
+      d += "Z";
+    }
+    return d;
+  }
+
+  function render(){
+    const dark = isDark();
+    const view = VIEWS[sel], mi = IDX[sel];
+    const stops = dark ? view.dark : view.light;
+    const VMIN = view.vmax / 250, VMAX = Math.max(view.vmax, VMIN * 5, ...DATA.cells.map(c => c[mi]));
+    const lVMIN = Math.log(VMIN), lVMAX = Math.log(VMAX);
+    const tOf = (v) => (Math.log(Math.max(v, VMIN)) - lVMIN) / (lVMAX - lVMIN);
+    const bright = (v) => v > 0 ? tOf(v) : -1;
+
+    const mount = document.getElementById("mapmount");
+    mount.innerHTML = "";
+    const svg = el("svg", {viewBox:`0 0 ${W} ${H}`, class:"map", role:"img",
+      "aria-label":`Choropleth map of __AOI_TITLE__ showing ${view.name} per cell`});
+
+    svg.appendChild(el("rect", {x:0,y:0,width:W,height:H,fill:"var(--map-bg)"}));
+
+    const defs = el("defs", {});
+    const filt = el("filter", {id:"bloom", x:"-20%", y:"-20%", width:"140%", height:"140%"});
+    filt.appendChild(el("feGaussianBlur", {stdDeviation:"4"}));
+    defs.appendChild(filt); svg.appendChild(defs);
+
+    const gLand = el("g", {});
+    for (const p of DATA.provinces) gLand.appendChild(el("path", {d:ringPath(p.rings), class:"prov-fill"}));
+    svg.appendChild(gLand);
+
+    const cw = (0.1 / lonspan * W) + 0.4, ch = (0.1 / latspan * H) + 0.4;
+    const lit = DATA.cells.filter(c => c[mi] > 0).sort((a,b)=>a[mi]-b[mi]);
+
+    if (dark){
+      const gB = el("g", {filter:"url(#bloom)", opacity:"var(--bloom)"});
+      for (const c of lit){
+        const tl = proj(c[0], c[1] + 0.1);
+        gB.appendChild(el("rect", {x:tl[0].toFixed(1), y:tl[1].toFixed(1),
+          width:cw.toFixed(1), height:ch.toFixed(1), fill:ramp(bright(c[mi]), stops)}));
+      }
+      svg.appendChild(gB);
+    }
+
+    const gC = el("g", {});
+    for (const c of DATA.cells){
+      const tl = proj(c[0], c[1] + 0.1);
+      const t = bright(c[mi]);
+      const r = el("rect", {x:tl[0].toFixed(1), y:tl[1].toFixed(1),
+        width:cw.toFixed(1), height:ch.toFixed(1),
+        fill: t >= 0 ? ramp(t, stops) : "var(--land)", class:"cell"});
+      r.__c = c;
+      gC.appendChild(r);
+    }
+    svg.appendChild(gC);
+
+    const gS = el("g", {});
+    for (const p of DATA.provinces) gS.appendChild(el("path", {d:ringPath(p.rings), class:"prov-line"}));
+    svg.appendChild(gS);
+
+    const gCity = el("g", {});
+    placeCityLabels(gCity, DATA.cities, proj, [b0, b1, b2, b3]);
+    svg.appendChild(gCity);
+
+    const tip = document.getElementById("tip");
+    gC.addEventListener("pointermove", (e) => {
+      const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
+      tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
+      const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
+      tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E · roof: ${c[10] ? "roofclf" : "segmentation"}</div>`
+        + `<div class="rowt${sel===0?' sel':''}"><span>&Delta; total</span><span>${c[2].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt${sel===1?' sel':''}"><span>&Delta; sub-400 m²</span><span>${c[3].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt${sel===2?' sel':''}"><span>&Delta; rooftop ≥ 400 m²</span><span>${c[4].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt${sel===3?' sel':''}"><span>&Delta; ground-mount</span><span>${c[5].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>Current / pre-boom</span><span>${c[6].toFixed(1)} / ${c[7].toFixed(1)}</span></div>`
+        + `<div class="rowt${sel===4?' sel':''}"><span>SPPI onset (uncalib.)</span><span>${c[9].toFixed(1)} MWp · ${c[8].toLocaleString()} bldg</span></div>`;
+    });
+    gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+
+    mount.appendChild(svg);
+
+    const grad = stops.map((s,i)=>`${s} ${(i/(stops.length-1)*100).toFixed(0)}%`).join(",");
+    document.getElementById("legbar").style.background = `linear-gradient(90deg, ${grad})`;
+    const tickFmt = v => v >= 10 ? Math.round(v).toLocaleString("en-US")
+      : v >= 1 ? v.toFixed(1) : v.toFixed(2);
+    const ticks = [VMIN, Math.sqrt(VMIN*VMAX), VMAX];
+    document.getElementById("legticks").innerHTML =
+      ticks.map(v => `<span style="left:${(tOf(v)*100).toFixed(1)}%">${tickFmt(v)}</span>`).join("");
+    document.getElementById("legcap").textContent = `${view.unit} per cell, ${view.label}`;
+  }
+
+  const T = DATA.totals;
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+  function countUp(id, target, dur, decimals){
+    const e = document.getElementById(id);
+    const format = decimals ? (n => n.toFixed(decimals)) : fmt;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches){ e.textContent = format(target); return; }
+    const t0 = performance.now();
+    function step(now){
+      const p = Math.min(1, (now - t0)/dur), e2 = 1 - Math.pow(1-p, 3);
+      e.textContent = format(target * e2);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  document.getElementById("kDeltaTotal").firstChild.textContent = fmt(T.d_total);
+  document.getElementById("kPct").firstChild.textContent =
+    T.pre.total > 0 ? (T.cur.total / T.pre.total).toFixed(1) : "–";
+  document.getElementById("kDeltaSub").firstChild.textContent = fmt(T.d_sub400);
+  document.getElementById("kDeltaRoof").firstChild.textContent = fmt(T.d_roof);
+  document.getElementById("kDeltaGround").firstChild.textContent = fmt(T.d_ground);
+
+  const TOTAL_KEY = ["d_total", "d_sub400", "d_roof", "d_ground", "onset_mwp"];
+  const PROV_KEY = ["d_total", "d_sub400", "d_roof", "d_ground", "onset_mwp"];
+
+  function drawTable() {
+    const provs = [...DATA.provinces].sort((a,b) => b[PROV_KEY[sel]] - a[PROV_KEY[sel]]);
+    const maxP = provs.length ? Math.max(...provs.map(p => p[PROV_KEY[sel]]), 1e-9) : 1;
+    document.getElementById("ranks").innerHTML = provs.map(p => {
+      const nm = p.name.replace("Islamabad Capital Territory","Islamabad").replace("Khyber Pakhtunkhwa","Kh. Pakhtunkhwa");
+      const v = p[PROV_KEY[sel]];
+      // Negative growth (re-polygonization noise) would render an invalid negative
+      // width as an unclamped full-width bar -- clamp to 0.
+      const pct = Math.max(0, v / maxP * 100);
+      return `<div class="row"><div class="top"><span class="nm">${nm}</span>`
+        + `<span class="vl">${fmt(v)} MWp</span></div>`
+        + `<div class="track"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div></div>`;
+    }).join("");
+    document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
+      `<tr><td>${p.name}</td><td>${fmt(p.d_total)}</td><td>${fmt(p.d_sub400)}</td>`
+      + `<td>${fmt(p.d_roof)}</td><td>${fmt(p.d_ground)}</td>`
+      + `<td>${fmt(p.cur_total)}</td><td>${fmt(p.pre_total)}</td><td>${fmt(p.onset_mwp)}</td></tr>`).join("");
+  }
+
+  const MAP_TITLES = [
+    "Total measured growth per 0.1° cell (atlas composition), current minus pre-boom",
+    "Sub-400 m² rooftop growth per 0.1° cell (roofclf), current minus pre-boom",
+    "Rooftop ≥ 400 m² growth per 0.1° cell (roofclf in-domain / segmentation out), current minus pre-boom",
+    "Ground-mount growth per 0.1° cell (segmentation), current minus pre-boom",
+    "SPPI onset capacity per 0.1° cell (uncalibrated ceiling, corroboration only)",
+  ];
+
+  function setView(i) {
+    sel = i;
+    ["tab0", "tab1", "tab2", "tab3", "tab4"].forEach((id, j) =>
+      document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
+    const view = VIEWS[i];
+    document.getElementById("heroUnit").textContent = view.unit;
+    countUp("heroNum", T[TOTAL_KEY[i]], 700, 0);
+    document.getElementById("heroLabel").textContent = `${view.label}, nationwide`;
+    document.getElementById("heroDesc").innerHTML = `<b>${view.name}.</b> ${view.desc}`;
+    document.getElementById("mapTitle").textContent = MAP_TITLES[i];
+    document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
+    if (i === 0) {
+      document.getElementById("tiles").innerHTML =
+        `<div class="tile"><div class="v">${fmt(T.cur.total)}</div><div class="k">Current MWp</div></div>
+         <div class="tile"><div class="v">${fmt(T.pre.total)}</div><div class="k">Pre-boom MWp</div></div>
+         <div class="tile"><div class="v">${fmt(T.neg_mass)}</div><div class="k">Negative-cell mass (noise scale)</div></div>
+         <div class="tile"><div class="v">${fmt(T.n_covered)}<small style="font-size:0.5em;">/${fmt(T.n_cells)}</small></div><div class="k">Cells with both epochs</div></div>`;
+    } else if (i === 4) {
+      document.getElementById("tiles").innerHTML =
+        `<div class="tile"><div class="v">${fmt(T.n_onset)}</div><div class="k">Onset buildings</div></div>
+         <div class="tile"><div class="v">${fmt(T.onset_mwp)}</div><div class="k">Onset MWp (uncalibrated ceiling)</div></div>
+         <div class="tile"><div class="v">${fmt(T.d_total)}</div><div class="k">Measured growth, for comparison</div></div>
+         <div class="tile"><div class="v">${fmt(T.n_cells)}</div><div class="k">Cells nationwide</div></div>`;
+    } else {
+      const KEY = ["", "sub400", "roof", "ground"][i];
+      document.getElementById("tiles").innerHTML =
+        `<div class="tile"><div class="v">${fmt(T.cur[KEY])}</div><div class="k">Current MWp, this component</div></div>
+         <div class="tile"><div class="v">${fmt(T.pre[KEY])}</div><div class="k">Pre-boom MWp, this component</div></div>
+         <div class="tile"><div class="v">${T.d_total !== 0 ? Math.round(100 * T[TOTAL_KEY[i]] / T.d_total) : 0}<small>%</small></div><div class="k">Share of total growth</div></div>
+         <div class="tile"><div class="v">${i === 2 ? fmt(T.n_domain) : fmt(T.n_covered)}</div><div class="k">${i === 2 ? "roofclf-domain cells" : "Cells with both epochs"}</div></div>`;
+    }
+    render(); drawTable();
+  }
+  for (let i = 0; i < 5; i++)
+    document.getElementById("tab" + i).addEventListener("click", () => setView(i));
+
+  document.getElementById("foot").innerHTML =
+    `${DATA.epochs.current} minus ${DATA.epochs.preboom} · one checkpoint, one calibration, both epochs · `
+    + `${fmt(T.n_covered)}/${fmt(T.n_cells)} cells with both epochs · roofclf domain ${fmt(T.n_domain)} cells · `
+    + `negative-cell mass ${fmt(T.neg_mass)} MWp (kept in data, not colour-mapped) · `
+    + `segmentation-only Δ (old growth map's instrument, same checkpoint pair): ${fmt(T.seg_only_delta)} MWp · `
+    + `Sentinel-2 L2A · buildings from VIDA Open Buildings · OSM excluded from both epochs (undated).`;
+
+  const btn = document.getElementById("themeBtn");
+  function updateThemeBtn(){ btn.textContent = isDark() ? "Light mode" : "Dark mode"; }
+  btn.addEventListener("click", () => {
+    const cur = isDark();
+    document.documentElement.setAttribute("data-theme", cur ? "light" : "dark");
+    updateThemeBtn();
+    render();
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!document.documentElement.getAttribute("data-theme")) { updateThemeBtn(); render(); }
+  });
+
+  updateThemeBtn();
+  setView(sel);
+})();
+</script>

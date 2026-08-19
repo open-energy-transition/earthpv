@@ -1374,6 +1374,7 @@ def canonical_composite_manifest(comp_idx, origin: tuple[float, float], cell_deg
 def score_buildings_national(
     aoi: str, model: dict, feats: list[str], composites: Path, out_dir: Path,
     min_roof_area_m2: float = 0.0, force: bool = False, limit: int = 0,
+    layer_index: int = 0,
 ) -> Path:
     """Apply an already-fit model to every VIDA building under `composites`, one cell
     (one composite tile) at a time -- the per-cell/per-building pattern
@@ -1426,7 +1427,13 @@ def score_buildings_national(
     if iso3 is None:
         raise ValueError(f"AOI '{aoi}' has no division.iso3 -> cannot locate VIDA buildings")
 
-    comp_idx = composite_index(str(composites))
+    # layer_index > 0 scores an alternate epoch (e.g. composite_1, the pre-boom
+    # 2021-10..2022-01 layer built by `compose --index 1`) with the SAME model and
+    # features -- the growth pipeline's roofclf half. The model and every downstream
+    # coverage-ratio/area-recall table stay calibrated against current-epoch mapping;
+    # applying them to another epoch is an explicit same-instrument extrapolation that
+    # only ever feeds epoch DIFFS, never a standalone historical level.
+    comp_idx = composite_index(str(composites), layers=layer_index + 1)
     origin = _grid_origin(aoi, cfg, settings)
     manifest = canonical_composite_manifest(comp_idx, origin, CELL_DEG)
     log.info("Canonical grid: %d cells from %d composite tiles", len(manifest), len(comp_idx.index))
@@ -1442,7 +1449,7 @@ def score_buildings_national(
     # once it has finished.
     (out_dir / "_model.json").write_text(json.dumps({
         "fingerprint": model_fingerprint(model, feats), "features": list(feats),
-        "aoi": aoi, "composites": str(composites),
+        "aoi": aoi, "composites": str(composites), "layer_index": layer_index,
     }, indent=2))
     need_yard = any(f in set(YARD_FEATURES) for f in feats)
     if need_yard:
@@ -1471,12 +1478,21 @@ def score_buildings_national(
             pd.DataFrame().to_parquet(out_path)
             continue
 
-        res = comp_idx.read_window(bbox)
+        try:
+            res = comp_idx.read_window(bbox)
+        except FileNotFoundError as e:
+            # A handful of national cells never got their composite_<layer_index>.tif
+            # (see compose_loop_preboom.sh's log). Skip without writing so a later
+            # resumed run retries them once the layer exists.
+            log.warning("cell %s: missing layer-%d composite (%s), skipping %d buildings",
+                        cell, layer_index, e, len(bu))
+            continue
         if res is None:
             log.warning("cell %s: no composite coverage, skipping %d buildings", cell, len(bu))
             continue
         arr, transform, crs = res
-        arr = arr[: len(BAND_NAMES)].astype("float32") / REFL_SCALE
+        arr = arr[layer_index * len(BAND_NAMES): (layer_index + 1) * len(BAND_NAMES)]
+        arr = arr.astype("float32") / REFL_SCALE
         bu_utm = bu.to_crs(crs)
         means, _ = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
 

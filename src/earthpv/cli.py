@@ -604,6 +604,12 @@ def roofclf_score_national_cmd(
         0, help="Cap the number of cells processed this call (0 = all; use for a smoke test "
         "before a multi-hour national run)"
     ),
+    layer_index: int = typer.Option(
+        0, help="Composite layer to score (1 = the pre-boom 2021/22 epoch built by "
+        "`compose --index 1`) -- same model, same features, different epoch's "
+        "reflectance. Use a distinct --out-dir per layer; the output feeds epoch "
+        "DIFFS (`earthpv growth`), never a standalone historical level"
+    ),
 ) -> None:
     """Score every VIDA building nationally with an already-fit roofclf model -- the
     sub-400 m2 half of the **main workflow** (see CLAUDE.md's "Main workflow" section):
@@ -621,6 +627,7 @@ def roofclf_score_national_cmd(
     score_buildings_national(
         aoi, model, feats, composites, out_dir,
         min_roof_area_m2=min_roof_area_m2, force=force, limit=limit,
+        layer_index=layer_index,
     )
     typer.echo(f"-> {out_dir}")
 
@@ -912,6 +919,65 @@ def ge400_roof_capacity_cmd(
         f"{summary['total_est_mwp_ge400_roof_domain']:.1f} MWp ({summary['scope']})"
     )
     typer.echo(f"-> {out_dir}")
+
+
+@app.command()
+def growth(
+    aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),
+    current_pred_dir: Path = typer.Option(
+        ..., help="Current-epoch predictions dir (its <aoi>/density must exist). Both "
+        "epochs MUST come from the same segmentation checkpoint and the same "
+        "calibration YAML -- diffing across checkpoints was the first growth map's "
+        "core flaw (see earthpv.growth)"),
+    preboom_pred_dir: Path = typer.Option(
+        ..., help="Pre-boom-epoch predictions dir (infer --index 1 with the SAME "
+        "checkpoint, then postprocess + density with the same calibration)"),
+    current_roofclf_density: Path = typer.Option(
+        ..., help="sub400-capacity/ge400-roof-capacity output dir for the current "
+        "epoch, built against --current-pred-dir's candidates"),
+    preboom_roofclf_density: Path = typer.Option(
+        ..., help="Same, for the pre-boom epoch (roofclf-score-national "
+        "--layer-index 1, then both capacity stages against --preboom-pred-dir)"),
+    out_dir: Path = typer.Option(
+        None, help="Output dir (default data/growth/<aoi>)"),
+    cell_density_path: Path = typer.Option(
+        Path("data/roofclf/national_cell_density.parquet"),
+        help="Shared national cell-density table -- the SAME file both epochs' "
+        "capacity stages used, so the calibrated domain is one fixed cell set"),
+    sppi_growth_grid: Path = typer.Option(
+        None, help="Optional sppi_growth_grid.geoparquet (scripts/sppi_growth_map.py) "
+        "to carry along as corroborating onset columns"),
+    current_label: str = typer.Option("current", help="Epoch label for the summary"),
+    preboom_label: str = typer.Option(
+        "pre-boom (2021-10..2022-01)", help="Epoch label for the summary"),
+    atlas_out: Path = typer.Option(
+        None, help="Also render the night-lights growth atlas page to this path "
+        "(atlas.build_growth_evidence_atlas)"),
+) -> None:
+    """Two-epoch PV growth grid/regions from the evidence atlas's own instruments --
+    segmentation ground-mount + roofclf rooftop replacement in-domain + segmentation
+    rooftop out-of-domain + roofclf sub-400 m2, per cell, both epochs through ONE
+    identical instrument. Supersedes scripts/pv_growth_map.py's segmentation-only,
+    cross-checkpoint diff. See earthpv.growth's module docstring for assumptions."""
+    import logging
+
+    from earthpv.growth import build_growth
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    out = build_growth(
+        aoi=aoi, current_pred_dir=current_pred_dir, preboom_pred_dir=preboom_pred_dir,
+        current_roofclf_density=current_roofclf_density,
+        preboom_roofclf_density=preboom_roofclf_density,
+        out_dir=out_dir or Path("data/growth") / aoi,
+        cell_density_path=cell_density_path, sppi_growth_grid=sppi_growth_grid,
+        current_label=current_label, preboom_label=preboom_label,
+    )
+    typer.echo(f"-> {out}")
+    if atlas_out:
+        from earthpv.atlas import build_growth_evidence_atlas
+
+        page = build_growth_evidence_atlas(aoi=aoi, growth_dir=out, out=atlas_out)
+        typer.echo(f"-> {page}")
 
 
 @app.command("check-density")

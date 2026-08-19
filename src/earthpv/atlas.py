@@ -1247,6 +1247,114 @@ def build_growth_atlas(
     return out
 
 
+GROWTH_EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_growth_evidence_atlas.html"
+
+
+def build_growth_evidence_atlas(
+    aoi: str, growth_dir: Path, out: Path | None = None, zoom_out_frac: float = 0.0,
+) -> Path:
+    """Night-lights atlas for `earthpv growth`'s output (growth.build_growth): the
+    two-epoch, same-instrument growth grid composed the way the evidence atlas composes
+    capacity. Five views: total / sub-400 (roofclf) / rooftop >= 400 (roofclf-or-seg by
+    domain) / ground-mount (seg) / SPPI onset (corroboration only, not in the total).
+    Supersedes `build_growth_atlas`, which renders the old cross-checkpoint
+    segmentation-only diff."""
+    growth_dir = Path(growth_dir)
+    grid = gpd.read_parquet(growth_dir / "growth_grid.geoparquet")
+    summary = json.loads((growth_dir / "summary.json").read_text())
+
+    for c in ["n_onset_buildings", "onset_mwp"]:  # absent when no SPPI grid was merged
+        if c not in grid.columns:
+            grid[c] = 0.0
+    delta_cols = ["delta_mwp_total", "delta_mwp_sub400", "delta_mwp_roof", "delta_mwp_ground"]
+    grid[delta_cols] = grid[delta_cols].fillna(0.0)  # uncovered cells render dark, not lit
+
+    cells = [
+        [round(float(r.lon0), 3), round(float(r.lat0), 3),
+         round(float(r.delta_mwp_total), 3), round(float(r.delta_mwp_sub400), 3),
+         round(float(r.delta_mwp_roof), 3), round(float(r.delta_mwp_ground), 3),
+         round(float(r.mwp_total_cur), 3), round(float(r.mwp_total_pre), 3),
+         int(r.n_onset_buildings), round(float(r.onset_mwp), 3), int(bool(r.in_domain))]
+        for r in grid.itertuples()
+    ]
+    bounds = [
+        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
+        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
+    ]
+    if zoom_out_frac:
+        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
+        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
+        bounds = [
+            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
+            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
+        ]
+
+    provinces = []
+    regions_path = growth_dir / "growth_regions.geoparquet"
+    if regions_path.exists():
+        reg = gpd.read_parquet(regions_path)
+        for r in reg[reg.level == "region"].itertuples():
+            provinces.append({
+                "name": str(r.name),
+                "d_total": round(float(r.delta_mwp_total), 1),
+                "d_sub400": round(float(r.delta_mwp_sub400), 1),
+                "d_roof": round(float(r.delta_mwp_roof), 1),
+                "d_ground": round(float(r.delta_mwp_ground), 1),
+                "cur_total": round(float(r.mwp_total_cur), 1),
+                "pre_total": round(float(r.mwp_total_pre), 1),
+                "onset_mwp": round(float(getattr(r, "onset_mwp", 0.0) or 0.0), 1),
+                "rings": _rings(r.geometry),
+            })
+        provinces.sort(key=lambda p: -p["d_total"])
+
+    d, cur, pre = summary["delta_mwp"], summary["mwp_current"], summary["mwp_preboom"]
+    data = {
+        "bounds": bounds,
+        "cells": cells,
+        "provinces": provinces,
+        "cities": CITIES.get(aoi, []),
+        "epochs": summary["epochs"],
+        "totals": {
+            "d_total": d["total"], "d_sub400": d["sub400"], "d_roof": d["roof"],
+            "d_ground": d["ground"],
+            "cur": cur, "pre": pre,
+            "n_cells": summary["n_cells"],
+            "n_covered": summary["n_cells_preboom_covered"],
+            "n_domain": summary["n_domain_cells"],
+            "neg_mass": summary["delta_mwp_negative_cell_mass"],
+            "seg_only_delta": summary["delta_est_mwp_rc_segmentation_only"],
+            "n_onset": int(grid.n_onset_buildings.sum()),
+            "onset_mwp": round(float(grid.onset_mwp.sum()), 1),
+        },
+    }
+
+    title = aoi.replace("_", " ").title()
+    html = GROWTH_EVIDENCE_TEMPLATE.read_text()
+    for key, value in {
+        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
+        "__PAGE_TITLE__": f"{title} PV Growth Atlas",
+        "__H1__": f"How much solar {title} added since before the boom",
+        "__AOI_TITLE__": title,
+        "__LEDE_HTML__": (
+            f"The evidence atlas's own instruments &mdash; the TerraMind segmentation "
+            f"fine-tune and the per-building roofclf classifier &mdash; applied "
+            f"identically to a pre-boom (2021/22) and a current Sentinel-2 composite, "
+            f"then differenced per cell. One checkpoint, one calibration, both epochs: "
+            f"what changed between the maps is the country, not the instrument."
+        ),
+    }.items():
+        html = html.replace(key, value)
+
+    out = Path(out) if out else growth_dir / f"{aoi}_pv_growth_evidence_atlas.html"
+    out.write_text(html)
+    log.info(
+        "Wrote growth evidence atlas (Δ total %.1f MWp = ground %.1f + roof %.1f + "
+        "sub400 %.1f; current %.1f vs pre-boom %.1f) -> %s",
+        d["total"], d["ground"], d["roof"], d["sub400"], cur["total"], pre["total"], out,
+    )
+    return out
+
+
 # --------------------------------------------------------------------------------------
 # Evidence-atlas uncertainty
 # --------------------------------------------------------------------------------------
