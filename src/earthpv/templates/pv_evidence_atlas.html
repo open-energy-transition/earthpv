@@ -575,17 +575,12 @@
           <div class="lk"><span class="sw ground"></span>ground-mount</div>
           <div class="lk" id="extrapKey"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
         </div>
-        <div class="hero-desc" style="margin-top:14px;"><b>Ground-mount below 400
-        m&sup2; reads exactly zero, not empty.</b> Segmentation is the only instrument
-        that detects ground-mount at any size, and it has a practical resolution floor
-        around 400 m&sup2; at Sentinel-2's 10 m pixel size -- it is not trained to
-        positively identify anything smaller. roofclf, the instrument that does cover
-        installations below 400 m&sup2;, is a per-building classifier: it needs a
-        building footprint to score, which a ground-mount site by definition doesn't
-        have. No instrument in this pipeline currently covers small ground-mount, so
-        this chart cannot show it as anything but zero -- that is a gap in
-        instrumentation, not evidence that small ground-mount installations don't
-        exist.</div>
+        <div class="hero-desc" style="margin-top:14px;">The same Best-estimate total,
+        re-cut by installation size instead of geography: rooftop bars stack across
+        every bin, while ground-mount only shows up at &ge;400 m&sup2; -- the two
+        detectors split the total by placement <i>and</i> size, not size alone. The
+        hatched cap on a rooftop bar is capacity extrapolated beyond the
+        density-calibrated domain, not directly measured there.</div>
       </section>
 
       <aside>
@@ -717,6 +712,9 @@
       Data: <span class="pose-mono pz-summary-path"></span><span class="pz-data-note"></span>.
       Validated = a single (tilt, azimuth) explains &ge; 2 independent spike dates via the
       specular reflection condition, tolerance 3&deg;. Point size &prop; &radic;(installation area).
+      Full derivation of the glint signal this pose fit is built on: <code>docs/methods/glint.md</code>.
+      Annotated Sentinel-2 / high-res examples of what a validated spike actually looks like in
+      the source imagery: <code>docs/glint_examples.md</code>.
     </p>
   </section>
 
@@ -735,6 +733,14 @@
         __CONFIDENCE_HTML__
       </div>
     </details>
+
+    <div class="hero-desc" style="margin-top:16px;">Read more on the project's
+    documentation site: <a href="https://open-energy-transition.github.io/earthpv/methods/density/" target="_blank" rel="noopener">capacity methodology</a> ·
+    <a href="https://open-energy-transition.github.io/earthpv/methods/roofclf/" target="_blank" rel="noopener">roofclf</a> ·
+    <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">Sentinel-2 glint &amp; panel pose</a> ·
+    <a href="https://open-energy-transition.github.io/earthpv/methods/calibration-quadrats/" target="_blank" rel="noopener">calibration quadrats</a> ·
+    <a href="https://open-energy-transition.github.io/earthpv/experiments/" target="_blank" rel="noopener">experiment register</a> ·
+    <a href="https://open-energy-transition.github.io/earthpv/open-questions/" target="_blank" rel="noopener">open questions</a>.</div>
   </section>
 
   <section class="sec" id="downloads">
