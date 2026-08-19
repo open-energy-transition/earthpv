@@ -34,33 +34,17 @@ reach now extends past its original sub-400 m<sup>2</sup> floor into large rooft
 wherever it has been calibrated to do so.
 
 **Segmentation, the source of every mapping lead, and of ground-mount capacity at any
-size.** A fine-tuned TerraMind-tiny outlines panels directly, exported as ranked
-GeoParquet, GeoJSON and a MapRoulette challenge for human validation, regardless of
-array size. Recall on the Germany validation states is 0.83 to 0.95 depending on array
-size; recall on Punjab rooftops went from 0.18 to 0.55 once verified in-domain training
-data closed the loop. roofclf has no building footprint to classify a ground-mounted
-array against, so segmentation remains the only instrument for ground-mount at any size,
-and it stays the authoritative *rooftop* instrument too, everywhere roofclf has not been
-calibrated (see next).
+size.** A fine-tuned TerraMind-tiny outlines panels directly detects ground based and rooftop solar for >400 m<sup>2</sup> PV installations. 
 
 **roofclf, for every rooftop below 400 m<sup>2</sup> -- and, where calibrated, for large
-rooftops too.** At 10 m resolution, a 100 m<sup>2</sup> array is a handful of mixed
+rooftops too.** At 10 m pixel size of Sentinel 2 imagery, a 100 m<sup>2</sup> array is a handful of mixed
 pixels -- not enough to draw a polygon around, but enough to ask whether a *building*
 carries PV. **roofclf** is a per-building classifier trained on 27 exhaustively mapped
 ground-truth quadrats (0.879 AUC, 0.834 with roof size controlled for, where the
 segmentation raster scores close to chance on the same small buildings), cross-checked
 against **SPPI**, a zero-training five-band spectral index (He et al. 2026) that needs no
 labels at all (0.823 AUC in its own nine-quadrat evaluation, where roofclf scored 0.874
-on the identical buildings). They agree often enough to raise measured precision from
-0.53 to 0.63 when both flag a building, and the gain concentrates in exactly the
-low-adoption places where roofclf alone is known to over-predict. Segmentation's blind
-spot turns out not to be building size but *installation* size -- a small array on a
-large roof is invisible to it too -- so as of 2026-08-07 roofclf's own rooftop estimate
-(AUC 0.896 vs segmentation's 0.73-0.78 on the identical &ge; 400 m<sup>2</sup> buildings)
-also *replaces* segmentation's rooftop total at or above 400 m<sup>2</sup> inside the
-cells its calibration quadrats cover. Outside those cells segmentation's own
-recall-corrected rooftop figure stays authoritative, since it is the only evidence-backed
-number there. See [Capacity density](methods/density.md).
+on the identical buildings). 
 
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.dark.svg#only-dark)
