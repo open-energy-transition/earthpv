@@ -700,7 +700,11 @@
             plotted there, because nothing was measured there.
           </p>
           <p>
-            &dagger; A single spike can't be checked for self-consistency --
+            &dagger; <b>Glint</b> is a brief, brighter-than-diffuse flash where a panel's
+            specular reflection lines up with the sun and Sentinel-2's fixed overpass
+            geometry on one date -- see <code>docs/methods/glint.md</code> for the full
+            derivation and <code>docs/glint_examples.md</code> for an annotated image
+            gallery. A single spike can't be checked for self-consistency --
             <span class="pz-pct-onespike">0</span>% of installations glint <i>once</i> (or on
             dates that disagree on a panel geometry) and so are correctly detected as "PV is
             probably here" but carry <b>no orientation information</b>.

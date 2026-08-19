@@ -2228,8 +2228,8 @@ def build_evidence_atlas(
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title}'s Solar Atlas",
-        "__H1__": f"{title}'s Solar Atlas",
+        "__PAGE_TITLE__": f"{title}'s PV Atlas",
+        "__H1__": f"{title}'s PV Atlas",
         "__AOI_TITLE__": title,
         "__AOI_OVERPASS_AREA_TAGS__": overpass_area_tags,
         "__CONFIDENCE_HTML__": (
