@@ -6,24 +6,22 @@ into them.
 
 It is deliberately separate from [Experiments](experiments.md), which records what was
 measured and settled. Something belongs here only if a concrete next step exists and has not
-been taken. When an item is closed it moves to the experiments register with a verdict, and
+been taken. When an item is closed, it moves to the experiments register with a verdict, and
 its row here is deleted rather than annotated.
 
 ## Ranked by expected value over cost
 
 ### 1. Keep turning the flywheel
 
-More human-verified Pakistani installations, retrain, measure. Every shipped improvement in
+Collect more human-verified Pakistani installations, retrain the model, and re-measure the performance. Every shipped improvement in
 [the experiments register](experiments.md) is smaller than this one. In-domain training chips
 tripled large-array recall; nothing architectural has come close.
 
 ### 2. `building_table`'s roof term counts a ground array that clips a shed as rooftop PV
 
 `parcel_pv_area`'s rule 3 skips any installation at or above `YARD_MAX_INSTALLATION_M2`
-(400 m2), because above that floor ground-mount is segmentation's instrument and the atlas
-already prices it. The roof term next to it has no such guard: it intersects every mapped PV
-polygon with every VIDA footprint regardless of placement or size. Harmless while ground-mount
-above the floor was rare in the quadrats; not harmless now.
+(400 m2), because above that floor, ground-mount is segmentation's instrument, and the atlas
+already prices it. The rooftop term has no size or placement filter: it intersects every mapped PV polygon with every VIDA building footprint, regardless of installation size or location. Harmless while ground-mounted above the floor was rare in the quadrats; not harmless now.
 
 Measured on Kalat Rural (added 2026-08-17, sited deliberately to include ground-mount):
 **69 of the 89 buildings the roof term labels has-PV are labelled solely because a >= 400 m2
@@ -35,11 +33,11 @@ buildings, and double-count against segmentation's own `est_mwp_rc_ground`.
 The step: extend rule 3 to the roof term, then re-measure every existing quadrat's
 `base_rate`/`pv_area_true_m2` to see how much it moves them (expected small outside Kalat,
 since ground-mount above the floor is rare elsewhere, but that is an assumption until
-measured). Until then Kalat Rural must be excluded from any refit by hand --
+measured). Until then, Kalat Rural must be excluded from any refit by hand --
 `roofclf.discover_quadrats` globs the label directory, so it is picked up automatically.
 See [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 17.
 
-### 3. The correction that prices most of the atlas is fit outside the density range it is applied to
+### 3. The correction that prices most of the atlas is outside the density range it is applied to
 
 `coverage_ratio` and `area_recall` multiply both roofclf components, which are 15,080 MWp or
 83% of the published Best estimate. Both are fit on the quadrats `select_calibrated_quadrats`
@@ -49,30 +47,29 @@ building-weighted median of 252 bldg/km2, and **9,842 MWp, 54% of the published 
 estimate, is priced by a multiplier fit entirely on denser ground**. The density
 stratification meant to absorb this is close to degenerate at deployment: two bands, and band
 0 is fit from 8 quadrats spanning 872 to 1,758 bldg/km2 and then applied to 92.1% of national
-buildings, everything in the domain from 48.5 up to 1,737.
+buildings, covering everything in the domain from 48.5 up to 1,737.
 
 **Measured 2026-08-16.** The trust gate is not density-neutral: Spearman(density, rate_ratio)
-is -0.577, the sparse density tercile passes at 0.44 against 1.00 for the middle one, and all
+is -0.577; the sparse density tercile passes at 0.44 against 1.00 for the middle one, and all
 five sparse quadrats it drops fail above the ceiling rather than below the floor. Relaxing
 `ratio_hi` moves the roofclf half by -8.4% (-1,270 MWp), non-monotonically, because admitting
 a quadrat moves the band split. That is 20 times the component dropped from the atlas on
 2026-08-15 for being unmeasured where applied. The published 90% interval does not cover any
 of this, because every quadrat the bootstrap can resample sits in the wrong band.
 
-The fix is mapping in an identified band, 300 to 600 bldg/km2 first, then 150 to 300; together
-those hold two thirds of the exposure. Three things are cheaper and worth doing first:
+The fix is mapping in an identified band, 300 to 600 bldg/km2 first, then 150 to 300; together,
+those hold two-thirds of the exposure. Three things are cheaper and worth doing first:
 backfill the missing `n_buildings` for `nasirabad_rural` and `tank_rural` (189 and 225, which
 currently bars them from the fit outright, including the very quadrat that set the domain's
 48.5 floor), record the fit's own density support next to the domain in the capacity
 summaries, and settle the gate band explicitly now that its confounding is measured. Full
-derivation, the sweep table and the reproduction script:
+derivation, the sweep table, and the reproduction script:
 [roofclf calibration density mismatch](issues/roofclf-calibration-density-mismatch.md).
 
 ### 4. The calibration quadrats are purposive, not a probability sample
 
 This is the single largest caveat on every capacity number the project publishes, and no
-amount of additional modelling removes it. All 27 quadrats were chosen by a researcher to
-span landscape types, not drawn at random from a defined national frame, so the intervals on
+amount of additional modelling removes it. All 27 quadrats were selected by researchers to span different landscape types rather than being randomly sampled from a defined national frame, so the intervals on
 the [evidence atlas](results/capacity.md) are not a design-based margin of error and cannot
 be made into one by adding more purposive quadrats.
 
@@ -155,12 +152,12 @@ domain itself -- roughly a third of the country's cells (holding ~5% of its buil
 outside it and are now reported as nothing rather than as an extrapolation. The JOSM
 validation batch built to test whether the domain could be widened with evidence
 (`results/pakistan_roofclf_validation_outdomain/`) turned out not to be reviewable, because
-the reference imagery there is too old to confirm or refute recently-installed small PV.
+the reference imagery there is too old to confirm or refute recently installed small PV.
 **Confirmed again 2026-08-17, this time on purpose-drawn quadrats rather than random review
 cells.** Three low-density boxes were drawn specifically to widen the domain, mapped, and all
 three came back with zero installations against 83 roofclf-AND-SPPI flagged buildings and
 475.4 kWp claimed. The imagery over all three is very old, so the zeros are uninterpretable in
-both directions, and none was registered: as confirmed zeros they would have moved the domain
+both directions, and none was registered: as confirmed zeros, they would have moved the domain
 floor to 11.8 bldg/km<sup>2</sup> (66.3% -> 95.6% of cells) and pulled the sparse band's
 coverage ratio toward zero on evidence that does not support it. See
 [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 17. The blocker is now known
@@ -182,8 +179,8 @@ accumulates across batches.
 
 ### 10. A per-locality pose calibration
 
-The [panel pose survey](results/pv-pose.md) fits a national pose distribution from glint.
-Fitting a *local* pose from whatever installations a subdivision already has, rather than
+The [panel pose survey](results/pv-pose.md) fits a national pose distribution using glint observations.
+Fitting a *local* distribution using installations already identified within each subdivision, rather than
 assuming a national standard, is untried and would improve the yield modelling that turns
 capacity into energy.
 
@@ -234,8 +231,7 @@ Balochistan and Islamabad Capital Territory fail the single-cell-concentration c
 Checked rather than assumed: all three flagged cells are the calibration quadrats' own
 cities, and the failures appeared only because shrinking a real ground-mount overstatement
 mechanically raised the visible concentration share of whatever legitimate signal remained.
-Published anyway, following this project's own precedent for a checked-genuine plausibility
-failure. Gilgit-Baltistan is separately exempted from the ground-to-rooftop ratio check,
+Anyway, the result was published, following this project's precedent for checked, genuine plausibility failures. Gilgit-Baltistan is separately exempted from the ground-to-rooftop ratio check,
 because its real rooftop base rate is near zero and the ratio is structurally uninformative
 there.
 
@@ -246,9 +242,9 @@ intersection. Measured at a 46.4% gap nationally, and confirmed by the recorded
 `building_overlap_frac`. Any per-building disaggregation built from that file is a
 conservative roof-anchored floor and should not be expected to sum back.
 
-**Buildings with no valid composite pixel score NaN rather than being scored.** The
+**Buildings without valid composite pixels are assigned NaN rather than receiving a model score.** The
 cell-edge fix excludes nodata fill from the zonal statistics, which is correct, but it leaves
-0.5 to 3.0% of buildings in tile-overlap strips unscored. A targeted re-read from the correct
+0.5% to 3.0% of buildings in tile-overlap strips unscored. A targeted re-read from the correct
 neighbouring tile would rescue them; it is not implemented, and the current behaviour is the
 safe direction (nothing unscored can clear a threshold).
 
