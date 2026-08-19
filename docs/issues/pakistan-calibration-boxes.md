@@ -1415,3 +1415,47 @@ What the quadrat **is** good for, and it is not a small thing: 29 mapped ground-
 between 400 m<sup>2</sup> and 1,998 m<sup>2</sup> in a rural setting. Outside the two solar-farm
 boxes (Quaid-e-Azam, Sukkur, both utility scale) this project has almost no ground truth at
 that size, and `docs/issues/small-ground-mount-instrument.md` is open for exactly that reason.
+
+### Box 18 -- three peri-urban screens (Attock, Layyah, Lodhran), geodesic squares 4.00 km2 each -- 2026-08-19
+
+Six candidate boxes were screened the same way as Box 17's three rejects: centroids of
+national grid cells (~100 km<sup>2</sup>) whose measured building density falls in the
+100-800 bldg/km<sup>2</sup> calibration gap, each a coarse regional pointer rather than a
+verified settlement (`data/labels/candidate_quadrats/`, six `*_periurban_calib_2km_candidate`
+files, all `stratum: "CANDIDATE -- not yet mapped, not a real quadrat"`). The owner checked
+imagery recency over all six before mapping anything -- exactly the gate Box 17 says to check
+*before* drawing, not after. **Only three had usable imagery: Attock, Layyah and Lodhran.**
+Mardan (Khyber Pakhtunkhwa), Shikarpur (Sindh) and Sialkot District (Punjab, a different site
+from the existing `sialkot_calib_1km` quadrat) were dropped for stale/unusable imagery and were
+never registered -- their candidate files remain in `data/labels/candidate_quadrats/` as a
+record of what was screened out and why, not as pending work.
+
+The three survivors were registered as-is via `scripts/new_calibration_quadrat.py`
+(`--geojson`, `--size-tag 2km`), with no nudge onto a more specific settlement inside the box
+-- the candidate geometry the owner copied into `data/labels/calibration_boundaries/` (the
+staging "boundary layer") is byte-identical to the original screening square. Confirmed clear
+against all 30 existing quadrats. Own building density (VIDA,
+`representative_point().within(boundary)`, the same rule `roofclf.building_table` uses, not
+the coarser source-grid-cell average the candidate files carry):
+
+| quadrat | own density (bldg/km<sup>2</sup>) | source-grid density | district | installations | median install m² | % sub-400 m² | placement | packing `nn_median_m` |
+|---|---:|---:|---|---:|---:|---:|---|---:|
+| `attock_periurban_calib_2km` | 894.75 | 549.29 | Attock, Punjab | 54 | 18.4 | 100.0% | 27 ground / 27 rooftop | 44.2 m |
+| `lodhran_periurban_calib_2km` | 237.25 | 249.96 | Lodhran, Punjab | 36 | 21.8 | 100.0% | 8 ground / 28 rooftop | 29.6 m |
+| `layyah_periurban_calib_2km` | 146.00 | 149.99 | Layyah, Punjab | 17 | 96.0 | 100.0% | 12 ground / 5 rooftop | 296.6 m |
+
+All three own densities sit comfortably inside the current calibrated domain
+(`density.CALIBRATED_BLDG_DENSITY_KM2` = 48.5-5,258.00 bldg/km<sup>2</sup>) -- none of them
+widens it. Their value is filling out the *middle* of that range with a peri-urban regime
+distinct from both the industrial estates and the sparse rural extensions added in Box
+14-17: all-sub-400 m² populations (unlike Kalat Rural), but at three different packing
+regimes -- Attock and Lodhran tightly packed (29.6-44.2 m, close to Lahore/Mardan's band),
+Layyah sparse (296.6 m, close to Muzaffargarh Rural's).
+
+Status: registered, all three explicitly **NOT Rule-1** (`new_calibration_quadrat.py` prints
+this on every fresh box; the counts above are a live Overpass pull at the supplied boundary,
+not a completeness sweep -- absence of a mapped installation does not mean absence of PV).
+`n_buildings`/`base_rate`/`nn_median_m` are blank in `results/calibration_quadrats.csv`
+pending a `roofclf` re-run that includes them; `roofclf.discover_quadrats` will pick them up
+automatically once it runs. Do not fold into a fit or count on their negatives until the
+owner declares a completeness pass for each, same as every other quadrat in this log.

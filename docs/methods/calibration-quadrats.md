@@ -75,8 +75,9 @@ explicitly re-declared for it the same day, so this quadrat reads `yes` like the
 sixteen. The rule for the *next* extension is the same: re-assert, never infer.
 
 **Known gap: this table was not regenerated when Hasal, Islamabad Northeast, Sanghar,
-Bahawalnagar Rural, Nasirabad Rural, Tank Rural or Kalat Rural were added (2026-08-10/17),
-so it undercounts the current 28-quadrat set by eleven.** `results/calibration_quadrats.csv` is
+Bahawalnagar Rural, Nasirabad Rural, Tank Rural, Kalat Rural, or the three peri-urban
+screens added 2026-08-19 (Attock, Layyah, Lodhran) were added, so it undercounts the current
+31-quadrat set by fourteen.** `results/calibration_quadrats.csv` is
 current; this page is a hand-maintained snapshot of it and has fallen behind more than
 once before (see CLAUDE.md's per-quadrat history for the full account). The four rows
 added below (Muzaffargarh Rural, Malok, Muzaffargarh Rural Wide, Khairpur Rural) are
@@ -91,12 +92,19 @@ Rural (`nasirabad_rural_calib_2km`, added 2026-08-13, Rule-1, Balochistan --
 why that declaration is trusted where Muzaffargarh Rural Wide's original zero was not),
 Tank Rural (`tank_rural_calib_2km`, added 2026-08-13, Rule-1, Khyber Pakhtunkhwa --
 10 installations, median 26.0 m², 100% below the 400 m² floor, packing 52.2 m; Box 16),
-and Kalat Rural (`kalat_rural_calib_3km`, added 2026-08-17, Rule-1, Balochistan --
+Kalat Rural (`kalat_rural_calib_3km`, added 2026-08-17, Rule-1, Balochistan --
 52 installations, median 429.3 m², only 40.4% below the 400 m² floor, 45 ground / 7
-rooftop, packing 47.0 m; Box 17) are not yet reflected, none of them because none has
+rooftop, packing 47.0 m; Box 17), and the three peri-urban screens added 2026-08-19 --
+Attock (`attock_periurban_calib_2km`, Punjab, 54 installations, median 18.4 m², packing
+44.2 m), Lodhran (`lodhran_periurban_calib_2km`, Punjab, 36 installations, median 21.8 m²,
+packing 29.6 m) and Layyah (`layyah_periurban_calib_2km`, Punjab, 17 installations, median
+96.0 m², packing 296.6 m) -- are not yet reflected, none of them because none has
 `n_buildings`/`n_pv_buildings`/
 `base_rate` yet (needs a `roofclf` re-run that includes it) and therefore no base rate to
-sort it by -- do not read this table as exhaustive.
+sort it by -- do not read this table as exhaustive. The three peri-urban screens are also
+**not yet Rule-1**, unlike the others in this sentence -- see Box 18 in
+[Calibration boxes](../issues/pakistan-calibration-boxes.md) for the full registration
+(including three sibling candidates dropped for stale imagery before mapping).
 
 **Kalat Rural must not enter a `roofclf` fit before `building_table`'s roof term gets a
 placement/size guard.** It is the first quadrat whose mapped PV is dominated by ground-mount

@@ -94,7 +94,7 @@
   .sec-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
 
   /* ── kpi strip ───────────────────────────────────────────────────── */
-  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 26px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
   @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
   .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
@@ -549,8 +549,10 @@
     <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
       <div class="r" id="kBestCi"></div>
       <div class="k">Best estimate, the highest defensible figure</div></div>
-    <div class="kpi"><div class="v" id="kOsm">0</div>
-      <div class="k">Installations hand-mapped in OpenStreetMap</div></div>
+    <div class="kpi"><div class="v" id="kOsmGe400">0</div>
+      <div class="k">Training data hand-mapped in OpenStreetMap, &ge;400 m&sup2;</div></div>
+    <div class="kpi"><div class="v" id="kOsmLt400">0</div>
+      <div class="k">Training data hand-mapped in OpenStreetMap, &lt;400 m&sup2;</div></div>
     <div class="kpi"><div class="v" id="kDomain">0</div>
       <div class="k">of 0.1&deg; cells have density-matched sub-400 m&sup2; calibration</div></div>
   </div>
@@ -559,7 +561,7 @@
     <div class="sec-head">
       <div>
         <div class="sec-label">Capacity</div>
-        <div class="sec-title">The same total, by installation size</div>
+        <div class="sec-title">The same Sentinel-2-detectable total, by installation size</div>
       </div>
     </div>
 
@@ -575,12 +577,11 @@
           <div class="lk"><span class="sw ground"></span>ground-mount</div>
           <div class="lk" id="extrapKey"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
         </div>
-        <div class="hero-desc" style="margin-top:14px;">The same Best-estimate total,
-        re-cut by installation size instead of geography: rooftop bars stack across
-        every bin, while ground-mount only shows up at &ge;400 m&sup2; -- the two
-        detectors split the total by placement <i>and</i> size, not size alone. The
-        hatched cap on a rooftop bar is capacity extrapolated beyond the
-        density-calibrated domain, not directly measured there.</div>
+        <div class="hero-desc" style="margin-top:14px;">The same Best-estimate total
+        photovoltaic capacity detectable with Sentinel-2, re-cut by installation size
+        instead of geography: rooftop bars stack across every bin, while ground-mount
+        only shows up at &ge;400 m&sup2; -- the two detectors split the total by
+        placement <i>and</i> size, not size alone.</div>
       </section>
 
       <aside>
@@ -819,7 +820,7 @@ out geom;</div>
   const VIEW = {
     label: "Best estimate", vmax: 8,
     name: "Total photovoltaic capacity detectable with Sentinel-2",
-    desc: "Individual arrays are outlined directly down to about 400 m² (the practical floor for Sentinel-2's 10 m pixels); below that, where a single array can no longer be resolved as its own shape, per-building density estimates take over instead. Open-source pipeline and methodology: <a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
+    desc: "Individual arrays are outlined directly down to about 400 m² (the practical floor for Sentinel-2's 10 m pixels); below that, where a single array can no longer be resolved as its own shape, pv density estimates take over instead. Open-source pipeline and methodology: <a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
     tiles: [
       ["mwp_large", "Model detections &ge;400 m², MWp"],
       ["small_all", "Model detections &lt;400 m², MWp"],
@@ -1506,7 +1507,8 @@ out geom;</div>
   const ciText = (ci) => (Array.isArray(ci) && ci.length === 2)
     ? `90% range ${fmt(ci[0])}–${fmt(ci[1])}` : "";
   document.getElementById("kBestCi").textContent = ciText(T.mwp_best_ci);
-  document.getElementById("kOsm").textContent = fmt(T.osm_n);
+  document.getElementById("kOsmGe400").textContent = fmt(T.osm_n_ge400);
+  document.getElementById("kOsmLt400").textContent = fmt(T.osm_n_lt400);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
 
   // The out-of-domain extrapolation is optional evidence: when the atlas was built

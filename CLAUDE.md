@@ -501,8 +501,8 @@ each standalone artifact page.
 
 ### Calibration quadrats
 
-**28 quadrats as of 2026-08-17 (Kalat Rural, the most recent addition), spanning
-Pakistan** -- purposive selections (industrial estates, dense residential blocks) plus several
+**31 quadrats as of 2026-08-19 (three peri-urban screens -- Attock, Layyah, Lodhran --
+the most recent additions), spanning Pakistan** -- purposive selections (industrial estates, dense residential blocks) plus several
 deliberately-rural extensions used to widen the density-calibration domain (see "Density stage"
 above). Bahawalnagar Rural's own building density (123.5 bldg/km², measured directly against
 VIDA) came in below the prior domain floor (141.00 bldg/km², set by Khairpur Rural), so
@@ -529,7 +529,15 @@ fit the sparse band's coverage ratio on ground-mount and double-count against se
 item 2. Its move also cost it its purpose: sited at 25.9 bldg/km² and moved to 46.5, it now
 sits 1.7 below the domain floor and widens it from 2,957 to 2,997 cells (66.3% -> 67.2%)
 instead of the 3,609 (80.9%) the original location would have reached.
-All are declared **Rule-1 complete** by
+**Three peri-urban screening boxes were added 2026-08-19** -- Attock (894.75 bldg/km² own
+density, 54 installations), Lodhran (237.25, 36 installations) and Layyah (146.00, 17
+installations), all Punjab, all-sub-400 m² populations, none moving the density floor (all
+sit well inside the existing 48.5-5,258.00 range). Registered from six candidate screening
+boxes total; the other three (Mardan, Shikarpur, Sialkot District) were dropped before
+mapping for stale/unusable imagery, the same gate Box 17 identifies -- see
+`docs/issues/pakistan-calibration-boxes.md`'s Box 18. **These three are explicitly NOT
+Rule-1** and not yet folded into any `roofclf` refit.
+Every quadrat through Kalat Rural is declared **Rule-1 complete** by
 the owner (every visible panel mapped) --
 **Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own
 (usually unrecorded) capture date, not against the Sentinel-2 composite's epoch, so the newest

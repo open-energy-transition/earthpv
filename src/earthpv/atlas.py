@@ -1952,6 +1952,8 @@ def build_evidence_atlas(
             n_unmatched_osm, len(joined_osm), len(grid),
         )
     in_grid_osm = joined_osm.dropna(subset=["cell"])
+    n_osm_ge400 = int((in_grid_osm["area_m2"] >= 400.0).sum())
+    n_osm_lt400 = int((in_grid_osm["area_m2"] < 400.0).sum())
     osm_by_cell = in_grid_osm.groupby("cell").apply(
         lambda d: pd.Series({
             "osm_mwp": d["kwp"].sum() / 1000,
@@ -2159,6 +2161,8 @@ def build_evidence_atlas(
             "osm_mwp": round(float(grid.osm_mwp.sum()), 1),
             "osm_mwp_unmatched": round(float(grid.osm_mwp_unmatched.sum()), 1),
             "osm_n": int(grid.osm_n.sum()),
+            "osm_n_ge400": n_osm_ge400,
+            "osm_n_lt400": n_osm_lt400,
             "n_osm_matched": int(osm["matched"].sum()),
             "small_low": round(float(grid.small_low.sum()), 1),
             "small_central": round(float(grid.small_central.sum()), 1),
