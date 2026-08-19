@@ -1781,8 +1781,26 @@ def build_evidence_atlas(
             "tier."
         )
     from earthpv import capacity_calibration as cc
+    from earthpv.config import Settings
 
     title = aoi.replace("_", " ").title()
+    division = (Settings.load().aois.get(aoi) or {}).get("division") or {}
+    if division.get("subtype") == "region" and division.get("name"):
+        # OSM's `ISO3166-1` tag is country-only; a province/state-level AOI (e.g.
+        # Punjab, Gujarat) has to be matched by boundary name instead, at
+        # admin_level=4 (the level used for provinces/states/Länder in every
+        # country this project currently targets).
+        overpass_area_tags = (
+            '["boundary"="administrative"]\n'
+            '  ["admin_level"="4"]\n'
+            f'  ["name"="{division["name"]}"]'
+        )
+    else:
+        overpass_area_tags = (
+            '["boundary"="administrative"]\n'
+            '  ["admin_level"="2"]\n'
+            f'  ["ISO3166-1"="{division.get("country", "")}"]'
+        )
     kwp_mod = meta.get("kwp_per_m2_module", cc.DEFAULT_KWP_PER_M2_MODULE)
     kwp_land = meta.get("kwp_per_m2_land", cc.DEFAULT_KWP_PER_M2_LAND)
 
@@ -2101,6 +2119,7 @@ def build_evidence_atlas(
         "__PAGE_TITLE__": f"{title}'s Solar Capacity Atlas",
         "__H1__": f"{title}'s Solar Capacity Atlas",
         "__AOI_TITLE__": title,
+        "__AOI_OVERPASS_AREA_TAGS__": overpass_area_tags,
         "__CONFIDENCE_HTML__": (
             "<p><b>The headline figure carries a 90% range, and it is wide.</b> "
             "Best estimate is "

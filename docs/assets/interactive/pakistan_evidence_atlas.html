@@ -748,12 +748,19 @@
         <div class="dl-list" id="dlList"></div>
         <div class="dl-query-label">Live OSM PV, not this snapshot -- Overpass query</div>
         <div class="dl-query">[out:json][timeout:180];
-area["name"="Pakistan"]["admin_level"="2"]-&gt;.searchArea;
+
+area
+  ["boundary"="administrative"]
+  ["admin_level"="2"]
+  ["ISO3166-1"="PK"]
+  -&gt;.searchArea;
+
 (
-  nwr["generator:source"="solar"](area.searchArea);
-  nwr["plant:source"="solar"](area.searchArea);
+  nwr["power"="generator"]["generator:source"="solar"](area.searchArea);
+  nwr["power"="plant"]["plant:source"="solar"](area.searchArea);
 );
-out meta geom;</div>
+
+out geom;</div>
         <div class="hero-desc" style="margin-top:10px;">Paste into
         <a href="https://overpass-turbo.eu/" target="_blank" rel="noopener">overpass-turbo.eu</a>
         for an interactive map and GeoJSON export, or POST it as the <code>data</code> parameter
@@ -1041,15 +1048,11 @@ out meta geom;</div>
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
       const rows = `<div class="rowt sel"><span>${VIEW.label}</span><span>${c[BEST_IDX].toFixed(1)} MWp</span></div>`;
+      const smallTotal = c[7] + (c[OUTDOMAIN_IDX] > 0 ? c[OUTDOMAIN_IDX] : 0);
       tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
         + rows
-        + `<div class="rowt large-flag"><span>&#9675; Hand-mapped in OSM</span><span>${c[OSM_IDX].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>&nbsp;&nbsp;OSM installations</span><span>${c[5].toLocaleString()}</span></div>`
-        + `<div class="rowt"><span>Model detections &ge;400 m²</span><span>${c[8].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>Small PV, roofclf alone</span><span>${c[7].toFixed(1)} MWp</span></div>`
-        + (c[OUTDOMAIN_IDX] > 0 ? `<div class="rowt"><span>Small PV, extrapolated (Best only)</span><span>${c[OUTDOMAIN_IDX].toFixed(1)} MWp</span></div>` : "")
-        + (c[9] ? `<div class="rowt domain-flag"><span>&#9679; Small-PV calibration</span><span>checked</span></div>` : "")
-        + (c[EXTENDED_IDX] ? `<div class="rowt extended-flag"><span>&#9675; Small-PV extrapolated, not checked</span><span></span></div>` : "");
+        + `<div class="rowt"><span>&ge;400 m²</span><span>${c[8].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>&lt;400 m²</span><span>${smallTotal.toFixed(1)} MWp</span></div>`;
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
