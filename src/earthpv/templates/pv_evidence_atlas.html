@@ -84,6 +84,10 @@
     font-size: clamp(26px, 4.4vw, 46px); line-height: 1.05; margin: 0;
     font-weight: 780; letter-spacing: -0.02em; text-wrap: balance; max-width: 24ch;
   }
+  .dev-note { margin-top: 14px; padding: 10px 14px; background: var(--hair);
+    border-left: 3px solid var(--accent); border-radius: 6px; font-size: 13px;
+    line-height: 1.5; color: var(--ink-2); max-width: 640px; }
+  .dev-note b { color: var(--ink); }
   /* ── section scaffolding ─────────────────────────────────────────── */
   .sec { margin-top: 44px; }
   .sec-head { display: flex; align-items: baseline; justify-content: space-between;
@@ -474,6 +478,9 @@
   <header>
     <p class="eyebrow">EarthPV · Sentinel-2 · OpenStreetMap · TerraMind · roofclf · SPPI</p>
     <h1>__H1__</h1>
+    <p class="dev-note"><b>Active development.</b> EarthPV is a research prototype:
+    detectors, calibration and methodology are still being tested and revised, so the
+    figures on this page will keep moving as new experiments land.</p>
   </header>
 
   <section class="sec" id="capacity">

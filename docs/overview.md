@@ -10,6 +10,11 @@
 
 </div>
 
+!!! warning "Active development"
+    EarthPV is still a research prototype. It is actively experimenting with new solar
+    detection methods, and its detectors, calibration and headline numbers are still being
+    tested and revised rather than settled.
+
 > **EarthPV demonstrates how free Sentinel-2 imagery, an open foundation model, and
 > human-in-the-loop validation in OpenStreetMap can make global photovoltaic mapping more
 > scalable, verifiable, and cost-effective than existing methods.**
