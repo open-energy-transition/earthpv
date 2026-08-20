@@ -953,6 +953,12 @@ def growth(
     atlas_out: Path = typer.Option(
         None, help="Also render the night-lights growth atlas page to this path "
         "(atlas.build_growth_evidence_atlas)"),
+    persistence_gate_m: float = typer.Option(
+        50.0, help="Gate the pre-boom segmentation level on current-epoch "
+        "corroboration: a pre-boom candidate with no current candidate within this "
+        "distance is dropped as a false positive, since PV is almost never "
+        "decommissioned (the 2026-08-20 check measured only 26.6% survival, mostly "
+        "winter-snow FPs above lat 34). 0 disables. See growth.persistence_gate."),
 ) -> None:
     """Two-epoch PV growth grid/regions from the evidence atlas's own instruments --
     segmentation ground-mount + roofclf rooftop replacement in-domain + segmentation
@@ -971,6 +977,7 @@ def growth(
         out_dir=out_dir or Path("data/growth") / aoi,
         cell_density_path=cell_density_path, sppi_growth_grid=sppi_growth_grid,
         current_label=current_label, preboom_label=preboom_label,
+        persistence_gate_m=persistence_gate_m,
     )
     typer.echo(f"-> {out}")
     if atlas_out:

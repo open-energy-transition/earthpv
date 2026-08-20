@@ -36,6 +36,21 @@ cancel is documented in the summary's `caveats`.
 lower in the current epoch than pre-boom is instrument noise (or, rarely, a real
 decommissioning); clamping at zero would bias the national total up. The summary reports
 the negative mass separately so its size is visible.
+
+**The pre-boom segmentation level is persistence-gated** (`persistence_gate`, default
+50 m, disable with `persistence_gate_m=0`): a pre-boom candidate with no current-epoch
+candidate anywhere near it is dropped before the pre-boom level is recomputed
+(`_seg_rc_cell_mwp`, the exact per-candidate est_mwp_rc math). The physical prior is
+that PV is almost never decommissioned, so a real pre-boom installation must still be
+detectable by the same instrument on the better (snow-free) current composite. The
+2026-08-20 sanity check that motivated this found only 26.6% of pre-boom candidates
+had any current counterpart within 50 m (rooftop 86%, ground_adjacent 44%, no_building
+5.6%) with 91 of 155 km2 of vanishing area above lat 34 deg -- winter snow in the
+2021-10..2022-01 composite, an FP mode the precision calibration never saw and that
+made the ungated ground delta negative. The gate is one-directional by construction:
+current-epoch-only false positives cannot be gated (indistinguishable from genuine new
+installations) and are priced by p_real alone, so the residual FP bias on the delta is
+upward -- see the summary's `caveats` and `persistence_gate` block.
 """
 
 from __future__ import annotations
@@ -52,6 +67,170 @@ log = logging.getLogger("growth")
 
 # Column pulled from each epoch's segmentation density grid, per placement.
 SEG_COLS = ["est_mwp_rc", "est_mwp_rc_roof", "est_mwp_rc_ground"]
+
+# Pre-boom candidates with no current-epoch candidate within this distance are gated
+# out of the pre-boom segmentation level (see persistence_gate).
+PERSISTENCE_GATE_M = 50.0
+
+
+def persistence_gate(
+    pre_cands: gpd.GeoDataFrame,
+    cur_cands: gpd.GeoDataFrame,
+    max_dist_m: float = PERSISTENCE_GATE_M,
+) -> tuple[np.ndarray, dict]:
+    """Mask of pre-boom candidates corroborated by ANY current-epoch candidate within
+    `max_dist_m` (metric, EPSG:6933), plus survival stats.
+
+    Physical prior: PV is almost never decommissioned, so a real pre-boom installation
+    still exists -- and is detectable by the SAME instrument on the better (snow-free
+    dry-season) current composite. A pre-boom-only detection is therefore a false
+    positive with near-certainty; keeping it inflates the pre-boom level and biases the
+    growth delta down (measured 2026-08-20: it flipped the ground delta negative).
+
+    Applied to EVERY pre-boom candidate, OSM-geometry-matched ones included: a real
+    (OSM-mapped) installation the current-epoch model misses entirely contributes zero
+    to the current level, so keeping it pre-boom would book a spurious negative delta
+    for capacity the diff's current side does not carry; gating it books the honest
+    0 - 0. Corroboration is tested against the RAW current candidate set (oversize
+    blobs included) -- an oversize current detection is still presence evidence, even
+    though it earns no capacity itself.
+    """
+    pre_m = pre_cands.reset_index(drop=True).to_crs(6933)
+    cur_m = cur_cands.to_crs(6933)
+    joined = gpd.sjoin_nearest(
+        pre_m, cur_m[["geometry"]], how="left",
+        max_distance=max_dist_m, distance_col="_gate_d",
+    )
+    survives = joined.groupby(level=0)["_gate_d"].min().notna().to_numpy()
+    placement = (
+        pre_cands["placement"].astype(str).to_numpy()
+        if "placement" in pre_cands.columns else np.array(["unknown"] * len(pre_cands))
+    )
+    by_placement = {
+        str(p): round(float(survives[placement == p].mean()), 4)
+        for p in np.unique(placement)
+    }
+    stats = {
+        "max_dist_m": float(max_dist_m),
+        "n_population": int(len(pre_cands)),
+        "n_gated_out": int((~survives).sum()),
+        "share_gated_out": round(float((~survives).mean()), 4),
+        "gated_out_area_m2": round(float(pre_cands.loc[~survives, "area_m2"].sum()), 1),
+        "survival_by_placement": by_placement,
+    }
+    return survives, stats
+
+
+def _seg_rc_cell_mwp(
+    cands: gpd.GeoDataFrame,
+    table: dict,
+    origin: tuple[float, float],
+    manifest_cells: set[str],
+    recall_floor: float,
+    kwp_module: float,
+    kwp_land: float,
+) -> pd.DataFrame:
+    """Per-cell recall-corrected segmentation MWp (SEG_COLS) recomputed from a candidate
+    frame -- the exact point-estimate math of `density._candidate_uncertainty`
+    (rc = area * p_real / recall, cell assignment by representative point) and
+    `density._ratios`' placement split (rooftop-placed at the module constant, the
+    remainder at the land constant). Verified 2026-08-20 to reproduce a stored
+    grid.geoparquet's est_mwp_rc columns to rounding (max per-cell diff 5e-5 MWp)."""
+    from earthpv import capacity_calibration as cc
+    from earthpv.density import CELL_DEG
+
+    area = cands["area_m2"].to_numpy(float)
+    placement = cands["placement"].astype(str).to_numpy()
+    p_real = cc.candidate_p_real(area, table, glint_consistent=(
+        cands["glint_consistent"].to_numpy() if "glint_consistent" in cands.columns
+        else None), placement=placement)
+    recall = cc.candidate_recall(area, table, floor=recall_floor, placement=placement)
+    rc = area * p_real / recall
+    reps = cands.geometry.representative_point()
+    ix = np.floor((reps.x.to_numpy() - origin[0]) / CELL_DEG).astype(int)
+    iy = np.floor((reps.y.to_numpy() - origin[1]) / CELL_DEG).astype(int)
+    cell = np.array([f"{i:04d}_{j:04d}" for i, j in zip(ix, iy)])
+    roof = placement == "rooftop"
+    df = pd.DataFrame({"cell": cell, "rc": rc, "rc_roof": np.where(roof, rc, 0.0)})
+    df = df[df["cell"].isin(manifest_cells)]
+    per = df.groupby("cell", as_index=False).sum()
+    per["est_mwp_rc_roof"] = (per.rc_roof * kwp_module / 1000.0).round(4)
+    per["est_mwp_rc_ground"] = ((per.rc - per.rc_roof).clip(lower=0.0) * kwp_land / 1000.0).round(4)
+    per["est_mwp_rc"] = (per.est_mwp_rc_roof + per.est_mwp_rc_ground).round(4)
+    return per[["cell", *SEG_COLS]]
+
+
+def _gate_preboom_grid(
+    aoi: str,
+    preboom_pred_dir: Path,
+    current_pred_dir: Path,
+    pre: pd.DataFrame,
+    max_dist_m: float,
+) -> tuple[pd.DataFrame, dict]:
+    """Replace the pre-boom grid's SEG_COLS with values recomputed from the
+    persistence-gated candidate population; the ungated originals are kept alongside
+    as `*_preboom_ungated`. Returns (grid, stats-for-summary)."""
+    from earthpv import capacity_calibration as cc
+    from earthpv.config import Settings
+    from earthpv.density import _grid_origin, capacity_relevant_candidates
+    from earthpv.labels import resolve_aoi
+
+    meta = json.loads(
+        (Path(preboom_pred_dir) / aoi / "density" / "meta.json").read_text())
+    pre_cands = gpd.read_parquet(Path(preboom_pred_dir) / aoi / "candidates.parquet")
+    cur_cands = gpd.read_parquet(Path(current_pred_dir) / aoi / "candidates.parquet")
+    pop, _ = capacity_relevant_candidates(pre_cands, meta["max_candidate_m2"])
+    pop = pop.reset_index(drop=True)
+    table = cc.load_table(Path(meta["calibration"]))
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    origin = _grid_origin(aoi, cfg, settings)
+    manifest = set(pre["cell"])
+    kwargs = dict(
+        table=table, origin=origin, manifest_cells=manifest,
+        recall_floor=meta["recall_floor"], kwp_module=meta["kwp_per_m2_module"],
+        kwp_land=meta["kwp_per_m2_land"],
+    )
+
+    # Guard: the ungated recompute must reproduce the stored grid before the gated
+    # version may replace it -- a mismatch means candidates.parquet or the calibration
+    # YAML changed since that density run, and gating would silently mix vintages.
+    ungated = _seg_rc_cell_mwp(pop, **kwargs)
+    stored = pre.set_index("cell")["est_mwp_rc"].fillna(0.0)
+    recomputed = ungated.set_index("cell")["est_mwp_rc"].reindex(stored.index).fillna(0.0)
+    max_diff = float((stored - recomputed).abs().max())
+    if max_diff > 0.01:
+        raise RuntimeError(
+            f"Ungated recompute of {aoi}'s pre-boom est_mwp_rc disagrees with the "
+            f"stored density grid (max per-cell diff {max_diff:.4f} MWp > 0.01). "
+            f"{preboom_pred_dir}/{aoi}/candidates.parquet or {meta['calibration']} "
+            "has changed since that density run -- re-run `earthpv density` on the "
+            "pre-boom pred dir first, or pass persistence_gate_m=0."
+        )
+
+    survives, stats = persistence_gate(pop, cur_cands, max_dist_m)
+    gated = _seg_rc_cell_mwp(pop[survives], **kwargs).set_index("cell")
+    pre = pre.copy()
+    for col in SEG_COLS:
+        pre[f"{col}_preboom_ungated"] = pre[col]
+        pre[col] = pre["cell"].map(gated[col]).fillna(0.0)
+    stats["recompute_max_cell_diff_mwp"] = round(max_diff, 6)
+    stats["preboom_seg_mwp_ungated"] = {
+        c: round(float(ungated[c].sum()), 1) for c in SEG_COLS}
+    stats["preboom_seg_mwp_gated"] = {
+        c: round(float(gated[c].sum()), 1) for c in SEG_COLS}
+    log.info(
+        "Persistence gate (%.0f m): %d/%d pre-boom candidates gated out -> pre-boom "
+        "segmentation level %.1f -> %.1f MWp (roof %.1f -> %.1f, ground %.1f -> %.1f)",
+        max_dist_m, stats["n_gated_out"], stats["n_population"],
+        stats["preboom_seg_mwp_ungated"]["est_mwp_rc"],
+        stats["preboom_seg_mwp_gated"]["est_mwp_rc"],
+        stats["preboom_seg_mwp_ungated"]["est_mwp_rc_roof"],
+        stats["preboom_seg_mwp_gated"]["est_mwp_rc_roof"],
+        stats["preboom_seg_mwp_ungated"]["est_mwp_rc_ground"],
+        stats["preboom_seg_mwp_gated"]["est_mwp_rc_ground"],
+    )
+    return pre, stats
 
 
 def _roofclf_cell_mwp(path: Path, kwp_col: str) -> pd.Series:
@@ -85,6 +264,7 @@ def build_growth(
     sppi_growth_grid: Path | None = None,
     current_label: str = "current",
     preboom_label: str = "pre-boom (2021-10..2022-01)",
+    persistence_gate_m: float = PERSISTENCE_GATE_M,
 ) -> Path:
     """Combine both epochs' segmentation density grids and roofclf capacity outputs
     into a per-cell growth grid, region aggregates, and a summary JSON. See the module
@@ -100,8 +280,14 @@ def build_growth(
         pre = pd.read_csv(Path(preboom_pred_dir) / aoi / "density" / "grid.csv")
     pre = pd.DataFrame(pre.drop(columns="geometry", errors="ignore"))
 
+    gate_stats = None
+    if persistence_gate_m:
+        pre, gate_stats = _gate_preboom_grid(
+            aoi, Path(preboom_pred_dir), Path(current_pred_dir), pre, persistence_gate_m)
+
+    pre_cols = [*SEG_COLS, *[c for c in pre.columns if c.endswith("_preboom_ungated")]]
     grid = cur.merge(
-        pre[["cell", *SEG_COLS]], on="cell", how="left", suffixes=("", "_preboom"),
+        pre[["cell", *pre_cols]], on="cell", how="left", suffixes=("", "_preboom"),
     )
     # A cell with no pre-boom row never got a composite_1 / pre-boom inference: its
     # delta is NOT MEASURABLE there, which is different from zero pre-boom capacity.
@@ -215,7 +401,27 @@ def build_growth(
         "delta_mwp_negative_cell_mass": round(float(
             grid.loc[covered, "delta_mwp_total"].clip(upper=0).sum()), 1),
         "delta_est_mwp_rc_segmentation_only": _tot("delta_est_mwp_rc"),
+        "persistence_gate": gate_stats,
         "caveats": [
+            (
+                f"The pre-boom segmentation level is persistence-gated at "
+                f"{persistence_gate_m:.0f} m (see growth.persistence_gate): pre-boom "
+                "candidates with no current-epoch detection anywhere near them are "
+                "dropped as false positives (PV is almost never decommissioned). The "
+                "gate is one-directional: current-epoch-only false positives cannot be "
+                "gated (indistinguishable from genuine new installations) and are "
+                "priced by p_real alone, so the residual FP bias on the delta is "
+                "upward. A real pre-boom installation the current epoch misses "
+                "contributes zero to both epochs (delta 0), not a negative delta; "
+                "genuine decommissioning is booked as zero growth. Ungated per-cell "
+                "values are kept in the grid as *_preboom_ungated."
+                if gate_stats else
+                "The pre-boom segmentation level is NOT persistence-gated "
+                "(persistence_gate_m=0): the 2026-08-20 sanity check measured only "
+                "26.6% of pre-boom candidates surviving into the current epoch "
+                "(no_building 5.6%, mostly winter snow above lat 34 deg), so the "
+                "ungated pre-boom level is FP-inflated and the delta biased LOW."
+            ),
             "Every calibration (candidate precision, coverage ratio, area recall, the "
             "roofclf fit) is measured on current-epoch mapping/imagery and assumed to "
             "transfer to the pre-boom epoch; only the DIFF of the fixed instrument is "
@@ -237,6 +443,13 @@ def build_growth(
             "No composed credible interval yet: coverage-ratio/kWp draws are shared "
             "between epochs and mostly cancel in the diff, but the residual is not "
             "priced. Point deltas only.",
+            "The roofclf halves are NOT persistence-gated: they passed the 2026-08-20 "
+            "persistence check (94% of pre-boom flagged cells still flagged, 3-4% of "
+            "capacity on dropped cells). Their separate problem is epoch "
+            "INsensitivity, not instability: the pre-boom roofclf level reads ~79% of "
+            "the current one, so the sub-400/ge-400 deltas are floors on the true "
+            "rooftop growth, limited by how much of roofclf's signal is the panel "
+            "rather than adopter-propensity building appearance.",
         ],
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))

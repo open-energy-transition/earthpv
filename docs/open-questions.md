@@ -1,6 +1,6 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-08-15. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-08-20. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
@@ -223,7 +223,41 @@ that means what it appears to mean. See
 Per-epoch density estimates would make capacity a time series, so the 2022 to 2026 boom
 becomes measurable per district and independently checkable against NEPRA net-metering
 registrations and customs import series. A single [growth map](results/growth.md) exists;
-an annual series does not.
+an annual series does not (composites for 2022/23 to 2024/25 are being built).
+
+The two-epoch diff itself failed its first sanity check and now carries a persistence
+gate (2026-08-20). Almost all PV detected pre-boom should still exist post-boom, yet
+only 26.6 percent of pre-boom segmentation candidates had any current-epoch detection
+within 50 m (11.4 percent of model-geometry ones; rooftop 86 percent, ground_adjacent
+44 percent, no_building 5.6 percent). The vanishing mass was concentrated above
+latitude 34: winter snow in the 2021-10 to 2022-01 composite, scored by a precision
+calibration that never saw snow, and let through `check-density` by Gilgit-Baltistan's
+ratio-check exemption. It inflated the pre-boom level enough to turn the national
+ground-mount delta negative. `growth.persistence_gate` now drops pre-boom candidates
+with no current-epoch corroboration before the pre-boom level is recomputed
+(pre-boom segmentation 5,646.5 to 4,408.6 MWp, ground 1,253.0 to 346.5; national delta
+3,497.5 to 4,415.5 MWp), with the ungated values kept per cell as `*_preboom_ungated`.
+
+What remains open, in order of expected effect on the delta:
+
+- **The gate is one-directional.** Current-epoch-only false positives cannot be gated
+  (they are indistinguishable from genuine new installations here) and are priced by
+  `p_real` alone, so the residual false-positive bias on the delta is now upward where
+  it was previously downward and much larger. A snow/SCL mask on the pre-boom
+  composite, or a winter-free compose window, would remove the FP mode at the source
+  instead of at the diff.
+- **The roofclf halves are epoch-insensitive rather than unstable.** They passed the
+  same persistence check (94 percent of pre-boom flagged cells still flagged, 3 to 4
+  percent of capacity on dropped cells), but the pre-boom roofclf level reads about 79
+  percent of the current one for a boom that multiplied the true sub-400 stock. Much of
+  roofclf's signal is adopter-propensity building appearance that predates the panels,
+  so the sub-400 and >= 400 roofclf deltas are floors on true rooftop growth. Measuring
+  roofclf's epoch sensitivity directly (score the same mapped quadrat buildings on both
+  composites and compare against known install-date installations, e.g. from the
+  step-change onset set) is the concrete next step.
+- **No composed credible interval on the delta**, and the pre-boom epoch has no
+  calibration of its own, so every stated pre-boom level remains an artifact of
+  current-epoch calibration transfer; only diffs of the fixed instrument are meaningful.
 
 ## Known defects carried on purpose
 
