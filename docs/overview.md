@@ -19,99 +19,79 @@
 > human-in-the-loop validation in OpenStreetMap can make global photovoltaic mapping more
 > scalable, verifiable, and cost-effective than existing methods.**
 
-EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and ESA, through
-TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
-and puts every detection in front of **OpenStreetMap** mappers for verification. The
-verified result becomes the next round of training data. Model, code, training labels and
-capacity numbers are all open, and every input is a global dataset -- nothing here is built
-on imagery or licences that only exist in one country.
+EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed every five days. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country. 
 
 **Pakistan is the first pilot, not the destination.** It is where four methods below were
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
 [Scaling worldwide](#scaling-worldwide).
 
-## The main workflow: two detectors, split by placement and calibration coverage, one evidence atlas
+## The Main Workflow
 
-This is earthpv's default pipeline and primary output. No single instrument covers
-rooftop solar at every scale, so it runs two, each measured against ground truth, and
-combines them into one product. The split is **not** a clean size boundary: roofclf's
-reach now extends past its original sub-400 m<sup>2</sup> floor into large rooftops too,
-wherever it has been calibrated to do so.
+This is earthpv’s default pipeline and primary output. It combines two detectors, each evaluated against ground truth, into a single evidence atlas. Their roles are divided by installation placement and calibration coverage rather than by a strict size threshold. In particular, `roofclf` now extends beyond its original sub-400 m² range to larger rooftops wherever calibration supports its use.
 
-**Segmentation, the source of every mapping lead, and of ground-mount capacity at any
-size.** A fine-tuned TerraMind-tiny outlines panels directly detects ground based and rooftop solar for >400 m<sup>2</sup> PV installations. 
+### Segmentation
 
-**roofclf, for every rooftop below 400 m<sup>2</sup> -- and, where calibrated, for large
-rooftops too.** At 10 m pixel size of Sentinel 2 imagery, a 100 m<sup>2</sup> array is a handful of mixed
-pixels -- not enough to draw a polygon around, but enough to ask whether a *building*
-carries PV. **roofclf** is a per-building classifier trained on 27 exhaustively mapped
-ground-truth quadrats (0.879 AUC, 0.834 with roof size controlled for, where the
-segmentation raster scores close to chance on the same small buildings), cross-checked
-against **SPPI**, a zero-training five-band spectral index (He et al. 2026) that needs no
-labels at all (0.823 AUC in its own nine-quadrat evaluation, where roofclf scored 0.874
-on the identical buildings). 
+A fine-tuned TerraMind-tiny model detects and outlines rooftop and ground-mounted PV installations above approximately 400 m². These detections provide the mapping leads used throughout EarthPV and form the basis of ground-mounted capacity estimates at all relevant sizes.
+
+### Roof-level classification
+
+`roofclf` addresses the part of the rooftop population that segmentation cannot reliably resolve. At Sentinel-2’s 10 m spatial resolution, a 100 m² array occupies only a handful of mixed pixels. This is insufficient to delineate a polygon reliably, but it can still provide enough information to determine whether a building hosts PV.
+
+`roofclf` is a per-building classifier trained on 27 exhaustively mapped ground-truth quadrats. It achieves an AUC of 0.879, or 0.834 after controlling for roof size, while the segmentation raster performs close to chance on the same small buildings. Its predictions are cross-checked against SPPI, a zero-training five-band spectral index introduced by He et al. (2026). In SPPI’s own nine-quadrat evaluation, SPPI achieved an AUC of 0.823, while `roofclf` reached 0.874 on the identical buildings.
+
+Although originally introduced for rooftops below 400 m², `roofclf` is also used for larger rooftops where sufficient calibration data supports its application.
 
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
 ![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.dark.svg#only-dark)
 
-**Both instruments converge on the evidence atlas.** `density` aggregates segmentation's
-&ge; 400 m<sup>2</sup> detections (rooftop and ground-mount, every cell);
-`roof-classifier` → `roofclf-score-national` → `sub400-capacity` builds
-roofclf's < 400 m<sup>2</sup> population, and `ge400-roof-capacity` builds its &ge; 400
-m<sup>2</sup> rooftop replacement inside the calibrated cells; `earthpv atlas` combines
-all of it into **Best estimate**, this project's own highest defensible figure,
-hand-mapped OpenStreetMap installations plus the model's own recall-corrected detections
-plus roofclf/SPPI's per-building density estimate -- with the overlap between OSM and
-detections removed rather than double-counted, and a 90% range on the total. Full command
-sequence: [The full pipeline](reproduce.md#the-full-pipeline).
+### Building the evidence atlas
 
-**Why two detectors, checked against a complete register.** Germany's MaStR register is
-legally mandatory, so it is ground truth rather than a sample. Measured against it,
-**65.5% of German rooftop capacity sits below the 400 m<sup>2</sup> detection floor**
-(97.2% of installations). An instrument that only sees above that floor is describing
-roughly a third of what a "rooftop solar" headline implies, which is the whole argument
-for the second detector. See [Validation against MaStR](methods/mastr-validation.md).
+The two detection streams are combined into a single capacity estimate:
 
-**The absolute total is a modelled estimate, not a metered figure -- Sentinel-2's 10 m
-pixels make that unavoidable.** An individual array below roughly 400 m<sup>2</sup> is a
-mixed-pixel problem rather than a shape the segmentation model can outline, so everything
-under that floor comes from `roofclf` instead, restricted to cells whose building density
-resembles the hand-mapped calibration quadrats it was measured on. That restriction keeps
-the sub-400 m<sup>2</sup> numbers honest, but it also means the total tracks calibration
-coverage, not a direct count, which is why the headline figure carries a 90% range rather
-than one bare number. Checked against that limitation directly: an independent,
-separately produced national rooftop-solar estimate agrees closely with this project's on
-**where** capacity concentrates -- normalizing both to percent of national total per
-spatial unit (their absolute magnitudes aren't comparable), the median difference across
-3,303 spatial units is 0.005 percentage points and rank correlation is 0.75-0.84. It
-disagrees more on how much weight the very largest sites deserve (a handful of hotspot
-cells drive most of the remaining gap, consistently in the same direction), which is a
-real, stated limitation, not a hidden one. See [Capacity map](results/capacity.md) for the
-full comparison and `scripts/pv_reference_share_comparison.py` to reproduce it.
+- `density` aggregates segmentation detections of installations ≥400 m², including both rooftop and ground-mounted systems across all cells.
+- `roof-classifier` → `roofclf-score-national` → `sub400-capacity` estimates rooftop capacity below 400 m².
+- `ge400-roof-capacity` provides the `roofclf`-based rooftop estimate above 400 m² within calibrated cells.
+- `earthpv atlas` combines these outputs into the Best estimate, earthpv’s highest defensible national capacity figure.
+
+The final estimate incorporates hand-mapped OpenStreetMap installations, recall-corrected model detections, and `roofclf`/SPPI per-building density estimates. Overlap between OSM installations and model detections is explicitly removed to avoid double counting, and the national total is reported with a 90% uncertainty range.
+
+Full command sequence: [The full pipeline](reproduce.md#the-full-pipeline).
+
+### But why are two detectors necessary?
+
+Germany’s MaStR register is legally mandatory and therefore provides a near-complete reference rather than a sample. Against this register, 65.5% of German rooftop capacity falls below the 400 m² segmentation threshold, representing 97.2% of installations.
+
+A system relying only on segmentation above this threshold would therefore capture roughly one-third of the rooftop capacity implied by a national “rooftop solar” estimate. This coverage gap motivates the second, building-level detector.
+
+See [Validation against MaStR](methods/mastr-validation.md).
+
+### Interpreting the national estimate
+
+EarthPV’s national capacity total is a modelled estimate rather than a metered figure. At Sentinel-2’s 10 m resolution, installations below roughly 400 m² are primarily a mixed-pixel problem rather than shapes that can be reliably delineated. Their contribution is therefore estimated using `roofclf`.
+
+To avoid extrapolating beyond its evidence base, these estimates are restricted to cells whose building density resembles the hand-mapped calibration quadrats on which the classifier was evaluated. This makes the sub-400 m² estimates more defensible, but also means that the national total depends partly on calibration coverage rather than a direct count of every installation. For this reason, the headline result is reported with a 90% uncertainty range.
+
+An independent national rooftop-solar estimate provides an additional spatial check. Because the absolute magnitudes of the two estimates are not directly comparable, both are normalized to each spatial unit’s share of national capacity. Across 3,303 spatial units, the median difference is 0.005 percentage points, with a rank correlation of 0.75 to 0.84.
+
+The main disagreement concerns the relative importance assigned to the largest sites. A small number of hotspot cells account for most of the remaining difference, consistently in the same direction. EarthPV therefore treats the treatment of very large sites as an explicit limitation of the current estimate.
+
+See [Capacity map](results/capacity.md) for the full comparison and `scripts/pv_reference_share_comparison.py` to reproduce it.
 
 ### Optional, supplementary instruments
 
-Everything below is evidence toward the main workflow, a secondary product built from the
-same detections, or a documented negative result -- not a competing main path.
+These instruments support, extend, or test the main workflow. They are not alternative primary pipelines.
 
-**Glint, for tilt and orientation.** A glass-fronted panel is partly a mirror, so it
-flashes into Sentinel-2 only on the geometry-predictable dates when its tilt and azimuth
-bisect the sun and the sensor. Two or more mutually consistent flashes are a physical
-confirmation that PV is present, independent of spectral appearance, and recover how the
-panel is mounted. Folds into the main workflow's leads ranking as a boost-only signal;
-never required to produce the evidence atlas.
+#### Glint
 
-**Growth, for when installations appeared.** Diffing a pre-boom (2021/22) Sentinel-2
-composite against the current one -- with both the segmentation model and SPPI run
-independently on each epoch -- shows where solar capacity actually landed, not just where
-it stands today. Pakistan's own rooftop stock roughly doubled since 2021/22 by this
-measure. See [Growth](results/growth.md).
+Glint analysis provides an independent physical confirmation of PV presence and can also recover panel tilt and orientation. Glass-fronted panels behave partly like mirrors, producing flashes in Sentinel-2 imagery on dates predicted by the geometry between the Sun, panel, and satellite. Two or more geometrically consistent flashes strengthen confidence that PV is present. In the main workflow, glint is used only as a boost to lead ranking and is never required to produce the evidence atlas.
 
-A fraction-head expected-area instrument, SPPI as a standalone (not cross-checked)
-detector, an older Low/Central/High/All-PV bracket atlas and a rooftop
-potential/saturation atlas exist too, each measured and each kept in the repository
-whether or not it was promoted -- see [Experiments](experiments.md) for what was tried
-and why the main workflow above is what shipped.
+#### Growth
+
+Growth analysis estimates when installations appeared by comparing a pre-boom 2021/22 Sentinel-2 composite with the current one. Both the segmentation model and SPPI are run independently on each epoch, allowing changes in solar deployment to be mapped over time rather than only measuring the present-day stock. By this measure, Pakistan’s rooftop solar stock has roughly doubled since 2021/22. See [Growth](results/growth.md).
+
+#### Other evaluated instruments
+
+Additional methods retained in the repository include a fraction-head expected-area model, SPPI as a standalone detector, an earlier Low/Central/High/All-PV bracket atlas, and a rooftop potential and saturation atlas. Each was evaluated even where it was not promoted into the final workflow. See [Experiments](experiments.md) for the methods tested and the rationale behind the final pipeline.
 
 [![The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](results/capacity.md)
 
@@ -173,19 +153,9 @@ above:
 | **400 m<sup>2</sup>** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
 
-The headline figure carries a 90% range as of 2026-08-11, composed from the
-area-to-capacity constants' priors, segmentation's measured precision and recall by
-installation size, and the coverage ratio's sensitivity to which calibration quadrats
-happen to have been mapped. The range is wide on purpose: this figure moved by 20-35%
-five times in a single week from recalibration alone, and reporting it bare had been
-hiding that. It is not a design-based margin of error -- the quadrats behind it are
-hand-picked, not randomly sampled, and it does not cover the gap between where the
-roofclf coverage-ratio correction is fit and where it is applied: about half of Best is
-priced by a multiplier measured on quadrats several times denser than most of the cells
-it prices (see [Calibration density mismatch](issues/roofclf-calibration-density-mismatch.md)).
-See [Capacity map](results/capacity.md) for the derivation and
-[Validation against MaStR](methods/mastr-validation.md) for what a legally complete
-register can and cannot settle.
+As of 2026-08-11, the headline figure carries a 90% uncertainty range based on priors for the area-to-capacity constants, measured segmentation precision and recall by installation size, and the sensitivity of the coverage ratio to the mapped calibration quadrats. The range is intentionally wide: recalibration alone shifted the estimate by 20 to 35% five times in one week.
+
+It is not a design-based margin of error. The quadrats are hand-picked, not randomly sampled, and the range does not capture the mismatch between where the roofclf coverage correction is calibrated and where it is applied. Roughly half of Best uses a multiplier derived from quadrats several times denser than many of the cells it estimates. See [Calibration density mismatch](issues/roofclf-calibration-density-mismatch.md) for details. The full uncertainty derivation is provided in [Capacity map](results/capacity.md), while [Validation against MaStR](methods/mastr-validation.md) explains what comparison with a legally complete register can and cannot establish.
 
 Every number above carries the same caveat: **this is a screening and estimation layer,
 not a register**. No human has validated most of it at scale, and the sub-400 m
