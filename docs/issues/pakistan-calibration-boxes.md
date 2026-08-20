@@ -1452,10 +1452,31 @@ distinct from both the industrial estates and the sparse rural extensions added 
 regimes -- Attock and Lodhran tightly packed (29.6-44.2 m, close to Lahore/Mardan's band),
 Layyah sparse (296.6 m, close to Muzaffargarh Rural's).
 
-Status: registered, all three explicitly **NOT Rule-1** (`new_calibration_quadrat.py` prints
-this on every fresh box; the counts above are a live Overpass pull at the supplied boundary,
-not a completeness sweep -- absence of a mapped installation does not mean absence of PV).
-`n_buildings`/`base_rate`/`nn_median_m` are blank in `results/calibration_quadrats.csv`
-pending a `roofclf` re-run that includes them; `roofclf.discover_quadrats` will pick them up
-automatically once it runs. Do not fold into a fit or count on their negatives until the
-owner declares a completeness pass for each, same as every other quadrat in this log.
+**Update 2026-08-20: the owner declared all three Rule-1 complete**, and they were folded
+into a fresh `roofclf` refit the same day (`data/roofclf_refit_box18_20260820_v2.log`,
+30 quadrats -- every discoverable quadrat except `kalat_rural_calib_3km`, which stays excluded
+per its own entry above until `building_table`'s roof term gets a placement/size guard).
+`results/calibration_quadrats.csv` now carries `n_buildings`/`base_rate`/`nn_median_m` for all
+three (`scripts/build_calibration_quadrats_csv.py --folds data/roofclf/folds.csv`) and
+`rule1_complete=True`. Fold results: Attock `auc` in the refit's `folds.csv` (56/3579
+buildings have PV, 1.6%, `rate_ratio` 3.71), Lodhran (32/949, 3.4%, ratio 0.82), Layyah
+(15/584, 2.6%, ratio 0.87) -- all inside the historical 0.2-5x `rate_ratio` span, no fold
+collapsed. Median fold AUC moved 0.8735 -> 0.8574 (27 -> 30 quadrats), a small, expected
+give from added landscape diversity rather than a fit failure. National rescoring
+(`roofclf-score-national --force`, needed because the model itself changed) was launched
+the same day as unit `earthpv-roofclf-score-box18`, completed in ~2.5h (4,470 cells, 75.7M
+buildings scored). `sub400-capacity`/`ge400-roof-capacity`/`atlas` re-run followed the same
+day: sub-400 central 9,201.7 -> 8,922.7 MWp, sub-400 AND-gate 2,647.0 -> 2,515.3 MWp, the
+>= 400 m² roofclf rooftop replacement 7,405.0 -> 6,747.3 MWp, Best estimate 19,745.9 ->
+**18,826.7 MWp** (90% CI 16,022-24,358), Verified (floor) 5,856.8 -> **5,725.1 MWp**. All
+three components moved down together, consistent with the lower median fold AUC rather than
+any one quadrat dominating. The pre-refit model/tables are kept at
+`data/roofclf_PRE_box18_20260820/` and `data/roofclf_national_with_sppi/pakistan/
+density_PRE_box18_20260820/` for comparison. Random-cell validation (20 cells, seed
+20260820) was generated (`results/pakistan_roofclf_validation/`) and logged to
+`results/roofclf_random_validation_log.csv` but **not yet reviewed** -- same open backlog as
+the 2026-08-17 batch.
+
+~~Status: registered, all three explicitly NOT Rule-1 ... Do not fold into a fit or count on
+their negatives until the owner declares a completeness pass for each, same as every other
+quadrat in this log.~~ (superseded above, 2026-08-20)

@@ -23,6 +23,16 @@
     label raises the same multiplier without touching where it is fit, so if anything slightly
     more rides on the mismatch than when this was written.
 
+    **2026-08-20**: three peri-urban quadrats (Attock, Layyah, Lodhran -- Box 18 in
+    [Calibration boxes](pakistan-calibration-boxes.md)) were declared Rule-1 and folded into
+    a fresh `roofclf` refit, moving Best estimate to 18,826.7 MWp, sub-400 central to 8,922.7
+    and the >= 400 m<sup>2</sup> replacement to 6,747.3 (total 15,670.0, 83% of Best). Same
+    caveat as above: figures below are left as measured on 2026-08-16 rather than restated.
+    The finding itself is if anything reinforced, not changed -- the new quadrats widen the
+    calibration set's density range slightly but do not change that it is fit on
+    urban/semi-urban land and applied nationally; `select_calibrated_quadrats`'s density-rank
+    correlation has not been remeasured against the 30-quadrat set.
+
 ## What the multiplier is and how much rides on it
 
 The roofclf half of the atlas is two components that share one formula:

@@ -30,9 +30,9 @@ model checkpoint.
 
 ## The headline figure
 
-**Best estimate: 19,746 MWp** (90% range 16,051 &ndash; 23,520). It combines every
+**Best estimate: 18,827 MWp** (90% range 16,022 &ndash; 24,358). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
-"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (8,832 MWp: roofclf's own
+"Ground-mount fixes" below) with &ge;400 m<sup>2</sup> capacity (roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
 detections everywhere else, segmentation's ground-mount detections throughout -- see
 "Segmentation vs. roofclf on large rooftops" below) and the roofclf per-building density
@@ -41,8 +41,18 @@ therefore measured inside the density-calibrated domain: the out-of-domain
 roofclf-AND-SPPI extrapolation that used to add 62 MWp was dropped from the published
 atlas on 2026-08-15 (see "A thirteenth change" below).
 
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 55 percent OpenStreetMap hand-mapped and 45 percent roofclf-and-SPPI agreement, totalling 5.9 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 7 percent TerraMind segmentation and 84 percent roofclf alone, totalling 19.7 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 55 percent OpenStreetMap hand-mapped and 45 percent roofclf-and-SPPI agreement, totalling 5.9 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 7 percent TerraMind segmentation and 84 percent roofclf alone, totalling 19.7 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+**Update 2026-08-20**: three peri-urban calibration quadrats (Attock, Layyah, Lodhran --
+`docs/issues/pakistan-calibration-boxes.md`'s Box 18) were declared Rule-1 and folded into a
+fresh `roofclf` refit (30 quadrats total; `kalat_rural_calib_3km` stays excluded). National
+rescoring moved every roofclf-based component down together (a slightly less confident fit,
+median LOQO fold AUC 0.8735 -> 0.8574, rather than any one quadrat dominating): sub-400
+central 9,201.7 &rarr; 8,922.7 MWp, sub-400 AND-gate 2,647.0 &rarr; 2,515.3 MWp, &ge;400
+m<sup>2</sup> roofclf rooftop 7,405.0 &rarr; 6,747.3 MWp, Verified (floor) 5,856.8 &rarr;
+5,725.1 MWp, Best estimate 19,745.9 &rarr; **18,826.7 MWp**. The density-calibrated domain
+itself is unchanged (2,957/4,463 cells, 66.3%).
+
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 56 percent OpenStreetMap hand-mapped and 44 percent roofclf-and-SPPI agreement, totalling 5.7 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.8 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 56 percent OpenStreetMap hand-mapped and 44 percent roofclf-and-SPPI agreement, totalling 5.7 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.8 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
 roofclf alone -- its own &ge;400 m<sup>2</sup> replacement plus the sub-400 m<sup>2</sup>
 central estimate -- supplies about four-fifths of Best by itself; direct OSM mapping and

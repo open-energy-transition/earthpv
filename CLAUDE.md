@@ -356,6 +356,20 @@ The parcel calibration and scoring now occupy the canonical paths (`data/roofclf
 `*_PRE_20260817_parcel_label` so every pre-widening figure stays reproducible. Full derivation:
 `docs/methods/roofclf.md`'s "The parcel label", `docs/issues/small-ground-mount-instrument.md`.
 
+**2026-08-20: Attock/Layyah/Lodhran (Box 18) declared Rule-1 and folded into a fresh refit**
+(30 quadrats total, `kalat_rural_calib_3km` still excluded -- see "Calibration quadrats"
+below). Same national rescoring + capacity chain, re-run in place: sub-400 central
+9,201.7 -> **8,922.7 MWp**, sub-400 AND-gate 2,647.0 -> **2,515.3 MWp**, the >= 400 m² roofclf
+rooftop replacement 7,405.0 -> **6,747.3 MWp**, Best estimate 19,745.9 -> **18,826.7 MWp**
+(90% CI 16,022-24,358), and the internal floor (Verified) 5,856.8 -> **5,725.1 MWp**. All
+three components moved down, consistent with the added peri-urban diversity giving a
+slightly less confident fit (median LOQO fold AUC 0.8735 -> 0.8574) rather than any single
+quadrat dominating. Pre-refit tables kept at `data/roofclf_PRE_box18_20260820/` and
+`data/roofclf_national_with_sppi/pakistan/density_PRE_box18_20260820/`. Random-cell
+validation (20 cells, seed 20260820, tiles in `results/pakistan_roofclf_validation/`) was
+generated but **not yet reviewed** -- rows logged to `results/roofclf_random_validation_log.csv`
+with blank verdict columns, same backlog pattern as the 2026-08-17 batch above.
+
 **roofclf's own misses are corrected for too, since 2026-08-15**
 (`sub400_capacity.area_recall_by_size_and_density`). The coverage ratio prices the PV on roofs
 roofclf *flagged*; on its own it books zero MWp for every installation on a roof roofclf missed.
@@ -392,11 +406,11 @@ that pulls a country average down; a range-extending quadrat has to be sized and
 average in enough non-built land on purpose. `docs/methods/calibration-quadrats.md` and
 `docs/methods/density.md` have the full derivation and every historical widening step.
 
-Current domain-restricted capacity figures (post 2026-08-13 second `roofclf` refit + national
-rescoring, 27 quadrats including `nasirabad_rural_calib_2km` and `tank_rural_calib_2km`; the two
-recall-corrected figures as of 2026-08-15): sub-400 central (feeds Best estimate)
-**7,890.2 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by design)
-**2,179.7 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **7,189.4 MWp**.
+Current domain-restricted capacity figures (post 2026-08-20 `roofclf` refit + national
+rescoring, 30 quadrats -- adds Attock/Layyah/Lodhran peri-urban screens, still excludes
+`kalat_rural_calib_3km`; parcel label, recall-corrected): sub-400 central (feeds Best
+estimate) **8,922.7 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by
+design) **2,515.3 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **6,747.3 MWp**.
 
 **Outside the calibrated domain, roofclf-AND-SPPI agreement CAN be used as a substitute standard
 of evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`, `--sub400-outdomain-cells`),
@@ -418,10 +432,11 @@ vector where the underlying constant or calibration set is shared. It asserts it
 point values sum to the published total as a guard against silently adding a component to
 the atlas without adding it to the uncertainty composition (the code still separately tracks
 the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
-published). **Current published result: Best estimate 18,218.4 MWp (90% CI 14,346-21,768)**
-(2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction above, then -61.7 on dropping
-the out-of-domain extrapolation; the floor is unchanged at 5,389.5 MWp throughout, as intended --
-neither change touches it).
+published). **Current published result: Best estimate 18,826.7 MWp (90% CI 16,022-24,358)**
+(2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction, then -61.7 on dropping the
+out-of-domain extrapolation; 2026-08-17: -> 19,745.9 on the parcel-label promotion; 2026-08-20:
+-> 18,826.7 on folding Box 18's three peri-urban quadrats into the refit. The floor (Verified)
+moved similarly: 5,389.5 -> 5,856.8 (parcel label, 2026-08-17) -> 5,725.1 (Box 18, 2026-08-20)).
 CLI: `--coverage-boot N` on `sub400-capacity`/`ge400-roof-capacity` (default 200; 0 disables and
 narrows the reported interval), `--no-recall-correct` on either to reproduce the
 pre-2026-08-15 flagged-population-only figures exactly.
@@ -535,10 +550,15 @@ installations), all Punjab, all-sub-400 m² populations, none moving the density
 sit well inside the existing 48.5-5,258.00 range). Registered from six candidate screening
 boxes total; the other three (Mardan, Shikarpur, Sialkot District) were dropped before
 mapping for stale/unusable imagery, the same gate Box 17 identifies -- see
-`docs/issues/pakistan-calibration-boxes.md`'s Box 18. **These three are explicitly NOT
-Rule-1** and not yet folded into any `roofclf` refit.
-Every quadrat through Kalat Rural is declared **Rule-1 complete** by
-the owner (every visible panel mapped) --
+`docs/issues/pakistan-calibration-boxes.md`'s Box 18. **Update 2026-08-20: the owner declared
+all three Rule-1**, and they were folded into a fresh `roofclf` refit the same day (30
+quadrats -- every discoverable quadrat except Kalat Rural, which stays excluded per its own
+entry above). Median fold AUC moved 0.8735 -> 0.8574 (27 -> 30 quadrats); the density-
+calibration domain itself did not move (still 2,957/4,463 cells, 66.3%, 48.5-5,258.00
+bldg/km², confirming none of the three widens it as expected). Pre-refit model/tables kept at
+`data/roofclf_PRE_box18_20260820/` for comparison.
+Every quadrat through Kalat Rural, plus these three as of 2026-08-20, is declared **Rule-1
+complete** by the owner (every visible panel mapped) --
 **Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own
 (usually unrecorded) capture date, not against the Sentinel-2 composite's epoch, so the newest
 installations are structurally missed regardless of mapping effort. This makes precision and

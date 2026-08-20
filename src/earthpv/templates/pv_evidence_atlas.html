@@ -487,7 +487,7 @@
     <div class="grid">
       <section class="card map-card">
         <div class="map-head">
-          <div class="map-title">__AOI_TITLE__ PV capacity, best estimate, by 0.1&deg; cell</div>
+          <div class="map-title">__AOI_TITLE__ PV capacity, by 0.1&deg; cell</div>
           <div class="map-sub">11 km × 11 km cells · log scale</div>
         </div>
         <div id="mapmount"></div>
@@ -528,7 +528,7 @@
       <aside>
         <div class="card">
           <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
-          <div class="hero-label">Best estimate, nationwide</div>
+          <div class="hero-label">Nationwide</div>
           <div class="hero-ci" id="heroCi"></div>
           <div class="hero-freshness" id="heroFreshness"></div>
           <div class="hero-desc" id="heroDesc"></div>
@@ -541,7 +541,7 @@
           <details class="tablewrap">
             <summary>Full province figures</summary>
             <div style="overflow-x:auto;"><table id="ptable">
-              <thead><tr><th>Province</th><th>Best estimate</th>
+              <thead><tr><th>Province</th><th>Capacity</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
                 <th>Small PV, checked cells</th>
                 <th id="thOutdomain">Small PV, extrapolated</th></tr></thead>
@@ -585,7 +585,7 @@
           <div class="lk"><span class="sw ground"></span>ground-mount</div>
           <div class="lk" id="extrapKey"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
         </div>
-        <div class="hero-desc" style="margin-top:14px;">The same Best-estimate total
+        <div class="hero-desc" style="margin-top:14px;">The same total
         photovoltaic capacity detectable with Sentinel-2, re-cut by installation size
         instead of geography: rooftop bars stack across every bin, while ground-mount
         only shows up at &ge;400 m&sup2; -- the two detectors split the total by
@@ -594,7 +594,7 @@
 
       <aside>
         <div class="card">
-          <div class="hero-desc" style="margin-top:0;">Best estimate, split by
+          <div class="hero-desc" style="margin-top:0;">Total Capacity, split by
           placement across every size bin. <b>Rooftop</b> dominates the small end;
           <b>ground-mount</b> dominates the largest bin (utility-scale plants).</div>
           <div class="tiles" id="sizeTiles"></div>
@@ -625,7 +625,7 @@
 
     <div class="card">
       <div class="map-head">
-        <div class="map-title" id="compTitle">Best estimate</div>
+        <div class="map-title" id="compTitle">Total Capacity</div>
         <div class="map-sub" id="compSub"></div>
       </div>
       <div class="comp-legend" id="compLegend"></div>
@@ -685,7 +685,7 @@
           to fit</div>
         </div>
         <div class="pose-panel pose-stat-card">
-          <div class="pose-stat-row"><span class="pose-stat-label">&ge;1 spike, no fittable pose&dagger;</span>
+          <div class="pose-stat-row"><span class="pose-stat-label">&ge;1 spike, no fittable pose;</span>
             <span class="pose-stat-val pose-mono pz-pct-onespike">0%</span></div>
           <div class="pose-stat-row"><span class="pose-stat-label">no glint signal at all</span>
             <span class="pose-stat-val pose-mono pz-pct-nosignal">0%</span></div>
@@ -696,19 +696,9 @@
         </div>
         <p class="pose-footnote pz-ge1000-note"></p>
         <div class="pose-panel pose-callout">
-          <h3 class="pose-callout-h">Why the plot only fills part of the circle</h3>
-          <p>
-            Sentinel-2 crosses this latitude at a fixed <b>~10:30 local time</b>, so across two
-            full years of imagery the sun's azimuth at the moment of every overpass never once
-            swings west of due south -- a panel facing southwest, west, or north <b>cannot glint
-            into this sensor no matter how long you wait.</b> That's a sensor limit, not a
-            property of rooftops here: the <span class="pose-fig">shaded wedge</span>
-            (<span class="pose-fig pz-wedge-deg">0</span>&deg; wide) marks orientations this
-            survey cannot observe at all, not orientations known to be empty. Nothing is
-            plotted there, because nothing was measured there.
-          </p>
-          <p>
-            &dagger; <b>Glint</b> is a brief, brighter-than-diffuse flash where a panel's
+          <h3 class="pose-callout-h">What is PV glint and how is it detected?</h3>
+            <p>
+            <b>PV Glint</b> is a brief, brighter-than-diffuse flash where a panel's
             specular reflection lines up with the sun and Sentinel-2's fixed overpass
             geometry on one date -- see
             <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">the method page</a>
@@ -718,6 +708,17 @@
             <span class="pz-pct-onespike">0</span>% of installations glint <i>once</i> (or on
             dates that disagree on a panel geometry) and so are correctly detected as "PV is
             probably here" but carry <b>no orientation information</b>.
+          </p>
+          <h3 class="pose-callout-h">Why the plot only fills part of the circle</h3>
+	  <p>
+            Sentinel-2 crosses this latitude at a fixed <b>~10:30 local time</b>, so across two
+            full years of imagery the sun's azimuth at the moment of every overpass never once
+            swings west of due south -- a panel facing southwest, west, or north <b>cannot glint
+            into this sensor no matter how long you wait.</b> That's a sensor limit, not a
+            property of rooftops here: the <span class="pose-fig">shaded wedge</span>
+            (<span class="pose-fig pz-wedge-deg">0</span>&deg; wide) marks orientations this
+            survey cannot observe at all, not orientations known to be empty. Nothing is
+            plotted there, because nothing was measured there.
           </p>
         </div>
       </div>

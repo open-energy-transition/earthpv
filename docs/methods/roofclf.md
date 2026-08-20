@@ -352,16 +352,19 @@ The coverage ratio is now fitted per roof-size bin and per building-density band
 
 | Component | Population | MWp |
 | --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,647 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 9,202 |
-| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 7,405 |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 62 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,515 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 8,923 |
+| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 6,747 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 69 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 19,745.9 MWp (90%
-range 16,051 to 23,520)** -- the first three rows only. The fourth was dropped from the
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 18,826.7 MWp (90%
+range 16,022 to 24,358)** -- the first three rows only. The fourth was dropped from the
 published atlas on 2026-08-15 (see the last bullet below); its capacity function and CLI
-flag remain for anyone who wants that estimate explicitly.
+flag remain for anyone who wants that estimate explicitly. (Updated 2026-08-20: three
+peri-urban calibration quadrats -- Attock, Layyah, Lodhran, `docs/issues/pakistan-calibration-boxes.md`'s
+Box 18 -- were declared Rule-1 and folded into a fresh `roofclf` refit, 30 quadrats total,
+moving every row in this table down together.)
 
 The two Best-estimate roofclf rows are **recall-corrected as of 2026-08-15**: the coverage
 ratio prices the PV on roofs roofclf flagged, and dividing by the measured share of true
@@ -391,8 +394,8 @@ Three things about that table are worth stating plainly:
   and the JOSM pass meant to test that population could not be done: the reference imagery
   there is too old to confirm or refute recent installations. It fed Best estimate only,
   drawn with its own dotted outline; dropping it moved the headline 18,280 to 18,218 MWp
-  and left the floor untouched. Everything the atlas now reports is measured where it is
-  applied.
+  (pre-parcel-label figures) and left the floor untouched. Everything the atlas now reports
+  is measured where it is applied.
 
 ## What roofclf cannot do
 

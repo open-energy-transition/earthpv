@@ -98,13 +98,15 @@ rooftop, packing 47.0 m; Box 17), and the three peri-urban screens added 2026-08
 Attock (`attock_periurban_calib_2km`, Punjab, 54 installations, median 18.4 m², packing
 44.2 m), Lodhran (`lodhran_periurban_calib_2km`, Punjab, 36 installations, median 21.8 m²,
 packing 29.6 m) and Layyah (`layyah_periurban_calib_2km`, Punjab, 17 installations, median
-96.0 m², packing 296.6 m) -- are not yet reflected, none of them because none has
-`n_buildings`/`n_pv_buildings`/
-`base_rate` yet (needs a `roofclf` re-run that includes it) and therefore no base rate to
-sort it by -- do not read this table as exhaustive. The three peri-urban screens are also
-**not yet Rule-1**, unlike the others in this sentence -- see Box 18 in
+96.0 m², packing 296.6 m) -- are not yet reflected in the table below, none of them because
+none had `n_buildings`/`n_pv_buildings`/`base_rate` when this snapshot was last hand-updated
+-- do not read this table as exhaustive; `results/calibration_quadrats.csv` is current.
+**Update 2026-08-20: the three peri-urban screens are now Rule-1** (the owner declared
+completeness) and are folded into the current `roofclf` fit along with every other quadrat
+here except `kalat_rural_calib_3km` -- see Box 18 in
 [Calibration boxes](../issues/pakistan-calibration-boxes.md) for the full registration
-(including three sibling candidates dropped for stale imagery before mapping).
+(including three sibling candidates dropped for stale imagery before mapping) and its
+2026-08-20 update for the refit itself.
 
 **Kalat Rural must not enter a `roofclf` fit before `building_table`'s roof term gets a
 placement/size guard.** It is the first quadrat whose mapped PV is dominated by ground-mount

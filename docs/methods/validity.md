@@ -3,9 +3,13 @@
 An assessment of two questions any reader should ask before citing this project's numbers:
 does the pipeline measure a physical signal or statistical noise, and does the approach
 scale beyond the Pakistan pilot. Written 2026-08-18 against the published Best estimate of
-19,745.9 MWp (90% range 16,051 to 23,520). The short answer to both is qualified: the
-signal is physical, but the certainty is unevenly distributed across the pipeline, and the
-two halves of the workflow scale very differently.
+19,745.9 MWp (90% range 16,051 to 23,520); updated 2026-08-20 for the Best estimate's move to
+**18,826.7 MWp (90% range 16,022 to 24,358)** after three peri-urban calibration quadrats
+were folded into a `roofclf` refit (see [Calibration boxes](../issues/pakistan-calibration-boxes.md)'s
+Box 18) -- the analysis below is otherwise unchanged, since the move is a quadrat-composition
+shift of the kind this page already discusses, not a new source of uncertainty. The short
+answer to both questions is qualified: the signal is physical, but the certainty is unevenly
+distributed across the pipeline, and the two halves of the workflow scale very differently.
 
 ## Evidence that the signal is physical
 
@@ -37,9 +41,9 @@ independent grounds:
 The distinction that matters is between *detection* and *magnitude*, and the place to
 direct scrutiny is the small end of the size distribution.
 
-Roughly 84% of the Best estimate (the sub-400 m&sup2; central component at 9,201.7 MWp
-plus the &ge;400 m&sup2; roofclf rooftop replacement at 7,405.0 MWp) flows through
-roofclf's coverage-ratio and area-recall calibration chain, fit on 27 purposively
+Roughly 83% of the Best estimate (the sub-400 m&sup2; central component at 8,922.7 MWp
+plus the &ge;400 m&sup2; roofclf rooftop replacement at 6,747.3 MWp) flows through
+roofclf's coverage-ratio and area-recall calibration chain, fit on 30 purposively
 selected quadrats on which the predicted-to-true adoption ratio has historically spanned
 0.2x to 5x. The classifier's discrimination is real but moderate (see
 [The rooftop classifier](roofclf.md) for the measured AUCs), and a per-building
