@@ -1,5 +1,5 @@
 ---
-title: "Pakistan: PV Capacity Map"
+title: "EarthPV"
 hide:
   - navigation
   - toc

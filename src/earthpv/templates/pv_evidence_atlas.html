@@ -187,6 +187,7 @@
   .legend-keys > button.key-toggle[aria-pressed="true"] .eye-slash { display: none; }
   .legend .domain-key .sw { width: 13px; height: 13px; margin-top: 1px;
     border: 2px dashed var(--domain); border-radius: 3px; }
+  #domainKey { margin-left: -2ch; }
   .legend .extended-key .sw { width: 13px; height: 13px; margin-top: 1px;
     border: 2px dotted var(--extended); border-radius: 3px; }
   .legend .calib-key .sw { width: 11px; height: 11px; margin-top: 2px; border-radius: 50%;
@@ -702,9 +703,11 @@
           <p>
             &dagger; <b>Glint</b> is a brief, brighter-than-diffuse flash where a panel's
             specular reflection lines up with the sun and Sentinel-2's fixed overpass
-            geometry on one date -- see <code>docs/methods/glint.md</code> for the full
-            derivation and <code>docs/glint_examples.md</code> for an annotated image
-            gallery. A single spike can't be checked for self-consistency --
+            geometry on one date -- see
+            <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">the method page</a>
+            for the full derivation and
+            <a href="https://open-energy-transition.github.io/earthpv/glint_examples/" target="_blank" rel="noopener">an annotated image gallery</a>.
+            A single spike can't be checked for self-consistency --
             <span class="pz-pct-onespike">0</span>% of installations glint <i>once</i> (or on
             dates that disagree on a panel geometry) and so are correctly detected as "PV is
             probably here" but carry <b>no orientation information</b>.
@@ -717,9 +720,11 @@
       Data: <span class="pose-mono pz-summary-path"></span><span class="pz-data-note"></span>.
       Validated = a single (tilt, azimuth) explains &ge; 2 independent spike dates via the
       specular reflection condition, tolerance 3&deg;. Point size &prop; &radic;(installation area).
-      Full derivation of the glint signal this pose fit is built on: <code>docs/methods/glint.md</code>.
+      Full derivation of the glint signal this pose fit is built on:
+      <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">the method page</a>.
       Annotated Sentinel-2 / high-res examples of what a validated spike actually looks like in
-      the source imagery: <code>docs/glint_examples.md</code>.
+      the source imagery:
+      <a href="https://open-energy-transition.github.io/earthpv/glint_examples/" target="_blank" rel="noopener">the image gallery</a>.
     </p>
   </section>
 
@@ -731,7 +736,7 @@
       </div>
     </div>
 
-    <details class="xdetails" open>
+    <details class="xdetails">
       <summary><span><span class="xt">How confident should you be in this?</span>
         <span class="xs">preliminary results, sampling caveats, independent corroboration</span></span><span class="xi">+</span></summary>
       <div class="xbody">
