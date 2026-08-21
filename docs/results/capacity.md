@@ -54,9 +54,7 @@ itself is unchanged (2,957/4,463 cells, 66.3%).
 ![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 56 percent OpenStreetMap hand-mapped and 44 percent roofclf-and-SPPI agreement, totalling 5.7 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.8 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
 ![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 56 percent OpenStreetMap hand-mapped and 44 percent roofclf-and-SPPI agreement, totalling 5.7 gigawatts peak; Best estimate is 9 percent OpenStreetMap, 8 percent TerraMind segmentation and 83 percent roofclf alone, totalling 18.8 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
-roofclf alone -- its own &ge;400 m<sup>2</sup> replacement plus the sub-400 m<sup>2</sup>
-central estimate -- supplies about four-fifths of Best by itself; direct OSM mapping and
-segmentation split the remaining fifth. SPPI no longer contributes to Best at all; its
+SPPI no longer contributes to Best at all; its
 role is in the internal floor, where it is nearly as large as all of hand-mapped OSM. Full per-component
 breakdown, with credible intervals on every slice:
 [capacity composition](../assets/interactive/pakistan_atlas_composition.html){ target="_blank" }.
