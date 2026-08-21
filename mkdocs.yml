@@ -124,6 +124,7 @@ nav:
   - Setup:
       - Tutorial: tutorial.md
       - Setup New Country: reproduce.md
+      - Contribute a calibration area: contribute.md
   # History last: what was tried, and what is still undecided. Every page under
   # Experiments carries a status banner, because several describe a pipeline that has
   # since been replaced.

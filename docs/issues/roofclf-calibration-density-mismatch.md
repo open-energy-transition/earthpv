@@ -1,37 +1,40 @@
 # The correction that prices most of the atlas is fit outside the density range it is applied to (2026-08-16)
 
-!!! warning "OPEN, measured 2026-08-16"
+!!! success "LARGELY CLOSED as of 2026-08-17 -- re-verified 2026-08-20, see update below"
 
-    No number has been changed and nothing has been withdrawn. This page reports a
-    measurement of an existing calibration choice, and the measurement says the choice is
-    load-bearing in a way that was not previously written down. Reproduce with
-    `scripts/trust_gate_density_audit.py`, which recomputes both affected components from
-    the saved per-building tables and reproduces their published totals exactly before
-    varying anything.
+    No number below has been changed and nothing has been withdrawn -- they are kept as
+    measured on 2026-08-16 for reproducibility (`scripts/trust_gate_density_audit.py`
+    recomputes them exactly from the saved per-building tables of that date). **But the
+    reach this page is about has since shrunk dramatically**, not because of any fix aimed
+    at it, as a side effect of `bahawalnagar_rural` (124 bldg/km<sup>2</sup>) crossing into
+    the trust gate's `rate_ratio` band sometime between 2026-08-16 and the 2026-08-17
+    parcel-label refit. Re-running the audit script against both the 27-quadrat
+    (2026-08-17, pre-Box 18) and the current 30-quadrat (2026-08-20, Box 18) fits gives:
 
-    **The short version:** 54% of the published Best estimate is priced by a multiplier
-    fit entirely on calibration quadrats that are denser than the cells the multiplier is
-    applied to, and the filter that produced that quadrat set, while described as a
-    precision filter, selects on density at a rank correlation of -0.58.
+    | | 2026-08-16 (as measured below) | 2026-08-17 (27 quadrats) | 2026-08-20 (30 quadrats, current) |
+    |---|---:|---:|---:|
+    | sparsest quadrat in the fit | 872 bldg/km<sup>2</sup> (Multan) | 124 bldg/km<sup>2</sup> (Bahawalnagar Rural) | 124 bldg/km<sup>2</sup> (unchanged) |
+    | in-domain buildings sparser than every fit quadrat | 84.1% | 13.5% | 13.5% (unchanged) |
+    | roofclf half priced out of calibration range | 54.3% | 5.5% | 5.3% |
+    | as a share of published Best estimate | 54% | 5% | 5% |
 
-    **Figures on this page are as measured on 2026-08-16 and have since moved**, with the
-    2026-08-17 [parcel label](../methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16):
-    Best estimate is now 19,745.9 MWp, sub-400 m<sup>2</sup> central 9,201.7 and the >= 400
-    m<sup>2</sup> replacement 7,405.0, so the two components this page is about now total
-    16,606.7 MWp, or 84% of Best. They are left as measured rather than restated, because the
-    audit script reproduces *those* totals. Nothing about the finding changes -- the parcel
-    label raises the same multiplier without touching where it is fit, so if anything slightly
-    more rides on the mismatch than when this was written.
+    **The short version, updated:** the multiplier is still fit on urban/semi-urban land and
+    applied to sparser cells nationally, and the trust gate still selects on density as a
+    side effect of selecting on precision (Spearman(density, rate_ratio) is -0.36 on the
+    current 30-quadrat fit, versus -0.58 as measured 2026-08-16) -- so the *mechanism* this
+    page describes is real and unfixed. But the practical *reach* of that mechanism dropped
+    an order of magnitude between 2026-08-16 and 2026-08-17, apparently from
+    Bahawalnagar Rural's own `rate_ratio` moving (2.19 &rarr; 1.78 &rarr; 1.70 across the
+    three fits above) rather than from any deliberate widening of the gate. **The three
+    Box 18 peri-urban quadrats folded in 2026-08-20 (Attock, Layyah, Lodhran) did NOT move
+    this finding further** -- the sparsest passing quadrat, the out-of-range building share,
+    and the out-of-range MWp share are all within measurement noise of the 2026-08-17
+    figures. Whether Bahawalnagar Rural's rate_ratio crossing the gate on 2026-08-17 was
+    itself examined and intentional, or a side effect of the parcel-label refit that nobody
+    checked against this page, is not recorded anywhere and is worth asking the owner about.
 
-    **2026-08-20**: three peri-urban quadrats (Attock, Layyah, Lodhran -- Box 18 in
-    [Calibration boxes](pakistan-calibration-boxes.md)) were declared Rule-1 and folded into
-    a fresh `roofclf` refit, moving Best estimate to 18,826.7 MWp, sub-400 central to 8,922.7
-    and the >= 400 m<sup>2</sup> replacement to 6,747.3 (total 15,670.0, 83% of Best). Same
-    caveat as above: figures below are left as measured on 2026-08-16 rather than restated.
-    The finding itself is if anything reinforced, not changed -- the new quadrats widen the
-    calibration set's density range slightly but do not change that it is fit on
-    urban/semi-urban land and applied nationally; `select_calibrated_quadrats`'s density-rank
-    correlation has not been remeasured against the 30-quadrat set.
+    Figures in the body of this page below are left as originally measured on 2026-08-16 for
+    reproducibility; read them as history, not as the current reach.
 
 ## What the multiplier is and how much rides on it
 

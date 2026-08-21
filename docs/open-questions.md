@@ -41,32 +41,40 @@ See [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 17.
 
 ### 3. The correction that prices most of the atlas is fit outside the density range it is applied to
 
-`coverage_ratio` and `area_recall` multiply both roofclf components, which are 15,080 MWp or
-83% of the published Best estimate. Both are fit on the quadrats `select_calibrated_quadrats`
-returns, and those span 872 to 4,195 bldg/km2. The cells they are applied to do not: **84.1%
-of in-domain buildings sit in cells sparser than every quadrat in the fit**, at a
-building-weighted median of 252 bldg/km2, and **9,842 MWp, 54% of the published Best
-estimate, is priced by a multiplier fit entirely on denser ground**. The density
-stratification meant to absorb this is close to degenerate at deployment: two bands, and band
-0 is fit from 8 quadrats spanning 872 to 1,758 bldg/km2 and then applied to 92.1% of national
-buildings, everything in the domain from 48.5 up to 1,737.
-
-**Measured 2026-08-16.** The trust gate is not density-neutral: Spearman(density, rate_ratio)
-is -0.577, the sparse density tercile passes at 0.44 against 1.00 for the middle one, and all
-five sparse quadrats it drops fail above the ceiling rather than below the floor. Relaxing
-`ratio_hi` moves the roofclf half by -8.4% (-1,270 MWp), non-monotonically, because admitting
-a quadrat moves the band split. That is 20 times the component dropped from the atlas on
-2026-08-15 for being unmeasured where applied. The published 90% interval does not cover any
-of this, because every quadrat the bootstrap can resample sits in the wrong band.
-
-The fix is mapping in an identified band, 300 to 600 bldg/km2 first, then 150 to 300; together
-those hold two thirds of the exposure. Three things are cheaper and worth doing first:
-backfill the missing `n_buildings` for `nasirabad_rural` and `tank_rural` (189 and 225, which
-currently bars them from the fit outright, including the very quadrat that set the domain's
-48.5 floor), record the fit's own density support next to the domain in the capacity
-summaries, and settle the gate band explicitly now that its confounding is measured. Full
-derivation, the sweep table and the reproduction script:
+**Reach dropped an order of magnitude since this was first measured, apparently as a side
+effect of an unrelated refit, not a deliberate fix -- re-verify before treating this as
+closed.** As measured 2026-08-16: `coverage_ratio` and `area_recall` (83% of Best) were fit
+on quadrats spanning 872 to 4,195 bldg/km2 while 84.1% of in-domain buildings sit in cells
+sparser than every one of them (building-weighted median 252 bldg/km2), pricing 9,842 MWp
+(54% of published Best) with a multiplier fit entirely on denser ground. Re-run
+(`scripts/trust_gate_density_audit.py`) as of the 2026-08-17 parcel-label refit and again
+after the 2026-08-20 Box 18 quadrats (Attock/Layyah/Lodhran) were folded in: the sparsest
+quadrat surviving the trust gate is now 124 bldg/km2 (`bahawalnagar_rural`, whose own
+`rate_ratio` moved 2.19 &rarr; 1.78 &rarr; 1.70 across the three fits and crossed the 2.0
+ceiling sometime between 2026-08-16 and 2026-08-17), only 13.5% of in-domain buildings sit
+sparser than every fit quadrat, and only ~5% of published Best is priced out of calibration
+range -- essentially unchanged between the 2026-08-17 and 2026-08-20 fits, so the Box 18
+quadrats did not move this finding further. **Nobody appears to have deliberately checked
+Bahawalnagar Rural's rate_ratio against this page when it crossed the gate** -- worth asking
+the owner whether that shift was noticed, since it is the whole reason this item's severity
+changed. Full before/after table:
 [roofclf calibration density mismatch](issues/roofclf-calibration-density-mismatch.md).
+
+The trust gate is still not density-neutral (Spearman(density, rate_ratio) -0.36 on the
+current 30-quadrat fit, versus -0.58 on 2026-08-16), so the *mechanism* is unfixed even
+though its *reach* is now small. `nasirabad_rural` and `tank_rural` no longer lack
+`n_buildings` (both are now scored -- 189 and 225 buildings respectively -- by every
+`roof-classifier` run since 2026-08-13), so that specific blocker from the original
+measurement is resolved; both still fail the gate on their own `rate_ratio` (tank_rural
+0.307, below the 0.5 floor; nasirabad_rural undefined, zero true positives), which is a
+legitimate exclusion, not a data gap. Remaining open work: settle the gate band explicitly
+now that its (much smaller) confounding is measured, and directly extend the fit's own
+density support into the remaining gap (50-125 bldg/km2, where the 13.5% still-uncovered
+population actually sits) rather than the stale 150-600 bldg/km2 target. Eight unscreened
+candidate quadrats targeting exactly that band, spanning Punjab/Sindh/Khyber Pakhtunkhwa/
+Balochistan, are proposed and awaiting the owner's own imagery-recency check (no automated
+check exists) in `data/labels/candidate_quadrats/*_gap_calib_2km_candidate.geojson` -- see
+[Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 19.
 
 ### 4. The calibration quadrats are purposive, not a probability sample
 

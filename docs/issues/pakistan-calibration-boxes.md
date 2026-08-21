@@ -1480,3 +1480,51 @@ the 2026-08-17 batch.
 ~~Status: registered, all three explicitly NOT Rule-1 ... Do not fold into a fit or count on
 their negatives until the owner declares a completeness pass for each, same as every other
 quadrat in this log.~~ (superseded above, 2026-08-20)
+
+### Box 19 -- eight candidate screens targeting the coverage-ratio fit's own density gap, geodesic squares 4.00 km<sup>2</sup> each -- 2026-08-20 (proposed, unscreened)
+
+Not registered, not mapped, no imagery check done -- these are candidate pointers only,
+same status as Box 18's original six before three were kept. Generated in response to
+[roofclf calibration density mismatch](roofclf-calibration-density-mismatch.md)'s finding
+that the coverage-ratio/area-recall fit's sparsest supporting quadrat sits at 124 bldg/km<sup>2</sup>
+(`bahawalnagar_rural_calib_4p00km2`) while 13.5% of in-domain buildings nationally
+(building-weighted median ~89 bldg/km<sup>2</sup>) sit sparser than that -- i.e. this
+targets the fit's own density support directly, not the domain floor (`density.
+CALIBRATED_BLDG_DENSITY_KM2`, unrelated and not what these would move).
+
+Method: `data/roofclf/national_cell_density.parquet` (national 0.1&deg; grid, `cell`/
+`n_buildings`/`density`) filtered to the 50-125 bldg/km<sup>2</sup> gap band, spatial-joined
+to geoBoundaries ADM1/ADM2 for province/district, filtered to >=20 km from every existing
+quadrat center (genuine new coverage, not redundant with an existing box), and to the four
+settled provinces (Punjab, Sindh, Khyber Pakhtunkhwa, Balochistan -- Azad Kashmir and
+Gilgit-Baltistan excluded, no existing quadrats there and GB is already ratio-check-exempt
+for an unrelated reason). Former-FATA/tribal KP districts (Waziristan, Mohmand, Bajaur,
+Khyber, Kurram, Orakzai) were explicitly excluded from the KP picks -- Waziristan specifically
+already failed Box 17's imagery-recency screen at a different (much sparser) density target,
+so it was not worth re-proposing here. Two candidates per province, spanning the low
+(~54-65 bldg/km<sup>2</sup>) and high (~102-125 bldg/km<sup>2</sup>) ends of the gap:
+
+| candidate | province | district | source-grid density (bldg/km<sup>2</sup>) |
+|---|---|---|---:|
+| `rajanpur_gap_calib_2km` | Punjab | Rajanpur | 54.4 |
+| `kasur_gap_calib_2km` | Punjab | Kasur | 124.4 |
+| `khairpur_gap_calib_2km` | Sindh | Khairpur | 55.3 |
+| `jacobabad_gap_calib_2km` | Sindh | Jacobabad | 107.9 |
+| `deraismailkhan_gap_calib_2km` | Khyber Pakhtunkhwa | Dera Ismail Khan | 63.2 |
+| `haripur_gap_calib_2km` | Khyber Pakhtunkhwa | Haripur | 102.1 |
+| `pishin_gap_calib_2km` | Balochistan | Pishin | 53.8 |
+| `mastung_gap_calib_2km` | Balochistan | Mastung | 118.8 |
+
+Confirmed clear (0% geometric overlap, nearest existing quadrat 46-53 km away) against every
+existing quadrat via `scripts/new_calibration_quadrat.py`'s own `check_overlap`. Files:
+`data/labels/candidate_quadrats/*_gap_calib_2km_candidate.geojson` (individually) and
+`density_gap_candidates_combined.geojson` (all eight). **No automated imagery-recency check
+exists anywhere in this codebase** (`docs/issues/calibration-imagery-dating.md` is still
+open, and `results/calibration_quadrats.csv`'s `imagery_layer`/`imagery_date` columns are
+empty for every quadrat) -- each candidate still needs the same manual JOSM/Esri Wayback/
+Google Earth Pro historical-imagery check that dropped three of Box 18's six, before
+`scripts/new_calibration_quadrat.py --geojson ... --lat ... --lon ...` turns any of these
+into a real quadrat. `source_grid_cell`/`source_grid_density_bldg_km2` are the *screening*
+grid cell's average, not the quadrat's own density once actually drawn and mapped -- Box 18
+measured its three survivors' own densities at 894.75/237.25/146.00 against source-grid
+values of 549.29/249.96/149.99, so expect these eight to move similarly once mapped.

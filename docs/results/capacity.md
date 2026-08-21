@@ -73,15 +73,19 @@ recall (see "A twelfth change" below), which is why the range widened alongside 
 estimate rather than simply shifting with it. It does **not** include a design-based
 sampling error, because the quadrats were hand-picked rather than randomly drawn. **It also
 does not cover the gap between where the coverage-ratio/area-recall correction is fit and
-where it is applied**: measured 2026-08-16, 54% of the published Best estimate is priced by
-a multiplier whose sparsest supporting quadrat (872 bldg/km<sup>2</sup>) is several times
-denser than most of the cells it prices, and the bootstrap behind the range above resamples
-only quadrats on the dense side of that gap, so it measures sampling noise within the fit
-and is silent about transfer to the sparser cells the number actually reports for -- see
+where it is applied**, though this gap has shrunk sharply since it was first measured: as of
+2026-08-16, 54% of the published Best estimate was priced by a multiplier whose sparsest
+supporting quadrat (872 bldg/km<sup>2</sup>) was several times denser than most of the cells
+it priced; as of the current (2026-08-20) fit, that is down to about **5%**, with the
+sparsest supporting quadrat now at 124 bldg/km<sup>2</sup> -- apparently a side effect of an
+unrelated 2026-08-17 refit rather than a deliberate fix, and unchanged by the quadrats added
+2026-08-20. The bootstrap behind the range above still resamples only quadrats within the
+fit, so it measures sampling noise within the fit and is silent about transfer to whatever
+sparser cells the remaining ~5% reports for -- see
 [Calibration density mismatch](../issues/roofclf-calibration-density-mismatch.md) for the
-full measurement. See "How confident should you be in this?" on the atlas page, and
-[validation against MaStR](../methods/mastr-validation.md) for what a complete register can
-and cannot settle here.
+full before/after measurement. See "How confident should you be in this?" on the atlas page,
+and [validation against MaStR](../methods/mastr-validation.md) for what a complete register
+can and cannot settle here.
 
 The sub-400 m<sup>2</sup> population is split into two populations of differing strictness:
 a more permissive one (roofclf alone, feeding the figure above directly) and a stricter one
