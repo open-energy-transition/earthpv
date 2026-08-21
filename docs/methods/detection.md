@@ -9,7 +9,7 @@ reproducible on hardware a university lab already owns.
 
 TerraMind is a plain vision transformer, so a UNet decoder needs a feature pyramid built
 for it. The neck stack is `SelectIndices` into `ReshapeTokensToImage` into
-`LearnedInterpolateToPyramidal`. Checkpoints monitor validation mIoU.
+`LearnedInterpolateToPyramidal`. Checkpoints monitor validation mIoU (mean Intersection over Union).
 
 **Bands.** Local composites carry 10 bands, B02 through B12 minus the two 60 m atmospheric
 bands B01 and B09. TerraMind's pretrained Sentinel-2 L2A patch embedding expects 12, so
@@ -86,9 +86,8 @@ candidate to a building footprint set in the candidates' local UTM zone, recordi
 Footprints come from **VIDA Open Buildings** (Google and Microsoft combined), which is
 imagery-derived and includes small unmapped structures, so "no building within 30 m"
 becomes a usable false-positive signal. The Overture set of buildings above 500 m<sup>2</sup>
-is the fallback. For a candidate set dominated by large arrays on already-mapped buildings
-the two attribute almost identically; VIDA's advantage appears as soon as `MIN_PV_AREA`
-drops toward residential scale.
+is the fallback. For a candidate set dominated by large arrays on already-mapped buildings, the two footprint sources produce almost identical results; VIDA's advantage appears as soon as `MIN_PV_AREA`
+drops toward residential scale. 
 
 ## Configurations
 
