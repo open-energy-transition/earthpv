@@ -10,12 +10,12 @@ This page is the register. It covers everything that was measured, whether it en
 repository; nothing was deleted on failure. For things that are still genuinely undecided,
 see [Open questions](open-questions.md).
 
-**How to read the verdicts.** <span class="outcome works">shipped</span> means it is in the
-main workflow today. <span class="outcome mixed">partial</span> means it produced a real
-measured signal that was not enough to promote. <span class="outcome negative">rejected</span>
-means it was measured and beaten by the alternative, or failed its own control.
-<span class="outcome open">superseded</span> means it shipped once and has since been
-replaced, so its own write-up describes a pipeline that no longer exists.
+#### How to read the verdicts:
+
+- <span class="outcome works">shipped</span> : part of the current main workflow
+- <span class="outcome mixed">partial</span> : useful measured signal, but not strong enough to promote
+- <span class="outcome negative">rejected</span> : underperformed the alternative or failed its control
+- <span class="outcome open">superseded</span>: previously shipped, but since replaced
 
 ## The register
 
@@ -105,35 +105,13 @@ model on its own.
 
 ### One estimator, applied to both halves
 
-The segmentation half of the atlas has estimated the whole population since the
-recall-corrected estimator shipped: each surviving detection stands in for 1/recall real
-installations of its size class. The roofclf half did not. It multiplied flagged roof area
-by the coverage ratio, which is measured as true mapped PV area over *flagged* roof area --
-a quantity that describes the roofs roofclf caught and books zero for every installation on
-a roof it missed. Two halves of one published number, built on two different estimators,
-and the uncorrected one was four-fifths of the total.
+The segmentation half already corrects for missed installations: each detection represents 1/recall real installations within its size class. The roofclf half did not. Its coverage ratio was measured only over flagged roofs, effectively assigning zero capacity to PV on missed roofs, even though roofclf contributed roughly four-fifths of the published estimate.
 
-Measuring the missing term needed no new data, only the quadrat labels already on disk: the
-share of true mapped PV **area** sitting on a flagged building, per roof-size bin and per
-building-density stratum, fit from the same 16 trusted quadrats at the same deployment
-threshold as the coverage ratio. It comes to **0.808 below 400 m<sup>2</sup>** and **0.978
-at or above** it, rising monotonically with roof size from 0.34 in the smallest decile of
-PV-carrying roofs to 0.99 in the largest. Area rather than count is the whole point: under a
-count recall, missing a 300 m<sup>2</sup> array and a 20 m<sup>2</sup> one cost the same,
-and in MWp they differ fifteenfold.
+Using the existing labels from 16 trusted quadrats, area recall was estimated as the share of mapped PV area on buildings flagged by roofclf, by roof-size bin and building-density stratum. It is 0.808 below 400 m² and 0.978 at or above 400 m², rising from 0.34 for the smallest PV-carrying roofs to 0.99 for the largest. Area recall is used because missing a 300 m² array matters far more to capacity than missing a 20 m² one.
 
-Correcting the two Best-estimate roofclf components moved them 6,372 to 7,890 MWp and 7,031
-to 7,189 MWp, and the published Best estimate 16,609 to 18,280 MWp. The internal floor did
-not move and was not meant to: a tier defined by two independent detectors agreeing stops
-being a floor the moment it extrapolates to what neither of them saw.
+The correction raised the two roofclf components from 6,372 to 7,890 MWp and from 7,031 to 7,189 MWp, increasing the published Best estimate from 16,609 to 18,280 MWp. The internal floor was left unchanged because it is defined by agreement between two independent detectors and should not extrapolate to installations neither observed.
 
-Two details make the number defensible rather than merely larger. The coverage ratio and the
-recall are refit inside the *same* bootstrap replicates instead of bootstrapped separately,
-because they come from the same quadrats and the same labels and their errors move together
--- a quadrat whose mapping is stale depresses one and inflates the other at once. And the
-correction is a lower bound on itself in three measurable ways, the largest being that Rule
-1 certifies completeness only as of the mapping imagery's epoch, which removes recent
-installations from the recall denominator only when they sit on an unflagged roof.
+Coverage ratio and recall are refit within the same bootstrap replicates because they share the same quadrats and labels. The correction also remains conservative, chiefly because mapping completeness is certified only for the imagery epoch, so some recent installations on unflagged roofs can still be missed.
 
 ### The vegetation veto, and why the obvious version fails
 
@@ -189,22 +167,25 @@ post-hoc false-positive filter.
 
 ### Two glint routes to density, both negative
 
-**Cell-aggregate spike counting.** Small residential arrays are individually sub-pixel and
-rarely glint alone, so the hypothesis was that a dense neighbourhood of independently
-oriented arrays would union their narrow glint windows into a high combined spike count.
-Tested against a fully mapped Lahore cluster with up to 120 separately mapped generators in a
-single 300 m block: zero-PV control cells averaged 1.0 spike, PV-bearing cells 1.45, medians
-tied at 1.0, and the 120-installation hotspot showed one spike in two years. This is probably
-a methodology failure rather than a physics one. A 90th-percentile statistic over a whole cell
-only moves if roughly 10% of the cell brightens at once, and even every installation in the
-busiest hotspot glinting simultaneously covers under half of that.
+#### 1. Cell-level spike counting
 
-**Recovering missed installations.** Find real mapped installations the thresholded mask
-misses entirely, glint-validate them, and add their area back. Tested on 43 missed German and
-208 missed Lahore installations against matched non-PV controls. Both fail the one thing this
-needs to do: Germany's control false-validation rate of 20.8% is uncomfortably close to the
-37.2% rate on missed installations, and Lahore's control rate of 8.7% is *higher* than its
-5.3% missed rate, which is worse than chance.
+The idea was that a dense neighbourhood of sub-pixel residential arrays might produce more cell-level glint spikes, even when individual arrays rarely glint strongly enough to detect alone. This was tested on a fully mapped Lahore cluster with up to 120 installations within a 300 m block.
+
+- Zero-PV controls: **1.0** mean spike
+- PV-bearing cells: **1.45** mean spikes
+- Median for both: **1.0**
+- The 120-installation hotspot produced only one spike in two years
+
+The signal was too weak to distinguish PV-rich cells reliably. This likely reflects the statistic rather than the underlying glint physics, since a 90th-percentile cell measure only responds when a large fraction of the cell brightens at once.
+
+#### 2. Recovering missed installations
+
+A second approach tested whether glint could validate real PV installations missed entirely by the segmentation mask, allowing their area to be added back. It was evaluated on 43 missed German installations and 208 missed Lahore installations, each compared with matched non-PV controls.
+
+- **Germany:** 37.2% validation on missed PV vs 20.8% on controls
+- **Lahore:** 5.3% validation on missed PV vs 8.7% on controls
+
+The separation is not strong enough for reliable recovery. In Germany, the control false-validation rate remains high, while in Lahore the control rate is actually higher than the missed-PV rate, indicating no useful discriminative signal.
 
 ### A measured glint PSF, and the control set that mattered more (2026-08-17)
 
@@ -318,11 +299,11 @@ co-registration by phase correlation, learns the PV installation change vector s
 rather than assuming a fixed index, deseasonalises with annual harmonics and per-orbit
 offsets, and scans for the best breakpoint per pixel.
 
-**The good part.** Area under the ROC curve of 0.875 and 0.74 on held-out halves, against
+**The good part:** Area under the ROC curve of 0.875 and 0.74 on held-out halves, against
 0.50 for the model on the same footprints. That is the first non-zero discrimination anyone
 here has achieved below 500 m².
 
-**The part that failed.** Converting that into a city-scale unmapped-capacity number was
+**The part that failed:** Converting that into a city-scale unmapped-capacity number was
 **rejected by its own control**. The method's estimate of unmapped area per built-up pixel sat
 inside the false-area floor measured on two PV-free cropland control cubes, so nothing in its
 totals block is quotable as capacity. What survives is the ranking: step-leads are defensible
