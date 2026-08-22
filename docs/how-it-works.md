@@ -125,7 +125,7 @@ Three inputs, each reused everywhere downstream rather than re-fetched per stage
 - **OSM / Overture solar labels** -- mapped installations from Overture's periodic
   snapshot, or a live Overpass pull for a region being freshly mapped
   (`earthpv overpass-labels`). This is both the training signal and, through the
-  flywheel, the thing the pipeline's own output eventually feeds back into.
+  flywheel, the destination the pipeline's own output eventually feeds back into.
 - **VIDA / Overture buildings** -- imagery-derived footprints (`buildings.py`), which
   matter because they include small, unmapped structures OpenStreetMap does not yet
   have. Buildings feed three downstream consumers directly: `postprocess`'s building
@@ -149,14 +149,14 @@ secondary product, or a documented negative result:
 | --- | --- | --- | --- |
 | **Segmentation raster** (`infer`) | **Yes -- every mapping lead; all ground-mount capacity; rooftop &ge; 400 m² outside roofclf's calibrated cells** | Yes, the primary one | per-pixel PV probability; the only instrument with a polygon and a defended ≥ 400 m² floor |
 | **[roofclf](methods/roofclf.md)** | **Yes -- every rooftop < 400 m², plus rooftop &ge; 400 m² inside its calibrated cells, where it replaces segmentation** | No, a separate lightweight classifier | per-building "does this roof carry PV," trained on exhaustively mapped calibration quadrats |
-| **SPPI** | Partially -- cross-checks roofclf as an internal floor for the evidence atlas | No, a fixed spectral formula | a zero-training index, cross-validated against the same ground truth as roofclf |
+| **SPPI** (spectral PV probability index) | Partially -- cross-checks roofclf as an internal floor for the evidence atlas | No, a fixed spectral formula | a zero-training index, cross-validated against the same ground truth as roofclf |
 | **Glint matched filter** | Optional -- boosts the leads ranking only | No | specular-flash geometry consistent with one fixed panel plane; a physical corroboration, not a probability |
 | **Fraction head** | Optional, not promoted (see below) | Yes, a separately trained checkpoint | per-pixel PV *coverage fraction*; drops the polygon, aims at sub-400 m² signal a segmentation threshold cannot see |
 
 Glint and SPPI need no model fit at all. roofclf is trained, but on a different, much
 smaller, hand-labelled corpus (the calibration quadrats), not on the segmentation
 checkpoint. This matters for how much to trust agreement between instruments: two
-signals that share no training data corroborating each other is real evidence; two
+signals that share no training data corroborating each other constitutes real evidence; two
 heads of the same checkpoint agreeing is not.
 
 ### Two optional instruments never got promoted past "evidence"
@@ -235,7 +235,7 @@ the same underlying artifacts:
   the calibrated cells -- OSM overlap removed rather than double-counted throughout, and
   floored per cell at what a person has actually mapped plus the stricter
   roofclf-and-SPPI agreement population. An earlier, looser tier,
-  **Ceiling** (a flat-precision, uncalibrated upper bound), was removed 2026-08-06: a
+  **Ceiling** (a flat-precision, uncalibrated upper bound), was removed on 2026-08-06: a
   later roofclf refit's lower deployment threshold roughly doubled it with no
   accompanying validation, so it had stopped being a meaningful bound.
 - **PyPSA-Earth grid CSV** (a byproduct of the main workflow's `density` stage, no extra
