@@ -1,3 +1,8 @@
+---
+hide:
+  - toc
+---
+
 # earthpv
 
 <div class="hero" markdown>
