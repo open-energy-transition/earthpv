@@ -21,12 +21,12 @@
 
 ---
 
+> **Country-scale solar PV capacity mapping from free 10 m Sentinel 2 satellite imagery and OpenStreetMap, covering both large arrays individually, small rooftop PV statistically and PV growth. A secondary specular-glint signal physically confirms detections and recovers panel tilt and azimuth for a subset of larger installations.**
+
 > [!WARNING]
 > **Active development.** EarthPV is a research prototype: it is actively experimenting
 > with new solar detection methods, and its detectors, calibration and headline numbers
 > are still being tested and revised rather than settled.
-
-> **Country-scale solar PV capacity mapping from free 10 m satellite imagery, covering both large arrays individually and small rooftop PV statistically. A secondary specular-glint signal physically confirms detections and recovers panel tilt and azimuth for a subset of larger installations.**
 
 EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and ESA, through.
 TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
