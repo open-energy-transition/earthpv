@@ -120,10 +120,10 @@ Two honest readings of that figure, and both matter:
 
 - **There is a real, physically sensible signal.** A roof carrying panels reads darker in
   every band, because glass over silicon absorbs where a concrete or metal roof scatters.
-  The dip is deepest in the red and near-infrared (6 to 8 percent from B04 through B08,
+  The dip is deepest in the red and near-infrared (6 to 8% from B04 through B08,
   which is the light a module exists to absorb) and shallowest in blue and in the first
   SWIR band (glass reflects blue slightly better, and silicon stops absorbing beyond its
-  band gap, so B11 recovers to a 3 percent gap).
+  band gap, so B11 recovers to a 3% gap).
   That shape, "dark, slightly blue, with a relative SWIR excess", is what the derived
   features (`blue_red_ratio`, `ndbi`, `brightness`) each capture one slice of, and it is
   the same physics [SPPI](../issues/sppi-spectral-index-evaluation.md) hard-codes as a
@@ -158,7 +158,7 @@ The roof term above is the geometric intersection of mapped PV with the footprin
 array two metres off the wall contributes exactly zero to `pv_area_true_m2`, and therefore
 zero to the coverage ratio and zero to the area recall, on a building this classifier
 usually flags anyway. `--parcel-label` closes that by adding the mapped PV that sits off
-every footprint but within 20 m of one, attributed whole to its single nearest building.
+every footprint but within 20 m of one, attributed wholly to its single nearest building.
 
 Three rules stop it double-counting. Each installation has the footprints it intersects
 subtracted before the remainder is measured, so the roof and yard terms partition one
@@ -326,7 +326,7 @@ so a false positive is expensive here in a way it is not in the mapping-leads qu
 `p_roofclf >= 0.2511` is the smallest threshold holding precision at 0.50 on the pooled
 out-of-fold scores, and it catches 63% of PV-carrying buildings there. Both numbers are
 still leave-one-quadrat-out measurements: one threshold instead of 27 per-fold ones, but
-no building ever scored by a model that saw its own quadrat.
+no building was ever scored by a model that saw its own quadrat.
 
 The threshold moves whenever the quadrat set changes, and it has moved a lot: 0.4555 at
 nine quadrats, 0.3064 once Quetta was dropped, 0.2443 at 23 quadrats, 0.251 at 25 quadrats
