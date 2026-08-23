@@ -11,7 +11,7 @@
 </div>
 
 
-> **Country-scale solar PV capacity mapping from free 10 m Sentinel 2 satellite imagery and OpenStreetMap, covering both large arrays individually, small rooftop PV statistically and PV growth. A secondary specular-glint signal physically confirms detections and recovers panel tilt and azimuth for a subset of larger installations.**
+> **The mission of EarthPV is to provide cost-effective, verifiable, open data on photovoltaic (PV) capacity, growth and orientation for every country worldwide.**
 
 
 !!! warning "Active development"
