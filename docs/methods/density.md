@@ -16,7 +16,7 @@ Each metric states its own bias.
 
 **Detected** (`*_det`) is the area of thresholded, merged candidate polygons lying on the
 footprint, taken at face value. It has raw-candidate floor semantics: it includes false
-positives and is blind to everything below threshold, which in practice means blind to
+positives and is blind to everything below threshold, which in practice means it is blind to
 most residential PV.
 
 **Calibrated** (`*_cal`) is the same area with each candidate weighted by a measured
@@ -26,7 +26,7 @@ no calibration table exists, and it remains dependent on the 0.3 polygonization 
 **Recall-corrected** (`*_rc`, cell and region level only) divides the calibrated candidate
 area by the model's measured recall in that size bin, floored at 0.05. That is a
 Horvitz-Thompson estimate of the whole population at or above the detection floor, missed
-installations included, with 90 percent credible bands propagated from the calibration
+installations included, with 90% credible bands propagated from the calibration
 posteriors.
 
 **Expected** (`*_exp`) is probability-weighted area: the sum over the footprint of
@@ -333,7 +333,7 @@ yet, especially outside the industrial stratum.
 panel edges". At one mixed pixel that is a far easier question: it needs the footprint's
 spectral signature to differ from a PV-free roof, not a resolvable outline. Training labels
 come from the exhaustively mapped quadrats, where a building with no mapped PV is a genuine
-negative -- which ordinary OpenStreetMap cannot supply, because there absence of a label
+negative -- which ordinary OpenStreetMap cannot supply, because the absence of a label
 mostly means absence of a mapper.
 
 ![Three panels over the same 0.49 square kilometre of coastal Karachi. Left: the Sentinel-2 dry-season composite at native 10 metre resolution with 165 mapped rooftop PV installations outlined in cyan over grey building footprints; the arrays are mostly smaller than a single pixel. Centre: the segmentation model's PV probability over the identical extent, uniformly zero, a black panel with only the cyan ground-truth outlines visible. Right: the per-building classifier's out-of-fold probability, each footprint shaded from dark to bright, separating the PV-carrying roofs.](../assets/figures/coastal-Karachi.png)
