@@ -1,5 +1,30 @@
 # Detection model
 
+## The task, seen at 10 m
+
+Everything about this model follows from one number: a Sentinel-2 pixel is 10 by 10
+metres. A large array spans tens of pixels and has a shape the model can outline. A
+domestic array does not even fill one pixel; its only trace is a slight change in that
+pixel's colour, mixed with whatever roof surrounds it.
+
+![The same Sentinel-2 10 metre pixel grid over three solar arrays. A 2,000 square metre array covers 20 pixels mostly with panel and has a clear shape to outline. A 400 square metre array, the segmentation floor, mostly covers only 3 pixels. A 100 square metre array covers no pixel even half way, peaking at 54 percent of one mixed pixel, leaving only a shifted spectral signature.](../assets/figures/pixel_grid.svg#only-light)
+![The same Sentinel-2 10 metre pixel grid over three solar arrays. A 2,000 square metre array covers 20 pixels mostly with panel and has a clear shape to outline. A 400 square metre array, the segmentation floor, mostly covers only 3 pixels. A 100 square metre array covers no pixel even half way, peaking at 54 percent of one mixed pixel, leaving only a shifted spectral signature.](../assets/figures/pixel_grid.dark.svg#only-dark)
+
+That is why the project runs **two detectors in two different domains**, split at
+400 m<sup>2</sup>:
+
+- **Spatial domain, this page.** Above the floor there is an outline to find, so a
+  segmentation model labels each pixel PV or not and `postprocess` turns the labelled
+  pixels into candidate polygons.
+- **Spectral domain, [the rooftop classifier](roofclf.md).** Below the floor there is no
+  outline, only mixed pixels, so the question changes from "where are the panel edges" to
+  "does this building's spectral signature look like it carries PV". That is a
+  per-building classification, not a segmentation.
+
+The floor is enforced in training, not just observed: `MIN_PV_AREA` burns everything
+below it into the training mask as `ignore`, so the segmentation model receives no
+gradient there at all (see [Positive threshold](#the-model) below).
+
 ## The model
 
 `terramind_v1_tiny`, the open TerraMind geospatial foundation model from IBM and ESA,
@@ -46,6 +71,41 @@ A high false-positive rate is expected and accepted on this path. Candidates are
 by people against high-resolution imagery, so a false positive costs seconds and a miss
 costs everything.
 
+## From composite to candidate, on real installations
+
+The whole spatial-domain pipeline is three steps, and all three are visible in one image:
+read the dry-season composite, predict a per-pixel probability, then threshold at 0.3 and
+polygonize whatever remains. These are four real Pakistani installations from the
+national inference run behind the published atlas, one per size bracket:
+
+![Four real installations, three panels each. Column one is the Sentinel-2 composite with OpenStreetMap outlines in cyan, column two the model's probability raster, column three the composite with the threshold 0.3 candidate outline in amber. A 111,283 square metre utility plant and a 9,061 square metre industrial rooftop are both detected at probability 1.0. A 715 square metre rooftop is also detected at 1.0, but its bracket's median peak probability over 60 sampled installations is 0.0. A 155 square metre rooftop in a dense Islamabad neighbourhood full of mapped installations produces a completely black probability panel: peak probability 0.0, no candidate.](../assets/figures/segmentation_examples.png)
+
+Reading it row by row:
+
+- **A utility-scale plant is unmissable.** At 111,283 m<sup>2</sup> the plant is a
+  thousand pixels; the model saturates at probability 1.0 and the candidate polygon traces
+  the real perimeter. This is why ground-mount capacity rests on segmentation alone.
+- **A large industrial rooftop works nearly as well** (peak 1.0; the median over 60
+  sampled installations in the 2,000 to 10,000 m<sup>2</sup> bracket is 0.83). The
+  candidate polygon is coarser than the mapped outlines, which is expected: the human
+  mapper draws each roof section, the model draws the blob of confident pixels, and
+  `postprocess` later swaps in the mapped OSM geometry where one matches.
+- **At the 400 m<sup>2</sup> floor detection becomes a coin toss weighted against the
+  model.** The 715 m<sup>2</sup> example is a clean hit, chosen to show what a hit looks
+  like, but the honest number sits next to it: the median peak probability across its
+  sampled bracket is 0.0. Most installations this size produce nothing.
+- **Below the floor there is nothing to threshold.** The last row is a dense residential
+  block with dozens of mapped installations; the probability panel is uniformly black.
+  This is not a tuning problem: the model was never trained on arrays this small (they
+  are burned as `ignore`), and no threshold recovers a probability that was never
+  raised. Everything below this line belongs to
+  [the rooftop classifier](roofclf.md), which asks the spectral question instead.
+
+The first three rows are deliberately the clearest detections in their brackets, because
+the figure illustrates the mechanism; the bracket medians printed on the figure keep the
+recall picture honest, and the [recall chart above](#what-it-recovers) is the systematic
+measurement.
+
 ## Two invariants that must not regress
 
 Naive sliding-window inference produced a regular grid of false positives at the window
@@ -62,6 +122,15 @@ about 7 percent after.
 raster per cell, and uses a stride that is deliberately **not** a multiple of the 16 px
 transformer patch size (currently 104) so patch-edge effects decorrelate between
 neighbours.
+
+![Five overlapping 224 pixel inference windows at a 104 pixel stride. Each window's Hann weight rises from zero to one and falls back to zero, and their sum is a smooth near-constant line. The comparison line for hard-edged windows is a staircase that jumps at every window boundary.](../assets/figures/hann_overlap.svg#only-light)
+![Five overlapping 224 pixel inference windows at a 104 pixel stride. Each window's Hann weight rises from zero to one and falls back to zero, and their sum is a smooth near-constant line. The comparison line for hard-edged windows is a staircase that jumps at every window boundary.](../assets/figures/hann_overlap.dark.svg#only-dark)
+
+The picture is the whole argument: a hard-edged window contributes with full weight right
+up to its boundary and then not at all, so any disagreement between neighbouring windows
+becomes a visible seam, and seams at a fixed spacing become a fake grid of candidate
+edges. The taper makes every prediction fade to zero at its own edge, so neighbours blend
+where they overlap and no position in the final raster is dominated by a window boundary.
 
 ## Imagery
 

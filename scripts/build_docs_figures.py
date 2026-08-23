@@ -19,6 +19,9 @@ pipeline pass picks up the new values:
   * capacity estimators    results/pakistan_pv_estimator_atlas.html (embedded JSON)
   * calibration table      configs/calibration/pakistan_candidate_precision.yaml
   * hero capacity map      results/pakistan_pv_density_scientific.png (auto-cropped)
+  * spectral signatures    results/detection_spectral_signatures.csv and
+    and per-cue AUC        results/detection_feature_auc.csv, both written by
+                           scripts/detection_domain_examples.py from gitignored data/
 
 The one exception is the per-installation recall table, which `earthpv evaluate`
 prints to stdout rather than writing to disk; it is transcribed into RECALL
@@ -662,6 +665,239 @@ def fig_pv_pose(t: Theme):
     save(fig, t, "pv_pose_polar")
 
 
+# ------------------------------------------- how detection works, spatial and spectral
+#
+# Two pure-geometry figures (pixel grid, Hann taper) plus two data figures whose numbers
+# come from tracked CSVs written by scripts/detection_domain_examples.py, which reads
+# gitignored data/ (the roofclf building table and the national probability rasters).
+# Re-run that script after a refit or a new national inference pass, then this one.
+
+
+def _rotrect_coverage(area_m2: float, view_m: float, center, angle_deg: float,
+                      aspect: float = 1.6, sub: int = 20):
+    """Per-10 m-pixel coverage fraction of a rotated rectangular array, plus its corners.
+
+    Supersamples each pixel `sub` x `sub` (0.5 m at sub=20), which is exactly how a
+    10 m sensor mixes a sub-pixel target into its neighbours -- no shapely needed, so
+    the docs CI (matplotlib only) can rebuild this figure.
+    """
+    import math
+
+    length = math.sqrt(area_m2 * aspect)
+    width = area_m2 / length
+    n = int(view_m / 10)
+    ax_ = np.linspace(0.25, view_m - 0.25, n * sub)
+    xx, yy = np.meshgrid(ax_, ax_)
+    th = math.radians(angle_deg)
+    u = (xx - center[0]) * math.cos(th) + (yy - center[1]) * math.sin(th)
+    v = -(xx - center[0]) * math.sin(th) + (yy - center[1]) * math.cos(th)
+    inside = (np.abs(u) <= length / 2) & (np.abs(v) <= width / 2)
+    cov = inside.reshape(n, sub, n, sub).mean(axis=(1, 3))
+    corners = []
+    for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1)):
+        cu, cv = su * length / 2, sv * width / 2
+        corners.append((center[0] + cu * math.cos(th) - cv * math.sin(th),
+                        center[1] + cu * math.sin(th) + cv * math.cos(th)))
+    return cov, corners
+
+
+def fig_pixel_grid(t: Theme):
+    """The spatial problem: the same 10 m grid over a 2,000, 400 and 100 m2 array."""
+    from matplotlib.colors import LinearSegmentedColormap
+
+    view = 120.0
+    cases = [(2000.0, "2,000 m$^2$"), (400.0, "400 m$^2$"), (100.0, "100 m$^2$")]
+    fig, axes = plt.subplots(1, 3, figsize=(8.4, 3.35))
+    fig.patch.set_facecolor(t.surface)
+    cmap = LinearSegmentedColormap.from_list("cov", [t.card, t.s1])
+    for ax, (area, label) in zip(axes, cases):
+        # Centre chosen once, off the pixel grid, the way a real roof sits.
+        cov, corners = _rotrect_coverage(area, view, (63.0, 58.0), 20.0)
+        ax.set_facecolor(t.surface)
+        ax.imshow(cov, extent=(0, view, 0, view), origin="lower", cmap=cmap,
+                  vmin=0, vmax=1, interpolation="nearest")
+        for g in np.arange(0, view + 1, 10):
+            ax.axhline(g, color=t.rule, linewidth=0.5)
+            ax.axvline(g, color=t.rule, linewidth=0.5)
+        ax.plot([c[0] for c in corners], [c[1] for c in corners],
+                color=t.ink, linewidth=1.4)
+        mostly = int((cov >= 0.5).sum())
+        touched = int((cov > 0.01).sum())
+        ax.set_title(f"{label}\n{mostly} of {touched} touched px mostly PV,\n"
+                     f"peak cover {cov.max():.0%}",
+                     fontsize=8.6, color=t.ink_dim, loc="left", pad=6)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlim(0, view)
+        ax.set_ylim(0, view)
+        for sp in ax.spines.values():
+            sp.set_color(t.rule)
+    axes[0].plot([6, 16], [8, 8], color=t.ink, linewidth=1.6)
+    axes[0].text(11, 11.5, "10 m", ha="center", fontsize=8, color=t.ink_dim)
+    fig.subplots_adjust(wspace=0.10, left=0.01, right=0.99, top=0.83, bottom=0.02)
+    titled(fig, t, "What Sentinel-2's 10 m pixels see of one solar array",
+           "Shading is the share of each pixel actually covered by the array. At 2,000 m$^2$ "
+           "there is a shape to outline; at 400 m$^2$, the segmentation floor, a handful of "
+           "pixels; at 100 m$^2$ no pixel is even half PV, so the only evidence left is a "
+           "shifted spectral signature in mixed pixels", width=110)
+    save(fig, t, "pixel_grid")
+
+
+def fig_hann_overlap(t: Theme):
+    """The overlap-add invariant: Hann-tapered windows sum seamlessly, hard edges do not."""
+    window, stride, n_win = 224, 104, 5
+    total = stride * (n_win - 1) + window
+    x = np.arange(total)
+    hann = np.hanning(window)
+    fig, ax = new_fig(t, 6.9, 2.9)
+    hann_sum = np.zeros(total)
+    box_sum = np.zeros(total)
+    for i in range(n_win):
+        s = i * stride
+        w = np.zeros(total)
+        w[s:s + window] = hann
+        hann_sum += w
+        box_sum[s:s + window] += 1.0
+        ax.plot(x, w, color=t.s2, linewidth=1.0, alpha=0.75,
+                label="one 224 px window, Hann-tapered" if i == 0 else None)
+    ax.plot(x, box_sum / box_sum[window // 2], color=t.ink_faint, linewidth=1.6,
+            linestyle="--", label="hard-edged windows: steps at every seam")
+    ax.plot(x, hann_sum / hann_sum[window // 2], color=t.s1, linewidth=2.2,
+            label="tapered windows: a smooth total weight")
+    ax.set_xlim(0, total)
+    ax.set_ylim(0, 1.75)
+    ax.set_yticks([0, 0.5, 1.0, 1.5])
+    ax.set_xticks([i * stride for i in range(n_win)] + [total])
+    ax.set_xticklabels([f"{i * stride}" for i in range(n_win)] + [f"{total}"], fontsize=8)
+    ax.set_xlabel("position across the cell, px (one window starts every 104 px)",
+                  fontsize=8.5, color=t.ink_dim)
+    style_axes(ax, t, ygrid=True)
+    leg = fig.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, -0.16),
+                     fontsize=8.5, ncol=3)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "Why inference windows are tapered before they overlap",
+           "Each window's prediction fades to zero at its own edges, so neighbouring "
+           "windows blend instead of butting. The 104 px stride is deliberately not a "
+           "multiple of the 16 px transformer patch, so patch-edge effects decorrelate "
+           "between neighbours", width=100)
+    save(fig, t, "hann_overlap")
+
+
+BAND_LABELS = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
+
+
+def read_spectral_signatures():
+    path = source("results/detection_spectral_signatures.csv")
+    if path is None:
+        return None
+    return list(csv.DictReader(path.open()))
+
+
+def fig_spectral_signatures(t: Theme):
+    """The spectral problem: PV and PV-free roofs of the same size, ten bands apart."""
+    rows = read_spectral_signatures()
+    if rows is None:
+        return
+    wl = [float(r["wavelength_nm"]) for r in rows]
+    pv = [float(r["pv_med"]) for r in rows]
+    npv = [float(r["nopv_med"]) for r in rows]
+    fig, (ax, ax2) = plt.subplots(
+        1, 2, figsize=(8.6, 3.4), gridspec_kw={"width_ratios": [1.45, 1.0]})
+    fig.patch.set_facecolor(t.surface)
+    for a in (ax, ax2):
+        a.set_facecolor(t.surface)
+        for sp in a.spines.values():
+            sp.set_visible(False)
+        a.tick_params(colors=t.ink_dim, labelsize=8, length=0)
+
+    ax.fill_between(wl, [float(r["pv_q25"]) for r in rows],
+                    [float(r["pv_q75"]) for r in rows], color=t.s1, alpha=0.18, linewidth=0)
+    ax.fill_between(wl, [float(r["nopv_q25"]) for r in rows],
+                    [float(r["nopv_q75"]) for r in rows], color=t.s2, alpha=0.18, linewidth=0)
+    ax.plot(wl, pv, color=t.s1, linewidth=2.0, marker="o", markersize=3.5,
+            label=f"roofs with mapped PV (n={int(rows[0]['n_pv']):,})")
+    ax.plot(wl, npv, color=t.s2, linewidth=2.0, marker="o", markersize=3.5,
+            label=f"PV-free roofs, same sizes (n={int(rows[0]['n_nopv']):,})")
+    for w, r in zip(wl, rows):
+        if r["band"] in {"B02", "B04", "B08", "B11", "B12"}:
+            ax.text(w, float(r["pv_q25"]) - 0.012, r["band"], ha="center", va="top",
+                    fontsize=7, color=t.ink_faint)
+    ax.set_xlim(380, 2300)
+    ax.set_ylim(0.15, 0.40)
+    ax.set_xlabel("wavelength, nm", fontsize=8.5, color=t.ink_dim)
+    ax.set_ylabel("median footprint reflectance", fontsize=8.5, color=t.ink_dim)
+    ax.grid(axis="y", color=t.rule, linewidth=0.8)
+    ax.set_axisbelow(True)
+    leg = ax.legend(frameon=False, loc="upper left", fontsize=8)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+
+    diff = [100 * (p / n - 1) for p, n in zip(pv, npv)]
+    xs = range(len(rows))
+    ax2.bar(list(xs), diff, 0.62, color=t.s1, zorder=3)
+    ax2.axhline(0, color=t.ink_dim, linewidth=0.9)
+    for i, d in enumerate(diff):
+        ax2.text(i, d - 0.35, f"{d:.0f}", ha="center", va="top", fontsize=7.5, color=t.ink)
+    ax2.set_xticks(list(xs))
+    ax2.set_xticklabels([r["band"] for r in rows], fontsize=7, rotation=45)
+    ax2.set_ylim(min(diff) - 2.4, 1.4)
+    ax2.set_ylabel("PV median vs PV-free, %", fontsize=8.5, color=t.ink_dim)
+    ax2.grid(axis="y", color=t.rule, linewidth=0.8)
+    ax2.set_axisbelow(True)
+
+    fig.subplots_adjust(left=0.075, right=0.99, top=0.97, bottom=0.17, wspace=0.30)
+    titled(fig, t, "A PV roof is a slightly different colour, not a different object",
+           "Median 10-band spectrum of sub-400 m$^2$ buildings in the Rule-1 calibration "
+           "quadrats, PV-free roofs resampled to the same roof-size mix. The gap is a few "
+           "percent of reflectance -- darkest through red and near-infrared, smallest in "
+           "blue and SWIR -- which is a statistical signal, never a per-roof proof", width=112)
+    save(fig, t, "spectral_signatures")
+
+
+def read_feature_auc():
+    path = source("results/detection_feature_auc.csv")
+    if path is None:
+        return None
+    return list(csv.DictReader(path.open()))
+
+
+def fig_feature_auc(t: Theme):
+    """No single cue suffices: per-feature separation vs the combinations in use."""
+    rows = read_feature_auc()
+    if rows is None:
+        return
+    rows = sorted(rows, key=lambda r: float(r["auc_folded"]))
+    fig, ax = new_fig(t, 6.9, 3.3)
+    y = range(len(rows))
+    combined = {"roofclf", "sppi"}
+    for i, r in enumerate(rows):
+        a = float(r["auc_folded"])
+        col = t.s1 if r["key"] in combined else t.s2
+        ax.barh(i, a - 0.5, 0.6, left=0.5, color=col, zorder=3)
+        ax.text(a + 0.004, i, f"{a:.2f}", va="center", color=t.ink, fontsize=8.5)
+        if a > 0.6:
+            ax.text(0.503, i, r["direction"], va="center", ha="left", fontsize=7,
+                    color=t.surface, zorder=4)
+        else:
+            ax.text(a + 0.028, i, r["direction"], va="center", ha="left", fontsize=7,
+                    color=t.ink_dim, zorder=4)
+    ax.set_yticks(list(y))
+    ax.set_yticklabels([r["label"] for r in rows], fontsize=8.5)
+    ax.axvline(0.5, color=t.ink_dim, linewidth=1.0)
+    ax.text(0.5, len(rows) - 0.15, "coin flip", fontsize=7.5, color=t.ink_dim,
+            ha="center", va="bottom")
+    ax.set_xlim(0.5, 0.84)
+    ax.set_xticks([0.5, 0.6, 0.7, 0.8])
+    style_axes(ax, t, xgrid=True)
+    titled(fig, t, "Each spectral cue is weak; the detectors are the combination",
+           "AUC separating PV from size-matched PV-free roofs under 400 m$^2$, same sample "
+           "as the spectrum figure. roofclf's score is out-of-fold (no building scored by a "
+           "model that saw its quadrat) and pooled across quadrats; the per-fold skill "
+           "numbers on the roofclf page are the ones to quote", width=110)
+    save(fig, t, "feature_auc")
+
+
 # ----------------------------------------------------- hand-authored SVG diagrams
 
 FLYWHEEL = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="480"
@@ -1223,6 +1459,9 @@ def crop_hero_map():
 # `python scripts/plot_calib_quadrat.py`.
 STATIC_RASTERS = [
     ("results/coastal-Karachi.png", "coastal-Karachi.png"),
+    # composite -> probability -> polygon walk-through; regenerate with
+    # `python scripts/detection_domain_examples.py`.
+    ("results/segmentation_examples.png", "segmentation_examples.png"),
 ]
 
 
@@ -1358,6 +1597,10 @@ def main():
         fig_glint_observability(t)
         fig_glint_pose_window(t)
         fig_glint_date_auc(t)
+        fig_pixel_grid(t)
+        fig_hann_overlap(t)
+        fig_spectral_signatures(t)
+        fig_feature_auc(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")

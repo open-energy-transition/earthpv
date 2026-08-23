@@ -86,6 +86,32 @@ The label-driven compose run in Punjab unlocked roughly 2,500 in-domain Pakistan
 positives this way, and adding them tripled large-array recall in Punjab compared with the
 Germany-only model.
 
+### Two ways to see a panel in a 10 m pixel
+
+The pipeline runs two detectors, and the reason is not organisational, it is optical. A
+Sentinel-2 pixel is 10 by 10 metres, and everything depends on how an array compares to
+that square:
+
+![The same Sentinel-2 10 metre pixel grid over three solar arrays. A 2,000 square metre array covers 20 pixels mostly with panel and has a clear shape to outline. A 400 square metre array, the segmentation floor, mostly covers only 3 pixels. A 100 square metre array covers no pixel even half way, peaking at 54 percent of one mixed pixel, leaving only a shifted spectral signature.](assets/figures/pixel_grid.svg#only-light)
+![The same Sentinel-2 10 metre pixel grid over three solar arrays. A 2,000 square metre array covers 20 pixels mostly with panel and has a clear shape to outline. A 400 square metre array, the segmentation floor, mostly covers only 3 pixels. A 100 square metre array covers no pixel even half way, peaking at 54 percent of one mixed pixel, leaving only a shifted spectral signature.](assets/figures/pixel_grid.dark.svg#only-dark)
+
+- **Above roughly 400 m<sup>2</sup> an array has a shape**, so detection works in the
+  **spatial domain**: the fine-tuned TerraMind model labels each pixel and its outline
+  becomes a candidate polygon. The [detection model page](methods/detection.md) walks
+  through this on real installations, from a utility plant the model cannot miss to a
+  715 m<sup>2</sup> rooftop it usually does.
+- **Below the floor an array is a fraction of one mixed pixel**, so detection moves to
+  the **spectral domain**: a panel-covered roof is a few percent darker than the same
+  roof without panels, deepest in red and near-infrared, with a slight blue tint and a
+  relative SWIR excess. No outline exists, so
+  [the rooftop classifier](methods/roofclf.md) scores whole buildings on that signature
+  instead, and its skill is measured on exhaustively mapped calibration quadrats.
+
+Neither domain proves an individual roof. The spatial detector tolerates false positives
+because a person reviews every lead; the spectral detector is never read per building at
+all, only summed into calibrated adoption rates. Both of those design choices follow from
+the physics in the figure above.
+
 ### Two products fall out of one model
 
 ![Two products from one model: Sentinel-2 composites feed TerraMind, whose probability raster splits into a leads product of polygons for human review, which flows to OpenStreetMap through a MapRoulette challenge, and a capacity product of megawatts peak per building and grid cell, which flows to PyPSA-Earth as a grid CSV.](assets/figures/two_products.svg#only-light)

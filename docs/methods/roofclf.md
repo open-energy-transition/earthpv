@@ -37,7 +37,10 @@ The recall correction cannot repair this, because `1 / recall x ~0` is still abo
 class that is never detected is not recoverable by reweighting the class that is. It needs
 a different estimator, and asking "does this building carry PV" is a far easier question
 at one mixed pixel than "where are its panel edges": it only needs the footprint's
-spectral signature to differ from a PV-free roof of the same kind.
+spectral signature to differ from a PV-free roof of the same kind. The
+[pixel-grid figure on the detection page](detection.md#the-task-seen-at-10-m) shows the
+geometry of that handover directly: at 100 m<sup>2</sup> no pixel is even half PV, so
+shape is gone and colour is all that is left.
 
 ## The flow, end to end
 
@@ -102,6 +105,52 @@ Two feature blocks are computed and left switched off by default, because the ab
 not support them: footprint shape (compactness, rectangularity, aspect ratio) and the
 segmentation and fraction rasters as inputs. See [the ablation](#what-the-pixels-actually-add)
 below.
+
+### What a PV roof looks like in the spectral domain
+
+The features above are numbers, and it is worth seeing what they actually measure. Take
+every sub-400 m<sup>2</sup> building in the Rule-1 quadrats, split by whether it carries
+mapped PV, resample the PV-free class to the same roof-size mix so nothing below is a
+size effect in disguise, and plot the two median spectra:
+
+![Left panel: two 10-band median reflectance spectra with interquartile ribbons, 15,042 PV roofs against 37,946 size-matched PV-free roofs. Both curves have the same shape, rising from blue to a near-infrared and SWIR plateau, with the PV curve sitting slightly below throughout and the ribbons overlapping heavily. Right panel: the per-band difference of the medians, minus 2 percent in blue B02 deepening to minus 8 percent in near-infrared B08, then shrinking again to minus 3 percent in SWIR B11.](../assets/figures/spectral_signatures.svg#only-light)
+![Left panel: two 10-band median reflectance spectra with interquartile ribbons, 15,042 PV roofs against 37,946 size-matched PV-free roofs. Both curves have the same shape, rising from blue to a near-infrared and SWIR plateau, with the PV curve sitting slightly below throughout and the ribbons overlapping heavily. Right panel: the per-band difference of the medians, minus 2 percent in blue B02 deepening to minus 8 percent in near-infrared B08, then shrinking again to minus 3 percent in SWIR B11.](../assets/figures/spectral_signatures.dark.svg#only-dark)
+
+Two honest readings of that figure, and both matter:
+
+- **There is a real, physically sensible signal.** A roof carrying panels reads darker in
+  every band, because glass over silicon absorbs where a concrete or metal roof scatters.
+  The dip is deepest in the red and near-infrared (6 to 8 percent from B04 through B08,
+  which is the light a module exists to absorb) and shallowest in blue and in the first
+  SWIR band (glass reflects blue slightly better, and silicon stops absorbing beyond its
+  band gap, so B11 recovers to a 3 percent gap).
+  That shape, "dark, slightly blue, with a relative SWIR excess", is what the derived
+  features (`blue_red_ratio`, `ndbi`, `brightness`) each capture one slice of, and it is
+  the same physics [SPPI](../issues/sppi-spectral-index-evaluation.md) hard-codes as a
+  formula.
+- **The signal is statistical, not diagnostic.** The interquartile ribbons overlap almost
+  completely: plenty of PV-free roofs are darker than the median PV roof. No band, and no
+  threshold on any band, sorts individual buildings cleanly. That is why this instrument
+  is a calibrated *probability* that gets summed into an adoption rate, never a per-roof
+  verdict, and why everything downstream (the deployment threshold, the coverage ratio,
+  the domain restriction) exists.
+
+The same point, measured rather than eyeballed: each spectral cue on its own separates the
+two populations only weakly, and the working instruments are combinations.
+
+![Horizontal bars of AUC on the same size-matched sub-400 square metre sample, from 0.5 labelled coin flip. Single cues: NDVI 0.55, overall brightness 0.62, NDBI 0.64, near-infrared B08 0.67, blue to red ratio 0.67. The two combinations sit clearly above them: SPPI, a fixed 5-band formula, at 0.75, and roofclf combining all 17 features at 0.77.](../assets/figures/feature_auc.svg#only-light)
+![Horizontal bars of AUC on the same size-matched sub-400 square metre sample, from 0.5 labelled coin flip. Single cues: NDVI 0.55, overall brightness 0.62, NDBI 0.64, near-infrared B08 0.67, blue to red ratio 0.67. The two combinations sit clearly above them: SPPI, a fixed 5-band formula, at 0.75, and roofclf combining all 17 features at 0.77.](../assets/figures/feature_auc.dark.svg#only-dark)
+
+Read the levels, not the exact values: this chart pools out-of-fold scores across all
+quadrats and restricts to size-matched sub-400 m<sup>2</sup> buildings, which is the
+hardest cut and makes both combinations look closer to each other than the
+[per-fold skill numbers below](#3-the-model-and-how-skill-is-measured), which are the
+ones to quote. What the chart establishes is the ordering: a vegetation index knows
+almost nothing here, each single physical cue is worth a few points over chance, and
+stacking ten bands plus the derived ratios is what turns a tint into an instrument.
+Source data: `results/detection_spectral_signatures.csv` and
+`results/detection_feature_auc.csv`, written by
+`scripts/detection_domain_examples.py` from the quadrat building table.
 
 ### The parcel label (`--parcel-label`, 2026-08-16)
 

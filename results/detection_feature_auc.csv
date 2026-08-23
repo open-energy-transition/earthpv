@@ -1,0 +1,8 @@
+key,label,direction,auc_raw,auc_folded,n_pv,n_nopv
+roofclf,"roofclf, all 17 features combined",out-of-fold probability,0.7705,0.7705,15042,37946
+sppi,"SPPI, a fixed 5-band formula",higher over panels,0.7506,0.7506,15042,37946
+blue_red_ratio,blue / red ratio,panels read bluer,0.6739,0.6739,15042,37946
+b08,near-infrared B08,panels read darker,0.3284,0.6716,15042,37946
+ndbi,NDBI (SWIR vs NIR),relatively brighter in SWIR,0.6449,0.6449,15042,37946
+brightness,overall brightness,panels read darker,0.3755,0.6245,15042,37946
+ndvi,NDVI (vegetation index),nearly uninformative here,0.4502,0.5498,15042,37946
