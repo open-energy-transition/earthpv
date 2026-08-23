@@ -10,22 +10,15 @@
 
 </div>
 
+
+> **Country-scale solar PV capacity mapping from free 10 m Sentinel 2 satellite imagery and OpenStreetMap, covering both large arrays individually, small rooftop PV statistically and PV growth. A secondary specular-glint signal physically confirms detections and recovers panel tilt and azimuth for a subset of larger installations.**
+
+
 !!! warning "Active development"
     EarthPV is still a research prototype. It is actively experimenting with new solar
     detection methods, and its detectors, calibration and headline numbers are still being
     tested and revised rather than settled.
 
-> **EarthPV detects and quantifies solar PV from Sentinel-2 imagery by fine-tuning the
-> open TerraMind foundation model. It combines two instruments, pixel segmentation for
-> individual arrays above roughly 400 m² (rooftop and ground-mount, up to utility scale)
-> and a per-building classifier for smaller rooftop installations, into a recall-first
-> evidence atlas of PV capacity per building, grid cell and region, with calibrated
-> uncertainty. Trained on Germany against OpenStreetMap labels, currently deployed on
-> Pakistan and Gujarat, and designed to scale to any country with open building footprints
-> and a modest set of hand-mapped calibration quadrats. It demonstrates how free
-> Sentinel-2 imagery, an open foundation model, and human-in-the-loop validation in
-> OpenStreetMap can make global photovoltaic mapping more scalable, verifiable, and
-> cost-effective than existing methods.**
 
 EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed every five days. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country. 
 
