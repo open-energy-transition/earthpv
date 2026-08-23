@@ -365,7 +365,7 @@ def osm_completeness_by_count(
     }
 
 
-def _coverage_guard(joined: pd.DataFrame, gem_total: int) -> dict:
+def _coverage_guard(joined: pd.DataFrame, gem_total: int, kw_total: float) -> dict:
     """Coverage bookkeeping for `validate_density_against_mastr`, and the reason it exists.
 
     A density run covering 4 of Germany's 76 MGRS tiles will happily produce a national sum
@@ -373,12 +373,19 @@ def _coverage_guard(joined: pd.DataFrame, gem_total: int) -> dict:
     underestimate rather than as missing imagery. So the harness reports how many
     municipalities it actually covered, refuses to emit a national comparison below
     `MIN_NATIONAL_COVERAGE`, and always scopes its regression to the covered subset.
+
+    `coverage_capacity_frac` (share of registered national rooftop kW inside the covered
+    municipalities) is reported alongside the count fraction because the two can diverge
+    hard: the pre-2026-08-23 centroid join reached 33% of municipalities at best but 62% of
+    capacity. The gate itself stays on the count fraction.
     """
     covered = int(len(joined))
+    kw_covered = float(joined.kw_rooftop.sum()) if "kw_rooftop" in joined else 0.0
     return {
         "n_gemeinden_covered": covered,
         "n_gemeinden_total": gem_total,
         "coverage_frac": round(covered / max(gem_total, 1), 4),
+        "coverage_capacity_frac": round(kw_covered / max(kw_total, 1e-9), 4),
     }
 
 
@@ -397,18 +404,30 @@ def validate_density_against_mastr(
 
     This is the end-to-end check the project cannot run in Pakistan: MaStR is complete, so
     a slope of 1.0 against it is a real accuracy statement and not a comparison of two
-    estimates. Cells are assigned to municipalities by cell centroid (the same convention
-    `density.aggregate`'s own region layer uses), which is coarse at 0.1 deg against German
-    municipality sizes -- so this is a check on aggregate level and rank correlation, not on
-    per-municipality values, and the returned `caveats` says so.
+    estimates. Each 0.1 deg cell's estimate is apportioned to the municipalities it
+    intersects by geodesic intersection-area share (a cell at 51 deg N is ~78 km2 against a
+    19 km2 median Gemeinde, so the previous centroid-in-polygon join could reach at most a
+    third of municipalities even under full imagery -- the 0.9 national bar was unreachable
+    by construction). The apportionment assumes PV is uniformly spread within a cell, so
+    this stays a check on aggregate level and rank correlation, not on per-municipality
+    values, and the returned `caveats` says so.
 
     Reports, on the covered subset only: the origin-forced OLS slope (the multiplicative
     bias -- 1.0 means the estimator is right on average), the median per-municipality ratio
     (robust to the long tail), Spearman rank correlation (does it put capacity in the right
-    places), and log-log Pearson. Refuses a national total below `MIN_NATIONAL_COVERAGE` of
-    municipalities, because partial imagery coverage reads exactly like a real underestimate.
+    places), and log-log Pearson. Each estimator is scored against two denominators:
+    `results` uses all registered rooftop capacity, `results_above_floor` uses only the
+    capacity in units above the segmentation floor (`kw_rooftop - kw_le_72`) -- 65.5% of
+    German rooftop capacity sits below that floor, so a flawless >= 400 m2 segmentation run
+    tops out near 0.35 against the all-capacity denominator and the above-floor block is
+    the one that reads as an accuracy statement for it. Refuses a national total below
+    `MIN_NATIONAL_COVERAGE` of municipalities, because partial imagery coverage reads
+    exactly like a real underestimate.
     """
     import geopandas as gpd
+    import shapely
+
+    from earthpv.labels import geodesic_area_m2
 
     density_dir = Path(density_dir)
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
@@ -421,55 +440,83 @@ def validate_density_against_mastr(
         )
     missing = [e for e in estimators if e not in grid.columns]
 
-    centroids = gpd.GeoDataFrame(
-        grid[present],
-        geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs="EPSG:4326",
+    if not grid.geom_type.isin(["Polygon", "MultiPolygon"]).all():
+        raise ValueError(
+            f"{density_dir}/grid.geoparquet carries non-polygon cell geometry -- the "
+            "area-weighted municipality join needs the cell footprints `density.aggregate` "
+            "writes; re-run `earthpv density` for this AOI"
+        )
+    cells = gpd.GeoDataFrame(grid[present], geometry=grid.geometry, crs=grid.crs or "EPSG:4326")
+    j = gpd.sjoin(cells, gem[["ags", "geometry"]], predicate="intersects", how="inner")
+    inter = shapely.intersection(
+        j.geometry.to_numpy(), gem.geometry.reindex(j.index_right).to_numpy()
     )
-    j = gpd.sjoin(centroids, gem[["ags", "name", "geometry"]], predicate="within", how="inner")
+    cell_area = np.array([geodesic_area_m2(g) for g in j.geometry])
+    # geodesic_area_m2 returns 0.0 for the line/point intersections of merely-touching
+    # boundaries, so those pairs drop out on their own.
+    w = np.array([geodesic_area_m2(g) for g in inter]) / np.clip(cell_area, 1e-9, None)
+    j = j.loc[w > 0, ["ags", *present]]
+    j[present] = j[present].to_numpy(float) * w[w > 0, None]
     agg = j.groupby("ags", as_index=False)[present].sum()
     m = agg.merge(counts[["ags", "kw_rooftop", f"kw_le_{SEG_FLOOR_KWP:g}"]], on="ags", how="inner")
     m = m[m.kw_rooftop >= min_gemeinde_kw]
 
     out: dict = {
         "density_dir": str(density_dir),
-        **_coverage_guard(m, int(len(gem))),
+        **_coverage_guard(m, int(len(gem)), float(counts.kw_rooftop.sum())),
         "estimators_missing_from_grid": missing,
         "min_gemeinde_kw": min_gemeinde_kw,
+        "above_floor_truth": (
+            f"kw_rooftop - kw_le_{SEG_FLOOR_KWP:g}: registered capacity in units above the "
+            ">= 400 m2 segmentation floor's 72 kWp equivalent -- the denominator a "
+            "segmentation-only estimator can actually see"
+        ),
         "caveats": [
-            "cells are assigned to municipalities by 0.1 deg cell centroid, which is coarse "
-            "against German municipality sizes -- read the aggregate slope and the rank "
-            "correlation, not per-municipality values",
+            "cell estimates are apportioned to municipalities by geodesic intersection-area "
+            "share, which assumes PV is uniformly spread within a 0.1 deg cell -- read the "
+            "aggregate slope and the rank correlation, not per-municipality values",
+            "the share of a border or coastal cell that intersects no municipality is "
+            "dropped, not renormalized -- detected capacity there is treated as outside "
+            "Germany",
             "MaStR counts registered capacity at its commissioning date; the imagery "
             "composite is a different window, so a small timing mismatch is expected",
         ],
         "results": {},
+        "results_above_floor": {},
     }
     if m.empty:
         out["verdict"] = "no municipality is covered by this density run -- nothing to compare"
         return out
 
-    truth = m.kw_rooftop.to_numpy(float) / 1000.0  # MWp, to match the estimators' units
-    for e in present:
-        pred = m[e].to_numpy(float)
-        ok = (truth > 0) & np.isfinite(pred)
-        slope = float((pred[ok] * truth[ok]).sum() / (truth[ok] ** 2).sum())
-        ratio = pred[ok] / truth[ok]
-        pos = ok & (pred > 0)
-        out["results"][e] = {
-            "n": int(ok.sum()),
-            "sum_pred_mwp": round(float(pred[ok].sum()), 1),
-            "sum_truth_mwp": round(float(truth[ok].sum()), 1),
-            "slope_ols_origin": round(slope, 4),
-            "median_ratio": round(float(np.median(ratio)), 4),
-            "spearman_rho": _num(
-                pd.Series(pred[ok]).corr(pd.Series(truth[ok]), method="spearman")
-            ),
-            "loglog_pearson_r": (
-                _num(np.corrcoef(np.log(pred[pos]), np.log(truth[pos]))[0, 1])
-                if pos.sum() > 2 else None
-            ),
-            "frac_municipalities_zero_pred": round(float((pred[ok] == 0).mean()), 4),
-        }
+    truths = {
+        "results": m.kw_rooftop.to_numpy(float) / 1000.0,  # MWp, matching the estimators
+        "results_above_floor": (
+            (m.kw_rooftop - m[f"kw_le_{SEG_FLOOR_KWP:g}"]).clip(lower=0.0).to_numpy(float)
+            / 1000.0
+        ),
+    }
+    for block, truth in truths.items():
+        for e in present:
+            pred = m[e].to_numpy(float)
+            ok = (truth > 0) & np.isfinite(pred)
+            slope = float((pred[ok] * truth[ok]).sum() / (truth[ok] ** 2).sum())
+            ratio = pred[ok] / truth[ok]
+            pos = ok & (pred > 0)
+            out[block][e] = {
+                "n": int(ok.sum()),
+                "sum_pred_mwp": round(float(pred[ok].sum()), 1),
+                "sum_truth_mwp": round(float(truth[ok].sum()), 1),
+                "slope_ols_origin": round(slope, 4),
+                "median_ratio": round(float(np.median(ratio)), 4),
+                "spearman_rho": _num(
+                    pd.Series(pred[ok]).corr(pd.Series(truth[ok]), method="spearman")
+                ),
+                "loglog_pearson_r": (
+                    _num(np.corrcoef(np.log(pred[pos]), np.log(truth[pos]))[0, 1])
+                    if pos.sum() > 2 else None
+                ),
+                "frac_municipalities_zero_pred": round(float((pred[ok] == 0).mean()), 4),
+            }
     if out["coverage_frac"] < MIN_NATIONAL_COVERAGE:
         out["verdict"] = (
             f"PARTIAL COVERAGE ({out['coverage_frac']:.1%} of municipalities): the slopes "

@@ -34,6 +34,19 @@ per-pixel probability times 100 m<sup>2</sup>, above a small noise floor. It int
 sub-threshold signal and is an upper-leaning ceiling, because false-positive probability
 mass gets summed too.
 
+The chain from detected to recall-corrected, worked on one real candidate with its own
+bin's measured corrections:
+
+![Waterfall of three bars for one real 3,400 square metre rooftop candidate. Detected, 612 kilowatts peak, the polygon at face value including false positives. An arrow labelled times P real equals 0.60, measured for rooftop candidates of 1,000 to 5,000 square metres, leads down to calibrated at 366 kilowatts peak, the headline accounting. A second arrow labelled divided by recall equals 0.46, measured against pre-pipeline OpenStreetMap, leads up to recall-corrected at 795 kilowatts peak, the population estimate with misses included.](../assets/figures/capacity_metrics.svg#only-light)
+![Waterfall of three bars for one real 3,400 square metre rooftop candidate. Detected, 612 kilowatts peak, the polygon at face value including false positives. An arrow labelled times P real equals 0.60, measured for rooftop candidates of 1,000 to 5,000 square metres, leads down to calibrated at 366 kilowatts peak, the headline accounting. A second arrow labelled divided by recall equals 0.46, measured against pre-pipeline OpenStreetMap, leads up to recall-corrected at 795 kilowatts peak, the population estimate with misses included.](../assets/figures/capacity_metrics.dark.svg#only-dark)
+
+Both corrections come from the same tracked
+[calibration table](calibration.md), and neither is a fudge factor: the first divides the
+candidate population into what is probably real, the second scales the survivors up to
+stand for the installations the model verifiably misses at that size. The two run in
+opposite directions on purpose -- a pipeline whose corrections only ever raised the number
+would deserve suspicion.
+
 !!! note "Reading the recall correction correctly"
     `*_rc` lives on the candidate population, so it is comparable to the `*_total`
     columns, not to the footprint-intersected `*_roof` ones. There is no per-building
@@ -138,6 +151,9 @@ at that building's own roof area. Whatever part of a rooftop-classified candidat
 polygon does *not* sit on any building -- gaps between the buildings it spans, general
 polygonize-and-merge over-draw beyond a roof's edge -- is counted in the first total and
 silently absent from the second.
+
+![Schematic of one rooftop-classified candidate polygon spanning two building footprints. The two intersection areas are marked as credited to building A's row, capped at A's roof area, and to building B's row. The larger remaining polygon area between and beyond the roofs is marked as off any roof: in the region total, in nobody's per-building row.](../assets/figures/attribution_gap.svg#only-light)
+![Schematic of one rooftop-classified candidate polygon spanning two building footprints. The two intersection areas are marked as credited to building A's row, capped at A's roof area, and to building B's row. The larger remaining polygon area between and beyond the roofs is marked as off any roof: in the region total, in nobody's per-building row.](../assets/figures/attribution_gap.dark.svg#only-dark)
 
 This is not a rounding difference. Measured 2026-08-06 against a single matched candidate
 snapshot (so the comparison isn't confounded by the separate stale-partials issue

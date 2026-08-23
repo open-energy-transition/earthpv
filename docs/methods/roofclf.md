@@ -374,6 +374,14 @@ refuses to speak where no quadrat resembles the ground. **Rescaling the domain f
 its share of cells or buildings to get a national total is exactly the error this design
 prevents**, and `sub400_capacity`'s own returned summary says so.
 
+![Histogram of all 4,463 Pakistani grid cells by building density on a logarithmic axis, with each calibration quadrat's own density as a tick below the axis. The 2,957 cells between 48.5 and 5,258 buildings per square kilometre, 66.3 percent of cells carrying 94.7 percent of national buildings, are highlighted as the calibrated domain; the large sparser tail to the left is labelled: sparser than any quadrat, roofclf refuses to count these cells.](../assets/figures/density_domain.svg#only-light)
+![Histogram of all 4,463 Pakistani grid cells by building density on a logarithmic axis, with each calibration quadrat's own density as a tick below the axis. The 2,957 cells between 48.5 and 5,258 buildings per square kilometre, 66.3 percent of cells carrying 94.7 percent of national buildings, are highlighted as the calibrated domain; the large sparser tail to the left is labelled: sparser than any quadrat, roofclf refuses to count these cells.](../assets/figures/density_domain.dark.svg#only-dark)
+
+The histogram also shows why widening is hard: the out-of-domain tail is *sparser* than
+every quadrat tick, and most cells sit just left of the band's lower edge. One
+low-density quadrat moves the edge much further than another urban one ever could -- which
+is what the deliberately rural extensions below were for.
+
 Widening the domain therefore needs new ground truth, not new code, and the constraint is
 subtle: a quadrat extends the range only if **its own** average density falls outside the
 current band. A boundary traced around a village, the natural way to draw one, is dense by

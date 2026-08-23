@@ -40,6 +40,9 @@ results/glint_validation_pakistan/*
 !results/segmentation_examples.png
 !results/candidate_placement.png
 !results/quadrat_map.png
+!results/capacity_metrics_example.csv
+!results/density_domain_cells.csv
+!results/density_domain_quadrats.csv
 !results/pakistan_pv_reference_comparison.html
 !results/pakistan_pv_external_comparison.html
 

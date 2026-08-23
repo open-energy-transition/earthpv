@@ -1,0 +1,2 @@
+bin,placement,area_m2,confidence,lon,lat,n_in_bin,kwp_per_m2_module
+1k-5k,rooftop,3400,0.91,73.073,31.468,68,0.18

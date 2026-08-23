@@ -22,6 +22,15 @@ Outputs
                                               classify each candidate's placement
   results/quadrat_map.png                     every calibration quadrat on the province
                                               map, sized by its mapped installations
+  results/capacity_metrics_example.csv        one real rooftop candidate (area, bin,
+                                              placement) for the det -> cal -> rc
+                                              waterfall figure; p_real and recall come
+                                              from the tracked calibration YAML at
+                                              figure-build time so the two never diverge
+  results/density_domain_cells.csv            every national cell's building density and
+                                              count, for the calibrated-domain histogram
+  results/density_domain_quadrats.csv         each quadrat's own density plus the shipped
+                                              domain band (density.CALIBRATED_BLDG_DENSITY_KM2)
 
 The building sample: every building under 400 m2 in the Rule-1 quadrat table except
 Kalat Rural (its has-PV labels are dominated by a >= 400 m2 ground-mount array clipping
@@ -586,12 +595,78 @@ def build_quadrat_map_png(out: Path) -> None:
     log.info("wrote %s", out.relative_to(ROOT))
 
 
+# --------------------------------------------- one candidate for the metrics waterfall
+
+
+def write_capacity_metrics_example() -> None:
+    """A representative rooftop candidate for the det -> cal -> rc worked example.
+
+    Deliberately only the candidate's own facts are written: its bin's measured p_real
+    and recall are read from the tracked calibration YAML by the figure itself, so a
+    recalibration moves the figure without this script re-running. Selection is
+    deterministic: the model-geometry rooftop candidate closest to the 1k-5k bin's
+    median area (a bin where both corrections visibly matter: p_real ~0.6, recall ~0.46).
+    """
+    cands = gpd.read_parquet(ROOT / "data/predictions/pakistan/candidates.parquet")
+    sub = cands[(cands.placement == "rooftop") & (cands.geometry_source == "model")
+                & (cands.area_m2 >= 1000) & (cands.area_m2 < 5000) & (~cands.oversize)]
+    row = sub.iloc[(sub.area_m2 - sub.area_m2.median()).abs().argsort().iloc[0]]
+    c = row.geometry.centroid
+    out = RESULTS / "capacity_metrics_example.csv"
+    with out.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["bin", "placement", "area_m2", "confidence", "lon", "lat",
+                    "n_in_bin", "kwp_per_m2_module"])
+        w.writerow(["1k-5k", "rooftop", f"{row.area_m2:.0f}", f"{row.confidence:.2f}",
+                    f"{c.x:.3f}", f"{c.y:.3f}", len(sub), 0.18])
+    log.info("metrics example: %.0f m2 rooftop candidate at %.2fN %.2fE "
+             "(median of %d in bin); wrote %s",
+             row.area_m2, c.y, c.x, len(sub), out.relative_to(ROOT))
+
+
+# ------------------------------------------------- the density-calibration domain band
+
+
+def write_density_domain_csvs() -> None:
+    """National per-cell density plus each quadrat's own density and the shipped band."""
+    from earthpv.density import CALIBRATED_BLDG_DENSITY_KM2
+
+    cells = pd.read_parquet(ROOT / "data/roofclf/national_cell_density.parquet")
+    lo, hi = CALIBRATED_BLDG_DENSITY_KM2
+    inside = (cells.density >= lo) & (cells.density <= hi)
+    log.info("domain band (%.1f, %.1f): %d of %d cells (%.1f%%), %.1f%% of buildings",
+             lo, hi, int(inside.sum()), len(cells), 100 * inside.mean(),
+             100 * cells.n_buildings[inside].sum() / cells.n_buildings.sum())
+
+    out = RESULTS / "density_domain_cells.csv"
+    with out.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["cell", "n_buildings", "density"])
+        for r in cells.itertuples():
+            w.writerow([r.cell, int(r.n_buildings), f"{r.density:.2f}"])
+    log.info("wrote %s", out.relative_to(ROOT))
+
+    # Each quadrat's own density, the same quantity sub400_capacity's
+    # quadrat_building_density_km2 computes from the regenerated quadrat profile CSV.
+    profile = pd.read_csv(RESULTS / "calibration_quadrats.csv")
+    out = RESULTS / "density_domain_quadrats.csv"
+    with out.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["label", "density", "excluded", "band_lo", "band_hi"])
+        for r in profile.itertuples():
+            w.writerow([r.label, f"{r.n_buildings / r.area_km2:.2f}",
+                        int(r.quadrat in EXCLUDED_QUADRATS), lo, hi])
+    log.info("wrote %s (%d quadrats)", out.relative_to(ROOT), len(profile))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     write_spectral_csvs()
     build_examples_png(RESULTS / "segmentation_examples.png")
     build_placement_png(RESULTS / "candidate_placement.png")
     build_quadrat_map_png(RESULTS / "quadrat_map.png")
+    write_capacity_metrics_example()
+    write_density_domain_csvs()
 
 
 if __name__ == "__main__":

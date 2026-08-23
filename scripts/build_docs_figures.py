@@ -1059,6 +1059,196 @@ def fig_mastr_size_share(t: Theme):
     save(fig, t, "mastr_size_share")
 
 
+# ----------------------------------- capacity metrics, domain band, attribution gap
+
+
+def read_metrics_example():
+    path = source("results/capacity_metrics_example.csv")
+    if path is None:
+        return None
+    return next(iter(csv.DictReader(path.open())))
+
+
+def fig_capacity_metrics(t: Theme):
+    """det -> cal -> rc on one real candidate, corrections labelled with their source."""
+    ex = read_metrics_example()
+    pl = read_calibration_placement()
+    if ex is None or not pl.get("rooftop"):
+        return
+    b = next(r for r in pl["rooftop"] if r["label"] == ex["bin"])
+    det = float(ex["area_m2"]) * float(ex["kwp_per_m2_module"])
+    cal = det * b["p_real"]
+    rc = cal / max(b["recall"], 0.05)
+    cal_lo, cal_hi = det * b["p_real_lo"], det * b["p_real_hi"]
+    rc_lo = det * b["p_real_lo"] / max(b["recall_hi"], 0.05)
+    rc_hi = det * b["p_real_hi"] / max(b["recall_lo"], 0.05)
+
+    fig, ax = new_fig(t, 6.9, 3.6)
+    x = [0, 1, 2]
+    vals = [det, cal, rc]
+    ax.bar(x, vals, 0.5, color=[t.s2, t.s1, t.s1], zorder=3)
+    for xi, lo, hi in ((1, cal_lo, cal_hi), (2, rc_lo, rc_hi)):
+        ax.plot([xi, xi], [lo, hi], color=t.ink_dim, linewidth=1.5, zorder=4)
+    for xi, v in zip(x, vals):
+        ax.text(xi, v + rc_hi * 0.045, f"{v:,.0f} kWp", ha="center", color=t.ink,
+                fontsize=10, fontweight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels([
+        "detected  (*_det)\nthe polygon at face value:\nincludes false positives",
+        "calibrated  (*_cal)\nthe headline accounting:\nonly what is probably real",
+        "recall-corrected  (*_rc)\nthe population estimate:\nmisses included",
+    ], fontsize=8)
+    # The two measured corrections, written on the arrows between the bars.
+    ax.annotate("", xy=(0.78, cal), xytext=(0.28, det),
+                arrowprops=dict(arrowstyle="->", color=t.ink_dim, linewidth=1.2))
+    ax.text(0.53, rc_hi * 0.17,
+            f"x P(real) = {b['p_real']:.2f}\nmeasured for rooftop\n{ex['bin']} m$^2$ "
+            "candidates", ha="center", fontsize=7.5, color=t.ink_dim)
+    ax.annotate("", xy=(1.78, rc), xytext=(1.28, cal),
+                arrowprops=dict(arrowstyle="->", color=t.ink_dim, linewidth=1.2))
+    ax.text(1.53, rc_hi * 0.17,
+            f"$\\div$ recall = {b['recall']:.2f}\nmeasured against\npre-pipeline OSM",
+            ha="center", fontsize=7.5, color=t.ink_dim)
+    ax.set_ylim(0, rc_hi * 1.16)
+    style_axes(ax, t, ygrid=True)
+    titled(fig, t, "From one detected polygon to the headline estimator",
+           f"A real {float(ex['area_m2']):,.0f} m$^2$ rooftop candidate "
+           f"({ex['lat']}N {ex['lon']}E) at 0.18 kWp/m$^2$, corrected by its own size "
+           "and placement bin's measured precision and recall from the tracked "
+           "calibration table. Whiskers span the bins' 90% intervals combined naively; "
+           "the pipeline composes them by posterior draws instead. The fourth metric, "
+           "expected, lives on pixels rather than candidates: an upper-leaning ceiling",
+           width=100)
+    save(fig, t, "capacity_metrics")
+
+
+def read_density_domain():
+    cells = source("results/density_domain_cells.csv")
+    quads = source("results/density_domain_quadrats.csv")
+    if cells is None or quads is None:
+        return None
+    return list(csv.DictReader(cells.open())), list(csv.DictReader(quads.open()))
+
+
+def fig_density_domain(t: Theme):
+    """Where roofclf is allowed to count: the quadrat-spanned building-density band."""
+    d = read_density_domain()
+    if d is None:
+        return
+    cells, quads = d
+    dens = np.array([float(r["density"]) for r in cells])
+    nb = np.array([int(r["n_buildings"]) for r in cells])
+    lo, hi = float(quads[0]["band_lo"]), float(quads[0]["band_hi"])
+    inside = (dens >= lo) & (dens <= hi)
+
+    fig, ax = new_fig(t, 6.9, 3.5)
+    # Log bins with the band edges forced onto bin boundaries, so the shading is crisp.
+    bins = np.unique(np.concatenate([
+        np.logspace(np.log10(max(dens.min(), 0.3)), np.log10(dens.max() * 1.05), 36),
+        [lo, hi],
+    ]))
+    counts, edges = np.histogram(dens, bins=bins)
+    centers = (edges[:-1] + edges[1:]) / 2
+    in_band = (centers >= lo) & (centers <= hi)
+    ax.bar(edges[:-1], counts, np.diff(edges), align="edge",
+           color=[t.s1 if b else t.ink_faint for b in in_band], zorder=3)
+    ax.set_xscale("log")
+    ax.axvline(lo, color=t.ink_dim, linewidth=1.0)
+    ax.axvline(hi, color=t.ink_dim, linewidth=1.0)
+
+    ymax = counts.max()
+    for r in quads:
+        q = float(r["density"])
+        excl = r["excluded"] == "1"
+        ax.plot([q, q], [-ymax * 0.075, -ymax * 0.015],
+                color=t.ink_faint if excl else t.s2,
+                linewidth=1.1 if excl else 1.4, clip_on=False, zorder=5)
+    ax.plot([], [], color=t.s2, linewidth=1.4,
+            label="a calibration quadrat's own density")
+    ax.plot([], [], color=t.ink_faint, linewidth=1.1,
+            label="registered, excluded from the fit")
+
+    n_cells, pct_cells = int(inside.sum()), 100 * inside.mean()
+    pct_bldg = 100 * nb[inside].sum() / nb.sum()
+    ax.text(np.sqrt(lo * hi), ymax * 0.96,
+            f"calibrated domain: {n_cells:,} of {len(dens):,} cells "
+            f"({pct_cells:.1f}%),\ncarrying {pct_bldg:.1f}% of national buildings",
+            ha="center", va="top", fontsize=8.5, color=t.ink)
+    ax.text(4.5, ymax * 0.62,
+            "sparser than any quadrat:\nroofclf refuses to\ncount these cells",
+            ha="center", fontsize=7.5, color=t.ink_dim)
+    ax.set_xlabel("buildings per km$^2$ in a 0.1$\\degree$ cell (log scale)",
+                  fontsize=8.5, color=t.ink_dim)
+    ax.set_ylabel("national cells", fontsize=8.5, color=t.ink_dim)
+    ax.set_ylim(0, ymax * 1.08)
+    style_axes(ax, t, ygrid=True)
+    leg = ax.legend(frameon=False, loc="upper left", fontsize=8)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "Where roofclf is allowed to count",
+           "Every Pakistani 0.1$\\degree$ cell by its VIDA building density. roofclf's "
+           "capacity functions only count cells inside the density band the calibration "
+           "quadrats themselves span (ticks below the axis): a quadrat only widens the "
+           "band if its own density falls outside it", width=104)
+    save(fig, t, "density_domain")
+
+
+# Transcribed from docs/methods/density.md's attribution-gap section (measured
+# 2026-08-06 on a matched candidate snapshot): 46.4% of rooftop-placed candidate area
+# sits on no building; the mean on-roof share of a rooftop candidate is 58.8%.
+GAP_PCT, MEAN_OVERLAP_PCT = 46.4, 58.8
+
+
+def fig_attribution_gap(t: Theme):
+    """Why per-building sums are ~half the region total: the off-roof polygon area."""
+    fig, ax = new_fig(t, 6.9, 3.5)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 52)
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.grid(False)
+
+    # Two footprints and one rooftop-classified candidate spanning them (axis-aligned so
+    # the intersections are exact rectangles; a sketch of the mechanism, not data).
+    b1, b2 = (8, 10, 26, 34), (40, 8, 62, 30)      # (x0, y0, x1, y1)
+    cand = (17, 13, 55, 42)
+    for x0, y0, x1, y1, name in (( *b1, "building A"), (*b2, "building B")):
+        ax.add_patch(plt.Rectangle((x0, y0), x1 - x0, y1 - y0, facecolor=t.card,
+                                   edgecolor=t.ink_faint, linewidth=1.0, zorder=2))
+        ax.text((x0 + x1) / 2, y0 - 2.6, name, ha="center", fontsize=8, color=t.ink_dim)
+    cx0, cy0, cx1, cy1 = cand
+    ax.add_patch(plt.Rectangle((cx0, cy0), cx1 - cx0, cy1 - cy0, facecolor=t.s1,
+                               alpha=0.22, edgecolor=t.s1, linewidth=1.8, zorder=3))
+    for bx0, by0, bx1, by1 in (b1, b2):
+        ix0, iy0 = max(cx0, bx0), max(cy0, by0)
+        ix1, iy1 = min(cx1, bx1), min(cy1, by1)
+        ax.add_patch(plt.Rectangle((ix0, iy0), ix1 - ix0, iy1 - iy0, facecolor=t.s1,
+                                   alpha=0.75, edgecolor="none", zorder=4))
+
+    ax.annotate("credited to A's row,\ncapped at A's roof area", (21, 24),
+                xytext=(2, 47), fontsize=7.5, color=t.ink,
+                arrowprops=dict(arrowstyle="->", color=t.ink_dim, linewidth=1.0))
+    ax.annotate("credited to B's row", (47, 22), xytext=(69, 14), fontsize=7.5,
+                color=t.ink, arrowprops=dict(arrowstyle="->", color=t.ink_dim,
+                                             linewidth=1.0))
+    ax.annotate("off any roof: in the region total,\nin nobody's per-building row",
+                (33, 37), xytext=(60, 44), fontsize=7.5, color=t.ink,
+                arrowprops=dict(arrowstyle="->", color=t.ink_dim, linewidth=1.0))
+    ax.text(cx0 + 1.5, cy1 - 1.5, "one rooftop-classified candidate", fontsize=7.5,
+            color=t.ink_dim, ha="left", va="top")
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    titled(fig, t, "Two accounting methods over the same candidate",
+           "The region total counts the candidate's full polygon once; the per-building "
+           "table only counts its roof intersections. Measured nationally, "
+           f"{GAP_PCT}% of rooftop-placed candidate area sits on no footprint (mean "
+           f"on-roof share {MEAN_OVERLAP_PCT}%), so per-building sums are a structural, "
+           "roof-anchored floor at roughly half the region total -- not a bug",
+           width=102)
+    save(fig, t, "attribution_gap")
+
+
 # ----------------------------------------------------- hand-authored SVG diagrams
 
 FLYWHEEL = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="480"
@@ -1767,6 +1957,9 @@ def main():
         fig_building_prior(t)
         fig_calibration_placement(t)
         fig_mastr_size_share(t)
+        fig_capacity_metrics(t)
+        fig_density_domain(t)
+        fig_attribution_gap(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")

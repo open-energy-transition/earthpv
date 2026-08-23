@@ -1,10 +1,10 @@
 """Self-tests for the MaStR validation harness (`earthpv.mastr_validation`).
 
-`validate_density_against_mastr` cannot be exercised against real data yet -- Germany has
-composites for 14 of its 76 MGRS tiles and no per-cell density run at all -- so without
-these it would ship completely unrun. They feed it a synthetic grid built FROM the register
-so the correct answers are known in advance: a grid carrying exactly MaStR's own capacity
-must come back with slope 1.0, and one carrying half of it with slope 0.5.
+They feed `validate_density_against_mastr` a synthetic grid built FROM the register so the
+correct answers are known in advance: a grid carrying exactly MaStR's own capacity must
+come back with slope 1.0, and one carrying half of it with slope 0.5. This pins the
+arithmetic (units, the kW->MWp conversion, the origin-forced OLS, and the area-weighted
+municipality apportionment) independently of any real density run.
 
 Run with `pixi run -e default python -m pytest tests/ -q` (pytest is not currently a
 declared dependency; these are written to also run as a plain script).
@@ -61,7 +61,12 @@ def test_dispersion_reports_zero_spread_when_the_share_is_constant() -> None:
 
 
 def _write_grid(tmp: Path, gem: gpd.GeoDataFrame, counts: pd.DataFrame, factor: float) -> Path:
-    """A density grid whose cells sit at municipality centroids and carry `factor` x truth."""
+    """A density grid carrying `factor` x truth, one cell per municipality.
+
+    Each cell's polygon IS its municipality's polygon, so the area-weighted apportionment
+    assigns it wholly to that municipality (a vg250 neighbour shares only a zero-area
+    boundary line, which the harness drops) and the expected slope stays exact.
+    """
     pts = gem.geometry.representative_point()
     grid = gpd.GeoDataFrame({
         "cell": [f"c{i:04d}" for i in range(len(gem))],
@@ -70,7 +75,7 @@ def _write_grid(tmp: Path, gem: gpd.GeoDataFrame, counts: pd.DataFrame, factor: 
         "est_mwp_rc_roof": gem.ags.map(
             counts.set_index("ags").kw_rooftop / 1000.0 * factor
         ).fillna(0.0).to_numpy(),
-        "geometry": pts,
+        "geometry": gem.geometry.to_numpy(),
     }, crs="EPSG:4326")
     d = tmp / "density"
     d.mkdir(parents=True, exist_ok=True)
@@ -93,9 +98,14 @@ def test_harness_recovers_slope_one_and_one_half(tmp_path: Path) -> None:
         assert abs(r["slope_ols_origin"] - expected) < 1e-6, r
         assert abs(r["median_ratio"] - expected) < 1e-6, r
         assert abs(r["spearman_rho"] - 1.0) < 1e-9, r
+        # The above-floor block scores the same prediction against a smaller denominator,
+        # so its slope must sit at or above the all-capacity one.
+        ra = got["results_above_floor"]["est_mwp_rc_roof"]
+        assert ra["n"] > 0 and ra["slope_ols_origin"] >= r["slope_ols_origin"], ra
         # 200 of ~11k municipalities is far below the national-coverage bar, so the harness
         # must refuse to call this a national accuracy statement.
         assert got["coverage_frac"] < MIN_NATIONAL_COVERAGE
+        assert 0.0 < got["coverage_capacity_frac"] <= 1.0, got["coverage_capacity_frac"]
         assert got["verdict"].startswith("PARTIAL COVERAGE"), got["verdict"]
 
 
