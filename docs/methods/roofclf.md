@@ -405,6 +405,23 @@ and silently assumes full coverage. Measured against the quadrats' own mapped
 The coverage ratio is now fitted per roof-size bin and per building-density band, then
 0.18 kWp per m<sup>2</sup> of module converts covered area to capacity.
 
+The quadrat ground truth shows directly what that ratio is pricing, and why it must be
+fitted by size rather than pooled:
+
+![Two panels from 17,090 PV-carrying quadrat buildings. Left, log-log: mapped PV area against building roof area, tracking roof size across three decades but sitting well below the array-equals-whole-roof line; a building just above the 400 square metre segmentation floor typically carries an array well below the floor. Right: the median share of the roof covered is U-shaped, about 0.5 on the smallest homes, dipping to 0.27 around 300 to 700 square metre roofs, and rising back above 0.6 on large industrial roofs.](../assets/figures/pv_vs_building.svg#only-light)
+![Two panels from 17,090 PV-carrying quadrat buildings. Left, log-log: mapped PV area against building roof area, tracking roof size across three decades but sitting well below the array-equals-whole-roof line; a building just above the 400 square metre segmentation floor typically carries an array well below the floor. Right: the median share of the roof covered is U-shaped, about 0.5 on the smallest homes, dipping to 0.27 around 300 to 700 square metre roofs, and rising back above 0.6 on large industrial roofs.](../assets/figures/pv_vs_building.dark.svg#only-dark)
+
+Two readings. First, the coverage share is not one number: it is U-shaped in roof size
+(small homes fill half the roof, mid-size buildings barely a quarter, big industrial
+roofs climb back up), which is exactly why the ratio is fitted per size bin. Note these
+medians sit above the 0.19 quoted in the previous paragraph because they are measured on buildings that
+truly carry PV, while the deployed ratio is measured over roofclf-*flagged* roofs, false
+flags included. Second, the left panel is the measured case for the
+&ge; 400 m<sup>2</sup> roofclf replacement below: a building above the floor usually
+carries an array **below** it (median 127 m<sup>2</sup> of PV on a roughly 485
+m<sup>2</sup> roof), so segmentation can miss a large building's array outright without
+that being evidence the roof is empty.
+
 ## Where the numbers land
 
 | Component | Population | MWp |

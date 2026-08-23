@@ -1249,6 +1249,82 @@ def fig_attribution_gap(t: Theme):
     save(fig, t, "attribution_gap")
 
 
+# ------------------------------------------------ PV size against building size
+
+
+def read_pv_vs_building():
+    bins = source("results/pv_size_vs_building_bins.csv")
+    scatter = source("results/pv_size_vs_building_scatter.csv")
+    if bins is None or scatter is None:
+        return None
+    return list(csv.DictReader(bins.open())), list(csv.DictReader(scatter.open()))
+
+
+def fig_pv_vs_building(t: Theme):
+    """How much PV a roof of a given size actually carries, from the quadrat truth."""
+    d = read_pv_vs_building()
+    if d is None:
+        return
+    bins, scatter = d
+    roof = [float(r["roof_med"]) for r in bins]
+    n_total = sum(int(r["n"]) for r in bins)
+
+    fig, (ax, ax2) = plt.subplots(
+        1, 2, figsize=(8.8, 3.7), gridspec_kw={"width_ratios": [1.35, 1.0]})
+    fig.patch.set_facecolor(t.surface)
+    for a in (ax, ax2):
+        a.set_facecolor(t.surface)
+        for sp in a.spines.values():
+            sp.set_visible(False)
+        a.tick_params(colors=t.ink_dim, labelsize=8, length=0)
+        a.set_xscale("log")
+        a.set_xlabel("building roof area, m$^2$", fontsize=8.5, color=t.ink_dim)
+        a.grid(axis="y", color=t.rule, linewidth=0.8)
+        a.set_axisbelow(True)
+
+    ax.set_yscale("log")
+    ax.scatter([float(r["roof_area_m2"]) for r in scatter],
+               [float(r["pv_area_m2"]) for r in scatter],
+               s=5, color=t.s2, alpha=0.28, linewidths=0, zorder=2)
+    ax.fill_between(roof, [float(r["pv_q25"]) for r in bins],
+                    [float(r["pv_q75"]) for r in bins], color=t.s1, alpha=0.20,
+                    linewidth=0, zorder=3)
+    ax.plot(roof, [float(r["pv_med"]) for r in bins], color=t.s1, linewidth=2.2,
+            marker="o", markersize=3.5, zorder=4, label="median array (IQR shaded)")
+    lims = (8, 40000)
+    ax.plot(lims, lims, color=t.ink_faint, linewidth=1.0, linestyle="--", zorder=1)
+    ax.text(3000, 5200, "array = whole roof", fontsize=7.5, color=t.ink_dim,
+            rotation=30, rotation_mode="anchor")
+    ax.axhline(400, color=t.s3, linewidth=1.2)
+    ax.text(9.5, 460, "400 m$^2$: the segmentation floor", fontsize=7.5, color=t.s3)
+    ax.set_xlim(*lims)
+    ax.set_ylim(1, 40000)
+    ax.set_ylabel("mapped PV on the building, m$^2$", fontsize=8.5, color=t.ink_dim)
+    leg = ax.legend(frameon=False, loc="upper left", fontsize=8)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+
+    ax2.fill_between(roof, [float(r["cov_q25"]) for r in bins],
+                     [float(r["cov_q75"]) for r in bins], color=t.s1, alpha=0.20,
+                     linewidth=0)
+    ax2.plot(roof, [float(r["cov_med"]) for r in bins], color=t.s1, linewidth=2.2,
+             marker="o", markersize=3.5)
+    ax2.axhline(1.0, color=t.ink_faint, linewidth=1.0, linestyle="--")
+    ax2.set_xlim(*lims)
+    ax2.set_ylim(0, 1.25)
+    ax2.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax2.set_ylabel("share of the roof covered", fontsize=8.5, color=t.ink_dim)
+
+    fig.subplots_adjust(left=0.07, right=0.99, top=0.97, bottom=0.16, wspace=0.28)
+    titled(fig, t, "How much PV a roof of a given size actually carries",
+           f"{n_total:,} PV-carrying buildings from the Rule-1 quadrats (parcel label). "
+           "Arrays track roof size across three decades but rarely fill the roof, and a "
+           "building just above the 400 m$^2$ floor typically carries an array well "
+           "below it -- why a big building can be a real segmentation miss, and what the "
+           "coverage-ratio conversion exists to price", width=112)
+    save(fig, t, "pv_vs_building")
+
+
 # ----------------------------------------------------- hand-authored SVG diagrams
 
 FLYWHEEL = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="480"
@@ -1960,6 +2036,7 @@ def main():
         fig_capacity_metrics(t)
         fig_density_domain(t)
         fig_attribution_gap(t)
+        fig_pv_vs_building(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")

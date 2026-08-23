@@ -43,6 +43,8 @@ results/glint_validation_pakistan/*
 !results/capacity_metrics_example.csv
 !results/density_domain_cells.csv
 !results/density_domain_quadrats.csv
+!results/pv_size_vs_building_bins.csv
+!results/pv_size_vs_building_scatter.csv
 !results/pakistan_pv_reference_comparison.html
 !results/pakistan_pv_external_comparison.html
 

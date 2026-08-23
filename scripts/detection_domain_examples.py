@@ -31,6 +31,10 @@ Outputs
                                               count, for the calibrated-domain histogram
   results/density_domain_quadrats.csv         each quadrat's own density plus the shipped
                                               domain band (density.CALIBRATED_BLDG_DENSITY_KM2)
+  results/pv_size_vs_building_bins.csv        mapped PV area and coverage fraction per
+                                              roof-size bin, PV-carrying quadrat buildings
+  results/pv_size_vs_building_scatter.csv     a stratified per-building sample of
+                                              (roof area, PV area) behind those bins
 
 The building sample: every building under 400 m2 in the Rule-1 quadrat table except
 Kalat Rural (its has-PV labels are dominated by a >= 400 m2 ground-mount array clipping
@@ -659,6 +663,60 @@ def write_density_domain_csvs() -> None:
     log.info("wrote %s (%d quadrats)", out.relative_to(ROOT), len(profile))
 
 
+# ------------------------------------------------ PV size against building size
+
+
+def write_pv_vs_building_csvs() -> None:
+    """Mapped PV area against the roof it sits on, from the Rule-1 quadrat buildings.
+
+    Ground-truth relationship on PV-carrying buildings (parcel label, Kalat Rural
+    excluded as everywhere else). Note this is a different population from the coverage
+    ratio the capacity chain applies: that one is measured over roofclf-*flagged* roofs,
+    false flags included, so it sits lower than the per-building medians here.
+    """
+    df = pd.read_parquet(BUILDINGS, columns=["quadrat", "roof_area_m2", "pv_area_true_m2",
+                                             "has_pv"])
+    pv = df[(df.quadrat != "kalat_rural") & (df.has_pv == 1) & (df.pv_area_true_m2 > 0)
+            & (df.roof_area_m2 > 0)].copy()
+    edges = np.logspace(np.log10(10), np.log10(30000), 14)
+    pv["bin"] = pd.cut(pv.roof_area_m2, edges)
+    pv["cov_frac"] = pv.pv_area_true_m2 / pv.roof_area_m2
+    rng = np.random.default_rng(SEED)
+
+    out = RESULTS / "pv_size_vs_building_bins.csv"
+    kept = 0
+    with out.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["roof_lo", "roof_hi", "n", "roof_med", "pv_q25", "pv_med", "pv_q75",
+                    "cov_q25", "cov_med", "cov_q75"])
+        for iv, g in pv.groupby("bin", observed=True):
+            if len(g) < 20:  # the >8,753 m2 tail has 8 buildings, too few for quartiles
+                continue
+            kept += len(g)
+            w.writerow([f"{iv.left:.0f}", f"{iv.right:.0f}", len(g),
+                        f"{g.roof_area_m2.median():.1f}",
+                        f"{g.pv_area_true_m2.quantile(0.25):.1f}",
+                        f"{g.pv_area_true_m2.median():.1f}",
+                        f"{g.pv_area_true_m2.quantile(0.75):.1f}",
+                        f"{g['cov_frac'].quantile(0.25):.3f}",
+                        f"{g['cov_frac'].median():.3f}",
+                        f"{g['cov_frac'].quantile(0.75):.3f}"])
+    log.info("pv-vs-building: %d PV buildings, %d in binned rows; wrote %s",
+             len(pv), kept, out.relative_to(ROOT))
+
+    # A stratified sample per bin so the sparse industrial tail stays visible in the
+    # scatter instead of being swamped by the residential mode.
+    out = RESULTS / "pv_size_vs_building_scatter.csv"
+    with out.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["roof_area_m2", "pv_area_m2"])
+        for _, g in pv.groupby("bin", observed=True):
+            take = g.sample(min(len(g), 250), random_state=int(rng.integers(2**31)))
+            for r in take.itertuples():
+                w.writerow([f"{r.roof_area_m2:.1f}", f"{r.pv_area_true_m2:.1f}"])
+    log.info("wrote %s", out.relative_to(ROOT))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     write_spectral_csvs()
@@ -667,6 +725,7 @@ def main() -> None:
     build_quadrat_map_png(RESULTS / "quadrat_map.png")
     write_capacity_metrics_example()
     write_density_domain_csvs()
+    write_pv_vs_building_csvs()
 
 
 if __name__ == "__main__":
