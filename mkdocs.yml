@@ -111,6 +111,7 @@ nav:
   - How it works:
       - how-it-works.md
       - Detection model: methods/detection.md
+      - Segmentation & the building map: methods/segmentation.md
       - Rooftop classifier (roofclf): methods/roofclf.md
 #      - Capacity density: methods/density.md
       - Calibration: methods/calibration.md

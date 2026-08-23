@@ -17,6 +17,11 @@ Outputs
   results/segmentation_examples.png           composite -> probability -> polygon, four
                                               real installations from ~200,000 m2 down to
                                               a sub-400 m2 miss
+  results/candidate_placement.png             the building join on real candidates: the
+                                              same scene before and after VIDA footprints
+                                              classify each candidate's placement
+  results/quadrat_map.png                     every calibration quadrat on the province
+                                              map, sized by its mapped installations
 
 The building sample: every building under 400 m2 in the Rule-1 quadrat table except
 Kalat Rural (its has-PV labels are dominated by a >= 400 m2 ground-mount array clipping
@@ -42,6 +47,7 @@ import rasterio.features
 import rasterio.windows
 
 matplotlib.use("Agg")
+import matplotlib.patches as mpatches  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.colors import Normalize  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
@@ -383,10 +389,209 @@ def build_examples_png(out: Path) -> None:
     log.info("wrote %s", out.relative_to(ROOT))
 
 
+# --------------------------------------------------------------- the building join
+
+PLACEMENT_COLORS = {
+    "rooftop": "#E8890C",          # >= 30% of the candidate sits on a footprint
+    "ground_adjacent": "#7550b0",  # within 30 m of one
+    "no_building": "#1c6fa8",      # neither
+}
+# A ~3.2 km scene near Multan chosen because it holds all three placement classes in one
+# view (27 rooftop, 3 ground_adjacent, 2 no_building at the time of writing); the counts
+# in the panel titles are recomputed from the candidates file, never assumed.
+PLACEMENT_CENTER = (71.387, 30.1308)
+PLACEMENT_SIDE_M = 3200.0
+
+
+def build_placement_png(out: Path) -> None:
+    """The same scene twice: raw candidates on imagery, then classified by the join."""
+    from earthpv.buildings import fetch_vida_buildings
+
+    cx, cy = PLACEMENT_CENTER
+    half_y = PLACEMENT_SIDE_M / 2 / 111_320.0
+    half_x = half_y / np.cos(np.radians(cy))
+    bounds = (cx - half_x, cy - half_y, cx + half_x, cy + half_y)
+
+    comp = CompositeIndex(COMPOSITES)
+    res = comp.read_window(bounds)
+    if res is None:
+        raise SystemExit(f"no composite coverage at {cy:.3f}N {cx:.3f}E")
+    arr, transform, crs = res
+    arr = arr[:10].astype("float32") / 10000.0
+    h, w = arr.shape[-2:]
+    left, top = transform * (0, 0)
+    right, bottom = transform * (w, h)
+    extent = (left, right, bottom, top)
+
+    cands = gpd.read_parquet(ROOT / "data/predictions/pakistan/candidates.parquet")
+    cands = cands[cands.intersects(box(*bounds))].to_crs(crs)
+    buildings = fetch_vida_buildings(bounds, "PAK").to_crs(crs)
+    counts = cands.placement.value_counts().to_dict()
+    log.info("placement scene: %d candidates %s, %d VIDA buildings",
+             len(cands), counts, len(buildings))
+
+    plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 9})
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(11.4, 6.1))
+
+    ax0.imshow(_rgb(arr), extent=extent, interpolation="nearest")
+    cands.boundary.plot(ax=ax0, color=CAND_EDGE, linewidth=1.3)
+    ax0.set_title(
+        f"{len(cands)} candidate polygons from the probability raster\n"
+        "(threshold 0.3, polygonized; no building information yet)",
+        fontsize=10, color=INK, loc="left", pad=8)
+
+    buildings.plot(ax=ax1, facecolor="#E4E0D6", edgecolor="#B9B3A5", linewidth=0.25)
+    for pl, col in PLACEMENT_COLORS.items():
+        sub = cands[cands.placement == pl]
+        if not sub.empty:
+            sub.plot(ax=ax1, facecolor=col, edgecolor=col, alpha=0.55, linewidth=1.2)
+            sub.boundary.plot(ax=ax1, color=col, linewidth=1.2)
+    ax1.set_title(
+        f"the same candidates against {len(buildings):,} VIDA footprints\n"
+        f"rooftop {counts.get('rooftop', 0)}, ground-adjacent "
+        f"{counts.get('ground_adjacent', 0)}, no building {counts.get('no_building', 0)}",
+        fontsize=10, color=INK, loc="left", pad=8)
+
+    handles = [
+        mpatches.Patch(facecolor="#E4E0D6", edgecolor="#B9B3A5",
+                       label="VIDA building footprint"),
+        mpatches.Patch(facecolor=PLACEMENT_COLORS["rooftop"], alpha=0.7,
+                       label="rooftop (≥ 30% on a footprint)"),
+        mpatches.Patch(facecolor=PLACEMENT_COLORS["ground_adjacent"], alpha=0.7,
+                       label="ground-adjacent (within 30 m)"),
+        mpatches.Patch(facecolor=PLACEMENT_COLORS["no_building"], alpha=0.7,
+                       label="no building nearby"),
+    ]
+    ax1.legend(handles=handles, loc="lower right", fontsize=8, frameon=True,
+               framealpha=0.92, edgecolor=RULE)
+
+    bar = 500.0
+    x0 = left + (right - left) * 0.05
+    y0 = bottom + (top - bottom) * 0.05
+    ax0.plot([x0, x0 + bar], [y0, y0], color="white", linewidth=2.6)
+    ax0.plot([x0, x0 + bar], [y0, y0], color=INK, linewidth=1.3)
+    ax0.text(x0 + bar / 2, y0 + (top - bottom) * 0.015, "500 m", ha="center",
+             color="white", fontsize=7.5)
+    for ax in (ax0, ax1):
+        ax.set_xlim(left, right)
+        ax.set_ylim(bottom, top)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_aspect("equal")
+        for sp in ax.spines.values():
+            sp.set_color(RULE)
+
+    fig.text(0.008, 0.975, f"The building join, on one real scene "
+             f"({cy:.2f}N {cx:.2f}E)", fontsize=14, color=INK, va="top")
+    fig.text(0.008, 0.928,
+             "Placement never removes a candidate; it decides how each one is ranked for "
+             "mappers and which\narea-to-capacity constant prices it (module 0.18 kWp/m² "
+             "on rooftops, land 0.05 kWp/m² for ground-mount).",
+             fontsize=8.8, color=DIM, va="top")
+    fig.subplots_adjust(left=0.008, right=0.992, top=0.78, bottom=0.02, wspace=0.03)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=170, facecolor="white")
+    log.info("wrote %s", out.relative_to(ROOT))
+
+
+# ------------------------------------------------------------------ quadrat map
+
+# Excluded from every roofclf refit until building_table's roof term gets a
+# placement/size guard: 69 of its 89 has-PV labels come from one >= 400 m2 ground array
+# clipping roofs. See docs/methods/calibration-quadrats.md and CLAUDE.md's Box 17 entry.
+EXCLUDED_QUADRATS = {"kalat_rural_calib_3km"}
+
+
+def _quadrat_stats() -> list[dict]:
+    """One row per registered quadrat: boundary centroid, area, mapped installations."""
+    rows = []
+    for boundary in sorted((ROOT / "data/labels").glob("*_calib_*_boundary.geojson")):
+        stem = boundary.name.replace("_boundary.geojson", "")
+        pulls = sorted((ROOT / "data/labels").glob(f"{stem}_overpass_solar*.parquet"))
+        if not pulls:
+            log.warning("%s has no solar pull, skipping", stem)
+            continue
+        b = gpd.read_file(boundary)
+        solar = gpd.read_parquet(pulls[-1])  # dated re-pulls sort after the plain name
+        geom = b.geometry.union_all()
+        rows.append({
+            "stem": stem,
+            "lon": geom.centroid.x, "lat": geom.centroid.y,
+            "km2": geodesic_area_m2(geom) / 1e6,
+            "n_pv": len(solar),
+            "excluded": stem in EXCLUDED_QUADRATS,
+        })
+    return rows
+
+
+def build_quadrat_map_png(out: Path) -> None:
+    regions = gpd.read_parquet(ROOT / "data/labels/pakistan_regions.parquet")
+    rows = _quadrat_stats()
+    log.info("quadrat map: %d quadrats, %d mapped installations total",
+             len(rows), sum(r["n_pv"] for r in rows))
+
+    plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 9})
+    fig, ax = plt.subplots(figsize=(8.6, 8.2))
+    regions.plot(ax=ax, facecolor="#F2EFE8", edgecolor="#B9B3A5", linewidth=0.7)
+
+    kept = [r for r in rows if not r["excluded"]]
+    excl = [r for r in rows if r["excluded"]]
+    size = lambda r: 14 + 5.5 * np.sqrt(r["n_pv"])  # noqa: E731
+    ax.scatter([r["lon"] for r in kept], [r["lat"] for r in kept],
+               s=[size(r) for r in kept], color=CAND_EDGE, alpha=0.75,
+               edgecolor="white", linewidth=0.6, zorder=5)
+    if excl:
+        ax.scatter([r["lon"] for r in excl], [r["lat"] for r in excl],
+                   s=[size(r) for r in excl], facecolor="none", edgecolor=DIM,
+                   linewidth=1.4, zorder=5)
+
+    # Name the extremes so the map reads without a gazetteer: the three largest mapped
+    # populations, the confirmed-zero quadrat, and the excluded one.
+    label = sorted(kept, key=lambda r: -r["n_pv"])[:3]
+    label += [r for r in kept if r["n_pv"] == 0] + excl
+    for r in label:
+        name = r["stem"].split("_calib")[0].replace("_", " ")
+        if r["excluded"]:
+            note, xy, ha = " (excluded)", (-8, -14), "right"
+        elif r["n_pv"] == 0:
+            note, xy, ha = " (0 installations)", (-8, -26), "right"
+        else:
+            note, xy, ha = f" ({r['n_pv']:,})", (8, 6), "left"
+        ax.annotate(name + note, (r["lon"], r["lat"]), textcoords="offset points",
+                    xytext=xy, ha=ha, fontsize=8, color=INK)
+
+    for n in (10, 100, 1000):
+        ax.scatter([], [], s=14 + 5.5 * np.sqrt(n), color=CAND_EDGE, alpha=0.75,
+                   label=f"{n:,} mapped installations")
+    ax.scatter([], [], s=60, facecolor="none", edgecolor=DIM, linewidth=1.4,
+               label="registered, excluded from the fit")
+    ax.legend(loc="lower right", fontsize=8, frameon=False, labelspacing=1.1)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    total = sum(r["n_pv"] for r in rows)
+    fig.text(0.02, 0.97, f"{len(rows)} calibration quadrats, "
+             f"{total:,} exhaustively mapped installations", fontsize=14, color=INK,
+             va="top")
+    fig.text(0.02, 0.935,
+             "Every quadrat is declared Rule-1 complete by its mapper: each visible panel "
+             "inside the boundary is mapped,\nso a roof without PV is a real negative. "
+             "Marker area scales with mapped installations.",
+             fontsize=8.8, color=DIM, va="top")
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.90, bottom=0.01)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=170, facecolor="white")
+    log.info("wrote %s", out.relative_to(ROOT))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     write_spectral_csvs()
     build_examples_png(RESULTS / "segmentation_examples.png")
+    build_placement_png(RESULTS / "candidate_placement.png")
+    build_quadrat_map_png(RESULTS / "quadrat_map.png")
 
 
 if __name__ == "__main__":

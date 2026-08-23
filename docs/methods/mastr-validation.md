@@ -46,6 +46,14 @@ Measured 2026-08-11 on 4,411,015 rooftop units totalling 74.8 GWp, commissioning
 2025-09-30. The &le; 100 kWp row reproduces the figure this project already quotes, which
 is the check that the filters here match `mastr.aggregate_gemeinden`'s.
 
+![Two cumulative curves over unit size on a logarithmic axis, from the MaStR register. The installation-count share rises steeply and reaches 97.2 percent by 72 kWp; the capacity share rises much more slowly and reaches 65.5 percent at the same point. A vertical line marks 72 kWp as 400 square metres of module, the segmentation floor.](../assets/figures/mastr_size_share.svg#only-light)
+![Two cumulative curves over unit size on a logarithmic axis, from the MaStR register. The installation-count share rises steeply and reaches 97.2 percent by 72 kWp; the capacity share rises much more slowly and reaches 65.5 percent at the same point. A vertical line marks 72 kWp as 400 square metres of module, the segmentation floor.](../assets/figures/mastr_size_share.dark.svg#only-dark)
+
+The vertical gap between the two curves at the floor is the whole caution about quoting
+this result: the count share saturates almost immediately because small units dominate
+any register by number, while capacity accumulates slowly because one industrial roof
+outweighs hundreds of homes.
+
 Two things to take from this table. First, the claim holds and is now measured at the right
 threshold: **65.5%** of German rooftop capacity sits below the segmentation floor, so an
 instrument that only sees above it is describing roughly a third of the quantity a "rooftop

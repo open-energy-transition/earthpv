@@ -34,6 +34,26 @@ rate and a correspondingly tight interval.
 Without either of the last two, the table is an honest mapped-only lower bound and marks
 itself `status: interim-mapped-only`.
 
+## P(real) is also split by placement, and the split is not cosmetic
+
+Since 2026-08-15 the table carries separate bins for rooftop and ground candidates
+(`placement_bins`), and the current Pakistan table shows why in one picture:
+
+![Paired bars of measured candidate precision per size bin with 90 percent credible intervals, read from the tracked Pakistan calibration table. Rooftop candidates sit between 0.56 and 0.68 in every size bin. Ground candidates sit between 0.05 and 0.24, an order of magnitude lower in the small bins.](../assets/figures/calibration_placement.svg#only-light)
+![Paired bars of measured candidate precision per size bin with 90 percent credible intervals, read from the tracked Pakistan calibration table. Rooftop candidates sit between 0.56 and 0.68 in every size bin. Ground candidates sit between 0.05 and 0.24, an order of magnitude lower in the small bins.](../assets/figures/calibration_placement.dark.svg#only-dark)
+
+A rooftop candidate and a ground candidate of the same size are different objects with
+different false-positive populations: a roof-anchored detection is corroborated by
+OpenStreetMap two thirds of the time, while a small ground detection is bright bare soil,
+riverbed or salt flat far more often than it is a panel. A pooled table averages the two,
+which let ground-mount borrow rooftop's corroboration rate in the same bin; the split is
+what stopped that, and small ground bins that lack evidence fall back to an honest
+`p_unmapped = 0` floor rather than inheriting the pooled value. `density.py` selects each
+candidate's own placement subtable wherever one exists, and warns when it loads a table
+without one for an AOI whose candidates span both placements. The `placement` column
+itself comes from the building join described in
+[Segmentation & the building map](segmentation.md).
+
 ## Uncertainty is propagated, not asserted
 
 Every rate carries its binomial counts, and 90 percent credible intervals are pushed

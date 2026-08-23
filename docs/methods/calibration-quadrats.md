@@ -19,6 +19,20 @@ rather than hand-maintained prose.
   already-detected candidate is real, at country scale. It reads some of these quadrats
   too (`--calibration-box`), but answers a different question.
 
+## Where they sit
+
+![Map of Pakistan's provinces with all 31 calibration quadrats as markers whose area scales with mapped installations, 16,469 in total. The quadrats cluster in Punjab and around the major cities, with Lahore's 5,695 installations the largest marker, deliberately rural extensions spread across Sindh and Balochistan including Nasirabad Rural with zero installations, and Kalat Rural drawn as an open circle labelled excluded from the fit.](../assets/figures/quadrat_map.png)
+
+The map is generated straight from the label files on disk
+(`scripts/detection_domain_examples.py`), so unlike the table below it always reflects
+every registered quadrat -- currently 31, including Kalat Rural, which is registered and
+Rule-1 but excluded from the `roofclf` fit (a &ge; 400 m<sup>2</sup> ground-mount array
+clipping roofs dominates its labels; see
+[Calibration boxes](../issues/pakistan-calibration-boxes.md), Box 17). The geography is
+the honest part: coverage is purposive and city-leaning, which is exactly why the
+[random-cell validation](roofclf-national-validation.md) and the density-domain
+restriction exist.
+
 ## Current quadrats
 
 **Seventeen quadrats**, all regenerated together on 2026-08-05 by

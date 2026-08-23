@@ -150,7 +150,9 @@ resumable.
 `postprocess.py` thresholds and polygonizes the probability raster, then joins each
 candidate to a building footprint set in the candidates' local UTM zone, recording
 `building_overlap_frac` and `building_dist_m`. Those feed a `building_prior` and
-`rank_score = confidence x (0.5 + 0.5 x prior)`.
+`rank_score = confidence x (0.5 + 0.5 x prior)`. This is a summary; the full walk-through
+of the join, the placement rule and what each product does with it is
+[Segmentation & the building map](segmentation.md).
 
 Footprints come from **VIDA Open Buildings** (Google and Microsoft combined), which is
 imagery-derived and includes small unmapped structures, so "no building within 30 m"

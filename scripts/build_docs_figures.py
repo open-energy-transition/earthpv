@@ -898,6 +898,167 @@ def fig_feature_auc(t: Theme):
     save(fig, t, "feature_auc")
 
 
+# ----------------------------------------- the building join, calibration and MaStR
+
+
+def fig_building_prior(t: Theme):
+    """The ranking prior postprocess computes from the building join, drawn exactly."""
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.4, 3.0))
+    fig.patch.set_facecolor(t.surface)
+    for a in (ax, ax2):
+        a.set_facecolor(t.surface)
+        for sp in a.spines.values():
+            sp.set_visible(False)
+        a.tick_params(colors=t.ink_dim, labelsize=8, length=0)
+        a.grid(axis="y", color=t.rule, linewidth=0.8)
+        a.set_axisbelow(True)
+        a.set_ylim(0, 1.12)
+        a.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+
+    frac = np.linspace(0, 1, 200)
+    on_roof = np.clip(np.maximum(np.clip(frac / 0.5, 0, 1), 0.15), 0, 1)
+    ax.plot(frac, on_roof, color=t.s1, linewidth=2.2)
+    ax.axvline(0.5, color=t.ink_faint, linewidth=0.9, linestyle="--")
+    ax.text(0.52, 0.25, "full prior once half the\ncandidate sits on a roof",
+            fontsize=7.5, color=t.ink_dim)
+    ax.set_xlabel("share of the candidate on a footprint", fontsize=8.5, color=t.ink_dim)
+    ax.set_ylabel("building prior", fontsize=8.5, color=t.ink_dim)
+
+    dist = np.linspace(0, 200, 400)
+    beside = np.clip(np.maximum(0.5 * np.exp(-dist / 30.0), 0.15), 0, 1)
+    ax2.plot(dist, beside, color=t.s2, linewidth=2.2)
+    ax2.axhline(0.15, color=t.ink_faint, linewidth=0.9, linestyle="--")
+    ax2.text(78, 0.20, "floor 0.15: a candidate with no building\n"
+             "near it is reordered, never dropped", fontsize=7.5, color=t.ink_dim)
+    ax2.set_xlabel("distance to the nearest footprint, m (no overlap)",
+                   fontsize=8.5, color=t.ink_dim)
+
+    fig.subplots_adjust(left=0.07, right=0.99, top=0.97, bottom=0.18, wspace=0.22)
+    titled(fig, t, "The building prior reorders the queue and removes nothing",
+           "rank_score = confidence x (0.5 + 0.5 x prior), so even the 0.15 floor keeps "
+           "57.5% of a candidate's confidence: an unmapped roof or a ground-mount plant "
+           "still surfaces. The prior is the larger of the two curves below", width=104)
+    save(fig, t, "building_prior")
+
+
+def read_calibration_placement():
+    """The `placement_bins:` tables from the tracked candidate-precision YAML.
+
+    Same file `read_calibration_recall` reads, but the section it deliberately stops at:
+    two more six-bin lists (rooftop, then ground) distinguished only by indentation, so
+    this parser tracks the two-space placement keys explicitly.
+    """
+    text = (ROOT / "configs/calibration/pakistan_candidate_precision.yaml").read_text()
+    out: dict[str, list[dict]] = {}
+    placement, cur, active = None, None, False
+    for line in text.splitlines():
+        if line.startswith("placement_bins:"):
+            active = True
+            continue
+        if not active:
+            continue
+        if line and not line.startswith(" "):
+            break  # next top-level key
+        if re.match(r"^  \w+:$", line):
+            placement = line.strip()[:-1]
+            out[placement] = []
+            cur = None
+            continue
+        s = line.strip()
+        if s.startswith("- label:"):
+            cur = {"label": s.split(":", 1)[1].strip().strip("'\"")}
+            out[placement].append(cur)
+        elif cur is not None and ":" in s:
+            k, v = s.split(":", 1)
+            try:
+                cur[k.strip()] = float(v.strip())
+            except ValueError:
+                pass
+    return out
+
+
+def fig_calibration_placement(t: Theme):
+    """Why the calibration is split by placement: same size bin, different p_real."""
+    d = read_calibration_placement()
+    if not d.get("rooftop") or not d.get("ground"):
+        return
+    labels = [b["label"] for b in d["rooftop"]]
+    x = np.arange(len(labels))
+    w, gap = 0.34, 0.012
+    fig, ax = new_fig(t, 6.9, 3.4)
+    for off, key, col, lab in ((-1, "rooftop", t.s1, "rooftop candidates"),
+                               (+1, "ground", t.s2, "ground candidates")):
+        bins = d[key]
+        vals = [b["p_real"] for b in bins]
+        ax.bar(x + off * (w / 2 + gap), vals, w, color=col, label=lab, zorder=3)
+        for i, b in enumerate(bins):
+            xi = x[i] + off * (w / 2 + gap)
+            ax.plot([xi, xi], [b["p_real_lo"], b["p_real_hi"]],
+                    color=t.ink_dim, linewidth=1.3, zorder=4)
+            ax.text(xi, b["p_real_hi"] + 0.025, f"{b['p_real']:.2f}",
+                    ha="center", color=t.ink, fontsize=8)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([f"{s} m$^2$" for s in labels], fontsize=8.5)
+    ax.set_ylim(0, 1.12)
+    ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    style_axes(ax, t, ygrid=True)
+    leg = ax.legend(frameon=False, loc="upper right", fontsize=9)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "The same size bin, two very different precisions",
+           "Measured P(candidate is real PV) per size bin and placement, with 90% "
+           "credible intervals, from the tracked Pakistan calibration table. Pooling the "
+           "two let bright bare ground borrow rooftop's OSM corroboration rate, which is "
+           "why the split is now the default", width=106)
+    save(fig, t, "calibration_placement")
+
+
+# Transcribed from docs/methods/mastr-validation.md's size table (measured 2026-08-11 on
+# 4,411,015 MaStR rooftop units, 74.8 GWp, cutoff 2025-09-30) -- the register itself is a
+# multi-GB download, so like RECALL above these are constants with a named source. Update
+# together with that page if the register is ever re-aggregated.
+MASTR_SIZE_SHARE = {
+    "kwp": [10, 30, 72, 100, 300, 1000],
+    "capacity_share": [24.0, 56.8, 65.5, 72.6, 83.2, 96.4],
+    "count_share": [60.0, 93.9, 97.2, 98.5, 99.6, 100.0],
+}
+
+
+def fig_mastr_size_share(t: Theme):
+    """Two thirds of a complete register's rooftop capacity sits below the floor."""
+    fig, ax = new_fig(t, 6.9, 3.4)
+    kwp = MASTR_SIZE_SHARE["kwp"]
+    ax.plot(kwp, MASTR_SIZE_SHARE["count_share"], color=t.s2, linewidth=2.0, marker="o",
+            markersize=4, label="share of installations (count)")
+    ax.plot(kwp, MASTR_SIZE_SHARE["capacity_share"], color=t.s1, linewidth=2.2,
+            marker="o", markersize=4, label="share of capacity (the one to quote)")
+    ax.set_xscale("log")
+    ax.axvline(72, color=t.s3, linewidth=1.6)
+    ax.text(66, 8, "72 kWp = 400 m$^2$ of module,\nthe segmentation floor",
+            fontsize=8, color=t.s3, ha="right")
+    ax.annotate("65.5%", (72, 65.5), textcoords="offset points", xytext=(10, -14),
+                fontsize=9.5, color=t.ink, fontweight="bold")
+    ax.annotate("97.2%", (72, 97.2), textcoords="offset points", xytext=(10, 4),
+                fontsize=9.5, color=t.ink)
+    ax.set_xticks(kwp)
+    ax.set_xticklabels([f"{k}" for k in kwp], fontsize=8.5)
+    ax.minorticks_off()
+    ax.set_xlabel("unit size, kWp (cumulative: at or below this size)",
+                  fontsize=8.5, color=t.ink_dim)
+    ax.set_ylim(0, 112)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%"))
+    style_axes(ax, t, ygrid=True)
+    leg = ax.legend(frameon=False, loc="lower right", fontsize=9)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "Germany's complete register, cut at this project's own floor",
+           "Cumulative share of MaStR rooftop capacity and installation count below each "
+           "unit size; 4.4M units, 74.8 GWp. Quoting the count share (97.2%) when the "
+           "reader hears capacity overstates the gap: the capacity share is 65.5%",
+           width=104)
+    save(fig, t, "mastr_size_share")
+
+
 # ----------------------------------------------------- hand-authored SVG diagrams
 
 FLYWHEEL = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="480"
@@ -1459,9 +1620,11 @@ def crop_hero_map():
 # `python scripts/plot_calib_quadrat.py`.
 STATIC_RASTERS = [
     ("results/coastal-Karachi.png", "coastal-Karachi.png"),
-    # composite -> probability -> polygon walk-through; regenerate with
-    # `python scripts/detection_domain_examples.py`.
+    # composite -> probability -> polygon walk-through, the building join, and the
+    # quadrat map; regenerate with `python scripts/detection_domain_examples.py`.
     ("results/segmentation_examples.png", "segmentation_examples.png"),
+    ("results/candidate_placement.png", "candidate_placement.png"),
+    ("results/quadrat_map.png", "quadrat_map.png"),
 ]
 
 
@@ -1601,6 +1764,9 @@ def main():
         fig_hann_overlap(t)
         fig_spectral_signatures(t)
         fig_feature_auc(t)
+        fig_building_prior(t)
+        fig_calibration_placement(t)
+        fig_mastr_size_share(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")
