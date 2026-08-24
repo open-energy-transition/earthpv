@@ -100,20 +100,13 @@ nav:
   # rather than duplicated under capacity-maps/ -- add new countries as their own
   # pages under capacity-maps/<country>.md as they get their own atlas.
   - PV Atlas:
-      - Pakistan: atlas.md
-      - Pakistan PV Capacity map: results/capacity.md
-      - Pakistan Capacity by installation size: results/capacity-by-size.md
-#      - Mapping leads: results/leads.md
-#      - Growth map: results/growth.md
-      - Pakistan Panel pose from glint: results/pv-pose.md
-#      - Gujarat capacity map: results/gujarat.md
+        - atlas.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
       - Detection model: methods/detection.md
       - Segmentation & the building map: methods/segmentation.md
       - Rooftop classifier (roofclf): methods/roofclf.md
-#      - Capacity density: methods/density.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md
       - Calibration quadrats overview: methods/calibration-quadrats.md

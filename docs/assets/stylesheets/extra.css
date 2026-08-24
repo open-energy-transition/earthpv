@@ -338,7 +338,9 @@
   padding: 0.05rem 0.55rem;
   border-radius: 999px;
   background: var(--pv-bar);
-  color: var(--pv-page);
+  /* Always-light text: --pv-page goes near-black in dark mode, which would vanish
+     against the equally dark --pv-bar pill. The footer token is light in both schemes. */
+  color: var(--md-footer-fg-color);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.04em;
