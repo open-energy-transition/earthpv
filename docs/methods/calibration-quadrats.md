@@ -229,7 +229,7 @@ connection timeout) before recovering. Fixed by renaming the exception variable 
 
 !!! success "All seventeen quadrats are Rule-1 as of 2026-08-05"
     The repository owner declared completeness for the entire current set, which is what
-    Rule-1 means here. Rule-1 coverage went 3 of 12 to **17 of 17** in one step, and it is a
+    Rule-1 means here. Rule-1 coverage went from 3 of 12 to **17 of 17** in one step, and it is a
     reversal for Karachi coastal, whose Rule-1 the owner had withdrawn earlier the same day
     when its boundary was extended.
 
@@ -268,7 +268,7 @@ connection timeout) before recovering. Fixed by renaming the exception variable 
     The magnitude is measurable without new mapping, by running one checkpoint over two
     imagery epochs (`scripts/fraction_stale_label_audit.py`): predicted PV now, not pre-boom,
     and unlabelled is a candidate post-mapping installation rather than an error. Measured
-    2026-08-05 over 13 quadrats it moves pooled precision 0.435 to 0.450 -- just 5.8% of
+    2026-08-05 over 13 quadrats, it moves pooled precision 0.435 to 0.450 -- just 5.8% of
     apparent false positives. But that pooled figure is dominated by industrial quadrats with
     large false-positive pixel counts, and **per quadrat it is the dominant error term exactly
     where the sub-400 m² programme lives**: 68.4% of apparent false positives in Karachi
