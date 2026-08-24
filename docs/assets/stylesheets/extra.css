@@ -306,6 +306,48 @@
   font-weight: 640;
 }
 
+/* ------------------------------------------------------------ announcement banner */
+
+.announce-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--pv-card-ring);
+  border-radius: 12px;
+  padding: 0.7rem 1.1rem;
+  margin: 0 0 1.2rem;
+  background: linear-gradient(90deg, var(--pv-accent), var(--pv-accent-2));
+  box-shadow: var(--pv-shadow-sm);
+  text-align: center;
+}
+
+.announce-banner a {
+  color: var(--pv-bar) !important;
+  font-weight: 680;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.announce-banner strong {
+  display: inline-block;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--pv-bar);
+  color: var(--pv-page);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.announce-banner p {
+  margin: 0;
+  color: var(--pv-bar);
+  font-size: 0.95rem;
+}
+
 /* ----------------------------------------------------------- stat strip (kpis) */
 
 /* The atlas's KPI strip is four across at its own 1280px width and drops to two below
