@@ -18,7 +18,12 @@ MIN_CELLS=4200   # ~90% of the 4,664 selected cells; below this, compose needs a
 log() { echo "$(date '+%F %T') [chain] $*"; }
 
 log "waiting for earthpv-compose-germany to finish..."
-while systemctl --user is-active --quiet earthpv-compose-germany; do sleep 300; done
+# The compose unit runs with Restart=on-failure (it died once on fd exhaustion,
+# 2026-08-23), so "activating" (the auto-restart window) still counts as running.
+while :; do
+  state=$(systemctl --user show earthpv-compose-germany -p ActiveState --value 2>/dev/null || echo inactive)
+  case "$state" in active|activating|reloading|deactivating) sleep 300 ;; *) break ;; esac
+done
 
 n=$(find "$COMPOSITES" -name composite_0.tif 2>/dev/null | wc -l)
 log "compose unit inactive; $n composites on disk"
