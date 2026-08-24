@@ -25,7 +25,7 @@ group of surviving pixels into one polygon, carrying the group's peak probabilit
 two guards run before anything else sees the candidates:
 
 - Polygons under **50 m<sup>2</sup>** are dropped: at 10 m resolution that is a
-  half-pixel sliver, below anything the model was trained to mean.
+  half-pixel sliver, below anything the model was meaningfully trained to resolve.
 - Polygons over **100,000 m<sup>2</sup>** are flagged `oversize` and later excluded from
   capacity. Merging every touching pixel has no upper bound, so one connected sheet of
   false positives can masquerade as a multi-km<sup>2</sup> "installation". A candidate
@@ -52,8 +52,8 @@ Microsoft Building Footprints. The property that matters is that it is
 **imagery-derived**: it contains the small, unmapped structures that OpenStreetMap in
 Pakistan largely does not, which is exactly the population a rooftop question needs.
 Pakistan's file is 76.6 million footprints; the join reads it windowed per area (the
-parquet's own bounding-box index prunes to the candidates' extent) rather than loading
-the country. Where no VIDA layer exists for a country, the Overture &ge; 500 m<sup>2</sup>
+Parquet's own bounding-box index prunes to the candidates' extent) rather than loading
+the whole country. Where no VIDA layer exists for a country, the Overture &ge; 500 m<sup>2</sup>
 set is the fallback, at the cost of the metric distance signals below.
 
 ## Step 4: the placement rule
@@ -71,7 +71,7 @@ numbers, its footprint overlap and its distance to the nearest footprint:
 
 Nothing is removed at this step. The two `no_building` candidates in the figure stay in
 the export: one may be a real ground-mount plant and the other bare-ground glare, and on
-the leads path that distinction is a mapper's few seconds, not the pipeline's call. (An
+the leads path that distinction is a few seconds' work for a mapper, not the pipeline's call. (An
 optional `--max-building-dist` filter exists for exports where isolated detections are
 known to be noise; it is off by default and only applies where a real metric distance was
 resolved.)
@@ -89,7 +89,7 @@ area overstates ground-mount capacity by 2 to 3 times, and both constants are ca
 against real plants rather than assumed -- see [Capacity density](density.md). The
 [candidate-precision calibration](calibration.md) is split by placement for the same
 reason: bright bare ground and industrial roofs are different false-positive populations,
-and pooling them let one borrow the other's corroboration rate.
+and pooling them lets one borrow the other's corroboration rate.
 
 **On the leads path it sets a prior, and the prior only reorders.** A candidate's
 `rank_score` is its model confidence times `(0.5 + 0.5 x prior)`, where the prior rewards
