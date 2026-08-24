@@ -323,7 +323,7 @@ the [experiments register](experiments.md) are optional extras, not alternative 
         --out docs/assets/interactive/pakistan_evidence_atlas.html
     ```
 
-    **`--downloads-manifest`/`--data-release-url` (added 2026-08-14) write a collapsed
+    **`--downloads-manifest`/`--data-release-url` write a collapsed
     "Download the underlying data" section at the very bottom of the page** -- capacity
     parquets, calibration boundaries, the pose survey, raw detections, and the model
     checkpoint, hosted as assets on a dated GitHub Release rather than in `data/` itself
@@ -337,40 +337,31 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     short Overpass query for the current, live state of OSM-mapped PV, since the raw
     detections in the release will go stale as mappers keep editing.
 
-    **`--imagery-date-range` (added 2026-08-14) is a free-text label, not a derived
-    value** -- composites for this AOI mix cells `earthpv compose` fetched directly
-    with cells reused from a `source_region` cache built by a different project on its
-    own schedule (see `CLAUDE.md`'s "Data reuse" section), so there is nowhere in the
-    pipeline that already knows the combined answer; it has to be supplied by whoever
-    last checked. The page always stamps its own build date regardless of whether this
-    is given.
+    **`--imagery-date-range` is a free-text label, not a derived value** -- composites
+    for this AOI mix cells `earthpv compose` fetched directly with cells reused from a
+    `source_region` cache built by a different project on its own schedule, so there is
+    nowhere in the pipeline that already knows the combined answer; it has to be
+    supplied by whoever last checked. The page always stamps its own build date
+    regardless of whether this is given.
 
-    **Two new sections, both optional (added 2026-08-13).** A "Capacity per size bin,
-    rooftop vs ground-mount" chart (the same re-binning `atlas-by-size` publishes as its
-    own page, computed from this run's own inputs so the two numbers can't drift by
-    construction) is embedded natively whenever `--ge400-roof-cells` is given -- no
-    separate flag needed. `--pose-summary-csv` additionally embeds the panel-pose
-    survey (`docs/results/pv-pose.md`, `earthpv.pose.compute_pose_survey_data` -- same
-    glint-validation summary CSV `build_pose_survey_page` takes) natively too, not as
-    an iframe: it keeps its own serif styling, but every one of its CSS custom
-    properties and classes is namespaced under `.pose-native` so nothing leaks onto the
-    rest of the page (an earlier iframe version was dropped because a nested scrollbar
-    on a sub-page read worse than the CSS-scoping work). `--pose-history-note`/
-    `--pose-data-note` are optional strings passed straight through, matching
-    `build_pose_survey_page`'s own parameters. Omitting `--pose-summary-csv` writes the
-    page with no pose section at all.
+    **Two optional sections.** A "Capacity per size bin, rooftop vs ground-mount" chart
+    (the same re-binning `atlas-by-size` publishes as its own page, computed from this
+    run's own inputs so the two numbers can't drift by construction) is embedded
+    natively whenever `--ge400-roof-cells` is given -- no separate flag needed.
+    `--pose-summary-csv` additionally embeds the panel-pose survey
+    (`docs/results/pv-pose.md`, `earthpv.pose.compute_pose_survey_data`) natively too,
+    scoped under its own `.pose-native` CSS namespace so nothing leaks onto the rest of
+    the page. `--pose-history-note`/`--pose-data-note` are optional strings passed
+    straight through. Omitting `--pose-summary-csv` writes the page with no pose section
+    at all.
 
-    **`--sub400-outdomain-cells` (added 2026-08-11) is optional, and the published
-    atlas no longer passes it (2026-08-15)** -- it adds roofclf-AND-SPPI agreement
-    outside the density-matched domain to Best as a strict, clearly-marked extrapolation
-    (worth +61.7 MWp at the time it was dropped). It was the only Best-estimate component
-    not measured where it was applied: every cell outside the domain sits below the
-    calibrated density band with no quadrat evidence in that range, and the JOSM pass
-    meant to check that population is blocked by stale reference imagery. Pass it and the
-    component returns, along with the map's dotted outline, the extra province-table
-    column and the composition's SPPI-in-Best slice. Both `sub400-*` and this flag's
-    input come from step 13's `earthpv sub400-capacity`, which writes all three
-    building-level parquets in one run.
+    **`--sub400-outdomain-cells` is optional and the published atlas does not pass it**
+    -- it would add roofclf-AND-SPPI agreement outside the density-matched domain to
+    Best as a strict, clearly-marked extrapolation, but that component is not measured
+    where it would be applied and the JOSM pass meant to check it is blocked by stale
+    reference imagery. See [Capacity map](results/capacity.md#calibration-coverage) for
+    why. Both `sub400-*` and this flag's input come from step 13's `earthpv
+    sub400-capacity`, which writes all three building-level parquets in one run.
 
     **`--ge400-roof-cells` is easy to omit by accident and changes the headline number
     by double digits of percent** (measured 2026-08-10: omitting it dropped Best
@@ -659,13 +650,13 @@ turn the whole thing from a lower bound into an estimate with an interval. See
 ### Step 7: publish it on this site
 
 Optional, and only relevant if the new country's results are meant to join this shared
-site rather than stay in your own deployment. Each entry under **Results** is a short,
-hand-written page: a lede, an embedded interactive HTML page under
+site rather than stay in your own deployment. Each new country's results are a short,
+hand-written page under `docs/results/`: a lede, an embedded interactive HTML page under
 `docs/assets/interactive/` (`INTERACTIVE` in `scripts/build_docs_figures.py` is what
 copies it there -- add a `(results/....html, docs-facing name)` pair and run
 `pixi run docs-figures`), and a caveats section. `docs/results/capacity.md` and
-`docs/results/growth.md` are the templates to copy. Add the new page to `mkdocs.yml`'s
-`Results` nav list once it exists. There is deliberately no config schema or generator
+`docs/results/growth.md` are the templates to copy. Add the new page under `mkdocs.yml`'s
+**PV Atlas** nav entry once it exists. There is deliberately no config schema or generator
 for this: a country's results are whatever pages it actually has, added by hand, not
 templated -- the one time this project tried a config-driven, auto-combined dashboard
 (`earthpv dashboard`, `src/earthpv/dashboard.py`), keeping it in sync turned out to cost

@@ -308,29 +308,32 @@
 
 /* ------------------------------------------------------------ announcement banner */
 
-.announce-banner {
+/* Site-wide top banner (OpenSustain.tech-style): a bright accent bar above the
+   header on every page, filled via the `announce` block in overrides/main.html.
+   `.md-banner` itself is Material's; we only restyle it here. */
+.md-banner {
+  background: linear-gradient(90deg, var(--pv-accent), var(--pv-accent-2));
+  color: var(--pv-bar);
+}
+
+.md-banner__inner {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  border: 1px solid var(--pv-card-ring);
-  border-radius: 12px;
-  padding: 0.7rem 1.1rem;
-  margin: 0 0 1.2rem;
-  background: linear-gradient(90deg, var(--pv-accent), var(--pv-accent-2));
-  box-shadow: var(--pv-shadow-sm);
   text-align: center;
+  font-size: 0.8rem;
 }
 
-.announce-banner a {
+.md-banner a {
   color: var(--pv-bar) !important;
   font-weight: 680;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.announce-banner strong {
+.md-banner strong {
   display: inline-block;
   padding: 0.05rem 0.55rem;
   border-radius: 999px;
@@ -342,10 +345,8 @@
   text-transform: uppercase;
 }
 
-.announce-banner p {
-  margin: 0;
+.md-banner__button {
   color: var(--pv-bar);
-  font-size: 0.95rem;
 }
 
 /* ----------------------------------------------------------- stat strip (kpis) */

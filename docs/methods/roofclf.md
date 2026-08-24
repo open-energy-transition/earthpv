@@ -5,7 +5,7 @@
     `roofclf` is the instrument that covers everything **below** the segmentation
     model's 400 m<sup>2</sup> detection floor, and (inside its calibrated domain) it now
     also replaces segmentation's own rooftop estimate above that floor. Numbers on this
-    page come from the 27-quadrat fit in `data/roofclf/summary.json` and the capacity run
+    page come from the 30-quadrat fit in `data/roofclf/summary.json` and the capacity run
     behind the published [evidence atlas](../results/capacity.md).
 
 ## What it is, in one paragraph
@@ -62,8 +62,9 @@ inside it, a roof with no mapped PV is a genuine negative. That is exactly the s
 missing in the failure regime, which is why the quadrats are spent on training rather than
 only on after-the-fact correction.
 
-Twenty-seven quadrats now carry Rule-1, spanning 79.9 km<sup>2</sup>, 16,303 mapped
-installations and 118,755 buildings.
+Thirty-one quadrats now carry Rule-1, with 16,469 mapped installations between them; 30
+feed the current fit (Kalat Rural is registered and Rule-1 but held out -- see
+[Calibration quadrats](calibration-quadrats.md)).
 
 !!! warning "Rule-1 is relative to the mapping imagery, not to the model's imagery"
 
@@ -328,11 +329,9 @@ out-of-fold scores, and it catches 63% of PV-carrying buildings there. Both numb
 still leave-one-quadrat-out measurements: one threshold instead of 27 per-fold ones, but
 no building was ever scored by a model that saw its own quadrat.
 
-The threshold moves whenever the quadrat set changes, and it has moved a lot: 0.4555 at
-nine quadrats, 0.3064 once Quetta was dropped, 0.2443 at 23 quadrats, 0.251 at 25 quadrats
-(after Sanghar and Bahawalnagar Rural were added), **0.2511 today** (27 quadrats, after
-Nasirabad Rural and Tank Rural were added and the model refit again, same day,
-2026-08-13). Anything downstream that hard-codes it is a bug.
+The threshold moves whenever the quadrat set changes -- it has ranged from about 0.24 to
+0.46 across refits as quadrats were added or dropped. Anything downstream that
+hard-codes it is a bug.
 
 ## 5. Scoring a country
 
@@ -446,8 +445,8 @@ mapped PV area that lands on a flagged roof (0.808 sub-400 m<sup>2</sup>, 0.978 
 400 m<sup>2</sup>, per size bin and density stratum) extends that to the roofs it missed --
 the same correction the segmentation half has always used. The floor row is deliberately
 left uncorrected, because a floor that extrapolates to installations neither detector saw
-is not a floor. See [the capacity map](../results/capacity.md)'s "A twelfth change" for the
-full derivation and the three ways the correction is a lower bound on itself.
+is not a floor. See [the capacity map](../results/capacity.md#the-area-recall-correction)
+for the full derivation and the three ways the correction is a lower bound on itself.
 
 Three things about that table are worth stating plainly:
 

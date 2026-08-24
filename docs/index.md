@@ -5,11 +5,6 @@ hide:
 
 # earthpv
 
-<div class="announce-banner" markdown>
-**New** &mdash; the Pakistan PV Atlas is live: 18,827 MWp best estimate, mapped cell by
-cell. [Open the atlas &rarr;](atlas.md)
-</div>
-
 <div class="hero" markdown>
 
 ![earthpv](assets/figures/earthpv-logo-mark.png#only-light){ .hero-logo }
@@ -48,7 +43,7 @@ A fine-tuned TerraMind-tiny model detects and outlines rooftop and ground-mounte
 
 `roofclf` addresses the part of the rooftop population that segmentation cannot reliably resolve. At Sentinel-2’s 10 m spatial resolution, a 100 m² array occupies only a handful of mixed pixels. This is insufficient to delineate a polygon reliably, but it can still provide enough information to determine whether a building hosts PV.
 
-`roofclf` is a per-building classifier trained on 27 exhaustively mapped ground-truth quadrats. It achieves an AUC of 0.879, or 0.834 after controlling for roof size, while the segmentation raster performs close to chance on the same small buildings. Its predictions are cross-checked against SPPI, a zero-training five-band spectral index introduced by He et al. (2026). In SPPI’s own nine-quadrat evaluation, SPPI achieved an AUC of 0.823, while `roofclf` reached 0.874 on the identical buildings.
+`roofclf` is a per-building classifier trained on 30 exhaustively mapped ground-truth quadrats. It achieves an AUC of 0.879, or 0.834 after controlling for roof size, while the segmentation raster performs close to chance on the same small buildings. Its predictions are cross-checked against SPPI, a zero-training five-band spectral index introduced by He et al. (2026). In SPPI’s own nine-quadrat evaluation, SPPI achieved an AUC of 0.823, while `roofclf` reached 0.874 on the identical buildings.
 
 Although originally introduced for rooftops below 400 m², `roofclf` is also used for larger rooftops where sufficient calibration data supports its application.
 
@@ -154,8 +149,7 @@ Pakistan's installed solar capacity is reported anywhere between
 Nobody can check those numbers, because the maps behind them are built on commercial
 high-resolution imagery that cannot be shared and that most licences forbid processing
 with AI. earthpv's own numbers come from
-[the main workflow](#the-main-workflow-two-detectors-split-by-placement-and-calibration-coverage-one-evidence-atlas)
-above:
+[the main workflow](#the-main-workflow) above:
 
 | | |
 | --- | --- |
@@ -164,9 +158,9 @@ above:
 | **400 m<sup>2</sup>** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
 
-As of 2026-08-11, the headline figure carries a 90% uncertainty range based on priors for the area-to-capacity constants, measured segmentation precision and recall by installation size, and the sensitivity of the coverage ratio to the mapped calibration quadrats. The range is intentionally wide: recalibration alone shifted the estimate by 20 to 35% five times in one week.
+The headline figure carries a 90% uncertainty range based on priors for the area-to-capacity constants, measured segmentation precision and recall by installation size, and the sensitivity of the coverage ratio to the mapped calibration quadrats. The range is intentionally wide: recalibration has repeatedly shifted the estimate by 20 to 35% within days, most recently as calibration coverage widened again in August 2026.
 
-It is not a design-based margin of error. The quadrats are hand-picked, not randomly sampled, and the range does not capture the mismatch between where the roofclf coverage correction is calibrated and where it is applied. Roughly half of Best uses a multiplier derived from quadrats several times denser than many of the cells it estimates. See [Calibration density mismatch](issues/roofclf-calibration-density-mismatch.md) for details. The full uncertainty derivation is provided in [Capacity map](results/capacity.md), while [Validation against MaStR](methods/mastr-validation.md) explains what comparison with a legally complete register can and cannot establish.
+It is not a design-based margin of error. The quadrats are hand-picked, not randomly sampled, and the range does not capture the mismatch between where the roofclf coverage correction is calibrated and where it is applied. As of the current fit, roughly 5% of Best is still priced by a multiplier derived from quadrats several times denser than the cells it estimates -- down sharply from about half in mid-August 2026 as calibration coverage widened. See [Calibration density mismatch](issues/roofclf-calibration-density-mismatch.md) for details. The full uncertainty derivation is provided in [Capacity map](results/capacity.md#how-confident-should-you-be-in-this), while [Validation against MaStR](methods/mastr-validation.md) explains what comparison with a legally complete register can and cannot establish.
 
 Every number above carries the same caveat: **this is a screening and estimation layer,
 not a register**. No human has validated most of it at scale, and the sub-400 m
@@ -320,8 +314,8 @@ pull finds it.
 
 **Map a quadrat.** Exhaustively mapping every installation inside a drawn boundary is worth
 far more per hour than scattered mapping, because it measures what the model *misses* rather
-than only confirming what it finds. 27 quadrats covering 79.9 km<sup>2</sup> exist so far;
-the protocol is in [Quadrat mapping protocol](calibration-mapping-protocol.md).
+than only confirming what it finds. 31 quadrats exist so far; the protocol is in
+[Quadrat mapping protocol](calibration-mapping-protocol.md).
 
 The highest-value next quadrat is a **sparse rural** one. A quadrat only widens the
 calibrated domain if its *own* average building density falls below the current floor, and a
