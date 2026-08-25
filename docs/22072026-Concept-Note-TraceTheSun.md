@@ -60,7 +60,7 @@ The project will be developed in close partnership with the TraceTheSun and Open
 * Open Energy Transition (currently unfunded)  
 * [Muhammad Awais](https://www.linkedin.com/in/awais307/) of Lahore University of Management Sciences in Pakistan (currently funded 4 interns by Open Energy Transition until August)  
 * [Jake Stid](https://www.linkedin.com/in/jake-stid-38bb23131/), creator of [GMSEUS](https://github.com/stidjaco/GMSEUS), from the Michigan State University (currently funded by US grant with regional focus on North America)   
-* [Gabriel Kasmi](https://www.linkedin.com/in/gabriel-kasmi/), volunteer and creator of [DeepPVMapper](https://github.com/gabrielkasmi/deeppvmapper). 
+* [Gabriel Kasmi](https://www.linkedin.com/in/gabriel-kasmi/), volunteer and creator of [DeepPVMapper](https://deeppvmapper.fr/). 
 
 Our intended impact is to provide trustworthy, verifiable and cost-effective data that is the best available. This data can be used by policymakers, utilities, modellers and investors to make better operational decisions, as well as better planning and investment decisions. This will enable them to understand the financial and operational opportunity/risks of the energy transition powered by PV \- reducing the uncertainty and unknowns surrounding the energy transition, accelerating it further.
 
