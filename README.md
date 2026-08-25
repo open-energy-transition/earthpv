@@ -125,6 +125,21 @@ confirmation that PV is present, independent of spectral appearance, and recover
 panel is mounted. Folds into the main workflow's leads ranking as a boost-only signal;
 never required to produce the evidence atlas.
 
+<p align="center">
+  <a href="https://open-energy-transition.github.io/earthpv/glint_examples/">
+    <img src="docs/glint_examples_HR/glint8.png" width="560"
+         alt="High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.">
+  </a>
+</p>
+
+<p align="center"><em>The physical event the glint check looks for, caught in sub-metre
+commercial imagery: the array's specular reflection is so intense it saturates the
+sensor outright, blooming into a rainbow smear across the neighbouring rooftops. At
+Sentinel-2's 10 m the same event is a single bright pixel-cluster on one predictable
+date -- more examples in
+<a href="https://open-energy-transition.github.io/earthpv/glint_examples/">What solar
+glint actually looks like</a>.</em></p>
+
 **Growth, for when installations appeared.** Diffing a pre-boom (2021/22) Sentinel-2
 composite against the current one -- with both the segmentation model and SPPI run
 independently on each epoch -- shows where solar capacity actually landed, not just where

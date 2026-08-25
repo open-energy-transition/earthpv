@@ -91,6 +91,10 @@ These instruments support, extend, or test the main workflow. They are not alter
 
 Glint analysis provides an independent physical confirmation of PV presence and can also recover panel tilt and orientation. Glass-fronted panels behave partly like mirrors, producing flashes in Sentinel-2 imagery on dates predicted by the geometry between the Sun, panel, and satellite. Two or more geometrically consistent flashes strengthen confidence that PV is present. In the main workflow, glint is used only as a boost to lead ranking and is never required to produce the evidence atlas.
 
+[![High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.](glint_examples_HR/glint8.png)](glint_examples.md)
+
+*The physical event the glint check looks for, caught in sub-metre commercial imagery: the array's specular reflection is so intense it saturates the sensor outright, blooming into a rainbow smear across the neighbouring rooftops. At Sentinel-2's 10 m the same event is a single bright pixel-cluster on one predictable date. More examples in the [glint image gallery](glint_examples.md).*
+
 #### Growth
 
 Growth analysis estimates when installations appeared by comparing a pre-boom 2021/22 Sentinel-2 composite with the current one. Both the segmentation model and SPPI are run independently on each epoch, allowing changes in solar deployment to be mapped over time rather than only measuring the present-day stock. By this measure, Pakistan’s rooftop solar stock has roughly doubled since 2021/22. See [Growth](results/growth.md).
