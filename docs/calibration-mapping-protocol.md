@@ -2,7 +2,8 @@
 
 **Audience:** the OSM mapping team building calibration areas for earthpv's
 Sentinel-2 solar-density estimation.
-**Status:** draft v1, 2026-07-18.
+**Status:** in effect for every quadrat mapped so far; most recently amended 2026-08-11
+(Rule 1's imagery-epoch bound, below).
 
 ## Why this mapping exists
 
@@ -168,38 +169,19 @@ here, not wattage.
 - Record for every quadrat: mapper name, mapping completion date, imagery
   layer + capture date (or "unknown").
 
-**Known gap (2026-08-01):** this field has not actually been populated for any of the
-real quadrats mapped so far -- see
-[Calibration quadrat imagery dating](issues/calibration-imagery-dating.md) for the
-mechanism by which that matters, free tools (Esri Wayback, Google Earth Pro's
-historical slider) that can likely backfill it at no cost, and what it would cost to
-close the gap with purchased imagery if those don't suffice.
-`results/calibration_quadrats.csv` now carries `imagery_layer` and `imagery_date`
-columns so the gap is visible per quadrat; they are still empty for all seventeen.
-
-**This bounds what a completeness declaration can mean (owner, 2026-08-05; folded into
-the Rule 1 definition itself 2026-08-11).** The OSM background imagery a mapper works
-from is generally *older* than the Sentinel-2 composite the model reads, and the newest
-installations are therefore unmappable -- they exist in the model's input and cannot
-exist in the labels. So **Rule-1 certifies completeness as of the mapping imagery, not as
-of the model's epoch**, and it only becomes a statement about the latter once
-contemporaneous imagery is acquired and swept. Do not read a Rule-1 declaration as
-"there is no PV here that the model could see". The practical consequences: precision
-measured against these negatives is a **lower bound**, `base_rate` is a **lower bound**
-and `rate_ratio` an **upper bound**; recall over mapped installations is unaffected.
-`scripts/fraction_stale_label_audit.py` measures the size of the effect without any new
-mapping, and it is large in exactly the dense small-rooftop quadrats the sub-400 m² work
-depends on (68.4% of apparent false positives in Karachi coastal).
-
-**Open item, not yet pursued: closing this gap needs imagery contemporaneous with (or
-newer than) the Sentinel-2 composite, which JOSM's default background layers do not
-reliably provide.** A future completeness pass against high-resolution imagery tasked or
-sourced specifically for this purpose (e.g. a commercial Maxar/Planet capture, or any
-systematically recent-capture layer) could certify a quadrat against the model's own
-epoch rather than an unknown, generally older one -- narrowing or eliminating the
-lower-bound/upper-bound qualifications above rather than just measuring their size.
-Nothing in the pipeline depends on this happening; `fraction_stale_label_audit.py`
-remains the interim, no-new-imagery way to bound the effect until it does.
+**Known gap:** `imagery_layer` and `imagery_date` have not actually been populated for
+any real quadrat mapped so far, even though `results/calibration_quadrats.csv` carries
+both columns. This is what makes the Rule 1 amendment above a bound rather than a
+correction: precision measured against these negatives, and `base_rate`, are **lower
+bounds**, and `rate_ratio` an **upper bound** (recall over mapped installations is
+unaffected), and `scripts/fraction_stale_label_audit.py` measures the size of that
+effect without any new mapping -- large in exactly the dense small-rooftop quadrats the
+sub-400 m² work depends on (68.4% of apparent false positives in Karachi coastal).
+Closing it needs imagery contemporaneous with the Sentinel-2 composite, which JOSM's
+default background layers do not reliably provide. See
+[Open questions](open-questions.md) (ground-truth completeness) for the current count and
+cost to close it, and [Calibration quadrat imagery dating](issues/calibration-imagery-dating.md)
+for free tools (Esri Wayback, Google Earth Pro's historical slider) that could backfill it.
 
 ## Completeness declaration and QA
 
@@ -223,9 +205,9 @@ n_added_by_second_pass, notes
 **Packing distance is computed automatically, not recorded by hand.** Once a
 quadrat's installations are mapped, `roofclf.packing_density` derives the median
 distance from each sub-400 m<sup>2</sup> installation to its nearest neighbour --
-measured 2026-07-29 to correlate strongly (r=0.70-0.82) with how a quadrat's
-calibration numbers (`exp_scale`, `auc_within_size`) behave, a continuous proxy for
-the stratum table above (see [Capacity density](methods/density.md#packing-distance-a-cheap-measured-proxy-for-stratum)).
+measured to correlate strongly (r=0.70-0.82) with how a quadrat's calibration numbers
+(`exp_scale`, `auc_within_size`) behave, a continuous proxy for the stratum table above
+(see [Capacity density](methods/density.md#below-the-detection-floor-the-sub-400-m2-instruments)).
 Worth checking when *choosing* a new quadrat's location. As of 2026-07-29 the existing
 nine split cleanly into "packed tighter than one Sentinel-2 pixel" (7-19 m) and
 "sparse" (44-52 m) with nothing in between, and this paragraph called a quadrat landing
@@ -244,7 +226,8 @@ layer:
 
 ```bash
 pixi run calib-export
-# -> results/calibration_quadrats_validation.geojson   (13 boxes + 3,353 installations)
+# -> results/calibration_quadrats_validation.geojson   (every registered quadrat's
+#    boundary plus its mapped installations)
 # -> results/calibration_quadrats_validation.mapcss    (JOSM paint style)
 ```
 

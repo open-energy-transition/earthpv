@@ -9,7 +9,7 @@ trust a `roofclf` capacity number.
 ## Why this is essential, not optional
 
 The [main workflow](../reproduce.md#the-full-pipeline)'s < 400 m² half is `roofclf`, a
-classifier fit on 17 hand-mapped calibration quadrats. Those quadrats are the only
+classifier fit on the current set of hand-mapped calibration quadrats. Those quadrats are the only
 ground truth this project has, but they are also **curated**: a mapper picked each one,
 and the set leans industrial/urban because that is where mapping effort went first (see
 [Calibration quadrats overview](calibration-quadrats.md)). A model that scores well only
@@ -133,16 +133,22 @@ script has no domain flag itself):
   tiles -- much larger per cell than the original batch, since domain cells are dense
   urban tiles, not sparse rural ones.
 - `results/pakistan_roofclf_validation_outdomain/` -- 20 cells drawn uniformly from the
-  3,281 qualifying cells OUTSIDE the domain (seed 20260811), kept as a second,
-  explicitly-labeled population rather than silently mixed with the domain batch: a
-  reviewer's precision estimate on THIS batch says something about the ~3,459 MWp of
-  roofclf-flagged capacity currently excluded from every published figure (see
-  CLAUDE.md's "75.5% of buildings are outside the domain" note), not about the number
-  the atlas reports.
+  qualifying cells OUTSIDE the domain (seed 20260811), kept as a second, explicitly-labeled
+  population rather than silently mixed with the domain batch: a reviewer's precision
+  estimate on THIS batch says something about the capacity outside the calibrated domain,
+  not about the number the atlas reports.
 
-Neither batch has been reviewed yet -- generating the tiles is not the validation;
-someone needs to open them in JOSM per the steps above and log real/false-positive
-counts. Until that happens, `docs/methods/calibration-quadrats.md`'s and CLAUDE.md's
-precision figures still rest entirely on the 13-19 hand-picked quadrats, and the
-domain-restricted capacity numbers (sub-400 central/AND-gate, >= 400 m² roofclf
-rooftop) have no unbiased-sample check behind them at all.
+**The density-calibrated domain has since grown substantially** (see
+[Calibration quadrats](calibration-quadrats.md) for its current size), so the specific
+cell counts above describe the domain as it stood on 2026-08-10, not today's -- but the
+general lesson (a random-cell batch must be drawn domain-aware, or it silently measures a
+different population than the one the atlas reports) still holds for any future batch.
+
+Neither of these two batches, nor later random-cell batches drawn against subsequent
+national scoring passes, has had its per-cell counts logged to
+`results/roofclf_random_validation_log.csv` yet -- generating the tiles is not the
+validation; someone needs to open them in JOSM per the steps above and log
+real/false-positive counts. Until that happens, this project's precision figures rest
+entirely on the hand-picked quadrats, and the domain-restricted capacity numbers (sub-400
+central/AND-gate, >= 400 m² roofclf rooftop) have no unbiased-sample check behind them at
+all. See [Open questions](../open-questions.md) for the current status of this backlog.

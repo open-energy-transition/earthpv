@@ -22,6 +22,7 @@ theme:
   icon:
     repo: fontawesome/brands/github
   features:
+    - announce.dismiss
     - navigation.tabs
     - navigation.sections
     - navigation.top
@@ -91,29 +92,21 @@ extra:
       name: Open Energy Transition
 
 nav:
-  # The capacity map itself is the landing page (index.md = site root), full-bleed
-  # (hide: [navigation, toc] in its front matter) so it reads as part of the site
-  # rather than an escape hatch to a bare standalone file. Reused here rather than
-  # duplicated under capacity-maps/ -- add new countries as their own pages under
-  # capacity-maps/<country>.md as they get their own atlas.
+  # Overview is the landing page (index.md = site root).
+  - Overview: index.md
+  # The capacity map itself, full-bleed (hide: [navigation, toc] in its front
+  # matter) so it reads as part of the site rather than an escape hatch to a bare
+  # standalone file, plus the rest of the Pakistan results pages. Reused here
+  # rather than duplicated under capacity-maps/ -- add new countries as their own
+  # pages under capacity-maps/<country>.md as they get their own atlas.
   - PV Atlas:
-      - Pakistan: index.md
-  - Overview: overview.md
-  # Results first: the pipeline's output is what most readers came for.
-  - Results:
-      - Pakistan PV Capacity map: results/capacity.md
-      - Pakistan Capacity by installation size: results/capacity-by-size.md
-#      - Mapping leads: results/leads.md
-#      - Growth map: results/growth.md
-      - Pakistan Panel pose from glint: results/pv-pose.md
-#      - Gujarat capacity map: results/gujarat.md
+        - atlas.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
       - Detection model: methods/detection.md
       - Segmentation & the building map: methods/segmentation.md
       - Rooftop classifier (roofclf): methods/roofclf.md
-#      - Capacity density: methods/density.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md
       - Calibration quadrats overview: methods/calibration-quadrats.md

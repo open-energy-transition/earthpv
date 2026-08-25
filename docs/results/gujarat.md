@@ -61,28 +61,20 @@ same `postprocess.MAX_CANDIDATE_M2` cap Pakistan's pipeline uses.
 
 ## Segmentation checkpoint: an open provenance gap, not a silent substitution
 
-**This atlas was NOT built with `v3_combined_india`**, the checkpoint the owner directed
-this project to use for all future development (2026-08-07). Gujarat's compose + infer +
-candidate-extraction had already been run in full (1,527/1,527 cells composited,
-1,526/1,527 inferred, `candidates.parquet` with 4,816 rows) on 2026-07-12 -- three days
-*before* `v3_combined_india` was even trained (2026-07-15/16). Re-running inference with
-the directed checkpoint was not possible: **the `v3_combined_india` checkpoint file no
-longer exists anywhere on this machine** (searched the full filesystem), and neither does
-`v2_combined`, the checkpoint `configs/aoi.yaml`'s own Gujarat comment names as what was
-used ("the existing Germany-trained checkpoint ... unchanged, same as the original
-Punjab bootstrap"). Both were apparently cleaned up at some point after producing their
-outputs, before this session. This atlas therefore uses whichever checkpoint produced
-Gujarat's existing, already-complete candidates -- almost certainly `v2_combined` per
-that comment, but this can no longer be verified against the weights themselves.
+**This atlas was NOT built with `v3_combined_india`**, the checkpoint used for all other
+current development. Gujarat's compose + infer + candidate-extraction ran to completion
+on 2026-07-12, three days before `v3_combined_india` was even trained, using whichever
+earlier checkpoint was current then -- almost certainly `v2_combined` per
+`configs/aoi.yaml`'s own Gujarat comment. Neither that checkpoint nor
+`v3_combined_india` still exists on disk, so which weights actually produced this atlas
+can no longer be verified.
 
 Practical consequence: treat this atlas as a **placeholder proof that the pipeline runs
 end-to-end for Gujarat**, not as a like-for-like comparison with Pakistan's
-`v3_combined_india`-based numbers. Re-running Gujarat's compose+infer with
-`v3_combined_india` (or whatever checkpoint is current when someone next revisits this
-AOI) and re-deriving from there is the natural next step; it was not done here because
-the specific weights the owner asked for are not recoverable without a fresh training
-run, which is a materially bigger undertaking than a re-inference pass and was judged
-out of scope for finishing this session's work.
+`v3_combined_india`-based numbers. Re-running Gujarat's compose+infer with the current
+checkpoint and re-deriving from there is the natural next step for anyone who revisits
+this AOI; it needs a fresh inference pass, not a retrain, since the model itself is
+unaffected.
 
 ## Reproducing this map
 

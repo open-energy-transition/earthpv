@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 
+{% block announce %}
+  <strong>New</strong> &mdash; the Pakistan PV Atlas is live: 18,827 MWp best estimate,
+  mapped cell by cell.
+  <a href="{{ 'atlas/' | url }}">Open the atlas &rarr;</a>
+{% endblock %}
+
 {% block extrahead %}
   {{ super() }}
   {% set social_image = config.site_url ~ "assets/figures/social-preview.png" %}
