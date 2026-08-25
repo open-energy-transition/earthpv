@@ -16,7 +16,7 @@ Each metric states its own bias.
 
 **Detected** (`*_det`) is the area of thresholded, merged candidate polygons lying on the
 footprint, taken at face value. It has raw-candidate floor semantics: it includes false
-positives and is blind to everything below threshold, which in practice means blind to
+positives and is blind to everything below threshold, which in practice means it is blind to
 most residential PV.
 
 **Calibrated** (`*_cal`) is the same area with each candidate weighted by a measured
@@ -26,7 +26,7 @@ no calibration table exists, and it remains dependent on the 0.3 polygonization 
 **Recall-corrected** (`*_rc`, cell and region level only) divides the calibrated candidate
 area by the model's measured recall in that size bin, floored at 0.05. That is a
 Horvitz-Thompson estimate of the whole population at or above the detection floor, missed
-installations included, with 90 percent credible bands propagated from the calibration
+installations included, with 90% credible bands propagated from the calibration
 posteriors.
 
 **Expected** (`*_exp`) is probability-weighted area: the sum over the footprint of
@@ -198,56 +198,728 @@ fraction-head run is a different instrument with its own (separately tracked) ca
 gaps, and sharing one flag across both would imply a validation that was never done for the
 one that didn't get it.
 
-## Below the detection floor: the sub-400 m² instruments
+## Below the detection floor: change the unit of prediction
 
-The recall correction above has a hard limit that no amount of better calibration
-reaches: it scales up what was detected, so `1/recall x ~0` is still ~0. Measured on the
-Pakistan run, the entire sub-500 m<sup>2</sup> class contributes **8.2 MWp** to this
-stage's national estimate, about 0.2 percent of the rooftop total, while a single
-exhaustively mapped square kilometre of residential Lahore holds **3.3 times more
-sub-100 m<sup>2</sup> PV area than this instrument finds in all of Pakistan**. A size
-class the segmentation detector never sees cannot be recovered by reweighting the classes
-it does see -- it needs a different estimator entirely.
+The recall correction has a hard limit that no amount of better calibration reaches. It
+scales up what was detected, so `1/recall x ~0` is still ~0. Measured on the Pakistan run,
+the entire sub-500 m<sup>2</sup> class contributes **8.2 MWp** to the national estimate,
+about 0.2 percent of the rooftop total, while a single exhaustively mapped square kilometre
+of residential Lahore holds **3.3 times more sub-100 m<sup>2</sup> PV area than the model
+finds in all of Pakistan**. That is not a coefficient problem. A size class the detector
+never sees cannot be recovered by reweighting the classes it does see.
 
-That estimator is `roofclf`, a per-building classifier, cross-checked against the
-zero-training SPPI spectral index: see [The rooftop classifier](roofclf.md) for how it is
-built, calibrated and converted to capacity, and [the capacity map](../results/capacity.md)
-for the current national figures it produces. The rest of this section keeps three
-findings from the road to that instrument that are still useful diagnostics today.
+Two instruments address it, and both drop the polygon.
 
-**Packing distance is a cheap, measured proxy for stratum.** `roofclf.packing_density` is
-the median distance from each sub-400 m<sup>2</sup> installation to its nearest neighbour
-of any size. It correlates with how a quadrat's calibration numbers behave (r=0.70-0.82
-with various instrument scale/skill measures) mostly because it is a continuous stand-in
-for **installation size regime**, not density as such: controlling for median
-installation size, packing distance's relationship with segmentation skill collapses from
-0.82 to -0.16, while its relationship with the *fraction head's* per-building AUC survives
-the same control (0.93 unconditional, 0.81 partial), because that is the one place a
-sub-pixel spacing effect should appear independent of array size. It is a standing column
-in every fold report (`nn_median_m`), useful for sizing a new calibration quadrat, but is
-not (yet) a per-building model feature.
+### Expected area from a fraction head
 
-**Discrimination tracks installation size, not density.** Every density measure
-correlates strongly with segmentation skill across quadrats, and every one of those
-correlations disappears once installation size is held constant. Median installation size
-alone predicts whether the segmentation raster works at all (Pearson r=0.99): a quadrat
-whose installations are mostly small scores near chance because `chips.MIN_PV_AREA` burns
-everything below 400 m<sup>2</sup> as `ignore`{.python} during training, not because
-density itself hurts detection. `frac_sub400` (the share of a quadrat's PV below the
-detection floor) is the one bias relationship that is not mechanical: it predicts how much
-area the fraction-head instrument misses, which is the sub-400 m<sup>2</sup> blindness
-measured directly.
+`density --fraction-prob-dir <run>/prob` swaps the expected-area instrument from
+segmentation class probability to a fraction head's per-pixel PV *coverage*. This matters
+because the segmentation model is trained with everything below `chips.MIN_PV_AREA` burned
+as `ignore`, so it has no reason to put probability mass on a small array, whereas the
+fraction head is trained on OpenStreetMap polygons burned at 10x supersampling with no
+size floor.
 
-**A pooled classifier without a per-stratum intercept produces a `rate_ratio` that is
-mechanically `constant / base_rate`.** An early national scoring pass found the deployment
-threshold badly distorted by pooling every quadrat's precision target together: the
-lowest-base-rate quadrat in the set was forcing the cut far higher than the rest of the
-population needed. Re-fitting without that one outlier stratum recovered a large,
-measured recall gain at the same precision target -- the clearest illustration that a
-single pooled operating point is fragile to whichever stratum happens to be most extreme,
-which is why `roofclf`'s domain restriction (below) rather than a single national rate is
-the shipped design. Full diagnosis:
-[roofclf national deployment](../issues/roofclf-national-deployment-and-temporal-features.md).
+Measured on all nine registered quadrats (`earthpv roof-classifier`, updated 2026-07-29
+to include the three owner-mapped boxes added that day), as predicted PV area over their
+buildings divided by the exhaustively mapped truth (`data/roofclf/exp_scale_anchor.csv`):
+
+| quadrat | stratum | segmentation | fraction head |
+| --- | --- | ---: | ---: |
+| **Karachi DHA 5 coastal (Rule-1)** | 1, coastal residential | **0.000** | **0.042** |
+| Mardan (Sheikh Maltoon Town) | 1/3, planned housing | 0.000 | 0.196 |
+| Quetta City | 5, arid/bare-land | 0.256 | 0.204 |
+| Lahore DHA (residential) | 1, affluent planned | 0.023 | 0.520 |
+| Sialkot Old City | 2, dense informal urban | 0.000 | 0.840 |
+| Multan Industrial | 6, industrial | 1.710 | 1.350 |
+| SITE Karachi | 6, industrial | 2.117 | 1.636 |
+| Sundar Industrial | 6, industrial | 1.265 | 1.439 |
+| Faisalabad PSIE | 6, industrial | 1.832 | 2.077 |
+
+Read the top row first. In the Rule-1-complete coastal quadrat, where the median installation
+is 86 m<sup>2</sup>, the segmentation instrument predicts **0.0 m<sup>2</sup> against 13,964 m<sup>2</sup>
+of mapped PV** -- not an underestimate, a total blank -- and the fraction head recovers
+4.2 percent. In Lahore DHA, where installations are larger, segmentation recovers 2.3 percent
+and the fraction head 52 percent. In the industrial quadrats both run high. So the fraction
+head is strictly better than segmentation below the floor and by a wide margin, but its own
+sensitivity still collapses as installations approach 100 m<sup>2</sup>: it is an improvement,
+not a solution.
+
+`--exp-scale` divides by a measured over-prediction factor -- **still not applied nationally,
+and the three new quadrats reinforce rather than resolve why.** The fraction-head scale now
+spans **0.042 to 2.077 across nine quadrats, a 49x range**, and it does not collapse to a
+clean stratum split either: within the five non-industrial quadrats alone (Karachi coastal,
+Mardan, Quetta, Lahore, Sialkot) the scale still spans 0.042-0.840, a 20x range, without an
+obvious relationship to median installation size (Sialkot's 63.7 m<sup>2</sup> median scales at
+0.840, close to Lahore's mixed-size 0.520, while Karachi coastal's broadly similar 86 m<sup>2</sup>
+median scales at 0.042 -- 20x lower). The four industrial quadrats are the one internally
+consistent group, all landing at 1.35-2.08. Averaging across all nine (mean 0.92, median 0.84)
+would produce a single constant that under-corrects the industrial quadrats by roughly 1.5-2x
+and over-corrects Karachi coastal and Mardan by roughly 5-20x in the *opposite* direction --
+actively worse than the current uncorrected default for those strata. **The default therefore
+stays `--exp-scale 1.0`.** A defensible correction needs either a per-stratum multiplier (which
+`density.py` does not currently have a mechanism to apply -- there is no per-cell/per-building
+stratum label at that stage) or enough quadrats per stratum to fit one reliably; five
+non-industrial quadrats is not yet that. Germany's MaStR bench cannot settle it either, since
+its two slope estimators disagree by 2.6x and its well-mapped subset by 13x. These quadrats
+can, because their denominator is complete by construction -- there just aren't enough of them
+yet, especially outside the industrial stratum.
+
+!!! warning "Full coverage reached; the Gilgit-Baltistan regression is exempted, but promotion still failed for a different reason (updated 2026-07-30)"
+    As of 2026-07-29 the fraction-head run covers **all 4,463 manifest cells**
+    (`exp_coverage_frac: 1.0`) -- the inference finished on 2026-07-27, the docs simply
+    hadn't been updated. National expected-area rooftop capacity with the fraction
+    instrument comes out at **6.65 GWp** vs the segmentation instrument's **5.4 GWp**
+    (+23%), consistent in direction and rough magnitude with the quadrat-level finding
+    above that segmentation is structurally blind below the floor. That comparison is
+    architecturally clean: the exp/fraction swap touches only `pv_area_exp`/`est_mwp_exp`,
+    nothing else in the pipeline.
+
+    The Gilgit-Baltistan ground-mount regression that originally blocked this (110 MWp
+    against 0.000 MWp rooftop) was traced to a `density.py`/`postprocess.py`
+    `no_building`-aggregation issue independent of the fraction head, and is now
+    exempted at the region level (`RATIO_CHECK_EXEMPT_REGIONS`, see the plausibility
+    gate section below) -- `check-density` passes again on that specific failure mode.
+
+    **That exemption was not enough: promoting the fraction head as `density.py`'s
+    default, attempted 2026-07-30 against the current (post-OSM-replace) candidate
+    population, failed `check-density` again, for a different reason.** Two regions
+    (Khyber Pakhtunkhwa, Balochistan) failed the ground:rooftop ratio check that had
+    previously passed. Root cause: a disproportionate **46% collapse in
+    roof-intersected candidate area vs. 29% overall** between the passing baseline and
+    the forced recompute -- the same class of `density.py` aggregation issue as the
+    Gilgit-Baltistan case, now surfaced more broadly because this was the first *forced*
+    full recompute combining OSM-geometry-replacement's candidate corrections with a
+    genuine forced recompute (earlier comparison runs had pinned the candidate set,
+    masking this). **The fraction head is still not promoted; the segmentation-based
+    run remains the published default**, restored from
+    `density_segmentation_pre_fraction_promote_20260730/`. The failing run is preserved
+    at `density_fraction_promoted_FAILED_20260730/` for whoever roots out the
+    aggregation bug next.
+
+    The practical path taken instead: a separate, explicitly experimental sub-400 m²
+    capacity product (`sub400_capacity.py`, next section) that combines the fraction
+    head's evidence with `roof-classifier`'s national scores without touching
+    `density.py`'s candidate-aggregation code at all -- see "Sub-400 m² experimental
+    capacity" below.
+
+    **The fraction head was never the cause of this.** A later, unrelated change (adding
+    the `density_confidence` completeness flag below) triggered a plain, non-`--force`
+    segmentation-only re-run and reproduced the identical failure. `_CAND_COLS` is
+    rederived from `candidates.parquet` on *every* run regardless of `--force`, while the
+    cached cell partials' per-building/`*_roof` columns only refresh on `--force` -- and
+    `candidates.parquet` was OSM-geometry-replaced (2026-07-29) after the partials were
+    last built with `--force`, so the two now permanently disagree. Any run against the
+    current candidate population fails the gate, segmentation or fraction. The published
+    `density/` stays pinned to the pre-OSM-replace snapshot (`n_oversize_excluded=233`)
+    until a `--force` rebuild happens and the roof-candidate collapse it triggers is
+    root-caused -- both still open.
+
+### Per-building classification
+
+`earthpv roof-classifier` asks **"does this building carry PV?"** instead of "where are its
+panel edges". At one mixed pixel that is a far easier question: it needs the footprint's
+spectral signature to differ from a PV-free roof, not a resolvable outline. Training labels
+come from the exhaustively mapped quadrats, where a building with no mapped PV is a genuine
+negative -- which ordinary OpenStreetMap cannot supply, because the absence of a label
+mostly means absence of a mapper.
+
+![Three panels over the same 0.49 square kilometre of coastal Karachi. Left: the Sentinel-2 dry-season composite at native 10 metre resolution with 165 mapped rooftop PV installations outlined in cyan over grey building footprints; the arrays are mostly smaller than a single pixel. Centre: the segmentation model's PV probability over the identical extent, uniformly zero, a black panel with only the cyan ground-truth outlines visible. Right: the per-building classifier's out-of-fold probability, each footprint shaded from dark to bright, separating the PV-carrying roofs.](../assets/figures/coastal-Karachi.png)
+
+/// caption
+The **coastal Karachi benchmark**, the project's only Rule-1-complete quadrat. Same extent
+and same colour scale in the two right-hand panels. The segmentation model returns
+identically zero across the whole box; the per-building classifier, scored out of fold,
+separates the same roofs at 0.831 AUC with roof size held fixed. Regenerate with
+`python scripts/plot_calib_quadrat.py`.
+///
+
+That middle panel is the finding, not an illustration of it. It is the published detector on
+a box where 165 installations are mapped and owner-verified, and its output is not a faint
+signal but a uniform zero.
+
+Leave-one-quadrat-out, **22,044 buildings and 2,376 carrying PV across nine quadrats**
+(updated 2026-07-29 with the three owner-mapped boxes added that day: Mardan, Quetta,
+Sialkot). Adoption rises with house size, so footprint area alone already scores about
+0.72; the **within-size-band** column removes size as a discriminator and measures what
+the imagery adds at fixed roof size, which is the honest headline.
+
+| held-out quadrat | base rate | AUC | AUC <500 m<sup>2</sup> | **within size band** | segmentation, within band | packing (m) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Karachi DHA 5 coastal (Rule-1)** | 0.185 | 0.883 | 0.886 | **0.846** | **0.500** | 16.8 |
+| Lahore DHA (residential) | 0.301 | 0.876 | 0.876 | 0.761 | 0.496 | 7.2 |
+| Sialkot Old City | 0.057 | 0.816 | 0.817 | 0.770 | 0.500 | 18.8 |
+| Mardan (Sheikh Maltoon Town) | 0.138 | 0.743 | 0.742 | 0.661 | 0.500 | 11.2 |
+| Quetta City | 0.030 | 0.852 | 0.856 | 0.842 | 0.501 | 44.0 |
+| Faisalabad PSIE | 0.125 | 0.850 | 0.813 | 0.831 | 0.651 | 45.8 |
+| Multan Industrial | 0.086 | 0.932 | 0.915 | 0.919 | 0.805 | 50.8 |
+| SITE Karachi | 0.131 | 0.935 | 0.929 | 0.931 | 0.875 | 46.2 |
+| Sundar Industrial | 0.098 | 0.874 | 0.840 | 0.863 | 0.762 | 52.1 |
+| **median** | | **0.874** | **0.856** | **0.842** | **0.501** | |
+
+The three new folds lower the median AUC slightly (0.879 -> 0.874) and the within-size
+median a touch more (0.845 -> 0.842) -- Mardan in particular is the weakest fold measured
+so far (0.743), the first non-industrial, non-Rule-1 quadrat in the set. Read that as the
+estimate becoming more honest with more evidence, not as the method degrading.
+
+### Packing distance: a cheap, measured proxy for stratum
+
+**packing (m)** is `roofclf.packing_density`: the median distance from each
+sub-400 m<sup>2</sup> installation to its nearest neighbour of *any* size, in metres
+-- added 2026-07-29 and now computed automatically for every fold (`folds.csv`), not
+a one-off calculation. It splits the nine quadrats cleanly at ~20-40 m with no
+quadrat in between: five pack sub-400 m<sup>2</sup> arrays tighter than one
+Sentinel-2 pixel (7-19 m -- Lahore, Mardan, Karachi coastal, Sialkot), four sit at
+44-52 m (Quetta, Faisalabad, Multan, SITE Karachi, Sundar).
+
+That split is not incidental. Measured against the same nine quadrats' own numbers:
+packing distance correlates **r=0.70** with `exp_scale_anchor`'s fraction-head scale,
+**r=0.82** with its segmentation scale, and **r=0.78** with `auc_within_size` above.
+A single geometric measurement from the labels alone -- no imagery, no model --
+predicts most of why quadrats disagree on `exp_scale`, `rate_ratio`, and skill. It is
+effectively a continuous, measurable version of the "4 industrial vs 5 residential"
+split this project already tracked by hand.
+
+!!! note "What packing distance is a proxy *for*"
+    Those correlations hold, but they are mostly **installation size** wearing a
+    spacing costume: control for median installation size and packing distance's
+    relationship with segmentation skill collapses from 0.819 to -0.155. The one part
+    that survives the control is its relationship with the *fraction head's* AUC
+    (0.931 -> 0.809 partial), which is the genuine 10 m pixel-mixing effect. Full
+    derivation, and the same treatment of `base_rate`, in
+    [Density and detection quality](#density-and-detection-quality-what-actually-correlates-with-what).
+
+Two consequences, both acted on already:
+
+- **Held-out quadrat choice for the fraction-head retrain** (below) should account for
+  packing, not just be picked for convenience. Lahore, the densest quadrat (7.2 m),
+  is also the single richest source of graded per-pixel training signal for the
+  sub-400 m<sup>2</sup> regression target -- holding it out is a real trade-off
+  (removing the best training example) made deliberately because it is also the
+  most statistically powerful validation check (1,033 installations to test against,
+  more than the other four dense quadrats combined).
+- **`nn_median_m` is now a standing column in `evaluate()`'s fold report**, so any
+  future fold's AUC/`rate_ratio` swing can be read against its packing regime at a
+  glance, instead of needing a separate cross-reference. It is not (yet) used as a
+  per-building model feature -- it is a quadrat-level property, not a building-level
+  one, so it belongs in the reporting layer, not `MODEL_FEATURES`.
+
+The two residential folds are the ones to read, and the coastal Karachi box is the strongest
+evidence in the project. It is the only quadrat asserted **Rule-1 complete**, so its
+PV-free buildings are trustworthy negatives rather than unmapped ones; its median
+installation is 86 m<sup>2</sup> and 98.8 percent of its installations sit below the
+detection floor. There, the segmentation model scores **exactly 0.500, chance**, and predicts
+**zero** PV area over the box's buildings. The per-building classifier reaches 0.831 at fixed
+roof size. Controlling for size costs the classifier only about 3 AUC points across folds,
+so this is the imagery separating a PV roof from a PV-free roof of the same size, not a
+house-size proxy.
+
+A feature-block ablation sets the shipped configuration, rather than preference (also
+updated 2026-07-29, nine quadrats):
+
+| features | AUC | AUC, roofs <500 m<sup>2</sup> |
+| --- | ---: | ---: |
+| footprint size only | 0.715 | 0.668 |
+| footprint reflectance only | 0.841 | 0.845 |
+| **size + reflectance (default)** | **0.874** | **0.856** |
+| plus segmentation and fraction rasters | 0.876 | 0.858 |
+
+Size alone is a real but modest prior, so the skill is not just "big buildings have PV".
+With six quadrats, adding the existing model rasters as features cost accuracy on small
+roofs (0.882 -> 0.870); with nine, that reverses to a marginal *gain* (0.856 -> 0.858) --
+small enough either way (<0.002) to read as noise rather than a real effect in both
+directions. The rasters stay off by default: the case for including them was never
+strong, and it is not stronger now.
+
+!!! warning "Ranking transfers, absolute rates do not"
+    `rate_ratio` in `folds.csv` spans **0.235 to 4.833** across nine quadrats (Mardan
+    under-predicts 4.3x, Quetta over-predicts 4.8x). Trained pooled, the model predicts
+    0.137 for residential Lahore where the truth is 0.301. So the ordering generalises out
+    of stratum but the *level* does not, and a per-stratum intercept is required before any
+    adoption rate or capacity number is published. That needs more residential/non-industrial
+    quadrats -- five of nine now cover that ground (Karachi coastal, Lahore, Sialkot, Mardan,
+    Quetta), up from one, but the spread above shows the binding constraint has not gone away.
+
+### Density and detection quality: what actually correlates with what
+
+This project has asserted a density-vs-detection-quality relationship in several places --
+the packing-distance r values just above, and the `rate_ratio` spread in the warning box.
+Recomputed in one pass across every quadrat artifact on disk
+(`scripts/quadrat_correlations.py` -> `results/quadrat_detection_correlations.csv`,
+`pixi run quadrat-correlations`), the relationship is real but it is **two different
+findings, and neither is "denser landscapes are harder in some intrinsic way."** Both turn
+out to be artifacts with a specific fix, which is more useful than a correlation would be.
+
+The script keeps two things apart on purpose, because conflating them is how "denser is
+worse" gets asserted: **discrimination** (can the instrument tell a PV pixel or building
+from a non-PV one *within* the quadrat -- the `*_auc*` columns, scale-free) and **bias**
+(does it predict the right *amount* -- `scale`, `rate_ratio`). A quadrat can rank perfectly
+and still be 3x high, so a correlation with one says nothing about the other.
+
+#### Discrimination: it is installation size, not density
+
+Every density measure correlates strongly with segmentation skill, and every one of those
+correlations disappears once installation size is held constant (n=9, Spearman, partial
+correlation controlling for `median_install_m2`):
+
+| relationship | Pearson r | Spearman rho | partial r given median size |
+| --- | ---: | ---: | ---: |
+| `median_install_m2` vs segmentation AUC | **0.991** | 0.932 | -- |
+| `frac_sub400` vs segmentation AUC | -0.981 | -0.932 | -0.241 |
+| packing distance vs segmentation AUC | 0.819 | 0.915 | **-0.155** |
+| installations per km² vs segmentation AUC | -0.603 | -0.915 | **+0.201** |
+| `frac_sub400` vs segmentation AUC within size band | -0.954 | -0.932 | +0.224 |
+| `median_install_m2` vs fraction-head pixel AUC (n=12) | 0.889 | 0.888 | -- |
+
+Median installation size is the single best predictor of whether the segmentation raster
+works at all, at **r=0.991** -- which is not a subtle empirical finding but the detection
+floor doing exactly what it says: the model is trained with everything below
+`chips.MIN_PV_AREA` burned as `ignore`, so a quadrat whose installations are mostly small
+gets chance-level output. Dense quadrats score badly **because dense quadrats are dense in
+*small* installations**, not because density itself hurts. Controlling for size, packing
+distance's relationship with segmentation skill goes to -0.155 and installations-per-km²
+actually flips sign.
+
+**One relationship survives the control, and it is the mechanistically expected one:**
+packing distance vs the *fraction head's* per-building AUC, 0.931 unconditionally and
+**0.809 partial**. That is the one place a spacing effect should appear independent of array
+size -- the fraction head predicts per-pixel coverage, and what spacing controls at 10 m GSD
+is how much of a pixel a neighbouring array contributes. `roofclf.packing_density`'s median
+15-17 m in the densest quadrats is at or below one pixel, so neighbours mix into each other
+regardless of how big any one of them is.
+
+So `packing_density` remains a useful cheap stratum proxy -- but for **installation size
+regime** first and spectral mixing second, not for density as such. That is a correction to
+how the r=0.70-0.82 figures above were framed, not a retraction of them.
+
+#### Bias: the base-rate correlation is mechanical
+
+`base_rate` is the strongest correlate of bias in the whole table, at **rho=-0.950**
+(p=0.0001, n=9), and unlike the discrimination results it **survives** controlling for
+installation size (partial r=-0.765). Higher true adoption, more under-prediction. It is
+also almost entirely an arithmetic consequence of a missing intercept:
+
+- The model's **predicted** rate is essentially unrelated to the truth: `pred_rate` vs
+  `base_rate` is r=-0.167 (p=0.67), rho=-0.417 (p=0.27).
+- `pred_rate` is nearly flat -- mean **0.137**, sd 0.043, CV 0.31 -- while `base_rate`
+  spans 3.0% to 30.1%, CV 0.62. The classifier predicts roughly one number everywhere.
+- So `rate_ratio = pred_rate / base_rate` reduces to `constant / base_rate`. Substituting
+  the mean predicted rate for `pred_rate` reproduces the observed `rate_ratio` at r=0.969,
+  rho=0.950, **median relative error 8.9%**.
+- A log-log fit gives slope **-1.133**, where exactly -1.0 is the purely mechanical
+  hyperbola.
+
+The "crossing point" this project has described at ~12% base rate is therefore not a
+property of Pakistani settlement: `rate_ratio = 1` at **base_rate 12.3%** simply because
+that is where the flat predicted rate happens to meet the truth, and it sits right next to
+the training quadrats' own mean base rate (12.8%). Recalibrating on a different set of
+quadrats would move the crossing point to that set's mean, without the model having learned
+anything new.
+
+Read that as confirmation of the fix already on record rather than a new obstacle: a
+**per-stratum intercept** is the thing missing, and `rate_ratio`'s 0.235-4.833 spread is
+what a missing intercept looks like when you divide by a base rate that varies 10x. Mardan
+is the one quadrat the mechanical account does not fit (`pred_rate` 0.032 against a flat
+~0.137), which is consistent with it being the weakest fold on independent grounds.
+
+One bias relationship is not mechanical and is worth keeping: `frac_sub400` vs the
+fraction head's predicted/true area, r=-0.945 / rho=-0.841 (n=12) and **-0.691 partial**.
+The more of a quadrat's PV sits below the detection floor, the more area the instrument
+misses -- the sub-400 m² blindness measured directly, and the reason
+[the sub-400 m² instruments](#below-the-detection-floor-change-the-unit-of-prediction)
+exist at all.
+
+#### How much to trust these numbers
+
+n is 7-13 per pair and the script tests 72 pairs, so no single p-value here is evidence on
+its own. What carries the weight is that the two headline results are each **pre-registered
+by an earlier claim in this document** (packing distance predicts skill; `rate_ratio` varies
+with base rate) and each has a mechanism that predicts the sign and rough magnitude in
+advance -- a detection floor at 400 m², and a classifier with one pooled intercept. The
+partial correlations are computed on a single control with n=9, so treat them as
+directional, not precise. Re-run the script when a quadrat is added; that is the check that
+matters more than any p-value in it.
+
+### National deployment: a scaling success, with one clean calibration lesson
+
+`roofclf.score_buildings_national` takes the pooled fit above and scores every VIDA
+building in the country -- **81.76 million buildings across all 4,473 composite
+cells**, previously untested at this scale. Two things made it tractable rather than a
+multi-day job: the shipped feature set never needed the segmentation/fraction
+probability rasters (ablation-excluded, see the table above), so scoring needs only
+composites + VIDA buildings, both already proven at national scale by `density.py`;
+and routing through `local_source.composite_index`'s existing `lru_cache` (previously
+unused by anything) avoids rebuilding the ~4,474-tile composite index once per cell.
+The deployment threshold is chosen the same way as the SPPI work
+(`sppi._precision_threshold`): most conservative cut clearing a target precision on
+pooled leave-one-quadrat-out scores, not Youden's J, because a capacity-contributing
+detector needs precision as the primary criterion.
+
+That threshold is also where the "ranking transfers, absolute rates do not" warning
+above stopped being abstract. Quetta -- the lowest-base-rate quadrat by a wide margin
+(3.0%, next-lowest is 5.7%) and the one place SPPI's own building-scoped detector
+collapsed to 10.5% precision -- was distorting the pooled threshold: holding a 0.50
+precision target across all nine quadrats forced the cut up to 0.4555, which caught
+only 25% of true positives at that precision. Re-fitting on the other eight quadrats
+(Quetta excluded, `data/roofclf_with_quetta_20260730/` kept for comparison) relaxed the
+threshold to 0.3064 and recall at the *same* 0.50 precision target rose to **39.6%** --
+a real, measured gain from removing one quadrat whose extreme base rate was pulling the
+whole pooled cut in the wrong direction, not from more data or a better model.
+
+**What this experiment does and does not license.** It is a genuine win on the
+question `roofclf` was built to answer -- given a fixed precision bar, how many true
+installations does the flagged set catch -- and it is the clearest illustration yet of
+why a single pooled cut is fragile: one outlier stratum, not nine ordinary ones, was
+setting the whole country's operating point. It does **not** mean `roofclf`'s national
+output is ready to contribute a capacity number. Converting 872,730 incrementally
+flagged buildings (no segmentation candidate within 30 m) into MWp at a flat precision
+weight was tried and produced 18,063 MWp -- 3.5 to 8x the country's entire existing
+recall-corrected total -- because a flat precision measured on nine base-rate-skewed
+quadrats does not survive being applied to 81.76 million mostly-rural buildings at a
+different true prevalence, the same failure this section's warning already names. See
+[the full writeup](../issues/roofclf-national-deployment-and-temporal-features.md)
+for the diagnosis. `roofclf`'s national scores stand today as a per-building
+ranking/lead-generation signal, not a capacity input.
+
+### SPPI cross-validation: real but uneven, and only as a second opinion
+
+SPPI (He et al. 2026, `src/earthpv/sppi.py`) is a zero-training spectral index scored
+directly on `roofclf`'s own held-out ground truth
+(`data/roofclf/buildings.geoparquet`) -- the same 8 quadrats, same labels, apples to
+apples:
+
+| signal | median AUC | within size band |
+|---|---:|---:|
+| SPPI (zero training) | 0.823 | 0.828 |
+| `roofclf` (17 features, fitted) | **0.874** | **0.842** |
+
+`roofclf` wins, but not by a wide margin given SPPI needs no training at all. **Adding
+SPPI as a `roofclf` input feature does nothing** -- 0.8736 to 0.8734 AUC, the same
+within-noise result the seg/frac raster features got when tried the same way -- because
+`roofclf`'s fitted linear weights already span the bands SPPI computes a fixed nonlinear
+combination of. That could read as "SPPI is redundant, stop here." It is not: a
+**second, independent check does something a single linear model over the same bands
+cannot**, tested 2026-07-30 as a live question ("could both methods agreeing produce a
+conservative sub-400 m<sup>2</sup> estimate?") rather than assumed.
+
+Restricting to sub-400 m<sup>2</sup> buildings (8 quadrats, Mardan excluded as its own
+already-diagnosed bad fold) and requiring `roofclf >= 0.3064` **and** SPPI above a
+matched-recall threshold:
+
+| | precision | recall | n flagged |
+|---|---:|---:|---:|
+| `roofclf` alone | 0.496 | 0.462 | 1,144 |
+| **AND-gate (both agree)** | **0.540** | 0.445 | 1,009 |
+| `roofclf` alone, at the *same* recall (0.445) | 0.498 | -- | -- |
+
+Agreement buys roughly **+4 points of precision over `roofclf` alone at matched recall**
+-- a real, measured gain, not just a stricter cutoff on one model wearing a different
+hat. The mechanism: SPPI is a fixed nonlinear combination of bands, `roofclf` a linear
+model over similar bands -- a linear model cannot fully reconstruct a nonlinear AND from
+one added covariate, so the two decision boundaries stay genuinely complementary even
+though SPPI carries no *rank* information `roofclf` doesn't already have on its own.
+
+**The gain is real but concentrated, not uniform -- read per quadrat, as always:**
+
+| quadrat | `roofclf` precision | AND-gate precision | delta |
+|---|---:|---:|---:|
+| Multan | 0.256 | 0.363 | **+10.7pp** |
+| Sialkot | 0.321 | 0.376 | **+5.5pp** |
+| Sundar | 0.253 | 0.304 | **+5.1pp** |
+| SITE Karachi | 0.567 | 0.581 | +1.4pp |
+| Lahore | 0.791 | 0.795 | ~flat |
+| Faisalabad | 0.359 | 0.352 | -0.7pp |
+| Karachi coastal | 0.644 | 0.635 | -0.9pp |
+
+The gain concentrates almost entirely in Multan/Sialkot/Sundar -- exactly the three
+low-base-rate quadrats the density-stratified precision work above had to *exclude* from
+calibration because `roofclf` overestimates 2x+ there. That is a coherent story, not a
+coincidence: SPPI agreement specifically catches `roofclf`'s overconfidence in the
+regime already known to be miscalibrated, rather than helping everywhere.
+
+**Tested nationally, 2026-07-30, on the domain-restricted population -- and it does not
+help there, confirming the table above rather than adding to it.**
+`score_buildings_national` now saves `sppi` alongside `p_roofclf` (zero extra cost, same
+bands already read; re-run once to backfill it,
+`data/roofclf_national_with_sppi/pakistan/prob/`). Applying the AND-gate to the *same*
+93 domain-restricted cells the sub-400 capacity figure below uses (i.e. exactly the
+Faisalabad/Karachi-coastal/SITE-Karachi-like regime, not Multan/Sialkot/Sundar):
+precision on those three calibration quadrats themselves is **flat** (0.5501 roofclf-alone
+vs 0.5499 AND-gate) while the AND-gate cuts the flagged population by 31% (496,122 to
+343,032 buildings) and the resulting capacity figure by 29% (6,628 to 4,690 MWp) for no
+precision gain. This is the mechanistic prediction of the per-quadrat table above,
+confirmed rather than contradicted: SPPI's benefit lives specifically in the low-density
+quadrats the domain restriction already excludes, so stacking the AND-gate on top of an
+already-restricted, already-well-calibrated population only removes recall for free.
+**Not adopted for the domain-restricted figure.** SPPI remains valuable as a check in
+the regime it actually helps (a future, separate low-density correction, not yet
+designed), not as a blanket addition to every roofclf deployment.
+
+### Regime-B correction and a national-proxy test (2026-07-31)
+
+Two follow-up questions, asked directly: does the Multan/Sialkot/Sundar-specific gain
+reproduce under a pooled (not per-quadrat) re-test, and can a per-cell signal tell us
+*where* that regime applies nationally so its correction could actually be deployed?
+
+**Reproduced, pooled, at matched recall.** `sppi.and_gate_regime_precision` pools
+TP/FP/FN across Multan, Sialkot and Sundar (sub-400 m<sup>2</sup> buildings, 9-quadrat
+table) rather than reading off per-quadrat deltas one at a time:
+
+| | precision | recall |
+|---|---:|---:|
+| `roofclf` alone (0.3064 threshold) | 0.309 | 0.424 |
+| `roofclf` alone, at the AND-gate's own recall | 0.462 | 0.153 |
+| **AND-gate** | **0.578** | 0.153 |
+
+A **+11.7 point** pooled gain at matched recall, a bit larger than the mean of the three
+individual per-quadrat deltas (+10.7/+5.5/+5.1pp) reported above -- the effect survives
+pooling, it is not an artefact of averaging three small samples. The cost is the same
+one already on record: only 15% of true installations in this regime survive the
+AND-gate. This is now reusable code (`sppi.and_gate_regime_precision`), not a one-off
+script result.
+
+**A related instability worth naming.** Which quadrats even count as "Multan/Sialkot/
+Sundar-like" (`rate_ratio` outside [0.5, 2.0]) depends on which fold table you read,
+because `rate_ratio` is itself a leave-one-quadrat-out statistic that shifts as the
+training pool changes. Sundar measures 1.68 (7-quadrat table), 2.11 (8-quadrat,
+Mardan added), then 1.71 (9-quadrat, Quetta added) -- straddling the 2.0 boundary across
+runs. The domain-restricted capacity figure (6,628 MWp) used the 8-quadrat table's
+3-quadrat split (Faisalabad, Karachi coastal, SITE Karachi); re-running
+`select_calibrated_quadrats` against the current 9-quadrat table gives 4 (Sundar now
+included). This does not change the 6,628 MWp figure retroactively -- that number is
+pinned to the fold table it was computed from -- but it means the Good/Regime-B split
+is a measurement with its own sampling noise near the boundary, not a fixed partition
+of Pakistan's geography.
+
+**Per-cell SPPI agreement rate as a national stratification proxy: tested, and it does
+not work.** The real, reproduced gain above is useless for national deployment without
+a way to tell which national cells are Multan/Sialkot/Sundar-like versus
+Faisalabad/Karachi-coastal/SITE-Karachi-like -- exactly the proxy problem this project
+has already failed to solve twice (existing candidate density anti-correlates with true
+small-PV rate; `roofclf`'s own raw predicted rate does not separate the regimes
+either). A per-cell signal needs no ground truth to compute nationally, so a candidate
+worth testing before assuming it does not exist: does the *fraction of `roofclf`-flagged
+buildings that SPPI also confirms* (`sppi.agreement_rate_by_quadrat`) track `rate_ratio`?
+
+| quadrat | confirmation rate | `rate_ratio` |
+|---|---:|---:|
+| Mardan | 0.000 | 0.235 |
+| Lahore | 0.050 | 0.454 |
+| Karachi coastal | 0.098 | 0.682 |
+| SITE Karachi | 0.440 | 1.146 |
+| Faisalabad | 0.675 | 1.328 |
+| Sundar | 0.319 | 1.710 |
+| Multan | 0.327 | 2.068 |
+| Sialkot | 0.117 | 2.304 |
+| Quetta | 0.506 | 4.833 |
+
+Correlation among the 7 quadrats with an ordinary failure mode (excluding Mardan and
+Quetta, each already separately diagnosed as a distinct problem, not a density-regime
+one) is weak: Pearson r = 0.19, Spearman rho = 0.36. It only looks strong (r = 0.50,
+rho = 0.63) with Mardan and Quetta folded back in -- almost certainly driven by those
+two known outliers rather than a real relationship, since the sign is not even
+consistent among the core 7: Karachi coastal (well-calibrated, `rate_ratio` 0.68) shows
+a *lower* confirmation rate than Sundar (over-predicting, `rate_ratio` 1.71), the
+opposite of what the hypothesis predicts. **Negative result, kept as code
+(`sppi.agreement_rate_by_quadrat`) rather than deleted**, in the same spirit as
+`roofclf_capacity.py`: this project has now failed to find a national stratification
+proxy three times (candidate density, `roofclf`'s own rate, SPPI agreement rate), which
+is itself useful to know before trying a fourth. The Regime-B correction above therefore
+stays exactly where it started: a real, reproducible effect with no known way to say
+where it applies outside the quadrats it was measured on.
+
+### Sub-400 m² experimental capacity: density-stratified, deliberately separate
+
+`src/earthpv/sub400_capacity.py` (2026-07-30) is the outcome of trying to fold both
+sub-400 m² instruments -- the fraction head and `roof-classifier`'s national scores --
+into one capacity number. It is **not part of the published atlas above**, on purpose:
+promoting the fraction head into `density.py` itself broke `check-density` (previous
+section), and the module's own docstring is written as a running record of what was
+tried and rejected, not just what worked, in the same spirit as
+`roofclf_capacity.py`.
+
+**Precision correction alone does not fix national deployment.** roofclf's per-quadrat
+precision at the deployment threshold (0.3064) is not flat -- it ranges 0.30 to 0.81
+across the 8 (no-Quetta) calibration quadrats -- and the relationship to true PV density
+(`base_rate`) is a crossing point, not a slope: quadrats below about 12% base rate
+over-predict by 2x or more, the one quadrat well above it (Lahore, 30%) under-predicts
+instead, and Mardan is a separate, already-diagnosed bad fold unrelated to density.
+Restricting to the three quadrats whose `rate_ratio` sits within 2x of 1 either way
+(Faisalabad, Karachi coastal, SITE Karachi -- 12.5-18.5% base rate) lifts pooled
+precision from the flat LOQO 0.499 to **0.5495**. Applied to the *same* national
+population the rejected flat-precision attempt used, this makes the number **worse**,
+not better -- 37,197 to 40,879 MWp -- because 0.5495 is still just barely above 0.5. The
+volume of buildings being priced, not the weight applied to them, was always the problem.
+
+**What actually moves the number is restricting the population.** Combining three
+corrections -- the pre-existing building-density domain restriction (only the 93 of
+4,473 national cells whose settlement density falls in the calibration quadrats'
+737-4,750 bldg/km² range), a contamination filter (buildings whose own footprint is
+already >= 400 m² are dropped from "incremental" -- they were never sub-floor, they
+just sit outside `new_lead_mask`'s 30 m matching radius of an existing candidate; 13.4%
+of the domain-restricted incremental buildings, 49% of its area), and the density-regime
+precision above -- gives:
+
+| | value |
+| --- | ---: |
+| Domain cells | 93 / 4,473 (2.1%) |
+| Buildings in domain | 15.6M / 81.8M (19.1%) |
+| Incremental buildings (post-contamination-filter) | 418,076 |
+| Incremental sub-400 m² roof area | 67.0 million m² |
+| **Sub-400 m² capacity (domain-restricted)** | **6,628 MWp** |
+
+That is, for the first time, the same order of magnitude as the country's entire
+existing segmentation-based total (5,078 MWp) rather than 3.5-8x it. It is still not a
+national number: **6,628 MWp describes only those 93 cells.** Rescaling it by the
+domain's 2.1%/19.1% share to infer a country total (~315 GWp) is exactly the
+base-rate-transfer failure this module exists to avoid, and
+`domain_restricted_capacity`'s returned summary states the scope explicitly so a caller
+cannot lose that caveat downstream.
+
+**Where those 93 cells are** (the only areas this figure actually describes): Karachi,
+Lahore and Peshawar (7-8 cells each), Mardan and Faisalabad (6), Islamabad and Sialkot
+(5), Multan, Charsadda, Sheikhpura and Gujranwala (3), Rawalpindi and Quetta (2), plus a
+long tail of single-cell districts. Building density (not PV density) is the only
+national proxy that survived testing as a way to identify candidate areas -- existing
+segmentation-detected candidate density was tried and **rejected**: it anti-correlates
+with true small-PV base rate (Karachi coastal and Lahore, the two quadrats with the
+*highest* true small-PV adoption, both show near-zero existing large-PV candidate
+density, because large-industrial and small-residential PV are different populations).
+roofclf's own raw predicted rate per cell was also tried and rejected: it does not
+separate calibrated from miscalibrated quadrats either (Multan and Sundar's predicted
+rate sits inside the "well-calibrated" band despite being 2x+ miscalibrated in truth).
+So "where might medium/high sub-400 m² PV density exist beyond the 8 mapped quadrats" is
+answered here only as "these are the largest, densest cities, which is where 6 of the 8
+existing quadrats already are" -- a reason to prioritize new calibration quadrats in
+Karachi's other residential districts, Rawalpindi, Peshawar and Islamabad, not a
+validated prediction of where capacity sits.
+
+### A sub-400 m² capacity bracket, plus non-imagery anchors (2026-07-31)
+
+Everything above answers "how much capacity does a detector find." This section asks a
+different question: given that both instruments are known to need a per-stratum
+correction that does not exist yet, what is a defensible **range**, and does anything
+independent of imagery corroborate it? Two frames, kept explicitly separate -- mixing
+them is exactly the base-rate-transfer mistake this page documents repeatedly.
+
+The Low/Central/High bracket members below are resolved per 0.1&deg; cell (not just as
+national totals) in an interactive atlas, switchable between four views:
+`results/pakistan_pv_sub400_bracket_atlas.html`
+(`atlas.build_sub400_bracket_atlas`, `earthpv atlas --sub400-low-cells ... --sub400-
+central-cells ... --sub400-high-cells ...`). Large PV (>= 400 m<sup>2</sup>,
+recall-corrected) is always shown too, per a follow-up request (2026-07-31): for Low
+and Central it is added into the reported total using the ROOFTOP-scope figure only
+(large PV nationwide plus small PV inside the checked cells, the same "large
+everywhere, small where checked" combination `build_combined_atlas` already ships for
+its single roofclf-alone case, now extended to both Low and Central); for High it is
+shown for scale only and not added in, since High is an explicit, uncalibrated ceiling
+and folding it together with the project's main validated number would blur that
+distinction. The atlas still reports each view's small-PV-only component alongside
+the combined figure, so nothing here is hidden, only added to.
+
+A fourth view, **All-PV**, answers a deliberately different, wider question: Central's
+small-PV component (roofclf alone, the 93-cell domain) plus large PV across EVERY
+placement, ground-mount farms included (`est_mwp_rc`, not `est_mwp_rc_roof`) --
+**11,706 MWp** nationally (6,628 small-PV + 5,078 large all-placement). This is kept
+separate from Central rather than used as Central's own headline number, for two
+reasons requested and confirmed the same day: ground-mount is a different physical
+asset class than "how much PV small buildings carry," with its own site-area
+conversion constant, and it is this pipeline's most bug-prone component (the
+ground-mount-to-rooftop ratio check in `plausibility.py` exists specifically because
+of it) -- so folding it in does not raise certainty, it adds a different kind of risk
+under a number that would otherwise read as a rooftop total.
+
+**Frame A -- domain-restricted (93 of 4,473 cells, 19.1% of buildings, NOT a national
+figure).** The existing roofclf-alone figure above (6,628 MWp) gets a new companion,
+requiring roofclf **and** SPPI to agree instead of roofclf alone --
+`sub400_capacity.domain_restricted_and_gate_capacity` (new this session; the AND-gate
+was previously measured only in an unsaved ad hoc script, reported in prose two sections
+up as 4,690 MWp). Re-measured with a properly pooled (not in-sample-ad-hoc) SPPI
+threshold fit on the same three calibration quadrats:
+
+| | roofclf alone | AND-gate (roofclf & SPPI) |
+| --- | ---: | ---: |
+| Precision (on the 3 calibration quadrats) | 0.5495 | **0.6166** |
+| Recall (same quadrats) | 0.7226 | 0.5839 |
+| Flagged buildings (93-cell domain) | 496,122 | 187,740 |
+| **Sub-400 m² capacity (this domain only)** | **6,628 MWp** | **2,651 MWp** |
+
+Unlike the earlier prose result (flat precision, recall traded away for nothing), the
+properly pooled threshold shows the AND-gate buys a real **+6.7 point precision gain**,
+not just a stricter cut at the same precision -- the earlier 4,690 MWp figure is
+superseded by this one; it was never saved as reusable code and is not exactly
+reproducible. Both remain scoped to the same 93 cells -- **do not rescale either to a
+country total**, for the reason stated repeatedly above.
+
+**Frame B -- unrestricted national, explicitly uncalibrated.** Refreshing the flat-LOQO-
+precision fold-in (`roofclf_capacity.incremental_capacity`) at the **current** deployment
+threshold (0.3064, post-Quetta-exclusion) against the full national scoring output
+reproduces **37,196.6 MWp** -- matching the 37,197 MWp already on record in
+`sub400_capacity.py`'s docstring, confirming the number is stable under a fresh read of
+the current artifacts. This supersedes the older 18,063 MWp figure, which used the prior
+9-quadrat 0.4555 threshold (since relaxed) and is not directly comparable. This is
+offered as a ceiling only, per the go-ahead to publish an upper bound that "does not need
+to be fully calibrated or validated" -- the precision weight is known not to survive the
+prevalence shift from 9 urban/industrial quadrats to 81.76M mostly rural buildings (see
+above), so treat it as an outer bound on plausibility, not an estimate.
+
+**External, non-imagery anchors.** Two independent administrative/trade data points,
+neither derived from this pipeline at all:
+
+- **NEPRA net-metering register** (Pakistan's regulator, the closest available analogue
+  to Germany's MaStR): **5.3 GW** registered nationally by April 2025 across 283,000
+  consumers, projected to reach 6.3 GW by the end of FY2024-25
+  ([pv magazine](https://www.pv-magazine.com/2025/06/02/pakistans-net-metering-capacity-hits-5-3-gw/),
+  [pv magazine](https://www.pv-magazine.com/2025/03/20/pakistans-net-metering-solar-capacity-surpasses-4-gw/)).
+  Average registered size is **18.7 kWp/consumer** -- well under the model's 72 kWp
+  (400 m²) floor, so this register is itself dominated by exactly the sub-400 m²
+  population this section is about. It is a **floor, not a total**: it only counts
+  customers who completed DISCO net-metering paperwork, and Pakistan's solar boom is
+  widely reported as running well ahead of formal registration (self-consumption and
+  off-grid/battery installs never appear here at all). Frame B's ceiling (37.2 GWp)
+  sitting roughly 6-7x above this floor is consistent with that gap, not contradicted by
+  it.
+- **Cumulative panel imports**: Chinese customs data puts Pakistan's 2024 solar panel
+  imports at **16.91 GW**, up from 7.47 GW in 2023 (+127%), with trade press citing
+  roughly **50 GW cumulative by August 2025**
+  ([pv magazine](https://www.pv-magazine.com/2025/02/07/china-exports-235-9-gw-of-solar-panels-in-2024/),
+  [Renewables First/Taiyang News](https://taiyangnews.info/markets/pakistan-9m-fy2025-solar-panel-imports-hit-127-gw)).
+  This is a much looser anchor -- it is import volume, not installed rooftop capacity,
+  and conflates utility-scale procurement, warehoused stock, and re-exports with rooftop
+  installs of every size. It is included only as an order-of-magnitude sanity check: the
+  gap between it and the NEPRA floor is the same "unregistered solar" phenomenon Pakistani
+  energy press already documents, and it is large enough that nothing in this bracket is
+  anywhere near implausible on these grounds.
+- **MaStR-shape-implied ceiling.** Applying Germany's legally complete size split
+  (72.6% of rooftop capacity in units <=100 kWp, ~<=555 m² of module; see "How the
+  estimate got here" below) to this project's own current published >= 400 m² rooftop
+  total -- **2,229.9 MWp**, recall-corrected, summed directly from
+  `data/predictions/pakistan/density/grid.geoparquet` (the per-cell source of truth;
+  an earlier draft of this section misread `regions.csv`, which stores BOTH province-
+  and district-level rows summing to the same national total each, and summed across
+  both, doubling it to 4,457 -- corrected 2026-07-31) -- implies a sub-400 m² total of
+  order (0.726/0.274 =) 2.65 x 2,230 approx **5,900 MWp**, *if* Pakistan's roof-size
+  distribution resembled Germany's. Two named caveats: the 400 m² vs. ~555 m² cutoff
+  mismatch, and no evidence yet that a mostly-rural, much poorer country's roof-size
+  distribution resembles Germany's at all. It lands close to Frame A's central figure,
+  which is the most it should be read as saying.
+
+| bracket member | value | scope | mechanism |
+| --- | ---: | --- | --- |
+| Frame A, AND-gate (low) | 2,651 MWp | 93 cells only | roofclf & SPPI agree, density-restricted |
+| Frame A, roofclf-alone (central) | 6,628 MWp | 93 cells only | roofclf alone, density-restricted |
+| MaStR-shape-implied | ~5,900 MWp | national (implied) | Germany size-distribution transfer |
+| NEPRA net-metering | 5,300-6,300 MWp | national (registered only) | admin record, non-imagery |
+| Frame B (high) | 37,197 MWp | national, unrestricted | flat LOQO precision, explicitly uncalibrated |
+
+**Read this table by column, not by sorting the value column.** The two Frame A rows and
+the Frame B row describe different populations (2.1% of cells vs. 100%) and must not be
+combined or rescaled into each other. NEPRA and MaStR are the only two rows that are
+genuinely national and independent of this pipeline. The MaStR-implied figure lands
+close to Frame A's own central estimate despite sharing no inputs with it -- two
+disjoint methods agreeing that closely is the strongest corroboration in this table.
+Frame B's explicitly uncalibrated ceiling sits a further 6x above both, comfortably
+above the NEPRA floor either way; that gap is consistent with "not implausible" for an
+explicit ceiling, not evidence that 37,197 MWp is itself a good estimate.
 
 ## Total capacity as a pipeline input
 
