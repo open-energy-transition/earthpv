@@ -21,16 +21,14 @@
 
 ---
 
+> **The mission of EarthPV is to provide cost-effective, verifiable, open data on photovoltaic (PV) capacity, growth and orientation for every country worldwide.**
+
 > [!WARNING]
 > **Active development.** EarthPV is a research prototype: it is actively experimenting
 > with new solar detection methods, and its detectors, calibration and headline numbers
 > are still being tested and revised rather than settled.
 
-> **EarthPV provides rooftop and ground-based photovoltaic distribution of up to 100 kW, including orientation and growth, for every country in the world. It demonstrates how free Sentinel-2 imagery, an open foundation model, and
-> human-in-the-loop validation in OpenStreetMap can make global photovoltaic mapping more
-> scalable, verifiable, and cost-effective than existing methods.**
-
-EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and ESA, through
+EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and ESA, through.
 TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
 and puts every detection in front of **OpenStreetMap** mappers for verification. The
 verified result becomes the next round of training data. Model, code, training labels and
@@ -126,6 +124,21 @@ bisect the sun and the sensor. Two or more mutually consistent flashes are a phy
 confirmation that PV is present, independent of spectral appearance, and recover how the
 panel is mounted. Folds into the main workflow's leads ranking as a boost-only signal;
 never required to produce the evidence atlas.
+
+<p align="center">
+  <a href="https://open-energy-transition.github.io/earthpv/glint_examples/">
+    <img src="docs/glint_examples_HR/glint8.png" width="560"
+         alt="High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.">
+  </a>
+</p>
+
+<p align="center"><em>The physical event the glint check looks for, caught in sub-metre
+commercial imagery: the array's specular reflection is so intense it saturates the
+sensor outright, blooming into a rainbow smear across the neighbouring rooftops. At
+Sentinel-2's 10 m the same event is a single bright pixel-cluster on one predictable
+date -- more examples in
+<a href="https://open-energy-transition.github.io/earthpv/glint_examples/">What solar
+glint actually looks like</a>.</em></p>
 
 **Growth, for when installations appeared.** Diffing a pre-boom (2021/22) Sentinel-2
 composite against the current one -- with both the segmentation model and SPPI run

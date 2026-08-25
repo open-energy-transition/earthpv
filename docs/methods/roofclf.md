@@ -5,7 +5,7 @@
     `roofclf` is the instrument that covers everything **below** the segmentation
     model's 400 m<sup>2</sup> detection floor, and (inside its calibrated domain) it now
     also replaces segmentation's own rooftop estimate above that floor. Numbers on this
-    page come from the 27-quadrat fit in `data/roofclf/summary.json` and the capacity run
+    page come from the 30-quadrat fit in `data/roofclf/summary.json` and the capacity run
     behind the published [evidence atlas](../results/capacity.md).
 
 ## What it is, in one paragraph
@@ -62,8 +62,9 @@ inside it, a roof with no mapped PV is a genuine negative. That is exactly the s
 missing in the failure regime, which is why the quadrats are spent on training rather than
 only on after-the-fact correction.
 
-Twenty-seven quadrats now carry Rule-1, spanning 79.9 km<sup>2</sup>, 16,303 mapped
-installations and 118,755 buildings.
+Thirty-one quadrats now carry Rule-1, with 16,469 mapped installations between them; 30
+feed the current fit (Kalat Rural is registered and Rule-1 but held out -- see
+[Calibration quadrats](calibration-quadrats.md)).
 
 !!! warning "Rule-1 is relative to the mapping imagery, not to the model's imagery"
 
@@ -120,10 +121,10 @@ Two honest readings of that figure, and both matter:
 
 - **There is a real, physically sensible signal.** A roof carrying panels reads darker in
   every band, because glass over silicon absorbs where a concrete or metal roof scatters.
-  The dip is deepest in the red and near-infrared (6 to 8 percent from B04 through B08,
+  The dip is deepest in the red and near-infrared (6 to 8% from B04 through B08,
   which is the light a module exists to absorb) and shallowest in blue and in the first
   SWIR band (glass reflects blue slightly better, and silicon stops absorbing beyond its
-  band gap, so B11 recovers to a 3 percent gap).
+  band gap, so B11 recovers to a 3% gap).
   That shape, "dark, slightly blue, with a relative SWIR excess", is what the derived
   features (`blue_red_ratio`, `ndbi`, `brightness`) each capture one slice of, and it is
   the same physics [SPPI](../issues/sppi-spectral-index-evaluation.md) hard-codes as a
@@ -158,7 +159,7 @@ The roof term above is the geometric intersection of mapped PV with the footprin
 array two metres off the wall contributes exactly zero to `pv_area_true_m2`, and therefore
 zero to the coverage ratio and zero to the area recall, on a building this classifier
 usually flags anyway. `--parcel-label` closes that by adding the mapped PV that sits off
-every footprint but within 20 m of one, attributed whole to its single nearest building.
+every footprint but within 20 m of one, attributed wholly to its single nearest building.
 
 Three rules stop it double-counting. Each installation has the footprints it intersects
 subtracted before the remainder is measured, so the roof and yard terms partition one
@@ -326,13 +327,11 @@ so a false positive is expensive here in a way it is not in the mapping-leads qu
 `p_roofclf >= 0.2511` is the smallest threshold holding precision at 0.50 on the pooled
 out-of-fold scores, and it catches 63% of PV-carrying buildings there. Both numbers are
 still leave-one-quadrat-out measurements: one threshold instead of 27 per-fold ones, but
-no building ever scored by a model that saw its own quadrat.
+no building was ever scored by a model that saw its own quadrat.
 
-The threshold moves whenever the quadrat set changes, and it has moved a lot: 0.4555 at
-nine quadrats, 0.3064 once Quetta was dropped, 0.2443 at 23 quadrats, 0.251 at 25 quadrats
-(after Sanghar and Bahawalnagar Rural were added), **0.2511 today** (27 quadrats, after
-Nasirabad Rural and Tank Rural were added and the model refit again, same day,
-2026-08-13). Anything downstream that hard-codes it is a bug.
+The threshold moves whenever the quadrat set changes -- it has ranged from about 0.24 to
+0.46 across refits as quadrats were added or dropped. Anything downstream that
+hard-codes it is a bug.
 
 ## 5. Scoring a country
 
@@ -405,6 +404,23 @@ and silently assumes full coverage. Measured against the quadrats' own mapped
 The coverage ratio is now fitted per roof-size bin and per building-density band, then
 0.18 kWp per m<sup>2</sup> of module converts covered area to capacity.
 
+The quadrat ground truth shows directly what that ratio is pricing, and why it must be
+fitted by size rather than pooled:
+
+![Two panels from 17,090 PV-carrying quadrat buildings. Left, log-log: mapped PV area against building roof area, tracking roof size across three decades but sitting well below the array-equals-whole-roof line; a building just above the 400 square metre segmentation floor typically carries an array well below the floor. Right: the median share of the roof covered is U-shaped, about 0.5 on the smallest homes, dipping to 0.27 around 300 to 700 square metre roofs, and rising back above 0.6 on large industrial roofs.](../assets/figures/pv_vs_building.svg#only-light)
+![Two panels from 17,090 PV-carrying quadrat buildings. Left, log-log: mapped PV area against building roof area, tracking roof size across three decades but sitting well below the array-equals-whole-roof line; a building just above the 400 square metre segmentation floor typically carries an array well below the floor. Right: the median share of the roof covered is U-shaped, about 0.5 on the smallest homes, dipping to 0.27 around 300 to 700 square metre roofs, and rising back above 0.6 on large industrial roofs.](../assets/figures/pv_vs_building.dark.svg#only-dark)
+
+Two readings. First, the coverage share is not one number: it is U-shaped in roof size
+(small homes fill half the roof, mid-size buildings barely a quarter, big industrial
+roofs climb back up), which is exactly why the ratio is fitted per size bin. Note these
+medians sit above the 0.19 quoted in the previous paragraph because they are measured on buildings that
+truly carry PV, while the deployed ratio is measured over roofclf-*flagged* roofs, false
+flags included. Second, the left panel is the measured case for the
+&ge; 400 m<sup>2</sup> roofclf replacement below: a building above the floor usually
+carries an array **below** it (median 127 m<sup>2</sup> of PV on a roughly 485
+m<sup>2</sup> roof), so segmentation can miss a large building's array outright without
+that being evidence the roof is empty.
+
 ## Where the numbers land
 
 | Component | Population | MWp |
@@ -429,8 +445,8 @@ mapped PV area that lands on a flagged roof (0.808 sub-400 m<sup>2</sup>, 0.978 
 400 m<sup>2</sup>, per size bin and density stratum) extends that to the roofs it missed --
 the same correction the segmentation half has always used. The floor row is deliberately
 left uncorrected, because a floor that extrapolates to installations neither detector saw
-is not a floor. See [the capacity map](../results/capacity.md)'s "A twelfth change" for the
-full derivation and the three ways the correction is a lower bound on itself.
+is not a floor. See [the capacity map](../results/capacity.md#the-area-recall-correction)
+for the full derivation and the three ways the correction is a lower bound on itself.
 
 Three things about that table are worth stating plainly:
 

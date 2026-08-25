@@ -1,7 +1,8 @@
 # Validating against a complete register: Germany and MaStR
 
 Every accuracy figure this project quotes for Pakistan is bounded by the same thing: the
-21 calibration quadrats behind it were hand-picked rather than randomly sampled, their
+calibration quadrats behind it (see [Calibration quadrats](calibration-quadrats.md) for the
+current count) were hand-picked rather than randomly sampled, their
 completeness is attested by one mapper rather than independently verified, and that
 completeness is relative to the date of the background imagery used for mapping rather
 than the date of the Sentinel-2 composite the model actually reads. Those are real limits
@@ -149,7 +150,7 @@ than missing code:
 2. **A building layer with small roofs.** `roofclf` scores per building and needs the
    sub-400 m&sup2; population. Germany has only the Overture &ge; 500 m&sup2; set here
    (1.6M rows); `data/vida/DEU.parquet` is absent.
-3. **Mapped quadrats.** All 21 calibration quadrats are Pakistani, and `roofclf` cannot be
+3. **Mapped quadrats.** Every calibration quadrat is Pakistani, and `roofclf` cannot be
    fit without exhaustively mapped ground where a no-PV building is a real negative. The
    3.6% OSM completeness measured above means German quadrats have to be *mapped*, not
    derived from an OSM pull &mdash; the same cost as the Pakistani ones.

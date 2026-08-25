@@ -68,23 +68,21 @@ about 5.5 m<sup>2</sup> of crystalline silicon per kWp, so **0.18 kWp per m<sup>
 A **ground-mount** detection outlines the *site*, not the modules. The ground-PV training
 labels are OpenStreetMap `power=plant` perimeters, which enclose access roads, inter-row
 spacing and substations, so the model is taught to fill the fence line. Only the
-ground-cover ratio of that polygon is module -- **0.05 kWp per m<sup>2</sup> of site**
-as of 2026-08-11, calibrated against the two named-plant ground-mount boxes
+ground-cover ratio of that polygon is module -- **0.05 kWp per m<sup>2</sup> of site**,
+calibrated against two named-plant ground-mount boxes
 (`docs/issues/pakistan-calibration-boxes.md`) rather than reasoned from a GCR assumption
 alone: Quaid-e-Azam Solar Park (400 MW / 8,904,839 m<sup>2</sup> dissolved OSM footprint)
 implies 0.0449 kWp/m<sup>2</sup>, the Sukkur solar farm (150 MW combined, three phases /
-2,606,013 m<sup>2</sup>) implies 0.0576 -- geometric mean 0.0509, rounded to 0.05. The
-previous 0.07 point sat nearer the upper-middle of the old GCR-reasoned range (0.045-0.11
-for GCR 0.25-0.6) than either measured site does. Converting site area at the rooftop
-constant still overstates ground-mount capacity, now by roughly 3.5-4x rather than the
-previously stated two to three.
+2,606,013 m<sup>2</sup>) implies 0.0576 -- geometric mean 0.0509, rounded to 0.05.
+Converting site area at the rooftop constant would overstate ground-mount capacity by
+roughly 3.5 to 4 times.
 
 Every all-PV estimator is therefore split by placement before conversion, and both
-constants carry lognormal priors (90 percent ranges of 0.15 to 0.21 and, as of 2026-08-11,
-0.035 to 0.075 for the land constant -- kept close to its old width rather than
-collapsed to bracket only the two measured plants, since n=2 does not support a tight
-posterior and other sites plausibly use tracking or different row spacing) so the
-conversion propagates into the credible intervals instead of being treated as exact.
+constants carry lognormal priors (90 percent ranges of 0.15 to 0.21 for the module
+constant and 0.035 to 0.075 for the land constant, kept wide since n=2 real plants does
+not support a tight posterior and other sites plausibly use tracking or different row
+spacing) so the conversion propagates into the credible intervals instead of being
+treated as exact.
 
 ## Blobs are excluded, not converted
 
@@ -131,7 +129,7 @@ Three layers plus an atlas land in `data/predictions/<aoi>/density/`:
 | `<aoi>_pv_atlas.html` | country | the self-contained interactive [capacity atlas](../results/capacity.md) |
 
 Rooftop capacity is `est_kwp = pv_area x --kwp-per-m2-module` (default 0.18); the
-ground-mount part of every all-PV column uses `--kwp-per-m2-land` (default 0.07). The
+ground-mount part of every all-PV column uses `--kwp-per-m2-land` (default 0.05). The
 `*_roof` and `*_ground` columns are exported separately so the split is auditable rather
 than buried in a total.
 
@@ -155,19 +153,17 @@ silently absent from the second.
 ![Schematic of one rooftop-classified candidate polygon spanning two building footprints. The two intersection areas are marked as credited to building A's row, capped at A's roof area, and to building B's row. The larger remaining polygon area between and beyond the roofs is marked as off any roof: in the region total, in nobody's per-building row.](../assets/figures/attribution_gap.svg#only-light)
 ![Schematic of one rooftop-classified candidate polygon spanning two building footprints. The two intersection areas are marked as credited to building A's row, capped at A's roof area, and to building B's row. The larger remaining polygon area between and beyond the roofs is marked as off any roof: in the region total, in nobody's per-building row.](../assets/figures/attribution_gap.dark.svg#only-dark)
 
-This is not a rounding difference. Measured 2026-08-06 against a single matched candidate
-snapshot (so the comparison isn't confounded by the separate stale-partials issue
-described elsewhere on this page):
-of 21,506,014 m<sup>2</sup> of rooftop-placed candidate area nationally, only
-11,527,028 m<sup>2</sup> (53.6%) is attributed to any building in `buildings.geoparquet`
--- a **46.4% gap (9,978,986 m<sup>2</sup>)**. The mechanism is exactly what it looks like:
-`postprocess._join_buildings_metric` only requires >= 30% of a candidate's own area to
-sit on *some* building before calling it `rooftop` (`NEAR_BUILDING_M`'s sibling
-threshold), and the mean `building_overlap_frac` across rooftop-classified candidates is
-only **58.8%** -- multiplying that shortfall through (`sum(area * (1 - overlap_frac))`)
-predicts a 9,781,295 m<sup>2</sup> gap, matching the measured figure to within 2%. Ground
-mount is not involved: both sides of this comparison are already restricted to
-`placement == "rooftop"` candidates before summing.
+This is not a rounding difference: of 21,506,014 m<sup>2</sup> of rooftop-placed
+candidate area nationally, only 11,527,028 m<sup>2</sup> (53.6%) is attributed to any
+building in `buildings.geoparquet` -- a **46.4% gap (9,978,986 m<sup>2</sup>)**. The
+mechanism is exactly what it looks like: `postprocess._join_buildings_metric` only
+requires >= 30% of a candidate's own area to sit on *some* building before calling it
+`rooftop` (`NEAR_BUILDING_M`'s sibling threshold), and the mean `building_overlap_frac`
+across rooftop-classified candidates is only **58.8%** -- multiplying that shortfall
+through (`sum(area * (1 - overlap_frac))`) predicts a 9,781,295 m<sup>2</sup> gap,
+matching the measured figure to within 2%. Ground-mount is not involved: both sides of
+this comparison are already restricted to `placement == "rooftop"` candidates before
+summing.
 
 Practical consequence: **`buildings.geoparquet`'s summed rooftop capacity understates the
 region/national rooftop total by roughly half**, structurally, not as a bug to patch --
@@ -180,24 +176,15 @@ also observed on a handful of candidates (VIDA building footprints occasionally 
 each other, double-counting a candidate's own intersection area across two overlapping
 buildings) -- a minor, secondary data-quality note, not the driver of the gap above.
 
-This is a separate, always-present structural gap from the cached-partials staleness issue
-described earlier on this page (the `_CAND_COLS`-vs-cached-`*_roof`-columns mismatch from
-the 2026-07-29/30 OSM-replace incident) -- it exists even when both sides are freshly
-computed from the exact same candidate snapshot, and would remain even after that other
-issue is fully resolved.
-
 Province polygons come from **geoBoundaries** (open, CC-BY), because Overture's divisions
 endpoint times out from the development machine. Override with `--regions-file`.
 
 ### Completeness confidence (segmentation runs only)
 
 Every estimator on this page (`det`/`cal`/`exp`/`rc`) is floored at >= 400 m<sup>2</sup> and
-its recall correction was measured on hand-mapped calibration quadrats spanning
-553-5,258 buildings/km<sup>2</sup> -- the full density range of every currently
-Rule-1-complete quadrat (18 as of 2026-08-09; widened from an 8-quadrat, no-Quetta figure
-of 737-4,750 that had gone stale as the calibration set grew). Outside that
-settlement-density range there is no calibration evidence either way -- not "the estimate
-is worse there", just "untested". A
+its recall correction was measured on hand-mapped calibration quadrats currently spanning
+553-5,258 buildings/km<sup>2</sup>. Outside that settlement-density range there is no
+calibration evidence either way -- not "the estimate is worse there", just "untested". A
 segmentation `density` run therefore carries a `density_confidence` column on
 `grid.csv`/`regions.csv` (values `below_calibrated_range` / `in_calibrated_range` /
 `above_calibrated_range`, alongside the raw `bldg_density_km2`), plus
@@ -938,43 +925,26 @@ explicit ceiling, not evidence that 37,197 MWp is itself a good estimate.
 
 Every number above is this project's own estimate of the total. `earthpv
 redistribute-capacity` (`capacity_redistribution.py`) answers a different question:
-given a total from an independent, possibly more-trusted source -- e.g. the NEPRA
-register above -- how should that total be spread across cells, regions or buildings,
-using this project's own measured RELATIVE shape rather than its absolute number.
-`share = row's est_mwp_* value / (national or per-region) sum`, `distributed = share x
-external_total`. Kept out of `density.py` itself, matching the same separation
-`sub400_capacity.py`/`pv_capacity.py`/`roofclf_capacity.py` already keep from the main
-aggregation path, for the same reason: this reads `density/`'s finished outputs and
-writes its own new sibling file, never touching `grid.geoparquet`/`regions.geoparquet`
-in place.
+given a total from an independent, possibly more-trusted source (for example Pakistan's
+NEPRA net-metering register), how should that total be spread across cells, regions or
+buildings, using this project's own measured *relative* shape rather than its absolute
+number: `share = row's est_mwp_* value / (national or per-region) sum`,
+`distributed = share x external_total`. It reads `density/`'s finished outputs and writes
+its own sibling file, never touching `grid.geoparquet`/`regions.geoparquet` in place.
 
-Two things worth stating plainly, not burying in code comments:
-
-- **Open, untested assumption.** An external total necessarily includes small
-  (< 400 m²) PV, so distributing it by the &ge; 400 m² shape this project can actually
-  validate assumes small-PV's spatial distribution tracks large-PV's. The one place
-  this has been looked at, even informally -- existing candidate density
-  anti-correlates with true small-PV base rate in the two quadrats compared above
-  (Karachi coastal, Lahore) -- leans against the assumption, though it has never been
-  computed as a formal statistic across all nine calibration quadrats. Every number
-  `redistribute-capacity` produces is conditional on that assumption holding, not
-  evidence that it does.
-- **Point estimates only.** `est_mwp_rc`'s posterior credible interval is not
-  propagated through this transform (doing so correctly needs either persisting
-  `density.py`'s internal per-draw matrices to disk, or recomputing them here from
-  `candidates.parquet` + the calibration table -- both real, not-yet-built work, left
-  as a named follow-up rather than attempted silently).
-
-First concrete run, the national NEPRA midpoint against the published Pakistan total:
+Two caveats worth stating plainly: an external total necessarily includes small
+(< 400 m²) PV, so distributing it by the &ge; 400 m² shape this project can actually
+validate assumes small-PV's spatial distribution tracks large-PV's, which is not
+established; and the transform is point-estimate only, since `est_mwp_rc`'s posterior
+credible interval is not currently propagated through it.
 
 ```bash
 earthpv redistribute-capacity --aoi pakistan --total-capacity 5800 --scope national
 ```
 
-`--scope region` (one total per region, each spread by that region's own local shape)
-is built and wired the same way, but has no real companion data yet -- no provincial
-NEPRA breakdown exists anywhere in this project's sources today, only the national
-scalar above.
+`--scope region` (one total per region, each spread by that region's own local shape) is
+built and wired the same way, but has no real companion data yet -- no provincial NEPRA
+breakdown exists in this project's sources today, only the national scalar above.
 
 ## Rooftop potential and saturation
 
@@ -982,56 +952,34 @@ Everything above answers "how much PV is already there." `earthpv atlas
 --potential-buildings <path>` (`atlas.py::build_potential_atlas`,
 `potential.py::large_roof_buildings`) answers a different, forward-looking question:
 where are large, currently-uncovered roofs that would make good candidates for *future*
-rooftop solar, and where is existing adoption already dense vs. sparse. It is a
-two-tab atlas, not a new capacity estimator, and it is deliberately kept separate from
-every number above.
+rooftop solar, and where is existing adoption already dense vs. sparse. It is a two-tab
+atlas, not a new capacity estimator, kept deliberately separate from every number above.
 
 **Potential.** Every VIDA building nationally with `roof_area_m2 >= 200` is pulled from
-`roofclf.score_buildings_national`'s existing per-cell output -- reusing only that
-table's building-footprint geometry, never its `p_roofclf`/`sppi` PV-presence scores.
-This is the load-bearing design choice: every calibration/precision problem documented
-above (the rejected 18-37 GWp roofclf fold-in, the 0.235-4.833 `rate_ratio` spread, the
-whole "ranking transfers, absolute rates do not" lesson) arises from converting a
-PV-*presence probability* into a capacity number. This instrument never does that -- it
-only measures building footprint size, a quantity roofclf's classifier neither predicts
-nor can get wrong in that sense, so none of those caveats apply here. From each cell's
-total large-roof area, the segmentation model's own probability-weighted expected PV
-area (`pv_area_exp_roof_m2`, upper-leaning on purpose) is subtracted to get an
-**uncovered** large-roof area, conservatively excluding any roof that already shows even
-sub-threshold PV signal. That area converts to peak capacity at the usual 0.18 kWp/m2
-module constant, then to annual energy via PVGIS-modelled specific yield (kWh/kWp/yr,
-`pv_capacity.py::specific_yield_kwh_per_kwp`, unchanged) interpolated
-(`pv_capacity.py::interpolate_yield`, plain inverse-distance-weighted numpy -- `scipy` is
-not a project dependency) from a coarse, cached probe grid (default 6x6 = 36 points)
-across the country. Irradiance is smooth at country scale, so a handful of PVGIS calls,
-cached to a CSV alongside the run's other density outputs, is enough.
+`roofclf.score_buildings_national`'s existing per-cell output, reusing only that table's
+building-footprint geometry, never its PV-presence scores -- this instrument only measures
+building footprint size, so none of `roofclf`'s calibration/precision caveats apply here.
+From each cell's total large-roof area, the segmentation model's own probability-weighted
+expected PV area is subtracted to get an **uncovered** large-roof area, which converts to
+peak capacity at the usual 0.18 kWp/m<sup>2</sup> module constant and then to annual
+energy via a PVGIS-modelled specific yield. 200 m<sup>2</sup>, not the 400 m<sup>2</sup>
+detection floor, is the cutoff because it reaches further into the realistic
+rooftop-opportunity space (roughly where Germany's MaStR register shows most rooftop
+capacity actually sits) rather than merely restating the population already above the
+detection floor -- with the caveat that the segmentation model has no discriminating
+signal at all in the 200-400 m<sup>2</sup> band, so that band's "potential" reads as
+almost entirely uncovered regardless of whether PV is actually there.
 
-**Why 200 m2, not the 400 m2 detection floor.** The segmentation model is trained with
-everything below `chips.MIN_PV_AREA` (400 m2) burned as `ignore`, so it has essentially
-no discriminating signal in the 200-400 m2 band specifically. That band's "potential"
-therefore reads as almost entirely uncovered regardless of whether PV is actually
-there -- an expected property of the instrument, not a bug, but worth stating plainly:
-a reader who compares this map to the `>= 400 m2` candidate population reported
-elsewhere on this site should not assume the same measurement confidence applies
-uniformly from 200 m2 up. 200 m2 was chosen specifically to reach further into the
-realistic rooftop-opportunity space -- roughly where Germany's MaStR register shows
-most rooftop capacity actually sits (72.6% of rooftop capacity in units <= 100 kWp, see
-the sub-400 m2 section above) -- rather than to merely restate the already-known
-population above the detection floor.
-
-**Saturation.** This second tab adds no new computation at all: `pv_ratio_det`/
-`pv_ratio_exp` (PV area / roof area) are already computed per cell and region by
-`_ratios()` and land unconditionally on `grid.geoparquet`/`regions.geoparquet`. The tab
-exists purely to give that existing ratio its own choropleth view, so dense-adoption
-urban areas read as visually distinct from under-adopted ones instead of only appearing
-in a table column.
+**Saturation.** This tab adds no new computation: `pv_ratio_det`/`pv_ratio_exp` (PV area
+over roof area) are already computed per cell and region and land unconditionally on
+`grid.geoparquet`/`regions.geoparquet`. The tab exists purely to give that existing ratio
+its own choropleth view.
 
 **Leads.** `scripts/build_potential_leads.py` (`pixi run potential-leads`) ranks
-individual large, uncovered roofs by `roof_area_m2 * kwh_per_kwp_yr` at the building's
-own cell, drops anything within 30 m of an existing detected candidate or hand-mapped
-OSM solar feature, and caps at 6 per 0.1 deg cell -- the same shape as
-`build_small_pv_josm_leads.py` -- for a human to spot-check the highest-opportunity
-roofs before treating any of this as validated.
+individual large, uncovered roofs by `roof_area_m2 * kwh_per_kwp_yr` at the building's own
+cell, drops anything within 30 m of an existing detected candidate or hand-mapped OSM
+solar feature, and caps at 6 per 0.1 deg cell, for a human to spot-check the
+highest-opportunity roofs before treating any of this as validated.
 
 ## The plausibility gate
 
@@ -1056,36 +1004,16 @@ noise.
 region's capacity means that region's total is one object, not a population, and no
 amount of per-bin calibration turns it into a statistic.
 
-The check exists because of a specific failure it now catches. Before the mounting split
-and the blob filter, Gilgit-Baltistan -- Karakoram rock and glacier -- was credited with
-166 MWp of PV against 0.8 MWp of rooftop, a ratio near 200, with a single cell holding
-39 percent of it. Four of seven provinces failed. The published run (last regenerated
-2026-07-26) passes, with Balochistan, Gilgit-Baltistan and Azad Kashmir still flagged
-suspect, which is the honest answer for three sparsely built desert and high-mountain
-regions.
-
-!!! warning "The ground-to-rooftop ratio failures were root-caused in 2026-08-11, and the gate now fails on a different check"
-    For most of 2026-07 and 2026-08 a fresh `--force` recompute pushed Khyber Pakhtunkhwa
-    and Balochistan past check 1, and Gilgit-Baltistan read 110 MWp of ground-mount against
-    **0.000 MWp** of rooftop. That was diagnosed at the time as a `density.py` regression in
-    `no_building`-placement aggregation. It was not. The actual cause was **pooling rooftop
-    and ground-mount into one precision/recall table**, which let ground-mount borrow
-    rooftop's much higher OSM corroboration rate in every shared size bin (measured: ~1% of
-    surviving ground candidates sit within 100 m of any OSM feature, against ~14% for
-    rooftop). Splitting the calibration by placement, dissolving overlapping OSM
-    ground-mount polygons, and calibrating the land constant against two real plants
-    (0.07 to 0.05 kWp/m²) moved Khyber Pakhtunkhwa's ratio from 3.35-8x to **0.49x** and
-    Balochistan's from 3.90-18x to **2.01x**, both comfortably inside the warn and fail
-    bands. Gilgit-Baltistan remains exempted from check 1 via
-    `RATIO_CHECK_EXEMPT_REGIONS`, on the separate and still-valid ground that its real
-    rooftop base rate is near zero and the ratio is structurally uninformative there.
-
-    `check-density` still reports **3 failures** on the published state, but on the
-    single-cell concentration check rather than the ratio check, and for an understood
-    reason: shrinking a real ground-mount overstatement mechanically raised the visible
-    concentration share of whatever legitimate signal remained. All three flagged cells are
-    the calibration quadrats' own cities. Published anyway, per this project's precedent for
-    a checked-genuine plausibility failure. See
+!!! note "Current published state: 3 flagged regions, checked and published anyway"
+    The published run fails the single-cell-concentration check for Khyber Pakhtunkhwa,
+    Balochistan and Islamabad Capital Territory. All three flagged cells are the
+    calibration quadrats' own cities (Peshawar, Quetta, Islamabad), which naturally
+    dominate otherwise sparse regions once an earlier ground-mount overstatement (fixed by
+    splitting rooftop and ground-mount calibration by placement) stopped masking that
+    concentration. Gilgit-Baltistan is separately exempted from the ratio check via
+    `RATIO_CHECK_EXEMPT_REGIONS`, because its real rooftop base rate is near zero and the
+    ratio is structurally uninformative there. Published anyway, per this project's
+    precedent for a checked-genuine plausibility failure. See
     [Open questions](../open-questions.md#known-defects-carried-on-purpose).
 
 ## Running it
@@ -1097,110 +1025,19 @@ pixi run earthpv calibrate-candidates --aoi pakistan
 pixi run earthpv density --aoi pakistan --districts
 pixi run earthpv check-density --aoi pakistan  # gate the numbers before publishing them
 pixi run earthpv atlas --aoi pakistan          # standalone atlas regeneration
-
-# Sub-400 m2 instruments (see above). Neither is in the published atlas yet.
-pixi run earthpv roof-classifier --aoi pakistan          # per-building, quadrat-trained
-pixi run earthpv density --aoi pakistan --districts \
-    --fraction-prob-dir data/predictions_frac_pk_v2/pakistan/prob   # partial coverage
 ```
 
 Changing the expected-area instrument or `--exp-scale` only reaches the per-building and
-`*_roof` columns on a `--force` re-run, since those live in the cached cell partials.
+`*_roof` columns on a `--force` re-run, since those live in the cached cell partials. For
+the sub-400 m<sup>2</sup> instruments (`roof-classifier`, `roofclf-score-national`,
+`sub400-capacity`, `ge400-roof-capacity`), see [The rooftop classifier](roofclf.md) and
+[the capacity map's reproduction steps](../results/capacity.md#reproducing-this-map).
 
-## How the estimate got here
-
-Each step exists because the previous one had a measurable gap.
-
-1. **Detected-area floor.** Precision-honest, blind below threshold.
-2. **Probability-weighted expectation.** Integrates sub-threshold signal. Together the two
-   bracket the truth.
-3. **Fraction-regression head.** A second head predicting per-pixel PV *coverage fraction*,
-   trained on OpenStreetMap polygons burned at 10x supersampling and block-averaged to
-   10 m. Individually noisy, with only about 4.5 percent per-installation recall in the
-   0 to 250 m<sup>2</sup> range, but unbiased in aggregate: chip-sum R<sup>2</sup> of 0.60 on
-   held-out Germany, and a municipal Spearman correlation against the legally complete
-   MaStR register of **0.740** across all German Gemeinden, versus 0.499 for the
-   segmentation baseline. Aggregate density is exactly what energy models need, and this
-   is the purpose-built estimator for it.
-4. **Calibration anchors.** Germany's MaStR register established a stable 2.4 to 2.5 times
-   aggregate over-prediction, consistent from chip level to municipality level and
-   therefore correctable. Pakistan was cross-checked against an independent 27.5 GW
-   distributed-solar study with a coverage-share-disentangled calibration, separating
-   scale error inside imaged cells from cells never imaged at all.
-5. **Coverage expansion.** That comparison showed the missing-coverage term dominated.
-   Cell selection had used the Overture set of buildings above 500 m<sup>2</sup>, which
-   undercounts small and informal structures by two to three orders of magnitude in rural
-   Pakistan. Switching to VIDA's 76.5 million footprints grew the compose target from 122
-   to about 4,460 cells.
-6. **Precision calibration.** `P(real | size, glint)` per size bin, from OpenStreetMap
-   mapped fractions, glint inversion and manual high-resolution review. See
-   [Calibration](calibration.md).
-7. **Recall correction and credible intervals**, deployed 2026-07-23. Everything before
-   this was precision-only: `est_mwp_cal` down-weighted false positives, but nothing
-   credited installations the model missed, so even the headline was structurally a floor.
-8. **Mounting-split conversion, blob filter and the plausibility gate**, 2026-07-26, from a
-   method review. Steps 1 to 7 all corrected the *area*, and then converted whatever
-   survived at one rooftop constant. Two errors hid in that last step and pushed the same
-   way. Ground-mount polygons are site area, not module area, so converting them at
-   0.18 kWp/m<sup>2</sup> overstated them two to three fold. And nothing bounded polygon
-   size, so 167 merged blobs carrying 47 percent of candidate area were each converted as
-   one installation's panels. Together they had inflated the all-PV headline roughly
-   threefold, almost entirely in the non-rooftop component; the plausibility gate now
-   fails the build if that recurs. The rooftop-scoped estimates, which the review found
-   sound, moved much less.
-
-Open next steps are the OpenStreetMap flywheel producing enough in-domain positives for a
-retrain, and per-epoch density estimates turning `est_mwp` into a time series so the 2022
-to 2026 boom becomes measurable per district. NEPRA net-metering totals as a Pakistani
-MaStR analogue (also on this list until 2026-07-31) are now pulled in above -- the two
-that replace it, still undone, are lower down the difficulty curve than another modeling
-pass:
-
-9. **Probability-sampled calibration quadrats.** Every quadrat mapped so far (11, as of
-   2026-07-30) was chosen purposively -- a city, an industrial estate, a box a mapper
-   picked. `rate_ratio`'s 0.235-4.833 spread and three separate failed searches for a
-   national stratification proxy (candidate density, roofclf's own rate, SPPI agreement
-   rate) are all downstream of that: there is no design-based estimate of national
-   variance because there is no probability sample. Drawing 15-20 new 1 km² boxes by
-   stratified-random sampling over the national building-density frame -- deliberately
-   including low-density and rural strata the current 11 boxes barely touch -- would
-   convert the base-rate question from "extrapolate a biased sample and hope" into an
-   estimator with a computable variance. Rural boxes are cheap to map completely (few
-   installations to check); this is mapping effort, not code, and is the single highest-
-   value action left on this list.
-10. **Per-cell sub-pixel unmixing, self-calibrated in place -- tried 2026-07-31, the
-   pooled version is negative, the actually-novel self-calibrated version remains
-   untested.** `src/earthpv/unmixing.py` implements a minimal two-endmember linear
-   mixture model (project each building's zonal-mean reflectance onto the line joining a
-   fitted "pure PV" and "pure background" vector, clip to [0, 1]) and evaluates it LOQO
-   on the 8 mapped quadrats, same protocol as every other instrument on this page:
-
-   | signal | median AUC | within size band | Pearson r (area frac) | scale spread |
-   | --- | ---: | ---: | ---: | ---: |
-   | segmentation raster | 0.511 | 0.501 | -- | -- |
-   | fraction head | 0.702 | 0.704 | 0.22 | 49x |
-   | **unmixing (this)** | **0.659** | **0.664** | **0.24** | **92x** |
-   | SPPI | 0.823 | 0.828 | 0.42 | 18x |
-   | roofclf | 0.874 | 0.842 | -- | -- |
-
-   **Negative: worse than SPPI and roofclf on every axis, and its 92x scale spread
-   (Karachi coastal underpredicts at 0.45x, Sialkot overpredicts at 41x) is the worst of
-   any instrument measured on this page.** Karachi coastal -- the one Rule-1-complete
-   quadrat with trustworthy negatives -- scores AUC 0.498, at chance. Not recommended in
-   this form; the code is kept (`fit_endmembers`/`unmix_fraction`/`evaluate_loqo`), same
-   convention as `roofclf_capacity.py` and `sppi.agreement_rate_by_quadrat`.
-
-   **This result does not actually test the proposal's differentiating claim.** The
-   whole case for unmixing was self-calibration -- fitting each cell's PV/background
-   endmembers from *that cell's own* confirmed >= 400 m² detections, not a pooled
-   national fit. The LOQO test above fits endmembers on 7 *other quadrats pooled
-   together* and applies them to an 8th -- exactly the cross-quadrat transfer this
-   page's other three stratification attempts already failed at, not the in-cell
-   self-calibration the idea depends on. A 1 km² quadrat is also the wrong scale to test
-   it at: it rarely contains enough of its own >= 400 m² confirmed detections to fit a
-   local endmember, unlike a real 0.1 degree (~11 km) national grid cell.
-   `cell_selfcheck_ratio` (implemented, unexercised) is what a real per-cell test would
-   use. **Still open, and now a better-specified next step than before this test ran**:
-   fit endmembers per national grid cell from its own segmentation-confirmed detections
-   and low-`p_roofclf` buildings, check recovered area against that cell's own known
-   large-array area, and only trust the sub-400 m² output where recovery holds.
+This system reached its current shape through several rounds of measurement against
+Germany's MaStR register and an independent Pakistani distributed-solar study, most
+notably the recall correction, the mounting-split conversion, and the plausibility gate
+itself, each added after a method review found the previous step alone was not enough.
+The full account of what was tried, what it cost, and what did not work (a fraction-
+regression head, a Low/Central/High bracket atlas, two-endmember spectral unmixing among
+them) is in [Experiments](../experiments.md); concrete open items are in
+[Open questions](../open-questions.md).

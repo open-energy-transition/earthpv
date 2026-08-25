@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-08-23T19:51:10.524342</dc:date>
+    <dc:date>2026-08-24T11:48:33.039098</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -45,7 +45,7 @@ L 178.013077 283.294662
 L 178.013077 193.737739 
 L 110.845385 193.737739 
 z
-" clip-path="url(#pec6c4cb933)" style="fill: #faf6ec; stroke: #857a61; stroke-linejoin: miter"/>
+" clip-path="url(#pe115b08142)" style="fill: #faf6ec; stroke: #857a61; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 230.254615 290.757739 
@@ -53,7 +53,7 @@ L 312.348462 290.757739
 L 312.348462 208.663893 
 L 230.254615 208.663893 
 z
-" clip-path="url(#pec6c4cb933)" style="fill: #faf6ec; stroke: #857a61; stroke-linejoin: miter"/>
+" clip-path="url(#pe115b08142)" style="fill: #faf6ec; stroke: #857a61; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #5f5540" x="144.429231" y="292.996662" transform="rotate(-0 144.429231 292.996662)">building A</text>
@@ -67,7 +67,7 @@ L 286.227692 272.100047
 L 286.227692 163.885431 
 L 144.429231 163.885431 
 z
-" clip-path="url(#pec6c4cb933)" style="fill: #c25e12; opacity: 0.22; stroke: #c25e12; stroke-width: 1.8; stroke-linejoin: miter"/>
+" clip-path="url(#pe115b08142)" style="fill: #c25e12; opacity: 0.22; stroke: #c25e12; stroke-width: 1.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 135.899639 151.697554 
@@ -116,7 +116,7 @@ L 178.013077 272.100047
 L 178.013077 193.737739 
 L 144.429231 193.737739 
 z
-" clip-path="url(#pec6c4cb933)" style="fill: #c25e12; opacity: 0.75"/>
+" clip-path="url(#pe115b08142)" style="fill: #c25e12; opacity: 0.75"/>
    </g>
    <g id="patch_10">
     <path d="M 230.254615 272.100047 
@@ -124,7 +124,7 @@ L 286.227692 272.100047
 L 286.227692 208.663893 
 L 230.254615 208.663893 
 z
-" clip-path="url(#pec6c4cb933)" style="fill: #c25e12; opacity: 0.75"/>
+" clip-path="url(#pe115b08142)" style="fill: #c25e12; opacity: 0.75"/>
    </g>
   </g>
   <g id="text_7">
@@ -144,7 +144,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="pec6c4cb933">
+  <clipPath id="pe115b08142">
    <rect x="80.993077" y="126.570047" width="373.153846" height="194.04"/>
   </clipPath>
  </defs>

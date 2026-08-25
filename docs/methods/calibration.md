@@ -88,9 +88,10 @@ statistically load-bearing, but it is the signal you would expect if snapshot re
 optimistic, since a mapper is more likely to have already mapped exactly the installations
 a model also finds easiest.
 
-Five boxes exist so far. A visual pass corroborated three, flagged Faisalabad as suspect,
-and confirmed Multan as solar-dense despite having zero OpenStreetMap solar features, which
-makes it the highest-priority mapping target.
+An early visual pass across the first five boxes corroborated three, flagged Faisalabad as
+suspect, and confirmed Multan as solar-dense despite having zero OpenStreetMap solar
+features -- exactly the kind of miss a calibration box exists to catch. See
+[Calibration quadrats](calibration-quadrats.md) for the current, much larger set.
 
 ## Independent anchors
 

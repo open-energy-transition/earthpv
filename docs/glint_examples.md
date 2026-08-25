@@ -15,7 +15,7 @@ and nowhere else in a two-year archive.
 
 ## High-resolution reference (ESRI World Imagery)
 
-Six real rooftop PV installations, captured in commercial high-resolution basemap
+Eight real rooftop PV installations, captured in commercial high-resolution basemap
 imagery at the moment their glass caught direct sun glare. These are what the Sentinel-2
 detections below are physically standing in for: the same reflective event, just far
 too small and fleeting to resolve at 10 m without knowing where and when to look.
@@ -28,6 +28,8 @@ too small and fleeting to resolve at 10 m without knowing where and when to look
 | **3.** A large shed-roof array beside a road, alternating bright and dark stripes, because individual panel *rows* are angled slightly differently and only some of them catch the specular condition at this exact moment. The glint stays sharply localized to those rows rather than washing out the whole roof, which is the row-level orientation dependence `fit_best_orientation` models. | **4.** A split rooftop installation: one section fully saturated, the adjacent section only partially lit. A visible example of why absence of glint on part of an array is not evidence against the rest of it. |
 | ![glint6](glint_examples_HR/glint6.png) | ![glint7](glint_examples_HR/glint7.png) |
 | **5.** A dense village of ordinary rooftops, where a single small PV installation stands out as an unmistakable bright patch against the uniformly dull surrounding roof material, the cue the whole method exploits. | **6.** A residential block next to LUMS, Lahore, where several rooftops along the same street glint at once -- independent installations, not one array's brightness bleeding into its neighbours, consistent with nearby installers following a similar mounting tilt and orientation. |
+| ![glint8](glint_examples_HR/glint8.png) | ![glint9](glint_examples_HR/glint9.png) |
+| **7.** A glint so intense it damages the image itself: the array saturates fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts trailing across the neighbouring buildings. The colour fringes are in the sensor, not on the ground -- the reflected beam exceeded what the imaging chain could record. | **8.** An industrial estate where several large roofs saturate at once, with red-channel bleed and dark ghost trails streaking off the brightest arrays -- extreme over-saturation artifacts from the commercial sensor's read-out. The same specular event that registers as a few bright pixels at Sentinel-2's 10 m here overwhelms a sub-metre instrument outright. |
 
 ## The same phenomenon at Sentinel-2 resolution
 

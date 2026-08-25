@@ -272,8 +272,8 @@ the same underlying artifacts:
   only capacity atlas (`earthpv atlas` with no `--sub400-*` flags, what a country with no
   mapped quadrats yet gets), the older Low/Central/High/All-PV bracket atlas, the
   rooftop potential/saturation atlas, and the retired config-driven national dashboard
-  bundle (kept working, no longer built by this site -- see CLAUDE.md's "National
-  dashboards" note).
+  bundle (`earthpv dashboard`, kept working but no longer built by this site -- Results
+  links directly to each standalone artifact page instead).
 
 ### Where each stage is documented in depth
 
