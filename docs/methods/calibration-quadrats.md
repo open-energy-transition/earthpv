@@ -87,21 +87,76 @@ mapped, verified against high-res imagery, per
 [the protocol's completeness rule](../calibration-mapping-protocol.md#completeness-declaration-and-qa).
 Only a Rule-1 quadrat's *negatives* (a building with no mapped PV) are trustworthy -- without
 the declaration, "not mapped" can mean "genuinely no PV" or "nobody has mapped it yet," and
-the two are indistinguishable. Every quadrat in the current set carries it, so the column no
-longer discriminates between rows here; it is kept because the distinction still governs
-what the negatives mean, and because a future quadrat starts out without it. **No quadrat in
-this repo has a recorded independent second-mapper sweep**, so a precision or `base_rate`
-figure derived from these negatives is owner-attested rather than independently verified --
-a real standard of evidence, but not the same one.
+the two are indistinguishable. **Every quadrat above now carries it** (2026-08-05), so the
+column no longer discriminates between rows; it is kept because the distinction still governs
+what the negatives mean, and because a future quadrat starts out without it.
 
-Two adjacent quadrats can silently corrupt each other's evidence: pooling overlapping
-boundaries into `roofclf` training/leave-one-quadrat-out either double-counts the shared
-buildings and installations or breaks the fold-independence the evaluation relies on, and
-`roofclf.building_table` has no overlap-aware filtering to catch it after the fact. This is
-why `scripts/new_calibration_quadrat.py` refuses to register a quadrat that overlaps an
-existing one without an explicit `--allow-overlap` (see "Adding a new quadrat" below) -- a
-past quadrat pair sharing one corner was withdrawn after its shared area turned out to hold
-a disproportionate share of both boxes' installations.
+**An eighteenth quadrat, `islamabad_northeast_calib_3p34km2`, was added 2026-08-06** from
+a hand-drawn boundary (`data/labels/calibration_boundaries/5-quad.geojson`, the fifth
+diamond in the same Islamabad cluster the four `islamabad_{north,east,south,west}`
+quadrats above belong to) via `scripts/new_calibration_quadrat.py`. Confirmed clear
+against all 17 existing quadrats (nearest is `islamabad_east` at 1.88 km). Not yet in the
+table above -- that needs a `build_calibration_quadrats_csv.py` rerun against a `roofclf`
+fit that includes it, which needs the VIDA building join, not just the raw OSM pull.
+Measured directly from the pull in the meantime: 839 installations (99.0% sub-400 m²,
+median 67.0 m², packing 18.6 m -- the same dense small-rooftop regime as the other three
+Islamabad diamonds), 5,718 buildings, 1,292 with PV, **base rate 22.6%**. The owner declared
+it **Rule-1 complete the same day it was created** -- recorded in
+`results/calibration_quadrats.csv` (`rule1_complete: True`, since that column is a human
+judgement no script may infer) -- so all **eighteen** quadrats now carry Rule-1, not
+seventeen; the callout below predates this and still says seventeen.
+
+**A nineteenth quadrat, `hasal_calib_1p00km2`, was added 2026-08-10** from a hand-drawn
+boundary (`data/labels/calibration_boundaries/hasal.geojson`, ~1 km² near Bahawalpur,
+Punjab) via `scripts/new_calibration_quadrat.py`. Confirmed clear against all 18
+existing quadrats (nearest is `multan_calib_3p92km2` at 121.74 km). The OSM pull itself
+succeeded on the first attempt (328 installations), but the script's independent
+confirming cross-check against silent Overpass truncation could not complete -- all
+three mirrors were down at the time -- so the pull is recorded `pull_unverified: True`
+pending a re-check once Overpass recovers. Ground truth: 328 installations (99.7% below
+the 400 m² floor, median 31.4 m², packing 18.5 m -- the tightly-packed
+informal/residential regime). The owner declared it **Rule-1 complete the same day it
+was created**, recorded in `results/calibration_quadrats.csv`.
+
+Folded into a fresh 19-quadrat `roofclf` refit the same day: `hasal` contributes 4,378
+buildings, 444 with PV (**base_rate 10.1%**), AUC **0.805**. Its `rate_ratio` is
+**0.461** -- roofclf under-predicts adoption there by more than 2x, the same failure
+shape as Rahim Yar Khan -- which keeps it just outside `select_calibrated_quadrats`'s
+`[0.5, 2.0]` band, so it does not (yet) enter the trusted-13 set the domain-restricted
+sub-400 m² capacity fit uses. It does widen the pooled 19-quadrat LOQO fit behind the
+national deployment threshold, which moved 0.2405 -> **0.2441** (`median_fold_auc`
+0.8824 -> 0.8757). Not yet in the table below -- see
+[Calibration boxes](../issues/pakistan-calibration-boxes.md)'s Box 13 for the full
+writeup.
+
+While registering the eighteenth quadrat, a real bug surfaced in
+`scripts/new_calibration_quadrat.py`: the OSM-pull retry loop's `except RuntimeError as e:`
+shadowed the `e` (east bound) local from `w, s, e, n = poly.bounds` earlier in `main()`,
+and Python's implicit `del e` at the end of an `except ... as e:` block (PEP 3110) left `e`
+unbound on any retry past the first failed attempt --
+`UnboundLocalError: cannot access local variable 'e'` rather than a clean retry. Hit for
+real this time because all three Overpass mirrors failed on the first attempt (504, 502,
+connection timeout) before recovering. Fixed by renaming the exception variable to `exc`.
+
+!!! success "All seventeen quadrats are Rule-1 as of 2026-08-05"
+    The repository owner declared completeness for the entire current set, which is what
+    Rule-1 means here. Rule-1 coverage went from 3 of 12 to **17 of 17** in one step, and it is a
+    reversal for Karachi coastal, whose Rule-1 the owner had withdrawn earlier the same day
+    when its boundary was extended.
+
+    This is a large gain in what the quadrats can support. Precision, false-positive rate and
+    `base_rate` all require trustworthy negatives, and until now only three quadrats supplied
+    them -- an old-city bazaar, a planned housing scheme and an arid low-adoption city, none
+    of them in the dense small-rooftop regime the sub-400 m² program exists to measure. All
+    seventeen now do, including the coastal, capital-territory and Sukkur regimes that had no
+    Rule-1 coverage at all.
+
+    Two caveats to carry rather than forget, because nothing in the data expresses them.
+    Five of the seventeen (Sukkur and the four Islamabad diamonds) were first pulled from OSM
+    the same day they were declared complete, and **no quadrat in this repo has a recorded
+    independent second-mapper sweep** -- that has been true since the first one and is not
+    new. So a precision figure derived from these negatives is owner-attested rather than
+    independently verified, which is a real standard of evidence but not the same one.
 
 !!! danger "Rule-1 is relative to the mapping imagery, not to Sentinel-2"
     Mapping is done against OpenStreetMap's background imagery (Esri/Bing/Maxar), and its
@@ -124,7 +179,7 @@ a disproportionate share of both boxes' installations.
     The magnitude is measurable without new mapping, by running one checkpoint over two
     imagery epochs (`scripts/fraction_stale_label_audit.py`): predicted PV now, not pre-boom,
     and unlabelled is a candidate post-mapping installation rather than an error. Measured
-    2026-08-05 over 13 quadrats it moves pooled precision 0.435 to 0.450 -- just 5.8% of
+    2026-08-05 over 13 quadrats, it moves pooled precision 0.435 to 0.450 -- just 5.8% of
     apparent false positives. But that pooled figure is dominated by industrial quadrats with
     large false-positive pixel counts, and **per quadrat it is the dominant error term exactly
     where the sub-400 m² programme lives**: 68.4% of apparent false positives in Karachi
