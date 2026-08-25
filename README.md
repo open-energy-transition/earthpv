@@ -39,6 +39,20 @@ on imagery or licences that only exist in one country.
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
 [Scaling worldwide](#scaling-worldwide).
 
+<p align="center">
+  <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
+    <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
+         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+  </a>
+</p>
+
+<p align="center"><em>This project's own highest defensible figure, not a bare point
+estimate: hand-mapped OpenStreetMap installations, the model's own recall-corrected
+detections, and a per-building density estimate for small rooftops, with a 90 percent
+range attached.
+<a href="https://open-energy-transition.github.io/earthpv/results/capacity/">Open the
+interactive version</a>.</em></p>
+
 ## The main workflow: two detectors, split by placement and calibration coverage, one evidence atlas
 
 This is earthpv's default pipeline and primary output. No single instrument covers
@@ -46,6 +60,11 @@ rooftop solar at every scale, so it runs two, each measured against ground truth
 combines them into one product. The split is **not** a clean size boundary: roofclf's
 reach now extends past its original sub-400 m² floor into large rooftops too, wherever
 it has been calibrated to do so.
+
+<p align="center">
+  <img src="docs/assets/figures/evidence_workflow.svg" width="720"
+       alt="The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors -- TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.">
+</p>
 
 **Segmentation, the source of every mapping lead, and of ground-mount capacity at any
 size.** A fine-tuned TerraMind-tiny outlines panels directly, exported as ranked
@@ -127,7 +146,7 @@ never required to produce the evidence atlas.
 
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/glint_examples/">
-    <img src="docs/glint_examples_HR/glint8.png" width="560"
+    <img src="docs/assets/figures/glint_example.jpg" width="280"
          alt="High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.">
   </a>
 </p>
@@ -152,20 +171,6 @@ atlas exist too, each measured and each kept in the repository whether or not it
 promoted -- see
 [Experiments](https://open-energy-transition.github.io/earthpv/experiments/)
 for what was tried and why the main workflow above is what shipped.
-
-<p align="center">
-  <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
-    <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
-  </a>
-</p>
-
-<p align="center"><em>This project's own highest defensible figure, not a bare point
-estimate: hand-mapped OpenStreetMap installations, the model's own recall-corrected
-detections, and a per-building density estimate for small rooftops, with a 90 percent
-range attached.
-<a href="https://open-energy-transition.github.io/earthpv/results/capacity/">Open the
-interactive version</a>.</em></p>
 
 ## Scaling worldwide
 

@@ -1840,6 +1840,166 @@ def write_roofclf_diagram():
         print(f"  wrote {path.relative_to(ROOT)}")
 
 
+# ---------------------------------------------- generated evidence-atlas workflow diagram
+#
+# The architecture diagram above maps the whole system at once, auxiliary instruments
+# included; this one is the companion the README and the Overview page embed. It shows
+# only the main workflow -- the two detectors that feed the published evidence atlas,
+# the ground truth both are measured against, and how their numbers are de-duplicated
+# and floored into one headline figure. Path colours follow COMPOSITION_SLOT (blue =
+# segmentation, orange = roofclf, teal = hand-mapped OSM) so this diagram and the atlas
+# composition chart never disagree on what a source looks like.
+
+EVW_W = 1150
+EVW_H = 890
+# Transcribed from the 2026-08-20 Box 18 refit's published atlas (`data/` and `results/`
+# are gitignored, so the docs CI can read neither) -- same caveat as ROOFCLF_STATS
+# above: re-transcribe these in the same commit as any pipeline run that moves the
+# atlas, together with the alt text in README.md and docs/index.md.
+EVW_STATS = {
+    "n_quadrats": 30,
+    "pct_domain_cells": 66,       # 2,957 of 4,463 national cells
+    "pct_domain_buildings": 95,   # 94.7% of national buildings
+    "mwp_best": 18827,
+    "ci_lo": 16022,
+    "ci_hi": 24358,
+}
+
+
+def build_evidence_workflow_svg(t: Theme) -> str:
+    boxes: dict[str, tuple[float, float, float, float]] = {}
+    parts: list[str] = []
+    s = EVW_STATS
+
+    def box(key, x, y, w, h, title, lines, stroke=None):
+        _svg_box(parts, boxes, t, key, x, y, w, h, title, lines, stroke)
+
+    def arrow(k1, k2, color, *, from_side="bottom", to_side="top", label=None):
+        sx, sy = _svg_anchor(boxes, k1, from_side)
+        tx, ty = _svg_anchor(boxes, k2, to_side)
+        if abs(sy - ty) < 1:  # horizontal hop between neighbours in one lane
+            path = f"M{sx:.0f},{sy:.0f} H{tx:.0f}"
+        else:
+            path = _elbow(sx, sy, tx, ty)
+        marker_id = f"ah-{color.lstrip('#')}-{t.name}"
+        parts.append(f'<path d="{path}" stroke="{color}" stroke-width="1.7" fill="none" '
+                     f'marker-end="url(#{marker_id})"/>')
+        if label:
+            mx, my = (sx + tx) / 2, (sy + ty) / 2 - 6
+            parts.append(f'<text x="{mx:.0f}" y="{my:.0f}" font-size="9.2" fill="{color}" '
+                         f'text-anchor="middle">{_esc(label)}</text>')
+
+    def lane_label(text, y):
+        parts.append(f'<text x="{ARCH_MARGIN}" y="{y:.0f}" font-size="11.3" '
+                     f'font-weight="600" fill="{t.ink_dim}">{_esc(text)}</text>')
+
+    def note(text, y):
+        parts.append(f'<text x="{ARCH_MARGIN}" y="{y:.0f}" font-size="9.6" '
+                     f'font-style="italic" fill="{t.ink_dim}">{_esc(text)}</text>')
+
+    title = "How the evidence atlas is built"
+    subtitle = ("Two detectors, split by placement and calibration coverage rather than by "
+                "size alone, measured against hand-mapped ground truth and combined into one "
+                "defensible figure.")
+    parts.append(f'<text x="{ARCH_MARGIN}" y="38" font-size="17.5" font-weight="600" '
+                 f'fill="{t.ink}">{_esc(title)}</text>')
+    parts.append(f'<text x="{ARCH_MARGIN}" y="60" font-size="12" fill="{t.ink_dim}">'
+                 f'{_esc(subtitle)}</text>')
+
+    # Lane A - inputs
+    lane_label("What goes in - all of it free and global", 84)
+    xa, wa = _row_x(3, gap=40, width=EVW_W - 2 * ARCH_MARGIN)
+    box("a1", xa[0], 90, wa, 88, "Sentinel-2 imagery",
+        ["10 m dry-season composites,", "refreshed every five days;", "both detectors read it"])
+    box("a2", xa[1], 90, wa, 88, "OpenStreetMap solar",
+        ["hand-mapped installations:", "training labels, and counted", "directly in the atlas"],
+        stroke=t.s3)
+    box("a3", xa[2], 90, wa, 88, "Building footprints",
+        ["VIDA (Google + Microsoft):", "every roof, including small", "unmapped ones"])
+
+    # Lane B - the two detectors
+    lane_label("Two detectors", 232)
+    xb, wb = _row_x(2, gap=90, width=EVW_W - 2 * ARCH_MARGIN)
+    box("b1", xb[0], 238, wb, 88, "Segmentation (TerraMind fine-tune)",
+        ["outlines individual arrays ≥ 400 m² directly in the pixels;",
+         "the only instrument for ground-mount PV at any size,",
+         "and the source of every human-checkable mapping lead"], stroke=t.s2)
+    box("b2", xb[1], 238, wb, 88, "roofclf, cross-checked with SPPI",
+        ["asks \"does this roof carry PV?\" for every building;",
+         "the only instrument below 400 m², and the better",
+         "rooftop one wherever it has been calibrated"], stroke=t.s1)
+
+    # Lane C - calibration against ground truth. Keep this label short: the arrows out
+    # of lane B drop through the label band, and a long label collides with them.
+    lane_label("Calibration", 380)
+    xc, wc = _row_x(3, gap=40, width=EVW_W - 2 * ARCH_MARGIN)
+    box("c1", xc[0], 386, wc, 88, "Precision + recall calibration",
+        ["each detection weighted by", "measured P(real | size, glint,",
+         "placement), then recall-corrected"], stroke=t.s2)
+    box("c0", xc[1], 386, wc, 88, f"Ground truth: {s['n_quadrats']} quadrats",
+        ["hand-mapped boxes with every", "visible panel traced; the",
+         "measuring stick for both sides"])
+    box("c2", xc[2], 386, wc, 88, "Coverage ratio + area recall",
+        ["fit per building size and density", "stratum; trusted only where cell density",
+         f"matches: {s['pct_domain_cells']}% of cells, {s['pct_domain_buildings']}% of buildings"],
+        stroke=t.s1)
+
+    # Lane D - combine
+    lane_label("Combined, never double-counted", 528)
+    dw = 640.0
+    box("d1", (EVW_W - dw) / 2, 534, dw, 122, "One best instrument per component",
+        ["ground-mount at any size: segmentation",
+         "rooftop ≥ 400 m²: roofclf inside its calibrated cells, segmentation elsewhere",
+         "rooftop < 400 m²: roofclf, cross-checked with SPPI",
+         "hand-mapped OSM counts first; detections overlapping it are removed",
+         "each cell floored at OSM plus the stricter roofclf-AND-SPPI agreement"])
+
+    # Lane E - output
+    lane_label("Published output", 710)
+    ew = 500.0
+    box("e1", (EVW_W - ew) / 2, 716, ew, 64, "Evidence atlas",
+        [f"Best estimate {s['mwp_best']:,} MWp, 90% range {s['ci_lo']:,} - {s['ci_hi']:,},",
+         "per 0.1° cell and province, with the size split made explicit"], stroke=t.s3)
+
+    note("Hand-mapped OSM also flows into the combine step directly, as its own component "
+         "and as part of the per-cell floor (long arrow omitted for clarity).", 816)
+    note("Blue = segmentation path, orange = roofclf path, teal = hand-mapped OpenStreetMap "
+         "- the same colours the atlas composition chart uses for these sources.", 834)
+    note("The 90% range composes the measured calibration uncertainties above instead of "
+         "hiding them; the headline is a modelled estimate, not a metered figure.", 852)
+
+    arrow("a1", "b1", t.s2)
+    arrow("a1", "b2", t.s1)
+    arrow("a2", "b1", t.ink_dim, label="training labels")
+    arrow("a3", "b2", t.ink_dim, label="one row per roof")
+    arrow("b1", "c1", t.s2)
+    arrow("b2", "c2", t.s1)
+    arrow("c0", "c1", t.ink_dim, from_side="left", to_side="right")
+    arrow("c0", "c2", t.ink_dim, from_side="right", to_side="left")
+    arrow("c1", "d1", t.s2)
+    arrow("c2", "d1", t.s1)
+    arrow("d1", "e1", t.ink_dim)
+
+    markers = _svg_markers(t)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{EVW_W}" height="{EVW_H}" '
+        f'viewBox="0 0 {EVW_W} {EVW_H}" font-family="DejaVu Sans, system-ui, sans-serif">'
+        f'<defs>{"".join(markers)}</defs>'
+        f'<rect width="{EVW_W}" height="{EVW_H}" rx="10" fill="{t.surface}"/>'
+        f'{"".join(parts)}</svg>'
+    )
+
+
+def write_evidence_workflow_diagram():
+    OUT.mkdir(parents=True, exist_ok=True)
+    for t in THEMES:
+        svg = build_evidence_workflow_svg(t)
+        suffix = ".svg" if t.name == "light" else ".dark.svg"
+        path = OUT / f"evidence_workflow{suffix}"
+        path.write_text(svg)
+        print(f"  wrote {path.relative_to(ROOT)}")
+
+
 def write_svg_pair(template: str, stem: str):
     for t in THEMES:
         svg = template.format(surface=t.surface, ink=t.ink, dim=t.ink_dim, rule=t.rule,
@@ -1852,6 +2012,32 @@ def write_svg_pair(template: str, stem: str):
 
 
 # ------------------------------------------------------------------- raster crop
+
+
+GLINT_HERO_SRC = ROOT / "docs" / "glint_examples_HR" / "glint8.png"
+
+
+def derive_glint_example():
+    """Half-size, JPEG-compressed copy of the README/Overview glint hero.
+
+    The gallery page keeps the full-resolution PNG (1.3 MB); the two landing-page
+    embeds only need half the pixels and a fraction of the bytes, so they read this
+    derived copy instead. The source is tracked, so CI can rebuild it too.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        print("  pillow not installed, skipping glint example derivation")
+        return
+    if not GLINT_HERO_SRC.exists():
+        print(f"  {GLINT_HERO_SRC.relative_to(ROOT)} missing, skipping glint example")
+        return
+    OUT.mkdir(parents=True, exist_ok=True)
+    im = Image.open(GLINT_HERO_SRC).convert("RGB")
+    im = im.resize((im.width // 2, im.height // 2), Image.LANCZOS)
+    dst = OUT / "glint_example.jpg"
+    im.save(dst, quality=82, optimize=True)
+    print(f"  wrote {dst.relative_to(ROOT)} ({im.width}x{im.height})")
 
 
 def crop_hero_map():
@@ -2042,10 +2228,12 @@ def main():
     write_svg_pair(PIPELINE_STRIP, "two_products")
     write_architecture_diagram()
     write_roofclf_diagram()
+    write_evidence_workflow_diagram()
     print("logo")
     derive_logo()
     print("rasters")
     crop_hero_map()
+    derive_glint_example()
     print("static rasters")
     copy_static_rasters()
     print("interactive pages")

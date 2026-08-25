@@ -31,9 +31,19 @@ EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
 [Scaling worldwide](#scaling-worldwide).
 
+[![The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](results/capacity.md)
+
+*This project's own highest defensible figure, not a bare point estimate: hand-mapped
+OpenStreetMap installations, the model's own recall-corrected detections, and a
+per-building density estimate for small rooftops, with a 90 percent range attached.
+[Open the interactive version](results/capacity.md).*
+
 ## The Main Workflow
 
 This is earthpv’s default pipeline and primary output. It combines two detectors, each evaluated against ground truth, into a single evidence atlas. Their roles are divided by installation placement and calibration coverage rather than by a strict size threshold. In particular, `roofclf` now extends beyond its original sub-400 m² range to larger rooftops wherever calibration supports its use.
+
+![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.](assets/figures/evidence_workflow.svg#only-light)
+![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.](assets/figures/evidence_workflow.dark.svg#only-dark)
 
 ### Segmentation
 
@@ -91,7 +101,7 @@ These instruments support, extend, or test the main workflow. They are not alter
 
 Glint analysis provides an independent physical confirmation of PV presence and can also recover panel tilt and orientation. Glass-fronted panels behave partly like mirrors, producing flashes in Sentinel-2 imagery on dates predicted by the geometry between the Sun, panel, and satellite. Two or more geometrically consistent flashes strengthen confidence that PV is present. In the main workflow, glint is used only as a boost to lead ranking and is never required to produce the evidence atlas.
 
-[![High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.](glint_examples_HR/glint8.png)](glint_examples.md)
+[![High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.](assets/figures/glint_example.jpg){ width="50%" }](glint_examples.md)
 
 *The physical event the glint check looks for, caught in sub-metre commercial imagery: the array's specular reflection is so intense it saturates the sensor outright, blooming into a rainbow smear across the neighbouring rooftops. At Sentinel-2's 10 m the same event is a single bright pixel-cluster on one predictable date. More examples in the [glint image gallery](glint_examples.md).*
 
@@ -102,13 +112,6 @@ Growth analysis estimates when installations appeared by comparing a pre-boom 20
 #### Other evaluated instruments
 
 Additional methods retained in the repository include a fraction-head expected-area model, SPPI as a standalone detector, an earlier Low/Central/High/All-PV bracket atlas, and a rooftop potential and saturation atlas. Each was evaluated even where it was not promoted into the final workflow. See [Experiments](experiments.md) for the methods tested and the rationale behind the final pipeline.
-
-[![The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](results/capacity.md)
-
-*This project's own highest defensible figure, not a bare point estimate: hand-mapped
-OpenStreetMap installations, the model's own recall-corrected detections, and a
-per-building density estimate for small rooftops, with a 90 percent range attached.
-[Open the interactive version](results/capacity.md).*
 
 ## Scaling worldwide
 
