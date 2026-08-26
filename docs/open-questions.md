@@ -1,6 +1,6 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-08-20. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-08-26. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
@@ -266,6 +266,75 @@ What remains open, in order of expected effect on the delta:
 - **No composed credible interval on the delta**, and the pre-boom epoch has no
   calibration of its own, so every stated pre-boom level remains an artifact of
   current-epoch calibration transfer; only diffs of the fixed instrument are meaningful.
+
+### 15. Nightlights as a substitute or complement to VIDA buildings
+
+VIDA Open Buildings is a single load-bearing input across the pipeline: it is the unit roofclf
+classifies (every VIDA footprint gets a has-PV score), the population
+`density.CALIBRATED_BLDG_DENSITY_KM2` stratifies by, the layer `postprocess` joins against for
+rooftop/ground/no-building `placement`, and the filter `compose` uses to decide which 0.1° cells
+even get composited. It carries three costs this project has already hit: it is a **single
+present-day snapshot** (a building built after the pre-boom epoch reads as bare ground in that
+epoch's table -- `growth.persistence_gate`, item 14 above), its footprints are imagery-derived
+and routinely undersized or a metre or two offset (the reason the parcel label's yard-overhang
+term exists, see [The rooftop classifier](methods/roofclf.md)), and its per-country availability
+is not guaranteed -- Germany has no VIDA file at all, one of three blockers to a full
+MaStR-comparable atlas there ([Validation against MaStR](methods/mastr-validation.md)). VIIRS
+nightlights is free, global, monthly, and none of those three problems apply to it, which makes
+it worth asking whether it can substitute for VIDA anywhere, or at least flag where VIDA is
+deficient.
+
+**What already exists points away from a straightforward fix.**
+`scripts/build_pv_external_comparison.py` correlates a 500 m VIIRS VNL v2.1 composite against
+per-cell Best estimate: Pearson r = 0.76 raw, but only **r = 0.55 once log roof area is
+partialled out**. Most of nightlights' apparent signal is therefore redundant with what
+VIDA-derived building density already supplies, not independent information a stratification
+model would gain by adding it. **2026-08-26: registered and rerun** against the current
+18,826.7 MWp atlas -- both numbers barely moved (0.548 to 0.545 partial) despite a 14% shift in
+the headline total since the script's only prior run (2026-08-12), so this looks like a stable
+property of the estimate's geography, not an artifact of one refit; full numbers, including the
+same result for the Relative Wealth Index, now live in
+[Experiments](experiments.md#external-corroboration-from-nightlights-and-a-wealth-index). Read
+that alongside [Capacity density](methods/density.md)'s own three failed attempts at finding
+*any* coarse per-cell proxy (candidate density, roofclf's predicted rate, SPPI agreement rate)
+for which quadrat-regime a national cell resembles -- a fourth coarse proxy succeeding where
+three did not would be the surprise, not the default expectation.
+
+**Resolution rules it out as a footprint replacement outright.** roofclf needs the footprint
+geometry itself, not just a settlement signal: about half of Pakistani VIDA buildings are
+already sub-pixel at Sentinel-2's 10 m GSD and fall back to a representative point, and VIIRS
+DNB's ~500 m pixel is 50x coarser again on a side (2,500x by area). A brighter or dimmer pixel
+does not tell `postprocess` which building under it is rooftop versus ground, or give
+`sub400_capacity` a footprint area to divide by. Any role nightlights can play is at the cell or
+region level, not the building level.
+
+**Where it could plausibly still help, none of it tried:**
+
+- **A VIDA-coverage plausibility check.** A cell that is bright in VIIRS but has implausibly low
+  VIDA building density is a candidate for "VIDA is missing structures here" -- the same failure
+  mode Germany hits at the country level, just at cell granularity. Cheap to compute (VIDA
+  building count per cell against `zonal_ntl()`'s already-implemented per-cell mean radiance),
+  and it would slot into `plausibility.py` alongside the existing ground:rooftop and
+  single-cell-concentration checks rather than needing a new stage.
+- **Unblocking `compose`'s cell-selection step for a country with no VIDA file.** The "populated
+  cells" filter currently reads VIDA building points; a country that fails
+  `scripts/new_region.py`'s `check_vida` gate has no path through that step today. A
+  VIIRS-derived built-up mask is a strictly worse proxy for "has roofs" than building points, but
+  it is better than no proxy at all -- it would only need to unblock imagery composition, not
+  per-building scoring, which would still need VIDA or an equivalent footprint source before
+  roofclf or sub400-capacity could run.
+- **A staleness cross-check for the growth work.** VIIRS's monthly cadence is the one input in
+  this pipeline that is not a single snapshot. Comparing VIIRS radiance change against
+  `growth.py`'s persistence-gated delta (item 14 above), even coarsely, is an independent check
+  on the direction of the 2022-2026 boom that costs nothing to compute against data already
+  downloaded for the external-comparison script.
+
+**Concrete next step:** test the VIDA-density-vs-nightlights ratio specifically as a
+`check-density`-style plausibility flag (the first bullet above), since that is the one
+candidate role where VIIRS's coarseness is not disqualifying and it is the one bullet above
+still untried. Item 4's post-stratification use should stay lower priority given the
+partial-correlation result, unless nightlight *variability* over time, rather than the mean
+level, turns out to behave differently from building density -- untested either way.
 
 ## Known defects carried on purpose
 

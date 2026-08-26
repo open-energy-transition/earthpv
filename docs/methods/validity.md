@@ -27,8 +27,12 @@ independent grounds:
   behaviour of a real optical signal; fitted noise does not produce it. See
   [Solar glint](glint.md).
 - **External correlations.** The atlas correlates with an independently produced rooftop
-  solar dataset (Spearman 0.83 at cell level), with VIIRS night-lights (r = 0.76), and
-  with the Meta Relative Wealth Index (r = 0.67). These are corroborating rather than
+  solar dataset (Spearman 0.84 at cell level, see [Capacity
+  map](../results/capacity.md#what-this-map-cannot-tell-you-and-what-an-independent-estimate-confirms-it-can)),
+  with VIIRS night-lights (r = 0.76, dropping to 0.55 once building density is controlled
+  for), and with the Meta Relative Wealth Index (r = 0.66, dropping to 0.35) -- see
+  [Experiments](../experiments.md#external-corroboration-from-nightlights-and-a-wealth-index)
+  for the partial-correlation caveat on the latter two. These are corroborating rather than
   conclusive, but a noise process would not produce them jointly.
 - **A record of rejected instruments.** Seasonal band stacking, deep super-resolution,
   SPPI as a standalone detector, glint-date boosting, and a promising step-change signal

@@ -64,6 +64,7 @@ see [Open questions](open-questions.md).
 | Opportunity-normalised glint sensitivity | <span class="outcome works">shipped</span> | Sensitivity varies ~2x with opportunity inside a size bin; now modelled per target instead of pooled. |
 | Glint-mined roofclf hard negatives | <span class="outcome negative">rejected</span> | 126 negatives at 1.2% contamination moved held-out AUC by 0.0003. Quantity, not quality, is the binding constraint. |
 | OSM as a complete reference in Germany | <span class="outcome negative">rejected</span> | 3.6% complete by unit count; implied kWp/m² unstable by more than the constant itself. |
+| External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
 | Low/Central/High/All-PV bracket atlas | <span class="outcome open">superseded</span> | Replaced by the two-tier evidence atlas, which sorts by standard of proof instead. |
 | Out-of-domain AND-gate extrapolation | <span class="outcome open">superseded</span> | Published 2026-08-11 to 2026-08-15, then dropped: the one Best-estimate component not measured where it was applied, and unreviewable by eye under stale imagery. -62 MWp. |
@@ -127,6 +128,42 @@ up at some point in the year and a panel never does. `scripts/veg_annual_ndvi.py
 year of scenes per lead and reports the 95th percentile. A positive control on ten leads the
 free version had already flagged found eight crossing 0.3 within the year, confirming the
 catches are real vegetation.
+
+### External corroboration from nightlights and a wealth index
+
+Two proxies that had never appeared anywhere in this codebase before -- VIIRS nighttime-lights
+radiance and Meta's Relative Wealth Index -- were correlated against the published atlas's
+per-cell Best estimate to ask a narrower question than validation: does detected PV track the
+same "built-up, electrified, and (for RWI) relatively wealthy" signal an independent,
+non-imagery-derived dataset would predict. Neither proxy sees solar panels; agreement is
+evidence the estimate is *plausible*, not evidence it is *correct*, and it is cited that way in
+[Validity and limitations](methods/validity.md#evidence-that-the-signal-is-physical), not used
+as a calibration input.
+
+`scripts/build_pv_external_comparison.py` computes `log(1+radiance)` vs. `log(1+MWp)` and,
+separately, RWI vs. `log(1+MWp)`, per 0.1&deg; cell, plus the same correlation after partialling
+out each cell's building footprint area (`roof_area_m2`) -- the obvious shared confound, since a
+bigger built-up cell is both brighter and has more roof to put PV on. It had run once,
+2026-08-12, and was never registered here. Rerun 2026-08-26 against the current 18,826.7 MWp
+atlas (14% higher than the 16,441.4 MWp the first run saw): nightlights correlate at
+**Pearson 0.761** raw, dropping to **0.545** once roof area is controlled for (n=4,463 cells);
+the wealth index at **0.661** raw, dropping to **0.345** (4,428 of 4,463 cells have RWI
+coverage). Both partial correlations barely moved between the two runs (0.548 to 0.545 for
+nightlights, 0.373 to 0.345 for RWI) despite the 14% shift in the headline total, so the
+relationship looks like a property of the estimate's geography rather than an artifact of one
+particular refit.
+
+The honest reading is that both proxies carry *some* information about PV placement beyond
+"this cell has more buildings" -- the partial correlations are positive and well clear of zero
+-- but a majority share of the raw correlation is exactly that confound, not new information.
+That is consistent with [Capacity density](methods/density.md)'s own three failed attempts at
+finding any coarse per-cell proxy (candidate density, roofclf's predicted rate, SPPI agreement
+rate) for which quadrat-regime a cell resembles: neither nightlights nor RWI has been tried in
+that specific role, and this result is why they are not expected to do much better than the
+three proxies that already failed there (see [Open questions](open-questions.md), item 15).
+The same script also recomputes the reference-hex comparison already published on
+[the capacity map](results/capacity.md#what-this-map-cannot-tell-you-and-what-an-independent-estimate-confirms-it-can)
+via the same grid match, as an internal consistency check rather than a second citation of it.
 
 ## What did not work
 
