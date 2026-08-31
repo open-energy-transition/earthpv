@@ -1,34 +1,110 @@
-# **Concept Note**
+# Concept Note: TraceTheSun
 
-# TraceTheSun \- PV Density Estimation   Applying PV data mapping methodologies that are cost effective, verifiable, community driven and localized.
+**Cost-effective, verifiable, community-driven photovoltaic (PV) capacity mapping from
+free satellite imagery.**
 
-July 24, 2026
+Drafted July 2026. Results in this note reflect the atlas snapshot of 2026-08-20; see
+the [live documentation](https://open-energy-transition.github.io/earthpv/) for the
+current figures.
 
-| Highlights Providing decision-ready PV density maps for grid planning, BESS deployment, policy and investment. Enabling transparent debate on data quality, uncertainty and discrepancies between non-verifiable estimates. Developing a scalable, cost-effective and verifiable methodology for global PV density estimation. Releasing open, reproducible PV maps, training data and AI models for independent verification and reuse. Empowering local communities to validate, update and maintain the data with limited resources. Accelerating the energy transition and reducing GHG emissions through faster, better and more cost-effective decisions. Target Country: Pakistan, Mexico, Vietnam, Bangladesh, Indonesia, India, Brazil, Philippines Partners: Lahore University of Management Sciences and Michigan State University |
-| :---- |
+## Highlights
 
-### **Background**
+- **Decision-ready PV maps** of installed rooftop and ground-mounted capacity per
+  0.1&deg; grid cell, for grid planning, battery-storage siting, policy and investment.
+- **A transparent basis for debate** on data quality, uncertainty and the large
+  discrepancies between today's non-verifiable national estimates.
+- **A scalable method** for global PV capacity estimation that does not depend on
+  commercial high-resolution imagery.
+- **Fully open outputs**: reproducible capacity maps, training data and AI models,
+  released for independent verification and reuse.
+- **Local ownership**: communities can validate, update and maintain the data with
+  limited resources.
+- **Faster energy-transition decisions**, and the reduced greenhouse-gas emissions that
+  follow from better and cheaper planning.
 
-The significant growth of photovoltaics around the world poses serious challenges for planners, policymakers and investors. For example, Pakistan's installed capacity is reported to range from [6.8 GW according to official figures to 47 GW according to NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/). Currently, mapping methodologies rely heavily on high-resolution satellite imagery, which significantly drives the cost, complexity and inaccessibility of such projects. Commercial acquired satellite imagery cannot be shared with others, and most publicly accessible satellite imagery from sources such as Google Maps, Mapbox and ESRI are not allowed to be processed using AI methods. Previous methods using Sentinel 2, the only globally available, free, regularly updated imagery with sufficient resolution to detect PV installations, could only detect large-scale, isolated utility-scale PV installations. 
+| | |
+| --- | --- |
+| **Pilot country** | Pakistan (complete); Gujarat, India registered as a worked template |
+| **Next target countries** | Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa, Nigeria |
+| **Partners** | Open Energy Transition; Centre for Water Informatics and Technology (WIT), Lahore University of Management Sciences; Michigan State University; DeepPVMapper |
+| **Code and results** | <https://github.com/open-energy-transition/earthpv> |
 
-This has created an environment in which only a single company with access to the imagery can update a dataset on PV distribution. Collaboration was not possible, and the results were not verifiable and therefore debatable. As a result, new estimates for PV distribution create recurring costs without the opportunity to discuss or verify this data with a third party. The lack of verifiability and the wide variation between estimates reduces trust in the data and hinders further improvements. 
+## Background
 
-As part of a pilot project called TraceTheSun with 4 internships of the Lahore University of Management Sciences in Pakistan funded by Open Energy Transition (OET), a new AI assisted community approach has shown significant improvement in the estimation of PV installations. With the help of a state of the art open source geospatial foundation model and a team of human data annotators, it has been shown that the [relative distribution of PV installation can be reconstructed with Sentinel 2](https://github.com/open-energy-transition/earthpv), significantly increasing the detection of rooftop PV area detection threshold down to 400 m². For densely populated areas with high PV adoption it has been shown that even smaller rooftop solar installations can be detected by estimating the PV density directly rather than detecting individual installations. 
+The rapid global growth of photovoltaics is a serious problem for planners,
+policymakers and investors, because nobody can say with confidence how much is
+installed or where. Pakistan's installed capacity, for example, is reported anywhere
+from
+[6.8 GW in official figures to 47 GW in NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
 
-This development was in particular possible by a community approach where multiple experienced mappers are regularly improving and validating the training data for the AI with the help of the various free satellite imagery accessible via the OpenStreetMap editor allowing for manual mapping and data annotation like ESRI, Mapbox, Bing. This leads to an iterative approach where AI is constantly suggesting new installations using low-resolution imagery and humans validate this data. This creates a nationwide high quality training dataset of utility scale, commercial and large residential PV installations, using OpenStreetMap as a mapping environment. Local Mappers are trained for this task and further add local context and knowledge. Furthermore various existing datasets are combined and validated against the free high resolution imagery in the OpenStreetMap editor. This imagery also enables more frequent observation every 15 days, which allows the growth of PV to be derived over time.
+Existing mapping methods depend on high-resolution satellite imagery, which drives up
+the cost and complexity of every such project and puts it out of reach for most
+countries. Commercially acquired imagery cannot be shared with third parties, and the
+publicly accessible high-resolution layers from Google, Mapbox and Esri may not be
+processed with AI. Sentinel-2, the only free, global, regularly updated imagery with
+enough resolution to see PV at all, had until recently only been used to detect large,
+isolated utility-scale plants.
 
-**Objectives**   
-The main objective of this project is to create an open verifiable, reproducible and globally adaptable workflow of rooftop solar installation mapping, targeting the following countries: **Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and Nigeria**.
+The result is a market in which only a company that already holds the imagery can
+update a PV-distribution dataset. Nobody else can collaborate on it, reproduce it or
+check it, so each new estimate is a recurring cost that cannot be independently
+verified or improved. The gap between estimates, and the fact that none can be checked,
+erodes trust in all of them.
 
-1. Create small, high-quality training datasets that represent different urban regions and contain many smaller installations. Use acquired high-resolution imagery or free high-resolution national imagery, if available. This dataset is used for training PV density estimations and to validate detections from low resolution imagery (1). In contrast to the high-resolution satellite images available by default in OpenStreetMap, this data may be processed using AI. 
+The TraceTheSun pilot, run in Pakistan by Open Energy Transition (OET) with a team of
+students at the Centre for Water Informatics and Technology (WIT), Lahore University of
+Management Sciences, has shown that this can change. Using an open geospatial foundation
+model and a team of human mappers, the pilot reconstructs the
+[distribution of PV across a country from Sentinel-2 alone](https://github.com/open-energy-transition/earthpv),
+bringing the size at which an individual rooftop array can be outlined down to about
+400 m<sup>2</sup>. Below that size, in densely built areas with high adoption, the
+pilot estimates PV density per building directly instead of trying to outline each
+installation, which recovers much smaller rooftop systems. The published national
+result for Pakistan is a **best estimate of 18,827 MWp** of rooftop and ground-mounted
+capacity, with a 90% range of 16,022 to 24,358 MWp, built from 15,642 individually
+hand-mapped and verified OpenStreetMap installations plus the model's own
+recall-corrected detections.
 
-2. Training of geospatial foundation model data from regions with exceptional data quality like Germany or UK, afterwards retraining with locally created training data. All detections and training will use global building datasets to limit the regions of detections. 
+What makes this work is the community loop. The AI reads only Sentinel-2 and proposes
+candidates; experienced OpenStreetMap mappers check each one against the licensed
+high-resolution layers in the OpenStreetMap editor (Esri, Mapbox, Bing) and map what is
+real; those verified installations become the next round of training data. Local mappers
+are trained for the task and add context no satellite carries, such as which roof
+belongs to a factory or a school. Existing PV datasets are folded in and validated the
+same way. Because Sentinel-2 revisits every five days, the same loop can also track how
+PV deployment has grown over time.
 
-3. Multiple iterations between human mappers and AI retraining to constantly improve the training data and AI implementation towards better detection metrics. This is done until reasonable detection quality of representative validation regions created within objective (2) is achieved. All larger PV installations above a threshold \>2000m² will be validated and mapped in OpenStreetMap. 
+## Objectives
 
-4. Combining AI generated data with manually validated data in OpenStreetMap to estimate nationwide PV density. This relative density estimation will be calibrated using regions where official comprehensive high resolution PV installation data is available like Germany, Switzerland or the United Kingdom. Validations and calibrations will also incorporate PV cells import/trading data into the country. 
+The goal is an open, verifiable, reproducible and globally adaptable workflow for
+mapping rooftop and ground-mounted solar, with Pakistan as the completed pilot and
+**Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and Nigeria** as the
+next target countries.
 
-5. (Optional) Considering local surface irradiance and typical characteristics for PV installations, the estimated local operational capacity is resolved for local grid cells of 0.1°x0.1°. 
+1. Build small, exhaustively mapped training areas that cover a range of urban and
+   rural landscapes and include many small installations, using acquired or free
+   national high-resolution imagery where it exists. These areas train the PV-density
+   estimator and validate the detections made from Sentinel-2. Unlike the
+   high-resolution basemaps inside the OpenStreetMap editor, this imagery may be
+   processed with AI.
+
+2. Pre-train the geospatial foundation model on regions with near-complete public data,
+   such as Germany or the UK, then retrain on the locally created data. Detection is
+   restricted to built-up areas using global building-footprint datasets.
+
+3. Iterate between human mappers and AI retraining until detection quality on the
+   representative validation areas from objective 2 is good enough. Every large PV
+   installation above roughly 2,000 m<sup>2</sup> is validated and mapped in
+   OpenStreetMap along the way.
+
+4. Combine the AI detections with the human-verified OpenStreetMap data to estimate
+   national PV density, calibrated against countries with complete official
+   high-resolution registers (Germany, Switzerland, the UK) and cross-checked against
+   national PV-module import and trade data.
+
+5. *(Optional)* Convert relative density into operational capacity per
+   0.1&deg; &times; 0.1&deg; grid cell, using local surface irradiance and typical
+   installation characteristics.
 
 6. (Optional) By using local surveys, housing density/ size datasets and poverty data, the distribution of PV based on different income classes is estimated.  
 
