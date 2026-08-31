@@ -253,10 +253,14 @@ The full register, with a verdict and the measurement behind each, is
 
 ## Credits
 
-earthpv is developed by [Open Energy Transition](https://openenergytransition.org) as part of
-the **TraceTheSun** pilot, with four interns from the **Lahore University of Management
-Sciences** doing the Pakistani mapping and validation work. See
-[Community](#community) for the full partner list, and the
+earthpv is developed by [Open Energy Transition](https://openenergytransition.org) as the
+software half of the **TraceTheSun** pilot. The concept was conceived by
+[Muhammad Awais](https://www.linkedin.com/in/awais307/) and Tobias; the Pakistani mapping,
+validation and ground-truth work is carried out by a student team at the
+[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/), Lahore
+University of Management Sciences, working in close coordination with Open Energy
+Transition. See [Community](#community) for the full contributor list, including every
+named student mapper, and the
 [TraceTheSun concept note](22072026-Concept-Note-TraceTheSun.md) for the programme behind it.
 
 ## Community
@@ -290,27 +294,49 @@ Currently forming, it includes:
 
 * **[Open Energy Transition](https://openenergytransition.org)**, which runs earthpv and
   funds the Pakistan pilot.
-* **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** of the **Lahore University of
-  Management Sciences** in Pakistan, leading four OET-funded interns doing the Pakistani
+* **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** and the student team at the
+  **[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore
+  University of Management Sciences, who co-designed the pipeline and do the Pakistani
   mapping, validation and local-context work that this project's Pakistani results rest on.
+  TraceTheSun was conceived jointly by Muhammad Awais and Tobias.
 * **[Jake Stid](https://www.linkedin.com/in/jake-stid-38bb23131/)** of Michigan State
   University, creator of [GMSEUS](https://github.com/stidjaco/GMSEUS), with a regional
   focus on North America.
 * **[Gabriel Kasmi](https://www.linkedin.com/in/gabriel-kasmi/)**, creator of
   [DeepPVMapper](https://github.com/gabrielkasmi/deeppvmapper).
 
-### The Lahore University of Management Sciences pilot
+### The Centre for Water Informatics and Technology (WIT), LUMS
 
-The LUMS internship is what turned earthpv from a model into a workflow. The interns map
-and verify Pakistani installations in OpenStreetMap against high-resolution imagery, add
-local knowledge no satellite carries, and build the fully mapped
-[ground-truth quadrats](calibration-mapping-protocol.md) that every recall number on this
-site is measured against.
+The Pakistani half of this project is a collaboration with the
+[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/) at the Lahore
+University of Management Sciences. TraceTheSun was conceived by Muhammad Awais and Tobias;
+the WIT student team coordinated closely with Open Energy Transition to turn earthpv from a
+model into a workflow. They map and verify Pakistani installations in OpenStreetMap against
+high-resolution imagery, add local knowledge no satellite carries, and build the fully
+mapped [ground-truth quadrats](calibration-mapping-protocol.md) that every recall number on
+this site is measured against.
+
+The WIT student contributors are:
+
+* **[Laeeba Hafeez Malik](https://www.linkedin.com/in/laeeba-hafeez-malik-220b63328/)**
+  (BS Computer Science)
+* **[Tayyiba Shafiq](https://www.linkedin.com/in/tayyiba-shafiq/)** (BS Economics)
+* **[Nimra Aamir Ali](https://www.linkedin.com/in/nimra-aamir-ali-417b98249/)**
+  (BS Anthropology)
+* **[Vania Malik](https://www.linkedin.com/in/vania-malik-799bbb343/)**
+  (BS Electrical Engineering)
 
 Their work is why the Pakistani model exists at all. Detection recall on Punjabi rooftops
 went from 0.18 to 0.55 for large arrays purely by adding in-domain training chips that came
 out of this loop, and the calibration boxes they map are currently the only instrument that
 can tell whether the model's own recall estimate is optimistic.
+
+For the WIT team this is a database and a design exercise at once. Co-designing the
+pipeline has been a learning process in open geospatial machine learning, and the resulting
+national PV database feeds WIT's own research directly. The next step is integrating and
+linking this dataset to energy and power-system models and integrated-assessment scenarios,
+so that an open, verifiable capacity map becomes a direct input to energy planning rather
+than a standalone map.
 
 ### How to contribute
 
