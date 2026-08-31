@@ -2,30 +2,18 @@
 hide:
   - navigation
 ---
-
 # earthpv
 
 <div class="hero" markdown>
 
-![earthpv](assets/figures/earthpv-logo-mark.png#only-light){ .hero-logo }
-![earthpv](assets/figures/earthpv-logo-mark-white.png#only-dark){ .hero-logo }
-
-**Open, global photovoltaic mapping from free satellite imagery.**
-{ .lede }
-
-</div>
-
-
 > **The mission of EarthPV is to provide cost-effective, verifiable, open data on photovoltaic (PV) capacity, growth and orientation for every country worldwide.**
-
 
 !!! warning "Active development"
     EarthPV is still a research prototype. It is actively experimenting with new solar
     detection methods, and its detectors, calibration and headline numbers are still being
     tested and revised rather than settled.
 
-
-EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed every five days. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country. 
+EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed every five days. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country.
 
 **Pakistan is the first pilot, not the destination.** It is where four methods below were
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
@@ -101,7 +89,7 @@ These instruments support, extend, or test the main workflow. They are not alter
 
 Glint analysis provides an independent physical confirmation of PV presence and can also recover panel tilt and orientation. Glass-fronted panels behave partly like mirrors, producing flashes in Sentinel-2 imagery on dates predicted by the geometry between the Sun, panel, and satellite. Two or more geometrically consistent flashes strengthen confidence that PV is present. In the main workflow, glint is used only as a boost to lead ranking and is never required to produce the evidence atlas.
 
-[![High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.](assets/figures/glint_example.jpg){ width="50%" }](glint_examples.md)
+[![High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.](assets/figures/glint_example.jpg){ width=&#34;50%&#34; }](glint_examples.md)
 
 *The physical event the glint check looks for, caught in sub-metre commercial imagery: the array's specular reflection is so intense it saturates the sensor outright, blooming into a rainbow smear across the neighbouring rooftops. At Sentinel-2's 10 m the same event is a single bright pixel-cluster on one predictable date. More examples in the [glint image gallery](glint_examples.md).*
 
@@ -117,12 +105,12 @@ Additional methods retained in the repository include a fraction-head expected-a
 
 Nothing in the pipeline is Pakistan-specific. All four inputs are global open datasets:
 
-| Input | Source | Coverage |
-| --- | --- | --- |
-| Imagery | Copernicus Sentinel-2 L2A | global, every five days, free |
-| Labels | OpenStreetMap, live Overpass or Overture | global, wherever mappers have been |
-| Footprints | VIDA Open Buildings | global, imagery-derived |
-| Boundaries | geoBoundaries, CC-BY | global, ADM1 and ADM2 |
+| Input      | Source                                   | Coverage                           |
+| ---------- | ---------------------------------------- | ---------------------------------- |
+| Imagery    | Copernicus Sentinel-2 L2A                | global, every five days, free      |
+| Labels     | OpenStreetMap, live Overpass or Overture | global, wherever mappers have been |
+| Footprints | VIDA Open Buildings                      | global, imagery-derived            |
+| Boundaries | geoBoundaries, CC-BY                     | global, ADM1 and ADM2              |
 
 Three commands set up a region that has never been touched. The first is read-only and
 tells you within a couple of minutes whether the data is actually there.
@@ -158,12 +146,12 @@ high-resolution imagery that cannot be shared and that most licences forbid proc
 with AI. earthpv's own numbers come from
 [the main workflow](#the-main-workflow) above:
 
-| | |
-| --- | --- |
-| **18,827 MWp** | Best estimate: this project's own highest defensible figure (90% range 16,022 &ndash; 24,358) |
-| **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
+|                             |                                                                                                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **18,827 MWp**        | Best estimate: this project's own highest defensible figure (90% range 16,022&ndash; 24,358)                                                       |
+| **15,642**            | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below)                                                                  |
 | **400 m<sup>2</sup>** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
-| **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
+| **65.5%**             | of Germany's rooftop capacity sits*below* that floor, measured against its complete MaStR register                                               |
 
 The headline figure carries a 90% uncertainty range based on priors for the area-to-capacity constants, measured segmentation precision and recall by installation size, and the sensitivity of the coverage ratio to the mapped calibration quadrats. The range is intentionally wide: recalibration has repeatedly shifted the estimate by 20 to 35% within days, most recently as calibration coverage widened again in August 2026.
 
@@ -212,8 +200,7 @@ pixi run -e ml earthpv train --config configs/terramind_pv.yaml --smoke
 pixi run -e ml earthpv evaluate --aoi freiburg --checkpoint data/models/last.ckpt
 ```
 
-The main workflow is `labels → chips → train → evaluate → compose
-→ infer → postprocess → export` to produce every mapping lead and, via
+The main workflow is `labels → chips → train → evaluate → compose → infer → postprocess → export` to produce every mapping lead and, via
 `density → check-density`, segmentation's own &ge; 400 m<sup>2</sup> capacity; then
 `roof-classifier → roofclf-score-national → sub400-capacity` for roofclf's
 < 400 m<sup>2</sup> population and `ge400-roof-capacity` for its &ge; 400 m<sup>2</sup>
@@ -238,18 +225,18 @@ The full register, with a verdict and the measurement behind each, is
 
 ## Where to go next
 
-| If you want to | Read |
-| --- | --- |
-| Understand the pipeline as it runs today | [How it works](how-it-works.md) |
-| Know how detection and density actually work | [Detection](methods/detection.md), [Density](methods/density.md) |
-| Check the method against a legally complete register | [Validation against MaStR](methods/mastr-validation.md) |
-| See what was tried and what it cost, including the failures | [Experiments](experiments.md) |
-| Know what is still unresolved before you cite a number | [Open questions](open-questions.md) |
-| Help by mapping | [Mapping leads](results/leads.md), [Quadrat protocol](calibration-mapping-protocol.md) |
-| Run the whole thing yourself, or bring it to another country | [Setup New Country](reproduce.md) |
-| Join the effort | [Community](#community) |
-| Follow updates, method notes and field reports | [Blog](blog/index.md) |
-| Read the one-page version | the [README](https://github.com/open-energy-transition/earthpv#readme) in the repository |
+| If you want to                                               | Read                                                                                   |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Understand the pipeline as it runs today                     | [How it works](how-it-works.md)                                                         |
+| Know how detection and density actually work                 | [Detection](methods/detection.md), [Density](methods/density.md)                         |
+| Check the method against a legally complete register         | [Validation against MaStR](methods/mastr-validation.md)                                 |
+| See what was tried and what it cost, including the failures  | [Experiments](experiments.md)                                                           |
+| Know what is still unresolved before you cite a number       | [Open questions](open-questions.md)                                                     |
+| Help by mapping                                              | [Mapping leads](results/leads.md), [Quadrat protocol](calibration-mapping-protocol.md)   |
+| Run the whole thing yourself, or bring it to another country | [Setup New Country](reproduce.md)                                                       |
+| Join the effort                                              | [Community](#community)                                                                 |
+| Follow updates, method notes and field reports               | [Blog](blog/index.md)                                                                   |
+| Read the one-page version                                    | the[README](https://github.com/open-energy-transition/earthpv#readme) in the repository |
 
 ## Credits
 
@@ -296,7 +283,7 @@ Currently forming, it includes:
   funds the Pakistan pilot.
 * **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** and the student team at the
   **[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore
-  University of Management Sciences, who co-designed the pipeline and do the Pakistani
+  University of Management Sciences, who co-designed the pipeline and did the Pakistani
   mapping, validation and local-context work that this project's Pakistani results rest on.
   TraceTheSun was conceived jointly by Muhammad Awais and Tobias.
 * **[Jake Stid](https://www.linkedin.com/in/jake-stid-38bb23131/)** of Michigan State
@@ -307,14 +294,22 @@ Currently forming, it includes:
 
 ### The Centre for Water Informatics and Technology (WIT), LUMS
 
-The Pakistani half of this project is a collaboration with the
+<div class="partner-logos" markdown="0">
+  <a href="https://wit.lums.edu.pk/" title="Centre for Water Informatics and Technology (WIT), LUMS">
+    <img src="assets/figures/wit_logo.png" alt="Centre for Water Informatics and Technology (WIT), LUMS">
+  </a>
+</div>
+
+The Pakistani side of earthpv is a collaboration with the
 [Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/) at the Lahore
-University of Management Sciences. TraceTheSun was conceived by Muhammad Awais and Tobias;
-the WIT student team coordinated closely with Open Energy Transition to turn earthpv from a
-model into a workflow. They map and verify Pakistani installations in OpenStreetMap against
-high-resolution imagery, add local knowledge no satellite carries, and build the fully
-mapped [ground-truth quadrats](calibration-mapping-protocol.md) that every recall number on
-this site is measured against.
+University of Management Sciences. TraceTheSun was conceived by Muhammad Awais and Tobias,
+and a team of WIT students has worked alongside Open Energy Transition since the pilot
+began, taking earthpv from a trained model to a working rooftop solar mapping pipeline.
+Their contribution runs across the entire workflow: they trace and verify Pakistani solar
+installations in OpenStreetMap against high-resolution imagery, contribute the local
+context that satellite data alone cannot capture, and build the exhaustively mapped
+[ground-truth quadrats](calibration-mapping-protocol.md) against which every recall figure
+on this site is measured.
 
 The WIT student contributors are:
 
@@ -326,17 +321,18 @@ The WIT student contributors are:
 * **[Vania Malik](https://www.linkedin.com/in/vania-malik-799bbb343/)**
   (BS Electrical Engineering)
 
-Their work is why the Pakistani model exists at all. Detection recall on Punjabi rooftops
-went from 0.18 to 0.55 for large arrays purely by adding in-domain training chips that came
-out of this loop, and the calibration boxes they map are currently the only instrument that
-can tell whether the model's own recall estimate is optimistic.
+This work is the reason the Pakistani model performs as well as it does. Adding in-domain
+training chips drawn from the mapping loop raised detection recall on Punjabi rooftops from
+0.18 to 0.55 for large arrays, and the calibration quadrats the students map remain the
+only means of checking whether the model's own recall estimates are too optimistic.
 
-For the WIT team this is a database and a design exercise at once. Co-designing the
-pipeline has been a learning process in open geospatial machine learning, and the resulting
-national PV database feeds WIT's own research directly. The next step is integrating and
-linking this dataset to energy and power-system models and integrated-assessment scenarios,
-so that an open, verifiable capacity map becomes a direct input to energy planning rather
-than a standalone map.
+For WIT, earthpv is both a research dataset and a shared design exercise. Co-developing the
+pipeline has given the students involved a practical introduction to open geospatial
+machine learning, and the national photovoltaic database it produces already supports the
+centre's own research. The longer-term goal is to connect this dataset to energy and
+power-system models and to integrated-assessment scenarios, so that an open and
+independently verifiable solar capacity map can feed directly into energy planning instead
+of remaining a standalone map.
 
 ### How to contribute
 
