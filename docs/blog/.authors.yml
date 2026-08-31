@@ -1,0 +1,12 @@
+# Bylines for blog posts. Reference a key here from a post's `authors:` list.
+# Add yourself in the same pull request as your first post.
+authors:
+  earthpv:
+    name: EarthPV team
+    description: Open Energy Transition
+    url: https://openenergytransition.org
+    avatar: https://github.com/open-energy-transition.png
+  gabriel-kasmi:
+    name: Gabriel Kasmi
+    description: Creator of DeepPVMapper
+    url: https://www.linkedin.com/in/gabriel-kasmi/

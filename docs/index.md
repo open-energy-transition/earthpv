@@ -248,6 +248,7 @@ The full register, with a verdict and the measurement behind each, is
 | Help by mapping | [Mapping leads](results/leads.md), [Quadrat protocol](calibration-mapping-protocol.md) |
 | Run the whole thing yourself, or bring it to another country | [Setup New Country](reproduce.md) |
 | Join the effort | [Community](#community) |
+| Follow updates, method notes and field reports | [Blog](blog/index.md) |
 | Read the one-page version | the [README](https://github.com/open-energy-transition/earthpv#readme) in the repository |
 
 ## Credits
