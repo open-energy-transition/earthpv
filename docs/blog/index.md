@@ -56,8 +56,8 @@ up, where a method broke. The settled version of anything below lives under
 3. If you want a byline of your own, add yourself to `docs/blog/.authors.yml`
    and reference that key under `authors`.
 4. Allowed `categories` are declared in `mkdocs.yml` (`Announcements`,
-   `Method notes`, `Field reports`, `Results`) -- add a new one there in the same
-   PR if you need it.
+   `Method notes`, `Field reports`, `Results`, `Perspectives`) -- add a new one
+   there in the same PR if you need it.
 5. Preview locally with `pixi run -e docs docs-serve`. CI builds the site with
    `mkdocs build --strict`, so a bad link or an undeclared category fails the
    build.
