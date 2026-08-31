@@ -184,7 +184,7 @@ secondary product, or a documented negative result:
 Glint and SPPI need no model fit at all. roofclf is trained, but on a different, much
 smaller, hand-labelled corpus (the calibration quadrats), not on the segmentation
 checkpoint. This matters for how much to trust agreement between instruments: two
-signals that share no training data corroborating each other constitutes real evidence; two
+signals that share no training data corroborating each other is real evidence; two
 heads of the same checkpoint agreeing is not.
 
 ### Two optional instruments never got promoted past "evidence"

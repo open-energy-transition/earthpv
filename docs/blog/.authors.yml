@@ -1,0 +1,28 @@
+# Bylines for blog posts. Reference a key here from a post's `authors:` list.
+# Add yourself in the same pull request as your first post.
+authors:
+  earthpv:
+    name: EarthPV team
+    description: Open Energy Transition
+    url: https://openenergytransition.org
+    avatar: https://github.com/open-energy-transition.png
+  gabriel-kasmi:
+    name: Gabriel Kasmi
+    description: Creator of DeepPVMapper
+    url: https://www.linkedin.com/in/gabriel-kasmi/
+    avatar: https://github.com/gabrielkasmi.png
+  laeeba-hafeez-malik:
+    name: Laeeba Hafeez Malik
+    description: OET intern, rooftop solar detection
+    url: https://www.linkedin.com/in/laeeba-hafeez-malik-220b63328/
+    avatar: https://ui-avatars.com/api/?name=Laeeba+Hafeez+Malik&background=2a2216&color=f5a623
+  tayyiba-shafiq:
+    name: Tayyiba Shafiq
+    description: WIT / LUMS, TraceTheSun pilot
+    url: https://www.linkedin.com/in/tayyiba-shafiq/
+    avatar: https://ui-avatars.com/api/?name=Tayyiba+Shafiq&background=2a2216&color=f5a623
+  nimra-aamir-ali:
+    name: Nimra Aamir Ali
+    description: WIT / LUMS, TraceTheSun pilot
+    url: https://www.linkedin.com/in/nimra-aamir-ali-417b98249/
+    avatar: https://ui-avatars.com/api/?name=Nimra+Aamir+Ali&background=2a2216&color=f5a623

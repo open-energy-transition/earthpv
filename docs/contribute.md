@@ -3,9 +3,9 @@
 `roofclf`, the per-building classifier that supplies most of the evidence atlas's Best
 estimate (83% of it, currently), is only as good as the ground truth it is fit on: a
 handful of small, hand-picked, **exhaustively mapped** neighbourhoods
-("[calibration quadrats](methods/calibration-quadrats.md)") scattered across Pakistan. More
-quadrats, in landscapes the current set does not yet cover, is the single most direct way
-to make this project's numbers more defensible. No model change, no retraining
+("[calibration quadrats](methods/calibration-quadrats.md)") scattered across Pakistan.
+Adding quadrats in landscapes the current set does not yet cover is the single most direct
+way to make this project's numbers more defensible. No model change, no retraining
 infrastructure, no GPU -- just OpenStreetMap mapping, done to one specific, strict rule.
 
 This page is the fast path in. For the exhaustive rules (tagging conventions, imagery

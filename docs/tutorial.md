@@ -44,8 +44,8 @@ pixi run -e ml earthpv train --config configs/terramind_pv.yaml --smoke
 
 This fine-tunes the model on the chips from step 2. `--smoke` runs only 50 optimizer
 steps: enough to confirm the model loads, your GPU is used, and a checkpoint file
-gets written. It is nowhere near enough training to detect anything real. Do not
-expect good results here. That is expected, not a bug.
+gets written. It is nowhere near enough training to detect anything real, so poor
+numbers here are normal, not a bug.
 
 ## Step 4: evaluate
 
