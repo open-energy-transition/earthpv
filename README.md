@@ -7,7 +7,7 @@
 
 # earthpv
 
-**Open, global photovoltaic mapping from free satellite imagery.**
+**Open, global (rooftop) photovoltaic mapping from free satellite imagery.**
 
 [Documentation](https://open-energy-transition.github.io/earthpv/) &nbsp;·&nbsp;
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) &nbsp;·&nbsp;
