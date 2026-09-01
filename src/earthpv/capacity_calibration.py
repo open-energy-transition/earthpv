@@ -248,6 +248,7 @@ def derive_table(
     recall_cands: gpd.GeoDataFrame | None = None,
     by_placement: bool = False,
     mapped_attrs: gpd.GeoDataFrame | None = None,
+    p_unmapped_by_placement: dict[str, dict[str, tuple[int, int]]] | None = None,
 ) -> dict:
     """Derive the per-bin p_real (+ recall + CI) table.
 
@@ -433,7 +434,20 @@ def derive_table(
             cands, bins, aoi, mapped_attrs=mapped_attrs, min_distance_m=min_distance_m,
             recall_reference=recall_reference, recall_cands=recall_pop,
             n_draws=N_DRAWS, seed=SEED,
+            p_unmapped_by_placement=p_unmapped_by_placement,
         )
+        # `status` is computed from the POOLED bins, which stay mapped-only when the
+        # p_unmapped evidence is register-derived (it is attributable to a placement, so
+        # it is only applied there). Saying "interim-mapped-only" would then describe a
+        # table whose placement bins -- the ones `density` actually consumes when present
+        # -- do carry measured p_unmapped. Only upgrade the mapped-only label; never
+        # overwrite "glint-calibrated", which `_table_evidence` keys on.
+        if table["status"] == "interim-mapped-only" and any(
+            b.get("p_unmapped_source") == "mastr-geolocated"
+            for bins_g in table["placement_bins"].values()
+            for b in bins_g
+        ):
+            table["status"] = "register-calibrated-by-placement"
     return table
 
 
@@ -458,6 +472,7 @@ def derive_placement_tables(
     recall_cands: gpd.GeoDataFrame | None = None,
     n_draws: int = N_DRAWS,
     seed: int = SEED,
+    p_unmapped_by_placement: dict[str, dict[str, tuple[int, int]]] | None = None,
 ) -> dict:
     """Separate rooftop/ground precision+recall tables, so ground-mount stops
     borrowing rooftop's much higher mapped fraction in the same area bin.
@@ -493,6 +508,19 @@ def derive_placement_tables(
         ("inherited-from-pooled"), since rooftop dominates the pooled population these
         values were fit on and a placement-restricted mapped_frac for rooftop is
         already a real improvement over the fully pooled number on its own.
+
+    `p_unmapped_by_placement` overrides both defaults where supplied, as
+    `{placement: {bin_label: (n_unmapped, n_confirmed)}}`. This exists because the
+    objection above is specific to the *glint* sample -- it never recorded a placement.
+    An external register that geolocates individual units does, so its verdicts can be
+    attributed to rooftop vs ground directly. Germany's MaStR is the first such source
+    (`scripts/mastr_p_unmapped.py`, 2026-09-01): it publishes per-unit coordinates for
+    units >= 30 kWp, so a registered installation's address point falling inside an
+    unmapped candidate polygon is direct evidence that candidate is real. Bins with
+    fewer than `MIN_MANUAL_N` reviews fall back to the defaults above, and
+    `_nearest_measured` then extrapolates across the gap as usual. Supplying nothing
+    reproduces the previous behaviour exactly, so AOIs without such a register (all of
+    them except Germany) are unaffected.
 
     Returns `{"rooftop": [...6 bins...], "ground": [...6 bins...]}`, each shaped like
     `derive_table`'s own `table["bins"]` (same keys, `p_real_lo`/`_hi` included via
@@ -577,6 +605,12 @@ def derive_placement_tables(
             mapped_frac = round(n_mapped / n, 4) if n else 0.0
             p_u = 0.0 if g == "ground" else float(pooled_p_u.get(label, 0.0))
             p_u_source = "interim-mapped-only-by-placement" if g == "ground" else "inherited-from-pooled"
+            manual_n = manual_real = 0
+            ext = (p_unmapped_by_placement or {}).get(g, {}).get(label)
+            if ext is not None and int(ext[0]) >= MIN_MANUAL_N:
+                manual_n, manual_real = int(ext[0]), int(ext[1])
+                p_u = manual_real / manual_n
+                p_u_source = "mastr-geolocated"
 
             recall_n, recall_matched = recall_by_bin.get(label, (0, 0))
             recall: float | None = None
@@ -589,15 +623,18 @@ def derive_placement_tables(
                 "label": label, "n_candidates": n, "n_mapped": n_mapped,
                 "mapped_frac": mapped_frac, "p_unmapped": round(p_u, 4),
                 "p_unmapped_source": p_u_source,
+                "manual_n": manual_n, "manual_real": manual_real,
                 "p_real": round(mapped_frac + (1.0 - mapped_frac) * p_u, 4),
                 "recall_n": recall_n, "recall_matched": recall_matched,
                 "recall": recall, "recall_source": recall_source,
                 # Placement-independent property of the glint instrument itself (from
                 # the 500-target OSM-confirmed study), not fit on this group's own
                 # candidates -- carried only so `posterior_draws` (reused as-is below)
-                # has the key it unconditionally reads; irrelevant here since
-                # `p_unmapped_source` never equals "manual"/"measured" for a placement
-                # table, so the branches that would actually consume it never run.
+                # has the key it unconditionally reads. Still unused by the branches
+                # that would consume it: a placement table's `p_unmapped_source` is
+                # never "measured" (the glint mixture branch). It CAN now be
+                # "mastr-geolocated", but that branch draws a Beta on manual_n/
+                # manual_real and does not read `sensitivity` either.
                 "sensitivity": float(SENSITIVITY[b]),
             })
         _nearest_measured(bins, "recall_source")
@@ -618,10 +655,12 @@ def derive_placement_tables(
                 row["recall_lo"], row["recall_hi"] = round(float(lo), 4), round(float(hi), 4)
         out[g] = bins
         log.info(
-            "Placement table [%s]: n=%d mapped_frac(mean)=%.3f p_real(mean)=%.3f "
-            "(%s p_unmapped)",
+            "Placement table [%s]: n=%d mapped_frac(mean)=%.3f p_unmapped(mean)=%.3f "
+            "p_real(mean)=%.3f (p_unmapped sources: %s)",
             g, len(g_cands), float(np.mean([r["mapped_frac"] for r in bins])),
-            float(np.mean([r["p_real"] for r in bins])), p_u_source,
+            float(np.mean([r["p_unmapped"] for r in bins])),
+            float(np.mean([r["p_real"] for r in bins])),
+            ", ".join(sorted({r["p_unmapped_source"] for r in bins})),
         )
     return out
 
@@ -685,7 +724,10 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
         m[i] = beta_or_point(k_m, n_c, row["mapped_frac"])
 
         source = row.get("p_unmapped_source", "none")
-        if source == "manual":
+        if source in ("manual", "mastr-geolocated"):
+            # Both are direct per-candidate verdicts on the unmapped remainder (a human
+            # review, or a geolocated MaStR unit inside the polygon), so both carry a
+            # Beta posterior on their own success counts rather than the glint mixture.
             p_u[i] = beta_or_point(row["manual_real"], row["manual_n"], row["p_unmapped"])
         elif source == "measured":
             # Proper likelihood, not the point inversion: the k validated of n sampled
@@ -728,6 +770,16 @@ def _table_evidence(table: dict) -> set[str]:
         evidence.add("glint-calibrated")
     if any(b.get("manual_n") for b in table.get("bins", [])):
         evidence.add("manual-reviews")
+    # A register-derived per-placement p_unmapped lives only in `placement_bins`, so the
+    # `bins` check above cannot see it. Without this, a bare `calibrate-candidates` re-run
+    # would silently drop it -- the same regression the pooled/mapped-only overwrite of
+    # 2026-08-14 caused for Pakistan.
+    if any(
+        b.get("p_unmapped_source") == "mastr-geolocated"
+        for bins in (table.get("placement_bins") or {}).values()
+        for b in bins
+    ):
+        evidence.add("register-p-unmapped")
     return evidence
 
 
@@ -745,7 +797,8 @@ def write_table(table: dict, path: Path, allow_downgrade: bool = False) -> Path:
                 raise ValueError(
                     f"{path} already carries {sorted(lost)} and the table about to replace "
                     f"it does not. Re-derive with the inputs that produced it (--by-placement, "
-                    "--glint-sample, --calibration-box, --manual-reviews as applicable), or "
+                    "--glint-sample, --calibration-box, --manual-reviews, "
+                    "--mastr-p-unmapped as applicable), or "
                     "pass --allow-downgrade to overwrite deliberately. See "
                     "capacity_calibration._table_evidence."
                 )

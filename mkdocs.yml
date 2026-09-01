@@ -99,8 +99,12 @@ nav:
   # standalone file, plus the rest of the Pakistan results pages. Reused here
   # rather than duplicated under capacity-maps/ -- add new countries as their own
   # pages under capacity-maps/<country>.md as they get their own atlas.
+  # Pakistan stays first and is the default the Overview links to. Each country page
+  # carries an in-page switcher, because `hide: [navigation]` means this tree is not
+  # visible from the atlas pages themselves.
   - PV Atlas:
-        - atlas.md
+        - Pakistan: atlas.md
+        - Germany: atlas-germany.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md

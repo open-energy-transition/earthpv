@@ -457,6 +457,64 @@
   display: none;
 }
 
+/* Country switcher for the PV Atlas pages. These pages carry `hide: [navigation]`, so
+   the left tree is unavailable as a way to move between countries -- this is the only
+   control that does it. It lives INSIDE the `.page-full-bleed` block on purpose: the
+   rule above hides Material's auto-generated `<h1>` only when the heading directly
+   precedes `.page-full-bleed`, so putting the switcher between them would bring that
+   redundant heading back. */
+.atlas-switch {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.2rem 0.55rem;
+  font-size: 0.76rem;
+}
+
+.atlas-switch .atlas-switch__label {
+  color: var(--pv-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.66rem;
+  margin-right: 0.15rem;
+}
+
+/* `.md-typeset a` colours links site-wide, so these need equal specificity to win. */
+.md-typeset .atlas-switch a {
+  color: var(--pv-ink-2);
+  text-decoration: none;
+  padding: 0.16rem 0.5rem;
+  border: 1px solid var(--pv-card-ring);
+  border-radius: 999px;
+  background: var(--pv-panel);
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.md-typeset .atlas-switch a:hover {
+  color: var(--pv-accent);
+  border-color: var(--pv-accent);
+}
+
+/* The country whose atlas is already on screen: shown, not a link. */
+.atlas-switch span[aria-current="page"] {
+  color: var(--pv-ink);
+  padding: 0.16rem 0.5rem;
+  border: 1px solid var(--pv-accent);
+  border-radius: 999px;
+  background: var(--pv-panel-2);
+  font-weight: 600;
+}
+
+/* A country whose atlas is a different product than the one next to it (Germany is
+   segmentation-only -- no roofclf half, so no evidence atlas). Keeps the switcher from
+   implying the two pages are like for like. */
+.atlas-switch .atlas-switch__note {
+  color: var(--pv-muted);
+  font-size: 0.66rem;
+  flex-basis: 100%;
+}
+
 .page-full-bleed {
   margin: 0;
   border-radius: 12px;

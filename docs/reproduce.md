@@ -400,9 +400,35 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     ```
 
     `validate-mastr`'s register-internal checks need no imagery and run in under a minute.
-    Its end-to-end per-municipality comparison needs a German `density` run, which is
-    currently blocked on composites and a small-roof building layer; it reports its own
-    coverage and refuses to call a partial-coverage result national. See
+    Its end-to-end per-municipality comparison needs a national German `density` run, which
+    exists as of 2026-08-31 (4,656 composited cells, 99.75% of MaStR capacity covered). The
+    full chain, as scripted in `scripts/run_germany_mastr_pipeline.sh`:
+
+    ```bash
+    # compose is the long pole: ~4,700 cells at ~35 cells/h. Raise the fd limit or it
+    # dies on "Too many open files" -- LimitNOFILE must be the soft:hard PAIR.
+    systemd-run --user --unit earthpv-compose-germany --working-directory=$PWD \
+      --property=Restart=on-failure --property=LimitNOFILE=65536:65536 \
+      bash -c '.pixi/envs/default/bin/python -m earthpv.cli compose --aoi germany \
+               --use-vida --workers 5 --window 2025-04-01:2025-09-30'
+    pixi run -e ml earthpv infer --aoi germany --checkpoint <ckpt>
+    pixi run earthpv postprocess --aoi germany --threshold 0.3
+
+    # Measure p_unmapped from geolocated MaStR units, then feed it to the calibration.
+    # Without this Germany's table carries p_unmapped = 0.0 and est_mwp_cal is a floor.
+    pixi run python scripts/mastr_p_unmapped.py
+    pixi run earthpv calibrate-candidates --aoi germany \
+      --mastr-p-unmapped results/germany_mastr_p_unmapped.csv
+
+    pixi run earthpv density --aoi germany --districts --force
+    pixi run earthpv check-density --aoi germany
+    ```
+
+    The composite window must match the register cutoff (`2025-04-01:2025-09-30` against a
+    2025-09-30 cutoff); the `compose` default is a Punjab dry season, which is German
+    winter. Germany still has **zero calibration quadrats**, so it gets the
+    segmentation-only atlas with no `roofclf` half, and the register cannot substitute:
+    MaStR publishes no coordinates below 30 kWp. See
     [Validation against MaStR](methods/mastr-validation.md).
 
 Areas and their parameters live in `configs/aoi.yaml`; model and training configs in

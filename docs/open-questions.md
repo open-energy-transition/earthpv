@@ -1,6 +1,6 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-08-26. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-09-01. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
@@ -39,7 +39,32 @@ measured). Until then Kalat Rural must be excluded from any refit by hand --
 `roofclf.discover_quadrats` globs the label directory, so it is picked up automatically.
 See [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 17.
 
-### 3. The correction that prices most of the atlas is fit outside the density range it is applied to
+### 3. Germany's recall denominator is wrong, and a complete register proves it
+
+Fixing Germany's `p_unmapped` (see
+[Validation against MaStR](methods/mastr-validation.md)) moved `est_mwp_cal`'s OLS slope
+against the register from 0.038 to 0.167, as intended -- better bounded, though still far from
+1.0. It also pushed `est_mwp_rc_roof` from 0.262 to **3.11**, i.e. from understating the truth
+to overstating it threefold. Two errors had been cancelling: a `p_real` held down by a missing `p_unmapped`
+term, and a recall denominator that is too small. Removing the first exposed the second.
+
+The recall denominator is the suspect, for two measurable reasons.
+`load_mapped_reference_attrs` puts **1,167 German OSM features larger than 50,000 m&sup2;
+into the `rooftop` group, with a median area of 89,263 m&sup2;** &mdash; nearly nine hectares,
+which is not a single rooftop array and is far more likely a plant perimeter or a
+multi-building complex. Rooftop recall in that bin comes out at 0.035, below the 0.05
+`DEFAULT_RECALL_FLOOR`, so the clamp then multiplies those candidates by the maximum 20x.
+Separately, recall is measured by **installation count** within a size bin and applied to
+**area**; the 5k-50k bin spans a tenfold size range, so if the model preferentially finds the
+large end of a bin, count-recall understates area-recall and inflates the estimator.
+
+Concrete next steps, in order: audit the reference's placement attribution for features above
+50,000 m&sup2;; measure count-recall against area-recall within a bin; and re-check whether
+Pakistan is affected, since it shares this code and only lacks a complete register to notice.
+Until then Germany's readable estimator is `est_mwp_det` (slope 0.340), not the atlas's
+default `est_mwp_rc` hero number.
+
+### 4. The correction that prices most of the atlas is fit outside the density range it is applied to
 
 **Reach dropped an order of magnitude since this was first measured, apparently as a side
 effect of an unrelated refit, not a deliberate fix -- re-verify before treating this as
@@ -76,7 +101,57 @@ Balochistan, are proposed and awaiting the owner's own imagery-recency check (no
 check exists) in `data/labels/candidate_quadrats/*_gap_calib_2km_candidate.geojson` -- see
 [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 19.
 
-### 4. The calibration quadrats are purposive, not a probability sample
+### 5. France could supply an external reference for the sub-400 m&sup2; half, which Germany cannot
+
+Germany's register answered the &ge; 400 m&sup2; question and is structurally silent below it:
+MaStR publishes no coordinates under 30 kWp, which is `roofclf`'s entire domain. So the half of
+the atlas that rests on 30 purposive Pakistani quadrats still has no external check at all.
+France is the most promising place to get one.
+
+**[DeepPVMapper](https://github.com/gabrielkasmi/deeppvmapper)** (Kasmi et al., MIT licence)
+is an automated pipeline detecting rooftop PV across France from IGN aerial tiles. Its output
+is the shape this project needs: **per-installation GeoJSON polygons with surface in
+m&sup2;, tilt, azimuth and installed kWp**, plus city-level aggregates, with precomputed
+results for French departments published on Zenodo. Capacity comes from its companion
+`pypvroof`. Critically, it **retains only residential-scale installations of 1.7 to 36.1 kWp
+on buildings** -- at 0.18 kWp/m&sup2; that is roughly 9 to 200 m&sup2; of module area, i.e.
+**entirely below this project's 400 m&sup2; segmentation floor**. It is a population-matched
+reference for exactly the instrument that lacks one.
+
+**[BDAPPV](https://huggingface.co/datasets/gabrielkasmi/bdappv)** (CC-BY-4.0) is the
+human-annotated dataset behind it: ~28,400 400x400 px aerial images over France and Belgium
+with binary segmentation masks, plus per-installation metadata (surface, tilt, azimuth, kWp,
+installation date). The distinction matters and should not be blurred.
+
+**The trap, stated up front: DeepPVMapper is a model output, not ground truth.** Comparing
+earthpv against it is model-versus-model, the same limitation this project already documents
+for its
+[external hex-dataset comparison](results/capacity.md#what-this-map-cannot-tell-you-and-what-an-independent-estimate-confirms-it-can);
+agreement would not be validation. BDAPPV's human masks are the part that can serve as truth,
+and its published metadata needs cleaning first -- the raw columns carry obvious outliers
+(azimuth beyond 360&deg;, kWp values orders of magnitude outside the residential band).
+
+What it could actually buy, in order of value:
+
+1. **An independent test of the 400 m&sup2; floor itself.** BDAPPV annotations are drawn on
+   sub-metre aerial imagery, so measuring earthpv's recall against them per size bin measures
+   the *sensor* limit at 10 m GSD rather than a modelling choice. That would confirm or refute
+   the floor with something other than this project's own reasoning.
+2. **An external `coverage_ratio` / `area_recall` reference below the floor.** Both are
+   currently fit on Pakistani quadrats alone, and per-installation polygons with area are
+   precisely the input those functions consume.
+3. **A second uncensored pose source** (item 12), derived from imagery rather than
+   self-reported, and covering the small installations MaStR omits.
+
+Costs and caveats. France has no local data here, so this is the `scripts/new_region.py`
+path plus a full `compose`/`infer` run -- the largest cost of any item on this page.
+Adoption rates do not transfer, so a French `coverage_ratio` could not be applied to Pakistan;
+the transferable quantities are the more physical ones, the detection floor and the
+area-recall-versus-size curve. And French imagery epochs (IGN flights are periodic, per
+department) will not match a Sentinel-2 composite window, which is the same epoch-mismatch
+problem that makes Rule-1 completeness relative.
+
+### 6. The calibration quadrats are purposive, not a probability sample
 
 This is the single largest caveat on every capacity number the project publishes, and no
 amount of additional modelling removes it. All 27 quadrats were chosen by a researcher to
@@ -91,7 +166,7 @@ post-stratify the existing quadrats on auxiliary variables known for the whole p
 (building density, roof-size distribution, nightlights, region) to get a design-consistent
 national total with a variance estimate.
 
-### 5. Ground-truth completeness is relative to the mapping imagery, not the satellite composite
+### 7. Ground-truth completeness is relative to the mapping imagery, not the satellite composite
 
 Quadrats are mapped against OpenStreetMap's background imagery, whose capture date is
 generally older than the Sentinel-2 composite the model reads. So Rule 1 certifies
@@ -110,7 +185,7 @@ than merely unstated. Backfilling them against Esri Wayback is the cheap first s
 starting point is the Maxar Open Data Program, which provides dated imagery over several areas
 in Pakistan (see [Open Issue #3](https://github.com/open-energy-transition/earthpv/issues/3))
 
-### 6. Small ground-mounted installations have no instrument at all
+### 8. Small ground-mounted installations have no instrument at all
 
 Both sub-400 m² instruments are per-*building* classifiers: they score a footprint. A small
 free-standing ground array has no footprint to score, and the segmentation model was trained
@@ -147,14 +222,14 @@ quadrats is the step that resolves it. See
 [Small ground-mounted instrument](issues/small-ground-mount-instrument.md) for the full
 measurements and what they rule in and out.
 
-### 7. Manual review of the small size bins
+### 9. Manual review of the small size bins
 
 In the 100 to 500 m² band, `p_real` is only pinned to [0.10, 0.89]. `earthpv
 calibrate-sample` emits a stratified sample of unmapped candidates for human verdicts, and
 roughly twenty verdicts per bin would collapse the widest remaining term in the calibration
 table.
 
-### 8. The out-of-domain population cannot currently be validated by eye
+### 10. The out-of-domain population cannot currently be validated by eye
 
 The published Best estimate no longer carries this component: it was dropped 2026-08-15,
 precisely because it was the one part of the total that could not be validated where it was
@@ -175,11 +250,11 @@ coverage ratio toward zero on evidence that does not support it. See
 to apply to *any* box drawn in the sparse remainder, not just to the cells the random sampler
 happened to pick, so it gates the domain-widening programme itself.
 
-This is item 5 blocking item 8. Contemporaneous high-resolution imagery would unblock both;
+This is item 7 blocking item 10. Contemporaneous high-resolution imagery would unblock both;
 free options worth checking first are Planet/NICFI monthly basemaps, which cover roughly to
 30 degrees north and so include Sindh but not Punjab.
 
-### 9. Two random-cell validation batches are generated but unreviewed
+### 11. Two random-cell validation batches are generated but unreviewed
 
 `results/pakistan_roofclf_validation_domain/` and `..._outdomain/` were drawn to measure
 roofclf's precision against an unbiased population rather than the curated quadrats. Neither
@@ -188,21 +263,72 @@ has been through JOSM review. The protocol is in
 belong in `results/roofclf_random_validation_log.csv` so precision against that population
 accumulates across batches.
 
-### 10. A per-locality pose calibration
+### 12. MaStR carries an uncensored installed-pose distribution, which the glint model assumes
+
+`glint_opportunity.py` states the problem in its own comments: the installed-pose prior **has
+to be assumed**, because this project's pose survey was fitted from observed glints, so every
+pose in it satisfies the glint condition by construction and it cannot supply an uncensored
+distribution. `DEFAULT_POSE_PRIOR` is therefore a guess, `dict(tilt_mu=25.0, tilt_sd=8.0,
+az_mu=180.0, az_sd=25.0)`, and it propagates into `expected_opportunities`, the sensitivity
+inversion, and from there into `p_unmapped`.
+
+Germany's register records pose at registration, independently of whether anything ever
+glinted. `solar_extended` carries `Hauptausrichtung` (azimuth), `HauptausrichtungNeigungswinkel`
+(tilt band), the same pair for a secondary orientation, and
+`EinheitlicheAusrichtungUndNeigungswinkel` (is the array single-pose at all). 97.4% of 4.44M
+rooftop units have azimuth and tilt; **225,138 have pose *and* coordinates** (119,429 of them
+at or above 72 kWp), plus 14,100 ground-mount. For comparison, the existing German glint study
+covers 113 targets.
+
+Checked against the assumed prior (2026-09-01), it is much too narrow in both axes:
+
+| | Measured (Germany) | `DEFAULT_POSE_PRIOR` |
+|---|---|---|
+| tilt &gt; 40&deg; | 23.8% | 3.04% |
+| tilt mean / sd | 32.2 / 12.6 | 25.0 / 8.0 |
+| azimuth &gt;45&deg; off south | 15.7% | 7.19% |
+
+It is also structurally unable to represent two real categories: **348,524 units are
+`Ost-West`** (dual-pitch, two opposed azimuths, no single pose) and 3,775 are tracked. A
+unimodal Gaussian has nowhere to put either.
+
+Three steps, cheapest first. **(1)** Swap the German distribution into
+`expected_opportunities`, which already takes the prior as an argument, and re-derive the
+figure the glint-date feature was *rejected* on -- "only 1-2% of a plausible installed
+population can ever satisfy the specular geometry on any single date" was computed under this
+prior, and a rejection resting on an assumed distribution should be re-checked against a
+measured one. It may well survive. **(2)** A direct per-target test: for the 119,429 units
+with pose and coordinates above the segmentation floor, run the glint detector and check
+whether the validation rate tracks predicted specular compatibility. That is a falsifiable
+test of the mechanism rather than another rate. **(3)** The same for the 14,100 ground-mount
+units, where tilt is far more uniform.
+
+**The blocking caveat is transfer.** The prior is applied to Pakistan, where roofs are largely
+flat; Germany's steep tilts reflect pitched-roof construction, so these numbers do **not**
+correct the Pakistani prior -- the same non-transferability this project already documents for
+adoption rates. What they do establish is that a narrow Gaussian is the wrong *shape* for a
+national rooftop population, and they give one country's real distribution to test the
+machinery against. Lesser caveats: tilt is banded in ~20&deg; steps where specular geometry is
+sensitive to a few degrees; 33.4% of geolocated units are flagged non-uniform; coordinates are
+address-level and pose is self-reported; and nothing exists below 30 kWp.
+See [Validation against MaStR](methods/mastr-validation.md) and
+[Solar glint](methods/glint.md).
+
+### 13. A per-locality pose calibration
 
 The [panel pose survey](results/pv-pose.md) fits a national pose distribution from glint.
 Fitting a *local* pose from whatever installations a subdivision already has, rather than
 assuming a national standard, is untried and would improve the yield modelling that turns
 capacity into energy.
 
-### 11. Sentinel-1 backscatter variance as a false-positive filter
+### 14. Sentinel-1 backscatter variance as a false-positive filter
 
 Distinct from the corner-reflector hypothesis that failed. Multi-temporal backscatter
 variance separates permanent structures from seasonally changing fields, and greenhouse metal
 frames give a bright return, the opposite of PV. Cheap, and not ruled out by the negative
 result on corner reflection.
 
-### 12. Per-pixel glint anomaly counting
+### 15. Per-pixel glint anomaly counting
 
 The statistic the [cell-aggregate glint test](issues/glint-spike-rate-density-estimator.md)
 should have used. A 90th-percentile statistic over a whole cell only moves if roughly 10% of
@@ -217,7 +343,7 @@ work is not automatically better than an aggregate here, because the glinting pa
 and position are unknown and vary by date. A per-pixel counting statistic that does not
 assume a shape is still untested and remains the open item.
 
-### 13. Glint scene coverage is silently incomplete
+### 16. Glint scene coverage is silently incomplete
 
 The tile-major glint fetch is 22x faster and numerically identical, but revalidation found
 that token expiry silently drops scenes for a large share of targets rather than erroring.
@@ -226,7 +352,7 @@ full study after a proper token-refresh fix is the only way to get a scene-count
 that means what it appears to mean. See
 [Glint tile-batched coverage](issues/glint-tile-batched-coverage.md).
 
-### 14. Growth as a product
+### 17. Growth as a product
 
 Per-epoch density estimates would make capacity a time series, so the 2022 to 2026 boom
 becomes measurable per district and independently checkable against NEPRA net-metering
@@ -267,7 +393,7 @@ What remains open, in order of expected effect on the delta:
   calibration of its own, so every stated pre-boom level remains an artifact of
   current-epoch calibration transfer; only diffs of the fixed instrument are meaningful.
 
-### 15. Nightlights as a substitute or complement to VIDA buildings
+### 18. Nightlights as a substitute or complement to VIDA buildings
 
 VIDA Open Buildings is a single load-bearing input across the pipeline: it is the unit roofclf
 classifies (every VIDA footprint gets a has-PV score), the population
@@ -275,11 +401,14 @@ classifies (every VIDA footprint gets a has-PV score), the population
 rooftop/ground/no-building `placement`, and the filter `compose` uses to decide which 0.1° cells
 even get composited. It carries three costs this project has already hit: it is a **single
 present-day snapshot** (a building built after the pre-boom epoch reads as bare ground in that
-epoch's table -- `growth.persistence_gate`, item 14 above), its footprints are imagery-derived
+epoch's table -- `growth.persistence_gate`, item 17 above), its footprints are imagery-derived
 and routinely undersized or a metre or two offset (the reason the parcel label's yard-overhang
 term exists, see [The rooftop classifier](methods/roofclf.md)), and its per-country availability
-is not guaranteed -- Germany has no VIDA file at all, one of three blockers to a full
-MaStR-comparable atlas there ([Validation against MaStR](methods/mastr-validation.md)). VIIRS
+is not guaranteed -- it had to be fetched separately for Germany (`data/vida/DEU.parquet`, 27.9M
+rows, 2026-08-23), which was one of three blockers to a MaStR-comparable atlas there
+([Validation against MaStR](methods/mastr-validation.md)); the remaining blocker is mapped
+calibration quadrats, since the register cannot localise the sub-30 kWp population `roofclf`
+needs. VIIRS
 nightlights is free, global, monthly, and none of those three problems apply to it, which makes
 it worth asking whether it can substitute for VIDA anywhere, or at least flag where VIDA is
 deficient.
@@ -325,7 +454,7 @@ region level, not the building level.
   roofclf or sub400-capacity could run.
 - **A staleness cross-check for the growth work.** VIIRS's monthly cadence is the one input in
   this pipeline that is not a single snapshot. Comparing VIIRS radiance change against
-  `growth.py`'s persistence-gated delta (item 14 above), even coarsely, is an independent check
+  `growth.py`'s persistence-gated delta (item 17 above), even coarsely, is an independent check
   on the direction of the 2022-2026 boom that costs nothing to compute against data already
   downloaded for the external-comparison script.
 
