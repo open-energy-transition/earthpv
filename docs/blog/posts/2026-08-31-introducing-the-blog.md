@@ -43,5 +43,5 @@ The blog is open. If you map for this project, run the pipeline somewhere new, o
 have a critique of a method worth writing down, you can publish it here. Open a
 pull request adding a Markdown file under `docs/blog/posts/`, or
 [open an issue](https://github.com/open-energy-transition/earthpv/issues) first if
-you would rather talk it through. Full instructions are on the
-[blog index](../index.md#how-to-add-a-post).
+you would rather talk it through. Full instructions are on
+[Contribute a post](../contributing.md#how-to-add-a-post).
