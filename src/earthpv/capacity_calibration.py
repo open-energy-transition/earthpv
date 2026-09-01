@@ -483,14 +483,24 @@ def derive_placement_tables(
     `p_real` for a mid-size bin is dominated by rooftop's much better corroboration
     and applied unchanged to ground candidates that have almost none of their own.
 
-    `mapped_frac` and `recall` are pure geometric OSM matches - no glint needed - so
-    both are split by placement directly, using `mapped_attrs` (must carry a
-    `placement` column; `export.load_mapped_reference_attrs`'s output, NOT the
-    boolean-only `mapped` `derive_table` itself uses) and, where given,
-    `recall_reference`'s own `placement` column. Either falls back to the unrestricted
-    (pooled) population with a warning if it lacks a `placement` column - a rooftop
-    candidate matching a ground reference feature 100 m away is a rare, not a
-    systematic, error, so this is a fallback worth having rather than refusing to run.
+    `mapped_frac` and `recall` are pure geometric OSM matches - no glint needed - but
+    they are split ASYMMETRICALLY, which is the important detail here.
+
+    `mapped_frac` splits both sides: a rooftop candidate's corroboration comes from
+    rooftop reference features, via `mapped_attrs` (must carry a `placement` column;
+    `export.load_mapped_reference_attrs`'s output, NOT the boolean-only `mapped`
+    `derive_table` itself uses). It falls back to the unrestricted reference with a
+    warning if that column is missing - a rooftop candidate matching a ground reference
+    100 m away is a rare, not a systematic, error, so the fallback is worth having.
+
+    `recall` splits only the REFERENCE, by `recall_reference`'s own `placement` column,
+    and matches it against the WHOLE candidate population. Precision asks "is this
+    candidate real" and recall asks "was this real installation detected at all"; the
+    finding candidate's own placement label answers the first question and is irrelevant
+    to the second. Restricting it too was measured on Germany (2026-09-02) to be the
+    dominant error in `est_mwp_rc` - see the comment at `pop_sub` for the 7.3x and 23.9x
+    it cost in the two largest rooftop bins, and why footprint undersizing makes the
+    error grow with installation size.
 
     `p_unmapped` (the glint-inversion component of precision) is NOT independently
     split: the existing glint sample (`data/glint/pakistan_cand_targets.parquet`,
@@ -532,15 +542,10 @@ def derive_placement_tables(
     cands = cands.reset_index(drop=True)
     groups = _placement_group(cands["placement"].to_numpy())
     recall_cands = cands if recall_cands is None else recall_cands
-    recall_groups = (
-        _placement_group(recall_cands["placement"].to_numpy())
-        if "placement" in recall_cands.columns else None
-    )
-    if recall_groups is None and recall_reference is not None and not recall_reference.empty:
-        log.warning(
-            "recall_cands has no `placement` column - recall split by placement will "
-            "use the unrestricted candidate population for both groups"
-        )
+    # No `placement` split of `recall_cands` -- deliberately. See the comment at
+    # `pop_sub` below: the finding candidate's own placement label is irrelevant to
+    # whether a reference installation was detected, and restricting on it understated
+    # rooftop recall by up to 24x.
 
     ref_groups = None
     if recall_reference is not None and not recall_reference.empty:
@@ -585,7 +590,23 @@ def derive_placement_tables(
             ref_sub = ref_sub[
                 ref_sub.geometry.geom_type.isin(("Polygon", "MultiPolygon"))
             ].reset_index(drop=True)
-            pop_sub = recall_cands[recall_groups == g] if recall_groups is not None else recall_cands
+            # Split the REFERENCE by placement but NOT the candidate population that
+            # counts as having found it. Precision and recall are asymmetric here:
+            # `mapped_frac` asks "is THIS candidate real", so its corroboration must come
+            # from references of its own placement; recall asks "was this real
+            # installation detected AT ALL", and whether `postprocess` happened to label
+            # the finding candidate rooftop or no_building says nothing about that.
+            #
+            # Restricting it was measured on Germany (2026-09-02) to be the dominant
+            # error in `est_mwp_rc`: rooftop recall in the 5k-50k bin read 0.096 against
+            # rooftop candidates alone but 0.693 against any candidate (7.3x), and in the
+            # >50k bin 0.036 against 0.852 (23.9x). The mechanism is VIDA footprint
+            # undersizing -- a large array overruns its imagery-derived outline, so
+            # `building_overlap_frac` drops and the candidate that correctly found a
+            # rooftop installation is classified `ground_adjacent`/`no_building`. The
+            # bigger the array the likelier that is, which is why the top bins were worst
+            # hit, and `1/recall` then inflated those candidates by up to the 20x clamp.
+            pop_sub = recall_cands
             if not ref_sub.empty:
                 areas = np.array([geodesic_area_m2(geom) for geom in ref_sub.geometry])
                 ridx = bin_index(areas)

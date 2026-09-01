@@ -190,13 +190,13 @@ placement_bins:
     p_real: 0.4688
     recall_n: 0
     recall_matched: 0
-    recall: 0.1166
+    recall: 0.1987
     recall_source: extrapolated from 500-1k
     sensitivity: 0.025
     p_real_lo: 0.3688
     p_real_hi: 0.5729
-    recall_lo: 0.1097
-    recall_hi: 0.1238
+    recall_lo: 0.1901
+    recall_hi: 0.2077
   - label: 100-500
     n_candidates: 572
     n_mapped: 129
@@ -208,13 +208,13 @@ placement_bins:
     p_real: 0.2725
     recall_n: 0
     recall_matched: 0
-    recall: 0.1166
+    recall: 0.1987
     recall_source: extrapolated from 500-1k
     sensitivity: 0.088
     p_real_lo: 0.2434
     p_real_hi: 0.3041
-    recall_lo: 0.1097
-    recall_hi: 0.1238
+    recall_lo: 0.1901
+    recall_hi: 0.2077
   - label: 500-1k
     n_candidates: 561
     n_mapped: 184
@@ -225,14 +225,14 @@ placement_bins:
     manual_real: 40
     p_real: 0.4005
     recall_n: 5551
-    recall_matched: 647
-    recall: 0.1166
+    recall_matched: 1103
+    recall: 0.1987
     recall_source: measured
     sensitivity: 0.162
     p_real_lo: 0.3672
     p_real_hi: 0.435
-    recall_lo: 0.1097
-    recall_hi: 0.1238
+    recall_lo: 0.1901
+    recall_hi: 0.2077
   - label: 1k-5k
     n_candidates: 2272
     n_mapped: 331
@@ -243,14 +243,14 @@ placement_bins:
     manual_real: 408
     p_real: 0.3278
     recall_n: 4325
-    recall_matched: 897
-    recall: 0.2074
+    recall_matched: 1207
+    recall: 0.2791
     recall_source: measured
     sensitivity: 0.306
     p_real_lo: 0.3122
     p_real_hi: 0.3448
-    recall_lo: 0.1975
-    recall_hi: 0.2178
+    recall_lo: 0.2681
+    recall_hi: 0.2905
   - label: 5k-50k
     n_candidates: 4617
     n_mapped: 150
@@ -261,14 +261,14 @@ placement_bins:
     manual_real: 2270
     p_real: 0.5297
     recall_n: 2143
-    recall_matched: 207
-    recall: 0.0966
+    recall_matched: 1480
+    recall: 0.6906
     recall_source: measured
     sensitivity: 0.293
     p_real_lo: 0.5181
     p_real_hi: 0.5417
-    recall_lo: 0.0863
-    recall_hi: 0.1073
+    recall_lo: 0.6738
+    recall_hi: 0.7073
   - label: '>50k'
     n_candidates: 162
     n_mapped: 14
@@ -279,14 +279,14 @@ placement_bins:
     manual_real: 111
     p_real: 0.781
     recall_n: 1179
-    recall_matched: 41
-    recall: 0.0348
+    recall_matched: 1003
+    recall: 0.8507
     recall_source: measured
     sensitivity: 0.261
     p_real_lo: 0.7245
     p_real_hi: 0.8312
-    recall_lo: 0.0267
-    recall_hi: 0.0439
+    recall_lo: 0.8333
+    recall_hi: 0.867
   ground:
   - label: <100
     n_candidates: 229
@@ -298,14 +298,14 @@ placement_bins:
     manual_real: 0
     p_real: 0.8253
     recall_n: 64914
-    recall_matched: 4393
-    recall: 0.0677
+    recall_matched: 8589
+    recall: 0.1323
     recall_source: measured
     sensitivity: 0.025
     p_real_lo: 0.7842
     p_real_hi: 0.8663
-    recall_lo: 0.0661
-    recall_hi: 0.0693
+    recall_lo: 0.1302
+    recall_hi: 0.1345
   - label: 100-500
     n_candidates: 1040
     n_mapped: 464
@@ -316,14 +316,14 @@ placement_bins:
     manual_real: 0
     p_real: 0.4462
     recall_n: 61302
-    recall_matched: 11544
-    recall: 0.1883
+    recall_matched: 13138
+    recall: 0.2143
     recall_source: measured
     sensitivity: 0.088
     p_real_lo: 0.4216
     p_real_hi: 0.4711
-    recall_lo: 0.1856
-    recall_hi: 0.1908
+    recall_lo: 0.2115
+    recall_hi: 0.217
   - label: 500-1k
     n_candidates: 599
     n_mapped: 117
@@ -334,14 +334,14 @@ placement_bins:
     manual_real: 2
     p_real: 0.1988
     recall_n: 10787
-    recall_matched: 3722
-    recall: 0.345
+    recall_matched: 3906
+    recall: 0.3621
     recall_source: measured
     sensitivity: 0.162
     p_real_lo: 0.1742
     p_real_hi: 0.2273
-    recall_lo: 0.3377
-    recall_hi: 0.3528
+    recall_lo: 0.3548
+    recall_hi: 0.3699
   - label: 1k-5k
     n_candidates: 2177
     n_mapped: 230
@@ -352,14 +352,14 @@ placement_bins:
     manual_real: 10
     p_real: 0.1104
     recall_n: 4339
-    recall_matched: 1386
-    recall: 0.3194
+    recall_matched: 1478
+    recall: 0.3406
     recall_source: measured
     sensitivity: 0.306
     p_real_lo: 0.1004
     p_real_hi: 0.1222
-    recall_lo: 0.3078
-    recall_hi: 0.3312
+    recall_lo: 0.3288
+    recall_hi: 0.3526
   - label: 5k-50k
     n_candidates: 9487
     n_mapped: 2490
@@ -370,14 +370,14 @@ placement_bins:
     manual_real: 432
     p_real: 0.313
     recall_n: 4738
-    recall_matched: 3534
-    recall: 0.7459
+    recall_matched: 3579
+    recall: 0.7554
     recall_source: measured
     sensitivity: 0.293
     p_real_lo: 0.3052
     p_real_hi: 0.3211
-    recall_lo: 0.7357
-    recall_hi: 0.7559
+    recall_lo: 0.7453
+    recall_hi: 0.7653
   - label: '>50k'
     n_candidates: 2140
     n_mapped: 801
@@ -388,11 +388,11 @@ placement_bins:
     manual_real: 201
     p_real: 0.5282
     recall_n: 1284
-    recall_matched: 1053
-    recall: 0.8201
+    recall_matched: 1064
+    recall: 0.8287
     recall_source: measured
     sensitivity: 0.261
     p_real_lo: 0.5085
     p_real_hi: 0.5494
-    recall_lo: 0.802
-    recall_hi: 0.8368
+    recall_lo: 0.811
+    recall_hi: 0.845
