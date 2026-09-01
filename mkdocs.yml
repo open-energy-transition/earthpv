@@ -79,7 +79,24 @@ markdown_extensions:
       alternate_style: true
   - pymdownx.smartsymbols
 
+# The built-in Material blog plugin drives the Blog section. It consumes
+# docs/blog/posts/*.md and generates the listing, per-post pages, the archive
+# and category indexes under blog/ at build time -- none of those files exist
+# on disk, so they are not (and cannot be) listed in nav. `search` MUST stay
+# after `blog`: the search index is built from the blog plugin's generated
+# pages, so it has to run second.
 plugins:
+  - blog:
+      blog_dir: blog
+      post_url_format: "{slug}"
+      post_excerpt: optional
+      archive_date_format: MMMM yyyy
+      categories_allowed:
+        - Announcements
+        - Method notes
+        - Field reports
+        - Results
+        - Perspectives
   - search
 
 extra:
@@ -146,5 +163,10 @@ nav:
       - Small ground-mount instrument: issues/small-ground-mount-instrument.md
       - Calibration density mismatch: issues/roofclf-calibration-density-mismatch.md
   - Open questions: open-questions.md
+  # Only the index is listed; the blog plugin appends post pages, the archive and
+  # category indexes beneath it at build time.
+  - Blog:
+      - blog/index.md
+      - blog/contributing.md
   - About:
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md

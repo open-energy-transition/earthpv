@@ -717,3 +717,33 @@
   background: rgba(79, 178, 232, 0.18);
   color: var(--pv-large);
 }
+
+/* ------------------------------------------------------ partner logo strip */
+
+/* The WIT and LUMS marks are dark blue on transparency, so they need a light
+   plate to stay legible on the slate scheme's near-black page. The same plate
+   is used in both schemes so the strip reads as deliberate rather than
+   theme-reactive. Used in the Community section of index.md. */
+.partner-logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.2rem 0 1.6rem;
+}
+
+.partner-logos a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.1rem;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: var(--pv-shadow-sm);
+}
+
+.partner-logos img {
+  height: 44px;
+  width: auto;
+  display: block;
+}

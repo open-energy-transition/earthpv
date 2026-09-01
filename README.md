@@ -7,7 +7,7 @@
 
 # earthpv
 
-**Open, global photovoltaic mapping from free satellite imagery.**
+**Open, global (rooftop) photovoltaic mapping from free satellite imagery.**
 
 [Documentation](https://open-energy-transition.github.io/earthpv/) &nbsp;·&nbsp;
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) &nbsp;·&nbsp;
@@ -327,10 +327,19 @@ well mapped in OpenStreetMap" is true of buildings and false of rooftop solar.
 
 earthpv is the software half of **TraceTheSun**, a pilot run by
 [Open Energy Transition](https://openenergytransition.org) to make PV mapping
-cost-effective, verifiable, community-driven and local, worldwide. The Pakistani results
-rest on four OET-funded interns at the **Lahore University of Management Sciences**, led by
-[Muhammad Awais](https://www.linkedin.com/in/awais307/), who do the mapping, validation,
-model development and ground-truth quadrat work that makes the pilot's numbers checkable.
+cost-effective, verifiable, community-driven and local, worldwide. The concept was
+conceived by [Muhammad Awais](https://www.linkedin.com/in/awais307/) and Tobias. The
+Pakistani results rest on a student team at the **[Centre for Water Informatics and
+Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore University of Management Sciences --
+[Laeeba Hafeez Malik](https://www.linkedin.com/in/laeeba-hafeez-malik-220b63328/) (BS
+Computer Science), [Tayyiba Shafiq](https://www.linkedin.com/in/tayyiba-shafiq/) (BS
+Economics), [Nimra Aamir Ali](https://www.linkedin.com/in/nimra-aamir-ali-417b98249/) (BS
+Anthropology) and [Vania Malik](https://www.linkedin.com/in/vania-malik-799bbb343/) (BS
+Electrical Engineering) -- who coordinated closely
+with OET to co-design the pipeline and do the mapping, validation, model development and
+ground-truth quadrat work that makes the pilot's numbers checkable. For WIT the effort is
+also a step toward linking the resulting national PV database into energy and power-system
+models and integrated-assessment scenarios.
 
 The most valuable contribution is **verified installations in OpenStreetMap**, in any
 country. Load the
