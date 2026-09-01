@@ -1,31 +1,33 @@
 """Self-contained HTML capacity atlas from `density` outputs.
 
-Two templates, chosen automatically by what the density run actually computed:
+**The evidence atlas (`templates/pv_evidence_atlas.html`, `build_evidence_atlas`) is the
+project's capacity atlas.** It tiers by STANDARD OF PROOF rather than by point estimate:
 
-- **Six-estimator atlas** (`templates/pv_estimator_atlas.html`, the default whenever
-  the columns exist): the night-lights choropleth originally hand-built as
-  results/pakistan_pv_estimator_atlas.html, switchable between all six capacity
-  estimators (detected / calibrated / expected / recall-corrected-rooftop in
-  rooftop scope; calibrated / recall-corrected in all-PV scope) with a national
-  comparison chart, credible-interval bands and a province ranking that follows
-  the selected estimator. Requires `est_mwp_rc*` columns, i.e. a run that had a
-  capacity_calibration table (`earthpv calibrate-candidates` before `density`).
-- **Simple atlas** (`templates/pv_atlas.html`, the fallback): a single-metric
-  night-lights map (est_mwp_cal if calibrated, else est_mwp_det, bracketed by
-  expected) for runs without recall-correction - e.g. Germany, or a partial/
-  validation-only density run that skipped calibration.
+- **Verified**: every PV installation hand-mapped in OpenStreetMap, plus (where a country
+  has mapped calibration quadrats) sub-400 m2 buildings where roofclf and SPPI
+  independently agree. No model detection enters this tier by itself.
+- **Best**: the hand-mapped population the model did not already find, plus its own
+  recall-corrected >= 400 m2 detections, plus the roofclf-alone small-PV density where
+  that half exists. The project's own pick, the highest figure it defends.
 
-`density` calls `build_atlas` at the end of every run; the `earthpv atlas` CLI
-command regenerates it standalone.
+A country with no mapped quadrats has no roofclf half, so `low_buildings_path` and
+`central_buildings_path` are omitted and the atlas is segmentation-only -- the tiers still
+mean the same things, Verified simply has no AND-gate population to add and Best no
+roofclf-alone density (Germany, Gujarat). Both must be omitted together; supplying one is
+a half-configured run and is rejected by the CLI.
 
-A fourth, richer template (`templates/pv_evidence_atlas.html`, `build_evidence_atlas`)
-is the project's default going forward as of 2026-08-01 for AOIs with the extra
-national-scale artifacts it needs (OSM solar pull, national roofclf+SPPI scoring, the
-sub-400 m2 bracket's building-level parquets): tiers by STANDARD OF PROOF (Verified /
-Best, a third Ceiling tier removed 2026-08-06) rather than by point estimate, plus the
-KPI-strip + expandable-background page shell documented in `CLAUDE.md`'s "Results-page
-house style". It supersedes `build_sub400_bracket_atlas` as the CLI's recommended path;
-that function stays for reference and for AOIs that only have the older bracket inputs.
+**Removed 2026-09-02: the six-estimator and simple atlases** (`build_atlas`,
+`_build_estimator_atlas`, `_build_simple_atlas`, `templates/pv_estimator_atlas.html`).
+`density` used to call `build_atlas` automatically at the end of every run, which is how a
+deprecated six-exposure page kept being produced alongside the real product -- for Germany
+it published a hero figure of 114 GWp against a 74.8 GWp complete register. Neither
+template was embedded in any published page. `earthpv atlas` now builds the evidence atlas
+and requires `--osm-solar`. Nothing can regenerate a six-estimator page any more, so the
+artifacts derived from one were removed with it rather than left to drift: the unpublished
+`docs/assets/interactive/pakistan_capacity_atlas.html`, the `capacity_estimators` docs
+figure and its `read_estimator_totals` reader, and the README screenshot entry. That keeps
+the "every figure is generated from a tracked source" invariant true. `build_sub400_bracket_atlas` and `build_combined_atlas` are untouched and still
+share `templates/pv_atlas.html`.
 """
 
 from __future__ import annotations
@@ -42,7 +44,6 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
-ESTIMATOR_TEMPLATE = Path(__file__).parent / "templates" / "pv_estimator_atlas.html"
 SUB400_BRACKET_TEMPLATE = Path(__file__).parent / "templates" / "pv_sub400_bracket_atlas.html"
 EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.html"
 POTENTIAL_TEMPLATE = Path(__file__).parent / "templates" / "pv_potential_atlas.html"
@@ -242,199 +243,6 @@ def _rings(geom, tolerance: float = 0.03) -> list:
     ]
 
 
-def build_atlas(
-    aoi: str, density_dir: Path, out: Path | None = None, zoom_out_frac: float = 0.0,
-    labels_dir: Path = Path("data/labels"),
-) -> Path:
-    """`zoom_out_frac` pads the map's lon/lat bounds by this fraction of their own
-    span on every side (e.g. 0.10 = 10% less zoom: the map draws 10% smaller within
-    the same frame, showing that much more surrounding context).
-
-    Dispatches to the six-estimator template when the run has recall-correction
-    columns (est_mwp_rc*, i.e. `calibrate-candidates` ran before `density`); falls
-    back to the single-metric template otherwise. See module docstring."""
-    density_dir = Path(density_dir)
-    grid = gpd.read_parquet(density_dir / "grid.geoparquet")
-    meta = json.loads((density_dir / "meta.json").read_text())
-    if "est_mwp_rc" in grid.columns:
-        return _build_estimator_atlas(aoi, density_dir, grid, meta, out, zoom_out_frac, labels_dir)
-    return _build_simple_atlas(aoi, density_dir, grid, meta, out, zoom_out_frac)
-
-
-def _build_simple_atlas(
-    aoi: str, density_dir: Path, grid: gpd.GeoDataFrame, meta: dict,
-    out: Path | None = None, zoom_out_frac: float = 0.0,
-) -> Path:
-    """The template's `proj()` fits the SVG viewBox exactly to `DATA.bounds`, so
-    `zoom_out_frac` is the only knob that changes -- cells, province outlines and
-    city labels all fall out unchanged, just at the new scale (a city just outside
-    the old bounds may now come into view; none already inside can drop out, since
-    the box only grows)."""
-    calibrated = (
-        meta.get("calibration_status", "uncalibrated") != "uncalibrated"
-        and "est_mwp_cal" in grid.columns
-    )
-    pcol = "est_mwp_cal" if calibrated else "est_mwp_det"
-    pacol = "pv_area_cal_roof_m2" if calibrated else "pv_area_det_roof_m2"
-    title = aoi.replace("_", " ").title()
-
-    cells = [
-        [round(float(r.lon0), 3), round(float(r.lat0), 3), round(float(getattr(r, pcol)), 3),
-         round(float(r.est_mwp_exp), 3), int(r.n_pv_buildings),
-         round(float(r.roof_area_m2) / 1e6, 3)]
-        for r in grid.itertuples()
-    ]
-    bounds = [
-        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
-        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
-    ]
-    if zoom_out_frac:
-        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
-        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
-        bounds = [
-            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
-            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
-        ]
-
-    provinces = []
-    regions_path = density_dir / "regions.geoparquet"
-    if regions_path.exists():
-        reg = gpd.read_parquet(regions_path)
-        for r in reg[reg.level == "region"].itertuples():
-            area_km2 = max(float(r.area_km2), 1e-9)
-            provinces.append({
-                "name": str(r.name),
-                # "mwp_det" is the template's primary-metric field name.
-                "mwp_det": round(float(getattr(r, pcol)), 1),
-                "mwp_exp": round(float(r.est_mwp_exp), 1),
-                "nb": int(r.n_pv_buildings),
-                "dens": round(float(getattr(r, pacol)) / area_km2, 1),
-                "rings": _rings(r.geometry),
-            })
-        provinces.sort(key=lambda p: -p["mwp_det"])
-
-    data = {
-        "bounds": bounds,
-        "cells": cells,
-        "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
-        "totals": {
-            "mwp_det": round(float(grid[pcol].sum())),
-            "mwp_exp": round(float(grid.est_mwp_exp.sum())),
-            "pv_buildings": int(grid.n_pv_buildings.sum()),
-            "det_km2": round(float(grid[pacol].sum()) / 1e6, 1),
-            "n_cells": int(len(grid)),
-            # Every metric on this page is roof-scope (footprint intersections), so the
-            # module constant is the only one that applies here. `kwp_per_m2` is the
-            # pre-split key, kept as a fallback for older meta.json files.
-            "kwp_per_m2": meta.get("kwp_per_m2_module", meta.get("kwp_per_m2", 0.18)),
-            "threshold": meta.get("threshold", 0.3),
-        },
-    }
-
-    if calibrated:
-        word, label, col = "calibrated", "Calibrated", "Cal"
-        det_total = round(float(grid.est_mwp_det.sum()))
-        bracket = (
-            f'Detected (raw threshold) floor: <b>{det_total:,}</b> MWp; probability-weighted '
-            'expectation: <b id="expNum">0</b> MWp. The calibrated number weights each '
-            "candidate by its measured P(real | size, glint) - the floor and ceiling bracket it."
-        )
-        howto = (
-            "<b>How to read it.</b> Colour is <b>calibrated</b> panel area - each candidate "
-            "weighted by its measured probability of being real PV (size-binned OSM-mapped "
-            "fraction + glint corroboration) - converted to peak capacity at "
-            f"{data['totals']['kwp_per_m2']} kWp/m². Detected and expected bracket it as "
-            "floor and ceiling. Cells with no detected PV are drawn as bare land; treat cell "
-            "values as indicative, not metered."
-        )
-        method_lede = (
-            "The model returns a PV probability for every 10&nbsp;m Sentinel-2 pixel. Panel "
-            "area on building roofs is converted to peak DC capacity with a single "
-            "module-density constant, then summed per cell, province and country. Detected "
-            "and expected areas bracket the truth; the headline weights each candidate by "
-            "P(real | size, glint) measured against OSM mapping and the solar-glint study "
-            "(configs/calibration/)."
-        )
-    else:
-        word, label, col = "detected", "Detected", "Det"
-        bracket = (
-            'Probability-weighted expectation: <b id="expNum">0</b> MWp. The two numbers '
-            "bracket the truth - the model is tuned for recall, so detections are a floor "
-            "and the expectation leans high."
-        )
-        howto = (
-            "<b>How to read it.</b> Colour is detected panel area converted to peak capacity "
-            f"at {data['totals']['kwp_per_m2']} kWp/m². <b>Detected</b> counts pixels above "
-            f"the {data['totals']['threshold']} probability threshold that fall on a building "
-            "footprint; <b>expected</b> sums probability across the footprint. Cells with no "
-            "detected PV are drawn as bare land. Candidates are meant for human validation, "
-            "so treat cell values as indicative, not metered."
-        )
-        method_lede = (
-            "The model returns a PV probability for every 10&nbsp;m Sentinel-2 pixel. Panel "
-            "area on building roofs is converted to peak DC capacity with a single "
-            "module-density constant, then summed per cell, province and country. Two area "
-            "estimates bracket the truth."
-        )
-
-    lede = (
-        "A recall-first segmentation model reads a year of Sentinel-2 imagery across every "
-        f"building-populated cell of {title} and marks the pixels that look like photovoltaic "
-        "panels. Aggregated to each building and then to a <b>0.1° grid</b>, the "
-        f"{word} panel area becomes an estimate of installed rooftop capacity - the input "
-        "an energy-system model needs. The map glows where that capacity concentrates."
-    )
-    det_total_note = round(float(grid.est_mwp_det.sum()))
-    exp_total_note = round(float(grid.est_mwp_exp.sum()))
-    formula_note = (
-        "<b>A<sub>det</sub></b> counts only pixels above the 0.30 threshold that fall on a "
-        "building footprint &mdash; the precision-honest floor. <b>A<sub>exp</sub></b> "
-        "integrates sub-threshold probability, so it leans high. Reported capacity is "
-        "<b>P&nbsp;=&nbsp;A&nbsp;&times;&nbsp;&eta;</b> for each, giving the detected / "
-        f"expected pair ({det_total_note:,} / {exp_total_note:,} MWp nationwide) that "
-        "brackets the true installed capacity."
-    )
-
-    html = TEMPLATE.read_text()
-    for key, value in {
-        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Rooftop Solar Atlas",
-        "__H1__": f"Where {title}'s rooftops already carry solar",
-        "__LEDE_HTML__": lede,
-        "__PRIMARY_WORD__": word,
-        "__PRIMARY_LABEL__": label,
-        "__PRIMARY_COL__": col,
-        "__SECONDARY_LABEL__": "Expected",
-        "__SECONDARY_COL__": "Exp",
-        "__TILE_LARGE_LABEL__": f"{label} MWp",
-        "__TILE_SMALL_LABEL__": "Expected MWp",
-        "__BRACKET_HTML__": bracket,
-        "__N_CELLS_TOTAL__": f"{len(grid):,}",
-        "__FOOT_MODEL__": (
-            "Model: TerraMind-tiny fine-tuned on Germany + Pakistan OSM solar"
-            + (" · calibrated capacity (P(real | size, glint))" if calibrated else "")
-        ),
-        "__AOI_TITLE__": title,
-        "__HOWTO_HTML__": howto,
-        "__METHOD_LEDE__": method_lede,
-        "__FORMULA_NOTE_HTML__": formula_note,
-    }.items():
-        html = html.replace(key, value)
-
-    out = Path(out) if out else density_dir / f"{aoi}_pv_atlas.html"
-    out.write_text(html)
-    log.info("Wrote capacity atlas (%s metric) -> %s", word, out)
-    return out
-
-
-# Size bins in m2, split at the 400 m2 detection floor: below it, a "large" candidate
-# cannot exist by construction (the segmentation model burns everything smaller as
-# ignore during training -- see chips.MIN_PV_AREA); above it, a "small" checked building
-# has already been dropped by the contamination filter in
-# `sub400_capacity.domain_restricted_capacity`. So the two series never share a bin --
-# this is one continuous size axis assembled from two instruments, not two overlapping
-# ones.
 _SMALL_BIN_EDGES = [0, 25, 50, 100, 200, 400]
 _LARGE_BIN_EDGES = [400, 1000, 2500, 5000, 10000, 25000, 100000]
 
@@ -715,136 +523,6 @@ _EST_COLS = [
     "est_mwp_det", "est_mwp_cal", "est_mwp_exp", "est_mwp_rc_roof",
     "est_mwp_cal_total", "est_mwp_rc",
 ]
-
-
-def _build_estimator_atlas(
-    aoi: str, density_dir: Path, grid: gpd.GeoDataFrame, meta: dict,
-    out: Path | None = None, zoom_out_frac: float = 0.0,
-    labels_dir: Path = Path("data/labels"),
-) -> Path:
-    """Six-estimator dark night-lights atlas (see module docstring)."""
-    title = aoi.replace("_", " ").title()
-
-    cells = [
-        [round(float(r.lon0), 3), round(float(r.lat0), 3),
-         *[round(float(getattr(r, c)), 3) for c in _EST_COLS],
-         int(r.n_pv_buildings),
-         round(float(r.est_mwp_rc_lo), 3), round(float(r.est_mwp_rc_hi), 3)]
-        for r in grid.itertuples()
-    ]
-    bounds = [
-        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
-        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
-    ]
-    if zoom_out_frac:
-        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
-        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
-        bounds = [
-            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
-            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
-        ]
-
-    provinces = []
-    regions_path = density_dir / "regions.geoparquet"
-    if regions_path.exists():
-        reg = gpd.read_parquet(regions_path)
-        for r in reg[reg.level == "region"].itertuples():
-            provinces.append({
-                "name": str(r.name),
-                "m": [round(float(getattr(r, c)), 1) for c in _EST_COLS],
-                "rc_ci": [round(float(r.est_mwp_rc_lo), 1), round(float(r.est_mwp_rc_hi), 1)],
-                "rcr_ci": [round(float(r.est_mwp_rc_roof_lo), 1), round(float(r.est_mwp_rc_roof_hi), 1)],
-                "ct_ci": [round(float(r.est_mwp_cal_total_lo), 1), round(float(r.est_mwp_cal_total_hi), 1)],
-                "rings": _rings(r.geometry),
-            })
-
-    run_date = meta.get("run_date")
-    if not run_date:
-        meta_path = density_dir / "meta.json"
-        run_date = (
-            datetime.datetime.fromtimestamp(meta_path.stat().st_mtime).strftime("%Y-%m-%d")
-            if meta_path.exists() else "n/a"
-        )
-
-    sub400 = meta.get("sub400_roofclf_supplemental")
-    if sub400 is not None:
-        # Requested explicitly despite the "do not sum" note above: the two instruments
-        # cover disjoint populations (>=400 m2 recall-corrected vs. a 93-cell sub-400 m2
-        # domain restriction) at very different confidence levels, so this combined figure
-        # is a user-requested convenience number, not a validated national estimate.
-        sub400 = {**sub400, "combined_mwp": round(
-            float(grid.est_mwp_rc.sum()) + float(sub400["total_est_mwp"]), 1
-        )}
-
-    data = {
-        "bounds": bounds,
-        "cells": cells,
-        "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
-        "calibBoxes": _load_calib_boxes(aoi, labels_dir),
-        "plausibilityNote": meta.get("plausibility_note"),
-        "sub400": sub400,
-        "totals": {
-            "m": [round(float(grid[c].sum())) for c in _EST_COLS],
-            # From the country-level summed draws in meta, NOT by adding the per-cell
-            # bounds: bin-level calibration uncertainty is fully correlated across cells,
-            # so summing per-cell quantiles is the error density.py's docstring warns
-            # about. It gave [4854, 8465] here against the correct [5034, 8239].
-            "rc_ci": [
-                round(meta.get("total_est_mwp_rc_lo", grid.est_mwp_rc_lo.sum())),
-                round(meta.get("total_est_mwp_rc_hi", grid.est_mwp_rc_hi.sum())),
-            ],
-            "rcr_ci": [
-                round(meta.get("total_est_mwp_rc_roof_lo", grid.est_mwp_rc_roof.sum())),
-                round(meta.get("total_est_mwp_rc_roof_hi", grid.est_mwp_rc_roof.sum())),
-            ],
-            "ct_ci": [
-                round(meta.get("total_est_mwp_cal_total_lo", grid.est_mwp_cal_total.sum())),
-                round(meta.get("total_est_mwp_cal_total_hi", grid.est_mwp_cal_total.sum())),
-            ],
-            "n_cells": int(len(grid)),
-            # Two conversion constants, because roof-scope metrics are module area and
-            # all-PV metrics include ground-mount candidates whose polygon is site area.
-            # `kwp` keeps the module value under its original key for older templates.
-            "kwp": meta.get("kwp_per_m2_module", meta.get("kwp_per_m2", 0.18)),
-            "kwpLand": meta.get("kwp_per_m2_land"),
-            "recall_floor": meta.get("recall_floor", 0.05),
-            "nOversize": meta.get("n_oversize_excluded"),
-            "maxCandidateM2": meta.get("max_candidate_m2"),
-            "run_date": run_date,
-        },
-    }
-
-    lede = (
-        "One recall-first model read a year of Sentinel-2 imagery over every "
-        f"building-populated cell of {title}. How much photovoltaic capacity it saw "
-        "depends on how honestly you count: the same probability rasters support "
-        "<b>six defensible estimates</b>, from a raw-detection floor to a "
-        "recall-corrected estimate of the whole detectable population. Switch "
-        "between them - the map, the hero number and the province ranking follow."
-    )
-    if data["totals"].get("kwpLand"):
-        lede += (
-            " Rooftop and ground-mount area convert at different rates, because a rooftop "
-            "detection outlines the panels and a ground-mount detection outlines the site."
-        )
-    html = ESTIMATOR_TEMPLATE.read_text()
-    for key, value in {
-        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} PV Capacity - Six Estimates, One Map",
-        "__EYEBROW__": f"earthpv · Sentinel-2 × TerraMind · 0.1° grid · {run_date}",
-        "__H1__": f"{title}'s solar boom, at six exposures",
-        "__LEDE_HTML__": lede,
-    }.items():
-        html = html.replace(key, value)
-
-    out = Path(out) if out else density_dir / f"{aoi}_pv_atlas.html"
-    out.write_text(html)
-    log.info(
-        "Wrote six-estimator capacity atlas (headline %s MWp, %s calibration quadrats) -> %s",
-        f"{data['totals']['m'][5]:,}", len(data["calibBoxes"]), out,
-    )
-    return out
 
 
 def _join_buildings_to_grid_cells(
@@ -1720,7 +1398,7 @@ def _evidence_uncertainty(
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
-    low_buildings_path: Path, central_buildings_path: Path,
+    low_buildings_path: Path | None = None, central_buildings_path: Path | None = None,
     out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
     ge400_roof_buildings_path: Path | None = None,
     sub400_outdomain_buildings_path: Path | None = None,
@@ -1979,12 +1657,26 @@ def build_evidence_atlas(
         ) / 1000,
     }
 
-    by_low = _join_buildings_to_grid_cells(
-        gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
-    ) / 1000.0
-    by_central = _join_buildings_to_grid_cells(
-        gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
-    ) / 1000.0
+    # Both absent = a country with no mapped calibration quadrats, so no `roofclf` half
+    # (Germany, Gujarat). The atlas is then segmentation-only: Verified degrades to the
+    # hand-mapped OSM population alone, Best to that plus the >= 400 m2 detections. Same
+    # "component absent rather than zero" handling the out-of-domain extrapolation gets --
+    # `_evidence_uncertainty`'s `cov` loop already skips the bootstrap for any component
+    # contributing 0 MWp, so the published interval stays honest.
+    by_low = (
+        _join_buildings_to_grid_cells(
+            gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
+        ) / 1000.0
+        if low_buildings_path is not None
+        else pd.Series(dtype=float)
+    )
+    by_central = (
+        _join_buildings_to_grid_cells(
+            gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
+        ) / 1000.0
+        if central_buildings_path is not None
+        else pd.Series(dtype=float)
+    )
     by_outdomain = (
         _join_buildings_to_grid_cells(
             gpd.read_parquet(sub400_outdomain_buildings_path), "est_kwp_sub400_outdomain", grid

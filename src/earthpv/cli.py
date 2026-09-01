@@ -1270,7 +1270,7 @@ def atlas(
     import logging
 
     from earthpv.atlas import (
-        build_atlas, build_combined_atlas, build_evidence_atlas, build_potential_atlas,
+        build_combined_atlas, build_evidence_atlas, build_potential_atlas,
         build_sub400_bracket_atlas,
     )
 
@@ -1280,12 +1280,20 @@ def atlas(
         build_potential_atlas(
             aoi, density_dir, potential_buildings, out=out, zoom_out_frac=zoom_out,
         )
-    elif sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
+    elif osm_solar is not None or sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
         if osm_solar is not None:
-            if not (sub400_low_cells and sub400_central_cells):
+            # The evidence atlas is the project's default capacity atlas, so --osm-solar
+            # alone is enough to reach it. A country with no mapped calibration quadrats
+            # has no `roofclf` half at all (Germany, Gujarat) and gets the
+            # segmentation-only evidence atlas: the two tiers still mean the same
+            # standards of proof, Verified just has no AND-gate population to add and
+            # Best no roofclf-alone density. Passing ONE of the pair is still an error --
+            # that is a half-configured run, not a segmentation-only one.
+            if bool(sub400_low_cells) != bool(sub400_central_cells):
                 raise typer.BadParameter(
-                    "--sub400-low-cells and --sub400-central-cells must both be given "
-                    "for the evidence atlas (--sub400-high-cells is no longer used -- "
+                    "--sub400-low-cells and --sub400-central-cells must be given together "
+                    "for the evidence atlas's roofclf half, or both omitted for the "
+                    "segmentation-only atlas (--sub400-high-cells is no longer used -- "
                     "the Ceiling tier was removed 2026-08-06)"
                 )
             candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
@@ -1319,7 +1327,15 @@ def atlas(
     elif sub400_cells is not None:
         build_combined_atlas(aoi, density_dir, sub400_cells, out=out, zoom_out_frac=zoom_out)
     else:
-        build_atlas(aoi, density_dir, out=out, zoom_out_frac=zoom_out)
+        raise typer.BadParameter(
+            "--osm-solar is required: the evidence atlas is this project's capacity "
+            "atlas, and the hand-mapped OSM population is its Verified tier. The old "
+            "six-estimator/simple fallback was removed 2026-09-02 (it published a "
+            "deprecated page alongside the real product). For a country with no mapped "
+            "calibration quadrats, pass --osm-solar alone for the segmentation-only "
+            "evidence atlas; add --sub400-low-cells/--sub400-central-cells where a "
+            "roofclf half exists."
+        )
 
 
 @app.command("atlas-by-size")

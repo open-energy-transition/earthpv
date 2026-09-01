@@ -16,7 +16,6 @@ Numbers come from files on disk wherever a file exists, so a re-run after a new
 pipeline pass picks up the new values:
 
   * glint sensitivity      results/glint_validation_pakistan/pakistan_stats_by_size.csv
-  * capacity estimators    results/pakistan_pv_estimator_atlas.html (embedded JSON)
   * calibration table      configs/calibration/pakistan_candidate_precision.yaml
   * hero capacity map      results/pakistan_pv_density_scientific.png (auto-cropped)
   * spectral signatures    results/detection_spectral_signatures.csv and
@@ -301,18 +300,6 @@ def fig_glint_date_auc(t: Theme):
     save(fig, t, "glint_date_auc")
 
 
-def read_estimator_totals():
-    """Pull the six capacity estimates out of the atlas page's embedded JSON."""
-    path = source("results/pakistan_pv_estimator_atlas.html")
-    if path is None:
-        return None
-    html = path.read_text()
-    m = re.search(r'id="pvdata"[^>]*>(.*?)</script>', html, flags=re.S)
-    if not m:
-        raise SystemExit("could not locate the atlas data block")
-    return json.loads(m.group(1))["totals"]
-
-
 def read_calibration_recall():
     """Measured per-size-bin model recall + credible band from the calibration table's
     pooled `bins:` list.
@@ -415,53 +402,6 @@ ESTIMATORS = [
     ("Calibrated, all PV", 4, "ct_ci", "all"),
     ("Recall-corrected, all PV", 5, "rc_ci", "all"),
 ]
-
-
-def fig_capacity_estimators(t: Theme):
-    tot = read_estimator_totals()
-    if tot is None:
-        return
-    fig, ax = new_fig(t, 7.6, 3.6)
-    labels = [e[0] for e in ESTIMATORS]
-    ends = [max(tot["m"][e[1]], tot[e[2]][1] if e[2] else 0) / 1000.0 for e in ESTIMATORS]
-    ys = list(range(len(ESTIMATORS)))[::-1]
-    for y, (label, idx, ci, scope) in zip(ys, ESTIMATORS):
-        v = tot["m"][idx] / 1000.0
-        col = t.s1 if scope == "roof" else t.s2
-        ax.barh(y, v, height=0.46, color=col, zorder=3)
-        end = v
-        if ci:
-            lo, hi = tot[ci][0] / 1000.0, tot[ci][1] / 1000.0
-            ax.plot([lo, hi], [y, y], color=t.ink_dim, linewidth=1.5, zorder=4)
-            for b in (lo, hi):
-                ax.plot([b, b], [y - 0.12, y + 0.12], color=t.ink_dim, linewidth=1.5, zorder=4)
-            end = hi
-        ax.text(end + 0.45, y, f"{v:.1f} GWp", va="center", color=t.ink, fontsize=9.5)
-    ax.set_yticks(ys)
-    ax.set_yticklabels(labels, fontsize=9.5)
-    ax.set_ylim(-1.15, len(ESTIMATORS) - 0.4)
-    ax.set_xlim(0, max(ends) * 1.22)
-    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}"))
-    ax.set_xlabel("GWp", color=t.ink_dim, fontsize=9)
-    style_axes(ax, t, xgrid=True)
-    ax.grid(axis="x", color=t.rule, linewidth=0.8, zorder=0)
-    handles = [plt.Rectangle((0, 0), 1, 1, color=t.s1),
-               plt.Rectangle((0, 0), 1, 1, color=t.s2)]
-    leg = ax.legend(handles, ["rooftop scope", "all PV, ground-mount farms included"],
-                    frameon=False, loc="lower left", fontsize=9, ncol=2,
-                    bbox_to_anchor=(0.0, -0.05), handlelength=1.1)
-    for txt in leg.get_texts():
-        txt.set_color(t.ink_dim)
-    # Two conversion constants since the placement split; older atlas payloads carry one.
-    conv = (
-        f"{tot['kwp']} kWp/m$^2$ rooftop module area, {tot['kwpLand']} kWp/m$^2$ "
-        "ground-mount site area"
-        if tot.get("kwpLand") else f"{tot['kwp']} kWp/m$^2$"
-    )
-    titled(fig, t, "One model, six defensible answers to “how much PV?”",
-           f"Pakistan, {tot['n_cells']:,} grid cells, {conv}, run {tot['run_date']}. "
-           "Whiskers are 90% credible intervals.")
-    save(fig, t, "capacity_estimators")
 
 
 def read_atlas_composition():
@@ -2200,15 +2140,15 @@ def copy_static_rasters():
 # follow the `results/` + sync pattern; the same move is a reasonable follow-up for
 # each but has not been done.
 INTERACTIVE = [
-    ("results/pakistan_pv_estimator_atlas.html", "pakistan_capacity_atlas.html"),
     ("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose.html"),
     ("results/pakistan_pv_density/pakistan_pv_density_map.html", "pakistan_density_map.html"),
     ("results/pakistan_pv_growth_atlas.html", "pakistan_growth_atlas.html"),
     ("results/pakistan_atlas_composition.html", "pakistan_atlas_composition.html"),
-    # Germany's atlas is written by `density` into its own output tree rather than to
-    # results/, so this row points at data/ instead. Both are gitignored; the copy under
-    # docs/assets/interactive/ is what actually ships.
-    ("data/predictions/germany/density/germany_pv_atlas.html", "germany_pv_atlas.html"),
+    # Germany's evidence atlas is written by `earthpv atlas` into the density output
+    # tree rather than to results/, so this row points at data/ instead. Both are
+    # gitignored; the copy under docs/assets/interactive/ is what actually ships.
+    ("data/predictions/germany/density/germany_pv_evidence_atlas.html",
+     "germany_pv_evidence_atlas.html"),
 ]
 
 
@@ -2304,7 +2244,6 @@ def main():
     for t in THEMES:
         fig_recall_by_size(t)
         fig_glint_by_size(t)
-        fig_capacity_estimators(t)
         fig_capacity_composition(t)
         fig_model_recall_bins(t)
         fig_size_spectrum(t)

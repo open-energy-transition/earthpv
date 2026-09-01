@@ -1399,26 +1399,20 @@ def run_density(
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
-    # Self-contained HTML capacity atlas (results/pakistan_7_7-style); never fatal.
+    # No atlas is built here. `density` used to call `atlas.build_atlas` automatically,
+    # which produced the deprecated six-estimator page alongside the real product -- for
+    # Germany that published a 114 GWp hero figure against a 74.8 GWp complete register.
+    # Both that builder and its template were removed 2026-09-02.
     #
-    # This always builds the BASIC atlas, not the three-tier evidence atlas that is the
-    # project's default going forward (`atlas.build_evidence_atlas`, CLAUDE.md's "Results-
-    # page house style") -- the evidence atlas needs a national OSM solar pull, this AOI's
-    # candidates.parquet, and three roofclf/SPPI sub-400 m2 building parquets, none of
-    # which `density` itself produces or knows the location of (they come from separate,
-    # later stages -- `earthpv roof-classifier` plus `sub400_capacity.py`/
-    # `roofclf_capacity.py`, run once per AOI with no fixed output-path convention across
-    # AOIs). Guessing a path here would either silently do nothing for every AOI without
-    # that extra work done, or worse, pick up a stale/unrelated file that happens to sit
-    # at a guessed path. Once those stages have run for this AOI, regenerate with:
+    # The project's capacity atlas is the evidence atlas, and `density` cannot build it:
+    # it needs a national OSM solar pull and this AOI's candidates.parquet, plus (where
+    # the country has mapped calibration quadrats) roofclf/SPPI sub-400 m2 building
+    # parquets from separate later stages with no fixed path convention across AOIs.
+    # Guessing those paths would either silently do nothing or pick up a stale file.
+    # Build it explicitly:
     #   earthpv atlas --aoi <aoi> --osm-solar <national OSM solar parquet> \
-    #     --sub400-low-cells <...> --sub400-central-cells <...> --sub400-high-cells <...>
-    try:
-        from earthpv.atlas import build_atlas
-
-        build_atlas(aoi, out_dir)
-    except Exception as e:  # noqa: BLE001 - a map rendering issue must not fail the run
-        log.warning("atlas generation failed: %s", e)
+    #     [--sub400-low-cells <...> --sub400-central-cells <...>]
+    # Omit the --sub400-* pair for a country with no quadrats (segmentation-only).
 
     log.info("Wrote density outputs -> %s", out_dir)
     log.info("Summary: %s", json.dumps(stats, indent=2))

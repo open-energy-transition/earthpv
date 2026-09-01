@@ -55,9 +55,6 @@ class Shot:
 
 
 SHOTS = [
-    # The capacity atlas, framed on the headline number and the national map.
-    Shot("results/pakistan_pv_estimator_atlas.html", "pakistan_capacity_atlas",
-         width=1500, height=2100, crop=(0, 0, 1500, 1650)),
     # The evidence atlas (Verified / Best estimate) -- this project's primary output,
     # combining segmentation (>=400 m2) with the roofclf/SPPI sub-400 m2 instruments.
     # Framed on the KPI strip and the map. Lives directly under docs/ (2026-08-06),
