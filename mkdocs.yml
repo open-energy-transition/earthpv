@@ -163,5 +163,6 @@ nav:
   # category indexes beneath it at build time.
   - Blog:
       - blog/index.md
+      - blog/contributing.md
   - About:
       - TraceTheSun concept note: 22072026-Concept-Note-TraceTheSun.md
