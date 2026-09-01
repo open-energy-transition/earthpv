@@ -28,6 +28,9 @@ see [Open questions](open-questions.md).
 | SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf sets an internal floor on the atlas's headline figure. |
 | Coverage ratio stratified by size and density | <span class="outcome works">shipped</span> | Replaced precision as the multiplier, and a flat ratio with a measured per-stratum one. |
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
+| [End-to-end validation against a complete register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Germany ran nationally at last: 99.75% of MaStR capacity covered, and segmentation recovers about a third of what it can see. |
+| [p_unmapped from a geolocated register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Replaced Germany's `p_unmapped: 0.0` floor with chance-corrected register evidence, split by placement. |
+| Dividing register p_unmapped by an OSM positive control | <span class="outcome negative">rejected</span> | The control is contaminated by the same sub-30 kWp coordinate suppression it was meant to absorb. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
 | Recall correction and credible intervals | <span class="outcome works">shipped</span> | Turned a structural floor into an estimate with a stated interval. |
 | Recall correction for roofclf, not just segmentation | <span class="outcome works">shipped</span> | The roofclf half was counting only the roofs it flagged; correcting it moved Best 16.6 to 18.3 GWp. |
@@ -164,6 +167,30 @@ three proxies that already failed there (see [Open questions](open-questions.md)
 The same script also recomputes the reference-hex comparison already published on
 [the capacity map](results/capacity.md#what-this-map-cannot-tell-you-and-what-an-independent-estimate-confirms-it-can)
 via the same grid match, as an internal consistency check rather than a second citation of it.
+
+### A legally-complete register as a precision instrument (2026-09-01)
+
+Germany's own accuracy check had a hole in it: with no instrument for `p_unmapped`, its
+calibration table shipped `0.0`, pricing every un-mapped candidate at zero and holding
+`est_mwp_cal` to an OLS slope of 0.038 against the register.
+
+MaStR closes it over part of the range. Coordinates are published only at or above 30 kWp
+&mdash; zero of the 4.17 million units below that carry one, a privacy policy rather than
+missing data, while the fill rate is 99.7% above the 72 kWp / 400 m&sup2; segmentation
+floor. So a registered installation's address point falling inside an unmapped candidate is
+direct evidence that the candidate is real, for exactly the population segmentation
+targets. Measured per placement, the term runs from 0.061 to 0.688 for rooftop and 0.000 to
+0.246 for ground, chance-corrected against the same polygons displaced 500-1,000 m.
+
+Two things generalise beyond Germany. The register is **silent below 30 kWp**, which is the
+`roofclf` domain, so this improves the instrument that was already working and does nothing
+for the one that needed help most &mdash; a register does not remove the need for mapped
+quadrats. And the natural refinement, dividing by an OSM-mapped positive control the way
+the glint inversion does, **fails here**: German OSM rooftop PV is the 3.6%-complete
+enthusiast-mapped tail, which skews below 30 kWp and so carries no coordinates, making the
+control contaminated by the very suppression it was meant to absorb. Full derivation and
+the rejected control:
+[Validating against a complete register](methods/mastr-validation.md).
 
 ## What did not work
 

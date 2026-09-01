@@ -1024,6 +1024,102 @@ MASTR_SIZE_SHARE = {
 }
 
 
+# MaStR publishes per-unit coordinates only at or above 30 kWp. Measured 2026-09-01 on the
+# open-mastr sqlite dump (`ArtDerSolaranlage = Gebaeudesolaranlage`, commissioned by
+# 2025-09-30); like MASTR_SIZE_SHARE above these are constants with a named source, because
+# the register is a multi-GB download the docs CI does not have. Regenerate with
+# scripts/mastr_p_unmapped.py's own query if the register is ever refreshed.
+MASTR_COORD_CLIFF = {
+    "band": ["0-20", "20-25", "25-29", "29-30", "30-31", "31-40", "40-72", "72-300", ">300"],
+    "pct_with_coords": [0.0, 0.0, 0.0, 0.0, 15.75, 53.97, 96.29, 99.67, 99.98],
+    "units": [3803514, 169646, 73215, 120750, 10121, 53726, 81530, 103248, 20111],
+}
+
+
+def fig_mastr_coord_cliff(t: Theme):
+    """The 30 kWp privacy cliff: why a register can localise only the large half."""
+    fig, ax = new_fig(t, 6.9, 3.4)
+    band = MASTR_COORD_CLIFF["band"]
+    x = np.arange(len(band))
+    pct = MASTR_COORD_CLIFF["pct_with_coords"]
+    cols = [t.s2 if p < 50 else t.s1 for p in pct]
+    ax.bar(x, pct, 0.66, color=cols, zorder=3)
+    for xi, p, n in zip(x, pct, MASTR_COORD_CLIFF["units"]):
+        ax.text(xi, p + 2.6, f"{p:.4g}%", ha="center", color=t.ink, fontsize=8)
+        ax.text(xi, -7.5, f"{n/1000:,.0f}k", ha="center", color=t.ink_faint, fontsize=7.5)
+    ax.axvline(3.5, color=t.ink_dim, linewidth=1.2, linestyle=(0, (4, 3)), zorder=4)
+    ax.text(3.62, 78, "30 kWp", color=t.ink_dim, fontsize=8.5)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(band, fontsize=8.5)
+    ax.set_xlabel("registered unit size (kWp)", color=t.ink_dim, fontsize=9)
+    ax.set_ylim(-12, 112)
+    ax.set_yticks([0, 25, 50, 75, 100])
+    style_axes(ax, t, ygrid=True)
+    titled(fig, t, "A complete register localises only the large half",
+           "Share of German MaStR rooftop units carrying published coordinates, by unit "
+           "size, with unit counts beneath each bar. Zero of the 4.17M units below 30 kWp "
+           "have one: a privacy policy, not missing data. That is why the register can "
+           "measure precision above the 400 m2 floor and not below it", width=106)
+    save(fig, t, "mastr_coord_cliff")
+
+
+def read_mastr_p_unmapped():
+    """Per-placement, per-bin p_unmapped measured from geolocated MaStR units."""
+    path = source("results/germany_mastr_p_unmapped.csv")
+    if path is None:
+        return None
+    rows = [r for r in csv.DictReader(path.read_text().splitlines())]
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["placement"], []).append(
+            {"label": r["bin_label"], "p_unmapped": float(r["p_unmapped"]),
+             "obs": float(r["obs"]), "f": float(r["f_chance"]), "n": int(r["n"])}
+        )
+    return out
+
+
+def fig_mastr_p_unmapped(t: Theme):
+    """What the register buys: a measured p_unmapped where the table shipped 0.0."""
+    d = read_mastr_p_unmapped()
+    if not d or not d.get("rooftop") or not d.get("ground"):
+        return
+    order = ["<100", "100-500", "500-1k", "1k-5k", "5k-50k", ">50k"]
+    fig, ax = new_fig(t, 6.9, 3.4)
+    x = np.arange(len(order))
+    w, gap = 0.34, 0.012
+    for off, key, col, lab in ((-1, "rooftop", t.s1, "rooftop candidates"),
+                               (+1, "ground", t.s2, "ground candidates")):
+        by = {b["label"]: b for b in d[key]}
+        for i, label in enumerate(order):
+            b = by.get(label)
+            if b is None:
+                continue
+            xi = x[i] + off * (w / 2 + gap)
+            ax.bar(xi, b["p_unmapped"], w, color=col, zorder=3,
+                   label=lab if i == 0 else None)
+            # the chance floor subtracted off, drawn as the sliver above the bar
+            if b["f"] > 0.004:
+                ax.bar(xi, b["f"], w, bottom=b["p_unmapped"], color=t.ink_faint,
+                       zorder=3, label="chance (displaced control)" if (i, off) == (4, -1) else None)
+            ax.text(xi, b["obs"] + 0.028, f"{b['p_unmapped']:.2f}",
+                    ha="center", color=t.ink, fontsize=8)
+    ax.axhline(0.0, color=t.rule, linewidth=1.0)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([f"{s} m$^2$" for s in order], fontsize=8.5)
+    ax.set_ylim(0, 0.92)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8])
+    style_axes(ax, t, ygrid=True)
+    leg = ax.legend(frameon=False, loc="upper left", fontsize=9)
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "Register evidence replaces a zero",
+           "P(candidate is real | not mapped in OSM), measured by testing whether a "
+           "geolocated MaStR unit falls inside each unmapped candidate polygon. The "
+           "German table shipped 0.0 for every bar. Grey slivers are the false-match rate "
+           "from the same polygons displaced 500-1000 m, subtracted off", width=106)
+    save(fig, t, "mastr_p_unmapped")
+
+
 def fig_mastr_size_share(t: Theme):
     """Two thirds of a complete register's rooftop capacity sits below the floor."""
     fig, ax = new_fig(t, 6.9, 3.4)
@@ -2109,6 +2205,10 @@ INTERACTIVE = [
     ("results/pakistan_pv_density/pakistan_pv_density_map.html", "pakistan_density_map.html"),
     ("results/pakistan_pv_growth_atlas.html", "pakistan_growth_atlas.html"),
     ("results/pakistan_atlas_composition.html", "pakistan_atlas_composition.html"),
+    # Germany's atlas is written by `density` into its own output tree rather than to
+    # results/, so this row points at data/ instead. Both are gitignored; the copy under
+    # docs/assets/interactive/ is what actually ships.
+    ("data/predictions/germany/density/germany_pv_atlas.html", "germany_pv_atlas.html"),
 ]
 
 
@@ -2219,6 +2319,8 @@ def main():
         fig_building_prior(t)
         fig_calibration_placement(t)
         fig_mastr_size_share(t)
+        fig_mastr_coord_cliff(t)
+        fig_mastr_p_unmapped(t)
         fig_capacity_metrics(t)
         fig_density_domain(t)
         fig_attribution_gap(t)

@@ -79,7 +79,11 @@ Germany’s MaStR register is legally mandatory and therefore provides a near-co
 
 A system relying only on segmentation above this threshold would therefore capture roughly one-third of the rooftop capacity implied by a national “rooftop solar” estimate. This coverage gap motivates the second, building-level detector.
 
-See [Validation against MaStR](methods/mastr-validation.md).
+As of 2026-08-31 that register also supports an end-to-end national check, covering 99.75% of
+German rooftop capacity, and it cuts both ways: it turned one estimator from unusable into
+better-bounded and showed that another was overstating the truth threefold. See
+[Validation against MaStR](methods/mastr-validation.md) and
+[Germany capacity and validation](results/germany.md).
 
 ### Interpreting the national estimate
 

@@ -125,7 +125,105 @@ array-versus-roof ambiguity applies to this project's Pakistani OSM reference, w
 used both as a recall denominator and as the evidence atlas's own hand-mapped population
 &mdash; it is not exempt.
 
-## The end-to-end comparison, and what still blocks it
+## The register as a precision instrument: measuring p_unmapped
+
+The OSM route above fails as a *completeness* reference. The register itself works as
+something narrower and more useful: a way to decide whether an individual detection is
+real.
+
+`p_real` per size bin is built as `mapped_frac + (1 - mapped_frac) x p_unmapped`, where
+`p_unmapped` is P(candidate is real | no OSM match). Germany had no instrument for that
+term at all, so its table shipped `p_unmapped: 0.0` &mdash; an honest floor that prices
+every unmapped candidate at zero. That single zero is what held `est_mwp_cal` to an OLS
+slope of 0.038 in the first complete run below.
+
+MaStR closes it, but only over part of the range, and the reason is worth stating before
+the result. Coordinates are published only at or above 30 kWp:
+
+![Coordinate publication against unit size](../assets/figures/mastr_coord_cliff.svg)
+
+Zero of the 4.17 million units below 30 kWp carry one. That is a privacy policy, not
+missing data &mdash; the same field is 80% populated for ground-mount. Above the cliff the
+fill rate is 96% by 40 kWp and 99.7% at or above 72 kWp, the 400 m&sup2; segmentation
+floor. So the register can measure precision for exactly the population segmentation
+targets, and is structurally silent below it. That is the mirror image of where the
+project's calibration need is greatest, and it is why MaStR does not replace mapped
+quadrats for `roofclf`: the sub-400 m&sup2; half of the atlas is precisely the half a
+register cannot localise.
+
+Note the asymmetry against the size table above. 65.5% of German rooftop *capacity* sits
+below the 72 kWp segmentation floor, and the register cannot place any of the units holding
+the 56.8% below 30 kWp. A complete register therefore improves the instrument that already
+worked and does nothing for the one that needed help most.
+
+`scripts/mastr_p_unmapped.py` tests whether a geolocated unit's address point falls
+**inside** an unmapped candidate polygon, per placement and size bin:
+
+![Measured p_unmapped by placement and size bin](../assets/figures/mastr_p_unmapped.svg)
+
+| Bin | Rooftop: raw | chance | **p_unmapped** | Ground |
+|---|---|---|---|---|
+| 100-500 m&sup2; | 0.061 | 0.000 | **0.061** (n=379) | 0.000 (n=573) |
+| 500-1k | 0.127 | 0.022 | **0.107** (n=371) | 0.004 (n=460) |
+| 1k-5k | 0.285 | 0.091 | **0.213** (n=1,914) | 0.005 (n=1,878) |
+| 5k-50k | 0.600 | 0.176 | **0.514** (n=4,417) | 0.069 (n=6,303) |
+| &gt;50k | 0.781 | 0.093 | **0.759** (n=146) | 0.247 (n=817) |
+
+The term is **attributable to a placement**, which the glint sample never was &mdash; that
+was the stated reason `derive_placement_tables` refused to split `p_unmapped` and instead
+forced ground to 0.0 and let rooftop inherit the pooled value. The rooftop/ground split here
+is a factor of seven in the 5k-50k bin, so pooling them would have been the same error the
+placement split exists to prevent.
+
+### The chance term has to be land-use matched
+
+The first version of this measurement got the null wrong, and it is the easiest thing to get
+wrong here. It used only a displaced control &mdash; the same polygons moved 500 m and
+1,000 m on a random bearing &mdash; which put the false-match rate at 0.3-2.3%. But
+displacing a polygon that far can move it off the built-up area entirely, into farmland
+where no rooftop unit could be registered, so it measures how empty the countryside is
+rather than how often a false positive captures a neighbour's unit.
+
+The right null is the base rate among buildings the model did **not** detect, in the same
+imaged cells and the same size bin:
+
+| Bin | Undetected buildings | Contain a registered unit |
+|---|---|---|
+| 500-1k m&sup2; | 48,841 | 2.2% |
+| 1k-5k | 24,967 | 9.1% |
+| 5k-50k | 2,119 | 17.6% |
+
+Large German roofs carry registered PV often enough that containment alone is weak evidence.
+Candidates still run 2.8-4.8x above that null, so the signal is real, but the naive version
+overstated `p_unmapped` by 10-25% (5k-50k: 0.577 against 0.514). With a land-use-matched `f`
+the correction is the two-component mixture `(obs - f) / (1 - f)` rather than a subtraction.
+
+`>50k` keeps the displaced control, because VIDA footprints that large barely exist (17 in
+the sample) and the matched null cannot be measured there; that bin is flagged in the CSV's
+`f_source` column. Ground keeps it throughout, deliberately: "an undetected building of this
+size" is not the right null for a ground-mount candidate.
+
+The result remains a **lower bound**, in the direction that matters: a real installation
+whose address point is geocoded a few metres off the roof outline counts as a miss, one
+below 30 kWp has no coordinate to match at all, and the mixture assumes a real array's point
+always lands inside its own polygon when in practice it sometimes does not.
+
+### The sensitivity division that was rejected
+
+The obvious refinement is to divide by a positive control, the way this project inverts the
+glint instrument: measure the match rate `S` among OSM-mapped (corroborated-real)
+candidates and report `(obs - f) / (S - f)`. That was measured and **rejected**.
+
+For ground it behaves: `S` = 0.589 against `obs` = 0.069 in the 5k-50k bin. For rooftop it
+inverts &mdash; `S` = 0.435 on 200 candidates against `obs` = 0.599 on 4,417, and the
+&gt;50k "control" is 16 candidates. The cause is structural rather than sample noise. German
+OSM rooftop PV is the 3.6%-complete, enthusiast-mapped population measured in the previous
+section, which skews to small residential arrays; those are below 30 kWp and so carry no
+coordinate by policy. The control is contaminated by precisely the suppression it was meant
+to absorb, and dividing by it clips nearly every rooftop bin to 1.0. The raw controls are
+written to `results/germany_mastr_p_unmapped_controls.csv` so the claim stays checkable.
+
+## The end-to-end comparison
 
 `validate_density_against_mastr` zonal-joins a `density` run's grid onto German
 municipalities and reports, per estimator, the origin-forced OLS slope (multiplicative

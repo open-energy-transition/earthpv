@@ -617,10 +617,63 @@ serve as an independent completeness reference for calibrating the module consta
 of registered rooftop units are mapped in OSM at all, and the well-mapped tail's implied
 kWp/m² swings 0.02-0.99 depending on mapper convention) -- this was tested and is a measured
 negative result, not a blocked one; `DEFAULT_KWP_PER_M2_MODULE` stays as independently
-calibrated. **The full end-to-end per-municipality density comparison cannot run yet** -- Germany
-has only 14 of 76 needed MGRS composite tiles and no VIDA building layer, and no calibration
-quadrat exists there yet; `validate_density_against_mastr` refuses to report a partial-coverage
-result as national. Full writeup: `docs/methods/mastr-validation.md`.
+calibrated.
+
+**The end-to-end per-municipality comparison RAN nationally 2026-08-31** (it was blocked until
+then on composites and a building layer; both were acquired 2026-08-23 -- 4,656 composited cells,
+`data/vida/DEU.parquet` 27.9M rows). Coverage 10,533/10,949 Gemeinden = **96.2% by count, 99.75%
+by capacity**, so `validate_density_against_mastr` reports it as national rather than refusing.
+Read the **above-floor** block (truth = `kw_rooftop - kw_le_72` = 25,723.5 MWp, what a ≥400 m²
+model can see), not the all-capacity one.
+
+**A register also works as a precision instrument, and this is where it gets interesting**
+(`scripts/mastr_p_unmapped.py`, `calibrate-candidates --mastr-p-unmapped`, 2026-09-01). MaStR
+publishes per-unit **coordinates** only at/above 30 kWp -- 0.00% of the 4.17M units below that
+carry one (a privacy policy, not missing data; the same field is 80% filled for ground-mount),
+rising to 99.7% at/above 72 kWp. So a registered unit's address point falling *inside* an
+unmapped candidate polygon is direct evidence that candidate is real, for exactly the population
+segmentation targets -- and the register is structurally silent below the floor, i.e. over
+`roofclf`'s entire domain. **A complete register therefore improves the instrument that already
+worked and does nothing for the one that needed help most; it does not remove the need for
+mapped quadrats.** Germany still has **zero** calibration quadrats and so no roofclf half.
+
+Measured rooftop `p_unmapped` (chance-corrected, per placement): 0.061 / 0.107 / 0.213 / 0.514 /
+0.759 across the 100-500 → >50k m² bins; ground 0.000-0.247. The table previously shipped
+`p_unmapped: 0.0` everywhere. `derive_placement_tables` gained an opt-in
+`p_unmapped_by_placement` for this -- its docstring declined to split `p_unmapped` only because
+the *glint* sample never recorded a placement, which a geolocated register does. Omitting the
+argument reproduces the old behaviour exactly, so **Pakistan is unaffected** (verified by
+regression check). `_table_evidence` now carries `register-p-unmapped`, so a bare
+`calibrate-candidates` re-run is refused rather than silently discarding it.
+
+**THE CHANCE TERM MUST BE LAND-USE MATCHED -- this was got wrong once.** A displaced control
+(polygons moved 500-1,000 m on a random bearing) puts the false-match rate at 0.3-2.3%, but
+displacement can land a polygon in farmland, measuring how empty the countryside is rather than
+how often a false positive captures a neighbour's unit. The right null is the base rate among
+buildings the model did **not** detect, same imaged cells, same size bin: **2.2% (n=48,841) /
+9.1% (n=24,967) / 17.6% (n=2,119)** for 500-1k / 1k-5k / 5k-50k m². Large German roofs carry
+registered PV often enough that containment alone is weak evidence. Candidates still run 2.8-4.8x
+above that null so the signal is real, but the naive version overstated `p_unmapped` by 10-25%.
+Correction is the mixture `(obs - f) / (1 - f)`, and the result stays a **lower bound** (S < 1).
+`>50k` keeps the displaced control (VIDA footprints that large barely exist, n=17); ground keeps
+it throughout, since "an undetected building of this size" is not the right null for ground-mount.
+**Rejected**: dividing by an OSM-mapped positive control the way the glint inversion does --
+German OSM rooftop PV is the 3.6%-complete enthusiast-mapped tail, which skews below 30 kWp and
+so carries no coordinates, making the control contaminated by the very suppression it should
+absorb (rooftop S=0.435 on n=200 vs obs=0.599 on n=4,417; it inverts).
+
+**Fixing `p_unmapped` exposed that `est_mwp_rc` is wrong for Germany in the opposite direction.**
+Two errors had been cancelling. `est_mwp_cal`'s slope moved 0.038 → 0.179 (better bounded, still
+far from 1.0); `est_mwp_rc_roof` moved 0.262 → ~3.3, i.e. from understating to overstating ~3x.
+The residual cause is the **recall denominator**, not the precision fix: `load_mapped_reference_attrs`
+puts 1,167 German OSM features >50,000 m² (median 89,263 m²) in the `rooftop` group, giving that
+bin recall 0.035 -- below `DEFAULT_RECALL_FLOOR` 0.05, so the clamp applies the maximum 20x; and
+recall is measured by installation **count** within a bin but applied to **area**, which inflates
+whenever the model finds the large end of a 10x-wide bin. **Pakistan shares this code and has no
+complete register to notice.** Not fixed -- see `docs/open-questions.md` item 3.
+**Germany's readable estimator is `est_mwp_det` (slope 0.340, unchanged by all of the above), NOT
+the atlas template's default `est_mwp_rc` hero number.** Full writeup:
+`docs/methods/mastr-validation.md`, `docs/results/germany.md`.
 
 ## Conventions & gotchas
 
