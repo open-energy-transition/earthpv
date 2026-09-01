@@ -131,6 +131,27 @@ states**, with Hamburg, Mecklenburg-Vorpommern, Niedersachsen and Schleswig-Hols
 appearing twice. That is a duplication in the region polygons, not a duplicated estimate, and
 it inflates the denominator in the "of 20 regions" summary line.
 
+## What this run opens up
+
+Three things follow from it, all tracked on [Open questions](../open-questions.md).
+
+**The recall denominator has to be audited, and not only for Germany** (item 3). The
+`est_mwp_rc` overshoot above is diagnosed but unfixed, and Pakistan runs the same estimator
+code without a register to catch it.
+
+**MaStR also records installed pose, uncensored** (item 12). `glint_opportunity.py` documents
+its pose prior as necessarily *assumed*, because this project's own pose survey was fitted
+from observed glints and is therefore censored by construction. The register carries azimuth
+and tilt for 97.4% of 4.44M rooftop units, of which 225,138 also have coordinates. Checked
+against the assumed prior it is far too narrow: 23.8% of German units are pitched steeper than
+40&deg; where the prior implies 3.04%. That makes Germany a place to test the glint model's
+mechanism rather than just its hit rate.
+
+**France, not Germany, is the place to check the small half** (item 5). The 30 kWp coordinate
+cliff means this register can say nothing about the sub-400 m&sup2; population, which is where
+`roofclf` operates and where the evidence is still 30 purposive Pakistani quadrats.
+DeepPVMapper and BDAPPV cover exactly that band in France.
+
 ## Reproducing this
 
 ```bash
