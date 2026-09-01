@@ -1484,6 +1484,15 @@ def calibrate_candidates(
         "`derive_placement_tables`. Pass --no-by-placement only to reproduce a "
         "pre-2026-08-10 pooled table deliberately.",
     ),
+    mastr_p_unmapped: Path = typer.Option(
+        None,
+        help="CSV from `scripts/mastr_p_unmapped.py`: per-placement, per-bin p_unmapped "
+        "measured from geolocated MaStR units (columns placement, bin_label, n, n_real). "
+        "Replaces the placement tables' p_unmapped defaults (ground forced 0.0, rooftop "
+        "inherited from pooled) with register evidence that is actually attributable to a "
+        "placement, which the glint sample never was. Germany only -- no other AOI has a "
+        "complete register that geolocates individual units.",
+    ),
     out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
     allow_downgrade: bool = typer.Option(
         False,
@@ -1585,10 +1594,33 @@ def calibrate_candidates(
             f"({len(boxes)} fully-mapped installations)"
         )
 
+    p_u_by_placement = None
+    if mastr_p_unmapped:
+        df_pu = pd.read_csv(mastr_p_unmapped)
+        missing = {"placement", "bin_label", "n", "n_real"} - set(df_pu.columns)
+        if missing:
+            raise typer.BadParameter(f"{mastr_p_unmapped}: missing columns {sorted(missing)}")
+        p_u_by_placement = {}
+        for row in df_pu.itertuples():
+            p_u_by_placement.setdefault(str(row.placement), {})[str(row.bin_label)] = (
+                int(row.n), int(row.n_real)
+            )
+        typer.echo(
+            f"register p_unmapped from {mastr_p_unmapped}: "
+            + ", ".join(
+                f"{pl}[{len(b)} bins]" for pl, b in sorted(p_u_by_placement.items())
+            )
+        )
+        if not by_placement:
+            raise typer.BadParameter(
+                "--mastr-p-unmapped needs --by-placement (it fills the placement tables)"
+            )
+
     table = cc.derive_table(
         cands, mapped, aoi=aoi, glint_sample=sample, min_distance_m=min_distance_m,
         manual_reviews=reviews, recall_reference=ref, recall_reference_name=ref_name,
         by_placement=by_placement, mapped_attrs=mapped_attrs,
+        p_unmapped_by_placement=p_u_by_placement,
     )
     cc.write_table(table, out or cc.default_table_path(aoi), allow_downgrade=allow_downgrade)
     for row in table["bins"]:
