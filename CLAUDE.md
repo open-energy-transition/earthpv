@@ -111,10 +111,24 @@ support it: the Muzaffargarh Rural Wide mistake again, caught before a refit. **
 widening the density domain further is therefore imagery date, not mapping effort** -- check
 `imagery_layer`/`imagery_date` before drawing, not after mapping. See Box 17.
 
-A country with no mapped calibration quadrats yet gets the ≥ 400 m² segmentation-only atlas
-(`earthpv atlas --aoi <aoi>`, no `--sub400-*`) until quadrats exist to fit `roofclf` -- that is
-still this workflow's output for that country, just missing its sub-400 m² half (this is
-Gujarat's current state).
+A country with no mapped calibration quadrats yet gets the **segmentation-only evidence atlas**
+(`earthpv atlas --aoi <aoi> --osm-solar <pull>`, omitting BOTH `--sub400-low-cells` and
+`--sub400-central-cells`; supplying one is rejected as a half-configured run) until quadrats
+exist to fit `roofclf` -- still this workflow's output for that country, just missing its
+sub-400 m² half. Verified degrades to hand-mapped OSM alone and Best to that plus the ≥ 400 m²
+detections; neither tier reaches below the floor. Germany is in this state, and Gujarat.
+
+**`--osm-solar` is now required, and `density` no longer writes an atlas at all (2026-09-02).**
+The six-estimator and simple atlases (`atlas.build_atlas`, `_build_estimator_atlas`,
+`_build_simple_atlas`, `templates/pv_estimator_atlas.html`) were **removed**: `density` called
+`build_atlas` at the end of every run, which kept producing a deprecated page alongside the real
+product -- for Germany it published a 114 GWp hero against a 74.8 GWp complete register. Neither
+template was embedded in any published page. Artifacts derived from them were removed with them
+(`docs/assets/interactive/pakistan_capacity_atlas.html`, the `capacity_estimators` docs figure and
+its reader, the README screenshot entry) so the "every figure is generated from a tracked source"
+invariant stays true. `build_sub400_bracket_atlas` and `build_combined_atlas` are untouched and
+still share `templates/pv_atlas.html`. Gujarat's committed atlas HTML predates this and can no
+longer be regenerated as-is; rebuild it as an evidence atlas when that AOI is revisited.
 
 **Of the many sub-400 m² instruments tried in this project's history (a per-pixel fraction
 head, SPPI as a standalone detector, spectral unmixing, several hard-negative and
@@ -662,18 +676,47 @@ German OSM rooftop PV is the 3.6%-complete enthusiast-mapped tail, which skews b
 so carries no coordinates, making the control contaminated by the very suppression it should
 absorb (rooftop S=0.435 on n=200 vs obs=0.599 on n=4,417; it inverts).
 
-**Fixing `p_unmapped` exposed that `est_mwp_rc` is wrong for Germany in the opposite direction.**
-Two errors had been cancelling. `est_mwp_cal`'s slope moved 0.038 → 0.179 (better bounded, still
-far from 1.0); `est_mwp_rc_roof` moved 0.262 → ~3.3, i.e. from understating to overstating ~3x.
-The residual cause is the **recall denominator**, not the precision fix: `load_mapped_reference_attrs`
-puts 1,167 German OSM features >50,000 m² (median 89,263 m²) in the `rooftop` group, giving that
-bin recall 0.035 -- below `DEFAULT_RECALL_FLOOR` 0.05, so the clamp applies the maximum 20x; and
-recall is measured by installation **count** within a bin but applied to **area**, which inflates
-whenever the model finds the large end of a 10x-wide bin. **Pakistan shares this code and has no
-complete register to notice.** Not fixed -- see `docs/open-questions.md` item 3.
-**Germany's readable estimator is `est_mwp_det` (slope 0.340, unchanged by all of the above), NOT
-the atlas template's default `est_mwp_rc` hero number.** Full writeup:
-`docs/methods/mastr-validation.md`, `docs/results/germany.md`.
+**Fixing `p_unmapped` exposed a second, opposite error: `est_mwp_rc` was far too high.** Two
+errors had been cancelling. `est_mwp_cal`'s slope moved 0.038 → 0.167 (better bounded, still far
+from 1.0); `est_mwp_rc_roof` moved 0.262 → 3.11, from understating to overstating ~3x.
+
+**FIXED 2026-09-02, and the cause was not the obvious one.** `derive_placement_tables` restricted
+BOTH sides of the recall measurement by placement: a rooftop reference installation only counted
+as found if the finding candidate was also classified `rooftop`. Precision and recall are
+asymmetric -- `mapped_frac` asks "is THIS candidate real" (so placement matters), `recall` asks
+"was this real installation detected AT ALL" (so how `postprocess` labelled the finder does not).
+Rooftop recall, same-placement vs any-candidate: 5k-50k **0.096 → 0.693** (7.3x), >50k
+**0.036 → 0.852** (23.9x). Mechanism, which explains why the error grows with size: a large array
+overruns its imagery-derived VIDA footprint, `building_overlap_frac` collapses, and the candidate
+that correctly found a rooftop array is classified `ground_adjacent`/`no_building` -- the same
+undersizing the parcel label exists to handle. `1/recall` then inflated it up to the 20x
+`DEFAULT_RECALL_FLOOR` clamp. Two hypotheses were measured and **refuted** first: oversize
+`rooftop` reference features (they recall at 0.841, same as the rest) and count-recall applied to
+area (ratio 1.01-1.08).
+
+**PAKISTAN IS AFFECTED and its published numbers are overstated.** Same code, no register to
+notice: rooftop recall moves 0.423 → 0.808 (5k-50k) and 0.065 → 0.952 (>50k), ground 0.107 → 0.417
+(500-1k). Pakistan's figures come from the checked-in `pakistan_candidate_precision.yaml` and do
+**not** move until that is deliberately re-derived (which needs `--glint-sample` and the
+calibration boxes, per "The checked-in calibration YAML is load-bearing" above). Re-deriving it
+will lower `est_mwp_rc` and therefore Best estimate. Not done -- an owner decision.
+
+**After the fix `est_mwp_rc_roof` is Germany's readable estimator at slope 0.405** -- the best
+calibrated of the four (exp 0.388, det 0.340, cal 0.167; det/exp are unchanged throughout, the
+sanity check that neither uses recall). Nationally `est_mwp_rc` went 114,145 -> **24,687 MWp**.
+
+**Germany's evidence atlas tier totals FAIL a register check and must not be quoted**
+(Verified 38,508 / Best 49,324 MWp). Verified is hand-mapped OSM x the two constants, and its
+ground component alone is 43,965 MWp against 37,138 MWp of ALL registered German ground-mount
+-- **118%**, impossible. Cause is mapper convention, already a documented negative result here:
+German OSM polygons outline roofs/sites rather than arrays and the implied kWp/m² spans
+0.02-0.99 against 0.18. The atlas is published for structure and per-cell geography only.
+`scripts/prepare_national_osm_solar.py` builds the `--osm-solar` input (a raw rooftopsenti pull
+has no `placement` column); it maps `small` -> rooftop (a SIZE class, 114k features) and caps
+`rooftop` at `MAX_CANDIDATE_M2`, reclassifying 494 features up to 4.19 km² as ground so they
+convert at the land constant.
+
+Full writeup: `docs/methods/mastr-validation.md`, `docs/results/germany.md`.
 
 ## Conventions & gotchas
 

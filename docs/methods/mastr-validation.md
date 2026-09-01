@@ -237,27 +237,85 @@ national. That guard is not hypothetical: a run covering 4 of Germany's 76 MGRS 
 would produce a national sum around 5% of the truth, and the resulting slope would read as
 a catastrophic model failure rather than as missing imagery.
 
-**As of 2026-08-11 this section cannot run**, and the blockers are data acquisition rather
-than missing code:
+**It ran nationally on 2026-08-31.** Blockers 1 and 2 above were closed by acquisition on
+2026-08-23 (4,656 composited cells; `data/vida/DEU.parquet`, 27.9M rows). Blocker 3 stands:
+Germany still has zero calibration quadrats, so this is a segmentation-only comparison with no
+`roofclf` half. Coverage is 10,533 of 10,949 municipalities, **96.2% by count and 99.75% by
+capacity**, so the guard reports it as national rather than refusing.
 
-1. **Imagery.** `data/composites/germany/` does not exist. The sibling `rooftopsenti`
-   project has composites for **14 of the 76 MGRS tiles** Germany's bbox needs, and the
-   existing `data/predictions/germany/prob/` holds 4 tiles, written per-MGRS-tile rather
-   than in the per-0.1&deg;-cell layout `density` reads. Closing this means
-   `earthpv compose --aoi germany` followed by `infer`, both resumable and network-bound.
-2. **A building layer with small roofs.** `roofclf` scores per building and needs the
-   sub-400 m&sup2; population. Germany has only the Overture &ge; 500 m&sup2; set here
-   (1.6M rows); `data/vida/DEU.parquet` is absent.
-3. **Mapped quadrats.** Every calibration quadrat is Pakistani, and `roofclf` cannot be
-   fit without exhaustively mapped ground where a no-PV building is a real negative. The
-   3.6% OSM completeness measured above means German quadrats have to be *mapped*, not
-   derived from an OSM pull &mdash; the same cost as the Pakistani ones.
+Read the **above-floor** block. Truth there is `kw_rooftop - kw_le_72` = 25,723.5 MWp, the
+registered capacity a &ge; 400 m&sup2; model can actually see; against all rooftop capacity
+every slope falls by roughly the 65.5% sub-floor share, which describes the floor rather than
+the model.
 
-Until then, `validate-mastr` reports `density_vs_mastr: {status: absent}` and the three
-register-internal sections above stand on their own, since none of them need imagery.
+| Estimator | Slope | Predicted MWp | Spearman &rho; |
+|---|---|---|---|
+| `est_mwp_rc_roof` | **0.405** | 12,509.7 | 0.628 |
+| `est_mwp_exp` | 0.388 | 13,110.4 | 0.656 |
+| `est_mwp_det` | 0.340 | 10,699.6 | 0.661 |
+| `est_mwp_cal` | 0.167 | 5,190.2 | 0.651 |
 
-Because the harness cannot be exercised against real data yet, it is covered by
-`tests/test_mastr_validation.py`, which feeds the register back through it synthetically:
+Ranking transfers and level does not: &rho; sits at 0.63-0.66 across estimators whose slopes
+span 0.17 to 0.41. The best-calibrated recovers about 40% of the capacity it could see.
+
+### Two errors that were cancelling
+
+Neither correction below would have been visible without a complete reference, and the second
+was found only because the first was made.
+
+Fixing `p_unmapped` (previous section) moved `est_mwp_cal` from 0.038 to 0.167 as intended. It
+also moved `est_mwp_rc_roof` from 0.262 to **3.11** &mdash; from understating truth to
+overstating it threefold. A plausible-looking national total had been the product of two large
+errors pointing in opposite directions.
+
+The second error was in the recall denominator, and not where it was first looked for.
+`capacity_calibration.derive_placement_tables` restricted **both** sides of the recall
+measurement by placement, so a rooftop reference installation counted as found only if the
+candidate that found it was also classified `rooftop`:
+
+| Rooftop bin | vs same-placement candidates | vs any candidate | factor |
+|---|---|---|---|
+| 500-1k m&sup2; | 0.128 | 0.167 | 1.3x |
+| 1k-5k | 0.214 | 0.268 | 1.25x |
+| 5k-50k | 0.096 | 0.693 | 7.3x |
+| &gt;50k | 0.036 | 0.852 | **23.9x** |
+
+Precision and recall are asymmetric. `mapped_frac` asks "is this candidate real", so its
+corroboration must come from references of its own placement. Recall asks "was this real
+installation detected at all", and how `postprocess` labelled the finding candidate says
+nothing about that. The mechanism explains why the error grew with installation size: a large
+array overruns its imagery-derived VIDA footprint, `building_overlap_frac` collapses, and a
+candidate that correctly found a rooftop installation is classified `ground_adjacent` or
+`no_building`. `1/recall` then inflated it by up to the 20x `DEFAULT_RECALL_FLOOR` clamp.
+
+Fixed 2026-09-02. `est_mwp_rc` moved from 114,145 to 24,687 MWp nationally and its slope from
+3.11 to 0.405. `est_mwp_det` and `est_mwp_exp` did not move at all, the sanity check that
+neither uses recall.
+
+Two hypotheses were written down first and both were measured and refuted: that oversize
+`rooftop` reference features deflated the top bin (they recall at 0.841, no different from the
+rest), and that count-recall applied to area inflated the estimator (area/count ratio 1.01 to
+1.08). The wrong diagnosis was the plausible one, which is why it is recorded.
+
+**Pakistan shares this code and has no register to notice.** Its rooftop recall moves 0.423 to
+0.808 in the 5k-50k bin, 0.065 to 0.952 above 50k, and ground 0.107 to 0.417 in 500-1k, so its
+`est_mwp_rc` and Best estimate are **overstated**. Pakistan's figures come from the checked-in
+calibration table and do not change until it is deliberately re-derived, which needs the glint
+sample and the calibration boxes. That has not been run.
+
+### The atlas totals do not survive the same check
+
+Germany's evidence atlas reports Verified 38,508 MWp and Best 49,324 MWp, and both are too
+high. Verified is the hand-mapped OSM population converted at the two constants; its ground
+component alone is 43,965 MWp against 37,138 MWp of all registered German ground-mount, or
+**118%**. That is the OSM-convention problem from the section above turned into a hard
+contradiction: area times a constant does not give German capacity when the polygon may
+outline the roof or the site rather than the array. The atlas is published for its structure
+and per-cell geography; the defensible German figure is `est_mwp_rc_roof`.
+
+The harness is also covered by `tests/test_mastr_validation.py`, which feeds the register back
+through it synthetically. That still matters now that it runs on real data, because a
+synthetic case is the only way to check the arithmetic against a known answer:
 a grid carrying exactly MaStR's own capacity must return slope 1.0, one carrying half of it
 must return 0.5, and a 200-municipality grid must be refused as non-national. That pins the
 arithmetic &mdash; units, the origin-forced fit, the kW-to-MWp conversion, the coverage

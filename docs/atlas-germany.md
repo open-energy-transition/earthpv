@@ -11,11 +11,12 @@ hide:
   <a href="../atlas/">Pakistan</a>
   <span aria-current="page">Germany</span>
   <span class="atlas-switch__note">
-    Germany is segmentation-only: it has no calibration quadrats, so no roofclf half and no
-    evidence atlas. Read <code>est_mwp_det</code>, not the hero figure &mdash; the MaStR
-    register shows <code>est_mwp_rc</code> overstates German rooftop capacity about threefold.
-    <a href="../results/germany/">What that means and how it was measured</a>.
+    Segmentation-only: Germany has no calibration quadrats, so there is no roofclf half.
+    Verified is the hand-mapped OpenStreetMap population alone and Best adds only the
+    model's own &ge; 400 m&sup2; detections &mdash; both tiers therefore exclude the 65.5%
+    of German rooftop capacity that sits below that floor.
+    <a href="../results/germany/">How accurate this is, measured against MaStR</a>.
   </span>
 </nav>
-<iframe src="../assets/interactive/germany_pv_atlas.html" title="Germany PV capacity atlas: six estimators by 0.1-degree cell"></iframe>
+<iframe src="../assets/interactive/germany_pv_evidence_atlas.html" title="Germany PV evidence atlas: verified and best estimate by 0.1-degree cell"></iframe>
 </div>

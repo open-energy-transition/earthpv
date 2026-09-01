@@ -30,6 +30,7 @@ see [Open questions](open-questions.md).
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
 | [End-to-end validation against a complete register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Germany ran nationally at last: 99.75% of MaStR capacity covered, and segmentation recovers about a third of what it can see. |
 | [p_unmapped from a geolocated register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Replaced Germany's `p_unmapped: 0.0` floor with chance-corrected register evidence, split by placement. |
+| [Recall measured against any candidate, not the same placement](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Rooftop recall was understated up to 24x because a big array overruns its footprint and the finder gets labelled ground. |
 | Dividing register p_unmapped by an OSM positive control | <span class="outcome negative">rejected</span> | The control is contaminated by the same sub-30 kWp coordinate suppression it was meant to absorb. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
 | Recall correction and credible intervals | <span class="outcome works">shipped</span> | Turned a structural floor into an estimate with a stated interval. |
@@ -191,6 +192,49 @@ enthusiast-mapped tail, which skews below 30 kWp and so carries no coordinates, 
 control contaminated by the very suppression it was meant to absorb. Full derivation and
 the rejected control:
 [Validating against a complete register](methods/mastr-validation.md).
+
+### The recall denominator, found by fixing something else (2026-09-02)
+
+Correcting Germany's `p_unmapped` moved `est_mwp_cal` the right way and pushed
+`est_mwp_rc_roof` from 0.262 to 3.11 against the register &mdash; from understating truth
+to overstating it threefold. Two errors had been cancelling, and removing one exposed the
+other.
+
+The cause was not either hypothesis first written down. It was that
+`derive_placement_tables` restricted **both** sides of the recall measurement by placement:
+a rooftop reference installation only counted as found if the finding candidate was itself
+classified `rooftop`. Precision and recall are asymmetric here. `mapped_frac` asks "is this
+candidate real", so its corroboration must come from references of its own placement.
+Recall asks "was this real installation detected at all", and how `postprocess` labelled
+the candidate that found it is irrelevant.
+
+Measured on Germany, rooftop recall against same-placement candidates versus against any
+candidate:
+
+| Bin | same placement | any candidate | factor |
+|---|---|---|---|
+| 500-1k m&sup2; | 0.128 | 0.167 | 1.3x |
+| 1k-5k | 0.214 | 0.268 | 1.25x |
+| 5k-50k | 0.096 | 0.693 | 7.3x |
+| &gt;50k | 0.036 | 0.852 | 23.9x |
+
+The mechanism explains why the error grew with size: a large array overruns its
+imagery-derived VIDA footprint, `building_overlap_frac` collapses, and the candidate that
+correctly found a rooftop installation is classified `ground_adjacent` or `no_building` &mdash;
+the same footprint undersizing the parcel label exists to handle. `1/recall` then inflated
+those candidates by up to the 20x clamp.
+
+**Pakistan is affected too**, which only a complete register could have revealed: rooftop
+recall there moves 0.423 to 0.808 in the 5k-50k bin and 0.065 to 0.952 above 50k, and
+ground 0.107 to 0.417 in 500-1k. Its published figures come from the checked-in calibration
+table and do not move until that is deliberately re-derived, which needs the glint sample
+and calibration boxes. Direction: Pakistan's `est_mwp_rc` is **overstated**.
+
+Two hypotheses were written down first and both were measured and **refuted**: that
+oversize `rooftop` reference features deflated the top bin (they recall at 0.841, no
+different from the rest), and that count-recall applied to area inflated the estimator
+(the area/count ratio is 1.01 to 1.08, negligible). Recorded because the wrong diagnosis
+was the plausible one.
 
 ## What did not work
 
