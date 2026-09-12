@@ -1890,6 +1890,11 @@ def validate_france_cmd(
         Path("data/labels/france_communes.parquet"),
         help="National commune polygons, from scripts/fetch_france_communes.py",
     ),
+    pred_dir: Path = typer.Option(
+        None, help="Prediction run whose candidates.parquet is scored against the "
+        "hand-mapped communes, measuring earthpv's own recall per installation size -- "
+        "the external test of the 400 m2 detection floor. Omit to skip that block.",
+    ),
     out_dir: Path = typer.Option(Path("results/france_validation")),
 ) -> None:
     """Validate the capacity methodology against France's national production register.
@@ -1915,7 +1920,8 @@ def validate_france_cmd(
     run_france_validation(
         register_csv=register_csv, register_dir=register_dir, labels_dir=labels_dir,
         opvm_path=opvm, density_dir=density_dir if density_dir.exists() else None,
-        communes_path=communes if Path(communes).exists() else None, out_dir=out_dir,
+        communes_path=communes if Path(communes).exists() else None,
+        pred_dir=pred_dir, out_dir=out_dir,
     )
 
 

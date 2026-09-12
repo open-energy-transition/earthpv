@@ -179,6 +179,71 @@ been corrected toward this ground truth, so precision measured inside them is an
 bound. Recall is the transferable half, and the module reports the caveat in its own output
 rather than only here.
 
+## The detection floor, measured from outside
+
+The 400 m&sup2; floor has always been argued from the sensor, 400 m&sup2; being four
+Sentinel-2 pixels, and checked against Pakistani quadrats that are themselves labelled off
+the same class of imagery. France can do better, because the fourteen communes were swept
+on sub-metre IGN orthophotos. An installation present in that truth set and absent from
+earthpv is a real miss rather than an annotation gap, so `mapped_vs_earthpv`
+(`earthpv validate-france --pred-dir ...`) measures recall per installation size against
+it.
+
+**Recall is the measurable half, and precision is deliberately not reported.** Four of the
+fourteen communes were mapped one to three years before the 2024 composite window, so an
+unmatched candidate may be a genuinely newer installation rather than a false positive.
+That biases precision and leaves recall alone: PV on a roof in 2021 is still there in 2024,
+so every mapped installation is a fair thing to require a detector to find. It is the same
+precision/recall asymmetry that `derive_placement_tables` was corrected for in September
+2026.
+
+**OpenPVMapper is the control that makes the number readable.** It reads the same
+installations, inside the same boundaries, from sub-metre imagery. If small installations
+were simply drawn less reliably by the mappers, it would show the same gradient earthpv
+does. It does not.
+
+| Installation size | n | earthpv recall | OpenPVMapper recall |
+| --- | --- | --- | --- |
+| 0 to 20 m&sup2; | 1,397 | 0.000 | 0.601 |
+| 20 to 50 m&sup2; | 873 | 0.010 | 0.797 |
+| 50 to 100 m&sup2; | 112 | 0.045 | 0.589 |
+| 100 to 200 m&sup2; | 112 | 0.062 | 0.589 |
+| 200 to 400 m&sup2; | 84 | 0.095 | 0.583 |
+| 400 m&sup2; and above | 44 | 0.045 | 0.750 |
+
+Spearman of recall against size bin is **+0.83 (p = 0.042)** for earthpv and
+**-0.29 (p = 0.58)** for OpenPVMapper. The gradient is the sensor, not the annotator, which
+is exactly the control this dataset was brought in to provide.
+
+**Retraining on French data does not move it.** Three independently trained models,
+spanning zero to 17,059 French training chips, return the same answer:
+
+| Model | French training chips | Pooled count recall | Gradient (rho) |
+| --- | --- | --- | --- |
+| v4 zero-shot | 0 | 0.0118 | +0.89 (p = 0.019) |
+| v6 France capped | 3,201 | 0.0103 | +0.89 (p = 0.019) |
+| v5 full France | 17,059 | 0.0118 | +0.83 (p = 0.042) |
+| OpenPVMapper control | n/a, sub-metre | 0.67 | -0.29 (p = 0.58) |
+
+v5 tripled the national candidate count and cut median candidate area from 8,301 to
+1,400 m&sup2; without moving recall on small French PV at all. A limit that survives
+retraining on in-domain data, while the same installations stay recoverable at sub-metre
+resolution, is physical.
+
+Pooled over all 2,622 mapped installations the count recall is **0.0118**
+(95% Wilson 0.0083 to 0.0167) and area recall **0.044**. Only 28 candidates fall inside the
+fourteen communes at all, against 39,462 nationally, and the median distance from a
+400 m&sup2;-plus mapped installation to the nearest candidate is 807 m.
+
+**Two things this measurement does not establish.** The 400 m&sup2;-plus bin holds 44
+installations and its recall of 0.045 carries a 95% Wilson interval of 0.013 to 0.151, so it
+is far too thin to be read as "earthpv fails above its own floor". These communes were
+chosen to be exhaustively mappable for the module constant, not to contain large arrays, and
+a residential commune is close to the worst case for a 10 m detector. The transferable
+finding is the gradient and its contrast with the control, not the level in any one bin. The
+result also bounds the sensor, not the method: it says nothing about Pakistan, where arrays
+are small relative to the 400 m&sup2; floor but still large relative to a pixel.
+
 ## Running a country-scale compose
 
 **Put the composites on the roomy filesystem first.** A country is roughly 10 MB per cell,

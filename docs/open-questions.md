@@ -86,23 +86,28 @@ exhaustively hand-mapped communes against dated vintages of a complete national 
 put `DEFAULT_KWP_PER_M2_MODULE` at 0.150 kWp/m&sup2; against the assumed 0.180, and
 settled that the below-floor capacity share is not a transferable constant.
 
+The independent test of the 400 m&sup2; floor is also **done, 2026-09-12**: earthpv's
+recall against the hand-mapped communes climbs with installation size while OpenPVMapper's,
+on the same truth at sub-metre resolution, does not, and retraining on French data does not
+move it. That is in the experiments register as
+[the detection floor measured against sub-metre truth](experiments.md#the-detection-floor-measured-against-sub-metre-truth-2026-09-12).
+
 What that leaves genuinely open, and it is the part this project actually needs:
 
-**An external `coverage_ratio` and `area_recall` reference below the floor.** Both are still
-fit on Pakistani quadrats alone. The French communes are the right shape of input, but
-earthpv has to be run over them first, and the Sentinel-2 composites for that are still
-being built. Adoption rates do not transfer, so a French `coverage_ratio` could never be
-applied to Pakistan directly; the transferable quantities are the more physical ones, the
-detection floor and the area-recall-versus-size curve.
+**An external `coverage_ratio` reference below the floor**, which is now the only part of
+this that France can still be asked for and probably cannot give. Both `coverage_ratio` and
+`area_recall` are still fit on Pakistani quadrats alone. The blocker named here originally,
+that the composites did not exist yet, is gone: the national compose finished 2026-09-05 and
+earthpv has been run over the communes three times (v4, v5, v6). The
+**area-recall-versus-size curve is measured**, and is the floor result above.
 
-**An independent test of the 400 m&sup2; floor itself.** Measuring earthpv's recall against
-hand-mapped French installations per size bin measures the *sensor* limit at 10 m GSD rather
-than a modelling choice, because the annotations are drawn on sub-metre imagery. The modal
-mapped French array is 20 m&sup2;, a fifth of one Sentinel-2 pixel, so this is the sharpest
-version of that test available anywhere in the project.
-[OpenPVMapper](https://doi.org/10.5281/zenodo.21534856) shows no size gradient in recall
-across 0 to 400 m&sup2; at sub-metre resolution, which is the expected control: whatever
-gradient earthpv shows there is the sensor, not the annotator.
+What is left is `coverage_ratio`, which is a `roofclf` quantity: true mapped PV area over
+*flagged* roof area. France cannot supply it, because roofclf does not flag French roofs at
+a usable rate in the first place (0.627 AUC within size band, 16 buildings flagged out of
+44,314 at precision 0.5). So this needs either a third country whose arrays are large
+against a pixel and which has both a register and hand-mapped truth, or more Pakistani
+quadrats in the sparse band. Adoption rates do not transfer, so a French `coverage_ratio`
+could never have been applied to Pakistan directly even if it existed.
 
 **A second uncensored pose source** (item 11). OpenPVMapper carries `tilt` and `azimuth` per
 installation, derived from imagery rather than self-reported, over exactly the small

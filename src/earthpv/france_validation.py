@@ -658,6 +658,174 @@ def mapped_vs_openpvmapper(
     }
 
 
+def mapped_vs_earthpv(
+    quadrats: dict[str, dict],
+    candidates_path: Path,
+    grid_path: Path | None = None,
+    size_bins: tuple[float, ...] = (0, 20, 50, 100, 200, 400, 1e9),
+    opvm_recall_by_bin: dict | None = None,
+    min_covered_frac: float = 0.99,
+) -> dict:
+    """earthpv's own recall against the hand-mapped communes, per installation size.
+
+    **This is the external test of the 400 m2 detection floor**, and the reason France is
+    worth the effort even though `roofclf` does not transfer here. The floor has always
+    been argued from the sensor (400 m2 is four Sentinel-2 pixels) and from Pakistani
+    quadrats that are themselves labelled off imagery. These annotations are drawn on
+    sub-metre IGN orthophotos, so they are independent of what a 10 m sensor can resolve:
+    an installation missing from earthpv but present in the truth set is a real miss, not
+    an annotation gap.
+
+    **Recall, not precision, is the measurable half here** -- the same asymmetry
+    `derive_placement_tables` was fixed for in 2026-09-02. Four of the fourteen communes
+    were mapped one to three years before the 2024 composite window, so an unmatched
+    candidate may be a genuinely newer installation rather than a false positive. That
+    biases precision and says nothing about recall: PV that was on a roof in 2021 is still
+    there in 2024, so every mapped installation is a fair thing to require a detector to
+    find. Precision over these communes is deliberately not reported.
+
+    **The control that makes the result interpretable is OpenPVMapper.** Pass its own
+    per-bin recall as `opvm_recall_by_bin` (from `mapped_vs_openpvmapper`). It reads the
+    same installations from sub-metre imagery and recalls them with no size gradient
+    across 0-400 m2, so whatever gradient earthpv shows against the same truth in the same
+    communes is the sensor, not the annotator. Without that control a size gradient could
+    just as easily be mappers drawing small things less reliably.
+
+    **A commune that was never inferred must not read as recall 0**, which is the one way
+    this measurement silently produces a wrong answer. When `grid_path` is given (a
+    density run's `grid.geoparquet`), each boundary's covered fraction is measured against
+    the inferred cells and anything below `min_covered_frac` is excluded from the pooled
+    figures with its reason recorded, rather than counted as a total miss.
+
+    Saint-Gely-du-Fesc is **kept** here, unlike in every fit: the mapper marked it
+    unfinished, but incomplete mapping removes installations from the truth set rather
+    than adding phantom ones, so it biases precision and leaves recall-over-mapped
+    unaffected.
+    """
+    import geopandas as gpd
+
+    cand = gpd.read_parquet(candidates_path)[["geometry", "area_m2", "placement"]]
+    cand = cand.to_crs("EPSG:4326").reset_index(drop=True)
+
+    grid = None
+    if grid_path is not None and Path(grid_path).exists():
+        grid = gpd.read_parquet(grid_path)[["geometry"]].to_crs("EPSG:4326")
+
+    rows, bin_rows, skipped = [], [], {}
+    for stem, q in quadrats.items():
+        bnd_gs = q["boundary"].to_crs("EPSG:4326")
+        bnd = bnd_gs.geometry.iloc[0]
+        truth = q["pv"].to_crs("EPSG:4326").reset_index(drop=True)
+        if truth.empty:
+            continue
+
+        covered = None
+        if grid is not None:
+            hit = grid[grid.geometry.intersects(bnd)]
+            if hit.empty:
+                covered = 0.0
+            else:
+                inter = hit.geometry.union_all().intersection(bnd)
+                covered = float(inter.area / bnd.area) if bnd.area > 0 else 0.0
+            if covered < min_covered_frac:
+                skipped[stem] = (
+                    f"only {covered:.1%} of the boundary falls in inferred cells -- "
+                    "excluded so an uninferred commune cannot read as recall 0"
+                )
+                continue
+
+        s = cand[cand.geometry.intersects(bnd)]
+        if s.empty:
+            matched_truth: set = set()
+        else:
+            j = gpd.sjoin(s[["geometry"]], truth[["geometry"]], how="inner",
+                          predicate="intersects")
+            matched_truth = set(j.index_right)
+
+        found = truth.index.isin(matched_truth)
+        cut = pd.cut(truth.area_m2, bins=list(size_bins), right=False)
+        for b, grp in truth.assign(_f=found).groupby(cut, observed=True):
+            bin_rows.append(dict(quadrat=stem, bin=str(b), n=len(grp),
+                                 found=int(grp._f.sum()), m2=float(grp.area_m2.sum()),
+                                 m2_found=float(grp.loc[grp._f, "area_m2"].sum())))
+
+        rows.append(dict(
+            quadrat=stem, commune=q["commune"], covered_frac=_num(covered),
+            n_truth=int(len(truth)), n_candidates=int(len(s)),
+            matched_truth=int(len(matched_truth)),
+            recall=_num(len(matched_truth) / len(truth)),
+            truth_m2=round(float(truth.area_m2.sum()), 1),
+            truth_m2_found=round(float(truth.loc[found, "area_m2"].sum()), 1),
+            mapping_date=str(q["mapping_date"]),
+        ))
+
+    df = pd.DataFrame(rows)
+    bins = pd.DataFrame(bin_rows)
+    by_bin: dict = {}
+    if not bins.empty:
+        g = bins.groupby("bin", observed=True)[["n", "found", "m2", "m2_found"]].sum()
+        by_bin = {
+            str(i): {"n": int(r.n), "count_recall": _num(r.found / max(r.n, 1)),
+                     "area_recall": _num(r.m2_found / max(r.m2, 1e-9))}
+            for i, r in g.iterrows()
+        }
+
+    def _gradient(d: dict | None) -> dict | None:
+        """Spearman of recall against bin order -- the number the control exists to make
+        readable. A detector limited by resolution climbs with size; one limited by the
+        annotator does not."""
+        if not d:
+            return None
+        order = [(i, v) for i, (_, v) in enumerate(sorted(
+            d.items(), key=lambda kv: float(str(kv[0]).split(",")[0].lstrip("[("))))]
+        if len(order) < 3:
+            return None
+        from scipy.stats import spearmanr
+        idx = [i for i, _ in order]
+        rec = [v["count_recall"] or 0.0 for _, v in order]
+        rho, p = spearmanr(idx, rec)
+        return {"spearman_recall_vs_size": _num(float(rho)), "p_value": _num(float(p), 4)}
+
+    below = bins[~bins.bin.str.startswith("[400")] if not bins.empty else bins
+    above = bins[bins.bin.str.startswith("[400")] if not bins.empty else bins
+    floor_split = {}
+    for name, part in (("below_400_m2", below), ("at_or_above_400_m2", above)):
+        if part is not None and not part.empty:
+            floor_split[name] = {
+                "n": int(part.n.sum()),
+                "count_recall": _num(part.found.sum() / max(part.n.sum(), 1)),
+                "area_recall": _num(part.m2_found.sum() / max(part.m2.sum(), 1e-9)),
+            }
+
+    return {
+        "candidates": str(candidates_path),
+        "n_quadrats_used": int(len(df)),
+        "n_truth": int(df.n_truth.sum()) if not df.empty else 0,
+        "pooled_count_recall": _num(df.matched_truth.sum() / max(df.n_truth.sum(), 1))
+        if not df.empty else None,
+        "pooled_area_recall": _num(df.truth_m2_found.sum() / max(df.truth_m2.sum(), 1e-9))
+        if not df.empty else None,
+        "recall_by_installation_m2": by_bin,
+        "floor_split": floor_split,
+        "size_gradient_earthpv": _gradient(by_bin),
+        "size_gradient_openpvmapper_control": _gradient(opvm_recall_by_bin),
+        "openpvmapper_recall_by_installation_m2": opvm_recall_by_bin or {},
+        "skipped_quadrats": skipped,
+        "precision_caveat": (
+            "precision is deliberately not reported: four communes were mapped 1-3 years "
+            "before the 2024 composite window, so an unmatched candidate may be a newer "
+            "installation rather than a false positive. Recall over mapped installations "
+            "is unaffected by that epoch gap"
+        ),
+        "control_caveat": (
+            "OpenPVMapper reads the same installations at sub-metre resolution, so its "
+            "flat recall across size is the control: a gradient in earthpv against the "
+            "same truth in the same communes is the 10 m sensor, not the annotator"
+        ),
+        "per_quadrat": df.to_dict("records") if not df.empty else [],
+    }
+
+
 # ---------------------------------------------------------------------------
 # earthpv against the register
 # ---------------------------------------------------------------------------
@@ -789,6 +957,7 @@ def run_france_validation(
     opvm_path: Path | None = None,
     density_dir: Path | None = None,
     communes_path: Path | None = None,
+    pred_dir: Path | None = None,
     out_dir: Path = Path("results/france_validation"),
 ) -> dict:
     """Run every France check that its inputs allow, and write the report.
@@ -833,6 +1002,28 @@ def run_france_validation(
             report["openpvmapper_vs_mapped"] = mapped_vs_openpvmapper(quadrats, opvm)
     else:
         report["skipped"]["openpvmapper"] = f"not found: {opvm_path}"
+
+    # The detection-floor test: earthpv's own recall against the same hand-mapped truth,
+    # with OpenPVMapper's (flat) size gradient passed in as the control that separates a
+    # sensor limit from an annotation limit.
+    if pred_dir is not None:
+        cand_path = Path(pred_dir) / "france" / "candidates.parquet"
+        if not quadrats:
+            report["skipped"]["earthpv_vs_mapped"] = f"no quadrats under {labels_dir}"
+        elif not cand_path.exists():
+            report["skipped"]["earthpv_vs_mapped"] = f"not found: {cand_path}"
+        else:
+            grid_path = Path(pred_dir) / "france" / "density" / "grid.geoparquet"
+            report["earthpv_vs_mapped"] = mapped_vs_earthpv(
+                quadrats, cand_path,
+                grid_path=grid_path if grid_path.exists() else None,
+                opvm_recall_by_bin=(report.get("openpvmapper_vs_mapped") or {}).get(
+                    "recall_by_installation_m2"),
+            )
+    else:
+        report["skipped"]["earthpv_vs_mapped"] = (
+            "pass --pred-dir to measure earthpv's recall against the hand-mapped communes"
+        )
 
     if density_dir and communes_path and Path(density_dir).exists():
         try:
