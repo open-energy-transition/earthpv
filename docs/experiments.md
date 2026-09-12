@@ -31,6 +31,11 @@ see [Open questions](open-questions.md).
 | [End-to-end validation against a complete register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Germany ran nationally at last: 99.75% of MaStR capacity covered, and segmentation recovers about a third of what it can see. |
 | [p_unmapped from a geolocated register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Replaced Germany's `p_unmapped: 0.0` floor with chance-corrected register evidence, split by placement. |
 | [Recall measured against any candidate, not the same placement](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Rooftop recall was understated up to 24x because a big array overruns its footprint and the finder gets labelled ground. |
+| [The module constant, measured against a register](methods/france-validation.md) | <span class="outcome works">shipped</span> | France put `DEFAULT_KWP_PER_M2_MODULE` at 0.150 kWp/m<sup>2</sup> against the assumed 0.180. Germany could not do this at all. |
+| [Reading a register back to the imagery epoch](methods/france-validation.md) | <span class="outcome works">shipped</span> | Dated ODRE vintages remove a 53% inflation that comes purely from PV installed after the flight. |
+| [Localizing the detector by retraining on France](#localizing-the-detector-what-french-chips-bought-2026-09-12) | <span class="outcome works">shipped</span> | Rank correlation against the register 0.29 to 0.45, closing half the gap to Germany. Slope barely moved. |
+| [roofclf on French residential PV](results/france.md#earthpv-against-france-the-sub-400-m2-instrument-does-not-transfer) | <span class="outcome negative">rejected</span> | 0.627 AUC within size band against Pakistan's ~0.834. A 20 m<sup>2</sup> array is a fifth of a Sentinel-2 pixel. |
+| [OpenPVMapper as an external reference](results/france.md) | <span class="outcome mixed">partial</span> | 91% of the register's sub-72 kWp capacity, but 0.67 recall against hand-mapped truth and a model output throughout. |
 | Dividing register p_unmapped by an OSM positive control | <span class="outcome negative">rejected</span> | The control is contaminated by the same sub-30 kWp coordinate suppression it was meant to absorb. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
 | Recall correction and credible intervals | <span class="outcome works">shipped</span> | Turned a structural floor into an estimate with a stated interval. |
@@ -50,6 +55,7 @@ see [Open questions](open-questions.md).
 | Two-season 20-band stacking | <span class="outcome negative">rejected</span> | No recall gain anywhere; slightly worse on large arrays. |
 | Boom-window (2021 vs current) stacking | <span class="outcome negative">rejected</span> | Inconclusive: training collapsed on 332 chips. |
 | Sentinel-1 corner reflection | <span class="outcome negative">rejected</span> | Backscatter enhancement indistinguishable from speckle. |
+| [Snow-cover contrast for small rooftop PV](#snow-cover-contrast-and-the-one-commune-that-nearly-sold-it-2026-09-08) | <span class="outcome negative">rejected</span> | Sound physics, wrong calendar: 0.096 usable scenes per commune-winter outside the Alps. |
 | Cell-aggregate glint density | <span class="outcome negative">rejected</span> | Wrong statistic for the question. |
 | Missed-installation glint recovery | <span class="outcome negative">rejected</span> | Control false-validation rate exceeded the recovery rate. |
 | Roof-axis orientation prior | <span class="outcome negative">rejected</span> | Flat concrete roofs do not constrain a tilt frame's azimuth. |
@@ -236,6 +242,124 @@ different from the rest), and that count-recall applied to area inflated the est
 (the area/count ratio is 1.01 to 1.08, negligible). Recorded because the wrong diagnosis
 was the plausible one.
 
+### A second register, and what it could measure that the first could not (2026-09-04)
+
+Germany's register settled the question above the 400 m<sup>2</sup> floor and was
+structurally silent below it: MaStR publishes no coordinates under 30 kWp, which is
+`roofclf`'s entire domain. France's register is censored in the same direction, below
+36 kW, but two features of it reach where Germany could not.
+
+**It publishes dated year-end vintages.** Because a small installation cannot be dated
+individually inside an aggregate row, the current snapshot cannot be filtered to a past
+epoch, but a past snapshot can simply be downloaded. Interpolating per-commune small-PV
+capacity between straddling year-ends puts the reference on the same day as the imagery a
+label was drawn against. That correction is worth 53%: the same fourteen communes read
+0.230 kWp/m<sup>2</sup> against today's register and 0.150 against the register as it stood
+when the aerial imagery was flown. The difference is entirely PV France installed in
+between, and any comparison that skips the step measures growth and reports it as physics.
+
+**Fourteen communes were swept exhaustively by hand**, on sub-metre imagery, with
+solar-thermal collectors tagged separately from PV. That makes the register's small-unit
+aggregate and the mapped sub-200 m<sup>2</sup> polygons the same population, and dividing
+one by the other measures `DEFAULT_KWP_PER_M2_MODULE` externally for the first time. It
+comes out at **0.150 kWp/m<sup>2</sup> against the 0.180 the project assumes**, ratio 0.83,
+stable at 0.147 under the widest reasonable definition of what counts as PV. The
+[German attempt at the same measurement](methods/mastr-validation.md) failed and was
+recorded as a negative result: 3.6% OSM completeness and an implied constant spanning
+0.02 to 0.99 on mapper convention.
+
+Two findings fell out of it that were not the point of the exercise.
+
+**The below-floor share is not transferable, now measured twice rather than argued once.**
+Germany's page inferred that from dispersion across municipalities. France settles it:
+17.3% of all registered French PV capacity sits below 72 kWp, 31.1% of low-voltage-connected
+capacity, against Germany's 65.5% of rooftop. France's fleet is far more ground-mount-heavy,
+so the practical cost of the floor is genuinely smaller there. Two complete registers differ
+by a factor of two to four on the quantity this project once transferred as a constant.
+
+**Solar thermal is a systematic confusion for imagery-based detection, and it is invisible
+without the tag.** 381 of 3,335 mapped features are hot-water collectors: black glazed
+rectangles on south-facing roofs producing no electricity. 137 OpenPVMapper polygons in
+these communes sit on one. Any validation whose ground truth does not separate them books
+that as a detection error or, worse, as capacity.
+
+France also cannot do one thing Germany can. Its register carries **no coordinates at any
+size**, so the `p_unmapped` precision instrument has no French counterpart, and **no
+rooftop/ground attribute**, so every share is bracketed rather than stated.
+
+### Where the sub-400 m2 instrument stops working (2026-09-04)
+
+`roofclf` is the half of this project that has no external check, so France was the place to
+get one. It did not survive it.
+
+Fitted on 13 exhaustively hand-mapped French communes (44,314 buildings, 1,231 with PV,
+leave-one-quadrat-out, parcel label), it reaches **median fold AUC 0.710 and 0.627 within
+size band**, against Pakistan's 0.857 and roughly 0.834. Building footprint size alone gets
+0.673, so **spectral reflectance is worth about 0.037 AUC** here. At a threshold tuned for
+50% precision it flags 16 buildings out of 44,314. Segmentation scores **exactly 0.500 in
+all 13 folds**.
+
+The cause is not the model. The median mapped French installation is **20 m<sup>2</sup>**
+against a **100 m<sup>2</sup>** Sentinel-2 pixel, so the array is a fifth of a mixed pixel
+that is mostly roof tile. The control that isolates this is OpenPVMapper, which recalls the
+same installations at 0.67 from sub-metre aerial imagery with no size gradient across
+0 to 400 m<sup>2</sup>: the annotations are findable, the sensor cannot find them.
+
+**This bounds `roofclf` rather than refuting it.** Pakistani quadrats contain installations
+that are small relative to the 400 m<sup>2</sup> segmentation floor but still large relative
+to a 10 m pixel. French residential PV sits below even that, and the instrument degrades to
+little more than a size prior there. The practical consequence for the published Pakistani
+atlas is a caution, not a correction: the sparse-density stratum, already the least
+well-supported part of the coverage-ratio fit, is the one nearest this regime.
+
+It also answers, negatively, the "independent test of the 400 m<sup>2</sup> floor" that
+[open question 4](open-questions.md) asked for. The floor is real, it is a sensor limit, and
+below roughly a pixel of module area there is no Sentinel-2 instrument here at all.
+
+### Localizing the detector: what French chips bought (2026-09-12)
+
+France was the first country this project inferred **zero-shot** -- the v4 checkpoint was
+trained on Germany, Pakistan, Punjab and Gujarat and had never seen a French roof -- and the
+first where a complete register could score that decision both before and after retraining.
+Same 20,501 communes, same 93.0% capacity coverage, so the two runs are directly comparable.
+
+| estimator | zero-shot slope | retrained slope | zero-shot &rho; | retrained &rho; | Germany slope | Germany &rho; |
+| --- | --- | --- | --- | --- | --- | --- |
+| `est_mwp_det` | 0.127 | **0.160** | 0.262 | **0.446** | 0.340 | 0.661 |
+| `est_mwp_exp` | 0.162 | **0.170** | 0.290 | **0.449** | 0.388 | 0.656 |
+
+**The gain is in placement, not magnitude.** Spearman rose 55% and closed about half the gap
+to in-domain Germany; slope moved 5 to 25% and total recovered capacity went from 26% to 34%
+of registered above-floor low-voltage capacity. Spearman is scale-free, so unlike slope it
+cannot be explained away by conversion constants or by France's proxy denominator (the
+register has no rooftop/ground field, so "above floor, low voltage" still contains
+BT-connected ground-mount). The zero-shot model was putting capacity in the wrong communes;
+the retrained one largely is not.
+
+**What changed underneath is more interesting than the totals.** The candidate population did
+not simply grow, it changed shape: 13,419 candidates became 39,462, the median candidate
+shrank from 8,301 to 1,400 m<sup>2</sup>, rooftop share doubled from 26.9% to 50.3%, blobs at
+or above 10,000 m<sup>2</sup> fell from 6,036 to 2,076, and **total detected area went down**,
+364 to 255 km<sup>2</sup>. `polygonize_chips` merges touching thresholded pixels with no upper
+bound, so a sheet of weak false positives becomes one multi-hectare "installation"; a
+zero-shot model tuned on Pakistani and German industrial roofs produced exactly that over
+France. Three times as many objects, six times smaller, with a third less total area, is the
+signature of a detector matched to a fleet of small rooftop arrays.
+
+A prediction recorded before the baseline ran was half right and worth keeping as calibration
+on this kind of forecast: the slope band (0.15 to 0.35) was about right for the uncalibrated
+estimators but anchored on the wrong comparator, and the rank-correlation collapse -- flagged
+in advance as "the more interesting failure" -- was the thing that actually happened, at 0.29
+against Germany's 0.66.
+
+**The caveat, stated because it limits the claim.** France is **73.6%** of the retrained
+corpus (18,577 chips against 6,661 from every other region combined), so this result confounds
+"French data is present" with "the corpus is 3.8x larger". A France-capped run of about 3,200
+chips, matching Germany's share, would separate them and has not been run. The checkpoint
+(`v5_combined_france`, epoch 25, early-stopped at 33) is applied to **France only**; Pakistan
+and Germany keep v4 and their published figures are unaffected.
+
+
 ## What did not work
 
 ### Two-season stacking
@@ -360,6 +484,58 @@ Full derivation, the pose-window figure and before/after imagery of the best-cas
 [Solar glint](methods/glint.md#can-a-predicted-glint-date-boost-the-roof-classifier). Two
 narrower versions survive untouched: per-locality pose calibration, and glint's existing role
 corroborating individual large arrays.
+
+### Snow-cover contrast, and the one commune that nearly sold it (2026-09-08)
+
+The physics here is better than the glint idea's, and it targets a weakness this project can
+name precisely. Panels are tilted, smooth and dark, so they shed and melt snow faster than
+the roof around them: under lying snow a small array stops being a dark patch on a dark slate
+roof and becomes a dark patch on a white one. At 10 m, for a 20 m<sup>2</sup> array in a
+100 m<sup>2</sup> pixel, that is the difference between a **8% reflectance deficit against a
+slate roof, inside BRDF noise**, and a **19% deficit against snow on a brighter, higher-SNR
+background** -- roughly 2.4x the signal, and aimed squarely at the dark-roof contrast problem
+that makes French rooftops harder than Pakistani ones.
+
+It fails on opportunity, which is the same thing that killed
+[choosing the imagery date so panels glint](#choosing-the-imagery-date-so-panels-glint), and
+it was measured the same way: not by building a detector, but by counting how many chances a
+roof actually gets. `scripts/snow_opportunity.py` reads SCL on its native 20 m grid inside a
+rasterised mask of each commune's VIDA footprints -- snow over farmland says nothing about
+whether roofs were white -- and counts a scene as an opportunity when snow exceeds 5% of roof
+pixels while cloud stays under 20% of them. Both conditions matter, and the cloud one is easy
+to forget: in France a snowfall usually arrives with the system that hides it.
+
+Across **1,556 scenes, 14 communes and four winters (2021/22 to 2024/25): 84 opportunities,
+of which 79 are in a single commune.** Saint-Martin-de-la-Porte, alpine Maurienne at roughly
+1,000 m, returns 19.8 per winter and peaks at 99.7% roof snow. Chambery returns 0.50 per
+winter, Grenoble, Langoat and Saulny 0.25 each, and **nine of the fourteen communes return
+zero in four winters**. Excluding the one alpine commune leaves **0.096 opportunities per
+commune-winter**, about one usable scene per commune per decade.
+
+Three things then compound, and the first is decisive:
+
+- **The signal is where the fleet is not.** On a deliberately generous definition of mountain
+  departements (Alps, high Pyrenees, Jura, Vosges, Massif Central), only **10.8% of France's
+  34.6 GWp of registered PV** sits there.
+- **It would need a retrain, not a processing change.** Snow currently *causes* false
+  positives here: `growth.py` records 91 of 155 km<sup>2</sup> of spurious "vanishing" PV
+  above latitude 34 as winter snow, and `imagery.py` excludes SCL class 11 from composites by
+  design. The contrast could not be harvested by the current model, only by one trained on
+  snow-bearing labels that do not exist.
+- **Winter geometry adds a false-positive mode.** At 45 N in December the sun sits near 20
+  degrees elevation, so shadows become large relative to buildings at 10 m, precisely while
+  the method hunts dark patches on bright roofs.
+
+**The methodological lesson is about the pilot, not the physics.** The alpine commune was run
+first as a smoke test and on its own it argued the opposite conclusion, roughly 20
+opportunities per winter. It is the outlier, not the norm, and a single-site pilot would have
+justified building the whole thing. Opportunity has to be counted over the population the
+method would be applied to.
+
+One variant survives and is worth stating: **Germany**, which has more reliable lowland snow
+and is already the largest region in the training corpus, so the retrain objection is weaker
+there. If the snow hypothesis is ever tested properly it should be tested there, not in
+France. Raw counts: `results/france_snow_opportunity.csv`.
 
 ### Temporal features for roofclf
 
