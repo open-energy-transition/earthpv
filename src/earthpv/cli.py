@@ -1856,5 +1856,63 @@ def validate_mastr_cmd(
     typer.echo(f"-> {path}")
 
 
+@app.command("validate-france")
+def validate_france_cmd(
+    register_csv: Path = typer.Option(
+        Path("data/register/odre_solaire_raw.csv"),
+        help="ODRE register CSV export (filiere=Solaire). Fetch with "
+        "scripts/fetch_odre_vintages.sh, or the current snapshot via the exports/csv API.",
+    ),
+    register_dir: Path = typer.Option(
+        Path("data/register"),
+        help="Directory of year-end vintages (odre_solaire_3112YY.csv), used to read the "
+        "register back to each quadrat's own mapping epoch",
+    ),
+    labels_dir: Path = typer.Option(
+        Path("data/labels/france"),
+        help="France calibration quadrats, from scripts/build_france_quadrats.py. Kept out "
+        "of data/labels/ on purpose: roofclf.discover_quadrats globs that directory, so a "
+        "French quadrat there would silently join a Pakistani refit.",
+    ),
+    opvm: Path = typer.Option(
+        None, help="OpenPVMapper enriched national table (GeoJSON or parquet). Omit to skip "
+        "every OpenPVMapper comparison."
+    ),
+    density_dir: Path = typer.Option(
+        None, help="Density run to compare per commune (default data/predictions/france/density)"
+    ),
+    communes: Path = typer.Option(
+        Path("data/labels/france_communes.parquet"),
+        help="National commune polygons, from scripts/fetch_france_communes.py",
+    ),
+    out_dir: Path = typer.Option(Path("results/france_validation")),
+) -> None:
+    """Validate the capacity methodology against France's national production register.
+
+    The France counterpart to `validate-mastr`, and deliberately not the same instrument.
+    France's register is complete like Germany's but censors every unit below 36 kW into
+    per-commune aggregates, publishes no coordinates at all, and carries no rooftop/ground
+    attribute -- so the below-floor share comes out bracketed rather than stated, and
+    Germany's `p_unmapped` precision check has no counterpart here.
+
+    What France adds instead is a measurement Germany could not deliver: fourteen communes
+    swept exhaustively by hand on sub-metre imagery, against dated vintages of the same
+    register, which together calibrate `DEFAULT_KWP_PER_M2_MODULE` externally for the first
+    time. German OSM was tested for this and failed (3.6% complete, implied kWp/m2 spanning
+    0.02-0.99).
+
+    Register-only blocks need no imagery and always run, so the country-level findings are
+    available long before a national compose finishes.
+    """
+    from earthpv.france_validation import run_france_validation
+
+    density_dir = density_dir or Path("data/predictions/france/density")
+    run_france_validation(
+        register_csv=register_csv, register_dir=register_dir, labels_dir=labels_dir,
+        opvm_path=opvm, density_dir=density_dir if density_dir.exists() else None,
+        communes_path=communes if Path(communes).exists() else None, out_dir=out_dir,
+    )
+
+
 if __name__ == "__main__":
     app()

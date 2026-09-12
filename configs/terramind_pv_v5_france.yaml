@@ -1,0 +1,84 @@
+# TerraTorch fine-tuning config for PV segmentation -- Germany + Pakistan + India + FRANCE.
+#
+# Identical recipe to configs/terramind_pv_v4_all.yaml (same backbone, necks, decoder,
+# loss, lr, schedule, monitor metric). The only variable is the corpus: France is added.
+#
+# WHY: France was inferred ZERO-SHOT by v4 (no French chips at all) and the 2026-09-11
+# register baseline measured what that costs. Against France's above-floor low-voltage
+# denominator, `est_mwp_exp` scores slope 0.162 and Spearman 0.290, against Germany's
+# 0.388 and 0.656 on its own (true rooftop) denominator. A slope gap could be conversion
+# constants or the proxy denominator; a rank correlation of 0.29 against 0.66 is the model
+# putting capacity in the wrong communes, which is what a detector that has never seen a
+# French roof should do. Baseline frozen at
+# results/france_validation/france_validation_BASELINE_zeroshot.json.
+#
+# Corpus (data/chips/combined_france/index.parquet, 25,238 chips,
+# scripts/merge_chip_index.py germany punjab pakistan gujarat france):
+#   germany : 3,189 chips (141 val, 2,173 with PV)      -- unchanged
+#   punjab  : 274 chips (37 val, 218 with PV)           -- unchanged
+#   pakistan: 2,438 chips (48 val, 1,593 with PV)       -- unchanged
+#   gujarat : 760 chips (128 val, 381 with PV)          -- unchanged
+#   france  : 18,577 chips (1,518 val, 11,613 with PV)  -- NEW, from 353,011 OSM solar
+#             features (43,343 at or above the 400 m2 chip threshold) over the 5,473-cell
+#             national composite set.
+#
+# BALANCE, STATED PLAINLY: France is 73.6% of this corpus. The owner chose the full set
+# over a Germany-sized cap (~3,200) on 2026-09-11. The consequence for interpretation is
+# that any improvement confounds "French data is present" with "the corpus is 3.8x larger",
+# and v5 is a France-weighted model rather than a balanced multi-country one. It is applied
+# to FRANCE ONLY; Pakistan and Germany keep v4, whose published figures are unaffected.
+#
+# Val holdout for France: Centre-Val de Loire, lon 0.5-3.1E / lat 46.5-48.4N, carved into
+# data/chips/france/index.parquet before the merge (the same way Gujarat's was). Contiguous,
+# carries both Loire-valley ground-mount and small-town rooftop, and is far enough from
+# every other French cluster that the +/-900 m chip jitter and the 2.24 km window cannot
+# leak a training chip into it. Chosen from geography before training, not from any score.
+
+data:
+  index_path: data/chips/combined_france/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # terramind_v1_tiny fits the GTX 1060; bump to _small if a bigger GPU is used.
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/v5_combined_france
+patience: 8
+# Same monitor as v3india (val/mIoU), not the base config's val/Accuracy -- matching the
+# checkpoint we're actually trying to replace.
+monitor: val/mIoU
+monitor_mode: max
