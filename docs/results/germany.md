@@ -179,6 +179,51 @@ states**, with Hamburg, Mecklenburg-Vorpommern, Niedersachsen and Schleswig-Hols
 appearing twice. That is a duplication in the region polygons, not a duplicated estimate, and
 it is why Hamburg counts as two failures.
 
+## Does roofclf transfer to Germany
+
+Germany sits between the two regimes this project has measured. French rooftop PV is roughly
+20 m&sup2; covering an eighth of its roof, where `roofclf` fails; Pakistani rooftop PV is
+roughly 54 m&sup2; covering a third, where it works. German OSM rooftop arrays in the cells
+tested have a median of 71 m&sup2; covering **0.266** of their roof, next to Pakistan's 0.309
+and France's 0.119. On the mechanism in
+[How it works](../how-it-works.md#where-the-spectral-detector-stops-working), Germany should
+be a regime where the instrument works, and it is.
+
+Three models scored on one shared German set, 45 grid cells and 551,966 buildings:
+
+| Model fitted on | AUC | Within size band |
+| --- | --- | --- |
+| France, OpenPVMapper labels | 0.704 | 0.625 |
+| Pakistan, production model | 0.715 | 0.641 |
+| **Germany, in-domain (leave-one-cell-out)** | **0.792** | **0.688** |
+
+**A foreign model does transfer, and it barely matters which one.** France's OpenPVMapper fit
+and Pakistan's production model land within 0.011 AUC of each other, which is a useful
+negative result on its own: the ranking signal is not country-specific. But an in-domain
+German fit beats both by about 0.08, so which country the labels come from matters far less
+than whether any of them are German.
+
+**Every number here is a hard lower bound, for two independent reasons**, and neither is
+comparable to Pakistan's 0.857 or France's 0.710, both measured against exhaustively mapped
+truth:
+
+1. **German OSM covers ~3.6% of registered rooftop units**, so the great majority of true
+   positives sit in the negative class.
+2. **VIDA cannot find the buildings.** Of 38,869 OSM rooftop arrays in these cells, 19,623
+   (50.5%) lie more than 20 m from any VIDA footprint and only 5,410 buildings end up labelled
+   at all, an attribution rate of 13.9%. The measured base rate is 0.98% where the feature
+   count implies 8%.
+
+The second point is the French cadastre finding again, worse. It is also actionable: German
+official building footprints and German OSM buildings are both far more complete than VIDA,
+and swapping them in is now a one-argument change through `building_table`'s `buildings`
+override.
+
+**What this means.** Germany is the best remaining candidate for a `roofclf` half, better than
+France by construction and measurable against a complete register. It needs two things first,
+and neither is a model change: exhaustively mapped calibration quadrats, because OSM at 3.6%
+completeness cannot fit a coverage ratio, and a footprint layer that finds the buildings.
+
 ## What this run opens up
 
 Both remaining items are tracked on [Open questions](../open-questions.md).
