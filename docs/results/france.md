@@ -270,6 +270,44 @@ multispectral sensor resolves. [OpenPVMapper](#openpvmapper-against-ground-truth
 same installations at 0.67 from sub-metre aerial imagery with no size gradient across this
 range, which isolates the difference to the sensor rather than to the annotation or the task.
 
+### Was it just too few labels? No
+
+The obvious objection to all of the above is that 1,231 hand-mapped positives is simply too
+small a training set, and that the sensor argument is being asked to explain what a bigger
+corpus would fix. That is testable, because
+[OpenPVMapper](https://doi.org/10.5281/zenodo.21534856) supplies 1.13M rooftop polygons
+nationally, and it was tested.
+
+`scripts/build_opvm_pseudo_quadrats.py` synthesizes roofclf quadrats over 90 PV-dense
+communes whose labels come from OpenPVMapper instead of a human, and
+`scripts/build_opvm_roofclf_table.py` runs the same `building_table` the real fit uses, so
+the only thing that differs is the label source. The fourteen hand-mapped communes are
+excluded by INSEE, because they are OpenPVMapper's own manual-correction layer and training
+on them would leak in both directions. The training communes match the target regime: their
+median array is 16.8 m&sup2; against the hand-mapped set's 19.2.
+
+That gives **386,565 buildings and 16,435 carrying PV, 13.4 times the supervision**, over 87
+communes disjoint from every evaluation commune. Scored on the same hand-mapped truth:
+
+| | Training positives | AUC | Within size band |
+| --- | --- | --- | --- |
+| Hand-mapped baseline, leave-one-quadrat-out | 1,231 | 0.710 | 0.627 |
+| **OpenPVMapper-trained** | **16,435** | **0.706** | **0.617** |
+| Control: same model on held-out OpenPVMapper labels | 16,435 | 0.683 | 0.608 |
+
+**Thirteen times the labels moves nothing** (-0.005 AUC, -0.010 within size band). The
+control is the more informative row. If the model had learned OpenPVMapper's biases rather
+than the world, it would score well on held-out OpenPVMapper labels and badly on hand-mapped
+truth. It scores **0.683** on its own label source, essentially the same as on the human
+one. The features do not separate roofs with PV from roofs without, whatever the labels say.
+
+**This is a lower bound, and the direction is the safe one.** OpenPVMapper recalls 0.67 of
+hand-mapped truth, so some of its negatives are real positives, and that mislabelling
+attenuates measured AUC. But the control evaluation carries the same noise and lands in the
+same place, and no plausible amount of label noise turns 0.706 into a deployable instrument.
+Three of the 90 communes produced no table, having no VIDA buildings or no composite
+coverage.
+
 **This does not invalidate the Pakistani `roofclf`.** It bounds where the instrument works.
 The honest reading is that the sub-400 m&sup2; half of this project's method is calibrated on
 a population of installations that are small relative to the 400 m&sup2; segmentation floor

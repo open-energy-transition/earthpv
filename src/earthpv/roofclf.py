@@ -725,7 +725,7 @@ def building_table(
     stem: str, iso3: str, composites: Path, seg_prob_dir: Path | None,
     frac_prob_dir: Path | None, labels_dir: Path = Path("data/labels"), con=None,
     include_epoch_jump: bool = False, preboom_prob_dir: Path | None = None,
-    parcel_label: bool = False,
+    parcel_label: bool = False, buildings: gpd.GeoDataFrame | None = None,
 ) -> pd.DataFrame:
     """One row per VIDA building in the quadrat, labelled and featurised.
 
@@ -737,6 +737,13 @@ def building_table(
     every published atlas number to date is a roof-only measurement. See
     docs/issues/small-ground-mount-instrument.md for what motivates it and what it cannot fix
     (the calibration for the sparse stratum this most affects rests on four quadrats).
+
+    `buildings` overrides the VIDA footprint source with a caller-supplied layer, which must
+    carry `geometry` and `area_m2` (geodesic, never `.area` on lat/lon) and may carry
+    `bf_confidence`. Added 2026-09-12 to test whether France's `roofclf` result is an artefact
+    of VIDA rather than of the sensor: VIDA is imagery-derived and in Toussieu finds 672
+    footprints where the French cadastre finds 3,366. Default `None` keeps the VIDA fetch, so
+    every existing caller is unchanged.
     """
     from earthpv.buildings import fetch_vida_buildings
     from earthpv.labels import geodesic_area_m2
@@ -745,9 +752,12 @@ def building_table(
     boundary, pv = load_quadrat(stem, labels_dir)
     name = quadrat_label(stem)
     minx, miny, maxx, maxy = boundary.bounds
-    bu = fetch_vida_buildings((minx, miny, maxx, maxy), iso3, con=con).reset_index(drop=True)
+    if buildings is None:
+        bu = fetch_vida_buildings((minx, miny, maxx, maxy), iso3, con=con).reset_index(drop=True)
+    else:
+        bu = buildings.to_crs("EPSG:4326").reset_index(drop=True)
     if bu.empty:
-        log.warning("quadrat %s: no VIDA buildings", name)
+        log.warning("quadrat %s: no buildings", name)
         return pd.DataFrame()
     inside = bu.geometry.representative_point().within(boundary)
     bu = bu[inside.to_numpy()].reset_index(drop=True)

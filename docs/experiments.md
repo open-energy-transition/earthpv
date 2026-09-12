@@ -34,7 +34,10 @@ see [Open questions](open-questions.md).
 | [The module constant, measured against a register](methods/france-validation.md) | <span class="outcome works">shipped</span> | France put `DEFAULT_KWP_PER_M2_MODULE` at 0.150 kWp/m<sup>2</sup> against the assumed 0.180. Germany could not do this at all. |
 | [Reading a register back to the imagery epoch](methods/france-validation.md) | <span class="outcome works">shipped</span> | Dated ODRE vintages remove a 53% inflation that comes purely from PV installed after the flight. |
 | [Localizing the detector by retraining on France](#localizing-the-detector-what-french-chips-bought-2026-09-12) | <span class="outcome works">shipped</span> | Rank correlation against the register 0.29 to 0.45, closing half the gap to Germany. Slope barely moved. |
+| [The 400 m<sup>2</sup> floor, measured from outside](#the-detection-floor-measured-against-sub-metre-truth-2026-09-12) | <span class="outcome works">shipped</span> | Recall climbs with size (rho +0.83) while the sub-metre control stays flat (-0.29). Retraining on French data does not move it. |
 | [roofclf on French residential PV](results/france.md#earthpv-against-france-the-sub-400-m2-instrument-does-not-transfer) | <span class="outcome negative">rejected</span> | 0.627 AUC within size band against Pakistan's ~0.834. A 20 m<sup>2</sup> array is a fifth of a Sentinel-2 pixel. |
+| [13x the roofclf labels, from OpenPVMapper](results/france.md#was-it-just-too-few-labels-no) | <span class="outcome negative">rejected</span> | 16,435 positives against 1,231 moves AUC by -0.005. The model scores 0.683 even on its own label source. |
+| [Authoritative footprints instead of VIDA](#authoritative-footprints-the-french-cadastre-against-vida-2026-09-12) | <span class="outcome mixed">partial</span> | VIDA misses 58% of French buildings. Fixing that is worth +0.027 AUC, which is 14% of the gap to Pakistan. |
 | [OpenPVMapper as an external reference](results/france.md) | <span class="outcome mixed">partial</span> | 91% of the register's sub-72 kWp capacity, but 0.67 recall against hand-mapped truth and a model output throughout. |
 | Dividing register p_unmapped by an OSM positive control | <span class="outcome negative">rejected</span> | The control is contaminated by the same sub-30 kWp coordinate suppression it was meant to absorb. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
@@ -359,6 +362,74 @@ chips, matching Germany's share, would separate them and has not been run. The c
 (`v5_combined_france`, epoch 25, early-stopped at 33) is applied to **France only**; Pakistan
 and Germany keep v4 and their published figures are unaffected.
 
+
+### The detection floor, measured against sub-metre truth (2026-09-12)
+
+The 400 m&sup2; floor was always an argument from the sensor, four Sentinel-2 pixels, checked
+against quadrats labelled off the same class of imagery. The fourteen French communes are
+swept on sub-metre IGN orthophotos, so for the first time a missed installation is provably a
+miss rather than an annotation gap. `mapped_vs_earthpv` measures recall per size bin against
+them.
+
+Recall climbs monotonically with installation size, Spearman **+0.83 (p = 0.042)**, from
+0.000 below 20 m&sup2; to 0.095 in the 200 to 400 m&sup2; bin. **OpenPVMapper, reading the
+same installations inside the same boundaries from sub-metre imagery, is flat: -0.29
+(p = 0.58)**, recalling 0.58 to 0.80 in every bin. That contrast is the whole point of the
+measurement. A gradient present in a 10 m detector and absent in a sub-metre one, against
+identical truth, is the sensor rather than the mapper.
+
+**The finding survives retraining, across three models.** v4 zero-shot (no French chips),
+v6 (3,201) and v5 (17,059) return pooled count recall of 0.0118, 0.0103 and 0.0118, with
+gradients of +0.89, +0.89 and +0.83, even though v5 tripled the national candidate count and
+cut median candidate area from 8,301 to 1,400 m&sup2;. In these communes only 28 candidates
+appear at all, and the median distance from a 400 m&sup2;-plus mapped installation to the
+nearest one is 807 m.
+
+This corroborates [roofclf's French result](#where-the-sub-400-m2-instrument-stops-working-2026-09-04)
+from the segmentation side, by a fully independent route: the classifier found no signal in
+the pixels, and the segmenter finds no polygons in the same places.
+
+**What it does not settle.** The 400 m&sup2;-plus bin holds 44 installations, recall 0.045
+with a 95% Wilson interval of 0.013 to 0.151, far too thin to claim earthpv fails above its
+own floor. These communes were chosen to be exhaustively mappable, not to hold large arrays.
+The transferable result is the gradient against the control, not the level in any one bin,
+and it bounds the sensor rather than the method: Pakistani arrays are small against the
+400 m&sup2; floor but still large against a 100 m&sup2; pixel.
+
+### Authoritative footprints: the French cadastre against VIDA (2026-09-12)
+
+`roofclf` reads VIDA Open Buildings, which is imagery-derived. That is the right choice where
+no authoritative footprint layer exists, which is the case across most of the project's
+target geography, but it is not free. Measured over the fourteen hand-mapped French communes
+against the DGFiP cadastre published through Etalab:
+
+| | Buildings | PV-bearing | Median footprint | AUC | Within size band |
+| --- | --- | --- | --- | --- | --- |
+| VIDA | 44,314 | 1,231 | 163 m&sup2; | 0.7103 | 0.6274 |
+| Cadastre | 103,697 | 1,759 | 53 m&sup2; | 0.7369 | 0.6548 |
+
+**VIDA finds 43% of the buildings and 70% of the PV-bearing ones.** In Toussieu specifically
+it returns 672 footprints where the cadastre returns 3,366, with a median of 146 m&sup2;
+against 22 m&sup2;, and 1.9x less total built area. Bad footprints degrade three things at
+once: the roof-area feature, which is the single strongest predictor; the zonal spectral
+means, which get averaged over the wrong pixels; and the label itself, which is mapped PV
+intersected with the footprint.
+
+Fixing all three is worth **+0.027 AUC within size band**, closing 14% of the gap to
+Pakistan's 0.821. Real, worth adopting for future French work, and not remotely enough to
+make the instrument deployable. The other 86% is
+[the sensor](#the-detection-floor-measured-against-sub-metre-truth-2026-09-12).
+
+**Two operational findings came out of this.** Overture carries essentially the same French
+footprints (3,826 in the Toussieu bbox against the cadastre's 3,366 inside the boundary) but
+costs a global S3 scan at roughly 166 seconds per commune against the cadastre's two, and
+Overture prunes its release directory to the last two releases, so `configs/aoi.yaml`'s pinned
+`2026-06-17.0` no longer exists and fails as "No files found", which reads like an empty area
+rather than an expired release. The cadastre is published per commune keyed by INSEE, which is
+already the unit the French quadrats use.
+
+`building_table` gained an optional `buildings` override for this; the default keeps the VIDA
+fetch, so no existing caller changed.
 
 ## What did not work
 
