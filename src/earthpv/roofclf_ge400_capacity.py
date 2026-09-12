@@ -52,6 +52,7 @@ def domain_restricted_ge400_roof_capacity(
     n_density_bands: int | None = None,
     n_coverage_boot: int | None = None,
     recall_correct: bool = True,
+    aoi: str | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """roofclf-scored, coverage-ratio-weighted capacity for >= 400 m2 rooftop buildings,
     restricted to the density-matched domain (same ~92 cells `sub400_capacity` uses).
@@ -109,7 +110,7 @@ def domain_restricted_ge400_roof_capacity(
     n_density_bands = DEFAULT_N_DENSITY_STRATA if n_density_bands is None else n_density_bands
 
     all_cells = pd.read_parquet(cell_density_path)
-    in_domain_cells = national_cell_domain(cell_density_path)
+    in_domain_cells = national_cell_domain(cell_density_path, aoi)
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
     composition = parcel_label_composition(buildings_path, quadrats, threshold)
     ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0

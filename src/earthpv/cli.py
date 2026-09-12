@@ -764,6 +764,10 @@ def sub400_capacity_cmd(
         threshold = json.loads((calib_dir / "summary.json").read_text())["deployment_threshold"]
 
     kwargs = dict(
+        # `aoi` selects the density-calibration band (density.calibrated_density_range):
+        # it is a per-country measurement, not a method constant, so all three functions
+        # below need it or they silently apply Pakistan's (48.5, 5258.00) band.
+        aoi=aoi,
         roofclf_dir=roofclf_dir, candidates_path=candidates_path, folds_path=folds_path,
         buildings_path=buildings_path, cell_density_path=cell_density_path,
         threshold=threshold, max_distance_m=max_distance_m,
@@ -906,6 +910,7 @@ def ge400_roof_capacity_cmd(
         threshold = json.loads((calib_dir / "summary.json").read_text())["deployment_threshold"]
 
     flagged, summary = domain_restricted_ge400_roof_capacity(
+        aoi=aoi,
         roofclf_dir=roofclf_dir, folds_path=folds_path, buildings_path=buildings_path,
         cell_density_path=cell_density_path, threshold=threshold, osm_solar_path=osm_solar,
         max_distance_m=max_distance_m, min_area_m2=min_area_m2,
