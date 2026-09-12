@@ -9,12 +9,22 @@ PRED=data/predictions_v6
 LOG=data/france_v6.log
 say(){ echo "$(date -Is) $*" | tee -a "$LOG"; }
 
-say "=== train (v6, France capped to 3,201 train chips) ==="
-$MLPY -m earthpv.cli train --config configs/terramind_pv_v6_france_capped.yaml >>"$LOG" 2>&1 \
-  || { say "train FAILED"; exit 1; }
-CKPT=$(ls -t data/models/v6_france_capped/terramind-pv-epoch=*.ckpt 2>/dev/null | head -1)
+CKDIR=data/models/v6_france_capped
+if ls "$CKDIR"/terramind-pv-epoch=*.ckpt >/dev/null 2>&1; then
+  say "=== train: SKIPPED, checkpoints already present in $CKDIR ==="
+else
+  say "=== train (v6, France capped to 3,201 train chips) ==="
+  $MLPY -m earthpv.cli train --config configs/terramind_pv_v6_france_capped.yaml >>"$LOG" 2>&1 \
+    || { say "train FAILED"; exit 1; }
+fi
+# Select by val/mIoU, NOT by mtime. save_top_k=2 keeps the two BEST checkpoints, so `ls -t`
+# returns the SECOND-best whenever the final improvement is not the argmax -- which is what
+# happened here (epoch 30 at 0.7818 against epoch 26 at 0.7828). v5 was inferred from its
+# own argmax checkpoint, so the ablation only isolates corpus size if both sides use the
+# same selection rule.
+CKPT=$($MLPY scripts/pick_best_checkpoint.py "$CKDIR" 2>>"$LOG")
 [ -n "$CKPT" ] || { say "no checkpoint produced"; exit 1; }
-say "best checkpoint: $CKPT"
+say "best checkpoint (argmax val/mIoU): $CKPT"
 
 say "=== infer (v6) ==="
 $MLPY -m earthpv.cli infer --aoi france --checkpoint "$CKPT" --out-dir "$PRED" >>"$LOG" 2>&1 \
