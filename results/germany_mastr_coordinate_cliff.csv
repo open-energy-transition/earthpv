@@ -1,0 +1,5 @@
+band,n_units,n_geolocated,gwp,pct_geolocated,below_seg_floor
+<10 kWp,2611445,0,17.56,0.0,True
+10-30 kWp,1519693,0,24.54,0.0,True
+30-72 kWp,156495,108443,6.88,69.3,True
+>=72 kWp,123388,123045,25.84,99.7,False

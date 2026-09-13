@@ -43,6 +43,9 @@ results/glint_validation_pakistan/*
 !results/capacity_metrics_example.csv
 !results/border_array_size.csv
 !results/border_register_anchor.csv
+!results/germany_mastr_coordinate_cliff.csv
+!results/germany_method_comparison.csv
+!results/germany_roofclf_capacity_per_gemeinde.csv
 !results/density_domain_cells.csv
 !results/density_domain_quadrats.csv
 !results/pv_size_vs_building_bins.csv

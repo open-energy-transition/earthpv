@@ -258,6 +258,127 @@ def fig_border_array_size(t: Theme):
     save(fig, t, "border_array_size")
 
 
+
+def read_germany_calibration():
+    cliff = source("results/germany_mastr_coordinate_cliff.csv")
+    gem = source("results/germany_roofclf_capacity_per_gemeinde.csv")
+    cmp_ = source("results/germany_method_comparison.csv")
+    if not (cliff and gem and cmp_):
+        return None, None, None
+    return (list(csv.DictReader(cliff.open())), list(csv.DictReader(gem.open())),
+            list(csv.DictReader(cmp_.open())))
+
+
+def fig_germany_calibration(t: Theme):
+    """How Germany's rooftop capacity was calibrated without a single mapped quadrat.
+
+    Three questions in order: why the register's coordinates cannot supervise the estimate,
+    what the calibration actually is, and whether any of it beat a trivial baseline.
+    """
+    cliff, gem, cmp_ = read_germany_calibration()
+    if not cliff:
+        return
+    fig, (ax1, ax2, ax3) = plt.subplots(
+        1, 3, figsize=(12.4, 3.6), gridspec_kw={"width_ratios": [1.0, 1.15, 1.25]})
+    fig.patch.set_facecolor(t.surface)
+    for a in (ax1, ax2, ax3):
+        a.set_facecolor(t.surface)
+        for sp in a.spines.values():
+            sp.set_visible(False)
+        a.tick_params(colors=t.ink_dim, labelsize=8, length=0)
+
+    # --- 1. the coordinate cliff -------------------------------------------------
+    bands = [r["band"] for r in cliff]
+    gwp = [float(r["gwp"]) for r in cliff]
+    pct = [float(r["pct_geolocated"]) for r in cliff]
+    below = [r["below_seg_floor"] == "True" for r in cliff]
+    x = np.arange(len(bands))
+    ax1.bar(x, gwp, width=0.62,
+            color=[t.s2 if b else t.rule for b in below])
+    for i, (g_, p_) in enumerate(zip(gwp, pct)):
+        ax1.text(i, g_ + 0.7, f"{p_:.0f}%", ha="center", color=t.s1,
+                 fontsize=8.5, fontweight="bold")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([b.replace(" kWp", "") for b in bands], fontsize=8)
+    ax1.set_ylabel("registered capacity (GWp)", color=t.ink_dim, fontsize=8.5)
+    ax1.set_xlabel("installation size (kWp)", color=t.ink_dim, fontsize=8.5)
+    ax1.set_ylim(0, max(gwp) * 1.22)
+    ax1.set_title("1. Coordinates stop where the capacity is",
+                  color=t.ink, fontsize=9.5, loc="left", pad=6)
+    ax1.text(0.02, 0.94, "orange % = share with coordinates\nblue = below the 400 m$^2$ floor",
+             transform=ax1.transAxes, color=t.ink_dim, fontsize=7.6, va="top")
+    style_axes(ax1, t, ygrid=True)
+
+    # --- 2. the calibration itself -----------------------------------------------
+    cm2 = np.array([float(r["credited_m2"]) for r in gem])
+    truth = np.array([float(r["truth_kw"]) for r in gem])
+    m = (cm2 > 0) & (truth > 0)
+    cm2, truth = cm2[m], truth[m]
+    ratio = truth.sum() / cm2.sum()
+    ax2.scatter(cm2, truth, s=5, alpha=0.20, color=t.s2, linewidths=0)
+    # Bound the line and the axes to where the municipalities actually are: a handful of
+    # near-zero ones otherwise stretch a log axis across decades that hold no data.
+    lo, hi = np.percentile(cm2, [0.5, 99.5])
+    xs = np.array([lo, hi])
+    ax2.plot(xs, xs * ratio, color=t.s1, linewidth=2.0,
+             label=f"fitted {ratio:.3f} kWp/m$^2$")
+    ax2.set_xscale("log")
+    ax2.set_yscale("log")
+    ax2.set_xlim(lo * 0.7, hi * 1.4)
+    ax2.set_ylim(np.percentile(truth, 0.5) * 0.7, np.percentile(truth, 99.5) * 1.4)
+    for axis in (ax2.xaxis, ax2.yaxis):
+        axis.set_minor_formatter(NullFormatter())
+        axis.set_minor_locator(NullLocator())
+    ax2.set_xlabel("credited roof area per municipality (m$^2$)",
+                   color=t.ink_dim, fontsize=8.5)
+    ax2.set_ylabel("registered capacity (kWp)", color=t.ink_dim, fontsize=8.5)
+    ax2.set_title(f"2. One constant, fitted on {len(cm2):,} municipalities",
+                  color=t.ink, fontsize=9.5, loc="left", pad=6)
+    leg = ax2.legend(frameon=False, fontsize=8, loc="lower right")
+    for tx in leg.get_texts():
+        tx.set_color(t.ink_dim)
+    style_axes(ax2, t, ygrid=True)
+
+    # --- 3. did any of it beat the baseline? -------------------------------------
+    samples = ["PV-dense (selected)", "representative"]
+    ests = ["roofclf, coordinate labels", "roofclf, register-count prior",
+            "roof area x a constant"]
+    colours = {ests[0]: t.s4, ests[1]: t.s2, ests[2]: t.s3}
+    w = 0.26
+    for i, est in enumerate(ests):
+        vals = [next(float(r["median_municipal_abs_pct_err"]) for r in cmp_
+                     if r["sample"] == s and r["estimator"] == est) for s in samples]
+        pos = np.arange(len(samples)) + (i - 1) * w
+        ax3.bar(pos, vals, width=w, color=colours[est], label=est)
+        for p_, v_ in zip(pos, vals):
+            ax3.text(p_, v_ + 1.2, f"{v_:.0f}", ha="center", color=t.ink, fontsize=7.6)
+    ax3.set_xticks(np.arange(len(samples)))
+    ax3.set_xticklabels(["55 PV-dense\nmunicipalities", "1,101 representative\nmunicipalities"],
+                        fontsize=8)
+    ax3.set_ylabel("median municipal error (%)", color=t.ink_dim, fontsize=8.5)
+    ax3.set_ylim(0, 82)
+    ax3.set_title("3. The apparent win was the sample",
+                  color=t.ink, fontsize=9.5, loc="left", pad=6)
+    leg = ax3.legend(frameon=False, fontsize=7.4, loc="upper left")
+    for tx in leg.get_texts():
+        tx.set_color(t.ink_dim)
+    style_axes(ax3, t, ygrid=True)
+
+    titled(fig, t,
+           "Calibrating German rooftop PV without a single mapped quadrat",
+           "Germany has no exhaustively mapped calibration boxes, so the usual coverage-ratio "
+           "route is shut. MaStR is complete instead. (1) It publishes coordinates only at and "
+           "above 30 kWp, so 42.1 of the 49.0 GWp below the detection floor can never be "
+           "located, which is why training on coordinates made the estimate worse. (2) The "
+           "calibration is one constant, kWp per credited roof area, fitted against the "
+           "register per municipality. (3) Supervising with per-municipality COUNTS fixes the "
+           "label problem, but on a representative sample it only ties multiplying roof area "
+           "by a constant.",
+           width=150)
+    fig.tight_layout()
+    save(fig, t, "germany_calibration")
+
+
 def read_glint_by_size():
     path = source("results/glint_validation_pakistan/pakistan_stats_by_size.csv")
     if path is None:
@@ -2356,6 +2477,7 @@ def main():
         fig_attribution_gap(t)
         fig_pv_vs_building(t)
         fig_border_array_size(t)
+        fig_germany_calibration(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")

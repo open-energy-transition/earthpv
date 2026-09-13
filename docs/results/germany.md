@@ -319,6 +319,52 @@ the 3.6% handicap; 10% of buildings had no valid composite pixel and are exclude
 estimators, so these figures cover the assessable roof population rather than every roof; and
 the model is VIDA-fitted, so refitting on OSM footprints before rescoring remains untested.
 
+### Calibrating Germany without a mapped quadrat: the whole picture
+
+Germany has no exhaustively mapped calibration boxes, and mapping some was the obvious
+prescription. It turned out not to be the binding constraint, and the route that worked
+instead is worth laying out in one place.
+
+![Three panels. First, registered German rooftop capacity by installation size with the share carrying coordinates: zero below 30 kWp, 69 percent at 30 to 72 kWp, 100 percent above, so 42.1 of the 49.0 GWp below the detection floor can never be located. Second, a log-log scatter of credited roof area against registered capacity for 9,674 municipalities with a fitted line at 0.279 kWp per square metre. Third, median municipal error for three estimators on two samples: on 55 PV-dense municipalities the register-count prior scores 18 against the roof-area baseline's 24, but on 1,101 representative municipalities the two tie at 33 and 34.](../assets/figures/germany_calibration.svg#only-light)
+![Three panels. First, registered German rooftop capacity by installation size with the share carrying coordinates: zero below 30 kWp, 69 percent at 30 to 72 kWp, 100 percent above, so 42.1 of the 49.0 GWp below the detection floor can never be located. Second, a log-log scatter of credited roof area against registered capacity for 9,674 municipalities with a fitted line at 0.279 kWp per square metre. Third, median municipal error for three estimators on two samples: on 55 PV-dense municipalities the register-count prior scores 18 against the roof-area baseline's 24, but on 1,101 representative municipalities the two tie at 33 and 34.](../assets/figures/germany_calibration.dark.svg#only-dark)
+
+**The constraint was never the classifier.** roofclf ranks German roofs perfectly adequately
+on OSM labels, at 0.824 AUC. What it could not do was fit a `coverage_ratio`, because you
+cannot measure the true PV area on a flagged roof from labels covering 3.6% of the truth.
+
+**MaStR replaces the quadrat, because the estimand is an aggregate.** The estimator emits a
+per-area capacity total, and a complete register publishes exactly that per municipality. So
+the calibration is one constant, kWp per unit of credited roof area, fitted directly against
+the register across 9,674 fully covered municipalities: panel 2. That is a stronger
+calibration than a transferred quadrat ratio, not a weaker one, and it needs no mapping at
+all.
+
+**Three ways of supervising the classifier were then tried, and the register's coordinates
+are the wrong one.** Panel 1 is why: coordinates begin at 30 kWp, so **42.1 of the 49.0 GWp**
+below the detection floor can never be located. Training on them produced a better classifier
+(0.8792 AUC against 0.8563) and a worse estimate (63.9% municipal error against 48.4%),
+because the labels and the estimand disagree about which installations matter.
+
+**Per-municipality counts fix the label problem.** MaStR publishes exact rooftop unit counts
+for all 11,024 Gemeinden, 4.41M units spanning every size band including the 4.13M that carry
+no coordinates. That is a known class prior, and positive-unlabelled training against it beats
+coordinate labels by a wide margin: 33.4% municipal error against 70.6%, on a set where only
+1.9% of register units are coordinate-labelled.
+
+**But it does not beat the trivial baseline, and the first result that said otherwise was a
+sampling artefact.** On 55 PV-dense municipalities the prior scored 18.2% against the
+roof-area baseline's 24.1%, which looked decisive. Those municipalities had a 27.0% PV base
+rate against Germany's national 15.9%, selected that way because they were chosen to maximise
+geolocated units. Repeated on 1,101 municipalities at a representative 14.9% base rate, the
+gap closes to **33.4% against 34.2%, with Spearman identical at 0.921 and 0.920**: a tie.
+
+**What Germany settles.** Four approaches -- OSM labels, register coordinates, a known
+per-municipality prior, and authoritative footprints -- and none beats multiplying total roof
+area by a constant at municipality level. Where rooftop PV is near-ubiquitous, roof area is
+close to sufficient and per-building discrimination washes out under aggregation. In Pakistan,
+where adoption is rare and concentrated, the same estimator cuts median error 3.4x against the
+same baseline. The instrument is not broken; the regime decides whether it has anything to add.
+
 ### Register labels: a better classifier that makes a worse estimate
 
 Germany's roofclf trains on OSM labels marking ~3.6% of registered rooftop units, so the

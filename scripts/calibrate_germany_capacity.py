@@ -175,6 +175,16 @@ def main() -> None:
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, indent=2))
 
+    # The calibration itself, one row per municipality: what the fit is actually made of,
+    # and the source for the calibration panel in docs/assets/figures/germany_calibration.svg.
+    d_out = d[["ags", "credited_m2", "all_roof_m2", "truth_kw"]].copy()
+    for name, col in (("roofclf_probability_weighted", "credited_m2"),
+                      ("roof_area_baseline", "all_roof_m2")):
+        d_out[f"pred_kw_{col}"] = d[col] * out["estimators"][name]["kwp_per_m2"]
+    gem_csv = str(args.out).replace(".json", "_per_gemeinde.csv")
+    d_out.to_csv(gem_csv, index=False)
+    log.info("wrote %s (%d municipalities)", gem_csv, len(d_out))
+
     cells = pd.DataFrame(cell_rows)
     r = out["estimators"]["roofclf_probability_weighted"]["kwp_per_m2"]
     cells["est_mwp_roofclf"] = cells.credited_m2 * r / 1000.0

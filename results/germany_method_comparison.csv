@@ -1,0 +1,9 @@
+sample,n_gemeinden,base_rate_pct,estimator,median_municipal_abs_pct_err,spearman
+PV-dense (selected),55,27.0,"roofclf, coordinate labels",44.2,0.7382
+PV-dense (selected),55,27.0,"roofclf, register-count prior",18.2,0.8821
+PV-dense (selected),55,27.0,roof area x a constant,24.1,0.8294
+representative,1101,14.9,"roofclf, coordinate labels",70.6,0.8547
+representative,1101,14.9,"roofclf, register-count prior",33.4,0.9207
+representative,1101,14.9,roof area x a constant,34.2,0.9197
+national,9674,15.9,"roofclf, OSM labels (national)",48.4,0.8251
+national,9674,15.9,roof area x a constant (national),37.8,0.875
