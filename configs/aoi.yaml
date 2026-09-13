@@ -211,6 +211,15 @@ aois:
     # what the imagery shows -- see docs/results/france.md.
     compose_window: ["2024-05-01", "2024-09-30"]
 
+  # Zambia national run (2026-09-13). No source_region: chips/compose/labels all come
+  # from the open fetchers (Planetary Computer STAC, live Overpass, VIDA ZMB).
+  # compose_window is the SOUTHERN-hemisphere dry season (May-Oct), not the default
+  # Punjab winter window. grid_origin pins the cell grid to the bbox origin so a later
+  # targeted quadrat compose names cells identically to this national one.
+  zambia:
+    bbox: [21.999, -18.08, 33.706, -8.224]
+    division: { name: Zambia, country: ZM, subtype: country, iso3: ZMB }
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]

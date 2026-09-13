@@ -156,13 +156,16 @@ is 1.01 to 1.08). Recorded because the wrong diagnosis was the plausible one.
 ## The plausibility gate
 
 `check-density` is the pre-publication gate for failure modes `p_real` weighting cannot
-catch. Across the three runs:
+catch. Across the runs:
 
-| | Original | After `p_unmapped` | After the recall fix |
-| --- | --- | --- | --- |
-| ok | 19 | 17 | **18** |
-| suspect | 1 (Saarland, ground-mount 3.6x rooftop) | 0 | 0 |
-| fail | 0 | 3 (Hamburg, Bremen) | **2 (Hamburg)** |
+| | Original | After `p_unmapped` | After the recall fix | After the region dedup |
+| --- | --- | --- | --- | --- |
+| ok | 19 | 17 | 18 | **15** |
+| suspect | 1 (Saarland, ground-mount 3.6x rooftop) | 0 | 0 | 0 |
+| fail | 0 | 3 (Hamburg, Bremen) | 2 (Hamburg) | **1 (Hamburg)** |
+
+The first three columns count 20 rows, the last 16: the region layer carried four duplicate
+polygons until 2026-09-13 (below), so Hamburg was being failed twice.
 
 Saarland's flag cleared legitimately: it was flagged because ground-mount read 3.6x its
 rooftop total, and rooftop capacity rising is exactly the correction that ratio wanted.
@@ -174,10 +177,25 @@ checked-genuine plausibility failure. The ground:rooftop ratio check correctly s
 requires `mwp_ground >= 50`; Hamburg has 7.0), while the concentration check has no
 equivalent minimum-region-size guard.
 
-One data quirk visible in the output: `plausibility.csv` carries **20 rows for Germany's 16
-states**, with Hamburg, Mecklenburg-Vorpommern, Niedersachsen and Schleswig-Holstein each
-appearing twice. That is a duplication in the region polygons, not a duplicated estimate, and
-it is why Hamburg counts as two failures.
+**A data quirk that turned out to be a real bug, fixed 2026-09-13.** `plausibility.csv`
+carried **20 rows for Germany's 16 states**, with Hamburg, Mecklenburg-Vorpommern,
+Niedersachsen and Schleswig-Holstein each appearing twice. The cause is that Overture
+publishes a coastal division twice, once as land and once including territorial waters, and
+nothing deduplicated them; each pair is perfectly nested. In `plausibility.csv` this was
+harmless beyond failing Hamburg twice, because every row is an independent per-polygon
+estimate. **In the evidence atlas it was not.** That page assigns capacity to a province by
+point-in-polygon on each cell's centroid, so 1,152 of Germany's 4,656 cells fell inside both
+rows of a pair: four Bundeslaender were listed twice in "Provinces, ranked by capacity", and
+the province column summed to 29,559 MWp against a national 24,687, a 19.7% double-count. The
+headline tiers are summed from the grid rather than from the provinces, so no published total
+moved.
+
+The fix keeps the **land** polygon, which is the **smaller** of a nested pair -- a "keep the
+largest" rule picks the wrong one every time. Germany's 16 kept polygons total 357,649 km&sup2;
+against the country's actual 357,596 km&sup2; of land. The test is geometric nesting rather
+than a repeated name, so genuinely distinct divisions that share a name are untouched. Only
+Germany was affected; every other AOI here draws its admin polygons from geoBoundaries, which
+publishes no maritime outlines.
 
 ## Does roofclf transfer to Germany
 
