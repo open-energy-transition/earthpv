@@ -363,6 +363,41 @@ probability tracks adoption *within* a single cell, where scene conditions are s
 producing identical municipal numbers is strong evidence the problem is not in the features,
 and a fourth would not change that.
 
+### What the German atlas now carries
+
+The atlas's sub-400 m&sup2; half was replaced on 2026-09-13, because the component it carried
+was the worst of the three measured options.
+
+| Sub-400 m&sup2; component | Median municipal error | In the atlas |
+| --- | --- | --- |
+| roofclf, probability-weighted | 48.4% | until 2026-09-13 |
+| Roof area, single constant | 37.8% | no |
+| **Roof area, 200-400 m&sup2; band at 0.03509 kWp/m&sup2;** | **35.4%** | **now** |
+
+Tier totals moved from Verified 41,937 / Best 61,854 MWp to **Verified 38,508 / Best 94,624
+MWp**. Three things explain that and should be read together.
+
+**Verified fell because a regression has nothing to agree with.** The old floor tier was the
+roofclf-and-SPPI agreement population; the replacement has no second detector, so Verified
+returns to hand-mapped OpenStreetMap alone. That is the honest result rather than a loss: the
+old floor asserted a standard of proof the new component cannot meet.
+
+**Best rose because the band is genuinely uncounted.** The 200-400 m&sup2; band sits entirely
+below segmentation's >= 400 m&sup2; population, and German OSM rooftop is ~3.6% complete, so
+deduplication removes very little of it. The component is 52.2 GWp against a registered
+54.3 GWp of rooftop at or below 100 kWp, and it is additional to what the other tiers hold
+rather than overlapping them.
+
+**It is an estimate, not evidence.** `roof area x constant` contains no per-building
+observation of PV. It reproduces the national total almost exactly, which is unsurprising
+since the constant is fitted against that register, and it ranks municipalities better than
+anything else tried. Both statements are true at once, and the atlas page says so rather than
+letting the tier name imply detection.
+
+**None of this fixes the headline problem.** The tier totals still fail their own register
+check, because Verified's ground component alone is 118% of all registered German ground-mount,
+from OSM mapper convention. That is a different defect from the one this replacement addresses.
+
 ### The estimator that finally beats the baseline, and what RID corrected about it
 
 Since no supervision scheme moved roofclf past a plain roof-area baseline, the remaining place

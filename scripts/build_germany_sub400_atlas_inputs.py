@@ -46,13 +46,26 @@ def main() -> None:
     ap.add_argument("--out-dir", default="data/roofclf_national_germany_prod/germany/density")
     ap.add_argument("--sample-cells", type=int, default=400)
     ap.add_argument("--max-roof-m2", type=float, default=400.0)
+    ap.add_argument("--min-roof-m2", type=float, default=0.0)
+    ap.add_argument("--method", choices=["roofclf", "size_band"], default="roofclf",
+                    help="roofclf weights each roof by p; size_band prices band roof area "
+                         "directly with a register-fitted constant and uses no classifier")
+    ap.add_argument("--kwp-per-m2", type=float, default=None,
+                    help="size_band only: kWp per m2 of band roof, fitted against the register")
     ap.add_argument("--osm-solar", default="data/labels/germany_national_osm_solar.parquet")
     ap.add_argument("--candidates", default="data/predictions/germany/candidates.parquet")
     args = ap.parse_args()
 
-    ratio = json.loads(Path(args.capacity).read_text())["estimators"][
-        "roofclf_probability_weighted"]["kwp_per_m2"]
-    log.info("register-fitted kWp per credited m2: %.5f", ratio)
+    if args.method == "size_band":
+        if args.kwp_per_m2 is None:
+            raise SystemExit("--kwp-per-m2 is required for --method size_band")
+        ratio = args.kwp_per_m2
+        log.info("size_band: %.0f-%.0f m2 roofs at %.5f kWp/m2, no classifier",
+                 args.min_roof_m2, args.max_roof_m2, ratio)
+    else:
+        ratio = json.loads(Path(args.capacity).read_text())["estimators"][
+            "roofclf_probability_weighted"]["kwp_per_m2"]
+        log.info("roofclf: register-fitted %.5f kWp per credited m2", ratio)
 
     files = sorted(glob.glob(f"{args.prob_dir}/*.parquet"))
     if not files:
@@ -103,7 +116,7 @@ def main() -> None:
         n_all += len(g)
         # Sub-400 m2 roofs only: this is the atlas's small-PV component, and >= 400 m2 is
         # segmentation's own population.
-        g = g[g.roof_area_m2 < args.max_roof_m2]
+        g = g[(g.roof_area_m2 < args.max_roof_m2) & (g.roof_area_m2 >= args.min_roof_m2)]
         if g.empty:
             continue
         pt = g.geometry.representative_point()
@@ -116,8 +129,17 @@ def main() -> None:
         if g.empty:
             continue
         n_kept += len(g)
-        kwp = g.roof_area_m2.to_numpy() * g.p_roofclf.to_numpy() * ratio
-        agree = (g.p_roofclf.to_numpy() >= p_thr) & (g.sppi.to_numpy() >= s_thr)
+        if args.method == "size_band":
+            # No classifier: the band's roof area priced directly. Measured at 35.4% median
+            # municipal error against roofclf's 48.4% and 37.8% for all roof area.
+            kwp = g.roof_area_m2.to_numpy() * ratio
+            # A regression has no second detector to agree with, so there is no floor
+            # population. Verified therefore keeps only hand-mapped OSM, and this component
+            # is written as zeros rather than omitted, because the atlas requires the pair.
+            agree = np.zeros(len(g), dtype=bool)
+        else:
+            kwp = g.roof_area_m2.to_numpy() * g.p_roofclf.to_numpy() * ratio
+            agree = (g.p_roofclf.to_numpy() >= p_thr) & (g.sppi.to_numpy() >= s_thr)
         rows.append({
             "cell": Path(f).stem,
             "est_kwp_sub400": float(kwp.sum()),

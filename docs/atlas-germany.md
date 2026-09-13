@@ -12,11 +12,15 @@ hide:
   <span aria-current="page">Germany</span>
   <a href="../atlas-france/">France</a>
   <span class="atlas-switch__note">
-    Now includes a sub-400 m&sup2; roofclf half, calibrated against the MaStR register per
-    municipality rather than against mapped quadrats, which Germany does not have. Read the
-    tiers as geography, not as capacity: they fail their own register check, and on
-    representative municipalities this estimator only ties multiplying roof area by a
-    constant.
+    The sub-400 m&sup2; half is a <b>register-calibrated statistical estimate, not a
+    detection</b>: roof area in the 200-400 m&sup2; band priced at 0.03509 kWp/m&sup2; against
+    MaStR, with no classifier. It replaced a roofclf component measured as worse than a plain
+    roof-area baseline (48.4% against 37.8% median municipal error; this estimator scores
+    35.4%). Because a regression has no second detector to agree with, Verified carries no
+    sub-400 component and is hand-mapped OpenStreetMap alone.
+    <b>Read the tiers as geography, not capacity</b> &mdash; they fail their own register
+    check.
+    <a href="../results/germany/">What was measured, and how</a>.
     Verified is the hand-mapped OpenStreetMap population alone and Best adds only the
     model's own &ge; 400 m&sup2; detections &mdash; both tiers therefore exclude the 65.5%
     of German rooftop capacity that sits below that floor.
