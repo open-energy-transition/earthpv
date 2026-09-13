@@ -111,12 +111,22 @@ support it: the Muzaffargarh Rural Wide mistake again, caught before a refit. **
 widening the density domain further is therefore imagery date, not mapping effort** -- check
 `imagery_layer`/`imagery_date` before drawing, not after mapping. See Box 17.
 
-A country with no mapped calibration quadrats yet gets the **segmentation-only evidence atlas**
+**A country with a complete register does not need mapped quadrats for the capacity half.**
+Germany has zero quadrats and now has a roofclf half anyway, because MaStR publishes per-
+municipality totals and the estimator is an aggregate: `roof-classifier` fits the model on
+pseudo-quadrats, `roofclf-score-national` scores the country, and
+`scripts/calibrate_germany_capacity.py` fits kWp per credited m2 against the register instead
+of a quadrat coverage ratio. See "MaStR validation" below for what that is worth (it ties a
+roof-area baseline in Germany and beats it 3.4x in Pakistan).
+
+A country with neither quadrats nor a complete register gets the **segmentation-only evidence
+atlas**
 (`earthpv atlas --aoi <aoi> --osm-solar <pull>`, omitting BOTH `--sub400-low-cells` and
 `--sub400-central-cells`; supplying one is rejected as a half-configured run) until quadrats
 exist to fit `roofclf` -- still this workflow's output for that country, just missing its
 sub-400 m² half. Verified degrades to hand-mapped OSM alone and Best to that plus the ≥ 400 m²
-detections; neither tier reaches below the floor. Germany is in this state, and Gujarat.
+detections; neither tier reaches below the floor. Gujarat is in this state; France is too
+(`roofclf` does not transfer to French residential PV). Germany no longer is.
 
 **`--osm-solar` is now required, and `density` no longer writes an atlas at all (2026-09-02).**
 The six-estimator and simple atlases (`atlas.build_atlas`, `_build_estimator_atlas`,
@@ -716,7 +726,80 @@ has no `placement` column); it maps `small` -> rooftop (a SIZE class, 114k featu
 `rooftop` at `MAX_CANDIDATE_M2`, reclassifying 494 features up to 4.19 km² as ground so they
 convert at the land constant.
 
-Full writeup: `docs/methods/mastr-validation.md`, `docs/results/germany.md`.
+**GERMANY NOW HAS A roofclf HALF, CALIBRATED FROM THE REGISTER RATHER THAN FROM QUADRATS
+(2026-09-13).** Germany has no exhaustively mapped calibration boxes, and mapping some looked
+like the prescription. It is not the binding constraint. The classifier ranks German roofs
+adequately on OSM labels (0.824 AUC); what 3.6%-complete labels cannot do is fit a
+`coverage_ratio`. They do not have to: **the estimator emits a per-area aggregate and a complete
+register publishes exactly that per municipality**, so the calibration is one constant, kWp per
+unit of credited roof area, fitted against MaStR across 9,674 fully covered Gemeinden.
+`vg250_gem.parquet` (10,949 municipality polygons, joins to MaStR on AGS) is what makes this
+possible. The 30 kWp coordinate cliff blocks `p_unmapped`, i.e. precision; it does not block
+calibration.
+
+Result over all 4,656 cells and 25.0M assessable buildings: **0.2793 kWp/m2 (90% 0.2654-0.2926),
+national 52.37 GWp against a registered 54.29 (0.96)**, median municipal error 48.4%, rho 0.825.
+The national extrapolation is a real out-of-sample test -- the constant is fitted only where the
+grid fully covers a municipality, then applied countrywide -- and the 4% shortfall is reported,
+not absorbed. Scripts: `scripts/run_germany_roofclf_production.py`,
+`scripts/calibrate_germany_capacity.py`, `scripts/validate_sub400_against_mastr.py`.
+
+**THE BEST TRAINING MIX WAS MEASURED, AND THE FRENCH BORDER SET IS THE ONLY FOREIGN DATA THAT
+HELPS.** Leave-one-German-quadrat-out: Germany only 0.8240 AUC / 0.7290 within size band,
+**Germany + France border (cadastre + OpenPVMapper, 29 Alsace/Moselle communes) 0.8372 / 0.7546**,
+Germany + France national 0.7384 / 0.6359, France border alone 0.7828 / 0.7152. Adding the
+border set helps; adding the national French set **hurts by 0.086 AUC**. Proximity, cadastre
+footprints and swamping (16,435 French positives against Germany's 2,252) are confounded and
+this test cannot separate them. `data/roofclf_germany_prod/` is the production fit.
+
+**THE SUB-400 m2 ESTIMATOR IS VALIDATED AGAINST A COMPLETE REGISTER FOR THE FIRST TIME, AND THE
+ANSWER IS REGIME-SPECIFIC.** Against a roof-area baseline (total roof area times a constant),
+per municipality: **Pakistan roofclf 26.5% median error against the null's 88.9% -- a 3.4x cut**
+(29 Rule-1 quadrats, leave-one-out); **Germany roofclf 48.4% against the null's 37.8% -- the
+baseline wins**. Where PV is rare, roof area says little about which places hold capacity; where
+it is near-ubiquitous, capacity is close to proportional to roof area by construction. **The
+machinery is validated in the regime it was built for.**
+
+**A NATIONAL TOTAL AGREEING WITH A REGISTER IS NOT EVIDENCE THE GEOGRAPHY IS RIGHT.** Germany's
+cross-validated total ratio came out at 1.003 while the median municipality was off by 53%,
+because over-prediction of the top decile (1.8x) cancelled under-prediction of the bottom 90%.
+Three German models with municipal errors spanning 37.8-63.9% all produced essentially the same
+national figure. PyPSA consumes the per-cell geography, not the total.
+
+**THREE WAYS OF SUPERVISING THE GERMAN CLASSIFIER, AND ONLY ONE IS SOUND.** (1) OSM labels: 3.6%
+complete but span all sizes. (2) **Register COORDINATES: rejected.** MaStR geolocates 108,443
+units at 30-72 kWp, which gave a better classifier (0.8792 AUC against 0.8563) and a **worse
+estimate (63.9% municipal error against 48.4%)** -- coordinates start at 30 kWp, so 42.1 of the
+49.0 GWp below the floor can never be located and the labels disagree with the estimand.
+Optimising building-level AUC on a mismatched label subset moves the aggregate confidently the
+wrong way. (3) **Register COUNTS as a known class prior** (`scripts/roofclf_pu_known_prior.py`):
+exact rooftop unit counts for all 11,024 Gemeinden, 4.41M units across every band including the
+4.13M with no coordinate. Positive-unlabelled training against that prior fixes the label
+problem (33.4% against coordinate labels' 70.6%) but **only ties the roof-area baseline on
+representative municipalities (33.4% against 34.2%, rho 0.921 against 0.920)**. The first run
+said 18.2% against 24.1% -- that was 55 PV-dense municipalities at a 27.0% base rate against
+Germany's 15.9%, selected because they maximised geolocated units. **Always check the sample
+before believing a win.** The prior is training-only; evaluation is grouped by municipality so a
+held-out Gemeinde's count is truth, never an input, or the exercise is circular.
+
+**Four approaches -- OSM labels, register coordinates, a known prior, authoritative footprints --
+and none beats multiplying roof area by a constant at municipality level in Germany.** That is
+now a settled, thrice-confirmed finding, and it is the counterpart to Pakistan's 3.4x win.
+
+**Germany's evidence atlas now carries the roofclf half** (Verified 38,508 -> **41,937**, Best
+49,324 -> **61,854 MWp**), built by `scripts/build_germany_sub400_atlas_inputs.py`. Three things
+about that generator are load-bearing: the component must be **INCREMENTAL** (sub-400 m2 roofs
+only, deduped against the hand-mapped OSM population and segmentation's own candidates) or it
+double-counts what Best already holds -- the first build read **97.2 GWp** before dedup against
+61.9 after; it is **pre-aggregated to one row per cell** on a real building point, because
+handing `atlas._join_buildings_to_grid_cells` 25M geometries peaks over 20 GB and is OOM-killed
+while the per-cell sum is identical; and the floor tier is **"both signals in their top decile",
+not precision-calibrated**, because Germany cannot fit a precision threshold on 3.6% labels.
+**The tier totals still fail their own register check** on mapper convention and the atlas note
+says so -- read them as geography, not capacity.
+
+Full writeup: `docs/methods/mastr-validation.md`, `docs/results/germany.md`. The calibration is
+walked through visually in `docs/assets/figures/germany_calibration.svg`.
 
 ### France validation (ODRE register + OpenPVMapper)
 
@@ -798,12 +881,17 @@ instead of silently borrowing Pakistan's. `CALIBRATED_BLDG_DENSITY_KM2` remains 
 and remains the fallback, so no existing Pakistani call site changed behaviour.
 `compose.run_compose` now also honours an AOI's `compose_window` when `--window` is not
 passed, so a national run cannot land on a different epoch than the quadrat cells it skips.
-**Only `density.py` is threaded so far**: `sub400_capacity.py` (`out_of_domain_and_gate_capacity`,
-the coverage-ratio domain filter) and `growth.py` still import `CALIBRATED_BLDG_DENSITY_KM2`
-directly and would therefore apply PAKISTAN's band to a French roofclf capacity run. That
-chain has not been run for France yet (it needs `roofclf-score-national` over the whole
-country), so nothing published is affected -- but thread `aoi` through those before the first
-France `sub400-capacity` / `ge400-roof-capacity` run.
+**FIXED 2026-09-12: `aoi` is threaded through the whole chain.** `sub400_capacity.py`
+(`national_cell_domain`, `domain_restricted_capacity`, `domain_restricted_and_gate_capacity`,
+`out_of_domain_and_gate_capacity`), `roofclf_ge400_capacity.py` and `growth.py` all take `aoi`
+and resolve the band via `density.calibrated_density_range`, and `cli.py` passes it. The
+parameter defaults to `None` for backwards compatibility, and
+`calibrated_density_range(None) == calibrated_density_range("pakistan") ==
+CALIBRATED_BLDG_DENSITY_KM2`, so Pakistan is provably unchanged. Verified by a functional test:
+a 20 bldg/km2 cell is in-domain for France but not Pakistan and a 1,200 bldg/km2 cell the
+reverse. `scripts/trust_gate_density_audit.py` and `scripts/detection_domain_examples.py` still
+import the constant directly and are left alone deliberately -- both read the hardcoded
+Pakistani `national_cell_density.parquet` and take no `--aoi`.
 
 
 AOI config: `france` carries `grid_origin: [-5.15, 41.33]` so a targeted quadrat-cell compose
@@ -883,11 +971,58 @@ bound, so v4's oversized blobs over France were merged false-positive sheets.
 
 **v5 (`configs/terramind_pv_v5_france.yaml`, `data/models/v5_combined_france/terramind-pv-epoch=25-step=37986.ckpt`,
 early-stopped at 33, 8h19m) IS APPLIED TO FRANCE ONLY.** Pakistan and Germany keep v4 and
-their published figures are untouched. **France is 73.6% of its corpus** (18,577 of 25,238
-chips), so the result confounds "French data present" with "3.8x larger corpus"; a
-~3,200-chip capped run would separate them and has NOT been run (owner chose the full set
-2026-09-11). France val holdout: Centre-Val de Loire (lon 0.5-3.1E, lat 46.5-48.4N), 1,518
-chips, carved into `data/chips/france/index.parquet` before the merge.
+their published figures are untouched. France val holdout: Centre-Val de Loire (lon 0.5-3.1E,
+lat 46.5-48.4N), 1,518 chips, carved into `data/chips/france/index.parquet` before the merge.
+
+**v6 RESOLVED THE v5 CONFOUND (2026-09-12): it is corpus SIZE, not merely French presence.**
+`configs/terramind_pv_v6_france_capped.yaml` caps France to Germany's size (3,201 train chips
+against v5's 17,059) with a byte-identical val holdout, so the only variable is French training
+volume. On the above-floor low-voltage denominator, `est_mwp_exp`: v4 zero-shot slope 0.162 /
+rho 0.290 / 26% recovery, **v6 0.100 / 0.364 / 18%**, v5 0.170 / 0.449 / 34%. **v6 recovers
+less than half of v5's rank gain and is WORSE than zero-shot on slope and recovery** -- a
+half-measure retrain lands somewhere worse than either end. The two effects do separate: blob
+suppression saturates early (merged false-positive sheets >= 10k m2 fall 6,036 -> 2,678 with
+19% of the French data, 79% of v5's total reduction) while candidate yield keeps scaling
+(13,419 -> 14,544 -> 39,462). v6 artifacts: `data/predictions_v6/`, `results/france_validation_v6/`,
+`results/france_pv_evidence_atlas_v6.html` (Verified 11,163 / Best 12,045 MWp -- Verified is
+identical to v5's because it is hand-mapped OSM times the constants and never touches the
+model). **v5 stays France's production checkpoint.**
+
+**THE 400 m2 FLOOR IS NOW MEASURED, NOT ARGUED (2026-09-12).** `france_validation.mapped_vs_earthpv`,
+exposed as `earthpv validate-france --pred-dir`, scores candidates against the 2,622 hand-mapped
+installations per size bin. Recall climbs with array size (Spearman **+0.83, p=0.042**, from
+0.000 below 20 m2 to 0.095 at 200-400 m2) while **OpenPVMapper, reading the same installations
+in the same communes from sub-metre imagery, is flat (-0.29, p=0.58)**. The gradient is the
+sensor, not the annotator. It survives across three models (v4/v6/v5: pooled count recall
+0.0118 / 0.0103 / 0.0118). Precision is deliberately NOT reported (four communes were mapped
+1-3 years before the composite window, which biases precision and leaves recall alone), a
+commune under 99% cell coverage is excluded rather than read as recall 0, and the >= 400 m2 bin
+holds only 44 installations (recall 0.045, 95% Wilson 0.013-0.151) so it cannot be read as
+"earthpv fails above its own floor".
+
+**TWO ALTERNATIVE EXPLANATIONS FOR THE FRENCH roofclf FAILURE WERE TESTED AND REJECTED.**
+*Too few labels?* No: OpenPVMapper pseudo-quadrats over 90 communes give 386,565 buildings and
+16,435 positives, **13.4x the supervision**, and move AUC by **-0.005** (0.706 against 0.710).
+The control that settles it is that the same model scores **0.683 on held-out OpenPVMapper
+labels**, its own source -- the features do not separate PV-bearing roofs whatever the labels
+say. *Bad footprints?* Partly, and now quantified: the DGFiP cadastre (per-commune by INSEE,
+authoritative, ~2 s per commune) finds 103,697 buildings and 1,759 PV-bearing where VIDA finds
+44,314 and 1,231, and fixing that is worth **+0.027 AUC within size band, 14% of the gap** to
+Pakistan. Real, worth adopting, nowhere near enough.
+
+**THE SIZE REGIME IS SET BY POLICY, NOT GEOGRAPHY (2026-09-13).** Across the France-Germany
+border French arrays are flat at 20.5-21.7 m2 in every 10 km band out to 60 km and then step at
+the line. **How big the step is depends entirely on the instrument**: the geolocated comparison
+says ~5x, but its German side is OSM at ~3.6% completeness and mappers trace large arrays first.
+Both COMPLETE registers cut to the same sub-36 kW band give **5.34 kWp per unit in Alsace/Moselle
+against 10.41 in BW/RP/Saarland -- 1.95x**, half what imagery implies. Figure:
+`docs/assets/figures/border_array_size.svg`. The practical warning for a new country: whether
+`roofclf` can work is a property of national subsidy design and cannot be inferred from a
+neighbour.
+
+**France has an atlas page** (`docs/atlas-france.md`) beside Pakistan's and Germany's, and its
+two interactive pages are in `build_docs_figures.py`'s sync list rather than copied by
+`rebuild_france_atlases_v5.sh`, which meant `pixi run docs-figures` could not refresh them.
 
 **Artifacts**: baseline frozen at `results/france_validation/france_validation_BASELINE_zeroshot.json`
 + `configs/calibration/france_candidate_precision_BASELINE_v4.yaml` + `*_BASELINE_zeroshot.html`
@@ -909,7 +1044,33 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
   (`/run/media/tobi/aidisc/earthpv/data/`): `chips/`, `composites/`, `models/`, `predictions/`.
   Files there are invisible to git/IDE explorers that hide ignored files.
 - **`row.mask` / `row.image` on a pandas row:** use bracket access (`row["mask"]`) -- `.mask`
-  resolves to the `Series.mask` method, a bug hit more than once here.
+  resolves to the `Series.mask` method, a bug hit more than once here. **A column named `cov`
+  is the same trap** (`DataFrame.cov`, the covariance method) and cost a run in
+  `validate_sub400_against_mastr.py`; it failed loudly only because comparing a method to a
+  float raises. Name a column something pandas does not already define, and prefer brackets.
+- **Selecting "the best checkpoint" by mtime is wrong.** `train.py` sets `save_top_k=2`, so a
+  run directory holds the two BEST checkpoints and `ls -t | head -1` returns the SECOND-best
+  whenever the final improvement is not the argmax -- exactly what happened to v6 (epoch 30 at
+  0.7818 against epoch 26 at 0.7828). Use `scripts/pick_best_checkpoint.py`, which reads
+  Lightning's own `best_model_path` out of the checkpoint's ModelCheckpoint callback state.
+- **`roofclf.discover_quadrats` globs `*_calib_*_boundary.geojson`.** A quadrat stem without
+  `_calib_` is invisible to `earthpv roof-classifier`, which fails with "No calibration
+  quadrats found" seconds after launch -- easy to mistake for a still-running job if nothing is
+  watching it.
+- **Overture prunes its release directory to the last two releases.** `configs/aoi.yaml`'s
+  pinned `overture_release` will eventually 404 as `IO Error: No files found`, which reads like
+  "no data for this area" rather than "your release expired". Check
+  `https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/?list-type=2&prefix=release/&delimiter=/`
+  for what still exists. Overture is also ~166 s per commune from here; for France the DGFiP
+  cadastre is the same footprints per INSEE in ~2 s.
+- **Anything that loads every scored building at once will OOM.** 25M buildings reprojected in
+  one go peaks at **22.7 GB**; stream per cell instead (`calibrate_germany_capacity.py` does,
+  at 2.6 GB). Run long jobs with `--property=MemoryMax=` so a regression fails fast rather than
+  thrashing swap.
+- **A new atlas component must be INCREMENTAL before it goes in.** Best already carries
+  segmentation's own detections and the hand-mapped OSM population, so a component crediting
+  every building double-counts. Germany's first build read 97.2 GWp before deduping against
+  both layers and 61.9 GWp after.
 - **Training positive threshold** is `MIN_PV_AREA` in `chips.py` (arrays below it are burned as
   `ignore = -1`, not negatives). Changing it requires rebuilding chips and retraining.
 - **Geographic val split** uses `val_tiles` in `configs/aoi.yaml`; these must be MGRS tiles the
@@ -919,6 +1080,13 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
 - Long GPU/network stages are run detached (`nohup … &`) and polled; the rich progress bar does
   not flush cleanly to a redirected log, so watch checkpoint files / cell counts to gauge
   progress rather than parsing the log.
+- **The aidisc drive is the binding constraint; `/home` (sda4, ~1.2 TB free) is where bulk
+  outputs belong.** This applies beyond composites: national roofclf scoring passes are ~4.7 GB
+  each, and `data/roofclf_national_germany_{vida,osm}` were moved to
+  `/home/tobi/earthpv_data/roofclf_passes/` and symlinked back when aidisc hit 98%. Moving and
+  symlinking preserves the data and the paths; deleting does not. Check `df -h` BEFORE a
+  national run, and guard long writes so they stop short of 100% rather than taking the whole
+  volume down.
 - **A new AOI's composites MUST be symlinked onto `/home` (sda4, 1.3 TB), never written
   straight into `data/composites/<aoi>/` on the aidisc drive.** `data/composites/germany`
   and `.../pakistan` are symlinks to `/home/tobi/earthpv_composites/<aoi>` for exactly this
