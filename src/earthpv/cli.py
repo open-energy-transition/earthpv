@@ -1925,5 +1925,55 @@ def validate_france_cmd(
     )
 
 
+@app.command("data-sources")
+def data_sources_cmd(
+    country: str = typer.Option(None, help="substring match, e.g. 'kenya' or 'korea'"),
+    continent: str = typer.Option(None, help="Africa / Asia / Europe / North America / ..."),
+    role: str = typer.Option(
+        None, help="train_positives | roof_context | pseudo_labels | calibration_only | "
+                   "access_required"),
+    min_priority: str = typer.Option(None, help="A+, A, A-, B+ ... keeps that grade or better"),
+    registry: Path = typer.Option(None, help="override the shipped registry CSV"),
+    urls: bool = typer.Option(False, "--urls", help="print source URLs and licences too"),
+) -> None:
+    """What PV labels, registers and roof layers exist for a country, and what to do with each.
+
+    The registry ships with the repo (`docs/assets/registry/earthpv_training_data_registry.csv`):
+    90 datasets across 51 countries. Each row is tagged with an `earthpv_role` derived from
+    whether PV presence is actually confirmed and whether the records carry geometry, because
+    that is what decides whether a source can train a model, only calibrate one, or neither.
+
+    Roof POTENTIAL is not installed PV, aggregate statistics cannot be training labels, and
+    model-derived inventories are Bronze supervision whose agreement is not validation. The
+    role tag exists to keep those three distinctions visible.
+
+        earthpv data-sources --country kenya
+        earthpv data-sources --continent Africa --role train_positives
+        earthpv data-sources --role calibration_only --min-priority A --urls
+    """
+    from earthpv.data_registry import ROLE_NEXT_STEP, filter_registry, load_registry
+
+    d = load_registry(registry) if registry else load_registry()
+    sel = filter_registry(d, country=country, continent=continent, role=role,
+                          min_priority=min_priority)
+    if sel.empty:
+        typer.echo("No registry entries match. `earthpv data-sources` with no filters lists all "
+                   f"{len(d)} datasets across {d.country.nunique()} countries.")
+        raise typer.Exit(code=1)
+
+    for r in sorted(sel.earthpv_role.unique(), key=lambda x: list(ROLE_NEXT_STEP).index(x)):
+        part = sel[sel.earthpv_role == r]
+        typer.echo(f"\n=== {r}  ({len(part)}) ===")
+        typer.echo(f"    {ROLE_NEXT_STEP[r]}\n")
+        for _, row in part.iterrows():
+            typer.echo(f"  [{str(row.priority):<4}] {row.country} -- {row.dataset_name}")
+            typer.echo(f"         {row.provider} | {row.scale_or_record_count}")
+            if urls:
+                typer.echo(f"         {row.source_url}")
+                typer.echo(f"         licence: {row.license_or_access}")
+    typer.echo(f"\n{len(sel)} of {len(d)} datasets. Full table and column meanings: "
+               "docs/data-registry.md")
+
+
 if __name__ == "__main__":
     app()

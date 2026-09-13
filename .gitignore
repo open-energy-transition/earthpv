@@ -46,6 +46,7 @@ results/glint_validation_pakistan/*
 !results/germany_mastr_coordinate_cliff.csv
 !results/germany_method_comparison.csv
 !results/germany_roofclf_capacity_per_gemeinde.csv
+!results/training_data_registry.html
 !results/density_domain_cells.csv
 !results/density_domain_quadrats.csv
 !results/pv_size_vs_building_bins.csv
