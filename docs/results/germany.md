@@ -446,11 +446,16 @@ placements now sit within about 10% of what the register says is inside the mapp
 Verified is 23% of Germany's 112 GWp of registered PV from OSM mapping 2.6% of units, which is
 plausible for a subset skewed to large installations where 34% was not.
 
-**Two scope limits, both deliberate.** Only `build_evidence_atlas` uses the table;
-`_size_distribution_data`, which feeds the size chart, still uses the flat constant, because
-changing both at once would let the headline and the chart disagree silently. And the matched
-sample is 5.2%-coordinate-limited and skewed to units at or above 30 kWp, so the
-large-polygon constant is better determined than the small-polygon one.
+**Both capacity paths use the table.** `_size_distribution_data`, which feeds the size chart,
+applies the same conversion as `build_evidence_atlas`, so the chart cannot disagree with the
+headline it sits beneath -- that function's contract is to re-bin the published total, not to
+recompute it. The change is currently latent rather than visible: Germany's atlas has no size
+chart, because that section is gated on a roofclf >= 400 m&sup2; replacement Germany does not
+have, and Pakistan, which does have the chart, returns the flat 0.18 at every size.
+
+**The remaining caveat is sampling.** The matched set is 5.2%-coordinate-limited and skewed to
+units at or above 30 kWp, so the large-polygon constant is better determined than the
+small-polygon one.
 
 ### What the German atlas now carries
 

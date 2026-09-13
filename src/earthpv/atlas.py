@@ -2293,8 +2293,14 @@ def _size_distribution_data(
     osm = dissolve_overlapping(osm, group_col="placement")
     osm = osm.copy()
     osm["matched"] = ~new_lead_mask(osm, cands, min_distance_m=NEAR_BUILDING_M)
+    # The SAME size-dependent rooftop conversion `build_evidence_atlas` uses, because this
+    # function's contract is that it re-bins the published total rather than recomputing it.
+    # Applying the table in one place and the flat constant in the other would make the size
+    # chart disagree with the headline it sits beneath.
     osm["kwp"] = np.where(
-        osm["placement"] == "rooftop", osm["area_m2"] * kwp_mod, osm["area_m2"] * kwp_land
+        osm["placement"] == "rooftop",
+        osm["area_m2"] * cc.osm_rooftop_kwp_per_m2(osm["area_m2"].to_numpy(), aoi),
+        osm["area_m2"] * kwp_land,
     )
     unmatched = osm.loc[~osm["matched"]]
     u_roof = (unmatched["placement"] == "rooftop").to_numpy()
