@@ -319,6 +319,50 @@ the 3.6% handicap; 10% of buildings had no valid composite pixel and are exclude
 estimators, so these figures cover the assessable roof population rather than every roof; and
 the model is VIDA-fitted, so refitting on OSM footprints before rescoring remains untested.
 
+### Where German roofclf actually loses, and what does not fix it
+
+Four label strategies all landing on the roof-area baseline raised the obvious question of
+where the shortfall sits. It is not in the classifier's discrimination, which is fine, and it
+is not in the features.
+
+**There is real headroom.** Adoption intensity varies **8.5x** across German municipalities
+(5th to 95th percentile: 0.0031 to 0.0266 registered kWp per m&sup2; of roof). Roof area alone
+explains 61% of municipal capacity variance in log space, leaving **39% unexplained**.
+
+**roofclf captures none of it.** The correlation between its credited area and the residual of
+a roof-area-only fit is **+0.007**. Whatever the classifier contributes at municipality level
+was already in "how much roof is here".
+
+**Removing roof area from the model changes nothing.** `log_roof_area` is roofclf's strongest
+feature, so the natural theory was that size swamps the spectral signal inside
+`sum(p x roof_area)`. Tested on 1,101 representative municipalities:
+
+| Feature set | Median municipal error | Spearman | Corr with roof-area residual |
+| --- | --- | --- | --- |
+| Roof area only (baseline) | 34.2% | 0.920 | n/a |
+| With size (current) | 33.4% | 0.921 | +0.0080 |
+| Without `log_roof_area` | 33.4% | 0.921 | +0.0083 |
+| Spectral features only | 33.4% | 0.921 | +0.0083 |
+
+Identical to three significant figures. The theory was wrong.
+
+**The reason is that the classifier does not see adoption at municipality scale at all.**
+Across municipalities whose true adoption intensity spans 4.6x, roofclf's mean probability
+spans **0.95x** -- flat -- and Spearman between the two is **-0.031**. Since `sum(p x
+roof_area)` with a near-constant p is just `sum(roof_area)` times a constant, the estimator
+collapses onto its own baseline by arithmetic, whatever features go into p.
+
+That is a more useful failure than "the model is weak". The two scales are decoupled:
+discrimination *within* a scene survives at 0.84-0.88 AUC, while the absolute level *across*
+scenes carries no adoption information. Two explanations remain, and they imply opposite next
+steps: per-scene nuisance variation (atmosphere, sun angle, composite epoch) masking a real
+signal, or genuine blindness at that scale. The discriminating measurement is whether mean
+probability tracks adoption *within* a single cell, where scene conditions are shared.
+
+**What this rules out**: more feature engineering on the classifier. Three feature sets
+producing identical municipal numbers is strong evidence the problem is not in the features,
+and a fourth would not change that.
+
 ### Calibrating Germany without a mapped quadrat: the whole picture
 
 Germany has no exhaustively mapped calibration boxes, and mapping some was the obvious
