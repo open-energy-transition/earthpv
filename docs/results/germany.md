@@ -266,6 +266,59 @@ size-stratified 0.839 / 59.3%, density-stratified 0.823 / 53.1%, size-and-densit
 53.2%. The machinery the Pakistani atlas depends on performs no better out of sample than one
 global number.
 
+### A calibrated German estimate, and why it is not in the atlas
+
+Germany's blocker was never the classifier, which ranks roofs perfectly adequately on OSM
+labels. It was the capacity half: a `coverage_ratio` cannot be fitted from labels covering
+3.6% of the truth. Germany does not need one. **MaStR is complete, so kWp per unit of
+credited roof area is fitted directly against the register per municipality**, which is a
+stronger calibration than a transferred quadrat ratio rather than a weaker one.
+
+The classifier's training mix was chosen by measurement, not assumption, leave-one-German-
+quadrat-out:
+
+| Training mix | AUC | Within size band |
+| --- | --- | --- |
+| Germany only | 0.8240 | 0.7290 |
+| **Germany + France border (cadastre)** | **0.8372** | **0.7546** |
+| Germany + France national | 0.7384 | 0.6359 |
+| France border only | 0.7828 | 0.7152 |
+
+Adding the French **border** communes helps; adding the French **national** set actively
+hurts by 0.086 AUC. Three explanations are confounded and this test cannot separate them:
+proximity and building stock, cadastre footprints against VIDA, and sheer swamping, since the
+national set brings 16,435 positives against Germany's 2,252.
+
+Scored over all 4,656 cells, 25.0M assessable buildings, and calibrated on the 9,674
+municipalities the grid fully covers (50.4 of 54.3 GWp registered):
+
+| Estimator | kWp/m&sup2; (90% CI) | Median municipal error | Spearman | National | vs register |
+| --- | --- | --- | --- | --- | --- |
+| roofclf, probability-weighted | 0.2793 (0.2654-0.2926) | 48.4% | 0.825 | **52.37 GWp** | 0.96 |
+| Roof-area baseline | 0.0088 (0.0086-0.0091) | **37.8%** | **0.875** | 52.38 GWp | 0.96 |
+| MaStR, the truth | | | | **54.29 GWp** | 1.00 |
+
+**The national extrapolation holds.** The constant is fitted only where the grid fully covers
+a municipality and then applied to every scored building in the country, landing at 96% of the
+register. The 4% shortfall is extrapolation error, reported rather than absorbed.
+
+**The gap to the baseline narrows at national scale but does not close.** On the 709-cell
+regional subset roofclf lost by 35 points of median error; nationally it loses by 11. Both
+moved: roofclf improved with the better mix, and the baseline degraded from 23.0% to 37.8%
+once the country included cities and the east, where roof area stops proxying for PV. The
+regional test flattered the baseline.
+
+**This is why the roofclf half is reported here and not folded into the atlas.** A component
+measured as worse than multiplying roof area by a constant does not belong inside a published
+Best estimate, and the atlas's floor tier needs a roofclf-and-SPPI agreement population that
+Germany cannot fit for the same 3.6% reason. The atlas therefore stays segmentation-only, and
+this estimate stands beside it with its own numbers.
+
+**Still preliminary.** No exhaustively mapped German quadrats exist, so the classifier carries
+the 3.6% handicap; 10% of buildings had no valid composite pixel and are excluded from BOTH
+estimators, so these figures cover the assessable roof population rather than every roof; and
+the model is VIDA-fitted, so refitting on OSM footprints before rescoring remains untested.
+
 ### Why this does not condemn the method
 
 The same comparison on Pakistan's 29 Rule-1-complete quadrats, leave-one-quadrat-out, reverses

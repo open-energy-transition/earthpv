@@ -2235,6 +2235,11 @@ INTERACTIVE = [
     # gitignored; the copy under docs/assets/interactive/ is what actually ships.
     ("data/predictions/germany/density/germany_pv_evidence_atlas.html",
      "germany_pv_evidence_atlas.html"),
+    # France's two pages were previously copied by scripts/rebuild_france_atlases_v5.sh,
+    # which meant `pixi run docs-figures` could not refresh them and a stale copy could
+    # ship unnoticed. Owned by the sync step now, like every other interactive page.
+    ("results/france_pv_evidence_atlas.html", "france_pv_evidence_atlas.html"),
+    ("results/france_pv_comparison_atlas.html", "france_pv_comparison_atlas.html"),
 ]
 
 

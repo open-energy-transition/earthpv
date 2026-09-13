@@ -122,6 +122,7 @@ nav:
   - PV Atlas:
         - Pakistan: atlas.md
         - Germany: atlas-germany.md
+        - France: atlas-france.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
