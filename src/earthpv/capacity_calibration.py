@@ -108,6 +108,53 @@ CI_PCT = (5.0, 95.0)  # 90% equal-tailed credible interval
 # area: ~5.5 m2 of c-Si module per kWp -> 0.18 kWp/m2 (grounded against the CEC
 # datasheet database by pv_capacity.check_kwp_per_m2).
 DEFAULT_KWP_PER_M2_MODULE = 0.18
+
+# **A hand-mapped OSM rooftop polygon is not the same object at every size**, which the flat
+# constant above silently assumes. Measured 2026-09-13 against MaStR: dissolved German OSM
+# rooftop polygons were matched to registered rooftop units, restricted to the 2,780 polygons
+# containing EXACTLY ONE unit so a polygon in a dense street could not collect its neighbours'
+# address points (unrestricted, sub-200 m2 polygons appeared to carry 0.63 kWp/m2, which is
+# three times full module coverage and therefore impossible):
+#
+#     < 200 m2    0.200 kWp/m2   n=207    small features really are arrays
+#     200-500     0.189          n=384
+#     500-2k      0.139          n=1,666
+#     > 2k        0.051          n=523    roof and site outlines, not arrays
+#
+# The distortion is concentrated: 4,694 German polygons above 2,000 m2 hold 101.2 of 122.4 km2
+# of OSM rooftop area, so the flat 0.18 turned 8.8 GWp into 22.0. `prepare_national_osm_solar`
+# already anticipates this by reclassifying rooftop above MAX_CANDIDATE_M2 as ground, but the
+# distortion starts fifty times lower than that cap.
+#
+# **Keyed by AOI, and every other country falls back to the flat constant**, because this is a
+# measurement of GERMAN mapper convention against a German register. Pakistan's and France's
+# published figures are unchanged by construction.
+OSM_ROOFTOP_KWP_PER_M2_BY_AOI: dict[str, list[tuple[float, float]]] = {
+    # (upper area bound in m2, kWp per m2); the last entry applies above the previous bound.
+    "germany": [(200.0, 0.200), (500.0, 0.189), (2000.0, 0.139), (float("inf"), 0.051)],
+}
+
+
+def osm_rooftop_kwp_per_m2(area_m2, aoi: str | None = None):
+    """kWp per m2 for hand-mapped OSM ROOFTOP polygons, size-dependent where measured.
+
+    Falls back to the flat `DEFAULT_KWP_PER_M2_MODULE` for any AOI without a measured table,
+    which is every AOI except Germany, so existing figures cannot move underneath a caller
+    that does not opt in. Accepts a scalar or an array.
+    """
+    import numpy as np
+
+    table = OSM_ROOFTOP_KWP_PER_M2_BY_AOI.get(str(aoi).lower()) if aoi else None
+    if not table:
+        return np.full_like(np.asarray(area_m2, dtype="float64"),
+                            DEFAULT_KWP_PER_M2_MODULE, dtype="float64")
+    a = np.asarray(area_m2, dtype="float64")
+    out = np.full(a.shape, table[-1][1], dtype="float64")
+    # Walk descending so each band overwrites only what is strictly below its bound.
+    for bound, k in sorted(table, key=lambda t: -t[0]):
+        out[a < bound] = k
+    return out
+
 # A *ground-mount* detection outlines the SITE, not the modules. The ground-PV training
 # labels are OSM `power=plant` perimeters (labels.py), which enclose access roads,
 # inter-row spacing and substations, so the model is taught to fill the fence line and a

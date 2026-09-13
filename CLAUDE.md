@@ -727,8 +727,22 @@ data-quality problem is the ground POPULATION: **73% of German OSM ground area c
 registered ground unit**, and corroboration is exactly **0% above 5 km2** (21 polygons, 33% of
 ground area, largest 88.3 km2 against a largest real German park of ~5 km2).
 `prepare_national_osm_solar.py` now drops ground features above 5 km2 -- prophylactic, since
-all 21 already fall outside the density grid and Verified is 38,508.1 MWp with or without them.
-Reconciling in-grid OSM against the register remains open and is NOT about these constants. Cause is mapper convention, already a documented negative result here:
+all 21 already fall outside the density grid and Verified was 38,508.1 MWp with or without them.
+
+**RECONCILED 2026-09-13, and the overstatement was ROOFTOP, not ground.** Replicating the
+atlas's exact in-grid population: ground assumed 17.97 GWp against 19.82 GWp of register
+capacity actually inside those polygons (**ratio 0.91, fine**), rooftop assumed 20.54 GWp
+against ~8.2 GWp (**~2.5x over**). The cause is that an OSM rooftop polygon is a different
+object at different sizes. Measured on the 2,780 polygons containing EXACTLY ONE registered
+unit (unrestricted, sub-200 m2 polygons appear to carry an impossible 0.63 kWp/m2 because they
+collect neighbours' address points): **<200 m2 0.200, 200-500 0.189, 500-2k 0.139, >2k 0.051
+kWp/m2**. 4,694 polygons above 2,000 m2 hold 101.2 of 122.4 km2 of all OSM rooftop area, so the
+flat 0.18 turned 8.8 GWp into 22.0.
+`capacity_calibration.osm_rooftop_kwp_per_m2` applies the table, **keyed by AOI** --
+Pakistan/France/Gujarat/Punjab/None all return the flat 0.18, verified not assumed. Germany's
+tiers move to **Verified 25,921 / Best 87,743 MWp** and both placements now sit within ~10% of
+the register. Only `build_evidence_atlas` uses it; `_size_distribution_data` still uses the flat
+constant deliberately, so the headline and the size chart cannot disagree silently. Cause is mapper convention, already a documented negative result here:
 German OSM polygons outline roofs/sites rather than arrays and the implied kWp/m² spans
 0.02-0.99 against 0.18. The atlas is published for structure and per-cell geography only.
 `scripts/prepare_national_osm_solar.py` builds the `--osm-solar` input (a raw rooftopsenti pull

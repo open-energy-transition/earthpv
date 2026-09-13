@@ -400,13 +400,57 @@ real German solar park of about 5 km&sup2;. `prepare_national_osm_solar.py` now 
 features above 5 km&sup2;, a threshold taken from where corroboration reaches zero rather than
 tuned to a target.
 
-**This changes no published number, and the 118% note was describing a computation the atlas no
-longer performs.** All 21 polygons have representative points outside the density grid, which
-covers building-populated cells only, so the atlas never counted them: Verified is 38,508.1 MWp
-before and after the cap, identical to the decimal. The cap is prophylactic -- it protects any
-future run whose grid does cover empty cells -- not a correction to a live figure. Reconciling
-the 38.5 GWp of in-grid OSM against the register is a separate open question, and it is not
-about these constants.
+**The cap itself changed no published number.** All 21 polygons have representative points
+outside the density grid, which covers building-populated cells only, so the atlas never
+counted them: Verified was 38,508.1 MWp before and after, identical to the decimal. The cap is
+prophylactic, protecting any future run whose grid does cover empty cells. The 118% note was
+describing a computation the atlas no longer performs -- the national OSM sum is 65.9 GWp at
+the assumed constants, but Verified reports only the in-grid subset.
+
+### Reconciling in-grid OSM: the overstatement was rooftop, not ground
+
+Replicating the atlas's exact population -- dissolved, then filtered to features whose
+representative point lands in a populated cell -- and asking the register what is actually
+inside those same polygons:
+
+| Placement | Verified assumed | Register inside those polygons | Ratio |
+| --- | --- | --- | --- |
+| Ground | 17.97 GWp | 19.82 GWp | **0.91** |
+| Rooftop | 20.54 GWp | see below | **~2.5x over** |
+
+Ground reconciles within 9%. **The entire overstatement is rooftop**, which inverts the
+long-standing note that ground-mount was the problem.
+
+**The mechanism is that an OSM rooftop polygon is not the same object at every size.** Measured
+on the 2,780 polygons containing EXACTLY ONE registered unit, so a polygon in a dense street
+cannot collect its neighbours' address points -- unrestricted, sub-200 m&sup2; polygons appeared
+to carry 0.63 kWp/m&sup2;, three times full module coverage and therefore impossible:
+
+| Polygon size | Measured kWp/m&sup2; | German polygons | Area | At 0.18 | At measured |
+| --- | --- | --- | --- | --- | --- |
+| < 200 m&sup2; | 0.200 | 78,809 | 5.3 km&sup2; | 0.95 | 1.05 |
+| 200-500 | 0.189 | 23,365 | 6.9 km&sup2; | 1.24 | 1.31 |
+| 500-2k | 0.139 | 9,291 | 9.0 km&sup2; | 1.62 | 1.25 |
+| **> 2k** | **0.051** | 4,694 | **101.2 km&sup2;** | **18.22** | **5.18** |
+
+Small features really are arrays and convert near full module coverage; large ones are roof or
+site outlines. The damage is concentrated, because **4,694 polygons above 2,000 m&sup2; hold
+101.2 of 122.4 km&sup2; of all OSM rooftop area**.
+
+`capacity_calibration.osm_rooftop_kwp_per_m2` now applies that table, **keyed by AOI**: Germany
+uses it, and Pakistan, France, Gujarat, Punjab and the unnamed default all return the flat
+0.18, verified rather than assumed, so no figure outside Germany moves.
+
+**Tier totals move to Verified 25,921 / Best 87,743 MWp** (from 38,508 / 94,624), and both
+placements now sit within about 10% of what the register says is inside the mapped polygons.
+Verified is 23% of Germany's 112 GWp of registered PV from OSM mapping 2.6% of units, which is
+plausible for a subset skewed to large installations where 34% was not.
+
+**Two scope limits, both deliberate.** Only `build_evidence_atlas` uses the table;
+`_size_distribution_data`, which feeds the size chart, still uses the flat constant, because
+changing both at once would let the headline and the chart disagree silently. And the matched
+sample is 5.2%-coordinate-limited and skewed to units at or above 30 kWp, so the
+large-polygon constant is better determined than the small-polygon one.
 
 ### What the German atlas now carries
 

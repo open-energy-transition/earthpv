@@ -1616,8 +1616,19 @@ def build_evidence_atlas(
     cand, _ = capacity_relevant_candidates(cand)
     osm = osm.copy()
     osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=NEAR_BUILDING_M)
+    # Rooftop conversion is size-dependent where it has been measured against a register
+    # (Germany only so far): a 30 m2 OSM feature is an array and converts near full module
+    # coverage, a 5,000 m2 one is a roof or site outline and converts at about a quarter of
+    # that. Every other AOI gets the flat `kwp_mod` back, so no published figure moves.
+    rooftop_k = cc.osm_rooftop_kwp_per_m2(osm["area_m2"].to_numpy(), aoi)
+    if not np.allclose(rooftop_k, kwp_mod):
+        log.info(
+            "Evidence atlas: size-dependent OSM rooftop conversion for %r -- %.4f to %.4f "
+            "kWp/m2 across the population, against the flat %.3f",
+            aoi, float(rooftop_k.min()), float(rooftop_k.max()), kwp_mod,
+        )
     osm["kwp"] = np.where(
-        osm["placement"] == "rooftop", osm["area_m2"] * kwp_mod, osm["area_m2"] * kwp_land
+        osm["placement"] == "rooftop", osm["area_m2"] * rooftop_k, osm["area_m2"] * kwp_land
     )
     pts = osm.copy()
     pts["geometry"] = pts.geometry.representative_point()
