@@ -1,0 +1,59 @@
+{
+  "n_gemeinden": 9674,
+  "bins_m2": [
+    0.0,
+    50.0,
+    100.0,
+    200.0,
+    400.0,
+    1000.0,
+    5000.0,
+    Infinity
+  ],
+  "estimators": {
+    "roof_area_single_constant": {
+      "median_municipal_abs_pct_err": 37.8,
+      "spearman": 0.875,
+      "total_ratio": 1.0002,
+      "mean_coefficients": [
+        0.00883
+      ]
+    },
+    "roofclf_single_constant": {
+      "median_municipal_abs_pct_err": 48.4,
+      "spearman": 0.825,
+      "total_ratio": 0.9999,
+      "mean_coefficients": [
+        0.27929
+      ]
+    },
+    "roof_area_size_stratified": {
+      "median_municipal_abs_pct_err": 32.7,
+      "spearman": 0.8919,
+      "total_ratio": 0.8509,
+      "mean_coefficients": [
+        0.0,
+        0.0,
+        0.0,
+        0.02978,
+        0.00012,
+        0.0,
+        0.0
+      ]
+    },
+    "roofclf_size_stratified": {
+      "median_municipal_abs_pct_err": 80.5,
+      "spearman": 0.8234,
+      "total_ratio": 0.3485,
+      "mean_coefficients": [
+        0.0,
+        0.0,
+        0.0,
+        0.22581,
+        0.0,
+        0.05884,
+        0.17155
+      ]
+    }
+  }
+}

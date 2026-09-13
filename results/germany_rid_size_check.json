@@ -1,0 +1,84 @@
+{
+  "source": "RID (TU Munich), Wartenberg, exhaustively annotated",
+  "n_roofs": 1899,
+  "n_with_pv": 353,
+  "base_rate": 0.1859,
+  "median_roof_m2": 140.1,
+  "median_pv_m2_on_pv_roofs": 14.4,
+  "spearman_roof_area_vs_pv_area_on_pv_roofs": 0.3486,
+  "osm_comparison_spearman": 0.729,
+  "by_roof_size": [
+    {
+      "bin": "0-50",
+      "n_roofs": 400,
+      "n_pv": 12,
+      "roof_m2": 12748.290969135745,
+      "pv_m2": 207.62248360249214,
+      "adoption_rate": 0.03,
+      "pv_per_roof_m2": 0.01629,
+      "share_of_all_pv": 0.016,
+      "share_of_all_roof": 0.0402,
+      "concentration": 0.398
+    },
+    {
+      "bin": "50-100",
+      "n_roofs": 324,
+      "n_pv": 22,
+      "roof_m2": 23546.460210869365,
+      "pv_m2": 343.3571595964604,
+      "adoption_rate": 0.0679,
+      "pv_per_roof_m2": 0.01458,
+      "share_of_all_pv": 0.0264,
+      "share_of_all_roof": 0.0743,
+      "concentration": 0.355
+    },
+    {
+      "bin": "100-200",
+      "n_roofs": 609,
+      "n_pv": 145,
+      "roof_m2": 91885.86361746224,
+      "pv_m2": 3062.2743900191163,
+      "adoption_rate": 0.2381,
+      "pv_per_roof_m2": 0.03333,
+      "share_of_all_pv": 0.2354,
+      "share_of_all_roof": 0.2899,
+      "concentration": 0.812
+    },
+    {
+      "bin": "200-400",
+      "n_roofs": 468,
+      "n_pv": 143,
+      "roof_m2": 121920.3409971971,
+      "pv_m2": 5279.075012653106,
+      "adoption_rate": 0.3056,
+      "pv_per_roof_m2": 0.0433,
+      "share_of_all_pv": 0.4058,
+      "share_of_all_roof": 0.3847,
+      "concentration": 1.055
+    },
+    {
+      "bin": "400-1k",
+      "n_roofs": 84,
+      "n_pv": 25,
+      "roof_m2": 47854.19292673234,
+      "pv_m2": 2800.7792916183826,
+      "adoption_rate": 0.2976,
+      "pv_per_roof_m2": 0.05853,
+      "share_of_all_pv": 0.2153,
+      "share_of_all_roof": 0.151,
+      "concentration": 1.426
+    },
+    {
+      "bin": "1k+",
+      "n_roofs": 14,
+      "n_pv": 6,
+      "roof_m2": 18980.168413962703,
+      "pv_m2": 1315.1340906391852,
+      "adoption_rate": 0.4286,
+      "pv_per_roof_m2": 0.06929,
+      "share_of_all_pv": 0.1011,
+      "share_of_all_roof": 0.0599,
+      "concentration": 1.688
+    }
+  ]
+}

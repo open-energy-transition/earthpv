@@ -1,0 +1,28 @@
+{
+  "n_buildings": 2213079,
+  "n_gemeinden": 1101,
+  "roof_area_baseline": {
+    "median_municipal_abs_pct_err": 34.2,
+    "spearman": 0.9197
+  },
+  "variants": {
+    "with_size (current)": {
+      "n": 1101,
+      "median_municipal_abs_pct_err": 33.4,
+      "spearman": 0.9207,
+      "corr_with_roof_area_residual": 0.008
+    },
+    "no_size": {
+      "n": 1101,
+      "median_municipal_abs_pct_err": 33.4,
+      "spearman": 0.9209,
+      "corr_with_roof_area_residual": 0.0083
+    },
+    "spectral_only": {
+      "n": 1101,
+      "median_municipal_abs_pct_err": 33.4,
+      "spearman": 0.9209,
+      "corr_with_roof_area_residual": 0.0083
+    }
+  }
+}

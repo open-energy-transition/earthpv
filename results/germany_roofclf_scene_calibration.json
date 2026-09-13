@@ -1,0 +1,24 @@
+{
+  "n_gemeinden": 9674,
+  "across_scene_spearman_meanp_vs_intensity": -0.0307,
+  "within_scene": {
+    "n_cells": 2580,
+    "median_rho": -0.3,
+    "mean_rho": -0.2559,
+    "frac_positive": 0.266
+  },
+  "estimators": {
+    "roof_area_baseline": {
+      "median_municipal_abs_pct_err": 37.8,
+      "spearman": 0.875
+    },
+    "roofclf_as_is": {
+      "median_municipal_abs_pct_err": 48.4,
+      "spearman": 0.8251
+    },
+    "roofclf_scene_normalised": {
+      "median_municipal_abs_pct_err": 40.7,
+      "spearman": 0.859
+    }
+  }
+}

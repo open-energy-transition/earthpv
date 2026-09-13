@@ -363,6 +363,62 @@ probability tracks adoption *within* a single cell, where scene conditions are s
 producing identical municipal numbers is strong evidence the problem is not in the features,
 and a fourth would not change that.
 
+### The estimator that finally beats the baseline, and what RID corrected about it
+
+Since no supervision scheme moved roofclf past a plain roof-area baseline, the remaining place
+to look was the estimator rather than the classifier. Splitting each municipality's roof area
+into size bins and letting the register price each band gives the first thing to beat it:
+
+| Estimator | Median municipal error | Spearman | National total |
+| --- | --- | --- | --- |
+| Roof area, single constant | 37.8% | 0.875 | 1.000 |
+| roofclf, single constant (deployed) | 48.4% | 0.825 | 1.000 |
+| **Roof area in the 200-400 m&sup2; band alone** | **35.4%** | **0.892** | 1.000 |
+| Roof area, all bins by NNLS | 32.7% | 0.892 | 0.851 |
+| roofclf, size-stratified | 80.5% | 0.823 | 0.348 |
+
+The NNLS variant scores best but its coefficients are degenerate: it puts essentially all
+weight on the 200-400 m&sup2; bin and zero on the other six, because bin areas are strongly
+collinear across municipalities, and it under-predicts the national total by 15%. **The
+single-band form is the one to use** -- barely worse, interpretable, and its national total is
+intact. Adding roofclf to the stratification makes it dramatically worse, which is the fifth
+independent line of evidence that the classifier subtracts at municipality scale here.
+
+**RID then corrected the reason this works.** The relationship underneath it was measured from
+German OSM, which covers ~3.6% of registered units and favours large conspicuous arrays -- the
+exact bias that could manufacture a spurious size preference.
+[RID](https://github.com/TUMFTM/RID) is the control: 1,899 roofs in Wartenberg annotated
+exhaustively from aerial imagery, with `pvmodule` among the superstructure classes, so an
+absent module is a real negative.
+
+| Roof size | Roofs | With PV | Adoption rate | Share of all PV area | Concentration |
+| --- | --- | --- | --- | --- | --- |
+| 0-50 m&sup2; | 400 | 12 | 0.030 | 1.6% | 0.40 |
+| 50-100 | 324 | 22 | 0.068 | 2.6% | 0.35 |
+| 100-200 | 609 | 145 | 0.238 | 23.5% | 0.81 |
+| **200-400** | 468 | 143 | **0.306** | **40.6%** | 1.05 |
+| 400-1k | 84 | 25 | 0.298 | 21.5% | 1.43 |
+| 1k+ | 14 | 6 | 0.429 | 10.1% | 1.69 |
+
+**The band is confirmed, the explanation was wrong.** 200-400 m&sup2; roofs really do carry
+40.6% of all annotated PV area from 25% of the roofs, so the estimator rests on something real.
+But adoption *rate* rises monotonically with roof size (0.030 to 0.429) and concentration is
+highest in the largest bins. The band dominates because that is where German roofs are, not
+because large roofs are disfavoured. The earlier reading -- that adoption anti-correlates with
+roof scale at -0.920, so PV is a small-roof phenomenon -- was measured **across municipalities**
+and does not transfer to **across buildings**; those are different quantities.
+
+**RID also prices OSM's bias.** Spearman between roof area and installed PV area on PV-bearing
+roofs is **+0.349** against OSM's **+0.729**, and the median installation on a PV-bearing roof
+is 14 m&sup2;. German OSM roughly doubles the apparent coupling between roof size and array
+size.
+
+**What RID is not.** It is 1,899 roofs in one Bavarian municipality, 86% residential: enough to
+settle a bivariate relationship, not to fit national intensity coefficients, and not a fix for
+roofclf, whose German problem is measured not to be a labelling problem at all. It is listed in
+the [country data registry](../data-registry.md) as roof-context supervision, and that is the
+right reading of it.
+
 ### Calibrating Germany without a mapped quadrat: the whole picture
 
 Germany has no exhaustively mapped calibration boxes, and mapping some was the obvious

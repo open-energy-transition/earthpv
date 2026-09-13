@@ -47,6 +47,10 @@ results/glint_validation_pakistan/*
 !results/germany_method_comparison.csv
 !results/germany_roofclf_capacity_per_gemeinde.csv
 !results/training_data_registry.html
+!results/germany_size_stratified_intensity.json
+!results/germany_rid_size_check.json
+!results/germany_roofclf_scene_calibration.json
+!results/germany_roofclf_size_free.json
 !results/density_domain_cells.csv
 !results/density_domain_quadrats.csv
 !results/pv_size_vs_building_bins.csv
