@@ -284,6 +284,22 @@ def _size_distribution(density_dir: Path, sub400_cells_path: Path | None) -> dic
     return {"bins": bins}
 
 
+def _region_rows(reg: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """The province-level rows of a written regions layer, deduplicated.
+
+    A density run before 2026-09-13 could write a coastal division twice (Overture
+    publishes a land outline and a land-plus-territorial-waters one, perfectly
+    nested). Germany's atlas listed four Bundeslaender twice in "Provinces, ranked by
+    capacity" and its cell-centroid province join matched 1,152 of 4,656 cells to both
+    rows. `density.load_admin` now drops the maritime outline at the source; this
+    repeats the check on read so an already-written regions.geoparquet cannot bring it
+    back.
+    """
+    from earthpv.density import drop_nested_duplicates  # local: density imports atlas
+
+    return drop_nested_duplicates(reg[reg.level == "region"], "region")
+
+
 def build_combined_atlas(
     aoi: str, density_dir: Path, sub400_cells_path: Path,
     out: Path | None = None, zoom_out_frac: float = 0.0,
@@ -372,7 +388,7 @@ def build_combined_atlas(
     regions_path = density_dir / "regions.geoparquet"
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
-        reg_regions = reg[reg.level == "region"]
+        reg_regions = _region_rows(reg)
         # Sum the two new per-cell columns into each province by point-in-polygon --
         # regions.geoparquet's own precomputed sums predate est_mwp_sub400/combined and
         # don't have them, so this is a join, not a lookup.
@@ -659,7 +675,7 @@ def build_sub400_bracket_atlas(
     regions_path = density_dir / "regions.geoparquet"
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
-        reg_regions = reg[reg.level == "region"]
+        reg_regions = _region_rows(reg)
         pts = gpd.GeoDataFrame(
             grid[[
                 "mwp_low", "mwp_central", "mwp_high", "est_mwp_rc_roof", "est_mwp_rc",
@@ -844,7 +860,7 @@ def build_growth_atlas(
         frac_by_name = {str(row["name"]): row for _, row in fr.iterrows()}
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
-        for r in reg[reg.level == "region"].itertuples():
+        for r in _region_rows(reg).itertuples():
             sr = sppi_by_name.get(str(r.name))
             fr = frac_by_name.get(str(r.name))
             provinces.append({
@@ -971,7 +987,7 @@ def build_growth_evidence_atlas(
     regions_path = growth_dir / "growth_regions.geoparquet"
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
-        for r in reg[reg.level == "region"].itertuples():
+        for r in _region_rows(reg).itertuples():
             provinces.append({
                 "name": str(r.name),
                 "d_total": round(float(r.delta_mwp_total), 1),
@@ -1777,7 +1793,7 @@ def build_evidence_atlas(
     regions_path = density_dir / "regions.geoparquet"
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
-        reg_regions = reg[reg.level == "region"]
+        reg_regions = _region_rows(reg)
         keep = [
             "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
             "small_low", "small_central", "small_outdomain",
@@ -2529,7 +2545,7 @@ def build_potential_atlas(
     regions_path = density_dir / "regions.geoparquet"
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
-        reg_regions = reg[reg.level == "region"]
+        reg_regions = _region_rows(reg)
         # Potential is derived from a building parquet regions.geoparquet predates, so
         # join the grid's own per-cell potential columns to provinces by centroid --
         # the same pattern build_combined_atlas/build_sub400_bracket_atlas already use

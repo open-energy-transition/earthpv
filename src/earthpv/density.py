@@ -731,6 +731,63 @@ def fetch_geoboundaries(iso3: str, level: str) -> gpd.GeoDataFrame | None:
     return gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:4326")
 
 
+def drop_nested_duplicates(gdf: gpd.GeoDataFrame, kind: str) -> gpd.GeoDataFrame:
+    """Drop a same-name admin polygon that is geometrically nested inside another.
+
+    Overture's `division_area` publishes coastal divisions twice: once as land and
+    once including territorial waters. Germany's four coastal states (Niedersachsen,
+    Schleswig-Holstein, Mecklenburg-Vorpommern, Hamburg) therefore arrived as 20
+    region rows for 16 Bundeslaender, each pair perfectly nested. Nothing downstream
+    deduplicates, so the evidence atlas listed those states twice and its
+    point-in-polygon province join matched 1,152 of Germany's 4,656 cells to both
+    rows -- a 19.7% double-count in the province table (the headline total is summed
+    from the grid, so it was unaffected).
+
+    The land polygon is the one to keep: it is the smaller of a nested pair, its
+    `area_km2` is the one a per-km2 density column should divide by, and a maritime
+    outline would attribute open water to a state.
+
+    Nesting is the whole test, so genuinely distinct divisions that share a name
+    (India has several) are left alone -- they are disjoint.
+    """
+    if gdf is None or gdf.empty or "name" not in gdf.columns:
+        return gdf
+    dup_names = gdf.loc[gdf["name"].duplicated(keep=False), "name"].unique()
+    if len(dup_names) == 0:
+        return gdf
+    # EPSG:6933 is equal-area worldwide; the test is relative area plus nesting, and a
+    # region-specific projection would be wrong for some AOI.
+    metric = gdf.to_crs("EPSG:6933") if gdf.crs and gdf.crs.to_epsg() != 6933 else gdf
+    drop: list = []
+    for nm in dup_names:
+        idx = list(gdf.index[gdf["name"] == nm])
+        geoms = {i: metric.geometry.loc[i] for i in idx}
+        for i in idx:
+            gi = geoms[i]
+            if gi is None or gi.is_empty:
+                continue
+            for j in idx:
+                if i == j:
+                    continue
+                gj = geoms[j]
+                if gj is None or gj.is_empty or gj.area <= gi.area:
+                    continue
+                # i nested in j (allow slivers from differing coastline sources)
+                if gi.intersection(gj).area >= 0.999 * gi.area:
+                    drop.append(j)
+                    break
+    drop = sorted(set(drop))
+    if not drop:
+        return gdf
+    log.warning(
+        "%s layer: dropped %d polygon(s) that nest a same-named one (%s) -- Overture "
+        "publishes coastal divisions as both land and land-plus-territorial-waters; "
+        "keeping the land outline",
+        kind, len(drop), ", ".join(sorted(set(str(n) for n in gdf.loc[drop, "name"]))),
+    )
+    return gdf.drop(index=drop)
+
+
 def load_admin(
     aoi: str, cfg: dict, settings: Settings, iso3: str, labels_dir: Path,
     districts: bool, regions_file: Path | None,
@@ -765,9 +822,9 @@ def load_admin(
         gdf.to_parquet(cache)
         return gdf.to_crs("EPSG:4326")
 
-    regions = _load("region", "region", "ADM1")
+    regions = drop_nested_duplicates(_load("region", "region", "ADM1"), "region")
     dist = _load("district", "county", "ADM2") if districts else None
-    return regions, dist
+    return regions, drop_nested_duplicates(dist, "district")
 
 
 # --------------------------------------------------------------------------------------
