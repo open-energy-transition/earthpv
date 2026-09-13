@@ -50,6 +50,7 @@ results/glint_validation_pakistan/*
 !results/germany_size_stratified_intensity.json
 !results/germany_rid_size_check.json
 !results/germany_osm_conversion_constants.json
+!results/germany_osm_validation_bands.csv
 !results/germany_roofclf_scene_calibration.json
 !results/germany_roofclf_size_free.json
 !results/density_domain_cells.csv

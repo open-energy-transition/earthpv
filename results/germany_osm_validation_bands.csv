@@ -1,0 +1,9 @@
+placement,band,n_polygons,area_km2,n_matched_one_unit,pct_with_registered_unit,assumed_kwp_per_m2,measured_kwp_per_m2,gwp_at_assumed,gwp_at_measured
+rooftop,<200,78809,5.25,207,0.3,0.18,0.2,0.945,1.05
+rooftop,200-500,23365,6.9,384,1.7,0.18,0.1892,1.243,1.306
+rooftop,500-2k,9291,9.01,1666,19.9,0.18,0.1386,1.622,1.249
+rooftop,>2k,4694,101.23,523,14.8,0.18,0.0511,18.222,5.176
+ground,<1 km2,22094,420.38,2569,16.4,0.05,0.0847,21.019,35.622
+ground,1-5 km2,77,157.7,3,26.0,0.05,,7.885,
+ground,5-10 km2,15,93.49,0,0.0,0.05,,4.674,
+ground,>10 km2,6,207.13,0,0.0,0.05,,10.357,

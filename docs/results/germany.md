@@ -409,6 +409,14 @@ the assumed constants, but Verified reports only the in-grid subset.
 
 ### Reconciling in-grid OSM: the overstatement was rooftop, not ground
 
+![Three panels validating Germany's OpenStreetMap tier against the MaStR register. First, the measured kilowatt-peak per square metre for hand-mapped rooftop polygons falls from 0.200 below 200 square metres to 0.051 above 2,000, against an assumed flat 0.18. Second, capacity credited by size band at the assumed against the measured constant: the largest band holds 101 of 122 square kilometres of mapped area and falls from 18.2 to 5.2 gigawatts peak, taking the rooftop total from 22.0 to 8.8. Third, the share of ground-mount polygons containing a registered unit by size: 16 percent below one square kilometre, 26 percent from one to five, and zero above five, covering 300 square kilometres.](../assets/figures/germany_register_validation.svg#only-light)
+![Three panels validating Germany's OpenStreetMap tier against the MaStR register. First, the measured kilowatt-peak per square metre for hand-mapped rooftop polygons falls from 0.200 below 200 square metres to 0.051 above 2,000, against an assumed flat 0.18. Second, capacity credited by size band at the assumed against the measured constant: the largest band holds 101 of 122 square kilometres of mapped area and falls from 18.2 to 5.2 gigawatts peak, taking the rooftop total from 22.0 to 8.8. Third, the share of ground-mount polygons containing a registered unit by size: 16 percent below one square kilometre, 26 percent from one to five, and zero above five, covering 300 square kilometres.](../assets/figures/germany_register_validation.dark.svg#only-dark)
+
+**How to read the figure.** Panel 1 is the measurement: what a polygon is really worth, by
+size. Panel 2 is why it matters, because almost all the mapped area sits in the band where the
+assumption is worst. Panel 3 is a different kind of failure -- ground-mount needed no constant
+change, but a third of its area is polygons that contain no registered installation at all.
+
 Replicating the atlas's exact population -- dissolved, then filtered to features whose
 representative point lands in a populated cell -- and asking the register what is actually
 inside those same polygons:

@@ -379,6 +379,118 @@ def fig_germany_calibration(t: Theme):
     save(fig, t, "germany_calibration")
 
 
+
+def read_germany_validation_bands():
+    f = source("results/germany_osm_validation_bands.csv")
+    if not f:
+        return None
+    return list(csv.DictReader(f.open()))
+
+
+def fig_germany_register_validation(t: Theme):
+    """What a hand-mapped OSM polygon is worth, measured against a complete register.
+
+    Left and centre are the rooftop finding, which is where the whole overstatement sat;
+    right is the ground finding, which is about the polygon population rather than the
+    constant.
+    """
+    rows = read_germany_validation_bands()
+    if not rows:
+        return
+    rf = [r for r in rows if r["placement"] == "rooftop"]
+    gr = [r for r in rows if r["placement"] == "ground"]
+    fig, (ax1, ax2, ax3) = plt.subplots(
+        1, 3, figsize=(12.4, 3.6), gridspec_kw={"width_ratios": [1.0, 1.1, 1.0]})
+    fig.patch.set_facecolor(t.surface)
+    for a in (ax1, ax2, ax3):
+        a.set_facecolor(t.surface)
+        for sp in a.spines.values():
+            sp.set_visible(False)
+        a.tick_params(colors=t.ink_dim, labelsize=8, length=0)
+
+    # --- 1. the measured constant collapses with polygon size ---------------------
+    lab = [r["band"] for r in rf]
+    meas = [float(r["measured_kwp_per_m2"]) for r in rf]
+    x = np.arange(len(lab))
+    ax1.bar(x, meas, width=0.6, color=t.s2)
+    ax1.axhline(0.18, color=t.s1, linewidth=1.8, linestyle="--")
+    ax1.text(len(lab) - 0.45, 0.184, "assumed 0.18", color=t.s1, fontsize=8,
+             ha="right", va="bottom", fontweight="bold")
+    for i, (v, r) in enumerate(zip(meas, rf)):
+        ax1.text(i, v + 0.006, f"{v:.3f}", ha="center", color=t.ink, fontsize=8.5,
+                 fontweight="bold")
+        ax1.text(i, 0.004, f"n={int(r['n_matched_one_unit'])}", ha="center",
+                 color=t.surface, fontsize=7.2)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(lab, fontsize=8)
+    ax1.set_xlabel("OSM rooftop polygon size (m$^2$)", color=t.ink_dim, fontsize=8.5)
+    ax1.set_ylabel("measured kWp per m$^2$", color=t.ink_dim, fontsize=8.5)
+    ax1.set_ylim(0, 0.23)
+    ax1.set_title("1. Big polygons are roofs, not arrays", color=t.ink, fontsize=9.5,
+                  loc="left", pad=6)
+    style_axes(ax1, t, ygrid=True)
+
+    # --- 2. and that is where all the area is --------------------------------------
+    ga = [float(r["gwp_at_assumed"]) for r in rf]
+    gm = [float(r["gwp_at_measured"]) for r in rf]
+    w = 0.38
+    ax2.bar(x - w / 2, ga, width=w, color=t.s1, label="at the assumed 0.18")
+    ax2.bar(x + w / 2, gm, width=w, color=t.s2, label="at the measured constant")
+    for i, r in enumerate(rf):
+        ax2.text(i, max(ga[i], gm[i]) + 0.45, f"{float(r['area_km2']):.0f} km$^2$",
+                 ha="center", color=t.ink_dim, fontsize=7.4)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(lab, fontsize=8)
+    ax2.set_xlabel("OSM rooftop polygon size (m$^2$)", color=t.ink_dim, fontsize=8.5)
+    ax2.set_ylabel("capacity credited (GWp)", color=t.ink_dim, fontsize=8.5)
+    ax2.set_ylim(0, 21.5)
+    ax2.set_title(f"2. {sum(ga):.1f} GWp claimed becomes {sum(gm):.1f}",
+                  color=t.ink, fontsize=9.5, loc="left", pad=6)
+    leg = ax2.legend(frameon=False, fontsize=7.8, loc="upper left")
+    for tx in leg.get_texts():
+        tx.set_color(t.ink_dim)
+    style_axes(ax2, t, ygrid=True)
+
+    # --- 3. ground: the constant was fine, the population was not -------------------
+    glab = [r["band"] for r in gr]
+    pct = [float(r["pct_with_registered_unit"]) for r in gr]
+    gx = np.arange(len(glab))
+    ax3.bar(gx, pct, width=0.6, color=[t.s3 if p > 0 else t.s1 for p in pct])
+    for i, (v, r) in enumerate(zip(pct, gr)):
+        ax3.text(i, v + 0.8, f"{v:.0f}%", ha="center", color=t.ink, fontsize=8.5,
+                 fontweight="bold")
+        # A zero bar has no inside to label, so the area goes above the percentage instead
+        # of on top of it.
+        if v > 4:
+            ax3.text(i, 0.6, f"{float(r['area_km2']):.0f} km$^2$", ha="center",
+                     color=t.surface, fontsize=7.2)
+        else:
+            ax3.text(i, v + 3.0, f"{float(r['area_km2']):.0f} km$^2$", ha="center",
+                     color=t.ink_dim, fontsize=7.2)
+    ax3.set_xticks(gx)
+    ax3.set_xticklabels(glab, fontsize=8)
+    ax3.set_xlabel("OSM ground polygon size", color=t.ink_dim, fontsize=8.5)
+    ax3.set_ylabel("share containing a registered unit", color=t.ink_dim, fontsize=8.5)
+    ax3.set_ylim(0, 32)
+    ax3.set_title("3. Ground: 300 km$^2$ that is not PV", color=t.ink, fontsize=9.5,
+                  loc="left", pad=6)
+    style_axes(ax3, t, ygrid=True)
+
+    titled(fig, t,
+           "Validating Germany's hand-mapped OpenStreetMap tier against MaStR",
+           "Germany's register is complete by law, so it can say what a mapped polygon is "
+           "really worth. (1) Measured on the polygons containing exactly one registered "
+           "unit, the rooftop constant falls from 0.200 kWp/m2 on small features, which are "
+           "genuinely arrays, to 0.051 on large ones, which outline roofs and sites. (2) "
+           "Almost all the mapped area sits in that largest band, so a flat 0.18 turned "
+           "8.8 GWp into 22.0. (3) Ground-mount needed no constant change, but 300 km2 of "
+           "polygons above 5 km2 contain no registered unit at all, and registration is "
+           "mandatory.",
+           width=150)
+    fig.tight_layout()
+    save(fig, t, "germany_register_validation")
+
+
 def read_glint_by_size():
     path = source("results/glint_validation_pakistan/pakistan_stats_by_size.csv")
     if path is None:
@@ -2479,6 +2591,7 @@ def main():
         fig_pv_vs_building(t)
         fig_border_array_size(t)
         fig_germany_calibration(t)
+        fig_germany_register_validation(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")
