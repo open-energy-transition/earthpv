@@ -42,6 +42,11 @@ jobs:
       - name: Regenerate figures and interactive pages
         run: python scripts/build_docs_figures.py
 
+      # mkdocs --strict validates Markdown links but copies raw HTML through
+      # verbatim, so a mis-prefixed <iframe src> 404s in the browser with CI green.
+      - name: Check raw HTML links
+        run: python scripts/check_docs_links.py
+
       - name: Build site
         run: mkdocs build --strict
 

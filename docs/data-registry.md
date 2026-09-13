@@ -5,7 +5,7 @@ country already publish?** Ninety datasets across fifty-one countries are catalo
 most countries have something, even where OpenStreetMap is nearly empty.
 
 <div class="page-full-bleed" markdown>
-<iframe src="assets/interactive/training_data_registry.html" title="Filterable registry of PV labels, registers and roof-context datasets by country"></iframe>
+<iframe src="../assets/interactive/training_data_registry.html" title="Filterable registry of PV labels, registers and roof-context datasets by country"></iframe>
 </div>
 
 The table above is filterable by country, continent and role. The same data is in
