@@ -363,6 +363,51 @@ probability tracks adoption *within* a single cell, where scene conditions are s
 producing identical municipal numbers is strong evidence the problem is not in the features,
 and a fourth would not change that.
 
+### What an OSM solar polygon is actually worth, and what that did not fix
+
+Germany's Verified tier is hand-mapped OSM area times two assumed constants, and the project
+has carried a note that its ground-mount component reads 118% of all registered German
+ground-mount. MaStR can settle the constants directly, because it geolocates the placement that
+matters: **81.2% of ground units carry coordinates** (14,357 of 17,674, 37.19 GWp) against 5.2%
+of rooftop units. A registered unit's coordinate falling inside a dissolved OSM polygon pairs a
+true capacity with a mapped area.
+
+| Placement | Assumed | Measured | Ratio | Matched |
+| --- | --- | --- | --- | --- |
+| Ground | 0.050 | **0.081** | 1.62x | 3,638 polygons, 19.8 GWp |
+| Rooftop | 0.180 | **0.081** | 0.45x | 3,165 polygons, 0.65 GWp |
+
+**The ground constant is too LOW, not too high**, so correcting it alone would push the tier
+further above the register rather than toward it. The rooftop constant is genuinely too high,
+consistent with German polygons outlining roofs rather than modules, but it is a biased sample:
+5.2% coordinate coverage skewed to units at or above 30 kWp, in a population dominated by
+sub-10 kWp systems.
+
+**The ground polygon population is the real data-quality problem.** 73% of German OSM ground
+area -- 656 of 900 km&sup2; -- contains no registered ground unit at all, and registration is
+mandatory. Broken down by size, corroboration collapses exactly where plausibility does:
+
+| Size band | Polygons | Area | Contains a registered unit |
+| --- | --- | --- | --- |
+| 0-1 km&sup2; | 28,471 | 438.4 km&sup2; | 13% |
+| 1-5 km&sup2; | 80 | 161.4 km&sup2; | 28% |
+| 5-10 km&sup2; | 15 | 93.5 km&sup2; | **0%** |
+| 10+ km&sup2; | 6 | 207.1 km&sup2; | **0%** |
+
+Not one of the 21 polygons above 5 km&sup2; contains a registered ground unit, and they hold
+33% of all German OSM ground area; the largest two are 88.3 and 62.0 km&sup2; against a largest
+real German solar park of about 5 km&sup2;. `prepare_national_osm_solar.py` now drops ground
+features above 5 km&sup2;, a threshold taken from where corroboration reaches zero rather than
+tuned to a target.
+
+**This changes no published number, and the 118% note was describing a computation the atlas no
+longer performs.** All 21 polygons have representative points outside the density grid, which
+covers building-populated cells only, so the atlas never counted them: Verified is 38,508.1 MWp
+before and after the cap, identical to the decimal. The cap is prophylactic -- it protects any
+future run whose grid does cover empty cells -- not a correction to a live figure. Reconciling
+the 38.5 GWp of in-grid OSM against the register is a separate open question, and it is not
+about these constants.
+
 ### What the German atlas now carries
 
 The atlas's sub-400 m&sup2; half was replaced on 2026-09-13, because the component it carried

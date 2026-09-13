@@ -48,8 +48,25 @@ log = logging.getLogger(__name__)
 # exist; the largest real single-roof installations are a few hectares.
 ROOFTOP_MAX_M2 = MAX_CANDIDATE_M2
 
+# A ground-mount polygon above this is not an installation either, and unlike the rooftop cap
+# there is nowhere to reclassify it TO, so it is dropped. Measured against MaStR on 2026-09-13,
+# by size band, as the share of German OSM `ground` polygons containing at least one registered
+# ground unit (registration is mandatory and 81.2% of ground units carry coordinates):
+#
+#     0-1 km2   28,471 polygons  438.4 km2   13% corroborated
+#     1-5 km2       80 polygons  161.4 km2   28% corroborated
+#     5-10 km2      15 polygons   93.5 km2    0% corroborated
+#     10+ km2        6 polygons  207.1 km2    0% corroborated
+#
+# Corroboration collapses to exactly zero above 5 km2 -- not a tuned threshold but the point
+# where the population stops being PV at all. Germany's largest real solar park is about 5 km2.
+# Those 21 polygons hold 33% of all German OSM ground area and contributed ~15 GWp to the
+# atlas's Verified tier, which is why it read 121% of all registered German ground-mount.
+GROUND_MAX_M2 = 5_000_000.0
 
-def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2) -> Path:
+
+def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
+            ground_max_m2: float = GROUND_MAX_M2) -> Path:
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     ref = load_mapped_reference_attrs(aoi, cfg, settings).reset_index(drop=True)
@@ -77,6 +94,22 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2) -> Path
     placement[oversize] = "ground"
     ref["placement"] = placement
 
+    # Drop implausible ground polygons. `density.py` deliberately exempts OSM-sourced oversize
+    # features from its own cap, on the assumption that a human-mapped footprint is real. An
+    # 88 km2 "solar" polygon is where that assumption fails.
+    too_big = (ref["placement"].to_numpy() == "ground") & (
+        ref["area_m2"].to_numpy() > ground_max_m2)
+    n_dropped = int(too_big.sum())
+    if n_dropped:
+        log.warning(
+            "dropping %d 'ground' features above %.0f m2 (%.1f km2, largest %.1f km2) -- none "
+            "of the German ones contains a registered ground unit, so they are not "
+            "installations",
+            n_dropped, ground_max_m2, ref["area_m2"].to_numpy()[too_big].sum() / 1e6,
+            ref["area_m2"].to_numpy()[too_big].max() / 1e6,
+        )
+    ref = ref[~too_big].reset_index(drop=True)
+
     log.info(
         "placement: %s (small->rooftop: %d, rooftop->ground on size: %d)",
         ref["placement"].value_counts().to_dict(), n_small, n_oversize,
@@ -92,10 +125,11 @@ def main() -> None:
     ap.add_argument("--aoi", required=True)
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--rooftop-max-m2", type=float, default=ROOFTOP_MAX_M2)
+    ap.add_argument("--ground-max-m2", type=float, default=GROUND_MAX_M2)
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     out = a.out or Path(f"data/labels/{a.aoi}_national_osm_solar.parquet")
-    prepare(a.aoi, out, a.rooftop_max_m2)
+    prepare(a.aoi, out, a.rooftop_max_m2, a.ground_max_m2)
 
 
 if __name__ == "__main__":

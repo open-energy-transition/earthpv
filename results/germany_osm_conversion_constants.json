@@ -1,0 +1,41 @@
+{
+  "cutoff": "2025-09-30",
+  "placements": {
+    "ground": {
+      "assumed_constant": 0.05,
+      "measured_area_weighted_kwp_per_m2": 0.08101,
+      "ratio_measured_over_assumed": 1.62,
+      "n_osm_polygons_total": 22191,
+      "n_matched_polygons": 3638,
+      "matched_area_km2": 244.67,
+      "matched_capacity_gwp": 19.821,
+      "register_units_with_coords": 14357,
+      "coordinate_coverage_note": "81.2% of ground units carry coordinates; only 5.2% of rooftop units do, skewed to >= 30 kWp, so the rooftop figure is a biased sample",
+      "per_polygon_quantiles": {
+        "p10": 0.03424,
+        "p25": 0.05174,
+        "p50": 0.07985,
+        "p75": 0.11831,
+        "p90": 0.16834
+      }
+    },
+    "rooftop": {
+      "assumed_constant": 0.18,
+      "measured_area_weighted_kwp_per_m2": 0.08142,
+      "ratio_measured_over_assumed": 0.452,
+      "n_osm_polygons_total": 115962,
+      "n_matched_polygons": 3165,
+      "matched_area_km2": 7.93,
+      "matched_capacity_gwp": 0.646,
+      "register_units_with_coords": 231488,
+      "coordinate_coverage_note": "81.2% of ground units carry coordinates; only 5.2% of rooftop units do, skewed to >= 30 kWp, so the rooftop figure is a biased sample",
+      "per_polygon_quantiles": {
+        "p10": 0.04394,
+        "p25": 0.06837,
+        "p50": 0.11956,
+        "p75": 0.16765,
+        "p90": 0.34975
+      }
+    }
+  }
+}
