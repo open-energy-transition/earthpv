@@ -239,16 +239,19 @@ def _roofclf_cell_mwp(path: Path, kwp_col: str) -> pd.Series:
     return df.groupby("cell")[kwp_col].sum() / 1000.0
 
 
-def _domain_cells(cell_density_path: Path) -> set[str]:
+def _domain_cells(cell_density_path: Path, aoi: str | None = None) -> set[str]:
     """The density-calibrated domain, derived exactly as the capacity functions do:
-    `density.CALIBRATED_BLDG_DENSITY_KM2` over the shared national cell-density table
+    `density.calibrated_density_range(aoi)` over the shared national cell-density table
     (NOT from which cells happen to have flagged buildings -- a domain cell where
     roofclf flags nothing in either epoch is a genuine roofclf zero, not a
-    fall-back-to-segmentation cell)."""
-    from earthpv.density import CALIBRATED_BLDG_DENSITY_KM2
+    fall-back-to-segmentation cell).
+
+    `aoi` selects the band; omitting it falls back to Pakistan's, which is what every
+    caller before 2026-09-12 got implicitly."""
+    from earthpv.density import calibrated_density_range
 
     cd = pd.read_parquet(cell_density_path)
-    lo, hi = CALIBRATED_BLDG_DENSITY_KM2
+    lo, hi = calibrated_density_range(aoi)
     dens_col = "density" if "density" in cd.columns else "bldg_density_km2"
     return set(cd.loc[(cd[dens_col] >= lo) & (cd[dens_col] <= hi), "cell"])
 
@@ -317,7 +320,7 @@ def build_growth(
                     ("mwp_ge400_roofclf_cur", ge4_cur), ("mwp_ge400_roofclf_pre", ge4_pre)]:
         grid[name] = grid["cell"].map(s).fillna(0.0)
 
-    domain = _domain_cells(Path(cell_density_path))
+    domain = _domain_cells(Path(cell_density_path), aoi)
     grid["in_domain"] = grid["cell"].isin(domain)
     grid["roof_source"] = np.where(grid.in_domain, "roofclf", "segmentation")
 

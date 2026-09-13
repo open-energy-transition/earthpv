@@ -76,55 +76,49 @@ Balochistan, are proposed and awaiting the owner's own imagery-recency check (no
 check exists) in `data/labels/candidate_quadrats/*_gap_calib_2km_candidate.geojson` -- see
 [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 19.
 
-### 4. France could supply an external reference for the sub-400 m&sup2; half, which Germany cannot
+### 4. France answered half of this; the earthpv half is still open
 
-Germany's register answered the &ge; 400 m&sup2; question and is structurally silent below it:
-MaStR publishes no coordinates under 30 kWp, which is `roofclf`'s entire domain. So the half of
-the atlas that rests on 30 purposive Pakistani quadrats still has no external check at all.
-France is the most promising place to get one.
+**Partly closed 2026-09-04.** The original item asked whether France could supply an
+external reference for the sub-400 m&sup2; half of the atlas, which Germany's register
+cannot reach. It can, and the register-side work is done and written up in
+[Validation against the French register](methods/france-validation.md): fourteen
+exhaustively hand-mapped communes against dated vintages of a complete national register
+put `DEFAULT_KWP_PER_M2_MODULE` at 0.150 kWp/m&sup2; against the assumed 0.180, and
+settled that the below-floor capacity share is not a transferable constant.
 
-**[DeepPVMapper](https://github.com/gabrielkasmi/deeppvmapper)** (Kasmi et al., MIT licence)
-is an automated pipeline detecting rooftop PV across France from IGN aerial tiles. Its output
-is the shape this project needs: **per-installation GeoJSON polygons with surface in
-m&sup2;, tilt, azimuth and installed kWp**, plus city-level aggregates, with precomputed
-results for French departments published on Zenodo. Capacity comes from its companion
-`pypvroof`. Critically, it **retains only residential-scale installations of 1.7 to 36.1 kWp
-on buildings** -- at 0.18 kWp/m&sup2; that is roughly 9 to 200 m&sup2; of module area, i.e.
-**entirely below this project's 400 m&sup2; segmentation floor**. It is a population-matched
-reference for exactly the instrument that lacks one.
+The independent test of the 400 m&sup2; floor is also **done, 2026-09-12**: earthpv's
+recall against the hand-mapped communes climbs with installation size while OpenPVMapper's,
+on the same truth at sub-metre resolution, does not, and retraining on French data does not
+move it. That is in the experiments register as
+[the detection floor measured against sub-metre truth](experiments.md#the-detection-floor-measured-against-sub-metre-truth-2026-09-12).
 
-**[BDAPPV](https://huggingface.co/datasets/gabrielkasmi/bdappv)** (CC-BY-4.0) is the
-human-annotated dataset behind it: ~28,400 400x400 px aerial images over France and Belgium
-with binary segmentation masks, plus per-installation metadata (surface, tilt, azimuth, kWp,
-installation date). The distinction matters and should not be blurred.
+What that leaves genuinely open, and it is the part this project actually needs:
 
-**The trap, stated up front: DeepPVMapper is a model output, not ground truth.** Comparing
-earthpv against it is model-versus-model, the same limitation this project already documents
-for its
-[external hex-dataset comparison](results/capacity.md#what-this-map-cannot-tell-you-and-what-an-independent-estimate-confirms-it-can);
-agreement would not be validation. BDAPPV's human masks are the part that can serve as truth,
-and its published metadata needs cleaning first -- the raw columns carry obvious outliers
-(azimuth beyond 360&deg;, kWp values orders of magnitude outside the residential band).
+**An external `coverage_ratio` reference below the floor**, which is now the only part of
+this that France can still be asked for and probably cannot give. Both `coverage_ratio` and
+`area_recall` are still fit on Pakistani quadrats alone. The blocker named here originally,
+that the composites did not exist yet, is gone: the national compose finished 2026-09-05 and
+earthpv has been run over the communes three times (v4, v5, v6). The
+**area-recall-versus-size curve is measured**, and is the floor result above.
 
-What it could actually buy, in order of value:
+What is left is `coverage_ratio`, which is a `roofclf` quantity: true mapped PV area over
+*flagged* roof area. France cannot supply it, because roofclf does not flag French roofs at
+a usable rate in the first place (0.627 AUC within size band, 16 buildings flagged out of
+44,314 at precision 0.5). So this needs either a third country whose arrays are large
+against a pixel and which has both a register and hand-mapped truth, or more Pakistani
+quadrats in the sparse band. Adoption rates do not transfer, so a French `coverage_ratio`
+could never have been applied to Pakistan directly even if it existed.
 
-1. **An independent test of the 400 m&sup2; floor itself.** BDAPPV annotations are drawn on
-   sub-metre aerial imagery, so measuring earthpv's recall against them per size bin measures
-   the *sensor* limit at 10 m GSD rather than a modelling choice. That would confirm or refute
-   the floor with something other than this project's own reasoning.
-2. **An external `coverage_ratio` / `area_recall` reference below the floor.** Both are
-   currently fit on Pakistani quadrats alone, and per-installation polygons with area are
-   precisely the input those functions consume.
-3. **A second uncensored pose source** (item 11), derived from imagery rather than
-   self-reported, and covering the small installations MaStR omits.
+**A second uncensored pose source** (item 11). OpenPVMapper carries `tilt` and `azimuth` per
+installation, derived from imagery rather than self-reported, over exactly the small
+installations MaStR omits. Not yet used, and worth doing: the glint-fitted pose work has no
+external check at all.
 
-Costs and caveats. France has no local data here, so this is the `scripts/new_region.py`
-path plus a full `compose`/`infer` run -- the largest cost of any item on this page.
-Adoption rates do not transfer, so a French `coverage_ratio` could not be applied to Pakistan;
-the transferable quantities are the more physical ones, the detection floor and the
-area-recall-versus-size curve. And French imagery epochs (IGN flights are periodic, per
-department) will not match a Sentinel-2 composite window, which is the same epoch-mismatch
-problem that makes Rule-1 completeness relative.
+**The trap has not gone away.** OpenPVMapper is a model output with ~74-75% published
+precision, not ground truth. Measured against the hand-mapped communes it recalls 0.67 of
+real installations, and the fourteen communes are its own manual-correction layer, so its
+precision there is an optimistic bound. earthpv agreeing with it would not be validation.
+The human sweeps are the part that can serve as truth.
 
 ### 5. The calibration quadrats are purposive, not a probability sample
 

@@ -114,6 +114,82 @@ because a person reviews every lead; the spectral detector is never read per bui
 all, only summed into calibrated adoption rates. Both of those design choices follow from
 the physics in the figure above.
 
+### Where the spectral detector stops working
+
+The physics above has a boundary, and France measured it. `roofclf` reaches 0.857 AUC in
+Pakistan and 0.710 in France, 0.821 against 0.627 once building size is controlled for. The
+interesting part is which explanation survives measurement, because the obvious candidates do
+not.
+
+**It is not the buildings.** French roofs carrying PV are essentially the same size as
+Pakistani ones. What differs is what sits on them:
+
+| | Median PV-bearing roof | Median array on it | Array's share of its roof |
+| --- | --- | --- | --- |
+| Pakistan | 195 m&sup2; | 54 m&sup2; | **0.309** |
+| France | 202 m&sup2; | 24 m&sup2; | **0.119** |
+
+A Pakistani array covers about a third of its roof; a French one about an eighth. That ratio,
+not the building, is what a mixed pixel responds to, and the feature ablation shows it
+directly:
+
+| | Pakistan | France |
+| --- | --- | --- |
+| Footprint size only | 0.744 | 0.673 |
+| **Reflectance only** | **0.833** | **0.672** |
+| Size and reflectance together | 0.857 | 0.710 |
+| What reflectance adds over size | **+0.113** | **+0.037** |
+
+In Pakistan reflectance alone reaches 0.833: the sensor genuinely sees panel. In France
+reflectance alone is 0.672, indistinguishable from footprint size alone at 0.673, so the
+French model is a building-size model with a spectral decoration on top. The dilution reading
+is supported by an external control: the same installations are recovered at 0.67 from
+sub-metre imagery with no size gradient, so the signal is present in the scene and averaged
+away by the pixel, rather than genuinely ambiguous.
+
+**The regime is set by policy, not by landscape.** The France-Germany border is the natural
+experiment, since climate and building stock are continuous across it and feed-in tariff
+history is not.
+
+![Two panels. Left, median mapped rooftop array against signed distance to the France-Germany border: France is flat at about 21 square metres across every ten-kilometre bin right up to the border, while the German series sits far higher and is erratic. Right, the same question asked of the two complete national registers cut to the same sub-36 kilowatt band: France averages 5.34 kilowatts peak per unit against Germany 10.41, a factor of 1.95.](assets/figures/border_array_size.svg#only-light)
+![Two panels. Left, median mapped rooftop array against signed distance to the France-Germany border: France is flat at about 21 square metres across every ten-kilometre bin right up to the border, while the German series sits far higher and is erratic. Right, the same question asked of the two complete national registers cut to the same sub-36 kilowatt band: France averages 5.34 kilowatts peak per unit against Germany 10.41, a factor of 1.95.](assets/figures/border_array_size.dark.svg#only-dark)
+
+French installations do not grow as they approach Germany. They sit at 20.5 to 21.7 m&sup2;
+in every ten-kilometre band out to 60 km, and then the step happens at the line itself.
+
+**How big the step is depends entirely on which instrument you ask, which is why the figure
+carries two panels.** The geolocated comparison suggests roughly 5x, but its German side is
+OSM at ~3.6% completeness and mappers trace large arrays first. Cutting both *complete*
+registers to the same sub-36 kW band gives the unbiased answer: **5.34 kWp per unit in Alsace
+and Moselle against 10.41 in Baden-Wuerttemberg, Rhineland-Palatinate and Saarland, a factor
+of 1.95** over 42,694 and 1,004,930 units. Real, large, and half what the imagery-based
+comparison implies.
+
+That is the practical warning for any new country: the size regime, and therefore whether
+`roofclf` can work at all, is a property of national subsidy design rather than of geography,
+so it cannot be inferred from a neighbour.
+
+**Three plausible fixes have been measured, and two of them do nothing.**
+
+| Fix | Effect on French AUC within size band |
+| --- | --- |
+| 13x more training labels, from [OpenPVMapper](results/france.md#was-it-just-too-few-labels-no) | -0.010 |
+| Authoritative footprints (French cadastre instead of VIDA) | +0.027 |
+| Retraining segmentation on 18,577 French chips | no change in recall (0.0118) |
+
+The footprint result is worth keeping even though it does not rescue the instrument: VIDA is
+imagery-derived and in these communes finds 44,314 buildings where the DGFiP cadastre finds
+103,697, missing 58% of buildings and 30% of the PV-bearing ones. Better footprints are a real
+improvement to feature quality, and they close 14% of the gap to Pakistan. The remaining 86%
+is the sensor.
+
+**What this means for reading the atlas.** The sub-400 m&sup2; half of the method is
+calibrated on installations that are small relative to the 400 m&sup2; segmentation floor but
+still large relative to a 100 m&sup2; pixel. Where that stops being true, the instrument stops
+working, and France has no `roofclf` half in its atlas for exactly this reason. The nearest
+thing to the French regime inside Pakistan is the sparse-density stratum, already the least
+well supported part of the coverage-ratio fit, and it should be read with this in mind.
+
 ### Two products fall out of one model
 
 ![Two products from one model: Sentinel-2 composites feed TerraMind, whose probability raster splits into a leads product of polygons for human review, which flows to OpenStreetMap through a MapRoulette challenge, and a capacity product of megawatts peak per building and grid cell, which flows to PyPSA-Earth as a grid CSV.](assets/figures/two_products.svg#only-light)

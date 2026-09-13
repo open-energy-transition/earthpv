@@ -102,6 +102,14 @@ better-bounded and showed that another was overstating the truth threefold. See
 [Validation against MaStR](methods/mastr-validation.md) and
 [Germany capacity and validation](results/germany.md).
 
+France supplies the check Germany could not. Its register is complete like Germany's but
+censored below 36 kW, and it publishes dated year-end vintages, so a hand-mapped commune can
+be compared against the register as it stood on the day the imagery was flown. Fourteen
+communes swept exhaustively by hand put the module constant at 0.150 kWp/m<sup>2</sup>
+against the 0.180 this project assumes, the first external measurement of it. See
+[Validation against the French register](methods/france-validation.md) and
+[France: a second register](results/france.md).
+
 ### Interpreting the national estimate
 
 The national total is a modelled estimate, not a meter reading. At 10 m resolution the

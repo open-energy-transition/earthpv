@@ -10,6 +10,7 @@ hide:
   <span class="atlas-switch__label">Atlas</span>
   <span aria-current="page">Pakistan</span>
   <a href="../atlas-germany/">Germany</a>
+  <a href="../atlas-france/">France</a>
 </nav>
 <iframe src="../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell"></iframe>
 </div>

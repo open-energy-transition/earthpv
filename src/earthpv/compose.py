@@ -240,6 +240,14 @@ def run_compose(
         raise ValueError("compose --index > 0 requires --window (the layer's date range)")
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
+    # An AOI may pin its own base-layer window (`compose_window`). France does, because its
+    # calibration labels were drawn on 2023-2024 imagery and a national run on a different
+    # epoch than the quadrat cells would silently mix two epochs into one product -- the
+    # resumable skip means the already-built cells keep whatever window they were made
+    # with. An explicit --window still wins, and index > 0 layers are unaffected.
+    if window is None and index == 0 and cfg.get("compose_window"):
+        window = tuple(cfg["compose_window"])
+        log.info("Using AOI compose_window %s for %s", window, aoi)
     # Mirror the rooftopsenti layout (<region>/composites/<cell>/composite_0.tif) so
     # CompositeIndex reads it unchanged.
     region_dir = Path(out_dir) / aoi

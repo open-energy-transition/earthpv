@@ -181,8 +181,31 @@ def load_dense_buildings(
     cache_dir = Path(cache_dir)
     cache = cache_dir / f"{aoi}_vida.parquet"
     if cache.exists():
-        log.info("Loading cached VIDA buildings %s", cache)
-        return gpd.read_parquet(cache)
+        cached = gpd.read_parquet(cache)
+        # A cache built for a SMALLER candidate set silently mislabels every candidate
+        # outside its extent as `no_building`, which converts rooftop capacity at the
+        # ground constant and collapses `est_mwp_rc_roof`. Measured on France 2026-09-11:
+        # a 153,759-building cache from a 31-cell pilot was reused by a 5,473-cell national
+        # postprocess, and 13,330 of 13,419 candidates came back `no_building` -- a result
+        # that looks like a detection failure, not a stale file. Compare extents and refuse
+        # to reuse a cache that does not cover the candidates.
+        if not cached.empty:
+            cminx, cminy, cmaxx, cmaxy = cached.total_bounds
+            minx, miny, maxx, maxy = cands.total_bounds
+            pad = 0.05  # deg, the fetch's own buffer is 2 km
+            if (minx < cminx - pad or miny < cminy - pad
+                    or maxx > cmaxx + pad or maxy > cmaxy + pad):
+                log.warning(
+                    "Cached VIDA %s covers %s but the candidates span %s -- refetching. "
+                    "Delete the cache to silence this.", cache,
+                    [round(float(v), 2) for v in cached.total_bounds],
+                    [round(float(v), 2) for v in cands.total_bounds],
+                )
+            else:
+                log.info("Loading cached VIDA buildings %s", cache)
+                return cached
+        else:
+            log.warning("Cached VIDA %s is empty; refetching", cache)
 
     iso3 = _iso3_for(cfg)
     if iso3 is None:

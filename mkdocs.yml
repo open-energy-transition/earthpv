@@ -122,6 +122,7 @@ nav:
   - PV Atlas:
         - Pakistan: atlas.md
         - Germany: atlas-germany.md
+        - France: atlas-france.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
@@ -130,6 +131,7 @@ nav:
       - Rooftop classifier (roofclf): methods/roofclf.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md
+      - Validation against the French register: methods/france-validation.md
       - Calibration quadrats overview: methods/calibration-quadrats.md
       - Quadrat protocol: calibration-mapping-protocol.md
       - Roofclf random-cell validation: methods/roofclf-national-validation.md

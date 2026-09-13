@@ -1,0 +1,77 @@
+# TerraTorch fine-tuning config: v6 = v5 with FRANCE CAPPED to Germany's size.
+#
+# THE ABLATION. v5 improved France's register Spearman from 0.290 to 0.449, but France was
+# 73.6% of its corpus, so that result confounds two things: "French data is present" and
+# "the corpus is 3.8x larger". This run separates them. Everything is identical to
+# configs/terramind_pv_v5_france.yaml -- backbone, necks, decoder, loss, lr, schedule,
+# monitor, and the France val holdout -- EXCEPT the number of French TRAINING chips.
+#
+# Corpus (data/chips/combined_france_capped/index.parquet, 11,380 chips):
+#   germany : 3,189 chips (141 val)      -- unchanged
+#   punjab  : 274 chips (37 val)         -- unchanged
+#   pakistan: 2,438 chips (48 val)       -- unchanged
+#   gujarat : 760 chips (128 val)        -- unchanged
+#   france  : 4,719 chips (3,201 train + 1,518 val) -- CAPPED from 17,059 train chips.
+#             France share 41.5% against v5's 73.6%; French TRAIN chips are 3,201 against
+#             Germany's 3,048, i.e. the two largest regions are now the same size.
+#
+# The subsample is stratified on `kind` (positive/near_negative/background mix preserved to
+# the tenth of a percent) and spread across tiles round-robin so no part of France is
+# dropped: 2,394 of 3,834 tiles survive, the longitude span is -4.7 to 9.5 against -5.1 to
+# 9.5, and the PV-bearing fraction is 60.8% against 62.6%. Seed 20260912,
+# data/chips/france/index_capped3200.parquet.
+#
+# THE VAL HOLDOUT IS IDENTICAL TO v5 (all 1,518 Centre-Val de Loire chips, untouched), so
+# the two runs' val/mIoU curves are directly comparable and the only variable is how much
+# French training data the model sees.
+#
+# Applied to FRANCE ONLY, like v5. Pakistan and Germany keep v4.
+
+data:
+  index_path: data/chips/combined_france_capped/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # terramind_v1_tiny fits the GTX 1060; bump to _small if a bigger GPU is used.
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/v6_france_capped
+patience: 8
+# Same monitor as v3india (val/mIoU), not the base config's val/Accuracy -- matching the
+# checkpoint we're actually trying to replace.
+monitor: val/mIoU
+monitor_mode: max

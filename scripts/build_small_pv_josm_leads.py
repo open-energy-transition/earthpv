@@ -140,7 +140,9 @@ def _derive_sppi_only() -> gpd.GeoDataFrame:
     from earthpv.sppi import add_sppi, pooled_precision_threshold
     from earthpv.sub400_capacity import national_cell_domain, select_calibrated_quadrats
 
-    domain_cells = national_cell_domain(CELL_DENSITY_PATH)
+    # Every path constant in this script is Pakistan's, so the band is too -- passed
+    # explicitly rather than relying on calibrated_density_range's fallback.
+    domain_cells = national_cell_domain(CELL_DENSITY_PATH, "pakistan")
     quadrats, _ = select_calibrated_quadrats(FOLDS_PATH)
 
     bt = gpd.read_parquet(CALIBRATION_BUILDINGS_PATH)

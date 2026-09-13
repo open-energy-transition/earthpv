@@ -718,6 +718,189 @@ convert at the land constant.
 
 Full writeup: `docs/methods/mastr-validation.md`, `docs/results/germany.md`.
 
+### France validation (ODRE register + OpenPVMapper)
+
+`france_validation.py` / `earthpv validate-france` is the **second** complete-register check,
+and deliberately not a copy of the MaStR one -- France's register is a different instrument.
+**It censors every unit below 36 kW into per-commune/per-IRIS aggregates, publishes NO
+coordinates at any size, and carries NO rooftop/ground attribute.** Consequences: (1) the
+72 kWp floor share is still *exactly* computable, because the censoring cliff sits below the
+floor, but shares below 36 kW are unrecoverable and are returned as `None`, never modelled;
+(2) **Germany's `p_unmapped` precision instrument has no French counterpart** and no
+substitute is offered; (3) every share is **bracketed, never stated** -- `all_pv` (17.3%) is
+a firm lower bound on the rooftop share, `bt_only` (31.1%) a rooftop-leaning upper one.
+Against Germany's directly-measured **65.5% of rooftop**, this settles by measurement what
+Germany's page argued from dispersion: **the below-floor share is not a transferable
+constant.** France's fleet is far more ground-mount-heavy (35.0 GWp all PV vs 19.1 GWp on
+low voltage). Count share is 92.0% -- quote the capacity share.
+
+**What France can do that Germany could not: measure the module constant.** ODRE publishes
+**dated year-end vintages** (2017 on; 2020-2025 pulled, 9.3 -> 30.4 GWp). An aggregate row
+carries one group-level date over hundreds of units, so the current snapshot cannot be
+filtered to a past epoch -- but a past snapshot can just be downloaded, and
+`interpolate_to_date` reads per-commune small-PV capacity back to a quadrat's own mapping
+day. Against **14 exhaustively hand-mapped communes** (3,335 features, median 20 m2, on
+sub-metre IGN imagery), the register's sub-36 kW band divided by mapped sub-200 m2 module
+area gives **`DEFAULT_KWP_PER_M2_MODULE` = 0.150 kWp/m2 against the assumed 0.180** (ratio
+0.83; 0.147 under the widest PV definition; median 0.149, IQR 0.129-0.273, 11 of 14 communes).
+**The epoch correction is worth 53%** -- the same communes read 0.230 against today's
+register. The German attempt at this measurement is a documented negative result (3.6% OSM
+completeness, implied constant 0.02-0.99). **Not yet acted on**: 0.18 is unchanged pending an
+owner decision, and the French figure does not transfer to Pakistan on its own.
+
+**`tag` on the French labels is load-bearing, not decoration.** 381 of 3,335 features are
+`thermal` (solar hot-water collectors -- area, no kilowatts), 12 are mapper-retracted
+`false`. Both are dropped. `unknown` (84) and `missing` (181) are genuinely ambiguous
+(`missing` overlaps OpenPVMapper at 48.6%, between `normal`'s 66.6% and `thermal`'s 29.4%),
+so they are excluded from the primary set and written to `data/labels/france_sensitivity/`;
+including them moves the constant 0.150 -> 0.147, i.e. not at all. **Solar thermal is the
+systematic confusion for any imagery-based detector and is invisible without the tag**: 137
+OpenPVMapper polygons in these communes sit on one.
+
+**France quadrats live in `data/labels/france/`, NOT `data/labels/`** --
+`roofclf.discover_quadrats` globs the latter, so a French quadrat there would silently join
+the next Pakistani refit (the Kalat Rural footgun again). Pass `--labels-dir`.
+`scripts/build_france_quadrats.py` builds them: commune contour as the boundary (the mapper's
+unit of work; mapping spills up to 23% outside, so features are clipped to it), `mapping_date`
+from the median feature `imageDate` rather than `metadata.json`, placement from VIDA overlap.
+**Saint-Gely-du-Fesc is marked unfinished by the mapper**, is not Rule-1 complete, and is
+excluded from every fit by explicit `--quadrat` flags. Langoat and Saulny are excluded from
+the module-constant fit specifically: the register reports no sub-36 kW capacity there at
+their mapping epoch despite mapped installations, which is a hole in the reference.
+
+**OpenPVMapper** (Kasmi 2026, `doi:10.5281/zenodo.21534856`, CC-BY-4.0; 1.14M rooftop
+polygons, ~15 GWp, mainland France) is scored **against the register first**, so a later
+earthpv comparison can be read knowing which way the reference leans. Cut to the same
+population on both sides (<= 72 kWp, low voltage) it recovers **91% of registered capacity**,
+slope 0.79, Spearman 0.79 over 17,970 communes -- a good reference for the sub-floor band.
+Its own implied capacity density is **0.129 kWp/m2**, against 0.150 measured and 0.180
+assumed: three attempts at one constant spanning 1.4x. Against the hand-mapped truth it
+recalls **0.667** (area 0.670) at raw precision 0.555. **It is a model output (~74-75%
+published precision), not ground truth -- agreement with it is not validation**, and the 14
+communes are its own manual-correction layer, so precision measured there is an optimistic
+bound and recall is the transferable half.
+
+**Register CSV exports truncate silently on an SSL reset** (a 2021 pull came back at 5.4 GWp
+against the true 13.4, reading as a year PV barely existed). `scripts/fetch_odre_vintages.sh`
+re-fetches until the line count is plausible and `load_vintages` refuses any vintage under
+1 GWp outright.
+
+**Two things break when a quadrat is commune-sized rather than a 1-4 km2 box.** (1)
+`roofclf.building_table` reads seg/frac probability from a SINGLE 0.1 deg cell (the
+boundary's representative point) and zero-fills the rest; 7 of 14 French communes straddle
+2-4 cells, so France runs `roof-classifier` **without `--seg-prob-dir`** -- a feature
+correct in some quadrats and part-zero in others is worse than absent everywhere, and
+segmentation carries almost no signal on 20 m2 arrays anyway. The composite read is properly
+windowed and is unaffected. (2) The density domain is per-AOI, not a method constant:
+`density.calibrated_density_range(aoi)` now looks up `CALIBRATED_BLDG_DENSITY_BY_AOI`
+(pakistan 48.5-5258.0 unchanged, **france 17.5-390.8**) and warns when an AOI has no entry
+instead of silently borrowing Pakistan's. `CALIBRATED_BLDG_DENSITY_KM2` remains Pakistan's
+and remains the fallback, so no existing Pakistani call site changed behaviour.
+`compose.run_compose` now also honours an AOI's `compose_window` when `--window` is not
+passed, so a national run cannot land on a different epoch than the quadrat cells it skips.
+**Only `density.py` is threaded so far**: `sub400_capacity.py` (`out_of_domain_and_gate_capacity`,
+the coverage-ratio domain filter) and `growth.py` still import `CALIBRATED_BLDG_DENSITY_KM2`
+directly and would therefore apply PAKISTAN's band to a French roofclf capacity run. That
+chain has not been run for France yet (it needs `roofclf-score-national` over the whole
+country), so nothing published is affected -- but thread `aoi` through those before the first
+France `sub400-capacity` / `ge400-roof-capacity` run.
+
+
+AOI config: `france` carries `grid_origin: [-5.15, 41.33]` so a targeted quadrat-cell compose
+and a later national one name cells identically, and `compose_window: ["2024-05-01",
+"2024-09-30"]` -- summer 2024, chosen so imagery, the calibration labels (10 of 14 communes
+mapped 2023-2024) and the register's 2024-12-31 vintage all sit in one epoch. **Four communes
+(Langoat 2021, Saulny/Eaunes 2022, Gannay 2022-23) predate that window**, so their labels
+understate what the imagery shows. National cell count at `--min-buildings 1000`: **5,471**.
+Checkpoint: `v4_combined_all` epoch=41, the same owner-approved substitution Germany used
+(`v3_combined_india` is no longer on disk).
+
+**ROOFCLF DOES NOT TRANSFER TO FRENCH RESIDENTIAL PV, and this is the most important
+earthpv-side result here.** Fitted on 13 hand-mapped communes (44,314 buildings, 1,231 with
+PV, 2.78% base rate, LOQO, parcel label): **median fold AUC 0.710, 0.627 within size band**,
+against Pakistan's 0.857 / ~0.834. Building size alone gets 0.673 and spectral-only 0.672, so
+**reflectance is worth ~0.037 AUC**; at a precision-0.5 threshold it flags **16 buildings out
+of 44,314** (recall 0.0065). Segmentation scores **exactly 0.500 in all 13 folds**. The cause
+is physical: the median mapped French installation is **20 m2 against a 100 m2 Sentinel-2
+pixel**. The control that isolates it to the sensor is OpenPVMapper, which recalls the same
+installations at 0.67 from sub-metre imagery with **no size gradient** across 0-400 m2.
+**This bounds roofclf, it does not refute Pakistan's** -- Pakistani quadrats hold arrays that
+are small relative to the 400 m2 floor but still large relative to a pixel. Treat Pakistan's
+sparse-density stratum (the weakest part of the coverage-ratio fit) as the nearest thing to
+this regime. Consequence for France: **no roofclf half in its atlas**, and `rate_ratio` spans
+0.37-6.91 across the communes so several fail the precision-trust gate anyway.
+
+**France has no candidate-precision calibration table** (`configs/calibration/france_candidate_precision.yaml`
+does not exist), so `density` warns and `est_mwp_cal` collapses to `est_mwp_det` with no
+`est_mwp_rc`. France's atlas figures are therefore a **precision-honest floor, not a
+recall-corrected estimate**. The hand-mapped communes are the obvious input for
+`calibrate-candidates --aoi france` (they are Rule-1 complete, which the Pakistani
+calibration boxes are too), but that has not been run.
+
+**France's evidence atlas EXISTS but covers 31 cells, not France.** Verified 112.3 MWp
+(90% 83-156), Best 119.9 MWp (102-156), over the 14 calibration communes only -- roughly
+250 km2 of a 551,500 km2 country, with **299,934 of 300,666 national OSM installations
+falling outside the grid**. Never quote it as a French total. Segmentation-only (no roofclf
+half: no quadrats outside these communes, and on the AUC above it would not be worth adding).
+It is a **strict precision floor**: no glint sample, so `p_unmapped` = 0.0 and `p_real`
+collapses to the OSM-mapped fraction (0.04-0.33 by bin), and recall was **deliberately
+skipped** (`--recall-reference none`) rather than measured against the hand-mapped communes,
+which are a sub-400 m2 ground truth against a >= 400 m2 candidate population -- pooling them
+would have manufactured a large, badly-determined correction and the 20x
+`DEFAULT_RECALL_FLOOR` clamp. `check-density` reports 1 fail + 1 suspect of 6 regions, both
+artefacts of sampling 1-4 chosen cells per region rather than data problems. The
+per-commune register comparison runs but reports itself unusable at **1.9% coverage
+(302/26,576 communes, `national: false`)** -- revisit after the national compose.
+
+**FOOTGUN I INTRODUCED: `export.load_mapped_reference_attrs` globs
+`data/labels/*_overpass_solar.parquet` AOI-AGNOSTICALLY.** France's national pull had to be
+named `france_national_overpass_solar.parquet` to be seen at all (as
+`france_national_osm_solar.parquet` it was invisible and every `mapped_frac` came out 0.000,
+which would have zeroed the whole atlas). That file is now in the glob's path, so **any future
+`calibrate-candidates --aoi pakistan` will pool 318,611 French features into its mapped
+reference.** Matching is spatial so Pakistani results are unaffected numerically, but the
+table's `recall_reference` provenance count (documented as 18,276) WILL change. Move or rename
+the France file before re-deriving Pakistan's table.
+
+**FRANCE IS SCORED AGAINST ITS REGISTER TWICE, ZERO-SHOT AND RETRAINED (2026-09-11/12).**
+Same 20,501 communes, 93.0% capacity coverage, so the runs are directly comparable. On the
+above-floor low-voltage denominator: `est_mwp_exp` slope **0.162 -> 0.170**, Spearman
+**0.290 -> 0.449**; `est_mwp_det` slope **0.127 -> 0.160**, Spearman **0.262 -> 0.446**
+(Germany, in-domain, on a TRUE rooftop denominator: 0.388/0.656 and 0.340/0.661). **The gain
+is placement, not magnitude** -- rho closed half the gap to Germany while slope moved 5-25%
+and total recovery went 26% -> 34%. Spearman is scale-free so it cannot be blamed on
+conversion constants or the proxy denominator; slope partly can, since France's register has
+no rooftop/ground field. **Quote `est_mwp_det`/`est_mwp_exp` for France, never `est_mwp_cal`
+or `est_mwp_rc_roof`** -- both sit near 0.02 for BOTH models because there is no French glint
+sample, so `p_unmapped`=0 and `p_real` collapses to the OSM-mapped fraction (Germany's
+`est_mwp_cal` collapses identically at 0.167 and is rescued by a recall correction France
+lacks).
+
+**What retraining changed is shape, not volume**: 13,419 -> 39,462 candidates, median area
+8,301 -> 1,400 m2, rooftop share 26.9% -> 50.3%, blobs >= 10,000 m2 6,036 -> 2,076, and total
+area DOWN 364 -> 255 km2. `polygonize_chips` merges touching thresholded pixels with no upper
+bound, so v4's oversized blobs over France were merged false-positive sheets.
+
+**v5 (`configs/terramind_pv_v5_france.yaml`, `data/models/v5_combined_france/terramind-pv-epoch=25-step=37986.ckpt`,
+early-stopped at 33, 8h19m) IS APPLIED TO FRANCE ONLY.** Pakistan and Germany keep v4 and
+their published figures are untouched. **France is 73.6% of its corpus** (18,577 of 25,238
+chips), so the result confounds "French data present" with "3.8x larger corpus"; a
+~3,200-chip capped run would separate them and has NOT been run (owner chose the full set
+2026-09-11). France val holdout: Centre-Val de Loire (lon 0.5-3.1E, lat 46.5-48.4N), 1,518
+chips, carved into `data/chips/france/index.parquet` before the merge.
+
+**Artifacts**: baseline frozen at `results/france_validation/france_validation_BASELINE_zeroshot.json`
++ `configs/calibration/france_candidate_precision_BASELINE_v4.yaml` + `*_BASELINE_zeroshot.html`
+atlases; v5 at `data/predictions_v5/` + `results/france_validation_v5/`. National evidence
+atlas on v5: **Verified 11,163 / Best 11,995 MWp** (90% 10,301-15,797) against a registered
+34.6 GWp -- a strict precision floor, recall deliberately skipped.
+
+**`scripts/merge_chip_index.py` ALWAYS writes `data/chips/combined/index.parquet`**, which is
+v3india's corpus. Back it up before merging a new corpus and move the result aside, or it is
+silently clobbered.
+
+Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126** wheels
@@ -736,6 +919,39 @@ Full writeup: `docs/methods/mastr-validation.md`, `docs/results/germany.md`.
 - Long GPU/network stages are run detached (`nohup … &`) and polled; the rich progress bar does
   not flush cleanly to a redirected log, so watch checkpoint files / cell counts to gauge
   progress rather than parsing the log.
+- **A new AOI's composites MUST be symlinked onto `/home` (sda4, 1.3 TB), never written
+  straight into `data/composites/<aoi>/` on the aidisc drive.** `data/composites/germany`
+  and `.../pakistan` are symlinks to `/home/tobi/earthpv_composites/<aoi>` for exactly this
+  reason; France was created as a real directory on aidisc and filled the 229 GB drive to
+  **100% (2.0 MB free)** at 2,789 of 5,471 cells, taking the whole project's data volume
+  with it. The failure does not name the disk: `compose` dies with Python **exit code 120**
+  (a failure to flush stdout) and the log truncates mid-word, which reads like a crash. A
+  country is roughly 10 MB/cell, so budget ~55 GB for France and check
+  `df -h /run/media/tobi/aidisc` BEFORE starting, not after. Committed cells survive a
+  disk-full (each is written to `.tif.tmp` and atomically renamed), so recovery is: move the
+  directory to `/home`, symlink it back, and resume.
+- **A country-scale `compose` leaks file descriptors and WILL die partway through; run it
+  in a restart loop, not as a single invocation.** Measured on France 2026-09-04/05: the
+  process dies with `OSError(24, 'Too many open files')` / `RasterioIOError: Attempt to
+  create new tiff file ... failed` after roughly 150-300 cells, despite a 524,288 FD limit.
+  It surfaces through whichever remote call happens to be next (a raster read, or the STAC
+  API client), so the traceback varies. Two things make it look like something else:
+  (1) a Planetary Computer **SAS token expires ~24 h after it is signed**, and a run that
+  crosses that boundary gets a 403 storm which accelerates the leak -- but the leak happens
+  on a fresh token too, so the token is not the root cause; (2) `annual_composite` fails
+  over to Earth Search on the 403s, so **the data is fine** -- all 224 cells from the first
+  France run passed a fill-fraction/max-reflectance check, including the 85 written after
+  the token expired. **Throughput is unaffected by the leak** (~0.74 cells/min either way),
+  so the fix is to re-invoke `compose` (resumable, idempotent) in a loop, which also
+  re-signs the token. **Cap each pass by WALL CLOCK, not by waiting for the crash** --
+  restarting only on a non-zero exit is NOT enough and was measured failing: before it dies,
+  the process DEGRADES, and a degraded pass looks identical to a healthy one from outside.
+  France's pass 3 decayed 58 -> 172 -> 256 s/it with RSS past 8 GB, running at 0.17
+  cells/min against 0.74, and never crashed, so a crash-triggered loop left it there for
+  four hours. `scripts/run_france_national_compose.sh` now wraps each pass in
+  `timeout 7200` and treats rc=124 as the expected path; a fresh process recovered to 0.80
+  cells/min immediately. Budget passes generously (~90 cells per 2 h pass) and let "a pass
+  added nothing" be the stop condition rather than a pass cap.
 - **`nohup setsid` alone does not survive a session logout on this machine.** systemd-logind
   kills a whole session's cgroup (all processes in it, `setsid` or not) when the session ends
   unless lingering is enabled. Run `loginctl show-user "$USER" | grep Linger` -- if `Linger=no`,

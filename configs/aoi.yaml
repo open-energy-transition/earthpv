@@ -193,6 +193,24 @@ aois:
     division: { name: Sindh, country: PK, subtype: region }
     source_region: pakistan_500
 
+  # Added by scripts/new_region.py. No source_region key, so chips and compose fetch
+  # from Planetary Computer STAC rather than a local composite cache.
+  france:
+    bbox: [-5.15, 41.33, 9.56, 51.09]
+    division: { name: France, country: FR, subtype: country, iso3: FRA }
+    # Pin the 0.1 deg grid to the bbox corner so a targeted run over the calibration
+    # communes and a later national run name the same cell the same way (and so the
+    # national run's resumable skip actually reuses them). Without this the origin comes
+    # from whatever boundary lookup succeeded at the time.
+    grid_origin: [-5.15, 41.33]
+    # Summer 2024, chosen to match the calibration mapping epoch rather than "now":
+    # 10 of the 14 hand-mapped communes were surveyed on 2023-2024 IGN imagery, and the
+    # ODRE register publishes a 2024-12-31 vintage, so imagery, labels and the validation
+    # reference all sit in one epoch. Four communes (Langoat 2021, Saulny and Eaunes 2022,
+    # Gannay 2022-23) are older than this window and their labels therefore understate
+    # what the imagery shows -- see docs/results/france.md.
+    compose_window: ["2024-05-01", "2024-09-30"]
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]

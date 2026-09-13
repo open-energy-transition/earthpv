@@ -148,6 +148,46 @@ _CAND_COLS = [
 # and 123.5 bldg/km2.
 CALIBRATED_BLDG_DENSITY_KM2 = (48.5, 5258.00)
 
+# Per-AOI density domains. The module-level constant above stays Pakistan's, unchanged and
+# still the default, so every existing Pakistani call site behaves exactly as before.
+#
+# The domain is NOT a property of the method, it is the density span of a country's own
+# Rule-1-complete calibration quadrats, and the two countries barely overlap: France's
+# fourteen hand-mapped communes run 17.5 bldg/km2 (Notre-Dame-de-Londres) to 390.8
+# (Saint-Genis-Laval), an order of magnitude below Pakistan's dense end. Applying
+# Pakistan's (48.5, 5258.00) to France would flag three genuinely-calibrated communes as
+# "below the calibrated range" and would call the whole French urban population calibrated
+# on the strength of Pakistani industrial quadrats.
+#
+# Saint-Gely-du-Fesc is excluded from France's range for the same reason it is excluded
+# from every fit: the mapper marked it unfinished, so it is not Rule-1 complete.
+CALIBRATED_BLDG_DENSITY_BY_AOI = {
+    "pakistan": (48.5, 5258.00),
+    "punjab": (48.5, 5258.00),
+    "france": (17.5, 390.8),
+}
+
+
+def calibrated_density_range(aoi: str | None = None) -> tuple[float, float]:
+    """The building-density band this AOI's coverage-ratio fit was actually measured over.
+
+    Falls back to Pakistan's band for an AOI with no entry, which is the historical
+    behaviour, but warns: silently borrowing another country's domain is how a capacity
+    figure ends up claiming calibration it does not have.
+    """
+    if aoi is None:
+        return CALIBRATED_BLDG_DENSITY_KM2
+    key = str(aoi).lower()
+    if key in CALIBRATED_BLDG_DENSITY_BY_AOI:
+        return CALIBRATED_BLDG_DENSITY_BY_AOI[key]
+    log.warning(
+        "AOI %r has no entry in CALIBRATED_BLDG_DENSITY_BY_AOI; falling back to Pakistan's "
+        "(%.1f, %.1f) bldg/km2. Fit this AOI's own range from its Rule-1-complete quadrats "
+        "before publishing a domain-restricted capacity figure for it.",
+        aoi, *CALIBRATED_BLDG_DENSITY_KM2,
+    )
+    return CALIBRATED_BLDG_DENSITY_KM2
+
 
 def _candidates_fingerprint(cand_path: Path, n_rows: int) -> dict:
     """Cheap, exact-enough identity of a candidates.parquet snapshot: file mtime/size
@@ -280,13 +320,13 @@ def capacity_relevant_candidates(
     return cands[~drop].reset_index(drop=True), stats
 
 
-def _completeness_flag(density_km2: pd.Series) -> pd.Series:
+def _completeness_flag(density_km2: pd.Series, aoi: str | None = None) -> pd.Series:
     """'below'/'in'/'above' the calibration quadrats' building-density range -- see
     `CALIBRATED_BLDG_DENSITY_KM2`. Below-range is the common case (rural Pakistan is far
     sparser than any hand-mapped quadrat) and is exactly where the recall correction's
     true miss rate is least known, not where it is worst; the label says "unmeasured",
     not "bad"."""
-    lo, hi = CALIBRATED_BLDG_DENSITY_KM2
+    lo, hi = calibrated_density_range(aoi)
     return pd.cut(
         density_km2.astype(float), bins=[-np.inf, lo, hi, np.inf],
         labels=["below_calibrated_range", "in_calibrated_range", "above_calibrated_range"],
@@ -974,7 +1014,10 @@ def aggregate(
     out_dir: Path, manifest: gpd.GeoDataFrame, regions: gpd.GeoDataFrame | None,
     districts: gpd.GeoDataFrame | None, kwp_module: float, kwp_land: float,
     cand_totals: pd.DataFrame, unc: dict | None = None, exp_source: str = "segmentation",
+    aoi: str | None = None,
 ) -> dict:
+    """`aoi` selects the density-calibration domain (`calibrated_density_range`). Left
+    None it falls back to Pakistan's band, which is what every pre-2026-09-04 caller got."""
     cells_dir = out_dir / "cells"
     rc_cols = ["pv_area_rc_total_m2", "pv_area_rc_roofcand_m2"] if unc is not None else []
     sum_cols = _SUM_COLS + rc_cols
@@ -1032,7 +1075,7 @@ def aggregate(
         grid["bldg_density_km2"] = (
             grid.n_buildings / grid.cell_area_km2.clip(lower=1e-9)
         ).round(2)
-        grid["density_confidence"] = _completeness_flag(grid["bldg_density_km2"])
+        grid["density_confidence"] = _completeness_flag(grid["bldg_density_km2"], aoi)
     if unc is not None:
         from earthpv.capacity_calibration import CI_PCT
 
@@ -1090,7 +1133,7 @@ def aggregate(
                 agg["bldg_density_km2"] = (
                     agg.n_buildings / agg.area_km2.clip(lower=1e-9)
                 ).round(2)
-                agg["density_confidence"] = _completeness_flag(agg["bldg_density_km2"])
+                agg["density_confidence"] = _completeness_flag(agg["bldg_density_km2"], aoi)
             if unc is not None:
                 ci_rows = [
                     {"id": rid, "name": name, **_unc_mwp_ci(unc, cell_list)}
@@ -1113,7 +1156,7 @@ def aggregate(
         "kwp_per_m2_land": float(kwp_land),
         **(
             {
-                "density_confidence_calibrated_range_km2": list(CALIBRATED_BLDG_DENSITY_KM2),
+                "density_confidence_calibrated_range_km2": list(calibrated_density_range(aoi)),
                 "n_cells_below_calibrated_density": int(
                     (grid.density_confidence == "below_calibrated_range").sum()
                 ),
@@ -1372,7 +1415,7 @@ def run_density(
         )
     stats = aggregate(
         out_dir, manifest, regions, dist, kwp_per_m2_module, kwp_per_m2_land,
-        cand_totals, unc=unc, exp_source=exp_source,
+        cand_totals, unc=unc, exp_source=exp_source, aoi=aoi,
     )
 
     meta = {

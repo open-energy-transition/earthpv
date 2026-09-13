@@ -1,0 +1,3 @@
+side,source,n_units,mean_kwp_per_unit,implied_m2_at_0p15
+France,"ODRE register, sub-36 kW, dep 67/68/57",42694,5.345,35.6
+Germany,"MaStR register, rooftop sub-36 kW, BW/RP/Saarland",1004930,10.407,69.4

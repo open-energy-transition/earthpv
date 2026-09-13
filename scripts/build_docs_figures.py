@@ -47,7 +47,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
-from matplotlib.ticker import FuncFormatter  # noqa: E402
+from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "assets" / "figures"
@@ -170,6 +170,92 @@ RECALL = {
     "punjab": [0.14, 0.16, 0.55],
     "punjab_germany_only": [None, None, 0.18],
 }
+
+
+def read_border_profile():
+    f = source("results/border_array_size.csv")
+    a = source("results/border_register_anchor.csv")
+    if not f or not a:
+        return None, None
+    return list(csv.DictReader(f.open())), list(csv.DictReader(a.open()))
+
+
+def fig_border_array_size(t: Theme):
+    """The France-Germany border as a natural experiment on installation size.
+
+    Left: median mapped array against signed distance to the border. Right: the same
+    question asked of the two complete registers, which is the only unbiased version,
+    because the left panel's German series comes from OSM at ~3.6% completeness and is
+    biased toward larger arrays.
+    """
+    rows, anchor = read_border_profile()
+    if not rows or not anchor:
+        return
+    fig, (ax, ax2) = plt.subplots(
+        1, 2, figsize=(8.8, 3.5), gridspec_kw={"width_ratios": [1.6, 1.0]})
+    fig.patch.set_facecolor(t.surface)
+    for a in (ax, ax2):
+        a.set_facecolor(t.surface)
+        for sp in a.spines.values():
+            sp.set_visible(False)
+        a.tick_params(colors=t.ink_dim, labelsize=8, length=0)
+
+    for side, colour in (("France", t.s2), ("Germany", t.s1)):
+        r = [x for x in rows if x["side"] == side]
+        if not r:
+            continue
+        mid = [(float(x["bin_lo_km"]) + float(x["bin_hi_km"])) / 2 for x in r]
+        med = [float(x["median_m2"]) for x in r]
+        ax.fill_between(mid, [float(x["p25_m2"]) for x in r],
+                        [float(x["p75_m2"]) for x in r], color=colour, alpha=0.16,
+                        linewidth=0)
+        n = sum(int(x["n"]) for x in r)
+        ax.plot(mid, med, color=colour, linewidth=2.2, marker="o", markersize=4,
+                label=f"{side} (n={n:,})")
+    ax.axvline(0, color=t.ink_dim, linewidth=1.1, linestyle="--", alpha=0.75)
+    ax.text(0, ax.get_ylim()[1], " border", color=t.ink_dim, fontsize=8,
+            ha="left", va="top")
+    ax.set_yscale("log")
+    # Log minor ticks render as bare dashes down the spine-less left edge; the decade
+    # labels alone carry the scale here.
+    ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.yaxis.set_minor_locator(NullLocator())
+    ax.set_xlabel("distance to the France-Germany border (km)", color=t.ink_dim, fontsize=8.5)
+    ax.set_ylabel("median mapped array (m$^2$)", color=t.ink_dim, fontsize=8.5)
+    ax.set_title("Geolocated, but not equally complete", color=t.ink, fontsize=9.5,
+                 loc="left", pad=6)
+    leg = ax.legend(frameon=False, fontsize=8, loc="upper left")
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    style_axes(ax, t, ygrid=True)
+
+    fr = next(x for x in anchor if x["side"] == "France")
+    de = next(x for x in anchor if x["side"] == "Germany")
+    vals = [float(fr["mean_kwp_per_unit"]), float(de["mean_kwp_per_unit"])]
+    ax2.bar([0, 1], vals, width=0.55, color=[t.s2, t.s1])
+    for i, (v, row) in enumerate(zip(vals, (fr, de))):
+        ax2.text(i, v + 0.25, f"{v:.2f} kWp", ha="center", va="bottom", color=t.ink,
+                 fontsize=9, fontweight="bold")
+        ax2.text(i, 0.35, f"n={int(row['n_units']):,}", ha="center", va="bottom",
+                 color=t.surface, fontsize=7.5)
+    ax2.set_xticks([0, 1])
+    ax2.set_xticklabels(["France\n(dep 67/68/57)", "Germany\n(BW/RP/SL)"], fontsize=8)
+    ax2.set_ylabel("mean per sub-36 kW unit (kWp)", color=t.ink_dim, fontsize=8.5)
+    ax2.set_ylim(0, max(vals) * 1.3)
+    ax2.set_title(f"Both registers, same band: {vals[1] / vals[0]:.2f}x",
+                  color=t.ink, fontsize=9.5, loc="left", pad=6)
+    style_axes(ax2, t, ygrid=True)
+
+    titled(fig, t,
+           "Rooftop arrays double in size at the German border",
+           "Left: median mapped array by distance to the border. France is flat at about "
+           "21 m\u00b2 right up to it. The German series sits far higher but is erratic, because "
+           "German OSM covers only ~3.6% of registered units and favours large arrays. "
+           "Right: the unbiased version, both complete registers cut to the same sub-36 kW "
+           "band. The real step is 1.95x, not the ~5x the left panel suggests. Same climate "
+           "and building stock either side, different feed-in tariff history.")
+    fig.tight_layout()
+    save(fig, t, "border_array_size")
 
 
 def read_glint_by_size():
@@ -2149,6 +2235,11 @@ INTERACTIVE = [
     # gitignored; the copy under docs/assets/interactive/ is what actually ships.
     ("data/predictions/germany/density/germany_pv_evidence_atlas.html",
      "germany_pv_evidence_atlas.html"),
+    # France's two pages were previously copied by scripts/rebuild_france_atlases_v5.sh,
+    # which meant `pixi run docs-figures` could not refresh them and a stale copy could
+    # ship unnoticed. Owned by the sync step now, like every other interactive page.
+    ("results/france_pv_evidence_atlas.html", "france_pv_evidence_atlas.html"),
+    ("results/france_pv_comparison_atlas.html", "france_pv_comparison_atlas.html"),
 ]
 
 
@@ -2264,6 +2355,7 @@ def main():
         fig_density_domain(t)
         fig_attribution_gap(t)
         fig_pv_vs_building(t)
+        fig_border_array_size(t)
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")

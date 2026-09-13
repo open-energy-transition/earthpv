@@ -725,7 +725,7 @@ def building_table(
     stem: str, iso3: str, composites: Path, seg_prob_dir: Path | None,
     frac_prob_dir: Path | None, labels_dir: Path = Path("data/labels"), con=None,
     include_epoch_jump: bool = False, preboom_prob_dir: Path | None = None,
-    parcel_label: bool = False,
+    parcel_label: bool = False, buildings: gpd.GeoDataFrame | None = None,
 ) -> pd.DataFrame:
     """One row per VIDA building in the quadrat, labelled and featurised.
 
@@ -737,6 +737,13 @@ def building_table(
     every published atlas number to date is a roof-only measurement. See
     docs/issues/small-ground-mount-instrument.md for what motivates it and what it cannot fix
     (the calibration for the sparse stratum this most affects rests on four quadrats).
+
+    `buildings` overrides the VIDA footprint source with a caller-supplied layer, which must
+    carry `geometry` and `area_m2` (geodesic, never `.area` on lat/lon) and may carry
+    `bf_confidence`. Added 2026-09-12 to test whether France's `roofclf` result is an artefact
+    of VIDA rather than of the sensor: VIDA is imagery-derived and in Toussieu finds 672
+    footprints where the French cadastre finds 3,366. Default `None` keeps the VIDA fetch, so
+    every existing caller is unchanged.
     """
     from earthpv.buildings import fetch_vida_buildings
     from earthpv.labels import geodesic_area_m2
@@ -745,9 +752,12 @@ def building_table(
     boundary, pv = load_quadrat(stem, labels_dir)
     name = quadrat_label(stem)
     minx, miny, maxx, maxy = boundary.bounds
-    bu = fetch_vida_buildings((minx, miny, maxx, maxy), iso3, con=con).reset_index(drop=True)
+    if buildings is None:
+        bu = fetch_vida_buildings((minx, miny, maxx, maxy), iso3, con=con).reset_index(drop=True)
+    else:
+        bu = buildings.to_crs("EPSG:4326").reset_index(drop=True)
     if bu.empty:
-        log.warning("quadrat %s: no VIDA buildings", name)
+        log.warning("quadrat %s: no buildings", name)
         return pd.DataFrame()
     inside = bu.geometry.representative_point().within(boundary)
     bu = bu[inside.to_numpy()].reset_index(drop=True)
@@ -1374,7 +1384,7 @@ def canonical_composite_manifest(comp_idx, origin: tuple[float, float], cell_deg
 def score_buildings_national(
     aoi: str, model: dict, feats: list[str], composites: Path, out_dir: Path,
     min_roof_area_m2: float = 0.0, force: bool = False, limit: int = 0,
-    layer_index: int = 0,
+    layer_index: int = 0, buildings_fn=None, cells: set[str] | None = None,
 ) -> Path:
     """Apply an already-fit model to every VIDA building under `composites`, one cell
     (one composite tile) at a time -- the per-cell/per-building pattern
@@ -1461,11 +1471,23 @@ def score_buildings_national(
         if limit and n_cells >= limit:
             break
         cell = m.cell
+        # `cells` restricts scoring to a named subset. `limit` cannot: it takes whatever
+        # the manifest yields first, which is not a region. Needed wherever the footprint
+        # layer only covers part of the country, and to keep two scoring passes paired on
+        # exactly the same cells.
+        if cells is not None and cell not in cells:
+            continue
         out_path = out_dir / f"{cell}.parquet"
         if out_path.exists() and not force:
             continue
         bbox = (m.lon0, m.lat0, m.lon0 + CELL_DEG, m.lat0 + CELL_DEG)
-        bu = fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con)
+        # `buildings_fn` swaps the footprint layer without touching anything else, the
+        # national counterpart of `building_table`'s `buildings` override. Measured 2026-09-13:
+        # over 27 German cells VIDA returns 300,222 footprints where OSM returns 465,707, and
+        # half of all German OSM rooftop arrays sit more than 20 m from any VIDA polygon, so
+        # which layer is used changes the flagged roof area this whole chain prices.
+        bu = (buildings_fn(bbox) if buildings_fn is not None
+              else fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con))
         if bu.empty:
             pd.DataFrame().to_parquet(out_path)
             continue

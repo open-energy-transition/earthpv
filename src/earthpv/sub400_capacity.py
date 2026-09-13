@@ -954,16 +954,22 @@ def cell_density_from_grid(grid_csv_path: Path) -> pd.DataFrame:
     return grid[["cell", "n_buildings", "density"]]
 
 
-def national_cell_domain(cell_density_path: Path) -> set[str]:
+def national_cell_domain(cell_density_path: Path, aoi: str | None = None) -> set[str]:
     """Cells whose building density falls in the calibration quadrats' range
-    (`density.CALIBRATED_BLDG_DENSITY_KM2`) -- the same range `density.py`'s
+    (`density.calibrated_density_range(aoi)`) -- the same range `density.py`'s
     segmentation-only completeness flag reads, reused here for the opposite purpose:
     restricting WHERE this module's national deployment is allowed to count buildings at
     all, not just flagging confidence after the fact.
-    """
-    from earthpv.density import CALIBRATED_BLDG_DENSITY_KM2
 
-    lo, hi = CALIBRATED_BLDG_DENSITY_KM2
+    **`aoi` is not optional in practice, only in signature.** The band is a per-country
+    measurement, not a method constant: Pakistan's (48.5, 5258.00) and France's
+    (17.5, 390.8) barely overlap. Omitting `aoi` falls back to Pakistan's band, which is
+    the historical behaviour and is byte-identical for Pakistani callers, but applying it
+    to another country silently claims calibration that country does not have. Pass it.
+    """
+    from earthpv.density import calibrated_density_range
+
+    lo, hi = calibrated_density_range(aoi)
     cells = pd.read_parquet(cell_density_path)
     in_range = cells[(cells.density >= lo) & (cells.density <= hi)]
     return set(in_range.cell)
@@ -986,6 +992,7 @@ def domain_restricted_capacity(
     n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
     recall_correct: bool = True,
+    aoi: str | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The module's actually-recommended output (see module docstring's 2026-07-30 note):
     combines four corrections, each individually insufficient on its own when measured:
@@ -1061,7 +1068,7 @@ def domain_restricted_capacity(
     from earthpv.export import new_lead_mask
 
     all_cells = pd.read_parquet(cell_density_path)
-    in_domain_cells = national_cell_domain(cell_density_path)
+    in_domain_cells = national_cell_domain(cell_density_path, aoi)
     n_buildings_in_domain = int(
         all_cells.loc[all_cells.cell.isin(in_domain_cells), "n_buildings"].sum()
     )
@@ -1252,6 +1259,7 @@ def domain_restricted_and_gate_capacity(
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
     n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
+    aoi: str | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The sub-400 bracket's LOW end: `domain_restricted_capacity`'s same 93-cell
     population, but requiring `p_roofclf >= threshold` AND SPPI above a pooled
@@ -1310,7 +1318,7 @@ def domain_restricted_and_gate_capacity(
     from earthpv.sppi import add_sppi, pooled_precision_threshold
 
     all_cells = pd.read_parquet(cell_density_path)
-    in_domain_cells = national_cell_domain(cell_density_path)
+    in_domain_cells = national_cell_domain(cell_density_path, aoi)
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
 
     bt = gpd.read_parquet(buildings_path)
@@ -1486,6 +1494,7 @@ def out_of_domain_and_gate_capacity(
     n_density_bands: int = DEFAULT_N_DENSITY_STRATA,
     n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
+    aoi: str | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """`domain_restricted_and_gate_capacity`'s mirror image: the SAME roofclf-AND-SPPI
     join, coverage-ratio-by-size-and-density fit, OSM/candidate dedup and contamination
@@ -1531,13 +1540,13 @@ def out_of_domain_and_gate_capacity(
     from earthpv.sppi import add_sppi, pooled_precision_threshold
 
     all_cells = pd.read_parquet(cell_density_path)
-    in_domain_cells = national_cell_domain(cell_density_path)
+    in_domain_cells = national_cell_domain(cell_density_path, aoi)
     out_domain_cells = set(all_cells.cell) - in_domain_cells
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
 
-    from earthpv.density import CALIBRATED_BLDG_DENSITY_KM2
+    from earthpv.density import calibrated_density_range
 
-    lo, hi = CALIBRATED_BLDG_DENSITY_KM2
+    lo, hi = calibrated_density_range(aoi)
     out_density = all_cells.loc[all_cells.cell.isin(out_domain_cells), "density"]
     n_below = int((out_density < lo).sum())
     n_above = int((out_density > hi).sum())

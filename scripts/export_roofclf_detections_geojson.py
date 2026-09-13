@@ -223,7 +223,7 @@ def main() -> None:
             tmp_path = Path(tmp.name)
         cell_density.to_parquet(tmp_path)
         try:
-            cells = national_cell_domain(tmp_path)
+            cells = national_cell_domain(tmp_path, args.aoi)
         finally:
             tmp_path.unlink(missing_ok=True)
         print(f"domain restriction: {len(cells)} of {len(grid)} cells match the calibrated "
