@@ -770,9 +770,12 @@ flat 0.18 turned 8.8 GWp into 22.0.
 Pakistan/France/Gujarat/Punjab/None all return the flat 0.18, verified not assumed. Germany's
 tiers move to **Verified 25,921 / Best 87,743 MWp** and both placements now sit within ~10% of
 the register. Only `build_evidence_atlas` uses it; `_size_distribution_data` still uses the flat
-constant deliberately, so the headline and the size chart cannot disagree silently. Cause is mapper convention, already a documented negative result here:
-German OSM polygons outline roofs/sites rather than arrays and the implied kWp/m² spans
-0.02-0.99 against 0.18. The atlas is published for structure and per-cell geography only.
+constant deliberately, so the headline and the size chart cannot disagree silently.
+
+The underlying cause is mapper convention, which was already a documented negative result
+here: German OSM polygons outline roofs and sites rather than arrays, and the implied kWp/m²
+spans 0.02-0.99 against 0.18. What the size-dependent table adds is that the convention varies
+*systematically with polygon size*, which is what makes it correctable rather than merely noted.
 `scripts/prepare_national_osm_solar.py` builds the `--osm-solar` input (a raw rooftopsenti pull
 has no `placement` column); it maps `small` -> rooftop (a SIZE class, 114k features) and caps
 `rooftop` at `MAX_CANDIDATE_M2`, reclassifying 494 features up to 4.19 km² as ground so they
@@ -838,8 +841,10 @@ held-out Gemeinde's count is truth, never an input, or the exercise is circular.
 and none beats multiplying roof area by a constant at municipality level in Germany.** That is
 now a settled, thrice-confirmed finding, and it is the counterpart to Pakistan's 3.4x win.
 
-**Germany's evidence atlas now carries the roofclf half** (Verified 38,508 -> **41,937**, Best
-49,324 -> **61,854 MWp**), built by `scripts/build_germany_sub400_atlas_inputs.py`. Three things
+**Germany's evidence atlas now carries the roofclf half** (Verified 38,508 -> 41,937, Best
+49,324 -> 61,854 MWp when it was added; **now Verified 25,921 / Best 87,743** after the
+size-dependent rooftop constant above), built by
+`scripts/build_germany_sub400_atlas_inputs.py`. Three things
 about that generator are load-bearing: the component must be **INCREMENTAL** (sub-400 m2 roofs
 only, deduped against the hand-mapped OSM population and segmentation's own candidates) or it
 double-counts what Best already holds -- the first build read **97.2 GWp** before dedup against
@@ -847,8 +852,11 @@ double-counts what Best already holds -- the first build read **97.2 GWp** befor
 handing `atlas._join_buildings_to_grid_cells` 25M geometries peaks over 20 GB and is OOM-killed
 while the per-cell sum is identical; and the floor tier is **"both signals in their top decile",
 not precision-calibrated**, because Germany cannot fit a precision threshold on 3.6% labels.
-**The tier totals still fail their own register check** on mapper convention and the atlas note
-says so -- read them as geography, not capacity.
+**Best still fails its own register check** -- 87,743 MWp against roughly 74,800 MWp of
+registered German PV -- so read the tiers as geography, not capacity, and the atlas note says
+so. Note what did and did not get fixed: the size-dependent constant reconciled the **OSM**
+component (both placements now within ~10% of the register), so what is left over is the
+roofclf sub-400 half and segmentation's own detections, not the conversion constants.
 
 Full writeup: `docs/methods/mastr-validation.md`, `docs/results/germany.md`. The calibration is
 walked through visually in `docs/assets/figures/germany_calibration.svg`.
