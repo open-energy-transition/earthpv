@@ -147,6 +147,28 @@ is supported by an external control: the same installations are recovered at 0.6
 sub-metre imagery with no size gradient, so the signal is present in the scene and averaged
 away by the pixel, rather than genuinely ambiguous.
 
+**The regime is set by policy, not by landscape.** The France-Germany border is the natural
+experiment, since climate and building stock are continuous across it and feed-in tariff
+history is not.
+
+![Two panels. Left, median mapped rooftop array against signed distance to the France-Germany border: France is flat at about 21 square metres across every ten-kilometre bin right up to the border, while the German series sits far higher and is erratic. Right, the same question asked of the two complete national registers cut to the same sub-36 kilowatt band: France averages 5.34 kilowatts peak per unit against Germany 10.41, a factor of 1.95.](assets/figures/border_array_size.svg#only-light)
+![Two panels. Left, median mapped rooftop array against signed distance to the France-Germany border: France is flat at about 21 square metres across every ten-kilometre bin right up to the border, while the German series sits far higher and is erratic. Right, the same question asked of the two complete national registers cut to the same sub-36 kilowatt band: France averages 5.34 kilowatts peak per unit against Germany 10.41, a factor of 1.95.](assets/figures/border_array_size.dark.svg#only-dark)
+
+French installations do not grow as they approach Germany. They sit at 20.5 to 21.7 m&sup2;
+in every ten-kilometre band out to 60 km, and then the step happens at the line itself.
+
+**How big the step is depends entirely on which instrument you ask, which is why the figure
+carries two panels.** The geolocated comparison suggests roughly 5x, but its German side is
+OSM at ~3.6% completeness and mappers trace large arrays first. Cutting both *complete*
+registers to the same sub-36 kW band gives the unbiased answer: **5.34 kWp per unit in Alsace
+and Moselle against 10.41 in Baden-Wuerttemberg, Rhineland-Palatinate and Saarland, a factor
+of 1.95** over 42,694 and 1,004,930 units. Real, large, and half what the imagery-based
+comparison implies.
+
+That is the practical warning for any new country: the size regime, and therefore whether
+`roofclf` can work at all, is a property of national subsidy design rather than of geography,
+so it cannot be inferred from a neighbour.
+
 **Three plausible fixes have been measured, and two of them do nothing.**
 
 | Fix | Effect on French AUC within size band |
