@@ -319,6 +319,48 @@ the 3.6% handicap; 10% of buildings had no valid composite pixel and are exclude
 estimators, so these figures cover the assessable roof population rather than every roof; and
 the model is VIDA-fitted, so refitting on OSM footprints before rescoring remains untested.
 
+### Register labels: a better classifier that makes a worse estimate
+
+Germany's roofclf trains on OSM labels marking ~3.6% of registered rooftop units, so the
+obvious suspicion was that label noise explained why it correlates with roof area and loses to
+a roof-area baseline. MaStR can test that directly: it publishes coordinates at and above
+30 kWp, giving **108,443 geolocated rooftop units in the 30-72 kWp band**, register-certain
+and inside roofclf's own sub-400 m&sup2; domain. 120 cells were relabelled from the register
+(1,493,881 buildings, 9,901 matched positives) and the model refitted, changing nothing else:
+same features, same VIDA footprints, same 4,656 scored cells, same calibration harness.
+
+| | Building AUC | Municipal median error | Spearman | National |
+| --- | --- | --- | --- | --- |
+| OSM-labelled | 0.8563 | **48.4%** | **0.825** | 52.37 GWp |
+| Register-labelled | **0.8792** | 63.9% | 0.803 | 52.31 GWp |
+| Roof-area baseline | n/a | **37.8%** | **0.875** | 52.38 GWp |
+| MaStR, the truth | | | | 54.29 GWp |
+
+**Cleaner labels made the classifier better and the capacity estimate worse**, by 0.023 AUC
+and 15.5 points of municipal error respectively.
+
+The cause is a band mismatch rather than anything subtle. The register geolocates only
+30-72 kWp, which is **6.9 of the 49.0 GWp** below the segmentation floor, so the refitted model
+is sharply tuned to the largest arrays in the band while the truth it is scored against is
+dominated by the **42.1 GWp of sub-30 kWp** installations that carry no coordinates at all.
+OSM's labels are noisy but span the whole size range, so their signal tracks total municipal
+capacity better despite being far less accurate per building.
+
+**Two things follow.** Optimising building-level AUC on a label subset that does not match the
+estimand can move the aggregate confidently in the wrong direction, which is worth remembering
+anywhere a classifier is tuned on one population and summed over another. And the label-noise
+explanation for roofclf losing to the baseline is substantially weakened: better labels made it
+worse, so the shortfall is not mainly noise.
+
+**The national total was 0.96 for all three models**, whose municipal errors span 37.8% to
+63.9%. That is the clearest available demonstration that a national figure agreeing with a
+complete register says nothing about whether the per-cell geography is right.
+
+What this does point to is supervising the capacity-dominant population directly. MaStR
+publishes exact rooftop unit COUNTS for all 10,757 Gemeinden, covering every band including
+the 4.13M uncoordinated sub-30 kWp units: a known class prior per municipality rather than a
+geolocated subset. That has not been tried.
+
 ### Why this does not condemn the method
 
 The same comparison on Pakistan's 29 Rule-1-complete quadrats, leave-one-quadrat-out, reverses
