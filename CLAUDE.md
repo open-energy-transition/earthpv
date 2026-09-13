@@ -468,6 +468,24 @@ pre-2026-08-15 flagged-population-only figures exactly.
 Full derivation, every historical recalibration step, and every rejected instrument:
 `docs/methods/density.md`, `docs/experiments.md`.
 
+**Overture publishes a coastal admin division TWICE -- land, and land-plus-territorial-waters
+-- and nothing used to deduplicate them** (found 2026-09-13). Germany's admin layer came back
+as **20 region rows for 16 Bundeslaender**, the four coastal states (Niedersachsen,
+Schleswig-Holstein, Mecklenburg-Vorpommern, Hamburg) each appearing as a perfectly-nested
+pair. The evidence atlas listed each of them twice in "Provinces, ranked by capacity", and
+because the province join is a **cell-centroid point-in-polygon**, 1,152 of 4,656 cells matched
+both rows of a pair: the province column summed to **29,559 MWp against a national 24,687**, a
+19.7% double-count. Headline totals are summed from the grid, not from the provinces, so no
+published total moved. **Keep the LAND polygon, which is the SMALLER of a nested pair** -- a
+"keep the largest" dedup picks the wrong one every time. Germany's 16 kept polygons total
+357,649 km² against its actual 357,596 km² of land. `density.drop_nested_duplicates` (applied
+in `load_admin` at both levels, and repeated on read by `atlas._region_rows` so an
+already-written `regions.geoparquet` cannot reintroduce it) tests **nesting**, not name
+equality, so genuinely distinct same-name divisions survive -- verified against Gujarat's seven
+repeated district names, which are disjoint. Only Germany was affected: every other AOI's admin
+layer came from geoBoundaries, which has no maritime rows.
+
+
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 
 The leads product has a human on every candidate; the capacity atlas has nobody, so a
@@ -505,6 +523,16 @@ files (`results/*.csv`, the atlas HTML's embedded JSON, calibration YAML) so the
 drift from them -- edit the sources, not the SVGs. Local preview:
 `pixi run docs-figures && pixi run -e docs docs-serve`. The build runs `--strict`, so a broken
 internal link fails CI. Docs prose avoids em dashes and emoji.
+
+**`mkdocs build --strict` does NOT validate URLs inside raw HTML, and this shipped a 404.**
+It rewrites Markdown links for `use_directory_urls` but copies raw HTML through verbatim, so
+`<iframe src="assets/interactive/...">` on a page served at `/data-registry/` resolved against
+the page and 404'd while CI stayed green -- the Markdown CSV link on the same page was
+rewritten correctly, which is why the source looked fine. A raw relative URL needs one `../`
+per path segment of the page's own served URL (`index.md` excepted, it is served at its
+directory). `scripts/check_docs_links.py` now checks every raw-HTML relative URL in `docs/`
+for the right prefix and an existing target, and runs in the docs workflow ahead of the build.
+
 
 Nav runs **Results → How it works → Setup → Experiments → Open questions**, output first,
 pipeline mechanics second, history last. `docs/experiments.md` is the canonical, dated register
