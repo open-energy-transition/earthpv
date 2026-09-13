@@ -224,6 +224,86 @@ France by construction and measurable against a complete register. It needs two 
 and neither is a model change: exhaustively mapped calibration quadrats, because OSM at 3.6%
 completeness cannot fit a coverage ratio, and a footprint layer that finds the buildings.
 
+## The sub-400 m&sup2; estimator against the register
+
+The `coverage_ratio` and `area_recall` machinery prices about 83% of Pakistan's published
+Best estimate, is fit on 30 purposive quadrats, and had never been checked against an
+independent truth, because Pakistan has none. Germany does.
+
+**The 30 kWp coordinate cliff does not block this.** It stops the `p_unmapped` precision
+instrument reaching below the floor, because individual sub-30 kWp units carry no
+coordinates. But this estimator makes no per-building claim; it emits a per-area aggregate,
+and an aggregate is exactly what an uncoordinated register publishes completely. The cliff
+blocks precision, not calibration.
+
+roofclf was fitted on 30 German pseudo-quadrats (325,933 buildings, median fold AUC **0.824**,
+0.729 within size band), scored over 709 cells in Baden-Wuerttemberg, Rhineland-Palatinate and
+Saarland, and aggregated to municipalities via `vg250_gem.parquet`. A Gemeinde counts only if
+the scored cells cover at least 98% of it, since its register capacity is whole and a
+partially scored one would pair truncated area against complete truth.
+
+**The result, cross-validated across municipalities, is that a trivial baseline wins.**
+
+| Footprints | Estimator | Spearman | Median abs. error | n |
+| --- | --- | --- | --- | --- |
+| VIDA | **Total roof area x a constant (no model)** | **0.965** | **23.0%** | 3,133 |
+| VIDA | roofclf, probability-weighted | 0.839 | 58.4% | 2,696 |
+| OSM | Total roof area x a constant (no model) | 0.959 | 25.1% | 3,144 |
+| OSM | roofclf, probability-weighted | 0.787 | 62.8% | 2,584 |
+
+Thresholded variants are worse still, monotonically so as the threshold tightens: at the 90th
+percentile 43.2% error, at the 95th 48.9%, at the 99th 91.7%.
+
+**A matching national total hid all of this.** The cross-validated total ratio is **1.003**,
+apparently flawless. Split by decile of predicted capacity, the estimator under-predicts the
+bottom 90% (decile ratios 0.0 to 0.6) and over-predicts the top decile at **1.8x**, and the
+two cancel. The median municipality receives **47%** of its true capacity. A national total
+that matches is not evidence of correctness; it is the fitted ratio forcing the totals to
+agree.
+
+**Stratification does not earn its keep here.** Pooled single ratio 0.839 / 58.1%,
+size-stratified 0.839 / 59.3%, density-stratified 0.823 / 53.1%, size-and-density 0.808 /
+53.2%. The machinery the Pakistani atlas depends on performs no better out of sample than one
+global number.
+
+### Why this does not condemn the method
+
+The same comparison on Pakistan's 29 Rule-1-complete quadrats, leave-one-quadrat-out, reverses
+it:
+
+| Country | Adoption regime | Null model | roofclf p-weighted |
+| --- | --- | --- | --- |
+| Pakistan | rare, ~2-14% base rate | 88.9% error | **26.5%** |
+| Germany | near-ubiquitous | **23.0%** | 58.4% |
+
+roofclf cuts median error **3.4x** against the null in Pakistan. The reversal is
+interpretable rather than mysterious: where PV is rare, total roof area says almost nothing
+about which municipalities hold capacity and a per-building classifier adds a great deal;
+where nearly every suitable roof carries PV, "capacity is proportional to roof area" is close
+to true by construction.
+
+So the sub-400 m&sup2; machinery is validated in the regime it was built for, for the first
+time, and Germany's failure has two sufficient explanations that both point away from the
+estimator being broken.
+
+### What is honestly still open
+
+**The German classifier is handicapped.** It is fitted on OSM labels that mark ~3.6% of
+registered rooftop units, so its probabilities are poorly calibrated in absolute terms. Its
+LOQO-fitted deployment threshold came back as **1.9994 with zero buildings flagged**, because
+a 0.5 precision target is unreachable when most true positives are unlabelled; the validation
+therefore weights roofs by probability rather than thresholding them.
+
+**The OSM footprint pass is confounded.** The model was fitted on VIDA-based tables and then
+applied to OSM footprints, whose median roof is 92 m&sup2; against VIDA's 159. Since
+`log_roof_area` is the strongest single feature, that is a distribution shift, not a clean
+test of whether better footprints help. Refitting on OSM tables before rescoring is the
+missing run.
+
+**Two findings do transfer.** Thresholding is worse than probability-weighting in both
+countries, consistently and by a wide margin. And a national total agreeing with a register
+says nothing about per-cell accuracy, which is what a PyPSA disaggregation actually consumes.
+
 ## What this run opens up
 
 Both remaining items are tracked on [Open questions](../open-questions.md).
