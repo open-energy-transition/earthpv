@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
+import os
 import threading
 from functools import lru_cache
 
@@ -36,8 +37,31 @@ ES_STAC_URL = "https://earth-search.aws.element84.com/v1"
 # finish on its own in the background (vsicurl reads have no side effects to clean
 # up); the pool is sized well above compose's typical worker count so a run of
 # stragglers can't starve fresh cells of a PC attempt slot.
-PC_TIMEOUT_S = 60
+# Overridable, because 60 s is a single-cell number and compose runs several cells at
+# once. A cell is BANDWIDTH-bound, not latency-bound (measured on Zambia 2026-09-13: one
+# uncontended cell is 53 s via PC and 83 s via Earth Search, and ~290 MB of COG reads
+# against a link that tops out near 320 MB/min -- i.e. one cell already saturates it).
+# So under N workers a perfectly healthy cell takes roughly N x 53 s, every cell trips a
+# 60 s patience, and the hand-off downloads each cell TWICE on a link that had no room
+# for the first copy. Raise this to a few times the expected per-cell wall time when
+# running several workers; the timeout is then still doing its job (catching a cell that
+# is genuinely stuck) without firing on every cell.
+PC_TIMEOUT_S = int(os.environ.get("EARTHPV_PC_TIMEOUT_S", "60"))
 _PC_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=24, thread_name_prefix="pc-attempt")
+# Escape hatch for a PC outage that lasts longer than a compose run.
+#
+# The hand-off above abandons a struggling PC attempt but cannot kill it: the thread
+# keeps reading the whole cell in the background, on the same link the Earth Search
+# retry now needs. That is cheap when PC is healthy and a handful of cells straggle. It
+# is a death spiral when EVERY cell exceeds the timeout, because the abandoned attempts
+# accumulate until they fill the 24-slot pool and permanently hold the bandwidth --
+# measured on Zambia 2026-09-13: with 6 compose workers 4 cells landed in 14 minutes,
+# and raising it to 16 workers produced ZERO cells in the next 20 (each pass then dying
+# on compose_loop.sh's 30-minute wall clock before writing anything, so the run looks
+# alive and never advances). Setting EARTHPV_STAC_PROVIDER=earth-search skips the PC
+# attempt entirely, which removes both the wasted bandwidth and the 60 s per-cell
+# penalty. Unset (the default) keeps the PC-first behaviour every earlier run used.
+_PROVIDER_OVERRIDE = os.environ.get("EARTHPV_STAC_PROVIDER", "").strip().lower() or None
 # SCL classes to keep: 4 vegetation, 5 bare, 6 water, 7 unclassified, 11 snow(excl)
 _SCL_VALID = (4, 5, 6, 7)
 MAX_CLOUD = 60  # scene-level filter; per-pixel SCL masking below
@@ -217,6 +241,12 @@ def annual_composite(
     instead of erroring outright. Different hosting from PC, so its recurring
     outages don't take the cell down.
     """
+    if _PROVIDER_OVERRIDE is not None:
+        # Single-provider mode (EARTHPV_STAC_PROVIDER). No fallback: the point is to
+        # stop paying for a provider that is known to be down for this whole run.
+        return _annual_composite_via(
+            _PROVIDER_OVERRIDE, bbox, date_range, max_cloud, max_items, geobox
+        )
     fut = _PC_EXECUTOR.submit(
         _annual_composite_via, "planetary-computer", bbox, date_range, max_cloud, max_items, geobox
     )

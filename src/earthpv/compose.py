@@ -71,12 +71,14 @@ def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame |
 
 
 def _solar_label_cells(
+    aoi: str,
     cfg: dict,
     settings: Settings,
     minx: float,
     miny: float,
     bbox: tuple[float, float, float, float],
     boundary: gpd.GeoDataFrame | None,
+    labels_dir: Path = Path("data/labels"),
 ) -> set[tuple[int, int]]:
     """Cells (same grid/origin as populated_cells) that contain an OSM solar positive.
 
@@ -85,15 +87,33 @@ def _solar_label_cells(
     independent of local building density. Uses the same bbox + boundary clip as the
     building pass so nothing outside the AOI leaks in.
 
-    AOIs with no local source_region (no rooftopsenti OSM solar dataset downloaded)
-    have no efficient local label source - direct Overture S3 label queries time out
-    from this machine (see CLAUDE.md) - so this degrades to no label cells rather than
-    attempting one. Inference coverage (via building density) is unaffected either way.
+    Two label sources, in order of preference:
+
+    1. The AOI's rooftopsenti `source_region` OSM solar dataset, where one exists.
+    2. A local Overpass pull, `<labels_dir>/<aoi>_overpass_solar*.parquet` - the same
+       file `chips` trains from (`chips._newest_overpass_path`). This is what makes a
+       new country's in-domain retrain possible at all: without it, a mapped ground-
+       mount plant sitting in farmland is never composited (no buildings -> no cell),
+       so it can never become a training chip no matter how completely OSM has it.
+       Measured on Zambia 2026-09-13: 1,568 mapped solar features, most of the large
+       ones in cells far below any sane `--min-buildings` threshold.
+
+    With neither, this degrades to no label cells rather than attempting a direct
+    Overture S3 query, which times out from this machine (see CLAUDE.md). Inference
+    coverage (via building density) is unaffected either way.
     """
-    if not cfg.get("source_region"):
-        return set()
-    region_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
-    labels = load_solar_labels(region_dir)
+    labels = None
+    if cfg.get("source_region"):
+        region_dir = Path(settings.raw["local_root"]) / cfg["source_region"]
+        labels = load_solar_labels(region_dir)
+    if labels is None or labels.empty:
+        from earthpv.chips import _newest_overpass_path
+
+        overpass_path = _newest_overpass_path(aoi, Path(labels_dir))
+        if not overpass_path.exists():
+            return set()
+        log.info("Solar label cells from Overpass pull %s", overpass_path)
+        labels = gpd.read_parquet(overpass_path)
     if labels is None or labels.empty:
         return set()
     pts = labels.geometry.representative_point()
@@ -181,7 +201,9 @@ def populated_cells(
     cells = pd.DataFrame({"ix": ix, "iy": iy}).value_counts().reset_index(name="n")
 
     label_cells = (
-        _solar_label_cells(cfg, settings, minx, miny, bbox, boundary) if include_labels else set()
+        _solar_label_cells(aoi, cfg, settings, minx, miny, bbox, boundary)
+        if include_labels
+        else set()
     )
     has_label = (
         np.array([(a, b) in label_cells for a, b in zip(cells.ix, cells.iy)], dtype=bool)

@@ -325,7 +325,16 @@ def _completeness_flag(density_km2: pd.Series, aoi: str | None = None) -> pd.Ser
     `CALIBRATED_BLDG_DENSITY_KM2`. Below-range is the common case (rural Pakistan is far
     sparser than any hand-mapped quadrat) and is exactly where the recall correction's
     true miss rate is least known, not where it is worst; the label says "unmeasured",
-    not "bad"."""
+    not "bad".
+
+    An AOI with no band of its own gets `no_calibrated_range`, not a comparison against
+    Pakistan's. `calibrated_density_range` falls back to Pakistan for backwards
+    compatibility and warns, but a WARNING does not survive into the published CSV while
+    a per-region label does: Zambia has no quadrats at all, and every one of its regions
+    came out "below_calibrated_range" on 2026-09-13 -- which reads as a measured statement
+    about a band that has never been fitted for that country."""
+    if aoi is not None and str(aoi).lower() not in CALIBRATED_BLDG_DENSITY_BY_AOI:
+        return pd.Series("no_calibrated_range", index=density_km2.index, dtype=object)
     lo, hi = calibrated_density_range(aoi)
     return pd.cut(
         density_km2.astype(float), bins=[-np.inf, lo, hi, np.inf],

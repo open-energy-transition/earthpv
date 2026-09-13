@@ -219,6 +219,23 @@ aois:
   zambia:
     bbox: [21.999, -18.08, 33.706, -8.224]
     division: { name: Zambia, country: ZM, subtype: country, iso3: ZMB }
+    grid_origin: [21.999, -18.08]
+    # Southern-hemisphere dry season. The compose default (Nov-Mar) is Zambia's RAINY
+    # season and would give a cloud-contaminated median; preflight over this window
+    # found 11,647 scenes under 40% cloud across 187 MGRS tiles, median cloud 0%.
+    compose_window: ["2025-05-01", "2025-10-15"]
+    # Geographic val holdout = the Copperbelt cluster (Kitwe / Kalulushi / Ndola,
+    # ~28.0-28.4E, -13.0 to -12.6N), ~700 km from the Lusaka training cluster, so
+    # neither the +/-900 m chip jitter nor the 2.24 km window can leak a training
+    # positive into it. It holds 41 of Zambia's 133 mapped installations at or above the
+    # 400 m2 chip threshold, all ground-mount -- which is what the mapped population
+    # actually is here (75% of features and 98% of area are ground). Lusaka is kept in
+    # training on purpose: it is the ONLY cell carrying rooftop positives (21 of the
+    # country's 54), so holding it out would leave no rooftop signal at all.
+    val_tiles: ["0060_0051", "0060_0052", "0060_0053", "0060_0054",
+                "0061_0051", "0061_0052", "0061_0053", "0061_0054",
+                "0062_0051", "0062_0052", "0062_0053", "0062_0054",
+                "0063_0051", "0063_0052", "0063_0053", "0063_0054"]
 
 seasons:
   spring: ["2025-03-01", "2025-05-31"]

@@ -41,7 +41,7 @@ def evaluate(
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     import torch
 
-    from earthpv.chips import _overpass_labels
+    from earthpv.chips import _newest_overpass_path, _overpass_labels
     from earthpv.infer import _sniff_task_type, load_model
 
     settings = Settings.load()
@@ -51,7 +51,12 @@ def evaluate(
     # rooftopsenti dataset for their true training labels, e.g. pakistan's
     # source_region pakistan_500 is a stale/geographically-different cache) must be
     # evaluated against the SAME labels they were trained on, not that cache.
-    overpass_path = Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
+    # `_newest_overpass_path`, not the bare `<aoi>_overpass_solar.parquet`, for the same
+    # reason: a dated variant is how this project supersedes a pull (a fresher re-pull, or
+    # Zambia's hand-audited screen of unbuilt `power=plant` perimeters), `chips` trains
+    # against whichever one that picks, and scoring the result against the superseded file
+    # measures recall over installations the model was never shown.
+    overpass_path = _newest_overpass_path(aoi, Path(labels_dir))
     if overpass_path.exists():
         labels = _overpass_labels(overpass_path)
         log.info("Using Overpass labels from %s", overpass_path)

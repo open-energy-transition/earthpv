@@ -66,10 +66,29 @@ GROUND_MAX_M2 = 5_000_000.0
 
 
 def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
-            ground_max_m2: float = GROUND_MAX_M2) -> Path:
+            ground_max_m2: float = GROUND_MAX_M2, labels: Path | None = None) -> Path:
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
-    ref = load_mapped_reference_attrs(aoi, cfg, settings).reset_index(drop=True)
+    if labels is not None:
+        # `load_mapped_reference_attrs` globs `data/labels/*_overpass_solar.parquet`
+        # AOI-AGNOSTICALLY (see CLAUDE.md), so for an AOI whose only reference is its own
+        # Overpass pull it would dissolve ~700k Pakistani/French/German features to find
+        # the few thousand local ones. Reading that one pull directly is the same answer
+        # for a fraction of the work -- and it keeps the log's feature count honest.
+        import geopandas as gpd
+
+        ref = gpd.read_parquet(labels).reset_index(drop=True)
+        if "source" not in ref.columns:
+            ref["source"] = "overpass"
+        if "osm_timestamp" not in ref.columns:
+            ref["osm_timestamp"] = None
+        if "placement" not in ref.columns:
+            ref["placement"] = "unknown"
+        from earthpv.labels import dissolve_overlapping
+
+        ref = dissolve_overlapping(ref).reset_index(drop=True)
+    else:
+        ref = load_mapped_reference_attrs(aoi, cfg, settings).reset_index(drop=True)
     log.info("%s: %d reference features", aoi, len(ref))
 
     if "area_m2" not in ref.columns or ref["area_m2"].isna().any():
@@ -126,10 +145,17 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--rooftop-max-m2", type=float, default=ROOFTOP_MAX_M2)
     ap.add_argument("--ground-max-m2", type=float, default=GROUND_MAX_M2)
+    ap.add_argument(
+        "--labels", type=Path, default=None,
+        help="Read this one placement-classified pull (e.g. "
+        "data/labels/<aoi>_overpass_solar.parquet) instead of pooling every "
+        "data/labels/*_overpass_solar.parquet in the repo. Use it for an AOI whose only "
+        "reference is its own pull; the corrections applied are identical.",
+    )
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     out = a.out or Path(f"data/labels/{a.aoi}_national_osm_solar.parquet")
-    prepare(a.aoi, out, a.rooftop_max_m2, a.ground_max_m2)
+    prepare(a.aoi, out, a.rooftop_max_m2, a.ground_max_m2, labels=a.labels)
 
 
 if __name__ == "__main__":
