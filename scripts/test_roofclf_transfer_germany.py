@@ -47,7 +47,9 @@ def build_quadrats(cells: list[str], out: Path) -> list[dict]:
         pv = o[o.geometry.intersects(c.geometry)].copy()
         if len(pv) < 20:
             continue
-        stem = f"de_{c.cell}_osm"
+        # `_calib_` is load-bearing: roofclf.discover_quadrats globs `*_calib_*_boundary
+        # .geojson`, so a stem without it is silently invisible to `earthpv roof-classifier`.
+        stem = f"de_{c.cell}_calib_osm"
         gpd.GeoDataFrame({
             "id": pv.get("id", pd.Series(range(len(pv)))).astype(str).to_numpy(),
             "kind": "generator", "placement": "rooftop",

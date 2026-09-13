@@ -32,6 +32,10 @@ def main() -> None:
     ap.add_argument("--out", default="data/roofclf_france_opvm/buildings.geoparquet")
     ap.add_argument("--iso3", default="FRA")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--footprints", choices=["vida", "cadastre"], default="vida",
+                    help="vida keeps the imagery-derived default; cadastre pulls the "
+                         "authoritative DGFiP layer per INSEE, which finds ~2.3x more "
+                         "buildings in France (see docs/experiments.md)")
     ap.add_argument("--checkpoint-every", type=int, default=10)
     args = ap.parse_args()
 
@@ -49,9 +53,20 @@ def main() -> None:
     parts, t0 = [], time.time()
     for i, m in enumerate(man, 1):
         t1 = time.time()
+        bu = None
+        if args.footprints == "cadastre":
+            import sys
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from earthpv.labels import geodesic_area_m2
+            from test_cadastre_footprints import fetch_cadastre
+            insee = str(gpd.read_file(
+                labels_dir / f"{m['stem']}_boundary.geojson")["insee"].iloc[0]).zfill(5)
+            bu = fetch_cadastre(insee, Path("data/cadastre_france"))[["geometry"]].copy()
+            bu["area_m2"] = [geodesic_area_m2(g) for g in bu.geometry]
+            bu["id"] = [f"cad-{j}" for j in range(len(bu))]
         try:
             t = building_table(m["stem"], args.iso3, Path(args.composites), None, None,
-                               labels_dir=labels_dir, con=con, parcel_label=True)
+                               labels_dir=labels_dir, con=con, parcel_label=True, buildings=bu)
         except Exception as e:  # noqa: BLE001
             log.warning("%s FAILED: %s", m["stem"], e)
             continue

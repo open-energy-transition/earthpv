@@ -1384,7 +1384,7 @@ def canonical_composite_manifest(comp_idx, origin: tuple[float, float], cell_deg
 def score_buildings_national(
     aoi: str, model: dict, feats: list[str], composites: Path, out_dir: Path,
     min_roof_area_m2: float = 0.0, force: bool = False, limit: int = 0,
-    layer_index: int = 0,
+    layer_index: int = 0, buildings_fn=None, cells: set[str] | None = None,
 ) -> Path:
     """Apply an already-fit model to every VIDA building under `composites`, one cell
     (one composite tile) at a time -- the per-cell/per-building pattern
@@ -1471,11 +1471,23 @@ def score_buildings_national(
         if limit and n_cells >= limit:
             break
         cell = m.cell
+        # `cells` restricts scoring to a named subset. `limit` cannot: it takes whatever
+        # the manifest yields first, which is not a region. Needed wherever the footprint
+        # layer only covers part of the country, and to keep two scoring passes paired on
+        # exactly the same cells.
+        if cells is not None and cell not in cells:
+            continue
         out_path = out_dir / f"{cell}.parquet"
         if out_path.exists() and not force:
             continue
         bbox = (m.lon0, m.lat0, m.lon0 + CELL_DEG, m.lat0 + CELL_DEG)
-        bu = fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con)
+        # `buildings_fn` swaps the footprint layer without touching anything else, the
+        # national counterpart of `building_table`'s `buildings` override. Measured 2026-09-13:
+        # over 27 German cells VIDA returns 300,222 footprints where OSM returns 465,707, and
+        # half of all German OSM rooftop arrays sit more than 20 m from any VIDA polygon, so
+        # which layer is used changes the flagged roof area this whole chain prices.
+        bu = (buildings_fn(bbox) if buildings_fn is not None
+              else fetch_vida_buildings(bbox, iso3, min_area_m2=min_roof_area_m2, con=con))
         if bu.empty:
             pd.DataFrame().to_parquet(out_path)
             continue
