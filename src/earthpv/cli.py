@@ -1948,7 +1948,7 @@ def data_sources_cmd(
     """What PV labels, registers and roof layers exist for a country, and what to do with each.
 
     The registry ships with the repo (`docs/assets/registry/earthpv_training_data_registry.csv`):
-    90 datasets across 51 countries. Each row is tagged with an `earthpv_role` derived from
+    91 datasets across 51 countries. Each row is tagged with an `earthpv_role` derived from
     whether PV presence is actually confirmed and whether the records carry geometry, because
     that is what decides whether a source can train a model, only calibrate one, or neither.
 

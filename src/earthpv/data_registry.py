@@ -1,6 +1,6 @@
 """The curated registry of PV labels, registers and roof-context datasets by country.
 
-`docs/assets/registry/earthpv_training_data_registry.csv` lists 90 datasets across 51 countries:
+`docs/assets/registry/earthpv_training_data_registry.csv` lists 91 datasets across 51 countries:
 open training labels, national installation registers, aggregate statistics and building/roof
 layers. It exists so that extending earthpv to a new country starts from "what does this
 country already publish" rather than from a blank OSM pull.

@@ -1,7 +1,7 @@
 # Country data registry
 
 Extending earthpv to a new country starts with a question this page answers: **what does this
-country already publish?** Ninety datasets across fifty-one countries are catalogued here, and
+country already publish?** Ninety-one datasets across fifty-one countries are catalogued here, and
 most countries have something, even where OpenStreetMap is nearly empty.
 
 <div class="page-full-bleed" markdown>

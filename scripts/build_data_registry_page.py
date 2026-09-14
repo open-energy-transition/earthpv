@@ -89,7 +89,7 @@ a{{color:var(--acc)}} .xdetails{{background:var(--panel);border:1px solid var(--
 .tablewrap{{overflow-x:auto}} .none{{color:var(--dim);padding:18px 0}}
 </style></head><body><div class="wrap">
 <h1>Country data registry</h1>
-<p class="sub">Ninety published datasets across fifty-one countries: PV labels, national
+<p class="sub">Ninety-one published datasets across fifty-one countries: PV labels, national
 installation registers, aggregate statistics and building/roof layers. Use it to find out what
 a country already publishes before starting a mapping campaign. The role tag is derived from
 whether PV presence is confirmed and whether records carry geometry, because that decides
