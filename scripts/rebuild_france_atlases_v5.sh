@@ -14,7 +14,13 @@ for f in results/france_pv_evidence_atlas.html results/france_pv_comparison_atla
 done
 
 say "=== evidence atlas (v5) ==="
+# --include-offgrid-osm: France's density grid holds only the 5,473 cells `compose` built
+# above --min-buildings, and 281,269 of 353,011 hand-mapped installations (79.7%) fall
+# outside it -- more mapped capacity than the atlas showed. The flag adds an OSM-only cell
+# per such installation (no imagery, no inference, every model column zero) instead of
+# dropping it. Owner's call, 2026-09-13: no regional filter on the French atlas.
 $PY -m earthpv.cli atlas --aoi france --pred-dir data/predictions_v5 --osm-solar "$OSM" \
+  --include-offgrid-osm \
   --out results/france_pv_evidence_atlas.html >>"$LOG" 2>&1 || { say "evidence atlas FAILED"; exit 1; }
 
 say "=== comparison atlas (v5) ==="

@@ -1268,6 +1268,14 @@ def atlas(
         "'https://github.com/<org>/<repo>/releases/download/<tag>'), joined with each "
         "manifest entry's 'file' to build its download link.",
     ),
+    include_offgrid_osm: bool = typer.Option(
+        False, help="Keep hand-mapped OSM installations that fall OUTSIDE the density "
+        "grid, by adding an OSM-only cell for each (no imagery, no inference, every model "
+        "column zero). Off by default because it moves an AOI's published Verified/Best. "
+        "The grid only holds cells `compose` built, i.e. cells above --min-buildings, so "
+        "the default silently drops real mapped capacity: measured 2026-09-13, Germany "
+        "36,760 of 183,111 installations (20.1%) and France 281,269 of 353,011 (79.7%).",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
@@ -1318,6 +1326,7 @@ def atlas(
                 imagery_date_range=imagery_date_range,
                 downloads=downloads,
                 data_release_url=data_release_url,
+                include_offgrid_osm=include_offgrid_osm,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
