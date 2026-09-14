@@ -2473,6 +2473,9 @@ INTERACTIVE = [
     # ship unnoticed. Owned by the sync step now, like every other interactive page.
     ("results/france_pv_evidence_atlas.html", "france_pv_evidence_atlas.html"),
     ("results/france_pv_comparison_atlas.html", "france_pv_comparison_atlas.html"),
+    # Zambia: segmentation-only (no calibration quadrats yet), written by
+    # scripts/run_zambia_pipeline.sh. Skipped with a notice until that run lands.
+    ("results/zambia_pv_evidence_atlas.html", "zambia_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 

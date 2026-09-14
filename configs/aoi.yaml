@@ -1,5 +1,11 @@
 # Areas of interest and label/chip parameters.
-overture_release: "2026-06-17.0"
+# Overture prunes its release directory to the LAST TWO releases, so a pin goes stale on a
+# roughly monthly cadence and then 404s as `IO Error: No files found` -- which reads like
+# "no data for this area", not "your release expired" (CLAUDE.md, Conventions & gotchas).
+# Checked 2026-09-13: 2026-06-17.0 had already been pruned; only 2026-07-22.0 and
+# 2026-08-19.0 remained. List what still exists with:
+#   curl -s "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/?list-type=2&prefix=release/&delimiter=/"
+overture_release: "2026-08-19.0"
 
 # Reuse Sentinel-2 composites + OSM/Overture labels already downloaded by the
 # sibling `rooftopsenti` project instead of re-fetching (see src/earthpv/local_source.py).
