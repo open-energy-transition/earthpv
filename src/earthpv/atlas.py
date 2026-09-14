@@ -1411,6 +1411,73 @@ def _evidence_uncertainty(
     }
 
 
+def _extend_grid_with_offgrid_osm(
+    grid: gpd.GeoDataFrame, osm: gpd.GeoDataFrame, cell_deg: float = 0.1,
+) -> tuple[gpd.GeoDataFrame, int]:
+    """Add zero-model cells so hand-mapped OSM outside the density grid is not dropped.
+
+    The density grid only holds cells `compose` actually built, i.e. cells that cleared
+    the `--min-buildings` threshold. `build_evidence_atlas` then joins OSM to that grid
+    and discards whatever falls outside it, which quietly removes real, hand-mapped
+    capacity from both the map and the Verified tier. Measured 2026-09-13: Germany loses
+    36,760 of 183,111 installations (20.1%), France 281,269 of 353,011 (79.7%) -- France's
+    atlas was excluding MORE mapped capacity than it showed.
+
+    The cells added here sit on the same 0.1 degree lattice (the origin is recovered from
+    the existing grid's own `ix`/`lon0`, so names stay congruent with `compose`) and carry
+    ZERO for every model column, because there is genuinely no imagery and no inference
+    there. Their Verified and Best both come out at the cell's OSM value, which is the
+    honest reading: somebody mapped an installation, and this pipeline has nothing to say
+    about it beyond that. `model_covered` marks them so the map and tooltip can say so.
+    """
+    if grid.empty or osm.empty:
+        grid = grid.copy()
+        grid["model_covered"] = True
+        return grid, 0
+    # Recover the lattice origin from the grid itself rather than re-deriving it from the
+    # AOI config: the grid is what the cell NAMES were minted against, and `_grid_origin`
+    # depends on a boundary lookup that can differ between runs.
+    origin_lon = float(np.median(grid["lon0"].to_numpy() - grid["ix"].to_numpy() * cell_deg))
+    origin_lat = float(np.median(grid["lat0"].to_numpy() - grid["iy"].to_numpy() * cell_deg))
+
+    pts = osm.geometry.representative_point()
+    ix = np.floor((pts.x.to_numpy() - origin_lon) / cell_deg).astype(int)
+    iy = np.floor((pts.y.to_numpy() - origin_lat) / cell_deg).astype(int)
+    names = np.array([f"{a:04d}_{b:04d}" for a, b in zip(ix, iy)])
+    have = set(grid["cell"].astype(str))
+    new = sorted({(n, int(a), int(b)) for n, a, b in zip(names, ix, iy) if n not in have})
+    grid = grid.copy()
+    grid["model_covered"] = True
+    if not new:
+        return grid, 0
+
+    from shapely.geometry import box
+
+    lon0 = np.array([origin_lon + a * cell_deg for _, a, _ in new])
+    lat0 = np.array([origin_lat + b * cell_deg for _, _, b in new])
+    add = gpd.GeoDataFrame(
+        {"cell": [n for n, _, _ in new],
+         "ix": [a for _, a, _ in new], "iy": [b for _, _, b in new],
+         "lon0": lon0, "lat0": lat0,
+         "lon_center": lon0 + cell_deg / 2, "lat_center": lat0 + cell_deg / 2},
+        geometry=[box(x, y, x + cell_deg, y + cell_deg) for x, y in zip(lon0, lat0)],
+        crs=grid.crs,
+    )
+    add["model_covered"] = False
+    for col in grid.columns:
+        if col in add.columns:
+            continue
+        if col == "density_confidence":
+            add[col] = "no_model_coverage"
+        elif pd.api.types.is_numeric_dtype(grid[col]):
+            add[col] = 0.0
+        else:
+            add[col] = None
+    add = add[grid.columns]
+    out = gpd.GeoDataFrame(pd.concat([grid, add], ignore_index=True), crs=grid.crs)
+    return out, len(add)
+
+
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
@@ -1423,6 +1490,7 @@ def build_evidence_atlas(
     imagery_date_range: str | None = None,
     downloads: list[dict] | None = None,
     data_release_url: str | None = None,
+    include_offgrid_osm: bool = False,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -1646,6 +1714,18 @@ def build_evidence_atlas(
     osm["kwp"] = np.where(
         osm["placement"] == "rooftop", osm["area_m2"] * rooftop_k, osm["area_m2"] * kwp_land
     )
+    if include_offgrid_osm:
+        grid, n_added = _extend_grid_with_offgrid_osm(grid, osm)
+        if n_added:
+            log.info(
+                "Evidence atlas: added %d OSM-only cells (no imagery, no inference) so "
+                "hand-mapped installations outside the density grid are kept rather than "
+                "dropped -- grid is now %d cells",
+                n_added, len(grid),
+            )
+    else:
+        grid = grid.copy()
+        grid["model_covered"] = True
     pts = osm.copy()
     pts["geometry"] = pts.geometry.representative_point()
     joined_osm = gpd.sjoin(pts, grid[["cell", "geometry"]], predicate="within", how="left")
@@ -1653,8 +1733,10 @@ def build_evidence_atlas(
     if n_unmatched_osm:
         log.warning(
             "Evidence atlas: %d of %d OSM-mapped installations fall outside every cell "
-            "of this %d-cell grid -- excluded from the map/totals below.",
+            "of this %d-cell grid -- excluded from the map/totals below.%s",
             n_unmatched_osm, len(joined_osm), len(grid),
+            "" if include_offgrid_osm else
+            " Pass include_offgrid_osm/--include-offgrid-osm to keep them.",
         )
     in_grid_osm = joined_osm.dropna(subset=["cell"])
     n_osm_ge400 = int((in_grid_osm["area_m2"] >= 400.0).sum())
@@ -1766,6 +1848,14 @@ def build_evidence_atlas(
             "(model estimate below the mapped value it was meant to supersede)",
             n_cells_best_floored, len(grid),
         )
+    # Carried per cell so the map's hover can account for Best in full. The two
+    # size-domain rows it used to show (`mwp_large`, `small_central`+`small_outdomain`)
+    # are only the MODEL's share: Best also folds in hand-mapped OSM the model never
+    # found, plus this floor lift. The national KPI tiles gained a third tile for exactly
+    # this on 2026-08-14 ("OSM hand-mapped, not in a model detection"); the per-cell hover
+    # did not, so it under-summed. Measured on the published German atlas 2026-09-13:
+    # 3,043 of 4,656 cells did not add up, by 10,847 MWp = 12.4% of Best nationally.
+    grid["best_floor_lift"] = np.maximum(grid["mwp_verified"] - grid["mwp_best"], 0.0)
     grid["mwp_best"] = np.maximum(grid["mwp_best"], grid["mwp_verified"])
 
     cells = [
@@ -1774,7 +1864,9 @@ def build_evidence_atlas(
          round(float(r.osm_mwp), 3), int(r.osm_n),
          round(float(r.small_low), 3), round(float(r.small_central), 3),
          round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings),
-         round(float(r.small_outdomain), 3), int(r.is_extended)]
+         round(float(r.small_outdomain), 3), int(r.is_extended),
+         round(float(r.osm_mwp_unmatched), 3), round(float(r.best_floor_lift), 3),
+         int(bool(r.model_covered))]
         for r in grid.itertuples()
     ]
     bounds = [

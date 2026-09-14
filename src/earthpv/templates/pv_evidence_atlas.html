@@ -815,11 +815,22 @@ out geom;</div>
   const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
 
   /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
-     small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended] */
+     small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended,
+     osm_mwp_unmatched, best_floor_lift, model_covered] */
   const BEST_IDX = 3;
   const OSM_IDX = 4;
   const OUTDOMAIN_IDX = 11;
   const EXTENDED_IDX = 12;
+  // Best is not the sum of the two size domains: it also carries hand-mapped OSM the
+  // model never found, and a floor lift where the cell was snapped up to its own mapped
+  // value. Same two terms the third KPI tile accounts for nationally. `|| 0` so an atlas
+  // written before these were carried degrades to the old two-row hover rather than NaN.
+  const OSM_UNMATCHED_IDX = 13;
+  const FLOOR_LIFT_IDX = 14;
+  // 0 marks a cell that exists ONLY because somebody hand-mapped an installation there:
+  // outside the composited grid, so no imagery and no inference, and its whole value is
+  // OSM. Undefined on an atlas written before this was carried -> treated as covered.
+  const COVERED_IDX = 15;
   const T = DATA.totals;
   T.small_all = (T.small_central || 0) + (T.small_outdomain || 0);
   // The two model-detection tiles below never summed to the headline number on their
@@ -1076,10 +1087,17 @@ out geom;</div>
       const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
       const rows = `<div class="rowt sel"><span>${VIEW.label}</span><span>${c[BEST_IDX].toFixed(1)} MWp</span></div>`;
       const smallTotal = c[7] + (c[OUTDOMAIN_IDX] > 0 ? c[OUTDOMAIN_IDX] : 0);
+      const osmOnly = (c[OSM_UNMATCHED_IDX] || 0) + (c[FLOOR_LIFT_IDX] || 0);
       tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
         + rows
-        + `<div class="rowt"><span>&ge;400 m²</span><span>${c[8].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>&lt;400 m²</span><span>${smallTotal.toFixed(1)} MWp</span></div>`;
+        + `<div class="rowt"><span>&ge;400 m², detected</span><span>${c[8].toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>&lt;400 m², detected</span><span>${smallTotal.toFixed(1)} MWp</span></div>`
+        + (osmOnly > 0.05
+            ? `<div class="rowt"><span>hand-mapped, not detected</span><span>${osmOnly.toFixed(1)} MWp</span></div>`
+            : "")
+        + (c[COVERED_IDX] === 0
+            ? `<div class="rowt"><span>coverage</span><span>hand-mapped only, not imaged</span></div>`
+            : "");
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
