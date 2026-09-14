@@ -53,12 +53,17 @@ ITER_S=${5:-1800}
 # Planetary Computer had started accepting connections and never answering. Without this,
 # a hang costs the whole remaining pass.
 STALL_S=${6:-600}
+# Extra args passed straight through to `compose`, e.g. "--use-vida --window A:B".
+# An AOI with no `compose_window` in aoi.yaml (Germany) MUST be given one here, or a
+# top-up run lands on the compose default (a Punjab dry season = German winter) and
+# silently mixes two epochs into one grid.
+EXTRA=${7:-}
 LOG="data/compose_${AOI}.log"
 ITER=$ITER_S       # per-pass wall clock, see ITER_S above
 COMPDIR="data/composites/$AOI/composites"
 
 mkdir -p data
-echo "$(date '+%F %T') LOOP: start aoi=${AOI} target=${TARGET:-none} min_buildings=${MIN_BUILDINGS} workers=${WORKERS} iter_s=${ITER_S}" >> "$LOG"
+echo "$(date '+%F %T') LOOP: start aoi=${AOI} target=${TARGET:-none} min_buildings=${MIN_BUILDINGS} workers=${WORKERS} iter_s=${ITER_S} extra='${EXTRA}'" >> "$LOG"
 
 prev=-1; stall=0
 while true; do
@@ -71,7 +76,7 @@ while true; do
   [ "$stall" -ge 3 ] && { echo "$(date '+%F %T') LOOP: no progress 3x at ${done}, exiting" >> "$LOG"; break; }
   prev=$done
   timeout -k 60 "$ITER" $PY -m earthpv.cli compose --aoi "$AOI" \
-    --min-buildings "$MIN_BUILDINGS" --workers "$WORKERS" >> "$LOG" 2>&1 &
+    --min-buildings "$MIN_BUILDINGS" --workers "$WORKERS" $EXTRA >> "$LOG" 2>&1 &
   pass_pid=$!
   # Stall watchdog for the pass above.
   (
