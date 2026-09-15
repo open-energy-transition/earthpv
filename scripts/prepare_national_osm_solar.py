@@ -66,7 +66,8 @@ GROUND_MAX_M2 = 5_000_000.0
 
 
 def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
-            ground_max_m2: float = GROUND_MAX_M2, labels: Path | None = None) -> Path:
+            ground_max_m2: float = GROUND_MAX_M2, labels: Path | None = None,
+            clip: bool = True) -> Path:
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     if labels is not None:
@@ -90,6 +91,36 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
     else:
         ref = load_mapped_reference_attrs(aoi, cfg, settings).reset_index(drop=True)
     log.info("%s: %d reference features", aoi, len(ref))
+
+    if clip:
+        # A "national" OSM pull must actually be national. Two ways it is not, and both were
+        # live until 2026-09-15:
+        #   * `load_mapped_reference_attrs` globs data/labels/*_overpass_solar.parquet
+        #     AOI-AGNOSTICALLY (see CLAUDE.md), so Germany's file spanned lon 5.9-75.4 and
+        #     lat 20.8-54.9 -- it reached into Pakistan.
+        #   * A bbox-limited pull is not a border-limited one: France's bbox contains
+        #     Belgium, Luxembourg, Germany, Switzerland, Italy and Spain.
+        # Both were invisible while the atlas dropped OSM outside its density grid. Once
+        # `--include-offgrid-osm` keeps that population, every foreign feature becomes a
+        # cell and drags the map across a continent.
+        from earthpv.buildings import _iso3_for
+        from earthpv.density import fetch_geoboundaries
+
+        iso3 = _iso3_for(cfg)
+        adm1 = fetch_geoboundaries(iso3, "ADM1") if iso3 else None
+        if adm1 is None:
+            log.warning("no geoBoundaries ADM1 for %r -- keeping the unclipped pull", iso3)
+        else:
+            import shapely
+
+            country = adm1.to_crs("EPSG:4326").geometry.union_all()
+            rep = ref.geometry.representative_point()
+            inside = shapely.contains_xy(country, rep.x.values, rep.y.values)
+            log.info(
+                "clipped to %s: %d of %d features inside the national boundary (%d dropped)",
+                iso3, int(inside.sum()), len(ref), int((~inside).sum()),
+            )
+            ref = ref[inside].reset_index(drop=True)
 
     if "area_m2" not in ref.columns or ref["area_m2"].isna().any():
         ref["area_m2"] = [geodesic_area_m2(g) for g in ref.geometry]
@@ -152,10 +183,15 @@ def main() -> None:
         "data/labels/*_overpass_solar.parquet in the repo. Use it for an AOI whose only "
         "reference is its own pull; the corrections applied are identical.",
     )
+    ap.add_argument(
+        "--no-clip", action="store_true",
+        help="Keep features outside the AOI's national boundary. Off by default; see the "
+        "clip block in `prepare` for the two ways a 'national' pull turns out not to be.",
+    )
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     out = a.out or Path(f"data/labels/{a.aoi}_national_osm_solar.parquet")
-    prepare(a.aoi, out, a.rooftop_max_m2, a.ground_max_m2, labels=a.labels)
+    prepare(a.aoi, out, a.rooftop_max_m2, a.ground_max_m2, labels=a.labels, clip=not a.no_clip)
 
 
 if __name__ == "__main__":
