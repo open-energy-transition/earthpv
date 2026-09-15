@@ -11,6 +11,7 @@ hide:
   <a href="../atlas/">Pakistan</a>
   <span aria-current="page">Germany</span>
   <a href="../atlas-france/">France</a>
+  <a href="../atlas-zambia/">Zambia</a>
   <span class="atlas-switch__note">
     The sub-400 m&sup2; half is a <b>register-calibrated statistical estimate, not a
     detection</b>: roof area in the 200-400 m&sup2; band priced at 0.03509 kWp/m&sup2; against

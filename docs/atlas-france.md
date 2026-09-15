@@ -11,6 +11,7 @@ hide:
   <a href="../atlas/">Pakistan</a>
   <a href="../atlas-germany/">Germany</a>
   <span aria-current="page">France</span>
+  <a href="../atlas-zambia/">Zambia</a>
   <span class="atlas-switch__note">
     Segmentation-only, and a strict precision floor: France has no calibration quadrats
     outside the fourteen hand-mapped communes, and <code>roofclf</code> does not transfer to

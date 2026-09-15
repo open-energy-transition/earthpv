@@ -25,12 +25,26 @@
 # THIS IS NOT A CLAIM THAT THE PROJECTS DO NOT EXIST -- only that no array was built as of
 # the imagery epoch. Re-screen after new imagery; a site that fills in should come back.
 #
-# Three more perimeters (1547162867 2.76 km2, 1547146891 2.23 km2, 1510572941 2.08 km2)
-# were NOT judged: their cells were not composited yet when this was written. Re-run the
-# screen once `compose` finishes and decide them then.
+# 2026-09-15, after the national compose finished (1,843/1,843 cells): the three
+# previously-unjudged perimeters were re-screened over full coverage.
+#   1547162867  2.76 km2  imaged 1.000, p_max 0.00 -> imagery shows uniform bare reddish
+#                         ground with an eroded rocky edge. EMPTY, added below.
+#   1547146891  2.23 km2  imaged 1.000, p_max 0.00 -> imagery shows mottled bush and
+#                         scrub woodland. EMPTY, added below.
+#   1510572941  2.08 km2  STILL UNJUDGEABLE, and not for lack of compose: its cell
+#                         (0069_0068) has a genuine nodata hole exactly under the polygon
+#                         -- 25,993 pixels, zero in all ten bands, well inside the raster
+#                         bounds -- and the cell is only 22.8% filled overall. That is a
+#                         rare defect (of 120 cells sampled nationally, median fill is
+#                         100% and only 2 are below 50%), not a systemic one. It stays IN
+#                         the atlas, contributing ~104 MWp at the land constant. To settle
+#                         it, re-compose 0069_0068 on a wider window or via the other STAC
+#                         provider, then re-run the screen.
 osm-way/1547172667
 osm-way/1547702741
 osm-way/1547167645
 osm-way/1547170720
 osm-way/1547146887
 osm-way/1442146965
+osm-way/1547162867
+osm-way/1547146891
