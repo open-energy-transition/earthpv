@@ -492,7 +492,7 @@ was the worst of the three measured options.
 | --- | --- | --- |
 | roofclf, probability-weighted | 48.4% | until 2026-09-13 |
 | Roof area, single constant | 37.8% | no |
-| **Roof area, 200-400 m&sup2; band at 0.03509 kWp/m&sup2;** | **35.4%** | **now** |
+| **Roof area, 200-400 m&sup2; band at 0.03493 kWp/m&sup2;** | **35.6%** | **now** |
 
 Tier totals moved from Verified 41,937 / Best 61,854 MWp to **Verified 38,508 / Best 94,624
 MWp**. Three things explain that and should be read together.

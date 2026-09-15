@@ -1,5 +1,5 @@
 {
-  "n_gemeinden": 9674,
+  "n_gemeinden": 10094,
   "bins_m2": [
     0.0,
     50.0,
@@ -12,47 +12,47 @@
   ],
   "estimators": {
     "roof_area_single_constant": {
-      "median_municipal_abs_pct_err": 37.8,
-      "spearman": 0.875,
-      "total_ratio": 1.0002,
+      "median_municipal_abs_pct_err": 38.2,
+      "spearman": 0.8713,
+      "total_ratio": 1.0007,
       "mean_coefficients": [
-        0.00883
+        0.00879
       ]
     },
     "roofclf_single_constant": {
-      "median_municipal_abs_pct_err": 48.4,
-      "spearman": 0.825,
-      "total_ratio": 0.9999,
+      "median_municipal_abs_pct_err": 48.5,
+      "spearman": 0.8221,
+      "total_ratio": 1.0005,
       "mean_coefficients": [
-        0.27929
+        0.27841
       ]
     },
     "roof_area_size_stratified": {
-      "median_municipal_abs_pct_err": 32.7,
-      "spearman": 0.8919,
-      "total_ratio": 0.8509,
+      "median_municipal_abs_pct_err": 32.9,
+      "spearman": 0.8887,
+      "total_ratio": 0.8577,
       "mean_coefficients": [
         0.0,
         0.0,
         0.0,
-        0.02978,
-        0.00012,
+        0.02937,
+        0.00067,
         0.0,
         0.0
       ]
     },
     "roofclf_size_stratified": {
       "median_municipal_abs_pct_err": 80.5,
-      "spearman": 0.8234,
-      "total_ratio": 0.3485,
+      "spearman": 0.822,
+      "total_ratio": 0.3476,
       "mean_coefficients": [
         0.0,
         0.0,
         0.0,
-        0.22581,
+        0.21444,
         0.0,
-        0.05884,
-        0.17155
+        0.06493,
+        0.17145
       ]
     }
   }

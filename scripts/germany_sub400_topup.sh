@@ -53,12 +53,14 @@ say "scored; prob dir now $(ls data/roofclf_national_germany_prod/germany/prob |
 # silently swap Germany's sub-400 estimator back to the probability-weighted roofclf one that
 # was REPLACED on 2026-09-13 for scoring worst of the three options (48.4% median municipal
 # error against 37.8% for plain roof area and 35.4% for this band). The parameters are
-# recovered from the published outputs: central sums to exactly 52,208.8 MWp and the floor
+# refitted on the no-filter grid 2026-09-15 (0.03509 -> 0.03493); the recipe is a pooled
+# ratio of sums, sum(kw_rooftop_le100)/sum(band roof area) over fully covered Gemeinden,
+# which reproduced 0.03509 exactly on the old grid. Central sums to 52,128.9 MWp and the floor
 # tier is all zeros, which only the size_band branch produces (a regression has no second
 # detector, so `agree` is zeroed rather than the component omitted).
-say "regenerating the sub-400 atlas inputs (size_band, 200-400 m2 at 0.03509 kWp/m2)"
+say "regenerating the sub-400 atlas inputs (size_band, 200-400 m2 at 0.03493 kWp/m2)"
 $PY scripts/build_germany_sub400_atlas_inputs.py \
-    --method size_band --kwp-per-m2 0.03509 --min-roof-m2 200 --max-roof-m2 400 \
+    --method size_band --kwp-per-m2 0.03493 --min-roof-m2 200 --max-roof-m2 400 \
     >> "$LOG" 2>&1 || { say "sub400 inputs FAILED"; exit 1; }
 
 # If the chain has not reached its own atlas step yet, that step will now use these inputs

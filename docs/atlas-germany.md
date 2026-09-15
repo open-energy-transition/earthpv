@@ -18,9 +18,9 @@ hide:
     of everything below that floor, and the mapped installations the model did not itself find.
     The sub-400 m&sup2; part is the largest of the three, and it is a
     <b>statistical estimate, not a detection</b>: roof area in the 200-400 m&sup2; band priced
-    at 0.03509 kWp/m&sup2; against MaStR, with no classifier. It replaced a roofclf component
+    at 0.03493 kWp/m&sup2; against MaStR, with no classifier. It replaced a roofclf component
     measured as worse than a plain roof-area baseline (48.4% against 37.8% median municipal
-    error; this estimator scores 35.4%). Because a regression has no second detector to agree
+    error; this estimator scores 35.6%). Because a regression has no second detector to agree
     with, Verified carries no sub-400 component &mdash; which is why the two tiers are so far
     apart here, and why Verified alone excludes the 65.5% of German rooftop capacity sitting
     below the floor.
