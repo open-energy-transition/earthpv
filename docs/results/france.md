@@ -321,9 +321,21 @@ population it is built for and no part of the population France's register censo
 
 ### The evidence atlas
 
-National, over all 5,473 composited cells and 13 regions: **Verified 11,163 MWp
-(90% 8,547-14,887), Best estimate 11,995 MWp (90% 10,301-15,797)**, against a registered
-34.6 GWp. Built on the retrained v5 checkpoint.
+National, over 5,958 cells and 13 regions: **Verified 12,382 MWp (90% 9,410-16,613), Best
+estimate 13,270 MWp (90% 11,421-17,416)**, against a registered 34.6 GWp. Built on the
+retrained v5 checkpoint.
+
+Two corrections on 2026-09-15 moved these from the 11,163 / 11,995 MWp over 5,473 cells this
+page previously reported. Hand-mapped installations outside the composited grid are no longer
+dropped but given their own OpenStreetMap-only cells, which is where 485 of the cells come
+from. And the national pull is now clipped to France's border: only **21.8%** of
+`france_overpass_solar.parquet` was actually inside France, the rest being mostly Spanish PV
+that France's bounding box happens to contain, along with German, Italian and Belgian. Those
+were invisible while the atlas discarded everything outside its grid, and became visible the
+moment it stopped.
+
+A national compose at `--min-buildings 1` is in progress, adding roughly 988 cells; these
+figures will move again when it lands.
 
 It is the **segmentation-only** form, for two independent reasons. France has no calibration
 quadrats outside the fourteen mapped communes, which is this project's documented rule for

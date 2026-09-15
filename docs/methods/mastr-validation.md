@@ -305,13 +305,21 @@ sample and the calibration boxes. That has not been run.
 
 ### The atlas totals do not survive the same check
 
-Germany's evidence atlas reports Verified 38,508 MWp and Best 49,324 MWp, and both are too
-high. Verified is the hand-mapped OSM population converted at the two constants; its ground
-component alone is 43,965 MWp against 37,138 MWp of all registered German ground-mount, or
-**118%**. That is the OSM-convention problem from the section above turned into a hard
-contradiction: area times a constant does not give German capacity when the polygon may
-outline the roof or the site rather than the array. The atlas is published for its structure
-and per-cell geography; the defensible German figure is `est_mwp_rc_roof`.
+Germany's evidence atlas reports **Verified 26,635 MWp and Best 88,709 MWp** (2026-09-15).
+Verified is the hand-mapped OpenStreetMap population converted at the two constants, and that
+conversion is where the tiers are weakest: area times a constant does not give German capacity
+when the polygon may outline the roof or the site rather than the array. The atlas is
+published for its structure and per-cell geography; the defensible German figure is
+`est_mwp_rc_roof`.
+
+!!! note "An earlier version of this page said the ground tier read 118% of the register"
+    That figure (43,965 MWp of Verified ground against 37,138 MWp registered) described a
+    computation the atlas no longer performs. Measured properly on 2026-09-13 &mdash;
+    replicating the atlas's own in-grid population &mdash; ground came to 17.97 GWp against
+    19.82 GWp of register capacity actually inside those polygons, a **ratio of 0.91**. The
+    real overstatement was **rooftop**, at about 2.5x, and it was fixed by the size-dependent
+    rooftop constant. See [Reconciling in-grid
+    OSM](../results/germany.md#reconciling-in-grid-osm-the-overstatement-was-rooftop-not-ground).
 
 The harness is also covered by `tests/test_mastr_validation.py`, which feeds the register back
 through it synthetically. That still matters now that it runs on real data, because a

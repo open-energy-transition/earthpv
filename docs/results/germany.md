@@ -20,9 +20,12 @@ Interactive. Hover a cell for its value.
 </p>
 
 !!! danger "This atlas's tier totals fail a register check. Do not quote them."
-    The evidence atlas reports Verified 38,508 MWp and Best 49,324 MWp for Germany. Both are
-    **too high**, and unlike anywhere else this project works, that can be proven rather than
-    suspected.
+    The evidence atlas reports Verified 26,635 MWp and Best 88,709 MWp for Germany
+    (2026-09-15, on the no-filter grid and a border-clipped OpenStreetMap pull). The tiers
+    rest on converting mapped polygon area at a constant, and unlike anywhere else this
+    project works, that assumption can be checked against a complete register rather than
+    merely suspected &mdash; see [the reconciliation
+    below](#reconciling-in-grid-osm-the-overstatement-was-rooftop-not-ground).
 
     Verified is the hand-mapped OpenStreetMap population, converted at the module constant
     for rooftop and the land constant for ground. Against the register:
@@ -420,7 +423,10 @@ tuned to a target.
 
 **The cap itself changed no published number.** All 21 polygons have representative points
 outside the density grid, which covers building-populated cells only, so the atlas never
-counted them: Verified was 38,508.1 MWp before and after, identical to the decimal. The cap is
+counted them: Verified was 38,508.1 MWp before and after, identical to the decimal. (Since
+2026-09-15 the atlas can count installations outside its grid, so "outside the grid" is no
+longer what excludes them &mdash; the cap drops them before they reach it, which is why the
+statement still holds.) The cap is
 prophylactic, protecting any future run whose grid does cover empty cells. The 118% note was
 describing a computation the atlas no longer performs -- the national OSM sum is 65.9 GWp at
 the assumed constants, but Verified reports only the in-grid subset.
@@ -469,6 +475,10 @@ uses it, and Pakistan, France, Gujarat, Punjab and the unnamed default all retur
 
 **Tier totals move to Verified 25,921 / Best 87,743 MWp** (from 38,508 / 94,624), and both
 placements now sit within about 10% of what the register says is inside the mapped polygons.
+Two later changes moved them again, and the current published figures are **Verified 26,635 /
+Best 88,709 MWp**: the grid was rebuilt with no building-density filter (2026-09-15, 4,656 to
+4,871 cells), and the national OpenStreetMap pull was clipped to Germany's border, which
+removed 249,115 of 475,210 pooled features that were never German at all.
 Verified is 23% of Germany's 112 GWp of registered PV from OSM mapping 2.6% of units, which is
 plausible for a subset skewed to large installations where 34% was not.
 

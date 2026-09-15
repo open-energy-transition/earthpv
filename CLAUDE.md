@@ -768,7 +768,8 @@ kWp/m2**. 4,694 polygons above 2,000 m2 hold 101.2 of 122.4 km2 of all OSM rooft
 flat 0.18 turned 8.8 GWp into 22.0.
 `capacity_calibration.osm_rooftop_kwp_per_m2` applies the table, **keyed by AOI** --
 Pakistan/France/Gujarat/Punjab/None all return the flat 0.18, verified not assumed. Germany's
-tiers move to **Verified 25,921 / Best 87,743 MWp** and both placements now sit within ~10% of
+tiers move to **Verified 25,921 / Best 87,743 MWp** (now **26,635 / 88,709** after the
+2026-09-15 no-filter grid rebuild and the national OSM border clip) and both placements now sit within ~10% of
 the register. Only `build_evidence_atlas` uses it; `_size_distribution_data` still uses the flat
 constant deliberately, so the headline and the size chart cannot disagree silently.
 
@@ -842,7 +843,7 @@ and none beats multiplying roof area by a constant at municipality level in Germ
 now a settled, thrice-confirmed finding, and it is the counterpart to Pakistan's 3.4x win.
 
 **Germany's evidence atlas now carries the roofclf half** (Verified 38,508 -> 41,937, Best
-49,324 -> 61,854 MWp when it was added; **now Verified 25,921 / Best 87,743** after the
+49,324 -> 61,854 MWp when it was added; **now Verified 26,635 / Best 88,709** after the
 size-dependent rooftop constant above), built by
 `scripts/build_germany_sub400_atlas_inputs.py`. Three things
 about that generator are load-bearing: the component must be **INCREMENTAL** (sub-400 m2 roofs
@@ -1087,7 +1088,8 @@ two interactive pages are in `build_docs_figures.py`'s sync list rather than cop
 **Artifacts**: baseline frozen at `results/france_validation/france_validation_BASELINE_zeroshot.json`
 + `configs/calibration/france_candidate_precision_BASELINE_v4.yaml` + `*_BASELINE_zeroshot.html`
 atlases; v5 at `data/predictions_v5/` + `results/france_validation_v5/`. National evidence
-atlas on v5: **Verified 11,163 / Best 11,995 MWp** (90% 10,301-15,797) against a registered
+atlas on v5: **Verified 12,382 / Best 13,270 MWp** (90% 11,421-17,416; was 11,163 / 11,995
+before the 2026-09-15 off-grid-OSM and border-clip corrections) against a registered
 34.6 GWp -- a strict precision floor, recall deliberately skipped.
 
 **`scripts/merge_chip_index.py` ALWAYS writes `data/chips/combined/index.parquet`**, which is
@@ -1117,6 +1119,16 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
   `_calib_` is invisible to `earthpv roof-classifier`, which fails with "No calibration
   quadrats found" seconds after launch -- easy to mistake for a still-running job if nothing is
   watching it.
+- **A "national" OSM pull is not national until it is clipped to the border.** Two
+  independent leaks, both live until 2026-09-15 and both invisible while the atlas dropped
+  OSM outside its density grid: `export.load_mapped_reference_attrs` globs
+  `data/labels/*_overpass_solar.parquet` AOI-agnostically, so Germany's national file spanned
+  lon 5.9-75.4 and reached into Pakistan (249,115 of 475,210 features were foreign); and a
+  bbox pull is not a border pull, so only **21.8%** of `france_overpass_solar.parquet` is
+  actually in France, most of the remainder being Spanish. `--include-offgrid-osm` made both
+  visible at once by turning every foreign feature into a map cell.
+  `prepare_national_osm_solar.py` now clips on the geoBoundaries ADM1 union by default
+  (`--no-clip` opts out), as `scripts/overpass_labels_chunked.py` already does at pull time.
 - **Overture prunes its release directory to the last two releases.** `configs/aoi.yaml`'s
   pinned `overture_release` will eventually 404 as `IO Error: No files found`, which reads like
   "no data for this area" rather than "your release expired". Check
