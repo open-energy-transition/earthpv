@@ -42,9 +42,30 @@ def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame |
     different, larger area (e.g. pakistan_500 = Balochistan+Sindh).
 
     AOIs with no local rooftopsenti dataset at all (e.g. a fresh country/state with no
-    source_region) fall back to geoBoundaries ADM1, filtered to `division.name` - this
-    is what keeps e.g. a "gujarat" AOI's cells from spilling into neighbouring states
-    when only a loose bbox is configured.
+    source_region) fall back to geoBoundaries ADM1: filtered to `division.name` for a
+    region, unioned for a whole country. That is what keeps e.g. a "gujarat" AOI's cells
+    from spilling into neighbouring states when only a loose bbox is configured.
+
+    **`subtype: country` used to return None here, and a bbox is not a border.** The
+    filter read `subtype != "country"`, so every country AOI with no `source_region`
+    composited its raw bbox with no clip on either the building pass or the label pass.
+    Germany and Pakistan were never exposed (both have a local `boundary.parquet`);
+    France, Zambia and Nigeria all were. Measured on France 2026-09-16: 795 of 6,774
+    composited cells, 11.7%, sit more than 0.1 deg outside the country - the whole
+    lon -5.10 column is Atlantic and Spain, and the 50.0-50.4N band is the Channel and
+    England. The label pass leaks harder than the building pass, because VIDA is already
+    partitioned per country while `<aoi>_overpass_solar.parquet` is a raw bbox pull:
+    only 21.8% of France's is inside France (CLAUDE.md, "A national OSM pull is not
+    national until it is clipped to the border"), and `_solar_label_cells` composites a
+    cell for each of those features. This is the same class of error as that OSM one,
+    one stage earlier.
+
+    The union is **clipped to the configured bbox** before being returned. `populated_cells`
+    derives its grid origin from `boundary.total_bounds`, so a country whose ADM1 set
+    includes overseas territories (Portugal's Azores, Spain's Canaries, France's Guyane)
+    would otherwise move `minx`/`miny` and silently RENAME every cell, orphaning the
+    composites already on disk. Verified not to move any current cell name: FRA/NGA/ZMB
+    ADM1 bounds all snap back to their configured `grid_origin`.
     """
     cands = [f"{aoi}_500", aoi]
     if cfg.get("source_region"):
@@ -55,7 +76,9 @@ def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame |
             return gpd.read_parquet(p).to_crs("EPSG:4326")
     division = cfg.get("division") or {}
     name, iso2, subtype = division.get("name"), division.get("country"), division.get("subtype")
-    if name and iso2 and subtype and subtype != "country":
+    if name and iso2 and subtype:
+        import shapely
+
         from earthpv.buildings import _iso3_for
         from earthpv.density import fetch_geoboundaries  # deferred: density.py imports this module
 
@@ -63,10 +86,27 @@ def _aoi_boundary(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame |
         if iso3:
             adm1 = fetch_geoboundaries(iso3, "ADM1")
             if adm1 is not None:
-                hit = adm1[adm1.name.map(_fold_name) == _fold_name(name)]
-                if not hit.empty:
-                    return hit.reset_index(drop=True)
-                log.warning("geoBoundaries ADM1 for %s has no region named %r; using raw bbox", iso3, name)
+                adm1 = adm1.to_crs("EPSG:4326")
+                if subtype == "country":
+                    geom = adm1.geometry.union_all()
+                else:
+                    hit = adm1[adm1.name.map(_fold_name) == _fold_name(name)]
+                    if hit.empty:
+                        log.warning(
+                            "geoBoundaries ADM1 for %s has no region named %r; using raw bbox",
+                            iso3, name,
+                        )
+                        return None
+                    geom = hit.geometry.union_all()
+                if cfg.get("bbox"):
+                    geom = geom.intersection(shapely.box(*cfg["bbox"]))
+                if geom.is_empty:
+                    log.warning(
+                        "geoBoundaries %s for %s does not intersect the configured bbox; "
+                        "using raw bbox", subtype, iso3,
+                    )
+                    return None
+                return gpd.GeoDataFrame(geometry=[geom], crs="EPSG:4326")
     return None
 
 
