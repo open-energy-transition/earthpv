@@ -261,6 +261,17 @@
     white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
   .comp-seg.texture::after { content: ""; position: absolute; inset: 0; pointer-events: none;
     background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 7px); }
+  /* Ground-mount hatch. Colour in this chart encodes METHOD, which is what the section
+     is about, so two segments of one method (OSM rooftop and OSM ground-mount) came out
+     the same colour and the only way to tell them apart was to hover. The hatch adds
+     PLACEMENT as a second, orthogonal channel without taking the colour away from
+     method. Runs the opposite way to `.texture` above and uses `::before`, so a segment
+     that is both textured and ground-mount shows both rather than one overwriting the
+     other. */
+  .comp-seg.ground::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.30) 0 3px, transparent 3px 8px); }
+  .comp-swatch.placement-ground { background: var(--muted);
+    background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px); }
   .comp-scale { display: flex; justify-content: space-between; font-family: var(--font-mono);
     font-size: 10.5px; color: var(--muted); margin-top: 6px; }
   .comp-tip { position: absolute; pointer-events: none; background: var(--panel);
@@ -1291,29 +1302,29 @@ out geom;</div>
     const comp = (k) => C[k] || {mwp: 0, ci: null};
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
-      { key: "osm_unmatched_roof", method: "osm", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
+      { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
         label: "OSM hand-mapped - rooftop (not already found by the model)" },
-      { key: "osm_unmatched_ground", method: "osm", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
+      { key: "osm_unmatched_ground", method: "osm", placement: "ground", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
         label: "OSM hand-mapped - ground-mount (not already found by the model)" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
         label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)" },
-      { key: "seg_roof_outdomain", method: "seg", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
+      { key: "seg_roof_outdomain", method: "seg", placement: "roof", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
         label: "TerraMind segmentation - rooftop, outside the calibrated domain" },
-      { key: "seg_ground", method: "seg", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
+      { key: "seg_ground", method: "seg", placement: "ground", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
         label: "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)" },
-      { key: "ge400_roof", method: "roofclf", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
+      { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
         label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain" },
-      { key: "small_central", method: "roofclf", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
+      { key: "small_central", method: "roofclf", placement: "roof", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
         label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated" },
-      { key: "small_outdomain", method: "sppi", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
+      { key: "small_outdomain", method: "sppi", placement: "roof", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
         label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain" },
     ];
     const verified = [
-      { key: "osm_roof", method: "osm", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
+      { key: "osm_roof", method: "osm", placement: "roof", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
         label: "OSM hand-mapped - rooftop (all of it, matched or not)" },
-      { key: "osm_ground", method: "osm", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
+      { key: "osm_ground", method: "osm", placement: "ground", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
         label: "OSM hand-mapped - ground-mount (all of it, matched or not)" },
-      { key: "small_low", method: "sppi", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
+      { key: "small_low", method: "sppi", placement: "roof", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
         label: "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain" },
     ];
     return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
@@ -1332,8 +1343,17 @@ out geom;</div>
     stack.innerHTML = rows.map((r, i) => {
       const w = (r.mwp / total * 100).toFixed(3);
       const pct = 100 * r.mwp / total;
-      const label = pct >= labelThresholdPct ? `<div class="comp-seg-label">${pct.toFixed(0)}%</div>` : "";
-      return `<div class="comp-seg${r.texture ? " texture" : ""}" data-i="${i}" `
+      // Name the placement in the bar itself where it fits. The hatch alone says "this is
+      // a different placement" but not which, and a tier is often two OSM segments whose
+      // only other visible difference is their width.
+      const place = r.placement === "ground" ? "Ground" : r.placement === "roof" ? "Roof" : "";
+      // Same threshold as the percentage itself: at the 8% cut a segment is ~90px wide
+      // and "Ground 8%" needs ~65px, so there is no width at which the number fits and
+      // the word does not. A higher bar just left the narrower of two adjacent segments
+      // unnamed, which is exactly the comparison the reader is trying to make.
+      const text = place ? `${place} ${pct.toFixed(0)}%` : `${pct.toFixed(0)}%`;
+      const label = pct >= labelThresholdPct ? `<div class="comp-seg-label">${text}</div>` : "";
+      return `<div class="comp-seg${r.texture ? " texture" : ""}${r.placement === "ground" ? " ground" : ""}" data-i="${i}" `
         + `style="width:${w}%;background:var(--${r.method === "roofclf" ? "accent" : r.method === "seg" ? "large" : r.method === "sppi" ? "extended" : "domain"})">${label}</div>`;
     }).join("");
     stack.querySelectorAll(".comp-seg").forEach(el => {
@@ -1344,6 +1364,7 @@ out geom;</div>
         tip.innerHTML = `<div class="t-title">${COMP_METHOD_META[r.method].name}</div>`
           + `<div class="t-row"><span class="k">MWp</span><span class="v">${fmt(r.mwp)}</span></div>`
           + `<div class="t-row"><span class="k">Share of tier</span><span class="v">${pct.toFixed(1)}%</span></div>`
+          + (r.placement ? `<div class="t-row"><span class="k">Placement</span><span class="v">${r.placement === "ground" ? "Ground-mount" : "Rooftop"}</span></div>` : "")
           + `<div class="t-row"><span class="k">90% CI</span><span class="v">${ciText2}</span></div>`
           + `<div class="t-desc">${r.label}</div>`;
         const wrapRect = el.closest(".comp-stack-wrap").getBoundingClientRect();
@@ -1365,10 +1386,16 @@ out geom;</div>
     document.getElementById("compTitle").innerHTML =
       `Best estimate -- ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
     document.getElementById("compSub").textContent =
-      "Segments grouped by method, in proportion to MWp · hover a segment for detail";
+      "Colour is the method, hatching is ground-mount, width is MWp · hover a segment for detail";
     const shownMethods = new Set([...best, ...verified].map(r => r.method));
-    document.getElementById("compLegend").innerHTML = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
+    let legend = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
       `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}</div>`).join("");
+    // Only claim the hatch means something when something is actually hatched.
+    if ([...best, ...verified].some(r => r.placement === "ground")) {
+      legend += `<div class="comp-legend-item"><span class="comp-swatch placement-ground"></span>`
+        + `Ground-mount (hatched); unhatched is rooftop</div>`;
+    }
+    document.getElementById("compLegend").innerHTML = legend;
     document.getElementById("compVerifiedLabel").textContent =
       `Verified (the floor) - ${fmt(T.mwp_verified)} MWp, for comparison`;
 
