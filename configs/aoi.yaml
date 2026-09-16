@@ -243,6 +243,23 @@ aois:
                 "0062_0051", "0062_0052", "0062_0053", "0062_0054",
                 "0063_0051", "0063_0052", "0063_0053", "0063_0054"]
 
+  # Nigeria national run (2026-09-15). No source_region: chips/compose/labels all come
+  # from the open fetchers (Planetary Computer STAC, live Overpass, VIDA NGA).
+  # compose_window is the NORTHERN-hemisphere dry season, and it is deliberately the
+  # short one: Nigeria spans 4N to 14N, so the Sahel north has a long dry season but the
+  # Niger Delta south has a very short one, and the south is the binding constraint.
+  # Preflight over this window found 6,103 scenes under 40% cloud across 179 MGRS tiles
+  # (median cloud 5%) nationally, but only 214 across the 20 tiles covering the southern
+  # strip (median cloud 28%). Widening to 2025-10-15:2026-04-15 buys just 21 more scenes
+  # there (+10%) for six weeks of extra epoch spread, so the tight window wins.
+  # grid_origin pins the cell grid to the bbox origin so a later targeted quadrat compose
+  # names cells identically to this national one.
+  nigeria:
+    bbox: [2.668, 4.24, 14.68, 13.893]
+    division: { name: Nigeria, country: NG, subtype: country, iso3: NGA }
+    grid_origin: [2.668, 4.24]
+    compose_window: ["2025-11-01", "2026-03-15"]
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]
