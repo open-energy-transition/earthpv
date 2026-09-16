@@ -404,6 +404,60 @@ def cell_manifest(prob_dir: Path, origin: tuple[float, float]) -> gpd.GeoDataFra
     return gpd.GeoDataFrame(man, geometry=geom, crs="EPSG:4326")
 
 
+def clip_manifest_to_boundary(
+    manifest: gpd.GeoDataFrame, aoi: str, cfg: dict, settings: Settings
+) -> gpd.GeoDataFrame:
+    """Drop cells that fall outside the AOI's own boundary.
+
+    `cell_manifest` enumerates whatever probability rasters exist, and `infer` writes one
+    for every composited cell, so anything `compose` built ends up in the capacity total.
+    Until 2026-09-16 `compose._aoi_boundary` returned None for a `subtype: country` AOI
+    with no `source_region`, which meant no border clip on either its building pass or its
+    label pass -- so France, Zambia and Nigeria composited, inferred and then AGGREGATED
+    cells outside the country. Measured on France: 795 of 6,774 cells, 11.7%, more than
+    0.1 deg beyond the border (the whole lon -5.10 column is Atlantic and Spain, and the
+    50.0-50.4N band is the Channel and England).
+
+    Fixing compose stops new foreign cells being built. It does not remove the ones
+    already on disk, and those are deliberately being kept for a future Europe-wide map,
+    so the clip has to happen here too or a country's own total keeps counting its
+    neighbours. This is the same class of error as the national OSM pulls that were only
+    clipped to their borders on 2026-09-15 (CLAUDE.md, "A national OSM pull is not
+    national until it is clipped to the border"), two stages further down.
+
+    **`intersects`, not centroid-within.** A cell straddling the border holds real
+    capacity on this side of it, and dropping it would understate a coastal or frontier
+    province. The region join downstream is centroid-based, so a half-in cell contributes
+    to the national grid without being claimed by a province -- the conservative pairing.
+
+    A no-op where `_aoi_boundary` yields nothing (it then logs and keeps every cell),
+    so an AOI whose boundary lookup fails degrades to the old behaviour rather than
+    silently emptying its grid.
+    """
+    boundary = _aoi_boundary(aoi, cfg, settings)
+    if boundary is None:
+        log.warning(
+            "No boundary for '%s' -> density cannot clip foreign cells; every inferred "
+            "cell is counted, including any outside the country", aoi,
+        )
+        return manifest
+    import shapely
+
+    keep = shapely.intersects(boundary.geometry.union_all(), manifest.geometry.values)
+    n_drop = int((~keep).sum())
+    if n_drop:
+        log.info(
+            "Boundary clip: dropped %d of %d cells outside %s (%.1f%%); %d remain",
+            n_drop, len(manifest), aoi, 100.0 * n_drop / len(manifest), int(keep.sum()),
+        )
+    if not keep.any():
+        raise ValueError(
+            f"Boundary clip removed every cell for '{aoi}'. The boundary and the cell grid "
+            "disagree -- check division.iso3 and grid_origin before re-running."
+        )
+    return manifest[keep].reset_index(drop=True)
+
+
 # --------------------------------------------------------------------------------------
 # Per-cell zonal statistics
 # --------------------------------------------------------------------------------------
@@ -1407,6 +1461,7 @@ def run_density(
 
     origin = _grid_origin(aoi, cfg, settings)
     manifest = cell_manifest(prob_dir, origin)
+    manifest = clip_manifest_to_boundary(manifest, aoi, cfg, settings)
     if limit:
         manifest = manifest.head(limit)
     log.info("Processing %d cells for %s (iso3=%s)", len(manifest), aoi, iso3)
