@@ -4,11 +4,20 @@ hide:
 ---
 # earthpv
 
-<div class="hero" markdown>
+<div class="hero hero--lockup" markdown>
+
+<div class="hero-mark" markdown="0">
+  <img src="assets/figures/earthpv-logo-mark.png#only-light" alt="" width="512" height="512">
+  <img src="assets/figures/earthpv-logo-mark-white.png#only-dark" alt="" width="512" height="512">
+</div>
+
+<div class="hero-copy" markdown>
 
 **The mission of EarthPV is to provide cost-effective, verifiable, open data on
 photovoltaic (PV) capacity, growth and orientation for every country worldwide.**
 { .lede }
+
+</div>
 
 </div>
 

@@ -216,12 +216,98 @@
   width: auto;
 }
 
-/* Hero logo on the home page: sits above the lede, swaps with the colour scheme. */
-.hero-logo {
+/* Hero lockup on the home page: the mark sits inside the hero card beside the lede,
+   lit by the same amber radial glow the atlases use for a bright cell. That glow is the
+   one piece of the night-lights system the chrome had not picked up anywhere, and the
+   mark earns it -- the glyph is a figure holding a solar panel with a sun beside it, so
+   the light reads as coming off the sun rather than as decoration.
+
+   Two files rather than a CSS filter: `derive_logo` in scripts/build_docs_figures.py
+   already emits a white variant from the same alpha channel, and Material's
+   `#only-light` / `#only-dark` suffixes swap them on the colour scheme. Inverting the
+   black mark with `filter` would also invert the glow behind it. */
+.hero-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* The glow is a sibling layer, not a box-shadow, so it can bleed past the mark's own
+   bounds the way a light source does. */
+.hero-mark::before {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 58% 34%,
+    rgba(245, 166, 35, 0.34) 0%,
+    rgba(245, 166, 35, 0.16) 38%,
+    rgba(245, 166, 35, 0) 70%);
+  z-index: 0;
+}
+
+[data-md-color-scheme="default"] .hero-mark::before {
+  /* Burnt orange at lower alpha: the light scheme's panel is cream, and the dark
+     scheme's amber at full strength reads as a stain on it rather than as light. */
+  background: radial-gradient(circle at 58% 34%,
+    rgba(194, 94, 18, 0.18) 0%,
+    rgba(194, 94, 18, 0.08) 40%,
+    rgba(194, 94, 18, 0) 70%);
+}
+
+.hero-mark img {
+  position: relative;
+  z-index: 1;
   display: block;
-  width: 84px;
+  width: 104px;
   height: auto;
-  margin: 0 0 1rem;
+}
+
+/* Slow, low-amplitude breathing, so the page has a pulse without anything moving.
+   Gated on `prefers-reduced-motion`, which is not only an accessibility default here:
+   scripts/screenshot_pages.py pins `ui.prefersReducedMotion` precisely so a render
+   cannot catch an animation mid-state, the same trap the atlas count-up already set. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-mark::before {
+    animation: hero-glow 7s ease-in-out infinite;
+  }
+}
+
+@keyframes hero-glow {
+  0%, 100% { opacity: 0.75; transform: scale(0.97); }
+  50%      { opacity: 1;    transform: scale(1.03); }
+}
+
+.hero--lockup {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.hero--lockup .hero-copy {
+  min-width: 0;
+}
+
+.hero--lockup .hero-copy > :first-child {
+  margin-top: 0;
+}
+
+.hero--lockup .hero-copy > :last-child {
+  margin-bottom: 0;
+}
+
+/* Stack below Material's own phone breakpoint: side by side, the lede drops to about
+   fifteen characters a line on a 400px screen. */
+@media screen and (max-width: 44.9375em) {
+  .hero--lockup {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .hero-mark img {
+    width: 84px;
+  }
 }
 
 /* --------------------------------------------------------- typographic details */
