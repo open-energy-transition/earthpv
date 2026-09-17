@@ -13,21 +13,16 @@ hide:
   <a href="../atlas-france/">France</a>
   <a href="../atlas-zambia/">Zambia</a>
   <span class="atlas-switch__note">
-    <b>Verified</b> is the hand-mapped OpenStreetMap population alone. <b>Best</b> adds three
-    things to it: the model's own &ge; 400 m&sup2; detections, a register-calibrated estimate
-    of everything below that floor, and the mapped installations the model did not itself find.
-    The sub-400 m&sup2; part is the largest of the three, and it is a
-    <b>statistical estimate, not a detection</b>: roof area in the 200-400 m&sup2; band priced
-    at 0.03493 kWp/m&sup2; against MaStR, with no classifier. It replaced a roofclf component
-    measured as worse than a plain roof-area baseline (48.4% against 37.8% median municipal
-    error; this estimator scores 35.6%). Because a regression has no second detector to agree
-    with, Verified carries no sub-400 component &mdash; which is why the two tiers are so far
-    apart here, and why Verified alone excludes the 65.5% of German rooftop capacity sitting
-    below the floor.
-    Both tiers now also count hand-mapped installations outside the composited grid, in cells
-    with no imagery and no inference of their own.
-    <b>Read the tiers as geography, not capacity</b> &mdash; they fail their own register
-    check, because German OpenStreetMap polygons outline roofs and sites rather than arrays.
+    <b>Verified</b> counts only the installations people have mapped by hand in
+    OpenStreetMap. <b>Best</b> adds three things: the model's own detections of arrays
+    above 400 m&sup2;, an estimate of the many smaller rooftop systems below that size,
+    and mapped installations the model missed. That estimate of the small systems is the
+    largest of the three, and it is <b>calculated from roof area, not detected</b>, which
+    is most of why the two numbers sit so far apart. Nearly two thirds of Germany's
+    rooftop capacity is in systems too small for the model to see.
+    <b>Read the map as geography rather than capacity.</b> Both totals fail a check
+    against Germany's national register, because German OpenStreetMap tends to outline
+    whole roofs and sites instead of the panels themselves.
     <a href="../results/germany/">What was measured, and how</a>.
   </span>
 </nav>
