@@ -123,6 +123,18 @@ h1 {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 7px);
 }
+/* Ground-mount hatch. Colour encodes METHOD, so two segments of one method (a tier's
+   OSM rooftop and OSM ground-mount) came out identical and the split was only
+   discoverable by hovering. Runs opposite to `.texture` and uses ::before, so the
+   floor-correction segment (textured, no placement) shows both rather than one
+   overwriting the other. Matches the evidence atlas, fixed the same way. */
+.seg.ground::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.30) 0 3px, transparent 3px 8px);
+}
+.legend-swatch.placement-ground {
+  background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px);
+}
 .stack-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 
 .tooltip {
@@ -183,7 +195,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
 
     <div class="card">
       <h2 id="bestTitle">Best estimate</h2>
-      <p class="card-sub">Segments grouped by method, in proportion to MWp &middot; hover a segment for detail</p>
+      <p class="card-sub">Colour is the method, hatching is ground-mount, width is MWp &middot; hover a segment for detail</p>
       <div class="legend" id="legendBest"></div>
       <div class="stack-wrap" id="stackWrapBest">
         <div class="stack" id="stackBest"></div>
@@ -324,10 +336,16 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
   `).join('');
 
   // ---- Legends ----
-  function renderLegend(elId, methods) {
-    document.getElementById(elId).innerHTML = methods.map((m) => `
+  function renderLegend(elId, methods, rows) {
+    let html = methods.map((m) => `
       <div class="legend-item"><span class="legend-swatch" style="background:${color(m)}"></span>${DATA.method_meta[m].name}</div>
     `).join('');
+    // Only claim the hatch means something when this tier actually has a hatched row.
+    if ((rows || []).some((r) => r.placement === 'ground')) {
+      html += `<div class="legend-item"><span class="legend-swatch placement-ground"
+        style="background-color:var(--text-muted)"></span>Ground-mount (hatched); unhatched is rooftop</div>`;
+    }
+    document.getElementById(elId).innerHTML = html;
   }
   // Counted from the rows the atlas actually published: an optional component it was
   // built without (the out-of-domain extrapolation, say) must not be announced here.
@@ -335,8 +353,8 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
   document.getElementById('bestTitle').textContent =
     `Best estimate - ${DATA.best_rows.length} components, ${bestMethods.size} `
     + `method${bestMethods.size === 1 ? '' : 's'}`;
-  renderLegend('legendBest', DATA.method_order.filter((m) => bestMethods.has(m)));
-  renderLegend('legendVerified', ['osm', 'sppi']);
+  renderLegend('legendBest', DATA.method_order.filter((m) => bestMethods.has(m)), DATA.best_rows);
+  renderLegend('legendVerified', ['osm', 'sppi'], DATA.verified_rows);
 
   // ---- Stacked bars ----
   function renderStack(stackId, tooltipId, rows, total, labelThresholdPct) {
@@ -345,9 +363,14 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     stack.innerHTML = rows.map((r, i) => {
       const w = (r.mwp / total * 100).toFixed(3);
       const texture = r.key === 'floor_offset' ? ' texture' : '';
+      const ground = r.placement === 'ground' ? ' ground' : '';
+      // Name the placement in the bar. The hatch says "a different placement", not which,
+      // and the comparison the reader wants is between two adjacent same-colour segments.
+      const place = r.placement === 'ground' ? 'Ground' : r.placement === 'roof' ? 'Roof' : '';
+      const text = place ? `${place} ${pct(r.pct)}` : pct(r.pct);
       const label = r.pct >= labelThresholdPct
-        ? `<div class="seg-label">${pct(r.pct)}</div>` : '';
-      return `<div class="seg${texture}" data-i="${i}" style="width:${w}%;background:${color(r.method)}">${label}</div>`;
+        ? `<div class="seg-label">${text}</div>` : '';
+      return `<div class="seg${texture}${ground}" data-i="${i}" style="width:${w}%;background:${color(r.method)}">${label}</div>`;
     }).join('');
 
     stack.querySelectorAll('.seg').forEach((el) => {
@@ -358,6 +381,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
           <div class="t-title">${DATA.method_meta[r.method].name}</div>
           <div class="t-row"><span class="k">MWp</span><span class="v mono">${fmt1(r.mwp)}</span></div>
           <div class="t-row"><span class="k">Share of tier</span><span class="v mono">${pct(r.pct)}</span></div>
+          ${r.placement ? `<div class="t-row"><span class="k">Placement</span><span class="v mono">${r.placement === 'ground' ? 'Ground-mount' : 'Rooftop'}</span></div>` : ''}
           <div class="t-row"><span class="k">90% CI</span><span class="v mono">${ciText}</span></div>
           <div class="t-desc">${r.label}</div>
         `;

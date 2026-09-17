@@ -44,6 +44,19 @@ METHOD = {
 }
 VERIFIED_METHOD = {"osm_roof": "osm", "osm_ground": "osm", "small_low": "sppi"}
 
+# Placement, carried alongside the method so the page can encode it separately. Colour
+# here means METHOD, so the two OSM rows of a tier (rooftop and ground-mount) drew in one
+# colour and the split was invisible -- Pakistan's Verified tier is 19% rooftop against
+# 37% ground-mount, and the page said only "24%" and "76%". The atlas itself was fixed
+# 2026-09-16; this is the standalone breakdown it links to as "Full breakdown".
+# `floor_offset` is a per-cell correction spanning both placements, so it has none.
+PLACEMENT = {
+    "osm_unmatched_roof": "roof", "osm_unmatched_ground": "ground", "floor_offset": None,
+    "seg_roof_outdomain": "roof", "seg_ground": "ground",
+    "ge400_roof": "roof", "small_central": "roof", "small_outdomain": "roof",
+    "osm_roof": "roof", "osm_ground": "ground", "small_low": "roof",
+}
+
 LABEL = {
     "osm_unmatched_roof": "OSM hand-mapped - rooftop (not already found by the model)",
     "osm_unmatched_ground": "OSM hand-mapped - ground-mount (not already found by the model)",
@@ -110,7 +123,7 @@ def build_rows(totals: dict) -> tuple[list[dict], list[dict]]:
         else:
             mwp, ci = comp[k]["mwp"], comp[k]["ci"]
         best_rows.append({
-            "key": k, "label": LABEL[k], "method": METHOD[k],
+            "key": k, "label": LABEL[k], "method": METHOD[k], "placement": PLACEMENT[k],
             "mwp": mwp, "ci": ci, "pct": 100 * mwp / best_total,
         })
 
@@ -119,7 +132,7 @@ def build_rows(totals: dict) -> tuple[list[dict], list[dict]]:
     for k in verified_keys:
         mwp, ci = comp[k]["mwp"], comp[k]["ci"]
         verified_rows.append({
-            "key": k, "label": LABEL[k], "method": VERIFIED_METHOD[k],
+            "key": k, "label": LABEL[k], "method": VERIFIED_METHOD[k], "placement": PLACEMENT[k],
             "mwp": mwp, "ci": ci, "pct": 100 * mwp / verified_total,
         })
 
