@@ -168,6 +168,9 @@
     letter-spacing: 0.03em; flex: none; }
 
   .legend-keys { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  /* `.legend-keys > div` sets an explicit display, which beats the `hidden` attribute's
+     default `display:none` -- so a key hidden in JS stayed visible. This restores it. */
+  .legend-keys > [hidden] { display: none !important; }
   .legend-keys > div, .legend-keys > button { display: flex; align-items: flex-start; gap: 6px;
     font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
   /* The two outline overlays are opt-in (both start off), so their legend entries are
@@ -194,6 +197,11 @@
   #domainKey { margin-left: -2ch; }
   .legend .extended-key .sw { width: 13px; height: 13px; margin-top: 1px;
     border: 2px dotted var(--extended); border-radius: 3px; }
+  /* Ring key for the hand-mapped OSM overlay. The map draws a `.large-dot` circle on
+     every cell carrying mapped capacity, sized by sqrt(MWp), and until 2026-09-17 nothing
+     in the legend said so -- a whole second data layer over the choropleth, unexplained. */
+  .legend .osm-ring-key .sw { width: 11px; height: 11px; margin-top: 2px; border-radius: 50%;
+    background: none; border: 1.6px solid var(--large); box-sizing: border-box; flex: none; }
   .legend .calib-key .sw { width: 11px; height: 11px; margin-top: 2px; border-radius: 50%;
     background: var(--domain); }
 
@@ -529,7 +537,10 @@
                 <line class="eye-slash" x1="4.2" y1="19.8" x2="19.8" y2="4.2"/>
               </svg>
             </button>
-            <div class="calib-key">
+            <div class="osm-ring-key" id="osmRingKey">
+              <span class="sw"></span>hand-mapped OpenStreetMap capacity (ring grows with MWp)
+            </div>
+            <div class="calib-key" id="calibKey">
               <span class="sw"></span>hand-checked calibration area (hover for detail)
             </div>
           </div>
@@ -1074,7 +1085,16 @@ out geom;</div>
     placeCityLabels(gCity, DATA.cities, proj, [b0, b1, b2, b3]);
     svg.appendChild(gCity);
 
-    if (DATA.calibBoxes && DATA.calibBoxes.length){
+    // Only advertise a key for a layer this atlas actually draws. Germany, France and
+    // Zambia have no calibration quadrats at all, and were promising the reader a symbol
+    // that is nowhere on their maps.
+    const hasCalib = !!(DATA.calibBoxes && DATA.calibBoxes.length);
+    const hasOsmRings = DATA.cells.some(c => c[OSM_IDX] > 0);
+    const calibKeyEl = document.getElementById("calibKey");
+    const osmKeyEl = document.getElementById("osmRingKey");
+    if (calibKeyEl) calibKeyEl.hidden = !hasCalib;
+    if (osmKeyEl) osmKeyEl.hidden = !hasOsmRings;
+    if (hasCalib){
       const gCalib = el("g", {class:"calib-group"});
       for (const b of DATA.calibBoxes){
         if (b.lon < b0 || b.lon > b2 || b.lat < b1 || b.lat > b3) continue;
