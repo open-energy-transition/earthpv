@@ -47,6 +47,7 @@ see [Open questions](open-questions.md).
 | [Size-dependent OSM rooftop conversion](results/germany.md#reconciling-in-grid-osm-the-overstatement-was-rooftop-not-ground) | <span class="outcome works">shipped</span> | Ground reconciled at 0.91; rooftop was 2.5x over because large polygons are roof outlines (0.051 kWp/m<sup>2</sup>) not arrays (0.200). Germany Verified 38,508 -> 25,921 MWp. |
 | [RID as a control on the size relationship](results/germany.md#the-estimator-that-finally-beats-the-baseline-and-what-rid-corrected-about-it) | <span class="outcome mixed">partial</span> | Exhaustive labels confirm the band but refute the mechanism, and price OSM's size bias at +0.729 against a true +0.349. |
 | [OpenPVMapper as an external reference](results/france.md) | <span class="outcome mixed">partial</span> | 91% of the register's sub-72 kWp capacity, but 0.67 recall against hand-mapped truth and a model output throughout. |
+| [SPPI alone as Germany's sub-400 estimator](#sppi-alone-as-germanys-sub-400-estimator-2026-09-18) | <span class="outcome negative">rejected</span> | Orders German roofs better than the trained classifier does (33.7% against 36.8% municipal error) and still loses to crediting roof area with no classifier at all (31.2%). |
 | Dividing register p_unmapped by an OSM positive control | <span class="outcome negative">rejected</span> | The control is contaminated by the same sub-30 kWp coordinate suppression it was meant to absorb. |
 | OSM geometry dissolve and closest-match dedup | <span class="outcome works">shipped</span> | Nested `plant`/`generator` ways were double-counting real installations. |
 | Recall correction and credible intervals | <span class="outcome works">shipped</span> | Turned a structural floor into an estimate with a stated interval. |
@@ -647,6 +648,52 @@ learning to distrust one tiny neighbourhood of feature space at the expense of e
 else. No factor tested threads that needle. The fix this actually recommends is mining more
 examples of the same bright-roof pattern nationally, for which no roofclf-side mining tool
 exists yet.
+
+### SPPI alone as Germany's sub-400 estimator (2026-09-18)
+
+Germany's published sub-400 m<sup>2</sup> half uses no classifier: it prices roof area in the
+200-400 m<sup>2</sup> band at a register-fitted constant, because that beat both `roofclf` and
+total roof area. The obvious thing left untried was the other detector. SPPI is a
+zero-training spectral index, it is already computed for every scored German building, and it
+is the corroborating half of Pakistan's AND-gate, so if any classifier were going to help
+here it is the one that needs no labels.
+
+It does not. All four estimators below were run through
+`scripts/validate_sub400_against_mastr.py` on identical data, the same cells, the same
+municipalities and the same five-fold cross-validation, with only the weighting changed:
+
+| estimator | Gemeinden | median municipal error | best stratified | Spearman | slope |
+| --- | --- | --- | --- | --- | --- |
+| roof area only (published) | 10,589 | **31.2%** | 28.8% | 0.942 | 0.888 |
+| SPPI percentile rank | 10,588 | 33.7% | 31.0% | 0.922 | 0.845 |
+| roofclf probability | 10,005 | 36.8% | 34.9% | 0.855 | 0.333 |
+| SPPI top decile | 10,209 | 49.9% | 48.8% | 0.824 | 0.498 |
+
+Two formulations, because SPPI is a spectral index in roughly [-2.6, 0.07] rather than a
+probability and cannot be multiplied in raw. **Percentile rank** weights each roof by where
+its SPPI falls in the national distribution, the analogue of probability weighting.
+**Top decile** credits only roofs above the 90th percentile, the analogue of thresholding and
+the way SPPI is used in Pakistan's AND-gate.
+
+The interesting half of the result is that SPPI ranks German roofs *better than the trained
+classifier does*, on both error and slope, while needing no labels at all. The decisive half
+is that neither beats doing nothing. This is the same finding as the roof-area baseline, from
+a third direction: where PV is near-ubiquitous, capacity is close to proportional to roof area
+by construction, so an instrument that concentrates credit on a subset discards more real
+capacity than it correctly withholds. Thresholding is worst precisely because it discards the
+most.
+
+The baselines here read 31.2% and 36.8% where
+[Germany's page](results/germany.md) records 35.4% and 48.4%, because the grid was rebuilt
+without the building-density filter (4,871 cells against 4,657) after those were measured.
+The ordering is unchanged and the within-run comparison is what the table is for.
+
+**A NaN trap worth recording**, because it produced a confident wrong answer rather than an
+error. The first top-decile run reported zero municipalities and zero capacity. 2,660 of
+6.2M buildings, 0.043%, carry no SPPI value; `np.quantile` returns NaN if any input is NaN,
+and `x >= NaN` is False for every row, so the threshold flagged nothing and the harness
+dutifully reported zeros all the way through. The harness is now NaN-safe and logs how many
+buildings lack a value.
 
 ## The partial result worth watching
 

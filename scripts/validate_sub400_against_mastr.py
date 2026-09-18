@@ -40,8 +40,18 @@ log = logging.getLogger("sub400-mastr")
 EQ_AREA = "EPSG:3035"
 
 
-def load_scored(prob_dir: Path, threshold: float | None) -> gpd.GeoDataFrame:
+def load_scored(prob_dir: Path, threshold: float | None,
+                min_roof_m2: float | None = None, max_roof_m2: float | None = None,
+                want_sppi: bool = False) -> gpd.GeoDataFrame:
+    """Scored buildings, optionally restricted to a roof-area band.
+
+    The band filter is applied PER FILE, before concatenating. Loading every German
+    building at once is the documented 22.7 GB OOM (CLAUDE.md, "Anything that loads every
+    scored building at once will OOM"); restricting to 200-400 m2 on the way in keeps a
+    band run well inside memory and changes nothing about the result.
+    """
     parts = []
+    cols = ["geometry", "roof_area_m2", "p_roofclf"] + (["sppi"] if want_sppi else [])
     for f in sorted(prob_dir.glob("*.parquet")):
         try:
             g = gpd.read_parquet(f)
@@ -49,7 +59,16 @@ def load_scored(prob_dir: Path, threshold: float | None) -> gpd.GeoDataFrame:
             continue
         if len(g) == 0 or "p_roofclf" not in g.columns:
             continue
-        parts.append(g[["geometry", "roof_area_m2", "p_roofclf"]])
+        if want_sppi and "sppi" not in g.columns:
+            raise SystemExit(f"{f} has no `sppi` column; this scoring pass cannot be "
+                             "used for an SPPI weighting")
+        if min_roof_m2 is not None:
+            g = g[g.roof_area_m2 >= min_roof_m2]
+        if max_roof_m2 is not None:
+            g = g[g.roof_area_m2 < max_roof_m2]
+        if len(g) == 0:
+            continue
+        parts.append(g[cols])
     if not parts:
         raise SystemExit(f"no scored cells under {prob_dir}")
     g = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=parts[0].crs)
@@ -78,10 +97,25 @@ def main() -> None:
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--seed", type=int, default=20260913)
     ap.add_argument("--label", default="vida")
-    ap.add_argument("--weight", choices=["prob", "threshold"], default="prob",
+    ap.add_argument("--weight",
+                    choices=["prob", "threshold", "area", "sppi_rank", "sppi_threshold"],
+                    default="prob",
                     help="prob weights each roof by p_roofclf (no threshold needed, the "
                          "analogue of density.py's est_mwp_exp); threshold counts roofs "
-                         "above --threshold, the analogue of est_mwp_det")
+                         "above --threshold, the analogue of est_mwp_det; area credits "
+                         "every roof's full area with NO classifier at all (the baseline "
+                         "the published German half uses); sppi_rank weights each roof by "
+                         "the percentile rank of its SPPI within the scored population "
+                         "(SPPI is a spectral index in roughly [-0.55, 0.07], not a "
+                         "probability, so it cannot be multiplied in raw); sppi_threshold "
+                         "counts roofs in SPPI's top --sppi-decile fraction")
+    ap.add_argument("--min-roof-m2", type=float, default=None,
+                    help="restrict to roofs at or above this area, applied per file on load")
+    ap.add_argument("--max-roof-m2", type=float, default=None,
+                    help="restrict to roofs below this area; 200/400 reproduces the band "
+                         "the published German sub-400 estimator prices")
+    ap.add_argument("--sppi-decile", type=float, default=0.9,
+                    help="sppi_threshold only: quantile of SPPI above which a roof counts")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -104,8 +138,32 @@ def main() -> None:
     else:
         log.info("deployment threshold: %.4f", thr)
 
-    scored = load_scored(Path(args.prob_dir), thr if args.weight == "threshold" else None
-                         ).to_crs(EQ_AREA)
+    want_sppi = args.weight.startswith("sppi")
+    scored = load_scored(Path(args.prob_dir),
+                         thr if args.weight == "threshold" else None,
+                         args.min_roof_m2, args.max_roof_m2, want_sppi).to_crs(EQ_AREA)
+    if want_sppi:
+        # Rank within the scored population: SPPI is an index, not a probability, and its
+        # absolute value carries no calibration. The fitted ratio absorbs the scale either
+        # way, so what is being tested is whether SPPI ORDERS roofs usefully.
+        s = scored.sppi.to_numpy()
+        # NaN-safe throughout. Measured on the German band: 34 NaN SPPI values in 313,264
+        # buildings, 0.011% -- enough for np.quantile to return NaN, and `x >= NaN` is
+        # False for EVERY row, so the first threshold run flagged nothing at all and
+        # reported n_gemeinden=0 rather than failing. A NaN roof is not evidence of PV,
+        # so it ranks and flags as absent rather than being dropped.
+        n_nan = int(np.isnan(s).sum())
+        if n_nan:
+            log.info("SPPI: %d of %d buildings have no value (%.3f%%); treated as absent",
+                     n_nan, len(s), 100 * n_nan / len(s))
+        scored["sppi_rank"] = pd.Series(s).rank(pct=True).fillna(0.0).to_numpy()
+        s_thr = float(np.nanquantile(s, args.sppi_decile))
+        scored["flagged"] = (scored.sppi >= s_thr).fillna(False)
+        log.info("SPPI: median %.4f, p90 %.4f, threshold(q=%.2f) %.4f, flagged %d (%.1f%%)",
+                 float(np.nanmedian(s)), float(np.nanquantile(s, 0.9)), args.sppi_decile, s_thr,
+                 int(scored.flagged.sum()), 100 * float(scored.flagged.mean()))
+    elif args.weight == "area":
+        scored["flagged"] = True
     grid = gpd.read_parquet(args.grid).to_crs(EQ_AREA)
     done = {p.stem for p in Path(args.prob_dir).glob("*.parquet")}
     grid = grid[grid.cell.isin(done)]
@@ -125,11 +183,21 @@ def main() -> None:
     if len(keep) < 50:
         raise SystemExit("too few fully covered Gemeinden for a cross-validated fit")
 
+    keep_cols = ["geometry", "roof_area_m2", "p_roofclf", "flagged"]
+    if want_sppi:
+        keep_cols += ["sppi", "sppi_rank"]
+    scored = scored[[c for c in keep_cols if c in scored.columns]]
     j = gpd.sjoin(scored, keep[["ags", "geometry"]], how="inner", predicate="within")
     # The estimator's input: roof area credited to PV, either probability-weighted or
     # thresholded. Everything downstream is identical between the two.
-    j["credited_m2"] = (j.roof_area_m2 * j.p_roofclf if args.weight == "prob"
-                        else j.roof_area_m2 * j.flagged.astype(float))
+    if args.weight == "prob":
+        j["credited_m2"] = j.roof_area_m2 * j.p_roofclf
+    elif args.weight == "area":
+        j["credited_m2"] = j.roof_area_m2
+    elif args.weight == "sppi_rank":
+        j["credited_m2"] = j.roof_area_m2 * j.sppi_rank
+    else:  # threshold, sppi_threshold
+        j["credited_m2"] = j.roof_area_m2 * j.flagged.astype(float)
     agg = j.groupby("ags").agg(
         flagged_roof_m2=("credited_m2", "sum"),
         all_roof_m2=("roof_area_m2", "sum"),
