@@ -1,6 +1,6 @@
 aoi: france
 status: interim-mapped-only
-derived: '2026-09-11'
+derived: '2026-09-17'
 min_distance_m: 100.0
 false_floor: 0.087
 false_n: 69
@@ -20,9 +20,9 @@ bin_edges_m2:
 - 50000.0
 bins:
 - label: <100
-  n_candidates: 663
-  n_mapped: 119
-  mapped_frac: 0.1795
+  n_candidates: 806
+  n_mapped: 149
+  mapped_frac: 0.1849
   sensitivity: 0.025
   sensitivity_source: study
   sensitivity_study: 0.025
@@ -38,13 +38,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.1795
-  p_real_lo: 0.156
-  p_real_hi: 0.204
+  p_real: 0.1849
+  p_real_lo: 0.1631
+  p_real_hi: 0.2073
 - label: 100-500
-  n_candidates: 8240
-  n_mapped: 1197
-  mapped_frac: 0.1453
+  n_candidates: 9956
+  n_mapped: 1362
+  mapped_frac: 0.1368
   sensitivity: 0.088
   sensitivity_source: study
   sensitivity_study: 0.088
@@ -60,13 +60,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.1453
-  p_real_lo: 0.1389
-  p_real_hi: 0.1515
+  p_real: 0.1368
+  p_real_lo: 0.1312
+  p_real_hi: 0.1423
 - label: 500-1k
-  n_candidates: 7179
-  n_mapped: 1815
-  mapped_frac: 0.2528
+  n_candidates: 8539
+  n_mapped: 2022
+  mapped_frac: 0.2368
   sensitivity: 0.162
   sensitivity_source: study
   sensitivity_study: 0.162
@@ -82,13 +82,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.2528
-  p_real_lo: 0.2445
-  p_real_hi: 0.2613
+  p_real: 0.2368
+  p_real_lo: 0.2293
+  p_real_hi: 0.2444
 - label: 1k-5k
-  n_candidates: 18724
-  n_mapped: 1854
-  mapped_frac: 0.099
+  n_candidates: 22942
+  n_mapped: 2185
+  mapped_frac: 0.0952
   sensitivity: 0.306
   sensitivity_source: study
   sensitivity_study: 0.306
@@ -104,13 +104,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.099
-  p_real_lo: 0.0955
-  p_real_hi: 0.1026
+  p_real: 0.0952
+  p_real_lo: 0.0921
+  p_real_hi: 0.0985
 - label: 5k-50k
-  n_candidates: 3688
-  n_mapped: 524
-  mapped_frac: 0.1421
+  n_candidates: 5421
+  n_mapped: 921
+  mapped_frac: 0.1699
   sensitivity: 0.293
   sensitivity_source: study
   sensitivity_study: 0.293
@@ -126,13 +126,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.1421
-  p_real_lo: 0.1326
-  p_real_hi: 0.1519
+  p_real: 0.1699
+  p_real_lo: 0.1614
+  p_real_hi: 0.1786
 - label: '>50k'
-  n_candidates: 876
-  n_mapped: 773
-  mapped_frac: 0.8824
+  n_candidates: 1334
+  n_mapped: 1188
+  mapped_frac: 0.8906
   sensitivity: 0.261
   sensitivity_source: study
   sensitivity_study: 0.261
@@ -148,9 +148,9 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.8824
-  p_real_lo: 0.8641
-  p_real_hi: 0.8995
+  p_real: 0.8906
+  p_real_lo: 0.8762
+  p_real_hi: 0.904
 provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from manual
   review of unmapped candidates where sampled (n>=20), else glint inversion p_u(b)
   = clip((v_b - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed
@@ -168,195 +168,195 @@ provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from 
 placement_bins:
   rooftop:
   - label: <100
-    n_candidates: 267
-    n_mapped: 87
-    mapped_frac: 0.3258
+    n_candidates: 269
+    n_mapped: 86
+    mapped_frac: 0.3197
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.3258
+    p_real: 0.3197
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.025
-    p_real_lo: 0.2803
-    p_real_hi: 0.3742
+    p_real_lo: 0.2747
+    p_real_hi: 0.368
   - label: 100-500
-    n_candidates: 4019
-    n_mapped: 739
-    mapped_frac: 0.1839
+    n_candidates: 4073
+    n_mapped: 750
+    mapped_frac: 0.1841
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.1839
+    p_real: 0.1841
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.088
-    p_real_lo: 0.1741
-    p_real_hi: 0.1941
+    p_real_lo: 0.1744
+    p_real_hi: 0.1943
   - label: 500-1k
-    n_candidates: 3908
-    n_mapped: 1091
-    mapped_frac: 0.2792
+    n_candidates: 3981
+    n_mapped: 1122
+    mapped_frac: 0.2818
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.2792
+    p_real: 0.2818
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.162
-    p_real_lo: 0.2677
-    p_real_hi: 0.291
+    p_real_lo: 0.2705
+    p_real_hi: 0.2936
   - label: 1k-5k
-    n_candidates: 10139
-    n_mapped: 873
-    mapped_frac: 0.0861
+    n_candidates: 10322
+    n_mapped: 895
+    mapped_frac: 0.0867
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.0861
+    p_real: 0.0867
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.306
-    p_real_lo: 0.0816
-    p_real_hi: 0.0909
+    p_real_lo: 0.0822
+    p_real_hi: 0.0915
   - label: 5k-50k
-    n_candidates: 1500
-    n_mapped: 70
-    mapped_frac: 0.0467
+    n_candidates: 1525
+    n_mapped: 72
+    mapped_frac: 0.0472
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.0467
+    p_real: 0.0472
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.293
-    p_real_lo: 0.0386
-    p_real_hi: 0.056
+    p_real_lo: 0.0392
+    p_real_hi: 0.0565
   - label: '>50k'
-    n_candidates: 29
-    n_mapped: 12
-    mapped_frac: 0.4138
+    n_candidates: 30
+    n_mapped: 13
+    mapped_frac: 0.4333
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.4138
+    p_real: 0.4333
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.261
-    p_real_lo: 0.27
-    p_real_hi: 0.5651
+    p_real_lo: 0.2916
+    p_real_hi: 0.5806
   ground:
   - label: <100
-    n_candidates: 396
-    n_mapped: 13
-    mapped_frac: 0.0328
+    n_candidates: 537
+    n_mapped: 28
+    mapped_frac: 0.0521
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0328
+    p_real: 0.0521
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.025
-    p_real_lo: 0.0206
-    p_real_hi: 0.0502
+    p_real_lo: 0.0382
+    p_real_hi: 0.0697
   - label: 100-500
-    n_candidates: 4221
-    n_mapped: 173
-    mapped_frac: 0.041
+    n_candidates: 5883
+    n_mapped: 231
+    mapped_frac: 0.0393
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.041
+    p_real: 0.0393
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.088
-    p_real_lo: 0.0363
-    p_real_hi: 0.0461
+    p_real_lo: 0.0353
+    p_real_hi: 0.0435
   - label: 500-1k
-    n_candidates: 3271
-    n_mapped: 259
-    mapped_frac: 0.0792
+    n_candidates: 4558
+    n_mapped: 315
+    mapped_frac: 0.0691
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0792
+    p_real: 0.0691
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.162
-    p_real_lo: 0.0719
-    p_real_hi: 0.0872
+    p_real_lo: 0.0633
+    p_real_hi: 0.0755
   - label: 1k-5k
-    n_candidates: 8585
-    n_mapped: 365
-    mapped_frac: 0.0425
+    n_candidates: 12620
+    n_mapped: 501
+    mapped_frac: 0.0397
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0425
+    p_real: 0.0397
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.306
-    p_real_lo: 0.039
-    p_real_hi: 0.0462
+    p_real_lo: 0.0369
+    p_real_hi: 0.0426
   - label: 5k-50k
-    n_candidates: 2188
-    n_mapped: 383
-    mapped_frac: 0.175
+    n_candidates: 3896
+    n_mapped: 721
+    mapped_frac: 0.1851
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.175
+    p_real: 0.1851
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.293
-    p_real_lo: 0.1621
-    p_real_hi: 0.1883
+    p_real_lo: 0.175
+    p_real_hi: 0.1952
   - label: '>50k'
-    n_candidates: 847
-    n_mapped: 754
-    mapped_frac: 0.8902
+    n_candidates: 1304
+    n_mapped: 1163
+    mapped_frac: 0.8919
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.8902
+    p_real: 0.8919
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.261
-    p_real_lo: 0.8722
-    p_real_hi: 0.907
+    p_real_lo: 0.8776
+    p_real_hi: 0.9055
