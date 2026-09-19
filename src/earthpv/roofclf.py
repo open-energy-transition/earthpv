@@ -419,6 +419,71 @@ def zonal_mean_max(
     return means, maxes
 
 
+TEMPORAL_STATS_FILE = "temporal_stats_0.tif"
+# Per-QUADRAT sidecar, `<composites>/temporal_stats/<stem>.tif`, written by
+# scripts/compose_temporal_stats.py. Preferred over the per-cell file above because a
+# quadrat is 1-4 km2 inside a ~110 km2 cell, so clipping the read to it costs roughly 30x
+# less bandwidth for exactly the same measurement -- the rest of the cell carries no
+# labels. The per-cell file stays the right artifact for a national scoring pass, and is
+# used when no quadrat-scoped one exists.
+TEMPORAL_STATS_DIR = "temporal_stats"
+# Visible/NIR and SWIR groupings for the compact block below. Specular glint is broadband,
+# so it should lift the visible and NIR together; SWIR is carried separately because that
+# is where a bright SOIL or a haze residual parts company with a panel.
+_T_VIS = ("b02", "b03", "b04")
+_T_NIR = ("b08",)
+_T_SWIR = ("b11", "b12")
+
+
+def temporal_features(
+    bu_utm: gpd.GeoDataFrame, stats_arr: np.ndarray, transform
+) -> dict[str, np.ndarray]:
+    """Per-building features from a `temporal_stats_0.tif` sidecar.
+
+    The sidecar is block-major (`imagery.temporal_stat_band_names`): every band's p10, then
+    every band's p50, p90 and std, then a single `n_obs` plane. Three derived quantities per
+    band, each the thing the median composite cannot express:
+
+      `{b}_tbright` p90 - p50, the bright tail. A free proxy for specular glint, which
+                    otherwise costs a bespoke per-target scene pull.
+      `{b}_tdark`   p50 - p10, the dark tail. Separates dark-and-static (PV) from
+                    dark-and-moving (shadow).
+      `{b}_tstd`    temporal spread, the cheap PV-against-cropland/water discriminator.
+
+    plus `n_obs`, without which the other three are unreadable: std = 0 means "stable" at
+    n = 12 and "one look" at n = 1.
+
+    Differences are taken against the sidecar's OWN p50, never against `composite_0.tif`'s
+    band, so a cell whose composite was built in an earlier run under different scene
+    availability still differences within one epoch.
+
+    `nodata=COMPOSITE_FILL` on the full stack is exact here rather than approximate: a
+    pixel is fill iff every statistic is 0, which happens iff it had no observations at
+    all, so a real pixel can never be masked by coincidence (its `n_obs` is positive).
+    """
+    nb = len(BAND_NAMES)
+    means, _ = zonal_mean_max(bu_utm, stats_arr, transform, nodata=COMPOSITE_FILL)
+    p10, p50, p90, sd = (means[i * nb:(i + 1) * nb] for i in range(4))
+    n_obs = means[4 * nb]
+    bright = (p90 - p50) / REFL_SCALE
+    dark = (p50 - p10) / REFL_SCALE
+    spread = sd / REFL_SCALE
+    out: dict[str, np.ndarray] = {}
+    for i, b in enumerate(BAND_NAMES):
+        out[f"{b}_tbright"] = bright[i]
+        out[f"{b}_tdark"] = dark[i]
+        out[f"{b}_tstd"] = spread[i]
+    idx = {b: i for i, b in enumerate(BAND_NAMES)}
+    grp = lambda a, names: a[[idx[b] for b in names]].mean(axis=0)  # noqa: E731
+    out["t_bright_vis"] = grp(bright, _T_VIS + _T_NIR)
+    out["t_bright_swir"] = grp(bright, _T_SWIR)
+    out["t_std_vis"] = grp(spread, _T_VIS)
+    out["t_std_nir"] = grp(spread, _T_NIR)
+    out["t_dark_vis"] = grp(dark, _T_VIS)
+    out["n_obs"] = n_obs
+    return out
+
+
 def yard_features(
     bu_utm: gpd.GeoDataFrame, arr: np.ndarray, transform, nodata: float | None = COMPOSITE_FILL,
     ring_m: float = YARD_RING_M, extra_mask: np.ndarray | None = None,
@@ -726,6 +791,7 @@ def building_table(
     frac_prob_dir: Path | None, labels_dir: Path = Path("data/labels"), con=None,
     include_epoch_jump: bool = False, preboom_prob_dir: Path | None = None,
     parcel_label: bool = False, buildings: gpd.GeoDataFrame | None = None,
+    temporal_stats: bool = False, preprocess: str | None = None,
 ) -> pd.DataFrame:
     """One row per VIDA building in the quadrat, labelled and featurised.
 
@@ -744,6 +810,18 @@ def building_table(
     of VIDA rather than of the sensor: VIDA is imagery-derived and in Toussieu finds 672
     footprints where the French cadastre finds 3,366. Default `None` keeps the VIDA fetch, so
     every existing caller is unchanged.
+
+    `temporal_stats` adds the `temporal_features` block, read from each cell's
+    `temporal_stats_0.tif` sidecar (`compose --stats`). A quadrat whose cell has no sidecar
+    is left without those columns and logged, so a partly-composited AOI produces a table
+    that `ablate` simply will not offer the block for, rather than one with a silently
+    zero-filled feature -- the failure mode `--seg-prob-dir` has in France, where a feature
+    correct in some quadrats and zero in others is worse than absent everywhere.
+   
+    `preprocess` swaps how the same downloaded pixels become per-building reflectance,
+    for measurement only (see `earthpv.preprocess`): "sharpen20" / "sharpen20_interp"
+    sharpen the nearest-replicated native-20 m bands, and "unmix" replaces the zonal mean
+    with a footprint-constrained solve of the pixel mixture. `None` is the shipped path.
     """
     from earthpv.buildings import fetch_vida_buildings
     from earthpv.labels import geodesic_area_m2
@@ -797,8 +875,16 @@ def building_table(
     arr = arr.astype("float32") / REFL_SCALE
     preboom_arr = arr[len(BAND_NAMES): 2 * len(BAND_NAMES)] if include_epoch_jump else None
     arr = arr[: len(BAND_NAMES)]
+    if preprocess in ("sharpen20", "sharpen20_interp"):
+        from earthpv.preprocess import sharpen_20m
+
+        arr = sharpen_20m(arr, method="interp" if preprocess.endswith("interp") else "regress")
     bu_utm = bu.to_crs(crs)
     means, maxes = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
+    if preprocess == "unmix":
+        from earthpv.preprocess import unmix_buildings
+
+        means = unmix_buildings(bu_utm, arr, transform, means)
 
     # The parcel widening. Both terms are kept separately so this table alone can
     # reproduce the roof-only figures it supersedes.
@@ -880,6 +966,26 @@ def building_table(
         pb_means, _ = zonal_mean_max(bu_utm, preboom_arr, transform, nodata=COMPOSITE_FILL)
         for i, b in enumerate(BAND_NAMES):
             out[f"{b}_jump"] = means[i] - pb_means[i]
+
+    if temporal_stats:
+        sc = None
+        own = Path(composites) / TEMPORAL_STATS_DIR / f"{stem}.tif"
+        if own.exists():
+            with rasterio.open(own) as _t:
+                sc = (_t.read(), _t.transform, _t.crs)
+        else:
+            sc = composite_index(str(composites), layers=1).read_sidecar_window(
+                (minx, miny, maxx, maxy), TEMPORAL_STATS_FILE
+            )
+        if sc is None:
+            log.warning("quadrat %s: no %s sidecar covering it -- temporal features omitted",
+                        name, TEMPORAL_STATS_FILE)
+        else:
+            s_arr, s_transform, s_crs = sc
+            for k, v in temporal_features(
+                bu.to_crs(s_crs), s_arr.astype("float32"), s_transform
+            ).items():
+                out[k] = v
 
     bounds = (minx, miny, maxx, maxy)
     for label, d in (("seg", seg_prob_dir), ("frac", frac_prob_dir), ("preboom", preboom_prob_dir)):
@@ -1190,12 +1296,34 @@ _ABLATIONS = {
 # `ablate()` call on a table without glint data never KeyErrors on a missing column.
 GLINT_FEATURES = ["glint_n_consistent", "glint_spike_rate"]
 
+# Temporal statistics off the composite's own scene stack (`temporal_features`). Present
+# only when the table was built with `temporal_stats=True` against cells composited with
+# `compose --stats`, so -- like the glint block above -- these are name lists rather than
+# members of MODEL_FEATURES, and `ablate` offers them only when the columns exist.
+#
+# Two blocks, because they test the same hypothesis at different widths. The COMPACT block
+# is the physically-motivated one and is far better powered: five aggregates, on the
+# grouping the physics suggests (broadband bright tail, SWIR separately, visible spread).
+# The FULL block is per-band and unconstrained, which is the honest check on whether the
+# compact grouping threw anything away -- at the cost of 31 columns on a fit whose smallest
+# quadrat carries a few hundred positives.
+TEMPORAL_COMPACT_FEATURES = [
+    "t_bright_vis", "t_bright_swir", "t_std_vis", "t_std_nir", "t_dark_vis", "n_obs",
+]
+TEMPORAL_FEATURES = (
+    [f"{b}_{k}" for b in BAND_NAMES for k in ("tbright", "tdark", "tstd")] + ["n_obs"]
+)
+
 
 def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
     """Leave-one-quadrat-out AUC per feature block, so the size prior is separated out.
 
     Adds `plus_glint`/`plus_everything` blocks only when `table` already carries
-    `GLINT_FEATURES` -- see that constant's comment.
+    `GLINT_FEATURES`, and the `plus_temporal`/`plus_temporal_full`/`temporal_only` blocks
+    only when it carries `TEMPORAL_COMPACT_FEATURES` -- see those constants' comments.
+
+    Reports `auc_within_size` alongside `auc`/`auc_small` because a block can lift pooled
+    AUC purely by correlating with roof area, which is a prior this table already has.
     """
     ablations = dict(_ABLATIONS)
     if "has_yard" in table.columns:
@@ -1204,6 +1332,16 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
         # parcel label, i.e. exactly the "does the yard block earn its place" contrast.
         ablations["plus_yard"] = list(PARCEL_MODEL_FEATURES)
         ablations["yard_only"] = ["log_roof_area", "bf_confidence"] + list(YARD_FEATURES)
+    if all(c in table.columns for c in TEMPORAL_COMPACT_FEATURES):
+        ablations["plus_temporal"] = list(MODEL_FEATURES) + list(TEMPORAL_COMPACT_FEATURES)
+        ablations["plus_temporal_full"] = list(MODEL_FEATURES) + list(TEMPORAL_FEATURES)
+        # Does the temporal block carry PV signal AT ALL, with no static spectral help?
+        # If `plus_temporal` ties the shipped model this separates "adds nothing new" from
+        # "says nothing" -- a block that reaches well above the size-only baseline on its
+        # own but adds nothing on top is redundant with the median, not uninformative.
+        ablations["temporal_only"] = (
+            ["log_roof_area", "bf_confidence"] + list(TEMPORAL_COMPACT_FEATURES)
+        )
     if all(c in table.columns for c in GLINT_FEATURES):
         ablations["plus_glint"] = list(MODEL_FEATURES) + list(GLINT_FEATURES)
         ablations["plus_everything"] = (
@@ -1221,13 +1359,20 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
             m = fit_logistic(Xtr, table.loc[tr, "has_pv"].to_numpy(float), l2)
             p = predict_proba(m, Xte)
             y = table.loc[te, "has_pv"].to_numpy()
-            small = table.loc[te, "roof_area_m2"].to_numpy() < 500.0
+            roof_te = table.loc[te, "roof_area_m2"].to_numpy()
+            small = roof_te < 500.0
+            within, _ = auc_within_size(y, p, roof_te)
             rows.append({
                 "block": label, "quadrat": name, "auc": round(auc(y, p), 4),
                 "auc_small": round(auc(y[small], p[small]), 4) if small.sum() > 1 else np.nan,
+                # The statistic this project actually quotes for "what the pixels
+                # contribute": bigger roofs carry PV more often, so a block can lift `auc`
+                # purely by correlating with size. See `auc_within_size`.
+                "auc_within_size": round(within, 4) if not np.isnan(within) else np.nan,
             })
     df = pd.DataFrame(rows)
-    return df.pivot_table(index="block", values=["auc", "auc_small"], aggfunc="median").round(4)
+    vals = [c for c in ("auc", "auc_small", "auc_within_size") if c in df.columns]
+    return df.pivot_table(index="block", values=vals, aggfunc="median").round(4)
 
 
 def _subset_matrix(df: pd.DataFrame, feats: list[str]) -> np.ndarray:
@@ -1609,6 +1754,7 @@ def run_roof_classifier(
     parcel_label: bool = False,
     include_yard_features: bool = False,
     table_path: Path | None = None,
+    temporal_stats: bool = False,
 ) -> Path:
     """Fit, evaluate and persist the classifier. See the CLI command for the options.
 
@@ -1660,7 +1806,7 @@ def run_roof_classifier(
         con = overture.connect()
         parts = [
             building_table(n, iso3, composites, seg_prob_dir, frac_prob_dir, labels_dir, con,
-                           parcel_label=parcel_label)
+                           parcel_label=parcel_label, temporal_stats=temporal_stats)
             for n in names
         ]
         # Keep geometry so the per-building predictions are mappable (QGIS, the docs figure).
@@ -1721,6 +1867,10 @@ def run_roof_classifier(
     abl = ablate(table, l2=l2)
     summary["ablation_median_auc"] = {k: float(v) for k, v in abl["auc"].items()}
     summary["ablation_median_auc_small"] = {k: float(v) for k, v in abl["auc_small"].items()}
+    if "auc_within_size" in abl.columns:
+        summary["ablation_median_auc_within_size"] = {
+            k: float(v) for k, v in abl["auc_within_size"].items()
+        }
     folds.to_csv(out_dir / "folds.csv", index=False)
     anchor.to_csv(out_dir / "exp_scale_anchor.csv", index=False)
     abl.to_csv(out_dir / "ablation.csv")

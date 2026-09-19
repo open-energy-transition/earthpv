@@ -1,0 +1,11 @@
+block,auc,auc_small,auc_within_size
+area_only,0.7441,0.7216,0.5773
+plus_prob_rasters,0.8587,0.8582,0.8214
+plus_shape,0.8593,0.8587,0.8196
+plus_temporal,0.8579,0.8575,0.8232
+plus_temporal_full,0.8576,0.8573,0.8262
+plus_yard,0.8562,0.8551,0.825
+size_plus_spectral,0.8574,0.857,0.8206
+spectral_only,0.8333,0.8335,0.8128
+temporal_only,0.7311,0.7194,0.5868
+yard_only,0.7518,0.7459,0.6429

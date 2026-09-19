@@ -1143,6 +1143,22 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
   segmentation's own detections and the hand-mapped OSM population, so a component crediting
   every building double-counts. Germany's first build read 97.2 GWp before deduping against
   both layers and 61.9 GWp after.
+- **The native-20 m bands are resampled BILINEAR since 2026-09-19, and the two modes must
+  not be mixed within an AOI.** B05-B07, B8A, B11 and B12 are 20 m at the sensor; odc.stac
+  previously replicated each value nearest-neighbour into a 2x2 block (measured: B11/B12
+  are 2x2-constant over 100.0% of cell 0122_0077 against 0.0% for B02/B08), which
+  misregisters the band a `roofclf` footprint sees by up to 10 m -- and the model's four
+  largest coefficients are SWIR or SWIR-derived (`b11_mean` +4.33, `swir_vis_ratio` -3.92,
+  `ndbi` +3.65, `b12_mean` -3.23, against +2.78 for the largest 10 m band). Bilinear is
+  worth +0.0041 AUC within size band over 30 quadrats (20/30 folds, sign test p=0.061):
+  suggestive, free, and shipped as the default (`imagery.BAND_RESAMPLING`,
+  `compose --resampling`). **Every existing composite -- Pakistan, Germany, France, Zambia
+  -- is `nearest`**, and composites now carry an `earthpv_resampling` tag (absent = nearest).
+  Recompose a country wholesale or leave it alone; a model calibrated on one and scored on
+  the other is a domain shift. SCL stays nearest always (interpolating class 4 and class 8
+  invents class 6). *Sharpening* those bands by regression on the visible ones was measured
+  and REJECTED (-0.0047 AUC, 7/30 folds, p=0.008): the SWIR signal is not predictable from
+  the visible bands, which is why it carries weight in the first place.
 - **Training positive threshold** is `MIN_PV_AREA` in `chips.py` (arrays below it are burned as
   `ignore = -1`, not negatives). Changing it requires rebuilding chips and retraining.
 - **Geographic val split** uses `val_tiles` in `configs/aoi.yaml`; these must be MGRS tiles the

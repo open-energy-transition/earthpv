@@ -95,6 +95,22 @@ def compose(
         "source_region - the local Overture-only set (>=500 m2) undercounts small/unmapped "
         "buildings by orders of magnitude in some regions"
     ),
+    resampling: str = typer.Option(
+        "20m-bilinear", "--resampling",
+        help="How the native-20 m bands (B05-B07, B8A, B11, B12) reach the 10 m grid: "
+        "'20m-bilinear' (default since 2026-09-19) or 'nearest' (what every composite "
+        "built before then used -- odc.stac replicates the 20 m value into each 2x2 block, "
+        "which misregisters it against a one-pixel footprint by up to 10 m). DO NOT MIX "
+        "the two within one AOI: recompose a country wholesale or leave it alone.",
+    ),
+    stats: bool = typer.Option(
+        False, "--stats/--no-stats",
+        help="Also write temporal_stats_<i>.tif: per-pixel p10/p50/p90/std per band plus a "
+        "valid-observation count, off the same scene stack the median already downloads. "
+        "No extra network traffic, but ~4x the per-cell disk and ~2.2 GB peak RSS per "
+        "concurrent cell, so keep --workers low. Cells whose composite exists but whose "
+        "sidecar does not are re-read for the sidecar alone; the composite is not rewritten.",
+    ),
 ) -> None:
     """Build S2 composites for building-populated cells of an AOI (STAC, resumable)."""
     from earthpv.compose import run_compose
@@ -102,7 +118,7 @@ def compose(
     win = tuple(window.split(":")) if window else None
     run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit,
                 window=win, index=index, workers=workers, include_labels=label_cells,
-                use_vida=use_vida)
+                use_vida=use_vida, stats=stats, resampling=resampling)
 
 
 @app.command()
@@ -562,6 +578,13 @@ def roof_classifier_cmd(
         "every quadrat table (about ten minutes). For feature-set comparisons: the table "
         "does not depend on the feature list.",
     ),
+    temporal_features: bool = typer.Option(
+        False, "--temporal-features/--no-temporal-features",
+        help="Read each cell's temporal_stats_0.tif sidecar (written by `compose --stats`) "
+        "and add the per-pixel p10/p50/p90/std block to the table. Measurement only: it is "
+        "NOT put in the fitted model, it is offered to the ablation, which is what decides "
+        "whether keeping more than the median earns its place.",
+    ),
 ) -> None:
     """Per-building PV classifier on the fully-mapped quadrats: the sub-400 m2 instrument.
 
@@ -580,7 +603,7 @@ def roof_classifier_cmd(
         aoi=aoi, quadrats=list(quadrat) if quadrat else None, composites=composites,
         seg_prob_dir=seg_prob_dir, frac_prob_dir=frac_prob_dir, labels_dir=labels_dir,
         out_dir=out_dir, parcel_label=parcel_label, include_yard_features=yard_features,
-        table_path=table_path,
+        table_path=table_path, temporal_stats=temporal_features,
     )
 
 

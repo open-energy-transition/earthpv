@@ -20,9 +20,14 @@ import rasterio
 from tqdm import tqdm
 
 from earthpv.config import Settings
-from earthpv.imagery import annual_composite
+from earthpv.imagery import (
+    DEFAULT_RESAMPLING,
+    TEMPORAL_STAT_BLOCKS,
+    annual_composite,
+    temporal_stat_band_names,
+)
 from earthpv.labels import resolve_aoi
-from earthpv.local_source import load_buildings, load_solar_labels
+from earthpv.local_source import composite_index, load_buildings, load_solar_labels
 
 log = logging.getLogger(__name__)
 
@@ -279,6 +284,80 @@ def populated_cells(
     return cells
 
 
+COMPOSITE_BANDS = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
+
+
+def temporal_stats_path(cell_dir: Path, index: int = 0) -> Path:
+    """Sidecar path for a cell's temporal statistics.
+
+    A SIDECAR, not extra bands on `composite_<i>.tif`: that file's 10-band layout is the
+    contract `CompositeIndex`, `infer`, `postprocess`, `density` and `roofclf` all read,
+    and it is shared with the sibling rooftopsenti project. Widening it would break every
+    one of them; a separate file is purely additive, and a cell that has no sidecar simply
+    has no temporal features.
+    """
+    return cell_dir / f"temporal_stats_{index}.tif"
+
+
+def write_temporal_stats(
+    path: Path, stats: np.ndarray, transform, crs, window: tuple[str, str] | None
+) -> None:
+    """Write a temporal-stats sidecar, via a .tmp rename like the composites themselves.
+
+    The window is recorded in TIFF tags. Which dates a composite was built from is
+    otherwise unrecoverable from the file, and these statistics are only comparable
+    against a median built from the same scenes.
+    """
+    tmp = path.with_suffix(".tif.tmp")
+    with rasterio.open(
+        tmp, "w", driver="GTiff", width=stats.shape[2], height=stats.shape[1],
+        count=stats.shape[0], dtype="uint16", crs=crs, transform=transform,
+        compress="deflate", predictor=2,
+    ) as dst:
+        dst.write(stats)
+        dst.descriptions = tuple(temporal_stat_band_names(COMPOSITE_BANDS))
+        dst.update_tags(
+            earthpv_window=":".join(window) if window else "default",
+            earthpv_stat_blocks=",".join(TEMPORAL_STAT_BLOCKS) + ",n_obs",
+        )
+    tmp.rename(path)
+
+
+def quadrat_geobox(composites: Path, boundary, margin_m: float = 200.0):
+    """GeoBox over a quadrat's bbox, snapped to its parent composite's pixel grid.
+
+    Snapping matters: it is what keeps the sidecar's p50 band comparable, pixel for pixel,
+    with `composite_0.tif`'s median, which is the check that rules out the two being built
+    from different scene sets. Returns `(geobox, bbox4326)` or None if uncovered.
+    """
+    import numpy as np
+    import rasterio.warp
+    from odc.geo.geobox import GeoBox
+    from shapely.geometry import box
+
+    idx = composite_index(str(composites), layers=1)
+    hits = idx.index[idx.index.intersects(box(*boundary.bounds))]
+    if hits.empty:
+        return None
+    with rasterio.open(hits.iloc[0].path) as src:
+        crs, tr = src.crs, src.transform
+        xs, ys = rasterio.warp.transform(
+            "EPSG:4326", crs,
+            [boundary.bounds[0], boundary.bounds[2]], [boundary.bounds[1], boundary.bounds[3]],
+        )
+    minx, maxx = min(xs) - margin_m, max(xs) + margin_m
+    miny, maxy = min(ys) - margin_m, max(ys) + margin_m
+    px = abs(tr.a)
+    # Snap outwards onto the parent grid (tr.c/tr.f are its origin).
+    minx = tr.c + np.floor((minx - tr.c) / px) * px
+    maxy = tr.f - np.floor((tr.f - maxy) / px) * px
+    w = int(np.ceil((maxx - minx) / px))
+    h = int(np.ceil((maxy - miny) / px))
+    gbox = GeoBox((h, w), rasterio.Affine(px, 0, minx, 0, -px, maxy), crs)
+    bbox = rasterio.warp.transform_bounds(crs, "EPSG:4326", minx, maxy - h * px, minx + w * px, maxy)
+    return gbox, bbox
+
+
 def run_compose(
     aoi: str,
     out_dir: Path,
@@ -289,6 +368,8 @@ def run_compose(
     workers: int = 1,
     include_labels: bool = True,
     use_vida: bool = False,
+    stats: bool = False,
+    resampling: str = DEFAULT_RESAMPLING,
 ) -> Path:
     """`window`/`index` build an extra seasonal layer (`composite_<index>.tif`, e.g.
     a post-monsoon contrast season) into the same cell dirs as the base run.
@@ -296,6 +377,20 @@ def run_compose(
     `workers` > 1 composites cells concurrently. The work is I/O-bound (remote STAC
     scene reads), so threads overlap the network waits for a near-linear speedup;
     the STAC search is serialized internally (annual_composite) for thread safety.
+
+    `resampling` picks how the native-20 m bands reach the 10 m grid (see
+    `imagery.BAND_RESAMPLING`). It is stamped into every composite this writes, because a
+    corpus must not silently mix the two: the pre-2026-09-19 default was "nearest" and
+    every existing composite is nearest.
+
+    `stats` also writes `temporal_stats_<index>.tif` per cell (see `write_temporal_stats`).
+    Two consequences worth knowing before running it at scale. It roughly quadruples
+    per-cell disk, and it makes the stage compute- and memory-hungry as well as
+    bandwidth-bound (~2.2 GB peak RSS per concurrent cell, measured), so keep `workers`
+    low. And a cell whose composite already exists is NOT skipped when its sidecar is
+    missing: the scenes are re-read to build it, and the existing composite is left
+    exactly as it was rather than rewritten, because the on-disk one may have been built
+    from a different scene availability and downstream products already rest on it.
     """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     if index > 0 and window is None:
@@ -326,10 +421,31 @@ def run_compose(
         name = f"{int(cell.ix):04d}_{int(cell.iy):04d}"
         cell_dir = out_dir / name
         tif = cell_dir / f"composite_{index}.tif"
-        if tif.exists():
+        sidecar = temporal_stats_path(cell_dir, index)
+        have_composite = tif.exists()
+        if have_composite and (not stats or sidecar.exists()):
             return False
         bbox = (cell.lon0, cell.lat0, cell.lon0 + CELL_DEG, cell.lat0 + CELL_DEG)
         try:
+            if have_composite:
+                # Sidecar-only pass: pin the stats to the existing composite's exact grid
+                # so the two are pixel-aligned, and never touch the composite itself.
+                from odc.geo.geobox import GeoBox
+
+                with rasterio.open(tif) as b:
+                    gbox = GeoBox((b.height, b.width), b.transform, b.crs)
+                kw = dict(geobox=gbox, with_stats=True, resampling=resampling)
+                if window:
+                    kw["date_range"] = window
+                if index > 0:
+                    kw["max_cloud"] = 60
+                res = annual_composite(bbox, **kw)
+                if res is None:
+                    log.warning("cell %s: no scenes for stats sidecar", name)
+                    return False
+                _, transform, crs, stats_arr = res
+                write_temporal_stats(sidecar, stats_arr, transform, crs, window)
+                return True
             if index > 0:
                 # Pin the extra layer to the base layer's exact grid.
                 base = cell_dir / "composite_0.tif"
@@ -340,16 +456,24 @@ def run_compose(
 
                 with rasterio.open(base) as b:
                     gbox = GeoBox((b.height, b.width), b.transform, b.crs)
-                res = annual_composite(bbox, date_range=window, geobox=gbox, max_cloud=60)
+                res = annual_composite(bbox, date_range=window, geobox=gbox, max_cloud=60,
+                                       with_stats=stats, resampling=resampling)
             else:
-                res = annual_composite(bbox, date_range=window) if window else annual_composite(bbox)
+                kw = dict(with_stats=stats, resampling=resampling)
+                if window:
+                    kw["date_range"] = window
+                res = annual_composite(bbox, **kw)
         except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
             log.warning("cell %s failed: %s", name, e)
             return False
         if res is None:
             log.warning("cell %s: no scenes", name)
             return False
-        arr, transform, crs = res
+        stats_arr = None
+        if stats:
+            arr, transform, crs, stats_arr = res
+        else:
+            arr, transform, crs = res
         cell_dir.mkdir(parents=True, exist_ok=True)
         # Write to a temp then rename so a killed run never leaves a half-written COG
         # that the resumable skip would treat as done.
@@ -362,7 +486,13 @@ def run_compose(
             dst.descriptions = tuple(
                 ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
             )
+            # Which resampling built this cell. A composite with no such tag predates
+            # 2026-09-19 and is "nearest".
+            dst.update_tags(earthpv_resampling=resampling,
+                            earthpv_window=":".join(window) if window else "default")
         tmp.rename(tif)
+        if stats_arr is not None:
+            write_temporal_stats(sidecar, stats_arr, transform, crs, window)
         return True
 
     rows = [cell for _, cell in cells.iterrows()]

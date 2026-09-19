@@ -19,6 +19,14 @@ site/
 # the directory, re-ignores its contents, then names the file.
 results/*
 !results/glint_observability_by_quadrat.csv
+# Preprocessing and temporal-statistics ablations (2026-09-19). Cited by
+# docs/experiments.md, so they are tracked sources like every other number on the site.
+!results/roofclf_temporal_ablation.csv
+!results/roofclf_temporal_ablation_folds.csv
+!results/roofclf_preprocess_ablation.json
+!results/roofclf_preprocess_sharpen20_folds.csv
+!results/roofclf_preprocess_sharpen20_interp_folds.csv
+!results/roofclf_preprocess_unmix_folds.csv
 !results/glint_observability_summary.json
 !results/glint_pose_by_region.csv
 !results/glint_pose_by_region_combined.csv

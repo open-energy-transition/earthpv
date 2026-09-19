@@ -88,6 +88,35 @@ class CompositeIndex:
             layer_arrays = [a[:, :h, :w] for a in layer_arrays]
         return np.concatenate(layer_arrays, axis=0), transform, dst_crs
 
+    def read_sidecar_window(
+        self, bbox: Bbox, name: str
+    ) -> tuple[np.ndarray, rasterio.Affine, CRS] | None:
+        """Read a per-tile sidecar raster (e.g. `temporal_stats_0.tif`) over a 4326 bbox.
+
+        Same tile selection and mosaicking as `read_window`, against a differently-named
+        file in the same cell directories. Returns None when the bbox is uncovered OR when
+        any contributing tile has no such sidecar -- missing is a normal state (sidecars
+        are written only by `compose --stats`), so this degrades to "no data" rather than
+        raising the way a missing composite layer does.
+        """
+        hits = self.index[self.index.intersects(box(*bbox))]
+        if hits.empty:
+            return None
+        full = hits[hits.covers(box(*bbox))]
+        paths = [full.iloc[0].path] if not full.empty else list(hits.path)
+        spaths = [Path(p).with_name(name) for p in paths]
+        if any(not p.exists() for p in spaths):
+            return None
+        srcs = [rasterio.open(str(p)) for p in spaths]
+        try:
+            dst_crs = srcs[0].crs
+            wb = rasterio.warp.transform_bounds("EPSG:4326", dst_crs, *bbox)
+            arr, transform = rasterio.merge.merge(srcs, bounds=wb, nodata=0)
+        finally:
+            for s in srcs:
+                s.close()
+        return arr, transform, dst_crs
+
 
 @lru_cache(maxsize=4)
 def composite_index(region_dir: str, layers: int = 1) -> CompositeIndex:

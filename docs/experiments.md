@@ -77,6 +77,10 @@ see [Open questions](open-questions.md).
 | Super-resolution, three variants | <span class="outcome negative">rejected</span> | No gain, and hallucination risk on a detection task. |
 | Two-endmember spectral unmixing | <span class="outcome negative">rejected</span> | 0.659 AUC, worse than both SPPI and roofclf, with a 92x scale spread. |
 | Epoch jump / step change as roofclf features | <span class="outcome negative">rejected</span> | Measured at exactly zero effect, and worse in the reflectance variant. |
+| [Keeping more than the median composite](#keeping-more-than-the-median-composite-2026-09-19) | <span class="outcome negative">rejected</span> | Per-pixel p10/p90/std off the same scenes the median already downloads: +0.0003 AUC, 16 of 30 folds, sign test p=0.57. |
+| [Bilinear resampling of the native-20 m bands](#the-20-m-bands-and-what-sharpening-them-costs-2026-09-19) | <span class="outcome works">shipped</span> | The model's biggest coefficients sit on bands replicated nearest-neighbour from 20 m. De-blocking them: +0.0041 AUC within size band, 20 of 30 folds, p=0.061. |
+| [Regression sharpening of the 20 m bands](#the-20-m-bands-and-what-sharpening-them-costs-2026-09-19) | <span class="outcome negative">rejected</span> | Predicting SWIR from the visible bands costs 0.0047 AUC, 7 of 30 folds, p=0.008. The SWIR signal is not synthesisable. |
+| [Footprint-constrained spatial unmixing](#unmixing-the-pixel-against-a-known-footprint-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts reflectance error 67% on synthetic sub-pixel buildings and loses 0.0323 AUC within size band on real ones, 2 of 30 folds, p=0.000. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -616,6 +620,173 @@ One variant survives and is worth stating: **Germany**, which has more reliable 
 and is already the largest region in the training corpus, so the retrain objection is weaker
 there. If the snow hypothesis is ever tested properly it should be tested there, not in
 France. Raw counts: `results/france_snow_opportunity.csv`.
+
+### The 20 m bands, and what sharpening them costs (2026-09-19)
+
+Six of the ten composite bands are 20 m at the sensor: B05, B06, B07, B8A, B11 and B12.
+The composite is written at 10 m, and `odc.stac` was replicating each 20 m value
+nearest-neighbour into a 2x2 block. Measured on cell 0122_0077, B11 and B12 are constant
+across 2x2 blocks in **100.0%** of the raster, against 0.0% for B02 and B08.
+
+That matters more than it sounds, because of where the classifier's weight sits:
+
+| Coefficient | Value | Native |
+| --- | --- | --- |
+| `b11_mean` | +4.33 | 20 m |
+| `swir_vis_ratio` | -3.92 | uses SWIR |
+| `ndvi` | +3.73 | 10 m |
+| `ndbi` | +3.65 | uses SWIR |
+| `b12_mean` | -3.23 | 20 m |
+| `b02_mean` | +2.78 | 10 m |
+
+The four largest are SWIR or SWIR-derived. So the model leans hardest on bands that carry
+no independent information at the grid it is scored on, and a 100 m2 building's SWIR value
+comes from a 20 m cell whose centre can be 10 m away from it.
+
+Two fixes were measured against the 30 production quadrats, leave-one-quadrat-out, paired
+per fold, changing nothing but how the same downloaded pixels reach the 10 m grid:
+
+| Variant | AUC | Within size band | Folds better | Sign test |
+| --- | --- | --- | --- | --- |
+| Baseline (nearest) | 0.8575 | 0.8206 | -- | -- |
+| Bilinear from the true 20 m grid | 0.8574 | **0.8322** | 20 of 30 | p = 0.061 |
+| Regression sharpening | 0.8570 | 0.8060 | 7 of 30 | p = 0.008 |
+
+**They point in opposite directions, and that is the finding.** Regression sharpening
+predicts each 20 m band from the four native-10 m bands and adds back the residual, and it
+**hurts significantly**: -0.0047 AUC, -0.0052 within size band, better in only 7 of 30
+folds. The interpretation is the useful part. If SWIR were largely a function of the
+visible bands, synthesising its 10 m structure from them would be nearly free; that it
+costs skill says **the SWIR signal the classifier uses is genuinely independent of the
+visible bands**, and replacing real-but-coarse SWIR with a visible-derived estimate throws
+it away. This is a property of PV worth remembering: it is spectrally distinctive in the
+shortwave infrared precisely where the visible bands cannot see it coming.
+
+Simply removing the blockiness, by taking each band back to its true 20 m grid and
+resampling bilinearly, moves the other way: **+0.0041 AUC within size band, better in 20
+of 30 folds, p = 0.061**, with the median within-size AUC going 0.8206 to 0.8322. That is
+suggestive rather than established, and it is free. It says the defect worth fixing is the
+**misregistration**, not the missing detail.
+
+**Shipped** as `imagery.BAND_RESAMPLING` / `annual_composite(resampling=...)`, default
+`"20m-bilinear"`, with `--resampling nearest` to reproduce the old behaviour. Every
+composite records which it used in an `earthpv_resampling` tag; a composite with no such
+tag predates this and is nearest. **The two must not be mixed within one AOI**: the change
+is small but systematic, and a model calibrated on nearest composites and scored on
+bilinear ones is a domain shift rather than an improvement. Pakistan, Germany, France and
+Zambia are all nearest today and stay that way until someone recomposes one wholesale.
+SCL keeps nearest regardless, because interpolating between class 4 and class 8 invents
+class 6.
+
+### Unmixing the pixel against a known footprint (2026-09-19)
+
+A zonal mean over a building's pixels is a mean of MIXTURES: a 100 m2 roof is one 10 m
+pixel it shares with road, yard and neighbours. That dilution is the mechanism behind
+nearly every negative result in this register. Blind two-endmember unmixing was rejected at
+0.659 AUC, but this is a different problem and a better-posed one, because the abundances
+are **known**: the footprints say what fraction of each pixel belongs to which building, so
+
+    y_p = sum_j A_pj r_j + (1 - sum_j A_pj) b_p
+
+is a linear inverse problem for the per-building reflectance `r`, solved for a whole
+quadrat at once with a ridge toward the zonal mean (`preprocess.unmix_buildings`).
+
+**On synthetic data it works exactly as intended.** With buildings deliberately offset from
+the pixel grid and 36 to 196 m2 in size, so the median building fills 38% of its brightest
+pixel, unmixing cuts mean reflectance error against truth by **67%** (0.0975 to 0.0319) and
+recovers **84% of the true dark/bright contrast** where the zonal mean recovers 28%.
+
+**On real quadrats it is the worst result in this register:** -0.0205 AUC and **-0.0323
+within size band**, better in **2 of 30 folds**, sign test p = 0.000. Not noise, not a tie,
+a substantial loss.
+
+Two explanations, and the second is the interesting one:
+
+- **The footprints are not that good.** The solve assumes `A` is exact. VIDA is
+  imagery-derived and systematically undersized -- this project already measured 117,003 m2
+  of mapped rooftop PV overhanging VIDA outlines across 27 quadrats, which is 80% of what
+  [the parcel label](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) recovers.
+  A wrong `A` does not merely fail to help, it attributes the wrong pixels to the building.
+- **The mixture is not purely a nuisance.** The parcel label shipped because PV *beside* a
+  building counts toward it, and the yard carries label-correlated signal. Unmixing does
+  the exact opposite: it strips the surroundings out in order to isolate the roof. Running
+  it against a parcel label is close to self-defeating, and the size of the loss suggests
+  the context is worth more than the purity.
+
+The honest summary is that **dilution is real but removing it is not the same as
+recovering the signal**, and an instrument that assumes its geometry is exact inherits
+every error in that geometry. Kept as `roof-classifier`-side machinery behind
+`building_table(preprocess="unmix")` for anyone who arrives with authoritative footprints
+-- the French cadastre is the obvious candidate, since it already bought +0.027 AUC within
+size band over VIDA there -- but off, and not recommended on an imagery-derived layer.
+
+Raw numbers for both: `results/roofclf_preprocess_ablation.json` and
+`results/roofclf_preprocess_*_folds.csv`.
+
+### Keeping more than the median composite (2026-09-19)
+
+The composite reduces about twelve cloud-masked scenes to their per-pixel median
+(`imagery.annual_composite`). A median is the maximum-robustness central estimator, so it
+deletes the tail by construction, and the tail is where a specular surface at a fixed tilt
+should put its information. The scenes are already downloaded and then discarded, so the
+cheapest possible version of "use the time dimension" is to keep more of that distribution
+and ask whether it helps.
+
+`compose --stats` now writes a `temporal_stats` sidecar beside each composite: per-pixel
+p10, p50, p90 and standard deviation for all ten bands, plus a valid-observation count.
+No extra network traffic, which matters because this stage is bandwidth-bound. What
+`roofclf` gets per building is the bright tail (p90 - p50, a free proxy for the glint that
+otherwise needs bespoke per-target scene pulls), the dark tail (p50 - p10, which should
+separate dark-and-static PV from dark-and-moving shadow), the temporal spread, and
+`n_obs`, without which spread is unreadable: std = 0 means "stable" at twelve looks and
+"one look" at one.
+
+The measurement is a leave-one-quadrat-out ablation on the 30 production quadrats, and it
+reproduces the shipped fit exactly (123,867 buildings, 17,150 positives, median fold AUC
+0.8574, 0.8206 within size band, min fold 0.4964), so the block is the only variable.
+
+| Feature block | AUC | Within size band |
+| --- | --- | --- |
+| Size only | 0.7441 | 0.5773 |
+| Size + temporal | 0.7311 | 0.5868 |
+| Median composite only | 0.8333 | -- |
+| Size + spectral (shipped) | 0.8574 | 0.8206 |
+| Shipped + temporal (compact, 6 columns) | 0.8579 | 0.8232 |
+| Shipped + temporal (full, 31 columns) | 0.8576 | 0.8262 |
+
+**It buys nothing.** Paired per fold, the compact block moves AUC by a median **+0.0003**
+(IQR -0.0013 to +0.0016), improving **16 of 30 folds**, sign test p=0.57; within size band
++0.0006 (IQR -0.0018 to +0.0033), 16 of 30, p=0.71. Widening from 6 columns to 31 does not
+rescue it, so the compact grouping is not what threw the signal away.
+
+The `temporal_only` row is the part worth keeping, because it distinguishes "adds nothing
+new" from "says nothing". On its own the block sits at 0.5868 within size band against a
+0.5773 size-only baseline: a trace above chance, not nothing, but nothing that survives
+having the median composite in the model. So the distribution's higher moments are close
+to redundant with its centre for this task, at this resolution.
+
+Two things make this a fair test rather than a plumbing failure. The sidecar stores its own
+p50, and that band is **bit-identical to `composite_0.tif`'s median on 100% of valid
+pixels**, so the temporal features and the existing reflectance features describe the same
+twelve scenes and no epoch confound is possible. And the block has real dynamic range
+rather than being flat: for B02 the median pixel spans 129 DN between p50 and p90, 183 DN
+between p10 and p50, with a standard deviation of 148 DN, against roof reflectances of
+order 1,000 to 3,000 DN.
+
+The likeliest reason it fails is the same sensor ceiling that
+[the 400 m2 floor](#the-detection-floor-measured-against-sub-metre-truth-2026-09-12) and
+[the French transfer result](results/france.md#earthpv-against-france-the-sub-400-m2-instrument-does-not-transfer)
+keep returning: a sub-400 m2 array is a minority of a 100 m2 pixel, so whatever anisotropy
+it has is diluted by a roof that does not share it, in every statistic equally. Twelve
+dry-season scenes also give little specular opportunity, which is the ceiling
+[glint](methods/glint.md) already documents from the other direction.
+
+Kept behind flags (`compose --stats`, `roof-classifier --temporal-features`), off by
+default, because re-measuring costs one afternoon and no retraining. Cost if it were ever
+wanted nationally: about 4x the per-cell composite disk, roughly 215 GB for Pakistan's
+4,473 cells. Raw numbers: `results/roofclf_temporal_ablation.csv` (median per block) and
+`results/roofclf_temporal_ablation_folds.csv` (per fold, which is what the paired test
+above is computed from).
 
 ### Temporal features for roofclf
 
