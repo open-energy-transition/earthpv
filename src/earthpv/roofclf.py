@@ -792,6 +792,7 @@ def building_table(
     include_epoch_jump: bool = False, preboom_prob_dir: Path | None = None,
     parcel_label: bool = False, buildings: gpd.GeoDataFrame | None = None,
     temporal_stats: bool = False, preprocess: str | None = None,
+    temporal_unmix: bool = False,
 ) -> pd.DataFrame:
     """One row per VIDA building in the quadrat, labelled and featurised.
 
@@ -998,6 +999,16 @@ def building_table(
             for k, v in temporal_features(
                 bu.to_crs(s_crs), s_arr.astype("float32"), s_transform
             ).items():
+                out[k] = v
+
+    if temporal_unmix:
+        from earthpv.preprocess import temporal_unmix_features
+
+        tu = temporal_unmix_features(bu_utm, composites, stem, len(bu))
+        if tu is None:
+            log.warning("quadrat %s: no scene stack -- temporal-unmix features omitted", name)
+        else:
+            for k, v in tu.items():
                 out[k] = v
 
     bounds = (minx, miny, maxx, maxy)
@@ -1345,6 +1356,16 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
         # parcel label, i.e. exactly the "does the yard block earn its place" contrast.
         ablations["plus_yard"] = list(PARCEL_MODEL_FEATURES)
         ablations["yard_only"] = ["log_roof_area", "bf_confidence"] + list(YARD_FEATURES)
+    from earthpv.preprocess import TEMPORAL_UNMIX_COMPACT, TEMPORAL_UNMIX_FEATURES
+
+    if all(c in table.columns for c in TEMPORAL_UNMIX_COMPACT):
+        ablations["plus_temporal_unmix"] = list(MODEL_FEATURES) + list(TEMPORAL_UNMIX_COMPACT)
+        ablations["plus_temporal_unmix_full"] = (
+            list(MODEL_FEATURES) + [c for c in TEMPORAL_UNMIX_FEATURES if c in table.columns]
+        )
+        ablations["temporal_unmix_only"] = (
+            ["log_roof_area", "bf_confidence"] + list(TEMPORAL_UNMIX_COMPACT)
+        )
     if all(c in table.columns for c in TEMPORAL_COMPACT_FEATURES):
         ablations["plus_temporal"] = list(MODEL_FEATURES) + list(TEMPORAL_COMPACT_FEATURES)
         ablations["plus_temporal_full"] = list(MODEL_FEATURES) + list(TEMPORAL_FEATURES)

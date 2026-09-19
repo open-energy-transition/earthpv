@@ -18,6 +18,7 @@ observation shared with three neighbouring pixels.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import numpy as np
 
@@ -233,3 +234,194 @@ def unmix_buildings(bu_utm, arr: np.ndarray, transform, zonal_means: np.ndarray,
         keep = touched & np.isfinite(zonal_means[bi])
         out[bi, keep] = np.clip(sol[keep], 0.0, 2.0)
     return out
+
+
+# --- Temporal unmixing ------------------------------------------------------------------
+#
+# The third unmixing attempt, and the one that uses neither the footprint nor the marginal
+# distribution. Its constraint is that a PV array's AREAL FRACTION of a pixel is constant
+# over time while the background's reflectance is not:
+#
+#     y_p(t) = f_p . r_PV + (1 - f_p) . b_p(t)
+#
+# Take the temporal spread of both sides. `r_PV` is constant, so it contributes none, and
+#
+#     spread(y_p) = (1 - f_p) . spread(b_p)
+#
+# which makes `f_p` estimable WITHOUT knowing either endmember's spectrum, as one minus the
+# ratio of a pixel's temporal spread to its local background's. That is the property worth
+# having: it is self-normalising against roof colour, where absolute reflectance is not,
+# and a dark roof and a panel look alike in a median composite but move differently through
+# a season.
+#
+# Distinct from what has already been rejected here. Static two-endmember unmixing (0.659
+# AUC) needed both endmember spectra. Footprint-constrained spatial unmixing (-0.0323 AUC
+# within size band) needed the footprint to be exact, which VIDA is not. The temporal
+# STATISTICS block (+0.0003) gave roofclf absolute spread, `{b}_tstd`, with no local
+# reference -- so it could not tell "this pixel is unusually still" from "this whole
+# neighbourhood is still", which is the entire content of the estimator below.
+#
+# WHERE IT MUST FAIL, stated before measuring: the denominator. Identifiability needs a
+# background that moves. A concrete yard beside a concrete roof gives spread(b) ~ 0 and the
+# ratio is noise over noise, so `background_amplitude` is emitted alongside every damping
+# feature as the validity term, and the per-quadrat analysis conditions on it.
+TU_WINDOW = 15          # pixels across the local-background window (~150 m)
+TU_MIN_OBS = 5          # a pixel needs this many cloud-free looks to have a spread at all
+TU_MIN_AMP = 20.0       # DN: below this the local background is too still to divide by
+
+
+def _robust_spread(stack: np.ndarray) -> np.ndarray:
+    """Median absolute deviation over time, per band and pixel: (band, y, x).
+
+    MAD rather than a standard deviation because a residual unmasked cloud or shadow is a
+    large single-date excursion, and this quantity is a denominator.
+    """
+    with np.errstate(invalid="ignore"):
+        med = np.nanmedian(stack, axis=0)
+        mad = np.nanmedian(np.abs(stack - med[None]), axis=0)
+    return mad.astype("float32")
+
+
+def _local_reference(a: np.ndarray, background: np.ndarray | None = None,
+                     window: int = TU_WINDOW) -> np.ndarray:
+    """Local background spread for a (band, y, x) field of per-pixel spreads.
+
+    `background` (see `_local_reference`) is a boolean mask of pixels that may be used as reference. **Excluding the
+    buildings themselves is not a refinement, it is the difference between measuring the
+    background and measuring the roof.** A median filter over a 150 m window centred on a
+    large roof is mostly that roof, so the reference collapses toward the pixel it is meant
+    to normalise and damping goes to zero -- systematically for exactly the large buildings
+    that carry PV. Measured on faisalabad before this was fixed, PV roofs read LOWER damping
+    than PV-free ones, the opposite of what the mixture model predicts.
+
+    Block median over `window`-sized cells of the allowed pixels, bilinearly expanded, so
+    the reference varies at the scale of a neighbourhood rather than a footprint.
+    """
+    from scipy.ndimage import zoom
+
+    nb, h, w = a.shape
+    if background is None:
+        background = np.ones((h, w), dtype=bool)
+    bh, bw = max(h // window, 1), max(w // window, 1)
+    ys = np.linspace(0, h, bh + 1).astype(int)
+    xs = np.linspace(0, w, bw + 1).astype(int)
+    out = np.empty_like(a)
+    for i in range(nb):
+        coarse = np.full((bh, bw), np.nan, dtype="float32")
+        for r in range(bh):
+            for c in range(bw):
+                sl = (slice(ys[r], ys[r + 1]), slice(xs[c], xs[c + 1]))
+                v = a[i][sl][background[sl] & np.isfinite(a[i][sl])]
+                if v.size >= 4:
+                    coarse[r, c] = np.median(v)
+        if np.isnan(coarse).all():
+            out[i] = np.nanmedian(a[i])
+            continue
+        coarse = np.where(np.isnan(coarse), np.nanmedian(coarse), coarse)
+        out[i] = zoom(coarse, (h / bh, w / bw), order=1, grid_mode=True, mode="nearest")[:h, :w]
+    return out
+
+
+def temporal_unmix_fields(stack: np.ndarray, background: np.ndarray | None = None
+                          ) -> dict[str, np.ndarray]:
+    """Per-pixel damping fields from a (time, band, y, x) cloud-masked stack.
+
+    Returns, per band, `damping` = 1 - spread(pixel) / spread(local background), which is
+    the areal PV fraction the model above implies, plus the two terms needed to read it
+    honestly: `background_amplitude` (the denominator, in DN) and `n_obs`.
+
+    Damping is clipped to [-1, 1] rather than [0, 1]. A pixel that moves MORE than its
+    surroundings is evidence against a constant component, and truncating that at zero
+    would throw away the negative half of the discriminator.
+    """
+    n_obs = np.isfinite(stack[:, 0]).sum(axis=0).astype("float32")
+    spread = _robust_spread(stack)                      # (band, y, x)
+    ref = _local_reference(spread, background)          # (band, y, x)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        damping = 1.0 - spread / np.maximum(ref, 1e-6)
+    damping = np.clip(damping, -1.0, 1.0).astype("float32")
+    # Where the background is too still, or the pixel too rarely seen, the ratio means
+    # nothing. Emit NaN rather than a plausible-looking number and let the caller decide.
+    invalid = (ref < TU_MIN_AMP) | (n_obs[None] < TU_MIN_OBS)
+    damping[invalid] = np.nan
+    return {"damping": damping, "background_amplitude": ref, "n_obs": n_obs}
+
+
+STACK_DIR = "stacks"
+
+
+def load_scene_stack(composites, stem: str):
+    """Read a quadrat's saved scene stack back, restoring NaN from the 0 fill."""
+    npz = Path(composites) / STACK_DIR / f"{stem}.npz"
+    if not npz.exists():
+        return None
+    z = np.load(npz, allow_pickle=False)
+    stack = z["stack"].astype("float32")
+    # 0 means masked or unread, the same convention the composites use. A real reflectance
+    # of exactly 0 does not occur after the baseline offset.
+    stack[stack == 0] = np.nan
+    import rasterio
+
+    return stack, rasterio.Affine(*z["transform"]), str(z["crs"])
+
+
+def temporal_unmix_features(bu_utm, composites, stem: str, zonal_shape: int
+                            ) -> dict[str, np.ndarray] | None:
+    """Per-building temporal-unmixing features, or None when the stack is missing.
+
+    `{b}_tdamp` is the estimated PV areal fraction from that band's damping, averaged over
+    the footprint. `t_damp_vis` / `t_damp_swir` group it the way the physics suggests, and
+    `t_bg_amp` carries the DENOMINATOR so the model can discount a building whose
+    surroundings never moved -- without it, a damping of 0.4 measured against a still
+    background is indistinguishable from one measured against a field.
+
+    `t_damp_valid` is the share of the footprint where the ratio was computable at all.
+    """
+    from earthpv.roofclf import BAND_NAMES, zonal_mean_max
+
+    loaded = load_scene_stack(composites, stem)
+    if loaded is None:
+        return None
+    stack, transform, crs = loaded
+    bu = bu_utm.to_crs(crs)
+    # Every footprint is excluded from the background reference, not just the one being
+    # measured: a neighbouring roof is no more "background" than this one.
+    import rasterio.features
+
+    built = rasterio.features.rasterize(
+        ((g, 1) for g in bu.geometry), out_shape=stack.shape[-2:], transform=transform,
+        fill=0, dtype="uint8",
+    ).astype(bool)
+    fields = temporal_unmix_fields(stack, background=~built)
+    damping, bg, n_obs = fields["damping"], fields["background_amplitude"], fields["n_obs"]
+
+    # zonal_mean_max cannot carry NaN through its bincount, so the validity mask is taken
+    # separately and the NaN cells are zero-filled for the mean -- which is why the share
+    # of valid pixels is reported alongside rather than folded in silently.
+    valid = np.isfinite(damping).astype("float32")
+    filled = np.nan_to_num(damping, nan=0.0)
+    dmean, _ = zonal_mean_max(bu, filled, transform)
+    vmean, _ = zonal_mean_max(bu, valid, transform)
+    bmean, _ = zonal_mean_max(bu, bg, transform)
+    nmean, _ = zonal_mean_max(bu, n_obs[None], transform)
+    # Re-normalise: the mean of (damping x valid) over the footprint divided by the share
+    # valid is the mean over the valid pixels only.
+    with np.errstate(invalid="ignore", divide="ignore"):
+        dmean = np.where(vmean > 0.2, dmean / np.maximum(vmean, 1e-6), np.nan)
+
+    idx = {b: i for i, b in enumerate(BAND_NAMES)}
+    out = {f"{b}_tdamp": dmean[i] for i, b in enumerate(BAND_NAMES)}
+    out["t_damp_vis"] = np.nanmean([dmean[idx[b]] for b in ("b02", "b03", "b04", "b08")], axis=0)
+    out["t_damp_swir"] = np.nanmean([dmean[idx[b]] for b in ("b11", "b12")], axis=0)
+    out["t_bg_amp"] = np.nanmean(bmean, axis=0)
+    out["t_damp_valid"] = vmean.mean(axis=0)
+    out["t_stack_obs"] = nmean[0]
+    return out
+
+
+TEMPORAL_UNMIX_FEATURES = (
+    [f"{b}_tdamp" for b in ("b02", "b03", "b04", "b05", "b06", "b07", "b08", "b8a",
+                            "b11", "b12")]
+    + ["t_damp_vis", "t_damp_swir", "t_bg_amp", "t_damp_valid", "t_stack_obs"]
+)
+TEMPORAL_UNMIX_COMPACT = ["t_damp_vis", "t_damp_swir", "t_bg_amp", "t_damp_valid"]

@@ -599,6 +599,73 @@ def l1c_composite(
     return arr, dst_transform, dst_crs
 
 
+def scene_stack(
+    bbox: tuple[float, float, float, float],
+    date_range: tuple[str, str] = ("2025-11-01", "2026-03-15"),
+    max_cloud: int = 30,
+    max_items: int = 12,
+    geobox=None,
+    resampling: str = DEFAULT_RESAMPLING,
+) -> tuple[np.ndarray, list, object, object] | None:
+    """The cloud-masked per-scene stack the median composite is reduced FROM.
+
+    Returns `(arr[time, band, y, x] float32 with NaN where masked, dates, transform, crs)`.
+
+    This is deliberately a separate function rather than a flag on `_annual_composite_via`,
+    and it duplicates that function's search/mask/offset logic on purpose: `compose` is the
+    stage a country-scale run depends on, it is frequently running while this module is
+    edited, and a refactor of it to serve an experiment is a bad trade. Keep the two in
+    sync by hand if the masking or offset rules change; the canonical copy is the one in
+    `_annual_composite_via`.
+
+    Earth Search only -- no provider race. A stack is read once per quadrat for an
+    experiment, so the Planetary Computer hand-off logic buys nothing here and its
+    abandoned-attempt behaviour would just compete for bandwidth with whatever else is
+    composing.
+    """
+    from rasterio.crs import CRS
+
+    bands = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
+    catalog = _es_catalog()
+    with _SEARCH_LOCK:
+        items = sorted(
+            catalog.search(
+                collections=["sentinel-2-l2a"], bbox=bbox,
+                datetime=f"{date_range[0]}/{date_range[1]}",
+                query={"eo:cloud_cover": {"lt": max_cloud}},
+            ).items(),
+            key=lambda it: it.properties.get("eo:cloud_cover", 100),
+        )[:max_items]
+    if not items:
+        return None
+    lon, lat = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+    epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) / 6) + 1
+    grid = dict(geobox=geobox) if geobox is not None else dict(
+        bbox=bbox, resolution=10, crs=CRS.from_epsg(epsg)
+    )
+    ds = odc.stac.load(
+        items, bands=[_ES_BAND_FOR[b] for b in [*bands, "SCL"]], groupby="solar_day",
+        chunks={"x": 2048, "y": 2048}, fail_on_error=False,
+        resampling=_resampling_spec(resampling, es=True), **grid,
+    ).rename({_ES_BAND_FOR[b]: b for b in [*bands, "SCL"]})
+    masked = ds[bands].where(ds["SCL"].isin(_SCL_VALID)).astype("float32")
+    # Same baseline-offset correction as the composite path: Earth Search bakes the
+    # >=04.00 BOA offset into its COGs, Planetary Computer does not, and the model is
+    # calibrated to raw DNs.
+    per_day = {
+        it.datetime.date(): 1000 if it.properties.get("earthsearch:boa_offset_applied") else 0
+        for it in items
+    }
+    offs = [per_day.get(d, 1000) for d in ds["time"].dt.date.values]
+    masked = masked + xr.DataArray(offs, coords={"time": ds["time"]}, dims="time")
+    out = masked.compute()
+    arr = np.stack([out[b].values for b in bands], axis=1)   # (time, band, y, x)
+    dates = [str(np.datetime64(t, "D")) for t in out["time"].values]
+    transform = out.odc.transform if hasattr(out, "odc") else out.rio.transform()
+    crs = geobox.crs if geobox is not None else CRS.from_epsg(epsg)
+    return arr, dates, transform, crs
+
+
 def to_chip_array(ds: xr.Dataset, seasons: list[str]) -> np.ndarray:
     """(bands*len(seasons), y, x) uint16 array in S2_BANDS order per season."""
     arrs = [

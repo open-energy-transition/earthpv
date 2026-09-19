@@ -482,6 +482,35 @@ Note that the obvious free option is gone: Microsoft retired the Planetary Compu
 June 2024 and archived its repository in June 2026. The STAC API and the data stay free, but
 there is no hosted notebook to run this in.
 
+### 19. Temporal unmixing deserves one test on an annual stack (2026-09-19)
+
+[Temporal unmixing](experiments.md#temporal-unmixing-the-dry-season-window-removes-its-own-signal-2026-09-19)
+was rejected on the imagery this project composites, and the reason points at the imagery
+rather than the method. The estimator infers a pixel's PV fraction from how much its
+temporal spread is damped relative to its local background, so it needs a background that
+moves. Measured across 22 quadrats, the open background moves only **1.12x** as much as a
+roof, and PV pixels vary **1.02x** as much as PV-free roofs, which is no signal at all.
+
+That is a property of the window, not of Pakistan. `annual_composite` takes a dry-season
+range of the twelve least-cloudy scenes precisely to suppress phenological and atmospheric
+variation, and a stable composite is the right choice for every other stage. Cropland in
+the monsoon is a different denominator entirely.
+
+The test is cheap and well-defined, because the machinery exists: `scene_stack` and
+`scripts/compose_scene_stacks.py` already build the per-scene cube, and
+`scripts/run_temporal_unmix_ablation.py` already prices the block with a conditional test
+against measured background dynamism. Re-fetch the stacks for a handful of the most
+agricultural quadrats (Muzaffargarh, Bahawalnagar, Khairpur, Nasirabad, Malok) with
+`--window` spanning a full year, re-run the invariance diagnostic first, and only continue
+if `open_over_roof` clears something like 2x. If it does, the conditional result already
+measured (Spearman +0.401, p=0.071; the dynamic half gained in 9 of 11 folds) says where
+to look.
+
+Two cautions carried from the rejected run. The gain in the dynamic half was +0.0015 AUC,
+so even a favourable window has to move this by an order of magnitude to matter. And an
+annual stack reintroduces everything the dry-season window exists to exclude, monsoon cloud
+above all, so the scene count per pixel will fall and `n_obs` has to be watched.
+
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.

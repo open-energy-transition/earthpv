@@ -82,6 +82,7 @@ see [Open questions](open-questions.md).
 | [Regression sharpening of the 20 m bands](#the-20-m-bands-and-what-sharpening-them-costs-2026-09-19) | <span class="outcome negative">rejected</span> | Predicting SWIR from the visible bands costs 0.0047 AUC, 7 of 30 folds, p=0.008. The SWIR signal is not synthesisable. |
 | [Footprint-constrained spatial unmixing](#unmixing-the-pixel-against-a-known-footprint-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts reflectance error 67% on synthetic sub-pixel buildings and loses 0.0323 AUC within size band on real ones, 2 of 30 folds, p=0.000. |
 | [Top-of-atmosphere instead of Sen2Cor](#l1c-against-l2a-the-correction-is-not-the-problem-2026-09-19) | <span class="outcome negative">rejected</span> | An exact coin flip, 15 of 30 folds, p=1.00, at triple the fold-to-fold spread. |
+| [Temporal unmixing](#temporal-unmixing-the-dry-season-window-removes-its-own-signal-2026-09-19) | <span class="outcome negative">rejected</span> | PV pixels vary as much as PV-free roofs (ratio 1.02), so there is no damping to measure. The gain tracks background dynamism as predicted, at 0.0015 AUC. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -775,6 +776,78 @@ to a whole country depends on.
 Kept as `building_table(preprocess="l1c")` plus `scripts/compose_l1c_quadrats.py`, because
 the reader is the reusable part: it is the project's only route to TOA reflectance, and
 glint work has a standing interest in saturation that L2A discards.
+
+### Temporal unmixing: the dry-season window removes its own signal (2026-09-19)
+
+The third and last unmixing attempt, and the only one that needs neither the footprint nor
+a known endmember spectrum. Its constraint is that a PV array's AREAL FRACTION of a pixel
+is constant while the background's reflectance is not, so taking the temporal spread of
+
+    y_p(t) = f_p . r_PV + (1 - f_p) . b_p(t)
+
+gives `spread(y_p) = (1 - f_p) . spread(b_p)`, and `f_p` is one minus the ratio of a
+pixel's temporal spread to its local background's. That is self-normalising against roof
+colour, where absolute reflectance is not: a dark roof and a panel look alike in a median
+composite, and the claim is that they move differently through a season.
+
+**On synthetic data the estimator is near-unbiased**, recovering 0.492 for a true fraction
+of 0.50 and 0.247 for 0.25, and refusing (100% NaN) when the background is held still.
+
+**On real quadrats the premise is simply false.** `scripts/pv_temporal_invariance.py`
+compares per-pixel temporal MAD inside mapped PV against PV-free roof pixels in the same
+quadrat, which tests the assumption directly and needs no classifier:
+
+| | Median across 22 quadrats | Range |
+| --- | --- | --- |
+| PV pixels / PV-free roof pixels | **1.02** | 0.89-1.23 |
+| Open background / roof pixels | **1.12** | 0.91-2.02 |
+
+A PV pixel varies over time **exactly as much as the roof beside it**, so there is no
+damping to measure; and the open background moves only 12% more than a roof, so there is
+barely a denominator to divide by. Only 1 quadrat of 22 has a background moving more than
+1.5x a roof. At 70-150 DN of MAD against 2,000-2,800 DN of reflectance, what is being
+measured is a common floor of per-scene radiometric residual and BRDF, not surface
+dynamics, and a floor is added AFTER mixing so it is not attenuated by `f` at all.
+
+The ablation agrees, over 30 quadrats leave-one-quadrat-out: **+0.0003 AUC (17 of 30
+folds, p=0.46)** and +0.0011 within size band (18 of 30, p=0.26). Damping plus size alone
+reaches 0.7388 / 0.5863, against a size-only baseline of 0.7441 / 0.5773.
+
+**The conditional test is what makes this more than another null.** Registered before the
+run: if the mechanism is real but starved, the gain should rise with how much a quadrat's
+background actually moves. It does. Spearman between the within-size gain and
+`open_over_roof` is **+0.401 (p = 0.071, n = 21 folds)**, and splitting at the median:
+
+| | Gain within size band | Folds better |
+| --- | --- | --- |
+| Dynamic half (open/roof >= 1.13) | +0.0015 | **9 of 11** |
+| Still half (open/roof < 1.13) | -0.0001 | 4 of 10 |
+
+So the physics is visible in the structure of the result and worth nothing in its
+magnitude. Treat that cautiously: n is 21, p = 0.071, and the single most dynamic quadrat
+(malok, open/roof 2.02) runs against the trend at -0.0013, so the relationship is not
+driven by its own extreme.
+
+**The most useful thing here is why the denominator is missing, because it is
+self-inflicted.** `annual_composite` takes a DRY-SEASON window of the twelve least-cloudy
+scenes, chosen precisely to suppress phenological and atmospheric variation and produce a
+stable composite. That is the right choice for everything else the pipeline does, and it
+removes exactly the background dynamics this estimator needs. The honest next test is a
+full-year stack including the monsoon, where cropland actually swings; that is different
+data, not a different estimator, and it is filed in
+[Open questions](open-questions.md). Until then this is rejected for the window the
+project actually composites.
+
+A methodological note worth keeping: the first precondition check measured temporal
+amplitude over WHOLE quadrats and looked ample (median 148 DN, all 31 quadrats clearing
+the bar). The denominator that matters is the background near a BUILDING, which is other
+roofs and pavement, and measuring that population gave 1.12. Checking the precondition on
+the wrong population is the same error the
+[snow-cover experiment](#snow-cover-contrast-and-the-one-commune-that-nearly-sold-it-2026-09-08)
+records, in a different costume.
+
+Artifacts: `results/pv_temporal_invariance.json`, `results/roofclf_temporal_unmix.json`,
+`results/roofclf_temporal_unmix_folds.csv`.
 
 ### Keeping more than the median composite (2026-09-19)
 

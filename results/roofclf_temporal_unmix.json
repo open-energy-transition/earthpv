@@ -1,0 +1,32 @@
+{
+  "n_folds": 30,
+  "n_rows": 123628,
+  "n_rows_dropped_nan": 239,
+  "median_auc_base": 0.8574,
+  "median_auc_plus_unmix": 0.8585,
+  "median_auc_plus_unmix_full": 0.859,
+  "median_auc_unmix_only": 0.7388,
+  "median_ws_base": 0.8205,
+  "median_ws_plus_unmix": 0.8235,
+  "median_ws_unmix_only": 0.5863,
+  "delta_auc_median": 0.0003,
+  "delta_auc_iqr": [
+    -0.0005,
+    0.0013
+  ],
+  "auc_folds_better": 17,
+  "auc_sign_p": 0.4583,
+  "delta_ws_median": 0.0011,
+  "delta_ws_iqr": [
+    -0.0003,
+    0.003
+  ],
+  "ws_folds_better": 18,
+  "ws_sign_p": 0.2649,
+  "n_conditioned": 21,
+  "cond_ws_spearman": 0.401,
+  "cond_ws_p": 0.0714,
+  "cond_auc_spearman": 0.327,
+  "delta_ws_dynamic_half": 0.0015,
+  "delta_ws_still_half": -0.0001
+}
