@@ -1152,10 +1152,13 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
   `ndbi` +3.65, `b12_mean` -3.23, against +2.78 for the largest 10 m band). Bilinear is
   worth +0.0041 AUC within size band over 30 quadrats (20/30 folds, sign test p=0.061):
   suggestive, free, and shipped as the default (`imagery.BAND_RESAMPLING`,
-  `compose --resampling`). **Every existing composite -- Pakistan, Germany, France, Zambia
-  -- is `nearest`**, and composites now carry an `earthpv_resampling` tag (absent = nearest).
-  Recompose a country wholesale or leave it alone; a model calibrated on one and scored on
-  the other is a domain shift. SCL stays nearest always (interpolating class 4 and class 8
+  `compose --resampling`). **Every existing composite -- Pakistan, Germany, France, Zambia,
+  Nigeria -- is `nearest`**, and composites now carry an `earthpv_resampling` tag (absent =
+  nearest). `compose` INHERITS an AOI's existing mode by default and only gives a fresh AOI
+  bilinear, so a resumable run cannot mix the two: that matters because a country-scale
+  compose runs in a restart loop (`compose_loop.sh`), and the first pass after a default
+  changes is exactly where silent mixing would happen. Recompose a country wholesale or
+  leave it alone; a model calibrated on one and scored on the other is a domain shift. SCL stays nearest always (interpolating class 4 and class 8
   invents class 6). *Sharpening* those bands by regression on the visible ones was measured
   and REJECTED (-0.0047 AUC, 7/30 folds, p=0.008): the SWIR signal is not predictable from
   the visible bands, which is why it carries weight in the first place.

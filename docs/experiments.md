@@ -673,8 +673,12 @@ suggestive rather than established, and it is free. It says the defect worth fix
 composite records which it used in an `earthpv_resampling` tag; a composite with no such
 tag predates this and is nearest. **The two must not be mixed within one AOI**: the change
 is small but systematic, and a model calibrated on nearest composites and scored on
-bilinear ones is a domain shift rather than an improvement. Pakistan, Germany, France and
-Zambia are all nearest today and stay that way until someone recomposes one wholesale.
+bilinear ones is a domain shift rather than an improvement. That is enforced rather than
+documented -- `compose` inherits an AOI's existing mode and gives only a fresh AOI the new
+default, because a country-scale run is a restart loop and the first pass after a default
+changes is where silent mixing happens. Pakistan, Germany, France, Zambia and Nigeria
+(20,160 cells between them) are all nearest today and stay that way until someone
+recomposes one wholesale, which on p=0.061 evidence is not worth the bandwidth.
 SCL keeps nearest regardless, because interpolating between class 4 and class 8 invents
 class 6.
 

@@ -96,12 +96,13 @@ def compose(
         "buildings by orders of magnitude in some regions"
     ),
     resampling: str = typer.Option(
-        "20m-bilinear", "--resampling",
+        None, "--resampling",
         help="How the native-20 m bands (B05-B07, B8A, B11, B12) reach the 10 m grid: "
-        "'20m-bilinear' (default since 2026-09-19) or 'nearest' (what every composite "
-        "built before then used -- odc.stac replicates the 20 m value into each 2x2 block, "
-        "which misregisters it against a one-pixel footprint by up to 10 m). DO NOT MIX "
-        "the two within one AOI: recompose a country wholesale or leave it alone.",
+        "'20m-bilinear' (the default for a FRESH AOI since 2026-09-19) or 'nearest' (what "
+        "every composite built before then used -- odc.stac replicates the 20 m value into "
+        "each 2x2 block, misregistering it against a one-pixel footprint by up to 10 m). "
+        "Omit it and an AOI that already has composites keeps whatever they used, so a "
+        "resumable run cannot mix the two; pass it explicitly only to override that.",
     ),
     stats: bool = typer.Option(
         False, "--stats/--no-stats",

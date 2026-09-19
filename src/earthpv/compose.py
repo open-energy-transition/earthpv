@@ -323,6 +323,23 @@ def write_temporal_stats(
     tmp.rename(path)
 
 
+def existing_resampling(out_dir: Path) -> str | None:
+    """The resampling an AOI's existing composites were built with, or None if there are none.
+
+    A composite written before 2026-09-19 carries no `earthpv_resampling` tag, and every
+    one of those is "nearest". This exists so a resumable run cannot quietly append
+    bilinear cells to a nearest corpus: the difference is small, systematic, and exactly
+    the kind of domain shift that shows up later as an unexplained calibration drift.
+    """
+    for tif in sorted(out_dir.glob("*/composite_0.tif"))[:1]:
+        try:
+            with rasterio.open(tif) as src:
+                return src.tags().get("earthpv_resampling", "nearest")
+        except rasterio.errors.RasterioIOError:
+            return None
+    return None
+
+
 def quadrat_geobox(composites: Path, boundary, margin_m: float = 200.0):
     """GeoBox over a quadrat's bbox, snapped to its parent composite's pixel grid.
 
@@ -369,7 +386,7 @@ def run_compose(
     include_labels: bool = True,
     use_vida: bool = False,
     stats: bool = False,
-    resampling: str = DEFAULT_RESAMPLING,
+    resampling: str | None = None,
 ) -> Path:
     """`window`/`index` build an extra seasonal layer (`composite_<index>.tif`, e.g.
     a post-monsoon contrast season) into the same cell dirs as the base run.
@@ -379,9 +396,13 @@ def run_compose(
     the STAC search is serialized internally (annual_composite) for thread safety.
 
     `resampling` picks how the native-20 m bands reach the 10 m grid (see
-    `imagery.BAND_RESAMPLING`). It is stamped into every composite this writes, because a
-    corpus must not silently mix the two: the pre-2026-09-19 default was "nearest" and
-    every existing composite is nearest.
+    `imagery.BAND_RESAMPLING`) and is stamped into every composite this writes. Leave it
+    None and the AOI decides: a directory that already holds composites keeps whatever
+    they were built with, and only a fresh AOI gets the current default. That is what
+    stops a resumable run from appending bilinear cells to a nearest corpus, which no
+    docstring warning would have prevented -- `compose` is re-invoked in a restart loop
+    for a country-scale run, so the FIRST pass after a default changes is where it would
+    have happened. An explicit value overrides the inheritance and warns if it conflicts.
 
     `stats` also writes `temporal_stats_<index>.tif` per cell (see `write_temporal_stats`).
     Two consequences worth knowing before running it at scale. It roughly quadruples
@@ -410,6 +431,21 @@ def run_compose(
     region_dir = Path(out_dir) / aoi
     out_dir = region_dir / "composites"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    found = existing_resampling(out_dir)
+    if resampling is None:
+        resampling = found or DEFAULT_RESAMPLING
+        if found:
+            log.info("Inheriting resampling=%s from the %d composites already in %s",
+                     resampling, len(list(out_dir.glob("*/composite_0.tif"))), out_dir)
+        else:
+            log.info("Fresh AOI: using resampling=%s", resampling)
+    elif found and found != resampling:
+        log.warning(
+            "MIXING RESAMPLING: %s already holds composites built with %r and this run was "
+            "told %r. The two are not interchangeable -- recompose the AOI wholesale or "
+            "pass --resampling %s.", out_dir, found, resampling, found,
+        )
 
     cells = populated_cells(aoi, cfg, settings, min_buildings, include_labels, use_vida)
     if limit:
