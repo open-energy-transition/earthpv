@@ -1,0 +1,11 @@
+quadrat,summer,winter,gain
+faisalabad_calib_1km,-0.919,-0.712,1.291
+islamabad_east_calib_2p79km2,-0.133,-0.315,0.421
+islamabad_north_calib_2p79km2,-0.256,-0.354,0.723
+islamabad_west_calib_2p79km2,-0.377,-0.561,0.671
+karachi_coast_calib_2p16km2,-0.679,-0.72,0.943
+lahore_calib_6p61km2,-0.503,-0.312,1.615
+multan_calib_3p92km2,-1.074,-1.058,1.015
+peshawar_west_calib_4p39km2,-0.523,-0.687,0.762
+site_karachi_calib_4p14km2,-1.271,-1.07,1.188
+sundar_calib_4p34km2,-0.707,-0.658,1.074

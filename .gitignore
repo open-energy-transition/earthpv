@@ -40,6 +40,11 @@ results/*
 !results/roofclf_medoid_context_plus_context_folds.csv
 !results/roofclf_medoid_context_context_only_folds.csv
 !results/roofclf_medoid_context_medoid_plus_context_folds.csv
+!results/glint_geometry_snr.json
+!results/glint_geometry_snr_scenes.csv
+!results/summer_window_contrast.json
+!results/summer_window_contrast_by_quadrat.csv
+!results/summer_window_contrast_scenes.csv
 !results/glint_observability_summary.json
 !results/glint_pose_by_region.csv
 !results/glint_pose_by_region_combined.csv

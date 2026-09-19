@@ -1,0 +1,13 @@
+{
+  "window": "2026-05-01:2026-06-15",
+  "n_quadrats": 10,
+  "n_summer_scenes": 76,
+  "n_winter_scenes": 111,
+  "median_dprime_summer": -0.601,
+  "median_dprime_winter": -0.672,
+  "median_contrast_gain": 0.98,
+  "quadrats_summer_better": 5,
+  "roof_brightness_summer": 3064.4,
+  "roof_brightness_winter": 2532.3,
+  "wilcoxon_p": 0.7695
+}

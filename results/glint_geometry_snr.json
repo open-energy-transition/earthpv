@@ -1,0 +1,15 @@
+{
+  "n_scenes": 239,
+  "n_quadrats": 22,
+  "glint_tol_deg": 10.0,
+  "frac_scenes_with_any_pose_glinting": 0.9372384937238494,
+  "median_min_misalign_deg": 3.77,
+  "spearman_dprime_vs_min_misalign_deg": 0.101,
+  "p_dprime_vs_min_misalign_deg": 0.1196,
+  "spearman_dprime_vs_frac_poses_glinting": -0.157,
+  "p_dprime_vs_frac_poses_glinting": 0.0153,
+  "dprime_nearest_quartile": -0.549,
+  "dprime_farthest_quartile": -0.409,
+  "misalign_nearest_quartile": 1.17,
+  "misalign_farthest_quartile": 8.54
+}

@@ -91,6 +91,8 @@ see [Open questions](open-questions.md).
 | [Context-relative spectral features](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome mixed">partial</span> | Within-cell z-scores alone TIE the shipped model's ranking while doubling its rate error: ranking is relative, calibration is absolute. |
 | [The spectral SNR budget](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome works">shipped</span> | Measured, not argued: the noise is roof heterogeneity at 20-40x the sensor's, and the linear spectral limit is already reached. |
 | [Local background conditioning](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts noise 23-43% and signal faster, at every scale from 31 m to 369 m, because PV adoption is spatially clustered. |
+| [Glint geometry as a scene-level SNR lever](#sun-geometry-neither-glint-nor-high-sun-raises-the-contrast-2026-09-19) | <span class="outcome negative">rejected</span> | The apparent gain is solar elevation: partialling it out leaves +0.025 (p=0.70). |
+| [Compositing in a high-sun window](#sun-geometry-neither-glint-nor-high-sun-raises-the-contrast-2026-09-19) | <span class="outcome negative">rejected</span> | Roofs are 21% brighter pre-monsoon and the contrast is unchanged (0.98x): d-prime is illumination-invariant. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -1099,6 +1101,59 @@ against array size, and it is the same quantity that
 Kept as `roofclf.add_neighbour_features` for anyone who wants to re-measure. Panels are
 strongly polarising, which would be a nearly background-free channel, but no free satellite
 measures it.
+
+### Sun geometry: neither glint nor high sun raises the contrast (2026-09-19)
+
+Two follow-ups to [the SNR budget](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19),
+asking whether some sun-sensor geometry gives a better look at the same panels.
+
+**Glint is not a scene-level lever.** A glass-fronted panel is specular, so on a date when
+the sun-panel-sensor geometry approaches the mirror condition it should stand out. Scored
+over 239 scenes in 22 quadrats, using each scene's own sun and view angles and the **192
+poses fitted from real Pakistani installations** rather than an assumed one, near-specular
+scenes do show 34% more contrast: d' -0.549 in the nearest quartile of misalignment (1.17
+deg) against -0.409 in the farthest (8.54 deg).
+
+It is not glint. Misalignment and solar zenith are collinear at +0.475 by construction, and
+partialling out the sun kills the geometry term while the sun survives:
+
+| | Spearman | p |
+| --- | --- | --- |
+| d' vs misalignment | +0.101 | 0.12 |
+| d' vs solar zenith | +0.204 | 0.0015 |
+| **d' vs misalignment, controlling for solar zenith** | **+0.025** | **0.70** |
+| d' vs solar zenith, controlling for misalignment | +0.161 | 0.013 |
+
+The sign was wrong for glint from the start: PV gets DARKER relative to the roof near
+specular, not brighter. And glint could not work as a scene selector even if it were real,
+because **93.7% of scenes already have some pose within 10 deg of specular** (median 3.77
+deg) -- the condition almost never discriminates between observations. What this does NOT
+test is per-target glint on individual installations, which is how `glint.py` uses it and
+where it does work: no scene has more than half the pose population glinting, so a narrow
+lobe on a few panels is diluted by pixel-averaging across a quadrat.
+
+**And a high-sun window does not help either, which refutes a prediction made here.** The
+winter fit was `d' = -1.296 + 0.0145 x sun_zenith`, which extrapolated to roughly double the
+contrast at summer sun angles and suggested the dry-season compose window might be costing
+signal. Measured against pre-monsoon May-June scenes over 10 quadrats:
+
+| | Pre-monsoon | Dry season |
+| --- | --- | --- |
+| Median d' | -0.601 | -0.672 |
+| Roof brightness | **3,064 DN** | 2,532 DN |
+
+**Gain 0.98x, better in 5 of 10 quadrats, Wilcoxon p = 0.77.** The first half of the
+mechanism happened exactly as predicted -- roofs really are 21% brighter under high sun --
+and the contrast did not move, because d' is a NORMALISED quantity: illumination scales the
+panel, the roof and the between-roof spread together, so numerator and denominator grow in
+step and the ratio is invariant to first order.
+
+That means the within-window correlation the prediction rested on was not illumination
+scaling at all; more likely seasonal surface change (moisture, dust, vegetation) tracking
+date across a narrow 37-59 deg span. **The compose window is not costing contrast**, and
+acting on the extrapolation would have meant recompositing a country onto a worse epoch for
+no gain. Artifacts: `results/glint_geometry_snr.json`,
+`results/summer_window_contrast.json` and their per-scene CSVs.
 
 ### Keeping more than the median composite (2026-09-19)
 
