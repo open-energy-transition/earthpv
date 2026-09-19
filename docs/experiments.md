@@ -81,6 +81,7 @@ see [Open questions](open-questions.md).
 | [Bilinear resampling of the native-20 m bands](#the-20-m-bands-and-what-sharpening-them-costs-2026-09-19) | <span class="outcome works">shipped</span> | The model's biggest coefficients sit on bands replicated nearest-neighbour from 20 m. De-blocking them: +0.0041 AUC within size band, 20 of 30 folds, p=0.061. |
 | [Regression sharpening of the 20 m bands](#the-20-m-bands-and-what-sharpening-them-costs-2026-09-19) | <span class="outcome negative">rejected</span> | Predicting SWIR from the visible bands costs 0.0047 AUC, 7 of 30 folds, p=0.008. The SWIR signal is not synthesisable. |
 | [Footprint-constrained spatial unmixing](#unmixing-the-pixel-against-a-known-footprint-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts reflectance error 67% on synthetic sub-pixel buildings and loses 0.0323 AUC within size band on real ones, 2 of 30 folds, p=0.000. |
+| [Top-of-atmosphere instead of Sen2Cor](#l1c-against-l2a-the-correction-is-not-the-problem-2026-09-19) | <span class="outcome negative">rejected</span> | An exact coin flip, 15 of 30 folds, p=1.00, at triple the fold-to-fold spread. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -726,6 +727,54 @@ size band over VIDA there -- but off, and not recommended on an imagery-derived 
 
 Raw numbers for both: `results/roofclf_preprocess_ablation.json` and
 `results/roofclf_preprocess_*_folds.csv`.
+
+### L1C against L2A: the correction is not the problem (2026-09-19)
+
+Sen2Cor's surface-reflectance retrieval assumes a **Lambertian** surface and constrains
+aerosol from dark targets. A PV module is specular AND dark, so on the face of it L2A
+models the wrong physics over exactly the target of interest, in a geometry-dependent way,
+and it clips the saturation a real glint produces. If that costs anything, the fix is free:
+use L1C top-of-atmosphere reflectance instead.
+
+Getting the data was the awkward part and is worth recording. Planetary Computer publishes
+L2A only, and Earth Search's `sentinel-2-l1c` assets point at ESA's **requester-pays**
+`s3://sentinel-s2-l1c`, which needs AWS credentials. Google's `gcp-public-data-sentinel-2`
+mirrors the same SAFE archives and is anonymously readable, so `imagery.l1c_composite`
+runs discovery on STAC and reads pixels as JP2 over HTTPS from GCS, on the parent
+composite's own pixel grid. L1C carries no usable cloud mask (QA60 is empty from baseline
+04.00), so the mask comes from the L2A scenes of the same solar days. Serially this costs
+about 12 minutes a quadrat, nearly all of it JP2 opens; a thread pool over the 120
+(scene, band) reads brings it to 108 s.
+
+The composite validates against L2A exactly as atmospheric physics requires: TOA/BOA is
+**1.42 in the blue, 1.19 green, 1.09 red, 0.97 NIR, 0.93 and 0.89 in the SWIR** -- strong
+Rayleigh path radiance at short wavelengths giving way to absorption at long ones.
+
+**And it makes no difference.** Over the same 30 quadrats, same rows, same features:
+
+| | AUC | Within size band |
+| --- | --- | --- |
+| L2A (shipped) | 0.8575 | 0.8206 |
+| L1C | 0.8429 | 0.8102 |
+| Paired delta | +0.0004, **15 of 30 folds, p = 1.00** | -0.0039, 12 of 30, p = 0.46 |
+
+Fifteen folds each way is as null as a result can be, so **the Lambertian objection, while
+physically real, costs the classifier nothing measurable.**
+
+The interesting part is the spread rather than the centre. The paired median is zero while
+the median AUC drops 0.0146, and the fold-to-fold IQR is about three times the other
+variants tested here (-0.0274 to +0.0128 within size band, against -0.0007 to +0.008 for
+bilinear resampling). A few quadrats get much worse under L1C while the typical one is
+unchanged. That is what an absent atmospheric correction should look like in a
+leave-one-quadrat-out design: path radiance varies with aerosol and geometry BETWEEN
+quadrats, so removing the correction adds cross-quadrat variance without touching
+per-building discrimination. **The correction earns its place in transferability, not in
+contrast** -- which is precisely the property a model trained on some quadrats and applied
+to a whole country depends on.
+
+Kept as `building_table(preprocess="l1c")` plus `scripts/compose_l1c_quadrats.py`, because
+the reader is the reusable part: it is the project's only route to TOA reflectance, and
+glint work has a standing interest in saturation that L2A discards.
 
 ### Keeping more than the median composite (2026-09-19)
 

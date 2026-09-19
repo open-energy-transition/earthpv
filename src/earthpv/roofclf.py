@@ -875,6 +875,19 @@ def building_table(
     arr = arr.astype("float32") / REFL_SCALE
     preboom_arr = arr[len(BAND_NAMES): 2 * len(BAND_NAMES)] if include_epoch_jump else None
     arr = arr[: len(BAND_NAMES)]
+    if preprocess == "l1c":
+        # Swap the whole reflectance source for the top-of-atmosphere composite, so every
+        # reflectance-derived term -- band means, indices, the yard block -- comes from one
+        # processing level. The L1C file is already on this composite's pixel grid
+        # (`scripts/compose_l1c_quadrats.py` pins it), so its own transform is used rather
+        # than reprojecting onto the L2A window.
+        l1c_path = Path(composites) / "l1c" / f"{stem}.tif"
+        if not l1c_path.exists():
+            log.warning("quadrat %s: no L1C composite at %s -- skipping", name, l1c_path)
+            return pd.DataFrame()
+        with rasterio.open(l1c_path) as _t:
+            arr = _t.read().astype("float32") / REFL_SCALE
+            transform, crs = _t.transform, _t.crs
     if preprocess in ("sharpen20", "sharpen20_interp"):
         from earthpv.preprocess import sharpen_20m
 

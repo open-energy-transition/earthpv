@@ -136,7 +136,13 @@ def main() -> None:
         d.to_csv(Path("results") / f"roofclf_preprocess_{mode}_folds.csv", index=False)
         log.info("%s: %s", mode, json.dumps(res))
 
-    Path("results/roofclf_preprocess_ablation.json").write_text(json.dumps(summary, indent=2))
+    # Merge rather than overwrite: a run naming one mode must not drop the others already
+    # measured, which is how the first l1c run clobbered three committed results.
+    out_json = Path("results/roofclf_preprocess_ablation.json")
+    prior = json.loads(out_json.read_text()) if out_json.exists() else {}
+    prior.update(summary)
+    out_json.write_text(json.dumps(prior, indent=2))
+    summary = prior
     print(json.dumps(summary, indent=2))
 
 
