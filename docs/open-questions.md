@@ -434,6 +434,54 @@ still untried. Item 4's post-stratification use should stay lower priority given
 partial-correlation result, unless nightlight *variability* over time, rather than the mean
 level, turns out to behave differently from building density -- untested either way.
 
+### 18. `compose` downloads 31 times more than it keeps (2026-09-19)
+
+Measured on the running Nigerian compose, over four minutes of a healthy 6.8 MB/s link:
+
+    downloaded   410 MB per composited cell
+    written       13.4 MB per composited cell   (24,788 MB over 1,854 cells)
+
+`annual_composite` pulls roughly twelve scenes by ten bands and keeps a per-pixel median, so
+about 31 of every 32 bytes crossing the link are discarded on arrival. For Nigeria's
+remaining 4,829 cells that is **about 2 TB of transfer to produce 65 GB of composites**:
+five days against under three hours at the same link speed.
+
+This is the binding constraint on the whole programme, not a Nigeria problem. Compose is the
+only stage measured in days, every new country pays it in full, and
+[the scaling guide](reproduce.md#scale-to-a-new-country) names eight more countries. It is
+listed last here only because the ranking above weighs accuracy; on wall-clock per country it
+would sit near the top.
+
+**The fix is to composite next to the data and download only the result.** Three routes, in
+increasing order of risk:
+
+- **Run the existing code on a co-located VM.** `sentinel-cogs` lives in AWS `us-west-2` and
+  Planetary Computer's blobs in Azure West Europe; same-region reads are free and fast.
+  Nothing about the science changes: same `imagery.py`, same twelve-least-cloudy selection,
+  same SCL classes, same Collection-1 offsets, byte-identical output. `compose` is already
+  resumable per cell and `EARTHPV_STAC_PROVIDER` already pins the provider to match the
+  region. Egress for a country is tens of GB.
+- **openEO on the Copernicus Data Space Ecosystem**, which is compositing as an API: send a
+  process graph, download the result. Every user gets 10,000 free credits a month.
+- **Google Earth Engine**, same shape via `COPERNICUS/S2_SR_HARMONIZED`.
+
+**What makes the last two risky is specific to this project.** `annual_composite` is not a
+generic median: twelve least-cloudy scenes, per-pixel SCL masking on classes 4/5/6/7, and the
+Collection-1 radiometric offset. The production checkpoint was fine-tuned on exactly that
+radiometry, and this repository has already discarded a set of composites built before the
+2026-07-26 offset fix. A reimplementation that is subtly off produces imagery the model reads
+as domain shift, and nothing would surface it until the capacity numbers came out wrong.
+
+**Concrete next step**, which is cheap and settles the risk: composite a few dozen cells of an
+existing AOI on a co-located VM, copy them back, and diff against the locally built ones. If
+they are byte-identical, route the next country that way and keep the recipe unchanged. Only
+if that is impractical is it worth porting the recipe to openEO, and then the same cell-level
+diff is the acceptance test.
+
+Note that the obvious free option is gone: Microsoft retired the Planetary Computer Hub in
+June 2024 and archived its repository in June 2026. The STAC API and the data stay free, but
+there is no hosted notebook to run this in.
+
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.
