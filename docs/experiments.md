@@ -87,6 +87,8 @@ see [Open questions](open-questions.md).
 | [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
 | [Area-weighted training loss](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Improves the area ratio it optimises (1.084 to 1.035) and loses on both ranking (-0.0111 AUC) and count calibration (0.0308 to 0.0395). |
 | [Post-hoc recalibration of roofclf](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Recovers 38% of gradient boosting's calibration gain at p=0.069. No monotone map reaches it, so that gain is a reordering. |
+| [Medoid instead of band-wise median compositing](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | A real artifact, but one date's spectrum loses more to noise than it gains in coherence: -0.0074 AUC. |
+| [Context-relative spectral features](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome mixed">partial</span> | Within-cell z-scores alone TIE the shipped model's ranking while doubling its rate error: ranking is relative, calibration is absolute. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -963,6 +965,63 @@ quadrats were split into five blocks by quadrat, and the calibrator was fitted o
 out-of-fold scores. Fitting on in-sample scores would be optimistic in exactly the direction
 being measured. Artifacts: `results/roofclf_weighting_calibration.json`,
 `results/roofclf_weighting_calibration_folds.csv`.
+
+### Spectral coherence, and where transferability lives (2026-09-19)
+
+Two more attempts at the features the classifier leans hardest on, both using data already
+on disk.
+
+| Variant | AUC | Within size band | Median rate error | Paired vs shipped |
+| --- | --- | --- | --- | --- |
+| Baseline (shipped) | 0.8574 | **0.8206** | 0.0308 | -- |
+| Medoid composite | 0.8415 | 0.7896 | 0.0280 | -0.0074, 9 of 30 |
+| Plus context features | 0.8540 | 0.8166 | 0.0291 | -0.0003, 14 of 30 |
+| **Context features ONLY** | 0.8595 | 0.8189 | **0.0569** | **-0.0011, 14 of 30** |
+| Medoid plus context | 0.8546 | 0.7982 | 0.0287 | -0.0070, 9 of 30 |
+
+**The band-wise median really does invent a spectrum, and fixing it does not pay.**
+`annual_composite` reduces with `median(dim="time")` over a Dataset, so each band's median
+is taken independently: a pixel's B02 can come from January and its B11 from March, and the
+result is a spectrum no scene observed. That is harmless for one band and not harmless for a
+RATIO, which is what the model weights most (`swir_vis_ratio` -3.92, `ndbi` +3.65,
+`blue_red_ratio` -1.56). A medoid -- the single date per pixel whose whole spectrum is
+closest to the median -- is coherent by construction, and verified to equal exactly one real
+date where the band-wise median equals none. It scores **-0.0074 AUC and -0.0102 within size
+band**. The trade is visible in the construction: a medoid is ONE observation, so it forfeits
+the twelve-scene median's noise averaging, and that costs more than incoherent ratios do. It
+does improve the rate error slightly (0.0308 to 0.0280), which is consistent with the
+diagnosis rather than with the medoid being simply worse.
+
+**The result worth keeping is the context-only row.** `local_zscore` re-centres a building
+against its own quadrat or cell, and ships applied to `brightness` alone, one feature of
+fifteen. Extended to every spectral feature, added alongside the absolute ones it changes
+nothing (-0.0003, 14 of 30). But **replacing them entirely ties the shipped model**
+(-0.0011, 14 of 30, p = 1.00) while nearly doubling the rate error, 0.0308 to 0.0569.
+
+That separates two things this project had confounded:
+
+- **Ranking is relative.** Which building in a cell carries PV is fully answerable from
+  within-cell contrast; the absolute reflectance level adds nothing to it.
+- **Calibration is absolute.** Z-scoring removes the level that says one quadrat is more
+  PV-dense than another, and the aggregate collapses.
+
+For scaling that is a useful thing to know in both directions. The ranking half -- the leads
+product, and the precision-thresholded population the coverage ratio is fitted on -- should
+transfer to a new country robustly, because it is immune to the cross-quadrat level shifts
+that atmospheric and seasonal differences produce. The aggregate half depends on absolute
+reflectance being comparable between places, which is exactly why removing atmospheric
+correction in [the L1C test](#l1c-against-l2a-the-correction-is-not-the-problem-2026-09-19)
+tripled the fold-to-fold spread without touching the median.
+
+Neither is adopted. The context block is kept as `roofclf.CONTEXT_FEATURES` /
+`add_context_features`, the medoid as `preprocess.medoid_composite` and
+`building_table(preprocess="medoid")`. One caveat on the medoid comparison: its table has 36
+more rows than the baseline (123,903 against 123,867), because a scene stack covers the
+quadrat geobox plus margin rather than the boundary bbox. At 0.03% that cannot carry the
+result, but the two are not row-identical the way the earlier preprocessing comparisons were.
+
+Artifacts: `results/roofclf_medoid_context.json`,
+`results/roofclf_medoid_context_*_folds.csv`.
 
 ### Keeping more than the median composite (2026-09-19)
 

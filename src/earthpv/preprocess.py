@@ -425,3 +425,39 @@ TEMPORAL_UNMIX_FEATURES = (
     + ["t_damp_vis", "t_damp_swir", "t_bg_amp", "t_damp_valid", "t_stack_obs"]
 )
 TEMPORAL_UNMIX_COMPACT = ["t_damp_vis", "t_damp_swir", "t_bg_amp", "t_damp_valid"]
+
+
+def medoid_composite(stack: np.ndarray) -> np.ndarray:
+    """Per-pixel MEDOID of a (time, band, y, x) stack: one real scene's whole spectrum.
+
+    `annual_composite` reduces with `median(dim="time")` on a Dataset, so each band's
+    median is taken INDEPENDENTLY. Pixel p's B02 can come from January and its B11 from
+    March, and the result is a spectrum no scene ever observed. That is harmless for a band
+    in isolation and not harmless for a RATIO between bands -- and the classifier's largest
+    coefficients are ratios: `swir_vis_ratio` -3.92, `ndbi` +3.65, `blue_red_ratio` -1.56.
+    A panel's signature is its band-to-band shape, and a band-wise median corrupts exactly
+    that.
+
+    The medoid picks, per pixel, the single date whose full spectrum is closest to the
+    per-band median, and takes all ten of its bands. Spectrally coherent by construction,
+    at the cost of being noisier than a median (it is one observation, not an average of
+    twelve), which is the trade this measures.
+
+    Distances are normalised per band by that band's spread over the stack, so SWIR's
+    larger absolute values do not dominate the choice. A date with any band missing at a
+    pixel cannot be that pixel's medoid. Pixels with no complete observation fall back to
+    the per-band median, which is what the shipped composite would have given anyway.
+    """
+    med = np.nanmedian(stack, axis=0)                       # (band, y, x)
+    scale = np.nanmedian(np.abs(stack - med[None]), axis=(0, 2, 3))
+    scale = np.where(np.isfinite(scale) & (scale > 1e-6), scale, 1.0)[None, :, None, None]
+    d = np.sum(((stack - med[None]) / scale) ** 2, axis=1)  # (time, y, x)
+    # A date missing any band is not a candidate.
+    d = np.where(np.isfinite(stack).all(axis=1), d, np.inf)
+    best = np.argmin(np.where(np.isfinite(d), d, np.inf), axis=0)
+    nb = stack.shape[1]
+    out = np.take_along_axis(stack, best[None, None], axis=0)[0]
+    complete = np.isfinite(d).any(axis=0)
+    for b in range(nb):
+        out[b] = np.where(complete, out[b], med[b])
+    return out.astype("float32")

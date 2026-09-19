@@ -889,6 +889,16 @@ def building_table(
         with rasterio.open(l1c_path) as _t:
             arr = _t.read().astype("float32") / REFL_SCALE
             transform, crs = _t.transform, _t.crs
+    if preprocess == "medoid":
+        from earthpv.preprocess import load_scene_stack, medoid_composite
+
+        loaded = load_scene_stack(composites, stem)
+        if loaded is None:
+            log.warning("quadrat %s: no scene stack -- cannot build a medoid", name)
+            return pd.DataFrame()
+        st, m_transform, m_crs = loaded
+        arr = medoid_composite(st) / REFL_SCALE
+        transform, crs = m_transform, m_crs
     if preprocess in ("sharpen20", "sharpen20_interp"):
         from earthpv.preprocess import sharpen_20m
 
@@ -1079,6 +1089,31 @@ SHAPE_FEATURES = ["compactness", "rectangularity", "aspect_ratio"]
 # of a nationally-pooled absolute value -- targets the bright-roof false-positive mode
 # specifically. See `_ABLATIONS`'s `plus_local_contrast`.
 LOCAL_CONTRAST_FEATURES = ["brightness_zscore"]
+# The same re-centring `brightness_zscore` applies, extended to EVERY spectral feature
+# rather than one of fifteen. `local_zscore`'s own docstring makes the argument -- "bright
+# for ITS OWN neighbourhood" is a different claim from "bright in absolute terms" -- and it
+# applies just as much to a SWIR ratio as to brightness. This targets the documented weak
+# point directly: ranking transfers across quadrats while absolute levels do not, and the
+# L1C test corroborated it by tripling the fold-to-fold spread when atmospheric
+# normalisation was removed. The grouping unit is the same one the shipped feature uses:
+# a quadrat when fitting, a cell when scoring nationally.
+CONTEXT_FEATURES = [f"{c}_z" for c in SPECTRAL_FEATURES]
+
+
+def add_context_features(table: pd.DataFrame, group: str = "quadrat") -> pd.DataFrame:
+    """Add `<feature>_z`, each spectral feature re-centred within its own group.
+
+    Uses feature values only, never labels, so computing it over a held-out quadrat leaks
+    nothing -- and it matches deployment, where a cell's own buildings are all available at
+    scoring time.
+    """
+    out = table.copy()
+    for c in SPECTRAL_FEATURES:
+        out[f"{c}_z"] = (
+            out.groupby(group, observed=True)[c]
+            .transform(lambda v: local_zscore(v.to_numpy(dtype="float64")))
+        )
+    return out
 # The yard block (`yard_features`), present only under `parcel_label`. Same shape as the
 # roof block plus SPPI, which is the strongest single spectral discriminator for a yard
 # array (0.833 AUC per pixel against matched controls) and needs no training. Measured to

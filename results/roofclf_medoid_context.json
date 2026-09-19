@@ -1,0 +1,96 @@
+{
+  "n_folds": 30,
+  "medians": {
+    "baseline": {
+      "auc": 0.8574,
+      "within_size": 0.8206,
+      "median_abs_rate_err": 0.0308
+    },
+    "medoid": {
+      "auc": 0.8415,
+      "within_size": 0.7896,
+      "median_abs_rate_err": 0.028
+    },
+    "plus_context": {
+      "auc": 0.854,
+      "within_size": 0.8166,
+      "median_abs_rate_err": 0.0291
+    },
+    "context_only": {
+      "auc": 0.8595,
+      "within_size": 0.8189,
+      "median_abs_rate_err": 0.0569
+    },
+    "medoid_plus_context": {
+      "auc": 0.8546,
+      "within_size": 0.7982,
+      "median_abs_rate_err": 0.0287
+    }
+  },
+  "vs_baseline": {
+    "medoid": {
+      "delta_auc_median": -0.0074,
+      "delta_auc_iqr": [
+        -0.0184,
+        0.0024
+      ],
+      "auc_folds_better": 9,
+      "auc_sign_p": 0.0614,
+      "delta_ws_median": -0.0102,
+      "delta_ws_iqr": [
+        -0.0253,
+        0.0086
+      ],
+      "ws_folds_better": 10,
+      "ws_sign_p": 0.136
+    },
+    "plus_context": {
+      "delta_auc_median": -0.0003,
+      "delta_auc_iqr": [
+        -0.0048,
+        0.0044
+      ],
+      "auc_folds_better": 14,
+      "auc_sign_p": 1.0,
+      "delta_ws_median": 0.001,
+      "delta_ws_iqr": [
+        -0.0053,
+        0.0065
+      ],
+      "ws_folds_better": 17,
+      "ws_sign_p": 0.4583
+    },
+    "context_only": {
+      "delta_auc_median": -0.0011,
+      "delta_auc_iqr": [
+        -0.0067,
+        0.0071
+      ],
+      "auc_folds_better": 14,
+      "auc_sign_p": 1.0,
+      "delta_ws_median": 0.0017,
+      "delta_ws_iqr": [
+        -0.0027,
+        0.007
+      ],
+      "ws_folds_better": 19,
+      "ws_sign_p": 0.136
+    },
+    "medoid_plus_context": {
+      "delta_auc_median": -0.007,
+      "delta_auc_iqr": [
+        -0.0145,
+        0.0041
+      ],
+      "auc_folds_better": 9,
+      "auc_sign_p": 0.0614,
+      "delta_ws_median": -0.005,
+      "delta_ws_iqr": [
+        -0.0229,
+        0.0118
+      ],
+      "ws_folds_better": 11,
+      "ws_sign_p": 0.2649
+    }
+  }
+}
