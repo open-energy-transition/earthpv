@@ -1122,24 +1122,33 @@ def design_matrix(df: pd.DataFrame, feats: list[str] | None = None) -> np.ndarra
 # --------------------------------------------------------------------------------------
 # Logistic regression (scipy), AUC
 # --------------------------------------------------------------------------------------
-def fit_logistic(X: np.ndarray, y: np.ndarray, l2: float = L2) -> dict:
+def fit_logistic(X: np.ndarray, y: np.ndarray, l2: float = L2,
+                 sample_weight: np.ndarray | None = None) -> dict:
     """L2-regularised logistic regression on standardised features, via L-BFGS.
 
     The intercept is unpenalised so the fitted base rate is not shrunk toward 0.5 -- this
     model's output is aggregated into an adoption rate, where the base rate is the point.
+
+    `sample_weight` (2026-09-19, off by default) weights the likelihood per row. The
+    motivation is that the estimand is CAPACITY, which is area-weighted, while an unweighted
+    fit treats a 30 m2 shed and a 390 m2 warehouse as equally important. Weights are
+    normalised to mean 1 so `l2` keeps the same meaning, and `None` reproduces the
+    unweighted fit exactly.
     """
     from scipy.optimize import minimize
 
     mu, sd = X.mean(0), X.std(0)
     sd = np.where(sd > 0, sd, 1.0)
     Z = np.hstack([(X - mu) / sd, np.ones((len(X), 1))])
+    sw = (np.ones(len(y)) if sample_weight is None
+          else np.asarray(sample_weight, dtype="float64") / np.mean(sample_weight))
 
     def nll(w):
         z = Z @ w
         # log(1+exp(z)) computed stably
-        ll = np.sum(y * z - np.logaddexp(0.0, z))
+        ll = np.sum(sw * (y * z - np.logaddexp(0.0, z)))
         pen = l2 * np.sum(w[:-1] ** 2) / 2.0
-        g = Z.T @ (1.0 / (1.0 + np.exp(-z)) - y)
+        g = Z.T @ (sw * (1.0 / (1.0 + np.exp(-z)) - y))
         g[:-1] += l2 * w[:-1]
         return -ll + pen, g
 

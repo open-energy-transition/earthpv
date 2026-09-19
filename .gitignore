@@ -33,6 +33,8 @@ results/*
 !results/roofclf_temporal_unmix_folds.csv
 !results/roofclf_model_class.json
 !results/roofclf_model_class_folds.csv
+!results/roofclf_weighting_calibration.json
+!results/roofclf_weighting_calibration_folds.csv
 !results/glint_observability_summary.json
 !results/glint_pose_by_region.csv
 !results/glint_pose_by_region_combined.csv

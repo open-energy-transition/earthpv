@@ -85,6 +85,8 @@ see [Open questions](open-questions.md).
 | [Temporal unmixing](#temporal-unmixing-the-dry-season-window-removes-its-own-signal-2026-09-19) | <span class="outcome negative">rejected</span> | PV pixels vary as much as PV-free roofs (ratio 1.02), so there is no damping to measure. The gain tracks background dynamism as predicted, at 0.0015 AUC. |
 | [Gradient boosting instead of the linear model](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome mixed">partial</span> | Ranks WORSE (-0.023 within size band, 4 of 30 folds) and calibrates BETTER (per-quadrat rate error 0.031 to 0.017, 20 of 29 quadrats). |
 | [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
+| [Area-weighted training loss](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Improves the area ratio it optimises (1.084 to 1.035) and loses on both ranking (-0.0111 AUC) and count calibration (0.0308 to 0.0395). |
+| [Post-hoc recalibration of roofclf](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Recovers 38% of gradient boosting's calibration gain at p=0.069. No monotone map reaches it, so that gain is a reordering. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -913,6 +915,54 @@ every rejected idea got, it is **noise: -0.0001 AUC, 14 of 30 folds, p = 1.00**,
 than a per-fold improvement. Closed.
 
 Artifacts: `results/roofclf_model_class.json`, `results/roofclf_model_class_folds.csv`.
+
+### Aiming at the aggregate: weighting and recalibration (2026-09-19)
+
+The [model-class test](#the-model-class-ranking-and-calibration-disagree-2026-09-19) found
+that gradient boosting ranks worse and predicts per-quadrat adoption rates better. Two
+cheap interventions follow from it, neither touching the feature set, both aimed at the
+aggregate the atlas consumes rather than at AUC.
+
+| Variant | AUC | Within size band | Median per-quadrat rate error | Area ratio |
+| --- | --- | --- | --- | --- |
+| Baseline (shipped) | **0.8574** | **0.8206** | 0.0308 | 1.084 |
+| Area-weighted loss | 0.8506 | 0.8046 | 0.0395 | **1.035** |
+| Isotonic, global | 0.8570 | 0.8199 | 0.0268 | 1.095 |
+| Isotonic, by size tercile | 0.8560 | 0.8166 | **0.0253** | 1.128 |
+| Platt | 0.8574 | 0.8206 | 0.0287 | 1.070 |
+| Gradient boosting, for reference | 0.8526 | 0.7979 | *0.0165* | -- |
+
+**Area weighting does what it promises, and that is not what the product needs.** Capacity
+is area-weighted while the fit treats a 30 m2 shed and a 390 m2 warehouse as equally
+important rows, so weighting the likelihood by roof area is the obvious correction. It
+improves the quantity it optimises -- the predicted-over-true flagged roof AREA moves 1.084
+to 1.035 -- and it is worse at everything else: -0.0111 AUC, -0.0160 within size band, and
+a COUNT rate error that rises 0.0308 to 0.0395. Trading the population that carries the
+labels against the aggregate loses more than it gains at this sample size. Available as
+`fit_logistic(sample_weight=...)`, off by default, and `None` reproduces the unweighted fit
+bit-for-bit.
+
+**The calibration gain is not recoverable by recalibration, which is the useful half.** A
+monotone map cannot change a ranking, so if gradient boosting were merely a better-calibrated
+version of the same score, isotonic or Platt would capture it for free. They do not. The best
+variant, isotonic fitted within roof-area terciles, cuts the median per-quadrat rate error
+0.0308 to 0.0253 and is closer in 19 of 29 quadrats, but at **Wilcoxon p = 0.069** it is not
+significant, and it recovers only **38% of the gradient-boosted improvement** (which reached
+0.0165 at p = 0.006). Platt moved AUC by exactly 0.0000 in 0 of 30 folds, which is the clean
+check that a strictly monotone map reorders nothing; isotonic moves it by 0.0002 only because
+it creates ties.
+
+So **gradient boosting's advantage is a genuine reordering of buildings, not a calibration
+curve**, and it cannot be had cheaply. That sharpens
+[open question 20](open-questions.md): if the aggregate matters more than the ranking for
+the capacity half, the GBM has to be deployed properly, plumbing and all, rather than
+approximated by post-processing the linear model.
+
+Calibrators were fitted NESTED -- inside each leave-one-quadrat-out fold the 29 training
+quadrats were split into five blocks by quadrat, and the calibrator was fitted on the inner
+out-of-fold scores. Fitting on in-sample scores would be optimistic in exactly the direction
+being measured. Artifacts: `results/roofclf_weighting_calibration.json`,
+`results/roofclf_weighting_calibration_folds.csv`.
 
 ### Keeping more than the median composite (2026-09-19)
 

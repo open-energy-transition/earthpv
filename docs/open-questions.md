@@ -526,6 +526,15 @@ precision-thresholded population the coverage ratio is fitted on; the per-cell a
 rate drives the capacity estimate that PyPSA consumes. The linear model is better at the
 first and worse at the second.
 
+**Update 2026-09-19: the cheap substitute does not work.** A monotone recalibration cannot
+change a ranking, so if the gradient-boosted model were merely better calibrated, isotonic
+or Platt on the linear model's scores would capture the gain for nothing. Measured: the best
+variant (isotonic within roof-area terciles) recovers 38% of it at Wilcoxon p = 0.069, and
+Platt recovers none by construction. The advantage is a reordering, not a calibration curve,
+so it has to be deployed rather than approximated. An area-weighted loss was tested in the
+same run and is not the answer either: it improves the area ratio it optimises (1.084 to
+1.035) while losing 0.0111 AUC and worsening the count rate error to 0.0395.
+
 What would settle it is pricing a GBM through the capacity chain rather than the AUC table:
 fit it on the same 30 quadrats, run `sub400-capacity` and `ge400-roof-capacity` with the
 same coverage-ratio and area-recall machinery, and compare the per-cell capacity against
