@@ -32,7 +32,7 @@ two columns: whether PV presence is confirmed, and whether the records carry geo
 | **Calibrate only** | Counts or capacity by area, no geometry | Per-region calibration, adoption priors |
 | **Ask first** | Register exists, export restricted | A partnership lead, not a download |
 
-Three ways to misread this table, all of which have cost real work somewhere:
+Four ways to misread this table, all of which have cost real work somewhere:
 
 **Roof potential is not installed PV.** A rooftop-potential layer says how much capacity a roof
 *could* host. Training on it teaches a model to find large roofs, which is the failure mode
@@ -46,6 +46,21 @@ are used, but it cannot supervise a per-building model.
 **Agreement with a model-derived inventory is not validation.** Those datasets carry their own
 error rate. OpenPVMapper is ~74-75% precise and earthpv agreeing with it proves nothing; it was
 used [as a control, not as truth](results/france.md).
+
+**A list of installations is not a calibration area.** `roofclf`'s coverage ratio and area
+recall are fitted on a BOUNDED area where the absence of PV is known, which is what a Rule-1
+quadrat or a mandatory register provides. Positives alone give a numerator with no
+denominator. Checked across Africa on 2026-09-19 and none of the candidates clears it:
+**Senegal's registry** is the best-licensed African source (CC BY 4.0, geolocated, an API)
+and still cannot calibrate, because its 478 records are all self-*declared* with none
+verified, 379 of them agricultural pumping at a 5.0 kWc median, and the densest 0.1 degree
+cell holds 12 installations. **Uganda's ProREU Lango mapping** is the one African source
+that publishes PV-free buildings alongside PV-bearing ones, which is exactly the missing
+denominator, and it exists only as PDF maps. **Cape Town's Smart Facilities Solar** is
+properly machine-readable but is 839 monthly rows over 23 council buildings. The route to an
+African calibration area is therefore to draw and map one with
+`scripts/new_calibration_quadrat.py`, gated on imagery date rather than mapping effort, not
+to find a dataset.
 
 ## Using a source to train
 
