@@ -76,14 +76,24 @@ say "link free: France compose done (marker=$([ -f "$FR_MARKER" ] && echo yes ||
 # if it still cannot reach the bar, the chain FAILS rather than publishing a country from
 # a fourteenth of its cells.
 COVERAGE_MIN=97          # percent of selected cells that must be composited
-MAX_ROUNDS=8             # retries; a real outage can outlast a few of these
-ROUND_WAIT=1800          # seconds between rounds, so a transient outage can clear
+# MAX_ROUNDS was 8, which was sized for a transient outage and WRONG for the job: eight
+# rounds of an hour plus 30-minute waits is about eight hours of patience, while a
+# country-scale compose at ~0.6 cells/min needs days. Nigeria hit it at 2,340 of 6,341
+# cells (36%) on 2026-09-19 and would have exited with a correct refusal that simply
+# stopped a run needing to continue. The gate's job is to stop a PARTIAL COUNTRY reaching
+# the pipeline, not to double as a wall clock, so the budget is now roughly a week.
+# scripts/run_france_national_compose.sh had this right: budget generously and let "a pass
+# added nothing" be the stop condition.
+MAX_ROUNDS=200
+ROUND_WAIT=1800          # seconds to wait AFTER AN UNPRODUCTIVE ROUND, so an outage can clear
+ROUND_PROGRESS_MIN=20    # cells; below this a round counts as unproductive and earns the wait
 
 selected_cells(){ grep -oE "Selected [0-9]+ cells" "data/compose_$AOI.log" 2>/dev/null | tail -1 | grep -oE "[0-9]+"; }
 built_cells(){ find "data/composites/$AOI/composites" -name composite_0.tif 2>/dev/null | wc -l; }
 
 for round in $(seq 1 $MAX_ROUNDS); do
-  say "compose round $round/$MAX_ROUNDS (min_buildings 1000, provider ${EARTHPV_STAC_PROVIDER:-default PC-first})"
+  before=$(built_cells)
+  say "compose round $round/$MAX_ROUNDS (min_buildings 1000, provider ${EARTHPV_STAC_PROVIDER:-default PC-first}), at $before cells"
   systemd-run --user --collect --unit=earthpv-compose-$AOI \
     -p WorkingDirectory="$PWD" -p LimitNOFILE=65536:65536 -p MemoryMax=16G \
     bash scripts/compose_loop.sh $AOI 0 1000 4 3600 600
@@ -96,11 +106,17 @@ for round in $(seq 1 $MAX_ROUNDS); do
     say "FAILED: compose never logged a cell selection"; exit 1
   fi
   pct=$(( 100 * got / sel ))
-  say "compose round $round finished: $got/$sel cells (${pct}%)"
+  gained=$(( got - before ))
+  say "compose round $round finished: $got/$sel cells (${pct}%), +$gained this round"
   [ "$pct" -ge "$COVERAGE_MIN" ] && break
   if [ "$round" -lt "$MAX_ROUNDS" ]; then
-    say "coverage below ${COVERAGE_MIN}% -- waiting ${ROUND_WAIT}s and retrying"
-    sleep "$ROUND_WAIT"
+    # Only pay the cooldown when the round achieved nothing, which is the signature of a
+    # provider outage. A round that is simply not finished yet should restart at once:
+    # at 200 rounds an unconditional 30-minute wait would burn four days doing nothing.
+    if [ "$gained" -lt "$ROUND_PROGRESS_MIN" ]; then
+      say "round added only $gained cells -- waiting ${ROUND_WAIT}s for the provider"
+      sleep "$ROUND_WAIT"
+    fi
   fi
 done
 sel=$(selected_cells); got=$(built_cells); pct=$(( 100 * got / sel ))
