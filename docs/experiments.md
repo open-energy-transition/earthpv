@@ -89,6 +89,8 @@ see [Open questions](open-questions.md).
 | [Post-hoc recalibration of roofclf](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Recovers 38% of gradient boosting's calibration gain at p=0.069. No monotone map reaches it, so that gain is a reordering. |
 | [Medoid instead of band-wise median compositing](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | A real artifact, but one date's spectrum loses more to noise than it gains in coherence: -0.0074 AUC. |
 | [Context-relative spectral features](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome mixed">partial</span> | Within-cell z-scores alone TIE the shipped model's ranking while doubling its rate error: ranking is relative, calibration is absolute. |
+| [The spectral SNR budget](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome works">shipped</span> | Measured, not argued: the noise is roof heterogeneity at 20-40x the sensor's, and the linear spectral limit is already reached. |
+| [Local background conditioning](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts noise 23-43% and signal faster, at every scale from 31 m to 369 m, because PV adoption is spatially clustered. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -1022,6 +1024,81 @@ result, but the two are not row-identical the way the earlier preprocessing comp
 
 Artifacts: `results/roofclf_medoid_context.json`,
 `results/roofclf_medoid_context_*_folds.csv`.
+
+### The spectral SNR budget, and why the domain is exhausted (2026-09-19)
+
+After a run of null preprocessing results it is worth asking what the spectral signal
+actually IS, rather than trying another representation of it. Detection here is a mixture,
+`y = f.r_PV + (1 - f).r_bg`, so the signal is `f.(r_PV - r_bg)` and the question is what
+each term is worth. Measured on the 30-quadrat table, in B08, the highest-contrast band:
+
+| Term | Value |
+| --- | --- |
+| Panel-minus-roof contrast at full cover | 0.0579 reflectance = **1.34 background sd** |
+| Median fill fraction on a PV roof | 0.309 |
+| Typical available signal | **0.41 sd** |
+| Background sd between PV-free roofs | 0.0431 reflectance |
+| Sentinel-2 radiometric noise at this level | ~0.001-0.002 reflectance |
+
+The mixture model holds tightly: B08 falls linearly with fill fraction
+(`B08 = 0.3142 - 0.0579 x f`), and the separation grows with it exactly as predicted --
+d' of -0.25, -0.36, -0.54, -0.83 across fill-fraction bands averaging 0.08, 0.15, 0.29 and
+0.65.
+
+**The noise is not the sensor, and this rules out a whole class of ideas by arithmetic.**
+Roof-to-roof heterogeneity is twenty to forty times Sentinel-2's radiometric noise. Every
+intervention aimed at measurement quality -- more scenes, a better atmospheric correction,
+denoising, spectral coherence -- is tuning a term worth about 2% of the variance. That is
+the retrospective explanation for
+[temporal statistics](#keeping-more-than-the-median-composite-2026-09-19),
+[L1C](#l1c-against-l2a-the-correction-is-not-the-problem-2026-09-19),
+[the medoid](#spectral-coherence-and-where-transferability-lives-2026-09-19) and
+[sharpening](#the-20-m-bands-and-what-sharpening-them-costs-2026-09-19) all landing at zero.
+
+**The linear spectral limit is already reached.** The Mahalanobis separation across all ten
+bands is d' = 1.226, an implied AUC of **0.807**, while `spectral_only` measures **0.8333**
+in leave-one-quadrat-out -- the shipped model is at or past the Gaussian linear bound,
+exceeding it because the hand-made ratios are nonlinear in the raw bands. Whitening buys
+1.95x over the best single band (0.629, B08) and the model already has it. With 79.3% of
+band variance in the first principal component and a maximum inter-band correlation of
+0.984, there are roughly two effective dimensions here. **No new index, matched filter or
+whitening of these bands can add meaningful signal.** (The bound is in-sample and assumes
+Gaussian classes, so read it as an order of magnitude, not a decimal.)
+
+**That leaves shrinking the denominator, which fails for an interesting reason.** Since the
+noise IS roof diversity, estimating a background per building from its nearest neighbours
+should raise SNR directly, and roofing material is spatially clustered so the neighbours are
+the right reference. It does cut the noise: the PV-free standard deviation falls **23 to 43%**
+across bands. It cuts the signal faster. Median d' falls to **0.36x**, B11 even changes sign,
+and the multivariate separation drops 1.226 to 0.904.
+
+The cause is a property this project already documents: **PV adoption is spatially
+clustered**, which is why `nn_median_m` exists. A PV roof's neighbours disproportionately
+carry PV, so the local median is itself pulled toward the panel spectrum and subtracting it
+cancels the contrast. Sweeping the neighbourhood scale shows there is no escape:
+
+| Neighbours | Median radius | Mahalanobis d' | Against raw |
+| --- | --- | --- | --- |
+| 10 | 31 m | 0.717 | 0.58x |
+| 50 | 78 m | 0.904 | 0.74x |
+| 200 | 169 m | 0.980 | 0.80x |
+| 800 | 369 m | 1.022 | 0.83x |
+| none | -- | **1.226** | 1.00x |
+
+Monotone, and asymptotic toward not conditioning at all. This also explains why the
+quadrat-scale version
+([context features](#spectral-coherence-and-where-transferability-lives-2026-09-19)) merely
+TIED rather than helped or hurt: at 1-4 km2 the group is large enough that adoption
+clustering does not dominate its median, so it neither cancels signal nor removes much
+heterogeneity.
+
+**Conclusion: the spectral domain is exhausted for this sensor.** The remaining term in the
+budget is fill fraction, which no amount of processing changes -- it is set by pixel size
+against array size, and it is the same quantity that
+[makes France fail and Pakistan work](results/france.md#earthpv-against-france-the-sub-400-m2-instrument-does-not-transfer).
+Kept as `roofclf.add_neighbour_features` for anyone who wants to re-measure. Panels are
+strongly polarising, which would be a nearly background-free channel, but no free satellite
+measures it.
 
 ### Keeping more than the median composite (2026-09-19)
 

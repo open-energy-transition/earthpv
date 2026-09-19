@@ -1099,6 +1099,71 @@ LOCAL_CONTRAST_FEATURES = ["brightness_zscore"]
 # a quadrat when fitting, a cell when scoring nationally.
 CONTEXT_FEATURES = [f"{c}_z" for c in SPECTRAL_FEATURES]
 
+# A LOCAL background model, one per building, estimated from its nearest neighbours.
+#
+# The measurement that motivates this (2026-09-19): the noise limiting spectral detection is
+# not the sensor. Between PV-free roofs the B08 standard deviation is 0.0431 reflectance,
+# against a Sentinel-2 radiometric noise of order 0.001-0.002 -- twenty to forty times
+# smaller. The noise IS roof-to-roof heterogeneity. Since signal scales with fill fraction
+# (measured: the panel-minus-roof contrast is 0.0579 reflectance at full cover, and the
+# median PV roof is 31% covered, leaving ~0.41 sd of separation), the only lever left that
+# does not need a sharper sensor is shrinking that denominator.
+#
+# `CONTEXT_FEATURES` above does a version of this with the QUADRAT or CELL as the group,
+# which is 1-4 km2 and mixes an industrial estate with the residential blocks beside it.
+# Roofing material is spatially clustered at a much finer scale, so the background for a
+# building is better estimated from the buildings around it.
+#
+# Why neighbours rather than a spectral clustering of the buildings themselves: clustering
+# on the same bands that carry the PV signal would put PV roofs in their own cluster and
+# condition the signal away. A building's own array barely moves the MEDIAN of fifty
+# neighbours at a 14% base rate, so this stays non-circular.
+NEIGHBOUR_K = 50
+NEIGHBOUR_FEATURES = ([f"{b}_nb" for b in BAND_NAMES]
+                      + ["nb_scatter", "nb_dist_m"])
+
+
+def add_neighbour_features(table: gpd.GeoDataFrame, k: int = NEIGHBOUR_K,
+                           group: str = "quadrat") -> gpd.GeoDataFrame:
+    """Add `<band>_nb`: the building's reflectance minus its k nearest neighbours' median.
+
+    Also `nb_scatter`, the neighbours' own spread (how homogeneous the local roof stock is,
+    so the model can discount a contrast measured against a heterogeneous background), and
+    `nb_dist_m`, the distance to the kth neighbour (how local "local" actually is here).
+
+    Neighbours are found per `group` and exclude the building itself.
+    """
+    from scipy.spatial import cKDTree
+
+    out = table.copy()
+    cols = [f"{b}_mean" for b in BAND_NAMES]
+    nb = np.full((len(table), len(BAND_NAMES)), np.nan)
+    scat = np.full(len(table), np.nan)
+    dist = np.full(len(table), np.nan)
+    for _, idx in table.groupby(group, observed=True).indices.items():
+        sub = table.iloc[idx]
+        pts = sub.geometry.representative_point()
+        # Metric coordinates: a local azimuthal approximation is ample at quadrat scale.
+        lat0 = float(pts.y.mean())
+        xy = np.column_stack([pts.x.to_numpy() * 111320.0 * np.cos(np.radians(lat0)),
+                              pts.y.to_numpy() * 110540.0])
+        vals = sub[cols].to_numpy(dtype="float64")
+        kk = min(k + 1, len(sub))
+        if kk < 5:
+            continue
+        d, j = cKDTree(xy).query(xy, k=kk)
+        j, d = j[:, 1:], d[:, 1:]            # drop self
+        with np.errstate(invalid="ignore"):
+            med = np.nanmedian(vals[j], axis=1)
+            nb[idx] = vals - med
+            scat[idx] = np.nanmedian(np.nanstd(vals[j], axis=1), axis=1)
+        dist[idx] = d[:, -1]
+    for i, b in enumerate(BAND_NAMES):
+        out[f"{b}_nb"] = nb[:, i]
+    out["nb_scatter"] = scat
+    out["nb_dist_m"] = dist
+    return out
+
 
 def add_context_features(table: pd.DataFrame, group: str = "quadrat") -> pd.DataFrame:
     """Add `<feature>_z`, each spectral feature re-centred within its own group.
