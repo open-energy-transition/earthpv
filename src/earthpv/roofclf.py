@@ -748,9 +748,19 @@ def local_zscore(values: np.ndarray) -> np.ndarray:
     not sample std, so a single-building cell/quadrat gives 0 rather than NaN.
     """
     values = np.asarray(values, dtype="float64")
-    med = np.median(values)
-    std = values.std(ddof=0)
-    return (values - med) / max(std, 1e-6)
+    # NaN-safe, and that is load-bearing rather than defensive. This runs inside
+    # `building_table` BEFORE the fill/edge rows are dropped, and `zonal_mean_max` returns
+    # NaN for any building whose footprint has no valid pixel. With plain `np.median` one
+    # such building turned the WHOLE quadrat's z-scores into NaN, which then poisoned every
+    # logistic fit that trained on it -- so `plus_local_contrast` silently disappeared from
+    # the ablation table from 2026-08-09 until this was found on 2026-09-19. Measured then:
+    # 21% of rows NaN, 5 of 30 quadrats entirely NaN, among them sialkot and sukkur, the two
+    # quadrats CLAUDE.md already records as carrying composite fill (1.0% and 0.45%).
+    med = np.nanmedian(values)
+    std = np.nanstd(values)
+    if not np.isfinite(med):
+        return np.full_like(values, np.nan)
+    return (values - med) / max(float(std) if np.isfinite(std) else 0.0, 1e-6)
 
 
 def _raster_for(point, prob_dir: Path) -> Path | None:

@@ -89,6 +89,7 @@ see [Open questions](open-questions.md).
 | [Post-hoc recalibration of roofclf](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Recovers 38% of gradient boosting's calibration gain at p=0.069. No monotone map reaches it, so that gain is a reordering. |
 | [Medoid instead of band-wise median compositing](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | A real artifact, but one date's spectrum loses more to noise than it gains in coherence: -0.0074 AUC. |
 | [Context-relative spectral features](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome mixed">partial</span> | Within-cell z-scores alone TIE the shipped model's ranking while doubling its rate error: ranking is relative, calibration is absolute. |
+| [Local-contrast brightness (`plus_local_contrast`)](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | Unmeasurable since 2026-08-09 through a NaN bug; fixed and measured at +0.0000 AUC, 13 of 30 folds. |
 | [The spectral SNR budget](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome works">shipped</span> | Measured, not argued: the noise is roof heterogeneity at 20-40x the sensor's, and the linear spectral limit is already reached. |
 | [Local background conditioning](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts noise 23-43% and signal faster, at every scale from 31 m to 369 m, because PV adoption is spatially clustered. |
 | [Glint geometry as a scene-level SNR lever](#sun-geometry-neither-glint-nor-high-sun-raises-the-contrast-2026-09-19) | <span class="outcome negative">rejected</span> | The apparent gain is solar elevation: partialling it out leaves +0.025 (p=0.70). |
@@ -1016,6 +1017,18 @@ that atmospheric and seasonal differences produce. The aggregate half depends on
 reflectance being comparable between places, which is exactly why removing atmospheric
 correction in [the L1C test](#l1c-against-l2a-the-correction-is-not-the-problem-2026-09-19)
 tripled the fold-to-fold spread without touching the median.
+
+**A footnote that turned out to be a defect.** `brightness_zscore` re-centres a building's
+brightness against its own quadrat or cell and has shipped as an available block,
+`plus_local_contrast`, since 2026-08-09. It had never actually been measured: `local_zscore`
+used `np.median` rather than `np.nanmedian`, and it runs inside `building_table` BEFORE the
+fill/edge rows are dropped, so a single building whose footprint has no valid pixel turned
+the entire quadrat's z-scores into NaN. That was 21% of rows and 5 of 30 quadrats entirely
+NaN -- among them sialkot and sukkur, the two quadrats already recorded here as carrying
+composite fill. One NaN poisons a logistic fit, so every fold trained on those quadrats
+returned NaN and `pivot_table` silently dropped the block from the ablation output. Fixed
+2026-09-19 (NaN-safe, and bit-identical on clean input), after which the block measures
+**+0.0000 AUC, 13 of 30 folds** and is rejected on its merits rather than by accident.
 
 Neither is adopted. The context block is kept as `roofclf.CONTEXT_FEATURES` /
 `add_context_features`, the medoid as `preprocess.medoid_composite` and
