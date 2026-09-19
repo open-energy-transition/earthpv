@@ -511,6 +511,33 @@ so even a favourable window has to move this by an order of magnitude to matter.
 annual stack reintroduces everything the dry-season window exists to exclude, monsoon cloud
 above all, so the scene count per pixel will fall and `n_obs` has to be watched.
 
+### 20. A gradient-boosted roofclf calibrates better; price it end to end (2026-09-19)
+
+[The model-class test](experiments.md#the-model-class-ranking-and-calibration-disagree-2026-09-19)
+found the two objectives pulling apart. Against the shipped linear model, gradient boosting
+ranks **worse** (-0.023 AUC within size band, better in 4 of 30 folds, p < 0.001) and
+calibrates **better** (median per-quadrat adoption-rate error 0.0308 to 0.0165, closer in
+20 of 29 quadrats, Wilcoxon p = 0.006), while keeping the full dispersion of true rates
+(0.0806 against 0.0798) rather than hedging toward the mean.
+
+That is not enough to change the classifier, because the two halves of the product want
+different things. Per-building ranking drives the MapRoulette leads and the
+precision-thresholded population the coverage ratio is fitted on; the per-cell adoption
+rate drives the capacity estimate that PyPSA consumes. The linear model is better at the
+first and worse at the second.
+
+What would settle it is pricing a GBM through the capacity chain rather than the AUC table:
+fit it on the same 30 quadrats, run `sub400-capacity` and `ge400-roof-capacity` with the
+same coverage-ratio and area-recall machinery, and compare the per-cell capacity against
+the quadrats it was not fitted on. If the better rate calibration survives that, it is
+worth the deployment work; if the coverage ratio simply absorbs the difference, it is not.
+
+Two obstacles are known. `save_model`/`score_buildings_national` assume a linear model
+serialised as coefficients, so national scoring needs real plumbing rather than a swap.
+And `fit_logistic` leaves its intercept unpenalised specifically so the fitted base rate is
+not shrunk, which is a deliberate calibration choice a tree ensemble makes differently --
+any comparison has to keep that in view rather than treating the two as interchangeable.
+
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.

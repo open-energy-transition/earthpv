@@ -83,6 +83,8 @@ see [Open questions](open-questions.md).
 | [Footprint-constrained spatial unmixing](#unmixing-the-pixel-against-a-known-footprint-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts reflectance error 67% on synthetic sub-pixel buildings and loses 0.0323 AUC within size band on real ones, 2 of 30 folds, p=0.000. |
 | [Top-of-atmosphere instead of Sen2Cor](#l1c-against-l2a-the-correction-is-not-the-problem-2026-09-19) | <span class="outcome negative">rejected</span> | An exact coin flip, 15 of 30 folds, p=1.00, at triple the fold-to-fold spread. |
 | [Temporal unmixing](#temporal-unmixing-the-dry-season-window-removes-its-own-signal-2026-09-19) | <span class="outcome negative">rejected</span> | PV pixels vary as much as PV-free roofs (ratio 1.02), so there is no damping to measure. The gain tracks background dynamism as predicted, at 0.0015 AUC. |
+| [Gradient boosting instead of the linear model](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome mixed">partial</span> | Ranks WORSE (-0.023 within size band, 4 of 30 folds) and calibrates BETTER (per-quadrat rate error 0.031 to 0.017, 20 of 29 quadrats). |
+| [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
@@ -848,6 +850,69 @@ records, in a different costume.
 
 Artifacts: `results/pv_temporal_invariance.json`, `results/roofclf_temporal_unmix.json`,
 `results/roofclf_temporal_unmix_folds.csv`.
+
+### The model class: ranking and calibration disagree (2026-09-19)
+
+Every feature block this project has measured -- SPPI, glint, the yard, epoch jump,
+temporal statistics, temporal unmixing, sharpening, spatial unmixing, L1C -- was priced
+against `fit_logistic`, an L2-regularised LINEAR model. A linear score cannot express a
+conjunction, and "is this a PV roof?" reads like one: dark AND spectrally flat across the
+visible AND the right SWIR drop AND large AND in a dense-adoption area. Six blocks landing
+within 0.005 of each other is consistent with the functional form being the constraint
+rather than the features, so it is worth testing directly.
+
+Two declared `HistGradientBoostingClassifier` configurations, conservative and larger,
+fixed in the script rather than selected on the held-out folds, on the same 30 quadrats
+and the same table.
+
+| Model and features | AUC | Within size band | Median per-quadrat rate error |
+| --- | --- | --- | --- |
+| Logistic (shipped) | 0.8574 | **0.8206** | 0.0308 |
+| Logistic + shape | 0.8593 | 0.8196 | 0.0309 |
+| GBM small | 0.8582 | 0.8006 | 0.0204 |
+| GBM large | 0.8526 | 0.7979 | 0.0177 |
+| GBM large + shape | 0.8618 | 0.7921 | **0.0165** |
+
+**On ranking the linear model wins, and not marginally.** Paired per fold, every GBM
+variant loses: -0.0089 to -0.0121 AUC and -0.0163 to -0.0231 within size band, better in
+only 4 to 6 of 30 folds, p <= 0.002. The larger configuration is worse than the smaller
+one, which is the signature of a flexible model learning each quadrat's idiosyncrasy
+rather than what transfers between them. Note that `gbm_large_shape` has the highest median
+AUC in the table (0.8618) while losing on 25 of 30 folds: a difference of medians is not a
+paired gain, which is the same trap the shape block below fell into.
+
+**So the linear model is not the bottleneck, and the feature experiments were fair.** That
+is worth having established, because it is the assumption every one of them rested on.
+
+**On calibration the answer reverses, and for this project that matters.** The atlas
+consumes an aggregate adoption rate, not a ranking, and the register already records that
+ranking transfers across quadrats while absolute rates do not -- which is why the
+coverage-ratio-by-size-and-density machinery exists at all. Measured per quadrat, GBM
+predicts the adoption rate substantially better: median absolute error **0.0308 to 0.0165**,
+closer to truth in **20 of 29 quadrats for `gbm_large` (Wilcoxon p = 0.006)** and 21 of 29
+with shape (sign test p = 0.024).
+
+The obvious objection is that a model can tighten `rate_ratio` by hedging toward the global
+mean, which would be worthless. It is not doing that: the spread of predicted rates across
+quadrats is 0.0806 against a true 0.0798, and the correlation with the true rate RISES from
+0.776 to 0.869. It keeps the dispersion and gets the level right more often.
+
+**The two objectives genuinely disagree, and nobody had noticed because only AUC was
+reported.** Nothing is being swapped on the strength of one run: the lead product and the
+precision-thresholded population that feeds the coverage ratio both depend on per-building
+ranking, where the linear model is better, while the capacity half depends on the rate,
+where it is not. The honest next step is to price a GBM end to end through
+`sub400-capacity` against the same quadrats, not to change the classifier.
+
+#### Footprint shape, settled
+
+`plus_shape` had scored 0.8593 against the shipped 0.8574 in the ablation table and had sat
+unadopted since 2026-08-09, the best-looking block never promoted. Given the paired test
+every rejected idea got, it is **noise: -0.0001 AUC, 14 of 30 folds, p = 1.00**, and
+-0.0003 within size band. The apparent gain was a difference of medians across folds rather
+than a per-fold improvement. Closed.
+
+Artifacts: `results/roofclf_model_class.json`, `results/roofclf_model_class_folds.csv`.
 
 ### Keeping more than the median composite (2026-09-19)
 
