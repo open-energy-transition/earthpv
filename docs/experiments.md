@@ -90,6 +90,8 @@ see [Open questions](open-questions.md).
 | [Medoid instead of band-wise median compositing](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | A real artifact, but one date's spectrum loses more to noise than it gains in coherence: -0.0074 AUC. |
 | [Context-relative spectral features](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome mixed">partial</span> | Within-cell z-scores alone TIE the shipped model's ranking while doubling its rate error: ranking is relative, calibration is absolute. |
 | [Local-contrast brightness (`plus_local_contrast`)](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | Unmeasurable since 2026-08-09 through a NaN bug; fixed and measured at +0.0000 AUC, 13 of 30 folds. |
+| [Cell-level brightness as a feature](#the-level-half-of-brightness-does-not-transfer-2026-09-20) | <span class="outcome negative">rejected</span> | Predicted to help calibration; makes it significantly WORSE, closer in 7 of 29 quadrats, p=0.008. |
+| [Snow-covered roofs in Germany](#snow-in-germany-the-opportunity-is-real-the-contrast-is-not-concludable-2026-09-20) | <span class="outcome mixed">partial</span> | Answers France's opportunity objection at a 10.3% scene rate; the contrast itself is 6 scenes, bimodal, p=0.39. |
 | [The spectral SNR budget](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome works">shipped</span> | Measured, not argued: the noise is roof heterogeneity at 20-40x the sensor's, and the linear spectral limit is already reached. |
 | [Local background conditioning](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts noise 23-43% and signal faster, at every scale from 31 m to 369 m, because PV adoption is spatially clustered. |
 | [Glint geometry as a scene-level SNR lever](#sun-geometry-neither-glint-nor-high-sun-raises-the-contrast-2026-09-19) | <span class="outcome negative">rejected</span> | The apparent gain is solar elevation: partialling it out leaves +0.025 (p=0.70). |
@@ -1167,6 +1169,81 @@ date across a narrow 37-59 deg span. **The compose window is not costing contras
 acting on the extrapolation would have meant recompositing a country onto a worse epoch for
 no gain. Artifacts: `results/glint_geometry_snr.json`,
 `results/summer_window_contrast.json` and their per-scene CSVs.
+
+### The level half of brightness does not transfer (2026-09-20)
+
+`absolute = cell_mean + deviation`, and `roofclf` sees only `absolute`, which confounds
+"this building is bright" with "this cell is bright". Handing it the cell mean adds one
+degree of freedom per feature. The motivation was the measured split reported above:
+within-cell z-scores alone tie the shipped ranking while doubling the rate error, so ranking
+is relative and calibration is absolute. The level half looked like the unexploited part.
+
+Registered before measuring: a cell-constant feature adds the same number to every
+building's logit inside a held-out quadrat, so it cannot reorder them, and any AUC movement
+can only come from refitting the other coefficients. That half held -- the single cell-mean
+moved AUC by **+0.0001**.
+
+The substantive half failed, and significantly.
+
+| Block | AUC | Within size band | Rate error | Rate ratio |
+| --- | --- | --- | --- | --- |
+| Baseline | 0.8574 | 0.8206 | **0.0308** | 1.061 |
+| Plus brightness cell-mean | 0.8571 | 0.8220 | 0.0309 | 1.056 |
+| Plus all 15 cell-means | 0.8494 | 0.8229 | 0.0430 | 1.012 |
+
+Calibration gets **worse**: the per-quadrat adoption rate is closer to truth in only **7 of
+29 quadrats, sign test p = 0.008, Wilcoxon p = 0.002**. The 15-feature version pushes median
+rate error 0.0308 to 0.0430 while pulling the ratio to 1.012, which is the signature of
+centring the level and widening its spread.
+
+The reason is this register's own finding, turned against the idea. A cell-constant feature
+is fitted across 29 quadrats and then extrapolated to an unseen one, so the model learns a
+BETWEEN-quadrat relationship between brightness and adoption rate -- and between-quadrat
+absolute rates are exactly what does not transfer. Adding the level as a feature does not
+give the model the level; it gives it a spurious slope to extrapolate along. Kept as
+`roofclf.CELL_LEVEL_FEATURES` / `add_cell_level_features` for re-measurement.
+
+### Snow in Germany: the opportunity is real, the contrast is not concludable (2026-09-20)
+
+[Snow-cover contrast](#snow-cover-contrast-and-the-one-commune-that-nearly-sold-it-2026-09-08)
+was rejected for France on opportunity, 0.096 usable scenes per commune-winter outside the
+Alps, and that entry named the one variant worth testing: Germany, which has more reliable
+lowland snow. Tested over the 8 densest PV cells in the German OSM rooftop layer, three
+winters, with SCL class 11 deliberately KEPT (the shipped mask drops classes outside 4-7 and
+would discard every observation under test) and snow measured over building footprints
+rather than over the cell.
+
+**The opportunity objection is answered.** 6 snow scenes out of 58 low-cloud scenes, a
+**10.3% rate**, against France's 0.096 per commune-winter. Observations of snow-covered roofs
+genuinely exist in Germany.
+
+**The contrast is not.** Six scenes, Mann-Whitney **p = 0.39**, and bimodal:
+
+| Cell | Snow on roofs | Roof DN | PV DN | d' |
+| --- | --- | --- | --- | --- |
+| 137_515 | 61% | 2,035 | 1,146 | -2.40 |
+| 137_515 | 100% | 3,806 | 2,405 | -1.72 |
+| 149_513 | 20% | 1,647 | 829 | -1.03 |
+| 149_513 | 100% | 4,333 | 1,702 | -1.74 |
+| 60_508 | 100% | 3,250 | **8,143** | **+3.84** |
+| 60_508 | 84% | 3,524 | **5,588** | **+2.48** |
+
+Four scenes behave as the physics predicts. The two that inverted are explained by array
+size rather than by snow: cell 60_508's mapped arrays have a **median area of 126 m2**,
+about 1.3 pixels at 10 m, against 338 and 320 m2 in the two well-behaved cells. At roughly
+1.2 PV pixels per array the mask is mostly snow-covered ROOF, which reads brighter than a
+roof average that includes shadowed and wet surfaces. The project's central limitation,
+array size against pixel size, reappears here amplified rather than relieved.
+
+The headline ratio of 15.9x is not usable either: it divides by a bare-season baseline of
+**-0.087**, i.e. German OSM rooftop PV barely separates from PV-free roofs in bare winter at
+all, which is consistent with a control contaminated by the 96.4% of German rooftop PV that
+OSM does not map. A near-zero denominator makes any ratio large.
+
+What would settle it is more cells and a restriction to arrays large enough to own a pixel.
+Recorded as partial rather than shipped or rejected, because the half that killed the French
+version is genuinely answered and the half that matters is untested at this sample size.
+Artifacts: `results/germany_snow_contrast.json`, `results/germany_snow_contrast_scenes.csv`.
 
 ### Keeping more than the median composite (2026-09-19)
 

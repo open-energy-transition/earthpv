@@ -1108,6 +1108,32 @@ LOCAL_CONTRAST_FEATURES = ["brightness_zscore"]
 # normalisation was removed. The grouping unit is the same one the shipped feature uses:
 # a quadrat when fitting, a cell when scoring nationally.
 CONTEXT_FEATURES = [f"{c}_z" for c in SPECTRAL_FEATURES]
+# The LEVEL half of the same decomposition. `absolute = cell_mean + deviation`, and the
+# model currently sees only `absolute`, which confounds "this building is bright" with
+# "this cell is bright". Handing it the cell mean as well adds exactly one degree of
+# freedom per feature.
+#
+# The prediction, registered before measuring (2026-09-19): a cell-constant feature adds
+# the SAME number to every building's logit inside a held-out quadrat, so it cannot reorder
+# them -- any AUC movement can only come from refitting the other coefficients. What it can
+# move is the LEVEL, which is where this model is weakest: per-quadrat adoption-rate error
+# 0.0308, the one place gradient boosting beat it. The motivation is the measured split
+# between the two halves: within-cell z-scores alone tie the shipped ranking while doubling
+# the rate error, so ranking is relative and calibration is absolute.
+CELL_LEVEL_FEATURES = [f"{c}_cellmean" for c in SPECTRAL_FEATURES]
+
+
+def add_cell_level_features(table: pd.DataFrame, group: str = "quadrat") -> pd.DataFrame:
+    """Add `<feature>_cellmean`, each spectral feature's mean over its own group.
+
+    Constant within a group by construction. Uses feature values only, never labels. The
+    group is a quadrat when fitting and a cell when scoring nationally, the same convention
+    `local_zscore` uses.
+    """
+    out = table.copy()
+    for c in SPECTRAL_FEATURES:
+        out[f"{c}_cellmean"] = out.groupby(group, observed=True)[c].transform("mean")
+    return out
 
 # A LOCAL background model, one per building, estimated from its nearest neighbours.
 #

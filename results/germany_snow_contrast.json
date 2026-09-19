@@ -1,0 +1,14 @@
+{
+  "n_scenes": 74,
+  "n_low_cloud": 58,
+  "n_snow_scenes": 6,
+  "n_bare_scenes": 51,
+  "n_cells": 6,
+  "snow_opportunity_rate": 0.1034,
+  "dprime_snow": -1.374,
+  "dprime_bare": -0.087,
+  "roof_brightness_snow": 3386.9,
+  "roof_brightness_bare": 981.4,
+  "mannwhitney_p": 0.3931,
+  "contrast_gain": 15.87
+}
