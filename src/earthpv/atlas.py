@@ -212,8 +212,9 @@ def download_section_html(aoi: str) -> str:
     grid cell is 0.1 degree and `lon0`/`lat0` are its south-west corner.
     """
     slug = re.sub(r"[^a-z0-9]+", "_", aoi.lower()).strip("_") or "atlas"
-    return f'''<section class="sec" id="downloads">
-  <div class="sec-head"><div class="sec-label">Downloads</div></div>
+    return f'''<!-- earthpv:cellcsv:start -->
+<section class="sec" id="cellCsvSection">
+  <div class="sec-head"><div class="sec-label">Raw data</div></div>
   <div class="card" style="padding:18px 20px;">
     <p style="margin:0 0 10px;font-size:13.5px;">
       <b>The capacity per grid cell shown on the map, as CSV.</b> One row per 0.1&deg;
@@ -227,22 +228,21 @@ def download_section_html(aoi: str) -> str:
 </section>
 <style>
 .dl-btn {{ font: inherit; font-size: 13px; font-weight: 640; padding: 9px 16px;
-  border-radius: 8px; cursor: pointer; color: var(--bg, #12100d);
+  border-radius: 8px; cursor: pointer; color: #12100d;
   background: var(--accent); border: 1px solid var(--accent); }}
 .dl-btn:hover {{ filter: brightness(1.08); }}
 </style>
 <script>
 (function () {{
   var btn = document.getElementById("dlCells");
-  if (!btn) return;
   var node = document.getElementById("pv");
-  if (!node) {{ btn.disabled = true; return; }}
+  if (!btn || !node) return;
   var D = JSON.parse(node.textContent);
   var rows = D.cells || [];
-  var cols = D.cell_cols || rows.length
-    ? (D.cell_cols || rows[0].map(function (_, i) {{ return "c" + i; }})) : [];
-  document.getElementById("dlNote").textContent =
-    rows.length.toLocaleString() + " cells";
+  var cols = D.cell_cols
+    || (rows.length ? rows[0].map(function (_, i) {{ return "c" + i; }}) : []);
+  var note = document.getElementById("dlNote");
+  if (note) note.textContent = rows.length.toLocaleString() + " cells";
   btn.addEventListener("click", function () {{
     var out = [cols.join(",")];
     for (var i = 0; i < rows.length; i++) out.push(rows[i].join(","));
@@ -255,6 +255,7 @@ def download_section_html(aoi: str) -> str:
   }});
 }})();
 </script>
+<!-- earthpv:cellcsv:end -->
 '''
 
 

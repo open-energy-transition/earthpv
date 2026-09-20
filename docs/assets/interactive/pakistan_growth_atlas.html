@@ -495,6 +495,53 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
   });
 })();
 </script>
+  <!-- earthpv:cellcsv:start -->
+<section class="sec" id="cellCsvSection">
+  <div class="sec-head"><div class="sec-label">Raw data</div></div>
+  <div class="card" style="padding:18px 20px;">
+    <p style="margin:0 0 10px;font-size:13.5px;">
+      <b>The capacity per grid cell shown on the map, as CSV.</b> One row per 0.1&deg;
+      cell, generated in your browser from the data this page is drawing, so it is exactly
+      the numbers above. <code>lon0</code>/<code>lat0</code> are the south-west corner of
+      the cell.
+    </p>
+    <button id="dlCells" type="button" class="dl-btn">Download capacity per cell (CSV)</button>
+    <span id="dlNote" style="font-size:11.5px;color:var(--muted);margin-left:10px;"></span>
+  </div>
+</section>
+<style>
+.dl-btn { font: inherit; font-size: 13px; font-weight: 640; padding: 9px 16px;
+  border-radius: 8px; cursor: pointer; color: #12100d;
+  background: var(--accent); border: 1px solid var(--accent); }
+.dl-btn:hover { filter: brightness(1.08); }
+</style>
+<script>
+(function () {
+  var btn = document.getElementById("dlCells");
+  var node = document.getElementById("pv");
+  if (!btn || !node) return;
+  var D = JSON.parse(node.textContent);
+  var rows = D.cells || [];
+  var cols = D.cell_cols
+    || (rows.length ? rows[0].map(function (_, i) { return "c" + i; }) : []);
+  var note = document.getElementById("dlNote");
+  if (note) note.textContent = rows.length.toLocaleString() + " cells";
+  btn.addEventListener("click", function () {
+    var out = [cols.join(",")];
+    for (var i = 0; i < rows.length; i++) out.push(rows[i].join(","));
+    var blob = new Blob([out.join("\n") + "\n"], {type: "text/csv;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "pakistan_capacity_by_cell.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  });
+})();
+</script>
+<!-- earthpv:cellcsv:end -->
+
+
+
 
 
   <div class="foot" id="foot"></div>

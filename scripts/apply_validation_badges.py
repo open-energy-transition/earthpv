@@ -83,8 +83,35 @@ LEDE = re.compile(r'\s*<p class="lede">.*?</p>\n?', re.S)
 EYEBROW = re.compile(r'\s*<(p|div) class="eyebrow">.*?</\1>\n?', re.S)
 OLD_LOGO = re.compile(r'\s*<style>\.brandmark.*?</style><div class="brandmark".*?</div>\n?',
                       re.S)
-OLD_DOWNLOAD = re.compile(r'\s*<section class="sec" id="downloads">.*?</script>\n?', re.S)
+# Matched ONLY between its own comment markers. An earlier version anchored on
+# `<section class="sec" id="downloads">` and ended at the next `</script>`, which collided
+# with the data-release Downloads section the evidence template already carries and
+# swallowed 44 KB of every page, including the main render script. Never anchor a
+# destructive regex on markup you do not own.
+OLD_DOWNLOAD = re.compile(
+    r'\s*<!-- earthpv:cellcsv:start -->.*?<!-- earthpv:cellcsv:end -->\n?', re.S)
 PV_JSON = re.compile(r'(<script id="pv" type="application/json">)(.*?)(</script>)', re.S)
+# The out-of-domain extrapolation was dropped from the published atlas in August 2026, so
+# this legend toggle points at an overlay no page still draws. wireKeyToggles already skips
+# a missing button, so removing the markup is safe.
+EXTRAP_KEY = re.compile(
+    r'\n\s*<button type="button" class="extended-key key-toggle" id="extendedKey".*?</button>',
+    re.S)
+
+
+# The dev-note and the lede are the only things stamping deliberately DELETES, and together
+# they are a couple of kilobytes. Anything bigger means a regex ate page content.
+MAX_SHRINK_BYTES = 6000
+
+
+def _guard_size(before: str, after: str, path: Path) -> None:
+    lost = len(before) - len(after)
+    if lost > MAX_SHRINK_BYTES:
+        raise SystemExit(
+            f"REFUSING to write {path}: stamping removed {lost:,} bytes, far more than the "
+            f"dev-note and lede it is allowed to drop. A regex has eaten page content; "
+            f"fix it rather than committing this."
+        )
 
 
 def add_downloads(html: str, aoi: str) -> str:
@@ -138,9 +165,12 @@ def stamp(path: Path, score: str, aoi: str = "atlas",
                 + html[m_h1.start():])
     badge = validation_badge_html(score)
     note = "re-stamped" if before != html and "vscore" in before else "stamped"
+    html = EXTRAP_KEY.sub("", html, count=1)
     html = add_downloads(html, aoi)
     if DEV_NOTE.search(html):
-        path.write_text(DEV_NOTE.sub(f"    {badge}\n", html, count=1))
+        out = DEV_NOTE.sub(f"    {badge}\n", html, count=1)
+        _guard_size(before, out, path)
+        path.write_text(out)
         return True, f"{note}, replaced the dev-note"
     m = AFTER_H1.search(html)
     if not m:
