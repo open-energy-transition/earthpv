@@ -1,0 +1,19 @@
+{
+  "n_rows": 123614,
+  "baseline": {
+    "auc": 0.86,
+    "threshold": 0.2514,
+    "n_flagged": 21596,
+    "precision": 0.5,
+    "recall": 0.6298,
+    "d_recall": 0.0
+  },
+  "plus_delta_2019": {
+    "auc": 0.8692,
+    "threshold": 0.2275,
+    "n_flagged": 22704,
+    "precision": 0.5,
+    "recall": 0.6621,
+    "d_recall": 0.0323
+  }
+}

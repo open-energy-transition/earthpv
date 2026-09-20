@@ -91,10 +91,13 @@ def spectral_summary(means: np.ndarray) -> dict[str, np.ndarray]:
     return out
 
 
+OLD_SUBDIR = "stacks_2019"
+
+
 def quadrat_deltas(stem: str, bu: gpd.GeoDataFrame, composites: Path,
-                   labels_dir: Path) -> pd.DataFrame | None:
+                   labels_dir: Path, old_subdir: str | None = None) -> pd.DataFrame | None:
     cur = load_scene_stack(composites, stem)
-    old = load_scene_stack(composites, stem, subdir="stacks_2019")
+    old = load_scene_stack(composites, stem, subdir=old_subdir or OLD_SUBDIR)
     if cur is None or old is None:
         log.warning("quadrat %s: missing %s stack", stem,
                     "current" if cur is None else "2019")
@@ -133,6 +136,10 @@ def main() -> None:
                     default=Path("data/roofclf_temporal_ablation/buildings.geoparquet"))
     ap.add_argument("--composites", type=Path, default=Path("data/composites/pakistan"))
     ap.add_argument("--labels-dir", type=Path, default=Path("data/labels"))
+    ap.add_argument("--old-subdir", default=OLD_SUBDIR,
+                    help="stack directory holding the EARLIER epoch")
+    ap.add_argument("--tag", default="",
+                    help="suffix for the result files, so one run cannot clobber another")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -151,7 +158,7 @@ def main() -> None:
             continue
         # Rebuild the SAME footprint set the table carries, in the same row order, so the
         # delta columns can be attached positionally rather than re-joined spatially.
-        d = quadrat_deltas(stem, sub, args.composites, args.labels_dir)
+        d = quadrat_deltas(stem, sub, args.composites, args.labels_dir, args.old_subdir)
         if d is None:
             continue
         d.index = sub.index
@@ -208,10 +215,11 @@ def main() -> None:
                         "ws_median": round(float(d[f"ws__{lab}"].median()), 4),
                         "folds_better": b, "folds_worse": w,
                         "sign_p": round(float(ps), 4), "wilcoxon_p": round(float(pw), 4)}
-    Path("results/roofclf_epoch_difference.json").write_text(
-        json.dumps(summary, indent=2) + "\n")
-    d.to_csv("results/roofclf_epoch_difference_folds.csv", index=False)
-    print("\nwrote results/roofclf_epoch_difference.json and _folds.csv")
+    summary["old_subdir"] = args.old_subdir
+    stem_out = f"results/roofclf_epoch_difference{args.tag}"
+    Path(f"{stem_out}.json").write_text(json.dumps(summary, indent=2) + "\n")
+    d.to_csv(f"{stem_out}_folds.csv", index=False)
+    print(f"\nwrote {stem_out}.json and _folds.csv")
 
 
 if __name__ == "__main__":

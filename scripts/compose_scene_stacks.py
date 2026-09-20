@@ -38,6 +38,10 @@ def main() -> None:
                     help="subdirectory under <composites> to write into -- use a distinct "
                          "one for a historical window so it cannot be mistaken for the "
                          "current epoch's stack")
+    ap.add_argument("--max-items", type=int, default=0,
+                    help="cap on scenes per quadrat; 0 keeps imagery.scene_stack's own")
+    ap.add_argument("--max-cloud", type=int, default=0,
+                    help="scene-level cloud cutoff in percent; 0 keeps the default")
     ap.add_argument("--margin-m", type=float, default=200.0)
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
@@ -68,6 +72,10 @@ def main() -> None:
             kw = {"geobox": gbox}
             if window:
                 kw["date_range"] = window
+            if args.max_items:
+                kw["max_items"] = args.max_items
+            if args.max_cloud:
+                kw["max_cloud"] = args.max_cloud
             res = scene_stack(bbox, **kw)
             if res is None:
                 log.warning("quadrat %s: no scenes", stem)

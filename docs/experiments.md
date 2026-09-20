@@ -1511,6 +1511,13 @@ generic change detector: the largest is `d19_b11` at +1.88, and `b11_mean` is th
 model's largest coefficient at +4.33. The block is reading "this roof moved TOWARDS the PV
 spectral signature", not "this roof moved".
 
+**In the units the atlas consumes** (the same deployment step
+[the reducer package was priced in](#the-composite-reducer-is-the-biggest-lever-in-this-register-2026-09-20)):
+at an identical precision of 0.500 the flagged population goes 21,596 to 22,704 buildings
+and **recall goes 0.6298 to 0.6621, +3.2 points, 5.1% relative**. For comparison the whole
+noise-reduction package is +6.4 points, and that one needs the existing national imagery
+recomposited; this one needs a second epoch alongside it.
+
 **Caveats.** The 2019 arm carries a median 7 frames against the current 12, so the
 difference is noisier on the old side than it needs to be; more 2019/20 scenes would likely
 widen the gain rather than close it. Rule-1 labels are epoch-relative, so an array installed
