@@ -147,6 +147,25 @@ the common failure modes worth reading before you start (mapping only the obviou
 installations, choosing a quadrat because it already looks solar-heavy, tracing roofs
 instead of panels).
 
+In JOSM, the loop is:
+
+1. **File -> Open** the `_boundary.geojson` the previous step wrote. It comes in as its own
+   layer. **Never upload that layer** -- the box is not an OpenStreetMap feature. Edit only
+   in the OSM data layer.
+2. Download OSM data for the same area, then sweep the box systematically, block by block,
+   rather than roaming.
+3. **Flip between imagery layers as you go.** A panel invisible on one background is often
+   obvious on the next, because they differ in capture date, sun angle and resolution. Work
+   through Bing, Esri World Imagery, Esri Clarity and Mapbox at minimum, and check the
+   Imagery menu for a national or regional layer, which in many countries is sharper and
+   more recent than any of them. This is the most common reason a "complete" box turns out
+   not to be. See
+   [Flip between imagery layers](calibration-mapping-protocol.md#flip-between-imagery-layers-this-is-not-optional).
+4. Validate (Ctrl+Shift+V), then **upload to OpenStreetMap** with a real changeset comment
+   and a `source` tag naming the imagery you traced from. The panels belong in the map, not
+   in a private file. See
+   [Uploading to OpenStreetMap](calibration-mapping-protocol.md#uploading-to-openstreetmap).
+
 A second mapper independently sweeping the same quadrat is part of the deliverable, not an
 optional extra -- it is what turns "I mapped everything" into a checked completeness
 declaration rather than one person's confidence.

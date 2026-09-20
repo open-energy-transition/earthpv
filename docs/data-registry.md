@@ -1,7 +1,7 @@
 # Country data registry
 
 Extending earthpv to a new country starts with a question this page answers: **what does this
-country already publish?** Ninety-one datasets across fifty-one countries are catalogued here, and
+country already publish?** A hundred and four datasets across fifty-six countries are catalogued here, and
 most countries have something, even where OpenStreetMap is nearly empty.
 
 <div class="page-full-bleed" markdown>
@@ -61,6 +61,70 @@ properly machine-readable but is 839 monthly rows over 23 council buildings. The
 African calibration area is therefore to draw and map one with
 `scripts/new_calibration_quadrat.py`, gated on imagery date rather than mapping effort, not
 to find a dataset.
+
+## What the 2026-09-20 screening pass changed
+
+Twenty-seven candidate sources were screened against what they actually publish. Thirteen
+were added. The other fourteen are worth recording, because the two reasons they did not
+make it are the reasons most candidate sources do not.
+
+**Nine were already here under their authoritative name.** Brazil's ANEEL distributed
+register, Australia's Clean Energy Regulator small-scale postcode data, Japan's FIT/FIP
+project disclosure, Korea's national solar permit standard data, the Dutch PIR/VertiCer
+registers, Denmark's BBR installation flags, Switzerland's plant register (which is the
+Pronovo-sourced file), India's PM Surya Ghar portal and the APVI solar map, which is a
+presentation layer over the Clean Energy Regulator data rather than a separate source. A
+candidate list assembled from programme names will collide with a registry indexed by
+publisher; check the publisher, not the programme.
+
+**Five lost their coordinates on inspection**, and that is the more useful failure. Every one
+of them was recorded in the candidate list as carrying coordinates, and in each case the
+register holds them internally but does not publish them:
+
+| Source | Claimed | Published |
+| --- | --- | --- |
+| CaliforniaDGStats NEM / Rule 21 | Coordinates, "very high" | ZIP code, for customer privacy |
+| Austria E-Control Anlagenregister | Coordinates | Locality and postcode |
+| Japan FIT/FIP disclosure | Coordinates | Municipality |
+| Massachusetts SMART / PTS | Coordinates | Town |
+| Spain PRETOR | Coordinates | No record-level export located |
+
+This is the [30 kWp coordinate cliff](methods/mastr-validation.md) again, and it is not a
+German quirk. A register that geolocates its own records for administration will usually
+suppress that field on publication once the records are small enough to identify a household.
+**Assume a distributed-generation register publishes an administrative area, not a point,
+until its schema says otherwise** -- which also means the cliff sits exactly where `roofclf`
+needs help and exactly where segmentation does not.
+
+Two additions are worth singling out, both because of a column rather than a country. The UK
+[REPD](https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract)
+publishes **site area** alongside capacity for operational solar, and
+`DEFAULT_KWP_PER_M2_LAND` currently rests on two Pakistani plants, so the land constant can be
+re-derived on a real sample. [EIA Form 860](https://www.eia.gov/electricity/data/eia860/)
+publishes per-generator **tilt, azimuth and mount technology**, which is the panel pose
+[glint](methods/glint.md) needs and which MaStR was previously the only register here known to
+carry.
+
+## Known gaps
+
+Ranked by what they would unblock, not by market size.
+
+**A third sub-400 m&sup2; regime.** `roofclf` works in Pakistan and
+[does not transfer to France](results/france.md), where the median mapped array is 20 m&sup2;
+against a 100 m&sup2; pixel. Two points do not make a rule. Australia's typical residential
+array is French-sized and Brazil's MMGD population is closer to Pakistan's, and both countries
+have registers already listed here, so either one turns that bound into a threshold.
+
+**Italy.** Atlaimpianti has about 790,000 georeferenced units and is the largest European
+population missing from this project. It is listed as access dependent rather than open
+because its reuse terms were not established; reading the published terms-of-use document is
+the whole unblock.
+
+**Spain and Chile.** Spain has a national register with no open record-level export, so it is
+a partnership lead. Chile publishes plant data through the Coordinador Electrico Nacional's
+Infotecnica platform and pairs large ground-mount with near-permanent clear sky, which is the
+easiest imagery regime available anywhere and therefore the cleanest possible test of the
+ground-mount half. Neither has been verified in depth.
 
 ## Using a source to train
 

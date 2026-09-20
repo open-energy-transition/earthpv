@@ -1,6 +1,6 @@
 """The curated registry of PV labels, registers and roof-context datasets by country.
 
-`docs/assets/registry/earthpv_training_data_registry.csv` lists 91 datasets across 51 countries:
+`docs/assets/registry/earthpv_training_data_registry.csv` lists 104 datasets across 56 countries:
 open training labels, national installation registers, aggregate statistics and building/roof
 layers. It exists so that extending earthpv to a new country starts from "what does this
 country already publish" rather than from a blank OSM pull.
@@ -9,7 +9,7 @@ country already publish" rather than from a blank OSM pull.
 `recommended_earthpv_use` column is prose written per dataset. `classify_role` turns the two
 structured columns that matter -- whether PV presence is actually confirmed, and whether the
 records carry geometry -- into one of five roles that map onto concrete pipeline stages, so a
-user can filter to "things I can train on" without reading ninety prose cells.
+user can filter to "things I can train on" without reading a hundred prose cells.
 
 The five roles, and why the distinction is load-bearing:
 

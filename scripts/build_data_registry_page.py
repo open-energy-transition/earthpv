@@ -2,7 +2,7 @@
 """Render the country data registry as a filterable page for the docs site.
 
 The CSV is the source of truth and ships in the repo; this only makes it browsable, because
-ninety rows of prose across fifteen columns is not something anyone reads in a spreadsheet
+a hundred rows of prose across fifteen columns is not something anyone reads in a spreadsheet
 while deciding whether their country has usable labels.
 
 Filtering is client-side over a JSON blob inlined into the page, so the page works from the
@@ -89,8 +89,8 @@ a{{color:var(--acc)}} .xdetails{{background:var(--panel);border:1px solid var(--
 .tablewrap{{overflow-x:auto}} .none{{color:var(--dim);padding:18px 0}}
 </style></head><body><div class="wrap">
 <h1>Country data registry</h1>
-<p class="sub">Ninety-one published datasets across fifty-one countries: PV labels, national
-installation registers, aggregate statistics and building/roof layers. Use it to find out what
+<p class="sub">{len(d)} published datasets across {d.country.nunique()} countries: PV labels,
+national installation registers, aggregate statistics and building/roof layers. Use it to find out what
 a country already publishes before starting a mapping campaign. The role tag is derived from
 whether PV presence is confirmed and whether records carry geometry, because that decides
 whether a source can train a model, only calibrate one, or neither.</p>

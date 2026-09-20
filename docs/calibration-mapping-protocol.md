@@ -37,6 +37,32 @@ This leads to the one rule that overrides everything else:
 > quadrat (`imagery_layer`/`imagery_date` below) so this gap is visible
 > per-quadrat instead of assumed away.
 
+## Quadrat selection should be automated, and is not yet
+
+Stated here because it is a known weakness of this protocol rather than a finished part of
+it. Boxes are currently chosen by hand, and two of the failure modes below are direct
+consequences:
+
+- **Selection bias.** "Do not choose a quadrat because you already know it has solar" is a
+  rule a human has to keep obeying. A sampler does not have to be reminded.
+- **Wasted mapping effort.** Three boxes in Box 18 were drawn and then dropped for stale
+  imagery, and three more (Dera Ghazi Khan, Waziristan, Jamshoro) were fully swept before
+  the imagery date made the result uninterpretable in both directions. The imagery date is
+  a gate that should be checked **before** anyone maps, not after.
+
+What an automated selector should do: stratify by building density and landscape type from
+the national grid earthpv already computes, propose boxes in the bands that are
+under-represented rather than the ones that are convenient, reject any candidate
+overlapping an existing quadrat, and check the best available imagery date for the
+candidate before proposing it. `density.calibrated_density_range` and the national
+cell-density table are the inputs; the density-domain lesson in
+[Calibration quadrats](methods/calibration-quadrats.md) is the constraint, namely that a
+box only widens the calibrated domain if its **own** average density is below the current
+floor, which a boundary traced around a settlement almost never achieves.
+
+Until that exists, the manual protocol below is what is in force, and the
+`--dry-run` overlap check is the one automated guard it does have.
+
 ## The quadrat plan
 
 ~25–35 quadrats across 6 landscape strata, each quadrat 1–4 km². Each stratum
@@ -91,6 +117,56 @@ refuses to register a boundary that overlaps an existing quadrat unless
 `--allow-overlap` is passed, because pooling overlapping quadrats double-counts the
 shared installations and breaks leave-one-quadrat-out fold independence (Boxes 9 and
 10 share a corner, which is why that check exists).
+
+### Or: generate the boundary with earthpv first, then map it
+
+The other direction, and the one to prefer when you are filling a gap in the stratum
+table rather than following a feature on the ground. earthpv draws the box, you map inside
+it. The square is geodesic (`pyproj.Geod.fwd`), never drawn by eye, so its area is exactly
+what it claims:
+
+```bash
+# 1. look before you write: geometry report, overlap check, district lookup, no files
+pixi run python scripts/new_calibration_quadrat.py --name sargodha_north \
+    --lat 32.0836 --lon 72.6711 --side-m 1500 --dry-run
+
+# 2. register it: writes the boundary and pulls live OSM solar for the box
+pixi run python scripts/new_calibration_quadrat.py --name sargodha_north \
+    --lat 32.0836 --lon 72.6711 --side-m 1500
+```
+
+That writes, into `data/labels/`:
+
+| File | What it is |
+| --- | --- |
+| `<name>_calib_<size>_boundary.geojson` | The boundary. **This is the file you open in JOSM.** |
+| `<name>_calib_<size>_boundary.parquet` | The same geometry for the pipeline. |
+| `<name>_calib_<size>_overpass_solar.parquet` | What OSM already has inside the box, at pull time. |
+
+The `_calib_` in the name is load-bearing: `roofclf.discover_quadrats` globs for it, so a
+stem without it is invisible to `earthpv roof-classifier` and fails with "No calibration
+quadrats found" seconds after launch.
+
+**Do the `--dry-run` first, every time.** It is the only thing standing between you and a
+box that overlaps an existing quadrat, which silently double-counts the shared
+installations and breaks leave-one-quadrat-out fold independence. The script refuses on an
+overlap unless `--allow-overlap` is passed; `--dry-run` lets you see it before the Overpass
+pull rather than after.
+
+### Loading a single quadrat boundary into JOSM
+
+1. **File -> Open** `data/labels/<stem>_boundary.geojson`. It arrives as its own data
+   layer.
+2. **Download OSM data** for the same area (`File -> Download from OSM`, or Ctrl+Shift+D)
+   into a separate layer.
+3. Turn on imagery and start sweeping. See [Imagery](#imagery-and-dating-critical) below,
+   because which layer you are on determines what you can see.
+
+!!! danger "Never upload the boundary layer"
+    The box is not an OpenStreetMap feature. Uploading it adds a nonsense square to the
+    map. Keep it as its own layer, make **every edit in the OSM layer**, and check the
+    upload dialog's layer name before you confirm. This is the single easiest mistake to
+    make in this workflow.
 
 Four things about a drawn boundary that are worth knowing before you map, not after:
 
@@ -169,6 +245,41 @@ here, not wattage.
 - Record for every quadrat: mapper name, mapping completion date, imagery
   layer + capture date (or "unknown").
 
+### Flip between imagery layers. This is not optional
+
+**A rooftop array that is invisible on one layer is often obvious on the next.** The layers
+differ in capture date, sun angle, resolution and compression, and panels are a dark,
+low-contrast, specular target: one layer may show a flat dark rectangle, another may catch
+the array mid-glint as a bright patch, a third may have been flown before it was installed.
+Mapping a quadrat against a single background is the most common reason a "complete" box
+turns out not to be.
+
+Work through what your area actually offers. In JOSM these live under **Imagery**, and the
+list is driven by the [Editor Layer Index](https://github.com/osmlab/editor-layer-index),
+so it varies by location and changes over time:
+
+- **Bing Aerial Imagery** and **Esri World Imagery**, the two general-purpose global
+  layers, usually with different capture dates in the same place.
+- **Esri World Imagery (Clarity)**, often a different and sometimes sharper capture of the
+  same ground.
+- **Mapbox Satellite**, a third independent composite.
+
+Toggle between them over the same roof before deciding there is no panel there. Where an
+installation is visible on one layer only, map it and record which layer showed it.
+
+**Many countries have national or regional imagery that beats all of the above**, and it is
+frequently both higher resolution and more recent: national ortho services appear in JOSM's
+imagery list for a good number of countries in Europe, North America, Japan and elsewhere.
+If you are mapping in one of those, check the Imagery menu for a country-specific layer
+before falling back on the global ones. Two cautions: only use layers that are actually
+cleared for OpenStreetMap use (JOSM's built-in list is curated for this, an arbitrary WMS
+you add yourself is not), and read the layer's attribution requirements.
+
+**Imagery layers are frequently offset from each other**, sometimes by several metres. When
+you flip layers, buildings appearing to move is the imagery shifting, not the OSM data
+being wrong. Align the imagery to existing OSM data (JOSM's imagery offset tool), never
+drag OSM data to match a misaligned layer, and set the offset per layer.
+
 **Known gap:** `imagery_layer` and `imagery_date` have not actually been populated for
 any real quadrat mapped so far, even though `results/calibration_quadrats.csv` carries
 both columns. This is what makes the Rule 1 amendment above a bound rather than a
@@ -182,6 +293,38 @@ default background layers do not reliably provide. See
 [Open questions](open-questions.md) (ground-truth completeness) for the current count and
 cost to close it, and [Calibration quadrat imagery dating](issues/calibration-imagery-dating.md)
 for free tools (Esri Wayback, Google Earth Pro's historical slider) that could backfill it.
+
+## Uploading to OpenStreetMap
+
+The panels you map go **into OpenStreetMap itself**, not into a private file. That is
+deliberate: the calibration needs them, and the map benefits from them independently of
+this project. It also means the usual OSM norms apply, and that a sloppy upload is a
+problem for other people rather than just for us.
+
+Before you press upload:
+
+- **Check which layer you are uploading.** It must be the OSM data layer, never the quadrat
+  boundary layer and never the all-quadrats validation layer.
+- **Run JOSM's validator** (Ctrl+Shift+V) and fix what it flags. Overlapping ways and
+  untagged geometry are the usual complaints on a panel-tracing session.
+- **Write a real changeset comment**, for example
+  `Map rooftop and ground-mounted solar PV in <place> (earthpv calibration area)`.
+- **Set the source.** Put the imagery you actually traced from in the changeset `source`
+  tag, e.g. `source=Esri World Imagery`. If you flipped between layers, name the one the
+  geometry came from.
+- **Upload in reasonable chunks.** A quadrat sweep can produce hundreds of features; a
+  single enormous changeset is harder for anyone to review or revert.
+
+If you stop partway, tag the unfinished work `fixme=incomplete calibration quadrat`
+immediately and say so in the register. An unfinished quadrat that looks finished is the
+one error this process cannot detect later.
+
+After uploading, refresh the box's snapshot so the pipeline sees your work:
+
+```bash
+pixi run python scripts/new_calibration_quadrat.py --name <same name> ... # re-pull, or
+pixi run calib-export                                                    # re-export all
+```
 
 ## Completeness declaration and QA
 
