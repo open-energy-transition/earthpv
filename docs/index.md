@@ -3,6 +3,8 @@ hide:
   - navigation
 ---
 
+# EarthPV
+
 <div class="hero hero--lockup" markdown>
 
 <div class="hero-mark" markdown="0">
@@ -21,62 +23,12 @@ hide:
 
 EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed **every five days**. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country.
 
-**Pakistan is the first pilot, not the destination.** It is where four methods below were
-built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
-[Scaling worldwide](#scaling-worldwide).
+Pakistan is the first pilot, not the final destination. It is where EarthPV was initially built and developed.
 
 [![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](results/capacity.md)
 
-*This project's own highest defensible figure, not a bare point estimate: hand-mapped
-OpenStreetMap installations, the model's own recall-corrected detections, and a
-per-building density estimate for small rooftops, with a 90 percent range attached.
+*Pakistan PV Capacity Estimate 
 [Open the interactive version](results/capacity.md).*
-
-## How small an installation does it find?
-
-Orders of magnitude, not thresholds. Measured on 30 exhaustively hand-mapped Pakistani
-calibration areas (123,898 buildings), at the same operating point the published atlas
-uses, binned by how much panel actually sits on the roof:
-
-| Panel area on the roof | Roughly | Found |
-| --- | --- | --- |
-| Above 100 m² | above 20 kWp | 92% rising to over 99% |
-| 50 to 100 m² | 10 to 20 kWp | 83% |
-| 20 to 50 m² | 4 to 9 kWp | 49% |
-| Below 20 m² | below 4 kWp | 22 to 31% |
-
-**In one line: EarthPV finds most rooftop PV above roughly 50 m² of panel, call it 10 kWp,
-is close to a coin flip between 20 and 50 m², and misses most of what is smaller.**
-
-Four things qualify that, and they matter more than the exact percentages.
-
-**It is recall-first, not precision-first.** At the same operating point roughly 1 in 10
-PV-free buildings is also flagged. Detections are mapping leads meant for human
-verification in OpenStreetMap, not a finished inventory.
-
-**Individual panel outlines have a higher floor than the per-building answer.** The
-segmentation detector, which is what produces an actual polygon and the only instrument
-for ground-mount at any size, targets arrays of about 400 m² and above, near 70 kWp. The
-table above is the per-building classifier, which answers "does this roof carry PV" rather
-than "where exactly".
-
-**The numbers above need a mapped calibration area in the same country.** They come from
-Pakistan, which has 30 of them. A country with a complete public register can substitute
-that register; a country with neither gets the segmentation half only.
-
-**Whether any of this transfers is set by national subsidy design, not by geography.** In
-France the median mapped rooftop array is 20 m² against Sentinel-2's 100 m² pixel, and the
-same pipeline recalls about 1% of installations while the roof classifier does not transfer
-at all. A sub-metre-imagery reference reads those same French installations at 67% with no
-size gradient, which places the limit in the sensor rather than in the method. Across the
-France-Germany border, array size steps by roughly 2x at the line while staying flat for
-60 km either side of it. So the question "will this work in my country" is a question about
-the size distribution of its installations, and it cannot be answered from a neighbour.
-
-For context on why the small end is worth the trouble at all: Germany's legally complete
-register shows **65.5% of rooftop capacity sits below the 400 m² segmentation floor**, in
-97.2% of installations by count. An instrument that only saw large arrays would be blind to
-about two thirds of the capacity a "rooftop solar" headline implies.
 
 ## How it works: two detectors, one atlas
 
@@ -114,55 +66,24 @@ features: legitimate training data for the next model.
 The consequence is that the cost of the next update is close to zero, and anyone can
 reproduce, check or improve the result.
 
-## Where it runs
+## How small an installation does it find?
 
-Every atlas carries an **EarthPV Calibration Score** saying what evidence is actually under
-it. Gold means the sub-400 m² half is calibrated against hand-mapped ground truth; Silver
-means above the floor only, calibrated locally; Bronze means above the floor only,
-without local calibration, and should be read as a floor rather than an estimate.
+Orders of magnitude, not thresholds. Measured on 30 exhaustively hand-mapped Pakistani
+calibration areas (123,898 buildings), at the same operating point the published atlas
+uses, binned by how much panel actually sits on the roof:
 
-| Country | Score | Atlas |
+| Panel area on the roof | Roughly | Found |
 | --- | --- | --- |
-| Pakistan | Gold | [Pakistan PV atlas](atlas.md) |
-| Germany | Gold | [Germany PV atlas](atlas-germany.md) |
-| France | Silver | [France PV atlas](atlas-france.md) |
-| Zambia | Bronze | [Zambia PV atlas](atlas-zambia.md) |
-| Gujarat, India | Bronze | [Gujarat capacity map](results/gujarat.md) |
+| Above 100 m² | above 20 kWp | 92% rising to over 99% |
+| 50 to 100 m² | 10 to 20 kWp | 83% |
+| 20 to 50 m² | 4 to 9 kWp | 49% |
+| Below 20 m² | below 4 kWp | 22 to 31% |
 
-Nothing in the pipeline is country-specific. All four inputs are global open datasets:
+Four things qualify that, and they matter more than the exact percentages.
 
-| Input | Source | Coverage |
-| --- | --- | --- |
-| Imagery | Copernicus Sentinel-2 L2A | global, every five days, free |
-| Labels | OpenStreetMap, live Overpass or Overture | global, wherever mappers have been |
-| Footprints | VIDA Open Buildings | global, imagery-derived |
-| Boundaries | geoBoundaries, CC-BY | global, ADM1 and ADM2 |
-
-Programme targets are Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and
-Nigeria. Bringing up a country that has never been touched takes three commands, the first
-read-only: [Setup a new country](reproduce.md).
-
-## Pakistan, the pilot
-
-Pakistan's installed solar capacity is reported anywhere between
-[6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
-Nobody can check those numbers, because the maps behind them rest on commercial imagery
-that cannot be shared. EarthPV's own figures:
-
-| | |
-| --- | --- |
-| **18,827 MWp** | Best estimate, this project's highest defensible figure (90% range 16,022 to 24,358) |
-| **15,642** | individual installations hand-mapped in OpenStreetMap |
-| **400 m²** | the floor below which segmentation is blind, and `roofclf` takes over |
-| **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete register |
-
-The range is deliberately wide: recalibration has repeatedly moved the estimate by 20 to
-35% within days. It is **not** a design-based margin of error, because the calibration
-areas are hand-picked rather than randomly sampled.
-
-**This is a screening and estimation layer, not a register.** No human has validated most
-of it at scale. How the estimate is derived and what it does not claim:
-[Capacity map](results/capacity.md).
+**It is recall-first, not precision-first.** At the same operating point roughly 1 in 10
+PV-free buildings is also flagged. Detections are mapping leads meant for human
+verification in OpenStreetMap, not a finished inventory.
 
 ## What did not work
 
@@ -175,21 +96,6 @@ on held-out data. Every one has runnable code in `scripts/`.
 The register with a verdict and the measurement behind each:
 [Experiments](experiments.md). What is still undecided:
 [Open questions](open-questions.md).
-
-## Where to go next
-
-| If you want to                                               | Read                                                                                   |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Understand the pipeline as it runs today                     | [How it works](how-it-works.md)                                                         |
-| Know how detection and density actually work                 | [Detection](methods/detection.md), [Density](methods/density.md)                         |
-| Check the method against a legally complete register         | [Validation against MaStR](methods/mastr-validation.md)                                 |
-| See what was tried and what it cost, including the failures  | [Experiments](experiments.md)                                                           |
-| Know what is still unresolved before you cite a number       | [Open questions](open-questions.md)                                                     |
-| Help by mapping                                              | [Mapping leads](results/leads.md), [Quadrat protocol](calibration-mapping-protocol.md)   |
-| Run the whole thing yourself, or bring it to another country | [Setup New Country](reproduce.md)                                                       |
-| Join the effort                                              | [Community](#community)                                                                 |
-| Follow updates, method notes and field reports               | [Blog](blog/index.md)                                                                   |
-| Read the one-page version                                    | the[README](https://github.com/open-energy-transition/earthpv#readme) in the repository |
 
 ## Credits
 
@@ -242,21 +148,6 @@ Full runbook, including the agent prompt and the review checklist:
 EarthPV is the software half of **TraceTheSun**, a pilot programme run by
 [Open Energy Transition](https://openenergytransition.org) to make photovoltaic mapping
 cost-effective, verifiable, community-driven and local.
-
-### The problem the community solves
-
-Pakistan's installed solar capacity is reported anywhere between 6.8 GW officially and
-47 GW by NGO estimates. That spread is not a measurement problem so much as a
-**verifiability** problem. Existing mapping methods depend on commercial high-resolution
-imagery that cannot be shared and that most licences forbid processing with AI. The
-consequence is an environment where a single company with imagery access can publish a
-distribution dataset that nobody else can reproduce, check or improve. Estimates get bought
-again every year, and disagreement between them cannot be resolved.
-
-Making the whole chain open changes the economics. Free imagery, an open model, open
-training data and an open mapping platform mean the cost of the next update is close to
-zero, the result can be argued about on the evidence, and the people who know the ground
-can correct it.
 
 ### TraceTheSun
 
@@ -355,21 +246,6 @@ Indonesia, India, Brazil, South Africa and Nigeria.
 **File what you find.** Issues and pull requests at
 [open-energy-transition/earthpv](https://github.com/open-energy-transition/earthpv).
 
-### What gets released
-
-1. **Training data** for high-resolution, low-resolution and density estimation, under an
-   open licence and, where possible, directly in OpenStreetMap.
-2. **Models**, under an open licence, with all preprocessing, training and postprocessing
-   code.
-3. **Educational and capacity-building material** on building the pipeline end to end,
-   including regional workflows, imagery and datasets.
-4. **A fully reproducible capacity map**, combining human-verified installations, AI
-   detections and estimated density, with the calibrations against import data, surveys and
-   net-metered systems documented.
-
-Long-term sustainability rests on keeping maintenance cost near zero and on empowering the
-OpenStreetMap community to reuse the tools directly, with new leads pushed to volunteer
-platforms such as Rapid, MapRoulette and StreetComplete.
 
 ## Licence
 
