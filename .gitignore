@@ -49,6 +49,10 @@ results/*
 !results/roofclf_cell_level_folds.csv
 !results/germany_snow_contrast.json
 !results/germany_snow_contrast_scenes.csv
+!results/subpixel_shifts.json
+!results/native_shifts.json
+!results/roofclf_gba_height.json
+!results/roofclf_gba_height_folds.csv
 !results/glint_observability_summary.json
 !results/glint_pose_by_region.csv
 !results/glint_pose_by_region_combined.csv

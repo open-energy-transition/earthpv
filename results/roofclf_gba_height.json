@@ -1,0 +1,23 @@
+{
+  "n_buildings": 19209,
+  "n_folds": 9,
+  "join_rate_overall": 0.16,
+  "auc_baseline": 0.876,
+  "ws_baseline": 0.8507,
+  "auc_plus_height": 0.8777,
+  "ws_plus_height": 0.8425,
+  "auc_height_only": 0.6893,
+  "ws_height_only": 0.5679,
+  "delta_auc_plus_height": 0.0004,
+  "auc_better_plus_height": "5/9",
+  "auc_p_plus_height": 1.0,
+  "delta_ws_plus_height": 0.0006,
+  "ws_better_plus_height": "6/9",
+  "ws_p_plus_height": 0.5078,
+  "delta_auc_height_only": -0.1731,
+  "auc_better_height_only": "0/9",
+  "auc_p_height_only": 0.0039,
+  "delta_ws_height_only": -0.257,
+  "ws_better_height_only": "0/9",
+  "ws_p_height_only": 0.0039
+}

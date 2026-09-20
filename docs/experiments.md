@@ -92,6 +92,10 @@ see [Open questions](open-questions.md).
 | [Local-contrast brightness (`plus_local_contrast`)](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | Unmeasurable since 2026-08-09 through a NaN bug; fixed and measured at +0.0000 AUC, 13 of 30 folds. |
 | [Cell-level brightness as a feature](#the-level-half-of-brightness-does-not-transfer-2026-09-20) | <span class="outcome negative">rejected</span> | Predicted to help calibration; makes it significantly WORSE, closer in 7 of 29 quadrats, p=0.008. |
 | [Snow-covered roofs in Germany](#snow-in-germany-the-opportunity-is-real-the-contrast-is-not-concludable-2026-09-20) | <span class="outcome mixed">partial</span> | Answers France's opportunity objection at a 10.3% scene rate; the contrast itself is 6 scenes, bimodal, p=0.39. |
+| [The composite reducer: mean, not median](#the-composite-reducer-is-the-biggest-lever-in-this-register-2026-09-20) | <span class="outcome works">shipped-pending</span> | +0.0286 AUC within size band, 25 of 30 folds, p=0.0001. Larger than every feature block in this register combined. |
+| [Multi-frame super-resolution](#the-composite-reducer-is-the-biggest-lever-in-this-register-2026-09-20) | <span class="outcome negative">rejected</span> | Sub-pixel diversity is 1.3 m, a quarter of what fusion needs; applying the shifts is WORSE than not. |
+| [SEN2SR single-image super-resolution](#the-composite-reducer-is-the-biggest-lever-in-this-register-2026-09-20) | <span class="outcome negative">rejected</span> | -0.0367 AUC within size band, 6 of 30 folds. Invented texture dilutes real contrast. |
+| [GlobalBuildingAtlas building height](#the-composite-reducer-is-the-biggest-lever-in-this-register-2026-09-20) | <span class="outcome negative">rejected</span> | d'=+0.651 alone and +0.0006 on top of the model: height is a proxy for footprint area. |
 | [The spectral SNR budget](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome works">shipped</span> | Measured, not argued: the noise is roof heterogeneity at 20-40x the sensor's, and the linear spectral limit is already reached. |
 | [Local background conditioning](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts noise 23-43% and signal faster, at every scale from 31 m to 369 m, because PV adoption is spatially clustered. |
 | [Glint geometry as a scene-level SNR lever](#sun-geometry-neither-glint-nor-high-sun-raises-the-contrast-2026-09-19) | <span class="outcome negative">rejected</span> | The apparent gain is solar elevation: partialling it out leaves +0.025 (p=0.70). |
@@ -1244,6 +1248,77 @@ What would settle it is more cells and a restriction to arrays large enough to o
 Recorded as partial rather than shipped or rejected, because the half that killed the French
 version is genuinely answered and the half that matters is untested at this sample size.
 Artifacts: `results/germany_snow_contrast.json`, `results/germany_snow_contrast_scenes.csv`.
+
+### The composite reducer is the biggest lever in this register (2026-09-20)
+
+Chasing Google's Open Buildings 2.5D Temporal, which fuses up to 32 Sentinel-2 acquisitions
+to reach an effective ~4 m, produced the largest single improvement measured anywhere in
+this register -- and it turned out to have nothing to do with super-resolution.
+
+`annual_composite` reduces the scene stack with a per-pixel **median**. Replacing it with a
+**mean** gains **+0.0286 AUC within size band, 25 of 30 leave-one-quadrat-out folds,
+p = 0.0001**, at 10 m, with no change to resolution, features or model.
+
+The decomposition that isolates it:
+
+| Variant | AUC | Within size band | Folds better |
+| --- | --- | --- | --- |
+| Baseline, median at 10 m | 0.8575 | 0.8206 | -- |
+| **Mean at 10 m** | 0.8756 | **+0.0286** | 25 of 30 |
+| Mean at 5 m | 0.8789 | +0.0313 | 25 of 30 |
+| Multi-frame fusion at 5 m | 0.8767 | +0.0273 | 26 of 30 |
+| Area-weighted zonal means at 10 m | 0.8588 | +0.0113 | 25 of 30 |
+| Median at 5 m, nearest | 0.8623 | +0.0058 | 23 of 30 |
+| SEN2SR single-image at 2.5 m | 0.8402 | **-0.0367** | 6 of 30 |
+
+So **91% of the effect is the estimator**, about 9% is the finer grid, and the fusion itself
+is NEGATIVE: applying measured sub-pixel shifts scores below not applying them.
+
+Why the mean wins is not mysterious once separated out. SCL masking already removes cloud,
+shadow and snow, so the median's robustness is largely redundant, and at twelve samples a
+median carries about 1.57x the variance of a mean. Less feature noise, better separation,
+and it helps most for the sub-pixel footprints whose single pixel is noisiest.
+
+**The route there was three wrong mechanisms in a row, which is worth recording.** The gain
+first looked like multi-frame fusion; a zero-shift control beat the fused version, so it
+looked like resolution; plain upsampling recovered only a fifth of it, so it looked like
+footprint sampling; exact area-weighted zonal means recovered a third. Only the mean
+explains it, and `tmean_up2` reproduces the shift-and-add control to four decimals, which is
+the consistency check that the accumulator had been computing a mean all along.
+
+**Why fusion cannot work here, measured rather than assumed.** Multi-frame super-resolution
+needs frames that sample the ground at different sub-pixel phases. Measured across 298 frame
+pairs in 30 quadrats, the median inter-acquisition shift is **0.122 px (1.22 m)**, with phase
+offsets at roughly a quarter of the uniform-spread ideal and only about 3 frames in 12
+usefully displaced. Re-measured from **native granules** with no reprojection or resampling,
+to rule out our own loading path as the cause: **0.132 px (1.32 m)**, essentially identical.
+The diversity really is that small. A synthetic check puts the consequence precisely: with
+ideal phases shift-and-add recovers +0.166 of correlation against an upsample, and at the
+diversity Sentinel-2 actually provides, +0.015 -- about 9% of the achievable gain.
+
+**And single-image super-resolution actively hurts.** SEN2SRLite (CC0-1.0, runs in 0.31 GB on
+a GTX 1060) produces a faithful 2.5 m raster -- downsampled it correlates 0.9976 with the
+original and it genuinely adds high-frequency energy, 0.688 to 0.918. It still costs
+**-0.0367 AUC within size band, 6 of 30 folds**, because it cannot add information: it
+redistributes 10 m content using learned priors, and texture uncorrelated with PV dilutes
+real contrast. That is the 2026-07 rejection reproduced with a much better model, and it
+answers the hallucination objection empirically rather than by assertion.
+
+**Building height, from GlobalBuildingAtlas, is redundant.** Height alone separates PV from
+PV-free roofs at d' = +0.651 (median 6.74 m against 4.03 m), comparable to the best single
+spectral band. On top of the model it is worth **+0.0006 within size band, 6 of 9 folds,
+p = 0.51**, and height-plus-size alone scores 0.173 BELOW baseline: tall buildings are large
+buildings, and `log_roof_area` already carries it. Measured on the 5 quadrats where GBA
+covers more than half our footprints, a biased subsample. GBA heights are CC BY-NC 4.0 in any
+case, which would have blocked deployment.
+
+**Before the mean ships, two things need checking.** The median is there to reject residual
+cloud that SCL misses, and a mean cannot; a trimmed mean is the obvious compromise and is
+measured alongside. And changing the reducer changes every composite, so the same rule
+applies as for the resampling change: recompose a country wholesale or leave it alone.
+
+Artifacts: `results/roofclf_preprocess_ablation.json`, `results/subpixel_shifts.json`,
+`results/native_shifts.json`, `results/roofclf_gba_height.json`.
 
 ### Keeping more than the median composite (2026-09-19)
 

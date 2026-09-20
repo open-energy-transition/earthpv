@@ -461,3 +461,73 @@ def medoid_composite(stack: np.ndarray) -> np.ndarray:
     for b in range(nb):
         out[b] = np.where(complete, out[b], med[b])
     return out.astype("float32")
+
+
+# --- Multi-frame super-resolution ---------------------------------------------------------
+#
+# The non-learned counterpart to SEN2SR, and the one that can actually add information.
+# Single-image SR redistributes the content of one 10 m frame using learned priors; measured
+# 2026-09-20 it COSTS 0.0367 AUC within size band (6 of 30 folds, p=0.002), which is what
+# invented texture diluting real contrast looks like. Multi-frame fusion is different in
+# kind: N frames that sample the ground at different sub-pixel phases jointly carry
+# information above the single-frame Nyquist limit, and recovering it is arithmetic on real
+# observations rather than a prior.
+#
+# Shift-and-add with bilinear splatting: every output sample is a weighted mean of real
+# pixels, so nothing can be hallucinated. Gaps, where no frame contributed, fall back to the
+# upsampled reference.
+#
+# WHAT THE PRECONDITION SAYS (measured 2026-09-19, `scripts/measure_subpixel_shifts.py`):
+# median inter-acquisition shift is 0.122 px (1.22 m) and the sub-pixel phase offsets sit at
+# roughly a quarter of the uniform-spread ideal, with only about 3 of 12 frames usefully
+# displaced. So 2x is the realistic ceiling here, not the 4x a well-sampled stack would
+# support, and Google's 32-acquisition budget is doing real work in their version.
+MFSR_SCALE = 2
+
+
+def mfsr_shift_and_add(stack: np.ndarray, shifts: np.ndarray, scale: int = MFSR_SCALE
+                       ) -> np.ndarray:
+    """Fuse a (time, band, y, x) stack onto a `scale`x finer grid using per-frame shifts.
+
+    `shifts` is (time, 2) of (dy, dx) in source pixels, as returned by phase correlation
+    against the reference frame. Each observed pixel is splatted bilinearly to where it
+    actually fell on the ground, so a frame offset by half a pixel contributes between the
+    output samples rather than on top of them -- which is the entire mechanism.
+    """
+    nt, nb, h, w = stack.shape
+    H, W = h * scale, w * scale
+    acc = np.zeros((nb, H, W), dtype="float64")
+    wgt = np.zeros((H, W), dtype="float64")
+    yy, xx = np.meshgrid(np.arange(h), np.arange(w), indexing="ij")
+    for t in range(nt):
+        dy, dx = float(shifts[t, 0]), float(shifts[t, 1])
+        # Where this frame's samples truly sit on the reference grid, in output pixels.
+        oy = (yy - dy + 0.5) * scale - 0.5
+        ox = (xx - dx + 0.5) * scale - 0.5
+        y0 = np.floor(oy).astype(int)
+        x0 = np.floor(ox).astype(int)
+        fy, fx = oy - y0, ox - x0
+        finite = np.isfinite(stack[t]).all(axis=0)
+        for ddy, ddx, wf in ((0, 0, (1 - fy) * (1 - fx)), (0, 1, (1 - fy) * fx),
+                             (1, 0, fy * (1 - fx)), (1, 1, fy * fx)):
+            ty, tx = y0 + ddy, x0 + ddx
+            ok = finite & (ty >= 0) & (ty < H) & (tx >= 0) & (tx < W) & (wf > 0)
+            if not ok.any():
+                continue
+            ti, tj, tw = ty[ok], tx[ok], wf[ok]
+            np.add.at(wgt, (ti, tj), tw)
+            for b in range(nb):
+                np.add.at(acc[b], (ti, tj), stack[t, b][ok] * tw)
+    out = np.full((nb, H, W), np.nan, dtype="float32")
+    filled = wgt > 1e-6
+    for b in range(nb):
+        out[b][filled] = acc[b][filled] / wgt[filled]
+    # Gaps: fall back to a plain upsample of the temporal median, so the raster is complete
+    # and any difference against the baseline comes from the fused samples, not from holes.
+    with np.errstate(invalid="ignore"):
+        med = np.nanmedian(stack, axis=0)
+    for b in range(nb):
+        up = np.repeat(np.repeat(med[b], scale, axis=0), scale, axis=1)[:H, :W]
+        gap = ~filled & np.isfinite(up)
+        out[b][gap] = up[gap]
+    return out

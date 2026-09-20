@@ -46,7 +46,6 @@ LOD1 = HF + "/GBA.LoD1/resolve/main/LoD1/asiawest/{tile}.json"
 # The polygons are web mercator; quadrat bounds are lon/lat.
 MERC = "EPSG:3857"
 _COORD = re.compile(rb"\[\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\]")
-_ID = re.compile(rb'"id":\s*"([^"]+)"')
 _HEIGHT = re.compile(rb'"([^"]+?)":\s*\{"height":\s*(-?\d+\.?\d*),\s*"var":\s*(-?\d+\.?\d*)\}')
 
 
@@ -102,13 +101,16 @@ def main() -> None:
             continue
         if not any(b[0] <= x <= b[2] and b[1] <= y <= b[3] for b in boxes):
             continue
-        mid = _ID.search(line)
         try:
             feat = json.loads(line.rstrip(b",\n").decode("utf8"))
         except Exception:  # noqa: BLE001 - a truncated line is not worth killing the pass
             continue
         keep_geom.append(shape(feat["geometry"]))
-        keep_id.append(feat["properties"].get("id") or (mid and mid.group(1).decode()))
+        # The LoD1 lookup is keyed by source+id+region concatenated, e.g.
+        # "google8J4PPRVQ+XF9JZ01" or "osm273260153PAK", NOT by the bare id. Joining on the
+        # id alone matched 0 of 19,678 buildings on the first run.
+        pr = feat["properties"]
+        keep_id.append(f"{pr.get('source', '')}{pr.get('id', '')}{pr.get('region', '')}")
         if n_seen % 2_000_000 == 0:
             log.info("  polygons scanned %d, kept %d", n_seen, len(keep_id))
     log.info("polygon pass done: %d scanned, %d kept inside quadrats", n_seen, len(keep_id))

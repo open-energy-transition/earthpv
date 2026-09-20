@@ -909,12 +909,122 @@ def building_table(
         st, m_transform, m_crs = loaded
         arr = medoid_composite(st) / REFL_SCALE
         transform, crs = m_transform, m_crs
+    if preprocess in ("tmean", "tmean_up2", "tmean_trim"):
+        # Isolating estimator from resolution. `mfsr_noshift` beat the baseline by +0.0205
+        # AUC, and nearest-upsampling the composite only by +0.0042 -- so the gain is not
+        # the finer grid. The remaining difference is that the shift-and-add accumulator
+        # averages over frames, making its base image a temporal MEAN of valid observations,
+        # where `annual_composite` writes a per-pixel MEDIAN. This tests the mean directly.
+        from earthpv.preprocess import load_scene_stack
+
+        loaded = load_scene_stack(composites, stem)
+        if loaded is None:
+            log.warning("quadrat %s: no scene stack", name)
+            return pd.DataFrame()
+        st, t_tr, t_crs = loaded
+        with np.errstate(invalid="ignore"):
+            if preprocess == "tmean_trim":
+                # The compromise: a mean has ~1/1.57 the variance of a median at n=12, but
+                # cannot reject residual cloud that SCL missed. Trimming the extreme 20%
+                # per pixel keeps most of the efficiency and most of the robustness.
+                lo = np.nanpercentile(st, 10, axis=0)
+                hi = np.nanpercentile(st, 90, axis=0)
+                keep = (st >= lo[None]) & (st <= hi[None])
+                arr = np.nanmean(np.where(keep, st, np.nan), axis=0) / REFL_SCALE
+            else:
+                arr = np.nanmean(st, axis=0) / REFL_SCALE
+        transform, crs = t_tr, t_crs
+        if preprocess == "tmean_up2":
+            arr = np.repeat(np.repeat(arr, 2, axis=1), 2, axis=2)
+            transform = rasterio.Affine(t_tr.a / 2, t_tr.b, t_tr.c, t_tr.d, t_tr.e / 2, t_tr.f)
+    if preprocess == "areazonal":
+        # The principled version of the 2026-09-20 upsampling finding, and the reason it
+        # works. `zonal_mean_max` rasterises with all_touched=False, so a pixel belongs to a
+        # building only if its CENTRE falls inside: about half of VIDA footprints then own
+        # zero pixels and fall back to a representative point. Nearest-upsampling the raster
+        # fixes that by subdividing pixels, which is just an approximation of weighting each
+        # 10 m pixel by the fraction of the footprint covering it. This computes that
+        # fraction directly -- exact, and no raster inflation.
+        from earthpv.preprocess import coverage_matrix
+
+        bu_utm_ = bu.to_crs(crs)
+        A = coverage_matrix(bu_utm_, arr.shape[-2:], transform, subpix=4)
+        flat = arr.reshape(arr.shape[0], -1)
+        ok_px = np.isfinite(flat).all(axis=0)
+        means_aw = np.full((arr.shape[0], A.shape[1]), np.nan)
+        Aok = A.multiply(ok_px[:, None]).tocsr()
+        wok = np.asarray(Aok.sum(axis=0)).ravel()
+        for bi in range(arr.shape[0]):
+            v = np.nan_to_num(flat[bi])
+            num = Aok.T.dot(v)
+            means_aw[bi] = np.where(wok > 1e-6, num / np.maximum(wok, 1e-9), np.nan)
+        log.info("quadrat %s: area-weighted zonal means, %d of %d buildings covered",
+                 name, int((wok > 1e-6).sum()), len(bu))
+    if preprocess in ("upsample2", "upsample4", "upsample2_nearest"):
+        # The deployable form of the 2026-09-20 finding. `mfsr_noshift` showed the gain is
+        # finer ZONAL SAMPLING, not fusion: at 10 m about half of VIDA footprints rasterise
+        # to zero pixels and fall back to a representative point, so the "zonal mean" is a
+        # point sample. This resamples the SAME composite before the zonal step -- no new
+        # data, no stacks, and it works anywhere a composite exists.
+        from scipy.ndimage import zoom as _zoom
+
+        k = 4 if preprocess == "upsample4" else 2
+        order = 0 if preprocess == "upsample2_nearest" else 1
+        arr = np.stack([_zoom(b, k, order=order, grid_mode=True, mode="nearest") for b in arr])
+        transform = rasterio.Affine(transform.a / k, transform.b, transform.c,
+                                    transform.d, transform.e / k, transform.f)
+    if preprocess in ("mfsr", "mfsr_noshift"):
+        # Multi-frame fusion of the saved scene stack onto a 2x finer grid, using
+        # phase-correlation shifts. Unlike SEN2SR this invents nothing: every output sample
+        # is a weighted mean of real observations. Synthetic check says it recovers ~9% of
+        # the ideal gain at the sub-pixel diversity Sentinel-2 actually provides here.
+        import importlib.util
+
+        from earthpv.preprocess import load_scene_stack, mfsr_shift_and_add
+        loaded = load_scene_stack(composites, stem)
+        if loaded is None:
+            log.warning("quadrat %s: no scene stack -- cannot fuse", name)
+            return pd.DataFrame()
+        st, m_tr, m_crs = loaded
+        spec = importlib.util.spec_from_file_location(
+            "pv_step_signal", Path("scripts/pv_step_signal.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        ref_i = int(np.argmax(np.isfinite(st[:, 6]).mean(axis=(1, 2))))
+        sh = np.zeros((st.shape[0], 2))
+        # `mfsr_noshift` is THE control for the fusion claim: identical code, identical
+        # gap-fill, identical 5 m grid, shifts forced to zero. Any gain it shows is finer
+        # zonal sampling of the same 10 m content -- notably, the ~half of VIDA footprints
+        # that rasterise to zero pixels at 10 m get real pixels at 5 m -- and only the
+        # DIFFERENCE between mfsr and mfsr_noshift is recovered sub-pixel information.
+        if preprocess == "mfsr":
+            for k in range(st.shape[0]):
+                if k != ref_i and np.isfinite(st[k, 6]).mean() > 0.5:
+                    sh[k] = mod._phase_shift(st[ref_i, 6], st[k, 6])
+        fused = mfsr_shift_and_add(st, sh, scale=2)
+        arr = fused / REFL_SCALE
+        transform = rasterio.Affine(m_tr.a / 2, m_tr.b, m_tr.c, m_tr.d, m_tr.e / 2, m_tr.f)
+        crs = m_crs
+    if preprocess == "sen2sr":
+        # ESAOpenSR SEN2SRLite output at 2.5 m (scripts/sen2sr_quadrats.py). Zonal stats
+        # then run on a 4x finer grid, so a 100 m2 building covers ~16 pixels instead of
+        # ~1 and the sub-pixel footprints that currently fall back to a representative
+        # point get real pixels. That is the mechanism under test.
+        sr_path = Path(composites) / "sen2sr" / f"{stem}.tif"
+        if not sr_path.exists():
+            log.warning("quadrat %s: no SEN2SR raster at %s -- skipping", name, sr_path)
+            return pd.DataFrame()
+        with rasterio.open(sr_path) as _t:
+            arr = _t.read().astype("float32") / REFL_SCALE
+            transform, crs = _t.transform, _t.crs
     if preprocess in ("sharpen20", "sharpen20_interp"):
         from earthpv.preprocess import sharpen_20m
 
         arr = sharpen_20m(arr, method="interp" if preprocess.endswith("interp") else "regress")
     bu_utm = bu.to_crs(crs)
     means, maxes = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
+    if preprocess == "areazonal":
+        means = means_aw
     if preprocess == "unmix":
         from earthpv.preprocess import unmix_buildings
 

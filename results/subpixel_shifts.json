@@ -1,0 +1,12 @@
+{
+  "n_pairs": 298,
+  "n_quadrats": 30,
+  "median_shift_px": 0.122,
+  "p90_shift_px": 0.283,
+  "median_shift_m": 1.22,
+  "share_above_0p2px": 0.238,
+  "share_above_0p5px": 0.037,
+  "median_subpixel_offset_y": 0.072,
+  "median_subpixel_offset_x": 0.053,
+  "phase_uniformity_target": 0.25
+}

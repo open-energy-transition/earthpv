@@ -1,0 +1,11 @@
+{
+  "n_pairs": 141,
+  "n_quadrats": 12,
+  "median_shift_px": 0.132,
+  "median_shift_m": 1.32,
+  "p90_shift_px": 0.326,
+  "share_above_0p2px": 0.27,
+  "share_above_0p5px": 0.035,
+  "median_subpixel_offset": 0.132,
+  "composite_grid_median_px": 0.122
+}
