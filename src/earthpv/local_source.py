@@ -14,7 +14,6 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
-import pandas as pd
 import rasterio
 import rasterio.merge
 import rasterio.warp
@@ -24,6 +23,36 @@ from shapely.geometry import box
 log = logging.getLogger(__name__)
 
 Bbox = tuple[float, float, float, float]
+
+
+def _snap_bounds(bounds, transform):
+    """Expand `bounds` outwards to the source raster's own pixel grid.
+
+    Without this, `merge` builds its output grid starting at whatever bounds it is handed,
+    and those come from a lat/lon round-trip, so they land at an arbitrary sub-pixel offset
+    from the source. Measured 2026-09-20 across eight quadrats, the returned grid sat
+    0.014-0.933 px off the source tile, meaning every read RESAMPLED the composite onto a
+    displaced grid before anything downstream saw it. Snapping makes the read a copy.
+
+    MEASURED BENEFIT IS SMALL AND NOT SIGNIFICANT: +0.0038 AUC and +0.0032 within size band
+    for `roofclf` over the 30 calibration quadrats, 18 of 30 folds, p = 0.26. It was first
+    attributed the whole +0.0098 gap between the stack and composite read paths; measuring
+    it alone showed it accounts for about a third of that, and the remainder is still
+    unexplained -- most likely the stack's 200 m margin changing which pixels edge footprints
+    sample, or a different scene set.
+
+    Kept on CORRECTNESS grounds rather than for the number: a read should not silently
+    resample its source, and the composite's own pixels are the truth. Note it does change
+    feature values, so anything calibrated on the old path shifts slightly.
+    """
+    px, py = abs(transform.a), abs(transform.e)
+    x0, y0, x1, y1 = bounds
+    ox, oy = transform.c, transform.f
+    import math
+    return (ox + math.floor((x0 - ox) / px) * px,
+            oy - math.ceil((oy - y0) / py) * py,
+            ox + math.ceil((x1 - ox) / px) * px,
+            oy - math.floor((oy - y1) / py) * py)
 
 
 class CompositeIndex:
@@ -76,6 +105,7 @@ class CompositeIndex:
             try:
                 dst_crs = srcs[0].crs
                 wb = rasterio.warp.transform_bounds("EPSG:4326", dst_crs, *bbox)
+                wb = _snap_bounds(wb, srcs[0].transform)
                 arr, transform = rasterio.merge.merge(srcs, bounds=wb, nodata=0)
                 layer_arrays.append(arr)
             finally:
