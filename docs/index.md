@@ -12,7 +12,7 @@ hide:
 
 <div class="hero-copy" markdown>
 
-**Free, Open amd Global Photovoltaic Mapping for Systems Above 10 kWp — Including Capacity, Growth and Orientation*
+**Free, Open amd Global Photovoltaic Mapping for Systems Above 10 kWp — Including Capacity, Growth and Orientation**
 { .lede }
 
 </div>
