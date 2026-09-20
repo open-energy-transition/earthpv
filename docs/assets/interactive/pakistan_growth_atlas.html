@@ -300,6 +300,38 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
   --vs: #bd5f22; --vs-hi: #e89159; --vs-lo: #7d3a10; --vs-ink: #f7e6d8;
   --vs-text: #d97c3f; --vs-ring: rgba(189,95,34,0.62); --vs-bg: rgba(189,95,34,0.13);
   --vs-rim: rgba(189,95,34,0.50); }
+/* LIGHT PALETTE. The metals above are tuned for the dark page and silver in particular is
+   near-white: measured at 1.03 contrast against the light panel, i.e. invisible. These
+   override under BOTH of the page's own light selectors -- the media query for the system
+   default and the explicit attribute for the in-page toggle -- so the badge follows the
+   theme in either direction. Measured on the light panel: disc contrast 3.7 gold, 4.8
+   silver, 5.7 bronze; tier text 5.1, 6.5, 7.0. */
+:root[data-theme="light"] .vscore--gold {
+  --vs: #a9760a; --vs-hi: #d8a53c; --vs-lo: #7d5405; --vs-ink: #fff8e6;
+  --vs-text: #8a6108; --vs-ring: rgba(169,118,10,0.45); --vs-bg: rgba(169,118,10,0.09);
+  --vs-rim: rgba(169,118,10,0.38); }
+:root[data-theme="light"] .vscore--silver {
+  --vs: #5f6e82; --vs-hi: #93a2b5; --vs-lo: #414c5b; --vs-ink: #ffffff;
+  --vs-text: #4d5a6b; --vs-ring: rgba(95,110,130,0.45); --vs-bg: rgba(95,110,130,0.09);
+  --vs-rim: rgba(95,110,130,0.36); }
+:root[data-theme="light"] .vscore--bronze {
+  --vs: #9c4a14; --vs-hi: #cf7a3f; --vs-lo: #6f3209; --vs-ink: #fdeade;
+  --vs-text: #8a3f10; --vs-ring: rgba(156,74,20,0.48); --vs-bg: rgba(156,74,20,0.10);
+  --vs-rim: rgba(156,74,20,0.40); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .vscore--gold {
+    --vs: #a9760a; --vs-hi: #d8a53c; --vs-lo: #7d5405; --vs-ink: #fff8e6;
+    --vs-text: #8a6108; --vs-ring: rgba(169,118,10,0.45); --vs-bg: rgba(169,118,10,0.09);
+    --vs-rim: rgba(169,118,10,0.38); }
+  :root:not([data-theme="dark"]) .vscore--silver {
+    --vs: #5f6e82; --vs-hi: #93a2b5; --vs-lo: #414c5b; --vs-ink: #ffffff;
+    --vs-text: #4d5a6b; --vs-ring: rgba(95,110,130,0.45); --vs-bg: rgba(95,110,130,0.09);
+    --vs-rim: rgba(95,110,130,0.36); }
+  :root:not([data-theme="dark"]) .vscore--bronze {
+    --vs: #9c4a14; --vs-hi: #cf7a3f; --vs-lo: #6f3209; --vs-ink: #fdeade;
+    --vs-text: #8a3f10; --vs-ring: rgba(156,74,20,0.48); --vs-bg: rgba(156,74,20,0.10);
+    --vs-rim: rgba(156,74,20,0.40); }
+}
 @media (max-width: 900px) {
   .vscore { position: static; margin-top: 12px; max-width: none; }
 }
@@ -543,6 +575,8 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
 })();
 </script>
 <!-- earthpv:cellcsv:end -->
+
+
 
 
 
