@@ -1,0 +1,42 @@
+{
+  "n_rows": 123305,
+  "n_folds": 29,
+  "baseline_ws": 0.837,
+  "plus_delta_2019": {
+    "d_ws_median": 0.0067,
+    "d_auc_median": 0.0052,
+    "ws_median": 0.8451,
+    "folds_better": 23,
+    "folds_worse": 6,
+    "sign_p": 0.0023,
+    "wilcoxon_p": 0.0002
+  },
+  "plus_delta_split": {
+    "d_ws_median": -0.0017,
+    "d_auc_median": -0.0009,
+    "ws_median": 0.8349,
+    "folds_better": 10,
+    "folds_worse": 19,
+    "sign_p": 0.136,
+    "wilcoxon_p": 0.0877
+  },
+  "plus_old_levels": {
+    "d_ws_median": 0.0063,
+    "d_auc_median": 0.0042,
+    "ws_median": 0.8434,
+    "folds_better": 24,
+    "folds_worse": 5,
+    "sign_p": 0.0005,
+    "wilcoxon_p": 0.0006
+  },
+  "plus_both": {
+    "d_ws_median": 0.0062,
+    "d_auc_median": 0.0049,
+    "ws_median": 0.8441,
+    "folds_better": 19,
+    "folds_worse": 10,
+    "sign_p": 0.136,
+    "wilcoxon_p": 0.0724
+  },
+  "old_subdir": "stacks_2019_wide"
+}

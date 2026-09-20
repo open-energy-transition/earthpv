@@ -557,20 +557,17 @@ in the extreme tail, so it is PV and not construction.
 
 What is open is whether it is worth deploying, and the honest number is the small one.
 Against the shipped read path it is +0.0234 within size band; against the noise-reduced one
-it is **+0.0047 (20 of 28 folds, p = 0.036)**, because four fifths of it is already captured
+it is **+0.0067 (23 of 29 folds, p = 0.002)**, because four fifths of it is already captured
 by the trimmed mean and area-weighted zonal means. A project that ships the reducer package
-gets +0.005 from a second epoch, at the cost of compositing the country twice.
+gets under a hundredth of AUC from a second epoch, at the cost of compositing the country
+twice. The depth question is closed: doubling the old epoch's frames (median 7 to 16) moved
+it 0.0047 to 0.0067 and the curve has not flattened, so a deeper old epoch is the cheapest
+remaining improvement. Two things remain open:
 
-Three things would settle it, in increasing order of cost:
-
-1. **Is the old epoch frame-starved?** The 2019/20 dry-season stacks carry a median 7 frames
-   against the current 12, so the difference is noisier on the old side than it needs to be.
-   A wider window (2019-10-01 to 2020-04-30, `--max-items 24 --max-cloud 50`) roughly doubles
-   the frame count; re-running the ablation on it says whether the +0.0047 was depth-limited.
-2. **Does it survive the capacity chain?** The deployment framing on the shipped base is
+1. **Does it survive the capacity chain?** The deployment framing on the shipped base is
    +3.2 points of recall at precision 0.500 (0.6298 to 0.6621). The same measurement has not
    been made on the noise-reduced base, where the AUC gain is 5x smaller.
-3. **Does it transfer?** Pakistan's boom is post-2022, which is what makes a 2019 composite a
+2. **Does it transfer?** Pakistan's boom is post-2022, which is what makes a 2019 composite a
    clean pre-installation look. A country whose PV predates the archive has no such epoch,
    and Germany's register-calibrated half has no quadrats to measure it on, so this is
    a Pakistan-shaped result until something tests it elsewhere.

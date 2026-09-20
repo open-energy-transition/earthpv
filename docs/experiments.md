@@ -86,7 +86,7 @@ see [Open questions](open-questions.md).
 | [Gradient boosting instead of the linear model](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome mixed">partial</span> | Ranks WORSE (-0.023 within size band, 4 of 30 folds) and calibrates BETTER (per-quadrat rate error 0.031 to 0.017, 20 of 29 quadrats). |
 | [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
 | [Area-weighted training loss](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Improves the area ratio it optimises (1.084 to 1.035) and loses on both ranking (-0.0111 AUC) and count calibration (0.0308 to 0.0395). |
-| [A pre-boom epoch as the roof's own control](#the-roof-is-its-own-control-2026-09-20) | <span class="outcome mixed">partial</span> | +0.0234 within size band over the SHIPPED read path (25 of 29 folds, p = 0.0002, placebo null) but only **+0.0047 over the noise-reduced one** (20 of 28, p = 0.036). The two levers are not additive. |
+| [A pre-boom epoch as the roof's own control](#the-roof-is-its-own-control-2026-09-20) | <span class="outcome mixed">partial</span> | +0.0234 within size band over the SHIPPED read path (25 of 29 folds, p = 0.0002, placebo null) but only **+0.0067 over the noise-reduced one** (23 of 29, p = 0.002). The two levers are not additive, and the old epoch is not yet deep enough. |
 | [Within-footprint pixel distribution](#most-footprints-are-one-pixel-2026-09-20) | <span class="outcome negative">rejected</span> | Extremes and spread of the same pixels the zonal mean averages: -0.0006 to -0.0015 within size band, 11 to 12 of 29 folds, p = 0.27 to 0.46. |
 | [Per-stratum deployment thresholds](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | Equal precision per size/density stratum COSTS 3.0 to 9.2 points of recall at matched precision (4 to 7 of 25 quadrats, p = 0.001 to 0.029). |
 | [Per-stratum score recalibration, one global cut](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | The theoretically-correct version. Pooled +1.3 points of recall, median per-quadrat +0.0000, 12 of 24 quadrats, p = 1.00. |
@@ -1533,8 +1533,26 @@ quadrats. Re-running the whole ablation on the `trimzonal` table instead:
 
 **Four fifths of the epoch gain is already captured by the noise reduction.** It is still
 there, still significant, and the placebo is still null on the better base (-0.0017, 10 of
-29) -- but a project that ships the reducer package should expect +0.005, not +0.023, from
-adding a second epoch on top.
+29) -- but a project that ships the reducer package should expect well under +0.01, not
++0.023, from adding a second epoch on top.
+
+**The old epoch was frame-starved, and it is still not saturated.** Those 2019/20 stacks
+carry a median 7 frames against the current 12. Re-pulling them over a wider window
+(2019-10-01 to 2020-04-30, `--max-items 24 --max-cloud 50`) more than doubles that to a
+median 16, and on the same noise-reduced base the gain rises and sharpens:
+
+| Old epoch | Median frames | Gain on `trimzonal` | Folds better | Sign p | Wilcoxon p |
+| --- | --- | --- | --- | --- | --- |
+| 2019-11-01 to 2020-03-15 | 7 | +0.0047 | 20 of 28 | 0.036 | 0.011 |
+| **2019-10-01 to 2020-04-30, cap 24** | **16** | **+0.0067** | **23 of 29** | **0.002** | **0.0002** |
+
+So the honest deployment number is +0.0067 and rising, not +0.0047, and the curve has not
+flattened -- a deeper old epoch is the cheapest remaining way to improve this, since it
+costs archive queries rather than a second national composite. One thing does change with
+the cleaner old epoch: the undifferenced 2019 LEVELS catch up almost completely (+0.0063,
+24 of 29, p = 0.0005 against the difference's +0.0067). The "the roof cancels" prior was
+worth 6x on a noisy old epoch and is worth almost nothing on a clean one, which is what a
+regularisation prior should do: it buys most where the data is weakest.
 
 The two are not measuring the same thing mechanically -- one cleans the current estimate,
 the other cancels the roof -- but they raise the same underlying quantity, the contrast
