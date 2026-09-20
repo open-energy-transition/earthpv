@@ -19,17 +19,6 @@ hide:
 
 </div>
 
-**Mapping a country we have not reached?** EarthPV is built to be forked per country
-and merged back: the aim is a global PV evidence atlas assembled from many countries,
-each run and verified by people who know the ground.
-[Fork it and add yours](reproduce.md#contribute-your-country-atlas-back)
-{ .lede }
-
-!!! warning "Active development"
-    EarthPV is still a research prototype. It is actively experimenting with new solar
-    detection methods, and its detectors, calibration and headline numbers are still being
-    tested and revised rather than settled.
-
 EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed every five days. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country.
 
 **Pakistan is the first pilot, not the destination.** It is where four methods below were
