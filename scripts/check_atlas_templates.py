@@ -28,6 +28,7 @@ REQUIRED = {
         ("__VALIDATION_BADGE__", "the calibration score stamp"),
         ("__DOWNLOAD_SECTION__", "the per-cell CSV and GeoParquet downloads"),
         ("comp-sizes", "the installation-size bands under the composition bar"),
+        ("__COMPOSITION_NOTE__", "the per-country composition sentence"),
         ('id="pv"', "the embedded per-cell data the downloads are built from"),
     ],
     "pv_growth_evidence_atlas.html": [
@@ -66,6 +67,90 @@ def const_for(template: str, src: str) -> str | None:
     return m.group(1) if m else None
 
 
+
+# Every AOI whose atlas is published, and the display name a reader would recognise it by.
+# A country's page must not name another country in its own prose -- the failure this check
+# exists for shipped Pakistan's NEPRA corroboration on the German, French and Zambian
+# atlases for weeks, and nothing in the build noticed.
+PUBLISHED = {
+    "pakistan_evidence_atlas.html": ("pakistan", "Pakistan"),
+    "germany_pv_evidence_atlas.html": ("germany", "Germany"),
+    "france_pv_evidence_atlas.html": ("france", "France"),
+    "zambia_pv_evidence_atlas.html": ("zambia", "Zambia"),
+}
+
+
+def _visible_text(html: str) -> str:
+    """Body text only: scripts, styles and comments carry cross-country references on
+    purpose (a JS comment explaining a label-collision fix cites Lahore and Karachi) and
+    are not what a reader sees."""
+    out = re.sub(r"(?s)<script.*?</script>", " ", html)
+    out = re.sub(r"(?s)<style.*?</style>", " ", out)
+    out = re.sub(r"(?s)<!--.*?-->", " ", out)
+    return out
+
+
+def check_published_atlases(problems: list[str]) -> None:
+    """No published atlas may name another country, or link another country's pages.
+
+    A country's OWN `configs/atlas/<aoi>.yaml` is exempt: Germany's page compares its
+    municipal error to Pakistan's on purpose, and France's explains why the classifier
+    that carries Pakistan's estimate does not carry its own. That is a deliberate,
+    reviewed comparison written for that page. What this checks is the text the BUILDER
+    emits, which is the same strings for every country and therefore must name none.
+    """
+    sys.path.insert(0, str(ROOT / "src"))
+    from earthpv import atlas_config
+
+    pub = ROOT / "docs" / "assets" / "interactive"
+    others = {name: [o for k, (_, o) in PUBLISHED.items() if k != name]
+              for name in PUBLISHED}
+    for name, (aoi, _) in PUBLISHED.items():
+        path = pub / name
+        if not path.exists():
+            continue                      # not every AOI is published in every checkout
+        html = path.read_text()
+        text = _visible_text(html)
+        cfg = atlas_config.load(aoi, ROOT / "configs" / "atlas")
+        for supplied in (cfg.ground_truth, cfg.corroboration, *cfg.caveats):
+            text = text.replace(supplied, " ")
+        for other in others[name]:
+            if other in text:
+                problems.append(
+                    f"{name}: its visible text names {other}, which is another country's "
+                    f"atlas. Country-specific prose belongs in configs/atlas/{aoi}.yaml.")
+        # a link to another country's page is just as wrong, and survives in raw HTML
+        for link_aoi in (a for k, (a, _) in PUBLISHED.items() if a != aoi):
+            if f'href="{link_aoi}_' in html:
+                problems.append(f"{name}: links to a {link_aoi} page "
+                                f"(set `composition_page` in configs/atlas/{aoi}.yaml)")
+
+
+def check_atlas_configs(problems: list[str]) -> None:
+    """Every configs/atlas/*.yaml parses, and none of its prose was mangled by wrapping.
+
+    A YAML folded scalar (`>-`) joins its lines with a space, so a line break placed mid
+    word -- which `textwrap` will happily do on a hyphen -- ships as "recent- enough" to
+    every reader of that page.
+    """
+    sys.path.insert(0, str(ROOT / "src"))
+    from earthpv import atlas_config
+
+    for path in sorted((ROOT / "configs" / "atlas").glob("*.yaml")):
+        try:
+            cfg = atlas_config.load(path.stem, ROOT / "configs" / "atlas")
+        except Exception as exc:                            # noqa: BLE001 - report, don't raise
+            problems.append(f"configs/atlas/{path.name}: {exc}")
+            continue
+        prose = [cfg.ground_truth, cfg.corroboration, *cfg.caveats]
+        for text in prose:
+            m = re.search(r"[a-z]- [a-z]", text)
+            if m:
+                problems.append(
+                    f"configs/atlas/{path.name}: a word is split across a folded line "
+                    f"(...{text[max(0, m.start() - 30):m.end() + 30]}...)")
+
+
 def main() -> int:
     src = ATLAS.read_text()
     provided = provided_keys(src)
@@ -95,13 +180,19 @@ def main() -> int:
                 f"{path.name}: uses {t} but {const}'s builder never substitutes it, so the "
                 f"literal text would ship to readers")
 
+    check_atlas_configs(problems)
+    check_published_atlases(problems)
+
     if problems:
         print("Atlas template check FAILED:")
         for p in problems:
             print(f"  - {p}")
         return 1
+    n_cfg = len(list((ROOT / "configs" / "atlas").glob("*.yaml")))
+    n_pub = sum(1 for n in PUBLISHED if (ROOT / "docs/assets/interactive" / n).exists())
     print(f"atlas templates: {len(REQUIRED)} checked, all features present and every "
-          f"placeholder substituted")
+          f"placeholder substituted; {n_cfg} AOI configs valid; {n_pub} published atlases "
+          f"carry no other country's text")
     return 0
 
 

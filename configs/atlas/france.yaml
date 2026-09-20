@@ -1,0 +1,79 @@
+# France's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# France has exhaustively hand-mapped ground truth AND a complete register, and neither
+# supports a small-panel half: roofclf does not transfer to French residential PV (median
+# fold AUC 0.710 against Pakistan's 0.857, because the median mapped French installation is
+# 20 m2 against a 100 m2 Sentinel-2 pixel). So the quadrats below are on the map as what
+# they are -- the measurement that established the detection floor -- and the default
+# "quadrats behind the small-panel instruments" paragraph is replaced accordingly.
+#
+# Numbers from docs/results/france.md and docs/methods/france-validation.md.
+
+title: France
+
+cities:
+  - [Paris, 2.352, 48.857]
+  - [Marseille, 5.370, 43.296]
+  - [Lyon, 4.835, 45.764]
+  - [Toulouse, 1.444, 43.605]
+  - [Nice, 7.262, 43.710]
+  - [Nantes, -1.553, 47.218]
+  - [Montpellier, 3.877, 43.611]
+  - [Strasbourg, 7.752, 48.573]
+  - [Bordeaux, -0.580, 44.838]
+  - [Lille, 3.058, 50.629]
+  - [Rennes, -1.678, 48.117]
+  - [Reims, 4.032, 49.258]
+
+# The 14 exhaustively hand-mapped communes (scripts/build_france_quadrats.py). They live in
+# `data/labels/france/`, NOT flat in `data/labels/` -- a flat French quadrat would silently
+# join the next Pakistani roofclf refit -- and `atlas._load_calib_boxes` looks in the
+# AOI-scoped directory first for exactly this reason.
+# Saint-Gely-du-Fesc is marked unfinished by the mapper, is not complete, and is excluded
+# from every fit; it carries `suspect` here rather than being quietly dropped off the map.
+calibration_boxes:
+  - {name: "Anglet", stem: anglet_calib_27p00km2, status: rule1}
+  - {name: "Chambéry", stem: chambery_calib_21p19km2, status: rule1}
+  - {name: "Eaunes", stem: eaunes_calib_14p91km2, status: rule1}
+  - {name: "Gannay-sur-Loire", stem: gannay_sur_loire_calib_32p18km2, status: rule1}
+  - {name: "Grenoble", stem: grenoble_calib_18p43km2, status: rule1}
+  - {name: "Langoat", stem: langoat_calib_18p70km2, status: rule1}
+  - {name: "Mâcon", stem: macon_calib_27p10km2, status: rule1}
+  - {name: "Notre-Dame-de-Londres", stem: notre_dame_de_londres_calib_28p28km2, status: rule1}
+  - {name: "Saint-Gély-du-Fesc (mapping unfinished)", stem: saint_gely_du_fesc_calib_16p58km2, status: suspect}
+  - {name: "Saint-Genis-Laval", stem: saint_genis_laval_calib_12p91km2, status: rule1}
+  - {name: "Saint-Martin-de-la-Porte", stem: saint_martin_de_la_porte_calib_19p24km2, status: rule1}
+  - {name: "Saulny", stem: saulny_calib_9p82km2, status: rule1}
+  - {name: "Toussieu", stem: toussieu_calib_5p07km2, status: rule1}
+  - {name: "Toussieux", stem: toussieux_calib_4p79km2, status: rule1}
+
+confidence:
+  ground_truth: >-
+    <p><b>Fourteen French communes were mapped panel by panel, and what they measured is
+    the limit of the instrument rather than a correction to it.</b> Across 3,335 hand-drawn
+    features on sub-metre imagery, the median installation is <b>20 m&sup2;</b> against a
+    Sentinel-2 pixel of 100 m&sup2;. Detection recall climbs with array size across those
+    communes (Spearman +0.83) while an independent model reading the same installations
+    from sub-metre imagery is flat, which places the gradient in the sensor and not in the
+    annotator. That is why this page has no small-panel half at all: the per-building
+    classifier that supplies most of Pakistan's estimate scores 0.710 here against 0.857
+    there, and at a usable precision it flags 16 buildings out of 44,314. The communes are
+    drawn on the map above; they set the floor, they do not raise the total.</p>
+  caveats:
+    - >-
+      <b>This page is a precision floor, not a recall-corrected estimate.</b> France has no
+      glint sample, so the chance that an unmapped detection is real is set to zero and the
+      model's credit collapses to the share of its detections that OpenStreetMap already
+      confirms. The recall correction that roughly doubles comparable Pakistani figures was
+      deliberately not applied: the only French ground truth available to measure it against
+      is a sub-400 m&sup2; population, and a correction fitted there would have been
+      manufactured rather than measured.
+  corroboration: >-
+    <p><b>France's own register says this page is missing most of the fleet, which is the
+    expected result.</b> The ODRE register puts French PV at roughly 34.6 GWp, several
+    times the figure above, and 92.0% of French installations by count sit below this
+    pipeline's 400 m&sup2; detection floor. Per commune, the detection estimators correlate
+    with the register at Spearman 0.45 after retraining in domain, against 0.29 zero-shot --
+    the retrained model got the geography substantially better while recovering about a
+    third of the capacity. Read the map for where French PV is, not for how much there
+    is.</p>

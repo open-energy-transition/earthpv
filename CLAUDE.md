@@ -485,6 +485,60 @@ equality, so genuinely distinct same-name divisions survive -- verified against 
 repeated district names, which are disjoint. Only Germany was affected: every other AOI's admin
 layer came from geoBoundaries, which has no maritime rows.
 
+### One atlas template, one config file per country (`configs/atlas/<aoi>.yaml`)
+
+**The Pakistan atlas IS the template, and since 2026-09-20 everything country-specific in it
+lives in `configs/atlas/<aoi>.yaml` instead of in the builder.**
+`templates/pv_evidence_atlas.html` was always shared, but the prose inside it and inside
+`build_evidence_atlas` was written for Pakistan and shipped verbatim to every other country.
+Germany's, France's and Zambia's published atlases each told their readers that **Pakistan's
+NEPRA net-metering register** put "registered rooftop solar at 5.3-6.3 GW nationally" as
+independent corroboration of THEIR headline figure, carried Pakistan's measured
+124 bldg/km2 density-sparsity caveat, linked Pakistan's composition page, and rendered
+"All **0** quadrats behind the small-panel instruments were chosen by a researcher". None of
+it failed a build, and none of it was visible from the Pakistan page it was written for.
+
+`atlas_config.load(aoi)` supplies `title`, `cities`, `calibration_boxes`, `composition_page`
+and three optional confidence blocks (`ground_truth`, `caveats`, `corroboration`). A missing
+file is normal and means a complete page minus the sections that need local evidence; a
+malformed one is an error, including an unknown key, since a typo would silently drop the
+section it was meant to fill. `CITIES` and `CALIBRATION_BOXES` are gone from `atlas.py`.
+
+Two builder functions replace what used to be one Pakistan-shaped string literal:
+- **`_confidence_html`** gates every claim on the thing that makes it true: the
+  quadrat-resampling bullet on an actual coverage bootstrap (Germany's roofclf half is fitted
+  against its register and has none), the purposive-sampling and Rule-1-epoch bullets on
+  actually having quadrats, the corroboration paragraph on the AOI supplying one. It also
+  derives two counts that were written out as words and were only ever right for one build
+  ("three specific ... sources", "two unrelated data sources").
+- **`_composition_note`** derives the "which method supplies most of Best" sentence from the
+  page's own components, mirroring the template's `compRows()` grouping, instead of asserting
+  roofclf on a country that has no roofclf half. Zambia's page said roofclf supplied most of
+  its Best estimate; it is segmentation-only.
+
+`_load_calib_boxes` now looks in `data/labels/<aoi>/` before `data/labels/`, so France's 14
+hand-mapped communes are drawn on its own map without being moved into the flat directory
+that feeds Pakistani roofclf refits.
+
+**`scripts/check_atlas_templates.py` fails CI** if a published atlas names another country in
+its visible text (scripts, styles and comments excluded) or links another country's page. A
+country's OWN config may name another on purpose, which is how Germany's page compares its
+48.4% municipal error to Pakistan's 26.5%, so config-supplied strings are removed before the
+check. Verified against the pre-fix Germany page: it catches both the NEPRA prose and the
+composition link.
+
+Germany, France and Zambia were rebuilt and republished on this template 2026-09-20. **No
+total moved** (Germany 26,635 / 88,709, France 12,382 / 13,369, Zambia 505.8 / 526.3 MWp);
+only prose, map annotations, the composition sentence and the template features those pages
+had been built too early to receive. Pakistan's own page changes by two sentences: the
+composition note gains real percentages, and the intro drops one now-derived word.
+
+**Still carrying Pakistan-only prose and hardcoded links: `pv_growth_atlas.html` and
+`pv_size_atlas.html`**, which are not covered by the guard because only evidence atlases are
+published per country today. A second country's growth atlas would reintroduce exactly this
+bug.
+
+
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 

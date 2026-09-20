@@ -1,0 +1,69 @@
+# Germany's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Germany is the one country where the pipeline can be checked against an answer rather
+# than against another estimate, so its page says different things from Pakistan's -- and
+# until this file existed it said Pakistan's things instead, down to citing Pakistan's
+# NEPRA register as corroboration of a German figure.
+#
+# Numbers below are from docs/results/germany.md and docs/methods/mastr-validation.md.
+# Deliberately NOT repeated here: this page's own headline figure, which the page already
+# renders above this text and which moves whenever the atlas is rebuilt.
+
+title: Germany
+
+cities:
+  - [Berlin, 13.405, 52.520]
+  - [Hamburg, 9.993, 53.551]
+  - [München, 11.582, 48.135]
+  - [Köln, 6.960, 50.938]
+  - [Frankfurt am Main, 8.682, 50.111]
+  - [Stuttgart, 9.183, 48.776]
+  - [Düsseldorf, 6.773, 51.228]
+  - [Leipzig, 12.374, 51.340]
+  - [Dortmund, 7.466, 51.514]
+  - [Bremen, 8.802, 53.079]
+  - [Hannover, 9.732, 52.376]
+  - [Nürnberg, 11.078, 49.452]
+
+# No calibration_boxes: Germany has no exhaustively hand-mapped areas at all. Its
+# small-panel half is calibrated against the register instead, which is what the
+# ground_truth paragraph below explains in place of the quadrat paragraph other countries
+# get.
+
+confidence:
+  ground_truth: >-
+    <p><b>There are no hand-mapped ground-truth areas behind this page, and for the
+    small-panel half there do not need to be.</b> Registration in Germany's
+    Marktstammdatenregister is legally mandatory rather than voluntary, and it publishes
+    totals per municipality -- which is exactly the quantity the small-panel estimator
+    produces. The conversion from flagged roof area to kilowatts was therefore fitted
+    against the register across 9,674 fully-covered municipalities, at 0.2793 kWp per m&sup2;
+    of credited roof area, and applied countrywide as a genuine out-of-sample test. What a
+    register cannot substitute for is a precision check on small installations: below
+    30 kWp it publishes no coordinates at all, so there is no way to ask whether a
+    particular flagged roof really carries panels.</p>
+  caveats:
+    - >-
+      <b>Getting the national total right is not evidence the geography is right.</b>
+      Cross-validated, this method's German national figure lands within a few percent of
+      the register while the median municipality is out by roughly half, because
+      over-prediction of the densest tenth of municipalities cancels under-prediction of
+      the other ninety percent. Three different models whose municipal errors spanned
+      38&ndash;64% all produced nearly the same national number. What a grid model is
+      consumed for is the geography, not the total.
+    - >-
+      <b>In Germany, multiplying roof area by a constant does as well as the classifier.</b>
+      Against a per-municipality roof-area baseline, the classifier's median error (48.4%)
+      is worse than the baseline's (37.8%). Where rooftop PV is close to ubiquitous,
+      capacity is nearly proportional to roof area by construction. The classifier earns
+      its keep where PV is rare -- in Pakistan it cuts the same error from 88.9% to 26.5% --
+      which is the regime it was built for and Germany is not.
+  corroboration: >-
+    <p><b>A complete national register puts the Best estimate above too high.</b> The
+    Marktstammdatenregister records roughly 74.8 GWp of PV in Germany, below the figure
+    this page reports, so read these tiers as geography -- where capacity sits -- rather
+    than as a national total. The hand-mapped OpenStreetMap component was reconciled
+    against the register in September 2026 and both placements now sit within about 10% of
+    it; what remains unreconciled is the model's own detections and the small-panel half.
+    Every other country in this project would need a register of this kind to make the
+    same statement, and does not have one.</p>

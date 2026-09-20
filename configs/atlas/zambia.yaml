@@ -1,0 +1,37 @@
+# Zambia's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Zambia is the project's clean test of what the pipeline produces when NOTHING local
+# exists: no cached imagery, no calibration quadrats, no register, no third-party dataset
+# to check against. So this file supplies almost nothing, which is the point -- before
+# `configs/atlas/` existed, that emptiness was filled with Pakistan's text, and Zambia's
+# atlas told its readers that Pakistan's NEPRA register corroborated the figure above it.
+#
+# Numbers from docs/results/zambia.md.
+
+title: Zambia
+
+cities:
+  - [Lusaka, 28.283, -15.417]
+  - [Kitwe, 28.214, -12.803]
+  - [Ndola, 28.637, -12.959]
+  - [Kabwe, 28.446, -14.447]
+  - [Chingola, 27.883, -12.529]
+  - [Livingstone, 25.855, -17.849]
+  - [Chipata, 32.645, -13.633]
+  - [Solwezi, 26.391, -12.169]
+  - [Mongu, 23.128, -15.249]
+  - [Kasama, 31.180, -10.213]
+
+# No calibration_boxes and no corroboration: there is no local ground truth and no
+# independent register. The builder's default no-ground-truth text is the correct text
+# here, so this file does not override it.
+confidence:
+  caveats:
+    - >-
+      <b>A third of the hand-mapped capacity here had never been built.</b> Zambia's
+      OpenStreetMap solar population is small enough to check one polygon at a time, and
+      eight large <code>power=plant</code> perimeters covering 11.7 km&sup2; turned out,
+      under the imagery, to be bare ground, bush or fields -- announced project sites
+      mapped as if complete. Removing them moved the hand-mapped tier down by roughly a
+      third. Nowhere else in this project is the mapped population small enough to audit
+      this way, which is worth remembering when reading a larger country's map.

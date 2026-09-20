@@ -42,6 +42,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from earthpv import atlas_config
+
 log = logging.getLogger(__name__)
 
 TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
@@ -383,156 +385,11 @@ def aoi_has_sub400(aoi: str) -> bool:
 POTENTIAL_TEMPLATE = Path(__file__).parent / "templates" / "pv_potential_atlas.html"
 SIZE_TEMPLATE = Path(__file__).parent / "templates" / "pv_size_atlas.html"
 
-# Major-city annotations per AOI (the map renders fine with none).
-CITIES: dict[str, list] = {
-    "pakistan": [
-        ["Karachi", 67.01, 24.86], ["Lahore", 74.34, 31.55], ["Islamabad", 73.05, 33.68],
-        ["Faisalabad", 73.08, 31.42], ["Multan", 71.52, 30.2], ["Peshawar", 71.58, 34.01],
-        ["Quetta", 66.98, 30.18], ["Hyderabad", 68.37, 25.4], ["Rawalpindi", 73.07, 33.6],
-        ["Gujranwala", 74.19, 32.16], ["Sukkur", 68.85, 27.7], ["Bahawalpur", 71.68, 29.4],
-    ],
-}
+# Map annotations and the exhaustively-mapped ground-truth quadrats both used to live
+# here as Pakistan-only dicts, which is why every other country's atlas drew an unlabelled
+# map. They are per-AOI content, so they live in `configs/atlas/<aoi>.yaml` now -- see
+# `atlas_config` for the schema and for what else moved out of this module.
 
-# Calibration ground-truth quadrats per AOI (docs/issues/pakistan-calibration-boxes.md),
-# pooled into the recall-corrected estimator's denominator.
-# `stem` is the full quadrat file prefix, so the box size is not baked into the code
-# (the protocol allows 1-4 km2 and the first Rule-1-complete box is 0.49 km2).
-# status: "rule1" = every visible panel mapped and verified, so its has-no-PV buildings
-# are trustworthy negatives; "corroborated" = visual pass supports the count but
-# completeness is not asserted; "suspect" = needs re-verification.
-# All seventeen carry status "rule1" as of 2026-08-05: the repository owner declared
-# completeness for the whole current set, which is what Rule-1 means here (see roofclf.py's
-# module docstring -- it is a mapper's declaration, never something code infers or a script
-# can produce). That is a reversal for Karachi coastal, whose Rule-1 the owner had withdrawn
-# earlier the same day when its boundary was extended, and a promotion for the five quadrats
-# added that day. A missing stem is skipped SILENTLY by `calibration_box_features`, so this
-# list must track every rename -- six stems changed on 2026-08-05.
-CALIBRATION_BOXES: dict[str, list] = {
-    "pakistan": [
-        # Extended 2026-08-05 from a 1 km2 square to a 6.61 km2 hand-drawn boundary that
-        # fully contains it (`_calib_1km` retired to data/labels/retired/).
-        {"name": "Lahore DHA Phase V", "stem": "lahore_calib_6p61km2", "status": "rule1"},
-        {"name": "Faisalabad (PSIE)", "stem": "faisalabad_calib_1km", "status": "rule1"},
-        # Extended 2026-08-05, 1 km2 square -> hand-drawn 3.92 km2 that fully contains it
-        # (`_calib_1km` retired to data/labels/retired/). Rule-1 explicitly re-declared by
-        # the owner for the extended area the same day (initially withheld, since the
-        # blanket declaration predated this boundary).
-        {"name": "Multan Industrial Estate", "stem": "multan_calib_3p92km2", "status": "rule1"},
-        # Extended 2026-08-05, 1 km2 square -> hand-drawn 4.34 km2 that fully contains it.
-        {"name": "Sundar Industrial Estate", "stem": "sundar_calib_4p34km2", "status": "rule1"},
-        # Extended 2026-08-05, 1 km2 square -> hand-drawn 4.14 km2 that fully contains it.
-        {"name": "SITE Karachi", "stem": "site_karachi_calib_4p14km2", "status": "rule1"},
-        # Extended 2026-08-05, 0.49 -> 2.16 km2. Not a strict superset: 8.6% of the old box
-        # falls outside this boundary, but that sliver held zero mapped installations.
-        {"name": "Karachi DHA Phase 5 / Zamzama (coastal)",
-         "stem": "karachi_coast_calib_2p16km2", "status": "rule1"},
-        {"name": "Sialkot Old City", "stem": "sialkot_calib_1km", "status": "rule1"},
-        {"name": "Sheikh Maltoon Town, Mardan", "stem": "mardan_calib_1km", "status": "rule1"},
-        {"name": "Quetta City", "stem": "quetta_calib_1km", "status": "rule1"},
-        {"name": "Peshawar", "stem": "peshawar_calib_1km", "status": "rule1"},
-        # Peshawar East removed 2026-08-05 as wrong (retired to data/labels/retired/): 32.1%
-        # of its installations sat inside the 6.56% corner it shared with Peshawar, so the
-        # pair could not be pooled without double-counting them or breaking LOQO fold
-        # independence, and its 3.7% base rate against Peshawar's 16.5% at 995 m was never
-        # reconciled. Do not re-add without resolving both.
-        # Extended 2026-08-05, 1.5 km square -> hand-drawn 4.39 km2 that fully contains it.
-        # Never listed here before that date, so the atlas silently omitted it.
-        {"name": "Peshawar West", "stem": "peshawar_west_calib_4p39km2", "status": "rule1"},
-        # Extended 2026-08-05, 1 km2 square -> hand-drawn 2.06 km2 that fully contains it.
-        {"name": "Rahim Yar Khan District", "stem": "rahim_yar_khan_calib_2p06km2",
-         "status": "rule1"},
-        # Added 2026-08-05. Sukkur is the first quadrat in Sindh outside Karachi, and at
-        # 100% of installations below the 400 m2 floor (median 27 m2) it is the purest
-        # sub-floor population in the set.
-        {"name": "Sukkur", "stem": "sukkur_calib_2p63km2", "status": "rule1"},
-        # Added 2026-08-05: four mutually non-overlapping diamonds around Islamabad, the
-        # first quadrats placed as a directional ring rather than purposively, and the first
-        # in Islamabad Capital Territory.
-        {"name": "Islamabad North", "stem": "islamabad_north_calib_2p79km2", "status": "rule1"},
-        {"name": "Islamabad East", "stem": "islamabad_east_calib_2p79km2", "status": "rule1"},
-        {"name": "Islamabad South", "stem": "islamabad_south_calib_2p79km2", "status": "rule1"},
-        {"name": "Islamabad West", "stem": "islamabad_west_calib_2p79km2", "status": "rule1"},
-        # Added the same day as the other four Islamabad diamonds but never listed here --
-        # found 2026-08-10/11: one of the 13 quadrats sub400_capacity's coverage-ratio and
-        # precision fits actually trust, so it was invisible on a map whose own numbers
-        # partly came from it. `_load_calib_boxes` skips a missing stem without erroring,
-        # which is exactly how this went unnoticed for days -- see that function's
-        # docstring on why a caller can't rely on it to catch this by itself.
-        {"name": "Islamabad Northeast", "stem": "islamabad_northeast_calib_3p34km2", "status": "rule1"},
-        # Added 2026-08-10, never listed here. Not one of the 13 quadrats behind the
-        # precision/coverage-ratio fits (rate_ratio outside the trusted band), but it is
-        # Rule-1 ground truth like every other quadrat -- see this file's own domain-vs-
-        # multiplier note for why that distinction matters and why it still belongs on
-        # the map.
-        {"name": "Hasal", "stem": "hasal_calib_1p00km2", "status": "rule1"},
-        # Added 2026-08-11, purpose-built to test whether the density-matched domain
-        # (national_cell_domain) could be widened downward with evidence -- picked from
-        # the densest 200x200 m building cluster inside a national cell averaging ~200
-        # bldg/km2, specifically to still have enough buildings to map. The quadrat's OWN
-        # density (639 bldg/km2) came out INSIDE the existing 553-5,258 bldg/km2 range,
-        # not below it -- a real, non-obvious finding, not the intended result: a small
-        # quadrat centered on a real settlement reads far denser than the coarse 0.1 deg
-        # cell average surrounding it, because villages cluster and farmland does not.
-        # Extremely low base rate (0.94%, second-lowest after Quetta's 3.0%) makes it
-        # valuable ground truth for the low end of the currently-calibrated range even
-        # though it does not extend that range. See CLAUDE.md's "Out-of-domain AND-gate"
-        # entry for the full story and what an actually range-extending quadrat needs.
-        {"name": "Muzaffargarh Rural", "stem": "muzaffargarh_rural_calib_1km", "status": "rule1"},
-        # Added 2026-08-11: a mapper-drawn (not geodesic-square) boundary, checked the
-        # same way -- 1,427.8 bldg/km2, also inside the existing calibrated range, but
-        # its rate_ratio (0.858) falls inside the trusted [0.5, 2.0] precision band, so
-        # unlike muzaffargarh_rural it DOES enter the 13-quadrat precision/coverage-ratio
-        # fit (-> 14). Declared Rule-1 complete by the owner "as complete as the imagery
-        # in JOSM allows" -- see CLAUDE.md's Rule-1-epoch-relative amendment the same day
-        # for what that qualification does and does not certify.
-        {"name": "Malok", "stem": "malok_calib_4p13km2", "status": "rule1"},
-        # Added 2026-08-11, the same day as Muzaffargarh Rural and Malok but for a
-        # different purpose: deliberately drawn to include open farmland alongside a
-        # village (4 km2, centered 7.2 km from Muzaffargarh Rural) rather than tracing a
-        # settlement's built-up edge, specifically to test whether a quadrat could
-        # average BELOW density.CALIBRATED_BLDG_DENSITY_KM2's floor. It did: 277.75
-        # bldg/km2 (unaffected by the correction below, since building count -- not PV --
-        # sets density). This quadrat moved the calibrated floor 553.40 -> 277.75 bldg/km2,
-        # growing the roofclf domain restriction from 163 to 646 of Pakistan's 4,463
-        # national cells.
-        #
-        # CORRECTED same day: the first OSM pull found 0 installations after 8
-        # independent non-timeout Overpass queries over ~20 minutes, which was treated as
-        # a confirmed-empty result (`build_overpass_labels` hard-fails on any single empty
-        # response by design and has no path to accept a genuine zero through its normal
-        # retry logic, so this required a manual override at the time). The owner then
-        # found and mapped PV the original pass had missed -- a genuine Rule-1
-        # completeness gap in the original sweep, not an Overpass reliability issue after
-        # all. Re-pulled once the new mapping was uploaded and propagated: **12
-        # installations** (7 rooftop, 5 ground; 9 of 1,111 buildings flagged has_pv),
-        # base_rate 0.81%, not 0.0%. `rate_ratio` (3.39) keeps it out of the trusted
-        # precision-calibration subset either way, so this correction did not need to
-        # touch any published capacity number beyond the domain-restriction share that
-        # naturally follows from more cells being in-domain.
-        {"name": "Muzaffargarh Rural Wide", "stem": "muzaffargarh_rural_wide_calib_2km",
-         "status": "rule1"},
-        # Added 2026-08-11, same session: a second range-extending quadrat, same method
-        # (a 4 km2 box deliberately including farmland, verified via direct VIDA building
-        # count before mapping) but in Khairpur District, Sindh, for geographic diversity
-        # from the Muzaffargarh-area quadrats. Measured 141.0 bldg/km2, moving the floor
-        # 277.75 -> 141.00 and growing the domain from 646 to 1,680 of Pakistan's 4,463
-        # cells. 3 installations (all ground-mount), base_rate 0.53%, rate_ratio (4.36)
-        # excluded from the trusted precision subset like Muzaffargarh Rural Wide.
-        {"name": "Khairpur Rural", "stem": "khairpur_rural_calib_2km", "status": "rule1"},
-        # Added 2026-08-12: a mapper-drawn 2x2 km boundary (3.98 km2 geodesic) in Sanghar
-        # District, Sindh -- 115 km from the nearest existing quadrat (Khairpur Rural), and
-        # the first quadrat in Sanghar. Overpass pull cleanly cross-checked (465 features
-        # written, confirming query saw 465 -- no truncation, no empty-response retry
-        # needed): 464 installations inside the boundary after the representative-point
-        # filter, 99.8% below the 400 m2 floor (median 30.2 m2), packing distance 24.4 m --
-        # a dense small-rooftop population close in character to Sialkot/Hasal. Declared
-        # Rule-1 complete by the owner. Not yet in a roofclf refit, so
-        # results/calibration_quadrats.csv carries it with n_buildings/n_pv_buildings/
-        # base_rate/nn_median_m blank rather than guessed -- those need `roofclf` re-run
-        # with this quadrat included, same as any other newly added box.
-        {"name": "Sanghar", "stem": "sanghar_calib_3p98km2", "status": "rule1"},
-    ],
-}
 
 
 def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[dict]:
@@ -543,9 +400,20 @@ def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[
     become ground truth."""
     import pandas as pd
 
+    # Two layouts are in use: Pakistan's quadrats sit flat in `data/labels/`, every AOI
+    # added since is scoped to `data/labels/<aoi>/` (France's are, deliberately -- a flat
+    # French quadrat would silently join the next Pakistani roofclf refit). Look in the
+    # scoped directory first so a country does not have to move its ground truth to get
+    # it drawn on its own map.
+    scoped = Path(labels_dir) / aoi
+    search = [scoped, Path(labels_dir)] if scoped.is_dir() else [Path(labels_dir)]
+
     out = []
-    for box in CALIBRATION_BOXES.get(aoi, []):
-        boundary = Path(labels_dir) / f"{box['stem']}_boundary.geojson"
+    for box in atlas_config.load(aoi).calibration_boxes:
+        boundary = next(
+            (d / f"{box['stem']}_boundary.geojson" for d in search
+             if (d / f"{box['stem']}_boundary.geojson").exists()),
+            Path(labels_dir) / f"{box['stem']}_boundary.geojson")
         if not boundary.exists():
             log.warning(
                 "Calibration box %r (stem %r) has no boundary file at %s -- skipped, "
@@ -557,7 +425,7 @@ def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[
             continue
         geom = gpd.read_file(boundary)
         centroid = geom.union_all().centroid
-        pulls = sorted(Path(labels_dir).glob(f"{box['stem']}_overpass_solar*.parquet"))
+        pulls = sorted(boundary.parent.glob(f"{box['stem']}_overpass_solar*.parquet"))
         n = len(pd.read_parquet(pulls[-1])) if pulls else 0
         out.append({
             "name": box["name"], "status": box["status"],
@@ -666,7 +534,7 @@ def build_combined_atlas(
             "`earthpv calibrate-candidates` before `density` so recall-correction exists; "
             "the combined atlas needs a large-PV instrument to add the small-PV figure to."
         )
-    title = aoi.replace("_", " ").title()
+    title = atlas_config.load(aoi).title
 
     # Reassign buildings to cells by spatial join against THIS grid's own cell polygons
     # (grid.geometry is exactly the [lon0,lon0+0.1) x [lat0,lat0+0.1) box), rather than
@@ -758,7 +626,7 @@ def build_combined_atlas(
         "bounds": bounds,
         "cells": cells,
         "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
+        "cities": [list(c) for c in atlas_config.load(aoi).cities],
         "calibBoxes": _load_calib_boxes(aoi, labels_dir),
         "totals": {
             "mwp_det": round(total_combined),
@@ -949,7 +817,7 @@ def build_sub400_bracket_atlas(
             "`earthpv calibrate-candidates` before `density` so recall-correction "
             "exists; the bracket atlas needs the large-PV instrument to show alongside."
         )
-    title = aoi.replace("_", " ").title()
+    title = atlas_config.load(aoi).title
 
     by_low = _join_buildings_to_grid_cells(
         gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
@@ -1059,7 +927,7 @@ def build_sub400_bracket_atlas(
         "bounds": bounds,
         "cells": cells,
         "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
+        "cities": [list(c) for c in atlas_config.load(aoi).cities],
         "calibBoxes": _load_calib_boxes(aoi, labels_dir),
         "totals": {
             "mwp_low": round(total_combined_low, 1),
@@ -1164,7 +1032,7 @@ def build_growth_atlas(
             grid[c] = 0.0
     grid[frac_cols] = grid[frac_cols].fillna(0.0)
 
-    title = aoi.replace("_", " ").title()
+    title = atlas_config.load(aoi).title
 
     cells = [
         [round(float(r.lon0), 3), round(float(r.lat0), 3),
@@ -1235,7 +1103,7 @@ def build_growth_atlas(
         "cells": cells,
         "cell_cols": cell_cols,
         "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
+        "cities": [list(c) for c in atlas_config.load(aoi).cities],
         "totals": {
             "delta_mwp_rc": round(float(grid.delta_est_mwp_rc.sum()), 1),
             "delta_mwp_det": round(float(grid.delta_est_mwp_det.sum()), 1),
@@ -1349,7 +1217,7 @@ def build_growth_evidence_atlas(
         "cells": cells,
         "cell_cols": cell_cols,
         "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
+        "cities": [list(c) for c in atlas_config.load(aoi).cities],
         "epochs": summary["epochs"],
         "totals": {
             "d_total": d["total"], "d_sub400": d["sub400"], "d_roof": d["roof"],
@@ -1365,7 +1233,7 @@ def build_growth_evidence_atlas(
         },
     }
 
-    title = aoi.replace("_", " ").title()
+    title = atlas_config.load(aoi).title
     _pq = write_cell_geoparquet(cells, cell_cols, out)
     _pq_name = _pq.name if _pq else ""
     html = GROWTH_EVIDENCE_TEMPLATE.read_text()
@@ -1841,6 +1709,214 @@ def _assert_no_placeholders(html: str, template: str) -> str:
     return html
 
 
+def _composition_note(cfg, components: dict, best_floor_offset: float,
+                      total_best: float) -> str:
+    """The sentence under the composition bar, derived from the bar's own numbers.
+
+    It used to be typed into the template: "roofclf alone ... supplies most of Best by
+    itself; direct OSM mapping and segmentation split roughly the rest", followed by a
+    link to Pakistan's composition page. Zambia has no roofclf half at all and published
+    that sentence anyway. Deriving it costs nothing -- the components are already embedded
+    in the page for the chart -- and it cannot go stale the way a typed claim about which
+    method dominates does.
+
+    The grouping mirrors `compRows()` in the template exactly, so the sentence and the bar
+    it sits under can never disagree about what a method contributed.
+    """
+    def total(*keys):
+        return sum(float((components.get(k) or {}).get("mwp", 0.0)) for k in keys)
+
+    methods = [
+        ("roofclf alone (its own &ge;400 m&sup2; replacement plus the sub-400 m&sup2; "
+         "central estimate)", total("ge400_roof", "small_central")),
+        ("direct OSM mapping", total("osm_unmatched_roof", "osm_unmatched_ground")
+         + float(best_floor_offset or 0.0)),
+        ("TerraMind segmentation", total("seg_roof_outdomain", "seg_ground")),
+        ("roofclf and SPPI agreeing, extrapolated beyond the calibrated domain",
+         total("small_outdomain")),
+    ]
+    methods = sorted([m for m in methods if m[1] > 0], key=lambda m: -m[1])
+    link = ("" if not cfg.composition_page else
+            " Full breakdown with credible intervals: "
+            f'<a href="{cfg.composition_page}" target="_blank" rel="noopener">capacity '
+            "composition</a>.")
+    if not methods or total_best <= 0:
+        return ("The methods behind this page's Best estimate are broken out in the bar "
+                "above." + link)
+
+    def pct(mwp):
+        return f"{100.0 * mwp / total_best:.0f}%"
+
+    head, rest = methods[0], methods[1:]
+    if not rest:
+        sentence = f"{head[0]} supplies all of Best."
+    elif len(rest) == 1:
+        sentence = (f"{head[0]} supplies {pct(head[1])} of Best; "
+                    f"{rest[0][0]} the remaining {pct(rest[0][1])}.")
+    else:
+        tail = [f"{name} ({pct(mwp)})" for name, mwp in rest]
+        sentence = (f"{head[0]} supplies {pct(head[1])} of Best; "
+                    f"{', '.join(tail[:-1])} and {tail[-1]} split the rest.")
+    # Deliberately NOT sentence-cased: the leading word is often `roofclf`, a module
+    # name that is lowercase everywhere else on the page and in the codebase.
+    return sentence + link
+
+
+def _confidence_html(
+    cfg, *, total_best: float, best_ci: list, has_extrapolation: bool,
+    has_quadrat_bootstrap: bool, n_calib_boxes: int, n_calib_rule1: int,
+) -> str:
+    """The "How confident should you be in this?" section, for ANY country.
+
+    Every paragraph here used to be one Python string literal written for Pakistan and
+    substituted into every atlas, so Germany's and Zambia's pages told their readers that
+    Pakistan's NEPRA register corroborated THEIR headline figure and that "All **0**
+    quadrats" behind the small-panel instruments had been hand-picked by a researcher.
+    The split now is: what the builder can see from this run's own numbers is written
+    here, and what needs local evidence comes from `configs/atlas/<aoi>.yaml` or is left
+    out entirely.
+
+    Each claim is therefore gated on the thing that makes it true:
+
+    - the quadrat-resampling bullet on `has_quadrat_bootstrap`, because a country whose
+      coverage ratio was fitted some other way (Germany, against its register) has no
+      quadrat composition to resample and the bullet would describe nothing;
+    - the extrapolation bullet on `has_extrapolation`, as before;
+    - the purposive-sampling and Rule-1-epoch bullets, and the ground-truth paragraph, on
+      actually having quadrats;
+    - `cfg.caveats` and `cfg.corroboration` on the AOI having supplied them.
+
+    `cfg.ground_truth` replaces the ground-truth paragraph AND suppresses the default
+    no-quadrats bullet: a country that explains its own evidence base (again, Germany)
+    should not also be told it has none.
+    """
+    lo, hi = best_ci
+    inside = [
+        "<b>The two \"panel area to power\" conversion numbers.</b> One "
+        "converts rooftop panel area to kWp, the other converts open-ground "
+        "solar-farm land to kWp. Both are measured against real, confirmed "
+        "power plants rather than assumed, but each carries its own "
+        "uncertainty.",
+        "<b>How well the detection model finds panels of different "
+        "sizes.</b> Its measured precision and recall were checked "
+        "installation-size by installation-size, and that check itself has a "
+        "margin of error.",
+    ]
+    if has_quadrat_bootstrap:
+        inside.append(
+            "<b>How much the small-panel corrections shift depending on which "
+            "neighborhoods were ground-truthed.</b> Two corrections -- how much of "
+            "a flagged roof is actually covered in panels, and what share of real "
+            "installations get flagged at all -- are fit on the same set of "
+            "ground-truthed neighborhoods (\"quadrats\"). This source of "
+            "uncertainty is measured by refitting both on random subsets of those "
+            "quadrats and seeing how far the answer moves.")
+    if has_extrapolation:
+        inside.append(
+            "<b>An added allowance for a rural extrapolation.</b> This "
+            "build also includes a rough small-rooftop-solar estimate for "
+            "rural cells outside the areas the small-panel correction was "
+            "actually calibrated against, and that extrapolation's own "
+            "uncertainty is folded into the range too.")
+
+    outside = []
+    if n_calib_boxes > 0:
+        # WHY the areas were hand-picked differs by country -- Pakistan's quadrats were
+        # placed where recent-enough reference imagery exists, France's are a mapping
+        # campaign's own communes -- so the reason is a `confidence.caveats` entry and
+        # only the consequence, which is the same everywhere, is written here.
+        outside.append(
+            "<b>The ground-truth areas were hand-picked, not randomly "
+            "sampled, so this isn't a formal statistical margin of error.</b> "
+            "A figure from purposively chosen areas can be checked, argued with and "
+            "improved, but it cannot be given a design-based confidence interval the "
+            "way a random sample of the country's buildings could.")
+        outside.append(
+            "<b>Ground-truth \"complete\" means complete as of when that "
+            "area was mapped, not as of the satellite image used for "
+            "detection.</b> That cuts both ways, but in the same direction: it "
+            "makes the model's measured accuracy look slightly worse than it is "
+            "(recent real installations get scored as false alarms) and its "
+            "measured miss rate look slightly better than it is (installations "
+            "built after mapping can't be missed if they were never counted as "
+            "ground truth to begin with). Both effects point the same way -- "
+            "this page's figure is more likely an undercount than an "
+            "overcount.")
+    elif not cfg.ground_truth:
+        outside.append(
+            "<b>No area of this country has been exhaustively mapped by hand to "
+            "check these numbers against.</b> The detectors' measured accuracy is "
+            "carried over from the countries where it was measured, and how well it "
+            "transfers here has not itself been measured. That is a different kind of "
+            "uncertainty from the range above, and no amount of arithmetic converts "
+            "one into the other.")
+    outside.extend(cfg.caveats)
+
+    ground_truth = cfg.ground_truth
+    if not ground_truth and n_calib_boxes > 0:
+        ground_truth = (
+            "<p><b>The ground-truth areas: hand-picked to cover a mix of "
+            "landscapes, not a random sample.</b> All "
+            f"<b>{n_calib_boxes}</b> quadrats behind "
+            + ("the small-panel instruments" if has_quadrat_bootstrap
+               else "this page's accuracy checks")
+            + " were chosen by a researcher to span "
+            "different kinds of places -- planned housing developments, dense "
+            "informal urban neighborhoods, industrial estates, arid/bare land -- "
+            "rather than drawn at random from a national list. Only "
+            f"<b>{n_calib_rule1}</b> of them have had a full "
+            "manual check thorough enough to trust their \"no panels here\" "
+            "verdicts (the teal markers on the map). However many quadrats "
+            "exist, hand-picked ones can't produce a formal national margin of "
+            "error on their own -- that needs a genuine random sample of the "
+            "country's buildings, which doesn't exist yet. More quadrats do "
+            "help: each new one added so far has turned up a new way the method "
+            "can go wrong.</p>")
+    elif not ground_truth:
+        ground_truth = (
+            "<p><b>Nothing on this page rests on hand-mapped ground truth from this "
+            "country.</b> Exhaustively mapped areas -- every panel in a few square "
+            "kilometres, drawn by hand -- are what turns a detection into a capacity "
+            "estimate: they measure how much of a flagged roof is actually covered in "
+            "panels, and how many real installations the detectors miss entirely. "
+            f"Until some exist here, read these figures accordingly. <a href=\"{CONTRIBUTE_URL}\" "
+            "target=\"_blank\" rel=\"noopener\">Mapping one is the most useful thing "
+            "anyone can contribute</a>.</p>")
+
+    # Both counts were written into the prose as words ("three specific ... sources",
+    # "two unrelated data sources") and were only ever right for the Pakistan build they
+    # were written against -- the first is already wrong for a Pakistan run WITH the
+    # out-of-domain extrapolation, which adds a fourth bullet.
+    n_word = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
+    preview = ["what's inside the range", "what isn't"]
+    if n_calib_boxes > 0:
+        preview.append("how many ground-truth areas it rests on")
+    if cfg.corroboration:
+        preview.append("how it compares to unrelated data sources")
+    return (
+        "<p><b>Best estimate: "
+        f"{total_best:,.0f} MWp, with a 90% range of "
+        f"{lo:,.0f}&ndash;{hi:,.0f} MWp.</b> That range covers "
+        f"{n_word.get(len(inside), len(inside))} "
+        "specific, measured sources of uncertainty -- but not everything that "
+        "could move this number. Below: "
+        f"{', '.join(preview[:-1])}, and {preview[-1]}.</p>"
+        "<p><b>What's inside the range:</b></p>"
+        "<ul>" + "".join(f"<li>{b}</li>" for b in inside) + "</ul>"
+        "<p><b>What's outside the range -- and can't be added back in with "
+        "more arithmetic:</b></p>"
+        "<ul>" + "".join(f"<li>{b}</li>" for b in outside) + "</ul>"
+        "<p><b>Treat this as an early-stage estimate from an active research "
+        "pipeline, not a finished census.</b> What's genuinely new here -- a "
+        "reproducible way to estimate distributed solar from free satellite "
+        "imagery and open-source AI, in places where official statistics are "
+        "sparse or absent -- holds regardless of whether any single number on "
+        "this page turns out exactly right. Expect these figures to keep "
+        "moving as the evidence behind them grows.</p>"
+        + ground_truth + cfg.corroboration
+    )
+
+
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
@@ -2017,7 +2093,7 @@ def build_evidence_atlas(
     from earthpv import capacity_calibration as cc
     from earthpv.config import Settings
 
-    title = aoi.replace("_", " ").title()
+    title = atlas_config.load(aoi).title
     division = (Settings.load().aois.get(aoi) or {}).get("division") or {}
     if division.get("subtype") == "region" and division.get("name"):
         # OSM's `ISO3166-1` tag is country-only; a province/state-level AOI (e.g.
@@ -2329,7 +2405,7 @@ def build_evidence_atlas(
         "cells": cells,
         "cell_cols": cell_cols,
         "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
+        "cities": [list(c) for c in atlas_config.load(aoi).cities],
         "calibBoxes": calib_boxes,
         "totals": {
             "mwp_verified": round(total_verified, 1),
@@ -2417,113 +2493,17 @@ def build_evidence_atlas(
         ),
         "__AOI_TITLE__": title,
         "__AOI_OVERPASS_AREA_TAGS__": overpass_area_tags,
-        "__CONFIDENCE_HTML__": (
-            "<p><b>Best estimate: "
-            f"{total_best:,.0f} MWp, with a 90% range of "
-            f"{uncertainty['mwp_best_ci'][0]:,.0f}&ndash;"
-            f"{uncertainty['mwp_best_ci'][1]:,.0f} MWp.</b> That range covers three "
-            "specific, measured sources of uncertainty -- but not everything that "
-            "could move this number. Below: what's inside the range, what isn't, "
-            "how many ground-truth areas it rests on, and how it compares to two "
-            "unrelated data sources.</p>"
-            "<p><b>What's inside the range:</b></p>"
-            "<ul>"
-            "<li><b>The two \"panel area to power\" conversion numbers.</b> One "
-            "converts rooftop panel area to kWp, the other converts open-ground "
-            "solar-farm land to kWp. Both are measured against real, confirmed "
-            "power plants rather than assumed, but each carries its own "
-            "uncertainty.</li>"
-            "<li><b>How well the detection model finds panels of different "
-            "sizes.</b> Its measured precision and recall were checked "
-            "installation-size by installation-size, and that check itself has a "
-            "margin of error.</li>"
-            "<li><b>How much the small-panel corrections shift depending on which "
-            "neighborhoods were ground-truthed.</b> Two corrections -- how much of "
-            "a flagged roof is actually covered in panels, and what share of real "
-            "installations get flagged at all -- are fit on the same set of "
-            "ground-truthed neighborhoods (\"quadrats\"). This source of "
-            "uncertainty is measured by refitting both on random subsets of those "
-            "quadrats and seeing how far the answer moves.</li>"
-            + (
-                "<li><b>An added allowance for a rural extrapolation.</b> This "
-                "build also includes a rough small-rooftop-solar estimate for "
-                "rural cells outside the areas the small-panel correction was "
-                "actually calibrated against, and that extrapolation's own "
-                "uncertainty is folded into the range too.</li>"
-                if int(grid["is_extended"].sum()) > 0 else
-                ""
-            ) +
-            "</ul>"
-            "<p><b>What's outside the range -- and can't be added back in with "
-            "more arithmetic:</b></p>"
-            "<ul>"
-            "<li><b>The ground-truth areas were hand-picked, not randomly "
-            "sampled, so this isn't a formal statistical margin of error.</b> "
-            "That wasn't a shortcut: a genuine random sample needs every sampled "
-            "location to have recent-enough reference imagery to confirm or rule "
-            "out a small installation, and random locations outside the "
-            "calibrated areas have so far landed on imagery too old to tell "
-            "\"no panels\" apart from \"panels installed after this photo was "
-            "taken.\" Hand-picking was the fallback that let ground-truth areas "
-            "be placed where recent-enough imagery actually exists.</li>"
-            "<li><b>Ground-truth \"complete\" means complete as of when that "
-            "area was mapped, not as of the satellite image used for "
-            "detection.</b> That cuts both ways, but in the same direction: it "
-            "makes the model's measured accuracy look slightly worse than it is "
-            "(recent real installations get scored as false alarms) and its "
-            "measured miss rate look slightly better than it is (installations "
-            "built after mapping can't be missed if they were never counted as "
-            "ground truth to begin with). Both effects point the same way -- "
-            "this page's figure is more likely an undercount than an "
-            "overcount.</li>"
-            "<li><b>Most of the Best estimate leans on one correction that's "
-            "only lightly tested where it's applied most.</b> That correction "
-            "is fit using ground-truth areas as sparse as 124 buildings/km"
-            "&sup2; at the sparsest of them, but about 13.5% of the buildings "
-            "it's actually applied to nationally are still sparser than that "
-            "(measured 2026-08-20; this was a much larger gap -- 872 "
-            "buildings/km&sup2; sparsest, 84% of buildings sparser -- as "
-            "measured 2026-08-16, before a later refit happened to admit a "
-            "sparser ground-truth area into the fit). The range above only "
-            "resamples the areas the correction was fit on -- it says nothing "
-            "about how well that correction holds up in the sparser areas "
-            "outside that fit.</li>"
-            "</ul>"
-            "<p><b>Treat this as an early-stage estimate from an active research "
-            "pipeline, not a finished census.</b> What's genuinely new here -- a "
-            "reproducible way to estimate distributed solar from free satellite "
-            "imagery and open-source AI, in a country where official statistics "
-            "are sparse -- holds regardless of whether any single number on this "
-            "page turns out exactly right. Expect these figures to keep moving "
-            "as more ground-truth areas get added.</p>"
-            "<p><b>The ground-truth areas: hand-picked to cover a mix of "
-            "landscapes, not a random sample.</b> All "
-            f"<b>{data['totals']['n_calib_boxes']}</b> quadrats behind the "
-            "small-panel instruments were chosen by a researcher to span "
-            "different kinds of places -- planned housing developments, dense "
-            "informal urban neighborhoods, industrial estates, arid/bare land -- "
-            "rather than drawn at random from a national list. Only "
-            f"<b>{data['totals']['n_calib_rule1']}</b> of them have had a full "
-            "manual check thorough enough to trust their \"no panels here\" "
-            "verdicts (the teal markers on the map). However many quadrats "
-            "exist, hand-picked ones can't produce a formal national margin of "
-            "error on their own -- that needs a genuine random sample of the "
-            "country's buildings, which doesn't exist yet. More quadrats do "
-            "help: each new one added so far has turned up a new way the method "
-            "can go wrong.</p>"
-            "<p><b>Two independent, non-satellite data sources land in the same "
-            "ballpark.</b> Pakistan's NEPRA net-metering register -- a "
-            "government administrative record with no connection to this "
-            "project -- puts registered rooftop solar at <b>5.3&ndash;6.3 "
-            "GW</b> nationally; that's a floor, since it only counts customers "
-            "who completed formal registration paperwork. Separately, Chinese "
-            "customs export data puts cumulative solar-panel imports into "
-            "Pakistan at roughly <b>50 GW</b> by mid-2025 -- a much looser "
-            "ceiling that covers the whole market, utility-scale plants "
-            "included. This page's headline figure falls inside that bracket. "
-            "Two unrelated, non-satellite sources agreeing on the same order of "
-            "magnitude is real corroboration -- though it can't confirm any "
-            "single number on this page precisely.</p>"
+        "__COMPOSITION_NOTE__": _composition_note(
+            atlas_config.load(aoi), uncertainty["components"],
+            uncertainty.get("best_floor_offset_mwp", 0.0), total_best,
+        ),
+        "__CONFIDENCE_HTML__": _confidence_html(
+            atlas_config.load(aoi),
+            total_best=total_best, best_ci=uncertainty["mwp_best_ci"],
+            has_extrapolation=int(grid["is_extended"].sum()) > 0,
+            has_quadrat_bootstrap=bool(uncertainty.get("coverage_bootstrap")),
+            n_calib_boxes=data["totals"]["n_calib_boxes"],
+            n_calib_rule1=data["totals"]["n_calib_rule1"],
         ),
     }.items():
         html = html.replace(key, value)
@@ -2905,7 +2885,7 @@ def build_size_distribution_atlas(
 ) -> Path:
     """Standalone size-distribution page. See `_size_distribution_data` for what's
     actually computed -- this just templates it into its own HTML file."""
-    title = aoi.replace("_", " ").title()
+    title = atlas_config.load(aoi).title
     size_data = _size_distribution_data(
         aoi, density_dir, osm_solar_path, candidates_path,
         low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
@@ -2958,7 +2938,7 @@ def build_potential_atlas(
     density_dir = Path(density_dir)
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
     meta = json.loads((density_dir / "meta.json").read_text())
-    title = aoi.replace("_", " ").title()
+    title = atlas_config.load(aoi).title
     kwp_module = meta.get("kwp_per_m2_module", 0.18)
 
     large = gpd.read_parquet(potential_buildings_path)
@@ -3050,7 +3030,7 @@ def build_potential_atlas(
         "bounds": bounds_out,
         "cells": cells,
         "provinces": provinces,
-        "cities": CITIES.get(aoi, []),
+        "cities": [list(c) for c in atlas_config.load(aoi).cities],
         "totals": {
             "gwh_potential": round(total_gwh, 1),
             "mwp_potential": round(total_mwp, 1),
