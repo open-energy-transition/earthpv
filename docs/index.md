@@ -13,8 +13,8 @@ hide:
 
 <div class="hero-copy" markdown>
 
-**The mission of EarthPV is to provide cost-effective, verifiable, open data on
-photovoltaic (PV) capacity, growth and orientation for every country worldwide.**
+**Cost-effective, verifiable, open data on photovoltaic capacity, growth and
+orientation for >50 kWp globally**
 { .lede }
 
 </div>
