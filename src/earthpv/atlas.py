@@ -46,6 +46,121 @@ log = logging.getLogger(__name__)
 TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
 SUB400_BRACKET_TEMPLATE = Path(__file__).parent / "templates" / "pv_sub400_bracket_atlas.html"
 EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.html"
+
+# --------------------------------------------------------------------------------------
+# EarthPV validation score
+# --------------------------------------------------------------------------------------
+# One badge at the top of every atlas saying what evidence is actually under the page,
+# because "an atlas exists for this country" says nothing about whether its small-PV half
+# was ever calibrated. The tiers are about EVIDENCE, not about model quality: a Bronze
+# country can have a perfectly good segmentation run and simply no local ground truth to
+# check it against.
+VALIDATION_TIERS = {
+    "gold": (
+        "Gold",
+        "Fully validated and trained using OpenStreetMap imagery and labels. Covers "
+        "installations above and below the 400 m² satellite floor.",
+    ),
+    "silver": (
+        "Silver",
+        "Above 400 m² only. Segmentation localized and validated against "
+        "OpenStreetMap ground truth. No calibrated estimate below the floor.",
+    ),
+    "bronze": (
+        "Bronze",
+        "Above 400 m² only. Segmentation with insufficient local training and "
+        "validation data. Read the figures as a floor, not an estimate.",
+    ),
+}
+
+
+def derive_validation_score(aoi: str, has_sub400: bool,
+                            labels_dir: Path = Path("data/labels")) -> str:
+    """Default tier from what the atlas actually has, overridable by the caller.
+
+    **Gold** needs the sub-400 m² half, which in this pipeline exists only where
+    exhaustively mapped calibration regions (or a complete national register) support a
+    coverage ratio. **Silver** needs no sub-400 half but does need local ground truth the
+    candidate-precision table was fitted on. **Bronze** is everything else.
+
+    This is a default, not a verdict. Cases where the evidence is real but of a different
+    kind -- Germany's half is calibrated from its register rather than from mapped
+    quadrats, and its Best estimate still fails its own register check -- are a judgement
+    the operator makes with `--validation-score`, not something to infer from file
+    existence.
+    """
+    if has_sub400:
+        return "gold"
+    # Silver wants LOCAL GROUND TRUTH the model was checked against, in either of the two
+    # forms this pipeline produces it: a candidate-precision table fitted against a real
+    # recall reference, or exhaustively mapped calibration regions for the AOI. France has
+    # the second and not the first -- its table carries `recall_reference: none` on
+    # purpose -- and its segmentation was still retrained in domain and scored against
+    # 2,622 hand-mapped installations, which is what Silver is describing.
+    table = Path("configs/calibration") / f"{aoi}_candidate_precision.yaml"
+    if table.exists():
+        try:
+            import yaml
+
+            if int(yaml.safe_load(table.read_text()).get("recall_reference_n") or 0) > 0:
+                return "silver"
+        except Exception:  # noqa: BLE001 - a malformed table must not break the atlas
+            pass
+    # ONLY an AOI-scoped directory. `data/labels/` itself holds Pakistan's 31 boundaries
+    # in the legacy flat layout, so globbing it would hand every AOI on the machine a
+    # Silver it did not earn -- the same AOI-agnostic globbing that once pooled 318,611
+    # French features into Pakistan's mapped reference. An AOI whose quadrats live flat
+    # is covered by the recall-reference branch above.
+    scoped = Path(labels_dir) / aoi
+    if scoped.is_dir() and any(scoped.glob("*_calib_*_boundary.geojson")):
+        return "silver"
+    return "bronze"
+
+
+# Self-contained: style plus markup, so a template adopts the badge by dropping in one
+# `__VALIDATION_BADGE__` placeholder and never a copy of the CSS. The colours reference each
+# page's own palette variables, which every atlas template defines.
+_VSCORE_CSS = """<style>
+.vscore { display: inline-flex; align-items: center; gap: 11px; margin-top: 14px;
+  padding: 9px 15px 9px 12px; border-radius: 999px; font-size: 13px; line-height: 1.45;
+  background: var(--hair); border: 1px solid var(--vs-rim); max-width: 680px; }
+.vscore-medal { width: 13px; height: 13px; border-radius: 50%; flex: none;
+  background: var(--vs); box-shadow: 0 0 0 3px var(--vs-halo); }
+.vscore-text { color: var(--ink-2); }
+.vscore-text b { color: var(--ink); font-weight: 680; }
+.vscore-desc { display: block; margin-top: 1px; }
+.vscore--gold   { --vs: #e8b33c; --vs-rim: rgba(232,179,60,0.42);
+                  --vs-halo: rgba(232,179,60,0.16); }
+.vscore--silver { --vs: #b9c2cc; --vs-rim: rgba(185,194,204,0.40);
+                  --vs-halo: rgba(185,194,204,0.16); }
+.vscore--bronze { --vs: #c08457; --vs-rim: rgba(192,132,87,0.40);
+                  --vs-halo: rgba(192,132,87,0.16); }
+@media (max-width: 560px) { .vscore { border-radius: 10px; align-items: flex-start; } }
+</style>"""
+
+
+def aoi_has_sub400(aoi: str) -> bool:
+    """Whether a calibrated sub-400 m2 half exists for this AOI on disk.
+
+    Used by the secondary atlases, which do not receive the sub-400 paths as arguments the
+    way `build_evidence_atlas` does, so they cannot tell from their inputs alone.
+    """
+    return (Path("data/roofclf_national_with_sppi") / aoi / "density"
+            / "sub400_central_incremental_buildings.parquet").exists()
+
+
+def validation_badge_html(score: str) -> str:
+    """The badge, style included, shared by every atlas template."""
+    key = (score or "bronze").strip().lower()
+    if key not in VALIDATION_TIERS:
+        raise ValueError(f"unknown validation score {score!r}; "
+                         f"expected one of {sorted(VALIDATION_TIERS)}")
+    name, desc = VALIDATION_TIERS[key]
+    return (f'{_VSCORE_CSS}<div class="vscore vscore--{key}">'
+            f'<span class="vscore-medal" aria-hidden="true"></span>'
+            f'<span class="vscore-text"><b>EarthPV Validation Score: {name}</b>'
+            f'<span class="vscore-desc">{desc}</span></span></div>')
+
 POTENTIAL_TEMPLATE = Path(__file__).parent / "templates" / "pv_potential_atlas.html"
 SIZE_TEMPLATE = Path(__file__).parent / "templates" / "pv_size_atlas.html"
 
@@ -499,6 +614,8 @@ def build_combined_atlas(
 
     html = TEMPLATE.read_text()
     for key, value in {
+        "__VALIDATION_BADGE__": validation_badge_html(
+            derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title} Solar Capacity: Large and Small Installations",
         "__H1__": f"Every scale of solar power in {title}, on one map",
@@ -1025,6 +1142,8 @@ def build_growth_evidence_atlas(
     title = aoi.replace("_", " ").title()
     html = GROWTH_EVIDENCE_TEMPLATE.read_text()
     for key, value in {
+        "__VALIDATION_BADGE__": validation_badge_html(
+            derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title} PV Growth Atlas",
         "__H1__": f"How much solar {title} added since before the boom",
@@ -1491,6 +1610,7 @@ def build_evidence_atlas(
     downloads: list[dict] | None = None,
     data_release_url: str | None = None,
     include_offgrid_osm: bool = False,
+    validation_score: str | None = None,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -2041,6 +2161,10 @@ def build_evidence_atlas(
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title}'s PV Atlas",
         "__H1__": f"{title}'s PV Atlas",
+        "__VALIDATION_BADGE__": validation_badge_html(
+            validation_score or derive_validation_score(
+                aoi, central_buildings_path is not None, labels_dir)
+        ),
         "__AOI_TITLE__": title,
         "__AOI_OVERPASS_AREA_TAGS__": overpass_area_tags,
         "__CONFIDENCE_HTML__": (

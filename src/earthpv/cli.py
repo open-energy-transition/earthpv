@@ -1306,6 +1306,15 @@ def atlas(
         "'https://github.com/<org>/<repo>/releases/download/<tag>'), joined with each "
         "manifest entry's 'file' to build its download link.",
     ),
+    validation_score: str = typer.Option(
+        None, "--validation-score",
+        help="EarthPV Validation Score shown at the top of the page: gold, silver or "
+             "bronze. Derived from the evidence the atlas actually has when omitted "
+             "(gold = a calibrated sub-400 m2 half; silver = above the floor only, but "
+             "validated against local OpenStreetMap ground truth; bronze = above the "
+             "floor only, no local validation). Set it explicitly where the evidence is "
+             "real but of a different kind than the rule assumes.",
+    ),
     include_offgrid_osm: bool = typer.Option(
         False, help="Keep hand-mapped OSM installations that fall OUTSIDE the density "
         "grid, by adding an OSM-only cell for each (no imagery, no inference, every model "
@@ -1365,6 +1374,7 @@ def atlas(
                 downloads=downloads,
                 data_release_url=data_release_url,
                 include_offgrid_osm=include_offgrid_osm,
+                validation_score=validation_score,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):

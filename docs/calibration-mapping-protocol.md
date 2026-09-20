@@ -125,6 +125,36 @@ to miss in a long log. Pakistan's band is meaningless in a country with differen
 settlement patterns, and the failure is silent: you get a plausible national number covering
 the wrong cells.
 
+### Shape is free; size is not
+
+**A calibration region does not have to be a box.** Any closed shape works, and several
+disjoint pieces in one file are unioned into a single region. Nothing downstream cares:
+`chips.quadrat_chips`, `roofclf.building_table` and every evaluation script mask and
+rasterise the real geometry. Following a suburb boundary, an industrial estate, a canal or
+the edge of the built-up area is usually **better** than a square, because a square clips
+arbitrary halves of whatever it lands on and leaves you mapping half a neighbourhood and
+half a field as if they were one stratum. Draw it in JOSM and hand it over with `--geojson`
+(see [Drawing the boundary in JOSM](#drawing-the-boundary-in-josm)).
+
+Size has real limits, and they come from the model rather than from taste:
+
+| | Value | Why |
+| --- | --- | --- |
+| **Maximum bounding box** | **about 2.2 km in both directions** | A training chip is 224 px at 10 m = **2,240 m**. A region inside that is framed by one chip window. |
+| Working size | 1 to 4 km² | Enough installations for a stable base rate, small enough to finish. |
+| Hard warning band | outside 0.4 to 4 km² | The importer warns and proceeds. The first Rule-1 region was 0.49 km². |
+
+Exceeding 2.24 km in either direction is allowed and loses no mapped ground, but the region
+is then tiled across several covering windows, which buys more training chips for the same
+supervision and dilutes that region's weight in the corpus. **A long thin shape, say a
+strip following a canal for 4 km, is better registered as two or three separate regions**
+than as one. The importer prints `chip_fit` and `bbox_fill` so this is visible before you
+map rather than after.
+
+The practical floor is mapping effort, not geometry: a small region gives a noisy
+`base_rate`, a large one is a long job, and an unfinished region is worse than no region at
+all.
+
 ### Derive your own strata, do not import Pakistan's
 
 The six strata below are Pakistani landscape types. The transferable rule is that a stratum
