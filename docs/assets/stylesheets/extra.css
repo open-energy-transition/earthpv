@@ -227,56 +227,15 @@
    `#only-light` / `#only-dark` suffixes swap them on the colour scheme. Inverting the
    black mark with `filter` would also invert the glow behind it. */
 .hero-mark {
-  position: relative;
   display: grid;
   place-items: center;
   flex: none;
 }
 
-/* The glow is a sibling layer, not a box-shadow, so it can bleed past the mark's own
-   bounds the way a light source does. */
-.hero-mark::before {
-  content: "";
-  position: absolute;
-  inset: -18%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 58% 34%,
-    rgba(245, 166, 35, 0.34) 0%,
-    rgba(245, 166, 35, 0.16) 38%,
-    rgba(245, 166, 35, 0) 70%);
-  z-index: 0;
-}
-
-[data-md-color-scheme="default"] .hero-mark::before {
-  /* Burnt orange at lower alpha: the light scheme's panel is cream, and the dark
-     scheme's amber at full strength reads as a stain on it rather than as light. */
-  background: radial-gradient(circle at 58% 34%,
-    rgba(194, 94, 18, 0.18) 0%,
-    rgba(194, 94, 18, 0.08) 40%,
-    rgba(194, 94, 18, 0) 70%);
-}
-
 .hero-mark img {
-  position: relative;
-  z-index: 1;
   display: block;
   width: 104px;
   height: auto;
-}
-
-/* Slow, low-amplitude breathing, so the page has a pulse without anything moving.
-   Gated on `prefers-reduced-motion`, which is not only an accessibility default here:
-   scripts/screenshot_pages.py pins `ui.prefersReducedMotion` precisely so a render
-   cannot catch an animation mid-state, the same trap the atlas count-up already set. */
-@media (prefers-reduced-motion: no-preference) {
-  .hero-mark::before {
-    animation: hero-glow 7s ease-in-out infinite;
-  }
-}
-
-@keyframes hero-glow {
-  0%, 100% { opacity: 0.75; transform: scale(0.97); }
-  50%      { opacity: 1;    transform: scale(1.03); }
 }
 
 .hero--lockup {
