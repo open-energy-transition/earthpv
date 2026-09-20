@@ -2,7 +2,6 @@
 hide:
   - navigation
 ---
-# EarthPV
 
 <div class="hero hero--lockup" markdown>
 
@@ -13,19 +12,12 @@ hide:
 
 <div class="hero-copy" markdown>
 
-**Mapping every solar system above 10 kWp worldwide: capacity, growth and
-orientation, open and verifiable**
+**Free, Open amd Global Photovoltaic Mapping for Systems Above 10 kWp — Including Capacity, Growth and Orientation*
 { .lede }
 
 </div>
 
 </div>
-
-**How small? EarthPV finds most rooftop PV above roughly 50 m² of panel, about
-10 kWp. Between 20 and 50 m² it is close to a coin flip, and below that it misses most
-of what is there.**
-[What that is measured on](#how-small-an-installation-does-it-find)
-{ .lede }
 
 **Mapping a country we have not reached?** EarthPV is built to be forked per country
 and merged back: the aim is a global PV evidence atlas assembled from many countries,
