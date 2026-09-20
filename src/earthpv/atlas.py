@@ -131,24 +131,43 @@ CONTRIBUTE_URL = "https://open-energy-transition.github.io/earthpv/contribute/"
 _VSCORE_CSS = """<style>
 header { position: relative; }
 .vscore { position: absolute; top: 2px; right: 0; display: inline-flex; align-items: center;
-  gap: 9px; padding: 8px 13px 8px 10px; border-radius: 10px; text-decoration: none;
-  background: var(--hair); border: 1px solid var(--vs-rim); max-width: 232px; }
-.vscore-mark { width: 26px; height: 26px; flex: none; background: var(--vs);
+  gap: 10px; padding: 8px 14px 8px 9px; border-radius: 12px; text-decoration: none;
+  background: var(--vs-bg); border: 1px solid var(--vs-rim); max-width: 246px; }
+/* A filled medallion, not a masked outline. The logo was drawn in the tier colour as
+   line art, which at 26 px made gold, silver and bronze nearly indistinguishable and
+   barely visible on a dark panel. A solid disc carries the colour, the mark is knocked
+   out of it in a dark ink, and a ring lifts it off whichever background it lands on. */
+.vscore-mark { width: 34px; height: 34px; flex: none; border-radius: 50%;
+  background: linear-gradient(145deg, var(--vs-hi), var(--vs) 58%, var(--vs-lo));
+  display: grid; place-items: center;
+  box-shadow: 0 0 0 1.5px var(--vs-ring), 0 1px 3px rgba(0,0,0,0.45); }
+.vscore-mark::after { content: ""; width: 21px; height: 21px; background: var(--vs-ink);
   -webkit-mask: url(%LOGO%) center/contain no-repeat;
   mask: url(%LOGO%) center/contain no-repeat; }
 .vscore-label { font-family: var(--font-mono, monospace); font-size: 8.5px;
-  letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted, #8b8b8b);
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted, #8b8b8b);
   display: block; }
-.vscore-tier { font-size: 14px; font-weight: 700; color: var(--vs); display: block;
-  line-height: 1.15; }
+.vscore-tier { font-size: 14.5px; font-weight: 800; color: var(--vs-text); display: block;
+  line-height: 1.15; letter-spacing: 0.01em; }
 .vscore-sub { font-size: 10.5px; line-height: 1.35; color: var(--ink-2); display: block;
   margin-top: 2px; }
-.vscore-cta { font-size: 10.5px; color: var(--vs); display: block; margin-top: 3px;
+.vscore-cta { font-size: 10.5px; color: var(--vs-text); display: block; margin-top: 3px;
   font-weight: 640; }
 a.vscore:hover .vscore-cta { text-decoration: underline; }
-.vscore--gold   { --vs: #e8b33c; --vs-rim: rgba(232,179,60,0.40); }
-.vscore--silver { --vs: #b9c2cc; --vs-rim: rgba(185,194,204,0.38); }
-.vscore--bronze { --vs: #c08457; --vs-rim: rgba(192,132,87,0.38); }
+/* Saturated and pulled apart on the colour wheel: warm yellow, cool blue-grey, red-copper,
+   so the three read differently at a glance and not just side by side. */
+.vscore--gold {
+  --vs: #d99a10; --vs-hi: #f7cf62; --vs-lo: #9c6b06; --vs-ink: #241a03;
+  --vs-text: #edb733; --vs-ring: rgba(217,154,16,0.60); --vs-bg: rgba(217,154,16,0.11);
+  --vs-rim: rgba(217,154,16,0.46); }
+.vscore--silver {
+  --vs: #eef3fa; --vs-hi: #ffffff; --vs-lo: #a7b4c4; --vs-ink: #171c24;
+  --vs-text: #dce4ef; --vs-ring: rgba(238,243,250,0.62); --vs-bg: rgba(238,243,250,0.10);
+  --vs-rim: rgba(238,243,250,0.40); }
+.vscore--bronze {
+  --vs: #bd5f22; --vs-hi: #e89159; --vs-lo: #7d3a10; --vs-ink: #f7e6d8;
+  --vs-text: #d97c3f; --vs-ring: rgba(189,95,34,0.62); --vs-bg: rgba(189,95,34,0.13);
+  --vs-rim: rgba(189,95,34,0.50); }
 @media (max-width: 900px) {
   .vscore { position: static; margin-top: 12px; max-width: none; }
 }
