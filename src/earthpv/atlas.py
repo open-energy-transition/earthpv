@@ -49,7 +49,7 @@ SUB400_BRACKET_TEMPLATE = Path(__file__).parent / "templates" / "pv_sub400_brack
 EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.html"
 
 # --------------------------------------------------------------------------------------
-# EarthPV validation score
+# EarthPV calibration score
 # --------------------------------------------------------------------------------------
 # One badge at the top of every atlas saying what evidence is actually under the page,
 # because "an atlas exists for this country" says nothing about whether its small-PV half
@@ -331,7 +331,7 @@ def validation_badge_html(score: str) -> str:
     return (f'{_VSCORE_CSS}<{tag} class="vscore vscore--{key}"{href}>'
             f'<span class="vscore-mark" aria-hidden="true"></span>'
             f'<span class="vscore-text">'
-            f'<span class="vscore-label">EarthPV Validation</span>'
+            f'<span class="vscore-label">EarthPV Calibration</span>'
             f'<span class="vscore-tier">{name}</span>'
             f'<span class="vscore-sub">{_VSCORE_SUB[key]}</span>{cta}'
             f'</span></{tag}>')

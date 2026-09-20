@@ -135,7 +135,7 @@ reproduce, check or improve the result.
 
 ## Where it runs
 
-Every atlas carries an **EarthPV Validation Score** saying what evidence is actually under
+Every atlas carries an **EarthPV Calibration Score** saying what evidence is actually under
 it. Gold means the sub-400 m² half is calibrated against hand-mapped ground truth; Silver
 means above the floor only, calibrated locally; Bronze means above the floor only,
 without local calibration, and should be read as a floor rather than an estimate.

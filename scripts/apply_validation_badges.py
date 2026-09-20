@@ -1,4 +1,4 @@
-"""Stamp the EarthPV Validation Score badge into already-published atlas pages.
+"""Stamp the EarthPV Calibration Score badge into already-published atlas pages.
 
 The badge reaches new atlases through the templates, but a page only picks it up when it
 is REGENERATED, and regenerating a country's atlas recomputes its published numbers and

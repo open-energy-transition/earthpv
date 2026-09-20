@@ -1308,7 +1308,7 @@ def atlas(
     ),
     validation_score: str = typer.Option(
         None, "--validation-score",
-        help="EarthPV Validation Score shown at the top of the page: gold, silver or "
+        help="EarthPV Calibration Score shown at the top of the page: gold, silver or "
              "bronze. Derived from the evidence the atlas actually has when omitted "
              "(gold = a calibrated sub-400 m2 half; silver = above the floor only, but "
              "validated against local OpenStreetMap ground truth; bronze = above the "
