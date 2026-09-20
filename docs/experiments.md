@@ -86,6 +86,8 @@ see [Open questions](open-questions.md).
 | [Gradient boosting instead of the linear model](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome mixed">partial</span> | Ranks WORSE (-0.023 within size band, 4 of 30 folds) and calibrates BETTER (per-quadrat rate error 0.031 to 0.017, 20 of 29 quadrats). |
 | [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
 | [Area-weighted training loss](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Improves the area ratio it optimises (1.084 to 1.035) and loses on both ranking (-0.0111 AUC) and count calibration (0.0308 to 0.0395). |
+| [Per-stratum deployment thresholds](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | Equal precision per size/density stratum COSTS 3.0 to 9.2 points of recall at matched precision (4 to 7 of 25 quadrats, p = 0.001 to 0.029). |
+| [Per-stratum score recalibration, one global cut](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | The theoretically-correct version. Pooled +1.3 points of recall, median per-quadrat +0.0000, 12 of 24 quadrats, p = 1.00. |
 | [Post-hoc recalibration of roofclf](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Recovers 38% of gradient boosting's calibration gain at p=0.069. No monotone map reaches it, so that gain is a reordering. |
 | [Medoid instead of band-wise median compositing](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome negative">rejected</span> | A real artifact, but one date's spectrum loses more to noise than it gains in coherence: -0.0074 AUC. |
 | [Context-relative spectral features](#spectral-coherence-and-where-transferability-lives-2026-09-19) | <span class="outcome mixed">partial</span> | Within-cell z-scores alone TIE the shipped model's ranking while doubling its rate error: ranking is relative, calibration is absolute. |
@@ -1403,6 +1405,57 @@ re-run for each variant:
 true PV roofs captured.** That is the number to quote, because it is the population the
 capacity chain is fitted on. The two free changes alone -- trimmed mean and area-weighted
 zonal -- deliver +5.3 points of it; the remaining +1.1 costs three times the download.
+
+### One threshold is already the right one (2026-09-20)
+
+If the deployment threshold is what the capacity chain consumes, the obvious next lever is
+the threshold itself. `run_roof_classifier` picks ONE cut targeting precision 0.5 on pooled
+out-of-fold scores. One cut is recall-optimal only if the score means the same thing
+everywhere, and this register has repeatedly found it does not: `rate_ratio` spans 0.2 to 5x
+across quadrats, gradient boosting beat the linear model on per-quadrat rate error while
+ranking worse, and no global monotone map recovered that gain. So: cut per stratum instead,
+on the two stratifiers the capacity chain already uses, building-size band and quadrat
+density. Every threshold is fitted on the OTHER quadrats' out-of-fold scores, the same
+nesting the model itself uses, and every comparison is against a global cut RE-TUNED to
+whatever precision the stratified rule actually reached, so a recall gain bought by dropping
+precision cannot read as a gain.
+
+**Equal precision in every stratum is much worse than one cut, and not marginally:**
+
+| Rule | Flagged | Precision | Recall | Net of matched global | Quadrats better | Sign p |
+| --- | --- | --- | --- | --- | --- | --- |
+| One global cut | 21,199 | 0.5012 | **0.6195** | -- | -- | -- |
+| Per size band | 20,180 | 0.5004 | 0.5889 | -0.0298 | 7 of 26 | 0.029 |
+| Per density stratum | 19,074 | 0.5023 | 0.5586 | -0.0579 | 3 of 23 | 0.0005 |
+| Per size and density | 19,029 | 0.4885 | 0.5420 | -0.0919 | 4 of 25 | 0.0009 |
+
+The mechanism is that **equal AVERAGE precision is the wrong objective**. At a fixed pooled
+precision the recall-maximising allocation equalises the MARGINAL precision -- the precision
+of the last building admitted -- not the stratum's average. A stratum whose base rate is
+3.6% (the 0-50 m2 band, 50,502 of 123,867 buildings) has to be cut very deep before its
+average precision reaches 0.5, and its recall collapses from 0.191 to 0.059 while the bands
+that were already easy barely move.
+
+**So the theoretically-correct version was run too**: recalibrate the score to a per-stratum
+posterior with isotonic regression fitted on the training folds, then apply ONE global cut to
+the recalibrated score, which equalises the margin by construction. This is not the
+[monotone recalibration already rejected here](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) --
+that map was global, and a per-stratum map is not monotone in the original score.
+
+It wins pooled and dies paired. Per size band: recall 0.6392 at precision 0.4947 against the
+matched global cut's 0.6260, so **+1.3 points pooled -- and a median per-quadrat difference
+of exactly +0.0000, 12 of 24 quadrats better, sign test p = 1.00**. The pooled gain is a few
+large quadrats, which is the same failure the register logged when 55 PV-dense German
+municipalities read as an 18.2% error against a representative 33.4%. Recalibrating per
+density stratum loses outright (-0.0482 net), and per size and density together loses
+(-0.0110 net).
+
+**Verdict: one global threshold is already the right allocation, and the score is closer to
+calibrated across size bands than the per-quadrat rate spread suggests.** Those are different
+claims about the same model -- rate error is a level error within a quadrat, and what a
+threshold needs is that the score ORDER the same way across strata, which it does. Nothing
+changes in the pipeline. Script: `scripts/run_stratified_threshold.py`, result
+`results/roofclf_stratified_threshold.json`.
 
 Artifacts: `results/roofclf_preprocess_ablation.json`, `results/subpixel_shifts.json`,
 `results/native_shifts.json`, `results/roofclf_gba_height.json`.

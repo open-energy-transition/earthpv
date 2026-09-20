@@ -34,6 +34,10 @@ def main() -> None:
     ap.add_argument("--labels-dir", type=Path, default=Path("data/labels"))
     ap.add_argument("--quadrat", action="append", default=None)
     ap.add_argument("--window", default="")
+    ap.add_argument("--subdir", default="stacks",
+                    help="subdirectory under <composites> to write into -- use a distinct "
+                         "one for a historical window so it cannot be mistaken for the "
+                         "current epoch's stack")
     ap.add_argument("--margin-m", type=float, default=200.0)
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
@@ -42,7 +46,7 @@ def main() -> None:
     composites = args.composites or Path("data/composites") / args.aoi
     window = tuple(args.window.split(":")) if args.window else None
     names = args.quadrat or discover_quadrats(args.labels_dir)
-    out_dir = composites / "stacks"
+    out_dir = composites / args.subdir
     out_dir.mkdir(parents=True, exist_ok=True)
     todo = [n for n in names if not (out_dir / f"{n}.npz").exists()]
     log.info("%d quadrats, %d already done, %d to build -> %s",

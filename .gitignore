@@ -54,6 +54,11 @@ results/*
 !results/roofclf_gba_height.json
 !results/roofclf_gba_height_folds.csv
 !results/roofclf_deployment_metrics.json
+!results/roofclf_stratified_threshold.json
+!results/roofclf_dispersion_*.json
+!results/roofclf_dispersion_*_folds.csv
+!results/roofclf_epoch_difference.json
+!results/roofclf_epoch_difference_folds.csv
 !results/glint_observability_summary.json
 !results/glint_pose_by_region.csv
 !results/glint_pose_by_region_combined.csv

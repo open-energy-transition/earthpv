@@ -435,6 +435,86 @@ _T_NIR = ("b08",)
 _T_SWIR = ("b11", "b12")
 
 
+def zonal_dispersion(
+    bu_utm: gpd.GeoDataFrame, arr: np.ndarray, transform, nodata: float | None = None
+) -> dict[str, np.ndarray]:
+    """Per-building WITHIN-FOOTPRINT distribution of a (bands, H, W) array: pixel count,
+    min, max and standard deviation.
+
+    Every spectral feature this module ships is a zonal MEAN, which is the right
+    statistic only if a flagged roof is uniformly covered. It is not: a panel array
+    typically occupies part of a roof, so the mean is a mixture of the panel and the
+    roof in an unknown proportion, and the roof half is the dominant noise term
+    (measured: roof-to-roof heterogeneity is 0.0431 reflectance, 20-40x the sensor
+    noise). The extremes approximate the endmembers directly -- the darkest pixel in a
+    footprint is the most panel-like one -- and the spread measures "part of this roof
+    reads differently from the rest", which partial cover produces and a uniformly bright
+    roof does not.
+
+    Same rasterize-then-bincount machinery, same `nodata` semantics and same
+    representative-point fallback as `zonal_mean_max`, so a building counted there is
+    counted here. A footprint resolving to a single pixel (about half the Pakistani VIDA
+    population) gets `n_px = 1`, `std = 0` and `min = max = mean`: a real measurement of
+    "no within-footprint variation is observable", not missing data.
+    """
+    if arr.ndim == 2:
+        arr = arr[None]
+    nb, h, w = arr.shape
+    n = len(bu_utm)
+    idx = rasterio.features.rasterize(
+        ((g, i) for i, g in enumerate(bu_utm.geometry, start=1)),
+        out_shape=(h, w), transform=transform, fill=0, all_touched=False, dtype="int32",
+    )
+    valid_px = None
+    if nodata is not None:
+        valid_px = ~np.all(arr == nodata, axis=0)
+        idx = np.where(valid_px, idx, 0)
+    flat = idx.ravel()
+    counts = np.bincount(flat, minlength=n + 1)[1:]
+    mins = np.zeros((nb, n), dtype="float64")
+    maxes = np.zeros((nb, n), dtype="float64")
+    stds = np.zeros((nb, n), dtype="float64")
+    for b in range(nb):
+        v = arr[b].ravel().astype("float64")
+        s1 = np.bincount(flat, weights=v, minlength=n + 1)[1:]
+        s2 = np.bincount(flat, weights=v * v, minlength=n + 1)[1:]
+        c = np.maximum(counts, 1)
+        var = np.maximum(s2 / c - (s1 / c) ** 2, 0.0)
+        stds[b] = np.where(counts > 0, np.sqrt(var), 0.0)
+        hi = np.full(n + 1, -np.inf)
+        np.maximum.at(hi, flat, v)
+        lo = np.full(n + 1, np.inf)
+        np.minimum.at(lo, flat, v)
+        maxes[b] = np.where(counts > 0, hi[1:], 0.0)
+        mins[b] = np.where(counts > 0, lo[1:], 0.0)
+
+    zero = counts == 0
+    if zero.any():
+        pts = bu_utm.geometry.representative_point()
+        rr, cc = rasterio.transform.rowcol(
+            transform, pts.x.to_numpy()[zero], pts.y.to_numpy()[zero]
+        )
+        rr = np.asarray(rr)
+        cc = np.asarray(cc)
+        ok = (rr >= 0) & (rr < h) & (cc >= 0) & (cc < w)
+        if valid_px is not None:
+            ok[ok] &= valid_px[rr[ok], cc[ok]]
+        zero_idx = np.flatnonzero(zero)
+        valid_idx, oob_idx = zero_idx[ok], zero_idx[~ok]
+        rr_v, cc_v = rr[ok], cc[ok]
+        counts = counts.astype("float64")
+        counts[valid_idx] = 1.0
+        counts[oob_idx] = np.nan
+        for b in range(nb):
+            v = arr[b][rr_v, cc_v].astype("float64")
+            mins[b, valid_idx] = v
+            maxes[b, valid_idx] = v
+            stds[b, valid_idx] = 0.0
+            for a in (mins, maxes, stds):
+                a[b, oob_idx] = np.nan
+    return {"n_px": np.asarray(counts, dtype="float64"),
+            "min": mins, "max": maxes, "std": stds}
+
 def temporal_features(
     bu_utm: gpd.GeoDataFrame, stats_arr: np.ndarray, transform
 ) -> dict[str, np.ndarray]:
@@ -1107,6 +1187,29 @@ def building_table(
     out["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
     out["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
 
+    # WITHIN-FOOTPRINT distribution (`zonal_dispersion`). Everything above is a zonal
+    # mean; these are the order statistics and the spread of the same pixels, on the four
+    # quantities that carry the PV shape. Free -- the window is already read and
+    # rasterized. See `DISPERSION_FEATURES`.
+    from earthpv.sppi import compute_sppi
+
+    px_bright = arr.mean(axis=0)
+    px_sppi = compute_sppi(arr[0], arr[1], arr[6], arr[8], arr[9])
+    px_swirvis = arr[_I_SWIR1] / (arr[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
+    px_bluered = arr[_I_BLUE] / (arr[_I_RED] + eps)
+    disp = zonal_dispersion(
+        bu_utm, np.stack([px_bright, px_sppi, px_swirvis, px_bluered]), transform,
+        # A fill pixel is all-zero in every band, and all four derived quantities are
+        # then exactly zero too, so `COMPOSITE_FILL` masks the same pixels here as it
+        # does in `zonal_mean_max` above.
+        nodata=COMPOSITE_FILL,
+    )
+    out["px_log_count"] = np.log10(np.clip(disp["n_px"], 1.0, None))
+    for k, lab in enumerate(("brightness", "sppi", "swir_vis", "blue_red")):
+        out[f"{lab}_px_min"] = disp["min"][k]
+        out[f"{lab}_px_max"] = disp["max"][k]
+        out[f"{lab}_px_std"] = disp["std"][k]
+
     # Shape features from the VIDA footprint geometry itself (no new imagery) and a
     # per-quadrat local-contrast re-centring of brightness (see `shape_features`/
     # `local_zscore`'s docstrings for what each targets and why).
@@ -1235,6 +1338,21 @@ SHAPE_FEATURES = ["compactness", "rectangularity", "aspect_ratio"]
 # of a nationally-pooled absolute value -- targets the bright-roof false-positive mode
 # specifically. See `_ABLATIONS`'s `plus_local_contrast`.
 LOCAL_CONTRAST_FEATURES = ["brightness_zscore"]
+# The WITHIN-FOOTPRINT distribution of the same pixels every `*_mean` above averages
+# over (`zonal_dispersion`). The mean is the right statistic only for a uniformly covered
+# roof; a partially covered one is a mixture whose panel endmember is better approximated
+# by the extreme than by the average, and whose spread is itself the evidence of partial
+# cover. Split into two blocks because they are different hypotheses: EXTREMES says "the
+# most panel-like pixel is more diagnostic than the average pixel", SPREAD says "a roof
+# with PV is internally heterogeneous". `px_log_count` is the control -- how many pixels
+# a footprint actually got is a size proxy the linear model could otherwise exploit
+# through either block, and `log_roof_area` does not fully carry it (the sub-pixel
+# fallback population all reads n_px = 1 whatever its area).
+_DISP_QUANTITIES = ("brightness", "sppi", "swir_vis", "blue_red")
+EXTREME_FEATURES = ([f"{q}_px_min" for q in _DISP_QUANTITIES]
+                    + [f"{q}_px_max" for q in _DISP_QUANTITIES])
+SPREAD_FEATURES = [f"{q}_px_std" for q in _DISP_QUANTITIES]
+DISPERSION_FEATURES = ["px_log_count"] + EXTREME_FEATURES + SPREAD_FEATURES
 # The same re-centring `brightness_zscore` applies, extended to EVERY spectral feature
 # rather than one of fifteen. `local_zscore`'s own docstring makes the argument -- "bright
 # for ITS OWN neighbourhood" is a different claim from "bright in absolute terms" -- and it
@@ -1657,6 +1775,16 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
         ablations["temporal_only"] = (
             ["log_roof_area", "bf_confidence"] + list(TEMPORAL_COMPACT_FEATURES)
         )
+    if all(c in table.columns for c in DISPERSION_FEATURES):
+        ablations["plus_extremes"] = (
+            list(MODEL_FEATURES) + ["px_log_count"] + list(EXTREME_FEATURES)
+        )
+        ablations["plus_spread"] = (
+            list(MODEL_FEATURES) + ["px_log_count"] + list(SPREAD_FEATURES)
+        )
+        ablations["plus_dispersion"] = list(MODEL_FEATURES) + list(DISPERSION_FEATURES)
+        # The control: does the pixel count alone move it, with no distribution?
+        ablations["plus_px_count"] = list(MODEL_FEATURES) + ["px_log_count"]
     if all(c in table.columns for c in GLINT_FEATURES):
         ablations["plus_glint"] = list(MODEL_FEATURES) + list(GLINT_FEATURES)
         ablations["plus_everything"] = (

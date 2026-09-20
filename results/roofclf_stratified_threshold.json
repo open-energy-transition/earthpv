@@ -1,0 +1,127 @@
+{
+  "n_rows": 123867,
+  "auc": 0.8601,
+  "target_precision": 0.5,
+  "global": {
+    "n_flagged": 21199,
+    "precision": 0.5012,
+    "recall": 0.6195,
+    "d_recall": 0.0
+  },
+  "by_size": {
+    "n_flagged": 20180,
+    "precision": 0.5004,
+    "recall": 0.5889,
+    "d_recall": -0.0306,
+    "matched_global_recall": 0.6187,
+    "net_d_recall": -0.0298,
+    "paired": {
+      "d_recall_median": -0.026,
+      "quadrats_better": 7,
+      "quadrats_worse": 19,
+      "sign_p": 0.029
+    }
+  },
+  "by_density": {
+    "n_flagged": 19074,
+    "precision": 0.5023,
+    "recall": 0.5586,
+    "d_recall": -0.0609,
+    "matched_global_recall": 0.6165,
+    "net_d_recall": -0.0579,
+    "paired": {
+      "d_recall_median": -0.0222,
+      "quadrats_better": 3,
+      "quadrats_worse": 20,
+      "sign_p": 0.0005
+    }
+  },
+  "by_size_and_density": {
+    "n_flagged": 19029,
+    "precision": 0.4885,
+    "recall": 0.542,
+    "d_recall": -0.0774,
+    "matched_global_recall": 0.6339,
+    "net_d_recall": -0.0919,
+    "paired": {
+      "d_recall_median": -0.05,
+      "quadrats_better": 4,
+      "quadrats_worse": 21,
+      "sign_p": 0.0009
+    }
+  },
+  "recal_by_size": {
+    "n_flagged": 22161,
+    "precision": 0.4947,
+    "recall": 0.6392,
+    "d_recall": 0.0198,
+    "matched_global_recall": 0.626,
+    "net_d_recall": 0.0132,
+    "paired": {
+      "d_recall_median": 0.0,
+      "quadrats_better": 12,
+      "quadrats_worse": 12,
+      "sign_p": 1.0
+    }
+  },
+  "recal_by_density": {
+    "n_flagged": 20214,
+    "precision": 0.4847,
+    "recall": 0.5713,
+    "d_recall": -0.0482,
+    "matched_global_recall": 0.6383,
+    "net_d_recall": -0.067,
+    "paired": {
+      "d_recall_median": 0.0,
+      "quadrats_better": 8,
+      "quadrats_worse": 13,
+      "sign_p": 0.3833
+    }
+  },
+  "recal_by_size_and_density": {
+    "n_flagged": 21423,
+    "precision": 0.4871,
+    "recall": 0.6085,
+    "d_recall": -0.011,
+    "matched_global_recall": 0.6353,
+    "net_d_recall": -0.0268,
+    "paired": {
+      "d_recall_median": 0.0,
+      "quadrats_better": 10,
+      "quadrats_worse": 14,
+      "sign_p": 0.5413
+    }
+  },
+  "size_bins": {
+    "0-50 m2": {
+      "n": 50502,
+      "base_rate": 0.0362,
+      "recall_global": 0.1909,
+      "recall_stratified": 0.1406
+    },
+    "50-100 m2": {
+      "n": 26045,
+      "base_rate": 0.0952,
+      "recall_global": 0.3134,
+      "recall_stratified": 0.3727
+    },
+    "100-200 m2": {
+      "n": 23327,
+      "base_rate": 0.1918,
+      "recall_global": 0.5474,
+      "recall_stratified": 0.6196
+    },
+    "200-400 m2": {
+      "n": 17844,
+      "base_rate": 0.3509,
+      "recall_global": 0.8134,
+      "recall_stratified": 0.8384
+    },
+    "400-inf m2": {
+      "n": 6149,
+      "base_rate": 0.3428,
+      "recall_global": 0.9279,
+      "recall_stratified": 0.8354
+    }
+  }
+}
