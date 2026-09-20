@@ -86,7 +86,7 @@ see [Open questions](open-questions.md).
 | [Gradient boosting instead of the linear model](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome mixed">partial</span> | Ranks WORSE (-0.023 within size band, 4 of 30 folds) and calibrates BETTER (per-quadrat rate error 0.031 to 0.017, 20 of 29 quadrats). |
 | [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
 | [Area-weighted training loss](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Improves the area ratio it optimises (1.084 to 1.035) and loses on both ranking (-0.0111 AUC) and count calibration (0.0308 to 0.0395). |
-| [A pre-boom epoch as the roof's own control](#the-roof-is-its-own-control-2026-09-20) | <span class="outcome works">works</span> | **+0.0234 within size band, 25 of 29 folds, p = 0.0002**, against a split-half placebo at -0.0009, 14 of 29, p = 1.00. The largest single feature block in this register. |
+| [A pre-boom epoch as the roof's own control](#the-roof-is-its-own-control-2026-09-20) | <span class="outcome mixed">partial</span> | +0.0234 within size band over the SHIPPED read path (25 of 29 folds, p = 0.0002, placebo null) but only **+0.0047 over the noise-reduced one** (20 of 28, p = 0.036). The two levers are not additive. |
 | [Within-footprint pixel distribution](#most-footprints-are-one-pixel-2026-09-20) | <span class="outcome negative">rejected</span> | Extremes and spread of the same pixels the zonal mean averages: -0.0006 to -0.0015 within size band, 11 to 12 of 29 folds, p = 0.27 to 0.46. |
 | [Per-stratum deployment thresholds](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | Equal precision per size/density stratum COSTS 3.0 to 9.2 points of recall at matched precision (4 to 7 of 25 quadrats, p = 0.001 to 0.029). |
 | [Per-stratum score recalibration, one global cut](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | The theoretically-correct version. Pooled +1.3 points of recall, median per-quadrat +0.0000, 12 of 24 quadrats, p = 1.00. |
@@ -1477,9 +1477,11 @@ reducer or a read-path change.
 | Plus the 2019 LEVELS, undifferenced | 0.8590 | 0.8294 | +0.0036 | 20 of 29 | 0.061 | 0.26 |
 | Plus both differences | 0.8695 | 0.8392 | +0.0222 | 25 of 29 | 0.0001 | 0.008 |
 
-**This is the largest single feature block in this register**, and roughly what the entire
-noise-reduction package above is worth -- from one extra historical composite over the same
-quadrats rather than a national recomposite.
+**Measured against the shipped read path this is the largest single feature block in this
+register**, and roughly what the entire noise-reduction package above is worth, from one
+extra historical composite rather than a national recomposite. **That framing does not
+survive its own control -- see "The two levers are not additive" below, which is the part to
+read before acting on any of this.**
 
 Three controls, all registered before measuring, and all of them matter:
 
@@ -1517,6 +1519,31 @@ at an identical precision of 0.500 the flagged population goes 21,596 to 22,704 
 and **recall goes 0.6298 to 0.6621, +3.2 points, 5.1% relative**. For comparison the whole
 noise-reduction package is +6.4 points, and that one needs the existing national imagery
 recomposited; this one needs a second epoch alongside it.
+
+**THE TWO LEVERS ARE NOT ADDITIVE, AND THIS IS THE RESULT THAT MATTERS FOR DEPLOYMENT.**
+Everything above measures the epoch difference against the SHIPPED read path: a median
+composite read through `CompositeIndex.read_window`. The noise-reduction package (trimmed
+mean, area-weighted zonal means) replaces exactly that, and it was fitted on the same 30
+quadrats. Re-running the whole ablation on the `trimzonal` table instead:
+
+| Base | Baseline within size band | Plus the 2019 difference | Gain | Folds better | Sign p |
+| --- | --- | --- | --- | --- | --- |
+| Shipped read path | 0.8205 | 0.8388 | **+0.0234** | 25 of 29 | 0.0001 |
+| Noise-reduced (`trimzonal`) | 0.8370 | 0.8510 | **+0.0047** | 20 of 28 | 0.036 |
+
+**Four fifths of the epoch gain is already captured by the noise reduction.** It is still
+there, still significant, and the placebo is still null on the better base (-0.0017, 10 of
+29) -- but a project that ships the reducer package should expect +0.005, not +0.023, from
+adding a second epoch on top.
+
+The two are not measuring the same thing mechanically -- one cleans the current estimate,
+the other cancels the roof -- but they raise the same underlying quantity, the contrast
+between panel and roof relative to the noise on it, and once the measurement is clean there
+is less left for the difference to recover. The honest summary is that **this register has
+found one large improvement available to `roofclf`, reachable two different ways, and not
+two large improvements.** Best measured combination: `trimzonal` plus the 2019 difference at
+0.8510 within size band against the shipped 0.8205, and the noise reduction is the cheaper
+half of it.
 
 **Caveats.** The 2019 arm carries a median 7 frames against the current 12, so the
 difference is noisier on the old side than it needs to be; more 2019/20 scenes would likely
