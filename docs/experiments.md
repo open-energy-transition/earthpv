@@ -1386,6 +1386,24 @@ more frames if the bandwidth is ever there.
 trimmed mean, area-weighted zonal means and more frames -- all of it noise reduction, none of
 it new information, and none of it super-resolution.
 
+**What it is worth to the PRODUCT, which is not AUC.** `run_roof_classifier` picks a
+threshold targeting precision 0.5 on pooled out-of-fold scores, and `sub400_capacity` fits
+its coverage ratio and area recall on the population that threshold flags. A ranking gain
+that leaves that population unchanged changes no capacity figure, so the deployment step was
+re-run for each variant:
+
+| Variant | AUC | Flagged | Precision | Recall |
+| --- | --- | --- | --- | --- |
+| Baseline | 0.8601 | 21,592 | 0.500 | **0.6295** |
+| Trimmed mean | 0.8771 | 23,148 | 0.500 | 0.6751 |
+| Plus area-weighted zonal | 0.8810 | 23,382 | 0.500 | 0.6822 |
+| Plus the full year's frames | 0.8851 | 23,794 | 0.500 | **0.6937** |
+
+**At identical precision, recall goes 0.6295 to 0.6937: +6.4 points, or 10.2% more of the
+true PV roofs captured.** That is the number to quote, because it is the population the
+capacity chain is fitted on. The two free changes alone -- trimmed mean and area-weighted
+zonal -- deliver +5.3 points of it; the remaining +1.1 costs three times the download.
+
 Artifacts: `results/roofclf_preprocess_ablation.json`, `results/subpixel_shifts.json`,
 `results/native_shifts.json`, `results/roofclf_gba_height.json`.
 
