@@ -1409,10 +1409,33 @@ exceeds the experimental +0.0113, which is the expected direction: it stopped dr
 smallest buildings. Acceptance test: `scripts/verify_area_weighted_default.py`, result
 `results/roofclf_area_weighted_default.json`.
 
-**No published figure moves until Pakistan is refitted and rescored nationally** -- the
-calibration and the national scoring must share one zonal convention, and
+**Pakistan was refitted on 2026-09-20** (30 quadrats, parcel label; pre-refit state kept at
+`data/roofclf_PRE_areaweighted_20260920/`). Against the 2026-08-20 production fit:
+
+| | 2026-08-20 | 2026-09-20 |
+| --- | --- | --- |
+| Buildings | 123,867 | 123,898 |
+| Median fold AUC | 0.8574 | 0.8682 |
+| Median within size band | 0.8206 | 0.8193 |
+| Deployment threshold | 0.2515 | 0.2446 |
+| Flagged at precision 0.500 | 21,580 | 22,580 |
+| **Recall at precision 0.500** | 0.6292 | **0.6583** |
+
+**The within-size line reads down and that is a difference of medians, not a regression.**
+Two things changed between those summaries -- area weighting and the grid-snap read fix --
+and neither summary is a paired comparison: different tables, different fold sets, and a
+median of fold medians is not additive. Measured properly on identical rows the two are
+**+0.0119** (24 of 29 folds, p = 0.0017) and **+0.0032** (18 of 29, p = 0.27) respectively;
+the read-path figure reproduces the +0.0032 already recorded for it, and its own unpaired
+medians move 0.8206 to 0.8092 while its paired delta is positive. This register has retracted
+a claim to this exact trap once already ("the 0.8593 that made it look best was a difference
+of medians"), so the paired test is the one to read. The deployment row is computed on pooled
+out-of-fold scores rather than a median, which is why it moves unambiguously.
+
+**The calibration and the national scoring must share one zonal convention**, and
 `check_scoring_matches_calibration` now refuses a mismatched pair by name rather than by
-coefficient hash.
+coefficient hash. National rescoring was run the same day off this fit; the capacity chain
+and the atlas are a separate, owner-gated step because they move the published headline.
 
 **Frame count helps, weakly, and only through variance.** Full-year stacks (~36 scenes
 against the dry-season 12) separate frame count from season by drawing a fixed random 12 out
