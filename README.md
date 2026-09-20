@@ -53,6 +53,52 @@ range attached.
 <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">Open the
 interactive version</a>.</em></p>
 
+## How small an installation does it find?
+
+Orders of magnitude, not thresholds. Measured on 30 exhaustively hand-mapped Pakistani
+calibration areas (123,898 buildings), at the same operating point the published atlas
+uses, binned by how much panel actually sits on the roof:
+
+| Panel area on the roof | Roughly | Found |
+| --- | --- | --- |
+| Above 100 m2 | above 20 kWp | 92% rising to over 99% |
+| 50 to 100 m2 | 10 to 20 kWp | 83% |
+| 20 to 50 m2 | 4 to 9 kWp | 49% |
+| Below 20 m2 | below 4 kWp | 22 to 31% |
+
+**In one line: EarthPV finds most rooftop PV above roughly 50 m2 of panel, call it 10 kWp,
+is close to a coin flip between 20 and 50 m2, and misses most of what is smaller.**
+
+Four things qualify that, and they matter more than the exact percentages.
+
+**It is recall-first, not precision-first.** At the same operating point roughly 1 in 10
+PV-free buildings is also flagged. Detections are mapping leads meant for human
+verification in OpenStreetMap, not a finished inventory.
+
+**Individual panel outlines have a higher floor than the per-building answer.** The
+segmentation detector, which is what produces an actual polygon and the only instrument
+for ground-mount at any size, targets arrays of about 400 m2 and above, near 70 kWp. The
+table above is the per-building classifier, which answers "does this roof carry PV" rather
+than "where exactly".
+
+**The numbers above need a mapped calibration area in the same country.** They come from
+Pakistan, which has 30 of them. A country with a complete public register can substitute
+that register; a country with neither gets the segmentation half only.
+
+**Whether any of this transfers is set by national subsidy design, not by geography.** In
+France the median mapped rooftop array is 20 m2 against Sentinel-2's 100 m2 pixel, and the
+same pipeline recalls about 1% of installations while the roof classifier does not transfer
+at all. A sub-metre-imagery reference reads those same French installations at 67% with no
+size gradient, which places the limit in the sensor rather than in the method. Across the
+France-Germany border, array size steps by roughly 2x at the line while staying flat for
+60 km either side of it. So the question "will this work in my country" is a question about
+the size distribution of its installations, and it cannot be answered from a neighbour.
+
+For context on why the small end is worth the trouble at all: Germany's legally complete
+register shows **65.5% of rooftop capacity sits below the 400 m2 segmentation floor**, in
+97.2% of installations by count. An instrument that only saw large arrays would be blind to
+about two thirds of the capacity a "rooftop solar" headline implies.
+
 ## The main workflow: two detectors, split by placement and calibration coverage, one evidence atlas
 
 This is earthpv's default pipeline and primary output. No single instrument covers
