@@ -12,14 +12,14 @@ hide:
 
 <div class="hero-copy" markdown>
 
-**Free, Open amd Global Photovoltaic Mapping for Systems Above 10 kWp — Including Capacity, Growth and Orientation**
+**Free, Open and Global Mapping of Photovoltaic Systems Above 10 kWp - Including Capacity, Growth and Orientation**
 { .lede }
 
 </div>
 
 </div>
 
-EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed every five days. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country.
+EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed by IBM and ESA and accessed through TerraTorch, using **Sentinel-2** imagery. Sentinel-2 provides free, global coverage with imagery refreshed **every five days**. Each model detection is then presented to **OpenStreetMap** mappers for verification, and the verified results are fed back into subsequent rounds of training. The model, code, training labels, and capacity estimates are all openly available, and every input is derived from globally accessible datasets. As a result, the approach does not depend on imagery, proprietary licences, or data sources that are restricted to any single country.
 
 **Pakistan is the first pilot, not the destination.** It is where four methods below were
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
