@@ -21,6 +21,12 @@ photovoltaic (PV) capacity, growth and orientation for every country worldwide.*
 
 </div>
 
+**How small? EarthPV finds most rooftop PV above roughly 50 m2 of panel, about
+10 kWp. Between 20 and 50 m2 it is close to a coin flip, and below that it misses most
+of what is there.**
+[What that is measured on](#how-small-an-installation-does-it-find)
+{ .lede }
+
 !!! warning "Active development"
     EarthPV is still a research prototype. It is actively experimenting with new solar
     detection methods, and its detectors, calibration and headline numbers are still being
