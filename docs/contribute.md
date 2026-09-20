@@ -147,11 +147,25 @@ the common failure modes worth reading before you start (mapping only the obviou
 installations, choosing a quadrat because it already looks solar-heavy, tracing roofs
 instead of panels).
 
+**Never used JOSM?** Do not learn it from this page. Open Energy Transition's
+[MapYourGrid](https://mapyourgrid.org/) campaign has the material already:
+[installing JOSM](https://mapyourgrid.org/installation-instructions/) on Windows, macOS or
+Linux, and the
+[JOSM Starter-Kit](https://mapyourgrid.org/starter-kit/#josm-starter-kit) for configuring
+presets, quality assurance, paint styles and the upload loop. It maps power lines rather
+than panels, so the tagging does not transfer, but the editor skills are the same ones.
+Its [Strategies](https://mapyourgrid.org/strategies/) page is worth reading too: the todo
+plugin, filters, `fixme` as inter-mapper communication and pre-upload validation all apply
+here unchanged.
+
 In JOSM, the loop is:
 
 1. **File -> Open** the `_boundary.geojson` the previous step wrote. It comes in as its own
    layer. **Never upload that layer** -- the box is not an OpenStreetMap feature. Edit only
-   in the OSM data layer.
+   in the OSM data layer. (Prefer to draw your own boundary instead of
+   using a generated square? Draw it on a **new layer** (Ctrl+N) and save that layer with
+   **File -> Save As... -> GeoJSON Files**, then pass it to the script with `--geojson`. See
+   [Drawing the boundary in JOSM](calibration-mapping-protocol.md#drawing-the-boundary-in-josm).)
 2. Download OSM data for the same area, then sweep the box systematically, block by block,
    rather than roaming.
 3. **Flip between imagery layers as you go.** A panel invisible on one background is often

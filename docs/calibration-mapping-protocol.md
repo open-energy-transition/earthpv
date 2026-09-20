@@ -37,6 +37,34 @@ This leads to the one rule that overrides everything else:
 > quadrat (`imagery_layer`/`imagery_date` below) so this gap is visible
 > per-quadrat instead of assumed away.
 
+## New to JOSM? Borrow the MapYourGrid guides
+
+[MapYourGrid](https://mapyourgrid.org/) is Open Energy Transition's grid-mapping campaign,
+and its JOSM material is written for exactly this shape of work: volunteers, OpenStreetMap,
+JOSM, a strict quality bar. **The subject is power lines rather than solar panels, so its
+presets and tagging do not carry over, but everything about the editor does.** Rather than
+restate it here:
+
+| Page | What to take from it |
+| --- | --- |
+| [Installation instructions](https://mapyourgrid.org/installation-instructions/) | Installing JOSM on Windows, macOS (`brew install --cask josm`) and Linux. Start here if you have never run it. |
+| [Starter-Kit, JOSM section](https://mapyourgrid.org/starter-kit/#josm-starter-kit) | Configuring the editor: presets, quality-assurance settings, custom map paint styles, the download-edit-upload loop, and a list of common beginner mistakes. The paint-style part is directly reusable, since this protocol also ships a `.mapcss`. |
+| [Map It](https://mapyourgrid.org/map-it/) | What it looks like when a campaign hands a mapper a concrete, bounded task instead of "go map somewhere". A calibration quadrat is the same idea with a harder completeness rule. |
+| [Strategies](https://mapyourgrid.org/strategies/) | The campaign mechanics, and the most transferable page of the four. See below. |
+
+Four of MapYourGrid's strategies map onto this protocol almost unchanged:
+
+- **The todo plugin**, for working a list of objects down to zero, is how you sweep a
+  quadrat block by block instead of roaming. Rule 1 is a completeness claim, and roaming is
+  how a box ends up half-swept.
+- **Filters**, to isolate one kind of object while you work. Here that is
+  `power=generator` with `generator:source=solar`.
+- **`fixme` tags as inter-mapper communication.** This protocol already uses
+  `fixme=incomplete calibration quadrat` for exactly that purpose.
+- **Pre-upload validation and peer review.** JOSM's validator before every upload, and a
+  second mapper independently sweeping the same box, which this protocol requires as part of
+  the completeness declaration rather than as an optional extra.
+
 ## Quadrat selection should be automated, and is not yet
 
 Stated here because it is a known weakness of this protocol rather than a finished part of
@@ -101,8 +129,27 @@ covered in OSM and TZ-SAM.
 
 ### Drawing the boundary in JOSM
 
-Draw the area in JOSM, select it, and use **File -> Save As -> GeoJSON**. Then hand
-the file over and it gets registered with:
+You can draw a calibration boundary directly in JOSM and export it as GeoJSON, which is
+often better than a square: it can follow a suburb, an industrial estate or a canal instead
+of clipping arbitrary halves of both.
+
+**Draw it on its own layer, not on the OSM data layer.** That keeps the box out of the
+upload path entirely, which is the safest version of the never-upload rule.
+
+1. **Layers -> New Layer** (Ctrl+N). This is now the active layer, and it is not connected
+   to OpenStreetMap.
+2. Turn on imagery and draw the boundary with the **draw tool** (keyboard `A`), clicking
+   each corner. **Close the way** by clicking the first node again, then press `Esc` to end
+   the line.
+3. With that layer still active, **File -> Save As...** and choose **GeoJSON Files
+   (\*.geojson)** in the file-type dropdown. JOSM saves the whole active layer, so a layer
+   holding only your boundary produces a clean file.
+4. Hand the file to the registration script.
+
+Keeping the boundary on its own layer also means you can leave it open and visible while
+you map in the OSM layer beside it.
+
+Then hand the file over and it gets registered with:
 
 ```bash
 python scripts/new_calibration_quadrat.py --name gujranwala_east \
