@@ -47,21 +47,31 @@ SCORES = {
 DEV_NOTE = re.compile(
     r'<p class="dev-note"><b>Active development\.</b>.*?</p>\n?', re.S)
 AFTER_H1 = re.compile(r'(<h1>[^<]*</h1>\n)')
+# An already-stamped badge, so a design change can be re-applied instead of skipped.
+OLD_BADGE = re.compile(r'\s*<style>\s*(?:header \{ position: relative; \}\s*)?\.vscore.*?'
+                       r'</(?:a|div)>\n?', re.S)
+# The long intro paragraph these pages carry under the title. The evidence atlases lost
+# their equivalent when the "Active development" note went; this is the same block on the
+# atlases that never had that note.
+LEDE = re.compile(r'\s*<p class="lede">.*?</p>\n?', re.S)
 
 
-def stamp(path: Path, score: str) -> tuple[bool, str]:
+def stamp(path: Path, score: str, drop_lede: bool = True) -> tuple[bool, str]:
     html = path.read_text()
-    if "vscore" in html:
-        return False, "already has a badge"
+    before = html
+    html = OLD_BADGE.sub("\n", html)          # re-stampable
+    if drop_lede:
+        html = LEDE.sub("\n", html)
     badge = validation_badge_html(score)
+    note = "re-stamped" if before != html and "vscore" in before else "stamped"
     if DEV_NOTE.search(html):
         path.write_text(DEV_NOTE.sub(f"    {badge}\n", html, count=1))
-        return True, "replaced the dev-note"
+        return True, f"{note}, replaced the dev-note"
     m = AFTER_H1.search(html)
     if not m:
         return False, "no dev-note and no <h1> to anchor to"
     path.write_text(html[:m.end()] + f"    {badge}\n" + html[m.end():])
-    return True, "inserted after the <h1>"
+    return True, f"{note} after the <h1>"
 
 
 def main() -> None:
@@ -76,7 +86,7 @@ def main() -> None:
         aoi = PAGE_AOI[name]
         score = SCORES.get(aoi) or derive_validation_score(aoi, False)
         if not args.write:
-            state = "has badge" if "vscore" in path.read_text() else "would stamp"
+            state = "would re-stamp" if "vscore" in path.read_text() else "would stamp"
             print(f"{name:46} {aoi:9} {score:7} {state}")
             continue
         changed, why = stamp(path, score)
