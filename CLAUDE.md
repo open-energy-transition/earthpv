@@ -1240,6 +1240,35 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
   `timeout 7200` and treats rc=124 as the expected path; a fresh process recovered to 0.80
   cells/min immediately. Budget passes generously (~90 cells per 2 h pass) and let "a pass
   added nothing" be the stop condition rather than a pass cap.
+- **A restart loop's own watchdogs can LIVELOCK a compose that is otherwise perfectly
+  healthy, and it reads in the log exactly like a provider outage.** Measured on Nigeria
+  2026-09-19/20: the run reached 2,340 of 6,341 cells and then produced **zero cells for 17
+  hours** across ten chain rounds, each logging "+0 this round" and paying its 1,800 s
+  provider cooldown. The provider was never down. The link was **saturated at 6.3-6.8 MB/s
+  throughout**, and a direct test of three missing cells composited two of them (47.8 s via
+  PC in the north, 297.8 s via Earth Search mid-country) while refusing the third for real
+  (99% empty, Niger Delta cloud). Only **67 cells had ever failed**; the other ~3,934 were
+  simply never reached. Mechanism: `imagery.PC_TIMEOUT_S` defaults to **60 s, which is a
+  SINGLE-CELL number**. A cell is bandwidth-bound (~290 MB of COG reads against a
+  ~380 MB/min link), so under N workers a perfectly healthy cell takes roughly N x its
+  uncontended ~50 s, **every** cell trips the patience, and each hand-off downloads the cell
+  TWICE because the abandoned PC attempt keeps reading in the background -- the same death
+  spiral `imagery._PROVIDER_OVERRIDE`'s comment describes, entered from the other side.
+  `compose_loop.sh`'s `STALL_S` then compounds it: at 600 s the watchdog killed every pass
+  before a single contended cell could land, since a pass needs 4-5 minutes just to fetch
+  VIDA, select cells and skip the ones already on disk. Fix (`scripts/run_nigeria_chain.sh`,
+  committed under `4b64013`, whose message is about roofclf zonal means): `PC_TIMEOUT_S=600`
+  passed to the compose unit via `systemd-run --setenv`, and `STALL_S=2400`. After it, three
+  consecutive full 3,600 s passes gained 53/59/58 cells with `stall=0` throughout and a
+  hand-off rate of 14% that did not climb. **The number that matters is that ~57 cells/h is
+  1.6x the ~35 cells/h the same run managed BEFORE it locked up**: it was already paying for
+  double-downloads on most cells and had merely not yet tipped into paying on all of them, so
+  **a compose that is "progressing" is not evidence the patience is set right**. The
+  diagnostic that separates the two cases in one minute is to measure the link -- a real
+  provider outage leaves it idle, this leaves it saturated -- and to count `exceeded <N>s`
+  hand-offs per landed cell. Set `PC_TIMEOUT_S` to several times the expected per-cell wall
+  time whenever `workers` > 1, and keep `STALL_S` well above a pass's startup cost plus one
+  slow cell.
 - **`nohup setsid` alone does not survive a session logout on this machine.** systemd-logind
   kills a whole session's cgroup (all processes in it, `setsid` or not) when the session ends
   unless lingering is enabled. Run `loginctl show-user "$USER" | grep Linger` -- if `Linger=no`,
