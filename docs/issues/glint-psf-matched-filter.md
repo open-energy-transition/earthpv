@@ -37,7 +37,7 @@ Four defects, three of them methodological:
    available. Sentinel-2's 10 m PSF is undersampled (FWHM near 1.34 px, below the 2 px
    Nyquist floor), so its sampled shape genuinely changes with sub-pixel position and an
    integer-aligned stack is not a well-defined object.
-2. Source extent was confounded with the PSF. A 100 to 500 m2 array spans 1 to 5 px, so its
+2. Source extent was confounded with the PSF. A 100 to 500 m² array spans 1 to 5 px, so its
    stamp is a PSF convolved with a finite source.
 3. Each stamp was divided by its own noise-selected maximum before median stacking, which
    inflates the wings and flattens the core.
@@ -76,7 +76,7 @@ the fitting choices are not driving it.
 
 ## Result 1: the PSF
 
-Fitted on 68 targets below 500 m2, where a source is close enough to a point for extent and
+Fitted on 68 targets below 500 m², where a source is close enough to a point for extent and
 PSF to separate:
 
 | quantity | value |
@@ -95,9 +95,9 @@ against the model now falls to zero past 2.5 px rather than sitting on a floor.
 
 | area bucket | n | fitted sigma (px) | median r2 |
 | --- | --- | --- | --- |
-| <100 m2 | 13 | 0.65 | 0.49 |
-| 100 to 500 m2 | 55 | 0.65 | 0.49 |
-| 500 m2 to 1k | 96 | 0.85 | 0.41 |
+| <100 m² | 13 | 0.65 | 0.49 |
+| 100 to 500 m² | 55 | 0.65 | 0.49 |
+| 500 m² to 1k | 96 | 0.85 | 0.41 |
 | 1k to 5k | 108 | 0.80 | 0.27 |
 | 5k to 50k | 199 | 0.95 | 0.19 |
 | >50k | 70 | 2.20 (grid ceiling) | 0.06 |
@@ -106,7 +106,7 @@ Sigma should be flat if the forward model were right, because extent is already 
 model. It is not flat, and variance explained collapses by a factor of eight across the
 range. The model assumption that fails is uniform illumination: **a specular glint comes
 from whichever patch of an array satisfies the mirror condition on that date, not from the
-whole array**. For a small array that distinction barely exists. For a 100,000 m2 plant
+whole array**. For a small array that distinction barely exists. For a 100,000 m² plant
 perimeter it is the whole story, and broadening is the fit's only way to respond to a
 misspecified shape.
 
@@ -117,7 +117,7 @@ installation's area.
 
 ## Result 3: the source moves between scenes
 
-Fitting a sub-pixel offset per spike scene, over 245 spike scenes across the 68 sub-500 m2
+Fitting a sub-pixel offset per spike scene, over 245 spike scenes across the 68 sub-500 m²
 targets:
 
 - median radial offset **0.72 px**, 90th percentile 1.34 px
@@ -135,7 +135,7 @@ that already contains registration, not as the instrument PSF.
 
 [The spike-rate density estimator](glint-spike-rate-density-estimator.md) has been blocked
 since 2026-07-18 on a false-spike rate of 8.7 to 20.3%, measured on Lahore controls that
-were only *model*-negative, equal to or above the true detection rate below 500 m2 and
+were only *model*-negative, equal to or above the true detection rate below 500 m² and
 therefore leaving its inversion undefined in the size regime it exists to serve. That doc's
 stated next step was to re-measure against verified negatives.
 
@@ -158,9 +158,9 @@ Against true detection rates from the 2,000-target study:
 
 | size | true detection rate | false spike rate | ratio |
 | --- | --- | --- | --- |
-| <100 m2 | 3.9% | 0.5% | 7.9x |
-| 100 to 500 m2 | 14.9% | 1.0% | **14.9x** |
-| 500 m2 to 1k | 27.0% | 2.0% | 13.5x |
+| <100 m² | 3.9% | 0.5% | 7.9x |
+| 100 to 500 m² | 14.9% | 1.0% | **14.9x** |
+| 500 m² to 1k | 27.0% | 2.0% | 13.5x |
 | 1k to 5k | 33.1% | 7.0% | 4.7x |
 
 The instrument is separable in every bin measured, including the two the estimator was
@@ -177,7 +177,7 @@ the comparison is like for like.
 
 AUC, positives against verified negatives:
 
-| statistic | <1000 m2 | all sizes |
+| statistic | <1000 m² | all sizes |
 | --- | --- | --- |
 | aperture, p98 minus annulus (existing) | **0.648** | **0.655** |
 | PSF matched filter, pinned to the centroid | 0.620 | 0.525 |
@@ -186,7 +186,7 @@ AUC, positives against verified negatives:
 
 Bootstrap over targets, 1,500 replicates, difference in AUC against the aperture statistic:
 
-| variant | <1000 m2 | all sizes |
+| variant | <1000 m² | all sizes |
 | --- | --- | --- |
 | pinned | -0.027 (90% -0.100 to +0.039), P(better) 0.27 | -0.129 (-0.191 to -0.068), P 0.00 |
 | offset fitted | -0.097 (-0.172 to -0.020), P 0.01 | -0.158 (-0.223 to -0.102), P 0.00 |
@@ -219,9 +219,9 @@ quadrat range:
 
 | size | d (k/n) | f (k/n) | d - f | purity of an observed spike | 90% CI on pi, 5,000 buildings scanned |
 | --- | --- | --- | --- | --- | --- |
-| <100 m2 | 0.039 (15/382) | 0.005 (1/200) | 0.034 | 0.47 | -61% to +25% |
-| 100 to 500 m2 | 0.149 (57/382) | 0.010 (2/200) | 0.139 | 0.62 | -3.1% to +15.9% |
-| 500 m2 to 1k | 0.270 (103/381) | 0.020 (2/100) | 0.250 | 0.60 | -4.2% to +15.7% |
+| <100 m² | 0.039 (15/382) | 0.005 (1/200) | 0.034 | 0.47 | -61% to +25% |
+| 100 to 500 m² | 0.149 (57/382) | 0.010 (2/200) | 0.139 | 0.62 | -3.1% to +15.9% |
+| 500 m² to 1k | 0.270 (103/381) | 0.020 (2/100) | 0.250 | 0.60 | -4.2% to +15.7% |
 | 1k to 5k | 0.331 (126/381) | 0.070 (7/100) | 0.261 | 0.34 | -12.1% to +20.9% |
 
 Two things to read off it. First, **purity is poor even at 15x separation**: at 10% adoption
@@ -236,7 +236,7 @@ target area barely helps, because `f` enters the numerator directly and `d - f` 
 denominator:
 
 Half-width of the 90% interval on a 10% adoption rate, in percentage points, for the
-100 to 500 m2 class:
+100 to 500 m² class:
 
 | calibration n (pos / neg) | 2,000 scanned | 5,000 | 20,000 | 100,000 |
 | --- | --- | --- | --- | --- |
@@ -246,7 +246,7 @@ Half-width of the 90% interval on a 10% adoption rate, in percentage points, for
 | 10,000 / 10,000 | 4.2 | 2.8 | 1.7 | 1.3 |
 
 Going from 5,000 to 100,000 buildings scanned on today's calibration buys 0.3 pp. Going from
-today's calibration to 3,000 of each buys 6 pp. The 500 m2 to 1k class behaves the same way,
+today's calibration to 3,000 of each buys 6 pp. The 500 m² to 1k class behaves the same way,
 starting from 6.8 pp and reaching 2.5 pp.
 
 There is also a **stratifier mismatch** to fix before any of this is trustworthy. `d` here is
@@ -299,13 +299,13 @@ per deployment region, not transferred.
 
 - **Reopen the spike-rate density estimator, but calibrate before surveying.** Its stated
   blocker is resolved: the detection-probability curve it inverts through can now be paired
-  with a measured false-spike rate 8 to 15x smaller than the true rate below 500 m2. Result 6
+  with a measured false-spike rate 8 to 15x smaller than the true rate below 500 m². Result 6
   shows the next bottleneck is the precision of `d` and `f`, not survey size, so the useful
   next pull is roughly 3,000 verified negatives and 3,000 quadrat positives per size class,
   the latter stratified by roof area rather than PV area. That is about 5x the pull already
   done here, which took two and a half hours across four shards.
-- **Do not expect a sub-100 m2 estimate.** At 3.9% sensitivity the interval is unbounded on
-  the present calibration and stays wide on any realistic one. The 100 m2 to 1k range is
+- **Do not expect a sub-100 m² estimate.** At 3.9% sensitivity the interval is unbounded on
+  the present calibration and stays wide on any realistic one. The 100 m² to 1k range is
   where this instrument can work.
 - **Do not replace the aperture statistic.** It wins, and the reason it wins is structural
   rather than a tuning artefact.

@@ -32,18 +32,18 @@ just "unmapped."
 bbox `74.399244,31.458839,74.409775,31.467822` (`data/labels/retired/lahore_calib_1km_overpass_solar.parquet`).
 
 **Ground truth:** 8 rooftop installations, all clustered in one corner of the box
-(74.409-74.410, 31.467-31.468), 314-577 m2 each -- reads as one small residential/
+(74.409-74.410, 31.467-31.468), 314-577 m² each -- reads as one small residential/
 commercial development where each unit got its own rooftop array, not 8 independent
 sites.
 
-**Our candidates (pk16085) in/near the box:** exactly 1, a 2702 m2 / confidence 0.49 /
+**Our candidates (pk16085) in/near the box:** exactly 1, a 2702 m² / confidence 0.49 /
 rank_score 0.39 rooftop candidate ~335m from the box center. Checked against a widened
 2km search: the closest any candidate gets to any of the 8 real installations is 877m --
 not a geometry-offset artifact, a genuine miss.
 
 **Result: 0/8 recall, 1 likely false positive.**
 - The model missed all 8 real installations. Each is well below this project's
-  ≥1000 m2 recall-first design target (README/CLAUDE.md) -- consistent with, and now a
+  ≥1000 m² recall-first design target (README/CLAUDE.md) -- consistent with, and now a
   direct empirical confirmation of, the known operating point rather than a new bug.
   Doesn't mean small arrays are unrecoverable, just that they're outside what this
   checkpoint was tuned to prioritize.
@@ -569,16 +569,16 @@ quadrat from one attempt.
 
 ---
 
-### Box 1 replaced -- Lahore DHA Phase 5, hand-drawn 6.61 km2 -- 2026-08-05
+### Box 1 replaced -- Lahore DHA Phase 5, hand-drawn 6.61 km² -- 2026-08-05
 
 Box 1's 1 km x 1 km square was **replaced** by a boundary drawn in JOSM and supplied as
-`data/labels/calibration_boundaries/DH5.geojson`: `lahore_calib_6p61km2`, 6.61 km2, 18
+`data/labels/calibration_boundaries/DH5.geojson`: `lahore_calib_6p61km2`, 6.61 km², 18
 vertices, bbox `74.392709,31.450724,74.432030,31.477134`. It is the **first non-square
 quadrat** in the set and the largest by a wide margin (2.9x Box 12). The retired square and
 both its Overpass pulls are kept at `data/labels/retired/lahore_calib_1km_*` -- not deleted,
 since `data/` is gitignored and there is no other copy.
 
-**The new boundary fully contains the old one** (0.0 m2 of the old square falls outside it),
+**The new boundary fully contains the old one** (0.0 m² of the old square falls outside it),
 which makes the replacement checkable rather than a matter of trust. Both checks pass:
 
 - **Nothing was lost.** All 1,014 installations the old box held are present in the new
@@ -586,13 +586,13 @@ which makes the replacement checkable rather than a matter of trust. Both checks
   new pull, i.e. mapping continued there since 2026-07-25.)
 - **The extension is mapped to a comparable standard**, so this is an extension and not a
   dilution with unmapped ground: 1,034 installations/km2 inside the old core against
-  **831/km2** across the added 5.61 km2. A fringe that had merely never been mapped would
+  **831/km2** across the added 5.61 km². A fringe that had merely never been mapped would
   show a fraction of that.
 
 **Profile:** 5,688 installations inside the boundary, 13,500 VIDA buildings, base rate
-**25.4%** (was 30.1% on the square), median installation **29.0 m2**, **99.0% below the
-400 m2 floor**, packing distance **6.8 m** -- the tightest of any quadrat, and now by far
-the largest sub-400 m2 ground-truth population in the project (5,631 sub-floor
+**25.4%** (was 30.1% on the square), median installation **29.0 m²**, **99.0% below the
+400 m² floor**, packing distance **6.8 m** -- the tightest of any quadrat, and now by far
+the largest sub-400 m² ground-truth population in the project (5,631 sub-floor
 installations against 5,688 for all twelve other quadrats combined). Still **NOT Rule-1
 complete**: no completeness declaration has been made for the added area, so its negatives
 remain untrustworthy exactly as before.
@@ -623,23 +623,23 @@ fewer installations than it. Prefer replacing a quadrat by *extension* for that 
 
 ---
 
-### Box 3 replaced -- Multan Industrial Estate, hand-drawn 3.92 km2 -- 2026-08-05
+### Box 3 replaced -- Multan Industrial Estate, hand-drawn 3.92 km² -- 2026-08-05
 
 Box 3's 1 km x 1 km square was replaced by a boundary supplied as
 `data/labels/calibration_boundaries/multan_industrial.geojson`: `multan_calib_3p92km2`,
-3.92 km2 (3.94x the old box), bbox `71.370492,30.117067,71.392508,30.134698`. The retired
+3.92 km² (3.94x the old box), bbox `71.370492,30.117067,71.392508,30.134698`. The retired
 square and its pulls are kept at `data/labels/retired/multan_calib_1km_*`.
 
 **Containment checked before registering, as with every replacement so far**: the new
-boundary fully contains the old one (0.0 m2 outside it), and all 40 installations the old
+boundary fully contains the old one (0.0 m² outside it), and all 40 installations the old
 box held are present in the new pull -- 0 lost. The pull itself was clean on the first
 attempt (166 features written, 166 confirmed by an independent query, no truncation).
 
 **Profile:** 164 installations, 3,419 VIDA buildings, base rate **8.1%** (was 8.6% on the
-square), median installation **605.5 m2**, 37.8% below the 400 m2 floor (was 26.7%) --
+square), median installation **605.5 m²**, 37.8% below the 400 m² floor (was 26.7%) --
 sub-floor share rose because the extension reaches beyond the estate's core large arrays.
 Packing distance **35.2 m**, in the same sparse industrial-estate range as Multan always
-was. The added 2.92 km2 is mapped at **34 installations/km2 against the old core's 64** --
+was. The added 2.92 km² is mapped at **34 installations/km2 against the old core's 64** --
 about half the density, the same signature Sundar showed on 2026-08-05: consistent with
 extending past an industrial estate into surrounding, less array-dense ground rather than a
 mapping gap, but the two are not distinguishable without a completeness sweep.
@@ -1149,7 +1149,7 @@ kind of re-mapping that motivated re-pulling everything in the first place. The 
 Sukkur's rooftop/mixed quadrat 1105 -> 1115, Sundar 132 -> 134), consistent with
 ongoing incremental OSM mapping rather than any systematic gap.
 
-### Box 14 -- Bahawalnagar Rural, hand-drawn ~4.00 km2 around (29.5002, 72.8716) -- 2026-08-13
+### Box 14 -- Bahawalnagar Rural, hand-drawn ~4.00 km² around (29.5002, 72.8716) -- 2026-08-13
 
 Proposed the same session as a deliberately-rural extension candidate for widening
 `density.CALIBRATED_BLDG_DENSITY_KM2`'s floor (141.00 bldg/km<sup>2</sup> at the time,
@@ -1200,7 +1200,7 @@ since both need a `roofclf` fold table that includes this quadrat) and to
 it into an actual `roofclf` refit and deciding whether to widen the domain constant are
 follow-up steps, not done here.
 
-### Box 15 -- Nasirabad Rural, geodesic square 4.00 km2 around (28.65, 68.15) -- 2026-08-13 -- first confirmed-zero Rule-1 quadrat
+### Box 15 -- Nasirabad Rural, geodesic square 4.00 km² around (28.65, 68.15) -- 2026-08-13 -- first confirmed-zero Rule-1 quadrat
 
 Suggested the same session as a further rural-extension candidate, same recipe as
 Bahawalnagar Rural: pre-checked against national VIDA buildings before mapping,
@@ -1253,7 +1253,7 @@ already guards `n_installations=0` explicitly (`if len(a) else 0.0`/`np.nan`). N
 folded into a `roofclf` refit -- `n_buildings`/`base_rate`/`nn_median_m` are blank in
 `results/calibration_quadrats.csv` pending one, same as Sanghar and Bahawalnagar Rural.
 
-### Box 16 -- Tank Rural, geodesic square 4.00 km2 around (32.20, 70.30) -- 2026-08-13
+### Box 16 -- Tank Rural, geodesic square 4.00 km² around (32.20, 70.30) -- 2026-08-13
 
 The second of the two candidates suggested the same session as Nasirabad Rural, in
 Tank District, southern Khyber Pakhtunkhwa -- KP's first rural-extension quadrat; its
@@ -1291,7 +1291,7 @@ does not itself move the boundary, since Nasirabad's is lower. See
 `docs/methods/density.md` for the updated domain cell/building counts once the national
 rescoring pass this widening motivates has run.
 
-### Box 17 -- Kalat Rural, geodesic square 9.01 km2 around (28.792663, 66.615940) -- 2026-08-17
+### Box 17 -- Kalat Rural, geodesic square 9.01 km² around (28.792663, 66.615940) -- 2026-08-17
 
 One of four low-density sites proposed this session to widen
 `density.CALIBRATED_BLDG_DENSITY_KM2`'s floor below 48.5 bldg/km<sup>2</sup>, where
@@ -1416,7 +1416,7 @@ between 400 m<sup>2</sup> and 1,998 m<sup>2</sup> in a rural setting. Outside th
 boxes (Quaid-e-Azam, Sukkur, both utility scale) this project has almost no ground truth at
 that size, and `docs/issues/small-ground-mount-instrument.md` is open for exactly that reason.
 
-### Box 18 -- three peri-urban screens (Attock, Layyah, Lodhran), geodesic squares 4.00 km2 each -- 2026-08-19
+### Box 18 -- three peri-urban screens (Attock, Layyah, Lodhran), geodesic squares 4.00 km² each -- 2026-08-19
 
 Six candidate boxes were screened the same way as Box 17's three rejects: centroids of
 national grid cells (~100 km<sup>2</sup>) whose measured building density falls in the

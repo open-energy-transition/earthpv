@@ -20,14 +20,14 @@ tripled large-array recall; nothing architectural has come close.
 ### 2. `building_table`'s roof term counts a ground array that clips a shed as rooftop PV
 
 `parcel_pv_area`'s rule 3 skips any installation at or above `YARD_MAX_INSTALLATION_M2`
-(400 m2), because above that floor ground-mount is segmentation's instrument and the atlas
+(400 m²), because above that floor ground-mount is segmentation's instrument and the atlas
 already prices it. The roof term next to it has no such guard: it intersects every mapped PV
 polygon with every VIDA footprint regardless of placement or size. Harmless while ground-mount
 above the floor was rare in the quadrats; not harmless now.
 
 Measured on Kalat Rural (added 2026-08-17, sited deliberately to include ground-mount):
-**69 of the 89 buildings the roof term labels has-PV are labelled solely because a >= 400 m2
-ground array clips them**, on roofs whose median footprint is 29 m2. That is a 21.24% base
+**69 of the 89 buildings the roof term labels has-PV are labelled solely because a >= 400 m²
+ground array clips them**, on roofs whose median footprint is 29 m². That is a 21.24% base
 rate in a 46.5 bldg/km2 rural box, higher than Mardan's. Folding it in unchanged would fit the
 sparse density band's coverage ratio on ground-mount, extrapolate that across millions of rural
 buildings, and double-count against segmentation's own `est_mwp_rc_ground`.

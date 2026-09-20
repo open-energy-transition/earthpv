@@ -273,12 +273,12 @@ This is earthpv's [main workflow](../reproduce.md#the-full-pipeline), end to end
 the atlas that combines them.
 
 ```bash
-# >= 400 m2 segmentation half
+# >= 400 m² segmentation half
 pixi run earthpv calibrate-candidates --aoi pakistan
 pixi run earthpv density --aoi pakistan --districts
 pixi run earthpv check-density --aoi pakistan   # gate: exits non-zero on an implausible region
 
-# < 400 m2 roofclf half -- needs mapped calibration quadrats first, see
+# < 400 m² roofclf half -- needs mapped calibration quadrats first, see
 # calibration-mapping-protocol.md. roofclf-score-national is the long pole (hours at
 # country scale) and is resumable per cell like density.
 pixi run earthpv roof-classifier --aoi pakistan
@@ -286,7 +286,7 @@ pixi run earthpv roofclf-score-national --aoi pakistan
 pixi run earthpv sub400-capacity --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet
 
-# roofclf's >= 400 m2 rooftop swap -- same national scoring pass, just the large-building
+# roofclf's >= 400 m² rooftop swap -- same national scoring pass, just the large-building
 # slice; replaces segmentation's rooftop estimate inside the same density-matched cells
 # sub400-capacity already restricts to.
 pixi run earthpv ge400-roof-capacity --aoi pakistan \

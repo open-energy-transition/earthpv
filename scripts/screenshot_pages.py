@@ -50,7 +50,12 @@ class Shot:
     name: str         # output PNG stem
     width: int
     height: int       # viewport height; render tall enough for the section you want
-    crop: tuple | None = None   # (left, top, right, bottom) in captured pixels
+    # (left, top, right, bottom) in captured pixels. **Cut on a component boundary,
+    # never through one.** These pages are laid out as cards, so a crop chosen by
+    # eyeballing a pixel height will slice a card in half and the hero image reads as
+    # broken. Pick the bottom edge just below the last FULL row you want to keep, and
+    # the right edge just outside the rightmost panel rather than through its padding.
+    crop: tuple | None = None
     max_width: int = 1600       # downscale target for the committed PNG
 
 
@@ -60,14 +65,23 @@ SHOTS = [
     # Framed on the KPI strip and the map. Lives directly under docs/ (2026-08-06),
     # not results/ -- it is this project's primary output, so its canonical copy is
     # wherever the site and README read it from, with no separate results/ original.
+    #
+    # The crop ends immediately BELOW the four-card KPI row and just outside the right
+    # edge of the province panel, so every visible block is whole (owner, 2026-09-20,
+    # correcting a 1500x1650 box that cut through the row beneath). Re-check this box
+    # whenever the page layout changes -- a card added or resized moves the boundary,
+    # and the failure is silent.
     Shot("docs/assets/interactive/pakistan_evidence_atlas.html", "pakistan_evidence_atlas",
-         width=1500, height=2100, crop=(0, 0, 1500, 1650)),
+         width=1500, height=2100, crop=(0, 0, 1300, 1257)),
     # The glint pose survey, framed on the polar plot and its stat column.
     Shot("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose",
          width=1400, height=1500, crop=(0, 0, 1400, 1272)),
     # The growth atlas (segmentation + SPPI epoch-diff), framed on the KPI strip and map.
+    # Same rule as the evidence atlas above: 1650 cut through the "What each view means"
+    # card and left a sentence sliced in half. 1515 lands in the 22 px gutter under the
+    # map and province panels instead.
     Shot("results/pakistan_pv_growth_atlas.html", "pakistan_pv_growth",
-         width=1500, height=2100, crop=(0, 0, 1500, 1650)),
+         width=1500, height=2100, crop=(0, 0, 1500, 1515)),
 ]
 
 

@@ -480,11 +480,11 @@ def fig_germany_register_validation(t: Theme):
            "Validating Germany's hand-mapped OpenStreetMap tier against MaStR",
            "Germany's register is complete by law, so it can say what a mapped polygon is "
            "really worth. (1) Measured on the polygons containing exactly one registered "
-           "unit, the rooftop constant falls from 0.200 kWp/m2 on small features, which are "
+           "unit, the rooftop constant falls from 0.200 kWp/m\u00b2 on small features, which are "
            "genuinely arrays, to 0.051 on large ones, which outline roofs and sites. (2) "
            "Almost all the mapped area sits in that largest band, so a flat 0.18 turned "
-           "8.8 GWp into 22.0. (3) Ground-mount needed no constant change, but 300 km2 of "
-           "polygons above 5 km2 contain no registered unit at all, and registration is "
+           "8.8 GWp into 22.0. (3) Ground-mount needed no constant change, but 300 km\u00b2 of "
+           "polygons above 5 km\u00b2 contain no registered unit at all, and registration is "
            "mandatory.",
            width=150)
     fig.tight_layout()
@@ -1318,7 +1318,7 @@ def fig_mastr_coord_cliff(t: Theme):
            "Share of German MaStR rooftop units carrying published coordinates, by unit "
            "size, with unit counts beneath each bar. Zero of the 4.17M units below 30 kWp "
            "have one: a privacy policy, not missing data. That is why the register can "
-           "measure precision above the 400 m2 floor and not below it", width=106)
+           "measure precision above the 400 m\u00b2 floor and not below it", width=106)
     save(fig, t, "mastr_coord_cliff")
 
 

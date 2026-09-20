@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-09-01T08:02:42.439461</dc:date>
+    <dc:date>2026-09-20T17:10:54.931959</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -101,7 +101,7 @@ z
      <g id="line2d_10">
       <path d="M 75.06 282.280498 
 L 460.08 282.280498 
-" clip-path="url(#pef0fcb5fa3)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p0626776735)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_11"/>
      <g id="text_11">
@@ -112,7 +112,7 @@ L 460.08 282.280498
      <g id="line2d_12">
       <path d="M 75.06 244.277273 
 L 460.08 244.277273 
-" clip-path="url(#pef0fcb5fa3)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p0626776735)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_13"/>
      <g id="text_12">
@@ -123,7 +123,7 @@ L 460.08 244.277273
      <g id="line2d_14">
       <path d="M 75.06 206.274047 
 L 460.08 206.274047 
-" clip-path="url(#pef0fcb5fa3)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p0626776735)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_15"/>
      <g id="text_13">
@@ -134,7 +134,7 @@ L 460.08 206.274047
      <g id="line2d_16">
       <path d="M 75.06 168.270821 
 L 460.08 168.270821 
-" clip-path="url(#pef0fcb5fa3)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p0626776735)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_17"/>
      <g id="text_14">
@@ -145,7 +145,7 @@ L 460.08 168.270821
      <g id="line2d_18">
       <path d="M 75.06 130.267595 
 L 460.08 130.267595 
-" clip-path="url(#pef0fcb5fa3)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#p0626776735)" style="fill: none; stroke: #3a2d16; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="line2d_19"/>
      <g id="text_15">
@@ -159,7 +159,7 @@ L 119.23666 282.280498
 L 119.23666 282.280498 
 L 92.560909 282.280498 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #4fb2e8"/>
+" clip-path="url(#p0626776735)" style="fill: #4fb2e8"/>
    </g>
    <g id="patch_4">
     <path d="M 132.978713 282.280498 
@@ -167,7 +167,7 @@ L 159.654464 282.280498
 L 159.654464 282.280498 
 L 132.978713 282.280498 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #4fb2e8"/>
+" clip-path="url(#p0626776735)" style="fill: #4fb2e8"/>
    </g>
    <g id="patch_5">
     <path d="M 173.396517 282.280498 
@@ -175,7 +175,7 @@ L 200.072267 282.280498
 L 200.072267 282.280498 
 L 173.396517 282.280498 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #4fb2e8"/>
+" clip-path="url(#p0626776735)" style="fill: #4fb2e8"/>
    </g>
    <g id="patch_6">
     <path d="M 213.814321 282.280498 
@@ -183,7 +183,7 @@ L 240.490071 282.280498
 L 240.490071 282.280498 
 L 213.814321 282.280498 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #4fb2e8"/>
+" clip-path="url(#p0626776735)" style="fill: #4fb2e8"/>
    </g>
    <g id="patch_7">
     <path d="M 254.232125 282.280498 
@@ -191,7 +191,7 @@ L 280.907875 282.280498
 L 280.907875 258.338466 
 L 254.232125 258.338466 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #4fb2e8"/>
+" clip-path="url(#p0626776735)" style="fill: #4fb2e8"/>
    </g>
    <g id="patch_8">
     <path d="M 294.649929 282.280498 
@@ -199,7 +199,7 @@ L 321.325679 282.280498
 L 321.325679 200.239135 
 L 294.649929 200.239135 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #f5a623"/>
+" clip-path="url(#p0626776735)" style="fill: #f5a623"/>
    </g>
    <g id="patch_9">
     <path d="M 335.067733 282.280498 
@@ -207,7 +207,7 @@ L 361.743483 282.280498
 L 361.743483 135.907274 
 L 335.067733 135.907274 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #f5a623"/>
+" clip-path="url(#p0626776735)" style="fill: #f5a623"/>
    </g>
    <g id="patch_10">
     <path d="M 375.485536 282.280498 
@@ -215,7 +215,7 @@ L 402.161287 282.280498
 L 402.161287 130.769238 
 L 375.485536 130.769238 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #f5a623"/>
+" clip-path="url(#p0626776735)" style="fill: #f5a623"/>
    </g>
    <g id="patch_11">
     <path d="M 415.90334 282.280498 
@@ -223,7 +223,7 @@ L 442.579091 282.280498
 L 442.579091 130.297998 
 L 415.90334 130.297998 
 z
-" clip-path="url(#pef0fcb5fa3)" style="fill: #f5a623"/>
+" clip-path="url(#p0626776735)" style="fill: #f5a623"/>
    </g>
    <g id="text_16">
     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #f7f1e6" x="105.898784" y="278.328163" transform="rotate(-0 105.898784 278.328163)">0%</text>
@@ -285,7 +285,7 @@ z
    <g id="line2d_20">
     <path d="M 247.361098 300.522047 
 L 247.361098 112.026047 
-" clip-path="url(#pef0fcb5fa3)" style="fill: none; stroke-dasharray: 4.8,3.6; stroke-dashoffset: 0; stroke: #c9bda4; stroke-width: 1.2"/>
+" clip-path="url(#p0626776735)" style="fill: none; stroke-dasharray: 4.8,3.6; stroke-dashoffset: 0; stroke: #c9bda4; stroke-width: 1.2"/>
    </g>
   </g>
   <g id="text_35">
@@ -298,11 +298,11 @@ L 247.361098 112.026047
    <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c9bda4" x="12.96" y="51.870047" transform="rotate(-0 12.96 51.870047)">each bar. Zero of the 4.17M units below 30 kWp have one: a privacy policy, not missing data. That is why</text>
   </g>
   <g id="text_38">
-   <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c9bda4" x="12.96" y="65.550047" transform="rotate(-0 12.96 65.550047)">the register can measure precision above the 400 m2 floor and not below it</text>
+   <text style="font-size: 9.5px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #c9bda4" x="12.96" y="65.550047" transform="rotate(-0 12.96 65.550047)">the register can measure precision above the 400 m² floor and not below it</text>
   </g>
  </g>
  <defs>
-  <clipPath id="pef0fcb5fa3">
+  <clipPath id="p0626776735">
    <rect x="75.06" y="112.026047" width="385.02" height="188.496"/>
   </clipPath>
  </defs>

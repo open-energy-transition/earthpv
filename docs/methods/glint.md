@@ -152,7 +152,7 @@ triage pre-filter, and both are open work.
 ## The point-spread function, and the false-spike floor (2026-08-17)
 
 Sentinel-2's effective PSF at 10 m is now measured directly from glinting installations:
-**sigma 0.65 px, 90% CI 0.60 to 0.70**, fitted over 68 targets below 500 m2 by forward-
+**sigma 0.65 px, 90% CI 0.60 to 0.70**, fitted over 68 targets below 500 m² by forward-
 modelling each target's polygon at 1 m, blurring it and block-averaging onto each scene's
 own grid at its true sub-pixel position. ESA's stated MTF at Nyquist implies 0.49 to 0.62 px,
 and the small excess is covered by a measured per-scene source displacement of 0.72 px.
@@ -168,7 +168,7 @@ The study's operational output is the **false-spike rate on verified negatives: 
 against 8.7 to 20.3% previously measured on merely model-negative controls. Disabling the
 per-pixel SCL veto raises it to 4.5%, so that veto accounts for about half the improvement
 and unmapped real PV in the old controls for the rest. Against true detection rates the
-instrument separates by 14.9x at 100 to 500 m2 and 7.9x below 100 m2.
+instrument separates by 14.9x at 100 to 500 m² and 7.9x below 100 m².
 
 ## Opportunity: how many chances did this target actually get?
 

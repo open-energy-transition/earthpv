@@ -177,7 +177,7 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     # ground-mount estimate dwarfs its rooftop one, or if one cell dominates a region.
     pixi run earthpv check-density --aoi pakistan
 
-    # Optional precision upgrade for the bins below 1,000 m2, where glint is blind:
+    # Optional precision upgrade for the bins below 1,000 m², where glint is blind:
     pixi run earthpv calibrate-sample --aoi pakistan     # fill `verdict` in JOSM or QGIS
     pixi run earthpv calibrate-candidates --aoi pakistan --manual-reviews <reviewed file>
     ```
@@ -507,7 +507,7 @@ pixi run python scripts/new_region.py check \
 [  ok  ] geoBoundaries ADM1  Thailand
 [  ok  ] geoBoundaries ADM2  Thailand
 [  ok  ] Sentinel-2 imagery  336 scenes under 40% cloud across 16 MGRS tiles, median cloud 19%
-[  ok  ] Grid size  600 cells of 0.1 degree over 72,943 km2
+[  ok  ] Grid size  600 cells of 0.1 degree over 72,943 km²
 ```
 
 What the four answers actually tell you:
@@ -645,7 +645,7 @@ actually lands for a new country: segmentation's &ge; 400 m&sup2; total, plus `r
 ```bash
 pixi run earthpv calibrate-candidates --aoi surat_thani
 pixi run earthpv density --aoi surat_thani --districts
-pixi run earthpv atlas --aoi surat_thani     # >= 400 m2 segmentation-only, for now
+pixi run earthpv atlas --aoi surat_thani     # >= 400 m² segmentation-only, for now
 ```
 
 Without local calibration evidence the table marks itself `status: interim-mapped-only`
@@ -800,7 +800,7 @@ segmentation-only country packs cleanly. The pack is, at most:
 | `<country>_capacity_by_cell.parquet` | **One row per 0.1 degree cell.** The PyPSA-ready table, and the one a global atlas would consume. |
 | `<country>_capacity_by_building.parquet` | One row per building carrying a segmentation detection. |
 | `<country>_capacity_by_region.parquet` | Admin-region aggregate, if `density --districts` ran. |
-| `<country>_roofclf_sub400_*.parquet` | The sub-400 m2 populations, central and the stricter floor. |
+| `<country>_roofclf_sub400_*.parquet` | The sub-400 m² populations, central and the stricter floor. |
 | `<country>_roofclf_ge400_roof_buildings.parquet` | roofclf's rooftop replacement above the floor. |
 | `<country>_raw_detections_unreviewed.parquet` | Every candidate polygon before human review. Leads, not truth. |
 | `<country>_roofclf_model.json`, `_summary.json` | The fitted model and its leave-one-quadrat-out skill. |

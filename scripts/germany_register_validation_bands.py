@@ -30,7 +30,7 @@ log = logging.getLogger("de-bands")
 ROOF_BINS = [0, 200, 500, 2000, np.inf]
 ROOF_LAB = ["<200", "200-500", "500-2k", ">2k"]
 GROUND_BINS = [0, 1e6, 5e6, 10e6, np.inf]
-GROUND_LAB = ["<1 km2", "1-5 km2", "5-10 km2", ">10 km2"]
+GROUND_LAB = ["<1 km²", "1-5 km²", "5-10 km²", ">10 km²"]
 
 
 def main() -> None:

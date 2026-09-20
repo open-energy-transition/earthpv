@@ -326,7 +326,7 @@ France also cannot do one thing Germany can. Its register carries **no coordinat
 size**, so the `p_unmapped` precision instrument has no French counterpart, and **no
 rooftop/ground attribute**, so every share is bracketed rather than stated.
 
-### Where the sub-400 m2 instrument stops working (2026-09-04)
+### Where the sub-400 m² instrument stops working (2026-09-04)
 
 `roofclf` is the half of this project that has no external check, so France was the place to
 get one. It did not survive it.
@@ -535,7 +535,7 @@ photometry pulls faint sources out of noise. Full write-up:
 
 The PSF part works. Fitting a forward model (polygon rasterised at 1 m, Gaussian-blurred,
 block-averaged onto each scene's own grid at the target's true sub-pixel position) over 68
-targets below 500 m2 gives **sigma 0.65 px, 90% CI 0.60 to 0.70**, against an optical theory
+targets below 500 m² gives **sigma 0.65 px, 90% CI 0.60 to 0.70**, against an optical theory
 range of 0.49 to 0.62 px implied by ESA's stated MTF. The residual excess is covered by a
 measured per-scene source displacement of 0.72 px median, so the fitted kernel is an
 effective one that already contains co-registration.
@@ -554,9 +554,9 @@ inside the 27 Rule-1 complete quadrats carrying `has_pv == 0`, give a false-spik
 **2.0%**, against the 8.7 to 20.3% previously measured on merely model-negative controls. An
 ablation puts the per-pixel SCL cloud veto at half of that improvement (4.5% with it
 disabled) and unmapped real PV in the old controls at the rest. Against true detection rates
-the instrument separates by 15x at 100 to 500 m2 and 7.9x below 100 m2, so
+the instrument separates by 15x at 100 to 500 m² and 7.9x below 100 m², so
 [the spike-rate density estimator](issues/glint-spike-rate-density-estimator.md)'s stated
-blocker, that false rate equals or exceeds true rate below 500 m2, does not hold against
+blocker, that false rate equals or exceeds true rate below 500 m², does not hold against
 verified negatives.
 
 ### Super-resolution
@@ -663,7 +663,7 @@ That matters more than it sounds, because of where the classifier's weight sits:
 | `b02_mean` | +2.78 | 10 m |
 
 The four largest are SWIR or SWIR-derived. So the model leans hardest on bands that carry
-no independent information at the grid it is scored on, and a 100 m2 building's SWIR value
+no independent information at the grid it is scored on, and a 100 m² building's SWIR value
 comes from a 20 m cell whose centre can be 10 m away from it.
 
 Two fixes were measured against the 30 production quadrats, leave-one-quadrat-out, paired
@@ -707,7 +707,7 @@ class 6.
 
 ### Unmixing the pixel against a known footprint (2026-09-19)
 
-A zonal mean over a building's pixels is a mean of MIXTURES: a 100 m2 roof is one 10 m
+A zonal mean over a building's pixels is a mean of MIXTURES: a 100 m² roof is one 10 m
 pixel it shares with road, yard and neighbours. That dilution is the mechanism behind
 nearly every negative result in this register. Blind two-endmember unmixing was rejected at
 0.659 AUC, but this is a different problem and a better-posed one, because the abundances
@@ -719,7 +719,7 @@ is a linear inverse problem for the per-building reflectance `r`, solved for a w
 quadrat at once with a ridge toward the zonal mean (`preprocess.unmix_buildings`).
 
 **On synthetic data it works exactly as intended.** With buildings deliberately offset from
-the pixel grid and 36 to 196 m2 in size, so the median building fills 38% of its brightest
+the pixel grid and 36 to 196 m² in size, so the median building fills 38% of its brightest
 pixel, unmixing cuts mean reflectance error against truth by **67%** (0.0975 to 0.0319) and
 recovers **84% of the true dark/bright contrast** where the zonal mean recovers 28%.
 
@@ -730,7 +730,7 @@ a substantial loss.
 Two explanations, and the second is the interesting one:
 
 - **The footprints are not that good.** The solve assumes `A` is exact. VIDA is
-  imagery-derived and systematically undersized -- this project already measured 117,003 m2
+  imagery-derived and systematically undersized -- this project already measured 117,003 m²
   of mapped rooftop PV overhanging VIDA outlines across 27 quadrats, which is 80% of what
   [the parcel label](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) recovers.
   A wrong `A` does not merely fail to help, it attributes the wrong pixels to the building.
@@ -950,7 +950,7 @@ aggregate the atlas consumes rather than at AUC.
 | Gradient boosting, for reference | 0.8526 | 0.7979 | *0.0165* | -- |
 
 **Area weighting does what it promises, and that is not what the product needs.** Capacity
-is area-weighted while the fit treats a 30 m2 shed and a 390 m2 warehouse as equally
+is area-weighted while the fit treats a 30 m² shed and a 390 m² warehouse as equally
 important rows, so weighting the likelihood by roof area is the obvious correction. It
 improves the quantity it optimises -- the predicted-over-true flagged roof AREA moves 1.084
 to 1.035 -- and it is worse at everything else: -0.0111 AUC, -0.0160 within size band, and
@@ -1113,7 +1113,7 @@ cancels the contrast. Sweeping the neighbourhood scale shows there is no escape:
 Monotone, and asymptotic toward not conditioning at all. This also explains why the
 quadrat-scale version
 ([context features](#spectral-coherence-and-where-transferability-lives-2026-09-19)) merely
-TIED rather than helped or hurt: at 1-4 km2 the group is large enough that adoption
+TIED rather than helped or hurt: at 1-4 km² the group is large enough that adoption
 clustering does not dominate its median, so it neither cancels signal nor removes much
 heterogeneity.
 
@@ -1237,8 +1237,8 @@ genuinely exist in Germany.
 | 60_508 | 84% | 3,524 | **5,588** | **+2.48** |
 
 Four scenes behave as the physics predicts. The two that inverted are explained by array
-size rather than by snow: cell 60_508's mapped arrays have a **median area of 126 m2**,
-about 1.3 pixels at 10 m, against 338 and 320 m2 in the two well-behaved cells. At roughly
+size rather than by snow: cell 60_508's mapped arrays have a **median area of 126 m²**,
+about 1.3 pixels at 10 m, against 338 and 320 m² in the two well-behaved cells. At roughly
 1.2 PV pixels per array the mask is mostly snow-covered ROOF, which reads brighter than a
 roof average that includes shadowed and wet surfaces. The project's central limitation,
 array size against pixel size, reappears here amplified rather than relieved.
@@ -1505,7 +1505,7 @@ precision cannot read as a gain.
 The mechanism is that **equal AVERAGE precision is the wrong objective**. At a fixed pooled
 precision the recall-maximising allocation equalises the MARGINAL precision -- the precision
 of the last building admitted -- not the stratum's average. A stratum whose base rate is
-3.6% (the 0-50 m2 band, 50,502 of 123,867 buildings) has to be cut very deep before its
+3.6% (the 0-50 m² band, 50,502 of 123,867 buildings) has to be cut very deep before its
 average precision reaches 0.5, and its recall collapses from 0.191 to 0.059 while the bands
 that were already easy barely move.
 
@@ -1752,9 +1752,9 @@ between p10 and p50, with a standard deviation of 148 DN, against roof reflectan
 order 1,000 to 3,000 DN.
 
 The likeliest reason it fails is the same sensor ceiling that
-[the 400 m2 floor](#the-detection-floor-measured-against-sub-metre-truth-2026-09-12) and
+[the 400 m² floor](#the-detection-floor-measured-against-sub-metre-truth-2026-09-12) and
 [the French transfer result](results/france.md#earthpv-against-france-the-sub-400-m2-instrument-does-not-transfer)
-keep returning: a sub-400 m2 array is a minority of a 100 m2 pixel, so whatever anisotropy
+keep returning: a sub-400 m² array is a minority of a 100 m² pixel, so whatever anisotropy
 it has is diluted by a roof that does not share it, in every statistic equally. Twelve
 dry-season scenes also give little specular opportunity, which is the ceiling
 [glint](methods/glint.md) already documents from the other direction.
