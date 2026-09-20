@@ -591,7 +591,24 @@ def area_weighted_zonal_mean(
     # and measured nationally those recovered buildings flag at 4.89x the rate of buildings
     # scored in both conventions, which is the cell-edge artefact returning in a new form.
     # See `MIN_VALID_COVER_FRAC`.
-    covered = (w > 1e-6) & (w >= MIN_VALID_COVER_FRAC * np.maximum(total, 1e-9))
+    # Two conditions, and the SECOND is the load-bearing one.
+    #
+    # The coverage floor alone does not work, measured 2026-09-20: the buildings this
+    # function newly scores are not mostly-over-fill, they are buildings whose
+    # REPRESENTATIVE POINT landed on fill or outside the window while their footprint
+    # overlaps real imagery, so they pass any coverage test and the floor never fires. They
+    # then flag at 4.89x the rate of buildings scored under both conventions, because they
+    # sit against the window edge where merged tile pixels read dark and PV is dark.
+    #
+    # So: area weighting may only IMPROVE THE VALUE of a building `zonal_mean_max` already
+    # scored. It may never make a previously unscored building scorable. That preserves
+    # exactly the safe direction CLAUDE.md records -- nothing unscored can clear a
+    # threshold -- while keeping the gain the quadrats actually measured, which came from
+    # better values on buildings that were always in the population.
+    already = np.isfinite(np.asarray(fallback_means)).all(axis=0)
+    covered = ((w > 1e-6)
+               & (w >= MIN_VALID_COVER_FRAC * np.maximum(total, 1e-9))
+               & already)
     out = np.array(fallback_means, dtype="float64", copy=True)
     if covered.any():
         for bi in range(nb):

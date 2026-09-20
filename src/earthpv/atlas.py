@@ -177,10 +177,15 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
 # `&nbsp;` between the number and the unit so a wrap can never split "400 m2", and an
 # explicit break after "below" so the Gold line reads as two clauses rather than wherever
 # the box happens to run out.
+# "Calibrated", not "validated". This repository keeps the two apart deliberately:
+# CALIBRATION is fitting the coverage ratio and precision tables against exhaustively
+# mapped areas, which is what the tiers describe; VALIDATION is the separate random-cell
+# review afterwards. Saying "validated" here would claim the second on the strength of
+# the first.
 _VSCORE_SUB = {
-    "gold": "Validated above and below<br>the 400&nbsp;m\u00b2 floor",
-    "silver": "Above 400&nbsp;m\u00b2 only.<br>Locally validated.",
-    "bronze": "Above 400&nbsp;m\u00b2 only.<br>No local validation.",
+    "gold": "Calibrated above and below<br>the 400&nbsp;m\u00b2 floor",
+    "silver": "Above 400&nbsp;m\u00b2 only.<br>Locally calibrated.",
+    "bronze": "Above 400&nbsp;m\u00b2 only.<br>No local calibration.",
 }
 
 
