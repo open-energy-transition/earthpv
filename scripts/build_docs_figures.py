@@ -2489,6 +2489,19 @@ def sync_interactive():
             print(f"  {src_rel} missing, skipping")
             continue
         (dst_dir / name).write_bytes(src.read_bytes())
+        # An atlas links its per-cell GeoParquet by a sibling filename built from its own
+        # stem. Most sources keep their name through the sync, but pakistan_pv_growth_atlas
+        # is published as pakistan_growth_atlas, so copying the HTML alone leaves the link
+        # pointing at a file that is not here. Copy the sibling under the PUBLISHED stem.
+        pq = src.with_name(src.stem + "_capacity_by_cell.parquet")
+        if pq.exists():
+            published = (dst_dir / name).with_name(
+                Path(name).stem + "_capacity_by_cell.parquet")
+            published.write_bytes(pq.read_bytes())
+            # and keep the href in step with the name we just wrote it under
+            html = (dst_dir / name).read_text()
+            (dst_dir / name).write_text(
+                html.replace(pq.name, published.name))
         print(f"  wrote docs/assets/interactive/{name}")
 
 
