@@ -28,6 +28,10 @@
 > most of what is there.**
 > [What that is measured on](#how-small-an-installation-does-it-find)
 
+> **Mapping a country we have not reached?** earthpv is built to be forked per country and
+> merged back: the aim is a global PV evidence atlas assembled from many countries, each run
+> and verified by people who know the ground. [Fork it and add yours](#add-your-country-the-atlas-is-meant-to-be-collective).
+
 > [!WARNING]
 > **Active development.** EarthPV is a research prototype: it is actively experimenting
 > with new solar detection methods, and its detectors, calibration and headline numbers
@@ -373,6 +377,64 @@ One negative result worth singling out, because it constrains how anyone should 
 OpenStreetMap-derived PV numbers including this project's own: **German OSM is only 3.6%
 complete for rooftop PV by unit count**, measured against the MaStR register. "Germany is
 well mapped in OpenStreetMap" is true of buildings and false of rooftop solar.
+
+## Add your country: the atlas is meant to be collective
+
+**The goal is a global PV evidence atlas assembled from many countries, each run and
+verified by people who know the ground.** Nothing in this pipeline is Pakistan-specific:
+every input is a global dataset, so the intended shape of this project is a fork per
+country and this repository as the place their results come back together. Pakistan,
+Germany, France, Gujarat and Zambia are the first five, not the destination.
+
+Be straight about what is not built yet: **there is no combiner that merges countries into
+one global surface.** What exists is a shared pipeline, a shared atlas format and a shared
+data pack layout, which is what makes that step possible later. A contribution that follows
+the layout will still be usable when it is written.
+
+```bash
+gh repo fork open-energy-transition/earthpv --clone --remote
+cd earthpv && git switch -c atlas/<country>
+
+pixi run python scripts/new_region.py check --iso3 <ISO3> --name <country>   # preflight
+pixi run python scripts/new_region.py add   --iso3 <ISO3> --name <country>
+pixi run python scripts/new_region.py plan  --aoi <country>                  # your runbook
+```
+
+Run the pipeline that `plan` prints. Every stage is resumable; `compose` is the long pole,
+measured in days on a home connection. A country with exhaustively mapped calibration areas
+gets the full two-detector atlas; one with a complete public register can substitute that
+register; one with neither gets a **segmentation-only atlas**, which is a real result and is
+how Gujarat and Zambia are published here.
+
+Then package the raw numbers. The atlas page is the headline, but **the per-cell capacity
+table is the product**, and since `data/` is gitignored these tables ship as GitHub Release
+assets with only a manifest committed:
+
+```bash
+pixi run python scripts/build_atlas_data_pack.py --aoi <country>
+gh release create <country>-atlas-data-$(date +%Y-%m-%d) dist/<country>-atlas-data/* \
+    --title "<Country> atlas data" --notes "Point-in-time snapshot"
+```
+
+That writes `<country>_capacity_by_cell.parquet` (one row per 0.1 degree cell, the
+PyPSA-ready table a global atlas would consume) alongside the per-building and per-region
+tables, the roofclf populations, the unreviewed raw detections and the fitted model, plus
+`configs/<country>_atlas_downloads.json`. Rebuild the atlas with `--downloads-manifest` and
+`--data-release-url` so the page links to them, add a short page under `docs/results/`, and
+open the pull request. **Commit the manifest, never the pack.**
+
+One step cannot be skipped and cannot be automated: after national scoring, draw 20 random
+cells and check them against high-resolution imagery. Without it a number has no evidence
+under it.
+
+**Working with Claude Code or another agent?** `CLAUDE.md` is the repository's agent brief,
+and most of this pipeline suits an agent well: preflight, config, babysitting the long
+stages, assembling the data pack, drafting the page. Point it at `CLAUDE.md` and
+`docs/reproduce.md` and ask it to stop before anything needing human eyes. It must not draw
+calibration areas, declare them complete, or sign off validation on its own.
+
+Full runbook, including the agent prompt that works and the review checklist:
+[Contribute your country atlas back](https://open-energy-transition.github.io/earthpv/reproduce/#contribute-your-country-atlas-back).
 
 ## Community
 

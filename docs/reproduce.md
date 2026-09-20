@@ -731,6 +731,147 @@ train on the region with the best label quality available (Germany), infer on th
 have people verify, retrain with the verified target-region chips oversampled. That
 sequence, not a bigger backbone, is what moved the numbers.
 
+## Contribute your country atlas back
+
+**The goal is a global PV evidence atlas assembled from many countries, each run and
+verified by people who know the ground.** No single group can map the world's rooftops, and
+nothing in this pipeline is Pakistan-specific: every input is a global dataset. So the
+intended shape of this project is a fork per country, and this repository as the place their
+results come back together.
+
+**Be warned about what is not built yet.** There is no combiner that merges several
+countries into one global surface, and no schema enforcing that two countries' numbers mean
+the same thing. What exists is a shared pipeline, a shared atlas format and a shared data
+pack layout, which is what makes a combiner possible later. A contribution that follows the
+layout below is one that will still be usable when that step is written.
+
+### 1. Fork and branch
+
+```bash
+gh repo fork open-energy-transition/earthpv --clone --remote
+cd earthpv
+git switch -c atlas/<country>
+```
+
+One branch per country, named `atlas/<country>`. Keep it to that country: a branch that also
+changes shared estimator code is two reviews in one, and the estimator half needs the
+experiment register treatment rather than a country review.
+
+### 2. Register the area and run the pipeline
+
+`scripts/new_region.py` is the front door, and [Scale to a new
+country](#scale-to-a-new-country) is the long form of what follows.
+
+```bash
+pixi run python scripts/new_region.py check --iso3 <ISO3> --name <country>
+pixi run python scripts/new_region.py add   --iso3 <ISO3> --name <country>
+pixi run python scripts/new_region.py plan  --aoi <country>   # prints your runbook
+```
+
+`plan` prints the ordered command list for that country. [The full
+pipeline](#the-full-pipeline) documents each stage. Two properties matter when you run it:
+every stage is **resumable** and safe to re-run, and `compose` is the long pole, measured in
+days on a home connection.
+
+**What you can and cannot skip.** A country with exhaustively mapped calibration areas gets
+the full two-detector atlas. A country with a complete public register can substitute that
+register for the quadrats. A country with neither gets a **segmentation-only atlas**, which
+is a real result and is how Gujarat and Zambia are published here. What you cannot skip is
+[random-cell manual validation](#12-manual-validation-random-cells) after national scoring:
+without it a number has no evidence behind it, and it is the one step no agent can do for
+you.
+
+### 3. Build the data pack
+
+The atlas page is the headline; the **per-cell capacity table is the product**. `data/` is
+gitignored and these tables run to hundreds of megabytes, so they are published as GitHub
+Release assets and the repository carries only a manifest pointing at them.
+
+```bash
+pixi run python scripts/build_atlas_data_pack.py --aoi <country>
+```
+
+That collects whatever the pipeline produced into `dist/<country>-atlas-data/`, measures it,
+and writes `configs/<country>_atlas_downloads.json`. It is tolerant of missing pieces, so a
+segmentation-only country packs cleanly. The pack is, at most:
+
+| File | What it is |
+| --- | --- |
+| `<country>_capacity_by_cell.parquet` | **One row per 0.1 degree cell.** The PyPSA-ready table, and the one a global atlas would consume. |
+| `<country>_capacity_by_building.parquet` | One row per building carrying a segmentation detection. |
+| `<country>_capacity_by_region.parquet` | Admin-region aggregate, if `density --districts` ran. |
+| `<country>_roofclf_sub400_*.parquet` | The sub-400 m2 populations, central and the stricter floor. |
+| `<country>_roofclf_ge400_roof_buildings.parquet` | roofclf's rooftop replacement above the floor. |
+| `<country>_raw_detections_unreviewed.parquet` | Every candidate polygon before human review. Leads, not truth. |
+| `<country>_roofclf_model.json`, `_summary.json` | The fitted model and its leave-one-quadrat-out skill. |
+
+Publish the pack as a release on **your fork**, then point the atlas at it:
+
+```bash
+gh release create <country>-atlas-data-$(date +%Y-%m-%d) dist/<country>-atlas-data/* \
+    --title "<Country> atlas data" --notes "Point-in-time snapshot"
+
+pixi run earthpv atlas --aoi <country> --osm-solar <national OSM pull> \
+    --downloads-manifest configs/<country>_atlas_downloads.json \
+    --data-release-url https://github.com/<you>/earthpv/releases/download/<tag> \
+    --out docs/assets/interactive/<country>_evidence_atlas.html
+```
+
+### 4. Write the page and open the pull request
+
+Add a short results page under `docs/results/<country>.md`, copying
+`docs/results/capacity.md` for shape: a lede, the embedded interactive page, and a caveats
+section that says what the numbers do **not** claim. Register the HTML in
+`INTERACTIVE` in `scripts/build_docs_figures.py`, add the page to `mkdocs.yml`'s PV Atlas
+nav, and run `pixi run docs-figures && pixi run -e docs mkdocs build --strict`. The build is
+strict, so a broken link fails CI rather than shipping.
+
+**What belongs in the pull request** is the AOI block in `configs/aoi.yaml`, the atlas HTML
+under `docs/assets/interactive/`, the results page, the nav entry, the downloads manifest,
+and any calibration boundaries you drew under `data/labels/` that you are willing to share.
+**What does not** is anything under `data/` or `dist/`: those are gitignored, and the tables
+live on the release.
+
+A contribution is easiest to accept when it states, in the page itself: which detectors ran,
+whether calibration areas exist and how many, the random-cell validation result, and which
+figure is a floor rather than an estimate. A segmentation-only atlas that says so plainly is
+more useful than a confident number with no evidence under it.
+
+### Running this with Claude or another coding agent
+
+Most of this pipeline is long-running, resumable and heavily documented, which suits an
+agent well. `CLAUDE.md` in the repository root is the brief: it is the current state of the
+pipeline, its invariants and the mistakes already made, and an agent that has read it will
+avoid most of them.
+
+```bash
+# from the repository root, after forking
+claude
+```
+
+Then give it the country and let it work from the runbook, for example:
+
+> Read CLAUDE.md and docs/reproduce.md. Set up <country> as a new AOI: preflight it with
+> scripts/new_region.py, add the config, and run the pipeline through the segmentation-only
+> evidence atlas. Run long stages as detached systemd units and report what each one
+> produced. Stop before anything that needs human validation and tell me what you need.
+
+What works well: the preflight, the config edit, running and babysitting the long stages,
+diagnosing the documented failure modes (`compose` leaking file descriptors, a disk filling,
+a Planetary Computer token expiring), assembling the data pack, and drafting the results
+page.
+
+**What an agent must not do on its own**, and what to tell it not to: draw or declare
+calibration areas complete, sign off random-cell validation, or publish a headline number
+without the validation behind it. Those are the steps where the evidence actually enters,
+and an agent has no way to look at the imagery and decide. Ask it to prepare the review
+tiles and wait.
+
+Two practical notes from running this repository with an agent. Long jobs need
+`systemd-run --user` with lingering enabled, or a session logout kills them; and ask for
+**paired, per-fold statistics** on any comparison, because a difference of medians has
+produced a wrong conclusion in this project more than once.
+
 ## Rebuilding this site
 
 ```bash

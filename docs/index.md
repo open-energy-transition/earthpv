@@ -27,6 +27,12 @@ of what is there.**
 [What that is measured on](#how-small-an-installation-does-it-find)
 { .lede }
 
+**Mapping a country we have not reached?** earthpv is built to be forked per country
+and merged back: the aim is a global PV evidence atlas assembled from many countries,
+each run and verified by people who know the ground.
+[Fork it and add yours](reproduce.md#contribute-your-country-atlas-back)
+{ .lede }
+
 !!! warning "Active development"
     EarthPV is still a research prototype. It is actively experimenting with new solar
     detection methods, and its detectors, calibration and headline numbers are still being
@@ -376,6 +382,40 @@ University of Management Sciences, working in close coordination with Open Energ
 Transition. See [Community](#community) for the full contributor list, including every
 named student mapper, and the
 [TraceTheSun concept note](22072026-Concept-Note-TraceTheSun.md) for the programme behind it.
+
+## Add your country: the atlas is meant to be collective
+
+**The goal is a global PV evidence atlas assembled from many countries, each run and
+verified by people who know the ground.** Nothing in this pipeline is Pakistan-specific:
+every input is a global dataset, so the intended shape of the project is a fork per country
+and this repository as the place their results come back together. Pakistan, Germany,
+France, Gujarat and Zambia are the first five, not the destination.
+
+What is not built yet, stated plainly: **there is no combiner that merges countries into one
+global surface.** What exists is a shared pipeline, a shared atlas format and a shared data
+pack layout, which is what makes that step possible later.
+
+The short version of contributing one:
+
+1. Fork the repository and branch as `atlas/<country>`.
+2. Preflight and register the area with `scripts/new_region.py`, which prints your runbook.
+3. Run the pipeline. Every stage is resumable; `compose` is the long pole. A country with
+   mapped calibration areas gets the full two-detector atlas, one with a complete public
+   register can substitute that register, and one with neither gets a segmentation-only
+   atlas, which is a real result.
+4. Draw 20 random cells and check them against high-resolution imagery. This step cannot be
+   skipped or automated, and without it a number has no evidence under it.
+5. Package the raw numbers with `scripts/build_atlas_data_pack.py`. The per-cell capacity
+   table is the product; because `data/` is gitignored it ships as a GitHub Release asset
+   with only a manifest committed.
+6. Add a short page under `docs/results/` and open the pull request.
+
+Most of this suits a coding agent, and `CLAUDE.md` is the repository's brief for one. The
+exceptions are the steps where evidence actually enters: drawing calibration areas,
+declaring them complete, and signing off validation.
+
+Full runbook, including the agent prompt and the review checklist:
+[Contribute your country atlas back](reproduce.md#contribute-your-country-atlas-back).
 
 ## Community
 

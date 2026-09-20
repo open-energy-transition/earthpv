@@ -121,3 +121,7 @@ results/glint_validation_pakistan/*
 results/pakistan_roofclf_parcel_validation/*
 !results/pakistan_roofclf_parcel_validation/*.geojson
 !results/pakistan_roofclf_parcel_validation/*.mapcss
+
+# Atlas data packs staged for a GitHub Release; the MANIFEST under configs/ is what
+# gets committed, never the assets themselves.
+dist/
