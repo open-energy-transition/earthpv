@@ -258,6 +258,15 @@
   .comp-stack { display: flex; width: 100%; height: 34px; border-radius: 6px; overflow: hidden;
     background: var(--panel-2); }
   .comp-stack.small { height: 26px; }
+  /* Installation-size bands under the method bar. Deliberately quiet: a tick line and a
+     mono label, so it reads as an axis annotation rather than a second data series. */
+  .comp-sizes { display: flex; width: 100%; margin-top: 5px; }
+  .comp-size-span { position: relative; min-width: 0; padding-top: 7px;
+    border-left: 1px solid var(--hair); }
+  .comp-size-span:last-child { border-right: 1px solid var(--hair); }
+  .comp-size-span > span { display: block; font-family: var(--font-mono); font-size: 10px;
+    color: var(--muted); letter-spacing: 0.04em; text-align: center;
+    white-space: nowrap; overflow: hidden; }
   .comp-seg { height: 100%; position: relative; cursor: pointer;
     border-right: 2px solid var(--panel-2); transition: filter 0.1s ease; }
   .comp-seg:last-child { border-right: none; }
@@ -641,6 +650,7 @@
 
       <div class="comp-stack-wrap">
         <div class="comp-stack" id="compStackBest"></div>
+        <div class="comp-sizes" id="compSizesBest"></div>
         <div class="comp-tip" id="compTipBest"></div>
       </div>
       <div class="comp-scale"><span>0 MWp</span><span id="compScaleBest"></span></div>
@@ -648,6 +658,7 @@
       <div class="comp-row-label" id="compVerifiedLabel"></div>
       <div class="comp-stack-wrap">
         <div class="comp-stack small" id="compStackVerified"></div>
+        <div class="comp-sizes" id="compSizesVerified"></div>
         <div class="comp-tip" id="compTipVerified"></div>
       </div>
       <div class="comp-scale"><span>0 MWp</span><span id="compScaleVerified"></span></div>
@@ -1314,29 +1325,29 @@ out geom;</div>
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
       { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
-        label: "OSM hand-mapped - rooftop (not already found by the model)" },
+        label: "OSM hand-mapped - rooftop (not already found by the model)", size: "any size" },
       { key: "osm_unmatched_ground", method: "osm", placement: "ground", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
-        label: "OSM hand-mapped - ground-mount (not already found by the model)" },
+        label: "OSM hand-mapped - ground-mount (not already found by the model)", size: "any size" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
-        label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)" },
+        label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)", size: "any size" },
       { key: "seg_roof_outdomain", method: "seg", placement: "roof", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
-        label: "TerraMind segmentation - rooftop, outside the calibrated domain" },
+        label: "TerraMind segmentation - rooftop, outside the calibrated domain", size: "\u2265 400 m\u00b2" },
       { key: "seg_ground", method: "seg", placement: "ground", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
-        label: "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)" },
+        label: "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)", size: "\u2265 400 m\u00b2" },
       { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
-        label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain" },
+        label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain", size: "\u2265 400 m\u00b2" },
       { key: "small_central", method: "roofclf", placement: "roof", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
-        label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated" },
+        label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated", size: "< 400 m\u00b2" },
       { key: "small_outdomain", method: "sppi", placement: "roof", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
-        label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain" },
+        label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain", size: "< 400 m\u00b2" },
     ];
     const verified = [
       { key: "osm_roof", method: "osm", placement: "roof", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
-        label: "OSM hand-mapped - rooftop (all of it, matched or not)" },
+        label: "OSM hand-mapped - rooftop (all of it, matched or not)", size: "any size" },
       { key: "osm_ground", method: "osm", placement: "ground", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
-        label: "OSM hand-mapped - ground-mount (all of it, matched or not)" },
+        label: "OSM hand-mapped - ground-mount (all of it, matched or not)", size: "any size" },
       { key: "small_low", method: "sppi", placement: "roof", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
-        label: "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain" },
+        label: "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain", size: "< 400 m\u00b2" },
     ];
     return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
   }
@@ -1367,6 +1378,26 @@ out geom;</div>
       return `<div class="comp-seg${r.texture ? " texture" : ""}${r.placement === "ground" ? " ground" : ""}" data-i="${i}" `
         + `style="width:${w}%;background:var(--${r.method === "roofclf" ? "accent" : r.method === "seg" ? "large" : r.method === "sppi" ? "extended" : "domain"})">${label}</div>`;
     }).join("");
+    // The size strip under the bar. The components are written in size order, so equal
+    // neighbours collapse into one span: a reader can see at a glance which slice of the
+    // total is above the 400 m2 floor and which is below it, which the method colours
+    // alone do not say. Built from the same rows, so it can never disagree with the bar.
+    const strip = document.getElementById(stackId.replace("compStack", "compSizes"));
+    if (strip) {
+      const runs = [];
+      rows.forEach(r => {
+        const last = runs[runs.length - 1];
+        if (last && last.size === (r.size || "")) last.mwp += r.mwp;
+        else runs.push({ size: r.size || "", mwp: r.mwp });
+      });
+      strip.innerHTML = runs.map(run => {
+        const pct = 100 * run.mwp / total;
+        const show = pct >= 7 ? run.size : "";
+        return `<div class="comp-size-span" style="width:${pct.toFixed(3)}%" `
+          + `title="${run.size}: ${fmt(run.mwp)} MWp, ${pct.toFixed(0)}% of the total">`
+          + `<span>${show}</span></div>`;
+      }).join("");
+    }
     stack.querySelectorAll(".comp-seg").forEach(el => {
       const r = rows[+el.dataset.i];
       el.addEventListener("pointerenter", () => {
