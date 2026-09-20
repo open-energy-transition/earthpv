@@ -6,6 +6,10 @@ that differs is how the same downloaded pixels became per-building reflectance.
 
     pixi run python scripts/run_preprocess_ablation.py --modes sharpen20,sharpen20_interp,unmix
 
+**Since 2026-09-20 `building_table` is area-weighted by default**, so a table rebuilt now is
+not comparable to the committed baseline, which predates that. Pass `area_weighted=False`
+to reproduce the figures in this register's pre-2026-09-20 rows.
+
 Variants are described in `earthpv.preprocess`. The baseline defaults to the table from the
 temporal ablation, whose MODEL_FEATURES columns reproduce production exactly (median fold
 AUC 0.8574, within size band 0.8206).

@@ -1291,6 +1291,7 @@ The decomposition that isolates it:
 | Mean at 5 m | 0.8789 | +0.0313 | 25 of 30 |
 | Multi-frame fusion at 5 m | 0.8767 | +0.0273 | 26 of 30 |
 | Area-weighted zonal means at 10 m | 0.8588 | +0.0113 | 25 of 30 |
+| Area-weighted zonal means, as SHIPPED (nodata-masked, no rows dropped) | 0.8682 | **+0.0119** | 24 of 29 |
 | Median at 5 m, nearest | 0.8623 | +0.0058 | 23 of 30 |
 | SEN2SR single-image at 2.5 m | 0.8402 | **-0.0367** | 6 of 30 |
 
@@ -1365,6 +1366,53 @@ worth **+0.0113 within size band** on its own (25 of 30 folds, p = 0.0001). Comb
 trimmed mean it reaches **+0.0305 raw, +0.0207 net of the path effect**, against +0.0215
 predicted by adding them: additive to within noise, because they attack different noise
 sources.
+
+**SHIPPED 2026-09-20, and it is the only part of this section that costs nothing.** The
+reducer and the frame count both need a country recomposited; area weighting is a read-side
+change to `roofclf` and needs no new imagery at all, so it was promoted to the default
+(`roofclf.AREA_WEIGHTED_ZONAL`, `roofclf.area_weighted_zonal_mean`, applied in BOTH
+`building_table` and `score_buildings_national`, with `--no-area-weighted` on
+`roof-classifier` and `roofclf-score-national` reproducing every earlier figure).
+
+**The shipped version is not the experimental code, so it was re-measured rather than
+carried over.** Two things had to change first, neither of which shows up in an interior
+quadrat:
+
+  * *The nodata mask.* The experiment tested `np.isfinite`, right for a NaN-masked scene
+    stack and wrong for a composite window, where fill is 0.0. Unmasked, a cell-edge fill
+    pixel enters the weighted mean as genuine near-zero reflectance, and PV is dark: that is
+    the mechanism that once made **45.6% of every nationally flagged building** a cell-edge
+    artefact. The shipped version applies the same all-bands-equal-fill test `zonal_mean_max`
+    uses.
+  * *The fallback.* A footprint with no subpixel of its own got zero weight and came back
+    NaN, silently dropping **0.16 to 0.47% of buildings per quadrat** -- the smallest ones,
+    i.e. the population this module exists for. The shipped version keeps `zonal_mean_max`'s
+    value for those rows, so the scored population is unchanged by construction. 0.06 to 0.8%
+    of buildings take that path.
+
+Re-measured on all 30 quadrats, both arms on identical rows, no rows lost:
+
+| Metric | Pixel-centre | Area-weighted | Delta | Folds better | Sign p | Wilcoxon p |
+| --- | --- | --- | --- | --- | --- | --- |
+| AUC | 0.8591 | 0.8682 | +0.0085 | 28 of 29 | 0.0000 | 0.0000 |
+| **Within size band** | 0.8093 | 0.8193 | **+0.0119** | 24 of 29 | 0.0005 | 0.0017 |
+
+and in the units the atlas consumes, at an identical precision of 0.500:
+
+| Arm | Flagged | Precision | Recall |
+| --- | --- | --- | --- |
+| Pixel-centre | 21,904 | 0.500 | 0.6386 |
+| **Area-weighted** | 22,580 | 0.500 | **0.6583** |
+
+**+2.0 points of recall, 3.1% relative, for no imagery.** The shipped version slightly
+exceeds the experimental +0.0113, which is the expected direction: it stopped dropping the
+smallest buildings. Acceptance test: `scripts/verify_area_weighted_default.py`, result
+`results/roofclf_area_weighted_default.json`.
+
+**No published figure moves until Pakistan is refitted and rescored nationally** -- the
+calibration and the national scoring must share one zonal convention, and
+`check_scoring_matches_calibration` now refuses a mismatched pair by name rather than by
+coefficient hash.
 
 **Frame count helps, weakly, and only through variance.** Full-year stacks (~36 scenes
 against the dry-season 12) separate frame count from season by drawing a fixed random 12 out

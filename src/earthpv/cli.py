@@ -593,6 +593,8 @@ def roof_classifier_cmd(
         "NOT put in the fitted model, it is offered to the ablation, which is what decides "
         "whether keeping more than the median earns its place.",
     ),
+    area_weighted: bool = typer.Option(True, "--area-weighted/--no-area-weighted",
+                                       help="Weight each 10 m pixel by the fraction of the footprint covering it (shipped default since 2026-09-20). --no-area-weighted restores the pixel-centre convention every figure published before then used."),
 ) -> None:
     """Per-building PV classifier on the fully-mapped quadrats: the sub-400 m2 instrument.
 
@@ -612,6 +614,7 @@ def roof_classifier_cmd(
         seg_prob_dir=seg_prob_dir, frac_prob_dir=frac_prob_dir, labels_dir=labels_dir,
         out_dir=out_dir, parcel_label=parcel_label, include_yard_features=yard_features,
         table_path=table_path, temporal_stats=temporal_features,
+        area_weighted=area_weighted,
     )
 
 
@@ -641,6 +644,9 @@ def roofclf_score_national_cmd(
         "reflectance. Use a distinct --out-dir per layer; the output feeds epoch "
         "DIFFS (`earthpv growth`), never a standalone historical level"
     ),
+    area_weighted: bool = typer.Option(True, "--area-weighted/--no-area-weighted",
+                                       help="Weight each 10 m pixel by the fraction of the footprint covering it (shipped default since 2026-09-20). --no-area-weighted restores the pixel-centre convention every figure published before then used. Must match the calibration the model came "
+                                            "from; a mismatch is refused downstream."),
 ) -> None:
     """Score every VIDA building nationally with an already-fit roofclf model -- the
     sub-400 m2 half of the **main workflow** (see CLAUDE.md's "Main workflow" section):
@@ -658,6 +664,7 @@ def roofclf_score_national_cmd(
     score_buildings_national(
         aoi, model, feats, composites, out_dir,
         min_roof_area_m2=min_roof_area_m2, force=force, limit=limit,
+        area_weighted=area_weighted,
         layer_index=layer_index,
     )
     typer.echo(f"-> {out_dir}")

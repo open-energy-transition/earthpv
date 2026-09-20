@@ -62,6 +62,7 @@ results/*
 !results/roofclf_epoch_mechanism.json
 !results/roofclf_epoch_mechanism_folds.csv
 !results/roofclf_epoch_deployment.json
+!results/roofclf_area_weighted_default.json
 !results/roofclf_epoch_difference_on_trimzonal.json
 !results/roofclf_epoch_difference_on_trimzonal_folds.csv
 !results/roofclf_epoch_difference_wide_on_trimzonal.json

@@ -1,0 +1,36 @@
+{
+  "auc": {
+    "off": 0.8591,
+    "on": 0.8682,
+    "delta_median": 0.0085,
+    "folds_better": 28,
+    "folds_worse": 1,
+    "sign_p": 0.0,
+    "wilcoxon_p": 0.0
+  },
+  "ws": {
+    "off": 0.8093,
+    "on": 0.8193,
+    "delta_median": 0.0119,
+    "folds_better": 24,
+    "folds_worse": 5,
+    "sign_p": 0.0005,
+    "wilcoxon_p": 0.0017
+  },
+  "deploy_off": {
+    "auc": 0.8638,
+    "threshold": 0.2506,
+    "n_flagged": 21904,
+    "precision": 0.5,
+    "recall": 0.6386,
+    "d_recall": 0.0
+  },
+  "deploy_on": {
+    "auc": 0.8702,
+    "threshold": 0.2446,
+    "n_flagged": 22580,
+    "precision": 0.5,
+    "recall": 0.6583,
+    "d_recall": 0.0197
+  }
+}

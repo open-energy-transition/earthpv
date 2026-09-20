@@ -55,7 +55,8 @@ say "link free: France compose done (marker=$([ -f "$FR_MARKER" ] && echo yes ||
 # ---- compose ------------------------------------------------------------------------
 # min_buildings 1000, as Zambia used. Workers 4. ITER_S 3600 caps each pass by WALL CLOCK
 # (a long-lived compose DEGRADES before it dies, and a degraded pass looks healthy from
-# outside); STALL_S 600 kills a pass that HANGS instead.
+# outside); STALL_S kills a pass that HANGS instead -- see PC PATIENCE below for why both
+# it and the Planetary Computer patience are set here rather than left at their defaults.
 #
 # STAC PROVIDER: left at the default (Planetary Computer first, Earth Search as
 # fallback). Pinning EARTHPV_STAC_PROVIDER=earth-search was tried on 2026-09-17 when PC
@@ -75,6 +76,31 @@ say "link free: France compose done (marker=$([ -f "$FR_MARKER" ] && echo yes ||
 # that LOOKS complete is the worst outcome available here, so compose is now retried and,
 # if it still cannot reach the bar, the chain FAILS rather than publishing a country from
 # a fourteenth of its cells.
+# PC PATIENCE AND THE STALL WATCHDOG, both raised 2026-09-20 after this run LIVELOCKED.
+# It ran at ~35 cells/h to 2,340 of 6,341 cells and then produced exactly zero for 17
+# hours, across ten rounds, while the link stayed saturated at 6.3 MB/s. Neither the
+# provider nor the imagery was at fault: a direct test of three missing cells the same
+# morning composited two of them (47.8 s via PC in the north, 297.8 s via Earth Search
+# mid-country) and refused the third for real (99% empty, southern cloud).
+#
+# The cause is the death spiral imagery.py's `_PROVIDER_OVERRIDE` comment already
+# describes, entered from the other side. `PC_TIMEOUT_S` defaults to 60 s, which is a
+# SINGLE-CELL number; a cell is bandwidth-bound at ~290 MB against a ~380 MB/min link,
+# so under 4 workers a perfectly healthy cell takes ~4x its uncontended 48-53 s and
+# EVERY cell trips the patience. Each hand-off then downloads the cell TWICE, because
+# the abandoned PC attempt keeps reading in the background, and the halved throughput
+# pushes the next cells over the timeout too. Raising the patience to several times the
+# expected per-cell wall time is exactly what that comment prescribes; it still catches
+# a genuinely stuck cell.
+#
+# STALL_S compounded it rather than causing it. At 600 s the watchdog killed every pass
+# before a single contended cell could land -- a pass needs 4-5 minutes just to fetch
+# VIDA, select cells and skip the 2,340 already on disk, leaving under five minutes of
+# real work -- so the loop hit "no progress 3x", exited, and the round loop paid its
+# 1,800 s provider cooldown for a provider that was never down. 2,400 s leaves room for
+# a slow cell without letting a true hang cost the whole hour.
+PC_TIMEOUT_S=600
+STALL_S=2400
 COVERAGE_MIN=97          # percent of selected cells that must be composited
 # MAX_ROUNDS was 8, which was sized for a transient outage and WRONG for the job: eight
 # rounds of an hour plus 30-minute waits is about eight hours of patience, while a
@@ -96,7 +122,8 @@ for round in $(seq 1 $MAX_ROUNDS); do
   say "compose round $round/$MAX_ROUNDS (min_buildings 1000, provider ${EARTHPV_STAC_PROVIDER:-default PC-first}), at $before cells"
   systemd-run --user --collect --unit=earthpv-compose-$AOI \
     -p WorkingDirectory="$PWD" -p LimitNOFILE=65536:65536 -p MemoryMax=16G \
-    bash scripts/compose_loop.sh $AOI 0 1000 4 3600 600
+    --setenv=EARTHPV_PC_TIMEOUT_S=$PC_TIMEOUT_S \
+    bash scripts/compose_loop.sh $AOI 0 1000 4 3600 $STALL_S
   sleep 30
   while systemctl --user is-active --quiet earthpv-compose-$AOI; do
     say "compose running ($(built_cells) cells)"; sleep 900

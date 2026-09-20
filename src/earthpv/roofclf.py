@@ -515,6 +515,67 @@ def zonal_dispersion(
     return {"n_px": np.asarray(counts, dtype="float64"),
             "min": mins, "max": maxes, "std": stds}
 
+
+# Weight each 10 m pixel by the fraction of the footprint covering it, instead of
+# `zonal_mean_max`'s all-or-nothing pixel-centre test. SHIPPED DEFAULT since 2026-09-20:
+# measured at +0.0113 AUC within size band on its own (25 of 30 folds, p = 0.0001) and it
+# costs no new imagery, which is what makes it the one part of the 2026-09-19/20 sweep that
+# can be taken without recompositing a country. See docs/experiments.md's
+# "The composite reducer is the biggest lever in this register".
+AREA_WEIGHTED_ZONAL = True
+
+
+def area_weighted_zonal_mean(
+    bu_utm: gpd.GeoDataFrame, arr: np.ndarray, transform, fallback_means: np.ndarray,
+    nodata: float | None = COMPOSITE_FILL, subpix: int = 4,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Per-building reflectance means, weighting each pixel by its covered area fraction.
+
+    `zonal_mean_max` rasterises with `all_touched=False`, so a pixel belongs to a building
+    only if its CENTRE falls inside. About 72% of Pakistani VIDA footprints then own zero
+    pixels and fall back to their representative point, which makes the "zonal mean" a
+    point sample of one pixel the building may occupy a twentieth of. Weighting by
+    `preprocess.coverage_matrix`'s exact area fractions is the principled version of the
+    upsampling result that first exposed this, with no raster inflation.
+
+    Two things here are NOT in the experimental variant this ships from, and both matter at
+    national scale rather than in an interior quadrat:
+
+    **The nodata mask.** The experiment tested `np.isfinite`, which is right for a scene
+    stack (masked = NaN) and wrong for a composite window (fill = 0.0). Unmasked, a
+    cell-edge fill pixel enters the weighted mean as genuine near-zero reflectance, and PV
+    is dark: that is precisely the mechanism that once made 45.6% of every flagged building
+    in Pakistan a cell-edge artefact (see `zonal_mean_max`). `nodata` is applied here with
+    the same all-bands-equal-fill test that function uses.
+
+    **The fallback.** A footprint smaller than one subpixel (2.5 m at `subpix=4`), or one
+    whose subpixels were all claimed by an overlapping neighbour, gets zero weight and
+    would come back NaN -- silently dropping the smallest buildings, which are the
+    population this module exists for. Those rows keep `fallback_means`, i.e. exactly what
+    `zonal_mean_max` returned, including its representative-point fallback. The scored
+    population is therefore unchanged by construction; only the values move.
+
+    Returns `(means, covered)` where `covered` flags the buildings that got a real weighted
+    mean rather than the fallback.
+    """
+    from earthpv.preprocess import coverage_matrix
+
+    nb = arr.shape[0]
+    flat = arr.reshape(nb, -1)
+    valid = np.isfinite(flat).all(axis=0)
+    if nodata is not None:
+        valid &= ~np.all(flat == nodata, axis=0)
+    A = coverage_matrix(bu_utm, arr.shape[-2:], transform, subpix=subpix)
+    Aok = A.multiply(valid[:, None]).tocsr()
+    w = np.asarray(Aok.sum(axis=0)).ravel()
+    covered = w > 1e-6
+    out = np.array(fallback_means, dtype="float64", copy=True)
+    if covered.any():
+        for bi in range(nb):
+            num = Aok.T.dot(np.nan_to_num(flat[bi], nan=0.0))
+            out[bi, covered] = num[covered] / w[covered]
+    return out, covered
+
 def temporal_features(
     bu_utm: gpd.GeoDataFrame, stats_arr: np.ndarray, transform
 ) -> dict[str, np.ndarray]:
@@ -882,7 +943,7 @@ def building_table(
     include_epoch_jump: bool = False, preboom_prob_dir: Path | None = None,
     parcel_label: bool = False, buildings: gpd.GeoDataFrame | None = None,
     temporal_stats: bool = False, preprocess: str | None = None,
-    temporal_unmix: bool = False,
+    temporal_unmix: bool = False, area_weighted: bool | None = None,
 ) -> pd.DataFrame:
     """One row per VIDA building in the quadrat, labelled and featurised.
 
@@ -914,6 +975,9 @@ def building_table(
     sharpen the nearest-replicated native-20 m bands, and "unmix" replaces the zonal mean
     with a footprint-constrained solve of the pixel mixture. `None` is the shipped path.
     """
+    # `AREA_WEIGHTED_ZONAL` is the shipped default; pass False to reproduce every figure
+    # published before 2026-09-20.
+    area_weighted = AREA_WEIGHTED_ZONAL if area_weighted is None else area_weighted
     from earthpv.buildings import fetch_vida_buildings
     from earthpv.labels import geodesic_area_m2
     from earthpv.local_source import composite_index
@@ -1044,29 +1108,6 @@ def building_table(
         if preprocess == "tmean_up2":
             arr = np.repeat(np.repeat(arr, 2, axis=1), 2, axis=2)
             transform = rasterio.Affine(t_tr.a / 2, t_tr.b, t_tr.c, t_tr.d, t_tr.e / 2, t_tr.f)
-    if preprocess is not None and ("areazonal" in preprocess or preprocess == "trimzonal"):
-        # The principled version of the 2026-09-20 upsampling finding, and the reason it
-        # works. `zonal_mean_max` rasterises with all_touched=False, so a pixel belongs to a
-        # building only if its CENTRE falls inside: about half of VIDA footprints then own
-        # zero pixels and fall back to a representative point. Nearest-upsampling the raster
-        # fixes that by subdividing pixels, which is just an approximation of weighting each
-        # 10 m pixel by the fraction of the footprint covering it. This computes that
-        # fraction directly -- exact, and no raster inflation.
-        from earthpv.preprocess import coverage_matrix
-
-        bu_utm_ = bu.to_crs(crs)
-        A = coverage_matrix(bu_utm_, arr.shape[-2:], transform, subpix=4)
-        flat = arr.reshape(arr.shape[0], -1)
-        ok_px = np.isfinite(flat).all(axis=0)
-        means_aw = np.full((arr.shape[0], A.shape[1]), np.nan)
-        Aok = A.multiply(ok_px[:, None]).tocsr()
-        wok = np.asarray(Aok.sum(axis=0)).ravel()
-        for bi in range(arr.shape[0]):
-            v = np.nan_to_num(flat[bi])
-            num = Aok.T.dot(v)
-            means_aw[bi] = np.where(wok > 1e-6, num / np.maximum(wok, 1e-9), np.nan)
-        log.info("quadrat %s: area-weighted zonal means, %d of %d buildings covered",
-                 name, int((wok > 1e-6).sum()), len(bu))
     if preprocess in ("upsample2", "upsample4", "upsample2_nearest"):
         # The deployable form of the 2026-09-20 finding. `mfsr_noshift` showed the gain is
         # finer ZONAL SAMPLING, not fusion: at 10 m about half of VIDA footprints rasterise
@@ -1130,8 +1171,14 @@ def building_table(
         arr = sharpen_20m(arr, method="interp" if preprocess.endswith("interp") else "regress")
     bu_utm = bu.to_crs(crs)
     means, maxes = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
-    if preprocess is not None and ("areazonal" in preprocess or preprocess == "trimzonal"):
-        means = means_aw
+    # Taken here, AFTER any preprocess transform of `arr`, so a variant that sharpens or
+    # resamples the raster is area-weighted over the raster it actually produced.
+    if area_weighted or (preprocess is not None
+                         and ("areazonal" in preprocess or preprocess == "trimzonal")):
+        means, covered = area_weighted_zonal_mean(bu_utm, arr, transform, means)
+        log.info("quadrat %s: area-weighted zonal means, %d of %d buildings covered "
+                 "(%d keep the pixel-centre fallback)", name, int(covered.sum()), len(bu),
+                 int((~covered).sum()))
     if preprocess == "unmix":
         from earthpv.preprocess import unmix_buildings
 
@@ -1857,6 +1904,10 @@ def save_model(model: dict, feats: list[str], path: Path) -> None:
     payload = {
         "w": model["w"].tolist(), "mu": model["mu"].tolist(), "sd": model["sd"].tolist(),
         "converged": model["converged"], "features": feats,
+        # The zonal convention the features were measured under. A model fitted on
+        # area-weighted means scores a pixel-centre population as a domain shift, and the
+        # coefficient fingerprint alone would not say which of the two it was.
+        "area_weighted_zonal": bool(AREA_WEIGHTED_ZONAL),
     }
     Path(path).write_text(json.dumps(payload, indent=2))
 
@@ -1895,9 +1946,22 @@ def check_scoring_matches_calibration(roofclf_dir: Path, calib_dir: Path) -> Non
     if not manifest.exists() or not model_path.exists():
         log.debug("No model fingerprint to check for %s against %s", roofclf_dir, calib_dir)
         return
-    scored = json.loads(manifest.read_text()).get("fingerprint")
+    man = json.loads(manifest.read_text())
+    scored = man.get("fingerprint")
     model, feats = load_model(model_path)
     expected = model_fingerprint(model, feats)
+    # Checked first because it gives a far more legible failure than a hash mismatch, and
+    # because a pre-2026-09-20 artefact carries neither key and must stay readable.
+    cal_aw = json.loads(model_path.read_text()).get("area_weighted_zonal")
+    sc_aw = man.get("area_weighted_zonal")
+    if cal_aw is not None and sc_aw is not None and bool(cal_aw) != bool(sc_aw):
+        raise ValueError(
+            f"{calib_dir} was calibrated with area_weighted_zonal={cal_aw} but "
+            f"{roofclf_dir} was scored with area_weighted_zonal={sc_aw}. Those are "
+            f"different zonal conventions, so the model is being applied to features it "
+            f"was not fitted on. Rescore nationally with this calibration, or point "
+            f"--calib-dir at the calibration the scoring came from."
+        )
     if scored != expected:
         raise ValueError(
             f"{roofclf_dir} was scored with model fingerprint {scored}, but {model_path} "
@@ -1974,6 +2038,7 @@ def score_buildings_national(
     aoi: str, model: dict, feats: list[str], composites: Path, out_dir: Path,
     min_roof_area_m2: float = 0.0, force: bool = False, limit: int = 0,
     layer_index: int = 0, buildings_fn=None, cells: set[str] | None = None,
+    area_weighted: bool | None = None,
 ) -> Path:
     """Apply an already-fit model to every VIDA building under `composites`, one cell
     (one composite tile) at a time -- the per-cell/per-building pattern
@@ -2046,9 +2111,13 @@ def score_buildings_national(
     # Fingerprint first, so the manifest exists even if the run is interrupted partway --
     # a resumed run appends cells to the same directory and must not be checkable only
     # once it has finished.
+    # Resolved before the manifest so a scoring directory STATES its zonal convention
+    # rather than leaving it to be inferred from a date.
+    area_weighted = AREA_WEIGHTED_ZONAL if area_weighted is None else area_weighted
     (out_dir / "_model.json").write_text(json.dumps({
         "fingerprint": model_fingerprint(model, feats), "features": list(feats),
         "aoi": aoi, "composites": str(composites), "layer_index": layer_index,
+        "area_weighted_zonal": bool(area_weighted),
     }, indent=2))
     need_yard = any(f in set(YARD_FEATURES) for f in feats)
     if need_yard:
@@ -2056,6 +2125,7 @@ def score_buildings_national(
                  YARD_RING_M)
 
     n_cells, n_buildings, n_flagged_05, n_unscored_nodata = 0, 0, 0, 0
+    n_fallback = 0
     for m in manifest.itertuples():
         if limit and n_cells >= limit:
             break
@@ -2106,6 +2176,13 @@ def score_buildings_national(
         arr = arr.astype("float32") / REFL_SCALE
         bu_utm = bu.to_crs(crs)
         means, _ = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
+        # MUST match `building_table`'s zonal convention. A model fitted on area-weighted
+        # means and applied to pixel-centre ones is a silent domain shift over the whole
+        # country, which is the failure `check_scoring_matches_calibration` exists to catch
+        # and which no fingerprint would notice if the two defaults ever drifted apart.
+        if area_weighted:
+            means, covered = area_weighted_zonal_mean(bu_utm, arr, transform, means)
+            n_fallback += int((~covered).sum())
 
         eps = 1e-6
         r, nir, sw = means[_I_RED], means[_I_NIR], means[_I_SWIR1]
@@ -2180,6 +2257,9 @@ def score_buildings_national(
               "calibration, not this raw count), %d left unscored (p_roofclf NaN) for "
               "having no valid composite pixel -> %s",
               n_cells, n_buildings, n_flagged_05, n_unscored_nodata, out_dir)
+    if area_weighted:
+        log.info("Area-weighted zonal means: %d buildings kept the pixel-centre fallback "
+                 "(no subpixel of their own)", n_fallback)
     return out_dir
 
 
@@ -2199,6 +2279,7 @@ def run_roof_classifier(
     include_yard_features: bool = False,
     table_path: Path | None = None,
     temporal_stats: bool = False,
+    area_weighted: bool | None = None,
 ) -> Path:
     """Fit, evaluate and persist the classifier. See the CLI command for the options.
 
@@ -2250,6 +2331,7 @@ def run_roof_classifier(
         con = overture.connect()
         parts = [
             building_table(n, iso3, composites, seg_prob_dir, frac_prob_dir, labels_dir, con,
+                           area_weighted=area_weighted,
                            parcel_label=parcel_label, temporal_stats=temporal_stats)
             for n in names
         ]

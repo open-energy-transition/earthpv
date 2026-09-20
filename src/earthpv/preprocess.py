@@ -1,9 +1,14 @@
 """Preprocessing variants of the composite, for measuring whether any of them help.
 
-Nothing here is in the shipped pipeline. Each function is an alternative way of turning
-the same downloaded pixels into per-building reflectance, offered to `roofclf` through
-`building_table(preprocess=...)` so the leave-one-quadrat-out harness can price it against
-the production table. See docs/experiments.md.
+Each function is an alternative way of turning the same downloaded pixels into per-building
+reflectance, offered to `roofclf` through `building_table(preprocess=...)` so the
+leave-one-quadrat-out harness can price it against the production table. See
+docs/experiments.md.
+
+**Two exceptions are now shipped code and must be treated as such.** `coverage_matrix` backs
+`roofclf.area_weighted_zonal_mean`, the default zonal convention since 2026-09-20, and
+`trimmed_mean_stack` is the reducer every stack-reading path uses. Changing either changes
+production output; the rest of this module changes only experiments.
 
 The motivating measurement (2026-09-19): the shipped classifier's largest coefficients sit
 on SWIR. `b11_mean` is +4.33, `swir_vis_ratio` -3.92, `ndbi` +3.65 and `b12_mean` -3.23,

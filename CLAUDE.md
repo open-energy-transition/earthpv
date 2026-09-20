@@ -1162,6 +1162,35 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
   invents class 6). *Sharpening* those bands by regression on the visible ones was measured
   and REJECTED (-0.0047 AUC, 7/30 folds, p=0.008): the SWIR signal is not predictable from
   the visible bands, which is why it carries weight in the first place.
+- **`roofclf`'s zonal means are AREA-WEIGHTED by default since 2026-09-20, and the
+  calibration and national scoring must never disagree about that.** `zonal_mean_max`
+  rasterises with `all_touched=False`, so a pixel belongs to a building only if its CENTRE
+  falls inside and **72.4% of Pakistani VIDA footprints own zero pixels**, falling back to a
+  one-pixel representative-point sample. `roofclf.area_weighted_zonal_mean` weights each
+  10 m pixel by the fraction of the footprint covering it instead
+  (`preprocess.coverage_matrix`, subpix 4). Worth **+0.0119 AUC within size band** (24 of 29
+  folds, p = 0.0005) and **+2.0 points of recall at a fixed precision of 0.500** (0.6386 to
+  0.6583), for **no new imagery** -- which is what separates it from the reducer and
+  frame-count changes in the same register section, both of which need a country
+  recomposited. Applied in BOTH `building_table` and `score_buildings_national`, resolved
+  from `roofclf.AREA_WEIGHTED_ZONAL`; `--no-area-weighted` on `roof-classifier` and
+  `roofclf-score-national` reproduces every figure published before that date. The
+  convention is recorded in `model_full.json` and in a scoring run's `_model.json`, and
+  `check_scoring_matches_calibration` refuses a mismatched pair by name. Two details are
+  load-bearing and were NOT in the experimental version: nodata is masked with the same
+  all-bands-equal-fill test `zonal_mean_max` uses (unmasked, a cell-edge fill pixel reads as
+  genuine near-zero reflectance, the mechanism behind the 45.6% cell-edge artefact), and a
+  footprint with no subpixel of its own keeps the pixel-centre value rather than becoming
+  NaN (the experiment silently dropped 0.16-0.47% of buildings, the smallest ones).
+  **Pakistan's published figures do NOT move until `roof-classifier` is refit and
+  `roofclf-score-national` re-run** -- both are pending an owner decision, since the chain
+  ends in a mandatory 20-cell manual validation.
+- **`preprocess.trimmed_mean_stack` replaces `np.nanpercentile` in every stack-reading
+  path.** `np.nanpercentile` falls back to a per-1-D-slice Python loop the moment the array
+  holds a NaN, which a cloud-masked stack always does: 24.5 s for one call on a
+  (12, 10, 236, 245) stack against 0.08 s. The replacement is bit-identical (maxdiff 0, same
+  NaN pattern, verified on full quadrat stacks), so `tmean_trim`/`trimzonal`/`year_trim`
+  reproduce their published figures exactly.
 - **Training positive threshold** is `MIN_PV_AREA` in `chips.py` (arrays below it are burned as
   `ignore = -1`, not negatives). Changing it requires rebuilding chips and retraining.
 - **Geographic val split** uses `val_tiles` in `configs/aoi.yaml`; these must be MGRS tiles the
