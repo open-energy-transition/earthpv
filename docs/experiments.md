@@ -1256,15 +1256,34 @@ to reach an effective ~4 m, produced the largest single improvement measured any
 this register -- and it turned out to have nothing to do with super-resolution.
 
 `annual_composite` reduces the scene stack with a per-pixel **median**. Replacing it with a
-**mean** gains **+0.0286 AUC within size band, 25 of 30 leave-one-quadrat-out folds,
-p = 0.0001**, at 10 m, with no change to resolution, features or model.
+**mean** gains **+0.0188 AUC within size band** at 10 m, with no change to resolution,
+features or model.
+
+**That figure is smaller than first reported here, and the correction matters.** The variants
+below reduce the saved SCENE STACKS while the baseline reduces the COMPOSITE FILES, and the
+two were fetched at different times through different read paths. A control run afterwards --
+the MEDIAN of the same stack, which should score zero if the two paths are equivalent --
+scores **+0.0098 within size band (21 of 30, p = 0.024)**. So roughly a third of the original
++0.0286 was the path, not the estimator:
+
+| Effect | AUC | Within size band |
+| --- | --- | --- |
+| Path (stack median against composite median) | +0.0054 | +0.0098 |
+| **Estimator (mean against median, same stack)** | **+0.0122** | **+0.0188** |
+| Estimator, trimmed mean | -- | +0.0102 |
+
+The estimator effect is real and significant either way, and the path effect is worth its own
+look: the baseline reads through `composite_index.read_window`, which mosaics and can carry
+the documented cell-edge fill frame, while a stack is a clean geobox read. If that is the
+cause it is a free win independent of any reducer.
 
 The decomposition that isolates it:
 
 | Variant | AUC | Within size band | Folds better |
 | --- | --- | --- | --- |
-| Baseline, median at 10 m | 0.8575 | 0.8206 | -- |
-| **Mean at 10 m** | 0.8756 | **+0.0286** | 25 of 30 |
+| Baseline, median at 10 m (composite file) | 0.8575 | 0.8206 | -- |
+| Median at 10 m (same stack) -- PATH CONTROL | 0.8628 | +0.0098 | 21 of 30 |
+| **Mean at 10 m** | 0.8756 | **+0.0286 (+0.0188 net of path)** | 25 of 30 |
 | Mean at 5 m | 0.8789 | +0.0313 | 25 of 30 |
 | Multi-frame fusion at 5 m | 0.8767 | +0.0273 | 26 of 30 |
 | Area-weighted zonal means at 10 m | 0.8588 | +0.0113 | 25 of 30 |
@@ -1321,8 +1340,8 @@ of the gain:
 | Reducer | Within size band | Folds better | One unmasked cloud |
 | --- | --- | --- | --- |
 | Median (current) | -- | -- | 100.7 |
-| **Trimmed mean (drop top and bottom decile)** | **+0.0200** | 25 of 30 | **100.2** |
-| Mean | +0.0286 | 25 of 30 | 924.4 |
+| **Trimmed mean (drop top and bottom decile)** | **+0.0200 (+0.0102 net of path)** | 25 of 30 | **100.2** |
+| Mean | +0.0286 (+0.0188 net of path) | 25 of 30 | 924.4 |
 
 So **the trimmed mean is the one to ship**: 70% of the gain, and robustness indistinguishable
 from the median on the failure mode the median exists for.

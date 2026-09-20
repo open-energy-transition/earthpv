@@ -909,7 +909,7 @@ def building_table(
         st, m_transform, m_crs = loaded
         arr = medoid_composite(st) / REFL_SCALE
         transform, crs = m_transform, m_crs
-    if preprocess in ("tmean", "tmean_up2", "tmean_trim"):
+    if preprocess is not None and preprocess.startswith(("tmean", "tmedian", "trimzonal")):
         # Isolating estimator from resolution. `mfsr_noshift` beat the baseline by +0.0205
         # AUC, and nearest-upsampling the composite only by +0.0042 -- so the gain is not
         # the finer grid. The remaining difference is that the shift-and-add accumulator
@@ -923,7 +923,14 @@ def building_table(
             return pd.DataFrame()
         st, t_tr, t_crs = loaded
         with np.errstate(invalid="ignore"):
-            if preprocess == "tmean_trim":
+            if preprocess == "tmedian":
+                # THE CONTROL for the reducer claim. `tmean` reduces the saved STACK while
+                # the baseline reduces the COMPOSITE FILE, and the two were fetched at
+                # different times. If their scene sets differ, some of the "mean" gain is
+                # really a different set of scenes. Taking the MEDIAN of the same stack
+                # isolates that: it should score ~0 against the baseline.
+                arr = np.nanmedian(st, axis=0) / REFL_SCALE
+            elif preprocess in ("tmean_trim", "trimzonal"):
                 # The compromise: a mean has ~1/1.57 the variance of a median at n=12, but
                 # cannot reject residual cloud that SCL missed. Trimming the extreme 20%
                 # per pixel keeps most of the efficiency and most of the robustness.
@@ -937,7 +944,7 @@ def building_table(
         if preprocess == "tmean_up2":
             arr = np.repeat(np.repeat(arr, 2, axis=1), 2, axis=2)
             transform = rasterio.Affine(t_tr.a / 2, t_tr.b, t_tr.c, t_tr.d, t_tr.e / 2, t_tr.f)
-    if preprocess == "areazonal":
+    if preprocess is not None and ("areazonal" in preprocess or preprocess == "trimzonal"):
         # The principled version of the 2026-09-20 upsampling finding, and the reason it
         # works. `zonal_mean_max` rasterises with all_touched=False, so a pixel belongs to a
         # building only if its CENTRE falls inside: about half of VIDA footprints then own
@@ -1023,7 +1030,7 @@ def building_table(
         arr = sharpen_20m(arr, method="interp" if preprocess.endswith("interp") else "regress")
     bu_utm = bu.to_crs(crs)
     means, maxes = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
-    if preprocess == "areazonal":
+    if preprocess is not None and ("areazonal" in preprocess or preprocess == "trimzonal"):
         means = means_aw
     if preprocess == "unmix":
         from earthpv.preprocess import unmix_buildings

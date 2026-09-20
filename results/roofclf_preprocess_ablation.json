@@ -320,5 +320,28 @@
     ],
     "ws_folds_better": 25,
     "ws_sign_p": 0.0001
+  },
+  "tmedian": {
+    "mode": "tmedian",
+    "n_rows": 123867,
+    "n_folds": 30,
+    "baseline_auc": 0.8575,
+    "variant_auc": 0.8628,
+    "baseline_auc_ws": 0.8206,
+    "variant_auc_ws": 0.8273,
+    "delta_auc_median": 0.0054,
+    "delta_auc_iqr": [
+      -0.0003,
+      0.0174
+    ],
+    "auc_folds_better": 21,
+    "auc_sign_p": 0.0241,
+    "delta_ws_median": 0.0098,
+    "delta_ws_iqr": [
+      -0.0009,
+      0.0266
+    ],
+    "ws_folds_better": 21,
+    "ws_sign_p": 0.0241
   }
 }
