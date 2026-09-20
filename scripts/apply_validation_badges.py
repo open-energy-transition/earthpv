@@ -16,20 +16,35 @@ import argparse
 import re
 from pathlib import Path
 
-from earthpv.atlas import derive_validation_score, validation_badge_html
+from earthpv.atlas import (derive_validation_score, header_logo_html,
+                           validation_badge_html)
 
 PUBLISHED = Path("docs/assets/interactive")
 
-# Which AOI a published page belongs to. Anything not listed is skipped rather than guessed.
-PAGE_AOI = {
-    "pakistan_evidence_atlas.html": "pakistan",
-    "germany_pv_evidence_atlas.html": "germany",
-    "france_pv_evidence_atlas.html": "france",
-    "zambia_pv_evidence_atlas.html": "zambia",
-    "gujarat_pv_atlas.html": "gujarat",
-    "pakistan_growth_atlas.html": "pakistan",
-    "france_pv_comparison_atlas.html": "france",
-}
+# (published name, AOI, canonical source).
+#
+# **Stamping only the docs/ copy is not enough, and that was a real bug.** Most of these
+# pages are SYNCED into docs/assets/interactive/ from results/ or data/ by
+# build_docs_figures.py's INTERACTIVE list, so a `pixi run docs-figures` copies the
+# unstamped original straight over the stamped copy and the badge silently disappears --
+# which is exactly what happened to France, Germany and Zambia. Stamp the SOURCE, and the
+# docs copy as well for the pages that have no separate source.
+PAGES = [
+    # canonical in docs/ (no results/ original -- see the atlas module's own note)
+    ("pakistan_evidence_atlas.html", "pakistan", None),
+    ("gujarat_pv_atlas.html", "gujarat", None),
+    # synced from elsewhere: the source is what must carry the stamp
+    ("germany_pv_evidence_atlas.html", "germany",
+     Path("data/predictions/germany/density/germany_pv_evidence_atlas.html")),
+    ("france_pv_evidence_atlas.html", "france",
+     Path("results/france_pv_evidence_atlas.html")),
+    ("france_pv_comparison_atlas.html", "france",
+     Path("results/france_pv_comparison_atlas.html")),
+    ("zambia_pv_evidence_atlas.html", "zambia",
+     Path("results/zambia_pv_evidence_atlas.html")),
+    ("pakistan_growth_atlas.html", "pakistan",
+     Path("results/pakistan_pv_growth_atlas.html")),
+]
 
 # Explicit tiers, because the derivation reads the CURRENT state of data/ and a page
 # published months ago should carry the score its evidence earned, not whatever happens to
@@ -54,14 +69,29 @@ OLD_BADGE = re.compile(r'\s*<style>\s*(?:header \{ position: relative; \}\s*)?\.
 # their equivalent when the "Active development" note went; this is the same block on the
 # atlases that never had that note.
 LEDE = re.compile(r'\s*<p class="lede">.*?</p>\n?', re.S)
+# The strapline at the very top ("EarthPV - Sentinel-2 - OpenStreetMap - ..."), replaced by
+# the logo mark.
+EYEBROW = re.compile(r'\s*<(p|div) class="eyebrow">.*?</\1>\n?', re.S)
+OLD_LOGO = re.compile(r'\s*<style>\.brandmark.*?</style><div class="brandmark".*?</div>\n?',
+                      re.S)
 
 
 def stamp(path: Path, score: str, drop_lede: bool = True) -> tuple[bool, str]:
     html = path.read_text()
     before = html
     html = OLD_BADGE.sub("\n", html)          # re-stampable
+    html = OLD_LOGO.sub("\n", html)
     if drop_lede:
         html = LEDE.sub("\n", html)
+    # Top strapline out, logo mark in. Anchored on the <h1> rather than on the eyebrow it
+    # replaces, so a SECOND run -- where the eyebrow is already gone -- still re-inserts
+    # the logo instead of quietly dropping it.
+    html = EYEBROW.sub("\n", html, count=1)
+    m_h1 = re.search(r'([ \t]*)<h1>', html)
+    if m_h1:
+        indent = m_h1.group(1)
+        html = (html[:m_h1.start()] + f"{indent}{header_logo_html()}\n"
+                + html[m_h1.start():])
     badge = validation_badge_html(score)
     note = "re-stamped" if before != html and "vscore" in before else "stamped"
     if DEV_NOTE.search(html):
@@ -78,19 +108,23 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--write", action="store_true", help="apply; otherwise report only")
     args = ap.parse_args()
-    for name in sorted(PAGE_AOI):
-        path = PUBLISHED / name
-        if not path.exists():
-            print(f"{name:46} missing, skipped")
-            continue
-        aoi = PAGE_AOI[name]
+    for name, aoi, source in PAGES:
         score = SCORES.get(aoi) or derive_validation_score(aoi, False)
-        if not args.write:
-            state = "would re-stamp" if "vscore" in path.read_text() else "would stamp"
-            print(f"{name:46} {aoi:9} {score:7} {state}")
+        # The source first, so a later docs-figures sync carries the stamp rather than
+        # reverting it; then the published copy, so the site is right immediately.
+        targets = [t for t in (source, PUBLISHED / name) if t and t.exists()]
+        if not targets:
+            print(f"{name:46} {aoi:9} {score:7} no source and no published copy, skipped")
             continue
-        changed, why = stamp(path, score)
-        print(f"{name:46} {aoi:9} {score:7} {'OK  ' if changed else 'skip'} {why}")
+        for path in targets:
+            where = "source" if path is source else "docs  "
+            if not args.write:
+                state = "re-stamp" if "vscore" in path.read_text() else "stamp"
+                print(f"{name:46} {aoi:9} {score:7} {where} would {state}")
+                continue
+            changed, why = stamp(path, score)
+            print(f"{name:46} {aoi:9} {score:7} {where} "
+                  f"{'OK  ' if changed else 'skip'} {why}")
 
 
 if __name__ == "__main__":

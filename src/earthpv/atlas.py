@@ -33,6 +33,7 @@ share `templates/pv_atlas.html`.
 from __future__ import annotations
 
 import datetime
+import re
 import json
 import logging
 from pathlib import Path
@@ -154,11 +155,29 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
 </style>""".replace("%LOGO%", _VSCORE_LOGO)
 
 # Short enough to sit in a corner. The long form lives on the landing page.
+# `&nbsp;` between the number and the unit so a wrap can never split "400 m2", and an
+# explicit break after "below" so the Gold line reads as two clauses rather than wherever
+# the box happens to run out.
 _VSCORE_SUB = {
-    "gold": "Validated above and below the 400 m\u00b2 floor",
-    "silver": "Above 400 m\u00b2 only. Locally validated.",
-    "bronze": "Above 400 m\u00b2 only. No local validation.",
+    "gold": "Validated above and below<br>the 400&nbsp;m\u00b2 floor",
+    "silver": "Above 400&nbsp;m\u00b2 only.<br>Locally validated.",
+    "bronze": "Above 400&nbsp;m\u00b2 only.<br>No local validation.",
 }
+
+
+def header_logo_html() -> str:
+    """The EarthPV mark for the top of an atlas, replacing the eyebrow text line.
+
+    Same masked data URI as the corner stamp, so it takes the page's accent colour and
+    works in both the light and dark palettes without shipping two images or a file path.
+    """
+    return ('<style>'
+            '.brandmark { width: 30px; height: 30px; background: var(--accent); '
+            '-webkit-mask: url(' + _VSCORE_LOGO + ') center/contain no-repeat; '
+            'mask: url(' + _VSCORE_LOGO + ') center/contain no-repeat; '
+            'margin-bottom: 6px; }'
+            '</style>'
+            '<div class="brandmark" role="img" aria-label="EarthPV"></div>')
 
 
 def validation_badge_html(score: str) -> str:
@@ -650,6 +669,7 @@ def build_combined_atlas(
 
     html = TEMPLATE.read_text()
     for key, value in {
+        "__HEADER_LOGO__": header_logo_html(),
         "__VALIDATION_BADGE__": validation_badge_html(
             derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -678,7 +698,7 @@ def build_combined_atlas(
         html = html.replace(key, value)
 
     out = Path(out) if out else density_dir / f"{aoi}_pv_combined_atlas.html"
-    out.write_text(html)
+    out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
         "Wrote combined atlas (large %.0f + small %.0f = %.0f MWp, %d/%d domain cells) -> %s",
         total_rc, total_sub400, total_combined, n_domain_cells, len(grid), out,
@@ -913,7 +933,7 @@ def build_sub400_bracket_atlas(
         html = html.replace(key, value)
 
     out = Path(out) if out else density_dir / f"{aoi}_pv_sub400_bracket_atlas.html"
-    out.write_text(html)
+    out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
         "Wrote sub-400 bracket atlas (low combined %.0f / central combined %.0f / "
         "high %.0f / all-PV %.0f MWp, large-PV roof %.0f / all-placement %.0f MWp, "
@@ -1082,7 +1102,7 @@ def build_growth_atlas(
         html = html.replace(key, value)
 
     out = Path(out) if out else growth_dir / f"{aoi}_pv_growth_atlas.html"
-    out.write_text(html)
+    out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
         "Wrote growth atlas (Δ %.1f MWp recall-corrected, %d SPPI-onset buildings, "
         "%.1f km² onset roof area, %.1f MWp uncalibrated SPPI ceiling, "
@@ -1178,6 +1198,7 @@ def build_growth_evidence_atlas(
     title = aoi.replace("_", " ").title()
     html = GROWTH_EVIDENCE_TEMPLATE.read_text()
     for key, value in {
+        "__HEADER_LOGO__": header_logo_html(),
         "__VALIDATION_BADGE__": validation_badge_html(
             derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -1195,7 +1216,7 @@ def build_growth_evidence_atlas(
         html = html.replace(key, value)
 
     out = Path(out) if out else growth_dir / f"{aoi}_pv_growth_evidence_atlas.html"
-    out.write_text(html)
+    out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
         "Wrote growth evidence atlas (Δ total %.1f MWp = ground %.1f + roof %.1f + "
         "sub400 %.1f; current %.1f vs pre-boom %.1f) -> %s",
@@ -1631,6 +1652,20 @@ def _extend_grid_with_offgrid_osm(
     add = add[grid.columns]
     out = gpd.GeoDataFrame(pd.concat([grid, add], ignore_index=True), crs=grid.crs)
     return out, len(add)
+
+
+def _assert_no_placeholders(html: str, template: str) -> str:
+    """Fail loudly if a template placeholder was never substituted.
+
+    A template can gain a placeholder (a validation badge, a header logo) without its
+    substitution dict gaining the key, and the failure is silent: the literal `__NAME__`
+    ships to readers. This turns that into an exception at build time.
+    """
+    left = sorted(set(re.findall(r"__[A-Z0-9_]+__", html)))
+    if left:
+        raise ValueError(f"{template}: unsubstituted placeholder(s) {left}. Add them to "
+                         f"the substitution dict, or remove them from the template.")
+    return html
 
 
 def build_evidence_atlas(
@@ -2197,6 +2232,7 @@ def build_evidence_atlas(
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title}'s PV Atlas",
         "__H1__": f"{title}'s PV Atlas",
+        "__HEADER_LOGO__": header_logo_html(),
         "__VALIDATION_BADGE__": validation_badge_html(
             validation_score or derive_validation_score(
                 aoi, central_buildings_path is not None, labels_dir)
@@ -2314,7 +2350,7 @@ def build_evidence_atlas(
     }.items():
         html = html.replace(key, value)
 
-    out.write_text(html)
+    out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
         "Wrote evidence atlas (verified %.0f / best %.0f MWp, "
         "%d/%d domain cells, %d extended-only cells contributing %.0f MWp) -> %s",
@@ -2708,7 +2744,7 @@ def build_size_distribution_atlas(
         html = html.replace(key, value)
 
     out = Path(out) if out else density_dir / f"{aoi}_pv_size_atlas.html"
-    out.write_text(html)
+    out.write_text(_assert_no_placeholders(html, out.name))
     t = size_data["totals"]
     log.info(
         "Wrote size-distribution atlas (roof %.0f + ground %.0f = %.0f MWp across "
@@ -2873,7 +2909,7 @@ def build_potential_atlas(
         html = html.replace(key, value)
 
     out = Path(out) if out else density_dir / f"{aoi}_pv_potential_atlas.html"
-    out.write_text(html)
+    out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
         "Wrote potential atlas (potential %.0f GWh/yr / %.0f MWp uncovered large-roof, "
         "national saturation %.2f%%) -> %s",
