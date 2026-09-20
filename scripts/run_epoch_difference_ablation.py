@@ -49,7 +49,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from earthpv.preprocess import load_scene_stack
+from earthpv.preprocess import load_scene_stack, trimmed_mean_stack
 from earthpv.roofclf import (BAND_NAMES, COMPOSITE_FILL, L2, MODEL_FEATURES, REFL_SCALE,
                              _I_BLUE, _I_GREEN, _I_NIR, _I_RED, _I_SWIR1, _subset_matrix,
                              auc, auc_within_size, discover_quadrats, fit_logistic,
@@ -75,11 +75,7 @@ BLOCKS = {
 
 def trimmed_mean(st: np.ndarray) -> np.ndarray:
     """The reducer this register settled on: drop the extreme 20% per pixel, mean the rest."""
-    with np.errstate(invalid="ignore"):
-        lo = np.nanpercentile(st, 10, axis=0)
-        hi = np.nanpercentile(st, 90, axis=0)
-        keep = (st >= lo[None]) & (st <= hi[None])
-        return np.nanmean(np.where(keep, st, np.nan), axis=0) / REFL_SCALE
+    return trimmed_mean_stack(st) / REFL_SCALE
 
 
 def spectral_summary(means: np.ndarray) -> dict[str, np.ndarray]:

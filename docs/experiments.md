@@ -86,6 +86,7 @@ see [Open questions](open-questions.md).
 | [Gradient boosting instead of the linear model](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome mixed">partial</span> | Ranks WORSE (-0.023 within size band, 4 of 30 folds) and calibrates BETTER (per-quadrat rate error 0.031 to 0.017, 20 of 29 quadrats). |
 | [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
 | [Area-weighted training loss](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Improves the area ratio it optimises (1.084 to 1.035) and loses on both ranking (-0.0111 AUC) and count calibration (0.0308 to 0.0395). |
+| [Within-footprint pixel distribution](#most-footprints-are-one-pixel-2026-09-20) | <span class="outcome negative">rejected</span> | Extremes and spread of the same pixels the zonal mean averages: -0.0006 to -0.0015 within size band, 11 to 12 of 29 folds, p = 0.27 to 0.46. |
 | [Per-stratum deployment thresholds](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | Equal precision per size/density stratum COSTS 3.0 to 9.2 points of recall at matched precision (4 to 7 of 25 quadrats, p = 0.001 to 0.029). |
 | [Per-stratum score recalibration, one global cut](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | The theoretically-correct version. Pooled +1.3 points of recall, median per-quadrat +0.0000, 12 of 24 quadrats, p = 1.00. |
 | [Post-hoc recalibration of roofclf](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Recovers 38% of gradient boosting's calibration gain at p=0.069. No monotone map reaches it, so that gain is a reordering. |
@@ -1449,6 +1450,52 @@ large quadrats, which is the same failure the register logged when 55 PV-dense G
 municipalities read as an 18.2% error against a representative 33.4%. Recalibrating per
 density stratum loses outright (-0.0482 net), and per size and density together loses
 (-0.0110 net).
+
+### Most footprints are one pixel (2026-09-20)
+
+Every spectral feature `roofclf` ships is a zonal MEAN over the footprint. That is the right
+statistic only if a flagged roof is uniformly covered, and it is not: an array usually
+occupies part of a roof, so the mean is a mixture of panel and roof in an unknown
+proportion. This register's SNR budget says the roof half is the dominant noise term
+(roof-to-roof heterogeneity 0.0431 reflectance, 20 to 40x the sensor noise) and that the
+linear spectral limit ON THE MEAN is essentially reached. Order statistics are not on that
+axis. They are a different summary of the same pixels, not a cleaner estimate of the same
+summary, so the limit does not bind them.
+
+Two hypotheses, registered before measuring. EXTREMES: the darkest pixel in a footprint
+approximates the panel endmember, so min and max are less diluted than the mean, and this
+should help MORE on larger footprints. SPREAD: a partially covered roof is internally
+heterogeneous and a uniform one is not, so the within-footprint standard deviation is
+direct evidence of partial cover. Both on four quantities (brightness, SPPI, SWIR/visible,
+blue/red), both free -- the window is already read and rasterized. Plus the control that
+matters here: the pixel COUNT alone, because a size proxy hiding inside either block would
+look like a win.
+
+| Block | AUC | Within size band | vs baseline | Folds better | Sign p |
+| --- | --- | --- | --- | --- | --- |
+| Baseline | 0.8591 | 0.8093 | -- | -- | -- |
+| Plus pixel count (control) | 0.8579 | 0.8092 | -0.0015 | 11 of 29 | 0.265 |
+| Plus extremes | 0.8579 | 0.8074 | -0.0006 | 12 of 29 | 0.458 |
+| Plus spread | 0.8583 | 0.8080 | -0.0012 | 11 of 28 | 0.345 |
+| Plus both | 0.8575 | 0.8086 | -0.0007 | 11 of 29 | 0.265 |
+
+**Nothing, and the diagnostic is the point: 72.4% of the 123,898 buildings in these 30
+quadrats resolve to a SINGLE 10 m pixel.** Median pixel count is 1 overall and 2 for a
+PV-bearing roof. For three quarters of the population min, max and mean are the same number
+and the standard deviation is exactly zero, so there is no within-footprint distribution to
+read. Splitting each fold's AUC by pixel count confirms it is not merely diluted: on the
+multi-pixel subset the blocks are still flat (spread +0.0009, 15 of 28 folds, p = 0.85;
+extremes -0.0003, 13 of 28, p = 0.85), so the registered size-conditional prediction fails
+on its own terms too.
+
+**This bounds a whole class of ideas, not just this one.** Anything that needs structure
+INSIDE a footprint -- texture, panel-versus-roof segmentation, within-roof unmixing, a
+shape prior on the array -- has no substrate in three quarters of the population that
+`roofclf` exists to cover. It also explains retrospectively why area-weighted zonal means
+work (+0.0113 within size band, above): that change attacks the same fact from the other
+side, fixing how a footprint reads a pixel it only PARTLY covers rather than trying to read
+structure within one. Script: `scripts/run_dispersion_ablation.py`, feature block
+`roofclf.DISPERSION_FEATURES`, result `results/roofclf_dispersion_baseline.json`.
 
 **Verdict: one global threshold is already the right allocation, and the score is closer to
 calibrated across size bands than the per-quadrat rate spread suggests.** Those are different

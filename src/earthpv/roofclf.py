@@ -996,7 +996,7 @@ def building_table(
         # the finer grid. The remaining difference is that the shift-and-add accumulator
         # averages over frames, making its base image a temporal MEAN of valid observations,
         # where `annual_composite` writes a per-pixel MEDIAN. This tests the mean directly.
-        from earthpv.preprocess import load_scene_stack
+        from earthpv.preprocess import load_scene_stack, trimmed_mean_stack
 
         # `year*` modes read the full-year stack (~35 scenes) instead of the dry-season one
         # (~12). `year12` then keeps a fixed random 12 of those, which is what ISOLATES
@@ -1033,10 +1033,11 @@ def building_table(
                 # The compromise: a mean has ~1/1.57 the variance of a median at n=12, but
                 # cannot reject residual cloud that SCL missed. Trimming the extreme 20%
                 # per pixel keeps most of the efficiency and most of the robustness.
-                lo = np.nanpercentile(st, 10, axis=0)
-                hi = np.nanpercentile(st, 90, axis=0)
-                keep = (st >= lo[None]) & (st <= hi[None])
-                arr = np.nanmean(np.where(keep, st, np.nan), axis=0) / REFL_SCALE
+                # `trimmed_mean_stack` is the same computation to the last bit (verified
+                # maxdiff 0 on full quadrat stacks) and ~380x faster: np.nanpercentile
+                # falls back to a per-1-D-slice Python loop as soon as the array holds any
+                # NaN, which a cloud-masked stack always does.
+                arr = trimmed_mean_stack(st) / REFL_SCALE
             else:
                 arr = np.nanmean(st, axis=0) / REFL_SCALE
         transform, crs = t_tr, t_crs

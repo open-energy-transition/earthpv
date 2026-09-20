@@ -1,0 +1,39 @@
+{
+  "baseline": {
+    "variant": "baseline",
+    "n_rows": 123898,
+    "n_folds": 30,
+    "plus_px_count": {
+      "d_ws_median": -0.0015,
+      "d_auc_median": -0.0001,
+      "folds_better": 11,
+      "folds_worse": 18,
+      "sign_p": 0.2649,
+      "wilcoxon_p": NaN
+    },
+    "plus_extremes": {
+      "d_ws_median": -0.0006,
+      "d_auc_median": 0.0003,
+      "folds_better": 12,
+      "folds_worse": 17,
+      "sign_p": 0.4583,
+      "wilcoxon_p": NaN
+    },
+    "plus_spread": {
+      "d_ws_median": -0.0012,
+      "d_auc_median": 0.0002,
+      "folds_better": 11,
+      "folds_worse": 17,
+      "sign_p": 0.3449,
+      "wilcoxon_p": NaN
+    },
+    "plus_dispersion": {
+      "d_ws_median": -0.0007,
+      "d_auc_median": -0.0007,
+      "folds_better": 11,
+      "folds_worse": 18,
+      "sign_p": 0.2649,
+      "wilcoxon_p": NaN
+    }
+  }
+}
