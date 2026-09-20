@@ -547,6 +547,39 @@ And `fit_logistic` leaves its intercept unpenalised specifically so the fitted b
 not shrunk, which is a deliberate calibration choice a tree ensemble makes differently --
 any comparison has to keep that in view rather than treating the two as interchangeable.
 
+### 21. A second imagery epoch is the only new information left; is it worth the download? (2026-09-20)
+
+[The pre-boom epoch difference](experiments.md#the-roof-is-its-own-control-2026-09-20) is
+the one intervention in the 2026-09-19/20 sweep that adds INFORMATION rather than removing
+noise, and its controls hold: a split-half placebo is null, the difference beats the
+undifferenced levels 6x, and the change is a darkening concentrated in the bulk rather than
+in the extreme tail, so it is PV and not construction.
+
+What is open is whether it is worth deploying, and the honest number is the small one.
+Against the shipped read path it is +0.0234 within size band; against the noise-reduced one
+it is **+0.0047 (20 of 28 folds, p = 0.036)**, because four fifths of it is already captured
+by the trimmed mean and area-weighted zonal means. A project that ships the reducer package
+gets +0.005 from a second epoch, at the cost of compositing the country twice.
+
+Three things would settle it, in increasing order of cost:
+
+1. **Is the old epoch frame-starved?** The 2019/20 dry-season stacks carry a median 7 frames
+   against the current 12, so the difference is noisier on the old side than it needs to be.
+   A wider window (2019-10-01 to 2020-04-30, `--max-items 24 --max-cloud 50`) roughly doubles
+   the frame count; re-running the ablation on it says whether the +0.0047 was depth-limited.
+2. **Does it survive the capacity chain?** The deployment framing on the shipped base is
+   +3.2 points of recall at precision 0.500 (0.6298 to 0.6621). The same measurement has not
+   been made on the noise-reduced base, where the AUC gain is 5x smaller.
+3. **Does it transfer?** Pakistan's boom is post-2022, which is what makes a 2019 composite a
+   clean pre-installation look. A country whose PV predates the archive has no such epoch,
+   and Germany's register-calibrated half has no quadrats to measure it on, so this is
+   a Pakistan-shaped result until something tests it elsewhere.
+
+Cost note: the stacks here are quadrat-clipped (223 MB for 31 boxes). A national second
+epoch is the same order as the recomposite [item 18](#18-compose-downloads-31-times-more-than-it-keeps-2026-09-19)
+prices, and unlike that one it does not replace what already exists, so both epochs have to
+be kept.
+
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.
