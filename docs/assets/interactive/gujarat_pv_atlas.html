@@ -165,6 +165,23 @@
   <header>
     <div class="eyebrow">earthpv · Sentinel-2 × TerraMind · 0.1° grid · 2026-08-07</div>
     <h1>Gujarat's solar boom, at six exposures</h1>
+    <style>
+.vscore { display: inline-flex; align-items: center; gap: 11px; margin-top: 14px;
+  padding: 9px 15px 9px 12px; border-radius: 999px; font-size: 13px; line-height: 1.45;
+  background: var(--hair); border: 1px solid var(--vs-rim); max-width: 680px; }
+.vscore-medal { width: 13px; height: 13px; border-radius: 50%; flex: none;
+  background: var(--vs); box-shadow: 0 0 0 3px var(--vs-halo); }
+.vscore-text { color: var(--ink-2); }
+.vscore-text b { color: var(--ink); font-weight: 680; }
+.vscore-desc { display: block; margin-top: 1px; }
+.vscore--gold   { --vs: #e8b33c; --vs-rim: rgba(232,179,60,0.42);
+                  --vs-halo: rgba(232,179,60,0.16); }
+.vscore--silver { --vs: #b9c2cc; --vs-rim: rgba(185,194,204,0.40);
+                  --vs-halo: rgba(185,194,204,0.16); }
+.vscore--bronze { --vs: #c08457; --vs-rim: rgba(192,132,87,0.40);
+                  --vs-halo: rgba(192,132,87,0.16); }
+@media (max-width: 560px) { .vscore { border-radius: 10px; align-items: flex-start; } }
+</style><div class="vscore vscore--bronze"><span class="vscore-medal" aria-hidden="true"></span><span class="vscore-text"><b>EarthPV Validation Score: Bronze</b><span class="vscore-desc">Above 400 m² only. Segmentation with insufficient local training and validation data. Read the figures as a floor, not an estimate.</span></span></div>
     <p class="lede">One recall-first model read a year of Sentinel-2 imagery over every building-populated cell of Gujarat. How much photovoltaic capacity it saw depends on how honestly you count: the same probability rasters support <b>six defensible estimates</b>, from a raw-detection floor to a recall-corrected estimate of the whole detectable population. Switch between them - the map, the hero number and the province ranking follow. Rooftop and ground-mount area convert at different rates, because a rooftop detection outlines the panels and a ground-mount detection outlines the site.</p>
     <div class="banner" id="plausibilityBanner" style="display:none">⚠ <span id="plausibilityText"></span></div>
   </header>
