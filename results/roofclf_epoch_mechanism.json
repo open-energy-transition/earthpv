@@ -1,0 +1,24 @@
+{
+  "coef_d19": {
+    "d19_b02": 0.9675,
+    "d19_b03": 0.4965,
+    "d19_b04": -0.6594,
+    "d19_b05": -0.6323,
+    "d19_b06": 0.8124,
+    "d19_b07": 1.3219,
+    "d19_b08": -1.1832,
+    "d19_b8a": -1.6475,
+    "d19_b11": 1.8754,
+    "d19_b12": -1.2649,
+    "d19_brightness": -0.0214,
+    "d19_ndvi": 0.0763,
+    "d19_ndbi": 0.0419,
+    "d19_swir_vis_ratio": 0.2811,
+    "d19_blue_red_ratio": -0.0781
+  },
+  "pv_minus_nopv_d19_brightness_median": -0.008154,
+  "quadrats_darker": 28,
+  "quadrats_total": 29,
+  "sign_p": 0.0,
+  "tail_threshold": 0.07993
+}

@@ -59,6 +59,9 @@ results/*
 !results/roofclf_dispersion_*_folds.csv
 !results/roofclf_epoch_difference.json
 !results/roofclf_epoch_difference_folds.csv
+!results/roofclf_epoch_mechanism.json
+!results/roofclf_epoch_mechanism_folds.csv
+!results/roofclf_epoch_deployment.json
 !results/glint_observability_summary.json
 !results/glint_pose_by_region.csv
 !results/glint_pose_by_region_combined.csv

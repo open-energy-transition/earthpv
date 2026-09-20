@@ -86,6 +86,7 @@ see [Open questions](open-questions.md).
 | [Gradient boosting instead of the linear model](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome mixed">partial</span> | Ranks WORSE (-0.023 within size band, 4 of 30 folds) and calibrates BETTER (per-quadrat rate error 0.031 to 0.017, 20 of 29 quadrats). |
 | [Footprint shape as model features](#the-model-class-ranking-and-calibration-disagree-2026-09-19) | <span class="outcome negative">rejected</span> | -0.0001 AUC, 14 of 30 folds, p=1.00. The 0.8593 that made it look best was a difference of medians. |
 | [Area-weighted training loss](#aiming-at-the-aggregate-weighting-and-recalibration-2026-09-19) | <span class="outcome negative">rejected</span> | Improves the area ratio it optimises (1.084 to 1.035) and loses on both ranking (-0.0111 AUC) and count calibration (0.0308 to 0.0395). |
+| [A pre-boom epoch as the roof's own control](#the-roof-is-its-own-control-2026-09-20) | <span class="outcome works">works</span> | **+0.0234 within size band, 25 of 29 folds, p = 0.0002**, against a split-half placebo at -0.0009, 14 of 29, p = 1.00. The largest single feature block in this register. |
 | [Within-footprint pixel distribution](#most-footprints-are-one-pixel-2026-09-20) | <span class="outcome negative">rejected</span> | Extremes and spread of the same pixels the zonal mean averages: -0.0006 to -0.0015 within size band, 11 to 12 of 29 folds, p = 0.27 to 0.46. |
 | [Per-stratum deployment thresholds](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | Equal precision per size/density stratum COSTS 3.0 to 9.2 points of recall at matched precision (4 to 7 of 25 quadrats, p = 0.001 to 0.029). |
 | [Per-stratum score recalibration, one global cut](#one-threshold-is-already-the-right-one-2026-09-20) | <span class="outcome negative">rejected</span> | The theoretically-correct version. Pooled +1.3 points of recall, median per-quadrat +0.0000, 12 of 24 quadrats, p = 1.00. |
@@ -1450,6 +1451,76 @@ large quadrats, which is the same failure the register logged when 55 PV-dense G
 municipalities read as an 18.2% error against a representative 33.4%. Recalibrating per
 density stratum loses outright (-0.0482 net), and per size and density together loses
 (-0.0110 net).
+
+### The roof is its own control (2026-09-20)
+
+Everything above works on ONE epoch, and the SNR budget says that is the binding
+constraint: the noise limiting `roofclf` is roof-to-roof heterogeneity, 0.0431 reflectance,
+20 to 40x the sensor noise, and the linear spectral limit on a single-epoch zonal mean is
+essentially reached. Every intervention aimed at the MEASUREMENT -- L1C, 20 m sharpening,
+spatial unmixing, single-image and multi-frame super-resolution, medoid compositing -- has
+failed, which is exactly what that budget predicts.
+
+There is one term that cancels roof-to-roof heterogeneity outright, and it is not spectral:
+**the same roof, earlier.** Pakistan's rooftop boom is post-2022, so a 2019/20 dry-season
+composite is a pre-installation look at most of today's arrays, and `current - 2019`
+differences away everything about the roof that did not change. Thirty-one quadrat-clipped
+scene stacks were pulled for 2019-11-01 to 2020-03-15 (6 to 12 frames, median 7, 223 MB
+total) and reduced the SAME way as the current stack, so a difference cannot pick up a
+reducer or a read-path change.
+
+| Block | AUC | Within size band | vs baseline | Folds better | Sign p | Wilcoxon p |
+| --- | --- | --- | --- | --- | --- | --- |
+| Baseline | 0.8574 | 0.8205 | -- | -- | -- | -- |
+| **Plus the 2019 difference** | **0.8632** | **0.8388** | **+0.0234** | **25 of 29** | **0.0001** | **0.0002** |
+| Plus a split-half difference (placebo) | 0.8551 | 0.8182 | -0.0009 | 14 of 29 | 1.00 | 0.70 |
+| Plus the 2019 LEVELS, undifferenced | 0.8590 | 0.8294 | +0.0036 | 20 of 29 | 0.061 | 0.26 |
+| Plus both differences | 0.8695 | 0.8392 | +0.0222 | 25 of 29 | 0.0001 | 0.008 |
+
+**This is the largest single feature block in this register**, and roughly what the entire
+noise-reduction package above is worth -- from one extra historical composite over the same
+quadrats rather than a national recomposite.
+
+Three controls, all registered before measuring, and all of them matter:
+
+**The placebo is exactly null.** Differencing the first half of the CURRENT dry-season stack
+against its second half gives the same band count, the same features, the same imagery and
+the same reduction, with no installation possible in between: -0.0009, 14 of 29 folds,
+p = 1.00. So what helps is the EPOCH, not having two estimates of the same roof.
+
+**The difference beats the levels, which is the L2 prior doing work.** For an unpenalised
+linear model, adding the 2019 levels spans the same space as adding the differences and must
+tie. Under L2 it does not, and it does not: +0.0036 (p = 0.061) against +0.0234. The
+difference parameterisation is the one that encodes "the roof cancels", and encoding it is
+worth 6x more than handing the model the same information unshaped.
+
+**It is PV, not construction.** A building that did not exist in 2019, or was re-roofed, also
+differences large, and VIDA footprints come from recent imagery so new construction is in
+the layer. Two reads separate them (`scripts/epoch_difference_mechanism.py`):
+
+  * *Sign.* PV modules are dark; bare ground turning into a roof is not. PV-bearing roofs
+    darkened relative to PV-free ones by a median 0.0082 reflectance, **darker in 28 of 29
+    quadrats, sign test p < 0.0001**.
+  * *Magnitude.* Construction would live in the extreme tail of the difference. It does not:
+    the top decile of `|d19_brightness|` has a LOWER PV base rate than the rest (0.130
+    against 0.140), and the gain is in the bulk (+0.0165, 25 of 28 folds) not the tail
+    (+0.0041, 12 of 19).
+
+The fitted coefficients are also self-consistent with the static model rather than with a
+generic change detector: the largest is `d19_b11` at +1.88, and `b11_mean` is the static
+model's largest coefficient at +4.33. The block is reading "this roof moved TOWARDS the PV
+spectral signature", not "this roof moved".
+
+**Caveats.** The 2019 arm carries a median 7 frames against the current 12, so the
+difference is noisier on the old side than it needs to be; more 2019/20 scenes would likely
+widen the gain rather than close it. Rule-1 labels are epoch-relative, so an array installed
+between the mapping imagery and the composite is an unlabelled positive in both arms.
+Deploying this nationally means a second epoch of imagery for the whole country, which is the
+same cost [open question 18](open-questions.md) prices for the reducer change -- but unlike
+the reducer it buys new information rather than less noise, and it does not require
+recompositing what already exists. Scripts: `scripts/compose_scene_stacks.py --window
+2019-11-01:2020-03-15 --subdir stacks_2019`, `scripts/run_epoch_difference_ablation.py`.
+Results: `results/roofclf_epoch_difference.json`, `results/roofclf_epoch_mechanism.json`.
 
 ### Most footprints are one pixel (2026-09-20)
 

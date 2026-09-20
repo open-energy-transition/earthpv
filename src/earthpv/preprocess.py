@@ -567,7 +567,12 @@ def trimmed_mean_stack(st: np.ndarray, lo_q: float = 0.10, hi_q: float = 0.90
         return v0 + frac * (v1 - v0)
 
     lo, hi = _q(lo_q), _q(hi_q)
-    with np.errstate(invalid="ignore"):
+    import warnings
+
+    with np.errstate(invalid="ignore"), warnings.catch_warnings():
+        # A pixel masked in every frame is an all-NaN slice, which is a legitimate outcome
+        # here and is turned into NaN on the last line, not a condition to warn about.
+        warnings.filterwarnings("ignore", message="Mean of empty slice")
         keep = (st >= lo[None]) & (st <= hi[None])
         out = np.nanmean(np.where(keep, st, np.nan), axis=0)
     return np.where(n > 0, out, np.nan)
