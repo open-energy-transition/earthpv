@@ -104,6 +104,13 @@ def compose(
         "Omit it and an AOI that already has composites keeps whatever they used, so a "
         "resumable run cannot mix the two; pass it explicitly only to override that.",
     ),
+    reducer: str = typer.Option(
+        None, "--reducer",
+        help="How the scene stack collapses per pixel: 'median' (every composite before "
+        "2026-09-20), 'mean' (+0.0286 AUC within size band for roofclf, but a single "
+        "unmasked cloud moves a pixel 9x) or 'trimmed' (drops the top and bottom decile "
+        "first). Omit it and an AOI inherits what its existing composites used.",
+    ),
     stats: bool = typer.Option(
         False, "--stats/--no-stats",
         help="Also write temporal_stats_<i>.tif: per-pixel p10/p50/p90/std per band plus a "
@@ -119,7 +126,7 @@ def compose(
     win = tuple(window.split(":")) if window else None
     run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit,
                 window=win, index=index, workers=workers, include_labels=label_cells,
-                use_vida=use_vida, stats=stats, resampling=resampling)
+                use_vida=use_vida, stats=stats, resampling=resampling, reducer=reducer)
 
 
 @app.command()

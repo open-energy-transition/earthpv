@@ -1312,10 +1312,28 @@ buildings, and `log_roof_area` already carries it. Measured on the 5 quadrats wh
 covers more than half our footprints, a biased subsample. GBA heights are CC BY-NC 4.0 in any
 case, which would have blocked deployment.
 
-**Before the mean ships, two things need checking.** The median is there to reject residual
-cloud that SCL misses, and a mean cannot; a trimmed mean is the obvious compromise and is
-measured alongside. And changing the reducer changes every composite, so the same rule
-applies as for the resampling change: recompose a country wholesale or leave it alone.
+**The mean's weakness is real, and a trimmed mean is the answer.** The median is there to
+reject residual cloud that SCL missed, and a mean cannot: with one unmasked cloud pixel among
+twelve frames, a clean value near 100 reads 100.7 under the median, 100.2 under a 20%-trimmed
+mean, and **924.4 under a plain mean**. Measured on the quadrats, the trimmed mean keeps most
+of the gain:
+
+| Reducer | Within size band | Folds better | One unmasked cloud |
+| --- | --- | --- | --- |
+| Median (current) | -- | -- | 100.7 |
+| **Trimmed mean (drop top and bottom decile)** | **+0.0200** | 25 of 30 | **100.2** |
+| Mean | +0.0286 | 25 of 30 | 924.4 |
+
+So **the trimmed mean is the one to ship**: 70% of the gain, and robustness indistinguishable
+from the median on the failure mode the median exists for.
+
+Wired as `imagery.REDUCERS` / `annual_composite(reducer=...)` / `compose --reducer`, with the
+default left at "median" and `run_compose` inheriting an AOI's existing reducer, exactly as
+for the resampling change and for the same reason: a model calibrated on medians and scored
+on means is a domain shift. Every existing AOI -- Pakistan, Germany, France, Nigeria, Zambia
+-- inherits "median". Shipping it nationally means recompositing, which
+[open question 18](open-questions.md) prices at roughly 2 TB of transfer per country, so it
+is free for the next country and expensive for the existing ones.
 
 Artifacts: `results/roofclf_preprocess_ablation.json`, `results/subpixel_shifts.json`,
 `results/native_shifts.json`, `results/roofclf_gba_height.json`.

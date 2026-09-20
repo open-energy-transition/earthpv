@@ -21,6 +21,7 @@ from tqdm import tqdm
 
 from earthpv.config import Settings
 from earthpv.imagery import (
+    DEFAULT_REDUCER,
     DEFAULT_RESAMPLING,
     TEMPORAL_STAT_BLOCKS,
     annual_composite,
@@ -323,6 +324,22 @@ def write_temporal_stats(
     tmp.rename(path)
 
 
+def existing_reducer(out_dir: Path) -> str | None:
+    """The reducer an AOI's existing composites were built with, or None if there are none.
+
+    A composite written before 2026-09-20 carries no `earthpv_reducer` tag and every one of
+    those is a median. Same inheritance rule as the resampling: a corpus must not mix, because
+    a model calibrated on medians and scored on means is a domain shift.
+    """
+    for tif in sorted(out_dir.glob("*/composite_0.tif"))[:1]:
+        try:
+            with rasterio.open(tif) as src:
+                return src.tags().get("earthpv_reducer", "median")
+        except rasterio.errors.RasterioIOError:
+            return None
+    return None
+
+
 def existing_resampling(out_dir: Path) -> str | None:
     """The resampling an AOI's existing composites were built with, or None if there are none.
 
@@ -387,6 +404,7 @@ def run_compose(
     use_vida: bool = False,
     stats: bool = False,
     resampling: str | None = None,
+    reducer: str | None = None,
 ) -> Path:
     """`window`/`index` build an extra seasonal layer (`composite_<index>.tif`, e.g.
     a post-monsoon contrast season) into the same cell dirs as the base run.
@@ -432,6 +450,18 @@ def run_compose(
     out_dir = region_dir / "composites"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    found_red = existing_reducer(out_dir)
+    if reducer is None:
+        reducer = found_red or DEFAULT_REDUCER
+        if found_red:
+            log.info("Inheriting reducer=%s from the composites already in %s",
+                     reducer, out_dir)
+    elif found_red and found_red != reducer:
+        log.warning(
+            "MIXING REDUCERS: %s already holds composites built with %r and this run was "
+            "told %r. Recompose the AOI wholesale or pass --reducer %s.",
+            out_dir, found_red, reducer, found_red)
+
     found = existing_resampling(out_dir)
     if resampling is None:
         resampling = found or DEFAULT_RESAMPLING
@@ -470,7 +500,7 @@ def run_compose(
 
                 with rasterio.open(tif) as b:
                     gbox = GeoBox((b.height, b.width), b.transform, b.crs)
-                kw = dict(geobox=gbox, with_stats=True, resampling=resampling)
+                kw = dict(geobox=gbox, with_stats=True, resampling=resampling, reducer=reducer)
                 if window:
                     kw["date_range"] = window
                 if index > 0:
@@ -493,9 +523,10 @@ def run_compose(
                 with rasterio.open(base) as b:
                     gbox = GeoBox((b.height, b.width), b.transform, b.crs)
                 res = annual_composite(bbox, date_range=window, geobox=gbox, max_cloud=60,
-                                       with_stats=stats, resampling=resampling)
+                                       with_stats=stats, resampling=resampling,
+                                       reducer=reducer)
             else:
-                kw = dict(with_stats=stats, resampling=resampling)
+                kw = dict(with_stats=stats, resampling=resampling, reducer=reducer)
                 if window:
                     kw["date_range"] = window
                 res = annual_composite(bbox, **kw)
@@ -524,7 +555,7 @@ def run_compose(
             )
             # Which resampling built this cell. A composite with no such tag predates
             # 2026-09-19 and is "nearest".
-            dst.update_tags(earthpv_resampling=resampling,
+            dst.update_tags(earthpv_resampling=resampling, earthpv_reducer=reducer,
                             earthpv_window=":".join(window) if window else "default")
         tmp.rename(tif)
         if stats_arr is not None:

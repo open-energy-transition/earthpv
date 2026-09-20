@@ -209,6 +209,41 @@ def _resampling_spec(mode: str, es: bool) -> str | dict:
 #
 # NOT a claim that any of this helps. It is the cheapest measurable form of the question,
 # and the ablation is what answers it.
+# --- How the scene stack is reduced -------------------------------------------------------
+#
+# The composite has always been a per-pixel MEDIAN. Measured 2026-09-20 over the 30 Pakistani
+# calibration quadrats, leave-one-quadrat-out, a MEAN instead gains +0.0286 AUC within size
+# band for `roofclf` (25 of 30 folds, p=0.0001) with no other change -- the largest single
+# improvement in docs/experiments.md, and larger than every feature block there combined.
+#
+# Why: SCL masking already removes cloud, shadow and snow, so the median's robustness is
+# largely redundant, and at twelve samples a median carries about 1.57x the variance of a
+# mean. The cost is that a mean cannot reject residual cloud SCL missed, which "trimmed"
+# exists for: it drops the top and bottom decile per pixel before averaging.
+#
+# DEFAULT STAYS "median". Changing the reducer changes every composite, exactly like
+# BAND_RESAMPLING, and a model calibrated on medians and scored on means is a domain shift
+# rather than an improvement. `run_compose` inherits an AOI's existing reducer for the same
+# reason. Shipping this nationally means recompositing, which open-questions #18 prices at
+# roughly 2 TB of transfer per country -- so it is free for the NEXT country and expensive
+# for the existing ones.
+REDUCERS = ("median", "mean", "trimmed")
+DEFAULT_REDUCER = "median"
+
+
+def _reduce_stack(masked, reducer: str):
+    """Collapse the cloud-masked (time, y, x) stack per pixel. See `REDUCERS`."""
+    if reducer == "median":
+        return masked.median(dim="time", skipna=True)
+    if reducer == "mean":
+        return masked.mean(dim="time", skipna=True)
+    if reducer == "trimmed":
+        lo = masked.quantile(0.10, dim="time", skipna=True).drop_vars("quantile")
+        hi = masked.quantile(0.90, dim="time", skipna=True).drop_vars("quantile")
+        return masked.where((masked >= lo) & (masked <= hi)).mean(dim="time", skipna=True)
+    raise ValueError(f"unknown reducer {reducer!r}; expected one of {REDUCERS}")
+
+
 TEMPORAL_STAT_BLOCKS = ("p10", "p50", "p90", "std")
 
 
@@ -262,6 +297,7 @@ def _annual_composite_via(
     geobox=None,
     with_stats: bool = False,
     resampling: str = DEFAULT_RESAMPLING,
+    reducer: str = DEFAULT_REDUCER,
 ) -> tuple[np.ndarray, object, object] | tuple[np.ndarray, object, object, np.ndarray] | None:
     """One provider attempt of annual_composite; `provider` is
     "planetary-computer" or "earth-search".
@@ -322,10 +358,10 @@ def _annual_composite_via(
         # because `quantile` sorts a copy and GDAL holds its own block cache on top. So a
         # stats run is memory-bound as well as bandwidth-bound: keep `workers` low.
         stack = masked.astype("float32").compute()
-        med_ds = stack.median(dim="time", skipna=True)
-        stats_arr = _temporal_stats(stack, med_ds, bands)
+        med_ds = _reduce_stack(stack, reducer)
+        stats_arr = _temporal_stats(stack, stack.median(dim="time", skipna=True), bands)
     else:
-        med_ds = masked.median(dim="time", skipna=True)
+        med_ds = _reduce_stack(masked, reducer)
     med = med_ds.fillna(0).astype("uint16").compute()
     arr = np.stack([med[b].values for b in bands], axis=0)
     if (arr != 0).mean() < 0.01:
@@ -351,8 +387,9 @@ def annual_composite(
     geobox=None,
     with_stats: bool = False,
     resampling: str = DEFAULT_RESAMPLING,
+    reducer: str = DEFAULT_REDUCER,
 ) -> tuple[np.ndarray, object, object] | tuple[np.ndarray, object, object, np.ndarray] | None:
-    """Cloud-masked median over the 10 local bands (B02..B12), 10 m.
+    """Cloud-masked per-pixel reduction over the 10 local bands (B02..B12), 10 m.
 
     `resampling` is "20m-bilinear" (the default since 2026-09-19: bilinear for the bands
     that are natively 20 m, nearest for everything else) or "nearest" (what every composite
@@ -393,11 +430,11 @@ def annual_composite(
         # stop paying for a provider that is known to be down for this whole run.
         return _annual_composite_via(
             _PROVIDER_OVERRIDE, bbox, date_range, max_cloud, max_items, geobox, with_stats,
-            resampling,
+            resampling, reducer,
         )
     fut = _PC_EXECUTOR.submit(
         _annual_composite_via, "planetary-computer", bbox, date_range, max_cloud, max_items,
-        geobox, with_stats, resampling,
+        geobox, with_stats, resampling, reducer,
     )
     try:
         result = fut.result(timeout=PC_TIMEOUT_S)
@@ -410,7 +447,7 @@ def annual_composite(
         )
         return _annual_composite_via(
             "earth-search", bbox, date_range, max_cloud, max_items, geobox, with_stats,
-            resampling,
+            resampling, reducer,
         )
     except Exception as e:  # noqa: BLE001 - any PC failure is grounds for fallback
         log.warning(
@@ -419,7 +456,7 @@ def annual_composite(
         )
         return _annual_composite_via(
             "earth-search", bbox, date_range, max_cloud, max_items, geobox, with_stats,
-            resampling,
+            resampling, reducer,
         )
     if result is None:
         # PC has no scenes for this window; ES mirrors the same ESA archive but
@@ -427,7 +464,7 @@ def annual_composite(
         log.info("Planetary Computer returned no scenes for bbox=%s; trying Earth Search", bbox)
         return _annual_composite_via(
             "earth-search", bbox, date_range, max_cloud, max_items, geobox, with_stats,
-            resampling,
+            resampling, reducer,
         )
     return result
 
