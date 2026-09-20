@@ -37,6 +37,15 @@ This leads to the one rule that overrides everything else:
 > quadrat (`imagery_layer`/`imagery_date` below) so this gap is visible
 > per-quadrat instead of assumed away.
 
+![A JOSM window over eastern Lahore at 500 metre scale. Thousands of small yellow polygons, one per mapped rooftop PV installation, fill two adjacent neighbourhoods so densely that the street grid shows through them. The mapped area stops along a ring road and a railway line; the identical-looking suburbs beyond those lines carry almost no yellow at all. That edge is the calibration boundary, and the emptiness outside it is unmapped ground rather than ground without solar.](assets/figures/josm-calibration-region-lahore.jpg)
+
+*What a finished calibration area looks like, and why the boundary matters. Inside the
+line every visible panel is mapped; outside it nothing is, and the two look identical on
+imagery. This is the whole point of Rule 1: the model's output over this area can be
+compared against reality only because "no polygon here" genuinely means "no panel here",
+and that guarantee stops exactly at the boundary. Note that the boundary follows a ring
+road and a railway rather than being a square, which is usually the better choice.*
+
 ## New to JOSM? Borrow the MapYourGrid guides
 
 [MapYourGrid](https://mapyourgrid.org/) is Open Energy Transition's grid-mapping campaign,
@@ -277,6 +286,13 @@ generator:output:electricity=yes        (add value in kW only if known, never gu
 location=roof                           (rooftop) | omit for ground-mounted
 ```
 
+![A JOSM session over an industrial district of Karachi. Hundreds of mapped solar generators cover the rooftops along a main road. On the right, the tag editor is open on the Solar Power Generator preset showing generator:source set to solar, and in the layer panel Mapbox Satellite is now the active background where the previous screenshot used Esri.](assets/figures/josm-solar-preset-tagging.jpg)
+
+*Tagging in practice, in SITE Karachi. The preset (Man Made / Power / Power Generator /
+Solar Power Generator) fills the tags in the table above, so they do not have to be typed
+by hand. The active background here is Mapbox where the previous screenshot used Esri:
+that switch is routine, not exceptional.*
+
 For solar pumps add `pump=powered` on the associated well/pump node where one
 exists. Do not invent capacity values; panel geometry is the ground truth
 here, not wattage.
@@ -300,6 +316,13 @@ low-contrast, specular target: one layer may show a flat dark rectangle, another
 the array mid-glint as a bright patch, a third may have been flown before it was installed.
 Mapping a quadrat against a single background is the most common reason a "complete" box
 turns out not to be.
+
+![The JOSM layer panel showing three background imagery layers stacked and switchable: Esri World Imagery, Mapbox Satellite and Bing aerial imagery. The map below is a 10 kilometre wide view around Lahore with a filter active that has hidden 91,065 objects, leaving only features tagged as solar visible as scattered clusters.](assets/figures/josm-imagery-layers-filter.jpg)
+
+*Three background layers loaded at once, which is the setup to work in: switching between
+Esri, Mapbox and Bing over the same roof is how you find arrays that one capture missed.
+The panel on the right also shows the filter doing the other half of the job, hiding 91,065
+objects so that only solar-tagged features remain on screen.*
 
 Work through what your area actually offers. In JOSM these live under **Imagery**, and the
 list is driven by the [Editor Layer Index](https://github.com/osmlab/editor-layer-index),
@@ -374,6 +397,13 @@ pixi run calib-export                                                    # re-ex
 ```
 
 ## Completeness declaration and QA
+
+![A one kilometre wide view of planned residential sectors in Islamabad. Yellow polygons marking mapped rooftop PV cover almost every house across several complete blocks, following the street layout exactly, while the wooded belts and open ground between sectors stay empty.](assets/figures/josm-mapped-residential-islamabad.jpg)
+
+*What "every visible panel" means in a residential stratum: near-total adoption, mapped
+house by house across whole blocks. A sweep that stopped at the large or obvious
+installations would have produced a fraction of this and would have taught the calibration
+that the model overcounts.*
 
 A quadrat is *done* when:
 

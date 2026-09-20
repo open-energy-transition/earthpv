@@ -523,6 +523,20 @@ def zonal_dispersion(
 # can be taken without recompositing a country. See docs/experiments.md's
 # "The composite reducer is the biggest lever in this register".
 AREA_WEIGHTED_ZONAL = True
+# Minimum share of a footprint that must sit over VALID (non-fill) imagery before its
+# area-weighted mean is used instead of `zonal_mean_max`'s value.
+#
+# This constant exists because omitting it shipped a real defect for one national run
+# (2026-09-20). `zonal_mean_max` returns NaN for a building with no valid pixel, which
+# CLAUDE.md records as a deliberately safe direction: nothing unscored can clear a
+# threshold. Area weighting lets a footprint reach a neighbouring pixel it does not own,
+# so without a floor it scored 12.8% more buildings nationally -- the cell-edge and
+# tile-overlap strips -- and those recovered buildings flagged at 4.89x the rate of
+# buildings scored under both conventions. The calibration quadrats cannot see this:
+# they are interior boxes where 0.06-0.8% of buildings take that path, so the in-quadrat
+# measurement (+0.0119 AUC within size band) is silent about the population that moved
+# the national total by tens of percent.
+MIN_VALID_COVER_FRAC = 0.5
 
 
 def area_weighted_zonal_mean(
@@ -548,12 +562,14 @@ def area_weighted_zonal_mean(
     in Pakistan a cell-edge artefact (see `zonal_mean_max`). `nodata` is applied here with
     the same all-bands-equal-fill test that function uses.
 
-    **The fallback.** A footprint smaller than one subpixel (2.5 m at `subpix=4`), or one
-    whose subpixels were all claimed by an overlapping neighbour, gets zero weight and
-    would come back NaN -- silently dropping the smallest buildings, which are the
-    population this module exists for. Those rows keep `fallback_means`, i.e. exactly what
-    `zonal_mean_max` returned, including its representative-point fallback. The scored
-    population is therefore unchanged by construction; only the values move.
+    **The fallback.** A footprint smaller than one subpixel (2.5 m at `subpix=4`), one
+    whose subpixels were all claimed by an overlapping neighbour, or one covering less
+    than `MIN_VALID_COVER_FRAC` of itself in valid imagery, keeps `fallback_means`, i.e.
+    exactly what `zonal_mean_max` returned, including its representative-point fallback
+    and its NaN for a building with no valid pixel at all. The scored population is
+    therefore unchanged by construction; only the values move. **That last condition is
+    load-bearing** -- see `MIN_VALID_COVER_FRAC` for the national defect that shipped
+    without it.
 
     Returns `(means, covered)` where `covered` flags the buildings that got a real weighted
     mean rather than the fallback.
@@ -568,7 +584,14 @@ def area_weighted_zonal_mean(
     A = coverage_matrix(bu_utm, arr.shape[-2:], transform, subpix=subpix)
     Aok = A.multiply(valid[:, None]).tocsr()
     w = np.asarray(Aok.sum(axis=0)).ravel()
-    covered = w > 1e-6
+    total = np.asarray(A.sum(axis=0)).ravel()
+    # A building must be MOSTLY over valid imagery before its weighted mean is trusted.
+    # Without this the function scores every cell-edge building that `zonal_mean_max`
+    # deliberately left NaN, from whatever sliver of valid pixels its footprint reaches --
+    # and measured nationally those recovered buildings flag at 4.89x the rate of buildings
+    # scored in both conventions, which is the cell-edge artefact returning in a new form.
+    # See `MIN_VALID_COVER_FRAC`.
+    covered = (w > 1e-6) & (w >= MIN_VALID_COVER_FRAC * np.maximum(total, 1e-9))
     out = np.array(fallback_means, dtype="float64", copy=True)
     if covered.any():
         for bi in range(nb):

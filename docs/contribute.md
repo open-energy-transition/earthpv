@@ -12,6 +12,12 @@ This page is the fast path in. For the exhaustive rules (tagging conventions, im
 dating, QA, all six landscape strata), see the
 [full mapping protocol](calibration-mapping-protocol.md); this page is the on-ramp to it.
 
+![A JOSM window over eastern Lahore. Thousands of small yellow polygons, one per mapped rooftop PV installation, fill two neighbourhoods so densely that the street grid shows through them, and the mapped area stops sharply along a ring road and a railway line, beyond which identical-looking suburbs carry almost no yellow.](assets/figures/josm-calibration-region-lahore.jpg)
+
+*A finished calibration area in Lahore. Inside the boundary every visible panel is mapped;
+outside it nothing is, and the two look the same on imagery. That guarantee is the whole
+product here, and it stops exactly at the line.*
+
 ## Why this matters, concretely
 
 A quadrat's *own* building density decides which national cells it can calibrate. As of
