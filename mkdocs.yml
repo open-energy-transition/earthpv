@@ -1,7 +1,6 @@
-site_name: earthpv
+site_name: EarthPV
 site_description: >-
-  Open rooftop solar mapping from Sentinel-2. A recall-first geospatial foundation
-  model, an OpenStreetMap validation loop, and a calibrated national capacity atlas.
+  Mapping every solar system above 10 kWp worldwide: capacity, growth and orientation, open and verifiable
 site_url: https://open-energy-transition.github.io/earthpv/
 repo_url: https://github.com/open-energy-transition/earthpv
 repo_name: open-energy-transition/earthpv
