@@ -13,8 +13,8 @@ hide:
 
 <div class="hero-copy" markdown>
 
-**Cost-effective, verifiable, open data on photovoltaic capacity, growth and
-orientation for >10 kWp globally**
+**Mapping every solar system above 10 kWp worldwide: capacity, growth and
+orientation, open and verifiable**
 { .lede }
 
 </div>

@@ -21,7 +21,7 @@
 
 ---
 
-> **Cost-effective, verifiable, open data on photovoltaic capacity, growth and orientation for >10 kWp globally**
+> **Mapping every solar system above 10 kWp worldwide: capacity, growth and orientation, open and verifiable**
 
 > **How small? EarthPV finds most rooftop PV above roughly 50 m² of panel, about
 > 10 kWp. Between 20 and 50 m² it is close to a coin flip, and below that it misses
