@@ -74,6 +74,126 @@ Four of MapYourGrid's strategies map onto this protocol almost unchanged:
   second mapper independently sweeping the same box, which this protocol requires as part of
   the completeness declaration rather than as an optional extra.
 
+## Defining calibration regions in a new country
+
+Everything below this section is written from Pakistan's experience and uses Pakistan's
+landscape strata. The *rules* transfer; the specific strata and numbers do not. If you are
+bringing up a country from nothing, this section is the one to read first.
+
+### You are calibrating two different instruments, and they want different things
+
+| | `roofclf` (per-building, below the floor) | Segmentation (candidate polygons, above it) |
+| --- | --- | --- |
+| What it needs | Small areas where **every** installation is mapped (Rule 1) | Human verdicts on a **sample of the model's own candidates** |
+| Built by | this protocol | `earthpv calibrate-sample` then `calibrate-candidates` |
+| Used for | coverage ratio, area recall, the density domain | `p_real` per size/placement bin, the recall correction |
+| Without it | no sub-400 m² half at all | `est_mwp_cal` collapses to `est_mwp_det`, a precision-honest floor |
+
+Both are called "calibration" in this repository and they are not interchangeable. France
+has 14 exhaustively mapped communes and **no** candidate-precision table, so its atlas is
+explicitly a floor rather than an estimate. Decide up front which of the two you are
+buying, because the mapping effort is not shared: one wants complete coverage of small
+areas, the other wants verdicts spread across the size range of what the model proposed.
+
+### How many regions, and where
+
+The binding constraint is not the count, it is **the range of building density the regions
+span**, because that range becomes the domain the capacity estimate is allowed to cover.
+`density.CALIBRATED_BLDG_DENSITY_BY_AOI` is fitted from the density of your Rule-1 regions,
+and every national cell outside that band is excluded from the published figure. Pakistan's
+30 regions span 48.5 to 5,258 buildings/km² and that buys **66.3% of national cells**,
+holding 94.7% of buildings. The rest of the country is not estimated.
+
+So plan the set against your own national cell-density distribution, which
+`earthpv density` produces before any of this:
+
+1. Compute the density distribution of the cells you intend to publish over.
+2. Place regions so their **own** densities span it, paying particular attention to the
+   sparse tail, which is where a set assembled by convenience will have no coverage.
+3. A region only extends the domain downward if **its own average density** is below the
+   current floor. A boundary traced around a settlement almost never achieves this, because
+   villages are dense and it is the farmland between them that pulls a national average
+   down. A range-extending region has to be sized and sited to average in unbuilt land on
+   purpose.
+4. Six to ten regions is enough to start fitting; Pakistan needed the twenties before the
+   sparse band stopped moving. Add until the coverage ratio in your sparsest stratum stops
+   changing when you add another.
+
+**Derive your own density band and register it.** A country with no entry in
+`CALIBRATED_BLDG_DENSITY_BY_AOI` falls back to Pakistan's band with a warning that is easy
+to miss in a long log. Pakistan's band is meaningless in a country with different
+settlement patterns, and the failure is silent: you get a plausible national number covering
+the wrong cells.
+
+### Derive your own strata, do not import Pakistan's
+
+The six strata below are Pakistani landscape types. The transferable rule is that a stratum
+is *a kind of place where the relationship between roofs and PV differs*, and that you want
+several regions in each. Build the list from your own country: the split that matters is
+whatever changes the answer, typically some combination of building density, roof type
+(flat concrete behaves differently from pitched tile), urban/peri-urban/rural, and whether
+an area is industrial. Pick by landscape type first and look at panels second, or the
+sample is biased before it starts.
+
+### Reject regions on imagery date, before anyone maps
+
+**This is the single most expensive mistake in this project's history of calibration
+mapping**, and it is now a hard gate in the tooling rather than advice.
+
+Rule 1 certifies "every visible panel as of the mapping imagery's capture date". If that
+imagery predates the Sentinel-2 composite the model reads, installations exist in the
+model's input that cannot exist in the labels, and the region's zeros are uninterpretable
+in **both** directions: you cannot tell a real absence from an absence of evidence. Six
+Pakistani boxes were lost to this. Three (Dera Ghazi Khan, Waziristan, Jamshoro) were
+**fully swept** before anyone checked, and registering them would have pulled the sparse
+band's coverage ratio toward zero on evidence that does not support it.
+
+So, before drawing anything:
+
+1. In JOSM, turn on each candidate layer over the area and find its capture date. Esri
+   World Imagery exposes dates through its own metadata; Esri Wayback and Google Earth
+   Pro's historical slider are free ways to date a view when the layer does not say.
+2. Compare it to your AOI's `compose_window`. If the best available imagery is
+   substantially older, the region is not usable **regardless of how much PV you can see in
+   it**.
+3. Record the outcome either way:
+
+```bash
+# usable: the date goes on the boundary and travels with the region for ever
+pixi run python scripts/new_calibration_quadrat.py --name sargodha_north \
+    --lat 32.0836 --lon 72.6711 --side-m 1500 --country Pakistan \
+    --imagery-layer "Esri World Imagery" --imagery-date 2025-03
+
+# not usable: record it as considered and rejected, and stop
+pixi run python scripts/new_calibration_quadrat.py --name dera_ghazi_khan_rural \
+    --lat <lat> --lon <lon> --side-m 3000 --country Pakistan \
+    --imagery-layer "Esri World Imagery" --imagery-date 2019-11 \
+    --reject "imagery predates the post-2022 PV boom; zeros uninterpretable"
+```
+
+The script **refuses to register a region without an imagery date**. `--imagery-unchecked`
+overrides it and is recorded as such, so an unchecked region is visibly different from one
+checked and found recent. A rejection writes a row to
+`results/calibration_rejected_regions.csv` and creates nothing under `data/labels/`.
+
+**Record rejections, do not just abandon them.** A rejection is evidence: it says someone
+looked here and why it was not usable. Without the register the next person re-draws the
+same box, and the set of regions that survives is a silent survivorship filter over
+wherever the imagery happened to be good, which is exactly the bias the stratification
+above exists to prevent.
+
+### Two siting constraints that cost this project a region
+
+**Do not site a region to include ground-mount.** Kalat Rural was placed deliberately to
+capture a ground-mounted array, and 69 of the 89 buildings it labels as having PV are
+labelled only because a large ground array clips them. It is registered, Rule-1 complete,
+and permanently **excluded** from the fit. Ground-mount at or above the segmentation floor
+is segmentation's instrument; a `roofclf` region wants roofs.
+
+**A region that moves loses its purpose.** Kalat Rural was sited at 25.9 buildings/km² to
+extend the sparse end and then moved to 46.5, where it no longer extended anything. If a
+region exists to reach a density band, re-check its density after any move.
+
 ## Quadrat selection should be automated, and is not yet
 
 Stated here because it is a known weakness of this protocol rather than a finished part of

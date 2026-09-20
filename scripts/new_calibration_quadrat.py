@@ -55,6 +55,10 @@ from earthpv.labels import geodesic_area_m2  # noqa: E402
 from earthpv.roofclf import load_boundary  # noqa: E402
 
 LABELS = Path("data/labels")
+# Considered-and-rejected locations. A rejection is evidence too: it records that someone
+# looked, and why it was not usable, so the same box is not re-drawn and the selection is
+# auditable rather than a silent survivorship filter over whatever happened to be mapped.
+REJECT_REGISTER = Path("results/calibration_rejected_regions.csv")
 GEOD = Geod(ellps="WGS84")
 FLOOR_M2 = 400.0  # the segmentation model's per-object detection floor
 CHIP_M = CHIP_SIZE * 10.0  # 2,240 m -- one training chip's edge
@@ -247,6 +251,28 @@ def main() -> None:
                     help="drawn mode: override the '_calib_<tag>' name suffix (default is "
                          "the geodesic area, e.g. 1p24km2)")
     ap.add_argument("--iso3", default="PAK")
+    ap.add_argument("--country", default=None,
+                    help="country name for the location string; defaults to Pakistan only "
+                         "when --iso3 is PAK, and is REQUIRED for any other country")
+    # The imagery gate. `imagery_layer`/`imagery_date` are columns the quadrat register has
+    # always carried and nothing ever populated, which is what makes Rule 1 a bound rather
+    # than a guarantee (see docs/calibration-mapping-protocol.md). Recording them at
+    # registration, before anyone maps, is also what stops the Box 17/18 failure: six boxes
+    # drawn or fully swept and only then found to sit under imagery too old to interpret.
+    ap.add_argument("--imagery-layer", default=None,
+                    help="background layer the box will be mapped against, e.g. "
+                         "'Esri World Imagery'. Recorded on the boundary.")
+    ap.add_argument("--imagery-date", default=None,
+                    help="best-known capture date of that layer, YYYY-MM-DD or YYYY-MM. "
+                         "Refuse to guess: pass --imagery-unchecked instead.")
+    ap.add_argument("--imagery-unchecked", action="store_true",
+                    help="register without an imagery date. Allowed, recorded as such, and "
+                         "means the box's zeros are uninterpretable until it is filled in.")
+    ap.add_argument("--reject", default=None, metavar="REASON",
+                    help="do NOT create a quadrat: record this location as considered and "
+                         "rejected, with the reason, in the rejection register. Use for a "
+                         "box dropped for stale or unusable imagery, so the next person "
+                         "does not re-draw it.")
     ap.add_argument("--allow-overlap", action="store_true",
                     help="proceed even though the box overlaps an existing quadrat "
                          "(record the share and the dedup consequence in the box registry)")
@@ -342,6 +368,46 @@ def main() -> None:
         print("\n--dry-run: nothing written, nothing fetched")
         return
 
+    if args.reject:
+        import csv
+        from datetime import date as _date
+
+        REJECT_REGISTER.parent.mkdir(parents=True, exist_ok=True)
+        new_file = not REJECT_REGISTER.exists()
+        with REJECT_REGISTER.open("a", newline="") as fh:
+            w = csv.writer(fh)
+            if new_file:
+                w.writerow(["name", "center_lat", "center_lon", "size_km2", "district",
+                            "province", "imagery_layer", "imagery_date", "reason",
+                            "date_rejected"])
+            w.writerow([args.name, round(rep.y, 6), round(rep.x, 6),
+                        round(area / 1e6, 4), district or "", province or "",
+                        args.imagery_layer or "", args.imagery_date or "",
+                        args.reject, _date.today().isoformat()])
+        print(f"\nRECORDED AS REJECTED in {REJECT_REGISTER}: {args.reject}")
+        print("No quadrat was created. Nothing under data/labels/ was touched.")
+        return
+
+    # The imagery gate. Refusing here is cheap; refusing after a mapper has swept the box
+    # is what Boxes 17 and 18 cost.
+    if not args.imagery_date and not args.imagery_unchecked:
+        raise SystemExit(
+            "REFUSING: no --imagery-date.\n"
+            "A quadrat's completeness is relative to its imagery's capture date, not to "
+            "mapping effort, so a box under imagery older than the composite epoch "
+            "produces zeros nobody can interpret in either direction. Check the layer's "
+            "date in JOSM BEFORE mapping, then either:\n"
+            "  --imagery-layer 'Esri World Imagery' --imagery-date 2025-03\n"
+            "  --imagery-unchecked                  (register anyway, recorded as such)\n"
+            "  --reject 'imagery from 2019, predates the PV boom'   (record and stop)"
+        )
+
+    country = args.country or ("Pakistan" if args.iso3.upper() == "PAK" else None)
+    if country is None:
+        raise SystemExit(
+            f"REFUSING: --iso3 {args.iso3} is not PAK and no --country was given. The "
+            "location string would otherwise read 'Pakistan' for a box that is not in it."
+        )
     LABELS.mkdir(parents=True, exist_ok=True)
     props = {
         "quadrat_id": stem,
@@ -349,7 +415,7 @@ def main() -> None:
         # and every non-owner-mapped box carries this placeholder at creation.
         "stratum": "unclassified pending mapper review",
         "location": ", ".join(x for x in (district and f"{district} District",
-                                          province, "Pakistan") if x),
+                                          province, country) if x),
         "province": province,
         # The measured geodesic area in both modes, never a nominal side*side -- for a
         # drawn shape the latter does not exist, and for a lon/lat square it is not
@@ -357,6 +423,11 @@ def main() -> None:
         "size_km2": round(area / 1e6, 4),
         "center": f"[{rep.x} {rep.y}]",
         "shape": "square (geodesic)" if not drawn else "drawn",
+        # What Rule 1 is actually relative to. Absent means "nobody checked", which is a
+        # different and weaker claim than a recorded old date.
+        "imagery_layer": args.imagery_layer or "",
+        "imagery_date": args.imagery_date or "",
+        "imagery_checked": bool(args.imagery_date),
     }
     if not drawn:
         props["side_m"] = float(side)

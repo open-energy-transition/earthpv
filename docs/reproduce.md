@@ -607,17 +607,37 @@ This is the step that is easy to skip and expensive to skip.
 verify against the high-resolution layers and map what is real, which both improves
 OpenStreetMap and produces your training positives.
 
-**Map one quadrat exhaustively.** Pick a 1 km<sup>2</sup> box in a built-up area and map
-*every* installation inside it, following the
-[quadrat protocol](calibration-mapping-protocol.md). This is the only instrument that
-measures what the model **misses**. Leads tell you about candidates the model found;
-they cannot tell you about the installations it never proposed. The Lahore box is the
-reason the Pakistani recall estimate is now suspected of being optimistic, and it took
-one afternoon.
+**Map calibration regions exhaustively.** Small areas where *every* installation is
+mapped, following the [quadrat protocol](calibration-mapping-protocol.md). This is the only
+instrument that measures what the model **misses**: leads tell you about candidates the
+model found and can never tell you about installations it never proposed. One box in Lahore
+took an afternoon and is the reason the Pakistani recall estimate is now suspected of being
+optimistic.
 
-**Review a calibration sample.** `earthpv calibrate-sample --aoi <area>` emits a
-stratified sample of unmapped candidates for human verdicts. Twenty verdicts per size bin
-replace a wide extrapolated interval with a measured one.
+One box is enough to learn something and **not** enough to publish a sub-400 m² capacity
+figure. Three things decide how many you need and where, and all three are in
+[Defining calibration regions in a new
+country](calibration-mapping-protocol.md#defining-calibration-regions-in-a-new-country):
+
+- **Check imagery date before drawing, not after mapping.** If the best imagery predates
+  your `compose_window`, the region's zeros cannot be interpreted in either direction. Six
+  Pakistani boxes were lost this way, three of them after being fully swept.
+  `new_calibration_quadrat.py` now refuses to register a region without `--imagery-date`,
+  and `--reject "<reason>"` records a rejected location so nobody re-draws it.
+- **Span your national density range, not just convenient places.** The density your
+  regions span becomes `density.CALIBRATED_BLDG_DENSITY_BY_AOI`, and every cell outside it
+  is excluded from the published figure. Pakistan's 30 regions buy 66.3% of national cells.
+- **Register your own density band.** An AOI with no entry falls back to Pakistan's with
+  only a log warning, which produces a plausible national number covering the wrong cells.
+
+**Calibrate the other instrument too, or say that you did not.** The regions above
+calibrate `roofclf`. Segmentation's own numbers need human verdicts on a sample of *its*
+candidates: `earthpv calibrate-sample --aoi <area>` emits a stratified sample of unmapped
+candidates, twenty verdicts per size bin replaces a wide extrapolated interval with a
+measured one, and `calibrate-candidates` turns them into
+`configs/calibration/<aoi>_candidate_precision.yaml`. Skip it and `est_mwp_cal` collapses to
+`est_mwp_det`: a precision-honest floor rather than an estimate, which is exactly what
+France publishes and says so.
 
 ### Step 5: retrain in domain
 
