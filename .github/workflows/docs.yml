@@ -47,6 +47,13 @@ jobs:
       - name: Check raw HTML links
         run: python scripts/check_docs_links.py
 
+      # A template that loses the calibration stamp, the header logo, the downloads or the
+      # size bands keeps building cleanly and simply stops showing them on every atlas made
+      # afterwards. A template that gains a placeholder the builder does not provide ships
+      # the literal __NAME__ to readers. Neither is visible to mkdocs.
+      - name: Check atlas templates
+        run: python scripts/check_atlas_templates.py
+
       - name: Build site
         run: mkdocs build --strict
 
