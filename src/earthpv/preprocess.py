@@ -350,9 +350,13 @@ def temporal_unmix_fields(stack: np.ndarray, background: np.ndarray | None = Non
 STACK_DIR = "stacks"
 
 
-def load_scene_stack(composites, stem: str):
-    """Read a quadrat's saved scene stack back, restoring NaN from the 0 fill."""
-    npz = Path(composites) / STACK_DIR / f"{stem}.npz"
+def load_scene_stack(composites, stem: str, subdir: str | None = None):
+    """Read a quadrat's saved scene stack back, restoring NaN from the 0 fill.
+
+    `subdir` selects an alternative stack directory, e.g. "stacks_year" for the full-year
+    stacks used to separate frame count from season.
+    """
+    npz = Path(composites) / (subdir or STACK_DIR) / f"{stem}.npz"
     if not npz.exists():
         return None
     z = np.load(npz, allow_pickle=False)

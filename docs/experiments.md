@@ -1354,6 +1354,38 @@ on means is a domain shift. Every existing AOI -- Pakistan, Germany, France, Nig
 [open question 18](open-questions.md) prices at roughly 2 TB of transfer per country, so it
 is free for the next country and expensive for the existing ones.
 
+**Two more noise reductions, and they stack.** Weighting each 10 m pixel by the fraction of
+the footprint covering it -- instead of `rasterize`'s all-or-nothing pixel-centre test, which
+gives about half of VIDA footprints zero pixels and a representative-point fallback -- is
+worth **+0.0113 within size band** on its own (25 of 30 folds, p = 0.0001). Combined with the
+trimmed mean it reaches **+0.0305 raw, +0.0207 net of the path effect**, against +0.0215
+predicted by adding them: additive to within noise, because they attack different noise
+sources.
+
+**Frame count helps, weakly, and only through variance.** Full-year stacks (~36 scenes
+against the dry-season 12) separate frame count from season by drawing a fixed random 12 out
+of the SAME year stack, so the two differ only in N:
+
+| Trimmed mean over | Within size band | Net of path |
+| --- | --- | --- |
+| 12 dry-season frames | +0.0200 | +0.0102 |
+| 12 frames of the year | +0.0247 | +0.0149 |
+| ~36 frames of the year | **+0.0295** | **+0.0197** |
+
+**The frame-count effect is +0.0048 within size band for tripling N**, and the path effect
+cancels in that comparison so it is clean. That is what 1/sqrt(N) predicts: three times the
+frames cuts the standard error by 42%. So Google's 32-acquisition budget does transfer to
+this problem -- through estimator variance, not through the shifted viewpoints its design
+exploits -- and it costs three times the download, which against
+[open question 18](open-questions.md)'s roughly 2 TB per country is a poor trade at national
+scale. Note also that the full-year season mix is not itself harmful: at matched N = 12 the
+year frames slightly outscore the dry-season ones, so a wider window is a viable way to reach
+more frames if the bandwidth is ever there.
+
+**The whole package, net of the path effect: about +0.026 AUC within size band**, from a
+trimmed mean, area-weighted zonal means and more frames -- all of it noise reduction, none of
+it new information, and none of it super-resolution.
+
 Artifacts: `results/roofclf_preprocess_ablation.json`, `results/subpixel_shifts.json`,
 `results/native_shifts.json`, `results/roofclf_gba_height.json`.
 

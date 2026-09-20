@@ -909,7 +909,8 @@ def building_table(
         st, m_transform, m_crs = loaded
         arr = medoid_composite(st) / REFL_SCALE
         transform, crs = m_transform, m_crs
-    if preprocess is not None and preprocess.startswith(("tmean", "tmedian", "trimzonal")):
+    if preprocess is not None and preprocess.startswith(("tmean", "tmedian", "trimzonal",
+                                                         "year")):
         # Isolating estimator from resolution. `mfsr_noshift` beat the baseline by +0.0205
         # AUC, and nearest-upsampling the composite only by +0.0042 -- so the gain is not
         # the finer grid. The remaining difference is that the shift-and-add accumulator
@@ -917,20 +918,38 @@ def building_table(
         # where `annual_composite` writes a per-pixel MEDIAN. This tests the mean directly.
         from earthpv.preprocess import load_scene_stack
 
-        loaded = load_scene_stack(composites, stem)
+        # `year*` modes read the full-year stack (~35 scenes) instead of the dry-season one
+        # (~12). `year12` then keeps a fixed random 12 of those, which is what ISOLATES
+        # frame count from season: year12 and year have identical season mixes in
+        # expectation and differ only in N, while comparing either against the dry-season
+        # stack would confound the two.
+        sub = None
+        if preprocess is not None and preprocess.startswith("year"):
+            loaded = (load_scene_stack(composites, stem, subdir="stacks_year")
+                      if (Path(composites) / "stacks_year" / f"{stem}.npz").exists() else None)
+            if loaded is None:
+                log.warning("quadrat %s: no year stack", name)
+                return pd.DataFrame()
+            if preprocess.startswith("year12"):
+                sub = 12
+        else:
+            loaded = load_scene_stack(composites, stem)
         if loaded is None:
             log.warning("quadrat %s: no scene stack", name)
             return pd.DataFrame()
         st, t_tr, t_crs = loaded
+        if sub is not None and st.shape[0] > sub:
+            rs = np.random.default_rng(abs(hash(stem)) % (2**32))
+            st = st[np.sort(rs.choice(st.shape[0], sub, replace=False))]
         with np.errstate(invalid="ignore"):
-            if preprocess == "tmedian":
+            if preprocess in ("tmedian", "year_median"):
                 # THE CONTROL for the reducer claim. `tmean` reduces the saved STACK while
                 # the baseline reduces the COMPOSITE FILE, and the two were fetched at
                 # different times. If their scene sets differ, some of the "mean" gain is
                 # really a different set of scenes. Taking the MEDIAN of the same stack
                 # isolates that: it should score ~0 against the baseline.
                 arr = np.nanmedian(st, axis=0) / REFL_SCALE
-            elif preprocess in ("tmean_trim", "trimzonal"):
+            elif preprocess in ("tmean_trim", "trimzonal", "year_trim", "year12_trim"):
                 # The compromise: a mean has ~1/1.57 the variance of a median at n=12, but
                 # cannot reject residual cloud that SCL missed. Trimming the extreme 20%
                 # per pixel keeps most of the efficiency and most of the robustness.
