@@ -184,6 +184,80 @@ _VSCORE_SUB = {
 }
 
 
+# Column names for the per-cell arrays each atlas embeds, emitted into the page as
+# `cell_cols` so the CSV export is schema-driven instead of hardcoding positions in JS.
+# Keep each list in step with the `cells = [...]` comprehension it names.
+CELL_COLS_EVIDENCE = [
+    "lon0", "lat0", "mwp_verified", "mwp_best", "osm_mwp", "osm_n", "small_low",
+    "small_central", "mwp_large", "in_domain", "n_pv_buildings", "small_outdomain",
+    "is_extended", "osm_mwp_unmatched", "best_floor_lift", "model_covered",
+]
+CELL_COLS_GROWTH_EVIDENCE = [
+    "lon0", "lat0", "delta_mwp_total", "delta_mwp_sub400", "delta_mwp_roof",
+    "delta_mwp_ground", "mwp_total_cur", "mwp_total_pre", "n_onset_buildings",
+    "onset_mwp", "in_domain",
+]
+CELL_COLS_GROWTH = [
+    "lon0", "lat0", "delta_est_mwp_rc", "delta_est_mwp_det", "n_onset_buildings",
+    "onset_roof_area_km2", "onset_mwp", "delta_mwp_exp_fraction",
+]
+
+
+def download_section_html(aoi: str) -> str:
+    """A Downloads section that hands the reader the exact per-cell table the map draws.
+
+    Built in the browser from the data already embedded in the page, rather than from a
+    file the page links to. That means it is always the numbers on screen, it needs no
+    hosting, no release and no build step, and it cannot go stale relative to the map. The
+    grid cell is 0.1 degree and `lon0`/`lat0` are its south-west corner.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "_", aoi.lower()).strip("_") or "atlas"
+    return f'''<section class="sec" id="downloads">
+  <div class="sec-head"><div class="sec-label">Downloads</div></div>
+  <div class="card" style="padding:18px 20px;">
+    <p style="margin:0 0 10px;font-size:13.5px;">
+      <b>The capacity per grid cell shown on the map, as CSV.</b> One row per 0.1&deg;
+      cell, generated in your browser from the data this page is drawing, so it is exactly
+      the numbers above. <code>lon0</code>/<code>lat0</code> are the south-west corner of
+      the cell.
+    </p>
+    <button id="dlCells" type="button" class="dl-btn">Download capacity per cell (CSV)</button>
+    <span id="dlNote" style="font-size:11.5px;color:var(--muted);margin-left:10px;"></span>
+  </div>
+</section>
+<style>
+.dl-btn {{ font: inherit; font-size: 13px; font-weight: 640; padding: 9px 16px;
+  border-radius: 8px; cursor: pointer; color: var(--bg, #12100d);
+  background: var(--accent); border: 1px solid var(--accent); }}
+.dl-btn:hover {{ filter: brightness(1.08); }}
+</style>
+<script>
+(function () {{
+  var btn = document.getElementById("dlCells");
+  if (!btn) return;
+  var node = document.getElementById("pv");
+  if (!node) {{ btn.disabled = true; return; }}
+  var D = JSON.parse(node.textContent);
+  var rows = D.cells || [];
+  var cols = D.cell_cols || rows.length
+    ? (D.cell_cols || rows[0].map(function (_, i) {{ return "c" + i; }})) : [];
+  document.getElementById("dlNote").textContent =
+    rows.length.toLocaleString() + " cells";
+  btn.addEventListener("click", function () {{
+    var out = [cols.join(",")];
+    for (var i = 0; i < rows.length; i++) out.push(rows[i].join(","));
+    var blob = new Blob([out.join("\\n") + "\\n"], {{type: "text/csv;charset=utf-8"}});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "{slug}_capacity_by_cell.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () {{ URL.revokeObjectURL(url); }}, 1000);
+  }});
+}})();
+</script>
+'''
+
+
 def header_logo_html() -> str:
     """The EarthPV mark for the top of an atlas, replacing the eyebrow text line.
 
@@ -689,6 +763,7 @@ def build_combined_atlas(
     html = TEMPLATE.read_text()
     for key, value in {
         "__HEADER_LOGO__": header_logo_html(),
+        "__DOWNLOAD_SECTION__": download_section_html(aoi),
         "__VALIDATION_BADGE__": validation_badge_html(
             derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -1026,6 +1101,7 @@ def build_growth_atlas(
          round(float(r.onset_mwp), 3), round(float(r.delta_mwp_exp_fraction), 3)]
         for r in grid.itertuples()
     ]
+    cell_cols = CELL_COLS_GROWTH
     bounds = [
         round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
         round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
@@ -1085,6 +1161,7 @@ def build_growth_atlas(
     data = {
         "bounds": bounds,
         "cells": cells,
+        "cell_cols": cell_cols,
         "provinces": provinces,
         "cities": CITIES.get(aoi, []),
         "totals": {
@@ -1163,6 +1240,7 @@ def build_growth_evidence_atlas(
          int(r.n_onset_buildings), round(float(r.onset_mwp), 3), int(bool(r.in_domain))]
         for r in grid.itertuples()
     ]
+    cell_cols = CELL_COLS_GROWTH_EVIDENCE
     bounds = [
         round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
         round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
@@ -1197,6 +1275,7 @@ def build_growth_evidence_atlas(
     data = {
         "bounds": bounds,
         "cells": cells,
+        "cell_cols": cell_cols,
         "provinces": provinces,
         "cities": CITIES.get(aoi, []),
         "epochs": summary["epochs"],
@@ -1218,6 +1297,7 @@ def build_growth_evidence_atlas(
     html = GROWTH_EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__HEADER_LOGO__": header_logo_html(),
+        "__DOWNLOAD_SECTION__": download_section_html(aoi),
         "__VALIDATION_BADGE__": validation_badge_html(
             derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -2079,6 +2159,7 @@ def build_evidence_atlas(
          int(bool(r.model_covered))]
         for r in grid.itertuples()
     ]
+    cell_cols = CELL_COLS_EVIDENCE
     bounds = [
         round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
         round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
@@ -2172,6 +2253,7 @@ def build_evidence_atlas(
     data = {
         "bounds": bounds,
         "cells": cells,
+        "cell_cols": cell_cols,
         "provinces": provinces,
         "cities": CITIES.get(aoi, []),
         "calibBoxes": calib_boxes,
@@ -2252,6 +2334,7 @@ def build_evidence_atlas(
         "__PAGE_TITLE__": f"{title}'s PV Atlas",
         "__H1__": f"{title}'s PV Atlas",
         "__HEADER_LOGO__": header_logo_html(),
+        "__DOWNLOAD_SECTION__": download_section_html(aoi),
         "__VALIDATION_BADGE__": validation_badge_html(
             validation_score or derive_validation_score(
                 aoi, central_buildings_path is not None, labels_dir)

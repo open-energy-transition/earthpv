@@ -16,8 +16,17 @@ import argparse
 import re
 from pathlib import Path
 
-from earthpv.atlas import (derive_validation_score, header_logo_html,
+import json
+
+from earthpv.atlas import (CELL_COLS_EVIDENCE, CELL_COLS_GROWTH,
+                           CELL_COLS_GROWTH_EVIDENCE, derive_validation_score,
+                           download_section_html, header_logo_html,
                            validation_badge_html)
+
+# A published page predates `cell_cols`, so the CSV export has no header to write. Recover
+# it from the column count, which identifies the schema unambiguously across these atlases.
+CELL_SCHEMAS = {len(c): c for c in (CELL_COLS_EVIDENCE, CELL_COLS_GROWTH_EVIDENCE,
+                                    CELL_COLS_GROWTH)}
 
 PUBLISHED = Path("docs/assets/interactive")
 
@@ -74,9 +83,44 @@ LEDE = re.compile(r'\s*<p class="lede">.*?</p>\n?', re.S)
 EYEBROW = re.compile(r'\s*<(p|div) class="eyebrow">.*?</\1>\n?', re.S)
 OLD_LOGO = re.compile(r'\s*<style>\.brandmark.*?</style><div class="brandmark".*?</div>\n?',
                       re.S)
+OLD_DOWNLOAD = re.compile(r'\s*<section class="sec" id="downloads">.*?</script>\n?', re.S)
+PV_JSON = re.compile(r'(<script id="pv" type="application/json">)(.*?)(</script>)', re.S)
 
 
-def stamp(path: Path, score: str, drop_lede: bool = True) -> tuple[bool, str]:
+def add_downloads(html: str, aoi: str) -> str:
+    """Give an already-published page the per-cell CSV export.
+
+    Two steps, because a page built before this feature has the data but not its column
+    names: recover `cell_cols` from the width of the embedded rows, then append the
+    section. Pages with no embedded `cells` (a comparison page, a registry) are left alone.
+    """
+    html = OLD_DOWNLOAD.sub("\n", html)      # re-appliable
+    m = PV_JSON.search(html)
+    if not m:
+        return html
+    try:
+        data = json.loads(m.group(2))
+    except ValueError:
+        return html
+    rows = data.get("cells") or []
+    if not rows:
+        return html
+    if "cell_cols" not in data:
+        cols = CELL_SCHEMAS.get(len(rows[0]))
+        if not cols:
+            return html          # unknown schema: better no CSV than a mislabelled one
+        data["cell_cols"] = cols
+        html = (html[:m.start()] + m.group(1)
+                + json.dumps(data, separators=(",", ":")) + m.group(3) + html[m.end():])
+    foot = re.search(r'\n(\s*)<div class="foot"', html)
+    section = "\n  " + download_section_html(aoi) + "\n"
+    if foot:
+        return html[:foot.start()] + section + html[foot.start() + 1:]
+    return html + section
+
+
+def stamp(path: Path, score: str, aoi: str = "atlas",
+          drop_lede: bool = True) -> tuple[bool, str]:
     html = path.read_text()
     before = html
     html = OLD_BADGE.sub("\n", html)          # re-stampable
@@ -94,6 +138,7 @@ def stamp(path: Path, score: str, drop_lede: bool = True) -> tuple[bool, str]:
                 + html[m_h1.start():])
     badge = validation_badge_html(score)
     note = "re-stamped" if before != html and "vscore" in before else "stamped"
+    html = add_downloads(html, aoi)
     if DEV_NOTE.search(html):
         path.write_text(DEV_NOTE.sub(f"    {badge}\n", html, count=1))
         return True, f"{note}, replaced the dev-note"
@@ -122,7 +167,7 @@ def main() -> None:
                 state = "re-stamp" if "vscore" in path.read_text() else "stamp"
                 print(f"{name:46} {aoi:9} {score:7} {where} would {state}")
                 continue
-            changed, why = stamp(path, score)
+            changed, why = stamp(path, score, aoi=aoi)
             print(f"{name:46} {aoi:9} {score:7} {where} "
                   f"{'OK  ' if changed else 'skip'} {why}")
 
