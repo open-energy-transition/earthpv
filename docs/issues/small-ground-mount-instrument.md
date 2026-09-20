@@ -330,7 +330,7 @@ amount of modelling on the current quadrat set narrows it.
 
 No model was trained, no checkpoint was produced, no atlas number moved, and no capacity
 component was added. The ratio estimates above are not published anywhere and should not be
-quoted as an earthpv figure until the cropland quadrats exist. The anchor result is measured
+quoted as an EarthPV figure until the cropland quadrats exist. The anchor result is measured
 on settlement-sited arrays plus OSM's own national sample, and OSM mapping is itself
 settlement-biased, so whether a field-sited tube-well array is equally close to a building is
 plausible but untested.

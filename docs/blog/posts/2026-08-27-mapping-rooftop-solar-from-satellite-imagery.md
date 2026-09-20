@@ -95,11 +95,11 @@ before the interesting part, the model training. After actually doing it, I do
 not think that anymore. Labeling is where most of your judgment calls happen. A
 model just inherits them.
 
-## Meeting earthpv
+## Meeting EarthPV
 
-Eventually the project shifted again, this time toward earthpv, an open-source
+Eventually the project shifted again, this time toward EarthPV, an open-source
 pipeline I would go on to contribute documentation to later in the internship.
-earthpv's answer to the resolution problem was not to abandon Sentinel-2 the way
+EarthPV's answer to the resolution problem was not to abandon Sentinel-2 the way
 I had, but to work around its limits directly, at a scale I had not attempted.
 
 Large installations still get detected and mapped as individual objects, the same
@@ -114,14 +114,14 @@ Seeing that approach, after having hit the exact same wall myself with
 rooftopsenti, was the moment the resolution problem actually clicked for me.
 There are two honest ways to handle a detection floor: build or find
 higher-resolution data to see past it, which is what I did, or build a calibrated
-estimate for what you know you are missing, which is what earthpv does. Neither
+estimate for what you know you are missing, which is what EarthPV does. Neither
 one is wrong. They answer different questions, and knowing which question you are
 actually trying to answer turned out to matter more than which technique you
 reach for first.
 
 ## What real documentation actually looks like
 
-Contributing to earthpv also meant working inside a live, open-source repository
+Contributing to EarthPV also meant working inside a live, open-source repository
 for the first time, instead of a course's sample codebase, and that adjustment
 turned out to be its own education.
 

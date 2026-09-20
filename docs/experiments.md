@@ -426,7 +426,7 @@ from the segmentation side, by a fully independent route: the classifier found n
 the pixels, and the segmenter finds no polygons in the same places.
 
 **What it does not settle.** The 400 m&sup2;-plus bin holds 44 installations, recall 0.045
-with a 95% Wilson interval of 0.013 to 0.151, far too thin to claim earthpv fails above its
+with a 95% Wilson interval of 0.013 to 0.151, far too thin to claim EarthPV fails above its
 own floor. These communes were chosen to be exhaustively mappable, not to hold large arrays.
 The transferable result is the gradient against the control, not the level in any one bin,
 and it bounds the sensor rather than the method: Pakistani arrays are small against the

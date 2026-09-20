@@ -11,7 +11,7 @@ targets used for the original per-target study (`pakistan_summary.csv`,
 `pakistan_stats_by_size.csv`), re-pulled through `tile_scene_series_batch` (33
 one-degree groups) and scored both ways -- the default spatial-ring criterion and
 the self-referenced one added for the dense-urban failure mode
-([[earthpv glint direct detection]]). Output: `data/glint/pakistan_revalidate_tilebatch.csv`.
+([[EarthPV glint direct detection]]). Output: `data/glint/pakistan_revalidate_tilebatch.csv`.
 
 **Flag-level agreement is good:** `detected` matches the original per-target pull on
 90.8% of targets, `validated` on 91.4%. Self-referenced vs default-criterion detected
@@ -50,7 +50,7 @@ scene loss is NOT random noise -- it lines up exactly with the per-bucket rate d
 Every bucket except `<100` (which only needs 1 spike, so tolerates losing scenes)
 reads lower with the batched fetch -- worst in the large-array buckets that the whole
 glint check exists to serve (LR boost is calibrated on ≥500 m²,
-[[earthpv glint validation]]). 40 targets flipped from detected→not-detected
+[[EarthPV glint validation]]). 40 targets flipped from detected→not-detected
 (scene starvation); only 6 flipped the other way.
 
 **Conclusion:** the try/except fix was necessary (a crash losing all progress is

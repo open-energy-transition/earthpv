@@ -2,10 +2,10 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/figures/earthpv-logo-mark-white.png">
-  <img src="docs/assets/figures/earthpv-logo-mark.png" width="132" alt="earthpv logo">
+  <img src="docs/assets/figures/earthpv-logo-mark.png" width="132" alt="EarthPV logo">
 </picture>
 
-# earthpv
+# EarthPV
 
 **Open, global (rooftop) photovoltaic mapping from free satellite imagery.**
 
@@ -21,14 +21,14 @@
 
 ---
 
-> **Cost-effective, verifiable, open data on photovoltaic capacity, growth and orientation for >50 kWp globally**
+> **Cost-effective, verifiable, open data on photovoltaic capacity, growth and orientation for >10 kWp globally**
 
 > **How small? EarthPV finds most rooftop PV above roughly 50 m² of panel, about
 > 10 kWp. Between 20 and 50 m² it is close to a coin flip, and below that it misses
 > most of what is there.**
 > [What that is measured on](#how-small-an-installation-does-it-find)
 
-> **Mapping a country we have not reached?** earthpv is built to be forked per country and
+> **Mapping a country we have not reached?** EarthPV is built to be forked per country and
 > merged back: the aim is a global PV evidence atlas assembled from many countries, each run
 > and verified by people who know the ground. [Fork it and add yours](#add-your-country-the-atlas-is-meant-to-be-collective).
 
@@ -51,7 +51,7 @@ built and measured; the plan is to run the same pipeline everywhere Sentinel-2 f
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -110,7 +110,7 @@ about two thirds of the capacity a "rooftop solar" headline implies.
 
 ## The main workflow: two detectors, split by placement and calibration coverage, one evidence atlas
 
-This is earthpv's default pipeline and primary output. No single instrument covers
+This is EarthPV's default pipeline and primary output. No single instrument covers
 rooftop solar at every scale, so it runs two, each measured against ground truth, and
 combines them into one product. The split is **not** a clean size boundary: roofclf's
 reach now extends past its original sub-400 m² floor into large rooftops too, wherever
@@ -269,7 +269,7 @@ Pakistan's installed solar capacity is reported anywhere between
 [6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
 Nobody can check those numbers, because the maps behind them are built on commercial
 high-resolution imagery that cannot be shared and that most licences forbid processing
-with AI. earthpv's own numbers come from
+with AI. EarthPV's own numbers come from
 [the main workflow](#the-main-workflow-two-detectors-split-by-placement-and-calibration-coverage-one-evidence-atlas)
 above:
 
@@ -438,7 +438,7 @@ Full runbook, including the agent prompt that works and the review checklist:
 
 ## Community
 
-earthpv is the software half of **TraceTheSun**, a pilot run by
+EarthPV is the software half of **TraceTheSun**, a pilot run by
 [Open Energy Transition](https://openenergytransition.org) to make PV mapping
 cost-effective, verifiable, community-driven and local, worldwide. The concept was
 conceived by [Muhammad Awais](https://www.linkedin.com/in/awais307/) and Tobias. The

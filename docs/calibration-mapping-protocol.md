@@ -1,13 +1,13 @@
 # PV calibration-ground mapping protocol (Pakistan)
 
-**Audience:** the OSM mapping team building calibration areas for earthpv's
+**Audience:** the OSM mapping team building calibration areas for EarthPV's
 Sentinel-2 solar-density estimation.
 **Status:** in effect for every quadrat mapped so far; most recently amended 2026-08-11
 (Rule 1's imagery-epoch bound, below).
 
 ## Why this mapping exists
 
-earthpv estimates rooftop/ground PV density per 0.1° grid cell across Pakistan
+EarthPV estimates rooftop/ground PV density per 0.1° grid cell across Pakistan
 from 10 m Sentinel-2 imagery. The model is deliberately recall-first: it
 overcounts in some landscapes (bare/arid land looks like panels) and
 undercounts in others (small roofs are below sensor resolution, so detection
@@ -238,7 +238,7 @@ consequences:
   a gate that should be checked **before** anyone maps, not after.
 
 What an automated selector should do: stratify by building density and landscape type from
-the national grid earthpv already computes, propose boxes in the bands that are
+the national grid EarthPV already computes, propose boxes in the bands that are
 under-represented rather than the ones that are convenient, reject any candidate
 overlapping an existing quadrat, and check the best available imagery date for the
 candidate before proposing it. `density.calibrated_density_range` and the national
@@ -324,10 +324,10 @@ refuses to register a boundary that overlaps an existing quadrat unless
 shared installations and breaks leave-one-quadrat-out fold independence (Boxes 9 and
 10 share a corner, which is why that check exists).
 
-### Or: generate the boundary with earthpv first, then map it
+### Or: generate the boundary with EarthPV first, then map it
 
 The other direction, and the one to prefer when you are filling a gap in the stratum
-table rather than following a feature on the ground. earthpv draws the box, you map inside
+table rather than following a feature on the ground. EarthPV draws the box, you map inside
 it. The square is geodesic (`pyproj.Geod.fwd`), never drawn by eye, so its area is exactly
 what it claims:
 

@@ -1,6 +1,6 @@
 # Mapping leads
 
-The leads product is the half of earthpv that has a human in the loop. It is a ranked
+The leads product is the half of EarthPV that has a human in the loop. It is a ranked
 queue of places where the model thinks there is solar and OpenStreetMap does not yet say
 so, exported in the formats mappers already use.
 

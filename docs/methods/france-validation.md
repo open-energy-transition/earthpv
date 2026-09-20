@@ -67,7 +67,7 @@ flattening the growth curve it exists to measure.
 ## The hand-mapped communes
 
 Fourteen communes were swept exhaustively on sub-metre IGN aerial imagery.
-`scripts/build_france_quadrats.py` turns them into earthpv calibration quadrats.
+`scripts/build_france_quadrats.py` turns them into EarthPV calibration quadrats.
 
 **The `tag` field is load-bearing.** 381 of 3,335 features are `thermal`, solar hot-water
 collectors that look like PV to both a mapper and a 10 m multispectral sensor and generate
@@ -160,7 +160,7 @@ tightly is whether 0.18 is the right order of magnitude, and it is.
 ## OpenPVMapper
 
 [OpenPVMapper](https://doi.org/10.5281/zenodo.21534856) is scored against the register
-before being used as a reference for anything, so that a later earthpv comparison can be
+before being used as a reference for anything, so that a later EarthPV comparison can be
 read knowing which way the reference leans.
 
 `load_openpvmapper` derives `n_sources` from the `sources` field, because the dataset's own
@@ -185,7 +185,7 @@ The 400 m&sup2; floor has always been argued from the sensor, 400 m&sup2; being 
 Sentinel-2 pixels, and checked against Pakistani quadrats that are themselves labelled off
 the same class of imagery. France can do better, because the fourteen communes were swept
 on sub-metre IGN orthophotos. An installation present in that truth set and absent from
-earthpv is a real miss rather than an annotation gap, so `mapped_vs_earthpv`
+EarthPV is a real miss rather than an annotation gap, so `mapped_vs_earthpv`
 (`earthpv validate-france --pred-dir ...`) measures recall per installation size against
 it.
 
@@ -199,10 +199,10 @@ precision/recall asymmetry that `derive_placement_tables` was corrected for in S
 
 **OpenPVMapper is the control that makes the number readable.** It reads the same
 installations, inside the same boundaries, from sub-metre imagery. If small installations
-were simply drawn less reliably by the mappers, it would show the same gradient earthpv
+were simply drawn less reliably by the mappers, it would show the same gradient EarthPV
 does. It does not.
 
-| Installation size | n | earthpv recall | OpenPVMapper recall |
+| Installation size | n | EarthPV recall | OpenPVMapper recall |
 | --- | --- | --- | --- |
 | 0 to 20 m&sup2; | 1,397 | 0.000 | 0.601 |
 | 20 to 50 m&sup2; | 873 | 0.010 | 0.797 |
@@ -211,7 +211,7 @@ does. It does not.
 | 200 to 400 m&sup2; | 84 | 0.095 | 0.583 |
 | 400 m&sup2; and above | 44 | 0.045 | 0.750 |
 
-Spearman of recall against size bin is **+0.83 (p = 0.042)** for earthpv and
+Spearman of recall against size bin is **+0.83 (p = 0.042)** for EarthPV and
 **-0.29 (p = 0.58)** for OpenPVMapper. The gradient is the sensor, not the annotator, which
 is exactly the control this dataset was brought in to provide.
 
@@ -237,7 +237,7 @@ fourteen communes at all, against 39,462 nationally, and the median distance fro
 
 **Two things this measurement does not establish.** The 400 m&sup2;-plus bin holds 44
 installations and its recall of 0.045 carries a 95% Wilson interval of 0.013 to 0.151, so it
-is far too thin to be read as "earthpv fails above its own floor". These communes were
+is far too thin to be read as "EarthPV fails above its own floor". These communes were
 chosen to be exhaustively mappable for the module constant, not to contain large arrays, and
 a residential commune is close to the worst case for a 10 m detector. The transferable
 finding is the gradient and its contrast with the control, not the level in any one bin. The

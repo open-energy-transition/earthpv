@@ -153,7 +153,7 @@ an emerging community that brings together the leading open-source PV-detection 
 and the most experienced PV mappers in OpenStreetMap to tag and map solar worldwide in
 an open, verifiable and cost-effective way. It currently includes:
 
-* **Open Energy Transition** -- runs earthpv and funded the Pakistan pilot; seeking
+* **Open Energy Transition** -- runs EarthPV and funded the Pakistan pilot; seeking
   funding to continue and scale.
 * **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** and the student team at
   the **Centre for Water Informatics and Technology (WIT)**, Lahore University of

@@ -76,7 +76,7 @@ Balochistan, are proposed and awaiting the owner's own imagery-recency check (no
 check exists) in `data/labels/candidate_quadrats/*_gap_calib_2km_candidate.geojson` -- see
 [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 19.
 
-### 4. France answered half of this; the earthpv half is still open
+### 4. France answered half of this; the EarthPV half is still open
 
 **Partly closed 2026-09-04.** The original item asked whether France could supply an
 external reference for the sub-400 m&sup2; half of the atlas, which Germany's register
@@ -86,7 +86,7 @@ exhaustively hand-mapped communes against dated vintages of a complete national 
 put `DEFAULT_KWP_PER_M2_MODULE` at 0.150 kWp/m&sup2; against the assumed 0.180, and
 settled that the below-floor capacity share is not a transferable constant.
 
-The independent test of the 400 m&sup2; floor is also **done, 2026-09-12**: earthpv's
+The independent test of the 400 m&sup2; floor is also **done, 2026-09-12**: EarthPV's
 recall against the hand-mapped communes climbs with installation size while OpenPVMapper's,
 on the same truth at sub-metre resolution, does not, and retraining on French data does not
 move it. That is in the experiments register as
@@ -98,7 +98,7 @@ What that leaves genuinely open, and it is the part this project actually needs:
 this that France can still be asked for and probably cannot give. Both `coverage_ratio` and
 `area_recall` are still fit on Pakistani quadrats alone. The blocker named here originally,
 that the composites did not exist yet, is gone: the national compose finished 2026-09-05 and
-earthpv has been run over the communes three times (v4, v5, v6). The
+EarthPV has been run over the communes three times (v4, v5, v6). The
 **area-recall-versus-size curve is measured**, and is the floor result above.
 
 What is left is `coverage_ratio`, which is a `roofclf` quantity: true mapped PV area over
@@ -117,7 +117,7 @@ external check at all.
 **The trap has not gone away.** OpenPVMapper is a model output with ~74-75% published
 precision, not ground truth. Measured against the hand-mapped communes it recalls 0.67 of
 real installations, and the fourteen communes are its own manual-correction layer, so its
-precision there is an optimistic bound. earthpv agreeing with it would not be validation.
+precision there is an optimistic bound. EarthPV agreeing with it would not be validation.
 The human sweeps are the part that can serve as truth.
 
 ### 5. The calibration quadrats are purposive, not a probability sample

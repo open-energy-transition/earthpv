@@ -17,7 +17,7 @@ everything that was tried, including the majority that did not ship, and
 
 ## Workflow
 
-The technical novelty in earthpv is not one model. It is a loop that combines free
+The technical novelty in EarthPV is not one model. It is a loop that combines free
 low-resolution imagery, an open foundation model, and human mappers working inside
 OpenStreetMap with the high-resolution imagery they are already licensed to look at.
 

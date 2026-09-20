@@ -1,6 +1,6 @@
 # Country data registry
 
-Extending earthpv to a new country starts with a question this page answers: **what does this
+Extending EarthPV to a new country starts with a question this page answers: **what does this
 country already publish?** A hundred and four datasets across fifty-six countries are catalogued here, and
 most countries have something, even where OpenStreetMap is nearly empty.
 
@@ -21,7 +21,7 @@ earthpv data-sources --role calibration_only --min-priority A --urls
 ## The one distinction that matters
 
 A dataset being about solar does not make it a training label. The registry records what each
-source **is**; earthpv tags each row with what you can actually **do** with it, derived from
+source **is**; EarthPV tags each row with what you can actually **do** with it, derived from
 two columns: whether PV presence is confirmed, and whether the records carry geometry.
 
 | Role | What it is | What it is for |
@@ -44,7 +44,7 @@ It is genuinely valuable for calibration, which is exactly how
 are used, but it cannot supervise a per-building model.
 
 **Agreement with a model-derived inventory is not validation.** Those datasets carry their own
-error rate. OpenPVMapper is ~74-75% precise and earthpv agreeing with it proves nothing; it was
+error rate. OpenPVMapper is ~74-75% precise and EarthPV agreeing with it proves nothing; it was
 used [as a control, not as truth](results/france.md).
 
 **A list of installations is not a calibration area.** `roofclf`'s coverage ratio and area
@@ -153,7 +153,7 @@ array outline.
 
 Datasets tagged **Calibrate only** have no geometry and are the more common case. They are
 what the two register validations in this project are built on, and the pattern transfers:
-aggregate earthpv's own output to the same administrative unit, then compare.
+aggregate EarthPV's own output to the same administrative unit, then compare.
 
 ```bash
 earthpv density --aoi <aoi> --districts

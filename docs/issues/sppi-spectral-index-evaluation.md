@@ -20,7 +20,7 @@ The paper proposes SPPI, a zero-parameter spectral index:
     SPPI = (B01/B03) * (B11 - B03 - |B08 - B03| - |B12 - B03|) / (B11 + B03)
 
 a visible "blue-shift" amplifier times a SWIR background-suppression term, combined
-multiplicatively as a spectral AND. B01 is not in earthpv's 10-band composites
+multiplicatively as a spectral AND. B01 is not in EarthPV's 10-band composites
 (`LOCAL_BANDS` drops B01/B09), so we substitute B02 -- the paper's own recommendation,
 which it puts at +/-2% accuracy cost.
 
@@ -97,7 +97,7 @@ way for the same reason: no per-stratum intercept exists.
 
 **The specific failure mode is disqualifying for our geography.** SPPI's worst
 over-prediction, 4.7x, is in the *arid* quadrat -- bare ground reading as PV, which is
-already earthpv's dominant false-positive mode and the entire reason
+already EarthPV's dominant false-positive mode and the entire reason
 `plausibility.py` exists. SPPI's SWIR background-suppression term was supposed to kill
 exactly that class and does not. Pakistan is largely arid, and the regions whose numbers
 are already least trustworthy (Balochistan, Gilgit-Baltistan) are the arid ones, so
@@ -181,7 +181,7 @@ five bands. Concrete uses, none of which is "improve the detector":
 
 **It does not reach below our detection floor as a segmentation/polygon detector.** The
 paper states a 3x3-pixel minimum, which at Sentinel-2's 10 m GSD is ~900 m<sup>2</sup> --
-*above* earthpv's existing 400 m<sup>2</sup> floor, not below it. The 0.828 above is a
+*above* EarthPV's existing 400 m<sup>2</sup> floor, not below it. The 0.828 above is a
 per-building *classification* score on footprints we already have, not evidence that SPPI
 can delineate an 86 m<sup>2</sup> array. For the sub-400 m<sup>2</sup> front, it is another
 per-building instrument alongside `roofclf`, and a slightly weaker one.

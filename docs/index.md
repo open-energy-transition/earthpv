@@ -2,7 +2,7 @@
 hide:
   - navigation
 ---
-# earthpv
+# EarthPV
 
 <div class="hero hero--lockup" markdown>
 
@@ -14,7 +14,7 @@ hide:
 <div class="hero-copy" markdown>
 
 **Cost-effective, verifiable, open data on photovoltaic capacity, growth and
-orientation for >50 kWp globally**
+orientation for >10 kWp globally**
 { .lede }
 
 </div>
@@ -27,7 +27,7 @@ of what is there.**
 [What that is measured on](#how-small-an-installation-does-it-find)
 { .lede }
 
-**Mapping a country we have not reached?** earthpv is built to be forked per country
+**Mapping a country we have not reached?** EarthPV is built to be forked per country
 and merged back: the aim is a global PV evidence atlas assembled from many countries,
 each run and verified by people who know the ground.
 [Fork it and add yours](reproduce.md#contribute-your-country-atlas-back)
@@ -44,7 +44,7 @@ EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
 [Scaling worldwide](#scaling-worldwide).
 
-[![The earthpv evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](results/capacity.md)
+[![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](results/capacity.md)
 
 *This project's own highest defensible figure, not a bare point estimate: hand-mapped
 OpenStreetMap installations, the model's own recall-corrected detections, and a
@@ -97,263 +97,102 @@ register shows **65.5% of rooftop capacity sits below the 400 m² segmentation f
 97.2% of installations by count. An instrument that only saw large arrays would be blind to
 about two thirds of the capacity a "rooftop solar" headline implies.
 
-## The Main Workflow
+## How it works: two detectors, one atlas
 
-This is earthpv's default pipeline and its primary output. Two detectors, each
-measured against hand-mapped ground truth, are combined into a single evidence atlas.
-What each one covers is split by installation placement and by how far the calibration
-reaches, not by a hard size cutoff: `roofclf` started as the sub-400 m<sup>2</sup>
-rooftop detector but now also handles larger rooftops in the cells where the
-calibration supports it.
+At Sentinel-2's 10 m resolution a large array has a shape you can trace and a small one
+does not, so EarthPV runs two instruments and combines them.
+
+- **Segmentation** outlines individual arrays above roughly 400 m². These are the mapping
+  leads, and the only instrument for ground-mounted solar at any size.
+- **`roofclf`** answers a smaller question for everything below that floor: *does this
+  building carry PV?* A 100 m² array is a handful of mixed pixels, too few to outline but
+  often enough to classify.
+
+Both are calibrated against small areas where every installation has been hand-mapped, then
+combined into the evidence atlas, de-duplicated against OpenStreetMap and each other.
 
 ![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.](assets/figures/evidence_workflow.svg#only-light)
 ![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.](assets/figures/evidence_workflow.dark.svg#only-dark)
 
-### Segmentation
+Full detail, including the optional glint and growth instruments and everything that was
+tried and rejected: [How it works](how-it-works.md).
 
-A fine-tuned TerraMind-tiny model detects and outlines rooftop and ground-mounted
-PV installations above roughly 400 m<sup>2</sup>. These detections are the mapping
-leads used throughout earthpv, and they are the sole basis for ground-mounted
-capacity at every size.
+## Why free imagery, when sharper imagery exists
 
-### Roof-level classification
+Two licences pull in opposite directions, and the loop is what resolves them. Sentinel-2 is
+free, global and coarse. Esri, Bing and Mapbox resolve individual panels but only allow a
+**person** to trace from them inside the OpenStreetMap editor.
 
-`roofclf` covers the rooftops segmentation cannot resolve. At Sentinel-2's 10 m
-resolution a 100 m<sup>2</sup> array spans only a handful of mixed pixels: too few to
-trace a reliable outline, but often enough to tell whether the building carries PV at
-all.
-
-`roofclf` is a per-building classifier trained on 30 exhaustively mapped ground-truth
-quadrats. It reaches an AUC of 0.879, or 0.834 once roof size is controlled for, on the
-same small buildings where the segmentation raster performs close to chance. Its
-predictions are cross-checked against SPPI, a zero-training five-band spectral index
-from He et al. (2026): on SPPI's own nine-quadrat evaluation, SPPI scored 0.823 and
-`roofclf` scored 0.874 on the same buildings.
-
-![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.svg#only-light)
-![Three instruments and the installation-size range each one covers, on a logarithmic area axis: aggregate density estimation from about 20 square metres upward, individual polygon detection from 400 square metres, and glint pose confirmation from 1000 square metres.](assets/figures/size_spectrum.dark.svg#only-dark)
-
-### Building the evidence atlas
-
-The two detection streams are combined into a single capacity estimate:
-
-- `density` aggregates the segmentation detections at or above 400 m<sup>2</sup>,
-  rooftop and ground-mounted, across every cell.
-- `roof-classifier` → `roofclf-score-national` → `sub400-capacity` estimates rooftop
-  capacity below 400 m<sup>2</sup>.
-- `ge400-roof-capacity` is the `roofclf`-based rooftop estimate above 400 m<sup>2</sup>,
-  inside the calibrated cells only.
-- `earthpv atlas` merges these into the Best estimate, this project's highest
-  defensible national figure.
-
-The Best estimate is built from hand-mapped OpenStreetMap installations,
-recall-corrected model detections, and the `roofclf`/SPPI per-building estimate. Where
-an OSM installation and a model detection describe the same array, one is dropped so it
-is not counted twice, and the national total is reported with a 90% uncertainty range.
-
-Full command sequence: [The full pipeline](reproduce.md#the-full-pipeline).
-
-### But why are two detectors necessary?
-
-Registration in Germany's MaStR is mandatory, so it is a near-complete reference
-rather than a sample. Measured against it, 65.5% of German rooftop capacity sits below
-the 400 m<sup>2</sup> segmentation floor (97.2% of installations by count).
-
-Segmentation alone, working only above that floor, would therefore see roughly
-one-third of the capacity a national "rooftop solar" figure implies. That gap is why
-there is a second, building-level detector.
-
-As of 2026-08-31 that register also supports an end-to-end national check, covering 99.75% of
-German rooftop capacity, and it cuts both ways: it turned one estimator from unusable into
-better-bounded and showed that another was overstating the truth threefold. See
-[Validation against MaStR](methods/mastr-validation.md) and
-[Germany capacity and validation](results/germany.md).
-
-France supplies the check Germany could not. Its register is complete like Germany's but
-censored below 36 kW, and it publishes dated year-end vintages, so a hand-mapped commune can
-be compared against the register as it stood on the day the imagery was flown. Fourteen
-communes swept exhaustively by hand put the module constant at 0.150 kWp/m<sup>2</sup>
-against the 0.180 this project assumes, the first external measurement of it. See
-[Validation against the French register](methods/france-validation.md) and
-[France: a second register](results/france.md).
-
-### Interpreting the national estimate
-
-The national total is a modelled estimate, not a meter reading. At 10 m resolution the
-sub-400 m<sup>2</sup> installations are a mixed-pixel problem rather than traceable
-shapes, so `roofclf` estimates their contribution instead of outlining them.
-
-That estimate is deliberately capped: it only runs in cells whose building density
-matches the hand-mapped calibration quadrats the classifier was tested on. Staying
-inside that range keeps the sub-400 m<sup>2</sup> numbers defensible, but it also means
-the national total rests partly on how far the calibration reaches, not on a direct
-count of every installation. Hence the 90% range on the headline figure.
-
-As a spatial cross-check, the atlas is compared against an independent national
-rooftop-solar dataset. The two cannot be compared in absolute terms, so both are
-reduced to each spatial unit's share of the national total. Across 3,303 units the
-median difference is 0.005 percentage points, with a rank correlation of 0.75 to 0.84.
-
-Where they disagree is on how much weight the largest sites carry: a handful of hotspot
-cells account for most of the gap, always in the same direction. earthpv treats its
-handling of very large sites as an explicit limitation of the current estimate.
-
-See [Capacity map](results/capacity.md) for the full comparison, and
-`scripts/pv_reference_share_comparison.py` to reproduce it.
-
-### Optional, supplementary instruments
-
-These support, extend, or test the main workflow. None of them is an alternative to it.
-
-#### Glint
-
-Glint is an independent, physical confirmation that PV is present, and it can also
-recover panel tilt and orientation. A glass-fronted panel acts partly as a mirror,
-flashing in Sentinel-2 imagery on the dates the Sun-panel-satellite geometry predicts.
-Two or more flashes on geometrically consistent dates raise confidence that the target
-is real PV. In the main workflow glint only boosts lead ranking; it is never needed to
-build the evidence atlas.
-
-[![High-resolution basemap imagery of a rooftop PV array caught mid-glint: the panels saturate fully white and the overload spills off the roof as a rainbow smear of detector-blooming artifacts across the neighbouring buildings.](assets/figures/glint_example.jpg){ width=&#34;50%&#34; }](glint_examples.md)
-
-*The physical event the glint check looks for, caught in sub-metre commercial imagery: the array's specular reflection is so intense it saturates the sensor outright, blooming into a rainbow smear across the neighbouring rooftops. At Sentinel-2's 10 m the same event is a single bright pixel-cluster on one predictable date. More examples in the [glint image gallery](glint_examples.md).*
-
-#### Growth
-
-Growth dates installations by running the pipeline twice: once on a pre-boom 2021/22
-Sentinel-2 composite, once on the current one. Segmentation and SPPI are each run
-independently on both epochs, so deployment can be tracked over time rather than only
-counted as it stands today. On this measure Pakistan's rooftop solar stock has roughly
-doubled since 2021/22. See [Growth](results/growth.md).
-
-#### Other evaluated instruments
-
-The repository also keeps a fraction-head expected-area model, SPPI as a standalone
-detector, an earlier Low/Central/High/All-PV bracket atlas, and a rooftop potential and
-saturation atlas. Each was measured; none was promoted into the main workflow. See
-[Experiments](experiments.md) for what was tried and why the final pipeline looks the
-way it does.
-
-## Scaling worldwide
-
-Nothing in the pipeline is Pakistan-specific. All four inputs are global open datasets:
-
-| Input      | Source                                   | Coverage                           |
-| ---------- | ---------------------------------------- | ---------------------------------- |
-| Imagery    | Copernicus Sentinel-2 L2A                | global, every five days, free      |
-| Labels     | OpenStreetMap, live Overpass or Overture | global, wherever mappers have been |
-| Footprints | VIDA Open Buildings                      | global, imagery-derived            |
-| Boundaries | geoBoundaries, CC-BY                     | global, ADM1 and ADM2              |
-
-Three commands set up a region that has never been touched. The first is read-only and
-tells you within a couple of minutes whether the data is actually there.
-
-```bash
-pixi run python scripts/new_region.py check --bbox 98.5,7.8,101.0,10.2 --iso3 THA
-pixi run python scripts/new_region.py add   --aoi surat_thani --bbox 98.5,7.8,101.0,10.2 --iso3 THA
-pixi run python scripts/new_region.py plan  --aoi surat_thani
-```
-
-`check` probes OpenStreetMap label density, VIDA availability, geoBoundaries, Sentinel-2
-cloud cover in your composite window, and the compose budget. `add` writes the AOI block.
-`plan` prints the ordered runbook with the region's name filled in.
-
-A first candidate set needs no local training data: the existing checkpoint runs
-unchanged. What closes the domain gap afterwards is local mapping, which is why the guide
-starts by telling you to find a mapping community before you run anything. **Programme
-targets are Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and Nigeria**;
-Gujarat is already registered as a worked template, with a first full,
-segmentation-only capacity estimate (812.6 MWp, &ge; 400 m<sup>2</sup>, no calibration
-quadrats yet) at [Gujarat capacity map](results/gujarat.md).
-
-Full guide, including what to expect by starting condition and what genuinely differs
-from Pakistan (climate windows, roof type, latitude-dependent glint geometry,
-installation-size distribution): [Setup a new country](reproduce.md).
-
-## Pakistan: the pilot, in numbers
-
-Pakistan's installed solar capacity is reported anywhere between
-[6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
-Nobody can check those numbers, because the maps behind them are built on commercial
-high-resolution imagery that cannot be shared and that most licences forbid processing
-with AI. earthpv's own numbers come from
-[the main workflow](#the-main-workflow) above:
-
-|                             |                                                                                                                                                    |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **18,827 MWp**        | Best estimate: this project's own highest defensible figure (90% range 16,022&ndash; 24,358)                                                       |
-| **15,642**            | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below)                                                                  |
-| **400 m<sup>2</sup>** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
-| **65.5%**             | of Germany's rooftop capacity sits*below* that floor, measured against its complete MaStR register                                               |
-
-The headline figure carries a 90% uncertainty range based on priors for the area-to-capacity constants, measured segmentation precision and recall by installation size, and the sensitivity of the coverage ratio to the mapped calibration quadrats. The range is intentionally wide: recalibration has repeatedly shifted the estimate by 20 to 35% within days, most recently as calibration coverage widened again in August 2026.
-
-It is not a design-based margin of error. The quadrats are hand-picked, not randomly sampled, and the range does not capture the mismatch between where the roofclf coverage correction is calibrated and where it is applied. As of the current fit, roughly 5% of Best is still priced by a multiplier derived from quadrats several times denser than the cells it estimates -- down sharply from about half in mid-August 2026 as calibration coverage widened. See [Calibration density mismatch](issues/roofclf-calibration-density-mismatch.md) for details. The full uncertainty derivation is provided in [Capacity map](results/capacity.md#how-confident-should-you-be-in-this), while [Validation against MaStR](methods/mastr-validation.md) explains what comparison with a legally complete register can and cannot establish.
-
-Every number above carries the same caveat: **this is a screening and estimation layer,
-not a register**. No human has validated most of it at scale, and the sub-400 m
-<sup>2</sup> share of Best estimate in particular is restricted to a small,
-density-matched slice of the country, not a national measurement. See
-[Capacity map](results/capacity.md) for how the estimate is derived and what it does and
-does not claim.
-
-## The OpenStreetMap mapping loop
-
-The technical novelty is not one model. It is a loop that combines free low-resolution
-imagery, an open foundation model, and human mappers working inside OpenStreetMap with
-the high-resolution imagery they are already licensed to look at.
+So the machine only ever reads Sentinel-2, people only ever read the high-resolution
+layers, and the installations they map become ordinary, openly licensed OpenStreetMap
+features: legitimate training data for the next model.
 
 ![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.svg#only-light)
 ![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
 
-Two licences pull in opposite directions, and the loop is what resolves them. Sentinel-2
-is free and global but coarse; Esri, Bing and Mapbox resolve individual panels but only
-allow a *person* to trace from them inside the OpenStreetMap editor. So the machine only
-ever reads Sentinel-2, people only ever read the high-resolution layers, and the verified
-installations they map are ordinary, openly licensed OpenStreetMap features that are
-legitimate training data for the next model. Full description:
-[Workflow](how-it-works.md#workflow).
+The consequence is that the cost of the next update is close to zero, and anyone can
+reproduce, check or improve the result.
 
-[![The glint pose survey page: a polar plot of fitted tilt and azimuth for 290 Pakistani installations, clustered between east-southeast and due south at tilts of roughly 5 to 20 degrees.](assets/figures/pakistan_pv_pose.png)](results/pv-pose.md)
+## Where it runs
 
-*Panel pose recovered from Sentinel-2 glint for 290 Pakistani installations, out of 2,000
-checked. [Open the interactive version](results/pv-pose.md).*
+Every atlas carries an **EarthPV Validation Score** saying what evidence is actually under
+it. Gold means the sub-400 m² half is calibrated against hand-mapped ground truth; Silver
+means above the floor only, validated locally; Bronze means above the floor only, without
+local validation, and should be read as a floor rather than an estimate.
 
-## Quickstart
+| Country | Score | Atlas |
+| --- | --- | --- |
+| Pakistan | Gold | [Pakistan PV atlas](atlas.md) |
+| Germany | Gold | [Germany PV atlas](atlas-germany.md) |
+| France | Silver | [France PV atlas](atlas-france.md) |
+| Zambia | Bronze | [Zambia PV atlas](atlas-zambia.md) |
+| Gujarat, India | Bronze | [Gujarat capacity map](results/gujarat.md) |
 
-```bash
-pixi install              # data pipeline: DuckDB, geopandas, rasterio, odc-stac
-pixi install -e ml        # adds PyTorch cu126 (Pascal-safe) and TerraTorch
-pixi run -e ml gpu-check
+Nothing in the pipeline is country-specific. All four inputs are global open datasets:
 
-# minutes-long smoke test through every GPU stage
-pixi run earthpv labels --aoi freiburg
-pixi run earthpv chips  --aoi freiburg --limit 50
-pixi run -e ml earthpv train --config configs/terramind_pv.yaml --smoke
-pixi run -e ml earthpv evaluate --aoi freiburg --checkpoint data/models/last.ckpt
-```
+| Input | Source | Coverage |
+| --- | --- | --- |
+| Imagery | Copernicus Sentinel-2 L2A | global, every five days, free |
+| Labels | OpenStreetMap, live Overpass or Overture | global, wherever mappers have been |
+| Footprints | VIDA Open Buildings | global, imagery-derived |
+| Boundaries | geoBoundaries, CC-BY | global, ADM1 and ADM2 |
 
-The main workflow is `labels → chips → train → evaluate → compose → infer → postprocess → export` to produce every mapping lead and, via
-`density → check-density`, segmentation's own &ge; 400 m<sup>2</sup> capacity; then
-`roof-classifier → roofclf-score-national → sub400-capacity` for roofclf's
-< 400 m<sup>2</sup> population and `ge400-roof-capacity` for its &ge; 400 m<sup>2</sup>
-rooftop replacement inside the calibrated cells; `atlas` combines all of it into the
-evidence atlas -- this project's primary output. Every stage is resumable and safe to
-re-run. The full runbook, including how to bring up a country that has never been
-touched, is in [Setup a new country](reproduce.md#the-full-pipeline).
+Programme targets are Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and
+Nigeria. Bringing up a country that has never been touched takes three commands, the first
+read-only: [Setup a new country](reproduce.md).
+
+## Pakistan, the pilot
+
+Pakistan's installed solar capacity is reported anywhere between
+[6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
+Nobody can check those numbers, because the maps behind them rest on commercial imagery
+that cannot be shared. EarthPV's own figures:
+
+| | |
+| --- | --- |
+| **18,827 MWp** | Best estimate, this project's highest defensible figure (90% range 16,022 to 24,358) |
+| **15,642** | individual installations hand-mapped in OpenStreetMap |
+| **400 m²** | the floor below which segmentation is blind, and `roofclf` takes over |
+| **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete register |
+
+The range is deliberately wide: recalibration has repeatedly moved the estimate by 20 to
+35% within days. It is **not** a design-based margin of error, because the calibration
+areas are hand-picked rather than randomly sampled.
+
+**This is a screening and estimation layer, not a register.** No human has validated most
+of it at scale. How the estimate is derived and what it does not claim:
+[Capacity map](results/capacity.md).
 
 ## What did not work
 
 Most of what was tried here failed, and the negative results are documented because they
-map where the 10 m resolution limit actually is: two-season band stacking (including a
-retry stacking the actual pre-boom epoch instead of a weather season), Sentinel-1 corner
-reflection, two separate routes from glint to density, roof-axis orientation priors,
-three super-resolution variants, spectral unmixing, temporal features for the roof
-classifier, and two retrains aimed at known failure modes that won in-sample and lost on
-held-out data. Every one has runnable code in `scripts/`.
+map where the 10 m resolution limit actually is: band stacking, Sentinel-1 corner
+reflection, two routes from glint to density, roof-axis orientation priors, three
+super-resolution variants, spectral unmixing, and two retrains that won in-sample and lost
+on held-out data. Every one has runnable code in `scripts/`.
 
-The full register, with a verdict and the measurement behind each, is
-[Experiments](experiments.md); what is still undecided is
+The register with a verdict and the measurement behind each:
+[Experiments](experiments.md). What is still undecided:
 [Open questions](open-questions.md).
 
 ## Where to go next
@@ -373,7 +212,7 @@ The full register, with a verdict and the measurement behind each, is
 
 ## Credits
 
-earthpv is developed by [Open Energy Transition](https://openenergytransition.org) as the
+EarthPV is developed by [Open Energy Transition](https://openenergytransition.org) as the
 software half of the **TraceTheSun** pilot. The concept was conceived by
 [Muhammad Awais](https://www.linkedin.com/in/awais307/) and Tobias; the Pakistani mapping,
 validation and ground-truth work is carried out by a student team at the
@@ -419,7 +258,7 @@ Full runbook, including the agent prompt and the review checklist:
 
 ## Community
 
-earthpv is the software half of **TraceTheSun**, a pilot programme run by
+EarthPV is the software half of **TraceTheSun**, a pilot programme run by
 [Open Energy Transition](https://openenergytransition.org) to make photovoltaic mapping
 cost-effective, verifiable, community-driven and local.
 
@@ -446,7 +285,7 @@ tagging and mapping solar worldwide in an open, verifiable and cost-effective wa
 
 Currently forming, it includes:
 
-* **[Open Energy Transition](https://openenergytransition.org)**, which runs earthpv and
+* **[Open Energy Transition](https://openenergytransition.org)**, which runs EarthPV and
   funds the Pakistan pilot.
 * **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** and the student team at the
   **[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore
@@ -467,11 +306,11 @@ Currently forming, it includes:
   </a>
 </div>
 
-The Pakistani side of earthpv is a collaboration with the
+The Pakistani side of EarthPV is a collaboration with the
 [Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/) at the Lahore
 University of Management Sciences. TraceTheSun was conceived by Muhammad Awais and Tobias,
 and a team of WIT students has worked alongside Open Energy Transition since the pilot
-began, taking earthpv from a trained model to a working rooftop solar mapping pipeline.
+began, taking EarthPV from a trained model to a working rooftop solar mapping pipeline.
 Their contribution runs across the entire workflow: they trace and verify Pakistani solar
 installations in OpenStreetMap against high-resolution imagery, contribute the local
 context that satellite data alone cannot capture, and build the exhaustively mapped
@@ -493,7 +332,7 @@ training chips drawn from the mapping loop raised detection recall on Punjabi ro
 0.18 to 0.55 for large arrays, and the calibration quadrats the students map remain the
 only means of checking whether the model's own recall estimates are too optimistic.
 
-For WIT, earthpv is both a research dataset and a shared design exercise. Co-developing the
+For WIT, EarthPV is both a research dataset and a shared design exercise. Co-developing the
 pipeline has given the students involved a practical introduction to open geospatial
 machine learning, and the national photovoltaic database it produces already supports the
 centre's own research. The longer-term goal is to connect this dataset to energy and

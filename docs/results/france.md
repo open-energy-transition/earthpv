@@ -177,7 +177,7 @@ Recall by installation size, in module area, against a 100 m&sup2; Sentinel-2 pi
 
 There is no clean size gradient. At sub-metre resolution detection is not
 resolution-limited over this range, which is the expected result and the useful contrast
-with earthpv, whose whole difficulty is that the modal French array here is 20 m&sup2;,
+with EarthPV, whose whole difficulty is that the modal French array here is 20 m&sup2;,
 a fifth of one Sentinel-2 pixel.
 
 **These communes are not independent of OpenPVMapper.** They are its manual-correction
@@ -185,7 +185,7 @@ layer, so its rows inside them have been corrected toward this ground truth and 
 precision measured here is an optimistic bound on precision elsewhere. Recall is the half
 that transfers.
 
-## earthpv against France, measured against the register
+## EarthPV against France, measured against the register
 
 France is the second country whose numbers can be scored against a complete register, and
 unlike Germany it was scored **twice**: once with a model that had never seen a French roof,

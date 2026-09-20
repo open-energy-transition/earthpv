@@ -268,7 +268,7 @@ built from summed draws. Adding per-cell bounds gives the wrong answer.
 
 ## Reproducing this map
 
-This is earthpv's [main workflow](../reproduce.md#the-full-pipeline), end to end: the
+This is EarthPV's [main workflow](../reproduce.md#the-full-pipeline), end to end: the
 &ge;400 m<sup>2</sup> segmentation half, then the < 400 m<sup>2</sup> roofclf half, then
 the atlas that combines them.
 
