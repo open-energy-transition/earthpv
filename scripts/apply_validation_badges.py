@@ -21,7 +21,7 @@ import json
 from earthpv.atlas import (CELL_COLS_EVIDENCE, CELL_COLS_GROWTH,
                            CELL_COLS_GROWTH_EVIDENCE, derive_validation_score,
                            download_section_html, header_logo_html,
-                           validation_badge_html)
+                           validation_badge_html, write_cell_geoparquet)
 
 # A published page predates `cell_cols`, so the CSV export has no header to write. Recover
 # it from the column count, which identifies the schema unambiguously across these atlases.
@@ -114,7 +114,7 @@ def _guard_size(before: str, after: str, path: Path) -> None:
         )
 
 
-def add_downloads(html: str, aoi: str) -> str:
+def add_downloads(html: str, aoi: str, out_path: Path) -> str:
     """Give an already-published page the per-cell CSV export.
 
     Two steps, because a page built before this feature has the data but not its column
@@ -139,8 +139,12 @@ def add_downloads(html: str, aoi: str) -> str:
         data["cell_cols"] = cols
         html = (html[:m.start()] + m.group(1)
                 + json.dumps(data, separators=(",", ":")) + m.group(3) + html[m.end():])
+    # GeoParquet is a real file, not something the browser can build, so write it beside
+    # the page being stamped. Same stem, so the relative link resolves for the published
+    # copy and for the source alike.
+    pq = write_cell_geoparquet(rows, data.get("cell_cols") or [], out_path)
     foot = re.search(r'\n(\s*)<div class="foot"', html)
-    section = "\n  " + download_section_html(aoi) + "\n"
+    section = "\n  " + download_section_html(aoi, pq.name if pq else "") + "\n"
     if foot:
         return html[:foot.start()] + section + html[foot.start() + 1:]
     return html + section
@@ -166,7 +170,7 @@ def stamp(path: Path, score: str, aoi: str = "atlas",
     badge = validation_badge_html(score)
     note = "re-stamped" if before != html and "vscore" in before else "stamped"
     html = EXTRAP_KEY.sub("", html, count=1)
-    html = add_downloads(html, aoi)
+    html = add_downloads(html, aoi, path)
     if DEV_NOTE.search(html):
         out = DEV_NOTE.sub(f"    {badge}\n", html, count=1)
         _guard_size(before, out, path)

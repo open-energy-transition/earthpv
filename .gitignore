@@ -126,3 +126,7 @@ results/pakistan_roofclf_parcel_validation/*
 # Atlas data packs staged for a GitHub Release; the MANIFEST under configs/ is what
 # gets committed, never the assets themselves.
 dist/
+
+# Per-cell GeoParquet shipped beside each published atlas (small, and the page links
+# to it by a relative path, so it has to be in the repo rather than a release).
+!docs/assets/interactive/*.parquet

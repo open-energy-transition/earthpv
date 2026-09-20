@@ -861,9 +861,11 @@ out geom;</div>
       <b>The capacity per grid cell shown on the map, as CSV.</b> One row per 0.1&deg;
       cell, generated in your browser from the data this page is drawing, so it is exactly
       the numbers above. <code>lon0</code>/<code>lat0</code> are the south-west corner of
-      the cell.
+      the cell. The GeoParquet carries the cell polygon in EPSG:4326, so it opens directly
+      in QGIS or GeoPandas.
     </p>
-    <button id="dlCells" type="button" class="dl-btn">Download capacity per cell (CSV)</button>
+    <button id="dlCells" type="button" class="dl-btn">Download CSV</button>
+    <a id="dlParquet" class="dl-btn dl-btn--alt" href="zambia_pv_evidence_atlas_capacity_by_cell.parquet" download>Download GeoParquet</a>
     <span id="dlNote" style="font-size:11.5px;color:var(--muted);margin-left:10px;"></span>
   </div>
 </section>
@@ -872,6 +874,8 @@ out geom;</div>
   border-radius: 8px; cursor: pointer; color: #12100d;
   background: var(--accent); border: 1px solid var(--accent); }
 .dl-btn:hover { filter: brightness(1.08); }
+.dl-btn--alt { background: transparent; color: var(--accent); margin-left: 8px;
+  text-decoration: none; display: inline-block; }
 </style>
 <script>
 (function () {
@@ -897,6 +901,7 @@ out geom;</div>
 })();
 </script>
 <!-- earthpv:cellcsv:end -->
+
 
 
   <div class="foot" id="foot"></div>

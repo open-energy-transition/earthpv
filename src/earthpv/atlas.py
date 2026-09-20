@@ -203,7 +203,36 @@ CELL_COLS_GROWTH = [
 ]
 
 
-def download_section_html(aoi: str) -> str:
+def write_cell_geoparquet(cells: list, cell_cols: list, out_html: Path) -> Path | None:
+    """Write the per-cell table as GeoParquet BESIDE the atlas HTML, same stem.
+
+    GeoParquet cannot be produced in the browser the way the CSV is, so unlike that export
+    this is a real file. Written as a sibling of the page rather than into a fixed
+    directory, so the relative link in the Downloads section resolves wherever the page is
+    served from: the docs site, a standalone copy, or a local file.
+
+    Geometry is the cell itself, a 0.1 degree box whose south-west corner is
+    `lon0`/`lat0`, in EPSG:4326 -- so it drops straight into QGIS or GeoPandas without the
+    reader having to reconstruct the grid.
+    """
+    if not cells or not cell_cols:
+        return None
+    import geopandas as gpd
+    import pandas as pd
+    from shapely.geometry import box
+
+    df = pd.DataFrame(cells, columns=cell_cols)
+    if not {"lon0", "lat0"} <= set(df.columns):
+        return None
+    step = 0.1
+    geom = [box(x, y, x + step, y + step) for x, y in zip(df.lon0, df.lat0)]
+    gdf = gpd.GeoDataFrame(df, geometry=geom, crs="EPSG:4326")
+    dst = Path(out_html).with_name(Path(out_html).stem + "_capacity_by_cell.parquet")
+    gdf.to_parquet(dst)
+    return dst
+
+
+def download_section_html(aoi: str, parquet_name: str = "") -> str:
     """A Downloads section that hands the reader the exact per-cell table the map draws.
 
     Built in the browser from the data already embedded in the page, rather than from a
@@ -220,9 +249,11 @@ def download_section_html(aoi: str) -> str:
       <b>The capacity per grid cell shown on the map, as CSV.</b> One row per 0.1&deg;
       cell, generated in your browser from the data this page is drawing, so it is exactly
       the numbers above. <code>lon0</code>/<code>lat0</code> are the south-west corner of
-      the cell.
+      the cell. The GeoParquet carries the cell polygon in EPSG:4326, so it opens directly
+      in QGIS or GeoPandas.
     </p>
-    <button id="dlCells" type="button" class="dl-btn">Download capacity per cell (CSV)</button>
+    <button id="dlCells" type="button" class="dl-btn">Download CSV</button>
+    <a id="dlParquet" class="dl-btn dl-btn--alt" href="{parquet_name}" download>Download GeoParquet</a>
     <span id="dlNote" style="font-size:11.5px;color:var(--muted);margin-left:10px;"></span>
   </div>
 </section>
@@ -231,6 +262,8 @@ def download_section_html(aoi: str) -> str:
   border-radius: 8px; cursor: pointer; color: #12100d;
   background: var(--accent); border: 1px solid var(--accent); }}
 .dl-btn:hover {{ filter: brightness(1.08); }}
+.dl-btn--alt {{ background: transparent; color: var(--accent); margin-left: 8px;
+  text-decoration: none; display: inline-block; }}
 </style>
 <script>
 (function () {{
@@ -761,10 +794,11 @@ def build_combined_atlas(
         "cells above for exactly where the small-installation figure is greater than zero."
     )
 
+    _pq_name = ""
     html = TEMPLATE.read_text()
     for key, value in {
         "__HEADER_LOGO__": header_logo_html(),
-        "__DOWNLOAD_SECTION__": download_section_html(aoi),
+        "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
         "__VALIDATION_BADGE__": validation_badge_html(
             derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -1295,10 +1329,12 @@ def build_growth_evidence_atlas(
     }
 
     title = aoi.replace("_", " ").title()
+    _pq = write_cell_geoparquet(cells, cell_cols, out)
+    _pq_name = _pq.name if _pq else ""
     html = GROWTH_EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__HEADER_LOGO__": header_logo_html(),
-        "__DOWNLOAD_SECTION__": download_section_html(aoi),
+        "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
         "__VALIDATION_BADGE__": validation_badge_html(
             derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
@@ -2329,13 +2365,15 @@ def build_evidence_atlas(
             pose_summary_csv, title, pose_history_note, pose_data_note,
         )
 
+    _pq = write_cell_geoparquet(cells, cell_cols, out)
+    _pq_name = _pq.name if _pq else ""
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title}'s PV Atlas",
         "__H1__": f"{title}'s PV Atlas",
         "__HEADER_LOGO__": header_logo_html(),
-        "__DOWNLOAD_SECTION__": download_section_html(aoi),
+        "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
         "__VALIDATION_BADGE__": validation_badge_html(
             validation_score or derive_validation_score(
                 aoi, central_buildings_path is not None, labels_dir)
