@@ -792,3 +792,16 @@
   width: auto;
   display: block;
 }
+
+/* ── sortable tables (assets/javascripts/tablesort.js) ─────────────── */
+.md-typeset th.sortable-th { cursor: pointer; user-select: none; position: relative;
+  padding-right: 1.25em; }
+.md-typeset th.sortable-th:hover { color: var(--md-accent-fg-color); }
+.md-typeset th.sortable-th:focus-visible { outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: -2px; }
+/* A neutral caret until sorted, then the direction. Drawn in the cell's own colour so it
+   works in both palettes without a second rule. */
+.md-typeset th.sortable-th::after { content: "⇅"; position: absolute; right: 0.45em;
+  opacity: 0.35; font-size: 0.85em; }
+.md-typeset th.sortable-th[aria-sort="ascending"]::after { content: "↑"; opacity: 0.9; }
+.md-typeset th.sortable-th[aria-sort="descending"]::after { content: "↓"; opacity: 0.9; }

@@ -55,6 +55,9 @@ extra_javascript:
   # Drives each embedded result page's own light/dark switch from Material's, so the
   # two dark modes cannot disagree. See the file header for why it clicks the toggle.
   - assets/javascripts/embed-theme.js
+  # Click-to-sort on content tables. Matters most on the experiments register, which is
+  # 90-odd rows and is usually read by verdict or by which experiment moved a number.
+  - assets/javascripts/tablesort.js
 
 markdown_extensions:
   - abbr
