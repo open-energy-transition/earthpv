@@ -23,20 +23,6 @@
 
 > **Mapping every solar system above 10 kWp worldwide: capacity, growth and orientation, open and verifiable**
 
-> **How small? EarthPV finds most rooftop PV above roughly 50 m² of panel, about
-> 10 kWp. Between 20 and 50 m² it is close to a coin flip, and below that it misses
-> most of what is there.**
-> [What that is measured on](#how-small-an-installation-does-it-find)
-
-> **Mapping a country we have not reached?** EarthPV is built to be forked per country and
-> merged back: the aim is a global PV evidence atlas assembled from many countries, each run
-> and verified by people who know the ground. [Fork it and add yours](#add-your-country-the-atlas-is-meant-to-be-collective).
-
-> [!WARNING]
-> **Active development.** EarthPV is a research prototype: it is actively experimenting
-> with new solar detection methods, and its detectors, calibration and headline numbers
-> are still being tested and revised rather than settled.
-
 EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and ESA, through.
 TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
 and puts every detection in front of **OpenStreetMap** mappers for verification. The
