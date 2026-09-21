@@ -17,7 +17,7 @@
 
 </div>
 
---
+---
 
 > [!WARNING]
 > **Active development.** EarthPV is alpha stage: it is actively experimenting
