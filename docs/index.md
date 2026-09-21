@@ -32,8 +32,7 @@ Pakistan is the first pilot, not the final destination. It is where EarthPV was 
 
 [![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
 
-*Pakistan PV Capacity Estimate 
-[Open the interactive version](atlas.md).*
+*[Open the interactive version](atlas.md)*
 
 ## How it works: two detectors, one atlas
 
@@ -57,11 +56,10 @@ tried and rejected: [How it works](how-it-works.md).
 
 ## Why free imagery, when sharper imagery exists
 
-Two licences pull in opposite directions, and the loop is what resolves them. Sentinel-2 is
-free, global and coarse. Esri, Bing and Mapbox resolve individual panels but only allow a
+Sentinel-2 is free, global and coarse. Esri, Bing and Mapbox resolve individual panels but only allow a
 **person** to trace from them inside the OpenStreetMap editor.
 
-So the machine only ever reads Sentinel-2, people only ever read the high-resolution
+So EarthPV only ever reads Sentinel-2, people only ever read the high-resolution
 layers, and the installations they map become ordinary, openly licensed OpenStreetMap
 features: legitimate training data for the next model.
 
@@ -73,7 +71,7 @@ reproduce, check or improve the result.
 
 ## How small an installation does it find?
 
-Orders of magnitude, not thresholds. Measured on 30 exhaustively hand-mapped Pakistani
+Measured on 30 exhaustively hand-mapped Pakistani
 calibration areas (123,898 buildings), at the same operating point the published atlas
 uses, binned by how much panel actually sits on the roof:
 
@@ -83,8 +81,6 @@ uses, binned by how much panel actually sits on the roof:
 | 50 to 100 m² | 10 to 20 kWp | 83% |
 | 20 to 50 m² | 4 to 9 kWp | 49% |
 | Below 20 m² | below 4 kWp | 22 to 31% |
-
-Four things qualify that, and they matter more than the exact percentages.
 
 ## What did not work
 
@@ -115,42 +111,10 @@ named student mapper, and the
 **The goal is a global PV evidence atlas assembled from many countries, each run and
 verified by people who know the ground.** Nothing in this pipeline is Pakistan-specific:
 every input is a global dataset, so the intended shape of the project is a fork per country
-and this repository as the place their results come back together. Pakistan, Germany,
-France, Gujarat and Zambia are the first five, not the destination.
-
-What is not built yet, stated plainly: **there is no combiner that merges countries into one
-global surface.** What exists is a shared pipeline, a shared atlas format and a shared data
-pack layout, which is what makes that step possible later.
-
-The short version of contributing one:
-
-1. Fork the repository and branch as `atlas/<country>`.
-2. Preflight and register the area with `scripts/new_region.py`, which prints your runbook.
-3. Run the pipeline. Every stage is resumable; `compose` is the long pole. A country with
-   mapped calibration areas gets the full two-detector atlas, one with a complete public
-   register can substitute that register, and one with neither gets a segmentation-only
-   atlas, which is a real result.
-4. Draw 20 random cells and check them against high-resolution imagery. This step cannot be
-   skipped or automated, and without it a number has no evidence under it.
-5. Package the raw numbers with `scripts/build_atlas_data_pack.py`. The per-cell capacity
-   table is the product; because `data/` is gitignored it ships as a GitHub Release asset
-   with only a manifest committed.
-6. Add a short page under `docs/results/` and open the pull request.
-
-Most of this suits a coding agent, and `CLAUDE.md` is the repository's brief for one. The
-exceptions are the steps where evidence actually enters: drawing calibration areas,
-declaring them complete, and signing off validation.
-
-Full runbook, including the agent prompt and the review checklist:
+and this repository as the place their results come back together. Full runbook, including the agent prompt and the review checklist:
 [Contribute your country atlas back](reproduce.md#contribute-your-country-atlas-back).
 
-## Community
-
-EarthPV is the software half of **TraceTheSun**, a pilot programme run by
-[Open Energy Transition](https://openenergytransition.org) to make photovoltaic mapping
-cost-effective, verifiable, community-driven and local.
-
-### TraceTheSun
+## TraceTheSun
 
 TraceTheSun is an emerging community bringing together the most prominent open-source
 projects in PV detection and the most skilled PV mappers in OpenStreetMap, to address
@@ -159,7 +123,7 @@ tagging and mapping solar worldwide in an open, verifiable and cost-effective wa
 Currently forming, it includes:
 
 * **[Open Energy Transition](https://openenergytransition.org)**, which runs EarthPV and
-  funds the Pakistan pilot. Led by [Tobias Auspurger](https://www.linkedin.com/in/tobias-augspurger/)
+  funds the Pakistan pilot. Led by [Tobias Auspurger](https://www.linkedin.com/in/tobias-augspurger/).
 * **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** and the student team at the
   **[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore
   University of Management Sciences, who co-designed the pipeline and did the Pakistani
