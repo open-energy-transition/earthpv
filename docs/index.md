@@ -42,7 +42,7 @@ does not, so EarthPV runs two instruments and combines them.
 
 - **Segmentation** outlines individual arrays above roughly 400 m². These are the mapping
   leads, and the only instrument for ground-mounted solar at any size.
-- **`roofclf`** answers a smaller question for everything below that floor: *does this
+- **roofclf** answers a smaller question for everything below that floor: *does this
   building carry PV?* A 100 m² array is a handful of mixed pixels, too few to outline but
   often enough to classify.
 
