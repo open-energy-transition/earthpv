@@ -7,7 +7,7 @@
 
 # EarthPV
 
-**Open, global (rooftop) photovoltaic mapping from free satellite imagery.**
+**Free, Open and Global Mapping of Photovoltaic Systems Above 10 kWp - Including Capacity, Growth and Orientation.**
 
 [Documentation](https://open-energy-transition.github.io/earthpv/) &nbsp;·&nbsp;
 [Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) &nbsp;·&nbsp;
@@ -20,8 +20,6 @@
 </div>
 
 ---
-
-> **Mapping every solar system above 10 kWp worldwide: capacity, growth and orientation, open and verifiable**
 
 > [!WARNING]
 > **Active development.** EarthPV is alpha stage: it is actively experimenting
