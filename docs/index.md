@@ -159,7 +159,7 @@ tagging and mapping solar worldwide in an open, verifiable and cost-effective wa
 Currently forming, it includes:
 
 * **[Open Energy Transition](https://openenergytransition.org)**, which runs EarthPV and
-  funds the Pakistan pilot.
+  funds the Pakistan pilot. Led by [Tobias Auspurger](https://www.linkedin.com/in/tobias-augspurger/)
 * **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** and the student team at the
   **[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore
   University of Management Sciences, who co-designed the pipeline and did the Pakistani
