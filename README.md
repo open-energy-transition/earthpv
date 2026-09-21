@@ -272,7 +272,7 @@ Full runbook, including the agent prompt that works and the review checklist:
 EarthPV is the software half of **TraceTheSun**, a pilot run by
 [Open Energy Transition](https://openenergytransition.org) to make PV mapping
 cost-effective, verifiable, community-driven and local, worldwide. The concept was
-conceived by [Muhammad Awais](https://www.linkedin.com/in/awais307/) and Tobias. The
+conceived by [Tobias Augspurger](https://www.linkedin.com/in/tobias-augspurger/) and [Muhammad Awais](https://www.linkedin.com/in/awais307/). The
 Pakistani results rest on a student team at the **[Centre for Water Informatics and
 Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore University of Management Sciences -
 [Laeeba Hafeez Malik](https://www.linkedin.com/in/laeeba-hafeez-malik-220b63328/) (BS
