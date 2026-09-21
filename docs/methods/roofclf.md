@@ -262,10 +262,10 @@ train and test and report skill the model does not have.
 
 | Measure | Value | Read it as |
 | --- | --- | --- |
-| Median fold AUC | **0.879** | ranking skill on a quadrat the model has never seen |
-| Median fold AUC within roof-size band | **0.834** | the same, with size removed as a discriminator |
+| Median fold AUC | **0.868** | ranking skill on a quadrat the model has never seen |
+| Median fold AUC within roof-size band | **0.819** | the same, with size removed as a discriminator |
 | Segmentation raster, within size band | **0.500** | chance. The 400 m<sup>2</sup> floor, measured |
-| Fraction head, unconditional | 0.634 | better than segmentation, still well behind |
+| Fraction head, unconditional | 0.599 | better than segmentation, still well behind |
 
 ### Why the within-size number is the honest one
 
@@ -425,23 +425,28 @@ that being evidence the roof is empty.
 
 | Component | Population | MWp |
 | --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 2,515 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 8,923 |
-| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 6,747 |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 69 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 3,761 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 13,231 |
+| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 8,257 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 189 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 18,826.7 MWp (90%
-range 16,022 to 24,358)** -- the first three rows only. The fourth was dropped from the
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 24,330.0 MWp (90%
+range 20,822 to 33,582)** -- the first three rows only. The fourth was dropped from the
 published atlas on 2026-08-15 (see the last bullet below); its capacity function and CLI
-flag remain for anyone who wants that estimate explicitly. (Updated 2026-08-20: three
-peri-urban calibration quadrats -- Attock, Layyah, Lodhran, `docs/issues/pakistan-calibration-boxes.md`'s
-Box 18 -- were declared Rule-1 and folded into a fresh `roofclf` refit, 30 quadrats total,
-moving every row in this table down together.)
+flag remain for anyone who wants that estimate explicitly. (Updated 2026-09-21: `roofclf`
+was refit and rescored nationally with **area-weighted zonal means**, which weight each 10 m
+pixel by the fraction of the footprint covering it instead of requiring the pixel centre to
+fall inside -- 72.4% of Pakistani VIDA footprints own no pixel by that test. It is worth
++0.0119 AUC within size band and +2.0 points of recall at fixed precision, and it moved every
+row in this table up together: 2,515 to 3,761, 8,923 to 13,231, 6,747 to 8,257, and Best
+estimate 18,826.7 to 24,330.0 MWp. The previous revision, 2026-08-20, folded three peri-urban
+quadrats -- Attock, Layyah, Lodhran, `docs/issues/pakistan-calibration-boxes.md`'s Box 18 --
+into a 30-quadrat refit.)
 
 The two Best-estimate roofclf rows are **recall-corrected as of 2026-08-15**: the coverage
 ratio prices the PV on roofs roofclf flagged, and dividing by the measured share of true
-mapped PV area that lands on a flagged roof (0.808 sub-400 m<sup>2</sup>, 0.978 at or above
+mapped PV area that lands on a flagged roof (0.809 sub-400 m<sup>2</sup>, 0.984 at or above
 400 m<sup>2</sup>, per size bin and density stratum) extends that to the roofs it missed --
 the same correction the segmentation half has always used. The floor row is deliberately
 left uncorrected, because a floor that extrapolates to installations neither detector saw
@@ -452,7 +457,7 @@ Three things about that table are worth stating plainly:
 
 - **SPPI is a second opinion, not a feature.** Adding SPPI as a roofclf input changes AUC
   from 0.8736 to 0.8734, which is nothing. Requiring the two to *agree* raises precision
-  from 0.53 to 0.63 on the same quadrats, at 0.46 recall instead of 0.73. They share no
+  from 0.52 to 0.63 on the same quadrats, at 0.39 recall instead of 0.73. They share no
   training data, which is why agreement between them is evidence and why it sets the
   internal floor under the atlas's headline figure.
 - **At or above 400 m<sup>2</sup>, roofclf replaces segmentation rather than adding to

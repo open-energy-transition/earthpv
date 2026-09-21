@@ -51,7 +51,7 @@ built and measured; the plan is to run the same pipeline everywhere Sentinel-2 f
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -118,7 +118,7 @@ it has been calibrated to do so.
 
 <p align="center">
   <img src="docs/assets/figures/evidence_workflow.svg" width="720"
-       alt="The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors -- TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.">
+       alt="The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors -- TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 24,330 MWp with a 90 percent range of 20,822 to 33,582.">
 </p>
 
 **Segmentation, the source of every mapping lead, and of ground-mount capacity at any
@@ -275,7 +275,7 @@ above:
 
 | | |
 | --- | --- |
-| **18,827 MWp** | Best estimate: this project's own highest defensible figure (90% range 16,022 &ndash; 24,358) |
+| **24,330 MWp** | Best estimate: this project's own highest defensible figure (90% range 20,822 &ndash; 33,582) |
 | **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
 | **400 m²** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |

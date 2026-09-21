@@ -1,7 +1,7 @@
 # Contribute a calibration area
 
 `roofclf`, the per-building classifier that supplies most of the evidence atlas's Best
-estimate (83% of it, currently), is only as good as the ground truth it is fit on: a
+estimate (88% of it, currently), is only as good as the ground truth it is fit on: a
 handful of small, hand-picked, **exhaustively mapped** neighbourhoods
 ("[calibration quadrats](methods/calibration-quadrats.md)") scattered across Pakistan.
 Adding quadrats in landscapes the current set does not yet cover is the single most direct

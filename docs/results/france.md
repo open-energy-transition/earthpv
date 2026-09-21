@@ -190,7 +190,9 @@ that transfers.
 France is the second country whose numbers can be scored against a complete register, and
 unlike Germany it was scored **twice**: once with a model that had never seen a French roof,
 and once after retraining with French data. Both runs cover the same 20,501 communes and
-93.0% of registered capacity, so they are directly comparable.
+93.0% of registered capacity, on the same 5,473-cell grid, so they are directly comparable.
+The re-score on the finished 6,021-cell grid is below the table, kept separate so the A/B
+stays an A/B.
 
 | estimator | zero-shot slope | **retrained slope** | zero-shot &rho; | **retrained &rho;** | Germany slope | Germany &rho; |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -203,6 +205,15 @@ conversion constants or by France's proxy denominator: it says the retrained mod
 capacity in substantially the right communes, and the zero-shot one did not. Slope moved
 much less (det +25%, exp +5%), and total recovered capacity went from 26% to 34% of
 registered above-floor low-voltage capacity.
+
+**Re-scored on the finished grid, 2026-09-20.** Repeating the retrained run against the
+6,021-cell density grid raises register coverage from 93.0% to **98.4% of registered capacity**
+(21,667 communes against 20,501) and barely moves the result: `est_mwp_exp` slope 0.170 to
+**0.169**, &rho; 0.449 to **0.420**, recovery 33.8% to **32.6%**; `est_mwp_det` slope 0.160 to
+**0.159**, &rho; 0.446 to **0.417**, recovery 34.4% to **33.3%**. The 1,166 communes the wider
+grid adds are the sparse rural ones a one-building cell floor reaches, and the model finds
+little in them, so rank correlation slips about 0.03 while slope holds to three decimals.
+Slope was the quantity in question, and it did not move.
 
 Quote `est_mwp_det` and `est_mwp_exp` for France. `est_mwp_cal` and `est_mwp_rc_roof` sit
 near 0.02 for both models because France has no glint sample, so `p_unmapped` is 0 and
@@ -321,21 +332,37 @@ population it is built for and no part of the population France's register censo
 
 ### The evidence atlas
 
-National, over 5,958 cells and 13 regions: **Verified 12,382 MWp (90% 9,410-16,613), Best
-estimate 13,270 MWp (90% 11,421-17,416)**, against a registered 34.6 GWp. Built on the
-retrained v5 checkpoint.
+National, over 6,021 cells and 13 regions: **Verified 12,382 MWp (90% 9,410-16,613), Best
+estimate 13,369 MWp (90% 11,478-17,762)**, against a registered 34.6 GWp. Built on the
+retrained v5 checkpoint, and rebuilt end to end on 2026-09-17 once the wider compose landed.
 
-Two corrections on 2026-09-15 moved these from the 11,163 / 11,995 MWp over 5,473 cells this
-page previously reported. Hand-mapped installations outside the composited grid are no longer
-dropped but given their own OpenStreetMap-only cells, which is where 485 of the cells come
-from. And the national pull is now clipped to France's border: only **21.8%** of
-`france_overpass_solar.parquet` was actually inside France, the rest being mostly Spanish PV
-that France's bounding box happens to contain, along with German, Italian and Belgian. Those
-were invisible while the atlas discarded everything outside its grid, and became visible the
-moment it stopped.
+**The `--min-buildings 1` compose finished on 2026-09-16.** It built 6,858 cells, of which
+the border clip drops 837 (12.2%) as Spanish, Belgian, German, Italian or Atlantic, leaving
+6,021 French ones against the 5,473 this page reported on 2026-09-13. Inference, postprocess,
+the candidate-precision table, density and the atlas were all re-run over that set: 49,145
+candidates against 39,462. Best estimate moved by about 100 MWp and **Verified did not move at
+all**, which is the shape to expect. The cells the wider floor adds are sparse and rural, so
+they carry model detections and almost no hand-mapped installations.
 
-A national compose at `--min-buildings 1` is in progress, adding roughly 988 cells; these
-figures will move again when it lands.
+The same compose retired a correction. With the cell floor at one building, **all 54,111
+border-clipped national OSM installations now fall inside the grid**, so
+`--include-offgrid-osm` -- added on 2026-09-15 because 79.7% of them fell outside a grid built
+at `--min-buildings 1000` -- no longer does any work for France and was not passed on the
+rebuild. The border clip itself still matters and still applies: only **21.8%** of
+`france_overpass_solar.parquet` was actually inside France, the rest mostly Spanish PV that
+France's bounding box happens to contain, along with German, Italian and Belgian.
+
+**`check-density` fails 9 of the 13 regions on this run**, all on the ground-mount:rooftop
+capacity ratio: Corse 79x, Provence-Alpes-Cote d'Azur 23x, Nouvelle-Aquitaine 17x, down to
+Ile-de-France 5x, with Auvergne-Rhone-Alpes suspect at 4.4x and only Pays de la Loire,
+Bretagne and Normandie passing. Nationally the run reads 852 MWp rooftop against 7,088 MWp
+ground-mount. That is not France's shape: the register puts 19.1 GWp of the country's
+34.6 GWp on low voltage, the closest thing it has to a rooftop line, so the true ratio is
+near parity rather than 8x. The gate is designed to catch ground-mount false positives, and
+here it is dominated by the opposite problem, the missing rooftop denominator this page
+documents at length -- a 20 m&sup2; French array is a fifth of a Sentinel-2 pixel. It is
+reported, not waived: read the rooftop half of the French atlas as a floor with a known,
+measured hole in it.
 
 It is the **segmentation-only** form, for two independent reasons. France has no calibration
 quadrats outside the fourteen mapped communes, which is this project's documented rule for
@@ -384,7 +411,7 @@ pixi run python scripts/fetch_france_communes.py
 pixi run earthpv validate-france --opvm data/openpvmapper/enriched_national.parquet
 
 # National imagery, then the zero-shot baseline
-pixi run earthpv compose --aoi france --min-buildings 1000 --workers 4   # see the note below
+pixi run earthpv compose --aoi france --min-buildings 1 --workers 4      # see the note below
 pixi run -e ml earthpv infer --aoi france --checkpoint <v4 ckpt>
 pixi run earthpv postprocess --aoi france --threshold 0.3
 pixi run earthpv calibrate-candidates --aoi france --recall-reference none --by-placement

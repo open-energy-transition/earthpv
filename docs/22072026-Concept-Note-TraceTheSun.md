@@ -60,8 +60,8 @@ bringing the size at which an individual rooftop array can be outlined down to a
 400 m<sup>2</sup>. Below that size, in densely built areas with high adoption, the
 pilot estimates PV density per building directly instead of trying to outline each
 installation, which recovers much smaller rooftop systems. The published national
-result for Pakistan is a **best estimate of 18,827 MWp** of rooftop and ground-mounted
-capacity, with a 90% range of 16,022 to 24,358 MWp, built from 15,642 individually
+result for Pakistan is a **best estimate of 24,330 MWp** of rooftop and ground-mounted
+capacity, with a 90% range of 20,822 to 33,582 MWp, built from 15,642 individually
 hand-mapped and verified OpenStreetMap installations plus the model's own
 recall-corrected detections.
 

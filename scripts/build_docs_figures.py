@@ -2211,13 +2211,33 @@ EVW_H = 890
 # are gitignored, so the docs CI can read neither) -- same caveat as ROOFCLF_STATS
 # above: re-transcribe these in the same commit as any pipeline run that moves the
 # atlas, together with the alt text in README.md and docs/index.md.
+def _evw_headline():
+    """Best estimate and its 90% range, read from the PUBLISHED atlas rather than typed
+    here. Hardcoding them meant this diagram kept drawing 18,827 MWp after the 2026-09-21
+    rescoring moved the headline to 24,330 -- a figure generated from a stale constant is
+    exactly what the "every figure is generated from a tracked source" rule exists to
+    prevent. Falls back to the last published values if the atlas is not on disk, so a
+    docs-only checkout still builds."""
+    path = source("docs/assets/interactive/pakistan_evidence_atlas.html")
+    if path is None:
+        return 24330, 20822, 33582
+    m = re.search(r'<script id="pv" type="application/json">(.*?)</script>',
+                  path.read_text(), flags=re.S)
+    if not m:
+        raise SystemExit("could not locate the atlas pv-data block")
+    t = json.loads(m.group(1))["totals"]
+    lo, hi = t["mwp_best_ci"]
+    return round(t["mwp_best"]), round(lo), round(hi)
+
+
+_EVW_BEST, _EVW_LO, _EVW_HI = _evw_headline()
 EVW_STATS = {
     "n_quadrats": 30,
     "pct_domain_cells": 66,       # 2,957 of 4,463 national cells
     "pct_domain_buildings": 95,   # 94.7% of national buildings
-    "mwp_best": 18827,
-    "ci_lo": 16022,
-    "ci_hi": 24358,
+    "mwp_best": _EVW_BEST,
+    "ci_lo": _EVW_LO,
+    "ci_hi": _EVW_HI,
 }
 
 

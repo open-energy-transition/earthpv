@@ -5,17 +5,13 @@ The [capacity map](capacity.md) reports the evidence atlas's Best-estimate total
 size, split rooftop vs ground-mount, instead of by geography. It is not a second
 estimate -- every MWp here comes from the identical components and calibration the
 main atlas uses, re-binned rather than recomputed. The two pages' totals match for the
-same run to within 0.02% (currently 18,826.7 vs 18,829 MWp) -- the residual is a
+same run to within 0.02% (currently 24,330.0 vs 24,333 MWp) -- the residual is a
 handful of candidates whose location falls just outside every grid cell's polygon and
 so never enters a per-cell total on either page, not an uncounted source of error.
 
-<div class="embed" markdown>
-<iframe src="../../assets/interactive/pakistan_size_distribution_atlas.html" title="Pakistan PV capacity by installation size, rooftop vs ground-mount" loading="lazy"></iframe>
-</div>
-<p class="embed-note">
-Interactive. Hover a bar for its exact value and installation count.
-<a href="../../assets/interactive/pakistan_size_distribution_atlas.html" target="_blank">Open full screen</a>.
-</p>
+**[Open the size-distribution chart](../assets/interactive/pakistan_size_distribution_atlas.html)**
+(interactive; hover a bar for its exact value and installation count). The geographic view
+of the same total is the [Pakistan PV Atlas](../atlas.md).
 
 ## Why size, not just geography
 

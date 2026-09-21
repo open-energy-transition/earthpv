@@ -247,7 +247,7 @@ completeness cannot fit a coverage ratio, and a footprint layer that finds the b
 
 ## The sub-400 m&sup2; estimator against the register
 
-The `coverage_ratio` and `area_recall` machinery prices about 83% of Pakistan's published
+The `coverage_ratio` and `area_recall` machinery prices about 88% of Pakistan's published
 Best estimate, is fit on 30 purposive quadrats, and had never been checked against an
 independent truth, because Pakistan has none. Germany does.
 

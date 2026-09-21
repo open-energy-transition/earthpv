@@ -44,12 +44,12 @@ EarthPV fine-tunes the open **TerraMind** geospatial foundation model, developed
 built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
 [Scaling worldwide](#scaling-worldwide).
 
-[![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 18,827 MWp (90 percent range 16,022 to 24,358) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](results/capacity.md)
+[![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
 
 *This project's own highest defensible figure, not a bare point estimate: hand-mapped
 OpenStreetMap installations, the model's own recall-corrected detections, and a
 per-building density estimate for small rooftops, with a 90 percent range attached.
-[Open the interactive version](results/capacity.md).*
+[Open the interactive version](atlas.md).*
 
 ## How small an installation does it find?
 
@@ -111,8 +111,8 @@ does not, so EarthPV runs two instruments and combines them.
 Both are calibrated against small areas where every installation has been hand-mapped, then
 combined into the evidence atlas, de-duplicated against OpenStreetMap and each other.
 
-![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.](assets/figures/evidence_workflow.svg#only-light)
-![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 18,827 MWp with a 90 percent range of 16,022 to 24,358.](assets/figures/evidence_workflow.dark.svg#only-dark)
+![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 24,330 MWp with a 90 percent range of 20,822 to 33,582.](assets/figures/evidence_workflow.svg#only-light)
+![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 24,330 MWp with a 90 percent range of 20,822 to 33,582.](assets/figures/evidence_workflow.dark.svg#only-dark)
 
 Full detail, including the optional glint and growth instruments and everything that was
 tried and rejected: [How it works](how-it-works.md).
@@ -170,7 +170,7 @@ that cannot be shared. EarthPV's own figures:
 
 | | |
 | --- | --- |
-| **18,827 MWp** | Best estimate, this project's highest defensible figure (90% range 16,022 to 24,358) |
+| **24,330 MWp** | Best estimate, this project's highest defensible figure (90% range 20,822 to 33,582) |
 | **15,642** | individual installations hand-mapped in OpenStreetMap |
 | **400 m²** | the floor below which segmentation is blind, and `roofclf` takes over |
 | **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete register |

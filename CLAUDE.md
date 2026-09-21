@@ -430,11 +430,17 @@ that pulls a country average down; a range-extending quadrat has to be sized and
 average in enough non-built land on purpose. `docs/methods/calibration-quadrats.md` and
 `docs/methods/density.md` have the full derivation and every historical widening step.
 
-Current domain-restricted capacity figures (post 2026-08-20 `roofclf` refit + national
-rescoring, 30 quadrats -- adds Attock/Layyah/Lodhran peri-urban screens, still excludes
+Current domain-restricted capacity figures (post 2026-09-21 `roofclf` refit + national
+rescoring on **area-weighted zonal means**, 30 quadrats -- still excludes
 `kalat_rural_calib_3km`; parcel label, recall-corrected): sub-400 central (feeds Best
-estimate) **8,922.7 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by
-design) **2,515.3 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **6,747.3 MWp**.
+estimate) **13,231.0 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by
+design) **3,760.9 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **8,256.7 MWp**
+(previous, pixel-centre sampling: 8,922.7 / 2,515.3 / 6,747.3). The model itself moved
+median fold AUC 0.8574 -> **0.8682**, within-size 0.8093 -> **0.8193**, deployment threshold
+0.2535 -> **0.2446** and recall at precision 0.500 from 0.6386 -> **0.6583** (123,898
+buildings, 17,151 with PV, 22,580 flagged). The density-calibration domain did **not** move:
+still 2,957 of 4,463 cells (66.3%, 94.7% of buildings). The out-of-domain AND-gate, still
+unpublished, went 61.7 -> **189.3 MWp**.
 
 **Outside the calibrated domain, roofclf-AND-SPPI agreement CAN be used as a substitute standard
 of evidence** (`sub400_capacity.out_of_domain_and_gate_capacity`, `--sub400-outdomain-cells`),
@@ -456,11 +462,17 @@ vector where the underlying constant or calibration set is shared. It asserts it
 point values sum to the published total as a guard against silently adding a component to
 the atlas without adding it to the uncertainty composition (the code still separately tracks
 the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
-published). **Current published result: Best estimate 18,826.7 MWp (90% CI 16,022-24,358)**
+published). **Current published result: Best estimate 24,330.0 MWp (90% CI 20,822-33,582)**
 (2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction, then -61.7 on dropping the
 out-of-domain extrapolation; 2026-08-17: -> 19,745.9 on the parcel-label promotion; 2026-08-20:
--> 18,826.7 on folding Box 18's three peri-urban quadrats into the refit. The floor (Verified)
-moved similarly: 5,389.5 -> 5,856.8 (parcel label, 2026-08-17) -> 5,725.1 (Box 18, 2026-08-20)).
+-> 18,826.7 on folding Box 18's three peri-urban quadrats into the refit; 2026-09-21:
+-> 24,330.0 on the area-weighted-zonal refit + national rescoring. The floor (Verified)
+moved similarly: 5,389.5 -> 5,856.8 (parcel label, 2026-08-17) -> 5,725.1 (Box 18, 2026-08-20)
+-> 6,970.7 (area-weighted zonal, 2026-09-21, 90% CI 6,021-9,063)). **The mandatory 20-cell
+random validation for this rescoring (seed 20260920, tiles in
+`results/pakistan_roofclf_validation/`) has NOT been reviewed** -- nor have the 2026-08-17 and
+2026-08-20 batches before it; `results/roofclf_random_validation_log.csv` carries 40 rows with
+every verdict column blank.
 CLI: `--coverage-boot N` on `sub400-capacity`/`ge400-roof-capacity` (default 200; 0 disables and
 narrows the reported interval), `--no-recall-correct` on either to reproduce the
 pre-2026-08-15 flagged-population-only figures exactly.
@@ -1014,7 +1026,9 @@ and a later national one name cells identically, and `compose_window: ["2024-05-
 "2024-09-30"]` -- summer 2024, chosen so imagery, the calibration labels (10 of 14 communes
 mapped 2023-2024) and the register's 2024-12-31 vintage all sit in one epoch. **Four communes
 (Langoat 2021, Saulny/Eaunes 2022, Gannay 2022-23) predate that window**, so their labels
-understate what the imagery shows. National cell count at `--min-buildings 1000`: **5,471**.
+understate what the imagery shows. National cell count: **5,471** at `--min-buildings 1000`,
+**6,858 built** at `--min-buildings 1` (the 2026-09-16 compose, which is what the published
+atlas runs on; 6,021 survive the border clip).
 Checkpoint: `v4_combined_all` epoch=41, the same owner-approved substitution Germany used
 (`v3_combined_india` is no longer on disk).
 
@@ -1033,27 +1047,39 @@ sparse-density stratum (the weakest part of the coverage-ratio fit) as the neare
 this regime. Consequence for France: **no roofclf half in its atlas**, and `rate_ratio` spans
 0.37-6.91 across the communes so several fail the precision-trust gate anyway.
 
-**France has no candidate-precision calibration table** (`configs/calibration/france_candidate_precision.yaml`
-does not exist), so `density` warns and `est_mwp_cal` collapses to `est_mwp_det` with no
-`est_mwp_rc`. France's atlas figures are therefore a **precision-honest floor, not a
-recall-corrected estimate**. The hand-mapped communes are the obvious input for
-`calibrate-candidates --aoi france` (they are Rule-1 complete, which the Pakistani
-calibration boxes are too), but that has not been run.
+**France HAS a candidate-precision calibration table since 2026-09-11**
+(`configs/calibration/france_candidate_precision.yaml`, status `interim-mapped-only`,
+re-derived 2026-09-17 against the expanded candidate set), so `est_mwp_cal` is precision-
+weighted rather than collapsing to `est_mwp_det`. It is fitted with `--recall-reference none`,
+so there is no recall correction and `est_mwp_rc` equals `est_mwp_cal_total`: France's atlas
+figures remain a **precision-honest floor, not a recall-corrected estimate**. The hand-mapped
+communes are still NOT used as that recall reference, deliberately -- they are a sub-400 m2
+ground truth against a >= 400 m2 candidate population (see the atlas paragraph below).
 
-**France's evidence atlas EXISTS but covers 31 cells, not France.** Verified 112.3 MWp
-(90% 83-156), Best 119.9 MWp (102-156), over the 14 calibration communes only -- roughly
-250 km2 of a 551,500 km2 country, with **299,934 of 300,666 national OSM installations
-falling outside the grid**. Never quote it as a French total. Segmentation-only (no roofclf
-half: no quadrats outside these communes, and on the AUC above it would not be worth adding).
-It is a **strict precision floor**: no glint sample, so `p_unmapped` = 0.0 and `p_real`
-collapses to the OSM-mapped fraction (0.04-0.33 by bin), and recall was **deliberately
-skipped** (`--recall-reference none`) rather than measured against the hand-mapped communes,
-which are a sub-400 m2 ground truth against a >= 400 m2 candidate population -- pooling them
-would have manufactured a large, badly-determined correction and the 20x
-`DEFAULT_RECALL_FLOOR` clamp. `check-density` reports 1 fail + 1 suspect of 6 regions, both
-artefacts of sampling 1-4 chosen cells per region rather than data problems. The
-per-commune register comparison runs but reports itself unusable at **1.9% coverage
-(302/26,576 communes, `national: false`)** -- revisit after the national compose.
+**FRANCE'S EVIDENCE ATLAS IS NATIONAL (the 31-cell version is long superseded; the
+`--min-buildings 1` compose landed 2026-09-16 and the whole chain was re-run 2026-09-17).**
+Compose built **6,858 cells**, the density border clip drops **837 (12.2%)** as Spanish /
+Belgian / German / Italian / Atlantic, leaving **6,021 French cells** against the 5,473 of the
+`--min-buildings 1000` grid. Inference, postprocess, `calibrate-candidates`, `density` and
+`atlas` all re-ran over that set (**49,145 candidates** against 39,462). Published result:
+**Verified 12,381.7 MWp (90% 9,410-16,613), Best 13,368.5 MWp (90% 11,478-17,762)** against a
+registered 34.6 GWp. Verified did not move at all on the widening and Best moved ~+100 MWp:
+the cells a one-building floor adds are sparse and rural, so they carry model detections and
+no hand-mapped installations. **`--include-offgrid-osm` is now a no-op for France and was not
+passed**: 100% of the 54,111 border-clipped national OSM features fall inside the grid, where
+79.7% fell outside the 5,473-cell one. Segmentation-only (no roofclf half). Still a **strict
+precision floor**: no glint sample, so `p_unmapped` = 0.0 and `p_real` collapses to the
+OSM-mapped fraction (0.04-0.33 by bin), and recall was **deliberately skipped**
+(`--recall-reference none`) rather than measured against the hand-mapped communes, which are a
+sub-400 m2 ground truth against a >= 400 m2 candidate population -- pooling them would have
+manufactured a large, badly-determined correction against the 20x `DEFAULT_RECALL_FLOOR` clamp.
+**`check-density` now fails 9 of 13 regions** (was 1 of 6 on the 31-cell run), every one on the
+ground-mount:rooftop ratio -- Corse 79x, PACA 23x, Nouvelle-Aquitaine 17x, down to
+Ile-de-France 5x, plus Auvergne-Rhone-Alpes suspect at 4.4x; nationally 852 MWp rooftop against
+7,088 MWp ground. The register puts 19.1 of France's 34.6 GWp on low voltage, so the true ratio
+is near parity: this gate is firing on the MISSING ROOFTOP DENOMINATOR (a 20 m2 French array is
+a fifth of a pixel), not on a ground-mount false-positive blowout. Published with that stated,
+not waived.
 
 **FOOTGUN I INTRODUCED: `export.load_mapped_reference_attrs` globs
 `data/labels/*_overpass_solar.parquet` AOI-AGNOSTICALLY.** France's national pull had to be
@@ -1066,7 +1092,8 @@ table's `recall_reference` provenance count (documented as 18,276) WILL change. 
 the France file before re-deriving Pakistan's table.
 
 **FRANCE IS SCORED AGAINST ITS REGISTER TWICE, ZERO-SHOT AND RETRAINED (2026-09-11/12).**
-Same 20,501 communes, 93.0% capacity coverage, so the runs are directly comparable. On the
+Same 20,501 communes, 93.0% capacity coverage, same 5,473-cell grid, so the runs are directly
+comparable. On the
 above-floor low-voltage denominator: `est_mwp_exp` slope **0.162 -> 0.170**, Spearman
 **0.290 -> 0.449**; `est_mwp_det` slope **0.127 -> 0.160**, Spearman **0.262 -> 0.446**
 (Germany, in-domain, on a TRUE rooftop denominator: 0.388/0.656 and 0.340/0.661). **The gain
@@ -1078,6 +1105,20 @@ or `est_mwp_rc_roof`** -- both sit near 0.02 for BOTH models because there is no
 sample, so `p_unmapped`=0 and `p_real` collapses to the OSM-mapped fraction (Germany's
 `est_mwp_cal` collapses identically at 0.167 and is rescued by a recall correction France
 lacks).
+
+**RE-SCORED ON THE FINISHED 6,021-CELL GRID (2026-09-20), and it barely moved.** The A/B above
+is frozen on the 5,473-cell grid; re-running `validate-france --density-dir
+data/predictions_v5/france/density` against the widened one lifts register coverage from 93.0%
+to **98.4% of registered capacity (21,667 communes against 20,501)** and gives `est_mwp_exp`
+slope **0.169** / rho **0.420** / 32.6% recovery and `est_mwp_det` slope **0.159** / rho
+**0.417** / 33.3%, against 0.170/0.449/33.8% and 0.160/0.446/34.4% before. The 1,166 added
+communes are the sparse rural ones a one-building cell floor reaches and the model finds little
+in them, so rho slips ~0.03 while slope holds to three decimals. Artifacts:
+`results/france_validation_v5/france_validation.json` (pre-widening copy kept as
+`*_PRE_6021cell_20260920.json`); the comparison atlas is rebuilt from it.
+**Watch the `--pred-dir` argument**: `validate-france` appends `france/candidates.parquet`
+itself, so it takes `data/predictions_v5`, not `data/predictions_v5/france` -- the wrong one
+silently skips the whole `earthpv_vs_mapped` floor-recall block instead of failing.
 
 **What retraining changed is shape, not volume**: 13,419 -> 39,462 candidates, median area
 8,301 -> 1,400 m2, rooftop share 26.9% -> 50.3%, blobs >= 10,000 m2 6,036 -> 2,076, and total
@@ -1142,9 +1183,14 @@ two interactive pages are in `build_docs_figures.py`'s sync list rather than cop
 **Artifacts**: baseline frozen at `results/france_validation/france_validation_BASELINE_zeroshot.json`
 + `configs/calibration/france_candidate_precision_BASELINE_v4.yaml` + `*_BASELINE_zeroshot.html`
 atlases; v5 at `data/predictions_v5/` + `results/france_validation_v5/`. National evidence
-atlas on v5: **Verified 12,382 / Best 13,270 MWp** (90% 11,421-17,416; was 11,163 / 11,995
-before the 2026-09-15 off-grid-OSM and border-clip corrections) against a registered
-34.6 GWp -- a strict precision floor, recall deliberately skipped.
+atlas on v5, over 6,021 cells: **Verified 12,381.7 / Best 13,368.5 MWp** (90% 11,478-17,762;
+was 12,382 / 13,270 over 5,473+485 cells before the `--min-buildings 1` compose landed
+2026-09-16, and 11,163 / 11,995 before the 2026-09-15 off-grid-OSM and border-clip
+corrections) against a registered 34.6 GWp -- a strict precision floor, recall deliberately
+skipped. **`results/france_validation/france_validation.json` is NOT the v5 artifact**: the
+2026-09-17 chain re-ran `validate-france` with no `--density-dir`, so that canonical-looking
+path holds a v4 (`data/predictions/france/density`, 2026-09-11) register comparison with the
+OpenPVMapper blocks missing. The v5 one is `results/france_validation_v5/`.
 
 **`scripts/merge_chip_index.py` ALWAYS writes `data/chips/combined/index.parquet`**, which is
 v3india's corpus. Back it up before merging a new corpus and move the result aside, or it is
@@ -1236,9 +1282,11 @@ Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
   genuine near-zero reflectance, the mechanism behind the 45.6% cell-edge artefact), and a
   footprint with no subpixel of its own keeps the pixel-centre value rather than becoming
   NaN (the experiment silently dropped 0.16-0.47% of buildings, the smallest ones).
-  **Pakistan's published figures do NOT move until `roof-classifier` is refit and
-  `roofclf-score-national` re-run** -- both are pending an owner decision, since the chain
-  ends in a mandatory 20-cell manual validation.
+  **Both were run on 2026-09-20/21 and Pakistan's published figures DID move**: refit on 30
+  quadrats, rescored over 4,471 cells, and the whole capacity chain re-run, taking Best
+  estimate 18,826.7 -> **24,330.0 MWp** and Verified 5,725.1 -> **6,970.7**. The mandatory
+  20-cell manual validation was generated (seed 20260920) but **not reviewed**, so the
+  published figure currently rests on an unreviewed rescoring.
 - **`preprocess.trimmed_mean_stack` replaces `np.nanpercentile` in every stack-reading
   path.** `np.nanpercentile` falls back to a per-1-D-slice Python loop the moment the array
   holds a NaN, which a cloud-masked stack always does: 24.5 s for one call on a
