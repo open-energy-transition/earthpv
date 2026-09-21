@@ -23,6 +23,11 @@
 
 > **Mapping every solar system above 10 kWp worldwide: capacity, growth and orientation, open and verifiable**
 
+> [!WARNING]
+> **Active development.** EarthPV is alpha stage: it is actively experimenting
+> with new solar detection methods, and its detectors, calibration and headline numbers
+> are still being tested and revised rather than settled.
+
 EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and ESA, through.
 TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
 and puts every detection in front of **OpenStreetMap** mappers for verification. The
