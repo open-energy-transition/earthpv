@@ -33,7 +33,7 @@ Pakistan is the first pilot, not the final destination. It is where EarthPV was 
 [![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
 
 *Pakistan PV Capacity Estimate 
-[Open the interactive version](results/capacity.md).*
+[Open the interactive version](atlas.md).*
 
 ## How it works: two detectors, one atlas
 
