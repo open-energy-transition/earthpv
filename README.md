@@ -7,21 +7,17 @@
 
 # EarthPV
 
-**Open, global (rooftop) photovoltaic mapping from free satellite imagery.**
+**Free, Open and Global Mapping of Photovoltaic Systems Above 10 kWp**   
+**Including Capacity, Growth and Orientation**
 
 [Documentation](https://open-energy-transition.github.io/earthpv/) &nbsp;·&nbsp;
-[Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) &nbsp;·&nbsp;
-[Growth](https://open-energy-transition.github.io/earthpv/results/growth/) &nbsp;·&nbsp;
-[Workflow](https://open-energy-transition.github.io/earthpv/how-it-works/#workflow) &nbsp;·&nbsp;
 [Setup a new country](https://open-energy-transition.github.io/earthpv/reproduce/) &nbsp;·&nbsp;
 [Experiments](https://open-energy-transition.github.io/earthpv/experiments/) &nbsp;·&nbsp;
-[Community](https://open-energy-transition.github.io/earthpv/#community)
+[Join the Community on Discord](https://discord.gg/T5zh6N24Hv)
 
 </div>
 
 ---
-
-> **Mapping every solar system above 10 kWp worldwide: capacity, growth and orientation, open and verifiable**
 
 > [!WARNING]
 > **Active development.** EarthPV is alpha stage: it is actively experimenting
@@ -32,17 +28,13 @@ EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and E
 TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
 and puts every detection in front of **OpenStreetMap** mappers for verification. The
 verified result becomes the next round of training data. Model, code, training labels and
-capacity numbers are all open, and every input is a global dataset -- nothing here is built
+capacity numbers are all open, and every input is a global dataset - nothing here is built
 on imagery or licences that only exist in one country.
 
-**Pakistan is the first pilot, not the destination.** It is where four methods below were
-built and measured; the plan is to run the same pipeline everywhere Sentinel-2 flies. See
-[Scaling worldwide](#scaling-worldwide).
-
 <p align="center">
-  <a href="https://open-energy-transition.github.io/earthpv/results/capacity/">
+  <a href="https://open-energy-transition.github.io/earthpv/atlas/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582) -- a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582) - a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 
@@ -50,17 +42,17 @@ built and measured; the plan is to run the same pipeline everywhere Sentinel-2 f
 estimate: hand-mapped OpenStreetMap installations, the model's own recall-corrected
 detections, and a per-building density estimate for small rooftops, with a 90 percent
 range attached.
-<a href="https://open-energy-transition.github.io/earthpv/results/capacity/">Open the
+<a href="https://open-energy-transition.github.io/earthpv/atlas/">Open the
 interactive version</a>.</em></p>
 
 ## How small an installation does it find?
 
-Orders of magnitude, not thresholds. Measured on 30 exhaustively hand-mapped Pakistani
+Measured on 30 exhaustively hand-mapped Pakistani
 calibration areas (123,898 buildings), at the same operating point the published atlas
 uses, binned by how much panel actually sits on the roof:
 
 | Panel area on the roof | Roughly | Found |
-| --- | --- | --- |
+| -- | -- | -- |
 | Above 100 m² | above 20 kWp | 92% rising to over 99% |
 | 50 to 100 m² | 10 to 20 kWp | 83% |
 | 20 to 50 m² | 4 to 9 kWp | 49% |
@@ -75,30 +67,6 @@ Four things qualify that, and they matter more than the exact percentages.
 PV-free buildings is also flagged. Detections are mapping leads meant for human
 verification in OpenStreetMap, not a finished inventory.
 
-**Individual panel outlines have a higher floor than the per-building answer.** The
-segmentation detector, which is what produces an actual polygon and the only instrument
-for ground-mount at any size, targets arrays of about 400 m² and above, near 70 kWp. The
-table above is the per-building classifier, which answers "does this roof carry PV" rather
-than "where exactly".
-
-**The numbers above need a mapped calibration area in the same country.** They come from
-Pakistan, which has 30 of them. A country with a complete public register can substitute
-that register; a country with neither gets the segmentation half only.
-
-**Whether any of this transfers is set by national subsidy design, not by geography.** In
-France the median mapped rooftop array is 20 m² against Sentinel-2's 100 m² pixel, and the
-same pipeline recalls about 1% of installations while the roof classifier does not transfer
-at all. A sub-metre-imagery reference reads those same French installations at 67% with no
-size gradient, which places the limit in the sensor rather than in the method. Across the
-France-Germany border, array size steps by roughly 2x at the line while staying flat for
-60 km either side of it. So the question "will this work in my country" is a question about
-the size distribution of its installations, and it cannot be answered from a neighbour.
-
-For context on why the small end is worth the trouble at all: Germany's legally complete
-register shows **65.5% of rooftop capacity sits below the 400 m² segmentation floor**, in
-97.2% of installations by count. An instrument that only saw large arrays would be blind to
-about two thirds of the capacity a "rooftop solar" headline implies.
-
 ## The main workflow: two detectors, split by placement and calibration coverage, one evidence atlas
 
 This is EarthPV's default pipeline and primary output. No single instrument covers
@@ -109,7 +77,7 @@ it has been calibrated to do so.
 
 <p align="center">
   <img src="docs/assets/figures/evidence_workflow.svg" width="720"
-       alt="The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors -- TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 24,330 MWp with a 90 percent range of 20,822 to 33,582.">
+       alt="The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors - TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against 30 hand-mapped ground-truth quadrats, then combined one best instrument per component with overlaps removed and each cell floored at hand-mapped OSM plus roofclf-and-SPPI agreement, producing the published evidence atlas: Best estimate 24,330 MWp with a 90 percent range of 20,822 to 33,582.">
 </p>
 
 **Segmentation, the source of every mapping lead, and of ground-mount capacity at any
@@ -122,8 +90,8 @@ array against, so segmentation remains the only instrument for ground-mount at a
 and it stays the authoritative *rooftop* instrument too, everywhere roofclf has not been
 calibrated (see next).
 
-**roofclf, for every rooftop below 400 m² -- and, where calibrated, for large rooftops
-too.** At 10 m resolution, a 100 m² array is a handful of mixed pixels -- not enough to
+**roofclf, for every rooftop below 400 m² - and, where calibrated, for large rooftops
+too.** At 10 m resolution, a 100 m² array is a handful of mixed pixels - not enough to
 draw a polygon around, but enough to ask whether a *building* carries PV. **roofclf** is
 a per-building classifier trained on 27 exhaustively mapped ground-truth quadrats (0.879
 AUC, 0.834 with roof size controlled for, where the segmentation raster scores close to
@@ -132,8 +100,8 @@ five-band spectral index (He et al. 2026) that needs no labels at all (0.823 AUC
 own nine-quadrat evaluation, where roofclf scored 0.874 on the identical buildings). They agree often enough to raise measured precision from 0.53 to 0.63
 when both flag a building, and the gain concentrates in exactly the low-adoption places
 where roofclf alone is known to over-predict. Segmentation's blind spot turns out not to
-be building size but *installation* size -- a small array on a large roof is invisible to
-it too -- so as of 2026-08-07 roofclf's own rooftop estimate (AUC 0.896 vs segmentation's
+be building size but *installation* size - a small array on a large roof is invisible to
+it too - so as of 2026-08-07 roofclf's own rooftop estimate (AUC 0.896 vs segmentation's
 0.73-0.78 on the identical ≥ 400 m² buildings) also *replaces* segmentation's rooftop
 total at or above 400 m² inside the cells its calibration quadrats cover. Outside those
 cells segmentation's own recall-corrected rooftop figure stays authoritative, since it is
@@ -146,20 +114,12 @@ the only evidence-backed number there. See
 `ge400-roof-capacity` builds its ≥ 400 m² rooftop replacement inside the calibrated
 cells; `earthpv atlas` combines all of it into **Best estimate**, this project's own
 highest defensible figure, hand-mapped OpenStreetMap installations plus the model's own
-recall-corrected detections plus roofclf/SPPI's per-building density estimate -- with
+recall-corrected detections plus roofclf/SPPI's per-building density estimate - with
 the overlap between OSM and detections removed rather than double-counted, and a 90%
 range on the total. Full command sequence:
 [The full pipeline](https://open-energy-transition.github.io/earthpv/reproduce/#the-full-pipeline).
 
-**Why two detectors, checked against a complete register.** Germany's MaStR register is
-legally mandatory, so it is ground truth rather than a sample. Measured against it,
-**65.5% of German rooftop capacity sits below the 400 m² detection floor** (97.2% of
-installations). An instrument that only sees above that floor is describing roughly a third
-of what a "rooftop solar" headline implies, which is the whole argument for the second
-detector. See
-[Validation against MaStR](https://open-energy-transition.github.io/earthpv/methods/mastr-validation/).
-
-**The absolute total is a modelled estimate, not a metered figure -- Sentinel-2's 10 m
+**The absolute total is a modelled estimate, not a metered figure - Sentinel-2's 10 m
 pixels make that unavoidable.** An individual array below roughly 400 m² is a mixed-pixel
 problem rather than a shape the segmentation model can outline, so everything under that
 floor comes from `roofclf` instead, restricted to cells whose building density resembles
@@ -169,7 +129,7 @@ direct count, which is why the headline figure carries a 90% range rather than o
 number.
 Checked against that limitation directly: an independent, separately produced national
 rooftop-solar estimate agrees closely with this project's on **where** capacity
-concentrates -- normalizing both to percent of national total per spatial unit (their
+concentrates - normalizing both to percent of national total per spatial unit (their
 absolute magnitudes aren't comparable), the median difference across 3,303 spatial units
 is 0.005 percentage points and rank correlation is 0.75-0.84. It disagrees more on how
 much weight the very largest sites deserve (a handful of hotspot cells drive most of the
@@ -181,7 +141,7 @@ full comparison and `scripts/pv_reference_share_comparison.py` to reproduce it.
 ### Optional, supplementary instruments
 
 Everything below is evidence toward the main workflow, a secondary product built from
-the same detections, or a documented negative result -- not a competing main path.
+the same detections, or a documented negative result - not a competing main path.
 
 **Glint, for tilt and orientation.** A glass-fronted panel is partly a mirror, so it
 flashes into Sentinel-2 only on the geometry-predictable dates when its tilt and azimuth
@@ -201,98 +161,22 @@ never required to produce the evidence atlas.
 commercial imagery: the array's specular reflection is so intense it saturates the
 sensor outright, blooming into a rainbow smear across the neighbouring rooftops. At
 Sentinel-2's 10 m the same event is a single bright pixel-cluster on one predictable
-date -- more examples in
+date - more examples in
 <a href="https://open-energy-transition.github.io/earthpv/glint_examples/">What solar
 glint actually looks like</a>.</em></p>
 
 **Growth, for when installations appeared.** Diffing a pre-boom (2021/22) Sentinel-2
-composite against the current one -- with both the segmentation model and SPPI run
-independently on each epoch -- shows where solar capacity actually landed, not just where
+composite against the current one - with both the segmentation model and SPPI run
+independently on each epoch - shows where solar capacity actually landed, not just where
 it stands today. Pakistan's own rooftop stock roughly doubled since 2021/22 by this
 measure. See [Growth](https://open-energy-transition.github.io/earthpv/results/growth/).
 
 A fraction-head expected-area instrument, SPPI as a standalone (not cross-checked)
 detector, an older Low/Central/High/All-PV bracket atlas and a rooftop potential/saturation
 atlas exist too, each measured and each kept in the repository whether or not it was
-promoted -- see
+promoted - see
 [Experiments](https://open-energy-transition.github.io/earthpv/experiments/)
 for what was tried and why the main workflow above is what shipped.
-
-## Scaling worldwide
-
-Nothing in the pipeline is Pakistan-specific. All four inputs are global open datasets:
-
-| Input | Source | Coverage |
-| --- | --- | --- |
-| Imagery | Copernicus Sentinel-2 L2A | global, every five days, free |
-| Labels | OpenStreetMap, live Overpass or Overture | global, wherever mappers have been |
-| Footprints | VIDA Open Buildings | global, imagery-derived |
-| Boundaries | geoBoundaries, CC-BY | global, ADM1 and ADM2 |
-
-Three commands set up a region that has never been touched. The first is read-only and
-tells you within a couple of minutes whether the data is actually there.
-
-```bash
-pixi run python scripts/new_region.py check --bbox 98.5,7.8,101.0,10.2 --iso3 THA
-pixi run python scripts/new_region.py add   --aoi surat_thani --bbox 98.5,7.8,101.0,10.2 --iso3 THA
-pixi run python scripts/new_region.py plan  --aoi surat_thani
-```
-
-`check` probes OpenStreetMap label density, VIDA availability, geoBoundaries, Sentinel-2
-cloud cover in your composite window, and the compose budget. `add` writes the AOI block.
-`plan` prints the ordered runbook with the region's name filled in.
-
-A first candidate set needs no local training data: the existing checkpoint runs unchanged.
-What closes the domain gap afterwards is local mapping, which is why the guide starts by
-telling you to find a mapping community before you run anything. **Programme targets are
-Mexico, Japan, Korea, Indonesia, India, Brazil, South Africa and Nigeria**; Gujarat is
-already registered as a worked template, with a first full, segmentation-only capacity
-estimate (812.6 MWp, ≥ 400 m², no calibration quadrats yet) at
-[Gujarat capacity map](https://open-energy-transition.github.io/earthpv/results/gujarat/).
-
-Full guide, including what to expect by starting condition and what genuinely differs from
-Pakistan (climate windows, roof type, latitude-dependent glint geometry, installation-size
-distribution): **[Setup a new country](https://open-energy-transition.github.io/earthpv/reproduce/)**.
-
-## Pakistan: the pilot, in numbers
-
-Pakistan's installed solar capacity is reported anywhere between
-[6.8 GW officially and 47 GW by NGO estimates](https://ember-energy.org/latest-insights/the-solarisation-of-pakistans-energy-economy/).
-Nobody can check those numbers, because the maps behind them are built on commercial
-high-resolution imagery that cannot be shared and that most licences forbid processing
-with AI. EarthPV's own numbers come from
-[the main workflow](#the-main-workflow-two-detectors-split-by-placement-and-calibration-coverage-one-evidence-atlas)
-above:
-
-| | |
-| --- | --- |
-| **24,330 MWp** | Best estimate: this project's own highest defensible figure (90% range 20,822 &ndash; 33,582) |
-| **15,642** | individual installations hand-mapped in OpenStreetMap (deduplicated -- see below) |
-| **400 m²** | size below which segmentation is trained blind; roofclf/SPPI cover it, and roofclf also replaces segmentation above it inside its calibrated cells |
-| **65.5%** | of Germany's rooftop capacity sits *below* that floor, measured against its complete MaStR register |
-
-The headline figure carries a 90% range as of 2026-08-11, composed from the
-area-to-capacity constants' priors, segmentation's measured precision and recall by
-installation size, and the coverage ratio's sensitivity to which calibration quadrats happen
-to have been mapped. The range is wide on purpose: this figure moved by 20-35% five times in
-a single week from recalibration alone, and reporting it bare had been hiding that. It is not
-a design-based margin of error -- the quadrats behind it are hand-picked, not randomly
-sampled, and it does not cover the gap between where the roofclf coverage-ratio correction is
-fit and where it is applied: about half of Best is priced by a multiplier measured on
-quadrats several times denser than most of the cells it prices (see [Calibration density
-mismatch](https://open-energy-transition.github.io/earthpv/issues/roofclf-calibration-density-mismatch/)).
-See
-[Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for the
-derivation and
-[Validation against MaStR](https://open-energy-transition.github.io/earthpv/methods/mastr-validation/)
-for what a legally complete register can and cannot settle.
-
-Every number above carries the same caveat: **this is a screening and estimation layer,
-not a register**. No human has validated most of it at scale, and the sub-400 m² share of
-Best estimate in particular is restricted to a small, density-matched slice of the
-country, not a national measurement. See
-[Capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/) for how
-the estimate is derived and what it does and does not claim.
 
 ## The OpenStreetMap mapping loop
 
@@ -325,50 +209,6 @@ installations, out of 2,000 checked.
 <a href="https://open-energy-transition.github.io/earthpv/results/pv-pose/">Open the
 interactive version</a>.</em></p>
 
-## Quickstart
-
-```bash
-pixi install              # data pipeline: DuckDB, geopandas, rasterio, odc-stac
-pixi install -e ml        # adds PyTorch cu126 (Pascal-safe) and TerraTorch
-pixi run -e ml gpu-check
-
-# minutes-long smoke test through every GPU stage
-pixi run earthpv labels --aoi freiburg
-pixi run earthpv chips  --aoi freiburg --limit 50
-pixi run -e ml earthpv train --config configs/terramind_pv.yaml --smoke
-pixi run -e ml earthpv evaluate --aoi freiburg --checkpoint data/models/last.ckpt
-```
-
-The main workflow is `labels → chips → train → evaluate → compose → infer →
-postprocess → export` to produce every mapping lead and, via `density →
-check-density`, segmentation's own ≥ 400 m² capacity; then `roof-classifier →
-roofclf-score-national → sub400-capacity` for roofclf's < 400 m² population and
-`ge400-roof-capacity` for its ≥ 400 m² rooftop replacement inside the calibrated cells;
-`atlas` combines all of it into the evidence atlas -- this project's primary output.
-Every stage is resumable and safe to re-run. The full runbook, including how to bring up
-a country that has never been touched, is in
-[Setup a new country](https://open-energy-transition.github.io/earthpv/reproduce/#the-full-pipeline).
-
-## What did not work
-
-Most of what was tried here failed, and the negative results are documented because they map
-where the 10 m resolution limit actually is: two-season band stacking (including a retry
-stacking the actual pre-boom epoch instead of a weather season), Sentinel-1 corner
-reflection, two separate routes from glint to density, roof-axis orientation priors, three
-super-resolution variants, spectral unmixing, temporal features for the roof classifier, and
-two retrains aimed at known failure modes that won in-sample and lost on held-out data.
-Every one has runnable code in `scripts/`.
-
-The full register, with a verdict and the measurement behind each, is
-[Experiments](https://open-energy-transition.github.io/earthpv/experiments/); what is still
-undecided is
-[Open questions](https://open-energy-transition.github.io/earthpv/open-questions/).
-
-One negative result worth singling out, because it constrains how anyone should read
-OpenStreetMap-derived PV numbers including this project's own: **German OSM is only 3.6%
-complete for rooftop PV by unit count**, measured against the MaStR register. "Germany is
-well mapped in OpenStreetMap" is true of buildings and false of rooftop solar.
-
 ## Add your country: the atlas is meant to be collective
 
 **The goal is a global PV evidence atlas assembled from many countries, each run and
@@ -383,12 +223,12 @@ data pack layout, which is what makes that step possible later. A contribution t
 the layout will still be usable when it is written.
 
 ```bash
-gh repo fork open-energy-transition/earthpv --clone --remote
+gh repo fork open-energy-transition/earthpv -clone -remote
 cd earthpv && git switch -c atlas/<country>
 
-pixi run python scripts/new_region.py check --iso3 <ISO3> --name <country>   # preflight
-pixi run python scripts/new_region.py add   --iso3 <ISO3> --name <country>
-pixi run python scripts/new_region.py plan  --aoi <country>                  # your runbook
+pixi run python scripts/new_region.py check -iso3 <ISO3> -name <country>   # preflight
+pixi run python scripts/new_region.py add   -iso3 <ISO3> -name <country>
+pixi run python scripts/new_region.py plan  -aoi <country>                  # your runbook
 ```
 
 Run the pipeline that `plan` prints. Every stage is resumable; `compose` is the long pole,
@@ -402,16 +242,16 @@ table is the product**, and since `data/` is gitignored these tables ship as Git
 assets with only a manifest committed:
 
 ```bash
-pixi run python scripts/build_atlas_data_pack.py --aoi <country>
+pixi run python scripts/build_atlas_data_pack.py -aoi <country>
 gh release create <country>-atlas-data-$(date +%Y-%m-%d) dist/<country>-atlas-data/* \
-    --title "<Country> atlas data" --notes "Point-in-time snapshot"
+    -title "<Country> atlas data" -notes "Point-in-time snapshot"
 ```
 
 That writes `<country>_capacity_by_cell.parquet` (one row per 0.1 degree cell, the
 PyPSA-ready table a global atlas would consume) alongside the per-building and per-region
 tables, the roofclf populations, the unreviewed raw detections and the fitted model, plus
-`configs/<country>_atlas_downloads.json`. Rebuild the atlas with `--downloads-manifest` and
-`--data-release-url` so the page links to them, add a short page under `docs/results/`, and
+`configs/<country>_atlas_downloads.json`. Rebuild the atlas with `-downloads-manifest` and
+`-data-release-url` so the page links to them, add a short page under `docs/results/`, and
 open the pull request. **Commit the manifest, never the pack.**
 
 One step cannot be skipped and cannot be automated: after national scoring, draw 20 random
@@ -432,49 +272,18 @@ Full runbook, including the agent prompt that works and the review checklist:
 EarthPV is the software half of **TraceTheSun**, a pilot run by
 [Open Energy Transition](https://openenergytransition.org) to make PV mapping
 cost-effective, verifiable, community-driven and local, worldwide. The concept was
-conceived by [Muhammad Awais](https://www.linkedin.com/in/awais307/) and Tobias. The
+conceived by [Tobias Augspurger](https://www.linkedin.com/in/tobias-augspurger/) and [Muhammad Awais](https://www.linkedin.com/in/awais307/). The
 Pakistani results rest on a student team at the **[Centre for Water Informatics and
-Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore University of Management Sciences --
+Technology (WIT)](https://wit.lums.edu.pk/)**, Lahore University of Management Sciences -
 [Laeeba Hafeez Malik](https://www.linkedin.com/in/laeeba-hafeez-malik-220b63328/) (BS
 Computer Science), [Tayyiba Shafiq](https://www.linkedin.com/in/tayyiba-shafiq/) (BS
 Economics), [Nimra Aamir Ali](https://www.linkedin.com/in/nimra-aamir-ali-417b98249/) (BS
 Anthropology) and [Vania Malik](https://www.linkedin.com/in/vania-malik-799bbb343/) (BS
-Electrical Engineering) -- who coordinated closely
+Electrical Engineering) - who coordinated closely
 with OET to co-design the pipeline and do the mapping, validation, model development and
 ground-truth quadrat work that makes the pilot's numbers checkable. For WIT the effort is
 also a step toward linking the resulting national PV database into energy and power-system
-models and integrated-assessment scenarios.
-
-The most valuable contribution is **verified installations in OpenStreetMap**, in any
-country. Load the
-[mapping leads](https://open-energy-transition.github.io/earthpv/results/leads/) into
-MapRoulette or JOSM, check them against the high-resolution layers, and map what is real.
-See [Community](https://open-energy-transition.github.io/earthpv/#community) for the
-quadrat protocol, the current partner list, and the other ways in.
-
-## Documentation
-
-This README is the short version. The full documentation is at
-**<https://open-energy-transition.github.io/earthpv/>**, organised so the working pipeline
-comes first and the history last:
-
-- **Results** -- [capacity map](https://open-energy-transition.github.io/earthpv/results/capacity/),
-  [mapping leads](https://open-energy-transition.github.io/earthpv/results/leads/),
-  [growth map](https://open-energy-transition.github.io/earthpv/results/growth/),
-  [panel pose](https://open-energy-transition.github.io/earthpv/results/pv-pose/).
-- **How it works** -- the pipeline as it runs today, plus reference pages for
-  [detection](https://open-energy-transition.github.io/earthpv/methods/detection/),
-  [density](https://open-energy-transition.github.io/earthpv/methods/density/),
-  [calibration](https://open-energy-transition.github.io/earthpv/methods/calibration/),
-  [MaStR validation](https://open-energy-transition.github.io/earthpv/methods/mastr-validation/),
-  the [quadrats](https://open-energy-transition.github.io/earthpv/methods/calibration-quadrats/)
-  and [glint](https://open-energy-transition.github.io/earthpv/methods/glint/).
-- **[Setup a new country](https://open-energy-transition.github.io/earthpv/reproduce/)** -- the runbook.
-- **[Experiments](https://open-energy-transition.github.io/earthpv/experiments/)** and
-  **[Open questions](https://open-energy-transition.github.io/earthpv/open-questions/)** --
-  what was tried and what it cost, and what is still unresolved.
-
-Build it locally with `pixi run docs-figures && pixi run -e docs docs-serve`.
+models and integrated-assessment scenarios. [Join the Community on Discord](https://discord.gg/T5zh6N24Hv)
 
 ## Licence
 
@@ -490,5 +299,5 @@ footprints. Under ODbL's share-alike clause, **these data releases are themselve
 under the [Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/odbl/1-0/)**,
 with attribution to &copy; OpenStreetMap contributors required on any use, alongside VIDA Open
 Buildings (CC BY 4.0) for the footprints and, for anything derived from the Germany/MaStR
-validation, the Marktstammdatenregister (Bundesnetzagentur, [Datenlizenz Deutschland -- Namensnennung -- Version
+validation, the Marktstammdatenregister (Bundesnetzagentur, [Datenlizenz Deutschland - Namensnennung - Version
 2.0](https://www.govdata.de/dl-de/by-2-0)).
