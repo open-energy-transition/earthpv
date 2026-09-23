@@ -103,6 +103,9 @@ say "imagery ready: $(find -L data/composites/$AOI/composites -name composite_0.
 
 # ---- localized training -----------------------------------------------------------------
 step chips $PY -m earthpv.cli chips --aoi $AOI
+# Train chips in the one-cell ring around the holdout could see val installations through
+# their window; relabel them `buffer` so neither side of the comparison is in-sample.
+step val_buffer $PY scripts/mark_val_buffer.py --aoi $AOI
 
 # The val split is geographic (`val_tiles`). Refuse to train on a corpus whose holdout
 # came out too small to score -- datamodule.py would silently fall back to a random 20%
