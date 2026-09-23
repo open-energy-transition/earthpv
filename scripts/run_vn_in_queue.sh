@@ -27,7 +27,11 @@ say() { echo "$(date '+%F %T') QUEUE: $*" | tee -a "$LOG"; }
 # Compose settings, all from the Nigeria livelock post-mortem (CLAUDE.md): Planetary
 # Computer patience several times the contended per-cell wall time, a stall watchdog well
 # above a pass's startup cost, 4 workers, 1-hour wall-clock passes.
-PC_TIMEOUT_S=600
+# 1800, not Nigeria's 600 (raised 2026-09-24): with the link shared with a concurrent
+# session's Nigeria hard-negative pulls, a healthy Vietnam cell took ~400-600 s under 4
+# workers and 26 of the first 87 cells (30%) tripped a 600 s patience, each one downloading
+# the cell twice. CLAUDE.md: set it to several times the contended per-cell wall time.
+PC_TIMEOUT_S=1800
 STALL_S=2400
 WORKERS=4
 MIN_BUILDINGS=1000
