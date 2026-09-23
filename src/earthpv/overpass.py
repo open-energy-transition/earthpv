@@ -32,6 +32,10 @@ Bbox = tuple[float, float, float, float]
 OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    # Added 2026-09-23: overpass.openstreetmap.ru was refusing connections outright and
+    # overpass-api.de 504ing most tiles during the Vietnam/India pulls, leaving one live
+    # mirror. The truncation check in `_run_query` applies to every mirror equally.
+    "https://overpass.private.coffee/api/interpreter",
     "https://overpass.openstreetmap.ru/api/interpreter",
 ]
 

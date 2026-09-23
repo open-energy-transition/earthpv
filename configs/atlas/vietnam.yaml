@@ -1,0 +1,42 @@
+# Vietnam's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Vietnam is in Zambia's and Nigeria's starting condition -- no cached imagery, no
+# calibration quadrats, no national register, no third-party dataset checked against -- so
+# this file supplies little beyond map labels and the caveats that are specific to it. The
+# builder's default no-ground-truth text is the correct text here and is not overridden.
+# Two things ARE different from those countries and are stated below: the segmentation was
+# fine-tuned on Vietnam's own OpenStreetMap labels (the owner's 2026-09-23 instruction),
+# and the imagery is a 12-month composite because no single dry season covers the country.
+#
+# Numbers belong in docs/results/vietnam.md; nothing here quotes a figure that a rebuild
+# could change.
+
+title: Vietnam
+
+cities:
+  - [Hanoi, 105.834, 21.028]
+  - [Ho Chi Minh City, 106.660, 10.762]
+  - [Hai Phong, 106.682, 20.845]
+  - [Da Nang, 108.220, 16.054]
+  - [Can Tho, 105.784, 10.045]
+  - [Nha Trang, 109.196, 12.238]
+  - [Hue, 107.585, 16.463]
+  - [Buon Ma Thuot, 108.038, 12.667]
+  - [Phan Rang, 108.989, 11.567]
+  - [Vinh, 105.692, 18.679]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of
+      Vietnam has been mapped panel by panel, so the per-building classifier that supplies
+      most of Pakistan's estimate has nothing to be calibrated against here. Everything on
+      the map is either hand-mapped in OpenStreetMap or an array the segmentation model
+      outlined directly, which in practice means installations of roughly 400 m&sup2; and
+      up. Vietnam's large 2020 rooftop build-out sits substantially below that size.
+    - >-
+      <b>The imagery is a year, not a season.</b> Northern Vietnam is overcast for much of
+      its dry season and the central coast is wet when the south is dry, so each map cell
+      is a median of the least-cloudy scenes from a full twelve months. A cell that never
+      cleared is missing from the map rather than filled with a guess; the results page
+      states how many.

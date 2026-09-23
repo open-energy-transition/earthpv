@@ -766,6 +766,7 @@ def process_cell(
 # Admin regions
 # --------------------------------------------------------------------------------------
 GEOBOUNDARIES_API = "https://www.geoboundaries.org/api/current/gbOpen/{iso3}/{level}/"
+GEOBOUNDARIES_CACHE = "data/geoboundaries/gb_{iso3}_{level}.geojson"
 
 
 def fetch_geoboundaries(iso3: str, level: str) -> gpd.GeoDataFrame | None:
@@ -774,14 +775,48 @@ def fetch_geoboundaries(iso3: str, level: str) -> gpd.GeoDataFrame | None:
 
     This is the admin source in practice because Overture's S3 divisions endpoint
     times out from this machine even bbox-pruned; geoBoundaries is a light CDN fetch.
+
+    **Cached on disk** (`GEOBOUNDARIES_CACHE`) after the first successful fetch, and
+    retried with backoff before giving up. `compose._aoi_boundary` calls this on every
+    compose pass, and a `None` here silently degrades compose to the raw bbox, which moves
+    the grid origin and can rename every cell (docs/issues/europe-download-campaign.md).
+    Over a multi-week unattended run one transient CDN failure is near-certain, so the
+    layer is fetched once and read locally from then on. Delete the file to refresh it.
     """
-    try:
-        meta = json.load(urllib.request.urlopen(
-            GEOBOUNDARIES_API.format(iso3=iso3, level=level), timeout=60))
-        gj = json.load(urllib.request.urlopen(meta["gjDownloadURL"], timeout=120))
-    except Exception as e:  # noqa: BLE001 - network failures degrade to no layer
-        log.warning("geoBoundaries %s/%s fetch failed: %s", iso3, level, e)
-        return None
+    import time
+
+    cache = Path(GEOBOUNDARIES_CACHE.format(iso3=iso3, level=level))
+    gj = None
+    if cache.exists():
+        try:
+            gj = json.loads(cache.read_text())
+        except Exception as e:  # noqa: BLE001 - a corrupt cache is refetched
+            log.warning("geoBoundaries cache %s unreadable (%s); refetching", cache, e)
+    if gj is None:
+        headers = {"User-Agent": "earthpv/1.0 (research tool; contact via repo issues)"}
+        last_err = None
+        for attempt, wait in enumerate((0, 10, 30, 90)):
+            if wait:
+                time.sleep(wait)
+            try:
+                meta = json.load(urllib.request.urlopen(urllib.request.Request(
+                    GEOBOUNDARIES_API.format(iso3=iso3, level=level), headers=headers),
+                    timeout=60))
+                gj = json.load(urllib.request.urlopen(urllib.request.Request(
+                    meta["gjDownloadURL"], headers=headers), timeout=300))
+                break
+            except Exception as e:  # noqa: BLE001 - network failures degrade to no layer
+                last_err = e
+                log.warning("geoBoundaries %s/%s fetch attempt %d failed: %s",
+                            iso3, level, attempt + 1, e)
+        if gj is None:
+            log.warning("geoBoundaries %s/%s fetch failed: %s", iso3, level, last_err)
+            return None
+        if gj.get("features"):
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            tmp = cache.with_suffix(".tmp")
+            tmp.write_text(json.dumps(gj))
+            tmp.replace(cache)
     feats = gj.get("features", [])
     if not feats:
         return None

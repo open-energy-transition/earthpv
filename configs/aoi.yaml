@@ -260,6 +260,75 @@ aois:
     grid_origin: [2.668, 4.24]
     compose_window: ["2025-11-01", "2026-03-15"]
 
+  # Vietnam (registered 2026-09-23, owner request: national run + localized retrain).
+  # bbox = geoBoundaries ADM1 union floored/ceiled to 0.1 deg, EXCEPT the east edge, cut
+  # at the mainland's 109.47E so the Paracels and Spratlys (which geoBoundaries puts under
+  # Da Nang and Khanh Hoa, out to 114.997E) are not a grid column of open sea. grid_origin
+  # is the floored corner, so the boundary path and the raw-bbox fallback name cells
+  # identically. 12-month window: no single dry season works nationally -- the north is
+  # overcast Jan-Apr (Hanoi: 16 scenes under 30% cloud in 20 months), the centre is wet
+  # Sep-Dec, the south dry Dec-Apr -- and `annual_composite` keeps the 12 least-cloudy
+  # scenes per cell whatever the window. The register measured "12 frames of the year"
+  # slightly above 12 dry-season frames. `cell_selection: duckdb` = per-cell building
+  # counts aggregated in DuckDB and cached (compose._vida_cell_counts_sql).
+  vietnam:
+    bbox: [102.1, 8.4, 109.5, 23.4]
+    division: { name: Vietnam, country: VN, subtype: country, iso3: VNM }
+    grid_origin: [102.1, 8.4]
+    compose_window: ["2025-09-01", "2026-08-31"]
+    cell_selection: duckdb
+
+  # India, national (registered 2026-09-23). Supersedes the `gujarat` AOI for new work;
+  # Gujarat's 1,527 composites are NOT reused (their July compose logged 403 storms that
+  # dropped scenes, and they carry no provenance tags). ADM1 union bounds
+  # [68.0935, 6.7544, 97.4115, 37.0776] incl. Andaman & Nicobar and Lakshadweep.
+  # 526.8M VIDA buildings: `cell_selection: duckdb` is REQUIRED here -- the in-memory
+  # point path would need ~50 GB (it peaks at 6.9 GB for Nigeria's 68M). Default Nov-Mar
+  # window, the same epoch as the gujarat chips already in the v4/v5 corpora.
+  india:
+    bbox: [68.0, 6.7, 97.5, 37.1]
+    division: { name: India, country: IN, subtype: country, iso3: IND }
+    grid_origin: [68.0, 6.7]
+    compose_window: ["2025-11-01", "2026-03-15"]
+    cell_selection: duckdb
+    # Val holdout = Gujarat's Surat-Bharuch-Vadodara val box (gujarat.val_box, lon 72.7-73.9,
+    # lat 21.0-23.0): every India cell whose centre falls inside it, 240 cells. v5 held
+    # this box out of its own gujarat corpus, so the localized v10 and v5 are both scored
+    # out-of-sample on it (scripts/compare_local_vs_v5.py). Chosen from geography, before
+    # training, and inherited rather than re-picked so the comparison has no free choice.
+    val_tiles: [
+      "0047_0143", "0047_0144", "0047_0145", "0047_0146", "0047_0147", "0047_0148", "0047_0149", "0047_0150",
+      "0047_0151", "0047_0152", "0047_0153", "0047_0154", "0047_0155", "0047_0156", "0047_0157", "0047_0158",
+      "0047_0159", "0047_0160", "0047_0161", "0047_0162", "0048_0143", "0048_0144", "0048_0145", "0048_0146",
+      "0048_0147", "0048_0148", "0048_0149", "0048_0150", "0048_0151", "0048_0152", "0048_0153", "0048_0154",
+      "0048_0155", "0048_0156", "0048_0157", "0048_0158", "0048_0159", "0048_0160", "0048_0161", "0048_0162",
+      "0049_0143", "0049_0144", "0049_0145", "0049_0146", "0049_0147", "0049_0148", "0049_0149", "0049_0150",
+      "0049_0151", "0049_0152", "0049_0153", "0049_0154", "0049_0155", "0049_0156", "0049_0157", "0049_0158",
+      "0049_0159", "0049_0160", "0049_0161", "0049_0162", "0050_0143", "0050_0144", "0050_0145", "0050_0146",
+      "0050_0147", "0050_0148", "0050_0149", "0050_0150", "0050_0151", "0050_0152", "0050_0153", "0050_0154",
+      "0050_0155", "0050_0156", "0050_0157", "0050_0158", "0050_0159", "0050_0160", "0050_0161", "0050_0162",
+      "0051_0143", "0051_0144", "0051_0145", "0051_0146", "0051_0147", "0051_0148", "0051_0149", "0051_0150",
+      "0051_0151", "0051_0152", "0051_0153", "0051_0154", "0051_0155", "0051_0156", "0051_0157", "0051_0158",
+      "0051_0159", "0051_0160", "0051_0161", "0051_0162", "0052_0143", "0052_0144", "0052_0145", "0052_0146",
+      "0052_0147", "0052_0148", "0052_0149", "0052_0150", "0052_0151", "0052_0152", "0052_0153", "0052_0154",
+      "0052_0155", "0052_0156", "0052_0157", "0052_0158", "0052_0159", "0052_0160", "0052_0161", "0052_0162",
+      "0053_0143", "0053_0144", "0053_0145", "0053_0146", "0053_0147", "0053_0148", "0053_0149", "0053_0150",
+      "0053_0151", "0053_0152", "0053_0153", "0053_0154", "0053_0155", "0053_0156", "0053_0157", "0053_0158",
+      "0053_0159", "0053_0160", "0053_0161", "0053_0162", "0054_0143", "0054_0144", "0054_0145", "0054_0146",
+      "0054_0147", "0054_0148", "0054_0149", "0054_0150", "0054_0151", "0054_0152", "0054_0153", "0054_0154",
+      "0054_0155", "0054_0156", "0054_0157", "0054_0158", "0054_0159", "0054_0160", "0054_0161", "0054_0162",
+      "0055_0143", "0055_0144", "0055_0145", "0055_0146", "0055_0147", "0055_0148", "0055_0149", "0055_0150",
+      "0055_0151", "0055_0152", "0055_0153", "0055_0154", "0055_0155", "0055_0156", "0055_0157", "0055_0158",
+      "0055_0159", "0055_0160", "0055_0161", "0055_0162", "0056_0143", "0056_0144", "0056_0145", "0056_0146",
+      "0056_0147", "0056_0148", "0056_0149", "0056_0150", "0056_0151", "0056_0152", "0056_0153", "0056_0154",
+      "0056_0155", "0056_0156", "0056_0157", "0056_0158", "0056_0159", "0056_0160", "0056_0161", "0056_0162",
+      "0057_0143", "0057_0144", "0057_0145", "0057_0146", "0057_0147", "0057_0148", "0057_0149", "0057_0150",
+      "0057_0151", "0057_0152", "0057_0153", "0057_0154", "0057_0155", "0057_0156", "0057_0157", "0057_0158",
+      "0057_0159", "0057_0160", "0057_0161", "0057_0162", "0058_0143", "0058_0144", "0058_0145", "0058_0146",
+      "0058_0147", "0058_0148", "0058_0149", "0058_0150", "0058_0151", "0058_0152", "0058_0153", "0058_0154",
+      "0058_0155", "0058_0156", "0058_0157", "0058_0158", "0058_0159", "0058_0160", "0058_0161", "0058_0162"
+    ]
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]

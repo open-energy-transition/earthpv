@@ -15,6 +15,14 @@ straddling a tile edge is returned by both neighbours -- and pushed through the 
 `classify_placement` + `geodesic_area_m2` step `build_overpass_labels` uses, so the
 output is byte-for-byte the same schema the single-shot path writes.
 
+**Tiles are cached and a rerun resumes.** Each landed tile is written to
+`<out-dir>/.overpass_tiles/<name>_<COLSxROWS>/<i>_<j>.parquet` (an empty tile as a
+zero-row file), and a rerun with the same `--bbox`/`--tiles` skips every cached tile. A
+national India pull is ~190 tiles against mirrors that 504 for minutes at a time
+(measured 2026-09-23); without this one persistent failure meant refetching the whole
+country. `--fresh` ignores the cache. The refuse-to-write-a-partial-pull rule is
+unchanged: the national file is only written once every tile has landed.
+
     pixi run python scripts/overpass_labels_chunked.py \
         --bbox 21.999,-18.08,33.706,-8.224 --iso3 ZMB --name zambia --tiles 4x4
 """
@@ -47,6 +55,11 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=180, help="per-tile Overpass timeout (s)")
     ap.add_argument("--retries", type=int, default=4, help="attempts per tile before giving up")
     ap.add_argument("--out-dir", type=Path, default=REPO / "data" / "labels")
+    ap.add_argument("--fetch-only", action="store_true",
+                    help="stop once every tile is cached, before the national clip and the "
+                    "VIDA placement step (lets the Overpass half run while VIDA downloads)")
+    ap.add_argument("--fresh", action="store_true",
+                    help="ignore cached tiles from an earlier run and refetch everything")
     ap.add_argument(
         "--no-clip", action="store_true",
         help="Keep features outside the country. Off by default: a country bbox is not "
@@ -66,16 +79,32 @@ def main() -> int:
     ncol, nrow = (int(v) for v in a.tiles.lower().split("x"))
     dx, dy = (maxx - minx) / ncol, (maxy - miny) / nrow
 
+    # The cache key carries the bbox, so a different grid can never read stale tiles.
+    key = f"{a.name}_{ncol}x{nrow}_" + "_".join(f"{v:.4f}" for v in (minx, miny, maxx, maxy))
+    tile_dir = a.out_dir / ".overpass_tiles" / key
+    tile_dir.mkdir(parents=True, exist_ok=True)
+
     frames, failed = [], []
     for j in range(nrow):
         for i in range(ncol):
             tile = (minx + i * dx, miny + j * dy, minx + (i + 1) * dx, miny + (j + 1) * dy)
             label = f"{i},{j}"
+            cached = tile_dir / f"{i}_{j}.parquet"
+            if cached.exists() and not a.fresh:
+                gdf = gpd.read_parquet(cached)
+                log.info("tile %s: %d features (cached)", label, len(gdf))
+                if not gdf.empty:
+                    frames.append(gdf)
+                continue
             for attempt in range(1, a.retries + 1):
                 try:
                     gdf = fetch_solar_overpass(bbox=tile, timeout=a.timeout)
                     log.info("tile %s %s: %d features", label,
                              tuple(round(v, 3) for v in tile), len(gdf))
+                    tmp = cached.with_suffix(".tmp")
+                    (gdf if not gdf.empty else gpd.GeoDataFrame(
+                        geometry=[], crs="EPSG:4326")).to_parquet(tmp)
+                    tmp.replace(cached)
                     if not gdf.empty:
                         frames.append(gdf)
                     break
@@ -94,6 +123,10 @@ def main() -> int:
     if not frames:
         log.error("no solar features anywhere in %s", a.bbox)
         return 1
+    if a.fetch_only:
+        log.info("--fetch-only: all %d tiles cached in %s; rerun without it to finish",
+                 ncol * nrow, tile_dir)
+        return 0
 
     solar = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs="EPSG:4326")
     before = len(solar)

@@ -1,0 +1,42 @@
+# India's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# India, national. Same starting condition as Zambia and Nigeria -- no calibration
+# quadrats, no register used, no third-party dataset checked against -- so the builder's
+# default no-ground-truth text stands. The segmentation was fine-tuned on India's own
+# OpenStreetMap labels (the owner's 2026-09-23 instruction). Gujarat's older state-level
+# page (docs/results/gujarat.md) is superseded by this one.
+#
+# Numbers belong in docs/results/india.md; nothing here quotes a figure that a rebuild
+# could change.
+
+title: India
+
+cities:
+  - [Delhi, 77.209, 28.614]
+  - [Mumbai, 72.878, 19.076]
+  - [Bengaluru, 77.595, 12.972]
+  - [Kolkata, 88.364, 22.573]
+  - [Chennai, 80.271, 13.083]
+  - [Hyderabad, 78.487, 17.385]
+  - [Ahmedabad, 72.571, 23.023]
+  - [Jaipur, 75.787, 26.912]
+  - [Jodhpur, 73.024, 26.238]
+  - [Lucknow, 80.947, 26.847]
+  - [Nagpur, 79.088, 21.146]
+  - [Guwahati, 91.736, 26.145]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of India
+      has been mapped panel by panel, so the per-building classifier that supplies most of
+      Pakistan's estimate has nothing to be calibrated against here. Everything on the map
+      is either hand-mapped in OpenStreetMap or an array the segmentation model outlined
+      directly, which in practice means installations of roughly 400 m&sup2; and up. The
+      household rooftop systems that dominate India's recent rooftop programme are mostly
+      below that size.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
+      A utility-scale park built on empty land that nobody has mapped yet falls outside
+      both rules and is not on this page.

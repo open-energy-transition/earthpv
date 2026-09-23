@@ -1,0 +1,67 @@
+# TerraTorch fine-tuning config for PV segmentation -- v5's corpus + VIETNAM.
+#
+# Identical recipe to configs/terramind_pv_v5_france.yaml (same backbone, necks, decoder,
+# loss, lr, schedule, monitor metric, patience). The only variable is the corpus: Vietnam's
+# own OpenStreetMap solar labels are added, because the owner asked (2026-09-23) for every
+# new country's segmentation to be LOCALIZED rather than run zero-shot.
+#
+# Corpus (data/chips/combined_vietnam/index.parquet, written by
+# scripts/run_country_compute.sh via
+# `merge_chip_index.py --out ... germany punjab pakistan gujarat france vietnam:R`, where
+# R = clamp(round(7000 / n_vietnam_train), 1, 8) puts Vietnam at roughly a quarter of the
+# training rows). Vietnam's OSM population is THIN -- 941 solar features nationally at
+# registration, against France's 353,011 -- so the chip count is what it is; the exact
+# counts are recorded in the run log and docs/results/vietnam.md.
+#
+# Val holdout: Vietnam's `val_tiles` (configs/aoi.yaml), a geographic cluster chosen from
+# the label map BEFORE training, never from a score. v5 has never seen any Vietnamese
+# chip, so scripts/compare_local_vs_v5.py compares the two on equal footing, and the
+# owner's ship rule is "whichever scores better on the held-out region".
+
+data:
+  index_path: data/chips/combined_vietnam/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # terramind_v1_tiny fits the GTX 1060; bump to _small if a bigger GPU is used.
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/v9_combined_vietnam
+patience: 8
+# Same monitor as v5 (val/mIoU), so the two are selected the same way.
+monitor: val/mIoU
+monitor_mode: max

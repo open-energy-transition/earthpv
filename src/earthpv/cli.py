@@ -119,6 +119,12 @@ def compose(
         "concurrent cell, so keep --workers low. Cells whose composite exists but whose "
         "sidecar does not are re-read for the sidecar alone; the composite is not rewritten.",
     ),
+    refresh_cells: bool = typer.Option(
+        False, "--refresh-cells",
+        help="Recompute the cached per-cell building counts (AOIs with `cell_selection: "
+        "duckdb` only; the cache is also invalidated automatically when the grid, boundary "
+        "or VIDA file changes)",
+    ),
 ) -> None:
     """Build S2 composites for building-populated cells of an AOI (STAC, resumable)."""
     from earthpv.compose import run_compose
@@ -126,7 +132,8 @@ def compose(
     win = tuple(window.split(":")) if window else None
     run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit,
                 window=win, index=index, workers=workers, include_labels=label_cells,
-                use_vida=use_vida, stats=stats, resampling=resampling, reducer=reducer)
+                use_vida=use_vida, stats=stats, resampling=resampling, reducer=reducer,
+                refresh_cells=refresh_cells)
 
 
 @app.command()

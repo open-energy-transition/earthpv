@@ -25,6 +25,11 @@ def connect() -> duckdb.DuckDBPyConnection:
     con.execute("SET s3_region='us-west-2';")
     # Anonymous access to the public Overture bucket
     con.execute("CREATE OR REPLACE SECRET overture (TYPE s3, PROVIDER config, REGION 'us-west-2');")
+    # Reuse parsed parquet footers across queries on this connection. Per-cell VIDA reads
+    # (density, postprocess, placement) hit the same country file thousands of times, and
+    # India's has 105k row groups: measured 2026-09-23, a 15k-building cell took 4.6 s
+    # without this and 2.8 s with it. Results are identical; DuckDB invalidates on mtime.
+    con.execute("SET parquet_metadata_cache=true;")
     return con
 
 

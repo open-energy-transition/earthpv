@@ -77,6 +77,12 @@ PUBLISHED = {
     "germany_pv_evidence_atlas.html": ("germany", "Germany"),
     "france_pv_evidence_atlas.html": ("france", "France"),
     "zambia_pv_evidence_atlas.html": ("zambia", "Zambia"),
+    # Nigeria was published 2026-09-23 without an entry here, which left its page
+    # unguarded; Vietnam and India are registered before their pages exist (a missing
+    # page is skipped, so this is safe to land first).
+    "nigeria_pv_evidence_atlas.html": ("nigeria", "Nigeria"),
+    "vietnam_pv_evidence_atlas.html": ("vietnam", "Vietnam"),
+    "india_pv_evidence_atlas.html": ("india", "India"),
 }
 
 
