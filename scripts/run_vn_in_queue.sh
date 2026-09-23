@@ -47,7 +47,7 @@ label_cells() { grep -aoE "[0-9]+ contain OSM solar labels" "data/compose_$1.log
 free_gb() { df -BG --output=avail "$1" | tail -1 | tr -dc 0-9; }
 vn_vida() { [ -s data/vida/VNM.parquet ] && [ ! -e /home/tobi/earthpv_data/VNM.parquet.part ]; }
 labels_ok() { [ -s "data/labels/$1_overpass_solar.parquet" ]; }
-vn_tiles_fetched() { grep -aq -- "--fetch-only: all" data/vietnam_labels.log 2>/dev/null; }
+vn_tiles_fetched() { grep -aqE -- "--fetch-only: all|never landed" data/vietnam_labels.log 2>/dev/null; }
 foreign_compose() {
   systemctl --user list-units --type=service --state=active --no-legend 'earthpv-compose-*' 2>/dev/null \
     | awk '{print $1}' | grep -vE '^earthpv-compose-(vietnam|india)\.service$'
