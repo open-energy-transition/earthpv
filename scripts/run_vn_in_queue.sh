@@ -145,6 +145,17 @@ while true; do
   # label cells on every pass and composites them first, so a late labels file is picked
   # up by the next pass (the same argument scripts/run_nigeria_chain.sh makes).
   IN_READY=1
+  # ...except while Vietnam's VIDA file is still downloading: source.coop sits ~340 ms away
+  # and its streams starve behind a saturating compose (measured 2026-09-23: 0 chunks in
+  # 8 minutes once India compose started, against ~0.6 MB/s alone). Vietnam is the
+  # priority, so India gives the link back until that file lands.
+  if unit_active earthpv-vida-vnm; then
+    IN_READY=0
+    if unit_active earthpv-compose-india; then
+      say "pausing India compose while the Vietnam VIDA download runs"
+      systemctl --user stop earthpv-compose-india; sleep 30; rm -f "$QMARK/india_round_start"
+    fi
+  fi
 
   # ---- milestones -------------------------------------------------------------------------
   if [ ! -f "$QMARK/india_train_ready" ]; then
