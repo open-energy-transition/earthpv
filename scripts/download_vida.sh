@@ -17,7 +17,7 @@ if [ -s "$DEST" ] && [ ! -e "$DEST.part" ]; then
   ln -sf "$DEST" "$LINK"; echo "already present: $DEST"; echo DOWNLOAD_OK; exit 0
 fi
 for i in $(seq 1 20); do
-  .pixi/envs/default/bin/python scripts/ranged_download.py "$URL" "$DEST" --workers 6 && break
+  .pixi/envs/default/bin/python scripts/ranged_download.py "$URL" "$DEST" --workers 16 && break
   echo "$(date '+%F %T') ranged download pass $i failed, retrying in 60 s"
   sleep 60
 done
