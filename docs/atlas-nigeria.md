@@ -1,5 +1,5 @@
 ---
-title: "EarthPV: France"
+title: "EarthPV: Nigeria"
 hide:
   - navigation
   - toc
@@ -10,9 +10,9 @@ hide:
   <span class="atlas-switch__label">Atlas</span>
   <a href="../atlas/">Pakistan</a>
   <a href="../atlas-germany/">Germany</a>
-  <span aria-current="page">France</span>
+  <a href="../atlas-france/">France</a>
   <a href="../atlas-zambia/">Zambia</a>
-  <a href="../atlas-nigeria/">Nigeria</a>
+  <span aria-current="page">Nigeria</span>
 </nav>
-<iframe src="../assets/interactive/france_pv_evidence_atlas.html" title="France PV evidence atlas: verified and best estimate by 0.1-degree cell"></iframe>
+<iframe src="../assets/interactive/nigeria_pv_evidence_atlas.html" title="Nigeria PV evidence atlas: verified and best estimate by 0.1-degree cell"></iframe>
 </div>

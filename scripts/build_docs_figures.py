@@ -2496,6 +2496,9 @@ INTERACTIVE = [
     # Zambia: segmentation-only (no calibration quadrats yet), written by
     # scripts/run_zambia_pipeline.sh. Skipped with a notice until that run lands.
     ("results/zambia_pv_evidence_atlas.html", "zambia_pv_evidence_atlas.html"),
+    # Nigeria: segmentation-only like Zambia, but on v5_combined_france rather than v4
+    # -- the v4/v5 comparison in docs/results/nigeria.md is why.
+    ("results/nigeria_pv_evidence_atlas.html", "nigeria_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 
