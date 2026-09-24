@@ -32,7 +32,12 @@ say() { echo "$(date '+%F %T') QUEUE: $*" | tee -a "$LOG"; }
 # workers and 26 of the first 87 cells (30%) tripped a 600 s patience, each one downloading
 # the cell twice. CLAUDE.md: set it to several times the contended per-cell wall time.
 PC_TIMEOUT_S=1800
-STALL_S=2400
+# 900, not Nigeria's 2400 (lowered 2026-09-24). 2400 was sized for a pass that spent 4-5
+# min fetching VIDA and selecting cells before its first cell; with the cached cell list a
+# fresh pass lands its first cell in 2-3 min, and the largest healthy gap between cells was
+# 824 s. Meanwhile Planetary Computer twice left every socket open and silent (0% CPU,
+# 0 kB/s, unacked Send-Q), and 2400 s meant 40 idle minutes each time.
+STALL_S=900
 WORKERS=4
 MIN_BUILDINGS=1000
 COVERAGE_MIN=97          # percent of selected cells that counts as "compose finished"
