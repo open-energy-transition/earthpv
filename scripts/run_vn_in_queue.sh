@@ -40,6 +40,17 @@ PC_TIMEOUT_S=1800
 STALL_S=900
 WORKERS=4
 MIN_BUILDINGS=1000
+# GDAL network hardening (added 2026-09-24). Twice a compose pass sat at 0 kB/s with every
+# socket to the Sentinel-2 blob host holding an unacknowledged ~600-byte request: curl had
+# reused a pooled keep-alive connection that went idle during a STAC search or a median
+# (Azure load balancers drop idle flows after ~4 min without a reset), and with no stall
+# timeout GDAL waited out the kernel's tcp_retries2=15 (~15 min) per request, while a fresh
+# connection to the same IP answered in 0.2 s. Keep-alive probes stop pooled connections
+# going idle; LOW_SPEED aborts a stalled transfer after 60 s so GDAL retries on a new one.
+GDAL_NET_ENV="--setenv=GDAL_HTTP_TCP_KEEPALIVE=YES --setenv=GDAL_HTTP_TCP_KEEPIDLE=60 \
+  --setenv=GDAL_HTTP_TCP_KEEPINTVL=30 --setenv=GDAL_HTTP_LOW_SPEED_TIME=60 \
+  --setenv=GDAL_HTTP_LOW_SPEED_LIMIT=1 --setenv=GDAL_HTTP_CONNECTTIMEOUT=30 \
+  --setenv=GDAL_HTTP_MAX_RETRY=5 --setenv=GDAL_HTTP_RETRY_DELAY=5"
 COVERAGE_MIN=97          # percent of selected cells that counts as "compose finished"
 MAX_UNPRODUCTIVE=8       # consecutive rounds adding < ROUND_PROGRESS_MIN before accepting
 ROUND_PROGRESS_MIN=20    #   a shortfall (the remaining cells then have no usable scenes)
@@ -83,6 +94,7 @@ start_compose() {  # start_compose <aoi>
   systemd-run --user --collect --unit="earthpv-compose-$aoi" -p WorkingDirectory="$PWD" \
     -p LimitNOFILE=65536:65536 -p MemoryMax=12G \
     --setenv=EARTHPV_PC_TIMEOUT_S=$PC_TIMEOUT_S --setenv=EARTHPV_REQUIRE_BOUNDARY=1 \
+    $GDAL_NET_ENV \
     bash scripts/compose_loop.sh "$aoi" 0 $MIN_BUILDINGS $WORKERS 3600 $STALL_S \
       "--resampling nearest" >/dev/null
 }
