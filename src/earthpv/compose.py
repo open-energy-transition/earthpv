@@ -586,6 +586,36 @@ def quadrat_geobox(composites: Path, boundary, margin_m: float = 200.0):
     return gbox, bbox
 
 
+def _harden_python_network() -> None:
+    """Opt-in timeouts for the Python-side HTTP calls of an unattended compose.
+
+    pystac-client's STAC searches and planetary_computer's SAS-token requests go through
+    `requests` with NO timeout, and `imagery._annual_composite_via` runs every search under
+    one process-wide `_SEARCH_LOCK`. Measured 2026-09-25 on Vietnam: a single search request
+    to Planetary Computer's API sat on an IPv6 socket with 460 unacknowledged bytes, held the
+    lock, and stalled all four workers -- including the Earth Search fallback, which needs the
+    same lock -- until the stall watchdog killed the pass. `requests` leaves urllib3 on the
+    socket default timeout, so a process-wide default turns that into a ReadTimeout that
+    releases the lock and fails over. GDAL's own reads are unaffected (they use curl; see
+    the GDAL_HTTP_* settings in scripts/run_vn_in_queue.sh).
+
+    EARTHPV_NET_TIMEOUT_S=<s> sets the default socket timeout; EARTHPV_FORCE_IPV4=1 makes
+    urllib3 resolve IPv4 only (the IPv6 path from this router was the one that went dead,
+    right after the ISP rotated the prefix). Both are unset everywhere else.
+    """
+    import socket
+
+    t = os.environ.get("EARTHPV_NET_TIMEOUT_S")
+    if t:
+        socket.setdefaulttimeout(float(t))
+        log.info("Python socket default timeout set to %ss (EARTHPV_NET_TIMEOUT_S)", t)
+    if os.environ.get("EARTHPV_FORCE_IPV4") == "1":
+        import urllib3.util.connection as urllib3_conn
+
+        urllib3_conn.allowed_gai_family = lambda: socket.AF_INET
+        log.info("urllib3 restricted to IPv4 (EARTHPV_FORCE_IPV4=1)")
+
+
 def run_compose(
     aoi: str,
     out_dir: Path,
@@ -627,6 +657,7 @@ def run_compose(
     from a different scene availability and downstream products already rest on it.
     """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    _harden_python_network()
     if index > 0 and window is None:
         raise ValueError("compose --index > 0 requires --window (the layer's date range)")
     settings = Settings.load()

@@ -50,7 +50,11 @@ MIN_BUILDINGS=1000
 GDAL_NET_ENV="--setenv=GDAL_HTTP_TCP_KEEPALIVE=YES --setenv=GDAL_HTTP_TCP_KEEPIDLE=60 \
   --setenv=GDAL_HTTP_TCP_KEEPINTVL=30 --setenv=GDAL_HTTP_LOW_SPEED_TIME=60 \
   --setenv=GDAL_HTTP_LOW_SPEED_LIMIT=1 --setenv=GDAL_HTTP_CONNECTTIMEOUT=30 \
-  --setenv=GDAL_HTTP_MAX_RETRY=5 --setenv=GDAL_HTTP_RETRY_DELAY=5"
+  --setenv=GDAL_HTTP_MAX_RETRY=5 --setenv=GDAL_HTTP_RETRY_DELAY=5 \
+  --setenv=EARTHPV_NET_TIMEOUT_S=120 --setenv=EARTHPV_FORCE_IPV4=1"
+# The last two harden the PYTHON side (added 2026-09-25): a STAC search to Planetary
+# Computer's API hung on an IPv6 socket holding imagery._SEARCH_LOCK, which stalled every
+# worker including the Earth Search fallback (compose._harden_python_network).
 COVERAGE_MIN=97          # percent of selected cells that counts as "compose finished"
 MAX_UNPRODUCTIVE=8       # consecutive rounds adding < ROUND_PROGRESS_MIN before accepting
 ROUND_PROGRESS_MIN=20    #   a shortfall (the remaining cells then have no usable scenes)
