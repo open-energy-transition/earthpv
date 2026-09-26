@@ -571,7 +571,8 @@ def attach_buildings(cands: gpd.GeoDataFrame, settings: Settings) -> gpd.GeoData
 
 
 def _resolve_buildings(
-    aoi: str, cands: gpd.GeoDataFrame, cfg: dict, settings: Settings, pred_dir: Path
+    aoi: str, cands: gpd.GeoDataFrame, cfg: dict, settings: Settings, pred_dir: Path,
+    building_buffer_m: float = 2000.0,
 ) -> gpd.GeoDataFrame | None:
     """Best available footprint set for the candidate extent.
 
@@ -579,7 +580,8 @@ def _resolve_buildings(
     is tried first and cached; the rooftopsenti local set (Overture, >= 500 m2) is
     the fallback. Both feed the same metric join.
     """
-    dense = load_dense_buildings(aoi, cands, cfg, settings, Path(pred_dir) / aoi / "buildings")
+    dense = load_dense_buildings(aoi, cands, cfg, settings, Path(pred_dir) / aoi / "buildings",
+                                 buffer_m=building_buffer_m)
     if dense is not None and not dense.empty:
         return dense
     source_region = cfg.get("source_region")
@@ -597,6 +599,7 @@ def run_postprocess(
     check_glint: bool = False, glint_top_n: int = 300, glint_skip_top: int = 100,
     glint_tile_deg: float = 1.0, glint_self_referenced: bool = False,
     osm_replace: bool = True, osm_match_distance_m: float = NEAR_BUILDING_M,
+    building_buffer_m: float = 2000.0,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this - isolated detections (cropland glare, bare soil, water glint)
@@ -626,7 +629,7 @@ def run_postprocess(
             mapped = load_mapped_reference_attrs(aoi, cfg, settings)
             cands = replace_with_osm_geometry(cands, mapped, max_distance_m=osm_match_distance_m)
             cands = flag_oversize(cands)  # a replaced geometry can cross MAX_CANDIDATE_M2
-        buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir)
+        buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir, building_buffer_m)
         if buildings is not None and not buildings.empty:
             log.info("Joining %d candidates with %d buildings", len(cands), len(buildings))
             cands = _join_buildings_chunked(cands, buildings)

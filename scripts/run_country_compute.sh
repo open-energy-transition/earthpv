@@ -163,7 +163,10 @@ step infer gpu $MLPY -m earthpv.cli infer --aoi $AOI --checkpoint "$CHOSEN"
 
 # ---- segmentation half of the main workflow (as scripts/run_nigeria_pipeline.sh) --------
 # NO --max-building-dist: that is the leads recipe and would drop ground-mount in farmland.
-step postprocess  $PY -m earthpv.cli postprocess --aoi $AOI --threshold 0.3
+# --building-buffer-m 500 (not the 2 km default): Vietnam's candidates reach 1,897 of its
+# 3,127 cells, and every footprint within 2 km of one of them was OOM-killed three times at
+# 14 GB (2026-09-26). Placement and rank_score only use buildings within ~40 m.
+step postprocess  $PY -m earthpv.cli postprocess --aoi $AOI --threshold 0.3 --building-buffer-m 500
 step export       $PY -m earthpv.cli export --aoi $AOI --exclude-mapped --min-distance-m 100
 # Ranking of large OSM power=plant perimeters by how much of each the model lights up.
 # Review artefacts ONLY; an exclusion list is hand-audited and never auto-applied.
@@ -190,7 +193,7 @@ touch "$QMARK/${AOI}_atlas_done"
 # made on the held-out region only; this is the whole-country population-shape comparison
 # (candidate count, median area, blobs) that France and Nigeria reported.
 step infer_other  gpu $MLPY -m earthpv.cli infer --aoi $AOI --checkpoint "$OTHER" --out-dir $ALT
-step postprocess_other $PY -m earthpv.cli postprocess --aoi $AOI --pred-dir $ALT --threshold 0.3
+step postprocess_other $PY -m earthpv.cli postprocess --aoi $AOI --pred-dir $ALT --threshold 0.3 --building-buffer-m 500
 step compare      $PY scripts/compare_checkpoints_vs_mapped.py --labels "$LABELS" \
                      --model chosen:data/predictions/$AOI/candidates.parquet:data/predictions/$AOI/prob \
                      --model other:$ALT/$AOI/candidates.parquet:$ALT/$AOI/prob

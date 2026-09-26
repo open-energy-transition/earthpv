@@ -171,15 +171,21 @@ def fetch_vida_near(
 
 
 def load_dense_buildings(
-    aoi: str, cands: gpd.GeoDataFrame, cfg: dict, settings: Settings, cache_dir: Path
+    aoi: str, cands: gpd.GeoDataFrame, cfg: dict, settings: Settings, cache_dir: Path,
+    buffer_m: float = 2000.0,
 ) -> gpd.GeoDataFrame | None:
     """Dense footprints around an AOI's candidates, preferring a cached VIDA pull.
 
     Order: cached VIDA parquet -> fresh windowed VIDA download (if the AOI's country
     is known) -> None (caller falls back to the local/Overture building set).
+
+    `buffer_m` is how far from any candidate a footprint is kept (default 2 km, what every
+    AOI before 2026-09-26 used). A non-default buffer gets its own cache file so the two
+    can never be confused.
     """
     cache_dir = Path(cache_dir)
-    cache = cache_dir / f"{aoi}_vida.parquet"
+    suffix = "" if buffer_m == 2000.0 else f"_buf{int(buffer_m)}m"
+    cache = cache_dir / f"{aoi}_vida{suffix}.parquet"
     if cache.exists():
         cached = gpd.read_parquet(cache)
         # A cache built for a SMALLER candidate set silently mislabels every candidate
@@ -211,7 +217,7 @@ def load_dense_buildings(
     if iso3 is None:
         log.info("No division country for AOI %s; skipping VIDA (using fallback buildings)", aoi)
         return None
-    gdf = fetch_vida_near(cands.geometry, iso3)
+    gdf = fetch_vida_near(cands.geometry, iso3, buffer_m=buffer_m)
     if gdf.empty:
         log.warning("VIDA returned no buildings for %s; using fallback", aoi)
         return None

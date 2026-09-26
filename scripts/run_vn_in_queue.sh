@@ -149,7 +149,7 @@ maybe_compute() {  # maybe_compute <aoi> <start marker>
   echo $((fails + 1)) > "$QMARK/${aoi}_compute_launches"
   say "launching $aoi compute chain (launch $((fails + 1))/$COMPUTE_MAX_FAILS)"
   systemd-run --user --collect --unit="earthpv-$aoi-compute" -p WorkingDirectory="$PWD" \
-    -p LimitNOFILE=65536:65536 -p MemoryMax=14G \
+    -p LimitNOFILE=65536:65536 -p MemoryMax=20G \
     bash scripts/run_country_compute.sh "$aoi" >/dev/null
 }
 

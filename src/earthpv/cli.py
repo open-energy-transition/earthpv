@@ -252,6 +252,13 @@ def postprocess(
         30.0, help="Max distance (m) to accept an OSM polygon as the same installation "
         "as a candidate, for --osm-replace (matches postprocess.NEAR_BUILDING_M)"
     ),
+    building_buffer_m: float = typer.Option(
+        2000.0, help="Keep VIDA footprints within this distance of any candidate. Only "
+        "placement (a roof within 30 m) and the rank prior (0.5*exp(-d/30 m), at its floor by "
+        "~40 m) use them, so beyond a few hundred metres only the reported building_dist_m "
+        "changes. Lower it where candidates cover most of a dense country: Vietnam's 2 km "
+        "set was OOM-killed at 14 GB (2026-09-26)"
+    ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
     from earthpv.postprocess import run_postprocess
@@ -262,6 +269,7 @@ def postprocess(
         glint_skip_top=glint_skip_top, glint_tile_deg=glint_tile_deg,
         glint_self_referenced=glint_self_referenced,
         osm_replace=osm_replace, osm_match_distance_m=osm_match_distance_m,
+        building_buffer_m=building_buffer_m,
     )
 
 
