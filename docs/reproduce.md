@@ -798,7 +798,7 @@ days on a home connection.
 **What you can and cannot skip.** A country with exhaustively mapped calibration areas gets
 the full two-detector atlas. A country with a complete public register can substitute that
 register for the quadrats. A country with neither gets a **segmentation-only atlas**, which
-is a real result and is how Gujarat and Zambia are published here. What you cannot skip is
+is a real result and is how Gujarat, Zambia, Nigeria and Vietnam are published here. What you cannot skip is
 [random-cell manual validation](#12-manual-validation-random-cells) after national scoring:
 without it a number has no evidence behind it, and it is the one step no agent can do for
 you.

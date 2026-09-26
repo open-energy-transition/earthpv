@@ -127,6 +127,7 @@ nav:
         - France: atlas-france.md
         - Zambia: atlas-zambia.md
         - Nigeria: atlas-nigeria.md
+        - Vietnam: atlas-vietnam.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md

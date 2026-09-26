@@ -2499,6 +2499,10 @@ INTERACTIVE = [
     # Nigeria: segmentation-only like Zambia, but on v5_combined_france rather than v4
     # -- the v4/v5 comparison in docs/results/nigeria.md is why.
     ("results/nigeria_pv_evidence_atlas.html", "nigeria_pv_evidence_atlas.html"),
+    # Vietnam: segmentation-only, on its own LOCALIZED checkpoint v9_combined_vietnam (the
+    # owner's ship rule picked it over v5 on the held-out Central Highlands), written by
+    # scripts/run_country_compute.sh. docs/results/vietnam.md has the comparison.
+    ("results/vietnam_pv_evidence_atlas.html", "vietnam_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 

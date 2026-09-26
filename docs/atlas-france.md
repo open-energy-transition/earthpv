@@ -13,6 +13,7 @@ hide:
   <span aria-current="page">France</span>
   <a href="../atlas-zambia/">Zambia</a>
   <a href="../atlas-nigeria/">Nigeria</a>
+  <a href="../atlas-vietnam/">Vietnam</a>
 </nav>
 <iframe src="../assets/interactive/france_pv_evidence_atlas.html" title="France PV evidence atlas: verified and best estimate by 0.1-degree cell"></iframe>
 </div>

@@ -215,7 +215,8 @@ interactive version</a>.</em></p>
 verified by people who know the ground.** Nothing in this pipeline is Pakistan-specific:
 every input is a global dataset, so the intended shape of this project is a fork per
 country and this repository as the place their results come back together. Pakistan,
-Germany, France, Gujarat and Zambia are the first five, not the destination.
+Germany, France, Gujarat, Zambia, Nigeria and Vietnam are the first seven, not the
+destination.
 
 Be straight about what is not built yet: **there is no combiner that merges countries into
 one global surface.** What exists is a shared pipeline, a shared atlas format and a shared
@@ -235,7 +236,7 @@ Run the pipeline that `plan` prints. Every stage is resumable; `compose` is the 
 measured in days on a home connection. A country with exhaustively mapped calibration areas
 gets the full two-detector atlas; one with a complete public register can substitute that
 register; one with neither gets a **segmentation-only atlas**, which is a real result and is
-how Gujarat and Zambia are published here.
+how Gujarat, Zambia, Nigeria and Vietnam are published here.
 
 Then package the raw numbers. The atlas page is the headline, but **the per-cell capacity
 table is the product**, and since `data/` is gitignored these tables ship as GitHub Release

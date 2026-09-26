@@ -1198,6 +1198,51 @@ silently clobbered.
 
 Full writeup: `docs/methods/france-validation.md`, `docs/results/france.md`.
 
+### Vietnam and India: the unattended localized run (launched 2026-09-23)
+
+The owner asked for Vietnam, then **all of India**, each ending in an evidence atlas, with the
+segmentation **localized** on each country's own OSM labels (not run zero-shot), the checkpoint
+chosen by **whichever scores better on a held-out region** (tie goes to local), and publication by
+push to main. It runs as one systemd queue, `earthpv-vn-in-queue` (`scripts/run_vn_in_queue.sh`,
+network lane: labels, compose, Vietnam first, India preempted), which hands each country to
+`earthpv-<aoi>-compute` (`scripts/run_country_compute.sh`: chips -> `mark_val_buffer.py` -> merge
+-> train -> `pick_best_checkpoint.py` -> `compare_local_vs_v5.py` -> infer -> atlas chain, behind
+markers in `data/<aoi>_pipeline_markers/`). Status: `bash scripts/vn_in_status.sh`; the durable
+check-in log is `data/vn_in_monitor.log`. Checkpoints are **v9_combined_vietnam** and
+**v10_combined_india** (`v8` is a concurrent session's `v8_combined_nigeria`).
+
+**Vietnam published 2026-09-26: Verified 8,179.8 / Best 8,860.5 MWp** on v9 (held-out Central
+Highlands: pixel IoU 0.762 against v5's 0.724, recall >= 500 m2 tied). `docs/results/vietnam.md`.
+India's compose is ~25,600 cells at ~90 cells/h, i.e. roughly 11 days; its v10 trains at a
+milestone (label cells plus 3,000 density cells) with inference running incrementally behind it.
+Holdouts: Vietnam = Kon Tum/Gia Lai/Dak Lak/Dak Nong (385 cells); India = Gujarat's old
+Surat-Bharuch-Vadodara val box (240 cells), inherited so v5 is out-of-sample there too.
+
+What this run changed, all opt-in so other AOIs keep their behaviour:
+- **`cell_selection: duckdb`** (AOI key): per-cell VIDA counts aggregated in DuckDB and cached in
+  `data/cells_cache/`. The in-memory path peaks at 6.9 GB for Nigeria's 68M points and would need
+  ~50 GB for India's 527M. Bit-identical cell lists, order included, on Zambia and Nigeria.
+- **`fetch_geoboundaries` caches** to `data/geoboundaries/gb_<ISO3>_<LEVEL>.geojson` with retries;
+  `EARTHPV_REQUIRE_BOUNDARY=1` makes compose fail closed instead of renaming every cell.
+- **Compose network hardening** (compose units only): GDAL `TCP_KEEPALIVE` + `LOW_SPEED_TIME=60`
+  (pooled keep-alive connections to the Sentinel-2 blob host died silently and each request waited
+  out `tcp_retries2`, ~15 min), and `EARTHPV_NET_TIMEOUT_S=120` + `EARTHPV_FORCE_IPV4=1`
+  (`compose._harden_python_network`: one hung STAC search holds `imagery._SEARCH_LOCK` and stalls
+  every worker, Earth Search fallback included). Rate went ~36 -> ~90 cells/h. Cost: ~1 dropped
+  band read per cell. Stall watchdog 900 s: a pass now lands its first cell in 2-3 min.
+- **`postprocess --building-buffer-m`** (500 for VN/IN): Vietnam's 2 km building set was
+  OOM-killed 3x at 14 GB. Placement and the rank prior only use buildings within ~40 m.
+- **`prepare_national_osm_solar.py --keep-detected-screen`**: the 5 km2 ground cap is German;
+  Vietnam's five largest parks (5.6-8.3 km2, ~1.9 GWp) are 92-99% detected, so above the cap a
+  feature is kept on the screen's evidence. India's parks are tens of km2.
+- `overpass_labels_chunked.py` caches tiles and resumes (`--fetch-only`), `merge_chip_index.py
+  --out`, `scripts/ranged_download.py` (source.coop throttles single streams; 16 ranges),
+  `parquet_metadata_cache` on every DuckDB connection (India cell query 4.6 -> 2.8 s).
+- **Editing a script a unit is running is unsafe** (bash reads incrementally): restart the unit.
+  Before stopping a compose unit by hand, `rm data/vn_in_queue_markers/<aoi>_round_start`, or the
+  queue books a false unproductive round and a 1 h cooldown. Stop the QUEUE first when removing
+  compute markers, or its next tick can relaunch the chain before the markers are gone.
+
 ## Conventions & gotchas
 
 - **GPU:** the target card is a **GTX 1060 (Pascal, sm_61)** → PyTorch must be **cu126** wheels
