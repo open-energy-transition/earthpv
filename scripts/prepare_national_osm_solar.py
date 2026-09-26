@@ -36,6 +36,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from earthpv.config import Settings
 from earthpv.export import load_mapped_reference_attrs
@@ -67,7 +68,8 @@ GROUND_MAX_M2 = 5_000_000.0
 
 def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
             ground_max_m2: float = GROUND_MAX_M2, labels: Path | None = None,
-            clip: bool = True) -> Path:
+            clip: bool = True, keep_detected_screen: Path | None = None,
+            keep_min_det_frac: float = 0.5) -> Path:
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     if labels is not None:
@@ -149,6 +151,26 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
     # 88 km2 "solar" polygon is where that assumption fails.
     too_big = (ref["placement"].to_numpy() == "ground") & (
         ref["area_m2"].to_numpy() > ground_max_m2)
+    # ...unless the model itself sees panels over most of it. The 5 km2 cap is a German
+    # measurement (Germany's largest real park is ~5 km2); Vietnam has model-confirmed parks
+    # of 5.6-8.3 km2 (2026-09-26: five relations, 92-99% of each area detected, 1.9 GWp at
+    # the land constant) and India's largest are tens of km2. The per-perimeter screen
+    # (scripts/screen_osm_ground_perimeters.py) is the evidence: a feature is kept when it
+    # was imaged and the checkpoint detects PV over at least `keep_min_det_frac` of it.
+    if keep_detected_screen is not None and too_big.any():
+        scr = pd.read_csv(keep_detected_screen)
+        ok_ids = set(scr.loc[(scr["imaged_frac"] >= 0.9)
+                             & (scr["det_frac"] >= keep_min_det_frac), "id"])
+        rescued = too_big & ref["id"].isin(ok_ids).to_numpy()
+        if rescued.any():
+            log.warning(
+                "keeping %d 'ground' features above %.0f m2 (%.1f km2) that the screen %s "
+                "shows imaged and >= %.0f%% detected -- real parks, not project outlines",
+                int(rescued.sum()), ground_max_m2,
+                ref["area_m2"].to_numpy()[rescued].sum() / 1e6, keep_detected_screen,
+                100 * keep_min_det_frac,
+            )
+        too_big = too_big & ~rescued
     n_dropped = int(too_big.sum())
     if n_dropped:
         log.warning(
@@ -188,10 +210,18 @@ def main() -> None:
         help="Keep features outside the AOI's national boundary. Off by default; see the "
         "clip block in `prepare` for the two ways a 'national' pull turns out not to be.",
     )
+    ap.add_argument(
+        "--keep-detected-screen", type=Path, default=None,
+        help="An OSM ground screen CSV (scripts/screen_osm_ground_perimeters.py). Ground "
+        "features above --ground-max-m2 are KEPT when that screen shows them imaged and "
+        "detected over at least --keep-min-det-frac of their area. Off by default.",
+    )
+    ap.add_argument("--keep-min-det-frac", type=float, default=0.5)
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     out = a.out or Path(f"data/labels/{a.aoi}_national_osm_solar.parquet")
-    prepare(a.aoi, out, a.rooftop_max_m2, a.ground_max_m2, labels=a.labels, clip=not a.no_clip)
+    prepare(a.aoi, out, a.rooftop_max_m2, a.ground_max_m2, labels=a.labels, clip=not a.no_clip,
+            keep_detected_screen=a.keep_detected_screen, keep_min_det_frac=a.keep_min_det_frac)
 
 
 if __name__ == "__main__":

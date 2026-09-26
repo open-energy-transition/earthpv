@@ -179,7 +179,11 @@ step calibrate    $PY -m earthpv.cli calibrate-candidates --aoi $AOI --recall-re
 step density      $PY -m earthpv.cli density --aoi $AOI --districts
 step check_density $PY -m earthpv.cli check-density --aoi $AOI
 # --labels pins this to the country's own pull (the default pools every country's file).
-step osm_solar    $PY scripts/prepare_national_osm_solar.py --aoi $AOI --labels "$LABELS"
+# --keep-detected-screen: the 5 km2 ground cap is a German measurement; Vietnam's five
+# largest mapped parks (5.6-8.3 km2, ~1.9 GWp) are 92-99% detected by the model, and India's
+# biggest parks are tens of km2. Above the cap a feature is kept only on that evidence.
+step osm_solar    $PY scripts/prepare_national_osm_solar.py --aoi $AOI --labels "$LABELS" \
+                     --keep-detected-screen results/${AOI}_osm_ground_screen/screen_full.csv
 # --include-offgrid-osm: every label cell is in the compose selection, so this is a no-op
 # unless a label cell never composited (cloud); then it keeps that hand-mapped capacity
 # rather than dropping it, as France and Germany do.
