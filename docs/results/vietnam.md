@@ -65,6 +65,27 @@ was selected on a pooled validation set that includes these chips, which is a sm
 advantage v5 did not get; and both checkpoints already find nearly every large array here,
 so the gain is in shape, not in detection.
 
+**The whole-country comparison**, after the atlas (`compare_checkpoints_vs_mapped.py`, both
+checkpoints inferred over all 2,611 cells, scored against the 2,071 dissolved mapped
+installations of 400 m&sup2; and up):
+
+| | v5 (zero-shot) | v9 (localized) |
+| --- | --- | --- |
+| pooled recall over mapped installations | 0.850 | 0.860 |
+| candidates | 17,125 | **6,343** |
+| median candidate area | 2,801 m&sup2; | 10,396 m&sup2; |
+| total candidate area | 151.5 km&sup2; | **95.1 km&sup2;** |
+| rooftop share | 46.0% | 57.6% |
+
+The recall row is **not** evidence for v9: it trained on most of these installations, so
+it is scored largely in-sample, and the decision above rests on the held-out region alone
+(McNemar p = 0.043 on this in-sample set, 65 against 43 discordant). The population shape is
+the real finding. v9 is a far more conservative detector, with 63% fewer candidates and 37%
+less candidate area. Without a quadrat or a register nobody can say how many of v5's extra
+10,782 small candidates are unmapped arrays rather than false positives. What can be said is
+that on held-out chips, where the truth is known, v9's pixels agree with the mapped outlines
+better.
+
 ## The 5 km&sup2; ground cap did not travel
 
 `scripts/prepare_national_osm_solar.py` drops every ground polygon above 5 km&sup2;. That
