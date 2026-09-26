@@ -129,7 +129,7 @@ def _candidate_cells(geoms: gpd.GeoSeries, buffer_deg: float) -> list[tuple[floa
 
 
 def fetch_vida_near(
-    geoms: gpd.GeoSeries, iso3: str, buffer_m: float = 2000.0
+    geoms: gpd.GeoSeries, iso3: str, buffer_m: float = 2000.0, con=None, progress: bool = True,
 ) -> gpd.GeoDataFrame:
     """VIDA footprints within `buffer_m` of any candidate geometry.
 
@@ -140,10 +140,11 @@ def fetch_vida_near(
     buffer_deg = buffer_m / 111320.0
     cells = _candidate_cells(geoms, buffer_deg)
     clip = geoms.buffer(buffer_deg).union_all()  # geographic buffer; fine as a keep-mask
-    log.info("Scanning %d VIDA cells (%s) around %d candidates", len(cells), iso3, len(geoms))
-    con = overture.connect()
+    if progress:
+        log.info("Scanning %d VIDA cells (%s) around %d candidates", len(cells), iso3, len(geoms))
+    con = con or overture.connect()
     parts = []
-    for lon0, lat0 in tqdm(cells, desc="vida cells"):
+    for lon0, lat0 in tqdm(cells, desc="vida cells", disable=not progress):
         bbox = (lon0, lat0, lon0 + CELL_DEG, lat0 + CELL_DEG)
         # Remote scans hit transient httpfs/Thrift errors; a failed query can also
         # poison the connection, so retry each cell on a fresh one before giving up

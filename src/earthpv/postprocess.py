@@ -318,6 +318,52 @@ def _join_buildings_chunked(
     return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=cands.crs)
 
 
+def _join_buildings_streamed(
+    cands: gpd.GeoDataFrame, iso3: str, buffer_m: float, chunk_deg: float = 0.25
+) -> gpd.GeoDataFrame:
+    """`_join_buildings_metric` per spatial chunk, fetching each chunk's VIDA footprints
+    fresh and discarding them, so no country-scale building table is ever held.
+
+    `_resolve_buildings` + `_join_buildings_chunked` first gather every footprint within
+    `buffer_m` of ANY candidate into one frame (and cache it). That scales with the whole
+    country: Vietnam's 500 m set peaked at 14-18.5 GB (2026-09-26) and India has 7.7x its
+    buildings. Here each chunk's candidates get the footprints within `buffer_m` of
+    THEMSELVES, which is exactly the set the global join would have used for any candidate
+    whose nearest roof is within `buffer_m`, so placement, overlap and rank prior are
+    unchanged; only a `building_dist_m` beyond `buffer_m` can differ (it reads -1). Verified
+    against Vietnam's global-join output before use. No cache is written.
+    """
+    from earthpv import overture
+    from earthpv.buildings import fetch_vida_near
+
+    if cands.empty:
+        return cands
+    cands = cands.reset_index(drop=True)
+    reps = cands.geometry.representative_point()
+    keys = pd.Series(list(zip(
+        np.floor(reps.x.to_numpy() / chunk_deg).astype(int).tolist(),
+        np.floor(reps.y.to_numpy() / chunk_deg).astype(int).tolist(),
+    )))
+    con = overture.connect()
+    parts = []
+    groups = keys.groupby(keys).groups
+    for key in tqdm(sorted(groups), desc="building join (streamed)"):
+        sub = cands.loc[groups[key]].reset_index(drop=True)
+        bu = fetch_vida_near(sub.geometry, iso3, buffer_m=buffer_m, con=con, progress=False)
+        if bu.empty:
+            sub = sub.copy()
+            sub["placement"] = "no_building"
+            sub["building_id"] = None
+            sub["building_overlap_frac"] = 0.0
+            sub["building_dist_m"] = -1.0
+            parts.append(sub)
+        else:
+            parts.append(_join_buildings_metric(sub, bu))
+    log.info("Streamed building join: %d candidates in %d chunks of %.2f deg (buffer %.0f m)",
+             len(cands), len(parts), chunk_deg, buffer_m)
+    return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=cands.crs)
+
+
 def _prob_raster_index(prob_dir: Path) -> gpd.GeoDataFrame:
     rows = []
     for tif in sorted(Path(prob_dir).glob("*.tif")):
@@ -599,7 +645,7 @@ def run_postprocess(
     check_glint: bool = False, glint_top_n: int = 300, glint_skip_top: int = 100,
     glint_tile_deg: float = 1.0, glint_self_referenced: bool = False,
     osm_replace: bool = True, osm_match_distance_m: float = NEAR_BUILDING_M,
-    building_buffer_m: float = 2000.0,
+    building_buffer_m: float = 2000.0, stream_buildings: bool = False,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this - isolated detections (cropland glare, bare soil, water glint)
@@ -629,13 +675,19 @@ def run_postprocess(
             mapped = load_mapped_reference_attrs(aoi, cfg, settings)
             cands = replace_with_osm_geometry(cands, mapped, max_distance_m=osm_match_distance_m)
             cands = flag_oversize(cands)  # a replaced geometry can cross MAX_CANDIDATE_M2
-        buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir, building_buffer_m)
-        if buildings is not None and not buildings.empty:
-            log.info("Joining %d candidates with %d buildings", len(cands), len(buildings))
-            cands = _join_buildings_chunked(cands, buildings)
+        from earthpv.buildings import _iso3_for
+
+        if stream_buildings and _iso3_for(cfg):
+            cands = _join_buildings_streamed(cands, _iso3_for(cfg), building_buffer_m)
         else:
-            # Last resort: remote Overture join (no metric signals for ranking).
-            cands = attach_buildings(cands, settings)
+            buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir,
+                                           building_buffer_m)
+            if buildings is not None and not buildings.empty:
+                log.info("Joining %d candidates with %d buildings", len(cands), len(buildings))
+                cands = _join_buildings_chunked(cands, buildings)
+            else:
+                # Last resort: remote Overture join (no metric signals for ranking).
+                cands = attach_buildings(cands, settings)
         cands = _add_ranking(cands)
         if preboom_prob_dir:
             cands = add_epoch_prior(cands, preboom_prob_dir)

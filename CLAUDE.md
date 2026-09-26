@@ -1232,6 +1232,9 @@ What this run changed, all opt-in so other AOIs keep their behaviour:
   band read per cell. Stall watchdog 900 s: a pass now lands its first cell in 2-3 min.
 - **`postprocess --building-buffer-m`** (500 for VN/IN): Vietnam's 2 km building set was
   OOM-killed 3x at 14 GB. Placement and the rank prior only use buildings within ~40 m.
+- **`postprocess --stream-buildings`**: per-0.25-deg fetch/join/discard instead of a national
+  building table (identical placement/overlap on all 6,536 Vietnam candidates, 1.9 GB vs 14-18.5 GB).
+  Needed for India; systemd-oomd killed a 500 m global join AND a compose together at 10:07 09-26.
 - **`prepare_national_osm_solar.py --keep-detected-screen`**: the 5 km2 ground cap is German;
   Vietnam's five largest parks (5.6-8.3 km2, ~1.9 GWp) are 92-99% detected, so above the cap a
   feature is kept on the screen's evidence. India's parks are tens of km2.

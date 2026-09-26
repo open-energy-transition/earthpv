@@ -259,6 +259,12 @@ def postprocess(
         "changes. Lower it where candidates cover most of a dense country: Vietnam's 2 km "
         "set was OOM-killed at 14 GB (2026-09-26)"
     ),
+    stream_buildings: bool = typer.Option(
+        False, "--stream-buildings/--no-stream-buildings",
+        help="Fetch VIDA footprints per 0.25-deg chunk of candidates and discard them after "
+        "the join, instead of holding every footprint in the country at once (and caching "
+        "it). Same placement and rank prior; needs the AOI's ISO3. For national India.",
+    ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
     from earthpv.postprocess import run_postprocess
@@ -269,7 +275,7 @@ def postprocess(
         glint_skip_top=glint_skip_top, glint_tile_deg=glint_tile_deg,
         glint_self_referenced=glint_self_referenced,
         osm_replace=osm_replace, osm_match_distance_m=osm_match_distance_m,
-        building_buffer_m=building_buffer_m,
+        building_buffer_m=building_buffer_m, stream_buildings=stream_buildings,
     )
 
 
