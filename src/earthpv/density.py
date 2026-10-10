@@ -1442,6 +1442,14 @@ def run_density(
                 "internally-inconsistent numbers. Re-run with --force to rebuild the "
                 "partials (re-fetches VIDA footprints per cell)."
             )
+    if not has_cached_partials and not force:
+        # A FIRST run builds every partial from this one `cands` snapshot, so the fingerprint
+        # is already true before the first cell is written. Recording it now lets a run that
+        # is killed partway (India, 2026-10-10: a host reboot at cell 22,890 of 25,576, 28 h
+        # in) resume without --force, which would have redone every cell. A --force run over
+        # existing partials still records it only at the end, below: interrupted, that one
+        # really does leave old and new partials mixed.
+        fp_path.write_text(json.dumps(cand_fp, indent=2))
 
     if not cands.empty:
         _ = cands.sindex  # build once, reused per cell

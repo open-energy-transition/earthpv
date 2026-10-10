@@ -24,9 +24,12 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 PY=.pixi/envs/default/bin/python
 MLPY=.pixi/envs/ml/bin/python
-AOI=${1:?usage: run_country_compute.sh <vietnam|india>}
+AOI=${1:?usage: run_country_compute.sh <aoi>}
 V5=data/models/v5_combined_france/terramind-pv-epoch=25-step=37986.ckpt
-QMARK=data/vn_in_queue_markers
+# The queue that launched this run owns the markers it waits on: data/vn_in_queue_markers
+# for Vietnam/India, data/country_queue_markers for the 2026-10-10 run
+# (scripts/run_country_queue.sh passes QMARK).
+QMARK=${QMARK:-data/vn_in_queue_markers}
 MARK=data/${AOI}_pipeline_markers
 LOG=data/${AOI}_pipeline.log
 GPU_LOCK=data/.gpu.lock
@@ -48,6 +51,32 @@ case "$AOI" in
     DATE_RANGE="Nov 2025 - Mar 2026"
     START_MARKER=$QMARK/india_train_ready
     INCREMENTAL=1 ;;
+  # The 2026-10-10 run (scripts/run_country_queue.sh): Vietnam's mode -- chips/train once
+  # the country's compose is finished -- on v5's corpus plus the country's own chips.
+  morocco)
+    MODEL_TAG=v11_combined_morocco; CONFIG=configs/terramind_pv_v11_morocco.yaml
+    BASE_CORPUS="germany punjab pakistan gujarat france"
+    DATE_RANGE="Apr - Sep 2026"
+    START_MARKER=$QMARK/morocco_compose_done
+    INCREMENTAL=0 ;;
+  egypt)
+    MODEL_TAG=v12_combined_egypt; CONFIG=configs/terramind_pv_v12_egypt.yaml
+    BASE_CORPUS="germany punjab pakistan gujarat france"
+    DATE_RANGE="Apr - Sep 2026"
+    START_MARKER=$QMARK/egypt_compose_done
+    INCREMENTAL=0 ;;
+  yemen)
+    MODEL_TAG=v13_combined_yemen; CONFIG=configs/terramind_pv_v13_yemen.yaml
+    BASE_CORPUS="germany punjab pakistan gujarat france"
+    DATE_RANGE="Oct 2025 - Mar 2026"
+    START_MARKER=$QMARK/yemen_compose_done
+    INCREMENTAL=0 ;;
+  south_africa)
+    MODEL_TAG=v14_combined_south_africa; CONFIG=configs/terramind_pv_v14_south_africa.yaml
+    BASE_CORPUS="germany punjab pakistan gujarat france"
+    DATE_RANGE="Apr - Sep 2026"
+    START_MARKER=$QMARK/south_africa_compose_done
+    INCREMENTAL=0 ;;
   *) echo "unknown AOI $AOI"; exit 2 ;;
 esac
 COMPOSE_DONE=$QMARK/${AOI}_compose_done
@@ -170,6 +199,10 @@ step infer gpu $MLPY -m earthpv.cli infer --aoi $AOI --checkpoint "$CHOSEN"
 # building table. Verified on Vietnam: identical placement and overlap for all 6,536
 # candidates and identical distance for all 6,321 within 500 m, at 1.9 GB against 14-18.5 GB.
 step postprocess  $PY -m earthpv.cli postprocess --aoi $AOI --threshold 0.3 --building-buffer-m 500 --stream-buildings
+# Solar-thermal (CSP mirror fields, solar water heaters) was dropped from the LABELS by the
+# queue (scripts/drop_solar_thermal.py); drop the model candidates lying mostly inside those
+# polygons too, before anything reads candidates.parquet. A no-op where nothing was dropped.
+step thermal      $PY scripts/drop_solar_thermal.py --aoi $AOI --candidates
 step export       $PY -m earthpv.cli export --aoi $AOI --exclude-mapped --min-distance-m 100
 # Ranking of large OSM power=plant perimeters by how much of each the model lights up.
 # Review artefacts ONLY; an exclusion list is hand-audited and never auto-applied.
@@ -194,6 +227,10 @@ step atlas        $PY -m earthpv.cli atlas --aoi $AOI --osm-solar "$OSM" --inclu
                      --imagery-date-range "$DATE_RANGE" \
                      --out results/${AOI}_pv_evidence_atlas.html
 touch "$QMARK/${AOI}_atlas_done"
+# SKIP_DIAGNOSTIC=1 (the 2026-10-10 queue): stop at the deliverable. The losing checkpoint's
+# whole-country run below holds the GPU for hours that the next country's training needs;
+# it is re-run afterwards by launching this script again without the flag.
+if [ "${SKIP_DIAGNOSTIC:-0}" = 1 ]; then say "ATLAS DONE (diagnostic deferred; chosen $CHOSEN)"; exit 0; fi
 
 # ---- diagnostic: the losing checkpoint over the whole country --------------------------
 # AFTER the atlas, so a failure here cannot cost the deliverable. The decision itself was

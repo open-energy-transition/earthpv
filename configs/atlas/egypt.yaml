@@ -1,0 +1,38 @@
+# Egypt's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Egypt, national. Same starting condition as Zambia, Nigeria, Vietnam and India -- no
+# calibration quadrats, no register used, no third-party dataset checked against -- so the
+# builder's default no-ground-truth text stands. The segmentation is localized on
+# Egypt's own OpenStreetMap labels and ships only if it beats v5 on a held-out region
+# (results/egypt_checkpoint_decision.json records which one did).
+#
+# Numbers belong in docs/results/egypt.md; nothing here quotes a figure a
+# rebuild could change.
+
+title: Egypt
+
+cities:
+  - [Cairo, 31.236, 30.044]
+  - [Alexandria, 29.919, 31.200]
+  - [Giza, 31.209, 30.013]
+  - [Port Said, 32.302, 31.265]
+  - [Suez, 32.550, 29.967]
+  - [Mansoura, 31.379, 31.041]
+  - [Asyut, 31.183, 27.181]
+  - [Luxor, 32.639, 25.687]
+  - [Aswan, 32.899, 24.089]
+  - [Hurghada, 33.812, 27.257]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of
+      Egypt has been mapped panel by panel, so there is nothing to calibrate a per-building
+      rooftop classifier against here. Everything on the map is either hand-mapped in
+      OpenStreetMap or an array the segmentation model outlined directly, which in practice
+      means installations of roughly 400 m&sup2; and up. Household and small commercial rooftop systems are mostly below that size.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
+      A utility-scale park built on empty land that nobody has mapped yet falls outside
+      both rules and is not on this page.

@@ -387,6 +387,60 @@ aois:
       "0058_0155", "0058_0156", "0058_0157", "0058_0158", "0058_0159", "0058_0160", "0058_0161", "0058_0162"
     ]
 
+
+  # ---- 2026-10-10 run: Morocco, Egypt, Yemen, South Africa (scripts/run_country_queue.sh) ----
+  # All four start in Zambia's/Nigeria's/Vietnam's condition: no quadrats, no register, so a
+  # segmentation-only evidence atlas on a LOCALIZED checkpoint (the owner's ship rule decides
+  # against v5). Grid origins sit on the global 0.1-degree lattice. Composed `nearest`, like
+  # every composite v5 was trained on. val_tiles are chosen from each label map before any
+  # training (see each block); the compute chain refuses to train on an empty holdout.
+  #
+  # Morocco: bbox stops at 27.7 N. geoBoundaries' MAR ADM1 layer extends to 20.8 N, i.e. it
+  # includes Western Sahara; this AOI follows the internationally recognized line at
+  # 27 deg 40' N instead (the 3 km strip of Tarfaya province between it and 27.7 is dropped
+  # to keep whole cells). Dry-season window: northern Morocco is cloudy in its winter rains.
+  morocco:
+    bbox: [-13.2, 27.7, -1.0, 35.95]
+    division: { name: Morocco, country: MA, subtype: country, iso3: MAR }
+    grid_origin: [-13.2, 27.7]
+    compose_window: ["2026-04-01", "2026-09-30"]
+    cell_selection: duckdb
+    # Val holdout = Drâa-Tafilalet (geoBoundaries ADM1), 5 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 8 of
+    # 39 dissolved >= 400 m2 positives (20.5%); the largest
+    # region (Marrakech-Safi, 10) is never the holdout.
+    val_tiles: [
+      "0060_0032", "0060_0033", "0063_0033", "0073_0025", "0089_0038",
+    ]
+
+  egypt:
+    bbox: [24.7, 22.0, 36.9, 31.7]
+    division: { name: Egypt, country: EG, subtype: country, iso3: EGY }
+    grid_origin: [24.7, 22.0]
+    compose_window: ["2026-04-01", "2026-09-30"]
+    cell_selection: duckdb
+    val_tiles: []
+
+  # Yemen: the highlands take the summer monsoon, so the window is the Oct-Mar dry season.
+  yemen:
+    bbox: [41.8, 12.1, 54.6, 19.0]
+    division: { name: Yemen, country: YE, subtype: country, iso3: YEM }
+    grid_origin: [41.8, 12.1]
+    compose_window: ["2025-10-01", "2026-03-31"]
+    cell_selection: duckdb
+    val_tiles: []
+
+  # South Africa: Apr-Sep is the dry season for the summer-rainfall interior where most
+  # people live; the Western Cape's winter rain is handled by the least-cloudy selection.
+  # Prince Edward Islands excluded by the bbox.
+  south_africa:
+    bbox: [16.4, -34.9, 32.9, -22.1]
+    division: { name: South Africa, country: ZA, subtype: country, iso3: ZAF }
+    grid_origin: [16.4, -34.9]
+    compose_window: ["2026-04-01", "2026-09-30"]
+    cell_selection: duckdb
+    val_tiles: []
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]

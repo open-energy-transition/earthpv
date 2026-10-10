@@ -83,6 +83,11 @@ PUBLISHED = {
     "nigeria_pv_evidence_atlas.html": ("nigeria", "Nigeria"),
     "vietnam_pv_evidence_atlas.html": ("vietnam", "Vietnam"),
     "india_pv_evidence_atlas.html": ("india", "India"),
+    # The 2026-10-10 run, registered before the pages exist like Vietnam and India.
+    "morocco_pv_evidence_atlas.html": ("morocco", "Morocco"),
+    "egypt_pv_evidence_atlas.html": ("egypt", "Egypt"),
+    "yemen_pv_evidence_atlas.html": ("yemen", "Yemen"),
+    "south_africa_pv_evidence_atlas.html": ("south_africa", "South Africa"),
 }
 
 

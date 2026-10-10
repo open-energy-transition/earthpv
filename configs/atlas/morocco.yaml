@@ -1,0 +1,41 @@
+# Morocco's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Morocco north of 27 deg 40' N (configs/aoi.yaml's morocco block explains the cut). Same starting condition as Zambia, Nigeria, Vietnam and India -- no
+# calibration quadrats, no register used, no third-party dataset checked against -- so the
+# builder's default no-ground-truth text stands. The segmentation is localized on
+# Morocco's own OpenStreetMap labels and ships only if it beats v5 on a held-out region
+# (results/morocco_checkpoint_decision.json records which one did).
+#
+# Numbers belong in docs/results/morocco.md; nothing here quotes a figure a
+# rebuild could change.
+
+title: Morocco
+
+cities:
+  - [Casablanca, -7.589, 33.573]
+  - [Rabat, -6.841, 34.020]
+  - [Marrakesh, -7.981, 31.630]
+  - [Fes, -5.004, 34.033]
+  - [Tangier, -5.834, 35.759]
+  - [Agadir, -9.598, 30.427]
+  - [Meknes, -5.555, 33.895]
+  - [Oujda, -1.908, 34.681]
+  - [Ouarzazate, -6.894, 30.920]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of
+      Morocco has been mapped panel by panel, so there is nothing to calibrate a per-building
+      rooftop classifier against here. Everything on the map is either hand-mapped in
+      OpenStreetMap or an array the segmentation model outlined directly, which in practice
+      means installations of roughly 400 m&sup2; and up. Household rooftop systems are mostly below that size.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
+      A utility-scale park built on empty land that nobody has mapped yet falls outside
+      both rules and is not on this page.
+    - >-
+      <b>The map stops at 27&deg;40&prime; N.</b> The boundary layer this pipeline uses
+      extends further south; this page follows the internationally recognized line
+      instead, and the territory south of it is not included.

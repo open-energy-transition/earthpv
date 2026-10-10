@@ -1,0 +1,41 @@
+# Yemen's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Yemen, national. Same starting condition as Zambia, Nigeria, Vietnam and India -- no
+# calibration quadrats, no register used, no third-party dataset checked against -- so the
+# builder's default no-ground-truth text stands. The segmentation is localized on
+# Yemen's own OpenStreetMap labels and ships only if it beats v5 on a held-out region
+# (results/yemen_checkpoint_decision.json records which one did).
+#
+# Numbers belong in docs/results/yemen.md; nothing here quotes a figure a
+# rebuild could change.
+
+title: Yemen
+
+cities:
+  - [Sana'a, 44.206, 15.369]
+  - [Aden, 45.037, 12.786]
+  - [Taiz, 44.021, 13.579]
+  - [Hodeidah, 42.954, 14.798]
+  - [Ibb, 44.183, 13.967]
+  - [Dhamar, 44.405, 14.543]
+  - [Marib, 45.322, 15.462]
+  - [Mukalla, 49.124, 14.542]
+  - [Sayun, 48.789, 15.943]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of
+      Yemen has been mapped panel by panel, so there is nothing to calibrate a per-building
+      rooftop classifier against here. Everything on the map is either hand-mapped in
+      OpenStreetMap or an array the segmentation model outlined directly, which in practice
+      means installations of roughly 400 m&sup2; and up. Much of the solar in use here is small household systems on roofs, which this page cannot see.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
+      A utility-scale park built on empty land that nobody has mapped yet falls outside
+      both rules and is not on this page.
+    - >-
+      <b>OpenStreetMap coverage is uneven.</b> Hand-mapped solar is concentrated where
+      volunteer mappers have worked, so the verified layer says as much about mapping
+      effort as about where panels are.

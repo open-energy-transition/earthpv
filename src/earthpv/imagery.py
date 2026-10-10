@@ -65,6 +65,14 @@ _PROVIDER_OVERRIDE = os.environ.get("EARTHPV_STAC_PROVIDER", "").strip().lower()
 # SCL classes to keep: 4 vegetation, 5 bare, 6 water, 7 unclassified, 11 snow(excl)
 _SCL_VALID = (4, 5, 6, 7)
 MAX_CLOUD = 60  # scene-level filter; per-pixel SCL masking below
+# A scene counts as covering a cell when its STAC footprint covers this share of the cell.
+# See `_rank_items`: measured 2026-10-10 on India, where ranking by `eo:cloud_cover` alone
+# kept twelve scenes that each covered 11% of a cell.
+FULL_COVERAGE = 0.99
+# Reject a composite when one band is empty (0) over this much more of the cell than
+# another. SCL masking empties every band together, so a healthy composite sits at ~0; a
+# band whose reads all failed (`fail_on_error=False` turns them into NaN -> 0) does not.
+BAND_DROPOUT_MAX = 0.02
 
 # Earth Search serves the same COG assets keyed by common band name; the rest of
 # the pipeline (and the trained model's radiometry) speaks PC's B-names.
@@ -288,6 +296,33 @@ def _temporal_stats(stack, med_ds, bands: list[str]) -> np.ndarray:
     return np.stack(planes, axis=0).astype("uint16")
 
 
+def _rank_items(items: list, bbox: tuple[float, float, float, float]) -> list:
+    """Least-cloudy first, but never at the expense of covering the cell.
+
+    `eo:cloud_cover` is a property of the whole MGRS tile, so ranking on it alone is blind
+    to how much of THIS cell a scene covers. In a dry season dozens of scenes tie at 0.0%
+    and the catalogue's order decides; on India's cell 0135_0177 (Rewa Ultra Mega Solar)
+    all twelve kept scenes came from tile 44QNM, which covers 11% of the cell, while
+    equally cloud-free 44RNN scenes covering all of it ranked 15th and below. The
+    composite came out 87% empty and the park was never imaged (2026-10-10).
+
+    Scenes covering at least `FULL_COVERAGE` of the cell now rank ahead of partial ones,
+    each group in cloud order. Where the twelve least-cloudy scenes already cover the cell
+    the selection, and therefore the composite, is unchanged (`sorted` is stable).
+    """
+    from shapely.geometry import box, shape
+
+    cell = box(*bbox)
+
+    def partial(it) -> bool:
+        try:
+            return shape(it.geometry).intersection(cell).area / cell.area < FULL_COVERAGE
+        except Exception:  # noqa: BLE001 - an unreadable footprint keeps its old rank
+            return False
+
+    return sorted(items, key=lambda it: (partial(it), it.properties.get("eo:cloud_cover", 100)))
+
+
 def _annual_composite_via(
     provider: str,
     bbox: tuple[float, float, float, float],
@@ -318,7 +353,7 @@ def _annual_composite_via(
         items = sorted(search.items(), key=lambda it: it.properties.get("eo:cloud_cover", 100))
     if not items:
         return None
-    items = items[:max_items]
+    items = _rank_items(items, bbox)[:max_items]
     load_bands = [_ES_BAND_FOR[b] for b in [*bands, "SCL"]] if es else [*bands, "SCL"]
     lon = (bbox[0] + bbox[2]) / 2
     lat = (bbox[1] + bbox[3]) / 2
@@ -371,6 +406,16 @@ def _annual_composite_via(
         # means the reads failed wholesale, not that the ground is dark.
         raise RuntimeError(
             f"{provider}: composite {100 * (arr == 0).mean():.0f}% empty for bbox={bbox}"
+        )
+    band_empty = (arr == 0).reshape(arr.shape[0], -1).mean(axis=1)
+    if band_empty.max() - band_empty.min() > BAND_DROPOUT_MAX:
+        # Whole bands lost to failed reads, with the others intact. Measured on India's
+        # 2026-10 compose: 1.7% of sampled cells had at least one band entirely zero, and
+        # the model reads such a cell as empty. Raising hands the cell to the other
+        # provider, and failing that, to a later compose pass.
+        raise RuntimeError(
+            f"{provider}: band dropout for bbox={bbox}: "
+            + ", ".join(f"{b} {100 * e:.0f}%" for b, e in zip(bands, band_empty))
         )
     transform = med.odc.transform if hasattr(med, "odc") else med.rio.transform()
     crs = geobox.crs if geobox is not None else CRS.from_epsg(epsg)
