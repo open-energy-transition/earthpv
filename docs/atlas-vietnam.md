@@ -14,6 +14,7 @@ hide:
   <a href="../atlas-zambia/">Zambia</a>
   <a href="../atlas-nigeria/">Nigeria</a>
   <span aria-current="page">Vietnam</span>
+  <a href="../atlas-india/">India</a>
 </nav>
 <iframe src="../assets/interactive/vietnam_pv_evidence_atlas.html" title="Vietnam PV evidence atlas: verified and best estimate by 0.1-degree cell"></iframe>
 </div>

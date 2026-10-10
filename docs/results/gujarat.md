@@ -1,5 +1,12 @@
 # Gujarat capacity map (India)
 
+!!! note "Superseded 2026-10-11 by the national India page"
+    Gujarat is now covered by the [India results page](india.md) and its
+    [evidence atlas](../atlas-india.md), built from a newer checkpoint and a national label
+    pull. The state figure there is 7,647.1 MWp on the same estimator against 765.0 here;
+    [that page](india.md#against-the-old-gujarat-page) explains the difference. This page is
+    kept as the record of the 2026-08-07 run.
+
 Gujarat was registered as this project's first non-Pakistan AOI to prove the pipeline
 runs anywhere Sentinel-2 flies, without any locally cached labels or building data (see
 [Setup New Country](../reproduce.md#running-on-a-new-region)). This page is its first

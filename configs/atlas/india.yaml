@@ -2,9 +2,11 @@
 #
 # India, national. Same starting condition as Zambia and Nigeria -- no calibration
 # quadrats, no register used, no third-party dataset checked against -- so the builder's
-# default no-ground-truth text stands. The segmentation was fine-tuned on India's own
-# OpenStreetMap labels (the owner's 2026-09-23 instruction). Gujarat's older state-level
-# page (docs/results/gujarat.md) is superseded by this one.
+# default no-ground-truth text stands. A segmentation fine-tuned on India's own
+# OpenStreetMap labels (v10_combined_india, the owner's 2026-09-23 instruction) was trained
+# and LOST on the held-out Gujarat box, so this page runs on v5_combined_france, whose only
+# Indian training data is Gujarat's (results/india_checkpoint_decision.json). Gujarat's
+# older state-level page (docs/results/gujarat.md) is superseded by this one.
 #
 # Numbers belong in docs/results/india.md; nothing here quotes a figure that a rebuild
 # could change.

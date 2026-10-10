@@ -463,8 +463,8 @@ expect by starting condition and what differs from Pakistan.
 
 This section is the path from "we would like a solar map of X" to a published capacity
 atlas for X. The programme's stated next targets are Mexico, Japan, Korea, Indonesia,
-India, Brazil, South Africa and Nigeria, and Gujarat in India is already registered as a
-worked template. None of them require anything Pakistan required.
+India, Brazil, South Africa and Nigeria; India and Nigeria now have national atlases. None
+of them require anything Pakistan required.
 
 ### What makes it portable
 
@@ -798,7 +798,7 @@ days on a home connection.
 **What you can and cannot skip.** A country with exhaustively mapped calibration areas gets
 the full two-detector atlas. A country with a complete public register can substitute that
 register for the quadrats. A country with neither gets a **segmentation-only atlas**, which
-is a real result and is how Gujarat, Zambia, Nigeria and Vietnam are published here. What you cannot skip is
+is a real result and is how India, Zambia, Nigeria and Vietnam are published here. What you cannot skip is
 [random-cell manual validation](#12-manual-validation-random-cells) after national scoring:
 without it a number has no evidence behind it, and it is the one step no agent can do for
 you.

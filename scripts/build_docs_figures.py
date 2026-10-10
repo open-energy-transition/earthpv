@@ -2503,6 +2503,10 @@ INTERACTIVE = [
     # owner's ship rule picked it over v5 on the held-out Central Highlands), written by
     # scripts/run_country_compute.sh. docs/results/vietnam.md has the comparison.
     ("results/vietnam_pv_evidence_atlas.html", "vietnam_pv_evidence_atlas.html"),
+    # India: segmentation-only, national, on v5_combined_france. Its localized v10 was
+    # trained and lost the held-out Gujarat box under the same ship rule, so v5 ships.
+    # Written by scripts/run_country_compute.sh; docs/results/india.md has the comparison.
+    ("results/india_pv_evidence_atlas.html", "india_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 

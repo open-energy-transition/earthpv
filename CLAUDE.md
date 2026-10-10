@@ -229,7 +229,7 @@ yet). It has zero calibration quadrats, so it has no roofclf half. It was also b
 whichever checkpoint produced its 2026-07-12 candidates (likely `v2_combined`, since-deleted and
 unverifiable), not the current `v3_combined_india` -- flagged in the doc, not silently glossed
 over; re-running compose+infer with the current checkpoint is the natural next step for anyone
-who revisits this AOI.
+who revisits this AOI. **Superseded 2026-10-11 by the national India atlas** (below).
 
 ### Compose stage (imagery for AOIs without local composites)
 
@@ -1245,6 +1245,49 @@ What this run changed, all opt-in so other AOIs keep their behaviour:
   Before stopping a compose unit by hand, `rm data/vn_in_queue_markers/<aoi>_round_start`, or the
   queue books a false unproductive round and a 1 h cooldown. Stop the QUEUE first when removing
   compute markers, or its next tick can relaunch the chain before the markers are gone.
+
+**India published 2026-10-11 on v5, not v10: Verified 67,592.6 / Best 75,855.7 MWp** (90%
+47,486-97,145 / 66,332-99,761) over 25,576 cells, Sentinel-2 November 2025 to March 2026.
+v10 lost the inherited Gujarat holdout on recall >= 500 m2 (0.911 against 0.938) and IoU
+(0.663 against 0.686), so v5 ships under the rule; a whole-country v10 diagnostic runs after.
+`docs/results/india.md`. Verified is almost all ground perimeters (1,331 km2 at 0.05).
+`check-density` fails 12 of 35 regions on the ground:rooftop ratio (the missing rooftop
+denominator, as in France: MNRE's own split is 3.8x) and six single-cell flags, each a mapped
+plant. 30.3 GW of `est_mwp_rc`'s 37,273 MWp is the 1,333 OSM-outline candidates exempt from the
+merge cap. **Open question 23**: the Khavda outlines the ground screen drops from Verified come
+back into Best (3,789 MWp, 5%) through OSM-geometry substitution plus that exemption. Eleven
+capacity-tagged Indian parks measure 0.045 kWp/m2 (mostly AC) against the 0.05 land constant.
+The Gujarat page is superseded: the state went 765 -> 7,647 MWp, mostly because the OSM
+oversize exemption (2026-08-10) postdates that run.
+
+**Compose defects, fixed 2026-10-10 for new composites only (open question 22).**
+`eo:cloud_cover` is per MGRS tile, so dry-season scenes tie at 0% and the twelve kept could
+all come from a tile clipping the cell's corner: Rewa Ultra Mega Solar's cell was 87% empty
+and the 750 MW park dropped out of India's Verified. `imagery._rank_items` ranks scenes
+covering >= 99% of the cell first. And `odc.stac.load(fail_on_error=False)` turns failed reads
+into zeros, so a cell could lose a whole band; `imagery.BAND_DROPOUT_MAX` now raises (the cell
+is retried). India (1.3% of cells each), Zambia, Nigeria and Vietnam were NOT recomposited;
+`scripts/scan_composite_defects.py` measures a country.
+
+**Solar-thermal is in OSM under the same `generator:source=solar` tag**, and the label pull
+keeps it. `scripts/drop_solar_thermal.py --aoi <aoi>` drops thermal/CSP elements from the
+labels before chips; `--candidates` drops candidates at least half inside them before
+`density`. Morocco's pull was half thermal (1,697 of 3,440, the Noor CSP complex). Every
+country before Morocco is unfiltered.
+
+### Morocco, Egypt, Yemen, South Africa (launched 2026-10-10)
+
+Same owner rules as above (localize, ship the better checkpoint on a holdout, >= 1,000
+buildings per cell plus label cells, publish by push to main). `earthpv-country-queue`
+(`scripts/run_country_queue.sh`; status `bash scripts/country_queue_status.sh`; markers
+`data/country_queue_markers/`; check-in log `data/country_monitor.log`) pulls labels, runs the
+thermal filter, composes one country at a time and hands each to `run_country_compute.sh
+<aoi>` with `SKIP_DIAGNOSTIC=1`. Checkpoints v11_combined_morocco, v12_combined_egypt, v13_combined_yemen,
+v14_combined_south_africa. Holdouts are picked from the label map before training by
+`scripts/pick_val_region.py` (ADM1 rule in its docstring) and written into `configs/aoi.yaml`.
+Morocco's AOI stops at 27.7N, the internationally recognised line (geoBoundaries MAR includes
+Western Sahara), and its holdout (Draa-Tafilalet, 8 of 39 positives) is too thin to settle the
+ship rule with confidence.
 
 ## Conventions & gotchas
 

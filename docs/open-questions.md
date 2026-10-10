@@ -577,6 +577,67 @@ epoch is the same order as the recomposite [item 18](#18-compose-downloads-31-ti
 prices, and unlike that one it does not replace what already exists, so both epochs have to
 be kept.
 
+### 22. Composites built before 2026-10-10 carry two compose defects (2026-10-10)
+
+Found while publishing India, when Rewa Ultra Mega Solar (750 MW, fully mapped) turned out
+never to have been imaged. Both defects are fixed in `imagery.py` for every composite built
+from 2026-10-10 on; nothing built earlier was recomposited.
+
+**Scene ranking ignored coverage.** `annual_composite` kept the twelve scenes with the
+lowest `eo:cloud_cover`, a property of the whole MGRS tile. In a dry season dozens tie at
+0.0% and the catalogue's order decides. For Rewa's cell (India `0135_0177`) all twelve came
+from tile 44QNM, which covers 11% of the cell, while equally cloud-free 44RNN scenes covering
+all of it ranked 15th and lower: the composite was 87% empty. Scenes covering at least 99%
+of a cell now rank first (`imagery._rank_items`), which leaves a cell's selection unchanged
+whenever its twelve least-cloudy scenes already covered it, and recomposing Rewa's cell
+took it from 87.4% to 0.0% empty.
+
+**Whole bands lost to failed reads.** `odc.stac.load(..., fail_on_error=False)` turns a
+failed range request into NaN and then 0, so a cell whose every read of one band failed
+kept the other nine and passed the "at least 1% non-zero" check. India's compose logged
+about 33,000 failed range requests. On such a cell the model mostly detects nothing. A
+composite whose bands differ in empty share by more than 2% now raises, which hands the
+cell to the other provider or a later pass (`imagery.BAND_DROPOUT_MAX`).
+
+Measured on random samples of existing composites (all-band-empty pixels lying on straight
+raster rows or columns, which is what a tile edge looks like in the cell's UTM grid):
+
+| | cells sampled | a band entirely missing | tile-edge gap above 5% | area lost to tile-edge gaps |
+| --- | --- | --- | --- | --- |
+| India | 3,000 | 1.3% | 1.3% | 0.79% |
+| Zambia | 400 | 0.0% | 1.5% | 0.85% |
+| Nigeria | 400 | 0.0% | 0.8% | 0.34% |
+| Vietnam | 400 | 0.5% | 0.2% | 0.19% |
+| France | 400 | 0.2% | 0.0% | 0.0% |
+
+Nationally this is about 1% of imaged area, which is small against everything else these
+segmentation-only floors leave out, but the loss is concentrated rather than spread out:
+one gap removed a 750 MW park from India's page. **What would close it:** recomposite only the affected
+cells (a per-cell scan of all of India takes about two hours), re-infer and re-run the atlas
+chain. Mixing is not a concern here, because the recipe and radiometry are unchanged and
+only the scene choice differs.
+
+### 23. Gate-rejected OSM outlines re-enter Best through the model (2026-10-11)
+
+Found while publishing India. `prepare_national_osm_solar.py --keep-detected-screen` keeps a
+ground perimeter above the 5 km&sup2; cap only when the screen finds it imaged and at least
+50% detected, which drops outlines drawn around planned zones. That gate acts on the OSM
+layer, i.e. on Verified. The model side has its own route to the same outline:
+`postprocess.replace_with_osm_geometry` substitutes a mapped outline for the model
+candidate it matches, and `density.capacity_relevant_candidates` exempts OSM geometry from
+the 100,000 m&sup2; cap, so the outline is credited at its full area times the land constant
+times `p_real`.
+
+In India that puts **3,789 MWp of Best (5.0%)** on the Khavda RE Park (88.3 km&sup2;, 19%
+detected) and NTPC Khavda (62.0 km&sup2;, 22%) outlines, both zero in Verified, plus about
+200 MWp on a 7.9 km&sup2; Rajasthan outline that is 0.06% detected. Simply refusing the
+exemption is not right either: the model's own polygons at Khavda are merged blobs above the
+cap, so a zone with several GW operating would fall to almost nothing.
+
+**What would close it:** for an OSM-geometry candidate whose outline failed the screen,
+credit the detected part of the outline (the thresholded probability inside it) instead of
+the whole. The screen already measures that area.
+
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.
