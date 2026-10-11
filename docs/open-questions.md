@@ -617,27 +617,6 @@ cells (a per-cell scan of all of India takes about two hours), re-infer and re-r
 chain. Mixing is not a concern here, because the recipe and radiometry are unchanged and
 only the scene choice differs.
 
-### 23. Gate-rejected OSM outlines re-enter Best through the model (2026-10-11)
-
-Found while publishing India. `prepare_national_osm_solar.py --keep-detected-screen` keeps a
-ground perimeter above the 5 km&sup2; cap only when the screen finds it imaged and at least
-50% detected, which drops outlines drawn around planned zones. That gate acts on the OSM
-layer, i.e. on Verified. The model side has its own route to the same outline:
-`postprocess.replace_with_osm_geometry` substitutes a mapped outline for the model
-candidate it matches, and `density.capacity_relevant_candidates` exempts OSM geometry from
-the 100,000 m&sup2; cap, so the outline is credited at its full area times the land constant
-times `p_real`.
-
-In India that puts **3,789 MWp of Best (5.0%)** on the Khavda RE Park (88.3 km&sup2;, 19%
-detected) and NTPC Khavda (62.0 km&sup2;, 22%) outlines, both zero in Verified, plus about
-200 MWp on a 7.9 km&sup2; Rajasthan outline that is 0.06% detected. Simply refusing the
-exemption is not right either: the model's own polygons at Khavda are merged blobs above the
-cap, so a zone with several GW operating would fall to almost nothing.
-
-**What would close it:** for an OSM-geometry candidate whose outline failed the screen,
-credit the detected part of the outline (the thresholded probability inside it) instead of
-the whole. The screen already measures that area.
-
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.

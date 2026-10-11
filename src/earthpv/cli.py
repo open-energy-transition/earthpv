@@ -1616,7 +1616,7 @@ def calibrate_candidates(
 
     from earthpv import capacity_calibration as cc
     from earthpv.config import Settings
-    from earthpv.density import capacity_relevant_candidates
+    from earthpv.density import capacity_relevant_candidates, load_osm_screen
     from earthpv.export import _load_mapped_reference, load_mapped_reference_attrs
     from earthpv.labels import resolve_aoi
     from earthpv.postprocess import MAX_CANDIDATE_M2
@@ -1629,7 +1629,8 @@ def calibrate_candidates(
     # oversize blobs density excludes) means recall in the largest bins reflects how
     # often a >100,000 m2 merged blob happens to sit near a mapped reference
     # installation, not how often the model's own capacity-relevant detections do.
-    cands, _ = capacity_relevant_candidates(raw_cands, max_candidate_m2)
+    cands, _ = capacity_relevant_candidates(
+        raw_cands, max_candidate_m2, osm_screen=load_osm_screen(aoi))
     if len(cands) != len(raw_cands):
         typer.echo(
             f"Calibrating against the capacity-relevant population: {len(cands)}/"

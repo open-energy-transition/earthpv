@@ -309,7 +309,15 @@ capacity (`density.capacity_relevant_candidates`, shared by `run_density` and th
 atlas) -- `polygonize_chips` merges every touching thresholded pixel with no upper bound, so a
 connected sheet of false positives can become one multi-km² "installation." A
 `geometry_source == "osm"` oversize candidate (a real, human-mapped footprint) is exempted from
-the exclusion.
+the exclusion. **Since 2026-10-11 the exemption has two limits, each mirroring a rule the OSM
+layer already applies to Verified** (`prepare_national_osm_solar.py`): an exempted outline is
+always ground (VIDA traces a park's panel rows as buildings, so 101 Indian park outlines had
+been placed `rooftop` and converted at the module constant), and when the AOI has a ground
+screen (`results/<aoi>_osm_ground_screen/screen_full.csv`, auto-discovered by
+`density.load_osm_screen`) an outline above 5 km² that fails the screen's evidence (imaged
+>= 0.9, detected >= 0.5) is credited at outline area x `det_frac` instead of whole. Before it,
+an outline the gate dropped from Verified came back into Best whole (India's Khavda outlines,
+3,789 MWp). The same rule runs in `density`, the evidence atlas and `calibrate-candidates`.
 
 **Current national result (Pakistan, `est_mwp_rc`, as of the 2026-08-11 placement-split fix):
 4,051.9 MWp** (rooftop 2,916.3 MWp, ground-mount 1,135.6 MWp). `check-density` currently reports
@@ -1246,19 +1254,22 @@ What this run changed, all opt-in so other AOIs keep their behaviour:
   queue books a false unproductive round and a 1 h cooldown. Stop the QUEUE first when removing
   compute markers, or its next tick can relaunch the chain before the markers are gone.
 
-**India published 2026-10-11 on v5, not v10: Verified 67,592.6 / Best 75,855.7 MWp** (90%
-47,486-97,145 / 66,332-99,761) over 25,576 cells, Sentinel-2 November 2025 to March 2026.
+**India published 2026-10-11 on v5, not v10: Verified 67,592.6 / Best 72,271.1 MWp** (90%
+47,486-97,145 / 63,487-98,370) over 25,576 cells, Sentinel-2 November 2025 to March 2026.
 v10 lost the inherited Gujarat holdout on recall >= 500 m2 (0.911 against 0.938) and IoU
 (0.663 against 0.686), so v5 ships under the rule; a whole-country v10 diagnostic runs after.
 `docs/results/india.md`. Verified is almost all ground perimeters (1,331 km2 at 0.05).
-`check-density` fails 12 of 35 regions on the ground:rooftop ratio (the missing rooftop
-denominator, as in France: MNRE's own split is 3.8x) and six single-cell flags, each a mapped
-plant. 30.3 GW of `est_mwp_rc`'s 37,273 MWp is the 1,333 OSM-outline candidates exempt from the
-merge cap. **Open question 23**: the Khavda outlines the ground screen drops from Verified come
-back into Best (3,789 MWp, 5%) through OSM-geometry substitution plus that exemption. Eleven
-capacity-tagged Indian parks measure 0.045 kWp/m2 (mostly AC) against the 0.05 land constant.
-The Gujarat page is superseded: the state went 765 -> 7,647 MWp, mostly because the OSM
-oversize exemption (2026-08-10) postdates that run.
+**Revised the same day from Best 75,855.7** by the OSM-outline fix (see "Density stage"):
+Khavda's two screen-rejected outlines went 3,789 -> 796 MWp, and 101 park outlines VIDA had
+placed `rooftop` moved to ground (model rooftop 4,109 -> 843 MWp; they had also set the
+largest rooftop bin's `p_real`, 0.318 -> 0.171 once the table was re-derived). Pre-fix outputs
+are kept in `/home/tobi/earthpv_data/india_PRE_osm_outline_fix_20261011/`.
+`check-density` fails 17 of 35 regions, 16 on the ground:rooftop ratio (the missing rooftop
+denominator, as in France: national 38x against MNRE's 3.8x) and six single-cell flags, each
+a mapped plant. 27.8 GW of `est_mwp_rc`'s 32,868 MWp is the 1,331 OSM-outline candidates
+exempt from the merge cap. Eleven capacity-tagged Indian parks measure 0.045 kWp/m2 (mostly
+AC) against the 0.05 land constant. The Gujarat page is superseded: the state went 765 ->
+4,554 MWp, mostly because the OSM oversize exemption (2026-08-10) postdates that run.
 
 **Compose defects, fixed 2026-10-10 for new composites only (open question 22).**
 `eo:cloud_cover` is per MGRS tile, so dry-season scenes tie at 0% and the twelve kept could

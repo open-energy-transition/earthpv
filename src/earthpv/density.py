@@ -104,6 +104,32 @@ _CAND_COLS = [
     "pv_area_cal_total_m2", "pv_area_cal_roofcand_m2",
 ]
 
+# The OSM layer's ground cap and the screen evidence that lifts it, shared with
+# scripts/prepare_national_osm_solar.py (derivation of the 5 km2 cap there) so the candidate
+# side of the atlas applies the same rule as the Verified side: see
+# `capacity_relevant_candidates`.
+OSM_GROUND_MAX_M2 = 5_000_000.0
+SCREEN_MIN_IMAGED_FRAC = 0.9
+SCREEN_MIN_DET_FRAC = 0.5
+
+
+def default_osm_screen_path(aoi: str | None) -> Path | None:
+    """The ground-perimeter screen `run_country_compute.sh` writes before `density`
+    (scripts/screen_osm_ground_perimeters.py), or None when this AOI has none."""
+    if not aoi:
+        return None
+    p = Path("results") / f"{aoi}_osm_ground_screen" / "screen_full.csv"
+    return p if p.exists() else None
+
+
+def load_osm_screen(aoi: str | None) -> pd.DataFrame | None:
+    p = default_osm_screen_path(aoi)
+    if p is None:
+        return None
+    scr = pd.read_csv(p, usecols=["id", "imaged_frac", "det_frac"])
+    log.info("OSM ground screen for %s: %s (%d perimeters)", aoi, p, len(scr))
+    return scr.drop_duplicates("id")
+
 # Building-density range (buildings/km2) spanned by every currently Rule-1-complete
 # calibration quadrat -- 23 quadrats as of 2026-08-11 (widened from 22 quadrats,
 # 277.75-5258.00, measured earlier the same day). Deliberately the FULL span, not just
@@ -233,6 +259,7 @@ def _dedup_osm_oversize(over_osm: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 def capacity_relevant_candidates(
     cands: gpd.GeoDataFrame, max_candidate_m2: float = MAX_CANDIDATE_M2,
+    osm_screen: pd.DataFrame | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The candidate population that actually earns capacity.
 
@@ -265,11 +292,37 @@ def capacity_relevant_candidates(
     real bug otherwise: an OSM installation matched only by a non-exempt oversize blob
     would be marked "already found by the model" while contributing zero to the
     model's own capacity number -- measured 2026-08-10 at 1,704 MWp nationally).
+
+    **Two limits on the exemption (2026-10-11, open question 23), both mirroring rules
+    the OSM layer (`scripts/prepare_national_osm_solar.py`) already applies to Verified:**
+
+    - An exempted outline is a SITE, so it is never `rooftop`: `postprocess` places a
+      candidate by its VIDA overlap, and VIDA traces a park's panel rows as buildings.
+      India had 101 park outlines (50.5 km2) placed `rooftop`, converting at the module
+      constant and the rooftop `p_real`, 2.3x what the same outline earns as ground --
+      2,891 of the 4,109 MWp of rooftop segmentation. The OSM layer reclassifies a
+      `rooftop` feature above the same cap to ground; this does the same.
+    - With `osm_screen` (the ground-perimeter screen, `load_osm_screen`), an exempted
+      outline above `OSM_GROUND_MAX_M2` that fails the screen's evidence (imaged
+      >= `SCREEN_MIN_IMAGED_FRAC` and detected >= `SCREEN_MIN_DET_FRAC`) is credited at
+      its DETECTED share only: `area_m2` becomes outline area x `det_frac`, the share of
+      the imaged part the model lights up, applied to the whole outline (an unimaged
+      part is a compose gap, not evidence of absence), and an outline with nothing
+      imaged earns nothing. Without it, an outline the gate drops from Verified came
+      back into Best whole: India's Khavda RE Park (88.3 km2, 19% detected) and NTPC
+      Khavda (62.0 km2, 22%) were 3,789 MWp of Best against zero in Verified. Refusing
+      the exemption instead would zero them, since the model's own polygons there are
+      merged blobs above the cap. Geometry is kept (it decides the cell and the OSM
+      match); only the credited area shrinks.
     """
     stats = {
         "n_oversize_excluded": 0, "oversize_area_m2": 0.0,
         "n_osm_oversize_exempted": 0, "osm_oversize_exempted_area_m2": 0.0,
         "n_osm_oversize_dedup_dropped": 0, "osm_oversize_dedup_dropped_area_m2": 0.0,
+        "n_osm_oversize_roof_to_ground": 0, "osm_oversize_roof_to_ground_area_m2": 0.0,
+        "osm_screen_applied": osm_screen is not None,
+        "n_osm_oversize_screen_limited": 0, "osm_oversize_screen_outline_area_m2": 0.0,
+        "osm_oversize_screen_credited_area_m2": 0.0,
     }
     if not max_candidate_m2 or cands.empty:
         return cands, stats
@@ -294,6 +347,42 @@ def capacity_relevant_candidates(
         cands.loc[dissolved.index, "geometry"] = dissolved.geometry.to_numpy()
         cands.loc[dissolved.index, "area_m2"] = dissolved["area_m2"].to_numpy()
         exempt.loc[dissolved.index] = True
+        if "placement" in cands.columns:
+            roof = cands.loc[dissolved.index, "placement"].astype(str) == "rooftop"
+            roof_ix = roof.index[roof.to_numpy()]
+            stats["n_osm_oversize_roof_to_ground"] = int(len(roof_ix))
+            stats["osm_oversize_roof_to_ground_area_m2"] = float(cands.loc[roof_ix, "area_m2"].sum())
+            cands.loc[roof_ix, "placement"] = "ground_adjacent"
+            if len(roof_ix):
+                log.warning(
+                    "OSM-oversize: %d exempted outlines (%.2f km2) placed `rooftop` by VIDA "
+                    "overlap reclassified as ground -- a site, not a roof",
+                    len(roof_ix), stats["osm_oversize_roof_to_ground_area_m2"] / 1e6,
+                )
+        if osm_screen is not None:
+            exempted = cands.loc[dissolved.index]
+            scr = osm_screen.set_index("id")
+            mid = exempted.get("osm_matched_id", pd.Series(None, index=exempted.index))
+            imaged = mid.map(scr["imaged_frac"]).astype(float)
+            det = mid.map(scr["det_frac"]).astype(float)
+            passes = (imaged >= SCREEN_MIN_IMAGED_FRAC) & (det >= SCREEN_MIN_DET_FRAC)
+            limited = (exempted["area_m2"].to_numpy(float) > OSM_GROUND_MAX_M2) & ~passes.to_numpy()
+            lim_ix = exempted.index[limited]
+            if len(lim_ix):
+                outline = cands.loc[lim_ix, "area_m2"].to_numpy(float)
+                credited = outline * det.loc[lim_ix].fillna(0.0).to_numpy()
+                cands.loc[lim_ix, "area_m2"] = credited
+                stats["n_osm_oversize_screen_limited"] = int(len(lim_ix))
+                stats["osm_oversize_screen_outline_area_m2"] = float(outline.sum())
+                stats["osm_oversize_screen_credited_area_m2"] = float(credited.sum())
+                exempt.loc[lim_ix[credited <= 0]] = False   # nothing imaged: excluded below
+                log.warning(
+                    "OSM-oversize: %d exempted outlines above %.0f km2 fail the ground screen "
+                    "(imaged >= %.0f%% and detected >= %.0f%%) -- credited at their detected "
+                    "share, %.2f of %.2f km2 (the Verified layer drops them)",
+                    len(lim_ix), OSM_GROUND_MAX_M2 / 1e6, 100 * SCREEN_MIN_IMAGED_FRAC,
+                    100 * SCREEN_MIN_DET_FRAC, credited.sum() / 1e6, outline.sum() / 1e6,
+                )
         stats["n_osm_oversize_exempted"] = int(len(dissolved))
         stats["osm_oversize_exempted_area_m2"] = float(dissolved["area_m2"].sum())
         if stats["n_osm_oversize_dedup_dropped"]:
@@ -1402,7 +1491,8 @@ def run_density(
         )
 
     # Drop blobs before anything consumes them (see capacity_relevant_candidates).
-    cands, oversize_stats = capacity_relevant_candidates(cands, max_candidate_m2)
+    cands, oversize_stats = capacity_relevant_candidates(
+        cands, max_candidate_m2, osm_screen=load_osm_screen(aoi))
     n_oversize = oversize_stats["n_oversize_excluded"]
     oversize_area_m2 = oversize_stats["oversize_area_m2"]
     n_osm_oversize_exempted = oversize_stats["n_osm_oversize_exempted"]
@@ -1594,6 +1684,10 @@ def run_density(
         "osm_oversize_exempted_area_m2": osm_oversize_exempted_area_m2,
         "n_osm_oversize_dedup_dropped": n_osm_oversize_dedup_dropped,
         "osm_oversize_dedup_dropped_area_m2": osm_oversize_dedup_dropped_area_m2,
+        **{k: oversize_stats[k] for k in (
+            "n_osm_oversize_roof_to_ground", "osm_oversize_roof_to_ground_area_m2",
+            "osm_screen_applied", "n_osm_oversize_screen_limited",
+            "osm_oversize_screen_outline_area_m2", "osm_oversize_screen_credited_area_m2")},
         "did_full_rebuild": did_full_rebuild,
         "n_cell_failures": n_cell_failures,
         "candidates_fingerprint_written": did_full_rebuild and n_cell_failures == 0,

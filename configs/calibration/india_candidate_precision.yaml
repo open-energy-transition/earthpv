@@ -1,6 +1,6 @@
 aoi: india
 status: interim-mapped-only
-derived: '2026-10-09'
+derived: '2026-10-11'
 min_distance_m: 100.0
 false_floor: 0.087
 false_n: 69
@@ -86,8 +86,8 @@ bins:
   p_real_lo: 0.0034
   p_real_hi: 0.0053
 - label: 1k-5k
-  n_candidates: 36276
-  n_mapped: 253
+  n_candidates: 36277
+  n_mapped: 254
   mapped_frac: 0.007
   sensitivity: 0.306
   sensitivity_source: study
@@ -106,7 +106,7 @@ bins:
   recall_source: none
   p_real: 0.007
   p_real_lo: 0.0063
-  p_real_hi: 0.0077
+  p_real_hi: 0.0078
 - label: 5k-50k
   n_candidates: 19081
   n_mapped: 996
@@ -130,9 +130,9 @@ bins:
   p_real_lo: 0.0495
   p_real_hi: 0.0549
 - label: '>50k'
-  n_candidates: 3510
-  n_mapped: 1773
-  mapped_frac: 0.5051
+  n_candidates: 3509
+  n_mapped: 1772
+  mapped_frac: 0.505
   sensitivity: 0.261
   sensitivity_source: study
   sensitivity_study: 0.261
@@ -148,9 +148,9 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.5051
-  p_real_lo: 0.4912
-  p_real_hi: 0.519
+  p_real: 0.505
+  p_real_lo: 0.4911
+  p_real_hi: 0.5189
 provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from manual
   review of unmapped candidates where sampled (n>=20), else glint inversion p_u(b)
   = clip((v_b - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed
@@ -248,21 +248,21 @@ placement_bins:
     p_real_lo: 0.0159
     p_real_hi: 0.0203
   - label: '>50k'
-    n_candidates: 311
-    n_mapped: 99
-    mapped_frac: 0.3183
+    n_candidates: 210
+    n_mapped: 36
+    mapped_frac: 0.1714
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.3183
+    p_real: 0.1714
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.261
-    p_real_lo: 0.2761
-    p_real_hi: 0.3633
+    p_real_lo: 0.1326
+    p_real_hi: 0.218
   ground:
   - label: <100
     n_candidates: 1920
@@ -313,8 +313,8 @@ placement_bins:
     p_real_lo: 0.0017
     p_real_hi: 0.0032
   - label: 1k-5k
-    n_candidates: 22143
-    n_mapped: 112
+    n_candidates: 22144
+    n_mapped: 113
     mapped_frac: 0.0051
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
@@ -326,7 +326,7 @@ placement_bins:
     recall: null
     recall_source: none
     sensitivity: 0.306
-    p_real_lo: 0.0043
+    p_real_lo: 0.0044
     p_real_hi: 0.0059
   - label: 5k-50k
     n_candidates: 9201
@@ -345,18 +345,18 @@ placement_bins:
     p_real_lo: 0.0699
     p_real_hi: 0.0788
   - label: '>50k'
-    n_candidates: 3199
-    n_mapped: 1613
-    mapped_frac: 0.5042
+    n_candidates: 3299
+    n_mapped: 1710
+    mapped_frac: 0.5183
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.5042
+    p_real: 0.5183
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.261
-    p_real_lo: 0.4896
-    p_real_hi: 0.5186
+    p_real_lo: 0.504
+    p_real_hi: 0.5324

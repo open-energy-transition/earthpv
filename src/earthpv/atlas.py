@@ -2119,7 +2119,7 @@ def build_evidence_atlas(
     #     `postprocess.replace_with_osm_geometry`, so one candidate blob overlapping many
     #     mapped installations only ever "claims" one of them -- see this function's
     #     docstring for the ~1,900 MWp of double-counting that undercounted matches.
-    from earthpv.density import capacity_relevant_candidates
+    from earthpv.density import capacity_relevant_candidates, load_osm_screen
     from earthpv.export import new_lead_mask
     from earthpv.labels import dissolve_overlapping
     from earthpv.postprocess import NEAR_BUILDING_M
@@ -2137,7 +2137,7 @@ def build_evidence_atlas(
     # the model" in any sense `mwp_large` reflects -- counting it as matched would
     # double-subtract it from `osm_mwp_unmatched` for nothing (measured 2026-08-10 at
     # 1,704 MWp nationally, see capacity_relevant_candidates's docstring).
-    cand, _ = capacity_relevant_candidates(cand)
+    cand, _ = capacity_relevant_candidates(cand, osm_screen=load_osm_screen(aoi))
     osm = osm.copy()
     osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=NEAR_BUILDING_M)
     # Rooftop conversion is size-dependent where it has been measured against a register
@@ -2623,7 +2623,7 @@ def _size_distribution_data(
     membership can't drift between the two atlases.
     """
     from earthpv import capacity_calibration as cc
-    from earthpv.density import capacity_relevant_candidates
+    from earthpv.density import capacity_relevant_candidates, load_osm_screen
     from earthpv.export import new_lead_mask
     from earthpv.labels import dissolve_overlapping
     from earthpv.postprocess import NEAR_BUILDING_M
@@ -2654,7 +2654,7 @@ def _size_distribution_data(
 
     # --- segmentation candidates: seg_ground (everywhere) + seg_roof_outdomain -------
     cands = gpd.read_parquet(candidates_path)
-    cands, _ = capacity_relevant_candidates(cands)
+    cands, _ = capacity_relevant_candidates(cands, osm_screen=load_osm_screen(aoi))
     table = cc.load_table(cc.default_table_path(aoi))
 
     ge400 = gpd.read_parquet(ge400_roof_buildings_path)

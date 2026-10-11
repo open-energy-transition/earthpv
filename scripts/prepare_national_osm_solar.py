@@ -39,6 +39,7 @@ import numpy as np
 import pandas as pd
 
 from earthpv.config import Settings
+from earthpv.density import OSM_GROUND_MAX_M2, SCREEN_MIN_DET_FRAC, SCREEN_MIN_IMAGED_FRAC
 from earthpv.export import load_mapped_reference_attrs
 from earthpv.labels import geodesic_area_m2, resolve_aoi
 from earthpv.postprocess import MAX_CANDIDATE_M2
@@ -63,13 +64,15 @@ ROOFTOP_MAX_M2 = MAX_CANDIDATE_M2
 # where the population stops being PV at all. Germany's largest real solar park is about 5 km2.
 # Those 21 polygons hold 33% of all German OSM ground area and contributed ~15 GWp to the
 # atlas's Verified tier, which is why it read 121% of all registered German ground-mount.
-GROUND_MAX_M2 = 5_000_000.0
+# Defined in density.py, whose `capacity_relevant_candidates` applies the same cap and the
+# same screen evidence to OSM outlines on the model side (2026-10-11, open question 23).
+GROUND_MAX_M2 = OSM_GROUND_MAX_M2
 
 
 def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
             ground_max_m2: float = GROUND_MAX_M2, labels: Path | None = None,
             clip: bool = True, keep_detected_screen: Path | None = None,
-            keep_min_det_frac: float = 0.5) -> Path:
+            keep_min_det_frac: float = SCREEN_MIN_DET_FRAC) -> Path:
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
     if labels is not None:
@@ -159,7 +162,7 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
     # was imaged and the checkpoint detects PV over at least `keep_min_det_frac` of it.
     if keep_detected_screen is not None and too_big.any():
         scr = pd.read_csv(keep_detected_screen)
-        ok_ids = set(scr.loc[(scr["imaged_frac"] >= 0.9)
+        ok_ids = set(scr.loc[(scr["imaged_frac"] >= SCREEN_MIN_IMAGED_FRAC)
                              & (scr["det_frac"] >= keep_min_det_frac), "id"])
         rescued = too_big & ref["id"].isin(ok_ids).to_numpy()
         if rescued.any():
@@ -216,7 +219,7 @@ def main() -> None:
         "features above --ground-max-m2 are KEPT when that screen shows them imaged and "
         "detected over at least --keep-min-det-frac of their area. Off by default.",
     )
-    ap.add_argument("--keep-min-det-frac", type=float, default=0.5)
+    ap.add_argument("--keep-min-det-frac", type=float, default=SCREEN_MIN_DET_FRAC)
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     out = a.out or Path(f"data/labels/{a.aoi}_national_osm_solar.parquet")

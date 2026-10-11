@@ -16,10 +16,18 @@ Interactive: [India PV evidence atlas](../atlas-india.md).
 | | |
 | --- | --- |
 | Verified | **67,592.6 MWp** (90% 47,486 to 97,145) |
-| Best estimate | **75,855.7 MWp** (90% 66,332 to 99,761) |
-| Grid | 25,576 of 25,590 selected cells of 0.1&deg;, 35 of 36 states and union territories states and union territories (geoBoundaries) |
+| Best estimate | **72,271.1 MWp** (90% 63,487 to 98,370) |
+| Grid | 25,576 of 25,590 selected cells of 0.1&deg;, 35 of 36 states and union territories (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, November 2025 to March 2026 |
 | Model | `v5_combined_france` epoch 25 (the localized `v10_combined_india` lost; see below) |
+
+!!! note "Revised the day it was published"
+    This page first went out on 11 October with Best at 75,855.7 MWp (90% 66,332 to
+    99,761). Later that day two defects in how mapped park outlines enter Best were
+    fixed, both described
+    [in the screen section](#the-ground-perimeter-screen-and-the-5-km2-cap): the Khavda
+    outlines the screen rejects had come back into Best whole, and 101 park outlines had
+    been placed on rooftops. Best fell by 3,584.6 MWp; Verified did not move.
 
 !!! warning "A precision floor, not an estimate"
     India has **no calibration quadrats**, so there is no `roofclf` half and no instrument
@@ -108,17 +116,28 @@ outline in Rajasthan with 0.06% detected. The other five are wrong drops, all on
 outlines, for the reason above, and three parks of 5.1 to 5.9 km&sup2; that are 76 to 94%
 detected where imaged but only 24 to 77% imaged.
 
-**The gate covers Verified only, and most of its drops come back through the model.**
-`postprocess` substitutes a mapped outline for the model candidate it matches, and
-`density` exempts OSM geometry from the 100,000 m&sup2; cap, so the Khavda RE Park and NTPC
-Khavda outlines enter Best at their full area times the land constant times the largest
-ground bin's `p_real` (0.504): **3,789 MWp in their two cells, 5.0% of Best**, against zero
-in Verified. The Rajasthan outline adds about 200 MWp the same way, and the three partly
-imaged parks about 400 MWp, which is the right outcome for them. Removing the Khavda
-outlines would not fix it: the model's own polygons at Khavda are merged blobs above the
-cap and are excluded, so a zone with several GW operating would drop to almost nothing. The evidence-based figure would credit the detected part of each
-outline; that is
-[open question 23](../open-questions.md#23-gate-rejected-osm-outlines-re-enter-best-through-the-model-2026-10-11).
+**Best now applies the same gate.** As first published, the gate covered Verified only and
+its drops came back through the model: `postprocess` substitutes a mapped outline for the
+model candidate it matches, and `density` exempts OSM geometry from the 100,000 m&sup2;
+cap, so the Khavda RE Park and NTPC Khavda outlines entered Best whole, 3,789 MWp in their
+two cells (5.0% of that day's Best) against zero in Verified. `density` now applies the
+gate's evidence rule on the model side as well: an outline above 5 km&sup2; that fails it
+is credited at its area times the share of its imaged part the model detects, and an
+outline with nothing imaged earns nothing. The two Khavda cells fall to **796.4 MWp**
+(30.7 of 150.2 km&sup2; credited) and the Rajasthan outline from 199.4 MWp to zero. The
+three partly imaged parks keep 76 to 94% of their area, since an unimaged part is a
+compose gap, not evidence of absence. Refusing the exemption outright would have been wrong
+the other way: the model's own polygons at Khavda are merged blobs above the cap, so a zone
+with several GW operating would have dropped to almost nothing.
+
+**A mapped park outline is never rooftop.** `postprocess` places a candidate by its overlap
+with VIDA footprints, and VIDA traces a park's panel rows as buildings, so 101 of the
+exempt outlines (50.5 km&sup2;) had been placed `rooftop`, converted at the module
+constant and priced at the rooftop `p_real`. They held 2,891 of the 4,109 MWp the model
+reported as rooftop, and they had also set the largest rooftop bin's `p_real` (0.318; 0.171
+without them). The OSM layer already reclassified a rooftop feature this large as ground;
+the candidate side now does the same, and the precision table was re-derived on the
+corrected population.
 
 **The land constant holds here.** Of the kept parks above 5 km&sup2;, eleven carry a
 capacity tag: 9,658 MW on 214.7 km&sup2;, **0.045 kWp/m&sup2;** pooled (median 0.047, IQR
@@ -130,38 +149,42 @@ constant is not universal, but it fits the Indian utility-scale fleet.
 
 ## Plausibility gate
 
-`earthpv check-density` reports **12 fail and 13 suspect of 35 regions**. Eleven of the
-twelve fail the ground-to-rooftop ratio above 5x, from Madhya Pradesh (5.2x) to Andhra
-Pradesh (24x); nationally the model's estimate is 33,164 MWp ground against 4,109 MWp
-rooftop, 8.1x. MNRE's own split is 3.8x (125.65 GW against 33.41 GW). As in
-[France](france.md), the gate is firing on the missing rooftop denominator: the household
-programme's 3.6 kW systems are below what this sensor can see, so every regional ratio is
-inflated.
+`earthpv check-density` reports **17 fail and 9 suspect of 35 regions**. Sixteen of the
+seventeen fail the ground-to-rooftop ratio above 5x, from Punjab (7.8x) to Rajasthan
+(108x); nationally the model's estimate is 32,025 MWp ground against 843 MWp rooftop, 38x.
+MNRE's own split is 3.8x (125.65 GW against 33.41 GW). As in [France](france.md), the gate
+is firing on the missing rooftop denominator: the household programme's 3.6 kW systems are
+below what this sensor can see, so every regional ratio is inflated. The ratios read worse
+than on the first version of this page (12 fail, national 8.1x) because most of what the
+model then called rooftop was park outlines (see the screen section above).
 
 Six regions also fail the single-cell check, and each flagged cell holds a mapped plant:
-the Khavda outlines in Gujarat (29% of the state, see above), the Ananthapuramu park at NP
-Kunta in Andhra Pradesh (30%, 44.3 km&sup2; of OSM outline), and mapped plants in
-Chhattisgarh, Kerala, Assam and Jharkhand (1.3 to 5.1 km&sup2; each). Jharkhand fails on
-concentration alone. The check exists to catch ground-mount false positives on bright bare
-land; here 1,203 of the 1,468 km&sup2; of capacity-relevant ground candidate area carries a
-mapped plant's outline, and the screen above shows the model detecting PV over a median
-98.5% of those perimeters. Published with the flags stated, per this project's precedent
-for a checked-genuine failure.
+Pavagada in Karnataka (26% of the state), the Ananthapuramu park at NP Kunta in Andhra
+Pradesh (30%, 44.3 km&sup2; of OSM outline), and mapped plants in Chhattisgarh, Kerala,
+Assam and Jharkhand (1.3 to 5.1 km&sup2; each). Jharkhand fails on concentration alone.
+Gujarat no longer does: the Khavda outlines were 29% of the state before they were
+credited at their detected share. The check exists to catch ground-mount false positives
+on bright bare land; here 1,073 of the 1,433 km&sup2; of capacity-relevant ground candidate
+area is a mapped plant's outline, and the screen above shows the model detecting PV over a
+median 98.5% of those perimeters. Published with the flags stated, per this project's
+precedent for a checked-genuine failure.
 
 ## Candidate population
 
 95,381 candidates: 32,541 rooftop, 25,214 ground-adjacent, 37,626 with no building, median
 1,798 m&sup2;. 1,911 model-drawn candidates exceed the 100,000 m&sup2; merge cap and are
 excluded from capacity: 33.7% of candidate area, the largest 30.27 km&sup2;. A further 1,331
-oversize candidates carry an OSM-verified plant geometry and are exempt. The model's own estimate (`est_mwp_rc`) is
-37,272.9 MWp (90% 25,615 to 52,777), 4,108.9 rooftop and 33,164.0 ground; with no recall
-reference it equals the precision-weighted `est_mwp_cal_total`. 30.3 GW of it is the 1,333
-OSM-outline candidates, each weighted by the largest ground bin's `p_real` of 0.504. The
-probability-weighted `est_mwp_exp` is 29,520.5 MWp.
+oversize candidates carry an OSM-verified plant geometry and are exempt, all counted as
+ground, six of them at their detected share (44.7 of 174.3 km&sup2;). The model's own
+estimate (`est_mwp_rc`) is 32,868.2 MWp (90% 21,838 to 47,921), 843.0 rooftop and
+32,025.3 ground; with no recall reference it equals the precision-weighted
+`est_mwp_cal_total`. 27.8 GW of it is the 1,331 OSM-outline candidates, each weighted by the
+largest ground bin's `p_real` of 0.518. The probability-weighted `est_mwp_exp`, which
+does not use the candidate population, is 29,520.5 MWp.
 
 **Verified is almost all ground-mount.** It is the hand-mapped layer at the two constants:
 1,331 km&sup2; of dissolved ground perimeters against 9.3 km&sup2; of rooftop polygons. Best
-adds 8,263 MWp on top, model detections outside anything Verified counts, 3,789 MWp of
+adds 4,678.5 MWp on top, model detections outside anything Verified counts, 796.4 MWp of
 it at Khavda (see the screen section above).
 
 Solar-thermal is counted as PV on this page. OpenStreetMap tags concentrated-solar plants
@@ -176,16 +199,16 @@ the publish window. Every country run after India filters it
 
 The [Gujarat page](gujarat.md) reported 812.6 MWp (`est_mwp_rc`) over its bounding box,
 of which Gujarat state was 765.0 (168.7 rooftop, 596.3 ground). The same estimator here
-gives the state **7,647.1 MWp** (376.0 rooftop, 7,271.2 ground), and the atlas puts it at
-Verified 5,852.3 and Best 10,527.7 MWp over 1,423 cells.
+gives the state **4,554.1 MWp** (93.3 rooftop, 4,460.9 ground), and the atlas puts it at
+Verified 5,852.3 and Best 7,492.9 MWp over 1,423 cells.
 
 Almost all of the rise is one rule. The Gujarat run (2026-08-07) excluded every candidate
 above 100,000 m&sup2;, including those carrying a mapped plant's outline; `density` began
-exempting OSM geometry from the cap three days later. Those 135 candidates (262.7
-km&sup2;) are about 6.6 GW of the new state figure, 3.8 GW of it the two Khavda outlines.
-The rest is a different checkpoint (v5, where the old page used one since deleted) and a
-national precision table in place of Gujarat's own (the largest ground bin's `p_real` is
-0.504 here against 0.309).
+exempting OSM geometry from the cap three days later. Those 135 candidates (142.1
+km&sup2; credited) are about 3.7 GW of the new state figure, 0.8 GW of it the two Khavda
+outlines at their detected share. The rest is a different checkpoint (v5, where the old
+page used one since deleted) and a national precision table in place of Gujarat's own (the
+largest ground bin's `p_real` is 0.518 here against 0.309).
 
 ## Operational notes
 
