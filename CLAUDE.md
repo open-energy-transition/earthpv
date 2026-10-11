@@ -1287,7 +1287,14 @@ labels before chips; `--candidates` drops candidates at least half inside them b
 country before Morocco is unfiltered; India's share was measured after publication (253
 features, 473 MWp, ~0.7% of both tiers) and is carried as a known defect. At India's size
 the bbox scan fails on every Overpass mirror; `--by-id` looks the label elements up by id
-instead and finds the same droppable set.
+instead and finds the same droppable set. **The filter's backup was silently undoing it
+until 2026-10-11**: it was named `<aoi>_overpass_solar.with_thermal.parquet`, and
+`chips._newest_overpass_path` (chips, `evaluate`, compose's label cells) globs
+`<aoi>_overpass_solar*.parquet` and takes the last name in sort order, which was the
+backup. Morocco's first v11 trained on it, and its holdout PV pixels were 75% Noor CSP
+mirrors. The backup is now `<aoi>_solar_labels_with_thermal.parquet` and dotted stems are
+ignored; Morocco's pre-fix run is kept in
+`/home/tobi/earthpv_data/morocco_PRE_thermalfix_20261011/`.
 
 ### Morocco, Egypt, Yemen, South Africa (launched 2026-10-10)
 

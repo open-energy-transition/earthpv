@@ -54,7 +54,11 @@ def _newest_overpass_path(aoi: str, labels_dir: Path) -> Path:
     sorts before '_' lexicographically, so the bare name always sorts first and a
     dated suffix always wins.
     """
-    cands = sorted(Path(labels_dir).glob(f"{aoi}_overpass_solar*.parquet"))
+    # A dotted stem is a side file, never a pull: `<aoi>_overpass_solar.with_thermal.parquet`
+    # (drop_solar_thermal.py's backup until 2026-10-11) sorts after the filtered file, and
+    # Morocco's chips were built from the unfiltered labels through it.
+    cands = sorted(p for p in Path(labels_dir).glob(f"{aoi}_overpass_solar*.parquet")
+                   if "." not in p.stem)
     return cands[-1] if cands else Path(labels_dir) / f"{aoi}_overpass_solar.parquet"
 
 

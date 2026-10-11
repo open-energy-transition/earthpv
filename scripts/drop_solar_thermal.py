@@ -14,8 +14,12 @@ Rule: drop an element whose `generator:method` or `plant:method` names `thermal`
 `generator:type` is a CSP collector type) UNLESS the same tag also names `photovoltaic` --
 a hybrid perimeter (thermal;photovoltaic) is kept, since part of it is PV. Matching is by
 OSM id against the labels' `id` column (`osm-<type>/<id>`). The original file is kept as
-`<name>_overpass_solar.with_thermal.parquet` and the dropped ids are written next to it.
-Idempotent: a second run finds nothing to drop.
+`<aoi>_solar_labels_with_thermal.parquet` and the dropped ids are written next to it.
+Idempotent: a second run finds nothing to drop. The backup name must NOT match
+`<aoi>_overpass_solar*.parquet`: `chips._newest_overpass_path` globs that and takes the
+last name in sort order, and until 2026-10-11 the backup was
+`<aoi>_overpass_solar.with_thermal.parquet`, which sorts after the filtered file. Morocco's
+chips and its checkpoint decision were built from the UNFILTERED labels that way.
 
 `--candidates` applies the same exclusion to the MODEL's side, after postprocess: a
 checkpoint that has learned (from earlier corpora) to read a mirror field as PV would
@@ -132,11 +136,16 @@ def thermal_ids_by_id(label_ids, timeout: int = 180, batch: int = 1000) -> dict[
 
 def filter_candidates(aoi: str, labels_dir: Path) -> int:
     record = labels_dir / f"{aoi}_solar_thermal_dropped.json"
-    backup = labels_dir / f"{aoi}_overpass_solar.with_thermal.parquet"
+    backup = labels_dir / f"{aoi}_solar_labels_with_thermal.parquet"
     cpath = REPO / f"data/predictions/{aoi}/candidates.parquet"
-    if not record.exists() or not backup.exists():
+    if not record.exists():
         print(f"{aoi}: no solar-thermal labels were dropped; candidates unchanged")
         return 0
+    if not backup.exists():
+        # The thermal polygons only exist in the backup; a missing one would otherwise
+        # skip the candidate filter silently.
+        print(f"{aoi}: {record.name} exists but {backup.name} does not", file=sys.stderr)
+        return 1
     ids = set(json.loads(record.read_text()))
     th = gpd.read_parquet(backup)
     th = th[th["id"].isin(ids) & th.geom_type.isin(["Polygon", "MultiPolygon"])]
@@ -192,7 +201,7 @@ def main() -> int:
         print("  ", i, th.get(i, {}))
     if a.dry_run:
         return 0
-    backup = path.with_name(f"{a.aoi}_overpass_solar.with_thermal.parquet")
+    backup = path.with_name(f"{a.aoi}_solar_labels_with_thermal.parquet")
     if not backup.exists():
         lab.to_parquet(backup)
     record = path.with_name(f"{a.aoi}_solar_thermal_dropped.json")
