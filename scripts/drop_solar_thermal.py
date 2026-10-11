@@ -24,7 +24,14 @@ area lies at least half inside a dropped thermal polygon are removed from
 data/predictions/<aoi>/candidates.parquet (kept as candidates.with_thermal.parquet).
 Run it before `density`, whose cached partials are fingerprinted against that file.
 
-    python scripts/drop_solar_thermal.py --aoi morocco [--dry-run]
+`--by-id` looks the label elements up by OSM id (1,000 per query) instead of scanning the
+bbox for thermal tags. It finds the same droppable set, since only label elements can be
+dropped, and it is the one that works at India's size: every 5-degree area scan there
+returned 500/504 on every mirror for a day (2026-10-11), while the 25 id lookups all
+answered. On Morocco's pre-filter labels it returns exactly the 1,697 elements the area
+scan dropped.
+
+    python scripts/drop_solar_thermal.py --aoi morocco [--dry-run] [--by-id]
     python scripts/drop_solar_thermal.py --aoi morocco --candidates
 """
 
@@ -32,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -81,17 +89,44 @@ def _thermal_ids_tile(bbox, timeout: int) -> dict[str, dict]:
   nwr["plant:source"="solar"]["plant:method"~"thermal"]{b};
 );
 out tags;"""
-    data = _run_query(q, timeout)
+    return _classify(_run_query(q, timeout).get("elements", []))
+
+
+def _classify(elements) -> dict[str, dict]:
     out = {}
-    for e in data.get("elements", []):
+    for e in elements:
         t = e.get("tags", {})
         method = (t.get("generator:method", "") + ";" + t.get("plant:method", "")).lower()
         if "photovoltaic" in method:
             continue   # hybrid: keep
+        if "thermal" not in method and not re.search(CSP_TYPES, t.get("generator:type", "")):
+            continue   # an id lookup returns every element, not only the matching ones
         out[f"osm-{e['type']}/{e['id']}"] = {
             k: t[k] for k in ("name", "power", "generator:method", "plant:method",
                               "generator:type", "plant:output:electricity") if k in t
         }
+    return out
+
+
+def thermal_ids_by_id(label_ids, timeout: int = 180, batch: int = 1000) -> dict[str, dict]:
+    """Tags of the label elements themselves, looked up by id: cheap for the server, where
+    a country-sized area scan is not."""
+    by_type: dict[str, list[str]] = {"node": [], "way": [], "relation": []}
+    for s in label_ids:
+        typ, num = s[len("osm-"):].split("/")
+        by_type[typ].append(num)
+    out: dict[str, dict] = {}
+    for typ, nums in by_type.items():
+        for k in range(0, len(nums), batch):
+            q = f"[out:json][timeout:{timeout}];{typ}(id:{','.join(nums[k:k + batch])});out tags;"
+            for attempt in range(4):
+                try:
+                    out.update(_classify(_run_query(q, timeout).get("elements", [])))
+                    break
+                except RuntimeError:
+                    if attempt == 3:
+                        raise
+                    time.sleep(60)
     return out
 
 
@@ -132,6 +167,8 @@ def main() -> int:
     ap.add_argument("--aoi", required=True)
     ap.add_argument("--labels-dir", type=Path, default=REPO / "data/labels")
     ap.add_argument("--dry-run", action="store_true", help="report, write nothing")
+    ap.add_argument("--by-id", action="store_true",
+                    help="look the label elements up by OSM id instead of scanning the bbox")
     ap.add_argument("--candidates", action="store_true",
                     help="filter model candidates against the already-dropped thermal polygons")
     a = ap.parse_args()
@@ -140,9 +177,10 @@ def main() -> int:
     cfg = Settings.load().aois[a.aoi]
     path = a.labels_dir / f"{a.aoi}_overpass_solar.parquet"
     lab = gpd.read_parquet(path)
-    th = thermal_ids(cfg["bbox"])
+    th = thermal_ids_by_id(lab["id"]) if a.by_id else thermal_ids(cfg["bbox"])
     hit = lab["id"].isin(th)
-    print(f"{a.aoi}: {len(th)} solar-thermal elements in the bbox, {int(hit.sum())} of "
+    where = "among the labels" if a.by_id else "in the bbox"
+    print(f"{a.aoi}: {len(th)} solar-thermal elements {where}, {int(hit.sum())} of "
           f"{len(lab)} label features match")
     if not hit.any():
         return 0

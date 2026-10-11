@@ -190,10 +190,16 @@ it at Khavda (see the screen section above).
 Solar-thermal is counted as PV on this page. OpenStreetMap tags concentrated-solar plants
 and rooftop water heaters with the same `generator:source=solar` the label pull selects,
 and India's labels were built before that was noticed (Morocco's, run next, turned out to
-be half solar-thermal). How much of India's label set is thermal was not measured: the check
-needs Overpass, and every public mirror was refusing or timing out (429, 500, 504) through
-the publish window. Every country run after India filters it
-(`scripts/drop_solar_thermal.py`).
+be half solar-thermal). It was measured the day after publication, by looking the label
+elements up by OSM id (`scripts/drop_solar_thermal.py --by-id`), since the area scans the
+other countries use failed on every public mirror at India's size: 253 of the 24,810 label
+features are solar-thermal, 9.4 km&sup2; once dissolved, among them the Dhirubhai Ambani
+(100 MW), Megha (50 MW) and Godawari (50 MW) concentrated-solar plants. Ten features of the
+hand-mapped layer lie mostly inside them and carry 473 MWp at the two constants, about 0.7%
+of Verified and of Best. They are not removed on this page: dropping the four model
+candidates that sit on the same plants rewrites the candidate file, which rebuilds the
+density stage over all 25,576 cells (about 31 hours) for a change well inside either
+interval. Every country run after India filters it (`scripts/drop_solar_thermal.py`).
 
 ## Against the old Gujarat page
 

@@ -1284,7 +1284,10 @@ is retried). India (1.3% of cells each), Zambia, Nigeria and Vietnam were NOT re
 keeps it. `scripts/drop_solar_thermal.py --aoi <aoi>` drops thermal/CSP elements from the
 labels before chips; `--candidates` drops candidates at least half inside them before
 `density`. Morocco's pull was half thermal (1,697 of 3,440, the Noor CSP complex). Every
-country before Morocco is unfiltered.
+country before Morocco is unfiltered; India's share was measured after publication (253
+features, 473 MWp, ~0.7% of both tiers) and is carried as a known defect. At India's size
+the bbox scan fails on every Overpass mirror; `--by-id` looks the label elements up by id
+instead and finds the same droppable set.
 
 ### Morocco, Egypt, Yemen, South Africa (launched 2026-10-10)
 

@@ -644,6 +644,14 @@ cell-edge fix excludes nodata fill from the zonal statistics, which is correct, 
 neighbouring tile would rescue them; it is not implemented, and the current behaviour is the
 safe direction (nothing unscored can clear a threshold).
 
+**India's atlas counts 473 MWp of solar-thermal as PV.** Its labels predate the
+solar-thermal filter, and the check could only be run after publication, by OSM id lookup:
+253 label features, 9.4 km&sup2; dissolved, three concentrated-solar plants among them,
+about 0.7% of Verified and of Best. Removing it rewrites the candidate file and so rebuilds
+the density stage (about 31 hours), which is not worth doing for 0.7% on its own; do it
+with the next India rebuild (`drop_solar_thermal.py --aoi india --by-id`, then
+`--candidates`). See [India](results/india.md).
+
 **Two segmentation checkpoints no longer exist on disk.** `v2_combined` and
 `v3_combined_india` were deleted at some point after producing their outputs. The Gujarat
 atlas is therefore built from a checkpoint that can no longer be verified against its own
