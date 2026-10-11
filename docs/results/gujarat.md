@@ -3,7 +3,7 @@
 !!! note "Superseded 2026-10-11 by the national India page"
     Gujarat is now covered by the [India results page](india.md) and its
     [evidence atlas](../atlas-india.md), built from a newer checkpoint and a national label
-    pull. The state figure there is 7,647.1 MWp on the same estimator against 765.0 here;
+    pull. The state figure there is 4,554.1 MWp on the same estimator against 765.0 here;
     [that page](india.md#against-the-old-gujarat-page) explains the difference. This page is
     kept as the record of the 2026-08-07 run.
 
