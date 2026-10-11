@@ -36,6 +36,10 @@ OVERPASS_ENDPOINTS = [
     # overpass-api.de 504ing most tiles during the Vietnam/India pulls, leaving one live
     # mirror. The truncation check in `_run_query` applies to every mirror equally.
     "https://overpass.private.coffee/api/interpreter",
+    # Added 2026-10-11: with overpass-api.de 429/504ing, kumi and private.coffee 500ing
+    # and overpass.openstreetmap.ru not accepting connections, VK's public instance was the
+    # one answering (data minutes old). Ahead of .ru, which only fails slowly.
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass.openstreetmap.ru/api/interpreter",
 ]
 
@@ -91,7 +95,10 @@ def _run_query(query: str, timeout: int) -> dict:
     for url in OVERPASS_ENDPOINTS:
         try:
             resp = requests.post(
-                url, data={"data": query}, headers=_HEADERS, timeout=timeout + 30
+                url, data={"data": query}, headers=_HEADERS,
+                # (connect, read): a mirror that does not accept the connection in 30 s is
+                # down, and waiting the full read budget for it cost 5.5 min per query.
+                timeout=(30, timeout + 30),
             )
             resp.raise_for_status()
             data = resp.json()

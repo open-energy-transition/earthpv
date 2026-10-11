@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import geopandas as gpd
@@ -57,7 +58,16 @@ def thermal_ids(bbox, timeout: int = 300, tile_deg: float = 5.0) -> dict[str, di
         for j in range(ny):
             tb = (xmin + i * (xmax - xmin) / nx, ymin + j * (ymax - ymin) / ny,
                   xmin + (i + 1) * (xmax - xmin) / nx, ymin + (j + 1) * (ymax - ymin) / ny)
-            out.update(_thermal_ids_tile(tb, timeout))
+            # One tile failing on every mirror used to abort the whole country, and with
+            # a dozen tiles that happened on most ticks during the 2026-10-11 outage.
+            for attempt in range(3):
+                try:
+                    out.update(_thermal_ids_tile(tb, timeout))
+                    break
+                except RuntimeError:
+                    if attempt == 2:
+                        raise
+                    time.sleep(90)
     return out
 
 
