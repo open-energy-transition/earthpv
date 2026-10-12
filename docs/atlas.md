@@ -15,6 +15,7 @@ hide:
   <a href="../atlas-nigeria/">Nigeria</a>
   <a href="../atlas-vietnam/">Vietnam</a>
   <a href="../atlas-india/">India</a>
+  <a href="../atlas-egypt/">Egypt</a>
 </nav>
 <iframe src="../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell"></iframe>
 </div>

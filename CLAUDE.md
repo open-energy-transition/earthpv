@@ -1308,7 +1308,26 @@ v14_combined_south_africa. Holdouts are picked from the label map before trainin
 `scripts/pick_val_region.py` (ADM1 rule in its docstring) and written into `configs/aoi.yaml`.
 Morocco's AOI stops at 27.7N, the internationally recognised line (geoBoundaries MAR includes
 Western Sahara), and its holdout (Draa-Tafilalet, 8 of 39 positives) is too thin to settle the
-ship rule with confidence.
+ship rule with confidence. Rebuilt from the filtered labels it has 49 train chips against the
+chain's floor of 50, so Morocco waits on an owner decision (accept 49, or a smaller holdout).
+
+**Egypt published 2026-10-12 on its localized v12: Verified 3,315.1 / Best 3,378.6 MWp**
+(90% 2,314-4,789 / 3,028-4,823) over 946 cells, Sentinel-2 April to September 2026. v12 beat
+v5 on the Cairo Governorate holdout on recall >= 500 m2 (5 of 23 against 1 of 23; IoU 0.062
+against 0.066), a thin holdout (7 positive chips, 0.3% of Egypt's chip PV pixels). Verified is
+mostly three parks (Benban 36.9 km2, 10.0 km2 north of it, Kharga 8.8 km2). The model's rooftop
+estimate is 0.2 MWp: the 176 rooftop candidates >= 1,000 m2 match no mapped rooftop, so their
+`p_real` is 0. `docs/results/egypt.md`. Yemen's holdout is 'Amran (13 val chips, 598 PV px),
+thin like Egypt's.
+
+**Label cells cover a park's whole outline since 2026-10-12** (`compose._solar_label_cells`).
+A cell per mapped feature by its representative point left an outline crossing a cell edge
+half imaged, and the ground screen (90% imaged above 5 km2) dropped two Egyptian parks that
+were 96-98% detected where imaged: Verified 2,374.6 -> 3,315.1 once the five cells were
+composed. South Africa gains 21 cells, Morocco and Yemen none; of the published countries only
+India has such cells uncomposed (8, six at Khavda; open question 22). **The queue decides an
+atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS DONE"**, so removing
+`<aoi>_atlas_done` does not relaunch a finished country: re-run its steps as a one-off unit.
 
 ## Conventions & gotchas
 

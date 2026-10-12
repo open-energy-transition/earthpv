@@ -419,7 +419,15 @@ aois:
     grid_origin: [24.7, 22.0]
     compose_window: ["2026-04-01", "2026-09-30"]
     cell_selection: duckdb
-    val_tiles: []
+    # Val holdout = Cairo Governorate (geoBoundaries ADM1), 22 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 10 of
+    # 71 dissolved >= 400 m2 positives (14.1%); the largest
+    # region (Red Sea Governorate, 15) is never the holdout.
+    val_tiles: [
+      "0065_0080", "0066_0078", "0066_0079", "0066_0080", "0067_0078", "0067_0079", "0067_0080", "0067_0081",
+      "0068_0079", "0068_0080", "0068_0081", "0069_0078", "0069_0079", "0069_0080", "0069_0081", "0070_0079",
+      "0070_0080", "0070_0081", "0070_0082", "0071_0080", "0071_0081", "0071_0082",
+    ]
 
   # Yemen: the highlands take the summer monsoon, so the window is the Oct-Mar dry season.
   yemen:
@@ -428,7 +436,18 @@ aois:
     grid_origin: [41.8, 12.1]
     compose_window: ["2025-10-01", "2026-03-31"]
     cell_selection: duckdb
-    val_tiles: []
+    # Val holdout = 'Amran Governorate (geoBoundaries ADM1), 47 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 21 of
+    # 1465 dissolved >= 400 m2 positives (1.4%); the largest
+    # region (Al Hudaydah Governorate, 1434) is never the holdout.
+    val_tiles: [
+      "0017_0041", "0017_0042", "0018_0034", "0018_0035", "0018_0039", "0018_0040", "0018_0041", "0018_0042",
+      "0019_0034", "0019_0035", "0019_0036", "0019_0037", "0019_0038", "0019_0039", "0019_0040", "0019_0041",
+      "0019_0042", "0020_0034", "0020_0035", "0020_0036", "0020_0037", "0020_0038", "0020_0039", "0020_0040",
+      "0020_0041", "0020_0042", "0021_0035", "0021_0036", "0021_0037", "0021_0038", "0021_0039", "0021_0040",
+      "0021_0041", "0021_0042", "0022_0035", "0022_0036", "0022_0037", "0022_0038", "0022_0039", "0022_0040",
+      "0022_0041", "0022_0042", "0022_0043", "0023_0037", "0023_0038", "0023_0039", "0024_0039",
+    ]
 
   # South Africa: Apr-Sep is the dry season for the summer-rainfall interior where most
   # people live; the Western Cape's winter rain is handled by the least-cloudy selection.

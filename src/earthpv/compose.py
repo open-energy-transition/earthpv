@@ -167,13 +167,57 @@ def _solar_label_cells(
     xmin, ymin, xmax, ymax = bbox
     inb = (pts.x >= xmin) & (pts.x <= xmax) & (pts.y >= ymin) & (pts.y <= ymax)
     pts = gpd.GeoDataFrame(geometry=pts[inb].values, crs="EPSG:4326")
+    outlines = labels.geometry[inb.values].reset_index(drop=True)  # aligned with `pts`
     if boundary is not None and not pts.empty:
         pts = gpd.sjoin(pts, boundary[["geometry"]], predicate="within", how="inner")
+        pts = pts[~pts.index.duplicated()]
     if pts.empty:
         return set()
     ix = np.floor((pts.geometry.x.values - minx) / CELL_DEG).astype(int)
     iy = np.floor((pts.geometry.y.values - miny) / CELL_DEG).astype(int)
-    return set(zip(ix.tolist(), iy.tolist()))
+    cells = set(zip(ix.tolist(), iy.tolist()))
+    return cells | _outline_cells(outlines.loc[pts.index], minx, miny, bbox, boundary)
+
+
+def _outline_cells(
+    outlines: gpd.GeoSeries,
+    minx: float,
+    miny: float,
+    bbox: tuple[float, float, float, float],
+    boundary: gpd.GeoDataFrame | None,
+) -> set[tuple[int, int]]:
+    """Every cell a mapped outline crosses into, beyond the one holding its point.
+
+    A label's representative point picks ONE cell, so a park outline straddling a cell
+    edge was only partly imaged. Measured on Egypt 2026-10-12: two parks of 10.0 and
+    8.8 km2, 96-98% detected where imaged, were 87% and 69% imaged, failed the ground
+    screen's imaging test and dropped out of Verified (~940 MWp at the land constant).
+    South Africa gains 21 cells from this, Egypt 7, Morocco and Yemen none.
+    """
+    from shapely.geometry import box
+
+    xmin, ymin, xmax, ymax = bbox
+    out: set[tuple[int, int]] = set()
+    for g in outlines:
+        if g is None or g.is_empty or g.geom_type not in ("Polygon", "MultiPolygon"):
+            continue
+        x0, y0, x1, y1 = g.bounds
+        cx0 = int(np.floor((max(x0, xmin) - minx) / CELL_DEG))
+        cx1 = int(np.floor((min(x1, xmax) - minx) / CELL_DEG))
+        cy0 = int(np.floor((max(y0, ymin) - miny) / CELL_DEG))
+        cy1 = int(np.floor((min(y1, ymax) - miny) / CELL_DEG))
+        if cx0 == cx1 and cy0 == cy1:
+            continue
+        for cx in range(cx0, cx1 + 1):
+            for cy in range(cy0, cy1 + 1):
+                cell = box(minx + cx * CELL_DEG, miny + cy * CELL_DEG,
+                           minx + (cx + 1) * CELL_DEG, miny + (cy + 1) * CELL_DEG)
+                if not g.intersects(cell):
+                    continue
+                if boundary is not None and not boundary.intersects(cell).any():
+                    continue
+                out.add((cx, cy))
+    return out
 
 
 CELL_CACHE_DIR = Path("data/cells_cache")

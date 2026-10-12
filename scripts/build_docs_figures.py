@@ -2507,6 +2507,10 @@ INTERACTIVE = [
     # trained and lost the held-out Gujarat box under the same ship rule, so v5 ships.
     # Written by scripts/run_country_compute.sh; docs/results/india.md has the comparison.
     ("results/india_pv_evidence_atlas.html", "india_pv_evidence_atlas.html"),
+    # Egypt: segmentation-only, national, on its own LOCALIZED checkpoint v12_combined_egypt
+    # (it beat v5 on the held-out Cairo Governorate). Written by
+    # scripts/run_country_compute.sh; docs/results/egypt.md has the comparison.
+    ("results/egypt_pv_evidence_atlas.html", "egypt_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 

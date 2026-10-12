@@ -599,6 +599,16 @@ about 33,000 failed range requests. On such a cell the model mostly detects noth
 composite whose bands differ in empty share by more than 2% now raises, which hands the
 cell to the other provider or a later pass (`imagery.BAND_DROPOUT_MAX`).
 
+**Park outlines imaged on one side of a cell edge (found 2026-10-12).** `compose` added a
+cell for each mapped solar feature by the feature's representative point, so an outline
+crossing a cell edge was imaged only where that point fell, and the ground screen, which
+keeps an outline above 5 km&sup2; only when 90% of it is imaged, dropped it. Egypt lost two
+parks from Verified this way before publication. `compose._solar_label_cells` now adds every
+cell an outline intersects; Egypt was refilled (five cells), and South Africa composes with
+the rule. Of the published countries, Vietnam, Zambia and Nigeria have no such cell left
+uncomposed, and India has eight, six of them at Khavda (`0013_0173` to `0015_0175`) and so
+under outlines the screen already credits only at their detected share.
+
 Measured on random samples of existing composites (all-band-empty pixels lying on straight
 raster rows or columns, which is what a tile edge looks like in the cell's UTM grid):
 
