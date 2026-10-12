@@ -36,6 +36,12 @@ confidence:
       A utility-scale park built on empty land that nobody has mapped yet falls outside
       both rules and is not on this page.
     - >-
+      <b>Solar parks the model outlines but nobody has mapped are not counted.</b> The
+      detector draws the Aden plant and smaller parks on the Red Sea coast, but they are not
+      in OpenStreetMap, and a model outline above 100,000 m&sup2; only counts when it carries
+      a mapped plant geometry. The same rule removes the dark rock outcrops of that size the
+      model mistakes for panels. Mapping the parks would bring them into the verified layer.
+    - >-
       <b>OpenStreetMap coverage is uneven.</b> Hand-mapped solar is concentrated where
       volunteer mappers have worked, so the verified layer says as much about mapping
       effort as about where panels are.

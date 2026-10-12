@@ -130,6 +130,7 @@ nav:
         - Vietnam: atlas-vietnam.md
         - India: atlas-india.md
         - Egypt: atlas-egypt.md
+        - Yemen: atlas-yemen.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md

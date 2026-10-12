@@ -2511,6 +2511,10 @@ INTERACTIVE = [
     # (it beat v5 on the held-out Cairo Governorate). Written by
     # scripts/run_country_compute.sh; docs/results/egypt.md has the comparison.
     ("results/egypt_pv_evidence_atlas.html", "egypt_pv_evidence_atlas.html"),
+    # Yemen: segmentation-only, national, on its own LOCALIZED checkpoint v13_combined_yemen
+    # (it tied v5 at zero on the held-out 'Amran Governorate; a tie goes to the localized
+    # model). Written by scripts/run_country_compute.sh; docs/results/yemen.md explains.
+    ("results/yemen_pv_evidence_atlas.html", "yemen_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 

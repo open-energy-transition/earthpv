@@ -1317,8 +1317,20 @@ v5 on the Cairo Governorate holdout on recall >= 500 m2 (5 of 23 against 1 of 23
 against 0.066), a thin holdout (7 positive chips, 0.3% of Egypt's chip PV pixels). Verified is
 mostly three parks (Benban 36.9 km2, 10.0 km2 north of it, Kharga 8.8 km2). The model's rooftop
 estimate is 0.2 MWp: the 176 rooftop candidates >= 1,000 m2 match no mapped rooftop, so their
-`p_real` is 0. `docs/results/egypt.md`. Yemen's holdout is 'Amran (13 val chips, 598 PV px),
-thin like Egypt's.
+`p_real` is 0. `docs/results/egypt.md`.
+
+**Yemen published 2026-10-12 on its localized v13: Verified 65.9 / Best 67.1 MWp** (90%
+46-95 / 49-98) over 810 cells, Sentinel-2 October 2025 to March 2026, against IRENA's 456 MW
+at end-2025. **The ship decision was a zero-zero tie** (both checkpoints 0 of 25 'Amran
+arrays, IoU 0) and went to v13 by the tie rule, on no evidence. Yemen's labels are 1,697
+solar irrigation arrays of ~600 m2 in Tihama farmland, mapped in 2023: their reflectance
+differs from a 30 m ring by ~2% per band (Egypt/Vietnam 8-25%), no shift within 60 m finds
+them, and v13 lights up 2 of 1,466 mapped features nationally. So `p_real` is ~0 in every
+bin and Best is the OSM map plus 1.2 MWp. Three real unmapped parks (Aden 1.31 km2, Mocha
+0.64, a Red Sea coast park 0.38) are among the 29 oversize detections and excluded by the
+merge cap along with 26 dark-rock ones; they are in the new-leads export.
+`docs/results/yemen.md`. **`screen_osm_ground_perimeters.py` crashed on a country with no
+perimeter >= 50,000 m2** (Yemen) and now writes a header-only CSV that `density` can read.
 
 **Label cells cover a park's whole outline since 2026-10-12** (`compose._solar_label_cells`).
 A cell per mapped feature by its representative point left an outline crossing a cell edge

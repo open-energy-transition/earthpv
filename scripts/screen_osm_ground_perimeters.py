@@ -158,7 +158,10 @@ def main() -> int:
 
     import pandas as pd
 
-    df = pd.DataFrame(rows)
+    # Explicit columns so a country with no perimeter above --min-area-m2 (Yemen) still
+    # writes a header `density.load_osm_screen` can read, rather than an empty file.
+    df = pd.DataFrame(rows, columns=["id", "area_m2", "area_km2", "imaged_frac", "det_frac",
+                                     "p_max", "osm_timestamp", "screen"])
     a.out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(a.out, index=False)
     print(df.to_string(index=False))
