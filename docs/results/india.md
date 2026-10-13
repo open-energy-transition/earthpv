@@ -75,9 +75,32 @@ Gujarat's chips from outside this box, and India's labels are 84% ground-mount, 
 population every earlier corpus already covers well. Vietnam's localized checkpoint won on
 outline quality (IoU 0.724 to 0.762) with recall tied; India's lost on both.
 
-**A whole-country v10 run** is in progress as a diagnostic, the same comparison the
-[Vietnam page](vietnam.md) carries, and will be added here when it finishes. The ship rule
-is decided on the holdout alone, so it cannot change which checkpoint this page runs on.
+**The whole-country comparison**, after the atlas (`compare_checkpoints_vs_mapped.py`, both
+checkpoints inferred over all 25,576 cells, scored against the 4,010 dissolved mapped
+installations of 400 m&sup2; and up that both imaged), finished on 13 October:
+
+| | v5 (ships) | v10 (localized) |
+| --- | --- | --- |
+| pooled recall over mapped installations | **0.501** (2,011) | 0.441 (1,767) |
+| recall, 500 to 50,000 m&sup2; | **0.698** (1,314 of 1,883) | 0.606 (1,141) |
+| recall above 50,000 m&sup2;, counting candidates above the cap | 0.937 | 0.936 |
+| candidates below the 100,000 m&sup2; merge cap | 92,139 | **33,454** |
+| median candidate area | 1,601 m&sup2; | 5,104 m&sup2; |
+| total candidate area below the cap | 528.1 km&sup2; | 505.5 km&sup2; |
+| candidates above the cap | 3,242 (2,081 km&sup2;) | 4,485 (2,472 km&sup2;) |
+| rooftop share below the cap | 35.2% | 30.7% |
+
+The script drops candidates above the merge cap, as `density` does, and India's parks are
+mostly found by exactly such candidates, so its own recall for the 2,066 installations above
+50,000 m&sup2; reads 0.32 and 0.29. Counting them, both checkpoints find 94% of the parks; the
+difference is in the arrays between 500 and 50,000 m&sup2;. **This recall favours v10 and v10
+still loses**: it trained on every Indian label outside the Gujarat box, so it is scored here
+largely in-sample, while v5's only Indian training data is Gujarat's chips. 338 installations are found by v5
+alone against 94 by v10 alone (McNemar p < 0.001). In Vietnam the localized checkpoint drew
+fewer, larger candidates and kept its recall; v10 draws 64% fewer candidates at three times
+the median area, holds about the same total area below the cap, merges about 1,250 more
+model-drawn blobs above it and finds fewer mapped arrays. The diagnostic confirms the
+holdout decision rather than qualifying it.
 
 ## A compose defect, found here and fixed for every later country
 
