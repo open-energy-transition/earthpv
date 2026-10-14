@@ -37,3 +37,14 @@ confidence:
       imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
       A utility-scale park built on empty land that nobody has mapped yet falls outside
       both rules and is not on this page.
+    - >-
+      <b>Solar parks the model outlines but nobody has mapped are not counted.</b> A model
+      outline above 100,000 m&sup2; only counts when it carries a mapped plant geometry. That
+      rule removes the mine pits, dark rock, salt pans and irrigated fields of that size the
+      model mistakes for panels, and with them the occasional real park that is not yet in
+      OpenStreetMap. Mapping such a park brings it into the verified layer.
+    - >-
+      <b>A mapped park counts whether or not it was built when the imagery was taken.</b>
+      Only perimeters above 5 km&sup2; are checked against the imagery before they are
+      counted. A few parks mapped during 2026 were still construction sites in the
+      April to September composite and are counted at their full outline.

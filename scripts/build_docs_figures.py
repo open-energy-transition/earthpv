@@ -2515,6 +2515,10 @@ INTERACTIVE = [
     # (it tied v5 at zero on the held-out 'Amran Governorate; a tie goes to the localized
     # model). Written by scripts/run_country_compute.sh; docs/results/yemen.md explains.
     ("results/yemen_pv_evidence_atlas.html", "yemen_pv_evidence_atlas.html"),
+    # South Africa: segmentation-only, national, on its own LOCALIZED checkpoint
+    # v14_combined_south_africa (it beat v5 on the held-out Western Cape). Written by
+    # scripts/run_country_compute.sh; docs/results/south-africa.md has the comparison.
+    ("results/south_africa_pv_evidence_atlas.html", "south_africa_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 

@@ -17,6 +17,7 @@ hide:
   <a href="../atlas-india/">India</a>
   <span aria-current="page">Egypt</span>
   <a href="../atlas-yemen/">Yemen</a>
+  <a href="../atlas-south-africa/">South Africa</a>
 </nav>
 <iframe src="../assets/interactive/egypt_pv_evidence_atlas.html" title="Egypt PV evidence atlas: verified and best estimate by 0.1-degree cell"></iframe>
 </div>

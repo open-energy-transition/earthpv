@@ -1332,6 +1332,20 @@ merge cap along with 26 dark-rock ones; they are in the new-leads export.
 `docs/results/yemen.md`. **`screen_osm_ground_perimeters.py` crashed on a country with no
 perimeter >= 50,000 m2** (Yemen) and now writes a header-only CSV that `density` can read.
 
+**South Africa published 2026-10-14 on its localized v14: Verified 9,393.8 / Best 9,755.6
+MWp** (90% 7,078-12,787 / 8,789-12,875) over 3,647 cells, Sentinel-2 April to September 2026,
+against SAPVIA's 10.12 GW (July 2026). **The first decisive localization win of this queue**:
+on the Western Cape holdout (452 positive chips, 17.5% of dissolved positives) recall >= 500
+m2 0.794 against v5's 0.744, >= 1,000 m2 0.858 against 0.708, pixel IoU 0.671 against 0.364;
+v5 still finds slightly more below 1,000 m2. Verified is 7,568.6 MWp of mapped ground and
+1,825.3 of mapped rooftop; the model adds 362 MWp net (floored in 591 cells). **86
+capacity-tagged parks measure 0.045 kWp/m2** (4,817 MW on 106.3 km2, mostly AC), the same as
+India's, against the 0.05 land constant. Three parks mapped in 2026 (Teraco Sediba, Ukuqala,
+Sonvanger, ~260 MWp) were construction sites in the composite and count in Verified at their
+full outlines, since only perimeters above 5 km2 are screened. `check-density` fails 6 of 9
+provinces (ground:rooftop ratio of the model's estimate, plus four single-cell flags that are
+each one mapped plant). `docs/results/south-africa.md`.
+
 **Label cells cover a park's whole outline since 2026-10-12** (`compose._solar_label_cells`).
 A cell per mapped feature by its representative point left an outline crossing a cell edge
 half imaged, and the ground screen (90% imaged above 5 km2) dropped two Egyptian parks that
