@@ -25,12 +25,11 @@ hide:
     EarthPV is a research prototype. Its detectors, calibration and headline numbers are
     still being tested and revised, not settled.
 
-EarthPV fine-tunes the open **TerraMind** geospatial foundation model (IBM and ESA, via
-TerraTorch) on **Sentinel-2** imagery, which is free, global and refreshed every five days,
-and puts every detection in front of **OpenStreetMap** mappers for verification. What they
-verify becomes the next round of training data. Model, code, labels and capacity numbers are
-open, and every input is a global dataset: nothing depends on imagery or licences that exist
-in only one country.
+Many countries do not know how much solar power sits on their roofs, or where. EarthPV
+answers that from space with free data: it detects PV arrays in Sentinel-2 satellite
+imagery, turns them into capacity estimates, and hands each detection to OpenStreetMap
+mappers to verify. What they confirm trains the next model. Built only on open models and
+global datasets, it works for any country.
 
 <div class="video-embed" markdown="0">
   <iframe src="https://www.youtube-nocookie.com/embed/0FiXLT_kNv0"
