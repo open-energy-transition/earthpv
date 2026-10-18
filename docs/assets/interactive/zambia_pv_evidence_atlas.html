@@ -990,6 +990,8 @@ out geom;</div>
   T.osm_contribution = (T.osm_mwp_unmatched || 0)
     + ((T.uncertainty && T.uncertainty.best_floor_offset_mwp) || 0);
   const fmt = n => Math.round(n).toLocaleString("en-US");
+  // Hover values: five significant digits, so a small cell reads 0.0041234 MWp, not 0.0.
+  const fmt5 = n => Number(n).toLocaleString("en-US", {maximumSignificantDigits: 5});
 
   const VIEW = {
     label: "Best estimate", vmax: 8,
@@ -1240,15 +1242,15 @@ out geom;</div>
       const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
-      const rows = `<div class="rowt sel"><span>${VIEW.label}</span><span>${c[BEST_IDX].toFixed(1)} MWp</span></div>`;
+      const rows = `<div class="rowt sel"><span>${VIEW.label}</span><span>${fmt5(c[BEST_IDX])} MWp</span></div>`;
       const smallTotal = c[7] + (c[OUTDOMAIN_IDX] > 0 ? c[OUTDOMAIN_IDX] : 0);
       const osmOnly = (c[OSM_UNMATCHED_IDX] || 0) + (c[FLOOR_LIFT_IDX] || 0);
       tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
         + rows
-        + `<div class="rowt"><span>&ge;400 m², detected</span><span>${c[8].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>&lt;400 m², detected</span><span>${smallTotal.toFixed(1)} MWp</span></div>`
+        + `<div class="rowt"><span>&ge;400 m², detected</span><span>${fmt5(c[8])} MWp</span></div>`
+        + `<div class="rowt"><span>&lt;400 m², detected</span><span>${fmt5(smallTotal)} MWp</span></div>`
         + (osmOnly > 0.05
-            ? `<div class="rowt"><span>hand-mapped, not detected</span><span>${osmOnly.toFixed(1)} MWp</span></div>`
+            ? `<div class="rowt"><span>hand-mapped, not detected</span><span>${fmt5(osmOnly)} MWp</span></div>`
             : "")
         + (c[COVERED_IDX] === 0
             ? `<div class="rowt"><span>coverage</span><span>hand-mapped only, not imaged</span></div>`
@@ -1349,9 +1351,9 @@ out geom;</div>
     function showTip(e, label, series, mwp, nInst, extrap){
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       tip.innerHTML = `<div class="th">${label} -- ${series}</div>`
-        + `<div class="rowt"><span>Capacity</span><span>${fmt(mwp)} MWp</span></div>`
+        + `<div class="rowt"><span>Capacity</span><span>${fmt5(mwp)} MWp</span></div>`
         + `<div class="rowt"><span>Installations</span><span>${fmt(nInst)}</span></div>`
-        + (extrap > 0 ? `<div class="rowt"><span>of which extrapolated</span><span>${fmt(extrap)} MWp</span></div>` : "");
+        + (extrap > 0 ? `<div class="rowt"><span>of which extrapolated</span><span>${fmt5(extrap)} MWp</span></div>` : "");
     }
     function moveTip(e){ tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; }
     function hideTip(){ tip.style.opacity = 0; }
@@ -1519,7 +1521,7 @@ out geom;</div>
         const pct = 100 * run.mwp / total;
         const show = pct >= 7 ? run.size : "";
         return `<div class="comp-size-span" style="width:${pct.toFixed(3)}%" `
-          + `title="${run.size}: ${fmt(run.mwp)} MWp, ${pct.toFixed(0)}% of the total">`
+          + `title="${run.size}: ${fmt5(run.mwp)} MWp, ${pct.toFixed(0)}% of the total">`
           + `<span>${show}</span></div>`;
       }).join("");
     }
@@ -1527,9 +1529,9 @@ out geom;</div>
       const r = rows[+el.dataset.i];
       el.addEventListener("pointerenter", () => {
         const pct = 100 * r.mwp / total;
-        const ciText2 = r.ci ? `${fmt(r.ci[0])} – ${fmt(r.ci[1])}` : "deterministic, no drawn interval";
+        const ciText2 = r.ci ? `${fmt5(r.ci[0])} – ${fmt5(r.ci[1])}` : "deterministic, no drawn interval";
         tip.innerHTML = `<div class="t-title">${COMP_METHOD_META[r.method].name}</div>`
-          + `<div class="t-row"><span class="k">MWp</span><span class="v">${fmt(r.mwp)}</span></div>`
+          + `<div class="t-row"><span class="k">MWp</span><span class="v">${fmt5(r.mwp)}</span></div>`
           + `<div class="t-row"><span class="k">Share of tier</span><span class="v">${pct.toFixed(1)}%</span></div>`
           + (r.placement ? `<div class="t-row"><span class="k">Placement</span><span class="v">${r.placement === "ground" ? "Ground-mount" : "Rooftop"}</span></div>` : "")
           + `<div class="t-row"><span class="k">90% CI</span><span class="v">${ciText2}</span></div>`
