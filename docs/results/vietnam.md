@@ -72,10 +72,19 @@ installations of 400 m&sup2; and up):
 | | v5 (zero-shot) | v9 (localized) |
 | --- | --- | --- |
 | pooled recall over mapped installations | 0.850 | 0.860 |
-| candidates | 17,125 | **6,343** |
+| recall above 50,000 m&sup2;, counting candidates above the cap | 0.944 (186 of 197) | **0.980** (193) |
+| candidates below the 100,000 m&sup2; merge cap | 17,125 | **6,343** |
 | median candidate area | 2,801 m&sup2; | 10,396 m&sup2; |
-| total candidate area | 151.5 km&sup2; | **95.1 km&sup2;** |
-| rooftop share | 46.0% | 57.6% |
+| total candidate area below the cap | 151.5 km&sup2; | **95.1 km&sup2;** |
+| candidates above the cap | 324 (167.6 km&sup2;) | 193 (145.7 km&sup2;) |
+| rooftop share below the cap | 46.0% | 57.6% |
+
+The script drops candidates above the merge cap, as `density` does, and most of Vietnam's
+parks are found by exactly such candidates, so its own recall for the 197 installations
+above 50,000 m&sup2; reads 0.50 (v5) and 0.48 (v9). Counted back in (added 18 October from
+the same outputs), v9 finds 193 of the 197 parks and v5 186. Of the candidates above the
+cap, 103 of v9's and 98 of v5's carry an OpenStreetMap plant outline; the rest are
+model-drawn, 90 for v9 against 226 for v5.
 
 The recall row is **not** evidence for v9: it trained on most of these installations, so
 it is scored largely in-sample, and the decision above rests on the held-out region alone
