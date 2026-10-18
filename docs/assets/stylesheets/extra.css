@@ -462,6 +462,28 @@
   height: 560px;
 }
 
+/* The explainer video on the home page: a 16:9 player at any width, in the same card
+   frame as the embedded result pages. */
+.video-embed {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--pv-card-ring);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 1.2rem 0 0.4rem;
+  box-shadow: var(--pv-shadow);
+  background: #000;
+}
+
+.video-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 /* These pages are laid out for ~1280px. Give the columns holding one a little more
    room than the default prose measure, short of the full-bleed treatment. */
 .md-grid:has(.embed) {

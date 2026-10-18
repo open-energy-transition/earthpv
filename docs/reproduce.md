@@ -489,7 +489,7 @@ recall in Punjab went from 0.18 to 0.55 purely on training data their verificati
 A run with no mapping community attached gives you a candidate file nobody will validate,
 a recall number nobody can check, and a capacity estimate resting on a single global
 calibration. Line up a local OpenStreetMap community, a university group, or an NGO first.
-[Community](index.md#community) describes what that collaboration looks like.
+[TraceTheSun](index.md#tracethesun) describes what that collaboration looks like.
 
 ### Step 0: preflight
 

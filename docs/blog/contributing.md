@@ -14,7 +14,7 @@ here.
   adding your post file (see [How to add a post](#how-to-add-a-post) below).
 - **Or get in touch first:** open an
   [issue](https://github.com/open-energy-transition/earthpv/issues) describing what you
-  want to write, or reach the team through the [Community](../index.md#community)
+  want to write, or reach the team through the [TraceTheSun](../index.md#tracethesun)
   contacts. We are happy to co-author, or to publish a guest post on your behalf.
 
 ## How to add a post
