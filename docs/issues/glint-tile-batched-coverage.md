@@ -4,7 +4,7 @@
 
     The 22x tile batching shipped and is still in use. The silent scene-loss bug this doc
     ends on is unfixed, so any scene-count comparison drawn from that study remains
-    untrustworthy. Tracked in [Open questions](../open-questions.md).
+    untrustworthy.
 
 Ran `scripts/glint_revalidate_pakistan.py`: the same 500 OSM-confirmed Pakistan
 targets used for the original per-target study (`pakistan_summary.csv`,

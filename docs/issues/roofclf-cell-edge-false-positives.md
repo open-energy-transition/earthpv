@@ -6,7 +6,7 @@
     capacity, evidence atlas) completed 2026-08-06. The MWp figures in the outcome table
     below were invalidated the same day by the coverage-ratio fix and have moved several
     times since; current numbers are on [Capacity](../results/capacity.md). One residual
-    item is still open and tracked in [Open questions](../open-questions.md): a building
+    item is still open: a building
     with no valid pixel in its own cell's tile scores NaN rather than being rescued by a
     targeted re-read.
 

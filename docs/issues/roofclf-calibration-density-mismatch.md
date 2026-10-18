@@ -222,8 +222,8 @@ Three cheaper things are worth doing first, and none of them need new mapping:
 - **Decide the gate question explicitly**, with the sweep above as the evidence, rather than
   leaving [0.5, 2.0] as an unexamined default whose density confounding is now measured.
 
-This is the concrete, quantified instance of the standing caveat in
-[Open questions](../open-questions.md) that the quadrats are purposive rather than a
+This is the concrete, quantified instance of the standing caveat
+that the quadrats are purposive rather than a
 probability sample. The general form of that caveat cannot be closed without a national
 sampling frame; this specific form can be narrowed a long way by mapping in one identified
 density band.

@@ -118,8 +118,8 @@ and together they lose 0.79% of imaged area. Nationally that is small; for Rewa 
 750 MW park from Verified, because the ground cap described below keeps a perimeter above
 5 km&sup2; only on imaging evidence. Both defects are fixed in `imagery.py` for every
 composite built from 2026-10-10 on, and Rewa's cell recomposed with the fix is 0.0% empty.
-**India was not recomposited**; the affected cells are listed as
-[open question 22](../open-questions.md#22-composites-built-before-2026-10-10-carry-two-compose-defects-2026-10-10).
+**India was not recomposited**; the affected cells are
+left for the next rebuild.
 
 ## The ground-perimeter screen and the 5 km&sup2; cap
 
@@ -263,7 +263,7 @@ below this page's floor. Gujarat leads the household programme by state, so a bo
 the obvious first one. Check the imagery date before drawing it; see the
 [quadrat protocol](../calibration-mapping-protocol.md).
 
-**Recomposite the affected cells** (open question 22), Rewa first.
+**Recomposite the affected cells**, Rewa first.
 
 ## Reproducing
 

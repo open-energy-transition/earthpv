@@ -12,8 +12,7 @@ figure against every other public estimate of Pakistan's solar fleet.
 
 Two things deliberately live elsewhere, so that this page stays a description of the working
 pipeline rather than a history of the project: [Experiments](experiments.md) is the record of
-everything that was tried, including the majority that did not ship, and
-[Open questions](open-questions.md) is what is still genuinely unresolved.
+everything that was tried, including the majority that did not ship.
 
 ## Workflow
 
@@ -418,7 +417,7 @@ which number is largest but which one a reader can walk back to primary data -- 
 Traceability column, not the Capacity estimate column, is where EarthPV's own contribution
 actually sits.
 
-## Experiments and open questions
+## Experiments
 
 Most of what has been tried in this project did not ship, and the negative results are the
 map of where Sentinel-2's 10 m resolution limit actually sits. That record has its own page
@@ -427,5 +426,3 @@ rather than a section here:
 - **[Experiments](experiments.md)** -- the full register, with a verdict on each and the
   measurement behind it. Everything from the in-domain training chips that tripled recall to
   the three super-resolution variants that did nothing, plus links to every deep write-up.
-- **[Open questions](open-questions.md)** -- what is unresolved, ranked by expected value
-  over cost, and the known defects that are carried on purpose rather than pending.

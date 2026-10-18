@@ -31,8 +31,7 @@ They are the first test of the pipeline at subcontinental scale.
       after the provider-timeout fix). At that rate India alone takes about 19 days.
     - The link to Planetary Computer measured 2.3 MB/s when the run launched. At that speed
       India takes closer to 50 days. It is also queued behind Vietnam.
-    - Each cell downloads about 410 MB to keep about 13 MB
-      ([open question 18](open-questions.md)).
+    - Each cell downloads about 410 MB to keep about 13 MB.
 - **The world is probably 150,000-300,000 cells.** This is an extrapolation from the
   per-country counts, not a measurement: Pakistan 4,463, Germany 4,656, France 6,021,
   Nigeria 6,341, India 25,553. At 57 cells per hour that is 4-7 months of continuous
@@ -69,8 +68,7 @@ They are the first test of the pipeline at subcontinental scale.
 
 Community members never need a GPU or a fast link.
 
-**Composite next to the archive.** This is the route [open question 18](open-questions.md)
-prices:
+**Composite next to the archive.** What this route costs:
 
 - Earth Search's `sentinel-cogs` bucket is in AWS `us-west-2`, and Planetary Computer's
   storage is in Azure West Europe. Reads in the same region are free and fast.
@@ -176,8 +174,8 @@ route and a lower bound, not quadrats for `roofclf`.
 ### Sampling rules
 
 - **Validation units must be a probability sample from a defined national frame.** Today's
-  quadrats were chosen by hand, and adding more hand-picked quadrats cannot fix that
-  ([open question 5](open-questions.md)). Calibration quadrats can still be hand-placed to
+  quadrats were chosen by hand, and adding more hand-picked quadrats cannot fix that.
+  Calibration quadrats can still be hand-placed to
   widen the density range.
 - **Use the atlas to design the sample.** Stratify by building density and weight the draw by
   the atlas's own predicted capacity. That puts the mapping effort where the capacity is, and
@@ -305,4 +303,3 @@ typically been around USD 10-25 per km². New tasking costs more and has larger 
 - [Validation against MaStR](methods/mastr-validation.md) and
   [against the French register](methods/france-validation.md)
 - [Roofclf random-cell validation](methods/roofclf-national-validation.md)
-- [Open questions](open-questions.md)

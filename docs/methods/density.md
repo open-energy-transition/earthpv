@@ -1013,8 +1013,7 @@ amount of per-bin calibration turns it into a statistic.
     concentration. Gilgit-Baltistan is separately exempted from the ratio check via
     `RATIO_CHECK_EXEMPT_REGIONS`, because its real rooftop base rate is near zero and the
     ratio is structurally uninformative there. Published anyway, per this project's
-    precedent for a checked-genuine plausibility failure. See
-    [Open questions](../open-questions.md#known-defects-carried-on-purpose).
+    precedent for a checked-genuine plausibility failure.
 
 ## Running it
 
@@ -1039,5 +1038,4 @@ notably the recall correction, the mounting-split conversion, and the plausibili
 itself, each added after a method review found the previous step alone was not enough.
 The full account of what was tried, what it cost, and what did not work (a fraction-
 regression head, a Low/Central/High bracket atlas, two-endmember spectral unmixing among
-them) is in [Experiments](../experiments.md); concrete open items are in
-[Open questions](../open-questions.md).
+them) is in [Experiments](../experiments.md).

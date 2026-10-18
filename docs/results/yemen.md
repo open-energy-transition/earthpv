@@ -132,7 +132,7 @@ on top, and is floored at Verified in two cells.
 
 Compose built 810 cells and finished at 04:06 on 12 October, with no provider hand-offs and
 the 10 October and 12 October compose fixes in place (scene ranking by coverage,
-band-dropout check, label cells covering a whole outline; see open question 22). Inference
+band-dropout check, label cells covering a whole outline; see [India](india.md#a-compose-defect-found-here-and-fixed-for-every-later-country)). Inference
 over 810 cells took 43 minutes. **The ground screen crashed on its first run**: Yemen has no
 mapped ground perimeter of 50,000 m&sup2; or more, and the screen wrote an empty table and
 then failed reading its own `screen` column. It now writes the column header regardless, so

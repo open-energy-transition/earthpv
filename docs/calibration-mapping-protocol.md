@@ -510,8 +510,7 @@ effect without any new mapping -- large in exactly the dense small-rooftop quadr
 sub-400 m² work depends on (68.4% of apparent false positives in Karachi coastal).
 Closing it needs imagery contemporaneous with the Sentinel-2 composite, which JOSM's
 default background layers do not reliably provide. See
-[Open questions](open-questions.md) (ground-truth completeness) for the current count and
-cost to close it, and [Calibration quadrat imagery dating](issues/calibration-imagery-dating.md)
+[Calibration quadrat imagery dating](issues/calibration-imagery-dating.md)
 for free tools (Esri Wayback, Google Earth Pro's historical slider) that could backfill it.
 
 ## Uploading to OpenStreetMap

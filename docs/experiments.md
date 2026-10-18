@@ -7,8 +7,7 @@ again.
 
 This page is the register. It covers everything that was measured, whether it ended up in
 [the pipeline](how-it-works.md) or not. Every experiment has runnable code in the
-repository; nothing was deleted on failure. For things that are still genuinely undecided,
-see [Open questions](open-questions.md).
+repository; nothing was deleted on failure.
 
 #### How to read the verdicts:
 
@@ -39,7 +38,7 @@ see [Open questions](open-questions.md).
 | [Localizing the detector on Vietnam](results/vietnam.md#localizing-the-detector) | <span class="outcome works">shipped</span> | v9, trained with Vietnam's own OSM labels, against v5 on the held-out Central Highlands: pixel IoU 0.724 to 0.762, recall on arrays of 500 m<sup>2</sup> and up tied (0.973 against 0.960). The localized checkpoint ships. |
 | [The 5 km<sup>2</sup> ground cap, outside Germany](results/vietnam.md) | <span class="outcome works">shipped</span> | Vietnam's five largest mapped parks, 5.6 to 8.3 km<sup>2</sup>, are 92 to 99% detected. An evidence-gated exception keeps them: Verified 6,258 to 8,180 MWp. |
 | [Localizing the detector on India](results/india.md#localizing-the-detector-and-why-v5-ships) | <span class="outcome negative">rejected</span> | v10, trained with India's own OSM labels, against v5 on the held-out Surat-Bharuch-Vadodara box: recall on arrays of 500 m<sup>2</sup> and up 0.938 to 0.911, pixel IoU 0.686 to 0.663. v5 ships. India's labels are 84% ground-mount, a population v5 already covers. |
-| [Compose scenes ranked by cell coverage](open-questions.md#22-composites-built-before-2026-10-10-carry-two-compose-defects-2026-10-10) | <span class="outcome works">shipped</span> | Scenes covering the whole cell now rank before partial ones, and a whole band lost to failed reads now raises. Rewa's cell went from 87.4% to 0.0% empty; composites built earlier were not rebuilt. |
+| [Compose scenes ranked by cell coverage](results/india.md#a-compose-defect-found-here-and-fixed-for-every-later-country) | <span class="outcome works">shipped</span> | Scenes covering the whole cell now rank before partial ones, and a whole band lost to failed reads now raises. Rewa's cell went from 87.4% to 0.0% empty; composites built earlier were not rebuilt. |
 | [Solar-thermal removed from the OSM labels](results/india.md#candidate-population) | <span class="outcome works">shipped</span> | OSM tags CSP plants and water heaters with the same `generator:source=solar`. Morocco's pull was half thermal (1,697 of 3,440 features, the Noor CSP complex). Filtered for every country after India. |
 | [Mapped park outlines in Best get the Verified gate](results/india.md#the-ground-perimeter-screen-and-the-5-km2-cap) | <span class="outcome works">shipped</span> | An OSM outline swapped in for a model candidate is exempt from the merge cap. It is now always ground, and above 5 km<sup>2</sup> it is credited at its detected share unless the ground screen keeps it, the rule Verified already applied. India's Best went from 75,856 to 72,271 MWp: Khavda's two outlines 3,789 to 796 MWp, and 101 park outlines VIDA had placed on rooftops moved to ground (model rooftop 4,109 to 843 MWp). Verified unchanged. |
 | [Localizing the detector on Egypt](results/egypt.md#localizing-the-detector) | <span class="outcome works">shipped</span> | v12, trained with Egypt's own OSM labels, against v5 on the held-out Cairo Governorate: recall on arrays of 500 m<sup>2</sup> and up 0.043 to 0.217 (1 and 5 of 23), pixel IoU 0.066 to 0.062. The localized checkpoint ships, on a thin holdout (seven positive chips, four installations of margin). |
@@ -222,7 +221,7 @@ That is consistent with [Capacity density](methods/density.md)'s own three faile
 finding any coarse per-cell proxy (candidate density, roofclf's predicted rate, SPPI agreement
 rate) for which quadrat-regime a cell resembles: neither nightlights nor RWI has been tried in
 that specific role, and this result is why they are not expected to do much better than the
-three proxies that already failed there (see [Open questions](open-questions.md), item 15).
+three proxies that already failed there.
 The same script also recomputes the reference-hex comparison already published on
 [the capacity map](results/capacity.md#what-this-map-cannot-tell-you-and-what-an-independent-estimate-confirms-it-can)
 via the same grid match, as an internal consistency check rather than a second citation of it.
@@ -365,7 +364,7 @@ atlas is a caution, not a correction: the sparse-density stratum, already the le
 well-supported part of the coverage-ratio fit, is the one nearest this regime.
 
 It also answers, negatively, the "independent test of the 400 m<sup>2</sup> floor" that
-[open question 4](open-questions.md) asked for. The floor is real, it is a sensor limit, and
+had been left open. The floor is real, it is a sensor limit, and
 below roughly a pixel of module area there is no Sentinel-2 instrument here at all.
 
 ### Localizing the detector: what French chips bought (2026-09-12)
@@ -868,8 +867,8 @@ scenes, chosen precisely to suppress phenological and atmospheric variation and 
 stable composite. That is the right choice for everything else the pipeline does, and it
 removes exactly the background dynamics this estimator needs. The honest next test is a
 full-year stack including the monsoon, where cropland actually swings; that is different
-data, not a different estimator, and it is filed in
-[Open questions](open-questions.md). Until then this is rejected for the window the
+data, not a different estimator, and it is still
+open. Until then this is rejected for the window the
 project actually composites.
 
 A methodological note worth keeping: the first precondition check measured temporal
@@ -984,7 +983,7 @@ it creates ties.
 
 So **gradient boosting's advantage is a genuine reordering of buildings, not a calibration
 curve**, and it cannot be had cheaply. That sharpens
-[open question 20](open-questions.md): if the aggregate matters more than the ranking for
+an open question: if the aggregate matters more than the ranking for
 the capacity half, the GBM has to be deployed properly, plumbing and all, rather than
 approximated by post-processing the linear model.
 
@@ -1369,7 +1368,7 @@ default left at "median" and `run_compose` inheriting an AOI's existing reducer,
 for the resampling change and for the same reason: a model calibrated on medians and scored
 on means is a domain shift. Every existing AOI -- Pakistan, Germany, France, Nigeria, Zambia
 -- inherits "median". Shipping it nationally means recompositing, which
-[open question 18](open-questions.md) prices at roughly 2 TB of transfer per country, so it
+costs roughly 2 TB of transfer per country, so it
 is free for the next country and expensive for the existing ones.
 
 **Two more noise reductions, and they stack.** Weighting each 10 m pixel by the fraction of
@@ -1465,7 +1464,7 @@ cancels in that comparison so it is clean. That is what 1/sqrt(N) predicts: thre
 frames cuts the standard error by 42%. So Google's 32-acquisition budget does transfer to
 this problem -- through estimator variance, not through the shifted viewpoints its design
 exploits -- and it costs three times the download, which against
-[open question 18](open-questions.md)'s roughly 2 TB per country is a poor trade at national
+roughly 2 TB of recompositing per country is a poor trade at national
 scale. Note also that the full-year season mix is not itself harmful: at matched N = 12 the
 year frames slightly outscore the dry-season ones, so a wider window is a viable way to reach
 more frames if the bandwidth is ever there.
@@ -1652,7 +1651,7 @@ difference is noisier on the old side than it needs to be; more 2019/20 scenes w
 widen the gain rather than close it. Rule-1 labels are epoch-relative, so an array installed
 between the mapping imagery and the composite is an unlabelled positive in both arms.
 Deploying this nationally means a second epoch of imagery for the whole country, which is the
-same cost [open question 18](open-questions.md) prices for the reducer change -- but unlike
+same cost, roughly 2 TB per country, as the reducer change -- but unlike
 the reducer it buys new information rather than less noise, and it does not require
 recompositing what already exists. Scripts: `scripts/compose_scene_stacks.py --window
 2019-11-01:2020-03-15 --subdir stacks_2019`, `scripts/run_epoch_difference_ablation.py`.

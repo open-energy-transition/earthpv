@@ -110,7 +110,7 @@ Most of what was tried failed, and the failures are documented because they map 
 from glint to density, roof-axis priors, three super-resolution variants, spectral unmixing,
 and two retrains that won in-sample and lost on held-out data. Each has runnable code in
 `scripts/`. The register with a verdict and the measurement behind each:
-[Experiments](experiments.md). What is still undecided: [Open questions](open-questions.md).
+[Experiments](experiments.md).
 
 ## Contribute
 

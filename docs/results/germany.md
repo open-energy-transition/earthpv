@@ -712,16 +712,14 @@ says nothing about per-cell accuracy, which is what a PyPSA disaggregation actua
 
 ## What this run opens up
 
-Both remaining items are tracked on [Open questions](../open-questions.md).
-
-**MaStR also records installed pose, uncensored** (item 11). `glint_opportunity.py` documents
+**MaStR also records installed pose, uncensored**. `glint_opportunity.py` documents
 its pose prior as necessarily *assumed*, because this project's own pose survey was fitted
 from observed glints and is therefore censored by construction. The register carries azimuth
 and tilt for 97.4% of 4.44M rooftop units, of which 225,138 also have coordinates. Checked
 against the assumed prior it is far too narrow: 23.8% of German units are pitched steeper
 than 40&deg; where the prior implies 3.04%.
 
-**France, not Germany, is the place to check the small half** (item 4). The 30 kWp coordinate
+**France, not Germany, is the place to check the small half**. The 30 kWp coordinate
 cliff means this register can say nothing about the sub-400 m&sup2; population, which is
 where `roofclf` operates and where the evidence is still 30 purposive Pakistani quadrats.
 DeepPVMapper and BDAPPV cover exactly that band in France.

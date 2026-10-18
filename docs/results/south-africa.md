@@ -163,7 +163,7 @@ which is why it sits only 362 MWp higher.
 Compose built 3,647 cells (3,259 by building density, 1,144 holding a mapped solar
 feature, the two overlapping) from 12 October 04:06 to 14 October 00:48, with the 10
 October and 12 October compose fixes in place (scene ranking by coverage, band-dropout
-check, label cells covering a whole outline; see open question 22). The machine's WiFi lost
+check, label cells covering a whole outline; see [India](india.md#a-compose-defect-found-here-and-fixed-for-every-later-country)). The machine's WiFi lost
 DNS for about 80 minutes on the evening of 13 October; every remaining cell failed fast, the
 compose loop exited cleanly, and the queue booked an unproductive round and a one-hour
 cooldown, which was cut short by hand once DNS was back. Inference over 3,647 cells took 2

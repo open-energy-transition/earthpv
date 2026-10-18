@@ -608,10 +608,12 @@ directory). `scripts/check_docs_links.py` now checks every raw-HTML relative URL
 for the right prefix and an existing target, and runs in the docs workflow ahead of the build.
 
 
-Nav runs **Results → How it works → Setup → Experiments → Open questions**, output first,
+Nav runs **Results → How it works → Setup → Experiments**, output first,
 pipeline mechanics second, history last. `docs/experiments.md` is the canonical, dated register
 of every experiment (shipped/partial/rejected/superseded) with links to the deep write-ups under
-`docs/issues/`; `docs/open-questions.md` lists concrete, actionable open items (an item is
+`docs/issues/`; `docs/open-questions.md` lists concrete, actionable open items and is
+**excluded from the published site** (`exclude_docs` in mkdocs.yml, owner request 2026-10-18),
+so no site page may link to it (an item is
 removed once closed, moving to the experiments register with a verdict, not annotated in place).
 Every surviving doc under `docs/issues/` carries a dated status banner stating whether it's
 shipped, closed-negative, superseded, or still open, since several were written mid-investigation

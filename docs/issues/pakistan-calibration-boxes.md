@@ -1409,7 +1409,7 @@ Status: registered, Rule-1, and **deliberately not folded into a `roofclf` refit
 pending one, and `roofclf.discover_quadrats` globs `data/labels/*_calib_*_boundary.geojson`,
 so the next `earthpv roof-classifier` run picks this box up automatically -- extend
 `parcel_pv_area`'s rule 3 to the roof term first, or exclude this stem, or the numbers above
-enter the fit silently. The open item is in `docs/open-questions.md`.
+enter the fit silently. The item is still open.
 
 What the quadrat **is** good for, and it is not a small thing: 29 mapped ground-mount arrays
 between 400 m<sup>2</sup> and 1,998 m<sup>2</sup> in a rural setting. Outside the two solar-farm

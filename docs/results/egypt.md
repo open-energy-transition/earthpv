@@ -80,7 +80,7 @@ screen keeps them. That moved Verified from 2,374.6 to **3,315.1 MWp** and Best 
 **3,378.6 MWp**. The same rule adds 21 cells to South Africa, whose compose had not started,
 and none to Morocco or Yemen. Of the countries already published, Vietnam, Zambia and
 Nigeria have no such cell, and India has eight, six of them at Khavda; see
-[open question 22](../open-questions.md#22-composites-built-before-2026-10-10-carry-two-compose-defects-2026-10-10).
+[India](india.md#a-compose-defect-found-here-and-fixed-for-every-later-country).
 
 ## The ground-perimeter screen
 
@@ -140,7 +140,7 @@ elsewhere.
 
 Compose built the 941 originally selected cells between 06:19 and 17:57 on 11 October,
 about 81 cells per hour, with no provider hand-offs and the 10 October compose fixes in
-place from the start (scene ranking by coverage, band-dropout check; see open question 22).
+place from the start (scene ranking by coverage, band-dropout check; see [India](india.md#a-compose-defect-found-here-and-fixed-for-every-later-country)).
 The five outline cells were added on 12 October in eight minutes, and the chain was re-run
 from inference: the five new cells were inferred on the CPU in under a minute, since
 Yemen's training held the GPU. Postprocess took three minutes and the density stage about

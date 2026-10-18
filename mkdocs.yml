@@ -5,6 +5,10 @@ site_url: https://open-energy-transition.github.io/earthpv/
 repo_url: https://github.com/open-energy-transition/earthpv
 repo_name: open-energy-transition/earthpv
 edit_uri: edit/main/docs/
+# The open-items register stays in the repository (CLAUDE.md points agents at it) but is
+# not published on the site.
+exclude_docs: |
+  open-questions.md
 copyright: >-
   Open Energy Transition. Code under MIT, documentation and data under open licences.
 
@@ -175,7 +179,6 @@ nav:
       - Small ground-mount instrument: issues/small-ground-mount-instrument.md
       - Calibration density mismatch: issues/roofclf-calibration-density-mismatch.md
       - Europe download campaign: issues/europe-download-campaign.md
-  - Open questions: open-questions.md
   # Only the index is listed; the blog plugin appends post pages, the archive and
   # category indexes beneath it at build time.
   - Blog:

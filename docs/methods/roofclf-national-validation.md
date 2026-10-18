@@ -151,4 +151,4 @@ validation; someone needs to open them in JOSM per the steps above and log
 real/false-positive counts. Until that happens, this project's precision figures rest
 entirely on the hand-picked quadrats, and the domain-restricted capacity numbers (sub-400
 central/AND-gate, >= 400 m² roofclf rooftop) have no unbiased-sample check behind them at
-all. See [Open questions](../open-questions.md) for the current status of this backlog.
+all.
