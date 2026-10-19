@@ -77,6 +77,34 @@ IoU is nearly twice v5's. The gain is concentrated in the larger arrays. Below 1
 m&sup2; v5 finds slightly more, at half the pixel agreement, which is what a detector that
 paints generously around small arrays looks like on this measure.
 
+**The whole-country comparison**, after the atlas (`compare_checkpoints_vs_mapped.py`, both
+checkpoints inferred over all 3,647 cells, scored against the 7,160 dissolved mapped
+installations of 400 m&sup2; and up), finished on 19 October:
+
+| | v5 | v14 (localized, ships) |
+| --- | --- | --- |
+| pooled recall over mapped installations | 0.612 (4,381) | 0.608 (4,354) |
+| recall, 100 to 1,000 m&sup2; | **0.626** (2,855 of 4,558) | 0.598 (2,724) |
+| recall, 1,000 to 50,000 m&sup2; | 0.608 (1,488 of 2,449) | **0.656** (1,606) |
+| candidates below the 100,000 m&sup2; merge cap | 10,587 | 10,372 |
+| median candidate area | 1,500 m&sup2; | 1,700 m&sup2; |
+| total candidate area below the cap | 49.6 km&sup2; | 45.1 km&sup2; |
+| candidates above the cap | 227 (141.6 km&sup2;) | 406 (286.4 km&sup2;) |
+| rooftop share below the cap | 53.0% | 39.9% |
+
+Nationally the two tie (564 installations found by v14 alone against 591 by v5 alone,
+McNemar p = 0.44), and v14 is scored largely in-sample here, since it trained on every
+province but the Western Cape. The split by size repeats the holdout's: v14 finds more of
+the arrays above 1,000 m&sup2;, v5 slightly more of the small ones. **The script's recall
+for the 153 parks above 50,000 m&sup2; is not usable here** (0.16 for v14 and 0.25 for v5,
+0.63 and 0.65 counting candidates above the cap). Of the 57 parks with no v14 candidate
+within 100 m, the probability rasters light 52 over at least half their outline, most of
+them completely: where parks stand side by side, `postprocess` merges them into one blob
+and then swaps in the outline of a single mapped park, so the cluster's other parks lose
+their candidate. One cell near 19.55&deg;E 28.85&deg;S holds 19 mapped parks and two
+candidates. Their capacity is not lost, since every mapped park counts in Verified, but
+the candidate-based recall understates both checkpoints on clustered parks.
+
 ## The ground-perimeter screen and the parks' own capacity tags
 
 `scripts/screen_osm_ground_perimeters.py` scored all **420 mapped ground perimeters of

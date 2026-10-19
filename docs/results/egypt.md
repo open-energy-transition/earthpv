@@ -64,6 +64,26 @@ ground arrays on the edge of Cairo, and both checkpoints find almost none of the
 0.06 for both, against 0.69 for v5 on India's holdout). The margin is four installations.
 It is enough to satisfy the rule, not to show that localization helps in Egypt by much.
 
+**The whole-country comparison**, after the atlas (`compare_checkpoints_vs_mapped.py`,
+both checkpoints over all 946 cells, scored against the 255 dissolved mapped installations
+of 400 m&sup2; and up), finished on 19 October:
+
+| | v5 | v12 (localized, ships) |
+| --- | --- | --- |
+| pooled recall over mapped installations | 0.169 (43) | **0.220** (56) |
+| recall, 500 to 1,000 m&sup2; | 0.000 (0 of 14) | **0.643** (9) |
+| recall above 50,000 m&sup2;, counting candidates above the cap | 0.867 (26 of 30) | **0.967** (29) |
+| candidates below the 100,000 m&sup2; merge cap | 3,159 | **1,172** |
+| median candidate area | 1,200 m&sup2; | 3,950 m&sup2; |
+| total candidate area below the cap | 11.0 km&sup2; | 11.5 km&sup2; |
+| candidates above the cap | 34 (59.9 km&sup2;) | 46 (83.9 km&sup2;) |
+
+v12 finds 15 installations v5 misses and v5 two that v12 misses (McNemar p = 0.002), in the
+same direction as the holdout. v12 trained on most of these, so it is scored largely
+in-sample here, and the decision above rests on the held-out chips alone. What the
+whole-country run adds is the shape: v12 draws a third as many candidates, three times
+larger at the median, over about the same area.
+
 ## A compose gap, closed before publication
 
 The first build of this page dropped two mapped parks from Verified, a 10.0 km&sup2;

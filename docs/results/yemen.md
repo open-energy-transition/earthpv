@@ -63,6 +63,15 @@ are 13), early-stopped at epoch 36, 9 hours 44 minutes on the GTX 1060.
 Both measures tie, and the rule gives a tie to the localized model. **The comparison carries
 no information**: neither checkpoint finds a single held-out pixel.
 
+**The whole-country comparison**, after the atlas (`compare_checkpoints_vs_mapped.py`,
+both checkpoints over all 810 cells, scored against the 1,465 dissolved mapped
+installations of 400 m&sup2; and up), finished on 19 October, confirms the holdout:
+**v5 finds 6 of them and v13 2**, the two parks between 5,000 and 50,000 m&sup2; for both
+(McNemar p = 0.13). v13 draws 2,304 candidates below the merge cap against v5's 3,609,
+larger at the median (1,799 against 1,201 m&sup2;) and over about the same area (9.2
+against 9.8 km&sup2;), and 29 above it (11.2 km&sup2;) against v5's 13 (4.3 km&sup2;),
+the dark-rock blobs and the three unmapped parks described below.
+
 ## Why neither model sees Yemen's mapped PV
 
 The held-out arrays are not the exception. Scoring v13's own national inference against
