@@ -134,18 +134,23 @@ nav:
   # Pakistan stays first and is the default the Overview links to. Each country page
   # carries an in-page switcher, because `hide: [navigation]` means this tree is not
   # visible from the atlas pages themselves.
+  # Grouped by calibration tier; scripts/build_atlas_pages.py writes the pages and prints
+  # this block (--nav), so the two cannot drift.
   - PV Atlas:
-        - Pakistan: atlas.md
-        - Germany: atlas-germany.md
-        - France: atlas-france.md
-        - Zambia: atlas-zambia.md
-        - Nigeria: atlas-nigeria.md
-        - Vietnam: atlas-vietnam.md
-        - India: atlas-india.md
-        - Egypt: atlas-egypt.md
-        - Yemen: atlas-yemen.md
-        - South Africa: atlas-south-africa.md
-        - Morocco: atlas-morocco.md
+      - Gold:
+          - Pakistan: atlas.md
+          - Germany: atlas-germany.md
+      - Silver:
+          - France: atlas-france.md
+      - Bronze:
+          - Egypt: atlas-egypt.md
+          - India: atlas-india.md
+          - Morocco: atlas-morocco.md
+          - Nigeria: atlas-nigeria.md
+          - South Africa: atlas-south-africa.md
+          - Vietnam: atlas-vietnam.md
+          - Yemen: atlas-yemen.md
+          - Zambia: atlas-zambia.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md

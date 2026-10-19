@@ -608,6 +608,12 @@ directory). `scripts/check_docs_links.py` now checks every raw-HTML relative URL
 for the right prefix and an existing target, and runs in the docs workflow ahead of the build.
 
 
+**The PV Atlas pages are generated** (`scripts/build_atlas_pages.py`, 2026-10-19): one row per
+country in `ATLASES`; each page's tier (Gold/Silver/Bronze) is read from the calibration badge
+its own atlas carries (`atlas.VALIDATION_TIERS`), the switcher and the `--nav` block are grouped
+by tier, and Silver/Bronze pages open with a missing-small-installations warning and a call to
+map a calibration area. A new country is one row plus a rerun; never edit `docs/atlas*.md` by hand.
+
 Nav runs **Results → How it works → Setup → Experiments**, output first,
 pipeline mechanics second, history last. `docs/experiments.md` is the canonical, dated register
 of every experiment (shipped/partial/rejected/superseded) with links to the deep write-ups under

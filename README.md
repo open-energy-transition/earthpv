@@ -44,14 +44,14 @@ mapping solar panels in every country</a>, EarthPV explained by Open Energy Tran
 
 Each country gets an interactive **evidence atlas**: hand-mapped OpenStreetMap
 installations plus the model's own detections, per 0.1&deg; cell, with a 90% range on the
-headline figure.
+headline figure. Atlases are tiered by calibration; mapping calibration areas is how an atlas moves
+up, so [maps a calibration area](https://open-energy-transition.github.io/earthpv/contribute/).
 
-| Country | What the atlas rests on |
-| --- | --- |
-| [Pakistan](https://open-energy-transition.github.io/earthpv/atlas/) | Both detectors, calibrated on 30 hand-mapped areas |
-| [Germany](https://open-energy-transition.github.io/earthpv/atlas-germany/) | Both detectors, the small-rooftop half calibrated against the national register (MaStR) |
-| [France](https://open-energy-transition.github.io/earthpv/atlas-france/) | Segmentation, checked against the national register (ODRE) |
-| [India](https://open-energy-transition.github.io/earthpv/atlas-india/), [Vietnam](https://open-energy-transition.github.io/earthpv/atlas-vietnam/), [South Africa](https://open-energy-transition.github.io/earthpv/atlas-south-africa/), [Morocco](https://open-energy-transition.github.io/earthpv/atlas-morocco/), [Egypt](https://open-energy-transition.github.io/earthpv/atlas-egypt/), [Nigeria](https://open-energy-transition.github.io/earthpv/atlas-nigeria/), [Zambia](https://open-energy-transition.github.io/earthpv/atlas-zambia/), [Yemen](https://open-energy-transition.github.io/earthpv/atlas-yemen/) | Segmentation only, until hand-mapped calibration areas or a register exist |
+| Tier | Country | What the atlas rests on |
+| --- | --- | --- |
+| Gold | [Pakistan](https://open-energy-transition.github.io/earthpv/atlas/), [Germany](https://open-energy-transition.github.io/earthpv/atlas-germany/) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel (Pakistan) or against the national register (Germany) |
+| Silver | [France](https://open-energy-transition.github.io/earthpv/atlas-france/) | 400 m² and up, validated against hand-mapped communes and the national register; small installations missing |
+| Bronze | [Egypt](https://open-energy-transition.github.io/earthpv/atlas-egypt/), [India](https://open-energy-transition.github.io/earthpv/atlas-india/), [Morocco](https://open-energy-transition.github.io/earthpv/atlas-morocco/), [Nigeria](https://open-energy-transition.github.io/earthpv/atlas-nigeria/), [South Africa](https://open-energy-transition.github.io/earthpv/atlas-south-africa/), [Vietnam](https://open-energy-transition.github.io/earthpv/atlas-vietnam/), [Yemen](https://open-energy-transition.github.io/earthpv/atlas-yemen/), [Zambia](https://open-energy-transition.github.io/earthpv/atlas-zambia/) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/atlas/">

@@ -46,13 +46,14 @@ global datasets, it works for any country.
 
 Each country gets an interactive **evidence atlas**: hand-mapped OpenStreetMap installations
 plus the model's own detections, per 0.1&deg; cell, with a 90% range on the headline figure.
+They are tiered by how well they are calibrated; mapping calibration areas is how an atlas moves
+up, so [maps a calibration area](contribute.md).
 
-| Country | What the atlas rests on |
-| --- | --- |
-| [Pakistan](atlas.md) | Both detectors, calibrated on 30 hand-mapped areas |
-| [Germany](atlas-germany.md) | Both detectors, the small-rooftop half calibrated against the national register (MaStR) |
-| [France](atlas-france.md) | Segmentation, checked against the national register (ODRE) |
-| [India](atlas-india.md), [Vietnam](atlas-vietnam.md), [South Africa](atlas-south-africa.md), [Morocco](atlas-morocco.md), [Egypt](atlas-egypt.md), [Nigeria](atlas-nigeria.md), [Zambia](atlas-zambia.md), [Yemen](atlas-yemen.md) | Segmentation only, until hand-mapped calibration areas or a register exist |
+| Tier | Country | What the atlas rests on |
+| --- | --- | --- |
+| Gold | [Pakistan](atlas.md), [Germany](atlas-germany.md) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel (Pakistan) or against the national register (Germany) |
+| Silver | [France](atlas-france.md) | 400 m² and up, validated against hand-mapped communes and the national register; small installations missing |
+| Bronze | [Egypt](atlas-egypt.md), [India](atlas-india.md), [Morocco](atlas-morocco.md), [Nigeria](atlas-nigeria.md), [South Africa](atlas-south-africa.md), [Vietnam](atlas-vietnam.md), [Yemen](atlas-yemen.md), [Zambia](atlas-zambia.md) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 
 [![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
 

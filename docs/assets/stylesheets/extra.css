@@ -582,6 +582,85 @@
   flex-basis: 100%;
 }
 
+/* Calibration tiers (scripts/build_atlas_pages.py): each group of countries in the
+   switcher opens with a medal-coloured chip, and Silver and Bronze pages carry a warning
+   above the map that smaller installations are missing. */
+:root {
+  --pv-tier-gold: #c9a227;
+  --pv-tier-silver: #8f9aa6;
+  --pv-tier-bronze: #b5793e;
+}
+
+.atlas-switch .atlas-switch__tier {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  color: var(--pv-ink);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+.atlas-switch .atlas-switch__tier::before {
+  content: "";
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: var(--tier-colour);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tier-colour) 55%, transparent);
+}
+
+.atlas-switch__tier--gold { --tier-colour: var(--pv-tier-gold); }
+.atlas-switch__tier--silver { --tier-colour: var(--pv-tier-silver); }
+.atlas-switch__tier--bronze { --tier-colour: var(--pv-tier-bronze); }
+
+.atlas-tier-alert {
+  margin: 0 0 0.7rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--tier-colour);
+  border-left: 6px solid var(--tier-colour);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tier-colour) 14%, var(--pv-panel));
+  color: var(--pv-ink);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.atlas-tier-alert--silver { --tier-colour: var(--pv-tier-silver); }
+.atlas-tier-alert--bronze { --tier-colour: var(--pv-tier-bronze); }
+
+.md-typeset .atlas-tier-alert p {
+  margin: 0;
+}
+
+.md-typeset .atlas-tier-alert p + p {
+  margin-top: 0.55rem;
+}
+
+.md-typeset .atlas-tier-alert a.atlas-tier-cta {
+  display: inline-block;
+  padding: 0.28rem 0.8rem;
+  border-radius: 999px;
+  background: var(--tier-colour);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.md-typeset .atlas-tier-alert a.atlas-tier-cta:hover {
+  filter: brightness(1.08);
+}
+
+.md-typeset .atlas-tier-alert a.atlas-tier-more {
+  margin-left: 0.6rem;
+  color: var(--pv-ink-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .page-full-bleed {
   margin: 0;
   border-radius: 12px;
