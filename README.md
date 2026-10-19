@@ -92,6 +92,10 @@ map becomes openly licensed training data for the next model.
        alt="The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.">
 </p>
 
+**Keeping it current.** An update is a re-run on new imagery, and each round starts from a
+better map: confirmed leads become verified capacity and training data. See
+[Keeping PV data current](https://open-energy-transition.github.io/earthpv/maintenance/).
+
 The same detections also give panel tilt and orientation from Sentinel-2
 [glint](https://open-energy-transition.github.io/earthpv/results/pv-pose/) and
 [growth](https://open-energy-transition.github.io/earthpv/results/growth/) since 2021/22.

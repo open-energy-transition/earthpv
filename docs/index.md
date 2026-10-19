@@ -85,6 +85,11 @@ nothing, and anyone can reproduce, check or improve the result.
 ![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.svg#only-light)
 ![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
 
+**Keeping it current.** An update is a re-run of the same pipeline on new imagery: new
+detections become mapping leads, what mappers confirm becomes verified capacity and
+training data, and each round starts from a better map than the last.
+[Keeping PV data current](maintenance.md) describes one round.
+
 Full detail, including panel orientation from glint and growth since 2021/22:
 [How it works](how-it-works.md).
 

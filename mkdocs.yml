@@ -149,6 +149,7 @@ nav:
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
+      - Keeping PV data current: maintenance.md
       - Detection model: methods/detection.md
       - Segmentation & the building map: methods/segmentation.md
       - Rooftop classifier (roofclf): methods/roofclf.md
