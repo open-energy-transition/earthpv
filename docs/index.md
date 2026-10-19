@@ -14,7 +14,8 @@ hide:
 
 <div class="hero-copy" markdown>
 
-**Free, Open and Global Mapping of Photovoltaic Systems Above 10 kWp - Including Capacity, Growth and Orientation**
+**Free and open mapping of photovoltaics around the Earth!**   
+**Including Capacity, Growth and Orientation Systems Above 10 kWp**
 { .lede }
 
 </div>
