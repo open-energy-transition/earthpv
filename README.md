@@ -40,7 +40,7 @@ global datasets, it works for any country.
 <p align="center"><em>Watch <a href="https://www.youtube.com/watch?v=0FiXLT_kNv0">We are
 mapping solar panels in every country</a>, EarthPV explained by Open Energy Transition.</em></p>
 
-## Country
+## Evidence atlas
 
 Each country gets an interactive **evidence atlas**: hand-mapped OpenStreetMap
 installations plus the model's own detections, per 0.1&deg; cell, with a 90% range on the
