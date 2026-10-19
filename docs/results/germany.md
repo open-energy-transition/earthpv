@@ -7,8 +7,8 @@ This page is the first national end-to-end run there, produced 2026-08-31 from c
 through the atlas below and re-derived twice since, because the register found two errors in
 it.
 
-It is a different kind of page from the [Pakistan capacity map](capacity.md) or the
-[Gujarat map](gujarat.md). Those report what the pipeline estimates. This one reports how
+It is a different kind of page from the [Pakistan capacity map](capacity.md), which
+reports what the pipeline estimates. This one reports how
 wrong that estimate is, because here that is measurable.
 
 <div class="embed" markdown>

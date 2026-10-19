@@ -7,7 +7,7 @@ calibration quadrats, no national register and no third-party PV dataset to chec
 It was run under the owner's standing instruction to **localize the segmentation** on the
 country's own OpenStreetMap labels and to ship whichever checkpoint scores better on a
 held-out region. Here, unlike Vietnam, the localized checkpoint lost, so this page runs on
-`v5_combined_france`. It supersedes the earlier state-level [Gujarat](gujarat.md) page.
+`v5_combined_france`. It supersedes an earlier state-level Gujarat page.
 
 Interactive: [India PV evidence atlas](../atlas-india.md).
 
@@ -226,7 +226,7 @@ interval. Every country run after India filters it (`scripts/drop_solar_thermal.
 
 ## Against the old Gujarat page
 
-The [Gujarat page](gujarat.md) reported 812.6 MWp (`est_mwp_rc`) over its bounding box,
+The earlier Gujarat page reported 812.6 MWp (`est_mwp_rc`) over its bounding box,
 of which Gujarat state was 765.0 (168.7 rooftop, 596.3 ground). The same estimator here
 gives the state **4,554.1 MWp** (93.3 rooftop, 4,460.9 ground), and the atlas puts it at
 Verified 5,852.3 and Best 7,492.9 MWp over 1,423 cells.

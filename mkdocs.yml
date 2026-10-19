@@ -5,10 +5,19 @@ site_url: https://open-energy-transition.github.io/earthpv/
 repo_url: https://github.com/open-energy-transition/earthpv
 repo_name: open-energy-transition/earthpv
 edit_uri: edit/main/docs/
-# The open-items register stays in the repository (CLAUDE.md points agents at it) but is
-# not published on the site.
+# Kept in the repository, not published: the open-items register (CLAUDE.md points agents
+# at it), the Gujarat page the India atlas superseded, the never-run Europe campaign plan,
+# and atlas snapshots nothing links to (owner requests 2026-10-18/19).
 exclude_docs: |
-  open-questions.md
+  /open-questions.md
+  /results/gujarat.md
+  /issues/europe-download-campaign.md
+  /assets/interactive/gujarat_pv_atlas.html
+  /assets/interactive/pakistan_evidence_atlas_DEFECTIVE_edgeflag_20260920.html
+  /assets/interactive/pakistan_evidence_atlas_EDGEFIX_20260920.html
+  /assets/interactive/pakistan_evidence_atlas_PRE_areaweighted_20260920.html
+  /assets/interactive/pakistan_density_map.html
+  /assets/interactive/pakistan_dashboard/
 copyright: >-
   Open Energy Transition. Code under MIT, documentation and data under open licences.
 
@@ -178,7 +187,6 @@ nav:
       - Calibration imagery dating: issues/calibration-imagery-dating.md
       - Small ground-mount instrument: issues/small-ground-mount-instrument.md
       - Calibration density mismatch: issues/roofclf-calibration-density-mismatch.md
-      - Europe download campaign: issues/europe-download-campaign.md
   # Only the index is listed; the blog plugin appends post pages, the archive and
   # category indexes beneath it at build time.
   - Blog:

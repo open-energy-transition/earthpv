@@ -613,7 +613,8 @@ pipeline mechanics second, history last. `docs/experiments.md` is the canonical,
 of every experiment (shipped/partial/rejected/superseded) with links to the deep write-ups under
 `docs/issues/`; `docs/open-questions.md` lists concrete, actionable open items and is
 **excluded from the published site** (`exclude_docs` in mkdocs.yml, owner request 2026-10-18),
-so no site page may link to it (an item is
+so no site page may link to it; the same list keeps the superseded Gujarat page, the never-run
+Europe campaign plan and unlinked atlas snapshots off the site (2026-10-19) (an item is
 removed once closed, moving to the experiments register with a verdict, not annotated in place).
 Every surviving doc under `docs/issues/` carries a dated status banner stating whether it's
 shipped, closed-negative, superseded, or still open, since several were written mid-investigation
