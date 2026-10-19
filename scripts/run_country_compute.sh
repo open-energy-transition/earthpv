@@ -77,6 +77,13 @@ case "$AOI" in
     DATE_RANGE="Apr - Sep 2026"
     START_MARKER=$QMARK/south_africa_compose_done
     INCREMENTAL=0 ;;
+  # 2026-10-19: Poland, added to the same queue on the owner's request.
+  poland)
+    MODEL_TAG=v15_combined_poland; CONFIG=configs/terramind_pv_v15_poland.yaml
+    BASE_CORPUS="germany punjab pakistan gujarat france"
+    DATE_RANGE="May - Sep 2026"
+    START_MARKER=$QMARK/poland_compose_done
+    INCREMENTAL=0 ;;
   *) echo "unknown AOI $AOI"; exit 2 ;;
 esac
 COMPOSE_DONE=$QMARK/${AOI}_compose_done

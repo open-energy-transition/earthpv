@@ -26,6 +26,7 @@ morocco|-13.2,27.6,-1.0,35.95|MAR|4x3
 egypt|24.7,22.0,36.9,31.7|EGY|4x4
 yemen|41.8,12.1,54.6,19.0|YEM|4x3
 south_africa|16.4,-34.9,32.9,-22.1|ZAF|8x6
+poland|14.0,49.0,24.2,54.9|POL|5x4
 "
 AOIS=$(echo "$COUNTRIES" | awk -F'|' 'NF {print $1}')
 

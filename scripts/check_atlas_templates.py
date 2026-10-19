@@ -88,6 +88,8 @@ PUBLISHED = {
     "egypt_pv_evidence_atlas.html": ("egypt", "Egypt"),
     "yemen_pv_evidence_atlas.html": ("yemen", "Yemen"),
     "south_africa_pv_evidence_atlas.html": ("south_africa", "South Africa"),
+    # 2026-10-19, registered before its page exists.
+    "poland_pv_evidence_atlas.html": ("poland", "Poland"),
 }
 
 

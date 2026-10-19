@@ -497,6 +497,16 @@ aois:
       "0071_0009", "0073_0029",
     ]
 
+  # Added by scripts/new_region.py. No source_region key, so chips and compose fetch
+  # from Planetary Computer STAC rather than a local composite cache.
+  poland:
+    bbox: [14.0, 49.0, 24.2, 54.9]
+    division: { name: Poland, country: PL, subtype: country, iso3: POL }
+    grid_origin: [14.0, 49.0]
+    # May to September: the least cloudy months and the highest sun, as for France.
+    compose_window: ["2026-05-01", "2026-09-30"]
+    cell_selection: duckdb
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]

@@ -1,0 +1,45 @@
+# Poland's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Poland, national. Same starting condition as Zambia, Nigeria, Vietnam, India and the
+# 2026-10-10 queue -- no calibration quadrats, no register used, no third-party dataset
+# checked against -- so the builder's default no-ground-truth text stands. The segmentation
+# is localized on Poland's own OpenStreetMap labels and ships only if it beats v5 on a
+# held-out region (results/poland_checkpoint_decision.json records which one did).
+#
+# Numbers belong in docs/results/poland.md; nothing here quotes a figure a rebuild could
+# change.
+
+title: Poland
+
+cities:
+  - [Warsaw, 21.012, 52.230]
+  - [Krakow, 19.945, 50.065]
+  - [Lodz, 19.457, 51.759]
+  - [Wroclaw, 17.039, 51.108]
+  - [Poznan, 16.925, 52.406]
+  - [Gdansk, 18.646, 54.352]
+  - [Szczecin, 14.553, 53.429]
+  - [Lublin, 22.568, 51.246]
+  - [Katowice, 19.024, 50.264]
+  - [Bialystok, 23.169, 53.133]
+  - [Rzeszow, 22.004, 50.041]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of
+      Poland has been mapped panel by panel, so there is nothing to calibrate a
+      per-building rooftop classifier against here. Everything on the map is either
+      hand-mapped in OpenStreetMap or an array the segmentation model outlined directly,
+      which in practice means installations of roughly 400 m&sup2; and up. The household
+      rooftop systems behind most of Poland's solar growth are mostly below that size.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
+      A utility-scale park built on empty land that nobody has mapped yet falls outside
+      both rules and is not on this page.
+    - >-
+      <b>Solar parks the model outlines but nobody has mapped are not counted.</b> A model
+      outline above 100,000 m&sup2; only counts when it carries a mapped plant geometry,
+      which removes large false detections and, with them, the occasional real park that
+      is not yet in OpenStreetMap. Mapping such a park brings it into the verified layer.
