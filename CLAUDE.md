@@ -614,6 +614,15 @@ its own atlas carries (`atlas.VALIDATION_TIERS`), the switcher and the `--nav` b
 by tier, and Silver/Bronze pages open with a missing-small-installations warning and a call to
 map a calibration area. A new country is one row plus a rerun; never edit `docs/atlas*.md` by hand.
 
+**Every evidence atlas shows an import ceiling** (2026-10-19, owner request): solar panels
+imported from China from Jan 2017 to the end of the imagery window, from Ember's customs-based
+export data (CC-BY-4.0). `scripts/ember_import_ceiling.py --csv <Ember monthly CSV>` writes
+`configs/external/ember_china_panel_imports.yaml`; `atlas.import_ceiling(aoi)` puts it in
+`totals.import_ceiling` and the hero shows Best as a share of it. India, Germany and France are
+flagged `ceiling: false` (domestic manufacturing; pre-2017 fleets and EU imports via the
+Netherlands) and the page says why instead of calling it a ceiling. Re-run the script when a
+new country's AOI is added, before its atlas is built. `docs/methods/validity.md` has the table.
+
 Nav runs **Results → How it works → Setup → Experiments**, output first,
 pipeline mechanics second, history last. `docs/experiments.md` is the canonical, dated register
 of every experiment (shipped/partial/rejected/superseded) with links to the deep write-ups under

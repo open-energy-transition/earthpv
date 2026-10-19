@@ -83,6 +83,40 @@ near 20 GWp in 2026 is consistent with that record, and arguably conservative. T
 pipeline does not use this figure anywhere; its value is precisely that it is
 independent.
 
+## An upper ceiling from customs data
+
+Each atlas also shows how much solar-panel capacity its country imported from China, from
+January 2017 to the end of the atlas's imagery window. The figures come from
+[Ember's China solar export data](https://ember-energy.org/data/china-solar-exports-data/)
+(China's customs records, module capacity derived from export value and the month's
+average price, CC-BY-4.0), summed by `scripts/ember_import_ceiling.py` into
+`configs/external/ember_china_panel_imports.yaml`. Where almost every panel comes from China
+and the fleet was built after 2017, that is a ceiling on what any atlas could count: some
+imported panels sit in warehouses, are re-exported or are not installed yet, and none
+imported later can be on the imagery.
+
+| Country | Best estimate (MWp) | Imported from China (MWp) | Period | Best as share of it |
+| --- | ---: | ---: | --- | ---: |
+| Pakistan | 24,330 | 57,609 | Jan 2017 to Jun 2026 | 42% |
+| Vietnam | 8,860 | 31,116 | Jan 2017 to Aug 2026 | 28% |
+| South Africa | 9,756 | 18,533 | Jan 2017 to Aug 2026 | 53% |
+| Egypt | 3,379 | 9,106 | Jan 2017 to Aug 2026 | 37% |
+| Nigeria | 121 | 5,663 | Jan 2017 to Mar 2026 | 2% |
+| Morocco | 411 | 4,817 | Jan 2017 to Aug 2026 | 9% |
+| Yemen | 67 | 2,848 | Jan 2017 to Mar 2026 | 2% |
+| Zambia | 526 | 827 | Jan 2017 to Oct 2025 | 64% |
+| India | 72,271 | 95,060 | Jan 2017 to Mar 2026 | not a ceiling |
+| Germany | 88,709 | 29,906 | Jan 2017 to Aug 2026 | not a ceiling |
+| France | 13,368 | 16,196 | Jan 2017 to Sep 2024 | not a ceiling |
+
+**It is not a ceiling for India, Germany or France**, and those atlases say so instead:
+India makes a large share of its own panels, and much of Germany's and France's fleets
+predate 2017, with much of the EU's Chinese supply arriving through the Netherlands rather
+than directly. Where it is a ceiling, the gap is mostly what this project cannot see: no
+Bronze or Silver atlas counts installations below about 400 m&sup2;, and the countries at
+2% (Nigeria, Yemen) are ones whose solar is overwhelmingly small household and pumping
+systems.
+
 ## Does the approach scale worldwide
 
 The question splits the same way the pipeline does.

@@ -169,7 +169,8 @@ checkable. [Join the community on Discord](https://discord.gg/T5zh6N24Hv).
 
 Code MIT. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
 and Overture Maps; labels from OpenStreetMap contributors under ODbL; administrative
-boundaries from geoBoundaries under CC-BY.
+boundaries from geoBoundaries under CC-BY; solar-panel import figures from
+[Ember](https://ember-energy.org/data/china-solar-exports-data/) under CC-BY-4.0.
 
 **Published data outputs** (the atlases, capacity tables, raw detections and any other
 derived dataset offered for download) are derivative databases of OpenStreetMap's solar

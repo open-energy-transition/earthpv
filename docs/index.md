@@ -190,7 +190,8 @@ feed this open, verifiable capacity map into energy and power-system models.
 
 Code is MIT. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open
 Buildings and Overture Maps; labels from OpenStreetMap contributors under ODbL;
-administrative boundaries from geoBoundaries under CC-BY.
+administrative boundaries from geoBoundaries under CC-BY; solar-panel import figures from
+[Ember](https://ember-energy.org/data/china-solar-exports-data/) under CC-BY-4.0.
 
 **Published data outputs** (the atlases, capacity tables, raw detections and any other
 derived dataset offered for download) are derivative databases of OpenStreetMap's solar

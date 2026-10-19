@@ -77,6 +77,34 @@ VALIDATION_TIERS = {
 }
 
 
+EMBER_IMPORTS = Path(__file__).resolve().parents[2] / "configs" / "external" / "ember_china_panel_imports.yaml"
+
+
+def import_ceiling(aoi: str, path: Path = EMBER_IMPORTS) -> dict | None:
+    """Panels imported from China into the AOI up to the end of its imagery window, from
+    Ember's customs-based export data (scripts/ember_import_ceiling.py writes the table).
+
+    An upper ceiling on capacity built since 2017 where nearly all panels come from China;
+    the entry says when it is not one (`ceiling: false` with `why_not`), and the template
+    words it accordingly. None when the AOI has no entry.
+    """
+    if not path.exists():
+        return None
+    import yaml
+
+    doc = yaml.safe_load(path.read_text()) or {}
+    e = (doc.get("aois") or {}).get(aoi)
+    if not e:
+        return None
+    out = {k: e[k] for k in ("mwp", "from", "to", "ceiling") if k in e}
+    out["from"], out["to"] = str(out["from"]), str(out["to"])
+    if e.get("why_not"):
+        out["why_not"] = e["why_not"]
+    out["source"] = "Ember"
+    out["url"] = doc.get("url")
+    return out
+
+
 def derive_validation_score(aoi: str, has_sub400: bool,
                             labels_dir: Path = Path("data/labels")) -> str:
     """Default tier from what the atlas actually has, overridable by the caller.
@@ -2446,6 +2474,9 @@ def build_evidence_atlas(
             "imagery_date_range": imagery_date_range,
         },
     }
+    ceiling = import_ceiling(aoi)
+    if ceiling:
+        data["totals"]["import_ceiling"] = ceiling
 
     if downloads and data_release_url:
         base = data_release_url.rstrip("/")

@@ -220,6 +220,10 @@
      this specific page was last built -- two different ages, so two different numbers. */
   .hero-freshness { font-family: var(--font-mono); font-size: 11px; color: var(--muted);
     margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .hero-ceiling { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); margin-top: 9px;
+    max-width: 52ch; font-variant-numeric: tabular-nums; }
+  .hero-ceiling b { color: var(--ink); }
+  .hero-ceiling a { color: inherit; }
   .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
   .hero-desc b { color: var(--ink); font-weight: 660; }
 
@@ -548,6 +552,7 @@
           <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
           <div class="hero-label">Nationwide</div>
           <div class="hero-ci" id="heroCi"></div>
+          <div class="hero-ceiling" id="heroCeiling"></div>
           <div class="hero-freshness" id="heroFreshness"></div>
           <div class="hero-desc" id="heroDesc"></div>
           <div class="tiles" id="tiles"></div>
@@ -1642,6 +1647,22 @@ out geom;</div>
 
   countUp("heroNum", T.mwp_best, 700);
   document.getElementById("heroCi").textContent = ciText(T.mwp_best_ci);
+  // Upper ceiling from customs data (Ember): panels imported from China up to the end of
+  // the imagery window (scripts/ember_import_ceiling.py). Called a ceiling only where the
+  // table says it is one; elsewhere the page says why it is not.
+  const IC = T.import_ceiling;
+  if (IC) {
+    const mon = (s) => { const [y, m] = String(s).split("-");
+      return new Date(Date.UTC(+y, +m - 1, 1)).toLocaleString("en-US",
+        {month: "short", year: "numeric", timeZone: "UTC"}); };
+    const span = `${mon(IC.from)} to ${mon(IC.to)}`;
+    const src = IC.url ? `<a href="${IC.url}" target="_blank" rel="noopener">Ember</a>` : "Ember";
+    document.getElementById("heroCeiling").innerHTML = IC.ceiling
+      ? `<b>Upper ceiling ${fmt(IC.mwp)} MWp</b>: solar panels imported from China, ${span} `
+        + `(${src}, customs data). This estimate is ${Math.round(100 * T.mwp_best / IC.mwp)}% of it.`
+      : `Solar panels imported from China, ${span}: ${fmt(IC.mwp)} MWp (${src}, customs data). `
+        + `Not a ceiling here: ${IC.why_not}.`;
+  }
   document.getElementById("heroFreshness").textContent = [
     T.imagery_date_range ? `Sentinel-2 imagery: ${T.imagery_date_range}` : null,
     T.generated_at ? `atlas generated ${T.generated_at}` : null,

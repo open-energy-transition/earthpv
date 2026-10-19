@@ -1,0 +1,85 @@
+# Written by scripts/ember_import_ceiling.py; do not edit by hand.
+source: Ember, China's Solar PV Exports (China customs, GACC), CC-BY-4.0
+url: https://ember-energy.org/data/china-solar-exports-data/
+data_through: 2026-08
+retrieved: '2026-10-19'
+method: Sum of Ember's monthly panel capacity (MW, export value / average module price) to each country
+  from the first month of the record to the end of the atlas's imagery window.
+aois:
+  egypt:
+    ember_area: Egypt
+    from: 2017-01
+    to: 2026-08
+    mwp: 9106.5
+    ceiling: true
+  france:
+    ember_area: France
+    from: 2017-01
+    to: 2024-09
+    mwp: 16196.5
+    ceiling: false
+    why_not: a large part of France's fleet was built before 2017, and much of the EU's Chinese supply
+      arrives through the Netherlands
+  germany:
+    ember_area: Germany
+    from: 2017-01
+    to: 2026-08
+    mwp: 29905.9
+    ceiling: false
+    why_not: most of Germany's fleet was built before 2017, and much of the EU's Chinese supply arrives
+      through the Netherlands
+  india:
+    ember_area: India
+    from: 2017-01
+    to: 2026-03
+    mwp: 95060.1
+    ceiling: false
+    why_not: India makes a large share of its own panels and restricts Chinese ones for public projects
+  morocco:
+    ember_area: Morocco
+    from: 2017-01
+    to: 2026-08
+    mwp: 4816.9
+    ceiling: true
+  nigeria:
+    ember_area: Nigeria
+    from: 2017-01
+    to: 2026-03
+    mwp: 5663.1
+    ceiling: true
+  pakistan:
+    ember_area: Pakistan
+    from: 2017-01
+    to: 2026-06
+    mwp: 57609.2
+    ceiling: true
+  poland:
+    ember_area: Poland
+    from: 2017-01
+    to: 2026-08
+    mwp: 21769.3
+    ceiling: true
+  south_africa:
+    ember_area: South Africa
+    from: 2017-01
+    to: 2026-08
+    mwp: 18532.9
+    ceiling: true
+  vietnam:
+    ember_area: Viet Nam
+    from: 2017-01
+    to: 2026-08
+    mwp: 31116.5
+    ceiling: true
+  yemen:
+    ember_area: Yemen
+    from: 2017-01
+    to: 2026-03
+    mwp: 2848.3
+    ceiling: true
+  zambia:
+    ember_area: Zambia
+    from: 2017-01
+    to: 2025-10
+    mwp: 826.9
+    ceiling: true
