@@ -1349,6 +1349,18 @@ full outlines, since only perimeters above 5 km2 are screened. `check-density` f
 provinces (ground:rooftop ratio of the model's estimate, plus four single-cell flags that are
 each one mapped plant). `docs/results/south-africa.md`.
 
+**Morocco published 2026-10-19 on its localized v11: Verified 380.4 / Best 411.2 MWp** (90%
+265-550 / 361-554) over 703 cells north of 27 deg 40' N, Sentinel-2 April to September 2026,
+against ONEE's 1,285 MW of utility-scale PV plus 534 MW CSP (pv magazine, 2026-02-26). The
+owner accepted 49 train chips (one under the chain's floor of 50) on 2026-10-18. **The ship
+decision was a tie near 1.0** (recall >= 500 m2 0.992 vs v5 0.994, IoU 0.935 vs 0.938): the
+Draa-Tafilalet holdout is three parks (Noor IV 72 MW, Noor Erfoud and Noor Zagora 40 MW each)
+and no small arrays. Verified is 377.8 MWp of mapped ground; the model adds 87.7 MWp
+(`est_mwp_rc`, all ground; no rooftop candidate matches a mapped rooftop). Nothing is mapped
+at Noor Midelt. **`atlas.build_evidence_atlas` now clips region outlines to the AOI bbox**:
+geoBoundaries MAR draws Laayoune-Sakia El Hamra and Guelmim-Oued Noun into Western Sahara
+(south to 24.4 N); every cell lies inside the bbox, so no total moves. `docs/results/morocco.md`.
+
 **Label cells cover a park's whole outline since 2026-10-12** (`compose._solar_label_cells`).
 A cell per mapped feature by its representative point left an outline crossing a cell edge
 half imaged, and the ground screen (90% imaged above 5 km2) dropped two Egyptian parks that

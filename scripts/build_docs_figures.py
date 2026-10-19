@@ -2519,6 +2519,11 @@ INTERACTIVE = [
     # v14_combined_south_africa (it beat v5 on the held-out Western Cape). Written by
     # scripts/run_country_compute.sh; docs/results/south-africa.md has the comparison.
     ("results/south_africa_pv_evidence_atlas.html", "south_africa_pv_evidence_atlas.html"),
+    # Morocco: segmentation-only, north of 27 deg 40' N, on its own LOCALIZED checkpoint
+    # v11_combined_morocco (it tied v5 near 1.0 on the held-out Draa-Tafilalet parks; a tie
+    # goes to the localized model). Written by scripts/run_country_compute.sh;
+    # docs/results/morocco.md explains.
+    ("results/morocco_pv_evidence_atlas.html", "morocco_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
 ]
 

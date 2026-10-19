@@ -52,7 +52,7 @@ plus the model's own detections, per 0.1&deg; cell, with a 90% range on the head
 | [Pakistan](atlas.md) | Both detectors, calibrated on 30 hand-mapped areas |
 | [Germany](atlas-germany.md) | Both detectors, the small-rooftop half calibrated against the national register (MaStR) |
 | [France](atlas-france.md) | Segmentation, checked against the national register (ODRE) |
-| [India](atlas-india.md), [Vietnam](atlas-vietnam.md), [South Africa](atlas-south-africa.md), [Egypt](atlas-egypt.md), [Nigeria](atlas-nigeria.md), [Zambia](atlas-zambia.md), [Yemen](atlas-yemen.md) | Segmentation only, until hand-mapped calibration areas or a register exist |
+| [India](atlas-india.md), [Vietnam](atlas-vietnam.md), [South Africa](atlas-south-africa.md), [Morocco](atlas-morocco.md), [Egypt](atlas-egypt.md), [Nigeria](atlas-nigeria.md), [Zambia](atlas-zambia.md), [Yemen](atlas-yemen.md) | Segmentation only, until hand-mapped calibration areas or a register exist |
 
 [![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
 

@@ -18,6 +18,7 @@ hide:
   <a href="../atlas-egypt/">Egypt</a>
   <a href="../atlas-yemen/">Yemen</a>
   <a href="../atlas-south-africa/">South Africa</a>
+  <a href="../atlas-morocco/">Morocco</a>
 </nav>
 <iframe src="../assets/interactive/zambia_pv_evidence_atlas.html" title="Zambia PV evidence atlas: verified and best estimate by 0.1-degree cell"></iframe>
 </div>

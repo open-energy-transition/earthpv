@@ -2327,6 +2327,17 @@ def build_evidence_atlas(
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
         reg_regions = _region_rows(reg)
+        # Draw a region only inside the AOI's own box. geoBoundaries' MAR layer carries
+        # Western Sahara inside two Moroccan regions, while the Morocco AOI stops at
+        # 27.7N, the internationally recognised line; the map must not draw past it
+        # either. Every cell lies inside the box, so no region total can change.
+        aoi_bbox = (Settings.load().aois.get(aoi) or {}).get("bbox")
+        if aoi_bbox:
+            from shapely.geometry import box as _box
+
+            reg_regions = reg_regions.copy()
+            reg_regions["geometry"] = reg_regions.geometry.intersection(_box(*aoi_bbox))
+            reg_regions = reg_regions[~reg_regions.geometry.is_empty]
         keep = [
             "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
             "small_low", "small_central", "small_outdomain",

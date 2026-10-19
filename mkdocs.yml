@@ -145,6 +145,7 @@ nav:
         - Egypt: atlas-egypt.md
         - Yemen: atlas-yemen.md
         - South Africa: atlas-south-africa.md
+        - Morocco: atlas-morocco.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md

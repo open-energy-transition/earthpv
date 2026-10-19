@@ -36,6 +36,11 @@ confidence:
       A utility-scale park built on empty land that nobody has mapped yet falls outside
       both rules and is not on this page.
     - >-
+      <b>Concentrating solar power is not counted.</b> The Noor Ouarzazate complex's
+      trough and tower plants focus sunlight with mirrors rather than converting it in
+      photovoltaic panels, so they are filtered out of the map and of the training labels.
+      Its photovoltaic plant, Noor IV, is counted.
+    - >-
       <b>The map stops at 27&deg;40&prime; N.</b> The boundary layer this pipeline uses
       extends further south; this page follows the internationally recognized line
       instead, and the territory south of it is not included.
