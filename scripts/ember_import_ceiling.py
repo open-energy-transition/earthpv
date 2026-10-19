@@ -50,6 +50,9 @@ NOT_A_CEILING = {
               "Chinese supply arrives through the Netherlands",
     "india": "India makes a large share of its own panels and restricts Chinese ones for "
              "public projects",
+    # Installed ~21.8 GW by Feb 2025 against 15.3 GW of direct imports from China by then.
+    "poland": "much of Poland's Chinese supply arrives through other EU countries, and its "
+              "installed fleet already exceeded its direct imports from China in early 2025",
 }
 
 

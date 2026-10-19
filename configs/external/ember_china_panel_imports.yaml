@@ -58,7 +58,9 @@ aois:
     from: 2017-01
     to: 2026-08
     mwp: 21769.3
-    ceiling: true
+    ceiling: false
+    why_not: much of Poland's Chinese supply arrives through other EU countries, and its installed fleet
+      already exceeded its direct imports from China in early 2025
   south_africa:
     ember_area: South Africa
     from: 2017-01

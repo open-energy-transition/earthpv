@@ -619,8 +619,8 @@ imported from China from Jan 2017 to the end of the imagery window, from Ember's
 export data (CC-BY-4.0). `scripts/ember_import_ceiling.py --csv <Ember monthly CSV>` writes
 `configs/external/ember_china_panel_imports.yaml`; `atlas.import_ceiling(aoi)` puts it in
 `totals.import_ceiling` and the hero shows Best as a share of it. India, Germany and France are
-flagged `ceiling: false` (domestic manufacturing; pre-2017 fleets and EU imports via the
-Netherlands) and the page says why instead of calling it a ceiling. Re-run the script when a
+flagged `ceiling: false`, and so is Poland (domestic manufacturing; pre-2017 fleets and EU
+imports via the Netherlands; Poland's fleet already exceeded its direct imports in 2025) and the page says why instead of calling it a ceiling. Re-run the script when a
 new country's AOI is added, before its atlas is built. `docs/methods/validity.md` has the table.
 
 Nav runs **Results → How it works → Setup → Experiments**, output first,

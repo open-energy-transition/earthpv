@@ -108,11 +108,14 @@ imported later can be on the imagery.
 | India | 72,271 | 95,060 | Jan 2017 to Mar 2026 | not a ceiling |
 | Germany | 88,709 | 29,906 | Jan 2017 to Aug 2026 | not a ceiling |
 | France | 13,368 | 16,196 | Jan 2017 to Sep 2024 | not a ceiling |
+| Poland | atlas in progress | 21,769 | Jan 2017 to Aug 2026 | not a ceiling |
 
-**It is not a ceiling for India, Germany or France**, and those atlases say so instead:
-India makes a large share of its own panels, and much of Germany's and France's fleets
-predate 2017, with much of the EU's Chinese supply arriving through the Netherlands rather
-than directly. Where it is a ceiling, the gap is mostly what this project cannot see: no
+**It is not a ceiling for India, Germany, France or Poland**, and those atlases say so
+instead: India makes a large share of its own panels, much of Germany's and France's fleets
+predate 2017, and much of the EU's Chinese supply arrives through the Netherlands and other
+member states rather than directly. Poland had about 21.8 GW installed by February 2025
+([Wikipedia](https://en.wikipedia.org/wiki/Solar_power_in_Poland)), against 15.3 GW of
+panels imported directly from China by then. Where it is a ceiling, the gap is mostly what this project cannot see: no
 Bronze or Silver atlas counts installations below about 400 m&sup2;, and the countries at
 2% (Nigeria, Yemen) are ones whose solar is overwhelmingly small household and pumping
 systems.
