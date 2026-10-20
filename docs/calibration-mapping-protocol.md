@@ -558,11 +558,11 @@ Before you press upload:
 
 - **Check which layer you are uploading.** It must be the OSM data layer, never the quadrat
   boundary layer and never the all-quadrats validation layer.
-- **Run JOSM's validator** (Ctrl+Shift+V) and fix what it flags. Overlapping ways and
+- **Run JOSM's validator** (Shift+V) and fix what it flags. Overlapping ways and
   untagged geometry are the usual complaints on a panel-tracing session.
 - **Write a real changeset comment**, for example
   `Map rooftop and ground-mounted solar PV in <place> (earthpv calibration area)`, with the
-  hashtags `#earthpv;#earthpv-calibration` (the atlas's editor buttons fill in both). The
+  hashtags `#tracethesun;#earthpv;#earthpv-calibration` (the atlas's editor buttons fill in both). The
   hashtags are how this project finds every calibration changeset again, on
   [OSMCha](https://osmcha.org/) or in the changeset search, without asking each mapper.
 - **Set the source.** Put the imagery you actually traced from in the changeset `source`

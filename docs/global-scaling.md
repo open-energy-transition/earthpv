@@ -298,7 +298,7 @@ typically been around USD 10-25 per km². New tasking costs more and has larger 
 - [TraceTheSun concept note](22072026-Concept-Note-TraceTheSun.md)
 - [Setup New Country](reproduce.md#scale-to-a-new-country)
 - [Calibration mapping protocol](calibration-mapping-protocol.md) and
-  [Contribute a calibration area](contribute.md)
+  [Contribute data](contribute/index.md)
 - [Calibration quadrats overview](methods/calibration-quadrats.md)
 - [Validation against MaStR](methods/mastr-validation.md) and
   [against the French register](methods/france-validation.md)

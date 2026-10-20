@@ -17,8 +17,8 @@ the navigation and the badge on the map cannot disagree:
   calibrated estimate below the floor.
 - **Bronze**: 400 m2 and up only, with no local calibration.
 
-Silver and Bronze pages open with a warning that smaller installations are missing and a
-call to action linking to the calibration-area guide.
+Silver and Bronze pages open with a warning that smaller installations are missing, what a
+reader can do about it, and links into the Contribute Data section (docs/contribute/).
 
     python scripts/build_atlas_pages.py          # rewrites docs/atlas*.md
     python scripts/build_atlas_pages.py --nav    # also prints the mkdocs.yml nav block
@@ -84,10 +84,25 @@ WARNING = {
         "Read every figure here as a floor."
     ),
 }
+# What a reader can do about it: the Contribute Data section (docs/contribute/).
+HELP = {
+    "silver": (
+        "<strong>You can help from your browser.</strong> Every solar installation mapped in "
+        "OpenStreetMap is counted in this atlas at its mapped size, and small areas mapped "
+        "completely, panel by panel, are what any estimate of the smaller installations here "
+        "would be fitted on."
+    ),
+    "bronze": (
+        "<strong>You can change that from your browser.</strong> The hollow diamonds on the "
+        "map are candidate areas chosen for this: click one, open it in iD or JOSM, and map "
+        "every solar panel inside it in OpenStreetMap. Six to ten complete areas are enough "
+        "to start estimating {country}'s smaller installations."
+    ),
+}
 CTA = (
-    '<a class="atlas-tier-cta" href="../contribute/">Help close the gap: map a calibration '
-    'area &rarr;</a> <a class="atlas-tier-more" href="../methods/calibration-quadrats/">How '
-    'calibration areas work</a>'
+    '<a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration '
+    'area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser '
+    '(iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a>'
 )
 
 
@@ -119,8 +134,9 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
              "---", "", '<div class="page-full-bleed" markdown>', switcher(stem)]
     if tier in WARNING:
         text = WARNING[tier].format(country=country, extra=extra).strip()
+        help_ = HELP[tier].format(country=country)
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
-                     f"  <p>{text}</p>\n  <p>{CTA}</p>\n</div>")
+                     f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{CTA}</p>\n</div>")
     # `allow="fullscreen"`: the atlas map has a fullscreen button, which a frame without
     # the permission silently disables. The local-network ones let the "Open in JOSM"
     # button reach JOSM's Remote Control on 127.0.0.1 under Chrome's Local Network Access

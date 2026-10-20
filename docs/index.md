@@ -48,7 +48,7 @@ global datasets, it works for any country.
 Each country gets an interactive **evidence atlas**: hand-mapped OpenStreetMap installations
 plus the model's own detections, per 0.1&deg; cell, with a 90% range on the headline figure.
 They are tiered by how well they are calibrated; mapping calibration areas is how an atlas moves
-up, so [maps a calibration area](contribute.md).
+up, so [maps a calibration area](contribute/index.md).
 
 | Tier | Country | What the atlas rests on |
 | --- | --- | --- |

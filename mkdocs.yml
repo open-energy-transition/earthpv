@@ -151,6 +151,15 @@ nav:
           - Vietnam: atlas-vietnam.md
           - Yemen: atlas-yemen.md
           - Zambia: atlas-zambia.md
+  # How the community adds the OpenStreetMap ground truth the atlases are calibrated on,
+  # right after the atlases whose Silver/Bronze notes link here. contribute/index.md keeps
+  # the old /contribute/ URL, which the atlas popups and the README link to.
+  - Contribute Data:
+      - contribute/index.md
+      - Map with iD: contribute/id.md
+      - Map with JOSM: contribute/josm.md
+      - Report and verify: contribute/report.md
+      - Register an area (maintainers): contribute/maintainers.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:
       - how-it-works.md
@@ -171,7 +180,6 @@ nav:
       - Tutorial: tutorial.md
       - Setup New Country: reproduce.md
       - Country data registry: data-registry.md
-      - Contribute a calibration area: contribute.md
   # History last: what was tried, and what is still undecided. Every page under
   # Experiments carries a status banner, because several describe a pipeline that has
   # since been replaced.

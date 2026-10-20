@@ -684,6 +684,31 @@
   margin: 0 0 1.6rem;
 }
 
+/* A screenshot still to be taken: a reserved, captioned blank, so a page reads right until
+   the image exists. Replace the whole <div class="shot-needed"> with the image when it does;
+   the block names the file to save and what it should show. */
+.md-typeset .shot-needed {
+  margin: 1.2rem 0;
+  padding: 1.1rem 1.3rem;
+  min-height: 11rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 2px dashed var(--pv-muted);
+  border-radius: 10px;
+  background: var(--pv-panel-2);
+  color: var(--pv-ink-2);
+  font-size: 0.74rem;
+}
+
+.md-typeset .shot-needed p {
+  margin: 0.25rem 0;
+}
+
+.md-typeset .shot-needed strong:first-child {
+  color: var(--pv-accent);
+}
+
 /* --------------------------------------------------------------- figure bits */
 
 .md-typeset figure img,

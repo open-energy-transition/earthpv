@@ -1881,11 +1881,16 @@ out geom;</div>
   const AREAS_DIR = "assets/labels/calibration_areas/";
   const AREAS = {base: null, fc: null, meta: {}, cands: []};
   const JOSM_HOST = "http://127.0.0.1:8111/";
-  const HASHTAGS = ["#earthpv", "#earthpv-calibration"];
+  // #tracethesun tracks the campaign's calibration-area mapping across every country.
+  const HASHTAGS = ["#tracethesun", "#earthpv", "#earthpv-calibration"];
   const DO_NOT_UPLOAD = "earthpv calibration reference layer - do not upload to OSM";
-  // docs/calibration-mapping-protocol.md, "Uploading to OpenStreetMap". No source tag is
-  // set: the protocol wants the imagery the geometry was actually traced from.
-  const commentFor = place => `Map rooftop and ground-mounted solar PV in ${place} (earthpv calibration area)`;
+  // docs/calibration-mapping-protocol.md, "Uploading to OpenStreetMap". The hashtags go in
+  // the comment text as well as the editors' hashtag parameters: iD keeps URL hashtags only
+  // in the changeset's `hashtags` tag, never in the comment, and once a comment carries
+  // hashtags both iD and JOSM derive that tag from it, so nothing is doubled. No source
+  // tag is set: the protocol wants the imagery the geometry was actually traced from.
+  const commentFor = place =>
+    `Map rooftop and ground-mounted solar PV in ${place} (earthpv calibration area) ${HASHTAGS.join(" ")}`;
   const PROPOSE_SIDE_M = 2000;
   const PROPOSE = {armed: false, last: null, btn: null};
   let POPUP = null;
@@ -2064,6 +2069,13 @@ out geom;</div>
           + ` --imagery-date ${p.imagery_date}` : "");
   }
 
+  // The GitHub issue form (.github/ISSUE_TEMPLATE/calibration-area.yml) prefilled with the
+  // area and country: how a mapper says "started", "finished" or "not mappable".
+  function reportUrl(spec){
+    const area = spec.report || spec.id;
+    return "https://github.com/open-energy-transition/earthpv/issues/new?" + new URLSearchParams({
+      template: "calibration-area.yml", title: `[calibration area] ${area}`, area, country: AOI});
+  }
   function showAreaPopup(lngLat, spec){
     if (POPUP) POPUP.remove();
     const d = document.createElement("div");
@@ -2079,7 +2091,8 @@ out geom;</div>
       + `<button type="button" class="btn" data-act="dl"${off}>GeoJSON</button></div>`
       + `<div class="ap-msg" role="status" aria-live="polite">${esc(spec.idNote || "")}</div>`
       + (spec.cmd ? `<details><summary>Register it (maintainers)</summary><div class="ap-cmd">${esc(spec.cmd)}</div></details>` : "")
-      + `<div class="foot"><a href="${siteRoot()}contribute/" target="_top">How to map a calibration area</a></div>`;
+      + `<div class="foot"><a href="${siteRoot()}contribute/" target="_top">How to map a calibration area</a>`
+      + ` &middot; <a href="${esc(reportUrl(spec))}" target="_blank" rel="noopener">Report progress</a></div>`;
     const msg = d.querySelector(".ap-msg");
     // Re-fitted on every status line too: the popup grows upward from its anchor.
     const say = (t, err) => { msg.textContent = t; msg.classList.toggle("err", !!err); requestAnimationFrame(fit); };
@@ -2177,6 +2190,7 @@ out geom;</div>
       extra += '<p class="ap-warn">To propose it, send the GeoJSON to the project maintainers.</p>';
     const spec = {head: "PROPOSED AREA, HAND-PICKED", name: `2 km square at ${at}`,
       place: `the area at ${at}`, id: `proposed_${lat.toFixed(4)}_${lon.toFixed(4)}`,
+      report: `proposed at ${at}`,
       rows: [["Size", "2 km × 2 km"]], bbox: [ring[2][0], ring[0][1], ring[0][0], ring[1][1]], feature,
       url: null, extra,
       warn: "Hand-picked, not sampled. Never place an area because you can already see solar there: that "

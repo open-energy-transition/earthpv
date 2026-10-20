@@ -1,0 +1,59 @@
+name: Calibration area
+description: Report progress on a calibration area mapped in OpenStreetMap (started, finished, second pass, or not mappable).
+title: "[calibration area] "
+labels: ["calibration-area"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for mapping. This tells us an area's state so a second mapper can check it and a maintainer can add it to the calibration. Guide: https://open-energy-transition.github.io/earthpv/contribute/report/
+  - type: input
+    id: area
+    attributes:
+      label: Area
+      description: The area's name from its atlas popup (e.g. `chama_s1_calib_2km`), or "proposed at <lat>, <lon>" for a box you proposed.
+    validations:
+      required: true
+  - type: input
+    id: country
+    attributes:
+      label: Country
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      options:
+        - "Started: I am mapping it (so nobody duplicates the first pass)"
+        - "Finished: every visible panel inside the boundary is mapped"
+        - "Second pass done: I independently re-checked someone else's finished area"
+        - "Not mappable: imagery too old, clouded, or nothing to map"
+        - "Stopped part way: not complete, please leave it out"
+    validations:
+      required: true
+  - type: input
+    id: osm_user
+    attributes:
+      label: OpenStreetMap username
+    validations:
+      required: true
+  - type: input
+    id: imagery
+    attributes:
+      label: Imagery you traced from, and its capture date
+      placeholder: "Esri World Imagery (Vivid), 2025-06-10; also checked Bing and Mapbox"
+  - type: input
+    id: changesets
+    attributes:
+      label: Changesets
+      description: Ids or links. Your OpenStreetMap profile lists them; they carry the hashtags #tracethesun and #earthpv-calibration.
+  - type: input
+    id: count
+    attributes:
+      label: Installations mapped (for a second pass, how many you added)
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything a reviewer should know, e.g. parts of the box under cloud, objects tagged fixme=possible solar, or why it is not mappable.

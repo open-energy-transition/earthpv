@@ -657,7 +657,7 @@ its map has drawn a complete frame. The atlas iframes on the docs site carry
 **Calibration areas open in JOSM or iD from the atlas (2026-10-20).** Clicking an area, or a
 hollow-diamond candidate, offers **Open in JOSM** (Remote Control: `import` of the area's
 published GeoJSON as a locked layer with `upload_policy=never`, then `load_and_zoom` into
-its own layer with the protocol's changeset comment and `#earthpv;#earthpv-calibration`),
+its own layer with the protocol's changeset comment and `#tracethesun;#earthpv;#earthpv-calibration`),
 **Open in iD** (`#gpx=<url>.geojson`, iD's never-uploaded custom-data layer) and a GeoJSON
 download. A **Propose** map control drops a 2 km square on the next click (same corners as
 `new_calibration_quadrat.geodesic_square` to < 0.1 mm), checks overlap against every
@@ -687,6 +687,16 @@ requests to 127.0.0.1.
   `World_Imagery/MapServer/4/query`, the endpoint iD's imagery panel uses.
 - **Output:** `data/labels/<aoi>/candidate_quadrats/`, with failures in `screened_out.csv`.
   `--replace` redraws only sampled candidates. Then run `calib-publish`.
+
+**The community guide is the "Contribute Data" nav section**, `docs/contribute/`.
+- Pages: `index.md` (overview; it keeps the `/contribute/` URL that the atlas popups,
+  badges and README link to), `id.md`, `josm.md`, `report.md`, `maintainers.md`.
+- Mappers report through a GitHub issue form, `.github/ISSUE_TEMPLATE/calibration-area.yml`.
+  The popup's "Report progress" link prefills `area` and `country`.
+- A screenshot still to be taken is a `<div class="shot-needed" markdown>` placeholder that
+  names the target file. Replace the whole block with the image once it exists.
+- The Silver and Bronze notes atop the atlas pages are `WARNING` + `HELP` + `CTA` in
+  `scripts/build_atlas_pages.py`.
 
 `new_calibration_quadrat.py --aoi <aoi>` registers outside Pakistan: it writes to
 `data/labels/<aoi>/`, uses that AOI's admin files, and takes ISO3 and country from

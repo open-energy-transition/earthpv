@@ -25,7 +25,8 @@ hide:
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
   <p><strong>Bronze atlas: smaller installations are missing.</strong> This map counts only installations mapped in OpenStreetMap and arrays the model can outline from space, roughly 400 m&sup2; (about 70 kWp) and larger. Household and small commercial rooftop systems, often most of a country's solar, are not included, because no area of Vietnam has yet been mapped panel by panel to calibrate them. Read every figure here as a floor.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/">Help close the gap: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../methods/calibration-quadrats/">How calibration areas work</a></p>
+  <p><strong>You can change that from your browser.</strong> The hollow diamonds on the map are candidate areas chosen for this: click one, open it in iD or JOSM, and map every solar panel inside it in OpenStreetMap. Six to ten complete areas are enough to start estimating Vietnam's smaller installations.</p>
+  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
 </div>
 <iframe src="../assets/interactive/vietnam_pv_evidence_atlas.html" title="Vietnam PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>
