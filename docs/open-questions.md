@@ -627,6 +627,19 @@ cells (a per-cell scan of all of India takes about two hours), re-infer and re-r
 chain. Mixing is not a concern here, because the recipe and radiometry are unchanged and
 only the scene choice differs.
 
+### 23. Sub-400 m² roofs next to a segmentation candidate fall through in Pakistan (2026-10-20)
+
+Found while fixing the OSM double count (see the experiments register, "OSM and a
+recall-corrected total"). Inside the ge400 roofclf domain, `atlas.build_evidence_atlas`
+discards segmentation's rooftop figure and uses roofclf's >= 400 m² replacement instead, but
+the sub-400 m² roofclf population (`sub400_capacity.domain_restricted_capacity`) still drops
+every flagged building within 30 m of a segmentation candidate. A small roof beside a detection
+is therefore counted by neither. The capacity summary puts it at about 38,000 flagged buildings
+(2,060,670 flagged in domain, minus 43,914 near OSM, minus 1,978,483 kept), very roughly
+300 MWp at the incremental average of 7.7 kWp per building: an estimate from counts, not a
+measurement. To close it, skip the segmentation dedup for cells inside the ge400 domain, re-run
+`sub400-capacity` and the atlas, and measure the move rather than assume it.
+
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.

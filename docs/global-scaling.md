@@ -93,7 +93,7 @@ overlap, and a missing imagery date.
 
 - `results/roofclf_random_validation_log.csv` holds 40 rows, all without a verdict. The
   2026-09-20 batch is not logged at all.
-- So Pakistan's published 24,330 MWp currently rests on a rescoring nobody has reviewed.
+- So Pakistan's published 24,407 MWp currently rests on a rescoring nobody has reviewed.
 - One maintainer cannot keep up with this. A community with a second-reviewer rule can.
 
 **One model or many.** The current rule is to retrain for each country on its own OSM

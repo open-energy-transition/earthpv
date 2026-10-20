@@ -56,7 +56,7 @@ up, so [maps a calibration area](contribute.md).
 | Silver | [France](atlas-france.md) | 400 m² and up, validated against hand-mapped communes and the national register; small installations missing |
 | Bronze | [Egypt](atlas-egypt.md), [India](atlas-india.md), [Morocco](atlas-morocco.md), [Nigeria](atlas-nigeria.md), [South Africa](atlas-south-africa.md), [Vietnam](atlas-vietnam.md), [Yemen](atlas-yemen.md), [Zambia](atlas-zambia.md) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 
-[![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
+[![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,407 MWp (90 percent range 20,868 to 33,620), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
 
 ## How it works
 

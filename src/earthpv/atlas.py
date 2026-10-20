@@ -1980,6 +1980,94 @@ def _confidence_html(
     )
 
 
+# --------------------------------------------------------------------------------------
+# Combining hand-mapped OSM with a recall-corrected satellite total (fixed 2026-10-20)
+# --------------------------------------------------------------------------------------
+# Segmentation's `est_mwp_rc` is a Horvitz-Thompson total: every detection is divided by
+# the measured recall of its size class, so it stands in for the installations the model
+# MISSED as well as the one it found (`density._candidate_uncertainty`). That recall is
+# measured as the share of OSM-mapped installations some candidate matches. Best used to
+# add the OSM-mapped installations no candidate matched on top of that total -- which are
+# exactly the misses the division already accounts for, so in expectation they were counted
+# twice. Measured on the published atlases (Pakistan's ground-mount half, Germany's rooftop
+# and ground-mount): 257-342 MWp in Pakistan and 3,624-4,596 MWp in Germany, after the
+# per-cell floor; Germany's Best was then ~13.9 GW above its ~74.8 GW register. Only AOIs
+# whose calibration table carries a recall correction are affected; the rest
+# (`--recall-reference none`) add OSM to an uncorrected, detected-only figure, which is
+# right as it stands.
+#
+# The consistent combination, per placement and size bin b, is
+#     max(HT_b, D_b + U_b)
+# HT the recall-corrected total, D the precision-weighted detected part, U the OSM-mapped
+# installations counted from the map: OSM-mapped misses fill in the satellite's estimated
+# misses instead of stacking on them, and win outright where they exceed the estimate. It
+# is applied by shrinking each candidate's inflation (HT - D) by the stratum's absorbed
+# share, so the known installations stay in their own cells and only the satellite's
+# unlocated scale-up is moved. U is in OSM's conversion and the inflation in segmentation's,
+# so where the two constants differ (Germany's size-dependent rooftop table) the absorbed
+# MWp is an approximation of the same physical installations, not an identity.
+#
+# The OSM match uses the recall table's own `min_distance_m` (100 m) wherever a recall
+# correction applies, not the atlas's 30 m: the table counts an installation with a
+# detection within 100 m as FOUND, so the satellite total already holds it through that
+# detection, and counting it again from the map was the second half of the same double
+# count. `legacy_osm_addition` reproduces the pre-2026-10-20 figures exactly.
+
+
+def table_has_recall(table: dict | None) -> bool:
+    """Whether a calibration table carries a recall correction (est_mwp_rc != est_mwp_cal)."""
+    return bool(table) and any(b.get("recall") is not None for b in table.get("bins", []))
+
+
+def osm_match_distance_m(table: dict | None, legacy: bool = False) -> float:
+    """How close a candidate must be for an OSM installation to count as detected."""
+    from earthpv.postprocess import NEAR_BUILDING_M
+
+    if legacy or not table_has_recall(table):
+        return float(NEAR_BUILDING_M)
+    return max(float(NEAR_BUILDING_M), float(table.get("min_distance_m") or NEAR_BUILDING_M))
+
+
+def osm_absorbed_inflation(
+    cand_area: np.ndarray, cand_placement: np.ndarray, cand_glint: np.ndarray | None,
+    miss_area: np.ndarray, miss_rooftop: np.ndarray, miss_mwp: np.ndarray,
+    table: dict, recall_floor: float, kwp_mod: float, kwp_land: float,
+) -> tuple[np.ndarray, np.ndarray, list[dict]]:
+    """Share of each candidate's recall inflation that OSM-mapped misses already account for.
+
+    Candidates and misses must be the ones whose satellite figure Best actually uses (a
+    stratum replaced by roofclf pairs its OSM with roofclf, not with segmentation). Returns
+    `(retain, inflation_mwp, rows)`: a candidate's corrected MWp is
+    `detected + inflation * retain`; `rows` is the per placement x size-bin audit.
+    """
+    from earthpv import capacity_calibration as cc
+
+    cand_area = np.asarray(cand_area, float)
+    roof = np.asarray(cand_placement).astype(str) == "rooftop"
+    p = cc.candidate_p_real(cand_area, table, glint_consistent=cand_glint, placement=cand_placement)
+    r = np.maximum(cc.candidate_recall(cand_area, table, floor=recall_floor,
+                                       placement=cand_placement), recall_floor)
+    k = np.where(roof, kwp_mod, kwp_land) / 1000.0
+    inflation = cand_area * p * k * (1.0 / r - 1.0)
+    cb = cc.bin_index(cand_area)
+    mb = cc.bin_index(np.asarray(miss_area, float))
+    miss_rooftop = np.asarray(miss_rooftop, bool)
+    miss_mwp = np.asarray(miss_mwp, float)
+    retain = np.ones(len(cand_area))
+    rows = []
+    for g_roof, name in ((True, "rooftop"), (False, "ground")):
+        for b in range(len(cc.BIN_EDGES_M2) + 1):
+            sel = (roof == g_roof) & (cb == b)
+            infl = float(inflation[sel].sum())
+            misses = float(miss_mwp[(miss_rooftop == g_roof) & (mb == b)].sum())
+            absorbed = min(misses, max(infl, 0.0))
+            if infl > 0:
+                retain[sel] = 1.0 - absorbed / infl
+            rows.append({"placement": name, "bin": b, "inflation_mwp": round(infl, 3),
+                         "osm_misses_mwp": round(misses, 3), "absorbed_mwp": round(absorbed, 3)})
+    return retain, inflation, rows
+
+
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
@@ -1994,6 +2082,7 @@ def build_evidence_atlas(
     data_release_url: str | None = None,
     include_offgrid_osm: bool = False,
     validation_score: str | None = None,
+    legacy_osm_addition: bool = False,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -2141,6 +2230,16 @@ def build_evidence_atlas(
     build the actual link. Omit either and no Downloads section is written -- this is a frozen
     snapshot the atlas does not regenerate on its own, so an AOI with no release yet should not
     show a section pointing at nothing.
+
+    **OSM and a recall-corrected satellite total are combined, not added (2026-10-20).**
+    See the comment block above `table_has_recall`: per placement and size bin, Best takes
+    `max(satellite total, satellite-detected + OSM-mapped misses)`, and an OSM installation
+    counts as detected at the recall table's own matching distance. Inside the >= 400 m2
+    roofclf domain every OSM-mapped rooftop installation is counted from the map: the
+    segmentation figure that would have "matched" it is not used there, and roofclf is
+    deduped against OSM, so a mapped array segmentation also found was counted nowhere
+    (Pakistan: 687 installations, 466 MWp, of which the per-cell floor restored 36).
+    `legacy_osm_addition=True` reproduces the earlier figures exactly.
     """
     density_dir = Path(density_dir)
     out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
@@ -2185,7 +2284,6 @@ def build_evidence_atlas(
     from earthpv.density import capacity_relevant_candidates, load_osm_screen
     from earthpv.export import new_lead_mask
     from earthpv.labels import dissolve_overlapping
-    from earthpv.postprocess import NEAR_BUILDING_M
 
     osm = gpd.read_parquet(osm_solar_path)
     # Two OSM features (a `plant` perimeter and a nested `generator` way, or two
@@ -2201,8 +2299,13 @@ def build_evidence_atlas(
     # double-subtract it from `osm_mwp_unmatched` for nothing (measured 2026-08-10 at
     # 1,704 MWp nationally, see capacity_relevant_candidates's docstring).
     cand, _ = capacity_relevant_candidates(cand, osm_screen=load_osm_screen(aoi))
+    # The table `density` priced the candidates with (recorded in its meta.json), so the
+    # recall the satellite total was divided by is the one OSM is reconciled against.
+    _table_path = Path(meta.get("calibration") or cc.default_table_path(aoi))
+    seg_table = cc.load_table(_table_path) if _table_path.exists() else None
+    match_m = osm_match_distance_m(seg_table, legacy_osm_addition)
     osm = osm.copy()
-    osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=NEAR_BUILDING_M)
+    osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=match_m)
     # Rooftop conversion is size-dependent where it has been measured against a register
     # (Germany only so far): a 30 m2 OSM feature is an array and converts near full module
     # coverage, a 5,000 m2 one is a roof or site outline and converts at about a quarter of
@@ -2241,13 +2344,30 @@ def build_evidence_atlas(
             "" if include_offgrid_osm else
             " Pass include_offgrid_osm/--include-offgrid-osm to keep them.",
         )
-    in_grid_osm = joined_osm.dropna(subset=["cell"])
+    in_grid_osm = joined_osm.dropna(subset=["cell"]).copy()
+    # roofclf's >= 400 m2 rooftop replacement domain (see below), needed here because it
+    # decides which OSM rooftop installations are counted from the map.
+    by_ge400_roof = (
+        _join_buildings_to_grid_cells(
+            gpd.read_parquet(ge400_roof_buildings_path), "est_kwp_ge400_roof", grid
+        ) / 1000.0
+        if ge400_roof_buildings_path is not None else None
+    )
+    ge400_domain_cells: set[str] = set(by_ge400_roof.index) if by_ge400_roof is not None else set()
+    # Counted from the map = enters Best as OSM. An installation a candidate matched enters
+    # through the satellite figure instead -- except a rooftop one inside roofclf's domain,
+    # where the satellite rooftop figure is discarded and roofclf skips OSM-mapped buildings.
+    in_grid_osm["counted"] = ~in_grid_osm["matched"]
+    if ge400_domain_cells and not legacy_osm_addition:
+        in_grid_osm["counted"] |= (
+            (in_grid_osm["placement"] == "rooftop") & in_grid_osm["cell"].isin(ge400_domain_cells)
+        )
     n_osm_ge400 = int((in_grid_osm["area_m2"] >= 400.0).sum())
     n_osm_lt400 = int((in_grid_osm["area_m2"] < 400.0).sum())
     osm_by_cell = in_grid_osm.groupby("cell").apply(
         lambda d: pd.Series({
             "osm_mwp": d["kwp"].sum() / 1000,
-            "osm_mwp_unmatched": d.loc[~d["matched"], "kwp"].sum() / 1000,
+            "osm_mwp_unmatched": d.loc[d["counted"], "kwp"].sum() / 1000,
             "osm_n": float(len(d)),
         }),
         include_groups=False,
@@ -2262,10 +2382,10 @@ def build_evidence_atlas(
         "osm_roof": float(in_grid_osm.loc[_osm_roof_m, "kwp"].sum()) / 1000,
         "osm_ground": float(in_grid_osm.loc[~_osm_roof_m, "kwp"].sum()) / 1000,
         "osm_unmatched_roof": float(
-            in_grid_osm.loc[_osm_roof_m & ~in_grid_osm["matched"], "kwp"].sum()
+            in_grid_osm.loc[_osm_roof_m & in_grid_osm["counted"], "kwp"].sum()
         ) / 1000,
         "osm_unmatched_ground": float(
-            in_grid_osm.loc[~_osm_roof_m & ~in_grid_osm["matched"], "kwp"].sum()
+            in_grid_osm.loc[~_osm_roof_m & in_grid_osm["counted"], "kwp"].sum()
         ) / 1000,
     }
 
@@ -2318,12 +2438,7 @@ def build_evidence_atlas(
     # (see docstring); outside it, segmentation's own est_mwp_rc_roof is the only
     # evidence-backed number, so it stays. Falls back to the pre-2026-08-07 combined
     # est_mwp_rc when no ge400 rooftop path is given (e.g. an AOI with no roofclf yet).
-    ge400_domain_cells: set[str] = set()
-    if ge400_roof_buildings_path is not None:
-        by_ge400_roof = _join_buildings_to_grid_cells(
-            gpd.read_parquet(ge400_roof_buildings_path), "est_kwp_ge400_roof", grid
-        ) / 1000.0
-        ge400_domain_cells = set(by_ge400_roof.index)
+    if by_ge400_roof is not None:
         grid["mwp_large_roof"] = np.where(
             grid["cell"].isin(ge400_domain_cells),
             grid["cell"].map(by_ge400_roof).fillna(0.0),
@@ -2333,7 +2448,50 @@ def build_evidence_atlas(
         n_domain_cells = int(grid["in_domain"].sum())
     else:
         grid["mwp_large_roof"] = grid["est_mwp_rc_roof"]
-    grid["mwp_large"] = grid["mwp_large_roof"] + grid["est_mwp_rc_ground"]
+
+    # OSM-mapped misses absorbed into the satellite's own estimate of its misses (see the
+    # comment above `table_has_recall`). Only where that estimate exists, and only for the
+    # satellite figures Best uses: ground-mount everywhere, rooftop outside roofclf's domain.
+    grid["seg_ground_mwp"] = grid["est_mwp_rc_ground"]
+    absorption_rows: list[dict] = []
+    absorbed = {"rooftop": 0.0, "ground": 0.0}
+    if not legacy_osm_addition and table_has_recall(seg_table):
+        roof_cells = set(grid["cell"]) - ge400_domain_cells
+        cp = cand.copy()
+        cp["geometry"] = cp.geometry.representative_point()
+        cp = gpd.sjoin(cp, grid[["cell", "geometry"]], predicate="within", how="inner")
+        c_place = cp["placement"].astype(str).to_numpy()
+        used = (c_place != "rooftop") | cp["cell"].isin(roof_cells).to_numpy()
+        cp, c_place = cp[used], c_place[used]
+        miss = in_grid_osm[in_grid_osm["counted"] & (
+            (in_grid_osm["placement"] != "rooftop") | in_grid_osm["cell"].isin(roof_cells))]
+        retain, inflation, absorption_rows = osm_absorbed_inflation(
+            cp["area_m2"].to_numpy(float), c_place,
+            cp["glint_consistent"].to_numpy() if "glint_consistent" in cp.columns else None,
+            miss["area_m2"].to_numpy(float), (miss["placement"] == "rooftop").to_numpy(),
+            miss["kwp"].to_numpy(float) / 1000.0, seg_table,
+            float(meta.get("recall_floor", cc.DEFAULT_RECALL_FLOOR)), kwp_mod, kwp_land,
+        )
+        cut = pd.DataFrame({"cell": cp["cell"].to_numpy(), "roof": c_place == "rooftop",
+                            "mwp": inflation * (1.0 - retain)})
+        for name, is_roof, col, cal_col in (
+            ("rooftop", True, "mwp_large_roof", "est_mwp_cal_total_roofcand"),
+            ("ground", False, "seg_ground_mwp", "est_mwp_cal_total_ground"),
+        ):
+            by_cell = grid["cell"].map(cut[cut.roof == is_roof].groupby("cell")["mwp"].sum()).fillna(0.0)
+            if cal_col in grid.columns:
+                # Never below the cell's own precision-weighted detected figure: the
+                # candidate-to-cell join here and density's can disagree at a cell edge.
+                rc_col = "est_mwp_rc_roof" if is_roof else "est_mwp_rc_ground"
+                by_cell = np.minimum(by_cell, (grid[rc_col] - grid[cal_col]).clip(lower=0.0))
+            grid[col] = grid[col] - by_cell
+            absorbed[name] = float(by_cell.sum())
+        log.info(
+            "Evidence atlas: OSM-mapped misses absorbed into the recall-corrected satellite "
+            "total (match %.0f m): rooftop %.1f MWp, ground-mount %.1f MWp",
+            match_m, absorbed["rooftop"], absorbed["ground"],
+        )
+    grid["mwp_large"] = grid["mwp_large_roof"] + grid["seg_ground_mwp"]
 
     grid["mwp_verified"] = grid["osm_mwp"] + grid["small_low"]
     grid["mwp_best"] = (
@@ -2442,7 +2600,7 @@ def build_evidence_atlas(
         # here on exactly the same mask that built the column.
         "ge400_roof": float(grid.loc[_in_ge400, "mwp_large_roof"].sum()),
         "seg_roof_outdomain": float(grid.loc[~_in_ge400, "mwp_large_roof"].sum()),
-        "seg_ground": float(grid.est_mwp_rc_ground.sum()),
+        "seg_ground": float(grid.seg_ground_mwp.sum()),
         "small_low": float(grid.small_low.sum()),
         "small_central": float(grid.small_central.sum()),
         "small_outdomain": float(grid.small_outdomain.sum()),
@@ -2499,6 +2657,17 @@ def build_evidence_atlas(
             "n_domain_cells": n_domain_cells,
             "n_extended_cells": int(grid.is_extended.sum()),
             "n_cells_best_floored": n_cells_best_floored,
+            # How OSM was reconciled with the satellite figures (2026-10-20 fix); a page
+            # built with `legacy_osm_addition` says so here rather than looking current.
+            "osm_combination": {
+                "method": ("legacy: OSM-mapped misses added to the recall-corrected total"
+                           if legacy_osm_addition else
+                           "max(satellite total, satellite-detected + OSM-mapped misses) "
+                           "per placement and size bin"),
+                "match_distance_m": match_m,
+                "absorbed_mwp": {k: round(v, 1) for k, v in absorbed.items()},
+                "bins": absorption_rows,
+            },
             "kwp_per_m2": kwp_mod,
             "n_calib_boxes": len(calib_boxes),
             "n_calib_rule1": n_calib_rule1,
@@ -2528,7 +2697,7 @@ def build_evidence_atlas(
         size_data = _size_distribution_data(
             aoi, density_dir, osm_solar_path, candidates_path,
             low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
-            sub400_outdomain_buildings_path,
+            sub400_outdomain_buildings_path, legacy_osm_addition=legacy_osm_addition,
         )
         size_best = size_data["totals"]["mwp_best"]
         if abs(size_best - total_best) > max(1.0, total_best * 0.02):
@@ -2644,6 +2813,7 @@ def _size_distribution_data(
     osm_solar_path: Path, candidates_path: Path,
     low_buildings_path: Path, central_buildings_path: Path, ge400_roof_buildings_path: Path,
     sub400_outdomain_buildings_path: Path | None = None,
+    legacy_osm_addition: bool = False,
 ) -> dict:
     """Re-bins `build_evidence_atlas`'s Best-estimate total by installation size and
     placement (rooftop / ground-mount) instead of by 0.1-degree cell. Shared by
@@ -2704,7 +2874,6 @@ def _size_distribution_data(
     from earthpv.density import capacity_relevant_candidates, load_osm_screen
     from earthpv.export import new_lead_mask
     from earthpv.labels import dissolve_overlapping
-    from earthpv.postprocess import NEAR_BUILDING_M
 
     density_dir = Path(density_dir)
     meta = json.loads((density_dir / "meta.json").read_text())
@@ -2733,7 +2902,9 @@ def _size_distribution_data(
     # --- segmentation candidates: seg_ground (everywhere) + seg_roof_outdomain -------
     cands = gpd.read_parquet(candidates_path)
     cands, _ = capacity_relevant_candidates(cands, osm_screen=load_osm_screen(aoi))
-    table = cc.load_table(cc.default_table_path(aoi))
+    # The table density priced the candidates with, as `build_evidence_atlas` reads it.
+    table = cc.load_table(Path(meta.get("calibration") or cc.default_table_path(aoi)))
+    match_m = osm_match_distance_m(table, legacy_osm_addition)
 
     ge400 = gpd.read_parquet(ge400_roof_buildings_path)
     # Domain membership by a fresh spatial join against THIS grid's own cell polygons,
@@ -2766,6 +2937,46 @@ def _size_distribution_data(
 
     ground_mask = ~is_roof
     roof_outdomain_mask = is_roof & ~in_domain
+
+    # --- hand-mapped OSM, counted from the map exactly as `build_evidence_atlas` counts it
+    osm = gpd.read_parquet(osm_solar_path)
+    osm = dissolve_overlapping(osm, group_col="placement")
+    osm = osm.copy()
+    osm["matched"] = ~new_lead_mask(osm, cands, min_distance_m=match_m)
+    # The SAME size-dependent rooftop conversion `build_evidence_atlas` uses, because this
+    # function's contract is that it re-bins the published total rather than recomputing it.
+    # Applying the table in one place and the flat constant in the other would make the size
+    # chart disagree with the headline it sits beneath.
+    osm["kwp"] = np.where(
+        osm["placement"] == "rooftop",
+        osm["area_m2"] * cc.osm_rooftop_kwp_per_m2(osm["area_m2"].to_numpy(), aoi),
+        osm["area_m2"] * kwp_land,
+    )
+    osm_pts = osm.copy()
+    osm_pts["geometry"] = osm_pts.geometry.representative_point()
+    osm_all = gpd.sjoin(osm_pts, grid[["cell", "geometry"]], predicate="within", how="left")
+    osm_all["counted"] = ~osm_all["matched"]
+    if ge400_cells and not legacy_osm_addition:
+        osm_all["counted"] |= (osm_all["placement"] == "rooftop") & osm_all["cell"].isin(ge400_cells)
+    osm_joined = osm_all.dropna(subset=["cell"])
+
+    # --- OSM-mapped misses absorbed into the satellite's estimate of its misses, with the
+    # same strata and the same candidates `build_evidence_atlas` uses.
+    if not legacy_osm_addition and table_has_recall(table):
+        in_grid = pd.notna(cell_of)
+        used = in_grid & (ground_mask | roof_outdomain_mask)
+        miss = osm_joined[osm_joined["counted"] & (
+            (osm_joined["placement"] != "rooftop") | ~osm_joined["cell"].isin(ge400_cells))]
+        retain_used, _, _ = osm_absorbed_inflation(
+            area[used], placement[used], None if glint is None else glint[used],
+            miss["area_m2"].to_numpy(float), (miss["placement"] == "rooftop").to_numpy(),
+            miss["kwp"].to_numpy(float) / 1000.0, table,
+            float(meta.get("recall_floor", cc.DEFAULT_RECALL_FLOOR)), kwp_mod, kwp_land,
+        )
+        retain = np.ones(len(cands))
+        retain[used] = retain_used
+        detected_area = area * p_real
+        rc_area = detected_area + (rc_area - detected_area) * retain
 
     seg_ground_mwp_arr = rc_area * kwp_land / 1000.0
     seg_roof_mwp_arr = rc_area * kwp_mod / 1000.0
@@ -2828,21 +3039,8 @@ def _size_distribution_data(
         if not low.empty else pd.Series(dtype=float)
     )
 
-    # --- hand-mapped OSM: unmatched feeds Best directly; matched feeds the floor ----
-    osm = gpd.read_parquet(osm_solar_path)
-    osm = dissolve_overlapping(osm, group_col="placement")
-    osm = osm.copy()
-    osm["matched"] = ~new_lead_mask(osm, cands, min_distance_m=NEAR_BUILDING_M)
-    # The SAME size-dependent rooftop conversion `build_evidence_atlas` uses, because this
-    # function's contract is that it re-bins the published total rather than recomputing it.
-    # Applying the table in one place and the flat constant in the other would make the size
-    # chart disagree with the headline it sits beneath.
-    osm["kwp"] = np.where(
-        osm["placement"] == "rooftop",
-        osm["area_m2"] * cc.osm_rooftop_kwp_per_m2(osm["area_m2"].to_numpy(), aoi),
-        osm["area_m2"] * kwp_land,
-    )
-    unmatched = osm.loc[~osm["matched"]]
+    # --- hand-mapped OSM: counted feeds Best directly; the rest feeds the floor --------
+    unmatched = osm_all.loc[osm_all["counted"]]
     u_roof = (unmatched["placement"] == "rooftop").to_numpy()
     _size_bin_add(
         unmatched.loc[u_roof, "area_m2"].to_numpy(float), unmatched.loc[u_roof, "kwp"].to_numpy(float) / 1000.0,
@@ -2853,13 +3051,9 @@ def _size_distribution_data(
         roof=False,
     )
 
-    osm_pts = osm.copy()
-    osm_pts["geometry"] = osm_pts.geometry.representative_point()
-    osm_joined = gpd.sjoin(osm_pts, grid[["cell", "geometry"]], predicate="within", how="left")
-    osm_joined = osm_joined.dropna(subset=["cell"])
     osm_all_by_cell = osm_joined.groupby("cell")["kwp"].sum() / 1000.0
     osm_unmatched_by_cell = (
-        osm_joined.loc[~osm_joined["matched"]].groupby("cell")["kwp"].sum() / 1000.0
+        osm_joined.loc[osm_joined["counted"]].groupby("cell")["kwp"].sum() / 1000.0
     )
 
     # --- replicate build_evidence_atlas's per-cell "Best floored at Verified" -------
@@ -2880,7 +3074,7 @@ def _size_distribution_data(
         if sf > 1e-6:
             shortfalls[c] = sf
 
-    matched_joined = osm_joined.loc[osm_joined["matched"]]
+    matched_joined = osm_joined.loc[~osm_joined["counted"]]
     low_joined = pd.DataFrame()
     if not low.empty:
         # Drop `low`'s own stale `cell` column first -- keeping it collides with

@@ -2446,25 +2446,27 @@ out geom;</div>
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
       { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
-        short: "OSM-mapped rooftop, no satellite match",
-        label: "OSM-mapped rooftop PV with no satellite detection within 30 m, counted from the map. "
-          + "Where a detection covers a mapped installation, Best counts the satellite figure instead, "
-          + "so nothing is counted twice.", size: "any size" },
+        short: "OSM-mapped rooftop, counted from the map",
+        label: "OSM-mapped rooftop PV that Best counts from the map: no satellite detection nearby, or one "
+          + "whose figure Best does not use. Where it uses a satellite figure that covers a mapped "
+          + "installation, it counts that figure instead, so nothing is counted twice.", size: "any size" },
       { key: "osm_unmatched_ground", method: "osm", placement: "ground", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
-        short: "OSM-mapped ground-mount, no satellite match",
-        label: "OSM-mapped ground-mount PV with no satellite detection within 30 m, counted from the map. "
-          + "Where a detection covers a mapped installation, Best counts the satellite figure instead, "
-          + "so nothing is counted twice.", size: "any size" },
+        short: "OSM-mapped ground-mount, counted from the map",
+        label: "OSM-mapped ground-mount PV that Best counts from the map: no satellite detection nearby, or one "
+          + "whose figure Best does not use. Where it uses a satellite figure that covers a mapped "
+          + "installation, it counts that figure instead, so nothing is counted twice.", size: "any size" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
         short: "OSM-mapped above the satellite figure",
         label: "Cells where the OSM-mapped capacity exceeds the satellite estimate: Best takes the mapped "
           + "figure there, so it never reads below what is already mapped.", size: "any size" },
       { key: "seg_roof_outdomain", method: "seg", placement: "roof", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
         short: "Satellite segmentation, rooftop",
-        label: "TerraMind segmentation of Sentinel-2 - rooftop, outside the calibrated domain", size: "≥ 400 m²" },
+        label: "TerraMind segmentation of Sentinel-2 - rooftop, outside the calibrated domain; scaled up for "
+          + "the installations it misses, less the misses already counted from the map", size: "≥ 400 m²" },
       { key: "seg_ground", method: "seg", placement: "ground", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
         short: "Satellite segmentation, ground-mount",
-        label: "TerraMind segmentation of Sentinel-2 - ground-mount (every cell; roofclf has no footprint there)", size: "≥ 400 m²" },
+        label: "TerraMind segmentation of Sentinel-2 - ground-mount (every cell; roofclf has no footprint there); "
+          + "scaled up for the installations it misses, less the misses already counted from the map", size: "≥ 400 m²" },
       { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
         short: "Satellite roofclf, rooftop ≥ 400 m²",
         label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain", size: "≥ 400 m²" },
@@ -2639,7 +2641,7 @@ out geom;</div>
       `Best estimate -- ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
     document.getElementById("compSub").textContent =
       "Colour is the source and method, hatching is ground-mount, length is MWp on one shared axis. "
-      + "An installation both mapped and detected counts once, from the satellite · hover a segment";
+      + "An installation both mapped and detected counts once · hover a segment";
     const shownMethods = new Set([...best, ...verified].map(r => r.method));
     let legend = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
       `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}`

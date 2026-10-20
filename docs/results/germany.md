@@ -20,8 +20,10 @@ Interactive. Hover a cell for its value.
 </p>
 
 !!! danger "This atlas's tier totals fail a register check. Do not quote them."
-    The evidence atlas reports Verified 26,635 MWp and Best 88,709 MWp for Germany
-    (2026-09-15, on the no-filter grid and a border-clipped OpenStreetMap pull). The tiers
+    The evidence atlas reports Verified 26,635 MWp and Best 84,473 MWp for Germany
+    (2026-10-20; Best was 88,709 until OSM-mapped misses stopped being counted on top of
+    the recall-corrected satellite total, on the no-filter grid and a border-clipped
+    OpenStreetMap pull). The tiers
     rest on converting mapped polygon area at a constant, and unlike anywhere else this
     project works, that assumption can be checked against a complete register rather than
     merely suspected &mdash; see [the reconciliation
@@ -475,10 +477,12 @@ uses it, and Pakistan, France, Gujarat, Punjab and the unnamed default all retur
 
 **Tier totals move to Verified 25,921 / Best 87,743 MWp** (from 38,508 / 94,624), and both
 placements now sit within about 10% of what the register says is inside the mapped polygons.
-Two later changes moved them again, and the current published figures are **Verified 26,635 /
-Best 88,709 MWp**: the grid was rebuilt with no building-density filter (2026-09-15, 4,656 to
+Two later changes moved them again, to **Verified 26,635 / Best 88,709 MWp**: the grid was rebuilt with no building-density filter (2026-09-15, 4,656 to
 4,871 cells), and the national OpenStreetMap pull was clipped to Germany's border, which
-removed 249,115 of 475,210 pooled features that were never German at all.
+removed 249,115 of 475,210 pooled features that were never German at all. On 2026-10-20 Best
+fell again, to **84,473 MWp**: OSM-mapped installations the detector missed had been added on
+top of a recall-corrected total that already stands in for them (see the
+[experiments register](../experiments.md)).
 Verified is 23% of Germany's 112 GWp of registered PV from OSM mapping 2.6% of units, which is
 plausible for a subset skewed to large installations where 34% was not.
 

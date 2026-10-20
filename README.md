@@ -56,7 +56,7 @@ up, so [maps a calibration area](https://open-energy-transition.github.io/earthp
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/atlas/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,330 MWp (90 percent range 20,822 to 33,582), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,407 MWp (90 percent range 20,868 to 33,620), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
   </a>
 </p>
 

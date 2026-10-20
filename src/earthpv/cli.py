@@ -1344,6 +1344,13 @@ def atlas(
         "the default silently drops real mapped capacity: measured 2026-09-13, Germany "
         "36,760 of 183,111 installations (20.1%) and France 281,269 of 353,011 (79.7%).",
     ),
+    legacy_osm_addition: bool = typer.Option(
+        False, help="Reproduce Best as published before 2026-10-20: OSM-mapped installations "
+        "no candidate matched within 30 m were ADDED to segmentation's recall-corrected total, "
+        "which already stands in for them, and a mapped rooftop array segmentation also found "
+        "inside roofclf's >= 400 m2 domain was counted nowhere. Only AOIs with a recall "
+        "correction (Pakistan, Germany) differ.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
@@ -1396,6 +1403,7 @@ def atlas(
                 data_release_url=data_release_url,
                 include_offgrid_osm=include_offgrid_osm,
                 validation_score=validation_score,
+                legacy_osm_addition=legacy_osm_addition,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):

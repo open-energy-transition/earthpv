@@ -419,6 +419,27 @@ correction is a lower bound in two further ways documented in `area_recall_by_si
 Rule-1 epoch staleness biases measured recall up, and the national population it is applied to is
 already deduped against segmentation and OSM while recall is measured over a whole quadrat.
 
+**OSM and a recall-corrected total: combine, don't add (2026-10-20).** Segmentation's
+`est_mwp_rc` divides each detection by the recall of its size class, measured as the share of
+OSM-mapped installations some candidate matches, so it already stands in for the mapped
+installations the model missed. Best used to ADD those (`osm_mwp_unmatched`) on top: counted
+twice in expectation. `build_evidence_atlas` (and `_size_distribution_data`, which must
+re-bin the same total) now takes, per placement x size bin, `max(HT, D + U)`: the absorbed
+share comes out of each candidate's inflation, never below a cell's precision-weighted
+`est_mwp_cal_*`, so mapped installations stay in their cells (`atlas.osm_absorbed_inflation`).
+Where a recall correction applies, OSM counts as matched at the table's own `min_distance_m`
+(100 m), not 30 m. Second fix, Pakistan only: inside the ge400 roofclf domain every OSM rooftop
+installation is counted from the map -- segmentation's rooftop figure is discarded there and
+roofclf is deduped against OSM, so a mapped array segmentation also detected was counted
+NOWHERE (687 installations, 466 MWp; the per-cell floor restored 36). Only AOIs with a recall
+table are affected (Pakistan, Germany). **Pakistan 24,330.0 -> 24,406.8 MWp, Germany 88,709 ->
+84,473 MWp.** A `--legacy-osm-addition` rebuild reproduced both published data blocks exactly
+before the fixed ones were published, and the page records its convention in
+`totals.osm_combination`. **Still open, Pakistan**: ~38,000 flagged sub-400 m2 roofs in the same
+domain are excluded only for sitting near a segmentation candidate whose rooftop figure is not
+used there (very roughly 300 MWp, estimated from counts); fixing it needs `sub400-capacity`
+rerun without that dedup inside the domain.
+
 **The density-calibration domain is a building-density band, `density.CALIBRATED_BLDG_DENSITY_KM2`**,
 fit from the density span of every Rule-1-complete calibration quadrat -- **NOT** from
 `select_calibrated_quadrats`'s separate precision-trust selection (a quadrat's density is real
@@ -470,8 +491,9 @@ vector where the underlying constant or calibration set is shared. It asserts it
 point values sum to the published total as a guard against silently adding a component to
 the atlas without adding it to the uncertainty composition (the code still separately tracks
 the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
-published). **Current published result: Best estimate 24,330.0 MWp (90% CI 20,822-33,582)**
-(2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction, then -61.7 on dropping the
+published). **Current published result: Best estimate 24,406.8 MWp (90% CI 20,868-33,620)**
+(2026-10-20: 24,330.0 -> 24,406.8 when OSM-mapped misses stopped being added on top of the
+recall-corrected satellite total, see "OSM and a recall-corrected total" below; 2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction, then -61.7 on dropping the
 out-of-domain extrapolation; 2026-08-17: -> 19,745.9 on the parcel-label promotion; 2026-08-20:
 -> 18,826.7 on folding Box 18's three peri-urban quadrats into the refit; 2026-09-21:
 -> 24,330.0 on the area-weighted-zonal refit + national rescoring. The floor (Verified)
@@ -608,6 +630,15 @@ config. The 11 published pages were moved this way and their `pv` data blocks an
 prose are byte-identical to before. **After a template commit, pass the revision the pages were
 last built from**, not HEAD. A rebuild through `earthpv atlas` was checked against it on Yemen:
 same totals and interval.
+
+**Re-template the SYNC SOURCES too, not only `docs/assets/interactive/`.** Most published
+atlases are copies `build_docs_figures.sync_interactive` makes from `results/<aoi>_pv_evidence_atlas.html`
+(Germany from `data/predictions/germany/density/`); CI cannot see those gitignored sources, so the
+committed copies are what ships, but a local `pixi run docs-figures` copies the sources over
+them. The 2026-10-19 template move re-templated only the docs copies, and the next local
+docs-figures run would have reverted all ten pages to the old template; caught and fixed
+2026-10-20. Also expect `docs-figures` to rewrite ~50 SVGs whose only change is matplotlib's
+timestamp and random clip/image ids: revert those, keep only real content changes.
 
 **`scripts/screenshot_pages.py` drives Firefox over WebDriver BiDi** (a stdlib WebSocket
 client) instead of `--screenshot`, which fires at the load event and captured an empty WebGL
@@ -917,8 +948,9 @@ kWp/m2**. 4,694 polygons above 2,000 m2 hold 101.2 of 122.4 km2 of all OSM rooft
 flat 0.18 turned 8.8 GWp into 22.0.
 `capacity_calibration.osm_rooftop_kwp_per_m2` applies the table, **keyed by AOI** --
 Pakistan/France/Gujarat/Punjab/None all return the flat 0.18, verified not assumed. Germany's
-tiers move to **Verified 25,921 / Best 87,743 MWp** (now **26,635 / 88,709** after the
-2026-09-15 no-filter grid rebuild and the national OSM border clip) and both placements now sit within ~10% of
+tiers move to **Verified 25,921 / Best 87,743 MWp** (then **26,635 / 88,709** after the
+2026-09-15 no-filter grid rebuild and the national OSM border clip, **Best 84,473** since the
+2026-10-20 OSM combination fix) and both placements now sit within ~10% of
 the register. Only `build_evidence_atlas` uses it; `_size_distribution_data` still uses the flat
 constant deliberately, so the headline and the size chart cannot disagree silently.
 
@@ -992,8 +1024,8 @@ and none beats multiplying roof area by a constant at municipality level in Germ
 now a settled, thrice-confirmed finding, and it is the counterpart to Pakistan's 3.4x win.
 
 **Germany's evidence atlas now carries the roofclf half** (Verified 38,508 -> 41,937, Best
-49,324 -> 61,854 MWp when it was added; **now Verified 26,635 / Best 88,709** after the
-size-dependent rooftop constant above), built by
+49,324 -> 61,854 MWp when it was added; **now Verified 26,635 / Best 84,473** after the
+size-dependent rooftop constant above and the 2026-10-20 OSM combination fix), built by
 `scripts/build_germany_sub400_atlas_inputs.py`. Three things
 about that generator are load-bearing: the component must be **INCREMENTAL** (sub-400 m2 roofs
 only, deduped against the hand-mapped OSM population and segmentation's own candidates) or it
@@ -1002,8 +1034,8 @@ double-counts what Best already holds -- the first build read **97.2 GWp** befor
 handing `atlas._join_buildings_to_grid_cells` 25M geometries peaks over 20 GB and is OOM-killed
 while the per-cell sum is identical; and the floor tier is **"both signals in their top decile",
 not precision-calibrated**, because Germany cannot fit a precision threshold on 3.6% labels.
-**Best still fails its own register check** -- 87,743 MWp against roughly 74,800 MWp of
-registered German PV -- so read the tiers as geography, not capacity, and the atlas note says
+**Best still fails its own register check** -- 84,473 MWp (88,709 before 2026-10-20) against
+roughly 74,800 MWp of registered German PV -- so read the tiers as geography, not capacity, and the atlas note says
 so. Note what did and did not get fixed: the size-dependent constant reconciled the **OSM**
 component (both placements now within ~10% of the register), so what is left over is the
 roofclf sub-400 half and segmentation's own detections, not the conversion constants.

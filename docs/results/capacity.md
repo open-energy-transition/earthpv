@@ -23,7 +23,7 @@ rooftop vs ground-mount by how large each installation is, instead of by geograp
 
 ## The headline figure
 
-**Best estimate: 24,330.0 MWp** (90% range 20,822 &ndash; 33,582). It combines every
+**Best estimate: 24,406.8 MWp** (90% range 20,868 &ndash; 33,620; 24,330.0 until 2026-10-20, when OSM-mapped misses stopped being counted on top of the satellite figure's own estimate of its misses -- see the [experiments register](../experiments.md)). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
 "Ground-mount capacity" below) with &ge;400 m<sup>2</sup> capacity (roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop

@@ -2220,7 +2220,7 @@ def _evw_headline():
     docs-only checkout still builds."""
     path = source("docs/assets/interactive/pakistan_evidence_atlas.html")
     if path is None:
-        return 24330, 20822, 33582
+        return 24407, 20868, 33620
     m = re.search(r'<script id="pv" type="application/json">(.*?)</script>',
                   path.read_text(), flags=re.S)
     if not m:
@@ -2326,7 +2326,7 @@ def build_evidence_workflow_svg(t: Theme) -> str:
         ["ground-mount at any size: segmentation",
          "rooftop ≥ 400 m²: roofclf inside its calibrated cells, segmentation elsewhere",
          "rooftop < 400 m²: roofclf, cross-checked with SPPI",
-         "hand-mapped OSM counts first; detections overlapping it are removed",
+         "OSM-mapped installations a detection missed fill in its estimate of misses",
          "each cell floored at OSM plus the stricter roofclf-AND-SPPI agreement"])
 
     # Lane E - output

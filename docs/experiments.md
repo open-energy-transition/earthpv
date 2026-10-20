@@ -27,6 +27,7 @@ repository; nothing was deleted on failure.
 | SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf sets an internal floor on the atlas's headline figure. |
 | Coverage ratio stratified by size and density | <span class="outcome works">shipped</span> | Replaced precision as the multiplier, and a flat ratio with a measured per-stratum one. |
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
+| OSM and a recall-corrected total: combine, don't add | <span class="outcome works">shipped</span> | Mapped misses were counted twice; Germany's Best fell 4.8%, Pakistan's rose 0.3% net. |
 | [End-to-end validation against a complete register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Germany ran nationally at last: 99.75% of MaStR capacity covered, and segmentation recovers about a third of what it can see. |
 | [p_unmapped from a geolocated register](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Replaced Germany's `p_unmapped: 0.0` floor with chance-corrected register evidence, split by placement. |
 | [Recall measured against any candidate, not the same placement](methods/mastr-validation.md) | <span class="outcome works">shipped</span> | Rooftop recall was understated up to 24x because a big array overruns its footprint and the finder gets labelled ground. |
@@ -175,6 +176,18 @@ Using the existing labels from 16 trusted quadrats, area recall was estimated as
 The correction raised the two roofclf components from 6,372 to 7,890 MWp and from 7,031 to 7,189 MWp, increasing the published Best estimate from 16,609 to 18,280 MWp. The internal floor was left unchanged because it is defined by agreement between two independent detectors and should not extrapolate to installations neither observed.
 
 Coverage ratio and recall are refit within the same bootstrap replicates because they share the same quadrats and labels. The correction also remains conservative, chiefly because mapping completeness is certified only for the imagery epoch, so some recent installations on unflagged roofs can still be missed.
+
+### OSM and a recall-corrected total: combine, don't add (2026-10-20)
+
+Segmentation's recall-corrected figure divides every detection by the measured recall of its size class, so it already stands in for the installations the model missed. That recall is measured as the share of OpenStreetMap-mapped installations some detection matches. Best then added the mapped installations no detection matched, which are exactly those misses, so in expectation they were counted twice. Only the two countries with a recall correction are affected, Pakistan and Germany; every other atlas adds OSM to an uncorrected, detected-only figure, which is right as it stands.
+
+Best now takes, per placement and size bin, the larger of the satellite total and the satellite-detected part plus the mapped misses: mapped misses fill in the satellite's estimate of its misses instead of stacking on it. The reduction comes out of the satellite figure's unlocated scale-up, never below what a cell actually detected, so the mapped installations stay in their own cells. An installation also counts as detected at the recall table's own 100 m, not the atlas's 30 m.
+
+The same audit found a gap in the other direction in Pakistan. Inside the area where roofclf replaces segmentation on rooftops, a mapped rooftop array that segmentation had also detected was counted nowhere: not from the map, because a detection matched it; not by roofclf, which skips mapped buildings; and not by segmentation, whose rooftop figure is discarded there. 687 installations, 466 MWp, of which the per-cell floor had restored 36. They are now counted from the map.
+
+Both atlases were rebuilt after a legacy rebuild (`--legacy-osm-addition`) reproduced the published data blocks exactly, so the moves are the fix and nothing else. **Germany: Best 88,709 to 84,473 MWp (-4.8%)**, 1,571 MWp absorbed from the rooftop scale-up and 2,414 from ground-mount; it is still about 9.7 GW above its ~74.8 GW register, so this explains roughly a third of that excess. **Pakistan: Best 24,330 to 24,407 MWp (+0.3%)**: 233 MWp absorbed from the ground-mount scale-up, more than offset by the restored rooftop arrays. Verified did not move in either, since it holds no satellite estimate.
+
+A third gap remains open in Pakistan: inside the same domain, about 38,000 flagged sub-400 m² roofs are excluded only for sitting near a segmentation detection whose rooftop figure is not used there, very roughly 300 MWp. Fixing it needs a rerun of `sub400-capacity`.
 
 ### The vegetation veto, and why the obvious version fails
 
