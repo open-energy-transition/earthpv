@@ -1,0 +1,3 @@
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"Feature","id":"attock_periurban_calib_2km","properties":{"id":"attock_periurban_calib_2km","name":"Attock Periurban","kind":"unlisted","status":"unlisted","area_km2":4.0,"location":"Attock District, Punjab, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[72.5013351,33.9499506],[72.5013351,33.9679814],[72.4796969,33.9679814],[72.4796969,33.9499506],[72.5013351,33.9499506]]]}}
+]}

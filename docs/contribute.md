@@ -38,23 +38,27 @@ what the candidates below are for.
 
 Rather than pick a location from scratch, eight candidate squares are already screened by
 building density, spread across Punjab, Sindh, Khyber Pakhtunkhwa and Balochistan, and
-confirmed clear of every existing quadrat:
+confirmed clear of every existing quadrat. They are the hollow diamonds on the
+[Pakistan atlas](atlas.md): click one, and **Open in JOSM** or **Open in iD** loads its
+exact boundary next to the OpenStreetMap data for the area (see step 1).
 
-| candidate | province | district | source-grid density (bldg/km<sup>2</sup>) |
+| candidate (boundary) | province | district | source-grid density (bldg/km<sup>2</sup>) |
 |---|---|---|---:|
-| `rajanpur_gap_calib_2km` | Punjab | Rajanpur | 54.4 |
-| `kasur_gap_calib_2km` | Punjab | Kasur | 124.4 |
-| `khairpur_gap_calib_2km` | Sindh | Khairpur | 55.3 |
-| `jacobabad_gap_calib_2km` | Sindh | Jacobabad | 107.9 |
-| `deraismailkhan_gap_calib_2km` | Khyber Pakhtunkhwa | Dera Ismail Khan | 63.2 |
-| `haripur_gap_calib_2km` | Khyber Pakhtunkhwa | Haripur | 102.1 |
-| `pishin_gap_calib_2km` | Balochistan | Pishin | 53.8 |
-| `mastung_gap_calib_2km` | Balochistan | Mastung | 118.8 |
+| [`rajanpur_gap_calib_2km`](assets/labels/calibration_areas/pakistan/rajanpur_gap_calib_2km.geojson) | Punjab | Rajanpur | 54.4 |
+| [`kasur_gap_calib_2km`](assets/labels/calibration_areas/pakistan/kasur_gap_calib_2km.geojson) | Punjab | Kasur | 124.4 |
+| [`khairpur_gap_calib_2km`](assets/labels/calibration_areas/pakistan/khairpur_gap_calib_2km.geojson) | Sindh | Khairpur | 55.3 |
+| [`jacobabad_gap_calib_2km`](assets/labels/calibration_areas/pakistan/jacobabad_gap_calib_2km.geojson) | Sindh | Jacobabad | 107.9 |
+| [`deraismailkhan_gap_calib_2km`](assets/labels/calibration_areas/pakistan/deraismailkhan_gap_calib_2km.geojson) | Khyber Pakhtunkhwa | Dera Ismail Khan | 63.2 |
+| [`haripur_gap_calib_2km`](assets/labels/calibration_areas/pakistan/haripur_gap_calib_2km.geojson) | Khyber Pakhtunkhwa | Haripur | 102.1 |
+| [`pishin_gap_calib_2km`](assets/labels/calibration_areas/pakistan/pishin_gap_calib_2km.geojson) | Balochistan | Pishin | 53.8 |
+| [`mastung_gap_calib_2km`](assets/labels/calibration_areas/pakistan/mastung_gap_calib_2km.geojson) | Balochistan | Mastung | 118.8 |
 
-Files: `data/labels/candidate_quadrats/<name>_candidate.geojson` (one each) and
-`density_gap_candidates_combined.geojson` (all eight in one layer). Full rationale for why
-these eight, this density band, and these locations specifically:
-[Calibration boxes log](issues/pakistan-calibration-boxes.md), Box 19.
+Every boundary, candidate or already mapped, is published under
+`assets/labels/calibration_areas/<country>/`, with one index per country
+([Pakistan](assets/labels/calibration_areas/pakistan.geojson)), so nothing here needs a
+clone of this repository. Full rationale for why these eight, this density band, and these
+locations specifically: [Calibration boxes log](issues/pakistan-calibration-boxes.md),
+Box 19.
 
 **Read each candidate's own `note` property before doing anything else with it.** Every one
 says the same thing: *this is a coarse regional screen, not a verified settlement.* The
@@ -65,8 +69,12 @@ from source-grid densities of 549/250/150 buildings/km<sup>2</sup> to *actual*, 
 densities of 895/237/146 once mapped -- expect something similar here. Picking your own
 location instead of one of these eight is equally welcome, as long as it targets a
 building density under about 125 buildings/km<sup>2</sup> (the current gap) and is not
-already inside an existing quadrat -- `scripts/new_calibration_quadrat.py` (below) checks
-the second condition for you.
+already inside an existing quadrat. On the atlas, the **Propose a calibration area** button
+(the dashed square under the zoom buttons) drops a 2 km square wherever you click next and
+checks it against every existing area and candidate; `scripts/new_calibration_quadrat.py`
+(below) checks again when the box is registered. A box placed this way is hand-picked, so
+the [selection-bias rule](calibration-mapping-protocol.md#quadrat-selection-should-be-automated-and-is-not-yet)
+applies: never place one because you can already see solar there.
 
 ## The five steps
 
@@ -77,8 +85,18 @@ visual step, and it is the single most common reason a candidate gets dropped. T
 Box 18's six original candidates (Mardan, Shikarpur, Sialkot District) never got mapped for
 exactly this reason.
 
-Open the candidate box in JOSM (or Esri World Imagery Wayback, or Google Earth Pro's
-historical slider) and check:
+Click the candidate on the [atlas](atlas.md) and press **Open in JOSM**. With JOSM
+running and **Preferences -> Remote Control -> Enable remote control** ticked, JOSM gets two
+new layers:
+
+- the boundary, **locked and set so JOSM refuses to upload it**;
+- the OpenStreetMap data for the area, as its own layer, already carrying the changeset
+  comment and the `#earthpv #earthpv-calibration` hashtags.
+
+The first time, Chrome asks whether the page may reach apps on your device: allow it, that
+is how the button talks to JOSM. **Open in iD** does the same in the browser editor, with
+the boundary as a read-only overlay that iD never uploads. Then check the imagery there (or
+in Esri World Imagery Wayback, or Google Earth Pro's historical slider):
 
 - Is there high-resolution imagery at all over this box?
 - How recent is it? PV in Pakistan is being installed fast; imagery more than about a
@@ -97,6 +115,11 @@ exactly what happened to half of Box 18's screen.
 If the imagery looks good but the box needs to move onto the actual settlement, draw a
 better boundary in JOSM around it (**File -> Save As -> GeoJSON**) instead of using the
 candidate square as-is. Any closed shape works; it does not have to stay a square.
+
+Steps 2 and 3 register the box in this project's data and need a clone of the repository.
+If you are mapping without one, skip them: the boundary you loaded from the atlas (or the
+one you drew) is all a maintainer needs, so go straight to step 4 and hand it over in
+step 5.
 
 ### 2. Preview it
 
@@ -166,14 +189,16 @@ here unchanged.
 
 In JOSM, the loop is:
 
-1. **File -> Open** the `_boundary.geojson` the previous step wrote. It comes in as its own
-   layer. **Never upload that layer** -- the box is not an OpenStreetMap feature. Edit only
-   in the OSM data layer. (Prefer to draw your own boundary instead of
-   using a generated square? Draw it on a **new layer** (Ctrl+N) and save that layer with
-   **File -> Save As... -> GeoJSON Files**, then pass it to the script with `--geojson`. See
+1. Load the boundary and the OSM data. The atlas's **Open in JOSM** does both: the boundary
+   arrives locked, with upload blocked, and the OSM data in a separate layer. Working from a
+   clone instead, **File -> Open** the `_boundary.geojson` the previous step wrote and
+   download OSM data for the same area. Either way, **never upload the boundary layer** --
+   the box is not an OpenStreetMap feature. Edit only in the OSM data layer. (Prefer to draw
+   your own boundary instead of using a generated square? Draw it on a **new layer**
+   (Ctrl+N) and save that layer with **File -> Save As... -> GeoJSON Files**, then pass it
+   to the script with `--geojson`. See
    [Drawing the boundary in JOSM](calibration-mapping-protocol.md#drawing-the-boundary-in-josm).)
-2. Download OSM data for the same area, then sweep the box systematically, block by block,
-   rather than roaming.
+2. Sweep the box systematically, block by block, rather than roaming.
 3. **Flip between imagery layers as you go.** A panel invisible on one background is often
    obvious on the next, because they differ in capture date, sun angle and resolution. Work
    through Bing, Esri World Imagery, Esri Clarity and Mapbox at minimum, and check the
@@ -181,9 +206,9 @@ In JOSM, the loop is:
    more recent than any of them. This is the most common reason a "complete" box turns out
    not to be. See
    [Flip between imagery layers](calibration-mapping-protocol.md#flip-between-imagery-layers-this-is-not-optional).
-4. Validate (Ctrl+Shift+V), then **upload to OpenStreetMap** with a real changeset comment
-   and a `source` tag naming the imagery you traced from. The panels belong in the map, not
-   in a private file. See
+4. Validate (Ctrl+Shift+V), then **upload to OpenStreetMap** with a real changeset comment,
+   the hashtags `#earthpv #earthpv-calibration`, and a `source` tag naming the imagery you
+   traced from. The panels belong in the map, not in a private file. See
    [Uploading to OpenStreetMap](calibration-mapping-protocol.md#uploading-to-openstreetmap).
 
 A second mapper independently sweeping the same quadrat is part of the deliverable, not an
@@ -203,7 +228,8 @@ for why this matters as much on the deployment side as on the mapping side).
 
 Open a pull request, or hand the boundary + register row to whoever maintains this
 project's `data/labels/` -- the same place every quadrat in
-[the current set](methods/calibration-quadrats.md) came from.
+[the current set](methods/calibration-quadrats.md) came from. For a candidate you mapped
+as published, its name is enough: the boundary is already here.
 
 ## What happens next
 

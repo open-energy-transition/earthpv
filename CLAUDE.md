@@ -654,6 +654,25 @@ map. A Shot can name a `ready` expression; the atlas sets `data-atlas-ready` on 
 its map has drawn a complete frame. The atlas iframes on the docs site carry
 `allow="fullscreen"` (`build_atlas_pages.py`), or the map's fullscreen button does nothing.
 
+**Calibration areas open in JOSM or iD from the atlas (2026-10-20).** Clicking an area, or a
+hollow-diamond candidate, offers **Open in JOSM** (Remote Control: `import` of the area's
+published GeoJSON as a locked layer with `upload_policy=never`, then `load_and_zoom` into
+its own layer with the protocol's changeset comment and `#earthpv;#earthpv-calibration`),
+**Open in iD** (`#gpx=<url>.geojson`, iD's never-uploaded custom-data layer) and a GeoJSON
+download. A **Propose** map control drops a 2 km square on the next click (same corners as
+`new_calibration_quadrat.geodesic_square` to < 0.1 mm), checks overlap against every
+published area as `check_overlap` does, and labels it hand-picked. The boundaries are NOT
+the embedded rings (rounded to ~100 m): `pixi run calib-publish`
+(`scripts/publish_calibration_areas.py`) writes full-precision
+`docs/assets/labels/calibration_areas/<aoi>.geojson` plus one `<aoi>/<stem>.geojson` per area
+(configured boxes, candidates, and unlisted registered quadrats for the overlap check only),
+and the page fetches its index at run time by `data-aoi-key` (`__AOI_KEY__`, which
+`retemplate_atlas.py` fills fresh). So a new candidate reaches every atlas with a re-publish,
+no rebuild. Re-run it whenever a quadrat or candidate is added or `calibration_boxes`
+changes; `check_atlas_templates.py` fails CI on a configured box without a published file.
+The iframes also carry `local-network-access; loopback-network` for Chrome's prompt on
+requests to 127.0.0.1.
+
 
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)

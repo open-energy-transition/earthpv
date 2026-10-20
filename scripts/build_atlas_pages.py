@@ -122,9 +122,13 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
                      f"  <p>{text}</p>\n  <p>{CTA}</p>\n</div>")
     # `allow="fullscreen"`: the atlas map has a fullscreen button, which a frame without
-    # the permission silently disables.
+    # the permission silently disables. The local-network ones let the "Open in JOSM"
+    # button reach JOSM's Remote Control on 127.0.0.1 under Chrome's Local Network Access
+    # (named `local-network-access` from Chrome 142, `loopback-network` from 145). A
+    # same-origin frame inherits them anyway; named so the page still works if the atlas
+    # is ever served from another origin.
     parts.append(f'<iframe src="../assets/interactive/{html}" title="{title}" '
-                 'allow="fullscreen"></iframe>')
+                 'allow="fullscreen; local-network-access; loopback-network"></iframe>')
     parts.append("</div>")
     return "\n".join(parts) + "\n"
 

@@ -14,7 +14,8 @@ or a file), checked by substituting it straight back and comparing the result to
 and then substituted into the current template. The data block, the badge, the prose and
 the download section move across byte for byte, so **no figure can change**. Placeholders
 the old template did not have are computed fresh from configuration only
-(`__LAYERS_JSON__`, from `configs/atlas/<aoi>.yaml`), never from pipeline output.
+(`__LAYERS_JSON__`, from `configs/atlas/<aoi>.yaml`; `__AOI_KEY__`, the AOI itself), never
+from pipeline output.
 
     pixi run python scripts/retemplate_atlas.py docs/assets/interactive/*evidence_atlas.html
     pixi run python scripts/retemplate_atlas.py PAGE --old-template 9fb3a29 --dry-run
@@ -117,7 +118,8 @@ def main() -> int:
         try:
             values = extract(old, page.read_text())
             aoi = args.aoi or aoi_of(page)
-            fresh = {"__LAYERS_JSON__": lambda: atlas.map_layers_json(aoi)}
+            fresh = {"__LAYERS_JSON__": lambda: atlas.map_layers_json(aoi),
+                     "__AOI_KEY__": lambda: aoi}
             html = new
             for key in sorted(new_keys):
                 if key in values:

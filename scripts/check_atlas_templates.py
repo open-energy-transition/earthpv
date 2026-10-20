@@ -32,6 +32,8 @@ REQUIRED = {
         ('id="pv"', "the embedded per-cell data the downloads are built from"),
         ("__LAYERS_JSON__", "the per-country extra map layers (configs/atlas/<aoi>.yaml)"),
         ('class="dlbar"', "the PNG/SVG/CSV download buttons on each figure"),
+        ("__AOI_KEY__", "the key the page fetches its published calibration areas by"),
+        ("calib-hit", "the click target that opens a calibration area in JOSM or iD"),
     ],
     "pv_growth_evidence_atlas.html": [
         ("__HEADER_LOGO__", "the EarthPV mark at the top"),
@@ -166,6 +168,47 @@ def check_atlas_configs(problems: list[str]) -> None:
                     f"(...{text[max(0, m.start() - 30):m.end() + 30]}...)")
 
 
+def check_calibration_areas(problems: list[str]) -> None:
+    """The published boundary files the atlas's editor buttons load are complete and safe.
+
+    They are committed output of `scripts/publish_calibration_areas.py`, which CI cannot
+    re-run (data/ is gitignored), so a config box added without re-publishing would give
+    a calibration area whose JOSM button imports nothing. Each file must also be one
+    polygon carrying `do_not_upload`, the tag a mapper sees in JOSM on the boundary layer.
+    """
+    sys.path.insert(0, str(ROOT / "src"))
+    import json
+
+    from earthpv import atlas_config
+
+    out = ROOT / "docs" / "assets" / "labels" / "calibration_areas"
+    for path in sorted((ROOT / "configs" / "atlas").glob("*.yaml")):
+        aoi = path.stem
+        index = out / f"{aoi}.geojson"
+        if not index.exists():
+            problems.append(f"{index.relative_to(ROOT)} is missing; run `pixi run calib-publish`")
+            continue
+        feats = json.loads(index.read_text()).get("features", [])
+        ids = {f["properties"]["id"] for f in feats}
+        listed = {f["properties"]["id"] for f in feats if f["properties"].get("kind") == "calibration"}
+        cfg = atlas_config.load(aoi, ROOT / "configs" / "atlas")
+        for box in cfg.calibration_boxes:
+            if box["stem"] not in listed:
+                problems.append(f"{index.relative_to(ROOT)}: no published boundary for configured box "
+                                f"{box['stem']!r}; run `pixi run calib-publish`")
+        files = {p.stem for p in (out / aoi).glob("*.geojson")} if (out / aoi).is_dir() else set()
+        for stem in sorted(files ^ ids):
+            problems.append(f"calibration_areas/{aoi}: {stem!r} is in only one of the index and the "
+                            "per-area files; run `pixi run calib-publish`")
+        for stem in sorted(files & ids):
+            one = json.loads((out / aoi / f"{stem}.geojson").read_text()).get("features", [])
+            ok = (len(one) == 1 and one[0]["geometry"]["type"] in ("Polygon", "MultiPolygon")
+                  and one[0]["properties"].get("do_not_upload") and one[0]["properties"]["id"] == stem)
+            if not ok:
+                problems.append(f"calibration_areas/{aoi}/{stem}.geojson: must be exactly one polygon "
+                                "with its own id and a do_not_upload property")
+
+
 def main() -> int:
     src = ATLAS.read_text()
     provided = provided_keys(src)
@@ -197,6 +240,7 @@ def main() -> int:
 
     check_atlas_configs(problems)
     check_published_atlases(problems)
+    check_calibration_areas(problems)
 
     if problems:
         print("Atlas template check FAILED:")

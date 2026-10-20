@@ -455,6 +455,22 @@ SIZE_TEMPLATE = Path(__file__).parent / "templates" / "pv_size_atlas.html"
 
 
 
+def calib_boundary_path(aoi: str, stem: str, labels_dir: Path = Path("data/labels")) -> Path:
+    """Where a calibration area's `<stem>_boundary.geojson` lives (the flat path if it is
+    nowhere, so a caller can name the file it looked for).
+
+    Two layouts are in use: Pakistan's quadrats sit flat in `data/labels/`, every AOI
+    added since is scoped to `data/labels/<aoi>/` (France's are, deliberately -- a flat
+    French quadrat would silently join the next Pakistani roofclf refit). Look in the
+    scoped directory first so a country does not have to move its ground truth to get
+    it drawn on its own map. Shared with `scripts/publish_calibration_areas.py`, so the
+    atlas and the published boundary files cannot disagree about which file a box is."""
+    scoped = Path(labels_dir) / aoi
+    search = [scoped, Path(labels_dir)] if scoped.is_dir() else [Path(labels_dir)]
+    name = f"{stem}_boundary.geojson"
+    return next((d / name for d in search if (d / name).exists()), Path(labels_dir) / name)
+
+
 def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[dict]:
     """Ring geometry + live-pulled installation count for each defined calibration
     quadrat. A box with no `<stem>_overpass_solar*.parquet` had zero solar features on its
@@ -463,20 +479,9 @@ def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[
     become ground truth."""
     import pandas as pd
 
-    # Two layouts are in use: Pakistan's quadrats sit flat in `data/labels/`, every AOI
-    # added since is scoped to `data/labels/<aoi>/` (France's are, deliberately -- a flat
-    # French quadrat would silently join the next Pakistani roofclf refit). Look in the
-    # scoped directory first so a country does not have to move its ground truth to get
-    # it drawn on its own map.
-    scoped = Path(labels_dir) / aoi
-    search = [scoped, Path(labels_dir)] if scoped.is_dir() else [Path(labels_dir)]
-
     out = []
     for box in atlas_config.load(aoi).calibration_boxes:
-        boundary = next(
-            (d / f"{box['stem']}_boundary.geojson" for d in search
-             if (d / f"{box['stem']}_boundary.geojson").exists()),
-            Path(labels_dir) / f"{box['stem']}_boundary.geojson")
+        boundary = calib_boundary_path(aoi, box["stem"], labels_dir)
         if not boundary.exists():
             log.warning(
                 "Calibration box %r (stem %r) has no boundary file at %s -- skipped, "
@@ -2738,6 +2743,9 @@ def build_evidence_atlas(
                 aoi, central_buildings_path is not None, labels_dir)
         ),
         "__AOI_TITLE__": title,
+        # The page fetches docs/assets/labels/calibration_areas/<aoi>.geojson by this key
+        # (scripts/publish_calibration_areas.py), so editor links work without a rebuild.
+        "__AOI_KEY__": aoi,
         "__AOI_OVERPASS_AREA_TAGS__": overpass_area_tags,
         "__LAYERS_JSON__": map_layers_json(aoi),
         "__COMPOSITION_NOTE__": _composition_note(

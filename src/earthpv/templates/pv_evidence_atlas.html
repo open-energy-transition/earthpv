@@ -220,6 +220,9 @@
   /* A diamond, not a dot: a round white marker read as one more city. */
   .sw.calib { border-radius: 1px; background: var(--ink); box-shadow: 0 0 0 1.5px var(--map-bg);
     width: 8px; height: 8px; margin: 0 2px; transform: rotate(45deg); }
+  /* Hollow: proposed, nothing mapped yet. */
+  .sw.cand { border-radius: 1px; background: none; border: 1.6px solid var(--ink);
+    width: 8px; height: 8px; margin: 0 2px; transform: rotate(45deg); }
   .sw.live { background: color-mix(in srgb, var(--domain) 35%, transparent);
     border: 1.4px solid var(--domain); }
   .sw.line { height: 2px; border-radius: 1px; background: var(--prov-stroke); }
@@ -263,6 +266,54 @@
     :root:not([data-theme="light"]) .maplibregl-ctrl-icon { filter: invert(0.92) sepia(0.2); }
   }
   .maplibregl-ctrl-group .reset-ctrl { font: 700 13px var(--font-mono); color: var(--ink-2); }
+  .maplibregl-ctrl-group .propose-ctrl { display: grid; place-items: center; color: var(--ink-2); }
+  .maplibregl-ctrl-group .propose-ctrl svg { width: 15px; height: 15px; fill: none;
+    stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+  .maplibregl-ctrl-group .propose-ctrl[aria-pressed="true"] { color: var(--accent);
+    background-color: var(--hair) !important; }
+
+  /* ── calibration-area popup: the way into JOSM / iD ───────────────── */
+  .maplibregl-popup-content { background: var(--panel); color: var(--ink);
+    border: 1px solid var(--card-ring); border-radius: 10px; box-shadow: var(--shadow);
+    padding: 11px 13px; font: 12px/1.5 var(--font-display); }
+  .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+  .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+  .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--panel); }
+  .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+  .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+  .maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--panel); }
+  .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--panel); }
+  .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--panel); }
+  .maplibregl-popup-close-button { color: var(--muted); font-size: 17px; padding: 1px 7px;
+    border-radius: 0 10px 0 6px; }
+  .maplibregl-popup-close-button:hover { color: var(--ink); background: var(--hair); }
+  .ap .th { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+    letter-spacing: 0.05em; margin: 0 18px 3px 0; }
+  .ap .nm { font-weight: 650; font-size: 13.5px; margin-bottom: 6px; }
+  .ap .rowt { display: flex; justify-content: space-between; gap: 14px; }
+  .ap .rowt span:first-child { color: var(--ink-2); }
+  .ap .rowt span:last-child { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+    text-align: right; }
+  .ap-warn { margin: 8px 0 0; padding-left: 8px; border-left: 2px solid var(--accent);
+    color: var(--ink-2); font-size: 11.5px; }
+  .ap details { margin-top: 6px; font-size: 11.5px; color: var(--ink-2); }
+  .ap summary { cursor: pointer; color: var(--accent); font-family: var(--font-mono);
+    font-size: 10.5px; letter-spacing: 0.04em; }
+  .ap-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .ap-actions .btn { padding: 5px 9px; font-size: 12px; text-decoration: none; }
+  .ap-actions .btn[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+  .ap-msg { min-height: 1.2em; margin-top: 7px; font-size: 11.5px; color: var(--ink-2); }
+  .ap-msg.err { color: #e5484d; }
+  .ap-cmd { margin-top: 6px; padding: 6px 8px; background: var(--panel-2);
+    border: 1px solid var(--card-ring); border-radius: 6px; font: 10.5px/1.5 var(--font-mono);
+    color: var(--ink-2); white-space: pre-wrap; word-break: break-all; user-select: all; }
+  .ap a { color: var(--accent); }
+  .ap .foot { margin-top: 8px; font-size: 11.5px; }
+  .map-hint { position: absolute; z-index: 4; top: 10px; left: 50%; transform: translateX(-50%);
+    max-width: calc(100% - 120px); padding: 6px 11px; border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--accent); color: var(--ink);
+    font: 600 12px var(--font-display); box-shadow: var(--shadow); text-align: center; }
+  .map-hint[hidden] { display: none; }
   .maplibregl-ctrl.maplibregl-ctrl-attrib {
     background: color-mix(in srgb, var(--panel) 82%, transparent) !important; color: var(--muted); }
   .maplibregl-ctrl-attrib a { color: var(--ink-2) !important; }
@@ -553,7 +604,7 @@
   .xdetails .xbody li::marker { color: var(--accent); }
 </style>
 
-<div class="wrap" data-aoi="__AOI_TITLE__">
+<div class="wrap" data-aoi="__AOI_TITLE__" data-aoi-key="__AOI_KEY__">
   <header>
     __HEADER_LOGO__
     <h1>__H1__</h1>
@@ -613,6 +664,8 @@
         <div class="map-shell" id="mapShell">
           <div id="map" role="region" aria-label="Interactive map of __AOI_TITLE__'s PV capacity per 0.1-degree cell"></div>
           <div class="city-layer" id="cityLayer" aria-hidden="true"></div>
+          <div class="map-hint" id="proposeHint" role="status" hidden>Click where a 2 km
+            calibration area should be centred. Esc cancels.</div>
         </div>
         <div class="legend">
           <div class="legend-scale">
@@ -1438,8 +1491,11 @@ out geom;</div>
      avail: DATA.cells.some(c => c[DOMAIN_IDX]), sw: "dash", key: "cells with sub-400 m² calibration (dashed outline)"},
     {id: "extended", label: "Small PV extrapolated beyond calibration", layers: ["extended-line"], on: false,
      avail: DATA.cells.some(c => c[EXTENDED_IDX]), sw: "dotted", key: "small PV extrapolated beyond calibration (dotted outline)"},
-    {id: "calib", label: "Hand-checked calibration areas", layers: ["calib-line", "calib-dot"], on: true,
-     avail: (DATA.calibBoxes || []).length > 0, sw: "calib", key: "hand-checked calibration area (hover for detail)"},
+    {id: "calib", label: "Hand-checked calibration areas", layers: ["calib-line", "calib-dot", "calib-hit"], on: true,
+     avail: (DATA.calibBoxes || []).length > 0, sw: "calib", key: "hand-checked calibration area (click to open it in an editor)"},
+    // Available once docs/assets/labels/calibration_areas/<aoi>.geojson arrives (loadAreas).
+    {id: "cand", label: "Candidate calibration areas, not yet mapped", layers: ["cand-line", "cand-dot", "cand-hit"],
+     on: true, avail: false, sw: "cand", key: "candidate calibration area, not yet mapped (click to map it)"},
     {id: "live", label: "OSM solar today, live (zoom in)", layers: ["live-fill", "live-line", "live-pt"], on: false,
      avail: true, sw: "live", key: "OpenStreetMap solar features, live from Overpass", status: true},
     {id: "glow", label: "Glow around bright cells", layers: ["glow"], on: true, avail: true},
@@ -1469,6 +1525,10 @@ out geom;</div>
       extended: {type: "geojson", data: boundaryOf(EXTENDED_IDX)},
       calibpolys: {type: "geojson", data: calib.polys},
       calibpts: {type: "geojson", data: calib.pts},
+      // Filled by loadAreas() and proposeAt(), not from the embedded data.
+      candpolys: {type: "geojson", data: {type: "FeatureCollection", features: []}},
+      candpts: {type: "geojson", data: {type: "FeatureCollection", features: []}},
+      proposal: {type: "geojson", data: {type: "FeatureCollection", features: []}},
       live: {type: "geojson", data: {type: "FeatureCollection", features: []},
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'},
     };
@@ -1516,10 +1576,21 @@ out geom;</div>
                  6, ["+", 0.9, ["*", ["get", "rf"], 0.42 * CELLPX0 * 64]],
                  12, ["+", 0.9, ["*", ["get", "rf"], 0.42 * CELLPX0 * 4096]],
                  22, ["+", 0.9, ["*", ["get", "rf"], 0.42 * CELLPX0 * Math.pow(2, 22)]]]}},
+      // Invisible fills, there only so a click anywhere inside an area opens it once the
+      // area is big enough on screen to aim at; the hover tooltip stays on the diamond.
+      {id: "calib-hit", type: "fill", source: "calibpolys", layout: {visibility: OV.calib.on ? "visible" : "none"},
+       paint: {"fill-color": P.ink, "fill-opacity": 0}},
+      {id: "cand-hit", type: "fill", source: "candpolys", layout: {visibility: OV.cand.on ? "visible" : "none"},
+       paint: {"fill-color": P.ink, "fill-opacity": 0}},
       {id: "calib-line", type: "line", source: "calibpolys", layout: {visibility: OV.calib.on ? "visible" : "none"},
        paint: {"line-color": P.ink2, "line-width": 1.4, "line-dasharray": [2, 1.4]}},
+      {id: "cand-line", type: "line", source: "candpolys", layout: {visibility: OV.cand.on ? "visible" : "none"},
+       paint: {"line-color": P.ink2, "line-width": 1.4, "line-dasharray": [0.7, 1.6]}},
       {id: "calib-dot", type: "symbol", source: "calibpts",
        layout: {visibility: OV.calib.on ? "visible" : "none", "icon-image": CALIB_ICON,
+                "icon-allow-overlap": true, "icon-ignore-placement": true}},
+      {id: "cand-dot", type: "symbol", source: "candpts",
+       layout: {visibility: OV.cand.on ? "visible" : "none", "icon-image": CAND_ICON,
                 "icon-allow-overlap": true, "icon-ignore-placement": true}},
       {id: "live-fill", type: "fill", source: "live", filter: ["==", ["geometry-type"], "Polygon"],
        layout: {visibility: OV.live.on ? "visible" : "none"},
@@ -1532,6 +1603,10 @@ out geom;</div>
        layout: {visibility: OV.live.on ? "visible" : "none"},
        paint: {"circle-color": P.domain, "circle-radius": 3.5, "circle-stroke-color": P.mapBg,
                "circle-stroke-width": 1}},
+      // A reader's own proposed area, in the colour this page gives reader-added layers.
+      {id: "proposal-fill", type: "fill", source: "proposal", paint: {"fill-color": P.user, "fill-opacity": 0.12}},
+      {id: "proposal-line", type: "line", source: "proposal",
+       paint: {"line-color": P.user, "line-width": 2, "line-dasharray": [2, 1]}},
     );
     return {version: 8, sources, layers};
   }
@@ -1539,8 +1614,9 @@ out geom;</div>
   // The calibration-area marker, drawn here rather than loaded from a sprite sheet: an
   // icon-only symbol layer needs no glyph or sprite server, so nothing external can make
   // it disappear. Redrawn on a theme change, since it carries the theme's ink.
-  const CALIB_ICON = "calib-diamond";
-  function calibIcon(){
+  // A candidate is the same diamond, hollow: proposed, nothing mapped yet.
+  const CALIB_ICON = "calib-diamond", CAND_ICON = "cand-diamond";
+  function calibIcon(hollow){
     const P = palette(), r = 2, size = 13 * r, cv = document.createElement("canvas");
     cv.width = cv.height = size;
     const ctx = cv.getContext("2d");
@@ -1548,11 +1624,14 @@ out geom;</div>
     const half = 3.7 * r;
     ctx.fillStyle = P.mapBg; ctx.fillRect(-half - 1.6 * r, -half - 1.6 * r, 2 * half + 3.2 * r, 2 * half + 3.2 * r);
     ctx.fillStyle = P.ink; ctx.fillRect(-half, -half, 2 * half, 2 * half);
+    if (hollow) ctx.clearRect(-half + 1.5 * r, -half + 1.5 * r, 2 * half - 3 * r, 2 * half - 3 * r);
     return ctx.getImageData(0, 0, size, size);
   }
   function ensureCalibIcon(m){
-    if (m.hasImage(CALIB_ICON)) m.updateImage(CALIB_ICON, calibIcon());
-    else m.addImage(CALIB_ICON, calibIcon(), {pixelRatio: 2});
+    for (const [id, hollow] of [[CALIB_ICON, false], [CAND_ICON, true]]){
+      if (m.hasImage(id)) m.updateImage(id, calibIcon(hollow));
+      else m.addImage(id, calibIcon(hollow), {pixelRatio: 2});
+    }
   }
 
   // Over a basemap the fill fades as the reader zooms toward roof scale, handing over to a
@@ -1588,6 +1667,9 @@ out geom;</div>
     m.setPaintProperty("prov-line", "line-color", P.provStroke);
     m.setPaintProperty("osm-rings", "circle-stroke-color", P.domain);
     m.setPaintProperty("calib-line", "line-color", P.ink2);
+    m.setPaintProperty("cand-line", "line-color", P.ink2);
+    m.setPaintProperty("proposal-fill", "fill-color", P.user);
+    m.setPaintProperty("proposal-line", "line-color", P.user);
     ensureCalibIcon(m);
     for (const id of ["live-fill", "live-line", "live-pt"])
       m.setPaintProperty(id, id === "live-line" ? "line-color" : id === "live-fill" ? "fill-color" : "circle-color", P.domain);
@@ -1731,7 +1813,7 @@ out geom;</div>
     const userIds = () => [...CFG_LAYERS, ...USER_LAYERS].filter(L => L.on && L.kind !== "raster")
       .flatMap(L => L.layerIds);
     m.on("mousemove", (e) => {
-      const ids = ["calib-dot", "live-fill", "live-line", "live-pt", ...userIds(), "cells"]
+      const ids = ["calib-dot", "cand-dot", "live-fill", "live-line", "live-pt", ...userIds(), "cells"]
         .filter(id => m.getLayer(id) && m.getLayoutProperty(id, "visibility") !== "none");
       const feats = m.queryRenderedFeatures(e.point, {layers: ids});
       const f = feats[0];
@@ -1742,8 +1824,9 @@ out geom;</div>
         MAP.hoverId = id;
         if (id != null) m.setFeatureState({source: "cells", id}, {hover: true});
       };
-      if (!f){ setHover(null); hideTip(); m.getCanvas().style.cursor = ""; return; }
-      m.getCanvas().style.cursor = f.layer.id === "cells" ? "" : "pointer";
+      const cursor = c => { m.getCanvas().style.cursor = PROPOSE.armed ? "crosshair" : c; };
+      if (!f){ setHover(null); hideTip(); cursor(""); return; }
+      cursor(f.layer.id === "cells" ? "" : "pointer");
       if (f.layer.id === "cells"){
         const c = DATA.cells[f.properties.i];
         setHover(f.id);
@@ -1753,10 +1836,15 @@ out geom;</div>
       setHover(null);
       if (f.layer.id === "calib-dot"){
         const b = DATA.calibBoxes[f.properties.k];
-        const statusLabel = b.status === "rule1" ? "Fully checked against real ground survey"
-          : b.status === "suspect" ? "Needs re-checking" : "Checked against high-resolution imagery";
         showTip(ev.clientX, ev.clientY, `<div class="th">CALIBRATION AREA: ${esc(b.name)}</div>`
-          + row("Mapped installations", fmt(b.n)) + row("Status", statusLabel));
+          + row("Mapped installations", fmt(b.n)) + row("Status", calibStatus(b.status))
+          + `<div class="t-desc">Click to open it in JOSM or iD.</div>`);
+      } else if (f.layer.id === "cand-dot"){
+        const p = AREAS.cands[f.properties.k].properties;
+        showTip(ev.clientX, ev.clientY, `<div class="th">CANDIDATE AREA: ${esc(p.name)}</div>`
+          + (p.density_bldg_km2 ? row("Buildings per km², region", fmt(p.density_bldg_km2)) : "")
+          + row("Status", "Not yet mapped")
+          + `<div class="t-desc">Click to map it in JOSM or iD.</div>`);
       } else if (f.layer.id.startsWith("live-")){
         showTip(ev.clientX, ev.clientY, liveTip(f.properties));
       } else {
@@ -1768,6 +1856,336 @@ out geom;</div>
       if (MAP.hoverId != null) m.setFeatureState({source: "cells", id: MAP.hoverId}, {hover: false});
       MAP.hoverId = null; hideTip();
     });
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // Calibration areas in an OSM editor. A click on an area offers its exact boundary in
+  // JOSM (Remote Control: a locked layer that refuses upload, beside the OSM data for the
+  // area) or iD (a read-only custom-data overlay). Not the rings embedded above, which are
+  // rounded to ~100 m for drawing: the full-precision files
+  // scripts/publish_calibration_areas.py writes next to the docs, fetched at run time by
+  // AOI key, so a page moved onto this template by retemplate_atlas.py gets them, and
+  // every new candidate, without a rebuild.
+  // ════════════════════════════════════════════════════════════════════════════════
+  const AOI_KEY = document.querySelector(".wrap").dataset.aoiKey || SLUG;
+  // The published site, for a page opened from disk or from a results/ copy, where the
+  // relative path does not exist. JOSM and iD fetch the boundary themselves, so it has to
+  // be a URL they can reach, never a blob: or file: one.
+  const SITE = "https://open-energy-transition.github.io/earthpv/";
+  const AREAS_DIR = "assets/labels/calibration_areas/";
+  const AREAS = {base: null, fc: null, meta: {}, cands: []};
+  const JOSM_HOST = "http://127.0.0.1:8111/";
+  const HASHTAGS = ["#earthpv", "#earthpv-calibration"];
+  const DO_NOT_UPLOAD = "earthpv calibration reference layer - do not upload to OSM";
+  // docs/calibration-mapping-protocol.md, "Uploading to OpenStreetMap". No source tag is
+  // set: the protocol wants the imagery the geometry was actually traced from.
+  const commentFor = place => `Map rooftop and ground-mounted solar PV in ${place} (earthpv calibration area)`;
+  const PROPOSE_SIDE_M = 2000;
+  const PROPOSE = {armed: false, last: null, btn: null};
+  let POPUP = null;
+
+  const calibStatus = s => s === "rule1" ? "Fully checked against real ground survey"
+    : s === "suspect" ? "Needs re-checking" : "Checked against high-resolution imagery";
+  const siteRoot = () => AREAS.base ? AREAS.base.slice(0, -AREAS_DIR.length) : SITE;
+  const areaUrl = id => AREAS.base + AOI_KEY + "/" + id + ".geojson";
+  function featureBounds(f){
+    const b = geomBounds({features: [f]});
+    return b ? [b[0][0], b[0][1], b[1][0], b[1][1]] : null;
+  }
+  const centerOf = b => [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2];
+
+  async function loadAreas(){
+    const rel = location.protocol.startsWith("http")
+      ? new URL("../labels/calibration_areas/", location.href).href : null;
+    for (const base of [rel, SITE + AREAS_DIR]){
+      if (!base) continue;
+      try {
+        const res = await fetch(base + AOI_KEY + ".geojson");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        AREAS.fc = await res.json();
+        AREAS.base = base;
+        break;
+      } catch (err){ console.warn("calibration areas", base, err.message || err); }
+    }
+    if (!AREAS.fc) return;
+    AREAS.meta = AREAS.fc.earthpv || {};
+    const feats = AREAS.fc.features || [];
+    const calib = feats.filter(f => f.properties.kind === "calibration");
+    // By the config name both were built from; by position if the config renamed a box
+    // since this page was built.
+    for (const b of DATA.calibBoxes || []){
+      b.area = calib.find(f => f.properties.name === b.name) || calib.find(f => {
+        const x = featureBounds(f);
+        return x && b.lon >= x[0] && b.lon <= x[2] && b.lat >= x[1] && b.lat <= x[3];
+      });
+    }
+    AREAS.cands = feats.filter(f => f.properties.kind === "candidate");
+    const m = MAP.map;
+    m.getSource("candpolys").setData({type: "FeatureCollection", features: AREAS.cands.map((f, k) =>
+      ({type: "Feature", properties: {k}, geometry: f.geometry}))});
+    m.getSource("candpts").setData({type: "FeatureCollection", features: AREAS.cands.map((f, k) =>
+      ({type: "Feature", properties: {k}, geometry: {type: "Point", coordinates: centerOf(featureBounds(f))}}))});
+    OV.cand.avail = AREAS.cands.length > 0;
+    renderLayerLists(); renderLegend();
+  }
+
+  // scripts/new_calibration_quadrat.py's geodesic_square on the WGS84 ellipsoid: north and
+  // south edges a meridian arc of side/2 from the centre (radius of curvature taken at the
+  // half-edge's midpoint), east and west side/2 over the prime-vertical radius. Agrees with
+  // pyproj's Geod.fwd far below a millimetre at 2 km, so the --dry-run command offered with
+  // a proposal rebuilds this exact box.
+  function geodesicSquare(lon, lat, side){
+    const a = 6378137, f = 1 / 298.257223563, e2 = f * (2 - f), half = side / 2, rad = Math.PI / 180;
+    const w = phi => 1 - e2 * Math.sin(phi) ** 2;
+    const M = phi => a * (1 - e2) / Math.pow(w(phi), 1.5);
+    const phi = lat * rad;
+    let dn = half / M(phi), ds = dn;
+    dn = half / M(phi + dn / 2); ds = half / M(phi - ds / 2);
+    const north = lat + dn / rad, south = lat - ds / rad;
+    const dl = half * Math.sqrt(w(phi)) / (a * Math.cos(phi)) / rad;
+    const east = lon + dl, west = lon - dl;
+    return [[east, south], [east, north], [west, north], [west, south], [east, south]];
+  }
+  // A ring clipped to an axis-aligned box (Sutherland-Hodgman; the clip window is convex,
+  // so a concave drawn boundary still yields the right area), and a ring's area on a plane
+  // tangent at `lat`. Only ever compared with another area at the same latitude, so the
+  // projection's scale cancels out of every share reported.
+  function clipRing(ring, [x0, y0, x1, y1]){
+    let out = ring.slice(0, -1);
+    const cutX = (p, q, x) => [x, p[1] + (x - p[0]) / (q[0] - p[0]) * (q[1] - p[1])];
+    const cutY = (p, q, y) => [p[0] + (y - p[1]) / (q[1] - p[1]) * (q[0] - p[0]), y];
+    for (const [inside, cut] of [[p => p[0] >= x0, (p, q) => cutX(p, q, x0)], [p => p[0] <= x1, (p, q) => cutX(p, q, x1)],
+                                 [p => p[1] >= y0, (p, q) => cutY(p, q, y0)], [p => p[1] <= y1, (p, q) => cutY(p, q, y1)]]){
+      const src = out; out = [];
+      src.forEach((cur, i) => {
+        const prev = src[(i + src.length - 1) % src.length];
+        if (inside(cur)){ if (!inside(prev)) out.push(cut(prev, cur)); out.push(cur); }
+        else if (inside(prev)) out.push(cut(prev, cur));
+      });
+      if (!out.length) break;
+    }
+    return out;
+  }
+  function ringArea(ring, lat){
+    const k = Math.cos(lat * Math.PI / 180);
+    let s = 0;
+    ring.forEach(([ax, ay], i) => { const [bx, by] = ring[(i + 1) % ring.length]; s += (ax * by - bx * ay) * k; });
+    return Math.abs(s) / 2;
+  }
+  function kmBetween(lat1, lon1, lat2, lon2){
+    const r = Math.PI / 180, dLat = (lat2 - lat1) * r, dLon = (lon2 - lon1) * r;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) ** 2;
+    return 12742 * Math.asin(Math.sqrt(h));
+  }
+  // new_calibration_quadrat.py's check_overlap, against every published area of this AOI
+  // (registered or candidate): share of the proposal covered, and centre distance.
+  function overlaps(ring, lon, lat){
+    const box = [ring[2][0], ring[0][1], ring[0][0], ring[1][1]];
+    const whole = ringArea(ring.slice(0, -1), lat);
+    return ((AREAS.fc && AREAS.fc.features) || []).map(f => {
+      const g = f.geometry;
+      const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+      let shared = 0;
+      for (const rings of polys) rings.forEach((r, i) => { shared += (i ? -1 : 1) * ringArea(clipRing(r, box), lat); });
+      const [cx, cy] = centerOf(featureBounds(f));
+      return {p: f.properties, share: Math.max(0, shared) / whole * 100, km: kmBetween(lat, lon, cy, cx)};
+    }).sort((a, b) => (b.share - a.share) || (a.km - b.km));
+  }
+
+  // A proposal has no published URL to import, so JOSM gets it inline as OSM XML. The
+  // `upload="never"` on the document is JOSM's own guard, on top of the request's policy.
+  function osmXml(spec){
+    const pts = spec.feature.geometry.coordinates[0].slice(0, -1);
+    let x = '<osm version="0.6" generator="EarthPV atlas" upload="never">';
+    pts.forEach(([lon, lat], i) => { x += `<node id="${-(i + 1)}" lat="${lat.toFixed(7)}" lon="${lon.toFixed(7)}"/>`; });
+    x += `<way id="${-(pts.length + 1)}">` + pts.map((_, i) => `<nd ref="${-(i + 1)}"/>`).join("") + '<nd ref="-1"/>';
+    for (const [k, v] of [["name", spec.name], ["do_not_upload", DO_NOT_UPLOAD]]) x += `<tag k="${esc(k)}" v="${esc(v)}"/>`;
+    return x + "</way></osm>";
+  }
+  function josmCommands(spec){
+    const [x0, y0, x1, y1] = spec.bbox, px = (x1 - x0) * 0.05, py = (y1 - y0) * 0.05;
+    const q = o => Object.entries(o).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    const layer = q({new_layer: true, layer_name: `${spec.id} boundary (do not upload)`,
+      layer_locked: true, download_policy: "never", upload_policy: "never"});
+    return [
+      // `url` last and as is: JOSM takes it whole and picks its GeoJSON reader from the
+      // `.geojson` ending, which an encoded or query-stringed URL would hide.
+      spec.url ? `import?${layer}&url=${spec.url}` : `load_data?${layer}&data=${encodeURIComponent(osmXml(spec))}`,
+      "load_and_zoom?" + q({left: (x0 - px).toFixed(6), right: (x1 + px).toFixed(6),
+        top: (y1 + py).toFixed(6), bottom: (y0 - py).toFixed(6), zoom_mode: "download",
+        new_layer: true, layer_name: `OSM data ${spec.id}`, changeset_comment: commentFor(spec.place),
+        changeset_hashtags: HASHTAGS.join(";")}),
+    ];
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Safari will not fetch http loopback from an https page, and JOSM's https port needs a
+  // self-signed certificate trusted by hand, so Safari gets the commands through one window
+  // it opens, steps through and closes (MapRoulette's workaround). Everywhere else they are
+  // plain requests, a second apart, so the OSM layer lands last and is the active one.
+  async function josmSend(cmds){
+    if (window.safari){
+      const w = window.open(JOSM_HOST + cmds[0], "_blank");
+      if (!w) throw new Error("popup blocked");
+      for (const c of cmds.slice(1)){ await sleep(1500); w.location.href = JOSM_HOST + c; }
+      await sleep(1500); w.close();
+      return;
+    }
+    for (const [i, c] of cmds.entries()){
+      const res = await fetch(JOSM_HOST + c);
+      if (!res.ok) throw Object.assign(new Error(`JOSM answered ${res.status}`), {status: res.status});
+      if (i < cmds.length - 1) await sleep(1000);
+    }
+  }
+  // iD loads `gpx=` into its custom-data layer, which is never uploaded, and picks the
+  // format from the URL's `.geojson` ending. It edits only from zoom 16.
+  function idUrl(spec){
+    const [cx, cy] = centerOf(spec.bbox);
+    const hash = [`map=16/${cy.toFixed(5)}/${cx.toFixed(5)}`];
+    if (spec.url) hash.push("gpx=" + encodeURIComponent(spec.url));
+    hash.push("background=EsriWorldImagery", "hashtags=" + encodeURIComponent(HASHTAGS.join(",")),
+              "comment=" + encodeURIComponent(commentFor(spec.place)));
+    return "https://www.openstreetmap.org/edit?editor=id#" + hash.join("&");
+  }
+  function registerCmd(name, lat, lon, side){
+    if (!AREAS.meta.register_script || !side) return "";
+    return `python ${AREAS.meta.register_script} --dry-run \\\n    --name ${name}`
+      + ` --lat ${lat.toFixed(6)} --lon ${lon.toFixed(6)} --side-m ${side}`;
+  }
+
+  function showAreaPopup(lngLat, spec){
+    if (POPUP) POPUP.remove();
+    const d = document.createElement("div");
+    d.className = "ap";
+    const off = spec.feature ? "" : ' aria-disabled="true" disabled';
+    d.innerHTML = `<div class="th">${esc(spec.head)}</div><div class="nm">${esc(spec.name)}</div>`
+      + spec.rows.map(([k, v]) => row(esc(k), esc(v))).join("")
+      + (spec.warn ? `<p class="ap-warn">${spec.warn}</p>` : "")
+      + (spec.extra || "")
+      + (spec.note ? `<details><summary>Why this box</summary><p>${esc(spec.note)}</p></details>` : "")
+      + `<div class="ap-actions"><button type="button" class="btn btn-primary" data-act="josm"${off}>Open in JOSM</button>`
+      + `<a class="btn" href="${esc(idUrl(spec))}" target="_blank" rel="noopener">Open in iD</a>`
+      + `<button type="button" class="btn" data-act="dl"${off}>GeoJSON</button></div>`
+      + `<div class="ap-msg" role="status" aria-live="polite">${esc(spec.idNote || "")}</div>`
+      + (spec.cmd ? `<details><summary>Register it (maintainers)</summary><div class="ap-cmd">${esc(spec.cmd)}</div></details>` : "")
+      + `<div class="foot"><a href="${siteRoot()}contribute/" target="_top">How to map a calibration area</a></div>`;
+    const msg = d.querySelector(".ap-msg");
+    // Re-fitted on every status line too: the popup grows upward from its anchor.
+    const say = (t, err) => { msg.textContent = t; msg.classList.toggle("err", !!err); requestAnimationFrame(fit); };
+    const josmBtn = d.querySelector('[data-act="josm"]');
+    josmBtn.addEventListener("click", async () => {
+      josmBtn.disabled = true;
+      say("Sending to JOSM...");
+      try {
+        await josmSend(josmCommands(spec));
+        say("Sent. JOSM now has the boundary as a locked layer that refuses upload, and the "
+          + "OSM data for the area as its own layer: map in that one.");
+      } catch (err){
+        say(err.status === 403 ? "JOSM refused the request: under Preferences > Remote Control, allow "
+            + "\"Import data from URL\" and \"Load data from API\"."
+          : err.status ? `JOSM answered ${err.status}. An older JOSM may lack these commands; update it.`
+          : "Could not reach JOSM. Start it, tick Preferences > Remote Control > Enable remote control, "
+            + "and allow this page if the browser asks about local network access.", true);
+      } finally { josmBtn.disabled = false; }
+    });
+    d.querySelector('[data-act="dl"]').addEventListener("click", () => {
+      const fc = {type: "FeatureCollection", features: [spec.feature]};
+      saveBlob(new Blob([JSON.stringify(fc)], {type: "application/geo+json"}), `${spec.id}.geojson`);
+    });
+    // Always above the point, then panned until it fits: the map card clips its overflow,
+    // and with its buttons a popup is taller than half a small map, so a free anchor would
+    // flip sides mid-pan and could still end up cut off.
+    const pop = POPUP = new maplibregl.Popup({maxWidth: "310px", anchor: "bottom"})
+      .setLngLat(lngLat).setDOMContent(d).addTo(MAP.map);
+    requestAnimationFrame(fit);
+    function fit(){
+      if (!pop.isOpen()) return;
+      const r = pop.getElement().getBoundingClientRect(), c = MAP.map.getContainer().getBoundingClientRect();
+      const dx = r.left < c.left + 8 ? r.left - c.left - 8 : r.right > c.right - 8 ? r.right - c.right + 8 : 0;
+      const dy = r.top < c.top + 8 ? r.top - c.top - 8 : r.bottom > c.bottom - 8 ? r.bottom - c.bottom + 8 : 0;
+      if (dx || dy) MAP.map.panBy([dx, dy], {duration: REDUCED ? 0 : 300});
+    }
+  }
+
+  function boxSpec(b){
+    const f = b.area || null, p = f ? f.properties : {};
+    return {head: "CALIBRATION AREA", name: b.name, place: b.name, id: p.id || SLUG + "_calibration_area",
+      rows: [["Mapped installations", fmt(b.n)], ["Status", calibStatus(b.status)],
+             ...(p.area_km2 ? [["Area", `${p.area_km2} km²`]] : [])],
+      bbox: f ? featureBounds(f) : featureBounds({geometry: {coordinates: b.rings}}),
+      feature: f, url: f ? areaUrl(p.id) : null,
+      warn: f ? "" : "The boundary files could not be loaded, so only iD at this location is offered."};
+  }
+  function candSpec(f){
+    const p = f.properties, bbox = featureBounds(f), [cx, cy] = centerOf(bbox);
+    return {head: "CANDIDATE AREA, NOT YET MAPPED", name: p.name, place: p.name, id: p.id,
+      rows: [...(p.density_bldg_km2 ? [["Buildings per km², region", fmt(p.density_bldg_km2)]] : []),
+             ["Area", `${p.area_km2} km²`]],
+      warn: "Not checked on the ground yet. Before mapping, make sure the imagery is recent and the "
+        + "box sits on a settlement; if it needs to move, redraw it in JOSM.",
+      note: p.note, bbox, feature: f, url: areaUrl(p.id),
+      cmd: registerCmd(p.id.replace(/_calib_.*$/, ""), cy, cx, p.side_m)};
+  }
+  function proposeAt(lngLat){
+    armPropose(false);
+    const lon = lngLat.lng, lat = lngLat.lat;
+    const ring = geodesicSquare(lon, lat, PROPOSE_SIDE_M);
+    const at = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    const feature = {type: "Feature", properties: {name: `Proposed calibration area at ${at}`,
+      kind: "proposal", hand_picked: true, side_m: PROPOSE_SIDE_M, do_not_upload: DO_NOT_UPLOAD},
+      geometry: {type: "Polygon", coordinates: [ring.map(([x, y]) => [+x.toFixed(7), +y.toFixed(7)])]}};
+    MAP.map.getSource("proposal").setData({type: "FeatureCollection", features: [feature]});
+    const kind = {calibration: "calibration area", candidate: "candidate", unlisted: "registered area"};
+    let extra;
+    if (!AREAS.fc) extra = '<p class="ap-warn">The existing areas could not be loaded, so overlap was not checked.</p>';
+    else {
+      const rows = overlaps(ring, lon, lat), hit = rows.filter(r => r.share >= 0.05);
+      extra = hit.length
+        ? `<p class="ap-warn"><b>Overlaps</b> ${hit.slice(0, 3).map(r => `${esc(r.p.name)} (${kind[r.p.kind] || r.p.kind}, `
+            + `${r.share.toFixed(1)}% of this box)`).join(", ")}. Overlapping areas double-count the shared `
+            + `installations; move the box${hit.some(r => r.p.kind === "candidate") ? ", or map that candidate instead" : ""}.</p>`
+        : rows.length ? `<p class="ap-warn">No overlap. Nearest existing area: ${esc(rows[0].p.name)}, `
+            + `${rows[0].km.toFixed(1)} km away.</p>` : "";
+    }
+    if (!AREAS.meta.register_script)
+      extra += '<p class="ap-warn">To propose it, send the GeoJSON to the project maintainers.</p>';
+    const spec = {head: "PROPOSED AREA, HAND-PICKED", name: `2 km square at ${at}`,
+      place: `the area at ${at}`, id: `proposed_${lat.toFixed(4)}_${lon.toFixed(4)}`,
+      rows: [["Size", "2 km × 2 km"]], bbox: [ring[2][0], ring[0][1], ring[0][0], ring[1][1]], feature,
+      url: null, extra,
+      warn: "Hand-picked, not sampled. Never place an area because you can already see solar there: that "
+        + "biases the calibration. Prefer a predefined candidate where one fits.",
+      idNote: "iD cannot load this box from here: download the GeoJSON and drop it onto the iD map.",
+      cmd: registerCmd("<name>", lat, lon, PROPOSE_SIDE_M)};
+    PROPOSE.last = {lngLat: [lon, lat], spec};
+    showAreaPopup([lon, lat], spec);
+  }
+  function armPropose(on){
+    PROPOSE.armed = on;
+    if (PROPOSE.btn) PROPOSE.btn.setAttribute("aria-pressed", String(on));
+    document.getElementById("proposeHint").hidden = !on;
+    if (MAP.map) MAP.map.getCanvas().style.cursor = on ? "crosshair" : "";
+    if (on && POPUP) POPUP.remove();
+  }
+  function wireMapClick(){
+    const m = MAP.map;
+    m.on("click", (e) => {
+      if (PROPOSE.armed){ proposeAt(e.lngLat); return; }
+      const ids = ["calib-dot", "cand-dot", "proposal-fill", "calib-hit", "cand-hit"]
+        .filter(id => m.getLayer(id) && m.getLayoutProperty(id, "visibility") !== "none");
+      const f = m.queryRenderedFeatures(e.point, {layers: ids})[0];
+      if (!f) return;
+      hideTip();
+      if (f.layer.id === "proposal-fill"){
+        if (PROPOSE.last) showAreaPopup(PROPOSE.last.lngLat, PROPOSE.last.spec);
+      } else if (f.layer.id.startsWith("calib")){
+        const b = DATA.calibBoxes[f.properties.k];
+        showAreaPopup([b.lon, b.lat], boxSpec(b));
+      } else {
+        const c = AREAS.cands[f.properties.k];
+        showAreaPopup(centerOf(featureBounds(c)), candSpec(c));
+      }
+    });
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && PROPOSE.armed) armPropose(false); });
   }
 
   // ── live OpenStreetMap solar, from the public Overpass API ───────────────────────
@@ -2230,7 +2648,7 @@ out geom;</div>
       return;
     }
     MAP.map = map;
-    map.on("styleimagemissing", (e) => { if (e.id === CALIB_ICON) ensureCalibIcon(map); });
+    map.on("styleimagemissing", (e) => { if (e.id === CALIB_ICON || e.id === CAND_ICON) ensureCalibIcon(map); });
     map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({showCompass: false}), "top-right");
     map.addControl(new maplibregl.FullscreenControl({container: shell}), "top-right");
@@ -2240,6 +2658,20 @@ out geom;</div>
         d.className = "maplibregl-ctrl maplibregl-ctrl-group";
         d.innerHTML = '<button type="button" class="reset-ctrl" title="Back to the whole country" aria-label="Back to the whole country">&#8634;</button>';
         d.firstChild.addEventListener("click", () => map.fitBounds([[b0, b1], [b2, b3]], {padding: 12, animate: !REDUCED}));
+        return d;
+      },
+      onRemove(){},
+    }, "top-right");
+    // Armed, so a reader's ordinary click on the map never drops a box by accident.
+    map.addControl({
+      onAdd(){
+        const d = document.createElement("div");
+        d.className = "maplibregl-ctrl maplibregl-ctrl-group";
+        d.innerHTML = '<button type="button" class="propose-ctrl" aria-pressed="false" title="Propose a calibration area'
+          + ' (2 km square)" aria-label="Propose a calibration area"><svg viewBox="0 0 16 16" aria-hidden="true">'
+          + '<rect x="2.5" y="2.5" width="11" height="11" stroke-dasharray="2.2 1.8"/><path d="M8 5.5v5M5.5 8h5"/></svg></button>';
+        PROPOSE.btn = d.firstChild;
+        PROPOSE.btn.addEventListener("click", () => armPropose(!PROPOSE.armed));
         return d;
       },
       onRemove(){},
@@ -2254,6 +2686,8 @@ out geom;</div>
     map.on("load", () => {
       placeCities();
       wireMapHover();
+      wireMapClick();
+      loadAreas();
       for (const spec of EXTRA){
         const L = Object.assign({id: "c" + CFG_LAYERS.length, on: !!spec.visible,
           opacity: spec.opacity == null ? (spec.type === "raster" ? 0.75 : 1) : spec.opacity,

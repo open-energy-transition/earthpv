@@ -80,6 +80,10 @@ potential-leads = "python scripts/build_potential_leads.py"
 # completeness pass against OSM imagery -- re-run whenever a quadrat is added or an
 # `_overpass_solar` pull is refreshed. See docs/calibration-mapping-protocol.md.
 calib-export = "python scripts/export_calibration_quadrats_geojson.py"
+# Every calibration area and candidate as a public per-area GeoJSON under
+# docs/assets/labels/calibration_areas/, which the atlas's "Open in JOSM / iD" buttons load
+# -- re-run whenever a quadrat or candidate is added, or `calibration_boxes` changes.
+calib-publish = "python scripts/publish_calibration_areas.py"
 # Every detected rooftop-PV candidate nationally as one JOSM validation layer -- re-run
 # whenever `earthpv postprocess` (candidates.parquet) is refreshed.
 rooftop-detections-export = "python scripts/export_rooftop_detections_geojson.py"

@@ -1,0 +1,3 @@
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"Feature","id":"lodhran_periurban_calib_2km","properties":{"id":"lodhran_periurban_calib_2km","name":"Lodhran Periurban","kind":"unlisted","status":"unlisted","area_km2":4.0,"location":"Lodhran District, Punjab, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[71.6008656,29.8499448],[71.6008656,29.8679872],[71.5801664,29.8679872],[71.5801664,29.8499448],[71.6008656,29.8499448]]]}}
+]}

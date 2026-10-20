@@ -361,6 +361,19 @@ pull rather than after.
 
 ### Loading a single quadrat boundary into JOSM
 
+**From the atlas, in one click.** Click the area or candidate on the country's atlas and
+press **Open in JOSM** (JOSM running, **Preferences -> Remote Control -> Enable remote
+control** ticked). Through JOSM's Remote Control it imports the area's published boundary
+(`assets/labels/calibration_areas/<country>/<stem>.geojson`, written by
+`pixi run calib-publish`) as a **locked layer with upload set to never**, then downloads
+the OSM data for the area, padded 5%, into a separate layer with the changeset comment and
+hashtags filled in. **Open in iD** loads the same file as iD's custom-data overlay, which
+iD never uploads. A box from the atlas's **Propose a calibration area** button has no
+published file yet; JOSM gets it inline, with the same lock, and iD only opens at its
+location (download its GeoJSON and drop it onto the iD map).
+
+**From a clone:**
+
 1. **File -> Open** `data/labels/<stem>_boundary.geojson`. It arrives as its own data
    layer.
 2. **Download OSM data** for the same area (`File -> Download from OSM`, or Ctrl+Shift+D)
@@ -527,7 +540,10 @@ Before you press upload:
 - **Run JOSM's validator** (Ctrl+Shift+V) and fix what it flags. Overlapping ways and
   untagged geometry are the usual complaints on a panel-tracing session.
 - **Write a real changeset comment**, for example
-  `Map rooftop and ground-mounted solar PV in <place> (earthpv calibration area)`.
+  `Map rooftop and ground-mounted solar PV in <place> (earthpv calibration area)`, with the
+  hashtags `#earthpv;#earthpv-calibration` (the atlas's editor buttons fill in both). The
+  hashtags are how this project finds every calibration changeset again, on
+  [OSMCha](https://osmcha.org/) or in the changeset search, without asking each mapper.
 - **Set the source.** Put the imagery you actually traced from in the changeset `source`
   tag, e.g. `source=Esri World Imagery`. If you flipped between layers, name the one the
   geometry came from.
@@ -543,7 +559,12 @@ After uploading, refresh the box's snapshot so the pipeline sees your work:
 ```bash
 pixi run python scripts/new_calibration_quadrat.py --name <same name> ... # re-pull, or
 pixi run calib-export                                                    # re-export all
+pixi run calib-publish   # after registering a box or listing it in configs/atlas/<aoi>.yaml
 ```
+
+`calib-publish` refreshes the public boundary files the atlas's editor buttons load. CI
+fails (`scripts/check_atlas_templates.py`) when a box listed in `calibration_boxes` has no
+published boundary.
 
 ## Completeness declaration and QA
 

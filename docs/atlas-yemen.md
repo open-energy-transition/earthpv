@@ -27,5 +27,5 @@ hide:
   <p><strong>Bronze atlas: smaller installations are missing.</strong> This map counts only installations mapped in OpenStreetMap and arrays the model can outline from space, roughly 400 m&sup2; (about 70 kWp) and larger. Household and small commercial rooftop systems, often most of a country's solar, are not included, because no area of Yemen has yet been mapped panel by panel to calibrate them. Read every figure here as a floor.</p>
   <p><a class="atlas-tier-cta" href="../contribute/">Help close the gap: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../methods/calibration-quadrats/">How calibration areas work</a></p>
 </div>
-<iframe src="../assets/interactive/yemen_pv_evidence_atlas.html" title="Yemen PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen"></iframe>
+<iframe src="../assets/interactive/yemen_pv_evidence_atlas.html" title="Yemen PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>

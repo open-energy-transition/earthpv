@@ -1,0 +1,3 @@
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"Feature","id":"islamabad_south_calib_2p79km2","properties":{"id":"islamabad_south_calib_2p79km2","name":"Islamabad South","kind":"calibration","status":"rule1","area_km2":2.793,"location":"Islamabad Capital Territory District, Islamabad Capital Territory, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[73.0015969,33.6795863],[73.0106949,33.6674433],[72.9948592,33.658835],[72.9857182,33.6711221],[73.0015969,33.6795863]]]}}
+]}

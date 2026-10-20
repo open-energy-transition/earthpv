@@ -1,0 +1,3 @@
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"Feature","id":"mardan_calib_1km","properties":{"id":"mardan_calib_1km","name":"Sheikh Maltoon Town, Mardan","kind":"calibration","status":"rule1","area_km2":1.0,"location":"Sheikh Maltoon Town, Bypass Road, Mardan Tehsil, Mardan District, Mardan Division, Khyber Pakhtunkhwa, Pakistan","side_m":1000.1,"do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[72.019951,34.18488],[72.0308,34.18488],[72.0308,34.193896],[72.019951,34.193896],[72.019951,34.18488]]]}}
+]}

@@ -27,5 +27,5 @@ hide:
   <p><strong>Silver atlas: smaller installations are missing.</strong> This map covers installations of roughly 400 m&sup2; (about 70 kWp) and larger, validated against hand-mapped ground truth, but it has no calibrated estimate below that size, where household and small commercial rooftop systems sit. A typical French household array is about 20 m&sup2;, a fifth of a Sentinel-2 pixel: too small for the small-installation classifier even in the fourteen communes mapped panel by panel. Every figure here is a floor.</p>
   <p><a class="atlas-tier-cta" href="../contribute/">Help close the gap: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../methods/calibration-quadrats/">How calibration areas work</a></p>
 </div>
-<iframe src="../assets/interactive/france_pv_evidence_atlas.html" title="France PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen"></iframe>
+<iframe src="../assets/interactive/france_pv_evidence_atlas.html" title="France PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>

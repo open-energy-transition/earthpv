@@ -23,5 +23,5 @@ hide:
   <a href="../atlas-yemen/">Yemen</a>
   <a href="../atlas-zambia/">Zambia</a>
 </nav>
-<iframe src="../assets/interactive/germany_pv_evidence_atlas.html" title="Germany PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen"></iframe>
+<iframe src="../assets/interactive/germany_pv_evidence_atlas.html" title="Germany PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>
