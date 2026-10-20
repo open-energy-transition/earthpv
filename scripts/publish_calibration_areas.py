@@ -60,8 +60,8 @@ PAGE_AOI = re.compile(r"(.+?)_(?:pv_)?evidence_atlas\.html$")   # as retemplate_
 # The flat `data/labels/` directory is Pakistan's (see `atlas.calib_boundary_path`); every
 # other AOI keeps its quadrats, and its candidates, under `data/labels/<aoi>/`.
 FLAT_AOI = "pakistan"
-# Only the flat directory feeds `new_calibration_quadrat.py` (it writes and checks overlap
-# there alone), so only that AOI's popups offer its command.
+# Offered in every popup; outside Pakistan with `--aoi`, which points it at that AOI's
+# own labels directory, admin files and country.
 REGISTER_SCRIPT = "scripts/new_calibration_quadrat.py"
 REJECT_REGISTER = Path("results/calibration_rejected_regions.csv")
 # Box 18 (docs/issues/pakistan-calibration-boxes.md): screened and dropped for stale imagery
@@ -146,6 +146,13 @@ def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS) 
                               "candidate", {
                                   "location": loc, "side_m": p.get("side_m"),
                                   "density_bldg_km2": p.get("source_grid_density_bldg_km2"),
+                                  # Written by scripts/propose_calibration_candidates.py; a
+                                  # hand-picked candidate has none of these.
+                                  "own_density_bldg_km2": p.get("own_density_bldg_km2"),
+                                  "stratum": p.get("stratum") if p.get("selection") else None,
+                                  "imagery_layer": p.get("imagery_layer"),
+                                  "imagery_date": p.get("imagery_date"),
+                                  "selection": p.get("selection"),
                                   "note": p.get("note")}))
     return feats
 
@@ -169,7 +176,7 @@ def publish(labels_dir: Path = LABELS, configs_dir: Path = CONFIGS, out: Path = 
         feats = areas_for(aoi, labels_dir, configs_dir)
         result[aoi] = feats
         meta = {"aoi": aoi, "warning": DO_NOT_UPLOAD,
-                "register_script": REGISTER_SCRIPT if aoi == FLAT_AOI else None}
+                "register_cmd": f"python {REGISTER_SCRIPT}" + ("" if aoi == FLAT_AOI else f" --aoi {aoi}")}
         plan[out / f"{aoi}.geojson"] = _collection(feats, meta)
         for f in feats:
             plan[out / aoi / f"{f['id']}.geojson"] = _collection([f], meta)

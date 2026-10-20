@@ -177,12 +177,20 @@ def confirm_element_count(
     return best
 
 
-def check_overlap(poly: Polygon, area_m2: float, skip: str = "") -> list[tuple[str, float, float]]:
+def labels_dir_for(aoi: str) -> Path:
+    """Pakistan's quadrats sit flat in `data/labels/` (they feed its roofclf refits); every
+    other AOI's in `data/labels/<aoi>/`, as `atlas.calib_boundary_path` reads them. A
+    country's box written flat would silently join the next Pakistani refit."""
+    return LABELS if aoi == "pakistan" else LABELS / aoi
+
+
+def check_overlap(poly: Polygon, area_m2: float, skip: str = "",
+                  labels_dir: Path = LABELS) -> list[tuple[str, float, float]]:
     """(stem, % of the new box shared, centre separation km) for every existing quadrat,
     overlapping ones first. `skip` excludes one stem -- its own -- so re-running after a
     failed Overpass pull is not blocked by the boundary the previous attempt wrote."""
     rows = []
-    for p in sorted(glob.glob(str(LABELS / "*_calib_*_boundary.geojson"))):
+    for p in sorted(glob.glob(str(labels_dir / "*_calib_*_boundary.geojson"))):
         stem = os.path.basename(p).replace("_boundary.geojson", "")
         if stem == skip:
             continue
@@ -195,15 +203,20 @@ def check_overlap(poly: Polygon, area_m2: float, skip: str = "") -> list[tuple[s
     return sorted(rows, key=lambda r: (-r[1], r[2]))
 
 
-def admin_lookup(lat: float, lon: float) -> tuple[str | None, str | None]:
+def admin_lookup(lat: float, lon: float, aoi: str = "pakistan") -> tuple[str | None, str | None]:
     """District/province from the density stage's own cached admin polygons, so a new
     box's stated location comes from the same source the capacity tables use rather
     than from reading the coordinates by hand."""
     out = []
-    for f in ("data/labels/pakistan_districts.parquet", "data/labels/pakistan_regions.parquet"):
+    for f in (f"data/labels/{aoi}_districts.parquet", f"data/labels/{aoi}_regions.parquet"):
         try:
             adm = gpd.read_parquet(f).to_crs(4326)
             hit = adm[adm.contains(Point(lon, lat))]
+            if hit.empty:
+                # The simplified outlines miss the coast; take the nearest within ~5 km
+                # (degrees, deliberately rough) rather than leave a coastal box unnamed.
+                d = adm.distance(Point(lon, lat))
+                hit = adm.loc[[d.idxmin()]] if d.min() < 0.05 else hit
             col = next((c for c in ("name", "shapeName") if c in adm.columns), None)
             out.append(str(hit.iloc[0][col]) if len(hit) and col else None)
         except Exception:  # noqa: BLE001 -- absent cache is not fatal, just unlabelled
@@ -250,10 +263,14 @@ def main() -> None:
     ap.add_argument("--size-tag",
                     help="drawn mode: override the '_calib_<tag>' name suffix (default is "
                          "the geodesic area, e.g. 1p24km2)")
-    ap.add_argument("--iso3", default="PAK")
+    ap.add_argument("--aoi", default="pakistan",
+                    help="AOI as in configs/aoi.yaml: picks the labels directory "
+                         "(data/labels/ for Pakistan, data/labels/<aoi>/ otherwise), the admin "
+                         "files, and the defaults for --iso3 and --country")
+    ap.add_argument("--iso3", default=None, help="default: the AOI's division.iso3")
     ap.add_argument("--country", default=None,
-                    help="country name for the location string; defaults to Pakistan only "
-                         "when --iso3 is PAK, and is REQUIRED for any other country")
+                    help="country name for the location string; default: the AOI's "
+                         "division.name (Pakistan for --iso3 PAK)")
     # The imagery gate. `imagery_layer`/`imagery_date` are columns the quadrat register has
     # always carried and nothing ever populated, which is what makes Rule 1 a bound rather
     # than a guarantee (see docs/calibration-mapping-protocol.md). Recording them at
@@ -285,6 +302,12 @@ def main() -> None:
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    from earthpv.config import Settings
+
+    division = (Settings.load().aois.get(args.aoi) or {}).get("division") or {}
+    args.iso3 = args.iso3 or division.get("iso3") or "PAK"
+    args.country = args.country or (division.get("name") if division.get("iso3") == args.iso3 else None)
+    labels = labels_dir_for(args.aoi)
     drawn = args.geojson is not None
     if drawn == (args.lat is not None or args.lon is not None):
         raise SystemExit("pass EITHER --geojson (drawn boundary) OR --lat and --lon (square)")
@@ -344,7 +367,7 @@ def main() -> None:
               "and a large one is a long mapping job.")
 
     print("\noverlap check against existing quadrats:")
-    rows = check_overlap(poly, area, skip=stem)
+    rows = check_overlap(poly, area, skip=stem, labels_dir=labels)
     overlaps = [r for r in rows if r[1] > 0]
     for st, share, d_km in rows[:5]:
         flag = f"OVERLAP {share:.2f}% of new box" if share else "clear"
@@ -362,7 +385,7 @@ def main() -> None:
 
     # A representative point, not the centroid: for a concave drawn boundary the centroid
     # can fall outside the polygon, which would look up the wrong district.
-    district, province = admin_lookup(rep.y, rep.x)
+    district, province = admin_lookup(rep.y, rep.x, args.aoi)
     print(f"\nadmin lookup: district={district!r} province={province!r}")
     if args.dry_run:
         print("\n--dry-run: nothing written, nothing fetched")
@@ -408,7 +431,7 @@ def main() -> None:
             f"REFUSING: --iso3 {args.iso3} is not PAK and no --country was given. The "
             "location string would otherwise read 'Pakistan' for a box that is not in it."
         )
-    LABELS.mkdir(parents=True, exist_ok=True)
+    labels.mkdir(parents=True, exist_ok=True)
     props = {
         "quadrat_id": stem,
         # Never guessed here: a stratum is a mapper's judgement about the landscape,
@@ -437,16 +460,16 @@ def main() -> None:
         props["source_geojson"] = str(src)
         props["n_vertices"] = geom_info["n_vertices"]
     gdf = gpd.GeoDataFrame([props], geometry=[poly], crs="EPSG:4326")
-    gj = LABELS / f"{stem}_boundary.geojson"
+    gj = labels / f"{stem}_boundary.geojson"
     gdf.to_file(gj, driver="GeoJSON")
     # GeoJSON written by fiona/pyogrio drops the FeatureCollection "name"; the existing
     # boxes carry it, so patch it back for consistency with them.
     doc = json.loads(gj.read_text())
     doc["name"] = f"{stem}_boundary"
     gj.write_text(json.dumps(doc, indent=2) + "\n")
-    gdf.to_parquet(LABELS / f"{stem}_boundary.parquet")
+    gdf.to_parquet(labels / f"{stem}_boundary.parquet")
     print(f"\nwrote {gj}")
-    print(f"wrote {LABELS / f'{stem}_boundary.parquet'}")
+    print(f"wrote {labels / f'{stem}_boundary.parquet'}")
 
     from earthpv.overpass import build_overpass_labels
 
@@ -460,7 +483,7 @@ def main() -> None:
     out = None
     for attempt in range(1, args.retries + 1):
         try:
-            out = build_overpass_labels(LABELS, bbox=(w, s, e, n), name=stem, iso3=args.iso3)
+            out = build_overpass_labels(labels, bbox=(w, s, e, n), name=stem, iso3=args.iso3)
             # An empty response is retryable (below) and a `remark`ed one now fails over
             # inside `_run_query`. Neither catches the third case, measured on this very
             # box: a mirror returning a *partial* element list, HTTP 200, no remark. So
@@ -481,7 +504,7 @@ def main() -> None:
                       "that is the only guard -- re-run once Overpass recovers.")
                 props["pull_unverified"] = True
                 gpd.GeoDataFrame([props], geometry=[poly], crs="EPSG:4326").to_parquet(
-                    LABELS / f"{stem}_boundary.parquet")
+                    labels / f"{stem}_boundary.parquet")
             if n_confirm and n_written < 0.98 * n_confirm:
                 raise RuntimeError(
                     f"pull looks truncated: {n_written} features written vs {n_confirm} "

@@ -1,0 +1,428 @@
+#!/usr/bin/env python
+"""Propose calibration-area candidates for a country by stratified random sampling.
+
+Until now every candidate was picked by hand (Pakistan's Boxes 18 and 19), which is how the
+two failure modes `docs/calibration-mapping-protocol.md` lists under "Quadrat selection"
+kept happening: selection bias ("do not choose a box because you can see solar there" is a
+rule a human has to keep obeying) and wasted mapping (six Pakistani boxes drawn or fully
+swept before anyone found their imagery predated the composite). This does the protocol's
+own recipe, in its order, with no human choice anywhere in it:
+
+1. **Strata from the country's own density grid.** `data/predictions/<aoi>/density/
+   grid.geoparquet` (`n_buildings`, `bldg_density_km2` per 0.1 deg cell) is cut into
+   `--strata` bands holding equal shares of the country's BUILDINGS, so the bands follow
+   the population the published estimate is applied to. Eight bands of one candidate,
+   not four of two: a building-weighted draw lands near a band's dense end, and four bands
+   left Egypt's sparsest pair at 235 and 326 bldg/km2 against a 5th percentile of 79.
+2. **Cells drawn at random within each band**, weighted by building count, from a seed
+   recorded on every candidate. Spread is enforced, not chosen: a new candidate keeps
+   `--min-spacing-km` from every other one and from every registered quadrat, and prefers
+   a province no candidate has used yet.
+3. **The box is placed on the buildings, not on the cell centroid.** A cell centroid is a
+   coarse pointer (Box 18's three quadrats measured 895/237/146 bldg/km2 against source
+   cells of 549/250/150). Every `--side-m` window inside the cell is counted from VIDA
+   footprints, and one whose OWN density is within 25% of the cell's is drawn at random.
+   That is what makes the box represent its stratum, and the box's own density is what
+   `density.CALIBRATED_BLDG_DENSITY_BY_AOI` will later be fitted from. Cells denser than
+   600 bldg/km2 get 1 km boxes (the protocol's dense-urban size), the rest 2 km.
+4. **The imagery gate, before anyone maps.** Esri World Imagery's own metadata service (the
+   one iD reads for its "imagery date" panel) is asked for the capture date at the centre
+   and the four corners; the OLDEST must be no more than `--max-imagery-lag-months` before
+   the AOI's `compose_window` start in `configs/aoi.yaml`. A box that fails is recorded in
+   `screened_out.csv` with the date and the next draw from the same band takes its place.
+
+Output: `data/labels/<aoi>/candidate_quadrats/<stem>_candidate.geojson` (Pakistan:
+`data/labels/candidate_quadrats/`), the layout `scripts/publish_calibration_areas.py` reads;
+run `pixi run calib-publish` afterwards and every atlas shows them as hollow diamonds.
+**Do not re-run with another seed to get nicer-looking boxes**: that reintroduces exactly
+the hand-picking this replaces. Re-running with the same seed reproduces the same draw.
+
+`scripts/heatmap_quadrat_candidates.py` is not this: it ranks boxes by OSM-mapped PV per
+building, which is the selection bias the protocol warns about, and needs a PV pull.
+
+    pixi run calib-candidates -- --aoi zambia --dry-run
+    pixi run calib-candidates -- --bronze                  # every Bronze atlas
+    pixi run calib-candidates -- --aoi india --replace     # redraw a country's candidates
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import math
+import os
+import re
+import sys
+import time
+import unicodedata
+import urllib.parse
+import urllib.request
+import zlib
+from datetime import date, datetime, timezone
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "scripts"))
+from new_calibration_quadrat import GEOD, geodesic_square  # noqa: E402
+
+from earthpv.config import Settings  # noqa: E402
+
+LABELS = Path("data/labels")
+FLAT_AOI = "pakistan"               # see atlas.calib_boundary_path
+PAGES = Path("docs/assets/interactive")
+ESRI_METADATA = ("https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/"
+                 "MapServer/4/query")
+ESRI_ZOOM = 18                       # the level a mapper traces panels at
+MIN_BOX_BUILDINGS = 25               # below this there is nothing to calibrate against
+OWN_DENSITY_TOL = 1.25               # a box's own density within x/÷ this of its cell's
+MAX_ATTEMPTS = 120                   # draws per band before it is reported short
+# Above this a 2 km box holds over 2,400 buildings, a long sweep; such cells get the
+# protocol's dense-urban 1 km box instead (--dense-side-m).
+DENSE_BLDG_KM2 = 600.0
+SELECTION = "stratified random by building density"
+
+
+def grid_path(aoi: str) -> Path:
+    """The AOI's density grid: `data/predictions/<aoi>/` first, else the one other
+    `data/predictions_*/<aoi>/` run that has one (Nigeria's lives under
+    `predictions_v5_nigeria/`). Several candidates is an error, not a guess."""
+    main = Path(f"data/predictions/{aoi}/density/grid.geoparquet")
+    if main.exists():
+        return main
+    found = sorted(Path("data").glob(f"predictions_*/{aoi}/density/grid.geoparquet"))
+    if len(found) == 1:
+        return found[0]
+    raise SystemExit(f"{aoi}: no unique density grid ({[str(p) for p in found] or 'none'}); "
+                     "pass --grid")
+
+
+def bronze_aois() -> list[str]:
+    """AOIs whose published atlas carries the Bronze calibration badge."""
+    out = []
+    for p in sorted(PAGES.glob("*evidence_atlas.html")):
+        m = re.match(r"(.+?)_(?:pv_)?evidence_atlas\.html$", p.name)
+        if m and 'class="vscore-tier">Bronze<' in p.read_text():
+            out.append(m.group(1))
+    return out
+
+
+def strata_edges(cells: pd.DataFrame, k: int) -> np.ndarray:
+    """Density edges cutting the cells into `k` bands of equal building share."""
+    c = cells.sort_values("bldg_density_km2")
+    share = c["n_buildings"].cumsum() / c["n_buildings"].sum()
+    inner = [float(c["bldg_density_km2"][share >= i / k].iloc[0]) for i in range(1, k)]
+    return np.array([0.0, *inner, float("inf")])
+
+
+def slug(text: str) -> str:
+    """A stem-safe place name, without the admin-type words ("Province de Nador" -> nador)."""
+    t = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode()
+    s = re.sub(r"[^a-z0-9]+", "_", t.lower()).strip("_")
+    admin = r"(province|prefecture|governorate|district|municipality|city|markz|wilaya)"
+    s = re.sub(rf"^{admin}(_(de|du|of|d))?_", "", s)
+    s = re.sub(rf"_{admin}$", "", s)
+    return s or "area"
+
+
+def esri_capture(lon: float, lat: float, retries: int = 3) -> dict | None:
+    """Esri World Imagery metadata at a point, for the layer serving `ESRI_ZOOM`."""
+    q = urllib.parse.urlencode({
+        "returnGeometry": "false", "geometry": f"{lon},{lat}", "inSR": 4326,
+        "geometryType": "esriGeometryPoint", "f": "json",
+        "outFields": "SRC_DATE2,SRC_RES,NICE_NAME,MinMapLevel,MaxMapLevel"})
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(f"{ESRI_METADATA}?{q}", timeout=30) as r:
+                feats = json.load(r).get("features", [])
+            for f in feats:
+                a = f["attributes"]
+                if a.get("MinMapLevel", 99) <= ESRI_ZOOM <= a.get("MaxMapLevel", -1) and a.get("SRC_DATE2"):
+                    return {"date": datetime.fromtimestamp(a["SRC_DATE2"] / 1000, timezone.utc).date(),
+                            "res_m": a.get("SRC_RES"), "name": a.get("NICE_NAME") or ""}
+            return None
+        except Exception:  # noqa: BLE001 -- network hiccup; retried, then reported as unknown
+            time.sleep(2 * (attempt + 1))
+    return None
+
+
+def imagery_gate(poly, earliest: date) -> tuple[bool, dict]:
+    """The oldest Esri capture date over the box's centre and corners, against `earliest`."""
+    w, s, e, n = poly.bounds
+    pts = [((w + e) / 2, (s + n) / 2), (w, s), (w, n), (e, s), (e, n)]
+    caps = [esri_capture(x, y) for x, y in pts]
+    if any(c is None for c in caps):
+        return False, {"reason": "no Esri imagery date at zoom 18 for part of the box"}
+    old = min(caps, key=lambda c: c["date"])
+    info = {"imagery_date": old["date"].isoformat(), "imagery_res_m": round(float(old["res_m"]), 2),
+            "imagery_layer": f"Esri World Imagery ({old['name']})" if old["name"] else "Esri World Imagery"}
+    if old["date"] < earliest:
+        info["reason"] = f"Esri imagery from {old['date']} predates {earliest}"
+        return False, info
+    return True, info
+
+
+def window_densities(lon: np.ndarray, lat: np.ndarray, cell: pd.Series, side_m: float):
+    """(centre lon, centre lat, n buildings) for every `side_m` window inside the cell, on
+    a quarter-side step, counted with a summed-area table over a 100 m raster."""
+    lat_c = cell.lat0 + 0.05
+    m_lat = 111_132.954 - 559.822 * math.cos(2 * math.radians(lat_c))
+    m_lon = 111_412.84 * math.cos(math.radians(lat_c))
+    res_y, res_x = 100.0 / m_lat, 100.0 / m_lon
+    nx, ny = int(math.ceil(0.1 / res_x)), int(math.ceil(0.1 / res_y))
+    hist, _, _ = np.histogram2d(lon, lat, bins=[nx, ny],
+                                range=[[cell.lon0, cell.lon0 + nx * res_x], [cell.lat0, cell.lat0 + ny * res_y]])
+    sat = np.zeros((nx + 1, ny + 1))
+    sat[1:, 1:] = hist.cumsum(0).cumsum(1)
+    wx, wy = int(round(side_m / 100)), int(round(side_m / 100))
+    step = max(1, wx // 4)
+    out = []
+    for i in range(0, nx - wx + 1, step):
+        for j in range(0, ny - wy + 1, step):
+            cnt = sat[i + wx, j + wy] - sat[i, j + wy] - sat[i + wx, j] + sat[i, j]
+            out.append((cell.lon0 + (i + wx / 2) * res_x, cell.lat0 + (j + wy / 2) * res_y, cnt))
+    return np.array(out)
+
+
+class Admin:
+    """District / region names from the density stage's own admin parquet files."""
+
+    def __init__(self, aoi: str):
+        import geopandas as gpd
+
+        self.layers = []
+        for kind in ("districts", "regions"):
+            p = LABELS / f"{aoi}_{kind}.parquet"
+            self.layers.append(gpd.read_parquet(p).to_crs(4326) if p.exists() else None)
+
+    def lookup(self, lon: float, lat: float) -> tuple[str | None, str | None]:
+        """(district, region) containing the point, else the nearest within ~5 km: the
+        simplified admin outlines miss the coast (94 South African cells hold 768k
+        buildings with their centre outside every province)."""
+        import warnings
+
+        from shapely.geometry import Point
+
+        pt, out = Point(lon, lat), []
+        for g in self.layers:
+            if g is None:
+                out.append(None)
+                continue
+            hit = g[g.contains(pt)]
+            if hit.empty:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")   # degrees, deliberately: a rough 5 km
+                    d = g.distance(pt)
+                hit = g.loc[[d.idxmin()]] if d.min() < 0.05 else hit
+            # Whitespace collapsed: one Vietnamese province name carries a trailing tab.
+            out.append(" ".join(str(hit.iloc[0]["name"]).split()) if len(hit) else None)
+        return out[0], out[1]
+
+
+def existing_boxes(home: Path) -> list:
+    """Every registered quadrat of this AOI: the overlap/spacing reference."""
+    from earthpv.roofclf import load_boundary
+
+    return [load_boundary(p) for p in sorted(home.glob("*_calib_*_boundary.geojson"))]
+
+
+def propose(aoi: str, args) -> list[dict]:
+    import duckdb
+    from shapely.geometry import mapping
+
+    from earthpv.buildings import fetch_vida_building_points
+
+    cfg = Settings.load().aois.get(aoi) or {}
+    div = cfg.get("division") or {}
+    iso3, country = div.get("iso3"), div.get("name")
+    if not iso3 or not cfg.get("compose_window"):
+        raise SystemExit(f"{aoi}: configs/aoi.yaml needs division.iso3 and compose_window")
+    win0 = date.fromisoformat(cfg["compose_window"][0])
+    months = win0.year * 12 + win0.month - 1 - args.max_imagery_lag_months
+    earliest = date(months // 12, months % 12 + 1, 1)
+
+    home = LABELS if aoi == FLAT_AOI else LABELS / aoi
+    out_dir = home / "candidate_quadrats"
+    auto = [p for p in sorted(out_dir.glob("*_candidate.geojson"))
+            if SELECTION in json.loads(p.read_text())["features"][0]["properties"].get("selection", "")]
+    if auto and not args.replace:
+        print(f"{aoi}: {len(auto)} sampled candidates already exist in {out_dir}; "
+              "pass --replace to redraw them")
+        return []
+
+    grid = pd.read_parquet(args.grid or grid_path(aoi),
+                           columns=["cell", "lon0", "lat0", "n_buildings", "bldg_density_km2"])
+    grid = grid[grid["n_buildings"] >= MIN_BOX_BUILDINGS].reset_index(drop=True)
+    edges = strata_edges(grid, args.strata)
+    grid["stratum"] = np.searchsorted(edges, grid["bldg_density_km2"], side="right") - 1
+    seed = args.seed if args.seed is not None else zlib.crc32(aoi.encode()) % 100_000
+    rng = np.random.default_rng(seed)
+    admin = Admin(aoi)
+    taken = existing_boxes(home)
+    used_regions: set = set()
+    picked, screened = [], []
+    con = duckdb.connect()
+
+    for k in range(args.strata):
+        band = grid[grid["stratum"] == k]
+        lo, hi = edges[k], edges[k + 1]
+        label = (f"density stratum {k + 1} of {args.strata}: "
+                 + (f"{lo:,.0f}-{hi:,.0f}" if math.isfinite(hi) else f">{lo:,.0f}") + " bldg/km2 (cell)")
+        got = 0
+        for attempt in range(MAX_ATTEMPTS):
+            if got == args.per_stratum or band.empty:
+                break
+            cell = band.iloc[rng.choice(len(band), p=band["n_buildings"] / band["n_buildings"].sum())]
+            # Cheap rejections first, from the cell centre: a province already used is skipped
+            # while there is room to spread (past half the attempts a band takes what it can
+            # get rather than coming back short), a cell no window of which can keep the
+            # spacing is skipped, and a cell whose centre imagery already fails the gate never
+            # costs a footprint query.
+            ccx, ccy = cell.lon0 + 0.05, cell.lat0 + 0.05
+            _, region0 = admin.lookup(ccx, ccy)
+            if region0 and region0 in used_regions and attempt < MAX_ATTEMPTS // 2:
+                continue
+            if any(GEOD.inv(ccx, ccy, b.centroid.x, b.centroid.y)[2] / 1000 < args.min_spacing_km - 8
+                   for b in taken):
+                continue
+            cap = esri_capture(ccx, ccy)
+            if cap is None or cap["date"] < earliest:
+                screened.append({"aoi": aoi, "stratum": k + 1, "cell": cell.cell, "lat": round(ccy, 6),
+                                 "lon": round(ccx, 6), "reason": "cell centre: " + (
+                                     f"Esri imagery from {cap['date']} predates {earliest}" if cap
+                                     else "no Esri imagery date at zoom 18"),
+                                 "imagery_date": cap["date"].isoformat() if cap else "",
+                                 "date_screened": date.today().isoformat()})
+                continue
+            side = args.dense_side_m if cell.bldg_density_km2 >= DENSE_BLDG_KM2 else args.side_m
+            bbox = (cell.lon0, cell.lat0, cell.lon0 + 0.1, cell.lat0 + 0.1)
+            pts = fetch_vida_building_points(bbox, iso3, con=con)
+            if pts.empty:
+                continue
+            wins = window_densities(pts["lon"].to_numpy(), pts["lat"].to_numpy(), cell, side)
+            if not len(wins):
+                continue
+            area_km2 = side * side / 1e6
+            dens = wins[:, 2] / area_km2
+            ok = (wins[:, 2] >= MIN_BOX_BUILDINGS) & (np.abs(np.log(np.maximum(dens, 1e-9) / cell.bldg_density_km2))
+                                                      <= math.log(OWN_DENSITY_TOL))
+            idx = np.flatnonzero(ok)
+            if not len(idx):
+                continue
+            cx, cy, _ = wins[rng.choice(idx)]
+            poly = geodesic_square(float(cy), float(cx), side)
+            near = [GEOD.inv(cx, cy, b.centroid.x, b.centroid.y)[2] / 1000 for b in taken]
+            if any(d < args.min_spacing_km for d in near) or any(b.intersects(poly) for b in taken):
+                continue
+            district, region = admin.lookup(cx, cy)
+            passed, img = imagery_gate(poly, earliest)
+            if not passed:
+                screened.append({"aoi": aoi, "stratum": k + 1, "cell": cell.cell, "lat": round(cy, 6),
+                                 "lon": round(cx, 6), "reason": img["reason"],
+                                 "imagery_date": img.get("imagery_date", ""),
+                                 "date_screened": date.today().isoformat()})
+                continue
+            w, s, e, n = poly.bounds
+            sel = pts[(pts.lon >= w) & (pts.lon <= e) & (pts.lat >= s) & (pts.lat <= n)]
+            geo_km2 = abs(GEOD.geometry_area_perimeter(poly)[0]) / 1e6
+            tag = f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m"
+            base = f"{slug(district or region or aoi)}_s{k + 1}"
+            stem = next(f"{base}{x}_calib_{tag}" for x in ("", *"bcdefgh")
+                        if f"{base}{x}_calib_{tag}" not in {c['stem'] for c in picked})
+            props = {
+                "quadrat_id": stem,
+                "stratum": label,
+                "location": ", ".join(x for x in (district, region, country) if x),
+                "province": region,
+                "size_km2": round(geo_km2, 4),
+                "center": f"[{cx:.6f} {cy:.6f}]",
+                "shape": "square (geodesic)",
+                "side_m": float(side),
+                "source_grid_cell": cell.cell,
+                "source_grid_density_bldg_km2": round(float(cell.bldg_density_km2), 2),
+                "source_grid_n_buildings": int(cell.n_buildings),
+                "own_n_buildings": int(len(sel)),
+                "own_density_bldg_km2": round(len(sel) / geo_km2, 2),
+                **img,
+                "imagery_checked": True,
+                "selection": f"{SELECTION}, seed {seed}",
+                "note": (f"Drawn by scripts/propose_calibration_candidates.py: a building-weighted "
+                         f"random cell from {label}, then a {side / 1000:g} km window inside it "
+                         f"whose own density ({len(sel) / geo_km2:,.0f} bldg/km2, VIDA) is within "
+                         f"25% of the cell's ({cell.bldg_density_km2:,.0f}). Esri imagery here "
+                         f"dates from {img['imagery_date']} (oldest of centre and corners), "
+                         f"no older than {earliest} for a composite starting {win0}. Not "
+                         "checked on the ground: confirm it is mappable before you start, and "
+                         "do not move it toward visible solar."),
+            }
+            picked.append({"stem": stem, "k": k + 1, "props": props, "geometry": mapping(poly)})
+            taken.append(poly)
+            if region:
+                used_regions.add(region)
+            got += 1
+        if got < args.per_stratum:
+            print(f"  {aoi}: stratum {k + 1} short, {got} of {args.per_stratum} after {MAX_ATTEMPTS} draws")
+
+    print(f"{aoi}: {len(picked)} candidates, {len(screened)} draws screened out on imagery "
+          f"(seed {seed}, imagery no older than {earliest})")
+    for c in picked:
+        p = c["props"]
+        print(f"  {c['stem']:<42} s{c['k']}  cell {p['source_grid_density_bldg_km2']:>8,.1f}"
+              f"  box {p['own_density_bldg_km2']:>8,.1f} bldg/km2  {p['own_n_buildings']:>6} bldg"
+              f"  Esri {p['imagery_date']} {p['imagery_res_m']} m  {p['location']}")
+    if args.dry_run:
+        return picked
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for p in auto:
+        p.unlink()
+    for c in picked:
+        doc = {"type": "FeatureCollection", "name": f"{c['stem']}_candidate",
+               "features": [{"type": "Feature", "properties": c["props"], "geometry": c["geometry"]}]}
+        (out_dir / f"{c['stem']}_candidate.geojson").write_text(json.dumps(doc, indent=2) + "\n")
+    if screened:
+        log = out_dir / "screened_out.csv"
+        new = not log.exists()
+        with log.open("a", newline="") as fh:
+            wr = csv.DictWriter(fh, fieldnames=list(screened[0]))
+            if new:
+                wr.writeheader()
+            wr.writerows(screened)
+    print(f"  wrote {len(picked)} files to {out_dir}")
+    return picked
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    who = ap.add_mutually_exclusive_group(required=True)
+    who.add_argument("--aoi", nargs="+", help="AOI(s) as in configs/aoi.yaml")
+    who.add_argument("--bronze", action="store_true", help="every AOI whose atlas is Bronze")
+    ap.add_argument("--strata", type=int, default=8, help="density bands of equal building share")
+    ap.add_argument("--per-stratum", type=int, default=1)
+    ap.add_argument("--side-m", type=float, default=2000.0)
+    ap.add_argument("--dense-side-m", type=float, default=1000.0,
+                    help=f"box side in cells denser than {DENSE_BLDG_KM2:g} bldg/km2")
+    ap.add_argument("--min-spacing-km", type=float, default=20.0)
+    ap.add_argument("--max-imagery-lag-months", type=int, default=12,
+                    help="oldest acceptable Esri capture, in months before the compose window start")
+    ap.add_argument("--seed", type=int, default=None, help="default: derived from the AOI name")
+    ap.add_argument("--grid", type=Path, default=None, help="density grid, for a single --aoi")
+    ap.add_argument("--replace", action="store_true", help="redraw an AOI's sampled candidates")
+    ap.add_argument("--dry-run", action="store_true", help="draw and report, write nothing")
+    args = ap.parse_args()
+    os.chdir(ROOT)
+    aois = bronze_aois() if args.bronze else args.aoi
+    if args.grid and len(aois) != 1:
+        raise SystemExit("--grid applies to a single --aoi")
+    for aoi in aois:
+        propose(aoi, args)
+    if not args.dry_run:
+        print("next: pixi run calib-publish")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

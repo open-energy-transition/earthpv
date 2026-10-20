@@ -1,3 +1,3 @@
-{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py"},"features":[
 {"type":"Feature","id":"site_karachi_calib_4p14km2","properties":{"id":"site_karachi_calib_4p14km2","name":"SITE Karachi","kind":"calibration","status":"rule1","area_km2":4.141,"location":"Karachi District, Sindh, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[66.9881916,24.918044],[66.9886636,24.9000614],[67.009263,24.9004507],[67.0084905,24.9186278],[66.9881916,24.918044]]]}}
 ]}

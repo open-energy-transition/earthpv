@@ -224,10 +224,9 @@ is segmentation's instrument; a `roofclf` region wants roofs.
 extend the sparse end and then moved to 46.5, where it no longer extended anything. If a
 region exists to reach a density band, re-check its density after any move.
 
-## Quadrat selection should be automated, and is not yet
+## Automated quadrat selection
 
-Stated here because it is a known weakness of this protocol rather than a finished part of
-it. Boxes are currently chosen by hand, and two of the failure modes below are direct
+Pakistan's boxes were chosen by hand, and two of the failure modes below are direct
 consequences:
 
 - **Selection bias.** "Do not choose a quadrat because you already know it has solar" is a
@@ -237,18 +236,40 @@ consequences:
   the imagery date made the result uninterpretable in both directions. The imagery date is
   a gate that should be checked **before** anyone maps, not after.
 
-What an automated selector should do: stratify by building density and landscape type from
-the national grid EarthPV already computes, propose boxes in the bands that are
-under-represented rather than the ones that are convenient, reject any candidate
-overlapping an existing quadrat, and check the best available imagery date for the
-candidate before proposing it. `density.calibrated_density_range` and the national
-cell-density table are the inputs; the density-domain lesson in
-[Calibration quadrats](methods/calibration-quadrats.md) is the constraint, namely that a
-box only widens the calibrated domain if its **own** average density is below the current
-floor, which a boundary traced around a settlement almost never achieves.
+Since 2026-10-20 a sampler does it instead, for any country with a density grid:
 
-Until that exists, the manual protocol below is what is in force, and the
-`--dry-run` overlap check is the one automated guard it does have.
+```bash
+pixi run calib-candidates -- --aoi zambia --dry-run   # report the draw, write nothing
+pixi run calib-candidates -- --bronze                 # every Bronze atlas
+pixi run calib-publish                                # put them on the atlases
+```
+
+`scripts/propose_calibration_candidates.py`:
+
+1. **Cuts the country's 0.1&deg; density grid into eight bands holding equal shares of its
+   buildings**, one candidate each, so the draws spread evenly across the population the
+   estimate is applied to, sparse tail included.
+2. **Draws cells at random within each band, weighted by building count**, from a seed
+   recorded on every candidate. New candidates keep 20 km from each other and from every
+   registered quadrat, and prefer a province not yet used.
+3. **Places the box on the buildings, not the cell centroid.** Every window inside the cell
+   is counted from VIDA footprints, and one whose **own** density is within 25% of the
+   cell's is drawn at random. The box's own density is what the calibrated domain is later
+   fitted from, which is the density-domain lesson in
+   [Calibration quadrats](methods/calibration-quadrats.md). Box 18's centroid-placed
+   squares measured 895/237/146 bldg/km<sup>2</sup> against cells of 549/250/150. Cells
+   denser than 600 bldg/km<sup>2</sup> get 1 km boxes, the rest 2 km.
+4. **Applies the imagery gate before anyone maps.** It reads Esri World Imagery's capture
+   date at the centre and four corners from Esri's own metadata service (the one iD's
+   imagery panel reads). The oldest must be at most 12 months before the AOI's
+   `compose_window` start. A box that fails goes to `screened_out.csv` next to the
+   candidates, and the next draw from the same band replaces it.
+
+What it does **not** do: stratify by landscape type (roof material, industrial,
+irrigated), check any layer other than Esri World Imagery, or look at the ground. A sampled
+candidate is still a pointer for a mapper to confirm, and the protocol below still applies
+to it in full. Do not re-run with another seed to get nicer-looking boxes: that is the
+hand-picking the sampler replaces.
 
 ## The quadrat plan
 

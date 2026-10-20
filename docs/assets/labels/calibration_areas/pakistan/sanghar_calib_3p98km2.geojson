@@ -1,3 +1,3 @@
-{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py"},"features":[
 {"type":"Feature","id":"sanghar_calib_3p98km2","properties":{"id":"sanghar_calib_3p98km2","name":"Sanghar","kind":"calibration","status":"rule1","area_km2":3.983,"location":"Sanghar District, Sindh, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[68.9392014,26.0380169],[68.9591986,26.0380169],[68.9591986,26.0559831],[68.9392014,26.0559831],[68.9392014,26.0380169]]]}}
 ]}

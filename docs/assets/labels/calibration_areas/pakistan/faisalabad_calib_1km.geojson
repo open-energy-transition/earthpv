@@ -1,3 +1,3 @@
-{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py"},"features":[
 {"type":"Feature","id":"faisalabad_calib_1km","properties":{"id":"faisalabad_calib_1km","name":"Faisalabad (PSIE)","kind":"calibration","status":"rule1","area_km2":0.997,"location":"Punjab Small Industries Estate, Faisalabad Sadar Tehsil, Faisalabad District, Punjab, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[73.047103,31.493125],[73.057639,31.493125],[73.057639,31.502108],[73.047103,31.502108],[73.047103,31.493125]]]}}
 ]}

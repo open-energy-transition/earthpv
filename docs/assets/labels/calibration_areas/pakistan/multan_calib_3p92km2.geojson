@@ -1,3 +1,3 @@
-{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py"},"features":[
 {"type":"Feature","id":"multan_calib_3p92km2","properties":{"id":"multan_calib_3p92km2","name":"Multan Industrial Estate","kind":"calibration","status":"rule1","area_km2":3.923,"location":"Multan District, Punjab, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[71.3704919,30.1342159],[71.3712644,30.1170671],[71.3925075,30.1175125],[71.3919925,30.1346984],[71.3704919,30.1342159]]]}}
 ]}

@@ -1,3 +1,3 @@
-{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py"},"features":[
 {"type":"Feature","id":"islamabad_west_calib_2p79km2","properties":{"id":"islamabad_west_calib_2p79km2","name":"Islamabad West","kind":"calibration","status":"rule1","area_km2":2.792,"location":"Islamabad Capital Territory District, Islamabad Capital Territory, Pakistan","do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[72.9914903,33.6929237],[73.0005884,33.6807826],[72.9847526,33.6721757],[72.9756116,33.6844608],[72.9914903,33.6929237]]]}}
 ]}

@@ -273,6 +273,9 @@
     background-color: var(--hair) !important; }
 
   /* ── calibration-area popup: the way into JOSM / iD ───────────────── */
+  /* Above the HTML city labels (.city-layer, z-index 2, a sibling of the map), which would
+     otherwise print through the popup; below the propose hint. */
+  .maplibregl-popup { z-index: 3; }
   .maplibregl-popup-content { background: var(--panel); color: var(--ink);
     border: 1px solid var(--card-ring); border-radius: 10px; box-shadow: var(--shadow);
     padding: 11px 13px; font: 12px/1.5 var(--font-display); }
@@ -304,9 +307,10 @@
   .ap-actions .btn[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
   .ap-msg { min-height: 1.2em; margin-top: 7px; font-size: 11.5px; color: var(--ink-2); }
   .ap-msg.err { color: #e5484d; }
+  .ap { overflow-y: auto; overscroll-behavior: contain; }
   .ap-cmd { margin-top: 6px; padding: 6px 8px; background: var(--panel-2);
     border: 1px solid var(--card-ring); border-radius: 6px; font: 10.5px/1.5 var(--font-mono);
-    color: var(--ink-2); white-space: pre-wrap; word-break: break-all; user-select: all; }
+    color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
   .ap a { color: var(--accent); }
   .ap .foot { margin-top: 8px; font-size: 11.5px; }
   .map-hint { position: absolute; z-index: 4; top: 10px; left: 50%; transform: translateX(-50%);
@@ -1842,7 +1846,9 @@ out geom;</div>
       } else if (f.layer.id === "cand-dot"){
         const p = AREAS.cands[f.properties.k].properties;
         showTip(ev.clientX, ev.clientY, `<div class="th">CANDIDATE AREA: ${esc(p.name)}</div>`
-          + (p.density_bldg_km2 ? row("Buildings per km², region", fmt(p.density_bldg_km2)) : "")
+          + (p.own_density_bldg_km2 ? row("Buildings per km², this box", fmt(p.own_density_bldg_km2))
+             : p.density_bldg_km2 ? row("Buildings per km², region", fmt(p.density_bldg_km2)) : "")
+          + (p.imagery_date ? row("Esri imagery", esc(p.imagery_date)) : "")
           + row("Status", "Not yet mapped")
           + `<div class="t-desc">Click to map it in JOSM or iD.</div>`);
       } else if (f.layer.id.startsWith("live-")){
@@ -2046,10 +2052,16 @@ out geom;</div>
               "comment=" + encodeURIComponent(commentFor(spec.place)));
     return "https://www.openstreetmap.org/edit?editor=id#" + hash.join("&");
   }
-  function registerCmd(name, lat, lon, side){
-    if (!AREAS.meta.register_script || !side) return "";
-    return `python ${AREAS.meta.register_script} --dry-run \\\n    --name ${name}`
-      + ` --lat ${lat.toFixed(6)} --lon ${lon.toFixed(6)} --side-m ${side}`;
+  // The registration command, `--aoi` included outside Pakistan (the index's register_cmd),
+  // with the candidate's own Esri date prefilled when the sampler recorded one: confirm it
+  // against the layer you actually map on before dropping --dry-run.
+  function registerCmd(name, lat, lon, side, p){
+    if (!AREAS.meta.register_cmd || !side) return "";
+    const q = s => `"${String(s).replace(/"/g, "")}"`;
+    return `${AREAS.meta.register_cmd} --dry-run \\\n    --name ${name}`
+      + ` --lat ${lat.toFixed(6)} --lon ${lon.toFixed(6)} --side-m ${side}`
+      + (p && p.imagery_date ? ` \\\n    --imagery-layer ${q(p.imagery_layer || "Esri World Imagery")}`
+          + ` --imagery-date ${p.imagery_date}` : "");
   }
 
   function showAreaPopup(lngLat, spec){
@@ -2094,6 +2106,10 @@ out geom;</div>
     // Always above the point, then panned until it fits: the map card clips its overflow,
     // and with its buttons a popup is taller than half a small map, so a free anchor would
     // flip sides mid-pan and could still end up cut off.
+    // Never taller than the map: with "Why this box" and the command open it would be, and
+    // no pan can fit that, so the body scrolls instead and the close button stays put.
+    d.style.maxHeight = Math.max(180, MAP.map.getContainer().clientHeight - 56) + "px";
+    d.querySelectorAll("details").forEach(x => x.addEventListener("toggle", () => requestAnimationFrame(fit)));
     const pop = POPUP = new maplibregl.Popup({maxWidth: "310px", anchor: "bottom"})
       .setLngLat(lngLat).setDOMContent(d).addTo(MAP.map);
     requestAnimationFrame(fit);
@@ -2115,15 +2131,26 @@ out geom;</div>
       feature: f, url: f ? areaUrl(p.id) : null,
       warn: f ? "" : "The boundary files could not be loaded, so only iD at this location is offered."};
   }
+  // A sampled candidate (scripts/propose_calibration_candidates.py) carries its stratum, its
+  // own measured density and the Esri date it passed the imagery gate with; a hand-picked
+  // one only the density of the grid cell it was pointed at.
   function candSpec(f){
     const p = f.properties, bbox = featureBounds(f), [cx, cy] = centerOf(bbox);
+    const stratum = /stratum (\d+ of \d+)/.exec(p.stratum || "");
     return {head: "CANDIDATE AREA, NOT YET MAPPED", name: p.name, place: p.name, id: p.id,
-      rows: [...(p.density_bldg_km2 ? [["Buildings per km², region", fmt(p.density_bldg_km2)]] : []),
+      rows: [...(p.own_density_bldg_km2 ? [["Buildings per km², this box", fmt(p.own_density_bldg_km2)]]
+                 : p.density_bldg_km2 ? [["Buildings per km², region", fmt(p.density_bldg_km2)]] : []),
+             ...(stratum ? [["Density stratum", stratum[1]]] : []),
+             ...(p.imagery_date ? [["Esri imagery", p.imagery_date]] : []),
              ["Area", `${p.area_km2} km²`]],
-      warn: "Not checked on the ground yet. Before mapping, make sure the imagery is recent and the "
-        + "box sits on a settlement; if it needs to move, redraw it in JOSM.",
+      warn: p.imagery_date
+        ? "Drawn at random from its density stratum, under Esri imagery recent enough for this "
+          + "country's satellite composite. Not checked on the ground: make sure it is mappable, "
+          + "and never move it toward visible solar."
+        : "Not checked on the ground yet. Before mapping, make sure the imagery is recent and the "
+          + "box sits on a settlement; if it needs to move, redraw it in JOSM.",
       note: p.note, bbox, feature: f, url: areaUrl(p.id),
-      cmd: registerCmd(p.id.replace(/_calib_.*$/, ""), cy, cx, p.side_m)};
+      cmd: registerCmd(p.id.replace(/_calib_.*$/, ""), cy, cx, p.side_m, p)};
   }
   function proposeAt(lngLat){
     armPropose(false);
@@ -2146,7 +2173,7 @@ out geom;</div>
         : rows.length ? `<p class="ap-warn">No overlap. Nearest existing area: ${esc(rows[0].p.name)}, `
             + `${rows[0].km.toFixed(1)} km away.</p>` : "";
     }
-    if (!AREAS.meta.register_script)
+    if (!AREAS.meta.register_cmd)
       extra += '<p class="ap-warn">To propose it, send the GeoJSON to the project maintainers.</p>';
     const spec = {head: "PROPOSED AREA, HAND-PICKED", name: `2 km square at ${at}`,
       place: `the area at ${at}`, id: `proposed_${lat.toFixed(4)}_${lon.toFixed(4)}`,

@@ -1,3 +1,3 @@
-{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":"scripts/new_calibration_quadrat.py"},"features":[
+{"type":"FeatureCollection","earthpv":{"aoi":"pakistan","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py"},"features":[
 {"type":"Feature","id":"sialkot_calib_1km","properties":{"id":"sialkot_calib_1km","name":"Sialkot Old City","kind":"calibration","status":"rule1","area_km2":1.0,"location":"Puran Nagar, Old City (پرانا شہر), Sialkot Tehsil, Sialkot District, Gujranwala Division, Punjab, Pakistan","side_m":1000.0,"do_not_upload":"earthpv calibration reference layer - do not upload to OSM"},"geometry":{"type":"Polygon","coordinates":[[[74.536883,32.499346],[74.547524,32.499346],[74.547524,32.508364],[74.536883,32.508364],[74.536883,32.499346]]]}}
 ]}

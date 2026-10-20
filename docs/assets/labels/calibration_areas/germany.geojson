@@ -1,3 +1,3 @@
-{"type":"FeatureCollection","earthpv":{"aoi":"germany","warning":"earthpv calibration reference layer - do not upload to OSM","register_script":null},"features":[
+{"type":"FeatureCollection","earthpv":{"aoi":"germany","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py --aoi germany"},"features":[
 
 ]}

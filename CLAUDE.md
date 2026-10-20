@@ -673,6 +673,26 @@ changes; `check_atlas_templates.py` fails CI on a configured box without a publi
 The iframes also carry `local-network-access; loopback-network` for Chrome's prompt on
 requests to 127.0.0.1.
 
+**Calibration candidates are sampled, not hand-picked (2026-10-20):**
+`pixi run calib-candidates -- --aoi <aoi>` (or `--bronze`), i.e.
+`scripts/propose_calibration_candidates.py`.
+- **Strata:** the AOI's density grid is cut into 8 bands of equal building share, one
+  candidate each.
+- **Draw:** building-weighted random cells per band, from a seed derived from the AOI name.
+  20 km spacing, one province each while possible.
+- **Placement:** the box is put on VIDA footprints, with its own density within 25% of the
+  cell's. 1 km boxes above 600 bldg/km², 2 km otherwise.
+- **Imagery gate:** the oldest Esri World Imagery capture at the centre and corners must be
+  no more than 12 months before `compose_window` start. It is read from
+  `World_Imagery/MapServer/4/query`, the endpoint iD's imagery panel uses.
+- **Output:** `data/labels/<aoi>/candidate_quadrats/`, with failures in `screened_out.csv`.
+  `--replace` redraws only sampled candidates. Then run `calib-publish`.
+
+`new_calibration_quadrat.py --aoi <aoi>` registers outside Pakistan: it writes to
+`data/labels/<aoi>/`, uses that AOI's admin files, and takes ISO3 and country from
+`configs/aoi.yaml`. Pakistan stays flat, because a flat non-Pakistani box would join the
+next Pakistani refit.
+
 
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)

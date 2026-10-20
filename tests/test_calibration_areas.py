@@ -87,7 +87,7 @@ def test_public_files_are_safe_and_rounded():
         assert "source_geojson" not in text and "/home/someone" not in text and "labels_file" not in text
         assert not re.search(r"\d\.\d{8,}", text), "coordinates must stop at 7 decimals"
         index = json.loads((t["out"] / "pakistan.geojson").read_text())
-        assert index["earthpv"]["register_script"] == "scripts/new_calibration_quadrat.py"
+        assert index["earthpv"]["register_cmd"] == "python scripts/new_calibration_quadrat.py"
         for f in index["features"]:
             one = json.loads((t["out"] / "pakistan" / f"{f['id']}.geojson").read_text())["features"]
             assert len(one) == 1 and one[0] == f and f["properties"]["do_not_upload"]
@@ -100,7 +100,8 @@ def test_every_aoi_gets_an_index_and_stale_files_go():
         out = t["out"]
         for aoi in ("testland", "nopeland"):   # a config without areas; a page without a config
             doc = json.loads((out / f"{aoi}.geojson").read_text())
-            assert doc["features"] == [] and doc["earthpv"]["register_script"] is None
+            assert doc["features"] == []
+            assert doc["earthpv"]["register_cmd"] == f"python scripts/new_calibration_quadrat.py --aoi {aoi}"
         assert not (out / "pakistan" / "gone_calib_1km.geojson").exists()
         assert not (out / "retired.geojson").exists()
         before = {p: p.read_text() for p in out.rglob("*.geojson")}

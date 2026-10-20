@@ -34,7 +34,10 @@ before/after.
 One new, well-mapped quadrat in the right density range moves this measurably. That is
 what the candidates below are for.
 
-## Start here: eight ready-made candidates
+## Start here (Pakistan): eight ready-made candidates
+
+Mapping in another country? Skip to
+[Everywhere else: the Bronze countries](#everywhere-else-the-bronze-countries).
 
 Rather than pick a location from scratch, eight candidate squares are already screened by
 building density, spread across Punjab, Sindh, Khyber Pakhtunkhwa and Balochistan, and
@@ -73,8 +76,47 @@ already inside an existing quadrat. On the atlas, the **Propose a calibration ar
 (the dashed square under the zoom buttons) drops a 2 km square wherever you click next and
 checks it against every existing area and candidate; `scripts/new_calibration_quadrat.py`
 (below) checks again when the box is registered. A box placed this way is hand-picked, so
-the [selection-bias rule](calibration-mapping-protocol.md#quadrat-selection-should-be-automated-and-is-not-yet)
+the [selection-bias rule](calibration-mapping-protocol.md#automated-quadrat-selection)
 applies: never place one because you can already see solar there.
+
+## Everywhere else: the Bronze countries
+
+Eight atlases are Bronze because not one area of the country has been mapped panel by
+panel, so they have no estimate at all below about 400 m<sup>2</sup>, where household
+solar sits. Each now has eight candidates, drawn by
+`scripts/propose_calibration_candidates.py` rather than picked by hand (see
+[Automated quadrat selection](calibration-mapping-protocol.md#automated-quadrat-selection)).
+
+The country's cells are split into eight building-density bands, each holding an eighth of
+its buildings, and one box is drawn at random in each band. So the eight together span the
+country from its sparsest settlements to its densest centres. Each box was placed where its
+**own** building density matches its band, and its Esri World Imagery was checked as recent
+enough before it was proposed:
+
+| country | candidates | box density (bldg/km<sup>2</sup>) | Esri imagery | boundaries |
+|---|---:|---|---|---|
+| [Egypt](atlas-egypt.md) | 8 | 150 to 1,085 | 2025-04 to 2025-08 | [egypt.geojson](assets/labels/calibration_areas/egypt.geojson) |
+| [India](atlas-india.md) | 8 | 78 to 2,946 | 2024-12 to 2026-05 | [india.geojson](assets/labels/calibration_areas/india.geojson) |
+| [Morocco](atlas-morocco.md) | 8 | 36 to 456 | 2025-04 to 2025-11 | [morocco.geojson](assets/labels/calibration_areas/morocco.geojson) |
+| [Nigeria](atlas-nigeria.md) | 8 | 39 to 2,291 | 2024-11 to 2025-12 | [nigeria.geojson](assets/labels/calibration_areas/nigeria.geojson) |
+| [South Africa](atlas-south-africa.md) | 8 | 34 to 2,360 | 2025-05 to 2026-02 | [south_africa.geojson](assets/labels/calibration_areas/south_africa.geojson) |
+| [Vietnam](atlas-vietnam.md) | 8 | 106 to 4,196 | 2024-12 to 2026-02 | [vietnam.geojson](assets/labels/calibration_areas/vietnam.geojson) |
+| [Yemen](atlas-yemen.md) | 8 | 20 to 336 | 2025-01 to 2025-12 | [yemen.geojson](assets/labels/calibration_areas/yemen.geojson) |
+| [Zambia](atlas-zambia.md) | 8 | 12 to 1,084 | 2024-07 to 2025-09 | [zambia.geojson](assets/labels/calibration_areas/zambia.geojson) |
+
+They are the hollow diamonds on each country's atlas, with the same **Open in JOSM** and
+**Open in iD** buttons. Each popup shows its band, its own density and its Esri date.
+
+- **Which one to map first:** the sparse ones. A country's calibrated domain stops at the
+  density of its sparsest mapped box, so band 1 or 2 buys the most.
+- **Before you start:** the steps below still apply in full, but step 1 has been done for
+  you on Esri World Imagery. Still flip to the other layers, because one older or blurrier
+  layer is how panels get missed.
+- **If a box is unmappable:** say so rather than moving it (a cloud-covered mosaic, or a box
+  that turns out to be quarry or water). A moved box is a hand-picked box.
+
+Registering one needs a clone. The popup's **Register it** command carries `--aoi` for the
+country and the candidate's imagery date.
 
 ## The five steps
 
