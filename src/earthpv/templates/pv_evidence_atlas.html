@@ -895,9 +895,9 @@
         <span class="xs">layers, your own data, downloads, licences</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <p><b>Layers.</b> "Show" picks the quantity the cells are coloured by: the Best
-        estimate, the hand-mapped OpenStreetMap capacity alone, the model's own detections
-        above or below 400 m&sup2;, or the gap between the Best estimate and what is
-        already mapped, which is where mapping effort pays off most. "per km&sup2;" divides
+        estimate, the OSM-mapped capacity alone, the satellite detections above or below
+        400 m&sup2;, or the gap between the Best estimate and what is already mapped, which
+        is where mapping effort pays off most. "per km&sup2;" divides
         by each cell's surface area, which shrinks toward the poles, so cells compare as
         densities rather than as totals. The colour scale is logarithmic and is refitted to
         whichever quantity is shown; the legend always states its range.</p>
@@ -1063,9 +1063,9 @@ out geom;</div>
     name: "Total photovoltaic capacity detectable with Sentinel-2",
     desc: "Individual arrays are outlined directly down to about 400 m² (the practical floor for Sentinel-2's 10 m pixels); below that, where a single array can no longer be resolved as its own shape, pv density estimates take over instead. Open-source pipeline and methodology: <a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
     tiles: [
-      ["mwp_large", "Model detections &ge;400 m², MWp"],
-      ["small_all", "Model detections &lt;400 m², MWp"],
-      ["osm_contribution", "OSM hand-mapped, not in a model detection, MWp"],
+      ["mwp_large", "Satellite-detected &ge;400 m², MWp"],
+      ["small_all", "Satellite-detected &lt;400 m², MWp"],
+      ["osm_contribution", "Added from OSM mapping, MWp"],
     ],
   };
 
@@ -1284,13 +1284,13 @@ out geom;</div>
     {id: "best", prop: "b", label: "Best estimate",
      desc: "Total photovoltaic capacity detectable with Sentinel-2, the headline figure"},
     {id: "gap", prop: "g", label: "Not yet in OpenStreetMap",
-     desc: "Best estimate minus hand-mapped capacity: where the map is furthest behind"},
-    {id: "osm", prop: "o", label: "Hand-mapped in OpenStreetMap",
+     desc: "Best estimate minus OSM-mapped capacity: where the map is furthest behind"},
+    {id: "osm", prop: "o", label: "OSM-mapped",
      desc: "Installations mapped by hand in OpenStreetMap, at the atlas's conversion constants"},
-    {id: "large", prop: "l", label: "Model detections, ≥ 400 m²",
-     desc: "Segmentation and roofclf estimates for arrays of 400 m² and larger"},
-    {id: "small", prop: "s", label: "Model detections, < 400 m²",
-     desc: "roofclf density estimate for arrays below the 400 m² segmentation floor"},
+    {id: "large", prop: "l", label: "Satellite-detected, ≥ 400 m²",
+     desc: "Sentinel-2 segmentation and roofclf estimates for arrays of 400 m² and larger"},
+    {id: "small", prop: "s", label: "Satellite-detected, < 400 m²",
+     desc: "Sentinel-2 roofclf density estimate for arrays below the 400 m² segmentation floor"},
   ];
   const cellValue = {
     b: c => c[BEST_IDX], o: c => c[OSM_IDX], l: c => c[LARGE_IDX], s: smallOf,
@@ -1432,8 +1432,8 @@ out geom;</div>
     {id: "provinces", label: "Province boundaries", layers: ["prov-line"], on: true,
      avail: (DATA.provinces || []).length > 0, sw: "line"},
     {id: "cities", label: "City labels", on: true, avail: (DATA.cities || []).length > 0},
-    {id: "osm", label: "Hand-mapped OSM capacity, ring grows with MWp", layers: ["osm-rings"], on: true,
-     avail: DATA.cells.some(c => c[OSM_IDX] > 0), sw: "ring", key: "hand-mapped OpenStreetMap capacity (ring grows with MWp)"},
+    {id: "osm", label: "OSM-mapped capacity, ring grows with MWp", layers: ["osm-rings"], on: true,
+     avail: DATA.cells.some(c => c[OSM_IDX] > 0), sw: "ring", key: "OSM-mapped capacity (ring grows with MWp)"},
     {id: "domain", label: "Cells with sub-400 m² calibration", layers: ["domain-line"], on: false,
      avail: DATA.cells.some(c => c[DOMAIN_IDX]), sw: "dash", key: "cells with sub-400 m² calibration (dashed outline)"},
     {id: "extended", label: "Small PV extrapolated beyond calibration", layers: ["extended-line"], on: false,
@@ -1699,11 +1699,11 @@ out geom;</div>
     }
     h += row(VIEW.label, `${fmt5(c[BEST_IDX])} MWp`, def.id === "best" ? "sel" : "");
     if (def.id === "best" && STATE.perKm2) h += row("per km²", `${fmt5(c[BEST_IDX] / km2)} MWp`);
-    h += row("&ge;400 m², detected", `${fmt5(c[LARGE_IDX])} MWp`);
-    h += row("&lt;400 m², detected", `${fmt5(smallTotal)} MWp`);
-    if (osmOnly > 0.05) h += row("hand-mapped, not detected", `${fmt5(osmOnly)} MWp`);
-    if (c[OSM_IDX] > 0) h += row("hand-mapped in OSM, all", `${fmt5(c[OSM_IDX])} MWp`);
-    if (c[COVERED_IDX] === 0) h += row("coverage", "hand-mapped only, not imaged");
+    h += row("satellite-detected &ge;400 m²", `${fmt5(c[LARGE_IDX])} MWp`);
+    h += row("satellite-detected &lt;400 m²", `${fmt5(smallTotal)} MWp`);
+    if (osmOnly > 0.05) h += row("added from OSM mapping", `${fmt5(osmOnly)} MWp`);
+    if (c[OSM_IDX] > 0) h += row("OSM-mapped, all", `${fmt5(c[OSM_IDX])} MWp`);
+    if (c[COVERED_IDX] === 0) h += row("coverage", "OSM-mapped only, not imaged");
     return h;
   }
   function propsTip(title, props){
@@ -2428,11 +2428,12 @@ out geom;</div>
   // From the SAME embedded uncertainty.components the headline interval is composed
   // from -- no new data, a second view onto it. `size` is the installation-size range a
   // method contributes over: the split between these methods is a size split first.
+  // Named by SOURCE first: hand-mapped in OpenStreetMap, or detected from Sentinel-2.
   const COMP_METHOD_META = {
-    osm:     { name: "OSM (hand-mapped)", cls: "osm", size: "any size" },
-    seg:     { name: "TerraMind segmentation", cls: "seg", size: "≥ 400 m²" },
-    roofclf: { name: "roofclf (alone)", cls: "roofclf", size: "any size, where calibrated" },
-    sppi:    { name: "roofclf + SPPI", cls: "sppi", size: "< 400 m²" },
+    osm:     { name: "OSM-mapped", cls: "osm", size: "any size" },
+    seg:     { name: "Satellite: TerraMind segmentation", cls: "seg", size: "≥ 400 m²" },
+    roofclf: { name: "Satellite: roofclf", cls: "roofclf", size: "any size, where calibrated" },
+    sppi:    { name: "Satellite: roofclf + SPPI", cls: "sppi", size: "< 400 m²" },
   };
   const COMP_METHOD_ORDER = ["osm", "seg", "roofclf", "sppi"];
 
@@ -2445,37 +2446,42 @@ out geom;</div>
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
       { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
-        short: "OSM, rooftop, not found by the model",
-        label: "OSM hand-mapped - rooftop (not already found by the model)", size: "any size" },
+        short: "OSM-mapped rooftop, no satellite match",
+        label: "OSM-mapped rooftop PV with no satellite detection within 30 m, counted from the map. "
+          + "Where a detection covers a mapped installation, Best counts the satellite figure instead, "
+          + "so nothing is counted twice.", size: "any size" },
       { key: "osm_unmatched_ground", method: "osm", placement: "ground", mwp: comp("osm_unmatched_ground").mwp, ci: comp("osm_unmatched_ground").ci,
-        short: "OSM, ground-mount, not found by the model",
-        label: "OSM hand-mapped - ground-mount (not already found by the model)", size: "any size" },
+        short: "OSM-mapped ground-mount, no satellite match",
+        label: "OSM-mapped ground-mount PV with no satellite detection within 30 m, counted from the map. "
+          + "Where a detection covers a mapped installation, Best counts the satellite figure instead, "
+          + "so nothing is counted twice.", size: "any size" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
-        short: "OSM floor correction",
-        label: "OSM floor correction (cells where the model fell short of hand-mapped OSM)", size: "any size" },
+        short: "OSM-mapped above the satellite figure",
+        label: "Cells where the OSM-mapped capacity exceeds the satellite estimate: Best takes the mapped "
+          + "figure there, so it never reads below what is already mapped.", size: "any size" },
       { key: "seg_roof_outdomain", method: "seg", placement: "roof", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
-        short: "Segmentation, rooftop",
-        label: "TerraMind segmentation - rooftop, outside the calibrated domain", size: "≥ 400 m²" },
+        short: "Satellite segmentation, rooftop",
+        label: "TerraMind segmentation of Sentinel-2 - rooftop, outside the calibrated domain", size: "≥ 400 m²" },
       { key: "seg_ground", method: "seg", placement: "ground", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
-        short: "Segmentation, ground-mount",
-        label: "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)", size: "≥ 400 m²" },
+        short: "Satellite segmentation, ground-mount",
+        label: "TerraMind segmentation of Sentinel-2 - ground-mount (every cell; roofclf has no footprint there)", size: "≥ 400 m²" },
       { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
-        short: "roofclf, rooftop ≥ 400 m²",
+        short: "Satellite roofclf, rooftop ≥ 400 m²",
         label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain", size: "≥ 400 m²" },
       { key: "small_central", method: "roofclf", placement: "roof", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
-        short: "roofclf, rooftop < 400 m²",
+        short: "Satellite roofclf, rooftop < 400 m²",
         label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated", size: "< 400 m²" },
       { key: "small_outdomain", method: "sppi", placement: "roof", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
-        short: "roofclf + SPPI, < 400 m², extrapolated",
+        short: "Satellite roofclf + SPPI, < 400 m², extrapolated",
         label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain", size: "< 400 m²" },
     ];
     const verified = [
       { key: "osm_roof", method: "osm", placement: "roof", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
-        short: "OSM, rooftop", label: "OSM hand-mapped - rooftop (all of it, matched or not)", size: "any size" },
+        short: "OSM-mapped rooftop", label: "OSM-mapped rooftop PV, all of it, whether or not a satellite detection covers it", size: "any size" },
       { key: "osm_ground", method: "osm", placement: "ground", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
-        short: "OSM, ground-mount", label: "OSM hand-mapped - ground-mount (all of it, matched or not)", size: "any size" },
+        short: "OSM-mapped ground-mount", label: "OSM-mapped ground-mount PV, all of it, whether or not a satellite detection covers it", size: "any size" },
       { key: "small_low", method: "sppi", placement: "roof", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
-        short: "roofclf + SPPI, < 400 m²",
+        short: "Satellite roofclf + SPPI, < 400 m²",
         label: "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain", size: "< 400 m²" },
     ];
     return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
@@ -2632,7 +2638,8 @@ out geom;</div>
     document.getElementById("compTitle").innerHTML =
       `Best estimate -- ${best.length} components, ${nMethods} method${nMethods === 1 ? "" : "s"}`;
     document.getElementById("compSub").textContent =
-      "Colour is the method, hatching is ground-mount, length is MWp on one shared axis · hover a segment";
+      "Colour is the source and method, hatching is ground-mount, length is MWp on one shared axis. "
+      + "An installation both mapped and detected counts once, from the satellite · hover a segment";
     const shownMethods = new Set([...best, ...verified].map(r => r.method));
     let legend = COMP_METHOD_ORDER.filter(m => shownMethods.has(m)).map(m =>
       `<div class="comp-legend-item"><span class="comp-swatch ${m}"></span>${COMP_METHOD_META[m].name}`
