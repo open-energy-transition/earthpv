@@ -359,6 +359,41 @@ def download_section_html(aoi: str, parquet_name: str = "") -> str:
 '''
 
 
+# A layer file is embedded in every copy of the page, so it is capped: past this, simplify
+# it (or serve it and give the config a `url`) rather than ship a multi-megabyte atlas.
+MAX_EMBEDDED_LAYER_BYTES = 5_000_000
+
+
+def map_layers_json(aoi: str) -> str:
+    """The `layers:` of `configs/atlas/<aoi>.yaml` as the page's `pv-layers` JSON block.
+
+    A `path` layer is read and embedded here, so the published page needs no file beside
+    it; a `url` layer is passed through for the reader's browser to fetch. Escaped for a
+    `<script>` block: a GeoJSON property containing `</script>` must not end it early.
+    Shared by `build_evidence_atlas` and `scripts/retemplate_atlas.py`, so a re-templated
+    page and a rebuilt one carry the same layers.
+    """
+    out = []
+    for layer in atlas_config.load(aoi).layers:
+        entry = {k: v for k, v in layer.items() if k != "path"}
+        if layer.get("path"):
+            path = Path(layer["path"])
+            size = path.stat().st_size
+            if size > MAX_EMBEDDED_LAYER_BYTES:
+                raise ValueError(
+                    f"configs/atlas/{aoi}.yaml: layer {layer['name']!r} is {size:,} bytes, over "
+                    f"the {MAX_EMBEDDED_LAYER_BYTES:,}-byte embedding cap. Simplify it, or host "
+                    "it and use `url` instead of `path`.")
+            data = json.loads(path.read_text())
+            if data.get("type") == "Feature":
+                data = {"type": "FeatureCollection", "features": [data]}
+            if data.get("type") != "FeatureCollection":
+                raise ValueError(f"{path}: expected a GeoJSON FeatureCollection")
+            entry["data"] = data
+        out.append(entry)
+    return json.dumps(out, separators=(",", ":")).replace("</", "<\\/")
+
+
 def header_logo_html() -> str:
     """The EarthPV mark for the top of an atlas, replacing the eyebrow text line.
 
@@ -2535,6 +2570,7 @@ def build_evidence_atlas(
         ),
         "__AOI_TITLE__": title,
         "__AOI_OVERPASS_AREA_TAGS__": overpass_area_tags,
+        "__LAYERS_JSON__": map_layers_json(aoi),
         "__COMPOSITION_NOTE__": _composition_note(
             atlas_config.load(aoi), uncertainty["components"],
             uncertainty.get("best_floor_offset_mwp", 0.0), total_best,

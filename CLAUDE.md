@@ -558,6 +558,63 @@ composition note gains real percentages, and the intro drops one now-derived wor
 published per country today. A second country's growth atlas would reintroduce exactly this
 bug.
 
+### The evidence atlas page: MapLibre GL + Observable Plot (2026-10-19)
+
+**The map is MapLibre GL JS 5.24 and the charts are Observable Plot 0.6.17 on D3 7.9**, loaded
+from jsDelivr at exact versions with SRI hashes (the hand-drawn SVG map could not pan, zoom,
+take a basemap or another layer, and nothing was exportable). **MapLibre 5, not 6**: v6 is
+ESM-only with a separate module worker, which does not load from a CDN into a `file://` page or
+an iframe. Offline, the page degrades rather than breaks: hero, KPIs, tables, the composition bar
+and the pose plot are plain SVG/HTML and still render; the map and the three Plot charts say
+they could not load.
+
+- **Map**: "Show" picks the cell quantity (Best, *Not yet in OpenStreetMap* = Best minus
+  hand-mapped, hand-mapped, model >= / < 400 m2); "per km2" divides by cell area; the log
+  colour scale is refitted per quantity (2nd percentile to max). Basemaps: none (night
+  lights), Esri grey canvas (follows the theme), OpenStreetMap, Esri satellite. Over a basemap
+  the fill fades with zoom and hands over to capacity-coloured cell outlines, so imagery shows
+  through at roof scale. **CARTO basemaps were tried and dropped: unkeyed requests now get an
+  "API KEY REQUIRED" tile.** City labels are HTML (no glyph server), calibration areas are
+  diamonds drawn into a canvas icon (a round marker read as one more city).
+- **More layers**: an opt-in *live OSM solar* overlay queries Overpass for the view from zoom
+  11 (overpass-api.de, then private.coffee; **a mirror lagged three months**, so the status
+  line shows the OSM timestamp returned, and a query takes ~30 s); readers add GeoJSON/CSV
+  files (drop on the map), GeoJSON URLs, XYZ tiles or a WMS (`{bbox-epsg-3857}`), URL layers
+  persisting in localStorage; and a country can ship layers in `configs/atlas/<aoi>.yaml`
+  (`layers:`, schema in `atlas_config`), embedded by `atlas.map_layers_json` (5 MB cap) into a
+  `pv-layers` block kept separate from the `pv` data block.
+- **Downloads**: every figure as PNG (2x), SVG and CSV, the map as PNG (legend, labels and
+  attribution composited in) plus the grid as GeoJSON/CSV. Exports are re-rendered at 960 px
+  and wrapped with title, subtitle and a source/date line, never serialised from screen.
+- **New section: uncertainty**, a forest plot of each Best component's point and 90% interval
+  on a log axis, from the same `uncertainty.components` the headline CI is composed from.
+- **Colour means method everywhere**: OSM teal, segmentation blue, roofclf amber,
+  roofclf+SPPI violet; hatching means ground-mount everywhere (the size chart now stacks with
+  hatched ground). Before, blue meant OSM on the map, segmentation in the composition and
+  ground-mount in the size chart. Dark `--large` moved #4fb2e8 -> #5b9cf2: against the OSM
+  teal it measured dE 13.6 for normal vision, under the floor of 15.
+
+**Plot gotchas, each hit once here**: on a log scale Plot routes any `tickFormat` through d3's
+log formatter, which blanks every tick with mantissa > 2 (draw the labels with a text mark);
+a `{value, label}` channel object as `barX`'s `y` breaks the implicit stack and the bars
+vanish (rename the field instead -- a tip labels a channel by its field name); `grid: true`
+on a scale plus a `gridX` mark draws two grids with different ticks.
+
+**`scripts/retemplate_atlas.py` moves published pages onto a new template without rebuilding
+them.** It recovers each placeholder's value by aligning the page with the template it was
+built from (`--old-template <git rev>`, default HEAD), proves the split by substituting back
+and comparing, then fills the current template; only `__LAYERS_JSON__` is computed fresh, from
+config. The 11 published pages were moved this way and their `pv` data blocks and confidence
+prose are byte-identical to before. **After a template commit, pass the revision the pages were
+last built from**, not HEAD. A rebuild through `earthpv atlas` was checked against it on Yemen:
+same totals and interval.
+
+**`scripts/screenshot_pages.py` drives Firefox over WebDriver BiDi** (a stdlib WebSocket
+client) instead of `--screenshot`, which fires at the load event and captured an empty WebGL
+map. A Shot can name a `ready` expression; the atlas sets `data-atlas-ready` on `<html>` once
+its map has drawn a complete frame. The atlas iframes on the docs site carry
+`allow="fullscreen"` (`build_atlas_pages.py`), or the map's fullscreen button does nothing.
+
 
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)

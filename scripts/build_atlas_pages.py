@@ -121,7 +121,10 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
         text = WARNING[tier].format(country=country, extra=extra).strip()
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
                      f"  <p>{text}</p>\n  <p>{CTA}</p>\n</div>")
-    parts.append(f'<iframe src="../assets/interactive/{html}" title="{title}"></iframe>')
+    # `allow="fullscreen"`: the atlas map has a fullscreen button, which a frame without
+    # the permission silently disables.
+    parts.append(f'<iframe src="../assets/interactive/{html}" title="{title}" '
+                 'allow="fullscreen"></iframe>')
     parts.append("</div>")
     return "\n".join(parts) + "\n"
 

@@ -23,5 +23,5 @@ hide:
   <a href="../atlas-yemen/">Yemen</a>
   <a href="../atlas-zambia/">Zambia</a>
 </nav>
-<iframe src="../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell"></iframe>
+<iframe src="../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell" allow="fullscreen"></iframe>
 </div>

@@ -30,6 +30,8 @@ REQUIRED = {
         ("comp-sizes", "the installation-size bands under the composition bar"),
         ("__COMPOSITION_NOTE__", "the per-country composition sentence"),
         ('id="pv"', "the embedded per-cell data the downloads are built from"),
+        ("__LAYERS_JSON__", "the per-country extra map layers (configs/atlas/<aoi>.yaml)"),
+        ('class="dlbar"', "the PNG/SVG/CSV download buttons on each figure"),
     ],
     "pv_growth_evidence_atlas.html": [
         ("__HEADER_LOGO__", "the EarthPV mark at the top"),

@@ -30,6 +30,19 @@ silently drop the section it was meant to fill):
       ground_truth: "<p>...</p>"           # replaces the default ground-truth paragraph
       caveats: ["<b>...</b> ..."]          # extra <li>s under "what's outside the range"
       corroboration: "<p>...</p>"          # independent, non-satellite cross-checks
+    layers:                                # extra map layers, listed under "More layers"
+      - name: Transmission lines           # required; shown in the layer list and legend
+        type: geojson                      # geojson | raster
+        path: data/external/lines.geojson  # geojson: embedded into the page at build time
+        # url: https://...                 # or fetched by the reader's browser (needs CORS);
+        #                                  # raster: a {z}/{x}/{y} tile URL, or a WMS GetMap
+        #                                  # URL with {bbox-epsg-3857} as its bbox
+        attribution: "&copy; source"       # shown on the map and in exported PNGs
+        color: "#9aa4b1"                   # geojson only; default: the page's --user colour
+        visible: false                     # default false: the capacity map stays the subject
+        opacity: 0.8                       # 0-1; default 1 (geojson), 0.75 (raster)
+        minzoom: 0                         # raster only, optional
+        maxzoom: 18
 
 `status` is the quadrat's completeness declaration, not something code can derive:
 "rule1" = every visible panel mapped (so its no-PV buildings are trustworthy negatives),
@@ -48,10 +61,13 @@ log = logging.getLogger(__name__)
 
 CONFIG_DIR = Path("configs/atlas")
 
-_TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence"}
+_TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers"}
 _CONFIDENCE_KEYS = {"ground_truth", "caveats", "corroboration"}
 _BOX_KEYS = {"name", "stem", "status"}
 _BOX_STATUS = {"rule1", "corroborated", "suspect"}
+_LAYER_KEYS = {"name", "type", "path", "url", "attribution", "color", "visible", "opacity",
+               "minzoom", "maxzoom"}
+_LAYER_TYPES = {"geojson", "raster"}
 
 
 @dataclass(frozen=True)
@@ -66,6 +82,7 @@ class AtlasConfig:
     ground_truth: str = ""
     caveats: tuple = ()
     corroboration: str = ""
+    layers: tuple = ()
 
     # Kept so a caller can tell "this country has no config" from "this country has a
     # config that supplies nothing", which read the same otherwise and mean different
@@ -125,6 +142,58 @@ def _parse_boxes(aoi: str, raw) -> tuple:
     return tuple(out)
 
 
+def _parse_layers(aoi: str, raw) -> tuple:
+    """Validate `layers:`. Files are only checked for existence here; `atlas` embeds them.
+
+    A layer is configuration, not pipeline output: it never enters a capacity figure and
+    the page lists it under "More layers", off by default unless `visible: true`.
+    """
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        _fail(aoi, "`layers` must be a list of mappings")
+    out = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            _fail(aoi, f"layer {entry!r} must be a mapping")
+        name = entry.get("name")
+        unknown = set(entry) - _LAYER_KEYS
+        if unknown:
+            _fail(aoi, f"layer {name!r} has unknown key(s) {sorted(unknown)}; "
+                       f"expected {sorted(_LAYER_KEYS)}")
+        if not name:
+            _fail(aoi, f"layer {entry!r} needs a `name`")
+        kind = entry.get("type", "geojson")
+        if kind not in _LAYER_TYPES:
+            _fail(aoi, f"layer {name!r} has type {kind!r}; expected one of {sorted(_LAYER_TYPES)}")
+        path, url = entry.get("path"), entry.get("url")
+        if kind == "geojson" and bool(path) == bool(url):
+            _fail(aoi, f"geojson layer {name!r} needs exactly one of `path` or `url`")
+        if kind == "raster":
+            if path or not url:
+                _fail(aoi, f"raster layer {name!r} needs a tile `url` and no `path`")
+            if "{z}" not in url and "{bbox-epsg-3857}" not in url:
+                _fail(aoi, f"raster layer {name!r}: url needs {{z}}/{{x}}/{{y}} or "
+                           "{bbox-epsg-3857}")
+        if url and not str(url).startswith(("https://", "http://")):
+            _fail(aoi, f"layer {name!r}: url must be http(s)")
+        if path and not Path(path).exists():
+            _fail(aoi, f"layer {name!r}: {path} does not exist")
+        color = entry.get("color")
+        if color is not None and not (isinstance(color, str) and color.startswith("#")
+                                      and len(color) in (4, 7)):
+            _fail(aoi, f"layer {name!r}: color must be a #rgb or #rrggbb hex string")
+        opacity = entry.get("opacity")
+        if opacity is not None and not (isinstance(opacity, (int, float)) and 0 < opacity <= 1):
+            _fail(aoi, f"layer {name!r}: opacity must be in (0, 1]")
+        out.append({k: entry[k] for k in _LAYER_KEYS if k in entry} | {"type": kind})
+    names = [layer["name"] for layer in out]
+    dupes = sorted({n for n in names if names.count(n) > 1})
+    if dupes:
+        _fail(aoi, f"layer name(s) listed twice: {dupes}")
+    return tuple(out)
+
+
 @functools.lru_cache(maxsize=None)
 def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
     """Read `<config_dir>/<aoi>.yaml`, or return an empty config if there is none.
@@ -169,5 +238,6 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         ground_truth=str(conf.get("ground_truth") or "").strip(),
         caveats=tuple(c.strip() for c in caveats),
         corroboration=str(conf.get("corroboration") or "").strip(),
+        layers=_parse_layers(aoi, raw.get("layers")),
         path=path,
     )
