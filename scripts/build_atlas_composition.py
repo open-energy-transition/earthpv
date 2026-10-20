@@ -9,8 +9,9 @@ never renders this breakdown as a standalone view -- only as an internal
 uncertainty-composition detail.
 
 Every component is tagged with which of four methods produced it:
-  - OSM (hand-mapped): human-mapped installations the model had not already found,
-    plus a per-cell floor correction (both converted at the module/land kWp priors).
+  - OSM-mapped: installations Best counts from the map rather than from a satellite
+    figure (no detection nearby, or one whose figure Best does not use), plus a per-cell
+    floor correction (both converted at the module/land kWp priors).
   - TerraMind segmentation: the fine-tuned pixel segmentation model, for ground-mount
     everywhere (roofclf has no footprint to classify there) and >= 400 m2 rooftop
     outside the density-calibrated domain.
@@ -58,24 +59,29 @@ PLACEMENT = {
 }
 
 LABEL = {
-    "osm_unmatched_roof": "OSM hand-mapped - rooftop (not already found by the model)",
-    "osm_unmatched_ground": "OSM hand-mapped - ground-mount (not already found by the model)",
-    "floor_offset": "OSM floor correction (cells where the model fell short of hand-mapped OSM)",
-    "seg_roof_outdomain": "TerraMind segmentation - rooftop, outside the calibrated domain",
-    "seg_ground": "TerraMind segmentation - ground-mount (every cell; roofclf has no footprint there)",
+    "osm_unmatched_roof": "OSM-mapped rooftop, counted from the map (no satellite detection "
+                          "nearby, or one whose figure Best does not use)",
+    "osm_unmatched_ground": "OSM-mapped ground-mount, counted from the map (no satellite "
+                            "detection nearby)",
+    "floor_offset": "OSM-mapped above the satellite figure: cells where Best takes the mapped "
+                    "capacity, so it never reads below what is already mapped",
+    "seg_roof_outdomain": "TerraMind segmentation of Sentinel-2 - rooftop, outside the calibrated "
+                          "domain, less the misses already counted from the map",
+    "seg_ground": "TerraMind segmentation of Sentinel-2 - ground-mount (every cell), less the "
+                  "misses already counted from the map",
     "ge400_roof": "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain",
     "small_central": "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated",
     "small_outdomain": "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain",
-    "osm_roof": "OSM hand-mapped - rooftop (all of it, matched or not)",
-    "osm_ground": "OSM hand-mapped - ground-mount (all of it, matched or not)",
+    "osm_roof": "OSM-mapped rooftop, all of it, whether or not a satellite detection covers it",
+    "osm_ground": "OSM-mapped ground-mount, all of it, whether or not a satellite detection covers it",
     "small_low": "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain",
 }
 
 METHOD_META = {
-    "osm": {"name": "OSM (hand-mapped)", "desc": "Human-mapped installations from OpenStreetMap solar tagging."},
-    "seg": {"name": "TerraMind segmentation", "desc": "The fine-tuned pixel-segmentation model, outlining panels directly."},
-    "roofclf": {"name": "roofclf (alone)", "desc": "Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},
-    "sppi": {"name": "roofclf + SPPI", "desc": "roofclf AND the zero-training SPPI spectral index agreeing - a stricter, cross-validated signal."},
+    "osm": {"name": "OSM-mapped", "desc": "Installations mapped by hand in OpenStreetMap solar tagging."},
+    "seg": {"name": "Satellite: TerraMind segmentation", "desc": "The fine-tuned pixel-segmentation model, outlining panels directly in Sentinel-2."},
+    "roofclf": {"name": "Satellite: roofclf", "desc": "Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},
+    "sppi": {"name": "Satellite: roofclf + SPPI", "desc": "roofclf AND the zero-training SPPI spectral index agreeing - a stricter, cross-validated signal."},
 }
 
 # Fixed categorical order (never cycled): most-directly-measured to

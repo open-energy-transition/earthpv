@@ -425,15 +425,16 @@ that being evidence the roof is empty.
 
 | Component | Population | MWp |
 | --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 3,761 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 13,231 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 3,784 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 13,263 |
 | At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 8,257 |
 | Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 189 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 24,406.8 MWp (90%
-range 20,868 to 33,620)** -- the first three rows only; 24,330.0 until 2026-10-20, when
-OSM-mapped misses stopped being counted twice. The fourth was dropped from the
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 24,438.3 MWp (90%
+range 20,894 to 33,666)** -- the first three rows only; 24,330.0 until 2026-10-20, when
+OSM-mapped misses stopped being counted twice and the two sub-400 m<sup>2</sup> rows stopped
+dropping roofs next to a segmentation detection Best does not use (13,231 and 3,761 before). The fourth was dropped from the
 published atlas on 2026-08-15 (see the last bullet below); its capacity function and CLI
 flag remain for anyone who wants that estimate explicitly. (Updated 2026-09-21: `roofclf`
 was refit and rescored nationally with **area-weighted zonal means**, which weight each 10 m

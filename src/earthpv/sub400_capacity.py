@@ -975,6 +975,87 @@ def national_cell_domain(cell_density_path: Path, aoi: str | None = None) -> set
     return set(in_range.cell)
 
 
+def dedup_candidates(
+    candidates_path: Path,
+    aoi: str | None = None,
+    ge400_roof_buildings_path: Path | None = None,
+    grid_path: Path | None = None,
+    legacy: bool = False,
+) -> tuple[gpd.GeoDataFrame, dict]:
+    """The segmentation candidates a roofclf building must not sit near to count here.
+
+    The proximity dedup exists so a roof is not counted twice: once by roofclf, once inside
+    segmentation's own figure. It is only right against a candidate whose figure Best
+    actually uses, and until 2026-10-20 it ran against every candidate in the file, so two
+    kinds of building were counted NOWHERE:
+
+    - near a candidate `density.capacity_relevant_candidates` excludes from capacity (a
+      non-exempt oversize blob, i.e. a merged false-positive sheet): the blob earns nothing,
+      and the roofs under it were dropped here as if it had;
+    - near a ROOFTOP candidate inside roofclf's >= 400 m2 replacement domain, where
+      `atlas.build_evidence_atlas` discards segmentation's rooftop figure for roofclf's
+      `ge400_roof` (which covers >= 400 m2 roofs only). The domain is derived exactly as the
+      atlas derives it, from `ge400_roof_buildings_path` joined to the density grid at
+      `grid_path`; without both, only the first correction applies.
+
+    Ground-mount candidates keep their dedup everywhere: their figure is in Best in every
+    cell, and a "ground_adjacent" candidate is often a rooftop array overrunning an
+    undersized footprint. `legacy=True` returns the raw file, reproducing earlier figures.
+    """
+    cands = gpd.read_parquet(candidates_path)
+    stats = {"legacy": bool(legacy), "n_candidates": int(len(cands)),
+             "n_not_capacity_relevant": 0, "n_rooftop_in_ge400_domain": 0,
+             "ge400_domain_cells": None}
+    if legacy:
+        stats["n_used"] = int(len(cands))
+        return cands, stats
+    from earthpv.density import capacity_relevant_candidates, load_osm_screen
+
+    relevant, _ = capacity_relevant_candidates(cands, osm_screen=load_osm_screen(aoi) if aoi else None)
+    stats["n_not_capacity_relevant"] = int(len(cands) - len(relevant))
+    if ge400_roof_buildings_path is not None and grid_path is not None:
+        from earthpv.atlas import _join_buildings_to_grid_cells
+
+        grid = gpd.read_parquet(grid_path)
+        domain = set(_join_buildings_to_grid_cells(
+            gpd.read_parquet(ge400_roof_buildings_path), "est_kwp_ge400_roof", grid).index)
+        roof = (relevant["placement"].astype(str) == "rooftop").to_numpy() \
+            if "placement" in relevant.columns else np.zeros(len(relevant), bool)
+        pts = gpd.GeoDataFrame(geometry=relevant.geometry.representative_point(), crs=relevant.crs)
+        pts = gpd.sjoin(pts, grid[["cell", "geometry"]], predicate="within", how="left")
+        pts = pts[~pts.index.duplicated(keep="first")]
+        in_domain = (pts["cell"].isin(domain)
+                     .reindex(relevant.index, fill_value=False).to_numpy(dtype=bool))
+        drop = roof & in_domain
+        stats["n_rooftop_in_ge400_domain"] = int(drop.sum())
+        stats["ge400_domain_cells"] = len(domain)
+        relevant = relevant[~drop]
+    stats["n_used"] = int(len(relevant))
+    return relevant, stats
+
+
+def _incremental_mask(
+    flagged: gpd.GeoDataFrame, candidates_path: Path, osm_solar_path: Path | None,
+    max_distance_m: float, aoi: str | None, ge400_roof_buildings_path: Path | None,
+    grid_path: Path | None, legacy_seg_dedup: bool,
+) -> tuple[np.ndarray, int, int, dict]:
+    """`(is_new, n_near_segmentation, n_near_osm, seg_dedup_stats)` for `flagged`, the
+    one dedup all three capacity functions share."""
+    from earthpv.export import new_lead_mask
+
+    cands, seg_stats = dedup_candidates(
+        candidates_path, aoi, ge400_roof_buildings_path, grid_path, legacy_seg_dedup)
+    is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
+    n_near_seg = int((~is_new).sum())
+    n_near_osm = 0
+    if osm_solar_path is not None:
+        osm = gpd.read_parquet(osm_solar_path)
+        is_new_osm = new_lead_mask(flagged, osm, min_distance_m=max_distance_m)
+        n_near_osm = int((is_new & ~is_new_osm).sum())
+        is_new = is_new & is_new_osm
+    return is_new, n_near_seg, n_near_osm, seg_stats
+
+
 def domain_restricted_capacity(
     roofclf_dir: Path,
     candidates_path: Path,
@@ -993,6 +1074,9 @@ def domain_restricted_capacity(
     size_floor_m2: list[float] | None = None,
     recall_correct: bool = True,
     aoi: str | None = None,
+    ge400_roof_buildings_path: Path | None = None,
+    grid_path: Path | None = None,
+    legacy_seg_dedup: bool = False,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The module's actually-recommended output (see module docstring's 2026-07-30 note):
     combines four corrections, each individually insufficient on its own when measured:
@@ -1110,14 +1194,10 @@ def domain_restricted_capacity(
         len(in_domain_cells), len(all_cells), len(flagged),
     )
 
-    cands = gpd.read_parquet(candidates_path)
-    is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
-    n_near_osm = 0
-    if osm_solar_path is not None:
-        osm = gpd.read_parquet(osm_solar_path)
-        is_new_osm = new_lead_mask(flagged, osm, min_distance_m=max_distance_m)
-        n_near_osm = int((is_new & ~is_new_osm).sum())
-        is_new = is_new & is_new_osm
+    is_new, n_near_seg, n_near_osm, seg_dedup = _incremental_mask(
+        flagged, candidates_path, osm_solar_path, max_distance_m, aoi,
+        ge400_roof_buildings_path, grid_path, legacy_seg_dedup,
+    )
     incremental_raw = flagged[is_new].reset_index(drop=True)
 
     over = incremental_raw.roof_area_m2 >= contamination_max_m2
@@ -1213,6 +1293,10 @@ def domain_restricted_capacity(
         "n_buildings_in_domain": n_buildings_in_domain,
         "n_buildings_national": n_buildings_national,
         "n_flagged_in_domain": int(len(flagged)),
+        # Which candidates the proximity dedup ran against (`dedup_candidates`), and how
+        # many flagged buildings it removed -- the figure the 2026-10-20 fix moved.
+        "segmentation_dedup": seg_dedup,
+        "n_excluded_near_segmentation": n_near_seg,
         "osm_dedup_applied": osm_solar_path is not None,
         "n_excluded_near_osm": n_near_osm,
         "n_incremental_before_contamination_filter": int(len(incremental_raw)),
@@ -1260,6 +1344,9 @@ def domain_restricted_and_gate_capacity(
     n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
     aoi: str | None = None,
+    ge400_roof_buildings_path: Path | None = None,
+    grid_path: Path | None = None,
+    legacy_seg_dedup: bool = False,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The sub-400 bracket's LOW end: `domain_restricted_capacity`'s same 93-cell
     population, but requiring `p_roofclf >= threshold` AND SPPI above a pooled
@@ -1368,14 +1455,10 @@ def domain_restricted_and_gate_capacity(
         "(sppi_threshold=%.4f)", len(in_domain_cells), len(all_cells), len(flagged), sppi_thresh,
     )
 
-    cands = gpd.read_parquet(candidates_path)
-    is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
-    n_near_osm = 0
-    if osm_solar_path is not None:
-        osm = gpd.read_parquet(osm_solar_path)
-        is_new_osm = new_lead_mask(flagged, osm, min_distance_m=max_distance_m)
-        n_near_osm = int((is_new & ~is_new_osm).sum())
-        is_new = is_new & is_new_osm
+    is_new, n_near_seg, n_near_osm, seg_dedup = _incremental_mask(
+        flagged, candidates_path, osm_solar_path, max_distance_m, aoi,
+        ge400_roof_buildings_path, grid_path, legacy_seg_dedup,
+    )
     incremental_raw = flagged[is_new].reset_index(drop=True)
 
     over = incremental_raw.roof_area_m2 >= contamination_max_m2
@@ -1446,6 +1529,10 @@ def domain_restricted_and_gate_capacity(
         "n_domain_cells": len(in_domain_cells),
         "n_national_cells": int(len(all_cells)),
         "n_flagged_in_domain": int(len(flagged)),
+        # Which candidates the proximity dedup ran against (`dedup_candidates`), and how
+        # many flagged buildings it removed -- the figure the 2026-10-20 fix moved.
+        "segmentation_dedup": seg_dedup,
+        "n_excluded_near_segmentation": n_near_seg,
         "osm_dedup_applied": osm_solar_path is not None,
         "n_excluded_near_osm": n_near_osm,
         "n_incremental_before_contamination_filter": int(len(incremental_raw)),
@@ -1495,6 +1582,9 @@ def out_of_domain_and_gate_capacity(
     n_coverage_boot: int = DEFAULT_COVERAGE_N_BOOT,
     size_floor_m2: list[float] | None = None,
     aoi: str | None = None,
+    ge400_roof_buildings_path: Path | None = None,
+    grid_path: Path | None = None,
+    legacy_seg_dedup: bool = False,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """`domain_restricted_and_gate_capacity`'s mirror image: the SAME roofclf-AND-SPPI
     join, coverage-ratio-by-size-and-density fit, OSM/candidate dedup and contamination
@@ -1591,14 +1681,10 @@ def out_of_domain_and_gate_capacity(
         "(sppi_threshold=%.4f)", len(out_domain_cells), len(all_cells), len(flagged), sppi_thresh,
     )
 
-    cands = gpd.read_parquet(candidates_path)
-    is_new = new_lead_mask(flagged, cands, min_distance_m=max_distance_m)
-    n_near_osm = 0
-    if osm_solar_path is not None:
-        osm = gpd.read_parquet(osm_solar_path)
-        is_new_osm = new_lead_mask(flagged, osm, min_distance_m=max_distance_m)
-        n_near_osm = int((is_new & ~is_new_osm).sum())
-        is_new = is_new & is_new_osm
+    is_new, n_near_seg, n_near_osm, seg_dedup = _incremental_mask(
+        flagged, candidates_path, osm_solar_path, max_distance_m, aoi,
+        ge400_roof_buildings_path, grid_path, legacy_seg_dedup,
+    )
     incremental_raw = flagged[is_new].reset_index(drop=True)
 
     over = incremental_raw.roof_area_m2 >= contamination_max_m2
@@ -1668,6 +1754,10 @@ def out_of_domain_and_gate_capacity(
         "n_out_domain_cells_above_calibrated_band": n_above,
         "n_national_cells": int(len(all_cells)),
         "n_flagged_out_domain": int(len(flagged)),
+        # Which candidates the proximity dedup ran against (`dedup_candidates`), and how
+        # many flagged buildings it removed -- the figure the 2026-10-20 fix moved.
+        "segmentation_dedup": seg_dedup,
+        "n_excluded_near_segmentation": n_near_seg,
         "osm_dedup_applied": osm_solar_path is not None,
         "n_excluded_near_osm": n_near_osm,
         "n_incremental_before_contamination_filter": int(len(incremental_raw)),

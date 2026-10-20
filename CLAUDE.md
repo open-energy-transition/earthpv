@@ -40,8 +40,8 @@ size, combined into one product:
   planned. (Two earlier checkpoints, `v2_combined` and an undocumented `pk16085` variant, were
   deleted from disk at some point and can no longer be independently re-verified; a Gujarat
   atlas built before this was noticed is flagged in `docs/results/gujarat.md`.)
-- **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `sub400-capacity` →
-  `ge400-roof-capacity`) -- a per-building "does this roof carry PV?" classifier, cross-checked
+- **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `ge400-roof-capacity` →
+  `sub400-capacity`) -- a per-building "does this roof carry PV?" classifier, cross-checked
   with the zero-training **SPPI** spectral index (roofclf AND SPPI agreeing) as an internal
   floor under the atlas's headline figure. Covers every building **< 400 m²** and, since
   2026-08-07, also **replaces** segmentation's own rooftop estimate for buildings **≥ 400 m²**
@@ -79,8 +79,8 @@ earthpv roofclf-score-national --aoi <aoi>          # long: hours at country sca
 # docs/methods/roofclf-national-validation.md.
 pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
 
+earthpv ge400-roof-capacity --aoi <aoi> --osm-solar <national OSM solar pull>   # before sub400
 earthpv sub400-capacity     --aoi <aoi> --osm-solar <national OSM solar pull>
-earthpv ge400-roof-capacity --aoi <aoi> --osm-solar <national OSM solar pull>
 # NOTE: --sub400-outdomain-cells is deliberately NOT passed (2026-08-15) -- see "Density stage".
 earthpv atlas --aoi <aoi> \
   --sub400-central-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
@@ -435,10 +435,16 @@ NOWHERE (687 installations, 466 MWp; the per-cell floor restored 36). Only AOIs 
 table are affected (Pakistan, Germany). **Pakistan 24,330.0 -> 24,406.8 MWp, Germany 88,709 ->
 84,473 MWp.** A `--legacy-osm-addition` rebuild reproduced both published data blocks exactly
 before the fixed ones were published, and the page records its convention in
-`totals.osm_combination`. **Still open, Pakistan**: ~38,000 flagged sub-400 m2 roofs in the same
-domain are excluded only for sitting near a segmentation candidate whose rooftop figure is not
-used there (very roughly 300 MWp, estimated from counts); fixing it needs `sub400-capacity`
-rerun without that dedup inside the domain.
+`totals.osm_combination`. **Third gap, closed the same day**: the sub-400 m2 populations deduped against EVERY candidate,
+so a flagged small roof next to a rooftop candidate inside the ge400 domain (whose figure Best
+discards) or next to an oversize blob excluded from capacity was counted nowhere.
+`sub400_capacity.dedup_candidates` now keeps only candidates whose figure Best uses
+(`--legacy-seg-dedup` reproduces the old run, verified exact first); `sub400-capacity` reads
+the domain from `ge400-roof-capacity`'s output, so **run ge400-roof-capacity first**. Estimated
+from counts at ~300 MWp, measured at **31.6 MWp** (central) and 23.4 (AND-gate): two-thirds of
+the freed roofs sit next to OSM-mapped PV, now counted from the map. **Pakistan Best
+24,406.8 -> 24,438.3, Verified 6,970.7 -> 6,994.1.** Pre-fix outputs:
+`data/roofclf_national_with_sppi/pakistan/density_PRE_segdedup_20261020/`.
 
 **The density-calibration domain is a building-density band, `density.CALIBRATED_BLDG_DENSITY_KM2`**,
 fit from the density span of every Rule-1-complete calibration quadrat -- **NOT** from
@@ -462,8 +468,8 @@ average in enough non-built land on purpose. `docs/methods/calibration-quadrats.
 Current domain-restricted capacity figures (post 2026-09-21 `roofclf` refit + national
 rescoring on **area-weighted zonal means**, 30 quadrats -- still excludes
 `kalat_rural_calib_3km`; parcel label, recall-corrected): sub-400 central (feeds Best
-estimate) **13,231.0 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by
-design) **3,760.9 MWp**, ≥ 400 m² roofclf rooftop replacement (in-domain) **8,256.7 MWp**
+estimate) **13,262.6 MWp**, sub-400 AND-gate (the internal floor population, uncorrected by
+design) **3,784.3 MWp** (13,231.0 / 3,760.9 before the 2026-10-20 dedup fix), ≥ 400 m² roofclf rooftop replacement (in-domain) **8,256.7 MWp**
 (previous, pixel-centre sampling: 8,922.7 / 2,515.3 / 6,747.3). The model itself moved
 median fold AUC 0.8574 -> **0.8682**, within-size 0.8093 -> **0.8193**, deployment threshold
 0.2535 -> **0.2446** and recall at precision 0.500 from 0.6386 -> **0.6583** (123,898
@@ -491,14 +497,16 @@ vector where the underlying constant or calibration set is shared. It asserts it
 point values sum to the published total as a guard against silently adding a component to
 the atlas without adding it to the uncertainty composition (the code still separately tracks
 the OSM-plus-AND-gate floor's own point value and CI internally, but only Best estimate is
-published). **Current published result: Best estimate 24,406.8 MWp (90% CI 20,868-33,620)**
+published). **Current published result: Best estimate 24,438.3 MWp (90% CI 20,894-33,666)**
 (2026-10-20: 24,330.0 -> 24,406.8 when OSM-mapped misses stopped being added on top of the
-recall-corrected satellite total, see "OSM and a recall-corrected total" below; 2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction, then -61.7 on dropping the
+recall-corrected satellite total, then -> 24,438.3 when the sub-400 m2 populations stopped
+deduping against candidates Best does not use, see "OSM and a recall-corrected total" below; 2026-08-15: 16,608.7 -> 18,279.6 on the roofclf recall correction, then -61.7 on dropping the
 out-of-domain extrapolation; 2026-08-17: -> 19,745.9 on the parcel-label promotion; 2026-08-20:
 -> 18,826.7 on folding Box 18's three peri-urban quadrats into the refit; 2026-09-21:
 -> 24,330.0 on the area-weighted-zonal refit + national rescoring. The floor (Verified)
 moved similarly: 5,389.5 -> 5,856.8 (parcel label, 2026-08-17) -> 5,725.1 (Box 18, 2026-08-20)
--> 6,970.7 (area-weighted zonal, 2026-09-21, 90% CI 6,021-9,063)). **The mandatory 20-cell
+-> 6,970.7 (area-weighted zonal, 2026-09-21, 90% CI 6,021-9,063) -> 6,994.1 (sub-400 dedup
+fix, 2026-10-20, 90% CI 6,041-9,091)). **The mandatory 20-cell
 random validation for this rescoring (seed 20260920, tiles in
 `results/pakistan_roofclf_validation/`) has NOT been reviewed** -- nor have the 2026-08-17 and
 2026-08-20 batches before it; `results/roofclf_random_validation_log.csv` carries 40 rows with

@@ -746,8 +746,8 @@ def read_atlas_composition():
 COMPOSITION_METHODS = ["osm", "seg", "roofclf", "sppi"]
 COMPOSITION_SLOT = {"osm": "s3", "seg": "s2", "roofclf": "s1", "sppi": "s4"}
 COMPOSITION_LABEL = {
-    "osm": "OSM (hand-mapped)", "seg": "TerraMind segmentation",
-    "roofclf": "roofclf (alone)", "sppi": "roofclf + SPPI",
+    "osm": "OSM-mapped", "seg": "Satellite: TerraMind segmentation",
+    "roofclf": "Satellite: roofclf", "sppi": "Satellite: roofclf + SPPI",
 }
 
 
@@ -2220,7 +2220,7 @@ def _evw_headline():
     docs-only checkout still builds."""
     path = source("docs/assets/interactive/pakistan_evidence_atlas.html")
     if path is None:
-        return 24407, 20868, 33620
+        return 24438, 20894, 33666
     m = re.search(r'<script id="pv" type="application/json">(.*?)</script>',
                   path.read_text(), flags=re.S)
     if not m:

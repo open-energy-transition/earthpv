@@ -267,6 +267,13 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     calibration quadrats, dedupe against existing segmentation candidates and mapped
     OSM solar, and convert to capacity at the LOQO-measured precision. No GPU.
 
+    **Run step 14 first** (it does not depend on this one). Since 2026-10-20 this step
+    dedupes only against candidates whose figure Best actually uses: not oversize blobs
+    excluded from capacity, and not rooftop candidates inside roofclf's &ge; 400 m&sup2;
+    domain, where the atlas discards segmentation's rooftop figure. It finds that domain
+    in step 14's `ge400_roof_incremental_buildings.parquet` and says so when it is missing.
+    `--legacy-seg-dedup` reproduces the earlier figures.
+
     ```bash
     pixi run earthpv sub400-capacity --aoi pakistan \
         --osm-solar data/labels/pakistan_overpass_solar.parquet
@@ -291,7 +298,8 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     inside the SAME density-matched domain step 13 uses (roofclf measured AUC 0.896 vs
     segmentation's 0.73-0.78 on identical buildings -- segmentation is a weak instrument
     for small PV including small PV on large buildings). Ground-mount is untouched --
-    roofclf has no footprint to score there. No GPU.
+    roofclf has no footprint to score there. No GPU. **Run it before step 13**, which reads
+    its output to know where segmentation's rooftop figure is not used.
 
     ```bash
     pixi run earthpv ge400-roof-capacity --aoi pakistan \

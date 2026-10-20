@@ -772,6 +772,19 @@ def sub400_capacity_cmd(
         "on either tier (100/200 m2 cost 2.5-3.8%/14-20%, not adopted as default). Pass "
         "'' to disable (reproduces pre-2026-08-10 behavior exactly)."
     ),
+    ge400_roof_cells: Path = typer.Option(
+        None, help="`ge400-roof-capacity`'s buildings parquet, which defines the cells where "
+        "the atlas discards segmentation's rooftop figure; a flagged roof near a ROOFTOP "
+        "candidate there is no longer deduped away (2026-10-20). Default: "
+        "<out-dir>/ge400_roof_incremental_buildings.parquet when it exists, so run "
+        "`ge400-roof-capacity` first."
+    ),
+    legacy_seg_dedup: bool = typer.Option(
+        False, help="Reproduce figures before 2026-10-20: dedup against EVERY candidate in "
+        "candidates.parquet, including oversize blobs excluded from capacity and rooftop "
+        "candidates whose figure the atlas discards inside roofclf's >= 400 m2 domain -- "
+        "both left roofs counted nowhere."
+    ),
 ) -> None:
     """Sub-400 m2 capacity (roofclf-only, and roofclf-AND-SPPI), restricted to national
     cells whose building density matches the calibration quadrats -- the other half of
@@ -822,6 +835,19 @@ def sub400_capacity_cmd(
     if threshold is None:
         threshold = json.loads((calib_dir / "summary.json").read_text())["deployment_threshold"]
 
+    grid_path = Path(pred_dir) / aoi / "density" / "grid.geoparquet"
+    if ge400_roof_cells is None and (out_dir / "ge400_roof_incremental_buildings.parquet").exists():
+        ge400_roof_cells = out_dir / "ge400_roof_incremental_buildings.parquet"
+    if not legacy_seg_dedup:
+        typer.echo(
+            f"segmentation dedup: capacity-relevant candidates only; rooftop candidates in "
+            f"roofclf's >= 400 m2 domain ignored per {ge400_roof_cells}"
+            if ge400_roof_cells is not None else
+            "segmentation dedup: capacity-relevant candidates only; no ge400 roofclf output "
+            "found, so rooftop candidates inside its domain still dedup (run "
+            "`ge400-roof-capacity` first)"
+        )
+
     kwargs = dict(
         # `aoi` selects the density-calibration band (density.calibrated_density_range):
         # it is a per-country measurement, not a method constant, so all three functions
@@ -835,6 +861,9 @@ def sub400_capacity_cmd(
         ratio_hi=DEFAULT_RATIO_HI if ratio_hi is None else ratio_hi,
         osm_solar_path=osm_solar,
         size_floor_m2=parsed_size_floor_m2,
+        ge400_roof_buildings_path=ge400_roof_cells,
+        grid_path=grid_path if grid_path.exists() else None,
+        legacy_seg_dedup=legacy_seg_dedup,
         **({} if coverage_boot is None else {"n_coverage_boot": coverage_boot}),
     )
 
