@@ -287,6 +287,8 @@ _TEMPLATE = r"""<!doctype html>
 
   const NS = "http://www.w3.org/2000/svg";
   const svg = document.getElementById("map");
+  // H follows the AOI's aspect ratio; the static 620 in the markup cut Sindh's coast off.
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const tip = document.getElementById("tooltip");
   const root = document.querySelector(".map-card");
   const statsEl = document.getElementById("stats");

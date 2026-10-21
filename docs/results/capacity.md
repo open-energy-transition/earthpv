@@ -192,23 +192,29 @@ question neither side can actually settle. Both were instead normalized to **per
 the national total per spatial unit** and compared: not "whose number is bigger," but
 "do the two agree on *where* PV concentrates."
 
-They do, for most of the country. Across the reference's 3,303 hexagons, the median
-absolute difference in national-share allocation is **0.005 percentage points**, and
-64% of hexagons land within &plusmn;0.02pp of each other (83% within &plusmn;0.05pp).
-Rank correlation (Spearman) is **0.84** including the many hexagons both sides agree
-carry essentially nothing, or **0.75** restricted to just the 1,759 hexagons (53%) this
-project actually places a detection in -- either way, strong agreement on the geography.
+They do, for most of the country. Measured 2026-10-21 against the 24,438.3 MWp Best
+estimate: across the reference's 3,303 hexagons, the median absolute difference in
+national-share allocation is **0.005 percentage points**, and 64% of hexagons land within
+&plusmn;0.02pp of each other (83% within &plusmn;0.05pp). Rank correlation (Spearman) is
+**0.87** including the many hexagons both sides agree carry essentially nothing, or
+**0.78** restricted to the 1,565 hexagons (47%) where this project's estimate is nonzero
+-- either way, strong agreement on the geography. The reference places only 4.7% of its
+national total in hexagons this project leaves at zero.
 
 That agreement is not uniform, though, and the exception is worth stating plainly: a
 small number of hexagons account for almost all of the remaining difference, and every
 one of the twenty largest discrepancies runs the same direction -- this project's
 estimate concentrates more of the national share into a handful of hotspot cells than
-the independent reference does (up to +4.5pp in the single largest case), never the
-reverse by nearly as much (the most negative hexagon is -0.16pp). That skew is why the
-straightforward linear correlation on share is a moderate 0.45 (a log-compressed
-version, less sensitive to those few large values, rises to 0.54) even though the rank
-correlation and the typical hexagon's near-exact agreement both say the two models are
-looking at the same country. Read it as two independently-built estimates agreeing
+the independent reference does, never the reverse by nearly as much (the most negative
+hexagon is -0.11pp). The largest case is the hexagon over central Lahore, +7.2pp: 7.4% of
+this project's national total against 0.2% of the reference's. The ten hexagons this
+project weights most hold 22% of its total; the reference's ten hold 1.8% of its own.
+Part of the gap is scope rather than disagreement: the hexagon around Quaid-e-Azam Solar
+Park is among the largest because Best counts ground-mount and the reference covers
+rooftops only. That skew is why the straightforward linear correlation on share is a
+moderate 0.41 (a log-compressed version, less sensitive to those few large values, rises
+to 0.56) even though the rank correlation and the typical hexagon's near-exact agreement
+both say the two models are looking at the same country. Read it as two independently-built estimates agreeing
 closely on geography and disagreeing about how much weight the largest sites deserve --
 not as a validation of one against the other, since neither is ground truth here.
 

@@ -219,14 +219,25 @@ as a calibration input.
 separately, RWI vs. `log(1+MWp)`, per 0.1&deg; cell, plus the same correlation after partialling
 out each cell's building footprint area (`roof_area_m2`) -- the obvious shared confound, since a
 bigger built-up cell is both brighter and has more roof to put PV on. It had run once,
-2026-08-12, and was never registered here. Rerun 2026-08-26 against the current 18,826.7 MWp
-atlas (14% higher than the 16,441.4 MWp the first run saw): nightlights correlate at
-**Pearson 0.761** raw, dropping to **0.545** once roof area is controlled for (n=4,463 cells);
-the wealth index at **0.661** raw, dropping to **0.345** (4,428 of 4,463 cells have RWI
-coverage). Both partial correlations barely moved between the two runs (0.548 to 0.545 for
-nightlights, 0.373 to 0.345 for RWI) despite the 14% shift in the headline total, so the
-relationship looks like a property of the estimate's geography rather than an artifact of one
-particular refit.
+2026-08-12, and was never registered here. Rerun 2026-08-26 against the then-current
+18,826.7 MWp atlas (14% higher than the 16,441.4 MWp the first run saw): nightlights at
+Pearson 0.761 raw, 0.545 once roof area is controlled for; the wealth index at 0.661 raw,
+0.345 controlled. Both partial correlations had barely moved since the first run (0.548 to
+0.545, 0.373 to 0.345), which read at the time as a stable property of the estimate's
+geography.
+
+**Rerun 2026-10-21 against the current 24,438.3 MWp atlas, and that stability did not
+hold.** Nightlights correlate at **Pearson 0.755** raw (Spearman 0.750), dropping to
+**0.477** once roof area is controlled for (n=4,463 cells); the wealth index at **0.748** raw
+(Spearman 0.656), dropping to **0.449** (4,428 of 4,463 cells have RWI coverage). The raw
+nightlights figure is unchanged, but what it carries beyond roof area fell by 0.07 while the
+wealth index's rose by 0.10. The step is the 2026-09-21 area-weighted zonal refit and
+national rescoring, not the 2026-10-20 fixes: the same script on the 24,330.0 MWp atlas
+between them gives 0.473 and 0.447, within 0.004 of today. So the partial correlations
+describe one estimate's geography, not a fixed property of PV placement in Pakistan: the
+current estimate follows relative wealth more closely, and lit built-up area less, than the
+August one did. The reference-hex rank correlation rose over the same step (0.82 to 0.87;
+[capacity map](results/capacity.md#what-this-map-cannot-tell-you-and-what-an-independent-estimate-confirms-it-can)).
 
 The honest reading is that both proxies carry *some* information about PV placement beyond
 "this cell has more buildings" -- the partial correlations are positive and well clear of zero

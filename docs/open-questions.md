@@ -384,14 +384,14 @@ deficient.
 
 **What already exists points away from a straightforward fix.**
 `scripts/build_pv_external_comparison.py` correlates a 500 m VIIRS VNL v2.1 composite against
-per-cell Best estimate: Pearson r = 0.76 raw, but only **r = 0.55 once log roof area is
-partialled out**. Most of nightlights' apparent signal is therefore redundant with what
-VIDA-derived building density already supplies, not independent information a stratification
-model would gain by adding it. **2026-08-26: registered and rerun** against the current
-18,826.7 MWp atlas -- both numbers barely moved (0.548 to 0.545 partial) despite a 14% shift in
-the headline total since the script's only prior run (2026-08-12), so this looks like a stable
-property of the estimate's geography, not an artifact of one refit; full numbers, including the
-same result for the Relative Wealth Index, now live in
+per-cell Best estimate: Pearson r = 0.75 raw, but only **r = 0.48 once log roof area is
+partialled out** (2026-10-21, 24,438.3 MWp atlas). Most of nightlights' apparent signal is
+therefore redundant with what VIDA-derived building density already supplies, not independent
+information a stratification model would gain by adding it. The partial figure is not a fixed
+property: it held at 0.548-0.545 across the first two runs (2026-08-12, 2026-08-26) and fell to
+0.473 with the 2026-09-21 area-weighted refit, while the Relative Wealth Index's rose from 0.345
+to 0.447. The nightlights drop moves toward this item's conclusion, not away from it; full
+numbers live in
 [Experiments](experiments.md#external-corroboration-from-nightlights-and-a-wealth-index). Read
 that alongside [Capacity density](methods/density.md)'s own three failed attempts at finding
 *any* coarse per-cell proxy (candidate density, roofclf's predicted rate, SPPI agreement rate)
