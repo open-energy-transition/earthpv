@@ -56,13 +56,13 @@
   [hidden] { display: none !important; }
   body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-sans);
     font-size: 15px; line-height: 1.55; }
-  .wrap { max-width: 1240px; margin: 0 auto;
+  .wrap { max-width: 1680px; margin: 0 auto;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .eyebrow { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--accent); }
-  h1 { font-size: clamp(28px, 4.4vw, 46px); line-height: 1.08; letter-spacing: -0.02em;
-    margin: 10px 0 14px; max-width: 20ch; text-wrap: balance; font-weight: 750; }
+  h1 { font-size: clamp(16px, 1.7vw, 21px); line-height: 1.3; letter-spacing: -0.01em;
+    margin: 0; font-weight: 700; text-wrap: balance; }
   h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
   h3 { font-size: 15px; margin: 0; }
   p { margin: 0 0 10px; }
@@ -74,7 +74,13 @@
   .card { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
     box-shadow: var(--shadow); }
 
-  header.top { padding-block: 34px 10px; }
+  header.top { padding-block: 12px 4px; }
+  .brandbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+  .brand { font-family: var(--font-mono); font-weight: 700; font-size: 14px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--accent); }
+  .meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+  section.size { padding-block: 22px 4px; }
+  section.size h2 { margin-bottom: 10px; }
   .head-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 28px;
     align-items: end; }
   .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
@@ -86,7 +92,7 @@
   .chart-title { font-size: 13.5px; font-weight: 650; }
   .chart-sub { font-size: 12px; color: var(--muted); }
 
-  section.explorer { padding-block: 18px 8px; }
+  section.explorer { padding-block: 8px 8px; }
   .ex-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; align-items: start; }
   .stage-card { padding: 0; overflow: hidden; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 14px;
@@ -103,7 +109,7 @@
   .ctl select { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--panel-2);
     border: 1px solid var(--card-ring); border-radius: 7px; padding: 4px 6px; }
   .ctl input[type="range"] { width: 110px; accent-color: var(--accent); }
-  #stage { position: relative; height: clamp(380px, 68vh, 660px); background: var(--stage);
+  #stage { position: relative; height: clamp(420px, calc(var(--avail, 100vh) - 205px), 1100px); background: var(--stage);
     touch-action: none; overflow: hidden; }
   .ctl output { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); min-width: 9ch; }
   #gl { display: block; width: 100%; height: 100%; cursor: crosshair; }
@@ -195,22 +201,10 @@
 </style>
 
 <header class="top wrap">
-  <div class="head-grid">
-    <div>
-      <div class="eyebrow">PVscope &middot; EarthPV &middot; Sentinel-2 L2A &middot; OpenStreetMap &middot; VIDA buildings</div>
-      <h1 id="h1">Most rooftop solar is smaller than one Sentinel-2 pixel</h1>
-      <p class="lede" id="lede"></p>
-      <div class="stats">
-        <div class="stat card"><div class="v" id="st1">-</div><div class="k" id="st1k"></div></div>
-        <div class="stat card"><div class="v" id="st2">-</div><div class="k" id="st2k"></div></div>
-        <div class="stat card"><div class="v" id="st3">-</div><div class="k" id="st3k"></div></div>
-      </div>
-    </div>
-    <figure class="card hist-card" style="margin:0">
-      <div class="chart-title">Size of every mapped array in the calibration areas</div>
-      <div class="chart-sub" id="histSub"></div>
-      <svg class="chart" id="hist" role="img" aria-label="Histogram of mapped PV array sizes with the area of one 10 m and one 20 m pixel marked"></svg>
-    </figure>
+  <div class="brandbar">
+    <span class="brand">PVscope</span>
+    <h1 id="h1">Most rooftop solar is smaller than one Sentinel-2 pixel</h1>
+    <span class="meta" id="meta"></span>
   </div>
 </header>
 
@@ -273,7 +267,42 @@
   </div>
 </section>
 
+<section class="size wrap" aria-label="Array sizes">
+  <div class="head-grid">
+    <div>
+      <h2>Why most panels are hard to see from space</h2>
+      <p class="lede" id="lede"></p>
+      <div class="stats">
+        <div class="stat card"><div class="v" id="st1">-</div><div class="k" id="st1k"></div></div>
+        <div class="stat card"><div class="v" id="st2">-</div><div class="k" id="st2k"></div></div>
+        <div class="stat card"><div class="v" id="st3">-</div><div class="k" id="st3k"></div></div>
+      </div>
+    </div>
+    <figure class="card hist-card" style="margin:0">
+      <div class="chart-title">Size of every mapped array in the calibration areas</div>
+      <div class="chart-sub" id="histSub"></div>
+      <svg class="chart" id="hist" role="img" aria-label="Histogram of mapped PV array sizes with the area of one 10 m and one 20 m pixel marked"></svg>
+    </figure>
+  </div>
+</section>
+
 <section class="notes wrap">
+  <details class="x">
+    <summary>How to read it</summary>
+    <div class="body">
+      <p><b>Image cube.</b> The top layer is the mapped panels and roofs, drawn at 1 m. Below it sits the share of
+      each 10 m pixel the panels cover, then the ten bands from blue (492 nm) down to shortwave infrared (2,202 nm).
+      The six bands that are 20 m at the sensor show as 2 by 2 blocks. Click a pixel to drill a column through every
+      layer, or select an array in the list to outline it on all of them. <b>Peel</b> lifts layers off so any band
+      can be seen from above.</p>
+      <p><b>Spectral space.</b> The same pixels, moved to a space whose axes are three bands of your choice, measured
+      as contrast to the roofs around them. The amber line is where panels push a pixel as their cover grows from
+      none to all of it; the blue ellipses show how far PV-free roofs already scatter. A pixel only stands out once
+      it leaves them.</p>
+      <p><b>Inspector.</b> The selected pixel's spectrum against nearby roofs, its PV cover on the 10 m and the 20 m
+      grid, and whether a score combining the bands clears two standard deviations of roof-to-roof variation.</p>
+    </div>
+  </details>
   <details class="x">
     <summary>How this was measured</summary>
     <div class="body" id="method"></div>
@@ -344,11 +373,12 @@
   const placeName = M.quadrat.replace(/_calib_.*$/, "").split("_").map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
 
   // ---------------------------------------------------------------- header
+  $("meta").textContent = `${placeName} calibration area \u00b7 ${N * 10} m window \u00b7 Sentinel-2 L2A \u00b7 OpenStreetMap \u00b7 VIDA buildings`;
   $("lede").textContent =
     `${fmt(S.n)} solar arrays have been mapped by hand in ${S.n_quadrats} calibration areas in Pakistan, ` +
     `every visible panel in each. Their median size is ${fmt(S.median)} m². A 10 m Sentinel-2 pixel ` +
-    `covers 100 m², and six of the ten bands are 20 m, 400 m² per pixel. Below, one 640 m window of ` +
-    `${placeName} shows what that does to the signal, in space and in the spectrum at once.`;
+    `covers 100 m², and six of the ten bands are 20 m, 400 m² per pixel. The window above, from ` +
+    `${placeName}, shows what that does to the signal, in space and in the spectrum at once.`;
   $("st1").textContent = pct(S.share100);
   $("st1k").textContent = "of mapped arrays are smaller than one 10 m pixel (100 m²)";
   $("st2").textContent = pct(S.share400);
@@ -769,10 +799,10 @@
   }
   function frameCamera() {
     const aspect = stage.clientWidth / stage.clientHeight;
-    const dist = 158 / Math.min(1, aspect * 0.95);
+    const dist = 176 / Math.min(1, aspect * 0.95);
     const dir = new THREE.Vector3(0.62, 0.5, 0.78).normalize();
     const shift = aspect > 1.1 ? 11 : 4;
-    controls.target.set(0.78 * shift, view === "cube" ? TOP() / 2 : SPEC_Y, -0.62 * shift);
+    controls.target.set(0.78 * shift, view === "cube" ? TOP() / 2 - 4 : SPEC_Y, -0.62 * shift);
     camera.position.copy(controls.target).addScaledVector(dir, dist);
     controls.update();
   }
@@ -975,7 +1005,7 @@
       signal. Read the thresholds as a best case for a single pixel. Mapping is complete as of its imagery date, so PV installed since then counts as roof and makes
       &sigma; slightly larger. EarthPV's own small-installation classifier works per building rather than per pixel,
       averaging every pixel under a footprint, which is how it reads arrays this page shows a single pixel cannot.</p>`;
-    $("src").textContent = `Generated by scripts/build_pvscope.py. Window centre ${M.lat} N, ${M.lon} E, ${N} × ${N} pixels (${N * 10} m). ` +
+    $("src").textContent = `Generated by scripts/build_pvscope.py and copied into the docs by pixi run docs-figures. Window centre ${M.lat} N, ${M.lon} E, ${N} × ${N} pixels (${N * 10} m). ` +
       `Sentinel-2: Copernicus. Solar arrays: OpenStreetMap contributors, ODbL. Buildings: VIDA Open Buildings.`;
   }
 
