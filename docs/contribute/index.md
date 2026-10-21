@@ -102,7 +102,9 @@ quickest to finish.
 Want to suggest an area of your own? The **Propose a calibration area** button on the atlas
 (the dashed square under the zoom buttons) drops a 2 km square where you click and checks
 it against every existing area. Place it by landscape, never because you can already see
-solar there: a sample chosen for its panels is biased before anyone maps it.
+solar there: a sample chosen for its panels is biased before anyone maps it. An area does
+not have to be a square: [Draw your own area](draw-area.md) shows how to outline one in JOSM
+and send it in as GeoJSON.
 
 ## New to OpenStreetMap editing?
 

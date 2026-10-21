@@ -118,3 +118,5 @@ Then [report your progress](report.md): finished, partly done, or not mappable.
 A box from the atlas's **Propose a calibration area** button has no published file yet, so
 **Open in iD** only opens at its location. Press **GeoJSON** in the popup to download the
 box, then drag the file onto the iD map: it appears as the same never-uploaded overlay.
+iD cannot draw and save a boundary of your own; for that, see
+[Draw your own area](draw-area.md), which uses JOSM.

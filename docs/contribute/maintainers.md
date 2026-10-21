@@ -35,8 +35,9 @@ python scripts/new_calibration_quadrat.py --aoi zambia --dry-run \
 ```
 
 or, for a boundary a mapper drew in JOSM (**File -> Save As -> GeoJSON** of a layer holding
-only the boundary; see
-[Drawing the boundary in JOSM](../calibration-mapping-protocol.md#drawing-the-boundary-in-josm)):
+only the boundary; see [Draw your own area](draw-area.md)). It arrives pasted into the
+report's **Boundary GeoJSON** field: save that block to a file, check the dry run, and reply
+on the report before the mapper starts, so a rejected outline costs no mapping:
 
 ```bash
 python scripts/new_calibration_quadrat.py --aoi zambia --dry-run \

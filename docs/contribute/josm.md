@@ -129,4 +129,5 @@ Then [report your progress](report.md): finished, partly done, or not mappable.
 ## Your own proposed area
 
 A box from the atlas's **Propose a calibration area** button also opens in JOSM: it arrives
-as the same locked, never-uploaded layer, next to the OSM data for the box.
+as the same locked, never-uploaded layer, next to the OSM data for the box. To outline an
+area of your own shape instead, see [Draw your own area](draw-area.md).

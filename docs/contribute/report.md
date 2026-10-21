@@ -20,6 +20,9 @@ Report at any of these points; each is useful:
 | Not mappable | the imagery is too old or clouded, or the box holds nothing to map |
 | Stopped part way | you cannot finish; the area is left out, no harm done |
 
+For an area you [drew yourself](draw-area.md), report *Started* before you map and paste
+the boundary file into the form's **Boundary GeoJSON** field.
+
 Please include your OpenStreetMap username, the imagery you traced from with its capture
 date, and your changesets (your OpenStreetMap profile lists them; they carry the hashtags
 `#tracethesun` and `#earthpv-calibration`, which is also how we find them across every

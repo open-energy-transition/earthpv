@@ -311,13 +311,15 @@ covered in OSM and TZ-SAM.
 
 You can draw a calibration boundary directly in JOSM and export it as GeoJSON, which is
 often better than a square: it can follow a suburb, an industrial estate or a canal instead
-of clipping arbitrary halves of both.
+of clipping arbitrary halves of both. The contributor-facing version of these steps,
+including how to send the file in, is [Draw your own area](contribute/draw-area.md).
 
 **Draw it on its own layer, not on the OSM data layer.** That keeps the box out of the
 upload path entirely, which is the safest version of the never-upload rule.
 
-1. **Layers -> New Layer** (Ctrl+N). This is now the active layer, and it is not connected
-   to OpenStreetMap.
+1. **File -> New Layer** (Ctrl+N). This is now the active layer, and it holds nothing
+   downloaded from OpenStreetMap. JOSM still treats it as a data layer, so never upload
+   while it is selected.
 2. Turn on imagery and draw the boundary with the **draw tool** (keyboard `A`), clicking
    each corner. **Close the way** by clicking the first node again, then press `Esc` to end
    the line.

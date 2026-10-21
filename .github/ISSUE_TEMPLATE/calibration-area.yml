@@ -11,7 +11,7 @@ body:
     id: area
     attributes:
       label: Area
-      description: The area's name from its atlas popup (e.g. `chama_s1_calib_2km`), or "proposed at <lat>, <lon>" for a box you proposed.
+      description: 'The area''s name from its atlas popup (e.g. `chama_s1_calib_2km`), "proposed at <lat>, <lon>" for a box you proposed, or "drawn: <file name>" for a boundary you drew yourself.'
     validations:
       required: true
   - type: input
@@ -52,6 +52,12 @@ body:
     id: count
     attributes:
       label: Installations mapped (for a second pass, how many you added)
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Boundary GeoJSON
+      description: 'Only for a boundary you drew yourself. Open the .geojson file you saved from JOSM in a text editor and paste its whole content here. Guide: https://open-energy-transition.github.io/earthpv/contribute/draw-area/'
+      render: json
   - type: textarea
     id: notes
     attributes:

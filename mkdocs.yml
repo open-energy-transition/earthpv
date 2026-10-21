@@ -158,6 +158,7 @@ nav:
       - contribute/index.md
       - Map with iD: contribute/id.md
       - Map with JOSM: contribute/josm.md
+      - Draw your own area: contribute/draw-area.md
       - Report and verify: contribute/report.md
       - Register an area (maintainers): contribute/maintainers.md
   # Then how the shipped pipeline actually works, with its reference pages.
