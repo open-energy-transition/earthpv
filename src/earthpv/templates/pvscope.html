@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PVscope</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: the size story up top, then one wide 3D stage with an inspector rail beside it,
+     then three charts that turn the stage's picture into numbers. Dark-first, like the
+     evidence atlas this belongs next to. */
+  :root {
+    color-scheme: dark;
+    --page: #100d09; --panel: #1a160f; --panel-2: #221d14; --stage: #0c0a07;
+    --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c;
+    --hair: rgba(247, 183, 51, 0.14); --card-ring: rgba(247, 183, 51, 0.10);
+    --accent: #f5a623;
+    /* Two series, validated as a pair against this surface (CVD dE 25.5). */
+    --s10: #4a8ee0; --s20: #d07f22;
+    /* PV cover, none to full. */
+    --seq-0: #241c12; --seq-1: #8a520e; --seq-2: #f5a623; --seq-3: #ffe2a8;
+    /* Contrast to nearby roofs: darker (where PV pulls a pixel) | same | brighter. */
+    --div-neg: #f5a623; --div-mid: #352e24; --div-pos: #5b9cf2;
+    /* Reflectance is imagery: dark is dark in both themes. */
+    --gray-0: #16130e; --gray-1: #f2eadc;
+    --ground: #1d1810; --roof: #514634; --pv: #f5a623;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 30px rgba(0, 0, 0, 0.45);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb; --stage: #ece4d2;
+      --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+      --hair: rgba(120, 80, 20, 0.16); --card-ring: rgba(120, 80, 20, 0.14);
+      --accent: #c25e12; --s10: #1c6fa8; --s20: #c25e12;
+      --seq-0: #e6dcc7; --seq-1: #e2a65a; --seq-2: #c25e12; --seq-3: #6e3006;
+      --div-neg: #c25e12; --div-mid: #ddd2bd; --div-pos: #1c6fa8;
+      --ground: #e3d9c4; --roof: #b9ab8f; --pv: #c25e12;
+      --shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 8px 24px rgba(80, 55, 15, 0.10);
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb; --stage: #ece4d2;
+    --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61;
+    --hair: rgba(120, 80, 20, 0.16); --card-ring: rgba(120, 80, 20, 0.14);
+    --accent: #c25e12; --s10: #1c6fa8; --s20: #c25e12;
+    --seq-0: #e6dcc7; --seq-1: #e2a65a; --seq-2: #c25e12; --seq-3: #6e3006;
+    --div-neg: #c25e12; --div-mid: #ddd2bd; --div-pos: #1c6fa8;
+    --ground: #e3d9c4; --roof: #b9ab8f; --pv: #c25e12;
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 8px 24px rgba(80, 55, 15, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-sans);
+    font-size: 15px; line-height: 1.55; }
+  .wrap { max-width: 1240px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .eyebrow { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(28px, 4.4vw, 46px); line-height: 1.08; letter-spacing: -0.02em;
+    margin: 10px 0 14px; max-width: 20ch; text-wrap: balance; font-weight: 750; }
+  h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
+  h3 { font-size: 15px; margin: 0; }
+  p { margin: 0 0 10px; }
+  .lede { color: var(--ink-2); max-width: 66ch; font-size: 16px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--font-mono); }
+  code { font-family: var(--font-mono); font-size: 0.88em; background: var(--panel-2);
+    padding: 1px 5px; border-radius: 4px; }
+  .card { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
+    box-shadow: var(--shadow); }
+
+  header.top { padding-block: 34px 10px; }
+  .head-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 28px;
+    align-items: end; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+  .stat { padding: 12px 14px; }
+  .stat .v { font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat .k { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.35; }
+  .hist-card { padding: 14px 14px 8px; }
+  .chart-title { font-size: 13.5px; font-weight: 650; }
+  .chart-sub { font-size: 12px; color: var(--muted); }
+
+  section.explorer { padding-block: 18px 8px; }
+  .ex-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; align-items: start; }
+  .stage-card { padding: 0; overflow: hidden; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 14px;
+    border-bottom: 1px solid var(--hair); }
+  .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--card-ring);
+    border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg button { font: inherit; font-size: 13px; color: var(--ink-2); background: transparent; border: 0;
+    border-radius: 7px; padding: 6px 11px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 650;
+    box-shadow: 0 0 0 1px var(--card-ring); }
+  .seg button:focus-visible, select:focus-visible, input:focus-visible, .alist button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ctl { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
+  .ctl select { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--panel-2);
+    border: 1px solid var(--card-ring); border-radius: 7px; padding: 4px 6px; }
+  .ctl input[type="range"] { width: 110px; accent-color: var(--accent); }
+  #stage { position: relative; height: clamp(380px, 68vh, 660px); background: var(--stage);
+    touch-action: none; overflow: hidden; }
+  .ctl output { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); min-width: 9ch; }
+  #gl { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  .lbl { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap;
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); will-change: transform;
+    text-shadow: 0 0 6px var(--stage), 0 0 2px var(--stage); }
+  .lbl b { color: var(--ink); font-weight: 650; }
+  .lbl.res20 b { color: var(--s20); }
+  .lbl.res10 b { color: var(--s10); }
+  .lbl.axis { color: var(--ink); font-size: 11.5px; }
+  .lbl.tick { color: var(--muted); font-size: 10.5px; }
+  .lbl.mix { color: var(--accent); }
+  .stage-msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px;
+    text-align: center; color: var(--ink-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; padding: 10px 14px 12px;
+    border-top: 1px solid var(--hair); font-size: 12px; color: var(--ink-2); min-height: 46px; }
+  .legend .ramp { display: inline-flex; align-items: center; gap: 8px; }
+  .legend .bar { width: 120px; height: 9px; border-radius: 3px; border: 1px solid var(--card-ring); }
+  .legend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px;
+    margin-right: 5px; }
+  .legend .ln { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--accent);
+    vertical-align: 3px; margin-right: 6px; }
+  .legend .tk { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .hint { font-size: 12px; color: var(--muted); padding: 0 14px 12px; }
+
+  .inspector { padding: 14px; display: grid; gap: 12px; }
+  .insp-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .insp-title .tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); }
+  .covers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .cv { background: var(--panel-2); border-radius: 9px; padding: 7px 9px; }
+  .cv .v { font-family: var(--font-mono); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cv .k { font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .cv.c10 .v { color: var(--s10); } .cv.c20 .v { color: var(--s20); }
+  .arr-line { font-size: 13px; color: var(--ink-2); min-height: 20px; }
+  .arr-line b { color: var(--ink); }
+  .pills { display: grid; gap: 6px; }
+  .pill { display: flex; align-items: center; gap: 8px; font-size: 12.5px; border-radius: 9px;
+    padding: 6px 9px; background: var(--panel-2); color: var(--ink-2); }
+  .pill .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; border: 1.5px solid var(--muted); }
+  .pill.yes { color: var(--ink); box-shadow: inset 0 0 0 1px var(--accent); }
+  .pill.yes .dot { background: var(--accent); border-color: var(--accent); }
+  .pill .sig { margin-left: auto; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .spec-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--ink-2); }
+  .spec-legend i { display: inline-block; width: 16px; vertical-align: 3px; margin-right: 5px; border-top: 2px solid; }
+  .alist { max-height: 210px; overflow: auto; border: 1px solid var(--hair); border-radius: 10px; }
+  .alist button { display: grid; grid-template-columns: 1.1fr 0.9fr 0.9fr 0.9fr; gap: 6px; width: 100%;
+    text-align: left; font: inherit; font-size: 12px; color: var(--ink-2); background: transparent; border: 0;
+    border-bottom: 1px solid var(--hair); padding: 6px 9px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .alist button:hover { background: var(--panel-2); }
+  .alist button[aria-current="true"] { background: var(--panel-2); color: var(--ink);
+    box-shadow: inset 3px 0 0 var(--accent); }
+  .alist .hd { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-family: var(--font-mono);
+    font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; cursor: default; }
+  .alist .hd:hover { background: var(--panel); }
+
+  svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
+  svg text { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); }
+  svg .t-ink { fill: var(--ink-2); }
+  svg .grid { stroke: var(--hair); stroke-width: 1; }
+  svg .axis { stroke: var(--muted); stroke-width: 1; opacity: 0.6; }
+  svg .bar-acc { fill: var(--accent); }
+  svg .mark-line { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3; }
+  svg .shade20 { fill: var(--panel-2); }
+  svg .l-pix { stroke: var(--accent); fill: none; stroke-width: 2; }
+  svg .d-pix { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+  svg .l-roof { stroke: var(--muted); fill: none; stroke-width: 2; }
+  svg .l-model { stroke: var(--ink-2); fill: none; stroke-width: 1.5; stroke-dasharray: 4 3; }
+  svg .hit { fill: transparent; }
+  .tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--panel);
+    font-size: 12px; line-height: 1.4; padding: 6px 9px; border-radius: 7px; max-width: 280px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
+  .tip b { font-weight: 700; }
+
+  section.notes { padding-block: 14px 44px; }
+  details.x { border: 1px solid var(--card-ring); border-radius: 12px; background: var(--panel); margin-top: 10px; }
+  details.x summary { cursor: pointer; padding: 12px 14px; font-weight: 650; font-size: 14px; }
+  details.x .body { padding: 0 14px 14px; color: var(--ink-2); font-size: 14px; max-width: 80ch; }
+  footer.src { font-family: var(--font-mono); font-size: 11px; color: var(--muted); padding-bottom: 30px; }
+
+  /* Stacks inside the docs column; side by side only on a full-screen page. */
+  @media (max-width: 1100px) {
+    .ex-grid { grid-template-columns: minmax(0, 1fr); }
+    .head-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+
+<header class="top wrap">
+  <div class="head-grid">
+    <div>
+      <div class="eyebrow">PVscope &middot; EarthPV &middot; Sentinel-2 L2A &middot; OpenStreetMap &middot; VIDA buildings</div>
+      <h1 id="h1">Most rooftop solar is smaller than one Sentinel-2 pixel</h1>
+      <p class="lede" id="lede"></p>
+      <div class="stats">
+        <div class="stat card"><div class="v" id="st1">-</div><div class="k" id="st1k"></div></div>
+        <div class="stat card"><div class="v" id="st2">-</div><div class="k" id="st2k"></div></div>
+        <div class="stat card"><div class="v" id="st3">-</div><div class="k" id="st3k"></div></div>
+      </div>
+    </div>
+    <figure class="card hist-card" style="margin:0">
+      <div class="chart-title">Size of every mapped array in the calibration areas</div>
+      <div class="chart-sub" id="histSub"></div>
+      <svg class="chart" id="hist" role="img" aria-label="Histogram of mapped PV array sizes with the area of one 10 m and one 20 m pixel marked"></svg>
+    </figure>
+  </div>
+</header>
+
+<section class="explorer wrap" aria-label="3D view">
+  <div class="ex-grid">
+    <div class="card stage-card">
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="View">
+          <button type="button" id="mCube" aria-pressed="true">Image cube</button>
+          <button type="button" id="mSpec" aria-pressed="false">Spectral space</button>
+        </div>
+        <div class="seg" role="group" aria-label="Values">
+          <button type="button" id="vCon" aria-pressed="true">Contrast to nearby roofs</button>
+          <button type="button" id="vRef" aria-pressed="false">Reflectance</button>
+        </div>
+        <span class="ctl" id="spaceCtl">
+          <label>Spacing <input type="range" id="spacing" min="2" max="10" step="0.5" value="5"></label>
+          <label>Peel <input type="range" id="peel" min="0" max="11" step="1" value="0"></label>
+          <output id="peelOut" for="peel">top: mapped PV</output>
+        </span>
+        <span class="ctl" id="axesCtl" hidden>
+          <label>x <select id="ax0"></select></label>
+          <label>up <select id="ax1"></select></label>
+          <label>z <select id="ax2"></select></label>
+        </span>
+      </div>
+      <div id="stage">
+        <canvas id="gl" aria-label="Interactive 3D view of the Sentinel-2 pixels" tabindex="0"></canvas>
+        <div id="labels"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="hint">Drag to orbit, scroll or pinch to zoom, right-drag to pan. Hover a pixel to inspect it; click to pin it and select the array it belongs to.</div>
+    </div>
+
+    <aside class="card inspector" aria-label="Pixel inspector">
+      <div class="insp-title"><h3 id="iTitle">Pixel</h3><span class="tag" id="iTag">pinned</span></div>
+      <div class="covers">
+        <div class="cv c10"><div class="v" id="cv10">-</div><div class="k">PV cover, its 10 m pixel</div></div>
+        <div class="cv c20"><div class="v" id="cv20">-</div><div class="k">PV cover, its 20 m pixel</div></div>
+        <div class="cv"><div class="v" id="cvRoof">-</div><div class="k">roof cover, 10 m pixel</div></div>
+      </div>
+      <div class="arr-line" id="iArr"></div>
+      <div>
+        <div class="spec-legend">
+          <span><i style="border-color:var(--accent)"></i>this pixel</span>
+          <span><i style="border-color:var(--muted)"></i>nearby PV-free roofs</span>
+          <span><i style="border-color:var(--ink-2);border-top-style:dashed"></i>roofs + cover &times; PV contrast</span>
+        </div>
+        <svg class="chart" id="spec" role="img" aria-label="Reflectance spectrum of the selected pixel"></svg>
+      </div>
+      <div class="pills">
+        <div class="pill" id="p10"><span class="dot"></span><span id="p10t"></span><span class="sig" id="p10v"></span></div>
+        <div class="pill" id="p20"><span class="dot"></span><span id="p20t"></span><span class="sig" id="p20v"></span></div>
+      </div>
+      <div>
+        <div class="chart-sub" style="margin-bottom:6px">Arrays in this window, smallest first. Select one to outline it on every layer.</div>
+        <div class="alist" id="alist" role="list"></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="notes wrap">
+  <details class="x">
+    <summary>How this was measured</summary>
+    <div class="body" id="method"></div>
+  </details>
+</section>
+<footer class="src wrap" id="src"></footer>
+<div class="tip" id="tip" hidden></div>
+
+<script id="data" type="application/json">__DATA_JSON__</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf" crossorigin="anonymous"></script>
+<script>
+(function () {
+  "use strict";
+  const D = JSON.parse(document.getElementById("data").textContent);
+  const W = D.win, N = W.n, NB = D.bands.length, NODATA = -32768;
+  const BANDS = D.bands, IS20 = BANDS.map(b => b.res === 20);
+  const REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = id => document.getElementById(id);
+
+  // ---------------------------------------------------------------- helpers
+  const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function rgb(h) {
+    h = h.replace("#", "");
+    if (h.length === 3) h = h.split("").map(c => c + c).join("");
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  }
+  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  function ramp(stops, t) {
+    t = Math.max(0, Math.min(1, t));
+    const k = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(k));
+    return mix(stops[i], stops[i + 1], k - i);
+  }
+  const css = c => `rgb(${c.map(Math.round).join(",")})`;
+  const fmt = (v, d = 0) => Number(v).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
+  const pct = v => `${Math.round(v * 100)}%`;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function txt(parent, x, y, s, attrs = {}) { const t = el("text", Object.assign({x, y}, attrs), parent); t.textContent = s; return t; }
+  const tip = $("tip");
+  function showTip(evt, html) {
+    tip.innerHTML = html; tip.hidden = false;
+    const r = tip.getBoundingClientRect();
+    let x = evt.clientX + 14, y = evt.clientY + 14;
+    if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - 14;
+    if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - 14;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  const hideTip = () => { tip.hidden = true; };
+
+  // pixel accessors (row-major, N x N, 10 m)
+  const bi = name => BANDS.findIndex(b => b.name === name);
+  const refl = (b, p) => W.refl[b][p] / 1e4;
+  const con = (b, p) => W.con[b][p] === NODATA ? NaN : W.con[b][p] / 1e4;
+  const blk = p => (Math.floor(p / N) >> 1) * (N / 2) + ((p % N) >> 1);
+  const f10 = p => W.f10[p] / 100, f20 = p => W.f20[blk(p)] / 100, roofc = p => W.roof[p] / 100;
+  const s10 = p => W.s10[p] === NODATA ? NaN : W.s10[p] / 100;
+  const s20 = p => W.s20[blk(p)] === NODATA ? NaN : W.s20[blk(p)] / 100;
+  const polyBy = new Map(D.polys.map(p => [p.i, p]));
+  const onRoof = p => W.roof[p] >= 30 || W.f10[p] > 0;
+  const S = D.sizes, MF = D.mf, M = D.meta;
+  const placeName = M.quadrat.replace(/_calib_.*$/, "").split("_").map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
+
+  // ---------------------------------------------------------------- header
+  $("lede").textContent =
+    `${fmt(S.n)} solar arrays have been mapped by hand in ${S.n_quadrats} calibration areas in Pakistan, ` +
+    `every visible panel in each. Their median size is ${fmt(S.median)} m². A 10 m Sentinel-2 pixel ` +
+    `covers 100 m², and six of the ten bands are 20 m, 400 m² per pixel. Below, one 640 m window of ` +
+    `${placeName} shows what that does to the signal, in space and in the spectrum at once.`;
+  $("st1").textContent = pct(S.share100);
+  $("st1k").textContent = "of mapped arrays are smaller than one 10 m pixel (100 m²)";
+  $("st2").textContent = pct(S.share400);
+  $("st2k").textContent = "are smaller than one 20 m pixel (400 m²), which is also the segmentation model's floor";
+  $("st3").textContent = `${fmt(MF.amin20)} m²`;
+  $("st3k").textContent = `smallest array all ten bands can reveal, at best: inside one 20 m pixel, next to roofs known to be PV-free (${placeName})`;
+  $("histSub").textContent = `${fmt(S.n)} arrays, ${S.n_quadrats} areas, log scale`;
+
+  function drawHist() {
+    const svg = $("hist"); svg.innerHTML = "";
+    const w = Math.max(300, svg.clientWidth || 520), h = 200, m = {l: 40, r: 10, t: 22, b: 30};
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const e = S.edges, c = S.counts, cmax = Math.max(...c);
+    const X = v => m.l + (v - e[0]) / (e[e.length - 1] - e[0]) * (w - m.l - m.r);
+    const Y = v => h - m.b - v / cmax * (h - m.t - m.b);
+    for (const v of [0.5, 1].map(f => Math.round(cmax * f / 100) * 100)) {
+      el("line", {x1: m.l, x2: w - m.r, y1: Y(v), y2: Y(v), class: "grid"}, svg);
+      txt(svg, m.l - 6, Y(v) + 3, fmt(v), {"text-anchor": "end"});
+    }
+    for (let i = 0; i < c.length; i++) {
+      const x0 = X(e[i]) + 0.5, x1 = X(e[i + 1]) - 0.5, y = Y(c[i]);
+      const r = el("rect", {x: x0, y, width: Math.max(0.5, x1 - x0), height: h - m.b - y, class: "bar-acc", rx: 1.5}, svg);
+      r.style.opacity = e[i + 1] <= 2 ? 1 : 0.55;
+      const hit = el("rect", {x: x0, y: m.t, width: Math.max(1, x1 - x0), height: h - m.t - m.b, class: "hit"}, svg);
+      const lo = Math.pow(10, e[i]), hi = Math.pow(10, e[i + 1]);
+      hit.addEventListener("pointermove", ev => showTip(ev, `<b>${fmt(lo)}–${fmt(hi)} m²</b><br>${fmt(c[i])} arrays`));
+      hit.addEventListener("pointerleave", hideTip);
+    }
+    el("line", {x1: m.l, x2: w - m.r, y1: h - m.b, y2: h - m.b, class: "axis"}, svg);
+    for (const v of [10, 100, 1000, 10000]) txt(svg, X(Math.log10(v)), h - m.b + 14, `${fmt(v)} m²`, {"text-anchor": "middle"});
+    for (const [v, lab, anchor, dx] of [[100, "one 10 m pixel", "end", -4], [400, "one 20 m pixel", "start", 4]]) {
+      const x = X(Math.log10(v));
+      el("line", {x1: x, x2: x, y1: m.t - 6, y2: h - m.b, class: "mark-line"}, svg);
+      txt(svg, x + dx, m.t - 8, lab, {class: "t-ink", "text-anchor": anchor});
+    }
+  }
+
+  // ---------------------------------------------------------------- 3D
+  const stage = $("stage"), canvas = $("gl"), labelsEl = $("labels");
+  const hasGL = typeof THREE !== "undefined" && THREE.OrbitControls;
+  let renderer = null;
+  if (hasGL) {
+    try { renderer = new THREE.WebGLRenderer({canvas, antialias: true}); } catch (err) { renderer = null; }
+  }
+  const L = 2 + NB;                         // truth, cover, ten bands
+  let spacing = 5, view = "cube", values = "contrast";
+  let axes = [bi("B04"), bi("B08"), bi("B12")];
+  let pinned = null, hover = null, focus = null;
+
+  // Truth on top, then PV cover, then the bands with wavelength increasing downward.
+  function layerY(k) { return (L - 1 - k) * spacing; }
+  const TOP = () => (L - 1) * spacing;
+  let peel = 0;
+
+  let scene, camera, controls, planeGeo, layers = [], colLines, focusLines, points = null, specGroup;
+  let morph = 0, morphTarget = 0, labelItems = [], specLabels = [], marker = null;
+  const dotTex = (() => {
+    const c = document.createElement("canvas"); c.width = c.height = 32;
+    const g = c.getContext("2d"); g.fillStyle = "#fff"; g.beginPath(); g.arc(16, 16, 14, 0, Math.PI * 2); g.fill();
+    return hasGL ? new THREE.CanvasTexture(c) : null;
+  })();
+
+  function makeTex(size, nearest) {
+    const cv = document.createElement("canvas"); cv.width = cv.height = size;
+    const tex = new THREE.CanvasTexture(cv);
+    tex.magFilter = nearest ? THREE.NearestFilter : THREE.LinearFilter;
+    tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+    return {cv, ctx: cv.getContext("2d"), tex};
+  }
+
+  function addLabel(html, cls, pos, list) {
+    const d = document.createElement("div"); d.className = "lbl " + (cls || ""); d.innerHTML = html;
+    labelsEl.appendChild(d);
+    const item = {el: d, pos: pos.clone(), alpha: 1};
+    list.push(item); return item;
+  }
+
+  function initScene() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(36, 1, 0.5, 3000);
+    controls = new THREE.OrbitControls(camera, canvas);
+    controls.enableDamping = true; controls.dampingFactor = 0.08;
+    controls.minDistance = 25; controls.maxDistance = 600;
+    controls.target.set(0, TOP() / 2, 0);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    planeGeo = new THREE.PlaneGeometry(N, N); planeGeo.rotateX(-Math.PI / 2);
+    const edgeGeo = new THREE.EdgesGeometry(planeGeo);
+    const defs = [{key: "truth", html: "<b>Mapped PV and roofs</b>"},
+                  {key: "cover", html: "<b>PV cover</b> &middot; 10 m"}]
+      .concat(BANDS.map((b, i) => ({key: "band", b: i, cls: b.res === 20 ? "res20" : "res10",
+        html: `<b>${b.name}</b> ${b.nm} nm &middot; ${b.res} m`})));
+    defs.forEach((d, k) => {
+      const t = makeTex(d.key === "truth" ? 1024 : N, d.key !== "truth");
+      const mat = new THREE.MeshBasicMaterial({map: t.tex, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false});
+      const mesh = new THREE.Mesh(planeGeo, mat); mesh.userData.k = k; scene.add(mesh);
+      const edge = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({transparent: true, opacity: 0.5}));
+      scene.add(edge);
+      const lab = addLabel(d.html, d.cls, new THREE.Vector3(N / 2 + 1.5, 0, -N / 2), labelItems);
+      layers.push(Object.assign({mesh, edge, t, lab}, d));
+    });
+
+    colLines = new THREE.LineSegments(new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({transparent: true, depthTest: false}));
+    colLines.renderOrder = 10; scene.add(colLines);
+    // a ring around the hovered or pinned pixel's dot in spectral space
+    const rc = document.createElement("canvas"); rc.width = rc.height = 64;
+    const rx = rc.getContext("2d"); rx.strokeStyle = "#fff"; rx.lineWidth = 7;
+    rx.beginPath(); rx.arc(32, 32, 26, 0, Math.PI * 2); rx.stroke();
+    const mgeo = new THREE.BufferGeometry(); mgeo.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0], 3));
+    marker = new THREE.Points(mgeo, new THREE.PointsMaterial({size: 20 * renderer.getPixelRatio(), sizeAttenuation: false,
+      map: new THREE.CanvasTexture(rc), transparent: true, depthTest: false}));
+    marker.renderOrder = 11; marker.visible = false; scene.add(marker);
+    focusLines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial());
+    scene.add(focusLines);
+    specGroup = new THREE.Group(); scene.add(specGroup);
+    positionLayers();
+    paintAll();
+    retheme3D();
+  }
+
+  function positionLayers() {
+    layers.forEach((ly, k) => {
+      const y = layerY(k);
+      ly.mesh.position.y = y; ly.edge.position.y = y; ly.lab.pos.set(N / 2 + 1.5, y, -N / 2);
+    });
+    updateColumn(); updateFocus();
+  }
+
+  // ---- painting
+  function paintTruth() {
+    const {ctx, cv, tex} = layers[0].t, s = cv.width / N;
+    ctx.fillStyle = tok("--ground"); ctx.fillRect(0, 0, cv.width, cv.height);
+    const drawRings = (rings, fill) => {
+      ctx.beginPath();
+      for (const ring of rings) { ring.forEach(([x, y], i) => i ? ctx.lineTo(x * s, y * s) : ctx.moveTo(x * s, y * s)); ctx.closePath(); }
+      ctx.fillStyle = fill; ctx.fill("evenodd");
+    };
+    drawRings(D.bld, tok("--roof"));
+    for (const p of D.polys) drawRings(p.rings, tok("--pv"));
+    ctx.strokeStyle = tok("--hair"); ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) { ctx.moveTo(i * s, 0); ctx.lineTo(i * s, cv.height); ctx.moveTo(0, i * s); ctx.lineTo(cv.width, i * s); }
+    ctx.stroke();
+    tex.needsUpdate = true;
+  }
+  function paintCover() {
+    const {ctx, tex} = layers[1].t, img = ctx.createImageData(N, N);
+    const stops = ["--seq-0", "--seq-1", "--seq-2", "--seq-3"].map(n => rgb(tok(n)));
+    for (let p = 0; p < N * N; p++) {
+      const c = ramp(stops, f10(p));
+      img.data.set([c[0], c[1], c[2], 255], p * 4);
+    }
+    ctx.putImageData(img, 0, 0); tex.needsUpdate = true;
+  }
+  const CON_RANGE = 0.08;
+  const stretch = BANDS.map((b, i) => {
+    const v = W.refl[i].slice().sort((a, b2) => a - b2);
+    return [v[Math.floor(v.length * 0.02)] / 1e4, v[Math.floor(v.length * 0.98)] / 1e4];
+  });
+  function bandColor(b, p, pal) {
+    if (values === "contrast") {
+      const v = con(b, p);
+      if (!isFinite(v)) return pal.mid;
+      const t = clamp(v / CON_RANGE, -1, 1);
+      const c = t < 0 ? mix(pal.mid, pal.neg, -t) : mix(pal.mid, pal.pos, t);
+      // Contrast is measured against roofs; ground, roads and trees are not what PV sits on.
+      return onRoof(p) ? c : mix(c, pal.stage, 0.72);
+    }
+    const [lo, hi] = stretch[b];
+    return mix(pal.g0, pal.g1, clamp((refl(b, p) - lo) / (hi - lo), 0, 1));
+  }
+  function palette() {
+    return {mid: rgb(tok("--div-mid")), neg: rgb(tok("--div-neg")), pos: rgb(tok("--div-pos")), stage: rgb(tok("--stage")),
+            g0: rgb(tok("--gray-0")), g1: rgb(tok("--gray-1"))};
+  }
+  function paintBands() {
+    const pal = palette();
+    for (let b = 0; b < NB; b++) {
+      const {ctx, tex} = layers[2 + b].t, img = ctx.createImageData(N, N);
+      for (let p = 0; p < N * N; p++) { const c = bandColor(b, p, pal); img.data.set([c[0], c[1], c[2], 255], p * 4); }
+      ctx.putImageData(img, 0, 0); tex.needsUpdate = true;
+    }
+  }
+  function paintAll() { paintTruth(); paintCover(); paintBands(); }
+
+  function retheme3D() {
+    if (!renderer) return;
+    renderer.setClearColor(new THREE.Color(tok("--stage")), 1);
+    const hair = new THREE.Color(tok("--muted"));
+    layers.forEach(ly => ly.edge.material.color.copy(hair));
+    colLines.material.color.set(tok("--ink"));
+    focusLines.material.color.set(tok("--accent"));
+    if (marker) marker.material.color.set(tok("--ink"));
+    if (points) recolorPoints();
+    buildSpecDecor();
+  }
+
+  // ---- column highlight (the "drill core") and focus outline
+  function updateColumn() {
+    if (!colLines) return;
+    const p = hover ?? pinned;
+    if (p == null) { colLines.geometry.setDrawRange(0, 0); return; }
+    const r = Math.floor(p / N), c = p % N, pos = [];
+    const sq = (x0, z0, s, y) => {
+      const x = x0 - N / 2, z = z0 - N / 2;
+      pos.push(x, y, z, x + s, y, z, x + s, y, z, x + s, y, z + s, x + s, y, z + s, x, y, z + s, x, y, z + s, x, y, z);
+    };
+    if (view === "cube") {
+      for (let k = 0; k < L; k++) {
+        const y = layerY(k) + 0.03;
+        if (k >= 2 && IS20[k - 2]) sq(c - (c % 2), r - (r % 2), 2, y); else sq(c, r, 1, y);
+      }
+      const yt = TOP();
+      for (const [dx, dz] of [[0, 0], [1, 0], [1, 1], [0, 1]]) pos.push(c + dx - N / 2, 0, r + dz - N / 2, c + dx - N / 2, yt, r + dz - N / 2);
+    }
+    colLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    colLines.geometry.setDrawRange(0, pos.length / 3);
+    updateMarker();
+  }
+  function updateMarker() {
+    if (!marker) return;
+    const p = hover ?? pinned, j = points && p != null ? points.userData.at.get(p) : undefined;
+    if (j === undefined || morph < 0.5) { marker.visible = false; return; }
+    const a = points.geometry.attributes.position, mp = marker.geometry.attributes.position;
+    mp.setXYZ(0, a.getX(j), a.getY(j), a.getZ(j)); mp.needsUpdate = true; marker.visible = true;
+  }
+  function updateFocus() {
+    if (!focusLines) return;
+    if (!focus || view !== "cube") { focusLines.geometry.setDrawRange(0, 0); return; }
+    const pos = [];
+    for (let k = 0; k < L; k++) {
+      const y = layerY(k) + 0.05;
+      for (const ring of focus.rings) for (let i = 0; i < ring.length - 1; i++) {
+        pos.push(ring[i][0] - N / 2, y, ring[i][1] - N / 2, ring[i + 1][0] - N / 2, y, ring[i + 1][1] - N / 2);
+      }
+    }
+    focusLines.geometry.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    focusLines.geometry.setDrawRange(0, pos.length / 3);
+  }
+
+  // ---- spectral space
+  const BOX = 26, SPEC_Y = 27;
+  let specState = null;
+  function specRange() {
+    const vals = [];
+    for (const a of axes) for (let p = 0; p < N * N; p++) {
+      if (!onRoof(p)) continue;
+      const v = values === "contrast" ? con(a, p) : refl(a, p);
+      if (isFinite(v)) vals.push(values === "contrast" ? Math.abs(v) : v);
+    }
+    vals.sort((x, y) => x - y);
+    if (values === "contrast") { const R = vals[Math.floor(vals.length * 0.96)]; return {lo: -R, hi: R}; }
+    return {lo: vals[Math.floor(vals.length * 0.01)], hi: vals[Math.floor(vals.length * 0.99)]};
+  }
+  function specPos(v3, rg) {
+    const m = (rg.lo + rg.hi) / 2, h = (rg.hi - rg.lo) / 2;
+    return [(v3[0] - m) / h * BOX, SPEC_Y + (v3[1] - m) / h * BOX, (v3[2] - m) / h * BOX];
+  }
+  function pixVal(a, p) { return values === "contrast" ? con(a, p) : refl(a, p); }
+  function buildPoints() {
+    if (points) { scene.remove(points); points.geometry.dispose(); }
+    const rg = specRange(), idx = [];
+    for (let p = 0; p < N * N; p++) if (onRoof(p) && axes.every(a => isFinite(pixVal(a, p)))) idx.push(p);
+    idx.sort((a, b) => f10(a) - f10(b));
+    const cube = new Float32Array(idx.length * 3), spec = new Float32Array(idx.length * 3);
+    idx.forEach((p, j) => {
+      const r = Math.floor(p / N), c = p % N;
+      cube.set([c + 0.5 - N / 2, layerY(1) + 0.1, r + 0.5 - N / 2], j * 3);
+      const v = specPos(axes.map(a => Math.max(rg.lo, Math.min(rg.hi, pixVal(a, p)))), rg);
+      spec.set(v, j * 3);
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(idx.length * 3), 3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(idx.length * 3), 3));
+    const mat = new THREE.PointsMaterial({size: 5 * renderer.getPixelRatio(), sizeAttenuation: false,
+      vertexColors: true, map: dotTex, alphaTest: 0.5});
+    points = new THREE.Points(g, mat);
+    points.userData = {idx, cube, spec, at: new Map(idx.map((p, j) => [p, j]))};
+    scene.add(points);
+    specState = {rg};
+    recolorPoints(); applyMorph(); buildSpecDecor();
+  }
+  function recolorPoints() {
+    const stops = ["--seq-1", "--seq-2", "--seq-3"].map(n => rgb(tok(n)));
+    const zero = mix(rgb(tok("--muted")), rgb(tok("--stage")), 0.45);
+    const col = points.geometry.attributes.color;
+    points.userData.idx.forEach((p, j) => {
+      const f = f10(p), c = f > 0 ? ramp(stops, 0.15 + 0.85 * f) : zero;
+      col.setXYZ(j, c[0] / 255, c[1] / 255, c[2] / 255);
+    });
+    col.needsUpdate = true;
+  }
+  function jacobi3(A) {
+    const a = A.map(r => r.slice()), v = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (let sweep = 0; sweep < 30; sweep++) {
+      for (const [p, q] of [[0, 1], [0, 2], [1, 2]]) {
+        if (Math.abs(a[p][q]) < 1e-14) continue;
+        const th = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+        const t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th * th + 1));
+        const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+        for (let k = 0; k < 3; k++) { const akp = a[k][p], akq = a[k][q]; a[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq; }
+        for (let k = 0; k < 3; k++) { const apk = a[p][k], aqk = a[q][k]; a[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk; }
+        for (let k = 0; k < 3; k++) { const vkp = v[k][p], vkq = v[k][q]; v[k][p] = c * vkp - s * vkq; v[k][q] = s * vkp + c * vkq; }
+      }
+    }
+    return {vals: [a[0][0], a[1][1], a[2][2]], vecs: [0, 1, 2].map(j => [v[0][j], v[1][j], v[2][j]])};
+  }
+  function buildSpecDecor() {
+    if (!specGroup || !specState) return;
+    while (specGroup.children.length) { const o = specGroup.children.pop(); o.geometry && o.geometry.dispose(); }
+    specLabels.forEach(l => l.el.remove()); specLabels = [];
+    const rg = specState.rg, ink = new THREE.Color(tok("--muted")), acc = new THREE.Color(tok("--accent"));
+    const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(2 * BOX, 2 * BOX, 2 * BOX)),
+      new THREE.LineBasicMaterial({color: ink, transparent: true, opacity: 0.35}));
+    box.position.y = SPEC_Y; specGroup.add(box);
+    const base = values === "contrast" ? [0, 0, 0] : axes.map(a => BANDS[a].roof);
+    const o = specPos(base, rg);
+    // axis lines through the roof point, so "away from the roofs" reads directly
+    const ax = [];
+    ax.push(-BOX, o[1], o[2], BOX, o[1], o[2], o[0], SPEC_Y - BOX, o[2], o[0], SPEC_Y + BOX, o[2], o[0], o[1], -BOX, o[0], o[1], BOX);
+    const axG = new THREE.BufferGeometry(); axG.setAttribute("position", new THREE.Float32BufferAttribute(ax, 3));
+    specGroup.add(new THREE.LineSegments(axG, new THREE.LineBasicMaterial({color: ink, transparent: true, opacity: 0.7})));
+    // the mixing line: roofs + cover x PV contrast, cover 0 to 1
+    const delta = axes.map(a => BANDS[a].delta);
+    const tip3 = specPos(base.map((v, i) => v + delta[i]), rg);
+    const a3 = new THREE.Vector3(...o), b3 = new THREE.Vector3(...tip3), len = a3.distanceTo(b3);
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, len, 10),
+      new THREE.MeshBasicMaterial({color: acc, depthTest: false}));
+    tube.position.copy(a3).lerp(b3, 0.5);
+    tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b3.clone().sub(a3).normalize());
+    tube.renderOrder = 12; specGroup.add(tube);
+    const ticks = [0.25, 0.5, 0.75, 1].map(f => specPos(base.map((v, i) => v + f * delta[i]), rg));
+    const tg = new THREE.BufferGeometry(); tg.setAttribute("position", new THREE.Float32BufferAttribute(ticks.flat(), 3));
+    const tk = new THREE.Points(tg, new THREE.PointsMaterial({color: acc, size: 10 * renderer.getPixelRatio(), sizeAttenuation: false, map: dotTex, alphaTest: 0.5, depthTest: false}));
+    tk.renderOrder = 12; specGroup.add(tk);
+    addLabel("<b style='color:inherit'>pixel fully covered by PV</b>", "mix", new THREE.Vector3(tip3[0] + 1, tip3[1] - 1, tip3[2]), specLabels);
+    // 2 sigma spread of PV-free roofs, contrast view only
+    if (values === "contrast") {
+      const pts = [];
+      for (let p = 0; p < N * N; p++) {
+        if (f10(p) > 0 || roofc(p) < 0.5) continue;
+        const v = axes.map(a => con(a, p)); if (v.every(isFinite)) pts.push(v);
+      }
+      const mu = [0, 1, 2].map(i => pts.reduce((s, v) => s + v[i], 0) / pts.length);
+      const C = [0, 1, 2].map(i => [0, 1, 2].map(j => pts.reduce((s, v) => s + (v[i] - mu[i]) * (v[j] - mu[j]), 0) / (pts.length - 1)));
+      const {vals, vecs} = jacobi3(C), ring = [];
+      for (const [i, j] of [[0, 1], [0, 2], [1, 2]]) {
+        const ri = 2 * Math.sqrt(Math.max(vals[i], 0)), rj = 2 * Math.sqrt(Math.max(vals[j], 0));
+        for (let s = 0; s < 72; s++) {
+          for (const th of [s / 72 * 2 * Math.PI, (s + 1) / 72 * 2 * Math.PI]) {
+            const v = [0, 1, 2].map(k => mu[k] + ri * Math.cos(th) * vecs[i][k] + rj * Math.sin(th) * vecs[j][k]);
+            ring.push(...specPos(v, rg));
+          }
+        }
+      }
+      const eg = new THREE.BufferGeometry(); eg.setAttribute("position", new THREE.Float32BufferAttribute(ring, 3));
+      const ell = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({color: new THREE.Color(tok("--div-pos")), transparent: true, opacity: 0.9, depthTest: false}));
+      ell.renderOrder = 11; specGroup.add(ell);
+    }
+    // axis titles and end ticks
+    const unit = values === "contrast" ? "contrast" : "reflectance";
+    const name = a => `${BANDS[a].name} ${BANDS[a].nm} nm`;
+    const sgn = v => (values === "contrast" && v > 0 ? "+" : "") + v.toFixed(2);
+    addLabel(`${name(axes[0])} &middot; ${unit}`, "axis", new THREE.Vector3(BOX + 2, o[1], o[2]), specLabels);
+    addLabel(`${name(axes[1])} &middot; ${unit}`, "axis", new THREE.Vector3(o[0], SPEC_Y + BOX + 2, o[2]), specLabels);
+    addLabel(`${name(axes[2])} &middot; ${unit}`, "axis", new THREE.Vector3(o[0], o[1], BOX + 2), specLabels);
+    addLabel(sgn(rg.lo), "tick", new THREE.Vector3(-BOX, o[1] - 2.5, o[2]), specLabels);
+    addLabel(sgn(rg.hi), "tick", new THREE.Vector3(BOX, o[1] - 2.5, o[2]), specLabels);
+    addLabel(sgn(rg.lo), "tick", new THREE.Vector3(o[0] + 1, SPEC_Y - BOX, o[2]), specLabels);
+    addLabel(sgn(rg.lo), "tick", new THREE.Vector3(o[0], o[1] - 2.5, -BOX), specLabels);
+    applyMorph();
+  }
+
+  function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function applyMorph() {
+    const e = ease(morph);
+    layers.forEach((ly, k) => {
+      const on = k >= peel;
+      ly.mesh.material.opacity = 0.95 * (1 - e); ly.edge.material.opacity = 0.5 * (1 - e);
+      ly.mesh.visible = ly.edge.visible = on && e < 0.999; ly.lab.alpha = on ? 1 - e : 0;
+    });
+    if (points) {
+      const {cube, spec} = points.userData, pos = points.geometry.attributes.position;
+      for (let j = 0; j < pos.count; j++) {
+        pos.setXYZ(j, cube[j * 3] + (spec[j * 3] - cube[j * 3]) * e,
+          cube[j * 3 + 1] + (spec[j * 3 + 1] - cube[j * 3 + 1]) * e,
+          cube[j * 3 + 2] + (spec[j * 3 + 2] - cube[j * 3 + 2]) * e);
+      }
+      pos.needsUpdate = true;
+      points.visible = morph > 0.001;
+      points.geometry.computeBoundingSphere();
+    }
+    if (specGroup) {
+      specGroup.visible = e > 0.02;
+      specGroup.children.forEach(o => { o.material.transparent = true; o.material.opacity = (o.userData.base ?? (o.userData.base = o.material.opacity)) * e; });
+    }
+    specLabels.forEach(l => { l.alpha = e; });
+    updateMarker();
+  }
+
+  // ---- render loop and labels
+  const v3 = hasGL ? new THREE.Vector3() : null;
+  function placeLabels() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    for (const it of labelItems.concat(specLabels)) {
+      v3.copy(it.pos).project(camera);
+      const vis = v3.z < 1 && it.alpha > 0.02;
+      it.el.style.opacity = vis ? it.alpha : 0;
+      if (vis) it.el.style.transform = `translate(${((v3.x + 1) / 2 * w).toFixed(1)}px, ${((1 - v3.y) / 2 * h - 7).toFixed(1)}px)`;
+    }
+  }
+  function resize() {
+    if (!renderer) return;
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  function frameCamera() {
+    const aspect = stage.clientWidth / stage.clientHeight;
+    const dist = 158 / Math.min(1, aspect * 0.95);
+    const dir = new THREE.Vector3(0.62, 0.5, 0.78).normalize();
+    const shift = aspect > 1.1 ? 11 : 4;
+    controls.target.set(0.78 * shift, view === "cube" ? TOP() / 2 : SPEC_Y, -0.62 * shift);
+    camera.position.copy(controls.target).addScaledVector(dir, dist);
+    controls.update();
+  }
+  let lastT = 0, readyFlag = false;
+  function loop(t) {
+    const dt = Math.min(0.05, (t - lastT) / 1000 || 0); lastT = t;
+    if (morph !== morphTarget) {
+      morph = REDUCE ? morphTarget : clamp(morph + Math.sign(morphTarget - morph) * dt / 1.3, 0, 1);
+      applyMorph();
+    }
+    controls.update();
+    renderer.render(scene, camera);
+    placeLabels();
+    if (!readyFlag) { readyFlag = true; document.documentElement.dataset.ready = "1"; }
+    requestAnimationFrame(loop);
+  }
+
+  // ---- picking
+  const ray = hasGL ? new THREE.Raycaster() : null;
+  if (ray) ray.params.Points.threshold = 0.7;
+  function pick(evt) {
+    const r = canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((evt.clientX - r.left) / r.width) * 2 - 1, -((evt.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    if (morph < 0.5) {
+      const hit = ray.intersectObjects(layers.filter(l => l.mesh.visible).map(l => l.mesh), false)[0];
+      if (!hit) return null;
+      const c = Math.floor(hit.point.x + N / 2), rr = Math.floor(hit.point.z + N / 2);
+      return c >= 0 && c < N && rr >= 0 && rr < N ? rr * N + c : null;
+    }
+    if (!points) return null;
+    const hit = ray.intersectObject(points)[0];
+    return hit ? points.userData.idx[hit.index] : null;
+  }
+  let downAt = null;
+  canvas.addEventListener("pointerdown", e => { downAt = [e.clientX, e.clientY]; });
+  canvas.addEventListener("pointermove", e => {
+    if (!renderer || e.buttons) return;
+    const p = pick(e);
+    if (p !== hover) { hover = p; updateColumn(); inspect(hover ?? pinned, hover != null); }
+  });
+  canvas.addEventListener("pointerleave", () => { hover = null; updateColumn(); inspect(pinned, false); });
+  canvas.addEventListener("pointerup", e => {
+    if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+    const p = pick(e); if (p == null) return;
+    pinned = p; hover = null;
+    const owner = W.owner[p];
+    setFocus(owner >= 0 && polyBy.has(owner) ? polyBy.get(owner) : null, false);
+    updateColumn(); inspect(pinned, false);
+  });
+
+  // ---------------------------------------------------------------- inspector
+  function setFocus(poly, pinBest) {
+    focus = poly;
+    if (poly && pinBest) pinned = poly.best[0] * N + poly.best[1];
+    updateFocus(); updateColumn(); inspect(pinned, false); renderList();
+  }
+  function inspect(p, isHover) {
+    if (p == null) return;
+    const r = Math.floor(p / N), c = p % N;
+    $("iTitle").textContent = `Pixel ${r + 1}, ${c + 1} of ${N} × ${N}`;
+    $("iTag").textContent = isHover ? "hover" : "pinned";
+    $("cv10").textContent = pct(f10(p)); $("cv20").textContent = pct(f20(p)); $("cvRoof").textContent = pct(roofc(p));
+    const own = W.owner[p], poly = own >= 0 ? polyBy.get(own) : null;
+    $("iArr").innerHTML = poly
+      ? `Mostly covered by an array of <b>${fmt(poly.area)} m²</b> (${poly.place || "unplaced"}). Its best pixel is ${pct(poly.bf10)} PV at 10 m and ${pct(poly.bf20)} at 20 m.`
+      : `No mapped PV in this pixel.`;
+    pill("p10", s10(p), "10 m pixel, 4 bands combined");
+    pill("p20", s20(p), "20 m pixel, all 10 bands combined");
+    drawSpectrum(p);
+  }
+  function pill(id, s, label) {
+    const yes = isFinite(s) && s >= 2;
+    $(id).classList.toggle("yes", yes);
+    $(id + "t").textContent = `${label}: ${!isFinite(s) ? "no roof background nearby" : yes ? "stands out from the roofs" : "within roof-to-roof variation"}`;
+    $(id + "v").textContent = isFinite(s) ? `${s >= 0 ? "+" : ""}${s.toFixed(1)}σ` : "";
+  }
+  function drawSpectrum(p) {
+    const svg = $("spec"); svg.innerHTML = "";
+    const w = Math.max(280, svg.clientWidth || 330), h = 190, m = {l: 38, r: 8, t: 14, b: 34};
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    const pix = BANDS.map((_, b) => refl(b, p));
+    const bg = BANDS.map((_, b) => { const c = con(b, p); return isFinite(c) ? refl(b, p) - c : NaN; });
+    const model = BANDS.map((bd, b) => bg[b] + (IS20[b] ? f20(p) : f10(p)) * bd.delta);
+    const all = pix.concat(bg, model).filter(isFinite);
+    let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * 0.12 + 0.005; lo -= pad; hi += pad;
+    const X = i => m.l + (i + 0.5) * (w - m.l - m.r) / NB, Y = v => m.t + (hi - v) / (hi - lo) * (h - m.t - m.b);
+    const bw = (w - m.l - m.r) / NB;
+    BANDS.forEach((b, i) => { if (IS20[i]) el("rect", {x: X(i) - bw / 2, y: m.t, width: bw, height: h - m.t - m.b, class: "shade20"}, svg); });
+    const ticks = 4;
+    for (let k = 0; k <= ticks; k++) {
+      const v = lo + (hi - lo) * k / ticks;
+      el("line", {x1: m.l, x2: w - m.r, y1: Y(v), y2: Y(v), class: "grid"}, svg);
+      txt(svg, m.l - 5, Y(v) + 3, v.toFixed(2), {"text-anchor": "end"});
+    }
+    BANDS.forEach((b, i) => {
+      txt(svg, X(i), h - m.b + 13, b.name.replace("B0", "B"), {"text-anchor": "middle", class: "t-ink"});
+      txt(svg, X(i), h - m.b + 25, String(b.nm), {"text-anchor": "middle"});
+    });
+    txt(svg, X(3) - bw / 2, m.t - 4, "20 m bands shaded");
+    const path = (vals, cls) => {
+      let d = "", pen = false;
+      vals.forEach((v, i) => { if (!isFinite(v)) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + "," + Y(v).toFixed(1); pen = true; });
+      el("path", {d, class: cls}, svg);
+    };
+    path(bg, "l-roof"); path(model, "l-model"); path(pix, "l-pix");
+    pix.forEach((v, i) => el("circle", {cx: X(i), cy: Y(v), r: 4, class: "d-pix"}, svg));
+    BANDS.forEach((b, i) => {
+      const hit = el("rect", {x: X(i) - bw / 2, y: m.t, width: bw, height: h - m.t - m.b, class: "hit"}, svg);
+      hit.addEventListener("pointermove", ev => showTip(ev,
+        `<b>${b.name}, ${b.nm} nm, ${b.res} m</b><br>this pixel ${pix[i].toFixed(3)}<br>nearby roofs ${isFinite(bg[i]) ? bg[i].toFixed(3) : "n/a"}` +
+        `<br>contrast ${isFinite(bg[i]) ? (pix[i] - bg[i] >= 0 ? "+" : "") + (pix[i] - bg[i]).toFixed(3) : "n/a"} (roof spread σ ${b.sigma.toFixed(3)})`));
+      hit.addEventListener("pointerleave", hideTip);
+    });
+  }
+  function renderList() {
+    const box = $("alist"); box.innerHTML = "";
+    const hd = document.createElement("button"); hd.className = "hd"; hd.tabIndex = -1; hd.type = "button";
+    hd.innerHTML = "<span>Array</span><span>10 m cover</span><span>20 m cover</span><span>20 m score</span>";
+    box.appendChild(hd);
+    D.polys.slice().sort((a, b) => a.area - b.area).forEach(p => {
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "listitem");
+      if (focus && focus.i === p.i) b.setAttribute("aria-current", "true");
+      b.innerHTML = `<span>${fmt(p.area)} m²</span><span>${pct(p.bf10)}</span><span>${pct(p.bf20)}</span><span>${p.s20 == null ? "n/a" : (p.s20 >= 0 ? "+" : "") + p.s20.toFixed(1) + "σ"}</span>`;
+      b.addEventListener("click", () => setFocus(p, true));
+      box.appendChild(b);
+    });
+  }
+
+  // ---------------------------------------------------------------- controls
+  function setPressed(a, b, on) { $(a).setAttribute("aria-pressed", String(on)); $(b).setAttribute("aria-pressed", String(!on)); }
+  function setView(v) {
+    view = v; setPressed("mCube", "mSpec", v === "cube");
+    $("spaceCtl").hidden = v !== "cube"; $("axesCtl").hidden = v === "cube";
+    if (!renderer) return;
+    if (v === "spec" && !points) buildPoints();
+    morphTarget = v === "spec" ? 1 : 0;
+    controls.target.y = v === "cube" ? TOP() / 2 : SPEC_Y;
+    updateColumn(); updateFocus(); legend();
+  }
+  $("mCube").addEventListener("click", () => setView("cube"));
+  $("mSpec").addEventListener("click", () => setView("spec"));
+  function setValues(v) {
+    values = v; setPressed("vCon", "vRef", v === "contrast");
+    if (!renderer) return;
+    paintBands(); if (points) buildPoints(); legend();
+  }
+  $("vCon").addEventListener("click", () => setValues("contrast"));
+  $("vRef").addEventListener("click", () => setValues("reflectance"));
+  $("spacing").addEventListener("input", e => {
+    spacing = Number(e.target.value); if (!renderer) return;
+    positionLayers(); controls.target.y = TOP() / 2;
+    if (points) buildPoints();
+  });
+  const layerName = k => k === 0 ? "mapped PV" : k === 1 ? "PV cover" : `${BANDS[k - 2].name} ${BANDS[k - 2].nm} nm`;
+  $("peel").addEventListener("input", e => {
+    peel = Number(e.target.value); $("peelOut").textContent = `top: ${layerName(peel)}`;
+    if (renderer) applyMorph();
+  });
+  ["ax0", "ax1", "ax2"].forEach((id, k) => {
+    const s = $(id);
+    BANDS.forEach((b, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `${b.name} ${b.nm} nm`; s.appendChild(o); });
+    s.value = axes[k];
+    s.addEventListener("change", () => { axes[k] = Number(s.value); if (renderer) buildPoints(); });
+  });
+  function legend() {
+    const lg = $("legend"), grad = names => `linear-gradient(90deg, ${names.map(n => tok(n)).join(", ")})`;
+    const cover = `<span class="ramp"><span>PV cover</span><span class="bar" style="background:${grad(view === "cube" ? ["--seq-0", "--seq-1", "--seq-2", "--seq-3"] : ["--seq-1", "--seq-2", "--seq-3"])}"></span><span class="tk">0 → 100%</span></span>`;
+    if (view === "cube") {
+      const bands = values === "contrast"
+        ? `<span class="ramp"><span class="tk">−${CON_RANGE}</span><span class="bar" style="background:linear-gradient(90deg, ${tok("--div-neg")}, ${tok("--div-mid")}, ${tok("--div-pos")})"></span><span class="tk">+${CON_RANGE}</span><span>← darker than nearby roofs, as PV is · brighter → · pixels that are not roof dimmed</span></span>`
+        : `<span class="ramp"><span class="bar" style="background:linear-gradient(90deg, ${tok("--gray-0")}, ${tok("--gray-1")})"></span><span>reflectance, each band stretched 2–98%</span></span>`;
+      lg.innerHTML = `<span><i class="sw" style="background:var(--pv)"></i>mapped PV <i class="sw" style="background:var(--roof);margin-left:10px"></i>roofs</span>${cover}${bands}`;
+    } else {
+      lg.innerHTML = `${cover}<span><i class="ln"></i>roofs + cover × PV contrast, ticks every 25%</span>` +
+        (values === "contrast" ? `<span><i class="ln" style="border-color:var(--div-pos)"></i>PV-free roofs, 2σ along each principal axis</span>` : "") +
+        `<span class="muted">Each dot is one 10 m pixel of the window that is mostly roof or holds mapped PV.</span>`;
+    }
+  }
+
+  function method() {
+    $("method").innerHTML = `
+      <p><b>Pixels.</b> The Sentinel-2 L2A composite EarthPV reads for cell <code>${M.cell}</code>, ten bands on a 10 m grid
+      (${M.crs}). The six native-20 m bands are stored as 2&times;2 blocks of identical values, aligned to even pixel
+      indices; the script checks this before it uses them. Reflectance is DN minus the 1,000 offset, over 10,000.</p>
+      <p><b>PV and roofs.</b> All ${M.n_arrays} solar arrays mapped in OpenStreetMap inside the ${placeName} calibration area
+      (${M.area_km2} km&sup2;, declared complete), and VIDA Open Buildings footprints. Both are rasterised at 1 m on the
+      composite's grid and averaged up, so a pixel's PV cover is the share of its area under mapped panels.</p>
+      <p><b>Contrast.</b> For each pixel and band: its reflectance minus the median of nearby PV-free roof pixels (at least
+      half roof, not touching mapped PV), within 50 m for 10 m bands and 60 m for 20 m bands, widened where none is near.
+      Fitting contrast against PV cover through the origin gives the contrast PV would cause at full cover. The spread
+      &sigma; is 1.4826 &times; the median absolute deviation of the same contrast over PV-free roofs: how much roofs
+      differ from their neighbours, which a detector has to beat, rather than sensor noise.</p>
+      <p><b>Thresholds.</b> PV clears 2&sigma; when cover &times; |contrast at full cover| reaches 2&sigma;. The combined
+      scores are matched filters: bands weighted by the inverse covariance of roof-to-roof contrast, scaled so PV-free roofs
+      have unit spread. ${pct(MF.fa20)}&ndash;${pct(MF.fa10)} of PV-free roofs clear 2&sigma; by chance.</p>
+      <p><b>Limits.</b> Every number is fitted and tested on the same area, so it describes ${placeName}'s bright concrete
+      roofs, not Pakistan. The background is built from roofs the mapping shows to be PV-free, which a deployed model cannot
+      know: in practice PV clusters, so a roof's neighbours often carry panels too and subtracting them cancels part of the
+      signal. Read the thresholds as a best case for a single pixel. Mapping is complete as of its imagery date, so PV installed since then counts as roof and makes
+      &sigma; slightly larger. EarthPV's own small-installation classifier works per building rather than per pixel,
+      averaging every pixel under a footprint, which is how it reads arrays this page shows a single pixel cannot.</p>`;
+    $("src").textContent = `Generated by scripts/build_pvscope.py. Window centre ${M.lat} N, ${M.lon} E, ${N} × ${N} pixels (${N * 10} m). ` +
+      `Sentinel-2: Copernicus. Solar arrays: OpenStreetMap contributors, ODbL. Buildings: VIDA Open Buildings.`;
+  }
+
+  // ---------------------------------------------------------------- boot
+  drawHist(); method();
+  const inner = p => p.best.every(v => v >= 6 && v < N - 6);
+  const start = D.polys.filter(p => inner(p) && p.area >= 120 && p.area <= 400 && p.s20 != null && p.s20 >= 2)
+      .sort((a, b) => (a.s10 >= 2) - (b.s10 >= 2) || a.area - b.area)[0]
+    || D.polys.filter(inner).sort((a, b) => b.area - a.area)[0] || D.polys[0];
+  focus = start; pinned = start.best[0] * N + start.best[1];
+  renderList(); inspect(pinned, false);
+  legend();
+  if (renderer) {
+    initScene(); resize(); frameCamera(); updateFocus(); updateColumn();
+    requestAnimationFrame(loop);
+  } else {
+    stage.insertAdjacentHTML("beforeend", `<div class="stage-msg">The 3D view needs WebGL and the three.js library, which did not load here. The inspector and the charts below still work.</div>`);
+    document.documentElement.dataset.ready = "1";
+  }
+  let rT = null;
+  window.addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(() => { resize(); drawHist(); inspect(hover ?? pinned, hover != null); }, 120); });
+  const retheme = () => { legend(); if (renderer) { paintAll(); retheme3D(); } inspect(hover ?? pinned, hover != null); };
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme);
+  new MutationObserver(retheme).observe(document.documentElement, {attributes: true, attributeFilter: ["data-theme"]});
+})();
+</script>

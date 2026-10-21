@@ -168,6 +168,7 @@ nav:
       - Detection model: methods/detection.md
       - Segmentation & the building map: methods/segmentation.md
       - Rooftop classifier (roofclf): methods/roofclf.md
+      - PVscope: methods/pvscope.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md
       - Validation against the French register: methods/france-validation.md

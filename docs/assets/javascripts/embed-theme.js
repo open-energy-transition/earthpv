@@ -70,6 +70,30 @@
     for (var i = 0; i < frames.length; i++) syncFrame(frames[i]);
   }
 
+  // An embed marked `.embed.fit` is sized to its own content instead of scrolling inside
+  // the fixed 760 px box, for a page whose 3D view zooms on scroll and would otherwise
+  // fight the frame's own scrolling (PVscope). It measures <body>, not scrollHeight:
+  // scrollHeight never drops below the frame's current height, so a frame sized that
+  // way can grow but never shrink back after the reader widens the window.
+  function fitFrame(frame) {
+    var doc;
+    try {
+      doc = frame.contentDocument;
+    } catch (err) {
+      return;
+    }
+    if (!doc || !doc.body || doc.location.href === "about:blank") return;
+    var apply = function () {
+      var h = Math.ceil(doc.body.getBoundingClientRect().height);
+      if (h > 0) frame.style.height = h + "px";
+    };
+    apply();
+    if (!frame.dataset.pvFitObserved && frame.contentWindow.ResizeObserver) {
+      frame.dataset.pvFitObserved = "1";
+      new frame.contentWindow.ResizeObserver(apply).observe(doc.body);
+    }
+  }
+
   function attach() {
     var frames = document.querySelectorAll(".embed iframe");
     for (var i = 0; i < frames.length; i++) {
@@ -77,8 +101,10 @@
       if (!frame.dataset.pvThemeBound) {
         frame.dataset.pvThemeBound = "1";
         frame.addEventListener("load", syncFrame.bind(null, frame));
+        if (frame.closest(".embed.fit")) frame.addEventListener("load", fitFrame.bind(null, frame));
       }
       syncFrame(frame); // already loaded from cache, or a no-op before load
+      if (frame.closest(".embed.fit")) fitFrame(frame);
     }
 
     // Material rewrites the attribute in place when the palette toggle is used. <body>

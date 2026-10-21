@@ -2525,6 +2525,10 @@ INTERACTIVE = [
     # docs/results/morocco.md explains.
     ("results/morocco_pv_evidence_atlas.html", "morocco_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
+    # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
+    # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;
+    # docs/methods/pvscope.md embeds it.
+    ("results/pakistan_pvscope.html", "pvscope.html"),
 ]
 
 
