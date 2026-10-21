@@ -83,23 +83,14 @@
       return;
     }
     if (!doc || !doc.body || doc.location.href === "about:blank") return;
-    // Inside a frame sized to its content, the page's own `vh` is the frame's height, so
-    // it cannot size anything to the reader's screen. `--avail` hands it the height left
-    // below the site header instead; PVscope sizes its 3D view from it.
-    var setAvail = function () {
-      var top = frame.getBoundingClientRect().top + window.scrollY;
-      doc.documentElement.style.setProperty("--avail", Math.max(480, window.innerHeight - top) + "px");
-    };
     var apply = function () {
       var h = Math.ceil(doc.body.getBoundingClientRect().height);
       if (h > 0) frame.style.height = h + "px";
     };
-    setAvail();
     apply();
     if (!frame.dataset.pvFitObserved && frame.contentWindow.ResizeObserver) {
       frame.dataset.pvFitObserved = "1";
       new frame.contentWindow.ResizeObserver(apply).observe(doc.body);
-      window.addEventListener("resize", setAvail);
     }
   }
 
