@@ -218,6 +218,8 @@ TEMPLATE = """
   {aoi}:
     bbox: [{minx}, {miny}, {maxx}, {maxy}]
     division: {{ name: {division}, country: {iso2}, subtype: {subtype}, iso3: {iso3} }}
+    # Filled by scripts/pick_val_region.py --write, which only writes into an empty list.
+    val_tiles: []
 """
 
 
