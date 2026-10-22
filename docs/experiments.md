@@ -128,6 +128,9 @@ repository; nothing was deleted on failure.
 | Glint-mined roofclf hard negatives | <span class="outcome negative">rejected</span> | 126 negatives at 1.2% contamination moved held-out AUC by 0.0003. Quantity, not quality, is the binding constraint. |
 | OSM as a complete reference in Germany | <span class="outcome negative">rejected</span> | 3.6% complete by unit count; implied kWp/m² unstable by more than the constant itself. |
 | [A sub-400 m² level without quadrats](#a-sub-400-m2-level-without-quadrats-from-osm-and-a-past-epoch-2026-10-20) | <span class="outcome negative">rejected</span> | The same roofs in 2021 are not negatives: roofclf's 2021 score predicts today's PV at AUC 0.83 against 0.87. |
+| [Google's AlphaEarth satellite embeddings in roofclf](#alphaearth-embeddings-propensity-not-panels-2026-10-22) | <span class="outcome negative">rejected</span> | Adding the 2025 embedding: -0.0003 AUC, 14 of 29 folds, recall at precision 0.5 down 0.017. The pre-boom 2021 embedding does as well, so what little it adds is propensity. |
+| [AlphaEarth change as a ground-mount precision check](#alphaearth-change-finds-unmapped-ground-mount-2026-10-22) | <span class="outcome mixed">partial</span> | 2017-to-2025 change separates real ground arrays from their surroundings at AUC 0.96, and a blind review puts the real share of unmapped ground detections at about 0.15, where the precision table books 0.0. Not applied; needs your review. |
+| [AlphaEarth as a second >= 400 m2 detector](#alphaearth-against-segmentation-a-different-detector-not-a-better-one-2026-10-22) | <span class="outcome mixed">partial</span> | Not better overall: lower precision where PV is mixed with farmland (0.65-0.70 against 0.83-0.88), but equal precision and higher rooftop recall (0.51 against 0.35) on the quadrats, and it finds different arrays: the union lifts quadrat rooftop recall to 0.60. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
 | Low/Central/High/All-PV bracket atlas | <span class="outcome open">superseded</span> | Replaced by the two-tier evidence atlas, which sorts by standard of proof instead. |
@@ -1964,6 +1967,204 @@ every band (median over 60 cells). `roofclf.epoch_feature_frame(dn_offset=)` har
 see open question 16 for what it means for the growth atlas. Scripts:
 `scripts/transfer_calibration_pakistan_check.py`, `scripts/transfer_calibration_followups.py`,
 `scripts/transfer_calibration_pu_auc.py`. Results: `results/transfer_calibration/`.
+
+### AlphaEarth embeddings: propensity, not panels (2026-10-22)
+
+Google's Satellite Embedding dataset (AlphaEarth Foundations v2.1, CC-BY-4.0) gives every
+10 m pixel a 64-number, unit-length summary of one calendar year of Sentinel-2, Landsat,
+Sentinel-1 and other inputs, from 2017. It is the cheapest new input available: no training
+and no GPU, and the Source Cooperative mirror (`tge-labs/aef`, anonymous S3) needs no Earth
+Engine account. Each building got the area-weighted mean of the 64 channels over its
+footprint, with the same `preprocess.coverage_matrix` weights the shipped Sentinel-2 features
+use. Production 30-quadrat table, leave-one-quadrat-out, paired per fold against the shipped
+model. Every variant was declared in the script before measuring; the harness reproduces the
+shipped model exactly (0.8682 AUC, recall 0.658 at precision 0.5).
+
+| Block | AUC | Within size band | vs baseline | Folds better | Sign p | Recall at precision 0.5 | Rate error |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Baseline (shipped) | 0.8682 | 0.8194 | -- | -- | -- | 0.658 | 0.0286 |
+| **Plus AEF 2025 (primary)** | 0.8682 | 0.8214 | +0.0032 | 18 of 29 | 0.26 | 0.642 | 0.0346 |
+| Plus AEF 2024 | 0.8675 | 0.8220 | +0.0050 | 19 of 29 | 0.14 | 0.673 | 0.0372 |
+| Plus AEF 2021, pre-boom control | 0.8741 | 0.8241 | +0.0047 | 20 of 29 | 0.061 | 0.691 | 0.0292 |
+| Plus AEF 2025 and its change since 2021 | 0.8673 | 0.8295 | +0.0066 | 21 of 29 | 0.024 | 0.672 | 0.0264 |
+| Plus AEF 2025 over a 70 m box, not the footprint | 0.8701 | 0.8182 | -0.0007 | 14 of 29 | 1.00 | 0.608 | 0.0384 |
+| Size plus AEF 2025, no Sentinel-2 block | 0.7475 | 0.6424 | -0.1691 | 1 of 29 | < 0.001 | 0.030 | 0.0354 |
+| Gradient boosting, plus AEF 2025 against without | 0.8517 | 0.7908 | +0.0012 | 16 of 29 | 0.71 | 0.647 | 0.0292 |
+
+**The primary comparison is null.** -0.0003 AUC (14 of 29 folds, p = 1.00), +0.0032 within
+size band (p = 0.26), and the two quantities the product consumes both get worse: recall at
+the deployment precision falls 0.658 to 0.642 (quadrat bootstrap 95%: -0.066 to +0.034) and
+the median per-quadrat adoption-rate error rises 0.0286 to 0.0346. A non-linear head does not
+change that (+0.0012 within size band for gradient boosting).
+
+**The pre-boom control explains the rest.** Pakistan had imported 14% of today's panels by
+January 2022, so a 2021 embedding cannot see most mapped arrays; it scores at least as well
+as 2025 (2025 against 2021: -0.0016 within size band, 12 of 29 folds; recall -0.049, 95%
+-0.092 to -0.021). The one block that clears a sign test, 2025 plus the change since 2021, is
+2021 plus 2025 in a linear model, and against the 2021 levels alone it adds nothing (+0.0016,
+18 of 29, p = 0.26; Wilcoxon p = 0.13 against baseline). The direct check agrees: between
+2021 and 2025 the embedding of a footprint that gained PV moved exactly as far as one that
+did not (median cosine 0.9607 against 0.9604). What the embedding carries is the kind of roof
+and neighbourhood that adopts, which is what [roofclf's own 2021
+score](#a-sub-400-m2-level-without-quadrats-from-osm-and-a-past-epoch-2026-10-20) already
+showed the Sentinel-2 block carries.
+
+**It cannot replace the Sentinel-2 block.** Size plus the embedding reaches 0.6424 within size
+band against 0.8194 for size plus reflectance, and flags almost nothing at precision 0.5. The
+embedding is spatially smooth at roof scale: a footprint's mean embedding sits at cosine 0.992
+from the mean over the 70 m box around it, so for a median 68 m2 Pakistani footprint it
+mostly describes the block. The footprint is still marginally more informative than the box
+(+0.0029 within size band, 22 of 29, p = 0.008), but neither beats the baseline.
+
+**Large arrays are visible, small ones are not** (`scripts/aef_pixel_change_check.py`). On
+the AEF grid, pixels at least 75% covered by mapped PV moved further 2021 to 2025 than
+PV-free roof pixels more than 50 m from any PV (pooled AUC 0.653). That is carried by the
+industrial quadrats (Multan, Rahim Yar Khan, Sanghar, SITE and the Karachi coast, 0.78 to
+0.82); in the residential Islamabad and Lahore quadrats PV pixels moved LESS than distant
+roofs (0.30 to 0.49), where new construction dominates the change. Roof pixels within 20 m of
+PV moved less than distant ones (0.43), so the change does not smear into neighbours. An
+annual AEF change map might corroborate large arrays or ground-mount, which is a separate
+question from roofclf and was not tested.
+
+Closed for roofclf. Scripts: `scripts/run_aef_embedding_ablation.py`,
+`scripts/aef_pixel_change_check.py`. Results: `results/roofclf_aef_embedding.json` and
+`_folds.csv`, `results/roofclf_aef_pixel_change.json`. Embedding windows for the 30 quadrats
+(2021, 2024, 2025) are cached under `/home/tobi/earthpv_data/aef/`.
+
+### AlphaEarth change finds unmapped ground-mount (2026-10-22)
+
+The [roofclf test](#alphaearth-embeddings-propensity-not-panels-2026-10-22) closed the
+embedding for small roofs but left one lead: pixels under large mapped arrays do move
+between years. The place that could use it is the ground-mount precision table.
+`pakistan_candidate_precision.yaml` sets `p_unmapped = 0.0` in every ground bin, so every
+segmentation detection off a roof with no OSM feature within 100 m (about 4,300 of 5,200) is
+booked as false, because nothing independent had ever looked at them.
+
+**Data.** Scattered objects are unaffordable from the COG mirror (one band block per read,
+~38 MB per object-year), so this reads the Source Cooperative Zarr mosaic
+(`tge-labs/aef-mosaic`) by HTTP range request, ~2.5 MB per 256 x 256 chunk
+(`scripts/aef_mosaic.py`, no new dependency; it matches the COG values at Multan at median
+cosine 0.997). 2,215 chunks per year, 2017, 2021 and 2025.
+
+**Populations** (`scripts/aef_large_array_change.py`, declared and seeded): every candidate
+with OSM within 100 m (real), every rooftop candidate without, a size-proportional random
+1,000 of the 4,326 unmapped ground ones, and 500 per placement of the OSM arrays >= 400 m2
+that no candidate is within 100 m of (missed). Controls: each ground object's own polygon
+displaced 300 to 1,200 m, and two PV-free VIDA roofs >= 400 m2 within 2 km for each rooftop
+one (contaminated by unmapped PV, so rooftop AUCs are lower bounds). Scores: raw change
+`1 - cos(e2017, e2025)`, and two logistic models fitted real against controls with
+1-degree cells held out, one on the change vector alone (`learned`) and one adding the 2025
+levels (`learned_level`).
+
+| Real against controls, AUC | Raw change | Learned, change only | Learned, change and levels |
+| --- | --- | --- | --- |
+| Ground candidates (876) | 0.718 | 0.964 | 0.990 |
+| Rooftop candidates (1,126) | 0.624 | 0.884 | 0.918 |
+| Ground arrays segmentation missed (500) | 0.594 | 0.879 | 0.941 |
+| Rooftop arrays segmentation missed (500) | 0.610 | 0.824 | 0.855 |
+
+The direction of change carries the signal, not its size: raw change is weak, a model of
+which way an embedding moves when an array goes in is strong, from 0.83 below 500 m2 to 0.98
+at 5,000 to 50,000 m2 for ground. At the controls' 5% false-positive rate the change-only
+model recovers 54% of the ground arrays segmentation missed and 40% of the rooftop ones.
+That rate is against the land around them, not against look-alikes, so this is a
+corroborating score for an existing candidate set, not a detector.
+
+**The unmapped real share.** A threshold mixture (`pi = (P_unmapped - P_controls) / (P_real -
+P_controls)`) puts it at 0.19 (1,000-5,000 m2), 0.29 (5,000-50,000) and 0.13 (> 50,000) on
+the change-only score, about zero below 1,000 m2. That assumes a false positive changes like
+the land around it, so it was checked by a **blind review** (`scripts/aef_render_review_tiles.py`):
+60 shuffled Esri World Imagery panels under random codes, verdicts written before the key
+was opened.
+
+| Stratum (score above or below the controls' 95th percentile) | PV | No PV | Unsure |
+| --- | --- | --- | --- |
+| Mapped arrays, a check on the reviewer | 6 | 0 | 0 |
+| Displaced controls | 0 | 6 | 0 |
+| Unmapped, above | 7 | 12 | 5 |
+| Unmapped, below | 1 | 23 | 0 |
+
+The assumption fails, in the expected direction: the twelve false positives above threshold
+are motorways, riverbeds, dark rock, forest, an open-pit mine and a factory yard, which score
+higher than random land. Weighted back by stratum (31% of unmapped ground candidates >=
+1,000 m2 sit above), **the real share is 0.12 to 0.18** (unsure counted as no, then yes),
+below the mixture but far from 0.0. The review was a check on the method, by Claude from Esri
+imagery; it is not a calibration, and the strata were drawn on `learned_level`.
+
+Two leads came from the review and are post hoc, on 43 decided objects with 8 PV, so they
+are recorded, not adopted. **The change-only score separates them far better** (AUC 0.975
+against 0.857 with levels, 0.750 for raw change): forest, rock and mountain are static, and
+only levels let them look like a solar park. **And timing separates the rest**: 63% of real
+ground arrays changed mostly after 2021 against 39% of controls, and 75% of the reviewed
+unmapped PV did, while the motorways, rivers, mine and yard changed mostly before.
+
+**What it would mean, not applied.** At the table's current recall values, a ground
+`p_unmapped` of 0.12 to 0.18 in the bins >= 1,000 m2 adds very roughly 0.44 to 0.66 GWp to
+segmentation's ground estimate (1,135.6 MWp). Re-deriving that YAML is an owner decision and
+interacts with the pending same-placement recall fix
+([two errors that were cancelling](methods/mastr-validation.md#two-errors-that-were-cancelling)),
+which pushes the other way. The next step is a real
+review: `scripts/aef_ground_review_sample.py` has drawn 120 unmapped ground candidates, 40
+per tercile of the change-only score, each with its Esri capture date (81 of 120 from 2025
+or later), into `results/aef_ground_review/review.geojson` for JOSM.
+
+Results: `results/aef_large_array_change.json` (and `_scores.csv`, `_population.parquet`),
+`results/aef_ground_review/`. Embedding chunks are cached under
+`/home/tobi/earthpv_data/aef/mosaic_chunks/` (16.6 GB).
+
+### AlphaEarth against segmentation: a different detector, not a better one (2026-10-22)
+
+**The owner's review settles the ground-mount share.** The 120 unmapped ground candidates of
+`results/aef_ground_review/review.geojson` were reviewed in JOSM on Esri imagery and every
+validated array mapped into OSM; `scripts/aef_review_from_osm.py` reads the verdicts back
+(two agreeing Overpass answers, data base checked to postdate the edits). 67 solar features
+are new since the July snapshot. Weighted back by tercile of the change-only score, the real
+share of unmapped ground candidates is **0.26 under the precision table's own 100 m match
+convention and 0.13 if the new feature must touch the candidate** (0.27 and 0.14 at >= 1,000
+m2; undecidable old-imagery candidates excluded). Per tercile, strict: high 10 of 29, mid 1
+of 23, low 0 of 35. The change score ranks these verdicts at AUC 0.84 (0.89 strict); raw
+change at 0.53. Claude's blind review had said 0.12 to 0.18, i.e. it was applying the strict
+rule. Either way the table's 0.0 is measurably too low; at its current recall values 0.14 to
+0.27 is very roughly +0.5 to +1.0 GWp of ground-mount. Not applied.
+
+**Wall to wall** (`scripts/aef_vs_segmentation.py --national-negatives`). A per-pixel logistic
+over the frozen embedding (2025 levels and the change since 2017, positives from mapped
+arrays >= 400 m2, negatives from around them and from 60 random national cells, never within
+2 km of an evaluation area), against the production candidate set, on 20 uniformly random
+density cells, 20 random PV-rich cells and the Rule-1 quadrats. The first run drew negatives
+only around known PV and fired 300 to 1,300 times per 1,000 km2 of ordinary land; random-land
+negatives fixed that, which is the difference between a usable and an unusable detector here.
+
+| At tau 0.99 (declared: the first AEF threshold whose random-land burden is below segmentation's) | Segmentation | AlphaEarth |
+| --- | --- | --- |
+| Random cells: unmapped detections per 1,000 km2 | 8.5 | 5.7 |
+| PV-rich cells: precision, mapped lower bound | 0.755 | 0.606 |
+| PV-rich cells: precision with the reviewed share of unmapped | 0.83-0.88 | 0.65-0.70 |
+| PV-rich cells: recall, ground / rooftop | 0.68 / 0.43 | 0.47 / 0.48 |
+| Quadrats, exhaustive: precision | 0.952 | 0.969 |
+| Quadrats: recall, ground / rooftop | 0.63 / 0.35 | 0.59 / 0.51 |
+
+The reviewed share comes from a second blind review mixing 72 unmapped detections from both
+instruments (`scripts/aef_vs_seg_review.py`): in the PV-rich cells 7 of 24 of segmentation's
+were PV against 3 of 24 of AlphaEarth's, so the precision gap is not an artefact of OSM having
+been mapped from segmentation's leads.
+
+**What it adds is different arrays.** Arrays found by AlphaEarth and missed by segmentation
+lift union recall from 0.35 to 0.60 for rooftop and from 0.63 to 0.81 for ground in the
+quadrats, where its additions are 94% real; in the PV-rich cells from 0.43 to 0.63 and 0.68 to
+0.76, where they are about 0.4 real. The gain sits at 400 to 5,000 m2 (quadrats: 0.31 to 0.47
+at 400 to 1,000 m2, 0.56 to 0.83 at 1,000 to 5,000 m2). Its false positives are landscape
+change, roads, rivers, mines, construction, where segmentation's are spectral look-alikes.
+
+**Verdict: not a replacement and not a third capacity instrument; two roles.** A precision
+corroborator for segmentation's unmapped candidates, calibrated on the owner's review, and a
+leads generator for the human-validation workflow, aimed at urban and industrial cells. Its
+newest year is calendar 2025, so it cannot see the newest arrays, and a national wall-to-wall
+pass is ~0.5 TB from the Zarr mosaic, or a server-side job on Earth Engine.
+
+Results: `results/aef_ground_review/owner_review_summary.json`, `owner_verdicts.csv`;
+`results/aef_vs_segmentation_natneg.csv` (and the first run without random-land negatives,
+`aef_vs_segmentation.csv`); `results/aef_vs_seg_review/`.
 
 ## The partial result worth watching
 
