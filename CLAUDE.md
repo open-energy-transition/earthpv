@@ -767,6 +767,12 @@ country in `ATLASES`; each page's tier (Gold/Silver/Bronze) is read from the cal
 its own atlas carries (`atlas.VALIDATION_TIERS`), the switcher and the `--nav` block are grouped
 by tier, and Silver/Bronze pages open with a missing-small-installations warning and a call to
 map a calibration area. A new country is one row plus a rerun; never edit `docs/atlas*.md` by hand.
+A tier that is a judgement rather than a fact about the files goes in `configs/atlas/<aoi>.yaml`
+(`validation: {score, note}`, which beats `derive_validation_score` and is read by all three
+atlas builders and `apply_validation_badges.py`). **Germany is Silver since 2026-10-22**
+(owner decision): its register-calibrated small half fails its own register check, so the
+page carries a Germany-specific note (`build_atlas_pages.TIER_NOTE`) instead of the generic
+"no estimate below the floor".
 
 **Every evidence atlas shows an import ceiling** (2026-10-19, owner request): solar panels
 imported from China from Jan 2017 to the end of the imagery window, from Ember's customs-based

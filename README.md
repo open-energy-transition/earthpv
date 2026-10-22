@@ -49,8 +49,8 @@ up, so [maps a calibration area](https://open-energy-transition.github.io/earthp
 
 | Tier | Country | What the atlas rests on |
 | --- | --- | --- |
-| Gold | [Pakistan](https://open-energy-transition.github.io/earthpv/atlas/), [Germany](https://open-energy-transition.github.io/earthpv/atlas-germany/) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel (Pakistan) or against the national register (Germany) |
-| Silver | [France](https://open-energy-transition.github.io/earthpv/atlas-france/) | 400 m² and up, validated against hand-mapped communes and the national register; small installations missing |
+| Gold | [Pakistan](https://open-energy-transition.github.io/earthpv/atlas/) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel |
+| Silver | [Germany](https://open-energy-transition.github.io/earthpv/atlas-germany/), [France](https://open-energy-transition.github.io/earthpv/atlas-france/) | 400 m² and up, checked against the national register (both) and hand-mapped communes (France). Germany also shows a small-installation estimate fitted to its register, not yet validated; France has none |
 | Bronze | [Egypt](https://open-energy-transition.github.io/earthpv/atlas-egypt/), [India](https://open-energy-transition.github.io/earthpv/atlas-india/), [Morocco](https://open-energy-transition.github.io/earthpv/atlas-morocco/), [Nigeria](https://open-energy-transition.github.io/earthpv/atlas-nigeria/), [Poland](https://open-energy-transition.github.io/earthpv/atlas-poland/), [South Africa](https://open-energy-transition.github.io/earthpv/atlas-south-africa/), [Vietnam](https://open-energy-transition.github.io/earthpv/atlas-vietnam/), [Yemen](https://open-energy-transition.github.io/earthpv/atlas-yemen/), [Zambia](https://open-energy-transition.github.io/earthpv/atlas-zambia/) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 
 <p align="center">

@@ -18,6 +18,7 @@ from pathlib import Path
 
 import json
 
+from earthpv import atlas_config
 from earthpv.atlas import (CELL_COLS_EVIDENCE, CELL_COLS_GROWTH,
                            CELL_COLS_GROWTH_EVIDENCE, derive_validation_score,
                            download_section_html, header_logo_html,
@@ -57,12 +58,11 @@ PAGES = [
 
 # Explicit tiers, because the derivation reads the CURRENT state of data/ and a page
 # published months ago should carry the score its evidence earned, not whatever happens to
-# be on this machine today. Germany is the judgement case the --validation-score flag
-# exists for: its sub-400 half is calibrated from the MaStR register rather than from
-# mapped quadrats, and its Best estimate still fails its own register check.
+# be on this machine today. A tier that is a judgement rather than a fact about the
+# files lives in configs/atlas/<aoi>.yaml (`validation`) and wins over this table:
+# Germany's, Silver since 2026-10-22, is the case it was added for.
 SCORES = {
     "pakistan": "gold",     # 30 Rule-1 mapped areas, calibrated sub-400 half
-    "germany": "gold",      # sub-400 half, register-calibrated; see note above
     "france": "silver",     # 14 hand-mapped communes, no calibrated sub-400 half
     "zambia": "bronze",     # segmentation only, no local ground truth
     "gujarat": "bronze",    # segmentation only, no calibration quadrats
@@ -151,7 +151,7 @@ def add_downloads(html: str, aoi: str, out_path: Path) -> str:
 
 
 def stamp(path: Path, score: str, aoi: str = "atlas",
-          drop_lede: bool = True) -> tuple[bool, str]:
+          drop_lede: bool = True, sub: str | None = None) -> tuple[bool, str]:
     html = path.read_text()
     before = html
     html = OLD_BADGE.sub("\n", html)          # re-stampable
@@ -167,7 +167,7 @@ def stamp(path: Path, score: str, aoi: str = "atlas",
         indent = m_h1.group(1)
         html = (html[:m_h1.start()] + f"{indent}{header_logo_html()}\n"
                 + html[m_h1.start():])
-    badge = validation_badge_html(score)
+    badge = validation_badge_html(score, sub)
     note = "re-stamped" if before != html and "vscore" in before else "stamped"
     html = EXTRAP_KEY.sub("", html, count=1)
     html = add_downloads(html, aoi, path)
@@ -188,7 +188,9 @@ def main() -> None:
     ap.add_argument("--write", action="store_true", help="apply; otherwise report only")
     args = ap.parse_args()
     for name, aoi, source in PAGES:
-        score = SCORES.get(aoi) or derive_validation_score(aoi, False)
+        cfg = atlas_config.load(aoi)
+        score = cfg.validation_score or SCORES.get(aoi) or derive_validation_score(aoi, False)
+        sub = cfg.validation_note if cfg.validation_score == score else None
         # The source first, so a later docs-figures sync carries the stamp rather than
         # reverting it; then the published copy, so the site is right immediately.
         targets = [t for t in (source, PUBLISHED / name) if t and t.exists()]
@@ -201,7 +203,7 @@ def main() -> None:
                 state = "re-stamp" if "vscore" in path.read_text() else "stamp"
                 print(f"{name:46} {aoi:9} {score:7} {where} would {state}")
                 continue
-            changed, why = stamp(path, score, aoi=aoi)
+            changed, why = stamp(path, score, aoi=aoi, sub=sub)
             print(f"{name:46} {aoi:9} {score:7} {where} "
                   f"{'OK  ' if changed else 'skip'} {why}")
 

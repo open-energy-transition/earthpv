@@ -10,8 +10,8 @@ hide:
   <span class="atlas-switch__label">Atlas</span>
   <span class="atlas-switch__tier atlas-switch__tier--gold" title="Installations above and below the 400 m2 floor, calibrated on ground truth or a register">Gold</span>
   <a href="../atlas/">Pakistan</a>
-  <a href="../atlas-germany/">Germany</a>
   <span class="atlas-switch__tier atlas-switch__tier--silver" title="400 m2 and up only, validated against local ground truth">Silver</span>
+  <a href="../atlas-germany/">Germany</a>
   <span aria-current="page">France</span>
   <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated">Bronze</span>
   <a href="../atlas-egypt/">Egypt</a>

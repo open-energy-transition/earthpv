@@ -12,7 +12,8 @@ the calibration badge its own atlas carries (`atlas.VALIDATION_TIERS`, set by
 the navigation and the badge on the map cannot disagree:
 
 - **Gold**: installations above and below the 400 m2 floor, the small half calibrated on
-  areas mapped panel by panel (Pakistan) or against a complete register (Germany).
+  areas mapped panel by panel (Pakistan). Germany's register-calibrated half would qualify
+  on paper, but fails its own register check, so it is Silver (`configs/atlas/germany.yaml`).
 - **Silver**: 400 m2 and up only, validated against local hand-mapped ground truth; no
   calibrated estimate below the floor.
 - **Bronze**: 400 m2 and up only, with no local calibration.
@@ -86,6 +87,24 @@ WARNING = {
         "Read every figure here as a floor."
     ),
 }
+# A country whose reason for its tier is not the generic one (its tier is set in
+# configs/atlas/<aoi>.yaml `validation`). Replaces WARNING and HELP for that page.
+TIER_NOTE = {
+    "Germany": (
+        "<strong>Silver atlas: the small-installation estimate is not yet validated.</strong> "
+        "Installations of roughly 400 m&sup2; (about 70 kWp) and larger are checked against "
+        "Germany's complete register (MaStR). Below that size the atlas does include an "
+        "estimate, fitted to the register's municipal totals. But its geography does not "
+        "survive the register's own check: the median municipality is off by about half, "
+        "worse than simply scaling roof area. The Best estimate also sits above the "
+        "roughly 75 GWp registered. Read the map as where capacity sits, not as a national "
+        "total.",
+        "<strong>You can help from your browser.</strong> No area of Germany has been mapped "
+        "panel by panel yet. A few complete areas would let the small-installation geography "
+        "be checked directly, which the register, with no coordinates below 30 kWp, cannot "
+        "do.",
+    ),
+}
 # What a reader can do about it: the Contribute Data section (docs/contribute/).
 HELP = {
     "silver": (
@@ -139,6 +158,8 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
     if tier in WARNING:
         text = WARNING[tier].format(country=country, extra=extra).strip()
         help_ = HELP[tier].format(country=country)
+        if country in TIER_NOTE:
+            text, help_ = TIER_NOTE[country]
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
                      f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{CTA}</p>\n</div>")
     # `allow="fullscreen"`: the atlas map has a fullscreen button, which a frame without

@@ -117,8 +117,8 @@ def derive_validation_score(aoi: str, has_sub400: bool,
     This is a default, not a verdict. Cases where the evidence is real but of a different
     kind -- Germany's half is calibrated from its register rather than from mapped
     quadrats, and its Best estimate still fails its own register check -- are a judgement
-    the operator makes with `--validation-score`, not something to infer from file
-    existence.
+    recorded in `configs/atlas/<aoi>.yaml` (`validation`, see `resolve_validation_badge`)
+    or passed with `--validation-score`, not something to infer from file existence.
     """
     if has_sub400:
         return "gold"
@@ -409,12 +409,13 @@ def header_logo_html() -> str:
             '<div class="brandmark" role="img" aria-label="EarthPV"></div>')
 
 
-def validation_badge_html(score: str) -> str:
+def validation_badge_html(score: str, sub: str | None = None) -> str:
     """The corner stamp: style, logo and markup in one self-contained block.
 
     Silver and Bronze carry a link to the contribution guide, because for those two the
     missing piece is local ground truth and a reader who cares about the score is exactly
-    the person who could supply it.
+    the person who could supply it. `sub` replaces the tier's one-line description, for a
+    country whose reason for its tier is not the generic one (`atlas_config` validation).
     """
     key = (score or "bronze").strip().lower()
     if key not in VALIDATION_TIERS:
@@ -430,8 +431,18 @@ def validation_badge_html(score: str) -> str:
             f'<span class="vscore-text">'
             f'<span class="vscore-label">EarthPV Calibration</span>'
             f'<span class="vscore-tier">{name}</span>'
-            f'<span class="vscore-sub">{_VSCORE_SUB[key]}</span>{cta}'
+            f'<span class="vscore-sub">{sub or _VSCORE_SUB[key]}</span>{cta}'
             f'</span></{tag}>')
+
+
+def resolve_validation_badge(aoi: str, derived: str, override: str | None = None) -> str:
+    """The badge an atlas carries: an explicit override, else the AOI config's judgement,
+    else the tier derived from what is on disk. The config's sub-line is used only when its
+    own tier is the one shown."""
+    cfg = atlas_config.load(aoi)
+    score = override or cfg.validation_score or derived
+    sub = cfg.validation_note if cfg.validation_score and score == cfg.validation_score else None
+    return validation_badge_html(score, sub)
 
 
 def aoi_has_sub400(aoi: str) -> bool:
@@ -772,8 +783,8 @@ def build_combined_atlas(
     for key, value in {
         "__HEADER_LOGO__": header_logo_html(),
         "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
-        "__VALIDATION_BADGE__": validation_badge_html(
-            derive_validation_score(aoi, aoi_has_sub400(aoi))),
+        "__VALIDATION_BADGE__": resolve_validation_badge(
+            aoi, derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title} Solar Capacity: Large and Small Installations",
         "__H1__": f"Every scale of solar power in {title}, on one map",
@@ -1308,8 +1319,8 @@ def build_growth_evidence_atlas(
     for key, value in {
         "__HEADER_LOGO__": header_logo_html(),
         "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
-        "__VALIDATION_BADGE__": validation_badge_html(
-            derive_validation_score(aoi, aoi_has_sub400(aoi))),
+        "__VALIDATION_BADGE__": resolve_validation_badge(
+            aoi, derive_validation_score(aoi, aoi_has_sub400(aoi))),
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
         "__PAGE_TITLE__": f"{title} PV Growth Atlas",
         "__H1__": f"How much solar {title} added since before the boom",
@@ -2738,10 +2749,9 @@ def build_evidence_atlas(
         "__H1__": f"{title}'s PV Atlas",
         "__HEADER_LOGO__": header_logo_html(),
         "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
-        "__VALIDATION_BADGE__": validation_badge_html(
-            validation_score or derive_validation_score(
-                aoi, central_buildings_path is not None, labels_dir)
-        ),
+        "__VALIDATION_BADGE__": resolve_validation_badge(
+            aoi, derive_validation_score(aoi, central_buildings_path is not None, labels_dir),
+            validation_score),
         "__AOI_TITLE__": title,
         # The page fetches docs/assets/labels/calibration_areas/<aoi>.geojson by this key
         # (scripts/publish_calibration_areas.py), so editor links work without a rebuild.

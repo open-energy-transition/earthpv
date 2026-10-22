@@ -52,8 +52,8 @@ up, so [maps a calibration area](contribute/index.md).
 
 | Tier | Country | What the atlas rests on |
 | --- | --- | --- |
-| Gold | [Pakistan](atlas.md), [Germany](atlas-germany.md) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel (Pakistan) or against the national register (Germany) |
-| Silver | [France](atlas-france.md) | 400 m² and up, validated against hand-mapped communes and the national register; small installations missing |
+| Gold | [Pakistan](atlas.md) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel |
+| Silver | [Germany](atlas-germany.md), [France](atlas-france.md) | 400 m² and up, checked against the national register (both) and hand-mapped communes (France). Germany also shows a small-installation estimate fitted to its register, not yet validated; France has none |
 | Bronze | [Egypt](atlas-egypt.md), [India](atlas-india.md), [Morocco](atlas-morocco.md), [Nigeria](atlas-nigeria.md), [Poland](atlas-poland.md), [South Africa](atlas-south-africa.md), [Vietnam](atlas-vietnam.md), [Yemen](atlas-yemen.md), [Zambia](atlas-zambia.md) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 
 [![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 24,438 MWp (90 percent range 20,894 to 33,666), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)

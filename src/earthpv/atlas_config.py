@@ -43,6 +43,14 @@ silently drop the section it was meant to fill):
         opacity: 0.8                       # 0-1; default 1 (geojson), 0.75 (raster)
         minzoom: 0                         # raster only, optional
         maxzoom: 18
+    validation:                            # the calibration tier, when it is a judgement
+      score: silver                        # gold | silver | bronze; beats the derived tier
+      note: "Register-checked above 400&nbsp;m&sup2;"   # replaces the badge's sub-line
+
+`validation` exists for the cases `atlas.derive_validation_score` cannot judge from files on
+disk: Germany has a calibrated small-installation half, which would make it Gold, but that
+half fails its own register check, so the owner placed it at Silver (2026-10-22). An
+explicit `--validation-score` on `earthpv atlas` still wins over this.
 
 `status` is the quadrat's completeness declaration, not something code can derive:
 "rule1" = every visible panel mapped (so its no-PV buildings are trustworthy negatives),
@@ -61,7 +69,10 @@ log = logging.getLogger(__name__)
 
 CONFIG_DIR = Path("configs/atlas")
 
-_TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers"}
+_TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
+             "validation"}
+_VALIDATION_KEYS = {"score", "note"}
+_SCORES = {"gold", "silver", "bronze"}
 _CONFIDENCE_KEYS = {"ground_truth", "caveats", "corroboration"}
 _BOX_KEYS = {"name", "stem", "status"}
 _BOX_STATUS = {"rule1", "corroborated", "suspect"}
@@ -83,6 +94,8 @@ class AtlasConfig:
     caveats: tuple = ()
     corroboration: str = ""
     layers: tuple = ()
+    validation_score: str = ""
+    validation_note: str = ""
 
     # Kept so a caller can tell "this country has no config" from "this country has a
     # config that supplies nothing", which read the same otherwise and mean different
@@ -229,6 +242,17 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
     if not isinstance(caveats, list) or any(not isinstance(c, str) for c in caveats):
         _fail(aoi, "`confidence.caveats` must be a list of HTML strings")
 
+    val = raw.get("validation") or {}
+    if not isinstance(val, dict):
+        _fail(aoi, "`validation` must be a mapping")
+    unknown = set(val) - _VALIDATION_KEYS
+    if unknown:
+        _fail(aoi, f"unknown validation key(s) {sorted(unknown)}; "
+                   f"expected {sorted(_VALIDATION_KEYS)}")
+    score = str(val.get("score") or "").strip().lower()
+    if score and score not in _SCORES:
+        _fail(aoi, f"validation.score {score!r} is not one of {sorted(_SCORES)}")
+
     return AtlasConfig(
         aoi=aoi,
         title=str(raw.get("title") or default_title),
@@ -239,5 +263,7 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         caveats=tuple(c.strip() for c in caveats),
         corroboration=str(conf.get("corroboration") or "").strip(),
         layers=_parse_layers(aoi, raw.get("layers")),
+        validation_score=score,
+        validation_note=str(val.get("note") or "").strip(),
         path=path,
     )
