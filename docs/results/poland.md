@@ -146,8 +146,12 @@ never wrote one; it does now. Inference over 3,948 cells took 2 hours 13 minutes
 
 ## What Poland needs next
 
-**Map the parks the model already outlines.** The leads hold on the order of 2 GWp of
-utility parks that are not in OpenStreetMap, the cheapest large gain on this page.
+**Map the parks the model already outlines.** `scripts/park_leads.py --aoi poland` writes
+them as a verification package: 351 model detections of 5 ha and up with no mapped solar
+within 100 m, about 2.4 GWp at the land constant, largest first, with iD and JOSM links,
+suggested tags, a MapRoulette file and a contact sheet. Of the 24 largest, 23 are solar
+parks on the composite and one is a quarry. Each needs a person to confirm it against
+high-resolution imagery and trace the site; the model outlines only mark the place.
 
 **A rooftop instrument.** Poland's household systems are the bulk of its fleet and
 all below the floor; an area mapped panel by panel would be the start of a
