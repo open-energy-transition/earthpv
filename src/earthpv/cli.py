@@ -125,15 +125,22 @@ def compose(
         "duckdb` only; the cache is also invalidated automatically when the grid, boundary "
         "or VIDA file changes)",
     ),
+    cells_file: Path = typer.Option(
+        None, "--cells-file",
+        help="Only these cells: a text file with one cell name (e.g. 0063_0037) per line. "
+        "For a sampled extra layer, such as a transfer calibration's pre-boom epoch.",
+    ),
 ) -> None:
     """Build S2 composites for building-populated cells of an AOI (STAC, resumable)."""
     from earthpv.compose import run_compose
 
     win = tuple(window.split(":")) if window else None
+    only = ({ln.strip() for ln in cells_file.read_text().splitlines() if ln.strip()}
+            if cells_file else None)
     run_compose(aoi=aoi, out_dir=out_dir, min_buildings=min_buildings, limit=limit,
                 window=win, index=index, workers=workers, include_labels=label_cells,
                 use_vida=use_vida, stats=stats, resampling=resampling, reducer=reducer,
-                refresh_cells=refresh_cells)
+                refresh_cells=refresh_cells, only_cells=only)
 
 
 @app.command()
@@ -668,6 +675,11 @@ def roofclf_score_national_cmd(
     area_weighted: bool = typer.Option(True, "--area-weighted/--no-area-weighted",
                                        help="Weight each 10 m pixel by the fraction of the footprint covering it (shipped default since 2026-09-20). --no-area-weighted restores the pixel-centre convention every figure published before then used. Must match the calibration the model came "
                                             "from; a mismatch is refused downstream."),
+    cells_file: Path = typer.Option(
+        None, "--cells-file",
+        help="Only these cells: a text file with one cell name (e.g. 0063_0037) per line. "
+        "For a transfer test on the cells holding a country's OSM-mapped PV.",
+    ),
 ) -> None:
     """Score every VIDA building nationally with an already-fit roofclf model -- the
     sub-400 m2 half of the **main workflow** (see CLAUDE.md's "Main workflow" section):
@@ -682,11 +694,13 @@ def roofclf_score_national_cmd(
     composites = composites or Path("data/composites") / aoi
     out_dir = out_dir or Path("data/roofclf_national_with_sppi") / aoi / "prob"
     model, feats = load_model(model_path)
+    only = ({ln.strip() for ln in cells_file.read_text().splitlines() if ln.strip()}
+            if cells_file else None)
     score_buildings_national(
         aoi, model, feats, composites, out_dir,
         min_roof_area_m2=min_roof_area_m2, force=force, limit=limit,
         area_weighted=area_weighted,
-        layer_index=layer_index,
+        layer_index=layer_index, cells=only,
     )
     typer.echo(f"-> {out_dir}")
 

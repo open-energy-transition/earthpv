@@ -674,6 +674,7 @@ def run_compose(
     resampling: str | None = None,
     reducer: str | None = None,
     refresh_cells: bool = False,
+    only_cells: set[str] | None = None,
 ) -> Path:
     """`window`/`index` build an extra seasonal layer (`composite_<index>.tif`, e.g.
     a post-monsoon contrast season) into the same cell dirs as the base run.
@@ -749,6 +750,15 @@ def run_compose(
 
     cells = populated_cells(aoi, cfg, settings, min_buildings, include_labels, use_vida,
                             refresh_cells=refresh_cells)
+    if only_cells is not None:
+        # A named subset, e.g. the sampled cells a transfer calibration reads its pre-boom
+        # false-positive rate from. `limit` cannot do this: it takes the densest first.
+        names = cells.apply(lambda c: f"{int(c.ix):04d}_{int(c.iy):04d}", axis=1)
+        missing = only_cells - set(names)
+        if missing:
+            log.warning("%d requested cells are not populated cells of %s: %s",
+                        len(missing), aoi, sorted(missing)[:10])
+        cells = cells[names.isin(only_cells).to_numpy()]
     if limit:
         cells = cells.head(limit)
     log.info("Compositing %d cells (>= %d buildings) for %s (%d workers)",

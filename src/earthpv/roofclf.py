@@ -977,6 +977,23 @@ def _read_prob(path: Path, bounds4326: tuple, out_crs, out_transform, out_shape)
 # --------------------------------------------------------------------------------------
 # Feature table
 # --------------------------------------------------------------------------------------
+def roof_pv_area(bu: gpd.GeoDataFrame, pv: gpd.GeoDataFrame) -> np.ndarray:
+    """Mapped PV area on each footprint (geodesic m2 of the intersection, summed over
+    every PV polygon touching it): the roof term of `building_table`'s label. Both frames
+    in EPSG:4326."""
+    from earthpv.labels import geodesic_area_m2
+
+    pv_area = np.zeros(len(bu))
+    if not pv.empty:
+        sindex = bu.sindex
+        for g in pv.geometry:
+            for bi in sindex.query(g, predicate="intersects"):
+                inter = geodesic_area_m2(bu.geometry.iloc[bi].intersection(g))
+                if inter > 0:
+                    pv_area[bi] += inter
+    return pv_area
+
+
 def building_table(
     stem: str, iso3: str, composites: Path, seg_prob_dir: Path | None,
     frac_prob_dir: Path | None, labels_dir: Path = Path("data/labels"), con=None,
@@ -1019,7 +1036,6 @@ def building_table(
     # published before 2026-09-20.
     area_weighted = AREA_WEIGHTED_ZONAL if area_weighted is None else area_weighted
     from earthpv.buildings import fetch_vida_buildings
-    from earthpv.labels import geodesic_area_m2
     from earthpv.local_source import composite_index
 
     boundary, pv = load_quadrat(stem, labels_dir)
@@ -1038,14 +1054,7 @@ def building_table(
         return pd.DataFrame()
 
     # Labels: true PV area on each footprint, then a has-PV flag by overlap share.
-    pv_area = np.zeros(len(bu))
-    if not pv.empty:
-        sindex = bu.sindex
-        for g in pv.geometry:
-            for bi in sindex.query(g, predicate="intersects"):
-                inter = geodesic_area_m2(bu.geometry.iloc[bi].intersection(g))
-                if inter > 0:
-                    pv_area[bi] += inter
+    pv_area = roof_pv_area(bu, pv)
     roof = bu["area_m2"].to_numpy(float)
     frac_true = np.divide(pv_area, np.maximum(roof, 1e-6))
     nn_median_m = packing_density(pv)
@@ -2074,6 +2083,72 @@ def canonical_composite_manifest(comp_idx, origin: tuple[float, float], cell_deg
     return man
 
 
+def epoch_feature_frame(
+    bu: gpd.GeoDataFrame, arr: np.ndarray, transform, crs, layer_index: int = 0,
+    area_weighted: bool | None = None, need_yard: bool = False, dn_offset: float = 0.0,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Per-building model features from one composite layer of a window `read_window`
+    returned (`arr` raw, all layers stacked). Shared by `score_buildings_national` and the
+    transfer calibration (`earthpv.transfer_calibration`), which scores the same buildings
+    in a second, earlier epoch and must not compute its features any differently.
+
+    `dn_offset` is added to every non-fill pixel first. A layer composited from scenes
+    processed before baseline 04.00 (2022-01-25) carries no BOA offset, while every model
+    here is fitted on post-2022 composites, which carry +1000 DN: such a layer needs
+    `dn_offset=1000` (`transfer_calibration.PRE_BASELINE_DN_OFFSET`) or every band reads
+    0.1 darker than the same roof does today.
+
+    Returns the feature frame and `covered`, True where a building got an area-weighted
+    mean of its own (all True when `area_weighted` is off).
+    """
+    area_weighted = AREA_WEIGHTED_ZONAL if area_weighted is None else area_weighted
+    arr = arr[layer_index * len(BAND_NAMES): (layer_index + 1) * len(BAND_NAMES)]
+    arr = arr.astype("float32")
+    if dn_offset:
+        fill = (arr == COMPOSITE_FILL).all(axis=0)
+        arr = np.where(fill[None], arr, arr + np.float32(dn_offset))
+    arr = arr / REFL_SCALE
+    bu_utm = bu.to_crs(crs)
+    means, _ = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
+    covered = np.ones(len(bu), dtype=bool)
+    # MUST match `building_table`'s zonal convention. A model fitted on area-weighted
+    # means and applied to pixel-centre ones is a silent domain shift over the whole
+    # country, which is the failure `check_scoring_matches_calibration` exists to catch
+    # and which no fingerprint would notice if the two defaults ever drifted apart.
+    if area_weighted:
+        means, covered = area_weighted_zonal_mean(bu_utm, arr, transform, means)
+
+    eps = 1e-6
+    r, nir, sw = means[_I_RED], means[_I_NIR], means[_I_SWIR1]
+    feat_df = pd.DataFrame({
+        "roof_area_m2": bu["area_m2"].to_numpy(float),
+        "bf_confidence": bu.get(
+            "bf_confidence", pd.Series(np.nan, index=bu.index)
+        ).to_numpy(),
+    })
+    for i, b in enumerate(BAND_NAMES):
+        feat_df[f"{b}_mean"] = means[i]
+    feat_df["ndvi"] = (nir - r) / (nir + r + eps)
+    feat_df["ndbi"] = (sw - nir) / (sw + nir + eps)
+    feat_df["brightness"] = means.mean(axis=0)
+    feat_df["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
+    feat_df["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
+    # Same shape/local-contrast features as `building_table` -- "local" here is this
+    # cell's own building population, the national-scale analogue of one quadrat.
+    for k, v in shape_features(bu_utm.geometry).items():
+        feat_df[k] = v
+    feat_df["brightness_zscore"] = local_zscore(feat_df["brightness"].to_numpy())
+    if need_yard:
+        # Cell-edge yards are truncated at the read window, exactly as roof statistics
+        # already are: `read_window` returns this cell's own box, so a building on the
+        # boundary sees only the part of its ring inside it. It shrinks `yard_area_m2`
+        # for a thin border strip rather than fabricating pixels, and `has_yard`
+        # remains true, which is the conservative failure.
+        for k, v in yard_features(bu_utm, arr, transform).items():
+            feat_df[k] = v
+    return feat_df, covered
+
+
 def score_buildings_national(
     aoi: str, model: dict, feats: list[str], composites: Path, out_dir: Path,
     min_roof_area_m2: float = 0.0, force: bool = False, limit: int = 0,
@@ -2212,46 +2287,9 @@ def score_buildings_national(
             log.warning("cell %s: no composite coverage, skipping %d buildings", cell, len(bu))
             continue
         arr, transform, crs = res
-        arr = arr[layer_index * len(BAND_NAMES): (layer_index + 1) * len(BAND_NAMES)]
-        arr = arr.astype("float32") / REFL_SCALE
-        bu_utm = bu.to_crs(crs)
-        means, _ = zonal_mean_max(bu_utm, arr, transform, nodata=COMPOSITE_FILL)
-        # MUST match `building_table`'s zonal convention. A model fitted on area-weighted
-        # means and applied to pixel-centre ones is a silent domain shift over the whole
-        # country, which is the failure `check_scoring_matches_calibration` exists to catch
-        # and which no fingerprint would notice if the two defaults ever drifted apart.
-        if area_weighted:
-            means, covered = area_weighted_zonal_mean(bu_utm, arr, transform, means)
-            n_fallback += int((~covered).sum())
-
-        eps = 1e-6
-        r, nir, sw = means[_I_RED], means[_I_NIR], means[_I_SWIR1]
-        feat_df = pd.DataFrame({
-            "roof_area_m2": bu["area_m2"].to_numpy(float),
-            "bf_confidence": bu.get(
-                "bf_confidence", pd.Series(np.nan, index=bu.index)
-            ).to_numpy(),
-        })
-        for i, b in enumerate(BAND_NAMES):
-            feat_df[f"{b}_mean"] = means[i]
-        feat_df["ndvi"] = (nir - r) / (nir + r + eps)
-        feat_df["ndbi"] = (sw - nir) / (sw + nir + eps)
-        feat_df["brightness"] = means.mean(axis=0)
-        feat_df["swir_vis_ratio"] = sw / (means[[_I_BLUE, _I_GREEN, _I_RED]].mean(axis=0) + eps)
-        feat_df["blue_red_ratio"] = means[_I_BLUE] / (r + eps)
-        # Same shape/local-contrast features as `building_table` -- "local" here is this
-        # cell's own building population, the national-scale analogue of one quadrat.
-        for k, v in shape_features(bu_utm.geometry).items():
-            feat_df[k] = v
-        feat_df["brightness_zscore"] = local_zscore(feat_df["brightness"].to_numpy())
-        if need_yard:
-            # Cell-edge yards are truncated at the read window, exactly as roof statistics
-            # already are: `read_window` returns this cell's own box, so a building on the
-            # boundary sees only the part of its ring inside it. It shrinks `yard_area_m2`
-            # for a thin border strip rather than fabricating pixels, and `has_yard`
-            # remains true, which is the conservative failure.
-            for k, v in yard_features(bu_utm, arr, transform).items():
-                feat_df[k] = v
+        feat_df, covered = epoch_feature_frame(bu, arr, transform, crs, layer_index,
+                                               area_weighted, need_yard)
+        n_fallback += int((~covered).sum())
 
         # A building with no valid composite pixel keeps its row -- building counts and
         # `potential.large_roof_buildings` read this table for footprints alone, so

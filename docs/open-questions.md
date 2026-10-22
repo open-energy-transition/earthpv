@@ -354,10 +354,23 @@ What remains open, in order of expected effect on the delta:
   percent of capacity on dropped cells), but the pre-boom roofclf level reads about 79
   percent of the current one for a boom that multiplied the true sub-400 stock. Much of
   roofclf's signal is adopter-propensity building appearance that predates the panels,
-  so the sub-400 and >= 400 roofclf deltas are floors on true rooftop growth. Measuring
-  roofclf's epoch sensitivity directly (score the same mapped quadrat buildings on both
-  composites and compare against known install-date installations, e.g. from the
-  step-change onset set) is the concrete next step.
+  so the sub-400 and >= 400 roofclf deltas are floors on true rooftop growth. **Measured
+  2026-10-20** on the 30 quadrats, leave-one-quadrat-out: the 2021 score predicts TODAY's
+  PV at AUC 0.832 against 0.870 for today's score, and 0.848 once the epochs are
+  quantile-matched, with only 14% of today's panels imported by then. So most of roofclf's
+  ranking is propensity, which is what sank a past epoch as a negative set (see the
+  experiments register, "A sub-400 m2 level without quadrats"). Scoring against
+  known-install-date installations would still separate the two halves more cleanly.
+- **composite_1 is on the pre-2022 radiometric scale and was scored as if it were not
+  (found 2026-10-20).** Scenes processed before Sentinel-2 baseline 04.00 (2022-01-25)
+  carry no BOA offset; composite_0 carries +1000 DN. Each layer's own darkest 0.5% of
+  pixels sits 730 to 860 DN apart in every band (median over 60 Pakistani cells), the
+  band-independent signature of the offset rather than of season. The growth pipeline
+  inferred and scored composite_1 unharmonized, so every pre-boom level (segmentation and
+  both roofclf halves) read every band about 0.08-0.1 darker than the same roof would today.
+  Whether that moves the published delta up or down has not been measured.
+  `roofclf.epoch_feature_frame(dn_offset=transfer_calibration.PRE_BASELINE_DN_OFFSET)`
+  harmonizes a layer for roofclf; segmentation has no equivalent yet.
 - **No composed credible interval on the delta**, and the pre-boom epoch has no
   calibration of its own, so every stated pre-boom level remains an artifact of
   current-epoch calibration transfer; only diffs of the fixed instrument are meaningful.

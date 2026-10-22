@@ -127,6 +127,7 @@ repository; nothing was deleted on failure.
 | Opportunity-normalised glint sensitivity | <span class="outcome works">shipped</span> | Sensitivity varies ~2x with opportunity inside a size bin; now modelled per target instead of pooled. |
 | Glint-mined roofclf hard negatives | <span class="outcome negative">rejected</span> | 126 negatives at 1.2% contamination moved held-out AUC by 0.0003. Quantity, not quality, is the binding constraint. |
 | OSM as a complete reference in Germany | <span class="outcome negative">rejected</span> | 3.6% complete by unit count; implied kWp/m² unstable by more than the constant itself. |
+| [A sub-400 m² level without quadrats](#a-sub-400-m2-level-without-quadrats-from-osm-and-a-past-epoch-2026-10-20) | <span class="outcome negative">rejected</span> | The same roofs in 2021 are not negatives: roofclf's 2021 score predicts today's PV at AUC 0.83 against 0.87. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
 | Low/Central/High/All-PV bracket atlas | <span class="outcome open">superseded</span> | Replaced by the two-tier evidence atlas, which sorts by standard of proof instead. |
@@ -1880,6 +1881,89 @@ error. The first top-decile run reported zero municipalities and zero capacity. 
 and `x >= NaN` is False for every row, so the threshold flagged nothing and the harness
 dutifully reported zeros all the way through. The harness is now NaN-safe and logs how many
 buildings lack a value.
+
+### A sub-400 m² level without quadrats, from OSM and a past epoch (2026-10-20)
+
+Countries whose only high-resolution imagery is years old cannot get Rule-1 quadrats (Box 17's
+gate), and without quadrats they get no sub-400 m² figure at all. The classifier can be
+borrowed, since ranking transfers; the level cannot, because the coverage ratio carries
+precision and precision carries the local adoption rate. The idea tested here measured the
+level from two things such a country still has (`earthpv.transfer_calibration`), as an
+adjusted count, `pi = (f - FPR) / (TPR - FPR)` per roof-size bin:
+
+- **TPR from OSM positives**: the detection rate among buildings carrying mapped PV anywhere
+  in the country. Incomplete mapping is fine, since only the rate among them is used.
+- **FPR from the past**: the flag rate of the same roofs in a pre-boom Sentinel-2 epoch,
+  scored by the same model, as an upper bound on today's false-positive rate.
+
+It was validated against Pakistan's 30 quadrats with no quadrat information at all: the
+classifier from the other quadrats, positives from 8,584 OSM-mapped sub-400 m² roofs outside
+every quadrat, negatives from composite_1 (2021-10 to 2022-01). Population: sub-400 m² roofs.
+
+| Level from | Median error per quadrat | Pooled ratio | Spearman |
+| --- | --- | --- | --- |
+| Quadrats, leave-one-out (flagged roof area x ratio) | 35% | 1.00 | 0.92 |
+| Quadrats, leave-one-out (roof area x constant, the null) | 54% | 0.98 | 0.90 |
+| OSM TPR + 2021 FPR | 318% | **-3.71** | -0.48 |
+| OSM TPR + 2021 FPR, epochs quantile-matched | 113% | -0.07 | -0.25 |
+| OSM TPR + the TRUE current FPR (an oracle) | 46% | 1.26 | 0.96 |
+| A strict threshold, no FPR correction (p >= 0.55) | 83% | 1.08 | 0.91 |
+| 200 random flagged roofs reviewed yes/no, OSM TPR | 56% | 1.27 (90%: 1.09-1.47) | 0.93 |
+
+**The past is not a negative set, and the reason is the classifier.** The same roofs flag
+more often in 2021 than today (0.236 against 0.160, while today's true FPR is 0.093), so the
+adjusted count goes negative. Matching the old epoch to today per band (median, median+IQR,
+quantile) only makes the two flag rates equal (0.156 to 0.164 against 0.160), and the estimate
+collapses to zero. The control that explains both: **roofclf's 2021 score predicts TODAY's
+PV at AUC 0.832, against 0.870 for today's score** (0.848 once the epochs are matched), and
+Pakistan had imported only 14% of today's panels by January 2022 (Ember). The classifier
+recognises the kind of roof that adopts, not the panels on it, which is also why
+[the epoch difference](#the-roof-is-its-own-control-2026-09-20) adds information but not much.
+The same finding rules out the softer version of the idea, composing Sentinel-2 at an old
+mapping epoch so a stale-imagery quadrat becomes Rule-1 again: the flagged set barely changes
+between epochs, so such a quadrat would measure the old epoch's PV per flagged roof, which in
+a boom country is several-fold below today's. That last step is inferred, not measured.
+
+**The positives half works.** With the true FPR plugged in, OSM-derived TPR and array size
+track the quadrats at Spearman 0.96. OSM positives are the easy ones (TPR 0.52-0.93 against
+0.23-0.85 on quadrat PV; mean array 1.3-1.6x larger), and the two biases largely cancel, to
++26%. A yes/no review of random flagged roofs is the cheapest human input that supplies the
+missing FPR (simulated at +27%, with 200 reviews holding the national total within about
+15% of that), but each reviewed roof still needs recent imagery, which is the constraint
+this started from.
+
+**Nigeria**, the motivating case, and **India** (2026-10-22): does Pakistan's classifier
+still rank PV roofs abroad? PU AUC on OSM-mapped sub-400 m² arrays against every other
+sub-400 m² roof in the same cells (`scripts/transfer_calibration_pu_auc.py`; 90% intervals
+from a cell-clustered bootstrap with negatives capped per cell):
+
+| Country | Positives (cells) | PU AUC | Within size bins | Flag rate, positives / unlabelled |
+| --- | --- | --- | --- | --- |
+| Pakistan (own model, quadrats excluded) | 4,385 (133) | 0.930 (0.926-0.949) | 0.887-0.924 | 0.750 / 0.049 |
+| India | 498 (148) | **0.778** (0.758-0.847) | 0.690-0.807 | 0.504 / 0.079 |
+| Nigeria | 60 (25) | 0.661 (0.555-0.783) | 0.628-0.833 | 0.367 / 0.115 |
+
+**Nigeria's first figure, 0.902 on 357 positives, was an artefact**, and so was India's
+first, 0.673 on 47,911. The script labelled every footprint touched by any non-ground OSM
+polygon, and VIDA traces a park's panel rows as buildings, so a large array or a park
+mistagged rooftop turned into hundreds of "PV roofs" that were not the target population.
+Positives now come only from arrays under 400 m², and footprints touching a larger PV
+polygon are dropped from both classes; Pakistan, whose mapped rooftop PV is mostly small,
+barely moves (0.934 -> 0.930), which is why the original rule looked sound. **The ranking
+transfers to India only partly**: well above chance, well below Pakistan, and the mapped
+Indian arrays are not smaller than Pakistan's (OSM sub-400 m² median 74.8 m² against 75.4),
+so this is not France's sub-pixel regime. The level cannot be borrowed either way (above),
+so neither country gets a sub-400 m² half: India needs its own Rule-1 quadrats (eight
+sampled candidates are in `data/labels/india/candidate_quadrats/`), which would also
+measure the borrowed model properly and allow a refit. Scored cells:
+`data/roofclf_transfer/{nigeria,india}/prob`.
+
+A side finding: composite_1 carries no BOA offset (scenes before baseline 04.00, 2022-01-25)
+while composite_0 carries +1000 DN; each layer's own darkest 0.5% sits 730 to 860 DN apart in
+every band (median over 60 cells). `roofclf.epoch_feature_frame(dn_offset=)` harmonizes it;
+see open question 16 for what it means for the growth atlas. Scripts:
+`scripts/transfer_calibration_pakistan_check.py`, `scripts/transfer_calibration_followups.py`,
+`scripts/transfer_calibration_pu_auc.py`. Results: `results/transfer_calibration/`.
 
 ## The partial result worth watching
 

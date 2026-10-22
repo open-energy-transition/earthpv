@@ -1626,6 +1626,15 @@ atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS DONE"**, so r
   (12, 10, 236, 245) stack against 0.08 s. The replacement is bit-identical (maxdiff 0, same
   NaN pattern, verified on full quadrat stacks), so `tmean_trim`/`trimzonal`/`year_trim`
   reproduce their published figures exactly.
+- **A pre-2022 composite layer is on a different radiometric scale.** Scenes processed
+  before Sentinel-2 baseline 04.00 (2022-01-25) carry no BOA offset and every model here is
+  fitted on post-2022 composites, which carry +1000 DN. Pakistan's composite_1 (2021-10 to
+  2022-01) reads 730-860 DN darker than composite_0 in every band on each layer's own dark
+  tail; pass `roofclf.epoch_feature_frame(..., dn_offset=transfer_calibration.
+  PRE_BASELINE_DN_OFFSET)` when scoring one. The growth pipeline did not (open question 16).
+  And do not treat an old epoch as a negative set for `roofclf`: its 2021 score predicts
+  today's PV at AUC 0.83 against 0.87, because it reads adopter-type roofs more than panels
+  (experiments register, 2026-10-20).
 - **Training positive threshold** is `MIN_PV_AREA` in `chips.py` (arrays below it are burned as
   `ignore = -1`, not negatives). Changing it requires rebuilding chips and retraining.
 - **Geographic val split** uses `val_tiles` in `configs/aoi.yaml`; these must be MGRS tiles the
