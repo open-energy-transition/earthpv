@@ -103,7 +103,12 @@ def main() -> int:
 
     settings = Settings.load()
     _, cfg = resolve_aoi(a.aoi, settings)
-    origin = cfg.get("grid_origin") or cfg["bbox"][:2]
+    # compose snaps the AOI boundary's lower-left to grid_origin, so a country whose border
+    # starts inside the first column (Poland: 14.12E against 14.0) names its cells from the
+    # snapped origin. density._grid_origin replicates compose; the raw grid_origin read
+    # every Polish perimeter from the neighbouring cell's composite (2026-10-22).
+    from earthpv.density import _grid_origin
+    origin = _grid_origin(a.aoi, cfg, settings)
     comp_dir = a.composite_dir or REPO / "data" / "composites" / a.aoi / "composites"
 
     labels = gpd.read_parquet(a.labels)

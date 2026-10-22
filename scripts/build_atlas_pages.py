@@ -22,6 +22,7 @@ reader can do about it, and links into the Contribute Data section (docs/contrib
 
     python scripts/build_atlas_pages.py          # rewrites docs/atlas*.md
     python scripts/build_atlas_pages.py --nav    # also prints the mkdocs.yml nav block
+    # Paste only the PV Atlas block over the old one: other nav sections may follow it.
 """
 
 from __future__ import annotations
@@ -51,6 +52,7 @@ ATLASES = [
     ("atlas-india", "India", "india_pv_evidence_atlas.html", None, ""),
     ("atlas-morocco", "Morocco", "morocco_pv_evidence_atlas.html", None, ""),
     ("atlas-nigeria", "Nigeria", "nigeria_pv_evidence_atlas.html", None, ""),
+    ("atlas-poland", "Poland", "poland_pv_evidence_atlas.html", None, ""),
     ("atlas-south-africa", "South Africa", "south_africa_pv_evidence_atlas.html", None, ""),
     ("atlas-vietnam", "Vietnam", "vietnam_pv_evidence_atlas.html", None, ""),
     ("atlas-yemen", "Yemen", "yemen_pv_evidence_atlas.html", None, ""),

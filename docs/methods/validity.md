@@ -108,7 +108,7 @@ imported later can be on the imagery.
 | India | 72,271 | 95,060 | Jan 2017 to Mar 2026 | not a ceiling |
 | Germany | 84,473 | 29,906 | Jan 2017 to Aug 2026 | not a ceiling |
 | France | 13,368 | 16,196 | Jan 2017 to Sep 2024 | not a ceiling |
-| Poland | atlas in progress | 21,769 | Jan 2017 to Aug 2026 | not a ceiling |
+| Poland | 7,781 | 21,769 | Jan 2017 to Aug 2026 | not a ceiling |
 
 **It is not a ceiling for India, Germany, France or Poland**, and those atlases say so
 instead: India makes a large share of its own panels, much of Germany's and France's fleets

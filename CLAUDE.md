@@ -1542,6 +1542,18 @@ at Noor Midelt. **`atlas.build_evidence_atlas` now clips region outlines to the 
 geoBoundaries MAR draws Laayoune-Sakia El Hamra and Guelmim-Oued Noun into Western Sahara
 (south to 24.4 N); every cell lies inside the bbox, so no total moves. `docs/results/morocco.md`.
 
+**Poland published 2026-10-22 on its localized v15: Verified 6,604.3 / Best 7,780.9 MWp** (90%
+4,618-9,528 / 6,411-10,398) over 3,948 cells, Sentinel-2 May to September 2026, against about
+21.8 GW installed (Feb 2025). v15 beat v5 on held-out Lublin cells (recall >= 500 m2 0.960 vs
+0.927, IoU 0.645 vs 0.571). Three run-level fixes came out of it: `pick_best_checkpoint.py`
+reads every `last*.ckpt` (a killed run's `last.ckpt` had picked the wrong epoch); the ground
+screen and `pick_val_region.py` use `density._grid_origin` (compose snaps the grid to the
+country's own lower-left, 14.1E for Poland, so the raw `grid_origin` read every perimeter
+from the neighbouring cell; the held-out cells are Lublin shifted one column east);
+`new_region.py add` writes `val_tiles: []`. **168 model detections above the merge cap (39.7 km2,
+~2 GWp) are mostly real, unmapped parks** in Poland, excluded by the cap like everywhere else.
+`docs/results/poland.md`.
+
 **Label cells cover a park's whole outline since 2026-10-12** (`compose._solar_label_cells`).
 A cell per mapped feature by its representative point left an outline crossing a cell edge
 half imaged, and the ground screen (90% imaged above 5 km2) dropped two Egyptian parks that

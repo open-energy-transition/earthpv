@@ -47,7 +47,10 @@ CELL_DEG = 0.1
 def pick(aoi: str, target: float, min_buildings: int) -> tuple[str, list[str], dict]:
     cfg = Settings.load().aois[aoi]
     iso3 = cfg["division"]["iso3"]
-    ox, oy = cfg.get("grid_origin", cfg["bbox"][:2])
+    # The origin compose actually names cells from (see density._grid_origin): with a raw
+    # grid_origin, Poland's val_tiles came out one column east of Lublin (2026-10-22).
+    from earthpv.density import _grid_origin
+    ox, oy = _grid_origin(aoi, cfg, Settings.load())
 
     lab = gpd.read_parquet(REPO / f"data/labels/{aoi}_overpass_solar.parquet")
     lab = lab[lab.geom_type.isin(["Polygon", "MultiPolygon"])]

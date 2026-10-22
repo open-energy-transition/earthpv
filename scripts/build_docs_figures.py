@@ -2524,6 +2524,9 @@ INTERACTIVE = [
     # goes to the localized model). Written by scripts/run_country_compute.sh;
     # docs/results/morocco.md explains.
     ("results/morocco_pv_evidence_atlas.html", "morocco_pv_evidence_atlas.html"),
+    # Poland: segmentation-only, national, on its own LOCALIZED checkpoint v15_combined_poland
+    # (it beat v5 on the held-out Lublin cells). docs/results/poland.md explains.
+    ("results/poland_pv_evidence_atlas.html", "poland_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;
