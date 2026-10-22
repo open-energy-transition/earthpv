@@ -1568,6 +1568,10 @@ atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS DONE"**, so r
   whenever the final improvement is not the argmax -- exactly what happened to v6 (epoch 30 at
   0.7818 against epoch 26 at 0.7828). Use `scripts/pick_best_checkpoint.py`, which reads
   Lightning's own `best_model_path` out of the checkpoint's ModelCheckpoint callback state.
+  **A restarted run leaves the dead run's files in the same directory**, and Lightning then
+  writes the live run's state to `last-v1.ckpt`; reading only `last.ckpt` returned the dead
+  run's best (Poland 2026-10-22: epoch 7 at 0.776 instead of epoch 27 at 0.804, caught
+  before publication). The picker now reads every `last*.ckpt` and takes the best score.
 - **`roofclf.discover_quadrats` globs `*_calib_*_boundary.geojson`.** A quadrat stem without
   `_calib_` is invisible to `earthpv roof-classifier`, which fails with "No calibration
   quadrats found" seconds after launch -- easy to mistake for a still-running job if nothing is
