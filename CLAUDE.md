@@ -1435,6 +1435,17 @@ exempt from the merge cap. Eleven capacity-tagged Indian parks measure 0.045 kWp
 AC) against the 0.05 land constant. The Gujarat page is superseded: the state went 765 ->
 4,554 MWp, mostly because the OSM oversize exemption (2026-08-10) postdates that run.
 
+**India's compose is being widened by `ring_cells: 3` (2026-10-22, owner request)**, an AOI
+key that adds every cell within 3 cells (~33 km) of the >= 1,000-building and label
+selection (`compose._add_ring_cells`), so a park built away from buildings is imaged too:
++3,573 cells (742 with no buildings), appended after the existing ones so resumed runs are
+unchanged. It is insurance, not a measured gap: 97.3% of mapped Indian ground-PV area
+already sits in cells with >= 1,000 buildings even after removing the VIDA "buildings"
+that are a park's own panel rows, and a 1-cell ring reaches all of it. The published atlas
+does not move until infer -> postprocess -> ... -> atlas is re-run over the new cells.
+The 500 m `--building-buffer-m` in `postprocess` is NOT a search radius: it only bounds
+which footprints are fetched for placement (30 m) and the rank prior; nothing is dropped.
+
 **Compose defects, fixed 2026-10-10 for new composites only (open question 22).**
 `eo:cloud_cover` is per MGRS tile, so dry-season scenes tie at 0% and the twelve kept could
 all come from a tile clipping the cell's corner: Rewa Ultra Mega Solar's cell was 87% empty

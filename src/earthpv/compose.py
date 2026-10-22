@@ -444,7 +444,9 @@ def populated_cells(
     it contains an OSM solar polygon - so density coverage for finding new arrays is
     unioned with full imagery coverage over every already-mapped one. Buildings are
     clipped to the AOI polygon (not just its bbox) so neighbouring provinces' cities
-    in the shared building set don't leak in.
+    in the shared building set don't leak in. An AOI's `ring_cells: k` then adds every
+    cell within k cells of that selection (`_add_ring_cells`), for ground-mount far from
+    any building.
 
     `use_vida=True` forces VIDA Open Buildings for cell selection even when the AOI has
     a `source_region` - the local rooftopsenti building set is Overture-only, filtered
@@ -495,6 +497,7 @@ def populated_cells(
         else np.zeros(len(cells), dtype=bool)
     )
     n_by_density = int((cells.n >= min_buildings).sum())
+    counts = cells[["ix", "iy", "n"]]
     cells = cells[(cells.n >= min_buildings) | has_label].reset_index(drop=True)
     # Label cells with no mapped buildings at all are absent from the histogram; add them.
     extra = sorted(label_cells - set(zip(cells.ix, cells.iy)))
@@ -520,7 +523,50 @@ def populated_cells(
         cells = cells.drop(columns="_lbl").reset_index(drop=True)
     else:
         cells = cells.sort_values("n", ascending=False).reset_index(drop=True)
+    ring = int(cfg.get("ring_cells", 0))
+    if ring > 0:
+        cells = _add_ring_cells(cells, ring, counts, minx, miny, boundary)
     return cells
+
+
+def _add_ring_cells(
+    cells: pd.DataFrame, ring: int, counts: pd.DataFrame, minx: float, miny: float,
+    boundary: gpd.GeoDataFrame | None,
+) -> pd.DataFrame:
+    """Every cell within `ring` cells (Chebyshev) of the selection, inside the AOI.
+
+    `ring_cells` (AOI config) widens the search away from buildings. A ground-mount park
+    needs no roof, so a density rule finds one only where VIDA happens to count enough
+    buildings in its cell -- for a recent park in empty desert, none, and the cell is
+    never imaged. The selection is dilated rather than the density floor lowered so the
+    added cells stay near where PV is built (settlements, roads, grid, mapped parks) and
+    not across high mountains. Appended AFTER the density and label cells, so the
+    existing order, and every resumed run, is unchanged; they are composited last.
+    """
+    import shapely
+
+    have = set(zip(cells.ix, cells.iy))
+    d = np.arange(-ring, ring + 1)
+    dx, dy = (a.ravel() for a in np.meshgrid(d, d))
+    ix = (cells.ix.to_numpy()[:, None] + dx).ravel()
+    iy = (cells.iy.to_numpy()[:, None] + dy).ravel()
+    new = pd.DataFrame({"ix": ix, "iy": iy}).drop_duplicates()
+    new = new[[(a, b) not in have for a, b in zip(new.ix, new.iy)]]
+    new = new[(new.ix >= 0) & (new.iy >= 0)].reset_index(drop=True)
+    if boundary is not None and not new.empty:
+        geom = boundary.geometry.union_all()
+        shapely.prepare(geom)
+        x0 = minx + new.ix.to_numpy() * CELL_DEG
+        y0 = miny + new.iy.to_numpy() * CELL_DEG
+        new = new[shapely.intersects(geom, shapely.box(x0, y0, x0 + CELL_DEG, y0 + CELL_DEG))]
+    new = new.merge(counts, on=["ix", "iy"], how="left").fillna({"n": 0})
+    new["n"] = new.n.astype(int)
+    new = new.sort_values("n", ascending=False)
+    new["lon0"] = minx + new.ix * CELL_DEG
+    new["lat0"] = miny + new.iy * CELL_DEG
+    log.info("Ring of %d cell(s) around the selection adds %d cells (%d with no buildings)",
+             ring, len(new), int((new.n == 0).sum()))
+    return pd.concat([cells, new[cells.columns]], ignore_index=True)
 
 
 COMPOSITE_BANDS = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]

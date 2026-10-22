@@ -349,6 +349,10 @@ aois:
     grid_origin: [68.0, 6.7]
     compose_window: ["2025-11-01", "2026-03-15"]
     cell_selection: duckdb
+    # Every cell within 3 cells (~33 km) of the >= 1,000-building and label selection, so a
+    # ground-mount park built away from any building is imaged too (compose._add_ring_cells,
+    # 2026-10-22, owner request). Adds 3,573 cells to the 25,598, composited after them.
+    ring_cells: 3
     # Val holdout = Gujarat's Surat-Bharuch-Vadodara val box (gujarat.val_box, lon 72.7-73.9,
     # lat 21.0-23.0): every India cell whose centre falls inside it, 240 cells. v5 held
     # this box out of its own gujarat corpus, so the localized v10 and v5 are both scored
