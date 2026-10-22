@@ -380,6 +380,25 @@ def _boa_offset(item, provider: str) -> float:
     return 0.0
 
 
+def _asset_href(item, key: str, provider: str) -> str:
+    """The asset URL, re-signed at the moment of use on Planetary Computer.
+
+    Search signs every href once (`planetary_computer.sign_inplace`), with a token that
+    lives 45 minutes and that the library only replaces once it has under 60 s left. So a
+    tile group read later than the search -- or longer than the token's remaining life --
+    fails at open with a 403 that the guards below turn into a silently missing scene,
+    the loss documented in docs/issues/glint-tile-batched-coverage.md. Re-signing the
+    bare URL here always gets a token with at least a minute to run, which outlasts one
+    windowed read. Earth Search hrefs are public and returned unchanged.
+    """
+    href = item.assets[key].href
+    if provider != "planetary-computer":
+        return href
+    import planetary_computer
+
+    return planetary_computer.sign(href.split("?", 1)[0])
+
+
 def _cached_tile_angles(item, provider: str) -> TileAngles:
     cache_key = f"{provider}:{item.id}"
     with _tile_angles_lock:
@@ -388,7 +407,7 @@ def _cached_tile_angles(item, provider: str) -> TileAngles:
         return cached
     import requests
 
-    href = item.assets[_metadata_asset_key(provider)].href
+    href = _asset_href(item, _metadata_asset_key(provider), provider)
     xml_text = requests.get(href, timeout=60).text
     ta = parse_tile_angles(xml_text)
     with _tile_angles_lock:
@@ -529,7 +548,7 @@ def _polygon_band_stats(
     """(p98 inside geometry, annulus median, n inside pixels), raw DN, in one band."""
     import rasterio
 
-    href = item.assets[_band_asset_key(band, provider)].href
+    href = _asset_href(item, _band_asset_key(band, provider), provider)
     with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
         p98, ring, npx = _read_target_stats(src, geometry, lon, lat)
     offset = _boa_offset(item, provider)  # NaN-preserving: nan + offset stays nan
@@ -545,7 +564,7 @@ def _scl_cloud_row(
     import rasterio
 
     try:
-        href = item.assets[_band_asset_key("SCL", provider)].href
+        href = _asset_href(item, _band_asset_key("SCL", provider), provider)
         with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
             tgt, ring, npx = _read_target_scl(src, geometry, lon, lat)
         return {"scl_cloud_frac": tgt, "scl_ring_cloud_frac": ring, "scl_npx": npx}
@@ -642,6 +661,43 @@ def _tile_key(lon: float, lat: float, tile_deg: float) -> tuple[int, int]:
     return int(np.floor(lon / tile_deg)), int(np.floor(lat / tile_deg))
 
 
+def _assign_items_by_footprint(
+    items: list, member_targets: list[tuple[str, object, float, float]],
+) -> dict[int, list[tuple[str, object, float, float]]]:
+    """Per target and acquisition minute, the ONE item whose footprint holds the target
+    deepest: `{item index: [targets to read from it]}`.
+
+    Neighbouring MGRS tiles overlap by ~10 km, so one acquisition arrives as two or three
+    items and `tile_scene_series_batch` reads them all, keeping the max-`npx` row only
+    afterwards. On the France pilot that was 308 items read for 126 dates. Choosing per
+    target, from each item's own STAC footprint, keeps the property that dedupe exists to
+    protect (never trade the item that covers a target for one that does not) without
+    downloading the copies. Depth rather than first-by-id, so a target near one tile's
+    edge is read from the tile it sits well inside.
+    """
+    import shapely
+    from shapely.geometry import shape
+
+    lons = np.array([t[2] for t in member_targets])
+    lats = np.array([t[3] for t in member_targets])
+    pts = shapely.points(lons, lats)
+    best: dict[tuple[int, str], tuple[float, int]] = {}
+    for idx, item in enumerate(items):
+        fp = shape(item.geometry)
+        inside = np.flatnonzero(shapely.contains_xy(fp, lons, lats))
+        if not len(inside):
+            continue
+        depth = shapely.distance(fp.boundary, pts[inside])
+        key = item.datetime.strftime("%Y%m%d%H%M")
+        for ti, dep in zip(inside, depth):
+            if dep > best.get((ti, key), (-1.0, -1))[0]:
+                best[(ti, key)] = (float(dep), idx)
+    out: dict[int, list] = {}
+    for (ti, _), (_, idx) in best.items():
+        out.setdefault(idx, []).append(member_targets[ti])
+    return out
+
+
 def _search_items_bbox(provider: str, bbox: tuple[float, float, float, float],
                         start: datetime, end: datetime, max_cloud: int):
     catalog = _es_catalog() if provider == "earth-search" else _pc_catalog()
@@ -700,7 +756,7 @@ def _read_targets_from_item(
     """
     import rasterio
 
-    href = item.assets[_band_asset_key(band, provider)].href
+    href = _asset_href(item, _band_asset_key(band, provider), provider)
     offset = 0.0 if (scl or not apply_offset) else _boa_offset(item, provider)
     out = {}
     try:
@@ -729,7 +785,7 @@ def tile_scene_series_batch(
     targets: pd.DataFrame, start: datetime, end: datetime,
     bands: tuple[str, ...] = GLINT_BANDS, max_cloud: int = 80,
     tile_deg: float = 1.0, max_workers: int = 6, keep_items: bool = False,
-    use_scl: bool = True,
+    use_scl: bool = True, dedupe_items: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """Tile-major batched analogue of `scene_series`, for many targets at once.
 
@@ -756,6 +812,11 @@ def tile_scene_series_batch(
     composite image, see `scripts/glint_alignment_check.py`), without a second search.
     Off by default: item objects aren't parquet/CSV-serializable, and no production
     consumer (`add_glint_prior`, the density/precision scripts) needs them.
+
+    `dedupe_items=True` reads each target from one item per acquisition instead of from
+    every overlapping tile's copy (`_assign_items_by_footprint`), and skips items no
+    target needs. Off by default so existing pulls stay reproducible; the per-date
+    max-`npx` pick below still runs, so a copy that slips through is handled as before.
     """
     keys = [_tile_key(lon, lat, tile_deg) for lon, lat in zip(targets.lon, targets.lat)]
     groups: dict[tuple, list[int]] = {}
@@ -797,25 +858,32 @@ def tile_scene_series_batch(
         # item actually has data there (see the npx-based pick below).
         items = sorted(items, key=lambda i: i.id)
         member_targets = [(r.pid, r.geometry, r.lon, r.lat) for r in grp.itertuples()]
+        assigned = _assign_items_by_footprint(items, member_targets) if dedupe_items else None
+        if assigned is not None:
+            log.info("tile-batch group %d: %d of %d items needed, %d target-scene reads",
+                     gi, len(assigned), len(items), sum(map(len, assigned.values())))
 
-        def _process_item(item):
+        def _process_item(idx, item):
+            targets_here = member_targets if assigned is None else assigned.get(idx, [])
+            if not targets_here:
+                return []
             try:
                 ta = _cached_tile_angles(item, provider)
             except Exception as e:  # noqa: BLE001 - one bad scene shouldn't kill the group
                 log.debug("tile-angles failed for %s: %s", item.id, e)
                 return []
             band_results = {
-                band: _read_targets_from_item(item, band, member_targets, provider)
+                band: _read_targets_from_item(item, band, targets_here, provider)
                 for band in bands
             }
             # One extra asset read per scene (+50% at the default two bands), which buys
             # the only per-pixel cloud evidence in the pipeline. See `annotate_spikes`.
             scl_results = (
-                _read_targets_from_item(item, "SCL", member_targets, provider, scl=True)
+                _read_targets_from_item(item, "SCL", targets_here, provider, scl=True)
                 if use_scl else {}
             )
             out = []
-            for pid, geometry, lon, lat in member_targets:
+            for pid, geometry, lon, lat in targets_here:
                 try:
                     ang = ta.at(lon, lat)
                     if ang is None:
@@ -839,7 +907,7 @@ def tile_scene_series_batch(
             return out
 
         with ThreadPoolExecutor(max_workers) as ex:
-            futs = {ex.submit(_process_item, it): it for it in items}
+            futs = {ex.submit(_process_item, i, it): it for i, it in enumerate(items)}
             for f in as_completed(futs):
                 try:
                     rows = f.result()
@@ -865,6 +933,24 @@ def tile_scene_series_batch(
         pid: (_dedupe(rows) if rows else pd.DataFrame())
         for pid, rows in all_rows.items()
     }
+
+
+def one_row_per_acquisition(d: pd.DataFrame) -> pd.DataFrame:
+    """Collapse tile copies of one acquisition: same day and same view azimuth (within
+    5 deg), keeping the copy with most pixels.
+
+    Overlapping MGRS tiles each deliver a copy of one acquisition, with granule sensing
+    times ~14 s apart, so the minute-keyed dedupe in `tile_scene_series_batch` keeps both
+    whenever they straddle a minute, and one glint then counts as two consistent spike
+    dates. Two orbits imaging a site on the same day look from opposite sides of the
+    track, so their view azimuths differ and both survive.
+    """
+    if d.empty:
+        return d
+    key = pd.DataFrame({"_day": pd.to_datetime(d["time"]).dt.date,
+                        "_vaz": (d["view_az"] / 5).round()}, index=d.index)
+    keep = d.assign(**key).sort_values("npx", ascending=False).drop_duplicates(["_day", "_vaz"])
+    return keep.drop(columns=["_day", "_vaz"]).sort_values("time").reset_index(drop=True)
 
 
 def _refl(dn):
@@ -928,13 +1014,20 @@ def annotate_spikes(
       baseline either way - clouds/haze don't care whether the roof next door is
       bright or dark).
 
+    Tile copies of one acquisition are collapsed first (`one_row_per_acquisition`).
+
     Adds `a_*`/`r_*` (in-polygon / annulus reflectance), `clear`, `spike`,
     `cloud_free` and `glint_tilt`/`glint_az` (the orientation that scene's geometry would
     require) columns. Rows missing reflectance stats are dropped; empty input (or
     all-missing) returns empty.
     """
     need = [f"p98_{b}" for b in bands] + [f"ring_{b}" for b in bands]
-    d = df.dropna(subset=need).copy()
+    d = df.dropna(subset=need)
+    if {"time", "view_az", "npx"} <= set(d.columns):
+        # Tile copies of one acquisition are one observation, not two: counted twice, a
+        # single glint "validates" a pose on its own (10 of Pakistan's 346 published fits).
+        d = one_row_per_acquisition(d)
+    d = d.copy()
     if d.empty:
         # Return the empty frame WITH the columns this function promises, not the bare
         # input. Callers reasonably write `annotated.clear.sum()` or

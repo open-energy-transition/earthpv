@@ -70,6 +70,8 @@ repository; nothing was deleted on failure.
 | Quadrat-bootstrap uncertainty on the atlas | <span class="outcome works">shipped</span> | The headline figure now carries a 90% range. |
 | Solar-glint corroboration | <span class="outcome works">shipped</span> | Calibrated likelihood ratios per size bucket, reward-only, never demoting. |
 | Tile-major glint fetching | <span class="outcome works">shipped</span> | 22x faster, numerically identical output. |
+| [Glint tile copies counted once](#glint-tile-copies-and-token-expiry-2026-10-22) | <span class="outcome works">shipped</span> | Overlapping tiles deliver one pass twice, and a glint seen in both had validated a pose on its own. Pakistan's pose survey: 346 to 336 fits, none of the rest moved. |
+| [A fresh Planetary Computer token for every read](#glint-tile-copies-and-token-expiry-2026-10-22) | <span class="outcome works">shipped</span> | The client cached a 45-minute token and replaced it only with under 60 s left, the cause of the silent scene loss in long glint pulls. |
 | Pre-boom epoch check | <span class="outcome works">shipped</span> | A persistent 2021 signal demotes a candidate. |
 | Vegetation veto | <span class="outcome works">shipped</span> | 596 of 5,132 leads vetoed, and specifically the right ones. |
 | Hard-negative mining for segmentation | <span class="outcome works">shipped</span> | Bi-temporal confirmed negatives cut false-positive pixels 28.6%. |
@@ -508,6 +510,42 @@ already the unit the French quadrats use.
 
 `building_table` gained an optional `buildings` override for this; the default keeps the VIDA
 fetch, so no existing caller changed.
+
+### Glint tile copies and token expiry (2026-10-22)
+
+Both defects surfaced while validating the France pose survey's fetch against the old path
+on real data.
+
+**One pass, counted twice.** Neighbouring MGRS tiles overlap by about 10 km, so one
+Sentinel-2 pass arrives as two to four items. Their granule sensing times differ by about
+14 s. `tile_scene_series_batch` dedupes on the sensing minute, so the copies survived
+whenever they straddled a minute: the France pilot read 308 items for 126 dates. A glint
+seen in two copies then counted as two dates that agree on one panel plane, which is the
+validation criterion itself.
+
+Re-analysed from cached series, after first confirming each published summary reproduced
+exactly:
+
+* **country2000:** 290 to 281 fits.
+* **Second regional top-up:** 33 to 32 fits.
+* **First top-up and the 500-target sensitivity study:** unaffected. The 500-target study
+  was pulled per target, so its curve and the rank multipliers stand.
+* **Surviving fits:** none moved.
+
+`glint.annotate_spikes` now collapses rows sharing a day and a view azimuth, so every
+analysis path is safe, including series pulled the old way. `tile_scene_series_batch(
+dedupe_items=True)` avoids downloading the copies at all: each target is read from the one
+item whose footprint holds it deepest. The default fetch is unchanged, so earlier pulls
+still reproduce.
+
+The 662-candidate glint sample behind Pakistan's `p_unmapped` was pulled through the same
+path, but its series were never cached, so it cannot be checked without a re-pull.
+
+**The token.** Search signs every asset URL with a cached 45-minute SAS token, and
+`planetary_computer` replaces it only once it has under 60 s left. A tile group read late,
+or for longer than the token had left, failed at open, and the guards turned each failure
+into a silently missing scene. `glint._asset_href` now re-signs the bare URL at the moment
+of use, and a deliberately stale href opens.
 
 ## What did not work
 

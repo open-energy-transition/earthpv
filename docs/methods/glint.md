@@ -113,11 +113,18 @@ seam-zone candidate could silently pick up an adjacent tile's non-covering item.
 Each tile group tries Planetary Computer first and falls back to Earth Search on AWS Open
 Data, which needs no authentication and fails independently.
 
-!!! warning "Token expiry at country scale"
-    A country-scale batched run can silently lose roughly half the scenes for 48 percent of
-    targets when the Planetary Computer signing token expires mid-run. Check the per-target
-    scene counts before trusting a large pull, and relaunch: the per-target file resume
-    design means nothing already fetched is lost.
+!!! warning "Token expiry and duplicate acquisitions"
+    **Token expiry.** Before 2026-10-22, a country-scale batched run could silently lose
+    roughly half the scenes for 48 percent of targets. The Planetary Computer token expired
+    mid-run, because the client caches a 45-minute token and replaces it only with under
+    60 s left. Asset URLs are now re-signed at open time (`glint._asset_href`).
+
+    **Duplicate acquisitions.** Overlapping MGRS tiles deliver copies of one acquisition
+    about 14 s apart. The default per-minute dedupe keeps both copies whenever they
+    straddle a minute, so one glint can count as two consistent dates. This affects 9 of
+    the 346 validated Pakistani fits.
+
+    For a new pull, pass `dedupe_items=True`, as `scripts/glint_pose_survey.py` does.
 
 ## Dense urban blocks need a different criterion
 
@@ -342,6 +349,18 @@ overwhelming majority of small rooftops permanently outside the observable band.
 
 ### Detection rate, validation rate, and fitted pose all shift with latitude (2026-08-14)
 
+!!! note "Corrected 2026-10-22"
+
+    The figures in this section were recomputed after the duplicate-acquisition fix (see
+    "Token expiry and duplicate acquisitions" above).
+
+    * **32-34N:** 11.0% to 9.4% validated.
+    * **Khyber Pakhtunkhwa:** 11.3% to 9.4%.
+    * **Punjab and Sindh:** each moved by under one point.
+    * **26-28N** (too thin to read) lost its only fit.
+
+    Every trend reads as before.
+
 The country2000 study (`data/glint/country2000_summary.csv`) was stratified by
 installation size, not region, so it had never been cut geographically until
 `scripts/glint_pose_by_region.py` did it directly against data already on disk -- no new
@@ -358,7 +377,7 @@ Within the well-sampled bands:
 |---|---:|---:|---:|---:|---|
 | 24-26N (coastal Sindh) | 435 | 39.5 | 21.1 | 9.7&deg; | 81.7&deg;-177.0&deg; |
 | 30-32N (central Punjab) | 959 | 29.6 | 13.6 | 14.6&deg; | 105.6&deg;-179.4&deg; |
-| 32-34N (upper Punjab) | 519 | 21.8 | 11.0 | 18.8&deg; | 129.7&deg;-180.1&deg; |
+| 32-34N (upper Punjab) | 519 | 21.6 | 9.4 | 18.8&deg; | 129.7&deg;-180.1&deg; |
 
 Two things move together and cleanly, in the direction each has an independent reason to:
 
@@ -376,8 +395,8 @@ Two things move together and cleanly, in the direction each has an independent r
   `pose.py`: the *same* wedge is currently applied nationally, computed from the pooled
   pan-Pakistan azimuth range, and this result says that pools together installations
   facing genuinely different observable ranges rather than one national truth.
-- **Detection and validation rate both decline with latitude** (39.5% -> 29.6% -> 21.8%
-  detected; 21.1% -> 13.6% -> 11.0% validated). Read cautiously: this is consistent with
+- **Detection and validation rate both decline with latitude** (39.5% -> 29.6% -> 21.6%
+  detected; 21.1% -> 13.6% -> 9.4% validated). Read cautiously: this is consistent with
   the wedge narrowing at higher latitude (fewer installations fall inside an observable
   range at all), but installation type, mounting convention, and building stock also
   differ by region and are not controlled for here -- the province cut below shows exactly
@@ -406,21 +425,30 @@ completed with healthy scene counts (chunk medians 293-380, no zero-scene target
 Merged into `data/glint/pakistan_combined_summary.csv` (2,401 targets total).
 
 **The well-sampled bands replicate closely** (24-26N: 435->490 targets, 39.5%->36.7%
-detected; 30-32N: 959->982, 29.6%->29.1%; 32-34N: 519->605, 21.8%->20.8% -- tilt and
+detected; 30-32N: 959->982, 29.6%->29.1%; 32-34N: 519->605, 21.6%->20.7% -- tilt and
 azimuth trends unchanged), which is reassuring: the top-up did not need to touch these,
 and it did not disturb them.
 
 **The top-up genuinely moved the thin groups, and not always the way a hopeful redraw
 would.** Khyber Pakhtunkhwa grew from 53 to 253 targets, but its validation rate fell
-from 11.3% to 7.5% -- the original small sample was optimistic by chance. Balochistan
+from 9.4% to 7.1% -- the original small sample was optimistic by chance. Balochistan
 (34 -> 114 targets) fell similarly, 26.5% -> 16.7%. Both are now bigger, more trustworthy
 *rate* estimates, but neither has enough *fitted* (pose-worthy) targets yet to report
-tilt/azimuth (Balochistan: 19 fitted; Khyber Pakhtunkhwa: 19; the reliability threshold is
+tilt/azimuth (Balochistan: 19 fitted; Khyber Pakhtunkhwa: 18; the reliability threshold is
 20). Azad Kashmir (8 installations nationally) and Gilgit-Baltistan (2) remain a full
 census, not a sample -- there is nothing left to draw.
 
+A second round, `scripts/glint_orientation_region_topup2.py` (442 targets, seed 44, same
+fetch and dates), went after the two provinces still under that threshold and the latitude
+bands made of their remaining pool. Islamabad Capital Territory was left out by owner
+decision: at 4.7% it would need 400 or more pulls to reach 20 fits. Azad Kashmir,
+Gilgit-Baltistan and 26-28N were left out because nothing remains to draw. Both provinces
+now clear the bar. Balochistan has 29 fitted of 196 (14.8% validated, median tilt
+12.2&deg;), and Khyber Pakhtunkhwa 39 of 497 (7.8%, median tilt 18.0&deg;). The combined pool
+is 2,843 targets.
+
 A night-lights-style atlas page (`scripts/build_glint_pose_regional_atlas.py` ->
-`results/pakistan_glint_pose_regional.html`) plots every one of the 2,401 targets on a
+`results/pakistan_glint_pose_regional.html`) plots every one of the 2,843 targets on a
 province choropleth (validation rate, dashed outline where too thin to trust) alongside
 the latitude-band bars, matching this project's other interactive result pages.
 
@@ -437,6 +465,7 @@ the latitude-band bars, matching this project's other interactive result pages.
 | `glint_density_*.py`, `glint_cell_density_*.py` | two attempts at regional density from glint, both negative |
 | `glint_pose_by_region.py` | re-cuts a glint study by latitude band and province -- detection/validation rate and fitted tilt/azimuth all shift with latitude |
 | `glint_orientation_region_topup.py` | targeted random top-up of the thin latitude bands/provinces `glint_pose_by_region.py` found, poolable with country2000 |
+| `glint_orientation_region_topup2.py` | second top-up, for the provinces still under 20 fitted after the first; its `merge` writes the combined 2,843-target summary |
 | `build_glint_pose_regional_atlas.py` | night-lights-style atlas page for the regional re-cut -- province choropleth + per-target points + latitude-band bars |
 | `glint_psf_photometry.py` | measures the effective PSF by forward-modelling each footprint, then tests matched filtering against the aperture statistic (measured: worse) |
 | `glint_psf_negatives.py` | draws and pulls the Rule-1-verified negative control set behind the 2.0% false-spike rate |
@@ -444,3 +473,4 @@ the latitude-band bars, matching this project's other interactive result pages.
 | `s1_corner_reflector_test.py` | the Sentinel-1 dihedral hypothesis, negative |
 | `glint_s2_example_grid.py` | builds the [Sentinel-2 image gallery](../glint_examples.md) |
 | `build_pv_pose_country2000.py` | builds the [pose survey page](../results/pv-pose.md) |
+| `glint_pose_survey.py` | pose survey of every mapped installation above a size floor, any country: dissolved targets, geographic chunks, one read per acquisition (France, 2026-10-22) |

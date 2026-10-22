@@ -21,8 +21,9 @@ histograms, and the validation rate by size.
 <iframe src="../../assets/interactive/pakistan_pv_pose.html" title="Fitted panel pose across Pakistan from Sentinel-2 glint" loading="lazy"></iframe>
 </div>
 <p class="embed-note">
-Fitted tilt and azimuth for 290 installations whose historical Sentinel-2 reflections agree
-on one fixed panel plane, out of 2,000 checked across two years.
+Fitted tilt and azimuth for 336 installations whose historical Sentinel-2 reflections agree
+on one fixed panel plane, out of 2,843 checked across two years: a 2,000-installation
+size-stratified sample plus 843 drawn at random in regions it left thin.
 <a href="../../assets/interactive/pakistan_pv_pose.html" target="_blank">Open full screen</a>.
 </p>
 
@@ -38,15 +39,24 @@ only what was actually measured rather than assuming the population is mirror-sy
 about the south axis and filling the rest in.
 
 **The population is dispersed, and bimodally so.** Tilt ranges from 2.5 to 28.6 degrees
-with an interquartile range of 6.3 to 18.8, and it splits into a shallow cluster around
+with an interquartile range of 7.2 to 18.8, and it splits into a shallow cluster around
 3 to 6 degrees (ground and utility mounts) and a broad hump at 15 to 21 degrees (typical
 fixed-pitch rooftop). The single densest tilt-and-azimuth bin holds under 10 percent of the
 fitted population.
 
-**Most installations never produce a fittable pose.** Of the installations at or above
-1,000 m<sup>2</sup>, 51 percent showed no glint signal at all and another 25 percent glinted
-once, or on dates that disagree, which detects presence but carries no orientation
-information. Only 23.6 percent reach this plot.
+**Most installations never produce a fittable pose.** In the size-stratified sample, 51
+percent of the installations at or above 1,000 m<sup>2</sup> showed no glint signal at all,
+and another 26 percent glinted once or on dates that disagree. That detects presence but
+carries no orientation information. Only 23.2 percent reach this plot.
+
+!!! note "Corrected 2026-10-22: one pass counted once"
+
+    Neighbouring Sentinel-2 tiles overlap, so one satellite pass can arrive as two copies.
+    The fit had counted a glint seen in both copies as two dates that agree. That was
+    enough on its own to validate a pose for 10 of the 346 fitted installations (9
+    ground-mount, 1 rooftop), and they are gone now. None of the remaining fits moved.
+    The page also now includes the second regional top-up of 442 installations, which had
+    been merged into the survey data without the page being rebuilt.
 
 ## What glint is and is not good for
 

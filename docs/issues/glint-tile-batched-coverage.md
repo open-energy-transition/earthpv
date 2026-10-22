@@ -1,10 +1,13 @@
 ## Status (2026-07-21): country-scale revalidation -- flags hold up, scene counts don't
 
-!!! note "OPEN (as of 2026-08-11)"
+!!! note "FIX SHIPPED, RE-RUN PENDING (as of 2026-10-22)"
 
-    The 22x tile batching shipped and is still in use. The silent scene-loss bug this doc
-    ends on is unfixed, so any scene-count comparison drawn from that study remains
-    untrustworthy.
+    The 22x tile batching shipped and is still in use. The silent scene loss this doc ends
+    on came from `planetary_computer`'s token cache: a 45-minute token that is only
+    replaced with under 60 s left. Since 2026-10-22 `glint._asset_href` re-signs every
+    asset URL at open time. Scene-count comparisons from the study below still predate the
+    fix, and a second defect turned up alongside it: tile copies of one acquisition can be
+    counted twice. See open question 15.
 
 Ran `scripts/glint_revalidate_pakistan.py`: the same 500 OSM-confirmed Pakistan
 targets used for the original per-target study (`pakistan_summary.csv`,

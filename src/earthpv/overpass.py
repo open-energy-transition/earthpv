@@ -167,8 +167,18 @@ def fetch_solar_overpass(
         raise ValueError("Pass exactly one of bbox or place")
     query = _query_bbox(bbox, timeout) if bbox else _query_place(place, timeout)
     data = _run_query(query, timeout)
-    elements = data.get("elements", [])
+    gdf = solar_elements_to_gdf(data.get("elements", []))
+    log.info(
+        "Overpass returned %d solar elements (%s)", len(gdf),
+        f"place={place!r}" if place else f"bbox={bbox}",
+    )
+    return gdf
 
+
+def solar_elements_to_gdf(elements: list[dict]) -> gpd.GeoDataFrame:
+    """Overpass `out meta geom` elements -> the solar label schema. Split out of
+    `fetch_solar_overpass` so a response saved to disk (a hand-run `newer:` diff query,
+    say) parses to exactly the same rows as a live pull."""
     rows = []
     for el in elements:
         geom = _element_geometry(el)
@@ -195,10 +205,6 @@ def fetch_solar_overpass(
                           geometry=[], crs="EPSG:4326")
     if not gdf.empty:
         gdf["kind"] = gdf["class"].map(lambda c: "generator" if c == "generator" else "plant")
-    log.info(
-        "Overpass returned %d solar elements (%s)", len(gdf),
-        f"place={place!r}" if place else f"bbox={bbox}",
-    )
     return gdf
 
 

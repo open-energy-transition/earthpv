@@ -871,7 +871,14 @@ def read_pose_points():
     m = re.search(r'id="pvdata"[^>]*>(.*?)</script>', html, flags=re.S)
     if not m:
         raise SystemExit("could not locate the pose data block")
-    return json.loads(m.group(1))
+    d = json.loads(m.group(1))
+    # The page's data block carries only the fitted points; the checked total is in its
+    # title. Read both, so the caption below cannot drift from what is plotted.
+    n = re.search(r"Glint Survey \(n=(\d+)\)", html)
+    if not n:
+        raise SystemExit("could not locate the pose survey total")
+    d["n_total"] = int(n.group(1))
+    return d
 
 
 def fig_pv_pose(t: Theme):
@@ -918,9 +925,10 @@ def fig_pv_pose(t: Theme):
     for txt in leg.get_texts():
         txt.set_color(t.ink_dim)
     titled(fig, t, "How Pakistani solar panels are actually mounted",
-           "Fitted tilt and azimuth for 290 installations whose Sentinel-2 glints agree on "
-           "one fixed panel plane, out of 2,000 checked. The shaded wedge is unreachable by "
-           "this sensor's fixed overpass time, not known to be empty.", width=76)
+           f"Fitted tilt and azimuth for {len(d['points']):,} installations whose Sentinel-2 "
+           f"glints agree on one fixed panel plane, out of {d['n_total']:,} checked. The shaded "
+           "wedge is unreachable by this sensor's fixed overpass time, not known to be empty.",
+           width=76)
     save(fig, t, "pv_pose_polar")
 
 

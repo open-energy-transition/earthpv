@@ -887,6 +887,15 @@ state:
   whole-image cloud-cover cutoff couldn't see localized cloud over one target, which SCL's
   per-pixel classification can. Gated on the annulus, not the target (a real glint is often
   itself saturated-bright, which SCL also flags as cloud).
+- **Tile copies count once, and asset URLs are re-signed per read (2026-10-22).**
+  Overlapping MGRS tiles deliver one pass as 2-4 items about 14 s apart, and the
+  minute-keyed dedupe in `tile_scene_series_batch` kept both, so one glint counted as two
+  consistent dates. `annotate_spikes` now collapses them (`one_row_per_acquisition`), and
+  `dedupe_items=True` avoids fetching them. The fix took Pakistan's pose survey from 346
+  to 336 fits, and the atlas pose section from 290 to 281 of 2,000. The 662-candidate
+  `p_unmapped` sample is uncached and unchecked (open question 15). `glint._asset_href`
+  re-signs Planetary Computer URLs at open, because the client keeps a 45-min token until
+  under 60 s is left, which was the silent scene loss in long pulls.
 - **Opportunity-normalized glint sensitivity is shipped** (`src/earthpv/glint_opportunity.py`):
   a target's glint-validation rate depends on how many geometrically-compatible scenes it got
   a chance to be seen in, not just its size bin, so the capacity calibration's inversion now

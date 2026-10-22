@@ -6,6 +6,10 @@
     the results cited here come from the 1 km² Lahore calibration box, which was retired in
     August 2026 and replaced by a hand-drawn 6.61 km² boundary.
 
+    Corrected 2026-10-22: the duplicate-acquisition fix leaves 281 of the 290 fits below.
+    The densest bin then holds 27/281 = 9.6% (9.7% before), so the conclusion is
+    unchanged. Pooled with the 843 regional top-up targets (336 fits), it holds 8.0%.
+
 ## The idea, as discussed
 
 Use the population's dominant (tilt, azimuth) as a forward model: predict the small

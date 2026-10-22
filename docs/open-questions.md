@@ -312,14 +312,26 @@ work is not automatically better than an aggregate here, because the glinting pa
 and position are unknown and vary by date. A per-pixel counting statistic that does not
 assume a shape is still untested and remains the open item.
 
-### 15. Glint scene coverage is silently incomplete
+### 15. The glint calibration sample predates two fetch fixes
 
-The tile-major glint fetch is 22x faster and numerically identical, but revalidation found
-that token expiry silently drops scenes for a large share of targets rather than erroring.
-The try/except fix moved the failure from loud to silent without removing it. Re-running the
-full study after a proper token-refresh fix is the only way to get a scene-count comparison
-that means what it appears to mean. See
-[Glint tile-batched coverage](issues/glint-tile-batched-coverage.md).
+Two glint fetch defects were found and fixed 2026-10-22: tile copies of one pass counted
+as two dates, and a cached token expiring mid-pull. See the experiments register's "Glint
+tile copies and token expiry".
+
+Already re-analysed from cache:
+
+* the pose survey (346 to 336 fits)
+* the regional re-cut
+* the pose section of the evidence atlas
+
+Two things remain:
+
+* **The 662-candidate glint sample.** It sets `p_unmapped` in
+  `pakistan_candidate_precision.yaml`. It was pulled through the affected batch path and
+  its series were never cached, so checking it needs a re-pull. The pose survey suggests
+  a few percent of its 61 validations could be tile copies. Any change re-derives a
+  load-bearing table and moves Best, so it is an owner decision.
+* **The scene-count comparison in the batching study.** It still predates the token fix.
 
 ### 16. Growth as a product
 
