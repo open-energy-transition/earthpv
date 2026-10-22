@@ -82,7 +82,8 @@ def fetch_vida_buildings(
     return gdf
 
 
-def fetch_vida_building_points(bbox: Bbox, iso3: str, con=None) -> pd.DataFrame:
+def fetch_vida_building_points(bbox: Bbox, iso3: str, con=None,
+                               with_area: bool = False) -> pd.DataFrame:
     """Building locations within `bbox` as plain (lon, lat) float columns, no geometry.
 
     For country-scale scans (Pakistan has 76M+ VIDA buildings) `fetch_vida_buildings`
@@ -91,13 +92,15 @@ def fetch_vida_building_points(bbox: Bbox, iso3: str, con=None) -> pd.DataFrame:
     per building (e.g. binning into cells for density-based cell selection) - it reads
     the parquet's own `bbox` struct (already used for row-group pruning) and returns its
     center, never touching the `geometry` column or DuckDB's spatial/GEOS layer at all.
+    `with_area` adds VIDA's own footprint area as `area_m2`, still without the geometry.
     """
     con = con or overture.connect()
     local = Path(VIDA_LOCAL.format(iso3=iso3))
     url = str(local) if local.exists() else VIDA_URL.format(iso3=iso3)
     xmin, ymin, xmax, ymax = bbox
+    area = ", area_in_meters AS area_m2" if with_area else ""
     sql = f"""
-        SELECT (bbox.xmin + bbox.xmax) / 2 AS lon, (bbox.ymin + bbox.ymax) / 2 AS lat
+        SELECT (bbox.xmin + bbox.xmax) / 2 AS lon, (bbox.ymin + bbox.ymax) / 2 AS lat{area}
         FROM read_parquet('{url}')
         WHERE bbox.xmin <= {xmax} AND bbox.xmax >= {xmin}
           AND bbox.ymin <= {ymax} AND bbox.ymax >= {ymin}

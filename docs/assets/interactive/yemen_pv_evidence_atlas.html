@@ -223,6 +223,11 @@
   /* Hollow: proposed, nothing mapped yet. */
   .sw.cand { border-radius: 1px; background: none; border: 1.6px solid var(--ink);
     width: 8px; height: 8px; margin: 0 2px; transform: rotate(45deg); }
+  /* The candidate to start with: a star, the same ink, so it reads as one of the diamonds'
+     family and not as a method colour. */
+  .sw.star { border-radius: 0; background: var(--ink); width: 13px; height: 13px;
+    clip-path: polygon(50% 0%, 61.8% 34.5%, 97.6% 34.5%, 68.8% 56.5%, 79.4% 90.5%, 50% 70%,
+      20.6% 90.5%, 31.2% 56.5%, 2.4% 34.5%, 38.2% 34.5%); }
   .sw.live { background: color-mix(in srgb, var(--domain) 35%, transparent);
     border: 1.4px solid var(--domain); }
   .sw.line { height: 2px; border-radius: 1px; background: var(--prov-stroke); }
@@ -350,6 +355,13 @@
   .legend-keys { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
   .legend-keys > span { display: inline-flex; align-items: center; gap: 6px;
     font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+  .legend-keys > .leg-start { display: inline-flex; align-items: center; gap: 6px;
+    font: 600 10.5px var(--font-mono); color: var(--ink); background: var(--panel-2);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 3px 9px 3px 7px;
+    cursor: pointer; }
+  .legend-keys > .leg-start:hover { background: var(--hair); }
+  .ap-start { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 6px;
+    font: 600 10.5px var(--font-mono); letter-spacing: 0.04em; color: var(--accent); }
 
   .hero-num { font-size: clamp(36px, 5.4vw, 54px); font-weight: 800; letter-spacing: -0.03em;
     line-height: 0.95; color: var(--accent); }
@@ -1718,7 +1730,10 @@ out geom;</div>
        layout: {visibility: OV.calib.on ? "visible" : "none", "icon-image": CALIB_ICON,
                 "icon-allow-overlap": true, "icon-ignore-placement": true}},
       {id: "cand-dot", type: "symbol", source: "candpts",
-       layout: {visibility: OV.cand.on ? "visible" : "none", "icon-image": CAND_ICON,
+       layout: {visibility: OV.cand.on ? "visible" : "none",
+                "icon-image": ["case", ["get", "star"], STAR_ICON, CAND_ICON],
+                // A higher key draws on top when icons overlap: the star never hides.
+                "symbol-sort-key": ["case", ["get", "star"], 1, 0],
                 "icon-allow-overlap": true, "icon-ignore-placement": true}},
       {id: "live-fill", type: "fill", source: "live", filter: ["==", ["geometry-type"], "Polygon"],
        layout: {visibility: OV.live.on ? "visible" : "none"},
@@ -1742,8 +1757,24 @@ out geom;</div>
   // The calibration-area marker, drawn here rather than loaded from a sprite sheet: an
   // icon-only symbol layer needs no glyph or sprite server, so nothing external can make
   // it disappear. Redrawn on a theme change, since it carries the theme's ink.
-  // A candidate is the same diamond, hollow: proposed, nothing mapped yet.
-  const CALIB_ICON = "calib-diamond", CAND_ICON = "cand-diamond";
+  // A candidate is the same diamond, hollow: proposed, nothing mapped yet. The candidate to
+  // start with (scripts/publish_calibration_areas.py's `start_here`) is a star.
+  const CALIB_ICON = "calib-diamond", CAND_ICON = "cand-diamond", STAR_ICON = "cand-star";
+  function starIcon(){
+    const P = palette(), r = 2, size = 21 * r, cv = document.createElement("canvas");
+    cv.width = cv.height = size;
+    const ctx = cv.getContext("2d");
+    ctx.translate(size / 2, size / 2 + 0.6 * r);
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++){
+      const rad = (i % 2 ? 3.6 : 8.6) * r, a = -Math.PI / 2 + i * Math.PI / 5;
+      ctx.lineTo(rad * Math.cos(a), rad * Math.sin(a));
+    }
+    ctx.closePath();
+    ctx.lineJoin = "round"; ctx.lineWidth = 3.2 * r; ctx.strokeStyle = P.mapBg; ctx.stroke();
+    ctx.fillStyle = P.ink; ctx.fill();
+    return ctx.getImageData(0, 0, size, size);
+  }
   function calibIcon(hollow){
     const P = palette(), r = 2, size = 13 * r, cv = document.createElement("canvas");
     cv.width = cv.height = size;
@@ -1756,9 +1787,10 @@ out geom;</div>
     return ctx.getImageData(0, 0, size, size);
   }
   function ensureCalibIcon(m){
-    for (const [id, hollow] of [[CALIB_ICON, false], [CAND_ICON, true]]){
-      if (m.hasImage(id)) m.updateImage(id, calibIcon(hollow));
-      else m.addImage(id, calibIcon(hollow), {pixelRatio: 2});
+    for (const [id, draw] of [[CALIB_ICON, () => calibIcon(false)], [CAND_ICON, () => calibIcon(true)],
+                              [STAR_ICON, starIcon]]){
+      if (m.hasImage(id)) m.updateImage(id, draw());
+      else m.addImage(id, draw(), {pixelRatio: 2});
     }
   }
 
@@ -1846,7 +1878,13 @@ out geom;</div>
       .map(o => `<span><span class="sw ${o.sw}"></span>${o.key}</span>`);
     for (const L of [...CFG_LAYERS, ...USER_LAYERS]) if (L.on && L.kind !== "raster")
       keys.push(`<span><span class="sw" style="background:${esc(L.color)}"></span>${esc(L.name)}</span>`);
+    // The candidate to start with, as a button that takes the reader there: at country
+    // zoom the star is one small mark among many.
+    const star = OV.cand.on && OV.cand.avail ? AREAS.cands.find(f => f.properties.start_here) : null;
+    if (star) keys.unshift(`<button type="button" class="leg-start" title="Zoom to it and open it">`
+      + `<span class="sw star"></span>Start here: ${esc(star.properties.name)}</button>`);
     document.getElementById("legkeys").innerHTML = keys.join("");
+    if (star) document.querySelector("#legkeys .leg-start").addEventListener("click", () => goToCandidate(star));
   }
 
   // ── city labels: HTML over the canvas, collision-avoiding ─────────────────────────
@@ -1969,12 +2007,14 @@ out geom;</div>
           + `<div class="t-desc">Click to open it in JOSM or iD.</div>`);
       } else if (f.layer.id === "cand-dot"){
         const p = AREAS.cands[f.properties.k].properties;
-        showTip(ev.clientX, ev.clientY, `<div class="th">CANDIDATE AREA: ${esc(p.name)}</div>`
+        showTip(ev.clientX, ev.clientY, `<div class="th">${p.start_here ? "START HERE: " : ""}CANDIDATE AREA: ${esc(p.name)}</div>`
           + (p.own_density_bldg_km2 ? row("Buildings per km², this box", fmt(p.own_density_bldg_km2))
              : p.density_bldg_km2 ? row("Buildings per km², region", fmt(p.density_bldg_km2)) : "")
+          + (p.own_large_buildings ? row("Buildings of 1,000 m² or more", fmt(p.own_large_buildings)) : "")
           + (p.imagery_date ? row("Esri imagery", esc(p.imagery_date)) : "")
+          + (p.priority ? row("Mapping order", `${p.priority} of ${AREAS.nRanked}`) : "")
           + row("Status", "Not yet mapped")
-          + `<div class="t-desc">Click to map it in JOSM or iD.</div>`);
+          + `<div class="t-desc">${p.start_here ? "The area to map first. " : ""}Click to map it in JOSM or iD.</div>`);
       } else if (f.layer.id.startsWith("live-")){
         showTip(ev.clientX, ev.clientY, liveTip(f.properties));
       } else {
@@ -2003,7 +2043,7 @@ out geom;</div>
   // be a URL they can reach, never a blob: or file: one.
   const SITE = "https://open-energy-transition.github.io/earthpv/";
   const AREAS_DIR = "assets/labels/calibration_areas/";
-  const AREAS = {base: null, fc: null, meta: {}, cands: []};
+  const AREAS = {base: null, fc: null, meta: {}, cands: [], nRanked: 0};
   const JOSM_HOST = "http://127.0.0.1:8111/";
   // #tracethesun tracks the campaign's calibration-area mapping across every country.
   const HASHTAGS = ["#tracethesun", "#earthpv", "#earthpv-calibration"];
@@ -2055,11 +2095,13 @@ out geom;</div>
       });
     }
     AREAS.cands = feats.filter(f => f.properties.kind === "candidate");
+    AREAS.nRanked = AREAS.cands.filter(f => f.properties.priority).length;
     const m = MAP.map;
     m.getSource("candpolys").setData({type: "FeatureCollection", features: AREAS.cands.map((f, k) =>
       ({type: "Feature", properties: {k}, geometry: f.geometry}))});
     m.getSource("candpts").setData({type: "FeatureCollection", features: AREAS.cands.map((f, k) =>
-      ({type: "Feature", properties: {k}, geometry: {type: "Point", coordinates: centerOf(featureBounds(f))}}))});
+      ({type: "Feature", properties: {k, star: !!f.properties.start_here},
+        geometry: {type: "Point", coordinates: centerOf(featureBounds(f))}}))});
     OV.cand.avail = AREAS.cands.length > 0;
     renderLayerLists(); renderLegend();
   }
@@ -2205,7 +2247,8 @@ out geom;</div>
     const d = document.createElement("div");
     d.className = "ap";
     const off = spec.feature ? "" : ' aria-disabled="true" disabled';
-    d.innerHTML = `<div class="th">${esc(spec.head)}</div><div class="nm">${esc(spec.name)}</div>`
+    d.innerHTML = (spec.star ? '<div class="ap-start"><span class="sw star"></span>START HERE</div>' : "")
+      + `<div class="th">${esc(spec.head)}</div><div class="nm">${esc(spec.name)}</div>`
       + spec.rows.map(([k, v]) => row(esc(k), esc(v))).join("")
       + (spec.warn ? `<p class="ap-warn">${spec.warn}</p>` : "")
       + (spec.extra || "")
@@ -2270,24 +2313,46 @@ out geom;</div>
   }
   // A sampled candidate (scripts/propose_calibration_candidates.py) carries its stratum, its
   // own measured density and the Esri date it passed the imagery gate with; a hand-picked
-  // one only the density of the grid cell it was pointed at.
+  // one only the density of the grid cell it was pointed at. A start-here box (--priority)
+  // carries its count of large buildings instead of a stratum, and on an uncalibrated atlas
+  // every candidate its place in the mapping order.
   function candSpec(f){
     const p = f.properties, bbox = featureBounds(f), [cx, cy] = centerOf(bbox);
     const stratum = /stratum (\d+ of \d+)/.exec(p.stratum || "");
+    const purposive = String(p.selection || "").startsWith("purposive");
     return {head: "CANDIDATE AREA, NOT YET MAPPED", name: p.name, place: p.name, id: p.id,
+      star: !!p.start_here,
       rows: [...(p.own_density_bldg_km2 ? [["Buildings per km², this box", fmt(p.own_density_bldg_km2)]]
                  : p.density_bldg_km2 ? [["Buildings per km², region", fmt(p.density_bldg_km2)]] : []),
+             ...(p.own_large_buildings ? [["Buildings of 1,000 m² or more", fmt(p.own_large_buildings)]] : []),
              ...(stratum ? [["Density stratum", stratum[1]]] : []),
              ...(p.imagery_date ? [["Esri imagery", p.imagery_date]] : []),
+             ...(p.priority ? [["Mapping order", `${p.priority} of ${AREAS.nRanked}`]] : []),
              ["Area", `${p.area_km2} km²`]],
-      warn: p.imagery_date
+      warn: (p.start_here ? "Map this area first: dense, with many large roofs, where solar is most "
+          + "likely to be found. " : "")
+        + (purposive
+        ? "Chosen for its building density and large buildings, never for solar already seen there, "
+          + "under Esri imagery recent enough for this country's satellite composite. Not checked on "
+          + "the ground: make sure it is mappable, and never move it toward visible solar."
+        : p.imagery_date
         ? "Drawn at random from its density stratum, under Esri imagery recent enough for this "
           + "country's satellite composite. Not checked on the ground: make sure it is mappable, "
           + "and never move it toward visible solar."
         : "Not checked on the ground yet. Before mapping, make sure the imagery is recent and the "
-          + "box sits on a settlement; if it needs to move, redraw it in JOSM.",
+          + "box sits on a settlement; if it needs to move, redraw it in JOSM."),
       note: p.note, bbox, feature: f, url: areaUrl(p.id),
       cmd: registerCmd(p.id.replace(/_calib_.*$/, ""), cy, cx, p.side_m, p)};
+  }
+  // The legend's "Start here" button: the candidate on screen, its popup open.
+  function goToCandidate(f){
+    const b = featureBounds(f), c = centerOf(b);
+    let opened = false;
+    // On arrival; on a timer too, since a camera already in place may not move at all.
+    const open = () => { if (!opened){ opened = true; showAreaPopup(c, candSpec(f)); } };
+    MAP.map.once("moveend", open);
+    MAP.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {padding: 80, maxZoom: 13, animate: !REDUCED});
+    setTimeout(open, REDUCED ? 50 : 1600);
   }
   function proposeAt(lngLat){
     armPropose(false);
@@ -2813,7 +2878,7 @@ out geom;</div>
       return;
     }
     MAP.map = map;
-    map.on("styleimagemissing", (e) => { if (e.id === CALIB_ICON || e.id === CAND_ICON) ensureCalibIcon(map); });
+    map.on("styleimagemissing", (e) => { if ([CALIB_ICON, CAND_ICON, STAR_ICON].includes(e.id)) ensureCalibIcon(map); });
     map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({showCompass: false}), "top-right");
     map.addControl(new maplibregl.FullscreenControl({container: shell}), "top-right");

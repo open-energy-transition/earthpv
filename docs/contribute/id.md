@@ -10,8 +10,8 @@ openstreetmap.org before you start, so iD opens ready to save.
 
 ## 1. Open the area
 
-On a country's atlas, click a candidate (hollow diamond) or a finished area (filled
-diamond) and press **Open in iD**. A new tab opens iD:
+On a country's atlas, click a candidate (hollow diamond; the **star** marks the one to map
+first) or a finished area (filled diamond) and press **Open in iD**. A new tab opens iD:
 
 - centred on the area, at zoom 16;
 - with the area's **boundary drawn as a dashed overlay**. It is iD's *Custom Map Data* layer

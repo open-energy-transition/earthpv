@@ -1,7 +1,8 @@
 # Draw your own calibration area
 
-The candidate areas on the atlas were drawn at random across each country's building-density
-range, so they are the first choice: nobody picked them for what they contain. Drawing your
+The candidate areas on the atlas were placed by rule: drawn at random across each country's
+building-density range, plus two start-here boxes in its densest districts with the most large
+roofs. They are the first choice, because nobody picked them for the solar they contain. Drawing your
 own is worth it when no candidate covers a kind of place the country still lacks, when a
 candidate turns out not to be mappable, or when you know a place well enough to outline it
 properly.

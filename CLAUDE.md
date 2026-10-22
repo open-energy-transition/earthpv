@@ -687,6 +687,15 @@ requests to 127.0.0.1.
   `World_Imagery/MapServer/4/query`, the endpoint iD's imagery panel uses.
 - **Output:** `data/labels/<aoi>/candidate_quadrats/`, with failures in `screened_out.csv`.
   `--replace` redraws only sampled candidates. Then run `calib-publish`.
+- **Start-here boxes (2026-10-22, owner request):** `calib-candidates -- --bronze --priority`
+  adds two PURPOSIVE 1 km boxes per Bronze AOI: among cells in the densest quarter of its
+  buildings, the window with the most roof area in VIDA footprints >= 1,000 m2, as dense as
+  that quarter's floor, 20 km apart, 5 km from sampled candidates, same imagery gate. Chosen
+  on buildings only, never on a solar layer, and marked `selection: purposive: ...`; they
+  raise the base rate, so the eight sampled boxes stay the representative set.
+  `calib-publish` ranks a Bronze AOI's candidates (start-here by large-roof area, then the
+  rest densest first) and the atlas draws `start_here` as a star with a *Start here* legend
+  button. Ranked at publish, so the star moves on by itself once its box is registered.
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/`.
 - Pages: `index.md` (overview; it keeps the `/contribute/` URL that the atlas popups,

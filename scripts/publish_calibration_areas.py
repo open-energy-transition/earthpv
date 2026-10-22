@@ -28,6 +28,13 @@ Three kinds of area:
   is a human decision the config has not recorded; published so the atlas's "Propose
   area" overlap check sees every existing quadrat, as `new_calibration_quadrat.py`'s does.
 
+On a Bronze atlas (no calibration yet, read from the page's own badge as
+`build_atlas_pages.tier_of` does) the candidates are also ranked, `priority` 1..N, and the
+first carries `start_here`, which the atlas draws as a star: the purposive start-here boxes
+(`propose_calibration_candidates.py --priority`: dense, most roof in large buildings) by
+large-roof area, then the sampled ones from the densest down. Ranked here rather than when
+drawn, so once the starred box is registered the star moves on to the next one by itself.
+
 Every feature carries `do_not_upload`, and only whitelisted properties: a boundary's own
 properties include local paths (`source_geojson`, `labels_file`) that do not belong on a
 public site. No timestamps, so a re-run with nothing new produces no diff.
@@ -74,6 +81,9 @@ DO_NOT_UPLOAD = "earthpv calibration reference layer - do not upload to OSM"
 DECIMALS = 7
 BOUNDARY = "_boundary.geojson"
 CANDIDATE = "_candidate.geojson"
+# propose_calibration_candidates.PRIORITY_SELECTION starts with this.
+PURPOSIVE = "purposive"
+BRONZE_BADGE = 'class="vscore-tier">Bronze<'
 
 
 def _round(coords):
@@ -111,7 +121,36 @@ def _label(stem: str) -> str:
     return roofclf.quadrat_label(stem).replace("_", " ").title()
 
 
-def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS) -> list[dict]:
+def _priority_key(f: dict) -> tuple:
+    """Start-here boxes first, by roof area in large buildings; then the rest densest first."""
+    p = f["properties"]
+    if str(p.get("selection", "")).startswith(PURPOSIVE):
+        return (0, -(p.get("own_large_roof_m2") or 0), p["id"])
+    return (1, -(p.get("own_density_bldg_km2") or p.get("density_bldg_km2") or 0), p["id"])
+
+
+def rank_candidates(feats: list[dict]) -> list[dict]:
+    """`priority` 1..N on the candidates, `start_here` on the first, candidates in that order."""
+    cands = sorted((f for f in feats if f["properties"]["kind"] == "candidate"), key=_priority_key)
+    for i, f in enumerate(cands, 1):
+        p = f["properties"]
+        tail = {k: p.pop(k) for k in ("note", "do_not_upload") if k in p}
+        p["priority"] = i
+        if i == 1:
+            p["start_here"] = True
+        p.update(tail)
+    return [f for f in feats if f["properties"]["kind"] != "candidate"] + cands
+
+
+def bronze_aois(pages: Path = PAGES) -> set[str]:
+    """AOIs whose published atlas carries the Bronze badge: no calibration yet."""
+    return {m.group(1) for p in Path(pages).glob("*evidence_atlas.html")
+            if (m := PAGE_AOI.match(p.name)) and BRONZE_BADGE in p.read_text()}
+
+
+def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS,
+              rank: bool = False) -> list[dict]:
+    """Every published area of `aoi`; `rank` adds the start-here priority to candidates."""
     cfg = atlas_config.load(aoi, configs_dir)
     feats, listed = [], set()
     for box in cfg.calibration_boxes:
@@ -150,11 +189,14 @@ def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS) 
                                   # hand-picked candidate has none of these.
                                   "own_density_bldg_km2": p.get("own_density_bldg_km2"),
                                   "stratum": p.get("stratum") if p.get("selection") else None,
+                                  # --priority boxes only.
+                                  "own_large_buildings": p.get("own_large_buildings"),
+                                  "own_large_roof_m2": p.get("own_large_roof_m2"),
                                   "imagery_layer": p.get("imagery_layer"),
                                   "imagery_date": p.get("imagery_date"),
                                   "selection": p.get("selection"),
                                   "note": p.get("note")}))
-    return feats
+    return rank_candidates(feats) if rank else feats
 
 
 def _collection(feats: list[dict], meta: dict) -> str:
@@ -172,8 +214,9 @@ def publish(labels_dir: Path = LABELS, configs_dir: Path = CONFIGS, out: Path = 
                      if (m := PAGE_AOI.match(p.name))})
     plan: dict[Path, str] = {}
     result = {}
+    bronze = bronze_aois(pages)
     for aoi in aois:
-        feats = areas_for(aoi, labels_dir, configs_dir)
+        feats = areas_for(aoi, labels_dir, configs_dir, rank=aoi in bronze)
         result[aoi] = feats
         meta = {"aoi": aoi, "warning": DO_NOT_UPLOAD,
                 "register_cmd": f"python {REGISTER_SCRIPT}" + ("" if aoi == FLAT_AOI else f" --aoi {aoi}")}
@@ -208,7 +251,9 @@ def main() -> int:
         kinds = {}
         for f in feats:
             kinds[f["properties"]["kind"]] = kinds.get(f["properties"]["kind"], 0) + 1
-        print(f"  {aoi}: " + ", ".join(f"{n} {k}" for k, n in sorted(kinds.items())))
+        star = next((f["id"] for f in feats if f["properties"].get("start_here")), None)
+        print(f"  {aoi}: " + ", ".join(f"{n} {k}" for k, n in sorted(kinds.items()))
+              + (f", start here: {star}" if star else ""))
     if not args.dry_run:
         size = sum(p.stat().st_size for p in OUT.rglob("*.geojson"))
         print(f"wrote {OUT}/ ({size / 1024:.0f} KB)")

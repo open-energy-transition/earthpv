@@ -10,14 +10,21 @@ declaring it complete, and publishing the boundaries the atlas loads.
 ```bash
 pixi run calib-candidates -- --aoi zambia --dry-run   # report the draw, write nothing
 pixi run calib-candidates -- --bronze                 # every Bronze atlas
+pixi run calib-candidates -- --bronze --priority      # + two start-here boxes each
 pixi run calib-publish                                # put them on the atlases
 ```
 
 `scripts/propose_calibration_candidates.py` cuts a country's density grid into eight bands
 of equal building share, draws one cell per band at random, places a box on the buildings
 so its own density matches its band, and drops any box whose Esri imagery is too old for
-the country's composite. The details, and what it does not do, are in
+the country's composite. With `--priority` it instead places two 1 km **start-here** boxes
+in the densest quarter of the country's buildings, where the roof area in buildings of
+1,000 m<sup>2</sup> or more is largest, through the same imagery gate. The details, and what
+it does not do, are in
 [Automated quadrat selection](../calibration-mapping-protocol.md#automated-quadrat-selection).
+On an uncalibrated (Bronze) atlas `calib-publish` also ranks the candidates, start-here
+boxes first and then the rest from the densest down, and the first is drawn as a star. The
+star moves to the next one by itself once that area is registered.
 `calib-publish` writes the public per-area GeoJSON under
 `docs/assets/labels/calibration_areas/` that the atlas fetches at run time, so new
 candidates need no atlas rebuild. Re-run it after anything below changes an area.

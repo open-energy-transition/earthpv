@@ -44,8 +44,9 @@ What matters is never declaring an area complete when it is not.
 ## How it works
 
 1. **Pick an area on the atlas.** Open a country's atlas from the [PV Atlas](../atlas.md)
-   tab. Hollow diamonds are candidate areas nobody has mapped yet; filled diamonds are
-   finished areas, which still welcome a second check. Click one.
+   tab. Hollow diamonds are candidate areas nobody has mapped yet, and a **star** marks the
+   one to start with (the *Start here* button under the map takes you to it); filled
+   diamonds are finished areas, which still welcome a second check. Click one.
 
     ![Zambia's atlas over satellite imagery of the town of Chipata, with a candidate area's popup open above its hollow diamond. The popup reads Candidate area, not yet mapped, and lists 59 buildings per square kilometre in the box, density stratum 5 of 8, Esri imagery from 2024-12-01 and an area of 4 square kilometres, followed by a short note and the buttons Open in JOSM, Open in iD and GeoJSON, and the links How to map a calibration area and Report progress. The dashed edges of the 2 km box are visible below the popup.](../assets/figures/contribute-atlas-candidate-popup.jpg)
 
@@ -77,27 +78,31 @@ Both need a free [OpenStreetMap account](https://www.openstreetmap.org/user/new)
 
 ## Where help is needed
 
-Every Bronze country has eight candidate areas, drawn at random across its building-density
-range rather than picked by hand, each with Esri imagery recent enough for that country's
-satellite data ([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
+Every Bronze country has ten candidate areas, each with Esri imagery recent enough for that
+country's satellite data: eight drawn at random across its building-density range rather than
+picked by hand, and two start-here boxes in its densest districts with the most large roofs
+([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
 Pakistan has eight more aimed at the sparse end of its calibration.
 
-| country | tier | open candidates | box density (bldg/km<sup>2</sup>) |
-|---|---|---:|---|
-| [Egypt](../atlas-egypt.md) | Bronze | 8 | 150 to 1,085 |
-| [India](../atlas-india.md) | Bronze | 8 | 78 to 2,946 |
-| [Morocco](../atlas-morocco.md) | Bronze | 8 | 36 to 456 |
-| [Nigeria](../atlas-nigeria.md) | Bronze | 8 | 39 to 2,291 |
-| [South Africa](../atlas-south-africa.md) | Bronze | 8 | 34 to 2,360 |
-| [Vietnam](../atlas-vietnam.md) | Bronze | 8 | 106 to 4,196 |
-| [Yemen](../atlas-yemen.md) | Bronze | 8 | 20 to 336 |
-| [Zambia](../atlas-zambia.md) | Bronze | 8 | 12 to 1,084 |
-| [Pakistan](../atlas.md) | Gold | 8 | 54 to 124 (region) |
-| [France](../atlas-france.md) | Silver | none | map any solar you can see |
+| country | tier | open candidates | box density (bldg/km<sup>2</sup>) | start here (&#9733;) |
+|---|---|---:|---|---|
+| [Egypt](../atlas-egypt.md) | Bronze | 10 | 150 to 1,085 | Qalyub, Qalyubia |
+| [India](../atlas-india.md) | Bronze | 10 | 78 to 2,946 | Thane, Maharashtra |
+| [Morocco](../atlas-morocco.md) | Bronze | 10 | 36 to 954 | Tangier-Assilah |
+| [Nigeria](../atlas-nigeria.md) | Bronze | 10 | 39 to 2,291 | Ikeja, Lagos |
+| [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |
+| [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
+| [Yemen](../atlas-yemen.md) | Bronze | 10 | 20 to 878 | Al Wehdah, Sana'a |
+| [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
+| [Pakistan](../atlas.md) | Gold | 8 | 54 to 124 (region) | |
+| [France](../atlas-france.md) | Silver | none | map any solar you can see | |
 
-**Start with a sparse one.** A country's calibration only reaches as far down in density
-as its sparsest complete area, so the low-density candidates help most. They are also the
-quickest to finish.
+**Start at the star.** On a Bronze atlas the candidates are numbered in mapping order: the
+start-here boxes first, in the densest districts with the most large roofs, then the sampled
+ones from the densest down. Dense districts with large roofs are where solar is most likely,
+so a first area there has panels to find and gives the country's calibration its first
+positives. The sparse candidates come later and still matter: a calibration only reaches as
+far down in density as its sparsest complete area, and they are the quickest to finish.
 
 Want to suggest an area of your own? The **Propose a calibration area** button on the atlas
 (the dashed square under the zoom buttons) drops a 2 km square where you click and checks
@@ -109,7 +114,7 @@ and send it in as GeoJSON.
 ## New to OpenStreetMap editing?
 
 You do not need to learn everything first. The [iD guide](id.md) is enough for a first
-sparse area. For JOSM, Open Energy Transition's [MapYourGrid](https://mapyourgrid.org/)
+area. For JOSM, Open Energy Transition's [MapYourGrid](https://mapyourgrid.org/)
 campaign has the material already:
 [installing JOSM](https://mapyourgrid.org/installation-instructions/), the
 [JOSM Starter-Kit](https://mapyourgrid.org/starter-kit/#josm-starter-kit) and its

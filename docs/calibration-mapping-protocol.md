@@ -271,6 +271,22 @@ candidate is still a pointer for a mapper to confirm, and the protocol below sti
 to it in full. Do not re-run with another seed to get nicer-looking boxes: that is the
 hand-picking the sampler replaces.
 
+**Start-here boxes (2026-10-22).** A first area should be one where there is solar to find.
+`pixi run calib-candidates -- --bronze --priority` adds two purposive 1 km boxes per
+uncalibrated country, chosen by rule and still on buildings alone: among the cells holding
+the densest quarter of its buildings (the top two of the eight bands), the window with the
+most roof area in buildings of 1,000 m<sup>2</sup> or more, which is where commercial and
+industrial rooftop PV sits, and which must itself be as dense as that quarter's lower edge.
+The two keep 20 km apart and 5 km from the sampled candidates, and pass the same imagery
+gate. No solar layer is read, OSM or model, so no box is placed where solar is already
+visible. They are marked `selection: purposive: ...` on the boundary, because a sample of a
+country's densest, most industrial districts runs at a higher PV rate than the country does.
+The per-density-stratum coverage ratio and `rate_ratio` exist for this (Pakistan's first
+quadrats were industrial estates and dense blocks), and the eight sampled boxes remain the
+representative set. `calib-publish` ranks every candidate of an uncalibrated atlas,
+start-here boxes first and then the sampled ones from the densest down, and the atlas draws
+the first as a **star**, with a *Start here* button in the map legend.
+
 ## The quadrat plan
 
 ~25–35 quadrats across 6 landscape strata, each quadrat 1–4 km². Each stratum

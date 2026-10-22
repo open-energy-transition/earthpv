@@ -94,9 +94,11 @@ HELP = {
     ),
     "bronze": (
         "<strong>You can change that from your browser.</strong> The hollow diamonds on the "
-        "map are candidate areas chosen for this: click one, open it in iD or JOSM, and map "
-        "every solar panel inside it in OpenStreetMap. Six to ten complete areas are enough "
-        "to start estimating {country}'s smaller installations."
+        "map are candidate areas chosen for this. Start with the one marked with a "
+        "<strong>&#9733; star</strong>: a dense district with many large roofs, where solar "
+        "is most likely. Click it, open it in iD or JOSM, and map every solar panel inside "
+        "it in OpenStreetMap. Six to ten complete areas are enough to start estimating "
+        "{country}'s smaller installations."
     ),
 }
 CTA = (

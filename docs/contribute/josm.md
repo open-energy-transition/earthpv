@@ -28,8 +28,9 @@ Safari briefly opens and closes a small window instead; that is expected.
 
 ## 2. Open the area
 
-On a country's atlas, click a candidate (hollow diamond) or a finished area (filled
-diamond) and press **Open in JOSM**. JOSM gets two new layers:
+On a country's atlas, click a candidate (hollow diamond; the **star** marks the one to map
+first) or a finished area (filled diamond) and press **Open in JOSM**. JOSM gets two new
+layers:
 
 - **`<area> boundary (do not upload)`**: the area's exact boundary, **locked**, and set so
   that JOSM refuses to upload it. You cannot add the box to OpenStreetMap by accident.

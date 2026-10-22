@@ -84,6 +84,12 @@ MAX_ATTEMPTS = 120                   # draws per band before it is reported shor
 # protocol's dense-urban 1 km box instead (--dense-side-m).
 DENSE_BLDG_KM2 = 600.0
 SELECTION = "stratified random by building density"
+# --priority: the purposive "start here" boxes. Selected on buildings alone, never on solar.
+PRIORITY_SELECTION = "purposive: dense cells, most large-roof area"
+LARGE_ROOF_M2 = 1000.0               # a footprint this big is commercial or industrial
+PRIORITY_STRATA = 2                  # the densest 2 of --strata bands: a quarter of buildings
+PRIORITY_CELLS = 40                  # cells scanned per ranking (roof cover, mean footprint)
+CAND_SPACING_KM = 5.0                # from an existing candidate; quadrats keep --min-spacing-km
 
 
 def grid_path(aoi: str) -> Path:
@@ -165,25 +171,30 @@ def imagery_gate(poly, earliest: date) -> tuple[bool, dict]:
     return True, info
 
 
-def window_densities(lon: np.ndarray, lat: np.ndarray, cell: pd.Series, side_m: float):
-    """(centre lon, centre lat, n buildings) for every `side_m` window inside the cell, on
-    a quarter-side step, counted with a summed-area table over a 100 m raster."""
+def window_densities(lon: np.ndarray, lat: np.ndarray, cell: pd.Series, side_m: float,
+                     weights: tuple = ()):
+    """(centre lon, centre lat, n buildings, *sum of each of `weights`) for every `side_m`
+    window inside the cell, on a quarter-side step, counted with a summed-area table over
+    a 100 m raster."""
     lat_c = cell.lat0 + 0.05
     m_lat = 111_132.954 - 559.822 * math.cos(2 * math.radians(lat_c))
     m_lon = 111_412.84 * math.cos(math.radians(lat_c))
     res_y, res_x = 100.0 / m_lat, 100.0 / m_lon
     nx, ny = int(math.ceil(0.1 / res_x)), int(math.ceil(0.1 / res_y))
-    hist, _, _ = np.histogram2d(lon, lat, bins=[nx, ny],
-                                range=[[cell.lon0, cell.lon0 + nx * res_x], [cell.lat0, cell.lat0 + ny * res_y]])
-    sat = np.zeros((nx + 1, ny + 1))
-    sat[1:, 1:] = hist.cumsum(0).cumsum(1)
+    rng = [[cell.lon0, cell.lon0 + nx * res_x], [cell.lat0, cell.lat0 + ny * res_y]]
+    sats = []
+    for w in (None, *weights):
+        hist, _, _ = np.histogram2d(lon, lat, bins=[nx, ny], range=rng, weights=w)
+        sat = np.zeros((nx + 1, ny + 1))
+        sat[1:, 1:] = hist.cumsum(0).cumsum(1)
+        sats.append(sat)
     wx, wy = int(round(side_m / 100)), int(round(side_m / 100))
     step = max(1, wx // 4)
     out = []
     for i in range(0, nx - wx + 1, step):
         for j in range(0, ny - wy + 1, step):
-            cnt = sat[i + wx, j + wy] - sat[i, j + wy] - sat[i + wx, j] + sat[i, j]
-            out.append((cell.lon0 + (i + wx / 2) * res_x, cell.lat0 + (j + wy / 2) * res_y, cnt))
+            sums = [s[i + wx, j + wy] - s[i, j + wy] - s[i + wx, j] + s[i, j] for s in sats]
+            out.append((cell.lon0 + (i + wx / 2) * res_x, cell.lat0 + (j + wy / 2) * res_y, *sums))
     return np.array(out)
 
 
@@ -262,9 +273,15 @@ def propose(aoi: str, args) -> list[dict]:
     rng = np.random.default_rng(seed)
     admin = Admin(aoi)
     taken = existing_boxes(home)
+    # Other candidates (start-here boxes, hand-picked ones) are never overlapped: two boxes
+    # sharing ground would count the same installations twice once both are mapped.
+    from earthpv.roofclf import load_boundary
+
+    others = [load_boundary(p) for p in sorted(out_dir.glob("*_candidate.geojson")) if p not in auto]
     used_regions: set = set()
     picked, screened = [], []
     con = duckdb.connect()
+    con.execute("SET parquet_metadata_cache=true;")  # India: 105k row groups per scan
 
     for k in range(args.strata):
         band = grid[grid["stratum"] == k]
@@ -315,7 +332,8 @@ def propose(aoi: str, args) -> list[dict]:
             cx, cy, _ = wins[rng.choice(idx)]
             poly = geodesic_square(float(cy), float(cx), side)
             near = [GEOD.inv(cx, cy, b.centroid.x, b.centroid.y)[2] / 1000 for b in taken]
-            if any(d < args.min_spacing_km for d in near) or any(b.intersects(poly) for b in taken):
+            if (any(d < args.min_spacing_km for d in near)
+                    or any(b.intersects(poly) for b in taken + others)):
                 continue
             district, region = admin.lookup(cx, cy)
             passed, img = imagery_gate(poly, earliest)
@@ -395,6 +413,201 @@ def propose(aoi: str, args) -> list[dict]:
     return picked
 
 
+def propose_priority(aoi: str, args) -> list[dict]:
+    """The `--n-priority` boxes a mapper should start with: dense, with the most roof in
+    large buildings, where rooftop PV is most likely and a first area pays off fastest.
+
+    Purposive, unlike `propose`, and recorded as such on every box: a sample of the
+    country's densest, most industrial districts runs at a higher PV base rate than the
+    country, which is what the per-density-stratum coverage ratio and `rate_ratio` exist to
+    absorb (Pakistan's first quadrats were chosen the same way). What keeps it honest is
+    what it is chosen ON: building footprints only. No solar layer, OSM or model, is read,
+    so a box is never placed where solar is already visible. Deterministic: the best box
+    by the rule, no seed.
+
+    1. **Pool**: cells in the densest `PRIORITY_STRATA` of the `--strata` equal-building
+       bands, i.e. where the densest quarter of the country's buildings sit.
+    2. **Cells scanned**: the `PRIORITY_CELLS` with the most roof area per km2 (density and
+       big roofs both raise it) and the `PRIORITY_CELLS` with the largest mean footprint
+       (industrial estates), after a cheap imagery check at the cell centre.
+    3. **Box**: every `--dense-side-m` window of the cell (1 km, whatever the density: a
+       first area should be one a newcomer can finish), scored by the roof area in
+       buildings of at least `LARGE_ROOF_M2`; a window must itself be as dense as the
+       pool's lower edge.
+    4. **Pick** the best-scoring windows across cells, `--min-spacing-km` apart from each
+       other and from registered quadrats, `CAND_SPACING_KM` from (and never overlapping)
+       the sampled candidates, through the same Esri imagery gate as `propose`.
+    """
+    import duckdb
+    from shapely.geometry import mapping
+
+    from earthpv.buildings import fetch_vida_building_points
+    from earthpv.roofclf import load_boundary
+
+    cfg = Settings.load().aois.get(aoi) or {}
+    div = cfg.get("division") or {}
+    iso3, country = div.get("iso3"), div.get("name")
+    if not iso3 or not cfg.get("compose_window"):
+        raise SystemExit(f"{aoi}: configs/aoi.yaml needs division.iso3 and compose_window")
+    win0 = date.fromisoformat(cfg["compose_window"][0])
+    months = win0.year * 12 + win0.month - 1 - args.max_imagery_lag_months
+    earliest = date(months // 12, months % 12 + 1, 1)
+
+    home = LABELS if aoi == FLAT_AOI else LABELS / aoi
+    out_dir = home / "candidate_quadrats"
+    files = sorted(out_dir.glob("*_candidate.geojson"))
+    sel_of = {p: json.loads(p.read_text())["features"][0]["properties"].get("selection", "")
+              for p in files}
+    mine = [p for p in files if sel_of[p].startswith(PRIORITY_SELECTION)]
+    if mine and not args.replace:
+        print(f"{aoi}: {len(mine)} priority candidates already exist in {out_dir}; "
+              "pass --replace to redraw them")
+        return []
+    others = [load_boundary(p) for p in files if p not in mine]
+
+    grid = pd.read_parquet(args.grid or grid_path(aoi), columns=[
+        "cell", "lon0", "lat0", "n_buildings", "bldg_density_km2", "roof_area_m2", "cell_area_km2"])
+    grid = grid[grid["n_buildings"] >= MIN_BOX_BUILDINGS].reset_index(drop=True)
+    edges = strata_edges(grid, args.strata)
+    floor = float(edges[args.strata - PRIORITY_STRATA])
+    pool = grid[grid["bldg_density_km2"] >= floor].copy()
+    pool["roof_cover"] = pool["roof_area_m2"] / (pool["cell_area_km2"] * 1e6)
+    pool["mean_roof_m2"] = pool["roof_area_m2"] / pool["n_buildings"]
+    scan = pd.concat([pool.nlargest(PRIORITY_CELLS, "roof_cover"),
+                      pool.nlargest(PRIORITY_CELLS, "mean_roof_m2")]).drop_duplicates("cell")
+    criterion = (f"densest {PRIORITY_STRATA} of {args.strata} density bands (cells from "
+                 f"{floor:,.0f} bldg/km2), most roof area in buildings of "
+                 f"{LARGE_ROOF_M2:,.0f} m2 or more")
+
+    admin = Admin(aoi)
+    con = duckdb.connect()
+    con.execute("SET parquet_metadata_cache=true;")  # India: 105k row groups per scan
+    screened, windows = [], []
+    for cell in scan.itertuples():
+        ccx, ccy = cell.lon0 + 0.05, cell.lat0 + 0.05
+        cap = esri_capture(ccx, ccy)
+        if cap is None or cap["date"] < earliest:
+            screened.append({"aoi": aoi, "stratum": "priority", "cell": cell.cell, "lat": round(ccy, 6),
+                             "lon": round(ccx, 6), "reason": "cell centre: " + (
+                                 f"Esri imagery from {cap['date']} predates {earliest}" if cap
+                                 else "no Esri imagery date at zoom 18"),
+                             "imagery_date": cap["date"].isoformat() if cap else "",
+                             "date_screened": date.today().isoformat()})
+            continue
+        # Always the dense-urban size: a first area should be one a newcomer can finish.
+        side = args.dense_side_m
+        pts = fetch_vida_building_points((cell.lon0, cell.lat0, cell.lon0 + 0.1, cell.lat0 + 0.1),
+                                         iso3, con=con, with_area=True)
+        if pts.empty:
+            continue
+        area = pts["area_m2"].to_numpy(dtype=float)
+        big = area >= LARGE_ROOF_M2
+        wins = window_densities(pts["lon"].to_numpy(), pts["lat"].to_numpy(), cell, side,
+                                weights=(big.astype(float), np.where(big, area, 0.0), area))
+        if not len(wins):
+            continue
+        ok = (wins[:, 2] >= MIN_BOX_BUILDINGS) & (wins[:, 2] / (side * side / 1e6) >= floor)
+        if not ok.any():
+            continue
+        i = np.flatnonzero(ok)[np.argmax(wins[ok, 4])]
+        windows.append((wins[i], cell, side))
+    windows.sort(key=lambda w: (-w[0][4], -w[0][2]))
+
+    taken = existing_boxes(home)
+    picked = []
+    for (cx, cy, _, _, large_area, _), cell, side in windows:
+        if len(picked) == args.n_priority or large_area <= 0:
+            break
+        poly = geodesic_square(float(cy), float(cx), side)
+        too_close = [(b, args.min_spacing_km) for b in taken] + [(b, CAND_SPACING_KM) for b in others]
+        if any(b.intersects(poly) or GEOD.inv(cx, cy, b.centroid.x, b.centroid.y)[2] / 1000 < km
+               for b, km in too_close):
+            continue
+        passed, img = imagery_gate(poly, earliest)
+        if not passed:
+            screened.append({"aoi": aoi, "stratum": "priority", "cell": cell.cell, "lat": round(cy, 6),
+                             "lon": round(cx, 6), "reason": img["reason"],
+                             "imagery_date": img.get("imagery_date", ""),
+                             "date_screened": date.today().isoformat()})
+            continue
+        district, region = admin.lookup(cx, cy)
+        inside = fetch_vida_building_points(poly.bounds, iso3, con=con, with_area=True)
+        big = inside[inside["area_m2"] >= LARGE_ROOF_M2]
+        geo_km2 = abs(GEOD.geometry_area_perimeter(poly)[0]) / 1e6
+        tag = f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m"
+        base = f"{slug(district or region or aoi)}_priority"
+        used = {c["stem"] for c in picked} | {p.name[: -len("_candidate.geojson")] for p in files
+                                              if p not in mine}
+        stem = next(f"{base}{x}_calib_{tag}" for x in ("", *"bcdefgh")
+                    if f"{base}{x}_calib_{tag}" not in used)
+        dens = len(inside) / geo_km2
+        props = {
+            "quadrat_id": stem,
+            "criterion": criterion,
+            "location": ", ".join(x for x in (district, region, country) if x),
+            "province": region,
+            "size_km2": round(geo_km2, 4),
+            "center": f"[{cx:.6f} {cy:.6f}]",
+            "shape": "square (geodesic)",
+            "side_m": float(side),
+            "source_grid_cell": cell.cell,
+            "source_grid_density_bldg_km2": round(float(cell.bldg_density_km2), 2),
+            "source_grid_n_buildings": int(cell.n_buildings),
+            "own_n_buildings": int(len(inside)),
+            "own_density_bldg_km2": round(dens, 2),
+            "own_large_buildings": int(len(big)),
+            "own_large_roof_m2": round(float(big["area_m2"].sum())),
+            "own_roof_cover": round(float(inside["area_m2"].sum()) / (geo_km2 * 1e6), 3),
+            **img,
+            "imagery_checked": True,
+            "selection": PRIORITY_SELECTION,
+            "note": (f"Chosen by scripts/propose_calibration_candidates.py --priority as a place "
+                     f"to start: among the cells holding {country or aoi}'s densest quarter of "
+                     f"buildings (from {floor:,.0f} bldg/km2), the {side / 1000:g} km window with "
+                     f"the most roof area in buildings of {LARGE_ROOF_M2:,.0f} m2 or more "
+                     f"({len(big):,} such buildings, {big['area_m2'].sum() / 1e4:,.1f} ha of roof; "
+                     f"{len(inside):,} buildings in all, {dens:,.0f} per km2, VIDA). Large and "
+                     f"dense roofs are where rooftop solar is most likely; the box was chosen on "
+                     f"buildings only, never on solar seen there. Esri imagery here dates from "
+                     f"{img['imagery_date']} (oldest of centre and corners), no older than "
+                     f"{earliest} for a composite starting {win0}. Not checked on the ground: "
+                     "confirm it is mappable before you start, and do not move it toward "
+                     "visible solar."),
+        }
+        picked.append({"stem": stem, "props": props, "geometry": mapping(poly)})
+        taken.append(poly)
+
+    print(f"{aoi}: {len(picked)} priority candidates from {len(windows)} scanned cells, "
+          f"{len(screened)} screened out on imagery (pool from {floor:,.0f} bldg/km2)")
+    for c in picked:
+        p = c["props"]
+        print(f"  {c['stem']:<44} box {p['own_density_bldg_km2']:>7,.0f} bldg/km2"
+              f"  {p['own_large_buildings']:>4} large, {p['own_large_roof_m2'] / 1e4:>6,.1f} ha"
+              f"  cover {p['own_roof_cover']:.2f}  Esri {p['imagery_date']}  {p['location']}")
+    if len(picked) < args.n_priority:
+        print(f"  {aoi}: short, {len(picked)} of {args.n_priority}")
+    if args.dry_run:
+        return picked
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for p in mine:
+        p.unlink()
+    for c in picked:
+        doc = {"type": "FeatureCollection", "name": f"{c['stem']}_candidate",
+               "features": [{"type": "Feature", "properties": c["props"], "geometry": c["geometry"]}]}
+        (out_dir / f"{c['stem']}_candidate.geojson").write_text(json.dumps(doc, indent=2) + "\n")
+    if screened:
+        log = out_dir / "screened_out.csv"
+        new = not log.exists()
+        with log.open("a", newline="") as fh:
+            wr = csv.DictWriter(fh, fieldnames=list(screened[0]))
+            if new:
+                wr.writeheader()
+            wr.writerows(screened)
+    print(f"  wrote {len(picked)} files to {out_dir}")
+    return picked
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     who = ap.add_mutually_exclusive_group(required=True)
@@ -410,7 +623,11 @@ def main() -> int:
                     help="oldest acceptable Esri capture, in months before the compose window start")
     ap.add_argument("--seed", type=int, default=None, help="default: derived from the AOI name")
     ap.add_argument("--grid", type=Path, default=None, help="density grid, for a single --aoi")
-    ap.add_argument("--replace", action="store_true", help="redraw an AOI's sampled candidates")
+    ap.add_argument("--priority", action="store_true",
+                    help="draw the purposive start-here boxes (dense, large roofs) instead")
+    ap.add_argument("--n-priority", type=int, default=2, help="start-here boxes per AOI")
+    ap.add_argument("--replace", action="store_true",
+                    help="redraw an AOI's sampled (or, with --priority, start-here) candidates")
     ap.add_argument("--dry-run", action="store_true", help="draw and report, write nothing")
     args = ap.parse_args()
     os.chdir(ROOT)
@@ -418,7 +635,7 @@ def main() -> int:
     if args.grid and len(aois) != 1:
         raise SystemExit("--grid applies to a single --aoi")
     for aoi in aois:
-        propose(aoi, args)
+        (propose_priority if args.priority else propose)(aoi, args)
     if not args.dry_run:
         print("next: pixi run calib-publish")
     return 0
