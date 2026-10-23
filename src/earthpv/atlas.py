@@ -1862,7 +1862,8 @@ def _confidence_html(
       quadrat composition to resample and the bullet would describe nothing;
     - the extrapolation bullet on `has_extrapolation`, as before;
     - the purposive-sampling and Rule-1-epoch bullets, and the ground-truth paragraph, on
-      actually having quadrats;
+      actually having quadrats the page's figures USE (`used: false` in the config marks a
+      registered area nothing draws on yet, which gets its own, weaker sentence);
     - `cfg.caveats` and `cfg.corroboration` on the AOI having supplied them.
 
     `cfg.ground_truth` replaces the ground-truth paragraph AND suppresses the default
@@ -1870,6 +1871,11 @@ def _confidence_html(
     should not also be told it has none.
     """
     lo, hi = best_ci
+    unused = [b for b in cfg.calibration_boxes if not b.get("used", True)]
+    n_unused = min(len(unused), n_calib_boxes)
+    n_calib_rule1 = max(n_calib_rule1 - sum(b["status"] == "rule1" for b in unused), 0)
+    n_calib_boxes -= n_unused
+    n_word = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
     inside = [
         "<b>The two \"panel area to power\" conversion numbers.</b> One "
         "converts rooftop panel area to kWp, the other converts open-ground "
@@ -1921,6 +1927,15 @@ def _confidence_html(
             "ground truth to begin with). Both effects point the same way -- "
             "this page's figure is more likely an undercount than an "
             "overcount.")
+    elif n_unused and not cfg.ground_truth:
+        outside.append(
+            "<b>The hand-mapped areas here do not check these numbers yet.</b> "
+            f"{n_word.get(n_unused, n_unused).capitalize()} "
+            + ("area of this country has" if n_unused == 1 else "areas of this country have")
+            + " been mapped panel by panel and declared complete, but no figure on this "
+            "page uses " + ("it" if n_unused == 1 else "them") + " yet. The detectors' "
+            "measured accuracy is still carried over from the countries where it was "
+            "measured, and how well it transfers here has not itself been measured.")
     elif not cfg.ground_truth:
         outside.append(
             "<b>No area of this country has been exhaustively mapped by hand to "
@@ -1951,6 +1966,20 @@ def _confidence_html(
             "country's buildings, which doesn't exist yet. More quadrats do "
             "help: each new one added so far has turned up a new way the method "
             "can go wrong.</p>")
+    elif not ground_truth and n_unused:
+        names = ", ".join(b["name"] for b in unused)
+        ground_truth = (
+            "<p><b>Nothing on this page rests on hand-mapped ground truth from this "
+            f"country yet.</b> {n_word.get(n_unused, n_unused).capitalize()} "
+            + ("area has" if n_unused == 1 else "areas have")
+            + f" been mapped panel by panel ({names}): every panel in it drawn by hand, "
+            "the ground truth that turns a detection into a capacity estimate by measuring "
+            "how much of a flagged roof is actually covered in panels and how many real "
+            "installations the detectors miss. Once a classifier is fitted to "
+            + ("it" if n_unused == 1 else "them") + ", these figures will rest on "
+            + ("it" if n_unused == 1 else "them")
+            + f". <a href=\"{CONTRIBUTE_URL}\" target=\"_blank\" rel=\"noopener\">More "
+            "such areas are the most useful thing anyone can contribute</a>.</p>")
     elif not ground_truth:
         ground_truth = (
             "<p><b>Nothing on this page rests on hand-mapped ground truth from this "
@@ -1966,7 +1995,6 @@ def _confidence_html(
     # "two unrelated data sources") and were only ever right for the Pakistan build they
     # were written against -- the first is already wrong for a Pakistan run WITH the
     # out-of-domain extrapolation, which adds a fourth bullet.
-    n_word = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
     preview = ["what's inside the range", "what isn't"]
     if n_calib_boxes > 0:
         preview.append("how many ground-truth areas it rests on")

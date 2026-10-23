@@ -142,6 +142,7 @@ nav:
       - Silver:
           - Germany: atlas-germany.md
           - France: atlas-france.md
+          - Yemen: atlas-yemen.md
       - Bronze:
           - Egypt: atlas-egypt.md
           - India: atlas-india.md
@@ -150,7 +151,6 @@ nav:
           - Poland: atlas-poland.md
           - South Africa: atlas-south-africa.md
           - Vietnam: atlas-vietnam.md
-          - Yemen: atlas-yemen.md
           - Zambia: atlas-zambia.md
   # How the community adds the OpenStreetMap ground truth the atlases are calibrated on,
   # right after the atlases whose Silver/Bronze notes link here. contribute/index.md keeps

@@ -13,6 +13,7 @@ hide:
   <span class="atlas-switch__tier atlas-switch__tier--silver" title="400 m2 and up only, validated against local ground truth">Silver</span>
   <a href="../atlas-germany/">Germany</a>
   <a href="../atlas-france/">France</a>
+  <a href="../atlas-yemen/">Yemen</a>
   <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated">Bronze</span>
   <span aria-current="page">Egypt</span>
   <a href="../atlas-india/">India</a>
@@ -21,7 +22,6 @@ hide:
   <a href="../atlas-poland/">Poland</a>
   <a href="../atlas-south-africa/">South Africa</a>
   <a href="../atlas-vietnam/">Vietnam</a>
-  <a href="../atlas-yemen/">Yemen</a>
   <a href="../atlas-zambia/">Zambia</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">

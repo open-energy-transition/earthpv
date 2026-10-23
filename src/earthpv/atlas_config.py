@@ -26,6 +26,8 @@ silently drop the section it was meant to fill):
       - [Karachi, 67.01, 24.86]
     calibration_boxes:                     # exhaustively mapped ground-truth quadrats
       - {name: Lahore DHA Phase V, stem: lahore_calib_6p61km2, status: rule1}
+      # used: false = registered and declared, but no figure on the page uses it yet
+      - {name: Al Wehdah, stem: al_wehdah_priority_calib_1km, status: rule1, used: false}
     confidence:                            # the "How confident should you be in this?" text
       ground_truth: "<p>...</p>"           # replaces the default ground-truth paragraph
       caveats: ["<b>...</b> ..."]          # extra <li>s under "what's outside the range"
@@ -56,6 +58,11 @@ explicit `--validation-score` on `earthpv atlas` still wins over this.
 "rule1" = every visible panel mapped (so its no-PV buildings are trustworthy negatives),
 "corroborated" = a visual pass supports the count without asserting completeness,
 "suspect" = needs re-verification. See `docs/methods/calibration-quadrats.md`.
+
+`used` (default true) says whether the page's figures draw on the area. A box is drawn on
+the map either way, but the confidence section only claims ground truth for boxes in use:
+Yemen's first area (2026-10-23) was registered before any classifier was fitted to it, and
+the default prose would otherwise have told readers the page's accuracy checks rested on it.
 """
 
 from __future__ import annotations
@@ -74,7 +81,7 @@ _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confid
 _VALIDATION_KEYS = {"score", "note"}
 _SCORES = {"gold", "silver", "bronze"}
 _CONFIDENCE_KEYS = {"ground_truth", "caveats", "corroboration"}
-_BOX_KEYS = {"name", "stem", "status"}
+_BOX_KEYS = {"name", "stem", "status", "used"}
 _BOX_STATUS = {"rule1", "corroborated", "suspect"}
 _LAYER_KEYS = {"name", "type", "path", "url", "attribution", "color", "visible", "opacity",
                "minzoom", "maxzoom"}
@@ -146,8 +153,11 @@ def _parse_boxes(aoi: str, raw) -> tuple:
         if status not in _BOX_STATUS:
             _fail(aoi, f"calibration box {entry['stem']!r} has status {status!r}; "
                        f"expected one of {sorted(_BOX_STATUS)}")
+        used = entry.get("used", True)
+        if not isinstance(used, bool):
+            _fail(aoi, f"calibration box {entry['stem']!r}: `used` must be true or false")
         out.append({"name": str(entry["name"]), "stem": str(entry["stem"]),
-                    "status": status})
+                    "status": status, "used": used})
     stems = [b["stem"] for b in out]
     dupes = sorted({s for s in stems if stems.count(s) > 1})
     if dupes:

@@ -787,7 +787,11 @@ by tier, and Silver/Bronze pages open with a missing-small-installations warning
 map a calibration area. A new country is one row plus a rerun; never edit `docs/atlas*.md` by hand.
 A tier that is a judgement rather than a fact about the files goes in `configs/atlas/<aoi>.yaml`
 (`validation: {score, note}`, which beats `derive_validation_score` and is read by all three
-atlas builders and `apply_validation_badges.py`). **Germany is Silver since 2026-10-22**
+atlas builders and `apply_validation_badges.py`). **Yemen is Silver since 2026-10-23** (owner decision, on registering Al Wehdah before anything
+was fitted to it): its box carries `used: false` in `configs/atlas/yemen.yaml`, which keeps the
+confidence section from claiming ground truth the figures do not use (the default prose, gated
+only on having a box, said the page's accuracy checks rested on it), and
+`build_atlas_pages.TIER_NOTE` has a Yemen note. **Germany is Silver since 2026-10-22**
 (owner decision): its register-calibrated small half fails its own register check, so the
 page carries a Germany-specific note (`build_atlas_pages.TIER_NOTE`) instead of the generic
 "no estimate below the floor".

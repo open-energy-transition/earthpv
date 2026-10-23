@@ -13,9 +13,16 @@ title: Yemen
 
 # Al Wehdah: the first start-here box (calib-candidates --priority), mapped panel by panel
 # and declared Rule-1 complete by the owner 2026-10-23 against Esri imagery of 2025-12-29.
-# Registered, not yet fitted: Yemen has no roofclf half until a refit uses it.
+# Registered, not yet fitted: Yemen has no roofclf half until a refit uses it, hence
+# `used: false` (drawn on the map; the confidence text does not claim it as ground truth).
 calibration_boxes:
-  - {name: "Al Wehdah, Sana'a", stem: al_wehdah_priority_calib_1km, status: rule1}
+  - {name: "Al Wehdah, Sana'a", stem: al_wehdah_priority_calib_1km, status: rule1, used: false}
+
+# Silver by the owner's decision (2026-10-23), taken with Al Wehdah registered and not yet
+# used by any figure; the derived tier would also say silver, from the boundary on disk.
+validation:
+  score: silver
+  note: "One area mapped panel by panel.<br>Not yet used by any figure."
 
 cities:
   - [Sana'a, 44.206, 15.369]

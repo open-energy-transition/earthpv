@@ -104,6 +104,20 @@ TIER_NOTE = {
         "be checked directly, which the register, with no coordinates below 30 kWp, cannot "
         "do.",
     ),
+    # Silver by the owner's decision (2026-10-23) once its first area was registered, before
+    # anything was fitted to it: the generic Silver line would claim validation it lacks.
+    "Yemen": (
+        "<strong>Silver atlas: one calibration area is mapped, not yet used.</strong> This map "
+        "covers installations of roughly 400 m&sup2; (about 70 kWp) and larger, those mapped "
+        "in OpenStreetMap and arrays the model can outline. Al Wehdah in Sana'a has been "
+        "mapped panel by panel and declared complete, but no figure here is fitted to it yet, "
+        "so there is still no estimate below that size, where household rooftop systems sit. "
+        "Read every figure here as a floor.",
+        "<strong>You can help from your browser.</strong> The hollow diamonds on the map are "
+        "candidate areas, among them 3 km farm areas for solar irrigation. Map every solar "
+        "panel inside one in OpenStreetMap: a few more complete areas are what an estimate of "
+        "Yemen's smaller installations would be fitted on.",
+    ),
 }
 # What a reader can do about it: the Contribute Data section (docs/contribute/).
 HELP = {
