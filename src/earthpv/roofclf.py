@@ -159,19 +159,29 @@ YARD_MAX_INSTALLATION_M2 = 400.0
 # Quadrat discovery and labels
 # --------------------------------------------------------------------------------------
 _BOUNDARY_SUFFIX = "_boundary.geojson"
+# A farm calibration area (`new_calibration_quadrat.py --farm`, drawn by
+# `propose_calibration_candidates.py --farmland`) carries this in its stem. It is ground
+# truth for `roofclf_ground`, and must stay out of the rooftop fits here: its mapped ground
+# arrays would label the farmhouses beside them as PV-carrying, which is Kalat Rural's
+# documented problem (CLAUDE.md, "Calibration quadrats").
+FARM_QUADRAT_INFIX = "_farm_calib_"
 
 
-def discover_quadrats(labels_dir: Path = Path("data/labels")) -> list[str]:
+def discover_quadrats(labels_dir: Path = Path("data/labels"), farm: bool = False) -> list[str]:
     """Quadrat stems that have both a boundary and a mapped-solar file.
 
     A stem is the full prefix before `_boundary.geojson`, e.g. `site_karachi_calib_1km` or
     `karachi_coast_calib_700m`. Matching on `_calib_*_` rather than a hard-coded `_calib_1km_`
     keeps the quadrat size out of the code: the protocol calls for 1-4 km2 boxes and the
     first Rule-1-complete one is 0.49 km2.
+
+    `farm=False` (every rooftop caller) skips farm areas; `farm=True` returns only them.
     """
     out = []
     for b in sorted(Path(labels_dir).glob(f"*_calib_*{_BOUNDARY_SUFFIX}")):
         stem = b.name[: -len(_BOUNDARY_SUFFIX)]
+        if (FARM_QUADRAT_INFIX in stem) != farm:
+            continue
         if _newest_solar(stem, labels_dir) is not None:
             out.append(stem)
     return out

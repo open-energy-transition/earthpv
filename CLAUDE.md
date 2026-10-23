@@ -899,6 +899,59 @@ selection above; both gates must be checked separately for any new quadrat.
 Full per-quadrat table and status: `docs/methods/calibration-quadrats.md`. Dated history of
 every addition/correction/withdrawal: `docs/issues/pakistan-calibration-boxes.md`.
 
+### Farm ground PV: `roofclf_ground` and farm calibration areas (2026-10-23)
+
+A footprint-free pixel detector in the roofclf family for small arrays beside fields
+(solar pumps), which neither instrument above sees: in Yemen's 'Amran test ground only
+6.6% of the owner-traced array area lies on a VIDA footprint, and segmentation found 0
+(v13) / 4 (v5) of 283 arrays of any size. `src/earthpv/roofclf_ground.py`:
+
+```bash
+pixi run calib-candidates -- --aoi <aoi> --farmland          # cropland-stratified 3 km boxes
+earthpv roofclf-ground --aoi <aoi> --clean-region <b.geojson> --weak-region <b.geojson>
+earthpv roofclf-ground-score-national --aoi <aoi>             # blobs per cell, resumable
+earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
+```
+
+- **Not in any atlas yet.** `ground_capacity` writes per-cell MWp, incremental blobs (deduped
+  against OSM and segmentation's capacity candidates) and `ground_leads.geojson`; its ratio
+  has no interval until three or more clean farm areas exist, and it says so.
+- **A calibration domain, like roofclf's density band** (`roofclf_ground.domain_cells`): cells
+  whose cropland share AND building density lie within x/÷1.25 of the clean areas' range.
+  The headline is `est_mwp_in_domain`; the all-cells figure is reported only as
+  `est_mwp_all_cells_extrapolated`. Added after the first Yemeni smoke test put its largest
+  cells on Al Hudaydah's city and coast (0-4% cropland) at a ratio measured on highland farms.
+  With 'Amran alone the domain is 12 of 810 Yemeni cells; the farm candidates widen it.
+- **Farm quadrats carry `_farm_calib_` in their stem** (`roofclf.FARM_QUADRAT_INFIX`;
+  `new_calibration_quadrat.py --farm`). `roofclf.discover_quadrats` skips them unless
+  `farm=True`, because a ground array would label the farmhouse beside it as PV-carrying
+  (the Kalat Rural problem). Overlap checks and `calib-publish` still see them.
+- **Two label sources.** Clean areas (farm quadrats, `--clean-region`: every panel traced)
+  give precision, the deployment threshold and the capacity ratio. Weak areas
+  (`--weak-region`: ordinary OSM, oversized rectangles and nodes) train only, as
+  multiple-instance bags. Tihama's UNGSC rectangles, useless as masks (they are why v13
+  learned nothing in Yemen), give held-out bag AUC 0.934 this way.
+- **Thresholds are logits**, not probabilities: a balanced fit puts strong detections at
+  p = 1.0 in float32, which ties exactly the leads a reviewer should see first.
+- **Vetoes, each measured on 'Amran's reviewed leads**: >= 30% of a blob within 8 m of a paved
+  OSM road (9 leads, 0 mapped arrays lost); SWIR more than 20% below the blob's ring, i.e.
+  water-harvesting ponds (11 leads, 0 of 301 mapped arrays; MNDWI fails, ponds read dry in a
+  dry-season median); no pixel within 50 m of a building, cropland or green pixel.
+- **The capacity estimand defaults to arrays below 400 m2** (`--max-array-m2`, roofclf's
+  floor), but 88% of 'Amran's array AREA is at or above it and segmentation misses that too;
+  `--max-array-m2 0` prices every size.
+- **Overpass is a dependency, cached so it is paid once**: area labels in
+  `data/roofclf_ground/<aoi>/areas/`, paved roads per whole 1-degree chunk in
+  `data/roads/<aoi>/`. National scoring never calls it: the road veto is a vector overlap the
+  capacity step applies, fetching only chunks that hold a blob (or `--roads <parquet>`). A
+  chunk that cannot be fetched leaves its blobs with `road_checked=False`, reported in the
+  summary, never silently.
+- Yemen's first run (`data/roofclf_ground/yemen/`): 'Amran held-out pixel AUC 0.983, precision
+  0.63 at 62% array recall (a floor), 0.937 when trained on Tihama alone; detected-to-mapped
+  sub-400 m2 area ratio 0.23, stable across 'Amran's four strips (0.19-0.30). Eight farm
+  candidates drawn (5.6-85% cropland strata, Esri 2025). Analysis, leads and the owner's
+  review: `results/yemen_agripv_testground/`.
+
 ### Glint
 
 Sentinel-2's specular-glint response (a panel briefly outshines diffuse reflectance at the right

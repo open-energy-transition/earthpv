@@ -74,6 +74,17 @@ the dark-rock blobs and the three unmapped parks described below.
 
 ## Why neither model sees Yemen's mapped PV
 
+!!! note "Revised 2026-10-23: the labels' geometry, not the sensor"
+
+    The explanation below says the Tihama arrays are too small for Sentinel-2. A test ground
+    in 'Amran, where 306 arrays of the same size class were traced around their panels,
+    shows they are not: those arrays read 8 to 21% darker than their ring in the visible and
+    near infrared. The Tihama labels are rectangles drawn around plots, and averaged over a
+    rectangle the panels disappear. Read as bags that hold PV somewhere, the same
+    rectangles do carry the signal, and a pixel detector trained on them finds the arrays.
+    See [Farm ground PV](../methods/roofclf-ground.md). The measurements below stand; the
+    conclusion drawn from them does not.
+
 The held-out arrays are not the exception. Scoring v13's own national inference against
 every mapped feature of 400 m&sup2; and up, as the ground screen does, it lights up **2 of
 1,466**, including the Tihama arrays it was trained on. The cause is in the imagery, not
@@ -149,6 +160,11 @@ then failed reading its own `screen` column. It now writes the column header reg
 and the chain was relaunched at 15:51 once it was fixed.
 
 ## What Yemen needs next
+
+**Map the farm calibration areas.** `calib-candidates -- --farmland` drew eight 3 km farm
+boxes across Yemen's cropland strata (2026-10-23). Three or more of them, completely
+mapped, are what the [farm ground-PV detector](../methods/roofclf-ground.md) needs before
+its estimate of solar irrigation can enter this page; its leads are usable for mapping now.
 
 **Map the three parks.** They are the largest PV the model sees in the country and the one
 change that would move Verified materially.

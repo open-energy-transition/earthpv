@@ -712,6 +712,21 @@ is not yet a measured skill estimate, just a fit. Quadrats and manual review are
 turn the whole thing from a lower bound into an estimate with an interval. See
 [Capacity density](methods/density.md) and [Calibration](methods/calibration.md).
 
+**Farm ground PV (not yet in the atlas).** Where small arrays stand beside fields rather
+than on roofs, as solar irrigation pumps do, neither instrument above sees them. The
+[farm ground-PV detector](methods/roofclf-ground.md) is the third, trained on farm
+calibration areas (`calib-candidates -- --farmland`) and on ordinary OSM labels read as
+bags:
+
+```bash
+pixi run earthpv roofclf-ground --aoi surat_thani --weak-region <boundary.geojson>
+pixi run earthpv roofclf-ground-score-national --aoi surat_thani
+pixi run earthpv roofclf-ground-capacity --aoi surat_thani --osm-solar <national OSM solar pull>
+```
+
+Its leads (`ground_leads.geojson`) are useful at once for mapping; its capacity needs three
+or more completely mapped farm areas before it means anything.
+
 ### Step 7: publish it on this site
 
 Optional, and only relevant if the new country's results are meant to join this shared

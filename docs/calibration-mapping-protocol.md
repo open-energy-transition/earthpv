@@ -287,6 +287,14 @@ representative set. `calib-publish` ranks every candidate of an uncalibrated atl
 start-here boxes first and then the sampled ones from the densest down, and the atlas draws
 the first as a **star**, with a *Start here* button in the map legend.
 
+**Farm boxes (2026-10-23).** `pixi run calib-candidates -- --aoi <country> --farmland` draws
+calibration areas for the farm ground-PV detector instead: the same recipe on cropland, with
+the cells cut into eight bands of equal cropland area by their ESA WorldCover share and a
+3 km box placed where its own cropland share is within 25% of the cell's. A farm box is
+registered with `new_calibration_quadrat.py --farm`, which keeps it out of every rooftop
+`roofclf` fit. Map all solar in it, ground and rooftop, tracing panels rather than fences.
+See [Farm ground PV](methods/roofclf-ground.md).
+
 ## The quadrat plan
 
 ~25–35 quadrats across 6 landscape strata, each quadrat 1–4 km². Each stratum

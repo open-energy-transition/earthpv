@@ -40,9 +40,32 @@ the hand-picking this replaces. Re-running with the same seed reproduces the sam
 `scripts/heatmap_quadrat_candidates.py` is not this: it ranks boxes by OSM-mapped PV per
 building, which is the selection bias the protocol warns about, and needs a PV pull.
 
+**`--farmland`: farm calibration areas for the ground-PV detector (`roofclf_ground`).**
+The building strata above describe where ROOFS are, which is the wrong frame for small
+ground arrays beside fields: in Yemen's 'Amran test ground only 6.6% of mapped array area
+lies on a building footprint (2026-10-23). This mode runs the same recipe on farmland:
+
+1. **Strata from cropland.** ESA WorldCover's cropland share of every density-grid cell
+   (`worldcover.cell_cropland`, cached in `data/cells_cache/<aoi>_cropland.parquet`), cut
+   into `--strata` bands holding equal shares of the country's cropland AREA. Cells under
+   `--farm-min-crop` cropland hold no farm to sample. Only density-grid cells are drawn
+   from, i.e. cells the country's compose imaged, because the detector cannot score
+   anything else.
+2. **Cells drawn cropland-weighted** within each band, same spacing and province spread.
+3. **The box is placed on the farmland**: every `--farm-side-m` window (3 km by default:
+   farm PV is sparse, 'Amran held about 2 arrays per km2) is counted from WorldCover at
+   100 m, and one whose own cropland share is within 25% of the cell's is drawn at random.
+4. **The same imagery gate.**
+
+Farm boxes are written as `<place>_f<k>_farm_calib_<side>_candidate.geojson`, register with
+`new_calibration_quadrat.py --farm`, and are invisible to the rooftop roofclf
+(`roofclf.FARM_QUADRAT_INFIX`). Map ALL solar in a farm box, ground and rooftop, tracing
+panels rather than enclosures.
+
     pixi run calib-candidates -- --aoi zambia --dry-run
     pixi run calib-candidates -- --bronze                  # every Bronze atlas
     pixi run calib-candidates -- --aoi india --replace     # redraw a country's candidates
+    pixi run calib-candidates -- --aoi yemen --farmland    # farm boxes for roofclf_ground
 """
 from __future__ import annotations
 
@@ -90,6 +113,10 @@ LARGE_ROOF_M2 = 1000.0               # a footprint this big is commercial or ind
 PRIORITY_STRATA = 2                  # the densest 2 of --strata bands: a quarter of buildings
 PRIORITY_CELLS = 40                  # cells scanned per ranking (roof cover, mean footprint)
 CAND_SPACING_KM = 5.0                # from an existing candidate; quadrats keep --min-spacing-km
+# --farmland: boxes for the ground-PV detector, stratified by cropland instead of buildings.
+FARM_SELECTION = "stratified random by cropland area"
+OWN_CROP_TOL = 1.25                  # a box's own cropland share within x/÷ this of its cell's
+MIN_WINDOW_COVER = 0.8               # of the cell's best-covered window: no half-sea boxes
 
 
 def grid_path(aoi: str) -> Path:
@@ -116,12 +143,31 @@ def bronze_aois() -> list[str]:
     return out
 
 
-def strata_edges(cells: pd.DataFrame, k: int) -> np.ndarray:
-    """Density edges cutting the cells into `k` bands of equal building share."""
-    c = cells.sort_values("bldg_density_km2")
-    share = c["n_buildings"].cumsum() / c["n_buildings"].sum()
-    inner = [float(c["bldg_density_km2"][share >= i / k].iloc[0]) for i in range(1, k)]
+def strata_edges(cells: pd.DataFrame, k: int, value: str = "bldg_density_km2",
+                 weight: str = "n_buildings") -> np.ndarray:
+    """`value` edges cutting the cells into `k` bands of equal `weight` share (building
+    density by building count by default; cropland share by cropland area for farms)."""
+    c = cells.sort_values(value)
+    share = c[weight].cumsum() / c[weight].sum()
+    inner = [float(c[value][share >= i / k].iloc[0]) for i in range(1, k)]
     return np.array([0.0, *inner, float("inf")])
+
+
+def cropland_table(aoi: str, grid: pd.DataFrame) -> pd.DataFrame:
+    """WorldCover cropland share per density-grid cell, cached per AOI. Recomputed when the
+    grid has cells the cache lacks (a widened compose), never silently partial."""
+    from earthpv.worldcover import cell_cropland
+
+    cache = Path("data/cells_cache") / f"{aoi}_cropland.parquet"
+    if cache.exists():
+        got = pd.read_parquet(cache)
+        if set(grid["cell"]) <= set(got["cell"]):
+            return got
+    print(f"  {aoi}: cropland share of {len(grid)} cells from ESA WorldCover (one read per tile)")
+    got = cell_cropland(grid[["cell", "lon0", "lat0"]])
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    got.to_parquet(cache)
+    return got
 
 
 def slug(text: str) -> str:
@@ -608,6 +654,190 @@ def propose_priority(aoi: str, args) -> list[dict]:
     return picked
 
 
+def propose_farmland(aoi: str, args) -> list[dict]:
+    """Farm calibration areas for `roofclf_ground`: `propose`'s recipe on cropland.
+
+    Strata are bands of equal cropland AREA by cell cropland share; a cell is drawn
+    cropland-weighted; the box is a `--farm-side-m` window whose own cropland share (ESA
+    WorldCover at 100 m) is within `OWN_CROP_TOL` of the cell's. Chosen on land cover
+    only, never on a solar layer, so a box is never placed where PV is already visible.
+    """
+    import duckdb
+    from shapely.geometry import mapping
+
+    from earthpv.buildings import fetch_vida_building_points
+    from earthpv.roofclf import load_boundary
+    from earthpv.worldcover import landcover_points
+
+    cfg = Settings.load().aois.get(aoi) or {}
+    div = cfg.get("division") or {}
+    iso3, country = div.get("iso3"), div.get("name")
+    if not iso3 or not cfg.get("compose_window"):
+        raise SystemExit(f"{aoi}: configs/aoi.yaml needs division.iso3 and compose_window")
+    win0 = date.fromisoformat(cfg["compose_window"][0])
+    months = win0.year * 12 + win0.month - 1 - args.max_imagery_lag_months
+    earliest = date(months // 12, months % 12 + 1, 1)
+
+    home = LABELS if aoi == FLAT_AOI else LABELS / aoi
+    out_dir = home / "candidate_quadrats"
+    files = sorted(out_dir.glob("*_candidate.geojson"))
+    mine = [p for p in files
+            if FARM_SELECTION in json.loads(p.read_text())["features"][0]["properties"].get("selection", "")]
+    if mine and not args.replace:
+        print(f"{aoi}: {len(mine)} farm candidates already exist in {out_dir}; "
+              "pass --replace to redraw them")
+        return []
+    others = [load_boundary(p) for p in files if p not in mine]
+
+    grid = pd.read_parquet(args.grid or grid_path(aoi), columns=["cell", "lon0", "lat0", "n_buildings"])
+    grid = grid.merge(cropland_table(aoi, grid), on="cell", how="left").fillna({"crop_frac": 0.0, "crop_km2": 0.0})
+    grid = grid[grid["crop_frac"] >= args.farm_min_crop].reset_index(drop=True)
+    if grid.empty:
+        print(f"{aoi}: no imaged cell has {args.farm_min_crop:.0%} cropland or more")
+        return []
+    edges = strata_edges(grid, args.strata, value="crop_frac", weight="crop_km2")
+    grid["stratum"] = np.searchsorted(edges, grid["crop_frac"], side="right") - 1
+    # A seed of its own: the building draw's seed would otherwise walk the same random
+    # sequence over a differently-sorted cell list, which is not a bias but is a needless
+    # coupling between two draws that should be independent.
+    seed = args.seed if args.seed is not None else zlib.crc32(f"{aoi}:farmland".encode()) % 100_000
+    rng = np.random.default_rng(seed)
+    admin = Admin(aoi)
+    taken = existing_boxes(home)
+    used_regions: set = set()
+    picked, screened = [], []
+    con = duckdb.connect()
+    con.execute("SET parquet_metadata_cache=true;")
+    side = args.farm_side_m
+
+    for k in range(args.strata):
+        band = grid[grid["stratum"] == k]
+        lo, hi = edges[k], edges[k + 1]
+        label = (f"cropland stratum {k + 1} of {args.strata}: "
+                 + (f"{lo:.1%}-{hi:.1%}" if math.isfinite(hi) else f">{lo:.1%}") + " cropland (cell)")
+        got = 0
+        for attempt in range(MAX_ATTEMPTS):
+            if got == args.per_stratum or band.empty:
+                break
+            cell = band.iloc[rng.choice(len(band), p=band["crop_km2"] / band["crop_km2"].sum())]
+            ccx, ccy = cell.lon0 + 0.05, cell.lat0 + 0.05
+            _, region0 = admin.lookup(ccx, ccy)
+            if region0 and region0 in used_regions and attempt < MAX_ATTEMPTS // 2:
+                continue
+            if any(GEOD.inv(ccx, ccy, b.centroid.x, b.centroid.y)[2] / 1000 < args.min_spacing_km - 8
+                   for b in taken):
+                continue
+            cap = esri_capture(ccx, ccy)
+            if cap is None or cap["date"] < earliest:
+                screened.append({"aoi": aoi, "stratum": f"farm {k + 1}", "cell": cell.cell,
+                                 "lat": round(ccy, 6), "lon": round(ccx, 6), "reason": "cell centre: " + (
+                                     f"Esri imagery from {cap['date']} predates {earliest}" if cap
+                                     else "no Esri imagery date at zoom 18"),
+                                 "imagery_date": cap["date"].isoformat() if cap else "",
+                                 "date_screened": date.today().isoformat()})
+                continue
+            lon, lat, crop = landcover_points((cell.lon0, cell.lat0, cell.lon0 + 0.1, cell.lat0 + 0.1))
+            if not crop.any():
+                continue
+            wins = window_densities(lon, lat, cell, side, weights=(crop.astype(float),))
+            if not len(wins):
+                continue
+            n_px, n_crop = wins[:, 2], wins[:, 3]
+            share = n_crop / np.maximum(n_px, 1)
+            ok = ((n_px >= MIN_WINDOW_COVER * n_px.max()) & (share > 0)
+                  & (np.abs(np.log(np.maximum(share, 1e-9) / cell.crop_frac)) <= math.log(OWN_CROP_TOL)))
+            idx = np.flatnonzero(ok)
+            if not len(idx):
+                continue
+            j = rng.choice(idx)
+            cx, cy, own_share = wins[j, 0], wins[j, 1], float(share[j])
+            poly = geodesic_square(float(cy), float(cx), side)
+            near = [GEOD.inv(cx, cy, b.centroid.x, b.centroid.y)[2] / 1000 for b in taken]
+            if (any(d < args.min_spacing_km for d in near)
+                    or any(b.intersects(poly) for b in taken + others)):
+                continue
+            passed, img = imagery_gate(poly, earliest)
+            if not passed:
+                screened.append({"aoi": aoi, "stratum": f"farm {k + 1}", "cell": cell.cell,
+                                 "lat": round(cy, 6), "lon": round(cx, 6), "reason": img["reason"],
+                                 "imagery_date": img.get("imagery_date", ""),
+                                 "date_screened": date.today().isoformat()})
+                continue
+            district, region = admin.lookup(cx, cy)
+            geo_km2 = abs(GEOD.geometry_area_perimeter(poly)[0]) / 1e6
+            n_bldg = len(fetch_vida_building_points(poly.bounds, iso3, con=con))
+            tag = f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m"
+            base = f"{slug(district or region or aoi)}_f{k + 1}"
+            used = {c["stem"] for c in picked} | {p.name[: -len("_candidate.geojson")] for p in files
+                                                  if p not in mine}
+            stem = next(f"{base}{x}_farm_calib_{tag}" for x in ("", *"bcdefgh")
+                        if f"{base}{x}_farm_calib_{tag}" not in used)
+            props = {
+                "quadrat_id": stem,
+                "stratum": label,
+                "location": ", ".join(x for x in (district, region, country) if x),
+                "province": region,
+                "size_km2": round(geo_km2, 4),
+                "center": f"[{cx:.6f} {cy:.6f}]",
+                "shape": "square (geodesic)",
+                "side_m": float(side),
+                "source_grid_cell": cell.cell,
+                "source_grid_crop_frac": round(float(cell.crop_frac), 4),
+                "own_crop_frac": round(own_share, 4),
+                "own_n_buildings": int(n_bldg),
+                "own_density_bldg_km2": round(n_bldg / geo_km2, 2),
+                **img,
+                "imagery_checked": True,
+                "selection": f"{FARM_SELECTION}, seed {seed}",
+                "detector": "roofclf_ground",
+                "note": (f"Farm calibration area for the ground-PV detector, drawn by "
+                         f"scripts/propose_calibration_candidates.py --farmland: a cropland-weighted "
+                         f"random cell from {label}, then a {side / 1000:g} km window inside it whose "
+                         f"own cropland share ({own_share:.1%}, ESA WorldCover) is within 25% of the "
+                         f"cell's ({cell.crop_frac:.1%}). Map ALL solar inside, ground and rooftop, "
+                         f"tracing the panels rather than the fence. Esri imagery here dates from "
+                         f"{img['imagery_date']} (oldest of centre and corners), no older than "
+                         f"{earliest} for a composite starting {win0}. Register with "
+                         "new_calibration_quadrat.py --farm. Not checked on the ground: confirm it "
+                         "is mappable before you start, and do not move it toward visible solar."),
+            }
+            picked.append({"stem": stem, "k": k + 1, "props": props, "geometry": mapping(poly)})
+            taken.append(poly)
+            if region:
+                used_regions.add(region)
+            got += 1
+        if got < args.per_stratum:
+            print(f"  {aoi}: farm stratum {k + 1} short, {got} of {args.per_stratum} after {MAX_ATTEMPTS} draws")
+
+    print(f"{aoi}: {len(picked)} farm candidates, {len(screened)} draws screened out on imagery "
+          f"(seed {seed}, imagery no older than {earliest})")
+    for c in picked:
+        p = c["props"]
+        print(f"  {c['stem']:<44} f{c['k']}  cell {p['source_grid_crop_frac']:>6.1%}"
+              f"  box {p['own_crop_frac']:>6.1%} cropland  {p['own_n_buildings']:>6} bldg"
+              f"  Esri {p['imagery_date']} {p['imagery_res_m']} m  {p['location']}")
+    if args.dry_run:
+        return picked
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for p in mine:
+        p.unlink()
+    for c in picked:
+        doc = {"type": "FeatureCollection", "name": f"{c['stem']}_candidate",
+               "features": [{"type": "Feature", "properties": c["props"], "geometry": c["geometry"]}]}
+        (out_dir / f"{c['stem']}_candidate.geojson").write_text(json.dumps(doc, indent=2) + "\n")
+    if screened:
+        log = out_dir / "screened_out.csv"
+        new = not log.exists()
+        with log.open("a", newline="") as fh:
+            wr = csv.DictWriter(fh, fieldnames=list(screened[0]))
+            if new:
+                wr.writeheader()
+            wr.writerows(screened)
+    print(f"  wrote {len(picked)} files to {out_dir}")
+    return picked
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     who = ap.add_mutually_exclusive_group(required=True)
@@ -623,11 +853,19 @@ def main() -> int:
                     help="oldest acceptable Esri capture, in months before the compose window start")
     ap.add_argument("--seed", type=int, default=None, help="default: derived from the AOI name")
     ap.add_argument("--grid", type=Path, default=None, help="density grid, for a single --aoi")
-    ap.add_argument("--priority", action="store_true",
-                    help="draw the purposive start-here boxes (dense, large roofs) instead")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--priority", action="store_true",
+                      help="draw the purposive start-here boxes (dense, large roofs) instead")
+    mode.add_argument("--farmland", action="store_true",
+                      help="draw farm calibration areas for the ground-PV detector, stratified "
+                           "by cropland instead of buildings")
     ap.add_argument("--n-priority", type=int, default=2, help="start-here boxes per AOI")
+    ap.add_argument("--farm-side-m", type=float, default=3000.0,
+                    help="--farmland box side (farm PV is sparse: about 2 arrays per km2 in 'Amran)")
+    ap.add_argument("--farm-min-crop", type=float, default=0.01,
+                    help="--farmland: skip cells with less cropland than this share")
     ap.add_argument("--replace", action="store_true",
-                    help="redraw an AOI's sampled (or, with --priority, start-here) candidates")
+                    help="redraw an AOI's sampled (or, with --priority / --farmland, those) candidates")
     ap.add_argument("--dry-run", action="store_true", help="draw and report, write nothing")
     args = ap.parse_args()
     os.chdir(ROOT)
@@ -635,7 +873,7 @@ def main() -> int:
     if args.grid and len(aois) != 1:
         raise SystemExit("--grid applies to a single --aoi")
     for aoi in aois:
-        (propose_priority if args.priority else propose)(aoi, args)
+        (propose_priority if args.priority else propose_farmland if args.farmland else propose)(aoi, args)
     if not args.dry_run:
         print("next: pixi run calib-publish")
     return 0

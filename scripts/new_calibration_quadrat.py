@@ -299,6 +299,12 @@ def main() -> None:
     ap.add_argument("--retry-wait-s", type=float, default=60.0)
     ap.add_argument("--dry-run", action="store_true",
                     help="run the geometry + overlap checks and stop before writing or fetching")
+    ap.add_argument("--farm", action="store_true",
+                    help="a FARM calibration area for the ground-PV detector (roofclf_ground): "
+                         "the stem gets '_farm_calib_', which keeps it out of the rooftop "
+                         "roofclf refits (a ground array would label the farmhouse beside it, "
+                         "the Kalat Rural problem) and is what `roofclf-ground` discovers. "
+                         "Use for boxes from `calib-candidates -- --farmland`.")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -333,7 +339,7 @@ def main() -> None:
             f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m")
         poly = geodesic_square(args.lat, args.lon, side)
         area = abs(GEOD.geometry_area_perimeter(poly)[0])
-    stem = f"{args.name}_calib_{size_tag}"
+    stem = f"{args.name}{'_farm' if args.farm else ''}_calib_{size_tag}"
 
     w, s, e, n = poly.bounds
     rep = poly.representative_point()
@@ -452,6 +458,8 @@ def main() -> None:
         "imagery_date": args.imagery_date or "",
         "imagery_checked": bool(args.imagery_date),
     }
+    if args.farm:
+        props["detector"] = "roofclf_ground"
     if not drawn:
         props["side_m"] = float(side)
     else:

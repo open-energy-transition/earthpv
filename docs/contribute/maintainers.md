@@ -11,8 +11,14 @@ declaring it complete, and publishing the boundaries the atlas loads.
 pixi run calib-candidates -- --aoi zambia --dry-run   # report the draw, write nothing
 pixi run calib-candidates -- --bronze                 # every Bronze atlas
 pixi run calib-candidates -- --bronze --priority      # + two start-here boxes each
+pixi run calib-candidates -- --aoi yemen --farmland   # farm boxes, stratified by cropland
 pixi run calib-publish                                # put them on the atlases
 ```
+
+`--farmland` draws 3 km farm areas for the
+[farm ground-PV detector](../methods/roofclf-ground.md), stratified by cropland rather than
+buildings. Register a mapped one with `--farm` added to the command below: its name then
+carries `_farm_calib_`, which keeps it out of every rooftop `roofclf` fit.
 
 `scripts/propose_calibration_candidates.py` cuts a country's density grid into eight bands
 of equal building share, draws one cell per band at random, places a box on the buildings

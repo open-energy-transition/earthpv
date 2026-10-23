@@ -705,6 +705,100 @@ def roofclf_score_national_cmd(
     typer.echo(f"-> {out_dir}")
 
 
+@app.command("roofclf-ground")
+def roofclf_ground_cmd(
+    aoi: str = typer.Option(..., help="AOI name (supplies division.iso3 for VIDA)"),
+    composites: Path = typer.Option(None, help="Composite dir (default data/composites/<aoi>)"),
+    labels_dir: Path = typer.Option(
+        None, help="Where farm quadrats (stems with '_farm_calib_') are registered "
+        "(default data/labels/ for Pakistan, data/labels/<aoi>/ otherwise)"),
+    clean_region: list[Path] = typer.Option(
+        None, help="A boundary GeoJSON whose solar is completely mapped as panel outlines "
+        "(repeatable). Gives precision and the capacity calibration."),
+    weak_region: list[Path] = typer.Option(
+        None, help="A boundary GeoJSON whose OSM solar is incomplete or oversized, nodes "
+        "included (repeatable). Trains as multiple-instance bags; never calibrates."),
+    osm: Path = typer.Option(None, help="Read region labels from this solar parquet instead "
+                             "of a live Overpass pull"),
+    refresh_osm: bool = typer.Option(False, help="Re-pull Overpass for every region"),
+    out_dir: Path = typer.Option(None, help="Output dir (default data/roofclf_ground/<aoi>)"),
+    max_array_m2: float = typer.Option(
+        400.0, help="The capacity estimand counts mapped arrays below this (roofclf's 400 m2 "
+        "floor). 0 = every size: 88% of 'Amran's array area is at or above 400 m2."),
+    worldcover: bool = typer.Option(True, "--worldcover/--no-worldcover",
+                                    help="Use WorldCover cropland as an ROI anchor"),
+) -> None:
+    """Footprint-free ground-PV detector for small arrays beside farmland, the roofclf
+    family's instrument for PV with no roof. Fits a pixel model on clean farm areas and
+    weak OSM areas, reports leave-one-block-out and leave-one-area-out skill, picks the
+    deployment threshold and measures the capacity calibration."""
+    from earthpv.roofclf_ground import train_ground
+
+    labels_dir = labels_dir or (Path("data/labels") if aoi == "pakistan" else Path("data/labels") / aoi)
+    out_dir = out_dir or Path("data/roofclf_ground") / aoi
+    s = train_ground(aoi, labels_dir, composites or Path("data/composites") / aoi, out_dir,
+                     clean_regions=clean_region or (), weak_regions=weak_region or (), osm=osm,
+                     refresh_osm=refresh_osm, use_worldcover=worldcover,
+                     max_array_m2=max_array_m2 or None)
+    for r in s["areas"]:
+        typer.echo("  " + ", ".join(f"{k}={v:.3f}" if isinstance(v, float) else f"{k}={v}"
+                                    for k, v in r.items() if k != "source"))
+    typer.echo(f"threshold {s['threshold']} -> {out_dir}")
+
+
+@app.command("roofclf-ground-score-national")
+def roofclf_ground_score_national_cmd(
+    aoi: str = typer.Option(..., help="AOI name"),
+    model_path: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/model_full.json"),
+    composites: Path = typer.Option(None, help="Composite dir (default data/composites/<aoi>)"),
+    out_dir: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/blobs"),
+    threshold: float = typer.Option(None, help="Override the model's deployment threshold (a logit)"),
+    worldcover: bool = typer.Option(True, "--worldcover/--no-worldcover"),
+    limit: int = typer.Option(0, help="Cap the cells processed this call (0 = all)"),
+    cells_file: Path = typer.Option(None, help="Only these cells, one name per line"),
+    force: bool = typer.Option(False, help="Recompute cells already written"),
+) -> None:
+    """Score every composite cell with the ground detector: blobs with their road, water
+    and ROI flags, one parquet per cell. Resumable."""
+    from earthpv.roofclf_ground import score_ground_national
+
+    only = ({ln.strip() for ln in cells_file.read_text().splitlines() if ln.strip()}
+            if cells_file else None)
+    out = score_ground_national(
+        aoi, model_path or Path("data/roofclf_ground") / aoi / "model_full.json",
+        composites or Path("data/composites") / aoi, out_dir or Path("data/roofclf_ground") / aoi / "blobs",
+        threshold=threshold, use_worldcover=worldcover, limit=limit, cells=only, force=force)
+    typer.echo(f"-> {out}")
+
+
+@app.command("roofclf-ground-capacity")
+def roofclf_ground_capacity_cmd(
+    aoi: str = typer.Option(..., help="AOI name"),
+    score_dir: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/blobs"),
+    calib_dir: Path = typer.Option(None, help="`roofclf-ground`'s output (default data/roofclf_ground/<aoi>)"),
+    out_dir: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/capacity"),
+    osm_solar: Path = typer.Option(None, help="National OSM solar pull: blobs near it are already counted"),
+    pred_dir: Path = typer.Option(Path("data/predictions"),
+                                  help="For <pred_dir>/<aoi>/candidates.parquet (segmentation dedup)"),
+    coverage_boot: int = typer.Option(200, help="Bootstrap replicates over clean areas (needs 3+)"),
+    leads: int = typer.Option(500, help="Top blobs written to ground_leads.geojson for review"),
+    roads: Path = typer.Option(None, help="Paved-roads parquet for the road veto (default: Overpass "
+                               "per 1-degree chunk holding a blob, cached in data/roads/<aoi>/)"),
+) -> None:
+    """Incremental ground-PV capacity per cell from the ground detector's blobs: what
+    neither OSM nor segmentation already counts, priced by the clean areas' ratio of
+    mapped PV area to detected blob area and the module constant."""
+    from earthpv.roofclf_ground import ground_capacity
+
+    base = Path("data/roofclf_ground") / aoi
+    s = ground_capacity(aoi, score_dir or base / "blobs", calib_dir or base, out_dir or base / "capacity",
+                        osm_solar=osm_solar, candidates=pred_dir / aoi / "candidates.parquet",
+                        n_boot=coverage_boot, leads=leads, roads=roads,
+                        grid=pred_dir / aoi / "density" / "grid.geoparquet")
+    for k, v in s.items():
+        typer.echo(f"  {k}: {v}")
+
+
 @app.command("sub400-capacity")
 def sub400_capacity_cmd(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),

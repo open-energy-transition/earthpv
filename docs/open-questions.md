@@ -227,7 +227,7 @@ fold Kalat Rural in. Until then it must be excluded from every refit by hand, be
 `roofclf.discover_quadrats` picks it up automatically. See
 [Calibration boxes](issues/pakistan-calibration-boxes.md)' Box 17.
 
-### 9. Small ground-mounted installations have no instrument
+### 9. Small ground-mounted installations have no calibrated instrument
 
 Both sub-400 m&sup2; instruments score building footprints, and a small free-standing array
 has none; segmentation burns everything below 400 m&sup2; as `ignore`. In Pakistan this is
@@ -242,8 +242,16 @@ detection at that unit lands under 1% precision at 30% recall in every stratum t
 density-stratified estimate puts the prize at 1,492 MWp (90% 435-3,526), all of its spread in
 the < 150 bldg/km&sup2; stratum, which four village-centred quadrats represent.
 
-**What would close it:** quadrats drawn in cropland rather than around villages, imagery
-date permitting (item 4). See
+An instrument exists since 2026-10-23: `roofclf_ground`, a footprint-free pixel detector
+([Farm ground PV](methods/roofclf-ground.md)). In Yemen it reaches precision 0.63 at 62% array
+recall on a fully traced test ground, where Pakistan's building-ring attempt above stayed
+under 1%, and it trains on ordinary OSM labels read as bags. It is not calibrated: one clean
+area, a domain of 12 of Yemen's 810 cells, and never run on Pakistan.
+
+**What would close it:** three or more mapped farm areas per country, drawn by
+`calib-candidates -- --farmland` (cropland strata, imagery gate included), then the
+component added to the evidence atlas and its uncertainty composition. For Pakistan, a first
+run against the tubewell population. See
 [Small ground-mounted instrument](issues/small-ground-mount-instrument.md).
 
 ### 10. Growth as a product

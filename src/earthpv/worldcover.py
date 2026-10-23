@@ -143,3 +143,111 @@ def candidate_worldcover_veto(
     wc = candidate_worldcover_class(geoms)
     veto = np.isin(wc, veto_classes) & np.isfinite(wc)
     return wc, veto
+
+
+# --------------------------------------------------------------------------------------
+# Cropland: where farm ground PV lives (`roofclf_ground`, farm calibration candidates)
+# --------------------------------------------------------------------------------------
+# Read resolution for the cell/window statistics. WorldCover's COGs carry overviews, so a
+# 100 m read of a 3x3 deg tile is one 3,600 px square from the overview, not 36,000.
+CROPLAND_READ_M = 100.0
+
+
+def _decimated(src, bounds, res_m: float):
+    """`(array, transform)` of `src` over 4326 `bounds`, read at roughly `res_m`."""
+    dec = max(1, int(round(res_m / 10.0)))
+    win = from_bounds(*bounds, transform=src.transform)
+    win = win.round_offsets().round_lengths().intersection(Window(0, 0, src.width, src.height))
+    h, w = max(1, int(win.height) // dec), max(1, int(win.width) // dec)
+    arr = src.read(1, window=win, out_shape=(h, w))
+    t = window_transform(win, src.transform)
+    return arr, t * t.scale(win.width / w, win.height / h)
+
+
+def cell_cropland(cells, cell_deg: float = 0.1, res_m: float = CROPLAND_READ_M):
+    """Cropland share of every 0.1 deg cell in `cells` (columns `cell`, `lon0`, `lat0`).
+
+    Returns `cell`, `crop_frac` (class 40 over all classified pixels, so sea and nodata
+    do not dilute it) and `crop_km2` (that share of the cell's area). One read per
+    WorldCover tile, so a country costs a dozen tile reads, not one per cell.
+    """
+    import pandas as pd
+
+    lon0, lat0 = cells["lon0"].to_numpy(float), cells["lat0"].to_numpy(float)
+    gx, gy = float(lon0.min()), float(lat0.min())
+    key = {(int(round((x - gx) / cell_deg)), int(round((y - gy) / cell_deg))): c
+           for c, x, y in zip(cells["cell"], lon0, lat0)}
+    crop, total = {}, {}
+    bbox = (lon0.min(), lat0.min(), lon0.max() + cell_deg, lat0.max() + cell_deg)
+    for path in _tile_index(bbox).path:
+        with rasterio.open(path) as src:
+            tb = src.bounds
+            ib = (max(tb.left, bbox[0]), max(tb.bottom, bbox[1]), min(tb.right, bbox[2]), min(tb.top, bbox[3]))
+            if ib[0] >= ib[2] or ib[1] >= ib[3]:
+                continue
+            arr, t = _decimated(src, ib, res_m)
+        rows, cols = np.indices(arr.shape)
+        lon = t.c + (cols + 0.5) * t.a
+        lat = t.f + (rows + 0.5) * t.e
+        ix = np.floor((lon - gx) / cell_deg).astype(int)
+        iy = np.floor((lat - gy) / cell_deg).astype(int)
+        k = ix.astype(np.int64) * 100_000 + iy
+        valid = arr > 0
+        for kk, n in zip(*np.unique(k[valid], return_counts=True)):
+            total[kk] = total.get(kk, 0) + int(n)
+        for kk, n in zip(*np.unique(k[arr == CROPLAND], return_counts=True)):
+            crop[kk] = crop.get(kk, 0) + int(n)
+    out = []
+    for (ix, iy), c in key.items():
+        kk = ix * 100_000 + iy
+        frac = crop.get(kk, 0) / total[kk] if total.get(kk) else 0.0
+        lat_c = gy + (iy + 0.5) * cell_deg
+        area_km2 = (cell_deg * 111.32) ** 2 * np.cos(np.radians(lat_c))
+        out.append({"cell": c, "crop_frac": frac, "crop_km2": frac * area_km2})
+    return pd.DataFrame(out)
+
+
+def landcover_points(bbox: tuple[float, float, float, float], res_m: float = CROPLAND_READ_M):
+    """`(lon, lat, is_cropland)` for every classified pixel centre in `bbox`, read at
+    `res_m`. Every classified pixel, not only cropland, so a window's cropland SHARE can
+    be counted without sea or nodata diluting it."""
+    lons, lats, crop = [], [], []
+    for path in _tile_index(bbox).path:
+        with rasterio.open(path) as src:
+            tb = src.bounds
+            ib = (max(tb.left, bbox[0]), max(tb.bottom, bbox[1]), min(tb.right, bbox[2]), min(tb.top, bbox[3]))
+            if ib[0] >= ib[2] or ib[1] >= ib[3]:
+                continue
+            arr, t = _decimated(src, ib, res_m)
+        rows, cols = np.nonzero(arr > 0)
+        lons.append(t.c + (cols + 0.5) * t.a)
+        lats.append(t.f + (rows + 0.5) * t.e)
+        crop.append(arr[rows, cols] == CROPLAND)
+    if not lons:
+        return np.array([]), np.array([]), np.array([], dtype=bool)
+    return np.concatenate(lons), np.concatenate(lats), np.concatenate(crop)
+
+
+def cropland_mask(bbox4326, dst_shape, dst_transform, dst_crs) -> np.ndarray | None:
+    """WorldCover cropland (class 40) resampled nearest onto a composite window's grid;
+    None when no tile covers it or the service cannot be reached (callers degrade to
+    their other ROI anchors rather than fail a national run on one network error)."""
+    from rasterio.warp import Resampling, reproject
+
+    try:
+        tiles = _tile_index(bbox4326)
+    except Exception as e:  # noqa: BLE001 -- network / STAC; reported, never fatal
+        log.warning("WorldCover unavailable for %s: %s", bbox4326, e)
+        return None
+    out = np.zeros(dst_shape, dtype="uint8")
+    for path in tiles.path:
+        try:
+            with rasterio.open(path) as src:
+                tmp = np.zeros(dst_shape, dtype="uint8")
+                reproject(rasterio.band(src, 1), tmp, dst_transform=dst_transform, dst_crs=dst_crs,
+                          resampling=Resampling.nearest)
+        except Exception as e:  # noqa: BLE001
+            log.warning("WorldCover tile read failed (%s): %s", path, e)
+            return None
+        out = np.where(out == 0, tmp, out)
+    return out == CROPLAND
