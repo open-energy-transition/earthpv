@@ -189,6 +189,28 @@ def parcel_label_composition(
 
 # Quantile bin count / minimum flagged buildings per bin for `coverage_ratio_by_size` --
 # see that function's docstring for why quantile (equal-count) bins, not equal-width ones.
+# How a building's roofclf score enters the capacity sum (2026-10-22). "threshold" is the
+# shipped rule: a building counts in full when `p_roofclf >= threshold` and not at all
+# otherwise, i.e. classify-and-count. "probability" counts every building in proportion
+# to its score, with the coverage ratio and area recall refit on the same weights. Measured
+# leave-one-quadrat-out in this module's own structure (`scripts/roofclf_soft_capacity_
+# check.py`): median per-quadrat error on true sub-400 m2 PV area 0.386 thresholded, 0.094
+# probability-weighted (0.18-0.24 with other scores), better in 20 of 29 quadrats; in the
+# six quadrats sparser than 300 bldg/km2 thresholding books 12% of the mapped PV and
+# probability weighting 92%. Opt-in: it is NOT the published estimator.
+WEIGHTINGS = ("threshold", "probability")
+DEFAULT_WEIGHTING = "threshold"
+
+
+def _check_weighting(weighting: str, sppi_min_precision: float | None = None) -> None:
+    if weighting not in WEIGHTINGS:
+        raise ValueError(f"weighting must be one of {WEIGHTINGS}, not {weighting!r}")
+    if weighting == "probability" and sppi_min_precision is not None:
+        # The AND-gate tiers are floors: two detectors agreeing on a building, by design a
+        # yes/no rule. Probability-weighting one of them would make the floor extrapolate.
+        raise ValueError("probability weighting is not defined for the roofclf AND SPPI gate")
+
+
 DEFAULT_COVERAGE_N_SIZE_BINS = 10
 DEFAULT_COVERAGE_MIN_BIN_N = 25
 
@@ -201,6 +223,7 @@ def coverage_ratio_by_size(
     n_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
+    weighting: str = DEFAULT_WEIGHTING,
 ) -> pd.DataFrame:
     """Measured (true mapped PV area / roof area) on the buildings roofclf (optionally AND
     SPPI) flags in `quadrats`, binned by each flagged building's OWN `roof_area_m2` -- the
@@ -243,7 +266,14 @@ def coverage_ratio_by_size(
     (`buildings_path` may then be None). Only `coverage_ratio_bootstrap_factors` uses it,
     to refit this table a few hundred times over resampled quadrat sets without paying
     for a few hundred `read_parquet` calls; every production caller still passes a path.
+
+    `weighting="probability"` (see `WEIGHTINGS`) refits the ratio as (sum of p x true PV
+    area) / (sum of p x roof area) over EVERY building, flagged or not, so it prices
+    probability-weighted roof area rather than flagged roof area. Bin edges and the
+    `min_bin_n` test still come from the flagged population, so the two weightings share
+    one binning and one fallback structure and differ only in the weights.
     """
+    _check_weighting(weighting, sppi_min_precision)
     df = gpd.read_parquet(buildings_path) if df is None else df
     sub = df[df.quadrat.isin(quadrats)]
     if sub.empty:
@@ -261,6 +291,8 @@ def coverage_ratio_by_size(
 
     roof = flagged.roof_area_m2.to_numpy(float)
     true = flagged.pv_area_true_m2.to_numpy(float)
+    if weighting == "probability" and len(roof):
+        return _soft_coverage_table(sub, roof, n_bins, min_bin_n, quadrats)
     if len(roof) == 0:
         log.warning(
             "coverage_ratio_by_size: no buildings flagged (quadrats=%s, threshold=%.4f, "
@@ -296,6 +328,39 @@ def coverage_ratio_by_size(
         "Coverage ratio by size (%d bins, %d quadrats, sppi_min_precision=%s, overall=%.4f):\n%s",
         len(table), len(quadrats), sppi_min_precision, overall_ratio, table.to_string(index=False),
     )
+    return table
+
+
+def _soft_coverage_table(sub: pd.DataFrame, flagged_roof: np.ndarray, n_bins: int,
+                         min_bin_n: int, quadrats: list[str]) -> pd.DataFrame:
+    """`coverage_ratio_by_size`'s table under `weighting="probability"`: the flagged
+    population's deciles and per-bin counts, every building's p-weighted ratio."""
+    w = sub.p_oof.to_numpy(float)
+    roof = sub.roof_area_m2.to_numpy(float)
+    true = sub.pv_area_true_m2.to_numpy(float)
+    overall_ratio = float((w * true).sum() / (w * roof).sum())
+    edges = np.unique(np.quantile(flagged_roof, np.linspace(0.0, 1.0, n_bins + 1)))
+    if len(edges) < 3:
+        edges = np.array([flagged_roof.min(), flagged_roof.max()])
+    edges[0], edges[-1] = -np.inf, np.inf
+    fbin = np.clip(np.searchsorted(edges, flagged_roof, side="right") - 1, 0, len(edges) - 2)
+    bin_idx = np.clip(np.searchsorted(edges, roof, side="right") - 1, 0, len(edges) - 2)
+    rows = []
+    for i in range(len(edges) - 1):
+        m = bin_idx == i
+        n = int((fbin == i).sum())
+        wroof = float((w[m] * roof[m]).sum())
+        wtrue = float((w[m] * true[m]).sum())
+        ratio = wtrue / wroof if wroof and n >= min_bin_n else overall_ratio
+        rows.append({
+            "bin_lo": float(edges[i]), "bin_hi": float(edges[i + 1]), "n_flagged": n,
+            "roof_area_m2": round(wroof, 1), "true_pv_area_m2": round(wtrue, 1),
+            "coverage_ratio": round(ratio, 4), "weighting": "probability",
+        })
+    table = pd.DataFrame(rows)
+    log.info("Coverage ratio by size, probability-weighted (%d bins, %d quadrats, "
+             "overall=%.4f):\n%s", len(table), len(quadrats), overall_ratio,
+             table.to_string(index=False))
     return table
 
 
@@ -395,6 +460,7 @@ def coverage_ratio_by_size_and_density(
     n_size_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
+    weighting: str = DEFAULT_WEIGHTING,
 ) -> dict:
     """`coverage_ratio_by_size`, fit independently within each of `n_density_bands`
     building-density strata instead of once over all calibrated quadrats pooled together --
@@ -430,7 +496,7 @@ def coverage_ratio_by_size_and_density(
     return _stratify_by_density(
         coverage_ratio_by_size, "coverage_table", buildings_path, quadrats, threshold,
         quadrat_density, sppi_min_precision, n_density_bands, n_size_bins, min_bin_n, df,
-        n_col="n_flagged",
+        n_col="n_flagged", weighting=weighting,
     )
 
 
@@ -438,6 +504,7 @@ def _stratify_by_density(
     fit, table_key: str, buildings_path: Path | None, quadrats: list[str], threshold: float,
     quadrat_density: pd.Series, sppi_min_precision: float | None, n_density_bands: int,
     n_size_bins: int, min_bin_n: int, df: pd.DataFrame | None, n_col: str,
+    weighting: str = DEFAULT_WEIGHTING,
 ) -> dict:
     """Fit `fit` (a size-binned table function) once per building-density band of
     `quadrats`, with a pooled fallback for any band whose own calibration population is
@@ -451,7 +518,7 @@ def _stratify_by_density(
 
     pooled_table = fit(
         buildings_path, quadrats, threshold, sppi_min_precision=sppi_min_precision,
-        n_bins=n_size_bins, min_bin_n=min_bin_n, df=df,
+        n_bins=n_size_bins, min_bin_n=min_bin_n, df=df, weighting=weighting,
     )
     band_idx = np.clip(
         np.searchsorted(edges, quadrat_density.to_numpy(float), side="right") - 1, 0, len(edges) - 2
@@ -463,7 +530,7 @@ def _stratify_by_density(
             continue
         table = fit(
             buildings_path, band_quadrats, threshold, sppi_min_precision=sppi_min_precision,
-            n_bins=n_size_bins, min_bin_n=min_bin_n, df=df,
+            n_bins=n_size_bins, min_bin_n=min_bin_n, df=df, weighting=weighting,
         )
         n_band = int(table[n_col].sum())
         used_pooled_fallback = n_band < min_bin_n
@@ -484,6 +551,7 @@ def _stratify_by_density(
         "band_edges": [float(e) for e in edges],
         "bands": bands,
         "pooled_fallback": pooled_table.to_dict("records"),
+        "weighting": weighting,
     }
     log.info(
         "%s by size and density (%d bands from %d quadrats): %s",
@@ -542,6 +610,7 @@ def area_recall_by_size(
     n_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
+    weighting: str = DEFAULT_WEIGHTING,
 ) -> pd.DataFrame:
     """Share of the quadrats' true mapped PV **area** that sits on a building roofclf
     actually flags, binned by roof size -- the denominator correction the coverage ratio
@@ -595,7 +664,11 @@ def area_recall_by_size(
     `coverage_ratio_by_size` applies. Returns `bin_lo`, `bin_hi`, `n_pv_buildings`,
     `n_pv_flagged`, `true_pv_area_m2`, `flagged_pv_area_m2`, `area_recall`. `df` is the
     same bootstrap escape hatch `coverage_ratio_by_size` documents.
+
+    `weighting="probability"` measures the share of true PV area carried by p-weighted
+    buildings, (sum of p x true PV area) / (sum of true PV area), on the same bins.
     """
+    _check_weighting(weighting, sppi_min_precision)
     df = gpd.read_parquet(buildings_path) if df is None else df
     sub = df[df.quadrat.isin(quadrats)]
     if sub.empty:
@@ -613,6 +686,8 @@ def area_recall_by_size(
     true = sub.pv_area_true_m2.to_numpy(float)
     roof = sub.roof_area_m2.to_numpy(float)
     has_pv = true > 0
+    # The weight each building's true PV area is credited with: its flag, or its score.
+    wt = pred.astype(float) if weighting == "threshold" else sub.p_oof.to_numpy(float)
     if not has_pv.any() or true.sum() <= 0:
         log.warning(
             "area_recall_by_size: no mapped PV in quadrats=%s -- returning area_recall=1.0 "
@@ -623,7 +698,7 @@ def area_recall_by_size(
             "bin_lo": -np.inf, "bin_hi": np.inf, "n_pv_buildings": 0, "n_pv_flagged": 0,
             "true_pv_area_m2": 0.0, "flagged_pv_area_m2": 0.0, "area_recall": 1.0,
         }])
-    overall_recall = float(true[pred].sum() / true.sum())
+    overall_recall = float((wt * true).sum() / true.sum())
 
     edges = np.unique(np.quantile(roof[has_pv], np.linspace(0.0, 1.0, n_bins + 1)))
     if len(edges) < 3:
@@ -636,7 +711,7 @@ def area_recall_by_size(
         m = bin_idx == i
         n_pv = int((m & has_pv).sum())
         true_sum = float(true[m].sum())
-        flagged_sum = float(true[m & pred].sum())
+        flagged_sum = float((wt[m] * true[m]).sum())
         recall = flagged_sum / true_sum if true_sum > 0 and n_pv >= min_bin_n else overall_recall
         rows.append({
             "bin_lo": float(edges[i]), "bin_hi": float(edges[i + 1]),
@@ -667,6 +742,7 @@ def area_recall_by_size_and_density(
     n_size_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
+    weighting: str = DEFAULT_WEIGHTING,
 ) -> dict:
     """`area_recall_by_size`, stratified by building density exactly as
     `coverage_ratio_by_size_and_density` stratifies the coverage ratio -- same band edges
@@ -685,7 +761,7 @@ def area_recall_by_size_and_density(
     return _stratify_by_density(
         area_recall_by_size, "recall_table", buildings_path, quadrats, threshold,
         quadrat_density, sppi_min_precision, n_density_bands, n_size_bins, min_bin_n, df,
-        n_col="n_pv_buildings",
+        n_col="n_pv_buildings", weighting=weighting,
     )
 
 
@@ -729,6 +805,8 @@ def coverage_ratio_bootstrap_factors(
     n_boot: int = DEFAULT_COVERAGE_N_BOOT,
     seed: int = COVERAGE_BOOTSTRAP_SEED,
     recall_stratified: dict | None = None,
+    weighting: str = DEFAULT_WEIGHTING,
+    target_weight: np.ndarray | None = None,
 ) -> dict:
     """Dimensionless multiplicative uncertainty on a capacity total, from resampling the
     CALIBRATION QUADRATS behind its coverage-ratio fit.
@@ -779,6 +857,10 @@ def coverage_ratio_bootstrap_factors(
     Degenerate replicates -- a resample whose fit raises, e.g. one that draws a single
     quadrat with no flagged building at all -- are dropped and counted, not silently
     treated as a factor of 1.0.
+
+    `weighting` refits both tables the way the caller's point fit was made, and
+    `target_weight` (the target population's own p under `weighting="probability"`, None
+    for a flagged population) multiplies each target building's priced roof area.
     """
     empty = {
         "n_boot": 0, "n_boot_requested": int(n_boot), "n_degenerate_replicates": 0,
@@ -790,8 +872,12 @@ def coverage_ratio_bootstrap_factors(
     if n_boot <= 0 or len(roof_area_m2) == 0:
         return empty
 
+    tw = None if target_weight is None else np.asarray(target_weight, dtype=float)
+
     def _priced(cov_fit: dict, rec_fit: dict | None) -> float:
         w = roof_area_m2 * apply_stratified_coverage_ratio(roof_area_m2, cell_density_km2, cov_fit)
+        if tw is not None:
+            w = w * tw
         if rec_fit is not None:
             w = w / apply_stratified_area_recall(roof_area_m2, cell_density_km2, rec_fit)
         return float(w.sum())
@@ -841,13 +927,13 @@ def coverage_ratio_bootstrap_factors(
                     None, list(rep_density.index), threshold, rep_density,
                     sppi_min_precision=sppi_min_precision,
                     n_density_bands=n_density_bands,
-                    df=rep_df,
+                    df=rep_df, weighting=weighting,
                 )
                 rep_recall = None if recall_stratified is None else area_recall_by_size_and_density(
                     None, list(rep_density.index), threshold, rep_density,
                     sppi_min_precision=sppi_min_precision,
                     n_density_bands=n_density_bands,
-                    df=rep_df,
+                    df=rep_df, weighting=weighting,
                 )
                 rep_total = _priced(rep_stratified, rep_recall)
             except Exception as e:  # noqa: BLE001 -- a degenerate resample must not kill the run
@@ -877,6 +963,7 @@ def coverage_ratio_bootstrap_factors(
         "resample_unit": "quadrat",
         "n_quadrats": len(uniq),
         "prices": "coverage_ratio / area_recall" if recall_stratified is not None else "coverage_ratio",
+        "weighting": weighting,
         "factors": [round(float(f), 6) for f in arr],
         "factor_ci90": [round(lo, 4), round(hi, 4)],
         "factor_mean": round(float(arr.mean()), 4),
@@ -1077,6 +1164,7 @@ def domain_restricted_capacity(
     ge400_roof_buildings_path: Path | None = None,
     grid_path: Path | None = None,
     legacy_seg_dedup: bool = False,
+    weighting: str = DEFAULT_WEIGHTING,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The module's actually-recommended output (see module docstring's 2026-07-30 note):
     combines four corrections, each individually insufficient on its own when measured:
@@ -1147,10 +1235,16 @@ def domain_restricted_capacity(
     figure (the in-domain cells only, 93 of 4,473 nationally as measured 2026-07-30) and
     must NOT be divided by the domain's share of national cells/buildings to infer a
     country total -- doing so was the exact failure this module exists to avoid.
+
+    `weighting="probability"` (opt-in, see `WEIGHTINGS`) prices every in-domain building
+    by its score instead of every flagged one in full, with both tables refit on the same
+    weights, and returns one row per (cell, size bin) rather than per building
+    (`probability_weighted_population`). Every exclusion above applies unchanged.
     """
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask
 
+    _check_weighting(weighting)
     all_cells = pd.read_parquet(cell_density_path)
     in_domain_cells = national_cell_domain(cell_density_path, aoi)
     n_buildings_in_domain = int(
@@ -1163,11 +1257,72 @@ def domain_restricted_capacity(
     ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
     stratified = coverage_ratio_by_size_and_density(
-        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
+        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands,
+        weighting=weighting,
     )
     recall_stratified = area_recall_by_size_and_density(
-        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
+        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands,
+        weighting=weighting,
     ) if recall_correct else None
+
+    if weighting == "probability":
+        cands, seg_dedup = dedup_candidates(
+            candidates_path, aoi, ge400_roof_buildings_path, grid_path, legacy_seg_dedup)
+        against = [cands] + ([gpd.read_parquet(osm_solar_path)] if osm_solar_path else [])
+        floor = ((np.array(stratified["band_edges"]), size_floor_m2)
+                 if size_floor_m2 is not None else None)
+        rows, st, target = probability_weighted_population(
+            roofclf_dir, sorted(in_domain_cells), all_cells.set_index("cell")["density"],
+            (0.0, contamination_max_m2), stratified, recall_stratified, "est_kwp_sub400",
+            ground_share, against, max_distance_m, size_floor=floor,
+        )
+        cov_boot = coverage_ratio_bootstrap_factors(
+            buildings_path, quadrats, threshold, quadrat_density, stratified,
+            target["roof_area_m2"], target["cell_density_km2"],
+            n_density_bands=n_density_bands, n_boot=n_coverage_boot,
+            recall_stratified=recall_stratified, weighting=weighting,
+            target_weight=target["weight"],
+        )
+        total_mwp = float(rows["est_kwp_sub400"].sum()) / 1000.0 if len(rows) else 0.0
+        summary = {
+            "method": "domain_restricted_sub400_capacity",
+            "weighting": "probability",
+            "calibration_quadrats": quadrats,
+            "parcel_label_composition": composition,
+            "calibration_coverage_ratio_by_size_and_density": stratified,
+            "recall_correction_applied": bool(recall_correct),
+            "calibration_area_recall_by_size_and_density": recall_stratified,
+            "coverage_ratio_bootstrap": cov_boot,
+            "n_domain_cells": len(in_domain_cells),
+            "n_national_cells": int(len(all_cells)),
+            "n_buildings_in_domain": n_buildings_in_domain,
+            "n_buildings_national": n_buildings_national,
+            "segmentation_dedup": seg_dedup,
+            "osm_dedup_applied": osm_solar_path is not None,
+            "n_excluded_near_segmentation": st["n_excluded_near"][0],
+            "n_excluded_near_osm": st["n_excluded_near"][1] if osm_solar_path else 0,
+            "size_floor_applied": size_floor_m2 is not None,
+            "size_floor_m2": size_floor_m2,
+            "size_floor_band_edges": (
+                [float(e) for e in stratified["band_edges"]] if size_floor_m2 is not None else None
+            ),
+            "n_excluded_by_size_floor": st["n_excluded_by_size_floor"],
+            "n_buildings_in_size_range": st["n_buildings_in_range"],
+            "n_buildings_priced": st["n_buildings_priced"],
+            "sum_p_priced": round(st["sum_weight"], 1),
+            "total_roof_area_m2_priced": round(st["roof_area_m2"], 1),
+            "total_probability_weighted_roof_area_m2": round(st["weighted_roof_area_m2"], 1),
+            "output_rows": "one per (cell, size bin), not per building",
+            "total_est_mwp_sub400_domain_restricted": round(total_mwp, 4),
+            "scope": (
+                f"{len(in_domain_cells)} of {len(all_cells)} national cells, every building "
+                "weighted by p_roofclf. NOT the published estimator, and NOT a national "
+                "figure -- do not rescale by the domain's share of cells/buildings."
+            ),
+        }
+        log.info("Domain-restricted sub-400 capacity, probability-weighted: %.1f MWp over "
+                 "%d buildings", total_mwp, st["n_buildings_priced"])
+        return rows, summary
 
     # Read only the ~93 in-domain per-cell parquets, not all 4,473 -- files are named
     # <cell>.parquet by `score_buildings_national`, so this is a filename filter, not a
@@ -1324,6 +1479,126 @@ def domain_restricted_capacity(
     }
     log.info("Domain-restricted sub-400 capacity: %s", summary)
     return incremental, summary
+
+
+# Size bins a probability-weighted component is aggregated into, one row per cell and bin.
+# MUST equal `atlas.SIZE_BIN_EDGES_M2`, so the evidence atlas's size chart re-bins these
+# rows into the same bins their buildings belong to.
+PROBABILITY_OUTPUT_SIZE_EDGES_M2 = (0.0, 100.0, 400.0, 1000.0, 5000.0, 20000.0, 100000.0,
+                                    float("inf"))
+
+
+def probability_weighted_population(
+    roofclf_dir: Path, cells: list[str], cell_density: pd.Series, area_range: tuple[float, float],
+    stratified: dict, recall_stratified: dict | None, value_col: str, ground_share: float,
+    dedup_against: list[gpd.GeoDataFrame], max_distance_m: float,
+    size_floor: tuple[np.ndarray, list[float]] | None = None,
+) -> tuple[gpd.GeoDataFrame, dict, dict]:
+    """Price EVERY building in `cells` whose roof area lies in `area_range`, weighted by
+    its `p_roofclf`, for `weighting="probability"`.
+
+    A thresholded component carries one row per flagged building (about 2M nationally for
+    Pakistan's sub-400 m2 half). A probability-weighted one would carry every building
+    (about 70M), which no consumer can hold: handing `atlas._join_buildings_to_grid_cells`
+    25M German footprints peaked over 20 GB. So cells are streamed one at a time, each
+    building is priced with the already-fitted tables, and the result is written as one row
+    per (cell, `PROBABILITY_OUTPUT_SIZE_EDGES_M2` bin) on a real building's representative
+    point, with `roof_area_m2` the capacity-weighted mean roof size of its bin. Per-cell and
+    per-size-bin sums are therefore exact; a size chart's object COUNT is not (`n_buildings`
+    carries the real one).
+
+    The same exclusions as the flagged path apply, to every building: `size_floor`
+    (`size_floor_by_density_band`'s band edges and floors) and a `max_distance_m` proximity
+    dedup against each frame in `dedup_against` (segmentation candidates and/or OSM).
+
+    Returns `(rows, stats, target)`, where `target` holds the per-building arrays
+    `coverage_ratio_bootstrap_factors` re-prices (`roof_area_m2`, `cell_density_km2`,
+    `weight`).
+    """
+    import pyarrow.parquet as pq
+    import shapely
+
+    from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
+    from earthpv.export import new_lead_mask
+
+    lo, hi = area_range
+    edges = np.asarray(PROBABILITY_OUTPUT_SIZE_EDGES_M2)
+    rows, t_roof, t_dens, t_w = [], [], [], []
+    st = {"n_cells_read": 0, "n_buildings_in_range": 0, "n_excluded_by_size_floor": 0,
+          "n_excluded_near": [0] * len(dedup_against), "n_buildings_priced": 0,
+          "sum_weight": 0.0, "roof_area_m2": 0.0, "weighted_roof_area_m2": 0.0}
+    for k, cell in enumerate(sorted(cells)):
+        path = Path(roofclf_dir) / f"{cell}.parquet"
+        if not path.exists():
+            continue
+        tab = pq.read_table(path, columns=["geometry", "roof_area_m2", "p_roofclf"])
+        roof = tab.column("roof_area_m2").to_numpy(zero_copy_only=False).astype(float)
+        pr = tab.column("p_roofclf").to_numpy(zero_copy_only=False).astype(float)
+        # NaN p is a building `score_buildings_national` deliberately left unscored (no
+        # valid pixel); it can never clear a threshold, so it carries no weight here either
+        keep = (roof >= lo) & (roof < hi) & np.isfinite(pr)
+        st["n_cells_read"] += 1
+        st["n_buildings_in_range"] += int(keep.sum())
+        dens = float(cell_density.get(cell, np.nan))
+        if size_floor is not None and keep.any():
+            fk = size_floor_by_density_band(roof, np.full(len(roof), dens), *size_floor)
+            st["n_excluded_by_size_floor"] += int((keep & ~fk).sum())
+            keep &= fk
+        if not keep.any():
+            continue
+        idx = np.flatnonzero(keep)
+        geom = shapely.from_wkb(tab.column("geometry").take(idx).to_numpy(zero_copy_only=False))
+        bu = gpd.GeoDataFrame({"roof_area_m2": roof[idx], "p": pr[idx]}, geometry=geom,
+                              crs="EPSG:4326")
+        new = np.ones(len(bu), dtype=bool)
+        for j, other in enumerate(dedup_against):
+            m = new_lead_mask(bu, other, min_distance_m=max_distance_m)
+            st["n_excluded_near"][j] += int((new & ~m).sum())
+            new &= m
+        bu = bu[new].reset_index(drop=True)
+        if bu.empty:
+            continue
+        r = bu["roof_area_m2"].to_numpy(float)
+        w = bu["p"].to_numpy(float)
+        d = np.full(len(bu), dens)
+        cov = apply_stratified_coverage_ratio(r, d, stratified)
+        rec = (apply_stratified_area_recall(r, d, recall_stratified)
+               if recall_stratified is not None else np.ones(len(bu)))
+        kwp = w * r * DEFAULT_KWP_PER_M2_MODULE * cov / rec
+        t_roof.append(r.astype("float32"))
+        t_dens.append(np.full(len(bu), dens, dtype="float32"))
+        t_w.append(w.astype("float32"))
+        st["n_buildings_priced"] += len(bu)
+        st["sum_weight"] += float(w.sum())
+        st["roof_area_m2"] += float(r.sum())
+        st["weighted_roof_area_m2"] += float((w * r).sum())
+        reps = bu.geometry.representative_point()
+        x, y = reps.x.to_numpy(), reps.y.to_numpy()
+        b = np.clip(np.searchsorted(edges, r, side="right") - 1, 0, len(edges) - 2)
+        for i in np.unique(b):
+            m = b == i
+            # a real building's point, the one nearest its group's centroid, so the row
+            # lands in the grid cell its buildings are in
+            mi = np.flatnonzero(m)[np.argmin((x[m] - x[m].mean()) ** 2 + (y[m] - y[m].mean()) ** 2)]
+            tot = float(kwp[m].sum())
+            rows.append({
+                "cell": cell, "size_bin_lo": float(edges[i]), "geometry": reps.iloc[mi],
+                "roof_area_m2": float(np.average(r[m], weights=kwp[m])) if tot > 0
+                else float(r[m].mean()),
+                "n_buildings": int(m.sum()), "sum_p": float(w[m].sum()),
+                value_col: tot, f"{value_col}_ground": tot * ground_share,
+            })
+        if (k + 1) % 250 == 0:
+            log.info("probability-weighted %s: %d/%d cells, %d buildings, %.1f MWp so far",
+                     value_col, k + 1, len(cells), st["n_buildings_priced"],
+                     sum(rw[value_col] for rw in rows) / 1000.0)
+    out = gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:4326") if rows else \
+        gpd.GeoDataFrame(columns=["cell", "size_bin_lo", "geometry", "roof_area_m2",
+                                  "n_buildings", "sum_p", value_col, f"{value_col}_ground"],
+                         geometry="geometry", crs="EPSG:4326")
+    cat = (lambda xs: np.concatenate(xs) if xs else np.array([], dtype="float32"))  # noqa: E731
+    target = {"roof_area_m2": cat(t_roof), "cell_density_km2": cat(t_dens), "weight": cat(t_w)}
+    return out, st, target
 
 
 def domain_restricted_and_gate_capacity(

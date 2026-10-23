@@ -917,7 +917,7 @@ state:
   consistent dates. `annotate_spikes` now collapses them (`one_row_per_acquisition`), and
   `dedupe_items=True` avoids fetching them. The fix took Pakistan's pose survey from 346
   to 336 fits, and the atlas pose section from 290 to 281 of 2,000. The 662-candidate
-  `p_unmapped` sample is uncached and unchecked (open question 15). `glint._asset_href`
+  `p_unmapped` sample is uncached and unchecked (open question 2, "Pakistan's segmentation calibration table is stale in four known ways"). `glint._asset_href`
   re-signs Planetary Computer URLs at open, because the client keeps a 45-min token until
   under 60 s is left, which was the silent scene loss in long pulls.
 - **Opportunity-normalized glint sensitivity is shipped** (`src/earthpv/glint_opportunity.py`):
@@ -1488,7 +1488,7 @@ does not move until infer -> postprocess -> ... -> atlas is re-run over the new 
 The 500 m `--building-buffer-m` in `postprocess` is NOT a search radius: it only bounds
 which footprints are fetched for placement (30 m) and the rank prior; nothing is dropped.
 
-**Compose defects, fixed 2026-10-10 for new composites only (open question 22).**
+**Compose defects, fixed 2026-10-10 for new composites only (open question 11, "Composites built before 2026-10-10 carry two compose defects").**
 `eo:cloud_cover` is per MGRS tile, so dry-season scenes tie at 0% and the twelve kept could
 all come from a tile clipping the cell's corner: Rewa Ultra Mega Solar's cell was 87% empty
 and the 750 MW park dropped out of India's Verified. `imagery._rank_items` ranks scenes
@@ -1592,7 +1592,7 @@ A cell per mapped feature by its representative point left an outline crossing a
 half imaged, and the ground screen (90% imaged above 5 km2) dropped two Egyptian parks that
 were 96-98% detected where imaged: Verified 2,374.6 -> 3,315.1 once the five cells were
 composed. South Africa gains 21 cells, Morocco and Yemen none; of the published countries only
-India has such cells uncomposed (8, six at Khavda; open question 22). **The queue decides an
+India has such cells uncomposed (8, six at Khavda; open question 11). **The queue decides an
 atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS DONE"**, so removing
 `<aoi>_atlas_done` does not relaunch a finished country: re-run its steps as a one-off unit.
 
@@ -1700,7 +1700,12 @@ atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS DONE"**, so r
   fitted on post-2022 composites, which carry +1000 DN. Pakistan's composite_1 (2021-10 to
   2022-01) reads 730-860 DN darker than composite_0 in every band on each layer's own dark
   tail; pass `roofclf.epoch_feature_frame(..., dn_offset=transfer_calibration.
-  PRE_BASELINE_DN_OFFSET)` when scoring one. The growth pipeline did not (open question 16).
+  PRE_BASELINE_DN_OFFSET)` when scoring one. The growth pipeline did not (open question 10,
+  "Growth as a product"). **But the offset is per cell, not flat (2026-10-22):** the 122 cells
+  whose composite_1 was built 2026-07-05, 24 of the 30 quadrats among them, already sit on
+  composite_0's scale, and the ~4,345 later cells read ~800 DN darker with a wide spread, so
+  harmonize per cell (match each band's window median to composite_0) rather than adding 1000
+  (`scripts/composite1_offset_survey.py`).
   And do not treat an old epoch as a negative set for `roofclf`: its 2021 score predicts
   today's PV at AUC 0.83 against 0.87, because it reads adopter-type roofs more than panels
   (experiments register, 2026-10-20).

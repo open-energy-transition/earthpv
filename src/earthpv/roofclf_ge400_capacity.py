@@ -53,6 +53,7 @@ def domain_restricted_ge400_roof_capacity(
     n_coverage_boot: int | None = None,
     recall_correct: bool = True,
     aoi: str | None = None,
+    weighting: str = "threshold",
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """roofclf-scored, coverage-ratio-weighted capacity for >= 400 m2 rooftop buildings,
     restricted to the density-matched domain (same ~92 cells `sub400_capacity` uses).
@@ -101,9 +102,12 @@ def domain_restricted_ge400_roof_capacity(
         apply_stratified_area_recall, apply_stratified_coverage_ratio,
         area_recall_by_size_and_density, coverage_ratio_by_size_and_density,
         coverage_ratio_bootstrap_factors,
-        national_cell_domain, parcel_label_composition, quadrat_building_density_km2,
+        _check_weighting, national_cell_domain, parcel_label_composition,
+        probability_weighted_population, quadrat_building_density_km2,
         select_calibrated_quadrats,
     )
+
+    _check_weighting(weighting)
 
     ratio_lo = DEFAULT_RATIO_LO if ratio_lo is None else ratio_lo
     ratio_hi = DEFAULT_RATIO_HI if ratio_hi is None else ratio_hi
@@ -116,11 +120,65 @@ def domain_restricted_ge400_roof_capacity(
     ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
     stratified = coverage_ratio_by_size_and_density(
-        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
+        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands,
+        weighting=weighting,
     )
     recall_stratified = area_recall_by_size_and_density(
-        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands
+        buildings_path, quadrats, threshold, quadrat_density, n_density_bands=n_density_bands,
+        weighting=weighting,
     ) if recall_correct else None
+
+    if weighting == "probability":
+        # Every in-domain >= `min_area_m2` building, weighted by its score; one row per
+        # (cell, size bin). OSM is the only dedup, as on the flagged path: segmentation's
+        # rooftop figure is what this component replaces.
+        against = [gpd.read_parquet(osm_solar_path)] if osm_solar_path is not None else []
+        rows, st, target = probability_weighted_population(
+            roofclf_dir, sorted(in_domain_cells), all_cells.set_index("cell")["density"],
+            (min_area_m2, np.inf), stratified, recall_stratified, "est_kwp_ge400_roof",
+            ground_share, against, max_distance_m,
+        )
+        cov_boot = coverage_ratio_bootstrap_factors(
+            buildings_path, quadrats, threshold, quadrat_density, stratified,
+            target["roof_area_m2"], target["cell_density_km2"],
+            n_density_bands=n_density_bands,
+            n_boot=DEFAULT_COVERAGE_N_BOOT if n_coverage_boot is None else n_coverage_boot,
+            recall_stratified=recall_stratified, weighting=weighting,
+            target_weight=target["weight"],
+        )
+        total_mwp = float(rows["est_kwp_ge400_roof"].sum()) / 1000.0 if len(rows) else 0.0
+        summary = {
+            "method": "domain_restricted_ge400_roof_capacity",
+            "weighting": "probability",
+            "calibration_quadrats": quadrats,
+            "parcel_label_composition": composition,
+            "calibration_coverage_ratio_by_size_and_density": stratified,
+            "recall_correction_applied": bool(recall_correct),
+            "calibration_area_recall_by_size_and_density": recall_stratified,
+            "coverage_ratio_bootstrap": cov_boot,
+            "threshold": threshold,
+            "min_area_m2": min_area_m2,
+            "n_domain_cells": len(in_domain_cells),
+            "n_national_cells": int(len(all_cells)),
+            "osm_dedup_applied": osm_solar_path is not None,
+            "n_excluded_near_osm": st["n_excluded_near"][0] if against else 0,
+            "n_buildings_in_size_range": st["n_buildings_in_range"],
+            "n_buildings_priced": st["n_buildings_priced"],
+            "sum_p_priced": round(st["sum_weight"], 1),
+            "total_roof_area_m2_priced": round(st["roof_area_m2"], 1),
+            "total_probability_weighted_roof_area_m2": round(st["weighted_roof_area_m2"], 1),
+            "output_rows": "one per (cell, size bin), not per building",
+            "total_est_mwp_ge400_roof_domain": round(total_mwp, 4),
+            "scope": (
+                f"{len(in_domain_cells)} of {len(all_cells)} national cells, every >= "
+                f"{min_area_m2:.0f} m2 building weighted by p_roofclf. NOT the published "
+                "estimator. REPLACES segmentation's est_mwp_rc_roof only in the cells it "
+                "has rows for."
+            ),
+        }
+        log.info("Domain-restricted >= %.0f m2 rooftop capacity, probability-weighted: "
+                 "%.1f MWp over %d buildings", min_area_m2, total_mwp, st["n_buildings_priced"])
+        return rows, summary
 
     parts = []
     for cell in sorted(in_domain_cells):

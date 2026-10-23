@@ -1,656 +1,346 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-09-01. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-10-23. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
 It is deliberately separate from [Experiments](experiments.md), which records what was
 measured and settled. Something belongs here only if a concrete next step exists and has not
 been taken. When an item is closed it moves to the experiments register with a verdict, and
-its row here is deleted rather than annotated.
+its row here is deleted rather than annotated. Elsewhere in the repository, cite an item by
+its title as well as its number: the numbers change whenever the list is re-ranked.
+
+Items 1 to 3 each move Pakistan's published Best estimate, and each waits on a decision or a
+review by the owner rather than on code.
 
 ## Ranked by expected value over cost
 
-### 1. Keep turning the flywheel
+### 1. How should the capacity chain use roofclf's probabilities? (2026-10-22)
 
-More human-verified Pakistani installations, retrain, measure. Every shipped improvement in
-[the experiments register](experiments.md) is smaller than this one. In-domain training chips
-tripled large-array recall; nothing architectural has come close.
+**What it does today.** `sub400-capacity` and `ge400-roof-capacity` count a building in full
+when `p_roofclf >= 0.2446` (the precision-0.5 cut) and not at all below it, then scale
+flagged roof area to true PV area with the coverage ratio and area recall. That is
+classify-and-count. The alternative counts every building in proportion to its score (a
+roof at 0.10 counts as a tenth of a PV roof), with both tables refit on the same weights.
+The classifier and its scores are identical either way; only the summing changes.
 
-### 2. `building_table`'s roof term counts a ground array that clips a shed as rooftop PV
+**What was measured.** Leave-one-quadrat-out, in the chain's own structure (size deciles x
+two density strata, the 19 trusted quadrats; `scripts/roofclf_soft_capacity_check.py`,
+`results/roofclf_soft_capacity.json`), median error on each held-out quadrat's true
+sub-400 m&sup2; PV area:
 
-`parcel_pv_area`'s rule 3 skips any installation at or above `YARD_MAX_INSTALLATION_M2`
-(400 m²), because above that floor ground-mount is segmentation's instrument and the atlas
-already prices it. The roof term next to it has no such guard: it intersects every mapped PV
-polygon with every VIDA footprint regardless of placement or size. Harmless while ground-mount
-above the floor was rare in the quadrats; not harmless now.
+| Pricing | Median error | Better than thresholded |
+| --- | --- | --- |
+| No classifier (roof area x ratio) | 0.518 | -- |
+| Thresholded (published) | 0.386 | -- |
+| Probability-weighted | 0.094 | 20 of 29 quadrats, Wilcoxon p = 0.0035 |
 
-Measured on Kalat Rural (added 2026-08-17, sited deliberately to include ground-mount):
-**69 of the 89 buildings the roof term labels has-PV are labelled solely because a >= 400 m²
-ground array clips them**, on roofs whose median footprint is 29 m². That is a 21.24% base
-rate in a 46.5 bldg/km2 rural box, higher than Mardan's. Folding it in unchanged would fit the
-sparse density band's coverage ratio on ground-mount, extrapolate that across millions of rural
-buildings, and double-count against segmentation's own `est_mwp_rc_ground`.
+It holds for four other classifier variants (0.18-0.24 against 0.28-0.38, 18 to 23 of 29)
+and for the roof-only label. Thresholding does not beat the no-classifier null at the median
+quadrat (16 of 29, p = 1.0). The failure is in sparse places: below 300 bldg/km&sup2; the
+mean score matches the true adoption rate (0.020 against 0.020) but only 0.2-0.3% of roofs
+cross the threshold, so thresholding books **12%** of the mapped PV there and probability
+weighting **92%** (truth-weighted). Estimators built for prior shift (EM prior adjustment,
+adjusted count) collapse to zero, so quadrats differ by more than their base rate. See the
+experiments register, "The capacity chain is a quantification problem".
 
-The step: extend rule 3 to the roof term, then re-measure every existing quadrat's
-`base_rate`/`pv_area_true_m2` to see how much it moves them (expected small outside Kalat,
-since ground-mount above the floor is rare elsewhere, but that is an assumption until
-measured). Until then Kalat Rural must be excluded from any refit by hand --
-`roofclf.discover_quadrats` globs the label directory, so it is picked up automatically.
-See [Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 17.
+**What it does to the atlas.** Run through the real chain with the opt-in flag
+`--weighting probability` on both capacity commands. The default stays `threshold`, and a
+threshold re-run with the flag in place reproduces every published component and bootstrap
+interval exactly. Builds and `atlas_comparison.txt` are in
+`/home/tobi/earthpv_data/roofclf_untapped/`; nothing was published.
 
-### 3. The correction that prices most of the atlas is fit outside the density range it is applied to
+| | Published | Probability-weighted |
+| --- | --- | --- |
+| Best estimate | 24,438 MWp (90% 20,894-33,666) | **34,589 MWp (90% 29,308-41,736)** |
+| Verified (internal floor) | 6,994 MWp | 6,994 MWp (floors stay thresholded by design) |
+| sub-400 m&sup2; roofclf | 13,263 MWp | 24,206 MWp |
+| &ge; 400 m&sup2; roofclf replacement | 8,257 MWp | 7,503 MWp |
+| Share of imported panels (57.6 GWp) | 42% | 60% |
 
-**Reach dropped an order of magnitude since this was first measured, apparently as a side
-effect of an unrelated refit, not a deliberate fix -- re-verify before treating this as
-closed.** As measured 2026-08-16: `coverage_ratio` and `area_recall` (83% of Best) were fit
-on quadrats spanning 872 to 4,195 bldg/km2 while 84.1% of in-domain buildings sit in cells
-sparser than every one of them (building-weighted median 252 bldg/km2), pricing 9,842 MWp
-(54% of published Best) with a multiplier fit entirely on denser ground. Re-run
-(`scripts/trust_gate_density_audit.py`) as of the 2026-08-17 parcel-label refit and again
-after the 2026-08-20 Box 18 quadrats (Attock/Layyah/Lodhran) were folded in: the sparsest
-quadrat surviving the trust gate is now 124 bldg/km2 (`bahawalnagar_rural`, whose own
-`rate_ratio` moved 2.19 &rarr; 1.78 &rarr; 1.70 across the three fits and crossed the 2.0
-ceiling sometime between 2026-08-16 and 2026-08-17), only 13.5% of in-domain buildings sit
-sparser than every fit quadrat, and only ~5% of published Best is priced out of calibration
-range -- essentially unchanged between the 2026-08-17 and 2026-08-20 fits, so the Box 18
-quadrats did not move this finding further. **Nobody appears to have deliberately checked
-Bahawalnagar Rural's rate_ratio against this page when it crossed the gate** -- worth asking
-the owner whether that shift was noticed, since it is the whole reason this item's severity
-changed. Full before/after table:
-[roofclf calibration density mismatch](issues/roofclf-calibration-density-mismatch.md).
+85% of the +10.2 GWp lands in cells of 100-1,000 bldg/km&sup2;; dense cities rise 18-25%,
+cells outside the domain not at all; Punjab takes +6.1 GWp.
 
-The trust gate is still not density-neutral (Spearman(density, rate_ratio) -0.36 on the
-current 30-quadrat fit, versus -0.58 on 2026-08-16), so the *mechanism* is unfixed even
-though its *reach* is now small. `nasirabad_rural` and `tank_rural` no longer lack
-`n_buildings` (both are now scored -- 189 and 225 buildings respectively -- by every
-`roof-classifier` run since 2026-08-13), so that specific blocker from the original
-measurement is resolved; both still fail the gate on their own `rate_ratio` (tank_rural
-0.307, below the 0.5 floor; nasirabad_rural undefined, zero true positives), which is a
-legitimate exclusion, not a data gap. Remaining open work: settle the gate band explicitly
-now that its (much smaller) confounding is measured, and directly extend the fit's own
-density support into the remaining gap (50-125 bldg/km2, where the 13.5% still-uncovered
-population actually sits) rather than the stale 150-600 bldg/km2 target. Eight unscreened
-candidate quadrats targeting exactly that band, spanning Punjab/Sindh/Khyber Pakhtunkhwa/
-Balochistan, are proposed and awaiting the owner's own imagery-recency check (no automated
-check exists) in `data/labels/candidate_quadrats/*_gap_calib_2km_candidate.geojson` -- see
-[Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 19.
+**Why it is not adopted yet.**
 
-### 4. France answered half of this; the EarthPV half is still open
+1. **The gain sits where calibration is thinnest.** Four trusted quadrats lie below 1,000
+   bldg/km&sup2; (Bahawalnagar Rural, Layyah, Lodhran, Multan), and the six quadrats below
+   300 bldg/km&sup2; hold 3,822 m&sup2; of mapped sub-400 m&sup2; PV between them. The trust
+   gate is not density-neutral either (Spearman of density against `rate_ratio` -0.36), and
+   area recall is PV-area-weighted, so the "sparse" band behaves like Islamabad.
+2. **National sparse cells do not look like sparse quadrats.** They flag 1.3-1.4% of roofs
+   against 0.2-0.3%, because a cell's 0.1-degree average density hides villages that are
+   locally dense, while a sparse quadrat really is farmland. Both estimators match quadrats
+   to cells on these unlike densities.
+3. **Probability weighting trusts the score's level.** A small systematic score bias on rural
+   roofs adds up over millions of buildings. Thresholding is immune to that and is biased low
+   instead; neither failure is measured nationally.
+4. **The random-cell validation is unreviewed** (item 3).
 
-**Partly closed 2026-09-04.** The original item asked whether France could supply an
-external reference for the sub-400 m&sup2; half of the atlas, which Germany's register
-cannot reach. It can, and the register-side work is done and written up in
-[Validation against the French register](methods/france-validation.md): fourteen
-exhaustively hand-mapped communes against dated vintages of a complete national register
-put `DEFAULT_KWP_PER_M2_MODULE` at 0.150 kWp/m&sup2; against the assumed 0.180, and
-settled that the below-floor capacity share is not a transferable constant.
+**The decision:** (a) switch Best to probability weighting, floors staying thresholded;
+(b) keep thresholding and show the probability-weighted figure as a stated alternative on
+the atlas; or (c) keep thresholding until the sparse band is measured. Option (c) is the
+status quo, and the measurement says it is the biased choice, not the cautious one.
 
-The independent test of the 400 m&sup2; floor is also **done, 2026-09-12**: EarthPV's
-recall against the hand-mapped communes climbs with installation size while OpenPVMapper's,
-on the same truth at sub-metre resolution, does not, and retraining on French data does not
-move it. That is in the experiments register as
-[the detection floor measured against sub-metre truth](experiments.md#the-detection-floor-measured-against-sub-metre-truth-2026-09-12).
+**What would settle it.**
 
-What that leaves genuinely open, and it is the part this project actually needs:
+1. **Map sparse and mid-density quadrats**, imagery date checked before drawing (item 4).
+   The eight `*_gap_calib_2km_candidate.geojson` boxes in `data/labels/candidate_quadrats/`
+   target 50-125 bldg/km&sup2;; the 100-1,000 band, where 85% of the change sits, needs boxes
+   too, best drawn by the sampler (item 5). Declared rule before mapping: score them with the
+   current model, no refit, and compare the two pricings on per-quadrat |log| error. Adopt
+   probability weighting if it is closer in a clear majority and its truth-weighted ratio
+   across them stays within 0.5-2.
+2. **Check the score's level directly in rural cells**: a random, score-stratified sample of a
+   few hundred sub-400 m&sup2; roofs in 100-1,000 bldg/km&sup2; cells, reviewed yes/no on recent
+   imagery, tests whether the sum of scores matches the count of PV roofs there.
 
-**An external `coverage_ratio` reference below the floor**, which is now the only part of
-this that France can still be asked for and probably cannot give. Both `coverage_ratio` and
-`area_recall` are still fit on Pakistani quadrats alone. The blocker named here originally,
-that the composites did not exist yet, is gone: the national compose finished 2026-09-05 and
-EarthPV has been run over the communes three times (v4, v5, v6). The
-**area-recall-versus-size curve is measured**, and is the floor result above.
+If adopted: re-run `ge400-roof-capacity` then `sub400-capacity` with `--weighting
+probability` into the canonical `data/roofclf_national_with_sppi/pakistan/density/` (keep the
+current outputs as `density_PRE_probability_<date>/`), rebuild the atlas, and update
+`docs/methods/roofclf.md` and CLAUDE.md. Two known gaps in the opt-in path: the size chart's
+object counts become counts of (cell, size bin) groups rather than buildings (totals and the
+map are exact), and the parcel label's ground share is still measured on flagged buildings.
 
-What is left is `coverage_ratio`, which is a `roofclf` quantity: true mapped PV area over
-*flagged* roof area. France cannot supply it, because roofclf does not flag French roofs at
-a usable rate in the first place (0.627 AUC within size band, 16 buildings flagged out of
-44,314 at precision 0.5). So this needs either a third country whose arrays are large
-against a pixel and which has both a register and hand-mapped truth, or more Pakistani
-quadrats in the sparse band. Adoption rates do not transfer, so a French `coverage_ratio`
-could never have been applied to Pakistan directly even if it existed.
+### 2. Pakistan's segmentation calibration table is stale in four known ways
 
-**A second uncensored pose source** (item 11). OpenPVMapper carries `tilt` and `azimuth` per
-installation, derived from imagery rather than self-reported, over exactly the small
-installations MaStR omits. Not yet used, and worth doing: the glint-fitted pose work has no
-external check at all.
+`configs/calibration/pakistan_candidate_precision.yaml` was derived 2026-08-11. Four things
+found since each move Best, in different directions, and none has been applied:
 
-**The trap has not gone away.** OpenPVMapper is a model output with ~74-75% published
-precision, not ground truth. Measured against the hand-mapped communes it recalls 0.67 of
-real installations, and the fourteen communes are its own manual-correction layer, so its
-precision there is an optimistic bound. EarthPV agreeing with it would not be validation.
-The human sweeps are the part that can serve as truth.
+- **Recall was measured against same-placement candidates only (found 2026-09-02).** A big
+  rooftop array overruns its VIDA footprint and the candidate that found it gets labelled
+  ground, so the reference counted as missed. Measured against any candidate, rooftop recall
+  moves 0.423 to 0.808 (5k-50k m&sup2;) and 0.065 to 0.952 (> 50k), ground 0.107 to 0.417
+  (500-1k). Applying it **lowers** `est_mwp_rc` and Best. See
+  [Two errors that were cancelling](methods/mastr-validation.md#two-errors-that-were-cancelling).
+- **Ground `p_unmapped` is 0.0 in every bin.** The owner's review of 120 unmapped ground
+  detections drawn by AlphaEarth change score puts their real share at 0.18-0.26 (0.46 if
+  every unsure verdict is PV; `results/aef_ground_review/owner_review_summary.json`).
+  Applying it **raises** Best, by very roughly 0.4-0.7 GWp at current recall.
+- **The 662-candidate glint sample predates two fetch fixes (2026-10-22):** tile copies of one
+  pass counted as two dates, and a cached token expiring mid-pull. It sets the rooftop
+  `p_unmapped`. Its series were never cached, so checking it needs a re-pull; the pose survey
+  suggests a few percent of its 61 validations could be tile copies. The scene-count
+  comparison in the batching study also still predates the token fix.
+- **The 100-500 m&sup2; band** has `p_real` pinned only to [0.10, 0.89]. `earthpv
+  calibrate-sample` emits a stratified sample of unmapped candidates, and about twenty
+  verdicts per bin would collapse the widest remaining term.
+
+**What would close it:** one re-derivation that takes all four together, since each rewrites
+the same load-bearing table. It needs the calibration boxes and the glint sample (a bare
+`calibrate-candidates` run is refused by `capacity_calibration.write_table`'s downgrade
+guard), and the France pull must first be moved out of the
+`data/labels/*_overpass_solar.parquet` glob (see CLAUDE.md). Owner decision.
+
+### 3. The random-cell validation has never been logged
+
+The main workflow makes a 20-cell random JOSM review mandatory after every national roofclf
+scoring, because the quadrats are curated and industrial-leaning. Three scorings have shipped
+since 2026-08-17 and none has a logged verdict: the parcel-label batch (seed 20260817,
+`results/pakistan_roofclf_parcel_validation/`) was reviewed by the owner but its per-cell
+counts were never written down; the Box 18 refit (seed 20260820) and the area-weighted
+rescoring (seed 20260920), both in `results/pakistan_roofclf_validation/`, were generated and
+not reviewed. `results/roofclf_random_validation_log.csv` holds the first two batches as 40
+rows with every verdict blank, and the third is not in it at all. The published Best
+therefore rests on an unreviewed rescoring, and items 1 and 2 would move it again on top.
+Protocol: [roofclf random-cell validation](methods/roofclf-national-validation.md). The
+out-of-domain batch (`results/pakistan_roofclf_validation_outdomain/`) is blocked by stale
+imagery (item 4) and should not hold the others up.
+
+### 4. Stale reference imagery: the labels' epoch, and a sparse remainder nobody can check
+
+Rule 1 certifies completeness against the mapping imagery, not against the Sentinel-2
+composite (2025-11 to 2026-03), so an array installed in between is in the model's input and
+missing from the labels: measured precision and `base_rate` are lower bounds, `rate_ratio` an
+upper bound, and recall is unaffected. Esri's capture dates over every quadrat were read
+2026-10-22 (`scripts/quadrat_imagery_dates.py`, output in
+`/home/tobi/earthpv_data/roofclf_untapped/quadrat_imagery_dates.csv`): from 2020-01-18 for
+Faisalabad to 2025-11-25, with four quadrats on 2023-or-earlier imagery (Faisalabad, Multan,
+Sukkur, Peshawar) and two from January 2024 (Peshawar West, Sialkot). Staleness moves
+`rate_ratio` and precision in the expected direction but weakly (Spearman +0.31, p = 0.10,
+vanishing once base rate is controlled for). **Faisalabad passes the precision-trust gate on
+six-year-old imagery**, so it helps fit the coverage ratio. These are the dates Esri serves
+today, an upper bound on what a mapper saw, and the `imagery_layer`/`imagery_date` columns of
+`results/calibration_quadrats.csv` are still empty.
+
+The same staleness blocks widening the density domain. Three low-density boxes drawn for it
+came back with zero installations under very old imagery and were not registered
+([Calibration boxes](issues/pakistan-calibration-boxes.md)' Box 17), and the out-of-domain
+review batch cannot be reviewed. The gate on widening is imagery date, not mapping effort.
+
+**What would close it:** write the measured dates into the quadrat table, ask Faisalabad's
+mapper which imagery they used, and re-check its trust if it was older than the composite by
+years. For the sparse remainder, dated high-resolution imagery: the Maxar Open Data Program
+([issue #3](https://github.com/open-energy-transition/earthpv/issues/3)), or Planet/NICFI
+monthly basemaps, which reach about 30 degrees north and so cover Sindh but not Punjab.
+[Calibration imagery dating](issues/calibration-imagery-dating.md) has the costing.
 
 ### 5. The calibration quadrats are purposive, not a probability sample
 
-This is the single largest caveat on every capacity number the project publishes, and no
-amount of additional modelling removes it. All 27 quadrats were chosen by a researcher to
-span landscape types, not drawn at random from a defined national frame, so the intervals on
-the [evidence atlas](results/capacity.md) are not a design-based margin of error and cannot
-be made into one by adding more purposive quadrats.
+All 31 were chosen by a researcher, so the atlas's intervals describe variability within the
+kind of place that has been mapped, not a design-based margin of error, and adding more
+purposive quadrats cannot change that. Since 2026-10-20 a sampler exists:
+`pixi run calib-candidates -- --aoi <aoi>` cuts the density grid into eight bands of equal
+building share, draws building-weighted random cells, and screens each box on its Esri
+imagery date. **It has not been run for Pakistan**: the boxes in
+`data/labels/candidate_quadrats/` are hand-proposed (Box 19's density-gap boxes and Box 18's
+peri-urban screens, three of which are now registered quadrats). Running it and mapping what
+passes the imagery gate gives quadrats with known inclusion probabilities, and it measures
+item 1 in the bands that matter. A cheaper partial route, untried: model-assisted
+estimation, post-stratifying the existing quadrats on variables known everywhere (building
+density, roof-size mix, region).
 
-What would actually close it is a probability sample drawn from the national
-building-density frame, which does not exist yet. That is new mapping work rather than new
-code. A cheaper partial route, not yet tried, is model-assisted estimation:
-post-stratify the existing quadrats on auxiliary variables known for the whole population
-(building density, roof-size distribution, nightlights, region) to get a design-consistent
-national total with a variance estimate.
+No external check of `coverage_ratio` below the floor exists either. France cannot supply
+one, because roofclf flags 16 of its 44,314 hand-mapped-commune buildings at precision 0.5;
+it would take a third country whose arrays are large against a pixel and which has both a
+register and hand-mapped truth.
 
-### 6. Ground-truth completeness is relative to the mapping imagery, not the satellite composite
+### 6. The module constant: France measured 0.150 kWp/m&sup2;, every country uses 0.18
 
-Quadrats are mapped against OpenStreetMap's background imagery, whose capture date is
-generally older than the Sentinel-2 composite the model reads. So Rule 1 certifies
-completeness *as of the mapping imagery*, and the freshest installations cannot be mapped at
-all. Known bias directions: measured precision is a lower bound, `base_rate` is a lower
-bound, and `rate_ratio` is therefore an upper bound. Recall over mapped installations is
-unaffected.
+[Validation against the French register](methods/france-validation.md) measured
+`DEFAULT_KWP_PER_M2_MODULE` at 0.150 kWp/m&sup2; (epoch-corrected, 11 of 14 hand-mapped
+communes) against the assumed 0.180. Applying it would lower every module-area rooftop
+conversion by 17%. French residential arrays are a different regime (median 20 m&sup2;), and
+the measurement does not transfer to Pakistan on its own. The decision: keep 0.18 everywhere,
+adopt 0.150 for France only, or widen the module prior in `kwp_draws` to span both. Owner
+decision.
 
-The magnitude is bounded but not resolved. Pooled over 13 quadrats the effect is only 5.8% of
-apparent false positives, but per quadrat it dominates exactly where the sub-400 m² work
-lives: 68.4% in coastal Karachi, 23.7% in Quetta, 11.7% in Lahore. The
-`imagery_layer`/`imagery_date` fields exist in `results/calibration_quadrats.csv` and are
-still empty for all 27 quadrats, which is why the per-quadrat magnitude is unknown rather
-than merely unstated. Backfilling them against Esri Wayback is the cheap first step;
-[Calibration imagery dating](issues/calibration-imagery-dating.md) has the full costing. Another 
-starting point is the Maxar Open Data Program, which provides dated imagery over several areas
-in Pakistan (see [Open Issue #3](https://github.com/open-energy-transition/earthpv/issues/3))
+### 7. Keep turning the flywheel
 
-### 7. Small ground-mounted installations have no instrument at all
+More human-verified Pakistani installations, retrain, measure. In-domain training chips
+tripled large-array recall (0.18 to 0.55 at or above 1,000 m&sup2; in Punjab), and no
+architectural change has come close. For roofclf the equivalent is item 1's quadrats.
 
-Both sub-400 m² instruments are per-*building* classifiers: they score a footprint. A small
-free-standing ground array has no footprint to score, and the segmentation model was trained
-with everything below its floor burned as `ignore`, so it gets no signal there either. This
-is a distinct open gap rather than a smaller version of the rooftop one, and the partial
-mitigations that work for rooftops do not generalise to it even in principle.
+### 8. `building_table`'s roof term counts a ground array that clips a shed as rooftop PV
 
-It probably matters more in Pakistan than the size of the gap suggests: solar-powered
-irrigation tubewells are a large and fast-growing class of small ground-mounted arrays in
-Punjab and Sindh farmland. Note that the rural quadrats' near-zero PV findings do **not**
-bound this, because those are building-scoped measurements and a tubewell array sits on bare
-ground.
+`parcel_pv_area` skips any installation at or above `YARD_MAX_INSTALLATION_M2` (400 m&sup2;),
+because above that floor ground-mount is segmentation's and the atlas already prices it. The
+roof term beside it (`roof_pv_area`) has no such guard. On Kalat Rural, sited deliberately to
+include ground-mount, **69 of the 89 buildings the roof term labels has-PV are labelled solely
+because a >= 400 m&sup2; ground array clips them** (median footprint 29 m&sup2;, a 21.24% base
+rate at 46.5 bldg/km&sup2;). Folding it in unchanged would fit the sparse band's coverage
+ratio on ground-mount and double-count against segmentation's `est_mwp_rc_ground`.
 
-**No longer just a plausible concern -- externally quantified, 2026-08-13.**
-TransitionZero's satellite estimate (5.64 GW ground-mounted, mostly tube-wells) and
-PRIED's independent household survey (5.04 GW agricultural) converge to within 12% of
-each other despite disagreeing on the national total by ~6 GW -- and this project's own
-published ground-mount total, *everything* combined (utility, industrial, agricultural),
-is 2.2 GW. This is now the single largest, most confidently-explainable component of the
-gap to those external estimates.
+**What would close it:** extend the size/placement guard to the roof term, re-measure every
+quadrat's `base_rate` and `pv_area_true_m2` (expected small outside Kalat, unmeasured), then
+fold Kalat Rural in. Until then it must be excluded from every refit by hand, because
+`roofclf.discover_quadrats` picks it up automatically. See
+[Calibration boxes](issues/pakistan-calibration-boxes.md)' Box 17.
 
-**Measured 2026-08-16, and the open part narrowed.** The quadrats hold 262 strict
-sub-400 m² ground-mount installations, not the 15 a five-quadrat hand count found, and
-**98.5% of them sit within 30 m of a VIDA building** (98.5% too on an independent national
-OSM sample, against 39.9% for random points in the same cells). So the candidate universe
-does not have to be invented: a 30 m ring around the building index `roofclf` already scores
-covers a tenth of the country and keeps the population. What does not work is detection at
-that unit, which lands under 1% precision at 30% recall in every stratum tested. What
-stays genuinely open is the size of the prize: a density-stratified estimate puts it at
-1,492 MWp with a 90% interval of 435-3,526 MWp, and the whole spread sits in the
-`< 150 bldg/km²` stratum, which holds 22.9% of national buildings and is represented by four
-quadrats covering 16 km², all drawn around villages rather than in farmland. Mapping cropland
-quadrats is the step that resolves it. See
-[Small ground-mounted instrument](issues/small-ground-mount-instrument.md) for the full
-measurements and what they rule in and out.
+### 9. Small ground-mounted installations have no instrument
 
-### 8. Manual review of the small size bins
+Both sub-400 m&sup2; instruments score building footprints, and a small free-standing array
+has none; segmentation burns everything below 400 m&sup2; as `ignore`. In Pakistan this is
+not a small gap: solar-powered irrigation tubewells are a large, fast-growing class in Punjab
+and Sindh, and TransitionZero's satellite estimate (5.64 GW ground-mounted, mostly tubewells)
+and PRIED's household survey (5.04 GW agricultural) agree within 12%, against 2.2 GW for this
+project's entire ground-mount total.
 
-In the 100 to 500 m² band, `p_real` is only pinned to [0.10, 0.89]. `earthpv
-calibrate-sample` emits a stratified sample of unmapped candidates for human verdicts, and
-roughly twenty verdicts per bin would collapse the widest remaining term in the calibration
-table.
+What is measured (2026-08-16): 98.5% of the quadrats' 262 sub-400 m&sup2; ground arrays sit
+within 30 m of a VIDA building, so a ring around the building index holds the population, but
+detection at that unit lands under 1% precision at 30% recall in every stratum tested. A
+density-stratified estimate puts the prize at 1,492 MWp (90% 435-3,526), all of its spread in
+the < 150 bldg/km&sup2; stratum, which four village-centred quadrats represent.
 
-### 9. The out-of-domain population cannot currently be validated by eye
+**What would close it:** quadrats drawn in cropland rather than around villages, imagery
+date permitting (item 4). See
+[Small ground-mounted instrument](issues/small-ground-mount-instrument.md).
 
-The published Best estimate no longer carries this component: it was dropped 2026-08-15,
-precisely because it was the one part of the total that could not be validated where it was
-applied. The question it leaves open is not the headline figure but the coverage of the
-domain itself -- roughly a third of the country's cells (holding ~5% of its buildings) are
-outside it and are now reported as nothing rather than as an extrapolation. The JOSM
-validation batch built to test whether the domain could be widened with evidence
-(`results/pakistan_roofclf_validation_outdomain/`) turned out not to be reviewable, because
-the reference imagery there is too old to confirm or refute recently-installed small PV.
-**Confirmed again 2026-08-17, this time on purpose-drawn quadrats rather than random review
-cells.** Three low-density boxes were drawn specifically to widen the domain, mapped, and all
-three came back with zero installations against 83 roofclf-AND-SPPI flagged buildings and
-475.4 kWp claimed. The imagery over all three is very old, so the zeros are uninterpretable in
-both directions, and none was registered: as confirmed zeros they would have moved the domain
-floor to 11.8 bldg/km<sup>2</sup> (66.3% -> 95.6% of cells) and pulled the sparse band's
-coverage ratio toward zero on evidence that does not support it. See
-[Calibration boxes](issues/pakistan-calibration-boxes.md)'s Box 17. The blocker is now known
-to apply to *any* box drawn in the sparse remainder, not just to the cells the random sampler
-happened to pick, so it gates the domain-widening programme itself.
+### 10. Growth as a product
 
-This is item 6 blocking item 9. Contemporaneous high-resolution imagery would unblock both;
-free options worth checking first are Planet/NICFI monthly basemaps, which cover roughly to
-30 degrees north and so include Sindh but not Punjab.
+Per-epoch capacity would make the 2022-2026 boom measurable per district and checkable
+against NEPRA net-metering registrations and customs imports. One two-epoch
+[growth map](results/growth.md) exists; an annual series does not
+(`scripts/compose_loop_years.sh` built composite_2 for a few hundred cells on 2026-08-19 to
+08-21 and stopped). The diff carries a persistence gate since 2026-08-20 (pre-boom winter snow
+had read as vanishing PV). Open, in order of expected effect on the delta:
 
-### 10. Two random-cell validation batches are generated but unreviewed
+- **composite_1's radiometric scale differs by cell (found 2026-10-20, corrected
+  2026-10-22).** The 122 cells whose composite_1 was built on 2026-07-05, 24 of the 30
+  quadrats among them, sit on composite_0's DN scale (median difference about 0 DN over 40
+  sampled cells). The ~4,345 built from 2026-07-15 on read about 800 DN darker, with a wide
+  spread (10th percentile about 0). So the flat `transfer_calibration.PRE_BASELINE_DN_OFFSET =
+  1000` the code applies to composite_1 is wrong for the early batch, and the growth
+  pipeline's unharmonized read is wrong for most of the late one. Matching each band's window
+  median to composite_0 per cell handles both (`scripts/composite1_offset_survey.py`). Effect
+  on the published delta unmeasured; segmentation has no harmonization path at all.
+- **The gate is one-directional.** Current-epoch false positives cannot be gated, so the
+  residual bias on the delta is upward. A snow/SCL mask on the pre-boom composite, or a
+  winter-free window, would remove the false-positive mode at the source.
+- **roofclf's deltas are floors on rooftop growth.** Its 2021 score predicts today's PV at AUC
+  0.832 against 0.870, so most of its ranking is propensity that predates the panels, and
+  the pre-boom roofclf level reads about 79% of today's for a boom that multiplied the stock.
+- **No credible interval on the delta**, and the pre-boom epoch has no calibration of its own,
+  so only diffs of the fixed instrument mean anything.
 
-`results/pakistan_roofclf_validation_domain/` and `..._outdomain/` were drawn to measure
-roofclf's precision against an unbiased population rather than the curated quadrats. Neither
-has been through JOSM review. The protocol is in
-[roofclf random-cell validation](methods/roofclf-national-validation.md), and the results
-belong in `results/roofclf_random_validation_log.csv` so precision against that population
-accumulates across batches.
+### 11. Composites built before 2026-10-10 carry two compose defects
 
-### 11. MaStR carries an uncensored installed-pose distribution, which the glint model assumes
+Both are fixed in `imagery.py` for every composite built from 2026-10-10 on; nothing earlier
+was recomposited. **Scene ranking ignored coverage**: `eo:cloud_cover` is per MGRS tile, so
+dry-season scenes tie at 0% and the twelve kept could all come from a tile clipping the cell's
+corner (Rewa Ultra Mega Solar's cell was 87% empty and the 750 MW park dropped out of India's
+Verified). **Whole bands were lost to failed reads**, which `odc.stac` turns into zeros. A
+third, compose adding one cell per mapped feature so outlines crossing a cell edge were half
+imaged, was fixed 2026-10-12. Measured on random samples, about 1% of imaged area is affected
+(India 1.3% of cells with a missing band and 0.79% of area in tile-edge gaps; Zambia, Nigeria,
+Vietnam and France at or below that), concentrated rather than spread. India still has eight
+uncomposed outline cells, six at Khavda.
 
-`glint_opportunity.py` states the problem in its own comments: the installed-pose prior **has
-to be assumed**, because this project's pose survey was fitted from observed glints, so every
-pose in it satisfies the glint condition by construction and it cannot supply an uncensored
-distribution. `DEFAULT_POSE_PRIOR` is therefore a guess, `dict(tilt_mu=25.0, tilt_sd=8.0,
-az_mu=180.0, az_sd=25.0)`, and it propagates into `expected_opportunities`, the sensitivity
-inversion, and from there into `p_unmapped`.
+**What would close it:** recomposite only the affected cells (`scripts/scan_composite_defects.py`
+finds them; about two hours for all of India), re-infer and re-run the atlas chain. Mixing is
+not a concern, since recipe and radiometry are unchanged.
 
-Germany's register records pose at registration, independently of whether anything ever
-glinted. `solar_extended` carries `Hauptausrichtung` (azimuth), `HauptausrichtungNeigungswinkel`
-(tilt band), the same pair for a secondary orientation, and
-`EinheitlicheAusrichtungUndNeigungswinkel` (is the array single-pose at all). 97.4% of 4.44M
-rooftop units have azimuth and tilt; **225,138 have pose *and* coordinates** (119,429 of them
-at or above 72 kWp), plus 14,100 ground-mount. For comparison, the existing German glint study
-covers 113 targets.
+### 12. `compose` downloads 31 times more than it keeps (2026-09-19)
 
-Checked against the assumed prior (2026-09-01), it is much too narrow in both axes:
+Measured on Nigeria: about 410 MB downloaded per cell to write 13.4 MB, because twelve
+scenes by ten bands are reduced to one median. For a country of 6,000 cells that is about
+2 TB of transfer and days of wall-clock, which makes compose the binding constraint on every
+new country. The fix is to composite next to the data: run the unchanged `imagery.py` on a
+VM in the archive's region (`sentinel-cogs` in AWS us-west-2, Planetary Computer in Azure
+West Europe), or port the recipe to openEO or Earth Engine. Porting is riskier: the recipe's
+scene selection, SCL classes and radiometric offset are what the checkpoints were trained
+on, and a subtly different composite reads as domain shift. **Next step:** composite a few
+dozen cells of an existing AOI on a co-located VM and diff them against the local ones; if
+byte-identical, route the next country that way. (The Planetary Computer Hub was retired in
+June 2024, so there is no free hosted notebook.)
 
-| | Measured (Germany) | `DEFAULT_POSE_PRIOR` |
-|---|---|---|
-| tilt &gt; 40&deg; | 23.8% | 3.04% |
-| tilt mean / sd | 32.2 / 12.6 | 25.0 / 8.0 |
-| azimuth &gt;45&deg; off south | 15.7% | 7.19% |
+### 13. Glint and pose: four untested refinements
 
-It is also structurally unable to represent two real categories: **348,524 units are
-`Ost-West`** (dual-pitch, two opposed azimuths, no single pose) and 3,775 are tracked. A
-unimodal Gaussian has nowhere to put either.
+- **MaStR's uncensored pose distribution.** The installed-pose prior in
+  `glint_opportunity.py` is assumed (`DEFAULT_POSE_PRIOR`, tilt 25 &plusmn; 8, azimuth
+  180 &plusmn; 25), because the pose survey only sees poses that glinted. Germany's register
+  records pose at registration for 97.4% of 4.44M rooftop units (225,138 with coordinates
+  too), and it is far wider than the prior (tilt > 40&deg; 23.8% against 3.0%; 348,524
+  east-west units a unimodal Gaussian cannot represent). Steps: swap it into
+  `expected_opportunities` and re-check the glint-date rejection that rested on the assumed
+  prior; then test per target whether validation tracks predicted specular compatibility.
+  It does not transfer to Pakistan's flat roofs, but it tests the machinery.
+- **OpenPVMapper as a second uncensored pose source**: it carries imagery-derived tilt and
+  azimuth for small French installations, exactly the ones MaStR omits, and has never been
+  used. A France glint pose survey started 2026-10-22 would be the natural check.
+- **Per-locality pose calibration.** A province-level re-cut of the pose survey exists;
+  fitting pose from a subdivision's own installations, which would improve yield modelling,
+  does not.
+- **Per-pixel glint anomaly counting**, scoring each pixel against its own baseline instead of
+  a cell-level percentile. Prototyped, never evaluated; a PSF matched filter, the most
+  favourable per-pixel statistic, already lost to the aggregate statistic, so a shape-free
+  counting statistic is the remaining untested form.
 
-Three steps, cheapest first. **(1)** Swap the German distribution into
-`expected_opportunities`, which already takes the prior as an argument, and re-derive the
-figure the glint-date feature was *rejected* on -- "only 1-2% of a plausible installed
-population can ever satisfy the specular geometry on any single date" was computed under this
-prior, and a rejection resting on an assumed distribution should be re-checked against a
-measured one. It may well survive. **(2)** A direct per-target test: for the 119,429 units
-with pose and coordinates above the segmentation floor, run the glint detector and check
-whether the validation rate tracks predicted specular compatibility. That is a falsifiable
-test of the mechanism rather than another rate. **(3)** The same for the 14,100 ground-mount
-units, where tilt is far more uniform.
+### 14. Sentinel-1 backscatter variance as a false-positive filter
 
-**The blocking caveat is transfer.** The prior is applied to Pakistan, where roofs are largely
-flat; Germany's steep tilts reflect pitched-roof construction, so these numbers do **not**
-correct the Pakistani prior -- the same non-transferability this project already documents for
-adoption rates. What they do establish is that a narrow Gaussian is the wrong *shape* for a
-national rooftop population, and they give one country's real distribution to test the
-machinery against. Lesser caveats: tilt is banded in ~20&deg; steps where specular geometry is
-sensitive to a few degrees; 33.4% of geolocated units are flagged non-uniform; coordinates are
-address-level and pose is self-reported; and nothing exists below 30 kWp.
-See [Validation against MaStR](methods/mastr-validation.md) and
-[Solar glint](methods/glint.md).
-
-### 12. A per-locality pose calibration
-
-The [panel pose survey](results/pv-pose.md) fits a national pose distribution from glint.
-Fitting a *local* pose from whatever installations a subdivision already has, rather than
-assuming a national standard, is untried and would improve the yield modelling that turns
-capacity into energy.
-
-### 13. Sentinel-1 backscatter variance as a false-positive filter
-
-Distinct from the corner-reflector hypothesis that failed. Multi-temporal backscatter
+Distinct from the corner-reflection hypothesis that failed: multi-temporal backscatter
 variance separates permanent structures from seasonally changing fields, and greenhouse metal
-frames give a bright return, the opposite of PV. Cheap, and not ruled out by the negative
-result on corner reflection.
+frames return bright, the opposite of PV. Cheap and untested.
 
-### 14. Per-pixel glint anomaly counting
+### 15. Nightlights as a check on VIDA coverage
 
-The statistic the [cell-aggregate glint test](issues/glint-spike-rate-density-estimator.md)
-should have used. A 90th-percentile statistic over a whole cell only moves if roughly 10% of
-the cell brightens at once; scoring each pixel against its own baseline does not have that
-problem. Prototyped, never evaluated.
-
-One piece of evidence now bears on it, and it cuts against the optimistic reading. A
-pixel-level PSF matched filter, the most favourable per-pixel statistic available since it
-is the optimal linear detector for a known shape, [loses to the aggregate p98-minus-annulus
-statistic](issues/glint-psf-matched-filter.md) on verified positives and negatives. Per-pixel
-work is not automatically better than an aggregate here, because the glinting patch's shape
-and position are unknown and vary by date. A per-pixel counting statistic that does not
-assume a shape is still untested and remains the open item.
-
-### 15. The glint calibration sample predates two fetch fixes
-
-Two glint fetch defects were found and fixed 2026-10-22: tile copies of one pass counted
-as two dates, and a cached token expiring mid-pull. See the experiments register's "Glint
-tile copies and token expiry".
-
-Already re-analysed from cache:
-
-* the pose survey (346 to 336 fits)
-* the regional re-cut
-* the pose section of the evidence atlas
-
-Two things remain:
-
-* **The 662-candidate glint sample.** It sets `p_unmapped` in
-  `pakistan_candidate_precision.yaml`. It was pulled through the affected batch path and
-  its series were never cached, so checking it needs a re-pull. The pose survey suggests
-  a few percent of its 61 validations could be tile copies. Any change re-derives a
-  load-bearing table and moves Best, so it is an owner decision.
-* **The scene-count comparison in the batching study.** It still predates the token fix.
-
-### 16. Growth as a product
-
-Per-epoch density estimates would make capacity a time series, so the 2022 to 2026 boom
-becomes measurable per district and independently checkable against NEPRA net-metering
-registrations and customs import series. A single [growth map](results/growth.md) exists;
-an annual series does not (composites for 2022/23 to 2024/25 are being built).
-
-The two-epoch diff itself failed its first sanity check and now carries a persistence
-gate (2026-08-20). Almost all PV detected pre-boom should still exist post-boom, yet
-only 26.6 percent of pre-boom segmentation candidates had any current-epoch detection
-within 50 m (11.4 percent of model-geometry ones; rooftop 86 percent, ground_adjacent
-44 percent, no_building 5.6 percent). The vanishing mass was concentrated above
-latitude 34: winter snow in the 2021-10 to 2022-01 composite, scored by a precision
-calibration that never saw snow, and let through `check-density` by Gilgit-Baltistan's
-ratio-check exemption. It inflated the pre-boom level enough to turn the national
-ground-mount delta negative. `growth.persistence_gate` now drops pre-boom candidates
-with no current-epoch corroboration before the pre-boom level is recomputed
-(pre-boom segmentation 5,646.5 to 4,408.6 MWp, ground 1,253.0 to 346.5; national delta
-3,497.5 to 4,415.5 MWp), with the ungated values kept per cell as `*_preboom_ungated`.
-
-What remains open, in order of expected effect on the delta:
-
-- **The gate is one-directional.** Current-epoch-only false positives cannot be gated
-  (they are indistinguishable from genuine new installations here) and are priced by
-  `p_real` alone, so the residual false-positive bias on the delta is now upward where
-  it was previously downward and much larger. A snow/SCL mask on the pre-boom
-  composite, or a winter-free compose window, would remove the FP mode at the source
-  instead of at the diff.
-- **The roofclf halves are epoch-insensitive rather than unstable.** They passed the
-  same persistence check (94 percent of pre-boom flagged cells still flagged, 3 to 4
-  percent of capacity on dropped cells), but the pre-boom roofclf level reads about 79
-  percent of the current one for a boom that multiplied the true sub-400 stock. Much of
-  roofclf's signal is adopter-propensity building appearance that predates the panels,
-  so the sub-400 and >= 400 roofclf deltas are floors on true rooftop growth. **Measured
-  2026-10-20** on the 30 quadrats, leave-one-quadrat-out: the 2021 score predicts TODAY's
-  PV at AUC 0.832 against 0.870 for today's score, and 0.848 once the epochs are
-  quantile-matched, with only 14% of today's panels imported by then. So most of roofclf's
-  ranking is propensity, which is what sank a past epoch as a negative set (see the
-  experiments register, "A sub-400 m2 level without quadrats"). Scoring against
-  known-install-date installations would still separate the two halves more cleanly.
-- **composite_1 is on the pre-2022 radiometric scale and was scored as if it were not
-  (found 2026-10-20).** Scenes processed before Sentinel-2 baseline 04.00 (2022-01-25)
-  carry no BOA offset; composite_0 carries +1000 DN. Each layer's own darkest 0.5% of
-  pixels sits 730 to 860 DN apart in every band (median over 60 Pakistani cells), the
-  band-independent signature of the offset rather than of season. The growth pipeline
-  inferred and scored composite_1 unharmonized, so every pre-boom level (segmentation and
-  both roofclf halves) read every band about 0.08-0.1 darker than the same roof would today.
-  Whether that moves the published delta up or down has not been measured.
-  `roofclf.epoch_feature_frame(dn_offset=transfer_calibration.PRE_BASELINE_DN_OFFSET)`
-  harmonizes a layer for roofclf; segmentation has no equivalent yet.
-- **No composed credible interval on the delta**, and the pre-boom epoch has no
-  calibration of its own, so every stated pre-boom level remains an artifact of
-  current-epoch calibration transfer; only diffs of the fixed instrument are meaningful.
-
-### 17. Nightlights as a substitute or complement to VIDA buildings
-
-VIDA Open Buildings is a single load-bearing input across the pipeline: it is the unit roofclf
-classifies (every VIDA footprint gets a has-PV score), the population
-`density.CALIBRATED_BLDG_DENSITY_KM2` stratifies by, the layer `postprocess` joins against for
-rooftop/ground/no-building `placement`, and the filter `compose` uses to decide which 0.1° cells
-even get composited. It carries three costs this project has already hit: it is a **single
-present-day snapshot** (a building built after the pre-boom epoch reads as bare ground in that
-epoch's table -- `growth.persistence_gate`, item 16 above), its footprints are imagery-derived
-and routinely undersized or a metre or two offset (the reason the parcel label's yard-overhang
-term exists, see [The rooftop classifier](methods/roofclf.md)), and its per-country availability
-is not guaranteed -- it had to be fetched separately for Germany (`data/vida/DEU.parquet`, 27.9M
-rows, 2026-08-23), which was one of three blockers to a MaStR-comparable atlas there
-([Validation against MaStR](methods/mastr-validation.md)); the remaining blocker is mapped
-calibration quadrats, since the register cannot localise the sub-30 kWp population `roofclf`
-needs. VIIRS
-nightlights is free, global, monthly, and none of those three problems apply to it, which makes
-it worth asking whether it can substitute for VIDA anywhere, or at least flag where VIDA is
-deficient.
-
-**What already exists points away from a straightforward fix.**
-`scripts/build_pv_external_comparison.py` correlates a 500 m VIIRS VNL v2.1 composite against
-per-cell Best estimate: Pearson r = 0.75 raw, but only **r = 0.48 once log roof area is
-partialled out** (2026-10-21, 24,438.3 MWp atlas). Most of nightlights' apparent signal is
-therefore redundant with what VIDA-derived building density already supplies, not independent
-information a stratification model would gain by adding it. The partial figure is not a fixed
-property: it held at 0.548-0.545 across the first two runs (2026-08-12, 2026-08-26) and fell to
-0.473 with the 2026-09-21 area-weighted refit, while the Relative Wealth Index's rose from 0.345
-to 0.447. The nightlights drop moves toward this item's conclusion, not away from it; full
-numbers live in
-[Experiments](experiments.md#external-corroboration-from-nightlights-and-a-wealth-index). Read
-that alongside [Capacity density](methods/density.md)'s own three failed attempts at finding
-*any* coarse per-cell proxy (candidate density, roofclf's predicted rate, SPPI agreement rate)
-for which quadrat-regime a national cell resembles -- a fourth coarse proxy succeeding where
-three did not would be the surprise, not the default expectation.
-
-**Resolution rules it out as a footprint replacement outright.** roofclf needs the footprint
-geometry itself, not just a settlement signal: about half of Pakistani VIDA buildings are
-already sub-pixel at Sentinel-2's 10 m GSD and fall back to a representative point, and VIIRS
-DNB's ~500 m pixel is 50x coarser again on a side (2,500x by area). A brighter or dimmer pixel
-does not tell `postprocess` which building under it is rooftop versus ground, or give
-`sub400_capacity` a footprint area to divide by. Any role nightlights can play is at the cell or
-region level, not the building level.
-
-**Where it could plausibly still help, none of it tried:**
-
-- **A VIDA-coverage plausibility check.** A cell that is bright in VIIRS but has implausibly low
-  VIDA building density is a candidate for "VIDA is missing structures here" -- the same failure
-  mode Germany hits at the country level, just at cell granularity. Cheap to compute (VIDA
-  building count per cell against `zonal_ntl()`'s already-implemented per-cell mean radiance),
-  and it would slot into `plausibility.py` alongside the existing ground:rooftop and
-  single-cell-concentration checks rather than needing a new stage.
-- **Unblocking `compose`'s cell-selection step for a country with no VIDA file.** The "populated
-  cells" filter currently reads VIDA building points; a country that fails
-  `scripts/new_region.py`'s `check_vida` gate has no path through that step today. A
-  VIIRS-derived built-up mask is a strictly worse proxy for "has roofs" than building points, but
-  it is better than no proxy at all -- it would only need to unblock imagery composition, not
-  per-building scoring, which would still need VIDA or an equivalent footprint source before
-  roofclf or sub400-capacity could run.
-- **A staleness cross-check for the growth work.** VIIRS's monthly cadence is the one input in
-  this pipeline that is not a single snapshot. Comparing VIIRS radiance change against
-  `growth.py`'s persistence-gated delta (item 16 above), even coarsely, is an independent check
-  on the direction of the 2022-2026 boom that costs nothing to compute against data already
-  downloaded for the external-comparison script.
-
-**Concrete next step:** test the VIDA-density-vs-nightlights ratio specifically as a
-`check-density`-style plausibility flag (the first bullet above), since that is the one
-candidate role where VIIRS's coarseness is not disqualifying and it is the one bullet above
-still untried. Item 4's post-stratification use should stay lower priority given the
-partial-correlation result, unless nightlight *variability* over time, rather than the mean
-level, turns out to behave differently from building density -- untested either way.
-
-### 18. `compose` downloads 31 times more than it keeps (2026-09-19)
-
-Measured on the running Nigerian compose, over four minutes of a healthy 6.8 MB/s link:
-
-    downloaded   410 MB per composited cell
-    written       13.4 MB per composited cell   (24,788 MB over 1,854 cells)
-
-`annual_composite` pulls roughly twelve scenes by ten bands and keeps a per-pixel median, so
-about 31 of every 32 bytes crossing the link are discarded on arrival. For Nigeria's
-remaining 4,829 cells that is **about 2 TB of transfer to produce 65 GB of composites**:
-five days against under three hours at the same link speed.
-
-This is the binding constraint on the whole programme, not a Nigeria problem. Compose is the
-only stage measured in days, every new country pays it in full, and
-[the scaling guide](reproduce.md#scale-to-a-new-country) names eight more countries. It is
-listed last here only because the ranking above weighs accuracy; on wall-clock per country it
-would sit near the top.
-
-**The fix is to composite next to the data and download only the result.** Three routes, in
-increasing order of risk:
-
-- **Run the existing code on a co-located VM.** `sentinel-cogs` lives in AWS `us-west-2` and
-  Planetary Computer's blobs in Azure West Europe; same-region reads are free and fast.
-  Nothing about the science changes: same `imagery.py`, same twelve-least-cloudy selection,
-  same SCL classes, same Collection-1 offsets, byte-identical output. `compose` is already
-  resumable per cell and `EARTHPV_STAC_PROVIDER` already pins the provider to match the
-  region. Egress for a country is tens of GB.
-- **openEO on the Copernicus Data Space Ecosystem**, which is compositing as an API: send a
-  process graph, download the result. Every user gets 10,000 free credits a month.
-- **Google Earth Engine**, same shape via `COPERNICUS/S2_SR_HARMONIZED`.
-
-**What makes the last two risky is specific to this project.** `annual_composite` is not a
-generic median: twelve least-cloudy scenes, per-pixel SCL masking on classes 4/5/6/7, and the
-Collection-1 radiometric offset. The production checkpoint was fine-tuned on exactly that
-radiometry, and this repository has already discarded a set of composites built before the
-2026-07-26 offset fix. A reimplementation that is subtly off produces imagery the model reads
-as domain shift, and nothing would surface it until the capacity numbers came out wrong.
-
-**Concrete next step**, which is cheap and settles the risk: composite a few dozen cells of an
-existing AOI on a co-located VM, copy them back, and diff against the locally built ones. If
-they are byte-identical, route the next country that way and keep the recipe unchanged. Only
-if that is impractical is it worth porting the recipe to openEO, and then the same cell-level
-diff is the acceptance test.
-
-Note that the obvious free option is gone: Microsoft retired the Planetary Computer Hub in
-June 2024 and archived its repository in June 2026. The STAC API and the data stay free, but
-there is no hosted notebook to run this in.
-
-### 19. Temporal unmixing deserves one test on an annual stack (2026-09-19)
-
-[Temporal unmixing](experiments.md#temporal-unmixing-the-dry-season-window-removes-its-own-signal-2026-09-19)
-was rejected on the imagery this project composites, and the reason points at the imagery
-rather than the method. The estimator infers a pixel's PV fraction from how much its
-temporal spread is damped relative to its local background, so it needs a background that
-moves. Measured across 22 quadrats, the open background moves only **1.12x** as much as a
-roof, and PV pixels vary **1.02x** as much as PV-free roofs, which is no signal at all.
-
-That is a property of the window, not of Pakistan. `annual_composite` takes a dry-season
-range of the twelve least-cloudy scenes precisely to suppress phenological and atmospheric
-variation, and a stable composite is the right choice for every other stage. Cropland in
-the monsoon is a different denominator entirely.
-
-The test is cheap and well-defined, because the machinery exists: `scene_stack` and
-`scripts/compose_scene_stacks.py` already build the per-scene cube, and
-`scripts/run_temporal_unmix_ablation.py` already prices the block with a conditional test
-against measured background dynamism. Re-fetch the stacks for a handful of the most
-agricultural quadrats (Muzaffargarh, Bahawalnagar, Khairpur, Nasirabad, Malok) with
-`--window` spanning a full year, re-run the invariance diagnostic first, and only continue
-if `open_over_roof` clears something like 2x. If it does, the conditional result already
-measured (Spearman +0.401, p=0.071; the dynamic half gained in 9 of 11 folds) says where
-to look.
-
-Two cautions carried from the rejected run. The gain in the dynamic half was +0.0015 AUC,
-so even a favourable window has to move this by an order of magnitude to matter. And an
-annual stack reintroduces everything the dry-season window exists to exclude, monsoon cloud
-above all, so the scene count per pixel will fall and `n_obs` has to be watched.
-
-### 20. A gradient-boosted roofclf calibrates better; price it end to end (2026-09-19)
-
-[The model-class test](experiments.md#the-model-class-ranking-and-calibration-disagree-2026-09-19)
-found the two objectives pulling apart. Against the shipped linear model, gradient boosting
-ranks **worse** (-0.023 AUC within size band, better in 4 of 30 folds, p < 0.001) and
-calibrates **better** (median per-quadrat adoption-rate error 0.0308 to 0.0165, closer in
-20 of 29 quadrats, Wilcoxon p = 0.006), while keeping the full dispersion of true rates
-(0.0806 against 0.0798) rather than hedging toward the mean.
-
-That is not enough to change the classifier, because the two halves of the product want
-different things. Per-building ranking drives the MapRoulette leads and the
-precision-thresholded population the coverage ratio is fitted on; the per-cell adoption
-rate drives the capacity estimate that PyPSA consumes. The linear model is better at the
-first and worse at the second.
-
-**Update 2026-09-19: the cheap substitute does not work.** A monotone recalibration cannot
-change a ranking, so if the gradient-boosted model were merely better calibrated, isotonic
-or Platt on the linear model's scores would capture the gain for nothing. Measured: the best
-variant (isotonic within roof-area terciles) recovers 38% of it at Wilcoxon p = 0.069, and
-Platt recovers none by construction. The advantage is a reordering, not a calibration curve,
-so it has to be deployed rather than approximated. An area-weighted loss was tested in the
-same run and is not the answer either: it improves the area ratio it optimises (1.084 to
-1.035) while losing 0.0111 AUC and worsening the count rate error to 0.0395.
-
-What would settle it is pricing a GBM through the capacity chain rather than the AUC table:
-fit it on the same 30 quadrats, run `sub400-capacity` and `ge400-roof-capacity` with the
-same coverage-ratio and area-recall machinery, and compare the per-cell capacity against
-the quadrats it was not fitted on. If the better rate calibration survives that, it is
-worth the deployment work; if the coverage ratio simply absorbs the difference, it is not.
-
-Two obstacles are known. `save_model`/`score_buildings_national` assume a linear model
-serialised as coefficients, so national scoring needs real plumbing rather than a swap.
-And `fit_logistic` leaves its intercept unpenalised specifically so the fitted base rate is
-not shrunk, which is a deliberate calibration choice a tree ensemble makes differently --
-any comparison has to keep that in view rather than treating the two as interchangeable.
-
-### 21. A second imagery epoch is the only new information left; is it worth the download? (2026-09-20)
-
-[The pre-boom epoch difference](experiments.md#the-roof-is-its-own-control-2026-09-20) is
-the one intervention in the 2026-09-19/20 sweep that adds INFORMATION rather than removing
-noise, and its controls hold: a split-half placebo is null, the difference beats the
-undifferenced levels 6x, and the change is a darkening concentrated in the bulk rather than
-in the extreme tail, so it is PV and not construction.
-
-What is open is whether it is worth deploying, and the honest number is the small one.
-Against the shipped read path it is +0.0234 within size band; against the noise-reduced one
-it is **+0.0067 (23 of 29 folds, p = 0.002)**, because four fifths of it is already captured
-by the trimmed mean and area-weighted zonal means. A project that ships the reducer package
-gets under a hundredth of AUC from a second epoch, at the cost of compositing the country
-twice. The depth question is closed: doubling the old epoch's frames (median 7 to 16) moved
-it 0.0047 to 0.0067 and the curve has not flattened, so a deeper old epoch is the cheapest
-remaining improvement. Two things remain open:
-
-1. **Does it survive the capacity chain?** The deployment framing on the shipped base is
-   +3.2 points of recall at precision 0.500 (0.6298 to 0.6621). The same measurement has not
-   been made on the noise-reduced base, where the AUC gain is 5x smaller.
-2. **Does it transfer?** Pakistan's boom is post-2022, which is what makes a 2019 composite a
-   clean pre-installation look. A country whose PV predates the archive has no such epoch,
-   and Germany's register-calibrated half has no quadrats to measure it on, so this is
-   a Pakistan-shaped result until something tests it elsewhere.
-
-Cost note: the stacks here are quadrat-clipped (223 MB for 31 boxes). A national second
-epoch is the same order as the recomposite [item 18](#18-compose-downloads-31-times-more-than-it-keeps-2026-09-19)
-prices, and unlike that one it does not replace what already exists, so both epochs have to
-be kept.
-
-### 22. Composites built before 2026-10-10 carry two compose defects (2026-10-10)
-
-Found while publishing India, when Rewa Ultra Mega Solar (750 MW, fully mapped) turned out
-never to have been imaged. Both defects are fixed in `imagery.py` for every composite built
-from 2026-10-10 on; nothing built earlier was recomposited.
-
-**Scene ranking ignored coverage.** `annual_composite` kept the twelve scenes with the
-lowest `eo:cloud_cover`, a property of the whole MGRS tile. In a dry season dozens tie at
-0.0% and the catalogue's order decides. For Rewa's cell (India `0135_0177`) all twelve came
-from tile 44QNM, which covers 11% of the cell, while equally cloud-free 44RNN scenes covering
-all of it ranked 15th and lower: the composite was 87% empty. Scenes covering at least 99%
-of a cell now rank first (`imagery._rank_items`), which leaves a cell's selection unchanged
-whenever its twelve least-cloudy scenes already covered it, and recomposing Rewa's cell
-took it from 87.4% to 0.0% empty.
-
-**Whole bands lost to failed reads.** `odc.stac.load(..., fail_on_error=False)` turns a
-failed range request into NaN and then 0, so a cell whose every read of one band failed
-kept the other nine and passed the "at least 1% non-zero" check. India's compose logged
-about 33,000 failed range requests. On such a cell the model mostly detects nothing. A
-composite whose bands differ in empty share by more than 2% now raises, which hands the
-cell to the other provider or a later pass (`imagery.BAND_DROPOUT_MAX`).
-
-**Park outlines imaged on one side of a cell edge (found 2026-10-12).** `compose` added a
-cell for each mapped solar feature by the feature's representative point, so an outline
-crossing a cell edge was imaged only where that point fell, and the ground screen, which
-keeps an outline above 5 km&sup2; only when 90% of it is imaged, dropped it. Egypt lost two
-parks from Verified this way before publication. `compose._solar_label_cells` now adds every
-cell an outline intersects; Egypt was refilled (five cells), and South Africa composes with
-the rule. Of the published countries, Vietnam, Zambia and Nigeria have no such cell left
-uncomposed, and India has eight, six of them at Khavda (`0013_0173` to `0015_0175`) and so
-under outlines the screen already credits only at their detected share.
-
-Measured on random samples of existing composites (all-band-empty pixels lying on straight
-raster rows or columns, which is what a tile edge looks like in the cell's UTM grid):
-
-| | cells sampled | a band entirely missing | tile-edge gap above 5% | area lost to tile-edge gaps |
-| --- | --- | --- | --- | --- |
-| India | 3,000 | 1.3% | 1.3% | 0.79% |
-| Zambia | 400 | 0.0% | 1.5% | 0.85% |
-| Nigeria | 400 | 0.0% | 0.8% | 0.34% |
-| Vietnam | 400 | 0.5% | 0.2% | 0.19% |
-| France | 400 | 0.2% | 0.0% | 0.0% |
-
-Nationally this is about 1% of imaged area, which is small against everything else these
-segmentation-only floors leave out, but the loss is concentrated rather than spread out:
-one gap removed a 750 MW park from India's page. **What would close it:** recomposite only the affected
-cells (a per-cell scan of all of India takes about two hours), re-infer and re-run the atlas
-chain. Mixing is not a concern here, because the recipe and radiometry are unchanged and
-only the scene choice differs.
+VIDA is a single load-bearing input everywhere (the unit roofclf classifies, the density
+stratifier, the placement join, compose's cell filter), and it is a present-day snapshot with
+undersized footprints. VIIRS nightlights cannot replace it (a 500 m pixel cannot tell which
+roof carries PV) and adds little as a covariate (r = 0.48 against Best once log roof area is
+partialled out, 2026-10-21). The one untried role where its coarseness does not disqualify it:
+**a plausibility flag for cells bright in VIIRS but implausibly sparse in VIDA**, i.e. where
+VIDA is missing structures, slotted into `plausibility.py` beside the existing checks.
 
 ## Known defects carried on purpose
 

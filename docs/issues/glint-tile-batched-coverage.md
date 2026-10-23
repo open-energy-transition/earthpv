@@ -7,7 +7,7 @@
     replaced with under 60 s left. Since 2026-10-22 `glint._asset_href` re-signs every
     asset URL at open time. Scene-count comparisons from the study below still predate the
     fix, and a second defect turned up alongside it: tile copies of one acquisition can be
-    counted twice. See open question 15.
+    counted twice. See open question 2, "Pakistan's segmentation calibration table is stale in four known ways".
 
 Ran `scripts/glint_revalidate_pakistan.py`: the same 500 OSM-confirmed Pakistan
 targets used for the original per-target study (`pakistan_summary.csv`,

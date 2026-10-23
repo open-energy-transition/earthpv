@@ -135,6 +135,11 @@ repository; nothing was deleted on failure.
 | [Google's AlphaEarth satellite embeddings in roofclf](#alphaearth-embeddings-propensity-not-panels-2026-10-22) | <span class="outcome negative">rejected</span> | Adding the 2025 embedding: -0.0003 AUC, 14 of 29 folds, recall at precision 0.5 down 0.017. The pre-boom 2021 embedding does as well, so what little it adds is propensity. |
 | [AlphaEarth change as a ground-mount precision check](#alphaearth-change-finds-unmapped-ground-mount-2026-10-22) | <span class="outcome mixed">partial</span> | 2017-to-2025 change separates real ground arrays from their surroundings at AUC 0.96, and a blind review puts the real share of unmapped ground detections at about 0.15, where the precision table books 0.0. Not applied; needs your review. |
 | [AlphaEarth as a second >= 400 m2 detector](#alphaearth-against-segmentation-a-different-detector-not-a-better-one-2026-10-22) | <span class="outcome mixed">partial</span> | Not better overall: lower precision where PV is mixed with farmland (0.65-0.70 against 0.83-0.88), but equal precision and higher rooftop recall (0.51 against 0.35) on the quadrats, and it finds different arrays: the union lifts quadrat rooftop recall to 0.60. |
+| [Probability-weighted capacity pricing](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome mixed">partial</span> | Pricing roof area by score instead of by a flag halves the per-quadrat PV-area error (0.386 to 0.094 below 400 m<sup>2</sup>, 20 of 29 quadrats) and lifts Pakistan's Best 24.4 to 34.6 GWp. Not adopted: open question 1. |
+| [Prevalence estimators for prior shift](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | EM prior adjustment and adjusted counts collapse to zero in most quadrats: they differ by more than their base rate. |
+| [Gradient boosting, priced end to end](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Its better per-quadrat adoption rate does not survive the capacity chain: 12 of 29 quadrats closer, p = 0.46. |
+| [The pre-boom epoch already on disk](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome mixed">partial</span> | composite_1 covers 4,467 of 4,473 Pakistani cells, so no download is needed; +0.0024 within size band (20 of 29, p = 0.061) and nothing under probability pricing. Not deployed. |
+| [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
 | Low/Central/High/All-PV bracket atlas | <span class="outcome open">superseded</span> | Replaced by the two-tier evidence atlas, which sorts by standard of proof instead. |
@@ -2022,7 +2027,8 @@ measure the borrowed model properly and allow a refit. Scored cells:
 A side finding: composite_1 carries no BOA offset (scenes before baseline 04.00, 2022-01-25)
 while composite_0 carries +1000 DN; each layer's own darkest 0.5% sits 730 to 860 DN apart in
 every band (median over 60 cells). `roofclf.epoch_feature_frame(dn_offset=)` harmonizes it;
-see open question 16 for what it means for the growth atlas. Scripts:
+see open question 10 ("Growth as a product") for what it means for the growth atlas, and
+for the 2026-10-22 finding that the offset differs by cell. Scripts:
 `scripts/transfer_calibration_pakistan_check.py`, `scripts/transfer_calibration_followups.py`,
 `scripts/transfer_calibration_pu_auc.py`. Results: `results/transfer_calibration/`.
 
@@ -2223,6 +2229,82 @@ pass is ~0.5 TB from the Zarr mosaic, or a server-side job on Earth Engine.
 Results: `results/aef_ground_review/owner_review_summary.json`, `owner_verdicts.csv`;
 `results/aef_vs_segmentation_natneg.csv` (and the first run without random-land negatives,
 `aef_vs_segmentation.csv`); `results/aef_vs_seg_review/`.
+
+### The capacity chain is a quantification problem (2026-10-22)
+
+A sweep of the levers this register had not yet tried, on the 30 production quadrats with the
+same paired leave-one-quadrat-out design as above. Every block is scored three ways: ranking
+(AUC within roof-size band), recall at the precision-0.5 deployment threshold, and the error
+on each held-out quadrat's true PV area when it is priced the way the capacity chain prices it.
+The harness recomputes the shipped band means from the composites and matches the production
+table exactly before adding anything (`scripts/roofclf_untapped_extract.py`,
+`scripts/roofclf_untapped_ablation.py`; `results/roofclf_untapped.json` and `_pass2.json`).
+
+**The classifier: nothing new ships.**
+
+| Block | Within size band vs shipped | Folds better | Verdict |
+| --- | --- | --- | --- |
+| Footprint weights convolved with a Gaussian PSF, sigma 0.4 / 0.65 / 1.0 px | +0.0005 / -0.0022 / -0.0144 | 19 / 11 / 7 of 29 | rejected: the area weights already fit |
+| Footprint buffered 1 / 2 / 4 m before area weighting | +0.0002 / -0.0012 / -0.0105 | 15 / 12 / 6 | rejected |
+| VIDA micro-context: counts within 25-100 m, nearest neighbour, relative size, built-up share | -0.0049 | 10 | rejected |
+| The ten nearest buildings' mean features (a spatial lag) | -0.0010 | 13 | rejected |
+| Spectral features x log roof area; all 45 pairwise band indices | -0.0003; -0.0002 | 14; 14 | rejected |
+| L2 0.01 / 100 / 1,000 | -0.0009 / -0.0046 / -0.0263 | 7 / 9 / 7 | the shipped L2 = 1 stands |
+| Equal training weight per quadrat | -0.0011 | 8 | rejected |
+| Train without positives under 10 m<sup>2</sup> of PV; without negatives within 5 m of a positive | -0.0009; +0.0002 | 4; 15 | rejected |
+| Yard block; segmentation and fraction rasters (re-measured on the current fit) | +0.0004; +0.0002 | 16; 16 | still rejected |
+| Mean logit of the linear model and gradient boosting | +0.0003 | 16 | recall +1.4 points (95% 0.2 to 4.0), nothing else |
+| Difference against composite_1 (2021-10 to 2022-01), per-window median match | +0.0024 | 20 (p = 0.061) | partial, below |
+
+**A second epoch is already on disk for Pakistan.** composite_1 exists for 4,467 of 4,473
+cells, so the download [the epoch-difference result](#the-roof-is-its-own-control-2026-09-20)
+priced at a national recomposite is not needed here. Its difference is the one positive block
+above, and on the capacity metric it helps thresholded pricing (median error 0.457 to 0.367,
+20 of 29 quadrats, p = 0.061) but not probability-weighted pricing (19 of 29, p = 0.26), so it
+is not deployed. Two cautions came with it. composite_1's radiometric scale differs by cell:
+the 122 cells built on 2026-07-05, which hold 24 of the 30 quadrats, already sit on
+composite_0's scale, so the documented flat +1000 DN offset makes them 0.1 too bright, and the
+version using it scores worse (+0.0014). And the 2021 epoch alone reaches 0.7956 within size
+band against 0.8194, the propensity [already recorded](#a-sub-400-m2-level-without-quadrats-from-osm-and-a-past-epoch-2026-10-20).
+
+**Gradient boosting, priced end to end.** [The model-class test](#the-model-class-ranking-and-calibration-disagree-2026-09-19)
+left open whether its better per-quadrat adoption rate survives the capacity chain. It does
+not: per-quadrat PV-area error 0.409 against 0.457 thresholded (12 of 29 quadrats closer,
+p = 0.46), and 0.245 against 0.242 probability-weighted.
+
+**The lever is the aggregation.** The capacity chain counts a flagged roof in full and an
+unflagged one not at all, then rescales by how that count behaved in the quadrats. Rebuilt in
+the chain's own structure and held out one quadrat at a time
+(`scripts/roofclf_soft_capacity_check.py`, `results/roofclf_soft_capacity.json`), median error
+on true sub-400 m<sup>2</sup> PV area:
+
+| Pricing, same scores | Median error | IQR | Pooled ratio |
+| --- | --- | --- | --- |
+| No classifier (roof area x ratio) | 0.518 | 0.23-1.84 | 1.085 |
+| Flagged roof area (published) | 0.386 | 0.16-0.83 | 1.017 |
+| Probability-weighted roof area | 0.094 | 0.07-0.67 | 0.998 |
+
+Probability weighting is closer in 20 of 29 quadrats (Wilcoxon p = 0.0035), and 18 to 23 of
+29 for four other scores and the roof-only label; the flagged version does not beat the
+null at the median (16 of 29). The mechanism is the sparse end: below 300 bldg/km<sup>2</sup>
+the mean score matches the true adoption rate (0.020 against 0.020) while only 0.2-0.3% of
+roofs cross the threshold, so the flagged version books 12% of the mapped PV there and the
+weighted one 92%. Through the real chain this moves Pakistan's Best estimate from 24,438 to
+34,589 MWp, 85% of it in cells of 100-1,000 bldg/km<sup>2</sup>, where calibration is thinnest;
+whether to adopt it is open question 1. `sub400-capacity` and `ge400-roof-capacity` take
+`--weighting probability`; the default reproduces every published figure exactly.
+
+**Estimators built for prior shift fail.** Treating the capacity chain as the quantification
+problem it is, the standard estimators for a population whose base rate differs from training
+were tried on the same scores (`scripts/roofclf_quantification.py`): EM prior adjustment
+(Saerens et al. 2002), adjusted counts by TPR and FPR, and their probabilistic version. All
+three reach a median error near 1.0, collapsing most quadrats to zero. Their assumption is
+that only the base rate differs between quadrats while the score distribution within each
+class stays put, and these quadrats differ in roof stock as well.
+
+**Temporal unmixing on a full-year stack is dropped from the open list.** Its best measured
+gain was +0.0015 within size band in the most dynamic quadrats, and this sweep puts the
+binding error in the aggregation, not in another thousandth of ranking.
 
 ## The partial result worth watching
 

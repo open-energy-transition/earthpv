@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Auto-restarting compose loop for the intermediate-year epochs (indices 2..4,
-# pakistan) -- the annual growth series (docs/open-questions.md item 14).
+# pakistan) -- the annual growth series (docs/open-questions.md item 10, "Growth as a product").
 #
 # Epoch layout after this completes (all on composite_0's base grid):
 #   composite_0  2025-11-01..2026-03-15  current (already built)

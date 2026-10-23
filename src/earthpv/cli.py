@@ -799,6 +799,13 @@ def sub400_capacity_cmd(
         "candidates whose figure the atlas discards inside roofclf's >= 400 m2 domain -- "
         "both left roofs counted nowhere."
     ),
+    weighting: str = typer.Option(
+        "threshold", help="How a roofclf score enters the roofclf-only (Best) component: "
+        "'threshold' counts flagged roofs in full (the published estimator); 'probability' "
+        "counts every roof by its score, with both calibration tables refit on the same "
+        "weights, and writes one row per cell and size bin. The AND-gate floors are "
+        "thresholded either way. See sub400_capacity.WEIGHTINGS."
+    ),
 ) -> None:
     """Sub-400 m2 capacity (roofclf-only, and roofclf-AND-SPPI), restricted to national
     cells whose building density matches the calibration quadrats -- the other half of
@@ -884,7 +891,8 @@ def sub400_capacity_cmd(
     # `recall_correct` is deliberately NOT in the shared kwargs: the two AND-gate
     # functions below take no such parameter, because a floor tier must not extrapolate
     # to installations neither detector flagged.
-    central, central_summary = domain_restricted_capacity(**kwargs, recall_correct=recall_correct)
+    central, central_summary = domain_restricted_capacity(
+        **kwargs, recall_correct=recall_correct, weighting=weighting)
     central.to_parquet(out_dir / "sub400_central_incremental_buildings.parquet")
     (out_dir / "sub400_central_summary.json").write_text(json.dumps(central_summary, indent=2))
 
@@ -978,6 +986,11 @@ def ge400_roof_capacity_cmd(
         "quadrats' own >= 400 m2 buildings, vs 0.808 sub-400 m2), but applied for the same "
         "reason and priced in the same bootstrap replicates.",
     ),
+    weighting: str = typer.Option(
+        "threshold", help="'threshold' (published) or 'probability': every >= 400 m2 roof "
+        "counted by its score, one output row per cell and size bin. See "
+        "`sub400-capacity --help`."
+    ),
 ) -> None:
     """roofclf-based capacity for >= 400 m2 ROOFTOP buildings -- REPLACES segmentation's
     own est_mwp_rc_roof inside the density-matched domain (roofclf measured AUC 0.896 vs
@@ -1017,7 +1030,7 @@ def ge400_roof_capacity_cmd(
         cell_density_path=cell_density_path, threshold=threshold, osm_solar_path=osm_solar,
         max_distance_m=max_distance_m, min_area_m2=min_area_m2,
         ratio_lo=ratio_lo, ratio_hi=ratio_hi, n_coverage_boot=coverage_boot,
-        recall_correct=recall_correct,
+        recall_correct=recall_correct, weighting=weighting,
     )
     flagged.to_parquet(out_dir / "ge400_roof_incremental_buildings.parquet")
     (out_dir / "ge400_roof_summary.json").write_text(json.dumps(summary, indent=2))

@@ -65,7 +65,8 @@ ROOFTOP_MAX_M2 = MAX_CANDIDATE_M2
 # Those 21 polygons hold 33% of all German OSM ground area and contributed ~15 GWp to the
 # atlas's Verified tier, which is why it read 121% of all registered German ground-mount.
 # Defined in density.py, whose `capacity_relevant_candidates` applies the same cap and the
-# same screen evidence to OSM outlines on the model side (2026-10-11, open question 23).
+# same screen evidence to OSM outlines on the model side (2026-10-11; docs/results/india.md,
+# "The ground-perimeter screen and the 5 km2 cap").
 GROUND_MAX_M2 = OSM_GROUND_MAX_M2
 
 

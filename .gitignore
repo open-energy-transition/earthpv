@@ -130,6 +130,14 @@ results/pakistan_roofclf_parcel_validation/*
 # (docs/pretrained-model.md), scored 2026-10-23 on the held-out chips of eleven regions.
 !results/release_model_benchmark.csv
 
+# The 2026-10-22 roofclf sweep and the probability-weighted capacity check, cited by
+# docs/experiments.md's "The capacity chain is a quantification problem".
+!results/roofclf_untapped*.json
+!results/roofclf_untapped*_folds.csv
+!results/roofclf_untapped*_capacity.csv
+!results/roofclf_quantification*
+!results/roofclf_soft_capacity*
+
 # Atlas data packs staged for a GitHub Release; the MANIFEST under configs/ is what
 # gets committed, never the assets themselves.
 dist/

@@ -1,0 +1,121 @@
+{
+  "score": "p_oof",
+  "n_quadrats": 29,
+  "trusted": [
+    "bahawalnagar_rural",
+    "faisalabad",
+    "islamabad_east",
+    "islamabad_north",
+    "islamabad_northeast",
+    "islamabad_south",
+    "islamabad_west",
+    "karachi_coast",
+    "lahore",
+    "layyah_periurban",
+    "lodhran_periurban",
+    "malok",
+    "multan",
+    "peshawar",
+    "peshawar_west",
+    "sanghar",
+    "sialkot",
+    "site_karachi",
+    "sukkur"
+  ],
+  "results": {
+    "all": {
+      "null": {
+        "median_abs_err": 0.5864,
+        "iqr": [
+          0.1447,
+          1.9333
+        ],
+        "pooled_ratio": 1.0068,
+        "spearman": 0.9458
+      },
+      "thresholded": {
+        "median_abs_err": 0.446,
+        "iqr": [
+          0.1591,
+          0.7933
+        ],
+        "pooled_ratio": 0.9917,
+        "spearman": 0.9527
+      },
+      "soft": {
+        "median_abs_err": 0.2089,
+        "iqr": [
+          0.0786,
+          0.6638
+        ],
+        "pooled_ratio": 0.9706,
+        "spearman": 0.9557
+      },
+      "soft_vs_thresholded": {
+        "a_better": "20/29",
+        "median_dlog": 0.101,
+        "sign_p": 0.0614,
+        "wilcoxon_p": 0.0099
+      },
+      "thresholded_vs_null": {
+        "a_better": "14/29",
+        "median_dlog": -0.0287,
+        "sign_p": 1.0,
+        "wilcoxon_p": 0.9491
+      },
+      "soft_vs_null": {
+        "a_better": "20/29",
+        "median_dlog": 0.1244,
+        "sign_p": 0.0614,
+        "wilcoxon_p": 0.006
+      }
+    },
+    "sub400": {
+      "null": {
+        "median_abs_err": 0.5178,
+        "iqr": [
+          0.2294,
+          1.8377
+        ],
+        "pooled_ratio": 1.085,
+        "spearman": 0.902
+      },
+      "thresholded": {
+        "median_abs_err": 0.3863,
+        "iqr": [
+          0.1566,
+          0.8321
+        ],
+        "pooled_ratio": 1.0171,
+        "spearman": 0.9207
+      },
+      "soft": {
+        "median_abs_err": 0.0941,
+        "iqr": [
+          0.065,
+          0.6656
+        ],
+        "pooled_ratio": 0.9975,
+        "spearman": 0.935
+      },
+      "soft_vs_thresholded": {
+        "a_better": "20/29",
+        "median_dlog": 0.1387,
+        "sign_p": 0.0614,
+        "wilcoxon_p": 0.0035
+      },
+      "thresholded_vs_null": {
+        "a_better": "16/29",
+        "median_dlog": 0.0215,
+        "sign_p": 0.7111,
+        "wilcoxon_p": 1.0
+      },
+      "soft_vs_null": {
+        "a_better": "22/29",
+        "median_dlog": 0.1865,
+        "sign_p": 0.0081,
+        "wilcoxon_p": 0.0017
+      }
+    }
+  }
+}

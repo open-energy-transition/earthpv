@@ -293,7 +293,7 @@ def capacity_relevant_candidates(
     would be marked "already found by the model" while contributing zero to the
     model's own capacity number -- measured 2026-08-10 at 1,704 MWp nationally).
 
-    **Two limits on the exemption (2026-10-11, open question 23), both mirroring rules
+    **Two limits on the exemption (2026-10-11, see docs/results/india.md), both mirroring rules
     the OSM layer (`scripts/prepare_national_osm_solar.py`) already applies to Verified:**
 
     - An exempted outline is a SITE, so it is never `rooftop`: `postprocess` places a
