@@ -196,8 +196,10 @@ pixel precision (0.72 against 0.79; it spreads into the desert around Moroccan p
 the precise alternative and is not released. Table: `results/release_model_benchmark.csv`,
 write-up: `docs/pretrained-model.md`. **Every published atlas still runs on its own country's
 checkpoint; the release changes no published number.** To release a newer model: slim it, upload
-it with `SHA256SUMS` and `MODEL_CARD.md` to a new tag, update `RELEASE`, and redo the page's
-tables from the same benchmark.
+it with `SHA256SUMS`, `MODEL_CARD.md`, `LICENSE` and `NOTICE` to a new tag, update `RELEASE`,
+and redo the page's tables from the same benchmark. **The weights are Apache-2.0** (owner
+decision 2026-10-23, matching TerraMind); `NOTICE` carries the TerraMind, OpenStreetMap and
+Copernicus attributions, and detections made with the model stay ODbL like every data output.
 
 ## Architecture
 

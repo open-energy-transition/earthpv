@@ -93,6 +93,7 @@ false positives at the window spacing.
 | Training labels | 29,458 chips of 2.24 km, cut around OpenStreetMap solar polygons and from background in Germany (3,189), Pakistan (2,712, Punjab included), India (Gujarat, 760), France (18,577) and South Africa (4,220) |
 | Training | Tversky loss (alpha 0.3, beta 0.7, which penalises a missed array more than a false one), AdamW at 10<sup>-4</sup>, batch 8 with 2-step accumulation; best epoch 41 of 49 by validation mIoU (0.811) on geographic holdouts, 16 hours on a GTX 1060 |
 | Training config | [`configs/terramind_pv_v14_south_africa.yaml`](https://github.com/open-energy-transition/earthpv/blob/main/configs/terramind_pv_v14_south_africa.yaml) |
+| Licence | [Apache-2.0](#licence-and-attribution), weights only |
 
 It is built for **arrays of roughly 400 m&sup2; and up, and ground-mount at any size**.
 Anything smaller is burned into the training mask as `ignore`, so the model is not trained
@@ -179,9 +180,14 @@ Every row behind these tables, per region and checkpoint, is in
 
 ## Licence and attribution
 
-The weights derive from [TerraMind 1.0](https://huggingface.co/ibm-esa-geospatial/TerraMind-1.0-tiny)
-(Apache-2.0, IBM and ESA), fine-tuned on labels from &copy; OpenStreetMap contributors
-(ODbL 1.0) over Copernicus Sentinel-2 imagery. Credit all three when you publish results
-made with it, and cite this repository. Detections and capacity tables made with it are
-derivative of OpenStreetMap and fall under ODbL like the project's other data outputs (see
-the [README](https://github.com/open-energy-transition/earthpv#licence)).
+**The model weights are released under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)**, the same licence as
+[TerraMind 1.0](https://huggingface.co/ibm-esa-geospatial/TerraMind-1.0-tiny), from which
+they derive. The release carries the licence text as `LICENSE` and the attributions as
+`NOTICE`. Keep `NOTICE` with the weights if you redistribute them or a fine-tune of them.
+
+Credit TerraMind (IBM and ESA), &copy; OpenStreetMap contributors (the training labels,
+ODbL 1.0) and Copernicus Sentinel-2 when you publish results made with it, and cite this
+repository. The licence covers the weights only. Detections and capacity tables made with
+them are derivative of OpenStreetMap and fall under ODbL, like the project's other data
+outputs (see the [README](https://github.com/open-energy-transition/earthpv#licence)).

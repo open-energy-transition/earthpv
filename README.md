@@ -193,7 +193,9 @@ checkable. [Join the community on Discord](https://discord.gg/T5zh6N24Hv).
 
 ## Licence
 
-Code MIT. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
+Code MIT. The [released segmentation model](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23)'s
+weights are Apache-2.0, like the TerraMind model they are fine-tuned from; its `NOTICE`
+lists the attributions to keep. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
 and Overture Maps; labels from OpenStreetMap contributors under ODbL; administrative
 boundaries from geoBoundaries under CC-BY; solar-panel import figures from
 [Ember](https://ember-energy.org/data/china-solar-exports-data/) under CC-BY-4.0.
