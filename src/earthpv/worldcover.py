@@ -154,10 +154,16 @@ CROPLAND_READ_M = 100.0
 
 
 def _decimated(src, bounds, res_m: float):
-    """`(array, transform)` of `src` over 4326 `bounds`, read at roughly `res_m`."""
+    """`(array, transform)` of `src` over 4326 `bounds`, read at roughly `res_m`; None when
+    the bounds cover less than one source pixel (a tile edge meeting a bbox edge)."""
     dec = max(1, int(round(res_m / 10.0)))
-    win = from_bounds(*bounds, transform=src.transform)
-    win = win.round_offsets().round_lengths().intersection(Window(0, 0, src.width, src.height))
+    win = from_bounds(*bounds, transform=src.transform).round_offsets().round_lengths()
+    if win.width < 1 or win.height < 1:
+        return None
+    try:
+        win = win.intersection(Window(0, 0, src.width, src.height))
+    except rasterio.errors.WindowError:
+        return None
     h, w = max(1, int(win.height) // dec), max(1, int(win.width) // dec)
     arr = src.read(1, window=win, out_shape=(h, w))
     t = window_transform(win, src.transform)
@@ -185,7 +191,10 @@ def cell_cropland(cells, cell_deg: float = 0.1, res_m: float = CROPLAND_READ_M):
             ib = (max(tb.left, bbox[0]), max(tb.bottom, bbox[1]), min(tb.right, bbox[2]), min(tb.top, bbox[3]))
             if ib[0] >= ib[2] or ib[1] >= ib[3]:
                 continue
-            arr, t = _decimated(src, ib, res_m)
+            got = _decimated(src, ib, res_m)
+        if got is None:
+            continue
+        arr, t = got
         rows, cols = np.indices(arr.shape)
         lon = t.c + (cols + 0.5) * t.a
         lat = t.f + (rows + 0.5) * t.e
@@ -218,7 +227,10 @@ def landcover_points(bbox: tuple[float, float, float, float], res_m: float = CRO
             ib = (max(tb.left, bbox[0]), max(tb.bottom, bbox[1]), min(tb.right, bbox[2]), min(tb.top, bbox[3]))
             if ib[0] >= ib[2] or ib[1] >= ib[3]:
                 continue
-            arr, t = _decimated(src, ib, res_m)
+            got = _decimated(src, ib, res_m)
+        if got is None:
+            continue
+        arr, t = got
         rows, cols = np.nonzero(arr > 0)
         lons.append(t.c + (cols + 0.5) * t.a)
         lats.append(t.f + (rows + 0.5) * t.e)

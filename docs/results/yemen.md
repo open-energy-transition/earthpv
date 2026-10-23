@@ -159,6 +159,21 @@ then failed reading its own `screen` column. It now writes the column header reg
 `density` reads an empty screen; the queue's three launches had all stopped at that step,
 and the chain was relaunched at 15:51 once it was fixed.
 
+## Calibration areas
+
+**Al Wehdah, Sana'a (registered 2026-10-23, Rule-1).** The first of Yemen's two start-here
+boxes (`calib-candidates --priority`: 1 km in the densest quarter of the country's
+buildings, where the most roof area sits in buildings of 1,000 m<sup>2</sup> or more), so a
+purposive sample that runs at a higher PV rate than the country. Mapped panel by panel and
+declared complete by the project owner on 2026-10-23, against Esri World Imagery (Vivid
+Mosaic Metro) captured 2025-12-29, inside the composite's October 2025 to March 2026
+window. It holds **87 installations**, 83 rooftop and 4 ground, 14,611 m<sup>2</sup> in
+all, median 78 m<sup>2</sup>; 78 of them (90%) are below the 400 m<sup>2</sup> segmentation
+floor and 51 below 100 m<sup>2</sup>. The pull was confirmed against a second Overpass
+query (88 elements both times). No second mapping pass is recorded. It is not yet used by
+any figure on this page: one quadrat fits `roofclf` but cannot measure its skill, which
+needs leave-one-quadrat-out folds.
+
 ## What Yemen needs next
 
 **Map the farm calibration areas.** `calib-candidates -- --farmland` drew eight 3 km farm

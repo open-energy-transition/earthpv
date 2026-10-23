@@ -122,10 +122,15 @@ def _label(stem: str) -> str:
 
 
 def _priority_key(f: dict) -> tuple:
-    """Start-here boxes first, by roof area in large buildings; then the rest densest first."""
+    """Start-here boxes first, by roof area in large buildings; then the rest densest first;
+    farm boxes (`propose_calibration_candidates.py --farmland`) last, by cropland share. A
+    9 km2 farm box is a longer job for a different instrument, and ranking it among the
+    building boxes would reorder those every time farm candidates are drawn."""
     p = f["properties"]
     if str(p.get("selection", "")).startswith(PURPOSIVE):
         return (0, -(p.get("own_large_roof_m2") or 0), p["id"])
+    if roofclf.FARM_QUADRAT_INFIX in p["id"]:
+        return (2, -(p.get("own_crop_frac") or 0), p["id"])
     return (1, -(p.get("own_density_bldg_km2") or p.get("density_bldg_km2") or 0), p["id"])
 
 
@@ -188,6 +193,8 @@ def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS,
                                   # Written by scripts/propose_calibration_candidates.py; a
                                   # hand-picked candidate has none of these.
                                   "own_density_bldg_km2": p.get("own_density_bldg_km2"),
+                                  # --farmland boxes only.
+                                  "own_crop_frac": p.get("own_crop_frac"),
                                   "stratum": p.get("stratum") if p.get("selection") else None,
                                   # --priority boxes only.
                                   "own_large_buildings": p.get("own_large_buildings"),

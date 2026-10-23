@@ -946,6 +946,11 @@ earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
   capacity step applies, fetching only chunks that hold a blob (or `--roads <parquet>`). A
   chunk that cannot be fetched leaves its blobs with `road_checked=False`, reported in the
   summary, never silently.
+- **Farm candidates exist for Yemen, Egypt, Morocco, India, Pakistan and South Africa**
+  (8 each, published 2026-10-23); `calib-publish` ranks them after every building box, so
+  drawing them never reorders those. Pakistan has no `compose_window` or `division.iso3` in
+  `configs/aoi.yaml`: the sampler takes `--window-start 2025-11-01` (compose's default when
+  its composites were built 2026-07-04; the files carry no window tag) and the ISO2 fallback.
 - Yemen's first run (`data/roofclf_ground/yemen/`): 'Amran held-out pixel AUC 0.983, precision
   0.63 at 62% array recall (a floor), 0.937 when trained on Tihama alone; detected-to-mapped
   sub-400 m2 area ratio 0.23, stable across 'Amran's four strips (0.19-0.30). Eight farm

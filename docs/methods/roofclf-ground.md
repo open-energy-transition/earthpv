@@ -142,8 +142,11 @@ on cropland instead of buildings: the country's imaged cells are cut into eight 
 equal cropland area by their ESA WorldCover cropland share, one cell is drawn per band
 weighted by cropland, a 3 km box (farm PV is sparse, about two arrays per km<sup>2</sup> in
 'Amran) is placed where its own cropland share is within 25% of the cell's, and the same
-Esri imagery check applies. For Yemen it drew eight boxes from 5.6% to 85% cropland, all
-under 2025 imagery. The three samplers (building strata, start-here boxes, farm boxes) each
+Esri imagery check applies. Eight boxes each were drawn on 2026-10-23 for Yemen, Egypt,
+Morocco, India, Pakistan and South Africa, the countries where solar irrigation is common,
+and published to their atlases, where they rank after the building boxes. Pakistan's
+configuration records no composite window, so its draw took `--window-start 2025-11-01`, the
+compose default when its composites were built. The three samplers (building strata, start-here boxes, farm boxes) each
 redraw only their own candidates.
 
 A farm area is registered with `new_calibration_quadrat.py --farm`, which puts
