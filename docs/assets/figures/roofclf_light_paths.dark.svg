@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360"
+     viewBox="0 0 760 360" font-family="DejaVu Sans, system-ui, sans-serif">
+  <defs>
+    <marker id="lp-keep-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#f5a623"/></marker>
+    <marker id="lp-pass-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2fd9c4"/></marker>
+  </defs>
+  <rect width="760" height="360" rx="10" fill="#100d09"/>
+  <text x="24" y="30" font-size="14" font-weight="600" fill="#f7f1e6">A module absorbs the light that a roof sends back</text>
+  <text x="24" y="50" font-size="10.5" fill="#c9bda4">Cross-sections, not to scale</text>
+
+  <text x="24" y="86" font-size="12" font-weight="600" fill="#f7f1e6">Solar module</text>
+  <rect x="176" y="120" width="220" height="20" fill="#1a160f" stroke="#c9bda4"/>
+  <rect x="176" y="140" width="220" height="5" fill="#4fb2e8" fill-opacity="0.6" stroke="#c9bda4"/>
+  <rect x="176" y="145" width="220" height="50" fill="#2f3742" stroke="#c9bda4"/>
+  <rect x="176" y="195" width="220" height="8" fill="#9aa0a6" stroke="#c9bda4"/>
+  <text x="168" y="134" text-anchor="end" font-size="10.5" fill="#c9bda4">Glass</text>
+  <text x="168" y="148" text-anchor="end" font-size="10.5" fill="#c9bda4">Anti-reflection coating</text>
+  <text x="168" y="174" text-anchor="end" font-size="10.5" fill="#c9bda4">Silicon cell</text>
+  <text x="168" y="203" text-anchor="end" font-size="10.5" fill="#c9bda4">Metal rear contact</text>
+  <path d="M240 92V178" fill="none" stroke="#f5a623" stroke-width="2.5" marker-end="url(#lp-keep-dark)"/>
+  <path d="M252 140L276 98" fill="none" stroke="#f5a623" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#lp-keep-dark)"/>
+  <path d="M320 92L336 199L352 92" fill="none" stroke="#2fd9c4" stroke-width="2.5" marker-end="url(#lp-pass-dark)"/>
+  <line x1="420" x2="440" y1="108" y2="108" stroke="#f5a623" stroke-width="2.5"/>
+  <text x="448" y="112" font-size="11" font-weight="600" fill="#f7f1e6">Visible and near infrared, below 1,100 nm</text>
+  <text x="448" y="128" font-size="10.5" fill="#c9bda4">absorbed by the silicon, becomes current</text>
+  <line x1="420" x2="440" y1="150" y2="150" stroke="#f5a623" stroke-opacity="0.55" stroke-width="1.5"/>
+  <text x="448" y="154" font-size="10.5" fill="#c9bda4">a little reflected, mostly blue</text>
+  <line x1="420" x2="440" y1="180" y2="180" stroke="#2fd9c4" stroke-width="2.5"/>
+  <text x="448" y="184" font-size="11" font-weight="600" fill="#f7f1e6">Shortwave infrared, above 1,100 nm</text>
+  <text x="448" y="200" font-size="10.5" fill="#c9bda4">passes through and reflects off the back</text>
+
+  <line x1="24" x2="736" y1="226" y2="226" stroke="#3a2d16"/>
+
+  <text x="24" y="250" font-size="12" font-weight="600" fill="#f7f1e6">Ordinary roof</text>
+  <rect x="176" y="290" width="220" height="28" fill="#d8d0c0" stroke="#c9bda4"/>
+  <text x="168" y="308" text-anchor="end" font-size="10.5" fill="#c9bda4">Concrete, metal or brick</text>
+  <path d="M220 254L246 288L272 254" fill="none" stroke="#f5a623" stroke-width="2.5" marker-end="url(#lp-keep-dark)"/>
+  <path d="M316 254L342 288L368 254" fill="none" stroke="#2fd9c4" stroke-width="2.5" marker-end="url(#lp-pass-dark)"/>
+  <line x1="420" x2="440" y1="270" y2="270" stroke="#f5a623" stroke-width="2.5"/>
+  <text x="448" y="274" font-size="11" font-weight="600" fill="#f7f1e6">Visible and near infrared</text>
+  <text x="448" y="290" font-size="10.5" fill="#c9bda4">scattered back, more in the near infrared</text>
+  <text x="448" y="306" font-size="10.5" fill="#c9bda4">than in blue</text>
+  <line x1="420" x2="440" y1="326" y2="326" stroke="#2fd9c4" stroke-width="2.5"/>
+  <text x="448" y="330" font-size="11" font-weight="600" fill="#f7f1e6">Shortwave infrared</text>
+  <text x="448" y="346" font-size="10.5" fill="#c9bda4">scattered back as well</text>
+</svg>

@@ -107,6 +107,8 @@ that square:
   relative SWIR excess. No outline exists, so
   [the rooftop classifier](methods/roofclf.md) scores whole buildings on that signature
   instead, and its skill is measured on exhaustively mapped calibration quadrats.
+  [How roofclf sees panels](methods/roofclf-physics.md) explains why silicon makes a roof
+  darkest in the near infrared.
 
 Neither domain proves an individual roof. The spatial detector tolerates false positives
 because a person reviews every lead; the spectral detector is never read per building at

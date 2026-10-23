@@ -119,6 +119,7 @@ repository; nothing was deleted on failure.
 | [GlobalBuildingAtlas building height](#the-composite-reducer-is-the-biggest-lever-in-this-register-2026-09-20) | <span class="outcome negative">rejected</span> | d'=+0.651 alone and +0.0006 on top of the model: height is a proxy for footprint area. |
 | [The spectral SNR budget](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome works">shipped</span> | Measured, not argued: the noise is roof heterogeneity at 20-40x the sensor's, and the linear spectral limit is already reached. |
 | [Local background conditioning](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome negative">rejected</span> | Cuts noise 23-43% and signal faster, at every scale from 31 m to 369 m, because PV adoption is spatially clustered. |
+| [PV-free neighbours as the background](#the-spectral-snr-budget-and-why-the-domain-is-exhausted-2026-09-19) | <span class="outcome negative">rejected</span> | Undoes the clustering (0.94x of raw separation, against 0.75x) but not the loss: visible and SWIR contrast is neighbourhood-level. -0.0001 to -0.0016 AUC, 10 to 13 of 29 folds. |
 | [Glint geometry as a scene-level SNR lever](#sun-geometry-neither-glint-nor-high-sun-raises-the-contrast-2026-09-19) | <span class="outcome negative">rejected</span> | The apparent gain is solar elevation: partialling it out leaves +0.025 (p=0.70). |
 | [Compositing in a high-sun window](#sun-geometry-neither-glint-nor-high-sun-raises-the-contrast-2026-09-19) | <span class="outcome negative">rejected</span> | Roofs are 21% brighter pre-monsoon and the contrast is unchanged (0.98x): d-prime is illumination-invariant. |
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
@@ -1204,6 +1205,24 @@ against array size, and it is the same quantity that
 Kept as `roofclf.add_neighbour_features` for anyone who wants to re-measure. Panels are
 strongly polarising, which would be a nearly background-free channel, but no free satellite
 measures it.
+
+**PV-free neighbours only (2026-10-23), also rejected.** The obvious repair is to build the
+background from neighbours that carry no PV, which removes the clustering that cancels the
+contrast. Measured on the area-weighted table (raw d' 1.564 there, against 1.226 in the
+pixel-centre measurement above), 50 nearest buildings in the same quadrat: neighbours chosen
+by label keep **0.90x** of the raw separation against the all-neighbour **0.75x**, and choosing
+them by out-of-fold score below the deployment threshold, which needs no labels, keeps
+**0.94x**. It still does not help. The PV-free spread falls 42% in every variant, but even with
+label-chosen neighbours the visible and SWIR bands keep only 0 to 0.4x of their separation
+(B11 changes sign) while B06 to B8A keep all of it: most of the visible and SWIR contrast is
+neighbourhood-level, which roof stock adopts PV, rather than panel physics. Dividing by the
+neighbours' spread, a local z-score, is worse than plain differencing. Added to the shipped
+features, every variant moves within-size AUC by -0.0001 to -0.0016 per fold, better in 10 to
+13 of 29 folds, none significant; on their own they reach 0.769 to 0.774 against 0.819. The
+score-chosen version carries a second-order leak (a neighbour's score comes from a model that
+saw the held-out quadrat), which can only flatter it. Script:
+`scripts/roofclf_pvfree_neighbour_contrast.py`; artifacts
+`results/roofclf_pvfree_neighbour_contrast_sep_k50.csv` and `_folds_k50.csv`.
 
 ### Sun geometry: neither glint nor high sun raises the contrast (2026-09-19)
 

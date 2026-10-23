@@ -87,6 +87,9 @@ results/glint_validation_pakistan/*
 !results/calibration_quadrats_validation.geojson
 !results/detection_spectral_signatures.csv
 !results/detection_feature_auc.csv
+!results/roofclf_covered_roof_spectra.csv
+!results/roofclf_pvfree_neighbour_contrast_sep_k50.csv
+!results/roofclf_pvfree_neighbour_contrast_folds_k50.csv
 !results/segmentation_examples.png
 !results/candidate_placement.png
 !results/quadrat_map.png

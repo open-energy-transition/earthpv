@@ -21,6 +21,8 @@ pipeline pass picks up the new values:
   * spectral signatures    results/detection_spectral_signatures.csv and
     and per-cue AUC        results/detection_feature_auc.csv, both written by
                            scripts/detection_domain_examples.py from gitignored data/
+  * covered-roof spectra   results/roofclf_covered_roof_spectra.csv, written by
+                           scripts/roofclf_covered_spectra.py from the same table
 
 The one exception is the per-installation recall table, which `earthpv evaluate`
 prints to stdout rather than writing to disk; it is transcribed into RECALL
@@ -1165,6 +1167,73 @@ def fig_feature_auc(t: Theme):
     save(fig, t, "feature_auc")
 
 
+def read_covered_spectra():
+    path = source("results/roofclf_covered_roof_spectra.csv")
+    if path is None:
+        return None
+    return list(csv.DictReader(path.open()))
+
+
+def fig_roofclf_covered_spectra(t: Theme):
+    """Why roofclf reads the near infrared: mostly covered roofs against bare ones.
+
+    Bands are evenly spaced rather than placed by wavelength, with one empty slot for the
+    865 -> 1,610 nm jump, which is where silicon's band edge sits and gets its line."""
+    rows = read_covered_spectra()
+    if rows is None:
+        return
+    xs = [i if i < 8 else i + 1 for i in range(len(rows))]
+    bare = [float(r["free_med"]) for r in rows]
+    cov = [float(r["covered_med"]) for r in rows]
+    fig, ax = new_fig(t, 7.6, 3.7)
+    ax.fill_between(xs, [float(r["free_q25"]) for r in rows],
+                    [float(r["free_q75"]) for r in rows], color=t.ink_faint, alpha=0.16,
+                    linewidth=0, zorder=1)
+    ax.plot(xs, bare, color=t.ink_faint, linewidth=2.0, marker="o", markersize=4, zorder=3,
+            label=f"PV-free roofs, same sizes (n={int(rows[0]['n_free']):,}), "
+                  "middle half shaded")
+    ax.plot(xs, cov, color=t.s1, linewidth=2.2, marker="o", markersize=4, zorder=4,
+            label=f"roofs at least 60% covered by PV (n={int(rows[0]['n_covered']):,})")
+    # Label only the bands the argument rests on: blue, the near-infrared peak, and the
+    # two shortwave bands either side of the silicon story.
+    for x, r, b, c in zip(xs, rows, bare, cov):
+        if r["band"] not in {"B02", "B08", "B11", "B12"}:
+            continue
+        pct = f"−{100 * (1 - c / b):.0f}%"
+        above = r["band"] == "B11"
+        ax.text(x, (b + 0.009) if above else (c - 0.009), pct, ha="center",
+                va="bottom" if above else "top", fontsize=9,
+                fontweight="bold" if r["band"] == "B08" else "normal",
+                color=t.s1 if r["band"] == "B08" else t.ink, zorder=5)
+    ax.axvline(8, color=t.ink_dim, linewidth=1.0, linestyle=(0, (4, 3)), zorder=2)
+    ax.text(7.9, 0.392, "1,100 nm", ha="right", va="bottom", fontsize=8.5, color=t.ink)
+    ax.text(7.85, 0.172, "← silicon absorbs", ha="right", va="bottom", fontsize=8,
+            color=t.ink_dim)
+    ax.text(8.15, 0.172, "silicon transparent →", ha="left", va="bottom", fontsize=8,
+            color=t.ink_dim)
+    for x, name in ((1, "visible"), (5, "near infrared"), (9.6, "shortwave infrared")):
+        ax.text(x, 0.392, name, ha="center", va="bottom", fontsize=8.5, color=t.ink_dim)
+    ax.set_yticks([0.20, 0.25, 0.30, 0.35])
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.2f}"))
+    ax.set_xticks(xs)
+    ax.set_xticklabels([f"{r['band']}\n{int(r['wavelength_nm']):,}" for r in rows],
+                       fontsize=8)
+    ax.set_xlim(-0.6, 10.6)
+    ax.set_ylim(0.165, 0.39)
+    ax.set_ylabel("median footprint reflectance", fontsize=8.5, color=t.ink_dim)
+    ax.set_xlabel("Sentinel-2 band and centre wavelength, nm", fontsize=8.5, color=t.ink_dim)
+    style_axes(ax, t, ygrid=True)
+    leg = ax.legend(frameon=False, loc="upper left", fontsize=8, bbox_to_anchor=(0.0, 0.93))
+    for txt in leg.get_texts():
+        txt.set_color(t.ink_dim)
+    titled(fig, t, "Panels darken a roof most in the near infrared, least just past 1,100 nm",
+           "Median Sentinel-2 reflectance over building footprints in the 30 Pakistani "
+           "calibration quadrats. Silicon absorbs everything shorter than about 1,100 nm, so "
+           "the gap widens with the roof's own near-infrared brightness and nearly closes in "
+           "B11, where light passes through the cell and reflects off its back", width=112)
+    save(fig, t, "roofclf_covered_spectra")
+
+
 # ----------------------------------------- the building join, calibration and MaStR
 
 
@@ -1784,6 +1853,59 @@ PIPELINE_STRIP = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="
   <g stroke="{s3}" stroke-width="1.6" fill="none"><path d="M650,146 H676"/></g>
 
   <text x="30" y="200" font-size="10.5" fill="{dim}">False positives are useful on the top path and forbidden on the bottom one, so only the bottom path is precision-calibrated.</text>
+</svg>
+"""
+
+# What light does in a module against a roof, for docs/methods/roofclf-physics.md. The
+# layers are drawn in material colours (dark silicon, grey metal, pale concrete) that stay
+# the same in both themes, because the point is that one is dark and the other is not;
+# only text, rules and the two light paths follow the theme. Amber = the light silicon
+# keeps (below 1,100 nm), teal = the light it lets through.
+LIGHT_PATHS = """<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360"
+     viewBox="0 0 760 360" font-family="DejaVu Sans, system-ui, sans-serif">
+  <defs>
+    <marker id="lp-keep-{sfx}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="{s1}"/></marker>
+    <marker id="lp-pass-{sfx}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="{s3}"/></marker>
+  </defs>
+  <rect width="760" height="360" rx="10" fill="{surface}"/>
+  <text x="24" y="30" font-size="14" font-weight="600" fill="{ink}">A module absorbs the light that a roof sends back</text>
+  <text x="24" y="50" font-size="10.5" fill="{dim}">Cross-sections, not to scale</text>
+
+  <text x="24" y="86" font-size="12" font-weight="600" fill="{ink}">Solar module</text>
+  <rect x="176" y="120" width="220" height="20" fill="{card}" stroke="{dim}"/>
+  <rect x="176" y="140" width="220" height="5" fill="{s2}" fill-opacity="0.6" stroke="{dim}"/>
+  <rect x="176" y="145" width="220" height="50" fill="#2f3742" stroke="{dim}"/>
+  <rect x="176" y="195" width="220" height="8" fill="#9aa0a6" stroke="{dim}"/>
+  <text x="168" y="134" text-anchor="end" font-size="10.5" fill="{dim}">Glass</text>
+  <text x="168" y="148" text-anchor="end" font-size="10.5" fill="{dim}">Anti-reflection coating</text>
+  <text x="168" y="174" text-anchor="end" font-size="10.5" fill="{dim}">Silicon cell</text>
+  <text x="168" y="203" text-anchor="end" font-size="10.5" fill="{dim}">Metal rear contact</text>
+  <path d="M240 92V178" fill="none" stroke="{s1}" stroke-width="2.5" marker-end="url(#lp-keep-{sfx})"/>
+  <path d="M252 140L276 98" fill="none" stroke="{s1}" stroke-opacity="0.55" stroke-width="1.5" marker-end="url(#lp-keep-{sfx})"/>
+  <path d="M320 92L336 199L352 92" fill="none" stroke="{s3}" stroke-width="2.5" marker-end="url(#lp-pass-{sfx})"/>
+  <line x1="420" x2="440" y1="108" y2="108" stroke="{s1}" stroke-width="2.5"/>
+  <text x="448" y="112" font-size="11" font-weight="600" fill="{ink}">Visible and near infrared, below 1,100 nm</text>
+  <text x="448" y="128" font-size="10.5" fill="{dim}">absorbed by the silicon, becomes current</text>
+  <line x1="420" x2="440" y1="150" y2="150" stroke="{s1}" stroke-opacity="0.55" stroke-width="1.5"/>
+  <text x="448" y="154" font-size="10.5" fill="{dim}">a little reflected, mostly blue</text>
+  <line x1="420" x2="440" y1="180" y2="180" stroke="{s3}" stroke-width="2.5"/>
+  <text x="448" y="184" font-size="11" font-weight="600" fill="{ink}">Shortwave infrared, above 1,100 nm</text>
+  <text x="448" y="200" font-size="10.5" fill="{dim}">passes through and reflects off the back</text>
+
+  <line x1="24" x2="736" y1="226" y2="226" stroke="{rule}"/>
+
+  <text x="24" y="250" font-size="12" font-weight="600" fill="{ink}">Ordinary roof</text>
+  <rect x="176" y="290" width="220" height="28" fill="#d8d0c0" stroke="{dim}"/>
+  <text x="168" y="308" text-anchor="end" font-size="10.5" fill="{dim}">Concrete, metal or brick</text>
+  <path d="M220 254L246 288L272 254" fill="none" stroke="{s1}" stroke-width="2.5" marker-end="url(#lp-keep-{sfx})"/>
+  <path d="M316 254L342 288L368 254" fill="none" stroke="{s3}" stroke-width="2.5" marker-end="url(#lp-pass-{sfx})"/>
+  <line x1="420" x2="440" y1="270" y2="270" stroke="{s1}" stroke-width="2.5"/>
+  <text x="448" y="274" font-size="11" font-weight="600" fill="{ink}">Visible and near infrared</text>
+  <text x="448" y="290" font-size="10.5" fill="{dim}">scattered back, more in the near infrared</text>
+  <text x="448" y="306" font-size="10.5" fill="{dim}">than in blue</text>
+  <line x1="420" x2="440" y1="326" y2="326" stroke="{s3}" stroke-width="2.5"/>
+  <text x="448" y="330" font-size="11" font-weight="600" fill="{ink}">Shortwave infrared</text>
+  <text x="448" y="346" font-size="10.5" fill="{dim}">scattered back as well</text>
 </svg>
 """
 
@@ -2659,6 +2781,7 @@ def main():
         fig_hann_overlap(t)
         fig_spectral_signatures(t)
         fig_feature_auc(t)
+        fig_roofclf_covered_spectra(t)
         fig_building_prior(t)
         fig_calibration_placement(t)
         fig_mastr_size_share(t)
@@ -2674,6 +2797,7 @@ def main():
     print("diagrams")
     write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
     write_svg_pair(PIPELINE_STRIP, "two_products")
+    write_svg_pair(LIGHT_PATHS, "roofclf_light_paths")
     write_architecture_diagram()
     write_roofclf_diagram()
     write_evidence_workflow_diagram()

@@ -124,7 +124,9 @@ Two honest readings of that figure, and both matter:
   The dip is deepest in the red and near-infrared (6 to 8% from B04 through B08,
   which is the light a module exists to absorb) and shallowest in blue and in the first
   SWIR band (glass reflects blue slightly better, and silicon stops absorbing beyond its
-  band gap, so B11 recovers to a 3% gap).
+  band gap, so B11 recovers to a 3% gap). [How roofclf sees panels](roofclf-physics.md)
+  walks through that physics with a cross-section and the same comparison on roofs at
+  least 60% covered.
   That shape, "dark, slightly blue, with a relative SWIR excess", is what the derived
   features (`blue_red_ratio`, `ndbi`, `brightness`) each capture one slice of, and it is
   the same physics [SPPI](../issues/sppi-spectral-index-evaluation.md) hard-codes as a
@@ -529,6 +531,7 @@ works on the un-curated rest of the country.
 
 | Topic | Page |
 | --- | --- |
+| Why panels read dark in the near infrared, and the physical limits that follow | [How roofclf sees panels](roofclf-physics.md) |
 | The quadrats: how they are drawn, mapped and declared complete | [Calibration quadrats](calibration-quadrats.md), [Quadrat protocol](../calibration-mapping-protocol.md) |
 | The random-cell validation protocol and its log | [Roofclf random-cell validation](roofclf-national-validation.md) |
 | How the sub-400 m<sup>2</sup> capacity bracket was arrived at | [Capacity density](density.md) |
