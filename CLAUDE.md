@@ -183,6 +183,22 @@ resumable per-cell like `density`.
 Ruff is configured (line-length 100) but run manually. The practical "does it work" check is a
 small end-to-end run: `chips --aoi germany --limit 500` → `train --smoke` → `evaluate`.
 
+**The released segmentation model is v14, fetched with `pixi run fetch-model` (2026-10-23).**
+`scripts/fetch_model.py` downloads `earthpv_segmentation_v14.ckpt` from the GitHub release
+`segmentation-model-v14-2026-10-23` into `data/models/release/` and checks its SHA-256;
+`new_region.py plan` and the setup docs take the file name from its `RELEASE` dict. It is
+`v14_combined_south_africa` epoch 41 put through `scripts/slim_checkpoint.py` (optimizer state
+dropped, `backbone_pretrained: false`, so 33 MB and no Hugging Face download at load), and with
+the committed code it reproduces South Africa's published probability raster byte for byte.
+It won a seven-checkpoint, eleven-region benchmark on installation recall (84.4% against v5's
+81.5% outside South Africa, paired p < 1e-30; rooftop 400-5,000 m2 52.3% against 49.1%) at lower
+pixel precision (0.72 against 0.79; it spreads into the desert around Moroccan parks). v15 is
+the precise alternative and is not released. Table: `results/release_model_benchmark.csv`,
+write-up: `docs/pretrained-model.md`. **Every published atlas still runs on its own country's
+checkpoint; the release changes no published number.** To release a newer model: slim it, upload
+it with `SHA256SUMS` and `MODEL_CARD.md` to a new tag, update `RELEASE`, and redo the page's
+tables from the same benchmark.
+
 ## Architecture
 
 ### Data reuse -- the load-bearing design decision

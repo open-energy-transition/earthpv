@@ -12,6 +12,7 @@
 
 [Documentation](https://open-energy-transition.github.io/earthpv/) &nbsp;·&nbsp;
 [Country atlases](https://open-energy-transition.github.io/earthpv/atlas/) &nbsp;·&nbsp;
+[Pretrained model](https://open-energy-transition.github.io/earthpv/pretrained-model/) &nbsp;·&nbsp;
 [Set up a new country](https://open-energy-transition.github.io/earthpv/reproduce/) &nbsp;·&nbsp;
 [Experiments](https://open-energy-transition.github.io/earthpv/experiments/) &nbsp;·&nbsp;
 [Discord](https://discord.gg/T5zh6N24Hv)
@@ -119,6 +120,31 @@ to a coin flip, and most smaller systems are missed.** Detection is recall-first
 10 PV-free buildings is also flagged, so detections are leads for human verification, not a
 finished inventory. Where household systems are a fraction of a pixel, as in France, the
 small-rooftop half does not work at all.
+
+## Run the pretrained model
+
+The segmentation model is published as a
+[GitHub release](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23):
+TerraMind tiny fine-tuned on OpenStreetMap solar labels from Germany, Pakistan, India,
+France and South Africa, 33 MB, and the best of seven checkpoints on held-out regions in
+eleven countries. You need Linux and an NVIDIA GPU; a 6 GB GTX 1060 is enough.
+
+```bash
+git clone https://github.com/open-energy-transition/earthpv.git && cd earthpv
+pixi install && pixi install -e ml     # data pipeline, then PyTorch and TerraTorch
+pixi run fetch-model                   # downloads the checkpoint and checks its SHA-256
+
+pixi run python scripts/new_region.py add --aoi <aoi> --bbox <bbox> --iso3 <ISO3>
+pixi run earthpv compose --aoi <aoi> --window <clear-season START:END>    # hours
+pixi run -e ml earthpv infer --aoi <aoi> --checkpoint data/models/release/earthpv_segmentation_v14.ckpt
+pixi run earthpv postprocess --aoi <aoi> --threshold 0.3
+pixi run earthpv export --aoi <aoi>    # ranked candidates for OpenStreetMap mappers
+```
+
+It finds arrays of roughly 400 m² and up, and ground-mount at any size; small rooftop
+systems need the locally calibrated roofclf half. What it was trained on, how it scores in
+each country and where it fails:
+[Pretrained model](https://open-energy-transition.github.io/earthpv/pretrained-model/).
 
 ## Add your country
 

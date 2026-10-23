@@ -181,6 +181,7 @@ nav:
       - Glint image gallery: glint_examples.md
       - Validity and limitations: methods/validity.md
   - Setup:
+      - Pretrained model: pretrained-model.md
       - Tutorial: tutorial.md
       - Setup New Country: reproduce.md
       - Country data registry: data-registry.md

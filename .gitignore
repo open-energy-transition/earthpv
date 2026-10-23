@@ -126,6 +126,10 @@ results/pakistan_roofclf_parcel_validation/*
 !results/pakistan_roofclf_parcel_validation/*.geojson
 !results/pakistan_roofclf_parcel_validation/*.mapcss
 
+# The cross-country checkpoint benchmark behind the released segmentation model
+# (docs/pretrained-model.md), scored 2026-10-23 on the held-out chips of eleven regions.
+!results/release_model_benchmark.csv
+
 # Atlas data packs staged for a GitHub Release; the MANIFEST under configs/ is what
 # gets committed, never the assets themselves.
 dist/

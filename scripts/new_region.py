@@ -285,9 +285,10 @@ same command after an interruption and it continues.
      systemd-run --user --collect --unit=earthpv-compose-{aoi} \\
        -p WorkingDirectory={repo} bash scripts/compose_loop.sh {aoi} 0 1000
 
-  3. Detect, reusing the existing checkpoint            (GPU)
+  3. Detect with the released checkpoint                (GPU)
+     pixi run fetch-model
      pixi run -e ml earthpv infer --aoi {aoi} \\
-       --checkpoint data/models/v2_combined/terramind-pv-epoch=39.ckpt
+       --checkpoint {checkpoint}
 
   4. Rank and export leads for mappers
      pixi run earthpv postprocess --aoi {aoi} --threshold 0.3 --max-building-dist 30
@@ -310,7 +311,7 @@ same command after an interruption and it continues.
      pixi run earthpv density --aoi {aoi} --districts
      pixi run earthpv atlas --aoi {aoi}
 
-Full guide: https://open-energy-transition.github.io/earthpv/scale/
+Full guide: https://open-energy-transition.github.io/earthpv/reproduce/#scale-to-a-new-country
 """
 
 
@@ -329,7 +330,10 @@ def cmd_plan(args) -> int:
         print(f"warning: AOI '{args.aoi}' has no resolvable ISO3. Add "
               "`iso3: XXX` to its division block, or the VIDA and geoBoundaries "
               "lookups will fail later.\n")
+    from fetch_model import RELEASE  # scripts/ is on sys.path when run as a script
+
     print(PLAN.format(aoi=args.aoi, bbox=bbox, iso3=iso3, repo=REPO,
+                      checkpoint=f"data/models/release/{RELEASE['file']}",
                       rule="=" * (len(args.aoi) + 14)))
     return 0
 

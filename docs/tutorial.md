@@ -64,6 +64,10 @@ GPU, PyTorch, and every data path in between. You are ready to run something rea
 
 ## Next steps
 
+To run a real model rather than a smoke one, download the released checkpoint with
+`pixi run fetch-model` and pass `data/models/release/earthpv_segmentation_v14.ckpt` as
+`--checkpoint`; see [Pretrained model](pretrained-model.md).
+
 This tutorial stopped after training and evaluation. The full pipeline has more
 stages after this: inference, postprocessing, export, and capacity estimation. See
 [The full pipeline](reproduce.md#the-full-pipeline) for all sixteen steps in order,

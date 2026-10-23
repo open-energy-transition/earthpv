@@ -108,6 +108,9 @@ quadrat-correlations = "python scripts/quadrat_correlations.py"
 docs-figures = "python scripts/build_docs_figures.py"
 # Re-capture the interactive HTML pages as PNGs for the README (needs firefox).
 docs-screenshots = "python scripts/screenshot_pages.py"
+# Download the released segmentation checkpoint into data/models/release/ and check its
+# SHA-256. See docs/pretrained-model.md.
+fetch-model = "python scripts/fetch_model.py"
 
 [feature.docs.tasks]
 docs-serve = "mkdocs serve"

@@ -34,6 +34,16 @@ overhead.
 
 A third environment, `docs`, builds this site and is independent of both.
 
+**The trained model is a download, not a training run.** The best-performing segmentation
+checkpoint is published as a GitHub release:
+
+```bash
+pixi run fetch-model      # -> data/models/release/earthpv_segmentation_v14.ckpt, SHA-256 checked
+```
+
+Every `--checkpoint` below can point at it. What it was trained on, how it was chosen and
+where it is weak are on [Pretrained model](pretrained-model.md).
+
 ## Smoke test first
 
 A complete, minutes-long pass through every stage that touches the GPU. Do this on a fresh
@@ -581,8 +591,8 @@ this section explains the reasoning behind those commands.
 
 ### Step 3: first pass, no retraining
 
-A first candidate set needs no local training data at all. The existing Germany-plus-Pakistan
-checkpoint runs unchanged.
+A first candidate set needs no local training data at all. The
+[released checkpoint](pretrained-model.md) runs unchanged.
 
 ```bash
 # labels from live OpenStreetMap
@@ -593,8 +603,9 @@ systemd-run --user --collect --unit=earthpv-compose-surat-thani \
   -p WorkingDirectory="$PWD" bash scripts/compose_loop.sh surat_thani 0 1000
 
 # detect, rank, export
+pixi run fetch-model
 pixi run -e ml earthpv infer --aoi surat_thani \
-    --checkpoint data/models/v2_combined/terramind-pv-epoch=39.ckpt
+    --checkpoint data/models/release/earthpv_segmentation_v14.ckpt
 pixi run earthpv postprocess --aoi surat_thani --threshold 0.3 --max-building-dist 30
 pixi run earthpv export --aoi surat_thani --exclude-mapped --min-distance-m 100
 ```
@@ -755,11 +766,16 @@ thin, the building prior weakens and `--max-building-dist` filtering gets riskie
 
 ### Reusing the model itself
 
-The checkpoint under `data/models/` is Germany plus Pakistan. For a region resembling
-either, use it directly. For one that resembles neither, the ordering that worked here was:
-train on the region with the best label quality available (Germany), infer on the target,
-have people verify, retrain with the verified target-region chips oversampled. That
-sequence, not a bigger backbone, is what moved the numbers.
+Start from the [released checkpoint](pretrained-model.md) (`pixi run fetch-model`), which
+has seen OpenStreetMap solar in Germany, Pakistan, India, France and South Africa. Its
+zero-shot scores on countries it never saw are on that page, and they vary enough that a
+first pass is a measurement, not a result. Once mapping has
+produced local positives, the ordering that worked here is: infer on the target, have
+people verify, retrain with the verified target-region chips added to the corpus, and keep
+whichever checkpoint scores better on a held-out part of the country. That sequence, not a
+bigger backbone, is what moved the numbers: South Africa's pixel IoU went from 0.36 to 0.67
+on its own labels, while swapping TerraMind for THOR at the same patch size lowered pixel
+IoU on ten of eleven holdouts.
 
 ## Contribute your country atlas back
 
