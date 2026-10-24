@@ -1,0 +1,62 @@
+# CONTROL for configs/thor_pv_ps8_south_africa.yaml: THOR-Tiny at TerraMind's own 16 px
+# token (160 m at 10 m GSD), on v14's corpus with v14's recipe.
+#
+# The ps8 run changes two things against v14 at once: the model (THOR for TerraMind) and the
+# token size (8 px for 16 px). This run changes only the model. So
+#   ps16 vs v14  = the cost or gain of switching to THOR at all, and
+#   ps8 vs ps16  = the patch-size effect, which is the question.
+# At matched ps16 the ESA/IBM comparison (arXiv 2607.18504) had TerraMind ahead of THOR by
+# 3-7 pp; it would not be surprising to see that here too.
+#
+# Identical to the ps8 config except backbone_patch_sizes, checkpoint_dir and prefix. With
+# patch 16 the 10 m group is 14x14 = 196 tokens and the 20 m group 7x7 = 49 (320 m).
+# On the GTX 1060: 133 ms per batch of 8 (v14: 274; the math SDPA kernel is faster here),
+# 0.56 GB peak.
+data:
+  index_path: data/chips/combined_south_africa/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: earthpv_thor
+    backbone_pretrained: true
+    backbone_variant: thor_v1_tiny
+    backbone_model_bands: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+                           NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    backbone_band_mean: [0.151598, 0.178003, 0.181496, 0.227026, 0.331533, 0.370196, 0.381887, 0.394061, 0.329228, 0.25116]
+    backbone_band_std: [0.037901, 0.04311, 0.057257, 0.051839, 0.076995, 0.097409, 0.103217, 0.103859, 0.074614, 0.071169]
+    backbone_ground_cover: 2240
+    backbone_patch_sizes: 16
+    backbone_merge_method: concat
+    backbone_out_indices: [2, 5, 8, 11]
+    necks:
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/thor_ps16_combined_south_africa
+checkpoint_prefix: thor-ps16-pv
+patience: 8
+# Continue from last.ckpt if the run was killed (train.py); the first run was
+# killed by systemd-oomd 2026-10-22 23:39 under system-wide IO/memory pressure.
+resume: true
+monitor: val/mIoU
+monitor_mode: max

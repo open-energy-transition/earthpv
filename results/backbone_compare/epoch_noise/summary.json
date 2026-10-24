@@ -1,0 +1,3852 @@
+{
+  "name": "epoch_noise",
+  "baseline": "v14e41",
+  "checkpoints": {
+    "v14e41": "data/models/v14_combined_south_africa/terramind-pv-epoch=41-step=79968.ckpt",
+    "v14e49": "data/models/v14_combined_south_africa/terramind-pv-epoch=49-step=95200.ckpt",
+    "thor8e25": "data/models/thor_ps8_combined_south_africa/thor-ps8-pv-epoch=25-step=49504.ckpt",
+    "thor8e30": "data/models/thor_ps8_combined_south_africa/thor-ps8-pv-epoch=30-step=59024.ckpt"
+  },
+  "production_threshold": 0.3,
+  "match_aois": [
+    "south_africa",
+    "france",
+    "pakistan",
+    "punjab",
+    "poland"
+  ],
+  "precision_target": 0.7359,
+  "operating_points": {
+    "v14e41": {
+      "thr": 0.3,
+      "precision": 0.7359,
+      "reached": true
+    },
+    "v14e49": {
+      "thr": 0.3,
+      "precision": 0.7171,
+      "reached": false,
+      "curve": {
+        "0.3": 0.7171
+      }
+    },
+    "thor8e25": {
+      "thr": 0.3,
+      "precision": 0.7834,
+      "reached": true,
+      "curve": {
+        "0.3": 0.7834
+      }
+    },
+    "thor8e30": {
+      "thr": 0.3,
+      "precision": 0.7713,
+      "reached": true,
+      "curve": {
+        "0.3": 0.7713
+      }
+    }
+  },
+  "aois": {
+    "south_africa": {
+      "v14e41": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7835,
+            "recall": 0.8241,
+            "iou": 0.6713,
+            "tp": 245403,
+            "fp": 67800,
+            "fn": 52384
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 495,
+              "recall": 0.8967
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1307,
+              "recall": 0.9703
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 403,
+              "recall": 0.9527
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 351,
+              "recall": 0.7312
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 1127,
+              "recall": 0.5938
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7835,
+            "recall": 0.8241,
+            "iou": 0.6713,
+            "tp": 245403,
+            "fp": 67800,
+            "fn": 52384
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 495,
+              "recall": 0.8967
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1307,
+              "recall": 0.9703
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 403,
+              "recall": 0.9527
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 351,
+              "recall": 0.7312
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 1127,
+              "recall": 0.5938
+            }
+          ]
+        }
+      },
+      "v14e49": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7447,
+            "recall": 0.8327,
+            "iou": 0.6478,
+            "tp": 247968,
+            "fp": 84999,
+            "fn": 49819
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 493,
+              "recall": 0.8931
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1310,
+              "recall": 0.9725
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 402,
+              "recall": 0.9504
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 399,
+              "recall": 0.8313
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 1298,
+              "recall": 0.6839
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7447,
+            "recall": 0.8327,
+            "iou": 0.6478,
+            "tp": 247968,
+            "fp": 84999,
+            "fn": 49819
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 493,
+              "recall": 0.8931
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1310,
+              "recall": 0.9725
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 402,
+              "recall": 0.9504
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 399,
+              "recall": 0.8313
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 1298,
+              "recall": 0.6839
+            }
+          ]
+        }
+      },
+      "thor8e25": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.8145,
+            "recall": 0.7796,
+            "iou": 0.662,
+            "tp": 232153,
+            "fp": 52877,
+            "fn": 65634
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 497,
+              "recall": 0.9004
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1305,
+              "recall": 0.9688
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 403,
+              "recall": 0.9527
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 324,
+              "recall": 0.675
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 948,
+              "recall": 0.4995
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.8145,
+            "recall": 0.7796,
+            "iou": 0.662,
+            "tp": 232153,
+            "fp": 52877,
+            "fn": 65634
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 497,
+              "recall": 0.9004
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1305,
+              "recall": 0.9688
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 403,
+              "recall": 0.9527
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 324,
+              "recall": 0.675
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 948,
+              "recall": 0.4995
+            }
+          ]
+        }
+      },
+      "thor8e30": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.8132,
+            "recall": 0.7733,
+            "iou": 0.6566,
+            "tp": 230268,
+            "fp": 52894,
+            "fn": 67519
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 490,
+              "recall": 0.8877
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1303,
+              "recall": 0.9673
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 405,
+              "recall": 0.9574
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 267,
+              "recall": 0.5563
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 841,
+              "recall": 0.4431
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.8132,
+            "recall": 0.7733,
+            "iou": 0.6566,
+            "tp": 230268,
+            "fp": 52894,
+            "fn": 67519
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 552,
+              "detected": 490,
+              "recall": 0.8877
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 1347,
+              "detected": 1303,
+              "recall": 0.9673
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 423,
+              "detected": 405,
+              "recall": 0.9574
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 480,
+              "detected": 267,
+              "recall": 0.5563
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1898,
+              "detected": 841,
+              "recall": 0.4431
+            }
+          ]
+        }
+      },
+      "paired": {
+        "v14e49_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 4700,
+            "recall_new": 0.8302,
+            "recall_base": 0.7836,
+            "only_new": 286,
+            "only_base": 67,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4700,
+            "recall_new": 0.8302,
+            "recall_base": 0.7836,
+            "only_new": 286,
+            "only_base": 67,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 2378,
+            "recall_new": 0.7136,
+            "recall_base": 0.6215,
+            "only_new": 275,
+            "only_base": 56,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 2322,
+            "recall_new": 0.9496,
+            "recall_base": 0.9496,
+            "only_new": 11,
+            "only_base": 11,
+            "p_mcnemar": 1.0
+          }
+        },
+        "v14e49_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 4700,
+            "recall_new": 0.8302,
+            "recall_base": 0.7836,
+            "only_new": 286,
+            "only_base": 67,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4700,
+            "recall_new": 0.8302,
+            "recall_base": 0.7836,
+            "only_new": 286,
+            "only_base": 67,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 2378,
+            "recall_new": 0.7136,
+            "recall_base": 0.6215,
+            "only_new": 275,
+            "only_base": 56,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 2322,
+            "recall_new": 0.9496,
+            "recall_base": 0.9496,
+            "only_new": 11,
+            "only_base": 11,
+            "p_mcnemar": 1.0
+          }
+        },
+        "thor8e25_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 4700,
+            "recall_new": 0.7398,
+            "recall_base": 0.7836,
+            "only_new": 118,
+            "only_base": 324,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4700,
+            "recall_new": 0.7398,
+            "recall_base": 0.7836,
+            "only_new": 118,
+            "only_base": 324,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 2378,
+            "recall_new": 0.5349,
+            "recall_base": 0.6215,
+            "only_new": 106,
+            "only_base": 312,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 2322,
+            "recall_new": 0.9496,
+            "recall_base": 0.9496,
+            "only_new": 12,
+            "only_base": 12,
+            "p_mcnemar": 1.0
+          }
+        },
+        "thor8e25_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 4700,
+            "recall_new": 0.7398,
+            "recall_base": 0.7836,
+            "only_new": 118,
+            "only_base": 324,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4700,
+            "recall_new": 0.7398,
+            "recall_base": 0.7836,
+            "only_new": 118,
+            "only_base": 324,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 2378,
+            "recall_new": 0.5349,
+            "recall_base": 0.6215,
+            "only_new": 106,
+            "only_base": 312,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 2322,
+            "recall_new": 0.9496,
+            "recall_base": 0.9496,
+            "only_new": 12,
+            "only_base": 12,
+            "p_mcnemar": 1.0
+          }
+        },
+        "thor8e30_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 4700,
+            "recall_new": 0.7034,
+            "recall_base": 0.7836,
+            "only_new": 112,
+            "only_base": 489,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4700,
+            "recall_new": 0.7034,
+            "recall_base": 0.7836,
+            "only_new": 112,
+            "only_base": 489,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 2378,
+            "recall_new": 0.4659,
+            "recall_base": 0.6215,
+            "only_new": 98,
+            "only_base": 468,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 2322,
+            "recall_new": 0.9466,
+            "recall_base": 0.9496,
+            "only_new": 14,
+            "only_base": 21,
+            "p_mcnemar": 0.3105
+          }
+        },
+        "thor8e30_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 4700,
+            "recall_new": 0.7034,
+            "recall_base": 0.7836,
+            "only_new": 112,
+            "only_base": 489,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4700,
+            "recall_new": 0.7034,
+            "recall_base": 0.7836,
+            "only_new": 112,
+            "only_base": 489,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 2378,
+            "recall_new": 0.4659,
+            "recall_base": 0.6215,
+            "only_new": 98,
+            "only_base": 468,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 2322,
+            "recall_new": 0.9466,
+            "recall_base": 0.9496,
+            "only_new": 14,
+            "only_base": 21,
+            "p_mcnemar": 0.3105
+          }
+        }
+      }
+    },
+    "france": {
+      "v14e41": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7602,
+            "recall": 0.6417,
+            "iou": 0.5337,
+            "tp": 131582,
+            "fp": 41505,
+            "fn": 73473
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 86,
+              "recall": 0.585
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 269,
+              "recall": 0.5823
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 201,
+              "recall": 0.841
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 147,
+              "recall": 0.7136
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 429,
+              "recall": 0.3701
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 2,
+              "recall": 0.5
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7602,
+            "recall": 0.6417,
+            "iou": 0.5337,
+            "tp": 131582,
+            "fp": 41505,
+            "fn": 73473
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 86,
+              "recall": 0.585
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 269,
+              "recall": 0.5823
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 201,
+              "recall": 0.841
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 147,
+              "recall": 0.7136
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 429,
+              "recall": 0.3701
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 2,
+              "recall": 0.5
+            }
+          ]
+        }
+      },
+      "v14e49": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7486,
+            "recall": 0.6416,
+            "iou": 0.5279,
+            "tp": 131571,
+            "fp": 44183,
+            "fn": 73484
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 90,
+              "recall": 0.6122
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 279,
+              "recall": 0.6039
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 200,
+              "recall": 0.8368
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 148,
+              "recall": 0.7184
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 434,
+              "recall": 0.3745
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 0,
+              "recall": 0.0
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7486,
+            "recall": 0.6416,
+            "iou": 0.5279,
+            "tp": 131571,
+            "fp": 44183,
+            "fn": 73484
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 90,
+              "recall": 0.6122
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 279,
+              "recall": 0.6039
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 200,
+              "recall": 0.8368
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 148,
+              "recall": 0.7184
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 434,
+              "recall": 0.3745
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 0,
+              "recall": 0.0
+            }
+          ]
+        }
+      },
+      "thor8e25": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7897,
+            "recall": 0.6323,
+            "iou": 0.5411,
+            "tp": 129648,
+            "fp": 34527,
+            "fn": 75407
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 91,
+              "recall": 0.619
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 286,
+              "recall": 0.619
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 203,
+              "recall": 0.8494
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 165,
+              "recall": 0.801
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 613,
+              "recall": 0.5289
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 2,
+              "recall": 0.5
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7897,
+            "recall": 0.6323,
+            "iou": 0.5411,
+            "tp": 129648,
+            "fp": 34527,
+            "fn": 75407
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 91,
+              "recall": 0.619
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 286,
+              "recall": 0.619
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 203,
+              "recall": 0.8494
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 165,
+              "recall": 0.801
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 613,
+              "recall": 0.5289
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 2,
+              "recall": 0.5
+            }
+          ]
+        }
+      },
+      "thor8e30": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7798,
+            "recall": 0.6523,
+            "iou": 0.5509,
+            "tp": 133767,
+            "fp": 37775,
+            "fn": 71288
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 95,
+              "recall": 0.6463
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 290,
+              "recall": 0.6277
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 204,
+              "recall": 0.8536
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 157,
+              "recall": 0.7621
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 576,
+              "recall": 0.497
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 1,
+              "recall": 0.25
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7798,
+            "recall": 0.6523,
+            "iou": 0.5509,
+            "tp": 133767,
+            "fp": 37775,
+            "fn": 71288
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 147,
+              "detected": 95,
+              "recall": 0.6463
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 462,
+              "detected": 290,
+              "recall": 0.6277
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 239,
+              "detected": 204,
+              "recall": 0.8536
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 206,
+              "detected": 157,
+              "recall": 0.7621
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 1159,
+              "detected": 576,
+              "recall": 0.497
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 4,
+              "detected": 1,
+              "recall": 0.25
+            }
+          ]
+        }
+      },
+      "paired": {
+        "v14e49_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 2217,
+            "recall_new": 0.5192,
+            "recall_base": 0.5115,
+            "only_new": 138,
+            "only_base": 121,
+            "p_mcnemar": 0.3201
+          },
+          "ge400": {
+            "n": 2217,
+            "recall_new": 0.5192,
+            "recall_base": 0.5115,
+            "only_new": 138,
+            "only_base": 121,
+            "p_mcnemar": 0.3201
+          },
+          "rooftop_400_5000": {
+            "n": 1365,
+            "recall_new": 0.4264,
+            "recall_base": 0.422,
+            "only_new": 108,
+            "only_base": 102,
+            "p_mcnemar": 0.7302
+          },
+          "ground_ge400": {
+            "n": 848,
+            "recall_new": 0.671,
+            "recall_base": 0.6557,
+            "only_new": 30,
+            "only_base": 17,
+            "p_mcnemar": 0.0789
+          }
+        },
+        "v14e49_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 2217,
+            "recall_new": 0.5192,
+            "recall_base": 0.5115,
+            "only_new": 138,
+            "only_base": 121,
+            "p_mcnemar": 0.3201
+          },
+          "ge400": {
+            "n": 2217,
+            "recall_new": 0.5192,
+            "recall_base": 0.5115,
+            "only_new": 138,
+            "only_base": 121,
+            "p_mcnemar": 0.3201
+          },
+          "rooftop_400_5000": {
+            "n": 1365,
+            "recall_new": 0.4264,
+            "recall_base": 0.422,
+            "only_new": 108,
+            "only_base": 102,
+            "p_mcnemar": 0.7302
+          },
+          "ground_ge400": {
+            "n": 848,
+            "recall_new": 0.671,
+            "recall_base": 0.6557,
+            "only_new": 30,
+            "only_base": 17,
+            "p_mcnemar": 0.0789
+          }
+        },
+        "thor8e25_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 2217,
+            "recall_new": 0.6134,
+            "recall_base": 0.5115,
+            "only_new": 337,
+            "only_base": 111,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 2217,
+            "recall_new": 0.6134,
+            "recall_base": 0.5115,
+            "only_new": 337,
+            "only_base": 111,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 1365,
+            "recall_new": 0.57,
+            "recall_base": 0.422,
+            "only_new": 282,
+            "only_base": 80,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 848,
+            "recall_new": 0.684,
+            "recall_base": 0.6557,
+            "only_new": 54,
+            "only_base": 30,
+            "p_mcnemar": 0.0116
+          }
+        },
+        "thor8e25_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 2217,
+            "recall_new": 0.6134,
+            "recall_base": 0.5115,
+            "only_new": 337,
+            "only_base": 111,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 2217,
+            "recall_new": 0.6134,
+            "recall_base": 0.5115,
+            "only_new": 337,
+            "only_base": 111,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 1365,
+            "recall_new": 0.57,
+            "recall_base": 0.422,
+            "only_new": 282,
+            "only_base": 80,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 848,
+            "recall_new": 0.684,
+            "recall_base": 0.6557,
+            "only_new": 54,
+            "only_base": 30,
+            "p_mcnemar": 0.0116
+          }
+        },
+        "thor8e30_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 2217,
+            "recall_new": 0.5968,
+            "recall_base": 0.5115,
+            "only_new": 319,
+            "only_base": 130,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 2217,
+            "recall_new": 0.5968,
+            "recall_base": 0.5115,
+            "only_new": 319,
+            "only_base": 130,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 1365,
+            "recall_new": 0.537,
+            "recall_base": 0.422,
+            "only_new": 261,
+            "only_base": 104,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 848,
+            "recall_new": 0.6946,
+            "recall_base": 0.6557,
+            "only_new": 58,
+            "only_base": 25,
+            "p_mcnemar": 0.0004
+          }
+        },
+        "thor8e30_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 2217,
+            "recall_new": 0.5968,
+            "recall_base": 0.5115,
+            "only_new": 319,
+            "only_base": 130,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 2217,
+            "recall_new": 0.5968,
+            "recall_base": 0.5115,
+            "only_new": 319,
+            "only_base": 130,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 1365,
+            "recall_new": 0.537,
+            "recall_base": 0.422,
+            "only_new": 261,
+            "only_base": 104,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 848,
+            "recall_new": 0.6946,
+            "recall_base": 0.6557,
+            "only_new": 58,
+            "only_base": 25,
+            "p_mcnemar": 0.0004
+          }
+        }
+      }
+    },
+    "pakistan": {
+      "v14e41": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.6063,
+            "recall": 0.8069,
+            "iou": 0.5295,
+            "tp": 20613,
+            "fp": 13385,
+            "fn": 4932
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 113,
+              "recall": 0.8968
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 37,
+              "recall": 0.4111
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 33,
+              "recall": 0.7674
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 29,
+              "recall": 0.537
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.6063,
+            "recall": 0.8069,
+            "iou": 0.5295,
+            "tp": 20613,
+            "fp": 13385,
+            "fn": 4932
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 113,
+              "recall": 0.8968
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 37,
+              "recall": 0.4111
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 33,
+              "recall": 0.7674
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 29,
+              "recall": 0.537
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        }
+      },
+      "v14e49": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.5969,
+            "recall": 0.8225,
+            "iou": 0.5287,
+            "tp": 21010,
+            "fp": 14191,
+            "fn": 4535
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 115,
+              "recall": 0.9127
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 50,
+              "recall": 0.5556
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 33,
+              "recall": 0.7674
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 24,
+              "recall": 0.4444
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.5969,
+            "recall": 0.8225,
+            "iou": 0.5287,
+            "tp": 21010,
+            "fp": 14191,
+            "fn": 4535
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 115,
+              "recall": 0.9127
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 50,
+              "recall": 0.5556
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 33,
+              "recall": 0.7674
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 24,
+              "recall": 0.4444
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        }
+      },
+      "thor8e25": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.6262,
+            "recall": 0.8073,
+            "iou": 0.5448,
+            "tp": 20623,
+            "fp": 12312,
+            "fn": 4922
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 112,
+              "recall": 0.8889
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 29,
+              "recall": 0.3222
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 32,
+              "recall": 0.7442
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 25,
+              "recall": 0.463
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.6262,
+            "recall": 0.8073,
+            "iou": 0.5448,
+            "tp": 20623,
+            "fp": 12312,
+            "fn": 4922
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 112,
+              "recall": 0.8889
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 29,
+              "recall": 0.3222
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 32,
+              "recall": 0.7442
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 25,
+              "recall": 0.463
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        }
+      },
+      "thor8e30": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.6094,
+            "recall": 0.8154,
+            "iou": 0.5355,
+            "tp": 20829,
+            "fp": 13352,
+            "fn": 4716
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 113,
+              "recall": 0.8968
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 29,
+              "recall": 0.3222
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 29,
+              "recall": 0.6744
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 18,
+              "recall": 0.3333
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.6094,
+            "recall": 0.8154,
+            "iou": 0.5355,
+            "tp": 20829,
+            "fp": 13352,
+            "fn": 4716
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 126,
+              "detected": 113,
+              "recall": 0.8968
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 90,
+              "detected": 29,
+              "recall": 0.3222
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 94,
+              "detected": 91,
+              "recall": 0.9681
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 43,
+              "detected": 29,
+              "recall": 0.6744
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 54,
+              "detected": 18,
+              "recall": 0.3333
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 13,
+              "detected": 11,
+              "recall": 0.8462
+            }
+          ]
+        }
+      },
+      "paired": {
+        "v14e49_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 420,
+            "recall_new": 0.7714,
+            "recall_base": 0.7476,
+            "only_new": 22,
+            "only_base": 12,
+            "p_mcnemar": 0.1214
+          },
+          "ge400": {
+            "n": 420,
+            "recall_new": 0.7714,
+            "recall_base": 0.7476,
+            "only_new": 22,
+            "only_base": 12,
+            "p_mcnemar": 0.1214
+          },
+          "rooftop_400_5000": {
+            "n": 97,
+            "recall_new": 0.5876,
+            "recall_base": 0.6392,
+            "only_new": 4,
+            "only_base": 9,
+            "p_mcnemar": 0.2668
+          },
+          "ground_ge400": {
+            "n": 310,
+            "recall_new": 0.8258,
+            "recall_base": 0.7774,
+            "only_new": 18,
+            "only_base": 3,
+            "p_mcnemar": 0.0015
+          }
+        },
+        "v14e49_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 420,
+            "recall_new": 0.7714,
+            "recall_base": 0.7476,
+            "only_new": 22,
+            "only_base": 12,
+            "p_mcnemar": 0.1214
+          },
+          "ge400": {
+            "n": 420,
+            "recall_new": 0.7714,
+            "recall_base": 0.7476,
+            "only_new": 22,
+            "only_base": 12,
+            "p_mcnemar": 0.1214
+          },
+          "rooftop_400_5000": {
+            "n": 97,
+            "recall_new": 0.5876,
+            "recall_base": 0.6392,
+            "only_new": 4,
+            "only_base": 9,
+            "p_mcnemar": 0.2668
+          },
+          "ground_ge400": {
+            "n": 310,
+            "recall_new": 0.8258,
+            "recall_base": 0.7774,
+            "only_new": 18,
+            "only_base": 3,
+            "p_mcnemar": 0.0015
+          }
+        },
+        "thor8e25_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 420,
+            "recall_new": 0.7143,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 30,
+            "p_mcnemar": 0.0541
+          },
+          "ge400": {
+            "n": 420,
+            "recall_new": 0.7143,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 30,
+            "p_mcnemar": 0.0541
+          },
+          "rooftop_400_5000": {
+            "n": 97,
+            "recall_new": 0.5876,
+            "recall_base": 0.6392,
+            "only_new": 6,
+            "only_base": 11,
+            "p_mcnemar": 0.3323
+          },
+          "ground_ge400": {
+            "n": 310,
+            "recall_new": 0.7484,
+            "recall_base": 0.7774,
+            "only_new": 10,
+            "only_base": 19,
+            "p_mcnemar": 0.136
+          }
+        },
+        "thor8e25_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 420,
+            "recall_new": 0.7143,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 30,
+            "p_mcnemar": 0.0541
+          },
+          "ge400": {
+            "n": 420,
+            "recall_new": 0.7143,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 30,
+            "p_mcnemar": 0.0541
+          },
+          "rooftop_400_5000": {
+            "n": 97,
+            "recall_new": 0.5876,
+            "recall_base": 0.6392,
+            "only_new": 6,
+            "only_base": 11,
+            "p_mcnemar": 0.3323
+          },
+          "ground_ge400": {
+            "n": 310,
+            "recall_new": 0.7484,
+            "recall_base": 0.7774,
+            "only_new": 10,
+            "only_base": 19,
+            "p_mcnemar": 0.136
+          }
+        },
+        "thor8e30_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 420,
+            "recall_new": 0.6929,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 39,
+            "p_mcnemar": 0.0027
+          },
+          "ge400": {
+            "n": 420,
+            "recall_new": 0.6929,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 39,
+            "p_mcnemar": 0.0027
+          },
+          "rooftop_400_5000": {
+            "n": 97,
+            "recall_new": 0.4845,
+            "recall_base": 0.6392,
+            "only_new": 5,
+            "only_base": 20,
+            "p_mcnemar": 0.0041
+          },
+          "ground_ge400": {
+            "n": 310,
+            "recall_new": 0.7516,
+            "recall_base": 0.7774,
+            "only_new": 11,
+            "only_base": 19,
+            "p_mcnemar": 0.2005
+          }
+        },
+        "thor8e30_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 420,
+            "recall_new": 0.6929,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 39,
+            "p_mcnemar": 0.0027
+          },
+          "ge400": {
+            "n": 420,
+            "recall_new": 0.6929,
+            "recall_base": 0.7476,
+            "only_new": 16,
+            "only_base": 39,
+            "p_mcnemar": 0.0027
+          },
+          "rooftop_400_5000": {
+            "n": 97,
+            "recall_new": 0.4845,
+            "recall_base": 0.6392,
+            "only_new": 5,
+            "only_base": 20,
+            "p_mcnemar": 0.0041
+          },
+          "ground_ge400": {
+            "n": 310,
+            "recall_new": 0.7516,
+            "recall_base": 0.7774,
+            "only_new": 11,
+            "only_base": 19,
+            "p_mcnemar": 0.2005
+          }
+        }
+      }
+    },
+    "punjab": {
+      "v14e41": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.4986,
+            "recall": 0.6189,
+            "iou": 0.3814,
+            "tp": 11749,
+            "fp": 11816,
+            "fn": 7236
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 20,
+              "recall": 0.7407
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 17,
+              "recall": 0.3617
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 270,
+              "recall": 0.7826
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 27,
+              "recall": 0.2547
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 40,
+              "recall": 0.8696
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.4986,
+            "recall": 0.6189,
+            "iou": 0.3814,
+            "tp": 11749,
+            "fp": 11816,
+            "fn": 7236
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 20,
+              "recall": 0.7407
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 17,
+              "recall": 0.3617
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 270,
+              "recall": 0.7826
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 27,
+              "recall": 0.2547
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 40,
+              "recall": 0.8696
+            }
+          ]
+        }
+      },
+      "v14e49": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.4587,
+            "recall": 0.6902,
+            "iou": 0.3804,
+            "tp": 13103,
+            "fp": 15464,
+            "fn": 5882
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 24,
+              "recall": 0.8889
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 27,
+              "recall": 0.5745
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 290,
+              "recall": 0.8406
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 40,
+              "recall": 0.3774
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 40,
+              "recall": 0.8696
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.4587,
+            "recall": 0.6902,
+            "iou": 0.3804,
+            "tp": 13103,
+            "fp": 15464,
+            "fn": 5882
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 24,
+              "recall": 0.8889
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 27,
+              "recall": 0.5745
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 290,
+              "recall": 0.8406
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 40,
+              "recall": 0.3774
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 40,
+              "recall": 0.8696
+            }
+          ]
+        }
+      },
+      "thor8e25": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.5183,
+            "recall": 0.6514,
+            "iou": 0.4057,
+            "tp": 12366,
+            "fp": 11494,
+            "fn": 6619
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 20,
+              "recall": 0.7407
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 16,
+              "recall": 0.3404
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 264,
+              "recall": 0.7652
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 26,
+              "recall": 0.2453
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 39,
+              "recall": 0.8478
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.5183,
+            "recall": 0.6514,
+            "iou": 0.4057,
+            "tp": 12366,
+            "fp": 11494,
+            "fn": 6619
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 20,
+              "recall": 0.7407
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 16,
+              "recall": 0.3404
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 264,
+              "recall": 0.7652
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 26,
+              "recall": 0.2453
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 39,
+              "recall": 0.8478
+            }
+          ]
+        }
+      },
+      "thor8e30": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.5016,
+            "recall": 0.6957,
+            "iou": 0.4114,
+            "tp": 13207,
+            "fp": 13121,
+            "fn": 5778
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 23,
+              "recall": 0.8519
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 20,
+              "recall": 0.4255
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 272,
+              "recall": 0.7884
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 31,
+              "recall": 0.2925
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 39,
+              "recall": 0.8478
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.5016,
+            "recall": 0.6957,
+            "iou": 0.4114,
+            "tp": 13207,
+            "fp": 13121,
+            "fn": 5778
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 27,
+              "detected": 23,
+              "recall": 0.8519
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 47,
+              "detected": 20,
+              "recall": 0.4255
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 6,
+              "detected": 4,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 345,
+              "detected": 272,
+              "recall": 0.7884
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 106,
+              "detected": 31,
+              "recall": 0.2925
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 46,
+              "detected": 39,
+              "recall": 0.8478
+            }
+          ]
+        }
+      },
+      "paired": {
+        "v14e49_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 577,
+            "recall_new": 0.7366,
+            "recall_base": 0.6551,
+            "only_new": 52,
+            "only_base": 5,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 577,
+            "recall_new": 0.7366,
+            "recall_base": 0.6551,
+            "only_new": 52,
+            "only_base": 5,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 451,
+            "recall_new": 0.7317,
+            "recall_base": 0.6585,
+            "only_new": 37,
+            "only_base": 4,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 80,
+            "recall_new": 0.6875,
+            "recall_base": 0.5125,
+            "only_new": 15,
+            "only_base": 1,
+            "p_mcnemar": 0.0005
+          }
+        },
+        "v14e49_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 577,
+            "recall_new": 0.7366,
+            "recall_base": 0.6551,
+            "only_new": 52,
+            "only_base": 5,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 577,
+            "recall_new": 0.7366,
+            "recall_base": 0.6551,
+            "only_new": 52,
+            "only_base": 5,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 451,
+            "recall_new": 0.7317,
+            "recall_base": 0.6585,
+            "only_new": 37,
+            "only_base": 4,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 80,
+            "recall_new": 0.6875,
+            "recall_base": 0.5125,
+            "only_new": 15,
+            "only_base": 1,
+            "p_mcnemar": 0.0005
+          }
+        },
+        "thor8e25_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 577,
+            "recall_new": 0.6395,
+            "recall_base": 0.6551,
+            "only_new": 23,
+            "only_base": 32,
+            "p_mcnemar": 0.2806
+          },
+          "ge400": {
+            "n": 577,
+            "recall_new": 0.6395,
+            "recall_base": 0.6551,
+            "only_new": 23,
+            "only_base": 32,
+            "p_mcnemar": 0.2806
+          },
+          "rooftop_400_5000": {
+            "n": 451,
+            "recall_new": 0.643,
+            "recall_base": 0.6585,
+            "only_new": 20,
+            "only_base": 27,
+            "p_mcnemar": 0.3817
+          },
+          "ground_ge400": {
+            "n": 80,
+            "recall_new": 0.5,
+            "recall_base": 0.5125,
+            "only_new": 3,
+            "only_base": 4,
+            "p_mcnemar": 1.0
+          }
+        },
+        "thor8e25_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 577,
+            "recall_new": 0.6395,
+            "recall_base": 0.6551,
+            "only_new": 23,
+            "only_base": 32,
+            "p_mcnemar": 0.2806
+          },
+          "ge400": {
+            "n": 577,
+            "recall_new": 0.6395,
+            "recall_base": 0.6551,
+            "only_new": 23,
+            "only_base": 32,
+            "p_mcnemar": 0.2806
+          },
+          "rooftop_400_5000": {
+            "n": 451,
+            "recall_new": 0.643,
+            "recall_base": 0.6585,
+            "only_new": 20,
+            "only_base": 27,
+            "p_mcnemar": 0.3817
+          },
+          "ground_ge400": {
+            "n": 80,
+            "recall_new": 0.5,
+            "recall_base": 0.5125,
+            "only_new": 3,
+            "only_base": 4,
+            "p_mcnemar": 1.0
+          }
+        },
+        "thor8e30_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 577,
+            "recall_new": 0.6742,
+            "recall_base": 0.6551,
+            "only_new": 38,
+            "only_base": 27,
+            "p_mcnemar": 0.2145
+          },
+          "ge400": {
+            "n": 577,
+            "recall_new": 0.6742,
+            "recall_base": 0.6551,
+            "only_new": 38,
+            "only_base": 27,
+            "p_mcnemar": 0.2145
+          },
+          "rooftop_400_5000": {
+            "n": 451,
+            "recall_new": 0.6718,
+            "recall_base": 0.6585,
+            "only_new": 29,
+            "only_base": 23,
+            "p_mcnemar": 0.4885
+          },
+          "ground_ge400": {
+            "n": 80,
+            "recall_new": 0.5875,
+            "recall_base": 0.5125,
+            "only_new": 9,
+            "only_base": 3,
+            "p_mcnemar": 0.146
+          }
+        },
+        "thor8e30_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 577,
+            "recall_new": 0.6742,
+            "recall_base": 0.6551,
+            "only_new": 38,
+            "only_base": 27,
+            "p_mcnemar": 0.2145
+          },
+          "ge400": {
+            "n": 577,
+            "recall_new": 0.6742,
+            "recall_base": 0.6551,
+            "only_new": 38,
+            "only_base": 27,
+            "p_mcnemar": 0.2145
+          },
+          "rooftop_400_5000": {
+            "n": 451,
+            "recall_new": 0.6718,
+            "recall_base": 0.6585,
+            "only_new": 29,
+            "only_base": 23,
+            "p_mcnemar": 0.4885
+          },
+          "ground_ge400": {
+            "n": 80,
+            "recall_new": 0.5875,
+            "recall_base": 0.5125,
+            "only_new": 9,
+            "only_base": 3,
+            "p_mcnemar": 0.146
+          }
+        }
+      }
+    },
+    "poland": {
+      "v14e41": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.6925,
+            "recall": 0.7786,
+            "iou": 0.5785,
+            "tp": 145778,
+            "fp": 64740,
+            "fn": 41459
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 239,
+              "recall": 0.8723
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3329,
+              "recall": 0.9867
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 486,
+              "recall": 0.9135
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 14,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 84,
+              "recall": 0.6316
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.6925,
+            "recall": 0.7786,
+            "iou": 0.5785,
+            "tp": 145778,
+            "fp": 64740,
+            "fn": 41459
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 239,
+              "recall": 0.8723
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3329,
+              "recall": 0.9867
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 486,
+              "recall": 0.9135
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 14,
+              "recall": 0.6667
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 84,
+              "recall": 0.6316
+            }
+          ]
+        }
+      },
+      "v14e49": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7019,
+            "recall": 0.7612,
+            "iou": 0.5752,
+            "tp": 142524,
+            "fp": 60529,
+            "fn": 44713
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 240,
+              "recall": 0.8759
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3294,
+              "recall": 0.9763
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 473,
+              "recall": 0.8891
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 17,
+              "recall": 0.8095
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 79,
+              "recall": 0.594
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7019,
+            "recall": 0.7612,
+            "iou": 0.5752,
+            "tp": 142524,
+            "fp": 60529,
+            "fn": 44713
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 240,
+              "recall": 0.8759
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3294,
+              "recall": 0.9763
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 473,
+              "recall": 0.8891
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 17,
+              "recall": 0.8095
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 79,
+              "recall": 0.594
+            }
+          ]
+        }
+      },
+      "thor8e25": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7927,
+            "recall": 0.7347,
+            "iou": 0.6163,
+            "tp": 137561,
+            "fp": 35978,
+            "fn": 49676
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 229,
+              "recall": 0.8358
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3274,
+              "recall": 0.9704
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 473,
+              "recall": 0.8891
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 17,
+              "recall": 0.8095
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 75,
+              "recall": 0.5639
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7927,
+            "recall": 0.7347,
+            "iou": 0.6163,
+            "tp": 137561,
+            "fp": 35978,
+            "fn": 49676
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 229,
+              "recall": 0.8358
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3274,
+              "recall": 0.9704
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 473,
+              "recall": 0.8891
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 17,
+              "recall": 0.8095
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 75,
+              "recall": 0.5639
+            }
+          ]
+        }
+      },
+      "thor8e30": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7673,
+            "recall": 0.7292,
+            "iou": 0.5971,
+            "tp": 136528,
+            "fp": 41404,
+            "fn": 50709
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 234,
+              "recall": 0.854
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3237,
+              "recall": 0.9594
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 461,
+              "recall": 0.8665
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 17,
+              "recall": 0.8095
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 75,
+              "recall": 0.5639
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7673,
+            "recall": 0.7292,
+            "iou": 0.5971,
+            "tp": 136528,
+            "fp": 41404,
+            "fn": 50709
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 274,
+              "detected": 234,
+              "recall": 0.854
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 3374,
+              "detected": 3237,
+              "recall": 0.9594
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 532,
+              "detected": 461,
+              "recall": 0.8665
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 21,
+              "detected": 17,
+              "recall": 0.8095
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 133,
+              "detected": 75,
+              "recall": 0.5639
+            }
+          ]
+        }
+      },
+      "paired": {
+        "v14e49_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 4334,
+            "recall_new": 0.9467,
+            "recall_base": 0.958,
+            "only_new": 26,
+            "only_base": 75,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4334,
+            "recall_new": 0.9467,
+            "recall_base": 0.958,
+            "only_new": 26,
+            "only_base": 75,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 154,
+            "recall_new": 0.6234,
+            "recall_base": 0.6364,
+            "only_new": 6,
+            "only_base": 8,
+            "p_mcnemar": 0.7905
+          },
+          "ground_ge400": {
+            "n": 4180,
+            "recall_new": 0.9586,
+            "recall_base": 0.9699,
+            "only_new": 20,
+            "only_base": 67,
+            "p_mcnemar": 0.0
+          }
+        },
+        "v14e49_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 4334,
+            "recall_new": 0.9467,
+            "recall_base": 0.958,
+            "only_new": 26,
+            "only_base": 75,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4334,
+            "recall_new": 0.9467,
+            "recall_base": 0.958,
+            "only_new": 26,
+            "only_base": 75,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 154,
+            "recall_new": 0.6234,
+            "recall_base": 0.6364,
+            "only_new": 6,
+            "only_base": 8,
+            "p_mcnemar": 0.7905
+          },
+          "ground_ge400": {
+            "n": 4180,
+            "recall_new": 0.9586,
+            "recall_base": 0.9699,
+            "only_new": 20,
+            "only_base": 67,
+            "p_mcnemar": 0.0
+          }
+        },
+        "thor8e25_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 4334,
+            "recall_new": 0.9386,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 122,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4334,
+            "recall_new": 0.9386,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 122,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 154,
+            "recall_new": 0.5974,
+            "recall_base": 0.6364,
+            "only_new": 6,
+            "only_base": 12,
+            "p_mcnemar": 0.2379
+          },
+          "ground_ge400": {
+            "n": 4180,
+            "recall_new": 0.9512,
+            "recall_base": 0.9699,
+            "only_new": 32,
+            "only_base": 110,
+            "p_mcnemar": 0.0
+          }
+        },
+        "thor8e25_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 4334,
+            "recall_new": 0.9386,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 122,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4334,
+            "recall_new": 0.9386,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 122,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 154,
+            "recall_new": 0.5974,
+            "recall_base": 0.6364,
+            "only_new": 6,
+            "only_base": 12,
+            "p_mcnemar": 0.2379
+          },
+          "ground_ge400": {
+            "n": 4180,
+            "recall_new": 0.9512,
+            "recall_base": 0.9699,
+            "only_new": 32,
+            "only_base": 110,
+            "p_mcnemar": 0.0
+          }
+        },
+        "thor8e30_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 4334,
+            "recall_new": 0.9285,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 166,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4334,
+            "recall_new": 0.9285,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 166,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 154,
+            "recall_new": 0.5974,
+            "recall_base": 0.6364,
+            "only_new": 9,
+            "only_base": 15,
+            "p_mcnemar": 0.3075
+          },
+          "ground_ge400": {
+            "n": 4180,
+            "recall_new": 0.9407,
+            "recall_base": 0.9699,
+            "only_new": 29,
+            "only_base": 151,
+            "p_mcnemar": 0.0
+          }
+        },
+        "thor8e30_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 4334,
+            "recall_new": 0.9285,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 166,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 4334,
+            "recall_new": 0.9285,
+            "recall_base": 0.958,
+            "only_new": 38,
+            "only_base": 166,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 154,
+            "recall_new": 0.5974,
+            "recall_base": 0.6364,
+            "only_new": 9,
+            "only_base": 15,
+            "p_mcnemar": 0.3075
+          },
+          "ground_ge400": {
+            "n": 4180,
+            "recall_new": 0.9407,
+            "recall_base": 0.9699,
+            "only_new": 29,
+            "only_base": 151,
+            "p_mcnemar": 0.0
+          }
+        }
+      }
+    },
+    "ALL": {
+      "v14e41": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7359,
+            "recall": 0.7557,
+            "iou": 0.5944,
+            "tp": 555125,
+            "fp": 199246,
+            "fn": 179484
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 953,
+              "recall": 0.8464
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4959,
+              "recall": 0.9321
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1185,
+              "recall": 0.9158
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 815,
+              "recall": 0.7443
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1696,
+              "recall": 0.5063
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 53,
+              "recall": 0.8413
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7359,
+            "recall": 0.7557,
+            "iou": 0.5944,
+            "tp": 555125,
+            "fp": 199246,
+            "fn": 179484
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 953,
+              "recall": 0.8464
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4959,
+              "recall": 0.9321
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1185,
+              "recall": 0.9158
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 815,
+              "recall": 0.7443
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1696,
+              "recall": 0.5063
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 53,
+              "recall": 0.8413
+            }
+          ]
+        }
+      },
+      "v14e49": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7171,
+            "recall": 0.7571,
+            "iou": 0.583,
+            "tp": 556176,
+            "fp": 219366,
+            "fn": 178433
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 962,
+              "recall": 0.8544
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4960,
+              "recall": 0.9323
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1170,
+              "recall": 0.9042
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 887,
+              "recall": 0.81
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1875,
+              "recall": 0.5597
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 51,
+              "recall": 0.8095
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7171,
+            "recall": 0.7571,
+            "iou": 0.583,
+            "tp": 556176,
+            "fp": 219366,
+            "fn": 178433
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 962,
+              "recall": 0.8544
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4960,
+              "recall": 0.9323
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1170,
+              "recall": 0.9042
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 887,
+              "recall": 0.81
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1875,
+              "recall": 0.5597
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 51,
+              "recall": 0.8095
+            }
+          ]
+        }
+      },
+      "thor8e25": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7834,
+            "recall": 0.7247,
+            "iou": 0.6037,
+            "tp": 532351,
+            "fp": 147188,
+            "fn": 202258
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 949,
+              "recall": 0.8428
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4910,
+              "recall": 0.9229
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1174,
+              "recall": 0.9073
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 802,
+              "recall": 0.7324
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1687,
+              "recall": 0.5036
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 52,
+              "recall": 0.8254
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7834,
+            "recall": 0.7247,
+            "iou": 0.6037,
+            "tp": 532351,
+            "fp": 147188,
+            "fn": 202258
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 949,
+              "recall": 0.8428
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4910,
+              "recall": 0.9229
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1174,
+              "recall": 0.9073
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 802,
+              "recall": 0.7324
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1687,
+              "recall": 0.5036
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 52,
+              "recall": 0.8254
+            }
+          ]
+        }
+      },
+      "thor8e30": {
+        "at_0.3": {
+          "pixel": {
+            "precision": 0.7713,
+            "recall": 0.7277,
+            "iou": 0.5986,
+            "tp": 534599,
+            "fp": 158546,
+            "fn": 200010
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 955,
+              "recall": 0.8481
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4879,
+              "recall": 0.9171
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1165,
+              "recall": 0.9003
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 742,
+              "recall": 0.6776
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1541,
+              "recall": 0.46
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 51,
+              "recall": 0.8095
+            }
+          ]
+        },
+        "at_matched_precision": {
+          "thr": 0.3,
+          "pixel": {
+            "precision": 0.7713,
+            "recall": 0.7277,
+            "iou": 0.5986,
+            "tp": 534599,
+            "fp": 158546,
+            "fn": 200010
+          },
+          "recall": [
+            {
+              "placement": "ground",
+              "size_bin": "1000-5000",
+              "n": 1126,
+              "detected": 955,
+              "recall": 0.8481
+            },
+            {
+              "placement": "ground",
+              "size_bin": "400-1000",
+              "n": 5320,
+              "detected": 4879,
+              "recall": 0.9171
+            },
+            {
+              "placement": "ground",
+              "size_bin": "5000-inf",
+              "n": 1294,
+              "detected": 1165,
+              "recall": 0.9003
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "1000-5000",
+              "n": 1095,
+              "detected": 742,
+              "recall": 0.6776
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "400-1000",
+              "n": 3350,
+              "detected": 1541,
+              "recall": 0.46
+            },
+            {
+              "placement": "rooftop",
+              "size_bin": "5000-inf",
+              "n": 63,
+              "detected": 51,
+              "recall": 0.8095
+            }
+          ]
+        }
+      },
+      "paired": {
+        "v14e49_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 12248,
+            "recall_new": 0.8087,
+            "recall_base": 0.7888,
+            "only_new": 524,
+            "only_base": 280,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 12248,
+            "recall_new": 0.8087,
+            "recall_base": 0.7888,
+            "only_new": 524,
+            "only_base": 280,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 4445,
+            "recall_new": 0.6214,
+            "recall_base": 0.5649,
+            "only_new": 430,
+            "only_base": 179,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 7740,
+            "recall_new": 0.9163,
+            "recall_base": 0.9169,
+            "only_new": 94,
+            "only_base": 99,
+            "p_mcnemar": 0.7735
+          }
+        },
+        "v14e49_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 12248,
+            "recall_new": 0.8087,
+            "recall_base": 0.7888,
+            "only_new": 524,
+            "only_base": 280,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 12248,
+            "recall_new": 0.8087,
+            "recall_base": 0.7888,
+            "only_new": 524,
+            "only_base": 280,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 4445,
+            "recall_new": 0.6214,
+            "recall_base": 0.5649,
+            "only_new": 430,
+            "only_base": 179,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 7740,
+            "recall_new": 0.9163,
+            "recall_base": 0.9169,
+            "only_new": 94,
+            "only_base": 99,
+            "p_mcnemar": 0.7735
+          }
+        },
+        "thor8e25_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 12248,
+            "recall_new": 0.7817,
+            "recall_base": 0.7888,
+            "only_new": 532,
+            "only_base": 619,
+            "p_mcnemar": 0.0112
+          },
+          "ge400": {
+            "n": 12248,
+            "recall_new": 0.7817,
+            "recall_base": 0.7888,
+            "only_new": 532,
+            "only_base": 619,
+            "p_mcnemar": 0.0112
+          },
+          "rooftop_400_5000": {
+            "n": 4445,
+            "recall_new": 0.56,
+            "recall_base": 0.5649,
+            "only_new": 420,
+            "only_base": 442,
+            "p_mcnemar": 0.4745
+          },
+          "ground_ge400": {
+            "n": 7740,
+            "recall_new": 0.9087,
+            "recall_base": 0.9169,
+            "only_new": 111,
+            "only_base": 175,
+            "p_mcnemar": 0.0002
+          }
+        },
+        "thor8e25_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 12248,
+            "recall_new": 0.7817,
+            "recall_base": 0.7888,
+            "only_new": 532,
+            "only_base": 619,
+            "p_mcnemar": 0.0112
+          },
+          "ge400": {
+            "n": 12248,
+            "recall_new": 0.7817,
+            "recall_base": 0.7888,
+            "only_new": 532,
+            "only_base": 619,
+            "p_mcnemar": 0.0112
+          },
+          "rooftop_400_5000": {
+            "n": 4445,
+            "recall_new": 0.56,
+            "recall_base": 0.5649,
+            "only_new": 420,
+            "only_base": 442,
+            "p_mcnemar": 0.4745
+          },
+          "ground_ge400": {
+            "n": 7740,
+            "recall_new": 0.9087,
+            "recall_base": 0.9169,
+            "only_new": 111,
+            "only_base": 175,
+            "p_mcnemar": 0.0002
+          }
+        },
+        "thor8e30_vs_v14e41_at_0.3": {
+          "all": {
+            "n": 12248,
+            "recall_new": 0.762,
+            "recall_base": 0.7888,
+            "only_new": 523,
+            "only_base": 851,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 12248,
+            "recall_new": 0.762,
+            "recall_base": 0.7888,
+            "only_new": 523,
+            "only_base": 851,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 4445,
+            "recall_new": 0.5136,
+            "recall_base": 0.5649,
+            "only_new": 402,
+            "only_base": 630,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 7740,
+            "recall_new": 0.9043,
+            "recall_base": 0.9169,
+            "only_new": 121,
+            "only_base": 219,
+            "p_mcnemar": 0.0
+          }
+        },
+        "thor8e30_vs_v14e41_at_matched_precision": {
+          "all": {
+            "n": 12248,
+            "recall_new": 0.762,
+            "recall_base": 0.7888,
+            "only_new": 523,
+            "only_base": 851,
+            "p_mcnemar": 0.0
+          },
+          "ge400": {
+            "n": 12248,
+            "recall_new": 0.762,
+            "recall_base": 0.7888,
+            "only_new": 523,
+            "only_base": 851,
+            "p_mcnemar": 0.0
+          },
+          "rooftop_400_5000": {
+            "n": 4445,
+            "recall_new": 0.5136,
+            "recall_base": 0.5649,
+            "only_new": 402,
+            "only_base": 630,
+            "p_mcnemar": 0.0
+          },
+          "ground_ge400": {
+            "n": 7740,
+            "recall_new": 0.9043,
+            "recall_base": 0.9169,
+            "only_new": 121,
+            "only_base": 219,
+            "p_mcnemar": 0.0
+          }
+        }
+      }
+    }
+  }
+}

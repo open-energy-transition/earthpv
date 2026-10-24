@@ -37,7 +37,11 @@ def _bucket(area: float) -> str:
 def evaluate(
     aoi: str, checkpoint: Path, chips_dir: Path, threshold: float = 0.3,
     task_type: str = "auto", chips_name: str | None = None, labels_dir: Path = Path("data/labels"),
+    extra_thresholds: tuple[float, ...] = (),
 ) -> pd.DataFrame:
+    """`extra_thresholds` scores more operating points from the same inference pass, into
+    `report.attrs["by_threshold"][t]` = {tp, fp, fn, hits}, `hits` aligned with
+    `report.attrs["installations"]`. The report itself is always `threshold`'s."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     import torch
 
@@ -81,8 +85,10 @@ def evaluate(
 
     tp = fp = fn = 0
     detected, missed = [], []  # areas of GT installations
+    records = []  # one row per (val chip, installation): lets two checkpoints be paired
     pred_sums, gt_sums = [], []  # chip-level Σ predicted / true PV area (m2), regression only
     sq_err_sum = abs_err_sum = n_valid_px = 0.0
+    by_thr = {float(t): dict(tp=0, fp=0, fn=0, hits=[]) for t in extra_thresholds}
     for _, row in val.iterrows():
         with rasterio.open(row["image"]) as src:
             arr = src.read().astype("float32")
@@ -115,12 +121,17 @@ def evaluate(
         tp += int((pred & gt_binary & valid).sum())
         fp += int((pred & ~gt_binary & valid).sum())
         fn += int((~pred & gt_binary & valid).sum())
+        preds_extra = {t: frac >= t for t in by_thr}
+        for t, pe in preds_extra.items():
+            by_thr[t]["tp"] += int((pe & gt_binary & valid).sum())
+            by_thr[t]["fp"] += int((pe & ~gt_binary & valid).sum())
+            by_thr[t]["fn"] += int((~pe & gt_binary & valid).sum())
 
         # Per-installation recall
         gt_here = labels[labels.geometry.intersects(chip_geo)]
         if gt_here.empty:
             continue
-        for _, inst in gt_here.iterrows():
+        for label_idx, inst in gt_here.iterrows():
             area = inst.area_m2 if inst.area_m2 > 0 else geodesic_area_m2(inst.geometry)
             poly = gpd.GeoSeries([inst.geometry], crs="EPSG:4326").to_crs(crs).iloc[0]
             inst_mask = rio_features.rasterize(
@@ -128,7 +139,12 @@ def evaluate(
             ).astype(bool)
             if not inst_mask.any():
                 continue
-            (detected if (pred & inst_mask).any() else missed).append(area)
+            hit = bool((pred & inst_mask).any())
+            (detected if hit else missed).append(area)
+            records.append(dict(chip_id=row["chip_id"], label_idx=int(label_idx),
+                                area_m2=float(area), placement=inst.placement, detected=hit))
+            for t, pe in preds_extra.items():
+                by_thr[t]["hits"].append(bool((pe & inst_mask).any()))
 
     iou = tp / max(tp + fp + fn, 1)
     f1 = 2 * tp / max(2 * tp + fp + fn, 1)
@@ -147,6 +163,11 @@ def evaluate(
     report = pd.DataFrame(rows)
     report.attrs["pixel_iou"] = iou
     report.attrs["pixel_f1"] = f1
+    report.attrs["pixel_counts"] = dict(tp=tp, fp=fp, fn=fn)
+    # A list, not a DataFrame: pandas compares attrs with == when it propagates them, which
+    # a DataFrame cannot answer. pd.DataFrame(report.attrs["installations"]) to analyse.
+    report.attrs["installations"] = records
+    report.attrs["by_threshold"] = by_thr
 
     if task_type == "regression":
         rmse = (sq_err_sum / max(n_valid_px, 1)) ** 0.5

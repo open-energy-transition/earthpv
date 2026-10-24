@@ -1,0 +1,74 @@
+# Backbone comparison: THOR-Tiny at an 8 px token (80 m at 10 m GSD) against v14's
+# TerraMind-Tiny at its fixed 16 px (160 m) token, on v14's corpus.
+#
+# Question: does a finer token grid recover the compact rooftop arrays (400-5,000 m2) that
+# segmentation misses? A 400 m2 array is 4 pixels, 1/64 of a TerraMind token. ESA/IBM's
+# TerraMind-vs-THOR comparison (arXiv 2607.18504) found patch size and decoder explain more
+# variance than model identity, with compact minority classes gaining most from small patches.
+#
+# Everything is v14's (configs/terramind_pv_v14_south_africa.yaml) except the backbone: same
+# corpus and holdouts, loss, lr, optimizer, schedule, patience, monitor metric, neck tail
+# (LearnedInterpolateToPyramidal) and UNet decoder. v14's checkpoint is the baseline, so it
+# is not retrained. configs/thor_pv_ps16_south_africa.yaml is the control at TerraMind's
+# token size, which separates the patch-size effect from the change of model.
+#
+# THOR specifics (earthpv.thor_backbone):
+#   * 10 bands in two THOR groups: B02/B03/B04/B08 at 10 m and B05-B07/B8A/B11/B12 at 20 m.
+#     With patch 8 and a 2,240 m chip that is 28x28 = 784 tokens for the 10 m group and
+#     14x14 = 196 (still 160 m) for the 20 m group, 980 in all, against TerraMind's 196.
+#     The two groups' feature maps are concatenated (merge_method concat, 384 channels).
+#   * band_mean/std: measured on this corpus's TRAIN split by scripts/chip_band_stats.py
+#     (3,000 chips, seed 0), in the DN/10000 units the datamodule feeds.
+#   * out_indices [2, 5, 8, 11] stands in for TerraMind's SelectIndices neck.
+#   * Upstream: FM4CS/THOR main @ 7ded3ce, FM4CS/thor_terratorch_ext main @ 00223bb,
+#     weights FM4CS/THOR-1.0-tiny (Apache-2.0), checked out under third_party/.
+# On the GTX 1060: 614 ms per batch of 8 (v14: 274), 2.36 GB peak, ~40 min per epoch.
+
+data:
+  index_path: data/chips/combined_south_africa/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: earthpv_thor
+    backbone_pretrained: true
+    backbone_variant: thor_v1_tiny
+    backbone_model_bands: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+                           NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    backbone_band_mean: [0.151598, 0.178003, 0.181496, 0.227026, 0.331533, 0.370196, 0.381887, 0.394061, 0.329228, 0.25116]
+    backbone_band_std: [0.037901, 0.04311, 0.057257, 0.051839, 0.076995, 0.097409, 0.103217, 0.103859, 0.074614, 0.071169]
+    backbone_ground_cover: 2240
+    backbone_patch_sizes: 8
+    backbone_merge_method: concat
+    backbone_out_indices: [2, 5, 8, 11]
+    necks:
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/thor_ps8_combined_south_africa
+checkpoint_prefix: thor-ps8-pv
+patience: 8
+# Continue from last.ckpt if the run was killed (train.py); the first run was
+# killed by systemd-oomd 2026-10-22 23:39 under system-wide IO/memory pressure.
+resume: true
+monitor: val/mIoU
+monitor_mode: max

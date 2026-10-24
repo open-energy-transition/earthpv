@@ -24,6 +24,10 @@ def run_training(config: Path, smoke: bool = False) -> Path:
 
     dm = PVDataModule(**cfg["data"])
     task_args = dict(cfg["task"])
+    from earthpv import thor_backbone
+
+    if thor_backbone.uses_thor(task_args.get("model_args", {})):
+        thor_backbone.register()
     task_type = cfg.get("task_type", "segmentation")
     if task_type == "regression":
         from terratorch.tasks import PixelwiseRegressionTask
@@ -67,7 +71,8 @@ def run_training(config: Path, smoke: bool = False) -> Path:
         # Metric keys contain '/', which Lightning can't substitute into a filename
         # template, so keep the filename on epoch/step only.
         ModelCheckpoint(
-            dirpath=ckpt_dir, filename="terramind-pv-{epoch:02d}-{step}",
+            dirpath=ckpt_dir, filename=cfg.get("checkpoint_prefix", "terramind-pv")
+            + "-{epoch:02d}-{step}",
             monitor=monitor, save_top_k=2, mode=mode, save_last=True,
         ),
         EarlyStopping(monitor=monitor, patience=cfg.get("patience", 8), mode=mode),
@@ -84,7 +89,18 @@ def run_training(config: Path, smoke: bool = False) -> Path:
         default_root_dir="logs",
         **trainer_kwargs,
     )
-    trainer.fit(task, datamodule=dm)
+    # Opt-in resume (config `resume: true`): continue from the run's own last.ckpt, which
+    # restores optimizer, epoch, ModelCheckpoint and EarlyStopping state, so a run killed by
+    # systemd-oomd loses at most one epoch. Off by default, so a production config never picks
+    # up a stale run's state from a reused directory.
+    ckpt_path = None
+    if cfg.get("resume") and not smoke and (ckpt_dir / "last.ckpt").exists():
+        ckpt_path = str(ckpt_dir / "last.ckpt")
+        log.info("Resuming from %s", ckpt_path)
+        from earthpv.infer import _allow_custom_losses
+
+        _allow_custom_losses()  # the pickled loss module must be allowlisted to load
+    trainer.fit(task, datamodule=dm, ckpt_path=ckpt_path)
     best = callbacks[0].best_model_path or str(ckpt_dir / "last.ckpt")
     log.info("Best checkpoint: %s", best)
     return Path(best)

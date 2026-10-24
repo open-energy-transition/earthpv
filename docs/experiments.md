@@ -140,6 +140,9 @@ repository; nothing was deleted on failure.
 | [Prevalence estimators for prior shift](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | EM prior adjustment and adjusted counts collapse to zero in most quadrats: they differ by more than their base rate. |
 | [Gradient boosting, priced end to end](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Its better per-quadrat adoption rate does not survive the capacity chain: 12 of 29 quadrats closer, p = 0.46. |
 | [The pre-boom epoch already on disk](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome mixed">partial</span> | composite_1 covers 4,467 of 4,473 Pakistani cells, so no download is needed; +0.0024 within size band (20 of 29, p = 0.061) and nothing under probability pricing. Not deployed. |
+| [THOR at 8 px tokens instead of TerraMind's 16 px](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | No pooled recall gain at matched precision: rooftop 400-5,000 m<sup>2</sup> 0.585 against 0.574 (p = 0.08), ground 0.928 against 0.933. Sharper outlines (pixel IoU 0.656 against 0.633) at 2.2x the training cost per batch. Not adopted. |
+| [THOR on TerraMind's own token grid](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome negative">rejected</span> | Ties v14 on rooftop recall (0.573 against 0.574), 1 point behind on ground. With 320 m SWIR tokens instead, it loses everywhere (rooftop 0.29). |
+| [Checkpoint selection by val mIoU](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | v14's second-best epoch finds 0.621 of rooftop arrays against the shipped epoch's 0.565, at precision 0.717 against 0.736: epoch noise is as large as the backbone effect. A recall-aware selection rule is untested. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
@@ -2306,6 +2309,82 @@ class stays put, and these quadrats differ in roof stock as well.
 **Temporal unmixing on a full-year stack is dropped from the open list.** Its best measured
 gain was +0.0015 within size band in the most dynamic quadrats, and this sweep puts the
 binding error in the aggregation, not in another thousandth of ranking.
+
+### A finer token grid: THOR at 8 px against TerraMind (2026-10-24)
+
+TerraMind's patch embedding is fixed at 16 px, so at 10 m every token is 160 m across and a
+400 m<sup>2</sup> array is 1/64 of one. ESA and IBM's comparison of TerraMind and THOR
+(arXiv 2607.18504) found patch size and decoder explain more variance than which model is used,
+with compact minority classes gaining most from small patches. THOR (ESA Phi-lab and NR,
+Apache-2.0) accepts any patch size, so the test was whether a finer grid recovers the rooftop
+arrays of 400-5,000 m<sup>2</sup> that segmentation misses.
+
+**Design.** Three THOR-Tiny runs on v14's corpus with v14's recipe (loss, learning rate,
+schedule, patience, neck tail, UNet decoder), so v14 itself is the baseline and was not
+retrained. THOR tokenises each GSD group separately, which needed a control that matches
+TerraMind's grid band for band:
+
+| Run | 10 m group (B02-B04, B08) | 20 m group (B05-B07, B8A, B11, B12) | Tokens | Train cost per batch of 8 |
+| --- | --- | --- | --- | --- |
+| v14 (TerraMind-Tiny) | 160 m | 160 m | 196 | 274 ms |
+| THOR ps16 | 160 m | 320 m | 245 | 133 ms |
+| THOR ps16m (matched grid) | 160 m | 160 m | 392 | 182 ms |
+| THOR ps8 | 80 m | 160 m | 980 | 614 ms |
+
+Scored by `scripts/compare_backbones.py` on every AOI's own `val` chips: the six holdouts of
+the training corpus plus five countries none of the models saw (Poland, Vietnam, India,
+Morocco, Egypt). Recall is per installation, paired on the same (chip, installation) and tested
+with an exact McNemar. Each THOR model is also compared at its own lowest threshold whose pooled
+pixel precision reaches v14's at the production 0.3, because a model that marks more pixels
+finds more installations: a 50-step smoke model scored recall 0.97 against v14's 0.75 at pixel
+IoU 0.02.
+
+**Result: no pooled recall gain.** At matched precision, all 11 AOIs pooled:
+
+| | v14 | THOR ps16m | THOR ps8 |
+| --- | --- | --- | --- |
+| Rooftop 400-5,000 m<sup>2</sup> recall (n = 4,633) | 0.574 | 0.573 (p = 0.97) | 0.585 (p = 0.08) |
+| Ground >= 400 m<sup>2</sup> recall (n = 10,722) | 0.933 | 0.924 (p < 0.001) | 0.928 (p = 0.005) |
+| Pixel precision | 0.733 | 0.776 | 0.782 |
+| Pixel IoU | 0.633 | 0.645 | 0.656 |
+
+On the matched grid THOR ties TerraMind, and halving the 10 m group's token adds +1.2 points of
+rooftop recall over it (+496/-441 installations, p = 0.08). The ps16 run with 320 m SWIR tokens
+lost in every AOI but Morocco (rooftop 0.29 against 0.57): coarse SWIR tokens cost far more than finer visible
+tokens gain, the same band ranking roofclf's coefficients show. What the finer grid does buy is
+outline: pixel precision +5 points and IoU +2.3 over v14, consistent at both saved epochs and in
+9 of 11 AOIs, which matters to an area-based capacity estimate more than to installation recall.
+
+**The regional effects are mostly selection noise.** ps8 against ps16m is +18 points on French
+rooftops and +18 on Pakistani ones, but -9 on South African and -15 on German (54
+installations). Within v14's own run, the second-best checkpoint (epoch 49, val mIoU 0.805
+against 0.811) has pooled rooftop recall 0.621 against the shipped epoch 41's 0.565, +9 points
+in South Africa, at pixel precision 0.717 against 0.736. So one run and one selected epoch per
+model cannot resolve a few points either way. The France gain is the one that held at both
+saved epochs of both runs (0.57 and 0.54 against 0.42 and 0.43).
+
+**Verdict: not adopted.** A finer grid does not recover the missed rooftop arrays at a level
+one run can show, at 2.2 times v14's training cost per batch (614 against 274 ms) and three
+times THOR ps16's inference cost per window (45 against 14 ms).
+4 px was not run: it does not fit at batch 8 on the GTX 1060, an estimated 5 s per batch puts a
+run at 8-12 days, and the ps8 over ps16m increment it would extend is +1.2 points. Two leads
+came out of it:
+
+- **Checkpoint selection.** val/mIoU is dominated by large ground plants' pixels and is a poor
+  selector of rooftop recall. A selection rule on held-out installation recall, from a split
+  that is not the holdout, or averaging the last epochs' weights, is untested and free.
+- **Pascal attention, and it applies to production.** On the GTX 1060 PyTorch's default SDPA
+  kernel (memory-efficient) is about 15 times slower in fp16 than the math kernel (269 against
+  18 ms per layer at 980 tokens). TerraMind calls the same SDPA: forcing the math kernel takes
+  TerraMind-Tiny from 275 to 97 ms per training batch of 8, with logits within 0.003 and 99.9%
+  of pixels unchanged. Not yet applied to production training or inference.
+
+Code: `src/earthpv/thor_backbone.py` (THOR from a `third_party/` checkout, input
+standardisation from `scripts/chip_band_stats.py`, compile disabled and the math kernel forced
+on pre-Volta GPUs), configs `configs/thor_pv_ps{16,16m,8}_south_africa.yaml`, runner
+`scripts/run_backbone_compare.sh`. `infer` uses a stride of 102 for tokens finer than 16 px,
+since 104 is a multiple of 8. Results: `results/backbone_compare/thor16_vs_v14/`,
+`thor8_vs_v14_lowthr/`, `thor16m_thor8_vs_v14/`, `epoch_noise/`.
 
 ## The partial result worth watching
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,22 @@ from torch.utils.data import DataLoader, Dataset
 # Chips store reflectance DN (x10000). TerraMind pretraining stats are applied by
 # the terratorch backbone when available; we feed reflectance in [0, ~1.5].
 DN_SCALE = 10000.0
+
+
+def _drop_from_page_cache(path: str) -> None:
+    """Tell the kernel this chip's pages need not stay cached. A combined corpus (~20 GB for
+    v14's 33k chips) is larger than a training unit's MemoryMax, so each epoch's pass only
+    evicts the last one; the cache it builds is charged to the unit, fills the limit, and the
+    in-cgroup reclaim that follows is the memory pressure systemd-oomd kills on (the THOR
+    comparison run was killed this way twice on 2026-10-22/23). Reads are unchanged."""
+    try:
+        fd = os.open(path, os.O_RDONLY)
+        try:
+            os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+        finally:
+            os.close(fd)
+    except (OSError, AttributeError):  # AttributeError: no posix_fadvise on this platform
+        pass
 
 
 class PVChipDataset(Dataset):
@@ -33,6 +50,8 @@ class PVChipDataset(Dataset):
         with rasterio.open(row["mask"]) as src:
             mask_dtype = "float32" if self.target == "fraction" else "int64"
             mask = src.read(1).astype(mask_dtype)
+        _drop_from_page_cache(row["image"])
+        _drop_from_page_cache(row["mask"])
         if self.augment:
             k = np.random.randint(4)
             img, mask = np.rot90(img, k, (1, 2)).copy(), np.rot90(mask, k, (0, 1)).copy()

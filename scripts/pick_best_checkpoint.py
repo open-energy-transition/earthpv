@@ -19,7 +19,7 @@ import sys
 import torch
 
 run_dir = sys.argv[1]
-cands = sorted(glob.glob(f"{run_dir}/terramind-pv-epoch=*.ckpt"))
+cands = sorted(glob.glob(f"{run_dir}/*-epoch=*.ckpt"))  # any `checkpoint_prefix`
 if not cands:
     sys.exit("no checkpoints")
 probes = sorted(glob.glob(f"{run_dir}/last*.ckpt")) or cands[-1:]

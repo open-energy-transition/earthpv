@@ -52,10 +52,41 @@ def _sniff_task_type(checkpoint: Path) -> str:
     return "regression" if "num_classes" not in model_args else "segmentation"
 
 
+def _model_args(checkpoint: Path) -> dict:
+    import torch
+
+    _allow_custom_losses()
+    ckpt = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    return ckpt.get("hyper_parameters", {}).get("model_args", {})
+
+
+def token_patch_px(model_args: dict) -> int:
+    """Side of one ViT token in pixels at 10 m. TerraMind's is fixed at 16; THOR's is the
+    configured `backbone_patch_sizes` (for its 10 m band group)."""
+    ps = model_args.get("backbone_patch_sizes")
+    if isinstance(ps, int):
+        return ps
+    if isinstance(ps, list) and len(ps) == 1:
+        return int(ps[0])
+    return 16
+
+
+def window_stride(patch_px: int) -> int:
+    """The sliding-window stride, which must NOT be a multiple of the token size: offsetting
+    the patch grid between neighbouring windows is what decorrelates patch-edge artefacts
+    instead of stacking them on a lattice (CLAUDE.md, tiling invariants). 104 for TerraMind's
+    16 px tokens, unchanged; 104 is a multiple of 8 and 4, so finer tokens get 102."""
+    return 104 if 104 % patch_px else 102
+
+
 def load_model(checkpoint: Path, task_type: str = "auto"):
     import torch
 
     _allow_custom_losses()
+    from earthpv import thor_backbone
+
+    if thor_backbone.uses_thor(_model_args(checkpoint)):
+        thor_backbone.register()
     if task_type == "auto":
         task_type = _sniff_task_type(checkpoint)
     if task_type == "regression":
@@ -125,10 +156,11 @@ def run_inference(
     task, device, task_type = load_model(checkpoint, task_type=task_type)
     log.info("Loaded %s checkpoint %s", task_type, checkpoint)
     n_bands = len(MODEL_BANDS)
-    # Stride deliberately NOT a multiple of the 16 px ViT patch size: this offsets the
-    # patch grid between neighbouring windows so patch-edge artefacts decorrelate and
-    # average out instead of recurring on a regular lattice.
-    stride = 104
+    # Stride deliberately NOT a multiple of the ViT patch size: this offsets the patch grid
+    # between neighbouring windows so patch-edge artefacts decorrelate and average out
+    # instead of recurring on a regular lattice. 104 for 16 px tokens (see window_stride).
+    stride = window_stride(token_patch_px(_model_args(checkpoint)))
+    log.info("Window stride %d px", stride)
     # 2D Hann taper: each window's contribution fades to ~0 at its own edges, so window
     # seams blend smoothly (overlap-add) and border artefacts get near-zero weight.
     hann = np.outer(np.hanning(CHIP_SIZE), np.hanning(CHIP_SIZE)).astype("float32") + 1e-3

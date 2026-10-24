@@ -229,6 +229,27 @@ feature pyramid built by the neck stack `SelectIndices → ReshapeTokensToImage 
 LearnedInterpolateToPyramidal`. Training (`train.py`) is a TerraTorch `SemanticSegmentationTask`
 via Lightning; checkpoints monitor `val/mIoU`.
 
+**A finer token grid was tested and not adopted (2026-10-24).** THOR-Tiny (ESA Phi-lab, any patch
+size) at 8 px tokens, on v14's corpus and recipe, ties v14 on rooftop 400-5,000 m2 recall at
+matched precision (0.585 against 0.574, p = 0.08) and is 0.5 points behind on ground. It has
+sharper outlines (pixel IoU 0.656 against 0.633) at 2.2x the training cost per batch. Experiment
+register: "A finer token grid". The tooling stays: `src/earthpv/thor_backbone.py` (THOR
+read from the gitignored `third_party/` checkout, because it pins TerraTorch 1.2.5),
+`scripts/compare_backbones.py` (paired McNemar per installation, at matched pixel precision,
+over every AOI's holdout) and `evaluate(extra_thresholds=...)`. Three findings from it apply to
+TerraMind too:
+- **Epoch selection noise is as large as a backbone change.** v14's second-best checkpoint finds
+  0.621 of rooftop arrays against the shipped one's 0.565, because val/mIoU is dominated by
+  large ground plants. Compare checkpoints on installation recall, never on one val/mIoU.
+- **On the GTX 1060 PyTorch's default SDPA kernel is about 3x slower for TerraMind.** Training
+  takes 275 against 97 ms per batch of 8 with the math kernel forced
+  (`torch.backends.cuda.enable_mem_efficient_sdp(False)`, `enable_flash_sdp(False)`), logits
+  within 0.003. It is NOT applied to production yet; `thor_backbone` forces it only for THOR.
+- **Training is protected against systemd-oomd now.** `datamodule` drops each chip from the
+  page cache after reading it: a ~20 GB corpus cannot be cached inside a unit's MemoryMax, and
+  the in-cgroup reclaim was what got runs killed. `resume: true` in a training config is opt-in
+  and continues from the run's own `last.ckpt`. Pair it with `systemd-run -p Restart=on-abnormal`.
+
 ### Adding a new AOI
 
 `scripts/new_region.py` is the front door for a region with no local data: `check` preflights

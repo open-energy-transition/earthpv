@@ -1,0 +1,66 @@
+# MATCHED-GRID CONTROL for configs/thor_pv_ps8_south_africa.yaml: THOR-Tiny on exactly
+# TerraMind's token grid, 14x14 tokens of 160 m for EVERY band.
+#
+# Why this exists: THOR tokenises each GSD group separately, so the plain ps16 control
+# (thor_pv_ps16_south_africa.yaml) gave the 20 m group (B05-B07, B8A, B11, B12) 7x7 tokens
+# of 320 m, twice as coarse as TerraMind's 160 m. SWIR carries most of the PV signal
+# roofclf finds, and that control lost to v14 far more than the ESA/IBM comparison predicts
+# (pooled rooftop 400-5,000 m2 recall 0.29 against 0.57), so it measured THOR plus a SWIR
+# handicap, not THOR. Here the 10 m group keeps patch 16 (160 m) and the 20 m group gets
+# patch 8 (8 x 20 m = 160 m): both 14x14, 392 tokens in all against TerraMind's 196 (which
+# sees every band in each of its 196 tokens).
+#
+#   ps16m vs v14 = THOR against TerraMind at matched token size, and
+#   ps8 vs ps16m = halving the 10 m group's token (80 m) with the 20 m group held at 160 m.
+#
+# Identical to the ps16 config except backbone_patch_sizes, checkpoint_dir and prefix.
+data:
+  index_path: data/chips/combined_south_africa/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    backbone: earthpv_thor
+    backbone_pretrained: true
+    backbone_variant: thor_v1_tiny
+    backbone_model_bands: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+                           NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    backbone_band_mean: [0.151598, 0.178003, 0.181496, 0.227026, 0.331533, 0.370196, 0.381887, 0.394061, 0.329228, 0.25116]
+    backbone_band_std: [0.037901, 0.04311, 0.057257, 0.051839, 0.076995, 0.097409, 0.103217, 0.103859, 0.074614, 0.071169]
+    backbone_ground_cover: 2240
+    backbone_patch_sizes: {BLUE: 16, GREEN: 16, RED: 16, NIR_BROAD: 16,
+                           RED_EDGE_1: 8, RED_EDGE_2: 8, RED_EDGE_3: 8, NIR_NARROW: 8,
+                           SWIR_1: 8, SWIR_2: 8}
+    backbone_merge_method: concat
+    backbone_out_indices: [2, 5, 8, 11]
+    necks:
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/thor_ps16m_combined_south_africa
+checkpoint_prefix: thor-ps16m-pv
+patience: 8
+# Continue from last.ckpt if the run was killed (train.py); the first run was
+# killed by systemd-oomd 2026-10-22 23:39 under system-wide IO/memory pressure.
+resume: true
+monitor: val/mIoU
+monitor_mode: max
