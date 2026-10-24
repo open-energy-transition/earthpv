@@ -128,7 +128,7 @@
   .sec-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
 
   /* ── kpi strip ───────────────────────────────────────────────────── */
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 26px; }
   @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
   .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
@@ -469,6 +469,10 @@
     overflow-x: auto; white-space: pre; line-height: 1.5; }
 
   .rank { margin-top: 4px; }
+  .prov-more { margin-top: 6px; background: none; border: 0; padding: 4px 2px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); }
+  .prov-more:hover { text-decoration: underline; }
   .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
 
   details.tablewrap { margin-top: 14px; }
@@ -724,6 +728,7 @@
             <div class="dlbar" data-fig="provinces"></div>
           </div>
           <div id="ranks" class="plot-host"></div>
+          <button type="button" class="prov-more" id="provMore" hidden aria-controls="ranks"></button>
           <details class="tablewrap">
             <summary>Full province figures</summary>
             <div style="overflow-x:auto;"><table id="ptable">
@@ -750,6 +755,8 @@
       <div class="k">Training data hand-mapped in OpenStreetMap, &lt;400 m&sup2;</div></div>
     <div class="kpi"><div class="v" id="kDomain">0</div>
       <div class="k">of 0.1&deg; cells have density-matched sub-400 m&sup2; calibration</div></div>
+    <div class="kpi" id="kpiCover" hidden><div class="v" id="kCover">0</div>
+      <div class="k" id="kCoverK"></div></div>
   </div>
 
   <section class="sec" id="sizebins">
@@ -2894,13 +2901,19 @@ out geom;</div>
   const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
 
   // Provinces, ranked: one series, so one colour and no legend box; the title names it.
+  // On the page the chart shows the top PROV_TOP and expands on request; exports and the
+  // CSV always carry every province.
+  const PROV_TOP = 7;
+  let provAll = false;
   function provinceRows(){
     return [...DATA.provinces].sort((a, b) => b.mwp_best - a.mwp_best);
   }
   function provinceChart(width, interactive){
     const P = palette();
     // The field is named for the reader: a tip labels each channel by its field name.
-    const rows = provinceRows().map(p => ({Province: p.name, mwp: p.mwp_best}));
+    const all = provinceRows();
+    const rows = (interactive && !provAll ? all.slice(0, PROV_TOP) : all)
+      .map(p => ({Province: p.name, mwp: p.mwp_best}));
     const maxChars = width < 360 ? 14 : width < 700 ? 22 : 34;
     const longest = Math.min(maxChars, Math.max(4, ...rows.map(r => r.Province.length)));
     const nTicks = Math.max(2, Math.floor(width / 110));
@@ -3465,6 +3478,14 @@ out geom;</div>
   document.getElementById("kOsmGe400").textContent = fmt(T.osm_n_ge400);
   document.getElementById("kOsmLt400").textContent = fmt(T.osm_n_lt400);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
+  // How much of the country was looked at. Absent on a page built before 2026-10-24.
+  if (T.n_cells_country){
+    const nOut = Math.max(0, T.n_cells_country - T.n_cells_processed);
+    document.getElementById("kCover").innerHTML = `${fmt(T.n_cells_processed)}<small>/ ${fmt(T.n_cells_country)}</small>`;
+    document.getElementById("kCoverK").textContent = `of the country's 0.1° cells imaged and processed; `
+      + `in the other ${fmt(nOut)} only hand-mapped OpenStreetMap counts`;
+    document.getElementById("kpiCover").hidden = false;
+  }
 
   // The out-of-domain extrapolation is optional evidence: when the atlas was built
   // without it, every surface that would report it (the province column, the size
@@ -3556,6 +3577,21 @@ out geom;</div>
         provinceRows().map(p => [p.name, p.mwp_best, p.osm_mwp, p.mwp_large, p.small_central, p.small_outdomain,
           HAS_GROUND ? (p.small_ground || 0) : "", p.mwp_verified])],
     });
+    const more = document.getElementById("provMore");
+    if (DATA.provinces.length > PROV_TOP && more && HAS_PLOT){
+      const label = () => provAll ? `Show the top ${PROV_TOP} only`
+        : `Show all ${DATA.provinces.length} provinces`;
+      more.textContent = label();
+      more.setAttribute("aria-expanded", "false");
+      more.hidden = false;
+      more.addEventListener("click", () => {
+        provAll = !provAll;
+        more.textContent = label();
+        more.setAttribute("aria-expanded", String(provAll));
+        const c = CHARTS.find(x => x.key === "provinces");
+        if (c) c.render();
+      });
+    }
   }
 
   const hasSizeBins = Array.isArray(DATA.bins) && DATA.bins.length > 0;

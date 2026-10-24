@@ -25,9 +25,8 @@ hide:
   <a href="../atlas-zambia/">Zambia</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--silver" role="note">
-  <p><strong>Silver atlas: farm solar is calibrated, household rooftops are not.</strong> This map covers installations of roughly 400 m&sup2; (about 70 kWp) and larger, those mapped in OpenStreetMap and arrays the model can outline, plus small solar-irrigation arrays beside fields, calibrated on seven hand-mapped farm areas in 'Amran and Tihama. Small household systems on roofs are not estimated: Al Wehdah in Sana'a has been mapped panel by panel for that, but nothing is fitted to it yet. Read the rooftop figures as a floor.</p>
-  <p><strong>You can help from your browser.</strong> The hollow diamonds on the map are candidate areas, among them 3 km farm areas for solar irrigation. Map every solar panel inside one in OpenStreetMap: a few complete building areas are what an estimate of Yemen's rooftop systems would be fitted on, and each farm area widens the farmland the farm estimate covers.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
+  <p><strong>Silver atlas: farm solar is calibrated, household rooftops are not.</strong> Installations of about 400 m&sup2; (70 kWp) and up are counted, plus small solar-irrigation arrays calibrated on hand-mapped farm areas. Small rooftop systems are not estimated yet, so read the rooftop figures as a floor.</p>
+  <p><strong>You can help:</strong> map every panel inside a hollow diamond. Building areas calibrate rooftops; farm areas widen the farm estimate. <a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
 </div>
 <iframe src="../assets/interactive/yemen_pv_evidence_atlas.html" title="Yemen PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>

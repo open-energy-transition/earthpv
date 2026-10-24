@@ -46,9 +46,8 @@ ATLASES = [
      "Pakistan PV evidence atlas: best estimate by 0.1-degree cell", ""),
     ("atlas-germany", "Germany", "germany_pv_evidence_atlas.html", None, ""),
     ("atlas-france", "France", "france_pv_evidence_atlas.html", None,
-     "A typical French household array is about 20 m&sup2;, a fifth of a Sentinel-2 pixel: "
-     "too small for the small-installation classifier even in the fourteen communes mapped "
-     "panel by panel. Every figure here is a floor."),
+     "A French household array is about 20 m&sup2;, a fifth of a Sentinel-2 pixel, so "
+     "every figure here is a floor."),
     ("atlas-egypt", "Egypt", "egypt_pv_evidence_atlas.html", None, ""),
     ("atlas-india", "India", "india_pv_evidence_atlas.html", None, ""),
     ("atlas-morocco", "Morocco", "morocco_pv_evidence_atlas.html", None, ""),
@@ -73,69 +72,50 @@ def tier_of(html: str) -> str:
 
 WARNING = {
     "silver": (
-        "<strong>Silver atlas: smaller installations are missing.</strong> This map covers "
-        "installations of roughly 400 m&sup2; (about 70 kWp) and larger, validated against "
-        "hand-mapped ground truth, but it has no calibrated estimate below that size, where "
-        "household and small commercial rooftop systems sit. {extra}"
+        "<strong>Silver atlas: smaller installations are missing.</strong> Installations of "
+        "about 400 m&sup2; (70 kWp) and up are validated against hand-mapped ground truth; "
+        "below that, where household rooftops sit, there is no calibrated estimate. {extra}"
     ),
     "bronze": (
-        "<strong>Bronze atlas: smaller installations are missing.</strong> This map counts "
-        "only installations mapped in OpenStreetMap and arrays the model can outline from "
-        "space, roughly 400 m&sup2; (about 70 kWp) and larger. Household and small "
-        "commercial rooftop systems, often most of a country's solar, are not included, "
-        "because no area of {country} has yet been mapped panel by panel to calibrate them. "
-        "Read every figure here as a floor."
+        "<strong>Bronze atlas: smaller installations are missing.</strong> Only mapped "
+        "installations and arrays the model outlines, about 400 m&sup2; (70 kWp) and up, are "
+        "counted, so read every figure as a floor."
     ),
 }
 # A country whose reason for its tier is not the generic one (its tier is set in
 # configs/atlas/<aoi>.yaml `validation`). Replaces WARNING and HELP for that page.
+# Kept short (owner request 2026-10-24: the banner at half its former length); the
+# atlas's own confidence section carries the detail.
 TIER_NOTE = {
     "Germany": (
         "<strong>Silver atlas: the small-installation estimate is not yet validated.</strong> "
-        "Installations of roughly 400 m&sup2; (about 70 kWp) and larger are checked against "
-        "Germany's complete register (MaStR). Below that size the atlas does include an "
-        "estimate, fitted to the register's municipal totals. But its geography does not "
-        "survive the register's own check: the median municipality is off by about half, "
-        "worse than simply scaling roof area. The Best estimate also sits above the "
-        "roughly 75 GWp registered. Read the map as where capacity sits, not as a national "
-        "total.",
-        "<strong>You can help from your browser.</strong> No area of Germany has been mapped "
-        "panel by panel yet. A few complete areas would let the small-installation geography "
-        "be checked directly, which the register, with no coordinates below 30 kWp, cannot "
-        "do.",
+        "Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR). "
+        "The estimate below that misses the register's municipal totals by about half, and "
+        "Best sits above the ~75 GWp registered: read the map as where capacity sits.",
+        "<strong>You can help:</strong> a few areas mapped panel by panel would check the "
+        "small-installation geography directly.",
     ),
-    # Silver by the owner's decision (2026-10-23), kept 2026-10-24 when seven farm areas
-    # began calibrating farm ground PV: household rooftops below 400 m2 are still unmeasured.
+    # Silver by the owner's decision (2026-10-23), kept 2026-10-24 when farm areas began
+    # calibrating farm ground PV: household rooftops below 400 m2 are still unmeasured.
     "Yemen": (
         "<strong>Silver atlas: farm solar is calibrated, household rooftops are not.</strong> "
-        "This map covers installations of roughly 400 m&sup2; (about 70 kWp) and larger, those "
-        "mapped in OpenStreetMap and arrays the model can outline, plus small solar-irrigation "
-        "arrays beside fields, calibrated on seven hand-mapped farm areas in 'Amran and "
-        "Tihama. Small household systems on roofs are not estimated: Al Wehdah in Sana'a has "
-        "been mapped panel by panel for that, but nothing is fitted to it yet. Read the "
-        "rooftop figures as a floor.",
-        "<strong>You can help from your browser.</strong> The hollow diamonds on the map are "
-        "candidate areas, among them 3 km farm areas for solar irrigation. Map every solar "
-        "panel inside one in OpenStreetMap: a few complete building areas are what an "
-        "estimate of Yemen's rooftop systems would be fitted on, and each farm area widens "
-        "the farmland the farm estimate covers.",
+        "Installations of about 400 m&sup2; (70 kWp) and up are counted, plus small "
+        "solar-irrigation arrays calibrated on hand-mapped farm areas. Small rooftop systems "
+        "are not estimated yet, so read the rooftop figures as a floor.",
+        "<strong>You can help:</strong> map every panel inside a hollow diamond. Building "
+        "areas calibrate rooftops; farm areas widen the farm estimate.",
     ),
 }
 # What a reader can do about it: the Contribute Data section (docs/contribute/).
 HELP = {
     "silver": (
-        "<strong>You can help from your browser.</strong> Every solar installation mapped in "
-        "OpenStreetMap is counted in this atlas at its mapped size, and small areas mapped "
-        "completely, panel by panel, are what any estimate of the smaller installations here "
-        "would be fitted on."
+        "<strong>You can help:</strong> small areas mapped completely, panel by panel, in "
+        "OpenStreetMap are what an estimate of the smaller installations is fitted on."
     ),
     "bronze": (
-        "<strong>You can change that from your browser.</strong> The hollow diamonds on the "
-        "map are candidate areas chosen for this. Start with the one marked with a "
-        "<strong>&#9733; star</strong>: a dense district with many large roofs, where solar "
-        "is most likely. Click it, open it in iD or JOSM, and map every solar panel inside "
-        "it in OpenStreetMap. Six to ten complete areas are enough to start estimating "
-        "{country}'s smaller installations."
+        "<strong>You can change that:</strong> map every panel inside a hollow diamond on the "
+        "map, starting with the <strong>&#9733; star</strong>. Six to ten complete areas start "
+        "an estimate of {country}'s smaller installations."
     ),
 }
 CTA = (
@@ -177,7 +157,7 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
         if country in TIER_NOTE:
             text, help_ = TIER_NOTE[country]
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
-                     f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{CTA}</p>\n</div>")
+                     f"  <p>{text}</p>\n  <p>{help_} {CTA}</p>\n</div>")
     # `allow="fullscreen"`: the atlas map has a fullscreen button, which a frame without
     # the permission silently disables. The local-network ones let the "Open in JOSM"
     # button reach JOSM's Remote Control on 127.0.0.1 under Chrome's Local Network Access

@@ -1526,6 +1526,34 @@ def _ci(draws: np.ndarray) -> list[float]:
     return [round(float(v), 1) for v in np.percentile(draws, CI_PCT)]
 
 
+def _cell_coverage(aoi: str, country, processed: pd.DataFrame) -> dict:
+    """`n_cells_country`, the AOI grid's 0.1-degree cells whose centre lies inside
+    `country` (plus any processed cell just outside it), and `n_cells_processed`, the cells
+    imaged and run through the detectors (`processed`, columns `lon_center`, `lat_center`). Compose selects cells by
+    buildings and mapped solar, so the rest of a country was never looked at: on the page
+    only hand-mapped OpenStreetMap counts there."""
+    import shapely
+
+    from earthpv.compose import CELL_DEG
+    from earthpv.config import Settings
+    from earthpv.density import _grid_origin
+    from earthpv.labels import resolve_aoi
+
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    x0, y0 = _grid_origin(aoi, cfg, settings)
+    w, s, e, n = country.bounds
+    xs = x0 + (np.arange(np.floor((w - x0) / CELL_DEG), np.ceil((e - x0) / CELL_DEG)) + 0.5) * CELL_DEG
+    ys = y0 + (np.arange(np.floor((s - y0) / CELL_DEG), np.ceil((n - y0) / CELL_DEG)) + 0.5) * CELL_DEG
+    gx, gy = np.meshgrid(xs, ys)
+    inside = shapely.contains_xy(country, gx.ravel(), gy.ravel())
+    # A processed cell whose centre is just offshore of the drawn outline still counts as
+    # the country's, so the processed count matches the cell count the page reports.
+    p_out = ~shapely.contains_xy(country, processed["lon_center"].to_numpy(float),
+                                 processed["lat_center"].to_numpy(float))
+    return {"n_cells_country": int(inside.sum() + p_out.sum()), "n_cells_processed": int(len(processed))}
+
+
 def _osm_traced_ground(osm: pd.DataFrame) -> np.ndarray:
     """Ground features `prepare_national_osm_solar.py` marked `panel_traced`: polygons a
     named mapper traced around the panels, so module area rather than a site. All False for
@@ -2714,6 +2742,7 @@ def build_evidence_atlas(
         ]
 
     provinces = []
+    cell_cover: dict = {}
     regions_path = density_dir / "regions.geoparquet"
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
@@ -2754,6 +2783,8 @@ def build_evidence_atlas(
                 "rings": _rings(r.geometry),
             })
         provinces.sort(key=lambda p: -p["mwp_best"])
+        processed = grid[grid["model_covered"].astype(bool)] if "model_covered" in grid else grid
+        cell_cover = _cell_coverage(aoi, reg_regions.geometry.union_all(), processed)
 
     total_verified = float(grid.mwp_verified.sum())
     total_best = float(grid.mwp_best.sum())
@@ -2834,6 +2865,9 @@ def build_evidence_atlas(
             "small_ground_status": ground_status,
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "n_cells": int(len(grid)),
+            # How much of the country was imaged and run, both counted by cell centre inside
+            # the outlines the page draws (absent when the AOI has no region layer).
+            **cell_cover,
             "n_domain_cells": n_domain_cells,
             "n_extended_cells": int(grid.is_extended.sum()),
             "n_cells_best_floored": n_cells_best_floored,

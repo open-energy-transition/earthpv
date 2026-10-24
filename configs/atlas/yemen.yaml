@@ -23,6 +23,14 @@ title: Yemen
 # 2023 UNGSC rectangles count as site outlines at the land constant (owner decision).
 calibration_boxes:
   - {name: "Al Wehdah, Sana'a", stem: al_wehdah_priority_calib_1km, status: rule1, used: false}
+  - {name: "Bani Al Harith, Sana'a", stem: bani_al_harith_s8_calib_2km, status: rule1, used: false}
+  - {name: "Sayun, Hadhramaut", stem: sayun_priority_calib_1km, status: rule1, used: false}
+  - {name: "Dawran Anis, Dhamar", stem: dawran_anis_s4_calib_2km, status: rule1, used: false}
+  - {name: "Al Maflahi, Lahij (no PV)", stem: al_maflahi_s5_calib_2km, status: rule1, used: false}
+  - {name: "Qa'tabah, Ad Dali' (no PV)", stem: qa_tabah_s6_calib_2km, status: rule1, used: false}
+  - {name: "Al Bayda", stem: al_bayda_s3_calib_2km, status: rule1, used: false}
+  - {name: "Al Mawasit, Ta'izz", stem: al_mawasit_s7_calib_2km, status: rule1, used: false}
+  - {name: "Huth, 'Amran", stem: huth_s1_calib_2km, status: rule1, used: false}
   - {name: "Huth, 'Amran (farm)", stem: amran_huth_farm_calib_129p53km2, status: rule1}
   - {name: "At Tuhayta, Tihama (farm)", stem: tihama_tuhayta_farm_calib_104p25km2, status: rule1}
   - {name: "Al Jarrahi west, Tihama (farm)", stem: tihama_jarrahi_west_farm_calib_53p29km2, status: rule1}
@@ -30,6 +38,13 @@ calibration_boxes:
   - {name: "Al Jarrahi east, Tihama (farm)", stem: tihama_jarrahi_east_farm_calib_93p31km2, status: rule1}
   - {name: "Al Jarrahi south, Tihama (farm)", stem: tihama_jarrahi_south_farm_calib_32p64km2, status: rule1}
   - {name: "Zabid, Tihama (farm)", stem: tihama_zabid_farm_calib_30p27km2, status: rule1}
+  - {name: "Jihanah, Sana'a (farm)", stem: jihanah_f2_farm_calib_3km, status: rule1, used: false}
+  - {name: "Lawdar, Abyan (farm)", stem: lawdar_f3_farm_calib_3km, status: rule1, used: false}
+  - {name: "Abs, Hajjah (farm, no PV)", stem: abs_f8_farm_calib_3km, status: rule1, used: false}
+  - {name: "Abs north, Hajjah (farm)", stem: abs_f7_farm_calib_3km, status: rule1, used: false}
+  - {name: "As Saiyani, Ibb (farm, no PV)", stem: as_saiyani_f4_farm_calib_3km, status: rule1, used: false}
+  - {name: "As Sawd, 'Amran (farm)", stem: as_sawd_f1_farm_calib_3km, status: rule1, used: false}
+  - {name: "Az Zaydiah, Al Hudaydah (farm)", stem: az_zaydiah_f6_farm_calib_3km, status: rule1, used: false}
 
 # Silver by the owner's decision (2026-10-23), kept 2026-10-24 when the farm areas went in:
 # they calibrate farm ground PV only, and household rooftops below 400 m2 are still unmeasured.
