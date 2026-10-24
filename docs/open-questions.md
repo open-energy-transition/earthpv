@@ -245,13 +245,15 @@ the < 150 bldg/km&sup2; stratum, which four village-centred quadrats represent.
 An instrument exists since 2026-10-23: `roofclf_ground`, a footprint-free pixel detector
 ([Farm ground PV](methods/roofclf-ground.md)). In Yemen it reaches precision 0.63 at 62% array
 recall on a fully traced test ground, where Pakistan's building-ring attempt above stayed
-under 1%, and it trains on ordinary OSM labels read as bags. It is not calibrated: one clean
-area, a domain of 12 of Yemen's 810 cells, and never run on Pakistan.
+under 1%, and it trains on ordinary OSM labels read as bags. Since 2026-10-24 it is a field
+on every atlas and in Yemen's Best (32.7 MWp), but barely calibrated: one clean area, a
+domain of 12 of Yemen's 810 cells, a judgement interval, and never run on Pakistan.
 
 **What would close it:** three or more mapped farm areas per country, drawn by
-`calib-candidates -- --farmland` (cropland strata, imagery gate included), then the
-component added to the evidence atlas and its uncertainty composition. For Pakistan, a first
-run against the tubewell population. See
+`calib-candidates -- --farmland` (cropland strata, imagery gate included), which turn the
+judgement interval into a bootstrap and widen the domain. For Pakistan, a first run against
+the tubewell population, with `--roofclf-buildings` so yard arrays roofclf already prices
+are not counted twice. See
 [Small ground-mounted instrument](issues/small-ground-mount-instrument.md).
 
 ### 10. Growth as a product

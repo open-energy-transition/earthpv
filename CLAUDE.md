@@ -637,7 +637,7 @@ they could not load.
 - **New section: uncertainty**, a forest plot of each Best component's point and 90% interval
   on a log axis, from the same `uncertainty.components` the headline CI is composed from.
 - **Colour means method everywhere**: OSM teal, segmentation blue, roofclf amber,
-  roofclf+SPPI violet; hatching means ground-mount everywhere (the size chart now stacks with
+  roofclf+SPPI violet, farm ground PV green (2026-10-24); hatching means ground-mount everywhere (the size chart now stacks with
   hatched ground). Before, blue meant OSM on the map, segmentation in the composition and
   ground-mount in the size chart. Dark `--large` moved #4fb2e8 -> #5b9cf2: against the OSM
   teal it measured dE 13.6 for normal vision, under the floor of 15.
@@ -917,9 +917,20 @@ earthpv roofclf-ground-score-national --aoi <aoi>             # blobs per cell, 
 earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
 ```
 
-- **Not in any atlas yet.** `ground_capacity` writes per-cell MWp, incremental blobs (deduped
-  against OSM and segmentation's capacity candidates) and `ground_leads.geojson`; its ratio
-  has no interval until three or more clean farm areas exist, and it says so.
+- **In the atlas since 2026-10-24, a standard field on every page**: `earthpv atlas
+  --ground-cells <ground_cells.parquet>` adds `small_ground` (farm ground PV < 400 m2) to Best
+  in the detector's calibration domain only, beside roofclf's rooftop `small_central`, as its
+  own tile, map quantity, hover row, province column, composition and uncertainty row, in
+  green (#68a800 / #245c00, hatched). Without it a page says "not measured"
+  (`totals.small_ground_status.measured: false`), never 0. Interval: module draw x bootstrap
+  over farm areas from `atlas.GROUND_MIN_AREAS` (3), else the stated judgement
+  `GROUND_JUDGEMENT_CI90` (x/÷2), labelled on the page. Run `roofclf-ground-capacity` with
+  the SAME `--osm-solar` file the atlas counts, and `--roofclf-buildings` where a roofclf
+  half exists (a blob within 20 m of a priced building is its yard array). Yemen: 32.7 MWp,
+  Best 67.1 -> 99.8. The 11 other published pages were moved onto the template with
+  `retemplate_atlas.py`, data blocks byte-identical; they had been built from HEAD's
+  template minus 8331c25's star-icon and start-here wording, which reached them by hand
+  edit, so no git revision reproduced them and the old template was reconstructed.
 - **A calibration domain, like roofclf's density band** (`roofclf_ground.domain_cells`): cells
   whose cropland share AND building density lie within x/÷1.25 of the clean areas' range.
   The headline is `est_mwp_in_domain`; the all-cells figure is reported only as
@@ -1598,7 +1609,8 @@ mostly three parks (Benban 36.9 km2, 10.0 km2 north of it, Kharga 8.8 km2). The 
 estimate is 0.2 MWp: the 176 rooftop candidates >= 1,000 m2 match no mapped rooftop, so their
 `p_real` is 0. `docs/results/egypt.md`.
 
-**Yemen published 2026-10-12 on its localized v13: Verified 65.9 / Best 67.1 MWp** (90%
+**Yemen published 2026-10-12 on its localized v13: Verified 65.9 / Best 67.1 MWp** (Best 99.8,
+90% 76-149, since 2026-10-24 with 32.7 MWp of farm ground PV; see "Farm ground PV") (90%
 46-95 / 49-98) over 810 cells, Sentinel-2 October 2025 to March 2026, against IRENA's 456 MW
 at end-2025. **The ship decision was a zero-zero tie** (both checkpoints 0 of 25 'Amran
 arrays, IoU 0) and went to v13 by the tie rule, on no evidence. Yemen's labels are 1,697

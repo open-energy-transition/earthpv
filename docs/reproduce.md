@@ -724,8 +724,10 @@ pixi run earthpv roofclf-ground-score-national --aoi surat_thani
 pixi run earthpv roofclf-ground-capacity --aoi surat_thani --osm-solar <national OSM solar pull>
 ```
 
-Its leads (`ground_leads.geojson`) are useful at once for mapping; its capacity needs three
-or more completely mapped farm areas before it means anything.
+Its leads (`ground_leads.geojson`) are useful at once for mapping. Pass
+`--ground-cells data/roofclf_ground/surat_thani/capacity/ground_cells.parquet` to
+`earthpv atlas` to add its capacity to Best inside its calibration domain; with fewer than
+three completely mapped farm areas the page carries a stated judgement for its interval.
 
 ### Step 7: publish it on this site
 

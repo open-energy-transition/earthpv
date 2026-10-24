@@ -47,6 +47,12 @@
        Light mode's #1c6fa8 already cleared it (15.4). */
     --large: #5b9cf2;
     --extended: #c97fe0;
+    /* Farm ground PV (roofclf_ground, 2026-10-24). Searched, not picked: among colours in
+       the method palette's lightness band, the one furthest from the five above, dE 19.7
+       for normal vision (OKLab x100) and 13.0 under deuteranopia, the best any hue
+       reached; hatching (it is always ground-mount) and its labels carry the rest. Light
+       mode's #245c00: dE 22.0 and 12.9. */
+    --ground: #68a800;
     --user: #e85d9c;
     --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
@@ -61,7 +67,7 @@
       --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
       --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
       --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --extended: #9b47b8;
-      --user: #c2185b; --bloom: 0;
+      --ground: #245c00; --user: #c2185b; --bloom: 0;
       --card-ring: rgba(120,80,20,0.14);
       --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
       color-scheme: light;
@@ -74,7 +80,7 @@
     --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
     --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
     --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
-    --extended: #9b47b8; --user: #c2185b; --bloom: 0;
+    --extended: #9b47b8; --ground: #245c00; --user: #c2185b; --bloom: 0;
     --card-ring: rgba(120,80,20,0.14);
     --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
     color-scheme: light;
@@ -86,7 +92,7 @@
     --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c; --city: #ffffff; --city-halo: rgba(8,6,4,0.94);
     --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
     --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #5b9cf2; --extended: #c97fe0;
-    --user: #e85d9c; --bloom: 0.55;
+    --ground: #68a800; --user: #e85d9c; --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
     --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
     color-scheme: dark;
@@ -384,11 +390,14 @@
   .hero-desc a { color: var(--accent); }
 
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-  /* The hero tiles show one more addend than #sizeTiles (model >=400m2, model <400m2,
-     PLUS the OSM contribution Best also includes) -- three tiles that sum exactly to
-     the headline number above them, not two that silently omit a third of it. */
-  #tiles { grid-template-columns: repeat(3, 1fr); }
-  @media (max-width: 480px) { #tiles { grid-template-columns: 1fr; } }
+  /* The hero tiles are every addend of Best: model >=400m2, rooftop <400m2, farm ground
+     <400m2 (since 2026-10-24) and the OSM contribution -- four tiles that sum exactly to
+     the headline number above them. */
+  #tiles { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 760px) { #tiles { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 400px) { #tiles { grid-template-columns: 1fr; } }
+  /* A field the page cannot fill reads as a statement, not as a zero. */
+  .tile .v.nm { font-size: 14px; font-weight: 600; color: var(--muted); padding-top: 7px; }
   .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
     border: 1px solid var(--card-ring); }
   .tile .v { font-size: 22px; font-weight: 740; letter-spacing: -0.01em; }
@@ -396,8 +405,9 @@
     text-transform: uppercase; color: var(--muted); margin-top: 4px; }
 
   /* ── composition by method. Colour is the METHOD everywhere on this page: OSM teal,
-     segmentation blue, roofclf amber, roofclf+SPPI violet -- the map's OSM rings and the
-     uncertainty chart use the same four. Hatching is ground-mount, everywhere. ── */
+     segmentation blue, roofclf amber, roofclf+SPPI violet, farm ground-PV green -- the
+     map's OSM rings and the uncertainty chart use the same five. Hatching is ground-mount,
+     everywhere. ── */
   .comp-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 6px 12px; }
   .comp-legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
     font-size: 11px; color: var(--ink-2); }
@@ -406,6 +416,7 @@
   .comp-swatch.seg { background: var(--large); }
   .comp-swatch.roofclf { background: var(--accent); }
   .comp-swatch.sppi { background: var(--extended); }
+  .comp-swatch.ground { background: var(--ground); }
   .comp-swatch.total { background: var(--ink); }
   .comp-swatch.placement-ground { background: var(--muted);
     background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px); }
@@ -414,7 +425,7 @@
     background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px); }
   .comp-swatch.extrap { background: repeating-linear-gradient(45deg,
     var(--accent) 0 2px, var(--panel) 2px 5px); }
-  .comp-methods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+  .comp-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 18px; }
   @media (max-width: 700px) { .comp-methods { grid-template-columns: repeat(2, 1fr); } }
   .comp-method-card { background: var(--panel-2); border: 1px solid var(--card-ring);
     border-radius: 10px; padding: 12px 13px; }
@@ -793,8 +804,9 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
             <div style="overflow-x:auto;"><table id="ptable">
               <thead><tr><th>Province</th><th>Capacity</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
-                <th>Small PV, checked cells</th>
-                <th id="thOutdomain">Small PV, extrapolated</th></tr></thead>
+                <th>Small rooftop PV, checked cells</th>
+                <th id="thOutdomain">Small PV, extrapolated</th>
+                <th id="thGround">Farm ground PV, &lt;400 m²</th></tr></thead>
               <tbody></tbody>
             </table></div>
           </details>
@@ -1039,8 +1051,9 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
         <span class="xs">layers, your own data, downloads, licences</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <p><b>Layers.</b> "Show" picks the quantity the cells are coloured by: the Best
-        estimate, the OSM-mapped capacity alone, the satellite detections above or below
-        400 m&sup2;, or the gap between the Best estimate and what is already mapped, which
+        estimate, the OSM-mapped capacity alone, the satellite detections above 400 m&sup2;,
+        rooftop PV below it, farm ground PV below it (arrays beside fields, where the farm
+        detector has run), or the gap between the Best estimate and what is already mapped, which
         is where mapping effort pays off most. "per km&sup2;" divides
         by each cell's surface area, which shrinks toward the poles, so cells compare as
         densities rather than as totals. The colour scale is logarithmic and is refitted to
@@ -1062,6 +1075,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
     <div class="hero-desc" style="margin-top:16px;">Read more on the project's
     documentation site: <a href="https://open-energy-transition.github.io/earthpv/methods/density/" target="_blank" rel="noopener">capacity methodology</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/methods/roofclf/" target="_blank" rel="noopener">roofclf</a> ·
+    <a href="https://open-energy-transition.github.io/earthpv/methods/roofclf-ground/" target="_blank" rel="noopener">farm ground PV</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">Sentinel-2 glint &amp; panel pose</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/methods/calibration-quadrats/" target="_blank" rel="noopener">calibration quadrats</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/experiments/" target="_blank" rel="noopener">experiment register</a>.</div>
@@ -1211,7 +1225,8 @@ out geom;</div>
 
   /* cell tuple: [lon0, lat0, verified, best, osm_mwp, osm_n, small_low,
      small_central, mwp_large, in_domain, pv_buildings, small_outdomain, is_extended,
-     osm_mwp_unmatched, best_floor_lift, model_covered] -- `cell_cols` carries the names. */
+     osm_mwp_unmatched, best_floor_lift, model_covered, small_ground]
+     -- `cell_cols` carries the names. */
   const BEST_IDX = 3;
   const OSM_IDX = 4;
   const SMALL_CENTRAL_IDX = 7;
@@ -1229,6 +1244,9 @@ out geom;</div>
   // outside the composited grid, so no imagery and no inference, and its whole value is
   // OSM. Undefined on an atlas written before this was carried -> treated as covered.
   const COVERED_IDX = 15;
+  // Farm ground PV below 400 m2 (2026-10-24). Undefined on an atlas written before it was
+  // carried, which reads as 0 here and as "not measured" in the totals.
+  const GROUND_IDX = 16;
   const T = DATA.totals;
   T.small_all = (T.small_central || 0) + (T.small_outdomain || 0);
   // The two model-detection tiles never summed to the headline number on their own --
@@ -1257,7 +1275,8 @@ out geom;</div>
     desc: "Individual arrays are outlined directly down to about 400 m² (the practical floor for Sentinel-2's 10 m pixels); below that, where a single array can no longer be resolved as its own shape, pv density estimates take over instead. Open-source pipeline and methodology: <a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
     tiles: [
       ["mwp_large", "Satellite-detected &ge;400 m², MWp"],
-      ["small_all", "Satellite-detected &lt;400 m², MWp"],
+      ["small_all", "Satellite rooftop &lt;400 m², MWp"],
+      ["small_ground", "Satellite farm ground &lt;400 m², MWp"],
       ["osm_contribution", "Added from OSM mapping, MWp"],
     ],
   };
@@ -1275,14 +1294,14 @@ out geom;</div>
   }
   function palette(){
     const names = ["page", "panel", "panel-2", "land", "map-bg", "ink", "ink-2", "muted", "hair",
-      "prov-stroke", "accent", "accent-dim", "domain", "large", "extended", "user", "city",
+      "prov-stroke", "accent", "accent-dim", "domain", "large", "extended", "ground", "user", "city",
       "city-halo", "font-mono", "font-display"];
     const P = {};
     for (const n of names) P[n.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = tok("--" + n);
     P.dark = isDark();
     return P;
   }
-  const METHOD_TOKEN = {osm: "domain", seg: "large", roofclf: "accent", sppi: "extended"};
+  const METHOD_TOKEN = {osm: "domain", seg: "large", roofclf: "accent", sppi: "extended", ground: "ground"};
   const methodColor = (P, m) => m === "total" ? P.ink : P[METHOD_TOKEN[m]];
 
   // Sequential ramps, one hue each, monotone in lightness (audited by
@@ -1482,11 +1501,14 @@ out geom;</div>
      desc: "Installations mapped by hand in OpenStreetMap, at the atlas's conversion constants"},
     {id: "large", prop: "l", label: "Satellite-detected, ≥ 400 m²",
      desc: "Sentinel-2 segmentation and roofclf estimates for arrays of 400 m² and larger"},
-    {id: "small", prop: "s", label: "Satellite-detected, < 400 m²",
-     desc: "Sentinel-2 roofclf density estimate for arrays below the 400 m² segmentation floor"},
+    {id: "small", prop: "s", label: "Satellite rooftop, < 400 m²",
+     desc: "Sentinel-2 roofclf density estimate for rooftop arrays below the 400 m² segmentation floor"},
+    {id: "ground", prop: "f", label: "Satellite farm ground, < 400 m²",
+     desc: "Farm ground-PV detector: arrays beside fields below 400 m², where it is calibrated"},
   ];
   const cellValue = {
     b: c => c[BEST_IDX], o: c => c[OSM_IDX], l: c => c[LARGE_IDX], s: smallOf,
+    f: c => c[GROUND_IDX] || 0,
     g: c => Math.max(c[BEST_IDX] - c[OSM_IDX], 0),
   };
   const LAYERS = LAYER_DEFS.filter(d => DATA.cells.some(c => cellValue[d.prop](c) > 0));
@@ -1761,13 +1783,13 @@ out geom;</div>
   // start with (scripts/publish_calibration_areas.py's `start_here`) is a star.
   const CALIB_ICON = "calib-diamond", CAND_ICON = "cand-diamond", STAR_ICON = "cand-star";
   function starIcon(){
-    const P = palette(), r = 2, size = 21 * r, cv = document.createElement("canvas");
+    const P = palette(), r = 2, size = 24 * r, cv = document.createElement("canvas");
     cv.width = cv.height = size;
     const ctx = cv.getContext("2d");
     ctx.translate(size / 2, size / 2 + 0.6 * r);
     ctx.beginPath();
     for (let i = 0; i < 10; i++){
-      const rad = (i % 2 ? 3.6 : 8.6) * r, a = -Math.PI / 2 + i * Math.PI / 5;
+      const rad = (i % 2 ? 4.1 : 9.8) * r, a = -Math.PI / 2 + i * Math.PI / 5;
       ctx.lineTo(rad * Math.cos(a), rad * Math.sin(a));
     }
     ctx.closePath();
@@ -1948,7 +1970,8 @@ out geom;</div>
     h += row(VIEW.label, `${fmt5(c[BEST_IDX])} MWp`, def.id === "best" ? "sel" : "");
     if (def.id === "best" && STATE.perKm2) h += row("per km²", `${fmt5(c[BEST_IDX] / km2)} MWp`);
     h += row("satellite-detected &ge;400 m²", `${fmt5(c[LARGE_IDX])} MWp`);
-    h += row("satellite-detected &lt;400 m²", `${fmt5(smallTotal)} MWp`);
+    h += row("satellite rooftop &lt;400 m²", `${fmt5(smallTotal)} MWp`);
+    if ((c[GROUND_IDX] || 0) > 0) h += row("satellite farm ground &lt;400 m²", `${fmt5(c[GROUND_IDX])} MWp`);
     if (osmOnly > 0.05) h += row("added from OSM mapping", `${fmt5(osmOnly)} MWp`);
     if (c[OSM_IDX] > 0) h += row("OSM-mapped, all", `${fmt5(c[OSM_IDX])} MWp`);
     if (c[COVERED_IDX] === 0) h += row("coverage", "OSM-mapped only, not imaged");
@@ -2329,8 +2352,9 @@ out geom;</div>
              ...(p.imagery_date ? [["Esri imagery", p.imagery_date]] : []),
              ...(p.priority ? [["Mapping order", `${p.priority} of ${AREAS.nRanked}`]] : []),
              ["Area", `${p.area_km2} km²`]],
-      warn: (p.start_here ? "Map this area first: dense, with many large roofs, where solar is most "
-          + "likely to be found. " : "")
+      warn: (!p.start_here ? "" : purposive ? "Map this area first: dense, with many large roofs, "
+          + "where solar is most likely to be found. "
+          : "Map this area first: the densest candidate left, where solar is most likely to be found. ")
         + (purposive
         ? "Chosen for its building density and large buildings, never for solar already seen there, "
           + "under Esri imagery recent enough for this country's satellite composite. Not checked on "
@@ -3098,8 +3122,9 @@ out geom;</div>
     seg:     { name: "Satellite: TerraMind segmentation", cls: "seg", size: "≥ 400 m²" },
     roofclf: { name: "Satellite: roofclf", cls: "roofclf", size: "any size, where calibrated" },
     sppi:    { name: "Satellite: roofclf + SPPI", cls: "sppi", size: "< 400 m²" },
+    ground:  { name: "Satellite: farm ground PV", cls: "ground", size: "< 400 m², where calibrated" },
   };
-  const COMP_METHOD_ORDER = ["osm", "seg", "roofclf", "sppi"];
+  const COMP_METHOD_ORDER = ["osm", "seg", "roofclf", "sppi", "ground"];
 
   function compRows(){
     const C = T.uncertainty.components;
@@ -3140,6 +3165,12 @@ out geom;</div>
       { key: "small_outdomain", method: "sppi", placement: "roof", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
         short: "Satellite roofclf + SPPI, < 400 m², extrapolated",
         label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain", size: "< 400 m²" },
+      { key: "small_ground", method: "ground", placement: "ground", mwp: comp("small_ground").mwp, ci: comp("small_ground").ci,
+        short: "Satellite farm ground PV, < 400 m²",
+        label: "Farm ground-PV detector - arrays beside fields, which have no roof for roofclf to score, below "
+          + "400 m², inside its own calibration domain"
+          + (T.uncertainty.small_ground_interval ? `; interval: ${T.uncertainty.small_ground_interval}` : ""),
+        size: "< 400 m²" },
     ];
     const verified = [
       { key: "osm_roof", method: "osm", placement: "roof", mwp: comp("osm_roof").mwp, ci: comp("osm_roof").ci,
@@ -3564,13 +3595,19 @@ out geom;</div>
   // chart's legend key, the map's dotted outline, the composition's SPPI-in-Best slice)
   // drops out rather than reporting a column of zeroes as if it were a measurement.
   const HAS_OUTDOMAIN = (T.small_outdomain || 0) > 0;
+  // Farm ground PV gets its column wherever the detector ran, zeros included: a measured
+  // zero in a province is information, an unmeasured one is not.
+  const HAS_GROUND = T.small_ground != null;
 
   function drawProvinceTable(){
     if (!HAS_OUTDOMAIN) document.getElementById("thOutdomain").style.display = "none";
+    const thG = document.getElementById("thGround");
+    if (thG && !HAS_GROUND) thG.style.display = "none";
     document.querySelector("#ptable tbody").innerHTML = provinceRows().map(p =>
       `<tr><td>${esc(p.name)}</td><td>${fmt(p.mwp_best)}</td>`
       + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
-      + (HAS_OUTDOMAIN ? `<td>${fmt(p.small_outdomain)}</td>` : "") + `</tr>`).join("");
+      + (HAS_OUTDOMAIN ? `<td>${fmt(p.small_outdomain)}</td>` : "")
+      + (HAS_GROUND ? `<td>${fmt(p.small_ground || 0)}</td>` : "") + `</tr>`).join("");
   }
   function drawSizeTable(){
     document.querySelector("#btable tbody").innerHTML = DATA.bins.map(b =>
@@ -3601,8 +3638,16 @@ out geom;</div>
     T.generated_at ? `atlas generated ${T.generated_at}` : null,
   ].filter(Boolean).join(" · ");
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
+  // `null`/absent is a field this country has not measured, never a zero: the farm
+  // ground-PV detector has only run where someone ran it (`totals.small_ground_status`).
+  const NOT_MEASURED = {
+    small_ground: "The farm ground-PV detector has not been run for this country yet",
+  };
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
-    `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
+    T[key] == null
+      ? `<div class="tile" title="${esc(NOT_MEASURED[key] || "Not measured for this country")}">`
+        + `<div class="v nm">not measured</div><div class="k">${label}</div></div>`
+      : `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
 
   drawProvinceTable();
   initMap();
@@ -3631,8 +3676,9 @@ out geom;</div>
     registerPlot("provinces", "ranks", needsPlot(provinceChart), {
       title: () => `${AOI}: Best-estimate PV capacity by province`,
       subtitle: () => `${totalLine()}. Province totals sum the 0.1° cells whose centre falls inside each province.`,
-      csv: () => [["province", "mwp_best", "osm_mwp", "mwp_large", "small_central", "small_outdomain", "mwp_verified"],
-        provinceRows().map(p => [p.name, p.mwp_best, p.osm_mwp, p.mwp_large, p.small_central, p.small_outdomain, p.mwp_verified])],
+      csv: () => [["province", "mwp_best", "osm_mwp", "mwp_large", "small_central", "small_outdomain", "small_ground", "mwp_verified"],
+        provinceRows().map(p => [p.name, p.mwp_best, p.osm_mwp, p.mwp_large, p.small_central, p.small_outdomain,
+          HAS_GROUND ? (p.small_ground || 0) : "", p.mwp_verified])],
     });
   }
 
@@ -3641,7 +3687,10 @@ out geom;</div>
   if (hasSizeBins) {
     document.getElementById("sizeTiles").innerHTML =
       `<div class="tile"><div class="v">${fmt(T.mwp_roof)}</div><div class="k">Rooftop, MWp</div></div>`
-      + `<div class="tile"><div class="v">${fmt(T.mwp_ground)}</div><div class="k">Ground-mount, MWp</div></div>`;
+      + `<div class="tile"><div class="v">${fmt(T.mwp_ground)}</div><div class="k">Ground-mount, MWp`
+      + ((T.size_unbinned_ground_mwp || 0) > 0
+        ? `, incl. ${fmt(T.size_unbinned_ground_mwp)} farm ground &lt;400 m² not split by size` : "")
+      + `</div></div>`;
     if (!DATA.bins.some(b => (b.roof_extrapolated_mwp || 0) > 0)) document.getElementById("extrapKey").style.display = "none";
     drawSizeTable();
     registerPlot("sizes", "chartmount", needsPlot(sizeChart), {

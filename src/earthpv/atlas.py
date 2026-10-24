@@ -257,7 +257,7 @@ _VSCORE_SUB = {
 CELL_COLS_EVIDENCE = [
     "lon0", "lat0", "mwp_verified", "mwp_best", "osm_mwp", "osm_n", "small_low",
     "small_central", "mwp_large", "in_domain", "n_pv_buildings", "small_outdomain",
-    "is_extended", "osm_mwp_unmatched", "best_floor_lift", "model_covered",
+    "is_extended", "osm_mwp_unmatched", "best_floor_lift", "model_covered", "small_ground",
 ]
 CELL_COLS_GROWTH_EVIDENCE = [
     "lon0", "lat0", "delta_mwp_total", "delta_mwp_sub400", "delta_mwp_roof",
@@ -1370,6 +1370,16 @@ EVIDENCE_DRAWS_SEED = 20260811
 # the wrong direction.
 OUTDOMAIN_EXTRAPOLATION_CI90 = (0.25, 1.25)
 
+# Farm ground PV (`roofclf_ground`, in Best since 2026-10-24): the error of its ratio of
+# mapped PV area to detected blob area is measured by a bootstrap over completely mapped
+# farm areas once a country has `GROUND_MIN_AREAS` of them. Below that there is nothing to
+# resample, and dropping the term would report the narrowest interval exactly where the
+# calibration is thinnest, so the component carries a stated judgement instead: a
+# lognormal factor whose 90% range is x/÷2 around the point. An owner decision, labelled as
+# a judgement on the page; it disappears by itself once the third farm area is mapped.
+GROUND_MIN_AREAS = 3
+GROUND_JUDGEMENT_CI90 = (0.5, 2.0)
+
 # Which atlas component each `density` estimator backs, so a missing interval can be checked
 # against whether that component actually carries any capacity in this run.
 _SEG_COMPONENT = {
@@ -1526,6 +1536,7 @@ def _evidence_uncertainty(
     n_draws: int = EVIDENCE_N_DRAWS,
     seed: int = EVIDENCE_DRAWS_SEED,
     extrapolation_ci90: tuple[float, float] = OUTDOMAIN_EXTRAPOLATION_CI90,
+    ground: dict | None = None,
 ) -> dict:
     """90% intervals for the evidence atlas's two tier totals, composed from every
     uncertainty this pipeline actually measures.
@@ -1554,6 +1565,9 @@ def _evidence_uncertainty(
       all four roofclf-based components, correlated across them.
     - **The out-of-domain extrapolation** (`OUTDOMAIN_EXTRAPOLATION_CI90`), a stated
       judgement, on that one component only.
+    - **Farm ground PV** (`small_ground`, `ground` = its ratio, bootstrap replicates and
+      number of mapped farm areas): the module-constant draw, times the bootstrap over farm
+      areas when there are `GROUND_MIN_AREAS` or more, else `GROUND_JUDGEMENT_CI90`.
 
     Two things this interval does NOT cover, and no arithmetic here can fix: the
     calibration quadrats are purposive rather than a probability sample, so this is not a
@@ -1620,6 +1634,22 @@ def _evidence_uncertainty(
     rng = np.random.default_rng(seed + 2)
     f_extrap = rng.uniform(extrapolation_ci90[0], extrapolation_ci90[1], n_draws)
 
+    f_ground, ground_interval = np.ones(n_draws), ""
+    if components.get("small_ground"):
+        g = ground or {}
+        reps = np.asarray(g.get("boots") or [], dtype=float)
+        ratio, n_areas = float(g.get("ratio") or 0.0), int(g.get("n_areas") or 0)
+        rng_g = np.random.default_rng(seed + 3)
+        if n_areas >= GROUND_MIN_AREAS and len(reps) and ratio > 0:
+            f_ground = rng_g.choice(reps / ratio, n_draws, replace=True)
+            ground_interval = f"bootstrap over {n_areas} mapped farm areas"
+        else:
+            sigma = np.log(GROUND_JUDGEMENT_CI90[1]) / 1.6448536
+            f_ground = np.exp(rng_g.normal(0.0, sigma, n_draws))
+            ground_interval = (f"stated judgement, x/÷{GROUND_JUDGEMENT_CI90[1]:g} at 90% "
+                               f"({n_areas} mapped farm area{'' if n_areas == 1 else 's'}, "
+                               f"fewer than {GROUND_MIN_AREAS})")
+
     c = components
     # Verified: hand-mapped OSM (exact areas, so only the conversion constant moves) plus
     # the AND-gate's coverage-ratio-weighted small-PV.
@@ -1646,6 +1676,10 @@ def _evidence_uncertainty(
         best_parts["small_outdomain"] = (
             c["small_outdomain"] * cov["small_outdomain"] * f_mod * f_extrap
         )
+    # Farm ground PV is traced around its panels, so it is module area and shares the
+    # module draw with every other module-area component.
+    if c.get("small_ground"):
+        best_parts["small_ground"] = c["small_ground"] * f_mod * f_ground
 
     v_point = sum(components[k] for k in ("osm_roof", "osm_ground", "small_low"))
     b_point = sum(components[k] for k in best_parts)
@@ -1697,6 +1731,8 @@ def _evidence_uncertainty(
         "kwp_module_ci90": list(cc.KWP_MODULE_CI90),
         "kwp_land_ci90": list(cc.KWP_LAND_CI90),
         "outdomain_extrapolation_ci90": list(extrapolation_ci90),
+        "small_ground_interval": ground_interval,
+        "ground_judgement_ci90": list(GROUND_JUDGEMENT_CI90),
         "not_covered": [
             "purposive (not probability-sampled) calibration quadrats -- this is not a "
             "design-based national margin of error",
@@ -1813,6 +1849,8 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
         ("TerraMind segmentation", total("seg_roof_outdomain", "seg_ground")),
         ("roofclf and SPPI agreeing, extrapolated beyond the calibrated domain",
          total("small_outdomain")),
+        ("the farm ground-PV detector (arrays beside fields, below 400 m&sup2;)",
+         total("small_ground")),
     ]
     methods = sorted([m for m in methods if m[1] > 0], key=lambda m: -m[1])
     link = ("" if not cfg.composition_page else
@@ -1844,6 +1882,7 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
 def _confidence_html(
     cfg, *, total_best: float, best_ci: list, has_extrapolation: bool,
     has_quadrat_bootstrap: bool, n_calib_boxes: int, n_calib_rule1: int,
+    ground_interval: str = "",
 ) -> str:
     """The "How confident should you be in this?" section, for ANY country.
 
@@ -1896,6 +1935,19 @@ def _confidence_html(
             "ground-truthed neighborhoods (\"quadrats\"). This source of "
             "uncertainty is measured by refitting both on random subsets of those "
             "quadrats and seeing how far the answer moves.")
+    if ground_interval.startswith("bootstrap"):
+        inside.append(
+            "<b>How much the farm ground-PV estimate shifts depending on which farm "
+            "areas were mapped.</b> Its ratio of mapped panel area to detected area is "
+            "refitted on random subsets of the completely mapped farm areas ("
+            + ground_interval + ").")
+    elif ground_interval:
+        inside.append(
+            "<b>A stated allowance for the farm ground-PV estimate.</b> It rests on fewer "
+            "than three completely mapped farm areas, so how much it would shift with "
+            "other areas cannot be measured yet. It carries a judgement instead, a factor "
+            "of two either way at 90%, which widens the range rather than leaving its "
+            "least-tested part out.")
     if has_extrapolation:
         inside.append(
             "<b>An added allowance for a rural extrapolation.</b> This "
@@ -2127,6 +2179,7 @@ def build_evidence_atlas(
     include_offgrid_osm: bool = False,
     validation_score: str | None = None,
     legacy_osm_addition: bool = False,
+    ground_cells_path: Path | None = None,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -2284,6 +2337,16 @@ def build_evidence_atlas(
     deduped against OSM, so a mapped array segmentation also found was counted nowhere
     (Pakistan: 687 installations, 466 MWp, of which the per-cell floor restored 36).
     `legacy_osm_addition=True` reproduces the earlier figures exactly.
+
+    **Farm ground PV, `ground_cells_path` (2026-10-24).** `roofclf-ground-capacity`'s
+    `ground_cells.parquet`: arrays beside fields that neither roofclf (no roof) nor
+    segmentation (below its floor) sees, already deduplicated against OSM, segmentation
+    and roofclf's priced buildings. Only cells inside the detector's own calibration domain
+    enter Best, as `small_ground`, a component of its own beside roofclf's rooftop
+    `small_central`; its interval is `GROUND_JUDGEMENT_CI90` until the country has
+    `GROUND_MIN_AREAS` mapped farm areas. `totals.small_ground_status` is written on every
+    page, `measured: false` without this path, so each atlas states whether the field was
+    measured rather than showing a zero.
     """
     density_dir = Path(density_dir)
     out = Path(out) if out else density_dir / f"{aoi}_pv_evidence_atlas.html"
@@ -2461,6 +2524,35 @@ def build_evidence_atlas(
         else pd.Series(dtype=float)
     )
 
+    # Farm ground PV (see docstring): in-domain cells only, by the cell names both this grid
+    # and `roofclf-ground-score-national` take from the AOI's own grid origin.
+    by_ground = pd.Series(dtype=float)
+    ground_status: dict = {"measured": False}
+    ground_unc = None
+    if ground_cells_path is not None:
+        gcells = pd.read_parquet(ground_cells_path)
+        gsum_path = Path(ground_cells_path).parent / "summary.json"
+        gsum = json.loads(gsum_path.read_text()) if gsum_path.exists() else {}
+        gin = gcells[gcells["in_domain"].astype(bool)]
+        by_ground = gin.groupby("cell")["est_mwp"].sum()
+        lost = sorted(set(by_ground.index) - set(grid["cell"].astype(str)))
+        if lost:
+            log.warning("Evidence atlas: %d farm ground-PV cells (%.1f MWp) are not in this grid "
+                        "and are dropped: %s", len(lost), float(by_ground[lost].sum()), lost[:5])
+        ground_unc = {"ratio": gsum.get("ratio_true_per_detected_m2"),
+                      "boots": gsum.get("ratio_bootstrap") or [],
+                      "n_areas": int(gsum.get("n_calibration_areas") or 0)}
+        ground_status = {
+            "measured": True,
+            "estimand": gsum.get("estimand"),
+            "n_calibration_areas": ground_unc["n_areas"],
+            "n_domain_cells": int(len(by_ground)),
+            "n_cells_with_blobs": int(gsum.get("cells_with_blobs") or len(gcells)),
+            "domain": gsum.get("domain"),
+            "all_cells_extrapolated_mwp": gsum.get("est_mwp_all_cells_extrapolated"),
+            "fingerprint": gsum.get("fingerprint"),
+        }
+
     grid = grid.copy()
     grid["osm_mwp"] = grid["cell"].map(osm_by_cell.get("osm_mwp", pd.Series(dtype=float))).fillna(0.0)
     grid["osm_mwp_unmatched"] = grid["cell"].map(
@@ -2470,6 +2562,7 @@ def build_evidence_atlas(
     grid["small_low"] = grid["cell"].map(by_low).fillna(0.0)
     grid["small_central"] = grid["cell"].map(by_central).fillna(0.0)
     grid["small_outdomain"] = grid["cell"].map(by_outdomain).fillna(0.0)
+    grid["small_ground"] = grid["cell"].map(by_ground).fillna(0.0)
     grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
     n_domain_cells = int(grid["in_domain"].sum())
     # Distinct from `in_domain`: these cells carry an EXTRAPOLATED small-PV contribution
@@ -2540,6 +2633,7 @@ def build_evidence_atlas(
     grid["mwp_verified"] = grid["osm_mwp"] + grid["small_low"]
     grid["mwp_best"] = (
         grid["osm_mwp_unmatched"] + grid["mwp_large"] + grid["small_central"] + grid["small_outdomain"]
+        + grid["small_ground"]
     )
     # Best is "the highest defensible figure" -- it must never read below Verified in the
     # same cell. It can, before this floor: Best drops a cell's matched-OSM value in favor
@@ -2571,7 +2665,7 @@ def build_evidence_atlas(
          round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings),
          round(float(r.small_outdomain), 3), int(r.is_extended),
          round(float(r.osm_mwp_unmatched), 3), round(float(r.best_floor_lift), 3),
-         int(bool(r.model_covered))]
+         int(bool(r.model_covered)), round(float(r.small_ground), 3)]
         for r in grid.itertuples()
     ]
     cell_cols = CELL_COLS_EVIDENCE
@@ -2605,7 +2699,7 @@ def build_evidence_atlas(
             reg_regions = reg_regions[~reg_regions.geometry.is_empty]
         keep = [
             "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
-            "small_low", "small_central", "small_outdomain",
+            "small_low", "small_central", "small_outdomain", "small_ground",
         ]
         pts2 = gpd.GeoDataFrame(
             grid[keep], geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
@@ -2623,6 +2717,7 @@ def build_evidence_atlas(
                 "small_low": round(float(row["small_low"]), 1),
                 "small_central": round(float(row["small_central"]), 1),
                 "small_outdomain": round(float(row["small_outdomain"]), 1),
+                "small_ground": round(float(row["small_ground"]), 1),
                 "nb": int(r.n_pv_buildings),
                 "rings": _rings(r.geometry),
             })
@@ -2648,6 +2743,7 @@ def build_evidence_atlas(
         "small_low": float(grid.small_low.sum()),
         "small_central": float(grid.small_central.sum()),
         "small_outdomain": float(grid.small_outdomain.sum()),
+        "small_ground": float(grid.small_ground.sum()),
     }
     uncertainty = _evidence_uncertainty(
         density_dir=density_dir, meta=meta, kwp_mod=kwp_mod, kwp_land=kwp_land,
@@ -2667,7 +2763,10 @@ def build_evidence_atlas(
             ).get("coverage_ratio_bootstrap", {}),
         },
         total_verified=total_verified, total_best=total_best,
+        ground=ground_unc,
     )
+    if ground_status["measured"]:
+        ground_status["interval"] = uncertainty["small_ground_interval"]
     log.info(
         "Evidence atlas: Verified %.1f MWp (90%% %.0f-%.0f), Best %.1f MWp (90%% %.0f-%.0f)",
         total_verified, *uncertainty["mwp_verified_ci"], total_best, *uncertainty["mwp_best_ci"],
@@ -2696,6 +2795,11 @@ def build_evidence_atlas(
             "small_low": round(float(grid.small_low.sum()), 1),
             "small_central": round(float(grid.small_central.sum()), 1),
             "small_outdomain": round(float(grid.small_outdomain.sum()), 1),
+            # Standard on every page: the value where the farm ground-PV detector ran,
+            # None (shown as "not measured", never as 0) where it did not.
+            "small_ground": (round(float(grid.small_ground.sum()), 1)
+                             if ground_status["measured"] else None),
+            "small_ground_status": ground_status,
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "n_cells": int(len(grid)),
             "n_domain_cells": n_domain_cells,
@@ -2743,7 +2847,11 @@ def build_evidence_atlas(
             low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
             sub400_outdomain_buildings_path, legacy_osm_addition=legacy_osm_addition,
         )
-        size_best = size_data["totals"]["mwp_best"]
+        # Farm ground PV is a ratio estimate on blob area: it has a total but no
+        # per-installation size, so it joins the chart's ground-mount total unbinned and the
+        # page says so, rather than being spread across bins it cannot be assigned to.
+        ground_total = float(grid.small_ground.sum())
+        size_best = size_data["totals"]["mwp_best"] + ground_total
         if abs(size_best - total_best) > max(1.0, total_best * 0.02):
             log.warning(
                 "Evidence atlas: size-bin re-binning totals %.1f MWp vs this page's own "
@@ -2754,7 +2862,8 @@ def build_evidence_atlas(
             )
         data["bins"] = size_data["bins"]
         data["totals"]["mwp_roof"] = size_data["totals"]["mwp_roof"]
-        data["totals"]["mwp_ground"] = size_data["totals"]["mwp_ground"]
+        data["totals"]["mwp_ground"] = round(size_data["totals"]["mwp_ground"] + ground_total, 1)
+        data["totals"]["size_unbinned_ground_mwp"] = round(ground_total, 1)
 
     # The panel-pose survey (glint-derived tilt/azimuth, `pose.py`) is embedded
     # natively -- see this function's docstring for why its CSS is namespaced under
@@ -2797,6 +2906,7 @@ def build_evidence_atlas(
             has_quadrat_bootstrap=bool(uncertainty.get("coverage_bootstrap")),
             n_calib_boxes=data["totals"]["n_calib_boxes"],
             n_calib_rule1=data["totals"]["n_calib_rule1"],
+            ground_interval=uncertainty.get("small_ground_interval", ""),
         ),
     }.items():
         html = html.replace(key, value)

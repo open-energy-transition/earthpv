@@ -966,7 +966,7 @@ def ground_capacity(
     aoi: str, score_dir: Path, calib_dir: Path, out_dir: Path, osm_solar: Path | None = None,
     candidates: Path | None = None, n_boot: int = 200, kwp_per_m2: float | None = None,
     leads: int = 500, max_blob_m2: float | None = "model", roads: Path | None = None,
-    grid: Path | None = None,
+    grid: Path | None = None, roofclf_buildings: tuple = (),
 ) -> dict:
     """Incremental ground-PV capacity per cell: kept blobs that neither OSM nor
     segmentation already counts, times the clean areas' true/detected area ratio, times
@@ -1037,6 +1037,17 @@ def ground_capacity(
                          predicate="intersects").index.unique()
         stats["dedup_segmentation"] = int((~drop[near]).sum())
         drop[near] = True
+    # roofclf's own priced buildings, where a country has both instruments: under the
+    # parcel label it already counts PV within `roofclf.YARD_RING_M` of a flagged roof, so a
+    # blob that close to one is that building's yard array and is roofclf's to count.
+    for path in roofclf_buildings:
+        b = gpd.read_parquet(path)
+        if b.empty:
+            continue
+        near = gpd.sjoin(gpd.GeoDataFrame(geometry=bu.buffer(roofclf.YARD_RING_M), crs=utm),
+                         b.to_crs(utm)[["geometry"]], predicate="intersects").index.unique()
+        stats[f"dedup_roofclf_{Path(path).stem}"] = int((~drop[near]).sum())
+        drop[near] = True
     inc = blobs[~drop].reset_index(drop=True)
     stats["blobs_incremental"] = len(inc)
 
@@ -1065,6 +1076,10 @@ def ground_capacity(
         "aoi": aoi, "detector": DETECTOR, "fingerprint": man.get("fingerprint"),
         "estimand": (f"PV area in arrays below {meta.get('max_array_m2'):g} m2" if meta.get("max_array_m2")
                      else "PV area in ground arrays of every size"),
+        "max_array_m2": meta.get("max_array_m2"),
+        # Every replicate, so the atlas can carry this component's calibration error in
+        # its interval the way it carries roofclf's coverage-ratio bootstrap.
+        "ratio_bootstrap": [round(float(x), 6) for x in boots],
         "ratio_true_per_detected_m2": ratio, "ratio_boot_p05_p95": (
             [float(np.percentile(boots, 5)), float(np.percentile(boots, 95))] if len(boots) else None),
         "n_calibration_areas": int((calib.block == "all").sum()),

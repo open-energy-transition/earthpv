@@ -1,11 +1,13 @@
 # Farm ground PV (roofclf_ground)
 
-!!! note "PARTIAL (2026-10-23): built and measured, not yet in any atlas"
+!!! note "SHIPPED (2026-10-24): in Yemen's Best estimate, inside its calibration domain"
 
-    The detector, its national scoring, its capacity step and the farm calibration areas
-    it needs all exist and were run on Yemen. No published figure uses it yet: its
-    capacity calibration rests on one completely mapped area, which covers 12 of Yemen's
-    810 imaged cells. Three or more mapped farm areas are what move it into an atlas.
+    Built and measured 2026-10-23, and since 2026-10-24 a standard field on every evidence
+    atlas: **farm ground PV below 400 m<sup>2</sup>**, beside rooftop PV below 400
+    m<sup>2</sup>. Yemen's atlas carries 32.7 MWp of it in Best. Every other atlas shows
+    the field as "not measured" until the detector is run there. Its calibration still
+    rests on one completely mapped area, which covers 12 of Yemen's 810 imaged cells, so
+    its interval is a stated judgement until a country has three mapped farm areas.
 
 Small solar arrays beside fields, most of them powering irrigation pumps, are a large and
 fast-growing class in arid countries, and neither of the project's two instruments sees
@@ -126,6 +128,37 @@ Yemen the detector priced 46.5 MWp, most of it in Al Hudaydah city and its shore
 cropland, with a ratio measured on highland farms. 'Amran alone (6.6% cropland,
 46 buildings per km<sup>2</sup>) makes 12 of Yemen's 810 cells in domain.
 
+## In the atlas
+
+`earthpv atlas --ground-cells data/roofclf_ground/<aoi>/capacity/ground_cells.parquet`
+adds the component; the `summary.json` beside it supplies the calibration. It is shown the
+same way on every country's page, so a reader can always find it:
+
+- **Its own line.** A fourth headline tile, "satellite farm ground &lt;400 m&sup2;", beside
+  the rooftop one, so the four tiles still sum to Best; a map quantity; a row in each map
+  cell's hover; a province column; a composition row and an uncertainty row. Its colour is
+  green, the one hue left that stays distinct from the other four methods in both themes
+  (OKLab distance 19.7 and 22.0 from the nearest, 13 under deuteranopia), and it is always
+  hatched, since it is always ground-mount.
+- **"Not measured", never zero.** A page built without it states that the detector has not
+  been run for the country (`totals.small_ground_status.measured: false`). Pages published
+  before the field existed were moved onto the new template by
+  `scripts/retemplate_atlas.py`, with their figures byte for byte unchanged.
+- **In Best, inside the domain only.** Only cells inside the detector's own calibration
+  domain count, the rule `roofclf`'s other components follow.
+- **Its interval.** The module-constant draw shared with every module-area component, times
+  a bootstrap over mapped farm areas once there are three or more
+  (`atlas.GROUND_MIN_AREAS`). Below that it carries a stated judgement, a lognormal factor
+  of two either way at 90% (`atlas.GROUND_JUDGEMENT_CI90`), said as such on the page:
+  leaving the term out would make the interval narrowest where the calibration is
+  thinnest.
+- **Incremental, against what the page counts.** Run `roofclf-ground-capacity` with the
+  same `--osm-solar` file the atlas uses, and with `--roofclf-buildings` where the country
+  has a `roofclf` half: a detection within 20 m of a building roofclf priced is that
+  building's yard array, which roofclf already counts.
+- **The size chart** (countries with `roofclf`'s &ge; 400 m<sup>2</sup> half) adds it to the
+  ground-mount total unbinned: a ratio estimate has an area but no per-array size.
+
 ## Farm calibration areas
 
 Rooftop quadrats are the wrong ground truth for this instrument, and the instrument's
@@ -163,6 +196,8 @@ pixi run earthpv roofclf-ground --aoi yemen \
     --weak-region data/labels/Yemen-mixed-labels.geojson
 pixi run earthpv roofclf-ground-score-national --aoi yemen      # about 10 s per cell, resumable
 pixi run earthpv roofclf-ground-capacity --aoi yemen --osm-solar <national OSM solar pull>
+pixi run earthpv atlas --aoi yemen --osm-solar <the same pull> \
+    --ground-cells data/roofclf_ground/yemen/capacity/ground_cells.parquet
 ```
 
 Registered farm areas are found automatically. Region labels are pulled from Overpass once
@@ -194,14 +229,14 @@ leads were two utility-scale plants that are not in OpenStreetMap at all.
 
 ## Limits
 
-- **One clean area.** Every capacity figure rests on 'Amran alone, which is why nothing is
-  published and the domain is 12 cells. The eight farm candidates exist to fix that.
+- **One clean area.** Every capacity figure rests on 'Amran alone, which is why the domain
+  is 12 cells and the interval a judgement. The eight farm candidates exist to fix that.
 - **Transfer is the open question.** Highland 'Amran and lowland Tihama behave differently,
   and the Tihama-only model found 'Amran's arrays at lower precision than plain SPPI. A new
   country should be read through its own leave-one-area-out figures, not Yemen's.
 - **Rule 1 is relative to the imagery's date** here as everywhere (see
   [roofclf](roofclf.md)): arrays built after the mapping imagery are present in the
   composite and absent from the labels, so precision is a lower bound.
-- **Not yet part of the atlas.** The component is incremental by construction (deduplicated
-  against OpenStreetMap and segmentation), but its uncertainty has not been added to the
-  atlas's interval composition.
+- **The OpenStreetMap layer it is deduplicated against ages.** Yemen's atlas counts a pull
+  from 12 October; arrays traced since are priced by the detector until that layer is
+  refreshed, then move into Verified.

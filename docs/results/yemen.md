@@ -1,4 +1,4 @@
-# Yemen: the map is solar irrigation the sensor cannot see, and the parks are not on it
+# Yemen: solar irrigation the old labels hid, and parks that are not on the map
 
 Yemen was composed and run on 11 and 12 October 2026, the second country of the
 Morocco-Egypt-Yemen-South Africa queue to reach a page. Like [Egypt](egypt.md) it started
@@ -16,14 +16,18 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
 | | |
 | --- | --- |
 | Verified | **65.9 MWp** (90% 46 to 95) |
-| Best estimate | **67.1 MWp** (90% 49 to 98) |
+| Best estimate | **99.8 MWp** (90% 76 to 149); 67.1 before 2026-10-24 |
+| of which farm ground PV, < 400 m&sup2; | **32.7 MWp** (90% 16 to 65, a stated judgement), 12 cells; [below](#farm-ground-pv-added-2026-10-24) |
 | Grid | 810 cells of 0.1&deg;, 22 governorates (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, October 2025 to March 2026 |
 | Model | `v13_combined_yemen` epoch 28, localized (tied with `v5_combined_france` at zero on the holdout; see below) |
 
-!!! warning "A precision floor, and here close to the mapped layer alone"
-    Yemen has **no calibration quadrats**, so there is no `roofclf` half and no instrument
-    below the 400 m&sup2; segmentation floor. It has no glint sample, so `p_unmapped` is 0
+!!! warning "A precision floor above 400 m&sup2;, and one small-array component in a few cells"
+    Yemen has **no `roofclf` half**: its one registered calibration area (Al Wehdah,
+    2026-10-23) has not been fitted, so nothing prices rooftop PV below the 400 m&sup2;
+    segmentation floor. Below that floor only the farm ground-PV detector counts, and only
+    in the 12 cells like its one calibration area ([below](#farm-ground-pv-added-2026-10-24)).
+    It has no glint sample, so `p_unmapped` is 0
     and `p_real` collapses to the OpenStreetMap-mapped fraction, which in Yemen is zero in
     every size bin (next sections). Recall was deliberately skipped
     (`--recall-reference none`). For scale, IRENA counts **456 MW of operational PV at the
@@ -146,7 +150,8 @@ hillside.
 1,891 reference features inside the border, none overlapping: 1.30 km&sup2; of ground (65.1
 MWp) and 0.004 km&sup2; of rooftop (0.8 MWp); the 130 unclassified points carry no area. The
 Tihama irrigation arrays are 61.4 MWp of the 65.9. Best adds the model's 1.2 MWp of ground
-on top, and is floored at Verified in two cells.
+on top and, since 2026-10-24, 32.7 MWp of farm ground PV below 400 m&sup2;, and is floored at
+Verified in two cells.
 
 ## Operational notes
 
@@ -158,6 +163,28 @@ mapped ground perimeter of 50,000 m&sup2; or more, and the screen wrote an empty
 then failed reading its own `screen` column. It now writes the column header regardless, so
 `density` reads an empty screen; the queue's three launches had all stopped at that step,
 and the chain was relaunched at 15:51 once it was fixed.
+
+## Farm ground PV (added 2026-10-24)
+
+Small arrays beside fields, mostly solar irrigation pumps, are counted by the
+[farm ground-PV detector](../methods/roofclf-ground.md), a pixel model trained on a fully
+traced test ground in 'Amran (306 arrays) and on the Tihama rectangles read as bags. It
+enters Best as its own component, beside where rooftop PV below 400 m&sup2; will sit once
+`roofclf` is fitted here:
+
+| | |
+| --- | --- |
+| In Best | **32.7 MWp**, arrays below 400 m&sup2; |
+| 90% interval | 16 to 65 MWp, a stated judgement (a factor of two either way), because it rests on one mapped farm area; a bootstrap over areas replaces it from the third |
+| Where | the 12 of 810 cells whose cropland share (5.3 to 8.3%) and building density (37 to 58 per km&sup2;) are within 25% of 'Amran's |
+| Not counted | 2,555 MWp if the same ratio were applied to every cell, which would put Yemen near its 2,848 MWp import ceiling for all solar since 2017: cities, coast and desert are not 'Amran |
+
+It is incremental: detections within 20 m of a feature in the OpenStreetMap pull this page
+counts (12 October), or of a segmentation candidate Best uses, are left to those. The
+arrays traced in 'Amran since then are not in that pull, so the detector prices them
+rather than the map; once Yemen's OpenStreetMap layer is refreshed they move into Verified
+and out of this figure. The eight farm calibration candidates on the map, drawn across
+Yemen's cropland strata, are what widen the 12 cells into a national estimate.
 
 ## Calibration areas
 

@@ -784,6 +784,10 @@ def roofclf_ground_capacity_cmd(
     leads: int = typer.Option(500, help="Top blobs written to ground_leads.geojson for review"),
     roads: Path = typer.Option(None, help="Paved-roads parquet for the road veto (default: Overpass "
                                "per 1-degree chunk holding a blob, cached in data/roads/<aoi>/)"),
+    roofclf_buildings: list[Path] = typer.Option(
+        None, help="roofclf's incremental building parquets (sub-400 central, >= 400 m2 rooftop) "
+        "where the country has a roofclf half: a blob within 20 m of a priced building is its "
+        "yard array and is left to roofclf (repeatable)"),
 ) -> None:
     """Incremental ground-PV capacity per cell from the ground detector's blobs: what
     neither OSM nor segmentation already counts, priced by the clean areas' ratio of
@@ -794,7 +798,8 @@ def roofclf_ground_capacity_cmd(
     s = ground_capacity(aoi, score_dir or base / "blobs", calib_dir or base, out_dir or base / "capacity",
                         osm_solar=osm_solar, candidates=pred_dir / aoi / "candidates.parquet",
                         n_boot=coverage_boot, leads=leads, roads=roads,
-                        grid=pred_dir / aoi / "density" / "grid.geoparquet")
+                        grid=pred_dir / aoi / "density" / "grid.geoparquet",
+                        roofclf_buildings=tuple(roofclf_buildings or ()))
     for k, v in s.items():
         typer.echo(f"  {k}: {v}")
 
@@ -1501,6 +1506,11 @@ def atlas(
         "inside roofclf's >= 400 m2 domain was counted nowhere. Only AOIs with a recall "
         "correction (Pakistan, Germany) differ.",
     ),
+    ground_cells: Path = typer.Option(
+        None, help="`roofclf-ground-capacity`'s ground_cells.parquet (its summary.json beside "
+        "it): farm ground PV below 400 m2, added to Best in the detector's own calibration "
+        "domain as its own component. Omitted, the page shows the field as not measured.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
@@ -1554,6 +1564,7 @@ def atlas(
                 include_offgrid_osm=include_offgrid_osm,
                 validation_score=validation_score,
                 legacy_osm_addition=legacy_osm_addition,
+                ground_cells_path=ground_cells,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
