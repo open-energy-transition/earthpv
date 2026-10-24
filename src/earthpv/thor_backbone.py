@@ -15,8 +15,8 @@ Three things the upstream plugin (`thor_terratorch_ext`) does not do and this wr
   Triton, and Triton refuses compute capability < 7.0, so compilation is disabled on such a
   GPU. And PyTorch's default SDPA kernel there (memory-efficient) is ~15x slower in fp16 than
   the plain math kernel (measured on the GTX 1060: 269 against 18 ms per layer, 980 tokens),
-  so the math kernel is forced. Both apply only when this module is imported, i.e. only when
-  a THOR backbone is in use.
+  so `train` and `infer.load_model` select the math kernel for it (`earthpv.attention`).
+  Disabling compilation applies only when a THOR backbone is in use.
 * **Import from a checkout.** THOR pins `terratorch==1.2.5` (we run 1.2.8), so it is not a
   pixi dependency. The two repositories are read from `EARTHPV_THOR_PATHS` (os.pathsep-separated)
   or from `third_party/THOR` and `third_party/thor_terratorch_ext` next to the repo root.
@@ -55,9 +55,7 @@ def _configure_for_device() -> None:
         import torch._dynamo
 
         torch._dynamo.config.disable = True
-        torch.backends.cuda.enable_mem_efficient_sdp(False)
-        torch.backends.cuda.enable_flash_sdp(False)
-        log.info("THOR on a pre-Volta GPU: torch.compile disabled, SDPA forced to the math kernel")
+        log.info("THOR on a pre-Volta GPU: torch.compile disabled")
 
 
 def register() -> None:

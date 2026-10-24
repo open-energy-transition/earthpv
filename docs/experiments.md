@@ -2377,7 +2377,11 @@ came out of it:
   kernel (memory-efficient) is about 15 times slower in fp16 than the math kernel (269 against
   18 ms per layer at 980 tokens). TerraMind calls the same SDPA: forcing the math kernel takes
   TerraMind-Tiny from 275 to 97 ms per training batch of 8, with logits within 0.003 and 99.9%
-  of pixels unchanged. Not yet applied to production training or inference.
+  of pixels unchanged. **Applied to training 2026-10-24** (`earthpv.attention`; a 50-step
+  smoke run 17 against 36 s). Not to TerraMind inference, which runs one window at a time
+  and gains only 17% (25 against 29 ms per window), while 0.03% of a raster's pixels move by
+  1-2 uint8 levels (7 of 51,120 detected pixels crossed 0.3 on six South African cells):
+  every published raster stays reproducible byte for byte instead.
 
 Code: `src/earthpv/thor_backbone.py` (THOR from a `third_party/` checkout, input
 standardisation from `scripts/chip_band_stats.py`, compile disabled and the math kernel forced

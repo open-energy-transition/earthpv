@@ -21,6 +21,9 @@ def run_training(config: Path, smoke: bool = False) -> Path:
 
     cfg = yaml.safe_load(Path(config).read_text())
     torch.set_float32_matmul_precision("medium")
+    from earthpv import attention
+
+    attention.configure(prefer_math=True)  # the GTX 1060 trains TerraMind ~2.8x faster on it
 
     dm = PVDataModule(**cfg["data"])
     task_args = dict(cfg["task"])

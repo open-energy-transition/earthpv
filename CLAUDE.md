@@ -241,10 +241,14 @@ TerraMind too:
 - **Epoch selection noise is as large as a backbone change.** v14's second-best checkpoint finds
   0.621 of rooftop arrays against the shipped one's 0.565, because val/mIoU is dominated by
   large ground plants. Compare checkpoints on installation recall, never on one val/mIoU.
-- **On the GTX 1060 PyTorch's default SDPA kernel is about 3x slower for TerraMind.** Training
-  takes 275 against 97 ms per batch of 8 with the math kernel forced
-  (`torch.backends.cuda.enable_mem_efficient_sdp(False)`, `enable_flash_sdp(False)`), logits
-  within 0.003. It is NOT applied to production yet; `thor_backbone` forces it only for THOR.
+- **On the GTX 1060 PyTorch's default SDPA kernel is about 3x slower for TerraMind training,
+  so `train` uses the math kernel since 2026-10-24** (`earthpv.attention`, pre-Volta GPUs
+  only): 97 against 275 ms per batch of 8, a smoke run 17 against 36 s. **TerraMind inference
+  deliberately keeps PyTorch's kernel**: it would gain only 17% (one window at a time), and
+  the kernels agree to rounding, not bit for bit (0.03% of a raster's pixels move by 1-2
+  uint8 levels), so every published raster still reproduces byte for byte (checked on six
+  South African cells). THOR uses the math kernel in both. `EARTHPV_SDPA=default|math`
+  overrides; `default` reproduces training as it ran before.
 - **Training is protected against systemd-oomd now.** `datamodule` drops each chip from the
   page cache after reading it: a ~20 GB corpus cannot be cached inside a unit's MemoryMax, and
   the in-cgroup reclaim was what got runs killed. `resume: true` in a training config is opt-in
