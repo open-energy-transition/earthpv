@@ -4,10 +4,11 @@
 
     Built and measured 2026-10-23, and since 2026-10-24 a standard field on every evidence
     atlas: **farm ground PV below 400 m<sup>2</sup>**, beside rooftop PV below 400
-    m<sup>2</sup>. Yemen's atlas carries 32.7 MWp of it in Best. Every other atlas shows
-    the field as "not measured" until the detector is run there. Its calibration still
-    rests on one completely mapped area, which covers 12 of Yemen's 810 imaged cells, so
-    its interval is a stated judgement until a country has three mapped farm areas.
+    m<sup>2</sup>. Every other atlas shows the field as "not measured" until the detector is
+    run there. **Recalibrated the same day on seven farm areas** ('Amran and six cut from a
+    Tihama region): Yemen's atlas now carries 169.1 MWp of it (90% 77 to 327), in 34 cells,
+    with each landscape priced by its own areas (see
+    [a calibration domain per region](#a-calibration-domain-per-region)).
 
 Small solar arrays beside fields, most of them powering irrigation pumps, are a large and
 fast-growing class in arid countries, and neither of the project's two instruments sees
@@ -69,9 +70,12 @@ median of its 70 m neighbourhood ("darker than what surrounds it").
 **Two kinds of training area.**
 
 - **Clean areas**: farm calibration areas and any boundary passed as `--clean-region`, in
-  which every visible panel is traced. Pixels at least half covered by panels are positives,
-  pixels more than 20 m from any PV are negatives. Only clean areas give precision, the
-  detection threshold and the capacity calibration.
+  which every visible installation is mapped. Pixels at least half covered by a traced
+  array are positives, pixels more than 20 m from any PV are negatives. Only clean areas
+  give precision, the detection threshold and the capacity calibration. A complete area may
+  still hold coarse shapes: a `power=plant` outline drawn around a site, or a node, trains
+  as a bag (below) and is priced as described under
+  [what a mapped polygon is worth](#what-a-mapped-polygon-is-worth).
 - **Weak areas** (`--weak-region`): ordinary OpenStreetMap, oversized polygons and nodes
   included. Each label is a bag whose two most PV-like pixels become positives, re-chosen
   over three refits that start from SPPI (multiple-instance learning). Negatives keep
@@ -79,8 +83,10 @@ median of its 70 m neighbourhood ("darker than what surrounds it").
 
 The model is a balanced logistic regression, the same fitting code as `roofclf`. Skill is
 reported leave-one-strip-out (each area cut into four strips, every fold holding one strip
-out of every area) and, when there is more than one area, leave-one-area-out, which is the
-figure that says what a new country should expect.
+out of every area) and, when there is more than one region, leave-one-region-out, which is
+the figure that says what a new country should expect. Areas cut from one mapped region
+carry the same `region` property on their boundary and are left out together: a
+neighbouring piece of the same farmland is no test of transfer.
 
 **Blobs and the threshold.** Pixels above the threshold join into 8-connected blobs. The
 threshold is a logit, chosen as the lowest one at which the clean areas' held-out blobs
@@ -88,13 +94,15 @@ reach a precision of 0.5. Logits rather than probabilities, because a balanced f
 every strong detection at a probability that rounds to 1.0 and ties the leads a reviewer
 should see first.
 
-**Three vetoes**, each measured against reviewed leads in 'Amran:
+**Four vetoes**, three measured against reviewed leads in 'Amran and one on Yemen's national
+run:
 
 | Veto | Rule | Measured |
 | --- | --- | --- |
 | Paved road | 30% or more of a blob within 8 m of an OSM motorway, trunk, primary, secondary or tertiary centreline, or an asphalt way | Removed the 9 leads on 'Amran's trunk road and none of the 11 leads the reviewer confirmed. A plain road buffer would have removed real arrays 0 to 5 m from roads. |
 | Water | The blob's B11 more than 20% darker than its ring | Water-harvesting ponds are dark in the visible like panels, but also in the shortwave infrared. Removed 11 leads, including all six read as ponds on imagery, and 0 of 301 mapped arrays. A water index does not work: in a dry-season median the ponds read dry. |
 | Outside the region of interest | No pixel within 50 m of a VIDA building, a WorldCover cropland pixel or a green pixel (NDVI 0.25 or more) | 96% of 'Amran's arrays lie inside it, in 28% of the land. It bought only 3 to 6 points of precision there; its purpose is dark rock and shadowed slopes far from any field. |
+| Size | A blob over 25,000 m<sup>2</sup> | 87% of Yemen's detected area was in blobs of 5,000 m<sup>2</sup> and more, most of it in desert cells under 1% cropland (lava fields and dark rock), the largest 61 km<sup>2</sup>. The largest installation mapped in the seven farm areas is 22,231 m<sup>2</sup> and the largest detection in them 16,000 m<sup>2</sup>, so the cap touches no calibration blob. |
 
 The road veto is applied in the capacity step, as a vector overlap on the blobs, so the
 national scoring pass never waits on Overpass.
@@ -108,11 +116,16 @@ every component follows:
    feature, which is counted from the map, and from any segmentation candidate whose
    figure the atlas uses.
 2. Times a ratio measured on the clean areas: true mapped PV area divided by detected blob
-   area, the same idea as `roofclf`'s coverage ratio. Its uncertainty is a bootstrap over
-   clean areas, never over pixels or blobs, and with fewer than three areas no interval is
-   reported.
+   area, the same idea as `roofclf`'s coverage ratio, taken from the calibration region the
+   cell resembles (below). Its uncertainty is a bootstrap over that region's areas, never
+   over pixels or blobs; a region with fewer than three areas carries a stated factor of two
+   either way instead.
 3. Times 0.18 kWp/m<sup>2</sup>, the module constant, because farm arrays are traced around
    their panels.
+
+Detections inside a registered farm area count nothing: the area is completely mapped, so its
+PV is counted from the map, and a detection no mapped feature explains is a false positive or
+postdates the imagery (387 blobs in Yemen).
 
 **Below 400 m<sup>2</sup> by default.** The ratio's numerator counts only arrays smaller
 than `--max-array-m2` (400 m<sup>2</sup>, the project's segmentation floor), so the estimand
@@ -120,13 +133,33 @@ matches `roofclf`'s. In 'Amran that is 12% of the mapped array area: the other 8
 larger arrays, which segmentation misses there too. `--max-array-m2 0` prices farm arrays of
 every size.
 
-**A calibration domain.** The headline counts only cells whose cropland share and building
-density lie within 25% of the range the clean areas span, the same rule `roofclf` applies
-with its building-density band. Everything else is reported separately, as an
-extrapolation. This was added after the first national test: on the first 60 cells of western
-Yemen the detector priced 46.5 MWp, most of it in Al Hudaydah city and its shore at 0 to 4%
-cropland, with a ratio measured on highland farms. 'Amran alone (6.6% cropland,
-46 buildings per km<sup>2</sup>) makes 12 of Yemen's 810 cells in domain.
+### A calibration domain per region
+
+The headline counts only cells that resemble a calibration region, and each such cell is
+priced with that region's ratio only. A cell resembles a region when its cropland share, its
+building density **and** its median elevation (Copernicus DEM) each lie within 25% of the
+range that region's areas span, the rule `roofclf` applies with its building-density band.
+Areas cut from one mapped region share a region (the `region` property on their boundary).
+Everything else is reported separately, as an extrapolation.
+
+Both rules before this one failed on Yemen, and each failure is the reason for a part of it:
+
+- **No domain at all.** On the first 60 cells of western Yemen the detector priced 46.5 MWp,
+  most of it in Al Hudaydah city and its shore at 0 to 4% cropland, with a ratio measured on
+  highland farms.
+- **One box around every area.** With 'Amran alone (6.6% cropland, 46 buildings per
+  km<sup>2</sup>) the box held 12 cells. With the six Tihama areas added it spanned 5 to 85%
+  cropland and held 289 cells, mostly highland terraces in Ibb, Sana'a and Ta'izz that
+  resemble Tihama in cropland and buildings only. They received Tihama's ratio, 1.19 mapped
+  m<sup>2</sup> per detected m<sup>2</sup> against 'Amran's 0.17, and the total came to
+  3,532 MWp, more than the 2,848 MWp of panels Yemen imported from China in total since
+  2017. A box per region without elevation still gave 2,366 MWp. Those cells hold 1.8 times
+  the detected area per km<sup>2</sup> of the Tihama areas, which is terraces, trees and
+  dark soil, not pumps.
+
+Elevation is what separates the landscapes: Tihama's areas lie at 68 to 236 m, 'Amran's at
+1,895 m. With it, Tihama's ratio reaches 32 lowland cells (Al Hudaydah, the Tihama plain of
+Hajjah, one in Al Mahwit and one on the Abyan coast) and 'Amran's two highland cells.
 
 ## In the atlas
 
@@ -147,11 +180,11 @@ same way on every country's page, so a reader can always find it:
 - **In Best, inside the domain only.** Only cells inside the detector's own calibration
   domain count, the rule `roofclf`'s other components follow.
 - **Its interval.** The module-constant draw shared with every module-area component, times
-  a bootstrap over mapped farm areas once there are three or more
-  (`atlas.GROUND_MIN_AREAS`). Below that it carries a stated judgement, a lognormal factor
-  of two either way at 90% (`atlas.GROUND_JUDGEMENT_CI90`), said as such on the page:
-  leaving the term out would make the interval narrowest where the calibration is
-  thinnest.
+  the replicates `roofclf-ground-capacity` writes: per calibration region, a bootstrap over
+  that region's farm areas once it has three or more (`roofclf_ground.BOOT_MIN_AREAS`), and
+  below that a stated judgement, a lognormal factor of two either way at 90%
+  (`roofclf_ground.JUDGEMENT_CI90`). The page says which applies to which region: leaving
+  the term out would make the interval narrowest where the calibration is thinnest.
 - **Incremental, against what the page counts.** Run `roofclf-ground-capacity` with the
   same `--osm-solar` file the atlas uses, and with `--roofclf-buildings` where the country
   has a `roofclf` half: a detection within 20 m of a building roofclf priced is that
@@ -182,6 +215,49 @@ configuration records no composite window, so its draw took `--window-start 2025
 compose default when its composites were built. The three samplers (building strata, start-here boxes, farm boxes) each
 redraw only their own candidates.
 
+### What a mapped polygon is worth
+
+The capacity calibration needs each mapped installation's panel area, and OpenStreetMap
+polygons are not all panels. `roofclf_ground.panel_area_factor` reads it from the tag:
+
+- **`power=generator`**: the array itself, counted at its area.
+- **`power=plant`**: the site around it, counted at the land constant's share of its area
+  (0.05 / 0.18, about 28%), the rule the atlas's Verified tier applies to every mapped
+  ground outline (owner decision, 2026-10-24). A plant outline that contains a generator
+  counts nothing: its generators carry its panels.
+- **Nodes** have no area and count nothing, so a node-heavy area understates its PV.
+- **A named mapper's polygons are arrays whatever their tag.** A country lists, in
+  `configs/aoi.yaml`, the OpenStreetMap accounts whose solar polygons are traced around the
+  panels (`osm_panel_tracers`; Yemen names its owner-mapper). The same list makes the atlas
+  price those polygons at the module constant in Verified (`labels.panel_traced`, written as
+  `panel_traced` by `prepare_national_osm_solar.py`). It is matched on the last editor: 868
+  of that account's 869 Yemeni polygons are their first version, so the edit history and
+  the authorship agree.
+
+Tihama's 2023 rectangles show why the outline rule is needed. On Esri imagery from April
+2025, a random sample of 12 (nine the detector missed, three it found) all hold panels: two to
+four small groups of perhaps 30 to 60 m<sup>2</sup> each inside a rectangle of 600 to
+1,000 m<sup>2</sup>, so panels cover roughly 10 to 25% of it, a little under the land
+constant's share. Taken as panel outlines the rectangles would overstate Tihama's panel area
+about fourfold.
+
+### Yemen's seven farm areas
+
+Registered 2026-10-24, from the owner's two boundaries:
+
+- **'Amran** (`amran_huth_farm_calib_129p53km2`): the whole test ground, 306 arrays, every
+  one traced around its panels, on Esri imagery from June to October 2025.
+- **Tihama**, six areas, 331.6 km<sup>2</sup>, 1,100 installations: the owner's region near
+  Zabid, where every installation was checked by hand. Esri's imagery there is a patchwork
+  from August 2021 to April 2025, and Rule 1 is only as good as the imagery's date, so the
+  region was cut to where Esri shows a capture from 1 October 2024 on (12 months before the
+  composite window, the candidate gate; Esri shows the newest capture at any spot, checked on
+  552 points), then cut along the 0.1&deg; grid, with pieces under 15 km<sup>2</sup> merged
+  into a neighbour. The remaining 199 km<sup>2</sup>, on 2021 to mid-2024 imagery, trains as
+  a weak region (`data/labels/yemen/tihama_stale_imagery_region.geojson`) and never
+  calibrates. 238 of the 1,100 installations are the owner's panel traces; most of the rest
+  are the 2023 rectangles.
+
 A farm area is registered with `new_calibration_quadrat.py --farm`, which puts
 `_farm_calib_` in its name. `roofclf` skips those areas: a ground array would mark the
 farmhouse beside it as carrying PV, the problem that keeps Kalat Rural out of Pakistan's
@@ -192,8 +268,8 @@ farm area, ground and rooftop, and trace the panels rather than the fence.
 
 ```bash
 pixi run earthpv roofclf-ground --aoi yemen \
-    --clean-region data/labels/agripv_testground.geojson \
-    --weak-region data/labels/Yemen-mixed-labels.geojson
+    --weak-region data/labels/yemen/tihama_stale_imagery_region.geojson \
+    --osm data/labels/yemen_overpass_solar.parquet      # region labels from the national pull
 pixi run earthpv roofclf-ground-score-national --aoi yemen      # about 10 s per cell, resumable
 pixi run earthpv roofclf-ground-capacity --aoi yemen --osm-solar <national OSM solar pull>
 pixi run earthpv atlas --aoi yemen --osm-solar <the same pull> \
@@ -207,21 +283,39 @@ and cached under `data/roofclf_ground/<aoi>/areas/`, and paved roads per whole d
 the model and its evaluation tables, one blob file per cell, and in `capacity/` the per-cell
 figures, the incremental blobs and `ground_leads.geojson`, ranked for review in JOSM.
 
-## Yemen: the first run
+## Yemen
 
-| | Result |
-| --- | --- |
-| 'Amran, held-out pixel AUC | 0.983 |
-| 'Amran, objects at the threshold | precision 0.63 at 62% of arrays found; 0.48 at 71% one step lower |
-| 'Amran, trained on Tihama only | pixel AUC 0.937, precision 0.40, 55% of arrays found |
-| Tihama, held-out bag AUC | 0.934 (0.812 trained on 'Amran only) |
-| Mapped sub-400 m<sup>2</sup> area per detected m<sup>2</sup> | 0.23, and 0.19 to 0.30 across 'Amran's four strips |
+| | 'Amran only (2026-10-23) | Seven farm areas (2026-10-24) |
+| --- | --- | --- |
+| Areas | 1, 306 traced arrays | 7: 'Amran and six Tihama areas, 1,406 installations |
+| Held-out pixel AUC, 'Amran | 0.983 | 0.978 |
+| Trained without 'Amran, on 'Amran | pixel AUC 0.937 | pixel AUC 0.939, precision 0.43, 58% of arrays found |
+| Trained without Tihama, on Tihama | bag AUC 0.812 | pixel AUC 0.96 to 1.00, but 2 to 33% of arrays found |
+| Threshold (logit) | 9.57 | 9.17: precision 0.55 at 39% of arrays, pooled |
+| Mapped sub-400 m<sup>2</sup> area per detected m<sup>2</sup> | 0.23 | 'Amran 0.17; Tihama 1.19 (0.14 to 8.4 by area, 90% bootstrap 0.56 to 2.15) |
+| Domain | 12 cells | 34 cells: 32 Tihama-like, 2 'Amran-like |
+| In Best | 32.7 MWp (x/÷2 judgement) | **169.1 MWp** (90% 77 to 327) |
 
-Precision in 'Amran is a floor. Reviewing the leads turned up arrays that were not yet
-mapped, and a Sentinel-2 time series of the leads (two clear dates a month, 2023 to 2026)
-dated eight unmapped ones to July to November 2025: they darkened after the June 2025 Esri
-capture, so the reviewer's imagery could not show them. Random control spots showed no such
-step (0 of 150).
+**Tihama's arrays are mostly too small to see.** The detector finds 60% of 'Amran's arrays
+but 6 to 50% of each Tihama area's. A sample of 12 of Tihama's 2023 rectangles on Esri's
+April 2025 imagery shows why: each holds two to four small panel groups of perhaps 30 to
+60 m<sup>2</sup>, often among orchard trees, below one Sentinel-2 pixel each. The ratio
+therefore scales up in Tihama, each detected m<sup>2</sup> standing for 1.19 m<sup>2</sup>
+of panels, where in 'Amran it scales down to 0.17 because most of 'Amran's PV is in arrays
+above the 400 m<sup>2</sup> estimand. A ratio that scales up amplifies false detections
+too, which is why the domain matters so much here.
+
+**The Tihama areas were drawn around a solar-irrigation hotspot.** The national cells
+priced with their ratio hold 205 m<sup>2</sup> of incremental detections per km<sup>2</sup>
+against the areas' 452, consistent with fewer pumps away from it, but the ratio itself is
+still the hotspot's. Read the figure as Tihama's lowland calibration applied to the lowland,
+not as a measured national total.
+
+Precision in a clean area is a floor. Reviewing 'Amran's leads turned up arrays that were
+not yet mapped, and a Sentinel-2 time series of the leads (two clear dates a month, 2023 to
+2026) dated eight unmapped ones to July to November 2025: they darkened after the June 2025
+Esri capture, so the reviewer's imagery could not show them. Random control spots showed no
+such step (0 of 150).
 
 The leads work as a mapping tool. In Tihama the reviewer confirmed and traced 88 of the 150
 strongest leads more than 50 m from any mapped feature (59%), adding 104 arrays. Among the
@@ -229,14 +323,20 @@ leads were two utility-scale plants that are not in OpenStreetMap at all.
 
 ## Limits
 
-- **One clean area.** Every capacity figure rests on 'Amran alone, which is why the domain
-  is 12 cells and the interval a judgement. The eight farm candidates exist to fix that.
-- **Transfer is the open question.** Highland 'Amran and lowland Tihama behave differently,
-  and the Tihama-only model found 'Amran's arrays at lower precision than plain SPPI. A new
-  country should be read through its own leave-one-area-out figures, not Yemen's.
+- **Two regions.** Every capacity figure rests on 'Amran and one Tihama region. The bootstrap
+  over Tihama's six areas says how much the ratio moves between farms of that plain, not
+  across a country, and 'Amran's part is still a stated judgement. The farm candidates in
+  other strata are what widen it.
+- **A ratio that scales up is fragile.** Where the detector finds a quarter of the arrays,
+  each detection stands for four times its own panels, and a false detection is multiplied
+  the same way. The domain contains it; a random-cell review of detections in the domain
+  would measure it.
+- **Transfer is the open question.** Highland 'Amran and lowland Tihama behave differently in
+  every respect measured here. A new country should be read through its own
+  leave-one-region-out figures, not Yemen's.
 - **Rule 1 is relative to the imagery's date** here as everywhere (see
   [roofclf](roofclf.md)): arrays built after the mapping imagery are present in the
-  composite and absent from the labels, so precision is a lower bound.
-- **The OpenStreetMap layer it is deduplicated against ages.** Yemen's atlas counts a pull
-  from 12 October; arrays traced since are priced by the detector until that layer is
-  refreshed, then move into Verified.
+  composite and absent from the labels, so precision is a lower bound. Tihama's areas are
+  cut to imagery from 1 October 2024 on for that reason.
+- **Panel area is estimated where the map has outlines.** A rectangle counts at the land
+  constant's 28% of its area; the April 2025 sample puts its panels nearer 10 to 25%.

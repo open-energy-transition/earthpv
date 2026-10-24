@@ -440,6 +440,12 @@ aois:
     grid_origin: [41.8, 12.1]
     compose_window: ["2025-10-01", "2026-03-31"]
     cell_selection: duckdb
+    # OSM accounts whose solar polygons are traced around the panels, every installation
+    # checked by the owner (2026-10-24): their ground polygons convert at the module
+    # constant, as panels, where any other mapped ground polygon converts at the land
+    # constant, as a site (labels.panel_traced; prepare_national_osm_solar.py writes it as
+    # `panel_traced`, roofclf_ground prices calibration areas with it).
+    osm_panel_tracers: [relaxxe]
     # Val holdout = 'Amran Governorate (geoBoundaries ADM1), 47 cells, chosen by
     # scripts/pick_val_region.py from the label map before training: 21 of
     # 1465 dissolved >= 400 m2 positives (1.4%); the largest

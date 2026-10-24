@@ -15,26 +15,35 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
 
 | | |
 | --- | --- |
-| Verified | **65.9 MWp** (90% 46 to 95) |
-| Best estimate | **99.8 MWp** (90% 76 to 149); 67.1 before 2026-10-24 |
-| of which farm ground PV, < 400 m&sup2; | **32.7 MWp** (90% 16 to 65, a stated judgement), 12 cells; [below](#farm-ground-pv-added-2026-10-24) |
+| Verified | **130.9 MWp** (90% 109 to 161); 65.9 before the 2026-10-24 OpenStreetMap refresh |
+| Best estimate | **302.1 MWp** (90% 210 to 471); 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
+| of which farm ground PV, < 400 m&sup2; | **169.1 MWp** (90% 77 to 327), 34 cells, calibrated on seven farm areas; [below](#farm-ground-pv-added-2026-10-24) |
+| OpenStreetMap | pulled 2026-10-24, 2,746 features (1,892 on 2026-10-10) |
 | Grid | 810 cells of 0.1&deg;, 22 governorates (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, October 2025 to March 2026 |
 | Model | `v13_combined_yemen` epoch 28, localized (tied with `v5_combined_france` at zero on the holdout; see below) |
 
-!!! warning "A precision floor above 400 m&sup2;, and one small-array component in a few cells"
-    Yemen has **no `roofclf` half**: its one registered calibration area (Al Wehdah,
+!!! warning "Household rooftops below 400 m&sup2; are not estimated"
+    Yemen has **no `roofclf` half**: its one rooftop calibration area (Al Wehdah,
     2026-10-23) has not been fitted, so nothing prices rooftop PV below the 400 m&sup2;
-    segmentation floor. Below that floor only the farm ground-PV detector counts, and only
-    in the 12 cells like its one calibration area ([below](#farm-ground-pv-added-2026-10-24)).
-    It has no glint sample, so `p_unmapped` is 0
-    and `p_real` collapses to the OpenStreetMap-mapped fraction, which in Yemen is zero in
-    every size bin (next sections). Recall was deliberately skipped
+    segmentation floor. Below that floor only the farm ground-PV detector counts, and only in
+    the 34 cells whose cropland, buildings and elevation resemble its farm areas
+    ([below](#farm-ground-pv-added-2026-10-24)). The segmentation model has no glint sample,
+    so `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction, under
+    0.01 in every size bin (next sections). Recall was deliberately skipped
     (`--recall-reference none`). For scale, IRENA counts **456 MW of operational PV at the
     end of 2025**, and the 120 MW Aden plant, in operation since July 2024, is being
     doubled to 240 MW
     ([pv magazine, 8 September 2026](https://www.pv-magazine.com/2026/09/08/yemens-largest-solar-plant-set-to-double-to-240-mw/)).
     That plant is not in OpenStreetMap, and this page does not count it.
+
+!!! note "Revised 2026-10-24: OpenStreetMap refreshed, the owner's traces counted as panels, seven farm areas"
+    The OpenStreetMap layer was pulled again (2,746 features against 1,892), the segmentation
+    precision table and density re-derived from it, and the farm ground-PV detector refitted
+    on seven completely mapped farm areas. Polygons the project's owner traced around the
+    panels (869 in Yemen) now convert at the module constant, as panels, where any other
+    mapped ground polygon converts at the land constant, as a site: about 42 MWp of
+    Verified's rise. Earlier figures in the sections below are marked with their date.
 
 ## Localizing the detector
 
@@ -146,12 +155,14 @@ table they are **1.2 MWp** (`est_mwp_rc`, all ground, 90% upper bound 11.3), bec
 confirmed counts for nothing, whether it is a real array nobody has mapped or a bright
 hillside.
 
-**Verified is the hand-mapped layer at the two constants, and 93% of it is Al Hudaydah.**
-1,891 reference features inside the border, none overlapping: 1.30 km&sup2; of ground (65.1
-MWp) and 0.004 km&sup2; of rooftop (0.8 MWp); the 130 unclassified points carry no area. The
-Tihama irrigation arrays are 61.4 MWp of the 65.9. Best adds the model's 1.2 MWp of ground
-on top and, since 2026-10-24, 32.7 MWp of farm ground PV below 400 m&sup2;, and is floored at
-Verified in two cells.
+**Verified is the hand-mapped layer at the two constants** (2026-10-12: 1,891 features,
+1.30 km&sup2; of ground at 65.1 MWp and 0.8 MWp of rooftop, 61.4 MWp of it the Tihama
+irrigation arrays). On the 2026-10-24 pull it is **130.9 MWp**: 122.6 MWp of ground and 8.3 of
+rooftop. 847 of the polygons are the owner's panel traces (`osm_panel_tracers` in
+`configs/aoi.yaml`), 629 of them on the ground with 326,065 m&sup2;, which count at the module
+constant: 58.7 MWp, against 16.3 had they been priced as sites. Best adds the model's
+4.2 MWp (`est_mwp_rc`, up from 1.2 because a few candidates now match newly mapped arrays) and
+169.1 MWp of farm ground PV below 400 m&sup2;, and is floored at Verified in two cells.
 
 ## Operational notes
 
@@ -167,24 +178,33 @@ and the chain was relaunched at 15:51 once it was fixed.
 ## Farm ground PV (added 2026-10-24)
 
 Small arrays beside fields, mostly solar irrigation pumps, are counted by the
-[farm ground-PV detector](../methods/roofclf-ground.md), a pixel model trained on a fully
-traced test ground in 'Amran (306 arrays) and on the Tihama rectangles read as bags. It
-enters Best as its own component, beside where rooftop PV below 400 m&sup2; will sit once
-`roofclf` is fitted here:
+[farm ground-PV detector](../methods/roofclf-ground.md), a pixel model, and enter Best as
+their own component, beside where rooftop PV below 400 m&sup2; will sit once `roofclf` is
+fitted here. It was first added on 2026-10-24 calibrated on 'Amran alone (32.7 MWp in 12
+cells, a stated judgement interval), and recalibrated the same day on seven farm areas:
 
 | | |
 | --- | --- |
-| In Best | **32.7 MWp**, arrays below 400 m&sup2; |
-| 90% interval | 16 to 65 MWp, a stated judgement (a factor of two either way), because it rests on one mapped farm area; a bootstrap over areas replaces it from the third |
-| Where | the 12 of 810 cells whose cropland share (5.3 to 8.3%) and building density (37 to 58 per km&sup2;) are within 25% of 'Amran's |
-| Not counted | 2,555 MWp if the same ratio were applied to every cell, which would put Yemen near its 2,848 MWp import ceiling for all solar since 2017: cities, coast and desert are not 'Amran |
+| In Best | **169.1 MWp**, arrays below 400 m&sup2;: 166.5 in 32 lowland cells at Tihama's ratio, 2.6 in two highland cells at 'Amran's |
+| 90% interval | 77 to 327 MWp: a bootstrap over the six Tihama areas, and a stated x/÷2 judgement for 'Amran's single area |
+| Where | cells whose cropland share, building density and elevation lie within 25% of one region's areas: Tihama 24 to 85% cropland, 49 to 617 buildings per km&sup2;, 54 to 295 m; 'Amran 5.3 to 8.3%, 37 to 58, 1,516 to 2,369 m |
+| Not counted | every other cell; detections inside the seven areas (counted from the map) |
 
-It is incremental: detections within 20 m of a feature in the OpenStreetMap pull this page
-counts (12 October), or of a segmentation candidate Best uses, are left to those. The
-arrays traced in 'Amran since then are not in that pull, so the detector prices them
-rather than the map; once Yemen's OpenStreetMap layer is refreshed they move into Verified
-and out of this figure. The eight farm calibration candidates on the map, drawn across
-Yemen's cropland strata, are what widen the 12 cells into a national estimate.
+**Why the figure is per region.** The detector finds 60% of 'Amran's arrays but 6 to 50% of
+each Tihama area's, so the ratio of mapped panel area to detected area is 0.17 in 'Amran and
+1.19 in Tihama: each detection there stands for more panel than it shows. Priced with one
+ratio over one box around all seven areas, the figure was 3,532 MWp in 289 cells, mostly
+highland terraces in Ibb, Sana'a and Ta'izz that resemble Tihama only in cropland and
+buildings, and more than the 2,848 MWp of panels Yemen has imported in total since 2017.
+Elevation separates the two landscapes (Tihama's areas lie at 68 to 236 m, 'Amran's at
+1,895 m), and each cell now takes only the ratio of the region it resembles.
+
+**The figure is Tihama's hotspot ratio applied to the lowland.** The owner's Tihama region
+was drawn around a known concentration of solar irrigation. The 32 cells priced with its
+ratio hold 205 m&sup2; of detections per km&sup2;, under half the calibration areas' 452,
+which is consistent with fewer pumps elsewhere; the ratio itself is the hotspot's. It is
+incremental: detections within 20 m of a feature in the OpenStreetMap layer this page counts,
+or of a segmentation candidate Best uses, are left to those.
 
 ## Calibration areas
 
@@ -201,12 +221,31 @@ query (88 elements both times). No second mapping pass is recorded. It is not ye
 any figure on this page: one quadrat fits `roofclf` but cannot measure its skill, which
 needs leave-one-quadrat-out folds.
 
+**Seven farm areas (registered 2026-10-24, Rule-1), behind the farm ground-PV figure.**
+
+- **'Amran** (Huth, 129.5 km&sup2;, Esri imagery June to October 2025): the test ground, 306
+  arrays, every one traced around its panels by the owner.
+- **Tihama**, six areas, 331.6 km&sup2;, 1,100 installations: the owner's region near Zabid,
+  in which every installation was checked by hand. Esri's imagery there runs from August
+  2021 to April 2025, so the region was cut to where it shows a capture from 1 October 2024 on
+  (12 months before the composite window), then along the 0.1&deg; grid: At Tuhayta (104.2
+  km&sup2;), Al Jarrahi west, centre, east and south (53.3, 17.9, 93.3 and 32.6), and Zabid
+  (30.3). The other 199 km&sup2; trains the detector and calibrates nothing.
+
+238 of Tihama's installations are the owner's panel traces; most of the rest are rectangles
+mapped in 2023 around whole sites, which count at the land constant's share of their area
+(owner decision). On Esri's April 2025 imagery, a random sample of 12 rectangles all hold
+panels, two to four small groups covering roughly 10 to 25% of each. Every pull was
+confirmed by a second Overpass query; Al Jarrahi east's first pull came back 16 features
+short and was retried.
+
 ## What Yemen needs next
 
-**Map the farm calibration areas.** `calib-candidates -- --farmland` drew eight 3 km farm
-boxes across Yemen's cropland strata (2026-10-23). Three or more of them, completely
-mapped, are what the [farm ground-PV detector](../methods/roofclf-ground.md) needs before
-its estimate of solar irrigation can enter this page; its leads are usable for mapping now.
+**Map farm areas outside the two regions.** `calib-candidates -- --farmland` drew eight 3 km
+farm boxes across Yemen's cropland strata (2026-10-23). The farm figure rests on 'Amran and
+one Tihama region; boxes in the highland terraces of Ibb and Ta'izz, and in the lowland away
+from the Zabid hotspot, are what would let it reach the rest of Yemen's farmland, and a
+second highland area would replace 'Amran's judgement interval with a measured one.
 
 **Map the three parks.** They are the largest PV the model sees in the country and the one
 change that would move Verified materially.
@@ -228,3 +267,22 @@ systemd-run --user --collect --unit=earthpv-country-queue -p WorkingDirectory="$
 The queue pulls the labels, runs the solar-thermal filter, composes Yemen, picks the
 holdout and hands the country to `scripts/run_country_compute.sh yemen` (chips, training,
 the v5 comparison, inference and the atlas chain, behind marker files).
+
+The 2026-10-24 refresh, on top of that (farm areas registered with
+`new_calibration_quadrat.py --aoi yemen --farm --geojson <area>`):
+
+```bash
+pixi run python scripts/overpass_labels_chunked.py --bbox=41.8,12.1,54.6,19.0 \
+  --iso3 YEM --name yemen --tiles 4x3 --timeout 300 --retries 8   # after moving the tile cache aside
+pixi run python scripts/drop_solar_thermal.py --aoi yemen --by-id
+# screen, calibrate-candidates, density, check-density, prepare_national_osm_solar.py: as in
+# run_country_compute.sh
+pixi run earthpv roofclf-ground --aoi yemen \
+  --weak-region data/labels/yemen/tihama_stale_imagery_region.geojson \
+  --osm data/labels/yemen_overpass_solar.parquet
+pixi run earthpv roofclf-ground-score-national --aoi yemen
+pixi run earthpv roofclf-ground-capacity --aoi yemen --osm-solar data/labels/yemen_national_osm_solar.parquet
+pixi run earthpv atlas --aoi yemen --osm-solar data/labels/yemen_national_osm_solar.parquet \
+  --include-offgrid-osm --imagery-date-range "Oct 2025 - Mar 2026" \
+  --ground-cells data/roofclf_ground/yemen/capacity/ground_cells.parquet
+```

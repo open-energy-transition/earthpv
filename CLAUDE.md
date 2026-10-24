@@ -791,7 +791,10 @@ atlas builders and `apply_validation_badges.py`). **Yemen is Silver since 2026-1
 was fitted to it): its box carries `used: false` in `configs/atlas/yemen.yaml`, which keeps the
 confidence section from claiming ground truth the figures do not use (the default prose, gated
 only on having a box, said the page's accuracy checks rested on it), and
-`build_atlas_pages.TIER_NOTE` has a Yemen note. **Germany is Silver since 2026-10-22**
+`build_atlas_pages.TIER_NOTE` has a Yemen note. Kept Silver 2026-10-24 when seven farm areas
+went in as used boxes: they calibrate farm ground PV only, household rooftops below 400 m2 are
+still unmeasured, and the config's own `confidence.ground_truth` replaces the default
+Pakistan-shaped quadrat paragraph. **Germany is Silver since 2026-10-22**
 (owner decision): its register-calibrated small half fails its own register check, so the
 page carries a Germany-specific note (`build_atlas_pages.TIER_NOTE`) instead of the generic
 "no estimate below the floor".
@@ -922,26 +925,46 @@ earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
   in the detector's calibration domain only, beside roofclf's rooftop `small_central`, as its
   own tile, map quantity, hover row, province column, composition and uncertainty row, in
   green (#68a800 / #245c00, hatched). Without it a page says "not measured"
-  (`totals.small_ground_status.measured: false`), never 0. Interval: module draw x bootstrap
-  over farm areas from `atlas.GROUND_MIN_AREAS` (3), else the stated judgement
-  `GROUND_JUDGEMENT_CI90` (x/÷2), labelled on the page. Run `roofclf-ground-capacity` with
+  (`totals.small_ground_status.measured: false`), never 0. Interval: module draw x the
+  replicates `roofclf-ground-capacity` writes per region (see the domain bullet below),
+  labelled on the page from the summary's `interval`; `atlas.GROUND_MIN_AREAS` /
+  `GROUND_JUDGEMENT_CI90` only serve a summary that predates it. Run `roofclf-ground-capacity` with
   the SAME `--osm-solar` file the atlas counts, and `--roofclf-buildings` where a roofclf
-  half exists (a blob within 20 m of a priced building is its yard array). Yemen: 32.7 MWp,
-  Best 67.1 -> 99.8. The 11 other published pages were moved onto the template with
+  half exists (a blob within 20 m of a priced building is its yard array). Yemen: 32.7 MWp
+  on 'Amran alone (Best 67.1 -> 99.8), then 169.1 MWp on seven areas (Best 302.1). The 11 other published pages were moved onto the template with
   `retemplate_atlas.py`, data blocks byte-identical; they had been built from HEAD's
   template minus 8331c25's star-icon and start-here wording, which reached them by hand
   edit, so no git revision reproduced them and the old template was reconstructed.
-- **A calibration domain, like roofclf's density band** (`roofclf_ground.domain_cells`): cells
-  whose cropland share AND building density lie within x/÷1.25 of the clean areas' range.
-  The headline is `est_mwp_in_domain`; the all-cells figure is reported only as
-  `est_mwp_all_cells_extrapolated`. Added after the first Yemeni smoke test put its largest
-  cells on Al Hudaydah's city and coast (0-4% cropland) at a ratio measured on highland farms.
-  With 'Amran alone the domain is 12 of 810 Yemeni cells; the farm candidates widen it.
+- **A calibration domain PER REGION** (`roofclf_ground.domain_cells`, 2026-10-24): a cell is
+  priced with a region's ratio only if its cropland share, building density AND median
+  elevation (Copernicus DEM, `cell_elevation`, cached in `data/cells_cache/<aoi>_elevation.parquet`)
+  each lie within x/÷1.25 of that region's areas; a region = areas sharing the `region`
+  property on their boundary. The headline is `est_mwp_in_domain`; the all-cells figure
+  (pooled ratio) is reported only as `est_mwp_all_cells_extrapolated` and is not on the
+  page. History: no domain put the first smoke test on Al Hudaydah's city and coast; one box
+  around ALL areas, once Tihama joined 'Amran, held 289 cells of highland terraces (Ibb,
+  Sana'a, Ta'izz) at Tihama's ratio (1.19 against 'Amran's 0.17) and reached 3,532 MWp,
+  above Yemen's 2,848 MWp import ceiling; per-region boxes without elevation 2,366 MWp.
+  Interval: `region_ratio_draws` bootstraps each region over its own areas from
+  `BOOT_MIN_AREAS` (3), else a stated x/÷2 (`JUDGEMENT_CI90`), and the summary's `interval`
+  names which; the atlas uses it as is. Blobs inside a registered farm area count nothing
+  (completely mapped; `--labels-dir`).
 - **Farm quadrats carry `_farm_calib_` in their stem** (`roofclf.FARM_QUADRAT_INFIX`;
   `new_calibration_quadrat.py --farm`). `roofclf.discover_quadrats` skips them unless
   `farm=True`, because a ground array would label the farmhouse beside it as PV-carrying
   (the Kalat Rural problem). Overlap checks and `calib-publish` still see them.
-- **Two label sources.** Clean areas (farm quadrats, `--clean-region`: every panel traced)
+- **A mapped polygon is priced by its tag** (`roofclf_ground.panel_area_factor`, owner
+  decision 2026-10-24): `power=generator` is the array; `power=plant` is a site, counted at
+  0.05/0.18 of its area (the land constant, as Verified prices it), or 0 when a generator
+  inside it carries its panels; nodes count 0. **`osm_panel_tracers`** (configs/aoi.yaml,
+  Yemen: the owner's account) names mappers whose polygons are panel traces whatever the tag:
+  `labels.panel_traced`, written as `panel_traced` by `prepare_national_osm_solar.py`, and the
+  evidence atlas then prices those ground polygons at the MODULE constant in Verified (and in
+  `_evidence_uncertainty`, via `osm_ground_traced`). Matched on last editor: pulls carry
+  `osm_user`/`osm_version` since 2026-10-24 (`overpass.element_meta_by_id` annotates older
+  files). Every other country has no tracers and does not move. Yemen: Verified 65.9 -> 130.9
+  MWp on the 2026-10-24 pull, ~42 MWp of it this pricing.
+- **Two label sources.** Clean areas (farm quadrats, `--clean-region`: every installation mapped)
   give precision, the deployment threshold and the capacity ratio. Weak areas
   (`--weak-region`: ordinary OSM, oversized rectangles and nodes) train only, as
   multiple-instance bags. Tihama's UNGSC rectangles, useless as masks (they are why v13
@@ -951,7 +974,10 @@ earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
 - **Vetoes, each measured on 'Amran's reviewed leads**: >= 30% of a blob within 8 m of a paved
   OSM road (9 leads, 0 mapped arrays lost); SWIR more than 20% below the blob's ring, i.e.
   water-harvesting ponds (11 leads, 0 of 301 mapped arrays; MNDWI fails, ponds read dry in a
-  dry-season median); no pixel within 50 m of a building, cropland or green pixel.
+  dry-season median); no pixel within 50 m of a building, cropland or green pixel; a blob
+  over 25,000 m2 (`MAX_BLOB_M2`, 2026-10-24: 87% of Yemen's national detected area was in
+  sheets of 5,000 m2+ on lava fields and rock, the largest 61 km2; the largest mapped farm
+  installation is 22,231 m2, the largest calibration-area detection 16,000 m2).
 - **The capacity estimand defaults to arrays below 400 m2** (`--max-array-m2`, roofclf's
   floor), but 88% of 'Amran's array AREA is at or above it and segmentation misses that too;
   `--max-array-m2 0` prices every size.
@@ -966,11 +992,19 @@ earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
   drawing them never reorders those. Pakistan has no `compose_window` or `division.iso3` in
   `configs/aoi.yaml`: the sampler takes `--window-start 2025-11-01` (compose's default when
   its composites were built 2026-07-04; the files carry no window tag) and the ISO2 fallback.
-- Yemen's first run (`data/roofclf_ground/yemen/`): 'Amran held-out pixel AUC 0.983, precision
-  0.63 at 62% array recall (a floor), 0.937 when trained on Tihama alone; detected-to-mapped
-  sub-400 m2 area ratio 0.23, stable across 'Amran's four strips (0.19-0.30). Eight farm
-  candidates drawn (5.6-85% cropland strata, Esri 2025). Analysis, leads and the owner's
-  review: `results/yemen_agripv_testground/`.
+- **Yemen (2026-10-24): seven farm areas, 169.1 MWp (90% 77 to 327) in 34 cells.** 'Amran
+  (`amran_huth_farm_calib_129p53km2`, the whole test ground) and six Tihama areas cut from the
+  owner's `Yemen-mixed-labels.geojson` boundary where Esri imagery is from 2024-10-01 on
+  (Esri shows the newest capture at a point; checked on 552 points), along the 0.1-degree
+  grid (331.6 of 530.6 km2); the rest is a training-only weak region,
+  `data/labels/yemen/tihama_stale_imagery_region.geojson`. Refit: threshold 9.17, pooled
+  precision 0.55 at 39% array recall; the detector finds 60% of 'Amran's arrays and 6-50% of
+  each Tihama area's, which is why Tihama's ratio is 1.19. A sample of 12 Tihama UNGSC
+  rectangles on Esri April 2025 imagery: all hold panels (2-4 small groups, ~10-25% of the
+  rectangle), missed ones mostly among orchard trees. Tihama's areas surround a hotspot, so
+  its ratio on the rest of the lowland is the soft spot. Pre-refresh outputs:
+  `/home/tobi/earthpv_data/yemen_PRE_osmrefresh_20261024/`. Analysis, leads and the owner's
+  review of the first run: `results/yemen_agripv_testground/`.
 
 ### Glint
 
@@ -1609,9 +1643,10 @@ mostly three parks (Benban 36.9 km2, 10.0 km2 north of it, Kharga 8.8 km2). The 
 estimate is 0.2 MWp: the 176 rooftop candidates >= 1,000 m2 match no mapped rooftop, so their
 `p_real` is 0. `docs/results/egypt.md`.
 
-**Yemen published 2026-10-12 on its localized v13: Verified 65.9 / Best 67.1 MWp** (Best 99.8,
-90% 76-149, since 2026-10-24 with 32.7 MWp of farm ground PV; see "Farm ground PV") (90%
-46-95 / 49-98) over 810 cells, Sentinel-2 October 2025 to March 2026, against IRENA's 456 MW
+**Yemen published 2026-10-12 on its localized v13: Verified 65.9 / Best 67.1 MWp** (90%
+46-95 / 49-98; since 2026-10-24, on a refreshed OpenStreetMap pull with the owner's panel
+traces at the module constant and 169.1 MWp of farm ground PV: **Verified 130.9 / Best 302.1
+MWp**, 90% 109-161 / 210-471; see "Farm ground PV") over 810 cells, Sentinel-2 October 2025 to March 2026, against IRENA's 456 MW
 at end-2025. **The ship decision was a zero-zero tie** (both checkpoints 0 of 25 'Amran
 arrays, IoU 0) and went to v13 by the tie rule, on no evidence. Yemen's labels are 1,697
 solar irrigation arrays of ~600 m2 in Tihama farmland, mapped in 2023: their reflectance

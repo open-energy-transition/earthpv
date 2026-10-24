@@ -15,14 +15,27 @@ title: Yemen
 # and declared Rule-1 complete by the owner 2026-10-23 against Esri imagery of 2025-12-29.
 # Registered, not yet fitted: Yemen has no roofclf half until a refit uses it, hence
 # `used: false` (drawn on the map; the confidence text does not claim it as ground truth).
+#
+# Farm areas (2026-10-24): what `roofclf-ground` calibrates farm ground PV on. 'Amran is the
+# owner's test ground, traced panel by panel. The six Tihama areas are the owner's region
+# near Zabid (data/labels/Yemen-mixed-labels.geojson), every installation checked by the
+# owner, cut to where Esri imagery is from 2024-10-01 on and along the 0.1-degree grid; its
+# 2023 UNGSC rectangles count as site outlines at the land constant (owner decision).
 calibration_boxes:
   - {name: "Al Wehdah, Sana'a", stem: al_wehdah_priority_calib_1km, status: rule1, used: false}
+  - {name: "Huth, 'Amran (farm)", stem: amran_huth_farm_calib_129p53km2, status: rule1}
+  - {name: "At Tuhayta, Tihama (farm)", stem: tihama_tuhayta_farm_calib_104p25km2, status: rule1}
+  - {name: "Al Jarrahi west, Tihama (farm)", stem: tihama_jarrahi_west_farm_calib_53p29km2, status: rule1}
+  - {name: "Al Jarrahi centre, Tihama (farm)", stem: tihama_jarrahi_centre_farm_calib_17p89km2, status: rule1}
+  - {name: "Al Jarrahi east, Tihama (farm)", stem: tihama_jarrahi_east_farm_calib_93p31km2, status: rule1}
+  - {name: "Al Jarrahi south, Tihama (farm)", stem: tihama_jarrahi_south_farm_calib_32p64km2, status: rule1}
+  - {name: "Zabid, Tihama (farm)", stem: tihama_zabid_farm_calib_30p27km2, status: rule1}
 
-# Silver by the owner's decision (2026-10-23), taken with Al Wehdah registered and not yet
-# used by any figure; the derived tier would also say silver, from the boundary on disk.
+# Silver by the owner's decision (2026-10-23), kept 2026-10-24 when the farm areas went in:
+# they calibrate farm ground PV only, and household rooftops below 400 m2 are still unmeasured.
 validation:
   score: silver
-  note: "One area mapped panel by panel.<br>Not yet used by any figure."
+  note: "Farm solar calibrated on seven mapped areas.<br>No rooftop estimate below 400 m&sup2; yet."
 
 cities:
   - [Sana'a, 44.206, 15.369]
@@ -36,13 +49,27 @@ cities:
   - [Sayun, 48.789, 15.943]
 
 confidence:
+  ground_truth: >-
+    <p><b>The ground-truth areas: seven farm areas, drawn and mapped by hand, not a random
+    sample.</b> The farm ground-PV figure is calibrated on the test ground around Huth in
+    'Amran, traced panel by panel, and on six areas of a Tihama region near Zabid where
+    every installation was checked by hand, about 460 km&sup2; in all. Most of Tihama's
+    installations were mapped in 2023 as rectangles around the whole site rather than the
+    panels; those count at the open-ground rate, not as panel area. The areas lie in two
+    regions, so the range measured over them says how much the result moves between farms
+    in those two landscapes, not across Yemen, and the estimate is only applied to map
+    cells whose share of cropland, density of buildings and elevation resemble them
+    (lowland plain for Tihama, highland for 'Amran). A further area,
+    Al Wehdah in Sana'a, is mapped panel by panel for a rooftop classifier that has not
+    been fitted yet; no figure uses it.</p>
   caveats:
     - >-
-      <b>The small-installation half of this page does not exist yet.</b> One area of
-      Yemen, Al Wehdah in Sana'a, has been mapped panel by panel, and a per-building rooftop
-      classifier has not yet been fitted to it. Everything on the map is either hand-mapped in
+      <b>Small household systems on roofs are not on this page yet.</b> One area of
+      Yemen, Al Wehdah in Sana'a, has been mapped panel by panel, but a per-building rooftop
+      classifier has not yet been fitted to it. Rooftop solar here is either hand-mapped in
       OpenStreetMap or an array the segmentation model outlined directly, which in practice
-      means installations of roughly 400 m&sup2; and up. Much of the solar in use here is small household systems on roofs, which this page cannot see.
+      means installations of roughly 400 m&sup2; and up. Small solar-irrigation arrays beside
+      fields are estimated, but only in farm cells that resemble the mapped farm areas.
     - >-
       <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
       imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.

@@ -246,12 +246,16 @@ An instrument exists since 2026-10-23: `roofclf_ground`, a footprint-free pixel 
 ([Farm ground PV](methods/roofclf-ground.md)). In Yemen it reaches precision 0.63 at 62% array
 recall on a fully traced test ground, where Pakistan's building-ring attempt above stayed
 under 1%, and it trains on ordinary OSM labels read as bags. Since 2026-10-24 it is a field
-on every atlas and in Yemen's Best (32.7 MWp), but barely calibrated: one clean area, a
-domain of 12 of Yemen's 810 cells, a judgement interval, and never run on Pakistan.
+on every atlas and in Yemen's Best: 169.1 MWp, calibrated on seven farm areas in two regions
+('Amran highland, Tihama lowland), each cell priced by the region it resembles. Two regions
+is still thin. Tihama's ratio scales detections UP (the detector finds a quarter of its
+arrays), so a false detection is multiplied too, and its areas were drawn around a hotspot.
+Never run on Pakistan.
 
-**What would close it:** three or more mapped farm areas per country, drawn by
-`calib-candidates -- --farmland` (cropland strata, imagery gate included), which turn the
-judgement interval into a bootstrap and widen the domain. For Pakistan, a first run against
+**What would close it:** farm areas in other landscapes (`calib-candidates -- --farmland`:
+cropland strata, imagery gate included), so that a region needs no extrapolation in
+elevation or cropland, and a random-cell review of in-domain detections, which would measure
+the false-detection share the ratio amplifies. For Pakistan, a first run against
 the tubewell population, with `--roofclf-buildings` so yard arrays roofclf already prices
 are not counted twice. See
 [Small ground-mounted instrument](issues/small-ground-mount-instrument.md).

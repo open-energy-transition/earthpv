@@ -104,19 +104,21 @@ TIER_NOTE = {
         "be checked directly, which the register, with no coordinates below 30 kWp, cannot "
         "do.",
     ),
-    # Silver by the owner's decision (2026-10-23) once its first area was registered, before
-    # anything was fitted to it: the generic Silver line would claim validation it lacks.
+    # Silver by the owner's decision (2026-10-23), kept 2026-10-24 when seven farm areas
+    # began calibrating farm ground PV: household rooftops below 400 m2 are still unmeasured.
     "Yemen": (
-        "<strong>Silver atlas: one calibration area is mapped, not yet used.</strong> This map "
-        "covers installations of roughly 400 m&sup2; (about 70 kWp) and larger, those mapped "
-        "in OpenStreetMap and arrays the model can outline. Al Wehdah in Sana'a has been "
-        "mapped panel by panel and declared complete, but no figure here is fitted to it yet, "
-        "so there is still no estimate below that size, where household rooftop systems sit. "
-        "Read every figure here as a floor.",
+        "<strong>Silver atlas: farm solar is calibrated, household rooftops are not.</strong> "
+        "This map covers installations of roughly 400 m&sup2; (about 70 kWp) and larger, those "
+        "mapped in OpenStreetMap and arrays the model can outline, plus small solar-irrigation "
+        "arrays beside fields, calibrated on seven hand-mapped farm areas in 'Amran and "
+        "Tihama. Small household systems on roofs are not estimated: Al Wehdah in Sana'a has "
+        "been mapped panel by panel for that, but nothing is fitted to it yet. Read the "
+        "rooftop figures as a floor.",
         "<strong>You can help from your browser.</strong> The hollow diamonds on the map are "
         "candidate areas, among them 3 km farm areas for solar irrigation. Map every solar "
-        "panel inside one in OpenStreetMap: a few more complete areas are what an estimate of "
-        "Yemen's smaller installations would be fitted on.",
+        "panel inside one in OpenStreetMap: a few complete building areas are what an "
+        "estimate of Yemen's rooftop systems would be fitted on, and each farm area widens "
+        "the farmland the farm estimate covers.",
     ),
 }
 # What a reader can do about it: the Contribute Data section (docs/contribute/).

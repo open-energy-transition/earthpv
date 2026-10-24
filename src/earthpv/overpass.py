@@ -15,6 +15,7 @@ itself (`area["name"=...]`), so no separate geocoder dependency is needed.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 import geopandas as gpd
@@ -197,15 +198,46 @@ def solar_elements_to_gdf(elements: list[dict]) -> gpd.GeoDataFrame:
             # saw -- absent, not "recent", when the endpoint omits meta (e.g. some mirrors
             # under load); do not assume freshness on a missing value.
             "osm_timestamp": el.get("timestamp"),
+            # Last editor and version, also `out meta`: a country can name the accounts whose
+            # polygons are traced around the panels (`osm_panel_tracers` in configs/aoi.yaml).
+            "osm_user": el.get("user"),
+            "osm_version": el.get("version"),
             "geometry": geom,
         })
     gdf = gpd.GeoDataFrame(rows, geometry="geometry", crs="EPSG:4326") if rows else \
         gpd.GeoDataFrame(columns=["id", "class", "generator_source", "plant_source",
-                                   "generator_place", "osm_location", "osm_timestamp"],
+                                   "generator_place", "osm_location", "osm_timestamp",
+                                   "osm_user", "osm_version"],
                           geometry=[], crs="EPSG:4326")
     if not gdf.empty:
         gdf["kind"] = gdf["class"].map(lambda c: "generator" if c == "generator" else "plant")
     return gdf
+
+
+def element_meta_by_id(ids, timeout: int = 180, batch: int = 1000) -> pd.DataFrame:
+    """`id`, `osm_user`, `osm_version` of OSM elements looked up by id (`osm-way/123`), for
+    a labels file pulled before those columns existed. Cheap for the server where an area
+    scan is not (the same reason `drop_solar_thermal.py --by-id` exists). An element the
+    lookup does not return (deleted since) is simply absent."""
+    by_type: dict[str, list[str]] = {"node": [], "way": [], "relation": []}
+    for s in ids:
+        typ, num = s[len("osm-"):].split("/")
+        by_type[typ].append(num)
+    rows = []
+    for typ, nums in by_type.items():
+        for k in range(0, len(nums), batch):
+            q = f"[out:json][timeout:{timeout}];{typ}(id:{','.join(nums[k:k + batch])});out meta;"
+            for attempt in range(4):
+                try:
+                    els = _run_query(q, timeout).get("elements", [])
+                    break
+                except RuntimeError:
+                    if attempt == 3:
+                        raise
+                    time.sleep(60)
+            rows += [{"id": f"osm-{el['type']}/{el['id']}", "osm_user": el.get("user"),
+                      "osm_version": el.get("version")} for el in els]
+    return pd.DataFrame(rows, columns=["id", "osm_user", "osm_version"])
 
 
 def build_overpass_labels(

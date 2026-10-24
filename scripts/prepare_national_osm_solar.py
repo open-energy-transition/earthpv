@@ -28,6 +28,11 @@ Two corrections are applied to that placement, both measured rather than assumed
 
 `unknown` is left alone and converts at the land constant, which is the conservative
 choice for a feature whose placement nothing in the data establishes.
+
+`panel_traced` marks polygons last edited by an account the AOI names in
+`osm_panel_tracers` (configs/aoi.yaml; Yemen's owner-mapper since 2026-10-24). They are
+traced around the panels, so the atlas converts them at the module constant even on the
+ground, where any other ground polygon is a site at the land constant.
 """
 from __future__ import annotations
 
@@ -190,8 +195,17 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
         "placement: %s (small->rooftop: %d, rooftop->ground on size: %d)",
         ref["placement"].value_counts().to_dict(), n_small, n_oversize,
     )
+    # Polygons the AOI's named mappers traced around the panels (`osm_panel_tracers`): the
+    # atlas converts them at the module constant whatever their placement.
+    from earthpv.labels import panel_traced
+
+    ref["panel_traced"] = panel_traced(ref, aoi)
+    if ref["panel_traced"].any():
+        t = ref["panel_traced"].to_numpy() & (ref["placement"].to_numpy() != "rooftop")
+        log.info("%d polygons traced around their panels (%d ground, %.0f m2)",
+                 int(ref["panel_traced"].sum()), int(t.sum()), float(ref["area_m2"].to_numpy()[t].sum()))
     out.parent.mkdir(parents=True, exist_ok=True)
-    ref[["id", "placement", "area_m2", "source", "osm_timestamp", "geometry"]].to_parquet(out)
+    ref[["id", "placement", "area_m2", "source", "osm_timestamp", "panel_traced", "geometry"]].to_parquet(out)
     log.info("Wrote %s", out)
     return out
 

@@ -788,10 +788,14 @@ def roofclf_ground_capacity_cmd(
         None, help="roofclf's incremental building parquets (sub-400 central, >= 400 m2 rooftop) "
         "where the country has a roofclf half: a blob within 20 m of a priced building is its "
         "yard array and is left to roofclf (repeatable)"),
+    labels_dir: Path = typer.Option(
+        None, help="Where farm areas are registered (default data/labels/ for Pakistan, "
+        "data/labels/<aoi>/ otherwise): blobs inside one count nothing, it is mapped"),
 ) -> None:
     """Incremental ground-PV capacity per cell from the ground detector's blobs: what
-    neither OSM nor segmentation already counts, priced by the clean areas' ratio of
-    mapped PV area to detected blob area and the module constant."""
+    neither OSM nor segmentation already counts, priced by the ratio of mapped PV area to
+    detected blob area of the calibration region each cell resembles, and the module
+    constant."""
     from earthpv.roofclf_ground import ground_capacity
 
     base = Path("data/roofclf_ground") / aoi
@@ -799,7 +803,9 @@ def roofclf_ground_capacity_cmd(
                         osm_solar=osm_solar, candidates=pred_dir / aoi / "candidates.parquet",
                         n_boot=coverage_boot, leads=leads, roads=roads,
                         grid=pred_dir / aoi / "density" / "grid.geoparquet",
-                        roofclf_buildings=tuple(roofclf_buildings or ()))
+                        roofclf_buildings=tuple(roofclf_buildings or ()),
+                        labels_dir=labels_dir or (Path("data/labels") if aoi == "pakistan"
+                                                  else Path("data/labels") / aoi))
     for k, v in s.items():
         typer.echo(f"  {k}: {v}")
 

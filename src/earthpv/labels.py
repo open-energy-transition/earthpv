@@ -139,6 +139,20 @@ def resolve_aoi(aoi: str, settings: Settings) -> tuple[tuple[float, float, float
     return tuple(cfg["bbox"]), cfg
 
 
+def panel_traced(gdf: gpd.GeoDataFrame, aoi: str | None) -> np.ndarray:
+    """Polygons last edited by an account the AOI names in `osm_panel_tracers`: traced
+    around the panels, so their area is module area, where an ordinary mapped ground
+    polygon is a site and converts at the land constant. Yemen names its owner-mapper
+    (2026-10-24); a measured 3.6x apart there (333,104 m2 of ground polygons, 60.0 MWp as
+    panels against 16.7 as sites). Last editor rather than creator: 868 of that account's
+    869 Yemeni polygons are version 1. False everywhere when the AOI names nobody or the
+    file predates the `osm_user` column, so no other country moves."""
+    tracers = set(((Settings.load().aois.get(aoi) or {}).get("osm_panel_tracers") or []) if aoi else [])
+    if not tracers or "osm_user" not in gdf.columns:
+        return np.zeros(len(gdf), dtype=bool)
+    return (gdf["osm_user"].isin(tracers) & gdf.geom_type.isin(["Polygon", "MultiPolygon"])).to_numpy()
+
+
 def classify_placement(
     solar: gpd.GeoDataFrame, con, settings: Settings, overlap_frac: float,
     iso3: str | None = None,

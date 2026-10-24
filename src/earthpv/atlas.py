@@ -1377,6 +1377,9 @@ OUTDOMAIN_EXTRAPOLATION_CI90 = (0.25, 1.25)
 # calibration is thinnest, so the component carries a stated judgement instead: a
 # lognormal factor whose 90% range is x/÷2 around the point. An owner decision, labelled as
 # a judgement on the page; it disappears by itself once the third farm area is mapped.
+# Since the per-region domain (2026-10-24) `roofclf-ground-capacity` applies the same two
+# rules per region itself (`roofclf_ground.BOOT_MIN_AREAS`, `JUDGEMENT_CI90`) and names
+# them in its summary's `interval`; these apply only to a summary written before that.
 GROUND_MIN_AREAS = 3
 GROUND_JUDGEMENT_CI90 = (0.5, 2.0)
 
@@ -1523,6 +1526,15 @@ def _ci(draws: np.ndarray) -> list[float]:
     return [round(float(v), 1) for v in np.percentile(draws, CI_PCT)]
 
 
+def _osm_traced_ground(osm: pd.DataFrame) -> np.ndarray:
+    """Ground features `prepare_national_osm_solar.py` marked `panel_traced`: polygons a
+    named mapper traced around the panels, so module area rather than a site. All False for
+    a file without the column, which is every country but Yemen (2026-10-24)."""
+    if "panel_traced" not in osm.columns:
+        return np.zeros(len(osm), dtype=bool)
+    return osm["panel_traced"].fillna(False).to_numpy(bool) & (osm["placement"] != "rooftop").to_numpy()
+
+
 def _evidence_uncertainty(
     *,
     density_dir: Path,
@@ -1640,7 +1652,13 @@ def _evidence_uncertainty(
         reps = np.asarray(g.get("boots") or [], dtype=float)
         ratio, n_areas = float(g.get("ratio") or 0.0), int(g.get("n_areas") or 0)
         rng_g = np.random.default_rng(seed + 3)
-        if n_areas >= GROUND_MIN_AREAS and len(reps) and ratio > 0:
+        if g.get("interval") and len(reps) and ratio > 0:
+            # Since 2026-10-24 `roofclf-ground-capacity` composes the interval itself, per
+            # calibration region (bootstrap where a region has the areas, the stated
+            # judgement where it does not) and says which in `interval`.
+            f_ground = rng_g.choice(reps / ratio, n_draws, replace=True)
+            ground_interval = g["interval"]
+        elif n_areas >= GROUND_MIN_AREAS and len(reps) and ratio > 0:
             f_ground = rng_g.choice(reps / ratio, n_draws, replace=True)
             ground_interval = f"bootstrap over {n_areas} mapped farm areas"
         else:
@@ -1653,9 +1671,12 @@ def _evidence_uncertainty(
     c = components
     # Verified: hand-mapped OSM (exact areas, so only the conversion constant moves) plus
     # the AND-gate's coverage-ratio-weighted small-PV.
+    # A panel-traced ground polygon is module area (`osm_ground_traced`, part of the ground
+    # figure): it takes the module draw.
+    g_tr, gu_tr = c.get("osm_ground_traced", 0.0), c.get("osm_unmatched_ground_traced", 0.0)
     verified_parts = {
         "osm_roof": c["osm_roof"] * f_mod,
-        "osm_ground": c["osm_ground"] * f_land,
+        "osm_ground": (c["osm_ground"] - g_tr) * f_land + g_tr * f_mod,
         "small_low": c["small_low"] * cov["small_low"] * f_mod,
     }
     # Best: the OSM the model did not already find, its own >= 400 m2 estimate (roofclf
@@ -1663,7 +1684,7 @@ def _evidence_uncertainty(
     # roofclf-alone small-PV components.
     best_parts = {
         "osm_unmatched_roof": c["osm_unmatched_roof"] * f_mod,
-        "osm_unmatched_ground": c["osm_unmatched_ground"] * f_land,
+        "osm_unmatched_ground": (c["osm_unmatched_ground"] - gu_tr) * f_land + gu_tr * f_mod,
         "ge400_roof": c["ge400_roof"] * cov["ge400_roof"] * f_mod,
         "seg_roof_outdomain": c["seg_roof_outdomain"] * f_seg["est_mwp_rc_roof"],
         "seg_ground": c["seg_ground"] * f_seg["est_mwp_rc_ground"],
@@ -2424,8 +2445,12 @@ def build_evidence_atlas(
             "kWp/m2 across the population, against the flat %.3f",
             aoi, float(rooftop_k.min()), float(rooftop_k.max()), kwp_mod,
         )
+    # A ground polygon is a site (land constant) unless the country names its mapper as one
+    # who traces around the panels (`panel_traced`, from `osm_panel_tracers`): module area.
+    osm["traced_ground"] = _osm_traced_ground(osm)
     osm["kwp"] = np.where(
-        osm["placement"] == "rooftop", osm["area_m2"] * rooftop_k, osm["area_m2"] * kwp_land
+        osm["placement"] == "rooftop", osm["area_m2"] * rooftop_k,
+        osm["area_m2"] * np.where(osm["traced_ground"], kwp_mod, kwp_land),
     )
     if include_offgrid_osm:
         grid, n_added = _extend_grid_with_offgrid_osm(grid, osm)
@@ -2494,6 +2519,12 @@ def build_evidence_atlas(
         "osm_unmatched_ground": float(
             in_grid_osm.loc[~_osm_roof_m & in_grid_osm["counted"], "kwp"].sum()
         ) / 1000,
+        # The module-priced share of the ground parts (panel-traced polygons), which takes
+        # the module draw rather than the land one.
+        "osm_ground_traced": float(in_grid_osm.loc[in_grid_osm["traced_ground"], "kwp"].sum()) / 1000,
+        "osm_unmatched_ground_traced": float(
+            in_grid_osm.loc[in_grid_osm["traced_ground"] & in_grid_osm["counted"], "kwp"].sum()
+        ) / 1000,
     }
 
     # Both absent = a country with no mapped calibration quadrats, so no `roofclf` half
@@ -2541,7 +2572,8 @@ def build_evidence_atlas(
                         "and are dropped: %s", len(lost), float(by_ground[lost].sum()), lost[:5])
         ground_unc = {"ratio": gsum.get("ratio_true_per_detected_m2"),
                       "boots": gsum.get("ratio_bootstrap") or [],
-                      "n_areas": int(gsum.get("n_calibration_areas") or 0)}
+                      "n_areas": int(gsum.get("n_calibration_areas") or 0),
+                      "interval": gsum.get("interval")}
         ground_status = {
             "measured": True,
             "estimand": gsum.get("estimand"),
@@ -3106,7 +3138,7 @@ def _size_distribution_data(
     osm["kwp"] = np.where(
         osm["placement"] == "rooftop",
         osm["area_m2"] * cc.osm_rooftop_kwp_per_m2(osm["area_m2"].to_numpy(), aoi),
-        osm["area_m2"] * kwp_land,
+        osm["area_m2"] * np.where(_osm_traced_ground(osm), kwp_mod, kwp_land),
     )
     osm_pts = osm.copy()
     osm_pts["geometry"] = osm_pts.geometry.representative_point()

@@ -22,10 +22,13 @@ So the unit here is the PIXEL, aggregated into blobs, not the building.
 
 - **Clean areas**: farm calibration quadrats (`new_calibration_quadrat.py --farm`, stems
   carrying `roofclf.FARM_QUADRAT_INFIX`, drawn by `propose_calibration_candidates.py
-  --farmland`) and any boundary passed as `clean_regions`. Every visible panel mapped, as
-  panel outlines. Pixels >= `POSITIVE_COVER` covered are positives, pixels more than
-  `CLEAN_NEG_BUFFER_M` from any PV are negatives. Only these can give precision and the
-  capacity calibration.
+  --farmland`) and any boundary passed as `clean_regions`. Every visible installation
+  mapped. Pixels >= `POSITIVE_COVER` covered by a traced array (`power=generator`) are
+  positives, pixels more than `CLEAN_NEG_BUFFER_M` from any PV are negatives. Only these
+  can give precision and the capacity calibration. A complete area may still hold coarse
+  shapes: a `power=plant` outline or a node trains as a bag (below) and is priced by
+  `panel_area_factor`, so Tihama's 1,534 UNGSC rectangles, every one checked by the owner
+  but drawn around a site, calibrate at the land constant rather than as panels.
 - **Weak areas** (`weak_regions`): ordinary OSM, oversized rectangles and nodes included.
   Each label is a multiple-instance "bag" known to hold PV somewhere; the `MIL_K` most
   PV-like pixels in it are its positives, re-chosen over `MIL_ITERS` refits starting from
@@ -106,6 +109,7 @@ POSITIVE_COVER = 0.5           # clean areas: a pixel at least half covered by m
 CLEAN_NEG_BUFFER_M = 20.0      # clean areas: negatives keep this far from any mapped PV
 WEAK_NEG_BUFFER_M = 100.0      # weak areas: OSM is incomplete and offset, so further
 NODE_BAG_RADIUS_M = 30.0       # a mapped node is a bag of this radius
+OUTLINE_KINDS = ("plant",)     # OSM features that outline a site, not its panels
 MIL_K = 2                      # pixels per weak bag taken as positives
 MIL_ITERS = 3
 NEG_SAMPLE = 200_000           # negatives drawn per area and fold
@@ -118,7 +122,12 @@ ROI_RADIUS_M = 50.0
 GREEN_NDVI = 0.25
 TARGET_PRECISION = 0.5         # same precision target roofclf's deployment threshold uses
 MAX_ARRAY_M2 = roofclf.MIN_PV_AREA_FOR_PACKING
-MAX_BLOB_M2: float | None = None
+# No farm array is a sheet of square kilometres. Measured on Yemen's 2026-10-24 national run:
+# 87% of the detected area was in blobs of 5,000 m2 and more, mostly desert cells under 1%
+# cropland (lava fields, dark rock), the largest one 61 km2, while the largest installation
+# mapped in the seven farm areas is 22,231 m2 (99% under 2,215) and the largest detection in
+# those areas 16,000 m2. The cap removes the sheets and touches no calibration blob.
+MAX_BLOB_M2: float | None = 25_000.0
 DEDUP_M = 20.0
 # The calibration's applicability domain: cells whose cropland share AND building density lie
 # within this factor of the range the clean areas span. The same x/÷1.25 the farm candidate
@@ -126,6 +135,12 @@ DEDUP_M = 20.0
 # extrapolation (the first Yemeni smoke test put its largest cells on Al Hudaydah's coast and
 # city, 0-4% cropland, priced with a ratio measured on highland farms).
 DOMAIN_TOL = 1.25
+# A region's ratio is bootstrapped over its own areas once it has this many; below that it
+# carries a stated factor of two either way at 90% (what `atlas` labels a judgement).
+BOOT_MIN_AREAS = 3
+JUDGEMENT_CI90 = (0.5, 2.0)
+DEM_COLLECTION = "cop-dem-glo-90"   # Copernicus DEM, 90 m, on Planetary Computer
+DEM_STEP = 10                      # cells read at every 10th DEM pixel, about 900 m
 READ_PAD_M = 150.0             # covers the 35 m median window, 40 m ring and 50 m ROI
 ON_MAPPED_M = 20.0             # a blob this close to a mapped array counts as right
 SHIFT_M = (300.0, 2000.0)      # null bags: a label moved this far into nearby land
@@ -435,6 +450,36 @@ class Area:
     boundary: BaseGeometry          # EPSG:4326
     labels: gpd.GeoDataFrame        # EPSG:4326, polygons and points
     source: str
+    group: str = ""                 # areas cut from one region; transfer leaves a group out
+
+
+def panel_area_factor(labels: gpd.GeoDataFrame, aoi: str | None = None) -> np.ndarray:
+    """Per polygon of `labels`, the share of its area that is panels, from what its OSM tag
+    says it outlines. A `power=generator` polygon is the array (1.0), and so is any polygon
+    a mapper the AOI names in `osm_panel_tracers` drew (`labels.panel_traced`), whatever
+    its tag. A `power=plant` polygon is the site, priced at the land constant like every
+    mapped ground outline in the atlas's Verified tier (owner decision 2026-10-24, for
+    Tihama's UNGSC rectangles), so `DEFAULT_KWP_PER_M2_LAND / DEFAULT_KWP_PER_M2_MODULE` of
+    it is panels -- or none of it when a generator inside it already carries its panels.
+    Labels without a `kind` column are all arrays, which is what every clean area held
+    before this rule.
+
+    Measured on Tihama: where the detector finds a rectangle its blob covers 21% of it,
+    against 49% of an owner-traced array (median per feature), which puts a rectangle's
+    panels near 0.43 of it; the land constant says 0.28, its 90% interval 0.19-0.42."""
+    from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_LAND, DEFAULT_KWP_PER_M2_MODULE
+    from earthpv.labels import panel_traced
+
+    poly = labels[labels.geom_type.isin(["Polygon", "MultiPolygon"])]
+    if "kind" not in poly.columns:
+        return np.ones(len(poly))
+    outline = poly["kind"].isin(OUTLINE_KINDS).to_numpy() & ~panel_traced(poly, aoi)
+    fac = np.where(outline, DEFAULT_KWP_PER_M2_LAND / DEFAULT_KWP_PER_M2_MODULE, 1.0)
+    if outline.any() and (~outline).any():
+        has_array = gpd.sjoin(poly[outline][["geometry"]], poly[~outline][["geometry"]].representative_point()
+                              .to_frame("geometry"), predicate="contains").index.unique()
+        fac[np.flatnonzero(outline)[np.isin(poly.index[outline], has_array)]] = 0.0
+    return fac
 
 
 def _area_labels(name: str, boundary: BaseGeometry, cache_dir: Path, osm: Path | None,
@@ -473,17 +518,28 @@ def _area_labels(name: str, boundary: BaseGeometry, cache_dir: Path, osm: Path |
 def load_areas(labels_dir: Path, cache_dir: Path, clean_regions=(), weak_regions=(),
                osm: Path | None = None, refresh: bool = False) -> list[Area]:
     """Farm quadrats under `labels_dir` (clean), plus boundary files passed as clean or
-    weak regions, each with its OSM solar."""
+    weak regions, each with its OSM solar. A quadrat keeps its nodes (`roofclf.load_quadrat`
+    drops them, and a node left out makes its PV a negative) and takes its group from the
+    boundary's `region` property, so areas cut from one mapped region are left out together
+    when transfer is measured."""
     out = []
     for stem in roofclf.discover_quadrats(Path(labels_dir), farm=True):
-        b, pv = roofclf.load_quadrat(stem, Path(labels_dir))
-        out.append(Area(roofclf.quadrat_label(stem), "clean", b, pv, f"farm quadrat {stem}"))
+        bpath = Path(labels_dir) / f"{stem}_boundary.geojson"
+        b = roofclf.load_boundary(bpath)
+        solar = roofclf._newest_solar(stem, Path(labels_dir))
+        if solar is None:
+            raise FileNotFoundError(f"farm quadrat {stem} has no *_overpass_solar parquet")
+        pv = gpd.read_parquet(solar).to_crs("EPSG:4326")
+        pv = pv[pv.geom_type.isin(["Polygon", "MultiPolygon", "Point", "MultiPoint"])].reset_index(drop=True)
+        region = gpd.read_file(bpath).iloc[0].get("region") or stem
+        out.append(Area(roofclf.quadrat_label(stem), "clean", b, pv, f"farm quadrat {stem}", region))
     for kind, paths in (("clean", clean_regions), ("weak", weak_regions)):
         for p in paths:
             b = roofclf.load_boundary(Path(p))
             name = Path(p).name.replace("_boundary.geojson", "").replace(".geojson", "")
             labels, src = _area_labels(name, b, cache_dir, osm, refresh)
-            out.append(Area(name, kind, b, labels, src))
+            props = gpd.read_file(p).iloc[0]
+            out.append(Area(name, kind, b, labels, src, props.get("region") or name))
     if not out:
         raise ValueError(f"no training areas: no farm quadrats under {labels_dir} and no regions given")
     return out
@@ -500,7 +556,7 @@ def _strips(domain: np.ndarray, k: int) -> np.ndarray:
     return np.where(domain, np.clip(b, 0, k - 1), -1)
 
 
-def prepare_area(a: Area, comp_idx, iso3, roads, wc, rng, con=None) -> dict | None:
+def prepare_area(a: Area, comp_idx, iso3, roads, wc, rng, con=None, aoi: str | None = None) -> dict | None:
     """Features, label masks and context for one area, in its composite's grid."""
     res = read_window(comp_idx, a.boundary.bounds, pad_m=READ_PAD_M)
     if res is None:
@@ -532,40 +588,44 @@ def prepare_area(a: Area, comp_idx, iso3, roads, wc, rng, con=None) -> dict | No
         n_in = int(bu.geometry.representative_point().within(a.boundary).sum()) if len(bu) else 0
         d_bldg = n_in / (geodesic_area_m2(a.boundary) / 1e6)
     d = {"area": a, "X": X, "domain": domain, "transform": tr, "crs": crs, "b11": refl[8], "road": road,
-         "crop_frac": d_crop, "bldg_density_km2": d_bldg,
+         "crop_frac": d_crop, "bldg_density_km2": d_bldg, "elev_m": area_elevation(a.boundary),
          "roi": roi, "context": ctx, "block": _strips(domain, N_BLOCKS), "px": px}
-    node_zone = _mask(pts.buffer(NODE_BAG_RADIUS_M), shp, tr)
     if a.kind == "clean":
-        cov = pv_cover(polys.geometry, shp, tr)
-        dist = _dist_m((cov > 0) | node_zone, px)
+        # Traced arrays are pixel positives; outlines and nodes are bags, like a weak area's
+        # labels, but the area is complete, so negatives come as close as a clean area's.
+        fac = panel_area_factor(polys, aoi)
+        traced, outline = fac == 1.0, (fac > 0) & (fac < 1.0)
+        cov = pv_cover(polys.geometry[traced], shp, tr)
+        bag_geoms = list(polys.geometry[outline]) + list(pts.buffer(NODE_BAG_RADIUS_M))
+        dist = _dist_m((cov > 0) | _mask(list(polys.geometry[~traced]) + bag_geoms, shp, tr), px)
+        arrays = polys[fac > 0].reset_index(drop=True)
         d.update(pos=(cov >= POSITIVE_COVER) & domain, neg=(dist > CLEAN_NEG_BUFFER_M) & domain, dist=dist,
-                 arrays=polys.reset_index(drop=True),
-                 array_px=[np.flatnonzero(_mask([g], shp, tr).ravel()) for g in polys.geometry],
-                 array_area=np.array([abs(g.area) for g in polys.geometry]))
+                 arrays=arrays, array_px=[np.flatnonzero(_mask([g], shp, tr).ravel()) for g in arrays.geometry],
+                 array_area=np.array([abs(g.area) for g in arrays.geometry]) * fac[fac > 0],
+                 array_outline=fac[fac > 0] < 1.0, n_nodes=len(pts))
+        null_buffer = CLEAN_NEG_BUFFER_M
     else:
         bag_geoms = list(polys.geometry) + list(pts.buffer(NODE_BAG_RADIUS_M))
-        bags = [np.flatnonzero((_mask([g], shp, tr) & domain).ravel()) for g in bag_geoms]
-        any_lab = _mask(bag_geoms, shp, tr)
-        dist = _dist_m(any_lab, px)
-        keep = [i for i, b in enumerate(bags) if len(b)]
-        bags = [bags[i] for i in keep]
-        bag_geoms = [bag_geoms[i] for i in keep]
-        nulls = []
-        from shapely.affinity import translate
+        dist = _dist_m(_mask(bag_geoms, shp, tr), px)
+        d.update(neg=(dist > WEAK_NEG_BUFFER_M) & domain, dist=dist)
+        null_buffer = WEAK_NEG_BUFFER_M
+    bags = [np.flatnonzero((_mask([g], shp, tr) & domain).ravel()) for g in bag_geoms]
+    keep = [i for i, b in enumerate(bags) if len(b)]
+    bags = [bags[i] for i in keep]
+    bag_geoms = [bag_geoms[i] for i in keep]
+    nulls = []
+    from shapely.affinity import translate
 
-        for g in bag_geoms:
-            for _ in range(50):
-                r, ang = rng.uniform(*SHIFT_M), rng.uniform(0, 2 * np.pi)
-                m = _mask([translate(g, r * np.cos(ang), r * np.sin(ang))], shp, tr)
-                if m.any() and domain[m].all() and dist[m].min() >= WEAK_NEG_BUFFER_M:
-                    nulls.append(np.flatnonzero(m.ravel()))
-                    break
-            else:
-                nulls.append(None)
-        flat_block = d["block"].ravel()
-        d.update(neg=(dist > WEAK_NEG_BUFFER_M) & domain, dist=dist, bags=bags, nulls=nulls,
-                 bag_block=np.array([np.bincount(flat_block[b][flat_block[b] >= 0]).argmax() for b in bags]),
-                 bag_kind=["node" if i >= len(polys) else "polygon" for i in keep])
+    for g in bag_geoms:
+        for _ in range(50):
+            r, ang = rng.uniform(*SHIFT_M), rng.uniform(0, 2 * np.pi)
+            m = _mask([translate(g, r * np.cos(ang), r * np.sin(ang))], shp, tr)
+            if m.any() and domain[m].all() and dist[m].min() >= null_buffer:
+                nulls.append(np.flatnonzero(m.ravel()))
+                break
+        else:
+            nulls.append(None)
+    d.update(bags=bags, nulls=nulls)
     return d
 
 
@@ -579,7 +639,8 @@ def _flat(d):
 def mil_fit(data: list[dict], train_block, rng, l2: float = L2) -> dict:
     """One model from every area's training pixels. `train_block(d)` is a boolean pixel
     mask of what this fit may see. Clean positives are fixed; each weak bag contributes
-    its `MIL_K` highest-scoring pixels, re-chosen after every refit (SPPI first)."""
+    its `MIL_K` highest-scoring pixels, re-chosen after every refit (SPPI first), and so
+    does every outline or node in a clean area."""
     clean_pos, negs, weak = [], [], []
     for d in data:
         tm = train_block(d)
@@ -587,13 +648,12 @@ def mil_fit(data: list[dict], train_block, rng, l2: float = L2) -> dict:
         ni = np.flatnonzero((d["neg"] & tm).ravel())
         if len(ni):
             negs.append(Xf[rng.choice(ni, min(NEG_SAMPLE, len(ni)), replace=False)])
-        if d["area"].kind == "clean":
+        if "pos" in d:
             pi = np.flatnonzero((d["pos"] & tm).ravel())
             if len(pi):
                 clean_pos.append(Xf[pi])
-        else:
-            tmf = tm.ravel()
-            weak += [(Xf, b) for b in d["bags"] if tmf[b].mean() > 0.5]
+        tmf = tm.ravel()
+        weak += [(Xf, b) for b in d["bags"] if tmf[b].mean() > 0.5]
     if not negs or (not clean_pos and not weak):
         raise ValueError("a fold has no positives or no negatives")
     sppi = FEATURES.index("sppi")
@@ -683,12 +743,13 @@ def train_ground(
     for a in areas:
         roads = fetch_paved_roads([a.boundary.bounds], cache=out_dir / "areas" / f"{a.name}_roads.parquet")
         wc = _WorldCover(a.boundary.bounds, enabled=use_worldcover)
-        d = prepare_area(a, comp_idx, iso3, roads, wc, rng, con=con)
+        d = prepare_area(a, comp_idx, iso3, roads, wc, rng, con=con, aoi=aoi)
         if d is not None:
             data.append(d)
             log.info("%s (%s): %d px, %s", a.name, a.kind, int(d["domain"].sum()),
-                     f"{int(d['pos'].sum())} positive px, {len(d['arrays'])} arrays" if a.kind == "clean"
-                     else f"{len(d['bags'])} bags")
+                     (f"{int(d['pos'].sum())} positive px, {len(d['arrays'])} arrays "
+                      f"({int(d['array_outline'].sum())} outlines), " if a.kind == "clean" else "")
+                     + f"{len(d['bags'])} bags")
     clean = [d for d in data if d["area"].kind == "clean"]
 
     # Leave-one-block-out: fold f holds out strip f of EVERY area, so each area is scored
@@ -702,15 +763,16 @@ def train_ground(
 
     rows = []
     for d, h in zip(data, held):
-        r = {"area": d["area"].name, "kind": d["area"].kind, "source": d["area"].source,
+        r = {"area": d["area"].name, "kind": d["area"].kind, "group": d["area"].group,
+             "source": d["area"].source,
              "context": "+".join(k for k in ("green", "buildings", "cropland") if d["context"].get(k)),
              "road_veto": d["road"] is not None}
         if d["area"].kind == "clean":
             pos, neg = d["pos"], d["neg"]
-            r.update(n_arrays=len(d["arrays"]), pixel_auc_lobo=roofclf.auc(
-                np.r_[np.ones(pos.sum()), np.zeros(neg.sum())], np.r_[h[pos], h[neg]]))
-        else:
-            r.update(n_bags=len(d["bags"]), bag_auc_lobo=_bag_auc(d, h))
+            r.update(n_arrays=len(d["arrays"]), n_outlines=int(d["array_outline"].sum()), n_nodes=d["n_nodes"],
+                     pixel_auc_lobo=roofclf.auc(np.r_[np.ones(pos.sum()), np.zeros(neg.sum())],
+                                                np.r_[h[pos], h[neg]]) if pos.any() else float("nan"))
+        r.update(n_bags=len(d["bags"]), bag_auc_lobo=_bag_auc(d, h))
         rows.append(r)
 
     # Deployment threshold: the lowest probability at which the clean areas' pooled
@@ -757,34 +819,41 @@ def train_ground(
             for b in [None, *range(N_BLOCKS)]:
                 sel = (ablock >= 0) if b is None else (ablock == b)
                 det = st["det_area_m2"] if b is None else float(st["blob_area"][blob_block == b].sum())
-                calib.append({"area": d["area"].name, "block": "all" if b is None else int(b),
+                calib.append({"area": d["area"].name, "group": d["area"].group,
+                              "block": "all" if b is None else int(b),
                               "crop_frac": d["crop_frac"], "bldg_density_km2": d["bldg_density_km2"],
-                              "det_area_m2": det, "true_area_m2": float(d["array_area"][sel & small].sum()),
+                              "elev_m": d["elev_m"], "det_area_m2": det, "true_area_m2": float(d["array_area"][sel & small].sum()),
+                              "true_area_outline_m2": float(d["array_area"][sel & small & d["array_outline"]].sum()),
                               "true_area_all_m2": float(d["array_area"][sel].sum()),
                               "n_arrays": int((sel & small).sum()), "recall": float(st["found"][sel & small].mean())
                               if (sel & small).any() else float("nan")})
         pd.DataFrame(calib).to_csv(out_dir / "calibration.csv", index=False)
 
-    # Transfer: leave one AREA out. The figure that says what a new country should expect.
-    if len(data) > 1:
-        for d, r in zip(data, rows):
-            others = [o for o in data if o is not d]
+    # Transfer: leave one REGION out (areas cut from one mapped region share a group, and a
+    # neighbouring piece of the same farmland is no test). What a new country should expect.
+    groups = list(dict.fromkeys(d["area"].group for d in data))
+    models = {}
+    if len(groups) > 1:
+        for g in groups:
             try:
-                m = mil_fit(others, lambda o: o["block"] >= 0, rng, l2)
+                models[g] = mil_fit([o for o in data if o["area"].group != g], lambda o: o["block"] >= 0, rng, l2)
             except ValueError as e:
-                log.warning("transfer to %s not measurable: %s", d["area"].name, e)
+                log.warning("transfer to %s not measurable: %s", g, e)
+    if models:
+        for d, r in zip(data, rows):
+            m = models.get(d["area"].group)
+            if m is None:
                 continue
             p = score_pixels(m, d["X"], d["domain"])
             if d["area"].kind == "clean":
                 pos, neg = d["pos"], d["neg"]
                 r["pixel_auc_transfer"] = roofclf.auc(np.r_[np.ones(pos.sum()), np.zeros(neg.sum())],
-                                                      np.r_[p[pos], p[neg]])
+                                                      np.r_[p[pos], p[neg]]) if pos.any() else float("nan")
                 if thr is not None:
                     st = _clean_object_stats(d, p, thr, max_blob_m2)
                     r["precision_transfer"] = st["on_mapped"] / st["blobs"] if st["blobs"] else float("nan")
                     r["recall_transfer"] = float(st["found"].mean()) if len(st["found"]) else float("nan")
-            else:
-                r["bag_auc_transfer"] = _bag_auc(d, p)
+            r["bag_auc_transfer"] = _bag_auc(d, p)
     pd.DataFrame(rows).to_csv(out_dir / "eval_areas.csv", index=False)
 
     full = mil_fit(data, lambda d: d["block"] >= 0, rng, l2)
@@ -794,7 +863,8 @@ def train_ground(
         "threshold": thr, "target_precision": target_precision, "max_array_m2": max_array_m2,
         "max_blob_m2": max_blob_m2, "road_veto_frac": ROAD_VETO_FRAC, "swir_veto": SWIR_VETO,
         "roi_radius_m": ROI_RADIUS_M, "areas": [{"name": d["area"].name, "kind": d["area"].kind,
-                                                "source": d["area"].source} for d in data],
+                                                "group": d["area"].group, "source": d["area"].source}
+                                               for d in data],
     }
     (out_dir / "model_full.json").write_text(json.dumps(payload, indent=2))
     summary = {"aoi": aoi, "fingerprint": roofclf.model_fingerprint(full, FEATURES), "threshold": thr,
@@ -899,25 +969,88 @@ def score_ground_national(
 # --------------------------------------------------------------------------------------
 # Capacity
 # --------------------------------------------------------------------------------------
-def ratio_bootstrap(calib: pd.DataFrame, n_boot: int, seed: int = BOOT_SEED) -> tuple[float, np.ndarray]:
-    """Pooled true/detected area ratio over clean AREAS, and its bootstrap over areas.
-    Fewer than three areas gives no interval (an empty array): one area's spread across
-    its own blocks is not the spread across places, which is what moved every roofclf
-    number this project has published."""
-    a = calib[calib.block == "all"]
-    if a.det_area_m2.sum() <= 0:
-        raise ValueError("the clean areas hold no detected blob area at the deployment threshold")
-    ratio = float(a.true_area_m2.sum() / a.det_area_m2.sum())
-    if len(a) < 3 or n_boot <= 0:
-        return ratio, np.zeros(0)
+def region_ratio_draws(calib: pd.DataFrame, n_boot: int, seed: int = BOOT_SEED) -> dict:
+    """Per calibration region (`group`, areas cut from one mapped region; an area on its
+    own otherwise): summed true and detected area, and `n_boot` replicates of both.
+
+    A region with `BOOT_MIN_AREAS` areas or more is resampled over its own areas: one
+    area's spread across its own strips is not the spread across places, which is what
+    moved every roofclf number this project has published. Below that, its true area is
+    multiplied by a lognormal draw of `JUDGEMENT_CI90`, so the region still carries an
+    interval rather than none. Regions are resampled separately because they are priced
+    separately (`domain_cells`)."""
+    a = calib[calib.block == "all"].copy()
+    if "group" not in a.columns:
+        a["group"] = a["area"]
     rng = np.random.default_rng(seed)
-    t, dd = a.true_area_m2.to_numpy(), a.det_area_m2.to_numpy()
-    boots = []
-    for _ in range(n_boot):
-        i = rng.integers(0, len(a), len(a))
-        if dd[i].sum() > 0:
-            boots.append(t[i].sum() / dd[i].sum())
-    return ratio, np.array(boots)
+    sigma = np.log(JUDGEMENT_CI90[1]) / 1.6448536
+    out = {}
+    for region, s in a.groupby("group", sort=False):
+        t, d = s.true_area_m2.to_numpy(float), s.det_area_m2.to_numpy(float)
+        if len(s) >= BOOT_MIN_AREAS:
+            idx = rng.integers(0, len(s), (n_boot, len(s)))
+            t_rep, d_rep = t[idx].sum(1), d[idx].sum(1)
+        else:
+            t_rep, d_rep = t.sum() * np.exp(rng.normal(0.0, sigma, n_boot)), np.full(n_boot, d.sum())
+        out[region] = {"true": float(t.sum()), "det": float(d.sum()), "true_rep": t_rep, "det_rep": d_rep,
+                       "n_areas": int(len(s)), "bootstrapped": len(s) >= BOOT_MIN_AREAS}
+    return out
+
+
+def _dem_items(bbox):
+    import planetary_computer
+    import pystac_client
+
+    from earthpv.worldcover import STAC_URL
+
+    cat = pystac_client.Client.open(STAC_URL, modifier=planetary_computer.sign_inplace)
+    return list(cat.search(collections=[DEM_COLLECTION], bbox=bbox).items())
+
+
+def cell_elevation(cells: pd.DataFrame, cell_deg: float = 0.1) -> pd.DataFrame:
+    """`cell`, `elev_m`: median Copernicus DEM elevation of every cell (columns `cell`,
+    `lon0`, `lat0`), read at every `DEM_STEP`-th pixel, one read per 1-degree tile."""
+    lon0, lat0 = cells["lon0"].to_numpy(float), cells["lat0"].to_numpy(float)
+    gx, gy = float(lon0.min()), float(lat0.min())
+    key = {int(round((x - gx) / cell_deg)) * 100_000 + int(round((y - gy) / cell_deg)): c
+           for c, x, y in zip(cells["cell"], lon0, lat0)}
+    bbox = (lon0.min(), lat0.min(), lon0.max() + cell_deg, lat0.max() + cell_deg)
+    parts = []
+    for it in _dem_items(bbox):
+        with rasterio.open(it.assets["data"].href) as src:
+            h, w = max(1, src.height // DEM_STEP), max(1, src.width // DEM_STEP)
+            arr = src.read(1, out_shape=(h, w)).astype("float64")
+            t = src.transform * Affine.scale(src.width / w, src.height / h)
+            nodata = src.nodata
+        rows, cols = np.indices(arr.shape)
+        lon, lat = t.c + (cols + 0.5) * t.a, t.f + (rows + 0.5) * t.e
+        k = np.floor((lon - gx) / cell_deg).astype(np.int64) * 100_000 + np.floor((lat - gy) / cell_deg).astype(np.int64)
+        ok = np.isin(k, list(key)) & (arr != nodata if nodata is not None else True)
+        parts.append(pd.DataFrame({"k": k[ok], "elev_m": arr[ok]}))
+    med = pd.concat(parts).groupby("k").elev_m.median() if parts else pd.Series(dtype=float)
+    return pd.DataFrame({"cell": list(key.values()), "elev_m": [med.get(k, np.nan) for k in key]})
+
+
+def area_elevation(boundary: BaseGeometry) -> float:
+    """Median Copernicus DEM elevation inside `boundary` (EPSG:4326), at the DEM's 90 m."""
+    from rasterio.errors import WindowError
+    from rasterio.windows import Window, from_bounds
+
+    vals = []
+    for it in _dem_items(boundary.bounds):
+        with rasterio.open(it.assets["data"].href) as src:
+            win = from_bounds(*boundary.bounds, transform=src.transform).round_offsets().round_lengths()
+            try:
+                win = win.intersection(Window(0, 0, src.width, src.height))
+            except WindowError:
+                continue
+            arr = src.read(1, window=win).astype("float64")
+            inside = rasterio.features.geometry_mask([boundary], arr.shape, src.window_transform(win), invert=True)
+            if src.nodata is not None:
+                inside &= arr != src.nodata
+            vals.append(arr[inside])
+    vals = np.concatenate(vals) if vals else np.zeros(0)
+    return float(np.median(vals)) if len(vals) else float("nan")
 
 
 def road_fractions(blobs: gpd.GeoDataFrame, roads: gpd.GeoDataFrame) -> np.ndarray:
@@ -936,45 +1069,70 @@ def road_fractions(blobs: gpd.GeoDataFrame, roads: gpd.GeoDataFrame) -> np.ndarr
     return out
 
 
+DOMAIN_VARS = ("crop_frac", "bldg_density_km2", "elev_m")
+
+
 def domain_cells(aoi: str, calib: pd.DataFrame, grid: Path | None) -> tuple[pd.DataFrame, dict]:
-    """`cell`, `crop_frac`, `bldg_density_km2`, `in_domain` for every density-grid cell, and
-    the bounds used: the clean areas' range of both, widened by `DOMAIN_TOL` each way."""
+    """`cell`, the domain variables, `in_domain` and `region` for every density-grid cell,
+    and the bounds used.
+
+    A cell is in a region's domain when its cropland share, building density AND median
+    elevation each lie within that region's areas' range, widened by `DOMAIN_TOL` each way,
+    and it is priced with that region's ratio only (`region` names it; a cell two regions
+    claim is priced with both pooled). One box around ALL areas was the rule while Yemen
+    had one area. With 'Amran (highland, 1,900 m) and Tihama (lowland, 70 to 240 m) it
+    reached 289 of 810 cells, mostly highland terraces in Ibb, Sana'a and Ta'izz that
+    resemble Tihama in cropland and buildings only, and put Tihama's ratio (1.19 per
+    detected m2, against 'Amran's 0.17) on their blobs: 3.5 GWp, above the 2.8 GWp of panels
+    Yemen imported in total since 2017. Elevation is what separates the two landscapes."""
     from earthpv.worldcover import cell_cropland
 
-    a = calib[calib.block == "all"]
+    a = calib[calib.block == "all"].copy()
+    if "group" not in a.columns:
+        a["group"] = a["area"]
     g = pd.read_parquet(grid or Path("data/predictions") / aoi / "density" / "grid.geoparquet",
                         columns=["cell", "lon0", "lat0", "bldg_density_km2"])
-    cache = Path("data/cells_cache") / f"{aoi}_cropland.parquet"
-    crop = pd.read_parquet(cache) if cache.exists() else None
-    if crop is None or not set(g.cell) <= set(crop.cell):
-        crop = cell_cropland(g[["cell", "lon0", "lat0"]])
-        cache.parent.mkdir(parents=True, exist_ok=True)
-        crop.to_parquet(cache)
-    g = g.merge(crop[["cell", "crop_frac"]], on="cell", how="left")
-    if "crop_frac" not in a or a[["crop_frac", "bldg_density_km2"]].isna().any().any():
-        log.warning("calibration.csv predates the domain columns or lacks them: no cell is in domain")
-        g["in_domain"] = False
-        return g[["cell", "crop_frac", "bldg_density_km2", "in_domain"]], {}
-    b = {"crop_frac": [float(a.crop_frac.min()) / DOMAIN_TOL, float(a.crop_frac.max()) * DOMAIN_TOL],
-         "bldg_density_km2": [float(a.bldg_density_km2.min()) / DOMAIN_TOL,
-                              float(a.bldg_density_km2.max()) * DOMAIN_TOL]}
-    g["in_domain"] = (g.crop_frac.between(*b["crop_frac"]) & g.bldg_density_km2.between(*b["bldg_density_km2"]))
-    return g[["cell", "crop_frac", "bldg_density_km2", "in_domain"]], b
+    for name, fn in (("cropland", cell_cropland), ("elevation", cell_elevation)):
+        cache = Path("data/cells_cache") / f"{aoi}_{name}.parquet"
+        got = pd.read_parquet(cache) if cache.exists() else None
+        if got is None or not set(g.cell) <= set(got.cell):
+            got = fn(g[["cell", "lon0", "lat0"]])
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            got.to_parquet(cache)
+        g = g.merge(got[["cell", "crop_frac" if name == "cropland" else "elev_m"]], on="cell", how="left")
+    cols = ["cell", *DOMAIN_VARS, "in_domain", "region"]
+    if any(v not in a for v in DOMAIN_VARS) or a[list(DOMAIN_VARS)].isna().any().any():
+        log.warning("calibration.csv lacks a domain variable (%s): no cell is in domain", ", ".join(DOMAIN_VARS))
+        g["in_domain"], g["region"] = False, None
+        return g[cols], {}
+    bounds, hits = {}, []
+    for region, s in a.groupby("group", sort=False):
+        b = {v: [float(s[v].min()) / DOMAIN_TOL, float(s[v].max()) * DOMAIN_TOL] for v in DOMAIN_VARS}
+        m = np.logical_and.reduce([g[v].between(*b[v]).to_numpy() for v in DOMAIN_VARS])
+        bounds[str(region)] = b
+        hits.append(np.where(m, str(region), ""))
+    g["region"] = ["+".join(r for r in row if r) or None for row in zip(*hits)]
+    g["in_domain"] = g["region"].notna()
+    return g[cols], bounds
 
 
 def ground_capacity(
     aoi: str, score_dir: Path, calib_dir: Path, out_dir: Path, osm_solar: Path | None = None,
     candidates: Path | None = None, n_boot: int = 200, kwp_per_m2: float | None = None,
     leads: int = 500, max_blob_m2: float | None = "model", roads: Path | None = None,
-    grid: Path | None = None, roofclf_buildings: tuple = (),
+    grid: Path | None = None, roofclf_buildings: tuple = (), labels_dir: Path | None = None,
 ) -> dict:
     """Incremental ground-PV capacity per cell: kept blobs that neither OSM nor
-    segmentation already counts, times the clean areas' true/detected area ratio, times
-    the module constant. Writes `ground_cells.parquet`, the incremental blobs, a ranked
-    leads GeoJSON for JOSM review, and `summary.json`.
+    segmentation already counts, times the true/detected area ratio of the calibration
+    region the cell resembles (`domain_cells`), times the module constant. Writes
+    `ground_cells.parquet`, the incremental blobs, a ranked leads GeoJSON for JOSM review,
+    and `summary.json`.
 
-    The headline (`est_mwp_in_domain`) counts only cells inside `domain_cells`; the
-    all-cells figure is reported beside it as an extrapolation, never as the estimate."""
+    The headline (`est_mwp_in_domain`) counts only cells inside a region's domain; the
+    all-cells figure, at the ratio pooled over every area, is reported beside it as an
+    extrapolation, never as the estimate. Blobs inside a registered farm area (`labels_dir`)
+    count nothing: the area is completely mapped, so what is there is counted from the map,
+    and a blob no mapped feature explains is a false positive or postdates the imagery."""
     from earthpv import capacity_calibration as cc
     from earthpv.density import capacity_relevant_candidates
 
@@ -987,7 +1145,11 @@ def ground_capacity(
     if max_blob_m2 == "model":
         max_blob_m2 = meta.get("max_blob_m2")
     calib = pd.read_csv(calib_dir / "calibration.csv", dtype={"block": str})
-    ratio, boots = ratio_bootstrap(calib, n_boot)
+    regions = region_ratio_draws(calib, n_boot)
+    a_all = calib[calib.block == "all"]
+    if a_all.det_area_m2.sum() <= 0:
+        raise ValueError("the clean areas hold no detected blob area at the deployment threshold")
+    pooled = float(a_all.true_area_m2.sum() / a_all.det_area_m2.sum())
     kwp = cc.DEFAULT_KWP_PER_M2_MODULE if kwp_per_m2 is None else kwp_per_m2
 
     parts = [gpd.read_parquet(p) for p in sorted(score_dir.glob("*.parquet")) if not p.name.startswith("_")]
@@ -1048,21 +1210,61 @@ def ground_capacity(
                          b.to_crs(utm)[["geometry"]], predicate="intersects").index.unique()
         stats[f"dedup_roofclf_{Path(path).stem}"] = int((~drop[near]).sum())
         drop[near] = True
+    # Completely mapped farm areas: whatever is there is counted from the map.
+    if labels_dir is not None:
+        areas = [roofclf.load_boundary(Path(labels_dir) / f"{st}_boundary.geojson")
+                 for st in roofclf.discover_quadrats(Path(labels_dir), farm=True)]
+        if areas:
+            rp = blobs.geometry.representative_point()
+            inside = np.zeros(len(blobs), dtype=bool)
+            for poly in areas:
+                inside |= rp.within(poly).to_numpy()
+            stats["inside_calibration_areas"] = int((inside & ~drop).sum())
+            drop |= inside
     inc = blobs[~drop].reset_index(drop=True)
     stats["blobs_incremental"] = len(inc)
 
     cells = inc.groupby("cell").agg(n_blobs=("area_m2", "size"), det_area_m2=("area_m2", "sum")).reset_index()
-    cells["est_pv_area_m2"] = cells.det_area_m2 * ratio
-    cells["est_mwp"] = cells.est_pv_area_m2 * kwp / 1000.0
     dom, bounds = domain_cells(aoi, calib, grid)
     cells = cells.merge(dom, on="cell", how="left")
     cells["in_domain"] = cells["in_domain"].fillna(False).astype(bool)
-    total = float(cells.est_mwp[cells.in_domain].sum())
+    # Each in-domain cell at the ratio of the region(s) it resembles, point and replicates.
+    n_rep = len(next(iter(regions.values()))["true_rep"]) if regions else 0
+    ratio_cell, reps_cell = np.zeros(len(cells)), np.zeros((len(cells), n_rep))
+    for i, reg in enumerate(cells["region"]):
+        if not isinstance(reg, str):
+            continue
+        rs = [regions[r] for r in reg.split("+")]
+        ratio_cell[i] = sum(r["true"] for r in rs) / sum(r["det"] for r in rs)
+        reps_cell[i] = sum(r["true_rep"] for r in rs) / sum(r["det_rep"] for r in rs)
+    cells["ratio"] = ratio_cell
+    cells["est_pv_area_m2"] = cells.det_area_m2 * ratio_cell
+    cells["est_mwp"] = cells.est_pv_area_m2 * kwp / 1000.0
+    total = float(cells.est_mwp.sum())
     det_total = float(cells.det_area_m2[cells.in_domain].sum())
+    # The in-domain estimate per replicate, as an effective ratio over the in-domain blob
+    # area, so the atlas can resample it the way it resamples roofclf's coverage ratio.
+    det = cells.det_area_m2.to_numpy()
+    boots = (det @ reps_cell) / det_total if det_total > 0 and n_rep else np.zeros(0)
+    ratio = total * 1000.0 / kwp / det_total if det_total > 0 else pooled
     ci = ([float(np.percentile(boots, 5)) * det_total * kwp / 1000.0,
            float(np.percentile(boots, 95)) * det_total * kwp / 1000.0] if len(boots) else None)
+    used = {r for reg in cells.loc[cells.in_domain, "region"] for r in reg.split("+")}
+    boot_part = [f"{v['n_areas']} mapped farm areas in {r}" for r, v in regions.items()
+                 if r in used and v["bootstrapped"]]
+    judged = [f"{v['n_areas']} in {r}" for r, v in regions.items() if r in used and not v["bootstrapped"]]
+    interval = (("bootstrap over " + " and ".join(boot_part) if boot_part else "stated judgement")
+                + (f"; {', '.join(judged)} (fewer than {BOOT_MIN_AREAS}) a stated "
+                   f"x/÷{JUDGEMENT_CI90[1]:g} judgement" if judged else ""))
     stats.update(cells_with_blobs=len(cells), cells_in_domain=int(cells.in_domain.sum()),
-                 domain=bounds, est_mwp_all_cells_extrapolated=float(cells.est_mwp.sum()))
+                 domain=bounds, regions={r: {"ratio": v["true"] / v["det"] if v["det"] else None,
+                                             "n_areas": v["n_areas"],
+                                             "cells": int((cells["region"].fillna("").str.split("+")
+                                                           .apply(lambda x, r=r: r in x)).sum()),
+                                             "est_mwp": float(cells.loc[cells["region"] == r, "est_mwp"].sum())}
+                                         for r, v in regions.items()},
+                 interval=interval,
+                 est_mwp_all_cells_extrapolated=float(cells.det_area_m2.sum() * pooled * kwp / 1000.0))
     out_dir.mkdir(parents=True, exist_ok=True)
     cells.to_parquet(out_dir / "ground_cells.parquet")
     inc.to_parquet(out_dir / "ground_blobs_incremental.parquet")
@@ -1080,13 +1282,10 @@ def ground_capacity(
         # Every replicate, so the atlas can carry this component's calibration error in
         # its interval the way it carries roofclf's coverage-ratio bootstrap.
         "ratio_bootstrap": [round(float(x), 6) for x in boots],
-        "ratio_true_per_detected_m2": ratio, "ratio_boot_p05_p95": (
+        "ratio_true_per_detected_m2": ratio, "ratio_pooled_all_areas": pooled, "ratio_boot_p05_p95": (
             [float(np.percentile(boots, 5)), float(np.percentile(boots, 95))] if len(boots) else None),
         "n_calibration_areas": int((calib.block == "all").sum()),
         "kwp_per_m2": kwp, "est_mwp_in_domain": total, "est_mwp_ci90": ci, **stats,
-        "note": (None if len(boots) else
-                 "fewer than three clean calibration areas: no interval, the ratio comes from "
-                 f"{int((calib.block == 'all').sum())} area(s) and is not yet a national calibration"),
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     return summary
