@@ -143,6 +143,7 @@ repository; nothing was deleted on failure.
 | [THOR at 8 px tokens instead of TerraMind's 16 px](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | No pooled recall gain at matched precision: rooftop 400-5,000 m<sup>2</sup> 0.585 against 0.574 (p = 0.08), ground 0.928 against 0.933. Sharper outlines (pixel IoU 0.656 against 0.633) at 2.2x the training cost per batch. Not adopted. |
 | [THOR on TerraMind's own token grid](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome negative">rejected</span> | Ties v14 on rooftop recall (0.573 against 0.574), 1 point behind on ground. With 320 m SWIR tokens instead, it loses everywhere (rooftop 0.29). |
 | [Checkpoint selection by val mIoU](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | v14's second-best epoch finds 0.621 of rooftop arrays against the shipped epoch's 0.565, at precision 0.717 against 0.736: epoch noise is as large as the backbone effect. A recall-aware selection rule is untested. |
+| [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-the-strongest-400-m2-detector-measured-here-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget, matching precision (owner's blind review: 0.85-0.98 against 0.86-1.00) and far higher recall: quadrat rooftop 0.65 against 0.35, PV-rich ground 0.83 against 0.68. Not adopted: restrictive licence, one country so far, ~0.5-1 TB per country. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
@@ -2389,6 +2390,108 @@ on pre-Volta GPUs), configs `configs/thor_pv_ps{16,16m,8}_south_africa.yaml`, ru
 `scripts/run_backbone_compare.sh`. `infer` uses a stride of 102 for tokens finer than 16 px,
 since 104 is a multiple of 8. Results: `results/backbone_compare/thor16_vs_v14/`,
 `thor8_vs_v14_lowthr/`, `thor16m_thor8_vs_v14/`, `epoch_noise/`.
+
+### OlmoEarth embeddings: the strongest >= 400 m2 detector measured here (2026-10-25)
+
+Ai2's OlmoEarth v1.3 annual embeddings (OlmoEarth-v1.3-Base over a calendar year of
+Sentinel-1, Sentinel-2 and Landsat; 128 dimensions, int8, 10 m on each UTM zone's grid;
+released 2026-10-22 on Source Cooperative) went through
+[the AlphaEarth head-to-head](#alphaearth-against-segmentation-a-different-detector-not-a-better-one-2026-10-22)
+unchanged: the same evaluation areas, truth, negatives, logistic probe and thresholds, so the
+embedding is the only thing that differs. One deviation was forced: OlmoEarth covers 2017-2022
+for only part of Pakistan (zone 43 from 2017, Multan's zone 42 from 2022, Quetta from 2023),
+so change is measured from 2023 for both embeddings, and AlphaEarth was re-run on that
+baseline. That costs AlphaEarth little (PV-rich recall 0.44 against 0.48 from 2017, quadrats
+0.52 against 0.54).
+
+**Operating points.** The declared rule (the first threshold whose random-land burden falls
+below segmentation's 8.5 unmapped detections per 1,000 km<sup>2</sup>) picks tau 0.99 for
+AlphaEarth and 0.995 for OlmoEarth's 64-dimension Matryoshka prefix. The full 128 dimensions
+never get below it (15.1 at 0.995, the highest threshold tested), so they have no declared
+point and are shown at 0.995 for reference.
+
+| | Segmentation | AlphaEarth | OlmoEarth 64-d | OlmoEarth 128-d |
+| --- | --- | --- | --- | --- |
+| Random cells: unmapped detections per 1,000 km<sup>2</sup> | 8.5 | 5.7 | 6.1 | 15.1 |
+| Random cells: of those, PV in Claude's blind review | 2-5 of 12 | 1-4 of 12 | 7-11 of 13 | not reviewed |
+| Random cells: of those, PV in the owner's blind review | not reviewed | not reviewed | 10-12 of 13 | not reviewed |
+| PV-rich cells: precision, mapped lower bound | 0.755 | 0.679 | 0.745 | 0.660 |
+| PV-rich cells: precision with Claude's reviewed share | 0.84-0.88 | 0.71-0.73 | 0.85-0.86 | not reviewed |
+| PV-rich cells: precision with the owner's reviewed share | 0.86-1.00 | 0.73-0.89 | 0.85-0.98 | not reviewed |
+| PV-rich cells: recall, ground / rooftop | 0.68 / 0.43 | 0.46 / 0.40 | 0.83 / 0.67 | 0.92 / 0.82 |
+| Quadrats, exhaustive: precision | 0.952 | 0.971 | 0.959 | 0.941 |
+| Quadrats: recall, ground / rooftop | 0.63 / 0.35 | 0.53 / 0.51 | 0.92 / 0.65 | 0.99 / 0.69 |
+| Quadrats: rooftop arrays a detection overlaps | 0.12 | 0.34 | 0.53 | 0.59 |
+
+AlphaEarth is the 2023 baseline throughout except its random-cell review, which is the earlier
+review of the 2017 baseline. **At the same false-alarm budget OlmoEarth 64-d matches
+segmentation's precision and finds far more arrays**: quadrat rooftop recall 0.65 against 0.35,
+PV-rich ground 0.83 against 0.68. Segmentation adds almost nothing on top of it (the union
+reaches 0.65 rooftop and 0.95 ground in the quadrats), where AlphaEarth's union with
+segmentation reached 0.60 and 0.81. In the quadrats 51 arrays are found by OlmoEarth and by
+neither of the other two, against 6 found only by AlphaEarth. On random land its unmapped
+detections are mostly real: in Claude's review 7 of 13 are clearly PV and 4 more are unsure,
+so its false alarms are 0.9-2.8 per 1,000 km<sup>2</sup> against segmentation's 5.0-7.1; the
+owner's review puts OlmoEarth's at 0.5-1.4 (segmentation's random-cell detections were not in
+the owner's sample).
+
+**Checked against four ways it could be an artefact:**
+
+- **Loose matching.** A truth array counts as found when a detection lies within 100 m, which
+  rewards blobs painted over built-up land. It does not here. OlmoEarth 64-d covers 0.24% of
+  the PV-rich cells' land against segmentation's 0.35%, 80% of its detected area lies on mapped
+  PV (segmentation 84%), and requiring overlap instead of proximity keeps the ranking: quadrat
+  rooftop 0.53 against 0.12 for segmentation and 0.34 for AlphaEarth, as tabled.
+- **Pixel leakage.** Training tiles touching a 0.02-degree buffer around any evaluation area are
+  skipped, the rule AlphaEarth used.
+- **OSM labels in pretraining.** OlmoEarth's pretraining decodes 30 rasterised OSM layers (as
+  targets only; inference sees imagery alone), among them `power_plant`, i.e. every `power=plant`
+  outline including solar parks, and `building`. Its training tiles were also chosen from 120 OSM
+  categories that include solar plants. So part of its plant-outline recall may be exposure to
+  these very labels: quadrat plant outlines are overlapped at 0.69 against segmentation's 0.22.
+  Solar `power=generator` was never a target, and rooftop generators still go from 0.12 to 0.53
+  in the quadrats, so the rooftop gain cannot come from it.
+- **The reviewer.** The 61 panels (`scripts/olmoearth_vs_seg_review.py`, blind and mixed) were
+  judged twice, by Claude and then by the owner (`scripts/build_review_page.py`). Fresh draws of
+  segmentation and AlphaEarth read in Claude's review as its earlier review did (5 PV and 3
+  unsure of 12 against 7 and 4 of 24; 1 and 1 of 12 against 3 and 1 of 24), so the instruments
+  were read alike. The two reviewers never disagree about PV: every panel Claude called PV the
+  owner did too, plus four more. They differ on the rest: of the 29 panels Claude called not
+  PV, the owner marked 22 unsure. So the owner's lower ends match Claude's (OlmoEarth 0.85,
+  segmentation 0.86 in the PV-rich cells) and the upper ends are wider. In the owner's review
+  OlmoEarth's PV-rich detections are 10 PV, 12 unsure and 2 not PV of 24, segmentation's 5, 7
+  and 0 of 12, AlphaEarth's 2, 6 and 4 of 12; on random land OlmoEarth's are 10, 2 and 1 of 13.
+
+Plausible reasons, untested: a year of monthly multi-sensor input against one dry-season
+median, and the Sentinel-2 grid itself rather than AlphaEarth's resampled lat/lon grid.
+
+**Verdict: the best candidate yet for a leads generator and a precision corroborator. Not
+adopted, for three reasons.**
+
+- **The licence.** The OlmoEarth Artifact License forbids military and extractive uses,
+  requires those restrictions to travel with distributed derivatives, and requires citing Ai2.
+  Detections derived from it cannot go into the ODbL atlas or the Apache-2.0 model without an
+  owner decision on how the terms combine. Leads that only point mappers at imagery are the
+  least entangled use.
+- **Cost.** At 64 dimensions and two years it is 1.1 MB per km<sup>2</sup>: about 1 TB for
+  Pakistan, about 0.5 TB for the building-populated cells. That is roughly a day per 0.5 TB
+  with nothing else on the link; this run fetched 49 GB in 4.5 hours beside a national compose.
+- **One country, one probe.** A pixel logistic regression on frozen embeddings, measured in
+  Pakistan only. Nationally, change is available only from 2023. A repeat in South Africa,
+  with its PV-rich cells drawn from the Western Cape holdout that neither instrument trained
+  on, is `scripts/olmoearth_vs_segmentation_country.py`.
+
+As a corroborator, it confirms 238 of segmentation's 290 PV-rich candidates, at a mapped
+precision of 0.815, against 0.481 for the 52 it does not. AlphaEarth confirmed 134, at 0.836
+against 0.686, so OlmoEarth separates segmentation's real candidates from its false ones better.
+
+Code: `scripts/olmoearth_mosaic.py` (Zarr v3 shard reader over range requests, no new
+dependency), `scripts/olmoearth_vs_segmentation.py`, `scripts/olmoearth_vs_seg_review.py`,
+runner `scripts/run_olmoearth_compare.sh`; `scripts/aef_vs_segmentation.py --base-year 2023`.
+Results: `results/olmoearth_vs_segmentation.csv` (with `_unions.csv` and `.json`),
+`results/aef_vs_segmentation_natneg_base2023.csv`, `results/olmoearth_vs_seg_review/` (the
+owner's verdicts in `summary_owner.json` and `blind_review_joined_owner.csv`, Claude's in
+`summary.json` and `claude_verdicts.csv`).
 
 ## The partial result worth watching
 
