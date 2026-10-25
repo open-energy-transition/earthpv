@@ -34,6 +34,7 @@ REQUIRED = {
         ('class="dlbar"', "the PNG/SVG/CSV download buttons on each figure"),
         ("__AOI_KEY__", "the key the page fetches its published calibration areas by"),
         ("calib-hit", "the click target that opens a calibration area in JOSM or iD"),
+        ("farm-dot", "the farm calibration area's own (green) marker, apart from building areas"),
     ],
     "pv_growth_evidence_atlas.html": [
         ("__HEADER_LOGO__", "the EarthPV mark at the top"),

@@ -300,10 +300,10 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true",
                     help="run the geometry + overlap checks and stop before writing or fetching")
     ap.add_argument("--farm", action="store_true",
-                    help="a FARM calibration area for the ground-PV detector (roofclf_ground): "
+                    help="a FARM calibration area for the ground-PV detector (groundclf): "
                          "the stem gets '_farm_calib_', which keeps it out of the rooftop "
                          "roofclf refits (a ground array would label the farmhouse beside it, "
-                         "the Kalat Rural problem) and is what `roofclf-ground` discovers. "
+                         "the Kalat Rural problem) and is what `groundclf` discovers. "
                          "Use for boxes from `calib-candidates -- --farmland`.")
     args = ap.parse_args()
 
@@ -459,7 +459,7 @@ def main() -> None:
         "imagery_checked": bool(args.imagery_date),
     }
     if args.farm:
-        props["detector"] = "roofclf_ground"
+        props["detector"] = "groundclf"
     if not drawn:
         props["side_m"] = float(side)
     else:

@@ -1,4 +1,4 @@
-# Farm ground PV (roofclf_ground)
+# Farm ground PV (groundclf)
 
 !!! note "SHIPPED (2026-10-24): in Yemen's Best estimate, inside its calibration domain"
 
@@ -14,9 +14,10 @@ Small solar arrays beside fields, most of them powering irrigation pumps, are a 
 fast-growing class in arid countries, and neither of the project's two instruments sees
 them. `roofclf` asks whether a roof carries PV, and these arrays have no roof. The
 segmentation model ignores everything below 400 m<sup>2</sup> and, in the area measured
-here, found almost none of them above it either. `roofclf_ground` is the third
+here, found almost none of them above it either. `groundclf` is the third
 instrument: it reads pixels rather than buildings, and is trained on farm areas rather than
-on rooftop quadrats.
+on rooftop quadrats. Its population is small farm arrays, not ground-mount PV at every size,
+which segmentation covers. (It was called `roofclf_ground` until 2026-10-25.)
 
 ## Why the other instruments miss these arrays
 
@@ -109,7 +110,7 @@ national scoring pass never waits on Overpass.
 
 ## From blobs to capacity
 
-`roofclf-ground-capacity` prices only what the atlas does not already count, the same rule
+`groundclf-capacity` prices only what the atlas does not already count, the same rule
 every component follows:
 
 1. Kept blobs (vetoes, region of interest) more than 20 m from any OpenStreetMap solar
@@ -163,7 +164,7 @@ Hajjah, one in Al Mahwit and one on the Abyan coast) and 'Amran's two highland c
 
 ## In the atlas
 
-`earthpv atlas --ground-cells data/roofclf_ground/<aoi>/capacity/ground_cells.parquet`
+`earthpv atlas --ground-cells data/groundclf/<aoi>/capacity/ground_cells.parquet`
 adds the component; the `summary.json` beside it supplies the calibration. It is shown the
 same way on every country's page, so a reader can always find it:
 
@@ -180,12 +181,12 @@ same way on every country's page, so a reader can always find it:
 - **In Best, inside the domain only.** Only cells inside the detector's own calibration
   domain count, the rule `roofclf`'s other components follow.
 - **Its interval.** The module-constant draw shared with every module-area component, times
-  the replicates `roofclf-ground-capacity` writes: per calibration region, a bootstrap over
-  that region's farm areas once it has three or more (`roofclf_ground.BOOT_MIN_AREAS`), and
+  the replicates `groundclf-capacity` writes: per calibration region, a bootstrap over
+  that region's farm areas once it has three or more (`groundclf.BOOT_MIN_AREAS`), and
   below that a stated judgement, a lognormal factor of two either way at 90%
-  (`roofclf_ground.JUDGEMENT_CI90`). The page says which applies to which region: leaving
+  (`groundclf.JUDGEMENT_CI90`). The page says which applies to which region: leaving
   the term out would make the interval narrowest where the calibration is thinnest.
-- **Incremental, against what the page counts.** Run `roofclf-ground-capacity` with the
+- **Incremental, against what the page counts.** Run `groundclf-capacity` with the
   same `--osm-solar` file the atlas uses, and with `--roofclf-buildings` where the country
   has a `roofclf` half: a detection within 20 m of a building roofclf priced is that
   building's yard array, which roofclf already counts.
@@ -218,7 +219,7 @@ redraw only their own candidates.
 ### What a mapped polygon is worth
 
 The capacity calibration needs each mapped installation's panel area, and OpenStreetMap
-polygons are not all panels. `roofclf_ground.panel_area_factor` reads it from the tag:
+polygons are not all panels. `groundclf.panel_area_factor` reads it from the tag:
 
 - **`power=generator`**: the array itself, counted at its area.
 - **`power=plant`**: the site around it, counted at the land constant's share of its area
@@ -267,19 +268,19 @@ farm area, ground and rooftop, and trace the panels rather than the fence.
 ## Running it
 
 ```bash
-pixi run earthpv roofclf-ground --aoi yemen \
+pixi run earthpv groundclf --aoi yemen \
     --weak-region data/labels/yemen/tihama_stale_imagery_region.geojson \
     --osm data/labels/yemen_overpass_solar.parquet      # region labels from the national pull
-pixi run earthpv roofclf-ground-score-national --aoi yemen      # about 10 s per cell, resumable
-pixi run earthpv roofclf-ground-capacity --aoi yemen --osm-solar <national OSM solar pull>
+pixi run earthpv groundclf-score-national --aoi yemen      # about 10 s per cell, resumable
+pixi run earthpv groundclf-capacity --aoi yemen --osm-solar <national OSM solar pull>
 pixi run earthpv atlas --aoi yemen --osm-solar <the same pull> \
-    --ground-cells data/roofclf_ground/yemen/capacity/ground_cells.parquet
+    --ground-cells data/groundclf/yemen/capacity/ground_cells.parquet
 ```
 
 Registered farm areas are found automatically. Region labels are pulled from Overpass once
-and cached under `data/roofclf_ground/<aoi>/areas/`, and paved roads per whole degree under
+and cached under `data/groundclf/<aoi>/areas/`, and paved roads per whole degree under
 `data/roads/<aoi>/`; a chunk Overpass cannot deliver leaves its blobs marked
-`road_checked=False`, counted in the summary. Outputs land in `data/roofclf_ground/<aoi>/`:
+`road_checked=False`, counted in the summary. Outputs land in `data/groundclf/<aoi>/`:
 the model and its evaluation tables, one blob file per cell, and in `capacity/` the per-cell
 figures, the incremental blobs and `ground_leads.geojson`, ranked for review in JOSM.
 

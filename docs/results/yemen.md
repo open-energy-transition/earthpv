@@ -95,7 +95,7 @@ the dark-rock blobs and the three unmapped parks described below.
     near infrared. The Tihama labels are rectangles drawn around plots, and averaged over a
     rectangle the panels disappear. Read as bags that hold PV somewhere, the same
     rectangles do carry the signal, and a pixel detector trained on them finds the arrays.
-    See [Farm ground PV](../methods/roofclf-ground.md). The measurements below stand; the
+    See [Farm ground PV](../methods/groundclf.md). The measurements below stand; the
     conclusion drawn from them does not.
 
 The held-out arrays are not the exception. Scoring v13's own national inference against
@@ -178,7 +178,7 @@ and the chain was relaunched at 15:51 once it was fixed.
 ## Farm ground PV (added 2026-10-24)
 
 Small arrays beside fields, mostly solar irrigation pumps, are counted by the
-[farm ground-PV detector](../methods/roofclf-ground.md), a pixel model, and enter Best as
+[farm ground-PV detector](../methods/groundclf.md), a pixel model, and enter Best as
 their own component, beside where rooftop PV below 400 m&sup2; will sit once `roofclf` is
 fitted here. It was first added on 2026-10-24 calibrated on 'Amran alone (32.7 MWp in 12
 cells, a stated judgement interval), and recalibrated the same day on seven farm areas:
@@ -277,12 +277,12 @@ pixi run python scripts/overpass_labels_chunked.py --bbox=41.8,12.1,54.6,19.0 \
 pixi run python scripts/drop_solar_thermal.py --aoi yemen --by-id
 # screen, calibrate-candidates, density, check-density, prepare_national_osm_solar.py: as in
 # run_country_compute.sh
-pixi run earthpv roofclf-ground --aoi yemen \
+pixi run earthpv groundclf --aoi yemen \
   --weak-region data/labels/yemen/tihama_stale_imagery_region.geojson \
   --osm data/labels/yemen_overpass_solar.parquet
-pixi run earthpv roofclf-ground-score-national --aoi yemen
-pixi run earthpv roofclf-ground-capacity --aoi yemen --osm-solar data/labels/yemen_national_osm_solar.parquet
+pixi run earthpv groundclf-score-national --aoi yemen
+pixi run earthpv groundclf-capacity --aoi yemen --osm-solar data/labels/yemen_national_osm_solar.parquet
 pixi run earthpv atlas --aoi yemen --osm-solar data/labels/yemen_national_osm_solar.parquet \
   --include-offgrid-osm --imagery-date-range "Oct 2025 - Mar 2026" \
-  --ground-cells data/roofclf_ground/yemen/capacity/ground_cells.parquet
+  --ground-cells data/groundclf/yemen/capacity/ground_cells.parquet
 ```

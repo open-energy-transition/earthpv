@@ -100,7 +100,9 @@ from earthpv.roofclf import BAND_NAMES, REFL_SCALE
 
 log = logging.getLogger(__name__)
 
-DETECTOR = "roofclf_ground"
+DETECTOR = "groundclf"
+# The module was `roofclf_ground` until 2026-10-25; models fitted under that name still load.
+LEGACY_DETECTORS = ("roofclf_ground",)
 _LC_BANDS = ("b03", "b04", "b08", "b11", "b12")
 FEATURES = ([f"log_{b}" for b in BAND_NAMES] + ["ndvi", "ndbi", "sppi"]
             + [f"lc_{b}" for b in _LC_BANDS] + ["lc_sppi", "lc_ndvi"])
@@ -876,7 +878,7 @@ def train_ground(
 def load_ground_model(path: Path) -> tuple[dict, list[str], dict]:
     model, feats = roofclf.load_model(path)
     meta = json.loads(Path(path).read_text())
-    if meta.get("detector") != DETECTOR:
+    if meta.get("detector") not in (DETECTOR, *LEGACY_DETECTORS):
         raise ValueError(f"{path} is not a {DETECTOR} model")
     if list(feats) != FEATURES:
         raise ValueError(f"{path} was fitted on features this code no longer computes")

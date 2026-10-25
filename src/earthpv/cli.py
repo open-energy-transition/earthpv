@@ -705,8 +705,8 @@ def roofclf_score_national_cmd(
     typer.echo(f"-> {out_dir}")
 
 
-@app.command("roofclf-ground")
-def roofclf_ground_cmd(
+@app.command("groundclf")
+def groundclf_cmd(
     aoi: str = typer.Option(..., help="AOI name (supplies division.iso3 for VIDA)"),
     composites: Path = typer.Option(None, help="Composite dir (default data/composites/<aoi>)"),
     labels_dir: Path = typer.Option(
@@ -721,7 +721,7 @@ def roofclf_ground_cmd(
     osm: Path = typer.Option(None, help="Read region labels from this solar parquet instead "
                              "of a live Overpass pull"),
     refresh_osm: bool = typer.Option(False, help="Re-pull Overpass for every region"),
-    out_dir: Path = typer.Option(None, help="Output dir (default data/roofclf_ground/<aoi>)"),
+    out_dir: Path = typer.Option(None, help="Output dir (default data/groundclf/<aoi>)"),
     max_array_m2: float = typer.Option(
         400.0, help="The capacity estimand counts mapped arrays below this (roofclf's 400 m2 "
         "floor). 0 = every size: 88% of 'Amran's array area is at or above 400 m2."),
@@ -732,10 +732,10 @@ def roofclf_ground_cmd(
     family's instrument for PV with no roof. Fits a pixel model on clean farm areas and
     weak OSM areas, reports leave-one-block-out and leave-one-area-out skill, picks the
     deployment threshold and measures the capacity calibration."""
-    from earthpv.roofclf_ground import train_ground
+    from earthpv.groundclf import train_ground
 
     labels_dir = labels_dir or (Path("data/labels") if aoi == "pakistan" else Path("data/labels") / aoi)
-    out_dir = out_dir or Path("data/roofclf_ground") / aoi
+    out_dir = out_dir or Path("data/groundclf") / aoi
     s = train_ground(aoi, labels_dir, composites or Path("data/composites") / aoi, out_dir,
                      clean_regions=clean_region or (), weak_regions=weak_region or (), osm=osm,
                      refresh_osm=refresh_osm, use_worldcover=worldcover,
@@ -746,12 +746,12 @@ def roofclf_ground_cmd(
     typer.echo(f"threshold {s['threshold']} -> {out_dir}")
 
 
-@app.command("roofclf-ground-score-national")
-def roofclf_ground_score_national_cmd(
+@app.command("groundclf-score-national")
+def groundclf_score_national_cmd(
     aoi: str = typer.Option(..., help="AOI name"),
-    model_path: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/model_full.json"),
+    model_path: Path = typer.Option(None, help="Default data/groundclf/<aoi>/model_full.json"),
     composites: Path = typer.Option(None, help="Composite dir (default data/composites/<aoi>)"),
-    out_dir: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/blobs"),
+    out_dir: Path = typer.Option(None, help="Default data/groundclf/<aoi>/blobs"),
     threshold: float = typer.Option(None, help="Override the model's deployment threshold (a logit)"),
     worldcover: bool = typer.Option(True, "--worldcover/--no-worldcover"),
     limit: int = typer.Option(0, help="Cap the cells processed this call (0 = all)"),
@@ -760,23 +760,23 @@ def roofclf_ground_score_national_cmd(
 ) -> None:
     """Score every composite cell with the ground detector: blobs with their road, water
     and ROI flags, one parquet per cell. Resumable."""
-    from earthpv.roofclf_ground import score_ground_national
+    from earthpv.groundclf import score_ground_national
 
     only = ({ln.strip() for ln in cells_file.read_text().splitlines() if ln.strip()}
             if cells_file else None)
     out = score_ground_national(
-        aoi, model_path or Path("data/roofclf_ground") / aoi / "model_full.json",
-        composites or Path("data/composites") / aoi, out_dir or Path("data/roofclf_ground") / aoi / "blobs",
+        aoi, model_path or Path("data/groundclf") / aoi / "model_full.json",
+        composites or Path("data/composites") / aoi, out_dir or Path("data/groundclf") / aoi / "blobs",
         threshold=threshold, use_worldcover=worldcover, limit=limit, cells=only, force=force)
     typer.echo(f"-> {out}")
 
 
-@app.command("roofclf-ground-capacity")
-def roofclf_ground_capacity_cmd(
+@app.command("groundclf-capacity")
+def groundclf_capacity_cmd(
     aoi: str = typer.Option(..., help="AOI name"),
-    score_dir: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/blobs"),
-    calib_dir: Path = typer.Option(None, help="`roofclf-ground`'s output (default data/roofclf_ground/<aoi>)"),
-    out_dir: Path = typer.Option(None, help="Default data/roofclf_ground/<aoi>/capacity"),
+    score_dir: Path = typer.Option(None, help="Default data/groundclf/<aoi>/blobs"),
+    calib_dir: Path = typer.Option(None, help="`groundclf`'s output (default data/groundclf/<aoi>)"),
+    out_dir: Path = typer.Option(None, help="Default data/groundclf/<aoi>/capacity"),
     osm_solar: Path = typer.Option(None, help="National OSM solar pull: blobs near it are already counted"),
     pred_dir: Path = typer.Option(Path("data/predictions"),
                                   help="For <pred_dir>/<aoi>/candidates.parquet (segmentation dedup)"),
@@ -796,9 +796,9 @@ def roofclf_ground_capacity_cmd(
     neither OSM nor segmentation already counts, priced by the ratio of mapped PV area to
     detected blob area of the calibration region each cell resembles, and the module
     constant."""
-    from earthpv.roofclf_ground import ground_capacity
+    from earthpv.groundclf import ground_capacity
 
-    base = Path("data/roofclf_ground") / aoi
+    base = Path("data/groundclf") / aoi
     s = ground_capacity(aoi, score_dir or base / "blobs", calib_dir or base, out_dir or base / "capacity",
                         osm_solar=osm_solar, candidates=pred_dir / aoi / "candidates.parquet",
                         n_boot=coverage_boot, leads=leads, roads=roads,
@@ -1518,7 +1518,7 @@ def atlas(
         "correction (Pakistan, Germany) differ.",
     ),
     ground_cells: Path = typer.Option(
-        None, help="`roofclf-ground-capacity`'s ground_cells.parquet (its summary.json beside "
+        None, help="`groundclf-capacity`'s ground_cells.parquet (its summary.json beside "
         "it): farm ground PV below 400 m2, added to Best in the detector's own calibration "
         "domain as its own component. Omitted, the page shows the field as not measured.",
     ),

@@ -728,18 +728,18 @@ turn the whole thing from a lower bound into an estimate with an interval. See
 
 **Farm ground PV (not yet in the atlas).** Where small arrays stand beside fields rather
 than on roofs, as solar irrigation pumps do, neither instrument above sees them. The
-[farm ground-PV detector](methods/roofclf-ground.md) is the third, trained on farm
+[farm ground-PV detector](methods/groundclf.md) is the third, trained on farm
 calibration areas (`calib-candidates -- --farmland`) and on ordinary OSM labels read as
 bags:
 
 ```bash
-pixi run earthpv roofclf-ground --aoi surat_thani --weak-region <boundary.geojson>
-pixi run earthpv roofclf-ground-score-national --aoi surat_thani
-pixi run earthpv roofclf-ground-capacity --aoi surat_thani --osm-solar <national OSM solar pull>
+pixi run earthpv groundclf --aoi surat_thani --weak-region <boundary.geojson>
+pixi run earthpv groundclf-score-national --aoi surat_thani
+pixi run earthpv groundclf-capacity --aoi surat_thani --osm-solar <national OSM solar pull>
 ```
 
 Its leads (`ground_leads.geojson`) are useful at once for mapping. Pass
-`--ground-cells data/roofclf_ground/surat_thani/capacity/ground_cells.parquet` to
+`--ground-cells data/groundclf/surat_thani/capacity/ground_cells.parquet` to
 `earthpv atlas` to add its capacity to Best inside its calibration domain; with fewer than
 three completely mapped farm areas the page carries a stated judgement for its interval.
 

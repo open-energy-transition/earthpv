@@ -490,6 +490,8 @@ def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[
     become ground truth."""
     import pandas as pd
 
+    from earthpv.roofclf import FARM_QUADRAT_INFIX
+
     out = []
     for box in atlas_config.load(aoi).calibration_boxes:
         boundary = calib_boundary_path(aoi, box["stem"], labels_dir)
@@ -510,6 +512,9 @@ def _load_calib_boxes(aoi: str, labels_dir: Path = Path("data/labels")) -> list[
             "name": box["name"], "status": box["status"],
             "lon": round(float(centroid.x), 4), "lat": round(float(centroid.y), 4),
             "n": n, "rings": _rings(geom.union_all(), tolerance=0.0),
+            # A farm area calibrates the farm ground-PV detector, a building area roofclf;
+            # the page draws them apart and says whether a figure uses each.
+            "farm": FARM_QUADRAT_INFIX in box["stem"], "used": bool(box.get("used", True)),
         })
     return out
 
@@ -1378,15 +1383,15 @@ EVIDENCE_DRAWS_SEED = 20260811
 # the wrong direction.
 OUTDOMAIN_EXTRAPOLATION_CI90 = (0.25, 1.25)
 
-# Farm ground PV (`roofclf_ground`, in Best since 2026-10-24): the error of its ratio of
+# Farm ground PV (`groundclf`, in Best since 2026-10-24): the error of its ratio of
 # mapped PV area to detected blob area is measured by a bootstrap over completely mapped
 # farm areas once a country has `GROUND_MIN_AREAS` of them. Below that there is nothing to
 # resample, and dropping the term would report the narrowest interval exactly where the
 # calibration is thinnest, so the component carries a stated judgement instead: a
 # lognormal factor whose 90% range is x/÷2 around the point. An owner decision, labelled as
 # a judgement on the page; it disappears by itself once the third farm area is mapped.
-# Since the per-region domain (2026-10-24) `roofclf-ground-capacity` applies the same two
-# rules per region itself (`roofclf_ground.BOOT_MIN_AREAS`, `JUDGEMENT_CI90`) and names
+# Since the per-region domain (2026-10-24) `groundclf-capacity` applies the same two
+# rules per region itself (`groundclf.BOOT_MIN_AREAS`, `JUDGEMENT_CI90`) and names
 # them in its summary's `interval`; these apply only to a summary written before that.
 GROUND_MIN_AREAS = 3
 GROUND_JUDGEMENT_CI90 = (0.5, 2.0)
@@ -1690,7 +1695,7 @@ def _evidence_uncertainty(
         ratio, n_areas = float(g.get("ratio") or 0.0), int(g.get("n_areas") or 0)
         rng_g = np.random.default_rng(seed + 3)
         if g.get("interval") and len(reps) and ratio > 0:
-            # Since 2026-10-24 `roofclf-ground-capacity` composes the interval itself, per
+            # Since 2026-10-24 `groundclf-capacity` composes the interval itself, per
             # calibration region (bootstrap where a region has the areas, the stated
             # judgement where it does not) and says which in `interval`.
             f_ground = rng_g.choice(reps / ratio, n_draws, replace=True)
@@ -2414,7 +2419,7 @@ def build_evidence_atlas(
     (Pakistan: 687 installations, 466 MWp, of which the per-cell floor restored 36).
     `legacy_osm_addition=True` reproduces the earlier figures exactly.
 
-    **Farm ground PV, `ground_cells_path` (2026-10-24).** `roofclf-ground-capacity`'s
+    **Farm ground PV, `ground_cells_path` (2026-10-24).** `groundclf-capacity`'s
     `ground_cells.parquet`: arrays beside fields that neither roofclf (no roof) nor
     segmentation (below its floor) sees, already deduplicated against OSM, segmentation
     and roofclf's priced buildings. Only cells inside the detector's own calibration domain
@@ -2611,7 +2616,7 @@ def build_evidence_atlas(
     )
 
     # Farm ground PV (see docstring): in-domain cells only, by the cell names both this grid
-    # and `roofclf-ground-score-national` take from the AOI's own grid origin.
+    # and `groundclf-score-national` take from the AOI's own grid origin.
     by_ground = pd.Series(dtype=float)
     ground_status: dict = {"measured": False}
     ground_unc = None

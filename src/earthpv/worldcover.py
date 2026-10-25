@@ -146,7 +146,7 @@ def candidate_worldcover_veto(
 
 
 # --------------------------------------------------------------------------------------
-# Cropland: where farm ground PV lives (`roofclf_ground`, farm calibration candidates)
+# Cropland: where farm ground PV lives (`groundclf`, farm calibration candidates)
 # --------------------------------------------------------------------------------------
 # Read resolution for the cell/window statistics. WorldCover's COGs carry overviews, so a
 # 100 m read of a 3x3 deg tile is one 3,600 px square from the overview, not 36,000.

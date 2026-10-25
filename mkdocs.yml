@@ -170,7 +170,7 @@ nav:
       - Segmentation & the building map: methods/segmentation.md
       - Rooftop classifier (roofclf): methods/roofclf.md
       - How roofclf sees panels: methods/roofclf-physics.md
-      - Farm ground PV (roofclf_ground): methods/roofclf-ground.md
+      - Farm ground PV (groundclf): methods/groundclf.md
       - PVscope: methods/pvscope.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md

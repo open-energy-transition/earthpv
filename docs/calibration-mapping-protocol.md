@@ -293,7 +293,7 @@ the cells cut into eight bands of equal cropland area by their ESA WorldCover sh
 3 km box placed where its own cropland share is within 25% of the cell's. A farm box is
 registered with `new_calibration_quadrat.py --farm`, which keeps it out of every rooftop
 `roofclf` fit. Map all solar in it, ground and rooftop, tracing panels rather than fences.
-See [Farm ground PV](methods/roofclf-ground.md).
+See [Farm ground PV](methods/groundclf.md).
 
 ## The quadrat plan
 

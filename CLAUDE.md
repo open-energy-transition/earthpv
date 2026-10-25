@@ -474,6 +474,11 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   (`PROV_TOP`) with a *Show all N provinces* toggle; a fifth KPI tile gives processed cells
   against the country's (`totals.n_cells_processed` / `n_cells_country`, `atlas._cell_coverage`;
   hidden until a rebuild provides them); the Silver/Bronze banner is short.
+- **Farm and building calibration areas are drawn apart (2026-10-25)**: a farm area
+  (`_farm_calib_`) is a green diamond with its own layer switch and legend key, a building area
+  the ink diamond; tooltips and popups say what each calibrates and whether the page's figures
+  use it (`farm`/`used` from `atlas._load_calib_boxes`; a page built earlier reads `farm` from
+  the published ids once the areas load). Neither kind feeds the other's instrument.
 - **Colour means method everywhere**: OSM teal, segmentation blue, roofclf amber, roofclf+SPPI
   violet, farm ground PV green; hatching means ground-mount everywhere.
 
@@ -650,27 +655,29 @@ Overpass pull against a second query (mirrors have returned truncated, non-error
 Per-quadrat table: `docs/methods/calibration-quadrats.md`. Dated history of every
 addition/correction/withdrawal: `docs/issues/pakistan-calibration-boxes.md`.
 
-### Farm ground PV: `roofclf_ground` and farm calibration areas
+### Farm ground PV: `groundclf` and farm calibration areas
 
 A footprint-free pixel detector in the roofclf family for small arrays beside fields (solar
-pumps), which neither instrument above sees (`src/earthpv/roofclf_ground.py`,
-`docs/methods/roofclf-ground.md`):
+pumps), which neither instrument above sees (`src/earthpv/groundclf.py`,
+`docs/methods/groundclf.md`). Named `roofclf_ground` until 2026-10-25: models tagged with
+the old name still load (`LEGACY_DETECTORS`) and `data/roofclf_ground` is a symlink to
+`data/groundclf`:
 
 ```bash
 pixi run calib-candidates -- --aoi <aoi> --farmland          # cropland-stratified 3 km boxes
-earthpv roofclf-ground --aoi <aoi> --clean-region <b.geojson> --weak-region <b.geojson>
-earthpv roofclf-ground-score-national --aoi <aoi>             # blobs per cell, resumable
-earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
+earthpv groundclf --aoi <aoi> --clean-region <b.geojson> --weak-region <b.geojson>
+earthpv groundclf-score-national --aoi <aoi>             # blobs per cell, resumable
+earthpv groundclf-capacity --aoi <aoi> --osm-solar <national OSM pull>
 ```
 
 - **A standard atlas field**: `earthpv atlas --ground-cells <ground_cells.parquet>` adds
   `small_ground` (farm ground PV < 400 m²) to Best in the detector's calibration domain only,
   with its own tile, map quantity, province column, composition and uncertainty row, in green.
   Without it a page says "not measured" (`totals.small_ground_status.measured: false`), never 0.
-  Run `roofclf-ground-capacity` with the SAME `--osm-solar` file the atlas counts, and
+  Run `groundclf-capacity` with the SAME `--osm-solar` file the atlas counts, and
   `--roofclf-buildings` where a roofclf half exists (a blob within 20 m of a priced building is
   its yard array).
-- **A calibration domain PER REGION** (`roofclf_ground.domain_cells`): a cell is priced with a
+- **A calibration domain PER REGION** (`groundclf.domain_cells`): a cell is priced with a
   region's ratio only if its cropland share, building density AND median elevation (Copernicus
   DEM, `cell_elevation`, cached in `data/cells_cache/<aoi>_elevation.parquet`) each lie within
   x/÷1.25 of that region's areas; a region = areas sharing the `region` property. The headline
@@ -681,7 +688,7 @@ earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
 - **Farm quadrats carry `_farm_calib_` in their stem** (`roofclf.FARM_QUADRAT_INFIX`;
   `new_calibration_quadrat.py --farm`). `roofclf.discover_quadrats` skips them unless
   `farm=True` (a ground array would label the farmhouse beside it as PV-carrying).
-- **A mapped polygon is priced by its tag** (`roofclf_ground.panel_area_factor`):
+- **A mapped polygon is priced by its tag** (`groundclf.panel_area_factor`):
   `power=generator` is the array; `power=plant` is a site, counted at 0.05/0.18 of its area, or 0
   when a generator inside it carries its panels; nodes count 0. **`osm_panel_tracers`** in
   `configs/aoi.yaml` names mappers whose polygons are panel traces whatever the tag
@@ -698,7 +705,7 @@ earthpv roofclf-ground-capacity --aoi <aoi> --osm-solar <national OSM pull>
   of a building, cropland or green pixel; a blob over 25,000 m² (`MAX_BLOB_M2`).
 - **The capacity estimand defaults to arrays below 400 m²** (`--max-array-m2`; `0` prices every
   size).
-- **Overpass is a cached dependency**: area labels in `data/roofclf_ground/<aoi>/areas/`, paved
+- **Overpass is a cached dependency**: area labels in `data/groundclf/<aoi>/areas/`, paved
   roads per 1-degree chunk in `data/roads/<aoi>/`. National scoring never calls it; the road veto
   is applied in the capacity step. A chunk that cannot be fetched leaves its blobs with
   `road_checked=False`, reported in the summary.

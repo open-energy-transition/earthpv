@@ -444,7 +444,7 @@ aois:
     # checked by the owner (2026-10-24): their ground polygons convert at the module
     # constant, as panels, where any other mapped ground polygon converts at the land
     # constant, as a site (labels.panel_traced; prepare_national_osm_solar.py writes it as
-    # `panel_traced`, roofclf_ground prices calibration areas with it).
+    # `panel_traced`, groundclf prices calibration areas with it).
     osm_panel_tracers: [relaxxe]
     # Val holdout = 'Amran Governorate (geoBoundaries ADM1), 47 cells, chosen by
     # scripts/pick_val_region.py from the label map before training: 21 of

@@ -40,7 +40,7 @@ the hand-picking this replaces. Re-running with the same seed reproduces the sam
 `scripts/heatmap_quadrat_candidates.py` is not this: it ranks boxes by OSM-mapped PV per
 building, which is the selection bias the protocol warns about, and needs a PV pull.
 
-**`--farmland`: farm calibration areas for the ground-PV detector (`roofclf_ground`).**
+**`--farmland`: farm calibration areas for the ground-PV detector (`groundclf`).**
 The building strata above describe where ROOFS are, which is the wrong frame for small
 ground arrays beside fields: in Yemen's 'Amran test ground only 6.6% of mapped array area
 lies on a building footprint (2026-10-23). This mode runs the same recipe on farmland:
@@ -65,7 +65,7 @@ panels rather than enclosures.
     pixi run calib-candidates -- --aoi zambia --dry-run
     pixi run calib-candidates -- --bronze                  # every Bronze atlas
     pixi run calib-candidates -- --aoi india --replace     # redraw a country's candidates
-    pixi run calib-candidates -- --aoi yemen --farmland    # farm boxes for roofclf_ground
+    pixi run calib-candidates -- --aoi yemen --farmland    # farm boxes for groundclf
 """
 from __future__ import annotations
 
@@ -655,7 +655,7 @@ def propose_priority(aoi: str, args) -> list[dict]:
 
 
 def propose_farmland(aoi: str, args) -> list[dict]:
-    """Farm calibration areas for `roofclf_ground`: `propose`'s recipe on cropland.
+    """Farm calibration areas for `groundclf`: `propose`'s recipe on cropland.
 
     Strata are bands of equal cropland AREA by cell cropland share; a cell is drawn
     cropland-weighted; the box is a `--farm-side-m` window whose own cropland share (ESA
@@ -793,7 +793,7 @@ def propose_farmland(aoi: str, args) -> list[dict]:
                 **img,
                 "imagery_checked": True,
                 "selection": f"{FARM_SELECTION}, seed {seed}",
-                "detector": "roofclf_ground",
+                "detector": "groundclf",
                 "note": (f"Farm calibration area for the ground-PV detector, drawn by "
                          f"scripts/propose_calibration_candidates.py --farmland: a cropland-weighted "
                          f"random cell from {label}, then a {side / 1000:g} km window inside it whose "

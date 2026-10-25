@@ -16,7 +16,7 @@ title: Yemen
 # Registered, not yet fitted: Yemen has no roofclf half until a refit uses it, hence
 # `used: false` (drawn on the map; the confidence text does not claim it as ground truth).
 #
-# Farm areas (2026-10-24): what `roofclf-ground` calibrates farm ground PV on. 'Amran is the
+# Farm areas (2026-10-24): what `groundclf` calibrates farm ground PV on. 'Amran is the
 # owner's test ground, traced panel by panel. The six Tihama areas are the owner's region
 # near Zabid (data/labels/Yemen-mixed-labels.geojson), every installation checked by the
 # owner, cut to where Esri imagery is from 2024-10-01 on and along the 0.1-degree grid; its

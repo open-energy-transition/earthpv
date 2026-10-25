@@ -161,7 +161,7 @@ YARD_MAX_INSTALLATION_M2 = 400.0
 _BOUNDARY_SUFFIX = "_boundary.geojson"
 # A farm calibration area (`new_calibration_quadrat.py --farm`, drawn by
 # `propose_calibration_candidates.py --farmland`) carries this in its stem. It is ground
-# truth for `roofclf_ground`, and must stay out of the rooftop fits here: its mapped ground
+# truth for `groundclf`, and must stay out of the rooftop fits here: its mapped ground
 # arrays would label the farmhouses beside them as PV-carrying, which is Kalat Rural's
 # documented problem (CLAUDE.md, "Calibration quadrats").
 FARM_QUADRAT_INFIX = "_farm_calib_"

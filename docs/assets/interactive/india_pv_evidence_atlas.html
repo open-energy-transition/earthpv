@@ -47,7 +47,7 @@
        Light mode's #1c6fa8 already cleared it (15.4). */
     --large: #5b9cf2;
     --extended: #c97fe0;
-    /* Farm ground PV (roofclf_ground, 2026-10-24). Searched, not picked: among colours in
+    /* Farm ground PV (groundclf, 2026-10-24). Searched, not picked: among colours in
        the method palette's lightness band, the one furthest from the five above, dE 19.7
        for normal vision (OKLab x100) and 13.0 under deuteranopia, the best any hue
        reached; hatching (it is always ground-mount) and its labels carry the rest. Light
@@ -229,6 +229,10 @@
   /* Hollow: proposed, nothing mapped yet. */
   .sw.cand { border-radius: 1px; background: none; border: 1.6px solid var(--ink);
     width: 8px; height: 8px; margin: 0 2px; transform: rotate(45deg); }
+  /* A farm area calibrates farm ground PV, so it carries that method's green; a building
+     area keeps the ink. */
+  .sw.calib.farm { background: var(--ground); }
+  .sw.cand.farm { border-color: var(--ground); }
   /* The candidate to start with: a star, the same ink, so it reads as one of the diamonds'
      family and not as a method colour. */
   .sw.star { border-radius: 0; background: var(--ink); width: 13px; height: 13px;
@@ -1082,7 +1086,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
     <div class="hero-desc" style="margin-top:16px;">Read more on the project's
     documentation site: <a href="https://open-energy-transition.github.io/earthpv/methods/density/" target="_blank" rel="noopener">capacity methodology</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/methods/roofclf/" target="_blank" rel="noopener">roofclf</a> ·
-    <a href="https://open-energy-transition.github.io/earthpv/methods/roofclf-ground/" target="_blank" rel="noopener">farm ground PV</a> ·
+    <a href="https://open-energy-transition.github.io/earthpv/methods/groundclf/" target="_blank" rel="noopener">farm ground PV</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">Sentinel-2 glint &amp; panel pose</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/methods/calibration-quadrats/" target="_blank" rel="noopener">calibration quadrats</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/experiments/" target="_blank" rel="noopener">experiment register</a>.</div>
@@ -1599,12 +1603,18 @@ out geom;</div>
       type: "Feature", properties: {name: p.name},
       geometry: {type: "MultiPolygon", coordinates: (p.rings || []).map(r => [r])}}))};
   }
+  // A farm area (`_farm_calib_` in its id) calibrates the farm ground-PV detector, a building
+  // area the rooftop classifier; neither feeds the other. Pages built before 2026-10-25 carry
+  // no `farm` flag, so it is read from the published id once the areas arrive (loadAreas).
+  const FARM_ID = /_farm_calib_/;
+  const isFarmBox = b => b.farm != null ? !!b.farm : !!(b.area && FARM_ID.test(b.area.properties.id || ""));
   function calibGeoJSON(){
     const polys = [], pts = [];
     (DATA.calibBoxes || []).forEach((b, k) => {
-      if (b.rings && b.rings.length) polys.push({type: "Feature", properties: {k},
+      const farm = isFarmBox(b);
+      if (b.rings && b.rings.length) polys.push({type: "Feature", properties: {k, farm},
         geometry: {type: "MultiPolygon", coordinates: b.rings.map(r => [r])}});
-      pts.push({type: "Feature", properties: {k}, geometry: {type: "Point", coordinates: [b.lon, b.lat]}});
+      pts.push({type: "Feature", properties: {k, farm}, geometry: {type: "Point", coordinates: [b.lon, b.lat]}});
     });
     return {polys: {type: "FeatureCollection", features: polys},
             pts: {type: "FeatureCollection", features: pts}};
@@ -1668,11 +1678,17 @@ out geom;</div>
      avail: DATA.cells.some(c => c[DOMAIN_IDX]), sw: "dash", key: "cells with sub-400 m² calibration (dashed outline)"},
     {id: "extended", label: "Small PV extrapolated beyond calibration", layers: ["extended-line"], on: false,
      avail: DATA.cells.some(c => c[EXTENDED_IDX]), sw: "dotted", key: "small PV extrapolated beyond calibration (dotted outline)"},
-    {id: "calib", label: "Hand-checked calibration areas", layers: ["calib-line", "calib-dot", "calib-hit"], on: true,
-     avail: (DATA.calibBoxes || []).length > 0, sw: "calib", key: "hand-checked calibration area (click to open it in an editor)"},
+    {id: "calib", label: "Building calibration areas (rooftop PV)", layers: ["calib-line", "calib-dot", "calib-hit"], on: true,
+     avail: (DATA.calibBoxes || []).some(b => !isFarmBox(b)), sw: "calib",
+     key: "building calibration area: calibrates rooftop PV (click to open it)"},
+    {id: "farmcalib", label: "Farm calibration areas (farm ground PV)", layers: ["farm-line", "farm-dot", "farm-hit"], on: true,
+     avail: (DATA.calibBoxes || []).some(isFarmBox), sw: "calib farm",
+     key: "farm calibration area: calibrates solar beside fields (click to open it)"},
     // Available once docs/assets/labels/calibration_areas/<aoi>.geojson arrives (loadAreas).
     {id: "cand", label: "Candidate calibration areas, not yet mapped", layers: ["cand-line", "cand-dot", "cand-hit"],
-     on: true, avail: false, sw: "cand", key: "candidate calibration area, not yet mapped (click to map it)"},
+     on: true, avail: false, sw: "cand", key: "candidate area, not yet mapped (click to map it)"},
+    // A legend key only: farm candidates draw in the candidate layer and follow its switch.
+    {id: "farmcand", follows: "cand", avail: false, sw: "cand farm", key: "farm candidate area, not yet mapped"},
     {id: "live", label: "OSM solar today, live (zoom in)", layers: ["live-fill", "live-line", "live-pt"], on: false,
      avail: true, sw: "live", key: "OpenStreetMap solar features, live from Overpass", status: true},
     {id: "glow", label: "Glow around bright cells", layers: ["glow"], on: true, avail: true},
@@ -1755,20 +1771,29 @@ out geom;</div>
                  22, ["+", 0.9, ["*", ["get", "rf"], 0.42 * CELLPX0 * Math.pow(2, 22)]]]}},
       // Invisible fills, there only so a click anywhere inside an area opens it once the
       // area is big enough on screen to aim at; the hover tooltip stays on the diamond.
-      {id: "calib-hit", type: "fill", source: "calibpolys", layout: {visibility: OV.calib.on ? "visible" : "none"},
-       paint: {"fill-color": P.ink, "fill-opacity": 0}},
+      {id: "calib-hit", type: "fill", source: "calibpolys", filter: ["!=", ["get", "farm"], true],
+       layout: {visibility: OV.calib.on ? "visible" : "none"}, paint: {"fill-color": P.ink, "fill-opacity": 0}},
+      {id: "farm-hit", type: "fill", source: "calibpolys", filter: ["==", ["get", "farm"], true],
+       layout: {visibility: OV.farmcalib.on ? "visible" : "none"}, paint: {"fill-color": P.ink, "fill-opacity": 0}},
       {id: "cand-hit", type: "fill", source: "candpolys", layout: {visibility: OV.cand.on ? "visible" : "none"},
        paint: {"fill-color": P.ink, "fill-opacity": 0}},
-      {id: "calib-line", type: "line", source: "calibpolys", layout: {visibility: OV.calib.on ? "visible" : "none"},
+      {id: "calib-line", type: "line", source: "calibpolys", filter: ["!=", ["get", "farm"], true],
+       layout: {visibility: OV.calib.on ? "visible" : "none"},
        paint: {"line-color": P.ink2, "line-width": 1.4, "line-dasharray": [2, 1.4]}},
+      {id: "farm-line", type: "line", source: "calibpolys", filter: ["==", ["get", "farm"], true],
+       layout: {visibility: OV.farmcalib.on ? "visible" : "none"},
+       paint: {"line-color": P.ground, "line-width": 1.6, "line-dasharray": [2, 1.4]}},
       {id: "cand-line", type: "line", source: "candpolys", layout: {visibility: OV.cand.on ? "visible" : "none"},
-       paint: {"line-color": P.ink2, "line-width": 1.4, "line-dasharray": [0.7, 1.6]}},
-      {id: "calib-dot", type: "symbol", source: "calibpts",
+       paint: {"line-color": candLineColor(P), "line-width": 1.4, "line-dasharray": [0.7, 1.6]}},
+      {id: "calib-dot", type: "symbol", source: "calibpts", filter: ["!=", ["get", "farm"], true],
        layout: {visibility: OV.calib.on ? "visible" : "none", "icon-image": CALIB_ICON,
+                "icon-allow-overlap": true, "icon-ignore-placement": true}},
+      {id: "farm-dot", type: "symbol", source: "calibpts", filter: ["==", ["get", "farm"], true],
+       layout: {visibility: OV.farmcalib.on ? "visible" : "none", "icon-image": FARM_ICON,
                 "icon-allow-overlap": true, "icon-ignore-placement": true}},
       {id: "cand-dot", type: "symbol", source: "candpts",
        layout: {visibility: OV.cand.on ? "visible" : "none",
-                "icon-image": ["case", ["get", "star"], STAR_ICON, CAND_ICON],
+                "icon-image": ["case", ["get", "star"], STAR_ICON, ["==", ["get", "farm"], true], FARM_CAND_ICON, CAND_ICON],
                 // A higher key draws on top when icons overlap: the star never hides.
                 "symbol-sort-key": ["case", ["get", "star"], 1, 0],
                 "icon-allow-overlap": true, "icon-ignore-placement": true}},
@@ -1797,6 +1822,10 @@ out geom;</div>
   // A candidate is the same diamond, hollow: proposed, nothing mapped yet. The candidate to
   // start with (scripts/publish_calibration_areas.py's `start_here`) is a star.
   const CALIB_ICON = "calib-diamond", CAND_ICON = "cand-diamond", STAR_ICON = "cand-star";
+  // Farm areas: the same diamonds in the farm ground-PV green.
+  const FARM_ICON = "farm-diamond", FARM_CAND_ICON = "farm-cand-diamond";
+  const CALIB_ICONS = [CALIB_ICON, CAND_ICON, STAR_ICON, FARM_ICON, FARM_CAND_ICON];
+  const candLineColor = P => ["case", ["==", ["get", "farm"], true], P.ground, P.ink2];
   function starIcon(){
     const P = palette(), r = 2, size = 24 * r, cv = document.createElement("canvas");
     cv.width = cv.height = size;
@@ -1812,20 +1841,21 @@ out geom;</div>
     ctx.fillStyle = P.ink; ctx.fill();
     return ctx.getImageData(0, 0, size, size);
   }
-  function calibIcon(hollow){
+  function calibIcon(hollow, farm){
     const P = palette(), r = 2, size = 13 * r, cv = document.createElement("canvas");
     cv.width = cv.height = size;
     const ctx = cv.getContext("2d");
     ctx.translate(size / 2, size / 2); ctx.rotate(Math.PI / 4);
     const half = 3.7 * r;
     ctx.fillStyle = P.mapBg; ctx.fillRect(-half - 1.6 * r, -half - 1.6 * r, 2 * half + 3.2 * r, 2 * half + 3.2 * r);
-    ctx.fillStyle = P.ink; ctx.fillRect(-half, -half, 2 * half, 2 * half);
+    ctx.fillStyle = farm ? P.ground : P.ink; ctx.fillRect(-half, -half, 2 * half, 2 * half);
     if (hollow) ctx.clearRect(-half + 1.5 * r, -half + 1.5 * r, 2 * half - 3 * r, 2 * half - 3 * r);
     return ctx.getImageData(0, 0, size, size);
   }
   function ensureCalibIcon(m){
     for (const [id, draw] of [[CALIB_ICON, () => calibIcon(false)], [CAND_ICON, () => calibIcon(true)],
-                              [STAR_ICON, starIcon]]){
+                              [STAR_ICON, starIcon], [FARM_ICON, () => calibIcon(false, true)],
+                              [FARM_CAND_ICON, () => calibIcon(true, true)]]){
       if (m.hasImage(id)) m.updateImage(id, draw());
       else m.addImage(id, draw(), {pixelRatio: 2});
     }
@@ -1864,7 +1894,8 @@ out geom;</div>
     m.setPaintProperty("prov-line", "line-color", P.provStroke);
     m.setPaintProperty("osm-rings", "circle-stroke-color", P.domain);
     m.setPaintProperty("calib-line", "line-color", P.ink2);
-    m.setPaintProperty("cand-line", "line-color", P.ink2);
+    m.setPaintProperty("farm-line", "line-color", P.ground);
+    m.setPaintProperty("cand-line", "line-color", candLineColor(P));
     m.setPaintProperty("proposal-fill", "fill-color", P.user);
     m.setPaintProperty("proposal-line", "line-color", P.user);
     ensureCalibIcon(m);
@@ -1911,7 +1942,7 @@ out geom;</div>
     document.getElementById("mapSub").innerHTML = STATE.perKm2
       ? "density per km&sup2; of each 0.1&deg; cell &middot; log scale"
       : "11 km &times; 11 km cells &middot; log scale";
-    const keys = OVERLAYS.filter(o => o.avail && o.on && o.key)
+    const keys = OVERLAYS.filter(o => o.avail && (o.follows ? OV[o.follows].on : o.on) && o.key)
       .map(o => `<span><span class="sw ${o.sw}"></span>${o.key}</span>`);
     for (const L of [...CFG_LAYERS, ...USER_LAYERS]) if (L.on && L.kind !== "raster")
       keys.push(`<span><span class="sw" style="background:${esc(L.color)}"></span>${esc(L.name)}</span>`);
@@ -2017,7 +2048,7 @@ out geom;</div>
     const userIds = () => [...CFG_LAYERS, ...USER_LAYERS].filter(L => L.on && L.kind !== "raster")
       .flatMap(L => L.layerIds);
     m.on("mousemove", (e) => {
-      const ids = ["calib-dot", "cand-dot", "live-fill", "live-line", "live-pt", ...userIds(), "cells"]
+      const ids = ["calib-dot", "farm-dot", "cand-dot", "live-fill", "live-line", "live-pt", ...userIds(), "cells"]
         .filter(id => m.getLayer(id) && m.getLayoutProperty(id, "visibility") !== "none");
       const feats = m.queryRenderedFeatures(e.point, {layers: ids});
       const f = feats[0];
@@ -2038,14 +2069,17 @@ out geom;</div>
         return;
       }
       setHover(null);
-      if (f.layer.id === "calib-dot"){
-        const b = DATA.calibBoxes[f.properties.k];
-        showTip(ev.clientX, ev.clientY, `<div class="th">CALIBRATION AREA: ${esc(b.name)}</div>`
-          + row("Mapped installations", fmt(b.n)) + row("Status", calibStatus(b.status))
+      if (f.layer.id === "calib-dot" || f.layer.id === "farm-dot"){
+        const b = DATA.calibBoxes[f.properties.k], farm = isFarmBox(b);
+        showTip(ev.clientX, ev.clientY, `<div class="th">${farm ? "FARM" : "BUILDING"} CALIBRATION AREA: ${esc(b.name)}</div>`
+          + row("Calibrates", calibrates(farm)) + row("Mapped installations", fmt(b.n))
+          + row("Status", calibStatus(b.status)) + (b.used != null ? row("Used in this page's figures", b.used ? "Yes" : "Not yet") : "")
           + `<div class="t-desc">Click to open it in JOSM or iD.</div>`);
       } else if (f.layer.id === "cand-dot"){
-        const p = AREAS.cands[f.properties.k].properties;
-        showTip(ev.clientX, ev.clientY, `<div class="th">${p.start_here ? "START HERE: " : ""}CANDIDATE AREA: ${esc(p.name)}</div>`
+        const p = AREAS.cands[f.properties.k].properties, farm = FARM_ID.test(p.id || "");
+        showTip(ev.clientX, ev.clientY, `<div class="th">${p.start_here ? "START HERE: " : ""}${farm ? "FARM " : ""}CANDIDATE AREA: ${esc(p.name)}</div>`
+          + row("Would calibrate", calibrates(farm))
+          + (p.own_crop_frac != null ? row("Cropland, this box", `${Math.round(100 * p.own_crop_frac)}%`) : "")
           + (p.own_density_bldg_km2 ? row("Buildings per km², this box", fmt(p.own_density_bldg_km2))
              : p.density_bldg_km2 ? row("Buildings per km², region", fmt(p.density_bldg_km2)) : "")
           + (p.own_large_buildings ? row("Buildings of 1,000 m² or more", fmt(p.own_large_buildings)) : "")
@@ -2097,8 +2131,10 @@ out geom;</div>
   const PROPOSE = {armed: false, last: null, btn: null};
   let POPUP = null;
 
-  const calibStatus = s => s === "rule1" ? "Fully checked against real ground survey"
+  const calibStatus = s => s === "rule1" ? "Complete: every panel visible on the imagery mapped"
     : s === "suspect" ? "Needs re-checking" : "Checked against high-resolution imagery";
+  const calibrates = farm => farm ? "Solar beside fields (farm ground PV detector)"
+    : "Rooftop solar, building by building (rooftop classifier)";
   const siteRoot = () => AREAS.base ? AREAS.base.slice(0, -AREAS_DIR.length) : SITE;
   const areaUrl = id => AREAS.base + AOI_KEY + "/" + id + ".geojson";
   function featureBounds(f){
@@ -2135,12 +2171,20 @@ out geom;</div>
     AREAS.cands = feats.filter(f => f.properties.kind === "candidate");
     AREAS.nRanked = AREAS.cands.filter(f => f.properties.priority).length;
     const m = MAP.map;
+    // A page built before the `farm` flag learns it from the ids just loaded.
+    const calib2 = calibGeoJSON();
+    m.getSource("calibpolys").setData(calib2.polys);
+    m.getSource("calibpts").setData(calib2.pts);
+    OV.calib.avail = (DATA.calibBoxes || []).some(b => !isFarmBox(b));
+    OV.farmcalib.avail = (DATA.calibBoxes || []).some(isFarmBox);
+    const candFarm = f => FARM_ID.test(f.properties.id || "");
     m.getSource("candpolys").setData({type: "FeatureCollection", features: AREAS.cands.map((f, k) =>
-      ({type: "Feature", properties: {k}, geometry: f.geometry}))});
+      ({type: "Feature", properties: {k, farm: candFarm(f)}, geometry: f.geometry}))});
     m.getSource("candpts").setData({type: "FeatureCollection", features: AREAS.cands.map((f, k) =>
-      ({type: "Feature", properties: {k, star: !!f.properties.start_here},
+      ({type: "Feature", properties: {k, star: !!f.properties.start_here, farm: candFarm(f)},
         geometry: {type: "Point", coordinates: centerOf(featureBounds(f))}}))});
     OV.cand.avail = AREAS.cands.length > 0;
+    OV.farmcand.avail = AREAS.cands.some(candFarm);
     renderLayerLists(); renderLegend();
   }
 
@@ -2342,8 +2386,11 @@ out geom;</div>
 
   function boxSpec(b){
     const f = b.area || null, p = f ? f.properties : {};
-    return {head: "CALIBRATION AREA", name: b.name, place: b.name, id: p.id || SLUG + "_calibration_area",
-      rows: [["Mapped installations", fmt(b.n)], ["Status", calibStatus(b.status)],
+    const farm = isFarmBox(b);
+    return {head: farm ? "FARM CALIBRATION AREA" : "BUILDING CALIBRATION AREA", name: b.name, place: b.name,
+      id: p.id || SLUG + "_calibration_area",
+      rows: [["Calibrates", calibrates(farm)], ["Mapped installations", fmt(b.n)], ["Status", calibStatus(b.status)],
+             ...(b.used != null ? [["Used in this page's figures", b.used ? "Yes" : "Not yet"]] : []),
              ...(p.area_km2 ? [["Area", `${p.area_km2} km²`]] : [])],
       bbox: f ? featureBounds(f) : featureBounds({geometry: {coordinates: b.rings}}),
       feature: f, url: f ? areaUrl(p.id) : null,
@@ -2358,9 +2405,12 @@ out geom;</div>
     const p = f.properties, bbox = featureBounds(f), [cx, cy] = centerOf(bbox);
     const stratum = /stratum (\d+ of \d+)/.exec(p.stratum || "");
     const purposive = String(p.selection || "").startsWith("purposive");
-    return {head: "CANDIDATE AREA, NOT YET MAPPED", name: p.name, place: p.name, id: p.id,
-      star: !!p.start_here,
-      rows: [...(p.own_density_bldg_km2 ? [["Buildings per km², this box", fmt(p.own_density_bldg_km2)]]
+    const farm = FARM_ID.test(p.id || "");
+    return {head: farm ? "FARM CANDIDATE AREA, NOT YET MAPPED" : "CANDIDATE AREA, NOT YET MAPPED", name: p.name,
+      place: p.name, id: p.id, star: !!p.start_here,
+      rows: [["Would calibrate", calibrates(farm)],
+             ...(p.own_crop_frac != null ? [["Cropland, this box", `${Math.round(100 * p.own_crop_frac)}%`]] : []),
+             ...(p.own_density_bldg_km2 ? [["Buildings per km², this box", fmt(p.own_density_bldg_km2)]]
                  : p.density_bldg_km2 ? [["Buildings per km², region", fmt(p.density_bldg_km2)]] : []),
              ...(p.own_large_buildings ? [["Buildings of 1,000 m² or more", fmt(p.own_large_buildings)]] : []),
              ...(stratum ? [["Density stratum", stratum[1]]] : []),
@@ -2439,14 +2489,14 @@ out geom;</div>
     const m = MAP.map;
     m.on("click", (e) => {
       if (PROPOSE.armed){ proposeAt(e.lngLat); return; }
-      const ids = ["calib-dot", "cand-dot", "proposal-fill", "calib-hit", "cand-hit"]
+      const ids = ["calib-dot", "farm-dot", "cand-dot", "proposal-fill", "calib-hit", "farm-hit", "cand-hit"]
         .filter(id => m.getLayer(id) && m.getLayoutProperty(id, "visibility") !== "none");
       const f = m.queryRenderedFeatures(e.point, {layers: ids})[0];
       if (!f) return;
       hideTip();
       if (f.layer.id === "proposal-fill"){
         if (PROPOSE.last) showAreaPopup(PROPOSE.last.lngLat, PROPOSE.last.spec);
-      } else if (f.layer.id.startsWith("calib")){
+      } else if (f.layer.id.startsWith("calib") || f.layer.id.startsWith("farm")){
         const b = DATA.calibBoxes[f.properties.k];
         showAreaPopup([b.lon, b.lat], boxSpec(b));
       } else {
@@ -2661,7 +2711,7 @@ out geom;</div>
     const ov = document.getElementById("ovList");
     ov.innerHTML = "";
     for (const o of OVERLAYS){
-      if (!o.avail) continue;
+      if (!o.avail || o.follows) continue;
       const d = document.createElement("div");
       d.className = "pop-row";
       d.innerHTML = `<label><input type="checkbox" ${o.on ? "checked" : ""}>`
@@ -2917,7 +2967,7 @@ out geom;</div>
       return;
     }
     MAP.map = map;
-    map.on("styleimagemissing", (e) => { if ([CALIB_ICON, CAND_ICON, STAR_ICON].includes(e.id)) ensureCalibIcon(map); });
+    map.on("styleimagemissing", (e) => { if (CALIB_ICONS.includes(e.id)) ensureCalibIcon(map); });
     map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({showCompass: false}), "top-right");
     map.addControl(new maplibregl.FullscreenControl({container: shell}), "top-right");

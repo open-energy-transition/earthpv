@@ -16,7 +16,7 @@ pixi run calib-publish                                # put them on the atlases
 ```
 
 `--farmland` draws 3 km farm areas for the
-[farm ground-PV detector](../methods/roofclf-ground.md), stratified by cropland rather than
+[farm ground-PV detector](../methods/groundclf.md), stratified by cropland rather than
 buildings. Register a mapped one with `--farm` added to the command below: its name then
 carries `_farm_calib_`, which keeps it out of every rooftop `roofclf` fit.
 

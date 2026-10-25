@@ -208,8 +208,8 @@ detection at that unit lands under 1% precision at 30% recall in every stratum t
 density-stratified estimate puts the prize at 1,492 MWp (90% 435-3,526), all of its spread in
 the < 150 bldg/km&sup2; stratum, which four village-centred quadrats represent.
 
-An instrument exists since 2026-10-23: `roofclf_ground`, a footprint-free pixel detector
-([Farm ground PV](methods/roofclf-ground.md)). In Yemen it reaches precision 0.63 at 62% array
+An instrument exists since 2026-10-23: `groundclf`, a footprint-free pixel detector
+([Farm ground PV](methods/groundclf.md)). In Yemen it reaches precision 0.63 at 62% array
 recall on a fully traced test ground, where Pakistan's building-ring attempt above stayed
 under 1%, and it trains on ordinary OSM labels read as bags. Since 2026-10-24 it is a field
 on every atlas and in Yemen's Best: 169.1 MWp, calibrated on seven farm areas in two regions
