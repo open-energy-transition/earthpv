@@ -809,7 +809,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
             <div style="overflow-x:auto;"><table id="ptable">
               <thead><tr><th>Province</th><th>Capacity</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
-                <th>Small rooftop PV, checked cells</th>
+                <th id="thSmall">Small rooftop PV, checked cells</th>
                 <th id="thOutdomain">Small PV, extrapolated</th>
                 <th id="thGround">Farm ground PV, &lt;400 m²</th></tr></thead>
               <tbody></tbody>
@@ -1175,7 +1175,6 @@ out geom;</div>
 })();
 </script>
 <!-- earthpv:cellcsv:end -->
-
   <div class="foot" id="foot"></div>
 </div>
 
@@ -1256,7 +1255,15 @@ out geom;</div>
   // carried, which reads as 0 here and as "not measured" in the totals.
   const GROUND_IDX = 16;
   const T = DATA.totals;
-  T.small_all = (T.small_central || 0) + (T.small_outdomain || 0);
+  // Rooftop PV below 400 m2 is measured only where a roofclf half ran
+  // (`totals.small_rooftop_status`). A segmentation-only page carries 0.0 for it, which is
+  // no measurement, so the tile, the cell hover and the province table say "not measured"
+  // rather than 0. A page built before the status was written counts as measured when any
+  // of its parts is non-zero.
+  const HAS_SMALL_ROOF = T.small_rooftop_status
+    ? !!T.small_rooftop_status.measured
+    : (T.small_central || 0) + (T.small_low || 0) + (T.small_outdomain || 0) > 0;
+  T.small_all = HAS_SMALL_ROOF ? (T.small_central || 0) + (T.small_outdomain || 0) : null;
   // The two model-detection tiles never summed to the headline number on their own --
   // Best also folds in OSM installations the model hadn't already found plus a per-cell
   // floor correction, both literally OSM-sourced capacity, so they are one tile and the
@@ -1978,7 +1985,7 @@ out geom;</div>
     h += row(VIEW.label, `${fmt5(c[BEST_IDX])} MWp`, def.id === "best" ? "sel" : "");
     if (def.id === "best" && STATE.perKm2) h += row("per km²", `${fmt5(c[BEST_IDX] / km2)} MWp`);
     h += row("satellite-detected &ge;400 m²", `${fmt5(c[LARGE_IDX])} MWp`);
-    h += row("satellite rooftop &lt;400 m²", `${fmt5(smallTotal)} MWp`);
+    h += row("satellite rooftop &lt;400 m²", HAS_SMALL_ROOF ? `${fmt5(smallTotal)} MWp` : "not measured");
     if ((c[GROUND_IDX] || 0) > 0) h += row("satellite farm ground &lt;400 m²", `${fmt5(c[GROUND_IDX])} MWp`);
     if (osmOnly > 0.05) h += row("added from OSM mapping", `${fmt5(osmOnly)} MWp`);
     if (c[OSM_IDX] > 0) h += row("OSM-mapped, all", `${fmt5(c[OSM_IDX])} MWp`);
@@ -3628,12 +3635,14 @@ out geom;</div>
   const HAS_GROUND = T.small_ground != null;
 
   function drawProvinceTable(){
+    if (!HAS_SMALL_ROOF) document.getElementById("thSmall").style.display = "none";
     if (!HAS_OUTDOMAIN) document.getElementById("thOutdomain").style.display = "none";
     const thG = document.getElementById("thGround");
     if (thG && !HAS_GROUND) thG.style.display = "none";
     document.querySelector("#ptable tbody").innerHTML = provinceRows().map(p =>
       `<tr><td>${esc(p.name)}</td><td>${fmt(p.mwp_best)}</td>`
-      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
+      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td>`
+      + (HAS_SMALL_ROOF ? `<td>${fmt(p.small_central)}</td>` : "")
       + (HAS_OUTDOMAIN ? `<td>${fmt(p.small_outdomain)}</td>` : "")
       + (HAS_GROUND ? `<td>${fmt(p.small_ground || 0)}</td>` : "") + `</tr>`).join("");
   }
@@ -3667,8 +3676,10 @@ out geom;</div>
   ].filter(Boolean).join(" · ");
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
   // `null`/absent is a field this country has not measured, never a zero: the farm
-  // ground-PV detector has only run where someone ran it (`totals.small_ground_status`).
+  // ground-PV detector has only run where someone ran it (`totals.small_ground_status`),
+  // and rooftop PV below 400 m2 needs a calibrated roofclf half (HAS_SMALL_ROOF).
   const NOT_MEASURED = {
+    small_all: "Rooftop PV below 400 m² needs the rooftop classifier, which has not been calibrated for this country yet",
     small_ground: "The farm ground-PV detector has not been run for this country yet",
   };
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
@@ -3705,7 +3716,8 @@ out geom;</div>
       title: () => `${AOI}: Best-estimate PV capacity by province`,
       subtitle: () => `${totalLine()}. Province totals sum the 0.1° cells whose centre falls inside each province.`,
       csv: () => [["province", "mwp_best", "osm_mwp", "mwp_large", "small_central", "small_outdomain", "small_ground", "mwp_verified"],
-        provinceRows().map(p => [p.name, p.mwp_best, p.osm_mwp, p.mwp_large, p.small_central, p.small_outdomain,
+        provinceRows().map(p => [p.name, p.mwp_best, p.osm_mwp, p.mwp_large,
+          HAS_SMALL_ROOF ? p.small_central : "", p.small_outdomain,
           HAS_GROUND ? (p.small_ground || 0) : "", p.mwp_verified])],
     });
     const more = document.getElementById("provMore");

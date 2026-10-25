@@ -2898,6 +2898,9 @@ def build_evidence_atlas(
             "small_ground": (round(float(grid.small_ground.sum()), 1)
                              if ground_status["measured"] else None),
             "small_ground_status": ground_status,
+            # Rooftop PV below 400 m2 exists only where a roofclf half ran; without one the
+            # small_* figures above are 0.0 by construction, and the page says "not measured".
+            "small_rooftop_status": {"measured": central_buildings_path is not None},
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "n_cells": int(len(grid)),
             # How much of the country was imaged and run, both counted by cell centre inside

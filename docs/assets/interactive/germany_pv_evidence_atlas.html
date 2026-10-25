@@ -128,7 +128,7 @@
   .sec-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
 
   /* ── kpi strip ───────────────────────────────────────────────────── */
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 26px; }
   @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
   .kpi { background: var(--panel); border: 1px solid var(--card-ring); border-radius: 14px;
@@ -469,6 +469,10 @@
     overflow-x: auto; white-space: pre; line-height: 1.5; }
 
   .rank { margin-top: 4px; }
+  .prov-more { margin-top: 6px; background: none; border: 0; padding: 4px 2px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); }
+  .prov-more:hover { text-decoration: underline; }
   .rank h3 { font-size: 14px; font-weight: 640; margin: 2px 2px 12px; }
 
   details.tablewrap { margin-top: 14px; }
@@ -799,12 +803,13 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
             <div class="dlbar" data-fig="provinces"></div>
           </div>
           <div id="ranks" class="plot-host"></div>
+          <button type="button" class="prov-more" id="provMore" hidden aria-controls="ranks"></button>
           <details class="tablewrap">
             <summary>Full province figures</summary>
             <div style="overflow-x:auto;"><table id="ptable">
               <thead><tr><th>Province</th><th>Capacity</th>
                 <th>OSM mapped</th><th>Model, &ge;400 m²</th>
-                <th>Small rooftop PV, checked cells</th>
+                <th id="thSmall">Small rooftop PV, checked cells</th>
                 <th id="thOutdomain">Small PV, extrapolated</th>
                 <th id="thGround">Farm ground PV, &lt;400 m²</th></tr></thead>
               <tbody></tbody>
@@ -825,6 +830,8 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
       <div class="k">Training data hand-mapped in OpenStreetMap, &lt;400 m&sup2;</div></div>
     <div class="kpi"><div class="v" id="kDomain">0</div>
       <div class="k">of 0.1&deg; cells have density-matched sub-400 m&sup2; calibration</div></div>
+    <div class="kpi" id="kpiCover" hidden><div class="v" id="kCover">0</div>
+      <div class="k" id="kCoverK"></div></div>
   </div>
 
   <section class="sec" id="sizebins">
@@ -1248,7 +1255,15 @@ out geom;</div>
   // carried, which reads as 0 here and as "not measured" in the totals.
   const GROUND_IDX = 16;
   const T = DATA.totals;
-  T.small_all = (T.small_central || 0) + (T.small_outdomain || 0);
+  // Rooftop PV below 400 m2 is measured only where a roofclf half ran
+  // (`totals.small_rooftop_status`). A segmentation-only page carries 0.0 for it, which is
+  // no measurement, so the tile, the cell hover and the province table say "not measured"
+  // rather than 0. A page built before the status was written counts as measured when any
+  // of its parts is non-zero.
+  const HAS_SMALL_ROOF = T.small_rooftop_status
+    ? !!T.small_rooftop_status.measured
+    : (T.small_central || 0) + (T.small_low || 0) + (T.small_outdomain || 0) > 0;
+  T.small_all = HAS_SMALL_ROOF ? (T.small_central || 0) + (T.small_outdomain || 0) : null;
   // The two model-detection tiles never summed to the headline number on their own --
   // Best also folds in OSM installations the model hadn't already found plus a per-cell
   // floor correction, both literally OSM-sourced capacity, so they are one tile and the
@@ -1970,7 +1985,7 @@ out geom;</div>
     h += row(VIEW.label, `${fmt5(c[BEST_IDX])} MWp`, def.id === "best" ? "sel" : "");
     if (def.id === "best" && STATE.perKm2) h += row("per km²", `${fmt5(c[BEST_IDX] / km2)} MWp`);
     h += row("satellite-detected &ge;400 m²", `${fmt5(c[LARGE_IDX])} MWp`);
-    h += row("satellite rooftop &lt;400 m²", `${fmt5(smallTotal)} MWp`);
+    h += row("satellite rooftop &lt;400 m²", HAS_SMALL_ROOF ? `${fmt5(smallTotal)} MWp` : "not measured");
     if ((c[GROUND_IDX] || 0) > 0) h += row("satellite farm ground &lt;400 m²", `${fmt5(c[GROUND_IDX])} MWp`);
     if (osmOnly > 0.05) h += row("added from OSM mapping", `${fmt5(osmOnly)} MWp`);
     if (c[OSM_IDX] > 0) h += row("OSM-mapped, all", `${fmt5(c[OSM_IDX])} MWp`);
@@ -3018,13 +3033,19 @@ out geom;</div>
   const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
 
   // Provinces, ranked: one series, so one colour and no legend box; the title names it.
+  // On the page the chart shows the top PROV_TOP and expands on request; exports and the
+  // CSV always carry every province.
+  const PROV_TOP = 7;
+  let provAll = false;
   function provinceRows(){
     return [...DATA.provinces].sort((a, b) => b.mwp_best - a.mwp_best);
   }
   function provinceChart(width, interactive){
     const P = palette();
     // The field is named for the reader: a tip labels each channel by its field name.
-    const rows = provinceRows().map(p => ({Province: p.name, mwp: p.mwp_best}));
+    const all = provinceRows();
+    const rows = (interactive && !provAll ? all.slice(0, PROV_TOP) : all)
+      .map(p => ({Province: p.name, mwp: p.mwp_best}));
     const maxChars = width < 360 ? 14 : width < 700 ? 22 : 34;
     const longest = Math.min(maxChars, Math.max(4, ...rows.map(r => r.Province.length)));
     const nTicks = Math.max(2, Math.floor(width / 110));
@@ -3132,6 +3153,10 @@ out geom;</div>
     // `_evidence_uncertainty`) -- drop the empties, so a run without, say, the
     // out-of-domain extrapolation shows no slice for it.
     const comp = (k) => C[k] || {mwp: 0, ci: null};
+    // How roofclf's scores were summed (`sub400_capacity.WEIGHTINGS`); absent on pages built
+    // before 2026-10-25, which were thresholded.
+    const byScore = (k) => ((T.roofclf_weighting || {})[k] === "probability"
+      ? ", every roof weighted by its score" : "");
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
       { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
@@ -3158,10 +3183,12 @@ out geom;</div>
           + "scaled up for the installations it misses, less the misses already counted from the map", size: "≥ 400 m²" },
       { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
         short: "Satellite roofclf, rooftop ≥ 400 m²",
-        label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain", size: "≥ 400 m²" },
+        label: "roofclf - ≥ 400 m² rooftop" + byScore("ge400_roof")
+          + ", replacing segmentation inside the calibrated domain", size: "≥ 400 m²" },
       { key: "small_central", method: "roofclf", placement: "roof", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
         short: "Satellite roofclf, rooftop < 400 m²",
-        label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated", size: "< 400 m²" },
+        label: "roofclf alone - sub-400 m² rooftop" + byScore("small_central")
+          + ", coverage ratio and recall, density-calibrated", size: "< 400 m²" },
       { key: "small_outdomain", method: "sppi", placement: "roof", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
         short: "Satellite roofclf + SPPI, < 400 m², extrapolated",
         label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain", size: "< 400 m²" },
@@ -3589,6 +3616,14 @@ out geom;</div>
   document.getElementById("kOsmGe400").textContent = fmt(T.osm_n_ge400);
   document.getElementById("kOsmLt400").textContent = fmt(T.osm_n_lt400);
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
+  // How much of the country was looked at. Absent on a page built before 2026-10-24.
+  if (T.n_cells_country){
+    const nOut = Math.max(0, T.n_cells_country - T.n_cells_processed);
+    document.getElementById("kCover").innerHTML = `${fmt(T.n_cells_processed)}<small>/ ${fmt(T.n_cells_country)}</small>`;
+    document.getElementById("kCoverK").textContent = `of the country's 0.1° cells imaged and processed; `
+      + `in the other ${fmt(nOut)} only hand-mapped OpenStreetMap counts`;
+    document.getElementById("kpiCover").hidden = false;
+  }
 
   // The out-of-domain extrapolation is optional evidence: when the atlas was built
   // without it, every surface that would report it (the province column, the size
@@ -3600,12 +3635,14 @@ out geom;</div>
   const HAS_GROUND = T.small_ground != null;
 
   function drawProvinceTable(){
+    if (!HAS_SMALL_ROOF) document.getElementById("thSmall").style.display = "none";
     if (!HAS_OUTDOMAIN) document.getElementById("thOutdomain").style.display = "none";
     const thG = document.getElementById("thGround");
     if (thG && !HAS_GROUND) thG.style.display = "none";
     document.querySelector("#ptable tbody").innerHTML = provinceRows().map(p =>
       `<tr><td>${esc(p.name)}</td><td>${fmt(p.mwp_best)}</td>`
-      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td><td>${fmt(p.small_central)}</td>`
+      + `<td>${fmt(p.osm_mwp)}</td><td>${fmt(p.mwp_large)}</td>`
+      + (HAS_SMALL_ROOF ? `<td>${fmt(p.small_central)}</td>` : "")
       + (HAS_OUTDOMAIN ? `<td>${fmt(p.small_outdomain)}</td>` : "")
       + (HAS_GROUND ? `<td>${fmt(p.small_ground || 0)}</td>` : "") + `</tr>`).join("");
   }
@@ -3639,8 +3676,10 @@ out geom;</div>
   ].filter(Boolean).join(" · ");
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
   // `null`/absent is a field this country has not measured, never a zero: the farm
-  // ground-PV detector has only run where someone ran it (`totals.small_ground_status`).
+  // ground-PV detector has only run where someone ran it (`totals.small_ground_status`),
+  // and rooftop PV below 400 m2 needs a calibrated roofclf half (HAS_SMALL_ROOF).
   const NOT_MEASURED = {
+    small_all: "Rooftop PV below 400 m² needs the rooftop classifier, which has not been calibrated for this country yet",
     small_ground: "The farm ground-PV detector has not been run for this country yet",
   };
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
@@ -3677,9 +3716,25 @@ out geom;</div>
       title: () => `${AOI}: Best-estimate PV capacity by province`,
       subtitle: () => `${totalLine()}. Province totals sum the 0.1° cells whose centre falls inside each province.`,
       csv: () => [["province", "mwp_best", "osm_mwp", "mwp_large", "small_central", "small_outdomain", "small_ground", "mwp_verified"],
-        provinceRows().map(p => [p.name, p.mwp_best, p.osm_mwp, p.mwp_large, p.small_central, p.small_outdomain,
+        provinceRows().map(p => [p.name, p.mwp_best, p.osm_mwp, p.mwp_large,
+          HAS_SMALL_ROOF ? p.small_central : "", p.small_outdomain,
           HAS_GROUND ? (p.small_ground || 0) : "", p.mwp_verified])],
     });
+    const more = document.getElementById("provMore");
+    if (DATA.provinces.length > PROV_TOP && more && HAS_PLOT){
+      const label = () => provAll ? `Show the top ${PROV_TOP} only`
+        : `Show all ${DATA.provinces.length} provinces`;
+      more.textContent = label();
+      more.setAttribute("aria-expanded", "false");
+      more.hidden = false;
+      more.addEventListener("click", () => {
+        provAll = !provAll;
+        more.textContent = label();
+        more.setAttribute("aria-expanded", String(provAll));
+        const c = CHARTS.find(x => x.key === "provinces");
+        if (c) c.render();
+      });
+    }
   }
 
   const hasSizeBins = Array.isArray(DATA.bins) && DATA.bins.length > 0;
