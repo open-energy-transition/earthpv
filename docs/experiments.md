@@ -143,7 +143,7 @@ repository; nothing was deleted on failure.
 | [THOR at 8 px tokens instead of TerraMind's 16 px](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | No pooled recall gain at matched precision: rooftop 400-5,000 m<sup>2</sup> 0.585 against 0.574 (p = 0.08), ground 0.928 against 0.933. Sharper outlines (pixel IoU 0.656 against 0.633) at 2.2x the training cost per batch. Not adopted. |
 | [THOR on TerraMind's own token grid](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome negative">rejected</span> | Ties v14 on rooftop recall (0.573 against 0.574), 1 point behind on ground. With 320 m SWIR tokens instead, it loses everywhere (rooftop 0.29). |
 | [Checkpoint selection by val mIoU](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | v14's second-best epoch finds 0.621 of rooftop arrays against the shipped epoch's 0.565, at precision 0.717 against 0.736: epoch noise is as large as the backbone effect. A recall-aware selection rule is untested. |
-| [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-the-strongest-400-m2-detector-measured-here-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget, matching precision (owner's blind review: 0.85-0.98 against 0.86-1.00) and far higher recall: quadrat rooftop 0.65 against 0.35, PV-rich ground 0.83 against 0.68. Not adopted: restrictive licence, one country so far, ~0.5-1 TB per country. |
+| [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-ahead-in-pakistan-behind-in-south-africa-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget it matches segmentation's precision in both countries, but its recall does not transfer: far higher in Pakistan (quadrat rooftop 0.65 against 0.35), half in South Africa's held-out Western Cape (0.22 against 0.43), where it also fires on substations. Not adopted: it does not transfer, a restrictive licence, ~0.5-1 TB per country. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
@@ -2391,7 +2391,7 @@ on pre-Volta GPUs), configs `configs/thor_pv_ps{16,16m,8}_south_africa.yaml`, ru
 since 104 is a multiple of 8. Results: `results/backbone_compare/thor16_vs_v14/`,
 `thor8_vs_v14_lowthr/`, `thor16m_thor8_vs_v14/`, `epoch_noise/`.
 
-### OlmoEarth embeddings: the strongest >= 400 m2 detector measured here (2026-10-25)
+### OlmoEarth embeddings: ahead in Pakistan, behind in South Africa (2026-10-25)
 
 Ai2's OlmoEarth v1.3 annual embeddings (OlmoEarth-v1.3-Base over a calendar year of
 Sentinel-1, Sentinel-2 and Landsat; 128 dimensions, int8, 10 m on each UTM zone's grid;
@@ -2465,9 +2465,39 @@ the owner's sample).
 Plausible reasons, untested: a year of monthly multi-sensor input against one dry-season
 median, and the Sentinel-2 grid itself rather than AlphaEarth's resampled lat/lon grid.
 
-**Verdict: the best candidate yet for a leads generator and a precision corroborator. Not
-adopted, for three reasons.**
+**The repeat in South Africa reverses it.** `scripts/olmoearth_vs_segmentation_country.py` ran
+the same 64-d probe, recipe and operating-point rule against v14's candidates, with the PV-rich
+cells drawn from the Western Cape, segmentation's val holdout, and the probe barred from that
+region too, so neither instrument trained there: 20 random national cells and 20 of the 78
+holdout cells holding two or more mapped arrays (the country has no quadrats). The rule again
+picks tau 0.995. Precision is Claude's blind review of 96 panels; the owner's is pending.
 
+| | Segmentation (v14) | OlmoEarth 64-d |
+| --- | --- | --- |
+| Random cells: unmapped detections per 1,000 km<sup>2</sup> | 19.3 | 15.2 |
+| Random cells: of 24 unmapped, PV in Claude's review | 1-6 | 1-5 |
+| PV-rich holdout cells: precision, mapped lower bound | 0.287 | 0.314 |
+| PV-rich holdout cells: precision with Claude's reviewed share | 0.50-0.55 | 0.49-0.54 |
+| PV-rich holdout cells: recall, all / rooftop / ground | 0.43 / 0.42 / 0.52 | 0.22 / 0.22 / 0.20 |
+
+Precision ties again, at half the recall. OlmoEarth matches segmentation's recall only at tau
+0.98 (0.44), at twice its random-land burden (37.3), and adds little in union (0.43 to 0.49).
+Both instruments are far less precise than in Pakistan: the reviewed false alarms are mostly
+roofs without panels, fields and sheds, plus ten electrical substations, all of them
+OlmoEarth's. `power_substation` is one of OlmoEarth's pretraining OSM targets beside
+`power_plant`, which may be why a probe trained on PV lands on them. As a corroborator it still
+separates: segmentation candidates it confirms are mapped at 0.47, the rest at 0.26.
+
+What differs from Pakistan is not only the country. There both instruments trained on labels
+from around the evaluated cells (the probe outside a 0.02-degree buffer); here neither did.
+Segmentation held up under the holdout and the probe did not, so Pakistan's advantage may be
+local training data more than the embedding. A South Africa run with the probe allowed into the
+Western Cape would separate the two; it is untested.
+
+**Verdict: a corroborator worth knowing about, not a detector to adopt.**
+
+- **It does not transfer.** Out of region, a pixel logistic on the frozen embedding finds half
+  of what segmentation finds at the same precision, and it brings its own false alarm.
 - **The licence.** The OlmoEarth Artifact License forbids military and extractive uses,
   requires those restrictions to travel with distributed derivatives, and requires citing Ai2.
   Detections derived from it cannot go into the ODbL atlas or the Apache-2.0 model without an
@@ -2476,12 +2506,10 @@ adopted, for three reasons.**
 - **Cost.** At 64 dimensions and two years it is 1.1 MB per km<sup>2</sup>: about 1 TB for
   Pakistan, about 0.5 TB for the building-populated cells. That is roughly a day per 0.5 TB
   with nothing else on the link; this run fetched 49 GB in 4.5 hours beside a national compose.
-- **One country, one probe.** A pixel logistic regression on frozen embeddings, measured in
-  Pakistan only. Nationally, change is available only from 2023. A repeat in South Africa,
-  with its PV-rich cells drawn from the Western Cape holdout that neither instrument trained
-  on, is `scripts/olmoearth_vs_segmentation_country.py`.
+- **One probe.** Only a pixel logistic regression on frozen embeddings was measured, and
+  nationally change is available only from 2023.
 
-As a corroborator, it confirms 238 of segmentation's 290 PV-rich candidates, at a mapped
+In Pakistan, as a corroborator, it confirms 238 of segmentation's 290 PV-rich candidates, at a mapped
 precision of 0.815, against 0.481 for the 52 it does not. AlphaEarth confirmed 134, at 0.836
 against 0.686, so OlmoEarth separates segmentation's real candidates from its false ones better.
 
@@ -2491,7 +2519,11 @@ runner `scripts/run_olmoearth_compare.sh`; `scripts/aef_vs_segmentation.py --bas
 Results: `results/olmoearth_vs_segmentation.csv` (with `_unions.csv` and `.json`),
 `results/aef_vs_segmentation_natneg_base2023.csv`, `results/olmoearth_vs_seg_review/` (the
 owner's verdicts in `summary_owner.json` and `blind_review_joined_owner.csv`, Claude's in
-`summary.json` and `claude_verdicts.csv`).
+`summary.json` and `claude_verdicts.csv`). South Africa: `scripts/olmoearth_vs_segmentation_country.py`
+(`--review`, `--join`), runner `scripts/run_olmoearth_country.sh`;
+`results/olmoearth_vs_segmentation_south_africa.csv` (with `_unions.csv` and `.json`) and
+`results/olmoearth_vs_seg_review_south_africa/` (Claude's verdicts in `claude_verdicts.csv`;
+the owner's review page is `blind/review.html`, from `scripts/build_review_page.py`).
 
 ## The partial result worth watching
 
