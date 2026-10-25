@@ -143,7 +143,7 @@ repository; nothing was deleted on failure.
 | [THOR at 8 px tokens instead of TerraMind's 16 px](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | No pooled recall gain at matched precision: rooftop 400-5,000 m<sup>2</sup> 0.585 against 0.574 (p = 0.08), ground 0.928 against 0.933. Sharper outlines (pixel IoU 0.656 against 0.633) at 2.2x the training cost per batch. Not adopted. |
 | [THOR on TerraMind's own token grid](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome negative">rejected</span> | Ties v14 on rooftop recall (0.573 against 0.574), 1 point behind on ground. With 320 m SWIR tokens instead, it loses everywhere (rooftop 0.29). |
 | [Checkpoint selection by val mIoU](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | v14's second-best epoch finds 0.621 of rooftop arrays against the shipped epoch's 0.565, at precision 0.717 against 0.736: epoch noise is as large as the backbone effect. A recall-aware selection rule is untested. |
-| [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-ahead-in-pakistan-behind-in-south-africa-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget it matches segmentation's precision in both countries, but its recall does not transfer: far higher in Pakistan (quadrat rooftop 0.65 against 0.35), half in South Africa's held-out Western Cape (0.22 against 0.43), where it also fires on substations. Not adopted: it does not transfer, a restrictive licence, ~0.5-1 TB per country. |
+| [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-ahead-in-pakistan-behind-in-south-africa-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget it matches segmentation's precision in both countries, but its recall does not transfer: far higher in Pakistan (quadrat rooftop 0.65 against 0.35), half in South Africa's held-out Western Cape (0.22 against 0.43, and 0.26 with Western Cape training added), where it also fires on substations. Not adopted: it does not transfer, a restrictive licence, ~0.5-1 TB per country. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
@@ -2482,14 +2482,16 @@ the same 64-d probe, recipe and operating-point rule against v14's candidates, w
 cells drawn from the Western Cape, segmentation's val holdout, and the probe barred from that
 region too, so neither instrument trained there: 20 random national cells and 20 of the 78
 holdout cells holding two or more mapped arrays (the country has no quadrats). The rule again
-picks tau 0.995. Precision is Claude's blind review of 96 panels; the owner's is pending.
+picks tau 0.995. Both Claude and the owner reviewed the 96 blind panels; they agree on 78.
 
 | | Segmentation (v14) | OlmoEarth 64-d |
 | --- | --- | --- |
 | Random cells: unmapped detections per 1,000 km<sup>2</sup> | 19.3 | 15.2 |
 | Random cells: of 24 unmapped, PV in Claude's review | 1-6 | 1-5 |
+| Random cells: of 24 unmapped, PV in the owner's review | 2 | 1-2 |
 | PV-rich holdout cells: precision, mapped lower bound | 0.287 | 0.314 |
 | PV-rich holdout cells: precision with Claude's reviewed share | 0.50-0.55 | 0.49-0.54 |
+| PV-rich holdout cells: precision with the owner's reviewed share | 0.53 | 0.54 |
 | PV-rich holdout cells: recall, all / rooftop / ground | 0.43 / 0.42 / 0.52 | 0.22 / 0.22 / 0.20 |
 
 Precision ties again, at half the recall. OlmoEarth matches segmentation's recall only at tau
@@ -2500,16 +2502,21 @@ OlmoEarth's. `power_substation` is one of OlmoEarth's pretraining OSM targets be
 `power_plant`, which may be why a probe trained on PV lands on them. As a corroborator it still
 separates: segmentation candidates it confirms are mapped at 0.47, the rest at 0.26.
 
-What differs from Pakistan is not only the country. There both instruments trained on labels
-from around the evaluated cells (the probe outside a 0.02-degree buffer); here neither did.
-Segmentation held up under the holdout and the probe did not, so Pakistan's advantage may be
-local training data more than the embedding. A South Africa run with the probe allowed into the
-Western Cape would separate the two; it is untested.
+**Local training data does not explain it.** In Pakistan both instruments trained on labels
+from around the evaluated cells (the probe outside a 0.02-degree buffer); in South Africa
+neither did. A second run (`--train-in-holdout`) adds the 759 Western Cape training tiles
+outside that buffer to the first run's 2,500 and national negatives, drawn again from the same
+seed, with segmentation still held out. The rule then picks tau 0.99, and the probe's recall in
+the holdout cells moves from 0.22 to 0.26 (rooftop 0.24, against segmentation's 0.42), its
+mapped lower bound from 0.314 to 0.244. At every fixed tau its recall is slightly lower than
+without the local tiles. So the gap to Pakistan is the country (its arrays, roofs and
+confusers), not missing local labels.
 
 **Verdict: a corroborator worth knowing about, not a detector to adopt.**
 
-- **It does not transfer.** Out of region, a pixel logistic on the frozen embedding finds half
-  of what segmentation finds at the same precision, and it brings its own false alarm.
+- **It does not transfer.** In South Africa a pixel logistic on the frozen embedding finds half
+  of what segmentation finds at the same precision, even with labels from the evaluated
+  region, and it brings its own false alarm.
 - **The licence.** The OlmoEarth Artifact License forbids military and extractive uses,
   requires those restrictions to travel with distributed derivatives, and requires citing Ai2.
   Detections derived from it cannot go into the ODbL atlas or the Apache-2.0 model without an
@@ -2533,8 +2540,10 @@ Results: `results/olmoearth_vs_segmentation.csv` (with `_unions.csv` and `.json`
 owner's verdicts in `summary_owner.json` and `blind_review_joined_owner.csv`, Claude's in
 `summary.json` and `claude_verdicts.csv`). South Africa: `scripts/olmoearth_vs_segmentation_country.py`
 (`--review`, `--join`), runner `scripts/run_olmoearth_country.sh`;
-`results/olmoearth_vs_segmentation_south_africa.csv` (with `_unions.csv` and `.json`) and
-`results/olmoearth_vs_seg_review_south_africa/` (Claude's verdicts in `claude_verdicts.csv`;
+`results/olmoearth_vs_segmentation_south_africa.csv` (with `_unions.csv` and `.json`; the
+second run beside it with `_holdout_trained`) and
+`results/olmoearth_vs_seg_review_south_africa/` (the owner's verdicts in
+`summary_verdicts.json`, Claude's in `claude_verdicts.csv`;
 the owner's review page is `blind/review.html`, from `scripts/build_review_page.py`).
 
 ## The partial result worth watching

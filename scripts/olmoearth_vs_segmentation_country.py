@@ -36,6 +36,15 @@ Stated asymmetries, both favouring segmentation: it reads 2026-04 to 2026-09 com
 OlmoEarth's newest year is 2025, so an array built in 2026 is visible to one instrument only;
 and outside the holdout its training chips may overlap the random cells.
 
+`--train-in-holdout` (declared 2026-10-25, after the first run found half of segmentation's
+recall) changes one thing: the probe also trains inside the holdout, outside the 0.02 deg buffer around
+the evaluation areas, as it did in Pakistan, where both instruments had labels from around the
+evaluated cells. The first run's 2,500 training tiles and its national negatives are drawn
+again from the same seed, and every candidate or mapped-array tile the holdout adds goes on top
+of them. Same evaluation areas (asserted), truth and rule; segmentation stays held out. If the
+probe's recall in the holdout cells rises to segmentation's, Pakistan's advantage was local
+training data; if not, it was the country. Outputs carry `_holdout_trained`.
+
 `--review` then draws a blind sample of unmapped detections for a human verdict: up to 24
 OlmoEarth and 24 segmentation detections from each of the rich and random cells, shuffled and
 rendered on Esri imagery under random codes, the key in a separate file. `--join` reads the
@@ -85,13 +94,13 @@ N_REVIEW = 24
 KEY = "blind_key_DO_NOT_OPEN_BEFORE_VERDICTS.geojson"
 
 
-def paths(aoi: str) -> dict[str, Path]:
+def paths(aoi: str, tag: str = "") -> dict[str, Path]:
     return {"grid": Path(f"data/predictions/{aoi}/density/grid.geoparquet"),
             "cands": Path(f"data/predictions/{aoi}/candidates.parquet"),
             "osm": Path(f"data/labels/{aoi}_overpass_solar.parquet"),
-            "work": Path(f"/home/tobi/earthpv_data/olmoearth/vs_seg_{aoi}"),
-            "out": Path(f"results/olmoearth_vs_segmentation_{aoi}"),
-            "review": Path(f"results/olmoearth_vs_seg_review_{aoi}")}
+            "work": Path(f"/home/tobi/earthpv_data/olmoearth/vs_seg_{aoi}{tag}"),
+            "out": Path(f"results/olmoearth_vs_segmentation_{aoi}{tag}"),
+            "review": Path(f"results/olmoearth_vs_seg_review_{aoi}{tag}")}
 
 
 def metric_crs(bbox) -> str:
@@ -122,25 +131,30 @@ def eval_sets(grid, truth, holdout, rng) -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(rows, geometry="geometry", crs=4326)
 
 
-def training_keys(objs, exclude, rng) -> list[tuple[int, int, int]]:
-    """Tiles touching any object, minus those `training_sample` would skip anyway, so they
-    are never downloaded; a seeded sample if there are more than MAX_TRAIN_TILES."""
+def allowed(keys, exclude) -> list[tuple[int, int, int]]:
+    """The tiles `training_sample` would not skip, so the rest are never downloaded."""
     ex4326 = exclude.buffer(avs.BUFFER_DEG).union_all()
     exz, keep = {}, []
-    for k in sorted(ovs._keys_for(objs)):
+    for k in sorted(keys):
         z = k[0]
         if z not in exz:
             exz[z] = gpd.GeoSeries([ex4326.intersection(ovs._band(z).buffer(1))],
                                    crs=4326).to_crs(om.epsg(z)).iloc[0]
         if not ovs._tile_box(*k).intersects(exz[z]):
             keep.append(k)
+    return keep
+
+
+def training_keys(keys, exclude, rng) -> list[tuple[int, int, int]]:
+    """The allowed tiles, a seeded sample if there are more than MAX_TRAIN_TILES."""
+    keep = allowed(keys, exclude)
     log.info("training tiles: %d outside the exclusion", len(keep))
     if len(keep) > MAX_TRAIN_TILES:
         keep = [keep[i] for i in sorted(rng.choice(len(keep), MAX_TRAIN_TILES, replace=False))]
     return keep
 
 
-def run(aoi: str, p: dict, plan: bool, workers: int) -> None:
+def run(aoi: str, p: dict, plan: bool, workers: int, train_in_holdout: bool = False) -> None:
     cfg = Settings.load().aois[aoi]
     holdout = set(cfg.get("val_tiles", []))
     if not holdout:
@@ -152,15 +166,27 @@ def run(aoi: str, p: dict, plan: bool, workers: int) -> None:
     cands = gpd.read_parquet(p["cands"]).to_crs(4326)
     grid = gpd.read_parquet(p["grid"]).to_crs(4326)
     sets = eval_sets(grid, truth, holdout, rng)
+    if train_in_holdout:
+        first = gpd.read_parquet(paths(aoi)["work"] / "eval_sets.parquet")
+        assert list(first["name"]) == list(sets["name"]), "evaluation areas differ from the first run"
     sets.to_parquet(p["work"] / "eval_sets.parquet")
     exclude = gpd.GeoDataFrame(geometry=pd.concat(
         [sets.geometry, grid[grid.cell.isin(holdout)].geometry], ignore_index=True), crs=4326)
+    eval_only = gpd.GeoDataFrame(geometry=sets.geometry.reset_index(drop=True), crs=4326)
 
     big = cands[cands.area_m2 >= avs.MIN_AREA]
     objs = gpd.GeoDataFrame(geometry=pd.concat([big.geometry, truth.geometry],
                                                ignore_index=True), crs=4326)
     eval_keys = ovs._keys_for(sets)
-    foot_keys = training_keys(objs, exclude, rng)
+    obj_keys = ovs._keys_for(objs)
+    foot_keys = training_keys(obj_keys, exclude, rng)
+    if train_in_holdout:  # the first run's sample, plus what the holdout adds
+        local = set(allowed(obj_keys, eval_only)) - set(allowed(obj_keys, exclude))
+        foot_keys = sorted(set(foot_keys) | local)
+    hz = {z: gpd.GeoSeries([grid[grid.cell.isin(holdout)].union_all()], crs=4326)
+          .to_crs(om.epsg(z)).iloc[0] for z in {k[0] for k in foot_keys}}
+    log.info("training tiles in the holdout: %d", sum(ovs._tile_box(*k).intersects(hz[k[0]])
+                                                       for k in foot_keys))
     extra = ovs.national_negative_keys(exclude, np.random.default_rng(SEED + 7), grid=p["grid"])
     allk = sorted(eval_keys | set(foot_keys) | set(extra))
     todo = [(z, y, 0, cy, cx) for (z, cy, cx) in allk for y in (ovs.BASE_YEAR, ovs.YEAR)]
@@ -174,7 +200,8 @@ def run(aoi: str, p: dict, plan: bool, workers: int) -> None:
         return
     om.prefetch(todo, workers=workers)
 
-    XB, X25, Y = ovs.training_sample(truth, exclude, rng, foot_keys, extra, dims=DIMS)
+    XB, X25, Y = ovs.training_sample(truth, eval_only if train_in_holdout else exclude, rng,
+                                     foot_keys, extra, dims=DIMS)
     models = {}
     for v in avs.VARIANTS:
         models[(DIMS, v)] = fit_logistic(ovs._features(XB, X25, v, DIMS).astype("float64"),
@@ -202,7 +229,8 @@ def run(aoi: str, p: dict, plan: bool, workers: int) -> None:
     un.to_csv(p["out"].with_name(p["out"].name + "_unions.csv"), index=False)
     p["out"].with_suffix(".json").write_text(json.dumps({
         "aoi": aoi, "base_year": ovs.BASE_YEAR, "year": ovs.YEAR, "dims": DIMS,
-        "n_holdout_cells": len(holdout), "n_truth": len(truth),
+        "n_holdout_cells": len(holdout), "train_in_holdout": train_in_holdout,
+        "n_truth": len(truth),
         "n_train_tiles": len(foot_keys), "n_negative_tiles": len(extra),
         "n_train_pos": int(Y.sum()), "n_train_neg": int((Y == 0).sum()),
         "converged": {v: bool(m["converged"]) for (_, v), m in models.items()},
@@ -304,16 +332,17 @@ def main() -> None:
     ap.add_argument("--join", action="store_true")
     ap.add_argument("--verdicts", type=Path)
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--train-in-holdout", action="store_true")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    p = paths(args.aoi)
+    p = paths(args.aoi, "_holdout_trained" if args.train_in_holdout else "")
     avs.UTM = metric_crs(Settings.load().aois[args.aoi]["bbox"])  # read by avs._near
     if args.review:
         review(p)
     elif args.join:
         join(p, args.verdicts or p["review"] / "blind" / "verdicts.csv")
     else:
-        run(args.aoi, p, args.plan, args.workers)
+        run(args.aoi, p, args.plan, args.workers, args.train_in_holdout)
 
 
 if __name__ == "__main__":
