@@ -2149,22 +2149,23 @@ ROOFCLF_H = 1064
 # their own alt text until 2026-08-15. Re-transcribe them in the same commit as any
 # pipeline run that moves the atlas, and check the numbers in `docs/methods/roofclf.md`'s
 # image alt text against them.
-# data/roofclf/summary.json (27-quadrat parcel-label refit, 2026-08-17)
+# data/roofclf/summary.json (30-quadrat area-weighted parcel-label refit, 2026-09-20)
 ROOFCLF_STATS = {
-    "n_quadrats": 27,
-    "auc": 0.874,
-    "auc_within_size": 0.831,
-    "threshold": 0.2535,
+    "n_quadrats": 30,
+    "auc": 0.868,
+    "auc_within_size": 0.819,
+    "threshold": 0.2446,
     "precision": 0.50,
-    "recall": 0.63,
+    "recall": 0.66,
 }
-# data/roofclf_national_with_sppi/pakistan/density/*_summary.json (parcel label, 2026-08-17)
+# data/roofclf_national_with_sppi/pakistan/density/*_summary.json (probability-weighted,
+# 2026-10-25)
 ROOFCLF_CAPACITY = {
     "n_domain_cells": 2957,
     "n_national_cells": 4463,
-    "verified_sub400": 2647,
-    "best_sub400": 9202,
-    "best_ge400_roof": 7405,
+    "verified_sub400": 3784,
+    "best_sub400": 24206,
+    "best_ge400_roof": 7503,
 }
 
 
@@ -2250,8 +2251,8 @@ def build_roofclf_svg(t: Theme) -> str:
         [f"{s['n_quadrats']} folds, each scored by a model", f"that never saw it: {s['auc']:.3f} AUC,",
          f"{s['auc_within_size']:.3f} within roof-size band"], stroke=t.s1)
     box("c3", xc[2], 402, wc, 104, "Deployment threshold",
-        [f"p >= {s['threshold']:.4f}, chosen on pooled", f"held-out scores for precision {s['precision']:.2f}",
-         f"at recall {s['recall']:.2f}"], stroke=t.s1)
+        [f"p >= {s['threshold']:.4f}: precision {s['precision']:.2f}", f"at recall {s['recall']:.2f}. Sets the floor",
+         "and the leads; Best sums scores"], stroke=t.s1)
     note("Folds are spatial by construction. A random split would put neighbouring roofs in "
          "train and test and report skill the model does not have.", 540)
 
@@ -2270,19 +2271,19 @@ def build_roofclf_svg(t: Theme) -> str:
         ["keep only cells whose building", "density falls in the quadrats'",
          f"own range: {cap['n_domain_cells']:,} of {cap['n_national_cells']:,} cells"], stroke=t.s3)
     box("e2", xe[1], 714, we, 108, "Remove what is already counted",
-        ["drop any flagged building within", "30 m of an existing detection or", "a mapped OSM installation"], stroke=t.s3)
+        ["drop any building within 30 m", "of an existing detection or", "a mapped OSM installation"], stroke=t.s3)
     box("e3", xe[2], 714, we, 108, "Roof area to MWp",
-        ["a coverage ratio measured per", "roof-size bin and density band,", "then the module kWp constant"], stroke=t.s3)
-    note("Panels cover only part of a flagged roof. Assuming otherwise overstated this "
-         "estimate by 2.4 to 2.7x until the coverage ratio replaced precision as the multiplier.", 856)
+        ["each roof weighted by its score,", "a coverage ratio per size bin and", "density band, the module constant"], stroke=t.s3)
+    note("Every roof counts in proportion to its score, not only those above the threshold: "
+         "held out by quadrat, that cut the median PV-area error from 0.39 to 0.09.", 856)
 
     # Lane F - into the atlas
     lane_label("6. Into the evidence atlas", 886)
     xf, wf = _row_x(1, gap=60)
     box("f1", xf[0], 894, wf, 94, "Best estimate",
         [f"roofclf alone in domain {cap['best_sub400']:,} MWp, plus {cap['best_ge400_roof']:,} MWp of "
-         f">= 400 m2 roofs -- floored per cell "
-         f"at hand-mapped OSM plus the stricter {cap['verified_sub400']:,} MWp roofclf-AND-SPPI population, "
+         ">= 400 m2 roofs, both priced by score -- floored per cell at hand-mapped OSM plus",
+         f"the stricter, thresholded {cap['verified_sub400']:,} MWp roofclf-AND-SPPI population, "
          "two instruments that share no training data"], stroke=t.s1)
 
     note("roofclf also REPLACES the segmentation model's own rooftop estimate for buildings "

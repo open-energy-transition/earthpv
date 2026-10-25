@@ -23,7 +23,7 @@ rooftop vs ground-mount by how large each installation is, instead of by geograp
 
 ## The headline figure
 
-**Best estimate: 24,438.3 MWp** (90% range 20,894 &ndash; 33,666; 24,330.0 until 2026-10-20, when OSM-mapped misses stopped being counted on top of the satellite figure's own estimate of its misses, and small roofs next to a segmentation detection whose figure Best does not use stopped being dropped -- see the [experiments register](../experiments.md)). It combines every
+**Best estimate: 34,588.8 MWp** (90% range 29,308 &ndash; 41,736; 24,438.3 until 2026-10-25, when roofclf's two components switched from counting the roofs above a threshold to counting every roof by its score -- see [roofclf](../methods/roofclf.md#count-every-roof-by-its-score); 24,330.0 until 2026-10-20, when OSM-mapped misses stopped being counted on top of the satellite figure's own estimate of its misses, and small roofs next to a segmentation detection whose figure Best does not use stopped being dropped -- see the [experiments register](../experiments.md)). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
 "Ground-mount capacity" below) with &ge;400 m<sup>2</sup> capacity (roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
@@ -33,8 +33,8 @@ cells. Every component is measured inside the density-calibrated domain: an
 out-of-domain roofclf-AND-SPPI extrapolation was tested and dropped from the published
 atlas (see "Calibration coverage" below).
 
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 46 percent OpenStreetMap-mapped and 54 percent roofclf-and-SPPI agreement, totalling 7.0 gigawatts peak; Best estimate is 8 percent OpenStreetMap-mapped, 4 percent TerraMind segmentation and 88 percent roofclf alone, totalling 24.4 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 46 percent OpenStreetMap-mapped and 54 percent roofclf-and-SPPI agreement, totalling 7.0 gigawatts peak; Best estimate is 8 percent OpenStreetMap-mapped, 4 percent TerraMind segmentation and 88 percent roofclf alone, totalling 24.4 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 46 percent OpenStreetMap-mapped and 54 percent roofclf-and-SPPI agreement, totalling 7.0 gigawatts peak; Best estimate is 6 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.6 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 46 percent OpenStreetMap-mapped and 54 percent roofclf-and-SPPI agreement, totalling 7.0 gigawatts peak; Best estimate is 6 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.6 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
 SPPI no longer contributes to Best at all; its role is in the internal floor (6,994.1
 MWp), where it is now larger than all of hand-mapped OSM put together. Full per-component
@@ -49,9 +49,11 @@ the coverage ratio's sensitivity to *which* calibration quadrats happen to have 
 mapped (measured by resampling the quadrats themselves, not the buildings inside them).
 It does **not** include a design-based sampling error, because the quadrats were
 hand-picked rather than randomly drawn. **It also does not cover the gap between where
-the coverage-ratio/area-recall correction is fit and where it is applied** -- as of the
-current fit, roughly 5% of published Best is priced by a multiplier whose sparsest
-supporting quadrat is several times denser than the cells it is applied to. See
+the coverage-ratio/area-recall correction is fit and where it is applied** -- as of
+2026-10-25, 7.2% of published Best is roofclf capacity in cells sparser than its sparsest
+supporting quadrat (6.6% under the thresholded pricing, measured the same way), and
+**nor does it cover whether roofclf's scores are right on average in those sparse cells**,
+which probability pricing takes at face value. See
 [Calibration density mismatch](../issues/roofclf-calibration-density-mismatch.md) for the
 full measurement, "How confident should you be in this?" on the atlas page, and
 [validation against MaStR](../methods/mastr-validation.md) for what a complete register
@@ -109,16 +111,17 @@ segmentation total these constants produce.
 
 ### The area-recall correction
 
-Every roofclf capacity figure multiplies flagged roof area by the measured coverage ratio
-(true mapped PV area over *flagged* roof area), which by itself books zero capacity for
-every installation sitting on a roof roofclf missed. This is corrected the same way
-segmentation's own recall correction has always worked: each flagged building stands in
-for the roofs of its size and density stratum that PV sits on but roofclf did not flag,
-using the measured share of true mapped PV *area* that lands on a flagged building --
-**0.808 for sub-400 m<sup>2</sup> buildings and 0.978 for &ge;400 m<sup>2</sup> ones**,
-rising from 0.34 in the smallest decile of PV-carrying roofs to 0.99 in the largest.
-Coverage ratio and area recall are refit inside the *same* bootstrap replicates, since
-they share the same quadrats and labels and their errors are strongly dependent.
+Every roofclf capacity figure multiplies score-weighted roof area (each roof's area times
+its `p_roofclf`, since 2026-10-25; flagged roof area before) by the measured coverage ratio
+(true mapped PV area over score-weighted roof area in the quadrats), which by itself books
+nothing for PV that the scores do not account for. This is corrected the same way
+segmentation's own recall correction has always worked: dividing by the measured share of
+true mapped PV *area* that the score-weighted roofs carry, per size bin and density band --
+pooled over the 19 trusted quadrats, **0.517 for sub-400 m<sup>2</sup> buildings and 0.867
+for &ge;400 m<sup>2</sup> ones** (0.834 and 0.982 for the flagged-roof count it replaced,
+which divided a smaller numerator). Coverage ratio and area recall are refit inside the
+*same* bootstrap replicates, since they share the same quadrats and labels and their errors
+are strongly dependent.
 
 The correction is a lower bound on itself in three ways: Rule-1 completeness is relative
 to the mapping imagery's own epoch, so it biases measured recall up (and this correction
@@ -192,28 +195,31 @@ question neither side can actually settle. Both were instead normalized to **per
 the national total per spatial unit** and compared: not "whose number is bigger," but
 "do the two agree on *where* PV concentrates."
 
-They do, for most of the country. Measured 2026-10-21 against the 24,438.3 MWp Best
+They do, for most of the country. Re-measured 2026-10-25 against the 34,588.8 MWp Best
 estimate: across the reference's 3,303 hexagons, the median absolute difference in
-national-share allocation is **0.005 percentage points**, and 64% of hexagons land within
-&plusmn;0.02pp of each other (83% within &plusmn;0.05pp). Rank correlation (Spearman) is
-**0.87** including the many hexagons both sides agree carry essentially nothing, or
-**0.78** restricted to the 1,565 hexagons (47%) where this project's estimate is nonzero
+national-share allocation is **0.005 percentage points**, and 66% of hexagons land within
+&plusmn;0.02pp of each other (89% within &plusmn;0.05pp). Rank correlation (Spearman) is
+**0.88** including the many hexagons both sides agree carry essentially nothing, or
+**0.86** restricted to the 1,557 hexagons where this project's estimate is nonzero
 -- either way, strong agreement on the geography. The reference places only 4.7% of its
-national total in hexagons this project leaves at zero.
+national total in hexagons this project leaves at zero. Pricing roofclf by score made the
+agreement closer: the thresholded page, measured the same way, gives 0.87 and 0.77, with 83%
+of hexagons within &plusmn;0.05pp.
 
 That agreement is not uniform, though, and the exception is worth stating plainly: a
 small number of hexagons account for almost all of the remaining difference, and every
 one of the twenty largest discrepancies runs the same direction -- this project's
 estimate concentrates more of the national share into a handful of hotspot cells than
 the independent reference does, never the reverse by nearly as much (the most negative
-hexagon is -0.11pp). The largest case is the hexagon over central Lahore, +7.2pp: 7.4% of
-this project's national total against 0.2% of the reference's. The ten hexagons this
-project weights most hold 22% of its total; the reference's ten hold 1.8% of its own.
+hexagon is -0.10pp). The largest case is the hexagon over central Lahore, +5.2pp: 5.4% of
+this project's national total against 0.2% of the reference's (+7.2pp before 2026-10-25's
+probability pricing moved weight toward smaller towns). The ten hexagons this project
+weights most hold 17% of its total (22% before); the reference's ten hold 1.8% of its own.
 Part of the gap is scope rather than disagreement: the hexagon around Quaid-e-Azam Solar
 Park is among the largest because Best counts ground-mount and the reference covers
 rooftops only. That skew is why the straightforward linear correlation on share is a
-moderate 0.41 (a log-compressed version, less sensitive to those few large values, rises
-to 0.56) even though the rank correlation and the typical hexagon's near-exact agreement
+moderate 0.49 (0.41 before 2026-10-25; a log-compressed version, less sensitive to those
+few large values, is higher) even though the rank correlation and the typical hexagon's near-exact agreement
 both say the two models are looking at the same country. Read it as two independently-built estimates agreeing
 closely on geography and disagreeing about how much weight the largest sites deserve --
 not as a validation of one against the other, since neither is ground truth here.

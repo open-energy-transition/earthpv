@@ -136,7 +136,7 @@ repository; nothing was deleted on failure.
 | [Google's AlphaEarth satellite embeddings in roofclf](#alphaearth-embeddings-propensity-not-panels-2026-10-22) | <span class="outcome negative">rejected</span> | Adding the 2025 embedding: -0.0003 AUC, 14 of 29 folds, recall at precision 0.5 down 0.017. The pre-boom 2021 embedding does as well, so what little it adds is propensity. |
 | [AlphaEarth change as a ground-mount precision check](#alphaearth-change-finds-unmapped-ground-mount-2026-10-22) | <span class="outcome mixed">partial</span> | 2017-to-2025 change separates real ground arrays from their surroundings at AUC 0.96, and a blind review puts the real share of unmapped ground detections at about 0.15, where the precision table books 0.0. Not applied; needs your review. |
 | [AlphaEarth as a second >= 400 m2 detector](#alphaearth-against-segmentation-a-different-detector-not-a-better-one-2026-10-22) | <span class="outcome mixed">partial</span> | Not better overall: lower precision where PV is mixed with farmland (0.65-0.70 against 0.83-0.88), but equal precision and higher rooftop recall (0.51 against 0.35) on the quadrats, and it finds different arrays: the union lifts quadrat rooftop recall to 0.60. |
-| [Probability-weighted capacity pricing](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome mixed">partial</span> | Pricing roof area by score instead of by a flag halves the per-quadrat PV-area error (0.386 to 0.094 below 400 m<sup>2</sup>, 20 of 29 quadrats) and lifts Pakistan's Best 24.4 to 34.6 GWp. Not adopted: open question 1. |
+| [Probability-weighted capacity pricing](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome works">shipped</span> | Pricing roof area by score instead of by a flag cuts the per-quadrat PV-area error from 0.386 to 0.094 below 400 m<sup>2</sup> (20 of 29 quadrats). The default since 2026-10-25: Pakistan's Best 24.4 to 34.6 GWp, floor unchanged. Untested in sparse national cells; `--weighting threshold` restores the old count. |
 | [Prevalence estimators for prior shift](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | EM prior adjustment and adjusted counts collapse to zero in most quadrats: they differ by more than their base rate. |
 | [Gradient boosting, priced end to end](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Its better per-quadrat adoption rate does not survive the capacity chain: 12 of 29 quadrats closer, p = 0.46. |
 | [The pre-boom epoch already on disk](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome mixed">partial</span> | composite_1 covers 4,467 of 4,473 Pakistani cells, so no download is needed; +0.0024 within size band (20 of 29, p = 0.061) and nothing under probability pricing. Not deployed. |
@@ -2294,10 +2294,22 @@ Probability weighting is closer in 20 of 29 quadrats (Wilcoxon p = 0.0035), and 
 null at the median (16 of 29). The mechanism is the sparse end: below 300 bldg/km<sup>2</sup>
 the mean score matches the true adoption rate (0.020 against 0.020) while only 0.2-0.3% of
 roofs cross the threshold, so the flagged version books 12% of the mapped PV there and the
-weighted one 92%. Through the real chain this moves Pakistan's Best estimate from 24,438 to
-34,589 MWp, 85% of it in cells of 100-1,000 bldg/km<sup>2</sup>, where calibration is thinnest;
-whether to adopt it is open question 1. `sub400-capacity` and `ge400-roof-capacity` take
-`--weighting probability`; the default reproduces every published figure exactly.
+weighted one 92%. Through the real chain this moved Pakistan's Best estimate from 24,438 to
+34,589 MWp, most of it in cells of 100-1,000 bldg/km<sup>2</sup>, where calibration is
+thinnest, so it shipped opt-in (`--weighting probability`) with thresholding as the default.
+
+**Adopted 2026-10-25** (owner decision): probability weighting is now the default of both
+capacity commands, and the published Pakistan atlas uses it. Best estimate 24,438.3 to
+34,588.8 MWp (90% 29,308-41,736); sub-400 m<sup>2</sup> roofclf 13,262.6 to 24,206.3, the
+&ge; 400 m<sup>2</sup> replacement 8,256.7 to 7,503.2; the roofclf-AND-SPPI floor stays
+thresholded by design, so Verified is unchanged at 6,994.1 MWp. 80% of the +10.2 GWp lands
+in cells of 100-1,000 bldg/km<sup>2</sup>, and against the independent rooftop-solar
+reference the geography agrees better (Spearman 0.868 to 0.882; 0.773 to 0.861 on hexagons
+where this project is non-zero). A `--weighting threshold` rerun the same day reproduced the
+previous page exactly. The thresholded count stays available as `--weighting threshold`.
+Measured on the quadrats but not in sparse national cells:
+[roofclf](methods/roofclf.md#count-every-roof-by-its-score) lists what it trusts and the two
+measurements that would revert it.
 
 **Estimators built for prior shift fail.** Treating the capacity chain as the quantification
 problem it is, the standard estimators for a population whose base rate differs from training

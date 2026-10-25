@@ -1,6 +1,6 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-10-23. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-10-25. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
@@ -10,97 +10,62 @@ been taken. When an item is closed it moves to the experiments register with a v
 its row here is deleted rather than annotated. Elsewhere in the repository, cite an item by
 its title as well as its number: the numbers change whenever the list is re-ranked.
 
-Items 1 to 3 each move Pakistan's published Best estimate, and each waits on a decision or a
-review by the owner rather than on code.
+Items 1 to 3 each move Pakistan's published Best estimate, and each waits on mapping, a
+decision or a review by the owner rather than on code.
 
 ## Ranked by expected value over cost
 
-### 1. How should the capacity chain use roofclf's probabilities? (2026-10-22)
+### 1. Probability-weighted roofclf capacity is published but untested where it adds most (2026-10-25)
 
-**What it does today.** `sub400-capacity` and `ge400-roof-capacity` count a building in full
-when `p_roofclf >= 0.2446` (the precision-0.5 cut) and not at all below it, then scale
-flagged roof area to true PV area with the coverage ratio and area recall. That is
-classify-and-count. The alternative counts every building in proportion to its score (a
-roof at 0.10 counts as a tenth of a PV roof), with both tables refit on the same weights.
-The classifier and its scores are identical either way; only the summing changes.
+**What changed.** Since 2026-10-25 `sub400-capacity` and `ge400-roof-capacity` count every
+in-domain building in proportion to its `p_roofclf`, with the coverage ratio and area recall
+refit on the same weights, instead of counting roofs above the 0.2446 threshold in full and
+the rest not at all (owner decision; `--weighting threshold` restores the old count). Held
+out one quadrat at a time it cut the median error on true sub-400 m&sup2; PV area from 0.386
+to 0.094 (20 of 29 quadrats, Wilcoxon p = 0.0035), and thresholding booked 12% of mapped PV
+in the six quadrats below 300 bldg/km&sup2;. Pakistan's Best moved 24,438.3 to 34,588.8 MWp
+(90% 29,308-41,736); Verified is unchanged at 6,994.1 MWp. The measurement and the decision
+are in the experiments register, "The capacity chain is a quantification problem", and
+[roofclf](methods/roofclf.md#count-every-roof-by-its-score).
 
-**What was measured.** Leave-one-quadrat-out, in the chain's own structure (size deciles x
-two density strata, the 19 trusted quadrats; `scripts/roofclf_soft_capacity_check.py`,
-`results/roofclf_soft_capacity.json`), median error on each held-out quadrat's true
-sub-400 m&sup2; PV area:
+**What is still open.** The four reasons the switch was held back are now its untested risks:
 
-| Pricing | Median error | Better than thresholded |
-| --- | --- | --- |
-| No classifier (roof area x ratio) | 0.518 | -- |
-| Thresholded (published) | 0.386 | -- |
-| Probability-weighted | 0.094 | 20 of 29 quadrats, Wilcoxon p = 0.0035 |
-
-It holds for four other classifier variants (0.18-0.24 against 0.28-0.38, 18 to 23 of 29)
-and for the roof-only label. Thresholding does not beat the no-classifier null at the median
-quadrat (16 of 29, p = 1.0). The failure is in sparse places: below 300 bldg/km&sup2; the
-mean score matches the true adoption rate (0.020 against 0.020) but only 0.2-0.3% of roofs
-cross the threshold, so thresholding books **12%** of the mapped PV there and probability
-weighting **92%** (truth-weighted). Estimators built for prior shift (EM prior adjustment,
-adjusted count) collapse to zero, so quadrats differ by more than their base rate. See the
-experiments register, "The capacity chain is a quantification problem".
-
-**What it does to the atlas.** Run through the real chain with the opt-in flag
-`--weighting probability` on both capacity commands. The default stays `threshold`, and a
-threshold re-run with the flag in place reproduces every published component and bootstrap
-interval exactly. Builds and `atlas_comparison.txt` are in
-`/home/tobi/earthpv_data/roofclf_untapped/`; nothing was published.
-
-| | Published | Probability-weighted |
-| --- | --- | --- |
-| Best estimate | 24,438 MWp (90% 20,894-33,666) | **34,589 MWp (90% 29,308-41,736)** |
-| Verified (internal floor) | 6,994 MWp | 6,994 MWp (floors stay thresholded by design) |
-| sub-400 m&sup2; roofclf | 13,263 MWp | 24,206 MWp |
-| &ge; 400 m&sup2; roofclf replacement | 8,257 MWp | 7,503 MWp |
-| Share of imported panels (57.6 GWp) | 42% | 60% |
-
-85% of the +10.2 GWp lands in cells of 100-1,000 bldg/km&sup2;; dense cities rise 18-25%,
-cells outside the domain not at all; Punjab takes +6.1 GWp.
-
-**Why it is not adopted yet.**
-
-1. **The gain sits where calibration is thinnest.** Four trusted quadrats lie below 1,000
-   bldg/km&sup2; (Bahawalnagar Rural, Layyah, Lodhran, Multan), and the six quadrats below
-   300 bldg/km&sup2; hold 3,822 m&sup2; of mapped sub-400 m&sup2; PV between them. The trust
+1. **The gain sits where calibration is thinnest.** 80% of the +10.2 GWp lands in cells of
+   100-1,000 bldg/km&sup2;. Four trusted quadrats lie below 1,000 bldg/km&sup2;
+   (Bahawalnagar Rural, Layyah, Lodhran, Multan), and the six quadrats below 300
+   bldg/km&sup2; hold 3,822 m&sup2; of mapped sub-400 m&sup2; PV between them. The trust
    gate is not density-neutral either (Spearman of density against `rate_ratio` -0.36), and
    area recall is PV-area-weighted, so the "sparse" band behaves like Islamabad.
 2. **National sparse cells do not look like sparse quadrats.** They flag 1.3-1.4% of roofs
    against 0.2-0.3%, because a cell's 0.1-degree average density hides villages that are
-   locally dense, while a sparse quadrat really is farmland. Both estimators match quadrats
-   to cells on these unlike densities.
+   locally dense, while a sparse quadrat really is farmland. Both pricings match quadrats to
+   cells on these unlike densities.
 3. **Probability weighting trusts the score's level.** A small systematic score bias on rural
-   roofs adds up over millions of buildings. Thresholding is immune to that and is biased low
-   instead; neither failure is measured nationally.
+   roofs adds up over millions of buildings. Thresholding is immune to that and biased low
+   instead; neither failure is measured nationally. In the 19 trusted quadrats the level
+   holds: out-of-fold scores sum to 0.89 of the PV-carrying roofs below 400 m&sup2; and 1.03
+   at or above it.
 4. **The random-cell validation is unreviewed** (item 3).
 
-**The decision:** (a) switch Best to probability weighting, floors staying thresholded;
-(b) keep thresholding and show the probability-weighted figure as a stated alternative on
-the atlas; or (c) keep thresholding until the sparse band is measured. Option (c) is the
-status quo, and the measurement says it is the biased choice, not the cautious one.
-
-**What would settle it.**
+**What would settle it,** with the rule declared before measuring:
 
 1. **Map sparse and mid-density quadrats**, imagery date checked before drawing (item 4).
    The eight `*_gap_calib_2km_candidate.geojson` boxes in `data/labels/candidate_quadrats/`
-   target 50-125 bldg/km&sup2;; the 100-1,000 band, where 85% of the change sits, needs boxes
-   too, best drawn by the sampler (item 5). Declared rule before mapping: score them with the
-   current model, no refit, and compare the two pricings on per-quadrat |log| error. Adopt
-   probability weighting if it is closer in a clear majority and its truth-weighted ratio
-   across them stays within 0.5-2.
+   target 50-125 bldg/km&sup2;; the 100-1,000 band, where most of the change sits, needs boxes
+   too, best drawn by the sampler (item 5). Score them with the current model, no refit, and
+   compare the two pricings on per-quadrat |log| error. **Revert to `--weighting threshold`**
+   if thresholding is closer in a clear majority, or if probability weighting's
+   truth-weighted ratio across them falls outside 0.5-2.
 2. **Check the score's level directly in rural cells**: a random, score-stratified sample of a
    few hundred sub-400 m&sup2; roofs in 100-1,000 bldg/km&sup2; cells, reviewed yes/no on recent
    imagery, tests whether the sum of scores matches the count of PV roofs there.
 
-If adopted: re-run `ge400-roof-capacity` then `sub400-capacity` with `--weighting
-probability` into the canonical `data/roofclf_national_with_sppi/pakistan/density/` (keep the
-current outputs as `density_PRE_probability_<date>/`), rebuild the atlas, and update
-`docs/methods/roofclf.md` and CLAUDE.md. Two known gaps in the opt-in path: the size chart's
-object counts become counts of (cell, size bin) groups rather than buildings (totals and the
-map are exact), and the parcel label's ground share is still measured on flagged buildings.
+The two gaps the opt-in path had are closed: the atlas's size chart counts a
+probability-weighted component's rooftop objects as the sum of scores (expected PV roofs)
+rather than as (cell, size bin) rows, and the parcel label's ground share is measured on the
+same score weights. Pre-switch outputs:
+`data/roofclf_national_with_sppi/pakistan/density_PRE_probability_20261025/` and
+`results/pakistan_pv_evidence_atlas_PRE_probability_20261025.html`.
 
 ### 2. Pakistan's segmentation calibration table is stale in four known ways
 
@@ -142,7 +107,8 @@ counts were never written down; the Box 18 refit (seed 20260820) and the area-we
 rescoring (seed 20260920), both in `results/pakistan_roofclf_validation/`, were generated and
 not reviewed. `results/roofclf_random_validation_log.csv` holds the first two batches as 40
 rows with every verdict blank, and the third is not in it at all. The published Best
-therefore rests on an unreviewed rescoring, and items 1 and 2 would move it again on top.
+therefore rests on an unreviewed rescoring, priced since 2026-10-25 by a weighting that leans
+harder on the score's level (item 1), and item 2 would move it again on top.
 Protocol: [roofclf random-cell validation](methods/roofclf-national-validation.md). The
 out-of-domain batch (`results/pakistan_roofclf_validation_outdomain/`) is blocked by stale
 imagery (item 4) and should not hold the others up.

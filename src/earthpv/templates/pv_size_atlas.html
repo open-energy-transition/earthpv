@@ -341,9 +341,11 @@
 
           <dt><span class="tag central">Rooftop, &lt;400 m&sup2;</span> roofclf, cross-checked with SPPI</dt>
           <dd>Below the segmentation model's practical floor, every rooftop's PV is
-          estimated per building. Inside the domain this is roofclf alone, calibrated
-          against hand-mapped quadrats for both how much of a flagged roof is panel and
-          what share of real installations get flagged at all; outside it (no calibration
+          estimated per building. Inside the domain this is roofclf alone, every roof
+          weighted by the classifier's score and calibrated against hand-mapped quadrats for
+          how much panel a roof carries per unit of score and what share of real panel area
+          the scores account for (its installation count is the sum of scores, the expected
+          number of PV roofs); outside it (no calibration
           quadrat in that density range) it falls back to roofclf-AND-SPPI agreement, a
           strict, marked extrapolation carrying neither correction &mdash; the hatched
           portion of the small rooftop bars.</dd>

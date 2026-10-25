@@ -275,7 +275,18 @@ the [experiments register](experiments.md) are optional extras, not alternative 
 
     Restrict the national scoring to cells whose building density matches the
     calibration quadrats, dedupe against existing segmentation candidates and mapped
-    OSM solar, and convert to capacity at the LOQO-measured precision. No GPU.
+    OSM solar, and convert roof area to capacity through the quadrat-measured coverage
+    ratio and area recall. No GPU.
+
+    **Every roof counts in proportion to its score** (`--weighting probability`, the
+    default since 2026-10-25), not only the roofs above the deployment threshold: held
+    out one quadrat at a time, that cut the median error on true sub-400 m&sup2; PV area
+    from 0.386 to 0.094, and the thresholded count booked about an eighth of the mapped
+    PV in sparse quadrats. The output is then one row per cell and size bin rather than
+    one per building. `--weighting threshold` reproduces the figures published before
+    2026-10-25; pass the same value to step 14. The AND-gate floor is thresholded either
+    way. [roofclf](methods/roofclf.md#count-every-roof-by-its-score) has the measurement
+    and what it leaves untested.
 
     **Run step 14 first** (it does not depend on this one). Since 2026-10-20 this step
     dedupes only against candidates whose figure Best actually uses: not oversize blobs
@@ -291,7 +302,8 @@ the [experiments register](experiments.md) are optional extras, not alternative 
 
     Writes three building-level parquets to `data/roofclf_national_with_sppi/<aoi>/
     density/`: `sub400_central_incremental_buildings.parquet` (roofclf alone, the
-    evidence atlas's Best-estimate small-PV component), `sub400_low_incremental_
+    evidence atlas's Best-estimate small-PV component; one row per cell and size bin under
+    the default weighting, with `n_buildings` and `sum_p`), `sub400_low_incremental_
     buildings.parquet` (roofclf AND SPPI agreeing, used as an internal floor on
     Best estimate), and (added
     2026-08-11) `sub400_outdomain_and_gate_incremental_buildings.parquet` (roofclf AND
@@ -309,7 +321,9 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     segmentation's 0.73-0.78 on identical buildings -- segmentation is a weak instrument
     for small PV including small PV on large buildings). Ground-mount is untouched --
     roofclf has no footprint to score there. No GPU. **Run it before step 13**, which reads
-    its output to know where segmentation's rooftop figure is not used.
+    its output to know where segmentation's rooftop figure is not used. Like step 13 it
+    prices every roof by its score by default; `--weighting threshold` restores the
+    flagged-roofs-only count.
 
     ```bash
     pixi run earthpv ge400-roof-capacity --aoi pakistan \

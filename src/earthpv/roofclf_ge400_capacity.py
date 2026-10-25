@@ -53,7 +53,7 @@ def domain_restricted_ge400_roof_capacity(
     n_coverage_boot: int | None = None,
     recall_correct: bool = True,
     aoi: str | None = None,
-    weighting: str = "threshold",
+    weighting: str | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """roofclf-scored, coverage-ratio-weighted capacity for >= 400 m2 rooftop buildings,
     restricted to the density-matched domain (same ~92 cells `sub400_capacity` uses).
@@ -94,6 +94,12 @@ def domain_restricted_ge400_roof_capacity(
     hand-mapped OSM (when `osm_solar_path` given), for the same double-counting reason
     `sub400_capacity`'s own OSM dedup exists: a building OSM already mapped should not
     also count here.
+
+    **Priced by probability (the default since 2026-10-25, `weighting`).** Every in-domain
+    >= `min_area_m2` building counts in proportion to its score, with both tables refit on
+    the same weights, one output row per (cell, size bin); `sub400_capacity.WEIGHTINGS`
+    has the measurement behind it. `weighting="threshold"` counts only the flagged
+    buildings, one row each, and reproduces the figures published before 2026-10-25.
     """
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask
@@ -102,11 +108,12 @@ def domain_restricted_ge400_roof_capacity(
         apply_stratified_area_recall, apply_stratified_coverage_ratio,
         area_recall_by_size_and_density, coverage_ratio_by_size_and_density,
         coverage_ratio_bootstrap_factors,
-        _check_weighting, national_cell_domain, parcel_label_composition,
+        DEFAULT_WEIGHTING, _check_weighting, national_cell_domain, parcel_label_composition,
         probability_weighted_population, quadrat_building_density_km2,
         select_calibrated_quadrats,
     )
 
+    weighting = DEFAULT_WEIGHTING if weighting is None else weighting
     _check_weighting(weighting)
 
     ratio_lo = DEFAULT_RATIO_LO if ratio_lo is None else ratio_lo
@@ -116,7 +123,7 @@ def domain_restricted_ge400_roof_capacity(
     all_cells = pd.read_parquet(cell_density_path)
     in_domain_cells = national_cell_domain(cell_density_path, aoi)
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
-    composition = parcel_label_composition(buildings_path, quadrats, threshold)
+    composition = parcel_label_composition(buildings_path, quadrats, threshold, weighting)
     ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
     stratified = coverage_ratio_by_size_and_density(
@@ -171,9 +178,9 @@ def domain_restricted_ge400_roof_capacity(
             "total_est_mwp_ge400_roof_domain": round(total_mwp, 4),
             "scope": (
                 f"{len(in_domain_cells)} of {len(all_cells)} national cells, every >= "
-                f"{min_area_m2:.0f} m2 building weighted by p_roofclf. NOT the published "
-                "estimator. REPLACES segmentation's est_mwp_rc_roof only in the cells it "
-                "has rows for."
+                f"{min_area_m2:.0f} m2 building weighted by p_roofclf. REPLACES "
+                "segmentation's est_mwp_rc_roof only in the cells it has rows for. NOT a "
+                "national figure on its own."
             ),
         }
         log.info("Domain-restricted >= %.0f m2 rooftop capacity, probability-weighted: "
@@ -258,6 +265,7 @@ def domain_restricted_ge400_roof_capacity(
 
     summary = {
         "method": "domain_restricted_ge400_roof_capacity",
+        "weighting": "threshold",
         "calibration_quadrats": quadrats,
         # See `sub400_capacity.parcel_label_composition`: None under the roof-only label,
         # and under the parcel label the share of this "rooftop" figure that is in fact

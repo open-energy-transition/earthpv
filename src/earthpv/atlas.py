@@ -547,8 +547,16 @@ def _size_distribution(density_dir: Path, sub400_cells_path: Path | None) -> dic
     capacity, so it answers "how many installations of each size" -- the long tail of
     small installations the 400 m2 floor otherwise hides entirely from view.
     """
+    import pyarrow.parquet as pq
+
     bins: list[dict] = []
-    if sub400_cells_path is not None and Path(sub400_cells_path).exists():
+    if (sub400_cells_path is not None and Path(sub400_cells_path).exists()
+            and "sum_p" in pq.read_schema(sub400_cells_path).names):
+        # A probability-weighted component is one row per (cell, size bin); its rows carry
+        # no building sizes finer than those bins, so this histogram cannot be drawn.
+        log.warning("Size histogram: %s is probability-weighted, small bins omitted",
+                    sub400_cells_path)
+    elif sub400_cells_path is not None and Path(sub400_cells_path).exists():
         small = pd.read_parquet(sub400_cells_path, columns=["roof_area_m2"])
         counts = _bin_counts(small["roof_area_m2"].to_numpy(float), _SMALL_BIN_EDGES)
         for lo, hi, n in zip(_SMALL_BIN_EDGES[:-1], _SMALL_BIN_EDGES[1:], counts):
@@ -1577,6 +1585,7 @@ def _evidence_uncertainty(
     seed: int = EVIDENCE_DRAWS_SEED,
     extrapolation_ci90: tuple[float, float] = OUTDOMAIN_EXTRAPOLATION_CI90,
     ground: dict | None = None,
+    roofclf_probability: bool = False,
 ) -> dict:
     """90% intervals for the evidence atlas's two tier totals, composed from every
     uncertainty this pipeline actually measures.
@@ -1787,6 +1796,8 @@ def _evidence_uncertainty(
             "design-based national margin of error",
             "Rule-1 completeness is relative to the mapping imagery's epoch, not the "
             "Sentinel-2 composite's, which biases measured precision and base_rate low",
+            "whether roofclf's score level transfers between density regimes (its "
+            "components sum scores)" if roofclf_probability else
             "roofclf's own threshold transfer between density regimes",
         ],
     }
@@ -1931,7 +1942,7 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
 def _confidence_html(
     cfg, *, total_best: float, best_ci: list, has_extrapolation: bool,
     has_quadrat_bootstrap: bool, n_calib_boxes: int, n_calib_rule1: int,
-    ground_interval: str = "",
+    ground_interval: str = "", roofclf_probability: bool = False,
 ) -> str:
     """The "How confident should you be in this?" section, for ANY country.
 
@@ -1952,7 +1963,9 @@ def _confidence_html(
     - the purposive-sampling and Rule-1-epoch bullets, and the ground-truth paragraph, on
       actually having quadrats the page's figures USE (`used: false` in the config marks a
       registered area nothing draws on yet, which gets its own, weaker sentence);
-    - `cfg.caveats` and `cfg.corroboration` on the AOI having supplied them.
+    - `cfg.caveats` and `cfg.corroboration` on the AOI having supplied them;
+    - the wording of the roofclf corrections, and the score-level caveat, on
+      `roofclf_probability` (its components priced by score, `sub400_capacity.WEIGHTINGS`).
 
     `cfg.ground_truth` replaces the ground-truth paragraph AND suppresses the default
     no-quadrats bullet: a country that explains its own evidence base (again, Germany)
@@ -1976,11 +1989,16 @@ def _confidence_html(
         "margin of error.",
     ]
     if has_quadrat_bootstrap:
+        corrections = (
+            "how much panel a roof carries for each unit of the building classifier's "
+            "confidence, and what share of real panel area that confidence accounts for"
+            if roofclf_probability else
+            "how much of a flagged roof is actually covered in panels, and what share of "
+            "real installations get flagged at all")
         inside.append(
             "<b>How much the small-panel corrections shift depending on which "
-            "neighborhoods were ground-truthed.</b> Two corrections -- how much of "
-            "a flagged roof is actually covered in panels, and what share of real "
-            "installations get flagged at all -- are fit on the same set of "
+            "neighborhoods were ground-truthed.</b> Two corrections -- "
+            + corrections + " -- are fit on the same set of "
             "ground-truthed neighborhoods (\"quadrats\"). This source of "
             "uncertainty is measured by refitting both on random subsets of those "
             "quadrats and seeing how far the answer moves.")
@@ -2045,6 +2063,15 @@ def _confidence_html(
             "transfers here has not itself been measured. That is a different kind of "
             "uncertainty from the range above, and no amount of arithmetic converts "
             "one into the other.")
+    if roofclf_probability:
+        outside.append(
+            "<b>The building classifier's confidence is taken at face value.</b> Every "
+            "roof counts in proportion to how likely the classifier thinks it carries "
+            "panels, rather than only the roofs above a cut-off. In the hand-mapped areas "
+            "that came far closer to the true panel area, above all in sparse, rural ones, "
+            "where a cut-off counted about an eighth of the mapped panels. The cost is that "
+            "a small, consistent lean in that confidence on village roofs would add up over "
+            "millions of buildings, and the hand-mapped areas cannot yet rule that out.")
     outside.extend(cfg.caveats)
 
     ground_truth = cfg.ground_truth
@@ -2808,6 +2835,17 @@ def build_evidence_atlas(
         "small_outdomain": float(grid.small_outdomain.sum()),
         "small_ground": float(grid.small_ground.sum()),
     }
+    central_summary = _capacity_summary_for(
+        central_buildings_path, "domain_restricted_sub400_capacity")
+    ge400_summary = _capacity_summary_for(
+        ge400_roof_buildings_path, "domain_restricted_ge400_roof_capacity")
+    # How roofclf's scores were summed into its two Best components
+    # (`sub400_capacity.WEIGHTINGS`); a summary without the key predates 2026-10-25's
+    # switch to probability weighting and was thresholded.
+    roofclf_weighting = {
+        k: d.get("weighting", "threshold")
+        for k, d in (("small_central", central_summary), ("ge400_roof", ge400_summary)) if d
+    }
     uncertainty = _evidence_uncertainty(
         density_dir=density_dir, meta=meta, kwp_mod=kwp_mod, kwp_land=kwp_land,
         components=unc_components,
@@ -2815,18 +2853,15 @@ def build_evidence_atlas(
             "small_low": _capacity_summary_for(
                 low_buildings_path, "domain_restricted_and_gate_sub400_capacity"
             ).get("coverage_ratio_bootstrap", {}),
-            "small_central": _capacity_summary_for(
-                central_buildings_path, "domain_restricted_sub400_capacity"
-            ).get("coverage_ratio_bootstrap", {}),
+            "small_central": central_summary.get("coverage_ratio_bootstrap", {}),
             "small_outdomain": _capacity_summary_for(
                 sub400_outdomain_buildings_path, "out_of_domain_and_gate_sub400_capacity"
             ).get("coverage_ratio_bootstrap", {}),
-            "ge400_roof": _capacity_summary_for(
-                ge400_roof_buildings_path, "domain_restricted_ge400_roof_capacity"
-            ).get("coverage_ratio_bootstrap", {}),
+            "ge400_roof": ge400_summary.get("coverage_ratio_bootstrap", {}),
         },
         total_verified=total_verified, total_best=total_best,
         ground=ground_unc,
+        roofclf_probability="probability" in roofclf_weighting.values(),
     )
     if ground_status["measured"]:
         ground_status["interval"] = uncertainty["small_ground_interval"]
@@ -2883,6 +2918,7 @@ def build_evidence_atlas(
                 "bins": absorption_rows,
             },
             "kwp_per_m2": kwp_mod,
+            "roofclf_weighting": roofclf_weighting,
             "n_calib_boxes": len(calib_boxes),
             "n_calib_rule1": n_calib_rule1,
             "mwp_verified_ci": uncertainty["mwp_verified_ci"],
@@ -2973,6 +3009,7 @@ def build_evidence_atlas(
             n_calib_boxes=data["totals"]["n_calib_boxes"],
             n_calib_rule1=data["totals"]["n_calib_rule1"],
             ground_interval=uncertainty.get("small_ground_interval", ""),
+            roofclf_probability="probability" in roofclf_weighting.values(),
         ),
     }.items():
         html = html.replace(key, value)
@@ -3002,17 +3039,27 @@ SIZE_BIN_EDGES_M2 = [0.0, 100.0, 400.0, 1000.0, 5000.0, 20000.0, 100000.0, float
 
 def _size_bin_sum(
     area_m2: np.ndarray, mwp: np.ndarray, edges: list[float] = SIZE_BIN_EDGES_M2,
+    n_weight: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Sum `mwp` and count objects into fixed-width `edges` bins by `area_m2`."""
+    """Sum `mwp` and count objects into fixed-width `edges` bins by `area_m2`. `n_weight`
+    replaces the count of rows with a per-row object count (`_roofclf_object_counts`)."""
     n_bins = len(edges) - 1
     idx = np.digitize(area_m2, edges[1:-1], right=False)
     sums = np.zeros(n_bins)
-    counts = np.zeros(n_bins, dtype=int)
+    counts = np.zeros(n_bins)
     for i in range(n_bins):
         m = idx == i
         sums[i] = mwp[m].sum()
-        counts[i] = int(m.sum())
+        counts[i] = float(n_weight[m].sum()) if n_weight is not None else float(m.sum())
     return sums, counts
+
+
+def _roofclf_object_counts(df: pd.DataFrame) -> np.ndarray | None:
+    """How many PV roofs each row of a roofclf component stands for. A thresholded
+    component has one row per flagged building (None: count rows). A probability-weighted
+    one has one row per (cell, size bin), and the counterpart of "flagged buildings" is the
+    sum of their scores, i.e. the expected number of PV-carrying roofs (`sum_p`)."""
+    return df["sum_p"].to_numpy(float) if "sum_p" in df.columns else None
 
 
 def _size_bin_display_labels(edges: list[float] = SIZE_BIN_EDGES_M2) -> list[str]:
@@ -3105,12 +3152,13 @@ def _size_distribution_data(
     n_bins = len(edges) - 1
     roof_mwp = np.zeros(n_bins)
     ground_mwp = np.zeros(n_bins)
-    roof_n = np.zeros(n_bins, dtype=int)
-    ground_n = np.zeros(n_bins, dtype=int)
+    roof_n = np.zeros(n_bins)
+    ground_n = np.zeros(n_bins)
     extrap_mwp = np.zeros(n_bins)  # the sub-400 out-of-domain slice, WITHIN roof_mwp
 
-    def _size_bin_add(area_v: np.ndarray, mwp_v: np.ndarray, roof: bool) -> None:
-        s, n = _size_bin_sum(area_v, mwp_v, edges)
+    def _size_bin_add(area_v: np.ndarray, mwp_v: np.ndarray, roof: bool,
+                      n_weight: np.ndarray | None = None) -> None:
+        s, n = _size_bin_sum(area_v, mwp_v, edges, n_weight)
         if roof:
             roof_mwp[:] += s; roof_n[:] += n
         else:
@@ -3222,7 +3270,8 @@ def _size_distribution_data(
         )
         ge400_roof_kwp = ge400["est_kwp_ge400_roof"].to_numpy(float) - ge400_ground_kwp
         area_v = ge400["roof_area_m2"].to_numpy(float)
-        _size_bin_add(area_v, ge400_roof_kwp / 1000.0, roof=True)
+        _size_bin_add(area_v, ge400_roof_kwp / 1000.0, roof=True,
+                      n_weight=_roofclf_object_counts(ge400))
         s, _ = _size_bin_sum(area_v, ge400_ground_kwp / 1000.0, edges)
         ground_mwp[:] += s
 
@@ -3236,7 +3285,8 @@ def _size_distribution_data(
         )
         central_roof_kwp = central["est_kwp_sub400"].to_numpy(float) - central_ground_kwp
         area_v = central["roof_area_m2"].to_numpy(float)
-        _size_bin_add(area_v, central_roof_kwp / 1000.0, roof=True)
+        _size_bin_add(area_v, central_roof_kwp / 1000.0, roof=True,
+                      n_weight=_roofclf_object_counts(central))
         s, _ = _size_bin_sum(area_v, central_ground_kwp / 1000.0, edges)
         ground_mwp[:] += s
         central_by_cell = _join_buildings_to_grid_cells(central, "est_kwp_sub400", grid) / 1000.0
@@ -3352,8 +3402,8 @@ def _size_distribution_data(
             "roof_mwp": round(float(roof_mwp[i]), 2),
             "ground_mwp": round(float(ground_mwp[i]), 2),
             "roof_extrapolated_mwp": round(float(extrap_mwp[i]), 2),
-            "roof_n": int(roof_n[i]),
-            "ground_n": int(ground_n[i]),
+            "roof_n": int(round(roof_n[i])),
+            "ground_n": int(round(ground_n[i])),
         }
         for i in range(n_bins)
     ]

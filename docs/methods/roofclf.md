@@ -6,7 +6,11 @@
     model's 400 m<sup>2</sup> detection floor, and (inside its calibrated domain) it now
     also replaces segmentation's own rooftop estimate above that floor. Numbers on this
     page come from the 30-quadrat fit in `data/roofclf/summary.json` and the capacity run
-    behind the published [evidence atlas](../results/capacity.md).
+    behind the published [evidence atlas](../results/capacity.md). Since 2026-10-25 that
+    run counts every roof in proportion to its score instead of only the roofs above a
+    threshold, which moved Best estimate from 24,438 to 34,589 MWp:
+    [Count every roof by its score](#count-every-roof-by-its-score) says why, and what it
+    leaves untested.
 
 ## What it is, in one paragraph
 
@@ -44,8 +48,8 @@ shape is gone and colour is all that is left.
 
 ## The flow, end to end
 
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.874 AUC and 0.831 within roof-size band, and a deployment threshold of 0.2535 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 9,202 plus 7,405 MWp, floored per cell at hand-mapped OSM plus the stricter 2,647 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 27 folds at 0.874 AUC and 0.831 within roof-size band, and a deployment threshold of 0.2535 at precision 0.50 and recall 0.63. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 9,202 plus 7,405 MWp, floored per cell at hand-mapped OSM plus the stricter 2,647 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 30 folds at 0.868 AUC and 0.819 within roof-size band, and a deployment threshold of 0.2446 at precision 0.50 and recall 0.66 that sets the floor and the leads. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, weight each roof by its score and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 24,206 plus 7,503 MWp, both priced by score, floored per cell at hand-mapped OSM plus the stricter, thresholded 3,784 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 30 folds at 0.868 AUC and 0.819 within roof-size band, and a deployment threshold of 0.2446 at precision 0.50 and recall 0.66 that sets the floor and the leads. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, weight each roof by its score and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 24,206 plus 7,503 MWp, both priced by score, floored per cell at hand-mapped OSM plus the stricter, thresholded 3,784 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
 
 The six stages below follow the chart from top to bottom.
 
@@ -322,14 +326,21 @@ rather than raising.
 
 ## 4. The deployment threshold
 
-A national scorer needs one operating point, and it is chosen for **precision**, not for
-balanced sensitivity: this signal contributes to a capacity number that no human reviews,
-so a false positive is expensive here in a way it is not in the mapping-leads queue.
+Wherever a building needs a yes or a no, one operating point is used, and it is chosen for
+**precision**, not for balanced sensitivity: a false positive is expensive in a figure no
+human reviews in a way it is not in the mapping-leads queue.
 
-`p_roofclf >= 0.2511` is the smallest threshold holding precision at 0.50 on the pooled
-out-of-fold scores, and it catches 63% of PV-carrying buildings there. Both numbers are
-still leave-one-quadrat-out measurements: one threshold instead of 27 per-fold ones, but
+`p_roofclf >= 0.2446` is the smallest threshold holding precision at 0.50 on the pooled
+out-of-fold scores, and it catches 66% of PV-carrying buildings there. Both numbers are
+still leave-one-quadrat-out measurements: one threshold instead of 30 per-fold ones, but
 no building was ever scored by a model that saw its own quadrat.
+
+**Since 2026-10-25 the threshold no longer decides what Best estimate counts.** It defines
+the roofclf-AND-SPPI floor, where two detectors agreeing on a building is a yes/no rule by
+design, and it picks the buildings for mapping leads and for the
+[random-cell validation](roofclf-national-validation.md). The two Best-estimate components
+count every roof in proportion to its score instead; stage 6,
+[Count every roof by its score](#count-every-roof-by-its-score), says why.
 
 The threshold moves whenever the quadrat set changes -- it has ranged from about 0.24 to
 0.46 across refits as quadrats were added or dropped. Anything downstream that
@@ -362,9 +373,8 @@ plausible-looking false-positive populations rather than crashing:
 
 ## 6. From a probability to a capacity number
 
-A flagged building is not yet a megawatt. Three corrections stand between them, and each
-one exists because skipping it produced a number that was wrong by a factor rather than by
-a few percent.
+A score is not yet a megawatt. Four steps stand between them, and each one exists because
+skipping it produced a number that was wrong by a factor rather than by a few percent.
 
 **Restrict the domain.** roofclf only counts buildings in cells whose building density
 falls inside the range spanned by the calibration quadrats themselves, currently 48.5 to
@@ -392,7 +402,7 @@ buildings/km<sup>2</sup> and grew the domain from 646 to 1,680 cells; a third,
 Bahawalnagar Rural (hand-drawn in JOSM, own density 123.5 buildings/km<sup>2</sup>), pushed
 it down again to 1,868 cells; a fourth, Nasirabad Rural (this project's first confirmed-zero-installation quadrat, own density 48.5 buildings/km<sup>2</sup>), pushed it down again to 2,957 cells the same day. Tank Rural, added alongside Nasirabad Rural, measured 55.75 buildings/km<sup>2</sup> -- inside the widened range, but not itself the new floor.
 
-**Remove what is already counted.** A flagged building within 30 m of an existing
+**Remove what is already counted.** A building within 30 m of an existing
 segmentation candidate, or of a mapped OpenStreetMap installation, is dropped. Anything
 whose own footprint is at least 400 m<sup>2</sup> is dropped from the sub-400 figure too,
 since that is a matching gap rather than small-PV signal. The OSM half of this was missing
@@ -401,10 +411,12 @@ until 2026-08-06 and was double-counting about 3% of the capacity.
 **Convert area honestly.** Panels cover part of a roof, not all of it. Multiplying flagged
 roof area by precision alone, which was the original approach, corrects for false positives
 and silently assumes full coverage. Measured against the quadrats' own mapped
-`pv_area_true_m2`, real coverage is about 0.19 of a flagged footprint for roofclf alone and
+`pv_area_true_m2`, real coverage was about 0.19 of a flagged footprint for roofclf alone and
 0.27 where roofclf and SPPI agree, so the original figures were 2.4 to 2.7 times too high.
 The coverage ratio is now fitted per roof-size bin and per building-density band, then
-0.18 kWp per m<sup>2</sup> of module converts covered area to capacity.
+0.18 kWp per m<sup>2</sup> of module converts covered area to capacity. Since 2026-10-25 the
+ratio is fitted on score-weighted roof area (next subsection), the population it is then
+applied to.
 
 The quadrat ground truth shows directly what that ratio is pricing, and why it must be
 fitted by size rather than pooled:
@@ -423,18 +435,124 @@ carries an array **below** it (median 127 m<sup>2</sup> of PV on a roughly 485
 m<sup>2</sup> roof), so segmentation can miss a large building's array outright without
 that being evidence the roof is empty.
 
+### Count every roof by its score
+
+**What changed on 2026-10-25.** Until then both Best-estimate components were
+classify-and-count: a building with `p_roofclf >= 0.2446` counted in full, a building below
+it not at all, and the coverage ratio and area recall then scaled flagged roof area to true
+PV area. Now every in-domain building counts in proportion to its score. A roof at 0.10
+counts as a tenth of a PV roof, a roof at 0.80 as four fifths. Both corrections are refitted
+on the same weights: the coverage ratio becomes the score-weighted true PV area over the
+score-weighted roof area in each size bin and density band, and the area recall the share of
+true PV area that the score-weighted roofs carry. The classifier, its scores, the domain and
+every exclusion are unchanged; only the summing changes.
+
+**Why.** Held out one quadrat at a time, in the chain's own structure (size deciles by two
+density bands, the 19 trusted quadrats; `scripts/roofclf_soft_capacity_check.py`,
+`results/roofclf_soft_capacity.json`), here is the error on each held-out quadrat's true
+sub-400 m<sup>2</sup> PV area:
+
+| Pricing, same scores | Median error | IQR | Better than thresholded |
+| --- | --- | --- | --- |
+| No classifier (roof area times ratio) | 0.518 | 0.23-1.84 | -- |
+| Thresholded, published until 2026-10-25 | 0.386 | 0.16-0.83 | -- |
+| **Probability-weighted, published** | **0.094** | 0.07-0.67 | 20 of 29 quadrats, Wilcoxon p = 0.0035 |
+
+It holds for four other classifier variants (median 0.18-0.24 against 0.28-0.38, better in
+18 to 23 of 29) and for the roof-only label. Thresholding beats the no-classifier null in only
+16 of 29 quadrats.
+
+The reason is the `rate_ratio` problem from stage 3, seen from the other side. The score's
+level barely moves between places, so a cut chosen for precision 0.5 on pooled scores
+admits almost nobody where adoption is rare: below 300 buildings/km<sup>2</sup> the mean
+score matches the true adoption rate (0.020 against 0.020), yet only 0.2-0.3% of roofs clear
+the threshold. Thresholding books **12%** of the mapped PV in those quadrats and probability
+weighting **92%** (truth-weighted). The coverage ratio cannot repair that, because it is
+fitted on the handful of flagged roofs in exactly those strata. Summing scores keeps what the
+cut throws away, which is also what the model was built for: stage 3 chose a calibrated
+logistic regression because its output is summed.
+
+**What it changed in Pakistan**, through the full chain and the atlas:
+
+| | Thresholded (until 2026-10-25) | Probability-weighted (published) |
+| --- | --- | --- |
+| Sub-400 m<sup>2</sup>, roofclf alone | 13,262.6 MWp | 24,206.3 MWp |
+| At or above 400 m<sup>2</sup>, roofclf rooftop replacement | 8,256.7 MWp | 7,503.2 MWp |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing (floor) | 3,784.3 MWp | 3,784.3 MWp |
+| **Best estimate** | 24,438.3 MWp (90% 20,894-33,666) | **34,588.8 MWp (90% 29,308-41,736)** |
+| Verified | 6,994.1 MWp | 6,994.1 MWp |
+| Best as a share of panels imported from China (57.6 GWp) | 42% | 60% |
+
+**Where it lands.** 80% of the +10,150 MWp is in cells of 100-1,000
+buildings/km<sup>2</sup>, the least calibrated part of the domain (Best there rises 65% in
+cells of 100-300 and 45% in cells of 300-1,000); the densest cells, 1,000-5,258, rise 21%,
+and cells outside the domain not at all. Punjab takes +6.1 GWp (+52%). It is not simply more
+of everything: below 400 m<sup>2</sup> the scores add up to 2.89 million expected PV roofs
+where the threshold admitted 1.73 million, while at or above 400 m<sup>2</sup> they add up
+to 155,536 where it admitted 238,466, so the larger-roof component falls 9%. Checked against
+the independent rooftop-solar reference on [the capacity map](../results/capacity.md), which
+this project never trains on, the new geography agrees better: Spearman 0.868 to 0.882
+across its 3,303 hexagons, and 0.773 to 0.861 where this project's estimate is non-zero.
+
+**The floor stays thresholded.** The roofclf-AND-SPPI population is a floor because two
+detectors that share no training data both said yes about the same building. Weighting one
+of them by its score would let the floor extrapolate, so `sub400_capacity` refuses
+probability weighting for that gate.
+
+**What it trusts, and what is not yet measured.** The same four reasons held the switch back
+from 2026-10-22, when it was measured
+([the capacity chain is a quantification problem](../experiments.md#the-capacity-chain-is-a-quantification-problem-2026-10-22)),
+to 2026-10-25, and they remain open risks:
+
+1. **The gain sits where calibration is thinnest.** Four trusted quadrats lie below 1,000
+   buildings/km<sup>2</sup> (Bahawalnagar Rural, Layyah, Lodhran, Multan), and the six quadrats
+   below 300 buildings/km<sup>2</sup> hold 3,822 m<sup>2</sup> of mapped sub-400 m<sup>2</sup>
+   PV between them.
+2. **National sparse cells do not look like sparse quadrats.** They flag 1.3-1.4% of roofs
+   against 0.2-0.3%, because a cell's 0.1-degree average density hides villages that are
+   locally dense, while a sparse quadrat really is farmland.
+3. **It takes the score's level at face value.** A small, consistent lean in the score on
+   rural roofs adds up over tens of millions of buildings. Thresholding is immune to that
+   and biased low instead; neither failure has been measured nationally. Where it can be
+   measured, the level holds: in the 19 trusted quadrats the out-of-fold scores of
+   sub-400 m<sup>2</sup> buildings sum to 12,620 against 14,129 roofs that carry PV (0.89),
+   and at or above 400 m<sup>2</sup> to 2,193 against 2,127 (1.03).
+4. **The random-cell validation of the current scoring is unreviewed**
+   ([roofclf random-cell validation](roofclf-national-validation.md)).
+
+Two measurements would settle it, with the rule declared before either is made. Map sparse
+and mid-density quadrats (imagery date checked before drawing) and score them with the
+current model, no refit: if thresholding is closer on per-quadrat |log| error in a clear
+majority, or probability weighting's truth-weighted ratio across them falls outside 0.5-2,
+the default goes back to thresholding. And review a random, score-stratified sample of a few
+hundred sub-400 m<sup>2</sup> roofs in cells of 100-1,000 buildings/km<sup>2</sup> on recent
+imagery, to test whether the sum of scores there matches the count of PV roofs.
+
+**Reproducing the thresholded figures.** `--weighting threshold` on both
+`ge400-roof-capacity` and `sub400-capacity` restores the old count; rerun on 2026-10-25 it
+reproduced every published component, bootstrap interval and atlas total exactly (Best
+24,438.3 MWp). The two weightings also differ in output shape. A probability-weighted
+component carries one row per cell and size bin (with `n_buildings` and `sum_p`), because
+pricing all 68 million in-domain buildings one row each would not fit in memory downstream.
+Per-cell and per-size-bin sums are exact, and the atlas's size chart counts its rooftop
+objects as the sum of scores, the expected number of PV roofs. The parcel label's
+ground-mount share is measured on the same score weights.
+
 ## Where the numbers land
 
-| Component | Population | MWp |
-| --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | Internal floor on Best estimate | 3,784 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | Best estimate | 13,263 |
-| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | Best estimate | 8,257 |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | Not published (dropped 2026-08-15) | 189 |
+| Component | Pricing | Population | MWp |
+| --- | --- | --- | --- |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | thresholded | Internal floor on Best estimate | 3,784 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | by score | Best estimate | 24,206 |
+| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | by score | Best estimate | 7,503 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | thresholded | Not published (dropped 2026-08-15) | 189 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 24,438.3 MWp (90%
-range 20,894 to 33,666)** -- the first three rows only; 24,330.0 until 2026-10-20, when
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 34,588.8 MWp (90%
+range 29,308 to 41,736)** -- the first three rows only. It was 24,438.3 MWp (20,894 to
+33,666) until 2026-10-25, when the two Best-estimate rows switched from counting the roofs
+above the threshold to counting every roof by its score (13,263 and 8,257 before; see
+[Count every roof by its score](#count-every-roof-by-its-score)), and 24,330.0 until 2026-10-20, when
 OSM-mapped misses stopped being counted twice and the two sub-400 m<sup>2</sup> rows stopped
 dropping roofs next to a segmentation detection Best does not use (13,231 and 3,761 before). The fourth was dropped from the
 published atlas on 2026-08-15 (see the last bullet below); its capacity function and CLI
@@ -449,10 +567,11 @@ quadrats -- Attock, Layyah, Lodhran, `docs/issues/pakistan-calibration-boxes.md`
 into a 30-quadrat refit.)
 
 The two Best-estimate roofclf rows are **recall-corrected as of 2026-08-15**: the coverage
-ratio prices the PV on roofs roofclf flagged, and dividing by the measured share of true
-mapped PV area that lands on a flagged roof (0.809 sub-400 m<sup>2</sup>, 0.984 at or above
-400 m<sup>2</sup>, per size bin and density stratum) extends that to the roofs it missed --
-the same correction the segmentation half has always used. The floor row is deliberately
+ratio prices the PV the scores account for, and dividing by the measured share of true
+mapped PV area that the score-weighted roofs carry (pooled over the trusted quadrats 0.517
+sub-400 m<sup>2</sup> and 0.867 at or above 400 m<sup>2</sup>, fitted per size bin and density
+stratum; 0.834 and 0.982 for flagged roofs under the old count) extends that to the PV they
+miss -- the same correction the segmentation half has always used. The floor row is deliberately
 left uncorrected, because a floor that extrapolates to installations neither detector saw
 is not a floor. See [the capacity map](../results/capacity.md#the-area-recall-correction)
 for the full derivation and the three ways the correction is a lower bound on itself.
@@ -509,10 +628,13 @@ pixi run earthpv roofclf-score-national --aoi pakistan
 # 3. Essential, not optional: validate against randomly drawn cells in JOSM.
 pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
 
-# 4. Turn probabilities into capacity. Both are CPU only and take minutes, because the
-#    domain restriction means only the matched cells are ever read.
-pixi run earthpv sub400-capacity     --aoi pakistan --osm-solar <national OSM solar pull>
+# 4. Turn probabilities into capacity, ge400 first (sub400 reads its domain). CPU only;
+#    priced by score by default, which reads every in-domain building: about 6 minutes
+#    for ge400 and 40 for sub400 in Pakistan. sub400 peaked near 7 GB but was killed
+#    under a 12 GB cgroup cap once, so give it 20 GB. --weighting threshold on both
+#    restores the flagged-roofs-only count published before 2026-10-25.
 pixi run earthpv ge400-roof-capacity --aoi pakistan --osm-solar <national OSM solar pull>
+pixi run earthpv sub400-capacity     --aoi pakistan --osm-solar <national OSM solar pull>
 ```
 
 Then rebuild the evidence atlas from the building-level parquets those two steps write:

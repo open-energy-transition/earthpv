@@ -3021,6 +3021,10 @@ out geom;</div>
     // `_evidence_uncertainty`) -- drop the empties, so a run without, say, the
     // out-of-domain extrapolation shows no slice for it.
     const comp = (k) => C[k] || {mwp: 0, ci: null};
+    // How roofclf's scores were summed (`sub400_capacity.WEIGHTINGS`); absent on pages built
+    // before 2026-10-25, which were thresholded.
+    const byScore = (k) => ((T.roofclf_weighting || {})[k] === "probability"
+      ? ", every roof weighted by its score" : "");
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
     const best = [
       { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
@@ -3047,10 +3051,12 @@ out geom;</div>
           + "scaled up for the installations it misses, less the misses already counted from the map", size: "≥ 400 m²" },
       { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
         short: "Satellite roofclf, rooftop ≥ 400 m²",
-        label: "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain", size: "≥ 400 m²" },
+        label: "roofclf - ≥ 400 m² rooftop" + byScore("ge400_roof")
+          + ", replacing segmentation inside the calibrated domain", size: "≥ 400 m²" },
       { key: "small_central", method: "roofclf", placement: "roof", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
         short: "Satellite roofclf, rooftop < 400 m²",
-        label: "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated", size: "< 400 m²" },
+        label: "roofclf alone - sub-400 m² rooftop" + byScore("small_central")
+          + ", coverage ratio and recall, density-calibrated", size: "< 400 m²" },
       { key: "small_outdomain", method: "sppi", placement: "roof", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
         short: "Satellite roofclf + SPPI, < 400 m², extrapolated",
         label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain", size: "< 400 m²" },

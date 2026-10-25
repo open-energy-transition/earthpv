@@ -329,9 +329,10 @@ domain** (`roofclf_ge400_capacity.py`, `earthpv ge400-roof-capacity`): segmentat
 installation size relative to its building, so a large building with a small array reads as a
 miss. Outside the domain, segmentation's own `est_mwp_rc_roof` remains the only number.
 
-**The coverage ratio** (true mapped PV area / flagged roof area) **is measured per building-size
-decile AND per density stratum** (`sub400_capacity.coverage_ratio_by_size_and_density`, shared by
-sub-400 central, sub-400 AND-gate and the ≥ 400 m² replacement). Its uncertainty comes from
+**The coverage ratio** (true mapped PV area / score-weighted roof area, or flagged roof area
+under `--weighting threshold`) **is measured per building-size decile AND per density
+stratum** (`sub400_capacity.coverage_ratio_by_size_and_density`, shared by sub-400 central,
+sub-400 AND-gate and the ≥ 400 m² replacement). Its uncertainty comes from
 **resampling calibration quadrats**, not buildings (quadrat composition is what moves these
 numbers): 200 bootstrap replicates, with one replicate index shared across all roofclf atlas
 components (`sub400_capacity.COVERAGE_BOOTSTRAP_SEED`).
@@ -343,6 +344,20 @@ area recall are refit inside the SAME bootstrap replicates so their dependent er
 multiplied as if independent. **Deliberately NOT applied to either AND-gate tier**: those are
 floors. `--no-recall-correct` reproduces the uncorrected figures; `--coverage-boot N` (default
 200; 0 disables and narrows the interval).
+
+**roofclf's Best components are priced by probability, not by a threshold (2026-10-25)**
+(`sub400_capacity.WEIGHTINGS`, `--weighting`, default `probability`). Every in-domain building
+counts by its `p_roofclf`, with coverage ratio and area recall refit on the same weights, and
+the output is one row per (cell, size bin) carrying `n_buildings` and `sum_p`. Leave-one-quadrat-
+out it cut the median sub-400 m² PV-area error 0.386 -> 0.094 (20 of 29); thresholding booked
+12% of mapped PV in quadrats below 300 bldg/km². What it trusts instead is the score's LEVEL in
+sparse national cells, which is unmeasured (open question 1 holds the declared revert rule).
+**The AND-gate floors stay thresholded** (`_check_weighting` refuses probability with SPPI),
+and the fitting primitives (`coverage_ratio_by_size`, `area_recall_by_size` and their
+stratified and bootstrap wrappers) keep `"threshold"` as their own default, so a new caller
+passes `weighting` explicitly. Give `ge400-roof-capacity` and `sub400-capacity` the same
+`--weighting`; `threshold` reproduces the pre-2026-10-25 figures. The atlas records it in
+`totals.roofclf_weighting` and counts the size chart's roofclf objects as `sum_p`.
 
 **The parcel label (`roof-classifier --parcel-label`) is the production label.** It adds mapped
 PV within `YARD_RING_M` (20 m) of a footprint, attributed whole to the nearest building, for
@@ -395,17 +410,18 @@ to the uncertainty.
 
 **Pakistan's current published figures.** Segmentation `est_mwp_rc` **4,051.9 MWp** (rooftop
 2,916.3, ground 1,135.6). roofclf (30 quadrats, parcel label, area-weighted zonal means,
-recall-corrected): sub-400 central **13,262.6 MWp**, sub-400 AND-gate (floor, uncorrected)
-**3,784.3 MWp**, ≥ 400 m² rooftop replacement **8,256.7 MWp**; median LOQO fold AUC 0.8682,
-within-size 0.8193, deployment threshold 0.2446. Atlas: **Best 24,438.3 MWp (90% CI
-20,894-33,666), Verified 6,994.1 MWp (90% CI 6,041-9,091)**. `check-density` fails 3 regions on
-single-cell concentration (KP, Balochistan, ICT), checked genuine (the calibration quadrats'
-own cities) and published per standing precedent. **The mandatory random validations of the
-last three rescorings (seeds 20260817, 20260820, 20260920; tiles in
+recall-corrected, probability-weighted since 2026-10-25): sub-400 central **24,206.3 MWp**,
+sub-400 AND-gate (floor, thresholded, uncorrected) **3,784.3 MWp**, ≥ 400 m² rooftop replacement
+**7,503.2 MWp**; median LOQO fold AUC 0.8682, within-size 0.8193, deployment threshold 0.2446.
+Atlas: **Best 34,588.8 MWp (90% CI 29,308-41,736), Verified 6,994.1 MWp (90% CI 6,041-9,091)**
+(thresholded until 2026-10-25: Best 24,438.3, 90% 20,894-33,666). `check-density` fails 3 regions
+on single-cell concentration (KP, Balochistan, ICT), checked genuine (the calibration quadrats'
+own cities) and published per standing precedent. **The mandatory random validations of the last
+three rescorings (seeds 20260817, 20260820, 20260920; tiles in
 `results/pakistan_roofclf_parcel_validation/` and `results/pakistan_roofclf_validation/`) have
-NOT been reviewed**: `results/roofclf_random_validation_log.csv` has 40 rows with blank
-verdicts, so the published figure rests on an unreviewed rescoring (open question 3). Pre-change outputs are kept
-beside the canonical paths with `_PRE_<change>_<date>` suffixes.
+NOT been reviewed**: `results/roofclf_random_validation_log.csv` has 40 rows with blank verdicts,
+so the published figure rests on an unreviewed rescoring (open question 3). Pre-change outputs
+are kept beside the canonical paths with `_PRE_<change>_<date>` suffixes.
 
 **Overture publishes a coastal admin division twice** (land, and land plus territorial waters).
 **Keep the LAND polygon, the SMALLER of a nested pair** -- "keep the largest" picks the wrong one
@@ -828,7 +844,7 @@ QUEUE first when removing compute markers.
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
-| Pakistan | `v3_combined_india` | 6,994.1 / 24,438.3 | roofclf half; see "Density stage" |
+| Pakistan | `v3_combined_india` | 6,994.1 / 34,588.8 | roofclf half, probability-weighted; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; Silver |
 | France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf |
 | India | `v5_combined_france` | 67,592.6 / 72,271.1 | v10 lost the Gujarat holdout |

@@ -36,7 +36,10 @@ one national number:
 - **Rooftop, &ge;400 m&sup2;** -- roofclf's own building-level estimate inside the
   density-matched domain, segmentation's recall-corrected candidates outside it. A
   building is counted by exactly one of the two per cell, never both.
-- **Rooftop, &lt;400 m&sup2;** -- roofclf alone inside the density-matched domain. The
+- **Rooftop, &lt;400 m&sup2;** -- roofclf alone inside the density-matched domain, every
+  roof weighted by its score since 2026-10-25 (as is the &ge;400 m&sup2; roofclf estimate),
+  so its installation count is the sum of scores, the expected number of PV-carrying roofs,
+  rather than a count of flagged buildings. The
   roofclf-AND-SPPI agreement outside that domain was dropped from both this page and the
   main atlas on 2026-08-15 (it was the one component not measured where it was applied);
   passing `--sub400-outdomain-cells` still restores it, as a marked extrapolation drawn

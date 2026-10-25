@@ -151,7 +151,7 @@ def density_regime_precision(
 
 
 def parcel_label_composition(
-    buildings_path: Path, quadrats: list[str], threshold: float
+    buildings_path: Path, quadrats: list[str], threshold: float, weighting: str = "threshold",
 ) -> dict | None:
     """What the parcel label actually added, on the population the coverage ratio is fit on.
 
@@ -168,18 +168,32 @@ def parcel_label_composition(
     area by the same bias, so the ratio transfers), but only the ground term makes the
     "rooftop" capacity line partly ground-mount. `yard_ground_share_of_flagged` is the
     number to quote for that, and it is what keeps the atlas's placement split honest.
+
+    `weighting="probability"` measures the same shares on every building weighted by its
+    out-of-fold score, the population a probability-weighted component prices; the keys
+    keep their `_of_flagged` names so readers need no second schema.
     """
+    _check_weighting(weighting)
     df = gpd.read_parquet(buildings_path)
     if "pv_area_yard_m2" not in df.columns:
         return None
     sub = df[df.quadrat.isin(quadrats)]
-    flagged = sub[sub.p_oof.to_numpy(float) >= threshold]
-    total = float(flagged.pv_area_true_m2.sum())
-    ground = float(flagged.pv_area_yard_ground_m2.sum())
-    overhang = float(flagged.pv_area_yard_overhang_m2.sum())
+    if weighting == "threshold":
+        sub = sub[sub.p_oof.to_numpy(float) >= threshold]
+        w = 1.0
+    else:
+        w = sub.p_oof.fillna(0.0)
+
+    def wsum(col: str) -> float:
+        return float((sub[col] * w).sum())
+
+    total = wsum("pv_area_true_m2")
+    ground = wsum("pv_area_yard_ground_m2")
+    overhang = wsum("pv_area_yard_overhang_m2")
     return {
+        "weighting": weighting,
         "flagged_pv_area_m2": round(total, 1),
-        "roof_m2": round(float(flagged.pv_area_roof_m2.sum()), 1),
+        "roof_m2": round(wsum("pv_area_roof_m2"), 1),
         "yard_ground_tagged_m2": round(ground, 1),
         "yard_rooftop_overhang_m2": round(overhang, 1),
         "yard_ground_share_of_flagged": round(ground / total, 4) if total else 0.0,
@@ -187,19 +201,28 @@ def parcel_label_composition(
     }
 
 
-# Quantile bin count / minimum flagged buildings per bin for `coverage_ratio_by_size` --
-# see that function's docstring for why quantile (equal-count) bins, not equal-width ones.
-# How a building's roofclf score enters the capacity sum (2026-10-22). "threshold" is the
-# shipped rule: a building counts in full when `p_roofclf >= threshold` and not at all
-# otherwise, i.e. classify-and-count. "probability" counts every building in proportion
-# to its score, with the coverage ratio and area recall refit on the same weights. Measured
-# leave-one-quadrat-out in this module's own structure (`scripts/roofclf_soft_capacity_
-# check.py`): median per-quadrat error on true sub-400 m2 PV area 0.386 thresholded, 0.094
-# probability-weighted (0.18-0.24 with other scores), better in 20 of 29 quadrats; in the
-# six quadrats sparser than 300 bldg/km2 thresholding books 12% of the mapped PV and
-# probability weighting 92%. Opt-in: it is NOT the published estimator.
+# How a building's roofclf score enters the capacity sum. "threshold" counts a building in
+# full when `p_roofclf >= threshold` and not at all otherwise (classify-and-count, the
+# published rule until 2026-10-25). "probability" counts every building in proportion to
+# its score, with the coverage ratio and area recall refit on the same weights.
+#
+# Probability is the default of the two capacity estimators (`domain_restricted_capacity`,
+# `roofclf_ge400_capacity.domain_restricted_ge400_roof_capacity`) and both CLI commands
+# since 2026-10-25. Measured leave-one-quadrat-out in this module's own structure
+# (`scripts/roofclf_soft_capacity_check.py`): median per-quadrat error on true sub-400 m2
+# PV area 0.386 thresholded, 0.094 probability-weighted (0.18-0.24 with other scores),
+# better in 20 of 29 quadrats (Wilcoxon p = 0.0035), while thresholding beats a
+# no-classifier null in only 16 of 29. The failure is in sparse places: below 300
+# bldg/km2 the mean score matches the true adoption rate but almost no roof clears the
+# cut, so thresholding books 12% of the mapped PV there and probability weighting 92%.
+# What this trusts instead is the score's LEVEL on national roofs, which the quadrats do
+# not test in villages; docs/methods/roofclf.md states that risk.
+#
+# The fitting primitives below (`coverage_ratio_by_size`, `area_recall_by_size` and
+# their density-stratified and bootstrap wrappers) keep "threshold" as their own default:
+# they take a threshold, and the roofclf AND SPPI floors call them as yes/no rules.
 WEIGHTINGS = ("threshold", "probability")
-DEFAULT_WEIGHTING = "threshold"
+DEFAULT_WEIGHTING = "probability"
 
 
 def _check_weighting(weighting: str, sppi_min_precision: float | None = None) -> None:
@@ -211,6 +234,8 @@ def _check_weighting(weighting: str, sppi_min_precision: float | None = None) ->
         raise ValueError("probability weighting is not defined for the roofclf AND SPPI gate")
 
 
+# Quantile bin count / minimum flagged buildings per bin for `coverage_ratio_by_size` --
+# see that function's docstring for why quantile (equal-count) bins, not equal-width ones.
 DEFAULT_COVERAGE_N_SIZE_BINS = 10
 DEFAULT_COVERAGE_MIN_BIN_N = 25
 
@@ -223,7 +248,7 @@ def coverage_ratio_by_size(
     n_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
-    weighting: str = DEFAULT_WEIGHTING,
+    weighting: str = "threshold",
 ) -> pd.DataFrame:
     """Measured (true mapped PV area / roof area) on the buildings roofclf (optionally AND
     SPPI) flags in `quadrats`, binned by each flagged building's OWN `roof_area_m2` -- the
@@ -460,7 +485,7 @@ def coverage_ratio_by_size_and_density(
     n_size_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
-    weighting: str = DEFAULT_WEIGHTING,
+    weighting: str = "threshold",
 ) -> dict:
     """`coverage_ratio_by_size`, fit independently within each of `n_density_bands`
     building-density strata instead of once over all calibrated quadrats pooled together --
@@ -504,7 +529,7 @@ def _stratify_by_density(
     fit, table_key: str, buildings_path: Path | None, quadrats: list[str], threshold: float,
     quadrat_density: pd.Series, sppi_min_precision: float | None, n_density_bands: int,
     n_size_bins: int, min_bin_n: int, df: pd.DataFrame | None, n_col: str,
-    weighting: str = DEFAULT_WEIGHTING,
+    weighting: str = "threshold",
 ) -> dict:
     """Fit `fit` (a size-binned table function) once per building-density band of
     `quadrats`, with a pooled fallback for any band whose own calibration population is
@@ -610,7 +635,7 @@ def area_recall_by_size(
     n_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
-    weighting: str = DEFAULT_WEIGHTING,
+    weighting: str = "threshold",
 ) -> pd.DataFrame:
     """Share of the quadrats' true mapped PV **area** that sits on a building roofclf
     actually flags, binned by roof size -- the denominator correction the coverage ratio
@@ -742,7 +767,7 @@ def area_recall_by_size_and_density(
     n_size_bins: int = DEFAULT_COVERAGE_N_SIZE_BINS,
     min_bin_n: int = DEFAULT_COVERAGE_MIN_BIN_N,
     df: pd.DataFrame | None = None,
-    weighting: str = DEFAULT_WEIGHTING,
+    weighting: str = "threshold",
 ) -> dict:
     """`area_recall_by_size`, stratified by building density exactly as
     `coverage_ratio_by_size_and_density` stratifies the coverage ratio -- same band edges
@@ -805,7 +830,7 @@ def coverage_ratio_bootstrap_factors(
     n_boot: int = DEFAULT_COVERAGE_N_BOOT,
     seed: int = COVERAGE_BOOTSTRAP_SEED,
     recall_stratified: dict | None = None,
-    weighting: str = DEFAULT_WEIGHTING,
+    weighting: str = "threshold",
     target_weight: np.ndarray | None = None,
 ) -> dict:
     """Dimensionless multiplicative uncertainty on a capacity total, from resampling the
@@ -1236,10 +1261,11 @@ def domain_restricted_capacity(
     must NOT be divided by the domain's share of national cells/buildings to infer a
     country total -- doing so was the exact failure this module exists to avoid.
 
-    `weighting="probability"` (opt-in, see `WEIGHTINGS`) prices every in-domain building
-    by its score instead of every flagged one in full, with both tables refit on the same
-    weights, and returns one row per (cell, size bin) rather than per building
-    (`probability_weighted_population`). Every exclusion above applies unchanged.
+    `weighting="probability"` (the default since 2026-10-25, see `WEIGHTINGS` for why)
+    prices every in-domain building by its score instead of every flagged one in full, with
+    both tables refit on the same weights, and returns one row per (cell, size bin) rather
+    than per building (`probability_weighted_population`). Every exclusion above applies
+    unchanged. `weighting="threshold"` reproduces the figures published before 2026-10-25.
     """
     from earthpv.capacity_calibration import DEFAULT_KWP_PER_M2_MODULE
     from earthpv.export import new_lead_mask
@@ -1253,7 +1279,7 @@ def domain_restricted_capacity(
     n_buildings_national = int(all_cells.n_buildings.sum())
     quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
     precision_info = density_regime_precision(buildings_path, quadrats, threshold)
-    composition = parcel_label_composition(buildings_path, quadrats, threshold)
+    composition = parcel_label_composition(buildings_path, quadrats, threshold, weighting)
     ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)
     stratified = coverage_ratio_by_size_and_density(
@@ -1316,8 +1342,8 @@ def domain_restricted_capacity(
             "total_est_mwp_sub400_domain_restricted": round(total_mwp, 4),
             "scope": (
                 f"{len(in_domain_cells)} of {len(all_cells)} national cells, every building "
-                "weighted by p_roofclf. NOT the published estimator, and NOT a national "
-                "figure -- do not rescale by the domain's share of cells/buildings."
+                "weighted by p_roofclf. NOT a national figure -- do not rescale by the "
+                "domain's share of cells/buildings."
             ),
         }
         log.info("Domain-restricted sub-400 capacity, probability-weighted: %.1f MWp over "
@@ -1421,6 +1447,7 @@ def domain_restricted_capacity(
 
     summary = {
         "method": "domain_restricted_sub400_capacity",
+        "weighting": "threshold",
         "calibration_quadrats": quadrats,
         # None for a roof-only calibration table; present (and worth reading before
         # quoting this component as "rooftop") for a parcel-label one.
@@ -1529,7 +1556,8 @@ def probability_weighted_population(
           "sum_weight": 0.0, "roof_area_m2": 0.0, "weighted_roof_area_m2": 0.0}
     for k, cell in enumerate(sorted(cells)):
         path = Path(roofclf_dir) / f"{cell}.parquet"
-        if not path.exists():
+        # a cell with no buildings is written without geometry metadata (two of Yemen's)
+        if not path.exists() or pq.read_metadata(path).num_rows == 0:
             continue
         tab = pq.read_table(path, columns=["geometry", "roof_area_m2", "p_roofclf"])
         roof = tab.column("roof_area_m2").to_numpy(zero_copy_only=False).astype(float)

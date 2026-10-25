@@ -4,7 +4,7 @@ An assessment of two questions any reader should ask before citing this project'
 does the pipeline measure a physical signal or statistical noise, and does the approach
 scale beyond the Pakistan pilot. Written 2026-08-18 against the published Best estimate of
 19,745.9 MWp (90% range 16,051 to 23,520); updated 2026-08-20 for the Best estimate's move to
-**24,330.0 MWp (90% range 20,822 to 33,582)**, now 24,438.3 (20,894 to 33,666) after two 2026-10-20 corrections to how OSM, segmentation and roofclf are combined, after three peri-urban calibration quadrats
+**24,330.0 MWp (90% range 20,822 to 33,582)**, then 24,438.3 (20,894 to 33,666) after two 2026-10-20 corrections to how OSM, segmentation and roofclf are combined, and since 2026-10-25 34,588.8 (29,308 to 41,736) with roofclf's components priced by score rather than by a threshold (see "Where the uncertainty concentrates"), after three peri-urban calibration quadrats
 were folded into a `roofclf` refit (see [Calibration boxes](../issues/pakistan-calibration-boxes.md)'s
 Box 18) -- the analysis below is otherwise unchanged, since the move is a quadrat-composition
 shift of the kind this page already discusses, not a new source of uncertainty. The short
@@ -45,8 +45,8 @@ independent grounds:
 The distinction that matters is between *detection* and *magnitude*, and the place to
 direct scrutiny is the small end of the size distribution.
 
-Roughly 88% of the Best estimate (the sub-400 m&sup2; central component at 13,262.6 MWp
-plus the &ge;400 m&sup2; roofclf rooftop replacement at 8,256.7 MWp) flows through
+Roughly 92% of the Best estimate (the sub-400 m&sup2; central component at 24,206.3 MWp
+plus the &ge;400 m&sup2; roofclf rooftop replacement at 7,503.2 MWp) flows through
 roofclf's coverage-ratio and area-recall calibration chain, fit on 30 purposively
 selected quadrats on which the predicted-to-true adoption ratio has historically spanned
 0.2x to 5x. The classifier's discrimination is real but moderate (see
@@ -55,8 +55,15 @@ classifier at that level plausibly learns some amount of *propensity* -- buildin
 and neighbourhood context correlated with adoption -- alongside the spectral signature of
 panels themselves. The same confound surfaced explicitly in the step-change experiment.
 The SPPI cross-check exists specifically as a defence here: SPPI is a zero-training,
-purely spectral index, and the OSM-plus-agreement population (5,856.8 MWp) is therefore
+purely spectral index, and the OSM-plus-agreement population (6,994.1 MWp) is therefore
 the hardest number in the atlas.
+
+Since 2026-10-25 that chain prices every roof by its score rather than counting the roofs
+above a threshold ([roofclf](roofclf.md#count-every-roof-by-its-score)). Held out by quadrat
+it is far more accurate, but it moves the weak point: the figure now leans on the score's
+level being right in sparse villages, where no quadrat has tested it, rather than on a
+threshold that undercounts there by design. The floor is untouched, since it stays
+thresholded.
 
 Two structural limits on the published 90% range should be stated plainly:
 
@@ -97,7 +104,7 @@ imported later can be on the imagery.
 
 | Country | Best estimate (MWp) | Imported from China (MWp) | Period | Best as share of it |
 | --- | ---: | ---: | --- | ---: |
-| Pakistan | 24,438 | 57,609 | Jan 2017 to Jun 2026 | 42% |
+| Pakistan | 34,589 | 57,609 | Jan 2017 to Jun 2026 | 60% |
 | Vietnam | 8,860 | 31,116 | Jan 2017 to Aug 2026 | 28% |
 | South Africa | 9,756 | 18,533 | Jan 2017 to Aug 2026 | 53% |
 | Egypt | 3,379 | 9,106 | Jan 2017 to Aug 2026 | 37% |

@@ -905,11 +905,15 @@ def sub400_capacity_cmd(
         "both left roofs counted nowhere."
     ),
     weighting: str = typer.Option(
-        "threshold", help="How a roofclf score enters the roofclf-only (Best) component: "
-        "'threshold' counts flagged roofs in full (the published estimator); 'probability' "
-        "counts every roof by its score, with both calibration tables refit on the same "
-        "weights, and writes one row per cell and size bin. The AND-gate floors are "
-        "thresholded either way. See sub400_capacity.WEIGHTINGS."
+        "probability", help="How a roofclf score enters the roofclf-only (Best) component: "
+        "'probability' (default since 2026-10-25) counts every roof by its score, with both "
+        "calibration tables refit on the same weights, and writes one row per cell and size "
+        "bin; 'threshold' counts flagged roofs in full and nothing else, one row per "
+        "building, and reproduces the figures published before 2026-10-25. Held out one "
+        "quadrat at a time, probability weighting cut the median error on true sub-400 m2 "
+        "PV area from 0.386 to 0.094 (thresholding books 12% of mapped PV in sparse "
+        "quadrats). The AND-gate floors are thresholded either way. See "
+        "sub400_capacity.WEIGHTINGS and docs/methods/roofclf.md."
     ),
 ) -> None:
     """Sub-400 m2 capacity (roofclf-only, and roofclf-AND-SPPI), restricted to national
@@ -1092,9 +1096,10 @@ def ge400_roof_capacity_cmd(
         "reason and priced in the same bootstrap replicates.",
     ),
     weighting: str = typer.Option(
-        "threshold", help="'threshold' (published) or 'probability': every >= 400 m2 roof "
-        "counted by its score, one output row per cell and size bin. See "
-        "`sub400-capacity --help`."
+        "probability", help="'probability' (default since 2026-10-25): every >= 400 m2 roof "
+        "counted by its score, one output row per cell and size bin; 'threshold': flagged "
+        "roofs only, one row per building, reproducing the figures published before "
+        "2026-10-25. Pass the same value to `sub400-capacity`. See `sub400-capacity --help`."
     ),
 ) -> None:
     """roofclf-based capacity for >= 400 m2 ROOFTOP buildings -- REPLACES segmentation's
