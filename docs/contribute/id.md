@@ -54,6 +54,9 @@ background info panel at the bottom (`Ctrl+Shift+B`) showing Esri's capture date
 
 ## 3. Map every panel
 
+Every installation inside the line, on roofs and on the ground, whatever kind of area it
+is: both of the project's detectors learn from every area.
+
 1. Zoom in to 18 or 19, so a single panel group is clearly visible.
 2. Press `3` (the **Area** tool) and click around the **panels only**, never the whole roof.
    Close the shape by clicking the first point again.

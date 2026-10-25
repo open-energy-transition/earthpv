@@ -187,11 +187,13 @@ because a >= 400 m&sup2; ground array clips them** (median footprint 29 m&sup2;,
 rate at 46.5 bldg/km&sup2;). Folding it in unchanged would fit the sparse band's coverage
 ratio on ground-mount and double-count against segmentation's `est_mwp_rc_ground`.
 
-**What would close it:** extend the size/placement guard to the roof term, re-measure every
-quadrat's `base_rate` and `pv_area_true_m2` (expected small outside Kalat, unmeasured), then
-fold Kalat Rural in. Until then it must be excluded from every refit by hand, because
-`roofclf.discover_quadrats` picks it up automatically. See
-[Calibration boxes](issues/pakistan-calibration-boxes.md)' Box 17.
+**Guard in place (2026-10-25):** `roof_pv_area` now ignores ground-placed installations of
+400 m&sup2; or more, the owner's condition for letting farm areas calibrate `roofclf` at all
+(every area now feeds both detectors). **What would close it:** the next refit re-measures every
+quadrat's `base_rate` and `pv_area_true_m2` with the guard (expected small outside Kalat,
+unmeasured), and the owner decides whether Kalat Rural joins. Until then it is excluded from
+every refit by hand, because `roofclf.discover_quadrats` picks it up automatically, as it now
+picks up the farm areas. See [Calibration boxes](issues/pakistan-calibration-boxes.md)' Box 17.
 
 ### 9. Small ground-mounted installations have no calibrated instrument
 

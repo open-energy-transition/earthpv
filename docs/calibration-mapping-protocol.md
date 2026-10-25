@@ -291,9 +291,12 @@ the first as a **star**, with a *Start here* button in the map legend.
 calibration areas for the farm ground-PV detector instead: the same recipe on cropland, with
 the cells cut into eight bands of equal cropland area by their ESA WorldCover share and a
 3 km box placed where its own cropland share is within 25% of the cell's. A farm box is
-registered with `new_calibration_quadrat.py --farm`, which keeps it out of every rooftop
-`roofclf` fit. Map all solar in it, ground and rooftop, tracing panels rather than fences.
-See [Farm ground PV](methods/groundclf.md).
+registered with `new_calibration_quadrat.py --farm`, which puts `_farm_calib_` in its name.
+Map all solar in it, ground and rooftop, tracing panels rather than fences, exactly as in a
+building area: since 2026-10-25 both detectors learn from both kinds of area. A farm area
+also calibrates the rooftop classifier (a ground array of 400 m<sup>2</sup> or more never
+labels the farmhouse it touches), and a building area trains the farm detector without
+calibrating it. See [Farm ground PV](methods/groundclf.md).
 
 ## The quadrat plan
 

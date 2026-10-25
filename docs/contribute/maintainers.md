@@ -18,7 +18,11 @@ pixi run calib-publish                                # put them on the atlases
 `--farmland` draws 3 km farm areas for the
 [farm ground-PV detector](../methods/groundclf.md), stratified by cropland rather than
 buildings. Register a mapped one with `--farm` added to the command below: its name then
-carries `_farm_calib_`, which keeps it out of every rooftop `roofclf` fit.
+carries `_farm_calib_`. Both kinds of area feed both detectors (since 2026-10-25): a farm
+area calibrates the farm detector and the rooftop classifier, a building area calibrates the
+rooftop classifier and trains the farm detector. An area whose imagery is too poor to
+certify completeness is listed `corroborated`, not `rule1`, and is left out of
+calibration with explicit `--quadrat` flags.
 
 `scripts/propose_calibration_candidates.py` cuts a country's density grid into eight bands
 of equal building share, draws one cell per band at random, places a box on the buildings

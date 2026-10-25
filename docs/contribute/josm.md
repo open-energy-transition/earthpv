@@ -69,6 +69,9 @@ solar remains) shows at a glance what is already mapped.*
 
 ## 4. Map every panel
 
+Every installation inside the line, on roofs and on the ground, whatever kind of area it
+is: both of the project's detectors learn from every area.
+
 1. Zoom in until a single panel group is clearly visible.
 2. Press `A` (draw) and click around the **panels only**, never the whole roof. Close the
    way by clicking the first node again.

@@ -167,7 +167,7 @@ _BOUNDARY_SUFFIX = "_boundary.geojson"
 FARM_QUADRAT_INFIX = "_farm_calib_"
 
 
-def discover_quadrats(labels_dir: Path = Path("data/labels"), farm: bool = False) -> list[str]:
+def discover_quadrats(labels_dir: Path = Path("data/labels"), farm: bool | None = None) -> list[str]:
     """Quadrat stems that have both a boundary and a mapped-solar file.
 
     A stem is the full prefix before `_boundary.geojson`, e.g. `site_karachi_calib_1km` or
@@ -175,12 +175,16 @@ def discover_quadrats(labels_dir: Path = Path("data/labels"), farm: bool = False
     keeps the quadrat size out of the code: the protocol calls for 1-4 km2 boxes and the
     first Rule-1-complete one is 0.49 km2.
 
-    `farm=False` (every rooftop caller) skips farm areas; `farm=True` returns only them.
+    `farm=None` (the default) returns every area, building and farm: since 2026-10-25 the
+    owner's rule is that mappers map every installation, ground and rooftop, in both kinds,
+    so both instruments learn from both (groundclf trains on building boxes, roofclf
+    calibrates on farm areas; `roof_pv_area` keeps a farm area's large ground arrays off its
+    farmhouses). `farm=True` returns only farm areas, `farm=False` only building areas.
     """
     out = []
     for b in sorted(Path(labels_dir).glob(f"*_calib_*{_BOUNDARY_SUFFIX}")):
         stem = b.name[: -len(_BOUNDARY_SUFFIX)]
-        if (FARM_QUADRAT_INFIX in stem) != farm:
+        if farm is not None and (FARM_QUADRAT_INFIX in stem) != farm:
             continue
         if _newest_solar(stem, labels_dir) is not None:
             out.append(stem)
@@ -990,10 +994,18 @@ def _read_prob(path: Path, bounds4326: tuple, out_crs, out_transform, out_shape)
 def roof_pv_area(bu: gpd.GeoDataFrame, pv: gpd.GeoDataFrame) -> np.ndarray:
     """Mapped PV area on each footprint (geodesic m2 of the intersection, summed over
     every PV polygon touching it): the roof term of `building_table`'s label. Both frames
-    in EPSG:4326."""
+    in EPSG:4326.
+
+    A ground-placed installation of `YARD_MAX_INSTALLATION_M2` or more labels no building
+    (2026-10-25): above that floor ground-mount is segmentation's and the map's, and its
+    overlap with a footprint is a farmhouse it clips or a panel row VIDA traced as a
+    building, not rooftop PV. This is the guard Kalat Rural was held out of refits for, and
+    what lets farm areas calibrate roofclf at all."""
     from earthpv.labels import geodesic_area_m2
 
     pv_area = np.zeros(len(bu))
+    if not pv.empty and {"placement", "area_m2"} <= set(pv.columns):
+        pv = pv[~((pv["placement"] == "ground") & (pv["area_m2"] >= YARD_MAX_INSTALLATION_M2))]
     if not pv.empty:
         sindex = bu.sindex
         for g in pv.geometry:

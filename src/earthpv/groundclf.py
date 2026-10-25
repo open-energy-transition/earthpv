@@ -46,6 +46,11 @@ So the unit here is the PIXEL, aggregated into blobs, not the building.
   the main residual confuser, dark in the visible like panels but also dark in SWIR. It
   removed 11 leads and 0 of 301 mapped arrays. MNDWI does not work here: in a dry-season
   median the ponds read dry.
+- **Steep ground** (Copernicus GLO-90 slope over `SLOPE_VETO_DEG` at the blob): cliff
+  shadows and dark rock in the highland canyons, which read like panels and which the
+  domain cannot exclude, since a mapped highland farm area can itself be rugged (As Sawd,
+  median slope 25 degrees, its arrays on the flat terraces at 2.6). Measured on the 14 farm
+  areas, 2026-10-25: 0.2% of mapped highland array area and none in Tihama lies steeper.
 - **Outside the ROI** (no pixel within `ROI_RADIUS_M` of a building, a WorldCover cropland
   pixel or a green pixel): 96% of 'Amran's arrays lie inside it, in 28% of the land. It
   bought only 3-6 points of precision there, and exists mainly for basalt and shadowed
@@ -120,6 +125,14 @@ L2 = roofclf.L2
 ROAD_HALF_WIDTH_M = 8.0
 ROAD_VETO_FRAC = 0.3
 SWIR_VETO = -0.2
+# A blob whose GLO-90 slope (90 m, at its representative point) exceeds this is a cliff shadow
+# or rock face, not a farm array. Measured 2026-10-25 on Yemen's 14 farm areas and the
+# 14-area model's national blobs: above 12 degrees lie 0.2% of the mapped highland array
+# area (352 arrays) and 0.0% of Tihama's, 4.6% of the detected area inside the highland
+# areas, and 51% of the detected area in highland domain cells (18% in Tihama's). In the two
+# highland cells the farm figure leaned on most, 0 of 18 sampled blobs were panels under
+# Esri imagery. 10 degrees would lose 1.2% of mapped highland area, 8 degrees 1.5%.
+SLOPE_VETO_DEG = 12.0
 ROI_RADIUS_M = 50.0
 GREEN_NDVI = 0.25
 TARGET_PRECISION = 0.5         # same precision target roofclf's deployment threshold uses
@@ -143,8 +156,10 @@ BOOT_MIN_AREAS = 3
 JUDGEMENT_CI90 = (0.5, 2.0)
 DEM_COLLECTION = "cop-dem-glo-90"   # Copernicus DEM, 90 m, on Planetary Computer
 DEM_STEP = 10                      # cells read at every 10th DEM pixel, about 900 m
+DEM_CACHE = Path("data/dem") / DEM_COLLECTION   # whole tiles, for slope at full resolution
 READ_PAD_M = 150.0             # covers the 35 m median window, 40 m ring and 50 m ROI
 ON_MAPPED_M = 20.0             # a blob this close to a mapped array counts as right
+LABELLED = ("clean", "train")   # area kinds with pixel labels (completely mapped)
 SHIFT_M = (300.0, 2000.0)      # null bags: a label moved this far into nearby land
 BOOT_SEED = 20261023
 WC_TOKEN_S = 1800              # re-sign WorldCover tile URLs this often in a long run
@@ -323,40 +338,63 @@ def fetch_paved_roads(bboxes, cache: Path | None = None, retries: int = 3) -> gp
 class _WorldCover:
     """WorldCover tile index for one run, re-signed every `WC_TOKEN_S` so a national pass
     does not outlive its Planetary Computer tokens (the failure CLAUDE.md records for
-    compose and glint). Disabled for the rest of the run after a failure."""
+    compose and glint). Disabled for the rest of the run after a failure to index.
+
+    Re-signing alone does not renew a token: `planetary_computer` hands back its cached one
+    until it is under a minute from expiry, so a re-sign shortly before expiry still carries
+    the old token for the next `WC_TOKEN_S`. Yemen's national pass of 2026-10-25 lost the
+    cropland anchor in every cell after 08:13 UTC that way. A failed read therefore clears
+    the token cache, re-indexes and reads once more before giving up on the cell."""
 
     def __init__(self, bbox4326, enabled: bool = True):
         self.bbox, self.enabled, self.tiles, self.t = bbox4326, enabled, None, 0.0
+
+    def _index(self, fresh: bool = False) -> bool:
+        from earthpv import worldcover
+
+        if fresh:
+            import planetary_computer.sas
+
+            planetary_computer.sas.TOKEN_CACHE.clear()
+        try:
+            self.tiles, self.t = worldcover._tile_index(self.bbox), time.time()
+            return True
+        except Exception as e:  # noqa: BLE001
+            log.warning("WorldCover off for this run: %s", e)
+            self.enabled = False
+            return False
+
+    def _read(self, bbox4326, out_shape, transform, crs) -> np.ndarray | None:
+        from rasterio.warp import Resampling, reproject
+
+        tiles = self.tiles[self.tiles.intersects(shapely_box(*bbox4326))]
+        if tiles.empty:
+            return None
+        out = np.zeros(out_shape, dtype="uint8")
+        for path in tiles.path:
+            with rasterio.open(path) as src:
+                tmp = np.zeros(out_shape, dtype="uint8")
+                reproject(rasterio.band(src, 1), tmp, dst_transform=transform, dst_crs=crs,
+                          resampling=Resampling.nearest)
+            out = np.where(out == 0, tmp, out)
+        return out
 
     def mask(self, bbox4326, out_shape, transform, crs) -> np.ndarray | None:
         from earthpv import worldcover
 
         if not self.enabled:
             return None
-        if self.tiles is None or time.time() - self.t > WC_TOKEN_S:
-            try:
-                self.tiles, self.t = worldcover._tile_index(self.bbox), time.time()
-            except Exception as e:  # noqa: BLE001
-                log.warning("WorldCover off for this run: %s", e)
-                self.enabled = False
-                return None
-        tiles = self.tiles[self.tiles.intersects(shapely_box(*bbox4326))]
-        if tiles.empty:
+        if (self.tiles is None or time.time() - self.t > WC_TOKEN_S) and not self._index():
             return None
-        from rasterio.warp import Resampling, reproject
-
-        out = np.zeros(out_shape, dtype="uint8")
-        for path in tiles.path:
+        for attempt in (1, 2):
             try:
-                with rasterio.open(path) as src:
-                    tmp = np.zeros(out_shape, dtype="uint8")
-                    reproject(rasterio.band(src, 1), tmp, dst_transform=transform, dst_crs=crs,
-                              resampling=Resampling.nearest)
+                out = self._read(bbox4326, out_shape, transform, crs)
+                return None if out is None else out == worldcover.CROPLAND
             except Exception as e:  # noqa: BLE001
-                log.warning("WorldCover read failed (%s); cropland anchor skipped here", e)
-                return None
-            out = np.where(out == 0, tmp, out)
-        return out == worldcover.CROPLAND
+                if attempt == 2 or not self._index(fresh=True):
+                    log.warning("WorldCover read failed (%s); cropland anchor skipped here", e)
+                    return None
+        return None
 
 
 def context_masks(bbox4326, out_shape, transform, crs, ndvi, iso3: str | None, roads, wc: _WorldCover | None,
@@ -392,7 +430,7 @@ def context_masks(bbox4326, out_shape, transform, crs, ndvi, iso3: str | None, r
 # Blobs
 # --------------------------------------------------------------------------------------
 BLOB_COLUMNS = ["n_px", "area_m2", "s_max", "s_mean", "swir_contrast", "road_frac", "in_roi",
-                "road_veto", "water_veto"]
+                "road_veto", "water_veto", "slope_deg", "slope_veto"]
 
 
 def extract_blobs(prob, threshold: float, domain, transform, crs, b11, road=None, roi=None,
@@ -431,12 +469,19 @@ def extract_blobs(prob, threshold: float, domain, transform, crs, b11, road=None
     }, geometry=polys, crs=crs)
     df["road_veto"] = df["road_frac"] >= ROAD_VETO_FRAC
     df["water_veto"] = df["swir_contrast"] < SWIR_VETO
-    return df.to_crs("EPSG:4326"), lab
+    df = df.to_crs("EPSG:4326")
+    rp = df.geometry.representative_point()
+    df["slope_deg"] = dem_slope_at(rp.x.to_numpy(), rp.y.to_numpy())
+    df["slope_veto"] = df["slope_deg"] > SLOPE_VETO_DEG
+    return df, lab
 
 
 def kept(blobs: pd.DataFrame, max_blob_m2: float | None = MAX_BLOB_M2) -> np.ndarray:
-    """Blobs that survive the road and water vetoes, lie in the ROI and under the cap."""
+    """Blobs that survive the road, water and slope vetoes, lie in the ROI and under the cap
+    (blob tables written before the slope veto carry no `slope_veto` and skip it)."""
     k = ~blobs["road_veto"].to_numpy(bool) & ~blobs["water_veto"].to_numpy(bool) & blobs["in_roi"].to_numpy(bool)
+    if "slope_veto" in blobs:
+        k &= ~blobs["slope_veto"].to_numpy(bool)
     if max_blob_m2 is not None:
         k &= blobs["area_m2"].to_numpy(float) <= max_blob_m2
     return k
@@ -448,7 +493,7 @@ def kept(blobs: pd.DataFrame, max_blob_m2: float | None = MAX_BLOB_M2) -> np.nda
 @dataclass
 class Area:
     name: str
-    kind: str                       # "clean" | "weak"
+    kind: str                       # "clean" | "train" | "weak"
     boundary: BaseGeometry          # EPSG:4326
     labels: gpd.GeoDataFrame        # EPSG:4326, polygons and points
     source: str
@@ -519,22 +564,31 @@ def _area_labels(name: str, boundary: BaseGeometry, cache_dir: Path, osm: Path |
 
 def load_areas(labels_dir: Path, cache_dir: Path, clean_regions=(), weak_regions=(),
                osm: Path | None = None, refresh: bool = False) -> list[Area]:
-    """Farm quadrats under `labels_dir` (clean), plus boundary files passed as clean or
-    weak regions, each with its OSM solar. A quadrat keeps its nodes (`roofclf.load_quadrat`
-    drops them, and a node left out makes its PV a negative) and takes its group from the
-    boundary's `region` property, so areas cut from one mapped region are left out together
-    when transfer is measured."""
+    """Farm quadrats under `labels_dir` (clean), its building quadrats (train), plus boundary
+    files passed as clean or weak regions, each with its OSM solar. A quadrat keeps its nodes
+    (`roofclf.load_quadrat` drops them, and a node left out makes its PV a negative) and
+    takes its group from the boundary's `region` property, so areas cut from one mapped
+    region are left out together when transfer is measured.
+
+    A building quadrat is mapped completely too (every installation, ground and rooftop: the
+    owner's rule since 2026-10-25), so its pixels are as good a label as a farm area's. It
+    trains the model, above all on what a town looks like without PV, but does not set the
+    threshold, the ratio or the domain (the owner's choice, 2026-10-25): the farm figure
+    stays a figure for land that resembles the farm areas. Building quadrats without a
+    `region` are one transfer group, "building quadrats"."""
     out = []
-    for stem in roofclf.discover_quadrats(Path(labels_dir), farm=True):
-        bpath = Path(labels_dir) / f"{stem}_boundary.geojson"
-        b = roofclf.load_boundary(bpath)
-        solar = roofclf._newest_solar(stem, Path(labels_dir))
-        if solar is None:
-            raise FileNotFoundError(f"farm quadrat {stem} has no *_overpass_solar parquet")
-        pv = gpd.read_parquet(solar).to_crs("EPSG:4326")
-        pv = pv[pv.geom_type.isin(["Polygon", "MultiPolygon", "Point", "MultiPoint"])].reset_index(drop=True)
-        region = gpd.read_file(bpath).iloc[0].get("region") or stem
-        out.append(Area(roofclf.quadrat_label(stem), "clean", b, pv, f"farm quadrat {stem}", region))
+    for farm in (True, False):
+        for stem in roofclf.discover_quadrats(Path(labels_dir), farm=farm):
+            bpath = Path(labels_dir) / f"{stem}_boundary.geojson"
+            b = roofclf.load_boundary(bpath)
+            solar = roofclf._newest_solar(stem, Path(labels_dir))
+            if solar is None:
+                raise FileNotFoundError(f"quadrat {stem} has no *_overpass_solar parquet")
+            pv = gpd.read_parquet(solar).to_crs("EPSG:4326")
+            pv = pv[pv.geom_type.isin(["Polygon", "MultiPolygon", "Point", "MultiPoint"])].reset_index(drop=True)
+            region = gpd.read_file(bpath).iloc[0].get("region") or (stem if farm else "building quadrats")
+            out.append(Area(roofclf.quadrat_label(stem), "clean" if farm else "train", b, pv,
+                            f"{'farm' if farm else 'building'} quadrat {stem}", region))
     for kind, paths in (("clean", clean_regions), ("weak", weak_regions)):
         for p in paths:
             b = roofclf.load_boundary(Path(p))
@@ -592,7 +646,7 @@ def prepare_area(a: Area, comp_idx, iso3, roads, wc, rng, con=None, aoi: str | N
     d = {"area": a, "X": X, "domain": domain, "transform": tr, "crs": crs, "b11": refl[8], "road": road,
          "crop_frac": d_crop, "bldg_density_km2": d_bldg, "elev_m": area_elevation(a.boundary),
          "roi": roi, "context": ctx, "block": _strips(domain, N_BLOCKS), "px": px}
-    if a.kind == "clean":
+    if a.kind in LABELLED:
         # Traced arrays are pixel positives; outlines and nodes are bags, like a weak area's
         # labels, but the area is complete, so negatives come as close as a clean area's.
         fac = panel_area_factor(polys, aoi)
@@ -750,7 +804,7 @@ def train_ground(
             data.append(d)
             log.info("%s (%s): %d px, %s", a.name, a.kind, int(d["domain"].sum()),
                      (f"{int(d['pos'].sum())} positive px, {len(d['arrays'])} arrays "
-                      f"({int(d['array_outline'].sum())} outlines), " if a.kind == "clean" else "")
+                      f"({int(d['array_outline'].sum())} outlines), " if a.kind in LABELLED else "")
                      + f"{len(d['bags'])} bags")
     clean = [d for d in data if d["area"].kind == "clean"]
 
@@ -769,7 +823,7 @@ def train_ground(
              "source": d["area"].source,
              "context": "+".join(k for k in ("green", "buildings", "cropland") if d["context"].get(k)),
              "road_veto": d["road"] is not None}
-        if d["area"].kind == "clean":
+        if d["area"].kind in LABELLED:
             pos, neg = d["pos"], d["neg"]
             r.update(n_arrays=len(d["arrays"]), n_outlines=int(d["array_outline"].sum()), n_nodes=d["n_nodes"],
                      pixel_auc_lobo=roofclf.auc(np.r_[np.ones(pos.sum()), np.zeros(neg.sum())],
@@ -847,7 +901,7 @@ def train_ground(
             if m is None:
                 continue
             p = score_pixels(m, d["X"], d["domain"])
-            if d["area"].kind == "clean":
+            if d["area"].kind in LABELLED:
                 pos, neg = d["pos"], d["neg"]
                 r["pixel_auc_transfer"] = roofclf.auc(np.r_[np.ones(pos.sum()), np.zeros(neg.sum())],
                                                       np.r_[p[pos], p[neg]]) if pos.any() else float("nan")
@@ -864,6 +918,7 @@ def train_ground(
         "converged": full["converged"], "features": FEATURES, "detector": DETECTOR,
         "threshold": thr, "target_precision": target_precision, "max_array_m2": max_array_m2,
         "max_blob_m2": max_blob_m2, "road_veto_frac": ROAD_VETO_FRAC, "swir_veto": SWIR_VETO,
+        "slope_veto_deg": SLOPE_VETO_DEG,
         "roi_radius_m": ROI_RADIUS_M, "areas": [{"name": d["area"].name, "kind": d["area"].kind,
                                                 "group": d["area"].group, "source": d["area"].source}
                                                for d in data],
@@ -1055,6 +1110,65 @@ def area_elevation(boundary: BaseGeometry) -> float:
     return float(np.median(vals)) if len(vals) else float("nan")
 
 
+_SLOPE_TILES: dict = {}
+
+
+def _slope_tile(lat_i: int, lon_i: int):
+    """GLO-90 slope in degrees over the 1-degree tile whose south-west corner is
+    (`lat_i`, `lon_i`), with its transform; None where the DEM has no tile (open sea). The
+    tile is downloaded whole into `DEM_CACHE` once: read remotely at full resolution it
+    takes about a minute of range requests, against a second or two as one file."""
+    k = (lat_i, lon_i)
+    if k not in _SLOPE_TILES:
+        name = (f"Copernicus_DSM_COG_30_{'N' if lat_i >= 0 else 'S'}{abs(lat_i):02d}_00_"
+                f"{'E' if lon_i >= 0 else 'W'}{abs(lon_i):03d}_00_DEM")
+        f = DEM_CACHE / f"{name}.tif"
+        if not f.exists():
+            items = _dem_items((lon_i + 0.4, lat_i + 0.4, lon_i + 0.6, lat_i + 0.6))
+            if not items:
+                _SLOPE_TILES[k] = None
+                return None
+            import requests
+
+            r = requests.get(items[0].assets["data"].href, timeout=300)
+            r.raise_for_status()
+            f = DEM_CACHE / f"{items[0].id}.tif"
+            f.parent.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_suffix(".tmp")
+            tmp.write_bytes(r.content)
+            tmp.rename(f)
+        with rasterio.open(f) as src:
+            z, t = src.read(1).astype("float64"), src.transform
+        lat = t.f + (np.arange(z.shape[0]) + 0.5) * t.e
+        dy = abs(t.e) * 111_320.0
+        dx = t.a * 111_320.0 * np.cos(np.radians(lat))[:, None]
+        gy, gx = np.gradient(z)
+        _SLOPE_TILES[k] = (np.degrees(np.arctan(np.hypot(gx / dx, gy / dy))).astype("float32"), t)
+    return _SLOPE_TILES[k]
+
+
+def dem_slope_at(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Copernicus GLO-90 slope in degrees at each point (EPSG:4326), NaN off the DEM."""
+    lon, lat = np.asarray(lon, dtype=float), np.asarray(lat, dtype=float)
+    out = np.full(len(lon), np.nan)
+    if not len(lon):
+        return out
+    la, lo = np.floor(lat).astype(int), np.floor(lon).astype(int)
+    for a, b in set(zip(la.tolist(), lo.tolist())):
+        tile = _slope_tile(a, b)
+        if tile is None:
+            continue
+        slope, t = tile
+        m = (la == a) & (lo == b)
+        c, r = ~t * (lon[m], lat[m])
+        r, c = np.floor(r).astype(int), np.floor(c).astype(int)
+        ok = (r >= 0) & (r < slope.shape[0]) & (c >= 0) & (c < slope.shape[1])
+        v = np.full(int(m.sum()), np.nan)
+        v[ok] = slope[r[ok], c[ok]]
+        out[m] = v
+    return out
+
+
 def road_fractions(blobs: gpd.GeoDataFrame, roads: gpd.GeoDataFrame) -> np.ndarray:
     """Share of each blob's area within `ROAD_HALF_WIDTH_M` of a road centreline: the
     vector form of the raster `road_frac` training measures."""
@@ -1148,6 +1262,13 @@ def ground_capacity(
         max_blob_m2 = meta.get("max_blob_m2")
     calib = pd.read_csv(calib_dir / "calibration.csv", dtype={"block": str})
     regions = region_ratio_draws(calib, n_boot)
+    n_areas = int((calib.block == "all").sum())
+    # A region whose areas hold no detected blob area has no ratio to price with (Lawdar:
+    # one mapped array, nothing detected), so it claims no cells.
+    unpriced = sorted(r for r, v in regions.items() if v["det"] <= 0)
+    regions = {r: v for r, v in regions.items() if r not in unpriced}
+    if "group" in calib.columns:
+        calib = calib[~calib.group.isin(unpriced)]
     a_all = calib[calib.block == "all"]
     if a_all.det_area_m2.sum() <= 0:
         raise ValueError("the clean areas hold no detected blob area at the deployment threshold")
@@ -1160,6 +1281,7 @@ def ground_capacity(
         raise ValueError(f"no blobs under {score_dir}")
     blobs = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs="EPSG:4326")
     n_all = len(blobs)
+    n_slope = int(blobs["slope_veto"].sum()) if "slope_veto" in blobs else None
     blobs = blobs[kept(blobs, max_blob_m2)].reset_index(drop=True)
 
     # The road veto, as a vector overlap over the blobs that survived everything else.
@@ -1180,7 +1302,8 @@ def ground_capacity(
     blobs["road_veto"] = blobs["road_frac"] >= ROAD_VETO_FRAC
     n_road = int(blobs["road_veto"].sum())
     blobs = blobs[~blobs["road_veto"]].reset_index(drop=True)
-    stats = {"blobs_scored": n_all, "blobs_kept_before_roads": len(blobs) + n_road, "road_vetoed": n_road,
+    stats = {"blobs_scored": n_all, "slope_vetoed": n_slope,
+             "blobs_kept_before_roads": len(blobs) + n_road, "road_vetoed": n_road,
              "blobs_kept": len(blobs), "blobs_kept_without_road_check": int((~blobs["road_checked"]).sum())}
 
     # Dedup, so the component is incremental: what OSM maps is counted from the map, and
@@ -1215,7 +1338,7 @@ def ground_capacity(
     # Completely mapped farm areas: whatever is there is counted from the map.
     if labels_dir is not None:
         areas = [roofclf.load_boundary(Path(labels_dir) / f"{st}_boundary.geojson")
-                 for st in roofclf.discover_quadrats(Path(labels_dir), farm=True)]
+                 for st in roofclf.discover_quadrats(Path(labels_dir))]
         if areas:
             rp = blobs.geometry.representative_point()
             inside = np.zeros(len(blobs), dtype=bool)
@@ -1265,7 +1388,7 @@ def ground_capacity(
                                                            .apply(lambda x, r=r: r in x)).sum()),
                                              "est_mwp": float(cells.loc[cells["region"] == r, "est_mwp"].sum())}
                                          for r, v in regions.items()},
-                 interval=interval,
+                 interval=interval, regions_unpriced=unpriced,
                  est_mwp_all_cells_extrapolated=float(cells.det_area_m2.sum() * pooled * kwp / 1000.0))
     out_dir.mkdir(parents=True, exist_ok=True)
     cells.to_parquet(out_dir / "ground_cells.parquet")
@@ -1286,7 +1409,7 @@ def ground_capacity(
         "ratio_bootstrap": [round(float(x), 6) for x in boots],
         "ratio_true_per_detected_m2": ratio, "ratio_pooled_all_areas": pooled, "ratio_boot_p05_p95": (
             [float(np.percentile(boots, 5)), float(np.percentile(boots, 95))] if len(boots) else None),
-        "n_calibration_areas": int((calib.block == "all").sum()),
+        "n_calibration_areas": n_areas,
         "kwp_per_m2": kwp, "est_mwp_in_domain": total, "est_mwp_ci90": ci, **stats,
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))

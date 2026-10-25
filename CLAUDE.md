@@ -637,12 +637,15 @@ date, not the Sentinel-2 composite's, so the newest installations are structural
 makes precision and `base_rate` **lower bounds** and `rate_ratio` an **upper bound**; recall over
 mapped installations is unaffected.
 
-**`kalat_rural_calib_3km` must stay OUT of any `roofclf` refit** until `building_table`'s roof
-term gets a placement/size guard: sited to include ground-mount, most of its has-PV buildings are
-labelled only because a ≥ 400 m² ground array clips them, which would fit the sparse band's
-coverage ratio on ground-mount and double-count against segmentation.
-`roofclf.discover_quadrats` globs the label directory, so the next `earthpv roof-classifier` run
-picks it up automatically unless excluded (open question 8).
+**Every area feeds both detectors (owner, 2026-10-25)**: mappers map every installation,
+ground and rooftop, in building and farm areas alike. `roofclf.discover_quadrats` returns both
+kinds by default (`farm=True`/`False` selects one), so **Pakistan's next `roof-classifier` refit
+picks up Sahiwal, Jhang f2, Jhang f5 (farm) and Mastung** besides Kalat Rural. Jhang f2 is
+`corroborated` (poor imagery) and must be left out with explicit `--quadrat` flags; Kalat
+Rural's inclusion is an owner decision. The guard Kalat was held out for now exists:
+`roofclf.roof_pv_area` ignores ground-placed installations of 400 m² or more, which before
+labelled every farmhouse a large ground array clipped (most of Kalat's has-PV buildings), and
+the parcel term already stopped at 400 m² (open question 8).
 
 **Ranking transfers across quadrats; absolute adoption rates do not** (`rate_ratio` has spanned
 0.2-5x), which is why the coverage ratio is stratified. `select_calibrated_quadrats` picks the
@@ -680,14 +683,19 @@ earthpv groundclf-capacity --aoi <aoi> --osm-solar <national OSM pull>
 - **A calibration domain PER REGION** (`groundclf.domain_cells`): a cell is priced with a
   region's ratio only if its cropland share, building density AND median elevation (Copernicus
   DEM, `cell_elevation`, cached in `data/cells_cache/<aoi>_elevation.parquet`) each lie within
-  x/÷1.25 of that region's areas; a region = areas sharing the `region` property. The headline
+  x/÷1.25 of that region's areas; a region = a landscape, the areas sharing the `region`
+  boundary property (Yemen: Tihama, Highlands); a region with no detected area prices nothing
+  (`regions_unpriced`). Regrouping changes the fit's random draws: retrain, never patch
+  `calibration.csv`. The headline
   is `est_mwp_in_domain`; `est_mwp_all_cells_extrapolated` is not on the page. Interval:
   `region_ratio_draws` bootstraps each region over its own areas from `BOOT_MIN_AREAS` (3), else
   a stated x/÷2 (`JUDGEMENT_CI90`); the summary's `interval` names which. Blobs inside a
   registered farm area count nothing (`--labels-dir`).
 - **Farm quadrats carry `_farm_calib_` in their stem** (`roofclf.FARM_QUADRAT_INFIX`;
-  `new_calibration_quadrat.py --farm`). `roofclf.discover_quadrats` skips them unless
-  `farm=True` (a ground array would label the farmhouse beside it as PV-carrying).
+  `new_calibration_quadrat.py --farm`). They are the detector's clean areas; building
+  quadrats join as kind `train` (owner's choice, 2026-10-25): their pixels enter the fit, but
+  not the threshold, the ratio or the domain, so the figure stays a farm figure. Blobs inside
+  any registered area, either kind, count nothing.
 - **A mapped polygon is priced by its tag** (`groundclf.panel_area_factor`):
   `power=generator` is the array; `power=plant` is a site, counted at 0.05/0.18 of its area, or 0
   when a generator inside it carries its panels; nodes count 0. **`osm_panel_tracers`** in
@@ -702,7 +710,10 @@ earthpv groundclf-capacity --aoi <aoi> --osm-solar <national OSM pull>
   p = 1.0 in float32).
 - **Vetoes**: >= 30% of a blob within 8 m of a paved OSM road; SWIR more than 20% below the
   blob's ring (water-harvesting ponds; MNDWI fails in a dry-season median); no pixel within 50 m
-  of a building, cropland or green pixel; a blob over 25,000 m² (`MAX_BLOB_M2`).
+  of a building, cropland or green pixel; a blob over 25,000 m² (`MAX_BLOB_M2`); a blob on
+  Copernicus GLO-90 slope over 12° (`SLOPE_VETO_DEG`, `dem_slope_at`; whole DEM tiles cached in
+  `data/dem/` -> `/home`, a remote full-resolution read takes a minute per tile): highland
+  cliff shadows, which no cell-level domain variable separates.
 - **The capacity estimand defaults to arrays below 400 m²** (`--max-array-m2`; `0` prices every
   size).
 - **Overpass is a cached dependency**: area labels in `data/groundclf/<aoi>/areas/`, paved

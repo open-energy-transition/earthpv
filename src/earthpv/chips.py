@@ -547,7 +547,7 @@ def build_quadrat_fraction_chips(
     else:
         comp_idx = CompositeIndex(Path(settings.raw["local_root"]) / cfg.get("source_region"))
 
-    stems = quadrats or discover_quadrats(Path(labels_dir))
+    stems = quadrats or discover_quadrats(Path(labels_dir), farm=False)
     rng = np.random.default_rng(seed)
     val_tiles = set(cfg.get("val_tiles", []))
     records: list[dict] = []

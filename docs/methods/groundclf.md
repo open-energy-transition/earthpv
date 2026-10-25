@@ -95,8 +95,8 @@ reach a precision of 0.5. Logits rather than probabilities, because a balanced f
 every strong detection at a probability that rounds to 1.0 and ties the leads a reviewer
 should see first.
 
-**Four vetoes**, three measured against reviewed leads in 'Amran and one on Yemen's national
-run:
+**Five vetoes**, three measured against reviewed leads in 'Amran and two on Yemen's national
+runs:
 
 | Veto | Rule | Measured |
 | --- | --- | --- |
@@ -104,6 +104,7 @@ run:
 | Water | The blob's B11 more than 20% darker than its ring | Water-harvesting ponds are dark in the visible like panels, but also in the shortwave infrared. Removed 11 leads, including all six read as ponds on imagery, and 0 of 301 mapped arrays. A water index does not work: in a dry-season median the ponds read dry. |
 | Outside the region of interest | No pixel within 50 m of a VIDA building, a WorldCover cropland pixel or a green pixel (NDVI 0.25 or more) | 96% of 'Amran's arrays lie inside it, in 28% of the land. It bought only 3 to 6 points of precision there; its purpose is dark rock and shadowed slopes far from any field. |
 | Size | A blob over 25,000 m<sup>2</sup> | 87% of Yemen's detected area was in blobs of 5,000 m<sup>2</sup> and more, most of it in desert cells under 1% cropland (lava fields and dark rock), the largest 61 km<sup>2</sup>. The largest installation mapped in the seven farm areas is 22,231 m<sup>2</sup> and the largest detection in them 16,000 m<sup>2</sup>, so the cap touches no calibration blob. |
+| Slope | Copernicus DEM (90 m) slope over 12&deg; at the blob | Highland cliff shadows and dark rock read like panels. Before this veto the two highland cells the farm figure leaned on most (Ad Dali' and Ta'izz) held 2.2 km<sup>2</sup> of detections, and 0 of 18 sampled blobs there were panels on Esri imagery. Steeper than 12&deg; lie 0.2% of the mapped highland array area (352 arrays), none of Tihama's, 4.6% of the detected area inside the highland farm areas and 51% of it in the highland cells the figure prices. A rugged farm area does not protect against it: As Sawd's median slope is 25&deg;, its arrays sit on terraces at 2.6&deg;, and its detections at 31&deg;. |
 
 The road veto is applied in the capacity step, as a vector overlap on the blobs, so the
 national scoring pass never waits on Overpass.
@@ -140,8 +141,10 @@ The headline counts only cells that resemble a calibration region, and each such
 priced with that region's ratio only. A cell resembles a region when its cropland share, its
 building density **and** its median elevation (Copernicus DEM) each lie within 25% of the
 range that region's areas span, the rule `roofclf` applies with its building-density band.
-Areas cut from one mapped region share a region (the `region` property on their boundary).
-Everything else is reported separately, as an extrapolation.
+A region is a landscape: areas share one when their boundaries carry the same `region`
+property, and an area without one stands alone. A region whose areas hold no detection at
+all has no ratio and prices no cell. Everything else is reported separately, as an
+extrapolation.
 
 Both rules before this one failed on Yemen, and each failure is the reason for a part of it:
 
@@ -161,6 +164,16 @@ Both rules before this one failed on Yemen, and each failure is the reason for a
 Elevation is what separates the landscapes: Tihama's areas lie at 68 to 236 m, 'Amran's at
 1,895 m. With it, Tihama's ratio reaches 32 lowland cells (Al Hudaydah, the Tihama plain of
 Hajjah, one in Al Mahwit and one on the Abyan coast) and 'Amran's two highland cells.
+
+The third failure came with the seven sampled farm boxes (2026-10-25). Grouped by landscape,
+three joined Tihama and three joined 'Amran as a highland region. Its four areas span 1,574
+to 2,296 m, 7 to 27% cropland and 31 to 120 buildings per km<sup>2</sup>, and its domain
+(25% wider each way) reaches most of the populated highlands: 163 cells and 574 MWp, of 891 MWp in all. On Esri imagery the two
+highland cells it leaned on most held cliff shadows and dark rock, 0 of 18 sampled blobs
+panels, and a random blob from each of nine other highland cells was a panel at most once.
+No cell-level variable separates them, because a mapped highland farm area can itself be
+rugged (As Sawd, median slope 25&deg;). Its arrays are not: they sit on terraces at a median
+2.6&deg;, its detections at 31&deg;. Hence the slope veto above, which is per blob.
 
 ## In the atlas
 
@@ -242,9 +255,9 @@ four small groups of perhaps 30 to 60 m<sup>2</sup> each inside a rectangle of 6
 constant's share. Taken as panel outlines the rectangles would overstate Tihama's panel area
 about fourfold.
 
-### Yemen's seven farm areas
+### Yemen's fourteen farm areas
 
-Registered 2026-10-24, from the owner's two boundaries:
+Seven registered 2026-10-24 from the owner's two boundaries:
 
 - **'Amran** (`amran_huth_farm_calib_129p53km2`): the whole test ground, 306 arrays, every
   one traced around its panels, on Esri imagery from June to October 2025.
@@ -259,11 +272,37 @@ Registered 2026-10-24, from the owner's two boundaries:
   calibrates. 238 of the 1,100 installations are the owner's panel traces; most of the rest
   are the 2023 rectangles.
 
+And seven of Yemen's eight sampled farm candidates (`calib-candidates --farmland`: 3 km
+boxes, one per cropland stratum, drawn at random), mapped by the owner on 2026-10-24 and 25.
+Each boundary names its landscape:
+
+| Area | Governorate | Region | Mapped arrays | Elevation |
+| --- | --- | --- | --- | --- |
+| Abs north (`abs_f7`) | Hajjah | Tihama | 3 | 107 m |
+| Abs (`abs_f8`) | Hajjah | Tihama | none | 132 m |
+| Az Zaydiah (`az_zaydiah_f6`) | Al Hudaydah | Tihama | 48 | 56 m |
+| As Sawd (`as_sawd_f1`) | 'Amran | Highlands | 6 | 1,736 m |
+| Jihanah (`jihanah_f2`) | Sana'a | Highlands | 40 | 2,296 m |
+| As Saiyani (`as_saiyani_f4`) | Ibb | Highlands | none | 1,574 m |
+| Lawdar (`lawdar_f3`) | Abyan | alone; prices nothing | 1 | 857 m |
+
+A box with no PV calibrates as much as one with PV: As Saiyani's detections (2,600
+m<sup>2</sup>, none on a panel) pull the highland ratio down where the detector fires on
+nothing.
+
 A farm area is registered with `new_calibration_quadrat.py --farm`, which puts
-`_farm_calib_` in its name. `roofclf` skips those areas: a ground array would mark the
-farmhouse beside it as carrying PV, the problem that keeps Kalat Rural out of Pakistan's
-refits. Overlap checks and `calib-publish` still see them. Mappers should map all solar in a
-farm area, ground and rooftop, and trace the panels rather than the fence.
+`_farm_calib_` in its name. Mappers map every installation in it, ground and rooftop, and
+trace the panels rather than the fence, as in a building area.
+
+**Every area feeds both detectors (owner, 2026-10-25).** A farm area also calibrates the
+rooftop classifier. It was kept out before because a ground array would mark the farmhouse
+beside it as carrying PV, the problem that keeps Kalat Rural out of Pakistan's refits;
+`roofclf` now ignores ground-placed installations of 400 m<sup>2</sup> or more on a roof, and
+its yard term already stopped at that size. A building area trains this detector, as kind
+`train`: its pixels enter the fit, above all as examples of towns without PV, but it sets
+neither the threshold nor a ratio nor a domain, so the figure stays one for land that
+resembles the farm areas (the owner's choice). Detections inside any registered area, of
+either kind, count nothing.
 
 ## Running it
 
