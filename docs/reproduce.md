@@ -351,7 +351,7 @@ the [experiments register](experiments.md) are optional extras, not alternative 
         --pose-data-note "(2000-target stratified country study, chunked tile-batch pull)" \
         --imagery-date-range "Oct 2025 - Jun 2026" \
         --downloads-manifest configs/pakistan_atlas_downloads.json \
-        --data-release-url https://github.com/open-energy-transition/earthpv/releases/download/pakistan-atlas-data-2026-08-14 \
+        --data-release-url https://github.com/open-energy-transition/earthpv/releases/download/pakistan-atlas-data-2026-10-25 \
         --out docs/assets/interactive/pakistan_evidence_atlas.html
     ```
 
@@ -871,17 +871,26 @@ pixi run python scripts/build_atlas_data_pack.py --aoi <country>
 
 That collects whatever the pipeline produced into `dist/<country>-atlas-data/`, measures it,
 and writes `configs/<country>_atlas_downloads.json`. It is tolerant of missing pieces, so a
-segmentation-only country packs cleanly. The pack is, at most:
+segmentation-only country packs cleanly. Run it after the atlas, whose per-cell table it
+packs. The pack is, at most:
 
 | File | What it is |
 | --- | --- |
-| `<country>_capacity_by_cell.parquet` | **One row per 0.1 degree cell.** The PyPSA-ready table, and the one a global atlas would consume. |
+| `<country>_atlas_capacity_by_cell.parquet` | **One row per 0.1 degree cell, every Best and Verified component.** The PyPSA-ready table, and the one a global atlas would consume. |
+| `<country>_capacity_by_cell.parquet` | The &ge; 400 m² segmentation half alone, per cell. |
 | `<country>_capacity_by_building.parquet` | One row per building carrying a segmentation detection. |
 | `<country>_capacity_by_region.parquet` | Admin-region aggregate, if `density --districts` ran. |
 | `<country>_roofclf_sub400_*.parquet` | The sub-400 m² populations, central and the stricter floor. |
-| `<country>_roofclf_ge400_roof_buildings.parquet` | roofclf's rooftop replacement above the floor. |
+| `<country>_roofclf_ge400_roof_*.parquet` | roofclf's rooftop replacement above the floor. |
 | `<country>_raw_detections_unreviewed.parquet` | Every candidate polygon before human review. Leads, not truth. |
 | `<country>_roofclf_model.json`, `_summary.json` | The fitted model and its leave-one-quadrat-out skill. |
+| `<country>_calibration_quadrat_boundaries.zip` | The boundary of every quadrat roofclf was fitted on, with a per-quadrat index. |
+
+roofclf tables priced by probability (the default) are one row per cell and size bin and
+are named `..._by_cell_and_size.parquet`; thresholded ones keep `..._buildings.parquet`.
+`--pose-csv`, `--checkpoint` and a data dictionary at
+`configs/<country>_atlas_data_dictionary.md` join the pack when given; Pakistan's
+dictionary is the model to copy.
 
 Publish the pack as a release on **your fork**, then point the atlas at it:
 

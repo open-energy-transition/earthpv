@@ -1,68 +1,92 @@
 [
   {
+    "file": "pakistan_atlas_capacity_by_cell.parquet",
+    "label": "Best estimate and Verified per grid cell",
+    "note": "The atlas's own map: every Best and Verified component per 0.1 degree cell, summing to the page's headline figures. The PyPSA-ready table. 4,463 rows.",
+    "size_bytes": 212096
+  },
+  {
     "file": "pakistan_capacity_by_cell.parquet",
-    "label": "Capacity per grid cell",
-    "note": "PyPSA-ready region/cell aggregate: n_buildings, roof_area_m2, est_mwp_rc and friends. 4,463 rows.",
+    "label": "Segmentation estimate per grid cell",
+    "note": "The >= 400 m2 segmentation half alone (est_mwp_rc and its estimators), with building counts and roof area per cell. 4,463 rows.",
     "size_bytes": 487796
   },
   {
     "file": "pakistan_capacity_by_building.parquet",
     "label": "Capacity per building",
-    "note": "One row per building carrying a segmentation detection. Sums to ~46% less than the cell table -- see the data dictionary. 91,424 rows.",
+    "note": "One row per building carrying a segmentation detection. Sums BELOW the cell table: each building is credited only with its own geometric intersection. 91,424 rows.",
     "size_bytes": 13739420
   },
   {
-    "file": "pakistan_roofclf_ge400_roof_buildings.parquet",
-    "label": "roofclf ≥ 400 m² rooftop replacement",
-    "note": "In-domain replacement for segmentation's own rooftop estimate. 187,827 rows.",
-    "size_bytes": 31959950
+    "file": "pakistan_capacity_by_region.parquet",
+    "label": "Capacity per admin region",
+    "note": "Region-level aggregate, if `density --districts` was run. 133 rows.",
+    "size_bytes": 526050
   },
   {
-    "file": "pakistan_roofclf_sub400_central_buildings.parquet",
-    "label": "roofclf sub-400 m², central estimate",
-    "note": "In-domain, feeds Best estimate. 979,780 rows.",
-    "size_bytes": 112944760
+    "file": "pakistan_roofclf_ge400_roof_by_cell_and_size.parquet",
+    "label": "roofclf >= 400 m2 rooftop replacement",
+    "note": "In-domain replacement for segmentation's own rooftop estimate. One row per cell and size bin, every building weighted by its score: n_buildings, sum_p (the expected number of PV roofs) and roof_area_m2 (the bin's capacity-weighted mean roof size). 6,045 rows.",
+    "size_bytes": 388495
+  },
+  {
+    "file": "pakistan_roofclf_sub400_central_by_cell_and_size.parquet",
+    "label": "roofclf sub-400 m2, central estimate",
+    "note": "In-domain, feeds Best estimate. One row per cell and size bin, every building weighted by its score: n_buildings, sum_p (the expected number of PV roofs) and roof_area_m2 (the bin's capacity-weighted mean roof size). 5,914 rows.",
+    "size_bytes": 400318
   },
   {
     "file": "pakistan_roofclf_sub400_low_buildings.parquet",
-    "label": "roofclf+SPPI sub-400 m², stricter floor",
-    "note": "In-domain, the internal floor population. 306,057 rows.",
-    "size_bytes": 34033145
+    "label": "roofclf+SPPI sub-400 m2, stricter floor",
+    "note": "In-domain, the internal floor population. 567,424 rows.",
+    "size_bytes": 60521551
   },
   {
     "file": "pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet",
-    "label": "roofclf+SPPI sub-400 m², out-of-domain",
-    "note": "Explicitly-flagged extrapolation beyond the calibrated domain. 12,271 rows.",
-    "size_bytes": 1410497
+    "label": "roofclf+SPPI sub-400 m2, out-of-domain",
+    "note": "Explicitly-flagged extrapolation beyond the calibrated domain, in the atlas's figures only when it was built with --sub400-outdomain-cells. 34,569 rows.",
+    "size_bytes": 3926739
   },
   {
     "file": "pakistan_raw_detections_unreviewed.parquet",
     "label": "Raw model detections (unreviewed)",
-    "note": "TerraMind segmentation's own ≥400 m² candidate polygons, before human review. 6,566 rows.",
+    "note": "Every thresholded candidate polygon, before human validation. Leads, not truth. 6,566 rows.",
     "size_bytes": 2539820
+  },
+  {
+    "file": "pakistan_roofclf_model.json",
+    "label": "Fitted roofclf model",
+    "note": "Coefficients, feature list and the zonal convention they were fitted under.",
+    "size_bytes": 1685
+  },
+  {
+    "file": "pakistan_roofclf_summary.json",
+    "label": "roofclf calibration summary",
+    "note": "Leave-one-quadrat-out skill, the deployment threshold and its precision/recall.",
+    "size_bytes": 2736
   },
   {
     "file": "pakistan_calibration_quadrat_boundaries.zip",
     "label": "Calibration quadrat boundaries",
-    "note": "GeoJSON boundary for every calibration quadrat used to fit roofclf and the density-calibration domain.",
-    "size_bytes": 7749
+    "note": "GeoJSON boundary of each of the 30 quadrats roofclf was fitted on, with quadrats.csv: held-out skill and which ones the coverage ratio was fitted on.",
+    "size_bytes": 23167
   },
   {
     "file": "pakistan_glint_pose_survey.csv",
     "label": "Panel pose survey (glint)",
-    "note": "Sentinel-2 specular-glint detections and fitted tilt/azimuth, 2,000 surveyed targets.",
-    "size_bytes": 148811
+    "note": "Sentinel-2 specular-glint detections and fitted panel tilt/azimuth per surveyed installation. 2,000 rows.",
+    "size_bytes": 148736
   },
   {
     "file": "terramind_pv_segmentation_checkpoint.ckpt",
     "label": "TerraMind segmentation checkpoint",
-    "note": "The terramind_v1_tiny fine-tune used to produce this release's detections and capacity numbers.",
+    "note": "The fine-tune that produced this release's detections and segmentation capacity.",
     "size_bytes": 98649447
   },
   {
     "file": "DATA_DICTIONARY.md",
     "label": "Data dictionary",
-    "note": "Column definitions, units, and known caveats for every file in this release.",
-    "size_bytes": 6437
+    "note": "Column definitions, units and known caveats for every file in this release.",
+    "size_bytes": 10075
   }
 ]
