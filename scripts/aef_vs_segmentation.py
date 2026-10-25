@@ -30,6 +30,10 @@ Known asymmetry, stated rather than corrected: AEF's newest year is calendar 202
 segmentation reads late-2025 to mid-2026 composites, so an array built in 2026 is visible
 to one instrument only.
 
+`--base-year 2023` (2026-10-24) measures the change from 2023 instead of 2017, the earliest
+year OlmoEarth v1.3 covers across Pakistan, so `olmoearth_vs_segmentation.py` can compare
+the two embeddings on the same baseline; it writes `_base2023` outputs beside the others.
+
     pixi run python scripts/aef_vs_segmentation.py --plan
     pixi run python scripts/aef_vs_segmentation.py
 """
@@ -79,6 +83,7 @@ MAX_POS = 150_000
 TAUS = (0.5, 0.8, 0.9, 0.95, 0.98, 0.99, 0.995)
 SEG_CONF = (0.0, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
 VARIANTS = ("change", "level", "both")
+BASE_YEAR = 2017  # the change baseline; --base-year
 # --national-negatives: the first run drew every negative from chunks around known PV, so
 # the detector never saw mountain, river or open desert, and its false-positive burden in the
 # random cells may be the training set's fault rather than the embedding's. These add
@@ -141,7 +146,7 @@ def national_negative_keys(exclude, rng) -> list[tuple[int, int]]:
 
 
 def training_sample(osm_d, exclude, rng, extra_keys=()):
-    keys = sorted({tuple(map(int, p.stem.split("_"))) for p in (am.CACHE / "2017").glob("*.zst")}
+    keys = sorted({tuple(map(int, p.stem.split("_"))) for p in (am.CACHE / str(BASE_YEAR)).glob("*.zst")}
                   & {tuple(map(int, p.stem.split("_"))) for p in (am.CACHE / "2025").glob("*.zst")}
                   & set(FOOTPRINT_KEYS))
     extra = set(extra_keys)
@@ -154,7 +159,7 @@ def training_sample(osm_d, exclude, rng, extra_keys=()):
         cb = box(x0, y0 - am.INNER * am.GSD, x0 + am.INNER * am.GSD, y0)
         if cb.intersects(ex):
             continue
-        a17, a25 = am.chunk(2017, cy, cx), am.chunk(2025, cy, cx)
+        a17, a25 = am.chunk(BASE_YEAR, cy, cx), am.chunk(2025, cy, cx)
         if a17 is None or a25 is None:
             continue
         tr = rasterio.Affine(am.GSD, 0, x0, 0, -am.GSD, y0)
@@ -196,7 +201,7 @@ def training_sample(osm_d, exclude, rng, extra_keys=()):
 # --------------------------------------------------------------------------------------
 def detect(models, geom) -> dict[str, gpd.GeoDataFrame]:
     minx, miny, maxx, maxy = geom.bounds
-    r17, tr = am.window(2017, minx, miny, maxx, maxy)
+    r17, tr = am.window(BASE_YEAR, minx, miny, maxx, maxy)
     r25, _ = am.window(2025, minx, miny, maxx, maxy)
     h, w = r17.shape[1:]
     valid = ((r17[0] != am.NODATA) & (r25[0] != am.NODATA)).ravel()
@@ -246,13 +251,14 @@ def score(sets, dets, cands, osm_all, truth) -> pd.DataFrame:
     rows = []
     for setname in ("random", "rich", "quadrats"):
         S = sets[sets.set == setname]
+        if S.empty:  # a country without Rule-1 quadrats
+            continue
         area_km2 = float(S.to_crs("EPSG:6933").area.sum() / 1e6)
         inside = lambda g: g[g.representative_point().within(S.union_all())]  # noqa: E731
         T = inside(truth)
         segs = inside(cands[cands.area_m2 >= MIN_AREA])
         instruments = {f"seg@conf{c}": segs[segs.confidence >= c] for c in SEG_CONF}
-        for key in dets[setname]:
-            instruments[f"aef_{key}"] = dets[setname][key]
+        instruments.update(dets[setname])
         for name, D in instruments.items():
             mapped = _near(D, osm_all)
             found = _near(T, D) if len(T) else np.array([], bool)
@@ -264,7 +270,7 @@ def score(sets, dets, cands, osm_all, truth) -> pd.DataFrame:
                 m = (T.placement == pl).to_numpy()
                 r[f"recall_{pl}"] = round(float(found[m].mean()), 3) if m.sum() else None
                 r[f"n_truth_{pl}"] = int(m.sum())
-            if name.startswith("aef_"):
+            if not name.startswith("seg@"):
                 both = _near(T, segs) | found
                 r["recall_union_seg"] = round(float(both.mean()), 3) if len(T) else None
                 conf = _near(segs, D)
@@ -282,10 +288,14 @@ def main() -> None:
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--national-negatives", action="store_true")
+    ap.add_argument("--base-year", type=int, default=2017)
     args = ap.parse_args()
-    global OUT
+    global OUT, BASE_YEAR
+    BASE_YEAR = args.base_year
     if args.national_negatives:
         OUT = OUT.with_name(OUT.stem + "_natneg.json")
+    if BASE_YEAR != 2017:
+        OUT = OUT.with_name(OUT.stem + f"_base{BASE_YEAR}.json")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     rng = np.random.default_rng(SEED)
     WORK.mkdir(parents=True, exist_ok=True)
@@ -299,7 +309,7 @@ def main() -> None:
              2 * (len(keys) - cached) * 2.5 / 1000)
     if args.plan:
         return
-    for y in (2025, 2017):
+    for y in (2025, BASE_YEAR):
         log.info("fetching %d", y)
         prefetch([(y, *k) for k in keys], workers=args.workers)
 
@@ -313,9 +323,11 @@ def main() -> None:
     if args.national_negatives:
         extra = national_negative_keys(sets, np.random.default_rng(SEED + 7))
         log.info("national negatives: %d chunks from %d random cells", len(extra), NAT_CELLS)
-        for y in (2025, 2017):
+        for y in (2025, BASE_YEAR):
             prefetch([(y, *k) for k in extra], workers=args.workers)
     FOOTPRINT_KEYS[:] = _footprint_keys()
+    if BASE_YEAR != 2017:  # the 2017 and 2025 training chunks were cached by aef_large_array_change
+        prefetch([(BASE_YEAR, *k) for k in FOOTPRINT_KEYS], workers=args.workers)
     X17, X25, Y = training_sample(truth, sets, rng, extra)
     models = {}
     for v in VARIANTS:
@@ -331,10 +343,12 @@ def main() -> None:
             log.info("  detected %s %s", setname, row["name"])
         dets[setname] = {k: gpd.GeoDataFrame(pd.concat(v, ignore_index=True), crs=4326)
                          for k, v in acc.items()}
-        tag = "_natneg" if args.national_negatives else ""
+        tag = ("_natneg" if args.national_negatives else "") + (
+            f"_base{BASE_YEAR}" if BASE_YEAR != 2017 else "")
         for k, g in dets[setname].items():
             g.to_parquet(WORK / f"det{tag}_{setname}_{k.replace('@', '_')}.parquet")
-    res = score(sets, dets, cands, osm, truth)
+    res = score(sets, {s: {f"aef_{k}": g for k, g in d.items()} for s, d in dets.items()},
+                cands, osm, truth)
     res.to_csv(OUT.with_name(OUT.stem + ".csv"), index=False)
     OUT.write_text(json.dumps({"n_train_pos": int(Y.sum()), "n_train_neg": int((Y == 0).sum()),
                                "rows": res.to_dict(orient="records")}, indent=2, default=str))
