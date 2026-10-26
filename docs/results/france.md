@@ -395,6 +395,51 @@ The ablation rows that involve `brightness_zscore` are unreliable for France: th
 NaN for 31% of French buildings. It is not in the production feature set, so the headline
 numbers above are unaffected.
 
+## Panel pose from Sentinel-2 glint (2026-10-26)
+
+The [France atlas](../atlas-france.md) now carries the same panel-orientation section as
+Pakistan's. It comes from a survey of **every OSM-mapped installation of 1,000 m&sup2; or
+more**: 6,337 once nested `power=plant` and `power=generator` outlines are dissolved into
+one installation each. Each installation's Sentinel-2 series covers one year, October 2025
+to September 2026. Pakistan's survey was a size-stratified sample of 2,000, and
+[the method](pv-pose.md) is the same.
+
+| | Installations | Glinted at least once | Pose fitted |
+|---|---:|---:|---:|
+| All | 6,337 | 1,801 (28.4%) | **1,277 (20.2%)** |
+| Ground-mount | 2,772 | 34.7% | 23.7% |
+| Rooftop | 3,565 | 23.6% | 17.4% |
+| Over 50,000 m&sup2; | 1,001 | 49.3% | 34.2% |
+
+**The fitted rate matches Pakistan's at the same size.** Pakistan fits 23.2% of its
+installations of 1,000 m&sup2; or more; its all-size figure is lower because small rooftops
+rarely glint.
+
+**The poses are tight and plausible.** The median tilt is 15.8&deg; (interquartile range
+13.2-20.4&deg;): 18.4&deg; for ground-mount and 15.0&deg; for rooftop, which is mostly barn
+and warehouse roofs at this size. The median azimuth is 172&deg;. Fitted azimuths run from
+129&deg; to 185&deg;, a narrower arc than Pakistan's 82-180&deg;, as the latitude trend in
+[Solar glint](../methods/glint.md) predicts.
+
+**Every point names its installation.** In the atlas, hovering over a point shows its OSM
+element, its region and its coordinates. Clicking opens the element on openstreetmap.org.
+The chart's CSV download lists all 1,277 points with OSM id, link, name, operator, region,
+longitude and latitude. Names come from a by-id Overpass lookup on 2026-10-26: 260 of the
+installations carry an OSM `name` and 117 an `operator`. Nine had been deleted from OSM since
+the 2026-10-22 pull, so they keep only their id and coordinates. Pakistan's pose points
+gained the same fields; none of its fits changed.
+
+**No French control has been measured.** Pakistan measured a false floor twice:
+
+* Controls the model called negative validated at 8.7%, partly because some carried
+  unmapped PV.
+* Verified PV-free buildings inside Rule-1 quadrats spiked at all only 2.0% of the time
+  ([Solar glint](../methods/glint.md#the-point-spread-function-and-the-false-spike-floor-2026-08-17)).
+
+Neither floor has been measured in France. Treat 20.2% as an upper bound on real fits, and
+treat any single pose as unconfirmed until it has been checked. The tight clustering is
+some evidence against many false fits, but it is not a control.
+
 ## Reproducing this
 
 ```bash
@@ -426,6 +471,18 @@ bash scripts/run_france_v5_compare.sh
 
 # The atlases
 bash scripts/rebuild_france_atlases_v5.sh
+
+# The glint pose survey, then its section on the published atlas
+python scripts/glint_pose_survey.py targets --name france \
+    --source data/labels/france_osm_20261022/france_solar_20261022.parquet --min-area 1000
+data/glint/france_pose/run_pull.sh             # resumable; about three days here
+python scripts/glint_pose_survey.py analyze --name france
+python scripts/glint_pose_survey.py osm-tags --summary data/glint/france_pose/summary.csv
+python scripts/glint_pose_survey.py export --name france --country France --no-page
+python scripts/patch_atlas_pose.py results/france_pv_evidence_atlas.html --aoi france \
+    --summary data/glint/france_pose/summary.csv --country France \
+    --density-dir data/predictions_v5/france/density \
+    --data-note "(all 6,337 OSM-mapped installations of 1,000 m² or more, Sentinel-2 imagery Oct 2025 to Sep 2026)"
 ```
 
 `compose` at country scale must be run through

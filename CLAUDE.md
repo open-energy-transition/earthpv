@@ -745,6 +745,12 @@ detector (`docs/methods/glint.md`):
 - **Opportunity-normalized sensitivity** (`src/earthpv/glint_opportunity.py`): the capacity
   calibration models `k ~ Poisson(q_b * opportunity)` instead of dividing by a flat per-bin
   sensitivity.
+- **Panel-pose surveys** (`scripts/glint_pose_survey.py`, `pose.py`) sit on the Pakistan
+  (2,000-target sample, 281 fits) and France (all 6,337 OSM installations >= 1,000 m2, 1,277
+  fits, 2026-10-26; no French false-floor control yet) atlases. Every pose point carries its
+  OSM id, coordinates, admin-1 region and, from the cached `osm-tags` lookup
+  (`<survey>osm_tags.parquet`), OSM `name`/`operator`; the chart's CSV download lists them.
+  `scripts/patch_atlas_pose.py` adds or replaces only a published page's pose section.
 
 ### MaStR validation (Germany)
 

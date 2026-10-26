@@ -58,6 +58,14 @@ carries no orientation information. Only 23.2 percent reach this plot.
     The page also now includes the second regional top-up of 442 installations, which had
     been merged into the survey data without the page being rebuilt.
 
+## France: the whole population
+
+France's survey fits every OSM-mapped installation of 1,000 m<sup>2</sup> or more rather
+than a sample: 1,277 poses from 6,337 installations, 20.2%, against Pakistan's 23.2% at the
+same size. It is on the [France atlas](../atlas-france.md), where every point names its OSM
+installation and the CSV download carries each one's id and coordinates. Numbers and caveats:
+[France](france.md#panel-pose-from-sentinel-2-glint-2026-10-26).
+
 ## What glint is and is not good for
 
 Glint is a **reward-only** signal in this pipeline. A candidate with two or more mutually

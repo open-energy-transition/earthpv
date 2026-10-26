@@ -214,30 +214,47 @@ def solar_elements_to_gdf(elements: list[dict]) -> gpd.GeoDataFrame:
     return gdf
 
 
-def element_meta_by_id(ids, timeout: int = 180, batch: int = 1000) -> pd.DataFrame:
-    """`id`, `osm_user`, `osm_version` of OSM elements looked up by id (`osm-way/123`), for
-    a labels file pulled before those columns existed. Cheap for the server where an area
-    scan is not (the same reason `drop_solar_thermal.py --by-id` exists). An element the
-    lookup does not return (deleted since) is simply absent."""
+def _elements_by_id(ids, out: str, timeout: int, batch: int) -> list[dict]:
+    """Overpass elements looked up by id (`osm-way/123`), `batch` ids per query."""
     by_type: dict[str, list[str]] = {"node": [], "way": [], "relation": []}
     for s in ids:
         typ, num = s[len("osm-"):].split("/")
         by_type[typ].append(num)
-    rows = []
+    els = []
     for typ, nums in by_type.items():
         for k in range(0, len(nums), batch):
-            q = f"[out:json][timeout:{timeout}];{typ}(id:{','.join(nums[k:k + batch])});out meta;"
+            q = f"[out:json][timeout:{timeout}];{typ}(id:{','.join(nums[k:k + batch])});out {out};"
             for attempt in range(4):
                 try:
-                    els = _run_query(q, timeout).get("elements", [])
+                    els += _run_query(q, timeout).get("elements", [])
                     break
                 except RuntimeError:
                     if attempt == 3:
                         raise
                     time.sleep(60)
-            rows += [{"id": f"osm-{el['type']}/{el['id']}", "osm_user": el.get("user"),
-                      "osm_version": el.get("version")} for el in els]
+    return els
+
+
+def element_meta_by_id(ids, timeout: int = 180, batch: int = 1000) -> pd.DataFrame:
+    """`id`, `osm_user`, `osm_version` of OSM elements looked up by id (`osm-way/123`), for
+    a labels file pulled before those columns existed. Cheap for the server where an area
+    scan is not (the same reason `drop_solar_thermal.py --by-id` exists). An element the
+    lookup does not return (deleted since) is simply absent."""
+    rows = [{"id": f"osm-{el['type']}/{el['id']}", "osm_user": el.get("user"),
+             "osm_version": el.get("version")} for el in _elements_by_id(ids, "meta", timeout, batch)]
     return pd.DataFrame(rows, columns=["id", "osm_user", "osm_version"])
+
+
+def element_tags_by_id(ids, keys=("name", "operator"), timeout: int = 180,
+                       batch: int = 1000) -> pd.DataFrame:
+    """`id` plus `osm_<key>` for each tag in `keys`, looked up by id like
+    `element_meta_by_id`. A tag the element does not carry is None; an element the lookup
+    does not return (deleted since) is absent."""
+    cols = [f"osm_{k}" for k in keys]
+    rows = [{"id": f"osm-{el['type']}/{el['id']}",
+             **{c: el.get("tags", {}).get(k) for c, k in zip(cols, keys)}}
+            for el in _elements_by_id(ids, "tags", timeout, batch)]
+    return pd.DataFrame(rows, columns=["id", *cols])
 
 
 def build_overpass_labels(

@@ -11,6 +11,7 @@ country another:
         --source data/labels/france_osm_20261022/france_overpass_solar.parquet --min-area 1000
     python scripts/glint_pose_survey.py pull    --name france --start 2024-10-01 --end 2026-10-01
     python scripts/glint_pose_survey.py analyze --name france
+    python scripts/glint_pose_survey.py osm-tags --summary data/glint/france_pose/summary.csv
 
 Three differences from the Pakistan script, all about scale:
 
@@ -210,25 +211,60 @@ def analyze(name: str = typer.Option(...), tol_deg: float = 3.0):
         print(f"\n=== by {col} ===\n{tab.to_string()}")
 
 
+@app.command("osm-tags")
+def osm_tags(
+    summary: Path = typer.Option(..., help="an `analyze` summary CSV (any survey, e.g. "
+                                 "data/glint/country2000_summary.csv)"),
+    all_targets: bool = typer.Option(False, help="look up every target, not only fitted ones"),
+):
+    """Cache OSM `name`/`operator` of the surveyed installations beside the summary, so the
+    atlas can say which installation a pose belongs to without calling Overpass itself."""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+    from earthpv.overpass import element_tags_by_id
+    from earthpv.pose import osm_tags_path, pose_locations
+
+    s = pd.read_csv(summary)
+    if not all_targets:
+        s = s[s.n_consistent >= 2]
+    ids = pose_locations(s, summary).osm_id.dropna().unique()
+    tags = element_tags_by_id([f"osm-{i}" for i in ids])
+    out = osm_tags_path(summary)
+    tags.to_parquet(out)
+    log.info("%d of %d elements returned (%d named, %d with an operator) -> %s", len(tags),
+             len(ids), tags.osm_name.notna().sum(), tags.osm_operator.notna().sum(), out)
+    if len(tags) < len(ids):
+        log.warning("%d elements missing: deleted since the survey, or a truncated mirror "
+                    "response; re-run to retry", len(ids) - len(tags))
+
+
 @app.command()
 def export(
     name: str = typer.Option(...),
     country: str = typer.Option(..., help="display name for the pose page"),
     out_dir: Path = typer.Option(Path("results")),
+    page: bool = typer.Option(True, help="also write the standalone pose page; its colours and "
+                              "histograms assume OSM generator/plant kinds, which a dissolved "
+                              "survey (France) does not keep, so pass --no-page there"),
 ):
-    """Validated poses as GeoJSON (one polygon per installation) plus the pose survey page."""
-    from earthpv.pose import build_pose_survey_page
+    """Validated poses as GeoJSON and CSV (one row per installation, with its OSM id, link,
+    name and coordinates) plus the standalone pose survey page."""
+    from earthpv.pose import build_pose_survey_page, pose_locations
 
     d = _dir(name)
     s = pd.read_csv(d / "summary.csv")
     t = gpd.read_parquet(d / "targets.parquet")[["pid", "geometry"]]
-    fit = t.merge(s[s.validated], on="pid")
-    fit = fit[["pid", "src_id", "placement", "kind", "area_m2", "fit_tilt", "fit_az",
-               "n_consistent", "n_spikes", "n_clear", "geometry"]]
+    fit = pose_locations(s[s.validated], d / "summary.csv")
+    fit["osm_url"] = "https://www.openstreetmap.org/" + fit.osm_id
+    fit = t.merge(fit, on="pid")
+    keep = ["pid", "osm_id", "osm_url", "name", "operator", "lon", "lat", "placement", "kind",
+            "area_m2", "fit_tilt", "fit_az", "n_consistent", "n_spikes", "n_clear", "geometry"]
+    fit = fit[[c for c in keep if c in fit.columns]]
     out_dir.mkdir(parents=True, exist_ok=True)
     gj = out_dir / f"{name}_glint_pose.geojson"
     gpd.GeoDataFrame(fit, geometry="geometry", crs="EPSG:4326").to_file(gj, driver="GeoJSON")
-    build_pose_survey_page(d / "summary.csv", out_dir / f"{name}_pv_pose.html", country=country)
+    fit.drop(columns="geometry").to_csv(gj.with_suffix(".csv"), index=False)
+    if page:
+        build_pose_survey_page(d / "summary.csv", out_dir / f"{name}_pv_pose.html", country=country)
     log.info("%d validated poses of %d analysed -> %s", len(fit), len(s), gj)
 
 

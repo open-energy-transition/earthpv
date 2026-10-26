@@ -901,8 +901,8 @@
           <div class="pose-tooltip" id="pose-tooltip"></div>
         </div>
         <div class="pose-legend">
-          <span class="pose-legend-item"><span class="pose-swatch pose-swatch-sun"></span>rooftop generator</span>
-          <span class="pose-legend-item"><span class="pose-swatch pose-swatch-glint"></span>ground plant</span>
+          <span class="pose-legend-item"><span class="pose-swatch pose-swatch-sun"></span><span class="pz-leg-roof">rooftop generator</span></span>
+          <span class="pose-legend-item"><span class="pose-swatch pose-swatch-glint"></span><span class="pz-leg-ground">ground plant</span></span>
           <span class="pose-legend-item"><span class="pose-swatch pose-swatch-excl"></span>unreachable by this sensor's fixed overpass time</span>
         </div>
       </div>
@@ -916,9 +916,9 @@
         </div>
         <div class="pose-panel pose-stat-card">
           <div class="pose-stat-row"><span class="pose-stat-label">&ge;1 spike, no fittable pose;</span>
-            <span class="pose-stat-val pose-mono pz-pct-onespike">0%</span></div>
+            <span class="pose-stat-val pose-mono"><span class="pz-pct-onespike">0</span>%</span></div>
           <div class="pose-stat-row"><span class="pose-stat-label">no glint signal at all</span>
-            <span class="pose-stat-val pose-mono pz-pct-nosignal">0%</span></div>
+            <span class="pose-stat-val pose-mono"><span class="pz-pct-nosignal">0</span>%</span></div>
           <div class="pose-stat-row"><span class="pose-stat-label">azimuth range observed</span>
             <span class="pose-stat-val pose-mono pz-az-range">&ndash;</span></div>
           <div class="pose-stat-row"><span class="pose-stat-label">tilt IQR observed</span>
@@ -941,8 +941,8 @@
           </p>
           <h3 class="pose-callout-h">Why the plot only fills part of the circle</h3>
           <p>
-            Sentinel-2 crosses this latitude at a fixed <b>~10:30 local time</b>, so across two
-            full years of imagery the sun's azimuth at the moment of every overpass never once
+            Sentinel-2 crosses this latitude at a fixed <b>~10:30 local time</b>, so in every
+            image of the survey window the sun's azimuth at the moment of overpass never once
             swings west of due south -- a panel facing southwest, west, or north <b>cannot glint
             into this sensor no matter how long you wait.</b> That's a sensor limit, not a
             property of rooftops here: the <span class="pose-fig">shaded wedge</span>
@@ -958,6 +958,8 @@
       Data: <span class="pose-mono pz-summary-path"></span><span class="pz-data-note"></span>.
       Validated = a single (tilt, azimuth) explains &ge; 2 independent spike dates via the
       specular reflection condition, tolerance 3&deg;. Point size &prop; &radic;(installation area).
+      Hover a point to see which installation it is; click it to open that installation in
+      OpenStreetMap. The CSV download lists every point with its OSM id and coordinates.
       Full derivation of the glint signal this pose fit is built on:
       <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">the method page</a>.
       Annotated Sentinel-2 / high-res examples of what a validated spike actually looks like in
@@ -3402,17 +3404,30 @@ out geom;</div>
     }
     return d + "Z";
   }
+  // Amber/teal split: OSM kind (generator/plant) where the survey kept it, else placement.
+  function poseIsRoof(d){
+    return DATA.pose.stats.color_by === "placement" ? d.pl === "rooftop" : d.k === "generator";
+  }
+  function poseLegend(){
+    return DATA.pose.stats.color_by === "placement" ? ["rooftop", "ground-mount"]
+      : ["rooftop generator", "ground plant"];
+  }
+  function poseOsmUrl(d){
+    return d.o ? `https://www.openstreetmap.org/${d.o}` : "";
+  }
   function drawPosePolar(svg, interactive){
     svg.innerHTML = "";
     const P = DATA.pose;
-    const cx = 320, cy = 320, R = 250, tiltMax = 30;
+    const cx = 320, cy = 320, R = 250;
+    // 30 degrees unless a fit is steeper, so no point lands outside the outer ring.
+    const tiltMax = Math.max(30, Math.ceil((P.stats.tilt_max || 0) / 10) * 10);
     const ink = poseCss("--pose-ink"), inkFaint = poseCss("--pose-ink-faint"), inkDim = poseCss("--pose-ink-dim"),
       rule = poseCss("--pose-rule"), sun = poseCss("--pose-accent-sun"),
       glint = poseCss("--pose-accent-glint"), excl = poseCss("--pose-excluded"),
       exclLine = poseCss("--pose-excluded-line"), chartBg = poseCss("--pose-bg-chart");
     const mono = 'ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", Consolas, monospace';
     svg.appendChild(el("path", {d: poseWedgePath(cx, cy, R, P.wedge[0], P.wedge[1]), fill: excl, opacity: 0.9}));
-    [10, 20, 30].forEach((t) => {
+    Array.from({length: tiltMax / 10}, (_, i) => (i + 1) * 10).forEach((t) => {
       const r = (t / tiltMax) * R;
       svg.appendChild(el("circle", {cx, cy, r, fill: "none", stroke: rule, "stroke-width": 1}));
       const [lx, ly] = posePolarXY(cx, cy, r, 250);
@@ -3445,16 +3460,23 @@ out geom;</div>
     P.points.forEach((d) => {
       const r = (d.t / tiltMax) * R;
       const [x, y] = posePolarXY(cx, cy, r, d.az);
-      const color = d.k === "generator" ? sun : glint;
+      const color = poseIsRoof(d) ? sun : glint;
       const c = el("circle", {cx: x, cy: y, r: sizeFor(d.a), fill: color, stroke: chartBg, "stroke-width": 1,
         opacity: 0.88, style: interactive ? "cursor:pointer;" : null});
       if (interactive){
         c.addEventListener("mouseenter", () => {
-          tipEl.innerHTML = `<b>${esc(d.p)}</b> · ${esc(d.k)} · ${esc(d.pl)}<br>`
-            + `tilt ${d.t}° · az ${d.az}° · area ${Math.round(d.a).toLocaleString()} m²<br>`
-            + `${d.n} consistent spike dates`;
+          const what = [d.k === "unknown" ? null : d.k, d.pl].filter(Boolean).join(" · ");
+          const where = [d.r, d.y != null ? `${d.y.toFixed(4)}, ${d.x.toFixed(4)}` : ""].filter(Boolean).join(" · ");
+          tipEl.innerHTML = `<b>${esc(d.nm || (d.o ? "OSM " + d.o : d.p))}</b>`
+            + (d.nm && d.o ? ` · OSM ${esc(d.o)}` : "") + "<br>"
+            + (d.op ? `operator ${esc(d.op)}<br>` : "")
+            + (where ? `${esc(where)}<br>` : "")
+            + `${esc(what)} · area ${Math.round(d.a).toLocaleString()} m²<br>`
+            + `tilt ${d.t}° · az ${d.az}° · ${d.n} consistent spike dates`
+            + (d.o ? `<br><i>click to open in OpenStreetMap</i>` : "");
           tipEl.classList.add("pose-show");
         });
+        if (d.o) c.addEventListener("click", () => window.open(poseOsmUrl(d), "_blank", "noopener"));
         c.addEventListener("mousemove", (ev) => {
           const rect = wrap.getBoundingClientRect();
           tipEl.style.left = (ev.clientX - rect.left) + "px";
@@ -3486,6 +3508,8 @@ out geom;</div>
     set("pz-wedge-deg", st.wedge_deg.toFixed(0));
     set("pz-summary-path", esc(st.summary_path));
     set("pz-data-note", st.data_note ? " " + esc(st.data_note) : "");
+    set("pz-leg-roof", esc(poseLegend()[0]));
+    set("pz-leg-ground", esc(poseLegend()[1]));
     set("pz-ge1000-note",
       `figures restricted to the &ge; 1,000 m&sup2; target class (n=${fmt(st.n_ge1000)} of ${fmt(st.n_total)})`);
   }
@@ -3716,11 +3740,14 @@ out geom;</div>
     drawPosePolar(document.getElementById("pose-polar"), true);
     chartDownloads("pose", {
       title: () => `${AOI}: fitted panel tilt and azimuth from Sentinel-2 glint`,
-      subtitle: () => `Tilt (radius, 0-30°) by azimuth (angle); amber = rooftop generator, teal = ground plant; `
+      subtitle: () => `Tilt (radius, 0-${Math.max(30, Math.ceil((DATA.pose.stats.tilt_max || 0) / 10) * 10)}°) by azimuth (angle); `
+        + `amber = ${poseLegend()[0]}, teal = ${poseLegend()[1]}; `
         + `the shaded wedge is unobservable from Sentinel-2's fixed overpass time.`,
       render: () => poseExportSvg(),
-      csv: () => [["id", "kind", "placement", "area_m2", "tilt_deg", "azimuth_deg", "n_spike_dates"],
-        DATA.pose.points.map(d => [d.p, d.k, d.pl, d.a, d.t, d.az, d.n])],
+      csv: () => [["id", "osm_id", "osm_url", "name", "operator", "region", "lon", "lat",
+        "kind", "placement", "area_m2", "tilt_deg", "azimuth_deg", "n_spike_dates"],
+        DATA.pose.points.map(d => [d.p, d.o || "", poseOsmUrl(d), d.nm || "", d.op || "", d.r || "",
+          d.x ?? "", d.y ?? "", d.k, d.pl, d.a, d.t, d.az, d.n])],
     });
   } else if (poseSection) {
     poseSection.style.display = "none";

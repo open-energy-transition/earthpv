@@ -2385,7 +2385,9 @@ def build_evidence_atlas(
       `pose_summary_csv` is the same glint-validation summary CSV
       `build_pose_survey_page` takes; `pose.compute_pose_survey_data` (shared with that
       function) computes chart data and every stat once. Omit it and no pose section is
-      written at all.
+      written at all. Each fitted point carries its OSM id, coordinates, OSM name where
+      `glint_pose_survey.py osm-tags` cached one, and the province it falls in, so the
+      tooltip and the CSV download say which installation a pose belongs to (2026-10-26).
 
     **`imagery_date_range` (added 2026-08-14): a free-text label for the Sentinel-2
     scene window the composites were built from** (e.g. "Oct 2025 - Jun 2026"), shown
@@ -2775,6 +2777,7 @@ def build_evidence_atlas(
 
     provinces = []
     cell_cover: dict = {}
+    reg_regions = None
     regions_path = density_dir / "regions.geoparquet"
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
@@ -2984,7 +2987,7 @@ def build_evidence_atlas(
         from earthpv import pose as pose_mod
 
         data["pose"] = pose_mod.compute_pose_survey_data(
-            pose_summary_csv, title, pose_history_note, pose_data_note,
+            pose_summary_csv, title, pose_history_note, pose_data_note, regions=reg_regions,
         )
 
     _pq = write_cell_geoparquet(cells, cell_cols, out)

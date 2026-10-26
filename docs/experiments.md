@@ -72,6 +72,7 @@ repository; nothing was deleted on failure.
 | Solar-glint corroboration | <span class="outcome works">shipped</span> | Calibrated likelihood ratios per size bucket, reward-only, never demoting. |
 | Tile-major glint fetching | <span class="outcome works">shipped</span> | 22x faster, numerically identical output. |
 | [Glint tile copies counted once](#glint-tile-copies-and-token-expiry-2026-10-22) | <span class="outcome works">shipped</span> | Overlapping tiles deliver one pass twice, and a glint seen in both had validated a pose on its own. Pakistan's pose survey: 346 to 336 fits, none of the rest moved. |
+| [France glint pose survey](results/france.md#panel-pose-from-sentinel-2-glint-2026-10-26) | <span class="outcome works">shipped</span> | Every OSM installation of 1,000 m<sup>2</sup> or more: 1,277 of 6,337 get a pose (20.2%, Pakistan 23.2% at that size), now on the France atlas with each point's OSM id, name and place. No French control yet. |
 | [A fresh Planetary Computer token for every read](#glint-tile-copies-and-token-expiry-2026-10-22) | <span class="outcome works">shipped</span> | The client cached a 45-minute token and replaced it only with under 60 s left, the cause of the silent scene loss in long glint pulls. |
 | Pre-boom epoch check | <span class="outcome works">shipped</span> | A persistent 2021 signal demotes a candidate. |
 | Vegetation veto | <span class="outcome works">shipped</span> | 596 of 5,132 leads vetoed, and specifically the right ones. |

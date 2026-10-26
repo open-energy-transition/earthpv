@@ -444,15 +444,84 @@ new MutationObserver(renderAll).observe(document.documentElement, { attributes: 
 """
 
 
+def survey_sidecar(summary_csv: Path, suffix: str) -> Path:
+    """A file written beside a survey's summary CSV under the same prefix:
+    `france_pose/summary.csv` -> `france_pose/<suffix>`,
+    `country2000_summary.csv` -> `country2000_<suffix>`."""
+    summary_csv = Path(summary_csv)
+    prefix = summary_csv.name[: -len("summary.csv")] if summary_csv.name.endswith("summary.csv") else ""
+    return summary_csv.with_name(prefix + suffix)
+
+
+def osm_tags_path(summary_csv: Path) -> Path:
+    """Cache of OSM `name`/`operator` per surveyed installation, written by
+    `scripts/glint_pose_survey.py osm-tags` (a live Overpass lookup, so never run while an
+    atlas builds)."""
+    return survey_sidecar(summary_csv, "osm_tags.parquet")
+
+
+def pose_locations(s: pd.DataFrame, summary_csv: Path, regions=None) -> pd.DataFrame:
+    """`s` with each installation's identity and place: `osm_id` (`way/123`), `lon`, `lat`,
+    and where available `name`/`operator` (OSM tags, `osm_tags_path`) and `region` (the
+    admin-1 polygon containing the point, from `regions`: a GeoDataFrame with `name` and
+    `geometry`).
+
+    A summary that does not carry `lon`/`lat` and an id itself (Pakistan's
+    `country2000_summary.csv`) takes them from its targets table
+    (`survey_sidecar(summary_csv, "targets.parquet")`, joined on `pid`). Whatever cannot be
+    found stays empty rather than failing: the page then shows the fit without a place."""
+    s = s.copy()
+    id_col = next((c for c in ("src_id", "osm_id") if c in s.columns), None)
+    if id_col is None or not {"lon", "lat"} <= set(s.columns):
+        tpath = survey_sidecar(summary_csv, "targets.parquet")
+        if tpath.exists():
+            t = pd.read_parquet(tpath)
+            t_id = next((c for c in ("src_id", "osm_id") if c in t.columns), None)
+            take = [c for c in ("lon", "lat") if c in t.columns and c not in s.columns]
+            if t_id and t_id not in s.columns:
+                take.append(t_id)
+            s = s.merge(t[["pid", *take]], on="pid", how="left")
+            id_col = id_col or t_id
+    s["osm_id"] = (s[id_col].astype("string").str.replace(r"^osm-", "", regex=True)
+                   if id_col else pd.Series(pd.NA, index=s.index, dtype="string"))
+    for c in ("lon", "lat"):
+        if c not in s.columns:
+            s[c] = float("nan")
+    tags = osm_tags_path(summary_csv)
+    if tags.exists() and id_col:
+        tg = pd.read_parquet(tags).rename(columns={"osm_name": "name", "osm_operator": "operator"})
+        tg["osm_id"] = tg["id"].astype("string").str.replace(r"^osm-", "", regex=True)
+        s = s.merge(tg[["osm_id", *[c for c in ("name", "operator") if c in tg.columns]]],
+                    on="osm_id", how="left")
+    if regions is not None and len(regions) and s.lon.notna().any():
+        import geopandas as gpd
+
+        pts = gpd.GeoDataFrame(s[["pid"]], geometry=gpd.points_from_xy(s.lon, s.lat),
+                               crs="EPSG:4326")
+        hit = gpd.sjoin(pts, regions[["name", "geometry"]].to_crs("EPSG:4326"),
+                        predicate="within", how="left")
+        hit = hit[~hit.index.duplicated()]
+        s["region"] = hit["name"].reindex(s.index).values
+    return s
+
+
 def compute_pose_survey_data(
     summary_csv: Path, country: str, history_note: str = "", data_note: str = "",
+    regions=None,
 ) -> dict:
     """Everything the pose survey needs -- chart data plus every derived stat --
     computed once and shared by `build_pose_survey_page` (the standalone page) and
     `build_evidence_atlas` (which embeds the identical section natively, see
-    `earthpv.atlas`). `history_note`/`data_note`: see `build_pose_survey_page`."""
+    `earthpv.atlas`). `history_note`/`data_note`: see `build_pose_survey_page`.
+
+    Each fitted point also carries where it is and what it is in OSM (`pose_locations`;
+    `regions` adds the admin-1 name), so the atlas tooltip and its CSV download name the
+    installation a pose came from. Points are coloured by OSM `kind` (generator/plant)
+    where every target has one, else by `placement` (`stats.color_by`): France's survey
+    dissolves generators into plants and keeps no kind."""
     s = pd.read_csv(summary_csv)
-    fit = s[s.n_consistent >= 2].copy().reset_index(drop=True)
+    fit = pose_locations(s[s.n_consistent >= 2], summary_csv, regions).reset_index(drop=True)
+    color_by = "kind" if set(s["kind"].dropna().unique()) <= {"generator", "plant"} else "placement"
 
     az_min, az_max = float(fit.fit_az.min()), float(fit.fit_az.max())
     # Everything outside the observed [az_min, az_max] range is unreachable by this
@@ -461,10 +530,23 @@ def compute_pose_survey_data(
     wedge = [round(az_max, 1), round(az_min + 360.0, 1)]
     wedge_span = round(wedge[1] - wedge[0], 1)
 
+    def _place(r) -> dict:
+        """Identity and location keys, each omitted when unknown (keeps the page small)."""
+        out = {}
+        if pd.notna(r.osm_id):
+            out["o"] = str(r.osm_id)
+        if pd.notna(r.lon) and pd.notna(r.lat):
+            out["x"], out["y"] = round(float(r.lon), 5), round(float(r.lat), 5)
+        for key, col in (("nm", "name"), ("op", "operator"), ("r", "region")):
+            v = getattr(r, col, None)
+            if v is not None and pd.notna(v) and str(v).strip():
+                out[key] = str(v).strip()
+        return out
+
     points = [
         dict(p=r.pid, k=r.kind, pl=r.placement, a=round(float(r.area_m2), 1),
              t=round(float(r.fit_tilt), 1), az=round(float(r.fit_az), 1),
-             n=int(r.n_consistent))
+             n=int(r.n_consistent), **_place(r))
         for r in fit.itertuples()
     ]
 
@@ -481,6 +563,8 @@ def compute_pose_survey_data(
     strip = []
     for label in LABELS:
         g = s[s.bucket == label]
+        if g.empty:  # a survey with a size floor (France: >= 1,000 m2) has no small buckets;
+            continue  # their mean is NaN, which is not JSON and breaks the page's data block
         strip.append([label, round(100 * g.detected.mean(), 1), round(100 * g.validated.mean(), 1)])
 
     return {
@@ -500,6 +584,8 @@ def compute_pose_survey_data(
             "az_max": round(az_max, 1),
             "tilt_q25": round(float(fit.fit_tilt.quantile(.25)), 1),
             "tilt_q75": round(float(fit.fit_tilt.quantile(.75)), 1),
+            "tilt_max": round(float(fit.fit_tilt.max()), 1),
+            "color_by": color_by,
             "wedge_deg": wedge_span,
             "summary_path": str(summary_csv),
             "history_note": history_note,
