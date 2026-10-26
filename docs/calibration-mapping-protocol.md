@@ -287,6 +287,15 @@ representative set. `calib-publish` ranks every candidate of an uncalibrated atl
 start-here boxes first and then the sampled ones from the densest down, and the atlas draws
 the first as a **star**, with a *Start here* button in the map legend.
 
+A start-here box that turns out to be unusable is rejected like any other region
+(`new_calibration_quadrat.py --reject`), then redrawn with `--priority --replace`: the
+sampler keeps every draw 20 km from a rejected location, as from a registered quadrat, so
+the redraw moves to another area instead of landing on the same box again, and a box
+already registered keeps its place in the count of two. The rule is deterministic, so a
+large-roof rule can still pick a warehouse district: India's first Thane box (2026-10-25)
+was a godown complex whose skylight strips read as panels, with 72% of its roof area in
+sheds of 5,000 m<sup>2</sup> or more.
+
 **Farm boxes (2026-10-23).** `pixi run calib-candidates -- --aoi <country> --farmland` draws
 calibration areas for the farm ground-PV detector instead: the same recipe on cropland, with
 the cells cut into eight bands of equal cropland area by their ESA WorldCover share and a

@@ -87,7 +87,7 @@ Pakistan has eight more aimed at the sparse end of its calibration.
 | country | tier | open candidates | box density (bldg/km<sup>2</sup>) | start here (&#9733;) |
 |---|---|---:|---|---|
 | [Egypt](../atlas-egypt.md) | Bronze | 10 | 150 to 1,085 | Qalyub, Qalyubia |
-| [India](../atlas-india.md) | Bronze | 10 | 78 to 2,946 | Thane, Maharashtra |
+| [India](../atlas-india.md) | Bronze | 9 | 78 to 2,946 | Surat, Gujarat |
 | [Morocco](../atlas-morocco.md) | Bronze | 10 | 36 to 954 | Tangier-Assilah |
 | [Nigeria](../atlas-nigeria.md) | Bronze | 10 | 39 to 2,291 | Ikeja, Lagos |
 | [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |

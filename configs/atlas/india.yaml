@@ -13,6 +13,16 @@
 
 title: India
 
+# Gurgaon: the first start-here box (calib-candidates --priority), mapped and declared
+# Rule-1 complete by the owner 2026-10-25 against Esri imagery of 2025-05-27. Registered, not
+# fitted: one area cannot calibrate a roofclf half, hence `used: false` (drawn on the map;
+# the confidence text does not claim it as ground truth). Purba Champaran: a sampled farm
+# box (calib-candidates --farmland), swept by the owner 2026-10-25 on Esri imagery of
+# 2025-04-03 and confirmed empty; no farm detector has been run on India.
+calibration_boxes:
+  - {name: "Gurgaon, Haryana", stem: gurgaon_priority_calib_1km, status: rule1, used: false}
+  - {name: "Purba Champaran, Bihar (farm, no PV)", stem: purba_champaran_f3_farm_calib_3km, status: rule1, used: false}
+
 cities:
   - [Delhi, 77.209, 28.614]
   - [Mumbai, 72.878, 19.076]
@@ -30,9 +40,9 @@ cities:
 confidence:
   caveats:
     - >-
-      <b>The small-installation half of this page does not exist yet.</b> No area of India
-      has been mapped panel by panel, so the per-building classifier that supplies most of
-      Pakistan's estimate has nothing to be calibrated against here. Everything on the map
+      <b>The small-installation half of this page does not exist yet.</b> One area of
+      India, in Gurgaon, has been mapped panel by panel, and one area is not enough to
+      calibrate the per-building classifier that supplies most of Pakistan's estimate. Everything on the map
       is either hand-mapped in OpenStreetMap or an array the segmentation model outlined
       directly, which in practice means installations of roughly 400 m&sup2; and up. The
       household rooftop systems that dominate India's recent rooftop programme are mostly

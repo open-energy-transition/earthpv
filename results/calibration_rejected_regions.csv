@@ -1,0 +1,2 @@
+name,center_lat,center_lon,size_km2,district,province,imagery_layer,imagery_date,reason,date_rejected
+thane_priority,19.240652,73.035177,1.0,Thane,Mahārāshtra,Esri World Imagery (Vivid Advanced),2025-10-12,"Bhiwandi godown complex, judged unusable by the owner: contiguous warehouse sheds with skylight strips that read as panels; 72% of VIDA roof area in footprints of 5,000 m2 or more (five of 20,000-42,000 m2), 4.5% in roofs under 400 m2",2026-10-25

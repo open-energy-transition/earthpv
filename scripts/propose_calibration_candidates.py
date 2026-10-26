@@ -117,6 +117,8 @@ CAND_SPACING_KM = 5.0                # from an existing candidate; quadrats keep
 FARM_SELECTION = "stratified random by cropland area"
 OWN_CROP_TOL = 1.25                  # a box's own cropland share within x/÷ this of its cell's
 MIN_WINDOW_COVER = 0.8               # of the cell's best-covered window: no half-sea boxes
+# Locations someone looked at and rejected (`new_calibration_quadrat.py --reject`).
+REJECT_REGISTER = Path("results/calibration_rejected_regions.csv")
 
 
 def grid_path(aoi: str) -> Path:
@@ -279,11 +281,26 @@ class Admin:
         return out[0], out[1]
 
 
+def rejected_rows() -> list[dict]:
+    """The rejection register `new_calibration_quadrat.py --reject` writes (every AOI)."""
+    if not REJECT_REGISTER.exists():
+        return []
+    with REJECT_REGISTER.open(newline="") as fh:
+        return [r for r in csv.DictReader(fh) if r.get("name")]
+
+
 def existing_boxes(home: Path) -> list:
-    """Every registered quadrat of this AOI: the overlap/spacing reference."""
+    """Every registered quadrat of this AOI, plus every rejected location: the overlap/
+    spacing reference. A rejected box is kept `--min-spacing-km` away like a registered one,
+    so a redraw moves to another area instead of landing beside it (or, for the
+    deterministic `--priority` draw, on it again). The register has no AOI column; another
+    country's rejections are simply too far away to matter."""
     from earthpv.roofclf import load_boundary
 
-    return [load_boundary(p) for p in sorted(home.glob("*_calib_*_boundary.geojson"))]
+    boxes = [load_boundary(p) for p in sorted(home.glob("*_calib_*_boundary.geojson"))]
+    return boxes + [geodesic_square(float(r["center_lat"]), float(r["center_lon"]),
+                                    math.sqrt(float(r["size_km2"])) * 1000.0)
+                    for r in rejected_rows()]
 
 
 def propose(aoi: str, args) -> list[dict]:
@@ -509,6 +526,15 @@ def propose_priority(aoi: str, args) -> list[dict]:
         print(f"{aoi}: {len(mine)} priority candidates already exist in {out_dir}; "
               "pass --replace to redraw them")
         return []
+    # A start-here box that has since been registered is done work: it keeps its file and its
+    # place in the --n-priority count, and --replace redraws only the open ones.
+    registered = {p.name[: -len("_boundary.geojson")] for p in home.glob("*_calib_*_boundary.geojson")}
+    done = [p for p in mine if p.name[: -len("_candidate.geojson")] in registered]
+    mine = [p for p in mine if p not in done]
+    want = args.n_priority - len(done)
+    if want <= 0:
+        print(f"{aoi}: all {args.n_priority} priority boxes are registered; nothing to draw")
+        return []
     others = [load_boundary(p) for p in files if p not in mine]
 
     grid = pd.read_parquet(args.grid or grid_path(aoi), columns=[
@@ -562,7 +588,7 @@ def propose_priority(aoi: str, args) -> list[dict]:
     taken = existing_boxes(home)
     picked = []
     for (cx, cy, _, _, large_area, _), cell, side in windows:
-        if len(picked) == args.n_priority or large_area <= 0:
+        if len(picked) == want or large_area <= 0:
             break
         poly = geodesic_square(float(cy), float(cx), side)
         too_close = [(b, args.min_spacing_km) for b in taken] + [(b, CAND_SPACING_KM) for b in others]
@@ -582,8 +608,10 @@ def propose_priority(aoi: str, args) -> list[dict]:
         geo_km2 = abs(GEOD.geometry_area_perimeter(poly)[0]) / 1e6
         tag = f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m"
         base = f"{slug(district or region or aoi)}_priority"
-        used = {c["stem"] for c in picked} | {p.name[: -len("_candidate.geojson")] for p in files
-                                              if p not in mine}
+        # A rejected name stays taken: calib-publish hides every candidate carrying one.
+        used = ({c["stem"] for c in picked} | {p.name[: -len("_candidate.geojson")] for p in files
+                                               if p not in mine}
+                | {f"{r['name']}_calib_{tag}" for r in rejected_rows()})
         stem = next(f"{base}{x}_calib_{tag}" for x in ("", *"bcdefgh")
                     if f"{base}{x}_calib_{tag}" not in used)
         dens = len(inside) / geo_km2
@@ -630,8 +658,8 @@ def propose_priority(aoi: str, args) -> list[dict]:
         print(f"  {c['stem']:<44} box {p['own_density_bldg_km2']:>7,.0f} bldg/km2"
               f"  {p['own_large_buildings']:>4} large, {p['own_large_roof_m2'] / 1e4:>6,.1f} ha"
               f"  cover {p['own_roof_cover']:.2f}  Esri {p['imagery_date']}  {p['location']}")
-    if len(picked) < args.n_priority:
-        print(f"  {aoi}: short, {len(picked)} of {args.n_priority}")
+    if len(picked) < want:
+        print(f"  {aoi}: short, {len(picked)} of {want}")
     if args.dry_run:
         return picked
 
