@@ -1957,12 +1957,12 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
         return sum(float((components.get(k) or {}).get("mwp", 0.0)) for k in keys)
 
     methods = [
-        ("roofclf alone (its own &ge;400 m&sup2; replacement plus the sub-400 m&sup2; "
-         "central estimate)", total("ge400_roof", "small_central")),
-        ("direct OSM mapping", total("osm_unmatched_roof", "osm_unmatched_ground")
+        ("roofclf's building-by-building estimate (rooftops of every size, in cells inside "
+         "its calibrated density range)", total("ge400_roof", "small_central")),
+        ("installations mapped in OpenStreetMap", total("osm_unmatched_roof", "osm_unmatched_ground")
          + float(best_floor_offset or 0.0)),
-        ("TerraMind segmentation", total("seg_roof_outdomain", "seg_ground")),
-        ("roofclf and SPPI agreeing, extrapolated beyond the calibrated domain",
+        ("TerraMind segmentation of large arrays", total("seg_roof_outdomain", "seg_ground")),
+        ("roofclf and SPPI agreeing, extrapolated beyond the calibrated density range",
          total("small_outdomain")),
         ("the farm ground-PV detector (arrays beside fields, below 400 m&sup2;)",
          total("small_ground")),
@@ -1998,6 +1998,8 @@ def _confidence_html(
     cfg, *, total_best: float, best_ci: list, has_extrapolation: bool,
     has_quadrat_bootstrap: bool, n_calib_boxes: int, n_calib_rule1: int,
     ground_interval: str = "", roofclf_probability: bool = False,
+    kwp_module_ci90: list | None = None, kwp_land_ci90: list | None = None,
+    n_coverage_boot: int | None = None,
 ) -> str:
     """The "How confident should you be in this?" section, for ANY country.
 
@@ -2032,51 +2034,50 @@ def _confidence_html(
     n_calib_rule1 = max(n_calib_rule1 - sum(b["status"] == "rule1" for b in unused), 0)
     n_calib_boxes -= n_unused
     n_word = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
+    def rng(ci):
+        return f"{ci[0]:g}&ndash;{ci[1]:g}" if ci and len(ci) == 2 else None
+
+    ranges = (f" Each is varied over its own range (90%: {rng(kwp_module_ci90)} and "
+              f"{rng(kwp_land_ci90)} kWp per m&sup2;)."
+              if rng(kwp_module_ci90) and rng(kwp_land_ci90) else
+              " Each is varied over its own range.")
     inside = [
-        "<b>The two \"panel area to power\" conversion numbers.</b> One "
-        "converts rooftop panel area to kWp, the other converts open-ground "
-        "solar-farm land to kWp. Both are measured against real, confirmed "
-        "power plants rather than assumed, but each carries its own "
-        "uncertainty.",
-        "<b>How well the detection model finds panels of different "
-        "sizes.</b> Its measured precision and recall were checked "
-        "installation-size by installation-size, and that check itself has a "
-        "margin of error.",
+        "<b>The two area-to-power constants.</b> Panel area on a roof converts at about "
+        "0.18 kWp per m&sup2;, the rating of a typical module; the outline of a "
+        "ground-mounted park converts at about 0.05 kWp per m&sup2;, measured on parks "
+        "whose capacity is known." + ranges,
+        "<b>How reliable the segmentation model's detections are.</b> How often its "
+        "detections turn out to be real, and how many mapped arrays it misses, were "
+        "measured size class by size class against mapped installations. Those "
+        "measurements have their own sampling error, which is drawn into the range.",
     ]
     if has_quadrat_bootstrap:
-        corrections = (
-            "how much panel a roof carries for each unit of the building classifier's "
-            "confidence, and what share of real panel area that confidence accounts for"
-            if roofclf_probability else
-            "how much of a flagged roof is actually covered in panels, and what share of "
-            "real installations get flagged at all")
+        conversion = ("the conversion from score to panel area" if roofclf_probability
+                      else "the conversion from flagged roofs to panel area")
+        times = f"{n_coverage_boot:,} times" if n_coverage_boot else "many times"
         inside.append(
-            "<b>How much the small-panel corrections shift depending on which "
-            "neighborhoods were ground-truthed.</b> Two corrections -- "
-            + corrections + " -- are fit on the same set of "
-            "ground-truthed neighborhoods (\"quadrats\"). This source of "
-            "uncertainty is measured by refitting both on random subsets of those "
-            "quadrats and seeing how far the answer moves.")
+            "<b>Which calibration areas roofclf was fitted on.</b> "
+            + conversion[0].upper() + conversion[1:]
+            + ", and the correction for panel area the scores miss, are refitted "
+            + times + " on random re-draws of the calibration areas (some left out, some "
+            "counted twice), and how far the answer moves goes into the range.")
     if ground_interval.startswith("bootstrap"):
         inside.append(
-            "<b>How much the farm ground-PV estimate shifts depending on which farm "
-            "areas were mapped.</b> Its ratio of mapped panel area to detected area is "
-            "refitted on random subsets of the completely mapped farm areas ("
-            + ground_interval + ").")
+            "<b>Which farm areas the farm ground-PV estimate was fitted on.</b> Its ratio "
+            "of mapped panel area to detected area is refitted on random re-draws of the "
+            "completely mapped farm areas (" + ground_interval + ").")
     elif ground_interval:
         inside.append(
             "<b>A stated allowance for the farm ground-PV estimate.</b> It rests on fewer "
-            "than three completely mapped farm areas, so how much it would shift with "
-            "other areas cannot be measured yet. It carries a judgement instead, a factor "
-            "of two either way at 90%, which widens the range rather than leaving its "
-            "least-tested part out.")
+            "than three completely mapped farm areas, too few to measure how much it would "
+            "shift with other areas. It carries a judgement instead, a factor of two either "
+            "way at 90%, which widens the range rather than leaving its least-tested part "
+            "out.")
     if has_extrapolation:
         inside.append(
-            "<b>An added allowance for a rural extrapolation.</b> This "
-            "build also includes a rough small-rooftop-solar estimate for "
-            "rural cells outside the areas the small-panel correction was "
-            "actually calibrated against, and that extrapolation's own "
-            "uncertainty is folded into the range too.")
+            "<b>An allowance for a rural extrapolation.</b> This build includes a rough "
+            "estimate of small rooftop PV in cells outside the calibrated density range, "
+            "and that extrapolation's own uncertainty is folded into the range.")
 
     outside = []
     if n_calib_boxes > 0:
@@ -2085,22 +2086,19 @@ def _confidence_html(
         # campaign's own communes -- so the reason is a `confidence.caveats` entry and
         # only the consequence, which is the same everywhere, is written here.
         outside.append(
-            "<b>The ground-truth areas were hand-picked, not randomly "
-            "sampled, so this isn't a formal statistical margin of error.</b> "
-            "A figure from purposively chosen areas can be checked, argued with and "
-            "improved, but it cannot be given a design-based confidence interval the "
-            "way a random sample of the country's buildings could.")
+            "<b>The calibration areas were chosen by hand, not drawn at random, so the "
+            "range is not a statistical margin of error for the country.</b> Re-drawing "
+            "them shows how much the areas disagree with each other, not how far the places "
+            "the estimate is applied to differ from all of them. Only a random sample of "
+            "areas can measure that.")
         outside.append(
-            "<b>Ground-truth \"complete\" means complete as of when that "
-            "area was mapped, not as of the satellite image used for "
-            "detection.</b> That cuts both ways, but in the same direction: it "
-            "makes the model's measured accuracy look slightly worse than it is "
-            "(recent real installations get scored as false alarms) and its "
-            "measured miss rate look slightly better than it is (installations "
-            "built after mapping can't be missed if they were never counted as "
-            "ground truth to begin with). Both effects point the same way -- "
-            "this page's figure is more likely an undercount than an "
-            "overcount.")
+            "<b>\"Every panel mapped\" holds as of the mapping imagery, which is older "
+            "than the satellite imagery.</b> Panels installed in between are missing from "
+            "the reference: the model's detections of them count as false alarms and its "
+            "misses of them go uncounted"
+            + (", and roofclf's conversion to panel area comes out low"
+               if has_quadrat_bootstrap else "")
+            + ". Each of these makes this figure more likely too low than too high.")
     elif n_unused and not cfg.ground_truth:
         outside.append(
             "<b>The hand-mapped areas here do not check these numbers yet.</b> "
@@ -2120,35 +2118,32 @@ def _confidence_html(
             "one into the other.")
     if roofclf_probability:
         outside.append(
-            "<b>The building classifier's confidence is taken at face value.</b> Every "
-            "roof counts in proportion to how likely the classifier thinks it carries "
-            "panels, rather than only the roofs above a cut-off. In the hand-mapped areas "
-            "that came far closer to the true panel area, above all in sparse, rural ones, "
-            "where a cut-off counted about an eighth of the mapped panels. The cost is that "
-            "a small, consistent lean in that confidence on village roofs would add up over "
-            "millions of buildings, and the hand-mapped areas cannot yet rule that out.")
+            "<b>Every roof counts in proportion to its score, and the score is not only "
+            "about panels.</b> In the calibration areas this came far closer to the mapped "
+            "panel area than counting only the roofs above a cut-off, above all in sparse, "
+            "rural ones, where the cut-off found about an eighth of the panels. But the "
+            "score also responds to the kinds of roofs and neighbourhoods where panels are "
+            "common, and summed over millions of village roofs even a small lean in it adds "
+            "up. The calibration areas cannot yet rule that out.")
     outside.extend(cfg.caveats)
 
     ground_truth = cfg.ground_truth
     if not ground_truth and n_calib_boxes > 0:
+        checked = ("All of them have" if n_calib_rule1 >= n_calib_boxes else
+                   f"<b>{n_calib_rule1}</b> of them have")
         ground_truth = (
-            "<p><b>The ground-truth areas: hand-picked to cover a mix of "
-            "landscapes, not a random sample.</b> All "
-            f"<b>{n_calib_boxes}</b> quadrats behind "
-            + ("the small-panel instruments" if has_quadrat_bootstrap
-               else "this page's accuracy checks")
-            + " were chosen by a researcher to span "
-            "different kinds of places -- planned housing developments, dense "
-            "informal urban neighborhoods, industrial estates, arid/bare land -- "
-            "rather than drawn at random from a national list. Only "
-            f"<b>{n_calib_rule1}</b> of them have had a full "
-            "manual check thorough enough to trust their \"no panels here\" "
-            "verdicts (the teal markers on the map). However many quadrats "
-            "exist, hand-picked ones can't produce a formal national margin of "
-            "error on their own -- that needs a genuine random sample of the "
-            "country's buildings, which doesn't exist yet. More quadrats do "
-            "help: each new one added so far has turned up a new way the method "
-            "can go wrong.</p>")
+            "<p><b>The calibration areas: hand-picked to cover a mix of places, not a "
+            f"random sample.</b> The <b>{n_calib_boxes}</b> calibration areas this page's "
+            + ("small-rooftop figures" if has_quadrat_bootstrap else "accuracy checks")
+            + " use are drawn on the map as diamonds, a few square kilometres each in which "
+            "volunteers mapped every panel. A researcher chose them to span different kinds "
+            "of places, from planned housing and dense urban blocks to industrial estates "
+            "and bare land, rather than drawing them at random. " + checked + " been "
+            "checked thoroughly enough to trust their \"no panel here\". Hand-picked areas, "
+            "however many, cannot give a national margin of error; randomly drawn ones can, "
+            "and where randomly drawn candidates exist the map shows them as hollow diamonds. "
+            "More areas of either kind help: each one added so far has turned up a new way "
+            "the method can go wrong.</p>")
     elif not ground_truth and n_unused:
         names = ", ".join(b["name"] for b in unused)
         ground_truth = (
@@ -2178,31 +2173,27 @@ def _confidence_html(
     # "two unrelated data sources") and were only ever right for the Pakistan build they
     # were written against -- the first is already wrong for a Pakistan run WITH the
     # out-of-domain extrapolation, which adds a fourth bullet.
-    preview = ["what's inside the range", "what isn't"]
+    preview = ["what is inside the range", "what is not"]
     if n_calib_boxes > 0:
-        preview.append("how many ground-truth areas it rests on")
+        preview.append("what calibration areas it rests on")
     if cfg.corroboration:
-        preview.append("how it compares to unrelated data sources")
+        preview.append("how it compares with other sources")
     return (
         "<p><b>Best estimate: "
         f"{total_best:,.0f} MWp, with a 90% range of "
-        f"{lo:,.0f}&ndash;{hi:,.0f} MWp.</b> That range covers "
+        f"{lo:,.0f}&ndash;{hi:,.0f} MWp.</b> The range covers "
         f"{n_word.get(len(inside), len(inside))} "
-        "specific, measured sources of uncertainty -- but not everything that "
-        "could move this number. Below: "
-        f"{', '.join(preview[:-1])}, and {preview[-1]}.</p>"
-        "<p><b>What's inside the range:</b></p>"
+        "measured sources of uncertainty, not everything that could move this number. "
+        f"Below: {', '.join(preview[:-1])}, and {preview[-1]}.</p>"
+        "<p><b>Inside the range:</b></p>"
         "<ul>" + "".join(f"<li>{b}</li>" for b in inside) + "</ul>"
-        "<p><b>What's outside the range -- and can't be added back in with "
-        "more arithmetic:</b></p>"
+        "<p><b>Outside the range, and not something more arithmetic can add back:</b></p>"
         "<ul>" + "".join(f"<li>{b}</li>" for b in outside) + "</ul>"
-        "<p><b>Treat this as an early-stage estimate from an active research "
-        "pipeline, not a finished census.</b> What's genuinely new here -- a "
-        "reproducible way to estimate distributed solar from free satellite "
-        "imagery and open-source AI, in places where official statistics are "
-        "sparse or absent -- holds regardless of whether any single number on "
-        "this page turns out exactly right. Expect these figures to keep "
-        "moving as the evidence behind them grows.</p>"
+        "<p><b>Treat this as an early estimate from an active research pipeline, not a "
+        "census.</b> What it offers is a reproducible way to estimate distributed solar "
+        "from free satellite imagery and open-source models where official statistics "
+        "are thin or missing. Expect the figures to move as the evidence behind them "
+        "grows.</p>"
         + ground_truth + cfg.corroboration
     )
 
@@ -3064,6 +3055,10 @@ def build_evidence_atlas(
             n_calib_rule1=data["totals"]["n_calib_rule1"],
             ground_interval=uncertainty.get("small_ground_interval", ""),
             roofclf_probability="probability" in roofclf_weighting.values(),
+            kwp_module_ci90=uncertainty.get("kwp_module_ci90"),
+            kwp_land_ci90=uncertainty.get("kwp_land_ci90"),
+            n_coverage_boot=next((b.get("n_boot") for b in (
+                uncertainty.get("coverage_bootstrap") or {}).values() if b.get("n_boot")), None),
         ),
     }.items():
         html = html.replace(key, value)

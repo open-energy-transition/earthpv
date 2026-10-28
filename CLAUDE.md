@@ -499,6 +499,10 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   the published ids once the areas load). Neither kind feeds the other's instrument.
 - **Colour means method everywhere**: OSM teal, segmentation blue, roofclf amber, roofclf+SPPI
   violet, farm ground PV green; hatching means ground-mount everywhere.
+- **"How the estimate is built" (2026-10-28)**: a plain-language methods section, one step per
+  method, written by the template's `renderMethod()` from the page's own components (gated like
+  the composition bar, so a segmentation-only country never reads about roofclf); the hero links
+  to it. Country evidence stays in `configs/atlas/<aoi>.yaml` caveats.
 
 **Plot gotchas**: on a log scale Plot routes any `tickFormat` through d3's log formatter, which
 blanks every tick with mantissa > 2 (draw labels with a text mark); a `{value, label}` channel
@@ -509,7 +513,11 @@ scale plus a `gridX` mark draws two grids.
 them**: it recovers each placeholder's value by aligning the page with the template it was built
 from (`--old-template <git rev>`, default HEAD), proves the split by substituting back, then
 fills the current template; only `__LAYERS_JSON__` and `__AOI_KEY__` are computed fresh. **After
-a template commit, pass the revision the pages were last built from**, not HEAD.
+a template commit, pass the revision the pages were last built from**, not HEAD. `--new-template`
+fills a template other than the working tree's (keeps an uncommitted edit out); `--refresh-prose
+REV` also rewrites the confidence and composition prose from each page's own data block, only
+where `atlas.py` at REV reproduces the page's existing prose (a page whose country config has
+changed since keeps its prose).
 
 **Re-template the SYNC SOURCES too, not only `docs/assets/interactive/`.** Most published
 atlases are copies `build_docs_figures.sync_interactive` makes from

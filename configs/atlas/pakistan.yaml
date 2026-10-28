@@ -154,6 +154,17 @@ calibration_boxes:
   # base_rate/nn_median_m blank rather than guessed -- those need `roofclf` re-run
   # with this quadrat included, same as any other newly added box.
   - {name: "Sanghar", stem: sanghar_calib_3p98km2, status: rule1}
+  # Added 2026-10-28: six quadrats in the 30-quadrat roofclf fit that were never listed here,
+  # so the map left out areas its own figures rest on (three of them are among the nine that
+  # price the sparse band). Registered 2026-08-13 to 08-19 (Boxes 14, 15 and 18 among them,
+  # docs/issues/pakistan-calibration-boxes.md); every one is recorded Rule-1 complete in
+  # results/calibration_quadrats.csv.
+  - {name: "Bahawalnagar Rural", stem: bahawalnagar_rural_calib_4p00km2, status: rule1}
+  - {name: "Nasirabad Rural (no PV)", stem: nasirabad_rural_calib_2km, status: rule1}
+  - {name: "Tank Rural", stem: tank_rural_calib_2km, status: rule1}
+  - {name: "Attock Peri-urban", stem: attock_periurban_calib_2km, status: rule1}
+  - {name: "Layyah Peri-urban", stem: layyah_periurban_calib_2km, status: rule1}
+  - {name: "Lodhran Peri-urban", stem: lodhran_periurban_calib_2km, status: rule1}
   # Added 2026-10-25: Mastung, Balochistan, a density-gap box (the 50-125 bldg/km2 band,
   # docs/issues/roofclf-calibration-density-mismatch.md) under Esri imagery of 2025-06-09,
   # declared Rule-1 complete by the owner. Not in a roofclf refit yet, so `used: false`.
@@ -173,52 +184,85 @@ calibration_boxes:
   - {name: "Jhang south (farm)", stem: jhang_f5_farm_calib_3km, status: rule1, used: false}
 
 confidence:
-  # Extra <li>s under "what's outside the range -- and can't be added back in with more
-  # arithmetic". The two country-neutral bullets there (purposive sampling, Rule-1 epoch
-  # staleness) are written by the builder whenever an AOI has calibration quadrats; this
-  # one is Pakistan's own measurement and belongs to Pakistan.
+  # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked
+  # areas, mapping-imagery epoch) are written by the builder whenever an AOI has calibration
+  # quadrats; these are Pakistan's own measurements and belong to Pakistan.
   caveats:
     - >-
-      <b>The ground-truth areas had to be hand-picked, because reference imagery elsewhere is too
-      old to check against.</b> A genuine random sample needs every sampled location to have
-      recent-enough imagery to confirm or rule out a small installation, and random locations
-      outside the calibrated areas have so far landed on imagery too old to tell "no panels" apart
-      from "panels installed after this photo was taken." Placing the areas by hand was the fallback
-      that let them sit where recent-enough imagery actually exists.
+      <b>The calibration areas had to be hand-picked, because aerial imagery in most of the
+      country is too old.</b> Checking for a small installation needs imagery recent enough to
+      tell "no panels" from "panels installed after this photo", and random locations have so far
+      mostly landed on imagery that is too old, so the areas were placed where recent imagery
+      exists. Eight randomly drawn areas that pass this check were proposed on 2026-10-28 and are
+      on the map as hollow diamonds; none is mapped yet.
 
     - >-
-      <b>Most of the Best estimate leans on one correction that's only lightly tested where it's
-      applied most.</b> That correction is fit using ground-truth areas as sparse as 124
-      buildings/km&sup2; at the sparsest of them, but about 13.5% of the buildings it's actually
-      applied to nationally are still sparser than that (measured 2026-08-20; this was a much larger
-      gap -- 872 buildings/km&sup2; sparsest, 84% of buildings sparser -- as measured 2026-08-16,
-      before a later refit happened to admit a sparser ground-truth area into the fit). The range
-      above only resamples the areas the correction was fit on -- it says nothing about how well
-      that correction holds up in the sparser areas outside that fit. Below 1,717
-      buildings/km&sup2;, which covers all but 20 of the 2,957 cells it prices, the correction is
-      fit on just 9 of those areas, three of them in Islamabad (measured 2026-10-28).
+      <b>The small-rooftop figure, most of Best, rests on few calibration areas where it is applied
+      most.</b> roofclf is trained on 30 areas, and its scores are converted to panel area with the
+      19 that pass a consistency check between flagged and mapped roofs. Below 1,717
+      buildings/km&sup2;, which covers all but 20 of the 2,957 cells priced, that conversion rests
+      on 9 of them, and 83% of their mapped small-rooftop panel area lies in the three Islamabad
+      areas. About 13.5% of the buildings priced are in cells sparser than the sparsest of the 19
+      (124 buildings/km&sup2;). Predicted from the other areas, 18 of 29 areas come out within
+      about a quarter of their mapped small-rooftop panel area, but six of the ten under 1,000
+      buildings/km&sup2; are more than 40% off, from 0.14 to 8 times it. The range above re-draws
+      the 19 areas; it does not measure how far rural cells differ from them (measured
+      2026-10-28).
+
+    # Added 2026-10-28: the 2021-epoch test, run only on cells whose composite_1 really is
+    # 2021 imagery (the 122 early city cells hold 2025 imagery there).
+    - >-
+      <b>The building score partly measures what kind of roof it is, not only whether it has
+      panels.</b> On Sentinel-2 imagery from late 2021, before most of today's panels were
+      installed, the score still picks out the roofs that carry panels today almost as well as on
+      current imagery (a ranking score of 0.79&ndash;0.82 against 0.87, where 0.5 is chance), and
+      its sum over all roofs is still 30&ndash;57% of today's. The segmentation model, by contrast,
+      finds about 12% of today's large arrays on the same 2021 imagery, close to the share that
+      registered capacity and panel imports suggest for the end of 2021 (about 14%). In the
+      calibration areas, about half of the summed score sits on roofs without panels. The
+      calibration turns this into panel area correctly on average for places like the calibration
+      areas; where villages carry fewer or more panels than their roofs suggest, it cannot tell.
+      Mapping the randomly drawn areas would measure that (measured 2026-10-28 on rural and
+      peri-urban cells with 2021 imagery, 1.8 million buildings).
+
+    # Added 2026-10-28: score signal by footprint size, quadrats and 2021 cells.
+    - >-
+      <b>The smallest buildings are counted mostly from their surroundings.</b> A footprint under
+      50 m&sup2; covers less than half of one 10 m pixel, and the score barely tells such roofs with
+      panels from those without: roofs with mapped panels average a score of 0.07&ndash;0.10,
+      against 0.37 on 200&ndash;400 m&sup2; roofs, and 83&ndash;88% of these buildings' summed
+      score in the calibration areas sits on roofs without panels. They hold under 5% of the mapped
+      small-rooftop panel area in the calibration areas, but about 12% of this page's
+      small-rooftop figure, roughly 2.8 GWp, because rural Pakistan has many small footprints
+      such as sheds and outbuildings. Leaving them out, a 50 m&sup2; floor that already applies in
+      the 20 densest cells, would lower Best by about that much. A blind review of 400 roofs, 121
+      of them under 50 m&sup2;, has been drawn to decide (2026-10-28).
 
     # Added 2026-10-28 from an external review: the interval composes measured errors only,
     # and the project's own history shows method choices move Best further than it does.
     - >-
-      <b>The range covers measured errors, not choices of method.</b> On 2026-10-25 the way
-      roofs below and above 400 m&sup2; are counted changed, from a yes/no cut at the building
-      classifier's threshold to every roof weighted by its score, and Best as published at the
-      time moved from 24,438 MWp (90% range 20,894&ndash;33,666) to 34,589 MWp
-      (29,308&ndash;41,736): each figure lies outside the other's range. Which segmentation model reads the imagery, which calibration
-      table prices its detections and where the calibrated density band ends are choices of the
-      same kind, and none of them is part of the range above.
+      <b>The range covers measured errors, not choices of method.</b> On 2026-10-25 roofs started
+      counting in proportion to their score instead of by a yes/no cut-off, and Best as published
+      moved from 24,438 MWp (90% range 20,894&ndash;33,666) to 34,589 MWp
+      (29,308&ndash;41,736): each lies outside the other's range. Which segmentation model reads
+      the imagery, which calibration table prices its detections, where the calibrated density
+      range ends and whether the smallest buildings count are choices of the same kind, and none
+      of them is part of the range above.
 
-  # Independent, non-satellite cross-checks on the headline figure. A country with none
-  # simply omits this key and the paragraph does not appear -- which is the honest
-  # rendering, and was not possible while this text lived in the builder.
+  # Non-satellite figures to read the headline against. Context, never a pass/fail check
+  # (owner rule): registered capacity is a floor, imports a loose ceiling, and the one
+  # independent estimate is itself derived from imports. A country with none omits this key.
   corroboration: >-
-      <p><b>Two independent, non-satellite data sources land in the same ballpark.</b> Pakistan's
-      NEPRA net-metering register -- a government administrative record with no connection to this
-      project -- puts registered rooftop solar at <b>5.3&ndash;6.3 GW</b> nationally; that's a
-      floor, since it only counts customers who completed formal registration paperwork. Separately,
-      Chinese customs export data puts cumulative solar-panel imports into Pakistan at roughly <b>50
-      GW</b> by mid-2025 -- a much looser ceiling that covers the whole market, utility-scale plants
-      included. This page's headline figure falls inside that bracket. Two unrelated, non-satellite
-      sources agreeing on the same order of magnitude is real corroboration -- though it can't
-      confirm any single number on this page precisely.</p>
+      <p><b>Other sources give context, not a check.</b> Pakistan publishes no count of installed
+      solar. What is registered, about 6.8 GW of net-metered rooftops by September 2025 plus about
+      0.8 GW of utility-scale parks, is a floor, since most systems are never registered. Solar
+      panels imported from China since 2017 add up to about 51 GW by the end of 2025 (Ember customs
+      data), a loose ceiling: some are still in stock or were re-exported, and earlier imports are
+      missing. The only independent estimate of installed capacity, 27&ndash;33 GW in January 2026
+      (Renewables First, derived from the import figures), sits just below this page's Best
+      estimate and overlaps its 90% range. Agreement in order of magnitude is all these show; none
+      of them can confirm a number on this page. Sources:
+      <a href="https://www.pv-magazine.com/2026/01/20/pakistans-installed-pv-capacity-estimated-above-27-gw/"
+      target="_blank" rel="noopener">pv magazine, 20 January 2026</a>;
+      <a href="https://ember-energy.org/data/china-solar-exports-data/" target="_blank"
+      rel="noopener">Ember</a>.</p>

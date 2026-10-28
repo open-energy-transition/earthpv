@@ -640,6 +640,10 @@
   .xdetails .xbody li { margin: 0 0 9px; }
   .xdetails .xbody li:last-child { margin-bottom: 0; }
   .xdetails .xbody li::marker { color: var(--accent); }
+  /* "How the estimate is built": one step per method, edged in that method's colour. */
+  .method-body .m-steps { list-style: none; margin: 0 0 14px; padding: 0; }
+  .method-body .m-steps > li { margin: 0 0 12px; padding-left: 14px;
+    border-left: 3px solid var(--m, var(--hair)); }
 </style>
 
 <div class="wrap" data-aoi="India" data-aoi-key="india">
@@ -836,7 +840,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
     <div class="kpi"><div class="v" id="kOsmLt400">0</div>
       <div class="k">Training data hand-mapped in OpenStreetMap, &lt;400 m&sup2;</div></div>
     <div class="kpi"><div class="v" id="kDomain">0</div>
-      <div class="k">of 0.1&deg; cells have density-matched sub-400 m&sup2; calibration</div></div>
+      <div class="k">of 0.1&deg; cells within the calibrated building-density range</div></div>
     <div class="kpi" id="kpiCover" hidden><div class="v" id="kCover">0</div>
       <div class="k" id="kCoverK"></div></div>
   </div>
@@ -866,8 +870,9 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
         <div id="chartmount" class="plot-host"></div>
         <div class="hero-desc" style="margin-top:14px;">The same total
         photovoltaic capacity detectable with Sentinel-2, re-cut by installation size
-        instead of geography: rooftop runs across every bin, while ground-mount
-        only shows up at &ge;400 m&sup2; -- the two detectors split the total by
+        instead of geography: rooftop runs across every bin, while ground-mount sits
+        almost entirely at &ge;400 m&sup2;, because below that only the farm ground-PV
+        detector sees it, where it has been run. The detectors split the total by
         placement <i>and</i> size, not size alone.</div>
       </section>
 
@@ -921,7 +926,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
            typed here: the static version named roofclf as the dominant method and linked
            Pakistan's composition page, on every country's atlas, including the ones with
            no roofclf half at all. -->
-      <div class="hero-desc" style="margin-top:16px;">direct OSM mapping supplies 55% of Best; TerraMind segmentation the remaining 45%.</div>
+      <div class="hero-desc" style="margin-top:16px;">installations mapped in OpenStreetMap supplies 55% of Best; TerraMind segmentation of large arrays the remaining 45%.</div>
     </div>
   </section>
 
@@ -945,10 +950,11 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
       <div class="hero-desc" style="margin-top:12px;">Each row is one addend of the Best
       estimate; the top row is their sum. The intervals do not add up to the total's:
       components that share an error source were drawn together (one area-to-capacity
-      constant for every rooftop figure, one for every ground-mount figure, one quadrat
-      bootstrap for every roofclf figure), so the total's interval is narrower than the
-      sum of the parts' intervals would suggest. A row without a whisker is a
-      deterministic correction rather than a modelled quantity.</div>
+      constant for every rooftop figure, one for every ground-mount figure, one re-draw of
+      the calibration areas for every roofclf figure), so the total's interval is narrower
+      than the sum of the parts' intervals would suggest. A row without a whisker is a
+      deterministic correction rather than a modelled quantity. The intervals cover measured
+      errors only; "How confident should you be in this?" below lists what they leave out.</div>
       <details class="tablewrap">
         <summary>All component intervals</summary>
         <div style="overflow-x:auto;"><table id="utable">
@@ -1054,11 +1060,19 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
       </div>
     </div>
 
+    <!-- Written by `renderMethod()` from this page's own components, so a country shows
+         only the methods it has. -->
+    <details class="xdetails" id="method">
+      <summary><span><span class="xt">How the estimate is built</span>
+        <span class="xs">the methods in plain language, what each can see, how they add up</span></span><span class="xi">+</span></summary>
+      <div class="xbody method-body" id="methodBody"></div>
+    </details>
+
     <details class="xdetails">
       <summary><span><span class="xt">How confident should you be in this?</span>
         <span class="xs">preliminary results, sampling caveats, independent corroboration</span></span><span class="xi">+</span></summary>
       <div class="xbody">
-        <p><b>Best estimate: 72,705 MWp, with a 90% range of 63,864&ndash;98,370 MWp.</b> That range covers two specific, measured sources of uncertainty -- but not everything that could move this number. Below: what's inside the range, and what isn't.</p><p><b>What's inside the range:</b></p><ul><li><b>The two "panel area to power" conversion numbers.</b> One converts rooftop panel area to kWp, the other converts open-ground solar-farm land to kWp. Both are measured against real, confirmed power plants rather than assumed, but each carries its own uncertainty.</li><li><b>How well the detection model finds panels of different sizes.</b> Its measured precision and recall were checked installation-size by installation-size, and that check itself has a margin of error.</li></ul><p><b>What's outside the range -- and can't be added back in with more arithmetic:</b></p><ul><li><b>The hand-mapped areas here do not check these numbers yet.</b> Two areas of this country have been mapped panel by panel and declared complete, but no figure on this page uses them yet. The detectors' measured accuracy is still carried over from the countries where it was measured, and how well it transfers here has not itself been measured.</li><li><b>The small-installation half of this page does not exist yet.</b> One area of India, in Gurgaon, has been mapped panel by panel, and one area is not enough to calibrate the per-building classifier that supplies most of Pakistan's estimate. Everything on the map is either hand-mapped in OpenStreetMap or an array the segmentation model outlined directly, which in practice means installations of roughly 400 m&sup2; and up. The household rooftop systems that dominate India's recent rooftop programme are mostly below that size.</li><li><b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were imaged if they hold at least 1,000 buildings or any hand-mapped solar installation. A utility-scale park built on empty land that nobody has mapped yet falls outside both rules and is not on this page.</li></ul><p><b>Treat this as an early-stage estimate from an active research pipeline, not a finished census.</b> What's genuinely new here -- a reproducible way to estimate distributed solar from free satellite imagery and open-source AI, in places where official statistics are sparse or absent -- holds regardless of whether any single number on this page turns out exactly right. Expect these figures to keep moving as the evidence behind them grows.</p><p><b>Nothing on this page rests on hand-mapped ground truth from this country yet.</b> Two areas have been mapped panel by panel (Gurgaon, Haryana, Purba Champaran, Bihar (farm, no PV)): every panel in it drawn by hand, the ground truth that turns a detection into a capacity estimate by measuring how much of a flagged roof is actually covered in panels and how many real installations the detectors miss. Once a classifier is fitted to them, these figures will rest on them. <a href="https://open-energy-transition.github.io/earthpv/contribute/" target="_blank" rel="noopener">More such areas are the most useful thing anyone can contribute</a>.</p>
+        <p><b>Best estimate: 72,705 MWp, with a 90% range of 63,864&ndash;98,370 MWp.</b> The range covers two measured sources of uncertainty, not everything that could move this number. Below: what is inside the range, and what is not.</p><p><b>Inside the range:</b></p><ul><li><b>The two area-to-power constants.</b> Panel area on a roof converts at about 0.18 kWp per m&sup2;, the rating of a typical module; the outline of a ground-mounted park converts at about 0.05 kWp per m&sup2;, measured on parks whose capacity is known. Each is varied over its own range (90%: 0.15&ndash;0.21 and 0.035&ndash;0.075 kWp per m&sup2;).</li><li><b>How reliable the segmentation model's detections are.</b> How often its detections turn out to be real, and how many mapped arrays it misses, were measured size class by size class against mapped installations. Those measurements have their own sampling error, which is drawn into the range.</li></ul><p><b>Outside the range, and not something more arithmetic can add back:</b></p><ul><li><b>The hand-mapped areas here do not check these numbers yet.</b> Two areas of this country have been mapped panel by panel and declared complete, but no figure on this page uses them yet. The detectors' measured accuracy is still carried over from the countries where it was measured, and how well it transfers here has not itself been measured.</li><li><b>The small-installation half of this page does not exist yet.</b> One area of India, in Gurgaon, has been mapped panel by panel, and one area is not enough to calibrate the per-building classifier that supplies most of Pakistan's estimate. Everything on the map is either hand-mapped in OpenStreetMap or an array the segmentation model outlined directly, which in practice means installations of roughly 400 m&sup2; and up. The household rooftop systems that dominate India's recent rooftop programme are mostly below that size.</li><li><b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were imaged if they hold at least 1,000 buildings or any hand-mapped solar installation. A utility-scale park built on empty land that nobody has mapped yet falls outside both rules and is not on this page.</li></ul><p><b>Treat this as an early estimate from an active research pipeline, not a census.</b> What it offers is a reproducible way to estimate distributed solar from free satellite imagery and open-source models where official statistics are thin or missing. Expect the figures to move as the evidence behind them grows.</p><p><b>Nothing on this page rests on hand-mapped ground truth from this country yet.</b> Two areas have been mapped panel by panel (Gurgaon, Haryana, Purba Champaran, Bihar (farm, no PV)): every panel in it drawn by hand, the ground truth that turns a detection into a capacity estimate by measuring how much of a flagged roof is actually covered in panels and how many real installations the detectors miss. Once a classifier is fitted to them, these figures will rest on them. <a href="https://open-energy-transition.github.io/earthpv/contribute/" target="_blank" rel="noopener">More such areas are the most useful thing anyone can contribute</a>.</p>
       </div>
     </details>
 
@@ -1296,7 +1310,20 @@ out geom;</div>
   const VIEW = {
     label: "Best estimate",
     name: "Total photovoltaic capacity detectable with Sentinel-2",
-    desc: "Individual arrays are outlined directly down to about 400 m² (the practical floor for Sentinel-2's 10 m pixels); below that, where a single array can no longer be resolved as its own shape, pv density estimates take over instead. Open-source pipeline and methodology: <a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
+    // Says what this page measures below the 400 m2 floor, which differs by country: mapped
+    // calibration areas (Pakistan), a register (Germany), nothing, and farm ground PV or not.
+    desc: "Arrays of about 400 m² and more are outlined directly in Sentinel-2's 10 m pixels. "
+      + (HAS_SMALL_ROOF
+        ? "Smaller rooftop arrays are too small to outline, so every building gets a score, and "
+          + (Object.keys((T.uncertainty || {}).coverage_bootstrap || {}).length
+            ? "areas where volunteers mapped every panel convert the scores into panel area. "
+            : "a calibration converts the scores into panel area. ")
+        : "Smaller rooftop arrays are too small to outline and are not measured here. ")
+      + (T.small_ground_status && T.small_ground_status.measured
+        ? "Small arrays beside fields are found by a separate farm detector. " : "")
+      + "Installations mapped in OpenStreetMap are counted from the map, whatever their size. "
+      + "<a href=\"#method\">How the estimate is built</a> · open-source pipeline: "
+      + "<a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
     tiles: [
       ["mwp_large", "Satellite-detected &ge;400 m², MWp"],
       ["small_all", "Satellite rooftop &lt;400 m², MWp"],
@@ -3278,6 +3305,11 @@ out geom;</div>
     const byScore = (k) => ((T.roofclf_weighting || {})[k] === "probability"
       ? ", every roof weighted by its score" : "");
     const floorOffset = T.uncertainty.best_floor_offset_mwp || 0;
+    // Pakistan-style roofclf halves are converted with mapped calibration areas (resampled
+    // for the interval); a register-calibrated one (Germany) is not.
+    const byAreas = Object.keys(T.uncertainty.coverage_bootstrap || {}).length > 0;
+    const converted = (detail) => byAreas
+      ? `, converted to panel area with the calibration areas${detail}` : ", converted to panel area by its calibration";
     const best = [
       { key: "osm_unmatched_roof", method: "osm", placement: "roof", mwp: comp("osm_unmatched_roof").mwp, ci: comp("osm_unmatched_roof").ci,
         short: "OSM-mapped rooftop, counted from the map",
@@ -3295,23 +3327,28 @@ out geom;</div>
           + "figure there, so it never reads below what is already mapped.", size: "any size" },
       { key: "seg_roof_outdomain", method: "seg", placement: "roof", mwp: comp("seg_roof_outdomain").mwp, ci: comp("seg_roof_outdomain").ci,
         short: "Satellite segmentation, rooftop",
-        label: "TerraMind segmentation of Sentinel-2 - rooftop, outside the calibrated domain; scaled up for "
-          + "the installations it misses, less the misses already counted from the map", size: "≥ 400 m²" },
+        label: "TerraMind segmentation of Sentinel-2, rooftop arrays in cells outside roofclf's calibrated "
+          + "density range; scaled up for the arrays it misses, minus those already counted from the map",
+        size: "≥ 400 m²" },
       { key: "seg_ground", method: "seg", placement: "ground", mwp: comp("seg_ground").mwp, ci: comp("seg_ground").ci,
         short: "Satellite segmentation, ground-mount",
-        label: "TerraMind segmentation of Sentinel-2 - ground-mount (every cell; roofclf has no footprint there); "
-          + "scaled up for the installations it misses, less the misses already counted from the map", size: "≥ 400 m²" },
+        label: "TerraMind segmentation of Sentinel-2, ground-mounted arrays in every cell (there is no roof "
+          + "for roofclf to score); scaled up for the arrays it misses, minus those already counted from the map",
+        size: "≥ 400 m²" },
       { key: "ge400_roof", method: "roofclf", placement: "roof", mwp: comp("ge400_roof").mwp, ci: comp("ge400_roof").ci,
         short: "Satellite roofclf, rooftop ≥ 400 m²",
-        label: "roofclf - ≥ 400 m² rooftop" + byScore("ge400_roof")
-          + ", replacing segmentation inside the calibrated domain", size: "≥ 400 m²" },
+        label: "roofclf, rooftops of 400 m² and more" + byScore("ge400_roof") + converted("")
+          + "; replaces the segmentation figure in cells inside the calibrated density range", size: "≥ 400 m²" },
       { key: "small_central", method: "roofclf", placement: "roof", mwp: comp("small_central").mwp, ci: comp("small_central").ci,
         short: "Satellite roofclf, rooftop < 400 m²",
-        label: "roofclf alone - sub-400 m² rooftop" + byScore("small_central")
-          + ", coverage ratio and recall, density-calibrated", size: "< 400 m²" },
+        label: "roofclf, rooftops under 400 m²" + byScore("small_central")
+          + converted(" (per building size and density)") + " and scaled up for the panel area the "
+          + "scores miss; cells inside the calibrated density range only",
+        size: "< 400 m²" },
       { key: "small_outdomain", method: "sppi", placement: "roof", mwp: comp("small_outdomain").mwp, ci: comp("small_outdomain").ci,
         short: "Satellite roofclf + SPPI, < 400 m², extrapolated",
-        label: "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain", size: "< 400 m²" },
+        label: "Rooftops under 400 m² where roofclf and SPPI agree, extrapolated to cells outside the "
+          + "calibrated density range", size: "< 400 m²" },
       { key: "small_ground", method: "ground", placement: "ground", mwp: comp("small_ground").mwp, ci: comp("small_ground").ci,
         short: "Satellite farm ground PV, < 400 m²",
         label: "Farm ground-PV detector - arrays beside fields, which have no roof for roofclf to score, below "
@@ -3326,7 +3363,8 @@ out geom;</div>
         short: "OSM-mapped ground-mount", label: "OSM-mapped ground-mount PV, all of it, whether or not a satellite detection covers it", size: "any size" },
       { key: "small_low", method: "sppi", placement: "roof", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
         short: "Satellite roofclf + SPPI, < 400 m²",
-        label: "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain", size: "< 400 m²" },
+        label: "Rooftops under 400 m² where roofclf and SPPI both see panels, inside the calibrated density "
+          + "range; not scaled up for misses", size: "< 400 m²" },
     ];
     return { best: best.filter(r => r.mwp > 0), verified: verified.filter(r => r.mwp > 0) };
   }
@@ -3501,6 +3539,95 @@ out geom;</div>
         <div class="m-pct">${m.pct.toFixed(1)}%</div>
         <div class="m-mwp">${fmt(m.mwp)} MWp</div>
       </div>`).join("");
+  }
+
+  // ── "How the estimate is built": the methods in plain language ───────────────────
+  // One step per method this page actually carries, gated on the same components the
+  // composition bar draws, so a segmentation-only country is never told about roofclf.
+  function renderMethod(){
+    const host = document.getElementById("methodBody");
+    if (!host) return;
+    const U = T.uncertainty || {}, C = U.components || {};
+    const mwp = k => (C[k] && C[k].mwp) || 0;
+    const hasSeg = mwp("seg_ground") + mwp("seg_roof_outdomain") > 0 || (T.mwp_large || 0) > 0;
+    const hasGe400 = mwp("ge400_roof") > 0;
+    const hasRoofclf = HAS_SMALL_ROOF && ((T.small_central || 0) > 0 || hasGe400);
+    const hasAnd = (T.small_low || 0) > 0;
+    const hasOutdomain = (T.small_outdomain || 0) > 0;
+    const hasGround = !!(T.small_ground_status && T.small_ground_status.measured);
+    const byQuadrats = Object.keys(U.coverage_bootstrap || {}).length > 0;
+    // How the scores were summed is recorded only on pages built since 2026-10-25.
+    const weighting = (T.roofclf_weighting || {}).small_central;
+    const kwp = T.kwp_per_m2 || 0.18;
+    const step = (token, html) => `<li style="--m: var(--${token})">${html}</li>`;
+    const steps = [step("domain",
+      `<b>Installations mapped by hand in OpenStreetMap.</b> ${fmt(T.osm_n || 0)} installations `
+      + `that volunteers drew from aerial imagery. Each converts to capacity by its area: about `
+      + `${kwp} kWp per m² of panel on a roof, and 0.05 kWp per m² for the outline of a `
+      + `ground-mounted park, which also takes in the gaps between panel rows and the access tracks. `
+      + `The same map is what the detectors below learn from and are checked against.`)];
+    if (hasSeg) steps.push(step("large",
+      `<b>Large arrays, outlined from Sentinel-2.</b> A TerraMind model, fine-tuned on mapped `
+      + `installations, marks the pixels that look like solar panels, and touching pixels become `
+      + `one detected array. At 10 m per pixel, an array needs roughly 400 m², about four pixels, `
+      + `to be outlined reliably. Each detection counts in proportion to how often detections of `
+      + `its size turned out to be real, and is scaled up by how many mapped arrays of its size `
+      + `the model misses, so the total also stands in for the arrays it does not find. Building `
+      + `footprints decide whether a detection is on a roof or on the ground.`
+      + (hasRoofclf && hasGe400 ? ` Where roofclf is calibrated (next step), only the `
+        + `ground-mounted detections are used.` : "")));
+    if (hasRoofclf) steps.push(step("accent",
+      `<b>Smaller rooftop arrays, scored building by building (roofclf).</b> Below about 400 m² `
+      + `an array is smaller than the pixels it sits in and cannot be outlined. Instead a `
+      + `classifier, roofclf, gives every building footprint a score between 0 and 1 from the `
+      + `Sentinel-2 colours on and around its roof. `
+      + (weighting === "probability" ? `Every roof counts in proportion to its score: a roof `
+        + `scored 0.2 counts a fifth as much as a certain one. `
+        : weighting === "threshold" ? `Only roofs scoring above a fixed cut-off count. ` : "")
+      + (byQuadrats
+        ? `Calibration areas, a few square kilometres each where volunteers mapped every panel, `
+          + `measure how much panel area one unit of score stands for, separately by building `
+          + `size and by how densely an area is built up, and how much panel area the scores miss. `
+        : `A calibration converts the scores into panel area; the next section says what it `
+          + `rests on for this country. `)
+      + `The score responds to panels, but also to the kinds of roofs and neighbourhoods where `
+      + `panels are common, so it means something only after this calibration, and only as far `
+      + `as the calibration resembles the places it is applied to. `
+      + (byQuadrats
+        ? `It is therefore applied only in cells whose building density lies within the range `
+          + `of the calibration areas`
+        : `It is applied only in the cells the calibration covers`)
+      + ` (${fmt(T.n_domain_cells || 0)} of ${fmt(T.n_cells || 0)} cells here)`
+      + (hasGe400 ? `, where it also replaces the segmentation figure for rooftops of 400 m² `
+        + `and more, because it tells roofs with and without panels apart better there` : "")
+      + `. ` + (hasOutdomain
+        ? `Elsewhere, a rougher estimate from roofclf and SPPI agreeing (see below) is `
+          + `extrapolated and shown separately.`
+        : `Elsewhere, rooftop PV below 400 m² is not measured`
+          + (hasGe400 ? `, and larger rooftops keep the segmentation figure.` : `.`))));
+    if (hasAnd) steps.push(step("extended",
+      `<b>A stricter count: the Verified floor.</b> The hand-mapped installations plus only the `
+      + `small roofs where roofclf and SPPI, a simple spectral index for panels that needs no `
+      + `training, both see panels, with nothing scaled up for misses. It is a lower bound, and `
+      + `Best never falls below it in any cell.`));
+    if (hasGround) steps.push(step("ground",
+      `<b>Small arrays beside fields.</b> Solar pumps and other small ground-mounted arrays have `
+      + `no roof to score, so a separate pixel detector finds them. Farm areas where volunteers `
+      + `mapped every array convert its detections into panel area, and it is counted only in `
+      + `landscapes like those areas.`));
+    host.innerHTML =
+      `<p>No single method sees every solar installation in 10 m satellite imagery, so the `
+      + `Best estimate adds up several, each used where it measures best, and counts every `
+      + `installation once. Each step is edged in the colour its method has in the bars above.</p>`
+      + `<ol class="m-steps">${steps.join("")}</ol>`
+      + `<p><b>Adding it up.</b> The parts are summed cell by cell. A mapped installation that a `
+      + `satellite figure already covers is not added again, and where the map holds more than `
+      + `the satellite figure, the map's figure is used. Satellite areas convert to capacity with `
+      + `the same two constants as the map, and MWp means the panels' rated peak power, not what `
+      + `they generate. `
+      + (hasAnd ? "" : `The Verified floor is the hand-mapped capacity alone. `)
+      + `The 90% range combines the measured uncertainties listed in the next section, which `
+      + `also says what the range leaves out.</p>`;
   }
 
   // ── uncertainty: one row per Best component, point and 90% interval, log axis ────
@@ -3817,6 +3944,12 @@ out geom;</div>
     T.generated_at ? `atlas generated ${T.generated_at}` : null,
   ].filter(Boolean).join(" · ");
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
+  renderMethod();
+  // The hero's "How the estimate is built" link opens the section it jumps to.
+  document.querySelectorAll('a[href="#method"]').forEach(a => a.addEventListener("click", () => {
+    const d = document.getElementById("method");
+    if (d) d.open = true;
+  }));
   // `null`/absent is a field this country has not measured, never a zero: the farm
   // ground-PV detector has only run where someone ran it (`totals.small_ground_status`),
   // and rooftop PV below 400 m2 needs a calibrated roofclf half (HAS_SMALL_ROOF).
