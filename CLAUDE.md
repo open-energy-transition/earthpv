@@ -374,6 +374,14 @@ placement claim. A parcel-label model needs its own national rescoring, and
 `roofclf.check_scoring_matches_calibration` refuses to pair a scoring with another
 calibration's coverage ratio. Full derivation: `docs/methods/roofclf.md`.
 
+**A foreign quadrat table can train a country's fit** (`roof-classifier --extra-table
+<other>/buildings.geoparquet --extra-share 0.5`): its rows enter every fold's training and the
+deployment fit at that share of the likelihood, are never a fold, and never reach the coverage
+ratio. Pakistan's unchanged model ranks Yemen's four building boxes with PV as well as Yemen's
+own (median AUC 0.809 against 0.813; equal-share pooling 0.818, `data/roofclf_yemen_pk_pooled`;
+unweighted pooling loses the farm areas), so ranking is not Yemen's problem: the level and
+the rural false positives are (`scripts/roofclf_transfer_yemen.py`).
+
 **OSM and a recall-corrected total: combine, don't add.** `est_mwp_rc` already stands in for
 the mapped installations the model missed, so adding unmatched OSM on top counts them twice.
 `build_evidence_atlas` (and `_size_distribution_data`, which re-bins the same total) takes, per
@@ -563,6 +571,15 @@ published file.
   most large-roof area in the densest quarter, chosen on buildings only, marked `selection:
   purposive: ...`); the eight sampled boxes stay the representative set. `calib-publish` ranks
   them first and the atlas draws `start_here` as a star.
+- **PV-rich boxes** (`--pv-rich --score-dir <roofclf prob dir>`, 2026-10-28): purposive 1 km
+  TOWN windows (own density >= 800 bldg/km²) with the most household roofs in the national top
+  5% of a roofclf scoring from a model that has NOT seen the AOI's labels (Yemen: Pakistan's,
+  `data/roofclf_transfer/yemen_pk/prob`). Rooftop positives for the fit, not the level. Draw
+  with `--dry-run`, look at each window's top-scored roofs on Esri z18, record the verdict in
+  `candidate_quadrats/pv_rich_review.csv` (`no_pv` keeps the draw 5 km away), then write with
+  `--pv-rich-confirmed-only`. Without the town floor Pakistan's model filled Yemen's top windows
+  with rural stone houses, roofless shells and greenhouse tunnels at p > 0.9. Yemen's ten
+  (`*_pv<k>_calib_1km`) were confirmed by the assistant, not the owner.
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,

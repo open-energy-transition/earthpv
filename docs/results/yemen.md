@@ -24,9 +24,11 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
 | Model | `v13_combined_yemen` epoch 28, localized (tied with `v5_combined_france` at zero on the holdout; see below) |
 
 !!! warning "Household rooftops below 400 m&sup2; are not estimated"
-    Yemen has **no `roofclf` half**: its one rooftop calibration area (Al Wehdah,
-    2026-10-23) has not been fitted, so nothing prices rooftop PV below the 400 m&sup2;
-    segmentation floor. Below that floor only the farm ground-PV detector counts, and only in
+    Yemen has **no `roofclf` half**: it was fitted on Yemen's nine building boxes and
+    fourteen farm areas on 2026-10-25 and left off, because only four boxes hold rooftop PV
+    and its leads were mostly greenhouses and sheds
+    ([below](#rooftop-pv-below-400-m2-borrowing-pakistans-classifier-2026-10-28)), so nothing
+    prices rooftop PV below the 400 m&sup2; segmentation floor. Below that floor only the farm ground-PV detector counts, and only in
     the 34 cells whose cropland, buildings and elevation resemble its farm areas
     ([below](#farm-ground-pv-added-2026-10-24)). The segmentation model has no glint sample,
     so `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction, under
@@ -206,7 +208,52 @@ which is consistent with fewer pumps elsewhere; the ratio itself is the hotspot'
 incremental: detections within 20 m of a feature in the OpenStreetMap layer this page counts,
 or of a segmentation candidate Best uses, are left to those.
 
+## Rooftop PV below 400 m&sup2;: borrowing Pakistan's classifier (2026-10-28)
+
+`roofclf` was fitted on Yemen's 23 areas on 2026-10-25 and left off this page: a median
+fold AUC of 0.83, but the rooftop leads it weighted most, reviewed by hand, were greenhouse
+tunnels and long poultry sheds. Yemen's mapped rooftop arrays are not too small for the
+sensor (median 78 m&sup2; in Al Wehdah and 51 m&sup2; in Sayun, against 44 m&sup2; in
+Pakistan's quadrats), so Pakistan's classifier, fitted on 30 quadrats and 17,151 PV roofs,
+was tested on the same Yemeni building tables
+(`scripts/roofclf_transfer_yemen.py`):
+
+| Training | Median AUC, the 4 building boxes with PV | Median AUC, all 16 areas with PV |
+| --- | --- | --- |
+| Yemen alone, leave one area out | 0.813 | 0.833 |
+| Pakistan's model, unchanged | 0.809 | 0.724 |
+| Pakistan and Yemen, each half the likelihood | 0.818 | 0.800 |
+| Pakistan and Yemen, every row weighted 1 | 0.815 | 0.762 |
+
+Pakistan's model ranks Yemen's roofs as well as Yemen's own. It does worse in the farm
+areas, whose positives are mostly irrigation arrays credited to the nearest farmhouse, and
+pooling the two countries adds about 0.01 on roofs (`roof-classifier --extra-table` does
+this pooling). Ranking is not what keeps rooftop PV off this page.
+
+Where the high scores land is. Pakistan's model was run over all 808 cells, and the 24
+one-kilometre windows holding the most household roofs in its national top 5% were looked
+at on Esri imagery, nine top-scored roofs each. Six showed panels, all towns: Ibb, Yarim,
+Yafi', Khamir, Al Makhadir and Sa'dah. Thirteen showed none: eleven rural hamlets of stone
+and mud houses scored above 0.9, Ghayl Bawazir's roofless concrete shells (its top 683
+roofs), greenhouse tunnels at Sahar, and the shadows of Thula's tower houses. Sana'a's
+windows away from Al Wehdah, where most roofs in view carry panels, hold 45 to 78 roofs in
+that top 5%, against 119 to 683 in the 24.
+Yemen's own model scores household roofs higher in its sparsest cells than in Sana'a's
+(mean 0.019 to 0.023 against 0.013) and puts 67% of its score-weighted roof area in cells
+under 100 buildings per km&sup2;. None of this is measured, because only four of the nine
+building boxes hold PV and none is a rural hamlet with a false-positive cluster.
+
 ## Calibration areas
+
+**Ten PV-rich town boxes (candidates, 2026-10-28, not yet mapped).** Drawn with
+`calib-candidates -- --aoi yemen --pv-rich`: 1 km windows of at least 800 buildings per
+km&sup2; with the most household roofs Pakistan's classifier scores in its national top 5%,
+every window's top-scored roofs looked at on Esri imagery and kept only where panels show
+(`data/labels/yemen/candidate_quadrats/pv_rich_review.csv`). Purposive, and chosen on a PV
+signal: they add rooftop positives to the fit, and their own adoption runs high by
+construction. Sana'a: Ma'in, As Sab'in, Sanhan and Bani Hushaysh; Ibb: Adh Dhihar (Ibb city)
+and Yarim; Khamir ('Amran), Sa'dah, Yafi' (Lahij) and Qa'tabah town (Ad Dali'). Esri
+imagery from 2024-10 to 2025-12 over every box.
 
 **Al Wehdah, Sana'a (registered 2026-10-23, Rule-1).** The first of Yemen's two start-here
 boxes (`calib-candidates --priority`: 1 km in the densest quarter of the country's
@@ -240,6 +287,12 @@ confirmed by a second Overpass query; Al Jarrahi east's first pull came back 16 
 short and was retried.
 
 ## What Yemen needs next
+
+**Map the PV-rich town boxes, and one false-positive town.** The ten candidates above
+would more than double the rooftop positives a `roofclf` fit sees in building boxes
+(132 roofs in Al Wehdah, Sayun, Bani Al Harith and Huth). One box in a place the classifier
+gets wrong, Ghayl Bawazir or a highland hamlet like Al Hasayn, would be quick to complete
+with no PV and would measure the false positives that decide the level.
 
 **Map farm areas outside the two regions.** `calib-candidates -- --farmland` drew eight 3 km
 farm boxes across Yemen's cropland strata (2026-10-23). The farm figure rests on 'Amran and

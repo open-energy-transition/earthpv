@@ -1666,6 +1666,24 @@ def fit_logistic(X: np.ndarray, y: np.ndarray, l2: float = L2,
     return {"w": res.x, "mu": mu, "sd": sd, "converged": bool(res.success)}
 
 
+def fit_with_extra(X: np.ndarray, y: np.ndarray, extra: tuple | None = None,
+                   extra_share: float = 0.5, l2: float = L2) -> dict:
+    """`fit_logistic` on the AOI's own rows plus, optionally, another country's quadrat rows
+    (`extra = (X_extra, y_extra)`), which carry `extra_share` of the likelihood whatever
+    the two row counts. Without `extra` this is `fit_logistic(X, y, l2)` exactly.
+
+    Measured 2026-10-28 for Yemen: Pakistan's model ranks Yemeni roofs as well as Yemen's
+    own (median AUC over the four building boxes with PV 0.809 against 0.813), and pooling
+    the two at equal shares gives 0.818; unweighted, Pakistan's 124k rows outvote Yemen's
+    farm areas (median over all areas 0.762 against 0.800 at equal shares)."""
+    if extra is None:
+        return fit_logistic(X, y, l2)
+    Xe, ye = extra
+    w = np.concatenate([np.full(len(y), (1 - extra_share) / len(y)),
+                        np.full(len(ye), extra_share / len(ye))])
+    return fit_logistic(np.vstack([X, Xe]), np.concatenate([y, ye]), l2, sample_weight=w)
+
+
 def predict_proba(model: dict, X: np.ndarray) -> np.ndarray:
     Z = np.hstack([(X - model["mu"]) / model["sd"], np.ones((len(X), 1))])
     return 1.0 / (1.0 + np.exp(-(Z @ model["w"])))
@@ -1750,7 +1768,8 @@ def _fold_report(name: str, y: np.ndarray, p: np.ndarray, df: pd.DataFrame) -> d
 
 
 def evaluate(
-    table: pd.DataFrame, l2: float = L2, feats: list[str] | None = None
+    table: pd.DataFrame, l2: float = L2, feats: list[str] | None = None,
+    extra: pd.DataFrame | None = None, extra_share: float = 0.5,
 ) -> tuple[pd.DataFrame, dict, np.ndarray]:
     """Leave-one-quadrat-out evaluation.
 
@@ -1758,25 +1777,32 @@ def evaluate(
     honest per-building prediction available for these rows -- every building scored by a
     model that never saw its quadrat -- so it is what gets written to the table.
 
+    `extra` is another country's quadrat table, in the training set of every fold (and of
+    the full fit) at `extra_share` of the likelihood, and never a fold itself: the folds,
+    the summary counts and the out-of-fold scores are the AOI's own rows only.
+
     A random split would put buildings from the same street in train and test and report
     fantasy skill; the quadrats are the only meaningful spatial unit here. Folds are
     reported individually because the five quadrats are not one population -- four
     industrial estates and one residential neighbourhood.
     """
     rows, oof = [], np.full(len(table), np.nan)
+    ex = None if extra is None else (design_matrix(extra, feats), extra.has_pv.to_numpy(float))
     for name in table.quadrat.unique():
         te = table.quadrat == name
         tr = ~te
         if table.loc[tr, "has_pv"].nunique() < 2 or te.sum() == 0:
             continue
-        m = fit_logistic(
-            design_matrix(table[tr], feats), table.loc[tr, "has_pv"].to_numpy(float), l2
+        m = fit_with_extra(
+            design_matrix(table[tr], feats), table.loc[tr, "has_pv"].to_numpy(float), ex,
+            extra_share, l2,
         )
         p = predict_proba(m, design_matrix(table[te], feats))
         oof[te.to_numpy()] = p
         rows.append(_fold_report(name, table.loc[te, "has_pv"].to_numpy(), p, table[te]))
     folds = pd.DataFrame(rows)
-    full = fit_logistic(design_matrix(table, feats), table.has_pv.to_numpy(float), l2)
+    full = fit_with_extra(design_matrix(table, feats), table.has_pv.to_numpy(float), ex,
+                          extra_share, l2)
     summary = {
         "n_buildings": int(len(table)),
         "n_pv": int(table.has_pv.sum()),
@@ -2380,8 +2406,15 @@ def run_roof_classifier(
     table_path: Path | None = None,
     temporal_stats: bool = False,
     area_weighted: bool | None = None,
+    extra_table: Path | None = None,
+    extra_share: float = 0.5,
 ) -> Path:
     """Fit, evaluate and persist the classifier. See the CLI command for the options.
+
+    `extra_table` is another country's `buildings.geoparquet` (Pakistan's for Yemen), whose
+    rows train every fold and the deployment fit at `extra_share` of the likelihood but are
+    never evaluated, never written to this run's table, and never reach a coverage ratio:
+    `sub400-capacity` reads only this AOI's own quadrats. The ablation stays own-rows only.
 
     `include_yard_features` puts `YARD_FEATURES` in the model. Measured 2026-08-16 and left
     OFF: against the PARCEL label itself -- the label the yard block exists to serve -- it
@@ -2442,9 +2475,23 @@ def run_roof_classifier(
         )
     if include_yard_features and "has_yard" not in table.columns:
         raise ValueError("include_yard_features needs a table built with parcel_label=True")
+    extra = None
+    if extra_table is not None:
+        extra = gpd.read_parquet(extra_table)
+        if ("pv_area_yard_m2" in extra.columns) != parcel_label:
+            raise ValueError(f"{extra_table} was not built with parcel_label={parcel_label}")
+        meta = Path(extra_table).parent / "model_full.json"
+        aw = AREA_WEIGHTED_ZONAL if area_weighted is None else area_weighted
+        if not meta.exists() or bool(json.loads(meta.read_text()).get(
+                "area_weighted_zonal", False)) != bool(aw):
+            raise ValueError(f"{extra_table}: its zonal convention (model_full.json "
+                             f"area_weighted_zonal) does not match area_weighted={aw}")
+        log.info("Training-only rows from %s: %d buildings, %d PV, %.0f%% of the likelihood",
+                 extra_table, len(extra), int(extra.has_pv.sum()), 100 * extra_share)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    folds, summary, oof = evaluate(table, l2=l2, feats=feats)
+    folds, summary, oof = evaluate(table, l2=l2, feats=feats, extra=extra,
+                                   extra_share=extra_share)
     table["p_oof"] = oof  # scored by a model that never saw this building's quadrat
     table.to_parquet(out_dir / "buildings.geoparquet")
     # Downstream (`sub400_capacity`, `roofclf_ge400_capacity`) reads this table's
@@ -2467,7 +2514,14 @@ def run_roof_classifier(
     # Deployment artifact: ONE fit on every labelled building pooled (not per-fold --
     # LOQO above is for honest skill measurement; a national scorer needs a single
     # model), persisted so `score_buildings_national` never needs to refit.
-    full_model = fit_logistic(design_matrix(table, feats), table.has_pv.to_numpy(float), l2)
+    if extra is not None:
+        summary["extra_training_table"] = str(extra_table)
+        summary["extra_training_share"] = float(extra_share)
+        summary["extra_training_rows"] = {"n": int(len(extra)), "n_pv": int(extra.has_pv.sum())}
+    full_model = fit_with_extra(
+        design_matrix(table, feats), table.has_pv.to_numpy(float),
+        None if extra is None else (design_matrix(extra, feats), extra.has_pv.to_numpy(float)),
+        extra_share, l2)
     save_model(full_model, feats, out_dir / "model_full.json")
     # Deployment threshold: precision-targeted (not Youden's J -- this session's SPPI
     # validation measured that a balanced-sensitivity criterion trades away far too much

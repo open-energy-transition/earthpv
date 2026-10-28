@@ -629,6 +629,15 @@ def roof_classifier_cmd(
     ),
     area_weighted: bool = typer.Option(True, "--area-weighted/--no-area-weighted",
                                        help="Weight each 10 m pixel by the fraction of the footprint covering it (shipped default since 2026-09-20). --no-area-weighted restores the pixel-centre convention every figure published before then used."),
+    extra_table: Path = typer.Option(
+        None, help="Another country's quadrat table (its roof-classifier --out-dir/"
+        "buildings.geoparquet, e.g. data/roofclf/buildings.geoparquet for Pakistan): its rows "
+        "train every fold and the deployment fit but are never evaluated and never reach "
+        "this AOI's coverage ratio. Built with the same --parcel-label and zonal convention.",
+    ),
+    extra_share: float = typer.Option(
+        0.5, help="Share of the likelihood the --extra-table rows carry, whatever the row "
+        "counts (0.5 = each country half; measured best of 'unweighted' and 0.5 for Yemen)."),
 ) -> None:
     """Per-building PV classifier on the fully-mapped quadrats: the sub-400 m2 instrument.
 
@@ -648,7 +657,7 @@ def roof_classifier_cmd(
         seg_prob_dir=seg_prob_dir, frac_prob_dir=frac_prob_dir, labels_dir=labels_dir,
         out_dir=out_dir, parcel_label=parcel_label, include_yard_features=yard_features,
         table_path=table_path, temporal_stats=temporal_features,
-        area_weighted=area_weighted,
+        area_weighted=area_weighted, extra_table=extra_table, extra_share=extra_share,
     )
 
 
