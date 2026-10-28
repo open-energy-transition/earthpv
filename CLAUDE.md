@@ -479,7 +479,8 @@ Offline, the page degrades: hero, KPIs, tables, the composition bar and the pose
 SVG/HTML; the map and the three Plot charts say they could not load.
 
 - **Map**: "Show" picks the cell quantity (Best, *Not yet in OpenStreetMap*, hand-mapped, model
-  >= / < 400 m²); "per km²" divides by cell area; the log colour scale is refitted per quantity.
+  >= / < 400 m²), always as MWp per cell (the per-km² toggle was removed 2026-10-28); the log
+  colour scale is refitted per quantity.
   Basemaps: none (night lights), Esri grey canvas, OpenStreetMap, Esri satellite (**CARTO needs
   an API key now**). City labels are HTML (no glyph server); calibration areas are diamonds.
 - **More layers**: an opt-in *live OSM solar* overlay queries Overpass from zoom 11 (mirrors can
@@ -488,6 +489,15 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   `atlas_config`), embedded by `atlas.map_layers_json` (5 MB cap) into a `pv-layers` block.
 - **Downloads**: every figure as PNG/SVG/CSV, the map as PNG plus the grid as GeoJSON/CSV,
   re-rendered at 960 px with title and source line, never serialised from screen.
+- **Mapping leads (2026-10-28)**: the Downloads section links the country's lead file, its
+  model's candidates more than 100 m from any OSM solar feature, from `totals.leads`
+  (`atlas.leads_release`, manifest `configs/atlas_leads.json`). The files are GitHub release
+  assets, never embedded (India's is 91 MB): `scripts/release_leads.py --out <dir> [--upload]`
+  rebuilds them with export's ranking and `candidate_id`s from the run behind each page (Nigeria
+  from `data/predictions_v5_nigeria`), clipped to the page's regions, and refuses a run whose
+  regions differ from the page's; France links its audited `france-osm-leads-2026-10-22`.
+  `scripts/patch_atlas_leads.py` adds the link to a published page without a rebuild. **A new
+  country gets its file only when `release_leads.py` is re-run for it** (add it to `SOURCES`).
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **For every page built or retemplated from 2026-10-24 on**: the province chart shows the top 7

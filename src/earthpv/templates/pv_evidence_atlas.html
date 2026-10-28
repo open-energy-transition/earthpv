@@ -469,6 +469,13 @@
     font-weight: 650; text-decoration: none; white-space: nowrap; }
   .dl-link a:hover { text-decoration: underline; }
   .dl-size { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  /* Mapping leads: a release file linked from the page (scripts/release_leads.py). */
+  .leads-item { margin-bottom: 14px; }
+  .leads-item .dl-note a { color: var(--accent); }
+  @media (max-width: 560px) {
+    .leads-item { flex-direction: column; }
+    .leads-item .dl-link { align-items: flex-start; }
+  }
   .dl-query-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
     text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
   .dl-query { background: var(--panel-2); border: 1px solid var(--card-ring); border-radius: 8px;
@@ -663,10 +670,6 @@
         <div class="toolbar" id="mapToolbar">
           <label class="tb-group"><span class="tb-label">Show</span>
             <select id="layerSel" class="select" aria-label="Capacity layer shown on the map"></select></label>
-          <div class="seg" role="group" aria-label="Units">
-            <button type="button" id="uCell" aria-pressed="true" title="Capacity in each 0.1&deg; cell">per cell</button>
-            <button type="button" id="uKm2" aria-pressed="false" title="Capacity divided by the cell's land-surface area, which shrinks with latitude">per km&sup2;</button>
-          </div>
           <label class="tb-group"><span class="tb-label">Basemap</span>
             <select id="baseSel" class="select" aria-label="Basemap">
               <option value="none">None</option>
@@ -1009,10 +1012,9 @@
         estimate, the OSM-mapped capacity alone, the satellite detections above 400 m&sup2;,
         rooftop PV below it, farm ground PV below it (arrays beside fields, where the farm
         detector has run), or the gap between the Best estimate and what is already mapped, which
-        is where mapping effort pays off most. "per km&sup2;" divides
-        by each cell's surface area, which shrinks toward the poles, so cells compare as
-        densities rather than as totals. The colour scale is logarithmic and is refitted to
-        whichever quantity is shown; the legend always states its range.</p>
+        is where mapping effort pays off most. Each cell shows its total in MWp. The colour
+        scale is logarithmic and is refitted to whichever quantity is shown; the legend always
+        states its range.</p>
         <p><b>Your own data.</b> "Layers" &rarr; "Add a layer" overlays a GeoJSON file, a
         CSV with latitude/longitude columns, a GeoJSON URL, an XYZ raster tile URL or a WMS
         (use <code>{bbox-epsg-3857}</code> in its GetMap URL). Files are read in your browser
@@ -1045,7 +1047,15 @@
       <div class="sec-sub" id="dlRelease"></div>
     </div>
 
-    <details class="xdetails">
+    <div class="dl-item leads-item" id="leadsItem" hidden>
+      <div class="dl-main">
+        <div class="dl-name">Mapping leads: solar arrays the model found that OpenStreetMap does not have yet</div>
+        <div class="dl-note" id="leadsNote"></div>
+      </div>
+      <div class="dl-link" id="leadsLink"></div>
+    </div>
+
+    <details class="xdetails" id="dlDetails">
       <summary><span><span class="xt">Download the underlying data</span>
         <span class="xs">capacity parquets, calibration boundaries, pose survey, raw detections, model checkpoint</span></span><span class="xi">+</span></summary>
       <div class="xbody">
@@ -1440,12 +1450,12 @@ out geom;</div>
   };
   const LAYERS = LAYER_DEFS.filter(d => DATA.cells.some(c => cellValue[d.prop](c) > 0));
   if (!LAYERS.length) LAYERS.push(LAYER_DEFS[0]);
-  const STATE = {layer: "best", perKm2: false, basemap: "none", opacity: 1};
+  const STATE = {layer: "best", basemap: "none", opacity: 1};
 
-  function scaleFor(def, perKm2){
+  function scaleFor(def){
     const vals = [];
     for (const c of DATA.cells){
-      const v = cellValue[def.prop](c) / (perKm2 ? cellKm2(c[1]) : 1);
+      const v = cellValue[def.prop](c);
       if (v > 0) vals.push(v);
     }
     if (!vals.length) return {vmin: 0.01, vmax: 1};
@@ -1468,7 +1478,7 @@ out geom;</div>
   function cellsGeoJSON(){
     return {type: "FeatureCollection", features: DATA.cells.map((c, i) => {
       const x = c[0], y = c[1];
-      const props = {i, km2: cellKm2(y), d: c[DOMAIN_IDX] ? 1 : 0, e: c[EXTENDED_IDX] ? 1 : 0};
+      const props = {i, d: c[DOMAIN_IDX] ? 1 : 0, e: c[EXTENDED_IDX] ? 1 : 0};
       for (const k in cellValue) props[k] = cellValue[k](c);
       return {type: "Feature", id: i, properties: props, geometry: {type: "Polygon",
         coordinates: [[[x, y], [x + 0.1, y], [x + 0.1, y + 0.1], [x, y + 0.1], [x, y]]]}};
@@ -1481,7 +1491,6 @@ out geom;</div>
       const props = {i};
       for (const k in cellValue) props[k] = cellValue[k](c);
       Object.assign(props, extra ? extra(c) : {});
-      props.km2 = cellKm2(c[1]);
       feats.push({type: "Feature", properties: props,
         geometry: {type: "Point", coordinates: [c[0] + 0.05, c[1] + 0.05]}});
     });
@@ -1545,14 +1554,11 @@ out geom;</div>
     0, add ? ["+", add, ["*", k, CELLPX0]] : ["*", k, CELLPX0],
     22, add ? ["+", add, ["*", k, CELLPX0 * Math.pow(2, 22)]] : ["*", k, CELLPX0 * Math.pow(2, 22)]];
 
-  function valueExpr(def, perKm2){
-    return perKm2 ? ["/", ["get", def.prop], ["get", "km2"]] : ["get", def.prop];
-  }
-  function rampExpr(def, perKm2, zeroColor){
-    const sc = scaleFor(def, perKm2);
+  function rampExpr(def, zeroColor){
+    const sc = scaleFor(def);
     MAP.scale = sc;
     const stops = isDark() ? RAMP_DARK : RAMP_LIGHT;
-    const v = valueExpr(def, perKm2);
+    const v = ["get", def.prop];
     const lo = Math.log(sc.vmin), hi = Math.log(sc.vmax) > lo ? Math.log(sc.vmax) : lo + 1;
     const interp = ["interpolate", ["linear"], ["ln", ["max", v, sc.vmin]]];
     stops.forEach((s, k) => interp.push(lo + (hi - lo) * k / (stops.length - 1), s));
@@ -1665,14 +1671,14 @@ out geom;</div>
       // between composited areas) and never tints a cell's own colour.
       {id: "glow", type: "circle", source: "glowpts",
        layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
-       paint: {"circle-color": rampExpr(def, STATE.perKm2, P.land), "circle-radius": cellScaled(0.95),
+       paint: {"circle-color": rampExpr(def, P.land), "circle-radius": cellScaled(0.95),
                "circle-blur": 1, "circle-opacity": 0.55}},
       {id: "cells", type: "fill", source: "cells",
-       paint: {"fill-color": rampExpr(def, STATE.perKm2, zero), "fill-opacity": cellsOpacity(),
+       paint: {"fill-color": rampExpr(def, zero), "fill-opacity": cellsOpacity(),
                "fill-antialias": false}},
       {id: "cells-edge", type: "line", source: "cells", minzoom: 8,
        layout: {visibility: STATE.basemap === "none" ? "none" : "visible"},
-       paint: {"line-color": rampExpr(def, STATE.perKm2, "rgba(0,0,0,0)"),
+       paint: {"line-color": rampExpr(def, "rgba(0,0,0,0)"),
                "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 2.4],
                "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.95]}},
       // Over the cells, so a cell that holds only hand-mapped OSM shows its colour hatched.
@@ -1828,12 +1834,12 @@ out geom;</div>
     const none = STATE.basemap === "none";
     m.setPaintProperty("bg", "background-color", P.mapBg);
     m.setPaintProperty("land", "fill-color", P.land);
-    m.setPaintProperty("cells", "fill-color", rampExpr(def, STATE.perKm2, none ? P.land : "rgba(0,0,0,0)"));
+    m.setPaintProperty("cells", "fill-color", rampExpr(def, none ? P.land : "rgba(0,0,0,0)"));
     m.setPaintProperty("cells", "fill-opacity", cellsOpacity());
     m.setPaintProperty("unimaged", "fill-opacity", hatchOpacity());
-    m.setPaintProperty("cells-edge", "line-color", rampExpr(def, STATE.perKm2, "rgba(0,0,0,0)"));
+    m.setPaintProperty("cells-edge", "line-color", rampExpr(def, "rgba(0,0,0,0)"));
     setVis("cells-edge", !none);
-    m.setPaintProperty("glow", "circle-color", rampExpr(def, STATE.perKm2, P.land));
+    m.setPaintProperty("glow", "circle-color", rampExpr(def, P.land));
     m.setPaintProperty("cells-hover", "line-color", P.ink);
     m.setPaintProperty("domain-line", "line-color", P.ink2);
     m.setPaintProperty("extended-line", "line-color", P.extended);
@@ -1863,7 +1869,7 @@ out geom;</div>
 
   function renderLegend(){
     const def = LAYERS.find(d => d.id === STATE.layer) || LAYERS[0];
-    const sc = MAP.scale || scaleFor(def, STATE.perKm2);
+    const sc = MAP.scale || scaleFor(def);
     const stops = isDark() ? RAMP_DARK : RAMP_LIGHT;
     const grad = stops.map((s, i) => `${s} ${(i / (stops.length - 1) * 100).toFixed(0)}%`).join(",");
     document.getElementById("legbar").style.background = `linear-gradient(90deg, ${grad})`;
@@ -1871,7 +1877,7 @@ out geom;</div>
     const pos = v => (Math.log(v) - lo) / (hi - lo) * 100;
     // The two ends are the fitted range itself; between them, every power of ten whose
     // label clears both end labels (widths estimated from the mono advance).
-    const unit = STATE.perKm2 ? "MWp per km²" : "MWp per cell";
+    const unit = "MWp per cell";
     document.getElementById("legcap").textContent = `${def.label}, ${unit} (log scale)`;
     const barW = document.getElementById("legbar").clientWidth || 500;
     const gap = t => (t.length * 6.6 + 10) / barW * 100;
@@ -1888,9 +1894,6 @@ out geom;</div>
     // With the hatch on, bare land means looked at and empty, so the key says so.
     document.getElementById("legzero").lastChild.textContent =
       OV.unimaged.avail && OV.unimaged.on ? "imaged, none detected" : "none detected";
-    document.getElementById("mapSub").innerHTML = STATE.perKm2
-      ? "density per km&sup2; of each 0.1&deg; cell &middot; log scale"
-      : "11 km &times; 11 km cells &middot; log scale";
     const keys = OVERLAYS.filter(o => o.avail && (o.follows ? OV[o.follows].on : o.on) && o.key)
       .map(o => `<span><span class="sw ${o.sw}"></span>${o.key}</span>`);
     for (const L of [...CFG_LAYERS, ...USER_LAYERS]) if (L.on && L.kind !== "raster")
@@ -1960,10 +1963,9 @@ out geom;</div>
     let h = `<div class="th">CELL ${clat}°N ${clon}°E · ${fmt(km2)} km²</div>`;
     if (def.id !== "best") {
       const v = cellValue[def.prop](c);
-      h += row(def.label, STATE.perKm2 ? `${fmt5(v / km2)} MWp/km²` : `${fmt5(v)} MWp`, "sel");
+      h += row(def.label, `${fmt5(v)} MWp`, "sel");
     }
     h += row(VIEW.label, `${fmt5(c[BEST_IDX])} MWp`, def.id === "best" ? "sel" : "");
-    if (def.id === "best" && STATE.perKm2) h += row("per km²", `${fmt5(c[BEST_IDX] / km2)} MWp`);
     h += row("satellite-detected &ge;400 m²", `${fmt5(c[LARGE_IDX])} MWp`);
     h += row("satellite rooftop &lt;400 m²", HAS_SMALL_ROOF ? `${fmt5(smallTotal)} MWp` : "not measured");
     if ((c[GROUND_IDX] || 0) > 0) h += row("satellite farm ground &lt;400 m²", `${fmt5(c[GROUND_IDX])} MWp`);
@@ -2812,7 +2814,7 @@ out geom;</div>
     const src = m.getCanvas();
     const w = src.clientWidth, h = src.clientHeight, S = 2, pad = 24;
     const def = LAYERS.find(d => d.id === STATE.layer) || LAYERS[0];
-    const unit = STATE.perKm2 ? "MWp per km²" : "MWp per 0.1° cell";
+    const unit = "MWp per 0.1° cell";
     const attribution = [...document.querySelectorAll(".maplibregl-ctrl-attrib-inner")]
       .map(n => n.textContent.replace(/\s+/g, " ").trim()).join(" ")
       .split("|").map(t => t.trim()).filter(t => t && !/^(EarthPV|MapLibre)$/.test(t)).join(" · ");
@@ -2880,7 +2882,7 @@ out geom;</div>
     ctx.fillStyle = P.muted; ctx.font = `10.5px ${P.fontMono}`;
     foot.forEach((line, i) => ctx.fillText(line, pad, headH + h + legendH + 6 + i * 14));
     const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("the map canvas could not be read")), "image/png"));
-    saveBlob(blob, `${SLUG}_pv_atlas_map_${def.id}${STATE.perKm2 ? "_per_km2" : ""}.png`);
+    saveBlob(blob, `${SLUG}_pv_atlas_map_${def.id}.png`);
   }
   function exportCellsGeoJSON(){
     const cols = DATA.cell_cols || [];
@@ -3002,14 +3004,6 @@ out geom;</div>
     map.on("error", (e) => console.warn("map:", (e && e.sourceId) || "", (e && e.error) || e));
 
     sel.addEventListener("change", () => { STATE.layer = sel.value; restyleMap(); });
-    const uCell = document.getElementById("uCell"), uKm2 = document.getElementById("uKm2");
-    const setUnits = (km2) => {
-      STATE.perKm2 = km2;
-      uCell.setAttribute("aria-pressed", String(!km2)); uKm2.setAttribute("aria-pressed", String(km2));
-      restyleMap();
-    };
-    uCell.addEventListener("click", () => setUnits(false));
-    uKm2.addEventListener("click", () => setUnits(true));
     const base = document.getElementById("baseSel");
     const opacity = document.getElementById("opacityRange");
     base.addEventListener("change", () => {
@@ -3737,6 +3731,29 @@ out geom;</div>
         : "";
   }
 
+  // Mapping leads: the model's outlines with no OpenStreetMap solar feature within
+  // `min_distance_m`, from the run behind this page. A release file, linked rather than
+  // embedded (India's is 91 MB); a page whose AOI has none shows no card.
+  function renderLeads(L){
+    const day = s => new Date(s + "T00:00:00Z").toLocaleDateString("en-GB",
+      {day: "numeric", month: "long", year: "numeric", timeZone: "UTC"});
+    const release = L.url.replace(/\/releases\/download\/([^/]+)\/.*/, "/releases/tag/$1");
+    document.getElementById("leadsNote").innerHTML = (L.note
+      || `${fmt(L.n)} places where the segmentation model outlined a solar array in the `
+        + `Sentinel-2 imagery more than ${fmt(L.min_distance_m)} m from every solar installation in `
+        + `OpenStreetMap as of ${day(L.osm_as_of)}, most promising first. They are unverified `
+        + `outlines drawn from 10 m pixels: check each one against recent high-resolution imagery `
+        + `before mapping it, and expect some bright roofs, greenhouses and dark fields among them. `
+        + `Anything mapped since that date can still appear.`)
+      + ` The GeoJSON opens in JOSM, iD and QGIS; the <a href="https://open-energy-transition.github.io/earthpv/contribute/" `
+      + `target="_blank" rel="noopener">mapping guide</a> explains how to work through it.`;
+    document.getElementById("leadsLink").innerHTML =
+      `<a href="${esc(L.url)}" target="_blank" rel="noopener">${esc(L.file)}</a>`
+      + `<span class="dl-size">GeoJSON · ${fmt(L.n)} leads · ${fmtBytes(L.size_bytes)}</span>`
+      + (release !== L.url ? `<a href="${esc(release)}" target="_blank" rel="noopener">release notes</a>` : "");
+    document.getElementById("leadsItem").hidden = false;
+  }
+
   function countUp(id, target, dur){
     const e = document.getElementById(id);
     if (REDUCED){ e.textContent = fmt(target); return; }
@@ -3930,9 +3947,12 @@ out geom;</div>
   }
 
   const hasDownloads = Array.isArray(T.downloads) && T.downloads.length > 0;
+  const hasLeads = !!(T.leads && T.leads.url);
   const downloadsSection = document.getElementById("downloads");
   if (hasDownloads) renderDownloads();
-  else if (downloadsSection) downloadsSection.style.display = "none";
+  else document.getElementById("dlDetails").hidden = true;
+  if (hasLeads) renderLeads(T.leads);
+  if (!hasDownloads && !hasLeads && downloadsSection) downloadsSection.style.display = "none";
 
   const hasPose = !!DATA.pose;
   const poseSection = document.getElementById("pose");

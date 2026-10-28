@@ -78,6 +78,7 @@ VALIDATION_TIERS = {
 
 
 EMBER_IMPORTS = Path(__file__).resolve().parents[2] / "configs" / "external" / "ember_china_panel_imports.yaml"
+LEADS_MANIFEST = Path(__file__).resolve().parents[2] / "configs" / "atlas_leads.json"
 
 
 def import_ceiling(aoi: str, path: Path = EMBER_IMPORTS) -> dict | None:
@@ -103,6 +104,20 @@ def import_ceiling(aoi: str, path: Path = EMBER_IMPORTS) -> dict | None:
     out["source"] = "Ember"
     out["url"] = doc.get("url")
     return out
+
+
+def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
+    """The AOI's mapping-lead file on GitHub: segmentation candidates more than
+    `min_distance_m` from any OSM solar feature, from the run behind this atlas.
+    scripts/release_leads.py builds the files and writes the manifest; the page links the
+    file rather than embedding it (India's is 91 MB). None when the AOI has no entry."""
+    if not path.exists():
+        return None
+    e = (json.loads(path.read_text()).get("aois") or {}).get(aoi)
+    if not e:
+        return None
+    return {k: e[k] for k in ("url", "file", "n", "size_bytes", "osm_as_of", "min_distance_m",
+                              "made", "note") if k in e}
 
 
 def derive_validation_score(aoi: str, has_sub400: bool,
@@ -2976,6 +2991,9 @@ def build_evidence_atlas(
     ceiling = import_ceiling(aoi)
     if ceiling:
         data["totals"]["import_ceiling"] = ceiling
+    leads = leads_release(aoi)
+    if leads:
+        data["totals"]["leads"] = leads
 
     if downloads and data_release_url:
         base = data_release_url.rstrip("/")
