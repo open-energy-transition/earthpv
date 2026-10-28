@@ -33,8 +33,8 @@ calibration coverage rather than cleanly by size, combine into one product:
   panels directly. Produces every mapping lead regardless of size, is the only instrument for
   ground-mount at any size, and is the rooftop instrument for arrays **≥ 400 m²** wherever
   `roofclf` is not calibrated to replace it. Each country runs its own checkpoint (Pakistan's
-  published rasters come from `v3_combined_india`, which is no longer on disk; the others are
-  listed under "Country runs").
+  published rasters come from `v16_combined_pakistan` since 2026-10-28, `v3_combined_india`
+  before; the others are listed under "Country runs").
 - **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `ge400-roof-capacity` →
   `sub400-capacity`): a per-building "does this roof carry PV?" classifier, cross-checked with
   the zero-training **SPPI** spectral index (roofclf AND SPPI agreeing) as an internal floor.
@@ -297,9 +297,9 @@ evidence the new one lacks (placement split, glint calibration, manual reviews,
 `register-p-unmapped`) unless `--allow-downgrade`; `density.py` warns when a table has no
 `placement_bins` for an AOI whose candidates span both placements. Reproducing Pakistan's table
 needs the calibration boxes and `--glint-sample`, not a bare re-run (its `recall_reference`
-records 18,276 features). **Pakistan's table predates the any-candidate recall fix, so its
-published `est_mwp_rc` (and Best) is overstated** until the table is deliberately re-derived --
-an owner decision, not done.
+records 19,221 features). **Pakistan's table was re-derived 2026-10-26 for v16**, with the
+any-candidate recall and 30 calibration boxes, as `status: interim-mapped-only`: `p_unmapped`
+from mapped installations only, no glint sample in any bin yet.
 
 **OSM reference polygons are dissolved before use** (`labels.dissolve_overlapping`): a
 `power=plant` perimeter with a nested `power=generator` way, or duplicate mapping passes, would
@@ -414,13 +414,14 @@ replicates) with correlated terms sharing one draw vector, and asserts its compo
 values sum to the published total -- a guard against adding an atlas component without adding it
 to the uncertainty.
 
-**Pakistan's current published figures.** Segmentation `est_mwp_rc` **4,051.9 MWp** (rooftop
-2,916.3, ground 1,135.6). roofclf (30 quadrats, parcel label, area-weighted zonal means,
-recall-corrected, probability-weighted since 2026-10-25): sub-400 central **24,206.3 MWp**,
-sub-400 AND-gate (floor, thresholded, uncorrected) **3,784.3 MWp**, ≥ 400 m² rooftop replacement
-**7,503.2 MWp**; median LOQO fold AUC 0.8682, within-size 0.8193, deployment threshold 0.2446.
-Atlas: **Best 34,588.8 MWp (90% CI 29,308-41,736), Verified 6,994.1 MWp (90% CI 6,041-9,091)**
-(thresholded until 2026-10-25: Best 24,438.3, 90% 20,894-33,666). `check-density` fails 3 regions
+**Pakistan's current published figures (v16, 2026-10-28).** Segmentation `est_mwp_rc` **3,129.2
+MWp** (rooftop 1,992.8, ground 1,136.4). roofclf (30 quadrats, parcel label, area-weighted zonal
+means, recall-corrected, probability-weighted since 2026-10-25), as priced in the atlas: sub-400
+central **24,060.4 MWp**, sub-400 AND-gate (floor, thresholded, uncorrected) **3,713.3 MWp**,
+≥ 400 m² rooftop replacement **7,249.5 MWp**; median LOQO fold AUC 0.8682, within-size 0.8193,
+deployment threshold 0.2446. Atlas: **Best 34,128.5 MWp (90% CI 28,848-41,191), Verified 7,350.8
+MWp (90% CI 6,349-9,526)** (on `v3_combined_india` until 2026-10-28: Best 34,588.8, Verified
+6,994.1; thresholded until 2026-10-25: Best 24,438.3, 90% 20,894-33,666). `check-density` fails 3 regions
 on single-cell concentration (KP, Balochistan, ICT), checked genuine (the calibration quadrats'
 own cities) and published per standing precedent. **The mandatory random validations of the last
 three rescorings (seeds 20260817, 20260820, 20260920; tiles in
@@ -897,7 +898,7 @@ QUEUE first when removing compute markers.
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
-| Pakistan | `v3_combined_india` | 6,994.1 / 34,588.8 | roofclf half, probability-weighted; see "Density stage" |
+| Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,128.5 | roofclf half, probability-weighted; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; Silver |
 | France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf |
 | India | `v5_combined_france` | 67,592.6 / 72,705.1 | v10 lost the Gujarat holdout; `ring_cells: 3` |

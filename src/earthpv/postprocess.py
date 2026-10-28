@@ -271,12 +271,20 @@ def _join_buildings_metric(
         dist[ci] = float(d[k])
         bid[ci] = str(bu.iloc[ti][id_col])
     # Total overlap fraction only matters for candidates that actually sit on roofs.
+    # An invalid ring (a self-touching blob, or a bad footprint) makes GEOS raise a
+    # TopologyException mid-join (Pakistan v16, 2026-10-26); repair only those, so every
+    # valid geometry's overlap is unchanged.
+    import shapely
+
+    def _valid(geom):
+        return geom if geom.is_valid else shapely.make_valid(geom)
+
     for ci in np.where(dist < 1e-6)[0]:
-        g = cu.geometry.iloc[ci]
+        g = _valid(cu.geometry.iloc[ci])
         hits = sindex.query(g, predicate="intersects")
         if len(hits) == 0:
             continue
-        inter = sum(g.intersection(bu.geometry.iloc[int(h)]).area for h in hits)
+        inter = sum(g.intersection(_valid(bu.geometry.iloc[int(h)])).area for h in hits)
         frac[ci] = inter / max(g.area, 1e-6)
 
     placement = np.where(

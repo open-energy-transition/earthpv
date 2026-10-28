@@ -2,56 +2,56 @@
   {
     "file": "pakistan_atlas_capacity_by_cell.parquet",
     "label": "Best estimate and Verified per grid cell",
-    "note": "The atlas's own map: every Best and Verified component per 0.1 degree cell, summing to the page's headline figures. The PyPSA-ready table. 4,463 rows.",
-    "size_bytes": 212096
+    "note": "The atlas's own map: every Best and Verified component per 0.1 degree cell, summing to the page's headline figures. The PyPSA-ready table. 4,470 rows.",
+    "size_bytes": 214724
   },
   {
     "file": "pakistan_capacity_by_cell.parquet",
     "label": "Segmentation estimate per grid cell",
-    "note": "The >= 400 m2 segmentation half alone (est_mwp_rc and its estimators), with building counts and roof area per cell. 4,463 rows.",
-    "size_bytes": 487796
+    "note": "The >= 400 m2 segmentation half alone (est_mwp_rc and its estimators), with building counts and roof area per cell. 4,470 rows.",
+    "size_bytes": 589163
   },
   {
     "file": "pakistan_capacity_by_building.parquet",
     "label": "Capacity per building",
-    "note": "One row per building carrying a segmentation detection. Sums BELOW the cell table: each building is credited only with its own geometric intersection. 91,424 rows.",
-    "size_bytes": 13739420
+    "note": "One row per building carrying a segmentation detection. Sums BELOW the cell table: each building is credited only with its own geometric intersection. 112,704 rows.",
+    "size_bytes": 17777410
   },
   {
     "file": "pakistan_capacity_by_region.parquet",
     "label": "Capacity per admin region",
     "note": "Region-level aggregate, if `density --districts` was run. 133 rows.",
-    "size_bytes": 526050
+    "size_bytes": 530956
   },
   {
     "file": "pakistan_roofclf_ge400_roof_by_cell_and_size.parquet",
     "label": "roofclf >= 400 m2 rooftop replacement",
-    "note": "In-domain replacement for segmentation's own rooftop estimate. One row per cell and size bin, every building weighted by its score: n_buildings, sum_p (the expected number of PV roofs) and roof_area_m2 (the bin's capacity-weighted mean roof size). 6,045 rows.",
-    "size_bytes": 388495
+    "note": "In-domain replacement for segmentation's own rooftop estimate. One row per cell and size bin, every building weighted by its score: n_buildings, sum_p (the expected number of PV roofs) and roof_area_m2 (the bin's capacity-weighted mean roof size). 6,033 rows.",
+    "size_bytes": 387796
   },
   {
     "file": "pakistan_roofclf_sub400_central_by_cell_and_size.parquet",
     "label": "roofclf sub-400 m2, central estimate",
     "note": "In-domain, feeds Best estimate. One row per cell and size bin, every building weighted by its score: n_buildings, sum_p (the expected number of PV roofs) and roof_area_m2 (the bin's capacity-weighted mean roof size). 5,914 rows.",
-    "size_bytes": 400318
+    "size_bytes": 400196
   },
   {
     "file": "pakistan_roofclf_sub400_low_buildings.parquet",
     "label": "roofclf+SPPI sub-400 m2, stricter floor",
-    "note": "In-domain, the internal floor population. 567,424 rows.",
-    "size_bytes": 60521551
+    "note": "In-domain, the internal floor population. 559,313 rows.",
+    "size_bytes": 59770789
   },
   {
     "file": "pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet",
     "label": "roofclf+SPPI sub-400 m2, out-of-domain",
-    "note": "Explicitly-flagged extrapolation beyond the calibrated domain, in the atlas's figures only when it was built with --sub400-outdomain-cells. 34,569 rows.",
-    "size_bytes": 3926739
+    "note": "Explicitly-flagged extrapolation beyond the calibrated domain, in the atlas's figures only when it was built with --sub400-outdomain-cells. 34,365 rows.",
+    "size_bytes": 3904989
   },
   {
     "file": "pakistan_raw_detections_unreviewed.parquet",
     "label": "Raw model detections (unreviewed)",
-    "note": "Every thresholded candidate polygon, before human validation. Leads, not truth. 6,566 rows.",
-    "size_bytes": 2539820
+    "note": "Every thresholded candidate polygon, before human validation. Leads, not truth. 13,660 rows.",
+    "size_bytes": 3016241
   },
   {
     "file": "pakistan_roofclf_model.json",
@@ -81,12 +81,12 @@
     "file": "terramind_pv_segmentation_checkpoint.ckpt",
     "label": "TerraMind segmentation checkpoint",
     "note": "The fine-tune that produced this release's detections and segmentation capacity.",
-    "size_bytes": 98649447
+    "size_bytes": 33018123
   },
   {
     "file": "DATA_DICTIONARY.md",
     "label": "Data dictionary",
     "note": "Column definitions, units and known caveats for every file in this release.",
-    "size_bytes": 10075
+    "size_bytes": 10385
   }
 ]
