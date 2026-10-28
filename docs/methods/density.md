@@ -264,7 +264,7 @@ its two slope estimators disagree by 2.6x and its well-mapped subset by 13x. The
 can, because their denominator is complete by construction -- there just aren't enough of them
 yet, especially outside the industrial stratum.
 
-!!! warning "Full coverage reached; the Gilgit-Baltistan regression is exempted, but promotion still failed for a different reason (updated 2026-07-30)"
+!!! warning "Full coverage reached; promotion failed `check-density` for a reason unrelated to the fraction head (resolved 2026-08-11)"
     As of 2026-07-29 the fraction-head run covers **all 4,463 manifest cells**
     (`exp_coverage_frac: 1.0`) -- the inference finished on 2026-07-27, the docs simply
     hadn't been updated. National expected-area rooftop capacity with the fraction
@@ -310,9 +310,23 @@ yet, especially outside the industrial stratum.
     `candidates.parquet` was OSM-geometry-replaced (2026-07-29) after the partials were
     last built with `--force`, so the two now permanently disagree. Any run against the
     current candidate population fails the gate, segmentation or fraction. The published
-    `density/` stays pinned to the pre-OSM-replace snapshot (`n_oversize_excluded=233`)
-    until a `--force` rebuild happens and the roof-candidate collapse it triggers is
-    root-caused -- both still open.
+    `density/` stayed pinned to the pre-OSM-replace snapshot (`n_oversize_excluded=233`)
+    until a `--force` rebuild could be run and the roof-candidate collapse it triggered
+    root-caused.
+
+    **Resolved 2026-08-11.** The `--force` rebuild ran with the ground-mount fixes, and the
+    Khyber Pakhtunkhwa and Balochistan failure was root-caused: precision/recall
+    calibration pooled rooftop and ground-mount in shared area bins, so uncorroborated
+    `no_building` blobs borrowed rooftop's much higher OSM corroboration rate. Splitting
+    the tables by placement (`capacity_calibration.derive_placement_tables`) brought both
+    ratios inside the check (0.49x and 2.01x; see
+    [the calibration-box log](../issues/pakistan-calibration-boxes.md)). `check-density`
+    no longer stands in the fraction head's way. What keeps it out of every capacity
+    figure is calibration: its predicted/true ratio spans 49x across quadrats, and a
+    quadrat-supervised retrain that looked consistent in sample did not hold on its
+    holdout ([Quadrat-supervised fraction retrain](../issues/quadrat-supervision-fraction-retrain.md)).
+    `sub400_capacity.py` now prices roofclf scores and the roofclf-and-SPPI floor only;
+    the fraction head survives in the [growth map](../results/growth.md).
 
 ### Per-building classification
 

@@ -266,15 +266,18 @@ heads of the same checkpoint agreeing is not.
 
 ### Two optional instruments never got promoted past "evidence"
 
-The fraction head and standalone SPPI are marked in the diagram as auxiliary, not
-because they scored badly, but because each promotion attempt broke something else --
-neither is part of the main workflow, and the main workflow does not need them to be:
+The fraction head and standalone SPPI are marked in the diagram as auxiliary: each
+carries real signal, but roofclf already does its job with a calibration measured on the
+quadrats. Neither is part of the main workflow, and the main workflow does not need them
+to be:
 
-- The fraction head scores far better than segmentation in the residential quadrat
-  where it matters most (predicted/true ratio 0.520 vs. 0.023), but forcing it through
-  `density.py`'s current candidate population broke `check-density` for reasons traced
-  to a pre-existing ground-mount aggregation issue, not the fraction head itself. It is
-  not in the published atlas.
+- The fraction head recovers far more sub-400 m² PV area than segmentation (0.520 of
+  mapped area against 0.023 in Lahore DHA, 0.042 against 0.000 in Karachi coastal), but
+  its predicted/true ratio spans 0.042 to 2.077 across quadrats, a quadrat-supervised
+  retrain that looked consistent in sample did not hold on its holdout, and as a roofclf
+  input it lowers AUC on small buildings. It is therefore not in the evidence atlas; it
+  appears only in the directional [growth map](results/growth.md). The `check-density`
+  failure first blamed on it happened without it too and has since been fixed.
 - SPPI beats roofclf on nothing (median AUC 0.823 against 0.874 on the same nine-quadrat
   evaluation; roofclf reaches 0.879 on the full 27-quadrat set it is fitted on) and adds nothing as a
   roofclf feature, but an AND-gate (roofclf **and** SPPI agreeing) raises precision by

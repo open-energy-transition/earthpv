@@ -1,13 +1,19 @@
-"""Sub-400 m2 capacity: fraction head + roofclf, density-stratified, kept OUT of `density.py`.
+"""Sub-400 m2 capacity from roofclf scores, density-stratified, kept OUT of `density.py`.
 
-This is a deliberately separate, experimental product -- NOT the segmentation-based
-atlas (`density.py`), and NOT merged into it. Two things forced that separation:
+Prices roofclf's national scores (and the roofclf-AND-SPPI floor); it reads no fraction-head
+raster. It began as a fraction head + roofclf product, kept separate from the
+segmentation-based `density.py` and not merged into it. Two things forced that separation;
+the sections below are the dated record from 2026-07-30, not the current method (see
+`docs/methods/roofclf.md`):
 
 - Promoting the fraction head as `density.py`'s default expected-area instrument
   (2026-07-30) broke `earthpv check-density` when forced through the current candidate
   population (a disproportionate 46% collapse in roof-intersected candidate area vs.
-  29% overall -- a `density.py`/`postprocess.py` aggregation issue, not something this
-  module can fix). The segmentation-based atlas was restored and stays the default.
+  29% overall). The fraction head was not the cause: stale cell partials disagreed with
+  OSM-replaced candidates, and the regional ratio failure was the pooled rooftop/ground
+  precision-recall calibration, fixed 2026-08-11 by `derive_placement_tables`. The
+  fraction head stays out because its predicted/true ratio does not transfer between
+  quadrats (0.042-2.077), not because of the gate.
 - roofclf's national capacity fold-in was separately rejected (see `roofclf_capacity.py`):
   a flat LOQO precision (0.50, measured at ~10.8% PV prevalence across 9 quadrats) gives
   18-37 GWp nationally, 3.5-8x the country's entire segmentation-based total, because PPV
