@@ -241,6 +241,9 @@
   .sw.live { background: color-mix(in srgb, var(--domain) 35%, transparent);
     border: 1.4px solid var(--domain); }
   .sw.line { height: 2px; border-radius: 1px; background: var(--prov-stroke); }
+  /* A cell no detector looked at: the map's own hatch over the land colour. */
+  .sw.hatch { border-radius: 2px; border: 1px solid var(--prov-stroke);
+    background: repeating-linear-gradient(135deg, var(--muted) 0 1.2px, var(--land) 1.2px 4px); }
 
   /* ── the map ─────────────────────────────────────────────────────── */
   .map-shell { position: relative; border-radius: 10px; overflow: hidden;
@@ -1476,6 +1479,16 @@ out geom;</div>
     return {type: "FeatureCollection", features: lines.length ? [{type: "Feature", properties: {},
       geometry: {type: "MultiLineString", coordinates: lines}}] : []};
   }
+  // The country's cells that were never imaged (`unimaged`, runs of `n` cells eastward from
+  // [lon0, lat0]; absent on a page built before 2026-10-28). Without them an unimaged cell
+  // and an imaged cell where nothing was found are both bare land.
+  const UNIMAGED = DATA.unimaged || [];
+  const N_UNIMAGED = UNIMAGED.reduce((s, r) => s + r[2], 0);
+  function unimagedGeoJSON(){
+    return {type: "FeatureCollection", features: UNIMAGED.map(([x, y, n]) => ({type: "Feature",
+      properties: {x, y}, geometry: {type: "Polygon", coordinates: [[[x, y], [x + 0.1 * n, y],
+        [x + 0.1 * n, y + 0.1], [x, y + 0.1], [x, y]]]}}))};
+  }
   function provincesGeoJSON(){
     return {type: "FeatureCollection", features: (DATA.provinces || []).map(p => ({
       type: "Feature", properties: {name: p.name},
@@ -1550,6 +1563,10 @@ out geom;</div>
     {id: "provinces", label: "Province boundaries", layers: ["prov-line"], on: true,
      avail: (DATA.provinces || []).length > 0, sw: "line"},
     {id: "cities", label: "City labels", on: true, avail: (DATA.cities || []).length > 0},
+    {id: "unimaged", label: "Cells not imaged (hatched)", layers: ["unimaged"], on: true,
+     avail: N_UNIMAGED > 0, sw: "hatch",
+     key: T.n_cells_country ? `not imaged: ${fmt(N_UNIMAGED)} of the country's ${fmt(T.n_cells_country)} cells, `
+       + `where only hand-mapped OSM counts` : "not imaged: only hand-mapped OSM counts there"},
     {id: "osm", label: "OSM-mapped capacity, ring grows with MWp", layers: ["osm-rings"], on: true,
      avail: DATA.cells.some(c => c[OSM_IDX] > 0), sw: "ring", key: "OSM-mapped capacity (ring grows with MWp)"},
     {id: "domain", label: "Cells with sub-400 m² calibration", layers: ["domain-line"], on: false,
@@ -1592,6 +1609,7 @@ out geom;</div>
       osmpts: {type: "geojson", data: cellCentersGeoJSON(c => c[OSM_IDX] > 0,
         c => ({rf: Math.min(1, Math.sqrt(c[OSM_IDX] / osmMax))}))},
       provinces: {type: "geojson", data: provincesGeoJSON()},
+      unimaged: {type: "geojson", data: unimagedGeoJSON()},
       domain: {type: "geojson", data: boundaryOf(DOMAIN_IDX)},
       extended: {type: "geojson", data: boundaryOf(EXTENDED_IDX)},
       calibpolys: {type: "geojson", data: calib.polys},
@@ -1630,6 +1648,9 @@ out geom;</div>
        paint: {"line-color": rampExpr(def, STATE.perKm2, "rgba(0,0,0,0)"),
                "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 2.4],
                "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.95]}},
+      // Over the cells, so a cell that holds only hand-mapped OSM shows its colour hatched.
+      {id: "unimaged", type: "fill", source: "unimaged", layout: {visibility: OV.unimaged.on ? "visible" : "none"},
+       paint: {"fill-pattern": HATCH_ICON, "fill-opacity": hatchOpacity(), "fill-antialias": false}},
       {id: "cells-hover", type: "line", source: "cells",
        paint: {"line-color": P.ink, "line-width": 1.5,
                "line-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0]}},
@@ -1702,7 +1723,9 @@ out geom;</div>
   const CALIB_ICON = "calib-diamond", CAND_ICON = "cand-diamond", STAR_ICON = "cand-star";
   // Farm areas: the same diamonds in the farm ground-PV green.
   const FARM_ICON = "farm-diamond", FARM_CAND_ICON = "farm-cand-diamond";
-  const CALIB_ICONS = [CALIB_ICON, CAND_ICON, STAR_ICON, FARM_ICON, FARM_CAND_ICON];
+  // Not a marker: the fill pattern of the unimaged cells, drawn and redrawn the same way.
+  const HATCH_ICON = "unimaged-hatch";
+  const CALIB_ICONS = [CALIB_ICON, CAND_ICON, STAR_ICON, FARM_ICON, FARM_CAND_ICON, HATCH_ICON];
   const candLineColor = P => ["case", ["==", ["get", "farm"], true], P.ground, P.ink2];
   function starIcon(){
     const P = palette(), r = 2, size = 24 * r, cv = document.createElement("canvas");
@@ -1730,10 +1753,22 @@ out geom;</div>
     if (hollow) ctx.clearRect(-half + 1.5 * r, -half + 1.5 * r, 2 * half - 3 * r, 2 * half - 3 * r);
     return ctx.getImageData(0, 0, size, size);
   }
+  // Diagonal lines on a transparent tile, so the land colour or a basemap shows between them.
+  // The two corner stubs continue each line into the next tile, so the pattern has no seams.
+  function hatchIcon(){
+    const P = palette(), r = 2, size = 7 * r, cv = document.createElement("canvas");
+    cv.width = cv.height = size;
+    const ctx = cv.getContext("2d");
+    ctx.strokeStyle = P.muted; ctx.globalAlpha = 0.75; ctx.lineWidth = 1.1 * r; ctx.lineCap = "square";
+    for (const [x0, y0, x1, y1] of [[0, size, size, 0], [-1, 1, 1, -1], [size - 1, size + 1, size + 1, size - 1]]){
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
+    return ctx.getImageData(0, 0, size, size);
+  }
   function ensureCalibIcon(m){
     for (const [id, draw] of [[CALIB_ICON, () => calibIcon(false)], [CAND_ICON, () => calibIcon(true)],
                               [STAR_ICON, starIcon], [FARM_ICON, () => calibIcon(false, true)],
-                              [FARM_CAND_ICON, () => calibIcon(true, true)]]){
+                              [FARM_CAND_ICON, () => calibIcon(true, true)], [HATCH_ICON, hatchIcon]]){
       if (m.hasImage(id)) m.updateImage(id, draw());
       else m.addImage(id, draw(), {pixelRatio: 2});
     }
@@ -1745,6 +1780,11 @@ out geom;</div>
   function cellsOpacity(){
     if (STATE.basemap === "none") return STATE.opacity;
     return ["interpolate", ["linear"], ["zoom"], 9, STATE.opacity, 13, STATE.opacity * 0.15];
+  }
+  // The hatch keeps its own opacity (the slider is the capacity layer's) and fades the same
+  // way over a basemap, so it never hides the imagery a reader zoomed in to see.
+  function hatchOpacity(){
+    return STATE.basemap === "none" ? 1 : ["interpolate", ["linear"], ["zoom"], 9, 0.9, 13, 0.2];
   }
 
   function setVis(id, on){
@@ -1763,6 +1803,7 @@ out geom;</div>
     m.setPaintProperty("land", "fill-color", P.land);
     m.setPaintProperty("cells", "fill-color", rampExpr(def, STATE.perKm2, none ? P.land : "rgba(0,0,0,0)"));
     m.setPaintProperty("cells", "fill-opacity", cellsOpacity());
+    m.setPaintProperty("unimaged", "fill-opacity", hatchOpacity());
     m.setPaintProperty("cells-edge", "line-color", rampExpr(def, STATE.perKm2, "rgba(0,0,0,0)"));
     setVis("cells-edge", !none);
     m.setPaintProperty("glow", "circle-color", rampExpr(def, STATE.perKm2, P.land));
@@ -1817,6 +1858,9 @@ out geom;</div>
       + inner.map(v => `<span style="left:${pos(v).toFixed(1)}%">${compact(v)}</span>`).join("")
       + `<span class="hi" style="left:100%">${hiL}</span>`;
     document.getElementById("legzero").hidden = STATE.basemap !== "none";
+    // With the hatch on, bare land means looked at and empty, so the key says so.
+    document.getElementById("legzero").lastChild.textContent =
+      OV.unimaged.avail && OV.unimaged.on ? "imaged, none detected" : "none detected";
     document.getElementById("mapSub").innerHTML = STATE.perKm2
       ? "density per km&sup2; of each 0.1&deg; cell &middot; log scale"
       : "11 km &times; 11 km cells &middot; log scale";
@@ -1901,6 +1945,15 @@ out geom;</div>
     if (c[COVERED_IDX] === 0) h += row("coverage", "OSM-mapped only, not imaged");
     return h;
   }
+  // A cell of an unimaged run, found from the pointer: the run carries only its corner.
+  function unimagedTip(f, lngLat){
+    const x = f.properties.x, y = f.properties.y;
+    const lon0 = x + 0.1 * Math.max(0, Math.floor((lngLat.lng - x) / 0.1 + 1e-9));
+    return `<div class="th">CELL ${(y + 0.05).toFixed(2)}°N ${(lon0 + 0.05).toFixed(2)}°E · ${fmt(cellKm2(y))} km²</div>`
+      + row("coverage", "not imaged")
+      + `<div class="t-desc">No Sentinel-2 composite was built for this cell, so no detector looked at it. `
+      + `The only capacity this page can show here is what is hand-mapped in OpenStreetMap.</div>`;
+  }
   function propsTip(title, props){
     const keys = Object.keys(props || {}).filter(k => props[k] != null && props[k] !== "" && typeof props[k] !== "object");
     let h = `<div class="th">${esc(title)}</div>`;
@@ -1926,10 +1979,12 @@ out geom;</div>
     const userIds = () => [...CFG_LAYERS, ...USER_LAYERS].filter(L => L.on && L.kind !== "raster")
       .flatMap(L => L.layerIds);
     m.on("mousemove", (e) => {
-      const ids = ["calib-dot", "farm-dot", "cand-dot", "live-fill", "live-line", "live-pt", ...userIds(), "cells"]
+      const ids = ["calib-dot", "farm-dot", "cand-dot", "live-fill", "live-line", "live-pt", ...userIds(), "cells",
+                   "unimaged"]
         .filter(id => m.getLayer(id) && m.getLayoutProperty(id, "visibility") !== "none");
       const feats = m.queryRenderedFeatures(e.point, {layers: ids});
-      const f = feats[0];
+      // The hatch draws over the cells, but a cell holding hand-mapped OSM has more to say.
+      const f = feats.find(x => x.layer.id !== "unimaged") || feats[0];
       const ev = e.originalEvent;
       const setHover = (id) => {
         if (MAP.hoverId === id) return;
@@ -1939,7 +1994,7 @@ out geom;</div>
       };
       const cursor = c => { m.getCanvas().style.cursor = PROPOSE.armed ? "crosshair" : c; };
       if (!f){ setHover(null); hideTip(); cursor(""); return; }
-      cursor(f.layer.id === "cells" ? "" : "pointer");
+      cursor(f.layer.id === "cells" || f.layer.id === "unimaged" ? "" : "pointer");
       if (f.layer.id === "cells"){
         const c = DATA.cells[f.properties.i];
         setHover(f.id);
@@ -1947,7 +2002,9 @@ out geom;</div>
         return;
       }
       setHover(null);
-      if (f.layer.id === "calib-dot" || f.layer.id === "farm-dot"){
+      if (f.layer.id === "unimaged"){
+        showTip(ev.clientX, ev.clientY, unimagedTip(f, e.lngLat));
+      } else if (f.layer.id === "calib-dot" || f.layer.id === "farm-dot"){
         const b = DATA.calibBoxes[f.properties.k], farm = isFarmBox(b);
         showTip(ev.clientX, ev.clientY, `<div class="th">${farm ? "FARM" : "BUILDING"} CALIBRATION AREA: ${esc(b.name)}</div>`
           + row("Calibrates", calibrates(farm)) + row("Mapped installations", fmt(b.n))
@@ -2782,6 +2839,17 @@ out geom;</div>
     tickAt(sc.vmax, "right");
     ctx.textAlign = "left"; ctx.fillStyle = P.ink2; ctx.font = `11px ${P.fontMono}`;
     ctx.fillText(unit, pad + lw + 14, ly + 10);
+    if (OV.unimaged.avail && OV.unimaged.on){
+      const hx = pad + lw + 14, hy = ly + 17, s = 11;
+      ctx.fillStyle = P.land; ctx.fillRect(hx, hy, s, s);
+      ctx.save(); ctx.beginPath(); ctx.rect(hx, hy, s, s); ctx.clip();
+      ctx.strokeStyle = P.muted; ctx.lineWidth = 1.1;
+      for (let k = -s; k < 2 * s; k += 3.5){ ctx.beginPath(); ctx.moveTo(hx + k, hy + s); ctx.lineTo(hx + k + s, hy); ctx.stroke(); }
+      ctx.restore();
+      const long = `not imaged (${fmt(N_UNIMAGED)} cells)`;
+      ctx.fillStyle = P.ink2;
+      ctx.fillText(ctx.measureText(long).width <= w + pad - hx - 17 ? long : "not imaged", hx + 17, hy + 9);
+    }
     ctx.fillStyle = P.muted; ctx.font = `10.5px ${P.fontMono}`;
     foot.forEach((line, i) => ctx.fillText(line, pad, headH + h + legendH + 6 + i * 14));
     const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("the map canvas could not be read")), "image/png"));

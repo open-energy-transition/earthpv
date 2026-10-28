@@ -1539,12 +1539,35 @@ def _ci(draws: np.ndarray) -> list[float]:
     return [round(float(v), 1) for v in np.percentile(draws, CI_PCT)]
 
 
+def _page_regions(aoi: str, regions_path: Path) -> gpd.GeoDataFrame:
+    """The province rows the evidence atlas draws, each clipped to the AOI's own box.
+
+    geoBoundaries' MAR layer carries Western Sahara inside two Moroccan regions, while the
+    Morocco AOI stops at 27.7N, the internationally recognised line; the map must not draw
+    past it either. Every cell lies inside the box, so no region total can change."""
+    from earthpv.config import Settings
+
+    reg_regions = _region_rows(gpd.read_parquet(regions_path))
+    aoi_bbox = (Settings.load().aois.get(aoi) or {}).get("bbox")
+    if aoi_bbox:
+        from shapely.geometry import box as _box
+
+        reg_regions = reg_regions.copy()
+        reg_regions["geometry"] = reg_regions.geometry.intersection(_box(*aoi_bbox))
+        reg_regions = reg_regions[~reg_regions.geometry.is_empty]
+    return reg_regions
+
+
 def _cell_coverage(aoi: str, country, processed: pd.DataFrame) -> dict:
     """`n_cells_country`, the AOI grid's 0.1-degree cells whose centre lies inside
     `country` (plus any processed cell just outside it), and `n_cells_processed`, the cells
     imaged and run through the detectors (`processed`, columns `lon_center`, `lat_center`). Compose selects cells by
     buildings and mapped solar, so the rest of a country was never looked at: on the page
-    only hand-mapped OpenStreetMap counts there."""
+    only hand-mapped OpenStreetMap counts there.
+
+    `unimaged` lists those cells, as runs `[lon0, lat0, n]` of n cells eastward from
+    (lon0, lat0), for the map to hatch; it holds exactly n_cells_country - n_cells_processed
+    cells. Not a total: `build_evidence_atlas` moves it out of `totals`."""
     import shapely
 
     from earthpv.compose import CELL_DEG
@@ -1559,12 +1582,39 @@ def _cell_coverage(aoi: str, country, processed: pd.DataFrame) -> dict:
     xs = x0 + (np.arange(np.floor((w - x0) / CELL_DEG), np.ceil((e - x0) / CELL_DEG)) + 0.5) * CELL_DEG
     ys = y0 + (np.arange(np.floor((s - y0) / CELL_DEG), np.ceil((n - y0) / CELL_DEG)) + 0.5) * CELL_DEG
     gx, gy = np.meshgrid(xs, ys)
-    inside = shapely.contains_xy(country, gx.ravel(), gy.ravel())
+    inside = shapely.contains_xy(country, gx.ravel(), gy.ravel()).reshape(gx.shape)
     # A processed cell whose centre is just offshore of the drawn outline still counts as
     # the country's, so the processed count matches the cell count the page reports.
-    p_out = ~shapely.contains_xy(country, processed["lon_center"].to_numpy(float),
-                                 processed["lat_center"].to_numpy(float))
-    return {"n_cells_country": int(inside.sum() + p_out.sum()), "n_cells_processed": int(len(processed))}
+    plon = processed["lon_center"].to_numpy(float)
+    plat = processed["lat_center"].to_numpy(float)
+    p_out = ~shapely.contains_xy(country, plon, plat)
+    todo = inside.copy()
+    fx, fy = (plon - xs[0]) / CELL_DEG, (plat - ys[0]) / CELL_DEG
+    if len(plon) and max(np.abs(fx - np.rint(fx)).max(), np.abs(fy - np.rint(fy)).max()) > 0.05:
+        log.warning("%s: processed cells are off the grid origin %s; the unimaged cells "
+                    "will be wrong", aoi, (x0, y0))
+    col = np.rint(fx).astype(int)
+    rw = np.rint(fy).astype(int)
+    ok = (~p_out) & (col >= 0) & (col < len(xs)) & (rw >= 0) & (rw < len(ys))
+    todo[rw[ok], col[ok]] = False
+    runs = []
+    for j in range(len(ys)):
+        edges = np.flatnonzero(np.diff(np.r_[0, todo[j].astype(np.int8), 0]))
+        lat0 = round(float(ys[j] - CELL_DEG / 2), 4)
+        runs += [[round(float(xs[a] - CELL_DEG / 2), 4), lat0, int(b - a)]
+                 for a, b in zip(edges[0::2], edges[1::2])]
+    return {"n_cells_country": int(inside.sum() + p_out.sum()), "n_cells_processed": int(len(processed)),
+            "unimaged": runs}
+
+
+def _bounds_with_runs(bounds: list, runs: list) -> list:
+    """`bounds` [w, s, e, n] widened to take in `_cell_coverage`'s unimaged runs."""
+    if not runs:
+        return bounds
+    return [round(min(bounds[0], min(r[0] for r in runs)), 3),
+            round(min(bounds[1], min(r[1] for r in runs)), 3),
+            round(max(bounds[2], max(r[0] + 0.1 * r[2] for r in runs)), 3),
+            round(max(bounds[3], max(r[1] + 0.1 for r in runs)), 3)]
 
 
 def _osm_traced_ground(osm: pd.DataFrame) -> np.ndarray:
@@ -2780,19 +2830,7 @@ def build_evidence_atlas(
     reg_regions = None
     regions_path = density_dir / "regions.geoparquet"
     if regions_path.exists():
-        reg = gpd.read_parquet(regions_path)
-        reg_regions = _region_rows(reg)
-        # Draw a region only inside the AOI's own box. geoBoundaries' MAR layer carries
-        # Western Sahara inside two Moroccan regions, while the Morocco AOI stops at
-        # 27.7N, the internationally recognised line; the map must not draw past it
-        # either. Every cell lies inside the box, so no region total can change.
-        aoi_bbox = (Settings.load().aois.get(aoi) or {}).get("bbox")
-        if aoi_bbox:
-            from shapely.geometry import box as _box
-
-            reg_regions = reg_regions.copy()
-            reg_regions["geometry"] = reg_regions.geometry.intersection(_box(*aoi_bbox))
-            reg_regions = reg_regions[~reg_regions.geometry.is_empty]
+        reg_regions = _page_regions(aoi, regions_path)
         keep = [
             "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
             "small_low", "small_central", "small_outdomain", "small_ground",
@@ -2820,6 +2858,9 @@ def build_evidence_atlas(
         provinces.sort(key=lambda p: -p["mwp_best"])
         processed = grid[grid["model_covered"].astype(bool)] if "model_covered" in grid else grid
         cell_cover = _cell_coverage(aoi, reg_regions.geometry.union_all(), processed)
+    unimaged = cell_cover.pop("unimaged", [])
+    # The map frames the whole country, so the hatched cells nobody looked at are in view.
+    bounds = _bounds_with_runs(bounds, unimaged)
 
     total_verified = float(grid.mwp_verified.sum())
     total_best = float(grid.mwp_best.sum())
@@ -2885,6 +2926,8 @@ def build_evidence_atlas(
         "bounds": bounds,
         "cells": cells,
         "cell_cols": cell_cols,
+        # The country's cells no detector looked at, hatched on the map (`_cell_coverage`).
+        "unimaged": unimaged,
         "provinces": provinces,
         "cities": [list(c) for c in atlas_config.load(aoi).cities],
         "calibBoxes": calib_boxes,

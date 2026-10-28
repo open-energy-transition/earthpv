@@ -483,8 +483,15 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   the same `uncertainty.components` the headline CI is composed from.
 - **For every page built or retemplated from 2026-10-24 on**: the province chart shows the top 7
   (`PROV_TOP`) with a *Show all N provinces* toggle; a fifth KPI tile gives processed cells
-  against the country's (`totals.n_cells_processed` / `n_cells_country`, `atlas._cell_coverage`;
-  hidden until a rebuild provides them); the Silver/Bronze banner is short.
+  against the country's (`totals.n_cells_processed` / `n_cells_country`, `atlas._cell_coverage`);
+  the Silver/Bronze banner is short.
+- **Cells nobody imaged are hatched (2026-10-28)**: `unimaged` in the data block (runs
+  `[lon0, lat0, n]` from `atlas._cell_coverage`, exactly `n_cells_country - n_cells_processed`
+  cells) is drawn over the cells, so an OSM-only cell shows its colour hatched and bare land
+  means imaged with nothing found; the map frames the whole country (`_bounds_with_runs`), and
+  the hatch has a layer switch, a legend key with the counts, a hover and a PNG legend key.
+  `scripts/patch_atlas_coverage.py` adds it, and the two counts where a page lacks them, to a
+  published page without a rebuild; every published atlas and its sync source carries it.
 - **Farm and building calibration areas are drawn apart (2026-10-25)**: a farm area
   (`_farm_calib_`) is a green diamond with its own layer switch and legend key, a building area
   the ink diamond; tooltips and popups say what each calibrates and whether the page's figures
