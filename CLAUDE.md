@@ -871,7 +871,7 @@ QUEUE first when removing compute markers.
 | Pakistan | `v3_combined_india` | 6,994.1 / 34,588.8 | roofclf half, probability-weighted; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; Silver |
 | France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf |
-| India | `v5_combined_france` | 67,592.6 / 72,271.1 | v10 lost the Gujarat holdout |
+| India | `v5_combined_france` | 67,592.6 / 72,705.1 | v10 lost the Gujarat holdout; `ring_cells: 3` |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 8,860.5 | |
 | Egypt | `v12_combined_egypt` | 3,315.1 / 3,378.6 | thin Cairo holdout |
 | Yemen | `v13_combined_yemen` | 130.9 / 302.1 | zero-zero tie; farm ground PV; Silver |
@@ -883,11 +883,14 @@ QUEUE first when removing compute markers.
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. 253 solar-thermal features (~0.7% of both
-  tiers) remain as a known defect. **The compose is being widened by `ring_cells: 3`** (+3,573
-  cells); the downstream re-run is `scripts/run_india_ring_chain.sh` (markers
-  `data/india_ring_markers/`), writing `results/india_pv_evidence_atlas_ring.html` beside the
-  published page; the published run is kept in `/home/tobi/earthpv_data/india_PRE_ring_20261024/`.
-  8 label cells (six at Khavda) are uncomposed (open question 11).
+  tiers) remain as a known defect. **The compose was widened by `ring_cells: 3`** (+3,573
+  cells, published 2026-10-28; `scripts/run_india_ring_chain.sh`, markers
+  `data/india_ring_markers/`; the run before it is kept in
+  `/home/tobi/earthpv_data/india_PRE_ring_20261024/`). It imaged Khavda's outlines whole
+  (+330 MWp) and every mapped outline cell, but its Himalayan cells add ~220 MWp of
+  false positives on shaded slopes and snow edges, which the page states and no veto removes
+  yet. India is **pinned Bronze** in `configs/atlas/india.yaml`: `derive_validation_score`
+  gives Silver to any AOI with a registered area in `data/labels/<aoi>/`, `used: false` or not.
 - **Yemen**: segmentation finds almost none of its labels (small Tihama irrigation arrays barely
   differ from their surroundings), so Best is the OSM map plus farm ground PV.
 - **Egypt**: the model's rooftop estimate is ~0 (no rooftop candidate matches a mapped rooftop).

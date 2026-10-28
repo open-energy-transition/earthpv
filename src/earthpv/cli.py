@@ -272,6 +272,11 @@ def postprocess(
         "the join, instead of holding every footprint in the country at once (and caching "
         "it). Same placement and rank prior; needs the AOI's ISO3. For national India.",
     ),
+    reuse_join: Path = typer.Option(
+        None, help="With --stream-buildings: a previous candidates.parquet of this AOI (copy it "
+        "aside first, this run overwrites it) whose building join is kept for every 0.25-deg "
+        "chunk whose candidate geometries are unchanged; only the others are joined again",
+    ),
 ) -> None:
     """Threshold, polygonize, join with Overture buildings."""
     from earthpv.postprocess import run_postprocess
@@ -283,6 +288,7 @@ def postprocess(
         glint_self_referenced=glint_self_referenced,
         osm_replace=osm_replace, osm_match_distance_m=osm_match_distance_m,
         building_buffer_m=building_buffer_m, stream_buildings=stream_buildings,
+        reuse_join=reuse_join,
     )
 
 

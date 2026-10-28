@@ -318,8 +318,61 @@ def _join_buildings_chunked(
     return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=cands.crs)
 
 
+JOIN_COLS = ["placement", "building_id", "building_overlap_frac", "building_dist_m"]
+
+
+def _chunk_keys(geoms: gpd.GeoSeries, chunk_deg: float) -> pd.Series:
+    """The streamed join's spatial chunk of each candidate, by its representative point."""
+    reps = geoms.representative_point()
+    return pd.Series(list(zip(
+        np.floor(reps.x.to_numpy() / chunk_deg).astype(int).tolist(),
+        np.floor(reps.y.to_numpy() / chunk_deg).astype(int).tolist(),
+    )))
+
+
+def _geom_keys(geoms: gpd.GeoSeries) -> np.ndarray:
+    """Normalized WKB, so the same polygon matches whatever ring start/orientation the
+    union happened to give it."""
+    import shapely
+
+    return shapely.to_wkb(shapely.normalize(np.asarray(geoms.values)))
+
+
+def load_join_reuse(path: Path, chunk_deg: float = 0.25) -> dict:
+    """A previous run's building join, per streamed chunk: {chunk key: frame of `_wkb` +
+    `JOIN_COLS`}, for `_join_buildings_streamed(reuse=...)`."""
+    prev = gpd.read_parquet(path)
+    missing = [c for c in JOIN_COLS if c not in prev.columns]
+    if missing:
+        raise ValueError(f"{path} has no {missing}: not a postprocess output to reuse")
+    prev = prev.reset_index(drop=True)
+    frame = pd.DataFrame(prev[JOIN_COLS])
+    frame["_wkb"] = _geom_keys(prev.geometry)
+    keys = _chunk_keys(prev.geometry, chunk_deg)
+    return {k: frame.loc[idx] for k, idx in keys.groupby(keys).groups.items()}
+
+
+def _reused_chunk(sub: gpd.GeoDataFrame, prev: pd.DataFrame | None) -> gpd.GeoDataFrame | None:
+    """`sub` with the previous run's join columns, or None unless that run's chunk held
+    exactly the same candidate geometries. Only then is the result the same as a fresh join:
+    the footprints `fetch_vida_near` returns, the UTM zone and every nearest-building distance
+    (beyond `buffer_m` too) depend on the chunk's whole candidate set, not on each candidate
+    alone."""
+    if prev is None or len(prev) != len(sub):
+        return None
+    wkb = _geom_keys(sub.geometry)
+    if sorted(wkb) != sorted(prev["_wkb"]):
+        return None
+    lookup = prev.drop_duplicates("_wkb").set_index("_wkb")
+    out = sub.copy()
+    for c in JOIN_COLS:
+        out[c] = lookup.loc[wkb, c].to_numpy()
+    return out
+
+
 def _join_buildings_streamed(
-    cands: gpd.GeoDataFrame, iso3: str, buffer_m: float, chunk_deg: float = 0.25
+    cands: gpd.GeoDataFrame, iso3: str, buffer_m: float, chunk_deg: float = 0.25,
+    reuse: dict | None = None,
 ) -> gpd.GeoDataFrame:
     """`_join_buildings_metric` per spatial chunk, fetching each chunk's VIDA footprints
     fresh and discarding them, so no country-scale building table is ever held.
@@ -332,6 +385,11 @@ def _join_buildings_streamed(
     whose nearest roof is within `buffer_m`, so placement, overlap and rank prior are
     unchanged; only a `building_dist_m` beyond `buffer_m` can differ (it reads -1). Verified
     against Vietnam's global-join output before use. No cache is written.
+
+    `reuse` (`load_join_reuse`) takes a chunk's join from a previous run instead when that
+    chunk's candidates are unchanged (`_reused_chunk`). National India's join is ~20 s per
+    chunk, 23 h in all, and widening its compose (`ring_cells`) changes only the chunks the
+    new cells touch.
     """
     from earthpv import overture
     from earthpv.buildings import fetch_vida_near
@@ -339,16 +397,18 @@ def _join_buildings_streamed(
     if cands.empty:
         return cands
     cands = cands.reset_index(drop=True)
-    reps = cands.geometry.representative_point()
-    keys = pd.Series(list(zip(
-        np.floor(reps.x.to_numpy() / chunk_deg).astype(int).tolist(),
-        np.floor(reps.y.to_numpy() / chunk_deg).astype(int).tolist(),
-    )))
+    keys = _chunk_keys(cands.geometry, chunk_deg)
     con = overture.connect()
     parts = []
+    n_reused = 0
     groups = keys.groupby(keys).groups
     for key in tqdm(sorted(groups), desc="building join (streamed)"):
         sub = cands.loc[groups[key]].reset_index(drop=True)
+        hit = _reused_chunk(sub, reuse.get(key)) if reuse is not None else None
+        if hit is not None:
+            parts.append(hit)
+            n_reused += 1
+            continue
         bu = fetch_vida_near(sub.geometry, iso3, buffer_m=buffer_m, con=con, progress=False)
         if bu.empty:
             sub = sub.copy()
@@ -359,8 +419,9 @@ def _join_buildings_streamed(
             parts.append(sub)
         else:
             parts.append(_join_buildings_metric(sub, bu))
-    log.info("Streamed building join: %d candidates in %d chunks of %.2f deg (buffer %.0f m)",
-             len(cands), len(parts), chunk_deg, buffer_m)
+    log.info("Streamed building join: %d candidates in %d chunks of %.2f deg (buffer %.0f m)%s",
+             len(cands), len(parts), chunk_deg, buffer_m,
+             f", {n_reused} chunks reused from a previous run" if reuse is not None else "")
     return gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=cands.crs)
 
 
@@ -646,6 +707,7 @@ def run_postprocess(
     glint_tile_deg: float = 1.0, glint_self_referenced: bool = False,
     osm_replace: bool = True, osm_match_distance_m: float = NEAR_BUILDING_M,
     building_buffer_m: float = 2000.0, stream_buildings: bool = False,
+    reuse_join: Path | None = None,
 ) -> Path:
     """`max_building_dist_m` (0 = disabled) drops candidates whose nearest building is
     farther than this - isolated detections (cropland glare, bare soil, water glint)
@@ -677,8 +739,13 @@ def run_postprocess(
             cands = flag_oversize(cands)  # a replaced geometry can cross MAX_CANDIDATE_M2
         from earthpv.buildings import _iso3_for
 
+        if reuse_join and not stream_buildings:
+            raise ValueError("reuse_join needs stream_buildings: only the streamed join is "
+                             "per chunk")
         if stream_buildings and _iso3_for(cfg):
-            cands = _join_buildings_streamed(cands, _iso3_for(cfg), building_buffer_m)
+            reuse = load_join_reuse(Path(reuse_join)) if reuse_join else None
+            cands = _join_buildings_streamed(cands, _iso3_for(cfg), building_buffer_m,
+                                             reuse=reuse)
         else:
             buildings = _resolve_buildings(aoi, cands, cfg, settings, pred_dir,
                                            building_buffer_m)

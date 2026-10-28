@@ -23,6 +23,12 @@ calibration_boxes:
   - {name: "Gurgaon, Haryana", stem: gurgaon_priority_calib_1km, status: rule1, used: false}
   - {name: "Purba Champaran, Bihar (farm, no PV)", stem: purba_champaran_f3_farm_calib_3km, status: rule1, used: false}
 
+# Bronze, pinned 2026-10-28 when the ring rebuild came out Silver: derive_validation_score
+# gives Silver to any AOI with a registered area in data/labels/<aoi>/, and both areas above
+# are `used: false`, so nothing on this page is fitted on local ground truth.
+validation:
+  score: bronze
+
 cities:
   - [Delhi, 77.209, 28.614]
   - [Mumbai, 72.878, 19.076]

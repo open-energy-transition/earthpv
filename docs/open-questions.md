@@ -265,8 +265,10 @@ Verified). **Whole bands were lost to failed reads**, which `odc.stac` turns int
 third, compose adding one cell per mapped feature so outlines crossing a cell edge were half
 imaged, was fixed 2026-10-12. Measured on random samples, about 1% of imaged area is affected
 (India 1.3% of cells with a missing band and 0.79% of area in tile-edge gaps; Zambia, Nigeria,
-Vietnam and France at or below that), concentrated rather than spread. India still has eight
-uncomposed outline cells, six at Khavda.
+Vietnam and France at or below that), concentrated rather than spread. India's eight uncomposed
+outline cells (six at Khavda) were composed by the `ring_cells: 3` widening (published
+2026-10-28). Rewa's cells were not rebuilt, and its two outlines (16.0 and 10.5 km&sup2;)
+still screen as unimaged.
 
 **What would close it:** recomposite only the affected cells (`scripts/scan_composite_defects.py`
 finds them; about two hours for all of India), re-infer and re-run the atlas chain. Mixing is
