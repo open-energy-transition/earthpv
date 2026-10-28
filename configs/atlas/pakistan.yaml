@@ -154,6 +154,23 @@ calibration_boxes:
   # base_rate/nn_median_m blank rather than guessed -- those need `roofclf` re-run
   # with this quadrat included, same as any other newly added box.
   - {name: "Sanghar", stem: sanghar_calib_3p98km2, status: rule1}
+  # Added 2026-10-25: Mastung, Balochistan, a density-gap box (the 50-125 bldg/km2 band,
+  # docs/issues/roofclf-calibration-density-mismatch.md) under Esri imagery of 2025-06-09,
+  # declared Rule-1 complete by the owner. Not in a roofclf refit yet, so `used: false`.
+  # Confirmed zero, but registered where the screen put it: 13 VIDA buildings (3.3 per km2),
+  # so it must not move the density band's floor (Box 20, pakistan-calibration-boxes.md).
+  - {name: "Mastung (no PV)", stem: mastung_gap_calib_2km, status: rule1, used: false}
+  # Added 2026-10-25: Sahiwal, Punjab, Pakistan's first farm area (calib-candidates
+  # --farmland, cropland stratum 6 of 8, Esri 2025-05-26), mapped by the owner. It
+  # calibrates the farm ground-PV detector, which has not been run on Pakistan; roofclf
+  # skips farm areas (`_farm_calib_`).
+  - {name: "Sahiwal (farm)", stem: sahiwal_f6_farm_calib_3km, status: rule1, used: false}
+  # Added 2026-10-25: Jhang, Punjab, two more sampled farm boxes (cropland strata 2 and 5
+  # of 8, Esri 2025-07-28), mapped by the owner. Jhang f2's imagery is poor (owner): small
+  # arrays may be missed, so it is `corroborated`, not `rule1`, and should train the farm
+  # detector rather than calibrate it. 18 installations, median 39 m2.
+  - {name: "Jhang (farm, poor imagery)", stem: jhang_f2_farm_calib_3km, status: corroborated, used: false}
+  - {name: "Jhang south (farm)", stem: jhang_f5_farm_calib_3km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "what's outside the range -- and can't be added back in with more
@@ -177,7 +194,20 @@ confidence:
       gap -- 872 buildings/km&sup2; sparsest, 84% of buildings sparser -- as measured 2026-08-16,
       before a later refit happened to admit a sparser ground-truth area into the fit). The range
       above only resamples the areas the correction was fit on -- it says nothing about how well
-      that correction holds up in the sparser areas outside that fit.
+      that correction holds up in the sparser areas outside that fit. Below 1,717
+      buildings/km&sup2;, which covers all but 20 of the 2,957 cells it prices, the correction is
+      fit on just 9 of those areas, three of them in Islamabad (measured 2026-10-28).
+
+    # Added 2026-10-28 from an external review: the interval composes measured errors only,
+    # and the project's own history shows method choices move Best further than it does.
+    - >-
+      <b>The range covers measured errors, not choices of method.</b> On 2026-10-25 the way
+      roofs below and above 400 m&sup2; are counted changed, from a yes/no cut at the building
+      classifier's threshold to every roof weighted by its score, and Best as published at the
+      time moved from 24,438 MWp (90% range 20,894&ndash;33,666) to 34,589 MWp
+      (29,308&ndash;41,736): each figure lies outside the other's range. Which segmentation model reads the imagery, which calibration
+      table prices its detections and where the calibrated density band ends are choices of the
+      same kind, and none of them is part of the range above.
 
   # Independent, non-satellite cross-checks on the headline figure. A country with none
   # simply omits this key and the paragraph does not appear -- which is the honest

@@ -1,6 +1,6 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-10-25. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-10-28. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
@@ -58,7 +58,17 @@ are in the experiments register, "The capacity chain is a quantification problem
    truth-weighted ratio across them falls outside 0.5-2.
 2. **Check the score's level directly in rural cells**: a random, score-stratified sample of a
    few hundred sub-400 m&sup2; roofs in 100-1,000 bldg/km&sup2; cells, reviewed yes/no on recent
-   imagery, tests whether the sum of scores matches the count of PV roofs there.
+   imagery, tests whether the sum of scores matches the count of PV roofs there. **Drawn
+   2026-10-28, waiting for the review:** 300 roofs below 400 m&sup2; and 100 at or above,
+   blind, imagery-gated, in `results/pakistan_roofclf_level_review/`
+   (`scripts/roofclf_level_review.py`; the folder's README is the protocol). The reference
+   is the coverage ratio's lower density band, whose 9 quadrats price 2,937 of the 2,957
+   in-domain cells (everything below 1,717 bldg/km&sup2;, three of the nine in Islamabad):
+   their out-of-fold scores sum to 1.115 per PV roof below 400 m&sup2; and 1.270 at or above.
+   The 0.89 and 1.03 quoted above do not reproduce from `data/roofclf/buildings.geoparquet`,
+   which gives 0.997 and 1.158 for the 19 trusted quadrats. The rule is the revert band
+   above, written into the draw's `design.json` before any answer; simulated on the drawn
+   sample, the review separates "the level transfers" from "off by 1.5 to 2", not finer.
 
 The two gaps the opt-in path had are closed: the atlas's size chart counts a
 probability-weighted component's rooftop objects as the sum of scores (expected PV roofs)
@@ -105,8 +115,8 @@ since 2026-08-17 and none has a logged verdict: the parcel-label batch (seed 202
 `results/pakistan_roofclf_parcel_validation/`) was reviewed by the owner but its per-cell
 counts were never written down; the Box 18 refit (seed 20260820) and the area-weighted
 rescoring (seed 20260920), both in `results/pakistan_roofclf_validation/`, were generated and
-not reviewed. `results/roofclf_random_validation_log.csv` holds the first two batches as 40
-rows with every verdict blank, and the third is not in it at all. The published Best
+not reviewed. `results/roofclf_random_validation_log.csv` holds all three batches as 60 rows
+(the third added 2026-10-28), every verdict blank. The published Best
 therefore rests on an unreviewed rescoring, priced since 2026-10-25 by a weighting that leans
 harder on the score's level (item 1), and item 2 would move it again on top.
 Protocol: [roofclf random-cell validation](methods/roofclf-national-validation.md). The
@@ -148,11 +158,13 @@ kind of place that has been mapped, not a design-based margin of error, and addi
 purposive quadrats cannot change that. Since 2026-10-20 a sampler exists:
 `pixi run calib-candidates -- --aoi <aoi>` cuts the density grid into eight bands of equal
 building share, draws building-weighted random cells, and screens each box on its Esri
-imagery date. **It has not been run for Pakistan**: the boxes in
-`data/labels/candidate_quadrats/` are hand-proposed (Box 19's density-gap boxes and Box 18's
-peri-urban screens, three of which are now registered quadrats). Running it and mapping what
-passes the imagery gate gives quadrats with known inclusion probabilities, and it measures
-item 1 in the bands that matter. A cheaper partial route, untried: model-assisted
+imagery date. **Run for Pakistan 2026-10-28** (seed 24490, against the published grid): eight
+boxes, one per band, all on Esri imagery from 2025-02 to 2025-05, six of them in the 66-617
+bldg/km&sup2; range where most of Best sits, in Dera Ghazi Khan, Sanghar, Upper Dir, Zhob,
+Azad Kashmir, Qilla Abdullah, Malakand and Gujranwala
+([Calibration boxes](issues/pakistan-calibration-boxes.md), Box 21). None is mapped yet.
+Mapping them gives quadrats with known inclusion probabilities, and it measures item 1 in
+the bands that matter. A cheaper partial route, untried: model-assisted
 estimation, post-stratifying the existing quadrats on variables known everywhere (building
 density, roof-size mix, region).
 
@@ -325,6 +337,41 @@ roof carries PV) and adds little as a covariate (r = 0.48 against Best once log 
 partialled out, 2026-10-21). The one untried role where its coarseness does not disqualify it:
 **a plausibility flag for cells bright in VIIRS but implausibly sparse in VIDA**, i.e. where
 VIDA is missing structures, slotted into `plausibility.py` beside the existing checks.
+
+### 16. The 90% interval leaves out choices of method (2026-10-28)
+
+`atlas._evidence_uncertainty` composes measured errors only (the kWp priors, segmentation's
+precision/recall posterior, the quadrat bootstrap, two stated judgement factors), and its
+docstring names two exclusions: purposive sampling and the Rule-1 imagery epoch. It leaves
+out method choices too, and those have moved Best further than the interval is wide: the
+2026-10-25 weighting switch took Best from 24,438 MWp (90% 20,894-33,666) to 34,589
+(29,308-41,736), each outside the other's interval, and the same docstring records five
+20-35% moves in one week of recalibration. Pakistan's atlas config now says so in a caveat
+(`confidence.caveats`, shown from the next rebuild). **What would close it**, an owner
+decision: publish a stated method bracket beside the interval (the threshold-weighted Best is
+one `--weighting threshold` run away), or add a judgement term the way
+`OUTDOMAIN_EXTRAPOLATION_CI90` does for the out-of-domain component.
+
+### 17. A segmentation outline is 2.4 times the array it finds (measured 2026-10-28)
+
+Measured with `scripts/candidate_area_bias.py` on Pakistan's published v3 candidates before
+OSM outline substitution, against the dissolved 2026-10-25 OSM pull
+(`results/pakistan_candidate_area_bias.json`): a matched rooftop candidate of 400 m&sup2; or
+more covers 2.43 times the mapped panel area it found (90% 2.36-2.51, n = 1,070), 2.52 inside
+the Rule-1 quadrats, where 68% of its outline lies outside every mapped panel. The ratio
+rises with size: about 1.0 at 1-5k m&sup2;, 2.5 above 5k m&sup2;. Ground candidates come to
+1.48 against OSM site perimeters. Nothing calibrates candidate area: `p_real` and recall count
+installations.
+
+Pakistan's published capacity barely sees it, by construction: matched candidates take their
+OSM outline before `density`, and every candidate in a bin is weighted by the bin's `p_real`,
+so the p_real-weighted area of candidates of 500 m&sup2; or more comes to 0.92 (rooftop) and
+0.89 (ground) of the mapped outline area. The inflation reaches capacity only where a table
+credits unmatched candidates as real (`p_unmapped` > 0): Pakistan's published rooftop bins
+above 5k m&sup2; (0.129), and **Germany's register-derived `p_unmapped` (0.06-0.76 by bin),
+where German OSM is too sparse to swap outlines**. **Next step:** keep a pre-substitution
+candidate file for Germany, run the script there, and if the ratio holds, price
+`p_unmapped`-credited candidates at outline area divided by the measured ratio.
 
 ## Known defects carried on purpose
 

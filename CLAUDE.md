@@ -324,6 +324,12 @@ by construction**: the region total sums each rooftop candidate's full polygon o
 per-building table credits only the intersection with each building capped at its roof area
 (~46% gap nationally in Pakistan). Per-building disaggregation is a conservative floor.
 
+**A model outline is ~2.4x the panel area it found** (Pakistan rooftop >= 400 m², 2.5 inside
+Rule-1 quadrats; `scripts/candidate_area_bias.py` on PRE-substitution candidates, open
+question 17). Published capacity barely sees it (matched candidates carry their OSM outline,
+and bin `p_real` discounts the rest to ~0.9 of mapped area); it bites wherever `p_unmapped`
+credits unmatched candidates as real, i.e. Germany's register-derived bins.
+
 **roofclf replaces segmentation's rooftop estimate for ≥ 400 m² buildings inside the density
 domain** (`roofclf_ge400_capacity.py`, `earthpv ge400-roof-capacity`): segmentation is blind to
 installation size relative to its building, so a large building with a small array reads as a
@@ -419,9 +425,14 @@ on single-cell concentration (KP, Balochistan, ICT), checked genuine (the calibr
 own cities) and published per standing precedent. **The mandatory random validations of the last
 three rescorings (seeds 20260817, 20260820, 20260920; tiles in
 `results/pakistan_roofclf_parcel_validation/` and `results/pakistan_roofclf_validation/`) have
-NOT been reviewed**: `results/roofclf_random_validation_log.csv` has 40 rows with blank verdicts,
-so the published figure rests on an unreviewed rescoring (open question 3). Pre-change outputs
-are kept beside the canonical paths with `_PRE_<change>_<date>` suffixes.
+NOT been reviewed**: `results/roofclf_random_validation_log.csv` has 60 rows with blank verdicts,
+so the published figure rests on an unreviewed rescoring (open question 3). **The score-level
+review** (`scripts/roofclf_level_review.py`, 400 blind roofs in 100-1,000 bldg/km² cells,
+`results/pakistan_roofclf_level_review/`) tests whether scores sum to the PV-roof count the 9
+lower-band quadrats imply (1.115 / 1.270 per PV roof); drawn 2026-10-28, not yet reviewed. The
+coverage ratio's lower band (< 1,717 bldg/km²) prices 2,937 of 2,957 in-domain cells from those 9
+quadrats. Pre-change outputs are kept beside the canonical paths with `_PRE_<change>_<date>`
+suffixes.
 
 **Overture publishes a coastal admin division twice** (land, and land plus territorial waters).
 **Keep the LAND polygon, the SMALLER of a nested pair** -- "keep the largest" picks the wrong one
@@ -529,7 +540,9 @@ published file.
 - **Imagery gate:** the oldest Esri World Imagery capture at centre and corners must be no more
   than 12 months before `compose_window` start (`World_Imagery/MapServer/4/query`).
 - **Output:** `data/labels/<aoi>/candidate_quadrats/`, failures in `screened_out.csv`.
-  `--replace` redraws only sampled candidates. Then run `calib-publish`.
+  `--replace` redraws only sampled candidates. Then run `calib-publish`. Pakistan's eight
+  (seed 24490, drawn 2026-10-28 on the pre-v16 grid) are Box 21 in
+  `docs/issues/pakistan-calibration-boxes.md`.
 - **Start-here boxes:** `--bronze --priority` adds two PURPOSIVE 1 km boxes per Bronze AOI (the
   most large-roof area in the densest quarter, chosen on buildings only, marked `selection:
   purposive: ...`); the eight sampled boxes stay the representative set. `calib-publish` ranks
@@ -722,7 +735,8 @@ earthpv groundclf-capacity --aoi <aoi> --osm-solar <national OSM pull>
   `road_checked=False`, reported in the summary.
 - **Farm candidates exist for Yemen, Egypt, Morocco, India, Pakistan and South Africa** (8 each);
   `calib-publish` ranks them after every building box. Pakistan has no `compose_window` or
-  `division.iso3` in `configs/aoi.yaml`, so the sampler takes `--window-start 2025-11-01`.
+  `division.iso3` in `configs/aoi.yaml`, so the sampler takes `--window-start 2025-11-01` in
+  every mode (`gate_setup`).
 - **Yemen is the only country with farm areas**: seven ('Amran plus six Tihama areas cut where
   Esri imagery is from 2024-10 on), 169.1 MWp (90% 77-327) in 34 cells. The rest of Tihama is a
   training-only weak region (`data/labels/yemen/tihama_stale_imagery_region.geojson`). Analysis

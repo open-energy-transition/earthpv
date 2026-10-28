@@ -303,20 +303,32 @@ def existing_boxes(home: Path) -> list:
                     for r in rejected_rows()]
 
 
+def gate_setup(aoi: str, args) -> tuple[dict, str, str | None, date, date]:
+    """(AOI config, ISO3, country name, composite window start, oldest acceptable imagery).
+
+    Pakistan predates `division.iso3` and `compose_window`: the ISO2 map in
+    `buildings._iso3_for` covers the first, `--window-start` the second (its composites carry
+    no window tag, see the flag's help)."""
+    from earthpv.buildings import _iso3_for
+
+    cfg = Settings.load().aois.get(aoi) or {}
+    iso3, country = _iso3_for(cfg), (cfg.get("division") or {}).get("name")
+    start = (cfg.get("compose_window") or [args.window_start])[0]
+    if not iso3 or not start:
+        raise SystemExit(f"{aoi}: configs/aoi.yaml needs division.iso3 and compose_window "
+                         "(or pass --window-start)")
+    win0 = date.fromisoformat(start)
+    months = win0.year * 12 + win0.month - 1 - args.max_imagery_lag_months
+    return cfg, iso3, country, win0, date(months // 12, months % 12 + 1, 1)
+
+
 def propose(aoi: str, args) -> list[dict]:
     import duckdb
     from shapely.geometry import mapping
 
     from earthpv.buildings import fetch_vida_building_points
 
-    cfg = Settings.load().aois.get(aoi) or {}
-    div = cfg.get("division") or {}
-    iso3, country = div.get("iso3"), div.get("name")
-    if not iso3 or not cfg.get("compose_window"):
-        raise SystemExit(f"{aoi}: configs/aoi.yaml needs division.iso3 and compose_window")
-    win0 = date.fromisoformat(cfg["compose_window"][0])
-    months = win0.year * 12 + win0.month - 1 - args.max_imagery_lag_months
-    earliest = date(months // 12, months % 12 + 1, 1)
+    cfg, iso3, country, win0, earliest = gate_setup(aoi, args)
 
     home = LABELS if aoi == FLAT_AOI else LABELS / aoi
     out_dir = home / "candidate_quadrats"
@@ -507,14 +519,7 @@ def propose_priority(aoi: str, args) -> list[dict]:
     from earthpv.buildings import fetch_vida_building_points
     from earthpv.roofclf import load_boundary
 
-    cfg = Settings.load().aois.get(aoi) or {}
-    div = cfg.get("division") or {}
-    iso3, country = div.get("iso3"), div.get("name")
-    if not iso3 or not cfg.get("compose_window"):
-        raise SystemExit(f"{aoi}: configs/aoi.yaml needs division.iso3 and compose_window")
-    win0 = date.fromisoformat(cfg["compose_window"][0])
-    months = win0.year * 12 + win0.month - 1 - args.max_imagery_lag_months
-    earliest = date(months // 12, months % 12 + 1, 1)
+    cfg, iso3, country, win0, earliest = gate_setup(aoi, args)
 
     home = LABELS if aoi == FLAT_AOI else LABELS / aoi
     out_dir = home / "candidate_quadrats"
@@ -693,22 +698,11 @@ def propose_farmland(aoi: str, args) -> list[dict]:
     import duckdb
     from shapely.geometry import mapping
 
-    from earthpv.buildings import _iso3_for, fetch_vida_building_points
+    from earthpv.buildings import fetch_vida_building_points
     from earthpv.roofclf import load_boundary
     from earthpv.worldcover import landcover_points
 
-    cfg = Settings.load().aois.get(aoi) or {}
-    div = cfg.get("division") or {}
-    # Pakistan predates `division.iso3` and `compose_window`: the ISO2 map covers the first,
-    # `--window-start` the second (its composites carry no window tag, see the flag's help).
-    iso3, country = _iso3_for(cfg), div.get("name")
-    start = (cfg.get("compose_window") or [args.window_start])[0]
-    if not iso3 or not start:
-        raise SystemExit(f"{aoi}: configs/aoi.yaml needs division.iso3 and compose_window "
-                         "(or pass --window-start)")
-    win0 = date.fromisoformat(start)
-    months = win0.year * 12 + win0.month - 1 - args.max_imagery_lag_months
-    earliest = date(months // 12, months % 12 + 1, 1)
+    cfg, iso3, country, win0, earliest = gate_setup(aoi, args)
 
     home = LABELS if aoi == FLAT_AOI else LABELS / aoi
     out_dir = home / "candidate_quadrats"
@@ -897,7 +891,7 @@ def main() -> int:
     ap.add_argument("--farm-min-crop", type=float, default=0.01,
                     help="--farmland: skip cells with less cropland than this share")
     ap.add_argument("--window-start", default=None,
-                    help="--farmland, for an AOI with no compose_window in configs/aoi.yaml: the "
+                    help="for an AOI with no compose_window in configs/aoi.yaml: the "
                          "start of the composite window the imagery gate measures against. "
                          "Pakistan's composites were built 2026-07-04 with compose's default then, "
                          "2025-11-01, and carry no window tag, so this is the recorded default, "

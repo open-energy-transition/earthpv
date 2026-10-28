@@ -1528,3 +1528,70 @@ into a real quadrat. `source_grid_cell`/`source_grid_density_bldg_km2` are the *
 grid cell's average, not the quadrat's own density once actually drawn and mapped -- Box 18
 measured its three survivors' own densities at 894.75/237.25/146.00 against source-grid
 values of 549.29/249.96/149.99, so expect these eight to move similarly once mapped.
+
+### Box 20 -- Mastung (Box 19's first mapped) and Pakistan's first three farm areas -- 2026-10-25
+
+Four areas finished by the owner on 2026-10-25 and registered the same day, all `used: false`
+in `configs/atlas/pakistan.yaml` (no refit yet):
+
+| area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
+|---|---|---|---:|---|
+| `mastung_gap_calib_2km` | building (Box 19 gap screen) | 2025-06-09 | 13 (3.3) | none: confirmed zero |
+| `sahiwal_f6_farm_calib_3km` | farm, cropland stratum 6 of 8 | 2025-05-26 | 435 (48.3) | 3 (2 ground, 1 rooftop), 199 m<sup>2</sup>, median 70 m<sup>2</sup> |
+| `jhang_f2_farm_calib_3km` | farm, cropland stratum 2 of 8 | 2025-07-28 | 968 (107.6) | 18 (15 ground, 3 rooftop), 924 m<sup>2</sup>, median 39 m<sup>2</sup> |
+| `jhang_f5_farm_calib_3km` | farm, cropland stratum 5 of 8 | 2025-07-28 | 2,030 (225.6) | 102 (46 ground, 56 rooftop), 5,405 m<sup>2</sup>, median 41 m<sup>2</sup> |
+
+- **Mastung was registered where the screen put it, not on a settlement.** Box 19's note asked
+  for the box to be nudged onto a visible settlement before mapping; it was not, and it holds
+  13 buildings. The owner found no PV, and two Overpass queries against the live database
+  (OSM base 2026-10-25 08:52 UTC) agree. It is Rule-1 ground truth, but 13 empty roofs are no
+  evidence for a density band: **it must not move `density.CALIBRATED_BLDG_DENSITY_KM2`'s floor
+  (48.5) to 3.3** when the band is next refitted from the quadrats' own densities.
+- **Jhang f2's imagery is poor** (owner): small arrays may have been missed, so it is
+  `corroborated`, not `rule1`, and is left out of calibration with explicit `--quadrat` flags.
+- **Both detectors now learn from both kinds of area** (owner, 2026-10-25), so the next
+  `roof-classifier` refit discovers the three farm areas too. `roofclf.roof_pv_area` now
+  ignores ground-placed installations of 400 m<sup>2</sup> or more, the guard Box 17 (Kalat
+  Rural) was held out for; whether Kalat joins is the owner's call.
+- Punjab's farm arrays are tiny: medians of 39 to 70 m<sup>2</sup>, under half a Sentinel-2
+  pixel, against 'Amran's 581 m<sup>2</sup> in Yemen.
+
+### Box 21 -- eight sampled building boxes, one per density band -- 2026-10-28 (proposed, imagery-screened)
+
+The first Pakistani boxes drawn by `scripts/propose_calibration_candidates.py` rather than by
+hand (open question "The calibration quadrats are purposive, not a probability sample"). The
+published density grid (`data/predictions/pakistan/density_PRE_v16_20261026/grid.geoparquet`,
+the inputs of the atlas as published) cut into eight bands of equal building share; one
+building-weighted random cell per band, seed 24490 (derived from the AOI name), at least
+20 km from every registered quadrat and rejected location, one province each while possible;
+the box placed where its own VIDA density is within 25% of its cell's; Esri imagery at the
+centre and all four corners no older than 2024-11-01 (12 months before the 2025-11-01
+composite window; 5 draws failed it, `data/labels/candidate_quadrats/screened_out.csv`).
+Not hand-moved, and not to be moved toward visible solar. The sampler's building mode needed
+Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
+
+| candidate | band | district, province | band (cell bldg/km<sup>2</sup>) | cell | box | VIDA buildings | Esri (Vivid) |
+|---|---|---|---|---:|---:|---:|---|
+| `dera_ghazi_khan_s1_calib_2km` | 1 of 8 | Dera Ghazi Khan, Punjab | 0-93 | 77.1 | 66.2 | 265 | 2025-05-22 |
+| `sanghar_s2_calib_2km` | 2 of 8 | Sanghar, Sindh | 93-160 | 114.5 | 103.2 | 413 | 2025-04-02 |
+| `upper_dir_s3_calib_2km` | 3 of 8 | Upper Dir, Khyber Pakhtunkhwa | 160-219 | 162.6 | 151.0 | 604 | 2025-05-20 |
+| `zhob_s4_calib_2km` | 4 of 8 | Zhob, Balochistan | 219-274 | 255.5 | 263.5 | 1,054 | 2025-02-22 |
+| `azad_kashmir_s5_calib_2km` | 5 of 8 | Azad Kashmir | 274-346 | 283.4 | 278.8 | 1,115 | 2025-05-12 |
+| `qilla_abdullah_s6_calib_2km` | 6 of 8 | Qilla Abdullah, Balochistan | 346-544 | 463.1 | 473.2 | 1,893 | 2025-05-21 |
+| `malakand_s7_calib_2km` | 7 of 8 | Malakand, Khyber Pakhtunkhwa | 544-1,096 | 590.9 | 617.0 | 2,468 | 2025-04-08 |
+| `gujranwala_s8_calib_1km` | 8 of 8 | Gujranwala, Punjab | > 1,096 | 3,081.4 | 3,065.0 | 3,065 | 2025-05-18 |
+
+- **Why these matter most:** bands 1-7 are the cells where the coverage ratio's lower density
+  band prices Best from 9 quadrats (three in Islamabad), and where 74% of the published Best
+  sits (48.5-1,000 bldg/km<sup>2</sup>). Seven of the eight are in districts with no
+  registered area; Sanghar has one, 20 km or more away.
+- **Each box's own density sits at its cell's**, unlike Box 18's screens (895/237/146 against
+  cells of 549/250/150): the sampler places the box on that density, so mapped, they also
+  test whether the national cells' 0.1-degree average density matches what a mapper sees.
+- **Mapping order:** any; they are a set, and the protocol's revert rule (open question
+  "Probability-weighted roofclf capacity...") compares the two pricings across all of them.
+  Map every installation, rooftop and ground, Rule-1, then register each with
+  `python scripts/new_calibration_quadrat.py --name <stem without _calib_...> --lat <lat>
+  --lon <lon> --side-m <2000 or 1000> --imagery-layer "Esri World Imagery (Vivid)"
+  --imagery-date <date above>` (centres are in each file's `center`, lon then lat).
+- Published to every atlas by `calib-publish` the same day (hollow diamonds).
