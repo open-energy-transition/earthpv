@@ -211,6 +211,13 @@ step postprocess  $PY -m earthpv.cli postprocess --aoi $AOI --threshold 0.3 --bu
 # polygons too, before anything reads candidates.parquet. A no-op where nothing was dropped.
 step thermal      $PY scripts/drop_solar_thermal.py --aoi $AOI --candidates
 step export       $PY -m earthpv.cli export --aoi $AOI --exclude-mapped --min-distance-m 100
+# Model outlines above the 100,000 m2 merge cap with no mapped solar nearby: draw the review
+# sample (census + area-weighted) and write its on-disk review package, Sentinel-2 composite
+# and Esri panels plus a review page (scripts/oversize_review.py; data/oversize_review/$AOI/).
+# Nothing is priced until a person judges the page and runs `oversize_review.py apply`, so
+# the atlas below keeps the cap; a failure here (no outlines, no network) never stops the chain.
+step oversize_review bash -c "$PY scripts/oversize_review.py draw --aoi $AOI --labels $LABELS \
+                     || echo 'oversize review package failed (non-fatal)'"
 # Ranking of large OSM power=plant perimeters by how much of each the model lights up.
 # Review artefacts ONLY; an exclusion list is hand-audited and never auto-applied.
 step screen       $PY scripts/screen_osm_ground_perimeters.py --aoi $AOI --labels "$LABELS" \

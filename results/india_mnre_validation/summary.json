@@ -1,0 +1,41 @@
+{
+  "register_month": "2026-01",
+  "bracket": [
+    "2025-11",
+    "2026-03"
+  ],
+  "national_mw": {
+    "mwp_verified": 70461.8,
+    "mwp_best": 99390.0,
+    "verified_ground": 68788.8,
+    "best_ground": 97559.7,
+    "best_roof": 1830.3,
+    "utility_ground": 110618.9,
+    "utility_ground_nov": 104133.9,
+    "utility_ground_mar": 118732.2,
+    "ground": 107254.3,
+    "hybrid_solar": 3364.6,
+    "rooftop": 24297.0,
+    "offgrid_kusum": 5634.3,
+    "total": 140550.1
+  },
+  "register_all_india_row": {
+    "ground": 107256.8,
+    "rooftop": 24298.5,
+    "hybrid_solar": 3364.6,
+    "offgrid_kusum": 5681.8,
+    "total": 140601.7,
+    "utility_ground": 110621.4
+  },
+  "ratio_ground_best": 0.882,
+  "ratio_ground_best_ac": 0.794,
+  "ratio_ground_verified": 0.622,
+  "ratio_roof": 0.075,
+  "ratio_total_best": 0.707,
+  "states_compared": 19,
+  "min_state_mw": 100.0,
+  "spearman_ground_best": 0.951,
+  "spearman_ground_verified": 0.954,
+  "median_abs_log_ratio_ground": 0.217,
+  "states_within_x1p5": 14
+}

@@ -1,0 +1,10 @@
+{
+  "source": "MNRE via MoSPI eSankhyiki (dataset MNRE, type_of_renewable_energy_code 1)",
+  "url": "https://esankhyiki.mospi.gov.in/macroindicators?product=mnre",
+  "access": "MCP server https://mcp.mospi.gov.in/, tool get_data",
+  "years": "2025,2026",
+  "fetched": "2026-10-29T10:11:41",
+  "n_rows": 3800,
+  "unit": "MW installed capacity",
+  "frequency": "monthly"
+}

@@ -1127,9 +1127,15 @@ def dedup_candidates(
     if legacy:
         stats["n_used"] = int(len(cands))
         return cands, stats
-    from earthpv.density import capacity_relevant_candidates, load_osm_screen
+    from earthpv.density import (
+        capacity_relevant_candidates,
+        load_osm_screen,
+        load_oversize_admission,
+    )
 
-    relevant, _ = capacity_relevant_candidates(cands, osm_screen=load_osm_screen(aoi) if aoi else None)
+    relevant, _ = capacity_relevant_candidates(
+        cands, osm_screen=load_osm_screen(aoi) if aoi else None,
+        oversize_admission=load_oversize_admission(aoi, cands))
     stats["n_not_capacity_relevant"] = int(len(cands) - len(relevant))
     if ge400_roof_buildings_path is not None and grid_path is not None:
         from earthpv.atlas import _join_buildings_to_grid_cells

@@ -60,6 +60,7 @@ import pandas as pd
 import rasterio
 import rasterio.features
 import rasterio.transform
+import shapely
 from rasterio.warp import transform_bounds
 from rasterio.windows import Window, from_bounds
 from rasterio.windows import transform as window_transform
@@ -257,9 +258,70 @@ def _dedup_osm_oversize(over_osm: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return dissolved.set_index("_orig_index")
 
 
+def load_oversize_admission(
+    aoi: str | None, cands: gpd.GeoDataFrame, table: dict | None = None,
+    max_candidate_m2: float = MAX_CANDIDATE_M2,
+) -> pd.DataFrame | None:
+    """Which model outlines above the merge cap a manual review admits to capacity.
+
+    Driven by the AOI's calibration table (`capacity_calibration.OVERSIZE_REVIEW_KEY`); None
+    when the table carries no review, which is every country but those that measured it, so
+    their cap is unchanged. The admitted population is exactly the one the review sampled:
+    model-drawn outlines (`geometry_source != "osm"`) above `max_candidate_m2` that are new
+    leads against the review's `mapped_reference` at its `min_distance_m`
+    (`export.new_lead_mask`, the export's own rule), outside `excluded_regions` (ADM1 names).
+    Returns `p_real_fixed` and `oversize_stratum` indexed like `cands`, for
+    `capacity_relevant_candidates(..., oversize_admission=...)`.
+    """
+    from earthpv import capacity_calibration as cc
+
+    if not aoi or cands.empty:
+        return None
+    if table is None:
+        path = cc.default_table_path(aoi)
+        if not path.exists():
+            return None
+        table = cc.load_table(path)
+    block = (table or {}).get(cc.OVERSIZE_REVIEW_KEY)
+    if not block:
+        return None
+    if float(block.get("max_candidate_m2", max_candidate_m2)) != float(max_candidate_m2):
+        raise ValueError(
+            f"{aoi}: the oversize review was drawn above {block['max_candidate_m2']:.0f} m2, "
+            f"this run caps at {max_candidate_m2:.0f} m2 -- the review does not describe it")
+    from earthpv.export import new_lead_mask
+
+    src = cands.get("geometry_source", pd.Series("model", index=cands.index)).fillna("model")
+    pool = cands[(cands["area_m2"].to_numpy(float) > max_candidate_m2) & (src != "osm").to_numpy()]
+    if pool.empty:
+        return None
+    ref = gpd.read_parquet(block["mapped_reference"])[["geometry"]]
+    new = new_lead_mask(pool, ref, min_distance_m=float(block["min_distance_m"]))
+    pool = pool[new]
+    excluded = list(block.get("excluded_regions") or [])
+    if excluded:
+        settings = Settings.load()
+        _, cfg = resolve_aoi(aoi, settings)
+        adm1 = fetch_geoboundaries(_iso3_for(cfg), "ADM1").to_crs("EPSG:4326")
+        unknown = set(excluded) - set(adm1["name"])
+        if unknown:
+            raise ValueError(f"{aoi}: oversize review excludes unknown regions {sorted(unknown)}")
+        bad = adm1[adm1["name"].isin(excluded)].geometry.union_all()
+        rp = pool.geometry.representative_point()
+        pool = pool[~shapely.contains_xy(bad, rp.x.values, rp.y.values)]
+    p = cc.oversize_review_p_real(block)
+    census = pool["area_m2"].to_numpy(float) >= float(block["census_min_area_m2"])
+    out = pd.DataFrame({
+        "oversize_stratum": np.where(census, "census", "sample"),
+        "p_real_fixed": np.where(census, p["census"], p["sample"]),
+    }, index=pool.index)
+    return out
+
+
 def capacity_relevant_candidates(
     cands: gpd.GeoDataFrame, max_candidate_m2: float = MAX_CANDIDATE_M2,
     osm_screen: pd.DataFrame | None = None,
+    oversize_admission: pd.DataFrame | None = None,
 ) -> tuple[gpd.GeoDataFrame, dict]:
     """The candidate population that actually earns capacity.
 
@@ -313,7 +375,19 @@ def capacity_relevant_candidates(
       Khavda (62.0 km2, 22%) were 3,789 MWp of Best against zero in Verified. Refusing
       the exemption instead would zero them, since the model's own polygons there are
       merged blobs above the cap. Geometry is kept (it decides the cell and the OSM
-      match); only the credited area shrinks.
+      match); only the credited area shrinks. Since 2026-10-28 the Verified layer carries
+      the same outline at the same share (`prepare_national_osm_solar.py`'s
+      `screen_credit`) rather than dropping it: here the size bin's `p_real` still applies,
+      so on its own this figure is about half the credited area, and Best takes the
+      Verified one through its per-cell floor.
+
+    **And model outlines a manual review admits (2026-10-28, docs/results/india.md).**
+    With `oversize_admission` (`load_oversize_admission`, present only where the AOI's
+    calibration table carries an `oversize_review`), a model-drawn outline above the cap
+    with no mapped solar nearby is kept, placed as ground, and carries `p_real_fixed` (its
+    stratum's reviewed share real) and `oversize_stratum`. In India the cap had kept about
+    29 GWp of real, unmapped parks out of Best. Callers that only describe the size-bin
+    population (`calibrate-candidates`) do not pass it.
     """
     stats = {
         "n_oversize_excluded": 0, "oversize_area_m2": 0.0,
@@ -323,6 +397,7 @@ def capacity_relevant_candidates(
         "osm_screen_applied": osm_screen is not None,
         "n_osm_oversize_screen_limited": 0, "osm_oversize_screen_outline_area_m2": 0.0,
         "osm_oversize_screen_credited_area_m2": 0.0,
+        "n_oversize_admitted": 0, "oversize_admitted_area_m2": 0.0,
     }
     if not max_candidate_m2 or cands.empty:
         return cands, stats
@@ -379,7 +454,7 @@ def capacity_relevant_candidates(
                 log.warning(
                     "OSM-oversize: %d exempted outlines above %.0f km2 fail the ground screen "
                     "(imaged >= %.0f%% and detected >= %.0f%%) -- credited at their detected "
-                    "share, %.2f of %.2f km2 (the Verified layer drops them)",
+                    "share, %.2f of %.2f km2 (the Verified layer credits them at the same share)",
                     len(lim_ix), OSM_GROUND_MAX_M2 / 1e6, 100 * SCREEN_MIN_IMAGED_FRAC,
                     100 * SCREEN_MIN_DET_FRAC, credited.sum() / 1e6, outline.sum() / 1e6,
                 )
@@ -393,6 +468,30 @@ def capacity_relevant_candidates(
                 stats["n_osm_oversize_dedup_dropped"], len(osm_over),
                 stats["osm_oversize_dedup_dropped_area_m2"] / 1e6,
             )
+    # Model outlines above the cap that a manual review admitted (`load_oversize_admission`):
+    # new leads, priced at their stratum's reviewed share real rather than a size bin, and
+    # always a site (ground) for the same reason an exempted OSM outline is.
+    if oversize_admission is not None and len(oversize_admission):
+        adm = oversize_admission.reindex(cands.index)
+        admitted = over & ~is_osm_over & adm["p_real_fixed"].notna()
+        cands["p_real_fixed"] = np.where(admitted, adm["p_real_fixed"], np.nan)
+        cands["oversize_stratum"] = np.where(admitted, adm["oversize_stratum"], None)
+        if "placement" in cands.columns:
+            cands.loc[admitted, "placement"] = "ground_adjacent"
+        exempt |= admitted
+        stats["n_oversize_admitted"] = int(admitted.sum())
+        stats["oversize_admitted_area_m2"] = float(cands.loc[admitted, "area_m2"].sum())
+        for s in ("census", "sample"):
+            m = admitted & (cands["oversize_stratum"] == s)
+            stats[f"n_oversize_admitted_{s}"] = int(m.sum())
+            stats[f"oversize_admitted_{s}_area_m2"] = float(cands.loc[m, "area_m2"].sum())
+        log.warning(
+            "Oversize review: %d model outlines above %.0f m2 (%.2f km2) with no mapped solar "
+            "nearby ADMITTED to capacity at their reviewed share real (census %d, sample %d)",
+            stats["n_oversize_admitted"], max_candidate_m2,
+            stats["oversize_admitted_area_m2"] / 1e6,
+            stats["n_oversize_admitted_census"], stats["n_oversize_admitted_sample"],
+        )
     drop = over & ~exempt
     stats["n_oversize_excluded"] = int(drop.sum())
     stats["oversize_area_m2"] = float(cands.loc[drop, "area_m2"].sum())
@@ -1075,8 +1174,16 @@ def _candidate_uncertainty(
         placement_col == "rooftop" if placement_col is not None else np.zeros(len(cands), bool)
     )
     grp = np.where(rooftop, "rooftop", "ground")
-    p_pt = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement_col)
-    r_pt = cc.candidate_recall(area, table, floor=recall_floor, placement=placement_col)
+    # Outlines above the merge cap admitted by a review (`capacity_relevant_candidates`)
+    # are priced by their stratum's posterior below, not by a size bin.
+    fixed = cands["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cands.columns else None
+    stratum = (cands["oversize_stratum"].to_numpy(object) if fixed is not None
+               else np.full(len(cands), None, dtype=object))
+    is_fixed = ~np.isnan(fixed) if fixed is not None else np.zeros(len(cands), bool)
+    p_pt = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement_col,
+                               fixed=fixed)
+    r_pt = cc.candidate_recall(area, table, floor=recall_floor, placement=placement_col,
+                               fixed=fixed)
 
     # Same population process_cell counts into the cell totals: assigned by
     # representative point to a manifest cell.
@@ -1087,6 +1194,7 @@ def _candidate_uncertainty(
         "cell": cell[keep], "b": bins[keep], "v": validated[keep],
         "roof": rooftop[keep], "grp": grp[keep], "area": area[keep],
         "rc_pt": (area * p_pt / r_pt)[keep],
+        "fixed": is_fixed[keep], "stratum": stratum[keep],
     })
     if df.empty:
         return None
@@ -1115,11 +1223,19 @@ def _candidate_uncertainty(
     mats = {k: np.zeros((len(cells), n_draws)) for k in ("cal_all", "rc_all", "cal_roof", "rc_roof")}
     for roof_only, cal_key, rc_key in ((False, "cal_all", "rc_all"), (True, "cal_roof", "rc_roof")):
         sub = df[df.roof] if roof_only else df
-        for (c, b, v, g), a in sub.groupby(["cell", "b", "v", "grp"])["area"].sum().items():
+        for (c, b, v, g), a in sub[~sub.fixed].groupby(["cell", "b", "v", "grp"])["area"].sum().items():
             w, r_dr = w_by_group[g]
             wa = a * w[int(v), b]
             mats[cal_key][pos[c]] += wa
             mats[rc_key][pos[c]] += wa / r_dr[b]
+    if df.fixed.any():
+        # Admitted outlines are ground by construction, so only the all-placement matrices
+        # carry them; each stratum shares one draw vector across cells (fully correlated,
+        # like a size bin), and recall is 1 (the review measured precision only).
+        sdraws = cc.oversize_review_draws(table[cc.OVERSIZE_REVIEW_KEY], n_draws)
+        for (c, st), a in df[df.fixed].groupby(["cell", "stratum"])["area"].sum().items():
+            mats["cal_all"][pos[c]] += a * sdraws[st]
+            mats["rc_all"][pos[c]] += a * sdraws[st]
 
     points = (
         df.assign(rc_roof_pt=np.where(df.roof, df.rc_pt, 0.0))
@@ -1490,9 +1606,24 @@ def run_density(
             plausibility_note,
         )
 
-    # Drop blobs before anything consumes them (see capacity_relevant_candidates).
+    # Drop blobs before anything consumes them (see capacity_relevant_candidates), except
+    # the outlines above the cap that this AOI's calibration table admits by review.
+    from earthpv import capacity_calibration as cc
+
+    cal_path = Path(calibration) if calibration else cc.default_table_path(aoi)
+    table = cc.load_table(cal_path) if cal_path.exists() else None
     cands, oversize_stats = capacity_relevant_candidates(
-        cands, max_candidate_m2, osm_screen=load_osm_screen(aoi))
+        cands, max_candidate_m2, osm_screen=load_osm_screen(aoi),
+        oversize_admission=load_oversize_admission(aoi, cands, table, max_candidate_m2))
+    # Admitted outlines are a population-level estimate (cell totals and their draws), never
+    # per-building: a park outline's overlap with VIDA "buildings" (its own panel rows) says
+    # nothing about a roof. Keeping them out of `process_cell` also keeps every cached
+    # partial valid, since the per-building candidate set is the one they were built from.
+    admitted = (
+        cands["p_real_fixed"].notna().to_numpy()
+        if "p_real_fixed" in cands.columns else np.zeros(len(cands), bool)
+    )
+    bldg_cands = cands[~admitted].reset_index(drop=True) if admitted.any() else cands
     n_oversize = oversize_stats["n_oversize_excluded"]
     oversize_area_m2 = oversize_stats["oversize_area_m2"]
     n_osm_oversize_exempted = oversize_stats["n_osm_oversize_exempted"]
@@ -1541,20 +1672,15 @@ def run_density(
         # really does leave old and new partials mixed.
         fp_path.write_text(json.dumps(cand_fp, indent=2))
 
-    if not cands.empty:
-        _ = cands.sindex  # build once, reused per cell
+    if not bldg_cands.empty:
+        _ = bldg_cands.sindex  # build once, reused per cell
 
     # Capacity-atlas calibration: weight each candidate by P(real | size, glint).
     # This is the split from the leads product - rank_score is never consumed here,
     # and the leads path never consumes p_real. Without a table, p_real = 1 and
     # est_mwp_cal degenerates to est_mwp_det.
-    from earthpv import capacity_calibration as cc
-
-    cal_path = Path(calibration) if calibration else cc.default_table_path(aoi)
     cal_status = "uncalibrated"
-    table = None
-    if cal_path.exists():
-        table = cc.load_table(cal_path)
+    if table is not None:
         cal_status = table["status"]
         glint_cons = cands.get("glint_consistent") if not cands.empty else None
         if not cands.empty:
@@ -1563,6 +1689,7 @@ def run_density(
                 glint_consistent=None if glint_cons is None else glint_cons.to_numpy(),
                 placement=cands["placement"].astype(str).to_numpy()
                 if "placement" in cands.columns else None,
+                fixed=cands["p_real_fixed"].to_numpy() if "p_real_fixed" in cands.columns else None,
             )
         log.info("Calibration table %s (%s): est_mwp_cal is precision-weighted", cal_path, cal_status)
         # A table with no `placement_bins` prices ground-mount off rooftop's much higher
@@ -1637,7 +1764,7 @@ def run_density(
     for row in tqdm([r for _, r in manifest.iterrows()], desc="density"):
         try:
             process_cell(
-                row, cands, con, iso3, min_prob, min_building_exp_m2, cells_dir, force,
+                row, bldg_cands, con, iso3, min_prob, min_building_exp_m2, cells_dir, force,
                 exp_source=exp_source, exp_path=exp_paths.get(row.cell), exp_scale=exp_scale,
             )
         except Exception as e:  # noqa: BLE001 - one bad cell must not kill the run
@@ -1688,6 +1815,8 @@ def run_density(
             "n_osm_oversize_roof_to_ground", "osm_oversize_roof_to_ground_area_m2",
             "osm_screen_applied", "n_osm_oversize_screen_limited",
             "osm_oversize_screen_outline_area_m2", "osm_oversize_screen_credited_area_m2")},
+        **{k: v for k, v in oversize_stats.items() if k.startswith(("n_oversize_admitted",
+                                                                    "oversize_admitted"))},
         "did_full_rebuild": did_full_rebuild,
         "n_cell_failures": n_cell_failures,
         "candidates_fingerprint_written": did_full_rebuild and n_cell_failures == 0,

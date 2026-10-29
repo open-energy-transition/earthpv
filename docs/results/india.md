@@ -1,4 +1,4 @@
-# India: the localized detector lost, and a compose defect hid a 750 MW park
+# India: the merge cap hid the unmapped parks, and the localized detector lost
 
 India was composed and run between 23 September and 11 October 2026, the largest
 country this pipeline has attempted: 25,576 cells of 0.1&deg;, about four times Nigeria.
@@ -18,8 +18,8 @@ Interactive: [India PV evidence atlas](../atlas-india.md).
 
 | | |
 | --- | --- |
-| Verified | **67,592.6 MWp** (90% 47,486 to 97,145) |
-| Best estimate | **72,705.1 MWp** (90% 63,865 to 98,370) |
+| Verified | **70,523.4 MWp** (90% 49,526 to 101,390) |
+| Best estimate | **99,541.5 MWp** (90% 80,394 to 128,501) |
 | Grid | all 29,171 selected cells of 0.1&deg; (97.1% of India's 30,056), 35 of 36 states and union territories (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, November 2025 to March 2026 |
 | Model | `v5_combined_france` epoch 25 (the localized `v10_combined_india` lost; see below) |
@@ -39,10 +39,24 @@ Interactive: [India PV evidence atlas](../atlas-india.md).
     rise is Khavda's park outlines, now imaged whole; about 220 MWp is false positives on
     Himalayan slopes, which the page carries. Verified did not move.
 
+!!! note "Revised on 29 October"
+    Until 29 October this page read Best 72,705.1 MWp (90% 63,865 to 98,370) and Verified
+    67,592.6 MWp. Two size rules were keeping real installations out. Model outlines above
+    the 100,000 m&sup2; merge cap with no mapped solar nearby were excluded, though most
+    are solar parks OpenStreetMap does not hold yet; they now count at a reviewed share
+    ([below](#parks-the-model-found-that-nobody-has-mapped)), which raised Best by about
+    25,400 MWp. Mapped outlines above 5 km&sup2; that fail the ground screen were dropped
+    from Verified and came into Best at half their detected share; both tiers now carry
+    them at that share ([below](#the-ground-perimeter-screen-and-the-5-km2-cap)), which
+    raised Verified by 2,930.8 MWp and Best by about 1,500. Best rose by 26,836.4 MWp in all.
+    Against MNRE's state-wise register, ground-mounted Best is now 0.88 of the registered
+    capacity ([below](#against-the-mnre-register)), about 0.64 before.
+
 !!! warning "A precision floor, not an estimate"
     India has **no calibration quadrats**, so there is no `roofclf` half and no instrument
     at all below the 400 m&sup2; segmentation floor. It has no glint sample, so
-    `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction. Recall
+    `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction, except
+    for the model outlines above the merge cap, which a manual review prices. Recall
     was deliberately skipped (`--recall-reference none`). For scale, MNRE puts India's
     installed solar at 171.05 GW, of which 125.65 GW is ground-mounted and 33.41 GW
     grid-connected rooftop
@@ -166,6 +180,21 @@ compose gap, not evidence of absence. Refusing the exemption outright would have
 the other way: the model's own polygons at Khavda are merged blobs above the cap, so a zone
 with several GW operating would have dropped to almost nothing.
 
+**Verified now carries them at the same share (29 October).** The model-side credit was
+discounted twice: `density` prices every candidate of its size bin at the bin's `p_real`,
+0.503 for the largest ground bin, so the 44.6 km&sup2; detected at Khavda reached Best as
+1,122.9 MWp, half of what that area is worth at the land constant. With the outlines absent
+from Verified, nothing restored the other half. `prepare_national_osm_solar.py` now keeps
+such an outline in Verified at its detected share instead of dropping it, and Best takes it
+through its per-cell floor: the two Khavda cells carry **2,230.0 MWp** in both tiers. The
+same rule floors the credit at the plants mapped inside an outline, which matters where the
+cap's dissolve had merged a 3.1 to 3.8 km&sup2; park into the 5.1 to 5.9 km&sup2; site around
+it; for India's three partly imaged parks the detected share is the larger figure anyway.
+Seven outlines are credited, 58.6 of 190.3 km&sup2;, adding 2,930.8 MWp to Verified. Only
+Rewa still earns nothing, for want of imagery. The detected share is itself a floor at
+Khavda: over the dark panel blocks inside both outlines the model lights up the block edges
+and not their interiors, so more of each outline is built than 28% and 32%.
+
 **A mapped park outline is never rooftop.** `postprocess` places a candidate by its overlap
 with VIDA footprints, and VIDA traces a park's panel rows as buildings, so 101 of the
 exempt outlines (50.5 km&sup2;) had been placed `rooftop`, converted at the module
@@ -182,6 +211,51 @@ plants. Indian parks usually quote AC capacity, so the DC figure is somewhat hig
 to the constant. This is the measurement Vietnam's page listed as missing; Germany's
 register put German plants at 0.081 and Zambia's two measured plants at 0.085, so the
 constant is not universal, but it fits the Indian utility-scale fleet.
+
+## Parks the model found that nobody has mapped
+
+`density` keeps model outlines above 100,000 m&sup2; out of capacity
+(`postprocess.MAX_CANDIDATE_M2`), because in Pakistan, where the rule was made, such outlines
+were merged sheets of false positives on bright bare ground. In India they are mostly solar
+parks. On 28 October the outlines above the cap with no mapped solar within 100 m (the
+export's own new-lead rule; 1,789 outlines, 659.1 km&sup2;) were checked on imagery:
+
+| | outlines | area | real |
+| --- | ---: | ---: | --- |
+| census: the 30 largest, 2.5 to 11.7 km&sup2; | 30 | 153.8 km&sup2; | 30 |
+| sample: 60 drawn from the rest by area, without replacement | 60 | | 51 |
+| of which in the six Himalayan states and territories | 2 | | 0 |
+
+Every sampled outline was judged on the November to March Sentinel-2 composite and on Esri
+World Imagery with its capture date, by the owner on the disk review page
+(`scripts/oversize_review.py`, four panels per outline). The owner's verdicts agree with the
+assistant's first pass on 86 of 90; a joint recheck of the other four kept three as not PV
+(a Himalayan slope, ploughed fields on Esri imagery of March 2026, and an outline that reads
+as water where Esri is from 2019) and found the assistant wrong on one park. 40 of the 51
+parks show panel rows on Esri; 11 show bare or freshly cleared ground on an Esri capture
+from 2022 to mid-2025 and panel blocks on the composite, i.e. parks built since. The nine
+that are not PV are two Himalayan slopes (one beside a glacial river), rock, the outline
+that reads as water, dark ploughed fields twice, grassland and burnt scrub twice. Because
+the sample is drawn by area, its share real (51 of 58 outside the Himalaya, 0.879, 90%
+0.793 to 0.934) is an area share. The 30 largest Khavda, Bhadla,
+Pavagada-sized outlines next to the mapped parks are all real: four of them, 42.1 km&sup2;,
+are operating Khavda parks outside both mapped Khavda outlines.
+
+The review is stored in India's calibration table (`oversize_review`, written by
+`scripts/oversize_review.py apply` from `results/india_oversize_review/review.csv`), and
+`density` now admits these outlines: always as ground, the census at full credit and the
+rest at the sample's share, with the share's posterior in the interval and no recall
+correction. The six Himalayan states and territories keep the cap, since both outlines drawn
+there were terrain. **1,650 outlines are admitted, 626.4 km&sup2; of outline credited as
+569.4 km&sup2;, adding 28,468 MWp to the model's estimate and about 25,400 to Best** (the
+rest lands in cells Verified already floors). Gujarat's Best rises from 7,800 to 15,601
+MWp; the Khavda window holds 4,478 MWp against 1,131 before.
+
+Two things this does not settle. The land constant is applied to the model's outline, which runs about 12% larger
+than the mapped perimeter where both exist, so the admitted figure may read up to a tenth
+high. And 376 outlines above the cap are still excluded: 139 in the Himalaya and 237 within
+100 m of mapped solar, whose mapped part counts from the map but whose unmapped remainder
+(about 48 km&sup2;) was not reviewed.
 
 ## Widening the compose away from buildings
 
@@ -225,18 +299,19 @@ Best rose by 434.0 MWp, from four sources:
   142.2 MWp, because most of those cells are floored at their Verified value.
 
 The widening also did what it was for. Of the 9,566 new leads in the added cells, 126 are
-model outlines above the 100,000 m&sup2; merge cap. Those count as leads, not capacity.
-Among them are a solar park west of Jaisalmer (70.31&deg;E 27.06&deg;N, a 1.2 km&sup2;
+model outlines above the 100,000 m&sup2; merge cap. Those counted as leads, not capacity,
+until 29 October; the ones with no mapped solar nearby now count at the reviewed share
+([above](#parks-the-model-found-that-nobody-has-mapped)). Among them are a solar park west of Jaisalmer (70.31&deg;E 27.06&deg;N, a 1.2 km&sup2;
 outline with no OpenStreetMap solar feature within 3 km) and a 5.7 km&sup2; outline near
 Bikaner (73.23&deg;E 28.33&deg;N) next to a partly mapped park. Both show panel rows on the
-composite. They are in `india_pv_new_leads.geojson`, unreviewed.
+composite. They are in `india_pv_new_leads.geojson`, and the Jaisalmer park is now counted.
 
 ## Plausibility gate
 
-`earthpv check-density` reports **19 fail and 9 suspect of 35 regions**. Eighteen of the
-nineteen fail the ground-to-rooftop ratio above 5x, from Punjab (7.5x) to Rajasthan (104x)
-and Arunachal Pradesh (534x); nationally the model's estimate is 31,555 MWp ground against
-841 MWp rooftop, 38x.
+`earthpv check-density` reports **21 fail and 10 suspect of 35 regions**. All 21 fail the
+ground-to-rooftop ratio above 5x, from Haryana (5.5x) to Rajasthan (173x) and Arunachal
+Pradesh (625x); nationally the model's estimate is 59,979 MWp ground against 841 MWp
+rooftop, 71x (31,555 against 841, 38x, before the unmapped parks were admitted).
 MNRE's own split is 3.8x (125.65 GW against 33.41 GW). As in [France](france.md), the gate
 is firing on the missing rooftop denominator: the household programme's 3.6 kW systems are
 below what this sensor can see, so every regional ratio is inflated. The ratios read worse
@@ -246,34 +321,37 @@ Pradesh and Himachal Pradesh fail only since the widening, and there the gate is
 their new ground-mount is mountain false positives
 ([below](#widening-the-compose-away-from-buildings)).
 
-Six regions also fail the single-cell check, and each flagged cell holds a mapped plant:
-Pavagada in Karnataka (26% of the state), the Ananthapuramu park at NP Kunta in Andhra
-Pradesh (30%, 44.3 km&sup2; of OSM outline), and mapped plants in Chhattisgarh, Kerala,
-Assam and Jharkhand (1.3 to 5.1 km&sup2; each). Jharkhand fails on concentration alone.
-Gujarat no longer does: the Khavda outlines were 29% of the state before they were
-credited at their detected share. The check exists to catch ground-mount false positives
-on bright bare land; here 1,087 of the 1,481 km&sup2; of capacity-relevant ground candidate
-area is a mapped plant's outline, and the screen above shows the model detecting PV over a
-median 98.5% of those perimeters. Published with the flags stated, per this project's
-precedent for a checked-genuine failure.
+Two regions also fail the single-cell check, and each flagged cell holds a reviewed park:
+Bihar's cell at 86.2&deg;E 25.1&deg;N (36% of the state) is one of the 30 largest unmapped
+outlines, all parks, and West Bengal's at 87.1&deg;E 22.7&deg;N (28%) one of the sampled
+outlines with panel rows on Esri. The six regions that failed on concentration before
+(Pavagada in Karnataka, the Ananthapuramu park in Andhra Pradesh, mapped plants in
+Chhattisgarh, Kerala, Assam and Jharkhand) no longer do: the admitted parks spread each
+state's total over more cells. The check exists to catch ground-mount false positives on
+bright bare land; here the ground area is mapped plant outlines the screen shows detected
+over a median 98.5%, and model outlines a review found real. Published with the flags
+stated, per this project's precedent for a checked-genuine failure.
 
 ## Candidate population
 
 104,968 candidates: 32,575 rooftop, 25,402 ground-adjacent, 46,991 with no building,
-median 1,699 m&sup2;. 2,028 model-drawn candidates exceed the 100,000 m&sup2; merge cap and
-are excluded from capacity: 35.8% of candidate area, the largest 30.27 km&sup2;. A further
-1,332 oversize candidates carry an OSM-verified plant geometry and are exempt, all counted
-as ground, six of them at their detected share (58.6 of 174.3 km&sup2;). The model's own
-estimate (`est_mwp_rc`) is 32,467.5 MWp (90% 21,574 to 47,307), 843.5 rooftop and
-31,624.0 ground; with no recall reference it equals the precision-weighted
-`est_mwp_cal_total`. 27.3 GW of it is the OSM-outline candidates above the cap, each
-weighted by the largest ground bin's `p_real` of 0.503. The probability-weighted
-`est_mwp_exp`, which does not use the candidate population, is 29,545.4 MWp.
+median 1,699 m&sup2;. 2,026 model-drawn candidates exceed the 100,000 m&sup2; merge cap.
+1,650 of them, with no mapped solar within 100 m and outside the Himalaya, are admitted at
+the reviewed share (626.4 km&sup2;, credited as 569.4); the other 376 (11.4% of candidate
+area, the largest 30.27 km&sup2;) stay excluded. A further 1,332 oversize candidates carry an
+OSM-verified plant geometry and are exempt, all counted as ground, six of them at their
+detected share (58.6 of 174.3 km&sup2;). The model's own estimate (`est_mwp_rc`) is
+**60,935.1 MWp** (90% 40,222 to 88,581), 843.5 rooftop and 60,091.6 ground; with no recall
+reference it equals the precision-weighted `est_mwp_cal_total`. 27.3 GW of it is the
+OSM-outline candidates above the cap, each weighted by the largest ground bin's `p_real` of
+0.503, and 28.5 GW the admitted outlines. The probability-weighted `est_mwp_exp`, which does
+not use the candidate population, is 29,545.4 MWp.
 
 **Verified is almost all ground-mount.** It is the hand-mapped layer at the two constants:
-1,331 km&sup2; of dissolved ground perimeters against 9.3 km&sup2; of rooftop polygons. Best
-adds 5,112.5 MWp on top, model detections outside anything Verified counts, 1,122.9 MWp of
-it at Khavda (see the screen section above).
+1,389.8 km&sup2; of dissolved ground perimeters (58.6 of them the credited share of the seven
+outlines above 5 km&sup2;) against 9.3 km&sup2; of rooftop polygons. Best adds 29,018.1 MWp
+on top, model detections outside anything Verified counts, most of it the admitted
+unmapped parks.
 
 Solar-thermal is counted as PV on this page. OpenStreetMap tags concentrated-solar plants
 and rooftop water heaters with the same `generator:source=solar` the label pull selects,
@@ -292,15 +370,61 @@ nothing: it drops candidates inside thermal elements already removed from the la
 India's labels never were. Every country run after India filters it
 (`scripts/drop_solar_thermal.py`).
 
+## Against the MNRE register
+
+MNRE's state-wise installed solar capacity, republished monthly by MoSPI's eSankhyiki
+([macroindicators, product MNRE](https://esankhyiki.mospi.gov.in/macroindicators?product=mnre)),
+is India's register for this page: MW per state and month in four categories, ground-mounted,
+rooftop (including PM Surya Ghar), the solar part of wind-solar hybrid plants, and
+off-grid/KUSUM. `scripts/validate_india_mnre.py` fetches it through MoSPI's own MCP server and
+compares it state by state with the atlas (`results/india_mnre_validation/`). The register
+grew from 132.8 to 150.3 GW of solar between November 2025 and March 2026, the ends of the
+imagery window, so the comparison is made at its centre, January 2026 (140.6 GW).
+
+| | this page | MNRE, January 2026 | ratio |
+| --- | ---: | ---: | ---: |
+| ground-mounted (+ hybrid solar), Best | 97,560 MWp | 110,619 MW | **0.88** |
+| ground-mounted (+ hybrid solar), Verified | 68,789 MWp | 110,619 MW | 0.62 |
+| rooftop | 1,830 MWp | 24,297 MW | 0.075 |
+| off-grid / KUSUM | not measured | 5,634 MW | |
+| all solar, Best | 99,390 MWp | 140,550 MW | 0.71 |
+
+The ground ratio is 0.94 against November's register and 0.82 against March's. Registered
+utility capacity in India is mostly quoted AC and this page's in DC: India's own
+capacity-tagged parks put site area at 0.045 per AC kW against the 0.05 the page converts at,
+so on an AC basis the ground ratio is 0.79. **The ground-mounted figure is about a fifth short,
+and it was a third short (about 0.64) before the unmapped parks above the merge cap were
+counted.** What remains short is the parks this page does not see: Rewa and the other
+unimaged outlines, the Himalayan outlines left out, the unmapped part of the 237 outlines
+that touch a mapped park, dark block interiors the model does not light up, and parks
+commissioned in the window that the median composite does not yet show.
+
+**The geography holds.** Across the 19 states with at least 100 MW of registered utility PV,
+the rank correlation between Best and the register is 0.95, 14 states are within a factor
+of 1.5, and the median state is off by 24% (median absolute log ratio 0.22). The four largest
+are Rajasthan 31.1 GW against 35.0 (0.89), Gujarat 15.4 against 20.2 (0.76), Karnataka 10.4
+against 10.0 (1.05) and Tamil Nadu 8.3 against 10.3 (0.80). The largest shortfalls are in the
+Himalaya, where the admitted outlines are left out (Himachal Pradesh 0.25, Uttarakhand 0.62),
+and Maharashtra (0.66). The page is high in small states: Punjab 1.45, Haryana 1.56, Bihar
+2.09 and, by far, Jharkhand, 244 MWp against 21 MW registered, of which 134 MWp is
+hand-mapped outlines; whether those are captive or mislabelled plants, or a gap in the
+register, is not settled here.
+
+**Rooftop is where the sensor stops.** The register's 24.3 GW of rooftop is mostly household
+systems of a few kW, about 20 m&sup2; of panel each, and this page sees 7.5% of it, the large
+commercial roofs. The register does not geolocate units, so unlike Germany's it cannot
+measure the precision of individual candidates; it checks totals per state and month.
+
 ## Against the old Gujarat page
 
 The earlier Gujarat page reported 812.6 MWp (`est_mwp_rc`) over its bounding box,
 of which Gujarat state was 765.0 (168.7 rooftop, 596.3 ground). The same estimator here
-gives the state **4,783.7 MWp** (93.3 rooftop, 4,690.4 ground), and the atlas puts it at
-Verified 5,852.3 and Best 7,800.1 MWp over 1,617 cells (4,554.1 MWp, and Best 7,492.9 over
-1,423 cells, before the widening).
+gives the state **11,579.8 MWp** (93.3 rooftop, 11,486.5 ground), and the atlas puts it at
+Verified 8,587.8 and Best 15,601.4 MWp over 1,617 cells (4,783.7 MWp, Verified 5,852.3 and
+Best 7,800.1 before the unmapped parks were admitted on 29 October; 4,554.1 MWp and Best
+7,492.9 over 1,423 cells before the widening).
 
-Almost all of the rise is one rule. The Gujarat run (2026-08-07) excluded every candidate
+Against the old page, almost all of the rise to 4,783.7 MWp is one rule. The Gujarat run (2026-08-07) excluded every candidate
 above 100,000 m&sup2;, including those carrying a mapped plant's outline; `density` began
 exempting OSM geometry from the cap three days later. Those 136 candidates (156.3
 km&sup2; credited) are about 3.9 GW of the new state figure, 1.1 GW of it the two Khavda
@@ -348,6 +472,10 @@ false positives sit on steep shaded slopes. A slope test like the one the farm g
 detector already applies (12&deg; on Copernicus GLO-90) would likely remove them, but it
 is a new rule for every country's segmentation half and needs a full density rebuild.
 
+**The rest of the outlines above the cap.** The 237 that touch mapped solar, whose
+unmapped remainder is still uncounted, are the next population to review, and the outline
+in Madhya Pradesh priced as water needs a current image.
+
 ## Reproducing
 
 ```bash
@@ -365,4 +493,21 @@ and the atlas chain, behind marker files). The widening is `ring_cells: 3` in
 ```bash
 systemd-run --user --collect --unit=earthpv-india-ring-chain -p WorkingDirectory="$PWD" \
   -p LimitNOFILE=65536:65536 -p MemoryMax=14G bash scripts/run_india_ring_chain.sh
+```
+
+The two size rules of 29 October need no rebuild of the cell partials: the review goes into
+the calibration table, the OSM layer is rebuilt with its screen, and `density` (without
+`--force`) and the atlas re-run:
+
+```bash
+pixi run python scripts/oversize_review.py apply --aoi india \
+  --exclude-region "Uttarākhand" --exclude-region "Himāchal Pradesh" --exclude-region "Ladākh" \
+  --exclude-region "Jammu and Kashmīr" --exclude-region "Sikkim" \
+  --exclude-region "Arunāchal Pradesh" --reviewer "..."
+pixi run python scripts/prepare_national_osm_solar.py --aoi india \
+  --labels data/labels/india_overpass_solar.parquet \
+  --keep-detected-screen results/india_osm_ground_screen/screen_full.csv
+pixi run earthpv density --aoi india --districts
+pixi run earthpv atlas --aoi india --osm-solar data/labels/india_national_osm_solar.parquet \
+  --include-offgrid-osm --imagery-date-range "Nov 2025 - Mar 2026"
 ```

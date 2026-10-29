@@ -158,3 +158,16 @@ dist/
 # Per-cell GeoParquet shipped beside each published atlas (small, and the page links
 # to it by a relative path, so it has to be in the repo rather than a release).
 !docs/assets/interactive/*.parquet
+# India's review of the model outlines above the merge cap (scripts/oversize_review.py), cited
+# by configs/calibration/india_candidate_precision.yaml, and its comparison with the MNRE
+# register (scripts/validate_india_mnre.py), cited by docs/results/india.md (2026-10-29).
+!results/india_oversize_review/
+results/india_oversize_review/*
+!results/india_oversize_review/review.csv
+!results/india_oversize_review/verdicts.csv
+!results/india_mnre_validation/
+results/india_mnre_validation/*
+!results/india_mnre_validation/mnre_solar_state_monthly.csv
+!results/india_mnre_validation/mnre_source.json
+!results/india_mnre_validation/comparison_by_state.csv
+!results/india_mnre_validation/summary.json

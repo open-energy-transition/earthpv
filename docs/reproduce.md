@@ -187,6 +187,16 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     # ground-mount estimate dwarfs its rooftop one, or if one cell dominates a region.
     pixi run earthpv check-density --aoi pakistan
 
+    # Model outlines above the 100,000 m² merge cap with no mapped solar nearby are left out
+    # until a person has judged a sample of them. `draw` writes the sample and a review
+    # package on disk: four panels per outline (Sentinel-2 composite, its 10 m detail, false
+    # colour, Esri with its capture date) and a page to judge them in, one key per verdict.
+    pixi run python scripts/oversize_review.py draw --aoi india
+    #   open data/oversize_review/india/index.html, judge every outline, export verdicts.csv
+    pixi run python scripts/oversize_review.py apply --aoi india --reviewer "<name>" \
+        --verdicts results/india_oversize_review/verdicts.csv --exclude-region "Ladākh" ...
+    pixi run earthpv density --aoi india --districts    # no --force: the cells stay valid
+
     # Optional precision upgrade for the bins below 1,000 m², where glint is blind:
     pixi run earthpv calibrate-sample --aoi pakistan     # fill `verdict` in JOSM or QGIS
     pixi run earthpv calibrate-candidates --aoi pakistan --manual-reviews <reviewed file>

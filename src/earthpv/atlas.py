@@ -1641,6 +1641,30 @@ def _osm_traced_ground(osm: pd.DataFrame) -> np.ndarray:
     return osm["panel_traced"].fillna(False).to_numpy(bool) & (osm["placement"] != "rooftop").to_numpy()
 
 
+def _apply_screen_credit(osm: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Credit a ground outline above the 5 km2 cap at the share `prepare_national_osm_solar.py`
+    measured for it (`screen_credit`), after this page's own dissolve.
+
+    The column is written only for outlines that fail the ground screen (2026-10-28): they
+    used to be dropped from Verified and came back into Best only as the model's estimate,
+    which the size bin's p_real halved a second time (India's Khavda outlines). The file's
+    own `area_m2` is already credited, but `dissolve_overlapping` recomputes a merged
+    cluster's area from its union (keeping the largest member's columns), so a credited row's
+    area is rederived here as its outline's geodesic area x `screen_credit`: the same figure
+    for a singleton, and the credit survives a re-merge. A file without the column (every
+    OSM file built before then, or without a screen) is returned unchanged."""
+    from earthpv.labels import geodesic_area_m2
+
+    osm = osm.copy()
+    if "screen_credit" in osm.columns:
+        credit = osm["screen_credit"].fillna(1.0).to_numpy(float)
+        area = osm["area_m2"].to_numpy(float).copy()
+        for i in np.flatnonzero(credit < 1.0):
+            area[i] = geodesic_area_m2(osm.geometry.iat[i]) * credit[i]
+        osm["area_m2"] = area
+    return osm
+
+
 def _evidence_uncertainty(
     *,
     density_dir: Path,
@@ -2265,6 +2289,7 @@ def osm_absorbed_inflation(
     cand_area: np.ndarray, cand_placement: np.ndarray, cand_glint: np.ndarray | None,
     miss_area: np.ndarray, miss_rooftop: np.ndarray, miss_mwp: np.ndarray,
     table: dict, recall_floor: float, kwp_mod: float, kwp_land: float,
+    cand_fixed: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, list[dict]]:
     """Share of each candidate's recall inflation that OSM-mapped misses already account for.
 
@@ -2277,9 +2302,10 @@ def osm_absorbed_inflation(
 
     cand_area = np.asarray(cand_area, float)
     roof = np.asarray(cand_placement).astype(str) == "rooftop"
-    p = cc.candidate_p_real(cand_area, table, glint_consistent=cand_glint, placement=cand_placement)
+    p = cc.candidate_p_real(cand_area, table, glint_consistent=cand_glint, placement=cand_placement,
+                            fixed=cand_fixed)
     r = np.maximum(cc.candidate_recall(cand_area, table, floor=recall_floor,
-                                       placement=cand_placement), recall_floor)
+                                       placement=cand_placement, fixed=cand_fixed), recall_floor)
     k = np.where(roof, kwp_mod, kwp_land) / 1000.0
     inflation = cand_area * p * k * (1.0 / r - 1.0)
     cb = cc.bin_index(cand_area)
@@ -2527,7 +2553,11 @@ def build_evidence_atlas(
     #     `postprocess.replace_with_osm_geometry`, so one candidate blob overlapping many
     #     mapped installations only ever "claims" one of them -- see this function's
     #     docstring for the ~1,900 MWp of double-counting that undercounted matches.
-    from earthpv.density import capacity_relevant_candidates, load_osm_screen
+    from earthpv.density import (
+        capacity_relevant_candidates,
+        load_osm_screen,
+        load_oversize_admission,
+    )
     from earthpv.export import new_lead_mask
     from earthpv.labels import dissolve_overlapping
 
@@ -2537,18 +2567,21 @@ def build_evidence_atlas(
     # individual areas double-counts it (measured 2026-08-10: ground-mount OSM area
     # shrinks 24.4% once dissolved; see labels.dissolve_overlapping's docstring).
     osm = dissolve_overlapping(osm, group_col="placement")
+    osm = _apply_screen_credit(osm)
     cand = gpd.read_parquet(candidates_path)
+    # The table `density` priced the candidates with (recorded in its meta.json), so the
+    # recall the satellite total was divided by is the one OSM is reconciled against.
+    _table_path = Path(meta.get("calibration") or cc.default_table_path(aoi))
+    seg_table = cc.load_table(_table_path) if _table_path.exists() else None
     # Match against the SAME population that actually earns capacity, not the raw
     # candidate file: an OSM installation matched only by a candidate this run
     # excludes from capacity (a non-exempt oversize blob) is not "already found by
     # the model" in any sense `mwp_large` reflects -- counting it as matched would
     # double-subtract it from `osm_mwp_unmatched` for nothing (measured 2026-08-10 at
     # 1,704 MWp nationally, see capacity_relevant_candidates's docstring).
-    cand, _ = capacity_relevant_candidates(cand, osm_screen=load_osm_screen(aoi))
-    # The table `density` priced the candidates with (recorded in its meta.json), so the
-    # recall the satellite total was divided by is the one OSM is reconciled against.
-    _table_path = Path(meta.get("calibration") or cc.default_table_path(aoi))
-    seg_table = cc.load_table(_table_path) if _table_path.exists() else None
+    cand, _ = capacity_relevant_candidates(
+        cand, osm_screen=load_osm_screen(aoi),
+        oversize_admission=load_oversize_admission(aoi, cand, seg_table))
     match_m = osm_match_distance_m(seg_table, legacy_osm_addition)
     osm = osm.copy()
     osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=match_m)
@@ -2758,6 +2791,7 @@ def build_evidence_atlas(
             miss["area_m2"].to_numpy(float), (miss["placement"] == "rooftop").to_numpy(),
             miss["kwp"].to_numpy(float) / 1000.0, seg_table,
             float(meta.get("recall_floor", cc.DEFAULT_RECALL_FLOOR)), kwp_mod, kwp_land,
+            cand_fixed=cp["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cp.columns else None,
         )
         cut = pd.DataFrame({"cell": cp["cell"].to_numpy(), "roof": c_place == "rooftop",
                             "mwp": inflation * (1.0 - retain)})
@@ -3207,7 +3241,11 @@ def _size_distribution_data(
     membership can't drift between the two atlases.
     """
     from earthpv import capacity_calibration as cc
-    from earthpv.density import capacity_relevant_candidates, load_osm_screen
+    from earthpv.density import (
+        capacity_relevant_candidates,
+        load_osm_screen,
+        load_oversize_admission,
+    )
     from earthpv.export import new_lead_mask
     from earthpv.labels import dissolve_overlapping
 
@@ -3238,9 +3276,11 @@ def _size_distribution_data(
 
     # --- segmentation candidates: seg_ground (everywhere) + seg_roof_outdomain -------
     cands = gpd.read_parquet(candidates_path)
-    cands, _ = capacity_relevant_candidates(cands, osm_screen=load_osm_screen(aoi))
     # The table density priced the candidates with, as `build_evidence_atlas` reads it.
     table = cc.load_table(Path(meta.get("calibration") or cc.default_table_path(aoi)))
+    cands, _ = capacity_relevant_candidates(
+        cands, osm_screen=load_osm_screen(aoi),
+        oversize_admission=load_oversize_admission(aoi, cands, table))
     match_m = osm_match_distance_m(table, legacy_osm_addition)
 
     ge400 = gpd.read_parquet(ge400_roof_buildings_path)
@@ -3266,8 +3306,11 @@ def _size_distribution_data(
         if "placement" in cands.columns else np.full(len(cands), "", dtype=object)
     )
     glint = cands["glint_consistent"].to_numpy() if "glint_consistent" in cands.columns else None
-    p_real = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement)
-    recall = cc.candidate_recall(area, table, floor=cc.DEFAULT_RECALL_FLOOR, placement=placement)
+    fixed = cands["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cands.columns else None
+    p_real = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement,
+                                 fixed=fixed)
+    recall = cc.candidate_recall(area, table, floor=cc.DEFAULT_RECALL_FLOOR, placement=placement,
+                                 fixed=fixed)
     rc_area = area * p_real / np.clip(recall, cc.DEFAULT_RECALL_FLOOR, None)
     is_roof = placement == "rooftop"
     in_domain = np.isin(cell_of, np.array(list(ge400_cells), dtype=object)) if ge400_cells else np.zeros(len(cands), bool)
@@ -3277,8 +3320,7 @@ def _size_distribution_data(
 
     # --- hand-mapped OSM, counted from the map exactly as `build_evidence_atlas` counts it
     osm = gpd.read_parquet(osm_solar_path)
-    osm = dissolve_overlapping(osm, group_col="placement")
-    osm = osm.copy()
+    osm = _apply_screen_credit(dissolve_overlapping(osm, group_col="placement"))
     osm["matched"] = ~new_lead_mask(osm, cands, min_distance_m=match_m)
     # The SAME size-dependent rooftop conversion `build_evidence_atlas` uses, because this
     # function's contract is that it re-bins the published total rather than recomputing it.

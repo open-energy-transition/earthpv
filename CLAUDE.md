@@ -57,6 +57,8 @@ earthpv train  --config configs/terramind_pv.yaml
 earthpv infer  --aoi <aoi> --checkpoint <ckpt>
 earthpv postprocess --aoi <aoi> --threshold 0.3
 earthpv export --aoi <aoi>
+pixi run python scripts/oversize_review.py draw --aoi <aoi>   # parks above the merge cap: judge
+#   data/oversize_review/<aoi>/index.html, then `oversize_review.py apply --verdicts ...`
 earthpv density --aoi <aoi> --districts && earthpv check-density --aoi <aoi>
 
 earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration quadrats
@@ -316,8 +318,31 @@ oversize candidate (a real, human-mapped footprint) is exempt, with two limits m
 (`results/<aoi>_osm_ground_screen/screen_full.csv`, auto-discovered by `density.load_osm_screen`)
 an outline above 5 km² that fails the screen (imaged >= 0.9, detected >= 0.5) is credited at
 outline area x `det_frac` instead of whole. The same rule runs in `density`, the evidence atlas
-and `calibrate-candidates`. Real unmapped parks above the cap are excluded too; they appear in
-the new-leads export.
+and `calibrate-candidates`. The Verified layer carries that outline at the same share
+(`screen_credit`, below) rather than dropping it, so Best takes it whole through its per-cell
+floor instead of the model figure, which the size bin's `p_real` halves a second time.
+
+**Model outlines above the cap are admitted where a review measured them (2026-10-29).** In
+India most were real parks OSM does not hold (30 of the 30 largest, 51 of 60 drawn by area from
+the rest, owner-reviewed; about 28 GWp the cap kept out of Best). `scripts/oversize_review.py draw|apply`
+reviews them and writes an `oversize_review` block into the country's calibration table;
+`density.load_oversize_admission` then admits new-lead model outlines above the cap
+(`export.new_lead_mask` at the review's `min_distance_m`) outside its `excluded_regions`,
+placed as ground and priced per stratum (`p_real_fixed`: the census of the largest, the
+area-weighted sample's share for the rest, Jeffreys draws; recall 1). They are population-level
+only: kept out of `process_cell`, so cached partials stay valid and no `--force` is needed.
+`calibrate-candidates` does not see them (the bins describe the rest) and carries the block
+forward; `_table_evidence` guards it. A country without the block keeps the cap exactly; its
+unmapped parks above the cap appear only in the new-leads export.
+**The review is a disk review of the imagery the model saw (2026-10-29).** `draw` (a
+non-fatal step of `run_country_compute.sh` after `export`) also runs `package`: one 2 x 2 JPEG
+per outline in `data/oversize_review/<aoi>/crops/` (composite true colour, 10 m detail, false
+colour SWIR/NIR/red, Esri with capture date; FIXED reflectance stretch) and `index.html`, the
+`build_review_page.write_page` page (keys 1/2/3, notes, Google/Bing/Wayback/JOSM links, CSV
+export). `apply --verdicts <export>` refuses unsure rows unless `--unsure-as`, and reports
+agreement with earlier verdicts; `draw` never redraws over verdicts (`--redraw`). The composite
+decides epoch (11 of India's 50 sampled parks postdate Esri), Esri decides texture (dark ploughed
+fields read as panel blocks at 10 m): neither panel alone suffices.
 
 **`buildings.geoparquet`'s summed rooftop capacity is not `grid.geoparquet`'s region total,
 by construction**: the region total sums each rooftop candidate's full polygon once, the
@@ -944,7 +969,7 @@ QUEUE first when removing compute markers.
 | Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,128.5 | roofclf half, probability-weighted; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; Silver |
 | France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf |
-| India | `v5_combined_france` | 67,592.6 / 72,705.1 | v10 lost the Gujarat holdout; `ring_cells: 3` |
+| India | `v5_combined_france` | 70,523.4 / 99,541.5 | v10 lost the Gujarat holdout; `ring_cells: 3`; oversize review |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 8,860.5 | |
 | Egypt | `v12_combined_egypt` | 3,315.1 / 3,378.6 | thin Cairo holdout |
 | Yemen | `v13_combined_yemen` | 130.9 / 302.1 | zero-zero tie; farm ground PV; Silver |
@@ -955,7 +980,15 @@ QUEUE first when removing compute markers.
 | Nigeria | `v5_combined_france` ep 25 | 90.2 / 120.9 | name `v8` is taken by `v8_combined_nigeria` |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
-- **India**: Verified is almost all ground perimeters. 253 solar-thermal features (~0.7% of both
+- **India**: Verified is almost all ground perimeters. **Since 2026-10-29 Best counts the
+  unmapped parks above the merge cap** (1,650 outlines at a reviewed share, +28,468 MWp to
+  `est_mwp_rc`; verdicts in `results/india_oversize_review/`, the owner's, 2026-10-29)
+  and Verified credits the seven outlines above 5 km² that fail the screen at their detected
+  share (Khavda 2,230 MWp in both tiers; Rewa still unimaged). Pre-change outputs carry
+  `_PRE_oversize_20261029`. **India's register is MNRE via MoSPI eSankhyiki** (state x month x
+  ground/rooftop/hybrid/KUSUM, `scripts/validate_india_mnre.py`, fetched through MoSPI's MCP
+  server; the REST API needs TLS legacy renegotiation): January 2026 ground-mounted Best 0.88 of
+  registered (0.79 AC basis), Spearman 0.95 over 19 states, rooftop 7.5%. 253 solar-thermal features (~0.7% of both
   tiers) remain as a known defect. **The compose was widened by `ring_cells: 3`** (+3,573
   cells, published 2026-10-28; `scripts/run_india_ring_chain.sh`, markers
   `data/india_ring_markers/`; the run before it is kept in
@@ -1022,7 +1055,13 @@ glob silently undoes the filter (dotted stems are now ignored).
   not a border pull). `prepare_national_osm_solar.py` builds the `--osm-solar` input: it clips
   on the geoBoundaries ADM1 union by default (`--no-clip` opts out), maps `small` -> rooftop,
   reclassifies rooftop features above `MAX_CANDIDATE_M2` as ground, and drops ground features
-  above 5 km² unless `--keep-detected-screen`.
+  above 5 km² unless `--keep-detected-screen`. With the screen, an outline above 5 km² that
+  fails it is credited, not dropped (2026-10-29): `area_m2` becomes outline x `det_frac`,
+  floored at the union of the plants mapped inside it that are each under the cap (the cap runs
+  after `dissolve_overlapping`, so they used to go out with it), and `screen_credit` records the
+  share, which `atlas._apply_screen_credit` reapplies after the atlas's own dissolve. Only an
+  outline earning nothing (unimaged, nothing nested) is dropped. Of the screened countries only
+  India's layer changes.
 - **Overture prunes its release directory to the last two releases.** A pinned
   `overture_release` eventually 404s as `IO Error: No files found`, which reads like "no data
   for this area". Check

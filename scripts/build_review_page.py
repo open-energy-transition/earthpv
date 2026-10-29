@@ -73,11 +73,40 @@ def main() -> None:
     locs = locations(args.review_dir)
     items = [{"code": c, "date": d, "img": _jpeg(im), **locs.get(c, {})}
              for c, d, im in zip(v.code, v.imagery_date, panels(blind, len(v)))]
-    page = (TEMPLATE.replace("__NAME__", args.review_dir.name)
-            .replace("__ITEMS__", json.dumps(items).replace("</", "<\\/")))
-    out = blind / "review.html"
-    out.write_text(page)
+    out = write_page(blind / "review.html", args.review_dir.name, items)
     print(f"{len(items)} panels -> {out} ({out.stat().st_size / 1e6:.1f} MB)")
+
+
+def write_page(out: Path, name: str, items: list[dict], guide: str | None = None) -> Path:
+    """Write the review page for `items`, for any review, not only the blind folders.
+
+    Each item needs `code` and `img` (a data URI, or a path relative to `out` so the images
+    stay on disk beside the page), and may carry `date`, `date_label` (the caption under the
+    image; default "Esri imagery <date>"), `lon`/`lat`/`bbox` for the imagery links. `guide`
+    replaces the "How to judge" text (HTML); the default is the blind reviews' own. The
+    export is `code,imagery_date,verdict,note` with verdicts `pv`, `no_pv`, `unsure`.
+    (`scripts/oversize_review.py package` uses this for unmapped parks, 2026-10-29.)"""
+    page = (TEMPLATE.replace("__NAME__", name)
+            .replace("__GUIDE__", GUIDE if guide is None else guide)
+            .replace("__ITEMS__", json.dumps(items).replace("</", "<\\/")))
+    out.write_text(page)
+    return out
+
+
+GUIDE = r"""      <ul>
+        <li><b>PV</b>: solar panels sit inside or touching the yellow outline. The outline may be
+          larger or smaller than the array; it still counts.</li>
+        <li><b>Not PV</b>: the outline covers something else (roofs, greenhouses, sheds, water,
+          bare ground, shadow) and the imagery is recent enough to show panels if they were there.</li>
+        <li><b>Unsure</b>: you cannot tell, for example the imagery is too blurred, a tile is
+          missing, or the capture is from before 2025 and shows no panels (the detectors read
+          2025-2026 imagery, so the array may be newer than the photo).</li>
+      </ul>
+      <p>The date on each panel is the Esri capture there. Newer imagery is often a click away:
+        Google and Bing in the links. Keys: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> judge and move on,
+        <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step, <kbd>n</kbd> note, <kbd>Esc</kbd> leave the note.</p>
+      <p>When done, export and save the file as <code>blind/verdicts.csv</code> in this folder
+        (or pass it with <code>--verdicts</code>). Progress also stays in this browser.</p>"""
 
 
 TEMPLATE = r"""<!doctype html>
@@ -188,20 +217,7 @@ input[type=file] { display: none; }
     </div>
     <div class="card" style="margin-top:16px">
       <h2>How to judge</h2>
-      <ul>
-        <li><b>PV</b>: solar panels sit inside or touching the yellow outline. The outline may be
-          larger or smaller than the array; it still counts.</li>
-        <li><b>Not PV</b>: the outline covers something else (roofs, greenhouses, sheds, water,
-          bare ground, shadow) and the imagery is recent enough to show panels if they were there.</li>
-        <li><b>Unsure</b>: you cannot tell, for example the imagery is too blurred, a tile is
-          missing, or the capture is from before 2025 and shows no panels (the detectors read
-          2025-2026 imagery, so the array may be newer than the photo).</li>
-      </ul>
-      <p>The date on each panel is the Esri capture there. Newer imagery is often a click away:
-        Google and Bing in the links. Keys: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> judge and move on,
-        <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step, <kbd>n</kbd> note, <kbd>Esc</kbd> leave the note.</p>
-      <p>When done, export and save the file as <code>blind/verdicts.csv</code> in this folder
-        (or pass it with <code>--verdicts</code>). Progress also stays in this browser.</p>
+__GUIDE__
     </div>
   </aside>
 </main>
@@ -238,7 +254,7 @@ input[type=file] { display: none; }
     const it = ITEMS[cur], v = state[it.code] || {};
     $("img").src = it.img; $("img").alt = "Panel " + it.code;
     $("code").textContent = `${it.code}  (${cur + 1} of ${ITEMS.length})`;
-    $("date").textContent = "Esri imagery " + (it.date || "unknown");
+    $("date").textContent = it.date_label || ("Esri imagery " + (it.date || "unknown"));
     document.querySelectorAll(".verdicts button").forEach((b) =>
       b.classList.toggle("on", b.dataset.v === v.verdict));
     $("note").value = v.note || "";

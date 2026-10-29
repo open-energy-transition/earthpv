@@ -822,6 +822,53 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
     return {"p_real": m + (1.0 - m) * p_u, "recall": recall, "lr": sens / f}
 
 
+# --------------------------------------------------------------------------------------
+# Model outlines above the merge cap, priced by a manual review (`oversize_review`)
+# --------------------------------------------------------------------------------------
+# `postprocess.MAX_CANDIDATE_M2` keeps model outlines above 100,000 m2 out of capacity
+# because in Pakistan they were merged false-positive sheets. In India most are real parks
+# OpenStreetMap does not hold yet: reviewed 2026-10-28 (results/india_oversize_review/),
+# the 30 largest new-lead outlines were all parks and 50 of 60 drawn by area from the rest,
+# about 29 GWp the cap kept out of Best. A country whose table carries this block admits
+# its new-lead outlines above the cap (`density.load_oversize_admission`) at the reviewed
+# share; every other country keeps the cap exactly as before.
+#
+# Two strata, both from the review: outlines at or above `census_min_area_m2` were all
+# reviewed (`census_real` of `census_n`), the rest are priced at the area-weighted sample's
+# share real, whose Jeffreys posterior carries the interval. The sample is drawn with
+# probability proportional to area, so the share is an AREA share, which is what a
+# per-candidate area weight needs. Regions in `excluded_regions` (where the review found
+# terrain, not parks) are not admitted at all: the cap holds there.
+OVERSIZE_REVIEW_KEY = "oversize_review"
+
+
+def oversize_review_p_real(block: dict) -> dict[str, float]:
+    """Point share real per stratum (`census`, `sample`) of an `oversize_review` block."""
+    return {
+        "census": block["census_real"] / block["census_n"] if block.get("census_n") else 0.0,
+        "sample": block["sample_real"] / block["sample_n"] if block.get("sample_n") else 0.0,
+    }
+
+
+def oversize_review_draws(block: dict, n_draws: int, seed: int | None = None) -> dict[str, np.ndarray]:
+    """Posterior draws of each stratum's share real (Jeffreys Beta on its own counts).
+
+    A census stratum in which every outline was found real is a point mass at 1: there is
+    nothing left to sample, and a Beta(n + 0.5, 0.5) would invent a false-positive rate
+    the review did not see."""
+    rng = np.random.default_rng((SEED if seed is None else seed) + 7)
+    out = {}
+    for name in ("census", "sample"):
+        n, k = int(block.get(f"{name}_n") or 0), int(block.get(f"{name}_real") or 0)
+        if n == 0:
+            out[name] = np.zeros(n_draws)
+        elif k == n and name == "census":
+            out[name] = np.ones(n_draws)
+        else:
+            out[name] = rng.beta(k + 0.5, n - k + 0.5, size=n_draws)
+    return out
+
+
 # Evidence a table can only LOSE by being re-derived with fewer inputs than the one it
 # replaces. `write_table` refuses such an overwrite unless the caller says so explicitly.
 # Not hypothetical: `configs/calibration/pakistan_candidate_precision.yaml` was
@@ -848,6 +895,8 @@ def _table_evidence(table: dict) -> set[str]:
         for b in bins
     ):
         evidence.add("register-p-unmapped")
+    if table.get(OVERSIZE_REVIEW_KEY):
+        evidence.add("oversize-review")
     return evidence
 
 
@@ -893,8 +942,13 @@ def candidate_p_real(
     glint_consistent: np.ndarray | None = None,
     min_consistent: int = 2,
     placement: np.ndarray | None = None,
+    fixed: np.ndarray | None = None,
 ) -> np.ndarray:
     """Per-candidate P(real): the bin prior, Bayes-updated where glint evidence exists.
+
+    `fixed` (NaN where absent) replaces the result outright for candidates priced by their
+    own review rather than by a size bin: an admitted outline above the merge cap
+    (`oversize_review`, `density.capacity_relevant_candidates` writes `p_real_fixed`).
 
     A glint-validated candidate (>= `min_consistent` mutually-consistent spike dates)
     gets posterior odds = prior odds * LR with LR = S_b / f - the same measured
@@ -921,26 +975,38 @@ def candidate_p_real(
     else:
         prior = np.array([table["bins"][b]["p_real"] for b in idx], dtype=float)
     if glint_consistent is None:
-        return prior
-    validated = np.asarray(glint_consistent) >= min_consistent
-    lr = np.asarray(SENSITIVITY, dtype=float)[idx] / FALSE_FLOOR
-    prior_c = prior.clip(1e-6, 1 - 1e-6)
-    odds = prior_c / (1.0 - prior_c) * lr
-    posterior = odds / (1.0 + odds)
-    return np.where(validated, posterior, prior)
+        out = prior
+    else:
+        validated = np.asarray(glint_consistent) >= min_consistent
+        lr = np.asarray(SENSITIVITY, dtype=float)[idx] / FALSE_FLOOR
+        prior_c = prior.clip(1e-6, 1 - 1e-6)
+        odds = prior_c / (1.0 - prior_c) * lr
+        posterior = odds / (1.0 + odds)
+        out = np.where(validated, posterior, prior)
+    if fixed is not None:
+        fixed = np.asarray(fixed, dtype=float)
+        out = np.where(np.isnan(fixed), out, fixed)
+    return out
 
 
 def candidate_recall(
     area_m2: np.ndarray, table: dict, floor: float = DEFAULT_RECALL_FLOOR,
     placement: np.ndarray | None = None,
+    fixed: np.ndarray | None = None,
 ) -> np.ndarray:
     """Per-candidate model recall for its size bin, clamped to `floor`.
 
     Bins whose recall was never measured (recall None / absent - pre-v2 tables)
     return 1.0: no correction rather than a made-up one. `placement` selects the
     candidate's own placement group's subtable when `table` carries
-    `placement_bins` -- see `candidate_p_real`.
+    `placement_bins` -- see `candidate_p_real`. A candidate with a `fixed` p_real (not
+    NaN, see `candidate_p_real`) gets 1.0: its review measured precision only, so it is
+    not scaled up to stand for installations nobody found.
     """
+    if fixed is not None:
+        fixed_mask = ~np.isnan(np.asarray(fixed, dtype=float))
+        out = candidate_recall(area_m2, table, floor=floor, placement=placement)
+        return np.where(fixed_mask, 1.0, out)
     idx = bin_index(area_m2)
     if placement is not None and "placement_bins" in table:
         groups = _placement_group(placement)

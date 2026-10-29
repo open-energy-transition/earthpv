@@ -360,3 +360,34 @@ placement_bins:
     sensitivity: 0.261
     p_real_lo: 0.4883
     p_real_hi: 0.5164
+oversize_review:
+  derived: '2026-10-29'
+  reviewer: owner, 2026-10-29, on the disk review page (four panels per outline);
+    s02, s06, s17 settled on a recheck with the assistant, whose first pass of 2026-10-28
+    is kept as verdict_prev
+  review_csv: results/india_oversize_review/review.csv
+  population: model-drawn outlines above max_candidate_m2 with no mapped solar within
+    min_distance_m of them (export.new_lead_mask)
+  max_candidate_m2: 100000.0
+  min_distance_m: 100.0
+  mapped_reference: data/labels/india_overpass_solar.parquet
+  census_min_area_m2: 2505773.8
+  census_n: 30
+  census_real: 30
+  sample_design: probability proportional to area, without replacement, seed 20261028,
+    from the outlines below the census
+  sample_n: 58
+  sample_real: 51
+  excluded_regions:
+  - "Arun\u0101chal Pradesh"
+  - "Him\u0101chal Pradesh"
+  - "Jammu and Kashm\u012Br"
+  - "Lad\u0101kh"
+  - Sikkim
+  - "Uttar\u0101khand"
+  excluded_sample_n: 2
+  excluded_sample_real: 0
+  p_real_census: 1.0
+  p_real_sample: 0.8793
+  p_real_sample_lo: 0.7931
+  p_real_sample_hi: 0.9345

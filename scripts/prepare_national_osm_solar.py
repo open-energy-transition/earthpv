@@ -98,8 +98,10 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
             ref["placement"] = "unknown"
         from earthpv.labels import dissolve_overlapping
 
+        raw = ref  # the undissolved features, for the cap's member floor below
         ref = dissolve_overlapping(ref).reset_index(drop=True)
     else:
+        raw = None  # already dissolved upstream: no members to recover
         ref = load_mapped_reference_attrs(aoi, cfg, settings).reset_index(drop=True)
     log.info("%s: %d reference features", aoi, len(ref))
 
@@ -137,6 +139,7 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
         ref["area_m2"] = [geodesic_area_m2(g) for g in ref.geometry]
     ref["area_m2"] = ref["area_m2"].fillna(0.0)
 
+    ref["placement_raw"] = ref["placement"].astype(object)
     placement = ref["placement"].fillna("unknown").to_numpy().astype(object)
     n_small = int((placement == "small").sum())
     placement[placement == "small"] = "rooftop"
@@ -166,10 +169,26 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
     # the land constant) and India's largest are tens of km2. The per-perimeter screen
     # (scripts/screen_osm_ground_perimeters.py) is the evidence: a feature is kept when it
     # was imaged and the checkpoint detects PV over at least `keep_min_det_frac` of it.
+    #
+    # ...and an outline that fails the screen is CREDITED, not dropped (2026-10-28,
+    # docs/results/india.md). Dropping it lost two things, both in India:
+    #   * the panels the model does see inside it. `density` already credits such an outline
+    #     at outline x det_frac on the model side, but there the size bin's p_real halved it
+    #     again, so Khavda's two outlines (150 km2, 44.6 km2 detected) came to Best at 1,123
+    #     MWp instead of ~2,230. Carried here at the same share, Verified holds it and Best's
+    #     per-cell floor takes it whole.
+    #   * plants mapped INSIDE it. The cap is applied after `dissolve_overlapping`, so a
+    #     3.4 km2 park nested in a 5.1 km2 site outline went out with the site, though alone
+    #     it is under the cap. The credit is floored at the union of such members.
+    # The credited share lands in `area_m2` (so every consumer that sums area is right) and
+    # in `screen_credit` (credited / outline, which `atlas._apply_screen_credit` reapplies
+    # after its own dissolve). Only an outline that earns nothing either way is dropped.
+    screen_credit = np.ones(len(ref))
+    n_credited, credited_km2, outline_km2 = 0, 0.0, 0.0
     if keep_detected_screen is not None and too_big.any():
-        scr = pd.read_csv(keep_detected_screen)
-        ok_ids = set(scr.loc[(scr["imaged_frac"] >= SCREEN_MIN_IMAGED_FRAC)
-                             & (scr["det_frac"] >= keep_min_det_frac), "id"])
+        scr = pd.read_csv(keep_detected_screen).drop_duplicates("id").set_index("id")
+        ok_ids = set(scr.index[(scr["imaged_frac"] >= SCREEN_MIN_IMAGED_FRAC)
+                               & (scr["det_frac"] >= keep_min_det_frac)])
         rescued = too_big & ref["id"].isin(ok_ids).to_numpy()
         if rescued.any():
             log.warning(
@@ -180,6 +199,24 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
                 100 * keep_min_det_frac,
             )
         too_big = too_big & ~rescued
+        for i in np.flatnonzero(too_big):
+            outline = float(ref["area_m2"].iat[i])
+            det = scr["det_frac"].get(ref["id"].iat[i], np.nan)
+            credit = outline * (0.0 if pd.isna(det) else float(det))
+            members = _sub_cap_member_m2(raw, ref.iloc[i], ground_max_m2)
+            credit = min(max(credit, members), outline)
+            if credit > 0:
+                screen_credit[i] = credit / outline
+                too_big[i] = False
+                n_credited += 1
+                credited_km2 += credit / 1e6
+                outline_km2 += outline / 1e6
+        if n_credited:
+            log.warning(
+                "crediting %d 'ground' features above %.0f m2 that fail the screen at the share "
+                "the model detects (floored at their nested sub-cap plants): %.1f of %.1f km2",
+                n_credited, ground_max_m2, credited_km2, outline_km2,
+            )
     n_dropped = int(too_big.sum())
     if n_dropped:
         log.warning(
@@ -189,6 +226,8 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
             n_dropped, ground_max_m2, ref["area_m2"].to_numpy()[too_big].sum() / 1e6,
             ref["area_m2"].to_numpy()[too_big].max() / 1e6,
         )
+    ref["screen_credit"] = screen_credit
+    ref["area_m2"] = ref["area_m2"].to_numpy(float) * screen_credit
     ref = ref[~too_big].reset_index(drop=True)
 
     log.info(
@@ -205,9 +244,33 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
         log.info("%d polygons traced around their panels (%d ground, %.0f m2)",
                  int(ref["panel_traced"].sum()), int(t.sum()), float(ref["area_m2"].to_numpy()[t].sum()))
     out.parent.mkdir(parents=True, exist_ok=True)
-    ref[["id", "placement", "area_m2", "source", "osm_timestamp", "panel_traced", "geometry"]].to_parquet(out)
+    ref[["id", "placement", "area_m2", "source", "osm_timestamp", "panel_traced", "screen_credit",
+         "geometry"]].to_parquet(out)
     log.info("Wrote %s", out)
     return out
+
+
+def _sub_cap_member_m2(raw, cluster, cap_m2: float) -> float:
+    """Geodesic area of the union of the undissolved features of `cluster`'s own placement
+    that lie mostly inside it and are each at or under the cap: the plants mapped inside an
+    outline, which the cap would have kept had it run before the dissolve. 0 without `raw`."""
+    import shapely
+
+    if raw is None:
+        return 0.0
+    cand = raw[raw.geometry.geom_type.isin(("Polygon", "MultiPolygon"))
+               & (raw["placement"].astype(str) == str(cluster["placement_raw"]))
+               & (raw["id"] != cluster["id"])]
+    cand = cand[cand.intersects(cluster.geometry)]
+    if cand.empty:
+        return 0.0
+    area = np.array([geodesic_area_m2(g) for g in cand.geometry])
+    inside = np.array([geodesic_area_m2(shapely.intersection(g, cluster.geometry))
+                       for g in cand.geometry])
+    keep = (area <= cap_m2) & (inside >= 0.5 * np.maximum(area, 1e-9))
+    if not keep.any():
+        return 0.0
+    return float(geodesic_area_m2(shapely.union_all(cand.geometry.to_numpy()[keep])))
 
 
 def main() -> None:

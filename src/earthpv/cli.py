@@ -1917,7 +1917,16 @@ def calibrate_candidates(
         by_placement=by_placement, mapped_attrs=mapped_attrs,
         p_unmapped_by_placement=p_u_by_placement,
     )
-    cc.write_table(table, out or cc.default_table_path(aoi), allow_downgrade=allow_downgrade)
+    dest = out or cc.default_table_path(aoi)
+    # The oversize review prices model outlines ABOVE the merge cap, which these bins never
+    # see (`capacity_relevant_candidates` is called above without an admission), so a
+    # re-derivation keeps it rather than dropping evidence it has no way to re-measure.
+    prior = cc.load_table(dest) if Path(dest).exists() else {}
+    if prior.get(cc.OVERSIZE_REVIEW_KEY) and not allow_downgrade:
+        table[cc.OVERSIZE_REVIEW_KEY] = prior[cc.OVERSIZE_REVIEW_KEY]
+        typer.echo(f"carried forward the oversize review from {dest} "
+                   f"({prior[cc.OVERSIZE_REVIEW_KEY].get('review_csv')})")
+    cc.write_table(table, dest, allow_downgrade=allow_downgrade)
     for row in table["bins"]:
         rec = "recall=  n/a" if row["recall"] is None else f"recall={row['recall']:.3f}"
         typer.echo(
