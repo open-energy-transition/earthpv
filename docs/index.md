@@ -84,8 +84,15 @@ reads only Sentinel-2, people read only the high-resolution layers, and what the
 becomes openly licensed training data for the next model. The next update costs close to
 nothing, and anyone can reproduce, check or improve the result.
 
-![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.svg#only-light)
-![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
+**The mapping flywheel.** Checking the model's leads is one way in. People also map
+calibration areas, where every panel is traced so the small-installation estimate can be
+fitted and checked, and track down the registers and statistics a country already keeps.
+Everything mapped goes into OpenStreetMap and comes back as counted capacity and as training
+labels for the country's next model. An LLM assistant helps at every station and makes none
+of the calls. [Contribute data](contribute/index.md) shows where to start.
+
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.svg#only-light)
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
 
 **Keeping it current.** An update is a re-run of the same pipeline on new imagery: new
 detections become mapping leads, what mappers confirm becomes verified capacity and

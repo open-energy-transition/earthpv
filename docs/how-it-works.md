@@ -16,12 +16,16 @@ everything that was tried, including the majority that did not ship.
 
 ## Workflow
 
-The technical novelty in EarthPV is not one model. It is a loop that combines free
-low-resolution imagery, an open foundation model, and human mappers working inside
-OpenStreetMap with the high-resolution imagery they are already licensed to look at.
+The technical novelty in EarthPV is not one model. It is a wheel that combines free
+low-resolution imagery, open foundation models, human mappers working inside OpenStreetMap
+with the high-resolution imagery they are already licensed to look at, and the local data a
+country already keeps. The model does three of its six stations and people do the other
+three; OpenStreetMap sits at the hub, because everything people map goes in there and comes
+back out as counted capacity and as training labels. Each turn leaves the map more complete,
+the models more local and the estimate better measured.
 
-![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.svg#only-light)
-![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.svg#only-light)
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
 
 ### Why the loop exists
 
@@ -38,32 +42,32 @@ as an ordinary, openly licensed feature; and that feature is legitimate training
 the next model. Nothing proprietary crosses into the model, and nothing the model produces
 is trusted until a person has looked at it.
 
-### The four steps
+The leads alone would turn the wheel for large arrays, which is how it started. Most of a
+country's rooftop solar is too small for any 10 m model to outline, and a number for it
+needs two things a lead cannot give: areas where *every* panel is mapped, to fit and check
+the small-installation estimate on, and whatever the country itself already counts, to set
+the result beside. Those are stations 4 and 5.
 
-#### 1. Labels from OpenStreetMap
+### The six stations
 
-`earthpv labels` reads solar polygons for an area either from Overture Maps (a periodic
-OpenStreetMap snapshot, convenient but lagging) or, for a freshly mapped region,
-`earthpv overpass-labels` queries the live Overpass API. Building footprints come from
-Overture and from VIDA Open Buildings, which is imagery-derived and therefore includes the
-small, unmapped structures that OpenStreetMap in Pakistan does not yet have.
+#### 1. Detect from space
 
-#### 2. Train on Sentinel-2
+`earthpv infer` runs the country's TerraMind checkpoint over every 0.1&deg;
+cell of dry-season Sentinel-2 composites and writes one probability raster per cell. Below
+the 400 m<sup>2</sup> floor, where an array has no outline in 10 m pixels, a per-building
+classifier (`roofclf`) scores every roof and, where farm areas calibrate it, a pixel
+detector (`groundclf`) scores small arrays beside fields ([two ways to see a
+panel](#two-ways-to-see-a-panel-in-a-10-m-pixel)). Building footprints come from VIDA Open
+Buildings, which is imagery-derived and therefore includes the small structures
+OpenStreetMap does not yet have.
 
-`earthpv chips` cuts training windows out of dry-season Sentinel-2 composites and burns
-the label polygons into per-pixel masks. `earthpv train` fine-tunes TerraMind-tiny through
-TerraTorch. Training started on Germany, where OpenStreetMap solar mapping is dense and
-close to complete, and then added Pakistani chips as the loop produced them. See
-[Detection model](methods/detection.md) for what that buys.
+#### 2. Publish the evidence atlas and the leads
 
-#### 3. Rank candidates and publish leads
-
-`earthpv infer` writes a probability raster per grid cell; `earthpv postprocess`
-polygonizes it, attaches each candidate to a building footprint, and scores it.
-The pipeline is deliberately **recall-first**: false positives cost a mapper a few
-seconds, whereas a missed installation is invisible forever. Nothing is dropped by the
-default export. What the priors do is reorder the queue so mappers hit real installations
-first:
+`earthpv postprocess` polygonizes each raster, attaches each candidate to a building
+footprint, and scores it. The pipeline is deliberately **recall-first**: false positives
+cost a mapper a few seconds, whereas a missed installation is invisible forever. Nothing is
+dropped by the default export. What the priors do is reorder the queue so mappers hit real
+installations first:
 
 | Signal | What it does | Direction |
 | --- | --- | --- |
@@ -73,19 +77,79 @@ first:
 | Vegetation veto | a crop cycle observed over the year, so not a panel | drops, into a separate clean file |
 
 `earthpv export` writes GeoParquet, GeoJSON and a MapRoulette challenge ordered by
-`rank_score`.
+`rank_score`, and each country's atlas links its file of [mapping leads](results/leads.md):
+the candidates more than 100 m from any solar installation already in OpenStreetMap. The
+atlas itself publishes the best estimate with its 90% range and every gap as a gap: cells
+nobody imaged are hatched, an instrument that has not been calibrated reads "not measured"
+rather than zero, and the candidate calibration areas still to map are drawn on the map, a
+star on the one to start with.
 
-#### 4. People verify, and the labels come back
+#### 3. Map the leads
 
 Mappers open each lead in the OpenStreetMap editor, compare it against the
 high-resolution layers, and either map the installation properly or discard the lead.
 Local mappers add what no imagery shows: which industrial estate this is, whether the roof
-belongs to a factory or a school, whether the array is net-metered.
+belongs to a factory or a school, whether the array is net-metered. Leads carry no
+completeness rule ([Map the leads with JOSM](contribute/leads.md)).
 
-Verified installations then flow straight back into step 1 through the Overpass label path.
-The label-driven compose run in Punjab unlocked roughly 2,500 in-domain Pakistani
-positives this way, and adding them tripled large-array recall in Punjab compared with the
-Germany-only model.
+#### 4. Map calibration areas
+
+A calibration area is a box, usually 1 to 3 km across, in which a mapper traces **every**
+visible panel down to the smallest rooftop unit
+([the protocol](calibration-mapping-protocol.md)). New candidates are drawn at random across
+a country's building-density range rather than picked by hand, so the sample is not chosen
+for its solar. Complete areas are what the small-installation half is fitted and tested on:
+`roofclf`'s leave-one-area-out skill, its coverage ratio and area recall per building size
+and density stratum, and the density band a figure is published in all come from
+them ([Calibration quadrats](methods/calibration-quadrats.md)). Pakistan has 30
+in its fit. A country without any publishes large installations only, and its atlas says so.
+
+#### 5. Investigate local datasets
+
+Every country keeps some count of its own solar: a register, the statistics office or
+energy ministry, a utility's net-metering list, a published study. Each one found is read
+for what it actually counts (registered or installed, AC or DC, rooftop or ground, above
+which size) and for its licence, then drawn beside the atlas in its *Against official and
+published figures* section, nationally and per province. None is treated as ground truth
+for the map, and none is used to score it. A register that is legally complete and
+geolocated goes further and becomes a calibration instrument: Germany's
+[MaStR](methods/mastr-validation.md) replaces calibration areas for its small-installation
+half and measures segmentation's precision, France's [ODRE register](methods/france-validation.md)
+measured the module constant at 0.150 kWp/m<sup>2</sup>, and India's MNRE register puts
+ground-mounted Best at 0.88 of registered with a rank agreement of 0.95 over 19 states.
+Customs records give an [import ceiling](methods/validity.md#an-upper-ceiling-from-customs-data)
+where a country has no domestic manufacturing.
+
+#### 6. Retrain and recalibrate
+
+Newly mapped installations come back through the live Overpass pull (`earthpv
+overpass-labels`). `earthpv chips` cuts training windows around them and burns the label
+polygons into per-pixel masks, and `earthpv train` fine-tunes TerraMind-tiny on the
+country's own labels. The localized checkpoint ships only if it beats the general model on
+a held-out region (a tie goes to the local one); see
+[Detection model](methods/detection.md). This is where the wheel first paid off: the
+label-driven compose in Punjab unlocked roughly 2,500 in-domain Pakistani positives, and
+adding them tripled large-array recall there against the Germany-only model.
+
+Newly registered calibration areas refit `roofclf` and its coverage ratio, can widen the
+density band a figure is published in, and reviewed samples of the model's candidates
+re-derive its precision table. The next turn of station 1 starts from all of it.
+
+### An LLM assistant at every station
+
+EarthPV is built and run with an LLM coding assistant, and the repository is written to be
+read by one: `CLAUDE.md` holds the pipeline's current state, its invariants and the
+mistakes already made ([running this with a coding
+agent](reproduce.md#running-this-with-claude-or-another-coding-agent)). Around the wheel an
+assistant runs and watches the long stages, finds a country's registers and statistics and
+reads them (India's MNRE register was fetched through the statistics ministry's own data
+service this way), prepares candidate areas and review pages, gives a first reading of a
+sample that a person then reviews, and answers mappers' questions about the editors and
+tagging.
+
+The boundary is fixed. An assistant never edits OpenStreetMap, never declares a
+calibration area complete, and never signs off a validation or a published number: every
+point where evidence enters the estimate is a person's call.
 
 ### Two ways to see a panel in a 10 m pixel
 

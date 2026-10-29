@@ -11,6 +11,28 @@ browser. No coding, no data download, no install if you use iD.
 outside it nothing is, and the two look the same on imagery. That guarantee is what makes
 an area useful, and it stops exactly at the line.*
 
+## The mapping flywheel
+
+EarthPV is not mapped once and left. Each country turns a wheel of six stations, and every
+turn starts from a better map than the last. The model does three of them: it detects solar
+in free Sentinel-2 imagery, publishes the country's atlas with its leads and the areas still
+to map, and is retrained and recalibrated on what people found. **You come in at the other
+three**, and whatever you map goes through OpenStreetMap at the hub: it is counted in the
+next atlas, and the next model learns from it.
+
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](../assets/figures/osm_ai_flywheel.svg#only-light)
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](../assets/figures/osm_ai_flywheel.dark.svg#only-dark)
+
+| way in | what you do | what it changes | start here |
+|---|---|---|---|
+| **3. Map the leads** | check the arrays of about 400 m<sup>2</sup> and more that the model found and OpenStreetMap lacks; trace what is really there | each one is counted at the next rebuild and becomes a training example for the country's own model | [Map the leads with JOSM](leads.md) |
+| **4. Map a calibration area** | trace **every** panel inside one box, down to the smallest rooftop unit | the small-installation estimate is fitted and checked on complete areas; they move a country from Bronze towards Gold | [the steps below](#how-it-works) |
+| **5. Investigate a local dataset** | find the register, statistics or study your country already has, and tell us what it counts | it is drawn beside the atlas, and a legally complete register can calibrate it | [Know a local dataset?](#know-a-local-dataset) |
+
+None of the three needs the others first, and none needs any coding.
+[How it works](../how-it-works.md#workflow) describes all six stations, and an
+[LLM assistant can help you](#help-from-an-llm-assistant) at any of them.
+
 ## What your mapping changes
 
 **Every installation you map is counted.** Each country's atlas adds the solar mapped in
@@ -83,6 +105,56 @@ array, mostly of 400 m<sup>2</sup> and more, that OpenStreetMap does not have. L
 with no completeness rule. Each one you check and map is counted in the atlas and becomes a
 training example for that country's own model. [Map the leads with JOSM](leads.md) walks
 through it with the OpenData, Todo list and continuous download plugins.
+
+## Know a local dataset?
+
+Most countries already count some of their solar, and a person who knows the country often
+knows where. Useful sources include:
+
+- a national or regional **register** of PV installations, or a grid operator's list of
+  connections;
+- figures from the **statistics office, energy ministry or regulator**, best of all per
+  province or district;
+- a utility's **net-metering** or subsidy records;
+- a **published study**, thesis or report with its own estimate, or local mapping of solar
+  or rooftops.
+
+Each one is read for what it actually counts (registered or installed, AC or DC, rooftop or
+ground, above which size, as of which date) and for its licence, then drawn beside the
+estimate in the atlas's *Against official and published figures* section, nationally and
+per province. It is never used to score the map, because none of them is ground truth for
+it: a register counts what is registered, a study what its own method sees. A register
+that is legally complete and geolocated can go further and calibrate the estimate, as
+Germany's [MaStR](../methods/mastr-validation.md) does for its small installations; France's
+[ODRE register](../methods/france-validation.md) measured how much capacity a square metre
+of panel carries.
+
+To point us to one, [open an issue](https://github.com/open-energy-transition/earthpv/issues/new)
+with a link, its licence, the date it refers to, and what it counts if you know. A dataset
+we may only read, not reuse, is still worth a comparison.
+
+## Help from an LLM assistant
+
+You do not have to work any station alone. An LLM assistant (a chat assistant, or a coding
+agent such as Claude Code in a copy of this repository) is good at the parts around the
+mapping:
+
+- **Mapping**: explaining a JOSM or iD step, a plugin error or a validator warning; which
+  tags a rooftop array, a solar water heater or a fenced park takes; what the fields in a
+  lead file mean.
+- **Local datasets**: finding a country's register or statistics, reading a report in
+  another language, turning a PDF table into a spreadsheet, and working out what a figure
+  counts. India's register was fetched and read this way.
+- **Running the pipeline**: the repository is written to be read by an agent, with
+  `CLAUDE.md` as its brief and a [runbook for agents](../reproduce.md#running-this-with-claude-or-another-coding-agent).
+
+What it must not do is the part only a person can vouch for. **Never let an assistant edit
+OpenStreetMap**, draw geometry for upload or decide that an area is complete: you trace
+every panel yourself, from imagery you have looked at, and OpenStreetMap's
+[Automated Edits code of conduct](https://wiki.openstreetmap.org/wiki/Automated_Edits_code_of_conduct)
+applies to anything else. The same line runs through EarthPV itself: an assistant prepares
+candidate areas, review pages and first readings, and a person makes every call that puts
+evidence into an estimate.
 
 ## Where help is needed
 

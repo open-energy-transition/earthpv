@@ -1759,62 +1759,6 @@ def fig_pv_vs_building(t: Theme):
 
 # ----------------------------------------------------- hand-authored SVG diagrams
 
-FLYWHEEL = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="480"
-     viewBox="0 0 900 480" font-family="DejaVu Sans, system-ui, sans-serif">
-  <defs>
-    <marker id="a{sfx}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8"
-            orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="{s1}"/>
-    </marker>
-    <marker id="b{sfx}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8"
-            orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="{s2}"/>
-    </marker>
-  </defs>
-  <rect width="900" height="480" rx="10" fill="{surface}"/>
-  <text x="50" y="42" font-size="17" font-weight="600" fill="{ink}">The mapping flywheel</text>
-  <text x="50" y="64" font-size="12" fill="{dim}">Every turn leaves the training data larger, cleaner and more local.</text>
-
-  <g stroke="{s1}" stroke-width="2" fill="none" marker-end="url(#a{sfx})">
-    <path d="M432,148 H466"/>
-    <path d="M660,196 V266"/>
-  </g>
-  <g stroke="{s2}" stroke-width="2" fill="none" marker-end="url(#b{sfx})">
-    <path d="M468,330 H434"/>
-    <path d="M240,266 V200"/>
-  </g>
-
-  <rect x="50" y="102" width="382" height="94" rx="8" fill="{card}" stroke="{rule}"/>
-  <text x="72" y="132" font-size="13" font-weight="600" fill="{ink}">1. OpenStreetMap labels</text>
-  <text x="72" y="154" font-size="11" fill="{dim}">Solar polygons drawn by mappers, pulled live</text>
-  <text x="72" y="172" font-size="11" fill="{dim}">through Overpass or Overture Maps.</text>
-
-  <rect x="468" y="102" width="382" height="94" rx="8" fill="{card}" stroke="{rule}"/>
-  <text x="490" y="132" font-size="13" font-weight="600" fill="{ink}">2. Fine-tune TerraMind on Sentinel-2</text>
-  <text x="490" y="154" font-size="11" fill="{dim}">Free 10 m imagery, worldwide, every five days.</text>
-  <text x="490" y="172" font-size="11" fill="{dim}">No commercial tile licence in the way.</text>
-
-  <rect x="468" y="266" width="382" height="128" rx="8" fill="{card}" stroke="{rule}"/>
-  <text x="490" y="296" font-size="13" font-weight="600" fill="{ink}">3. Rank candidates, publish leads</text>
-  <text x="490" y="318" font-size="11" fill="{dim}">Recall-first. A building prior, glint corroboration,</text>
-  <text x="490" y="336" font-size="11" fill="{dim}">a pre-boom epoch check and a vegetation veto</text>
-  <text x="490" y="354" font-size="11" fill="{dim}">reorder the queue; a MapRoulette challenge</text>
-  <text x="490" y="372" font-size="11" fill="{dim}">carries it to mappers.</text>
-
-  <rect x="50" y="266" width="382" height="128" rx="8" fill="{card}" stroke="{rule}"/>
-  <text x="72" y="296" font-size="13" font-weight="600" fill="{ink}">4. People verify what the model found</text>
-  <text x="72" y="318" font-size="11" fill="{dim}">Local mappers open each lead in the OpenStreetMap</text>
-  <text x="72" y="336" font-size="11" fill="{dim}">editor, check it against Esri, Bing and Mapbox</text>
-  <text x="72" y="354" font-size="11" fill="{dim}">imagery, then map it properly with local context.</text>
-  <text x="72" y="376" font-size="11" fill="{s2}">Verified installations become the next training labels.</text>
-
-  <text x="676" y="236" font-size="11" fill="{s1}">detections out</text>
-  <text x="256" y="236" font-size="11" fill="{s2}">verified labels back in</text>
-  <text x="50" y="440" font-size="11" fill="{dim}">Only free and openly licensed imagery reaches the model. The high-resolution</text>
-  <text x="50" y="458" font-size="11" fill="{dim}">layers are used by people, inside the editor, where their licences allow it.</text>
-</svg>
-"""
-
 PIPELINE_STRIP = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="214"
      viewBox="0 0 900 214" font-family="DejaVu Sans, system-ui, sans-serif">
   <rect width="900" height="214" rx="10" fill="{surface}"/>
@@ -1912,7 +1856,7 @@ LIGHT_PATHS = """<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360
 
 # ---------------------------------------------------- generated architecture diagram
 #
-# Unlike FLYWHEEL/PIPELINE_STRIP above, this one is built programmatically: too many
+# Unlike PIPELINE_STRIP above, this one is built programmatically: too many
 # boxes (18) and cross-lane arrows to hand-place reliably as a static template.
 
 ARCH_W = 1200
@@ -2506,6 +2450,169 @@ def write_evidence_workflow_diagram():
         print(f"  wrote {path.relative_to(ROOT)}")
 
 
+# ------------------------------------------------------------- the mapping flywheel
+#
+# Six stations clockwise round an elliptical ring, OpenStreetMap at the hub. The teal
+# spokes are what passes through the map (mapped panels in; the atlas counts them and the
+# models learn from them), the pale band marks the stations people do, and the dashed
+# frame round the whole wheel is the LLM assistant. Detail lives in the page prose: the
+# figure is drawn to stay legible at the docs column width (about 575 px), so it carries
+# titles, not paragraphs. Angles run clockwise from east, as SVG's y axis points down.
+
+FLY_W = 760
+FLY_CX, FLY_CY = 380, 300
+FLY_RX, FLY_RY = 250, 172  # the station ring
+FLY_HUB = 72
+FLY_PILL = (222, 54)       # station card, width x height
+FLY_FRAME_TOP = 78
+
+FLY_STATIONS = [
+    # (angle, title, subtitle, done by people)
+    (-90, "Detect from space", "Sentinel-2, open models", False),
+    (-30, "Publish the atlas", "estimate, leads, areas", False),
+    (30, "Map the leads", "arrays of 400 m² and up", True),
+    (90, "Map calibration areas", "every panel inside the line", True),
+    (150, "Local datasets", "registers, statistics", True),
+    (210, "Retrain, recalibrate", "on the new local labels", False),
+]
+# Spokes through the hub, by station index: (station, direction).
+FLY_SPOKES = [(2, "in"), (3, "in"), (5, "out"), (1, "out")]
+
+
+def build_flywheel_svg(t: Theme) -> str:
+    cx, cy = FLY_CX, FLY_CY
+    pw, ph = FLY_PILL
+    parts: list[str] = []
+
+    def at(deg):
+        a = np.radians(deg)
+        return cx + FLY_RX * np.cos(a), cy + FLY_RY * np.sin(a)
+
+    def in_pill(x, y, margin):
+        return any(abs(x - px) <= pw / 2 + margin and abs(y - py) <= ph / 2 + margin
+                   for px, py in (at(s[0]) for s in FLY_STATIONS))
+
+    def ring_arc(d0, d1):
+        """The ring between two angles, trimmed to where it leaves both cards."""
+        ts = np.linspace(d0, d1, 400)
+        free = [d for d in ts if not in_pill(*at(d), margin=7)]
+        a0, a1 = free[0], free[-1]
+        (x0, y0), (x1, y1) = at(a0), at(a1)
+        return f"M{x0:.1f},{y0:.1f} A{FLY_RX},{FLY_RY} 0 0 1 {x1:.1f},{y1:.1f}"
+
+    def text(x, y, s, size=12, fill=None, weight=None, anchor="start"):
+        w = f' font-weight="{weight}"' if weight else ""
+        parts.append(f'<text x="{x:.0f}" y="{y:.0f}" font-size="{size}" '
+                     f'fill="{fill or t.ink_dim}" text-anchor="{anchor}"{w}>{_esc(s)}</text>')
+
+    def marker(color):
+        return f"url(#ah-{color.lstrip('#')}-{t.name})"
+
+    parts.append(f'<text x="24" y="36" font-size="18.5" font-weight="600" fill="{t.ink}">'
+                 'The mapping flywheel</text>')
+    text(24, 59, "Each turn leaves the map more complete and the models more local.", size=13)
+
+    # The assistant's frame round the whole wheel, labelled on its top edge.
+    frame_bottom = cy + FLY_RY + ph / 2 + 92
+    parts.append(f'<rect x="12" y="{FLY_FRAME_TOP}" width="{FLY_W - 24}" '
+                 f'height="{frame_bottom - FLY_FRAME_TOP:.0f}" rx="12" fill="none" '
+                 f'stroke="{t.ink_dim}" stroke-width="1.4" stroke-dasharray="6 5"/>')
+    parts.append(f'<rect x="26" y="{FLY_FRAME_TOP - 10}" width="118" height="20" '
+                 f'fill="{t.surface}"/>')
+    text(34, FLY_FRAME_TOP + 5, "LLM assistant", size=12.5, fill=t.ink, weight="600")
+
+    # The people band, under the stations it spans.
+    people = [s[0] for s in FLY_STATIONS if s[3]]
+    (x0, y0), (x1, y1) = at(people[0] - 16), at(people[-1] + 16)
+    parts.append(f'<path d="M{x0:.1f},{y0:.1f} A{FLY_RX},{FLY_RY} 0 0 1 {x1:.1f},{y1:.1f}" '
+                 f'fill="none" stroke="{t.s3}" stroke-opacity="0.16" stroke-width="78" '
+                 f'stroke-linecap="round"/>')
+
+    n = len(FLY_STATIONS)
+    for i in range(n):
+        d0 = FLY_STATIONS[i][0]
+        d1 = FLY_STATIONS[(i + 1) % n][0]
+        d1 += 360 if d1 < d0 else 0
+        parts.append(f'<path d="{ring_arc(d0, d1)}" fill="none" stroke="{t.ink_dim}" '
+                     f'stroke-width="2.2" marker-end="{marker(t.ink_dim)}"/>')
+
+    for i, direction in FLY_SPOKES:
+        px, py = at(FLY_STATIONS[i][0])
+        dx, dy = px - cx, py - cy
+        length = np.hypot(dx, dy)
+        # where the centre-to-card line meets the card's edge
+        hit = max(1 - (pw / 2) / abs(dx) if abs(dx) > 1e-6 else -1,
+                  1 - (ph / 2) / abs(dy) if abs(dy) > 1e-6 else -1)
+        near, far = (FLY_HUB + 7) / length, hit - 8 / length
+        a, b = (far, near) if direction == "in" else (near, far)
+        parts.append(f'<path d="M{cx + a * dx:.1f},{cy + a * dy:.1f} '
+                     f'L{cx + b * dx:.1f},{cy + b * dy:.1f}" stroke="{t.s3}" '
+                     f'stroke-width="2.2" marker-end="{marker(t.s3)}"/>')
+
+    parts.append(f'<circle cx="{cx}" cy="{cy}" r="{FLY_HUB}" fill="{t.card}" stroke="{t.s3}" '
+                 f'stroke-width="2.2"/>')
+    text(cx, cy - 6, "OpenStreetMap", size=14.5, fill=t.s3, weight="600", anchor="middle")
+    text(cx, cy + 14, "every checked panel,", size=11, anchor="middle")
+    text(cx, cy + 28, "openly licensed", size=11, anchor="middle")
+
+    for i, (deg, title, sub, by_people) in enumerate(FLY_STATIONS, start=1):
+        px, py = at(deg)
+        stroke = t.s3 if by_people else t.rule
+        parts.append(f'<rect x="{px - pw / 2:.1f}" y="{py - ph / 2:.1f}" width="{pw}" '
+                     f'height="{ph}" rx="9" fill="{t.card}" stroke="{stroke}" '
+                     f'stroke-width="1.4"/>')
+        nx = px - pw / 2 + 22
+        parts.append(f'<circle cx="{nx:.1f}" cy="{py:.1f}" r="13" fill="none" '
+                     f'stroke="{t.ink}" stroke-width="1.4"/>')
+        text(nx, py + 5, str(i), size=13, fill=t.ink, weight="600", anchor="middle")
+        text(nx + 22, py - 3, title, size=13.5, fill=t.ink, weight="600")
+        text(nx + 22, py + 15, sub, size=11.5)
+
+    # What the assistant does and the line it does not cross, inside its own frame.
+    cap_y = cy + FLY_RY + ph / 2 + 38
+    text(cx, cap_y, "Runs the pipeline, finds and reads local data, prepares areas and "
+         "review pages,", anchor="middle")
+    text(cx, cap_y + 18, "answers mapping questions. It never edits OpenStreetMap or signs off "
+         "a number: people do.", fill=t.ink, anchor="middle")
+
+    # Legend: one key per encoding the wheel uses.
+    ly = frame_bottom + 32
+    for kx, kind, label in [(24, "spoke", "through OpenStreetMap: counted, and learned from"),
+                            (430, "band", "stations people do")]:
+        if kind == "spoke":
+            parts.append(f'<path d="M{kx},{ly - 4} H{kx + 30}" stroke="{t.s3}" '
+                         f'stroke-width="2.2" marker-end="{marker(t.s3)}"/>')
+        else:
+            parts.append(f'<rect x="{kx}" y="{ly - 14}" width="30" height="20" rx="10" '
+                         f'fill="{t.s3}" fill-opacity="0.16"/>')
+        text(kx + 40, ly + 1, label, size=12)
+
+    note_y = ly + 30
+    text(24, note_y, "Only free, openly licensed imagery reaches the models. People read the "
+         "high-resolution", size=11.5)
+    text(24, note_y + 16, "layers, inside the editor, where their licences allow it.", size=11.5)
+
+    height = note_y + 16 + 20
+    markers = _svg_markers(t)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{FLY_W}" height="{height:.0f}" '
+        f'viewBox="0 0 {FLY_W} {height:.0f}" '
+        f'font-family="DejaVu Sans, system-ui, sans-serif">'
+        f'<defs>{"".join(markers)}</defs>'
+        f'<rect width="{FLY_W}" height="{height:.0f}" rx="10" fill="{t.surface}"/>'
+        f'{"".join(parts)}</svg>'
+    )
+
+
+def write_flywheel_diagram():
+    OUT.mkdir(parents=True, exist_ok=True)
+    for t in THEMES:
+        suffix = ".svg" if t.name == "light" else ".dark.svg"
+        path = OUT / f"osm_ai_flywheel{suffix}"
+        path.write_text(build_flywheel_svg(t))
+        print(f"  wrote {path.relative_to(ROOT)}")
+
+
 def write_svg_pair(template: str, stem: str):
     for t in THEMES:
         svg = template.format(surface=t.surface, ink=t.ink, dim=t.ink_dim, rule=t.rule,
@@ -2796,7 +2903,7 @@ def main():
         fig_germany_calibration(t)
         fig_germany_register_validation(t)
     print("diagrams")
-    write_svg_pair(FLYWHEEL, "osm_ai_flywheel")
+    write_flywheel_diagram()
     write_svg_pair(PIPELINE_STRIP, "two_products")
     write_svg_pair(LIGHT_PATHS, "roofclf_light_paths")
     write_architecture_diagram()

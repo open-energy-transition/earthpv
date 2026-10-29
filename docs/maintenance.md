@@ -7,8 +7,8 @@ updating a country is a **re-run of the same pipeline on new imagery**, not a ne
 and so that every round leaves the next one better informed: more of the map verified by
 people, more local training data, and a calibration measured against a larger reference.
 
-![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.svg#only-light)
-![The mapping flywheel: OpenStreetMap labels train a TerraMind model on Sentinel-2 imagery, the model publishes ranked candidates as mapping leads, local mappers verify each lead against high-resolution imagery in the OpenStreetMap editor, and the verified installations become the next round of training labels.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.svg#only-light)
+![The mapping flywheel: six numbered stations run clockwise round a ring with OpenStreetMap at the hub. 1, detect from space with each country's TerraMind model and the small-installation classifiers. 2, publish the evidence atlas with mapping leads and areas to map. 3, people map the leads of 400 square metres and more. 4, people map calibration areas completely. 5, people investigate local datasets such as registers and official statistics. 6, retrain the models and recalibrate on what was mapped. Arrows from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry them to the atlas as counted capacity and to retraining as labels. A dashed frame round the whole wheel marks an LLM assistant that helps at every station but never edits OpenStreetMap, declares an area complete or signs off a number.](assets/figures/osm_ai_flywheel.dark.svg#only-dark)
 
 ## One round of maintenance
 
@@ -72,6 +72,12 @@ from finished outputs takes seconds.
   Africa's own model beat the general one clearly (pixel IoU 0.671 against 0.364); with
   seven and nine, Egypt's and Yemen's holdouts decided on four installations and on none.
   Mapping is what turns a country from the second case into the first.
+
+- **What is measured widens.** Each newly completed calibration area refits the
+  small-installation classifier and can widen the building-density band a figure is
+  published in, and each local dataset found adds a register or statistic the atlas is
+  drawn beside. Those are stations 4 and 5 of the [flywheel](how-it-works.md#workflow), and
+  neither waits for new imagery.
 
 ## Checks that keep an update honest
 
