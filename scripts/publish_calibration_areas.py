@@ -34,6 +34,10 @@ first carries `start_here`, which the atlas draws as a star: the purposive start
 (`propose_calibration_candidates.py --priority`: dense, most roof in large buildings) by
 large-roof area, then the sampled ones from the densest down. Ranked here rather than when
 drawn, so once the starred box is registered the star moves on to the next one by itself.
+A country config's `start_here` (`configs/atlas/<aoi>.yaml`) puts that candidate first and
+ranks the country's candidates on any atlas, Bronze or not: which box to map first is then
+a judgement the config records (Yemen: the PV-rich town box with the most panels on Esri
+imagery, 2026-10-29).
 
 Every feature carries `do_not_upload`, and only whitelisted properties: a boundary's own
 properties include local paths (`source_geojson`, `labels_file`) that do not belong on a
@@ -122,21 +126,25 @@ def _label(stem: str) -> str:
 
 
 def _priority_key(f: dict) -> tuple:
-    """Start-here boxes first, by roof area in large buildings; then the rest densest first;
-    farm boxes (`propose_calibration_candidates.py --farmland`) last, by cropland share. A
-    9 km2 farm box is a longer job for a different instrument, and ranking it among the
-    building boxes would reorder those every time farm candidates are drawn."""
+    """Start-here boxes first, by roof area in large buildings (`--pv-rich` boxes, which
+    carry none, by their count of likely-PV roofs); then the rest densest first; farm boxes
+    (`propose_calibration_candidates.py --farmland`) last, by cropland share. A 9 km2 farm
+    box is a longer job for a different instrument, and ranking it among the building boxes
+    would reorder those every time farm candidates are drawn."""
     p = f["properties"]
     if str(p.get("selection", "")).startswith(PURPOSIVE):
-        return (0, -(p.get("own_large_roof_m2") or 0), p["id"])
+        return (0, -(p.get("own_large_roof_m2") or 0), -(p.get("own_likely_pv_roofs") or 0),
+                p["id"])
     if roofclf.FARM_QUADRAT_INFIX in p["id"]:
         return (2, -(p.get("own_crop_frac") or 0), p["id"])
     return (1, -(p.get("own_density_bldg_km2") or p.get("density_bldg_km2") or 0), p["id"])
 
 
-def rank_candidates(feats: list[dict]) -> list[dict]:
-    """`priority` 1..N on the candidates, `start_here` on the first, candidates in that order."""
-    cands = sorted((f for f in feats if f["properties"]["kind"] == "candidate"), key=_priority_key)
+def rank_candidates(feats: list[dict], first: str = "") -> list[dict]:
+    """`priority` 1..N on the candidates, `start_here` on the first, candidates in that order;
+    `first` (a candidate's id) leads whatever the ranking says."""
+    cands = sorted((f for f in feats if f["properties"]["kind"] == "candidate"),
+                   key=lambda f: (f["id"] != first, _priority_key(f)))
     for i, f in enumerate(cands, 1):
         p = f["properties"]
         tail = {k: p.pop(k) for k in ("note", "do_not_upload") if k in p}
@@ -199,11 +207,17 @@ def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS,
                                   # --priority boxes only.
                                   "own_large_buildings": p.get("own_large_buildings"),
                                   "own_large_roof_m2": p.get("own_large_roof_m2"),
+                                  # --pv-rich boxes only.
+                                  "own_likely_pv_roofs": p.get("own_likely_pv_roofs"),
                                   "imagery_layer": p.get("imagery_layer"),
                                   "imagery_date": p.get("imagery_date"),
                                   "selection": p.get("selection"),
                                   "note": p.get("note")}))
-    return rank_candidates(feats) if rank else feats
+    if cfg.start_here and not any(f["id"] == cfg.start_here for f in feats):
+        # Registered since: the star moves on. Anything else is a typo in the config.
+        raise SystemExit(f"{aoi}: start_here {cfg.start_here!r} is neither a candidate nor a "
+                         f"registered area under {home}")
+    return rank_candidates(feats, cfg.start_here) if rank or cfg.start_here else feats
 
 
 def _collection(feats: list[dict], meta: dict) -> str:

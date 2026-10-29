@@ -590,6 +590,10 @@ published file.
   `--pv-rich-confirmed-only`. Without the town floor Pakistan's model filled Yemen's top windows
   with rural stone houses, roofless shells and greenhouse tunnels at p > 0.9. Yemen's ten
   (`*_pv<k>_calib_1km`) were confirmed by the assistant, not the owner.
+- **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
+  rank that country's candidates with it first and star it on ANY atlas (otherwise only
+  Bronze ones are ranked). Yemen's is Yafi' (2026-10-29): picked on Esri imagery over the
+  classifier's top window, Adh Dhihar (439 likely roofs, few visible arrays).
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,

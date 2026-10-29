@@ -255,6 +255,14 @@ construction. Sana'a: Ma'in, As Sab'in, Sanhan and Bani Hushaysh; Ibb: Adh Dhiha
 and Yarim; Khamir ('Amran), Sa'dah, Yafi' (Lahij) and Qa'tabah town (Ad Dali'). Esri
 imagery from 2024-10 to 2025-12 over every box.
 
+**Yafi' is the one to map first (2026-10-29)**, drawn as the atlas's star. It is not the
+classifier's pick: Adh Dhihar in Ibb city holds the most roofs Pakistan's model scores as
+likely (439, against Yafi's 196), but on Esri imagery at the same zoom over the central
+600 m of all ten boxes, Yafi' showed the most distinct rooftop arrays, about a dozen in its
+central 300 m, and Adh Dhihar few among cluttered roofs. Its imagery (2025-10-13) also falls
+inside the composite's window. A visual comparison, not a count; `start_here` in
+`configs/atlas/yemen.yaml` records it.
+
 **Al Wehdah, Sana'a (registered 2026-10-23, Rule-1).** The first of Yemen's two start-here
 boxes (`calib-candidates --priority`: 1 km in the densest quarter of the country's
 buildings, where the most roof area sits in buildings of 1,000 m<sup>2</sup> or more), so a

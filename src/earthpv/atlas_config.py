@@ -48,6 +48,12 @@ silently drop the section it was meant to fill):
     validation:                            # the calibration tier, when it is a judgement
       score: silver                        # gold | silver | bronze; beats the derived tier
       note: "Register-checked above 400&nbsp;m&sup2;"   # replaces the badge's sub-line
+    start_here: yafi_pv2_calib_1km         # the candidate to map first, drawn as a star
+
+`start_here` names a candidate (`candidate_quadrats/<stem>_candidate.geojson`) when which
+one to map first is a judgement. `scripts/publish_calibration_areas.py` ranks it first and
+stars it, on any atlas; without it only a Bronze atlas gets a star, its first by rule. Once
+the box is registered the star moves on to the next in the ranking by itself.
 
 `validation` exists for the cases `atlas.derive_validation_score` cannot judge from files on
 disk: Germany has a calibrated small-installation half, which would make it Gold, but that
@@ -77,7 +83,7 @@ log = logging.getLogger(__name__)
 CONFIG_DIR = Path("configs/atlas")
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
-             "validation"}
+             "validation", "start_here"}
 _VALIDATION_KEYS = {"score", "note"}
 _SCORES = {"gold", "silver", "bronze"}
 _CONFIDENCE_KEYS = {"ground_truth", "caveats", "corroboration"}
@@ -103,6 +109,7 @@ class AtlasConfig:
     layers: tuple = ()
     validation_score: str = ""
     validation_note: str = ""
+    start_here: str = ""
 
     # Kept so a caller can tell "this country has no config" from "this country has a
     # config that supplies nothing", which read the same otherwise and mean different
@@ -275,5 +282,6 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         layers=_parse_layers(aoi, raw.get("layers")),
         validation_score=score,
         validation_note=str(val.get("note") or "").strip(),
+        start_here=str(raw.get("start_here") or "").strip(),
         path=path,
     )

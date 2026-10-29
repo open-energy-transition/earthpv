@@ -52,6 +52,14 @@ validation:
   score: silver
   note: "Farm solar calibrated on seven mapped areas.<br>No rooftop estimate below 400 m&sup2; yet."
 
+# The PV-rich town box to map first (owner request 2026-10-29: "the one with the most PV").
+# Not the classifier's pick: Adh Dhihar (Ibb city) has the most roofs Pakistan's roofclf
+# scores as likely (439, against Yafi's 196), but on Esri z18 over the central 600 m of
+# all ten boxes Yafi' showed the most distinct rooftop arrays, about a dozen in its central
+# 300 m, and Adh Dhihar few among cluttered roofs. Yafi's imagery (2025-10-13) also falls
+# inside the composite window. A visual comparison by the assistant, not a count.
+start_here: yafi_pv2_calib_1km
+
 cities:
   - [Sana'a, 44.206, 15.369]
   - [Aden, 45.037, 12.786]

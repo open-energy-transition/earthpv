@@ -34,7 +34,10 @@ it does not do, are in
 [Automated quadrat selection](../calibration-mapping-protocol.md#automated-quadrat-selection).
 On an uncalibrated (Bronze) atlas `calib-publish` also ranks the candidates, start-here
 boxes first and then the rest from the densest down, and the first is drawn as a star. The
-star moves to the next one by itself once that area is registered.
+star moves to the next one by itself once that area is registered. To choose the star by
+hand, on any atlas, name the candidate in the country's config as `start_here: <stem>`
+(`configs/atlas/<aoi>.yaml`); `calib-publish` then ranks that country's candidates with it
+first, and fails on a name that is neither a candidate nor a registered area.
 `calib-publish` writes the public per-area GeoJSON under
 `docs/assets/labels/calibration_areas/` that the atlas fetches at run time, so new
 candidates need no atlas rebuild. Re-run it after anything below changes an area.
