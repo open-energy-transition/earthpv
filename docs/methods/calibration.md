@@ -115,8 +115,8 @@ all.
 
 ## Hard-negative mining
 
-Calibration measures error; hard negatives remove it. Two independent sources feed
-retraining, and `--centers` merges them into one index so neither clobbers the other.
+Calibration measures error; hard negatives remove it. Independent sources feed retraining,
+and `--centers` merges them into one index so none clobbers another.
 
 ```bash
 # bi-temporal: large unmapped buildings with no PV in either epoch
@@ -127,4 +127,19 @@ pixi run earthpv hard-negative-chips --aoi pakistan \
 # vegetation-vetoed leads: the dark fallow and paddy soil class German data never showed
 pixi run earthpv hard-negative-chips --aoi pakistan \
     --centers data/predictions/pakistan/hard_negatives_veg.parquet
+
+# OpenStreetMap classes the model mistakes for PV: swimming pools and wastewater
+# treatment plants (Egypt); --pbf reads a Geofabrik extract instead of Overpass
+pixi run earthpv osm-hard-negatives --aoi egypt --pbf <egypt-YYMMDD.osm.pbf>
+pixi run earthpv hard-negative-chips --aoi egypt \
+    --centers data/predictions/egypt/hard_negatives_osm.parquet
 ```
+
+A mapped object of a class that is never solar needs no second epoch to confirm it, as a
+road does not: `osm-hard-negatives` puts a chip center on every swimming pool of at least
+150 m&sup2; and every wastewater plant, settling basin or clarifier OpenStreetMap holds
+inside the composited cells, drops any within 75 m of mapped solar, and orders the ones a
+model candidate touches first before thinning them to one per 500 m. Its summary counts
+how many of the country's leads each class explains. See
+[Egypt](../results/egypt.md#false-positives-swimming-pools-and-treatment-basins) for why
+these two classes.

@@ -26,9 +26,10 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 !!! warning "Leads, not data"
     Every lead is an unverified outline drawn from 10 m pixels, typically about twice the
     area of the panels it found, and some are not solar at all: bright or dark roofs,
-    greenhouses, artificial turf, ploughed fields, rock, water, substations. **Never upload a
-    lead and never copy its outline.** Check each one on high-resolution imagery and trace
-    what you see there.
+    greenhouses, artificial turf, ploughed fields, rock, water, substations, swimming pools
+    and the rectangular basins and sludge drying beds of wastewater treatment plants (many
+    of Egypt's leads are these last two). **Never upload a lead and never copy its
+    outline.** Check each one on high-resolution imagery and trace what you see there.
 
 ## 1. Get the lead file
 

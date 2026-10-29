@@ -505,6 +505,38 @@ def road_hard_negatives(
     )
 
 
+@app.command("osm-hard-negatives")
+def osm_hard_negatives(
+    aoi: str = typer.Option(..., help="AOI name (e.g. egypt)"),
+    classes: str = typer.Option(
+        "swimming_pool,wastewater",
+        help="Comma-separated classes from osm_negatives.CLASSES",
+    ),
+    pred_dir: Path = typer.Option(Path("data/predictions"),
+                                  help="Holds <aoi>/candidates.parquet and the leads file"),
+    out_dir: Path = typer.Option(Path("data/predictions")),
+    declutter_m: float = typer.Option(500.0, help="One center per grid cell of this size"),
+    mapped_buffer_m: float = typer.Option(75.0, help="Halo (m) around mapped solar excluded"),
+    limit_per_class: int = typer.Option(0, help="Cap centers per class (0 = no cap)"),
+    chunk_deg: float = typer.Option(1.0, help="Overpass query tile size in degrees"),
+    pbf: Path = typer.Option(
+        None, help="Read the classes from this OSM extract (.osm.pbf) instead of Overpass"
+    ),
+) -> None:
+    """Mine hard negatives from OSM classes the model mistakes for PV (Egypt's pools and
+    wastewater basins): chip centers on mapped features, away from mapped solar, the ones
+    a candidate touches first. Writes hard_negatives_osm.parquet plus a summary of how
+    many leads each class explains, ready for `earthpv hard-negative-chips --centers`."""
+    from earthpv.osm_negatives import run_osm_hard_negatives
+
+    run_osm_hard_negatives(
+        aoi=aoi, classes=tuple(c.strip() for c in classes.split(",") if c.strip()),
+        pred_dir=pred_dir, out_dir=out_dir, declutter_m=declutter_m,
+        mapped_buffer_m=mapped_buffer_m, limit_per_class=limit_per_class, chunk_deg=chunk_deg,
+        pbf=pbf,
+    )
+
+
 @app.command()
 def density(
     aoi: str = typer.Option(..., help="AOI name (e.g. pakistan)"),

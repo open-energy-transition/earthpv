@@ -697,6 +697,8 @@ def build_hard_negative_chips(
         return dict(
             chip_id=cid, lon=row.lon, lat=row.lat, kind="hard_negative", tile=tile,
             split=split, pv_pixels=int((band == 1).sum()), image=str(img_path), mask=str(mask_path),
+            # osm_negatives' centers name their class, so a retrain can be scored per class
+            **({"osm_class": row["osm_class"]} if "osm_class" in row.index else {}),
         )
 
     records = []

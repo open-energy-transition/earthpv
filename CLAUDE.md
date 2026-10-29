@@ -1008,6 +1008,14 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
 - **Yemen**: segmentation finds almost none of its labels (small Tihama irrigation arrays barely
   differ from their surroundings), so Best is the OSM map plus farm ground PV.
 - **Egypt**: the model's rooftop estimate is ~0 (no rooftop candidate matches a mapped rooftop).
+  **Many of its leads are swimming pools and wastewater treatment plants** (owner, 2026-10-29),
+  above all the plants' rectangular basins. `earthpv osm-hard-negatives` (`osm_negatives.py`)
+  cuts hard-negative chip centers on the OSM-mapped ones and counts the leads each class
+  touches; `--pbf` reads a Geofabrik extract when Overpass is overloaded. OSM explains the
+  pools (77 of 1,165 leads mostly a mapped pool) but not the plants (9 leads). 1,120 chips in
+  `data/chips/egypt_hard_neg` (-> /home), val-buffered with `mark_val_buffer.py --chips`;
+  175 fall in the Cairo holdout against its 9 original chips, so score the sets apart. No
+  model has been trained on them yet (open question 19).
 - **Morocco**: geoBoundaries MAR includes Western Sahara, so `atlas.build_evidence_atlas` clips
   region outlines to the AOI bbox.
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and

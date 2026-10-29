@@ -156,6 +156,57 @@ largest ground bin's `p_real` of 0.379, below the mapped value, so in 48 cells B
 floored at Verified; what remains on top is model detections and unmatched mapped features
 elsewhere.
 
+## False positives: swimming pools and treatment basins
+
+**The owner's review of Egypt's mapping leads (29 October 2026) found many of them on
+swimming pools and on wastewater treatment plants**, above all on the plants' rectangular
+settling and aeration basins. Still water is dark against bright desert, sand and concrete,
+and a row of rectangular basins has the shape of a block of panel rows at 10 m. The model
+had little chance to learn otherwise: Egypt contributes 119 distinct chips to the corpus (81
+positive, 29 near negatives, 9 background, repeated eightfold), of which 9 hold a mapped
+pool of 150 m&sup2; or more and 3 a mapped wastewater feature.
+
+Checked against OpenStreetMap (Geofabrik's Egypt extract of 28 October 2026, 4,356 pools
+and 665 wastewater features inside the composited cells), the 1,165 leads split as follows:
+
+| | Leads |
+| --- | --- |
+| Touch a mapped swimming pool | 95 (75 ground-adjacent, 20 rooftop; median lead 3,502 m&sup2;) |
+| of which the pool covers at least 20% of the outline | 77 (median cover 39%) |
+| Touch a mapped wastewater plant, basin or clarifier | 9 |
+| Touch other mapped water (`water=lake` 23, untyped `natural=water` 13, `water=reflecting_pool` 5, canals, ponds) | 56 |
+| Touch any mapped water, pools included | 151 of 1,165 (13%) |
+
+A model outline is about twice the object it found, so a pool covering 39% of a lead's
+outline is the object. **OpenStreetMap explains the pools but not the treatment plants**: 9
+leads sit on a mapped plant, so most of the plants the review found are not in OSM or are
+mapped as something else. On Esri imagery, the candidates on the 8 mapped plants that one
+touches sit on **sludge drying beds**: grids of equal, walled rectangular beds beside the
+clarifiers, filled with dark water or grey to brown sludge, in the place and shape of a
+block of panel rows (the assistant's reading, not yet the owner's). The 23 leads on `water=lake` include artificial lagoons in
+resort compounds but were not checked one by one.
+
+The published figures barely depend on these leads. The 95 pool leads would add 37.8 MWp
+at full credit (0.40 km&sup2; ground-adjacent at the land constant, 0.10 km&sup2; rooftop
+at the module constant), and the precision table credits unmatched candidates of these
+sizes at 1 to 5% of their area. The cost falls on mappers, who meet every one, and the
+[leads guide](../contribute/leads.md) now names both classes.
+
+**Hard negatives from OpenStreetMap.** `earthpv osm-hard-negatives` puts a training chip
+on every mapped pool of at least 150 m&sup2; and every mapped wastewater feature, drops any
+within 75 m of mapped solar (3 were), orders the ones a candidate touches first and keeps
+one per 500 m. Egypt gets **1,121 centers: 873 on pools and 248 on wastewater features, 97
+of them (89 and 8) on objects a model candidate touches**. The wastewater set teaches the
+class from the plants OSM does hold, which are not the ones the leads sit on. 1,120 chips
+were cut (one window straddles two UTM zones) into `data/chips/egypt_hard_neg`: 889 train,
+56 in the buffer ring round the Cairo holdout, and 175 inside it, 163 of them on pools.
+That is far more than the holdout's 9 original chips, so a comparison should score the
+two sets apart. 24 chips carry mapped solar elsewhere in their 2.24 km window, labelled
+as PV. The halo protects only mapped solar: a plant or resort with an unmapped array of
+its own would teach that array as a negative, so the 97 chips on objects a candidate
+touches are the ones to look at before training. No model has been trained on them yet
+(next section).
+
 ## Operational notes
 
 Compose built the 941 originally selected cells between 06:19 and 17:57 on 11 October,
@@ -175,6 +226,12 @@ parks, which is most of what Egypt has mapped.
 **Rooftop mapping or a calibration quadrat.** 523 mapped rooftop features nationally are
 too few for the precision table to price a rooftop candidate; see the candidate section.
 
+**A retrain with the pool and wastewater hard negatives.** Add `egypt_hard_neg` to the
+corpus beside `egypt:R` and compare against `v12_combined_egypt` on installation recall at
+matched precision, and on how many leads still land on pools and basins. The leads on
+unmapped treatment plants are the measure that matters, and OSM cannot count them: a
+reviewed sample of the new leads can.
+
 ## Reproducing
 
 ```bash
@@ -187,3 +244,13 @@ systemd-run --user --collect --unit=earthpv-country-queue -p WorkingDirectory="$
 The queue pulls the labels, runs the solar-thermal filter, composes Egypt, picks the
 holdout and hands the country to `scripts/run_country_compute.sh egypt` (chips, training,
 the v5 comparison, inference and the atlas chain, behind marker files).
+
+The pool and wastewater hard negatives, from Geofabrik's extract (`--pbf`; without it the
+command queries Overpass, whose mirrors were overloaded on the day):
+
+```bash
+pixi run earthpv osm-hard-negatives --aoi egypt --pbf egypt-261028.osm.pbf
+pixi run earthpv hard-negative-chips --aoi egypt \
+  --centers data/predictions/egypt/hard_negatives_osm.parquet
+pixi run python scripts/mark_val_buffer.py --aoi egypt --chips egypt_hard_neg
+```

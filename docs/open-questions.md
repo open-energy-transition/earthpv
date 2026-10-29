@@ -382,6 +382,21 @@ where German OSM is too sparse to swap outlines**. **Next step:** keep a pre-sub
 candidate file for Germany, run the script there, and if the ratio holds, price
 `p_unmapped`-credited candidates at outline area divided by the measured ratio.
 
+### 19. Egypt: retrain with the pool and wastewater hard negatives (2026-10-29)
+
+The owner's review found many of Egypt's leads on swimming pools and on wastewater
+treatment plants' rectangular basins. Against OSM, 77 of 1,165 leads are mostly a mapped
+pool, but only 9 touch a mapped wastewater feature: the plants the leads sit on are largely
+unmapped. `earthpv osm-hard-negatives` cut 1,120 chips (872 pools, 248 wastewater; 889
+train, 56 buffer, 175 val) into `data/chips/egypt_hard_neg`
+([Egypt](results/egypt.md#false-positives-swimming-pools-and-treatment-basins)).
+**Next step:** retrain v12's recipe with `egypt_hard_neg` added at 1x, compare on
+installation recall at matched precision (`scripts/compare_backbones.py`) over Egypt's 9
+original val chips, and separately on false-positive pixels over the 175 hard-negative val
+chips, which would otherwise swamp them; then on leads per class. The treatment-plant count
+needs a reviewed sample of the new leads, since OSM cannot supply it. `water=lake` (23
+leads, partly resort lagoons) is the next class to check.
+
 ## Known defects carried on purpose
 
 These are understood, measured, and currently accepted rather than pending.

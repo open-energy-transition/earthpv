@@ -10,9 +10,11 @@ chip two cells away is at least one full cell (~11 km) from the holdout, far bey
 window's reach.
 
 Rewrites `data/chips/<aoi>/index.parquet` in place, keeping the original as
-`index_prebuffer.parquet` the first time. Idempotent.
+`index_prebuffer.parquet` the first time. Idempotent. `--chips` names a chip set cut for
+the AOI under another directory, e.g. its hard negatives:
 
     python scripts/mark_val_buffer.py --aoi vietnam
+    python scripts/mark_val_buffer.py --aoi egypt --chips egypt_hard_neg
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ sys.path.insert(0, str(REPO / "src"))
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--aoi", required=True)
+    ap.add_argument("--chips", help="Chip set under data/chips/ (default: the AOI's own)")
     a = ap.parse_args()
 
     from earthpv.config import Settings
@@ -40,7 +43,7 @@ def main() -> int:
     if not val:
         print(f"{a.aoi}: no val_tiles configured; nothing to buffer")
         return 0
-    path = REPO / "data" / "chips" / a.aoi / "index.parquet"
+    path = REPO / "data" / "chips" / (a.chips or a.aoi) / "index.parquet"
     backup = path.with_name("index_prebuffer.parquet")
     if not backup.exists():
         pd.read_parquet(path).to_parquet(backup)
@@ -56,7 +59,7 @@ def main() -> int:
     hit = (idx.split == "train") & tile_xy.isin(ring)
     idx.loc[hit, "split"] = "buffer"
     idx.to_parquet(path)
-    print(f"{a.aoi}: {int(hit.sum())} train chips in the {len(ring)}-cell ring around "
+    print(f"{a.chips or a.aoi}: {int(hit.sum())} train chips in the {len(ring)}-cell ring around "
           f"{len(vxy)} val cells marked 'buffer'; now "
           f"{int((idx.split == 'train').sum())} train / {int((idx.split == 'val').sum())} val "
           f"/ {int((idx.split == 'buffer').sum())} buffer")
