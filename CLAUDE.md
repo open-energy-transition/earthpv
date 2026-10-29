@@ -823,7 +823,13 @@ earthpv groundclf-capacity --aoi <aoi> --osm-solar <national OSM pull>
   `calib-publish` ranks them after every building box. Pakistan has no `compose_window` or
   `division.iso3` in `configs/aoi.yaml`, so the sampler takes `--window-start 2025-11-01` in
   every mode (`gate_setup`).
-- **Yemen is the only country with farm areas**: seven ('Amran plus six Tihama areas cut where
+- **Pakistan's farm areas (2026-10-29) do not work**: eight 3 km boxes, `region` Punjab plain /
+  Lower Indus / Peshawar valley / Balochistan coast; the fit (`data/groundclf/pakistan` on
+  /home) has held-out pixel AUC ~0.83 but object precision 2-5% and ~0 recall on Jhang f5 and
+  Swabi (ground arrays median 44-106 m² against 'Amran's 581). Not scored; Pakistan's farm
+  ground PV stays "not measured". A farm area its config does not declare `rule1` (Jhang f2)
+  trains only (`train_ground`'s `train_only`).
+- **Yemen is the only country with a farm figure**: seven areas ('Amran plus six Tihama areas cut where
   Esri imagery is from 2024-10 on), 169.1 MWp (90% 77-327) in 34 cells. The rest of Tihama is a
   training-only weak region (`data/labels/yemen/tihama_stale_imagery_region.geojson`). Analysis
   and the owner's lead review: `results/yemen_agripv_testground/`.

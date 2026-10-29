@@ -235,14 +235,18 @@ on every atlas and in Yemen's Best: 169.1 MWp, calibrated on seven farm areas in
 ('Amran highland, Tihama lowland), each cell priced by the region it resembles. Two regions
 is still thin. Tihama's ratio scales detections UP (the detector finds a quarter of its
 arrays), so a false detection is multiplied too, and its areas were drawn around a hotspot.
-Never run on Pakistan.
+First run on Pakistan 2026-10-29, on eight farm areas mapped that day: it does not see the
+arrays (object precision 2 to 5%, next to no recall at the deployed threshold, ground arrays
+median 44 to 106 m&sup2;; [Farm ground PV](methods/groundclf.md#pakistan-arrays-too-small-to-see-2026-10-29)).
 
 **What would close it:** farm areas in other landscapes (`calib-candidates -- --farmland`:
 cropland strata, imagery gate included), so that a region needs no extrapolation in
 elevation or cropland, and a random-cell review of in-domain detections, which would measure
-the false-detection share the ratio amplifies. For Pakistan, a first run against
-the tubewell population, with `--roofclf-buildings` so yard arrays roofclf already prices
-are not counted twice. See
+the false-detection share the ratio amplifies. For Pakistan, blobs will not do at these
+sizes; the untested route is the pixel scores' sum, leave-one-area-out over the eight areas
+(does an area's summed score track its mapped ground PV, as roofclf's probability pricing
+does?), with `--roofclf-buildings` so yard arrays roofclf already prices are not counted
+twice. See
 [Small ground-mounted instrument](issues/small-ground-mount-instrument.md).
 
 ### 10. Growth as a product

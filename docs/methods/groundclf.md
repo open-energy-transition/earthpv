@@ -361,6 +361,43 @@ The leads work as a mapping tool. In Tihama the reviewer confirmed and traced 88
 strongest leads more than 50 m from any mapped feature (59%), adding 104 arrays. Among the
 leads were two utility-scale plants that are not in OpenStreetMap at all.
 
+## Pakistan: arrays too small to see (2026-10-29)
+
+The owner mapped Pakistan's farm candidates on 2026-10-29 and the detector was fitted on them
+the same day, grouped into four landscapes by the boundaries' `region`: Punjab plain (Sahiwal,
+Jhang f5, Jhang f2), Lower Indus (Thatta, Badin, Qambar Shahdadkot), Peshawar valley (Swabi)
+and Balochistan coast (Lasbela). Jhang f2 is `corroborated` for poor imagery, so it trains
+without calibrating: a farm area the country's config does not declare Rule-1 complete joins
+like a building quadrat. Pakistan's 35 building quadrats trained too.
+
+| Farm area | Mapped installations | Median ground array | Held-out pixel AUC | Detected at threshold | Mapped PV | Arrays found |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Jhang f5 | 102 | 44 m<sup>2</sup> | 0.84 | 0 m<sup>2</sup> | 5,411 m<sup>2</sup> | 0 |
+| Swabi f4 | 57 | 106 m<sup>2</sup> | 0.83 | 500 m<sup>2</sup> | 6,194 m<sup>2</sup> | 0 |
+| Lasbela f1 | 37 | 86 m<sup>2</sup> | 0.81 | 700 m<sup>2</sup> | 4,493 m<sup>2</sup> | 5% |
+| Sahiwal f6 | 5 | 87 m<sup>2</sup> | 0.48 | 6,200 m<sup>2</sup> | 409 m<sup>2</sup> | 0 |
+| Thatta, Badin, Qambar Shahdadkot | 2 | | | 3,400 m<sup>2</sup> | 85 m<sup>2</sup> | |
+
+**It does not see them.** The pixels rank arrays above their surroundings (AUC 0.81 to 0.84
+where dozens are mapped, against 'Amran's 0.98), but as objects the pooled held-out
+precision stays between 2 and 5% at every threshold: 3.3% at 35% of the arrays, 4.8% at 1%
+at the deployed threshold. There, Sahiwal's 6,200 m<sup>2</sup> of detections hold none of
+its 409 m<sup>2</sup> of PV, and the three Sindh boxes, with two arrays between them, show
+3,400 m<sup>2</sup>. The ratios the capacity step would price with, mapped area over detected,
+run from 0.025 (Lower Indus) to 12.4 (Peshawar valley): they measure false detections, not
+PV. Nothing was scored nationally, and Pakistan's atlas keeps farm ground PV as not measured.
+
+The likeliest reason is size. The median ground array is 44 to 106 m<sup>2</sup>, a
+thirteenth to a fifth of 'Amran's 581 m<sup>2</sup>, so an array covers at most about one
+100 m<sup>2</sup> pixel, and 9 km<sup>2</sup> of farmland holds far more dark pixels of other kinds: the lesson
+of Tihama's small groups, without 'Amran's large arrays to carry the fit. A pixel AUC of
+0.8 says the scores still carry some signal; whether their sum tracks an area's mapped PV, as
+roofclf's probability pricing does, is untested.
+
+Road vetoes came from Geofabrik's Pakistan extract of 2026-10-29 for 21 of the 43 areas
+while Overpass was overloaded; on the 22 areas Overpass did serve, the extract returned the
+same ways. Outputs: `data/groundclf/pakistan/` (on `/home`).
+
 ## Limits
 
 - **Two regions.** Every capacity figure rests on 'Amran and one Tihama region. The bootstrap

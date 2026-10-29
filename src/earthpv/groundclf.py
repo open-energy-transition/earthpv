@@ -563,7 +563,8 @@ def _area_labels(name: str, boundary: BaseGeometry, cache_dir: Path, osm: Path |
 
 
 def load_areas(labels_dir: Path, cache_dir: Path, clean_regions=(), weak_regions=(),
-               osm: Path | None = None, refresh: bool = False) -> list[Area]:
+               osm: Path | None = None, refresh: bool = False,
+               train_only: frozenset = frozenset()) -> list[Area]:
     """Farm quadrats under `labels_dir` (clean), its building quadrats (train), plus boundary
     files passed as clean or weak regions, each with its OSM solar. A quadrat keeps its nodes
     (`roofclf.load_quadrat` drops them, and a node left out makes its PV a negative) and
@@ -575,7 +576,11 @@ def load_areas(labels_dir: Path, cache_dir: Path, clean_regions=(), weak_regions
     trains the model, above all on what a town looks like without PV, but does not set the
     threshold, the ratio or the domain (the owner's choice, 2026-10-25): the farm figure
     stays a figure for land that resembles the farm areas. Building quadrats without a
-    `region` are one transfer group, "building quadrats"."""
+    `region` are one transfer group, "building quadrats".
+
+    A farm quadrat in `train_only` (stems) joins the same way, as "train": one the country's
+    config does not declare Rule-1 complete, such as Pakistan's Jhang f2 (poor imagery), whose
+    unmapped arrays would read as false detections if it set the threshold or the ratio."""
     out = []
     for farm in (True, False):
         for stem in roofclf.discover_quadrats(Path(labels_dir), farm=farm):
@@ -587,7 +592,8 @@ def load_areas(labels_dir: Path, cache_dir: Path, clean_regions=(), weak_regions
             pv = gpd.read_parquet(solar).to_crs("EPSG:4326")
             pv = pv[pv.geom_type.isin(["Polygon", "MultiPolygon", "Point", "MultiPoint"])].reset_index(drop=True)
             region = gpd.read_file(bpath).iloc[0].get("region") or (stem if farm else "building quadrats")
-            out.append(Area(roofclf.quadrat_label(stem), "clean" if farm else "train", b, pv,
+            kind = "clean" if farm and stem not in train_only else "train"
+            out.append(Area(roofclf.quadrat_label(stem), kind, b, pv,
                             f"{'farm' if farm else 'building'} quadrat {stem}", region))
     for kind, paths in (("clean", clean_regions), ("weak", weak_regions)):
         for p in paths:
@@ -792,7 +798,14 @@ def train_ground(
     rng = np.random.default_rng(BOOT_SEED)
     _, cfg = resolve_aoi(aoi, Settings.load())
     iso3 = _iso3_for(cfg)
-    areas = load_areas(labels_dir, out_dir / "areas", clean_regions, weak_regions, osm, refresh_osm)
+    # A farm quadrat the atlas config does not declare Rule-1 complete trains, never calibrates.
+    from earthpv import atlas_config
+    train_only = frozenset(b["stem"] for b in atlas_config.load(aoi).calibration_boxes
+                           if roofclf.FARM_QUADRAT_INFIX in b["stem"] and b["status"] != "rule1")
+    if train_only:
+        log.info("farm quadrats not declared Rule-1, training only: %s", ", ".join(sorted(train_only)))
+    areas = load_areas(labels_dir, out_dir / "areas", clean_regions, weak_regions, osm, refresh_osm,
+                       train_only=train_only)
     comp_idx = composite_index(str(composites))
     con = overture.connect()
     data = []
