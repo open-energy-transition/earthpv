@@ -325,7 +325,7 @@ def download_section_html(aoi: str, parquet_name: str = "") -> str:
     slug = re.sub(r"[^a-z0-9]+", "_", aoi.lower()).strip("_") or "atlas"
     return f'''<!-- earthpv:cellcsv:start -->
 <section class="sec" id="cellCsvSection">
-  <div class="sec-head"><div class="sec-label">Raw data</div></div>
+  <div class="sec-head"><div class="sec-label">Capacity data</div></div>
   <div class="card" style="padding:18px 20px;">
     <p style="margin:0 0 10px;font-size:13.5px;">
       <b>The capacity per grid cell shown on the map, as CSV.</b> One row per 0.1&deg;
@@ -2835,7 +2835,7 @@ def build_evidence_atlas(
     # size-domain rows it used to show (`mwp_large`, `small_central`+`small_outdomain`)
     # are only the MODEL's share: Best also folds in hand-mapped OSM the model never
     # found, plus this floor lift. The national KPI tiles gained a third tile for exactly
-    # this on 2026-08-14 (now "Added from OSM mapping", 2026-10-20); the per-cell hover
+    # this on 2026-08-14 (now "OpenStreetMap", 2026-10-29); the per-cell hover
     # did not, so it under-summed. Measured on the published German atlas 2026-09-13:
     # 3,043 of 4,656 cells did not add up, by 10,847 MWp = 12.4% of Best nationally.
     grid["best_floor_lift"] = np.maximum(grid["mwp_verified"] - grid["mwp_best"], 0.0)

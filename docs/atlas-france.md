@@ -26,7 +26,8 @@ hide:
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--silver" role="note">
   <p><strong>Silver atlas: smaller installations are missing.</strong> Installations of about 400 m&sup2; (70 kWp) and up are validated against hand-mapped ground truth; below that, where household rooftops sit, there is no calibrated estimate. A French household array is about 20 m&sup2;, a fifth of a Sentinel-2 pixel, so every figure here is a floor.</p>
-  <p><strong>You can help:</strong> small areas mapped completely, panel by panel, in OpenStreetMap are what an estimate of the smaller installations is fitted on. <a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
+  <p><strong>You can help:</strong> small areas mapped completely, panel by panel, in OpenStreetMap are what an estimate of the smaller installations is fitted on.</p>
+  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
 </div>
 <iframe src="../assets/interactive/france_pv_evidence_atlas.html" title="France PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>

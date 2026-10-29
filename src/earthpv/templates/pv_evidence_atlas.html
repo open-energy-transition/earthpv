@@ -648,6 +648,7 @@
   .xdetails .xbody li:last-child { margin-bottom: 0; }
   .xdetails .xbody li::marker { color: var(--accent); }
   /* "How the estimate is built": one step per method, edged in that method's colour. */
+  .unit-case { text-transform: none; }
   .method-body .m-steps { list-style: none; margin: 0 0 14px; padding: 0; }
   .method-body .m-steps > li { margin: 0 0 12px; padding-left: 14px;
     border-left: 3px solid var(--m, var(--hair)); }
@@ -1193,6 +1194,18 @@ out geom;</div>
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
     c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 
+  // Sentinel-2's size limits, stated on every atlas (owner, 2026-10-29). Where rooftops
+  // below 400 m2 are not measured, the note says what the sensor could reach and that this
+  // page does not yet.
+  const SIZE_NOTE = "<b>Size limits:</b> " + (HAS_SMALL_ROOF
+    ? "the smallest installations this estimate registers are about 25-50 m², depending on "
+      + "the size of the roof they sit on, and individual installations are estimated "
+      + "precisely only from about 100 m² up."
+    : "Sentinel-2 can register installations down to about 25-50 m², depending on the size "
+      + "of the roof they sit on, and individual installations precisely from about 100 m² "
+      + "up. Rooftop installations below 400 m² are not measured in this atlas yet: areas "
+      + "mapped panel by panel are what such an estimate is fitted on.");
+
   const VIEW = {
     label: "Best estimate",
     name: "Total photovoltaic capacity detectable with Sentinel-2",
@@ -1204,9 +1217,10 @@ out geom;</div>
           + (Object.keys((T.uncertainty || {}).coverage_bootstrap || {}).length
             ? "areas where volunteers mapped every panel convert the scores into panel area. "
             : "a calibration converts the scores into panel area. ")
-        : "Smaller rooftop arrays are too small to outline and are not measured here. ")
+        : "Smaller rooftop arrays are too small to outline. ")
       + (T.small_ground_status && T.small_ground_status.measured
         ? "Small arrays beside fields are found by a separate farm detector. " : "")
+      + SIZE_NOTE + " "
       + "Installations mapped in OpenStreetMap are counted from the map, whatever their size. "
       + "<a href=\"#method\">How the estimate is built</a> · open-source pipeline: "
       + "<a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
@@ -1214,7 +1228,7 @@ out geom;</div>
       ["mwp_large", "Satellite-detected &ge;400 m², MWp"],
       ["small_all", "Satellite rooftop &lt;400 m², MWp"],
       ["small_ground", "Satellite farm ground &lt;400 m², MWp"],
-      ["osm_contribution", "Added from OSM mapping, MWp"],
+      ["osm_contribution", "Open&shy;Street&shy;Map, MWp"],
     ],
   };
 
@@ -1289,12 +1303,17 @@ out geom;</div>
     for (const r of rows) out.push(cols.map((c, i) => csvCell(Array.isArray(r) ? r[i] : r[c])).join(","));
     saveBlob(new Blob([out.join("\n") + "\n"], {type: "text/csv;charset=utf-8"}), name);
   }
+  const ATTRIBUTION =
+    '<a href="https://open-energy-transition.github.io/earthpv/" target="_blank" rel="noopener">EarthPV</a>, '
+    + '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>, '
+    + '<a href="https://openenergytransition.org/" target="_blank" rel="noopener">Open Energy Transition</a>';
+  const ATTRIBUTION_TEXT = ATTRIBUTION.replace(/<[^>]+>/g, "");
   function sourceLine(){
     return [
       `EarthPV, ${AOI} PV Atlas`,
       T.imagery_date_range ? `Sentinel-2 imagery ${T.imagery_date_range}` : null,
       T.generated_at ? `generated ${T.generated_at}` : null,
-      "open-energy-transition.github.io/earthpv",
+      "Open Energy Transition, open-energy-transition.github.io/earthpv",
       "OSM data (c) OpenStreetMap contributors, ODbL",
     ].filter(Boolean).join(" · ");
   }
@@ -1637,7 +1656,7 @@ out geom;</div>
     const calib = calibGeoJSON();
     const osmMax = Math.max(1e-9, ...DATA.cells.map(c => c[OSM_IDX]));
     const sources = {
-      cells: {type: "geojson", data: cellsGeoJSON(), attribution: "EarthPV"},
+      cells: {type: "geojson", data: cellsGeoJSON(), attribution: ATTRIBUTION},
       glowpts: {type: "geojson", data: cellCentersGeoJSON(c => c[BEST_IDX] > 0)},
       osmpts: {type: "geojson", data: cellCentersGeoJSON(c => c[OSM_IDX] > 0,
         c => ({rf: Math.min(1, Math.sqrt(c[OSM_IDX] / osmMax))}))},
@@ -2838,7 +2857,7 @@ out geom;</div>
     const unit = "MWp per 0.1° cell";
     const attribution = [...document.querySelectorAll(".maplibregl-ctrl-attrib-inner")]
       .map(n => n.textContent.replace(/\s+/g, " ").trim()).join(" ")
-      .split("|").map(t => t.trim()).filter(t => t && !/^(EarthPV|MapLibre)$/.test(t)).join(" · ");
+      .split("|").map(t => t.trim()).filter(t => t && t !== ATTRIBUTION_TEXT && !/^(EarthPV|MapLibre)$/.test(t)).join(" · ");
     const measure = document.createElement("canvas").getContext("2d");
     measure.font = `10.5px ${P.fontMono}`;
     const foot = wrapMeasured(measure, [sourceLine(), attribution].filter(Boolean).join(" · "), w);
@@ -3511,6 +3530,7 @@ out geom;</div>
       + `Best estimate adds up several, each used where it measures best, and counts every `
       + `installation once. Each step is edged in the colour its method has in the bars above.</p>`
       + `<ol class="m-steps">${steps.join("")}</ol>`
+      + `<p>${SIZE_NOTE}</p>`
       + `<p><b>Adding it up.</b> The parts are summed cell by cell. A mapped installation that a `
       + `satellite figure already covers is not added again, and where the map holds more than `
       + `the satellite figure, the map's figure is used. Satellite areas convert to capacity with `
@@ -4032,5 +4052,47 @@ out geom;</div>
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     if (!document.documentElement.getAttribute("data-theme")) rethemeAll();
   });
+})();
+</script>
+<script>
+// Units keep their case inside uppercase labels: "MWP" and "M²" read as other units. Wraps
+// kWp/MWp/GWp/m²/km² in a span that opts out of text-transform, in every label on the page
+// now and in every one rendered later (tooltips, tables, re-renders), so a new label needs
+// no markup of its own. SVG text (the charts) is left alone: it is never uppercased here.
+(function () {
+  const UNIT = /(?<![A-Za-z])(?:[kMGT]Wp|k?m²)(?![A-Za-z])/g;
+  function keepUnitCase(root){
+    if (!root || root.nodeType !== 1) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const hits = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const p = n.parentElement;
+      UNIT.lastIndex = 0;
+      if (!p || !UNIT.test(n.data) || p.classList.contains("unit-case")
+          || p.closest("svg, option, select, textarea, script, style")) continue;
+      if (getComputedStyle(p).textTransform === "uppercase") hits.push(n);
+    }
+    for (const n of hits) {
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      for (const m of n.data.matchAll(UNIT)) {
+        frag.append(n.data.slice(last, m.index));
+        const s = document.createElement("span");
+        s.className = "unit-case";
+        s.textContent = m[0];
+        frag.append(s);
+        last = m.index + m[0].length;
+      }
+      frag.append(n.data.slice(last));
+      n.replaceWith(frag);
+    }
+  }
+  keepUnitCase(document.body);
+  new MutationObserver(recs => {
+    for (const r of recs) {
+      if (r.type === "characterData") keepUnitCase(r.target.parentElement);
+      else for (const n of r.addedNodes) keepUnitCase(n.nodeType === 1 ? n : n.parentElement);
+    }
+  }).observe(document.body, {childList: true, subtree: true, characterData: true});
 })();
 </script>

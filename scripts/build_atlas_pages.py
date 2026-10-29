@@ -157,7 +157,7 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
         if country in TIER_NOTE:
             text, help_ = TIER_NOTE[country]
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
-                     f"  <p>{text}</p>\n  <p>{help_} {CTA}</p>\n</div>")
+                     f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{CTA}</p>\n</div>")
     # `allow="fullscreen"`: the atlas map has a fullscreen button, which a frame without
     # the permission silently disables. The local-network ones let the "Open in JOSM"
     # button reach JOSM's Remote Control on 127.0.0.1 under Chrome's Local Network Access

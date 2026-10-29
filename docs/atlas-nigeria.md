@@ -26,7 +26,8 @@ hide:
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
   <p><strong>Bronze atlas: smaller installations are missing.</strong> Only mapped installations and arrays the model outlines, about 400 m&sup2; (70 kWp) and up, are counted, so read every figure as a floor.</p>
-  <p><strong>You can change that:</strong> map every panel inside a hollow diamond on the map, starting with the <strong>&#9733; star</strong>. Six to ten complete areas start an estimate of Nigeria's smaller installations. <a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
+  <p><strong>You can change that:</strong> map every panel inside a hollow diamond on the map, starting with the <strong>&#9733; star</strong>. Six to ten complete areas start an estimate of Nigeria's smaller installations.</p>
+  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
 </div>
 <iframe src="../assets/interactive/nigeria_pv_evidence_atlas.html" title="Nigeria PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>
