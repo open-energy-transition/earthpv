@@ -5,7 +5,7 @@
 #   bash scripts/country_queue_status.sh
 cd "$(dirname "$0")/.."
 Q=data/country_queue_markers
-AOIS="morocco egypt yemen south_africa poland"
+AOIS="morocco egypt yemen south_africa poland namibia"
 now=$(date +%s)
 echo "== $(date '+%F %T')  earthpv Morocco/Egypt/Yemen/South Africa status"
 

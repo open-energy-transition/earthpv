@@ -84,6 +84,14 @@ case "$AOI" in
     DATE_RANGE="May - Sep 2026"
     START_MARKER=$QMARK/poland_compose_done
     INCREMENTAL=0 ;;
+  # 2026-10-28: Namibia, same queue. South Africa joins the base corpus at weight 1: the
+  # nearest landscape with a large label set (configs/terramind_pv_v17_namibia.yaml).
+  namibia)
+    MODEL_TAG=v17_combined_namibia; CONFIG=configs/terramind_pv_v17_namibia.yaml
+    BASE_CORPUS="germany punjab pakistan gujarat france south_africa"
+    DATE_RANGE="May - Sep 2026"
+    START_MARKER=$QMARK/namibia_compose_done
+    INCREMENTAL=0 ;;
   *) echo "unknown AOI $AOI"; exit 2 ;;
 esac
 COMPOSE_DONE=$QMARK/${AOI}_compose_done

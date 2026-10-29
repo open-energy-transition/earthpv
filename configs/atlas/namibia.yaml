@@ -1,0 +1,55 @@
+# Namibia's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Namibia, national. Same starting condition as Zambia, Nigeria, Vietnam, India and the
+# 2026-10-10 queue -- no calibration quadrats, no register used, no third-party dataset
+# checked against -- so the builder's default no-ground-truth text stands. The segmentation
+# is localized on Namibia's own OpenStreetMap labels and ships only if it beats v5 on a
+# held-out region (results/namibia_checkpoint_decision.json records which one did).
+#
+# Numbers belong in docs/results/namibia.md; nothing here quotes a figure a rebuild could
+# change.
+
+title: Namibia
+
+cities:
+  - [Windhoek, 17.083, -22.560]
+  - [Walvis Bay, 14.505, -22.957]
+  - [Swakopmund, 14.527, -22.678]
+  - [Oshakati, 15.700, -17.788]
+  - [Rundu, 19.767, -17.918]
+  - [Katima Mulilo, 24.273, -17.500]
+  - [Otjiwarongo, 16.647, -20.464]
+  - [Tsumeb, 17.719, -19.248]
+  - [Gobabis, 18.967, -22.450]
+  - [Mariental, 17.957, -24.627]
+  - [Keetmanshoop, 18.133, -26.583]
+  - [Luderitz, 15.159, -26.648]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of
+      Namibia has been mapped panel by panel, so there is nothing to calibrate a
+      per-building rooftop classifier against here. Everything on the map is either
+      hand-mapped in OpenStreetMap or an array the segmentation model outlined directly,
+      which in practice means installations of roughly 400 m&sup2; and up. Household,
+      farm and small-business systems are mostly below that size.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
+      Across most of Namibia a 0.1-degree cell holds far fewer buildings than that, so
+      farms, lodges and villages outside the towns are not imaged, and a solar park built
+      on empty land that nobody has mapped yet is not on this page.
+    - >-
+      <b>Solar parks the model outlines but nobody has mapped are not counted.</b> A model
+      outline above 100,000 m&sup2; only counts when it carries a mapped plant geometry. That
+      rule removes the salt pans, dark rock and mine workings of that size the model can
+      mistake for panels, and with them the occasional real park that is not yet in
+      OpenStreetMap. Mapping such a park brings it into the verified layer.
+    - >-
+      <b>Seasonal pans in the north are counted as solar parks.</b> In the Cuvelai basin
+      (Omusati, Ohangwena, Oshana and Oshikoto) the model reads the flat, bright floors and
+      standing water of oshanas as ground-mounted panels. Satellite imagery of the largest
+      such detections shows pans, not panels, so most of the satellite-detected capacity in
+      those four regions is not real. No filter removes them yet; the Verified figure, which
+      counts only mapped installations, is not affected.

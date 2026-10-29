@@ -561,6 +561,28 @@ aois:
       "0098_0018", "0098_0019", "0099_0015", "0099_0016", "0099_0018",
     ]
 
+  # Namibia (registered 2026-10-28, owner request: first-iteration atlas). Added by
+  # scripts/new_region.py; no source_region key, so chips and compose fetch from
+  # Planetary Computer STAC.
+  namibia:
+    bbox: [11.7, -29.0, 25.3, -16.9]
+    division: { name: Namibia, country: NA, subtype: country, iso3: NAM }
+    grid_origin: [11.7, -29.0]
+    # May to September: the dry winter. The northern regions and Zambezi take their rain
+    # Nov-Apr; preflight found the Apr-Sep window at median 0% scene cloud.
+    compose_window: ["2026-05-01", "2026-09-30"]
+    cell_selection: duckdb
+    # Filled by scripts/pick_val_region.py --write, which only writes into an empty list.
+    # Val holdout = Erongo (geoBoundaries ADM1), 20 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 38 of
+    # 234 dissolved >= 400 m2 positives (16.2%); the largest
+    # region (Khomas, 118) is never the holdout.
+    val_tiles: [
+      "0028_0060", "0028_0061", "0028_0063", "0029_0063", "0031_0068", "0032_0065", "0032_0077", "0033_0054",
+      "0033_0064", "0033_0065", "0035_0080", "0036_0076", "0038_0069", "0038_0070", "0038_0079", "0041_0068",
+      "0041_0070", "0042_0075", "0043_0075", "0044_0066",
+    ]
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]

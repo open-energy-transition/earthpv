@@ -41,6 +41,12 @@ aois:
     to: 2026-08
     mwp: 4816.9
     ceiling: true
+  namibia:
+    ember_area: Namibia
+    from: 2017-01
+    to: 2026-08
+    mwp: 1498.0
+    ceiling: true
   nigeria:
     ember_area: Nigeria
     from: 2017-01

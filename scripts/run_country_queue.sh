@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Morocco, Egypt, Yemen, South Africa: the unattended queue behind the 2026-10-10 run.
+# Morocco, Egypt, Yemen, South Africa: the unattended queue behind the 2026-10-10 run
+# (Poland added 2026-10-19, Namibia 2026-10-28).
 #
 # Generalises scripts/run_vn_in_queue.sh from two hard-wired countries to an ordered list.
 # This script owns the NETWORK LANE -- label pulls and compose, one country at a time in
@@ -27,6 +28,7 @@ egypt|24.7,22.0,36.9,31.7|EGY|4x4
 yemen|41.8,12.1,54.6,19.0|YEM|4x3
 south_africa|16.4,-34.9,32.9,-22.1|ZAF|8x6
 poland|14.0,49.0,24.2,54.9|POL|5x4
+namibia|11.7,-29.0,25.3,-16.9|NAM|4x4
 "
 AOIS=$(echo "$COUNTRIES" | awk -F'|' 'NF {print $1}')
 
