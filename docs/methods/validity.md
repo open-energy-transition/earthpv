@@ -94,8 +94,9 @@ independent.
 
 Each atlas draws its own total and its own provinces beside the figures a reader is likely
 to know, in a section of its own ("Against official and published figures"): the national
-total as points with their intervals, and, where a source publishes provinces, one row per
-province with the atlas and the source side by side and their rank agreement (Spearman).
+total as bars with their intervals, and, where a source publishes provinces, the atlas's bar
+and the source's beneath it for each province, with how closely the two rank the provinces
+(Spearman's rank correlation).
 `scripts/official_capacity.py` writes the figures into
 `configs/external/official_capacity.yaml`; each was checked against a fresh download of its
 source, and the vintage nearest the end of the atlas's imagery window was used.

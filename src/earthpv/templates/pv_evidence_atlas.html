@@ -53,6 +53,10 @@
        reached; hatching (it is always ground-mount) and its labels carry the rest. Light
        mode's #245c00: dE 22.0 and 12.9. */
     --ground: #68a800;
+    /* Bars for figures that are not this atlas ("Against official and published figures"):
+       a warm grey, dE 21.7 from --accent for normal vision (OKLab x100) and 18.3 under
+       protanopia; --ink-2 measured 12.4, too close. Light mode's #5f5a50: 18.4 and 11.3. */
+    --ref: #8c8270;
     --user: #e85d9c;
     --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
@@ -67,7 +71,7 @@
       --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
       --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
       --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8; --extended: #9b47b8;
-      --ground: #245c00; --user: #c2185b; --bloom: 0;
+      --ground: #245c00; --ref: #5f5a50; --user: #c2185b; --bloom: 0;
       --card-ring: rgba(120,80,20,0.14);
       --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
       color-scheme: light;
@@ -80,7 +84,7 @@
     --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
     --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
     --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
-    --extended: #9b47b8; --ground: #245c00; --user: #c2185b; --bloom: 0;
+    --extended: #9b47b8; --ground: #245c00; --ref: #5f5a50; --user: #c2185b; --bloom: 0;
     --card-ring: rgba(120,80,20,0.14);
     --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(80,55,15,0.10);
     color-scheme: light;
@@ -92,7 +96,7 @@
     --ink: #f7f1e6; --ink-2: #c9bda4; --muted: #93866c; --city: #ffffff; --city-halo: rgba(8,6,4,0.94);
     --hair: rgba(247,183,51,0.14); --prov-stroke: rgba(247,183,51,0.26);
     --accent: #f5a623; --accent-dim: #b5610f; --domain: #2fd9c4; --large: #5b9cf2; --extended: #c97fe0;
-    --ground: #68a800; --user: #e85d9c; --bloom: 0.55;
+    --ground: #68a800; --ref: #8c8270; --user: #e85d9c; --bloom: 0.55;
     --card-ring: rgba(247,183,51,0.10);
     --shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.45);
     color-scheme: dark;
@@ -428,14 +432,17 @@
     background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px); }
   .comp-swatch.extrap { background: repeating-linear-gradient(45deg,
     var(--accent) 0 2px, var(--panel) 2px 5px); }
-  /* "Against official and published figures": this atlas filled amber, a reference an ink
-     ring, customs imports a muted diamond -- the same marks the two charts draw. */
-  .comp-swatch.ref-atlas { background: var(--accent); border-radius: 50%; }
-  .comp-swatch.ref-official { background: transparent; border: 2px solid var(--ink); border-radius: 50%;
-    width: 9px; height: 9px; }
-  .comp-swatch.ref-imports { background: var(--muted); border-radius: 1px; transform: rotate(45deg) scale(0.85); }
-  .ref-notes ul { margin: 6px 0 0; padding-left: 18px; }
-  .ref-notes li { margin: 5px 0; }
+  /* "Against official and published figures": this atlas's bars amber, every other
+     figure's grey; a pale bar with an outline is a bound (Verified, the floor) or context
+     (customs imports) rather than a count of what is installed. */
+  .comp-swatch.ref-atlas { background: var(--accent); }
+  .comp-swatch.ref-official { background: var(--ref); }
+  .ref-lede { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; margin: 2px 0 12px; max-width: 72ch; }
+  .ref-lede b { color: var(--ink); font-weight: 650; }
+  .ref-src { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+  .ref-src li { margin: 6px 0; }
+  .ref-src b { color: var(--ink); }
+  .ref-src a { color: var(--accent); }
   .ref-pick[hidden] { display: none; }
   .ref-pick { display: inline-flex; align-items: center; gap: 8px; margin: 2px 6px 10px;
     font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
@@ -917,28 +924,32 @@
       <div class="fig-head">
         <div>
           <div class="map-title">National total</div>
-          <div class="map-sub">linear scale &middot; MWp &middot; hover a row for detail</div>
+          <div class="map-sub">this atlas in MWp &middot; other figures in MW as published</div>
         </div>
         <div class="dlbar" data-fig="references"></div>
       </div>
+      <p class="ref-lede" id="refLede"></p>
       <div class="comp-legend" id="refLegend"></div>
       <div id="refMount" class="plot-host"></div>
-      <div class="hero-desc ref-notes" id="refNotes"></div>
+      <details class="tablewrap" id="refSources">
+        <summary>Sources and what each figure counts</summary>
+        <ul class="ref-src" id="refNotes"></ul>
+      </details>
     </div>
     <div class="card chart-card" id="refRegionCard" style="margin-top:14px;">
       <div class="fig-head">
         <div>
           <div class="map-title" id="refRegionTitle">By province</div>
-          <div class="map-sub">linear scale &middot; MWp &middot; hover a row for detail</div>
+          <div class="map-sub" id="refRegionSub"></div>
         </div>
         <div class="dlbar" data-fig="references-provinces"></div>
       </div>
       <label class="ref-pick" id="refPickWrap" hidden>Compare with
         <select id="refPick"></select></label>
+      <p class="ref-lede" id="refRegionNote"></p>
       <div class="comp-legend" id="refRegionLegend"></div>
       <div id="refRegionMount" class="plot-host"></div>
       <button type="button" class="prov-more" id="refMore" hidden aria-controls="refRegionMount"></button>
-      <div class="hero-desc" id="refRegionNote" style="margin-top:12px;"></div>
       <details class="tablewrap">
         <summary>All province figures</summary>
         <div style="overflow-x:auto;"><table id="rtable">
@@ -1301,7 +1312,7 @@ out geom;</div>
   }
   function palette(){
     const names = ["page", "panel", "panel-2", "land", "map-bg", "ink", "ink-2", "muted", "hair",
-      "prov-stroke", "accent", "accent-dim", "domain", "large", "extended", "ground", "user", "city",
+      "prov-stroke", "accent", "accent-dim", "domain", "large", "extended", "ground", "ref", "user", "city",
       "city-halo", "font-mono", "font-display"];
     const P = {};
     for (const n of names) P[n.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = tok("--" + n);
@@ -4042,7 +4053,14 @@ out geom;</div>
   // `totals.references` (configs/external/official_capacity.yaml: registers, statistics
   // offices, published estimates) and the customs record `totals.import_ceiling` (Ember,
   // panels imported from China). Drawn beside this atlas's own figures and never scored
-  // against them: each counts something different, and the notes under the chart say what.
+  // against them: each counts something different, and the sources list says what.
+  //
+  // Both charts are plain bars from zero, each figure's name ABOVE its bar and its value
+  // at the bar's end, in the page's text face (owner, 2026-10-29: the first version's
+  // dots, rings and dumbbells in small monospace were hard to read). Amber is this atlas,
+  // grey (--ref) every other figure; a pale outlined bar is a floor (Verified) or context
+  // (customs imports) rather than a count of what is installed. Rows are laid out in
+  // pixels on an identity y scale, so a name never competes with its bar for width.
   const REFS = Array.isArray(T.references) ? T.references : [];
   const IC = T.import_ceiling || null;
   const REF_KIND = {register: "register", statistics: "statistics",
@@ -4053,64 +4071,58 @@ out geom;</div>
     return new Date(Date.UTC(+y, +m - 1, +(d || 1))).toLocaleString("en-US",
       Object.assign({month: "short", year: "numeric", timeZone: "UTC"}, d ? {day: "numeric"} : {}));
   }
-  const ciOf = ci => Array.isArray(ci) ? {lo: ci[0], hi: ci[1]} : {};
-  // Row labels: dated where there is room, the bare name on a phone (the tip and the
-  // notes below carry the date either way).
+  const refStyle = P => Object.assign(plotStyle(P), {fontFamily: P.fontDisplay, fontSize: "12.5px"});
+  const REF_CHAR_PX = 7.4;   // about one digit of 12.5px system-ui, to size the value margin
+  const refBarFill = (P, group) => group === "atlas" ? P.accent : P.ref;
+
   function refTotalRows(narrow){
     const mon = s => monthLabel(String(s).slice(0, 7));
-    const rows = [Object.assign({name: narrow ? "This atlas, Best" : "This atlas: Best estimate", group: "atlas",
-      mwp: T.mwp_best, detail: "Total PV capacity detectable with Sentinel-2, 90% credible interval"},
-      ciOf(T.mwp_best_ci))];
-    if (T.mwp_verified != null) rows.push(Object.assign({name: narrow ? "This atlas, Verified"
-      : "This atlas: Verified", group: "atlas", mwp: T.mwp_verified,
-      detail: "Hand-mapped OpenStreetMap plus the strictest detections, the floor"}, ciOf(T.mwp_verified_ci)));
-    REFS.forEach(r => rows.push(Object.assign({name: narrow ? r.name : `${r.name}, ${mon(r.as_of)}`,
-      group: "official", mwp: r.mw, detail: `${REF_KIND[r.kind]}, ${r.publisher}, ${monthLabel(r.as_of)}`},
-      ciOf(r.range))));
-    if (IC) rows.push({name: narrow ? "Imported from China"
-      : `Imported from China, ${mon(IC.from)} to ${mon(IC.to)}`,
-      group: "imports", mwp: IC.mwp, detail: IC.ceiling
-        ? "Customs record (Ember), a ceiling on capacity built since 2017"
-        : "Customs record (Ember), not a ceiling here"});
-    return rows.map(r => Object.assign(r, {hasCi: r.lo != null && r.hi != null}));
+    const rows = [{label: "This atlas: Best estimate", group: "atlas", mwp: T.mwp_best, unit: "MWp",
+      ci: T.mwp_best_ci, detail: "Total PV capacity detectable with Sentinel-2, 90% credible interval"}];
+    if (T.mwp_verified != null) rows.push({label: "This atlas: Verified, the floor", group: "atlas",
+      faint: true, mwp: T.mwp_verified, unit: "MWp", ci: T.mwp_verified_ci,
+      detail: "Hand-mapped OpenStreetMap plus the strictest detections, 90% credible interval"});
+    REFS.forEach(r => rows.push({label: `${r.name}, ${monthLabel(r.as_of)}`, group: "official",
+      mwp: r.mw, unit: "MW", ci: r.range,
+      detail: `${REF_KIND[r.kind]}, ${r.publisher}` + (r.range ? ", with its stated range" : "")}));
+    if (IC) rows.push({label: `${narrow ? "Imported" : "Panels imported"} from China, `
+      + `${mon(IC.from)} to ${mon(IC.to)}`, group: "imports", faint: true, mwp: IC.mwp, unit: "MWp",
+      detail: IC.ceiling ? "Customs record (Ember): a ceiling on what can have been built since 2017"
+        : `Customs record (Ember), not a ceiling here: ${IC.why_not}`});
+    // Pixel layout: the name on a 19 px line, then an 18 px bar, then a 12 px gap.
+    return rows.map((r, i) => Object.assign(r, {
+      lo: Array.isArray(r.ci) ? r.ci[0] : null, hi: Array.isArray(r.ci) ? r.ci[1] : null,
+      yText: 4 + i * 49 + 14, y0: 4 + i * 49 + 19, y1: 4 + i * 49 + 37}));
   }
-  const refColor = (P, g) => g === "atlas" ? P.accent : g === "imports" ? P.muted : P.ink;
   function refTotalChart(width, interactive){
     const P = palette();
-    const narrow = width < 560;
-    const rows = refTotalRows(narrow);
-    const maxChars = narrow ? 22 : 46;
-    const longest = Math.min(maxChars, Math.max(...rows.map(r => r.name.length)));
-    const xmax = Math.max(...rows.map(r => r.hasCi ? r.hi : r.mwp));
-    const nTicks = Math.max(2, Math.floor(width / 120));
-    const col = d => refColor(P, d.group);
+    const rows = refTotalRows(width < 560);
+    const value = d => `${fmt(d.mwp)} ${d.unit}`;
+    const end = d => d.hi != null ? Math.max(d.hi, d.mwp) : d.mwp;
+    const withCi = rows.filter(d => d.lo != null && d.hi != null);
+    const tipText = d => `${d.label}\n${fmt5(d.mwp)} ${d.unit}`
+      + (d.lo != null ? ` (range ${fmt(d.lo)} to ${fmt(d.hi)})` : "") + `\n${d.detail}`;
+    const bar = (data, faint) => Plot.rectX(data, {x1: 0, x2: "mwp", y1: "y0", y2: "y1", rx: 2,
+      fill: d => refBarFill(P, d.group), fillOpacity: faint ? 0.25 : 1,
+      stroke: faint ? (d => refBarFill(P, d.group)) : undefined, strokeWidth: 1.5,
+      title: interactive ? tipText : undefined, tip: interactive});
     return Plot.plot({
-      width, height: rows.length * 32 + 44, marginLeft: Math.round(longest * 6.3 + 14),
-      marginRight: narrow ? 52 : 64,
-      marginTop: 8, marginBottom: 30, style: plotStyle(P),
+      width, height: rows[rows.length - 1].y1 + 8,
+      marginLeft: 1, marginRight: Math.round(Math.max(...rows.map(d => value(d).length)) * REF_CHAR_PX + 16),
+      marginTop: 0, marginBottom: 0, style: refStyle(P),
       ariaLabel: `${AOI}: this atlas's national PV capacity beside official and published figures`,
-      x: {domain: [0, xmax], nice: true, label: null, tickFormat: compact, ticks: nTicks},
-      y: {domain: rows.map(r => r.name), label: null, tickSize: 0, padding: 0.4,
-          tickFormat: d => trunc(d, maxChars)},
-      color: {type: "identity"},
+      x: {domain: [0, Math.max(...rows.map(end))], axis: null},
+      y: {type: "identity", axis: null}, color: {type: "identity"},
       marks: [
-        Plot.gridX({ticks: nTicks, stroke: P.hair, strokeOpacity: 1}),
-        Plot.ruleX([0], {stroke: P.muted}),
-        Plot.ruleY(rows.filter(r => r.hasCi), {y: "name", x1: "lo", x2: "hi", stroke: col, strokeWidth: 2.5,
-          strokeLinecap: "round"}),
-        Plot.tickX(rows.filter(r => r.hasCi), {y: "name", x: "lo", stroke: col, strokeWidth: 1.5, inset: 8}),
-        Plot.tickX(rows.filter(r => r.hasCi), {y: "name", x: "hi", stroke: col, strokeWidth: 1.5, inset: 8}),
-        Plot.dot(rows, {y: {value: "name", label: "Figure"}, x: "mwp", r: 5.5,
-          symbol: d => d.group === "imports" ? "diamond" : "circle",
-          fill: d => d.group === "official" ? P.panel : col(d),
-          stroke: d => d.group === "official" ? P.ink : P.panel, strokeWidth: 2,
-          channels: {Low: {value: "lo", label: "low"}, High: {value: "hi", label: "high"},
-                     Detail: {value: "detail", label: "Detail"}},
-          tip: interactive ? {format: {x: v => `${fmt5(v)} MWp`, y: true, fill: false, stroke: false,
-            symbol: false, Low: v => v == null ? "" : fmt5(v), High: v => v == null ? "" : fmt5(v),
-            Detail: true}} : undefined}),
-        Plot.text(rows, {y: "name", x: d => d.hasCi ? d.hi : d.mwp, text: d => fmt(d.mwp), dx: 9,
-          textAnchor: "start", fill: P.ink2}),
+        bar(rows.filter(d => !d.faint), false),
+        bar(rows.filter(d => d.faint), true),
+        Plot.ruleY(withCi, {y: d => (d.y0 + d.y1) / 2, x1: "lo", x2: "hi", stroke: P.ink, strokeWidth: 1.5}),
+        Plot.ruleX(withCi, {x: "lo", y1: d => d.y0 + 4, y2: d => d.y1 - 4, stroke: P.ink, strokeWidth: 1.5}),
+        Plot.ruleX(withCi, {x: "hi", y1: d => d.y0 + 4, y2: d => d.y1 - 4, stroke: P.ink, strokeWidth: 1.5}),
+        Plot.text(rows, {y: "yText", frameAnchor: "left", textAnchor: "start", lineAnchor: "bottom",
+          text: d => trunc(d.label, Math.floor(width / 6.6)), fill: P.ink, fontWeight: 600}),
+        Plot.text(rows, {x: end, y: d => (d.y0 + d.y1) / 2, text: value, dx: 8, textAnchor: "start",
+          lineAnchor: "middle", fill: P.ink2, fontVariant: "tabular-nums"}),
       ],
     });
   }
@@ -4126,8 +4138,9 @@ out geom;</div>
     return [["figure", "kind", "publisher", "as_of", "mw", "range_low", "range_high", "scope", "url"], rows];
   }
 
-  // Province by province, for each reference that publishes provinces: a dumbbell per
-  // province, this atlas (amber) to the reference (ink ring), largest reference first.
+  // Province by province, for each reference that publishes provinces: the province's
+  // name, then this atlas's bar (amber) and the reference's (grey) directly beneath it,
+  // largest reference first.
   const REGION_REFS = REFS.filter(r => r.regions && Object.keys(r.regions).length);
   const REF_TOP = 10;
   let refRegionIdx = 0, refAll = false;
@@ -4145,28 +4158,29 @@ out geom;</div>
     const ref = REGION_REFS[refRegionIdx];
     const all = refRegionRows();
     const rows = interactive && !refAll ? all.slice(0, REF_TOP) : all;
-    const maxChars = width < 360 ? 14 : width < 700 ? 22 : 34;
-    const longest = Math.min(maxChars, Math.max(4, ...rows.map(r => r.Province.length)));
-    const nTicks = Math.max(2, Math.floor(width / 110));
-    const xmax = Math.max(...rows.map(r => Math.max(r.atlas, r.ref)));
-    const ratio = d => d.ratio == null ? "" : `\nthis atlas / ${ref.name}: ${d.ratio.toFixed(2)}`;
+    // Per province: a 17 px name line, two 13 px bars 2 px apart, a 10 px gap.
+    const step = 55;
+    const bars = rows.flatMap((d, i) => [
+      {d, group: "atlas", v: d.atlas, y0: 4 + i * step + 18, y1: 4 + i * step + 31},
+      {d, group: "official", v: d.ref, y0: 4 + i * step + 33, y1: 4 + i * step + 46}]);
+    const xmax = Math.max(...bars.map(b => b.v));
+    const tipText = b => `${b.d.Province}\nthis atlas, Best: ${fmt5(b.d.atlas)} MWp\n${ref.name}: `
+      + `${fmt5(b.d.ref)} MW` + (b.d.ratio == null ? "" : `\nthis atlas / ${ref.name}: ${b.d.ratio.toFixed(2)}`);
     return Plot.plot({
-      width, height: rows.length * 24 + 40, marginLeft: Math.round(longest * 6.5 + 10),
-      marginRight: 20, marginTop: 4, marginBottom: 28, style: plotStyle(P),
+      width, height: 4 + rows.length * step,
+      marginLeft: 1, marginRight: Math.round(fmt(xmax).length * REF_CHAR_PX + 16),
+      marginTop: 0, marginBottom: 0, style: refStyle(P),
       ariaLabel: `${AOI}: PV capacity by province, this atlas against ${ref.name}`,
-      x: {domain: [0, xmax], nice: true, label: null, tickFormat: compact, ticks: nTicks},
-      y: {domain: rows.map(r => r.Province), label: null, tickSize: 0, padding: 0.3,
-          tickFormat: d => trunc(d, maxChars)},
+      x: {domain: [0, xmax], axis: null},
+      y: {type: "identity", axis: null}, color: {type: "identity"},
       marks: [
-        Plot.gridX({ticks: nTicks, stroke: P.hair, strokeOpacity: 1}),
-        Plot.ruleX([0], {stroke: P.muted}),
-        Plot.ruleY(rows, {y: "Province", x1: d => Math.min(d.atlas, d.ref), x2: d => Math.max(d.atlas, d.ref),
-          stroke: P.muted, strokeOpacity: 0.45, strokeWidth: 3}),
-        Plot.dot(rows, {y: "Province", x: "ref", r: 5, fill: P.panel, stroke: P.ink, strokeWidth: 2}),
-        Plot.dot(rows, {y: "Province", x: "atlas", r: 5, fill: P.accent, stroke: P.panel, strokeWidth: 1.5}),
-        interactive ? Plot.tip(rows, Plot.pointerY({y: "Province", x: d => Math.max(d.atlas, d.ref),
-          title: d => `${d.Province}\nthis atlas, Best: ${fmt5(d.atlas)} MWp\n${ref.name}: ${fmt5(d.ref)} MW`
-            + ratio(d)})) : null,
+        Plot.rectX(bars, {x1: 0, x2: "v", y1: "y0", y2: "y1", rx: 2, fill: b => refBarFill(P, b.group),
+          title: interactive ? tipText : undefined, tip: interactive}),
+        Plot.text(rows, {y: (d, i) => 4 + i * step + 14, frameAnchor: "left", textAnchor: "start",
+          lineAnchor: "bottom", text: d => trunc(d.Province, Math.floor(width / 6.6)), fill: P.ink,
+          fontWeight: 600}),
+        Plot.text(bars, {x: "v", y: b => (b.y0 + b.y1) / 2, text: b => fmt(b.v), dx: 7, textAnchor: "start",
+          lineAnchor: "middle", fill: P.ink2, fontSize: "11.5px", fontVariant: "tabular-nums"}),
       ],
     });
   }
@@ -4196,20 +4210,26 @@ out geom;</div>
     }
     return saa && sbb ? sab / Math.sqrt(saa * sbb) : null;
   }
+  // The rank agreement in words first, the coefficient after it for whoever wants it.
+  const orderWords = rho => rho >= 0.9 ? "nearly the same order" : rho >= 0.7 ? "a similar order"
+    : rho >= 0.4 ? "a partly similar order" : "quite different orders";
   function renderRefRegionChrome(){
     const ref = REGION_REFS[refRegionIdx];
     const rows = refRegionRows();
-    document.getElementById("refRegionTitle").textContent = `By province: this atlas against ${ref.name}`;
+    const when = monthLabel(ref.as_of);
+    document.getElementById("refRegionTitle").textContent = `By province: this atlas and ${ref.name}`;
+    document.getElementById("refRegionSub").textContent =
+      `this atlas in MWp · ${ref.name} in MW · largest first by ${ref.name}`;
     document.getElementById("refRegionLegend").innerHTML =
       `<div class="comp-legend-item"><span class="comp-swatch ref-atlas"></span>This atlas, Best estimate</div>`
       + `<div class="comp-legend-item"><span class="comp-swatch ref-official"></span>${esc(ref.name)}, `
-      + `${esc(monthLabel(ref.as_of))}</div>`;
+      + `${esc(when)}</div>`;
     const sumA = rows.reduce((s, d) => s + d.atlas, 0), sumR = rows.reduce((s, d) => s + d.ref, 0);
     const rho = rows.length >= 3 ? spearman(rows.map(d => d.atlas), rows.map(d => d.ref)) : null;
     document.getElementById("refRegionNote").innerHTML =
-      `Largest first, by ${esc(ref.name)}'s figure. Over these ${rows.length} provinces this atlas's Best `
-      + `estimate sums to ${fmt(sumA)} MWp and ${esc(ref.name)} to ${fmt(sumR)} MW`
-      + (rho == null ? "." : `; ranked by capacity, the two orders agree at Spearman &rho; = ${rho.toFixed(2)}.`)
+      (rho == null ? "" : `Ranked by capacity, this atlas and ${esc(ref.name)} put these ${rows.length} `
+        + `provinces in <b>${orderWords(rho)}</b> (rank correlation ${rho.toFixed(2)}). `)
+      + `Summed over them: ${fmt(sumA)} MWp here, ${fmt(sumR)} MW in ${esc(ref.name)}.`
       + (ref.regions_scope ? ` ${esc(ref.regions_scope)}` : "");
     document.getElementById("rtableRef").textContent = ref.name;
     document.querySelector("#rtable tbody").innerHTML = rows.map(d =>
@@ -4220,12 +4240,26 @@ out geom;</div>
     more.textContent = refAll ? `Show the top ${REF_TOP} only` : `Show all ${rows.length} provinces`;
     more.setAttribute("aria-expanded", String(refAll));
   }
-  function renderRefNotes(){
+  function renderRefText(){
+    const ci = T.mwp_best_ci;
+    document.getElementById("refLede").innerHTML =
+      `This atlas's Best estimate is <b>${fmt(T.mwp_best)} MWp</b>`
+      + (ci ? ` (90% range ${fmt(ci[0])} to ${fmt(ci[1])})` : "") + ". "
+      + (REFS.length
+        ? "For comparison: " + REFS.map(r => `${esc(r.name)}, <b>${fmt(r.mw)} MW</b> `
+          + `(${esc(monthLabel(r.as_of))})`).join("; ") + ". "
+        : `No official national figure was found for ${esc(AOI)}, so only the customs record of `
+          + `panels imported from China is shown. `)
+      + "Each figure counts something different, so none of them is ground truth for this map "
+      + "(see <i>Sources</i> below the chart).";
     const imagery = T.imagery_date_range ? ` in its imagery window (${esc(T.imagery_date_range)})` : "";
-    const items = REFS.map(r =>
+    const items = [`<li>This atlas counts what Sentinel-2 shows${imagery}, as module capacity (MWp). `
+      + `A register counts what was registered by its date, in MW as declared, which for large plants `
+      + `is often the inverter (AC) rating, below the module capacity.</li>`];
+    REFS.forEach(r => items.push(
       `<li><b>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}</b>`
       + ` (${REF_KIND[r.kind]}, ${esc(r.publisher)}, ${esc(monthLabel(r.as_of))}): <b>${fmt(r.mw)} MW</b>`
-      + (r.range ? ` (range ${fmt(r.range[0])} to ${fmt(r.range[1])})` : "") + `. ${esc(r.scope || "")}</li>`);
+      + (r.range ? ` (range ${fmt(r.range[0])} to ${fmt(r.range[1])})` : "") + `. ${esc(r.scope || "")}</li>`));
     if (IC) {
       const src = IC.url ? `<a href="${esc(IC.url)}" target="_blank" rel="noopener">Ember</a>` : "Ember";
       items.push(`<li><b>Panels imported from China</b> (${src}, China's customs records, CC-BY-4.0), `
@@ -4235,25 +4269,16 @@ out geom;</div>
             + "2017; some imported panels sit in warehouses, are re-exported or are not installed yet."
           : `Not a ceiling here: ${esc(IC.why_not)}.`) + `</li>`);
     }
-    document.getElementById("refNotes").innerHTML =
-      `None of these figures is ground truth for this map, and the map is not scored against them: `
-      + `each counts something different. This atlas counts what Sentinel-2 shows${imagery}; a register `
-      + `counts what was registered by its date, in MW as declared, which for large plants is often the `
-      + `inverter (AC) rating, below the module (MWp) capacity the atlas counts.`
-      + (REFS.length ? "" : ` No official national or provincial figure is on file for ${esc(AOI)} yet, `
-        + `so the customs record is the only comparison.`)
-      + `<ul>${items.join("")}</ul>`;
+    document.getElementById("refNotes").innerHTML = items.join("");
   }
 
   const refSection = document.getElementById("references");
   if (REFS.length || IC) {
     document.getElementById("refLegend").innerHTML =
       `<div class="comp-legend-item"><span class="comp-swatch ref-atlas"></span>This atlas</div>`
-      + (REFS.length ? `<div class="comp-legend-item"><span class="comp-swatch ref-official"></span>`
-        + `Official or published figure</div>` : "")
-      + (IC ? `<div class="comp-legend-item"><span class="comp-swatch ref-imports"></span>`
-        + `Panels imported from China</div>` : "");
-    renderRefNotes();
+      + `<div class="comp-legend-item"><span class="comp-swatch ref-official"></span>`
+      + (REFS.length ? "Official or published figures" : "Customs record") + `</div>`;
+    renderRefText();
     const names = [...REFS.map(r => `${r.name} (${monthLabel(r.as_of)})`),
       ...(IC ? ["panels imported from China (Ember)"] : [])];
     registerPlot("references", "refMount", needsPlot(refTotalChart), {
@@ -4270,9 +4295,9 @@ out geom;</div>
       }
       renderRefRegionChrome();
       registerPlot("references-provinces", "refRegionMount", needsPlot(refRegionChart), {
-        title: () => `${AOI}: PV capacity by province, this atlas against ${REGION_REFS[refRegionIdx].name}`,
-        subtitle: () => `This atlas's Best estimate (MWp) and ${REGION_REFS[refRegionIdx].name} `
-          + `(${monthLabel(REGION_REFS[refRegionIdx].as_of)}, MW) per province, largest first.`,
+        title: () => `${AOI}: PV capacity by province, this atlas and ${REGION_REFS[refRegionIdx].name}`,
+        subtitle: () => `This atlas's Best estimate (MWp, amber) and ${REGION_REFS[refRegionIdx].name} `
+          + `(${monthLabel(REGION_REFS[refRegionIdx].as_of)}, MW, grey) per province, largest first.`,
         csv: refRegionCSV,
       });
       const rerender = () => {

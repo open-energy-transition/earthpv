@@ -527,9 +527,12 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and
   Verified with their intervals) beside each `totals.references` entry and the Ember customs
-  record, then a per-province dumbbell against the first reference that publishes provinces
-  (a picker when several do), with its Spearman rank agreement. The hero no longer carries
-  the Ember line. `scripts/official_capacity.py` writes `configs/external/official_capacity.yaml`
+  record, then per province this atlas's bar over the reference's for the first reference
+  that publishes provinces (a picker when several do), with its rank agreement in words and
+  as Spearman's rho. Plain bars from zero, each name above its bar and its value at the end,
+  amber for the atlas and grey (`--ref`) for everything else: the first version's dots and
+  dumbbells in small monospace were hard to read (owner). The hero no longer carries the
+  Ember line. `scripts/official_capacity.py` writes `configs/external/official_capacity.yaml`
   (registers from disk: MaStR per Land, ODRE per region at the 2024-12-31 vintage, MNRE per
   state for Jan 2026; cited documents typed into `PUBLISHED`, e.g. TransitionZero's Pakistan
   provinces); `atlas.official_capacity(aoi, provinces)` refuses a province key the page does
