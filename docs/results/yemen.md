@@ -243,9 +243,32 @@ Yemen's own model scores household roofs higher in its sparsest cells than in Sa
 under 100 buildings per km&sup2;. None of this is measured, because only four of the nine
 building boxes hold PV and none is a rural hamlet with a false-positive cluster.
 
+**The first measured level: Yafi' and Qa'tabah town (2026-10-29).** The first two PV-rich
+town boxes to be mapped ([below](#calibration-areas)) are the first Yemeni test of where
+the scores sit, not only how they rank. Against roofclf's own parcel label (`roof_pv_area`
+plus `parcel_pv_area`, a roof with PV on 5% of it), Pakistan's unchanged model, read from
+its national Yemen scoring (`data/roofclf_transfer/yemen_pk/prob`):
+
+| Roofs | Buildings | With PV | AUC | Score sum per PV roof | Precision of the top-5% flag |
+| --- | --- | --- | --- | --- | --- |
+| Yafi', below 400 m&sup2; | 932 | 29 (3.1%) | 0.79 | 4.15 | 0.10, at recall 0.69 |
+| Yafi', 400 m&sup2; and up | 40 | 6 | 0.69 | 3.28 | 0.20 |
+| Qa'tabah town, below 400 m&sup2; | 826 | 18 (2.2%) | 0.89 | 2.74 | 0.25, at recall 0.28 |
+| Qa'tabah town, 400 m&sup2; and up | 70 | 10 | 0.81 | 1.42 | 0.28 |
+| Pakistan's quadrats, below / at or above 400 m&sup2; | | | | 1.115 / 1.270 | |
+
+It ranks the two towns' roofs as well as it ranks the other boxes, and better in Qa'tabah,
+but on household roofs its scores sum to 3.6 per PV roof across the two (170 over 47),
+about 3.2 times what they sum to in Pakistan. The boxes were picked for their high scores,
+and a window picked that way is partly picked for its scoring errors, which pushes the
+ratio up. Qa'tabah town is the least affected of the ten (the fewest high-scoring roofs,
+20) and still reads 2.5 times. Everything above inferred the level from where the high
+scores land; these two measure it.
+
 ## Calibration areas
 
-**Ten PV-rich town boxes (candidates, 2026-10-28, not yet mapped).** Drawn with
+**Ten PV-rich town boxes (candidates, 2026-10-28; Yafi' and Qa'tabah town mapped
+2026-10-29).** Drawn with
 `calib-candidates -- --aoi yemen --pv-rich`: 1 km windows of at least 800 buildings per
 km&sup2; with the most household roofs Pakistan's classifier scores in its national top 5%,
 every window's top-scored roofs looked at on Esri imagery and kept only where panels show
@@ -255,13 +278,28 @@ construction. Sana'a: Ma'in, As Sab'in, Sanhan and Bani Hushaysh; Ibb: Adh Dhiha
 and Yarim; Khamir ('Amran), Sa'dah, Yafi' (Lahij) and Qa'tabah town (Ad Dali'). Esri
 imagery from 2024-10 to 2025-12 over every box.
 
-**Yafi' is the one to map first (2026-10-29)**, drawn as the atlas's star. It is not the
-classifier's pick: Adh Dhihar in Ibb city holds the most roofs Pakistan's model scores as
-likely (439, against Yafi's 196), but on Esri imagery at the same zoom over the central
-600 m of all ten boxes, Yafi' showed the most distinct rooftop arrays, about a dozen in its
-central 300 m, and Adh Dhihar few among cluttered roofs. Its imagery (2025-10-13) also falls
-inside the composite's window. A visual comparison, not a count; `start_here` in
-`configs/atlas/yemen.yaml` records it.
+**Yafi', Lahij (registered 2026-10-29, Rule-1).** The first PV-rich box mapped, starred on
+the atlas that morning by hand rather than by the classifier: Adh Dhihar in Ibb city holds
+the most roofs Pakistan's model scores as likely (439, against Yafi's 196), but on Esri
+imagery at the same zoom over the central 600 m of all ten boxes, Yafi' showed the most
+distinct rooftop arrays and Adh Dhihar few among cluttered roofs. Mapped panel by panel and
+declared finished by the owner the same day (changesets 191180704 and 191180806), against
+Esri Vivid imagery of 2025-10-13, inside the composite's window. It holds **40
+installations**, 22 rooftop and 18 ground by their overlap with VIDA footprints,
+2,519 m<sup>2</sup> in all, median 52 m<sup>2</sup>, every one below 400 m<sup>2</sup> and
+34 below 100 m<sup>2</sup>; 35 of its 972 VIDA buildings carry PV under roofclf's parcel
+label. The pull was confirmed against a second Overpass query (40 both times). Not yet used
+by any figure on this page. With Yafi' registered the star moved on by the default order, to
+Adh Dhihar; Yafi' showed that order is a weak guide to PV, since one in ten of the roofs it
+counts carried panels.
+
+**Qa'tabah town, Ad Dali' (registered 2026-10-29, Rule-1).** The second PV-rich box mapped,
+the town itself, 9.7 km from the rural `qa_tabah_s6` box (which holds no PV). Declared
+finished by the owner the same day (changesets 191181245 and 191181493), against Esri Vivid
+imagery of 2025-03-21. It holds **31 installations**, 23 rooftop and 8 ground,
+2,142 m<sup>2</sup> in all, median 52 m<sup>2</sup>, every one below 400 m<sup>2</sup> and
+25 below 100 m<sup>2</sup>; 28 of its 896 VIDA buildings carry PV. Confirmed by a second
+Overpass query (31). Not yet used by any figure on this page.
 
 **Al Wehdah, Sana'a (registered 2026-10-23, Rule-1).** The first of Yemen's two start-here
 boxes (`calib-candidates --priority`: 1 km in the densest quarter of the country's
@@ -296,11 +334,12 @@ short and was retried.
 
 ## What Yemen needs next
 
-**Map the PV-rich town boxes, and one false-positive town.** The ten candidates above
-would more than double the rooftop positives a `roofclf` fit sees in building boxes
-(132 roofs in Al Wehdah, Sayun, Bani Al Harith and Huth). One box in a place the classifier
-gets wrong, Ghayl Bawazir or a highland hamlet like Al Hasayn, would be quick to complete
-with no PV and would measure the false positives that decide the level.
+**Map the PV-rich town boxes, and one false-positive town.** Yafi' and Qa'tabah town added
+63 PV roofs to the 132 a `roofclf` fit saw in building boxes (Al Wehdah, Sayun, Bani Al
+Harith and Huth), and the eight candidates left would add several times that. The two
+measured the level in towns where panels show; one box in a place the classifier gets
+wrong, Ghayl Bawazir or a highland hamlet like Al Hasayn, would be quick to complete with no
+PV and would measure the false positives at the other end.
 
 **Map farm areas outside the two regions.** `calib-candidates -- --farmland` drew eight 3 km
 farm boxes across Yemen's cropland strata (2026-10-23). The farm figure rests on 'Amran and

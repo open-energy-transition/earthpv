@@ -76,15 +76,24 @@ What matters is never declaring an area complete when it is not.
 
 Both need a free [OpenStreetMap account](https://www.openstreetmap.org/user/new).
 
+## Or map the large installations the model found
+
+Every atlas also links its country's **mapping leads**: places where the model sees a solar
+array, mostly of 400 m<sup>2</sup> and more, that OpenStreetMap does not have. Leads come
+with no completeness rule. Each one you check and map is counted in the atlas and becomes a
+training example for that country's own model. [Map the leads with JOSM](leads.md) walks
+through it with the OpenData, Todo list and continuous download plugins.
+
 ## Where help is needed
 
 Every Bronze country has ten candidate areas, each with Esri imagery recent enough for that
 country's satellite data: eight drawn at random across its building-density range rather than
 picked by hand, and two start-here boxes in its densest districts with the most large roofs
 ([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
-Pakistan has twenty: eight aimed at the sparse end of its calibration, seven hand-placed
-gap boxes and five farm boxes. Yemen, Silver since its
-farm areas, has ten town boxes where panels show on rooftops, for its rooftop classifier.
+Pakistan has eighteen: eight aimed at the sparse end of its calibration, six hand-placed
+gap boxes and four farm boxes. Yemen, Silver since its
+farm areas, has ten town boxes where panels show on rooftops, for its rooftop classifier;
+Yafi' and Qa'tabah town were mapped on 2026-10-29.
 
 | country | tier | open candidates | box density (bldg/km<sup>2</sup>) | start here (&#9733;) |
 |---|---|---:|---|---|
@@ -95,8 +104,8 @@ farm areas, has ten town boxes where panels show on rooftops, for its rooftop cl
 | [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |
 | [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
 | [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
-| [Pakistan](../atlas.md) | Gold | 20 | 39 to 3,065 | Badin, Sindh (farm) |
-| [Yemen](../atlas-yemen.md) | Silver | 12 | 34 to 2,123 | Yafi', Lahij |
+| [Pakistan](../atlas.md) | Gold | 18 | 55 to 3,065 | Badin, Sindh (farm) |
+| [Yemen](../atlas-yemen.md) | Silver | 10 | 34 to 2,123 | Adh Dhihar, Ibb |
 | [France](../atlas-france.md) | Silver | none | map any solar you can see | |
 
 **Start at the star.** Wherever a country's small solar is not yet measured, on its roofs or
@@ -107,8 +116,8 @@ so a first area there has panels to find and gives the country's calibration its
 positives. The sparse candidates come later and still matter: a calibration only reaches as
 far down in density as its sparsest complete area, and they are the quickest to finish.
 Pakistan already measures its rooftops, so its star is a farm box, the one with the most
-cropland. Yemen's star is chosen by hand instead: of its ten town boxes, Yafi' shows the most
-panels on Esri imagery.
+cropland. Yemen's town boxes come in order of how many roofs a classifier scores as likely
+solar.
 
 Want to suggest an area of your own? The **Propose a calibration area** button on the atlas
 (the dashed square under the zoom buttons) drops a 2 km square where you click and checks

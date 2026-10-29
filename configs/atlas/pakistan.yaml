@@ -182,6 +182,16 @@ calibration_boxes:
   # detector rather than calibrate it. 18 installations, median 39 m2.
   - {name: "Jhang (farm, poor imagery)", stem: jhang_f2_farm_calib_3km, status: corroborated, used: false}
   - {name: "Jhang south (farm)", stem: jhang_f5_farm_calib_3km, status: rule1, used: false}
+  # Added 2026-10-29: Kasur, Punjab, the second of Box 19's density-gap boxes mapped, where
+  # the screen put it (changeset 191181692). Esri Vivid imagery of 2025-05-01 at the centre
+  # and all four corners, checked at registration since none had been recorded. 15
+  # installations (9 ground, 6 rooftop) on 221 VIDA buildings (55 per km2). `used: false`
+  # until a roofclf refit (Box 22, pakistan-calibration-boxes.md).
+  - {name: "Kasur", stem: kasur_gap_calib_2km, status: rule1, used: false}
+  # Added 2026-10-29: Thatta, Sindh, a sampled farm box (cropland stratum 3 of 8, Esri
+  # 2025-02-20), in which the owner found no PV. Calibrates the farm ground-PV detector,
+  # which has not been run on Pakistan.
+  - {name: "Thatta (farm, no PV)", stem: thatta_f3_farm_calib_3km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked

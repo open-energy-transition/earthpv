@@ -287,8 +287,8 @@ representative set. `calib-publish` ranks every candidate of an atlas that has n
 rooftop PV below 400 m<sup>2</sup> or farm ground PV, start-here boxes first and then the
 sampled ones from the densest down (farm boxes first where only farm ground PV is missing),
 and the atlas draws the first as a **star**, with a *Start here* button in the map legend. A
-country config can name the star instead (`start_here`): Yemen's is the PV-rich town box
-with the most panels on Esri imagery.
+country config can name the star instead (`start_here`): Yemen's was the PV-rich town box
+with the most panels on Esri imagery (Yafi', mapped 2026-10-29).
 
 A start-here box that turns out to be unusable is rejected like any other region
 (`new_calibration_quadrat.py --reject`), then redrawn with `--priority --replace`: the

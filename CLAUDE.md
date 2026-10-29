@@ -597,9 +597,9 @@ published file.
   Where only farm ground PV is unmeasured, farm boxes rank first: Pakistan's star is Badin
   (`badin_f8_farm`, 94% cropland). Germany and France qualify but have no open candidates.
 - **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
-  rank that country's candidates with it first and star it, on any atlas. Yemen's is Yafi'
-  (2026-10-29): picked on Esri imagery over the classifier's top window, Adh Dhihar (439
-  likely roofs, few visible arrays).
+  rank that country's candidates with it first and star it, on any atlas. Yemen's was Yafi'
+  (2026-10-29, picked on Esri imagery over the classifier's top window, Adh Dhihar); mapped
+  and registered the same day, so the key was dropped and the star moved on by rule.
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,
@@ -660,8 +660,12 @@ and a call to map a calibration area. A new country is one row plus a rerun; **n
 (`validation: {score, note}`, which beats `derive_validation_score` and is read by all three
 atlas builders and `apply_validation_badges.py`), with a country note in
 `build_atlas_pages.TIER_NOTE`. **Germany is Silver** (its register-calibrated small half fails
-its own register check). **Yemen is Silver**: its building box carries `used: false` and its
-farm areas calibrate farm ground PV only, so household rooftops below 400 m² are unmeasured.
+its own register check). **Yemen is Silver**: its farm areas calibrate farm ground PV
+only, so household rooftops below 400 m² are unmeasured; its eleven building boxes carry
+`used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the
+owner; Yafi' and Qa'tabah town, the first PV-rich town boxes, were mapped 2026-10-29). In those
+two Pakistan's unchanged roofclf ranks household roofs at AUC 0.79 / 0.89 but its scores sum to
+3.6 per PV roof (170 over 47) against 1.115 in Pakistan's quadrats: the first measured level.
 
 **Every evidence atlas shows an import ceiling**: solar panels imported from China from Jan 2017
 to the end of the imagery window, from Ember's customs-based export data (CC-BY-4.0).

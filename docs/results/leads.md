@@ -72,7 +72,8 @@ pixi run earthpv export --aoi pakistan --exclude-mapped --min-distance-m 100 \
 
 That writes GeoParquet, GeoJSON and a MapRoulette challenge sorted by `rank_score`. Load
 the challenge in MapRoulette, or open the GeoJSON directly in JOSM or QGIS alongside the
-Esri and Bing layers.
+Esri and Bing layers. Every published atlas links its country's lead file, and
+[Map the leads with JOSM](../contribute/leads.md) is the step-by-step workflow for it.
 
 When mapping a lead, tag it the way the rest of OpenStreetMap does
 (`generator:source=solar` on a rooftop generator, `power=plant` with

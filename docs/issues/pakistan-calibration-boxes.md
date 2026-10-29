@@ -1595,3 +1595,38 @@ Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
   --lon <lon> --side-m <2000 or 1000> --imagery-layer "Esri World Imagery (Vivid)"
   --imagery-date <date above>` (centres are in each file's `center`, lon then lat).
 - Published to every atlas by `calib-publish` the same day (hollow diamonds).
+
+### Box 22 -- Kasur (Box 19's second mapped) and a farm box with no PV in Thatta -- 2026-10-29
+
+Two areas finished by the owner on 2026-10-29 and registered the same day, both `used: false`
+in `configs/atlas/pakistan.yaml` (no refit yet):
+
+| area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
+|---|---|---|---:|---|
+| `kasur_gap_calib_2km` | building (Box 19 gap screen) | 2025-05-01 | 221 (55.3) | 15 (9 ground, 6 rooftop), 1,355 m<sup>2</sup>, median 89 m<sup>2</sup> |
+| `thatta_f3_farm_calib_3km` | farm, cropland stratum 3 of 8 | 2025-02-20 | 354 (39.3) | none: confirmed zero |
+
+- **Kasur's imagery was dated at registration, not before mapping.** Box 19 recorded no date;
+  Esri's metadata service gives Vivid 2025-05-01 at the centre and all four corners
+  (`propose_calibration_candidates.esri_capture`), within 12 months of the 2025-11-01
+  composite window, so its roofs without PV are usable negatives. Like Mastung it was
+  registered where the screen put it, but unlike Mastung it sits on a settlement: 55
+  buildings per km<sup>2</sup>, inside the density domain (floor 48.5) and below the
+  sparsest quadrat in the coverage-ratio fit (124, Bahawalnagar Rural), which is what the
+  gap screen was for. Pulled by `new_calibration_quadrat.py`, confirmed by its second query
+  (15 both times).
+- **A first reading of the score level in a sparse box.** Under roofclf's parcel label, 16 of
+  Kasur's 219 household roofs carry PV (three ground arrays lie more than 20 m from any
+  building and label none). The production scoring
+  (`data/roofclf_national_with_sppi/pakistan/prob`, whose fit never saw Kasur) ranks them at
+  AUC 0.70, and its scores sum to **0.45 per PV roof** below 400 m<sup>2</sup>, against 1.115
+  in the lower density band's 9 quadrats: here the scores understate PV, by about 2.5 times.
+  One box and 16 roofs, so a reading for open question 1, not an answer; the blind level
+  review drawn 2026-10-28 is the test.
+- **Thatta f3 holds no PV.** The owner found none. OSM's live API agrees (343 elements in the
+  box, no solar and no power feature, 2026-10-29), and so does an Overpass count (OSM base
+  2026-10-29 08:43 UTC); `new_calibration_quadrat.py`'s own pull got the same empty answer and
+  stopped, as it does by design on zero, so the empty label file was written in Mastung's
+  schema. Its imagery (2025-02-20) is the oldest the gate allows, so an array installed in the
+  eight months before the composite window would be missed. It calibrates the farm ground-PV
+  detector, which has not been run on Pakistan.

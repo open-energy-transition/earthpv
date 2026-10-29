@@ -31,6 +31,13 @@ calibration_boxes:
   - {name: "Al Bayda", stem: al_bayda_s3_calib_2km, status: rule1, used: false}
   - {name: "Al Mawasit, Ta'izz", stem: al_mawasit_s7_calib_2km, status: rule1, used: false}
   - {name: "Huth, 'Amran", stem: huth_s1_calib_2km, status: rule1, used: false}
+  # The first PV-rich town box (calib-candidates --pv-rich), the atlas's star; mapped by the
+  # owner and declared finished 2026-10-29 (changeset 191180704) against Esri Vivid imagery
+  # of 2025-10-13 (plus 191180806). 40 installations, all below 400 m2.
+  - {name: "Yafi', Lahij", stem: yafi_pv2_calib_1km, status: rule1, used: false}
+  # The second, Qa'tabah town (not the rural qa_tabah_s6 box): finished 2026-10-29
+  # (changesets 191181245, 191181493), Esri Vivid imagery of 2025-03-21. 31 installations.
+  - {name: "Qa'tabah town, Ad Dali'", stem: qa_tabah_pv10_calib_1km, status: rule1, used: false}
   - {name: "Huth, 'Amran (farm)", stem: amran_huth_farm_calib_129p53km2, status: rule1}
   - {name: "At Tuhayta, Tihama (farm)", stem: tihama_tuhayta_farm_calib_104p25km2, status: rule1}
   - {name: "Al Jarrahi west, Tihama (farm)", stem: tihama_jarrahi_west_farm_calib_53p29km2, status: rule1}
@@ -51,14 +58,6 @@ calibration_boxes:
 validation:
   score: silver
   note: "Farm solar calibrated on seven mapped areas.<br>No rooftop estimate below 400 m&sup2; yet."
-
-# The PV-rich town box to map first (owner request 2026-10-29: "the one with the most PV").
-# Not the classifier's pick: Adh Dhihar (Ibb city) has the most roofs Pakistan's roofclf
-# scores as likely (439, against Yafi's 196), but on Esri z18 over the central 600 m of
-# all ten boxes Yafi' showed the most distinct rooftop arrays, about a dozen in its central
-# 300 m, and Adh Dhihar few among cluttered roofs. Yafi's imagery (2025-10-13) also falls
-# inside the composite window. A visual comparison by the assistant, not a count.
-start_here: yafi_pv2_calib_1km
 
 cities:
   - [Sana'a, 44.206, 15.369]

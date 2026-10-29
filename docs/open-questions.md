@@ -69,6 +69,10 @@ are in the experiments register, "The capacity chain is a quantification problem
    which gives 0.997 and 1.158 for the 19 trusted quadrats. The rule is the revert band
    above, written into the draw's `design.json` before any answer; simulated on the drawn
    sample, the review separates "the level transfers" from "off by 1.5 to 2", not finer.
+   **A first mapped reading (2026-10-29): the Kasur gap box** (55 bldg/km&sup2;, Box 22), where
+   the production scores sum to 0.45 per PV roof below 400 m&sup2; against the 1.115
+   reference, understating PV about 2.5 times. 16 PV roofs in one box: a pointer, not the
+   answer.
 
 The two gaps the opt-in path had are closed: the atlas's size chart counts a
 probability-weighted component's rooftop objects as the sum of scores (expected PV roofs)
