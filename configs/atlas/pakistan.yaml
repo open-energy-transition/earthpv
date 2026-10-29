@@ -175,6 +175,7 @@ calibration_boxes:
   # --farmland, cropland stratum 6 of 8, Esri 2025-05-26), mapped by the owner. It
   # calibrates the farm ground-PV detector, which has not been run on Pakistan; roofclf
   # skips farm areas (`_farm_calib_`).
+  # Second pass by the owner 2026-10-29: 5 installations (was 3), re-pulled (Box 22).
   - {name: "Sahiwal (farm)", stem: sahiwal_f6_farm_calib_3km, status: rule1, used: false}
   # Added 2026-10-25: Jhang, Punjab, two more sampled farm boxes (cropland strata 2 and 5
   # of 8, Esri 2025-07-28), mapped by the owner. Jhang f2's imagery is poor (owner): small
@@ -204,6 +205,12 @@ calibration_boxes:
   # Added 2026-10-29: Qilla Abdullah, Balochistan, the first of Box 21's eight sampled building
   # boxes mapped (density band 6 of 8, Esri 2025-05-21; changeset 191184456): 46 installations.
   - {name: "Qilla Abdullah", stem: qilla_abdullah_s6_calib_2km, status: rule1, used: false}
+  # Added 2026-10-29: Lasbela, Balochistan, the last farm candidate (cropland stratum 1 of 8,
+  # 28% cropland, Esri 2025-08-30; changeset 191186090): 37 installations, 36 of them ground.
+  - {name: "Lasbela (farm)", stem: lasbela_f1_farm_calib_3km, status: rule1, used: false}
+  # Added 2026-10-29: Sanghar, Sindh, Box 21's density band 2 of 8 (Esri 2025-04-02): 2 rooftop
+  # installations on 413 VIDA buildings.
+  - {name: "Sanghar", stem: sanghar_s2_calib_2km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked

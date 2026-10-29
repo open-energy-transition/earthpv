@@ -90,8 +90,8 @@ Every Bronze country has ten candidate areas, each with Esri imagery recent enou
 country's satellite data: eight drawn at random across its building-density range rather than
 picked by hand, and two start-here boxes in its densest districts with the most large roofs
 ([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
-Pakistan has fourteen: seven aimed at the sparse end of its calibration, six hand-placed
-gap boxes and one farm box. Yemen, Silver since its
+Pakistan has twelve: six aimed at the sparse end of its calibration and six hand-placed
+gap boxes. Yemen, Silver since its
 farm areas, has ten town boxes where panels show on rooftops, for its rooftop classifier;
 Yafi' and Qa'tabah town were mapped on 2026-10-29.
 
@@ -104,7 +104,7 @@ Yafi' and Qa'tabah town were mapped on 2026-10-29.
 | [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |
 | [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
 | [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
-| [Pakistan](../atlas.md) | Gold | 14 | 66 to 3,065 | Lasbela, Balochistan (farm) |
+| [Pakistan](../atlas.md) | Gold | 12 | 66 to 3,065 | Gujranwala, Punjab |
 | [Yemen](../atlas-yemen.md) | Silver | 10 | 34 to 2,123 | Adh Dhihar, Ibb |
 | [France](../atlas-france.md) | Silver | none | map any solar you can see | |
 
@@ -115,8 +115,8 @@ down. Dense districts with large roofs are where solar is most likely,
 so a first area there has panels to find and gives the country's calibration its first
 positives. The sparse candidates come later and still matter: a calibration only reaches as
 far down in density as its sparsest complete area, and they are the quickest to finish.
-Pakistan already measures its rooftops, so its star is a farm box, the one with the most
-cropland. Yemen's town boxes come in order of how many roofs a classifier scores as likely
+Pakistan already measures its rooftops, so its star went to a farm box, the one with the most
+cropland, until all eight were mapped; it is back on the densest building box. Yemen's town boxes come in order of how many roofs a classifier scores as likely
 solar.
 
 Want to suggest an area of your own? The **Propose a calibration area** button on the atlas

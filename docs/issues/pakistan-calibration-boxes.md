@@ -1595,12 +1595,12 @@ Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
   --lon <lon> --side-m <2000 or 1000> --imagery-layer "Esri World Imagery (Vivid)"
   --imagery-date <date above>` (centres are in each file's `center`, lon then lat).
 - Published to every atlas by `calib-publish` the same day (hollow diamonds).
-- **Mapped so far:** Qilla Abdullah s6 (2026-10-29, Box 22).
+- **Mapped so far:** Qilla Abdullah s6 and Sanghar s2 (2026-10-29, Box 22).
 
-### Box 22 -- Kasur, Qilla Abdullah and four farm boxes -- 2026-10-29
+### Box 22 -- Kasur, two sampled boxes and five farm boxes -- 2026-10-29
 
-Six areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
-in `configs/atlas/pakistan.yaml` (no refit yet):
+Eight areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
+in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of Box 20's:
 
 | area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
 |---|---|---|---:|---|
@@ -1610,6 +1610,8 @@ in `configs/atlas/pakistan.yaml` (no refit yet):
 | `qambar_shahdadkot_f7_farm_calib_3km` | farm, cropland stratum 7 of 8 | 2025-05-29 | 674 (74.9) | none: confirmed zero |
 | `swabi_f4_farm_calib_3km` | farm, cropland stratum 4 of 8 | 2025-09-19 | 495 (55.0) | 57 (45 ground, 12 rooftop), 6,916 m<sup>2</sup>, median 105 m<sup>2</sup> |
 | `qilla_abdullah_s6_calib_2km` | building (Box 21, density band 6 of 8) | 2025-05-21 | 1,893 (473.2) | 46 (24 rooftop, 22 ground), 3,363 m<sup>2</sup>, median 47 m<sup>2</sup> |
+| `lasbela_f1_farm_calib_3km` | farm, cropland stratum 1 of 8 | 2025-08-30 | 899 (99.9) | 37 (36 ground, 1 rooftop), 4,490 m<sup>2</sup>, median 86 m<sup>2</sup> |
+| `sanghar_s2_calib_2km` | building (Box 21, density band 2 of 8) | 2025-04-02 | 413 (103.2) | 2 rooftop, 161 m<sup>2</sup> |
 
 - **Kasur's imagery was dated at registration, not before mapping.** Box 19 recorded no date;
   Esri's metadata service gives Vivid 2025-05-01 at the centre and all four corners
@@ -1657,3 +1659,14 @@ in `configs/atlas/pakistan.yaml` (no refit yet):
   (2.08 at or above, 10 roofs), against the 1.115 and 1.270 reference: here the scores
   overstate PV about twice. With Kasur's 0.45 the two mapped boxes point opposite ways; the
   protocol's comparison needs all eight.
+- **Lasbela f1, the last farm candidate, holds 36 ground arrays** in 9 km<sup>2</sup> of
+  coastal Balochistan that is only 28% cropland: after Jhang f5 (46) and Swabi (45) the third
+  farm area with enough ground arrays to measure the detector on. Two Overpass answers came
+  back empty before the third held 38 features (37 inside the box), matched by the confirming
+  query.
+- **Sanghar s2 holds 2 rooftop arrays** on 413 buildings. Its confirming queries all failed
+  on overloaded endpoints, so the script marks the pull unverified; OSM's live API showed the
+  same 2 solar ways in the box an hour earlier. Its level reading (2 PV roofs) is no reading.
+- **Second passes over Box 20's Sahiwal f6 and Jhang f2.** Sahiwal gained 2 ground arrays
+  (5 installations, 4 ground, re-pulled the same day); Jhang f2 is unchanged at 18. Jhang f2
+  stays `corroborated`: the pass found nothing new, but the imagery is what made it so.
