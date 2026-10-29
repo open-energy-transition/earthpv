@@ -1596,9 +1596,9 @@ Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
   --imagery-date <date above>` (centres are in each file's `center`, lon then lat).
 - Published to every atlas by `calib-publish` the same day (hollow diamonds).
 
-### Box 22 -- Kasur (Box 19's second mapped) and three Sindh farm boxes -- 2026-10-29
+### Box 22 -- Kasur (Box 19's second mapped) and four farm boxes -- 2026-10-29
 
-Four areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
+Five areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
 in `configs/atlas/pakistan.yaml` (no refit yet):
 
 | area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
@@ -1607,6 +1607,7 @@ in `configs/atlas/pakistan.yaml` (no refit yet):
 | `thatta_f3_farm_calib_3km` | farm, cropland stratum 3 of 8 | 2025-02-20 | 354 (39.3) | none: confirmed zero |
 | `badin_f8_farm_calib_3km` | farm, cropland stratum 8 of 8 | 2025-06-07 | 665 (73.9) | 2 rooftop, 85 m<sup>2</sup> |
 | `qambar_shahdadkot_f7_farm_calib_3km` | farm, cropland stratum 7 of 8 | 2025-05-29 | 674 (74.9) | none: confirmed zero |
+| `swabi_f4_farm_calib_3km` | farm, cropland stratum 4 of 8 | 2025-09-19 | 495 (55.0) | 57 (45 ground, 12 rooftop), 6,916 m<sup>2</sup>, median 105 m<sup>2</sup> |
 
 - **Kasur's imagery was dated at registration, not before mapping.** Box 19 recorded no date;
   Esri's metadata service gives Vivid 2025-05-01 at the centre and all four corners
@@ -1641,3 +1642,8 @@ in `configs/atlas/pakistan.yaml` (no refit yet):
   km<sup>2</sup> of cropland, hold two rooftop arrays and no ground array**, where Jhang's
   two Punjab boxes (Box 20) hold 61 ground arrays. The star moved on to Swabi f4, in Khyber
   Pakhtunkhwa.
+- **Swabi f4 holds the farm solar the Sindh boxes lack**: 45 ground arrays and 12 rooftop in
+  9 km<sup>2</sup> of the Peshawar valley, under Esri imagery from 2025-09-19, the newest of
+  the 9 Pakistani areas with a recorded imagery date. Its arrays are larger than Punjab's (median 105 m<sup>2</sup> against
+  Jhang's 39 and 41), and one of them, 727 m<sup>2</sup>, is above the segmentation floor.
+  Mapped in one changeset (191183685), confirmed by the script's second query (57 both times).

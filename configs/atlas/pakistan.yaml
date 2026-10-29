@@ -198,6 +198,9 @@ calibration_boxes:
   # Added 2026-10-29: Qambar Shahdadkot, Sindh, the next starred farm box (stratum 7 of 8,
   # 93% cropland, Esri 2025-05-29): no PV (owner; OSM API and Overpass agree).
   - {name: "Qambar Shahdadkot (farm, no PV)", stem: qambar_shahdadkot_f7_farm_calib_3km, status: rule1, used: false}
+  # Added 2026-10-29: Swabi, Khyber Pakhtunkhwa, the next starred farm box (stratum 4 of 8,
+  # 74% cropland, Esri 2025-09-19; changeset 191183685): 57 installations, 45 of them ground.
+  - {name: "Swabi (farm)", stem: swabi_f4_farm_calib_3km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked
