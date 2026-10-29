@@ -222,7 +222,7 @@ ISO2 fallback map only covers PK/DE/IN, so an AOI without it fails at the densit
 than at setup. `source.coop` 403s any request without a User-Agent header, which reads exactly
 like "no such country." Guide: `docs/reproduce.md`'s "Scale to a new country" section. Before a
 new country's atlas is built, re-run `scripts/ember_import_ceiling.py` (see "Documentation
-site").
+site"), and add any official figures to `scripts/official_capacity.py` and re-run it.
 
 ### Compose stage (imagery for AOIs without local composites)
 
@@ -525,6 +525,16 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   country gets its file only when `release_leads.py` is re-run for it** (add it to `SOURCES`).
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
+- **"Against official and published figures" (2026-10-29)**: the national total (Best and
+  Verified with their intervals) beside each `totals.references` entry and the Ember customs
+  record, then a per-province dumbbell against the first reference that publishes provinces
+  (a picker when several do), with its Spearman rank agreement. The hero no longer carries
+  the Ember line. `scripts/official_capacity.py` writes `configs/external/official_capacity.yaml`
+  (registers from disk: MaStR per Land, ODRE per region at the 2024-12-31 vintage, MNRE per
+  state for Jan 2026; cited documents typed into `PUBLISHED`, e.g. TransitionZero's Pakistan
+  provinces); `atlas.official_capacity(aoi, provinces)` refuses a province key the page does
+  not have. `scripts/patch_atlas_references.py` adds the section to a published page without a
+  rebuild. Drawn side by side, never scored: none of them is ground truth for the map.
 - **For every page built or retemplated from 2026-10-24 on**: the province chart shows the top 7
   (`PROV_TOP`) with a *Show all N provinces* toggle; a fifth KPI tile gives processed cells
   against the country's (`totals.n_cells_processed` / `n_cells_country`, `atlas._cell_coverage`);
@@ -696,8 +706,10 @@ owner; Yafi' and Qa'tabah town, the first PV-rich town boxes, were mapped 2026-1
 two Pakistan's unchanged roofclf ranks household roofs at AUC 0.79 / 0.89 but its scores sum to
 3.6 per PV roof (170 over 47) against 1.115 in Pakistan's quadrats: the first measured level.
 
-**Every evidence atlas shows an import ceiling**: solar panels imported from China from Jan 2017
-to the end of the imagery window, from Ember's customs-based export data (CC-BY-4.0).
+**Every evidence atlas shows an import ceiling** (in its "Against official and published
+figures" section since 2026-10-29, no longer under the headline): solar panels imported from
+China from Jan 2017 to the end of the imagery window, from Ember's customs-based export data
+(CC-BY-4.0).
 `scripts/ember_import_ceiling.py --csv <Ember monthly CSV>` writes
 `configs/external/ember_china_panel_imports.yaml`; `atlas.import_ceiling(aoi)` puts it in
 `totals.import_ceiling`. India, Germany, France and Poland are flagged `ceiling: false` (domestic

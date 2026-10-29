@@ -90,10 +90,43 @@ near 20 GWp in 2026 is consistent with that record, and arguably conservative. T
 pipeline does not use this figure anywhere; its value is precisely that it is
 independent.
 
+## Official and published figures
+
+Each atlas draws its own total and its own provinces beside the figures a reader is likely
+to know, in a section of its own ("Against official and published figures"): the national
+total as points with their intervals, and, where a source publishes provinces, one row per
+province with the atlas and the source side by side and their rank agreement (Spearman).
+`scripts/official_capacity.py` writes the figures into
+`configs/external/official_capacity.yaml`; each was checked against a fresh download of its
+source, and the vintage nearest the end of the atlas's imagery window was used.
+
+| Country | Source | As of | MW | Provinces |
+| --- | --- | --- | ---: | --- |
+| Pakistan | [TransitionZero](https://www.transitionzero.org/shedding-light-on-pakistans-distributed-solar-revolution), satellite-sampling estimate, distributed plus utility-scale | Oct 2025 | 29,030 (24,070 to 33,990) | 7, distributed only |
+| Germany | [MaStR](https://www.marktstammdatenregister.de/MaStR/Datendownload) register, building and ground-mounted | 30 Sep 2025 | 111,961 | 16 Länder |
+| France | [ODRE](https://odre.opendatasoft.com/explore/dataset/registre-national-installation-production-stockage-electricite-agrege-311224/) register, metropolitan France | 31 Dec 2024 | 24,433 | 13 regions |
+| India | [MNRE](https://esankhyiki.mospi.gov.in/macroindicators?product=mnre) state-wise register | Jan 2026 | 140,602 | 35 states and territories |
+| South Africa | [NTCSA (Eskom)](https://www.ntcsa.co.za/wp-content/uploads/2026/10/Weekly_System_Status_Report_2026_w43.pdf), contracted utility PV plus its estimate of all other PV | Sep 2026 | 12,210 | 9, estimate only |
+| Poland | [ARE](https://www.are.waw.pl/badania-statystyczne/energetyka-w-liczbach) monthly statistics | Aug 2026 | 27,106 | none |
+| Poland | [URE](https://www.ure.gov.pl/download/9/16535/MAPAOZEna30092026nastroneURE.xlsx) installation list, above 50 kW | 30 Sep 2026 | 13,440 | 16 voivodeships |
+| Egypt, Morocco, Nigeria, Vietnam, Yemen, Zambia | [IRENA Renewable Capacity Statistics 2026](https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf) | end of 2025 | 3,247; 546; 285; 19,252; 456; 328 | none |
+
+**None of them is ground truth for the map, and the atlas is not scored against them.** A
+register counts what was registered by its date, in MW as declared (often the inverter
+rating for large plants, below the module capacity the atlas counts); TransitionZero's is
+another estimate with its own method; South Africa's is mostly Eskom's demand-side estimate,
+which its report calls unverified; URE's list leaves out Poland's prosumer installations; and
+IRENA flags its figure for each country as coming from an official source (Egypt), an
+unofficial one (Vietnam, Yemen) or its own estimate (Morocco, Nigeria, Zambia). IRENA stands
+in only where no national figure was found. Every Bronze and Silver atlas misses most
+installations below about 400 m&sup2;, which a complete register counts, so the gap to a
+register says as much about that floor as about the satellite count.
+
 ## An upper ceiling from customs data
 
-Each atlas also shows how much solar-panel capacity its country imported from China, from
-January 2017 to the end of the atlas's imagery window. The figures come from
+Each atlas also shows, in the same section as the official figures above, how much
+solar-panel capacity its country imported from China, from January 2017 to the end of the
+atlas's imagery window. The figures come from
 [Ember's China solar export data](https://ember-energy.org/data/china-solar-exports-data/)
 (China's customs records, module capacity derived from export value and the month's
 average price, CC-BY-4.0), summed by `scripts/ember_import_ceiling.py` into

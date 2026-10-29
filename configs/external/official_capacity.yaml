@@ -1,0 +1,283 @@
+# Written by scripts/official_capacity.py; do not edit by hand.
+note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
+  for the atlas: `scope` says what each counts.'
+retrieved: '2026-10-29'
+aois:
+  egypt:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 3247.0
+    scope: National on- and off-grid solar PV at the end of 2025, from an official national source. No
+      national register or statistic was found for this country.
+  france:
+  - id: odre
+    name: ODRE register
+    title: Registre national des installations de production d'électricité, vintage 2024-12-31
+    publisher: ODRE (RTE, Enedis and the distribution operators)
+    kind: register
+    url: https://odre.opendatasoft.com/explore/dataset/registre-national-installation-production-stockage-electricite-agrege-311224/
+    as_of: '2024-12-31'
+    mw: 24433.1
+    scope: Every grid-connected PV installation in metropolitan France at the year-end after the imagery,
+      installations below 36 kW as per-commune aggregates; overseas regions left out.
+    regions:
+      Auvergne-Rhône-Alpes: 2964.7
+      Bourgogne-Franche-Comté: 1229.4
+      Bretagne: 756.6
+      Centre-Val de Loire: 1345.6
+      Corse: 246.0
+      Grand Est: 1932.9
+      Hauts-de-France: 769.6
+      Normandie: 497.9
+      Nouvelle-Aquitaine: 5576.2
+      Occitanie: 4481.5
+      Pays de la Loire: 1639.0
+      Provence-Alpes-Côte d'Azur: 2587.8
+      Île-de-France: 405.9
+  germany:
+  - id: mastr
+    name: MaStR register
+    title: Marktstammdatenregister, rooftop and ground-mounted PV
+    publisher: Bundesnetzagentur
+    kind: register
+    url: https://www.marktstammdatenregister.de/MaStR/Datendownload
+    as_of: '2025-09-30'
+    mw: 111960.5
+    scope: Every registered building-mounted and ground-mounted PV unit commissioned by 2025-09-30, module
+      capacity. Registration is mandatory for grid-connected PV; plug-in balcony units are not included.
+    regions:
+      Schleswig-Holstein: 4309.4
+      Hamburg: 231.3
+      Niedersachsen: 10041.8
+      Bremen: 181.7
+      Nordrhein-Westfalen: 13550.8
+      Hessen: 5188.5
+      Rheinland-Pfalz: 5662.5
+      Baden-Württemberg: 14067.4
+      Bayern: 30070.7
+      Saarland: 1149.5
+      Berlin: 449.4
+      Brandenburg: 8563.7
+      Mecklenburg-Vorpommern: 4615.1
+      Sachsen: 5298.6
+      Sachsen-Anhalt: 5490.1
+      Thüringen: 3089.9
+  india:
+  - id: mnre
+    name: MNRE register
+    title: MNRE state-wise installed solar capacity (via MoSPI eSankhyiki)
+    publisher: Ministry of New and Renewable Energy
+    kind: register
+    url: https://esankhyiki.mospi.gov.in/macroindicators?product=mnre
+    as_of: 2026-01
+    mw: 140601.7
+    scope: Ground-mounted, rooftop, hybrid and off-grid/KUSUM solar at the end of 2026-01, the centre
+      of the imagery window. Utility-scale plants are usually reported in AC, below their module capacity.
+    regions:
+      Rājasthān: 37925.0
+      Gujarāt: 26909.3
+      Mahārāshtra: 19105.1
+      Tamil Nādu: 11731.6
+      Karnātaka: 10824.0
+      Andhra Pradesh: 6935.4
+      Madhya Pradesh: 5855.6
+      Telangāna: 5065.1
+      Uttar Pradesh: 3829.9
+      Chhattīsgarh: 1755.4
+      Punjab: 1561.0
+      Odisha: 773.3
+      Uttarākhand: 837.9
+      Kerala: 2080.2
+      Haryāna: 2540.1
+      Himāchal Pradesh: 346.3
+      West Bengal: 320.6
+      Bihār: 435.3
+      Assam: 474.2
+      Andaman and Nicobar Islands: 32.1
+      Mizoram: 33.7
+      Jhārkhand: 235.8
+      Dādra and Nagar Haveli and Damān and Diu: 134.9
+      Delhi: 403.3
+      Tripura: 35.2
+      Chandīgarh: 78.8
+      Ladākh: 12.0
+      Goa: 73.6
+      Jammu and Kashmīr: 79.5
+      Arunāchal Pradesh: 15.4
+      Puducherry: 77.6
+      Manipur: 17.5
+      Sikkim: 7.6
+      Nāgāland: 3.3
+      Meghālaya: 4.3
+  morocco:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 546.0
+    scope: National on- and off-grid solar PV at the end of 2025, IRENA's own estimate. No national register
+      or statistic was found for this country.
+  namibia:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 389.0
+    scope: National on- and off-grid solar PV at the end of 2025, IRENA's own estimate. No national register
+      or statistic was found for this country.
+  nigeria:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 285.0
+    scope: National on- and off-grid solar PV at the end of 2025, IRENA's own estimate. No national register
+      or statistic was found for this country.
+  pakistan:
+  - id: transitionzero
+    name: TransitionZero
+    title: Shedding light on Pakistan's distributed solar revolution
+    publisher: TransitionZero and PRIED
+    kind: estimate
+    url: https://www.transitionzero.org/shedding-light-on-pakistans-distributed-solar-revolution
+    as_of: 2025-10
+    mw: 29030.0
+    range:
+    - 24070.0
+    - 33990.0
+    scope: 'Satellite-sampling estimate: 27.53 GW of distributed rooftop and ground PV (range 22.57 to
+      32.49 GW) from 0.3 m imagery of sampled areas extrapolated nationally, plus 1.5 GW of utility-scale
+      plants from TZ-SAM.'
+    regions:
+      Punjab: 15700.0
+      Khyber Pakhtunkhwa: 6160.0
+      Sindh: 3500.0
+      Islamabad Capital Territory: 610.0
+      Azad Kashmir: 540.0
+      Balochistan: 910.0
+      Gilgit-Baltistan: 120.0
+    regions_scope: 'Distributed PV only: the 1.5 GW of utility-scale plants is not split by province,
+      so the provinces sum to 27.53 GW.'
+  poland:
+  - id: are
+    name: ARE
+    title: 'Energetyka w liczbach: moc osiągalna, OZE - fotowoltaika'
+    publisher: Agencja Rynku Energii
+    kind: statistics
+    url: https://www.are.waw.pl/badania-statystyczne/energetyka-w-liczbach
+    as_of: 2026-08
+    mw: 27105.5
+    scope: National PV capacity at the end of August 2026 from the energy statistics agency's monthly
+      series; its size implies it includes the prosumer microinstallations URE's list leaves out (about
+      13.7 GW).
+  - id: ure
+    name: URE register
+    title: Instalacje odnawialnych źródeł energii, stan na 30 września 2026 r.
+    publisher: Urząd Regulacji Energetyki
+    kind: register
+    url: https://www.ure.gov.pl/download/9/16535/MAPAOZEna30092026nastroneURE.xlsx
+    as_of: '2026-09-30'
+    mw: 13440.2
+    scope: Every PV installation above microinstallation size (over 50 kW) in the energy regulator's list,
+      summed by voivodeship; prosumer microinstallations are not in it.
+    regions:
+      Greater Poland Voivodeship: 2915.7
+      Kuyavian-Pomeranian Voivodeship: 663.3
+      Lesser Poland Voivodeship: 262.2
+      Lower Silesian Voivodeship: 982.9
+      Lublin Voivodeship: 556.8
+      Lubusz Voivodeship: 1244.3
+      Masovian Voivodeship: 776.2
+      Opole Voivodeship: 371.2
+      Podlaskie Voivodeship: 508.3
+      Pomeranian Voivodeship: 978.5
+      Silesian Voivodeship: 339.3
+      Subcarpathian Voivodeship: 557.9
+      Warmian-Masurian Voivodeship: 854.1
+      West Pomeranian Voivodeship: 1513.9
+      Łódź Voivodeship: 560.5
+      Świętokrzyskie Voivodeship: 355.0
+    regions_scope: Installations above 50 kW only, so the bulk of rooftop PV, about 13.7 GW of prosumer
+      microinstallations nationally (ARE), is outside these figures.
+  south_africa:
+  - id: ntcsa
+    name: NTCSA (Eskom)
+    title: Weekly System Status Report, 2026 week 43
+    publisher: National Transmission Company South Africa
+    kind: estimate
+    url: https://www.ntcsa.co.za/wp-content/uploads/2026/10/Weekly_System_Status_Report_2026_w43.pdf
+    as_of: 2026-09
+    mw: 12210.3
+    scope: 2,780.2 MW of utility-scale PV contracted with NTCSA plus 9,430.1 MW of 'estimated rooftop
+      PV', Eskom's demand-side estimate of every PV installation without an NTCSA contract, rooftop and
+      ground-mounted. The report marks its values as unverified and not yet official.
+    regions:
+      Eastern Cape: 797.1
+      Free State: 650.2
+      Gauteng: 3055.7
+      KwaZulu-Natal: 1375.1
+      Limpopo: 579.7
+      Mpumalanga: 704.9
+      Nothern Cape: 758.4
+      North West: 681.2
+      Western Cape: 827.8
+    regions_scope: 'Estimated rooftop and other uncontracted PV only: the 2,780.2 MW of contracted utility-scale
+      PV is not split by province.'
+  turkiye:
+  - id: teias
+    name: TEİAŞ
+    title: Türkiye Elektrik Üretim-İletim İstatistikleri 2025, table 9
+    publisher: Türkiye Elektrik İletim A.Ş.
+    kind: statistics
+    url: https://www.teias.gov.tr/turkiye-elektrik-uretim-iletim-istatistikleri
+    as_of: '2025-12-31'
+    mw: 25926.7
+    scope: National installed solar capacity at the end of 2025 from the transmission operator's annual
+      statistics, licensed and unlicensed plants.
+  vietnam:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 19252.0
+    scope: National on- and off-grid solar PV at the end of 2025, from an unofficial source (industry
+      or press). No national register or statistic was found for this country.
+  yemen:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 456.0
+    scope: National on- and off-grid solar PV at the end of 2025, from an unofficial source (industry
+      or press). No national register or statistic was found for this country.
+  zambia:
+  - id: irena
+    name: IRENA
+    title: Renewable Capacity Statistics 2026, solar photovoltaic
+    publisher: International Renewable Energy Agency
+    kind: statistics
+    url: https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf
+    as_of: '2025-12-31'
+    mw: 328.0
+    scope: National on- and off-grid solar PV at the end of 2025, IRENA's own estimate. No national register
+      or statistic was found for this country.

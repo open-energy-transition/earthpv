@@ -35,6 +35,7 @@ REQUIRED = {
         ("__AOI_KEY__", "the key the page fetches its published calibration areas by"),
         ("calib-hit", "the click target that opens a calibration area in JOSM or iD"),
         ("farm-dot", "the farm calibration area's own (green) marker, apart from building areas"),
+        ('id="references"', "the comparison with official and published figures and Ember imports"),
     ],
     "pv_growth_evidence_atlas.html": [
         ("__HEADER_LOGO__", "the EarthPV mark at the top"),

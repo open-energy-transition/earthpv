@@ -106,6 +106,45 @@ def import_ceiling(aoi: str, path: Path = EMBER_IMPORTS) -> dict | None:
     return out
 
 
+OFFICIAL_CAPACITY = EMBER_IMPORTS.with_name("official_capacity.yaml")
+REFERENCE_KINDS = ("register", "statistics", "estimate")
+
+
+def official_capacity(
+    aoi: str, region_names=None, path: Path = OFFICIAL_CAPACITY
+) -> list[dict] | None:
+    """Official and published capacity figures the atlas draws beside its own
+    (scripts/official_capacity.py writes the table): each a national `mw`, optionally a
+    `range` and per-province `regions` keyed by the atlas's own province names.
+
+    `region_names`, when given, are the page's provinces: a key outside them is an error
+    rather than a silently missing bar. None when the AOI has no entry.
+    """
+    if not path.exists():
+        return None
+    import yaml
+
+    doc = yaml.safe_load(path.read_text()) or {}
+    entries = (doc.get("aois") or {}).get(aoi)
+    if not entries:
+        return None
+    out = []
+    for e in entries:
+        if e.get("kind") not in REFERENCE_KINDS:
+            raise ValueError(
+                f"{path.name}: {aoi}/{e.get('id')}: kind must be one of {REFERENCE_KINDS}")
+        ref = {k: e[k] for k in ("id", "name", "title", "publisher", "kind", "url", "as_of",
+                                 "mw", "range", "scope", "regions", "regions_scope") if k in e}
+        ref["as_of"] = str(ref["as_of"])
+        if region_names is not None and ref.get("regions"):
+            unknown = sorted(set(ref["regions"]) - set(region_names))
+            if unknown:
+                raise ValueError(
+                    f"{path.name}: {aoi}/{ref['id']}: regions not on the page: {unknown}")
+        out.append(ref)
+    return out
+
+
 def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     """The AOI's mapping-lead file on GitHub: segmentation candidates more than
     `min_distance_m` from any OSM solar feature, from the run behind this atlas.
@@ -3025,6 +3064,9 @@ def build_evidence_atlas(
     ceiling = import_ceiling(aoi)
     if ceiling:
         data["totals"]["import_ceiling"] = ceiling
+    references = official_capacity(aoi, [p["name"] for p in data["provinces"]])
+    if references:
+        data["totals"]["references"] = references
     leads = leads_release(aoi)
     if leads:
         data["totals"]["leads"] = leads

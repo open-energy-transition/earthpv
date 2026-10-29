@@ -388,10 +388,6 @@
      this specific page was last built -- two different ages, so two different numbers. */
   .hero-freshness { font-family: var(--font-mono); font-size: 11px; color: var(--muted);
     margin-top: 6px; font-variant-numeric: tabular-nums; }
-  .hero-ceiling { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); margin-top: 9px;
-    max-width: 52ch; font-variant-numeric: tabular-nums; }
-  .hero-ceiling b { color: var(--ink); }
-  .hero-ceiling a { color: inherit; }
   .hero-desc { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; }
   .hero-desc b { color: var(--ink); font-weight: 660; }
   .hero-desc a { color: var(--accent); }
@@ -432,6 +428,19 @@
     background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px); }
   .comp-swatch.extrap { background: repeating-linear-gradient(45deg,
     var(--accent) 0 2px, var(--panel) 2px 5px); }
+  /* "Against official and published figures": this atlas filled amber, a reference an ink
+     ring, customs imports a muted diamond -- the same marks the two charts draw. */
+  .comp-swatch.ref-atlas { background: var(--accent); border-radius: 50%; }
+  .comp-swatch.ref-official { background: transparent; border: 2px solid var(--ink); border-radius: 50%;
+    width: 9px; height: 9px; }
+  .comp-swatch.ref-imports { background: var(--muted); border-radius: 1px; transform: rotate(45deg) scale(0.85); }
+  .ref-notes ul { margin: 6px 0 0; padding-left: 18px; }
+  .ref-notes li { margin: 5px 0; }
+  .ref-pick[hidden] { display: none; }
+  .ref-pick { display: inline-flex; align-items: center; gap: 8px; margin: 2px 6px 10px;
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
+  .ref-pick select { font: inherit; color: var(--ink); background: var(--panel-2);
+    border: 1px solid var(--hair); border-radius: 6px; padding: 3px 6px; }
   .comp-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 18px; }
   @media (max-width: 700px) { .comp-methods { grid-template-columns: repeat(2, 1fr); } }
   .comp-method-card { background: var(--panel-2); border: 1px solid var(--card-ring);
@@ -731,7 +740,6 @@
           <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
           <div class="hero-label">Nationwide</div>
           <div class="hero-ci" id="heroCi"></div>
-          <div class="hero-ceiling" id="heroCeiling"></div>
           <div class="hero-freshness" id="heroFreshness"></div>
           <div class="hero-desc" id="heroDesc"></div>
           <div class="tiles" id="tiles"></div>
@@ -894,6 +902,54 @@
     </div>
   </section>
 
+  <!-- This atlas beside the figures a reader already knows: registers, statistics offices,
+       published estimates (`totals.references`, configs/external/official_capacity.yaml)
+       and the panels imported from China (`totals.import_ceiling`, Ember). Drawn side by
+       side, never scored: each counts something different, and the notes say what. -->
+  <section class="sec" id="references">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Context</div>
+        <div class="sec-title">Against official and published figures</div>
+      </div>
+    </div>
+    <div class="card chart-card">
+      <div class="fig-head">
+        <div>
+          <div class="map-title">National total</div>
+          <div class="map-sub">linear scale &middot; MWp &middot; hover a row for detail</div>
+        </div>
+        <div class="dlbar" data-fig="references"></div>
+      </div>
+      <div class="comp-legend" id="refLegend"></div>
+      <div id="refMount" class="plot-host"></div>
+      <div class="hero-desc ref-notes" id="refNotes"></div>
+    </div>
+    <div class="card chart-card" id="refRegionCard" style="margin-top:14px;">
+      <div class="fig-head">
+        <div>
+          <div class="map-title" id="refRegionTitle">By province</div>
+          <div class="map-sub">linear scale &middot; MWp &middot; hover a row for detail</div>
+        </div>
+        <div class="dlbar" data-fig="references-provinces"></div>
+      </div>
+      <label class="ref-pick" id="refPickWrap" hidden>Compare with
+        <select id="refPick"></select></label>
+      <div class="comp-legend" id="refRegionLegend"></div>
+      <div id="refRegionMount" class="plot-host"></div>
+      <button type="button" class="prov-more" id="refMore" hidden aria-controls="refRegionMount"></button>
+      <div class="hero-desc" id="refRegionNote" style="margin-top:12px;"></div>
+      <details class="tablewrap">
+        <summary>All province figures</summary>
+        <div style="overflow-x:auto;"><table id="rtable">
+          <thead><tr><th>Province</th><th>This atlas, Best</th><th id="rtableRef">Reference</th>
+            <th>Ratio</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </details>
+    </div>
+  </section>
+
   <section class="sec pose-native" id="pose">
     <div class="sec-head">
       <div>
@@ -972,7 +1028,7 @@
       Validated = a single (tilt, azimuth) explains &ge; 2 independent spike dates via the
       specular reflection condition, tolerance 3&deg;. Point size &prop; &radic;(installation area).
       Hover a point to see which installation it is; click it to open that installation in
-      OpenStreetMap. The CSV download lists every point with its OSM id and coordinates.
+      OpenStreetMap. The CSV download lists every point with its OSM id and coordinates.<span class="pz-parts-note"></span>
       Full derivation of the glint signal this pose fit is built on:
       <a href="https://open-energy-transition.github.io/earthpv/methods/glint/" target="_blank" rel="noopener">the method page</a>.
       Annotated Sentinel-2 / high-res examples of what a validated spike actually looks like in
@@ -3701,7 +3757,9 @@ out geom;</div>
             + (d.nm && d.o ? ` · OSM ${esc(d.o)}` : "") + "<br>"
             + (d.op ? `operator ${esc(d.op)}<br>` : "")
             + (where ? `${esc(where)}<br>` : "")
-            + `${esc(what)} · area ${Math.round(d.a).toLocaleString()} m²<br>`
+            + (d.oi ? `orientation ${d.oi} of ${d.on}: ${Math.round(d.a).toLocaleString()} m², `
+                + `${Math.round(100 * d.sh)}% of ${Math.round(d.fa).toLocaleString()} m²<br>${esc(what)}<br>`
+              : `${esc(what)} · area ${Math.round(d.a).toLocaleString()} m²<br>`)
             + `tilt ${d.t}° · az ${d.az}° · ${d.n} consistent spike dates`
             + (d.o ? `<br><i>click to open in OpenStreetMap</i>` : "");
           tipEl.classList.add("pose-show");
@@ -3738,6 +3796,15 @@ out geom;</div>
     set("pz-wedge-deg", st.wedge_deg.toFixed(0));
     set("pz-summary-path", esc(st.summary_path));
     set("pz-data-note", st.data_note ? " " + esc(st.data_note) : "");
+    if (st.n_points && st.n_points !== st.n_fitted)
+      document.querySelectorAll(".pose-chart-n").forEach(e => e.innerHTML =
+        `${fmt(st.n_points)} poses`);
+    set("pz-parts-note", st.n_parts_read
+      ? ` Installations of ${fmt(st.parts_min_m2)} m&sup2; or more (${fmt(st.n_parts_read)} here) are read in ${st.cell_m} m `
+        + `cells, each against the ground around the whole installation, and cells that agree on a `
+        + `pose form one orientation: an installation built in blocks facing different ways `
+        + `(${fmt(st.n_multi)} here) shows one point per orientation, placed at and sized by its own `
+        + `cells.` : "");
     set("pz-leg-roof", esc(poseLegend()[0]));
     set("pz-leg-ground", esc(poseLegend()[1]));
     set("pz-ge1000-note",
@@ -3857,22 +3924,6 @@ out geom;</div>
 
   countUp("heroNum", T.mwp_best, 700);
   document.getElementById("heroCi").textContent = ciText(T.mwp_best_ci);
-  // Upper ceiling from customs data (Ember): panels imported from China up to the end of
-  // the imagery window (scripts/ember_import_ceiling.py). Called a ceiling only where the
-  // table says it is one; elsewhere the page says why it is not.
-  const IC = T.import_ceiling;
-  if (IC) {
-    const mon = (s) => { const [y, m] = String(s).split("-");
-      return new Date(Date.UTC(+y, +m - 1, 1)).toLocaleString("en-US",
-        {month: "short", year: "numeric", timeZone: "UTC"}); };
-    const span = `${mon(IC.from)} to ${mon(IC.to)}`;
-    const src = IC.url ? `<a href="${IC.url}" target="_blank" rel="noopener">Ember</a>` : "Ember";
-    document.getElementById("heroCeiling").innerHTML = IC.ceiling
-      ? `<b>Upper ceiling ${fmt(IC.mwp)} MWp</b>: solar panels imported from China, ${span} `
-        + `(${src}, customs data). This estimate is ${Math.round(100 * T.mwp_best / IC.mwp)}% of it.`
-      : `Solar panels imported from China, ${span}: ${fmt(IC.mwp)} MWp (${src}, customs data). `
-        + `Not a ceiling here: ${IC.why_not}.`;
-  }
   document.getElementById("heroFreshness").textContent = [
     T.imagery_date_range ? `Sentinel-2 imagery: ${T.imagery_date_range}` : null,
     T.generated_at ? `atlas generated ${T.generated_at}` : null,
@@ -3987,6 +4038,257 @@ out geom;</div>
     document.getElementById("uncertainty").style.display = "none";
   }
 
+  // ── against official and published figures ─────────────────────────────────────
+  // `totals.references` (configs/external/official_capacity.yaml: registers, statistics
+  // offices, published estimates) and the customs record `totals.import_ceiling` (Ember,
+  // panels imported from China). Drawn beside this atlas's own figures and never scored
+  // against them: each counts something different, and the notes under the chart say what.
+  const REFS = Array.isArray(T.references) ? T.references : [];
+  const IC = T.import_ceiling || null;
+  const REF_KIND = {register: "register", statistics: "statistics",
+    estimate: "published estimate"};
+  function monthLabel(s){
+    const [y, m, d] = String(s).split("-");
+    if (!m) return y;
+    return new Date(Date.UTC(+y, +m - 1, +(d || 1))).toLocaleString("en-US",
+      Object.assign({month: "short", year: "numeric", timeZone: "UTC"}, d ? {day: "numeric"} : {}));
+  }
+  const ciOf = ci => Array.isArray(ci) ? {lo: ci[0], hi: ci[1]} : {};
+  // Row labels: dated where there is room, the bare name on a phone (the tip and the
+  // notes below carry the date either way).
+  function refTotalRows(narrow){
+    const mon = s => monthLabel(String(s).slice(0, 7));
+    const rows = [Object.assign({name: narrow ? "This atlas, Best" : "This atlas: Best estimate", group: "atlas",
+      mwp: T.mwp_best, detail: "Total PV capacity detectable with Sentinel-2, 90% credible interval"},
+      ciOf(T.mwp_best_ci))];
+    if (T.mwp_verified != null) rows.push(Object.assign({name: narrow ? "This atlas, Verified"
+      : "This atlas: Verified", group: "atlas", mwp: T.mwp_verified,
+      detail: "Hand-mapped OpenStreetMap plus the strictest detections, the floor"}, ciOf(T.mwp_verified_ci)));
+    REFS.forEach(r => rows.push(Object.assign({name: narrow ? r.name : `${r.name}, ${mon(r.as_of)}`,
+      group: "official", mwp: r.mw, detail: `${REF_KIND[r.kind]}, ${r.publisher}, ${monthLabel(r.as_of)}`},
+      ciOf(r.range))));
+    if (IC) rows.push({name: narrow ? "Imported from China"
+      : `Imported from China, ${mon(IC.from)} to ${mon(IC.to)}`,
+      group: "imports", mwp: IC.mwp, detail: IC.ceiling
+        ? "Customs record (Ember), a ceiling on capacity built since 2017"
+        : "Customs record (Ember), not a ceiling here"});
+    return rows.map(r => Object.assign(r, {hasCi: r.lo != null && r.hi != null}));
+  }
+  const refColor = (P, g) => g === "atlas" ? P.accent : g === "imports" ? P.muted : P.ink;
+  function refTotalChart(width, interactive){
+    const P = palette();
+    const narrow = width < 560;
+    const rows = refTotalRows(narrow);
+    const maxChars = narrow ? 22 : 46;
+    const longest = Math.min(maxChars, Math.max(...rows.map(r => r.name.length)));
+    const xmax = Math.max(...rows.map(r => r.hasCi ? r.hi : r.mwp));
+    const nTicks = Math.max(2, Math.floor(width / 120));
+    const col = d => refColor(P, d.group);
+    return Plot.plot({
+      width, height: rows.length * 32 + 44, marginLeft: Math.round(longest * 6.3 + 14),
+      marginRight: narrow ? 52 : 64,
+      marginTop: 8, marginBottom: 30, style: plotStyle(P),
+      ariaLabel: `${AOI}: this atlas's national PV capacity beside official and published figures`,
+      x: {domain: [0, xmax], nice: true, label: null, tickFormat: compact, ticks: nTicks},
+      y: {domain: rows.map(r => r.name), label: null, tickSize: 0, padding: 0.4,
+          tickFormat: d => trunc(d, maxChars)},
+      color: {type: "identity"},
+      marks: [
+        Plot.gridX({ticks: nTicks, stroke: P.hair, strokeOpacity: 1}),
+        Plot.ruleX([0], {stroke: P.muted}),
+        Plot.ruleY(rows.filter(r => r.hasCi), {y: "name", x1: "lo", x2: "hi", stroke: col, strokeWidth: 2.5,
+          strokeLinecap: "round"}),
+        Plot.tickX(rows.filter(r => r.hasCi), {y: "name", x: "lo", stroke: col, strokeWidth: 1.5, inset: 8}),
+        Plot.tickX(rows.filter(r => r.hasCi), {y: "name", x: "hi", stroke: col, strokeWidth: 1.5, inset: 8}),
+        Plot.dot(rows, {y: {value: "name", label: "Figure"}, x: "mwp", r: 5.5,
+          symbol: d => d.group === "imports" ? "diamond" : "circle",
+          fill: d => d.group === "official" ? P.panel : col(d),
+          stroke: d => d.group === "official" ? P.ink : P.panel, strokeWidth: 2,
+          channels: {Low: {value: "lo", label: "low"}, High: {value: "hi", label: "high"},
+                     Detail: {value: "detail", label: "Detail"}},
+          tip: interactive ? {format: {x: v => `${fmt5(v)} MWp`, y: true, fill: false, stroke: false,
+            symbol: false, Low: v => v == null ? "" : fmt5(v), High: v => v == null ? "" : fmt5(v),
+            Detail: true}} : undefined}),
+        Plot.text(rows, {y: "name", x: d => d.hasCi ? d.hi : d.mwp, text: d => fmt(d.mwp), dx: 9,
+          textAnchor: "start", fill: P.ink2}),
+      ],
+    });
+  }
+  function refTotalCSV(){
+    const rows = [["This atlas: Best estimate", "this atlas", "", T.imagery_date_range || "", T.mwp_best,
+      ...(T.mwp_best_ci || ["", ""]), "", ""]];
+    if (T.mwp_verified != null) rows.push(["This atlas: Verified", "this atlas", "", T.imagery_date_range || "",
+      T.mwp_verified, ...(T.mwp_verified_ci || ["", ""]), "", ""]);
+    REFS.forEach(r => rows.push([r.name, REF_KIND[r.kind], r.publisher, r.as_of, r.mw,
+      ...(r.range || ["", ""]), r.scope || "", r.url || ""]));
+    if (IC) rows.push(["Panels imported from China", IC.ceiling ? "customs record, ceiling" : "customs record",
+      "Ember", `${IC.from} to ${IC.to}`, IC.mwp, "", "", IC.ceiling ? "" : IC.why_not, IC.url || ""]);
+    return [["figure", "kind", "publisher", "as_of", "mw", "range_low", "range_high", "scope", "url"], rows];
+  }
+
+  // Province by province, for each reference that publishes provinces: a dumbbell per
+  // province, this atlas (amber) to the reference (ink ring), largest reference first.
+  const REGION_REFS = REFS.filter(r => r.regions && Object.keys(r.regions).length);
+  const REF_TOP = 10;
+  let refRegionIdx = 0, refAll = false;
+  function refRegionRows(){
+    const ref = REGION_REFS[refRegionIdx];
+    const prov = new Map((DATA.provinces || []).map(p => [p.name, p]));
+    return Object.entries(ref.regions).filter(([n]) => prov.has(n)).map(([n, v]) => {
+      const p = prov.get(n);
+      return {Province: n, atlas: p.mwp_best, verified: p.mwp_verified, ref: v,
+        ratio: v > 0 ? p.mwp_best / v : null};
+    }).sort((a, b) => b.ref - a.ref);
+  }
+  function refRegionChart(width, interactive){
+    const P = palette();
+    const ref = REGION_REFS[refRegionIdx];
+    const all = refRegionRows();
+    const rows = interactive && !refAll ? all.slice(0, REF_TOP) : all;
+    const maxChars = width < 360 ? 14 : width < 700 ? 22 : 34;
+    const longest = Math.min(maxChars, Math.max(4, ...rows.map(r => r.Province.length)));
+    const nTicks = Math.max(2, Math.floor(width / 110));
+    const xmax = Math.max(...rows.map(r => Math.max(r.atlas, r.ref)));
+    const ratio = d => d.ratio == null ? "" : `\nthis atlas / ${ref.name}: ${d.ratio.toFixed(2)}`;
+    return Plot.plot({
+      width, height: rows.length * 24 + 40, marginLeft: Math.round(longest * 6.5 + 10),
+      marginRight: 20, marginTop: 4, marginBottom: 28, style: plotStyle(P),
+      ariaLabel: `${AOI}: PV capacity by province, this atlas against ${ref.name}`,
+      x: {domain: [0, xmax], nice: true, label: null, tickFormat: compact, ticks: nTicks},
+      y: {domain: rows.map(r => r.Province), label: null, tickSize: 0, padding: 0.3,
+          tickFormat: d => trunc(d, maxChars)},
+      marks: [
+        Plot.gridX({ticks: nTicks, stroke: P.hair, strokeOpacity: 1}),
+        Plot.ruleX([0], {stroke: P.muted}),
+        Plot.ruleY(rows, {y: "Province", x1: d => Math.min(d.atlas, d.ref), x2: d => Math.max(d.atlas, d.ref),
+          stroke: P.muted, strokeOpacity: 0.45, strokeWidth: 3}),
+        Plot.dot(rows, {y: "Province", x: "ref", r: 5, fill: P.panel, stroke: P.ink, strokeWidth: 2}),
+        Plot.dot(rows, {y: "Province", x: "atlas", r: 5, fill: P.accent, stroke: P.panel, strokeWidth: 1.5}),
+        interactive ? Plot.tip(rows, Plot.pointerY({y: "Province", x: d => Math.max(d.atlas, d.ref),
+          title: d => `${d.Province}\nthis atlas, Best: ${fmt5(d.atlas)} MWp\n${ref.name}: ${fmt5(d.ref)} MW`
+            + ratio(d)})) : null,
+      ],
+    });
+  }
+  function refRegionCSV(){
+    const ref = REGION_REFS[refRegionIdx];
+    return [["province", "atlas_best_mwp", "atlas_verified_mwp", `${ref.id}_mw`, "ratio_best_to_reference"],
+      refRegionRows().map(d => [d.Province, d.atlas, d.verified, d.ref,
+        d.ratio == null ? "" : +d.ratio.toFixed(3)])];
+  }
+  function ranks(v){
+    const idx = v.map((x, i) => [x, i]).sort((a, b) => a[0] - b[0]);
+    const r = new Array(v.length);
+    for (let i = 0; i < idx.length;) {
+      let j = i;
+      while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++;
+      for (let k = i; k <= j; k++) r[idx[k][1]] = (i + j) / 2 + 1;
+      i = j + 1;
+    }
+    return r;
+  }
+  function spearman(a, b){
+    const ra = ranks(a), rb = ranks(b), n = a.length;
+    const ma = ra.reduce((s, x) => s + x, 0) / n, mb = rb.reduce((s, x) => s + x, 0) / n;
+    let sab = 0, saa = 0, sbb = 0;
+    for (let i = 0; i < n; i++) {
+      sab += (ra[i] - ma) * (rb[i] - mb); saa += (ra[i] - ma) ** 2; sbb += (rb[i] - mb) ** 2;
+    }
+    return saa && sbb ? sab / Math.sqrt(saa * sbb) : null;
+  }
+  function renderRefRegionChrome(){
+    const ref = REGION_REFS[refRegionIdx];
+    const rows = refRegionRows();
+    document.getElementById("refRegionTitle").textContent = `By province: this atlas against ${ref.name}`;
+    document.getElementById("refRegionLegend").innerHTML =
+      `<div class="comp-legend-item"><span class="comp-swatch ref-atlas"></span>This atlas, Best estimate</div>`
+      + `<div class="comp-legend-item"><span class="comp-swatch ref-official"></span>${esc(ref.name)}, `
+      + `${esc(monthLabel(ref.as_of))}</div>`;
+    const sumA = rows.reduce((s, d) => s + d.atlas, 0), sumR = rows.reduce((s, d) => s + d.ref, 0);
+    const rho = rows.length >= 3 ? spearman(rows.map(d => d.atlas), rows.map(d => d.ref)) : null;
+    document.getElementById("refRegionNote").innerHTML =
+      `Largest first, by ${esc(ref.name)}'s figure. Over these ${rows.length} provinces this atlas's Best `
+      + `estimate sums to ${fmt(sumA)} MWp and ${esc(ref.name)} to ${fmt(sumR)} MW`
+      + (rho == null ? "." : `; ranked by capacity, the two orders agree at Spearman &rho; = ${rho.toFixed(2)}.`)
+      + (ref.regions_scope ? ` ${esc(ref.regions_scope)}` : "");
+    document.getElementById("rtableRef").textContent = ref.name;
+    document.querySelector("#rtable tbody").innerHTML = rows.map(d =>
+      `<tr><td>${esc(d.Province)}</td><td>${fmt(d.atlas)}</td><td>${fmt(d.ref)}</td>`
+      + `<td>${d.ratio == null ? "–" : d.ratio.toFixed(2)}</td></tr>`).join("");
+    const more = document.getElementById("refMore");
+    more.hidden = !(rows.length > REF_TOP && HAS_PLOT);
+    more.textContent = refAll ? `Show the top ${REF_TOP} only` : `Show all ${rows.length} provinces`;
+    more.setAttribute("aria-expanded", String(refAll));
+  }
+  function renderRefNotes(){
+    const imagery = T.imagery_date_range ? ` in its imagery window (${esc(T.imagery_date_range)})` : "";
+    const items = REFS.map(r =>
+      `<li><b>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}</b>`
+      + ` (${REF_KIND[r.kind]}, ${esc(r.publisher)}, ${esc(monthLabel(r.as_of))}): <b>${fmt(r.mw)} MW</b>`
+      + (r.range ? ` (range ${fmt(r.range[0])} to ${fmt(r.range[1])})` : "") + `. ${esc(r.scope || "")}</li>`);
+    if (IC) {
+      const src = IC.url ? `<a href="${esc(IC.url)}" target="_blank" rel="noopener">Ember</a>` : "Ember";
+      items.push(`<li><b>Panels imported from China</b> (${src}, China's customs records, CC-BY-4.0), `
+        + `${esc(monthLabel(IC.from))} to ${esc(monthLabel(IC.to))}: <b>${fmt(IC.mwp)} MWp</b>. `
+        + (IC.ceiling
+          ? "Nearly every panel here comes from China, so this bounds what can have been built since "
+            + "2017; some imported panels sit in warehouses, are re-exported or are not installed yet."
+          : `Not a ceiling here: ${esc(IC.why_not)}.`) + `</li>`);
+    }
+    document.getElementById("refNotes").innerHTML =
+      `None of these figures is ground truth for this map, and the map is not scored against them: `
+      + `each counts something different. This atlas counts what Sentinel-2 shows${imagery}; a register `
+      + `counts what was registered by its date, in MW as declared, which for large plants is often the `
+      + `inverter (AC) rating, below the module (MWp) capacity the atlas counts.`
+      + (REFS.length ? "" : ` No official national or provincial figure is on file for ${esc(AOI)} yet, `
+        + `so the customs record is the only comparison.`)
+      + `<ul>${items.join("")}</ul>`;
+  }
+
+  const refSection = document.getElementById("references");
+  if (REFS.length || IC) {
+    document.getElementById("refLegend").innerHTML =
+      `<div class="comp-legend-item"><span class="comp-swatch ref-atlas"></span>This atlas</div>`
+      + (REFS.length ? `<div class="comp-legend-item"><span class="comp-swatch ref-official"></span>`
+        + `Official or published figure</div>` : "")
+      + (IC ? `<div class="comp-legend-item"><span class="comp-swatch ref-imports"></span>`
+        + `Panels imported from China</div>` : "");
+    renderRefNotes();
+    const names = [...REFS.map(r => `${r.name} (${monthLabel(r.as_of)})`),
+      ...(IC ? ["panels imported from China (Ember)"] : [])];
+    registerPlot("references", "refMount", needsPlot(refTotalChart), {
+      title: () => `${AOI}: national PV capacity beside official and published figures`,
+      subtitle: () => `This atlas's Best and Verified estimates with 90% intervals, against `
+        + `${names.join(", ")}. Registers in MW as declared; none is ground truth for the atlas.`,
+      csv: refTotalCSV,
+    });
+    if (REGION_REFS.length) {
+      const pick = document.getElementById("refPick");
+      if (REGION_REFS.length > 1) {
+        pick.innerHTML = REGION_REFS.map((r, i) => `<option value="${i}">${esc(r.name)}</option>`).join("");
+        document.getElementById("refPickWrap").hidden = false;
+      }
+      renderRefRegionChrome();
+      registerPlot("references-provinces", "refRegionMount", needsPlot(refRegionChart), {
+        title: () => `${AOI}: PV capacity by province, this atlas against ${REGION_REFS[refRegionIdx].name}`,
+        subtitle: () => `This atlas's Best estimate (MWp) and ${REGION_REFS[refRegionIdx].name} `
+          + `(${monthLabel(REGION_REFS[refRegionIdx].as_of)}, MW) per province, largest first.`,
+        csv: refRegionCSV,
+      });
+      const rerender = () => {
+        renderRefRegionChrome();
+        const c = CHARTS.find(x => x.key === "references-provinces");
+        if (c) c.render();
+      };
+      pick.addEventListener("change", () => { refRegionIdx = +pick.value; refAll = false; rerender(); });
+      document.getElementById("refMore").addEventListener("click", () => { refAll = !refAll; rerender(); });
+    } else {
+      document.getElementById("refRegionCard").style.display = "none";
+    }
+  } else if (refSection) {
+    refSection.style.display = "none";
+  }
+
   const hasDownloads = Array.isArray(T.downloads) && T.downloads.length > 0;
   const hasLeads = !!(T.leads && T.leads.url);
   const downloadsSection = document.getElementById("downloads");
@@ -4007,9 +4309,11 @@ out geom;</div>
         + `the shaded wedge is unobservable from Sentinel-2's fixed overpass time.`,
       render: () => poseExportSvg(),
       csv: () => [["id", "osm_id", "osm_url", "name", "operator", "region", "lon", "lat",
-        "kind", "placement", "area_m2", "tilt_deg", "azimuth_deg", "n_spike_dates"],
+        "kind", "placement", "area_m2", "orientation", "n_orientations", "orientation_area_m2",
+        "orientation_share", "tilt_deg", "azimuth_deg", "n_spike_dates"],
         DATA.pose.points.map(d => [d.p, d.o || "", poseOsmUrl(d), d.nm || "", d.op || "", d.r || "",
-          d.x ?? "", d.y ?? "", d.k, d.pl, d.a, d.t, d.az, d.n])],
+          d.x ?? "", d.y ?? "", d.k, d.pl, d.fa ?? d.a, d.oi ?? "", d.on ?? "", d.oi ? d.a : "",
+          d.sh ?? "", d.t, d.az, d.n])],
     });
   } else if (poseSection) {
     poseSection.style.display = "none";
