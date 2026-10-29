@@ -90,7 +90,7 @@ Every Bronze country has ten candidate areas, each with Esri imagery recent enou
 country's satellite data: eight drawn at random across its building-density range rather than
 picked by hand, and two start-here boxes in its densest districts with the most large roofs
 ([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
-Pakistan has fifteen: eight aimed at the sparse end of its calibration, six hand-placed
+Pakistan has fourteen: seven aimed at the sparse end of its calibration, six hand-placed
 gap boxes and one farm box. Yemen, Silver since its
 farm areas, has ten town boxes where panels show on rooftops, for its rooftop classifier;
 Yafi' and Qa'tabah town were mapped on 2026-10-29.
@@ -104,7 +104,7 @@ Yafi' and Qa'tabah town were mapped on 2026-10-29.
 | [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |
 | [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
 | [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
-| [Pakistan](../atlas.md) | Gold | 15 | 66 to 3,065 | Lasbela, Balochistan (farm) |
+| [Pakistan](../atlas.md) | Gold | 14 | 66 to 3,065 | Lasbela, Balochistan (farm) |
 | [Yemen](../atlas-yemen.md) | Silver | 10 | 34 to 2,123 | Adh Dhihar, Ibb |
 | [France](../atlas-france.md) | Silver | none | map any solar you can see | |
 

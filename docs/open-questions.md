@@ -72,7 +72,8 @@ are in the experiments register, "The capacity chain is a quantification problem
    **A first mapped reading (2026-10-29): the Kasur gap box** (55 bldg/km&sup2;, Box 22), where
    the production scores sum to 0.45 per PV roof below 400 m&sup2; against the 1.115
    reference, understating PV about 2.5 times. 16 PV roofs in one box: a pointer, not the
-   answer.
+   answer. **The first sampled box, Qilla Abdullah s6** (473 bldg/km&sup2;, 33 PV roofs), reads
+   2.21, overstating about twice: the two readings disagree in sign.
 
 The two gaps the opt-in path had are closed: the atlas's size chart counts a
 probability-weighted component's rooftop objects as the sum of scores (expected PV roofs)

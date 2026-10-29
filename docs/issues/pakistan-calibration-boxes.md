@@ -1595,10 +1595,11 @@ Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
   --lon <lon> --side-m <2000 or 1000> --imagery-layer "Esri World Imagery (Vivid)"
   --imagery-date <date above>` (centres are in each file's `center`, lon then lat).
 - Published to every atlas by `calib-publish` the same day (hollow diamonds).
+- **Mapped so far:** Qilla Abdullah s6 (2026-10-29, Box 22).
 
-### Box 22 -- Kasur (Box 19's second mapped) and four farm boxes -- 2026-10-29
+### Box 22 -- Kasur, Qilla Abdullah and four farm boxes -- 2026-10-29
 
-Five areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
+Six areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
 in `configs/atlas/pakistan.yaml` (no refit yet):
 
 | area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
@@ -1608,6 +1609,7 @@ in `configs/atlas/pakistan.yaml` (no refit yet):
 | `badin_f8_farm_calib_3km` | farm, cropland stratum 8 of 8 | 2025-06-07 | 665 (73.9) | 2 rooftop, 85 m<sup>2</sup> |
 | `qambar_shahdadkot_f7_farm_calib_3km` | farm, cropland stratum 7 of 8 | 2025-05-29 | 674 (74.9) | none: confirmed zero |
 | `swabi_f4_farm_calib_3km` | farm, cropland stratum 4 of 8 | 2025-09-19 | 495 (55.0) | 57 (45 ground, 12 rooftop), 6,916 m<sup>2</sup>, median 105 m<sup>2</sup> |
+| `qilla_abdullah_s6_calib_2km` | building (Box 21, density band 6 of 8) | 2025-05-21 | 1,893 (473.2) | 46 (24 rooftop, 22 ground), 3,363 m<sup>2</sup>, median 47 m<sup>2</sup> |
 
 - **Kasur's imagery was dated at registration, not before mapping.** Box 19 recorded no date;
   Esri's metadata service gives Vivid 2025-05-01 at the centre and all four corners
@@ -1647,3 +1649,11 @@ in `configs/atlas/pakistan.yaml` (no refit yet):
   the 9 Pakistani areas with a recorded imagery date. Its arrays are larger than Punjab's (median 105 m<sup>2</sup> against
   Jhang's 39 and 41), and one of them, 727 m<sup>2</sup>, is above the segmentation floor.
   Mapped in one changeset (191183685), confirmed by the script's second query (57 both times).
+- **Qilla Abdullah s6 is the first of Box 21's sampled boxes mapped**, and so the first
+  Pakistani level reading on a box not chosen by hand or by score. Its first Overpass answer
+  came back empty and the retry held 46, the stale-endpoint case the script retries for.
+  Under the parcel label 33 of its 1,796 household roofs carry PV; the production scoring
+  ranks them at AUC 0.81, and its scores sum to **2.21 per PV roof** below 400 m<sup>2</sup>
+  (2.08 at or above, 10 roofs), against the 1.115 and 1.270 reference: here the scores
+  overstate PV about twice. With Kasur's 0.45 the two mapped boxes point opposite ways; the
+  protocol's comparison needs all eight.

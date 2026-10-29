@@ -201,6 +201,9 @@ calibration_boxes:
   # Added 2026-10-29: Swabi, Khyber Pakhtunkhwa, the next starred farm box (stratum 4 of 8,
   # 74% cropland, Esri 2025-09-19; changeset 191183685): 57 installations, 45 of them ground.
   - {name: "Swabi (farm)", stem: swabi_f4_farm_calib_3km, status: rule1, used: false}
+  # Added 2026-10-29: Qilla Abdullah, Balochistan, the first of Box 21's eight sampled building
+  # boxes mapped (density band 6 of 8, Esri 2025-05-21; changeset 191184456): 46 installations.
+  - {name: "Qilla Abdullah", stem: qilla_abdullah_s6_calib_2km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked
