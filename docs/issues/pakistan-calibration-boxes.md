@@ -1595,11 +1595,11 @@ Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
   --lon <lon> --side-m <2000 or 1000> --imagery-layer "Esri World Imagery (Vivid)"
   --imagery-date <date above>` (centres are in each file's `center`, lon then lat).
 - Published to every atlas by `calib-publish` the same day (hollow diamonds).
-- **Mapped so far:** Qilla Abdullah s6 and Sanghar s2 (2026-10-29, Box 22).
+- **Mapped so far:** Qilla Abdullah s6, Sanghar s2 and Gujranwala s8 (2026-10-29, Box 22).
 
-### Box 22 -- Kasur, two sampled boxes and five farm boxes -- 2026-10-29
+### Box 22 -- Kasur, three sampled boxes and five farm boxes -- 2026-10-29
 
-Eight areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
+Nine areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
 in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of Box 20's:
 
 | area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
@@ -1612,6 +1612,7 @@ in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of B
 | `qilla_abdullah_s6_calib_2km` | building (Box 21, density band 6 of 8) | 2025-05-21 | 1,893 (473.2) | 46 (24 rooftop, 22 ground), 3,363 m<sup>2</sup>, median 47 m<sup>2</sup> |
 | `lasbela_f1_farm_calib_3km` | farm, cropland stratum 1 of 8 | 2025-08-30 | 899 (99.9) | 37 (36 ground, 1 rooftop), 4,490 m<sup>2</sup>, median 86 m<sup>2</sup> |
 | `sanghar_s2_calib_2km` | building (Box 21, density band 2 of 8) | 2025-04-02 | 413 (103.2) | 2 rooftop, 161 m<sup>2</sup> |
+| `gujranwala_s8_calib_1km` | building (Box 21, density band 8 of 8) | 2025-05-18 | 3,065 (3,065) | 37 (28 rooftop, 9 ground), 3,013 m<sup>2</sup>, median 34 m<sup>2</sup> |
 
 - **Kasur's imagery was dated at registration, not before mapping.** Box 19 recorded no date;
   Esri's metadata service gives Vivid 2025-05-01 at the centre and all four corners
@@ -1667,6 +1668,11 @@ in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of B
 - **Sanghar s2 holds 2 rooftop arrays** on 413 buildings. Its confirming queries all failed
   on overloaded endpoints, so the script marks the pull unverified; OSM's live API showed the
   same 2 solar ways in the box an hour earlier. Its level reading (2 PV roofs) is no reading.
+- **Gujranwala s8, the densest band**: 39 of its 3,040 household roofs carry PV under the
+  parcel label; the production scoring ranks them at AUC 0.76 and sums to **3.91 per PV
+  roof**. Gujranwala is in the coverage ratio's upper density band (above 1,717
+  bldg/km<sup>2</sup>), whose own reference has not been computed; against the 19 trusted
+  quadrats' pooled 0.997 it reads about four times high.
 - **Second passes over Box 20's Sahiwal f6 and Jhang f2.** Sahiwal gained 2 ground arrays
   (5 installations, 4 ground, re-pulled the same day); Jhang f2 is unchanged at 18. Jhang f2
   stays `corroborated`: the pass found nothing new, but the imagery is what made it so.

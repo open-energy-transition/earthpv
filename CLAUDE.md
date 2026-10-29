@@ -622,7 +622,8 @@ published file.
   Where only farm ground PV is unmeasured, farm boxes rank first: Pakistan's star was Badin
   (`badin_f8_farm`, 94% cropland; 2 rooftop arrays), then Qambar Shahdadkot f7 (no PV), Swabi
   f4 (57 installations, 45 ground) and Lasbela f1 (37, 36 ground), all mapped 2026-10-29. With
-  no farm candidate left the star falls back to the densest building box (Gujranwala s8).
+  no farm candidate left the star falls back to the densest building box (Gujranwala s8,
+  mapped the same day; then Malakand s7).
   Germany and France qualify but have no open candidates.
 - **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
   rank that country's candidates with it first and star it, on any atlas. Yemen's was Yafi'

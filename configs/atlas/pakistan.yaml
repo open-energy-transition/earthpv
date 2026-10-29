@@ -211,6 +211,9 @@ calibration_boxes:
   # Added 2026-10-29: Sanghar, Sindh, Box 21's density band 2 of 8 (Esri 2025-04-02): 2 rooftop
   # installations on 413 VIDA buildings.
   - {name: "Sanghar", stem: sanghar_s2_calib_2km, status: rule1, used: false}
+  # Added 2026-10-29: Gujranwala, Punjab, Box 21's densest band (8 of 8, 3,065 bldg/km2, Esri
+  # 2025-05-18): 37 installations (28 rooftop, 9 ground).
+  - {name: "Gujranwala", stem: gujranwala_s8_calib_1km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked
