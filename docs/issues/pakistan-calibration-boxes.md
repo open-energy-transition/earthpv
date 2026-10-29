@@ -1597,9 +1597,9 @@ Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
 - Published to every atlas by `calib-publish` the same day (hollow diamonds).
 - **Mapped so far:** Qilla Abdullah s6, Sanghar s2 and Gujranwala s8 (2026-10-29, Box 22).
 
-### Box 22 -- Kasur, three sampled boxes and five farm boxes -- 2026-10-29
+### Box 22 -- Kasur, Jacobabad, three sampled boxes and five farm boxes -- 2026-10-29
 
-Nine areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
+Ten areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
 in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of Box 20's:
 
 | area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
@@ -1613,6 +1613,7 @@ in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of B
 | `lasbela_f1_farm_calib_3km` | farm, cropland stratum 1 of 8 | 2025-08-30 | 899 (99.9) | 37 (36 ground, 1 rooftop), 4,490 m<sup>2</sup>, median 86 m<sup>2</sup> |
 | `sanghar_s2_calib_2km` | building (Box 21, density band 2 of 8) | 2025-04-02 | 413 (103.2) | 2 rooftop, 161 m<sup>2</sup> |
 | `gujranwala_s8_calib_1km` | building (Box 21, density band 8 of 8) | 2025-05-18 | 3,065 (3,065) | 37 (28 rooftop, 9 ground), 3,013 m<sup>2</sup>, median 34 m<sup>2</sup> |
+| `jacobabad_gap_calib_2km` | building (Box 19 gap screen) | 2025-06-05 | 332 (83.0) | none: confirmed zero |
 
 - **Kasur's imagery was dated at registration, not before mapping.** Box 19 recorded no date;
   Esri's metadata service gives Vivid 2025-05-01 at the centre and all four corners
@@ -1673,6 +1674,22 @@ in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of B
   roof**. Gujranwala is in the coverage ratio's upper density band (above 1,717
   bldg/km<sup>2</sup>), whose own reference has not been computed; against the 19 trusted
   quadrats' pooled 0.997 it reads about four times high.
+- **Jacobabad holds no PV**, the third of Box 19's gap boxes mapped (after Mastung and
+  Kasur), and like them registered where the screen put it. Like Kasur it sits on a
+  settlement: 332 buildings, 83 per km<sup>2</sup>, inside the density domain and below the
+  coverage-ratio fit's sparsest quadrat (124). Esri Vivid imagery of 2025-06-05 at the centre
+  and all four corners, dated at registration, within 12 months of the composite window, so
+  its roofs are usable negatives. OSM's live API agrees (547 elements in the box, no solar or
+  power feature, 2026-10-29), and so does an Overpass count (OSM base 2026-10-29 19:47 UTC);
+  `new_calibration_quadrat.py`'s two pulls came back empty and it stopped, so the empty label
+  file was written in Mastung's schema.
+- **Jacobabad measures the score floor directly.** The production scoring (whose fit never saw
+  Jacobabad) gives its 332 roofs, all below 400 m<sup>2</sup>, scores summing to **5.34**,
+  where there is no PV roof at all: at the lower density band's 1.115 per PV roof that reads
+  as about 5 PV roofs. Two roofs pass the 0.2446 threshold. For scale, Kasur's 219 household
+  roofs, 16 of them with PV, sum to 7.17, and Sanghar's 413 (2 with PV) to 4.32: a sparse box
+  with no PV books three quarters of what one with 16 PV roofs does. One box, so a reading
+  for open question 1, not an answer.
 - **Second passes over Box 20's Sahiwal f6 and Jhang f2.** Sahiwal gained 2 ground arrays
   (5 installations, 4 ground, re-pulled the same day); Jhang f2 is unchanged at 18. Jhang f2
   stays `corroborated`: the pass found nothing new, but the imagery is what made it so.

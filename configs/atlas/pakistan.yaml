@@ -214,6 +214,10 @@ calibration_boxes:
   # Added 2026-10-29: Gujranwala, Punjab, Box 21's densest band (8 of 8, 3,065 bldg/km2, Esri
   # 2025-05-18): 37 installations (28 rooftop, 9 ground).
   - {name: "Gujranwala", stem: gujranwala_s8_calib_1km, status: rule1, used: false}
+  # Added 2026-10-29: Jacobabad, Sindh, the third of Box 19's density-gap boxes mapped, where
+  # the screen put it (Esri Vivid 2025-06-05 at the centre and all four corners): no PV on
+  # 332 VIDA buildings (83 per km2), confirmed against OSM's live API and Overpass (Box 22).
+  - {name: "Jacobabad (no PV)", stem: jacobabad_gap_calib_2km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked
