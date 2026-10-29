@@ -594,8 +594,9 @@ published file.
   every atlas whose own page reports roofclf (`totals.small_rooftop_status`, or for an older
   page all `small_*` zero) or groundclf (`totals.small_ground_status`) as not measured
   (`unmeasured_instruments`), Gold and Silver included; only a page measuring both gets none.
-  Where only farm ground PV is unmeasured, farm boxes rank first: Pakistan's star is Badin
-  (`badin_f8_farm`, 94% cropland). Germany and France qualify but have no open candidates.
+  Where only farm ground PV is unmeasured, farm boxes rank first: Pakistan's star was Badin
+  (`badin_f8_farm`, 94% cropland; 2 rooftop arrays), then Qambar Shahdadkot f7 (no PV), both
+  mapped 2026-10-29; now Swabi f4. Germany and France qualify but have no open candidates.
 - **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
   rank that country's candidates with it first and star it, on any atlas. Yemen's was Yafi'
   (2026-10-29, picked on Esri imagery over the classifier's top window, Adh Dhihar); mapped

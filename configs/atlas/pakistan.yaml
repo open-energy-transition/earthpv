@@ -192,6 +192,12 @@ calibration_boxes:
   # 2025-02-20), in which the owner found no PV. Calibrates the farm ground-PV detector,
   # which has not been run on Pakistan.
   - {name: "Thatta (farm, no PV)", stem: thatta_f3_farm_calib_3km, status: rule1, used: false}
+  # Added 2026-10-29: Badin, Sindh, the farm box the atlas starred (cropland stratum 8 of 8,
+  # 94% cropland, Esri 2025-06-07): 2 small rooftop arrays (85 m2) on 665 VIDA buildings.
+  - {name: "Badin (farm)", stem: badin_f8_farm_calib_3km, status: rule1, used: false}
+  # Added 2026-10-29: Qambar Shahdadkot, Sindh, the next starred farm box (stratum 7 of 8,
+  # 93% cropland, Esri 2025-05-29): no PV (owner; OSM API and Overpass agree).
+  - {name: "Qambar Shahdadkot (farm, no PV)", stem: qambar_shahdadkot_f7_farm_calib_3km, status: rule1, used: false}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked

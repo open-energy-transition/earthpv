@@ -1596,15 +1596,17 @@ Pakistan's `--window-start` and ISO2 fallbacks, which only its farm mode had.
   --imagery-date <date above>` (centres are in each file's `center`, lon then lat).
 - Published to every atlas by `calib-publish` the same day (hollow diamonds).
 
-### Box 22 -- Kasur (Box 19's second mapped) and a farm box with no PV in Thatta -- 2026-10-29
+### Box 22 -- Kasur (Box 19's second mapped) and three Sindh farm boxes -- 2026-10-29
 
-Two areas finished by the owner on 2026-10-29 and registered the same day, both `used: false`
+Four areas finished by the owner on 2026-10-29 and registered the same day, all `used: false`
 in `configs/atlas/pakistan.yaml` (no refit yet):
 
 | area | kind | Esri imagery | VIDA buildings (per km<sup>2</sup>) | mapped installations |
 |---|---|---|---:|---|
 | `kasur_gap_calib_2km` | building (Box 19 gap screen) | 2025-05-01 | 221 (55.3) | 15 (9 ground, 6 rooftop), 1,355 m<sup>2</sup>, median 89 m<sup>2</sup> |
 | `thatta_f3_farm_calib_3km` | farm, cropland stratum 3 of 8 | 2025-02-20 | 354 (39.3) | none: confirmed zero |
+| `badin_f8_farm_calib_3km` | farm, cropland stratum 8 of 8 | 2025-06-07 | 665 (73.9) | 2 rooftop, 85 m<sup>2</sup> |
+| `qambar_shahdadkot_f7_farm_calib_3km` | farm, cropland stratum 7 of 8 | 2025-05-29 | 674 (74.9) | none: confirmed zero |
 
 - **Kasur's imagery was dated at registration, not before mapping.** Box 19 recorded no date;
   Esri's metadata service gives Vivid 2025-05-01 at the centre and all four corners
@@ -1630,3 +1632,12 @@ in `configs/atlas/pakistan.yaml` (no refit yet):
   schema. Its imagery (2025-02-20) is the oldest the gate allows, so an array installed in the
   eight months before the composite window would be missed. It calibrates the farm ground-PV
   detector, which has not been run on Pakistan.
+- **Badin f8 was the atlas's star** (2026-10-29: Pakistan's farm ground PV is unmeasured, and
+  of its farm candidates Badin holds the most cropland, 94%). Two small rooftop arrays in a
+  9 km<sup>2</sup> box of almost unbroken cropland and no ground array. The star moved on to
+  Qambar Shahdadkot f7 (93% cropland), which holds no PV at all (OSM's live API: 964
+  elements, no solar or power feature; Overpass, OSM base 2026-10-29 08:50 UTC: none;
+  registered with an empty label file as Thatta was). **Three Sindh farm boxes, 27
+  km<sup>2</sup> of cropland, hold two rooftop arrays and no ground array**, where Jhang's
+  two Punjab boxes (Box 20) hold 61 ground arrays. The star moved on to Swabi f4, in Khyber
+  Pakhtunkhwa.
