@@ -260,6 +260,12 @@ def window_densities(lon: np.ndarray, lat: np.ndarray, cell: pd.Series, side_m: 
     return np.array(out)
 
 
+# geoBoundaries' Namibian ADM2 names do not match their outlines (Rosh Pinah falls in
+# "Omuthiyagwipundi", Oshakati in "Otjinene"; checked 2026-10-29), so a box there is named
+# after its region alone. Its ADM1 regions are correct.
+NO_DISTRICT_NAMES = {"namibia"}
+
+
 class Admin:
     """District / region names from the density stage's own admin parquet files."""
 
@@ -269,7 +275,8 @@ class Admin:
         self.layers = []
         for kind in ("districts", "regions"):
             p = LABELS / f"{aoi}_{kind}.parquet"
-            self.layers.append(gpd.read_parquet(p).to_crs(4326) if p.exists() else None)
+            ok = p.exists() and not (kind == "districts" and aoi in NO_DISTRICT_NAMES)
+            self.layers.append(gpd.read_parquet(p).to_crs(4326) if ok else None)
 
     def lookup(self, lon: float, lat: float) -> tuple[str | None, str | None]:
         """(district, region) containing the point, else the nearest within ~5 km: the

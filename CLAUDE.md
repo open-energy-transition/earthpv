@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and twelve countries have a published evidence atlas (see "Country
+country's own OSM labels, and thirteen countries have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -1001,6 +1001,7 @@ QUEUE first when removing compute markers.
 | Poland | `v15_combined_poland` | 6,604.3 / 7,780.9 | |
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 526.3 | |
 | Nigeria | `v5_combined_france` ep 25 | 90.2 / 120.9 | name `v8` is taken by `v8_combined_nigeria` |
+| Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Since 2026-10-29 Best counts the
@@ -1033,6 +1034,13 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   model has been trained on them yet (open question 19).
 - **Morocco**: geoBoundaries MAR includes Western Sahara, so `atlas.build_evidence_atlas` clips
   region outlines to the AOI bbox.
+- **Namibia** (published 2026-10-29): v17 beat v5 on the Erongo holdout (recall >= 500 m2
+  0.952 against 0.766), but **reads the Cuvelai basin's seasonal pans (oshanas) as ground
+  PV**: about 54 of the 66 MWp Best adds over Verified, 10 of 10 sampled on Esri were pans;
+  priced through the >50k m2 ground bin (21 of 101 mapped). No filter yet; the page says so.
+  geoBoundaries NAM ADM2 names are shuffled (ADM1 is right; `propose_calibration_candidates.py`
+  names Namibian boxes by region), and Esri serves most of Namibia only to zoom 17, so one
+  calibration box passes the imagery gate.
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

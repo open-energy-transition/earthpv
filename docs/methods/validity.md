@@ -110,7 +110,7 @@ source, and the vintage nearest the end of the atlas's imagery window was used.
 | South Africa | [NTCSA (Eskom)](https://www.ntcsa.co.za/wp-content/uploads/2026/10/Weekly_System_Status_Report_2026_w43.pdf), contracted utility PV plus its estimate of all other PV | Sep 2026 | 12,210 | 9, estimate only |
 | Poland | [ARE](https://www.are.waw.pl/badania-statystyczne/energetyka-w-liczbach) monthly statistics | Aug 2026 | 27,106 | none |
 | Poland | [URE](https://www.ure.gov.pl/download/9/16535/MAPAOZEna30092026nastroneURE.xlsx) installation list, above 50 kW | 30 Sep 2026 | 13,440 | 16 voivodeships |
-| Egypt, Morocco, Nigeria, Vietnam, Yemen, Zambia | [IRENA Renewable Capacity Statistics 2026](https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf) | end of 2025 | 3,247; 546; 285; 19,252; 456; 328 | none |
+| Egypt, Morocco, Namibia, Nigeria, Vietnam, Yemen, Zambia | [IRENA Renewable Capacity Statistics 2026](https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf) | end of 2025 | 3,247; 546; 389; 285; 19,252; 456; 328 | none |
 
 **None of them is ground truth for the map, and the atlas is not scored against them.** A
 register counts what was registered by its date, in MW as declared (often the inverter
@@ -118,7 +118,7 @@ rating for large plants, below the module capacity the atlas counts); Transition
 another estimate with its own method; South Africa's is mostly Eskom's demand-side estimate,
 which its report calls unverified; URE's list leaves out Poland's prosumer installations; and
 IRENA flags its figure for each country as coming from an official source (Egypt), an
-unofficial one (Vietnam, Yemen) or its own estimate (Morocco, Nigeria, Zambia). IRENA stands
+unofficial one (Vietnam, Yemen) or its own estimate (Morocco, Namibia, Nigeria, Zambia). IRENA stands
 in only where no national figure was found. Every Bronze and Silver atlas misses most
 installations below about 400 m&sup2;, which a complete register counts, so the gap to a
 register says as much about that floor as about the satellite count.
@@ -146,6 +146,7 @@ imported later can be on the imagery.
 | Morocco | 411 | 4,817 | Jan 2017 to Aug 2026 | 9% |
 | Yemen | 67 | 2,848 | Jan 2017 to Mar 2026 | 2% |
 | Zambia | 526 | 827 | Jan 2017 to Oct 2025 | 64% |
+| Namibia | 530 | 1,498 | Jan 2017 to Aug 2026 | 35% |
 | India | 99,542 | 95,060 | Jan 2017 to Mar 2026 | not a ceiling |
 | Germany | 84,473 | 29,906 | Jan 2017 to Aug 2026 | not a ceiling |
 | France | 13,368 | 16,196 | Jan 2017 to Sep 2024 | not a ceiling |

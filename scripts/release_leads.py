@@ -63,7 +63,7 @@ SOURCES = {
     # Nigeria's atlas is the v5 run; data/predictions/nigeria holds the losing checkpoint's.
     "nigeria": {"pred": "data/predictions_v5_nigeria/nigeria"},
     "india": {}, "vietnam": {}, "zambia": {}, "egypt": {}, "yemen": {},
-    "south_africa": {}, "morocco": {}, "poland": {},
+    "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {},
 }
 # The published page each run must match: its provinces are compared with the regions read
 # here, so a lead file cannot come from a run other than the page's.

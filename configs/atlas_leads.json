@@ -46,6 +46,15 @@
       "min_distance_m": 100,
       "made": "2026-10-28"
     },
+    "namibia": {
+      "file": "namibia_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-10-28/namibia_pv_new_leads.geojson",
+      "n": 848,
+      "size_bytes": 1144678,
+      "osm_as_of": "2026-10-14",
+      "min_distance_m": 100,
+      "made": "2026-10-29"
+    },
     "nigeria": {
       "file": "nigeria_pv_new_leads.geojson",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-10-28/nigeria_pv_new_leads.geojson",

@@ -18,6 +18,7 @@ hide:
   <span aria-current="page">Egypt</span>
   <a href="../atlas-india/">India</a>
   <a href="../atlas-morocco/">Morocco</a>
+  <a href="../atlas-namibia/">Namibia</a>
   <a href="../atlas-nigeria/">Nigeria</a>
   <a href="../atlas-poland/">Poland</a>
   <a href="../atlas-south-africa/">South Africa</a>
