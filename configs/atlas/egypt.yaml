@@ -11,6 +11,20 @@
 
 title: Egypt
 
+# Al Minya f5: a sampled farm box (calib-candidates --farmland, cropland stratum 5 of 8; 89%
+# cropland and 4,817 VIDA buildings in its own 9 km2), swept by the owner 2026-10-29 on Esri
+# World Imagery (Vivid) of 2025-05-25 and confirmed empty: no PV, ground or rooftop. No farm
+# detector has been run on Egypt and an empty area cannot fit a rooftop one, hence
+# `used: false` (drawn on the map; the confidence text does not claim it).
+calibration_boxes:
+  - {name: "Al Minya, Minya (farm, no PV)", stem: al_minya_f5_farm_calib_3km, status: rule1, used: false}
+
+# Bronze, pinned 2026-10-29 when Al Minya was registered: derive_validation_score gives
+# Silver to any AOI with a registered area in data/labels/<aoi>/, and the one area above is
+# `used: false`, so nothing on this page is fitted on local ground truth.
+validation:
+  score: bronze
+
 cities:
   - [Cairo, 31.236, 30.044]
   - [Alexandria, 29.919, 31.200]
@@ -26,9 +40,10 @@ cities:
 confidence:
   caveats:
     - >-
-      <b>The small-installation half of this page does not exist yet.</b> No area of
-      Egypt has been mapped panel by panel, so there is nothing to calibrate a per-building
-      rooftop classifier against here. Everything on the map is either hand-mapped in
+      <b>The small-installation half of this page does not exist yet.</b> One area of
+      Egypt, a farm area near Minya, has been mapped panel by panel and holds no solar at
+      all, and an area without panels cannot calibrate a per-building rooftop classifier.
+      Everything on the map is either hand-mapped in
       OpenStreetMap or an array the segmentation model outlined directly, which in practice
       means installations of roughly 400 m&sup2; and up. Household and small commercial rooftop systems are mostly below that size.
     - >-

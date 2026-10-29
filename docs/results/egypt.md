@@ -21,7 +21,8 @@ Interactive: [Egypt PV evidence atlas](../atlas-egypt.md).
 | Model | `v12_combined_egypt` epoch 16, localized (it beat `v5_combined_france` on the holdout; see below) |
 
 !!! warning "A precision floor, not an estimate"
-    Egypt has **no calibration quadrats**, so there is no `roofclf` half and no instrument
+    No **calibration quadrat** enters Egypt's figures (the one registered area, below, holds
+    no PV), so there is no `roofclf` half and no instrument
     at all below the 400 m&sup2; segmentation floor. It has no glint sample, so
     `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction. Recall
     was deliberately skipped (`--recall-reference none`). For scale, GlobalData puts
@@ -225,6 +226,10 @@ parks, which is most of what Egypt has mapped.
 
 **Rooftop mapping or a calibration quadrat.** 523 mapped rooftop features nationally are
 too few for the precision table to price a rooftop candidate; see the candidate section.
+The first area is registered: Al Minya f5, a sampled 3 km farm box near Minya (89%
+cropland, 4,817 VIDA buildings), swept on 2026-10-29 against Esri imagery of 2025-05-25,
+holds no PV at all, ground or rooftop. OSM's live API and an Overpass count agree. It is a
+confirmed zero, `used: false`, since no farm detector has been run on Egypt.
 
 **A retrain with the pool and wastewater hard negatives.** Add `egypt_hard_neg` to the
 corpus beside `egypt:R` and compare against `v12_combined_egypt` on installation recall at
