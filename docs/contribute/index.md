@@ -82,7 +82,8 @@ Every Bronze country has ten candidate areas, each with Esri imagery recent enou
 country's satellite data: eight drawn at random across its building-density range rather than
 picked by hand, and two start-here boxes in its densest districts with the most large roofs
 ([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
-Pakistan has eight more aimed at the sparse end of its calibration. Yemen, Silver since its
+Pakistan has twenty: eight aimed at the sparse end of its calibration, seven hand-placed
+gap boxes and five farm boxes. Yemen, Silver since its
 farm areas, has ten town boxes where panels show on rooftops, for its rooftop classifier.
 
 | country | tier | open candidates | box density (bldg/km<sup>2</sup>) | start here (&#9733;) |
@@ -94,18 +95,20 @@ farm areas, has ten town boxes where panels show on rooftops, for its rooftop cl
 | [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |
 | [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
 | [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
-| [Pakistan](../atlas.md) | Gold | 8 | 54 to 124 (region) | |
+| [Pakistan](../atlas.md) | Gold | 20 | 39 to 3,065 | Badin, Sindh (farm) |
 | [Yemen](../atlas-yemen.md) | Silver | 12 | 34 to 2,123 | Yafi', Lahij |
 | [France](../atlas-france.md) | Silver | none | map any solar you can see | |
 
-**Start at the star.** On a Bronze atlas the candidates are numbered in mapping order: the
-start-here boxes first, in the densest districts with the most large roofs, then the sampled
-ones from the densest down. Dense districts with large roofs are where solar is most likely,
+**Start at the star.** Wherever a country's small solar is not yet measured, on its roofs or
+on its farms, the candidates are numbered in mapping order: the start-here boxes first, in
+the densest districts with the most large roofs, then the sampled ones from the densest
+down. Dense districts with large roofs are where solar is most likely,
 so a first area there has panels to find and gives the country's calibration its first
 positives. The sparse candidates come later and still matter: a calibration only reaches as
 far down in density as its sparsest complete area, and they are the quickest to finish.
-Yemen's star is chosen by hand instead: of its ten town boxes, Yafi' shows the most panels on
-Esri imagery.
+Pakistan already measures its rooftops, so its star is a farm box, the one with the most
+cropland. Yemen's star is chosen by hand instead: of its ten town boxes, Yafi' shows the most
+panels on Esri imagery.
 
 Want to suggest an area of your own? The **Propose a calibration area** button on the atlas
 (the dashed square under the zoom buttons) drops a 2 km square where you click and checks

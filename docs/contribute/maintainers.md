@@ -32,8 +32,12 @@ in the densest quarter of the country's buildings, where the roof area in buildi
 1,000 m<sup>2</sup> or more is largest, through the same imagery gate. The details, and what
 it does not do, are in
 [Automated quadrat selection](../calibration-mapping-protocol.md#automated-quadrat-selection).
-On an uncalibrated (Bronze) atlas `calib-publish` also ranks the candidates, start-here
-boxes first and then the rest from the densest down, and the first is drawn as a star. The
+On an atlas where either small-installation instrument is unmeasured, the rooftop
+classifier or the farm ground-PV detector, `calib-publish` also ranks the candidates and
+draws the first as a star. That is every Bronze atlas, and a Gold or Silver one whose page
+says one of the two is not measured; it reads that from the page itself, as the page does.
+Start-here boxes come first, then the rest from the densest down, farm boxes last; where only
+farm ground PV is unmeasured (Pakistan), the farm boxes come first, by cropland share. The
 star moves to the next one by itself once that area is registered. To choose the star by
 hand, on any atlas, name the candidate in the country's config as `start_here: <stem>`
 (`configs/atlas/<aoi>.yaml`); `calib-publish` then ranks that country's candidates with it

@@ -283,11 +283,12 @@ visible. They are marked `selection: purposive: ...` on the boundary, because a 
 country's densest, most industrial districts runs at a higher PV rate than the country does.
 The per-density-stratum coverage ratio and `rate_ratio` exist for this (Pakistan's first
 quadrats were industrial estates and dense blocks), and the eight sampled boxes remain the
-representative set. `calib-publish` ranks every candidate of an uncalibrated atlas,
-start-here boxes first and then the sampled ones from the densest down, and the atlas draws
-the first as a **star**, with a *Start here* button in the map legend. A country config can
-name the star instead (`start_here`): Yemen's is the PV-rich town box with the most panels on
-Esri imagery.
+representative set. `calib-publish` ranks every candidate of an atlas that has not measured
+rooftop PV below 400 m<sup>2</sup> or farm ground PV, start-here boxes first and then the
+sampled ones from the densest down (farm boxes first where only farm ground PV is missing),
+and the atlas draws the first as a **star**, with a *Start here* button in the map legend. A
+country config can name the star instead (`start_here`): Yemen's is the PV-rich town box
+with the most panels on Esri imagery.
 
 A start-here box that turns out to be unusable is rejected like any other region
 (`new_calibration_quadrat.py --reject`), then redrawn with `--priority --replace`: the

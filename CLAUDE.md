@@ -590,10 +590,16 @@ published file.
   `--pv-rich-confirmed-only`. Without the town floor Pakistan's model filled Yemen's top windows
   with rural stone houses, roofless shells and greenhouse tunnels at p > 0.9. Yemen's ten
   (`*_pv<k>_calib_1km`) were confirmed by the assistant, not the owner.
+- **Which atlases get a star** (2026-10-29): `calib-publish` ranks and stars candidates on
+  every atlas whose own page reports roofclf (`totals.small_rooftop_status`, or for an older
+  page all `small_*` zero) or groundclf (`totals.small_ground_status`) as not measured
+  (`unmeasured_instruments`), Gold and Silver included; only a page measuring both gets none.
+  Where only farm ground PV is unmeasured, farm boxes rank first: Pakistan's star is Badin
+  (`badin_f8_farm`, 94% cropland). Germany and France qualify but have no open candidates.
 - **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
-  rank that country's candidates with it first and star it on ANY atlas (otherwise only
-  Bronze ones are ranked). Yemen's is Yafi' (2026-10-29): picked on Esri imagery over the
-  classifier's top window, Adh Dhihar (439 likely roofs, few visible arrays).
+  rank that country's candidates with it first and star it, on any atlas. Yemen's is Yafi'
+  (2026-10-29): picked on Esri imagery over the classifier's top window, Adh Dhihar (439
+  likely roofs, few visible arrays).
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,

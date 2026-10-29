@@ -2489,8 +2489,10 @@ out geom;</div>
   // own measured density and the Esri date it passed the imagery gate with; a hand-picked
   // one only the density of the grid cell it was pointed at. A start-here box (--priority)
   // carries its count of large buildings instead of a stratum, a PV-rich box (--pv-rich) its
-  // count of roofs a classifier scores as likely PV, and on an uncalibrated atlas, or one
-  // whose country config names a start_here, every candidate its place in the mapping order.
+  // count of roofs a classifier scores as likely PV, a farm box (--farmland) its cropland
+  // share and cropland stratum, and on an atlas where roofclf or groundclf is unmeasured, or
+  // one whose country config names a start_here, every candidate its place in the mapping
+  // order.
   function candSpec(f){
     const p = f.properties, bbox = featureBounds(f), [cx, cy] = centerOf(bbox);
     const stratum = /stratum (\d+ of \d+)/.exec(p.stratum || "");
@@ -2505,16 +2507,23 @@ out geom;</div>
                  : p.density_bldg_km2 ? [["Buildings per km², region", fmt(p.density_bldg_km2)]] : []),
              ...(p.own_large_buildings ? [["Buildings of 1,000 m² or more", fmt(p.own_large_buildings)]] : []),
              ...(p.own_likely_pv_roofs ? [["Roofs scored likely solar", fmt(p.own_likely_pv_roofs)]] : []),
-             ...(stratum ? [["Density stratum", stratum[1]]] : []),
+             ...(stratum ? [[farm ? "Cropland stratum" : "Density stratum", stratum[1]]] : []),
              ...(p.imagery_date ? [["Esri imagery", p.imagery_date]] : []),
              ...(p.priority ? [["Mapping order", `${p.priority} of ${AREAS.nRanked}`]] : []),
              ["Area", `${p.area_km2} km²`]],
-      warn: (!p.start_here ? "" : pvRich ? "Map this area first: of the candidates, it shows the "
+      warn: (!p.start_here ? "" : farm ? "Map this area first: of the farm candidates, it holds "
+          + "the most cropland, where farm solar is most likely to be found. "
+          : pvRich ? "Map this area first: of the candidates, it shows the "
           + "most solar panels on Esri imagery. "
           : purposive ? "Map this area first: dense, with many large roofs, "
           + "where solar is most likely to be found. "
           : "Map this area first: the densest candidate left, where solar is most likely to be found. ")
-        + (pvRich
+        + (farm && p.imagery_date
+        ? "Drawn at random from its cropland stratum, under Esri imagery recent enough for this "
+          + "country's satellite composite. Map all solar inside, ground and rooftop, tracing the "
+          + "panels rather than the fence. Not checked on the ground: make sure it is mappable, "
+          + "and never move it toward visible solar."
+        : pvRich
         ? "Chosen where a PV classifier scores the most household roofs as likely solar, and kept "
           + "because panels show on Esri imagery, so its share of roofs with solar runs high by "
           + "design: it gives the classifier rooftop examples. Map every installation, ground and "

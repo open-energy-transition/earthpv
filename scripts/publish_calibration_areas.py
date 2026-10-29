@@ -28,12 +28,17 @@ Three kinds of area:
   is a human decision the config has not recorded; published so the atlas's "Propose
   area" overlap check sees every existing quadrat, as `new_calibration_quadrat.py`'s does.
 
-On a Bronze atlas (no calibration yet, read from the page's own badge as
-`build_atlas_pages.tier_of` does) the candidates are also ranked, `priority` 1..N, and the
-first carries `start_here`, which the atlas draws as a star: the purposive start-here boxes
+On an atlas where either small-installation instrument is unmeasured the candidates are
+also ranked, `priority` 1..N, and the first carries `start_here`, which the atlas draws as a
+star. That is every Bronze atlas (no calibration yet, read from the page's own badge as
+`build_atlas_pages.tier_of` does), and a Gold or Silver one whose own totals say `roofclf`
+(rooftop PV below 400 m2) or `groundclf` (farm ground PV) has not run, read as the page
+reads them (`unmeasured_instruments`). The order: the purposive start-here boxes
 (`propose_calibration_candidates.py --priority`: dense, most roof in large buildings) by
-large-roof area, then the sampled ones from the densest down. Ranked here rather than when
-drawn, so once the starred box is registered the star moves on to the next one by itself.
+large-roof area, then the sampled ones from the densest down, farm boxes last; where only
+farm ground PV is unmeasured (Pakistan), the farm boxes first, since they are what would
+measure it. Ranked here rather than when drawn, so once the starred box is registered the
+star moves on to the next one by itself.
 A country config's `start_here` (`configs/atlas/<aoi>.yaml`) puts that candidate first and
 ranks the country's candidates on any atlas, Bronze or not: which box to map first is then
 a judgement the config records (Yemen: the PV-rich town box with the most panels on Esri
@@ -88,6 +93,7 @@ CANDIDATE = "_candidate.geojson"
 # propose_calibration_candidates.PRIORITY_SELECTION starts with this.
 PURPOSIVE = "purposive"
 BRONZE_BADGE = 'class="vscore-tier">Bronze<'
+DATA_BLOCK = re.compile(r'<script id="pv" type="application/json">(.*?)</script>', re.S)
 
 
 def _round(coords):
@@ -125,26 +131,27 @@ def _label(stem: str) -> str:
     return roofclf.quadrat_label(stem).replace("_", " ").title()
 
 
-def _priority_key(f: dict) -> tuple:
+def _priority_key(f: dict, farm_first: bool = False) -> tuple:
     """Start-here boxes first, by roof area in large buildings (`--pv-rich` boxes, which
     carry none, by their count of likely-PV roofs); then the rest densest first; farm boxes
     (`propose_calibration_candidates.py --farmland`) last, by cropland share. A 9 km2 farm
     box is a longer job for a different instrument, and ranking it among the building boxes
-    would reorder those every time farm candidates are drawn."""
+    would reorder those every time farm candidates are drawn. `farm_first` puts the farm
+    boxes ahead instead, for an atlas whose rooftop half is measured and farm half is not."""
     p = f["properties"]
     if str(p.get("selection", "")).startswith(PURPOSIVE):
         return (0, -(p.get("own_large_roof_m2") or 0), -(p.get("own_likely_pv_roofs") or 0),
                 p["id"])
     if roofclf.FARM_QUADRAT_INFIX in p["id"]:
-        return (2, -(p.get("own_crop_frac") or 0), p["id"])
+        return (-1 if farm_first else 2, -(p.get("own_crop_frac") or 0), p["id"])
     return (1, -(p.get("own_density_bldg_km2") or p.get("density_bldg_km2") or 0), p["id"])
 
 
-def rank_candidates(feats: list[dict], first: str = "") -> list[dict]:
+def rank_candidates(feats: list[dict], first: str = "", farm_first: bool = False) -> list[dict]:
     """`priority` 1..N on the candidates, `start_here` on the first, candidates in that order;
     `first` (a candidate's id) leads whatever the ranking says."""
     cands = sorted((f for f in feats if f["properties"]["kind"] == "candidate"),
-                   key=lambda f: (f["id"] != first, _priority_key(f)))
+                   key=lambda f: (f["id"] != first, _priority_key(f, farm_first)))
     for i, f in enumerate(cands, 1):
         p = f["properties"]
         tail = {k: p.pop(k) for k in ("note", "do_not_upload") if k in p}
@@ -161,9 +168,29 @@ def bronze_aois(pages: Path = PAGES) -> set[str]:
             if (m := PAGE_AOI.match(p.name)) and BRONZE_BADGE in p.read_text()}
 
 
+def unmeasured_instruments(pages: Path = PAGES) -> dict[str, set[str]]:
+    """Per published AOI, which of `rooftop` (roofclf, PV below 400 m2) and `ground`
+    (groundclf, farm ground PV) its page reports as not measured, decided as the page's own
+    template decides it: `totals.small_rooftop_status`, or on a page built before that was
+    written, rooftop counts as measured when any `small_*` part is non-zero; ground only
+    where `totals.small_ground_status.measured` says so."""
+    out = {}
+    for p in Path(pages).glob("*evidence_atlas.html"):
+        if not (m := PAGE_AOI.match(p.name)) or not (block := DATA_BLOCK.search(p.read_text())):
+            continue
+        t = json.loads(block.group(1)).get("totals") or {}
+        roof = ((t.get("small_rooftop_status") or {}).get("measured")
+                if "small_rooftop_status" in t else
+                sum(t.get(k) or 0 for k in ("small_central", "small_low", "small_outdomain")) > 0)
+        ground = bool((t.get("small_ground_status") or {}).get("measured"))
+        out[m.group(1)] = {k for k, ok in (("rooftop", roof), ("ground", ground)) if not ok}
+    return out
+
+
 def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS,
-              rank: bool = False) -> list[dict]:
-    """Every published area of `aoi`; `rank` adds the start-here priority to candidates."""
+              rank: bool = False, farm_first: bool = False) -> list[dict]:
+    """Every published area of `aoi`; `rank` adds the start-here priority to candidates,
+    `farm_first` ranks the farm boxes ahead of the building boxes."""
     cfg = atlas_config.load(aoi, configs_dir)
     feats, listed = [], set()
     for box in cfg.calibration_boxes:
@@ -217,7 +244,8 @@ def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS,
         # Registered since: the star moves on. Anything else is a typo in the config.
         raise SystemExit(f"{aoi}: start_here {cfg.start_here!r} is neither a candidate nor a "
                          f"registered area under {home}")
-    return rank_candidates(feats, cfg.start_here) if rank or cfg.start_here else feats
+    return (rank_candidates(feats, cfg.start_here, farm_first) if rank or cfg.start_here
+            else feats)
 
 
 def _collection(feats: list[dict], meta: dict) -> str:
@@ -236,8 +264,11 @@ def publish(labels_dir: Path = LABELS, configs_dir: Path = CONFIGS, out: Path = 
     plan: dict[Path, str] = {}
     result = {}
     bronze = bronze_aois(pages)
+    gaps = unmeasured_instruments(pages)
     for aoi in aois:
-        feats = areas_for(aoi, labels_dir, configs_dir, rank=aoi in bronze)
+        gap = gaps.get(aoi, set())
+        feats = areas_for(aoi, labels_dir, configs_dir, rank=aoi in bronze or bool(gap),
+                          farm_first=gap == {"ground"})
         result[aoi] = feats
         meta = {"aoi": aoi, "warning": DO_NOT_UPLOAD,
                 "register_cmd": f"python {REGISTER_SCRIPT}" + ("" if aoi == FLAT_AOI else f" --aoi {aoi}")}
@@ -266,6 +297,7 @@ def main() -> int:
     args = ap.parse_args()
     os.chdir(ROOT)  # configs/atlas/ and data/labels/ are repository-relative
     result = publish(dry_run=args.dry_run)
+    gaps = unmeasured_instruments()
     for aoi, feats in result.items():
         if not feats:
             continue
@@ -274,7 +306,8 @@ def main() -> int:
             kinds[f["properties"]["kind"]] = kinds.get(f["properties"]["kind"], 0) + 1
         star = next((f["id"] for f in feats if f["properties"].get("start_here")), None)
         print(f"  {aoi}: " + ", ".join(f"{n} {k}" for k, n in sorted(kinds.items()))
-              + (f", start here: {star}" if star else ""))
+              + (f", start here: {star}" if star else "")
+              + (f" (not measured: {', '.join(sorted(gaps[aoi]))})" if gaps.get(aoi) else ""))
     if not args.dry_run:
         size = sum(p.stat().st_size for p in OUT.rglob("*.geojson"))
         print(f"wrote {OUT}/ ({size / 1024:.0f} KB)")

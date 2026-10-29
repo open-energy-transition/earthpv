@@ -52,8 +52,9 @@ silently drop the section it was meant to fill):
 
 `start_here` names a candidate (`candidate_quadrats/<stem>_candidate.geojson`) when which
 one to map first is a judgement. `scripts/publish_calibration_areas.py` ranks it first and
-stars it, on any atlas; without it only a Bronze atlas gets a star, its first by rule. Once
-the box is registered the star moves on to the next in the ranking by itself.
+stars it, on any atlas; without it an atlas gets a star, its first by rule, only where
+roofclf or groundclf is unmeasured. Once the box is registered the star moves on to the next
+in the ranking by itself.
 
 `validation` exists for the cases `atlas.derive_validation_score` cannot judge from files on
 disk: Germany has a calibrated small-installation half, which would make it Gold, but that
