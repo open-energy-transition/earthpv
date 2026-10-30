@@ -350,9 +350,13 @@ short and was retried.
 **Map the PV-rich town boxes, and one false-positive town.** Yafi' and Qa'tabah town added
 63 PV roofs to the 132 a `roofclf` fit saw in building boxes (Al Wehdah, Sayun, Bani Al
 Harith and Huth), and the eight candidates left would add several times that. The two
-measured the level in towns where panels show; one box in a place the classifier gets
-wrong, Ghayl Bawazir or a highland hamlet like Al Hasayn, would be quick to complete with no
-PV and would measure the false positives at the other end.
+measured the level in towns where panels show; a box in a place the classifier gets wrong
+measures the false positives at the other end. That box is drawn and starred on the atlas
+(2026-10-30): `ghayl_bawazir_fa1_calib_1km`, written by `calib-candidates --false-alarm` at
+the first window the PV-rich review marked `no_pv`. Pakistan's model puts 683 of its 966
+buildings among Yemen's top 5% of household roofs; on Esri imagery of 2025-03-05 its nine
+top-scored roofs are roofless or unfinished concrete shells, none with a panel. Its share
+of roofs with solar runs low by design, as the PV-rich boxes' runs high.
 
 **Map farm areas outside the two regions.** `calib-candidates -- --farmland` drew eight 3 km
 farm boxes across Yemen's cropland strata (2026-10-23). The farm figure rests on 'Amran and

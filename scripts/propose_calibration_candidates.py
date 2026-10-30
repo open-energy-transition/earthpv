@@ -66,6 +66,8 @@ panels rather than enclosures.
     pixi run calib-candidates -- --bronze                  # every Bronze atlas
     pixi run calib-candidates -- --aoi india --replace     # redraw a country's candidates
     pixi run calib-candidates -- --aoi yemen --farmland    # farm boxes for groundclf
+    pixi run calib-candidates -- --aoi yemen --false-alarm ghayl_bawazir_pv1 \\
+        --score-dir data/roofclf_transfer/yemen_pk/prob    # where roofclf is wrong
 """
 from __future__ import annotations
 
@@ -127,6 +129,10 @@ PV_RICH_MIN_DENSITY = 800.0          # the window's own VIDA buildings per km2
 # window within this distance of a `no_pv` row is never drawn again. Town-sized, because the
 # cause is the town's roofs: Ghayl Bawazir's shells came back 3 km from the first two windows.
 PV_RICH_REVIEW_KM = 5.0
+# --false-alarm: the other side of the level. A window the review marked `no_pv`, where the
+# classifier's high scores sit on roofs without solar (roofless shells, stone hamlets). The
+# atlas tells it from a PV-rich box by "saw no solar", never by "PV classifier".
+FALSE_ALARM_SELECTION = "purposive: high classifier scores where a reviewer saw no solar"
 # --farmland: boxes for the ground-PV detector, stratified by cropland instead of buildings.
 FARM_SELECTION = "stratified random by cropland area"
 OWN_CROP_TOL = 1.25                  # a box's own cropland share within x/÷ this of its cell's
@@ -934,6 +940,147 @@ def propose_pv_rich(aoi: str, args) -> list[dict]:
     return picked
 
 
+def propose_false_alarm(aoi: str, args) -> list[dict]:
+    """One purposive box at the window `pv_rich_review.csv` names (`--false-alarm <name>`),
+    which the review must mark `no_pv`: a town where a roofclf scoring puts many household
+    roofs in its national top `PV_RICH_TOP_SHARE` and a reviewer saw no panel on the
+    top-scored ones.
+
+    The other side of `propose_pv_rich`. The level, scores summed per PV roof, is what a
+    left-out area gets wrong (Yemen, 2026-10-30: 0.07 to 3.56 per PV roof against Pakistan's
+    1.115), and the failure behind the high end is scores on PV-free roofs, which no PV-rich
+    box measures. Mapped complete, this box's share of roofs with solar runs LOW by design,
+    as a PV-rich box's runs high; whether either enters the coverage ratio is an owner
+    decision, and the sampled boxes remain the design-unbiased set. The window is the
+    review's own (the draw's 1 km window centre), at `--dense-side-m`, through the same
+    imagery gate; `--score-dir` (the scoring the review looked at) adds its likely-roof count.
+    """
+    import duckdb
+    import geopandas as gpd
+    from shapely.geometry import mapping
+
+    from earthpv.buildings import fetch_vida_building_points
+    from earthpv.roofclf import load_boundary
+
+    _, iso3, country, win0, earliest = gate_setup(aoi, args)
+    home = LABELS if aoi == FLAT_AOI else LABELS / aoi
+    out_dir = home / "candidate_quadrats"
+    review_path = out_dir / "pv_rich_review.csv"
+    review = pd.read_csv(review_path) if review_path.exists() else pd.DataFrame()
+    hit = review[review["name"] == args.false_alarm] if len(review) else review
+    if hit.empty:
+        raise SystemExit(f"{aoi}: no window {args.false_alarm!r} in {review_path}")
+    rv = hit.iloc[0]
+    if rv["verdict"] != "no_pv":
+        raise SystemExit(f"{aoi}: {args.false_alarm} is marked {rv['verdict']!r}, not 'no_pv'")
+    cx, cy, side = float(rv["lon"]), float(rv["lat"]), args.dense_side_m
+    poly = geodesic_square(cy, cx, side)
+
+    files = sorted(out_dir.glob("*_candidate.geojson"))
+    sel_of = {p: json.loads(p.read_text())["features"][0]["properties"].get("selection", "")
+              for p in files}
+    registered = {p.name[: -len("_boundary.geojson")] for p in home.glob("*_calib_*_boundary.geojson")}
+    same = [p for p in files if sel_of[p].startswith(FALSE_ALARM_SELECTION)
+            and load_boundary(p).intersects(poly)]
+    if same and not args.replace:
+        print(f"{aoi}: {same[0].name} already covers {args.false_alarm}; pass --replace to redraw it")
+        return []
+    near = existing_boxes(home) + [load_boundary(p) for p in files if p not in same]
+    if any(b.intersects(poly) for b in near):
+        raise SystemExit(f"{aoi}: the {args.false_alarm} window overlaps a registered area or candidate")
+    passed, img = imagery_gate(poly, earliest)
+    if not passed:
+        raise SystemExit(f"{aoi}: {args.false_alarm} fails the imagery gate: {img['reason']}")
+
+    district, region = Admin(aoi).lookup(cx, cy)
+    con = duckdb.connect()
+    con.execute("SET parquet_metadata_cache=true;")
+    inside = fetch_vida_building_points(poly.bounds, iso3, con=con, with_area=True)
+    geo_km2 = abs(GEOD.geometry_area_perimeter(poly)[0]) / 1e6
+    dens = len(inside) / geo_km2
+    grid = pd.read_parquet(args.grid or grid_path(aoi), columns=[
+        "cell", "lon0", "lat0", "n_buildings", "bldg_density_km2"])
+    in_cell = grid[(grid["lon0"] <= cx) & (cx < grid["lon0"] + 0.1)
+                   & (grid["lat0"] <= cy) & (cy < grid["lat0"] + 0.1)]
+    if in_cell.empty:
+        raise SystemExit(f"{aoi}: {args.false_alarm} lies outside the density grid")
+    cell = in_cell.iloc[0]
+
+    scored = {}
+    if args.score_dir:
+        import pyarrow.parquet as pq
+
+        paths = [p for p in sorted(args.score_dir.glob("*.parquet")) if pq.read_metadata(p).num_rows]
+        house = pd.concat([pd.read_parquet(p, columns=["roof_area_m2", "p_roofclf"]) for p in paths],
+                          ignore_index=True)
+        house = house[house["roof_area_m2"] < PV_RICH_MAX_ROOF_M2]
+        cut = float(house["p_roofclf"].quantile(1 - PV_RICH_TOP_SHARE))
+        w, s, e, n = poly.bounds
+        touch = grid[(grid["lon0"] < e) & (grid["lon0"] + 0.1 > w)
+                     & (grid["lat0"] < n) & (grid["lat0"] + 0.1 > s)]
+        b = pd.concat([gpd.read_parquet(args.score_dir / f"{c}.parquet",
+                                        columns=["geometry", "roof_area_m2", "p_roofclf"])
+                       for c in touch["cell"] if (args.score_dir / f"{c}.parquet").exists()],
+                      ignore_index=True)
+        b = b[b.geometry.representative_point().within(poly)]
+        n_likely = int(((b["roof_area_m2"] < PV_RICH_MAX_ROOF_M2) & (b["p_roofclf"] >= cut)).sum())
+        scored = {"own_likely_pv_roofs": n_likely, "score_threshold": round(cut, 4),
+                  "score_source": str(args.score_dir)}
+
+    tag = f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m"
+    used = ({p.name[: -len("_candidate.geojson")] for p in files if p not in same} | registered
+            | {f"{r['name']}_calib_{tag}" for r in rejected_rows()})
+    k = 1 + sum(1 for p in files if sel_of[p].startswith(FALSE_ALARM_SELECTION) and p not in same)
+    base = f"{slug(district or region or aoi)}_fa{k}"
+    stem = next(f"{base}{x}_calib_{tag}" for x in ("", *"bcdefgh")
+                if f"{base}{x}_calib_{tag}" not in used)
+    likely = (f"{scored['own_likely_pv_roofs']:,} of its {len(inside):,} buildings are household "
+              f"roofs in the national top {PV_RICH_TOP_SHARE:.0%} of the classifier's scores; "
+              if scored else "")
+    props = {
+        "quadrat_id": stem,
+        "criterion": (f"a window pv_rich_review.csv ({args.false_alarm}) marks no_pv: household "
+                      f"roofs in the national top {PV_RICH_TOP_SHARE:.0%} of roofclf scores, no "
+                      f"panel seen on the top-scored ones"),
+        "location": ", ".join(x for x in (district, region, country) if x),
+        "province": region,
+        "size_km2": round(geo_km2, 4),
+        "center": f"[{cx:.6f} {cy:.6f}]",
+        "shape": "square (geodesic)",
+        "side_m": float(side),
+        "source_grid_cell": cell["cell"],
+        "source_grid_density_bldg_km2": round(float(cell["bldg_density_km2"]), 2),
+        "source_grid_n_buildings": int(cell["n_buildings"]),
+        "own_n_buildings": int(len(inside)),
+        "own_density_bldg_km2": round(dens, 2),
+        **scored,
+        "pv_review": f"{rv['verdict']}: {rv['reason']} ({rv['date_reviewed']})",
+        **img,
+        "imagery_checked": True,
+        "selection": FALSE_ALARM_SELECTION,
+        "note": (f"Chosen by scripts/propose_calibration_candidates.py --false-alarm "
+                 f"{args.false_alarm} to measure the rooftop classifier's false alarms: "
+                 f"{likely}a reviewer saw no panel on the top-scored roofs on Esri imagery "
+                 f"({rv['reason']}). Chosen where the classifier is wrong, so its share of roofs "
+                 f"with solar runs low by design. Map every installation, ground and rooftop; "
+                 f"finding no solar at all is a result, so say the box was checked in full. "
+                 f"Esri imagery here dates from {img['imagery_date']} (oldest of centre and "
+                 f"corners), no older than {earliest} for a composite starting {win0}."),
+    }
+    print(f"{aoi}: {stem}  {len(inside):,} buildings, {dens:,.0f} bldg/km2"
+          + (f", {scored['own_likely_pv_roofs']:,} likely" if scored else "")
+          + f"  Esri {img['imagery_date']}  {props['location']}")
+    if args.dry_run:
+        return [{"stem": stem, "props": props}]
+    for p in same:
+        p.unlink()
+    doc = {"type": "FeatureCollection", "name": f"{stem}_candidate",
+           "features": [{"type": "Feature", "properties": props, "geometry": mapping(poly)}]}
+    (out_dir / f"{stem}_candidate.geojson").write_text(json.dumps(doc, indent=2) + "\n")
+    print(f"  wrote {out_dir / f'{stem}_candidate.geojson'}")
+    return [{"stem": stem, "props": props}]
+
+
 def shape_of(candidate: dict):
     from shapely.geometry import shape
 
@@ -1141,11 +1288,15 @@ def main() -> int:
     mode.add_argument("--pv-rich", action="store_true",
                       help="draw purposive boxes where a roofclf scoring (--score-dir) puts the "
                            "most likely-PV household roofs: rooftop positives for the fit")
+    mode.add_argument("--false-alarm", metavar="NAME", default=None,
+                      help="write one purposive box at the window pv_rich_review.csv names and "
+                           "marks no_pv: where the classifier's high scores show no solar")
     ap.add_argument("--n-priority", type=int, default=2,
                     help="start-here (or, with --pv-rich, PV-rich) boxes per AOI")
     ap.add_argument("--score-dir", type=Path, default=None,
-                    help="--pv-rich: a roofclf-score-national prob/ directory, from a model "
-                         "that has not seen this AOI's labels")
+                    help="--pv-rich (or --false-alarm, for its likely-roof count): a "
+                         "roofclf-score-national prob/ directory, from a model that has not "
+                         "seen this AOI's labels")
     ap.add_argument("--pv-rich-spacing-km", type=float, default=4.0,
                     help="--pv-rich: from each other, registered quadrats and candidates")
     ap.add_argument("--per-province", type=int, default=2,
@@ -1175,7 +1326,8 @@ def main() -> int:
         raise SystemExit("--grid applies to a single --aoi")
     for aoi in aois:
         (propose_priority if args.priority else propose_farmland if args.farmland
-         else propose_pv_rich if args.pv_rich else propose)(aoi, args)
+         else propose_pv_rich if args.pv_rich else propose_false_alarm if args.false_alarm
+         else propose)(aoi, args)
     if not args.dry_run:
         print("next: pixi run calib-publish")
     return 0

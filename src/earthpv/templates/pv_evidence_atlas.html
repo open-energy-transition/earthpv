@@ -2450,7 +2450,8 @@ out geom;</div>
   // own measured density and the Esri date it passed the imagery gate with; a hand-picked
   // one only the density of the grid cell it was pointed at. A start-here box (--priority)
   // carries its count of large buildings instead of a stratum, a PV-rich box (--pv-rich) its
-  // count of roofs a classifier scores as likely PV, a farm box (--farmland) its cropland
+  // count of roofs a classifier scores as likely PV (as does a false-alarm box, --false-alarm,
+  // where a reviewer saw no solar on those roofs), a farm box (--farmland) its cropland
   // share and cropland stratum, and on an atlas where roofclf or groundclf is unmeasured, or
   // one whose country config names a start_here, every candidate its place in the mapping
   // order.
@@ -2458,7 +2459,8 @@ out geom;</div>
     const p = f.properties, bbox = featureBounds(f), [cx, cy] = centerOf(bbox);
     const stratum = /stratum (\d+ of \d+)/.exec(p.stratum || "");
     const purposive = String(p.selection || "").startsWith("purposive");
-    const pvRich = /\bPV classifier\b/.test(p.selection || "");
+    const falseAlarm = /\bsaw no solar\b/.test(p.selection || "");
+    const pvRich = !falseAlarm && /\bPV classifier\b/.test(p.selection || "");
     const farm = FARM_ID.test(p.id || "");
     return {head: farm ? "FARM CANDIDATE AREA, NOT YET MAPPED" : "CANDIDATE AREA, NOT YET MAPPED", name: p.name,
       place: p.name, id: p.id, star: !!p.start_here,
@@ -2474,6 +2476,7 @@ out geom;</div>
              ["Area", `${p.area_km2} km²`]],
       warn: (!p.start_here ? "" : farm ? "Map this area first: of the farm candidates, it holds "
           + "the most cropland, where farm solar is most likely to be found. "
+          : falseAlarm ? "Map this area first: it tests where the rooftop classifier goes wrong. "
           : pvRich ? "Map this area first: of the candidates, it shows the "
           + "most solar panels on Esri imagery. "
           : purposive ? "Map this area first: dense, with many large roofs, "
@@ -2484,6 +2487,11 @@ out geom;</div>
           + "country's satellite composite. Map all solar inside, ground and rooftop, tracing the "
           + "panels rather than the fence. Not checked on the ground: make sure it is mappable, "
           + "and never move it toward visible solar."
+        : falseAlarm
+        ? "Chosen where the classifier scores many household roofs as likely solar but a reviewer "
+          + "saw no panels on Esri imagery, so its share of roofs with solar runs low by design. Map "
+          + "every installation, ground and rooftop; finding no solar at all is a result, so report "
+          + "that the area was checked in full. Not checked on the ground: make sure it is mappable."
         : pvRich
         ? "Chosen where a PV classifier scores the most household roofs as likely solar, and kept "
           + "because panels show on Esri imagery, so its share of roofs with solar runs high by "

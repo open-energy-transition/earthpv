@@ -288,7 +288,12 @@ rooftop PV below 400 m<sup>2</sup> or farm ground PV, start-here boxes first and
 sampled ones from the densest down (farm boxes first where only farm ground PV is missing),
 and the atlas draws the first as a **star**, with a *Start here* button in the map legend. A
 country config can name the star instead (`start_here`): Yemen's was the PV-rich town box
-with the most panels on Esri imagery (Yafi', mapped 2026-10-29).
+with the most panels on Esri imagery (Yafi', mapped 2026-10-29), and since 2026-10-30 is
+Ghayl Bawazir, a town where the rooftop classifier scores 683 of 966 buildings as likely
+solar and its top-scored roofs are roofless concrete shells on Esri imagery.
+`calib-candidates -- --false-alarm <window>` writes such a box at a window the PV-rich
+review marked `no_pv`: mapped complete, it measures the classifier's false alarms, the other
+end of the level from a PV-rich box.
 
 A start-here box that turns out to be unusable is rejected like any other region
 (`new_calibration_quadrat.py --reject`), then redrawn with `--priority --replace`: the

@@ -669,7 +669,13 @@ published file.
 - **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
   rank that country's candidates with it first and star it, on any atlas. Yemen's was Yafi'
   (2026-10-29, picked on Esri imagery over the classifier's top window, Adh Dhihar); mapped
-  and registered the same day, so the key was dropped and the star moved on by rule.
+  and registered the same day, so the key was dropped and the star moved on by rule. Since
+  2026-10-30 it is Ghayl Bawazir (`ghayl_bawazir_fa1_calib_1km`, owner's pick).
+- **False-alarm boxes** (`--false-alarm <window> [--score-dir]`, 2026-10-30): one purposive
+  1 km box at a window `pv_rich_review.csv` marks `no_pv`, selection "...where a reviewer saw
+  no solar" (the atlas popup keys on that, never on "PV classifier"). The level's other end
+  from a PV-rich box: Ghayl Bawazir, 683 of 966 buildings in Pakistan's model's top 5%, its
+  top-scored roofs roofless shells. Whether it enters the coverage ratio is an owner decision.
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,

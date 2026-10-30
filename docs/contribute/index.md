@@ -164,8 +164,9 @@ picked by hand, and two start-here boxes in its densest districts with the most 
 ([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
 Pakistan has eleven: five aimed at the sparse end of its calibration and six hand-placed
 gap boxes. Yemen, Silver since its
-farm areas, has ten town boxes where panels show on rooftops, for its rooftop classifier;
-Yafi' and Qa'tabah town were mapped on 2026-10-29.
+farm areas, has town boxes where panels show on rooftops, for its rooftop classifier (Yafi'
+and Qa'tabah town were mapped on 2026-10-29), and its star is a town where that classifier
+sees solar on roofless concrete shells: mapping it shows how often the classifier is wrong.
 
 | country | tier | open candidates | box density (bldg/km<sup>2</sup>) | start here (&#9733;) |
 |---|---|---:|---|---|
@@ -177,7 +178,7 @@ Yafi' and Qa'tabah town were mapped on 2026-10-29.
 | [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
 | [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
 | [Pakistan](../atlas.md) | Gold | 11 | 66 to 617 | Malakand, Khyber Pakhtunkhwa |
-| [Yemen](../atlas-yemen.md) | Silver | 10 | 34 to 2,123 | Adh Dhihar, Ibb |
+| [Yemen](../atlas-yemen.md) | Silver | 11 | 34 to 2,123 | Ghayl Bawazir, Hadhramaut |
 | [France](../atlas-france.md) | Silver | none | map any solar you can see | |
 
 **Start at the star.** Wherever a country's small solar is not yet measured, on its roofs or
