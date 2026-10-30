@@ -15,10 +15,10 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
 
 | | |
 | --- | --- |
-| Verified | **130.9 MWp** (90% 109 to 161); 65.9 before the 2026-10-24 OpenStreetMap refresh |
-| Best estimate | **302.1 MWp** (90% 210 to 471); 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
+| Verified | **151.3 MWp** (90% 128 to 184); 130.9 until 2026-10-30, 65.9 before the 2026-10-24 OpenStreetMap refresh |
+| Best estimate | **324.7 MWp** (90% 230 to 493); 302.1 until 2026-10-30, 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
 | of which farm ground PV, < 400 m&sup2; | **169.1 MWp** (90% 77 to 327), 34 cells, calibrated on seven farm areas; [below](#farm-ground-pv-added-2026-10-24) |
-| OpenStreetMap | pulled 2026-10-24, 2,746 features (1,892 on 2026-10-10) |
+| OpenStreetMap | pulled late on 2026-10-24, 3,315 installations in the grid after dissolving overlaps (2,723 in the page before, 1,892 on 2026-10-10) |
 | Grid | 810 cells of 0.1&deg;, 22 governorates (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, October 2025 to March 2026 |
 | Model | `v13_combined_yemen` epoch 28, localized (tied with `v5_combined_france` at zero on the holdout; see below) |
@@ -46,6 +46,15 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
     panels (869 in Yemen) now convert at the module constant, as panels, where any other
     mapped ground polygon converts at the land constant, as a site: about 42 MWp of
     Verified's rise. Earlier figures in the sections below are marked with their date.
+
+!!! note "Rebuilt 2026-10-30: the late 2026-10-24 OpenStreetMap pull"
+    The page now counts the OpenStreetMap pull made late on 2026-10-24, after the page was
+    built, with the segmentation precision table and density re-derived from it: Verified
+    130.9 to 151.3 MWp, Best 302.1 to 324.7. The farm ground-PV figure is unchanged, the
+    published seven-area fit (`/home/tobi/earthpv_data/yemen_7areas_20261024`); it was
+    deduplicated against the earlier pull, so an array mapped in between can count in both.
+    The fourteen-area refits of 2026-10-25 (449 to 891 MWp depending on the slope veto and
+    the roofclf deduplication) stay unpublished. The page also gained the size chart.
 
 ## Localizing the detector
 
@@ -159,8 +168,12 @@ hillside.
 
 **Verified is the hand-mapped layer at the two constants** (2026-10-12: 1,891 features,
 1.30 km&sup2; of ground at 65.1 MWp and 0.8 MWp of rooftop, 61.4 MWp of it the Tihama
-irrigation arrays). On the 2026-10-24 pull it is **130.9 MWp**: 122.6 MWp of ground and 8.3 of
-rooftop. 847 of the polygons are the owner's panel traces (`osm_panel_tracers` in
+irrigation arrays). On the first 2026-10-24 pull it was 130.9 MWp: 122.6 MWp of ground and 8.3 of
+rooftop. On the late pull of that day it is **151.3 MWp**: 135.8 of ground and 15.5 of rooftop,
+and Best adds the model's 7.1 MWp and the same 169.1 of farm ground PV, floored at Verified in
+four cells. The figures that follow are the earlier page's.
+
+847 of the polygons are the owner's panel traces (`osm_panel_tracers` in
 `configs/aoi.yaml`), 629 of them on the ground with 326,065 m&sup2;, which count at the module
 constant: 58.7 MWp, against 16.3 had they been priced as sites. Best adds the model's
 4.2 MWp (`est_mwp_rc`, up from 1.2 because a few candidates now match newly mapped arrays) and

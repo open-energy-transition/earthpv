@@ -543,9 +543,10 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   notes and CSV columns saying so. Capacity below 400 m² with no per-installation size (farm
   ground PV, Germany's per-cell rooftop half) is a "<400 m², not split" column
   (`totals.size_unbinned_*_mwp`). `scripts/patch_atlas_sizes.py` adds it to a published page
-  and refuses one whose bins miss its Best by over 2%. **Yemen's page has no bins**: its OSM
-  pull and density grid were regenerated after it was built, so its section stays hidden
-  until a rebuild.
+  and refuses one whose bins miss its Best by over 2%. Yemen was rebuilt for it instead
+  (2026-10-30) on the late 2026-10-24 OSM pull its density already used, keeping the published
+  seven-area farm fit (`/home/tobi/earthpv_data/yemen_7areas_20261024`); the working tree's
+  fourteen-area refits stay unpublished.
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and
@@ -1022,7 +1023,7 @@ QUEUE first when removing compute markers.
 | India | `v5_combined_france` | 70,523.4 / 99,541.5 | v10 lost the Gujarat holdout; `ring_cells: 3`; oversize review |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 8,860.5 | |
 | Egypt | `v12_combined_egypt` | 3,315.1 / 3,378.6 | thin Cairo holdout |
-| Yemen | `v13_combined_yemen` | 130.9 / 302.1 | zero-zero tie; farm ground PV; Silver |
+| Yemen | `v13_combined_yemen` | 151.3 / 324.7 | zero-zero tie; farm ground PV; Silver |
 | South Africa | `v14_combined_south_africa` | 9,393.8 / 9,755.6 | decisive localization win |
 | Morocco | `v11_combined_morocco` | 380.4 / 411.2 | tie near 1.0; AOI stops at 27.7N |
 | Poland | `v15_combined_poland` | 6,604.3 / 7,780.9 | |

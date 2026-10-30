@@ -65,8 +65,8 @@ bins:
   p_real_hi: 0.0038
 - label: 500-1k
   n_candidates: 311
-  n_mapped: 1
-  mapped_frac: 0.0032
+  n_mapped: 2
+  mapped_frac: 0.0064
   sensitivity: 0.162
   sensitivity_source: study
   sensitivity_study: 0.162
@@ -82,13 +82,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0032
-  p_real_lo: 0.0006
-  p_real_hi: 0.0125
+  p_real: 0.0064
+  p_real_lo: 0.0019
+  p_real_hi: 0.0177
 - label: 1k-5k
   n_candidates: 961
-  n_mapped: 2
-  mapped_frac: 0.0021
+  n_mapped: 4
+  mapped_frac: 0.0042
   sensitivity: 0.306
   sensitivity_source: study
   sensitivity_study: 0.306
@@ -104,13 +104,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0021
-  p_real_lo: 0.0006
-  p_real_hi: 0.0058
+  p_real: 0.0042
+  p_real_lo: 0.0018
+  p_real_hi: 0.0088
 - label: 5k-50k
   n_candidates: 464
-  n_mapped: 4
-  mapped_frac: 0.0086
+  n_mapped: 6
+  mapped_frac: 0.0129
   sensitivity: 0.293
   sensitivity_source: study
   sensitivity_study: 0.293
@@ -126,9 +126,9 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0086
-  p_real_lo: 0.0036
-  p_real_hi: 0.0181
+  p_real: 0.0129
+  p_real_lo: 0.0064
+  p_real_hi: 0.0239
 - label: '>50k'
   n_candidates: 13
   n_mapped: 0
@@ -150,7 +150,7 @@ bins:
   recall_source: none
   p_real: 0.0
   p_real_lo: 0.0001
-  p_real_hi: 0.138
+  p_real_hi: 0.1374
 provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from manual
   review of unmapped candidates where sampled (n>=20), else glint inversion p_u(b)
   = clip((v_b - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed
@@ -217,36 +217,36 @@ placement_bins:
     p_real_hi: 0.0683
   - label: 1k-5k
     n_candidates: 251
-    n_mapped: 1
-    mapped_frac: 0.004
+    n_mapped: 2
+    mapped_frac: 0.008
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.004
+    p_real: 0.008
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.306
-    p_real_lo: 0.0007
-    p_real_hi: 0.0156
+    p_real_lo: 0.0022
+    p_real_hi: 0.0226
   - label: 5k-50k
     n_candidates: 110
-    n_mapped: 1
-    mapped_frac: 0.0091
+    n_mapped: 2
+    mapped_frac: 0.0182
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.0091
+    p_real: 0.0182
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.293
-    p_real_lo: 0.0015
-    p_real_hi: 0.0351
+    p_real_lo: 0.0053
+    p_real_hi: 0.0496
   - label: '>50k'
     n_candidates: 0
     n_mapped: 0
@@ -298,52 +298,52 @@ placement_bins:
     p_real_hi: 0.0043
   - label: 500-1k
     n_candidates: 256
-    n_mapped: 0
-    mapped_frac: 0.0
+    n_mapped: 1
+    mapped_frac: 0.0039
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0
+    p_real: 0.0039
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.162
-    p_real_lo: 0.0
-    p_real_hi: 0.0071
+    p_real_lo: 0.0007
+    p_real_hi: 0.0151
   - label: 1k-5k
     n_candidates: 710
-    n_mapped: 1
-    mapped_frac: 0.0014
+    n_mapped: 2
+    mapped_frac: 0.0028
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0014
+    p_real: 0.0028
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.306
-    p_real_lo: 0.0003
-    p_real_hi: 0.0055
+    p_real_lo: 0.0008
+    p_real_hi: 0.008
   - label: 5k-50k
     n_candidates: 354
-    n_mapped: 3
-    mapped_frac: 0.0085
+    n_mapped: 4
+    mapped_frac: 0.0113
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0085
+    p_real: 0.0113
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.293
-    p_real_lo: 0.003
-    p_real_hi: 0.02
+    p_real_lo: 0.0046
+    p_real_hi: 0.0236
   - label: '>50k'
     n_candidates: 13
     n_mapped: 0
@@ -359,4 +359,4 @@ placement_bins:
     recall_source: none
     sensitivity: 0.261
     p_real_lo: 0.0002
-    p_real_hi: 0.1399
+    p_real_hi: 0.1377

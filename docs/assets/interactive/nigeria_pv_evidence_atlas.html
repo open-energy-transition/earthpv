@@ -4276,12 +4276,20 @@ out geom;</div>
       + `</div></div>`
       + (HAS_SMALL_ROOF ? "" : nmTile("small_all", "Rooftop &lt;400 m², MWp"))
       + (HAS_GROUND ? "" : nmTile("small_ground", "Farm ground &lt;400 m², MWp"));
+    // Each claim only where this page's own bins bear it out (Yemen's largest bin is empty).
+    const u = sizeUnsplit(), last = DATA.bins[DATA.bins.length - 1];
+    const smallSum = k => DATA.bins.filter(b => binBelow400(b.label)).reduce((a, b) => a + b[k], 0);
+    const claims = [];
+    if (HAS_SMALL_ROOF && smallSum("roof_mwp") + u.roof > smallSum("ground_mwp") + u.ground)
+      claims.push(["Rooftop", "dominates the small end"]);
+    if (last && last.ground_mwp > last.roof_mwp)
+      claims.push(["ground-mount", "dominates the largest bin (utility-scale plants)"]);
     document.getElementById("sizeAside").innerHTML = "Total capacity, split by placement across "
-      + "every size bin. " + (HAS_SMALL_ROOF
-        ? "<b>Rooftop</b> dominates the small end; <b>ground-mount</b> dominates the largest bin "
-          + "(utility-scale plants)."
-        : "<b>Ground-mount</b> dominates the largest bin (utility-scale plants). The rooftop "
-          + "figure leaves out rooftop PV below 400 m², which is not measured here.");
+      + "every size bin. "
+      + (claims.length ? claims.map(([w, t], i) => `<b>${i ? w : w[0].toUpperCase() + w.slice(1)}</b> ${t}`)
+        .join("; ") + ". " : "")
+      + (HAS_SMALL_ROOF ? "" : "The rooftop figure leaves out rooftop PV below 400 m², which is not "
+        + "measured here.");
     document.getElementById("sizeDesc").innerHTML = sizeDescHtml();
     const head = sizeHeadLines();
     if (head.length){
