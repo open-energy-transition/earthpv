@@ -11,7 +11,9 @@ longer does.
 
 This recovers the page's placeholder values exactly as `retemplate_atlas.py` does, sets
 `totals.references` where the builder puts it (after `import_ceiling`), checking every
-province key against the page's own provinces, and fills the current template. Every
+province key against the page's own provinces, and `totals.imagery_dates` after it (the
+median scene date, `atlas.imagery_dates`, configs/atlas_imagery_dates.yaml, which
+scripts/imagery_median_date.py writes), and fills the current template. Every
 other key is re-serialised byte for byte, which is checked before writing, so no figure
 can change. A page whose AOI has no entry moves to the new template with the customs
 record alone.
@@ -63,8 +65,15 @@ def main() -> int:
                 raise ValueError("the data block does not re-serialise byte for byte")
             aoi = args.aoi or aoi_of(page)
             refs = atlas.official_capacity(aoi, [p["name"] for p in data["provinces"]])
-            T = {k: v for k, v in data["totals"].items() if k != "references"}
-            data["totals"] = _insert_after(T, "import_ceiling", {"references": refs}) if refs else T
+            dates = atlas.imagery_dates(aoi)
+            T = {k: v for k, v in data["totals"].items()
+                 if k not in ("references", "imagery_dates")}
+            if refs:
+                T = _insert_after(T, "import_ceiling", {"references": refs})
+            if dates:
+                T = _insert_after(T, "references" if refs else "import_ceiling",
+                                  {"imagery_dates": dates})
+            data["totals"] = T
             values["__PV_DATA_JSON__"] = json.dumps(data, **DUMPS)
             fresh = {"__LAYERS_JSON__": lambda: atlas.map_layers_json(aoi),
                      "__AOI_KEY__": lambda: aoi}
@@ -80,6 +89,7 @@ def main() -> int:
             page.write_text(html)
         what = ", ".join(f"{r['name']} ({len(r.get('regions') or {})} provinces)"
                          for r in refs or []) or "no references"
+        what += f"; imagery median {dates['median']}" if dates else "; no imagery dates"
         ic = "customs record" if data["totals"].get("import_ceiling") else "no customs record"
         print(f"  {'checked' if args.dry_run else 'wrote'} {page} [{aoi}]: {what}; {ic}")
     return 1 if failed else 0

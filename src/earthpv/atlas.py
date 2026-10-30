@@ -145,6 +145,26 @@ def official_capacity(
     return out
 
 
+IMAGERY_DATES = LEADS_MANIFEST.with_name("atlas_imagery_dates.yaml")
+
+
+def imagery_dates(aoi: str, path: Path = IMAGERY_DATES) -> dict | None:
+    """When the AOI's imagery was taken: the median acquisition date of the Sentinel-2
+    scenes behind its composites, the middle half of those dates (`p25`, `p75`) and the
+    sample of cells they were reconstructed from (scripts/imagery_median_date.py). The
+    comparison with official figures dates the atlas by it. None when the AOI has no entry.
+    """
+    if not path.exists():
+        return None
+    import yaml
+
+    entry = ((yaml.safe_load(path.read_text()) or {}).get("aois") or {}).get(aoi)
+    if not entry:
+        return None
+    return {k: entry[k] for k in ("median", "p25", "p75", "first", "last", "windows",
+                                  "n_cells", "n_cells_sampled", "n_scene_days") if k in entry}
+
+
 def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     """The AOI's mapping-lead file on GitHub: segmentation candidates more than
     `min_distance_m` from any OSM solar feature, from the run behind this atlas.
@@ -3067,6 +3087,9 @@ def build_evidence_atlas(
     references = official_capacity(aoi, [p["name"] for p in data["provinces"]])
     if references:
         data["totals"]["references"] = references
+    dates = imagery_dates(aoi)
+    if dates:
+        data["totals"]["imagery_dates"] = dates
     leads = leads_release(aoi)
     if leads:
         data["totals"]["leads"] = leads

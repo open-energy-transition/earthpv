@@ -4071,14 +4071,25 @@ out geom;</div>
     return new Date(Date.UTC(+y, +m - 1, +(d || 1))).toLocaleString("en-US",
       Object.assign({month: "short", year: "numeric", timeZone: "UTC"}, d ? {day: "numeric"} : {}));
   }
+  // When this atlas's imagery was taken: the median acquisition date of the scenes behind
+  // its composites and the middle half of them (`totals.imagery_dates`,
+  // scripts/imagery_median_date.py), so its bars carry a date like every other figure's.
+  const IMG = T.imagery_dates && T.imagery_dates.median ? T.imagery_dates : null;
+  const imgMonth = IMG ? monthLabel(IMG.median.slice(0, 7)) : null;
+  const imgLo = IMG ? monthLabel(IMG.p25.slice(0, 7)) : "", imgHi = IMG ? monthLabel(IMG.p75.slice(0, 7)) : "";
+  const imgSpread = `${imgLo} to ${imgHi}`, imgBetween = `between ${imgLo} and ${imgHi}`;
   const refStyle = P => Object.assign(plotStyle(P), {fontFamily: P.fontDisplay, fontSize: "12.5px"});
   const REF_CHAR_PX = 7.4;   // about one digit of 12.5px system-ui, to size the value margin
   const refBarFill = (P, group) => group === "atlas" ? P.accent : P.ref;
 
   function refTotalRows(narrow){
     const mon = s => monthLabel(String(s).slice(0, 7));
-    const rows = [{label: "This atlas: Best estimate", group: "atlas", mwp: T.mwp_best, unit: "MWp",
-      ci: T.mwp_best_ci, detail: "Total PV capacity detectable with Sentinel-2, 90% credible interval"}];
+    const best = !IMG ? "This atlas: Best estimate"
+      : narrow ? `This atlas: Best, imagery ${imgMonth}`
+      : `This atlas: Best estimate, median imagery date ${imgMonth}`;
+    const rows = [{label: best, group: "atlas", mwp: T.mwp_best, unit: "MWp",
+      ci: T.mwp_best_ci, detail: "Total PV capacity detectable with Sentinel-2, 90% credible interval"
+        + (IMG ? `\nSentinel-2 scenes: median ${monthLabel(IMG.median)}, middle half ${imgSpread}` : "")}];
     if (T.mwp_verified != null) rows.push({label: "This atlas: Verified, the floor", group: "atlas",
       faint: true, mwp: T.mwp_verified, unit: "MWp", ci: T.mwp_verified_ci,
       detail: "Hand-mapped OpenStreetMap plus the strictest detections, 90% credible interval"});
@@ -4127,10 +4138,14 @@ out geom;</div>
     });
   }
   function refTotalCSV(){
-    const rows = [["This atlas: Best estimate", "this atlas", "", T.imagery_date_range || "", T.mwp_best,
-      ...(T.mwp_best_ci || ["", ""]), "", ""]];
-    if (T.mwp_verified != null) rows.push(["This atlas: Verified", "this atlas", "", T.imagery_date_range || "",
-      T.mwp_verified, ...(T.mwp_verified_ci || ["", ""]), "", ""]);
+    // The atlas is dated by its imagery's median scene date where the page has one.
+    const asOf = IMG ? IMG.median : (T.imagery_date_range || "");
+    const scope = IMG ? `Sentinel-2 scenes from ${IMG.first} to ${IMG.last}, median ${IMG.median}, `
+      + `middle half ${IMG.p25} to ${IMG.p75}` : "";
+    const rows = [["This atlas: Best estimate", "this atlas", "", asOf, T.mwp_best,
+      ...(T.mwp_best_ci || ["", ""]), scope, ""]];
+    if (T.mwp_verified != null) rows.push(["This atlas: Verified", "this atlas", "", asOf,
+      T.mwp_verified, ...(T.mwp_verified_ci || ["", ""]), scope, ""]);
     REFS.forEach(r => rows.push([r.name, REF_KIND[r.kind], r.publisher, r.as_of, r.mw,
       ...(r.range || ["", ""]), r.scope || "", r.url || ""]));
     if (IC) rows.push(["Panels imported from China", IC.ceiling ? "customs record, ceiling" : "customs record",
@@ -4221,7 +4236,8 @@ out geom;</div>
     document.getElementById("refRegionSub").textContent =
       `this atlas in MWp · ${ref.name} in MW · largest first by ${ref.name}`;
     document.getElementById("refRegionLegend").innerHTML =
-      `<div class="comp-legend-item"><span class="comp-swatch ref-atlas"></span>This atlas, Best estimate</div>`
+      `<div class="comp-legend-item"><span class="comp-swatch ref-atlas"></span>This atlas, Best estimate`
+      + (IMG ? `, median imagery date ${esc(imgMonth)}` : "") + `</div>`
       + `<div class="comp-legend-item"><span class="comp-swatch ref-official"></span>${esc(ref.name)}, `
       + `${esc(when)}</div>`;
     const sumA = rows.reduce((s, d) => s + d.atlas, 0), sumR = rows.reduce((s, d) => s + d.ref, 0);
@@ -4244,7 +4260,9 @@ out geom;</div>
     const ci = T.mwp_best_ci;
     document.getElementById("refLede").innerHTML =
       `This atlas's Best estimate is <b>${fmt(T.mwp_best)} MWp</b>`
-      + (ci ? ` (90% range ${fmt(ci[0])} to ${fmt(ci[1])})` : "") + ". "
+      + (ci ? ` (90% range ${fmt(ci[0])} to ${fmt(ci[1])})` : "")
+      + (IMG ? `, from Sentinel-2 imagery with a median date of <b>${esc(monthLabel(IMG.median))}</b> `
+        + `(half the scenes ${esc(imgBetween)})` : "") + ". "
       + (REFS.length
         ? "For comparison: " + REFS.map(r => `${esc(r.name)}, <b>${fmt(r.mw)} MW</b> `
           + `(${esc(monthLabel(r.as_of))})`).join("; ") + ". "
@@ -4254,6 +4272,9 @@ out geom;</div>
       + "(see <i>Sources</i> below the chart).";
     const imagery = T.imagery_date_range ? ` in its imagery window (${esc(T.imagery_date_range)})` : "";
     const items = [`<li>This atlas counts what Sentinel-2 shows${imagery}, as module capacity (MWp). `
+      + (IMG ? `Its scenes' median date is ${esc(monthLabel(IMG.median))}, and half of them were taken `
+        + `${esc(imgBetween)}, reconstructed from the Sentinel-2 catalogue for `
+        + `${fmt(IMG.n_cells_sampled)} of the ${fmt(IMG.n_cells)} imaged cells. ` : "")
       + `A register counts what was registered by its date, in MW as declared, which for large plants `
       + `is often the inverter (AC) rating, below the module capacity.</li>`];
     REFS.forEach(r => items.push(
@@ -4283,8 +4304,9 @@ out geom;</div>
       ...(IC ? ["panels imported from China (Ember)"] : [])];
     registerPlot("references", "refMount", needsPlot(refTotalChart), {
       title: () => `${AOI}: national PV capacity beside official and published figures`,
-      subtitle: () => `This atlas's Best and Verified estimates with 90% intervals, against `
-        + `${names.join(", ")}. Registers in MW as declared; none is ground truth for the atlas.`,
+      subtitle: () => `This atlas's Best and Verified estimates with 90% intervals`
+        + (IMG ? ` (Sentinel-2 imagery, median date ${monthLabel(IMG.median)})` : "")
+        + `, against ${names.join(", ")}. Registers in MW as declared; none is ground truth for the atlas.`,
       csv: refTotalCSV,
     });
     if (REGION_REFS.length) {
@@ -4296,7 +4318,8 @@ out geom;</div>
       renderRefRegionChrome();
       registerPlot("references-provinces", "refRegionMount", needsPlot(refRegionChart), {
         title: () => `${AOI}: PV capacity by province, this atlas and ${REGION_REFS[refRegionIdx].name}`,
-        subtitle: () => `This atlas's Best estimate (MWp, amber) and ${REGION_REFS[refRegionIdx].name} `
+        subtitle: () => `This atlas's Best estimate (MWp, amber`
+          + (IMG ? `; imagery median ${imgMonth}` : "") + `) and ${REGION_REFS[refRegionIdx].name} `
           + `(${monthLabel(REGION_REFS[refRegionIdx].as_of)}, MW, grey) per province, largest first.`,
         csv: refRegionCSV,
       });

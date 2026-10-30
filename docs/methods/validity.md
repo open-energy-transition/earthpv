@@ -96,7 +96,10 @@ Each atlas draws its own total and its own provinces beside the figures a reader
 to know, in a section of its own ("Against official and published figures"): the national
 total as bars with their intervals, and, where a source publishes provinces, the atlas's bar
 and the source's beneath it for each province, with how closely the two rank the provinces
-(Spearman's rank correlation).
+(Spearman's rank correlation). The atlas is dated by the median acquisition date of the
+Sentinel-2 scenes behind its composites, with the middle half of those dates: the composites
+do not record their scenes, so `scripts/imagery_median_date.py` repeats the composite step's
+catalogue search and scene ranking for a random sample of each country's cells.
 `scripts/official_capacity.py` writes the figures into
 `configs/external/official_capacity.yaml`; each was checked against a fresh download of its
 source, and the vintage nearest the end of the atlas's imagery window was used.

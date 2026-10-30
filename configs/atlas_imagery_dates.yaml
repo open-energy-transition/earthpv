@@ -1,0 +1,187 @@
+# Written by scripts/imagery_median_date.py; do not edit by hand.
+note: Median acquisition date of the Sentinel-2 scenes behind each evidence atlas's composites, reconstructed
+  from the STAC catalogue for a random sample of cells (scripts/imagery_median_date.py). p25/p75 bound
+  the middle half.
+aois:
+  egypt:
+    median: '2026-07-31'
+    p25: '2026-06-16'
+    p75: '2026-09-01'
+    first: '2026-04-04'
+    last: '2026-09-28'
+    windows:
+    - 2026-04-01:2026-09-30
+    n_cells: 946
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1422
+    made: '2026-10-29'
+  france:
+    median: '2024-07-31'
+    p25: '2024-07-03'
+    p75: '2024-08-20'
+    first: '2024-05-01'
+    last: '2024-09-29'
+    windows:
+    - 2024-05-01:2024-09-30
+    n_cells: 6858
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1183
+    made: '2026-10-29'
+  germany:
+    median: '2025-06-14'
+    p25: '2025-04-28'
+    p75: '2025-08-11'
+    first: '2025-04-01'
+    last: '2025-09-30'
+    windows:
+    - 2025-04-01:2025-09-30
+    n_cells: 4871
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 998
+    made: '2026-10-29'
+  india:
+    median: '2026-01-10'
+    p25: '2025-11-29'
+    p75: '2026-02-16'
+    first: '2025-11-01'
+    last: '2026-03-15'
+    windows:
+    - 2025-11-01:2026-03-15
+    n_cells: 29171
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1277
+    made: '2026-10-29'
+  morocco:
+    median: '2026-07-26'
+    p25: '2026-06-26'
+    p75: '2026-08-25'
+    first: '2026-04-02'
+    last: '2026-09-26'
+    windows:
+    - 2026-04-01:2026-09-30
+    n_cells: 703
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1372
+    made: '2026-10-29'
+  namibia:
+    median: '2026-07-19'
+    p25: '2026-06-12'
+    p75: '2026-08-23'
+    first: '2026-05-01'
+    last: '2026-09-30'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 459
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1387
+    made: '2026-10-29'
+  nigeria:
+    median: '2026-01-01'
+    p25: '2025-11-30'
+    p75: '2026-01-25'
+    first: '2025-11-01'
+    last: '2026-03-15'
+    windows:
+    - 2025-11-01:2026-03-15
+    n_cells: 6254
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1232
+    made: '2026-10-29'
+  pakistan:
+    median: '2025-12-23'
+    p25: '2025-11-20'
+    p75: '2026-02-18'
+    first: '2025-11-01'
+    last: '2026-03-15'
+    windows:
+    - 2025-11-01:2026-03-15
+    n_cells: 4473
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1303
+    made: '2026-10-29'
+  poland:
+    median: '2026-07-29'
+    p25: '2026-06-20'
+    p75: '2026-08-15'
+    first: '2026-05-01'
+    last: '2026-09-30'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 3948
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1229
+    made: '2026-10-29'
+  south_africa:
+    median: '2026-07-12'
+    p25: '2026-05-27'
+    p75: '2026-08-06'
+    first: '2026-04-01'
+    last: '2026-09-30'
+    windows:
+    - 2026-04-01:2026-09-30
+    n_cells: 3647
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1372
+    made: '2026-10-29'
+  vietnam:
+    median: '2026-03-25'
+    p25: '2026-01-09'
+    p75: '2026-04-11'
+    first: '2025-09-04'
+    last: '2026-08-17'
+    windows:
+    - 2025-09-01:2026-08-31
+    n_cells: 2611
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1228
+    made: '2026-10-29'
+  yemen:
+    median: '2025-12-02'
+    p25: '2025-11-05'
+    p75: '2026-02-08'
+    first: '2025-10-06'
+    last: '2026-03-26'
+    windows:
+    - 2025-10-01:2026-03-31
+    n_cells: 810
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1389
+    made: '2026-10-29'
+  zambia:
+    median: '2025-08-06'
+    p25: '2025-07-05'
+    p75: '2025-09-02'
+    first: '2025-05-08'
+    last: '2025-10-15'
+    windows:
+    - 2025-05-01:2025-10-15
+    n_cells: 1843
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1237
+    made: '2026-10-29'
