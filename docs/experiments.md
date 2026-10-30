@@ -151,6 +151,7 @@ repository; nothing was deleted on failure.
 | [THOR on TerraMind's own token grid](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome negative">rejected</span> | Ties v14 on rooftop recall (0.573 against 0.574), 1 point behind on ground. With 320 m SWIR tokens instead, it loses everywhere (rooftop 0.29). |
 | [Checkpoint selection by val mIoU](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | v14's second-best epoch finds 0.621 of rooftop arrays against the shipped epoch's 0.565, at precision 0.717 against 0.736: epoch noise is as large as the backbone effect. A recall-aware selection rule is untested. |
 | [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-ahead-in-pakistan-behind-in-south-africa-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget it matches segmentation's precision in both countries, but its recall does not transfer: far higher in Pakistan (quadrat rooftop 0.65 against 0.35), half in South Africa's held-out Western Cape (0.22 against 0.43, and 0.26 with Western Cape training added), where it also fires on substations. Not adopted: it does not transfer, a restrictive licence, ~0.5-1 TB per country. |
+| [TerraMind's own input standardisation (v21)](#feeding-terramind-the-input-it-was-pretrained-on-v21-2026-10-30) | <span class="outcome negative">rejected</span> | Every checkpoint saw DN / 10000, never TerraMind's pretraining standardisation. A frozen-feature probe said that cost a lot (held-out token AP 0.469 against 0.737), but fine-tuned with v14's recipe otherwise unchanged it ties v14 on rooftop recall (0.575 against 0.574 at matched precision, p = 0.87) and is 0.6 points behind on ground. It converges in half the epochs; its one regional effect beyond epoch noise is a loss in France. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
@@ -2552,6 +2553,83 @@ second run beside it with `_holdout_trained`) and
 `results/olmoearth_vs_seg_review_south_africa/` (the owner's verdicts in
 `summary_verdicts.json`, Claude's in `claude_verdicts.csv`;
 the owner's review page is `blind/review.html`, from `scripts/build_review_page.py`).
+
+### Feeding TerraMind the input it was pretrained on: v21 (2026-10-30)
+
+TerraMind was pretrained on Sentinel-2 L2A standardised per band with fixed statistics, but
+TerraTorch 1.2.8's TerraMind ViT backbones (`terramind_v1_tiny` and its siblings) do not apply
+them; only its generation and TiM builders do. Every segmentation checkpoint up to v20 was fed
+reflectance (DN / 10000), so each band's spread was 5 to 8 times narrower than in pretraining.
+TiM variants were not an alternative: they refuse a band subset and need 12 bands, where the
+composites have 10.
+
+**The probe said it mattered.** A frozen-feature probe on v14's corpus (logistic regression on
+the four encoder layers the neck selects, one prediction per 16 px token, 1,487 training and
+754 held-out chips) measured what the pretrained encoder can read before any fine-tuning:
+
+| Encoder input | Held-out token average precision |
+| --- | --- |
+| DN / 10000 (every checkpoint so far) | 0.469 |
+| TerraMind's own standardisation of raw DN | 0.737 |
+| The same, 1,000 DN BOA offset removed first | 0.696 |
+| The corpus's own statistics (what `thor_backbone` applies) | 0.452 |
+| Randomly initialised weights, DN / 10000 and standardised | 0.231, 0.259 |
+
+It improved in all six training AOIs (France 0.115 to 0.553, South Africa 0.426 to 0.718).
+
+**The test.** v21 is v14 with one change: `backbone: earthpv_terramind`, which standardises each
+band with TerraMind's statistics inside the model. Same pretrained weights, bands, neck,
+decoder, loss, learning rate (1e-4, constant), patience and corpus
+(`data/chips/combined_south_africa`). It was scored as THOR was
+([above](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24)): 11 holdouts, paired
+McNemar per installation, each checkpoint at its own threshold reaching v14's pooled pixel
+precision (0.755 over the six training AOIs). Since one selected epoch moves rooftop recall by
+several points, both of v21's saved epochs were scored against both of v14's.
+
+**v21 converges twice as fast.** Its best val/mIoU, 0.8132 at epoch 20, is above v14's 0.8109
+at epoch 41, and early stopping ended it after epoch 28 against v14's 49.
+
+**It does not find more installations.** All 11 AOIs pooled, at matched precision:
+
+| | v14 epoch 41 (shipped) | v14 epoch 49 | v21 epoch 20 | v21 epoch 27 |
+| --- | --- | --- | --- | --- |
+| Threshold | 0.3 | 0.8 | 0.5 | 0.1 |
+| Rooftop 400-5,000 m<sup>2</sup> recall (n = 4,634) | 0.574 | 0.610 (p < 0.001) | 0.575 (+317/-312, p = 0.87) | 0.576 (p = 0.67) |
+| Ground >= 400 m<sup>2</sup> recall (n = 10,725) | 0.933 | 0.929 (p = 0.003) | 0.926 (+75/-142, p < 0.001) | 0.925 (p < 0.001) |
+| Pixel precision | 0.733 | 0.760 | 0.754 | 0.763 |
+| Pixel IoU | 0.633 | 0.644 | 0.650 | 0.654 |
+
+v14 epoch 49 does not quite reach the target at the highest scored threshold (0.754 at 0.8).
+The pixel IoU gain comes mostly from Morocco, where the shipped epoch alone is imprecise (0.68
+against 0.91 to 0.96 for the other three).
+
+**The regional moves are mostly epoch noise.** v21 gains rooftop arrays in South Africa (0.66
+and 0.65 against 0.62, p < 0.002) and Punjab (0.69 and 0.71 against 0.66) and loses ground
+plants in Poland (0.960 against 0.970), but v14's own epoch 49 makes all three moves, each by
+more (South Africa 0.69, Punjab 0.71, Poland 0.955). The one move that is v21's own,
+at both saved epochs, is a loss in **France**: rooftop 0.35 and 0.38 against 0.42 (+63/-165,
+p < 0.001), ground 0.62 and 0.60 against 0.66, where v14 epoch 49 differs from epoch 41 by
+about one point either way. Elsewhere the differences are small: Pakistan's ground plants rise
+at both v21 epochs (0.81 against 0.77) as they do at v14 epoch 49, German ground falls by 7 of
+399 at epoch 27 only (p = 0.02), and Gujarat, Vietnam, India, Morocco and Egypt show none.
+
+**Verdict: rejected as a model change.** The probe measured a frozen encoder. Fine-tuning every
+layer at 1e-4 lets the encoder adapt to whatever scale it is fed, and here it adapts fully;
+the input only shortens the way there. v21 replaces neither the released v14 nor any country's
+checkpoint, and no published number changes. The standardisation could still matter where the
+pretrained features have to carry more: with a lower encoder learning rate, a frozen encoder,
+or a larger backbone fine-tuned briefly. That is untested, and worth trying only together with
+a learning-rate schedule (constant 1e-4 with early stopping is the recipe every checkpoint
+used). The faster convergence is real but small in hours: 20 fewer epochs at about 9 minutes
+each on the GTX 1060, so v21 trained in 4.5 hours.
+
+Code: `src/earthpv/terramind_backbone.py` (`earthpv_terramind`: the statistics as buffers, in
+the units the model receives, so they travel with the checkpoint and `datamodule`, `infer` and
+`evaluate` are unchanged; every existing checkpoint loads and predicts exactly as before),
+config `configs/terramind_pv_v21_tmnorm_south_africa.yaml`, runner
+`scripts/run_tmnorm_compare.sh`. Checkpoints in
+`/home/tobi/earthpv_data/models/v21_tmnorm_south_africa/`. Results:
+`results/backbone_compare/v21_tmnorm_vs_v14/`.
 
 ## The partial result worth watching
 

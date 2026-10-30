@@ -148,6 +148,8 @@ results/backbone_compare/*
 !results/backbone_compare/thor8_vs_v14_lowthr/
 !results/backbone_compare/thor16m_thor8_vs_v14/
 !results/backbone_compare/epoch_noise/
+# 2026-10-30 TerraMind input standardisation (v21), docs/experiments.md "Feeding TerraMind".
+!results/backbone_compare/v21_tmnorm_vs_v14/
 results/backbone_compare/*/*
 !results/backbone_compare/*/summary.json
 

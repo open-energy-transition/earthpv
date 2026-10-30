@@ -1,0 +1,69 @@
+# TerraTorch fine-tuning config for PV segmentation -- v14 with TerraMind's own input
+# standardisation (2026-10-30).
+#
+# Identical recipe and corpus to configs/terramind_pv_v14_south_africa.yaml (same pretrained
+# terramind_v1_tiny weights, bands, necks, decoder, loss, lr, schedule, monitor metric,
+# patience, data/chips/combined_south_africa/index.parquet unchanged since v14 trained on it).
+# The only variable is the input: v14 fed the encoder DN / 10000; `earthpv_terramind`
+# (src/earthpv/terramind_backbone.py) standardises each band with TerraMind's pretraining
+# mean/std inside the model, which TerraTorch's TerraMind backbone never did. A frozen-feature
+# probe put held-out token average precision at 0.469 against 0.737 for the two inputs;
+# this run measures what survives fine-tuning.
+#
+# Scored by scripts/run_tmnorm_compare.sh with scripts/compare_backbones.py against v14
+# epoch 41 (shipped) and epoch 49 (v14's own epoch noise), on the 11 holdouts the THOR
+# comparison used, both of this run's saved epochs, at matched pixel precision.
+
+data:
+  index_path: data/chips/combined_south_africa/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # earthpv_terramind = terramind_v1_tiny (backbone_variant) behind TerraMind's own
+    # pretraining standardisation; weights, bands and token grid are v14's.
+    backbone: earthpv_terramind
+    backbone_variant: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+# -> /home/tobi/earthpv_data/models/v21_tmnorm_south_africa (aidisc is the binding constraint)
+checkpoint_dir: data/models/v21_tmnorm_south_africa
+patience: 8
+# Same monitor as v14 (val/mIoU), so the two are selected the same way.
+monitor: val/mIoU
+monitor_mode: max
+
+# Training is protected against systemd-oomd restarts: continue from this run's own last.ckpt.
+resume: true

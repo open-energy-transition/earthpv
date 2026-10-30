@@ -83,13 +83,16 @@ def load_model(checkpoint: Path, task_type: str = "auto"):
     import torch
 
     _allow_custom_losses()
-    from earthpv import attention, thor_backbone
+    from earthpv import attention, terramind_backbone, thor_backbone
 
-    thor = thor_backbone.uses_thor(_model_args(checkpoint))
+    model_args = _model_args(checkpoint)
+    thor = thor_backbone.uses_thor(model_args)
     # TerraMind keeps PyTorch's kernel here, so published rasters reproduce byte for byte.
     attention.configure(prefer_math=thor)
     if thor:
         thor_backbone.register()
+    if terramind_backbone.uses_standardized_terramind(model_args):
+        terramind_backbone.register()
     if task_type == "auto":
         task_type = _sniff_task_type(checkpoint)
     if task_type == "regression":

@@ -27,10 +27,12 @@ def run_training(config: Path, smoke: bool = False) -> Path:
 
     dm = PVDataModule(**cfg["data"])
     task_args = dict(cfg["task"])
-    from earthpv import thor_backbone
+    from earthpv import terramind_backbone, thor_backbone
 
     if thor_backbone.uses_thor(task_args.get("model_args", {})):
         thor_backbone.register()
+    if terramind_backbone.uses_standardized_terramind(task_args.get("model_args", {})):
+        terramind_backbone.register()
     task_type = cfg.get("task_type", "segmentation")
     if task_type == "regression":
         from terratorch.tasks import PixelwiseRegressionTask

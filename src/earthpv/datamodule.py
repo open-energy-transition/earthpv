@@ -12,8 +12,9 @@ import torch
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 
-# Chips store reflectance DN (x10000). TerraMind pretraining stats are applied by
-# the terratorch backbone when available; we feed reflectance in [0, ~1.5].
+# Chips store reflectance DN (x10000); we feed reflectance in [0, ~1.5]. TerraTorch's
+# TerraMind backbones do NOT apply TerraMind's pretraining standardisation: a backbone that
+# needs it applies it inside the model (`earthpv.terramind_backbone`, `earthpv.thor_backbone`).
 DN_SCALE = 10000.0
 
 

@@ -199,6 +199,18 @@ via Lightning; checkpoints monitor `val/mIoU`.
   second-best checkpoint finds 0.621 of rooftop arrays against the shipped one's 0.565).
   `scripts/compare_backbones.py` (paired McNemar per installation, at matched pixel precision,
   over every AOI's holdout) and `evaluate(extra_thresholds=...)` do this.
+- **TerraTorch's TerraMind backbone does not standardise its input** (only its generation and
+  TiM builders take TerraMind's pretraining mean/std), so every checkpoint up to v20 saw DN /
+  10000, each band's spread 5-8x narrower than in pretraining. `backbone: earthpv_terramind`
+  with `backbone_variant: terramind_v1_*` (`terramind_backbone.py`) applies TerraMind's own
+  statistics inside the model, like `thor_backbone`; existing checkpoints load unchanged. A
+  frozen-feature probe put held-out token AP at 0.469 on DN / 10000 against 0.737 (corpus
+  statistics 0.452), but **v21** (v14's recipe and corpus, `scripts/run_tmnorm_compare.sh`,
+  2026-10-30) shows it does not survive full fine-tuning at 1e-4: rooftop recall 0.575 against
+  v14's 0.574 at matched precision, ground 0.6 points lower, France worse at both saved epochs;
+  it only converges in half the epochs. Rejected; untested with a lower encoder LR. TiM
+  variants cannot take our 10 bands. Small and Base fit the 1060 at batch 8 (1.0 / 2.7 GiB
+  peak, 2x / 4.9x Tiny's step time).
 - **On the GTX 1060 `train` uses PyTorch's math SDPA kernel** (`earthpv.attention`, pre-Volta
   GPUs only): the default kernel is about 3x slower for TerraMind training. **TerraMind
   inference deliberately keeps PyTorch's default kernel**: the gain is small and the kernels
