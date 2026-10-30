@@ -152,6 +152,7 @@ repository; nothing was deleted on failure.
 | [Checkpoint selection by val mIoU](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | v14's second-best epoch finds 0.621 of rooftop arrays against the shipped epoch's 0.565, at precision 0.717 against 0.736: epoch noise is as large as the backbone effect. A recall-aware selection rule is untested. |
 | [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-ahead-in-pakistan-behind-in-south-africa-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget it matches segmentation's precision in both countries, but its recall does not transfer: far higher in Pakistan (quadrat rooftop 0.65 against 0.35), half in South Africa's held-out Western Cape (0.22 against 0.43, and 0.26 with Western Cape training added), where it also fires on substations. Not adopted: it does not transfer, a restrictive licence, ~0.5-1 TB per country. |
 | [One segmentation model pooled from every country (v18)](#one-segmentation-model-for-every-country-v18-pooled-2026-10-30) | <span class="outcome negative">rejected</span> | At matched pixel precision it finds fewer installations than v14 over 14 holdouts: rooftop 400-5,000 m<sup>2</sup> 0.474 against 0.573 (+144/-609, p < 1e-60), ground 0.910 against 0.916. It wins only Egypt (23 installations, its own training data) and loses in South Africa and France, whose share of the corpus it halved. As trained; longer training is untested. |
+| [Which training labels teach rooftop PV as background](#which-training-labels-teach-rooftop-pv-as-background-a-per-source-audit-2026-10-30) | <span class="outcome mixed">partial</span> | v14 over 10,473 training chips it never trained on, from 15 sources. Vietnam's chips hold about 10 unmapped PV roofs per mapped rooftop array and Germany's national chips about 16 (83% of registered rooftop units of 72 kWp or more sit on background pixels), against 0.1 to 0.3 in France, South Africa and Pakistan. Poland's labels are clean of it. Supports the harmful-label part of v18's loss for those two sources; a second pooled corpus burns their unlabelled roofs as ignore. |
 | [TerraMind's own input standardisation (v21)](#feeding-terramind-the-input-it-was-pretrained-on-v21-2026-10-30) | <span class="outcome negative">rejected</span> | Every checkpoint saw DN / 10000, never TerraMind's pretraining standardisation. A frozen-feature probe said that cost a lot (held-out token AP 0.469 against 0.737), but fine-tuned with v14's recipe otherwise unchanged it ties v14 on rooftop recall (0.575 against 0.574 at matched precision, p = 0.87) and is 0.6 points behind on ground. It converges in half the epochs; its one regional effect beyond epoch noise is a loss in France. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
@@ -2615,6 +2616,82 @@ epochs 24 to 26 were not saved.
 checkpoint. What would separate the explanations: v18 trained on to v14's epoch count without
 early stopping (resume from `last.ckpt`, about 11 GPU hours); v18 as a starting point for one
 country's fine-tune; and a run without the German national chips and the Yemen repeats.
+
+### Which training labels teach rooftop PV as background? A per-source audit (2026-10-30)
+
+A chip burns every mapped installation as 1 and everything else as 0, so a source that maps few
+of its PV roofs teaches the rest as "not PV". v18's entry left that untested.
+`scripts/label_audit.py` measures it per source without training anything. The released v14,
+at threshold 0.5, is run over up to 1,500 chips per source, keeping only chips at least one chip
+width (2,240 m) from every v14 training chip, where v14 has learned the labels' gaps. Every
+confident blob of 400 m<sup>2</sup> or more that lies more than 30 m from any label or ignore
+region is counted. One with at least a quarter of its area on a VIDA footprint is a roof blob.
+That is 10,473 chips from 15 sources. Punjab drops out: all 274 of its chips lie inside v14's
+training footprint.
+
+A roof blob is either unmapped PV or a false positive. Two checks separate them: Germany's
+register, and Esri imagery of 12 random roof blobs per source (`review`; crops and the shared
+review page in `data/label_audit/review/`). The verdicts so far are Claude's
+(`results/label_audit/review_verdicts_assistant.csv`), not the owner's.
+
+| Source | Share of v18 train rows | Roof blobs per 100 chips | PV on Esri (of decided) | Unmapped roof PV per 100 chips | Per mapped rooftop array |
+| --- | --- | --- | --- | --- | --- |
+| Vietnam | 10.7% | 53.3 | 8 of 11 | 38.9 | ~10 |
+| South Africa | 10.9% | 35.5 | 8 of 11 | 25.9 | 0.27 |
+| Germany, national chips | 11.1% | 18.1 | 8 of 8 (register: at least 52%) | 9.4-18.1 | 0.7-1.3 (register: ~16) |
+| Gujarat | 1.0% | 23.4 | 5 of 9 | 13.1 | |
+| India | 8.0% | 19.7 | 5 of 9 | 11.0 | 0.50 |
+| Nigeria | 1.6% | 8.7 | 9 of 10 | 7.8 | |
+| France | 26.3% | 6.8 | 7 of 8 | 6.0 | 0.10 |
+| Germany, 14 tiles | 4.7% | 10.9 | 4 of 9 | 4.8 | 0.66 |
+| Pakistan, fresh chips | 8.6% | 11.0 | 3 of 7 | 4.7 | 0.22 |
+| Morocco | 0.6% | 13.2 | 2 of 9 | 2.9 | |
+| Egypt | 1.3% | 5.0 | 2 of 5 | 2.0 | |
+| Poland | 11.8% | 1.8 | 0 of 7 | 0 | 0 |
+| Yemen | 2.9% | 0.4 | 0 of 1 | 0 | |
+| Zambia | 0.3% | 0 | | 0 | |
+| Namibia | not in v18 | 12.0 | none decidable (Esri 2019) | | |
+
+"Unmapped roof PV" is roof blobs times the PV share among decided crops. The last column divides
+it by mapped installations per chip times the rooftop share of mapped installations of 400
+m<sup>2</sup> or more in that source's holdout. That share is approximate for the chips, and it
+is left blank where no holdout share was surveyed.
+
+**Germany's register settles the national chips without a model.** The 1,500 audited national
+chips hold 3,988 registered rooftop units of 72 kWp or more (about 400 m<sup>2</sup> of module)
+commissioned before the compose window. 83% of them sit on pixels the chip trains as background,
+8% on a label and 6% within 30 m of one. That is 2.2 per chip, against 1.3 mapped installations
+of any kind, or about 16 per mapped rooftop array. The 14-tile `germany` source reads the same
+(82% on background). v14's roof blobs there lie within 30 m of a registered unit of 30 kWp or
+more 61% of the time. Undetected, unlabelled footprints of the same size in the same chips do so
+19% of the time (`mastr-null`, land-use matched as in `scripts/mastr_p_unmapped.py`), so at least
+52% of the blobs are registered PV.
+
+**What it shows:**
+
+- **The hypothesis holds for Vietnam and the German national chips.** Together they are 21.8% of
+  v18's train rows. Their labels hold almost no rooftop arrays (3% and 11% of mapped
+  installations), while their roofs carry many.
+- **The rooftop teachers have the same gap, but small:** 0.1 to 0.3 unmapped PV roofs per mapped
+  rooftop array in France, South Africa and Pakistan, and 0.5 in India.
+- **Poland's labels are clean of it.** After France it is v18's largest source (11.8%), but its
+  few roof blobs are mostly not PV (0 of 7 decided, on Esri captures from 2020 to 2024). Whatever
+  it cost v18 is dilution.
+- **Morocco's roof blobs are mostly roofs with a grid of skylights** (7 of 9), a false-positive
+  class worth hard negatives.
+- **Yemen has the opposite problem:** v14 finds 2 of the 2,454 labels in its chips, so Yemen
+  holds labels no detector here can see.
+
+**Limits.** These are floors: v14 finds about 57% of rooftop arrays, and blobs within 30 m of a
+label are not counted. Twelve crops per source put about +/-25 points on each PV share. Esri
+predates the composite in Namibia (2019), Poland (2020 to 2024) and parts of Pakistan.
+
+**Verdict.** The harmful-label explanation of v18's rooftop loss is supported for two sources and
+refuted for Poland. It does not rule out the dilution and under-training explanations in v18's
+entry. A second pooled corpus will burn unlabelled building footprints as ignore in Vietnam and
+in the German national chips, plus an ignore disc around every unmapped register unit of 30 kWp
+or more in Germany. India and Gujarat probably need the same; Poland keeps its labels as they
+are.
 
 ### Feeding TerraMind the input it was pretrained on: v21 (2026-10-30)
 
