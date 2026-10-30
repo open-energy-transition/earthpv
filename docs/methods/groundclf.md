@@ -203,8 +203,10 @@ same way on every country's page, so a reader can always find it:
   same `--osm-solar` file the atlas uses, and with `--roofclf-buildings` where the country
   has a `roofclf` half: a detection within 20 m of a building roofclf priced is that
   building's yard array, which roofclf already counts.
-- **The size chart** (countries with `roofclf`'s &ge; 400 m<sup>2</sup> half) adds it to the
-  ground-mount total unbinned: a ratio estimate has an area but no per-array size.
+- **The size chart** (on every evidence atlas since 2026-10-30) draws it in a column of its
+  own, "&lt;400 m<sup>2</sup>, not split": a ratio estimate has an area but no per-array
+  size, so it cannot be divided between the two bins below 400 m<sup>2</sup>. Where the
+  detector has not run, the chart frames those bins as not measured for farm ground PV.
 
 ## Farm calibration areas
 

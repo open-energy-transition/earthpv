@@ -7,7 +7,10 @@ estimate -- every MWp here comes from the identical components and calibration t
 main atlas uses, re-binned rather than recomputed. The two pages' totals match for the
 same run to within 0.02% (currently 24,438.3 vs 24,441 MWp) -- the residual is a
 handful of candidates whose location falls just outside every grid cell's polygon and
-so never enters a per-cell total on either page, not an uncounted source of error.
+so never enters a per-cell total on either page, not an uncounted source of error. Since
+2026-10-30 the re-binning leaves those candidates out too, as the per-cell total does, and
+every country's evidence atlas carries the chart; where a detector below 400 m&sup2; has
+not run, those bins are framed as not measured.
 
 **[Open the size-distribution chart](../assets/interactive/pakistan_size_distribution_atlas.html)**
 (interactive; hover a bar for its exact value and installation count). The geographic view

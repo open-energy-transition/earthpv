@@ -432,6 +432,9 @@
     background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px); }
   .comp-swatch.extrap { background: repeating-linear-gradient(45deg,
     var(--accent) 0 2px, var(--panel) 2px 5px); }
+  /* Size bins whose detector did not run: the chart's dashed "not measured" frame. */
+  .comp-swatch.not-measured { background: var(--panel-2); border: 1px dashed var(--muted);
+    box-sizing: border-box; }
   /* "Against official and published figures": this atlas's bars amber, every other
      figure's grey; a pale bar with an outline is a bound (Verified, the floor) or context
      (customs imports) rather than a count of what is installed. */
@@ -470,6 +473,7 @@
   .chart-legend { display: flex; align-items: center; gap: 8px 16px; margin: 4px 6px 10px;
     flex-wrap: wrap; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
   .chart-legend .lk { display: flex; align-items: center; gap: 6px; }
+  .chart-legend .lk[hidden] { display: none; }
 
   /* ── downloads: a point-in-time data release, plus a live-OSM Overpass escape
      hatch for anything the release has already gone stale on ── */
@@ -810,21 +814,15 @@
           <div class="lk"><span class="comp-swatch roof-solid"></span>rooftop</div>
           <div class="lk"><span class="comp-swatch ground-hatch"></span>ground-mount (hatched)</div>
           <div class="lk" id="extrapKey"><span class="comp-swatch extrap"></span>rooftop, extrapolated beyond calibration</div>
+          <div class="lk" id="nmKey" hidden><span class="comp-swatch not-measured"></span><span id="nmKeyText"></span></div>
         </div>
         <div id="chartmount" class="plot-host"></div>
-        <div class="hero-desc" style="margin-top:14px;">The same total
-        photovoltaic capacity detectable with Sentinel-2, re-cut by installation size
-        instead of geography: rooftop runs across every bin, while ground-mount sits
-        almost entirely at &ge;400 m&sup2;, because below that only the farm ground-PV
-        detector sees it, where it has been run. The detectors split the total by
-        placement <i>and</i> size, not size alone.</div>
+        <div class="hero-desc" id="sizeDesc" style="margin-top:14px;"></div>
       </section>
 
       <aside>
         <div class="card">
-          <div class="hero-desc" style="margin-top:0;">Total Capacity, split by
-          placement across every size bin. <b>Rooftop</b> dominates the small end;
-          <b>ground-mount</b> dominates the largest bin (utility-scale plants).</div>
+          <div class="hero-desc" id="sizeAside" style="margin-top:0;"></div>
           <div class="tiles" id="sizeTiles"></div>
         </div>
 
@@ -837,6 +835,7 @@
                 <th>Rooftop n</th><th>Ground n</th></tr></thead>
               <tbody></tbody>
             </table></div>
+            <div class="hero-desc" id="btableNote" hidden style="margin-top:8px;min-height:0;font-size:12px;"></div>
           </details>
         </div>
       </aside>
@@ -3193,14 +3192,74 @@ out geom;</div>
   // Size bins: stacked, so each column's height is the bin's total and the split is read
   // inside it. Ground-mount is hatched, the same convention the composition bar uses, so
   // hatching means "ground-mount" everywhere on this page.
+  //
+  // Below 400 m2 the chart is whole only where both detectors for that range ran: roofclf
+  // for rooftops (HAS_SMALL_ROOF) and the farm detector for ground PV beside fields
+  // (HAS_GROUND). Where one did not, those bins hold only OSM-mapped installations and the
+  // few small arrays segmentation outlines, so the chart frames them "not measured" (a
+  // dashed frame, not a hatch: hatching is ground-mount) rather than letting a short bar
+  // read as a small market. Capacity below 400 m2 estimated as a total, with no size per
+  // installation (farm ground PV; a rooftop half priced per cell), gets a column of its own
+  // (`totals.size_unbinned_*_mwp`), not a share of the two bins it cannot be split between.
+  const SIZE_UNSPLIT = "<400 m², not split";
+  function sizeMissing(){
+    return [HAS_SMALL_ROOF ? null : "rooftop", HAS_GROUND ? null : "farm ground"].filter(Boolean);
+  }
+  // From the builder's labels (`_size_bin_display_labels`): "<100 m²", "100–400 m²", ...
+  function binBelow400(label){
+    if (label === SIZE_UNSPLIT) return true;
+    const m = /^(?:<|[\d.]+k?–)([\d.]+)(k?) m²$/.exec(label);
+    return !!m && +m[1] * (m[2] ? 1000 : 1) <= 400;
+  }
+  function sizeUnsplit(){
+    return {roof: T.size_unbinned_roof_mwp || 0, ground: T.size_unbinned_ground_mwp || 0};
+  }
+  function sizeDomain(){
+    const u = sizeUnsplit();
+    return (u.roof > 0 || u.ground > 0 ? [SIZE_UNSPLIT] : []).concat(DATA.bins.map(b => b.label));
+  }
+  const SIZE_FLOOR_NOTE = "OSM-mapped installations and arrays the model outlines only";
+  function sizeNote(bin, part){
+    if (bin === SIZE_UNSPLIT) return "estimated as a total below 400 m², not per installation";
+    if (!binBelow400(bin)) return null;
+    const ground = part === "Ground-mount";
+    if (!ground && !HAS_SMALL_ROOF) return `rooftop PV below 400 m² not measured: ${SIZE_FLOOR_NOTE}`;
+    if (ground && !HAS_GROUND) return `farm ground PV not measured: ${SIZE_FLOOR_NOTE}`;
+    return null;
+  }
+  // The chart's own header over the frame: what is missing, then what the bars hold.
+  function sizeHeadLines(){
+    const missing = sizeMissing();
+    if (!missing.length) return [];
+    const what = !HAS_SMALL_ROOF && !HAS_GROUND ? "the bars hold"
+      : !HAS_SMALL_ROOF ? "rooftop here is" : "ground-mount here is";
+    return [`Below 400 m²: ${missing.join(" and ")} PV not measured`,
+      `${what} only OSM-mapped installations and arrays the model outlines`];
+  }
+  function wrapWords(text, maxChars){
+    const out = [];
+    let line = "";
+    for (const w of text.split(" ")){
+      if (line && (line + " " + w).length > maxChars){ out.push(line); line = w; }
+      else line = line ? line + " " + w : w;
+    }
+    if (line) out.push(line);
+    return out;
+  }
   function sizeRows(){
     const rows = [];
+    const u = sizeUnsplit();
+    if (u.roof > 0 || u.ground > 0){
+      rows.push({bin: SIZE_UNSPLIT, part: "Rooftop", mwp: u.roof, n: null});
+      rows.push({bin: SIZE_UNSPLIT, part: "Ground-mount", mwp: u.ground, n: null});
+    }
     DATA.bins.forEach(b => {
       const extr = Math.min(b.roof_extrapolated_mwp || 0, b.roof_mwp);
       rows.push({bin: b.label, part: "Rooftop", mwp: b.roof_mwp - extr, n: b.roof_n});
       if (extr > 0) rows.push({bin: b.label, part: "Rooftop, extrapolated", mwp: extr, n: null});
       rows.push({bin: b.label, part: "Ground-mount", mwp: b.ground_mwp, n: b.ground_n});
     });
+    rows.forEach(r => { r.note = sizeNote(r.bin, r.part); });
     return rows;
   }
   function hatchDefs(id, base, stripe, angle, w){
@@ -3217,35 +3276,66 @@ out geom;</div>
   let chartSeq = 0;
   function sizeChart(width, interactive){
     const P = palette();
-    const n = DATA.bins.length;
+    const domain = sizeDomain();
+    const n = domain.length;
     const mL = 52, mR = 8;
     const band = (width - mL - mR) / n;
     // Columns are capped near 28 px however wide the card is: the leftover is air, not
     // a fatter bar.
     const padding = Math.min(0.85, Math.max(0.25, 1 - 28 / band));
     const sid = `szh${++chartSeq}`, eid = `sze${chartSeq}`;
-    const totals = DATA.bins.map(b => ({bin: b.label, total: b.roof_mwp + b.ground_mwp}));
+    const rows = sizeRows();
+    const totals = domain.map(bin => ({bin,
+      total: rows.filter(r => r.bin === bin).reduce((a, r) => a + r.mwp, 0)}));
     const parts = ["Rooftop", "Rooftop, extrapolated", "Ground-mount"];
-    // Bin labels run up to ~11 characters; below ~78 px a column they would collide, so
-    // they turn instead.
+    // Bin labels run up to ~11 characters (the unsplit column's in two lines); below ~78 px
+    // a column they would collide, so they turn instead.
     const rotate = band < 78;
+    // The not-measured frame's header sits in the top margin, below the y axis's label and
+    // above every bar and total label; on a narrow chart it may run past the frame.
+    const small = domain.filter(binBelow400);
+    const head = small.length ? sizeHeadLines() : [];
+    const maxChars = Math.max(16, Math.floor((width - mL - mR - 12) / 6.4));
+    const headLines = head.flatMap((t, i) => wrapWords(t, maxChars).map(text => ({text, strong: i === 0})));
+    const HEAD_Y0 = 18;
+    const headH = headLines.length ? HEAD_Y0 + headLines.length * 13 + 6 : 0;
+    const frame = (index, scales, values, dims) => {
+      const x = scales.x, step = x.step(), gap = step - x.bandwidth();
+      const x0 = x(small[0]) - gap / 2, x1 = x(small[small.length - 1]) + x.bandwidth() + gap / 2;
+      const top = headH + 2, bottom = dims.height - dims.marginBottom;
+      const g = el("g", {"aria-label": "not measured below 400 m²"});
+      g.appendChild(el("rect", {x: x0, y: top, width: x1 - x0, height: bottom - top,
+        fill: P.panel2, stroke: P.muted, "stroke-dasharray": "4 3", rx: 4}));
+      headLines.forEach((l, i) => {
+        // Plot sets text-anchor: middle on its svg; the header reads from the frame's edge.
+        const t = el("text", {x: x0 + 2, y: HEAD_Y0 + 10 + i * 13, "text-anchor": "start",
+          fill: l.strong ? P.ink : P.muted, "font-weight": l.strong ? 600 : null});
+        t.textContent = l.text;
+        g.appendChild(t);
+      });
+      return g;
+    };
     return Plot.plot({
-      width, height: rotate ? 360 : 330, marginLeft: mL, marginRight: mR, marginTop: 18,
-      marginBottom: rotate ? 76 : 46,
-      style: plotStyle(P), ariaLabel: `PV capacity by installation size, rooftop and ground-mount, ${AOI}`,
-      x: {domain: DATA.bins.map(b => b.label), label: "Installation size", padding, tickSize: 0,
+      width, height: (rotate ? 360 : 330) + headH, marginLeft: mL, marginRight: mR,
+      marginTop: 18 + headH, marginBottom: rotate ? 76 : 46,
+      style: plotStyle(P), ariaLabel: `PV capacity by installation size, rooftop and ground-mount, ${AOI}`
+        + (head.length ? `. ${head[0]}.` : ""),
+      x: {domain, label: "Installation size", padding, tickSize: 0,
+          tickFormat: d => d === SIZE_UNSPLIT ? "<400 m²\nnot split" : d,
           tickRotate: rotate ? -38 : 0, labelOffset: rotate ? 70 : 36},
       y: {label: "MWp", tickFormat: compact, nice: true},
       color: {domain: parts, range: [P.accent, `url(#${eid})`, `url(#${sid})`]},
       marks: [
         hatchDefs(sid, P.accentDim, "rgba(0,0,0,0.38)", -45),
         hatchDefs(eid, P.panel, P.accent, 45),
+        headLines.length ? frame : null,
         Plot.gridY({stroke: P.hair, strokeOpacity: 1}),
-        Plot.barY(sizeRows(), Plot.stackY({x: "bin", y: "mwp", fill: "part", order: parts,
+        Plot.barY(rows, Plot.stackY({x: "bin", y: "mwp", fill: "part", order: parts,
           insetTop: 1, insetBottom: 1,
-          channels: {Installations: {value: "n", label: "Installations"}},
+          channels: {Installations: {value: "n", label: "Installations"},
+            Note: {value: "note", label: "Note"}},
           tip: interactive ? {format: {x: true, fill: true, y: v => `${fmt5(v)} MWp`,
-            Installations: v => v == null ? "" : fmt(v)}} : undefined})),
+            Installations: v => v == null ? "" : fmt(v), Note: true}} : undefined})),
         Plot.text(totals, {x: "bin", y: "total", text: d => d.total > 0 ? compact(d.total) : "", dy: -8,
           fill: P.ink2, fontWeight: 600}),
         Plot.ruleY([0], {stroke: P.muted}),
@@ -3253,8 +3343,13 @@ out geom;</div>
     });
   }
   function sizeCSV(){
-    return [["size_bin", "rooftop_mwp", "ground_mwp", "rooftop_extrapolated_mwp", "rooftop_n", "ground_n"],
-      DATA.bins.map(b => [b.label, b.roof_mwp, b.ground_mwp, b.roof_extrapolated_mwp || 0, b.roof_n, b.ground_n])];
+    const u = sizeUnsplit();
+    const rows = DATA.bins.map(b => [b.label, b.roof_mwp, b.ground_mwp, b.roof_extrapolated_mwp || 0,
+      b.roof_n, b.ground_n, sizeNote(b.label, "Rooftop") || "", sizeNote(b.label, "Ground-mount") || ""]);
+    if (u.roof > 0 || u.ground > 0) rows.unshift([SIZE_UNSPLIT, u.roof, u.ground, 0, "", "",
+      sizeNote(SIZE_UNSPLIT), sizeNote(SIZE_UNSPLIT)]);
+    return [["size_bin", "rooftop_mwp", "ground_mwp", "rooftop_extrapolated_mwp", "rooftop_n", "ground_n",
+      "rooftop_note", "ground_note"], rows];
   }
 
   // ── composition by method (8 components, 4 methods) ──────────────────────────────
@@ -3928,9 +4023,42 @@ out geom;</div>
       + (HAS_GROUND ? `<td>${fmt(p.small_ground || 0)}</td>` : "") + `</tr>`).join("");
   }
   function drawSizeTable(){
-    document.querySelector("#btable tbody").innerHTML = DATA.bins.map(b =>
-      `<tr><td>${b.label}</td><td>${fmt(b.roof_mwp)}</td><td>${fmt(b.ground_mwp)}</td>`
+    // A figure the chart frames as not measured carries a mark, explained under the table.
+    const nm = (bin, part) => bin !== SIZE_UNSPLIT && sizeNote(bin, part) ? "*" : "";
+    const u = sizeUnsplit();
+    const unsplit = u.roof > 0 || u.ground > 0
+      ? `<tr><td>${SIZE_UNSPLIT}</td><td>${fmt(u.roof)}</td><td>${fmt(u.ground)}</td><td></td><td></td></tr>` : "";
+    document.querySelector("#btable tbody").innerHTML = unsplit + DATA.bins.map(b =>
+      `<tr><td>${b.label}</td><td>${fmt(b.roof_mwp)}${nm(b.label, "Rooftop")}</td>`
+      + `<td>${fmt(b.ground_mwp)}${nm(b.label, "Ground-mount")}</td>`
       + `<td>${fmt(b.roof_n)}</td><td>${fmt(b.ground_n)}</td></tr>`).join("");
+    const head = sizeHeadLines();
+    const note = document.getElementById("btableNote");
+    if (note && head.length){
+      note.textContent = `* ${head[0]}: ${SIZE_FLOOR_NOTE}.`;
+      note.hidden = false;
+    }
+  }
+  // What the size chart can and cannot say, from the page's own statuses.
+  function sizeDescHtml(){
+    const u = sizeUnsplit();
+    let h = "The same total photovoltaic capacity detectable with Sentinel-2, re-cut by installation "
+      + "size instead of geography. ";
+    h += HAS_SMALL_ROOF
+      ? "Rooftop runs across every bin, while ground-mount sits almost entirely at &ge;400 m². "
+      : "<b>Rooftop PV below 400 m² is not measured in this atlas</b>: the rooftop classifier "
+        + "that estimates it has not been calibrated for this country, so below 400 m² the "
+        + "rooftop bars hold only installations mapped in OpenStreetMap and the few small arrays "
+        + "the segmentation model outlines. Household rooftop PV is missing from them: read "
+        + "them as a floor, not an estimate. ";
+    h += HAS_GROUND
+      ? "Small ground arrays beside fields come from the farm ground-PV detector. "
+      : `<b>Farm ground PV below 400 m² is not measured${HAS_SMALL_ROOF ? "" : " either"}</b>: `
+        + "the detector for small arrays beside fields has not been run for this country. ";
+    if (u.roof > 0 || u.ground > 0)
+      h += `The first column, ${SIZE_UNSPLIT}, holds capacity below 400 m² that is estimated as `
+        + "a total rather than per installation, so it cannot be split between the two bins. ";
+    return h + "The detectors split the total by placement <i>and</i> size, not size alone.";
   }
 
   countUp("heroNum", T.mwp_best, 700);
@@ -4011,17 +4139,37 @@ out geom;</div>
   const hasSizeBins = Array.isArray(DATA.bins) && DATA.bins.length > 0;
   const sizeSection = document.getElementById("sizebins");
   if (hasSizeBins) {
+    const nmTile = (key, label) => `<div class="tile" title="${esc(NOT_MEASURED[key])}">`
+      + `<div class="v nm">not measured</div><div class="k">${label}</div></div>`;
     document.getElementById("sizeTiles").innerHTML =
-      `<div class="tile"><div class="v">${fmt(T.mwp_roof)}</div><div class="k">Rooftop, MWp</div></div>`
+      `<div class="tile"><div class="v">${fmt(T.mwp_roof)}</div><div class="k">Rooftop, MWp`
+      + ((T.size_unbinned_roof_mwp || 0) > 0
+        ? `, incl. ${fmt(T.size_unbinned_roof_mwp)} &lt;400 m² not split by size` : "")
+      + `</div></div>`
       + `<div class="tile"><div class="v">${fmt(T.mwp_ground)}</div><div class="k">Ground-mount, MWp`
       + ((T.size_unbinned_ground_mwp || 0) > 0
         ? `, incl. ${fmt(T.size_unbinned_ground_mwp)} farm ground &lt;400 m² not split by size` : "")
-      + `</div></div>`;
+      + `</div></div>`
+      + (HAS_SMALL_ROOF ? "" : nmTile("small_all", "Rooftop &lt;400 m², MWp"))
+      + (HAS_GROUND ? "" : nmTile("small_ground", "Farm ground &lt;400 m², MWp"));
+    document.getElementById("sizeAside").innerHTML = "Total capacity, split by placement across "
+      + "every size bin. " + (HAS_SMALL_ROOF
+        ? "<b>Rooftop</b> dominates the small end; <b>ground-mount</b> dominates the largest bin "
+          + "(utility-scale plants)."
+        : "<b>Ground-mount</b> dominates the largest bin (utility-scale plants). The rooftop "
+          + "figure leaves out rooftop PV below 400 m², which is not measured here.");
+    document.getElementById("sizeDesc").innerHTML = sizeDescHtml();
+    const head = sizeHeadLines();
+    if (head.length){
+      document.getElementById("nmKeyText").textContent = `${head[0].replace("Below", "below")} (dashed frame)`;
+      document.getElementById("nmKey").hidden = false;
+    }
     if (!DATA.bins.some(b => (b.roof_extrapolated_mwp || 0) > 0)) document.getElementById("extrapKey").style.display = "none";
     drawSizeTable();
     registerPlot("sizes", "chartmount", needsPlot(sizeChart), {
       title: () => `${AOI}: PV capacity by installation size`,
-      subtitle: () => `Rooftop (solid) and ground-mount (hatched) stacked per size bin, MWp. ${totalLine()}.`,
+      subtitle: () => `Rooftop (solid) and ground-mount (hatched) stacked per size bin, MWp. ${totalLine()}.`
+        + (head.length ? ` ${head[0]}: ${SIZE_FLOOR_NOTE}.` : ""),
       csv: sizeCSV,
     });
   } else if (sizeSection) {

@@ -2509,10 +2509,10 @@ def build_evidence_atlas(
       independent ones re-verified against each other -- unlike the standalone page,
       which is built from a separate CLI invocation and can drift by the residual
       `docs/results/capacity-by-size.md` documents (candidates that fall just outside
-      every grid cell's polygon). Only rendered when `ge400_roof_buildings_path` is
-      given, matching every other roofclf-dependent section on this page; an AOI with
-      no roofclf national scoring yet (e.g. Gujarat) gets the map without this chart
-      rather than a chart of zeroes.
+      every grid cell's polygon). Rendered on every page since 2026-10-30 (before, only
+      with `ge400_roof_buildings_path`): where a detector below 400 m2 is missing, the
+      template marks those bins "not measured" from `totals.small_rooftop_status` /
+      `small_ground_status`, so a short bar there never reads as a measured small market.
     - **The panel-pose survey** (`pose.py`, glint-derived tilt/azimuth), embedded
       NATIVELY (2026-08-13, superseding an earlier iframe version -- an iframe forced a
       second internal scrollbar on a sub-page, which read as a worse experience than
@@ -3102,32 +3102,31 @@ def build_evidence_atlas(
 
     # Second lens on the same Best-estimate total: by installation size and placement
     # instead of by cell. Same computation `build_size_distribution_atlas` publishes as
-    # its own page (see `_size_distribution_data`'s docstring) -- only available once
-    # roofclf's >= 400 m2 replacement exists, same gate every other roofclf-dependent
-    # section on this page uses.
-    if ge400_roof_buildings_path is not None:
-        size_data = _size_distribution_data(
-            aoi, density_dir, osm_solar_path, candidates_path,
-            low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
-            sub400_outdomain_buildings_path, legacy_osm_addition=legacy_osm_addition,
+    # its own page (see `_size_distribution_data`'s docstring). On every page since
+    # 2026-10-30, roofclf half or not: where a detector below 400 m2 is missing
+    # (`small_rooftop_status`, `small_ground_status`), the chart marks those bins as
+    # not measured rather than letting a short bar read as a small market.
+    size_data = _size_distribution_data(
+        aoi, density_dir, osm_solar_path, candidates_path,
+        low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
+        sub400_outdomain_buildings_path, legacy_osm_addition=legacy_osm_addition,
+        include_offgrid_osm=include_offgrid_osm,
+    )
+    # Farm ground PV is a ratio estimate on blob area: it has a total but no
+    # per-installation size, so it joins the chart's ground-mount total unbinned and the
+    # page says so, rather than being spread across bins it cannot be assigned to.
+    ground_total = float(grid.small_ground.sum())
+    size_best = size_data["totals"]["mwp_best"] + ground_total
+    if abs(size_best - total_best) > max(1.0, total_best * 0.02):
+        log.warning(
+            "Evidence atlas: size-bin re-binning totals %.1f MWp vs this page's own "
+            "%.1f MWp (%.1f%% apart) -- investigate before trusting the embedded "
+            "chart; see _size_distribution_data's docstring for the residual this is "
+            "normally expected to stay within.",
+            size_best, total_best, abs(size_best - total_best) / max(total_best, 1) * 100,
         )
-        # Farm ground PV is a ratio estimate on blob area: it has a total but no
-        # per-installation size, so it joins the chart's ground-mount total unbinned and the
-        # page says so, rather than being spread across bins it cannot be assigned to.
-        ground_total = float(grid.small_ground.sum())
-        size_best = size_data["totals"]["mwp_best"] + ground_total
-        if abs(size_best - total_best) > max(1.0, total_best * 0.02):
-            log.warning(
-                "Evidence atlas: size-bin re-binning totals %.1f MWp vs this page's own "
-                "%.1f MWp (%.1f%% apart) -- investigate before trusting the embedded "
-                "chart; see _size_distribution_data's docstring for the residual this is "
-                "normally expected to stay within.",
-                size_best, total_best, abs(size_best - total_best) / max(total_best, 1) * 100,
-            )
-        data["bins"] = size_data["bins"]
-        data["totals"]["mwp_roof"] = size_data["totals"]["mwp_roof"]
-        data["totals"]["mwp_ground"] = round(size_data["totals"]["mwp_ground"] + ground_total, 1)
-        data["totals"]["size_unbinned_ground_mwp"] = round(ground_total, 1)
+    data["bins"] = size_data["bins"]
+    data["totals"].update(size_totals(size_data["totals"], ground_total))
 
     # The panel-pose survey (glint-derived tilt/azimuth, `pose.py`) is embedded
     # natively -- see this function's docstring for why its CSS is namespaced under
@@ -3243,12 +3242,27 @@ def _size_bin_display_labels(edges: list[float] = SIZE_BIN_EDGES_M2) -> list[str
     return labels
 
 
+def size_totals(size: dict, ground_total: float) -> dict:
+    """The size chart's keys in an evidence atlas's `totals`, from `_size_distribution_data`'s
+    own totals plus the farm ground-PV total (`small_ground`), which has no per-installation
+    size. Below 400 m2, `size_unbinned_*_mwp` is capacity the chart draws as one column,
+    not split between the two bins (see `_size_distribution_data`'s docstring)."""
+    return {
+        "mwp_roof": size["mwp_roof"],
+        "mwp_ground": round(size["mwp_ground"] + ground_total, 1),
+        "size_unbinned_ground_mwp": round(size.get("mwp_unbinned_ground", 0.0) + ground_total, 1),
+        "size_unbinned_roof_mwp": size.get("mwp_unbinned_roof", 0.0),
+    }
+
+
 def _size_distribution_data(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
-    low_buildings_path: Path, central_buildings_path: Path, ge400_roof_buildings_path: Path,
+    low_buildings_path: Path | None = None, central_buildings_path: Path | None = None,
+    ge400_roof_buildings_path: Path | None = None,
     sub400_outdomain_buildings_path: Path | None = None,
     legacy_osm_addition: bool = False,
+    include_offgrid_osm: bool = False,
 ) -> dict:
     """Re-bins `build_evidence_atlas`'s Best-estimate total by installation size and
     placement (rooftop / ground-mount) instead of by 0.1-degree cell. Shared by
@@ -3304,6 +3318,20 @@ def _size_distribution_data(
     polygons), not a fresh `sub400_capacity.national_cell_domain` call or a trusted
     `cell` string column -- matching `build_evidence_atlas` line for line so domain
     membership can't drift between the two atlases.
+
+    **Every roofclf input is optional (2026-10-30)**, as it is for `build_evidence_atlas`:
+    a segmentation-only country has no ge400 domain, so every rooftop candidate is
+    `seg_roof_outdomain`, and the floor is Verified = OSM alone. Its bins below 400 m2
+    then hold only OSM-mapped installations and the few small arrays segmentation
+    outlines; `totals.small_rooftop_status` says so on the page, never this function.
+    `include_offgrid_osm` adds the same OSM-only cells `build_evidence_atlas` adds, so
+    their floor lands in the bins too.
+
+    A component priced per cell rather than per roof (Germany's register-calibrated
+    sub-400 half, `build_germany_sub400_atlas_inputs.py`, has no `roof_area_m2`) cannot be
+    split between the two bins below 400 m2: it is returned whole as
+    `totals.mwp_unbinned_roof` (and its parcel ground share as `mwp_unbinned_ground`),
+    inside `mwp_roof`/`mwp_best` but outside `bins`, rather than spread by a guess.
     """
     from earthpv import capacity_calibration as cc
     from earthpv.density import (
@@ -3338,6 +3366,12 @@ def _size_distribution_data(
         return pd.Series(values).groupby(pd.Series(keys)).sum()
 
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
+    osm = gpd.read_parquet(osm_solar_path)
+    osm = _apply_screen_credit(dissolve_overlapping(osm, group_col="placement"))
+    if include_offgrid_osm:
+        grid, _ = _extend_grid_with_offgrid_osm(grid, osm)
+    unbinned_roof = 0.0    # priced below 400 m2 per cell, no per-roof size (see docstring)
+    unbinned_ground = 0.0
 
     # --- segmentation candidates: seg_ground (everywhere) + seg_roof_outdomain -------
     cands = gpd.read_parquet(candidates_path)
@@ -3348,7 +3382,8 @@ def _size_distribution_data(
         oversize_admission=load_oversize_admission(aoi, cands, table))
     match_m = osm_match_distance_m(table, legacy_osm_addition)
 
-    ge400 = gpd.read_parquet(ge400_roof_buildings_path)
+    ge400 = (gpd.read_parquet(ge400_roof_buildings_path)
+             if ge400_roof_buildings_path is not None else gpd.GeoDataFrame())
     # Domain membership by a fresh spatial join against THIS grid's own cell polygons,
     # not by trusting `ge400`'s own `cell` string column -- that id comes from whatever
     # manifest was current when roofclf's national scoring ran, which can silently
@@ -3380,12 +3415,14 @@ def _size_distribution_data(
     is_roof = placement == "rooftop"
     in_domain = np.isin(cell_of, np.array(list(ge400_cells), dtype=object)) if ge400_cells else np.zeros(len(cands), bool)
 
-    ground_mask = ~is_roof
-    roof_outdomain_mask = is_roof & ~in_domain
+    # Only what the published total counts: `density` prices a candidate in the grid cell
+    # holding it, so one outside every cell (France's border-clipped cells keep theirs in
+    # candidates.parquet: +2.8 GWp of Spanish, Belgian and German arrays) is in no total.
+    in_grid = pd.notna(cell_of)
+    ground_mask = ~is_roof & in_grid
+    roof_outdomain_mask = is_roof & ~in_domain & in_grid
 
     # --- hand-mapped OSM, counted from the map exactly as `build_evidence_atlas` counts it
-    osm = gpd.read_parquet(osm_solar_path)
-    osm = _apply_screen_credit(dissolve_overlapping(osm, group_col="placement"))
     osm["matched"] = ~new_lead_mask(osm, cands, min_distance_m=match_m)
     # The SAME size-dependent rooftop conversion `build_evidence_atlas` uses, because this
     # function's contract is that it re-bins the published total rather than recomputing it.
@@ -3407,8 +3444,7 @@ def _size_distribution_data(
     # --- OSM-mapped misses absorbed into the satellite's estimate of its misses, with the
     # same strata and the same candidates `build_evidence_atlas` uses.
     if not legacy_osm_addition and table_has_recall(table):
-        in_grid = pd.notna(cell_of)
-        used = in_grid & (ground_mask | roof_outdomain_mask)
+        used = ground_mask | roof_outdomain_mask
         miss = osm_joined[osm_joined["counted"] & (
             (osm_joined["placement"] != "rooftop") | ~osm_joined["cell"].isin(ge400_cells))]
         retain_used, _, _ = osm_absorbed_inflation(
@@ -3450,7 +3486,8 @@ def _size_distribution_data(
         ground_mwp[:] += s
 
     # --- roofclf alone, < 400 m2, in-domain ------------------------------------------
-    central = gpd.read_parquet(central_buildings_path)
+    central = (gpd.read_parquet(central_buildings_path)
+               if central_buildings_path is not None else gpd.GeoDataFrame())
     central_by_cell = pd.Series(dtype=float)
     if not central.empty:
         central_ground_kwp = (
@@ -3458,11 +3495,15 @@ def _size_distribution_data(
             if "est_kwp_sub400_ground" in central.columns else np.zeros(len(central))
         )
         central_roof_kwp = central["est_kwp_sub400"].to_numpy(float) - central_ground_kwp
-        area_v = central["roof_area_m2"].to_numpy(float)
-        _size_bin_add(area_v, central_roof_kwp / 1000.0, roof=True,
-                      n_weight=_roofclf_object_counts(central))
-        s, _ = _size_bin_sum(area_v, central_ground_kwp / 1000.0, edges)
-        ground_mwp[:] += s
+        if "roof_area_m2" in central.columns:
+            area_v = central["roof_area_m2"].to_numpy(float)
+            _size_bin_add(area_v, central_roof_kwp / 1000.0, roof=True,
+                          n_weight=_roofclf_object_counts(central))
+            s, _ = _size_bin_sum(area_v, central_ground_kwp / 1000.0, edges)
+            ground_mwp[:] += s
+        else:
+            unbinned_roof += float(central_roof_kwp.sum()) / 1000.0
+            unbinned_ground += float(central_ground_kwp.sum()) / 1000.0
         central_by_cell = _join_buildings_to_grid_cells(central, "est_kwp_sub400", grid) / 1000.0
 
     # --- roofclf+SPPI, < 400 m2, extrapolated outside the domain --------------------
@@ -3479,14 +3520,16 @@ def _size_distribution_data(
             outd_by_cell = _join_buildings_to_grid_cells(outd, "est_kwp_sub400_outdomain", grid) / 1000.0
 
     # --- AND-gate ("low"), < 400 m2, in-domain -- NEVER shown, floor-check input only
-    low = gpd.read_parquet(low_buildings_path)
+    low = (gpd.read_parquet(low_buildings_path)
+           if low_buildings_path is not None else gpd.GeoDataFrame())
     low_by_cell = (
         _join_buildings_to_grid_cells(low, "est_kwp_sub400_and_gate", grid) / 1000.0
         if not low.empty else pd.Series(dtype=float)
     )
 
     # --- hand-mapped OSM: counted feeds Best directly; the rest feeds the floor --------
-    unmatched = osm_all.loc[osm_all["counted"]]
+    # Off-grid OSM is in no total either, unless `include_offgrid_osm` gave it a cell.
+    unmatched = osm_all.loc[osm_all["counted"] & osm_all["cell"].notna()]
     u_roof = (unmatched["placement"] == "rooftop").to_numpy()
     _size_bin_add(
         unmatched.loc[u_roof, "area_m2"].to_numpy(float), unmatched.loc[u_roof, "kwp"].to_numpy(float) / 1000.0,
@@ -3549,6 +3592,9 @@ def _size_distribution_data(
         sub2 = low_joined.loc[low_joined["cell"] == c] if not low_joined.empty else low_joined
         if not sub2.empty:
             wsum = float(sub2["est_kwp_sub400_and_gate"].sum())
+            if "roof_area_m2" not in sub2.columns:
+                unbinned_roof += sf
+                continue
             for _, row in sub2.iterrows():
                 share = (row["est_kwp_sub400_and_gate"] / wsum) if wsum > 0 else 1.0 / len(sub2)
                 amt = sf * share
@@ -3566,8 +3612,8 @@ def _size_distribution_data(
         )
         ground_mwp[-1] += unattributed
 
-    total_roof = float(roof_mwp.sum())
-    total_ground = float(ground_mwp.sum())
+    total_roof = float(roof_mwp.sum()) + unbinned_roof
+    total_ground = float(ground_mwp.sum()) + unbinned_ground
     total = total_roof + total_ground
     labels = _size_bin_display_labels(edges)
     bins = [
@@ -3588,6 +3634,8 @@ def _size_distribution_data(
             "mwp_best": round(total, 1),
             "mwp_roof": round(total_roof, 1),
             "mwp_ground": round(total_ground, 1),
+            "mwp_unbinned_roof": round(unbinned_roof, 1),
+            "mwp_unbinned_ground": round(unbinned_ground, 1),
             "n_bins": n_bins,
         },
         "n_cells_floored": len(shortfalls),

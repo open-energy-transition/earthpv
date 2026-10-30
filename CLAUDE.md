@@ -535,6 +535,17 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   regions differ from the page's; France links its audited `france-osm-leads-2026-10-22`.
   `scripts/patch_atlas_leads.py` adds the link to a published page without a rebuild. **A new
   country gets its file only when `release_leads.py` is re-run for it** (add it to `SOURCES`).
+- **Size chart on every page (2026-10-30)**: `_size_distribution_data` re-bins Best by size
+  with or without a roofclf half (it was Pakistan-only), counting only candidates and OSM
+  inside the grid, as the per-cell total does. Where `small_rooftop_status` or
+  `small_ground_status` is unmeasured, the bins below 400 m² sit in a dashed "not measured"
+  frame (not a hatch: hatching is ground-mount), with a header, legend key, tiles, tooltip
+  notes and CSV columns saying so. Capacity below 400 m² with no per-installation size (farm
+  ground PV, Germany's per-cell rooftop half) is a "<400 m², not split" column
+  (`totals.size_unbinned_*_mwp`). `scripts/patch_atlas_sizes.py` adds it to a published page
+  and refuses one whose bins miss its Best by over 2%. **Yemen's page has no bins**: its OSM
+  pull and density grid were regenerated after it was built, so its section stays hidden
+  until a rebuild.
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and
