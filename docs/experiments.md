@@ -151,6 +151,7 @@ repository; nothing was deleted on failure.
 | [THOR on TerraMind's own token grid](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome negative">rejected</span> | Ties v14 on rooftop recall (0.573 against 0.574), 1 point behind on ground. With 320 m SWIR tokens instead, it loses everywhere (rooftop 0.29). |
 | [Checkpoint selection by val mIoU](#a-finer-token-grid-thor-at-8-px-against-terramind-2026-10-24) | <span class="outcome mixed">partial</span> | v14's second-best epoch finds 0.621 of rooftop arrays against the shipped epoch's 0.565, at precision 0.717 against 0.736: epoch noise is as large as the backbone effect. A recall-aware selection rule is untested. |
 | [OlmoEarth embeddings as a >= 400 m2 detector](#olmoearth-embeddings-ahead-in-pakistan-behind-in-south-africa-2026-10-25) | <span class="outcome mixed">partial</span> | At segmentation's false-alarm budget it matches segmentation's precision in both countries, but its recall does not transfer: far higher in Pakistan (quadrat rooftop 0.65 against 0.35), half in South Africa's held-out Western Cape (0.22 against 0.43, and 0.26 with Western Cape training added), where it also fires on substations. Not adopted: it does not transfer, a restrictive licence, ~0.5-1 TB per country. |
+| [One segmentation model pooled from every country (v18)](#one-segmentation-model-for-every-country-v18-pooled-2026-10-30) | <span class="outcome negative">rejected</span> | At matched pixel precision it finds fewer installations than v14 over 14 holdouts: rooftop 400-5,000 m<sup>2</sup> 0.474 against 0.573 (+144/-609, p < 1e-60), ground 0.910 against 0.916. It wins only Egypt (23 installations, its own training data) and loses in South Africa and France, whose share of the corpus it halved. As trained; longer training is untested. |
 | [TerraMind's own input standardisation (v21)](#feeding-terramind-the-input-it-was-pretrained-on-v21-2026-10-30) | <span class="outcome negative">rejected</span> | Every checkpoint saw DN / 10000, never TerraMind's pretraining standardisation. A frozen-feature probe said that cost a lot (held-out token AP 0.469 against 0.737), but fine-tuned with v14's recipe otherwise unchanged it ties v14 on rooftop recall (0.575 against 0.574 at matched precision, p = 0.87) and is 0.6 points behind on ground. It converges in half the epochs; its one regional effect beyond epoch noise is a loss in France. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
@@ -2553,6 +2554,67 @@ second run beside it with `_holdout_trained`) and
 `results/olmoearth_vs_seg_review_south_africa/` (the owner's verdicts in
 `summary_verdicts.json`, Claude's in `claude_verdicts.csv`;
 the owner's review page is `blind/review.html`, from `scripts/build_review_page.py`).
+
+### One segmentation model for every country? v18 pooled (2026-10-30)
+
+Every localized checkpoint is v5's corpus plus ONE country, so no model had seen more than one of
+Poland, India, Vietnam, Egypt, Morocco, Yemen, Nigeria and Zambia, and Germany's chips came from
+14 MGRS tiles. v18 pools them: v16's corpus row for row, each of those eight countries' train
+chips repeated up to 8 times towards about 7,000 rows, and 7,205 German chips cut from the
+national compose outside the 14 tiles (69,364 rows, 64,967 train; provenance in
+`data/chips/combined_pooled_v18/corpus.json`). The recipe is v16's unchanged: one run, best
+val/mIoU 0.8191 at epoch 18, early-stopped after epoch 26.
+
+**Scored against v14 at matched precision.** `scripts/compare_backbones.py` on 14 holdouts,
+paired McNemar per installation. Its first pass could not match: v18's pixel precision at its
+lowest scored threshold (0.790 at 0.2) was already above v14's at production (0.755 at 0.3), so
+its "matched" row was still a more conservative model. The re-score
+(`results/backbone_compare/v18_pooled_vs_v14_lowthr/`) adds thresholds down to 0.0003. Pooled
+over the six matching AOIs, v18 reaches v14's precision at 0.01 (0.764), its epoch 23 at 0.3
+(0.758). Over all 14 holdouts:
+
+| Checkpoint (threshold) | >= 400 m<sup>2</sup> | Rooftop 400-5,000 m<sup>2</sup> | Ground >= 400 m<sup>2</sup> | Pixel IoU (6 AOIs) |
+| --- | --- | --- | --- | --- |
+| v14 (0.3) | 0.816 | 0.573 | 0.916 | 0.622 |
+| v18 epoch 18 (0.01) | 0.783 (+256/-790) | 0.474 (+144/-609) | 0.910 (+108/-177) | 0.590 |
+| v18 epoch 23 (0.3) | 0.787 (+219/-688) | 0.492 (+137/-517) | 0.908 (+79/-167) | 0.615 |
+
+Every row is p < 1e-4 against v14. v18 at epoch 18 never reaches v14's pixel recall at any
+threshold (0.739 at 0.0003 against 0.780 at 0.3): this is not only a shifted operating point.
+
+**Where it loses, matched to v14's own precision in each region:**
+
+- **South Africa** (4,700 installations): rooftop 0.48 (epoch 18) and 0.53 (epoch 23) against
+  0.62, 333 and 212 rooftop arrays lost net; ground 0.945 against 0.950.
+- **France** (2,217): rooftop 0.37 and 0.31 against 0.42; ground 0.56 and 0.58 against 0.66.
+- **Poland** (4,334): rooftop 0.53 against 0.64 but not matched, since v14 is far less precise
+  there (0.69) than v18 at any threshold. Poland's own v15 makes the same trade (79 of 154
+  rooftop arrays against v14's 98, `results/release_model_benchmark.csv`). Ground up to +0.8
+  points.
+- **Egypt** (23): 13 (epoch 18) and 6 (epoch 23) against 1, the one clear win, on v18's own
+  training data.
+- Germany, Pakistan (both holdouts), Punjab, Gujarat, India, Vietnam, Morocco, Zambia and Yemen:
+  no significant difference, except two small losses (German ground, 7 of 399 at epoch 18;
+  `pakistan_fresh`, 11 net of 314 at epoch 23).
+
+So on the seven holdouts v14 never trained on and v18 did (India, Poland, Vietnam, Morocco,
+Egypt, Yemen, Zambia), v18 wins one, and v14 transfers as well as v18 does with home data.
+
+**Why, as far as one run shows.** The losses sit in the two largest holdouts, South Africa and
+France, which both corpora contain and whose share v18 halved (South Africa 7,092 of 30,458
+train rows in v14, 23%, and of 64,967 in v18, 11%). Early stopping on pooled val/mIoU ended v18 at
+about 19 passes over each South African chip against v14's 42, and epoch 23 is better than
+epoch 18 on South African rooftops (0.54 against 0.47 at 0.3) at the same val/mIoU (0.8188
+against 0.8191). Some of the gap may therefore be dilution and under-training rather than
+harmful labels. Two harmful-label candidates are untested: the German national chips (OSM holds
+about 3.6% of Germany's rooftop units, so unmapped roofs train as background) and Yemen's 233
+chips repeated 8 times (labels segmentation does not find at all). `last.ckpt` is epoch 23;
+epochs 24 to 26 were not saved.
+
+**Verdict: rejected as trained.** v18 replaces neither the released v14 nor any country's
+checkpoint. What would separate the explanations: v18 trained on to v14's epoch count without
+early stopping (resume from `last.ckpt`, about 11 GPU hours); v18 as a starting point for one
+country's fine-tune; and a run without the German national chips and the Yemen repeats.
 
 ### Feeding TerraMind the input it was pretrained on: v21 (2026-10-30)
 

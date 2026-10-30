@@ -1,0 +1,74 @@
+# TerraTorch fine-tuning config for PV segmentation -- v16's corpus POOLED with every
+# country's own chips (2026-10-28).
+#
+# Identical recipe to configs/terramind_pv_v16_pakistan.yaml (backbone, necks, decoder, loss,
+# lr, schedule, monitor metric, patience). The only variable is the corpus. Every localized
+# checkpoint so far was the v5 base plus ONE country, so no model had seen more than one of
+# Poland, India, Vietnam, Egypt, Morocco, Yemen, Nigeria and Zambia, and Germany's chips came
+# from 14 MGRS tiles holding 12% of its OSM installations of 400 m2 or more.
+#
+# Corpus (data/chips/combined_pooled_v18/index.parquet -> /home, provenance in corpus.json
+# beside it, built by scripts/build_pooled_corpus.py): v16's corpus row for row, plus each of
+# those eight countries' chip index with its train rows repeated clamp(round(7000 / n_train),
+# 1, 8) times, plus `germany_national`: `earthpv chips --aoi germany` on the national compose,
+# outside the 14 tiles and 0.15 deg clear of the held-out tiles 32TQT/32TPT, capped at 3,500
+# positives (about 7,000 chips, the size every localized country is weighted to). German OSM
+# rooftop polygons over 2,000 m2 trace whole roofs, so they are burned as ignore (-1), as are
+# the 21 ground outlines over 5 km2 the national file drops.
+#
+# Holdouts: every source keeps its own val split. Any train chip within 12 km of another
+# source's val chip is `buffer` (scripts/build_pooled_corpus.py).
+#
+# Ship rule: scored against v14 (released) and v16 (Pakistan's) with
+# scripts/compare_backbones.py on every region's held-out chips, at matched precision.
+
+data:
+  index_path: data/chips/combined_pooled_v18/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # terramind_v1_tiny fits the GTX 1060; bump to _small if a bigger GPU is used.
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/v18_pooled
+patience: 8
+# Same monitor as v5 (val/mIoU), so the two are selected the same way.
+monitor: val/mIoU
+monitor_mode: max
+
+# Training is protected against systemd-oomd restarts: continue from this run's own last.ckpt.
+resume: true
