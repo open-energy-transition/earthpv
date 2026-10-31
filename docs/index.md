@@ -155,9 +155,9 @@ TraceTheSun is an emerging community of open-source PV detection projects and ex
 OpenStreetMap solar mappers, working on tagging and mapping solar worldwide in an open,
 verifiable and cost-effective way. It currently includes:
 
-* **[Open Energy Transition](https://openenergytransition.org)**, which runs EarthPV and
-  funds the Pakistan pilot, led by
-  [**Tobias Augspurger**](https://www.linkedin.com/in/tobias-augspurger/).
+* **[Tobias Augspurger](https://www.linkedin.com/in/tobias-augspurger/)** of
+  **[Open Energy Transition](https://openenergytransition.org)**, which runs EarthPV and
+  funds the Pakistan pilot.
 * **[Muhammad Awais](https://www.linkedin.com/in/awais307/)** and the student team at the
   **[Centre for Water Informatics and Technology (WIT)](https://wit.lums.edu.pk/)**, LUMS.
   TraceTheSun was conceived jointly by Muhammad Awais and Tobias.
