@@ -54,7 +54,8 @@ silently drop the section it was meant to fill):
 one to map first is a judgement. `scripts/publish_calibration_areas.py` ranks it first and
 stars it, on any atlas; without it an atlas gets a star, its first by rule, only where
 roofclf or groundclf is unmeasured. Once the box is registered the star moves on to the next
-in the ranking by itself.
+in the ranking by itself. `start_here: none` keeps the mapping order and stars nothing, for
+a country where no box should be singled out (Yemen, owner, 2026-10-31).
 
 `validation` exists for the cases `atlas.derive_validation_score` cannot judge from files on
 disk: Germany has a calibrated small-installation half, which would make it Gold, but that
@@ -82,6 +83,8 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 CONFIG_DIR = Path("configs/atlas")
+# `start_here: none`: rank the candidates, star none of them.
+NO_STAR = "none"
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
              "validation", "start_here"}

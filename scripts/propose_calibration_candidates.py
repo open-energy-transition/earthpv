@@ -57,6 +57,13 @@ lies on a building footprint (2026-10-23). This mode runs the same recipe on far
    100 m, and one whose own cropland share is within 25% of the cell's is drawn at random.
 4. **The same imagery gate.**
 
+**`--towns`: town boxes at random, for the level** (2026-10-31). A building drawn at random
+from every building in the density grid, the 1 km box centred on it kept if it reaches the
+`--pv-rich` town floor (800 bldg/km2), no overlap, the same imagery gate: towns in
+proportion to their buildings, with no classifier score and no look for solar anywhere in
+the draw. Written as `<place>_t<k>_calib_1km`; `calib-publish` ranks them first, in draw
+order, so a partly mapped set is still a random sample.
+
 Farm boxes are written as `<place>_f<k>_farm_calib_<side>_candidate.geojson`, register with
 `new_calibration_quadrat.py --farm`, and are invisible to the rooftop roofclf
 (`roofclf.FARM_QUADRAT_INFIX`). Map ALL solar in a farm box, ground and rooftop, tracing
@@ -68,6 +75,7 @@ panels rather than enclosures.
     pixi run calib-candidates -- --aoi yemen --farmland    # farm boxes for groundclf
     pixi run calib-candidates -- --aoi yemen --false-alarm ghayl_bawazir_pv1 \\
         --score-dir data/roofclf_transfer/yemen_pk/prob    # where roofclf is wrong
+    pixi run calib-candidates -- --aoi yemen --towns --dry-run   # towns at random, no PV signal
 """
 from __future__ import annotations
 
@@ -133,6 +141,13 @@ PV_RICH_REVIEW_KM = 5.0
 # classifier's high scores sit on roofs without solar (roofless shells, stone hamlets). The
 # atlas tells it from a PV-rich box by "saw no solar", never by "PV classifier".
 FALSE_ALARM_SELECTION = "purposive: high classifier scores where a reviewer saw no solar"
+# --towns: town boxes drawn at random, for the level. PV-rich and false-alarm boxes are chosen
+# on a classifier's scores, so their share of roofs with solar runs high or low by design, and
+# Yemen's four PV-rich towns priced each other at a ratio a town without solar breaks
+# (Ghayl Bawazir, 2026-10-31). These see no score and no imagery of solar: a building drawn at
+# random from the whole grid, kept if the box around it reaches the --pv-rich town floor.
+TOWN_SELECTION = "random town boxes by building"
+TOWN_MAX_DRAWS = 600                 # buildings drawn before the mode reports itself short
 # --farmland: boxes for the ground-PV detector, stratified by cropland instead of buildings.
 FARM_SELECTION = "stratified random by cropland area"
 OWN_CROP_TOL = 1.25                  # a box's own cropland share within x/÷ this of its cell's
@@ -1081,6 +1096,171 @@ def propose_false_alarm(aoi: str, args) -> list[dict]:
     return [{"stem": stem, "props": props}]
 
 
+def propose_towns(aoi: str, args) -> list[dict]:
+    """`--n-towns` town boxes drawn at random, with no PV signal anywhere in the draw.
+
+    What a town-level ratio needs: the PV-rich boxes were chosen on a classifier's scores
+    and kept where panels showed, the false-alarm box where none did, so neither says what a
+    town picked blind holds. Every building has the same chance:
+
+    1. **A building at random**: a density-grid cell drawn by its building count, then one of
+       its VIDA buildings uniformly, from a seed recorded on every candidate.
+    2. **The box around it**: the `--dense-side-m` square (1 km) centred on that building,
+       kept if it holds at least `--pv-rich-min-density` buildings per km2, the same town
+       floor `--pv-rich` uses. Otherwise the building is not in a town and the next is drawn,
+       so towns are sampled in proportion to their buildings.
+    3. **No overlap** with a registered area, a candidate or another draw, and
+       `--town-spacing-km` between centres; then the same Esri imagery gate, with failures
+       in `screened_out.csv`.
+
+    A town without solar is as likely as one with it, which is the point. Registered town
+    boxes count toward `--n-towns`, so a redraw (`--replace`) tops up the rest.
+    """
+    import duckdb
+    from shapely.geometry import mapping
+
+    from earthpv.buildings import fetch_vida_building_points
+    from earthpv.roofclf import load_boundary
+
+    _, iso3, country, win0, earliest = gate_setup(aoi, args)
+    home = LABELS if aoi == FLAT_AOI else LABELS / aoi
+    out_dir = home / "candidate_quadrats"
+    files = sorted(out_dir.glob("*_candidate.geojson"))
+    sel_of = {p: json.loads(p.read_text())["features"][0]["properties"].get("selection", "")
+              for p in files}
+    registered = {p.name[: -len("_boundary.geojson")] for p in home.glob("*_calib_*_boundary.geojson")}
+    mine = [p for p in files if sel_of[p].startswith(TOWN_SELECTION)
+            and p.name[: -len("_candidate.geojson")] not in registered]
+    done = [p for p in files if sel_of[p].startswith(TOWN_SELECTION) and p not in mine]
+    if mine and not args.replace:
+        print(f"{aoi}: {len(mine)} town candidates already exist in {out_dir}; "
+              "pass --replace to redraw them")
+        return []
+    want = args.n_towns - len(done)
+    if want <= 0:
+        print(f"{aoi}: all {args.n_towns} town boxes are registered; nothing to draw")
+        return []
+
+    grid = pd.read_parquet(args.grid or grid_path(aoi),
+                           columns=["cell", "lon0", "lat0", "n_buildings", "bldg_density_km2"])
+    grid = grid[grid["n_buildings"] >= MIN_BOX_BUILDINGS].reset_index(drop=True)
+    seed = args.seed if args.seed is not None else zlib.crc32(f"{aoi}:towns".encode()) % 100_000
+    rng = np.random.default_rng(seed)
+    side, floor = args.dense_side_m, args.pv_rich_min_density
+    need = floor * side * side / 1e6
+    admin = Admin(aoi)
+    near = existing_boxes(home) + [load_boundary(p) for p in files if p not in mine]
+    con = duckdb.connect()
+    con.execute("SET parquet_metadata_cache=true;")
+    cells: dict[str, pd.DataFrame] = {}
+    picked, screened, n_rural, n_near = [], [], 0, 0
+    w_cell = grid["n_buildings"] / grid["n_buildings"].sum()
+    for _ in range(TOWN_MAX_DRAWS):
+        if len(picked) == want:
+            break
+        cell = grid.iloc[rng.choice(len(grid), p=w_cell)]
+        if cell.cell not in cells:
+            cells[cell.cell] = fetch_vida_building_points(
+                (cell.lon0, cell.lat0, cell.lon0 + 0.1, cell.lat0 + 0.1), iso3, con=con)
+        pts = cells[cell.cell]
+        if pts.empty:
+            continue
+        b = pts.iloc[rng.integers(len(pts))]
+        cx, cy = float(b["lon"]), float(b["lat"])
+        poly = geodesic_square(cy, cx, side)
+        w, s, e, n = poly.bounds
+        inside = ((pts.lon >= w) & (pts.lon <= e) & (pts.lat >= s) & (pts.lat <= n)).sum()
+        crosses = not (cell.lon0 <= w and e <= cell.lon0 + 0.1 and cell.lat0 <= s and n <= cell.lat0 + 0.1)
+        if inside < need and crosses:
+            inside = len(fetch_vida_building_points(poly.bounds, iso3, con=con))
+        if inside < need:
+            n_rural += 1
+            continue
+        boxes = near + [shape_of(c) for c in picked]
+        if any(bx.intersects(poly) or GEOD.inv(cx, cy, bx.centroid.x, bx.centroid.y)[2] / 1000
+               < args.town_spacing_km for bx in boxes):
+            n_near += 1
+            continue
+        passed, img = imagery_gate(poly, earliest)
+        if not passed:
+            screened.append({"aoi": aoi, "stratum": "towns", "cell": cell.cell, "lat": round(cy, 6),
+                             "lon": round(cx, 6), "reason": img["reason"],
+                             "imagery_date": img.get("imagery_date", ""),
+                             "date_screened": date.today().isoformat()})
+            continue
+        own = fetch_vida_building_points(poly.bounds, iso3, con=con)
+        geo_km2 = abs(GEOD.geometry_area_perimeter(poly)[0]) / 1e6
+        district, region = admin.lookup(cx, cy)
+        tag = f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m"
+        used = ({c["stem"] for c in picked} | {p.name[: -len("_candidate.geojson")] for p in files
+                                               if p not in mine} | registered
+                | {f"{r['name']}_calib_{tag}" for r in rejected_rows()})
+        k = len(picked) + len(done) + 1
+        base = f"{slug(district or region or aoi)}_t{k}"
+        stem = next(f"{base}{x}_calib_{tag}" for x in ("", *"bcdefgh")
+                    if f"{base}{x}_calib_{tag}" not in used)
+        dens = len(own) / geo_km2
+        props = {
+            "quadrat_id": stem,
+            "stratum": f"town stratum: {side / 1000:g} km boxes of {floor:,.0f} bldg/km2 or more",
+            "location": ", ".join(x for x in (district, region, country) if x),
+            "province": region,
+            "size_km2": round(geo_km2, 4),
+            "center": f"[{cx:.6f} {cy:.6f}]",
+            "shape": "square (geodesic)",
+            "side_m": float(side),
+            "source_grid_cell": cell.cell,
+            "source_grid_density_bldg_km2": round(float(cell.bldg_density_km2), 2),
+            "source_grid_n_buildings": int(cell.n_buildings),
+            "own_n_buildings": int(len(own)),
+            "own_density_bldg_km2": round(dens, 2),
+            **img,
+            "imagery_checked": True,
+            "selection": f"{TOWN_SELECTION}, seed {seed}",
+            "note": (f"Drawn by scripts/propose_calibration_candidates.py --towns: a building "
+                     f"drawn at random from every building in the density grid, and the "
+                     f"{side / 1000:g} km box centred on it, kept because it holds "
+                     f"{len(own):,} buildings ({dens:,.0f} per km2, VIDA; a town is "
+                     f"{floor:,.0f} or more). No classifier score and no look for solar went "
+                     f"into the draw, so a town without solar is as likely as one with it: "
+                     f"map every installation, ground and rooftop, and if there is none, say "
+                     f"the box was checked in full. Esri imagery here dates from "
+                     f"{img['imagery_date']} (oldest of centre and corners), no older than "
+                     f"{earliest} for a composite starting {win0}. Do not move it toward "
+                     f"visible solar."),
+        }
+        picked.append({"stem": stem, "props": props, "geometry": mapping(poly)})
+
+    print(f"{aoi}: {len(picked)} town candidates (seed {seed}); {n_rural} draws outside towns, "
+          f"{n_near} too near another box, {len(screened)} screened out on imagery")
+    for c in picked:
+        p = c["props"]
+        print(f"  {c['stem']:<36} {p['own_n_buildings']:>6,} bldg  {p['own_density_bldg_km2']:>6,.0f}"
+              f" bldg/km2  cell {p['source_grid_cell']}  Esri {p['imagery_date']}  {p['location']}")
+    if len(picked) < want:
+        print(f"  {aoi}: short, {len(picked)} of {want} after {TOWN_MAX_DRAWS} draws")
+    if args.dry_run:
+        return picked
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for p in mine:
+        p.unlink()
+    for c in picked:
+        doc = {"type": "FeatureCollection", "name": f"{c['stem']}_candidate",
+               "features": [{"type": "Feature", "properties": c["props"], "geometry": c["geometry"]}]}
+        (out_dir / f"{c['stem']}_candidate.geojson").write_text(json.dumps(doc, indent=2) + "\n")
+    if screened:
+        log = out_dir / "screened_out.csv"
+        new = not log.exists()
+        with log.open("a", newline="") as fh:
+            wr = csv.DictWriter(fh, fieldnames=list(screened[0]))
+            if new:
+                wr.writeheader()
+            wr.writerows(screened)
+    print(f"  wrote {len(picked)} files to {out_dir}")
+    return picked
+
+
 def shape_of(candidate: dict):
     from shapely.geometry import shape
 
@@ -1291,18 +1471,25 @@ def main() -> int:
     mode.add_argument("--false-alarm", metavar="NAME", default=None,
                       help="write one purposive box at the window pv_rich_review.csv names and "
                            "marks no_pv: where the classifier's high scores show no solar")
+    mode.add_argument("--towns", action="store_true",
+                      help="draw town boxes at random (a random building's 1 km box, kept at the "
+                           "--pv-rich town floor), with no PV signal: the level for towns")
     ap.add_argument("--n-priority", type=int, default=2,
                     help="start-here (or, with --pv-rich, PV-rich) boxes per AOI")
     ap.add_argument("--score-dir", type=Path, default=None,
                     help="--pv-rich (or --false-alarm, for its likely-roof count): a "
                          "roofclf-score-national prob/ directory, from a model that has not "
                          "seen this AOI's labels")
+    ap.add_argument("--n-towns", type=int, default=6,
+                    help="--towns: town boxes per AOI, registered ones included")
+    ap.add_argument("--town-spacing-km", type=float, default=2.0,
+                    help="--towns: between box centres, and from registered areas and candidates")
     ap.add_argument("--pv-rich-spacing-km", type=float, default=4.0,
                     help="--pv-rich: from each other, registered quadrats and candidates")
     ap.add_argument("--per-province", type=int, default=2,
                     help="--pv-rich: at most this many boxes per province")
     ap.add_argument("--pv-rich-min-density", type=float, default=PV_RICH_MIN_DENSITY,
-                    help="--pv-rich: a window's own buildings per km2 (towns only)")
+                    help="--pv-rich and --towns: a window's own buildings per km2 (towns only)")
     ap.add_argument("--pv-rich-confirmed-only", action="store_true",
                     help="--pv-rich: only windows pv_rich_review.csv marks 'panels'")
     ap.add_argument("--farm-side-m", type=float, default=3000.0,
@@ -1316,8 +1503,8 @@ def main() -> int:
                          "2025-11-01, and carry no window tag, so this is the recorded default, "
                          "not a value read from the files")
     ap.add_argument("--replace", action="store_true",
-                    help="redraw an AOI's sampled (or, with --priority / --farmland / --pv-rich, "
-                         "those) candidates")
+                    help="redraw an AOI's sampled (or, with --priority / --farmland / --pv-rich "
+                         "/ --towns, those) candidates")
     ap.add_argument("--dry-run", action="store_true", help="draw and report, write nothing")
     args = ap.parse_args()
     os.chdir(ROOT)
@@ -1327,7 +1514,7 @@ def main() -> int:
     for aoi in aois:
         (propose_priority if args.priority else propose_farmland if args.farmland
          else propose_pv_rich if args.pv_rich else propose_false_alarm if args.false_alarm
-         else propose)(aoi, args)
+         else propose_towns if args.towns else propose)(aoi, args)
     if not args.dry_run:
         print("next: pixi run calib-publish")
     return 0

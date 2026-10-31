@@ -322,8 +322,9 @@ power feature) and an Overpass query against the live database (OSM base 2026-10
 08:17 UTC, 384 elements in the box, none solar) agree, so it is registered with an empty
 label file, a confirmed zero. Its 951 VIDA buildings, 933 of them below 400 m<sup>2</sup>,
 make it the first town box that measures the classifier's scores on roofs without solar.
-Not yet used by any figure on this page. With it registered the star moved on by the
-default order, to Adh Dhihar.
+Not yet used by any figure on this page. With it registered the star would have moved
+on by the default order, to Adh Dhihar; the owner removed Yemen's star instead
+(`start_here: none`, 2026-10-31).
 
 **Al Wehdah, Sana'a (registered 2026-10-23, Rule-1).** The first of Yemen's two start-here
 boxes (`calib-candidates --priority`: 1 km in the densest quarter of the country's
@@ -358,7 +359,16 @@ short and was retried.
 
 ## What Yemen needs next
 
-**Map the PV-rich town boxes, and one false-positive town.** Yafi' and Qa'tabah town added
+**Map the six town boxes drawn at random, in their order.** `calib-candidates -- --towns`
+(2026-10-31) drew a building at random from every building in Yemen's density grid and kept
+the 1 km box around it if it holds at least 800 buildings: As Sab'in (Sana'a city), Az
+Zaydiah, Dhamar city, Bani Hushaysh, Al Marawi'ah and Bayt al Faqih, 821 to 2,471 buildings
+each, under Esri imagery from 2025-04 to 2025-12. No classifier score went into the draw, so
+mapped complete they say what Yemen's towns hold, with or without solar; 60 of the 74
+buildings drawn lay outside towns, so about one Yemeni building in five sits in one. They
+lead the atlas's mapping order.
+
+**The PV-rich town boxes come after them.** Yafi' and Qa'tabah town added
 63 PV roofs to the 132 a `roofclf` fit saw in building boxes (Al Wehdah, Sayun, Bani Al
 Harith and Huth), and the eight candidates left would add several times that. The two
 measured the level in towns where panels show; a box in a place the classifier gets wrong

@@ -288,12 +288,23 @@ rooftop PV below 400 m<sup>2</sup> or farm ground PV, start-here boxes first and
 sampled ones from the densest down (farm boxes first where only farm ground PV is missing),
 and the atlas draws the first as a **star**, with a *Start here* button in the map legend. A
 country config can name the star instead (`start_here`): Yemen's was the PV-rich town box
-with the most panels on Esri imagery (Yafi', mapped 2026-10-29), and since 2026-10-30 is
-Ghayl Bawazir, a town where the rooftop classifier scores 683 of 966 buildings as likely
-solar and its top-scored roofs are roofless concrete shells on Esri imagery.
+with the most panels on Esri imagery (Yafi', mapped 2026-10-29), then Ghayl Bawazir
+(2026-10-30), a town where the rooftop classifier scores 683 of 966 buildings as likely
+solar and its top-scored roofs are roofless concrete shells on Esri imagery; mapped on
+2026-10-31, it holds no solar. `start_here: none` keeps the order without a star, as
+Yemen's config has since.
 `calib-candidates -- --false-alarm <window>` writes such a box at a window the PV-rich
 review marked `no_pv`: mapped complete, it measures the classifier's false alarms, the other
 end of the level from a PV-rich box.
+
+Neither kind says what a town picked blind holds, which is what a town-level figure needs.
+`calib-candidates -- --towns` draws those: a building at random from every building in the
+country's density grid, and the 1 km box centred on it, kept if it holds at least 800
+buildings, the town floor of the PV-rich boxes. No classifier score and no look at the
+imagery for solar enter the draw, so towns come up in proportion to their buildings and a
+town without solar is as likely as one with it. The boxes are ranked first on the atlas, in
+the order they were drawn, so whichever are mapped first are still a random sample. Yemen
+has six (2026-10-31).
 
 A start-here box that turns out to be unusable is rejected like any other region
 (`new_calibration_quadrat.py --reject`), then redrawn with `--priority --replace`: the

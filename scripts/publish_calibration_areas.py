@@ -42,7 +42,8 @@ star moves on to the next one by itself.
 A country config's `start_here` (`configs/atlas/<aoi>.yaml`) puts that candidate first and
 ranks the country's candidates on any atlas, Bronze or not: which box to map first is then
 a judgement the config records (Yemen: the PV-rich town box with the most panels on Esri
-imagery, 2026-10-29).
+imagery, 2026-10-29). `start_here: none` keeps the order and stars nothing (Yemen since
+2026-10-31).
 
 Every feature carries `do_not_upload`, and only whitelisted properties: a boundary's own
 properties include local paths (`source_geojson`, `labels_file`) that do not belong on a
@@ -92,6 +93,9 @@ BOUNDARY = "_boundary.geojson"
 CANDIDATE = "_candidate.geojson"
 # propose_calibration_candidates.PRIORITY_SELECTION starts with this.
 PURPOSIVE = "purposive"
+# propose_calibration_candidates.TOWN_SELECTION starts with this; `_t<k>` is the draw order.
+TOWNS = "random town boxes"
+TOWN_K = re.compile(r"_t(\d+)[a-h]?_calib_")
 BRONZE_BADGE = 'class="vscore-tier">Bronze<'
 DATA_BLOCK = re.compile(r'<script id="pv" type="application/json">(.*?)</script>', re.S)
 
@@ -132,13 +136,17 @@ def _label(stem: str) -> str:
 
 
 def _priority_key(f: dict, farm_first: bool = False) -> tuple:
-    """Start-here boxes first, by roof area in large buildings (`--pv-rich` boxes, which
-    carry none, by their count of likely-PV roofs); then the rest densest first; farm boxes
+    """Town boxes drawn at random (`--towns`) first, in draw order, so that whichever of them
+    get mapped first are still a random sample of towns; then start-here boxes, by roof area
+    in large buildings (`--pv-rich` boxes, which carry none, by their count of likely-PV
+    roofs); then the rest densest first; farm boxes
     (`propose_calibration_candidates.py --farmland`) last, by cropland share. A 9 km2 farm
     box is a longer job for a different instrument, and ranking it among the building boxes
     would reorder those every time farm candidates are drawn. `farm_first` puts the farm
     boxes ahead instead, for an atlas whose rooftop half is measured and farm half is not."""
     p = f["properties"]
+    if str(p.get("selection", "")).startswith(TOWNS) and (m := TOWN_K.search(p["id"])):
+        return (-0.5, int(m.group(1)), p["id"])
     if str(p.get("selection", "")).startswith(PURPOSIVE):
         return (0, -(p.get("own_large_roof_m2") or 0), -(p.get("own_likely_pv_roofs") or 0),
                 p["id"])
@@ -147,16 +155,17 @@ def _priority_key(f: dict, farm_first: bool = False) -> tuple:
     return (1, -(p.get("own_density_bldg_km2") or p.get("density_bldg_km2") or 0), p["id"])
 
 
-def rank_candidates(feats: list[dict], first: str = "", farm_first: bool = False) -> list[dict]:
-    """`priority` 1..N on the candidates, `start_here` on the first, candidates in that order;
-    `first` (a candidate's id) leads whatever the ranking says."""
+def rank_candidates(feats: list[dict], first: str = "", farm_first: bool = False,
+                    star: bool = True) -> list[dict]:
+    """`priority` 1..N on the candidates, `start_here` on the first unless `star` is off,
+    candidates in that order; `first` (a candidate's id) leads whatever the ranking says."""
     cands = sorted((f for f in feats if f["properties"]["kind"] == "candidate"),
                    key=lambda f: (f["id"] != first, _priority_key(f, farm_first)))
     for i, f in enumerate(cands, 1):
         p = f["properties"]
         tail = {k: p.pop(k) for k in ("note", "do_not_upload") if k in p}
         p["priority"] = i
-        if i == 1:
+        if i == 1 and star:
             p["start_here"] = True
         p.update(tail)
     return [f for f in feats if f["properties"]["kind"] != "candidate"] + cands
@@ -240,12 +249,13 @@ def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS,
                                   "imagery_date": p.get("imagery_date"),
                                   "selection": p.get("selection"),
                                   "note": p.get("note")}))
-    if cfg.start_here and not any(f["id"] == cfg.start_here for f in feats):
+    star = cfg.start_here != atlas_config.NO_STAR
+    first = cfg.start_here if star else ""
+    if first and not any(f["id"] == first for f in feats):
         # Registered since: the star moves on. Anything else is a typo in the config.
-        raise SystemExit(f"{aoi}: start_here {cfg.start_here!r} is neither a candidate nor a "
+        raise SystemExit(f"{aoi}: start_here {first!r} is neither a candidate nor a "
                          f"registered area under {home}")
-    return (rank_candidates(feats, cfg.start_here, farm_first) if rank or cfg.start_here
-            else feats)
+    return (rank_candidates(feats, first, farm_first, star) if rank or first else feats)
 
 
 def _collection(feats: list[dict], meta: dict) -> str:

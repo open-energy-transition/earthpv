@@ -42,6 +42,7 @@ star moves to the next one by itself once that area is registered. To choose the
 hand, on any atlas, name the candidate in the country's config as `start_here: <stem>`
 (`configs/atlas/<aoi>.yaml`); `calib-publish` then ranks that country's candidates with it
 first, and fails on a name that is neither a candidate nor a registered area.
+`start_here: none` keeps the mapping order and stars nothing (Yemen since 2026-10-31).
 `calib-publish` writes the public per-area GeoJSON under
 `docs/assets/labels/calibration_areas/` that the atlas fetches at run time, so new
 candidates need no atlas rebuild. Re-run it after anything below changes an area.

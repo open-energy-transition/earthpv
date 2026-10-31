@@ -671,12 +671,20 @@ published file.
   (2026-10-29, picked on Esri imagery over the classifier's top window, Adh Dhihar); mapped
   and registered the same day, so the key was dropped and the star moved on by rule. Ghayl
   Bawazir (`ghayl_bawazir_fa1_calib_1km`, owner's pick 2026-10-30) went the same way: swept
-  2026-10-31, registered with no PV, star moved on by rule to Adh Dhihar.
+  2026-10-31, registered with no PV. Since then Yemen has no star (`start_here: none`,
+  owner): the candidates keep their mapping order, none is starred.
 - **False-alarm boxes** (`--false-alarm <window> [--score-dir]`, 2026-10-30): one purposive
   1 km box at a window `pv_rich_review.csv` marks `no_pv`, selection "...where a reviewer saw
   no solar" (the atlas popup keys on that, never on "PV classifier"). The level's other end
   from a PV-rich box: Ghayl Bawazir, 683 of 966 buildings in Pakistan's model's top 5%, its
   top-scored roofs roofless shells. Whether it enters the coverage ratio is an owner decision.
+- **Random town boxes** (`--towns [--n-towns 6]`, 2026-10-31): a building drawn at random
+  from the whole density grid, its 1 km box kept if it reaches the town floor (800 bldg/km2),
+  no PV signal anywhere; selection "random town boxes by building, seed N", stems
+  `<place>_t<k>_calib_1km`. `calib-publish` ranks them first, in draw order, so a partly
+  mapped set stays a random sample. Yemen's six (seed 94417): As Sab'in, Az Zaydiah, Dhamar,
+  Bani Hushaysh, Al Marawi'ah, Bayt al Faqih; 60 of the 74 buildings drawn were outside
+  towns, so about one Yemeni building in five sits in one.
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,
