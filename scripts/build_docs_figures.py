@@ -2462,7 +2462,8 @@ def write_evidence_workflow_diagram():
 FLY_W = 760
 FLY_CX, FLY_CY = 380, 300
 FLY_RX, FLY_RY = 250, 172  # the station ring
-FLY_HUB = 72
+FLY_HUB = 92
+FLY_LOGO = 80              # the OpenStreetMap logo inside the hub, px square
 FLY_PILL = (222, 54)       # station card, width x height
 FLY_FRAME_TOP = 78
 
@@ -2473,10 +2474,27 @@ FLY_STATIONS = [
     (30, "Map the leads", "arrays of 400 m² and up", True),
     (90, "Map calibration areas", "every panel inside the line", True),
     (150, "Local datasets", "registers, statistics", True),
-    (210, "Retrain, recalibrate", "on the new local labels", False),
+    (210, "Retrain the model", "recalibrate on new labels", False),
 ]
 # Spokes through the hub, by station index: (station, direction).
 FLY_SPOKES = [(2, "in"), (3, "in"), (5, "out"), (1, "out")]
+
+# The logo exactly as Wikimedia Commons serves File:Openstreetmap_logo.svg (SHA-1
+# 37bbac95921b47fa7d8148289412cdc28eebcaf2): Ken Vermette, CC BY-SA 3.0, a trademark of the
+# OpenStreetMap Foundation. The figure credits it under the wheel.
+OSM_LOGO = ROOT / "scripts" / "figure_assets" / "openstreetmap_logo.svg"
+
+
+def _osm_logo(x: float, y: float, size: float) -> str:
+    """The OpenStreetMap logo as a nested <svg> at (x, y), its ids prefixed so they cannot
+    clash with the figure's own."""
+    src = OSM_LOGO.read_text()
+    body = src[src.index(">", src.index("<svg")) + 1:src.rindex("</svg>")]
+    body = re.sub(r'\bid="([^"]+)"', r'id="osm-\1"', body)
+    body = re.sub(r'(url\(#|href="#)', r"\1osm-", body)
+    body = re.sub(r"\n\s*", "", body)
+    return (f'<svg x="{x:.1f}" y="{y:.1f}" width="{size}" height="{size}" '
+            f'viewBox="0 0 256 256" xmlns:xlink="http://www.w3.org/1999/xlink">{body}</svg>')
 
 
 def build_flywheel_svg(t: Theme) -> str:
@@ -2551,9 +2569,10 @@ def build_flywheel_svg(t: Theme) -> str:
 
     parts.append(f'<circle cx="{cx}" cy="{cy}" r="{FLY_HUB}" fill="{t.card}" stroke="{t.s3}" '
                  f'stroke-width="2.2"/>')
-    text(cx, cy - 6, "OpenStreetMap", size=14.5, fill=t.s3, weight="600", anchor="middle")
-    text(cx, cy + 14, "every checked panel,", size=11, anchor="middle")
-    text(cx, cy + 28, "openly licensed", size=11, anchor="middle")
+    parts.append(_osm_logo(cx - FLY_LOGO / 2, cy - 64, FLY_LOGO))
+    text(cx, cy + 36, "OpenStreetMap", size=14.5, fill=t.s3, weight="600", anchor="middle")
+    text(cx, cy + 53, "every checked panel,", size=11, anchor="middle")
+    text(cx, cy + 67, "openly licensed", size=11, anchor="middle")
 
     for i, (deg, title, sub, by_people) in enumerate(FLY_STATIONS, start=1):
         px, py = at(deg)
@@ -2591,8 +2610,10 @@ def build_flywheel_svg(t: Theme) -> str:
     text(24, note_y, "Only free, openly licensed imagery reaches the models. People read the "
          "high-resolution", size=11.5)
     text(24, note_y + 16, "layers, inside the editor, where their licences allow it.", size=11.5)
+    text(24, note_y + 36, "OpenStreetMap logo: Ken Vermette, CC BY-SA 3.0; a trademark of the "
+         "OpenStreetMap Foundation.", size=10.5)
 
-    height = note_y + 16 + 20
+    height = note_y + 36 + 18
     markers = _svg_markers(t)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{FLY_W}" height="{height:.0f}" '
