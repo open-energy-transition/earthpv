@@ -38,6 +38,10 @@ calibration_boxes:
   # The second, Qa'tabah town (not the rural qa_tabah_s6 box): finished 2026-10-29
   # (changesets 191181245, 191181493), Esri Vivid imagery of 2025-03-21. 31 installations.
   - {name: "Qa'tabah town, Ad Dali'", stem: qa_tabah_pv10_calib_1km, status: rule1, used: false}
+  # The false-alarm town box (calib-candidates --false-alarm), the atlas's star since
+  # 2026-10-30: swept by the owner 2026-10-31 against Esri Vivid imagery of 2025-03-05, no PV
+  # found, ground or rooftop; OSM's live API and Overpass agree (a confirmed zero).
+  - {name: "Ghayl Bawazir, Hadhramaut (no PV)", stem: ghayl_bawazir_fa1_calib_1km, status: rule1, used: false}
   - {name: "Huth, 'Amran (farm)", stem: amran_huth_farm_calib_129p53km2, status: rule1}
   - {name: "At Tuhayta, Tihama (farm)", stem: tihama_tuhayta_farm_calib_104p25km2, status: rule1}
   - {name: "Al Jarrahi west, Tihama (farm)", stem: tihama_jarrahi_west_farm_calib_53p29km2, status: rule1}
@@ -58,14 +62,6 @@ calibration_boxes:
 validation:
   score: silver
   note: "Farm solar calibrated on seven mapped areas.<br>No rooftop estimate below 400 m&sup2; yet."
-
-# The box to map next (owner request 2026-10-30): where roofclf is wrong. Yemen's own fit
-# sums its scores to 0.07-3.56 per PV roof in a left-out town box, and no mapped box measures
-# its scores on roofs without solar. Pakistan's roofclf (never shown Yemen's labels) puts 683
-# of this window's 966 buildings among Yemen's top 5% of household roofs; on Esri z18
-# (2025-03-05) they are roofless concrete shells with no panel in sight
-# (calib-candidates --false-alarm ghayl_bawazir_pv1).
-start_here: ghayl_bawazir_fa1_calib_1km
 
 cities:
   - [Sana'a, 44.206, 15.369]

@@ -314,6 +314,17 @@ imagery of 2025-03-21. It holds **31 installations**, 23 rooftop and 8 ground,
 25 below 100 m<sup>2</sup>; 28 of its 896 VIDA buildings carry PV. Confirmed by a second
 Overpass query (31). Not yet used by any figure on this page.
 
+**Ghayl Bawazir, Hadhramaut (registered 2026-10-31, Rule-1, no PV).** The false-alarm
+town box (`calib-candidates --false-alarm`), starred on the atlas from 2026-10-30. Swept by
+the owner against Esri Vivid imagery of 2025-03-05, within the year before the composite
+window: no PV, ground or rooftop. OSM's live API (552 elements, newest edit 2025-10-09, no
+power feature) and an Overpass query against the live database (OSM base 2026-10-31
+08:17 UTC, 384 elements in the box, none solar) agree, so it is registered with an empty
+label file, a confirmed zero. Its 951 VIDA buildings, 933 of them below 400 m<sup>2</sup>,
+make it the first town box that measures the classifier's scores on roofs without solar.
+Not yet used by any figure on this page. With it registered the star moved on by the
+default order, to Adh Dhihar.
+
 **Al Wehdah, Sana'a (registered 2026-10-23, Rule-1).** The first of Yemen's two start-here
 boxes (`calib-candidates --priority`: 1 km in the densest quarter of the country's
 buildings, where the most roof area sits in buildings of 1,000 m<sup>2</sup> or more), so a
@@ -351,9 +362,10 @@ short and was retried.
 63 PV roofs to the 132 a `roofclf` fit saw in building boxes (Al Wehdah, Sayun, Bani Al
 Harith and Huth), and the eight candidates left would add several times that. The two
 measured the level in towns where panels show; a box in a place the classifier gets wrong
-measures the false positives at the other end. That box is drawn and starred on the atlas
-(2026-10-30): `ghayl_bawazir_fa1_calib_1km`, written by `calib-candidates --false-alarm` at
-the first window the PV-rich review marked `no_pv`. Pakistan's model puts 683 of its 966
+measures the false positives at the other end. That box was drawn and starred on the atlas
+(2026-10-30) and mapped with no PV on 2026-10-31 ([above](#calibration-areas)):
+`ghayl_bawazir_fa1_calib_1km`, written by `calib-candidates --false-alarm` at the first
+window the PV-rich review marked `no_pv`. Pakistan's model puts 683 of its 966
 buildings among Yemen's top 5% of household roofs; on Esri imagery of 2025-03-05 its nine
 top-scored roofs are roofless or unfinished concrete shells, none with a panel. Its share
 of roofs with solar runs low by design, as the PV-rich boxes' runs high.

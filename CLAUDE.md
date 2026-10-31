@@ -669,8 +669,9 @@ published file.
 - **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
   rank that country's candidates with it first and star it, on any atlas. Yemen's was Yafi'
   (2026-10-29, picked on Esri imagery over the classifier's top window, Adh Dhihar); mapped
-  and registered the same day, so the key was dropped and the star moved on by rule. Since
-  2026-10-30 it is Ghayl Bawazir (`ghayl_bawazir_fa1_calib_1km`, owner's pick).
+  and registered the same day, so the key was dropped and the star moved on by rule. Ghayl
+  Bawazir (`ghayl_bawazir_fa1_calib_1km`, owner's pick 2026-10-30) went the same way: swept
+  2026-10-31, registered with no PV, star moved on by rule to Adh Dhihar.
 - **False-alarm boxes** (`--false-alarm <window> [--score-dir]`, 2026-10-30): one purposive
   1 km box at a window `pv_rich_review.csv` marks `no_pv`, selection "...where a reviewer saw
   no solar" (the atlas popup keys on that, never on "PV classifier"). The level's other end
@@ -737,7 +738,7 @@ and a call to map a calibration area. A new country is one row plus a rerun; **n
 atlas builders and `apply_validation_badges.py`), with a country note in
 `build_atlas_pages.TIER_NOTE`. **Germany is Silver** (its register-calibrated small half fails
 its own register check). **Yemen is Silver**: its farm areas calibrate farm ground PV
-only, so household rooftops below 400 m² are unmeasured; its eleven building boxes carry
+only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
 `used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the
 owner; Yafi' and Qa'tabah town, the first PV-rich town boxes, were mapped 2026-10-29). In those
 two Pakistan's unchanged roofclf ranks household roofs at AUC 0.79 / 0.89 but its scores sum to
