@@ -221,6 +221,36 @@ def match_mapped_polygons(
     return out
 
 
+# The steep-ground lead screen (owner, 2026-10-31). A lead whose ground is steeper than
+# STEEP_SLOPE_DEG (Copernicus GLO-90 slope at the outline's representative point, the
+# measurement groundclf's slope veto uses) is dropped from a lead file only if its outline
+# is smaller than STEEP_MAX_AREA_M2; a larger one stays, flagged `steep_review`, because a
+# solar farm can sit on a mountainside and a mapper has to look at it. Measured on Yemen's
+# 2,288 released leads: shaded hillsides, cliff edges, escarpment shadows and gullies read
+# like panels (9 of 10 random leads above 12 degrees were not PV on Esri and the
+# composite), while 2 of 3,229 mapped OSM solar polygons lie above 15 degrees under
+# 1,000 m2. Validation: results/leads_steep_screen/.
+STEEP_SLOPE_DEG = 15.0
+STEEP_MAX_AREA_M2 = 1000.0
+
+
+def steep_lead_screen(leads: gpd.GeoDataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """`(slope_deg, drop, review)` for each lead: the GLO-90 slope at its representative
+    point, the small steep leads a lead file drops, and the larger steep leads it keeps
+    for a human (`steep_review`). A lead off the DEM (NaN slope) is neither: absence of
+    evidence is not a verdict."""
+    from earthpv.groundclf import dem_slope_at
+
+    if leads.empty:
+        z = np.zeros(0)
+        return z, z.astype(bool), z.astype(bool)
+    rep = leads.geometry.to_crs(4326).representative_point()
+    slope = dem_slope_at(rep.x.to_numpy(), rep.y.to_numpy())
+    steep = np.nan_to_num(slope, nan=0.0) > STEEP_SLOPE_DEG
+    small = leads["area_m2"].to_numpy(float) < STEEP_MAX_AREA_M2
+    return slope, steep & small, steep & ~small
+
+
 def filter_new_leads(
     cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, min_distance_m: float = 0.0
 ) -> gpd.GeoDataFrame:
@@ -337,6 +367,18 @@ def run_export(
             min_distance_m, len(leads), len(cands),
         )
         if exclude_mapped:
+            # The steep-ground screen of the released lead files (STEEP_SLOPE_DEG), so a
+            # run's own lead file matches what scripts/release_leads.py publishes. A DEM
+            # that cannot be reached leaves the file unscreened rather than failing export.
+            try:
+                slope, steep_drop, steep_review = steep_lead_screen(leads)
+                leads = leads.assign(slope_deg=np.round(slope, 1), steep_review=steep_review)
+                leads = leads[~steep_drop].reset_index(drop=True)
+                log.info("Steep-ground screen (> %.0f deg): %d small leads dropped, %d larger "
+                         "kept as steep_review", STEEP_SLOPE_DEG, int(steep_drop.sum()),
+                         int(steep_review.sum()))
+            except Exception as e:  # noqa: BLE001 -- the lead file is still written
+                log.warning("steep-ground screen skipped (DEM unavailable: %s)", e)
             nl = pred_dir / f"{aoi}_pv_new_leads.geojson"
             leads.to_file(nl, driver="GeoJSON")
 

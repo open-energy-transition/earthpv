@@ -533,8 +533,19 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   rebuilds them with export's ranking and `candidate_id`s from the run behind each page (Nigeria
   from `data/predictions_v5_nigeria`), clipped to the page's regions, and refuses a run whose
   regions differ from the page's; France links its audited `france-osm-leads-2026-10-22`.
-  `scripts/patch_atlas_leads.py` adds the link to a published page without a rebuild. **A new
-  country gets its file only when `release_leads.py` is re-run for it** (add it to `SOURCES`).
+  `scripts/patch_atlas_leads.py` adds the link to a published page without a rebuild (and
+  re-resolves the badge, below). **A new country gets its file only when `release_leads.py` is
+  re-run for it** (add it to `SOURCES`).
+  **Small leads on steep ground are left out (owner, 2026-10-31)**: `export.steep_lead_screen`
+  drops a lead under `STEEP_MAX_AREA_M2` (1,000 m²) whose GLO-90 slope at its representative
+  point exceeds `STEEP_SLOPE_DEG` (15°), and keeps a larger one flagged `steep_review` (a
+  mountain solar farm needs a human); every lead carries `slope_deg`. Shaded slopes, cliff
+  edges, escarpment shadows and gullies read like panels: a third of Yemen's leads stood above
+  12° against 0.5% of its highland OSM solar. Applied by `release_leads.py` (tag
+  `pv-new-leads-2026-11-01`; the 2026-10-28 files stay published) and by `earthpv export`'s
+  new-leads file. Validation: `scripts/validate_steep_lead_screen.py`,
+  `results/leads_steep_screen/`. The slope is read from whole cached DEM tiles (`data/dem` ->
+  /home, ~5 MB each); a first country-wide run downloads hundreds, slowly under a busy link.
 - **Size chart on every page (2026-10-30)**: `_size_distribution_data` re-bins Best by size
   with or without a roofclf half (it was Pakistan-only), counting only candidates and OSM
   inside the grid, as the per-cell total does. Where `small_rooftop_status` or
@@ -744,9 +755,17 @@ and a call to map a calibration area. A new country is one row plus a rerun; **n
 `docs/atlas*.md` by hand**. A tier that is a judgement goes in `configs/atlas/<aoi>.yaml`
 (`validation: {score, note}`, which beats `derive_validation_score` and is read by all three
 atlas builders and `apply_validation_badges.py`), with a country note in
-`build_atlas_pages.TIER_NOTE`. **Germany is Silver** (its register-calibrated small half fails
-its own register check). **Yemen is Silver**: its farm areas calibrate farm ground PV
-only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
+`build_atlas_pages.TIER_NOTE`. **Gold and Silver also need every mapping lead checked by a
+person (owner, 2026-10-31)**: `validation.leads_checked: {made, by, date, note}` declares it
+for the lead file whose manifest `made` it names (`atlas.leads_checked`), so a rebuilt lead
+file starts unchecked. Without it `resolve_validation_badge` shows Bronze whatever the tier
+earned (an explicit `--validation-score` is capped too), keeps the earned tier on the badge as
+`data-earned`, and `build_atlas_pages` gives the page the leads banner (`LEADS_WARNING`,
+`EARNED_NOTE`). `docs/atlas-quality-levels.md` (generated, `quality_page`) lists every
+criterion and each country's standing. Pakistan's leads are declared checked (owner); France,
+Germany and Yemen earn Silver and show Bronze until theirs are. **Germany earns Silver** (its
+register-calibrated small half fails its own register check). **Yemen earns Silver**: its farm
+areas calibrate farm ground PV only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
 `used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the
 owner; Yafi' and Qa'tabah town, the first PV-rich town boxes, were mapped 2026-10-29). In those
 two Pakistan's unchanged roofclf ranks household roofs at AUC 0.79 / 0.89 but its scores sum to
@@ -1033,12 +1052,12 @@ QUEUE first when removing compute markers.
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
 | Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,128.5 | roofclf half, probability-weighted; see "Density stage" |
-| Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; Silver |
-| France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf |
+| Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked) |
+| France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
 | India | `v5_combined_france` | 70,523.4 / 99,541.5 | v10 lost the Gujarat holdout; `ring_cells: 3`; oversize review |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 8,860.5 | |
 | Egypt | `v12_combined_egypt` | 3,315.1 / 3,378.6 | thin Cairo holdout |
-| Yemen | `v13_combined_yemen` | 151.3 / 324.7 | zero-zero tie; farm ground PV; Silver |
+| Yemen | `v13_combined_yemen` | 151.3 / 324.7 | zero-zero tie; farm ground PV; earns Silver, shows Bronze (leads unchecked) |
 | South Africa | `v14_combined_south_africa` | 9,393.8 / 9,755.6 | decisive localization win |
 | Morocco | `v11_combined_morocco` | 380.4 / 411.2 | tie near 1.0; AOI stops at 27.7N |
 | Poland | `v15_combined_poland` | 6,604.3 / 7,780.9 | |

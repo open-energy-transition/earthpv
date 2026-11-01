@@ -58,16 +58,21 @@ EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.htm
 # was ever calibrated. The tiers are about EVIDENCE, not about model quality: a Bronze
 # country can have a perfectly good segmentation run and simply no local ground truth to
 # check it against.
+# Gold and Silver also need every mapping lead checked by a human (owner, 2026-10-31):
+# `leads_checked`, applied by `resolve_validation_badge`. The full list of criteria is
+# docs/atlas-quality-levels.md (scripts/build_atlas_pages.py writes it).
 VALIDATION_TIERS = {
     "gold": (
         "Gold",
         "Fully validated and trained using OpenStreetMap imagery and labels. Covers "
-        "installations above and below the 400 m² satellite floor.",
+        "installations above and below the 400 m² satellite floor. Every mapping lead "
+        "checked by a human.",
     ),
     "silver": (
         "Silver",
         "Above 400 m² only. Segmentation localized and validated against "
-        "OpenStreetMap ground truth. No calibrated estimate below the floor.",
+        "OpenStreetMap ground truth. No calibrated estimate below the floor. Every "
+        "mapping lead checked by a human.",
     ),
     "bronze": (
         "Bronze",
@@ -176,7 +181,39 @@ def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     if not e:
         return None
     return {k: e[k] for k in ("url", "file", "n", "size_bytes", "osm_as_of", "min_distance_m",
-                              "made", "note") if k in e}
+                              "made", "note", "steep") if k in e}
+
+
+def leads_checked(aoi: str, path: Path = LEADS_MANIFEST) -> dict:
+    """Whether every lead in the AOI's current mapping-lead file has been checked by a
+    human, the requirement Silver and Gold share (owner, 2026-10-31).
+
+    The check is a declaration in `configs/atlas/<aoi>.yaml` (`validation.leads_checked`),
+    like a quadrat's Rule-1 status, and it names the lead file it covers by the `made` date
+    `scripts/release_leads.py` writes into the manifest. It holds only while that is still
+    the file the atlas links: a rebuilt lead file holds leads nobody has looked at. An AOI
+    with no lead file has nothing a reader could check, so it is not checked either.
+    Returns `checked` plus who, when and which file, for the badge and the page."""
+    cfg = atlas_config.load(aoi)
+    release = leads_release(aoi, path) or {}
+    out = {"checked": False, "file_made": release.get("made", ""),
+           "made": cfg.leads_checked_made, "by": cfg.leads_checked_by,
+           "date": cfg.leads_checked_date, "note": cfg.leads_checked_note}
+    out["checked"] = bool(release and cfg.leads_checked_made
+                          and cfg.leads_checked_made == str(release.get("made")))
+    return out
+
+
+def leads_for_page(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
+    """`totals.leads`: the lead file (`leads_release`) plus whether every lead in it has been
+    checked (`leads_checked`), which the Downloads card states."""
+    release = leads_release(aoi, path)
+    if not release:
+        return None
+    c = leads_checked(aoi, path)
+    release["checked"] = ({k: c[k] for k in ("by", "date", "note") if c[k]} | {"all": True}
+                          if c["checked"] else {"all": False})
+    return release
 
 
 def derive_validation_score(aoi: str, has_sub400: bool,
@@ -193,6 +230,10 @@ def derive_validation_score(aoi: str, has_sub400: bool,
     quadrats, and its Best estimate still fails its own register check -- are a judgement
     recorded in `configs/atlas/<aoi>.yaml` (`validation`, see `resolve_validation_badge`)
     or passed with `--validation-score`, not something to infer from file existence.
+
+    The tier returned here is the one EARNED by the calibration evidence. Gold and Silver
+    also need every mapping lead checked, which `resolve_validation_badge` applies on top
+    (`leads_checked`), so a country can earn Silver and still show Bronze.
     """
     if has_sub400:
         return "gold"
@@ -483,13 +524,17 @@ def header_logo_html() -> str:
             '<div class="brandmark" role="img" aria-label="EarthPV"></div>')
 
 
-def validation_badge_html(score: str, sub: str | None = None) -> str:
+def validation_badge_html(score: str, sub: str | None = None, earned: str | None = None) -> str:
     """The corner stamp: style, logo and markup in one self-contained block.
 
     Silver and Bronze carry a link to the contribution guide, because for those two the
     missing piece is local ground truth and a reader who cares about the score is exactly
     the person who could supply it. `sub` replaces the tier's one-line description, for a
     country whose reason for its tier is not the generic one (`atlas_config` validation).
+    `earned` is the tier the calibration evidence earned when the badge shows a lower one
+    (leads not yet checked); it is kept on the badge as `data-earned` so a page can be
+    re-badged without a rebuild once the leads are checked
+    (scripts/patch_atlas_leads.py, scripts/build_atlas_pages.py).
     """
     key = (score or "bronze").strip().lower()
     if key not in VALIDATION_TIERS:
@@ -500,6 +545,8 @@ def validation_badge_html(score: str, sub: str | None = None) -> str:
            '<span class="vscore-cta">Add local training data &rarr;</span>')
     tag, href = ("a", f' href="{CONTRIBUTE_URL}" target="_blank" rel="noopener"') \
         if key != "gold" else ("div", "")
+    if earned and earned != key:
+        href += f' data-earned="{earned}"'
     return (f'{_VSCORE_CSS}<{tag} class="vscore vscore--{key}"{href}>'
             f'<span class="vscore-mark" aria-hidden="true"></span>'
             f'<span class="vscore-text">'
@@ -509,14 +556,32 @@ def validation_badge_html(score: str, sub: str | None = None) -> str:
             f'</span></{tag}>')
 
 
+def earned_validation_score(aoi: str, derived: str, override: str | None = None) -> str:
+    """The tier the calibration evidence earns: an explicit override, else the AOI config's
+    judgement, else the tier derived from what is on disk."""
+    return (override or atlas_config.load(aoi).validation_score or derived).strip().lower()
+
+
+def shown_validation_score(aoi: str, earned: str) -> str:
+    """The tier a page shows: the earned one, or Bronze for a Gold or Silver whose mapping
+    leads are not all checked (`leads_checked`)."""
+    return earned if earned == "bronze" or leads_checked(aoi)["checked"] else "bronze"
+
+
 def resolve_validation_badge(aoi: str, derived: str, override: str | None = None) -> str:
-    """The badge an atlas carries: an explicit override, else the AOI config's judgement,
-    else the tier derived from what is on disk. The config's sub-line is used only when its
-    own tier is the one shown."""
+    """The badge an atlas carries: the earned tier (`earned_validation_score`), shown as
+    Bronze until every mapping lead is checked (`shown_validation_score`; an explicit
+    override is capped too, since the lead check is a requirement, not a judgement). The
+    config's sub-line is used only when its own tier is the one shown."""
     cfg = atlas_config.load(aoi)
-    score = override or cfg.validation_score or derived
-    sub = cfg.validation_note if cfg.validation_score and score == cfg.validation_score else None
-    return validation_badge_html(score, sub)
+    earned = earned_validation_score(aoi, derived, override)
+    score = shown_validation_score(aoi, earned)
+    if score != earned:
+        sub = (f"{VALIDATION_TIERS[earned][0]} otherwise.<br>Mapping leads not yet "
+               f"checked.")
+    else:
+        sub = cfg.validation_note if cfg.validation_score and score == cfg.validation_score else None
+    return validation_badge_html(score, sub, earned)
 
 
 def aoi_has_sub400(aoi: str) -> bool:
@@ -3090,7 +3155,7 @@ def build_evidence_atlas(
     dates = imagery_dates(aoi)
     if dates:
         data["totals"]["imagery_dates"] = dates
-    leads = leads_release(aoi)
+    leads = leads_for_page(aoi)
     if leads:
         data["totals"]["leads"] = leads
 

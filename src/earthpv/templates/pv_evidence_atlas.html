@@ -3967,6 +3967,18 @@ out geom;</div>
         + `outlines drawn from 10 m pixels: check each one against recent high-resolution imagery `
         + `before mapping it, and expect some bright roofs, greenhouses and dark fields among them. `
         + `Anything mapped since that date can still appear.`)
+      // The steep-ground screen (export.steep_lead_screen) and the lead check Silver and
+      // Gold need (atlas.leads_checked); a page built before either says nothing about it.
+      + (L.steep ? ` Leads under ${fmt(L.steep.max_area_m2)} m² on ground steeper than `
+        + `${L.steep.slope_deg}° were left out (${fmt(L.steep.dropped)}): shaded slopes, cliff `
+        + `edges and gullies read like panels. ${fmt(L.steep.review)} larger ones on steep ground `
+        + `are kept and marked <code>steep_review</code>, since a solar farm can stand on a `
+        + `mountainside.` : "")
+      + (L.checked ? (L.checked.all
+          ? ` Every lead in this file has been checked by a person`
+            + (L.checked.date ? ` (${esc(L.checked.by || "")}, ${day(L.checked.date)})` : "") + `.`
+          : ` These leads have not all been checked yet; a Silver or Gold atlas needs every `
+            + `one checked by a person.`) : "")
       + ` The GeoJSON opens in JOSM, iD and QGIS; the <a href="https://open-energy-transition.github.io/earthpv/contribute/" `
       + `target="_blank" rel="noopener">mapping guide</a> explains how to work through it.`;
     document.getElementById("leadsLink").innerHTML =

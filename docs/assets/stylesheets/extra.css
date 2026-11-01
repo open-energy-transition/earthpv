@@ -617,6 +617,18 @@
 .atlas-switch__tier--silver { --tier-colour: var(--pv-tier-silver); }
 .atlas-switch__tier--bronze { --tier-colour: var(--pv-tier-bronze); }
 
+/* "What the levels mean": the link to docs/atlas-quality-levels.md, set apart from the
+   countries as plain text rather than another pill. */
+.md-typeset .atlas-switch a.atlas-switch__about {
+  margin-left: 0.6rem;
+  border: none;
+  background: none;
+  padding: 0.16rem 0.2rem;
+  color: var(--pv-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .atlas-tier-alert {
   margin: 0 0 0.6rem;
   padding: 0.55rem 0.9rem;

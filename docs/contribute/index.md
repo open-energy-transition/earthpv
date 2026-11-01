@@ -47,9 +47,11 @@ tiers mean:
 
 | tier | what it has | what it needs |
 |---|---|---|
-| Gold | small installations estimated, calibrated on complete areas or a national register | more areas in the density bands it does not yet cover |
-| Silver | large installations only, checked against local ground truth | small-installation calibration that works for its roof sizes |
-| Bronze | large installations only, nothing local to check against | its first complete calibration areas |
+| Gold | small installations estimated, calibrated on complete areas or a national register; every mapping lead checked | more areas in the density bands it does not yet cover |
+| Silver | large installations only, checked against local ground truth; every mapping lead checked | small-installation calibration that works for its roof sizes |
+| Bronze | large installations only, nothing local to check against, or leads not all checked | its first complete calibration areas, and [every lead checked](leads.md) |
+
+Every criterion behind the levels is on [Quality levels](../atlas-quality-levels.md).
 
 Six to ten complete areas, spread from sparse villages to dense city centres, are enough to
 start calibrating a country. Each one counts.
@@ -163,7 +165,7 @@ country's satellite data: eight drawn at random across its building-density rang
 picked by hand, and two start-here boxes in its densest districts with the most large roofs
 ([how they were chosen](../calibration-mapping-protocol.md#automated-quadrat-selection)).
 Pakistan has eleven: five aimed at the sparse end of its calibration and six hand-placed
-gap boxes. Yemen, Silver since its
+gap boxes. Yemen, calibrated as Silver since its
 farm areas, has town boxes where panels show on rooftops, for its rooftop classifier (Yafi'
 and Qa'tabah town were mapped on 2026-10-29). Ghayl Bawazir, a town where that classifier
 sees solar on roofless concrete shells, was mapped on 2026-10-31 and holds none: the measure
@@ -181,8 +183,8 @@ holds.
 | [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
 | [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
 | [Pakistan](../atlas.md) | Gold | 11 | 66 to 617 | Malakand, Khyber Pakhtunkhwa |
-| [Yemen](../atlas-yemen.md) | Silver | 16 | 34 to 2,471 | none for now |
-| [France](../atlas-france.md) | Silver | none | map any solar you can see | |
+| [Yemen](../atlas-yemen.md) | Bronze (calibrated as Silver) | 16 | 34 to 2,471 | none for now |
+| [France](../atlas-france.md) | Bronze (calibrated as Silver) | none | map any solar you can see | |
 
 **Start at the star.** Wherever a country's small solar is not yet measured, on its roofs or
 on its farms, the candidates are numbered in mapping order: the start-here boxes first, in

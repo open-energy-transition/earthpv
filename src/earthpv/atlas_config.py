@@ -48,6 +48,11 @@ silently drop the section it was meant to fill):
     validation:                            # the calibration tier, when it is a judgement
       score: silver                        # gold | silver | bronze; beats the derived tier
       note: "Register-checked above 400&nbsp;m&sup2;"   # replaces the badge's sub-line
+      leads_checked:                       # every lead in a lead file has a human verdict
+        made: "2026-10-31"                 # that file's `made` in configs/atlas_leads.json
+        by: owner                          # who checked or declared them checked
+        date: "2026-10-31"                 # when
+        note: "..."                        # optional: how, where the verdicts are
     start_here: yafi_pv2_calib_1km         # the candidate to map first, drawn as a star
 
 `start_here` names a candidate (`candidate_quadrats/<stem>_candidate.geojson`) when which
@@ -61,6 +66,13 @@ a country where no box should be singled out (Yemen, owner, 2026-10-31).
 disk: Germany has a calibrated small-installation half, which would make it Gold, but that
 half fails its own register check, so the owner placed it at Silver (2026-10-22). An
 explicit `--validation-score` on `earthpv atlas` still wins over this.
+
+`validation.leads_checked` is the other half of Silver and Gold (owner, 2026-10-31): every
+lead in the country's mapping-lead file must have been checked by a human. Like a quadrat's
+Rule-1 status it is a declaration, not something code can derive, and it names the lead
+file it covers by its `made` date, so a rebuilt lead file is unchecked until someone says
+otherwise. Without it `atlas.resolve_validation_badge` shows Bronze whatever the tier
+earned (see `atlas.leads_checked`).
 
 `status` is the quadrat's completeness declaration, not something code can derive:
 "rule1" = every visible panel mapped (so its no-PV buildings are trustworthy negatives),
@@ -88,7 +100,8 @@ NO_STAR = "none"
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
              "validation", "start_here"}
-_VALIDATION_KEYS = {"score", "note"}
+_VALIDATION_KEYS = {"score", "note", "leads_checked"}
+_LEADS_CHECKED_KEYS = {"made", "by", "date", "note"}
 _SCORES = {"gold", "silver", "bronze"}
 _CONFIDENCE_KEYS = {"ground_truth", "caveats", "corroboration"}
 _BOX_KEYS = {"name", "stem", "status", "used"}
@@ -113,6 +126,12 @@ class AtlasConfig:
     layers: tuple = ()
     validation_score: str = ""
     validation_note: str = ""
+    # `validation.leads_checked`: the lead file (by its manifest `made` date) whose every
+    # lead has a human verdict, who checked it, when, and how. Empty: not checked.
+    leads_checked_made: str = ""
+    leads_checked_by: str = ""
+    leads_checked_date: str = ""
+    leads_checked_note: str = ""
     start_here: str = ""
 
     # Kept so a caller can tell "this country has no config" from "this country has a
@@ -273,6 +292,15 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
     score = str(val.get("score") or "").strip().lower()
     if score and score not in _SCORES:
         _fail(aoi, f"validation.score {score!r} is not one of {sorted(_SCORES)}")
+    checked = val.get("leads_checked") or {}
+    if not isinstance(checked, dict):
+        _fail(aoi, "`validation.leads_checked` must be a mapping")
+    unknown = set(checked) - _LEADS_CHECKED_KEYS
+    if unknown:
+        _fail(aoi, f"unknown validation.leads_checked key(s) {sorted(unknown)}; "
+                   f"expected {sorted(_LEADS_CHECKED_KEYS)}")
+    if checked and not all(checked.get(k) for k in ("made", "by", "date")):
+        _fail(aoi, "`validation.leads_checked` needs `made`, `by` and `date`")
 
     return AtlasConfig(
         aoi=aoi,
@@ -286,6 +314,10 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         layers=_parse_layers(aoi, raw.get("layers")),
         validation_score=score,
         validation_note=str(val.get("note") or "").strip(),
+        leads_checked_made=str(checked.get("made") or "").strip(),
+        leads_checked_by=str(checked.get("by") or "").strip(),
+        leads_checked_date=str(checked.get("date") or "").strip(),
+        leads_checked_note=str(checked.get("note") or "").strip(),
         start_here=str(raw.get("start_here") or "").strip(),
         path=path,
     )

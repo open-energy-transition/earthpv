@@ -34,6 +34,18 @@ cities:
 # completeness; suspect = needs re-verification. A stem with no boundary geojson on
 # disk is skipped silently by `atlas._load_calib_boxes`, so this list has to track
 # every rename.
+# Gold needs every mapping lead checked (owner rule, 2026-10-31; atlas.leads_checked). The
+# owner declared Pakistan's leads checked on 2026-10-31: the 2026-10-28 file
+# (pv-new-leads-2026-10-28, 8,639 leads). The 2026-11-01 file named here is that file less
+# the 369 leads under 1,000 m2 on ground steeper than 15 degrees, so every lead in it was
+# in the file checked. A rebuilt lead file needs a new declaration.
+validation:
+  leads_checked:
+    made: "2026-11-01"
+    by: owner
+    date: "2026-10-31"
+    note: "the 8,639 leads of the 2026-10-28 file, declared checked by the owner on 2026-10-31; the 2026-11-01 file is that one less 369 small leads on steep ground"
+
 calibration_boxes:
   # Extended 2026-08-05 from a 1 km2 square to a 6.61 km2 hand-drawn boundary that
   # fully contains it (`_calib_1km` retired to data/labels/retired/).

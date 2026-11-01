@@ -10,11 +10,9 @@ hide:
   <span class="atlas-switch__label">Atlas</span>
   <span class="atlas-switch__tier atlas-switch__tier--gold" title="Installations above and below the 400 m2 floor, calibrated on ground truth or a register">Gold</span>
   <a href="../atlas/">Pakistan</a>
-  <span class="atlas-switch__tier atlas-switch__tier--silver" title="400 m2 and up only, validated against local ground truth">Silver</span>
+  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or mapping leads not yet all checked">Bronze</span>
   <a href="../atlas-germany/">Germany</a>
   <span aria-current="page">France</span>
-  <a href="../atlas-yemen/">Yemen</a>
-  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated">Bronze</span>
   <a href="../atlas-egypt/">Egypt</a>
   <a href="../atlas-india/">India</a>
   <a href="../atlas-morocco/">Morocco</a>
@@ -23,12 +21,14 @@ hide:
   <a href="../atlas-poland/">Poland</a>
   <a href="../atlas-south-africa/">South Africa</a>
   <a href="../atlas-vietnam/">Vietnam</a>
+  <a href="../atlas-yemen/">Yemen</a>
   <a href="../atlas-zambia/">Zambia</a>
+  <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
-<div class="atlas-tier-alert atlas-tier-alert--silver" role="note">
-  <p><strong>Silver atlas: smaller installations are missing.</strong> Installations of about 400 m&sup2; (70 kWp) and up are validated against hand-mapped ground truth; below that, where household rooftops sit, there is no calibrated estimate. A French household array is about 20 m&sup2;, a fifth of a Sentinel-2 pixel, so every figure here is a floor.</p>
-  <p><strong>You can help:</strong> small areas mapped completely, panel by panel, in OpenStreetMap are what an estimate of the smaller installations is fitted on.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
+<div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
+  <p><strong>Bronze until its mapping leads are checked.</strong> Arrays of about 400 m&sup2; and up are checked against 14 communes mapped panel by panel; nothing below that is estimated. Silver and Gold also need a person to have checked every lead in the country's lead file: the places the model found solar that OpenStreetMap does not have yet (28,734 leads).</p>
+  <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work through it on recent imagery, mapping every real installation. When every lead has a verdict the atlas shows Silver again.</p>
+  <p><a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> <a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a></p>
 </div>
 <iframe src="../assets/interactive/france_pv_evidence_atlas.html" title="France PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>

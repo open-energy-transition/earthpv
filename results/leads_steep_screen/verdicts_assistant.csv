@@ -1,0 +1,154 @@
+code,candidate_id,kind,verdict,note,reviewer,date
+egypt-d00,egypt-pv-001181,dropped,unsure,hillside behind a Red Sea resort; cannot tell at this scale,assistant,2026-11-01
+egypt-r00,egypt-pv-000620,review,no_pv,rock band / volcanic hill / canyon shadow / salt flat,assistant,2026-11-01
+egypt-r01,egypt-pv-000943,review,no_pv,rock band / volcanic hill / canyon shadow / salt flat,assistant,2026-11-01
+egypt-r02,egypt-pv-000630,review,no_pv,rock band / volcanic hill / canyon shadow / salt flat,assistant,2026-11-01
+egypt-r03,egypt-pv-000505,review,no_pv,rock band / volcanic hill / canyon shadow / salt flat,assistant,2026-11-01
+germany-d00,germany-pv-021945,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-d01,germany-pv-025176,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-d02,germany-pv-024687,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-d03,germany-pv-024964,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-d04,germany-pv-018336,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-d05,germany-pv-024117,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-d06,germany-pv-016191,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-d07,germany-pv-022404,dropped,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-r00,germany-pv-021993,review,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+germany-r01,germany-pv-022321,review,unsure,farmstead in hill country; a barn roof could carry PV,assistant,2026-11-01
+germany-r02,germany-pv-021685,review,unsure,farm buildings; composite broken here,assistant,2026-11-01
+germany-r03,germany-pv-023238,review,no_pv,Alpine cast shadow beside masked terrain,assistant,2026-11-01
+india-d00,india-pv-075534,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-d01,india-pv-103887,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-d02,india-pv-095367,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-d03,india-pv-102169,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-d04,india-pv-059449,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-d05,india-pv-090280,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-d06,india-pv-049625,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-d07,india-pv-078507,dropped,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-r00,india-pv-076345,review,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-r01,india-pv-078483,review,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-r02,india-pv-075097,review,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+india-r03,india-pv-084583,review,no_pv,"Himalayan shadow, snow edge or forest slope",assistant,2026-11-01
+morocco-d00,morocco-pv-000484,dropped,unsure,small dark spots in farmland by a wadi; Esri from 2022,assistant,2026-11-01
+morocco-d01,morocco-pv-000597,dropped,no_pv,forested or eroded hillside,assistant,2026-11-01
+morocco-d02,morocco-pv-000605,dropped,unsure,forest edge; no Esri tile,assistant,2026-11-01
+morocco-d03,morocco-pv-000522,dropped,no_pv,forested or eroded hillside,assistant,2026-11-01
+morocco-d04,morocco-pv-000368,dropped,no_pv,forested or eroded hillside,assistant,2026-11-01
+morocco-d05,morocco-pv-000502,dropped,unsure,small light-grey object on Esri 2022 (tank or roof?),assistant,2026-11-01
+morocco-d06,morocco-pv-000314,dropped,no_pv,forested or eroded hillside,assistant,2026-11-01
+morocco-d07,morocco-pv-000400,dropped,no_pv,forested or eroded hillside,assistant,2026-11-01
+morocco-r00,morocco-pv-000667,review,no_pv,forested or eroded hillside,assistant,2026-11-01
+morocco-r01,morocco-pv-000495,review,unsure,grey rectangular structure on Esri 2024,assistant,2026-11-01
+morocco-r02,morocco-pv-000453,review,no_pv,forested or eroded hillside,assistant,2026-11-01
+morocco-r03,morocco-pv-000501,review,no_pv,forested or eroded hillside,assistant,2026-11-01
+namibia-d00,namibia-pv-000945,dropped,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-d01,namibia-pv-000757,dropped,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-d02,namibia-pv-000952,dropped,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-d03,namibia-pv-000769,dropped,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-d04,namibia-pv-000958,dropped,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-d05,namibia-pv-000747,dropped,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-r00,namibia-pv-000506,review,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-r01,namibia-pv-000589,review,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-r02,namibia-pv-000164,review,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+namibia-r03,namibia-pv-000488,review,no_pv,shaded slope or canyon wall,assistant,2026-11-01
+nigeria-d00,nigeria-pv-002979,dropped,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-d01,nigeria-pv-004997,dropped,unsure,edge of a burnt patch; Esri from 2019,assistant,2026-11-01
+nigeria-d02,nigeria-pv-004299,dropped,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-d03,nigeria-pv-004762,dropped,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-d04,nigeria-pv-002004,dropped,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-d05,nigeria-pv-003834,dropped,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-d06,nigeria-pv-001362,dropped,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-d07,nigeria-pv-003047,dropped,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-r00,nigeria-pv-003376,review,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-r01,nigeria-pv-003412,review,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-r02,nigeria-pv-003228,review,no_pv,forested or rocky hillside,assistant,2026-11-01
+nigeria-r03,nigeria-pv-003883,review,no_pv,forested or rocky hillside,assistant,2026-11-01
+pakistan-d00,pakistan-pv-011296,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-d01,pakistan-pv-013567,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-d02,pakistan-pv-012966,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-d03,pakistan-pv-013426,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-d04,pakistan-pv-009834,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-d05,pakistan-pv-012559,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-d06,pakistan-pv-009065,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-d07,pakistan-pv-011628,dropped,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-r00,pakistan-pv-011314,review,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-r01,pakistan-pv-011430,review,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-r02,pakistan-pv-011105,review,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+pakistan-r03,pakistan-pv-011887,review,no_pv,"mountain slope, ridge or gully",assistant,2026-11-01
+poland-d00,poland-pv-008194,dropped,no_pv,"Tatra slope, scree or forest",assistant,2026-11-01
+poland-r00,poland-pv-007772,review,no_pv,"Tatra slope, scree or forest",assistant,2026-11-01
+poland-r01,poland-pv-007884,review,unsure,patch beside a mountain road; no Esri tile,assistant,2026-11-01
+poland-r02,poland-pv-007648,review,unsure,building in a forest clearing; Esri from 2019,assistant,2026-11-01
+poland-r03,poland-pv-006983,review,no_pv,"Tatra slope, scree or forest",assistant,2026-11-01
+south_africa-d00,south_africa-pv-008490,dropped,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-d01,south_africa-pv-010659,dropped,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-d02,south_africa-pv-010112,dropped,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-d03,south_africa-pv-010534,dropped,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-d04,south_africa-pv-007041,dropped,unsure,forest edge beside a rectangular grey patch,assistant,2026-11-01
+south_africa-d05,south_africa-pv-009607,dropped,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-d06,south_africa-pv-006163,dropped,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-d07,south_africa-pv-008664,dropped,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-r00,south_africa-pv-008220,review,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-r01,south_africa-pv-008525,review,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-r02,south_africa-pv-008016,review,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+south_africa-r03,south_africa-pv-009040,review,no_pv,"mountain shadow, mine wall or dump, or composite grey block",assistant,2026-11-01
+vietnam-d00,vietnam-pv-005868,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-d01,vietnam-pv-006488,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-d02,vietnam-pv-006370,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-d03,vietnam-pv-006402,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-d04,vietnam-pv-005500,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-d05,vietnam-pv-006305,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-d06,vietnam-pv-005330,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-d07,vietnam-pv-005874,dropped,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-r00,vietnam-pv-005793,review,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-r01,vietnam-pv-005836,review,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-r02,vietnam-pv-005716,review,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+vietnam-r03,vietnam-pv-005974,review,no_pv,"forest, clearing or hillside field",assistant,2026-11-01
+yemen-d00,yemen-pv-001213,dropped,no_pv,canyon rim,assistant,2026-10-31
+yemen-d01,yemen-pv-002222,dropped,no_pv,slope beside masked holes,assistant,2026-10-31
+yemen-d02,yemen-pv-001830,dropped,no_pv,canyon wall beside a bright patch,assistant,2026-10-31
+yemen-d03,yemen-pv-001669,dropped,unsure,edge of a village with greenhouse tunnels; cannot tell at this scale,assistant,2026-10-31
+yemen-d04,yemen-pv-002211,dropped,no_pv,dissected hillside,assistant,2026-10-31
+yemen-d05,yemen-pv-001943,dropped,no_pv,"hills with masked holes; greenhouses nearby, not at the lead",assistant,2026-10-31
+yemen-d06,yemen-pv-002077,dropped,no_pv,below a cliff beside masked shadow,assistant,2026-10-31
+yemen-d07,yemen-pv-002122,dropped,no_pv,shaded slope,assistant,2026-10-31
+yemen-d08,yemen-pv-002242,dropped,no_pv,gully,assistant,2026-10-31
+yemen-d09,yemen-pv-001444,dropped,unsure,bright patch and masked pixel in a wadi; Esri from 2019,assistant,2026-10-31
+yemen-d10,yemen-pv-002082,dropped,no_pv,shaded valley side,assistant,2026-10-31
+yemen-d11,yemen-pv-002100,dropped,no_pv,canyon rim,assistant,2026-10-31
+yemen-d12,yemen-pv-001002,dropped,no_pv,54 degree slope beside masked shadow,assistant,2026-10-31
+yemen-d13,yemen-pv-001057,dropped,no_pv,composite mostly no-data here; forested hills on Esri,assistant,2026-10-31
+yemen-d14,yemen-pv-002215,dropped,unsure,dark pixels beside a masked block; Esri under cloud,assistant,2026-10-31
+yemen-d15,yemen-pv-002184,dropped,unsure,beside masked shadows on a mountain; no Esri tile,assistant,2026-10-31
+yemen-d16,yemen-pv-001264,dropped,no_pv,hillside beside a masked shadow strip,assistant,2026-10-31
+yemen-d17,yemen-pv-001709,dropped,no_pv,steep slope below a road,assistant,2026-10-31
+yemen-d18,yemen-pv-001581,dropped,no_pv,slope beside a masked shadow,assistant,2026-10-31
+yemen-d19,yemen-pv-002108,dropped,no_pv,escarpment shadow lines,assistant,2026-10-31
+yemen-d20,yemen-pv-002310,dropped,no_pv,"rugged mountains, cast shadows",assistant,2026-10-31
+yemen-d21,yemen-pv-002080,dropped,no_pv,cliff edge beside masked terrain shadow,assistant,2026-10-31
+yemen-d22,yemen-pv-002267,dropped,no_pv,"ridge slope, nothing on Esri",assistant,2026-10-31
+yemen-d23,yemen-pv-002208,dropped,no_pv,shadow in a narrow canyon,assistant,2026-10-31
+yemen-r00,yemen-pv-001169,review,no_pv,deep cast shadow in mountains,assistant,2026-10-31
+yemen-r01,yemen-pv-001316,review,no_pv,hillside,assistant,2026-10-31
+yemen-r02,yemen-pv-000950,review,no_pv,slope,assistant,2026-10-31
+yemen-r03,yemen-pv-000837,review,no_pv,canyon rim,assistant,2026-10-31
+yemen-r04,yemen-pv-000953,review,no_pv,cliff shadow,assistant,2026-10-31
+yemen-r05,yemen-pv-000823,review,no_pv,slope,assistant,2026-10-31
+yemen-r06,yemen-pv-001201,review,no_pv,"wadi side, dark vegetation",assistant,2026-10-31
+yemen-r07,yemen-pv-001058,review,no_pv,"hillside, nothing on Esri",assistant,2026-10-31
+yemen-r08,yemen-pv-001536,review,no_pv,slope,assistant,2026-10-31
+yemen-r09,yemen-pv-000793,review,no_pv,hillside beside masked shadow,assistant,2026-10-31
+yemen-r10,yemen-pv-001875,review,no_pv,canyon rim,assistant,2026-10-31
+yemen-r11,yemen-pv-000632,review,no_pv,dark rocky hill beside fields,assistant,2026-10-31
+yemen-r12,yemen-pv-000833,review,no_pv,trees along a stream,assistant,2026-10-31
+yemen-r13,yemen-pv-001042,review,no_pv,hills,assistant,2026-10-31
+yemen-r14,yemen-pv-000734,review,no_pv,slope edge,assistant,2026-10-31
+yemen-r15,yemen-pv-000480,review,no_pv,"dark rock hill, 22 ha",assistant,2026-10-31
+yemen-r16,yemen-pv-001553,review,no_pv,shaded slope,assistant,2026-10-31
+yemen-r17,yemen-pv-001136,review,no_pv,terraced hillside,assistant,2026-10-31
+yemen-r18,yemen-pv-000686,review,no_pv,hillside,assistant,2026-10-31
+yemen-r19,yemen-pv-001188,review,no_pv,ridge beside masked pixels,assistant,2026-10-31
+zambia-d00,zambia-pv-000659,dropped,no_pv,"mine dump, burnt woodland or hillside",assistant,2026-11-01
+zambia-r00,zambia-pv-000553,review,no_pv,"mine dump, burnt woodland or hillside",assistant,2026-11-01
+zambia-r01,zambia-pv-000640,review,no_pv,"mine dump, burnt woodland or hillside",assistant,2026-11-01
+zambia-r02,zambia-pv-000587,review,no_pv,"mine dump, burnt woodland or hillside",assistant,2026-11-01
+zambia-r03,zambia-pv-000377,review,no_pv,"mine dump, burnt woodland or hillside",assistant,2026-11-01

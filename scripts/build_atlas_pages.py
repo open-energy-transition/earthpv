@@ -18,8 +18,15 @@ the navigation and the badge on the map cannot disagree:
   calibrated estimate below the floor.
 - **Bronze**: 400 m2 and up only, with no local calibration.
 
+Gold and Silver also need every mapping lead checked by a person (owner, 2026-10-31;
+`atlas.leads_checked`). A page whose calibration earns more than Bronze but whose leads are
+not all checked shows Bronze, and its badge keeps the earned tier as `data-earned`; its
+banner says what is missing.
+
 Silver and Bronze pages open with a warning that smaller installations are missing, what a
 reader can do about it, and links into the Contribute Data section (docs/contribute/).
+`docs/atlas-quality-levels.md` lists every criterion and where each country stands
+(`quality_page`); the switcher links it.
 
     python scripts/build_atlas_pages.py          # rewrites docs/atlas*.md
     python scripts/build_atlas_pages.py --nav    # also prints the mkdocs.yml nav block
@@ -29,6 +36,9 @@ reader can do about it, and links into the Contribute Data section (docs/contrib
 from __future__ import annotations
 
 import argparse
+import json
+import re
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -36,8 +46,10 @@ DOCS = REPO / "docs"
 
 TIERS = {
     "gold": ("Gold", "Installations above and below the 400 m2 floor, calibrated on ground truth or a register"),
-    "silver": ("Silver", "400 m2 and up only, validated against local ground truth"),
-    "bronze": ("Bronze", "400 m2 and up only, not yet calibrated"),
+    "silver": ("Silver", "400 m2 and up only, validated against local ground truth; every "
+               "mapping lead checked"),
+    "bronze": ("Bronze", "400 m2 and up only, not yet calibrated, or mapping leads not yet "
+               "all checked"),
 }
 
 # (page stem, country, interactive file, iframe title, country-specific warning line)
@@ -63,13 +75,30 @@ ATLASES = [
 
 def tier_of(html: str) -> str:
     """The tier the atlas's own calibration badge shows."""
-    import re
-
     text = (DOCS / "assets" / "interactive" / html).read_text()
     m = re.search(r'class="vscore-tier">(Gold|Silver|Bronze)<', text)
     if not m:
         raise SystemExit(f"{html}: no calibration badge found; rebuild the atlas first")
     return m.group(1).lower()
+
+
+def earned_of(html: str) -> str:
+    """The tier the atlas's calibration evidence earned: its badge's `data-earned` when the
+    badge shows a lower one because the leads are not all checked, else the shown tier."""
+    text = (DOCS / "assets" / "interactive" / html).read_text()
+    m = re.search(r'class="vscore vscore--[a-z]+"[^>]*?data-earned="([a-z]+)"', text)
+    return m.group(1) if m else tier_of(html)
+
+
+def totals_of(html: str) -> dict:
+    """The page's own `totals` block."""
+    text = (DOCS / "assets" / "interactive" / html).read_text()
+    m = re.search(r'<script id="pv" type="application/json">(.*?)</script>', text, re.S)
+    return json.loads(m.group(1)).get("totals", {}) if m else {}
+
+
+def aoi_of(country: str) -> str:
+    return country.lower().replace(" ", "_")
 
 WARNING = {
     "silver": (
@@ -107,6 +136,32 @@ TIER_NOTE = {
         "areas calibrate rooftops; farm areas widen the farm estimate.",
     ),
 }
+# A page that earned Silver or Gold on its calibration but shows Bronze because its
+# mapping leads are not all checked (owner rule, 2026-10-31). EARNED_NOTE says, in one
+# sentence, what the calibration does cover; the banner then names the missing piece.
+LEADS_WARNING = (
+    "<strong>Bronze until its mapping leads are checked.</strong> {earned_note} Silver and "
+    "Gold also need a person to have checked every lead in the country's lead file: the "
+    "places the model found solar that OpenStreetMap does not have yet ({n} leads)."
+)
+LEADS_HELP = (
+    "<strong>You can help:</strong> download the lead file under <em>Download the data behind "
+    "this atlas</em> and work through it on recent imagery, mapping every real installation. "
+    "When every lead has a verdict the atlas shows {earned} again."
+)
+LEADS_CTA = (
+    '<a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> '
+    '<a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a>'
+)
+EARNED_NOTE = {
+    "Germany": "Arrays of about 400 m&sup2; and up are checked against Germany's register "
+               "(MaStR); the small-installation estimate below that is not yet validated.",
+    "France": "Arrays of about 400 m&sup2; and up are checked against 14 communes mapped "
+              "panel by panel; nothing below that is estimated.",
+    "Yemen": "Installations of about 400 m&sup2; and up are counted, plus small "
+             "solar-irrigation arrays calibrated on hand-mapped farm areas; small rooftop "
+             "systems are not estimated.",
+}
 # What a reader can do about it: the Contribute Data section (docs/contribute/).
 HELP = {
     "silver": (
@@ -134,15 +189,18 @@ def switcher(current: str) -> str:
     lines = ['<nav class="atlas-switch" aria-label="Choose a country atlas">',
              '  <span class="atlas-switch__label">Atlas</span>']
     for tier, (label, desc) in TIERS.items():
+        rows = [r for r in ATLASES if tier_of(r[2]) == tier]
+        if not rows:      # a level no country shows (Silver from 2026-10-31): no empty label
+            continue
         lines.append(f'  <span class="atlas-switch__tier atlas-switch__tier--{tier}" '
                      f'title="{desc}">{label}</span>')
-        for stem, country, html, *_ in ATLASES:
-            if tier_of(html) != tier:
-                continue
+        for stem, country, html, *_ in rows:
             if stem == current:
                 lines.append(f'  <span aria-current="page">{country}</span>')
             else:
                 lines.append(f'  <a href="{_href(stem)}">{country}</a>')
+    lines.append('  <a class="atlas-switch__about" href="../atlas-quality-levels/">'
+                 'What the levels mean</a>')
     lines.append("</nav>")
     return "\n".join(lines)
 
@@ -152,7 +210,17 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
     title = title or f"{country} PV evidence atlas: verified and best estimate by 0.1-degree cell"
     parts = ["---", f'title: "EarthPV: {country}"', "hide:", "  - navigation", "  - toc",
              "---", "", '<div class="page-full-bleed" markdown>', switcher(stem)]
-    if tier in WARNING:
+    earned = earned_of(html)
+    if earned != tier:
+        label = TIERS[earned][0]
+        n = (totals_of(html).get("leads") or {}).get("n")
+        text = LEADS_WARNING.format(
+            earned_note=EARNED_NOTE.get(country, f"Its calibration meets {label}."),
+            n=f"{n:,}" if n else "all")
+        help_ = LEADS_HELP.format(earned=label)
+        parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
+                     f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{LEADS_CTA}</p>\n</div>")
+    elif tier in WARNING:
         text = WARNING[tier].format(country=country, extra=extra).strip()
         help_ = HELP[tier].format(country=country)
         if country in TIER_NOTE:
@@ -172,12 +240,177 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
 
 
 def nav_block() -> str:
-    out = ["  - PV Atlas:"]
+    out = ["  - PV Atlas:", "      - Quality levels: atlas-quality-levels.md"]
     for tier, (label, _) in TIERS.items():
-        out.append(f"      - {label}:")
-        for stem, country, html, *_ in ATLASES:
-            if tier_of(html) == tier:
-                out.append(f"          - {country}: {stem}.md")
+        rows = [r for r in ATLASES if tier_of(r[2]) == tier]
+        if rows:          # mkdocs rejects a section with no pages
+            out.append(f"      - {label}:")
+            out += [f"          - {country}: {stem}.md" for stem, country, *_ in rows]
+    return "\n".join(out)
+
+
+# --------------------------------------------------------------------------------------
+# docs/atlas-quality-levels.md: every criterion, and where each country stands
+# --------------------------------------------------------------------------------------
+# Each criterion: (name, what it means, where it is set). The levels add up: Silver needs
+# all of Bronze, Gold all of Silver. Keep in step with atlas.derive_validation_score,
+# atlas.leads_checked and the country-run rules in CLAUDE.md.
+CRITERIA = {
+    "bronze": [
+        ("Model trained on the country's own map",
+         "The segmentation model is fine-tuned on the country's own OpenStreetMap solar, and "
+         "the shipped checkpoint is whichever of that local model and a general one finds "
+         "more mapped installations in a held-out region chosen before training; a tie goes "
+         "to the local model. Zambia, run before this rule, uses a general model.",
+         "`scripts/pick_val_region.py`, `scripts/compare_local_vs_v5.py`"),
+        ("Imagery over every populated cell",
+         "A dry-season Sentinel-2 composite over every 0.1&deg; cell with at least 1,000 "
+         "buildings, plus every cell holding mapped solar. Cells nobody imaged are hatched on the map, so "
+         "bare land means imaged with nothing found.",
+         "`earthpv compose`"),
+        ("Hand-mapped solar counted once",
+         "<em>Verified</em> is OpenStreetMap's own solar, clipped to the border and dissolved "
+         "so a plant outline and the panels mapped inside it count once.",
+         "`scripts/prepare_national_osm_solar.py`"),
+        ("Model outlines priced by measured precision",
+         "<em>Best</em> adds the model's outlines of about 400 m&sup2; and up, each weighted "
+         "by the share of outlines of its size and placement that turned out to be real. "
+         "Without a local recall reference this is a floor.",
+         "`configs/calibration/<aoi>_candidate_precision.yaml`"),
+        ("Plausibility gate",
+         "Before publication each region's ground-mount to rooftop ratio and its "
+         "single-cell concentration are checked; a failure is looked at and stated on the "
+         "page.",
+         "`earthpv check-density`"),
+        ("Mapping leads published",
+         "The model's outlines more than 100 m from any solar installation in "
+         "OpenStreetMap, most promising first. Leads under 1,000 m&sup2; on ground steeper "
+         "than 15&deg; are left out (shaded slopes and cliff edges read like panels); "
+         "larger ones on steep ground stay, marked <code>steep_review</code>, because a "
+         "solar farm can stand on a mountainside. France's audited lead release predates "
+         "this rule.",
+         "`scripts/release_leads.py`"),
+    ],
+    "silver": [
+        ("Local ground truth",
+         "The model's precision table is fitted against the country's own mapped "
+         "installations as a recall reference, or the country has calibration areas in use "
+         "where every visible panel is mapped (Rule 1).",
+         "`atlas.derive_validation_score`"),
+        ("Every mapping lead checked",
+         "A person has looked at every lead in the country's current lead file on recent "
+         "high-resolution imagery and mapped the real installations. The record names the "
+         "lead file it covers, so a rebuilt file starts unchecked. Until the check is "
+         "recorded the atlas shows Bronze, whatever its calibration earns.",
+         "`validation.leads_checked` in `configs/atlas/<aoi>.yaml`"),
+    ],
+    "gold": [
+        ("Installations below 400 m&sup2; calibrated",
+         "An estimate below the 400 m&sup2; floor, where 10 m pixels cannot outline an "
+         "array: the rooftop classifier priced by a coverage ratio fitted on calibration "
+         "areas mapped panel by panel, its interval from resampling those areas, or a "
+         "legally complete national register.",
+         "`roofclf`, `sub400_capacity.py`"),
+        ("The small-installation estimate holds up",
+         "That estimate survives the check against its own ground truth: leaving each "
+         "mapped area out in turn, or the register's municipal totals.",
+         "owner judgement, `validation.score`"),
+    ],
+}
+# Owner decisions recorded as `validation.score` in configs/atlas/<aoi>.yaml, in words.
+JUDGEMENT = {
+    "Germany": "Silver, not Gold (2026-10-22): its small-installation half is calibrated on "
+               "the register, but misses the register's municipal totals by about half.",
+    "Yemen": "Silver (2026-10-23): its farm areas calibrate small solar-irrigation arrays "
+             "only; household rooftops below 400 m&sup2; are not estimated.",
+    "Egypt": "Bronze (2026-10-29): its one registered area, a farm area with no solar, is "
+             "not used by the figures.",
+    "India": "Bronze (2026-10-28): its two registered areas are not used by the figures, "
+             "so nothing on the page is fitted on local ground truth.",
+}
+# What a country still needs for the level above the one it earned, where it is not the
+# generic step.
+NEXT = {
+    "Germany": "A small-installation estimate that passes the register check",
+    "Yemen": "Household rooftops below 400 m&sup2; calibrated on mapped building areas",
+}
+
+
+def _below_400(totals: dict, country: str) -> str:
+    roof = totals.get("small_rooftop_status")
+    roof = roof.get("measured") if isinstance(roof, dict) else (totals.get("small_central") or 0) > 0
+    ground = (totals.get("small_ground_status") or {}).get("measured", False)
+    parts = (["rooftop"] if roof else []) + (["farm ground"] if ground else [])
+    if country == "Germany" and roof:
+        return "rooftop (register-calibrated, not validated)"
+    return " and ".join(parts) if parts else "not measured"
+
+
+def quality_page() -> str:
+    sys.path.insert(0, str(REPO / "src"))
+    from earthpv import atlas
+
+    out = ["---", 'title: "EarthPV: quality levels"', "---", "",
+           "# Quality levels: Gold, Silver and Bronze", "",
+           "Every country atlas carries a calibration badge in its corner: **Gold**, "
+           "**Silver** or **Bronze**. It says how far the atlas's figures have been checked, "
+           "against installations mapped by hand and by people looking at what the model "
+           "found, not how much solar a country has. The levels add up: Silver needs everything Bronze asks for, and Gold "
+           "everything Silver asks for. A country shows the highest level whose every "
+           "criterion it meets.", ""]
+    heads = {"bronze": "Bronze: every published atlas",
+             "silver": "Silver: Bronze, plus local ground truth and checked leads",
+             "gold": "Gold: Silver, plus installations below 400 m&sup2;"}
+    for tier in ("bronze", "silver", "gold"):
+        out += [f"## {heads[tier]}", "", "| Criterion | What it means | Where it is set |",
+                "| --- | --- | --- |"]
+        out += [f"| **{n}** | {w} | {where} |" for n, w, where in CRITERIA[tier]]
+        out.append("")
+    out += ["## When a lead counts as checked", "",
+            "A lead is checked when a person has looked at it on recent high-resolution "
+            "imagery and either mapped the installation in OpenStreetMap or judged it not "
+            "solar. Rooftop leads in towns and leads beside roads deserve the same look as "
+            "the rest: dark asphalt junctions and shadows are the model's commonest false "
+            "alarms. Leads marked <code>steep_review</code> need a look at the terrain as "
+            "well. The [lead mapping guide](contribute/leads.md) walks through a lead file in "
+            "JOSM. When every lead in a country's current file has a verdict, a maintainer "
+            "records it as `validation.leads_checked` in the country's configuration, naming "
+            "the file by its date; the badge then shows the level the calibration earns.", ""]
+    out += ["## Where each country stands", "",
+            "| Country | Shows | Calibration earns | Below 400 m&sup2; | Leads checked | "
+            "Missing for the next level |", "| --- | --- | --- | --- | --- | --- |"]
+    for stem, country, html, *_ in ATLASES:
+        shown, earned, totals = tier_of(html), earned_of(html), totals_of(html)
+        aoi = aoi_of(country)
+        c = atlas.leads_checked(aoi)
+        leads = totals.get("leads") or {}
+        n = leads.get("n")
+        checked = (f"yes, {c['date']}" if c["checked"]
+                   else f"no ({n:,} leads)" if n else "no")
+        missing = []
+        if earned != "bronze" and not c["checked"]:
+            missing.append(f"Check every lead ({n:,})" if n else "Check every lead")
+        if earned == "bronze":
+            missing.append("Local ground truth: map a calibration area")
+            if not c["checked"]:
+                missing.append("check every lead")
+        elif earned == "silver":
+            step = NEXT.get(country, "A calibrated estimate below 400 m&sup2;")
+            missing.append(f"then: {step[0].lower()}{step[1:]}" if missing else step)
+        out.append(f"| [{country}]({stem}.md) | {TIERS[shown][0]} | {TIERS[earned][0]} | "
+                   f"{_below_400(totals, country)} | {checked} | "
+                   f"{'; '.join(missing) or '-'} |")
+    out += ["", "The table is read from each atlas's own badge and data, and from the lead "
+            "files' records, so it changes when they do.", "",
+            "## Judgements", "",
+            "The level is derived from what each atlas has on disk. Where the evidence is of "
+            "a different kind, the owner's decision is recorded in the country's "
+            "configuration (`validation.score`) and wins over the derived level; the lead "
+            "check still applies on top.", ""]
+    out += [f"- **{k}**: {v}" for k, v in JUDGEMENT.items()]
+    out += ["", "Code: `atlas.derive_validation_score` (the derived level), "
+            "`atlas.resolve_validation_badge` and `atlas.leads_checked` (the lead check); this "
+            "page is written by `scripts/build_atlas_pages.py`.", ""]
     return "\n".join(out)
 
 
@@ -185,9 +418,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--nav", action="store_true", help="print the mkdocs.yml nav block")
     a = ap.parse_args()
+    import os
+    os.chdir(REPO)
     for row in ATLASES:
         (DOCS / f"{row[0]}.md").write_text(page(*row))
-    print(f"wrote {len(ATLASES)} atlas pages")
+    (DOCS / "atlas-quality-levels.md").write_text(quality_page())
+    print(f"wrote {len(ATLASES)} atlas pages and atlas-quality-levels.md")
     if a.nav:
         print(nav_block())
     return 0

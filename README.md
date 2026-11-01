@@ -45,13 +45,16 @@ mapping solar panels in every country</a>, EarthPV explained by Open Energy Tran
 
 Each country gets an interactive **evidence atlas**: hand-mapped OpenStreetMap
 installations plus the model's own detections, per 0.1&deg; cell, with a 90% range on the
-headline figure. Atlases are tiered by calibration; mapping calibration areas is how an atlas moves
-up, so [maps a calibration area](https://open-energy-transition.github.io/earthpv/contribute/).
+headline figure. Atlases are tiered by calibration and checking
+([what each level needs](https://open-energy-transition.github.io/earthpv/atlas-quality-levels/));
+mapping calibration areas and checking the mapping leads is how an atlas moves up, so
+[maps a calibration area](https://open-energy-transition.github.io/earthpv/contribute/).
 
 | Tier | Country | What the atlas rests on |
 | --- | --- | --- |
 | Gold | [Pakistan](https://open-energy-transition.github.io/earthpv/atlas/) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel |
-| Silver | [Germany](https://open-energy-transition.github.io/earthpv/atlas-germany/), [France](https://open-energy-transition.github.io/earthpv/atlas-france/), [Yemen](https://open-energy-transition.github.io/earthpv/atlas-yemen/) | 400 m² and up, checked against the national register (Germany, France) and hand-mapped communes (France). Germany also shows a small-installation estimate fitted to its register, not yet validated; France has none. Yemen has its first area mapped panel by panel, not yet used by any figure |
+| Silver | none yet | 400 m² and up, checked against local ground truth, and every mapping lead checked by a person |
+| Bronze, calibrated as Silver | [Germany](https://open-energy-transition.github.io/earthpv/atlas-germany/), [France](https://open-energy-transition.github.io/earthpv/atlas-france/), [Yemen](https://open-energy-transition.github.io/earthpv/atlas-yemen/) | 400 m² and up, checked against the national register (Germany, France) and hand-mapped communes (France); Yemen's small solar-irrigation arrays calibrated on mapped farm areas. Germany also shows a small-installation estimate fitted to its register, not yet validated. Bronze until every mapping lead is checked |
 | Bronze | [Egypt](https://open-energy-transition.github.io/earthpv/atlas-egypt/), [India](https://open-energy-transition.github.io/earthpv/atlas-india/), [Morocco](https://open-energy-transition.github.io/earthpv/atlas-morocco/), [Namibia](https://open-energy-transition.github.io/earthpv/atlas-namibia/), [Nigeria](https://open-energy-transition.github.io/earthpv/atlas-nigeria/), [Poland](https://open-energy-transition.github.io/earthpv/atlas-poland/), [South Africa](https://open-energy-transition.github.io/earthpv/atlas-south-africa/), [Vietnam](https://open-energy-transition.github.io/earthpv/atlas-vietnam/), [Zambia](https://open-energy-transition.github.io/earthpv/atlas-zambia/) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 
 <p align="center">

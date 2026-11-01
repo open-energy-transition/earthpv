@@ -137,13 +137,12 @@ nav:
   # Grouped by calibration tier; scripts/build_atlas_pages.py writes the pages and prints
   # this block (--nav), so the two cannot drift.
   - PV Atlas:
+      - Quality levels: atlas-quality-levels.md
       - Gold:
           - Pakistan: atlas.md
-      - Silver:
+      - Bronze:
           - Germany: atlas-germany.md
           - France: atlas-france.md
-          - Yemen: atlas-yemen.md
-      - Bronze:
           - Egypt: atlas-egypt.md
           - India: atlas-india.md
           - Morocco: atlas-morocco.md
@@ -152,6 +151,7 @@ nav:
           - Poland: atlas-poland.md
           - South Africa: atlas-south-africa.md
           - Vietnam: atlas-vietnam.md
+          - Yemen: atlas-yemen.md
           - Zambia: atlas-zambia.md
   # How the community adds the OpenStreetMap ground truth the atlases are calibrated on,
   # right after the atlases whose Silver/Bronze notes link here. contribute/index.md keeps

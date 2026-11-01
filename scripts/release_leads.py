@@ -13,14 +13,20 @@ printed beside this one as a check. Leads whose representative point falls outsi
 regions the atlas draws (`atlas._page_regions`) are dropped: a composited cell can reach
 across a border.
 
-Nothing is filtered for precision. Leads are unverified 10 m outlines, recall-first like
-every candidate file, and the README asset says so.
+One thing is filtered (owner, 2026-10-31): a lead on ground steeper than
+`export.STEEP_SLOPE_DEG` (15 degrees, Copernicus GLO-90 at its representative point) whose
+outline is under `export.STEEP_MAX_AREA_M2` (1,000 m2) is left out, because shaded
+hillsides, cliff edges and escarpment shadows read like panels. A larger lead on steep
+ground stays, marked `steep_review`, since a solar farm can sit on a mountainside and a
+mapper has to look at it. Every lead carries its `slope_deg`. Validation:
+results/leads_steep_screen/. Otherwise leads are unverified 10 m outlines, recall-first
+like every candidate file, and the README asset says so.
 
 France is not built here: its leads were audited against IGN aerial imagery and released
 on their own (`france-osm-leads-2026-10-22`, scripts/build_france_osm_leads.py); its
 manifest entry links that file.
 
-    pixi run python scripts/release_leads.py --out /home/tobi/earthpv_data/pv_new_leads_2026-10-28
+    pixi run python scripts/release_leads.py --out /home/tobi/earthpv_data/pv_new_leads_2026-11-01
     pixi run python scripts/release_leads.py --out ... --upload     # gh release create/upload
 
 Writes `<out>/<aoi>_pv_new_leads.geojson`, `<out>/README.md`, `<out>/SHA256SUMS` and
@@ -39,6 +45,7 @@ import sys
 from pathlib import Path
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,11 +53,14 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from earthpv import atlas  # noqa: E402
-from earthpv.export import new_lead_mask  # noqa: E402
+from earthpv.export import (STEEP_MAX_AREA_M2, STEEP_SLOPE_DEG, new_lead_mask,  # noqa: E402
+                            steep_lead_screen)
 
 REPO = "open-energy-transition/earthpv"
 MANIFEST = ROOT / "configs" / "atlas_leads.json"
-TAG = "pv-new-leads-2026-10-28"
+# 2026-10-28: the first release. 2026-11-01: the same runs, with the steep-ground screen.
+# A new tag rather than a re-upload, so the files earlier lead checks covered stay published.
+TAG = "pv-new-leads-2026-11-01"
 
 # Per AOI: the candidates behind its published atlas, the OSM pull(s) that count as
 # mapped, and the density directory holding the regions the page draws.
@@ -87,7 +97,7 @@ FRANCE = {
 }
 COLUMNS = ["candidate_id", "rank_score", "confidence", "area_m2", "placement",
            "building_dist_m", "building_overlap_frac", "building_prior", "building_id",
-           "oversize", "lon", "lat"]
+           "oversize", "slope_deg", "steep_review", "lon", "lat"]
 
 
 def _osm_as_of(frames: list[gpd.GeoDataFrame], paths: list[Path]) -> str:
@@ -130,6 +140,9 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     inside = rep.within(regions.geometry.union_all()).to_numpy()
     n_outside = int((~inside).sum())
     leads, rep = leads[inside].copy(), rep[inside]
+    slope, steep_drop, steep_review = steep_lead_screen(leads)
+    leads["slope_deg"], leads["steep_review"] = slope.round(1), steep_review
+    leads, rep = leads[~steep_drop].copy(), rep[~steep_drop]
     leads["lon"], leads["lat"] = rep.x.round(6), rep.y.round(6)
     for c in ("rank_score", "confidence", "building_prior", "building_overlap_frac"):
         if c in leads:
@@ -145,7 +158,8 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     export_file = pred / f"{aoi}_pv_new_leads.geojson"
     export_n = len(gpd.read_file(export_file, columns=[])) if export_file.exists() else None
     print(f"  {aoi:13s} {len(leads):7,d} leads of {len(cands):7,d} candidates "
-          f"({n_outside:,} outside the page's regions dropped; export file: "
+          f"({n_outside:,} outside the page's regions, {int(steep_drop.sum()):,} small on "
+          f"steep ground dropped; {int(steep_review.sum()):,} steep_review; export file: "
           f"{export_n if export_n is not None else '-'}) -> {path.stat().st_size / 1e6:.1f} MB")
     return {
         "file": path.name,
@@ -155,6 +169,9 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
         "osm_as_of": _osm_as_of(frames, paths),
         "min_distance_m": int(min_distance_m),
         "made": dt.date.today().isoformat(),
+        "steep": {"slope_deg": STEEP_SLOPE_DEG, "max_area_m2": STEEP_MAX_AREA_M2,
+                  "dropped": int(steep_drop.sum()), "review": int(steep_review.sum()),
+                  "no_dem": int(np.isnan(slope).sum())},
     }
 
 
@@ -171,6 +188,15 @@ high-resolution imagery before mapping anything; some will be bright roofs, gree
 dark fields or rock. Nothing here should be imported into OpenStreetMap automatically. The
 mapping guide is https://open-energy-transition.github.io/earthpv/contribute/.
 
+**Steep ground.** Shaded hillsides, cliff edges and the shadows below escarpments read like
+panels in Sentinel-2. A lead smaller than {steep_area} m2 on ground steeper than
+{steep_deg} degrees (Copernicus GLO-90 slope at a point inside the outline) is left out of
+these files. Of 89 such leads drawn across twelve countries and checked on imagery none was
+solar (79 were not, 10 could not be settled), and the rule would remove 2 of the 22,124
+outlines the model drew on solar that is mapped. A larger lead on steep ground
+is kept and marked `steep_review = true`: a solar farm can be built on a mountainside, so
+someone has to look at it. Every lead carries the slope it was judged on (`slope_deg`).
+
 Features are sorted most promising first. Columns:
 
 | column | meaning |
@@ -182,10 +208,12 @@ Features are sorted most promising first. Columns:
 | placement | rooftop, ground_adjacent or no_building, from VIDA building footprints |
 | building_dist_m, building_overlap_frac, building_prior, building_id | the building join behind placement |
 | oversize | outline above 100,000 m2: excluded from the atlas's capacity, often a real unmapped park |
+| slope_deg | Copernicus GLO-90 terrain slope in degrees at the lead's point (empty off the DEM) |
+| steep_review | true for a lead of {steep_area} m2 or more on ground steeper than {steep_deg} degrees: kept for a human, may be shadow on a slope or a mountain solar farm |
 | lon, lat | a point inside the outline |
 
-| country | leads | OpenStreetMap as of |
-| --- | ---: | --- |
+| country | leads | small steep leads left out | steep_review | OpenStreetMap as of |
+| --- | ---: | ---: | ---: | --- |
 {rows}
 
 France's leads are a separate, audited release: https://github.com/{repo}/releases/tag/france-osm-leads-2026-10-22
@@ -214,10 +242,13 @@ def main() -> int:
     manifest["release"] = f"https://github.com/{REPO}/releases/tag/{TAG}"
 
     built = {a: e for a, e in manifest["aois"].items() if a != "france"}
-    rows = "\n".join(f"| {a.replace('_', ' ').title()} | {e['n']:,} | {e['osm_as_of']} |"
+    rows = "\n".join(f"| {a.replace('_', ' ').title()} | {e['n']:,} | "
+                     f"{e.get('steep', {}).get('dropped', 0):,} | "
+                     f"{e.get('steep', {}).get('review', 0):,} | {e['osm_as_of']} |"
                      for a, e in built.items())
     (args.out / "README.md").write_text(README.format(
-        date=dt.date.today().isoformat(), dist=int(args.min_distance_m), rows=rows, repo=REPO))
+        date=dt.date.today().isoformat(), dist=int(args.min_distance_m), rows=rows, repo=REPO,
+        steep_area=f"{STEEP_MAX_AREA_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}"))
     files = [args.out / e["file"] for e in built.values()] + [args.out / "README.md"]
     sums = [f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}" for f in files]
     (args.out / "SHA256SUMS").write_text("\n".join(sums) + "\n")

@@ -36,8 +36,9 @@ country. Two further signals adjust it:
   post-2022, so a candidate that already looked like PV in the 2021 dry-season composite
   is more likely a bright roof, concrete apron or rock outcrop than a new array.
 
-Nothing in the default export is dropped. A high-confidence detection with no building
-anywhere near it may be an unmapped roof or a ground-mounted farm, and it still surfaces.
+Nothing else in the default export is dropped. A high-confidence detection with no building
+anywhere near it may be an unmapped roof or a ground-mounted farm, and it still surfaces;
+the one exception is a small lead on steep ground (below).
 
 ## The one file that does drop things
 
@@ -62,6 +63,30 @@ Vegetation-vetoed leads are written to `hard_negatives_veg.parquet` and fed back
 training negatives. Unlike epoch persistence, which real old PV also shows, an observed
 crop cycle is near-conclusive non-PV evidence, and dark fallow soil is a confusion class
 that German training data never contained.
+
+## The released lead files: small leads on steep ground left out
+
+The lead file every atlas links (`scripts/release_leads.py`) leaves out one kind of lead
+(owner decision, 2026-10-31): an outline smaller than 1,000 m<sup>2</sup> on ground steeper
+than 15&deg;, measured as the Copernicus GLO-90 slope at a point inside the outline. Shaded
+hillsides, cliff edges, gullies and the shadows under escarpments read like panels at 10 m.
+In Yemen's first release a third of the leads stood on ground steeper than 12&deg;, against
+0.5% of the mapped solar in the same highlands, and 9 of 10 drawn at random were not solar
+on imagery.
+
+A larger lead on steep ground stays in the file, marked `steep_review`, because a solar farm
+can stand on a mountainside and a person has to look at it. Every lead carries the slope it
+was judged on (`slope_deg`), and `earthpv export` applies the same screen to a run's own
+`<aoi>_pv_new_leads.geojson`.
+
+Across the twelve lead files of 2026-11-01 the rule removes 6,306 of 156,170 leads (Yemen
+15.5%, India 5%, Poland almost none) and keeps 7,091 as `steep_review`. On solar known to be
+real it would remove 2 of the 22,124 model outlines that found a mapped installation, and at
+most 0.04% of any country's mapped solar area. Of 89 removed leads drawn at random and
+checked on imagery, none was solar (79 were not, 10 could not be settled); of 64 kept steep
+leads none was solar either, but a few, such as farmsteads in German hill country, could be,
+which is why the larger ones stay ([experiment register](../experiments.md#small-leads-on-steep-ground-2026-10-31),
+`results/leads_steep_screen/`).
 
 ## Getting the leads into OpenStreetMap
 

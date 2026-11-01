@@ -47,13 +47,15 @@ global datasets, it works for any country.
 
 Each country gets an interactive **evidence atlas**: hand-mapped OpenStreetMap installations
 plus the model's own detections, per 0.1&deg; cell, with a 90% range on the headline figure.
-They are tiered by how well they are calibrated; mapping calibration areas is how an atlas moves
-up, so [maps a calibration area](contribute/index.md).
+They are tiered by how well they are calibrated and checked
+([what each level needs](atlas-quality-levels.md)); mapping calibration areas and checking the
+mapping leads is how an atlas moves up, so [maps a calibration area](contribute/index.md).
 
 | Tier | Country | What the atlas rests on |
 | --- | --- | --- |
 | Gold | [Pakistan](atlas.md) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel |
-| Silver | [Germany](atlas-germany.md), [France](atlas-france.md), [Yemen](atlas-yemen.md) | 400 m² and up, checked against the national register (Germany, France) and hand-mapped communes (France). Germany also shows a small-installation estimate fitted to its register, not yet validated; France has none. Yemen has its first area mapped panel by panel, not yet used by any figure |
+| Silver | none yet | 400 m² and up, checked against local ground truth, and every mapping lead checked by a person |
+| Bronze, calibrated as Silver | [Germany](atlas-germany.md), [France](atlas-france.md), [Yemen](atlas-yemen.md) | 400 m² and up, checked against the national register (Germany, France) and hand-mapped communes (France); Yemen's small solar-irrigation arrays calibrated on mapped farm areas. Germany also shows a small-installation estimate fitted to its register, not yet validated. Bronze until every mapping lead is checked |
 | Bronze | [Egypt](atlas-egypt.md), [India](atlas-india.md), [Morocco](atlas-morocco.md), [Namibia](atlas-namibia.md), [Nigeria](atlas-nigeria.md), [Poland](atlas-poland.md), [South Africa](atlas-south-africa.md), [Vietnam](atlas-vietnam.md), [Zambia](atlas-zambia.md) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 
 [![The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 34,589 MWp (90 percent range 29,308 to 41,736), a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.](assets/figures/pakistan_evidence_atlas.png)](atlas.md)
