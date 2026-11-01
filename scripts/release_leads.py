@@ -192,7 +192,7 @@ mapping guide is https://open-energy-transition.github.io/earthpv/contribute/.
 panels in Sentinel-2. A lead smaller than {steep_area} m2 on ground steeper than
 {steep_deg} degrees (Copernicus GLO-90 slope at a point inside the outline) is left out of
 these files. Of 89 such leads drawn across twelve countries and checked on imagery none was
-solar (79 were not, 10 could not be settled), and the rule would remove 2 of the 22,124
+solar (86 were not, 3 could not be settled), and the rule would remove 2 of the 22,124
 outlines the model drew on solar that is mapped. A larger lead on steep ground
 is kept and marked `steep_review = true`: a solar farm can be built on a mountainside, so
 someone has to look at it. Every lead carries the slope it was judged on (`slope_deg`).

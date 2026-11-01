@@ -38,7 +38,7 @@ repository; nothing was deleted on failure.
 | [v5 against v4 on a third country](results/nigeria.md#the-finding-v4-and-v5-disagree-and-v5-is-right) | <span class="outcome works">shipped</span> | Nigeria is in neither checkpoint's training data: pooled recall 0.565 to 0.728, strictly dominant, McNemar p=0.000. The v5 gain is not only French. |
 | [Localizing the detector on Vietnam](results/vietnam.md#localizing-the-detector) | <span class="outcome works">shipped</span> | v9, trained with Vietnam's own OSM labels, against v5 on the held-out Central Highlands: pixel IoU 0.724 to 0.762, recall on arrays of 500 m<sup>2</sup> and up tied (0.973 against 0.960). The localized checkpoint ships. |
 | [The 5 km<sup>2</sup> ground cap, outside Germany](results/vietnam.md) | <span class="outcome works">shipped</span> | Vietnam's five largest mapped parks, 5.6 to 8.3 km<sup>2</sup>, are 92 to 99% detected. An evidence-gated exception keeps them: Verified 6,258 to 8,180 MWp. |
-| [Small leads on steep ground left out](#small-leads-on-steep-ground-2026-10-31) | <span class="outcome works">shipped</span> | A third of Yemen's leads stood on ground steeper than 12&deg;, against 0.5% of its highland OSM solar. Leads under 1,000 m<sup>2</sup> above 15&deg; now leave the lead files (Yemen 355 of 2,288); larger ones are kept as `steep_review`. Across twelve countries 6,306 of 156,170 leads go; 2 of 22,124 candidates that found mapped solar would, and none of 153 drawn leads checked on imagery was solar. |
+| [Small leads on steep ground left out](#small-leads-on-steep-ground-2026-10-31) | <span class="outcome works">shipped</span> | A third of Yemen's leads stood on ground steeper than 12&deg;, against 0.5% of its highland OSM solar. Leads under 1,000 m<sup>2</sup> above 15&deg; now leave the lead files (Yemen 355 of 2,288); larger ones are kept as `steep_review`. Across twelve countries 6,306 of 156,170 leads go; 2 of 22,124 candidates that found mapped solar would. The owner judged 153 drawn leads on imagery: none is solar (148 not, 5 unsure). |
 | [Localizing the detector on India](results/india.md#localizing-the-detector-and-why-v5-ships) | <span class="outcome negative">rejected</span> | v10, trained with India's own OSM labels, against v5 on the held-out Surat-Bharuch-Vadodara box: recall on arrays of 500 m<sup>2</sup> and up 0.938 to 0.911, pixel IoU 0.686 to 0.663. v5 ships. India's labels are 84% ground-mount, a population v5 already covers. |
 | [Compose scenes ranked by cell coverage](results/india.md#a-compose-defect-found-here-and-fixed-for-every-later-country) | <span class="outcome works">shipped</span> | Scenes covering the whole cell now rank before partial ones, and a whole band lost to failed reads now raises. Rewa's cell went from 87.4% to 0.0% empty; composites built earlier were not rebuilt. |
 | [Solar-thermal removed from the OSM labels](results/india.md#candidate-population) | <span class="outcome works">shipped</span> | OSM tags CSP plants and water heaters with the same `generator:source=solar`. Morocco's pull was half thermal (1,697 of 3,440 features, the Noor CSP complex). Filtered for every country after India. |
@@ -569,8 +569,6 @@ or for longer than the token had left, failed at open, and the guards turned eac
 into a silently missing scene. `glint._asset_href` now re-signs the bare URL at the moment
 of use, and a deliberately stale href opens.
 
-## What did not work
-
 ### Small leads on steep ground (2026-10-31)
 
 The owner flagged Yemen's released leads: shadows on steep ground, where shadows from
@@ -611,12 +609,20 @@ South Africa). Six of India's removed leads miss the rule when re-measured from 
 file, all by rounding: five outlines just under 1,000 m<sup>2</sup> are stored as 1,000.0, and
 one point re-read at 7 decimals lands on the neighbouring 90 m pixel. A further 65 removed
 and 44 kept leads drawn from the other eleven countries were judged the same way: none was
-solar. Over all twelve countries, 79 of 89 removed leads were not solar and 10 could not be
-settled (old, cloudy or missing Esri imagery, a resort hillside, small roofs or tanks); of 64
-kept `steep_review` leads, 59 were not solar and 5 could not be settled, among them two
-German farmsteads whose barn roofs could carry panels, which is what keeping the larger leads
-is for. These verdicts are the
-assistant's; the review page in `data/leads_steep_screen/review/` is for the owner's.
+solar. **The owner then judged all 153 on the same sheets** (`verdicts_owner.csv`,
+2026-11-01): none is solar. Of 89 removed leads, 86 are not solar and 3 could not be settled
+(a hillside behind a Red Sea resort, a Yemeni village edge with greenhouse tunnels, a South
+African mountain shadow or mine wall); of 64 kept `steep_review` leads, 62 are not solar and
+2 could not be settled (a building in a Polish forest clearing, a German farmstead whose barn
+roof could carry panels). With no solar among 89, the solar share of the removed leads is
+below 3.3% at one-sided 95% confidence, for the sample's mix of countries (India, with most of
+the removed leads, gave 8). The assistant's own verdicts (`verdicts_assistant.csv`) agree on
+141 of 153; of the other 12, 11 are leads the assistant left unsure and the owner judged not
+solar, and neither reviewer called any lead solar. The larger steep leads are almost all false
+alarms too (62 of 64), so most of the 7,091 `steep_review` leads are likely not solar; keeping
+them in front of a person is the owner's choice, so that a mountainside solar farm is not lost.
+
+## What did not work
 
 ### Two-season stacking
 

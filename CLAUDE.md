@@ -544,8 +544,10 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   12° against 0.5% of its highland OSM solar. Applied by `release_leads.py` (tag
   `pv-new-leads-2026-11-01`; the 2026-10-28 files stay published) and by `earthpv export`'s
   new-leads file. Validation: `scripts/validate_steep_lead_screen.py`,
-  `results/leads_steep_screen/`. The slope is read from whole cached DEM tiles (`data/dem` ->
-  /home, ~5 MB each); a first country-wide run downloads hundreds, slowly under a busy link.
+  `results/leads_steep_screen/`; the owner judged 153 sampled leads on imagery (2026-11-01,
+  `verdicts_owner.csv`): none solar, removed 86 not / 3 unsure, kept 62 not / 2 unsure. The
+  slope is read from whole cached DEM tiles (`data/dem` -> /home, ~5 MB each); a first
+  country-wide run downloads hundreds, slowly under a busy link.
 - **Size chart on every page (2026-10-30)**: `_size_distribution_data` re-bins Best by size
   with or without a roofclf half (it was Pakistan-only), counting only candidates and OSM
   inside the grid, as the per-cell total does. Where `small_rooftop_status` or

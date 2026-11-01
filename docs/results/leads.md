@@ -83,9 +83,9 @@ Across the twelve lead files of 2026-11-01 the rule removes 6,306 of 156,170 lea
 15.5%, India 5%, Poland almost none) and keeps 7,091 as `steep_review`. On solar known to be
 real it would remove 2 of the 22,124 model outlines that found a mapped installation, and at
 most 0.04% of any country's mapped solar area. Of 89 removed leads drawn at random and
-checked on imagery, none was solar (79 were not, 10 could not be settled); of 64 kept steep
-leads none was solar either, but a few, such as farmsteads in German hill country, could be,
-which is why the larger ones stay ([experiment register](../experiments.md#small-leads-on-steep-ground-2026-10-31),
+checked on imagery by the owner, none was solar (86 were not, 3 could not be settled); of 64
+kept steep leads none was solar either (62 were not, 2 could not be settled), but a few, such
+as a farmstead in German hill country, could be, which is why the larger ones stay ([experiment register](../experiments.md#small-leads-on-steep-ground-2026-10-31),
 `results/leads_steep_screen/`).
 
 ## Getting the leads into OpenStreetMap
