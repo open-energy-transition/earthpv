@@ -236,12 +236,15 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
 
 
 def nav_block() -> str:
-    out = ["  - PV Atlas:", "      - Quality levels: atlas-quality-levels.md"]
+    # The quality-levels page goes last: a section opens on its first page, and clicking
+    # PV Atlas must land on the top-tier country's map, not on the criteria.
+    out = ["  - PV Atlas:"]
     for tier, (label, _) in TIERS.items():
         rows = [r for r in ATLASES if tier_of(r[2]) == tier]
         if rows:          # mkdocs rejects a section with no pages
             out.append(f"      - {label}:")
             out += [f"          - {country}: {stem}.md" for stem, country, *_ in rows]
+    out.append("      - Quality levels: atlas-quality-levels.md")
     return "\n".join(out)
 
 
