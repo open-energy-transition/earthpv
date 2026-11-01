@@ -42,12 +42,26 @@ cities:
 # of peak probability below 0.9 and 108 on ever-wet ground, so every lead in it was in the
 # file checked. A rebuilt lead file needs
 # a new declaration.
+# Silver and Gold also need the model retrained on mapped leads at least once (owner rule,
+# 2026-11-01; atlas.leads_retrained). The owner declared Pakistan's first turn on
+# 2026-11-01: the first model's lead file (v3_combined_india, 2026-07-16,
+# data/predictions/pakistan/pakistan_pv_new_leads.geojson, 4,602 leads) was worked through,
+# and v16_combined_pakistan was trained on the 2026-10-25 OSM pull that holds that mapping
+# (31,835 solar features against 16,085 in July). 434 of the 4,602 leads sit within 100 m of
+# mapped solar in that pull (388 mapped since July); the rest carry no recorded verdict, so
+# the majority rests on the owner's declaration.
 validation:
   leads_checked:
     made: "2026-11-01"
     by: owner
     date: "2026-10-31"
     note: "the 8,639 leads of the 2026-10-28 file, declared checked by the owner on 2026-10-31; the 2026-11-01 file is that one less 515 leads on steep ground, 2,341 open-ground leads of low model probability and 108 on ever-wet ground"
+  retrained_on_leads:
+    leads: "2026-07-16"
+    model: v16_combined_pakistan
+    by: owner
+    date: "2026-11-01"
+    note: "the 4,602 leads of v3_combined_india's 2026-07-16 file worked through; v16_combined_pakistan trained on the 2026-10-25 OSM pull, where 434 of them are mapped"
 
 calibration_boxes:
   # Extended 2026-08-05 from a 1 km2 square to a 6.61 km2 hand-drawn boundary that

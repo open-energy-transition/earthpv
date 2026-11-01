@@ -19,14 +19,15 @@ the navigation and the badge on the map cannot disagree:
 - **Bronze**: 400 m2 and up only, with no local calibration.
 
 Gold and Silver also need every mapping lead checked by a person (owner, 2026-10-31;
-`atlas.leads_checked`). A page whose calibration earns more than Bronze but whose leads are
-not all checked shows Bronze, and its badge keeps the earned tier as `data-earned`; its
-banner says what is missing.
+`atlas.leads_checked`) and the segmentation model retrained on mapped leads at least once
+(owner, 2026-11-01; `atlas.leads_retrained`): one turn of the mapping flywheel. A page whose
+calibration earns more than Bronze but lacks either shows Bronze, and its badge keeps the
+earned tier as `data-earned`; its banner says what is missing (`atlas.lead_rule_gaps`).
 
 Silver and Bronze pages open with a warning that smaller installations are missing, what a
 reader can do about it, and links into the Contribute Data section (docs/contribute/).
-`docs/atlas-quality-levels.md` lists every criterion and where each country stands
-(`quality_page`); the switcher links it.
+`docs/atlas-quality-levels.md` lists every criterion and ends on the flywheel figure the
+levels follow (`quality_page`); the switcher links it.
 
     python scripts/build_atlas_pages.py          # rewrites docs/atlas*.md
     python scripts/build_atlas_pages.py --nav    # also prints the mkdocs.yml nav block
@@ -38,17 +39,19 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 DOCS = REPO / "docs"
+sys.path.insert(0, str(REPO / "src"))
 
 TIERS = {
     "gold": ("Gold", "Installations above and below the 400 m2 floor, calibrated on ground truth or a register"),
     "silver": ("Silver", "400 m2 and up only, validated against local ground truth; every "
-               "mapping lead checked"),
+               "mapping lead checked; model retrained on mapped leads"),
     "bronze": ("Bronze", "400 m2 and up only, not yet calibrated, or mapping leads not yet "
-               "all checked"),
+               "all checked, or model not yet retrained on them"),
 }
 
 # (page stem, country, interactive file, iframe title, country-specific warning line)
@@ -87,6 +90,11 @@ def earned_of(html: str) -> str:
     text = (DOCS / "assets" / "interactive" / html).read_text()
     m = re.search(r'class="vscore vscore--[a-z]+"[^>]*?data-earned="([a-z]+)"', text)
     return m.group(1) if m else tier_of(html)
+
+
+def aoi_of(html: str) -> str:
+    """The AOI key behind an interactive file name (`pakistan_evidence_atlas.html` included)."""
+    return re.sub(r"(_pv)?_evidence_atlas\.html$", "", html)
 
 
 def totals_of(html: str) -> dict:
@@ -133,18 +141,33 @@ TIER_NOTE = {
     ),
 }
 # A page that earned Silver or Gold on its calibration but shows Bronze because its
-# mapping leads are not all checked (owner rule, 2026-10-31). EARNED_NOTE says, in one
-# sentence, what the calibration does cover; the banner then names the missing piece.
-LEADS_WARNING = (
-    "<strong>Bronze until its mapping leads are checked.</strong> {earned_note} Silver and "
-    "Gold also need a person to have checked every lead in the country's lead file: the "
-    "places the model found solar that OpenStreetMap does not have yet ({n} leads)."
-)
+# mapping leads are not all checked (owner rule, 2026-10-31) or its model has not yet been
+# retrained on mapped leads (owner rule, 2026-11-01). EARNED_NOTE says, in one sentence,
+# what the calibration does cover; the banner then names the missing pieces, keyed by
+# `atlas.lead_rule_gaps`.
+LEADS_WARNING = "<strong>{title}</strong> {earned_note} Silver and Gold also need {needs}."
+LEADS_TITLE = {
+    ("leads_checked", "leads_retrained"):
+        "Bronze until its mapping leads are checked and the model is retrained on them.",
+    ("leads_checked",): "Bronze until its mapping leads are checked.",
+    ("leads_retrained",): "Bronze until the model is retrained on mapped leads.",
+}
+LEADS_NEED = {
+    "leads_checked": "every lead in the country's lead file checked by a person ({n} places "
+                     "the model found solar that OpenStreetMap does not have yet)",
+    "leads_retrained": "the model retrained at least once on what people mapped from over "
+                       "half of a lead file",
+}
 LEADS_HELP = (
     "<strong>You can help:</strong> download the lead file under <em>Download the data behind "
     "this atlas</em> and work through it on recent imagery, mapping every real installation. "
-    "When every lead has a verdict the atlas shows {earned} again."
+    "{then}"
 )
+LEADS_THEN = {
+    True: "The model is retrained on what you map; once it is, and every lead has a verdict, "
+          "the atlas shows {earned}.",
+    False: "When every lead has a verdict the atlas shows {earned}.",
+}
 LEADS_CTA = (
     '<a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> '
     '<a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a>'
@@ -202,6 +225,8 @@ def switcher(current: str) -> str:
 
 
 def page(stem: str, country: str, html: str, title: str | None, extra: str) -> str:
+    from earthpv import atlas
+
     tier = tier_of(html)
     title = title or f"{country} PV evidence atlas: verified and best estimate by 0.1-degree cell"
     parts = ["---", f'title: "EarthPV: {country}"', "hide:", "  - navigation", "  - toc",
@@ -210,10 +235,18 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
     if earned != tier:
         label = TIERS[earned][0]
         n = (totals_of(html).get("leads") or {}).get("n")
+        gaps = tuple(atlas.lead_rule_gaps(aoi_of(html)))
+        if not gaps:
+            raise SystemExit(f"{html}: its badge shows {tier}, below the {earned} it earned, "
+                             "but its config meets every lead rule; re-badge it first "
+                             "(scripts/patch_atlas_leads.py)")
+        needs = ", and ".join(LEADS_NEED[g].format(n=f"{n:,}" if n else "all") for g in gaps)
         text = LEADS_WARNING.format(
+            title=LEADS_TITLE[gaps],
             earned_note=EARNED_NOTE.get(country, f"Its calibration meets {label}."),
-            n=f"{n:,}" if n else "all")
-        help_ = LEADS_HELP.format(earned=label)
+            needs=needs)
+        help_ = LEADS_HELP.format(
+            then=LEADS_THEN["leads_retrained" in gaps].format(earned=label))
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
                      f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{LEADS_CTA}</p>\n</div>")
     elif tier in WARNING:
@@ -249,11 +282,11 @@ def nav_block() -> str:
 
 
 # --------------------------------------------------------------------------------------
-# docs/atlas-quality-levels.md: every criterion, and where each country stands
+# docs/atlas-quality-levels.md: every criterion, and the flywheel the levels follow
 # --------------------------------------------------------------------------------------
 # Each criterion: (name, what it means, where it is set). The levels add up: Silver needs
 # all of Bronze, Gold all of Silver. Keep in step with atlas.derive_validation_score,
-# atlas.leads_checked and the country-run rules in CLAUDE.md.
+# atlas.leads_checked, atlas.leads_retrained and the country-run rules in CLAUDE.md.
 CRITERIA = {
     "bronze": [
         ("Model trained on the country's own map",
@@ -303,6 +336,14 @@ CRITERIA = {
          "lead file it covers, so a rebuilt file starts unchecked. Until the check is "
          "recorded the atlas shows Bronze, whatever its calibration earns.",
          "`validation.leads_checked` in `configs/atlas/<aoi>.yaml`"),
+        ("Model retrained on mapped leads",
+         "The mapping flywheel has turned at least once: people have worked through over "
+         "half of the leads from the country's first model, mapping the real installations "
+         "and judging the rest not solar, and the localized segmentation model has been "
+         "trained a second time on the country's OpenStreetMap solar, now holding that "
+         "mapping. Until this is recorded the atlas shows Bronze, whatever its calibration "
+         "earns.",
+         "`validation.retrained_on_leads` in `configs/atlas/<aoi>.yaml`"),
     ],
     "gold": [
         ("Installations below 400 m&sup2; calibrated",
@@ -317,6 +358,22 @@ CRITERIA = {
          "owner judgement, `validation.score`"),
     ],
 }
+# The flywheel figure's alt text, as docs/how-it-works.md carries it (build_docs_figures.py
+# draws the figure).
+FLYWHEEL_ALT = (
+    "The mapping flywheel: six numbered stations run clockwise round a ring with the "
+    "OpenStreetMap logo at the hub. 1, detect from space with each country's TerraMind model "
+    "and the small-installation classifiers. 2, publish the evidence atlas with mapping leads"
+    " and areas to map. 3, people map the leads of 400 square metres and more. 4, people map "
+    "calibration areas completely. 5, people investigate local datasets such as registers and"
+    " official statistics. 6, retrain the model and recalibrate on what was mapped. Arrows "
+    "from stations 3 and 4 carry mapped panels into OpenStreetMap, and arrows out of it carry"
+    " them to the atlas as counted capacity and to retraining as labels. A dashed frame round"
+    " the whole wheel marks an LLM assistant that helps at every station but never edits "
+    "OpenStreetMap, declares an area complete or signs off a number."
+)
+
+
 def quality_page() -> str:
     # The owner removed the per-country standings table, the judgements and the code line
     # from the published page (67820b5, 2026-11-01): it lists the criteria only.
@@ -329,7 +386,8 @@ def quality_page() -> str:
            "everything Silver asks for. A country shows the highest level whose every "
            "criterion it meets.", ""]
     heads = {"bronze": "Bronze: every published atlas",
-             "silver": "Silver: Bronze, plus local ground truth and checked leads",
+             "silver": "Silver: Bronze, plus local ground truth, checked leads and a "
+                       "retrained model",
              "gold": "Gold: Silver, plus installations below 400 m&sup2;"}
     for tier in ("bronze", "silver", "gold"):
         out += [f"## {heads[tier]}", "", "| Criterion | What it means | Where it is set |",
@@ -345,7 +403,40 @@ def quality_page() -> str:
             "well. The [lead mapping guide](contribute/leads.md) walks through a lead file in "
             "JOSM. When every lead in a country's current file has a verdict, a maintainer "
             "records it as `validation.leads_checked` in the country's configuration, naming "
-            "the file by its date; the badge then shows the level the calibration earns.", ""]
+            "the file by its date.", "",
+            "## When the model counts as retrained", "",
+            "The first model a country gets is trained on whatever OpenStreetMap held when "
+            "its atlas was first built, and its leads are the places it found solar that the "
+            "map did not have. The model counts as retrained once people have worked through "
+            "over half of that first lead file, and the localized model has been trained "
+            "again on the country's OpenStreetMap solar, now holding what they mapped. A "
+            "maintainer records it as `validation.retrained_on_leads`, naming the lead file "
+            "and the new model. It needs doing once: unlike the lead check, it does not lapse "
+            "when a new lead file is made. With both records in place the badge shows the "
+            "level the calibration earns.", "",
+            "## The levels follow the mapping flywheel", "",
+            f"![{FLYWHEEL_ALT}](assets/figures/osm_ai_flywheel.svg#only-light)",
+            f"![{FLYWHEEL_ALT}](assets/figures/osm_ai_flywheel.dark.svg#only-dark)", "",
+            "The levels say how far a country has come round the "
+            "[mapping flywheel](how-it-works.md#workflow), the loop in which the model and "
+            "the people mapping solar in OpenStreetMap improve each other's work.", "",
+            "- **Bronze: the wheel is set up.** A model trained on the country's own "
+            "OpenStreetMap solar detects arrays from space (station 1), and the atlas is "
+            "published with its mapping leads and the areas to map (station 2).",
+            "- **Silver: the wheel has turned once.** People check every lead and map the "
+            "real installations (station 3), and the model is retrained on what they mapped "
+            "(station 6), so its next leads come from a model that has learned the country's "
+            "own false alarms and missed arrays. The figures are checked against local "
+            "ground truth: mapped installations, complete calibration areas (station 4) or a "
+            "register (station 5).",
+            "- **Gold: the wheel reaches below the floor.** Installations under 400 m&sup2; "
+            "are too small for the model to outline, so no lead finds them. Calibration areas "
+            "mapped panel by panel (station 4), or a legally complete register (station 5), "
+            "are what the small-installation estimate is fitted on and checked against.", "",
+            "Each further turn adds labels the model learns from and areas the estimates are "
+            "fitted on, so a country moves up by being mapped. The lead check applies to each "
+            "new lead file; the first retraining counts for good.",
+            ""]
     return "\n".join(out)
 
 

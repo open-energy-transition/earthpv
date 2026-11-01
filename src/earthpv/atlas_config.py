@@ -53,6 +53,12 @@ silently drop the section it was meant to fill):
         by: owner                          # who checked or declared them checked
         date: "2026-10-31"                 # when
         note: "..."                        # optional: how, where the verdicts are
+      retrained_on_leads:                  # the flywheel has turned once
+        leads: "2026-07-16"                # the first model's lead file, by its date
+        model: v16_combined_pakistan       # the localized model trained on that mapping
+        by: owner                          # who declared it
+        date: "2026-11-01"                 # when
+        note: "..."                        # optional: how many leads, which OSM pull
     start_here: yafi_pv2_calib_1km         # the candidate to map first, drawn as a star
 
 `start_here` names a candidate (`candidate_quadrats/<stem>_candidate.geojson`) when which
@@ -73,6 +79,14 @@ Rule-1 status it is a declaration, not something code can derive, and it names t
 file it covers by its `made` date, so a rebuilt lead file is unchecked until someone says
 otherwise. Without it `atlas.resolve_validation_badge` shows Bronze whatever the tier
 earned (see `atlas.leads_checked`).
+
+`validation.retrained_on_leads` is the third (owner, 2026-11-01): the segmentation model has
+been retrained on mapped leads at least once. Over half of the leads from the country's
+first model have a human verdict (the real ones mapped, the rest judged not solar), and the
+localized model was trained a second time on the OpenStreetMap solar that includes that
+mapping. It names the first lead file and the second model, and once declared it stays
+true: "at least once" does not expire with a new lead file. Without it Silver and Gold also
+show Bronze (`atlas.leads_retrained`).
 
 `status` is the quadrat's completeness declaration, not something code can derive:
 "rule1" = every visible panel mapped (so its no-PV buildings are trustworthy negatives),
@@ -100,8 +114,9 @@ NO_STAR = "none"
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
              "validation", "start_here"}
-_VALIDATION_KEYS = {"score", "note", "leads_checked"}
+_VALIDATION_KEYS = {"score", "note", "leads_checked", "retrained_on_leads"}
 _LEADS_CHECKED_KEYS = {"made", "by", "date", "note"}
+_RETRAINED_KEYS = {"leads", "model", "by", "date", "note"}
 _SCORES = {"gold", "silver", "bronze"}
 _CONFIDENCE_KEYS = {"ground_truth", "caveats", "corroboration"}
 _BOX_KEYS = {"name", "stem", "status", "used"}
@@ -132,6 +147,13 @@ class AtlasConfig:
     leads_checked_by: str = ""
     leads_checked_date: str = ""
     leads_checked_note: str = ""
+    # `validation.retrained_on_leads`: the first model's lead file, over half of which has a
+    # human verdict, and the localized model retrained on that mapping. Empty: not yet.
+    retrained_leads: str = ""
+    retrained_model: str = ""
+    retrained_by: str = ""
+    retrained_date: str = ""
+    retrained_note: str = ""
     start_here: str = ""
 
     # Kept so a caller can tell "this country has no config" from "this country has a
@@ -301,6 +323,15 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
                    f"expected {sorted(_LEADS_CHECKED_KEYS)}")
     if checked and not all(checked.get(k) for k in ("made", "by", "date")):
         _fail(aoi, "`validation.leads_checked` needs `made`, `by` and `date`")
+    retrained = val.get("retrained_on_leads") or {}
+    if not isinstance(retrained, dict):
+        _fail(aoi, "`validation.retrained_on_leads` must be a mapping")
+    unknown = set(retrained) - _RETRAINED_KEYS
+    if unknown:
+        _fail(aoi, f"unknown validation.retrained_on_leads key(s) {sorted(unknown)}; "
+                   f"expected {sorted(_RETRAINED_KEYS)}")
+    if retrained and not all(retrained.get(k) for k in ("leads", "model", "by", "date")):
+        _fail(aoi, "`validation.retrained_on_leads` needs `leads`, `model`, `by` and `date`")
 
     return AtlasConfig(
         aoi=aoi,
@@ -318,6 +349,11 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         leads_checked_by=str(checked.get("by") or "").strip(),
         leads_checked_date=str(checked.get("date") or "").strip(),
         leads_checked_note=str(checked.get("note") or "").strip(),
+        retrained_leads=str(retrained.get("leads") or "").strip(),
+        retrained_model=str(retrained.get("model") or "").strip(),
+        retrained_by=str(retrained.get("by") or "").strip(),
+        retrained_date=str(retrained.get("date") or "").strip(),
+        retrained_note=str(retrained.get("note") or "").strip(),
         start_here=str(raw.get("start_here") or "").strip(),
         path=path,
     )

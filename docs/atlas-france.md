@@ -10,7 +10,7 @@ hide:
   <span class="atlas-switch__label">Atlas</span>
   <span class="atlas-switch__tier atlas-switch__tier--gold" title="Installations above and below the 400 m2 floor, calibrated on ground truth or a register">Gold</span>
   <a href="../atlas/">Pakistan</a>
-  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or mapping leads not yet all checked">Bronze</span>
+  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or mapping leads not yet all checked, or model not yet retrained on them">Bronze</span>
   <a href="../atlas-germany/">Germany</a>
   <span aria-current="page">France</span>
   <a href="../atlas-egypt/">Egypt</a>
@@ -26,8 +26,8 @@ hide:
   <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
-  <p><strong>Bronze until its mapping leads are checked.</strong> Arrays of about 400 m&sup2; and up are checked against 14 communes mapped panel by panel; nothing below that is estimated. Silver and Gold also need a person to have checked every lead in the country's lead file: the places the model found solar that OpenStreetMap does not have yet (28,734 leads).</p>
-  <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work through it on recent imagery, mapping every real installation. When every lead has a verdict the atlas shows Silver again.</p>
+  <p><strong>Bronze until its mapping leads are checked and the model is retrained on them.</strong> Arrays of about 400 m&sup2; and up are checked against 14 communes mapped panel by panel; nothing below that is estimated. Silver and Gold also need every lead in the country's lead file checked by a person (28,734 places the model found solar that OpenStreetMap does not have yet), and the model retrained at least once on what people mapped from over half of a lead file.</p>
+  <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work through it on recent imagery, mapping every real installation. The model is retrained on what you map; once it is, and every lead has a verdict, the atlas shows Silver.</p>
   <p><a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> <a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a></p>
 </div>
 <iframe src="../assets/interactive/france_pv_evidence_atlas.html" title="France PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>

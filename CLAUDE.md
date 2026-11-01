@@ -789,9 +789,17 @@ for the lead file whose manifest `made` it names (`atlas.leads_checked`), so a r
 file starts unchecked. Without it `resolve_validation_badge` shows Bronze whatever the tier
 earned (an explicit `--validation-score` is capped too), keeps the earned tier on the badge as
 `data-earned`, and `build_atlas_pages` gives the page the leads banner (`LEADS_WARNING`,
-`EARNED_NOTE`). `docs/atlas-quality-levels.md` (generated, `quality_page`) lists every
-criterion and each country's standing. Pakistan's leads are declared checked (owner); France,
-Germany and Yemen earn Silver and show Bronze until theirs are. **Germany earns Silver** (its
+`EARNED_NOTE`). **They also need the model retrained on mapped leads at least once (owner,
+2026-11-01)**: over half of the country's first lead file has a verdict and the localized
+model was trained again on the OSM pull holding that mapping, declared as
+`validation.retrained_on_leads: {leads, model, by, date, note}` (`atlas.leads_retrained`);
+it does not lapse with a new lead file. `atlas.lead_rule_gaps` names what a page lacks, for
+the badge's sub-line and the banner. `docs/atlas-quality-levels.md` (generated,
+`quality_page`; the owner removed its standings table) lists every criterion and ends on the
+flywheel figure the levels follow. Pakistan's leads are declared checked and its v16 declared
+the retrain on v3's 2026-07-16 lead file (owner; 434 of those 4,602 leads are mapped in v16's
+pull, the rest carry no recorded verdict); France, Germany and Yemen earn Silver and show
+Bronze until both are declared. **Germany earns Silver** (its
 register-calibrated small half fails its own register check). **Yemen earns Silver**: its farm
 areas calibrate farm ground PV only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
 `used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the

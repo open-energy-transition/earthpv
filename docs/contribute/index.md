@@ -47,9 +47,9 @@ tiers mean:
 
 | tier | what it has | what it needs |
 |---|---|---|
-| Gold | small installations estimated, calibrated on complete areas or a national register; every mapping lead checked | more areas in the density bands it does not yet cover |
-| Silver | large installations only, checked against local ground truth; every mapping lead checked | small-installation calibration that works for its roof sizes |
-| Bronze | large installations only, nothing local to check against, or leads not all checked | its first complete calibration areas, and [every lead checked](leads.md) |
+| Gold | small installations estimated, calibrated on complete areas or a national register; every mapping lead checked; model retrained on mapped leads | more areas in the density bands it does not yet cover |
+| Silver | large installations only, checked against local ground truth; every mapping lead checked; model retrained on mapped leads | small-installation calibration that works for its roof sizes |
+| Bronze | large installations only, nothing local to check against, or leads not all checked, or model not yet retrained on them | its first complete calibration areas, [every lead checked](leads.md), and the model retrained on what was mapped |
 
 Every criterion behind the levels is on [Quality levels](../atlas-quality-levels.md).
 

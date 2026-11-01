@@ -22,7 +22,7 @@ from earthpv import atlas_config
 from earthpv.atlas import (CELL_COLS_EVIDENCE, CELL_COLS_GROWTH,
                            CELL_COLS_GROWTH_EVIDENCE, derive_validation_score,
                            download_section_html, header_logo_html,
-                           shown_validation_score, validation_badge_html,
+                           lead_rule_sub, shown_validation_score, validation_badge_html,
                            write_cell_geoparquet)
 
 # A published page predates `cell_cols`, so the CSV export has no header to write. Recover
@@ -168,11 +168,12 @@ def stamp(path: Path, score: str, aoi: str = "atlas",
         indent = m_h1.group(1)
         html = (html[:m_h1.start()] + f"{indent}{header_logo_html()}\n"
                 + html[m_h1.start():])
-    # Gold and Silver also need every mapping lead checked (atlas.leads_checked): the badge
-    # shows Bronze until they are, keeping the earned tier as `data-earned`.
+    # Gold and Silver also need every mapping lead checked and the model retrained on mapped
+    # leads once (atlas.lead_rule_gaps): the badge shows Bronze until they are, keeping the
+    # earned tier as `data-earned`.
     shown = shown_validation_score(aoi, score)
     if shown != score:
-        sub = (f"{score.title()} otherwise.<br>Mapping leads not yet checked.")
+        sub = lead_rule_sub(aoi, score)
     badge = validation_badge_html(shown, sub, score)
     note = "re-stamped" if before != html and "vscore" in before else "stamped"
     html = EXTRAP_KEY.sub("", html, count=1)
