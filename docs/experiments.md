@@ -38,7 +38,7 @@ repository; nothing was deleted on failure.
 | [v5 against v4 on a third country](results/nigeria.md#the-finding-v4-and-v5-disagree-and-v5-is-right) | <span class="outcome works">shipped</span> | Nigeria is in neither checkpoint's training data: pooled recall 0.565 to 0.728, strictly dominant, McNemar p=0.000. The v5 gain is not only French. |
 | [Localizing the detector on Vietnam](results/vietnam.md#localizing-the-detector) | <span class="outcome works">shipped</span> | v9, trained with Vietnam's own OSM labels, against v5 on the held-out Central Highlands: pixel IoU 0.724 to 0.762, recall on arrays of 500 m<sup>2</sup> and up tied (0.973 against 0.960). The localized checkpoint ships. |
 | [The 5 km<sup>2</sup> ground cap, outside Germany](results/vietnam.md) | <span class="outcome works">shipped</span> | Vietnam's five largest mapped parks, 5.6 to 8.3 km<sup>2</sup>, are 92 to 99% detected. An evidence-gated exception keeps them: Verified 6,258 to 8,180 MWp. |
-| [Small leads on steep ground left out](#small-leads-on-steep-ground-2026-10-31) | <span class="outcome works">shipped</span> | A third of Yemen's leads stood on ground steeper than 12&deg;, against 0.5% of its highland OSM solar. Leads under 1,000 m<sup>2</sup> above 15&deg; now leave the lead files (Yemen 355 of 2,288); larger ones are kept as `steep_review`. Across twelve countries 6,306 of 156,170 leads go; 2 of 22,124 candidates that found mapped solar would. The owner judged 153 drawn leads on imagery: none is solar (148 not, 5 unsure). |
+| [Small leads on steep ground left out](#small-leads-on-steep-ground-2026-10-31) | <span class="outcome works">shipped</span> | A third of Yemen's leads stood on ground steeper than 12&deg;, against 0.5% of its highland OSM solar. Leads under 1,000 m<sup>2</sup> above 15&deg; now leave the lead files (Yemen 355 of 2,288); larger ones are kept as `steep_review`, unless above 30&deg; (any size, from 60 shadows the owner flagged in Wadi Hadramawt; 57 now go). Across twelve countries 10,098 of 156,170 leads go and 3,298 stay as `steep_review`; 2 of 22,370 candidates that found mapped solar would. The owner judged 153 drawn leads on imagery: none is solar (148 not, 5 unsure). |
 | [Localizing the detector on India](results/india.md#localizing-the-detector-and-why-v5-ships) | <span class="outcome negative">rejected</span> | v10, trained with India's own OSM labels, against v5 on the held-out Surat-Bharuch-Vadodara box: recall on arrays of 500 m<sup>2</sup> and up 0.938 to 0.911, pixel IoU 0.686 to 0.663. v5 ships. India's labels are 84% ground-mount, a population v5 already covers. |
 | [Compose scenes ranked by cell coverage](results/india.md#a-compose-defect-found-here-and-fixed-for-every-later-country) | <span class="outcome works">shipped</span> | Scenes covering the whole cell now rank before partial ones, and a whole band lost to failed reads now raises. Rewa's cell went from 87.4% to 0.0% empty; composites built earlier were not rebuilt. |
 | [Solar-thermal removed from the OSM labels](results/india.md#candidate-population) | <span class="outcome works">shipped</span> | OSM tags CSP plants and water heaters with the same `generator:source=solar`. Morocco's pull was half thermal (1,697 of 3,440 features, the Noor CSP complex). Filtered for every country after India. |
@@ -621,6 +621,39 @@ the removed leads, gave 8). The assistant's own verdicts (`verdicts_assistant.cs
 solar, and neither reviewer called any lead solar. The larger steep leads are almost all false
 alarms too (62 of 64), so most of the 7,091 `steep_review` leads are likely not solar; keeping
 them in front of a person is the owner's choice, so that a mountainside solar farm is not lost.
+
+**The owner's flagged shadows and a 30&deg; cap (2026-11-01).** The owner then sent 60 leads
+from the first release that they had judged shadow on steep ground, all in Wadi Hadramawt
+(`data/yemen-false-postivies-shadow.geojson`; per lead in `owner_flagged_yemen.csv`). The
+15&deg; rule had already removed 38 of them (median 35&deg;). Another 20 were
+1,000 m<sup>2</sup> or larger and so kept as `steep_review`, on ground of 24&deg; to 46&deg;
+(median 37&deg;): cliffs, with 19 of the 20 above 30&deg;. The last two stand on flat ground
+(6&deg; and 11&deg; at the lead's point) with 32&deg; and 19&deg; within 90 m: shadow thrown
+onto the valley floor at the foot of a cliff.
+
+Leads above 30&deg; are now left out whatever their size (owner; `export.STEEP_CAP_DEG`). On
+solar known to be real the cap costs almost nothing. None of the 13,344 model outlines of
+1,000 m<sup>2</sup> or more that found mapped solar in Germany, India, Vietnam and Poland
+stands above 30&deg; (these are the only countries with any such outline above 15&deg;, and
+only one, in India, is above 25&deg;). Four mapped polygons of that size in the twelve
+countries do: three in Germany, one in India, 9,186 m<sup>2</sup> together. The 23 kept
+`steep_review` leads above 30&deg; that the owner had judged were all not solar. The cap
+removes 3,792 of the 7,091 `steep_review` leads (India 3,056, South Africa 245, Pakistan 146,
+Germany 124, Yemen 117) and leaves 3,298. A cap at 25&deg; catches the same 19 of the
+owner's 20 for about 1,300 more leads, one found-mapped outline and five mapped polygons; a
+cap at 35&deg; catches only 13. The validation re-run under both rules
+(`results/leads_steep_screen/cap30/summary.csv`) puts 789 of 545,468 mapped polygons under
+them (785 small, 4 larger above 30&deg;), at most 0.03% of any country's mapped area, and 2
+of 22,370 candidates that found mapped solar. With the cap the twelve files hold 145,826
+leads. Yemen's rebuilt file also reads the OpenStreetMap pull of 2026-10-31: 246 of its
+leads had been mapped since 2026-10-24 and left it as well (1,570 leads; the candidates that
+found mapped solar there rose from 12 to 258).
+
+The cliff-foot pair was left alone. A slope read at one point cannot see a cliff beside the
+outline; the owner declined a neighbourhood test for now. Leaving out small leads with ground
+steeper than 25&deg; within 90 m would catch one of the two and 65 more Yemeni leads (3.4%),
+but also 0.2% of Yemen's mapped solar polygons: farms on valley floors under the cliffs. At
+15&deg; within 90 m, 13.6% of the leads go against 0.9% of mapped solar.
 
 ## What did not work
 

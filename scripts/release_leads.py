@@ -18,7 +18,9 @@ One thing is filtered (owner, 2026-10-31): a lead on ground steeper than
 outline is under `export.STEEP_MAX_AREA_M2` (1,000 m2) is left out, because shaded
 hillsides, cliff edges and escarpment shadows read like panels. A larger lead on steep
 ground stays, marked `steep_review`, since a solar farm can sit on a mountainside and a
-mapper has to look at it. Every lead carries its `slope_deg`. Validation:
+mapper has to look at it, unless its ground is steeper than `export.STEEP_CAP_DEG` (30
+degrees; owner, 2026-11-01), where a lead of any size is left out. Every lead carries its
+`slope_deg`. Validation:
 results/leads_steep_screen/. Otherwise leads are unverified 10 m outlines, recall-first
 like every candidate file, and the README asset says so.
 
@@ -53,13 +55,15 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from earthpv import atlas  # noqa: E402
-from earthpv.export import (STEEP_MAX_AREA_M2, STEEP_SLOPE_DEG, new_lead_mask,  # noqa: E402
-                            steep_lead_screen)
+from earthpv.export import (STEEP_CAP_DEG, STEEP_MAX_AREA_M2, STEEP_SLOPE_DEG,  # noqa: E402
+                            new_lead_mask, steep_lead_screen)
 
 REPO = "open-energy-transition/earthpv"
 MANIFEST = ROOT / "configs" / "atlas_leads.json"
 # 2026-10-28: the first release. 2026-11-01: the same runs, with the steep-ground screen.
 # A new tag rather than a re-upload, so the files earlier lead checks covered stay published.
+# The 30-degree cap was added on 2026-11-01 too, before anyone had checked those files, so
+# they were replaced under the same tag.
 TAG = "pv-new-leads-2026-11-01"
 
 # Per AOI: the candidates behind its published atlas, the OSM pull(s) that count as
@@ -158,7 +162,7 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     export_file = pred / f"{aoi}_pv_new_leads.geojson"
     export_n = len(gpd.read_file(export_file, columns=[])) if export_file.exists() else None
     print(f"  {aoi:13s} {len(leads):7,d} leads of {len(cands):7,d} candidates "
-          f"({n_outside:,} outside the page's regions, {int(steep_drop.sum()):,} small on "
+          f"({n_outside:,} outside the page's regions, {int(steep_drop.sum()):,} on "
           f"steep ground dropped; {int(steep_review.sum()):,} steep_review; export file: "
           f"{export_n if export_n is not None else '-'}) -> {path.stat().st_size / 1e6:.1f} MB")
     return {
@@ -170,6 +174,7 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
         "min_distance_m": int(min_distance_m),
         "made": dt.date.today().isoformat(),
         "steep": {"slope_deg": STEEP_SLOPE_DEG, "max_area_m2": STEEP_MAX_AREA_M2,
+                  "cap_deg": STEEP_CAP_DEG,
                   "dropped": int(steep_drop.sum()), "review": int(steep_review.sum()),
                   "no_dem": int(np.isnan(slope).sum())},
     }
@@ -195,7 +200,9 @@ these files. Of 89 such leads drawn across twelve countries and checked on image
 solar (86 were not, 3 could not be settled), and the rule would remove 2 of the 22,124
 outlines the model drew on solar that is mapped. A larger lead on steep ground
 is kept and marked `steep_review = true`: a solar farm can be built on a mountainside, so
-someone has to look at it. Every lead carries the slope it was judged on (`slope_deg`).
+someone has to look at it. Above {steep_cap} degrees a lead of any size is left out: shadowed
+cliffs again, and none of the 13,344 outlines of 1,000 m2 or more that the model drew on
+mapped solar stands that steep. Every lead carries the slope it was judged on (`slope_deg`).
 
 Features are sorted most promising first. Columns:
 
@@ -209,10 +216,10 @@ Features are sorted most promising first. Columns:
 | building_dist_m, building_overlap_frac, building_prior, building_id | the building join behind placement |
 | oversize | outline above 100,000 m2: excluded from the atlas's capacity, often a real unmapped park |
 | slope_deg | Copernicus GLO-90 terrain slope in degrees at the lead's point (empty off the DEM) |
-| steep_review | true for a lead of {steep_area} m2 or more on ground steeper than {steep_deg} degrees: kept for a human, may be shadow on a slope or a mountain solar farm |
+| steep_review | true for a lead of {steep_area} m2 or more on ground steeper than {steep_deg} degrees (and not above {steep_cap}): kept for a human, may be shadow on a slope or a mountain solar farm |
 | lon, lat | a point inside the outline |
 
-| country | leads | small steep leads left out | steep_review | OpenStreetMap as of |
+| country | leads | steep leads left out | steep_review | OpenStreetMap as of |
 | --- | ---: | ---: | ---: | --- |
 {rows}
 
@@ -248,7 +255,8 @@ def main() -> int:
                      for a, e in built.items())
     (args.out / "README.md").write_text(README.format(
         date=dt.date.today().isoformat(), dist=int(args.min_distance_m), rows=rows, repo=REPO,
-        steep_area=f"{STEEP_MAX_AREA_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}"))
+        steep_area=f"{STEEP_MAX_AREA_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}",
+        steep_cap=f"{STEEP_CAP_DEG:g}"))
     files = [args.out / e["file"] for e in built.values()] + [args.out / "README.md"]
     sums = [f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}" for f in files]
     (args.out / "SHA256SUMS").write_text("\n".join(sums) + "\n")

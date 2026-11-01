@@ -51,18 +51,19 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 | `placement` | `rooftop` (on a building), `ground_adjacent` (next to one) or `no_building` (open land) |
 | `oversize` | `true` for an outline above 100,000 m<sup>2</sup>: often a whole unmapped park, sometimes a merged sheet of false alarms |
 | `slope_deg` | the terrain slope at the lead, in degrees (Copernicus 90 m elevation model) |
-| `steep_review` | `true` for a lead of 1,000 m<sup>2</sup> or more on ground steeper than 15&deg;: look at the terrain as well as the outline (below) |
+| `steep_review` | `true` for a lead of 1,000 m<sup>2</sup> or more on ground steeper than 15&deg; (up to 30&deg;): look at the terrain as well as the outline (below) |
 | `lon`, `lat` | a point inside the outline |
 
 **Steep ground.** Shaded hillsides, cliff edges, gullies and the shadows under escarpments
 look like panels to the model. Leads smaller than 1,000 m<sup>2</sup> on ground steeper than
 15&deg; are left out of the files for that reason. Larger ones on steep ground stay in,
 marked `steep_review`, because a solar farm can be built on a mountainside: on those, check
-whether the dark patch is panels or the slope's own shadow. Sentinel-2 passes in the
+whether the dark patch is panels or the slope's own shadow. Above 30&deg; a lead of any size
+is left out: at that slope the leads checked so far were all cliffs. Sentinel-2 passes in the
 mid-morning, so shadows fall to the north-west north of the equator and to the south-west
 south of it.
 
-Large countries have large files: India's holds about 95,000 leads (92 MB). Work one region
+Large countries have large files: India's holds about 92,000 leads (89 MB). Work one region
 at a time (step 3). France's leads are a separate,
 [audited release](https://github.com/open-energy-transition/earthpv/releases/tag/france-osm-leads-2026-10-22)
 with priority tiers and one file per d&eacute;partement.

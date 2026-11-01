@@ -38,7 +38,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -96,9 +95,6 @@ def totals_of(html: str) -> dict:
     m = re.search(r'<script id="pv" type="application/json">(.*?)</script>', text, re.S)
     return json.loads(m.group(1)).get("totals", {}) if m else {}
 
-
-def aoi_of(country: str) -> str:
-    return country.lower().replace(" ", "_")
 
 WARNING = {
     "silver": (
@@ -287,7 +283,8 @@ CRITERIA = {
          "OpenStreetMap, most promising first. Leads under 1,000 m&sup2; on ground steeper "
          "than 15&deg; are left out (shaded slopes and cliff edges read like panels); "
          "larger ones on steep ground stay, marked <code>steep_review</code>, because a "
-         "solar farm can stand on a mountainside. France's audited lead release predates "
+         "solar farm can stand on a mountainside, unless the ground is steeper than 30&deg;, "
+         "where a lead of any size is left out. France's audited lead release predates "
          "this rule.",
          "`scripts/release_leads.py`"),
     ],
@@ -317,39 +314,9 @@ CRITERIA = {
          "owner judgement, `validation.score`"),
     ],
 }
-# Owner decisions recorded as `validation.score` in configs/atlas/<aoi>.yaml, in words.
-JUDGEMENT = {
-    "Germany": "Silver, not Gold (2026-10-22): its small-installation half is calibrated on "
-               "the register, but misses the register's municipal totals by about half.",
-    "Yemen": "Silver (2026-10-23): its farm areas calibrate small solar-irrigation arrays "
-             "only; household rooftops below 400 m&sup2; are not estimated.",
-    "Egypt": "Bronze (2026-10-29): its one registered area, a farm area with no solar, is "
-             "not used by the figures.",
-    "India": "Bronze (2026-10-28): its two registered areas are not used by the figures, "
-             "so nothing on the page is fitted on local ground truth.",
-}
-# What a country still needs for the level above the one it earned, where it is not the
-# generic step.
-NEXT = {
-    "Germany": "A small-installation estimate that passes the register check",
-    "Yemen": "Household rooftops below 400 m&sup2; calibrated on mapped building areas",
-}
-
-
-def _below_400(totals: dict, country: str) -> str:
-    roof = totals.get("small_rooftop_status")
-    roof = roof.get("measured") if isinstance(roof, dict) else (totals.get("small_central") or 0) > 0
-    ground = (totals.get("small_ground_status") or {}).get("measured", False)
-    parts = (["rooftop"] if roof else []) + (["farm ground"] if ground else [])
-    if country == "Germany" and roof:
-        return "rooftop (register-calibrated, not validated)"
-    return " and ".join(parts) if parts else "not measured"
-
-
 def quality_page() -> str:
-    sys.path.insert(0, str(REPO / "src"))
-    from earthpv import atlas
-
+    # The owner removed the per-country standings table, the judgements and the code line
+    # from the published page (67820b5, 2026-11-01): it lists the criteria only.
     out = ["---", 'title: "EarthPV: quality levels"', "---", "",
            "# Quality levels: Gold, Silver and Bronze", "",
            "Every country atlas carries a calibration badge in its corner: **Gold**, "
@@ -376,41 +343,6 @@ def quality_page() -> str:
             "JOSM. When every lead in a country's current file has a verdict, a maintainer "
             "records it as `validation.leads_checked` in the country's configuration, naming "
             "the file by its date; the badge then shows the level the calibration earns.", ""]
-    out += ["## Where each country stands", "",
-            "| Country | Shows | Calibration earns | Below 400 m&sup2; | Leads checked | "
-            "Missing for the next level |", "| --- | --- | --- | --- | --- | --- |"]
-    for stem, country, html, *_ in ATLASES:
-        shown, earned, totals = tier_of(html), earned_of(html), totals_of(html)
-        aoi = aoi_of(country)
-        c = atlas.leads_checked(aoi)
-        leads = totals.get("leads") or {}
-        n = leads.get("n")
-        checked = (f"yes, {c['date']}" if c["checked"]
-                   else f"no ({n:,} leads)" if n else "no")
-        missing = []
-        if earned != "bronze" and not c["checked"]:
-            missing.append(f"Check every lead ({n:,})" if n else "Check every lead")
-        if earned == "bronze":
-            missing.append("Local ground truth: map a calibration area")
-            if not c["checked"]:
-                missing.append("check every lead")
-        elif earned == "silver":
-            step = NEXT.get(country, "A calibrated estimate below 400 m&sup2;")
-            missing.append(f"then: {step[0].lower()}{step[1:]}" if missing else step)
-        out.append(f"| [{country}]({stem}.md) | {TIERS[shown][0]} | {TIERS[earned][0]} | "
-                   f"{_below_400(totals, country)} | {checked} | "
-                   f"{'; '.join(missing) or '-'} |")
-    out += ["", "The table is read from each atlas's own badge and data, and from the lead "
-            "files' records, so it changes when they do.", "",
-            "## Judgements", "",
-            "The level is derived from what each atlas has on disk. Where the evidence is of "
-            "a different kind, the owner's decision is recorded in the country's "
-            "configuration (`validation.score`) and wins over the derived level; the lead "
-            "check still applies on top.", ""]
-    out += [f"- **{k}**: {v}" for k, v in JUDGEMENT.items()]
-    out += ["", "Code: `atlas.derive_validation_score` (the derived level), "
-            "`atlas.resolve_validation_badge` and `atlas.leads_checked` (the lead check); this "
-            "page is written by `scripts/build_atlas_pages.py`.", ""]
     return "\n".join(out)
 
 

@@ -539,7 +539,10 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   **Small leads on steep ground are left out (owner, 2026-10-31)**: `export.steep_lead_screen`
   drops a lead under `STEEP_MAX_AREA_M2` (1,000 m²) whose GLO-90 slope at its representative
   point exceeds `STEEP_SLOPE_DEG` (15°), and keeps a larger one flagged `steep_review` (a
-  mountain solar farm needs a human); every lead carries `slope_deg`. Shaded slopes, cliff
+  mountain solar farm needs a human) unless it is above `STEEP_CAP_DEG` (30°, any size;
+  owner, 2026-11-01, from 60 Wadi Hadramawt shadows the owner flagged,
+  `results/leads_steep_screen/owner_flagged_yemen.csv`); every lead carries `slope_deg`.
+  One rule for every caller: `export.steep_rule`. Shaded slopes, cliff
   edges, escarpment shadows and gullies read like panels: a third of Yemen's leads stood above
   12° against 0.5% of its highland OSM solar. Applied by `release_leads.py` (tag
   `pv-new-leads-2026-11-01`; the 2026-10-28 files stay published) and by `earthpv export`'s

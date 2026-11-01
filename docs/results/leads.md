@@ -64,28 +64,37 @@ training negatives. Unlike epoch persistence, which real old PV also shows, an o
 crop cycle is near-conclusive non-PV evidence, and dark fallow soil is a confusion class
 that German training data never contained.
 
-## The released lead files: small leads on steep ground left out
+## The released lead files: leads on steep ground left out
 
-The lead file every atlas links (`scripts/release_leads.py`) leaves out one kind of lead
-(owner decision, 2026-10-31): an outline smaller than 1,000 m<sup>2</sup> on ground steeper
-than 15&deg;, measured as the Copernicus GLO-90 slope at a point inside the outline. Shaded
-hillsides, cliff edges, gullies and the shadows under escarpments read like panels at 10 m.
-In Yemen's first release a third of the leads stood on ground steeper than 12&deg;, against
-0.5% of the mapped solar in the same highlands, and 9 of 10 drawn at random were not solar
-on imagery.
+The lead file every atlas links (`scripts/release_leads.py`) leaves out leads on steep
+ground, measured as the Copernicus GLO-90 slope at a point inside the outline: an outline
+smaller than 1,000 m<sup>2</sup> on ground steeper than 15&deg; (owner decision, 2026-10-31),
+and an outline of any size on ground steeper than 30&deg; (2026-11-01). Shaded hillsides,
+cliff edges, gullies and the shadows under escarpments read like panels at 10 m. In Yemen's
+first release a third of the leads stood on ground steeper than 12&deg;, against 0.5% of the
+mapped solar in the same highlands, and 9 of 10 drawn at random were not solar on imagery.
 
-A larger lead on steep ground stays in the file, marked `steep_review`, because a solar farm
-can stand on a mountainside and a person has to look at it. Every lead carries the slope it
-was judged on (`slope_deg`), and `earthpv export` applies the same screen to a run's own
-`<aoi>_pv_new_leads.geojson`.
+A larger lead on ground between 15&deg; and 30&deg; stays in the file, marked `steep_review`,
+because a solar farm can stand on a mountainside and a person has to look at it. Every lead
+carries the slope it was judged on (`slope_deg`), and `earthpv export` applies the same
+screen to a run's own `<aoi>_pv_new_leads.geojson`.
 
-Across the twelve lead files of 2026-11-01 the rule removes 6,306 of 156,170 leads (Yemen
-15.5%, India 5%, Poland almost none) and keeps 7,091 as `steep_review`. On solar known to be
-real it would remove 2 of the 22,124 model outlines that found a mapped installation, and at
-most 0.04% of any country's mapped solar area. Of 89 removed leads drawn at random and
+The 30&deg; cap came from 60 leads in Wadi Hadramawt that the owner flagged as shadow: the
+15&deg; rule had removed 38, and 19 of the 20 larger ones it kept stood above 30&deg;, on
+cliffs. Two more lie on flat ground at the foot of a cliff, which a slope read at one point
+cannot see; they stay for now.
+
+Across the twelve lead files of 2026-11-01 the rules remove 10,098 of 156,170 leads (6,306
+small ones and 3,792 larger ones above 30&deg;; Yemen 472, India 7,942, Poland 3) and keep
+3,298 as `steep_review`. On solar known to be real they would remove 2 of the 22,370 model
+outlines that found a mapped installation, none of them larger than 1,000 m<sup>2</sup>, and
+at most 0.03% of any country's mapped solar area. Yemen's file also reads a newer
+OpenStreetMap pull (2026-10-31), so 246 of its leads mapped in the week before left it. Of 89 small steep leads drawn at random and
 checked on imagery by the owner, none was solar (86 were not, 3 could not be settled); of 64
-kept steep leads none was solar either (62 were not, 2 could not be settled), but a few, such
-as a farmstead in German hill country, could be, which is why the larger ones stay ([experiment register](../experiments.md#small-leads-on-steep-ground-2026-10-31),
+larger ones none was solar either (62 were not, 2 could not be settled), and the 23 of them
+above 30&deg; were all judged not solar. A few below 30&deg;, such as a farmstead in German hill
+country, could be solar, which is why those stay
+([experiment register](../experiments.md#small-leads-on-steep-ground-2026-10-31),
 `results/leads_steep_screen/`).
 
 ## Getting the leads into OpenStreetMap

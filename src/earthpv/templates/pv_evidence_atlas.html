@@ -3970,7 +3970,9 @@ out geom;</div>
       // The steep-ground screen (export.steep_lead_screen) and the lead check Silver and
       // Gold need (atlas.leads_checked); a page built before either says nothing about it.
       + (L.steep ? ` Leads under ${fmt(L.steep.max_area_m2)} m² on ground steeper than `
-        + `${L.steep.slope_deg}° were left out (${fmt(L.steep.dropped)}): shaded slopes, cliff `
+        + `${L.steep.slope_deg}°`
+        + (L.steep.cap_deg ? `, and leads of any size above ${L.steep.cap_deg}°,` : ``)
+        + ` were left out (${fmt(L.steep.dropped)}): shaded slopes, cliff `
         + `edges and gullies read like panels. ${fmt(L.steep.review)} larger ones on steep ground `
         + `are kept and marked <code>steep_review</code>, since a solar farm can stand on a `
         + `mountainside.` : "")

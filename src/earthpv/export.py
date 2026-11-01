@@ -230,15 +230,20 @@ def match_mapped_polygons(
 # like panels (9 of 10 random leads above 12 degrees were not PV on Esri and the
 # composite), while 2 of 3,229 mapped OSM solar polygons lie above 15 degrees under
 # 1,000 m2. Validation: results/leads_steep_screen/.
+# Above STEEP_CAP_DEG a lead is dropped whatever its size (owner, 2026-11-01): 19 of the 20
+# large leads the owner flagged as shadow in Wadi Hadramawt stood above it, as did none of
+# the 13,344 model outlines of 1,000 m2 or more that found mapped solar in the four
+# countries with any steep ones, and 4 mapped polygons of that size in twelve countries.
 STEEP_SLOPE_DEG = 15.0
 STEEP_MAX_AREA_M2 = 1000.0
+STEEP_CAP_DEG = 30.0
 
 
 def steep_lead_screen(leads: gpd.GeoDataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """`(slope_deg, drop, review)` for each lead: the GLO-90 slope at its representative
-    point, the small steep leads a lead file drops, and the larger steep leads it keeps
-    for a human (`steep_review`). A lead off the DEM (NaN slope) is neither: absence of
-    evidence is not a verdict."""
+    point, the leads a lead file drops (small and steep, or any size above
+    `STEEP_CAP_DEG`), and the larger steep leads it keeps for a human (`steep_review`). A
+    lead off the DEM (NaN slope) is neither: absence of evidence is not a verdict."""
     from earthpv.groundclf import dem_slope_at
 
     if leads.empty:
@@ -246,9 +251,18 @@ def steep_lead_screen(leads: gpd.GeoDataFrame) -> tuple[np.ndarray, np.ndarray, 
         return z, z.astype(bool), z.astype(bool)
     rep = leads.geometry.to_crs(4326).representative_point()
     slope = dem_slope_at(rep.x.to_numpy(), rep.y.to_numpy())
-    steep = np.nan_to_num(slope, nan=0.0) > STEEP_SLOPE_DEG
-    small = leads["area_m2"].to_numpy(float) < STEEP_MAX_AREA_M2
-    return slope, steep & small, steep & ~small
+    drop, review = steep_rule(slope, leads["area_m2"].to_numpy(float))
+    return slope, drop, review
+
+
+def steep_rule(slope: np.ndarray, area_m2: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """`(drop, review)` from a slope and an outline area: dropped when steeper than
+    `STEEP_SLOPE_DEG` and under `STEEP_MAX_AREA_M2`, or steeper than `STEEP_CAP_DEG` at
+    any size; kept as `steep_review` when steep, that large and not above the cap."""
+    s = np.nan_to_num(np.asarray(slope, dtype=float), nan=0.0)
+    steep, small = s > STEEP_SLOPE_DEG, np.asarray(area_m2, dtype=float) < STEEP_MAX_AREA_M2
+    drop = steep & (small | (s > STEEP_CAP_DEG))
+    return drop, steep & ~drop
 
 
 def filter_new_leads(
@@ -374,9 +388,9 @@ def run_export(
                 slope, steep_drop, steep_review = steep_lead_screen(leads)
                 leads = leads.assign(slope_deg=np.round(slope, 1), steep_review=steep_review)
                 leads = leads[~steep_drop].reset_index(drop=True)
-                log.info("Steep-ground screen (> %.0f deg): %d small leads dropped, %d larger "
-                         "kept as steep_review", STEEP_SLOPE_DEG, int(steep_drop.sum()),
-                         int(steep_review.sum()))
+                log.info("Steep-ground screen (> %.0f deg, any size > %.0f deg): %d leads "
+                         "dropped, %d larger kept as steep_review", STEEP_SLOPE_DEG,
+                         STEEP_CAP_DEG, int(steep_drop.sum()), int(steep_review.sum()))
             except Exception as e:  # noqa: BLE001 -- the lead file is still written
                 log.warning("steep-ground screen skipped (DEM unavailable: %s)", e)
             nl = pred_dir / f"{aoi}_pv_new_leads.geojson"

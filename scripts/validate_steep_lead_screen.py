@@ -2,7 +2,8 @@
 """Validate the steep-ground lead screen (`export.steep_lead_screen`, owner 2026-10-31).
 
 The released lead files leave out a lead under 1,000 m2 on ground steeper than 15 degrees
-and keep a larger one as `steep_review`. Two questions, per country:
+and keep a larger one as `steep_review`, unless it stands above 30 degrees (left out at any
+size, owner 2026-11-01). Two questions, per country:
 
 1. **What real solar would the rule throw away?** Applied to the solar we know is real:
    every mapped OpenStreetMap solar polygon in the country's pull (its own outline area and
@@ -46,10 +47,9 @@ SEED = 20261031
 
 
 def _rule(slope: np.ndarray, area: np.ndarray):
-    from earthpv.export import STEEP_MAX_AREA_M2, STEEP_SLOPE_DEG
+    from earthpv.export import steep_rule
 
-    steep = np.nan_to_num(slope, nan=0.0) > STEEP_SLOPE_DEG
-    return steep & (area < STEEP_MAX_AREA_M2), steep & (area >= STEEP_MAX_AREA_M2)
+    return steep_rule(slope, area)
 
 
 def _slope(g: gpd.GeoSeries) -> np.ndarray:
@@ -166,13 +166,18 @@ def main() -> int:
     ap.add_argument("--review-per-country", type=int, default=4,
                     help="steep_review leads drawn per country (Yemen: 5x)")
     ap.add_argument("--no-render", action="store_true")
+    ap.add_argument("--out", type=Path, default=OUT,
+                    help="results directory (default results/leads_steep_screen; a re-run "
+                         "under a changed rule should write elsewhere, since the reviewers' "
+                         "verdicts are keyed to the first run's sample.csv codes)")
     a = ap.parse_args()
 
     import os
     os.chdir(ROOT)
     from release_leads import SOURCES
 
-    OUT.mkdir(parents=True, exist_ok=True)
+    out = a.out if a.out.is_absolute() else ROOT / a.out
+    out.mkdir(parents=True, exist_ok=True)
     rows, hits, drops, reviews = [], [], [], []
     for aoi in a.aoi or list(SOURCES):
         if not (a.new / f"{aoi}_pv_new_leads.geojson").exists():
@@ -183,8 +188,8 @@ def main() -> int:
         hits.append(hit)
         drops.append(dropped)
         reviews.append(review)
-    pd.DataFrame(rows).to_csv(OUT / "summary.csv", index=False)
-    pd.concat(hits, ignore_index=True).to_csv(OUT / "osm_steep.csv", index=False)
+    pd.DataFrame(rows).to_csv(out / "summary.csv", index=False)
+    pd.concat(hits, ignore_index=True).to_csv(out / "osm_steep.csv", index=False)
 
     # One generator per country, seeded alike, so a country's draw (and its codes, e.g.
     # `yemen-d03`) does not change when other countries are added to a run.
@@ -209,13 +214,13 @@ def main() -> int:
             "rank_score"]
     sample[cols].assign(lon=sample.geometry.representative_point().x,
                         lat=sample.geometry.representative_point().y).to_csv(
-        OUT / "sample.csv", index=False)
+        out / "sample.csv", index=False)
     if not a.no_render:
         from build_review_page import write_page
 
         items = render(sample, REVIEW)
         write_page(REVIEW / "index.html", "leads_steep_screen", items, guide=GUIDE)
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(rows)} countries, {len(sample)} leads drawn")
+    print(f"wrote {out.relative_to(ROOT)}: {len(rows)} countries, {len(sample)} leads drawn")
     return 0
 
 
