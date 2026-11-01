@@ -265,6 +265,84 @@ def steep_rule(slope: np.ndarray, area_m2: np.ndarray) -> tuple[np.ndarray, np.n
     return drop, steep & ~drop
 
 
+# The low-confidence open-ground lead screen (2026-11-01). A lead with no building near
+# it (`placement == "no_building"`) whose peak model probability (`confidence`, the
+# maximum over the outline) is below LOWCONF_MAX_CONFIDENCE is dropped from a lead file at
+# any size. Measured on the 13 published countries (results/fp_filter_survey/): Germany's
+# register finds a unit >= 30 kWp inside 0-5% of such unmatched outlines in every size bin
+# against 10-38% above 0.9 (chance 0.1-0.2%); they are 0-1.3% OSM-mapped in most countries
+# (4-7% in France, Germany, Poland) against 2-53% for the no_building outlines kept; none of
+# 18 random ones of 1,000 m2 or more (Pakistan, South Africa) was PV on Esri; and dropping
+# them loses at most 1.5% of the mapped area the model finds (France; Pakistan 6 of 9,920
+# installations). None of India's 81 owner-confirmed parks above the merge cap falls under
+# it. Below 0.9 the mapped share is flat, so a lower cut on its own buys nothing; and
+# `ground_adjacent` is spared because its low-confidence outlines are often rooftop arrays
+# overrunning an undersized footprint (15-35% register hits).
+LOWCONF_PLACEMENT = "no_building"
+LOWCONF_MAX_CONFIDENCE = 0.9
+
+
+def low_confidence_rule(placement, confidence) -> np.ndarray:
+    """True where a candidate is open-ground (`no_building`) and its peak probability is
+    below `LOWCONF_MAX_CONFIDENCE`. A missing confidence is never a verdict."""
+    conf = np.asarray(confidence, dtype=float)
+    return (np.asarray(placement).astype(str) == LOWCONF_PLACEMENT) & (
+        np.nan_to_num(conf, nan=1.0) < LOWCONF_MAX_CONFIDENCE)
+
+
+def _steep_review(leads: gpd.GeoDataFrame) -> np.ndarray:
+    """The leads the steep-ground screen keeps for a human (`steep_review`): the owner's
+    rule is that someone looks at each, so no later screen removes them."""
+    if "steep_review" not in leads.columns:
+        return np.zeros(len(leads), dtype=bool)
+    return leads["steep_review"].fillna(False).to_numpy(bool)
+
+
+def low_confidence_lead_screen(leads: gpd.GeoDataFrame) -> np.ndarray:
+    """The leads a lead file drops under `low_confidence_rule` (none when the file lacks
+    `placement` or `confidence`). A `steep_review` lead is never dropped (`_steep_review`):
+    the rule would take 2,017 of the 3,298 in the 2026-11-01 files, but the owner kept them
+    for a human, so they stay."""
+    if leads.empty or not {"placement", "confidence"} <= set(leads.columns):
+        return np.zeros(len(leads), dtype=bool)
+    return low_confidence_rule(leads["placement"].to_numpy(),
+                               leads["confidence"].to_numpy()) & ~_steep_review(leads)
+
+
+# The OPTIONAL surface-water lead screen (2026-11-01; per AOI, `lead_water_screen: true`
+# in configs/aoi.yaml, or export --water-screen). A lead not placed on a rooftop with at
+# least WATER_EVER_WET_MIN of its outline ever water in JRC Global Surface Water
+# (1984-2020) is dropped: seasonal pans, salt pans, fish and wastewater ponds. Off by
+# default because real PV stands on water and wet ground in some countries (floating PV,
+# pond PV, salt-marsh parks such as Khavda); see surface_water.py for the measurements.
+WATER_EVER_WET_MIN = 0.25
+
+
+def water_lead_screen(leads: gpd.GeoDataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """`(ever_wet_frac, drop)` per lead. A lead JRC does not cover (NaN) is never dropped,
+    nor a `steep_review` one (`_steep_review`)."""
+    from earthpv.surface_water import water_history
+
+    if leads.empty:
+        z = np.zeros(0)
+        return z, z.astype(bool)
+    wet = water_history(leads.geometry)["ever_wet_frac"].to_numpy(float)
+    roof = leads["placement"].astype(str).to_numpy() == "rooftop" if "placement" in leads \
+        else np.zeros(len(leads), dtype=bool)
+    return wet, ~roof & ~_steep_review(leads) & (np.nan_to_num(wet, nan=0.0) >= WATER_EVER_WET_MIN)
+
+
+def lead_water_screen_enabled(aoi: str, override: bool | None = None) -> bool:
+    """`override` when given, else the AOI's `lead_water_screen` key (default off)."""
+    if override is not None:
+        return bool(override)
+    from earthpv.config import Settings
+    from earthpv.labels import resolve_aoi
+
+    _, cfg = resolve_aoi(aoi, Settings.load())
+    return bool(cfg.get("lead_water_screen", False))
+
+
 def filter_new_leads(
     cands: gpd.GeoDataFrame, mapped: gpd.GeoDataFrame, min_distance_m: float = 0.0
 ) -> gpd.GeoDataFrame:
@@ -340,6 +418,7 @@ def run_export(
     worldcover_veto: bool = False, ensemble_veto: bool = False,
     sppi_rescue_min: float | None = None,
     min_area_m2: float = 0.0,
+    water_screen: bool | None = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     pred_dir = Path(pred_dir) / aoi
@@ -393,6 +472,19 @@ def run_export(
                          STEEP_CAP_DEG, int(steep_drop.sum()), int(steep_review.sum()))
             except Exception as e:  # noqa: BLE001 -- the lead file is still written
                 log.warning("steep-ground screen skipped (DEM unavailable: %s)", e)
+            lowconf = low_confidence_lead_screen(leads)
+            leads = leads[~lowconf].reset_index(drop=True)
+            log.info("Low-confidence open-ground screen (no_building, peak < %.2f): %d leads "
+                     "dropped", LOWCONF_MAX_CONFIDENCE, int(lowconf.sum()))
+            if lead_water_screen_enabled(aoi, water_screen):
+                try:
+                    wet, wet_drop = water_lead_screen(leads)
+                    leads = leads.assign(ever_wet_frac=np.round(wet, 3))[~wet_drop]
+                    leads = leads.reset_index(drop=True)
+                    log.info("Surface-water screen (non-rooftop, >= %.0f%% ever wet): %d leads "
+                             "dropped", 100 * WATER_EVER_WET_MIN, int(wet_drop.sum()))
+                except Exception as e:  # noqa: BLE001 -- the lead file is still written
+                    log.warning("surface-water screen skipped (JRC unavailable: %s)", e)
             nl = pred_dir / f"{aoi}_pv_new_leads.geojson"
             leads.to_file(nl, driver="GeoJSON")
 

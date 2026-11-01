@@ -1173,7 +1173,12 @@ def _candidate_uncertainty(
     rooftop = (
         placement_col == "rooftop" if placement_col is not None else np.zeros(len(cands), bool)
     )
-    grp = np.where(rooftop, "rooftop", "ground")
+    confidence = cands["confidence"].to_numpy(float) if "confidence" in cands.columns else None
+    # The pricing group, which with a table's confidence_split is not just rooftop/ground
+    # (capacity_calibration.LOWCONF_GROUP); `rooftop` above still picks the kWp constant.
+    grp = (cc._placement_group(placement_col, confidence, table.get("confidence_split"))
+           if placement_col is not None and "placement_bins" in table
+           else np.where(rooftop, "rooftop", "ground"))
     # Outlines above the merge cap admitted by a review (`capacity_relevant_candidates`)
     # are priced by their stratum's posterior below, not by a size bin.
     fixed = cands["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cands.columns else None
@@ -1181,9 +1186,9 @@ def _candidate_uncertainty(
                else np.full(len(cands), None, dtype=object))
     is_fixed = ~np.isnan(fixed) if fixed is not None else np.zeros(len(cands), bool)
     p_pt = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement_col,
-                               fixed=fixed)
+                               fixed=fixed, confidence=confidence)
     r_pt = cc.candidate_recall(area, table, floor=recall_floor, placement=placement_col,
-                               fixed=fixed)
+                               fixed=fixed, confidence=confidence)
 
     # Same population process_cell counts into the cell totals: assigned by
     # representative point to a manifest cell.
@@ -1212,7 +1217,7 @@ def _candidate_uncertainty(
     if "placement_bins" in table:
         w_by_group = {
             g: _group_weights({**table, "bins": table["placement_bins"][g]})
-            for g in cc.PLACEMENT_GROUPS
+            for g in cc.table_groups(table)
         }
     else:
         w_pooled = _group_weights(table)
@@ -1690,6 +1695,8 @@ def run_density(
                 placement=cands["placement"].astype(str).to_numpy()
                 if "placement" in cands.columns else None,
                 fixed=cands["p_real_fixed"].to_numpy() if "p_real_fixed" in cands.columns else None,
+                confidence=cands["confidence"].to_numpy(float)
+                if "confidence" in cands.columns else None,
             )
         log.info("Calibration table %s (%s): est_mwp_cal is precision-weighted", cal_path, cal_status)
         # A table with no `placement_bins` prices ground-mount off rooftop's much higher

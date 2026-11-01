@@ -46,12 +46,13 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 | --- | --- |
 | `candidate_id` | the lead's id, the same in the country's other exports |
 | `rank_score` | the model's confidence times a building prior; the sort order |
-| `confidence` | mean model probability inside the outline |
+| `confidence` | the highest model probability inside the outline |
 | `area_m2` | the outline's area; the panels are usually about half of it |
 | `placement` | `rooftop` (on a building), `ground_adjacent` (next to one) or `no_building` (open land) |
 | `oversize` | `true` for an outline above 100,000 m<sup>2</sup>: often a whole unmapped park, sometimes a merged sheet of false alarms |
 | `slope_deg` | the terrain slope at the lead, in degrees (Copernicus 90 m elevation model) |
 | `steep_review` | `true` for a lead of 1,000 m<sup>2</sup> or more on ground steeper than 15&deg; (up to 30&deg;): look at the terrain as well as the outline (below) |
+| `ever_wet_frac` | share of the outline ever under water since 1984 (only in countries with the pans-and-ponds screen) |
 | `lon`, `lat` | a point inside the outline |
 
 **Steep ground.** Shaded hillsides, cliff edges, gullies and the shadows under escarpments
@@ -62,6 +63,12 @@ whether the dark patch is panels or the slope's own shadow. Above 30&deg; a lead
 is left out: at that slope the leads checked so far were all cliffs. Sentinel-2 passes in the
 mid-morning, so shadows fall to the north-west north of the equator and to the south-west
 south of it.
+
+**Open ground at low probability, and pans and ponds.** A lead with no building near it whose
+highest model probability is below 0.9 is left out too: such leads were almost never solar
+(fields, riverbeds, shaded slopes, scrub). In Pakistan, Egypt and Namibia, a lead off rooftops
+at least a quarter of whose outline has been under water since 1984 is left out as well:
+seasonal pans, salt pans and ponds. Neither rule removes a `steep_review` lead.
 
 Large countries have large files: India's holds about 92,000 leads (89 MB). Work one region
 at a time (step 3). France's leads are a separate,

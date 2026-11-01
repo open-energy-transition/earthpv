@@ -26,7 +26,7 @@ hide:
   <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
-  <p><strong>Bronze until its mapping leads are checked.</strong> Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR); the small-installation estimate below that is not yet validated. Silver and Gold also need a person to have checked every lead in the country's lead file: the places the model found solar that OpenStreetMap does not have yet (17,451 leads).</p>
+  <p><strong>Bronze until its mapping leads are checked.</strong> Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR); the small-installation estimate below that is not yet validated. Silver and Gold also need a person to have checked every lead in the country's lead file: the places the model found solar that OpenStreetMap does not have yet (15,116 leads).</p>
   <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work through it on recent imagery, mapping every real installation. When every lead has a verdict the atlas shows Silver again.</p>
   <p><a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> <a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a></p>
 </div>

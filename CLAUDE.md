@@ -447,6 +447,15 @@ density must read below the floor; a boundary traced around a settlement almost 
 range-extending quadrat must deliberately average in non-built land. History:
 `docs/methods/calibration-quadrats.md`, `docs/methods/density.md`.
 
+**Pricing low-probability open ground apart exists but is not adopted (2026-11-01).**
+`calibrate-candidates --confidence-split 0.9` (off by default) or
+`scripts/split_calibration_tables.py` (splits a checked-in table's ground bins, keeping its
+recall rows and evidence) adds a third placement table, `capacity_calibration.LOWCONF_GROUP`,
+for the lead rule's class; every pricing call passes `confidence`, and `_placement_group`
+refuses a split table without it. It RAISES the model's priced capacity in 12 of 13 countries
+(the confident ground outlines get their own, higher mapped share) yet moves Best by under
+0.5% (South Africa -35.5 MWp; controls reproduce the published pages exactly). Owner decision.
+
 **Out-of-domain roofclf-AND-SPPI capacity (`sub400_capacity.out_of_domain_and_gate_capacity`,
 `--sub400-outdomain-cells`) exists but is not published** (owner decision 2026-08-15): it is
 the one component not measured where it would be applied, and its manual review is blocked by
@@ -551,6 +560,20 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   `verdicts_owner.csv`): none solar, removed 86 not / 3 unsure, kept 62 not / 2 unsure. The
   slope is read from whole cached DEM tiles (`data/dem` -> /home, ~5 MB each); a first
   country-wide run downloads hundreds, slowly under a busy link.
+  **Open-ground leads of low peak probability are left out too (2026-11-01)**:
+  `export.low_confidence_rule` drops a `no_building` lead whose `confidence` (the PEAK
+  probability in the outline, not a mean) is below `LOWCONF_MAX_CONFIDENCE` (0.9), any size.
+  MaStR finds a unit in 0-5% of such unmatched outlines against 10-38% above 0.9; 0-1.3%
+  OSM-mapped in most countries; at most 1.5% of mapped area lost. Below 0.9 the mapped share
+  is flat, so a lower cut buys nothing, and `ground_adjacent` is spared (15-35% register hits).
+  **The surface-water screen is per country** (`lead_water_screen: true` in configs/aoi.yaml:
+  Pakistan, Egypt, Namibia; `export --water-screen/--no-water-screen`): `surface_water.py`
+  (JRC Global Surface Water 1984-2020, block cache `data/jrc_gsw` -> /home) drops non-rooftop
+  leads >= 25% ever wet (pans, salt pans, ponds). Never India or Vietnam: Khavda's salt marsh,
+  floating and pond PV. `planetary_computer.sign` 404s for this dataset; the module signs with
+  the collection token, which lives ~15 min. Released as `pv-new-leads-2026-11-01b`; neither
+  screen removes a `steep_review` lead (the owner keeps those for a human; the rule alone would
+  take 2,017 of 3,298). Survey: `results/fp_filter_survey/`.
 - **Size chart on every page (2026-10-30)**: `_size_distribution_data` re-bins Best by size
   with or without a roofclf half (it was Pakistan-only), counting only candidates and OSM
   inside the grid, as the per-cell total does. Where `small_rooftop_status` or

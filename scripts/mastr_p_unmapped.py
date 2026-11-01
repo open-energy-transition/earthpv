@@ -195,7 +195,8 @@ def base_rate_null(
 
 
 def measure(aoi: str, db: Path, cutoff: str, pred_dir: Path,
-            base_rate_cells: int = 0) -> tuple[pd.DataFrame, pd.DataFrame]:
+            base_rate_cells: int = 0,
+            split: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     rng = np.random.default_rng(SEED)
     settings = Settings.load()
     _, cfg = resolve_aoi(aoi, settings)
@@ -209,7 +210,11 @@ def measure(aoi: str, db: Path, cutoff: str, pred_dir: Path,
     idx_all = cc.bin_index(cands["area_m2"].to_numpy())
     # `_placement_group`'s own rooftop/ground collapse, so bins line up with the
     # placement tables these numbers feed.
-    grp_all = cc._placement_group(cands["placement"].to_numpy())
+    # With `split` (calibrate-candidates' confidence split), open-ground candidates below
+    # its peak probability are their own group, counted against ground units like ground.
+    grp_all = cc._placement_group(cands["placement"].to_numpy(),
+                                  cands["confidence"].to_numpy() if split else None, split)
+    groups = ("rooftop", "ground") + ((cc.LOWCONF_GROUP,) if split else ())
     log.info("candidates %d | unmapped %d | OSM-mapped %d",
              len(cands), int(unmapped.sum()), int((~unmapped).sum()))
 
@@ -228,8 +233,8 @@ def measure(aoi: str, db: Path, cutoff: str, pred_dir: Path,
             log.info("  matched null [%s]: %d/%d = %.4f", lab, k, n, k / n)
 
     ctl_rows, res_rows = [], []
-    for pl in ("rooftop", "ground"):
-        P = pts[pl]
+    for pl in groups:
+        P = pts[cc.reference_group(pl)]
         pops: dict[str, dict[str, tuple[int, int]]] = {}
         for pop, mask in (("unmapped", unmapped & (grp_all == pl)),
                           ("mapped", (~unmapped) & (grp_all == pl))):
@@ -297,12 +302,16 @@ def main() -> None:
                          "(0 disables it and falls back to the displaced control, which "
                          "overstates p_unmapped -- see the module docstring)")
     ap.add_argument("--out", type=Path, default=Path("results/germany_mastr_p_unmapped.csv"))
+    ap.add_argument("--split", action=argparse.BooleanOptionalAction, default=True,
+                    help="measure the low-confidence open-ground group apart, as "
+                         "calibrate-candidates' default confidence split prices it")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     if not a.db.exists():
         raise SystemExit(f"{a.db} not found -- run earthpv.mastr.download_mastr() first")
-    res, ctl = measure(a.aoi, a.db, a.cutoff, a.pred_dir, a.base_rate_cells)
+    res, ctl = measure(a.aoi, a.db, a.cutoff, a.pred_dir, a.base_rate_cells,
+                       split=cc.default_confidence_split() if a.split else None)
     a.out.parent.mkdir(parents=True, exist_ok=True)
     res.to_csv(a.out, index=False)
     ctl_path = a.out.with_name(a.out.stem + "_controls.csv")

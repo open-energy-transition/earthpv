@@ -181,7 +181,7 @@ def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     if not e:
         return None
     return {k: e[k] for k in ("url", "file", "n", "size_bytes", "osm_as_of", "min_distance_m",
-                              "made", "note", "steep") if k in e}
+                              "made", "note", "steep", "lowconf", "water") if k in e}
 
 
 def leads_checked(aoi: str, path: Path = LEADS_MANIFEST) -> dict:
@@ -2414,6 +2414,7 @@ def osm_absorbed_inflation(
     miss_area: np.ndarray, miss_rooftop: np.ndarray, miss_mwp: np.ndarray,
     table: dict, recall_floor: float, kwp_mod: float, kwp_land: float,
     cand_fixed: np.ndarray | None = None,
+    cand_confidence: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, list[dict]]:
     """Share of each candidate's recall inflation that OSM-mapped misses already account for.
 
@@ -2427,9 +2428,10 @@ def osm_absorbed_inflation(
     cand_area = np.asarray(cand_area, float)
     roof = np.asarray(cand_placement).astype(str) == "rooftop"
     p = cc.candidate_p_real(cand_area, table, glint_consistent=cand_glint, placement=cand_placement,
-                            fixed=cand_fixed)
+                            fixed=cand_fixed, confidence=cand_confidence)
     r = np.maximum(cc.candidate_recall(cand_area, table, floor=recall_floor,
-                                       placement=cand_placement, fixed=cand_fixed), recall_floor)
+                                       placement=cand_placement, fixed=cand_fixed,
+                                       confidence=cand_confidence), recall_floor)
     k = np.where(roof, kwp_mod, kwp_land) / 1000.0
     inflation = cand_area * p * k * (1.0 / r - 1.0)
     cb = cc.bin_index(cand_area)
@@ -2916,6 +2918,7 @@ def build_evidence_atlas(
             miss["kwp"].to_numpy(float) / 1000.0, seg_table,
             float(meta.get("recall_floor", cc.DEFAULT_RECALL_FLOOR)), kwp_mod, kwp_land,
             cand_fixed=cp["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cp.columns else None,
+            cand_confidence=cp["confidence"].to_numpy(float) if "confidence" in cp.columns else None,
         )
         cut = pd.DataFrame({"cell": cp["cell"].to_numpy(), "roof": c_place == "rooftop",
                             "mwp": inflation * (1.0 - retain)})
@@ -3472,10 +3475,11 @@ def _size_distribution_data(
     )
     glint = cands["glint_consistent"].to_numpy() if "glint_consistent" in cands.columns else None
     fixed = cands["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cands.columns else None
+    confidence = cands["confidence"].to_numpy(float) if "confidence" in cands.columns else None
     p_real = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement,
-                                 fixed=fixed)
+                                 fixed=fixed, confidence=confidence)
     recall = cc.candidate_recall(area, table, floor=cc.DEFAULT_RECALL_FLOOR, placement=placement,
-                                 fixed=fixed)
+                                 fixed=fixed, confidence=confidence)
     rc_area = area * p_real / np.clip(recall, cc.DEFAULT_RECALL_FLOOR, None)
     is_roof = placement == "rooftop"
     in_domain = np.isin(cell_of, np.array(list(ge400_cells), dtype=object)) if ge400_cells else np.zeros(len(cands), bool)
@@ -3517,6 +3521,7 @@ def _size_distribution_data(
             miss["area_m2"].to_numpy(float), (miss["placement"] == "rooftop").to_numpy(),
             miss["kwp"].to_numpy(float) / 1000.0, table,
             float(meta.get("recall_floor", cc.DEFAULT_RECALL_FLOOR)), kwp_mod, kwp_land,
+            cand_confidence=None if confidence is None else confidence[used],
         )
         retain = np.ones(len(cands))
         retain[used] = retain_used

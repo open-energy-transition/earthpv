@@ -39,6 +39,8 @@ repository; nothing was deleted on failure.
 | [Localizing the detector on Vietnam](results/vietnam.md#localizing-the-detector) | <span class="outcome works">shipped</span> | v9, trained with Vietnam's own OSM labels, against v5 on the held-out Central Highlands: pixel IoU 0.724 to 0.762, recall on arrays of 500 m<sup>2</sup> and up tied (0.973 against 0.960). The localized checkpoint ships. |
 | [The 5 km<sup>2</sup> ground cap, outside Germany](results/vietnam.md) | <span class="outcome works">shipped</span> | Vietnam's five largest mapped parks, 5.6 to 8.3 km<sup>2</sup>, are 92 to 99% detected. An evidence-gated exception keeps them: Verified 6,258 to 8,180 MWp. |
 | [Small leads on steep ground left out](#small-leads-on-steep-ground-2026-10-31) | <span class="outcome works">shipped</span> | A third of Yemen's leads stood on ground steeper than 12&deg;, against 0.5% of its highland OSM solar. Leads under 1,000 m<sup>2</sup> above 15&deg; now leave the lead files (Yemen 355 of 2,288); larger ones are kept as `steep_review`, unless above 30&deg; (any size, from 60 shadows the owner flagged in Wadi Hadramawt; 57 now go). Across twelve countries 10,098 of 156,170 leads go and 3,298 stay as `steep_review`; 2 of 22,370 candidates that found mapped solar would. The owner judged 153 drawn leads on imagery: none is solar (148 not, 5 unsure). |
+| [Open ground at low probability, and pans and ponds, left out of the leads](#open-ground-at-low-probability-and-pans-and-ponds-2026-11-01) | <span class="outcome works">shipped</span> | Open-ground leads below 0.9 peak probability are 0-1.3% OSM-mapped in most countries and hold a registered German unit 0-5% of the time (10-38% above 0.9); none of 18 drawn was solar; they leave the lead files at a cost of at most 1.5% of mapped area. JRC surface-water history removes pans and ponds where switched on (Pakistan, Egypt, Namibia); off where solar stands on water (India, Vietnam). |
+| [Pricing low-probability open ground apart in the precision table](#pricing-low-probability-open-ground-apart-2026-11-01) | <span class="outcome mixed">partial</span> | Built, not adopted: a third placement table raises the model's priced capacity in 12 of 13 countries (the confident ground outlines then get their own, higher mapped share) but moves Best by under 0.5% (South Africa -35.5 MWp). Owner decision. |
 | [Localizing the detector on India](results/india.md#localizing-the-detector-and-why-v5-ships) | <span class="outcome negative">rejected</span> | v10, trained with India's own OSM labels, against v5 on the held-out Surat-Bharuch-Vadodara box: recall on arrays of 500 m<sup>2</sup> and up 0.938 to 0.911, pixel IoU 0.686 to 0.663. v5 ships. India's labels are 84% ground-mount, a population v5 already covers. |
 | [Compose scenes ranked by cell coverage](results/india.md#a-compose-defect-found-here-and-fixed-for-every-later-country) | <span class="outcome works">shipped</span> | Scenes covering the whole cell now rank before partial ones, and a whole band lost to failed reads now raises. Rewa's cell went from 87.4% to 0.0% empty; composites built earlier were not rebuilt. |
 | [Solar-thermal removed from the OSM labels](results/india.md#candidate-population) | <span class="outcome works">shipped</span> | OSM tags CSP plants and water heaters with the same `generator:source=solar`. Morocco's pull was half thermal (1,697 of 3,440 features, the Noor CSP complex). Filtered for every country after India. |
@@ -654,6 +656,59 @@ outline; the owner declined a neighbourhood test for now. Leaving out small lead
 steeper than 25&deg; within 90 m would catch one of the two and 65 more Yemeni leads (3.4%),
 but also 0.2% of Yemen's mapped solar polygons: farms on valley floors under the cliffs. At
 15&deg; within 90 m, 13.6% of the leads go against 0.9% of mapped solar.
+
+### Open ground at low probability, and pans and ponds (2026-11-01)
+
+After a survey of what other PV maps do against false positives (masks for water, snow,
+roads and slope; a small classifier on each detected outline; hard negatives; human review:
+Microsoft's India solar farms, Global Renewables Watch, Zhang et al. 2022, Kruitwagen et al.
+2021, TransitionZero), two cheap checks were measured on all 13 published countries
+(`results/fp_filter_survey/`, scripts there).
+
+**Peak probability.** Model outlines were re-cut from the probability rasters as
+`postprocess.polygonize_chips` draws them (reproducing every published model-geometry
+candidate exactly), because an outline replaced by its OSM polygon carries the highest
+probability of every fragment it absorbed. The share of outlines within 100 m of mapped OSM
+solar is flat from 0.3 to 0.9 inside every placement and size bin and rises only above 0.9
+(pooled over countries, ground 5k-50k m<sup>2</sup>: 0.04-0.06 below 0.9, 0.25 above), so
+a plain cut at 0.4 or 0.5 shortens the lead list without cleaning it. Germany's register,
+which needs no OSM, separates by placement: unmatched `no_building` outlines below 0.9 hold
+a registered unit (any of 30 kWp and more, or ground) 0-5% of the time in every size bin
+against 10-38% above 0.9 (chance by displacement 0.1-0.2%), while `ground_adjacent` outlines
+below 0.9 hold one 15-35% of the time (rooftop arrays overrunning an undersized VIDA
+footprint). The rule `no_building` and peak below 0.9 has an OSM mapped share of 0-1.3% in
+most countries (4-7% in France, Germany, Poland) against 2-53% for the `no_building`
+outlines it keeps; dropping it loses at most 1.5% of the mapped area the model finds (France;
+Pakistan 6 of 9,920 installations, India 6 of 3,576) and none of India's 81 owner-confirmed
+parks above the merge cap; 18 of 18 random outlines of 1,000 m<sup>2</sup> or more (Pakistan,
+South Africa) were not solar on Esri (Claude's reading). It removes 35-60% of most countries'
+leads. **Adopted for the lead files** (`export.low_confidence_rule`), at any size.
+
+**Surface-water history.** JRC Global Surface Water (1984-2020, 30 m; `surface_water.py`):
+a non-rooftop lead at least a quarter ever wet. Clean in Namibia (197 leads, 21 of the 67 MWp
+its leads carry, none of 57 matched real outlines), Egypt (93 leads, none of 37 matched; 9 of
+9 flagged leads checked on Esri not solar: salt flats, wetland, ponds) and mostly in Pakistan
+(477 leads; 9 of 4,916 matched, 4.5% of mapped ground area: a Karachi-coast plant and one near
+Tarbela). Harmful in India (7.6% of mapped ground area: Khavda's salt marsh, Omkareshwar and
+Ramagundam floating) and Vietnam (17%; 3 of 9 flagged leads were real pond arrays). Rooftop
+flags are noise over dark city roofs. **Adopted per country** (`lead_water_screen`, on for
+Pakistan, Egypt, Namibia). In Namibia's Cuvelai the two screens together remove 26.5 of the
+53.7 MWp of leads; 18 MWp of confident, never-wet pans remain.
+
+### Pricing low-probability open ground apart (2026-11-01)
+
+The lead rule as a precision-table split: `no_building` candidates below 0.9 peak probability
+get their own placement table (`capacity_calibration.LOWCONF_GROUP`; `calibrate-candidates
+--confidence-split 0.9`, or `scripts/split_calibration_tables.py`, which splits the ground
+bins of a checked-in table keeping its recall rows and other evidence). Their own mapped
+share is about zero, so their credit falls (South Africa 164 to 13 MWp, Germany 706 to 162
+with register `p_unmapped` measured per group), but the confident ground outlines are then
+priced at their own, higher mapped share, and they are the larger ones: the model's priced
+capacity RISES in 12 of 13 countries (India +875, South Africa +616 or 20%, Egypt +152,
+Germany +195 MWp; France -11). Through the atlas, where OSM and the per-cell Verified floor
+absorb most of it, Best falls slightly: South Africa 9,755.6 to 9,720.1, Egypt 3,378.6 to
+3,376.5, Namibia 530.2 to 528.2 MWp (controls reproduce each published page exactly). Not
+adopted: no published table carries it; off by default.
 
 ## What did not work
 

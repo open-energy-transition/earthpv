@@ -296,6 +296,7 @@ def derive_table(
     by_placement: bool = False,
     mapped_attrs: gpd.GeoDataFrame | None = None,
     p_unmapped_by_placement: dict[str, dict[str, tuple[int, int]]] | None = None,
+    confidence_split: dict | None = None,
 ) -> dict:
     """Derive the per-bin p_real (+ recall + CI) table.
 
@@ -482,7 +483,10 @@ def derive_table(
             recall_reference=recall_reference, recall_cands=recall_pop,
             n_draws=N_DRAWS, seed=SEED,
             p_unmapped_by_placement=p_unmapped_by_placement,
+            confidence_split=confidence_split,
         )
+        if confidence_split:
+            table["confidence_split"] = dict(confidence_split)
         # `status` is computed from the POOLED bins, which stay mapped-only when the
         # p_unmapped evidence is register-derived (it is attributable to a placement, so
         # it is only applied there). Saying "interim-mapped-only" would then describe a
@@ -499,14 +503,56 @@ def derive_table(
 
 
 PLACEMENT_GROUPS = ("rooftop", "ground")
+# The third pricing group of a table derived with a confidence split (2026-11-01): open-
+# ground candidates (`placement == "no_building"`) whose peak probability is below the
+# split, the class `export.low_confidence_rule` drops from lead files. It is priced on its
+# own mapped fraction (0-1.3% in most countries against 2-53% for the open-ground outlines
+# above 0.9; Germany's register 0-5% against 10-38%, results/fp_filter_survey/) instead of
+# borrowing the ground bin's, which the confident outlines dominate. It converts at the land
+# constant like every non-rooftop candidate, its recall is the ground group's (recall is a
+# property of the mapped installations, found by any candidate), and it stays in the
+# candidate population: nothing is excluded, only priced apart.
+LOWCONF_GROUP = "ground_lowconf"
 
 
-def _placement_group(placement: np.ndarray) -> np.ndarray:
+def default_confidence_split() -> dict:
+    """The split `calibrate-candidates` derives by default: the lead files' rule."""
+    from earthpv.export import LOWCONF_MAX_CONFIDENCE, LOWCONF_PLACEMENT
+
+    return {"placement": LOWCONF_PLACEMENT, "below": float(LOWCONF_MAX_CONFIDENCE),
+            "group": LOWCONF_GROUP}
+
+
+def _placement_group(
+    placement: np.ndarray, confidence: np.ndarray | None = None, split: dict | None = None,
+) -> np.ndarray:
     """Rooftop vs everything else -- matches `density.py`'s own roof/ground split
     (`placement == "rooftop"` vs `no_building`/`ground_adjacent`) and the two area ->
-    capacity constants (module vs land)."""
-    is_rooftop = np.asarray(placement).astype(str) == "rooftop"
-    return np.where(is_rooftop, "rooftop", "ground")
+    capacity constants (module vs land). With a table's `confidence_split`, the split's
+    placement below its peak probability becomes `LOWCONF_GROUP`; the split needs the
+    candidates' `confidence`, and a missing one is refused rather than priced as ground."""
+    placement = np.asarray(placement).astype(str)
+    out = np.where(placement == "rooftop", "rooftop", "ground").astype(object)
+    if split:
+        if confidence is None:
+            raise ValueError(
+                "this calibration table prices low-confidence open-ground candidates apart "
+                "(confidence_split); pass the candidates' `confidence`")
+        conf = np.nan_to_num(np.asarray(confidence, dtype=float), nan=1.0)
+        low = (placement == str(split["placement"])) & (conf < float(split["below"]))
+        out[low] = split.get("group", LOWCONF_GROUP)
+    return out
+
+
+def table_groups(table: dict) -> list[str]:
+    """The pricing groups a table's `placement_bins` carries, in order."""
+    return list(table.get("placement_bins") or PLACEMENT_GROUPS)
+
+
+def reference_group(group: str) -> str:
+    """The mapped-reference group a pricing group is matched and recalled against: the
+    low-confidence group's installations are ground-mounted ones."""
+    return "ground" if group == LOWCONF_GROUP else group
 
 
 def derive_placement_tables(
@@ -520,9 +566,16 @@ def derive_placement_tables(
     n_draws: int = N_DRAWS,
     seed: int = SEED,
     p_unmapped_by_placement: dict[str, dict[str, tuple[int, int]]] | None = None,
+    confidence_split: dict | None = None,
 ) -> dict:
     """Separate rooftop/ground precision+recall tables, so ground-mount stops
     borrowing rooftop's much higher mapped fraction in the same area bin.
+
+    `confidence_split` (`default_confidence_split()`) adds a third table, `LOWCONF_GROUP`,
+    for open-ground candidates below the split's peak probability; it is matched and
+    recalled against the ground reference (`reference_group`). Its `p_unmapped` is a
+    floor of 0 like ground's unless `p_unmapped_by_placement` carries rows for it (a
+    register measured on the split population, scripts/mastr_p_unmapped.py --split).
 
     Pooling both placements into one set of bins was measured 2026-08-10 to matter a
     lot: nationally, only ~1% of surviving model-only ground candidates sit within
@@ -587,7 +640,18 @@ def derive_placement_tables(
     from earthpv.labels import geodesic_area_m2
 
     cands = cands.reset_index(drop=True)
-    groups = _placement_group(cands["placement"].to_numpy())
+    if confidence_split and "confidence" not in cands.columns:
+        raise ValueError("confidence_split needs the candidates' `confidence` column")
+    groups = _placement_group(
+        cands["placement"].to_numpy(),
+        cands["confidence"].to_numpy() if confidence_split else None, confidence_split)
+    group_list = PLACEMENT_GROUPS + ((LOWCONF_GROUP,) if confidence_split else ())
+    if confidence_split and p_unmapped_by_placement and "ground" in p_unmapped_by_placement \
+            and LOWCONF_GROUP not in p_unmapped_by_placement:
+        log.warning(
+            "p_unmapped_by_placement has ground rows but none for %s: the ground rows were "
+            "measured on the unsplit population and now price only its confident part; "
+            "re-measure with the split (scripts/mastr_p_unmapped.py --split)", LOWCONF_GROUP)
     recall_cands = cands if recall_cands is None else recall_cands
     # No `placement` split of `recall_cands` -- deliberately. See the comment at
     # `pop_sub` below: the finding candidate's own placement label is irrelevant to
@@ -616,12 +680,13 @@ def derive_placement_tables(
 
     pooled_p_u = {row["label"]: row["p_unmapped"] for row in pooled_bins}
     out: dict[str, list[dict]] = {}
-    for g in PLACEMENT_GROUPS:
+    for g in group_list:
+        rg = reference_group(g)
         g_cands = cands[groups == g].reset_index(drop=True)
         idx = bin_index(g_cands["area_m2"].to_numpy()) if len(g_cands) else np.array([], dtype=int)
 
         if mapped_attrs is not None and not mapped_attrs.empty:
-            ref = mapped_attrs[mapped_groups == g] if mapped_groups is not None else mapped_attrs
+            ref = mapped_attrs[mapped_groups == rg] if mapped_groups is not None else mapped_attrs
             is_mapped = (
                 ~new_lead_mask(g_cands, ref, min_distance_m=min_distance_m)
                 if len(g_cands) and not ref.empty else np.zeros(len(g_cands), dtype=bool)
@@ -632,7 +697,7 @@ def derive_placement_tables(
         recall_by_bin: dict[str, tuple[int, int]] = {}
         if recall_reference is not None and not recall_reference.empty:
             ref_sub = (
-                recall_reference[ref_groups == g] if ref_groups is not None else recall_reference
+                recall_reference[ref_groups == rg] if ref_groups is not None else recall_reference
             )
             ref_sub = ref_sub[
                 ref_sub.geometry.geom_type.isin(("Polygon", "MultiPolygon"))
@@ -671,8 +736,9 @@ def derive_placement_tables(
             n = int(in_bin.sum())
             n_mapped = int(is_mapped[in_bin].sum())
             mapped_frac = round(n_mapped / n, 4) if n else 0.0
-            p_u = 0.0 if g == "ground" else float(pooled_p_u.get(label, 0.0))
-            p_u_source = "interim-mapped-only-by-placement" if g == "ground" else "inherited-from-pooled"
+            p_u = 0.0 if rg == "ground" else float(pooled_p_u.get(label, 0.0))
+            p_u_source = ("interim-mapped-only-by-placement" if rg == "ground"
+                          else "inherited-from-pooled")
             manual_n = manual_real = 0
             ext = (p_unmapped_by_placement or {}).get(g, {}).get(label)
             if ext is not None and int(ext[0]) >= MIN_MANUAL_N:
@@ -897,7 +963,105 @@ def _table_evidence(table: dict) -> set[str]:
         evidence.add("register-p-unmapped")
     if table.get(OVERSIZE_REVIEW_KEY):
         evidence.add("oversize-review")
+    # A table pricing low-confidence open ground apart must not be silently replaced by one
+    # that pools it back into the ground bins (a bare re-run with --no-confidence-split).
+    if table.get("confidence_split"):
+        evidence.add("confidence-split")
     return evidence
+
+
+INTERIM_P_U_SOURCES = ("interim-mapped-only-by-placement", "none")
+
+
+def split_ground_by_confidence(
+    table: dict, cands: gpd.GeoDataFrame, mapped_attrs: gpd.GeoDataFrame,
+    split: dict | None = None,
+    p_unmapped_by_group: dict[str, dict[str, tuple[int, int]]] | None = None,
+) -> dict:
+    """Refine an existing placement table with a confidence split, keeping its evidence.
+
+    Re-deriving a table from scratch needs every input it was built from (Pakistan's 30
+    calibration boxes as they stood, Germany's register sample), so this splits only the
+    ground bins of the table as it is: the rooftop bins, recall rows, provenance and any
+    oversize review stay untouched. Each ground bin becomes two, `ground` (the confident
+    part) and `LOWCONF_GROUP`, with candidate and mapped counts recounted on `cands` (the
+    capacity-relevant population) against the ground half of `mapped_attrs` at the table's
+    own `min_distance_m`. Both keep the bin's recall row: recall is the share of mapped
+    ground installations found by ANY candidate, which the split does not change.
+    `p_unmapped` is the floor of 0 where the bin's was (mapped-only); a measured one
+    (register, glint, review) describes the unsplit population, so it must come per group
+    from `p_unmapped_by_group` (scripts/mastr_p_unmapped.py --split) or the split is refused.
+    `split_counts` records the recount against the stored totals, so drift since the table
+    was derived is visible.
+    """
+    import copy
+
+    from earthpv.export import new_lead_mask
+
+    if "placement_bins" not in table:
+        raise ValueError("table has no placement_bins to split (derive with --by-placement)")
+    if table.get("confidence_split"):
+        raise ValueError(f"table is already split: {table['confidence_split']}")
+    split = split or default_confidence_split()
+    out = copy.deepcopy(table)
+    dist = float(table.get("min_distance_m") or 100.0)
+    gmask = _placement_group(cands["placement"].to_numpy()) == "ground"
+    gc = cands[gmask].reset_index(drop=True)
+    low = _placement_group(gc["placement"].to_numpy(), gc["confidence"].to_numpy(),
+                           split) == LOWCONF_GROUP
+    ref = mapped_attrs[_placement_group(mapped_attrs["placement"].to_numpy()) == "ground"]
+    is_mapped = (~new_lead_mask(gc, ref, min_distance_m=dist) if len(gc) and not ref.empty
+                 else np.zeros(len(gc), dtype=bool))
+    idx = bin_index(gc["area_m2"].to_numpy())
+    new: dict[str, list[dict]] = {"ground": [], LOWCONF_GROUP: []}
+    counts = []
+    for b, row in enumerate(table["placement_bins"]["ground"]):
+        label = row["label"]
+        sel_all = idx == b
+        counts.append({"label": label, "stored_n": int(row["n_candidates"]),
+                       "stored_mapped": int(row.get("n_mapped") or 0),
+                       "recount_n": int(sel_all.sum()), "recount_mapped": int(is_mapped[sel_all].sum()),
+                       "lowconf_n": int((sel_all & low).sum())})
+        for g, m in (("ground", ~low), (LOWCONF_GROUP, low)):
+            sel = sel_all & m
+            n, k = int(sel.sum()), int(is_mapped[sel].sum())
+            r = dict(row)
+            r.update(n_candidates=n, n_mapped=k, mapped_frac=round(k / n, 4) if n else 0.0)
+            group_pu = (p_unmapped_by_group or {}).get(g)
+            ext = (group_pu or {}).get(label)
+            if ext is not None and int(ext[0]) >= MIN_MANUAL_N:
+                r.update(manual_n=int(ext[0]), manual_real=int(ext[1]),
+                         p_unmapped=round(int(ext[1]) / int(ext[0]), 4),
+                         p_unmapped_source="mastr-geolocated")
+            elif group_pu is not None or row.get("p_unmapped_source", "none") in INTERIM_P_U_SOURCES:
+                # measured for this group but too thin in this bin: the floor, as
+                # derive_placement_tables does
+                r.update(p_unmapped=0.0, manual_n=0, manual_real=0,
+                         p_unmapped_source="interim-mapped-only-by-placement")
+            else:
+                raise ValueError(
+                    f"ground bin {label} carries a measured p_unmapped "
+                    f"({row.get('p_unmapped_source')}) for the unsplit population; measure it "
+                    f"per group and pass p_unmapped_by_group")
+            r["p_real"] = round(r["mapped_frac"] + (1.0 - r["mapped_frac"]) * r["p_unmapped"], 4)
+            new[g].append(r)
+    for g, bins in new.items():
+        synthetic = {"seed": table.get("seed", SEED), "n_draws": table.get("n_draws", N_DRAWS),
+                     "false_validated": table.get("false_validated", FALSE_VALIDATED_N),
+                     "false_n": table.get("false_n", FALSE_N), "bins": bins}
+        draws = posterior_draws(synthetic)
+        for i, r in enumerate(bins):
+            lo, hi = np.percentile(draws["p_real"][i], CI_PCT)
+            r["p_real_lo"], r["p_real_hi"] = round(float(lo), 4), round(float(hi), 4)
+    out["placement_bins"] = {"rooftop": table["placement_bins"]["rooftop"],
+                             "ground": new["ground"], LOWCONF_GROUP: new[LOWCONF_GROUP]}
+    out["confidence_split"] = dict(split)
+    out["split_counts"] = counts
+    if any(r.get("p_unmapped_source") == "mastr-geolocated"
+           for bins in out["placement_bins"].values() for r in bins) \
+            and out.get("status") == "interim-mapped-only":
+        out["status"] = "register-calibrated-by-placement"
+    return out
 
 
 def write_table(table: dict, path: Path, allow_downgrade: bool = False) -> Path:
@@ -943,6 +1107,7 @@ def candidate_p_real(
     min_consistent: int = 2,
     placement: np.ndarray | None = None,
     fixed: np.ndarray | None = None,
+    confidence: np.ndarray | None = None,
 ) -> np.ndarray:
     """Per-candidate P(real): the bin prior, Bayes-updated where glint evidence exists.
 
@@ -961,13 +1126,14 @@ def candidate_p_real(
     placement group's subtable instead of the pooled one -- see that function's
     docstring for why pooling understated ground-mount's false-positive rate. Falls
     back to the pooled `table["bins"]` for a table with no placement split (older
-    tables, or an AOI not yet re-derived with `--by-placement`).
+    tables, or an AOI not yet re-derived with `--by-placement`). A table with a
+    `confidence_split` also needs the candidates' peak probability, `confidence`.
     """
     idx = bin_index(area_m2)
     if placement is not None and "placement_bins" in table:
-        groups = _placement_group(placement)
+        groups = _placement_group(placement, confidence, table.get("confidence_split"))
         prior = np.empty(len(idx), dtype=float)
-        for g in PLACEMENT_GROUPS:
+        for g in table_groups(table):
             gm = groups == g
             if gm.any():
                 gbins = table["placement_bins"][g]
@@ -993,6 +1159,7 @@ def candidate_recall(
     area_m2: np.ndarray, table: dict, floor: float = DEFAULT_RECALL_FLOOR,
     placement: np.ndarray | None = None,
     fixed: np.ndarray | None = None,
+    confidence: np.ndarray | None = None,
 ) -> np.ndarray:
     """Per-candidate model recall for its size bin, clamped to `floor`.
 
@@ -1005,13 +1172,14 @@ def candidate_recall(
     """
     if fixed is not None:
         fixed_mask = ~np.isnan(np.asarray(fixed, dtype=float))
-        out = candidate_recall(area_m2, table, floor=floor, placement=placement)
+        out = candidate_recall(area_m2, table, floor=floor, placement=placement,
+                               confidence=confidence)
         return np.where(fixed_mask, 1.0, out)
     idx = bin_index(area_m2)
     if placement is not None and "placement_bins" in table:
-        groups = _placement_group(placement)
+        groups = _placement_group(placement, confidence, table.get("confidence_split"))
         per_row = np.empty(len(idx), dtype=float)
-        for g in PLACEMENT_GROUPS:
+        for g in table_groups(table):
             gm = groups == g
             if gm.any():
                 gbins = table["placement_bins"][g]

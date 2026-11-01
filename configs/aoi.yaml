@@ -89,6 +89,9 @@ aois:
     division: { name: Pakistan, country: PK, subtype: country }
     source_region: pakistan_500
     grid_origin: [69.3405158324398, 27.7089663393252]
+    # Lead files drop non-rooftop leads on ever-wet ground (export.water_lead_screen,
+    # surface_water.py); measured clean here 2026-11-01, results/fp_filter_survey/.
+    lead_water_screen: true
     # Small geographic val holdout: an isolated Multan-area cluster (~71.6E, 30.3N),
     # rooftop-dominant, ~20 km from the nearest training positive so no window/jitter
     # leakage. Deliberately small (~38 positives, ~1.5%) to maximise training data.
@@ -421,6 +424,9 @@ aois:
     bbox: [24.7, 22.0, 36.9, 31.7]
     division: { name: Egypt, country: EG, subtype: country, iso3: EGY }
     grid_origin: [24.7, 22.0]
+    # Lead files drop non-rooftop leads on ever-wet ground (export.water_lead_screen,
+    # surface_water.py); measured clean here 2026-11-01, results/fp_filter_survey/.
+    lead_water_screen: true
     compose_window: ["2026-04-01", "2026-09-30"]
     cell_selection: duckdb
     # Val holdout = Cairo Governorate (geoBoundaries ADM1), 22 cells, chosen by
@@ -568,6 +574,9 @@ aois:
     bbox: [11.7, -29.0, 25.3, -16.9]
     division: { name: Namibia, country: NA, subtype: country, iso3: NAM }
     grid_origin: [11.7, -29.0]
+    # Lead files drop non-rooftop leads on ever-wet ground (export.water_lead_screen,
+    # surface_water.py); measured clean here 2026-11-01, results/fp_filter_survey/.
+    lead_water_screen: true
     # May to September: the dry winter. The northern regions and Zambezi take their rain
     # Nov-Apr; preflight found the Apr-Sep window at median 0% scene cloud.
     compose_window: ["2026-05-01", "2026-09-30"]

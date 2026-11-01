@@ -36,16 +36,18 @@ cities:
 # every rename.
 # Gold needs every mapping lead checked (owner rule, 2026-10-31; atlas.leads_checked). The
 # owner declared Pakistan's leads checked on 2026-10-31: the 2026-10-28 file
-# (pv-new-leads-2026-10-28, 8,639 leads). The 2026-11-01 file named here is that file less
-# 515 leads on steep ground (369 under 1,000 m2 steeper than 15 degrees, 146 larger ones
-# steeper than 30), so every lead in it was in the file checked. A rebuilt lead file needs
+# (pv-new-leads-2026-10-28, 8,639 leads). The 2026-11-01 file named here (rebuilt the same
+# day as pv-new-leads-2026-11-01b) is that file less 515 leads on steep ground (369 under
+# 1,000 m2 steeper than 15 degrees, 146 larger ones steeper than 30), 2,341 open-ground leads
+# of peak probability below 0.9 and 108 on ever-wet ground, so every lead in it was in the
+# file checked. A rebuilt lead file needs
 # a new declaration.
 validation:
   leads_checked:
     made: "2026-11-01"
     by: owner
     date: "2026-10-31"
-    note: "the 8,639 leads of the 2026-10-28 file, declared checked by the owner on 2026-10-31; the 2026-11-01 file is that one less 515 leads on steep ground"
+    note: "the 8,639 leads of the 2026-10-28 file, declared checked by the owner on 2026-10-31; the 2026-11-01 file is that one less 515 leads on steep ground, 2,341 open-ground leads of low model probability and 108 on ever-wet ground"
 
 calibration_boxes:
   # Extended 2026-08-05 from a 1 km2 square to a 6.61 km2 hand-drawn boundary that

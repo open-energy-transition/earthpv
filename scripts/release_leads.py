@@ -13,7 +13,7 @@ printed beside this one as a check. Leads whose representative point falls outsi
 regions the atlas draws (`atlas._page_regions`) are dropped: a composited cell can reach
 across a border.
 
-One thing is filtered (owner, 2026-10-31): a lead on ground steeper than
+Three things are filtered. A lead on ground steeper than
 `export.STEEP_SLOPE_DEG` (15 degrees, Copernicus GLO-90 at its representative point) whose
 outline is under `export.STEEP_MAX_AREA_M2` (1,000 m2) is left out, because shaded
 hillsides, cliff edges and escarpment shadows read like panels. A larger lead on steep
@@ -21,8 +21,14 @@ ground stays, marked `steep_review`, since a solar farm can sit on a mountainsid
 mapper has to look at it, unless its ground is steeper than `export.STEEP_CAP_DEG` (30
 degrees; owner, 2026-11-01), where a lead of any size is left out. Every lead carries its
 `slope_deg`. Validation:
-results/leads_steep_screen/. Otherwise leads are unverified 10 m outlines, recall-first
-like every candidate file, and the README asset says so.
+results/leads_steep_screen/ (owner, 2026-10-31 and 2026-11-01). A lead with no building
+nearby whose peak model probability is below `export.LOWCONF_MAX_CONFIDENCE` (0.9) is left
+out at any size (2026-11-01; results/fp_filter_survey/), unless the steep screen kept it as
+`steep_review`, which neither later screen touches. Where a country's
+`lead_water_screen` is on in configs/aoi.yaml, a non-rooftop lead at least
+`export.WATER_EVER_WET_MIN` of whose outline was ever water in JRC Global Surface Water is
+left out too, and every lead carries `ever_wet_frac`. Otherwise leads are unverified 10 m
+outlines, recall-first like every candidate file, and the README asset says so.
 
 France is not built here: its leads were audited against IGN aerial imagery and released
 on their own (`france-osm-leads-2026-10-22`, scripts/build_france_osm_leads.py); its
@@ -55,16 +61,19 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from earthpv import atlas  # noqa: E402
-from earthpv.export import (STEEP_CAP_DEG, STEEP_MAX_AREA_M2, STEEP_SLOPE_DEG,  # noqa: E402
-                            new_lead_mask, steep_lead_screen)
+from earthpv.export import (LOWCONF_MAX_CONFIDENCE, STEEP_CAP_DEG,  # noqa: E402
+                            STEEP_MAX_AREA_M2, STEEP_SLOPE_DEG, WATER_EVER_WET_MIN,
+                            lead_water_screen_enabled, low_confidence_lead_screen,
+                            new_lead_mask, steep_lead_screen, water_lead_screen)
 
 REPO = "open-energy-transition/earthpv"
 MANIFEST = ROOT / "configs" / "atlas_leads.json"
 # 2026-10-28: the first release. 2026-11-01: the same runs, with the steep-ground screen.
 # A new tag rather than a re-upload, so the files earlier lead checks covered stay published.
 # The 30-degree cap was added on 2026-11-01 too, before anyone had checked those files, so
-# they were replaced under the same tag.
-TAG = "pv-new-leads-2026-11-01"
+# they were replaced under the same tag. Later on 2026-11-01 the open-ground low-probability
+# and (per country) surface-water screens: a new tag, so the steep-only files stay published.
+TAG = "pv-new-leads-2026-11-01b"
 
 # Per AOI: the candidates behind its published atlas, the OSM pull(s) that count as
 # mapped, and the density directory holding the regions the page draws.
@@ -101,7 +110,7 @@ FRANCE = {
 }
 COLUMNS = ["candidate_id", "rank_score", "confidence", "area_m2", "placement",
            "building_dist_m", "building_overlap_frac", "building_prior", "building_id",
-           "oversize", "slope_deg", "steep_review", "lon", "lat"]
+           "oversize", "slope_deg", "steep_review", "ever_wet_frac", "lon", "lat"]
 
 
 def _osm_as_of(frames: list[gpd.GeoDataFrame], paths: list[Path]) -> str:
@@ -147,6 +156,15 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     slope, steep_drop, steep_review = steep_lead_screen(leads)
     leads["slope_deg"], leads["steep_review"] = slope.round(1), steep_review
     leads, rep = leads[~steep_drop].copy(), rep[~steep_drop]
+    lowconf = low_confidence_lead_screen(leads)
+    leads, rep = leads[~lowconf].copy(), rep[~lowconf]
+    water = None
+    if lead_water_screen_enabled(aoi):
+        wet, wet_drop = water_lead_screen(leads)
+        leads["ever_wet_frac"] = np.round(wet, 3)
+        leads, rep = leads[~wet_drop].copy(), rep[~wet_drop]
+        water = {"ever_wet_min": WATER_EVER_WET_MIN, "dropped": int(wet_drop.sum()),
+                 "no_data": int(np.isnan(wet).sum())}
     leads["lon"], leads["lat"] = rep.x.round(6), rep.y.round(6)
     for c in ("rank_score", "confidence", "building_prior", "building_overlap_frac"):
         if c in leads:
@@ -163,7 +181,9 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     export_n = len(gpd.read_file(export_file, columns=[])) if export_file.exists() else None
     print(f"  {aoi:13s} {len(leads):7,d} leads of {len(cands):7,d} candidates "
           f"({n_outside:,} outside the page's regions, {int(steep_drop.sum()):,} on "
-          f"steep ground dropped; {int(steep_review.sum()):,} steep_review; export file: "
+          f"steep ground dropped; {int(steep_review.sum()):,} steep_review; "
+          f"{int(lowconf.sum()):,} open-ground low-confidence dropped; "
+          f"{water['dropped'] if water else '-'} on ever-wet ground dropped; export file: "
           f"{export_n if export_n is not None else '-'}) -> {path.stat().st_size / 1e6:.1f} MB")
     return {
         "file": path.name,
@@ -177,6 +197,9 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
                   "cap_deg": STEEP_CAP_DEG,
                   "dropped": int(steep_drop.sum()), "review": int(steep_review.sum()),
                   "no_dem": int(np.isnan(slope).sum())},
+        "lowconf": {"placement": "no_building", "max_confidence": LOWCONF_MAX_CONFIDENCE,
+                    "dropped": int(lowconf.sum())},
+        **({"water": water} if water else {}),
     }
 
 
@@ -204,23 +227,37 @@ someone has to look at it. Above {steep_cap} degrees a lead of any size is left 
 cliffs again, and none of the 13,344 outlines of 1,000 m2 or more that the model drew on
 mapped solar stands that steep. Every lead carries the slope it was judged on (`slope_deg`).
 
+**Open ground at low confidence.** A lead with no building near it whose peak model
+probability is below {lowconf_max} is left out at any size: dark fields, riverbeds, shaded
+slopes, forest, farm reservoirs. Germany's register, which locates every unit of 30 kW or
+more, finds one inside 0-5% of such outlines against 10-38% of the more confident ones,
+none of 18 drawn at random was solar on imagery, and leaving them out loses at most 1.5% of
+the mapped solar area the model finds. A `steep_review` lead stays whatever its probability.
+
+**Pans and ponds (some countries only).** In countries where it is switched on
+({water_aois}), a lead not on a rooftop with at least {water_pct}% of its outline ever
+under water since 1984 (JRC Global Surface Water) is left out: seasonal pans, salt pans,
+fish and wastewater ponds. Those leads carry `ever_wet_frac`. It stays off where solar
+stands on water or wet ground (floating plants, pond PV, salt-marsh parks).
+
 Features are sorted most promising first. Columns:
 
 | column | meaning |
 | --- | --- |
 | candidate_id | id in the country's candidate and MapRoulette exports |
 | rank_score | model confidence times a building prior; the sort key |
-| confidence | mean model probability inside the outline |
+| confidence | peak (highest) model probability inside the outline |
 | area_m2 | geodesic area of the outline |
 | placement | rooftop, ground_adjacent or no_building, from VIDA building footprints |
 | building_dist_m, building_overlap_frac, building_prior, building_id | the building join behind placement |
 | oversize | outline above 100,000 m2: excluded from the atlas's capacity, often a real unmapped park |
 | slope_deg | Copernicus GLO-90 terrain slope in degrees at the lead's point (empty off the DEM) |
 | steep_review | true for a lead of {steep_area} m2 or more on ground steeper than {steep_deg} degrees (and not above {steep_cap}): kept for a human, may be shadow on a slope or a mountain solar farm |
+| ever_wet_frac | share of the outline ever under water, 1984-2020 (only where the pans-and-ponds screen is on) |
 | lon, lat | a point inside the outline |
 
-| country | leads | steep leads left out | steep_review | OpenStreetMap as of |
-| --- | ---: | ---: | ---: | --- |
+| country | leads | steep leads left out | steep_review | open ground, low confidence, left out | pans and ponds left out | OpenStreetMap as of |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
 {rows}
 
 France's leads are a separate, audited release: https://github.com/{repo}/releases/tag/france-osm-leads-2026-10-22
@@ -251,12 +288,18 @@ def main() -> int:
     built = {a: e for a, e in manifest["aois"].items() if a != "france"}
     rows = "\n".join(f"| {a.replace('_', ' ').title()} | {e['n']:,} | "
                      f"{e.get('steep', {}).get('dropped', 0):,} | "
-                     f"{e.get('steep', {}).get('review', 0):,} | {e['osm_as_of']} |"
+                     f"{e.get('steep', {}).get('review', 0):,} | "
+                     f"{e.get('lowconf', {}).get('dropped', 0):,} | "
+                     f"{format(e['water']['dropped'], ',') if 'water' in e else 'off'} | "
+                     f"{e['osm_as_of']} |"
                      for a, e in built.items())
     (args.out / "README.md").write_text(README.format(
         date=dt.date.today().isoformat(), dist=int(args.min_distance_m), rows=rows, repo=REPO,
         steep_area=f"{STEEP_MAX_AREA_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}",
-        steep_cap=f"{STEEP_CAP_DEG:g}"))
+        steep_cap=f"{STEEP_CAP_DEG:g}", lowconf_max=f"{LOWCONF_MAX_CONFIDENCE:g}",
+        water_pct=f"{100 * WATER_EVER_WET_MIN:g}",
+        water_aois=", ".join(a.replace("_", " ").title() for a, e in built.items()
+                             if "water" in e) or "none yet"))
     files = [args.out / e["file"] for e in built.values()] + [args.out / "README.md"]
     sums = [f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}" for f in files]
     (args.out / "SHA256SUMS").write_text("\n".join(sums) + "\n")

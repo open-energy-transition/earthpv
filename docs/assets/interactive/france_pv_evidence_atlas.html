@@ -4100,6 +4100,14 @@ out geom;</div>
         + `edges and gullies read like panels. ${fmt(L.steep.review)} larger ones on steep ground `
         + `are kept and marked <code>steep_review</code>, since a solar farm can stand on a `
         + `mountainside.` : "")
+      // The open-ground and surface-water screens (export.low_confidence_lead_screen,
+      // export.water_lead_screen, 2026-11-01); a file built before them says nothing.
+      + (L.lowconf ? ` Leads with no building nearby whose highest model probability is `
+        + `below ${L.lowconf.max_confidence} were left out as well (${fmt(L.lowconf.dropped)}): `
+        + `fields, riverbeds, shaded slopes and scrub.` : "")
+      + (L.water ? ` So were ${fmt(L.water.dropped)} leads off rooftops at least `
+        + `${Math.round(100 * L.water.ever_wet_min)}% of whose outline has been under water `
+        + `since 1984: seasonal pans, salt pans and ponds.` : "")
       + (L.checked ? (L.checked.all
           ? ` Every lead in this file has been checked by a person`
             + (L.checked.date ? ` (${esc(L.checked.by || "")}, ${day(L.checked.date)})` : "") + `.`

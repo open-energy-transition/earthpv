@@ -38,7 +38,7 @@ country. Two further signals adjust it:
 
 Nothing else in the default export is dropped. A high-confidence detection with no building
 anywhere near it may be an unmapped roof or a ground-mounted farm, and it still surfaces;
-the one exception is a small lead on steep ground (below).
+the exceptions are leads on steep ground and open-ground leads of low model probability (below).
 
 ## The one file that does drop things
 
@@ -96,6 +96,38 @@ above 30&deg; were all judged not solar. A few below 30&deg;, such as a farmstea
 country, could be solar, which is why those stay
 ([experiment register](../experiments.md#small-leads-on-steep-ground-2026-10-31),
 `results/leads_steep_screen/`).
+
+## Open ground at low probability, and pans and ponds
+
+From the lead files released after 2026-11-01 two more kinds of lead are left out, and
+`earthpv export` applies both to a run's own lead file
+([experiment register](../experiments.md#open-ground-at-low-probability-and-pans-and-ponds-2026-11-01),
+`results/fp_filter_survey/`).
+
+**Open ground at low probability.** A lead with no building near it whose highest model
+probability inside the outline is below 0.9 is left out, at any size. Among such outlines
+the share that turns out to be mapped solar is low and does not rise between 0.3 and 0.9:
+0 to 1.3% in most countries (4 to 7% in France, Germany and Poland), against 2 to 53% for
+the open-ground outlines above 0.9. Germany's register, which locates every unit of 30 kW or
+more, finds one inside 0 to 5% of them in every size bin, against 10 to 38% of the confident
+ones. None of 18 drawn at random in Pakistan and South Africa was solar on imagery: fields,
+riverbeds, shaded hillsides, forest, a farm reservoir, a quarry floor. Leaving them out loses
+at most 1.5% of the mapped solar area the model finds (France) and none of the 81 parks above
+the merge cap that the owner confirmed in India. A lead next to a building is kept whatever
+its probability: many are rooftop arrays overrunning an undersized building outline. So is a
+`steep_review` lead: the owner kept the large leads on steep ground for a person to look at,
+and the rule would otherwise take 2,017 of the 3,298.
+
+**Pans and ponds, in some countries.** Where the screen is switched on (Pakistan, Egypt and
+Namibia; `lead_water_screen` in `configs/aoi.yaml`), a lead not on a rooftop of which at
+least a quarter was ever under water between 1984 and 2020 in JRC Global Surface Water is
+left out: seasonal pans, salt pans, fish and wastewater ponds. On its own it flags 197 of
+Namibia's 825 leads, most of them in the Cuvelai basin, and none of the 57 outlines that found
+mapped solar; in Egypt none of 9 flagged leads checked on imagery was solar. It stays off
+elsewhere because solar stands on water or wet ground: in India it would flag 7.6% of the
+mapped ground-mounted area (Khavda on the Rann of Kutch salt marsh, the floating plants at
+Omkareshwar and Ramagundam) and in Vietnam 17% (floating and pond-mounted plants; 3 of 9
+flagged leads there were real arrays not yet mapped).
 
 ## Getting the leads into OpenStreetMap
 

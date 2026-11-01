@@ -389,12 +389,24 @@ def export(
         "target floor (candidates below it can still surface as near-chance noise -- "
         "polygonize_chips does not enforce MIN_PV_AREA on its output)"
     ),
+    water_screen: bool = typer.Option(
+        None, "--water-screen/--no-water-screen",
+        help="With --exclude-mapped, drop non-rooftop leads at least a quarter of whose "
+        "outline was ever water in JRC Global Surface Water (1984-2020): pans, salt pans, "
+        "fish and wastewater ponds. Default: the AOI's `lead_water_screen` key in "
+        "configs/aoi.yaml (off unless set). Keep it off where PV stands on water or wet "
+        "ground (floating PV, pond PV, salt-marsh parks): see earthpv.surface_water"
+    ),
 ) -> None:
     """Export candidates as GeoParquet/GeoJSON + MapRoulette challenge.
 
+    With --exclude-mapped the lead file drops small leads on steep ground and open-ground
+    leads of low peak probability (export.STEEP_*, export.LOWCONF_*), and pans and ponds
+    where the surface-water screen is on.
+
     Any of the veto flags additionally writes <aoi>_pv_new_leads_clean.geojson (the
     filtered validation queue) and hard_negatives_veg.parquet / hard_negatives_s1.parquet
-    (vetoed leads as retraining centers). The default artifacts stay recall-first."""
+    (vetoed leads as retraining centers). The candidate files stay recall-first."""
     from earthpv.export import run_export
 
     run_export(
@@ -407,6 +419,7 @@ def export(
         worldcover_veto=worldcover_veto, ensemble_veto=ensemble_veto,
         sppi_rescue_min=sppi_rescue_min,
         min_area_m2=min_area_m2,
+        water_screen=water_screen,
     )
 
 
@@ -1820,6 +1833,13 @@ def calibrate_candidates(
         "complete register that geolocates individual units.",
     ),
     out: Path = typer.Option(None, help="Output YAML (default configs/calibration/<aoi>_...)"),
+    confidence_split: float = typer.Option(
+        None, help="Price open-ground (no_building) candidates whose peak probability is "
+        "below this apart, in a third placement table (capacity_calibration.LOWCONF_GROUP); "
+        "the lead files' rule is 0.9 (export.LOWCONF_MAX_CONFIDENCE). Off unless given: "
+        "measured 2026-11-01 it RAISES the model's priced capacity in 12 of 13 countries "
+        "(the confident ground outlines are then priced at their own, higher mapped share), "
+        "so it awaits an owner decision. Needs --by-placement"),
     allow_downgrade: bool = typer.Option(
         False,
         help="Permit overwriting an existing table that carries evidence this run does "
@@ -1943,11 +1963,17 @@ def calibrate_candidates(
                 "--mastr-p-unmapped needs --by-placement (it fills the placement tables)"
             )
 
+    split = ({**cc.default_confidence_split(), "below": float(confidence_split)}
+             if confidence_split else None)
+    if split and not by_placement:
+        raise typer.BadParameter("--confidence-split needs --by-placement (it adds a placement "
+                                 "table)")
     table = cc.derive_table(
         cands, mapped, aoi=aoi, glint_sample=sample, min_distance_m=min_distance_m,
         manual_reviews=reviews, recall_reference=ref, recall_reference_name=ref_name,
         by_placement=by_placement, mapped_attrs=mapped_attrs,
         p_unmapped_by_placement=p_u_by_placement,
+        confidence_split=split,
     )
     dest = out or cc.default_table_path(aoi)
     # The oversize review prices model outlines ABOVE the merge cap, which these bins never

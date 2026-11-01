@@ -141,10 +141,12 @@ def _seg_rc_cell_mwp(
 
     area = cands["area_m2"].to_numpy(float)
     placement = cands["placement"].astype(str).to_numpy()
+    confidence = cands["confidence"].to_numpy(float) if "confidence" in cands.columns else None
     p_real = cc.candidate_p_real(area, table, glint_consistent=(
         cands["glint_consistent"].to_numpy() if "glint_consistent" in cands.columns
-        else None), placement=placement)
-    recall = cc.candidate_recall(area, table, floor=recall_floor, placement=placement)
+        else None), placement=placement, confidence=confidence)
+    recall = cc.candidate_recall(area, table, floor=recall_floor, placement=placement,
+                                 confidence=confidence)
     rc = area * p_real / recall
     reps = cands.geometry.representative_point()
     ix = np.floor((reps.x.to_numpy() - origin[0]) / CELL_DEG).astype(int)
