@@ -34,34 +34,3 @@ Every country atlas carries a calibration badge in its corner: **Gold**, **Silve
 ## When a lead counts as checked
 
 A lead is checked when a person has looked at it on recent high-resolution imagery and either mapped the installation in OpenStreetMap or judged it not solar. Rooftop leads in towns and leads beside roads deserve the same look as the rest: dark asphalt junctions and shadows are the model's commonest false alarms. Leads marked <code>steep_review</code> need a look at the terrain as well. The [lead mapping guide](contribute/leads.md) walks through a lead file in JOSM. When every lead in a country's current file has a verdict, a maintainer records it as `validation.leads_checked` in the country's configuration, naming the file by its date; the badge then shows the level the calibration earns.
-
-## Where each country stands
-
-| Country | Shows | Calibration earns | Below 400 m&sup2; | Leads checked | Missing for the next level |
-| --- | --- | --- | --- | --- | --- |
-| [Pakistan](atlas.md) | Gold | Gold | rooftop | yes, 2026-10-31 | - |
-| [Germany](atlas-germany.md) | Bronze | Silver | rooftop (register-calibrated, not validated) | no (17,575 leads) | Check every lead (17,575); then: a small-installation estimate that passes the register check |
-| [France](atlas-france.md) | Bronze | Silver | not measured | no (28,734 leads) | Check every lead (28,734); then: a calibrated estimate below 400 m&sup2; |
-| [Egypt](atlas-egypt.md) | Bronze | Bronze | not measured | no (1,148 leads) | Local ground truth: map a calibration area; check every lead |
-| [India](atlas-india.md) | Bronze | Bronze | not measured | no (95,313 leads) | Local ground truth: map a calibration area; check every lead |
-| [Morocco](atlas-morocco.md) | Bronze | Bronze | not measured | no (664 leads) | Local ground truth: map a calibration area; check every lead |
-| [Namibia](atlas-namibia.md) | Bronze | Bronze | not measured | no (842 leads) | Local ground truth: map a calibration area; check every lead |
-| [Nigeria](atlas-nigeria.md) | Bronze | Bronze | not measured | no (4,821 leads) | Local ground truth: map a calibration area; check every lead |
-| [Poland](atlas-poland.md) | Bronze | Bronze | not measured | no (5,706 leads) | Local ground truth: map a calibration area; check every lead |
-| [South Africa](atlas-south-africa.md) | Bronze | Bronze | not measured | no (8,031 leads) | Local ground truth: map a calibration area; check every lead |
-| [Vietnam](atlas-vietnam.md) | Bronze | Bronze | not measured | no (4,910 leads) | Local ground truth: map a calibration area; check every lead |
-| [Yemen](atlas-yemen.md) | Bronze | Silver | farm ground | no (1,933 leads) | Check every lead (1,933); then: household rooftops below 400 m&sup2; calibrated on mapped building areas |
-| [Zambia](atlas-zambia.md) | Bronze | Bronze | not measured | no (651 leads) | Local ground truth: map a calibration area; check every lead |
-
-The table is read from each atlas's own badge and data, and from the lead files' records, so it changes when they do.
-
-## Judgements
-
-The level is derived from what each atlas has on disk. Where the evidence is of a different kind, the owner's decision is recorded in the country's configuration (`validation.score`) and wins over the derived level; the lead check still applies on top.
-
-- **Germany**: Silver, not Gold (2026-10-22): its small-installation half is calibrated on the register, but misses the register's municipal totals by about half.
-- **Yemen**: Silver (2026-10-23): its farm areas calibrate small solar-irrigation arrays only; household rooftops below 400 m&sup2; are not estimated.
-- **Egypt**: Bronze (2026-10-29): its one registered area, a farm area with no solar, is not used by the figures.
-- **India**: Bronze (2026-10-28): its two registered areas are not used by the figures, so nothing on the page is fitted on local ground truth.
-
-Code: `atlas.derive_validation_score` (the derived level), `atlas.resolve_validation_badge` and `atlas.leads_checked` (the lead check); this page is written by `scripts/build_atlas_pages.py`.
