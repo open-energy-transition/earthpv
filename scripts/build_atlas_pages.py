@@ -18,11 +18,12 @@ the navigation and the badge on the map cannot disagree:
   calibrated estimate below the floor.
 - **Bronze**: 400 m2 and up only, with no local calibration.
 
-Gold and Silver also need every mapping lead checked by a person (owner, 2026-10-31;
-`atlas.leads_checked`) and the segmentation model retrained on mapped leads at least once
-(owner, 2026-11-01; `atlas.leads_retrained`): one turn of the mapping flywheel. A page whose
-calibration earns more than Bronze but lacks either shows Bronze, and its badge keeps the
-earned tier as `data-earned`; its banner says what is missing (`atlas.lead_rule_gaps`).
+Gold and Silver also need the leads mapped in OpenStreetMap to localize the model (owner,
+2026-11-01; `atlas.leads_retrained`): a third of a lead file's leads and of its very large
+outlines with a verdict, and the segmentation model retrained on that mapping once, one turn
+of the mapping flywheel. It replaced "every lead checked" (2026-10-31). A page whose
+calibration earns more than Bronze but lacks it shows Bronze, and its badge keeps the earned
+tier as `data-earned`; its banner says what is missing (`atlas.lead_rule_gaps`).
 
 Silver and Bronze pages open with a warning that smaller installations are missing, what a
 reader can do about it, and links into the Contribute Data section (docs/contribute/).
@@ -48,10 +49,10 @@ sys.path.insert(0, str(REPO / "src"))
 
 TIERS = {
     "gold": ("Gold", "Installations above and below the 400 m2 floor, calibrated on ground truth or a register"),
-    "silver": ("Silver", "400 m2 and up only, validated against local ground truth; every "
-               "mapping lead checked; model retrained on mapped leads"),
-    "bronze": ("Bronze", "400 m2 and up only, not yet calibrated, or mapping leads not yet "
-               "all checked, or model not yet retrained on them"),
+    "silver": ("Silver", "400 m2 and up only, validated against local ground truth; leads "
+               "mapped in OpenStreetMap to localize the model"),
+    "bronze": ("Bronze", "400 m2 and up only, not yet calibrated, or not yet enough leads "
+               "mapped in OpenStreetMap to localize the model"),
 }
 
 # (page stem, country, interactive file, iframe title, country-specific warning line)
@@ -140,33 +141,37 @@ TIER_NOTE = {
         "areas calibrate rooftops; farm areas widen the farm estimate.",
     ),
 }
-# A page that earned Silver or Gold on its calibration but shows Bronze because its
-# mapping leads are not all checked (owner rule, 2026-10-31) or its model has not yet been
-# retrained on mapped leads (owner rule, 2026-11-01). EARNED_NOTE says, in one sentence,
-# what the calibration does cover; the banner then names the missing pieces, keyed by
-# `atlas.lead_rule_gaps`.
-LEADS_WARNING = "<strong>{title}</strong> {earned_note} Silver and Gold also need {needs}."
+# A page that earned Silver or Gold on its calibration but shows Bronze because not enough
+# of its leads have been mapped in OpenStreetMap to localize the model (owner rule,
+# 2026-11-01; it replaced "every lead checked"). EARNED_NOTE says, in one sentence, what the
+# calibration does cover; the banner then says what is missing, keyed by
+# `atlas.lead_rule_gaps`. Worded softly on purpose (owner, 2026-11-01): the point is that
+# mapped leads localize the model, not a checklist.
+LEADS_WARNING = "<strong>{title}</strong> {earned_note} {needs}"
 LEADS_TITLE = {
-    ("leads_checked", "leads_retrained"):
-        "Bronze until its mapping leads are checked and the model is retrained on them.",
-    ("leads_checked",): "Bronze until its mapping leads are checked.",
-    ("leads_retrained",): "Bronze until the model is retrained on mapped leads.",
+    ("leads_mapped", "leads_retrained"):
+        "Bronze until more of its leads are mapped in OpenStreetMap.",
+    ("leads_retrained",): "Bronze until the model is retrained on the mapped leads.",
 }
 LEADS_NEED = {
-    "leads_checked": "every lead in the country's lead file checked by a person ({n} places "
-                     "the model found solar that OpenStreetMap does not have yet)",
-    "leads_retrained": "the model retrained at least once on what people mapped from over "
-                       "half of a lead file",
+    ("leads_mapped", "leads_retrained"):
+        "{earned} also needs leads mapped in OpenStreetMap to localize the model: about a "
+        "third of the {n} places the model found solar that OpenStreetMap does not have "
+        "yet{blobs}.",
+    ("leads_retrained",):
+        "{earned} also needs the model retrained on what people have mapped.",
 }
+LEADS_BLOBS = ", and of its {nb} very large outlines"
 LEADS_HELP = (
     "<strong>You can help:</strong> download the lead file under <em>Download the data behind "
-    "this atlas</em> and work through it on recent imagery, mapping every real installation. "
-    "{then}"
+    "this atlas</em> and work down it from the top on recent imagery, mapping every real "
+    "installation. {then}"
 )
 LEADS_THEN = {
-    True: "The model is retrained on what you map; once it is, and every lead has a verdict, "
-          "the atlas shows {earned}.",
-    False: "When every lead has a verdict the atlas shows {earned}.",
+    ("leads_mapped", "leads_retrained"):
+        "Once about a third has a verdict, the model is retrained on what you mapped and the "
+        "atlas shows {earned}.",
+    ("leads_retrained",): "Once the model is retrained on it, the atlas shows {earned}.",
 }
 LEADS_CTA = (
     '<a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> '
@@ -234,19 +239,21 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
     earned = earned_of(html)
     if earned != tier:
         label = TIERS[earned][0]
-        n = (totals_of(html).get("leads") or {}).get("n")
+        leads = totals_of(html).get("leads") or {}
+        n, nb = leads.get("n"), (leads.get("blobs") or {}).get("n")
         gaps = tuple(atlas.lead_rule_gaps(aoi_of(html)))
         if not gaps:
             raise SystemExit(f"{html}: its badge shows {tier}, below the {earned} it earned, "
                              "but its config meets every lead rule; re-badge it first "
                              "(scripts/patch_atlas_leads.py)")
-        needs = ", and ".join(LEADS_NEED[g].format(n=f"{n:,}" if n else "all") for g in gaps)
+        needs = LEADS_NEED[gaps].format(
+            earned=label, n=f"{n:,}" if n else "all the",
+            blobs=LEADS_BLOBS.format(nb=f"{nb:,}") if nb else "")
         text = LEADS_WARNING.format(
             title=LEADS_TITLE[gaps],
             earned_note=EARNED_NOTE.get(country, f"Its calibration meets {label}."),
             needs=needs)
-        help_ = LEADS_HELP.format(
-            then=LEADS_THEN["leads_retrained" in gaps].format(earned=label))
+        help_ = LEADS_HELP.format(then=LEADS_THEN[gaps].format(earned=label))
         parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
                      f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{LEADS_CTA}</p>\n</div>")
     elif tier in WARNING:
@@ -286,7 +293,8 @@ def nav_block() -> str:
 # --------------------------------------------------------------------------------------
 # Each criterion: (name, what it means, where it is set). The levels add up: Silver needs
 # all of Bronze, Gold all of Silver. Keep in step with atlas.derive_validation_score,
-# atlas.leads_checked, atlas.leads_retrained and the country-run rules in CLAUDE.md.
+# atlas.leads_retrained, density.load_oversize_admission and the country-run rules in
+# CLAUDE.md.
 CRITERIA = {
     "bronze": [
         ("Model trained on the country's own map",
@@ -309,6 +317,13 @@ CRITERIA = {
          "by the share of outlines of its size and placement that turned out to be real. "
          "Without a local recall reference this is a floor.",
          "`configs/calibration/<aoi>_candidate_precision.yaml`"),
+        ("Very large outlines counted only once checked",
+         "An outline above 100,000 m&sup2; (10 ha) is a blob: 10 m pixels merge everything "
+         "bright and touching into one shape, so it is as often a sheet of false alarms as a "
+         "solar park the map does not have yet. A blob counts towards capacity only once it "
+         "is mapped in OpenStreetMap or a person has judged it solar on the Sentinel-2 "
+         "imagery the model saw; until then it is a lead in a file of its own.",
+         "`density.load_oversize_admission`, `scripts/oversize_review.py`"),
         ("Plausibility gate",
          "Before publication each region's ground-mount to rooftop ratio and its "
          "single-cell concentration are checked; a failure is looked at and stated on the "
@@ -316,7 +331,8 @@ CRITERIA = {
          "`earthpv check-density`"),
         ("Mapping leads published",
          "The model's outlines more than 100 m from any solar installation in "
-         "OpenStreetMap, most promising first. Leads under 1,000 m&sup2; on ground steeper "
+         "OpenStreetMap, in two files: the leads, most promising first, and the very large "
+         "outlines, largest first. Leads under 1,000 m&sup2; on ground steeper "
          "than 15&deg; are left out (shaded slopes and cliff edges read like panels); "
          "larger ones on steep ground stay, marked <code>steep_review</code>, because a "
          "solar farm can stand on a mountainside, unless the ground is steeper than 30&deg;, "
@@ -330,19 +346,13 @@ CRITERIA = {
          "installations as a recall reference, or the country has calibration areas in use "
          "where every visible panel is mapped (Rule 1).",
          "`atlas.derive_validation_score`"),
-        ("Every mapping lead checked",
-         "A person has looked at every lead in the country's current lead file on recent "
-         "high-resolution imagery and mapped the real installations. The record names the "
-         "lead file it covers, so a rebuilt file starts unchecked. Until the check is "
+        ("Leads mapped to localize the model",
+         "The mapping flywheel has turned at least once: people have checked about a third "
+         "of a lead file's leads, working down from the top, and a third of its very large "
+         "outlines, largest first, mapping the real installations in OpenStreetMap and "
+         "judging the rest not solar; and the localized segmentation model has been trained "
+         "again on the country's OpenStreetMap solar, now holding that mapping. Until this is "
          "recorded the atlas shows Bronze, whatever its calibration earns.",
-         "`validation.leads_checked` in `configs/atlas/<aoi>.yaml`"),
-        ("Model retrained on mapped leads",
-         "The mapping flywheel has turned at least once: people have worked through over "
-         "half of the leads from the country's first model, mapping the real installations "
-         "and judging the rest not solar, and the localized segmentation model has been "
-         "trained a second time on the country's OpenStreetMap solar, now holding that "
-         "mapping. Until this is recorded the atlas shows Bronze, whatever its calibration "
-         "earns.",
          "`validation.retrained_on_leads` in `configs/atlas/<aoi>.yaml`"),
     ],
     "gold": [
@@ -386,8 +396,8 @@ def quality_page() -> str:
            "everything Silver asks for. A country shows the highest level whose every "
            "criterion it meets.", ""]
     heads = {"bronze": "Bronze: every published atlas",
-             "silver": "Silver: Bronze, plus local ground truth, checked leads and a "
-                       "retrained model",
+             "silver": "Silver: Bronze, plus local ground truth and leads mapped to "
+                       "localize the model",
              "gold": "Gold: Silver, plus installations below 400 m&sup2;"}
     for tier in ("bronze", "silver", "gold"):
         out += [f"## {heads[tier]}", "", "| Criterion | What it means | Where it is set |",
@@ -400,20 +410,25 @@ def quality_page() -> str:
             "solar. Rooftop leads in towns and leads beside roads deserve the same look as "
             "the rest: dark asphalt junctions and shadows are the model's commonest false "
             "alarms. Leads marked <code>steep_review</code> need a look at the terrain as "
-            "well. The [lead mapping guide](contribute/leads.md) walks through a lead file in "
-            "JOSM. When every lead in a country's current file has a verdict, a maintainer "
-            "records it as `validation.leads_checked` in the country's configuration, naming "
-            "the file by its date.", "",
-            "## When the model counts as retrained", "",
-            "The first model a country gets is trained on whatever OpenStreetMap held when "
-            "its atlas was first built, and its leads are the places it found solar that the "
-            "map did not have. The model counts as retrained once people have worked through "
-            "over half of that first lead file, and the localized model has been trained "
-            "again on the country's OpenStreetMap solar, now holding what they mapped. A "
-            "maintainer records it as `validation.retrained_on_leads`, naming the lead file "
-            "and the new model. It needs doing once: unlike the lead check, it does not lapse "
-            "when a new lead file is made. With both records in place the badge shows the "
-            "level the calibration earns.", "",
+            "well. A very large outline is checked on the Sentinel-2 imagery the model saw as "
+            "well as on recent high-resolution imagery, since a park built after the "
+            "high-resolution capture shows only there; map the panels or the park's outline, "
+            "not the blob. The [lead mapping guide](contribute/leads.md) walks through a lead "
+            "file in JOSM.", "",
+            "## How much to map: a third", "",
+            "Mapping every lead does not pay: the real installations sit near the top of a "
+            "lead file, which is sorted most promising first, and the bottom is mostly false "
+            "alarms, above all among the small ones. Where people have worked through a lead "
+            "file, the top third held more than two thirds of the leads they went on to map in "
+            "Pakistan (385 of v3's 4,435 leads of July 2026) and nearly nine in ten in Yemen (246 of "
+            "2,259 in a week of October 2026); below it only 2 to 4% of leads were real. In "
+            "Germany, whose register locates every installation of 30 kW or more, the top "
+            "third holds 46% of the leads with a registered unit inside. So a third of the "
+            "leads, worked from the top, and a third of the very large outlines, largest "
+            "first, give the model most of what a full pass would. A maintainer records it as "
+            "`validation.retrained_on_leads`, naming the lead file, the shares checked and "
+            "the model trained on the result. It needs doing once: it does not lapse when a "
+            "new lead file is made.", "",
             "## The levels follow the mapping flywheel", "",
             f"![{FLYWHEEL_ALT}](assets/figures/osm_ai_flywheel.svg#only-light)",
             f"![{FLYWHEEL_ALT}](assets/figures/osm_ai_flywheel.dark.svg#only-dark)", "",
@@ -423,8 +438,8 @@ def quality_page() -> str:
             "- **Bronze: the wheel is set up.** A model trained on the country's own "
             "OpenStreetMap solar detects arrays from space (station 1), and the atlas is "
             "published with its mapping leads and the areas to map (station 2).",
-            "- **Silver: the wheel has turned once.** People check every lead and map the "
-            "real installations (station 3), and the model is retrained on what they mapped "
+            "- **Silver: the wheel has turned once.** People check a third of the leads and "
+            "map the real installations (station 3), and the model is retrained on what they mapped "
             "(station 6), so its next leads come from a model that has learned the country's "
             "own false alarms and missed arrays. The figures are checked against local "
             "ground truth: mapped installations, complete calibration areas (station 4) or a "
@@ -434,8 +449,7 @@ def quality_page() -> str:
             "mapped panel by panel (station 4), or a legally complete register (station 5), "
             "are what the small-installation estimate is fitted on and checked against.", "",
             "Each further turn adds labels the model learns from and areas the estimates are "
-            "fitted on, so a country moves up by being mapped. The lead check applies to each "
-            "new lead file; the first retraining counts for good.",
+            "fitted on, so a country moves up by being mapped. The first turn counts for good.",
             ""]
     return "\n".join(out)
 

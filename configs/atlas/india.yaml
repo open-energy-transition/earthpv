@@ -48,15 +48,17 @@ confidence:
   # results/india_mnre_validation/summary.json, 2026-10-29). The ratios are this build's:
   # re-run `validate_india_mnre.py compare` after any rebuild and check the sentence still holds.
   corroboration: >-
-    <p><b>Against India's register, ground-mounted solar is close and sits in the right
-    states.</b> MNRE's state-wise register, republished by MoSPI's eSankhyiki, records 110.6
-    GW of utility-scale solar on the ground (ground-mounted plants plus the solar part of
-    hybrid plants) at the centre of the imagery window, January 2026. This page's best
-    estimate of ground-mounted solar is about nine tenths of that, and across the 19 states
-    with at least 100 MW registered it ranks them almost exactly as the register does (rank
-    correlation 0.95). The register mostly quotes AC capacity and this page DC, so the real
-    shortfall is nearer a fifth. Rooftop is the large gap: the register holds 24.3 GW, most
-    of it household systems of a few kW, and this page sees less than a tenth of it.</p>
+    <p><b>Against India's register, ground-mounted solar sits in the right states and falls
+    short where parks are still waiting for a verdict.</b> MNRE's state-wise register,
+    republished by MoSPI's eSankhyiki, records 110.6 GW of utility-scale solar on the ground
+    (ground-mounted plants plus the solar part of hybrid plants) at the centre of the imagery
+    window, January 2026. This page's best estimate of ground-mounted solar is about three
+    quarters of that, and across the 19 states with at least 100 MW registered it ranks them
+    almost exactly as the register does (rank correlation 0.97). The register mostly quotes
+    AC capacity and this page DC, so the real shortfall is nearer a third, most of it in the
+    parks the model outlined that nobody has judged yet (Gujarat, Rajasthan, Maharashtra).
+    Rooftop is the large gap: the register holds 24.3 GW, most of it household systems of a
+    few kW, and this page sees less than a tenth of it.</p>
   caveats:
     - >-
       <b>The small-installation half of this page does not exist yet.</b> One area of
@@ -73,15 +75,15 @@ confidence:
       built on empty land farther out than that is not on this page; hatched cells were
       never imaged.
     - >-
-      <b>Solar parks the model found that nobody has mapped are counted, at a reviewed
-      share.</b> A model outline larger than 10 hectares used to be left out of the
-      estimate, because in other countries such outlines were mostly bright bare ground or
-      rock merged into one shape. In India they are mostly parks OpenStreetMap does not hold
-      yet. Outlines were checked by hand on satellite imagery: every one of the 30 largest
-      was a park, and so were 51 of 60 drawn at random, larger ones more often, from the
-      rest. The largest count in full and the rest at that share. They are left out in the
-      six Himalayan states and territories, where both outlines drawn were shaded mountain
-      slopes. None of these parks is in the hand-mapped figure.
+      <b>Solar parks the model found that nobody has mapped count once a person has judged
+      them.</b> A model outline larger than 10 hectares is as often bright bare ground or
+      rock merged into one shape as a solar park OpenStreetMap does not hold yet, so it counts
+      only once it is mapped or someone has judged it solar on the imagery the model saw. In
+      India 90 of 1,789 such outlines have been judged, the 30 largest and 60 drawn at random,
+      and the 81 found to be parks count in full. The other 1,699 are in the blob file under
+      the downloads; most of those drawn so far were parks, so until they are judged the best
+      figure understates the parks the model found. None of these parks is in the hand-mapped
+      figure.
     - >-
       <b>A mapped outline drawn around a whole planned zone counts only where panels are
       seen.</b> Seven ground outlines larger than 5 km&sup2;, among them two at Khavda in

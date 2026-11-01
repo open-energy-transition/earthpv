@@ -58,24 +58,25 @@ EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.htm
 # was ever calibrated. The tiers are about EVIDENCE, not about model quality: a Bronze
 # country can have a perfectly good segmentation run and simply no local ground truth to
 # check it against.
-# Gold and Silver also need every mapping lead checked by a human (owner, 2026-10-31):
-# `leads_checked`, and the segmentation model retrained on mapped leads at least once
-# (owner, 2026-11-01): `leads_retrained`. Both are applied by `resolve_validation_badge`.
-# The full list of criteria is docs/atlas-quality-levels.md (scripts/build_atlas_pages.py
-# writes it).
+# Gold and Silver also need the mapping leads mapped in OpenStreetMap to localize the model
+# (owner, 2026-11-01): a third of a lead file's leads and a third of its blobs with a human
+# verdict, and the segmentation model retrained on that mapping at least once
+# (`leads_retrained`, `LEAD_SHARE_MIN`), applied by `resolve_validation_badge`. It replaced
+# "every lead in the current file checked" (2026-10-31 to 2026-11-01; `leads_checked` is now
+# a record the Downloads card states). The full list of criteria is
+# docs/atlas-quality-levels.md (scripts/build_atlas_pages.py writes it).
 VALIDATION_TIERS = {
     "gold": (
         "Gold",
         "Fully validated and trained using OpenStreetMap imagery and labels. Covers "
-        "installations above and below the 400 m² satellite floor. Every mapping lead "
-        "checked by a human, and the model retrained on mapped leads at least once.",
+        "installations above and below the 400 m² satellite floor. Enough mapping leads "
+        "mapped in OpenStreetMap to localize the model.",
     ),
     "silver": (
         "Silver",
         "Above 400 m² only. Segmentation localized and validated against "
-        "OpenStreetMap ground truth. No calibrated estimate below the floor. Every "
-        "mapping lead checked by a human, and the model retrained on mapped leads at "
-        "least once.",
+        "OpenStreetMap ground truth. No calibrated estimate below the floor. Enough "
+        "mapping leads mapped in OpenStreetMap to localize the model.",
     ),
     "bronze": (
         "Bronze",
@@ -184,19 +185,21 @@ def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     if not e:
         return None
     return {k: e[k] for k in ("url", "file", "n", "size_bytes", "osm_as_of", "min_distance_m",
-                              "made", "note", "steep", "lowconf", "water") if k in e}
+                              "made", "note", "steep", "lowconf", "water", "blobs") if k in e}
 
 
 def leads_checked(aoi: str, path: Path = LEADS_MANIFEST) -> dict:
     """Whether every lead in the AOI's current mapping-lead file has been checked by a
-    human, the requirement Silver and Gold share (owner, 2026-10-31).
+    human: a record the Downloads card states. From 2026-10-31 to 2026-11-01 it was a
+    requirement of Silver and Gold; the owner replaced it with a share mapped to localize the
+    model (`leads_retrained`), since checking every lead buys few labels per hour.
 
     The check is a declaration in `configs/atlas/<aoi>.yaml` (`validation.leads_checked`),
     like a quadrat's Rule-1 status, and it names the lead file it covers by the `made` date
     `scripts/release_leads.py` writes into the manifest. It holds only while that is still
     the file the atlas links: a rebuilt lead file holds leads nobody has looked at. An AOI
     with no lead file has nothing a reader could check, so it is not checked either.
-    Returns `checked` plus who, when and which file, for the badge and the page."""
+    Returns `checked` plus who, when and which file, for the page."""
     cfg = atlas_config.load(aoi)
     release = leads_release(aoi, path) or {}
     out = {"checked": False, "file_made": release.get("made", ""),
@@ -207,53 +210,71 @@ def leads_checked(aoi: str, path: Path = LEADS_MANIFEST) -> dict:
     return out
 
 
-def leads_retrained(aoi: str) -> dict:
-    """Whether the country's segmentation model has been retrained on mapped leads at least
-    once, the requirement Silver and Gold share with `leads_checked` (owner, 2026-11-01).
+# The share of a lead file's leads, and of its blobs (outlines above the merge cap), that
+# must have a human verdict before the model's retraining on them counts (owner,
+# 2026-11-01: "mapping all leads does not make sense"). A third, because that is where the
+# real installations are: in the ranked file the top third held 69% of the leads people
+# later mapped in Pakistan (v3's 2026-07-16 file, 385 of 4,435 mapped by the 2026-10-25
+# pull) and 87% in Yemen (2026-10-28 file, 246 of 2,259 mapped by 2026-10-31), and 46% of
+# the leads holding a registered unit in Germany; below it 4% of Pakistan's and 2% of
+# Yemen's leads were real. scripts/lead_share.py, results/lead_share/.
+LEAD_SHARE_MIN = 1 / 3
 
-    One turn of the mapping flywheel: over half of the leads from the country's first model
-    have a human verdict (the real installations mapped in OpenStreetMap, the rest judged not
-    solar), and the localized model was trained a second time on the OSM solar that includes
-    that mapping. Like `leads_checked` it is a declaration in `configs/atlas/<aoi>.yaml`
-    (`validation.retrained_on_leads`), naming the first lead file and the second model; unlike
-    it, it does not lapse with a rebuilt lead file, since "at least once" stays true.
-    Returns `retrained` plus the declaration's fields."""
+
+def leads_retrained(aoi: str) -> dict:
+    """Whether the country's leads have been mapped in OpenStreetMap to localize the model,
+    the lead requirement Silver and Gold share (owner, 2026-11-01).
+
+    One turn of the mapping flywheel: at least `LEAD_SHARE_MIN` of a lead file's leads, and
+    of its blobs, have a human verdict (the real installations mapped in OpenStreetMap, the
+    rest judged not solar), and the localized model was trained again on the OSM solar that
+    holds that mapping. A declaration in `configs/atlas/<aoi>.yaml`
+    (`validation.retrained_on_leads`) naming the lead file, the shares and the new model. It
+    does not lapse with a rebuilt lead file, since "at least once" stays true.
+    `blobs_share` defaults to `share`: a declaration made before the blob file existed
+    counted the blobs among the leads. Returns `mapped` (the shares are met), `retrained`
+    (that and a model named) plus the declaration's fields."""
     cfg = atlas_config.load(aoi)
+    share = cfg.retrained_share
+    blobs = cfg.retrained_blobs_share if cfg.retrained_blobs_share is not None else share
     out = {"leads": cfg.retrained_leads, "model": cfg.retrained_model,
+           "share": share, "blobs_share": blobs,
            "by": cfg.retrained_by, "date": cfg.retrained_date, "note": cfg.retrained_note}
-    out["retrained"] = bool(cfg.retrained_leads and cfg.retrained_model)
+    eps = 1e-9
+    out["mapped"] = bool(cfg.retrained_leads and share is not None
+                         and share >= LEAD_SHARE_MIN - eps and blobs >= LEAD_SHARE_MIN - eps)
+    out["retrained"] = bool(out["mapped"] and cfg.retrained_model)
     return out
 
 
-# What a Silver or Gold page still lacks, in the words its badge and banner use. Keys are
-# stable: scripts/build_atlas_pages.py picks its banner sentences by them.
+# What a Silver or Gold page still lacks. Keys are stable: scripts/build_atlas_pages.py picks
+# its banner sentences by them.
 LEAD_RULE_GAPS = {
-    "leads_checked": "Mapping leads not yet checked",
-    "leads_retrained": "Model not yet retrained on mapped leads",
+    "leads_mapped": "Needs more leads mapped",
+    "leads_retrained": "Model not yet retrained on them",
 }
+# The badge's sub-line under a page shown below its earned tier: one plain sentence.
+LEAD_RULE_SUB = "Needs more leads mapped in<br>OpenStreetMap to localize the model."
 
 
 def lead_rule_gaps(aoi: str) -> list[str]:
     """The keys of `LEAD_RULE_GAPS` the AOI has not met: empty when a page may show the tier
     its calibration earns."""
-    gaps = []
-    if not leads_checked(aoi)["checked"]:
-        gaps.append("leads_checked")
-    if not leads_retrained(aoi)["retrained"]:
-        gaps.append("leads_retrained")
-    return gaps
+    r = leads_retrained(aoi)
+    if not r["mapped"]:
+        return ["leads_mapped", "leads_retrained"]
+    return [] if r["retrained"] else ["leads_retrained"]
 
 
 def lead_rule_sub(aoi: str, earned: str) -> str:
     """The badge's sub-line for a page shown as Bronze although its calibration earns
     `earned`: the earned tier, then what is missing."""
-    gaps = [LEAD_RULE_GAPS[g] for g in lead_rule_gaps(aoi)]
-    return f"{VALIDATION_TIERS[earned][0]} otherwise.<br>" + ".<br>".join(gaps) + "."
+    return f"{VALIDATION_TIERS[earned][0]} otherwise.<br>{LEAD_RULE_SUB}"
 
 
 def leads_for_page(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
-    """`totals.leads`: the lead file (`leads_release`) plus whether every lead in it has been
-    checked (`leads_checked`), which the Downloads card states."""
+    """`totals.leads`: the lead and blob files (`leads_release`) plus whether every lead in
+    them has been checked (`leads_checked`), which the Downloads card states."""
     release = leads_release(aoi, path)
     if not release:
         return None
@@ -279,7 +300,7 @@ def derive_validation_score(aoi: str, has_sub400: bool,
     or passed with `--validation-score`, not something to infer from file existence.
 
     The tier returned here is the one EARNED by the calibration evidence. Gold and Silver
-    also need every mapping lead checked and the model retrained on mapped leads once, which
+    also need a share of the mapping leads mapped and the model retrained on them once, which
     `resolve_validation_badge` applies on top (`lead_rule_gaps`), so a country can earn
     Silver and still show Bronze.
     """
@@ -581,7 +602,7 @@ def validation_badge_html(score: str, sub: str | None = None, earned: str | None
     country whose reason for its tier is not the generic one (`atlas_config` validation).
     `earned` is the tier the calibration evidence earned when the badge shows a lower one
     (`lead_rule_gaps`); it is kept on the badge as `data-earned` so a page can be
-    re-badged without a rebuild once the leads are checked
+    re-badged without a rebuild once enough leads are mapped
     (scripts/patch_atlas_leads.py, scripts/build_atlas_pages.py).
     """
     key = (score or "bronze").strip().lower()
@@ -611,17 +632,16 @@ def earned_validation_score(aoi: str, derived: str, override: str | None = None)
 
 
 def shown_validation_score(aoi: str, earned: str) -> str:
-    """The tier a page shows: the earned one, or Bronze for a Gold or Silver whose mapping
-    leads are not all checked (`leads_checked`) or whose model has not yet been retrained on
-    mapped leads (`leads_retrained`)."""
+    """The tier a page shows: the earned one, or Bronze for a Gold or Silver whose leads have
+    not yet been mapped to localize the model (`leads_retrained`)."""
     return earned if earned == "bronze" or not lead_rule_gaps(aoi) else "bronze"
 
 
 def resolve_validation_badge(aoi: str, derived: str, override: str | None = None) -> str:
     """The badge an atlas carries: the earned tier (`earned_validation_score`), shown as
-    Bronze until every mapping lead is checked and the model has been retrained on mapped
-    leads (`shown_validation_score`; an explicit override is capped too, since both are
-    requirements, not judgements). The config's sub-line is used only when its own tier is
+    Bronze until a share of the leads is mapped and the model has been retrained on them
+    (`shown_validation_score`; an explicit override is capped too, since that is a
+    requirement, not a judgement). The config's sub-line is used only when its own tier is
     the one shown."""
     cfg = atlas_config.load(aoi)
     earned = earned_validation_score(aoi, derived, override)

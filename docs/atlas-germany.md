@@ -10,7 +10,7 @@ hide:
   <span class="atlas-switch__label">Atlas</span>
   <span class="atlas-switch__tier atlas-switch__tier--gold" title="Installations above and below the 400 m2 floor, calibrated on ground truth or a register">Gold</span>
   <a href="../atlas/">Pakistan</a>
-  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or mapping leads not yet all checked, or model not yet retrained on them">Bronze</span>
+  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or not yet enough leads mapped in OpenStreetMap to localize the model">Bronze</span>
   <span aria-current="page">Germany</span>
   <a href="../atlas-france/">France</a>
   <a href="../atlas-egypt/">Egypt</a>
@@ -26,8 +26,8 @@ hide:
   <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
-  <p><strong>Bronze until its mapping leads are checked and the model is retrained on them.</strong> Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR); the small-installation estimate below that is not yet validated. Silver and Gold also need every lead in the country's lead file checked by a person (15,116 places the model found solar that OpenStreetMap does not have yet), and the model retrained at least once on what people mapped from over half of a lead file.</p>
-  <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work through it on recent imagery, mapping every real installation. The model is retrained on what you map; once it is, and every lead has a verdict, the atlas shows Silver.</p>
+  <p><strong>Bronze until more of its leads are mapped in OpenStreetMap.</strong> Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR); the small-installation estimate below that is not yet validated. Silver also needs leads mapped in OpenStreetMap to localize the model: about a third of the 14,535 places the model found solar that OpenStreetMap does not have yet, and of its 581 very large outlines.</p>
+  <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work down it from the top on recent imagery, mapping every real installation. Once about a third has a verdict, the model is retrained on what you mapped and the atlas shows Silver.</p>
   <p><a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> <a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a></p>
 </div>
 <iframe src="../assets/interactive/germany_pv_evidence_atlas.html" title="Germany PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>

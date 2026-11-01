@@ -40,6 +40,7 @@ repository; nothing was deleted on failure.
 | [The 5 km<sup>2</sup> ground cap, outside Germany](results/vietnam.md) | <span class="outcome works">shipped</span> | Vietnam's five largest mapped parks, 5.6 to 8.3 km<sup>2</sup>, are 92 to 99% detected. An evidence-gated exception keeps them: Verified 6,258 to 8,180 MWp. |
 | [Small leads on steep ground left out](#small-leads-on-steep-ground-2026-10-31) | <span class="outcome works">shipped</span> | A third of Yemen's leads stood on ground steeper than 12&deg;, against 0.5% of its highland OSM solar. Leads under 1,000 m<sup>2</sup> above 15&deg; now leave the lead files (Yemen 355 of 2,288); larger ones are kept as `steep_review`, unless above 30&deg; (any size, from 60 shadows the owner flagged in Wadi Hadramawt; 57 now go). Across twelve countries 10,098 of 156,170 leads go and 3,298 stay as `steep_review`; 2 of 22,370 candidates that found mapped solar would. The owner judged 153 drawn leads on imagery: none is solar (148 not, 5 unsure). |
 | [Open ground at low probability, and pans and ponds, left out of the leads](#open-ground-at-low-probability-and-pans-and-ponds-2026-11-01) | <span class="outcome works">shipped</span> | Open-ground leads below 0.9 peak probability are 0-1.3% OSM-mapped in most countries and hold a registered German unit 0-5% of the time (10-38% above 0.9); none of 18 drawn was solar; they leave the lead files at a cost of at most 1.5% of mapped area. JRC surface-water history removes pans and ponds where switched on (Pakistan, Egypt, Namibia); off where solar stands on water (India, Vietnam). |
+| [Very large outlines counted only once judged; a third of the leads for Silver](#very-large-outlines-need-a-verdict-and-a-third-of-the-leads-is-enough-2026-11-01) | <span class="outcome works">shipped</span> | Outlines above 100,000 m<sup>2</sup> get a lead file of their own and count towards capacity only once mapped or judged solar: India's Best 99,542 to 82,574 MWp (81 judged parks of 1,789 instead of 1,650 at a sampled share). Silver needs a third of a lead file's leads and blobs with a verdict, not every lead: the top third held 69% (Pakistan) and 87% (Yemen) of what was mapped later and 46% of Germany's register hits. |
 | [Pricing low-probability open ground apart in the precision table](#pricing-low-probability-open-ground-apart-2026-11-01) | <span class="outcome mixed">partial</span> | Built, not adopted: a third placement table raises the model's priced capacity in 12 of 13 countries (the confident ground outlines then get their own, higher mapped share) but moves Best by under 0.5% (South Africa -35.5 MWp). Owner decision. |
 | [Localizing the detector on India](results/india.md#localizing-the-detector-and-why-v5-ships) | <span class="outcome negative">rejected</span> | v10, trained with India's own OSM labels, against v5 on the held-out Surat-Bharuch-Vadodara box: recall on arrays of 500 m<sup>2</sup> and up 0.938 to 0.911, pixel IoU 0.686 to 0.663. v5 ships. India's labels are 84% ground-mount, a population v5 already covers. |
 | [Compose scenes ranked by cell coverage](results/india.md#a-compose-defect-found-here-and-fixed-for-every-later-country) | <span class="outcome works">shipped</span> | Scenes covering the whole cell now rank before partial ones, and a whole band lost to failed reads now raises. Rewa's cell went from 87.4% to 0.0% empty; composites built earlier were not rebuilt. |
@@ -710,6 +711,43 @@ Germany +195 MWp; France -11). Through the atlas, where OSM and the per-cell Ver
 absorb most of it, Best falls slightly: South Africa 9,755.6 to 9,720.1, Egypt 3,378.6 to
 3,376.5, Namibia 530.2 to 528.2 MWp (controls reproduce each published page exactly). Not
 adopted: no published table carries it; off by default.
+
+### Very large outlines need a verdict, and a third of the leads is enough (2026-11-01)
+
+The owner saw many false positives among the small leads and asked for two changes: the very
+large outlines in a lead file of their own, never counted towards capacity until they are
+mapped in OpenStreetMap or a person has judged them on Sentinel-2 imagery; and a Silver rule
+asking for a reasonable share of the leads and blobs mapped, not every lead.
+
+**Blobs.** An outline above the 100,000 m<sup>2</sup> merge cap (`oversize`) now goes to
+`<country>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`; the
+`pv-new-leads-2026-11-01b` files were split in place with `--resplit`, same leads, same date):
+100,556 leads and 3,127 blobs over twelve countries, France's 29 already apart. What a blob is
+varies by country: 81 of the 90 the owner judged in India were parks, 41% of Germany's 581 hold a
+registered unit, 3 of Pakistan's 121 of July have been mapped since, none of Yemen's 29. The
+cap already kept blobs out of capacity everywhere but India, which since 2026-10-29 admitted
+1,650 of them at its review's census and sample shares. `density.load_oversize_admission`
+now admits only outlines with a `pv` verdict, each whole: India's 81 judged parks, 185.0 of
+the 569.4 km<sup>2</sup> credited before. India's segmentation estimate falls from
+60,935 to 41,716 MWp, Best from 99,542 (90% 80,394 to 128,501) to 82,574 MWp (90%
+70,770 to 107,295), Verified unchanged at 70,523; the 1,699 unjudged blobs are queued for a
+verdict each (`oversize_review.py draw --all`). Against MNRE's register ground-mounted Best
+goes from 0.88 to 0.73 of registered capacity; if the review sample is a guide, judging the
+remaining parks would close most of that. No other country's figures move.
+
+**How much of a lead file to check** (`scripts/lead_share.py`, `results/lead_share/`). Where a
+reference exists, the real installations sit at the top of the ranked file: the top third
+held 69% of the leads mapped since in Pakistan (385 of v3's 4,435 leads of 2026-07-16) and 87%
+in Yemen (246 of 2,259 from 2026-10-28, a week of the owner's mapping), with 4.1% and 2.1%
+real below it; in Germany, where the register needs nobody to have looked, it holds 46% of
+the 6,408 leads with a unit inside (35.9% below). Leads under 1,000 m<sup>2</sup> were
+3.9%, 3.2% and 6.9% real. **Adopted: Silver and Gold need a third** (`atlas.LEAD_SHARE_MIN`)
+of a lead file's leads and of its blobs with a verdict and the model retrained on that
+mapping once (`validation.retrained_on_leads` with `share` and `blobs_share`), replacing
+"every lead in the current file checked" (2026-10-31) and the retrain rule's "over half".
+Pakistan's turn is recorded at `share: 0.5`, the owner's "over half", and it stays Gold;
+France, Germany and Yemen still show Bronze. The banner says it softly, as the owner asked:
+leads need to be mapped in OpenStreetMap to localize the model.
 
 ## What did not work
 

@@ -334,14 +334,17 @@ and `calibrate-candidates`. The Verified layer carries that outline at the same 
 (`screen_credit`, below) rather than dropping it, so Best takes it whole through its per-cell
 floor instead of the model figure, which the size bin's `p_real` halves a second time.
 
-**Model outlines above the cap are admitted where a review measured them (2026-10-29).** In
-India most were real parks OSM does not hold (30 of the 30 largest, 51 of 60 drawn by area from
-the rest, owner-reviewed; about 28 GWp the cap kept out of Best). `scripts/oversize_review.py draw|apply`
-reviews them and writes an `oversize_review` block into the country's calibration table;
-`density.load_oversize_admission` then admits new-lead model outlines above the cap
-(`export.new_lead_mask` at the review's `min_distance_m`) outside its `excluded_regions`,
-placed as ground and priced per stratum (`p_real_fixed`: the census of the largest, the
-area-weighted sample's share for the rest, Jeffreys draws; recall 1). They are population-level
+**Model outlines above the cap (blobs) count only once a person has judged them (owner,
+2026-11-01).** A blob never enters capacity until it is mapped in OSM or carries a `pv` verdict
+in the country's review: `scripts/oversize_review.py draw|apply` writes an `oversize_review`
+block into the calibration table, and `density.load_oversize_admission` admits exactly the
+new-lead outlines (`export.new_lead_mask` at the review's `min_distance_m`) with a `pv` verdict
+in its `review_csv`, matched by `candidate_index` and area, whole (`p_real_fixed` 1, stratum
+`reviewed`), placed as ground, recall 1. From 2026-10-29 to 2026-11-01 India admitted 1,650 at
+the review's census and sample shares (30 of the 30 largest, 51 of 58 drawn by area; +28,468
+MWp); now only its 81 judged parks (185 km2) of 1,789. `draw --all` queues every other blob
+(stratum `queue`, largest first) and `apply` takes a partial export, keeping earlier verdicts;
+`excluded_regions` no longer filters (a verdict outranks it). They are population-level
 only: kept out of `process_cell`, so cached partials stay valid and no `--force` is needed.
 `calibrate-candidates` does not see them (the bins describe the rest) and carries the block
 forward; `_table_evidence` guards it. A country without the block keeps the cap exactly; its
@@ -545,6 +548,11 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   `scripts/patch_atlas_leads.py` adds the link to a published page without a rebuild (and
   re-resolves the badge, below). **A new country gets its file only when `release_leads.py` is
   re-run for it** (add it to `SOURCES`).
+  **Blobs have a file of their own (owner, 2026-11-01)**: leads above `MAX_CANDIDATE_M2`
+  (100,000 m2) go to `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`,
+  manifest `blobs`, linked on the same card); `--resplit` split the 11-01b files in place,
+  keeping their `made` date. 100,556 leads and 3,127 blobs; France's audited release already
+  kept its 29 apart (`france_pv_leads_oversize.geojson`).
   **Small leads on steep ground are left out (owner, 2026-10-31)**: `export.steep_lead_screen`
   drops a lead under `STEEP_MAX_AREA_M2` (1,000 m²) whose GLO-90 slope at its representative
   point exceeds `STEEP_SLOPE_DEG` (15°), and keeps a larger one flagged `steep_review` (a
@@ -783,23 +791,26 @@ and a call to map a calibration area. A new country is one row plus a rerun; **n
 `docs/atlas*.md` by hand**. A tier that is a judgement goes in `configs/atlas/<aoi>.yaml`
 (`validation: {score, note}`, which beats `derive_validation_score` and is read by all three
 atlas builders and `apply_validation_badges.py`), with a country note in
-`build_atlas_pages.TIER_NOTE`. **Gold and Silver also need every mapping lead checked by a
-person (owner, 2026-10-31)**: `validation.leads_checked: {made, by, date, note}` declares it
-for the lead file whose manifest `made` it names (`atlas.leads_checked`), so a rebuilt lead
-file starts unchecked. Without it `resolve_validation_badge` shows Bronze whatever the tier
-earned (an explicit `--validation-score` is capped too), keeps the earned tier on the badge as
+`build_atlas_pages.TIER_NOTE`. **Gold and Silver also need the leads mapped in OSM to
+localize the model (owner, 2026-11-01)**: at least `atlas.LEAD_SHARE_MIN` (a third) of a lead
+file's leads and of its blobs have a verdict, and the localized model was trained again on
+the OSM pull holding that mapping, declared as `validation.retrained_on_leads: {leads, share,
+blobs_share, model, by, date, note}` (`atlas.leads_retrained`; `blobs_share` defaults to
+`share`); it does not lapse with a new lead file. A third because the real ones sit at the
+top of the ranked file: the top third held 69% of what was mapped later in Pakistan, 87% in
+Yemen, 46% of register hits in Germany, and below it 2-4% were real
+(`scripts/lead_share.py`, `results/lead_share/`). It replaced "every lead in the current
+file checked" (2026-10-31); `validation.leads_checked` is now a record the Downloads card
+states. Without it `resolve_validation_badge` shows Bronze whatever the tier earned (an
+explicit `--validation-score` is capped too), keeps the earned tier on the badge as
 `data-earned`, and `build_atlas_pages` gives the page the leads banner (`LEADS_WARNING`,
-`EARNED_NOTE`). **They also need the model retrained on mapped leads at least once (owner,
-2026-11-01)**: over half of the country's first lead file has a verdict and the localized
-model was trained again on the OSM pull holding that mapping, declared as
-`validation.retrained_on_leads: {leads, model, by, date, note}` (`atlas.leads_retrained`);
-it does not lapse with a new lead file. `atlas.lead_rule_gaps` names what a page lacks, for
-the badge's sub-line and the banner. `docs/atlas-quality-levels.md` (generated,
-`quality_page`; the owner removed its standings table) lists every criterion and ends on the
-flywheel figure the levels follow. Pakistan's leads are declared checked and its v16 declared
-the retrain on v3's 2026-07-16 lead file (owner; 434 of those 4,602 leads are mapped in v16's
-pull, the rest carry no recorded verdict); France, Germany and Yemen earn Silver and show
-Bronze until both are declared. **Germany earns Silver** (its
+`EARNED_NOTE`, worded softly on the owner's request: leads need mapping to localize the
+model). `atlas.lead_rule_gaps` names what a page lacks. `docs/atlas-quality-levels.md`
+(generated, `quality_page`; the owner removed its standings table) lists every criterion
+and ends on the flywheel figure the levels follow. Pakistan's v16 is declared retrained on
+v3's 2026-07-16 lead file at `share: 0.5` (the owner's "over half", blobs counted among the
+leads then; 385 of its 4,435 leads are mapped in v16's pull); France, Germany and Yemen earn
+Silver and show Bronze until they declare one. **Germany earns Silver** (its
 register-calibrated small half fails its own register check). **Yemen earns Silver**: its farm
 areas calibrate farm ground PV only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
 `used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the

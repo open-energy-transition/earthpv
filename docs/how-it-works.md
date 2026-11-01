@@ -116,7 +116,7 @@ geolocated goes further and becomes a calibration instrument: Germany's
 [MaStR](methods/mastr-validation.md) replaces calibration areas for its small-installation
 half and measures segmentation's precision, France's [ODRE register](methods/france-validation.md)
 measured the module constant at 0.150 kWp/m<sup>2</sup>, and India's MNRE register puts
-ground-mounted Best at 0.88 of registered with a rank agreement of 0.95 over 19 states.
+ground-mounted Best at 0.73 of registered with a rank agreement of 0.97 over 19 states.
 Customs records give an [import ceiling](methods/validity.md#an-upper-ceiling-from-customs-data)
 where a country has no domestic manufacturing.
 

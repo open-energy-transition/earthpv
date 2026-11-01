@@ -3967,8 +3967,8 @@ out geom;</div>
         + `outlines drawn from 10 m pixels: check each one against recent high-resolution imagery `
         + `before mapping it, and expect some bright roofs, greenhouses and dark fields among them. `
         + `Anything mapped since that date can still appear.`)
-      // The steep-ground screen (export.steep_lead_screen) and the lead check Silver and
-      // Gold need (atlas.leads_checked); a page built before either says nothing about it.
+      // The steep-ground screen (export.steep_lead_screen) and the lead check
+      // (atlas.leads_checked); a page built before either says nothing about it.
       + (L.steep ? ` Leads under ${fmt(L.steep.max_area_m2)} m² on ground steeper than `
         + `${L.steep.slope_deg}°`
         + (L.steep.cap_deg ? `, and leads of any size above ${L.steep.cap_deg}°,` : ``)
@@ -3984,16 +3984,28 @@ out geom;</div>
       + (L.water ? ` So were ${fmt(L.water.dropped)} leads off rooftops at least `
         + `${Math.round(100 * L.water.ever_wet_min)}% of whose outline has been under water `
         + `since 1984: seasonal pans, salt pans and ponds.` : "")
+      // Very large outlines in a file of their own (release_leads.split_blobs, 2026-11-01):
+      // never counted in capacity until mapped or judged solar by a person
+      // (density.load_oversize_admission). A page built before says nothing about them.
+      + (L.blobs ? ` The ${fmt(L.blobs.n)} very large outlines, above `
+        + `${fmt(L.blobs.min_area_m2)} m², are in a file of their own, largest first: as often a `
+        + `sheet of false alarms as a solar park the map does not have yet. None counts towards `
+        + `this atlas's capacity until it is mapped in OpenStreetMap or a person has judged it `
+        + `solar on the Sentinel-2 imagery the model saw.` : "")
       + (L.checked ? (L.checked.all
           ? ` Every lead in this file has been checked by a person`
             + (L.checked.date ? ` (${esc(L.checked.by || "")}, ${day(L.checked.date)})` : "") + `.`
-          : ` These leads have not all been checked yet; a Silver or Gold atlas needs every `
-            + `one checked by a person.`) : "")
+          : ` Checking leads and mapping the real installations in OpenStreetMap is what `
+            + `localizes the model: about a third of the leads and of the very large outlines, `
+            + `worked from the top, are enough to retrain it.`) : "")
       + ` The GeoJSON opens in JOSM, iD and QGIS; the <a href="https://open-energy-transition.github.io/earthpv/contribute/" `
       + `target="_blank" rel="noopener">mapping guide</a> explains how to work through it.`;
     document.getElementById("leadsLink").innerHTML =
       `<a href="${esc(L.url)}" target="_blank" rel="noopener">${esc(L.file)}</a>`
       + `<span class="dl-size">GeoJSON · ${fmt(L.n)} leads · ${fmtBytes(L.size_bytes)}</span>`
+      + (L.blobs ? `<a href="${esc(L.blobs.url)}" target="_blank" rel="noopener">${esc(L.blobs.file)}</a>`
+        + `<span class="dl-size">GeoJSON · ${fmt(L.blobs.n)} very large outlines · `
+        + `${fmtBytes(L.blobs.size_bytes)}</span>` : "")
       + (release !== L.url ? `<a href="${esc(release)}" target="_blank" rel="noopener">release notes</a>` : "");
     document.getElementById("leadsItem").hidden = false;
   }

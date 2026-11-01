@@ -1,10 +1,11 @@
 # Map the leads with JOSM
 
-Every country's atlas on the [PV Atlas](../atlas.md) tab links a file of **mapping leads**:
-places where the segmentation model outlined a solar array in Sentinel-2 imagery more than
-100 m from every solar installation in OpenStreetMap when the file was made. Most are arrays
-of 400 m<sup>2</sup> and more, the size the model is trained and measured on: factory and
-warehouse roofs, ground-mounted parks, large pump arrays.
+Every country's atlas on the [PV Atlas](../atlas.md) tab links two files of **mapping
+leads**: places where the segmentation model outlined a solar array in Sentinel-2 imagery
+more than 100 m from every solar installation in OpenStreetMap when the file was made. Most
+are arrays of 400 m<sup>2</sup> and more, the size the model is trained and measured on:
+factory and warehouse roofs, ground-mounted parks, large pump arrays. The outlines above
+100,000 m<sup>2</sup> (10 ha) are in a file of their own, the **blob file** (below).
 
 Mapping them does two things. The next time the country's atlas is rebuilt, each
 installation you add is counted as hand-mapped solar. And the next time the country's model
@@ -15,8 +16,18 @@ make a better model, and the better model finds the next leads
 ([how it works](../how-it-works.md#workflow)).
 
 Unlike a [calibration area](index.md#the-one-rule-map-everything-inside-the-line), leads
-come with no completeness rule: map as many as you like, in any order, and stop when you
-want.
+come with no completeness rule: map as many as you like and stop when you want.
+
+**How far to go: about a third, from the top.** Checking every lead does not pay. The file is
+sorted most promising first, and the real installations sit near the top: where people have
+worked through a lead file, the top third held more than two thirds of the leads they went
+on to map in Pakistan and nearly nine in ten in Yemen. Below it only 2 to 4 leads in 100
+were solar, and the small ones are mostly false alarms. So start at the top and work down. When about a third
+of a country's leads, and a third of its blobs, have a verdict, the model can be retrained
+on what was mapped, which is what a [Silver atlas](../atlas-quality-levels.md) needs. Tell
+us how far down the file you got (the `candidate_id` of the last lead you checked) in an
+[issue](https://github.com/open-energy-transition/earthpv/issues), so the share can be
+recorded.
 
 This guide combines three JOSM plugins the way Open Energy Transition's
 [MapYourGrid](https://mapyourgrid.org/strategies/) uses them for its hint layers:
@@ -35,12 +46,14 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 
 1. Open the country's atlas from the [PV Atlas](../atlas.md) tab and scroll to **Download
    the data behind this atlas**. The first card, *Mapping leads: solar arrays the model found
-   that OpenStreetMap does not have yet*, links the country's file,
-   `<country>_pv_new_leads.geojson`, and its release notes.
+   that OpenStreetMap does not have yet*, links the country's two files,
+   `<country>_pv_new_leads.geojson` and `<country>_pv_blob_leads.geojson`, and their release
+   notes.
 2. Note the date on the card. Leads are checked against OpenStreetMap as of that day, so an
    installation mapped since can still be in the file; continuous download (step 5) shows
    you when it is.
-3. The file is sorted most promising first. JOSM shows each lead's properties as tags:
+3. The leads file is sorted most promising first, the blob file largest first. JOSM shows
+   each lead's properties as tags:
 
 | property | what it tells you |
 | --- | --- |
@@ -49,7 +62,7 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 | `confidence` | the highest model probability inside the outline |
 | `area_m2` | the outline's area; the panels are usually about half of it |
 | `placement` | `rooftop` (on a building), `ground_adjacent` (next to one) or `no_building` (open land) |
-| `oversize` | `true` for an outline above 100,000 m<sup>2</sup>: often a whole unmapped park, sometimes a merged sheet of false alarms |
+| `oversize` | `true` for an outline above 100,000 m<sup>2</sup>, so only in the blob file |
 | `slope_deg` | the terrain slope at the lead, in degrees (Copernicus 90 m elevation model) |
 | `steep_review` | `true` for a lead of 1,000 m<sup>2</sup> or more on ground steeper than 15&deg; (up to 30&deg;): look at the terrain as well as the outline (below) |
 | `ever_wet_frac` | share of the outline ever under water since 1984 (only in countries with the pans-and-ponds screen) |
@@ -70,10 +83,24 @@ highest model probability is below 0.9 is left out too: such leads were almost n
 at least a quarter of whose outline has been under water since 1984 is left out as well:
 seasonal pans, salt pans and ponds. Neither rule removes a `steep_review` lead.
 
-Large countries have large files: India's holds about 92,000 leads (89 MB). Work one region
-at a time (step 3). France's leads are a separate,
+**Very large outlines: the blob file.** Sentinel-2's 10 m pixels merge everything bright and
+touching into one shape, so an outline above 100,000 m<sup>2</sup> is as often a sheet of
+false alarms (pans, ploughed fields, shadowed slopes) as a solar park OpenStreetMap does not
+have yet. India's checked blobs were mostly parks (81 of 90); of the 121 in Pakistan's file
+of July 2026, 3 have been mapped since. The atlas counts no blob's capacity until it is
+mapped in OpenStreetMap or a person has judged it solar on the Sentinel-2 imagery the model
+saw, so each one you settle moves the estimate. Look at recent Sentinel-2 imagery as well as
+the high-resolution layers, for example in the
+[Copernicus Browser](https://browser.dataspace.copernicus.eu/): a park built after the
+high-resolution capture shows only there. If it is a park, map the park's outline or its
+panel blocks from the high-resolution imagery, never the blob. If the high-resolution imagery
+is older than the park, say so in an issue instead of mapping it.
+
+Large countries have large files: India's holds about 62,000 leads (60 MB) and 1,637 blobs.
+Work one region at a time (step 3). France's leads are a separate,
 [audited release](https://github.com/open-energy-transition/earthpv/releases/tag/france-osm-leads-2026-10-22)
-with priority tiers and one file per d&eacute;partement.
+with priority tiers and one file per d&eacute;partement; its blobs are
+`france_pv_leads_oversize.geojson`.
 
 ## 2. Set up JOSM and the three plugins
 
@@ -230,12 +257,14 @@ As in [Map with JOSM, step 6](josm.md#6-validate-and-upload), with three differe
 
 - **The atlas.** The next time the country's atlas is built, your installations are in its
   hand-mapped layer and in *Verified*, and the leads they answer drop out of the next lead
-  file, since they are now within 100 m of OpenStreetMap solar.
+  file, since they are now within 100 m of OpenStreetMap solar. A blob you map is counted
+  from your outline, never from the model's.
 - **The model.** The next time the country's model is trained, they are training labels.
   Arrays below 400 m<sup>2</sup> are left out of the model's training, because it cannot
   resolve them from 10 m pixels, so the large installations are the ones that teach it; the
   small ones still count in the atlas.
-- **The false alarms.** Nothing records a lead you skipped as wrong. If a whole kind of lead
-  is wrong where you map, greenhouses or a particular roof material, say so in an
+- **The false alarms.** Nothing in OpenStreetMap records a lead you judged not solar, so say
+  how far down the file you got in an issue, as above. If a whole kind of lead is wrong where
+  you map, greenhouses or a particular roof material, say that too in an
   [issue](https://github.com/open-energy-transition/earthpv/issues): it is the cheapest way
   to tell the next model what to ignore.

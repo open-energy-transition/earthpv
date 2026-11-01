@@ -129,6 +129,40 @@ mapped ground-mounted area (Khavda on the Rann of Kutch salt marsh, the floating
 Omkareshwar and Ramagundam) and in Vietnam 17% (floating and pond-mounted plants; 3 of 9
 flagged leads there were real arrays not yet mapped).
 
+## Very large outlines in a file of their own, and how much to check
+
+Since 2026-11-01 each country's leads come as two files: `<country>_pv_new_leads.geojson`,
+most promising first, and `<country>_pv_blob_leads.geojson`, the outlines above the
+100,000 m<sup>2</sup> merge cap, largest first (`scripts/release_leads.py`; the files of
+`pv-new-leads-2026-11-01b` were split in place, the same leads under the same date). Twelve
+countries hold 100,556 leads and 3,127 blobs between them; France's audited release already
+kept its 29 apart. A blob is whatever the 10 m pixels merged into one shape, and what that
+is varies by country: 81 of the 90 judged on imagery in India were parks, 41% of
+Germany's 581 hold a registered unit, and of the 121 in Pakistan's file of July 2026 three
+have been mapped since, of Yemen's 29 none. **No blob counts towards capacity until it is
+mapped in OpenStreetMap or a person has judged it solar on the Sentinel-2 imagery the model
+saw** (owner, 2026-11-01; `density.load_oversize_admission`). That ended India's admission of
+its 1,562 unreviewed blobs at the review sample's share real (see
+[India](india.md)); `scripts/oversize_review.py draw --all` queues them for a verdict each.
+
+**How much of a lead file is worth checking** (`scripts/lead_share.py`,
+`results/lead_share/`). The files are ranked, and the real installations sit near the top:
+
+| where a reference exists | leads | real | share of the real ones in the top third | real below the top third |
+| --- | ---: | ---: | ---: | ---: |
+| Pakistan, v3's file of 2026-07-16, mapped by the 2026-10-25 pull | 4,435 | 385 | 69% | 4.1% |
+| Yemen, file of 2026-10-28, mapped by 2026-10-31 | 2,259 | 246 | 87% | 2.1% |
+| Germany, file of 2026-11-01, a registered unit inside | 14,535 | 6,408 | 46% | 35.9% |
+
+"Mapped since" is a lower bound on real and leans towards where people looked, which in
+Yemen was the top of the file; the German register does not, and there the ranking is
+weaker. Small leads are the worst: under 1,000 m<sup>2</sup> 3.9% were mapped since in
+Pakistan, 3.2% in Yemen, and 6.9% hold a registered unit in Germany, against 12 to 59% for
+leads of 10,000 to 100,000 m<sup>2</sup>. So Silver asks for about a third of a lead file's
+leads, worked from the top, and a third of its blobs to have a verdict before the model is
+retrained on them (`atlas.LEAD_SHARE_MIN`), not every lead: past the top third, Pakistan's
+and Yemen's mappers would have found 2 to 4 installations per 100 leads checked.
+
 ## Getting the leads into OpenStreetMap
 
 ```bash

@@ -1,4 +1,14 @@
-"""Review the model outlines above the merge cap, and price them by that review.
+"""Review the model outlines above the merge cap, and admit those judged solar to capacity.
+
+**Only an outline a person judged solar counts (owner, 2026-11-01).** A very large outline
+(a blob) enters capacity once it is mapped in OpenStreetMap or once it carries a `pv`
+verdict here; `density.load_oversize_admission` admits exactly those, each whole, and
+nothing else. India's first review (2026-10-28/29) priced its 1,562 unreviewed outlines at
+the sample's share real instead; since 2026-11-01 its census and sample are the record of
+how the review was drawn, and `draw --all` queues every other blob behind them (stratum
+`queue`, largest first) so the rest can be judged one by one, in as many sittings as it
+takes: `apply` takes a partial export, keeps earlier verdicts, and leaves a queue outline
+nobody has judged out of capacity.
 
 `postprocess.MAX_CANDIDATE_M2` (100,000 m2) keeps model outlines above it out of capacity:
 in Pakistan they were merged false-positive sheets. In India most are solar parks that
@@ -89,6 +99,8 @@ def cmd_draw(a) -> int:
     path = a.out / "review.csv"
     if path.exists() and not a.redraw:
         print(f"{path} exists; packaging it as drawn (--redraw draws a new sample)")
+        if a.all:
+            _queue_rest(path, population(a.aoi, a.labels, a.min_distance_m))
         return cmd_package(a)
     pool = population(a.aoi, a.labels, a.min_distance_m)
     if pool.empty:
@@ -112,7 +124,28 @@ def cmd_draw(a) -> int:
           f"{a.min_distance_m:.0f} m ({pool.area_m2.sum() / 1e6:.1f} km2); census {len(census)} "
           f"({census.area_m2.sum() / 1e6:.1f} km2), sample {len(sample)} by area, seed {a.seed} "
           f"-> {path}")
+    if a.all:
+        _queue_rest(path, pool)
     return cmd_package(a)
+
+
+def _queue_rest(path: Path, pool) -> None:
+    """Append every outline of `pool` review.csv does not hold yet, largest first, as stratum
+    `queue` (codes q0000...), keeping every row and verdict already there."""
+    import pandas as pd
+
+    rev = pd.read_csv(path)
+    rest = pool[~pool["candidate_index"].isin(rev["candidate_index"])]
+    rest = rest.sort_values("area_m2", ascending=False)
+    k0 = int(rev.loc[rev["stratum"] == "queue", "k"].max() + 1) if (rev["stratum"] == "queue").any() else 0
+    q = rest[["candidate_index", "lon", "lat", "area_m2", "region"]].assign(
+        stratum="queue", k=range(k0, k0 + len(rest)))
+    q["code"] = [f"q{k:04d}" for k in q["k"]]
+    q["verdict"] = ""
+    q["evidence"] = ""
+    pd.concat([rev, q], ignore_index=True).to_csv(path, index=False)
+    print(f"queued {len(q)} more outlines ({q.area_m2.sum() / 1e6:.1f} km2), largest first; "
+          f"{len(rev) + len(q)} in {path}")
 
 
 def cmd_apply(a) -> int:
@@ -126,9 +159,12 @@ def cmd_apply(a) -> int:
     if a.verdicts is not None:
         rev = _merge_page_verdicts(rev, a.verdicts, a.unsure_as, a.reviewer)
         rev.to_csv(a.review, index=False)
-    bad = sorted(set(rev["verdict"].fillna("")) - set(VERDICTS))
-    if bad:
-        raise SystemExit(f"{a.review}: verdicts must be {VERDICTS}, found {bad} (blank = unreviewed)")
+    queue = rev["stratum"] == "queue"
+    bad = sorted(set(rev["verdict"].fillna("")) - set(VERDICTS) - {""})
+    blank = rev["verdict"].fillna("").eq("") & ~queue
+    if bad or blank.any():
+        raise SystemExit(f"{a.review}: verdicts must be {VERDICTS}, found {bad or ['']}; only a "
+                         "queue outline may stay blank (unreviewed)")
     pool = population(a.aoi, a.labels, a.min_distance_m)
     missing = set(rev["candidate_index"]) - set(pool["candidate_index"])
     if missing:
@@ -140,6 +176,7 @@ def cmd_apply(a) -> int:
         raise SystemExit(f"--exclude-region names no outline's region: {sorted(unknown)}")
     rev["real"] = rev["verdict"] == "pv"
     rev["excluded"] = rev["region"].isin(excluded)
+    judged_q = rev[queue & rev["verdict"].fillna("").ne("")]
     census = rev[rev.stratum == "census"]
     if census["excluded"].any():
         raise SystemExit("a census outline lies in an excluded region; the strata would overlap")
@@ -175,13 +212,14 @@ def cmd_apply(a) -> int:
     table = cc.load_table(path)
     table[cc.OVERSIZE_REVIEW_KEY] = block
     cc.write_table(table, path)
-    adm = pool[~pool["region"].isin(excluded)]
-    big = adm["area_m2"] >= block["census_min_area_m2"]
-    km2 = adm.loc[big, "area_m2"].sum() / 1e6 * p["census"] + adm.loc[~big, "area_m2"].sum() / 1e6 * p["sample"]
+    pv = rev[rev["verdict"] == "pv"]
+    pv = pv[~pv["region"].isin(excluded)]
     print(f"census {block['census_real']}/{block['census_n']} real; sample {block['sample_real']}/"
           f"{block['sample_n']} = {p['sample']:.3f} (90% {lo:.3f}-{hi:.3f}); excluded regions "
-          f"{block['excluded_sample_real']}/{block['excluded_sample_n']} real. Admits {len(adm)} of "
-          f"{len(pool)} outlines, {km2:.1f} km2 credited -> {path}")
+          f"{block['excluded_sample_real']}/{block['excluded_sample_n']} real; queue "
+          f"{int((judged_q['verdict'] == 'pv').sum())}/{len(judged_q)} real of {int(queue.sum())} "
+          f"queued. Admits the {len(pv)} of {len(pool)} outlines judged solar, "
+          f"{pv['area_m2'].sum() / 1e6:.1f} km2 -> {path}")
     return 0
 
 
@@ -437,28 +475,37 @@ def _esri(geom, rep, side: float):
 
 def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: str):
     """The page's export (`code,imagery_date,verdict,note`) into review.csv's rows."""
+    import numpy as np
     import pandas as pd
 
     v = pd.read_csv(verdicts, dtype=str).fillna("").set_index("code")
-    missing = sorted(set(rev.code) - set(v.index[v.verdict != ""]))
+    v = v.reindex(rev.code).fillna("")
+    queue = (rev["stratum"] == "queue").to_numpy()
+    prev0 = rev["verdict"].fillna("").to_numpy()
+    missing = sorted(set(rev.code[(v.verdict.to_numpy() == "") & ~queue & (prev0 == "")]))
     if missing:
         raise SystemExit(f"{len(missing)} outlines have no verdict in {verdicts}: {missing[:8]}")
-    page = v.loc[rev.code, "verdict"].map({"pv": "pv", "no_pv": "not_pv", "unsure": "unsure"})
+    page = v["verdict"].map({"pv": "pv", "no_pv": "not_pv", "unsure": "unsure", "": ""})
+    # No verdict on the page for an outline judged before: keep the earlier one.
+    page = pd.Series(np.where(page.to_numpy() == "", prev0, page.to_numpy()), index=page.index)
     unsure = list(rev.code[(page == "unsure").to_numpy()])
     if unsure and unsure_as is None:
         raise SystemExit(f"{len(unsure)} outlines are unsure ({unsure[:8]}): settle them on the "
                          "linked imagery, or pass --unsure-as not_pv to price them as absent")
     page = page.replace("unsure", unsure_as or "unsure").to_numpy()
     prev = rev["verdict"].fillna("").to_numpy()
-    judged = prev != ""
+    judged = (prev != "") & (v["verdict"].to_numpy() != "")
     if judged.any():
         agree = (prev[judged] == page[judged]).sum()
         print(f"{reviewer} agrees with the earlier verdicts on {agree} of {judged.sum()} outlines; "
               f"they differ on {', '.join(rev.code[judged & (prev != page)]) or 'none'}")
         rev["verdict_prev"] = prev
     rev["verdict"] = page
-    note = v.loc[rev.code, "note"].to_numpy()
-    rev["evidence"] = [f"{reviewer}: {n}" if n else f"{reviewer}" for n in note]
+    note = v["note"].to_numpy()
+    fresh = v["verdict"].to_numpy() != ""
+    old = rev["evidence"].fillna("").to_numpy() if "evidence" in rev else [""] * len(rev)
+    rev["evidence"] = [(f"{reviewer}: {n}" if n else f"{reviewer}") if f else o
+                       for n, f, o in zip(note, fresh, old)]
     for c in unsure:
         rev.loc[rev.code == c, "evidence"] += f" (unsure, priced as {unsure_as})"
     return rev
@@ -474,6 +521,9 @@ def main() -> int:
         p.add_argument("--min-distance-m", type=float, default=100.0)
         p.add_argument("--seed", type=int, default=20261028)
     d = sub.choices["draw"]
+    d.add_argument("--all", action="store_true",
+                   help="queue every outline not yet in review.csv behind the census and "
+                        "sample, largest first, so each can be judged (owner, 2026-11-01)")
     d.add_argument("--census-n", type=int, default=30)
     d.add_argument("--sample-n", type=int, default=60)
     d.add_argument("--redraw", action="store_true",

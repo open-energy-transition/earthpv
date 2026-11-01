@@ -895,24 +895,29 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
 # because in Pakistan they were merged false-positive sheets. In India most are real parks
 # OpenStreetMap does not hold yet: reviewed 2026-10-28 (results/india_oversize_review/),
 # the 30 largest new-lead outlines were all parks and 50 of 60 drawn by area from the rest,
-# about 29 GWp the cap kept out of Best. A country whose table carries this block admits
-# its new-lead outlines above the cap (`density.load_oversize_admission`) at the reviewed
-# share; every other country keeps the cap exactly as before.
+# about 29 GWp the cap kept out of Best.
 #
-# Two strata, both from the review: outlines at or above `census_min_area_m2` were all
-# reviewed (`census_real` of `census_n`), the rest are priced at the area-weighted sample's
-# share real, whose Jeffreys posterior carries the interval. The sample is drawn with
-# probability proportional to area, so the share is an AREA share, which is what a
-# per-candidate area weight needs. Regions in `excluded_regions` (where the review found
-# terrain, not parks) are not admitted at all: the cap holds there.
+# **Only an outline a person has judged counts (owner, 2026-11-01).** A very large outline
+# (a "blob", above the cap) never enters capacity until it is mapped in OpenStreetMap
+# (then it comes in as mapped solar) or a person has judged it solar on the imagery the
+# model saw (`scripts/oversize_review.py`'s disk review). `density.load_oversize_admission`
+# admits exactly the outlines with a `pv` verdict in the block's `review_csv`, each whole
+# (stratum `reviewed`, share real 1). From 2026-10-29 to 2026-11-01 India's unreviewed
+# outlines were admitted at the share real of a review sample instead; the census and
+# sample counts are kept in the block as the record of that review. Every country without
+# the block keeps the cap exactly as before.
 OVERSIZE_REVIEW_KEY = "oversize_review"
+OVERSIZE_STRATA = ("census", "sample", "reviewed")
 
 
 def oversize_review_p_real(block: dict) -> dict[str, float]:
-    """Point share real per stratum (`census`, `sample`) of an `oversize_review` block."""
+    """Point share real per stratum of an `oversize_review` block: the review's `census` and
+    `sample` (the record of how the review was drawn), and `reviewed`, an outline judged
+    solar one by one, which is what capacity admits."""
     return {
         "census": block["census_real"] / block["census_n"] if block.get("census_n") else 0.0,
         "sample": block["sample_real"] / block["sample_n"] if block.get("sample_n") else 0.0,
+        "reviewed": 1.0,
     }
 
 
@@ -923,7 +928,7 @@ def oversize_review_draws(block: dict, n_draws: int, seed: int | None = None) ->
     nothing left to sample, and a Beta(n + 0.5, 0.5) would invent a false-positive rate
     the review did not see."""
     rng = np.random.default_rng((SEED if seed is None else seed) + 7)
-    out = {}
+    out = {"reviewed": np.ones(n_draws)}  # judged one by one: nothing left to sample
     for name in ("census", "sample"):
         n, k = int(block.get(f"{name}_n") or 0), int(block.get(f"{name}_real") or 0)
         if n == 0:

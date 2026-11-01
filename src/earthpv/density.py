@@ -60,7 +60,6 @@ import pandas as pd
 import rasterio
 import rasterio.features
 import rasterio.transform
-import shapely
 from rasterio.warp import transform_bounds
 from rasterio.windows import Window, from_bounds
 from rasterio.windows import transform as window_transform
@@ -266,12 +265,19 @@ def load_oversize_admission(
 
     Driven by the AOI's calibration table (`capacity_calibration.OVERSIZE_REVIEW_KEY`); None
     when the table carries no review, which is every country but those that measured it, so
-    their cap is unchanged. The admitted population is exactly the one the review sampled:
-    model-drawn outlines (`geometry_source != "osm"`) above `max_candidate_m2` that are new
-    leads against the review's `mapped_reference` at its `min_distance_m`
-    (`export.new_lead_mask`, the export's own rule), outside `excluded_regions` (ADM1 names).
-    Returns `p_real_fixed` and `oversize_stratum` indexed like `cands`, for
-    `capacity_relevant_candidates(..., oversize_admission=...)`.
+    their cap is unchanged. The pool is the one the review drew from: model-drawn outlines
+    (`geometry_source != "osm"`) above `max_candidate_m2` that are new leads against the
+    review's `mapped_reference` at its `min_distance_m` (`export.new_lead_mask`, the
+    export's own rule).
+
+    **Admitted are only the outlines a person judged solar (owner, 2026-11-01)**: those with
+    a `pv` verdict in the block's `review_csv`, matched by `candidate_index` and checked by
+    area, each whole (`p_real_fixed` 1, stratum `reviewed`). An outline nobody has judged
+    stays out of capacity, as does one judged not solar, until it is mapped in OSM. A
+    verdict whose outline is not in this run's pool is an error: the review describes
+    another candidate file. Returns `p_real_fixed` and `oversize_stratum` indexed like
+    `cands`, for `capacity_relevant_candidates(..., oversize_admission=...)`; None when no
+    outline is admitted.
     """
     from earthpv import capacity_calibration as cc
 
@@ -298,24 +304,25 @@ def load_oversize_admission(
     ref = gpd.read_parquet(block["mapped_reference"])[["geometry"]]
     new = new_lead_mask(pool, ref, min_distance_m=float(block["min_distance_m"]))
     pool = pool[new]
-    excluded = list(block.get("excluded_regions") or [])
-    if excluded:
-        settings = Settings.load()
-        _, cfg = resolve_aoi(aoi, settings)
-        adm1 = fetch_geoboundaries(_iso3_for(cfg), "ADM1").to_crs("EPSG:4326")
-        unknown = set(excluded) - set(adm1["name"])
-        if unknown:
-            raise ValueError(f"{aoi}: oversize review excludes unknown regions {sorted(unknown)}")
-        bad = adm1[adm1["name"].isin(excluded)].geometry.union_all()
-        rp = pool.geometry.representative_point()
-        pool = pool[~shapely.contains_xy(bad, rp.x.values, rp.y.values)]
+    # `excluded_regions` kept the sampled share out of regions where the review found
+    # terrain, not parks; a person's verdict on one outline outranks it, so it no longer
+    # filters what is admitted.
+    rev = pd.read_csv(block["review_csv"])
+    pv = rev[rev["verdict"].fillna("") == "pv"]
+    found = pv["candidate_index"].isin(pool.index)
+    if not found.all():
+        raise ValueError(
+            f"{aoi}: {int((~found).sum())} outlines judged solar in {block['review_csv']} are "
+            "not in this run's pool of outlines above the cap (another candidate file?)")
+    area = pool.loc[pv["candidate_index"], "area_m2"].to_numpy(float)
+    if not np.allclose(area, pv["area_m2"].to_numpy(float), rtol=1e-6, atol=1.0):
+        raise ValueError(f"{aoi}: {block['review_csv']}: a reviewed outline's area differs "
+                         "from the candidate it names (another candidate file?)")
+    if pv.empty:
+        return None
     p = cc.oversize_review_p_real(block)
-    census = pool["area_m2"].to_numpy(float) >= float(block["census_min_area_m2"])
-    out = pd.DataFrame({
-        "oversize_stratum": np.where(census, "census", "sample"),
-        "p_real_fixed": np.where(census, p["census"], p["sample"]),
-    }, index=pool.index)
-    return out
+    return pd.DataFrame({"oversize_stratum": "reviewed", "p_real_fixed": p["reviewed"]},
+                        index=pd.Index(pv["candidate_index"].to_numpy(), name=pool.index.name))
 
 
 def capacity_relevant_candidates(
@@ -381,13 +388,13 @@ def capacity_relevant_candidates(
       so on its own this figure is about half the credited area, and Best takes the
       Verified one through its per-cell floor.
 
-    **And model outlines a manual review admits (2026-10-28, docs/results/india.md).**
-    With `oversize_admission` (`load_oversize_admission`, present only where the AOI's
-    calibration table carries an `oversize_review`), a model-drawn outline above the cap
-    with no mapped solar nearby is kept, placed as ground, and carries `p_real_fixed` (its
-    stratum's reviewed share real) and `oversize_stratum`. In India the cap had kept about
-    29 GWp of real, unmapped parks out of Best. Callers that only describe the size-bin
-    population (`calibrate-candidates`) do not pass it.
+    **And model outlines a person judged solar (2026-10-28, docs/results/india.md; one by
+    one since 2026-11-01).** With `oversize_admission` (`load_oversize_admission`, present
+    only where the AOI's calibration table carries an `oversize_review`), a model-drawn
+    outline above the cap with no mapped solar nearby and a `pv` verdict is kept, placed as
+    ground, and carries `p_real_fixed` (1) and `oversize_stratum` (`reviewed`). An outline
+    nobody has judged stays out. Callers that only describe the size-bin population
+    (`calibrate-candidates`) do not pass it.
     """
     stats = {
         "n_oversize_excluded": 0, "oversize_area_m2": 0.0,
@@ -468,10 +475,11 @@ def capacity_relevant_candidates(
                 stats["n_osm_oversize_dedup_dropped"], len(osm_over),
                 stats["osm_oversize_dedup_dropped_area_m2"] / 1e6,
             )
-    # Model outlines above the cap that a manual review admitted (`load_oversize_admission`):
-    # new leads, priced at their stratum's reviewed share real rather than a size bin, and
-    # always a site (ground) for the same reason an exempted OSM outline is.
+    # Model outlines above the cap that a person judged solar (`load_oversize_admission`):
+    # new leads, priced whole rather than by a size bin, and always a site (ground) for the
+    # same reason an exempted OSM outline is.
     if oversize_admission is not None and len(oversize_admission):
+        from earthpv.capacity_calibration import OVERSIZE_STRATA
         adm = oversize_admission.reindex(cands.index)
         admitted = over & ~is_osm_over & adm["p_real_fixed"].notna()
         cands["p_real_fixed"] = np.where(admitted, adm["p_real_fixed"], np.nan)
@@ -481,16 +489,15 @@ def capacity_relevant_candidates(
         exempt |= admitted
         stats["n_oversize_admitted"] = int(admitted.sum())
         stats["oversize_admitted_area_m2"] = float(cands.loc[admitted, "area_m2"].sum())
-        for s in ("census", "sample"):
+        for s in OVERSIZE_STRATA:
             m = admitted & (cands["oversize_stratum"] == s)
             stats[f"n_oversize_admitted_{s}"] = int(m.sum())
             stats[f"oversize_admitted_{s}_area_m2"] = float(cands.loc[m, "area_m2"].sum())
         log.warning(
             "Oversize review: %d model outlines above %.0f m2 (%.2f km2) with no mapped solar "
-            "nearby ADMITTED to capacity at their reviewed share real (census %d, sample %d)",
+            "nearby ADMITTED to capacity, each judged solar by a person",
             stats["n_oversize_admitted"], max_candidate_m2,
             stats["oversize_admitted_area_m2"] / 1e6,
-            stats["n_oversize_admitted_census"], stats["n_oversize_admitted_sample"],
         )
     drop = over & ~exempt
     stats["n_oversize_excluded"] = int(drop.sum())

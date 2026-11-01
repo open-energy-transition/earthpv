@@ -10,7 +10,7 @@ hide:
   <span class="atlas-switch__label">Atlas</span>
   <span class="atlas-switch__tier atlas-switch__tier--gold" title="Installations above and below the 400 m2 floor, calibrated on ground truth or a register">Gold</span>
   <a href="../atlas/">Pakistan</a>
-  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or mapping leads not yet all checked, or model not yet retrained on them">Bronze</span>
+  <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or not yet enough leads mapped in OpenStreetMap to localize the model">Bronze</span>
   <a href="../atlas-germany/">Germany</a>
   <a href="../atlas-france/">France</a>
   <span aria-current="page">Egypt</span>

@@ -48,13 +48,15 @@ silently drop the section it was meant to fill):
     validation:                            # the calibration tier, when it is a judgement
       score: silver                        # gold | silver | bronze; beats the derived tier
       note: "Register-checked above 400&nbsp;m&sup2;"   # replaces the badge's sub-line
-      leads_checked:                       # every lead in a lead file has a human verdict
+      leads_checked:                       # a record: every lead in a lead file has a verdict
         made: "2026-10-31"                 # that file's `made` in configs/atlas_leads.json
         by: owner                          # who checked or declared them checked
         date: "2026-10-31"                 # when
         note: "..."                        # optional: how, where the verdicts are
       retrained_on_leads:                  # the flywheel has turned once
-        leads: "2026-07-16"                # the first model's lead file, by its date
+        leads: "2026-07-16"                # the lead file worked through, by its date
+        share: 0.5                         # share of its leads with a verdict (>= 1/3)
+        blobs_share: 0.5                   # same for its blobs; default: `share`
         model: v16_combined_pakistan       # the localized model trained on that mapping
         by: owner                          # who declared it
         date: "2026-11-01"                 # when
@@ -73,20 +75,19 @@ disk: Germany has a calibrated small-installation half, which would make it Gold
 half fails its own register check, so the owner placed it at Silver (2026-10-22). An
 explicit `--validation-score` on `earthpv atlas` still wins over this.
 
-`validation.leads_checked` is the other half of Silver and Gold (owner, 2026-10-31): every
-lead in the country's mapping-lead file must have been checked by a human. Like a quadrat's
-Rule-1 status it is a declaration, not something code can derive, and it names the lead
-file it covers by its `made` date, so a rebuilt lead file is unchecked until someone says
-otherwise. Without it `atlas.resolve_validation_badge` shows Bronze whatever the tier
-earned (see `atlas.leads_checked`).
+`validation.retrained_on_leads` is the other half of Silver and Gold (owner, 2026-11-01): the
+leads have been mapped in OpenStreetMap to localize the model. At least a third
+(`atlas.LEAD_SHARE_MIN`) of a lead file's leads and of its blobs have a human verdict (the
+real ones mapped, the rest judged not solar), and the localized model was trained again on
+the OpenStreetMap solar that includes that mapping. Like a quadrat's Rule-1 status it is a
+declaration, not something code can derive. It names the lead file, the shares and the new
+model, and once declared it stays true: "at least once" does not expire with a new lead
+file. Without it `atlas.resolve_validation_badge` shows Bronze whatever the tier earned
+(`atlas.leads_retrained`).
 
-`validation.retrained_on_leads` is the third (owner, 2026-11-01): the segmentation model has
-been retrained on mapped leads at least once. Over half of the leads from the country's
-first model have a human verdict (the real ones mapped, the rest judged not solar), and the
-localized model was trained a second time on the OpenStreetMap solar that includes that
-mapping. It names the first lead file and the second model, and once declared it stays
-true: "at least once" does not expire with a new lead file. Without it Silver and Gold also
-show Bronze (`atlas.leads_retrained`).
+`validation.leads_checked` records that every lead in the country's current lead file has a
+human verdict, naming the file by its `made` date; the Downloads card says so. From
+2026-10-31 to 2026-11-01 it was a requirement of Silver and Gold.
 
 `status` is the quadrat's completeness declaration, not something code can derive:
 "rule1" = every visible panel mapped (so its no-PV buildings are trustworthy negatives),
@@ -116,7 +117,7 @@ _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confid
              "validation", "start_here"}
 _VALIDATION_KEYS = {"score", "note", "leads_checked", "retrained_on_leads"}
 _LEADS_CHECKED_KEYS = {"made", "by", "date", "note"}
-_RETRAINED_KEYS = {"leads", "model", "by", "date", "note"}
+_RETRAINED_KEYS = {"leads", "share", "blobs_share", "model", "by", "date", "note"}
 _SCORES = {"gold", "silver", "bronze"}
 _CONFIDENCE_KEYS = {"ground_truth", "caveats", "corroboration"}
 _BOX_KEYS = {"name", "stem", "status", "used"}
@@ -147,9 +148,11 @@ class AtlasConfig:
     leads_checked_by: str = ""
     leads_checked_date: str = ""
     leads_checked_note: str = ""
-    # `validation.retrained_on_leads`: the first model's lead file, over half of which has a
-    # human verdict, and the localized model retrained on that mapping. Empty: not yet.
+    # `validation.retrained_on_leads`: a lead file, the share of its leads and of its blobs
+    # with a human verdict, and the localized model retrained on that mapping. Empty: not yet.
     retrained_leads: str = ""
+    retrained_share: float | None = None
+    retrained_blobs_share: float | None = None
     retrained_model: str = ""
     retrained_by: str = ""
     retrained_date: str = ""
@@ -332,6 +335,15 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
                    f"expected {sorted(_RETRAINED_KEYS)}")
     if retrained and not all(retrained.get(k) for k in ("leads", "model", "by", "date")):
         _fail(aoi, "`validation.retrained_on_leads` needs `leads`, `model`, `by` and `date`")
+    shares = {}
+    for k in ("share", "blobs_share"):
+        v = retrained.get(k)
+        if v is None:
+            shares[k] = None
+            continue
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 1:
+            _fail(aoi, f"`validation.retrained_on_leads.{k}` must be a share between 0 and 1")
+        shares[k] = float(v)
 
     return AtlasConfig(
         aoi=aoi,
@@ -350,6 +362,8 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         leads_checked_date=str(checked.get("date") or "").strip(),
         leads_checked_note=str(checked.get("note") or "").strip(),
         retrained_leads=str(retrained.get("leads") or "").strip(),
+        retrained_share=shares["share"],
+        retrained_blobs_share=shares["blobs_share"],
         retrained_model=str(retrained.get("model") or "").strip(),
         retrained_by=str(retrained.get("by") or "").strip(),
         retrained_date=str(retrained.get("date") or "").strip(),

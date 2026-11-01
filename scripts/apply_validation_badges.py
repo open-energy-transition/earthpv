@@ -168,9 +168,9 @@ def stamp(path: Path, score: str, aoi: str = "atlas",
         indent = m_h1.group(1)
         html = (html[:m_h1.start()] + f"{indent}{header_logo_html()}\n"
                 + html[m_h1.start():])
-    # Gold and Silver also need every mapping lead checked and the model retrained on mapped
-    # leads once (atlas.lead_rule_gaps): the badge shows Bronze until they are, keeping the
-    # earned tier as `data-earned`.
+    # Gold and Silver also need a third of the leads mapped and the model retrained on them
+    # once (atlas.lead_rule_gaps): the badge shows Bronze until they are, keeping the earned
+    # tier as `data-earned`.
     shown = shown_validation_score(aoi, score)
     if shown != score:
         sub = lead_rule_sub(aoi, score)

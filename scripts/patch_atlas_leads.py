@@ -6,10 +6,10 @@ scripts/release_leads.py writes), which the Downloads section turns into a link 
 country's lead file on GitHub. A page built before 2026-10-28 has no such key.
 
 This recovers the page's placeholder values exactly as `retemplate_atlas.py` does, sets
-`totals.leads` from the manifest where the builder puts it (after `import_ceiling`),
-re-resolves the calibration badge (Gold and Silver need every lead checked, so a new lead
-file can move a badge either way: `atlas.resolve_validation_badge`), and fills the current
-template. Every other key is re-serialised byte for byte, which is
+`totals.leads` from the manifest where the builder puts it (after `import_ceiling`), with
+its blob file where there is one, re-resolves the calibration badge (Gold and Silver need a
+share of the leads mapped and the model retrained on them, `atlas.resolve_validation_badge`,
+so a new declaration can move a badge either way), and fills the current template. Every other key is re-serialised byte for byte, which is
 checked before writing, so no figure can change. A page whose AOI has no manifest entry
 moves to the new template without a lead link.
 
@@ -65,9 +65,9 @@ def main() -> int:
                 raise ValueError("the data block does not re-serialise byte for byte")
             aoi = args.aoi or aoi_of(page)
             leads = atlas.leads_for_page(aoi)
-            # The badge follows the lead check (atlas.resolve_validation_badge): the tier the
+            # The badge follows the lead rule (atlas.resolve_validation_badge): the tier the
             # page EARNED is read from the badge it carries (`data-earned` when it shows a
-            # lower one), so checking a country's leads restores it without a rebuild.
+            # lower one), so declaring a country's leads mapped restores it without a rebuild.
             m = EARNED.search(values["__VALIDATION_BADGE__"])
             earned = m.group(2) or m.group(1)
             values["__VALIDATION_BADGE__"] = atlas.resolve_validation_badge(aoi, earned)
