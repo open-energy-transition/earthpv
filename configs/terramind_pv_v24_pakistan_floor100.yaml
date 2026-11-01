@@ -1,0 +1,62 @@
+# v16 with Pakistan's mapped arrays of 100-400 m2 trained as PV (2026-10-31).
+#
+# Question (owner): does training segmentation on labels above 100 m2, not 400 m2, find more
+# and better small rooftop arrays in Pakistan? Everything is v16's (corpus rows, images, splits,
+# recipe below) except the masks of Pakistan's TRAIN rows (pakistan_fresh, punjab), rebuilt by
+# scripts/lower_floor_corpus.py: every mapped array of 100-400 m2 in the 2026-10-25 pull is
+# burned as 1 (all_touched, like the big ones) where it was ignore; arrays below 100 m2 stay
+# ignore. 4,048 arrays, 713 of 3,064 chips, +3.9% PV pixels in pakistan_fresh. Small arrays
+# touching any of the 45 registered calibration areas stay ignore (2,633), so those Rule-1
+# areas are a clean small-array test for v16 and this model alike (scripts/small_array_eval.py).
+# Val and buffer masks are v16's, so val/mIoU selects the same way.
+# Corpus: data/chips/combined_pakistan_v24_floor100 -> /home (corpus.json).
+data:
+  index_path: data/chips/combined_pakistan_v24_floor100/index.parquet
+  batch_size: 8
+  num_workers: 4
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # terramind_v1_tiny fits the GTX 1060; bump to _small if a bigger GPU is used.
+    backbone: terramind_v1_tiny
+    backbone_pretrained: true
+    backbone_modalities: [S2L2A]
+    backbone_bands:
+      S2L2A: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+              NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    necks:
+      - name: SelectIndices
+        indices: [2, 5, 8, 11]
+      - name: ReshapeTokensToImage
+        remove_cls_token: false
+      - name: LearnedInterpolateToPyramidal
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 60
+  accumulate_grad_batches: 2
+
+checkpoint_dir: data/models/v24_pakistan_floor100
+patience: 8
+# Same monitor as v5 (val/mIoU), so the two are selected the same way.
+monitor: val/mIoU
+monitor_mode: max
+
+# Training is protected against systemd-oomd restarts: continue from this run's own last.ckpt.
+resume: true

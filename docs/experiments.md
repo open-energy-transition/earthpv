@@ -157,6 +157,7 @@ repository; nothing was deleted on failure.
 | [One segmentation model pooled from every country (v18)](#one-segmentation-model-for-every-country-v18-pooled-2026-10-30) | <span class="outcome negative">rejected</span> | At matched pixel precision it finds fewer installations than v14 over 14 holdouts: rooftop 400-5,000 m<sup>2</sup> 0.474 against 0.573 (+144/-609, p < 1e-60), ground 0.910 against 0.916. It wins only Egypt (23 installations, its own training data) and loses in South Africa and France, whose share of the corpus it halved. As trained; longer training is untested. |
 | [Which training labels teach rooftop PV as background](#which-training-labels-teach-rooftop-pv-as-background-a-per-source-audit-2026-10-30) | <span class="outcome mixed">partial</span> | v14 over 10,473 training chips it never trained on, from 15 sources. Vietnam's chips hold about 10 unmapped PV roofs per mapped rooftop array and Germany's national chips about 16 (83% of registered rooftop units of 72 kWp or more sit on background pixels), against 0.1 to 0.3 in France, South Africa and Pakistan. Poland's labels are clean of it. Supports the harmful-label part of v18's loss for those two sources; a second pooled corpus burns their unlabelled roofs as ignore. |
 | [TerraMind's own input standardisation (v21)](#feeding-terramind-the-input-it-was-pretrained-on-v21-2026-10-30) | <span class="outcome negative">rejected</span> | Every checkpoint saw DN / 10000, never TerraMind's pretraining standardisation. A frozen-feature probe said that cost a lot (held-out token AP 0.469 against 0.737), but fine-tuned with v14's recipe otherwise unchanged it ties v14 on rooftop recall (0.575 against 0.574 at matched precision, p = 0.87) and is 0.6 points behind on ground. It converges in half the epochs; its one regional effect beyond epoch noise is a loss in France. |
+| [Training on arrays down to 100 m<sup>2</sup> (v24)](#training-on-arrays-down-to-100-m2-v24-2026-11-01) | <span class="outcome negative">rejected</span> | v16 retrained with Pakistan's 4,048 mapped arrays of 100 to 400 m<sup>2</sup> burned as PV instead of ignore. At the production threshold it finds more small rooftop arrays in the calibration areas (0.052 against 0.0375 at its later epoch) only because it flags more pixels everywhere (43% more there). At v16's pixel precision it finds 0.032 and 0.036 at its two saved epochs, against 0.0375, and nothing changes below 100 m<sup>2</sup> (about 0.1%). Small rooftop PV stays `roofclf`'s job. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
@@ -2911,6 +2912,77 @@ config `configs/terramind_pv_v21_tmnorm_south_africa.yaml`, runner
 `scripts/run_tmnorm_compare.sh`. Checkpoints in
 `/home/tobi/earthpv_data/models/v21_tmnorm_south_africa/`. Results:
 `results/backbone_compare/v21_tmnorm_vs_v14/`.
+
+### Training on arrays down to 100 m²: v24 (2026-11-01)
+
+The owner asked whether training segmentation on arrays from 100 m² up, instead of 400 m², would
+find more of Pakistan's small rooftop installations, and find them better. `chips.MIN_PV_AREA`
+burns every array below 400 m² as ignore, so no checkpoint has ever had a gradient from one.
+
+**The test.** v24 is v16 with one change. In Pakistan's training chips (`pakistan_fresh` and
+`punjab`), the 4,048 mapped arrays of 100 to 400 m² in the 2026-10-25 pull are burned as PV,
+all-touched as the large ones are, in 713 of 3,064 chips (3.9% more PV pixels). Arrays below
+100 m² stay ignore, and so does every array touching a registered calibration area (2,633), so
+the areas are a clean test for both models. Corpus, images, splits and recipe are v16's; val
+and buffer masks are unchanged, so val/mIoU picks epochs on the same terms. Both of v24's saved
+epochs (26, its best val/mIoU, and 33) were scored against both of v16's (30, shipped, and 38),
+on two sets neither was trained on:
+
+- **44 calibration areas**, Rule-1 complete (every visible panel mapped; Jhang f2, corroborated
+  only, is left out), on production rasters: 2,614 rooftop arrays of 100 to 400 m² and 12,633
+  below 100 m².
+- **v16's Pakistani holdout chips** (the Multan and Punjab val chips and their buffer rings,
+  clear of every training chip): 289 rooftop arrays of 100 to 400 m². The map is incomplete
+  there, so precision is a floor.
+
+Each checkpoint is read at the lowest threshold reaching v16's pixel precision at 0.3 on that
+set, with an exact McNemar test per installation against v16 epoch 30
+(`scripts/small_array_eval.py`).
+
+**It does not find more small arrays.** Calibration areas, at matched pixel precision (0.576):
+
+| | v16 epoch 30 (shipped) | v16 epoch 38 | v24 epoch 26 | v24 epoch 33 |
+| --- | --- | --- | --- | --- |
+| Threshold | 0.3 | 0.15 | 0.6 | 0.9 |
+| Rooftop 100-400 m<sup>2</sup> recall (n = 2,614) | 0.0375 | 0.0375 (+32/-32) | 0.0318 (+15/-30, p = 0.04) | 0.0360 (+19/-23, p = 0.64) |
+| Rooftop below 100 m<sup>2</sup> recall (n = 12,633) | 0.0012 | 0.0010 | 0.0016 | 0.0013 |
+| Ground 100-400 m<sup>2</sup> recall (n = 221) | 0.104 | 0.095 | 0.086 | 0.109 |
+| Rooftop 400 m<sup>2</sup> and up recall (n = 512) | 0.607 | 0.594 | 0.582 (p = 0.047) | 0.617 |
+| Outlines of 400 m<sup>2</sup> or less touching mapped PV | 21 of 34 | 18 of 29 | 15 of 25 | 10 of 35 |
+
+On the holdout chips (matched pixel precision 0.569), rooftop 100-400 m² recall is 0.059 for
+v16 epoch 30, 0.024 for its epoch 38 (+1/-11, p = 0.006), 0.083 for v24 epoch 26 (+10/-3,
+p = 0.09) and 0.059 for v24 epoch 33 (+7/-7). That one hint of a gain rests on 13 arrays and
+one epoch, and the calibration areas, nine times the sample, show the same epoch losing.
+
+**At the production threshold it looks better, misleadingly.** At 0.3, v24 epoch 33 finds 0.052
+of the areas' small rooftop arrays (+52/-14) and epoch 26 finds 0.043 (+30/-15). But both flag
+more pixels at every threshold: 27,925 and 35,564 in the areas at 0.3, against v16's 24,824 (12%
+and 43% more). Raised to v16's precision, the gain is gone. What the labels taught is to fire
+more readily, not to see a 100 m² array in a 10 m pixel.
+
+**Arrays of 400 m² and up.** On Pakistan's three holdouts, as v16 was shipped
+(`compare_backbones.py`, `pakistan_fresh`, `pakistan`, `punjab`), v24 epoch 26 finds more at
+matched precision: 0.756 against 0.740 of 1,318 installations (+52/-31, p = 0.03), mostly
+ground-mount (0.790 against 0.768, +27/-13). Its epoch 33 ties (0.735, +48/-54), and in the
+calibration areas epoch 26 finds fewer large rooftop arrays than v16 (table). v16's own epoch 38
+reaches 0.691 on the same holdouts (+26/-90), so the choice of epoch moves this number more than
+the change does.
+
+**Verdict: rejected.** At equal precision v24 finds the same 3 to 4 in 100 rooftop arrays of 100
+to 400 m² as v16, or fewer, and nothing below 100 m². Small rooftop PV stays `roofclf`'s job; v16
+stays Pakistan's checkpoint and no published number changes. The one positive, the 400 m² holdouts
+at epoch 26, does not survive the second epoch or the calibration areas, so it is no case for a
+swap. Only the labels changed here: a model built for small objects (finer tokens, a loss weighted
+toward them) was not part of this test.
+
+Code: `scripts/lower_floor_corpus.py` (re-burns a corpus's training masks from a lower floor,
+calibration areas held out), `scripts/small_array_eval.py` (both test sets, every threshold from
+one inference pass, bins down to 0-100 m²), config `configs/terramind_pv_v24_pakistan_floor100.yaml`,
+runner `scripts/run_floor100_v24.sh`. Checkpoints in
+`/home/tobi/earthpv_data/models/v24_pakistan_floor100/`. Results:
+`results/small_array_eval/v24_floor100_vs_v16/` and
+`results/backbone_compare/v24_floor100_vs_v16/`.
 
 ## The partial result worth watching
 

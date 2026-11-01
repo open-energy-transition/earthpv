@@ -45,7 +45,9 @@ kept; the rest are dropped rather than zero-padded.
 **Positive threshold.** `MIN_PV_AREA` in `chips.py` sets the smallest labelled array that
 is burned as a positive. Arrays below it are burned as `ignore = -1`, not as negatives, so
 the loss never learns that a small real array is background. Changing it means rebuilding
-chips and retraining.
+chips and retraining. Lowering it to 100 m<sup>2</sup> in Pakistan was tried
+([v24](../experiments.md#training-on-arrays-down-to-100-m2-v24-2026-11-01)): at the same
+pixel precision the model found no more small rooftop arrays than before.
 
 ## What it recovers
 
