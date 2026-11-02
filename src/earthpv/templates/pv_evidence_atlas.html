@@ -432,9 +432,9 @@
     background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0 2px, transparent 2px 5px); }
   .comp-swatch.extrap { background: repeating-linear-gradient(45deg,
     var(--accent) 0 2px, var(--panel) 2px 5px); }
-  /* Size bins whose detector did not run: the chart's dashed "not measured" frame. */
-  .comp-swatch.not-measured { background: var(--panel-2); border: 1px dashed var(--muted);
-    box-sizing: border-box; }
+  /* A size bin whose detector did not run: the bar's top fades out, open-ended. */
+  .comp-swatch.not-measured { background: linear-gradient(to top, var(--accent), transparent);
+    border: 0; }
   /* "Against official and published figures": this atlas's bars amber, every other
      figure's grey; a pale bar with an outline is a bound (Verified, the floor) or context
      (customs imports) rather than a count of what is installed. */
@@ -3204,12 +3204,16 @@ out geom;</div>
   // Below 400 m2 the chart is whole only where both detectors for that range ran: roofclf
   // for rooftops (HAS_SMALL_ROOF) and the farm detector for ground PV beside fields
   // (HAS_GROUND). Where one did not, those bins hold only OSM-mapped installations and the
-  // few small arrays segmentation outlines, so the chart frames them "not measured" (a
-  // dashed frame, not a hatch: hatching is ground-mount) rather than letting a short bar
-  // read as a small market. Capacity below 400 m2 estimated as a total, with no size per
+  // few small arrays segmentation outlines, so a short bar there must not read as a small
+  // market. Such a bar continues past its measured top, in the same column, as a fade that
+  // goes invisible with no top edge: more is missing, by an unknown amount, so its height is
+  // fixed and measures nothing (owner, 2026-11-02). A bar too short to see carries nothing:
+  // the caption, the tiles and the text say "not measured" there.
+  // Capacity below 400 m2 estimated as a total, with no size per
   // installation (farm ground PV; a rooftop half priced per cell), gets a column of its own
   // (`totals.size_unbinned_*_mwp`), not a share of the two bins it cannot be split between.
   const SIZE_UNSPLIT = "<400 m², not split";
+  const FADE_MIN_SHARE = 0.015;  // of the tallest bar: about 4 px, below it there is no bar to continue
   function sizeMissing(){
     return [HAS_SMALL_ROOF ? null : "rooftop", HAS_GROUND ? null : "farm ground"].filter(Boolean);
   }
@@ -3235,14 +3239,25 @@ out geom;</div>
     if (ground && !HAS_GROUND) return `farm ground PV not measured: ${SIZE_FLOOR_NOTE}`;
     return null;
   }
-  // The chart's own header over the frame: what is missing, then what the bars hold.
+  // The bins whose bar fades on: a detector is missing there and the bar can be seen. The
+  // unsplit column is never one: its capacity has no size to continue.
+  function sizeFadeBins(){
+    if (!sizeMissing().length) return [];
+    const totals = new Map();
+    sizeRows().forEach(r => totals.set(r.bin, (totals.get(r.bin) || 0) + r.mwp));
+    const top = Math.max(0, ...totals.values());
+    return [...totals.keys()].filter(b => b !== SIZE_UNSPLIT && binBelow400(b)
+      && totals.get(b) > 0 && totals.get(b) >= FADE_MIN_SHARE * top);
+  }
+  // The chart's own header: what is missing, then what the bars hold.
   function sizeHeadLines(){
     const missing = sizeMissing();
     if (!missing.length) return [];
-    const what = !HAS_SMALL_ROOF && !HAS_GROUND ? "the bars hold"
-      : !HAS_SMALL_ROOF ? "rooftop here is" : "ground-mount here is";
+    const what = !HAS_SMALL_ROOF && !HAS_GROUND ? "The bars hold"
+      : !HAS_SMALL_ROOF ? "Rooftop here is" : "Ground-mount here is";
     return [`Below 400 m²: ${missing.join(" and ")} PV not measured`,
-      `${what} only OSM-mapped installations and arrays the model outlines`];
+      `${what} only OSM-mapped installations and arrays the model outlines`
+      + (sizeFadeBins().length ? "; a fading top means more is missing, by an unknown amount" : "")];
   }
   function wrapWords(text, maxChars){
     const out = [];
@@ -3291,7 +3306,7 @@ out geom;</div>
     // Columns are capped near 28 px however wide the card is: the leftover is air, not
     // a fatter bar.
     const padding = Math.min(0.85, Math.max(0.25, 1 - 28 / band));
-    const sid = `szh${++chartSeq}`, eid = `sze${chartSeq}`;
+    const sid = `szh${++chartSeq}`, eid = `sze${chartSeq}`, uid = `szu${chartSeq}`;
     const rows = sizeRows();
     const totals = domain.map(bin => ({bin,
       total: rows.filter(r => r.bin === bin).reduce((a, r) => a + r.mwp, 0)}));
@@ -3299,25 +3314,45 @@ out geom;</div>
     // Bin labels run up to ~11 characters (the unsplit column's in two lines); below ~78 px
     // a column they would collide, so they turn instead.
     const rotate = band < 78;
-    // The not-measured frame's header sits in the top margin, below the y axis's label and
-    // above every bar and total label; on a narrow chart it may run past the frame.
+    // The header over the band sits in the top margin, below the y axis's label and above
+    // every bar and total label; on a narrow chart it may run past the band.
     const small = domain.filter(binBelow400);
     const head = small.length ? sizeHeadLines() : [];
-    const maxChars = Math.max(16, Math.floor((width - mL - mR - 12) / 6.4));
+    const maxChars = Math.max(16, Math.floor((width - mL - mR - 34) / 6.7));
     const headLines = head.flatMap((t, i) => wrapWords(t, maxChars).map(text => ({text, strong: i === 0})));
     const HEAD_Y0 = 18;
     const headH = headLines.length ? HEAD_Y0 + headLines.length * 13 + 6 : 0;
-    const frame = (index, scales, values, dims) => {
-      const x = scales.x, step = x.step(), gap = step - x.bandwidth();
-      const x0 = x(small[0]) - gap / 2, x1 = x(small[small.length - 1]) + x.bandwidth() + gap / 2;
-      const top = headH + 2, bottom = dims.height - dims.marginBottom;
+    const fadeBins = sizeFadeBins();
+    const totalOf = bin => totals.find(d => d.bin === bin).total;
+    // Room above the tallest bar that fades, so the fade is never cut off.
+    const yTop = Math.max(0, ...totals.map(d => d.total), ...fadeBins.map(b => totalOf(b) * 1.2));
+    // Rooftop's colour where rooftop is missing, ground-mount's where only that is.
+    const fadeColour = HAS_SMALL_ROOF ? P.accentDim : P.accent;
+    const FADE_H = 46;
+    const fades = (index, scales) => {
+      const g = el("g", {"aria-label": "bars below 400 m² continue by an unknown amount"});
+      const defs = el("defs", {});
+      g.appendChild(defs);
+      fadeBins.forEach((bin, i) => {
+        const yBar = scales.y(totalOf(bin)), id = `${uid}f${i}`;
+        const lg = el("linearGradient", {id, gradientUnits: "userSpaceOnUse", x1: 0, x2: 0,
+          y1: yBar - FADE_H, y2: yBar});
+        lg.appendChild(el("stop", {offset: 0, "stop-color": fadeColour, "stop-opacity": 0}));
+        lg.appendChild(el("stop", {offset: 1, "stop-color": fadeColour, "stop-opacity": 0.75}));
+        defs.appendChild(lg);
+        // One pixel into the bar, so no seam shows at its measured top.
+        g.appendChild(el("rect", {x: scales.x(bin), y: yBar - FADE_H, width: scales.x.bandwidth(),
+          height: FADE_H + 1, fill: `url(#${id})`}));
+      });
+      return g;
+    };
+    const caption = (index, scales) => {
       const g = el("g", {"aria-label": "not measured below 400 m²"});
-      g.appendChild(el("rect", {x: x0, y: top, width: x1 - x0, height: bottom - top,
-        fill: P.panel2, stroke: P.muted, "stroke-dasharray": "4 3", rx: 4}));
+      const x = scales.x, x0 = x(small[0]) - (x.step() - x.bandwidth()) / 2;
       headLines.forEach((l, i) => {
-        // Plot sets text-anchor: middle on its svg; the header reads from the frame's edge.
+        // Plot sets text-anchor: middle on its svg; the header reads from the first bin's edge.
         const t = el("text", {x: x0 + 2, y: HEAD_Y0 + 10 + i * 13, "text-anchor": "start",
-          fill: l.strong ? P.ink : P.muted, "font-weight": l.strong ? 600 : null});
+          fill: l.strong ? P.ink2 : P.muted, "font-weight": l.strong ? 600 : null});
         t.textContent = l.text;
         g.appendChild(t);
       });
@@ -3331,13 +3366,14 @@ out geom;</div>
       x: {domain, label: "Installation size", padding, tickSize: 0,
           tickFormat: d => d === SIZE_UNSPLIT ? "<400 m²\nnot split" : d,
           tickRotate: rotate ? -38 : 0, labelOffset: rotate ? 70 : 36},
-      y: {label: "MWp", tickFormat: compact, nice: true},
+      y: {label: "MWp", tickFormat: compact, nice: true, domain: [0, yTop]},
       color: {domain: parts, range: [P.accent, `url(#${eid})`, `url(#${sid})`]},
       marks: [
         hatchDefs(sid, P.accentDim, "rgba(0,0,0,0.38)", -45),
         hatchDefs(eid, P.panel, P.accent, 45),
-        headLines.length ? frame : null,
+        headLines.length ? caption : null,
         Plot.gridY({stroke: P.hair, strokeOpacity: 1}),
+        fadeBins.length ? fades : null,
         Plot.barY(rows, Plot.stackY({x: "bin", y: "mwp", fill: "part", order: parts,
           insetTop: 1, insetBottom: 1,
           channels: {Installations: {value: "n", label: "Installations"},
@@ -3345,7 +3381,10 @@ out geom;</div>
           tip: interactive ? {format: {x: true, fill: true, y: v => `${fmt5(v)} MWp`,
             Installations: v => v == null ? "" : fmt(v), Note: true}} : undefined})),
         Plot.text(totals, {x: "bin", y: "total", text: d => d.total > 0 ? compact(d.total) : "", dy: -8,
-          fill: P.ink2, fontWeight: 600}),
+          fill: P.ink2, fontWeight: 600, filter: d => !fadeBins.includes(d.bin)}),
+        // On the fade, a halo keeps the figure readable.
+        Plot.text(totals, {x: "bin", y: "total", text: d => compact(d.total), dy: -8,
+          fill: P.ink, fontWeight: 600, stroke: P.panel, filter: d => fadeBins.includes(d.bin)}),
         Plot.ruleY([0], {stroke: P.muted}),
       ],
     });
@@ -4077,7 +4116,7 @@ out geom;</div>
     const head = sizeHeadLines();
     const note = document.getElementById("btableNote");
     if (note && head.length){
-      note.textContent = `* ${head[0]}: ${SIZE_FLOOR_NOTE}.`;
+      note.textContent = `* ${head[0]}. These figures are ${SIZE_FLOOR_NOTE}.`;
       note.hidden = false;
     }
   }
@@ -4211,15 +4250,17 @@ out geom;</div>
     document.getElementById("sizeDesc").innerHTML = sizeDescHtml();
     const head = sizeHeadLines();
     if (head.length){
-      document.getElementById("nmKeyText").textContent = `${head[0].replace("Below", "below")} (dashed frame)`;
-      document.getElementById("nmKey").hidden = false;
+      if (sizeFadeBins().length){
+        document.getElementById("nmKeyText").textContent = "fading top: more missing, amount unknown";
+        document.getElementById("nmKey").hidden = false;
+      }
     }
     if (!DATA.bins.some(b => (b.roof_extrapolated_mwp || 0) > 0)) document.getElementById("extrapKey").style.display = "none";
     drawSizeTable();
     registerPlot("sizes", "chartmount", needsPlot(sizeChart), {
       title: () => `${AOI}: PV capacity by installation size`,
       subtitle: () => `Rooftop (solid) and ground-mount (hatched) stacked per size bin, MWp. ${totalLine()}.`
-        + (head.length ? ` ${head[0]}: ${SIZE_FLOOR_NOTE}.` : ""),
+        + (head.length ? ` ${head[0]}. These figures are ${SIZE_FLOOR_NOTE}.` : ""),
       csv: sizeCSV,
     });
   } else if (sizeSection) {
