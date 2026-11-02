@@ -12,10 +12,12 @@ the calibration badge its own atlas carries (`atlas.VALIDATION_TIERS`, set by
 the navigation and the badge on the map cannot disagree:
 
 - **Gold**: installations above and below the 400 m2 floor, the small half calibrated on
-  areas mapped panel by panel (Pakistan). Germany's register-calibrated half would qualify
-  on paper, but fails its own register check, so it is Silver (`configs/atlas/germany.yaml`).
-- **Silver**: 400 m2 and up only, validated against local hand-mapped ground truth; no
-  calibrated estimate below the floor.
+  areas mapped panel by panel or a register, and the rooftop classifier checked by people by
+  random validation and point data inspection (owner, 2026-11-02). No country yet. A judgement
+  set in `configs/atlas/<aoi>.yaml`, never derived from files on disk.
+- **Silver**: 400 m2 and up validated against local hand-mapped ground truth; any estimate
+  below the floor is not yet checked. Pakistan's and Germany's small halves stop here for
+  that reason (Germany's fails its own register check; `configs/atlas/<aoi>.yaml`).
 - **Bronze**: 400 m2 and up only, with no local calibration.
 
 Gold and Silver also need the leads mapped in OpenStreetMap to localize the model (owner,
@@ -48,9 +50,10 @@ DOCS = REPO / "docs"
 sys.path.insert(0, str(REPO / "src"))
 
 TIERS = {
-    "gold": ("Gold", "Installations above and below the 400 m2 floor, calibrated on ground truth or a register"),
-    "silver": ("Silver", "400 m2 and up only, validated against local ground truth; leads "
-               "mapped in OpenStreetMap to localize the model"),
+    "gold": ("Gold", "Installations above and below the 400 m2 floor, calibrated on ground "
+             "truth or a register, with the rooftop classifier checked by people"),
+    "silver": ("Silver", "400 m2 and up validated against local ground truth; leads mapped in "
+               "OpenStreetMap to localize the model; any estimate below 400 m2 not yet checked"),
     "bronze": ("Bronze", "400 m2 and up only, not yet calibrated, or not yet enough leads "
                "mapped in OpenStreetMap to localize the model"),
 }
@@ -122,6 +125,18 @@ WARNING = {
 # Kept short (owner request 2026-10-24: the banner at half its former length); the
 # atlas's own confidence section carries the detail.
 TIER_NOTE = {
+    # Silver by the owner's decision (2026-11-02): the small-installation estimate is
+    # calibrated, but the checks Gold asks of the rooftop classifier are not done.
+    "Pakistan": (
+        "<strong>Silver atlas: the small-installation estimate is not yet checked by "
+        "people.</strong> Installations of about 400 m&sup2; (70 kWp) and up are validated "
+        "against hand-mapped ground truth. The estimate below that is calibrated on areas "
+        "mapped panel by panel, but nobody has yet checked the classifier's results on cells "
+        "drawn at random or building by building, so read Best as an estimate still to be "
+        "confirmed.",
+        "<strong>You can help:</strong> map every panel inside a calibration area. Sparsely "
+        "built areas help most: the estimate there rests on the fewest mapped areas.",
+    ),
     "Germany": (
         "<strong>Silver atlas: the small-installation estimate is not yet validated.</strong> "
         "Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR). "
@@ -366,6 +381,18 @@ CRITERIA = {
          "That estimate survives the check against its own ground truth: leaving each "
          "mapped area out in turn, or the register's municipal totals.",
          "owner judgement, `validation.score`"),
+        ("The rooftop classifier checked by people",
+         "A person has checked the classifier's results on the national scoring behind the "
+         "page, in two ways. <em>Random validation:</em> cells drawn at random from the whole "
+         "country, away from the calibration areas, are reviewed on imagery and the real and "
+         "false detections logged, because calibration areas are chosen on purpose and a "
+         "classifier that does well there may not do well elsewhere. <em>Point data "
+         "inspection:</em> the classifier's score for every building, exported as points, is "
+         "looked through on a map for where it fires and where it stays silent. Until both "
+         "are recorded the atlas shows Silver.",
+         "`scripts/tile_roofclf_detections_geojson.py`, "
+         "`results/roofclf_random_validation_log.csv`, `scripts/export_roofclf_points.py`; "
+         "owner judgement, `validation.score`"),
     ],
 }
 # The flywheel figure's alt text, as docs/how-it-works.md carries it (build_docs_figures.py
@@ -398,7 +425,7 @@ def quality_page() -> str:
     heads = {"bronze": "Bronze: every published atlas",
              "silver": "Silver: Bronze, plus local ground truth and leads mapped to "
                        "localize the model",
-             "gold": "Gold: Silver, plus installations below 400 m&sup2;"}
+             "gold": "Gold: Silver, plus installations below 400 m&sup2;, checked by people"}
     for tier in ("bronze", "silver", "gold"):
         out += [f"## {heads[tier]}", "", "| Criterion | What it means | Where it is set |",
                 "| --- | --- | --- |"]
@@ -447,7 +474,9 @@ def quality_page() -> str:
             "- **Gold: the wheel reaches below the floor.** Installations under 400 m&sup2; "
             "are too small for the model to outline, so no lead finds them. Calibration areas "
             "mapped panel by panel (station 4), or a legally complete register (station 5), "
-            "are what the small-installation estimate is fitted on and checked against.", "",
+            "are what the small-installation estimate is fitted on and checked against. People "
+            "then check the rooftop classifier's results directly, on cells drawn at random and "
+            "on its score for every building.", "",
             "Each further turn adds labels the model learns from and areas the estimates are "
             "fitted on, so a country moves up by being mapped. The first turn counts for good.",
             ""]

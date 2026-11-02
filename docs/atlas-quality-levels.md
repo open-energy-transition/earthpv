@@ -25,12 +25,13 @@ Every country atlas carries a calibration badge in its corner: **Gold**, **Silve
 | **Local ground truth** | The model's precision table is fitted against the country's own mapped installations as a recall reference, or the country has calibration areas in use where every visible panel is mapped (Rule 1). | `atlas.derive_validation_score` |
 | **Leads mapped to localize the model** | The mapping flywheel has turned at least once: people have checked about a third of a lead file's leads, working down from the top, and a third of its very large outlines, largest first, mapping the real installations in OpenStreetMap and judging the rest not solar; and the localized segmentation model has been trained again on the country's OpenStreetMap solar, now holding that mapping. Until this is recorded the atlas shows Bronze, whatever its calibration earns. | `validation.retrained_on_leads` in `configs/atlas/<aoi>.yaml` |
 
-## Gold: Silver, plus installations below 400 m&sup2;
+## Gold: Silver, plus installations below 400 m&sup2;, checked by people
 
 | Criterion | What it means | Where it is set |
 | --- | --- | --- |
 | **Installations below 400 m&sup2; calibrated** | An estimate below the 400 m&sup2; floor, where 10 m pixels cannot outline an array: the rooftop classifier priced by a coverage ratio fitted on calibration areas mapped panel by panel, its interval from resampling those areas, or a legally complete national register. | `roofclf`, `sub400_capacity.py` |
 | **The small-installation estimate holds up** | That estimate survives the check against its own ground truth: leaving each mapped area out in turn, or the register's municipal totals. | owner judgement, `validation.score` |
+| **The rooftop classifier checked by people** | A person has checked the classifier's results on the national scoring behind the page, in two ways. <em>Random validation:</em> cells drawn at random from the whole country, away from the calibration areas, are reviewed on imagery and the real and false detections logged, because calibration areas are chosen on purpose and a classifier that does well there may not do well elsewhere. <em>Point data inspection:</em> the classifier's score for every building, exported as points, is looked through on a map for where it fires and where it stays silent. Until both are recorded the atlas shows Silver. | `scripts/tile_roofclf_detections_geojson.py`, `results/roofclf_random_validation_log.csv`, `scripts/export_roofclf_points.py`; owner judgement, `validation.score` |
 
 ## When a lead counts as checked
 
@@ -49,6 +50,6 @@ The levels say how far a country has come round the [mapping flywheel](how-it-wo
 
 - **Bronze: the wheel is set up.** A model trained on the country's own OpenStreetMap solar detects arrays from space (station 1), and the atlas is published with its mapping leads and the areas to map (station 2).
 - **Silver: the wheel has turned once.** People check a third of the leads and map the real installations (station 3), and the model is retrained on what they mapped (station 6), so its next leads come from a model that has learned the country's own false alarms and missed arrays. The figures are checked against local ground truth: mapped installations, complete calibration areas (station 4) or a register (station 5).
-- **Gold: the wheel reaches below the floor.** Installations under 400 m&sup2; are too small for the model to outline, so no lead finds them. Calibration areas mapped panel by panel (station 4), or a legally complete register (station 5), are what the small-installation estimate is fitted on and checked against.
+- **Gold: the wheel reaches below the floor.** Installations under 400 m&sup2; are too small for the model to outline, so no lead finds them. Calibration areas mapped panel by panel (station 4), or a legally complete register (station 5), are what the small-installation estimate is fitted on and checked against. People then check the rooftop classifier's results directly, on cells drawn at random and on its score for every building.
 
 Each further turn adds labels the model learns from and areas the estimates are fitted on, so a country moves up by being mapped. The first turn counts for good.

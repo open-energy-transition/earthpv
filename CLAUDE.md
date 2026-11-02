@@ -831,7 +831,12 @@ model). `atlas.lead_rule_gaps` names what a page lacks. `docs/atlas-quality-leve
 and ends on the flywheel figure the levels follow. Pakistan's v16 is declared retrained on
 v3's 2026-07-16 lead file at `share: 0.5` (the owner's "over half", blobs counted among the
 leads then; 385 of its 4,435 leads are mapped in v16's pull); France, Germany and Yemen earn
-Silver and show Bronze until they declare one. **Germany earns Silver** (its
+Silver and show Bronze until they declare one. **Gold also needs roofclf checked by people
+(owner, 2026-11-02)**: random validation (`results/roofclf_random_validation_log.csv`) and
+point data inspection (`scripts/export_roofclf_points.py`) on the scoring behind the page.
+`derive_validation_score` stops at Silver, so Gold is only ever declared (`validation.score:
+gold`, or `--validation-score`). **No atlas is Gold today; Pakistan is Silver** (config, its
+own `TIER_NOTE`) until both are recorded; no figure changed. **Germany earns Silver** (its
 register-calibrated small half fails its own register check). **Yemen earns Silver**: its farm
 areas calibrate farm ground PV only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
 `used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the
@@ -1132,7 +1137,7 @@ QUEUE first when removing compute markers.
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
-| Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,128.5 | roofclf half, probability-weighted; see "Density stage" |
+| Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,128.5 | roofclf half, probability-weighted, Silver until people have checked it; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked) |
 | France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
 | India | `v5_combined_france` | 70,523.4 / 103,036.9 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count |

@@ -71,9 +71,12 @@ in the ranking by itself. `start_here: none` keeps the mapping order and stars n
 a country where no box should be singled out (Yemen, owner, 2026-10-31).
 
 `validation` exists for the cases `atlas.derive_validation_score` cannot judge from files on
-disk: Germany has a calibrated small-installation half, which would make it Gold, but that
-half fails its own register check, so the owner placed it at Silver (2026-10-22). An
-explicit `--validation-score` on `earthpv atlas` still wins over this.
+disk. Gold is one, and can only be set here or by `--validation-score`: it needs people to
+have checked the rooftop classifier by random validation and point data inspection (owner,
+2026-11-02), so the derivation stops at Silver. `note` says why a country stops where it
+does: Germany's small-installation half fails its own register check (2026-10-22), and
+Pakistan's has not been checked by people yet. An explicit `--validation-score` on `earthpv
+atlas` still wins over this.
 
 `validation.retrained_on_leads` is the other half of Silver and Gold (owner, 2026-11-01): the
 leads have been mapped in OpenStreetMap to localize the model. At least a third

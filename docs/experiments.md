@@ -761,6 +761,14 @@ Pakistan's turn is recorded at `share: 0.5`, the owner's "over half", and it sta
 France, Germany and Yemen still show Bronze. The banner says it softly, as the owner asked:
 leads need to be mapped in OpenStreetMap to localize the model.
 
+**Gold also needs the rooftop classifier checked by people** (owner, 2026-11-02): random
+validation (cells drawn at random away from the calibration areas, logged in
+`results/roofclf_random_validation_log.csv`) and point data inspection (the per-building
+scores from `scripts/export_roofclf_points.py`). Every row of that log is blank, so Pakistan
+moved from Gold to Silver with no figure changed, and no atlas is Gold.
+`atlas.derive_validation_score` now stops at Silver: a person's check cannot be read from
+files on disk, so Gold can only be declared (`validation.score` in the country's config).
+
 ## What did not work
 
 ### Two-season stacking

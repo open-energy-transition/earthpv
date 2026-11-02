@@ -63,20 +63,24 @@ EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.htm
 # verdict, and the segmentation model retrained on that mapping at least once
 # (`leads_retrained`, `LEAD_SHARE_MIN`), applied by `resolve_validation_badge`. It replaced
 # "every lead in the current file checked" (2026-10-31 to 2026-11-01; `leads_checked` is now
-# a record the Downloads card states). The full list of criteria is
-# docs/atlas-quality-levels.md (scripts/build_atlas_pages.py writes it).
+# a record the Downloads card states).
+# Gold also needs the rooftop classifier checked by people, by random validation and point
+# data inspection (owner, 2026-11-02), which no file on disk can show: `validation.score: gold`
+# in the country's config declares it, and `derive_validation_score` stops at Silver. The full
+# list of criteria is docs/atlas-quality-levels.md (scripts/build_atlas_pages.py writes it).
 VALIDATION_TIERS = {
     "gold": (
         "Gold",
         "Fully validated and trained using OpenStreetMap imagery and labels. Covers "
-        "installations above and below the 400 m² satellite floor. Enough mapping leads "
+        "installations above and below the 400 m² satellite floor, with the rooftop "
+        "classifier checked by people on random cells and point data. Enough mapping leads "
         "mapped in OpenStreetMap to localize the model.",
     ),
     "silver": (
         "Silver",
-        "Above 400 m² only. Segmentation localized and validated against "
-        "OpenStreetMap ground truth. No calibrated estimate below the floor. Enough "
-        "mapping leads mapped in OpenStreetMap to localize the model.",
+        "Segmentation localized and validated against OpenStreetMap ground truth above "
+        "400 m². Any estimate below the floor is not yet checked. Enough mapping leads "
+        "mapped in OpenStreetMap to localize the model.",
     ),
     "bronze": (
         "Bronze",
@@ -288,13 +292,15 @@ def derive_validation_score(aoi: str, has_sub400: bool,
                             labels_dir: Path = Path("data/labels")) -> str:
     """Default tier from what the atlas actually has, overridable by the caller.
 
-    **Gold** needs the sub-400 m² half, which in this pipeline exists only where
-    exhaustively mapped calibration regions (or a complete national register) support a
-    coverage ratio. **Silver** needs no sub-400 half but does need local ground truth the
+    **Gold** is never returned here. It needs the sub-400 m² half, which in this pipeline
+    exists only where exhaustively mapped calibration regions (or a complete national
+    register) support a coverage ratio, and people having checked the rooftop classifier by
+    random validation and point data inspection (owner, 2026-11-02), which no file shows.
+    **Silver** is that half unchecked, or no sub-400 half but local ground truth the
     candidate-precision table was fitted on. **Bronze** is everything else.
 
-    This is a default, not a verdict. Cases where the evidence is real but of a different
-    kind -- Germany's half is calibrated from its register rather than from mapped
+    This is a default, not a verdict. Gold, and cases where the evidence is real but of a
+    different kind -- Germany's half is calibrated from its register rather than from mapped
     quadrats, and its Best estimate still fails its own register check -- are a judgement
     recorded in `configs/atlas/<aoi>.yaml` (`validation`, see `resolve_validation_badge`)
     or passed with `--validation-score`, not something to infer from file existence.
@@ -305,7 +311,7 @@ def derive_validation_score(aoi: str, has_sub400: bool,
     Silver and still show Bronze.
     """
     if has_sub400:
-        return "gold"
+        return "silver"
     # Silver wants LOCAL GROUND TRUTH the model was checked against, in either of the two
     # forms this pipeline produces it: a candidate-precision table fitted against a real
     # recall reference, or exhaustively mapped calibration regions for the AOI. France has
@@ -429,7 +435,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
 # review afterwards. Saying "validated" here would claim the second on the strength of
 # the first.
 _VSCORE_SUB = {
-    "gold": "Calibrated above and below<br>the 400&nbsp;m\u00b2 floor",
+    "gold": "Calibrated and checked above<br>and below the 400&nbsp;m\u00b2 floor",
     "silver": "Above 400&nbsp;m\u00b2 only.<br>Locally calibrated.",
     "bronze": "Above 400&nbsp;m\u00b2 only.<br>No local calibration.",
 }

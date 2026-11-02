@@ -53,8 +53,8 @@ mapping leads is how an atlas moves up, so [maps a calibration area](contribute/
 
 | Tier | Country | What the atlas rests on |
 | --- | --- | --- |
-| Gold | [Pakistan](atlas.md) | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel |
-| Silver | none yet | 400 m² and up, checked against local ground truth, with about a third of the mapping leads and of the very large outlines checked and mapped in OpenStreetMap, and the model retrained on them |
+| Gold | none yet | Installations above and below 400 m², the small ones calibrated on areas mapped panel by panel, with the rooftop classifier checked by people on randomly drawn cells and on its score for every building |
+| Silver | [Pakistan](atlas.md) | 400 m² and up, checked against local ground truth, with about a third of the mapping leads and of the very large outlines checked and mapped in OpenStreetMap, and the model retrained on them; Pakistan also has a calibrated estimate below 400 m², not yet checked by people |
 | Bronze, calibrated as Silver | [Germany](atlas-germany.md), [France](atlas-france.md), [Yemen](atlas-yemen.md) | 400 m² and up, checked against the national register (Germany, France) and hand-mapped communes (France); Yemen's small solar-irrigation arrays calibrated on mapped farm areas. Germany also shows a small-installation estimate fitted to its register, not yet validated. Bronze until more of their leads are mapped in OpenStreetMap to localize the model |
 | Bronze | [Egypt](atlas-egypt.md), [India](atlas-india.md), [Morocco](atlas-morocco.md), [Namibia](atlas-namibia.md), [Nigeria](atlas-nigeria.md), [Poland](atlas-poland.md), [South Africa](atlas-south-africa.md), [Vietnam](atlas-vietnam.md), [Zambia](atlas-zambia.md) | 400 m² and up, not yet calibrated: hand-mapped installations plus what the model outlines; small installations missing |
 

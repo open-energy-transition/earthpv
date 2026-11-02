@@ -63,7 +63,7 @@ PAGES = [
 # files lives in configs/atlas/<aoi>.yaml (`validation`) and wins over this table:
 # Germany's, Silver since 2026-10-22, is the case it was added for.
 SCORES = {
-    "pakistan": "gold",     # 30 Rule-1 mapped areas, calibrated sub-400 half
+    "pakistan": "silver",   # 30 Rule-1 mapped areas, calibrated sub-400 half, roofclf unchecked
     "france": "silver",     # 14 hand-mapped communes, no calibrated sub-400 half
     "zambia": "bronze",     # segmentation only, no local ground truth
     "gujarat": "bronze",    # segmentation only, no calibration quadrats

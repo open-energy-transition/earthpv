@@ -137,7 +137,7 @@ nav:
   # Grouped by calibration tier; scripts/build_atlas_pages.py writes the pages and prints
   # this block (--nav), so the two cannot drift.
   - PV Atlas:
-      - Gold:
+      - Silver:
           - Pakistan: atlas.md
       - Bronze:
           - Germany: atlas-germany.md

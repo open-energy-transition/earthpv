@@ -47,8 +47,8 @@ tiers mean:
 
 | tier | what it has | what it needs |
 |---|---|---|
-| Gold | small installations estimated, calibrated on complete areas or a national register; leads mapped to localize the model | more areas in the density bands it does not yet cover |
-| Silver | large installations only, checked against local ground truth; leads mapped to localize the model | small-installation calibration that works for its roof sizes |
+| Gold | small installations estimated, calibrated on complete areas or a national register, with the rooftop classifier checked by people on random cells and on its score for every building; leads mapped to localize the model | more areas in the density bands it does not yet cover |
+| Silver | large installations checked against local ground truth; leads mapped to localize the model; any estimate of small installations not yet checked | small-installation calibration that works for its roof sizes, then those checks by people |
 | Bronze | large installations only, nothing local to check against, or not yet enough leads mapped to localize the model | its first complete calibration areas, and [about a third of its leads](leads.md) checked and mapped so the model can be retrained on them |
 
 Every criterion behind the levels is on [Quality levels](../atlas-quality-levels.md).
@@ -182,7 +182,7 @@ holds.
 | [South Africa](../atlas-south-africa.md) | Bronze | 10 | 34 to 2,360 | Ekurhuleni, Gauteng |
 | [Vietnam](../atlas-vietnam.md) | Bronze | 10 | 106 to 4,196 | Binh Chanh, Ho Chi Minh City |
 | [Zambia](../atlas-zambia.md) | Bronze | 10 | 12 to 1,084 | Lusaka |
-| [Pakistan](../atlas.md) | Gold | 11 | 66 to 617 | Malakand, Khyber Pakhtunkhwa |
+| [Pakistan](../atlas.md) | Silver | 11 | 66 to 617 | Malakand, Khyber Pakhtunkhwa |
 | [Yemen](../atlas-yemen.md) | Bronze (calibrated as Silver) | 16 | 34 to 2,471 | none for now |
 | [France](../atlas-france.md) | Bronze (calibrated as Silver) | none | map any solar you can see | |
 

@@ -50,7 +50,14 @@ cities:
 # (31,835 solar features against 16,085 in July). 434 of the 4,602 leads sit within 100 m of
 # mapped solar in that pull (388 mapped since July); the rest carry no recorded verdict, so
 # the majority rests on the owner's declaration.
+# Silver, not Gold (owner, 2026-11-02): Gold also needs people to have checked the rooftop
+# classifier, by random validation and by point data inspection (build_atlas_pages.CRITERIA).
+# Every row of results/roofclf_random_validation_log.csv is blank, and the points exported
+# to data/roofclf_points/pakistan on 2026-11-02 have no recorded inspection. Set `score: gold`
+# once both are recorded for the scoring behind the page.
 validation:
+  score: silver
+  note: "Calibrated above and below 400&nbsp;m&sup2;.<br>Small half not yet checked by people."
   leads_checked:
     made: "2026-11-01"
     by: owner
