@@ -3046,7 +3046,7 @@ def build_evidence_atlas(
     # size-domain rows it used to show (`mwp_large`, `small_central`+`small_outdomain`)
     # are only the MODEL's share: Best also folds in hand-mapped OSM the model never
     # found, plus this floor lift. The national KPI tiles gained a third tile for exactly
-    # this on 2026-08-14 (now "OpenStreetMap", 2026-10-29); the per-cell hover
+    # this on 2026-08-14 (now "Added from OpenStreetMap", 2026-11-02); the per-cell hover
     # did not, so it under-summed. Measured on the published German atlas 2026-09-13:
     # 3,043 of 4,656 cells did not add up, by 10,847 MWp = 12.4% of Best nationally.
     grid["best_floor_lift"] = np.maximum(best_floor - grid["mwp_best"], 0.0)
