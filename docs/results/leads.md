@@ -137,13 +137,14 @@ most promising first, and `<country>_pv_blob_leads.geojson`, the outlines above 
 `pv-new-leads-2026-11-01b` were split in place, the same leads under the same date). Twelve
 countries hold 100,556 leads and 3,127 blobs between them; France's audited release already
 kept its 29 apart. A blob is whatever the 10 m pixels merged into one shape, and what that
-is varies by country: 81 of the 90 judged on imagery in India were parks, 41% of
+is varies by country: 1,427 of the 1,640 judged on imagery in India were parks, 41% of
 Germany's 581 hold a registered unit, and of the 121 in Pakistan's file of July 2026 three
 have been mapped since, of Yemen's 29 none. **No blob counts towards capacity until it is
 mapped in OpenStreetMap or a person has judged it solar on the Sentinel-2 imagery the model
 saw** (owner, 2026-11-01; `density.load_oversize_admission`). That ended India's admission of
 its 1,562 unreviewed blobs at the review sample's share real (see
-[India](india.md)); `scripts/oversize_review.py draw --all` queues them for a verdict each.
+[India](india.md)); `scripts/oversize_review.py draw`, a step of every country's run, queues
+each blob for a verdict, largest first.
 
 **How much of a lead file is worth checking** (`scripts/lead_share.py`,
 `results/lead_share/`). The files are ranked, and the real installations sit near the top:

@@ -2632,7 +2632,9 @@ def build_evidence_atlas(
       this fix, since `est_mwp_rc` for that cell was ~0. Best is defined as "the highest
       defensible figure," so it can never legitimately read below Verified in the same
       cell; `np.maximum(mwp_best, mwp_verified)` enforces that ordering after both are
-      computed, and `n_cells_best_floored` records how often it had to.
+      computed, and `n_cells_best_floored` records how often it had to. Since 2026-11-02
+      the floor also holds every park a person judged solar in that cell, which lies apart
+      from the mapped features and so adds to them.
 
     **Two more sections, both optional and both re-using data this call already has
     (added 2026-08-13):**
@@ -3020,11 +3022,24 @@ def build_evidence_atlas(
     # of the model's own est_mwp_rc/small_central, which is sometimes smaller (e.g.
     # Quaid-e-Azam Solar Park: Verified 866 MWp vs Best 243 MWp pre-fix, since est_mwp_rc
     # there was ~0). See this function's docstring, 2026-08-06 fix.
-    n_cells_best_floored = int((grid["mwp_best"] < grid["mwp_verified"]).sum())
+    # A park a person judged solar (a blob with a `pv` verdict) is as real as a mapped one and
+    # lies apart from every mapped feature, so the floor is the mapped figure PLUS it. Floored
+    # at Verified alone, a cell the model underrates swallowed it (owner, 2026-11-02; India:
+    # 2,274 of 19,609 MWp). No review, no change.
+    judged_mwp = 0.0
+    if "p_real_fixed" in cand.columns and cand["p_real_fixed"].notna().any():
+        judged = cand[cand["p_real_fixed"].notna()]
+        jp = gpd.GeoDataFrame(
+            {"mwp": judged["area_m2"].to_numpy(float) * kwp_land / 1000.0},
+            geometry=judged.geometry.representative_point().to_numpy(), crs=cand.crs)
+        jp = gpd.sjoin(jp, grid[["cell", "geometry"]], predicate="within", how="inner")
+        judged_mwp = grid["cell"].map(jp.groupby("cell")["mwp"].sum()).fillna(0.0)
+    best_floor = grid["mwp_verified"] + judged_mwp
+    n_cells_best_floored = int((grid["mwp_best"] < best_floor).sum())
     if n_cells_best_floored:
         log.info(
-            "Evidence atlas: flooring mwp_best at mwp_verified in %d/%d cells "
-            "(model estimate below the mapped value it was meant to supersede)",
+            "Evidence atlas: flooring mwp_best at mwp_verified plus judged parks in %d/%d "
+            "cells (model estimate below the mapped value it was meant to supersede)",
             n_cells_best_floored, len(grid),
         )
     # Carried per cell so the map's hover can account for Best in full. The two
@@ -3034,8 +3049,8 @@ def build_evidence_atlas(
     # this on 2026-08-14 (now "OpenStreetMap", 2026-10-29); the per-cell hover
     # did not, so it under-summed. Measured on the published German atlas 2026-09-13:
     # 3,043 of 4,656 cells did not add up, by 10,847 MWp = 12.4% of Best nationally.
-    grid["best_floor_lift"] = np.maximum(grid["mwp_verified"] - grid["mwp_best"], 0.0)
-    grid["mwp_best"] = np.maximum(grid["mwp_best"], grid["mwp_verified"])
+    grid["best_floor_lift"] = np.maximum(best_floor - grid["mwp_best"], 0.0)
+    grid["mwp_best"] = np.maximum(grid["mwp_best"], best_floor)
 
     cells = [
         [round(float(r.lon0), 3), round(float(r.lat0), 3),
@@ -3689,6 +3704,10 @@ def _size_distribution_data(
         v = s.get(c) if len(s) else None
         return float(v) if v is not None and pd.notna(v) else 0.0
 
+    # A judged park is in `seg_ground_by_cell` and in the floor (see `build_evidence_atlas`), so
+    # what a shortfall tops up is still the cell's mapped installations.
+    judged = ~np.isnan(fixed) & in_grid if fixed is not None else np.zeros(len(cands), bool)
+    judged_by_cell = _cell_sum(cell_of[judged], area[judged] * kwp_land / 1000.0)
     all_cells = grid["cell"].to_numpy()
     shortfalls: dict[str, float] = {}
     for c in all_cells:
@@ -3697,7 +3716,7 @@ def _size_distribution_data(
             _get(osm_unmatched_by_cell, c) + large_roof + _get(seg_ground_by_cell, c)
             + _get(central_by_cell, c) + _get(outd_by_cell, c)
         )
-        verified = _get(osm_all_by_cell, c) + _get(low_by_cell, c)
+        verified = _get(osm_all_by_cell, c) + _get(low_by_cell, c) + _get(judged_by_cell, c)
         sf = verified - best_raw
         if sf > 1e-6:
             shortfalls[c] = sf

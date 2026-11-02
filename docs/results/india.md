@@ -19,7 +19,7 @@ Interactive: [India PV evidence atlas](../atlas-india.md).
 | | |
 | --- | --- |
 | Verified | **70,523.4 MWp** (90% 49,526 to 101,390) |
-| Best estimate | **82,574.1 MWp** (90% 70,770 to 107,295) |
+| Best estimate | **103,036.9 MWp** (90% 83,676 to 132,969) |
 | Grid | all 29,171 selected cells of 0.1&deg; (97.1% of India's 30,056), 35 of 36 states and union territories (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, November 2025 to March 2026 |
 | Model | `v5_combined_france` epoch 25 (the localized `v10_combined_india` lost; see below) |
@@ -52,6 +52,16 @@ Interactive: [India PV evidence atlas](../atlas-india.md).
     Against MNRE's state-wise register, ground-mounted Best is now 0.88 of the registered
     capacity ([below](#against-the-mnre-register)), about 0.64 before.
 
+!!! note "Revised on 2 November"
+    Until 2 November this page read Best 82,574.1 MWp (90% 70,770 to 107,295). The owner has
+    now judged every outline above the merge cap that the lead screens keep, on the disk
+    review page: 1,346 of the 1,550 queued are parks, so 1,427 count, 577.1 km&sup2;, up from
+    81 and 185.0 km&sup2; ([below](#parks-the-model-found-that-nobody-has-mapped)). A judged
+    park now also adds to the mapped figure in Best's per-cell floor, which had been hiding
+    2,274 MWp of the new parks and 854 MWp of the earlier 81. Best rises by 20,462.8 MWp;
+    Verified did not move. Against MNRE's register ground-mounted Best is now 0.91 of the
+    registered capacity, 0.82 on an AC basis.
+
 !!! note "Revised on 1 November"
     Until 1 November this page read Best 99,541.5 MWp (90% 80,394 to 128,501). The owner's
     rule since: a model outline above the merge cap counts only once it is mapped in
@@ -59,8 +69,8 @@ Interactive: [India PV evidence atlas](../atlas-india.md).
     outlines admitted on 29 October counted at the review sample's share real; now only the
     81 the review found to be parks count, each whole, 185.0 of the 569.4 km&sup2; credited
     before ([below](#parks-the-model-found-that-nobody-has-mapped)). Best fell by
-    16,967.4 MWp; Verified did not move. Against MNRE's register ground-mounted Best is now
-    0.73 of the registered capacity. The other 1,699 outlines are in the atlas's blob file,
+    16,967.4 MWp; Verified did not move. Against MNRE's register ground-mounted Best was then
+    0.73 of the registered capacity. The other 1,699 outlines went to the atlas's blob file,
     each waiting for a verdict.
 
 !!! warning "A precision floor, not an estimate"
@@ -259,14 +269,17 @@ October to 1 November `density` admitted these outlines as ground, the census at
 and the rest at the sample's share, outside the six Himalayan states and territories: 1,650
 outlines, 626.4 km&sup2; of outline credited as 569.4 km&sup2;, adding 28,468 MWp to the
 model's estimate and about 25,400 to Best. **Since 1 November only an outline a person has
-judged solar counts** (owner): the 81 parks of the review, each whole, always as ground and
-with no recall correction, 185.0 km&sup2;, adding 9,249 MWp to the model's estimate
-(41,715.6 MWp) and Best 82,574.1 MWp. Gujarat's Best is 12,140 MWp (7,800 before any
-outline was admitted, 15,601 under the sample's share). The 1,699 outlines nobody has judged
-are in the atlas's blob file, largest first, and `scripts/oversize_review.py draw --all`
-queues them for the disk review page; each one judged a park joins Best whole. Most of those
-drawn so far were parks, so until they are judged Best understates the parks the model
-found.
+judged solar counts** (owner), each whole, always as ground and with no recall correction: at
+first the 81 parks of the review, 185.0 km&sup2; and 9,249 MWp. **On 2 November the owner judged
+all 1,550 outlines the lead screens keep** on the same page, largest first: 1,346 parks
+(392.2 km&sup2;) and 204 not (46.1 km&sup2;), none left unsure, 87% by count against the
+sample's 0.879. That makes 1,427 parks, 577.1 km&sup2;, 28,857 MWp of the model's estimate
+(61,324.2 MWp), and Best 103,036.9 MWp. A judged park lies at least 100 m from every mapped
+feature, so it adds to the mapped figure in Best's per-cell floor too (owner, 2 November); the
+floor had been hiding 3,128 MWp of them in cells where the model underrates what is mapped.
+Gujarat's Best is 16,379 MWp (7,800 before any outline was admitted, 15,601 under the sample's
+share). The other 149 of the 1,789 were left out by the lead screens (steep ground, open ground
+at low probability, outlines beyond the border), and count only if someone maps them.
 
 Two things this does not settle. The land constant is applied to the model's outline, which runs about 12% larger
 than the mapped perimeter where both exist, so the admitted figure may read up to a tenth
@@ -400,31 +413,30 @@ imagery window, so the comparison is made at its centre, January 2026 (140.6 GW)
 
 | | this page | MNRE, January 2026 | ratio |
 | --- | ---: | ---: | ---: |
-| ground-mounted (+ hybrid solar), Best | 80,637 MWp | 110,619 MW | **0.73** |
+| ground-mounted (+ hybrid solar), Best | 101,089 MWp | 110,619 MW | **0.91** |
 | ground-mounted (+ hybrid solar), Verified | 68,789 MWp | 110,619 MW | 0.62 |
 | rooftop | 1,830 MWp | 24,297 MW | 0.075 |
 | off-grid / KUSUM | not measured | 5,634 MW | |
-| all solar, Best | 82,467 MWp | 140,550 MW | 0.59 |
+| all solar, Best | 102,919 MWp | 140,550 MW | 0.73 |
 
-The ground ratio is 0.77 against November's register and 0.68 against March's. Registered
+The ground ratio is 0.97 against November's register and 0.85 against March's. Registered
 utility capacity in India is mostly quoted AC and this page's in DC: India's own
 capacity-tagged parks put site area at 0.045 per AC kW against the 0.05 the page converts at,
-so on an AC basis the ground ratio is 0.66. **The ground-mounted figure is about a third
-short.** It was about 0.64 before any park above the merge cap was counted and 0.88 while the
-unjudged ones counted at the review sample's share (29 October to 1 November), so most of
-the shortfall is the 1,699 outlines waiting for a verdict. The rest is parks this page does
-not see: Rewa and the other unimaged outlines, the unmapped part of the 237 outlines that
+so on an AC basis the ground ratio is 0.82. **The ground-mounted figure is about a fifth
+short.** It was about 0.64 before any park above the merge cap was counted, 0.88 while the
+unjudged ones counted at the review sample's share (29 October to 1 November) and 0.73 with
+only the first review's 81 parks. What is left is mostly parks this page does not see: Rewa and the other unimaged outlines, the unmapped part of the 237 outlines that
 touch a mapped park, dark block interiors the model does not light up, and parks
 commissioned in the window that the median composite does not yet show.
 
 **The geography holds.** Across the 19 states with at least 100 MW of registered utility PV,
-the rank correlation between Best and the register is 0.97, 12 states are within a factor
-of 1.5, and the median state is off by 22% (median absolute log ratio 0.20). The four largest
-are Rajasthan 28.8 GW against 35.0 (0.82), Gujarat 11.9 against 20.2 (0.59), Karnataka 9.0
-against 10.0 (0.90) and Tamil Nadu 5.6 against 10.3 (0.54). The largest shortfalls are
-Himachal Pradesh (0.25) and Maharashtra (0.41), then Tamil Nadu and Gujarat, where most of
-the unjudged parks are. The page is high in small states: Punjab 1.20, Bihar 1.33 and, by
-far, Jharkhand, 153 MWp against 21 MW registered, of which 134 MWp is hand-mapped outlines;
+the rank correlation between Best and the register is 0.97, 16 states are within a factor
+of 1.5, and the median state is off by 17% (median absolute log ratio 0.15). The four largest
+are Rajasthan 32.7 GW against 35.0 (0.93), Gujarat 16.1 against 20.2 (0.80), Maharashtra 8.4
+against 12.1 (0.69) and Tamil Nadu 9.0 against 10.3 (0.88). The largest shortfalls are
+Himachal Pradesh (0.41) and Maharashtra. The page is high in small states: Punjab 1.47,
+Haryana 1.61, Bihar 1.98 and, by far, Jharkhand, 232 MWp against 21 MW registered, of which
+134 MWp is hand-mapped outlines;
 whether those are captive or mislabelled plants, or a gap in the register, is not settled
 here.
 
@@ -437,8 +449,9 @@ measure the precision of individual candidates; it checks totals per state and m
 
 The earlier Gujarat page reported 812.6 MWp (`est_mwp_rc`) over its bounding box,
 of which Gujarat state was 765.0 (168.7 rooftop, 596.3 ground). The same estimator here
-gives the state **7,780.4 MWp** (93.3 rooftop, 7,687.1 ground), and the atlas puts it at
-Verified 8,587.8 and Best 12,139.7 MWp over 1,617 cells (11,579.8 MWp and Best 15,601.4 while
+gives the state **11,988.1 MWp** (93.3 rooftop, 11,894.7 ground), and the atlas puts it at
+Verified 8,587.8 and Best 16,379.0 MWp over 1,617 cells (7,780.4 MWp and Best 12,139.7 with the
+first review's 81 parks, 1 to 2 November; 11,579.8 MWp and Best 15,601.4 while
 the unjudged parks above the merge cap counted at the review sample's share, 29 October to 1
 November;
 4,783.7 MWp, Verified 5,852.3 and Best 7,800.1 before any was admitted; 4,554.1 MWp and Best

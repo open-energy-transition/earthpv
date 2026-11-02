@@ -737,6 +737,16 @@ verdict each (`oversize_review.py draw --all`). Against MNRE's register ground-m
 goes from 0.88 to 0.73 of registered capacity; if the review sample is a guide, judging the
 remaining parks would close most of that. No other country's figures move.
 
+**Judged, 2026-11-02.** The review became a default step: `oversize_review.py draw` queues every
+blob the lead screens keep (`--all` is gone), and `data/oversize_review/index.html` lists 3,050
+outlines over thirteen countries. The owner judged all of India's 1,550 in one sitting: 1,346
+parks, 204 not, none unsure, 87% against the sample's 0.879. India now counts 1,427 parks, 577.1
+km<sup>2</sup>. Best's per-cell floor becomes Verified plus the judged parks in the cell, because
+at Verified alone it hid 3,128 MWp of them. India's segmentation estimate goes from 41,716 to
+61,324 MWp, Best from 82,574 to 103,037 MWp (90% 83,676 to 132,969), Verified unchanged at
+70,523; against MNRE ground-mounted Best goes from 0.73 to 0.91 of registered capacity (0.82 AC),
+as the sample predicted. No other country's figures move.
+
 **How much of a lead file to check** (`scripts/lead_share.py`, `results/lead_share/`). Where a
 reference exists, the real installations sit at the top of the ranked file: the top third
 held 69% of the leads mapped since in Pakistan (385 of v3's 4,435 leads of 2026-07-16) and 87%

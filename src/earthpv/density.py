@@ -273,9 +273,10 @@ def load_oversize_admission(
     **Admitted are only the outlines a person judged solar (owner, 2026-11-01)**: those with
     a `pv` verdict in the block's `review_csv`, matched by `candidate_index` and checked by
     area, each whole (`p_real_fixed` 1, stratum `reviewed`). An outline nobody has judged
-    stays out of capacity, as does one judged not solar, until it is mapped in OSM. A
-    verdict whose outline is not in this run's pool is an error: the review describes
-    another candidate file. Returns `p_real_fixed` and `oversize_stratum` indexed like
+    stays out of capacity, as does one judged not solar, until it is mapped in OSM, when
+    the map counts it and its verdict rests. A verdict naming an outline these candidates do
+    not hold at that area is an error: the review describes another candidate file. Returns
+    `p_real_fixed` and `oversize_stratum` indexed like
     `cands`, for `capacity_relevant_candidates(..., oversize_admission=...)`; None when no
     outline is admitted.
     """
@@ -309,15 +310,16 @@ def load_oversize_admission(
     # filters what is admitted.
     rev = pd.read_csv(block["review_csv"])
     pv = rev[rev["verdict"].fillna("") == "pv"]
-    found = pv["candidate_index"].isin(pool.index)
-    if not found.all():
+    known = pv["candidate_index"].isin(cands.index)
+    if not known.all():
         raise ValueError(
-            f"{aoi}: {int((~found).sum())} outlines judged solar in {block['review_csv']} are "
-            "not in this run's pool of outlines above the cap (another candidate file?)")
-    area = pool.loc[pv["candidate_index"], "area_m2"].to_numpy(float)
+            f"{aoi}: {int((~known).sum())} outlines judged solar in {block['review_csv']} are "
+            "not in this run's candidates (another candidate file?)")
+    area = cands.loc[pv["candidate_index"], "area_m2"].to_numpy(float)
     if not np.allclose(area, pv["area_m2"].to_numpy(float), rtol=1e-6, atol=1.0):
         raise ValueError(f"{aoi}: {block['review_csv']}: a reviewed outline's area differs "
                          "from the candidate it names (another candidate file?)")
+    pv = pv[pv["candidate_index"].isin(pool.index)]  # the rest are mapped since
     if pv.empty:
         return None
     p = cc.oversize_review_p_real(block)

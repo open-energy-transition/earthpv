@@ -77,16 +77,25 @@ def main() -> None:
     print(f"{len(items)} panels -> {out} ({out.stat().st_size / 1e6:.1f} MB)")
 
 
-def write_page(out: Path, name: str, items: list[dict], guide: str | None = None) -> Path:
+def write_page(out: Path, name: str, items: list[dict], guide: str | None = None,
+               title: str = "Blind PV review", store: str | None = None,
+               export_name: str = "verdicts.csv", back: str | None = None) -> Path:
     """Write the review page for `items`, for any review, not only the blind folders.
 
     Each item needs `code` and `img` (a data URI, or a path relative to `out` so the images
     stay on disk beside the page), and may carry `date`, `date_label` (the caption under the
     image; default "Esri imagery <date>"), `lon`/`lat`/`bbox` for the imagery links. `guide`
     replaces the "How to judge" text (HTML); the default is the blind reviews' own. The
-    export is `code,imagery_date,verdict,note` with verdicts `pv`, `no_pv`, `unsure`.
-    (`scripts/oversize_review.py package` uses this for unmapped parks, 2026-10-29.)"""
+    export is `code,imagery_date,verdict,note` with verdicts `pv`, `no_pv`, `unsure`, saved
+    as `export_name`. Progress is saved in the browser under `store` (default `name`), which
+    must change whenever the same codes come to mean other outlines. `back` links a page of
+    pages. (`scripts/oversize_review.py package` uses this for unmapped parks, 2026-10-29.)"""
+    home = f'<a class="btn" href="{back}">All countries</a>' if back else ""
     page = (TEMPLATE.replace("__NAME__", name)
+            .replace("__TITLE__", title)
+            .replace("__STORE__", store or name)
+            .replace("__EXPORT__", export_name)
+            .replace("__BACK__", home)
             .replace("__GUIDE__", GUIDE if guide is None else guide)
             .replace("__ITEMS__", json.dumps(items).replace("</", "<\\/")))
     out.write_text(page)
@@ -114,7 +123,7 @@ TEMPLATE = r"""<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Blind PV Review</title>
+<title>__TITLE__</title>
 <style>
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2330; --muted: #5d6677; --line: #d9dde5;
@@ -166,7 +175,10 @@ textarea { width: 100%; margin-top: 10px; min-height: 56px; font: inherit; color
 .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; font-size: 13px; }
 .links a { color: var(--accent); text-decoration: none; border: 1px solid var(--line);
   border-radius: 999px; padding: 3px 10px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px;
+  max-height: 260px; overflow-y: auto; position: relative; padding-right: 4px;
+  scrollbar-color: var(--todo) transparent; }
+.btn { text-decoration: none; }
 .chip { font: 12px ui-monospace, monospace; padding: 6px 0; text-align: center;
   border-radius: 6px; border: 2px solid transparent; background: var(--todo); color: var(--ink); cursor: pointer; }
 .chip.pv { background: var(--pv); color: #fff; }
@@ -185,9 +197,10 @@ input[type=file] { display: none; }
 </head>
 <body>
 <header>
-  <h1>Blind PV review <span class="name">__NAME__</span></h1>
+  <h1>__TITLE__ <span class="name">__NAME__</span></h1>
   <div class="progress"><div class="bar"><div id="bar"></div></div><span id="prog"></span></div>
-  <button id="export" title="Download verdicts.csv">Export verdicts.csv</button>
+  __BACK__
+  <button id="export" title="Download __EXPORT__">Export __EXPORT__</button>
   <label class="btn" title="Load a verdicts.csv exported earlier">Import<input id="import" type="file" accept=".csv"></label>
   <button id="theme" title="Toggle light or dark">Theme</button>
 </header>
@@ -226,7 +239,7 @@ __GUIDE__
 <script>
 (function () {
   const ITEMS = JSON.parse(document.getElementById("items").textContent);
-  const STORE = "pvreview:__NAME__";
+  const STORE = "pvreview:__STORE__";
   const LABEL = { pv: "PV", no_pv: "Not PV", unsure: "Unsure" };
   let state = {};
   try { state = JSON.parse(localStorage.getItem(STORE) || "{}") || {}; } catch (e) { state = {}; }
@@ -265,10 +278,23 @@ __GUIDE__
     const c = { pv: 0, no_pv: 0, unsure: 0 };
     ITEMS.forEach((x) => { const s = state[x.code]; if (s && c[s.verdict] !== undefined) c[s.verdict]++; });
     $("counts").innerHTML = Object.entries(c).map(([k, n]) => `<span>${LABEL[k]}: <b>${n}</b></span>`).join("");
-    $("grid").innerHTML = ITEMS.map((x, i) => {
+    paint();
+    // The next few images, so a key press shows the next outline at once.
+    for (let k = 1; k <= 3; k++) new Image().src = ITEMS[(cur + k) % ITEMS.length].img;
+  }
+
+  // Built once: a country can queue thousands of outlines.
+  $("grid").innerHTML = ITEMS.map((x, i) =>
+    `<div class="chip" data-i="${i}" title="${x.code}">${x.code}</div>`).join("");
+  function paint() {
+    const g = $("grid"), chips = g.children;
+    ITEMS.forEach((x, i) => {
       const s = state[x.code] || {};
-      return `<div class="chip ${s.verdict || ""} ${i === cur ? "cur" : ""}" data-i="${i}" title="${x.code}">${x.code}</div>`;
-    }).join("");
+      chips[i].className = `chip ${s.verdict || ""} ${i === cur ? "cur" : ""}`;
+    });
+    const c = chips[cur];
+    if (c.offsetTop < g.scrollTop || c.offsetTop + c.offsetHeight > g.scrollTop + g.clientHeight)
+      g.scrollTop = c.offsetTop - g.clientHeight / 2;
   }
 
   function go(i) { cur = (i + ITEMS.length) % ITEMS.length; render(); }
@@ -314,7 +340,7 @@ __GUIDE__
     }));
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([rows.join("\n") + "\n"], { type: "text/csv" }));
-    a.download = "verdicts.csv"; a.click();
+    a.download = "__EXPORT__"; a.click();
     const open = ITEMS.filter((x) => !(state[x.code] && state[x.code].verdict)).length;
     toast(open ? `Exported; ${open} panels still unjudged` : "Exported all verdicts");
   };

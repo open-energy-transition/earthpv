@@ -187,14 +187,15 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     # ground-mount estimate dwarfs its rooftop one, or if one cell dominates a region.
     pixi run earthpv check-density --aoi pakistan
 
-    # Model outlines above the 100,000 m² merge cap with no mapped solar nearby are left out
-    # until a person has judged a sample of them. `draw` writes the sample and a review
-    # package on disk: four panels per outline (Sentinel-2 composite, its 10 m detail, false
-    # colour, Esri with its capture date) and a page to judge them in, one key per verdict.
-    pixi run python scripts/oversize_review.py draw --aoi india
-    #   open data/oversize_review/india/index.html, judge every outline, export verdicts.csv
-    pixi run python scripts/oversize_review.py apply --aoi india --reviewer "<name>" \
-        --verdicts results/india_oversize_review/verdicts.csv --exclude-region "Ladākh" ...
+    # The solar farm review, a step of every run. Model outlines above the 100,000 m² merge
+    # cap with no mapped solar nearby count only once a person judges them solar or they are
+    # mapped. `draw` queues every one, largest first, and writes a review package on disk:
+    # four panels per outline (Sentinel-2 composite, its 10 m detail, false colour, Esri with
+    # its capture date) and a page to judge them in, one key per verdict.
+    pixi run blob-review draw --aoi india
+    #   open data/oversize_review/index.html (every country), judge as many as you like, export
+    pixi run blob-review apply --aoi india --reviewer "<name>" --verdicts <the export>
+    pixi run blob-review status                         # what each country has left
     pixi run earthpv density --aoi india --districts    # no --force: the cells stay valid
 
     # Optional precision upgrade for the bins below 1,000 m², where glint is blind:
@@ -867,7 +868,10 @@ is a real result and is how India, Zambia, Nigeria, Vietnam, Egypt, Yemen, South
 are published here. What you cannot skip is
 [random-cell manual validation](#12-manual-validation-random-cells) after national scoring:
 without it a number has no evidence behind it, and it is the one step no agent can do for
-you.
+you. The solar farm review (`pixi run blob-review`, in the density step) is the other step of
+that kind, but you can stop it whenever you like: a very large outline nobody has judged
+stays out of the capacity figures, so the atlas is honest at any point, and each park judged
+adds to it.
 
 ### 3. Build the data pack
 
@@ -961,8 +965,8 @@ a Planetary Computer token expiring), assembling the data pack, and drafting the
 page.
 
 **What an agent must not do on its own**, and what to tell it not to: draw or declare
-calibration areas complete, sign off random-cell validation, or publish a headline number
-without the validation behind it. Those are the steps where the evidence actually enters,
+calibration areas complete, sign off random-cell validation, judge the solar farm review, or
+publish a headline number without the validation behind it. Those are the steps where the evidence actually enters,
 and an agent has no way to look at the imagery and decide. Ask it to prepare the review
 tiles and wait.
 

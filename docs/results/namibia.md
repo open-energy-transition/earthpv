@@ -104,8 +104,8 @@ removes the pans yet. Verified, which counts only mapped installations, is not a
 m&sup2;. 69 carry a mapped OpenStreetMap geometry, 20 of them above the 100,000 m&sup2;
 merge cap and exempt from it. **63 model-drawn outlines exceed the cap and are excluded
 from capacity** (15.0 km&sup2;); 52 of them (12.3 km&sup2;, up to 1.2 km&sup2; each) lie in
-Omusati and Ohangwena, the same oshana country. The disk review page for them (`scripts/oversize_review.py`) was drawn, not
-judged, so the cap stands as for every country without a review.
+Omusati and Ohangwena, the same oshana country. The disk review page (`scripts/oversize_review.py`) holds the 28 that pass the
+lead screens; none has been judged yet, so the cap stands as for every country without a review.
 
 The model's own estimate is **143.1 MWp** (`est_mwp_rc`, 90% 87 to 231), 137.5 of it
 ground; thresholded and unweighted, its own outlines below the cap are 35.5 MWp

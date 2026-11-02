@@ -361,16 +361,20 @@ placement_bins:
     p_real_lo: 0.4883
     p_real_hi: 0.5164
 oversize_review:
-  derived: '2026-10-29'
+  derived: '2026-11-02'
   reviewer: owner, 2026-10-29, on the disk review page (four panels per outline);
     s02, s06, s17 settled on a recheck with the assistant, whose first pass of 2026-10-28
-    is kept as verdict_prev
+    is kept as verdict_prev; owner, 2026-11-02, every queued outline on the disk review
+    page
   review_csv: results/india_oversize_review/review.csv
   population: model-drawn outlines above max_candidate_m2 with no mapped solar within
     min_distance_m of them (export.new_lead_mask)
   max_candidate_m2: 100000.0
   min_distance_m: 100.0
   mapped_reference: data/labels/india_overpass_solar.parquet
+  n_outlines: 1640
+  n_judged: 1640
+  n_pv: 1427
   census_min_area_m2: 2505773.8
   census_n: 30
   census_real: 30

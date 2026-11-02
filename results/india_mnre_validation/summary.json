@@ -6,9 +6,9 @@
   ],
   "national_mw": {
     "mwp_verified": 70461.8,
-    "mwp_best": 82466.8,
+    "mwp_best": 102918.8,
     "verified_ground": 68788.8,
-    "best_ground": 80636.5,
+    "best_ground": 101088.5,
     "best_roof": 1830.3,
     "utility_ground": 110618.9,
     "utility_ground_nov": 104133.9,
@@ -27,15 +27,15 @@
     "total": 140601.7,
     "utility_ground": 110621.4
   },
-  "ratio_ground_best": 0.729,
-  "ratio_ground_best_ac": 0.656,
+  "ratio_ground_best": 0.914,
+  "ratio_ground_best_ac": 0.822,
   "ratio_ground_verified": 0.622,
   "ratio_roof": 0.075,
-  "ratio_total_best": 0.587,
+  "ratio_total_best": 0.732,
   "states_compared": 19,
   "min_state_mw": 100.0,
-  "spearman_ground_best": 0.967,
+  "spearman_ground_best": 0.968,
   "spearman_ground_verified": 0.954,
-  "median_abs_log_ratio_ground": 0.196,
-  "states_within_x1p5": 12
+  "median_abs_log_ratio_ground": 0.153,
+  "states_within_x1p5": 16
 }

@@ -86,7 +86,7 @@ seasonal pans, salt pans and ponds. Neither rule removes a `steep_review` lead.
 **Very large outlines: the blob file.** Sentinel-2's 10 m pixels merge everything bright and
 touching into one shape, so an outline above 100,000 m<sup>2</sup> is as often a sheet of
 false alarms (pans, ploughed fields, shadowed slopes) as a solar park OpenStreetMap does not
-have yet. India's checked blobs were mostly parks (81 of 90); of the 121 in Pakistan's file
+have yet. India's checked blobs were mostly parks (1,427 of 1,640); of the 121 in Pakistan's file
 of July 2026, 3 have been mapped since. The atlas counts no blob's capacity until it is
 mapped in OpenStreetMap or a person has judged it solar on the Sentinel-2 imagery the model
 saw, so each one you settle moves the estimate. Look at recent Sentinel-2 imagery as well as

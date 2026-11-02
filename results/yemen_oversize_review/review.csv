@@ -1,0 +1,7 @@
+candidate_index,lon,lat,area_m2,region,stratum,k,code,verdict,evidence
+400,44.87654,12.87879,1338364.545185898,‘Adan Governorate,queue,0,q0000,,
+776,43.26331,13.36553,643150.8363320858,Ta'izz Governorate,queue,1,q0001,,
+318,42.92552,14.99039,380036.2208944722,Al Hudaydah Governorate,queue,2,q0002,,
+810,46.44509,14.33852,136627.24802343955,Shabwah Governorate,queue,3,q0003,,
+773,43.44317,13.91292,109210.93540109186,Al Hudaydah Governorate,queue,4,q0004,,
+775,43.28191,13.83454,106194.36002649504,Al Hudaydah Governorate,queue,5,q0005,,

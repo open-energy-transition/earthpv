@@ -49,14 +49,14 @@ confidence:
   # re-run `validate_india_mnre.py compare` after any rebuild and check the sentence still holds.
   corroboration: >-
     <p><b>Against India's register, ground-mounted solar sits in the right states and falls
-    short where parks are still waiting for a verdict.</b> MNRE's state-wise register,
+    about a fifth short.</b> MNRE's state-wise register,
     republished by MoSPI's eSankhyiki, records 110.6 GW of utility-scale solar on the ground
     (ground-mounted plants plus the solar part of hybrid plants) at the centre of the imagery
-    window, January 2026. This page's best estimate of ground-mounted solar is about three
-    quarters of that, and across the 19 states with at least 100 MW registered it ranks them
+    window, January 2026. This page's best estimate of ground-mounted solar is about nine
+    tenths of that, and across the 19 states with at least 100 MW registered it ranks them
     almost exactly as the register does (rank correlation 0.97). The register mostly quotes
-    AC capacity and this page DC, so the real shortfall is nearer a third, most of it in the
-    parks the model outlined that nobody has judged yet (Gujarat, Rajasthan, Maharashtra).
+    AC capacity and this page DC, so the real shortfall is nearer a fifth, mostly parks this
+    page does not see: cells never imaged, such as Rewa's, and parks built during the window.
     Rooftop is the large gap: the register holds 24.3 GW, most of it household systems of a
     few kW, and this page sees less than a tenth of it.</p>
   caveats:
@@ -79,11 +79,11 @@ confidence:
       them.</b> A model outline larger than 10 hectares is as often bright bare ground or
       rock merged into one shape as a solar park OpenStreetMap does not hold yet, so it counts
       only once it is mapped or someone has judged it solar on the imagery the model saw. In
-      India 90 of 1,789 such outlines have been judged, the 30 largest and 60 drawn at random,
-      and the 81 found to be parks count in full. The other 1,699 are in the blob file under
-      the downloads; most of those drawn so far were parks, so until they are judged the best
-      figure understates the parks the model found. None of these parks is in the hand-mapped
-      figure.
+      India 1,640 of 1,789 such outlines have been judged, and the 1,427 found to be parks
+      count in full, about 28,900 MWp of the best figure. The other 149 were left out of the
+      review by the filters on the lead files (steep slopes, open ground at low confidence,
+      outlines beyond the border) and count only if someone maps them. None of these parks is
+      in the hand-mapped figure.
     - >-
       <b>A mapped outline drawn around a whole planned zone counts only where panels are
       seen.</b> Seven ground outlines larger than 5 km&sup2;, among them two at Khavda in

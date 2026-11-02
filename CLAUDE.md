@@ -45,7 +45,8 @@ calibration coverage rather than cleanly by size, combine into one product:
 - **`atlas.build_evidence_atlas`** combines both into **Best estimate**: hand-mapped OSM, plus
   segmentation's ground-mount, roofclf's rooftop replacement in-domain plus segmentation's own
   recall-corrected rooftop out-of-domain, plus roofclf density below 400 m², de-duplicated
-  against each other and against OSM, and floored per cell at **Verified** (hand-mapped OSM
+  against each other and against OSM, and floored per cell at **Verified** plus any park a person
+  judged solar there (hand-mapped OSM
   plus the stricter roofclf+SPPI agreement population). Best carries a 90% credible interval.
 
 The end-to-end command sequence is in `docs/reproduce.md`'s "The full pipeline"; the short
@@ -57,8 +58,8 @@ earthpv train  --config configs/terramind_pv.yaml
 earthpv infer  --aoi <aoi> --checkpoint <ckpt>
 earthpv postprocess --aoi <aoi> --threshold 0.3
 earthpv export --aoi <aoi>
-pixi run python scripts/oversize_review.py draw --aoi <aoi>   # parks above the merge cap: judge
-#   data/oversize_review/<aoi>/index.html, then `oversize_review.py apply --verdicts ...`
+pixi run blob-review draw --aoi <aoi>   # the solar farm review: every outline above the merge
+#   cap. Judge in data/oversize_review/index.html, then `pixi run blob-review apply --verdicts ...`
 earthpv density --aoi <aoi> --districts && earthpv check-density --aoi <aoi>
 
 earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration quadrats
@@ -86,6 +87,14 @@ from the national scoring output, excludes calibration quadrats, and writes JOSM
 GeoJSON tiles into `results/<aoi>_roofclf_validation/`. Results go in
 `results/roofclf_random_validation_log.csv`. Protocol:
 `docs/methods/roofclf-national-validation.md`.
+
+**The solar farm review is part of this workflow too (owner, 2026-11-02).** A very large
+model outline (a blob) stays out of capacity until it is mapped or a person judges it solar, so
+one look per outline is the cheapest capacity there is to verify. `run_country_compute.sh` draws
+a country's package after `export`; `data/oversize_review/index.html` lists every country's page,
+`pixi run blob-review status` the counts. Sittings can be partial: apply any export, then
+`density --districts` (no `--force`) and the atlas. An agent prepares this and never judges it.
+See "Density stage".
 
 **Imagery date is the gate on sparse areas, not mapping effort.** Out-of-domain random cells and
 low-density quadrats have repeatedly sat under reference imagery too old to confirm or refute
@@ -340,11 +349,20 @@ in the country's review: `scripts/oversize_review.py draw|apply` writes an `over
 block into the calibration table, and `density.load_oversize_admission` admits exactly the
 new-lead outlines (`export.new_lead_mask` at the review's `min_distance_m`) with a `pv` verdict
 in its `review_csv`, matched by `candidate_index` and area, whole (`p_real_fixed` 1, stratum
-`reviewed`), placed as ground, recall 1. From 2026-10-29 to 2026-11-01 India admitted 1,650 at
+`reviewed`), placed as ground, recall 1. One judged and then mapped leaves the pool and is
+counted from the map; a verdict naming an outline the candidates do not hold at that area is an
+error (a new model run needs `draw --redraw`). From 2026-10-29 to 2026-11-01 India admitted 1,650 at
 the review's census and sample shares (30 of the 30 largest, 51 of 58 drawn by area; +28,468
-MWp); now only its 81 judged parks (185 km2) of 1,789. `draw --all` queues every other blob
-(stratum `queue`, largest first) and `apply` takes a partial export, keeping earlier verdicts;
-`excluded_regions` no longer filters (a verdict outranks it). They are population-level
+MWp); now only its judged parks (1,427 of 1,789, 577 km2). Best's per-cell floor is Verified
+plus the judged parks in the cell (owner, 2026-11-02; `build_evidence_atlas` and
+`_size_distribution_data`, which must agree). `draw` queues every blob (stratum
+`queue`, largest first; since 2026-11-02 the default, census and sample only on request) and
+`apply` takes a partial export, keeping earlier verdicts; a blank or unsure queue outline stays
+out and returns on the next page; `excluded_regions` no longer filters (a verdict outranks it).
+**The queue is the published blob file's population** (`oversize_review.lead_screened`: the
+page's regions and the lead screens; `run_source` takes the candidates and reference behind the
+published atlas from `release_leads.SOURCES`, plus France's
+`data/labels/france_mapped_20261022.parquet`). They are population-level
 only: kept out of `process_cell`, so cached partials stay valid and no `--force` is needed.
 `calibrate-candidates` does not see them (the bins describe the rest) and carries the block
 forward; `_table_evidence` guards it. A country without the block keeps the cap exactly; its
@@ -354,8 +372,11 @@ non-fatal step of `run_country_compute.sh` after `export`) also runs `package`: 
 per outline in `data/oversize_review/<aoi>/crops/` (composite true colour, 10 m detail, false
 colour SWIR/NIR/red, Esri with capture date; FIXED reflectance stretch) and `index.html`, the
 `build_review_page.write_page` page (keys 1/2/3, notes, Google/Bing/Wayback/JOSM links, CSV
-export). `apply --verdicts <export>` refuses unsure rows unless `--unsure-as`, and reports
-agreement with earlier verdicts; `draw` never redraws over verdicts (`--redraw`). The composite
+export, `<aoi>_blob_verdicts.csv`; a judged outline leaves the page on the next `package`,
+`--include-judged` keeps it). `apply --verdicts <export>` refuses unsure census or sample rows
+unless `--unsure-as`, and reports agreement with earlier verdicts; `draw` never redraws over
+verdicts (`--redraw`, which also clears the crops). The page's saved progress is keyed to the
+draw, so old verdicts cannot attach to a redraw's codes. The composite
 decides epoch (11 of India's 50 sampled parks postdate Esri), Esri decides texture (dark ploughed
 fields read as panel blocks at 10 m): neither panel alone suffices.
 
@@ -1114,7 +1135,7 @@ QUEUE first when removing compute markers.
 | Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,128.5 | roofclf half, probability-weighted; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked) |
 | France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
-| India | `v5_combined_france` | 70,523.4 / 99,541.5 | v10 lost the Gujarat holdout; `ring_cells: 3`; oversize review |
+| India | `v5_combined_france` | 70,523.4 / 103,036.9 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 8,860.5 | |
 | Egypt | `v12_combined_egypt` | 3,315.1 / 3,378.6 | thin Cairo holdout |
 | Yemen | `v25_combined_yemen` | 277.5 / 457.3 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
@@ -1126,15 +1147,20 @@ QUEUE first when removing compute markers.
 | Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
-- **India**: Verified is almost all ground perimeters. **Since 2026-10-29 Best counts the
-  unmapped parks above the merge cap** (1,650 outlines at a reviewed share, +28,468 MWp to
-  `est_mwp_rc`; verdicts in `results/india_oversize_review/`, the owner's, 2026-10-29)
+- **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
+  above the merge cap that a person judged solar** (1,427 of 1,789, 577 km2, 28,857 MWp of
+  `est_mwp_rc`, all judged by the owner 2026-11-02; 81 from 2026-11-01; from 2026-10-29 1,650 at
+  the review's shares, +28,468; verdicts in `results/india_oversize_review/`; the other 149 met
+  the lead screens and count only if mapped)
   and Verified credits the seven outlines above 5 km² that fail the screen at their detected
   share (Khavda 2,230 MWp in both tiers; Rewa still unimaged). Pre-change outputs carry
-  `_PRE_oversize_20261029`. **India's register is MNRE via MoSPI eSankhyiki** (state x month x
+  `_PRE_oversize_20261029`, those before the blob rule
+  `/home/tobi/earthpv_data/india_PRE_blobrule_20261101/`, those before the full review
+  `/home/tobi/earthpv_data/india_PRE_judged_20261102/`. **India's register is MNRE via MoSPI eSankhyiki** (state x month x
   ground/rooftop/hybrid/KUSUM, `scripts/validate_india_mnre.py`, fetched through MoSPI's MCP
-  server; the REST API needs TLS legacy renegotiation): January 2026 ground-mounted Best 0.88 of
-  registered (0.79 AC basis), Spearman 0.95 over 19 states, rooftop 7.5%. 253 solar-thermal features (~0.7% of both
+  server; the REST API needs TLS legacy renegotiation): January 2026 ground-mounted Best 0.91 of
+  registered (0.82 AC basis), Spearman 0.97 over 19 states,
+  rooftop 7.5%. 253 solar-thermal features (~0.7% of both
   tiers) remain as a known defect. **The compose was widened by `ring_cells: 3`** (+3,573
   cells, published 2026-10-28; `scripts/run_india_ring_chain.sh`, markers
   `data/india_ring_markers/`; the run before it is kept in

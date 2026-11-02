@@ -1,36 +1,34 @@
-"""Review the model outlines above the merge cap, and admit those judged solar to capacity.
+"""Judge the model's very large outlines (blobs) by eye, and count those judged solar.
 
-**Only an outline a person judged solar counts (owner, 2026-11-01).** A very large outline
-(a blob) enters capacity once it is mapped in OpenStreetMap or once it carries a `pv`
-verdict here; `density.load_oversize_admission` admits exactly those, each whole, and
-nothing else. India's first review (2026-10-28/29) priced its 1,562 unreviewed outlines at
-the sample's share real instead; since 2026-11-01 its census and sample are the record of
-how the review was drawn, and `draw --all` queues every other blob behind them (stratum
-`queue`, largest first) so the rest can be judged one by one, in as many sittings as it
-takes: `apply` takes a partial export, keeps earlier verdicts, and leaves a queue outline
-nobody has judged out of capacity.
+**This review is a standing step of every country's run, like the random-cell validation.**
+`postprocess.MAX_CANDIDATE_M2` (100,000 m2) keeps model outlines above it out of capacity,
+because a sheet of false alarms merges into one shape as readily as a solar park does. A blob
+enters capacity once it is mapped in OpenStreetMap or once it carries a `pv` verdict here
+(owner, 2026-11-01; `density.load_oversize_admission`, each whole), and nothing else admits
+one. Large parks are also the fastest capacity to verify: one look per outline.
 
-`postprocess.MAX_CANDIDATE_M2` (100,000 m2) keeps model outlines above it out of capacity:
-in Pakistan they were merged false-positive sheets. In India most are solar parks that
-OpenStreetMap does not hold yet (2026-10-28, docs/results/india.md). This measures, per
-country, what share of those outlines is real, and writes the result into the country's
-calibration table as `oversize_review`, which is what makes `density` and the atlas admit
-them (`density.load_oversize_admission`). A country without the block keeps the cap.
+    pixi run blob-review draw --aoi india     # review.csv + the review package
+    # open data/oversize_review/index.html (every country), judge with keys 1 / 2 / 3, export:
+    pixi run blob-review apply --aoi india --reviewer "<name>" --verdicts <the export>
+    pixi run blob-review status               # who has what left, and refresh that index
+    pixi run earthpv density --aoi india --districts    # no --force: the cells stay valid
+    # then rebuild the atlas as usual; `status` prints each country's share of its blobs
 
-The population is the export's own: model-drawn outlines above the cap that are new leads
-(`export.new_lead_mask`, no mapped solar within `--min-distance-m`). Two strata:
+**The queue is the published blob file's population, largest first**: model-drawn outlines
+above the cap that are new leads (`export.new_lead_mask`, no mapped solar within
+`--min-distance-m`), inside the regions the atlas draws, through the lead screens
+(`export.steep_lead_screen`, `low_confidence_lead_screen`, and `water_lead_screen` where a
+country switches it on), so nobody judges what the leads already leave out. A country's
+candidates and mapped reference are the run behind its published atlas (`run_source`). `draw`
+on an existing review.csv appends outlines it does not hold and keeps every verdict; `--redraw`
+starts again. Sittings can be partial: `apply` takes any export and keeps earlier verdicts, an
+outline left blank or unsure stays out of capacity and returns on the next page, and an outline
+already judged leaves the page when it is next packaged (`--include-judged` keeps it).
 
-  * a CENSUS of the `--census-n` largest outlines, every one reviewed;
-  * a SAMPLE of `--sample-n` drawn from the rest with probability proportional to area and
-    without replacement, so the share found real is an AREA share, the weight a per-outline
-    area estimate needs.
-
-    python scripts/oversize_review.py draw --aoi india     # review.csv + the review package
-    # open data/oversize_review/india/index.html, judge every outline (keys 1 / 2 / 3),
-    # export verdicts.csv into results/india_oversize_review/, then:
-    python scripts/oversize_review.py apply --aoi india --verdicts \\
-        results/india_oversize_review/verdicts.csv --reviewer "<name>" \\
-        --exclude-region "Uttarākhand" --exclude-region "Ladākh" ...
+`--census-n` / `--sample-n` optionally draw a measured share ahead of the queue: a census of the
+largest outlines and a sample of the rest with probability proportional to area, without
+replacement. Neither prices anything since 2026-11-01. India's 90 of 2026-10-28/29 are kept as
+the record of how the review began, and `apply` needs every census and sample row judged.
 
 **The review is done on disk, from the imagery the model saw** (`package`, run by `draw`,
 2026-10-29). Each outline gets one image of four panels in
@@ -40,29 +38,56 @@ colour around the whole outline, the same at native 10 m pixels over 1.3 km, a f
 `build_review_page.py`'s page: one outline at a time, PV / not PV / unsure, a note, links to
 Google, Bing, Esri Wayback and JOSM for an outline the panels cannot settle. The composite
 is the right epoch: 11 of the 50 parks of India's sample were built after their Esri capture.
-Its limit is 10 m: 9 of India's 60 sampled outlines needed the Esri panel to decide, and
-`apply` accepts no unsure verdict (resolve it on the linked imagery, or pass
-`--unsure-as not_pv` to price it as absent). The page shows no model score, and nothing
-from an earlier verdict, so a second reviewer judges blind; `apply` reports agreement.
-`review.geojson` holds the same outlines for JOSM.
+Its limit is 10 m: 9 of India's 60 sampled outlines needed the Esri panel to decide. The page
+shows no model score, and nothing from an earlier verdict, so a second reviewer judges blind;
+`apply` reports agreement. `review.geojson` holds the same outlines for JOSM. The review is a
+human reading of imagery: record who reviewed it in `--reviewer`.
 
-`--exclude-region` (ADM1 names) keeps the cap in regions where the review found terrain, not
-parks: their sample rows are reported apart and nothing there is admitted. The review is a
-human reading of imagery (Sentinel-2 composite, Esri World Imagery and its capture date):
-record who reviewed it in `--reviewer`.
+**A verdict names one candidate file.** An outline judged and then mapped in OpenStreetMap
+leaves the pool and is counted from the map (no error, `apply` reports it). A new model run
+renumbers the candidates, so `apply` and `density` refuse the old review; `draw --redraw` starts
+a new one, and because the page's saved progress is keyed to the draw, old verdicts cannot
+attach themselves to the new outlines.
 """
 
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from datetime import date
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
+sys.path.insert(0, str(REPO / "scripts"))
 
 VERDICTS = ("pv", "not_pv")
+PACKAGES = REPO / "data" / "oversize_review"
+# France's leads were audited and released on their own (scripts/build_france_osm_leads.py):
+# its run is not in release_leads.SOURCES, its reference is that build's own three pulls in
+# one file, and its blob file went through none of the later lead screens.
+FRANCE = {"pred": "data/predictions_v5/france", "osm": "data/labels/france_mapped_20261022.parquet",
+          "screens": False}
+
+
+def run_source(aoi: str) -> dict:
+    """`pred` (candidates), `osm` (mapped reference) and `screens` of the run behind `aoi`'s
+    published atlas: the lead release's table, so a queue names the outlines its blob file does.
+    A country that has not been released yet uses the default paths."""
+    from release_leads import SOURCES
+
+    if aoi == "france":
+        return FRANCE
+    src = SOURCES.get(aoi, {})
+    return {"pred": src.get("pred", f"data/predictions/{aoi}"),
+            "osm": (src.get("osm") or [f"data/labels/{aoi}_overpass_solar.parquet"])[0],
+            "screens": True}
+
+
+def candidates_path(aoi: str) -> Path:
+    return REPO / run_source(aoi)["pred"] / "candidates.parquet"
 
 
 def population(aoi: str, labels: Path, min_distance_m: float):
@@ -76,10 +101,11 @@ def population(aoi: str, labels: Path, min_distance_m: float):
     from earthpv.labels import resolve_aoi
     from earthpv.postprocess import MAX_CANDIDATE_M2
 
-    c = gpd.read_parquet(REPO / f"data/predictions/{aoi}/candidates.parquet")
+    c = gpd.read_parquet(candidates_path(aoi))
     src = c["geometry_source"].fillna("model") if "geometry_source" in c.columns else "model"
     pool = c[(c["area_m2"] > MAX_CANDIDATE_M2) & (src != "osm")]
     ref = gpd.read_parquet(labels)[["geometry"]]
+    ref = ref[ref.geometry.notna() & ~ref.geometry.is_empty]
     pool = pool[new_lead_mask(pool, ref, min_distance_m=min_distance_m)].copy()
     _, cfg = resolve_aoi(aoi, Settings.load())
     adm1 = fetch_geoboundaries(_iso3_for(cfg), "ADM1").to_crs(4326)
@@ -92,25 +118,64 @@ def population(aoi: str, labels: Path, min_distance_m: float):
     return pool
 
 
+def lead_screened(aoi: str, pool):
+    """`pool` as the published blob file holds it: inside the regions the atlas draws (the
+    ADM1 layer before `density` has written them, as in a country's first run), through the
+    lead screens in `release_leads.build`'s order."""
+    from earthpv import atlas
+    from earthpv.export import (lead_water_screen_enabled, low_confidence_lead_screen,
+                                steep_lead_screen, water_lead_screen)
+
+    src = run_source(aoi)
+    regions = REPO / src["pred"] / "density" / "regions.geoparquet"
+    rep = pool.geometry.representative_point()
+    if regions.exists():
+        inside = rep.within(atlas._page_regions(aoi, regions).geometry.union_all()).to_numpy()
+    else:
+        inside = pool["region"].notna().to_numpy()
+    pool = pool[inside].copy()
+    if not src["screens"] or pool.empty:
+        return pool
+    _, drop, review = steep_lead_screen(pool)
+    pool["steep_review"] = review
+    pool = pool[~drop].copy()
+    pool = pool[~low_confidence_lead_screen(pool)].copy()
+    if lead_water_screen_enabled(aoi):
+        _, wet = water_lead_screen(pool)
+        pool = pool[~wet].copy()
+    return pool
+
+
+def _draw_id(rev) -> str:
+    """Names one draw for the page's saved progress: the first row never changes when the
+    queue grows, and a new candidate file or sample cannot reproduce it."""
+    import hashlib
+
+    first = rev.iloc[0]
+    return hashlib.sha1(f"{first['candidate_index']}:{first['area_m2']}".encode()).hexdigest()[:8]
+
+
 def cmd_draw(a) -> int:
     import numpy as np
     import pandas as pd
 
     path = a.out / "review.csv"
-    if path.exists() and not a.redraw:
-        print(f"{path} exists; packaging it as drawn (--redraw draws a new sample)")
-        if a.all:
-            _queue_rest(path, population(a.aoi, a.labels, a.min_distance_m))
-        return cmd_package(a)
     pool = population(a.aoi, a.labels, a.min_distance_m)
-    if pool.empty:
-        print(f"no model outline above the cap is a new lead in {a.aoi}; nothing to review")
+    queue = lead_screened(a.aoi, pool)
+    print(f"{a.aoi}: {len(pool)} outlines above the cap with no mapped solar within "
+          f"{a.min_distance_m:.0f} m ({pool.area_m2.sum() / 1e6:.1f} km2); {len(queue)} after "
+          f"the atlas's regions and the lead screens ({queue.area_m2.sum() / 1e6:.1f} km2)")
+    if path.exists() and not a.redraw:
+        _queue_rest(path, queue)
+        return cmd_package(a)
+    if queue.empty:
+        print(f"nothing to review in {a.aoi}")
         return 0
     rng = np.random.default_rng(a.seed)
-    census = pool.sort_values("area_m2", ascending=False).head(a.census_n)
-    rest = pool.drop(census.index)
-    pick = rng.choice(rest.index, size=min(a.sample_n, len(rest)), replace=False,
-                      p=rest["area_m2"] / rest["area_m2"].sum())
+    census = queue.sort_values("area_m2", ascending=False).head(a.census_n)
+    rest = queue.drop(census.index)
+    pick = (rng.choice(rest.index, size=min(a.sample_n, len(rest)), replace=False,
+                       p=rest["area_m2"] / rest["area_m2"].sum()) if a.sample_n else [])
     sample = rest.loc[pick]
     cols = ["candidate_index", "lon", "lat", "area_m2", "region"]
     out = pd.concat([census[cols].assign(stratum="census", k=range(len(census))),
@@ -120,12 +185,9 @@ def cmd_draw(a) -> int:
     out["evidence"] = ""
     a.out.mkdir(parents=True, exist_ok=True)
     out.to_csv(path, index=False)
-    print(f"{len(pool)} outlines above the cap with no mapped solar within "
-          f"{a.min_distance_m:.0f} m ({pool.area_m2.sum() / 1e6:.1f} km2); census {len(census)} "
-          f"({census.area_m2.sum() / 1e6:.1f} km2), sample {len(sample)} by area, seed {a.seed} "
-          f"-> {path}")
-    if a.all:
-        _queue_rest(path, pool)
+    # The crops are named by code, and a new draw reuses the codes.
+    shutil.rmtree(PACKAGES / a.aoi / "crops", ignore_errors=True)
+    _queue_rest(path, queue)
     return cmd_package(a)
 
 
@@ -137,7 +199,8 @@ def _queue_rest(path: Path, pool) -> None:
     rev = pd.read_csv(path)
     rest = pool[~pool["candidate_index"].isin(rev["candidate_index"])]
     rest = rest.sort_values("area_m2", ascending=False)
-    k0 = int(rev.loc[rev["stratum"] == "queue", "k"].max() + 1) if (rev["stratum"] == "queue").any() else 0
+    in_queue = rev["stratum"] == "queue"
+    k0 = int(rev.loc[in_queue, "k"].max() + 1) if in_queue.any() else 0
     q = rest[["candidate_index", "lon", "lat", "area_m2", "region"]].assign(
         stratum="queue", k=range(k0, k0 + len(rest)))
     q["code"] = [f"q{k:04d}" for k in q["k"]]
@@ -149,6 +212,7 @@ def _queue_rest(path: Path, pool) -> None:
 
 
 def cmd_apply(a) -> int:
+    import geopandas as gpd
     import numpy as np
     import pandas as pd
 
@@ -158,7 +222,6 @@ def cmd_apply(a) -> int:
     rev = pd.read_csv(a.review)
     if a.verdicts is not None:
         rev = _merge_page_verdicts(rev, a.verdicts, a.unsure_as, a.reviewer)
-        rev.to_csv(a.review, index=False)
     queue = rev["stratum"] == "queue"
     bad = sorted(set(rev["verdict"].fillna("")) - set(VERDICTS) - {""})
     blank = rev["verdict"].fillna("").eq("") & ~queue
@@ -166,60 +229,112 @@ def cmd_apply(a) -> int:
         raise SystemExit(f"{a.review}: verdicts must be {VERDICTS}, found {bad or ['']}; only a "
                          "queue outline may stay blank (unreviewed)")
     pool = population(a.aoi, a.labels, a.min_distance_m)
-    missing = set(rev["candidate_index"]) - set(pool["candidate_index"])
-    if missing:
-        raise SystemExit(f"{len(missing)} reviewed outlines are not in the current population "
-                         f"(candidates.parquet changed since the draw?): {sorted(missing)[:5]}")
-    excluded = set(a.exclude_region)
-    unknown = excluded - set(pool["region"].dropna())
+    gone = rev[~rev["candidate_index"].isin(pool["candidate_index"])]
+    c = pd.read_parquet(candidates_path(a.aoi), columns=["area_m2"])
+    same = gone["candidate_index"].isin(c.index)
+    if not same.all() or not np.allclose(c.loc[gone.loc[same, "candidate_index"], "area_m2"],
+                                         gone.loc[same, "area_m2"], rtol=1e-6, atol=1.0):
+        raise SystemExit(f"{len(gone)} reviewed outlines are not in the current population and "
+                         "not in the candidates as drawn: candidates.parquet changed since the "
+                         "draw, so start a new review with `draw --redraw`")
+    if a.verdicts is not None:  # only once nothing above can refuse the sitting
+        rev.to_csv(a.review, index=False)
+    prior = (cc.load_table(cc.default_table_path(a.aoi)) or {}).get(cc.OVERSIZE_REVIEW_KEY) or {}
+    unknown = set(a.exclude_region) - set(pool["region"].dropna())
     if unknown:
         raise SystemExit(f"--exclude-region names no outline's region: {sorted(unknown)}")
+    excluded = set(a.exclude_region) or set(prior.get("excluded_regions") or [])
     rev["real"] = rev["verdict"] == "pv"
     rev["excluded"] = rev["region"].isin(excluded)
-    judged_q = rev[queue & rev["verdict"].fillna("").ne("")]
+    judged = rev["verdict"].fillna("").ne("")
     census = rev[rev.stratum == "census"]
     if census["excluded"].any():
         raise SystemExit("a census outline lies in an excluded region; the strata would overlap")
     sample = rev[(rev.stratum == "sample") & ~rev.excluded]
     ex = rev[(rev.stratum == "sample") & rev.excluded]
+    earlier = prior.get("reviewer")  # every sitting's reviewer stays on record
     block = {
         "derived": date.today().isoformat(),
-        "reviewer": a.reviewer,
+        "reviewer": f"{earlier}; {a.reviewer}" if earlier and a.reviewer not in earlier
+                    else a.reviewer,
         "review_csv": str(a.review),
         "population": "model-drawn outlines above max_candidate_m2 with no mapped solar within "
                       "min_distance_m of them (export.new_lead_mask)",
         "max_candidate_m2": float(MAX_CANDIDATE_M2),
         "min_distance_m": float(a.min_distance_m),
         "mapped_reference": str(a.labels),
-        "census_min_area_m2": float(census["area_m2"].min()),
-        "census_n": int(len(census)),
-        "census_real": int(census["real"].sum()),
-        "sample_design": f"probability proportional to area, without replacement, seed {a.seed}, "
-                         "from the outlines below the census",
-        "sample_n": int(len(sample)),
-        "sample_real": int(sample["real"].sum()),
-        "excluded_regions": sorted(excluded),
-        "excluded_sample_n": int(len(ex)),
-        "excluded_sample_real": int(ex["real"].sum()),
+        "n_outlines": int(len(rev)),
+        "n_judged": int(judged.sum()),
+        "n_pv": int(rev["real"].sum()),
     }
-    p = cc.oversize_review_p_real(block)
-    d = cc.oversize_review_draws(block, 4000)
-    block["p_real_census"] = round(p["census"], 4)
-    block["p_real_sample"] = round(p["sample"], 4)
-    lo, hi = np.percentile(d["sample"], cc.CI_PCT)
-    block["p_real_sample_lo"], block["p_real_sample_hi"] = round(float(lo), 4), round(float(hi), 4)
+    measured = ""
+    if len(census) or len(sample) or len(ex):  # a drawn share, the record of how a review began
+        block.update({
+            "census_min_area_m2": float(census["area_m2"].min()) if len(census) else None,
+            "census_n": int(len(census)),
+            "census_real": int(census["real"].sum()),
+            "sample_design": prior.get("sample_design") or (
+                f"probability proportional to area, without replacement, seed {a.seed}, from "
+                "the outlines below the census"),
+            "sample_n": int(len(sample)),
+            "sample_real": int(sample["real"].sum()),
+            "excluded_regions": sorted(excluded),
+            "excluded_sample_n": int(len(ex)),
+            "excluded_sample_real": int(ex["real"].sum()),
+        })
+        p = cc.oversize_review_p_real(block)
+        lo, hi = np.percentile(cc.oversize_review_draws(block, 4000)["sample"], cc.CI_PCT)
+        block["p_real_census"] = round(p["census"], 4)
+        block["p_real_sample"] = round(p["sample"], 4)
+        block["p_real_sample_lo"] = round(float(lo), 4)
+        block["p_real_sample_hi"] = round(float(hi), 4)
+        measured = (f"census {block['census_real']}/{block['census_n']} real; sample "
+                    f"{block['sample_real']}/{block['sample_n']} = {p['sample']:.3f} (90% "
+                    f"{lo:.3f}-{hi:.3f}). ")
     path = cc.default_table_path(a.aoi)
     table = cc.load_table(path)
     table[cc.OVERSIZE_REVIEW_KEY] = block
     cc.write_table(table, path)
-    pv = rev[rev["verdict"] == "pv"]
-    pv = pv[~pv["region"].isin(excluded)]
-    print(f"census {block['census_real']}/{block['census_n']} real; sample {block['sample_real']}/"
-          f"{block['sample_n']} = {p['sample']:.3f} (90% {lo:.3f}-{hi:.3f}); excluded regions "
-          f"{block['excluded_sample_real']}/{block['excluded_sample_n']} real; queue "
-          f"{int((judged_q['verdict'] == 'pv').sum())}/{len(judged_q)} real of {int(queue.sum())} "
-          f"queued. Admits the {len(pv)} of {len(pool)} outlines judged solar, "
-          f"{pv['area_m2'].sum() / 1e6:.1f} km2 -> {path}")
+    pv = rev[rev["real"]]
+    mapped_pv = pv[pv["candidate_index"].isin(gone["candidate_index"])]
+    admits = pv.drop(mapped_pv.index)
+    print(f"{measured}{block['n_judged']} of {len(rev)} outlines judged, {block['n_pv']} solar. "
+          f"Admits {len(admits)}, {admits['area_m2'].sum() / 1e6:.1f} km2 -> {path}")
+    if len(gone):
+        print(f"{len(gone)} reviewed outlines are mapped since ({len(mapped_pv)} judged solar): "
+              "the map counts those, not the verdict")
+    write_hub()
+    print(f"Next: `earthpv density --aoi {a.aoi} --districts`, then the atlas. `package` drops "
+          "the judged outlines from the page.")
+    return 0
+
+
+def _share_row(aoi: str, path: Path) -> dict:
+    import pandas as pd
+
+    rev = pd.read_csv(path)
+    v = rev["verdict"].fillna("")
+    left = v.eq("")
+    return {"aoi": aoi, "n": len(rev), "judged": int((~left).sum()), "pv": int(v.eq("pv").sum()),
+            "not_pv": int(v.eq("not_pv").sum()), "left": int(left.sum()),
+            "left_km2": float(rev.loc[left, "area_m2"].sum() / 1e6),
+            "page": (PACKAGES / aoi / "index.html").exists()}
+
+
+def share_table() -> list[dict]:
+    rows = [_share_row(p.parent.name.removesuffix("_oversize_review"), p)
+            for p in sorted((REPO / "results").glob("*_oversize_review/review.csv"))]
+    return sorted(rows, key=lambda r: -r["left_km2"])
+
+
+def cmd_status(a) -> int:
+    rows = share_table()
+    print(f"{'country':14s} {'outlines':>8s} {'judged':>7s} {'solar':>6s} {'not':>5s} "
+          f"{'left':>6s} {'left km2':>9s}  share judged")
+    for r in rows:
+        print(f"{r['aoi']:14s} {r['n']:8d} {r['judged']:7d} {r['pv']:6d} {r['not_pv']:5d} "
+              f"{r['left']:6d} {r['left_km2']:9.1f}  {r['judged'] / max(r['n'], 1):.0%}")
+    print(f"-> {write_hub()}")
     return 0
 
 
@@ -245,16 +360,45 @@ GUIDE = r"""      <ul>
         <li><b>Not PV</b>: something else, typically dark ploughed fields, water or aquaculture
           ponds, burn scars, rock, a shaded slope, snow, a riverbed or greenhouses. Fields are
           dark only in true colour; water is dark in every panel.</li>
-        <li><b>Unsure</b>: these four panels cannot settle it. Open the links, decide, and
-          change the verdict; an outline left unsure cannot be priced.</li>
+        <li><b>Unsure</b>: these four panels cannot settle it. Open the links and decide, or
+          leave it unsure: it does not count, and it comes back next time.</li>
       </ul>
       <p>The composite is the imagery the model read, so it shows parks built after the Esri
         capture: panels on the composite and bare or freshly cleared ground on an older Esri
-        image is a park built since. Keys: <kbd>1</kbd> PV, <kbd>2</kbd> Not PV,
+        image is a park built since. A flat grey block is a cell nobody imaged; a black block,
+        dark red in the false colour, is a cell that lost bands. Neither is ground: judge
+        those parts on Esri. Keys: <kbd>1</kbd> PV, <kbd>2</kbd> Not PV,
         <kbd>3</kbd> unsure, <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step, <kbd>n</kbd> note.</p>
-      <p>When done, export <code>verdicts.csv</code> into
-        <code>results/__AOI___oversize_review/</code> and run
-        <code>oversize_review.py apply --verdicts</code>. Progress also stays in this browser.</p>"""
+      <p>Stop whenever you like: progress stays in this browser, and any export can be
+        applied, however partial. An outline left blank or unsure stays out of capacity and
+        comes back on the next page. Export, then run
+        <code>pixi run blob-review apply --aoi __AOI__ --reviewer "&lt;name&gt;"
+        --verdicts &lt;the export&gt;</code>.</p>"""
+
+
+def _render_job(job: tuple) -> tuple[str, bool, str | None]:
+    code, args = job
+    try:
+        ok, esri_date = _render(*args)
+    except Exception as e:  # noqa: BLE001 -- one bad outline must not stop the country
+        print(f"  {code}: not rendered: {e}", flush=True)
+        return code, False, None
+    return code, ok, esri_date
+
+
+def _epoch(aoi: str, cfg: dict) -> str:
+    """The imagery window as the page says it; an AOI built before `compose_window` existed
+    gets the span of its scenes, from `scripts/imagery_median_date.py`."""
+    import yaml
+
+    window = cfg.get("compose_window")
+    if window:
+        return f"{_month(window[0])} to {_month(window[1])}"
+    path = REPO / "configs" / "atlas_imagery_dates.yaml"
+    dates = (yaml.safe_load(path.read_text()).get("aois") or {}).get(aoi) if path.exists() else None
+    if dates:
+        return f"{_month(str(dates['first']))} to {_month(str(dates['last']))}"
+    return "composite"
 
 
 def cmd_package(a) -> int:
@@ -262,7 +406,6 @@ def cmd_package(a) -> int:
     import geopandas as gpd
     import pandas as pd
 
-    sys.path.insert(0, str(REPO / "scripts"))
     from build_review_page import write_page
 
     from earthpv.config import Settings
@@ -273,26 +416,40 @@ def cmd_package(a) -> int:
     if "code" not in rev.columns:
         rev.insert(0, "code", [f"{s[0]}{k:02d}" for s, k in zip(rev.stratum, rev.k)])
         rev.to_csv(path, index=False)
-    cands = gpd.read_parquet(REPO / f"data/predictions/{a.aoi}/candidates.parquet",
-                             columns=["geometry"])
+    cands = gpd.read_parquet(candidates_path(a.aoi), columns=["geometry"])
     geoms = cands.geometry.loc[rev.candidate_index].to_numpy()
     s = Settings.load()
     cfg = s.aois[a.aoi]
     origin = _grid_origin(a.aoi, cfg, s)
-    window = cfg.get("compose_window")
-    epoch = (f"{_month(window[0])} to {_month(window[1])}" if window else "the imagery window")
-    pkg = REPO / "data" / "oversize_review" / a.aoi
+    epoch = _epoch(a.aoi, cfg)
+    pkg = PACKAGES / a.aoi
     (pkg / "crops").mkdir(parents=True, exist_ok=True)
     comp = REPO / f"data/composites/{a.aoi}/composites"
-    items, dates = [], []
-    for r, g in zip(rev.itertuples(), geoms):
-        jpg = pkg / "crops" / f"{r.code}.jpg"
+    show = rev["verdict"].fillna("").eq("") | a.include_judged
+    jobs = []
+    for r, g, on_page in zip(rev.itertuples(), geoms, show):
+        jpg, meta = pkg / "crops" / f"{r.code}.jpg", pkg / "crops" / f"{r.code}.esri"
+        if on_page and (a.force or not jpg.exists() or not meta.exists()):
+            jobs.append((r.code, (g, comp, origin, epoch, jpg, not a.no_esri)))
+    no_esri = 0
+    with ProcessPoolExecutor(max_workers=a.workers) as pool:
+        for n, (code, ok, esri_date) in enumerate(pool.map(_render_job, jobs, chunksize=4), 1):
+            # No marker for a failed Esri fetch, so the next `package` tries that one again.
+            if ok:
+                (pkg / "crops" / f"{code}.esri").write_text(esri_date or "")
+            no_esri += not ok
+            if n % 100 == 0 or n == len(jobs):
+                print(f"  {a.aoi}: {n} of {len(jobs)} rendered", flush=True)
+    items, dates, unrendered = [], [], []
+    for r, g, on_page in zip(rev.itertuples(), geoms, show):
         meta = pkg / "crops" / f"{r.code}.esri"
-        if a.force or not jpg.exists():
-            esri_date = _render(g, comp, origin, epoch, jpg, esri=not a.no_esri)
-            meta.write_text(esri_date or "")
         esri_date = meta.read_text().strip() if meta.exists() else ""
         dates.append(esri_date)
+        if not on_page:
+            continue
+        if not (pkg / "crops" / f"{r.code}.jpg").exists():
+            unrendered.append(r.code)
+            continue
         w, so, e, n = g.bounds
         p = g.representative_point()
         items.append({
@@ -303,19 +460,82 @@ def cmd_package(a) -> int:
             "bbox": [round(w - 0.002, 6), round(so - 0.002, 6), round(e + 0.002, 6),
                      round(n + 0.002, 6)],
         })
-    page = write_page(pkg / "index.html", f"{a.aoi}_oversize_review", items,
-                      guide=GUIDE.replace("__AOI__", a.aoi))
+    if not items:
+        (pkg / "index.html").unlink(missing_ok=True)
+        print(f"every outline of {a.aoi} has a verdict; no page")
+    else:
+        page = write_page(pkg / "index.html", f"{a.aoi}_oversize_review", items,
+                          guide=GUIDE.replace("__AOI__", a.aoi), title="Solar farm review",
+                          store=f"{a.aoi}_oversize_review:{_draw_id(rev)}",
+                          export_name=f"{a.aoi}_blob_verdicts.csv", back="../index.html")
+        print(f"{len(items)} of {len(rev)} outlines on the page -> {page}"
+              + (f"; {no_esri} without their Esri panel (`package` retries)" if no_esri else ""))
+    if unrendered:
+        print(f"{len(unrendered)} outlines could not be rendered and are not on the page "
+              f"(`package` retries them): {unrendered[:8]}")
     rev["esri_date"] = dates
     gj = gpd.GeoDataFrame({
-        "name": [f"{c} {v}" if isinstance(v, str) and v else c for c, v in zip(rev.code, rev.verdict)],
+        "name": [f"{c} {v}" if isinstance(v, str) and v else c
+                 for c, v in zip(rev.code, rev.verdict)],
         "review_verdict": rev.verdict, "review_evidence": rev.evidence, "esri_date": rev.esri_date,
         "stratum": rev.stratum, "k": rev.k, "area_ha": (rev.area_m2 / 1e4).round(1),
         "region": rev.region, "candidate_index": rev.candidate_index,
     }, geometry=geoms, crs="EPSG:4326")
     gj.to_file(a.out / "review.geojson", driver="GeoJSON")
-    print(f"{len(items)} outlines -> {page} (crops in {pkg / 'crops'}); JOSM layer "
-          f"{a.out / 'review.geojson'}. Do not upload that layer: the outlines are the model's.")
+    print(f"JOSM layer {a.out / 'review.geojson'}. Do not upload it: the outlines are the model's.")
+    write_hub()
     return 0
+
+
+HUB_ROW = ('<tr><td>{link}</td><td>{left:,}</td><td>{left_km2:,.1f}</td><td>{judged:,} of {n:,} '
+           '({share:.0%})</td><td>{pv:,}</td><td>{not_pv:,}</td></tr>')
+HUB = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Solar farm review</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root { color-scheme: light dark; --ink: light-dark(#1d2330, #e6e9ef);
+  --muted: light-dark(#5d6677, #98a2b3); --line: light-dark(#d9dde5, #2a3140);
+  --accent: light-dark(#2563eb, #6ea8ff); --bg: light-dark(#f6f7f9, #0f131a); }
+body { margin: 0 auto; max-width: 860px; padding: 24px 16px; background: var(--bg);
+  color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
+h1 { font-size: 22px; margin: 0 0 8px; }
+p { color: var(--muted); }
+a { color: var(--accent); }
+table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right;
+  font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 13px; color: var(--muted); font-weight: 600; }
+code { font-size: 13px; }
+</style></head><body>
+<h1>Solar farm review</h1>
+<p>Very large model outlines, one look each: Sentinel-2 as the model saw it, its false colour,
+and Esri for texture. An outline counts towards capacity only once a person judges it solar
+or it is mapped in OpenStreetMap. Largest first within each country.</p>
+<table><thead><tr><th>Country</th><th>To judge</th><th>km&sup2; to judge</th><th>Judged</th>
+<th>Solar</th><th>Not solar</th></tr></thead><tbody>
+__ROWS__
+</tbody></table>
+<p>Counts are what <code>apply</code> has recorded. Progress since then is in each page, until
+you export it and run<br>
+<code>pixi run blob-review apply --aoi &lt;country&gt; --reviewer "&lt;name&gt;" --verdicts
+&lt;the export&gt;</code><br>
+then <code>earthpv density --aoi &lt;country&gt; --districts</code> and the atlas.</p>
+</body></html>
+"""
+
+
+def write_hub() -> Path:
+    """`data/oversize_review/index.html`: every country's page and what `apply` has recorded."""
+    rows = []
+    for r in share_table():
+        name = r["aoi"].replace("_", " ").title()
+        link = f'<a href="{r["aoi"]}/index.html">{name}</a>' if r["page"] else name
+        rows.append(HUB_ROW.format(link=link, share=r["judged"] / max(r["n"], 1), **r))
+    PACKAGES.mkdir(parents=True, exist_ok=True)
+    out = PACKAGES / "index.html"
+    out.write_text(HUB.replace("__ROWS__", "\n".join(rows)))
+    return out
 
 
 def _month(day: str) -> str:
@@ -324,8 +544,10 @@ def _month(day: str) -> str:
     return _d.fromisoformat(day).strftime("%b %Y")
 
 
-def _render(geom, comp_dir: Path, origin, epoch: str, out: Path, esri: bool = True) -> str | None:
-    """One outline's four panels as a 2 x 2 JPEG. Returns the Esri capture date, if fetched."""
+def _render(geom, comp_dir: Path, origin, epoch: str, out: Path,
+            esri: bool = True) -> tuple[bool, str | None]:
+    """One outline's four panels as a 2 x 2 JPEG. Returns whether the panels are as asked (an
+    Esri fetch that failed is not, and wants another try) and the Esri capture date."""
     from PIL import Image
     from pyproj import Transformer
 
@@ -348,11 +570,11 @@ def _render(geom, comp_dir: Path, origin, epoch: str, out: Path, esri: bool = Tr
         _caption(_outline(_rgb(ctx, bands, FALSE_RGB), gu, ctx_tf),
                  "false colour: SWIR, NIR, red"),
     ]
-    esri_date = None
+    esri_date, ok = None, True
     if esri:
         im, esri_date = _esri(geom, rep, side)
-        panels.append(_caption(im, f"Esri World Imagery {esri_date or '(no capture date)'}"
-                               if im is not None else "Esri imagery unavailable"))
+        ok = im is not None
+        panels.append(_caption(im, f"Esri World Imagery {esri_date or '(no capture date)'}"))
     if len(panels) < 4 or panels[3] is None:
         panels = panels[:3] + [_caption(Image.new("RGB", (PANEL, PANEL), (40, 40, 40)),
                                         "Esri not fetched")]
@@ -360,7 +582,7 @@ def _render(geom, comp_dir: Path, origin, epoch: str, out: Path, esri: bool = Tr
     for i, p in enumerate(panels):
         sheet.paste(p, ((i % 2) * PANEL, (i // 2) * PANEL))
     sheet.save(out, "JPEG", quality=86)
-    return esri_date
+    return ok, esri_date
 
 
 def _transform(geom, tr):
@@ -446,7 +668,6 @@ def _esri(geom, rep, side: float):
     from PIL import Image, ImageDraw
     from pyproj import Transformer
 
-    sys.path.insert(0, str(REPO / "scripts"))
     from propose_calibration_candidates import esri_capture
 
     to_m = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
@@ -488,10 +709,21 @@ def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: s
     page = v["verdict"].map({"pv": "pv", "no_pv": "not_pv", "unsure": "unsure", "": ""})
     # No verdict on the page for an outline judged before: keep the earlier one.
     page = pd.Series(np.where(page.to_numpy() == "", prev0, page.to_numpy()), index=page.index)
-    unsure = list(rev.code[(page == "unsure").to_numpy()])
+    is_unsure = (page == "unsure").to_numpy()
+    unsure = list(rev.code[is_unsure & ~queue])
     if unsure and unsure_as is None:
-        raise SystemExit(f"{len(unsure)} outlines are unsure ({unsure[:8]}): settle them on the "
-                         "linked imagery, or pass --unsure-as not_pv to price them as absent")
+        raise SystemExit(f"{len(unsure)} census or sample outlines are unsure ({unsure[:8]}): "
+                         "their share needs a verdict. Settle them on the linked imagery, or "
+                         "pass --unsure-as not_pv to price them as absent")
+    # An unsure queue outline stays open: it does not count and comes back on the next page.
+    open_q = is_unsure & queue
+    if unsure_as is None:
+        page = page.where(~open_q, prev0)
+        if open_q.any():
+            print(f"{int(open_q.sum())} queue outlines left unsure: out of capacity, back on "
+                  "the next page")
+    else:
+        unsure = list(rev.code[is_unsure])
     page = page.replace("unsure", unsure_as or "unsure").to_numpy()
     prev = rev["verdict"].fillna("").to_numpy()
     judged = (prev != "") & (v["verdict"].to_numpy() != "")
@@ -499,16 +731,26 @@ def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: s
         agree = (prev[judged] == page[judged]).sum()
         print(f"{reviewer} agrees with the earlier verdicts on {agree} of {judged.sum()} outlines; "
               f"they differ on {', '.join(rev.code[judged & (prev != page)]) or 'none'}")
-        rev["verdict_prev"] = prev
+        # The first differing verdict stays on record over repeated partial applies.
+        changed = judged & (prev != page)
+        if "verdict_prev" not in rev:
+            rev["verdict_prev"] = ""
+        rev["verdict_prev"] = rev["verdict_prev"].astype(object)
+        rev.loc[changed, "verdict_prev"] = prev[changed]
     rev["verdict"] = page
     note = v["note"].to_numpy()
     fresh = v["verdict"].to_numpy() != ""
-    old = rev["evidence"].fillna("").to_numpy() if "evidence" in rev else [""] * len(rev)
+    # A column of blanks reads back as floats.
+    old = (rev["evidence"].astype(object).fillna("").to_numpy() if "evidence" in rev
+           else [""] * len(rev))
     rev["evidence"] = [(f"{reviewer}: {n}" if n else f"{reviewer}") if f else o
                        for n, f, o in zip(note, fresh, old)]
+    if unsure_as is None and open_q.any():
+        rev.loc[open_q, "evidence"] = rev.loc[open_q, "evidence"].astype(str) + " (unsure)"
     for c in unsure:
         rev.loc[rev.code == c, "evidence"] += f" (unsure, priced as {unsure_as})"
     return rev
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -517,32 +759,39 @@ def main() -> int:
         p = sub.add_parser(name)
         p.add_argument("--aoi", required=True)
         p.add_argument("--labels", type=Path, default=None,
-                       help="the mapped reference (default data/labels/<aoi>_overpass_solar.parquet)")
+                       help="the mapped reference (default: the published run's own, run_source)")
         p.add_argument("--min-distance-m", type=float, default=100.0)
         p.add_argument("--seed", type=int, default=20261028)
+    sub.add_parser("status", help="every country's verdicts; refreshes the index page")
     d = sub.choices["draw"]
-    d.add_argument("--all", action="store_true",
-                   help="queue every outline not yet in review.csv behind the census and "
-                        "sample, largest first, so each can be judged (owner, 2026-11-01)")
-    d.add_argument("--census-n", type=int, default=30)
-    d.add_argument("--sample-n", type=int, default=60)
+    d.add_argument("--census-n", type=int, default=0,
+                   help="judge the N largest outlines as a census, ahead of the queue")
+    d.add_argument("--sample-n", type=int, default=0,
+                   help="judge N more drawn by area as a sample, ahead of the queue")
     d.add_argument("--redraw", action="store_true",
-                   help="draw a new sample over an existing review.csv (its verdicts are lost)")
+                   help="start over from the current candidates (every verdict is lost)")
     for name in ("draw", "package"):
         q = sub.choices[name]
         q.add_argument("--out", type=Path, default=None)
         q.add_argument("--no-esri", action="store_true", help="leave the Esri panel out (offline)")
         q.add_argument("--force", action="store_true", help="re-render crops that exist")
+        q.add_argument("--workers", type=int, default=4)
+        q.add_argument("--include-judged", action="store_true",
+                       help="keep outlines with a verdict on the page, to judge them again")
     p = sub.choices["apply"]
     p.add_argument("--review", type=Path, default=None)
     p.add_argument("--verdicts", type=Path, default=None,
                    help="the review page's export (code,imagery_date,verdict,note)")
     p.add_argument("--unsure-as", choices=VERDICTS, default=None,
-                   help="price an outline left unsure as this verdict (default: refuse)")
-    p.add_argument("--exclude-region", action="append", default=[])
+                   help="price an outline left unsure as this verdict (default: a queue outline "
+                        "stays open; a census or sample outline is refused)")
+    p.add_argument("--exclude-region", action="append", default=[],
+                   help="keep a region's sample rows apart in the measured share; a record only")
     p.add_argument("--reviewer", required=True)
     a = ap.parse_args()
-    a.labels = a.labels or Path(f"data/labels/{a.aoi}_overpass_solar.parquet")
+    if a.cmd == "status":
+        return cmd_status(a)
+    a.labels = a.labels or Path(run_source(a.aoi)["osm"])
     if a.cmd in ("draw", "package"):
         a.out = a.out or REPO / "results" / f"{a.aoi}_oversize_review"
         return cmd_draw(a) if a.cmd == "draw" else cmd_package(a)
