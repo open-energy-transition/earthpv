@@ -26,7 +26,7 @@ hide:
   <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
-  <p><strong>Bronze until more of its leads are mapped in OpenStreetMap.</strong> Installations of about 400 m&sup2; and up are counted, plus small solar-irrigation arrays calibrated on hand-mapped farm areas; small rooftop systems are not estimated. Silver also needs leads mapped in OpenStreetMap to localize the model: about a third of the 1,073 places the model found solar that OpenStreetMap does not have yet, and of its 25 very large outlines.</p>
+  <p><strong>Bronze until more of its leads are mapped in OpenStreetMap.</strong> Installations of about 400 m&sup2; and up are counted, plus small solar-irrigation arrays calibrated on hand-mapped farm areas; small rooftop systems are not estimated. Silver also needs leads mapped in OpenStreetMap to localize the model: about a third of the 1,036 places the model found solar that OpenStreetMap does not have yet, and of its 6 very large outlines.</p>
   <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work down it from the top on recent imagery, mapping every real installation. Once about a third has a verdict, the model is retrained on what you mapped and the atlas shows Silver.</p>
   <p><a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> <a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a></p>
 </div>

@@ -5,8 +5,10 @@ Morocco-Egypt-Yemen-South Africa queue to reach a page. Like [Egypt](egypt.md) i
 with no calibration quadrats, no national register and no third-party PV dataset to check
 against, and it was run under the owner's standing instruction to **localize the
 segmentation** on the country's own OpenStreetMap labels and to ship whichever checkpoint
-scores better on a held-out region. Neither checkpoint scored anything on the holdout, the
-tie goes to the localized `v13_combined_yemen` under that rule, and this page runs on it.
+scores better on a held-out region. Neither checkpoint scored anything on the holdout, and
+the tie went to the localized `v13_combined_yemen` under that rule. Since 2026-11-02 the page
+runs on `v25_combined_yemen`, retrained on the arrays the owner mapped from v13's leads
+([below](#retraining-on-the-mapped-leads-v25-2026-11-02)).
 **Read it as a map of what OpenStreetMap holds, not as an estimate of Yemen's PV.**
 
 Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
@@ -15,13 +17,13 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
 
 | | |
 | --- | --- |
-| Verified | **151.3 MWp** (90% 128 to 184); 130.9 until 2026-10-30, 65.9 before the 2026-10-24 OpenStreetMap refresh |
-| Best estimate | **324.7 MWp** (90% 230 to 493); 302.1 until 2026-10-30, 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
-| of which farm ground PV, < 400 m&sup2; | **169.1 MWp** (90% 77 to 327), 34 cells, calibrated on seven farm areas; [below](#farm-ground-pv-added-2026-10-24) |
-| OpenStreetMap | pulled late on 2026-10-24, 3,315 installations in the grid after dissolving overlaps (2,723 in the page before, 1,892 on 2026-10-10) |
+| Verified | **277.5 MWp** (90% 238 to 325); 151.3 until 2026-11-02, 130.9 until 2026-10-30, 65.9 before the 2026-10-24 OpenStreetMap refresh |
+| Best estimate | **457.3 MWp** (90% 361 to 629); 324.7 until 2026-11-02, 302.1 until 2026-10-30, 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
+| of which farm ground PV, < 400 m&sup2; | **171.0 MWp** (90% 85 to 335), 34 cells, calibrated on seven farm areas; 169.1 until 2026-11-02; [below](#farm-ground-pv-added-2026-10-24) |
+| OpenStreetMap | pulled 2026-11-01, 4,135 installations in the grid (3,315 on the late 2026-10-24 pull, 2,723 in the page before, 1,892 on 2026-10-10) |
 | Grid | 810 cells of 0.1&deg;, 22 governorates (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, October 2025 to March 2026 |
-| Model | `v13_combined_yemen` epoch 28, localized (tied with `v5_combined_france` at zero on the holdout; see below) |
+| Model | `v25_combined_yemen` epoch 30, retrained on the 2026-11-01 pull; `v13_combined_yemen` epoch 28 until 2026-11-02 (tied with `v5_combined_france` at zero on the holdout; see below) |
 
 !!! warning "Household rooftops below 400 m&sup2; are not estimated"
     Yemen has **no `roofclf` half**: it was fitted on Yemen's nine building boxes and
@@ -31,8 +33,9 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
     prices rooftop PV below the 400 m&sup2; segmentation floor. Below that floor only the farm ground-PV detector counts, and only in
     the 34 cells whose cropland, buildings and elevation resemble its farm areas
     ([below](#farm-ground-pv-added-2026-10-24)). The segmentation model has no glint sample,
-    so `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction, under
-    0.01 in every size bin (next sections). Recall was deliberately skipped
+    so `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction: 0.13 to
+    0.27 in v25's rooftop bins from 100 to 5,000 m&sup2; and 0.01 to 0.07 on the ground, under
+    0.02 everywhere for v13 (next sections). Recall was deliberately skipped
     (`--recall-reference none`). For scale, IRENA counts **456 MW of operational PV at the
     end of 2025**, and the 120 MW Aden plant, in operation since July 2024, is being
     doubled to 240 MW
@@ -55,6 +58,17 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
     deduplicated against the earlier pull, so an array mapped in between can count in both.
     The fourteen-area refits of 2026-10-25 (449 to 891 MWp depending on the slope veto and
     the roofclf deduplication) stay unpublished. The page also gained the size chart.
+
+!!! note "Rebuilt 2026-11-02: v25, retrained on the mapped leads, and the 2026-11-01 pull"
+    The owner mapped 827 solar features between 2026-10-25 and 2026-10-31, most of them from
+    v13's mapping leads. The page now runs on `v25_combined_yemen`, trained on the pull that
+    holds them, with its own precision table and density, and counts that pull: Verified
+    151.3 to 277.5 MWp, Best 324.7 to 457.3. The new features are 126.6 MWp of the rise
+    (105.6 ground, 21.0 rooftop); the model's part of Best beyond the map grew from about 4
+    to about 9 MWp. The farm ground-PV figure is the same seven-area fit, deduplicated again
+    against the new pull and v25's detections: 169.1 to 171.0 MWp. The mapping leads are
+    v25's (`pv-new-leads-2026-11-02`: 1,036 leads and 6 very large outlines, against v13's
+    1,073 and 25). Sections below that quote v13 keep their dates.
 
 ## Localizing the detector
 
@@ -95,6 +109,68 @@ installations of 400 m&sup2; and up), finished on 19 October, confirms the holdo
 larger at the median (1,799 against 1,201 m&sup2;) and over about the same area (9.2
 against 9.8 km&sup2;), and 29 above it (11.2 km&sup2;) against v5's 13 (4.3 km&sup2;),
 the dark-rock blobs and the three unmapped parks described below.
+
+## Retraining on the mapped leads: v25 (2026-11-02)
+
+Between 2026-10-25 and 2026-10-31 the owner mapped 827 solar features in Yemen, most of them
+from v13's mapping leads: 514 ground and 313 rooftop, 437 of them 400 m&sup2; and up. The
+pull of 2026-11-01 holds 4,158 features against 3,338 on 2026-10-24; arrays of 400 m&sup2;
+and up rose from 1,777 to 2,197, rooftop ones from 41 to 126. The solar-thermal filter found
+none.
+
+**Corpus and recipe.** v13's recipe and base corpus, unchanged; only Yemen's chips are new:
+518 train and 55 val (430 with PV), against v13's 233 and 13, weighted x8 (29,443 corpus
+rows). Best epoch 30 (pooled val/mIoU 0.790), early-stopped after epoch 38, about six hours
+on the GTX 1060 (`configs/terramind_pv_v25_yemen.yaml`, `scripts/run_yemen_v25.sh`).
+
+**The holdout cannot decide.** 'Amran is unchanged, but it is now almost entirely the owner's
+Huth farm area: 170 mapped arrays of 400 m&sup2; and up, 162 of them ground arrays beside
+fields, median 987 m&sup2;, about 156 inside that calibration area. v25 finds 6, its second
+epoch 3, v13 2 and v5 2; of the holdout's 5,533 PV pixels v13 marks 42 and v25 90 at 0.3
+(`results/backbone_compare/v25_yemen_vs_v13/`). Every model is blind to these arrays, which
+is what the farm ground-PV detector is for.
+
+**Against every mapped array of 400 m&sup2; and up.** Both models' national probability
+rasters were scored against all 2,191 dissolved OpenStreetMap arrays of 400 m&sup2; and up in
+the 2026-11-01 pull, an array counting as found when any pixel touching it reaches the
+threshold (`scripts/yemen_v25_national_recall.py`, `results/yemen_v25_national_recall/`).
+v25 is read at 0.1, the lowest threshold at which its pixel precision reaches v13's at 0.3,
+both nationally and outside both models' training images:
+
+| Mapped arrays of 400 m&sup2; and up | n | v13 at 0.3 | v25 at 0.1 | Only v25 / only v13 |
+| --- | --- | --- | --- | --- |
+| All | 2,191 | 0.128 | 0.152 | 58 / 6 |
+| Rooftop | 126 | 0.405 | 0.460 | 8 / 1 (p = 0.04) |
+| Ground, 400-1,000 m&sup2; | 1,493 | 0.036 | 0.050 | 24 / 4 |
+| Ground, 1,000-5,000 m&sup2; | 558 | 0.290 | 0.335 | 26 / 1 |
+| Ground, 5,000 m&sup2; and up | 14 | 0.929 | 0.929 | 0 / 0 |
+| Ground mapped by 2026-10-24 | 1,713 | 0.005 | 0.012 | 12 / 0 |
+| Ground added 2026-10-25 to 31 | 352 | 0.625 | 0.719 | 38 / 5 |
+| Ground outside both models' training images | 224 | 0.031 | 0.067 | 8 / 0 (p = 0.008) |
+| Rooftop outside both models' training images | 16 | 0.188 | 0.188 | 0 / 0 |
+
+**v25 raises half the alarms.** At 0.3 it marks 100,310 pixels against v13's 204,431 and
+finds more arrays (305 against 280); 7.4% of its pixels touch mapped solar against 3.2%.
+Outside both models' training images, where little is mapped, it marks 82,000 pixels
+against 184,321.
+
+**How far this goes.** 87% of the rooftop arrays and 83% of the ground arrays lie inside
+v25's training images (v13's: 4% and 62%), so the whole-country rows favour v25; the rows
+outside both models' training images are the clean test, and they point the same way on
+few arrays. The arrays added in late October were mapped from v13's leads, which favours
+v13. Neither model sees the Tihama rectangles mapped by 2026-10-24. Counting per candidate
+instead would mislead: `postprocess.replace_with_osm_geometry` gives a matched candidate one
+OpenStreetMap polygon, so its neighbours lose the match.
+
+**The decision.** The holdout ties and both checkpoints are localized; v25 ships on the
+national comparison. Its precision table matches far more candidates to mapped arrays (260
+of 2,002, against 2 of 2,333 for v13), but 239 of the 260 lie inside its own training images
+(outside them 21 of 1,606 match), so the higher `p_real` is mostly the training labels
+found again; through "combine, don't add" Best takes those arrays from the map either way.
+Of its 8 outlines above the merge cap (3.2 km&sup2;, against v13's 29 and 11.2 km&sup2;),
+three are the Aden, Mocha and Red Sea parks below; the other five were not inspected.
+`check-density` reports 0 fail and 7 suspect of 22 governorates, each below the 50 MWp
+floor.
 
 ## Why neither model sees Yemen's mapped PV
 
@@ -407,7 +483,30 @@ The queue pulls the labels, runs the solar-thermal filter, composes Yemen, picks
 holdout and hands the country to `scripts/run_country_compute.sh yemen` (chips, training,
 the v5 comparison, inference and the atlas chain, behind marker files).
 
-The 2026-10-24 refresh, on top of that (farm areas registered with
+The 2026-11-02 retrain on the 2026-11-01 pull (v25), on top of that:
+
+```bash
+pixi run python scripts/overpass_labels_chunked.py --bbox=41.8,12.1,54.6,19.0 \
+  --iso3 YEM --name yemen --tiles 4x3 --timeout 300 --retries 8 --fresh
+pixi run python scripts/drop_solar_thermal.py --aoi yemen --by-id
+systemd-run --user --collect --unit=earthpv-v25-yemen -p WorkingDirectory="$PWD" \
+  -p LimitNOFILE=65536:65536 -p MemoryMax=14G bash scripts/run_yemen_v25.sh
+pixi run python scripts/prepare_national_osm_solar.py --aoi yemen \
+  --labels data/labels/yemen_overpass_solar.parquet \
+  --keep-detected-screen results/yemen_osm_ground_screen/screen_full.csv
+F=/home/tobi/earthpv_data/yemen_7areas_20261024   # the published seven-area farm fit
+pixi run earthpv groundclf-capacity --aoi yemen --score-dir $F/blobs --calib-dir $F \
+  --out-dir data/predictions_v25/yemen/groundclf_capacity --pred-dir data/predictions_v25 \
+  --osm-solar data/labels/yemen_national_osm_solar.parquet
+pixi run earthpv atlas --aoi yemen --pred-dir data/predictions_v25 \
+  --osm-solar data/labels/yemen_national_osm_solar.parquet --include-offgrid-osm \
+  --imagery-date-range "Oct 2025 - Mar 2026" \
+  --ground-cells data/predictions_v25/yemen/groundclf_capacity/ground_cells.parquet
+pixi run python scripts/release_leads.py --aoi yemen --out <release directory> --upload
+pixi run python scripts/yemen_v25_national_recall.py
+```
+
+The 2026-10-24 refresh, on top of the first run (farm areas registered with
 `new_calibration_quadrat.py --aoi yemen --farm --geojson <area>`):
 
 ```bash

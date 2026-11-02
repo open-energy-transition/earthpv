@@ -1104,7 +1104,7 @@ QUEUE first when removing compute markers.
 | India | `v5_combined_france` | 70,523.4 / 99,541.5 | v10 lost the Gujarat holdout; `ring_cells: 3`; oversize review |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 8,860.5 | |
 | Egypt | `v12_combined_egypt` | 3,315.1 / 3,378.6 | thin Cairo holdout |
-| Yemen | `v13_combined_yemen` | 151.3 / 324.7 | zero-zero tie; farm ground PV; earns Silver, shows Bronze (leads unchecked) |
+| Yemen | `v25_combined_yemen` | 277.5 / 457.3 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
 | South Africa | `v14_combined_south_africa` | 9,393.8 / 9,755.6 | decisive localization win |
 | Morocco | `v11_combined_morocco` | 380.4 / 411.2 | tie near 1.0; AOI stops at 27.7N |
 | Poland | `v15_combined_poland` | 6,604.3 / 7,780.9 | |
@@ -1131,7 +1131,13 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   yet. India is **pinned Bronze** in `configs/atlas/india.yaml`: `derive_validation_score`
   gives Silver to any AOI with a registered area in `data/labels/<aoi>/`, `used: false` or not.
 - **Yemen**: segmentation finds almost none of its labels (small Tihama irrigation arrays barely
-  differ from their surroundings), so Best is the OSM map plus farm ground PV.
+  differ from their surroundings), so Best is the OSM map plus farm ground PV. **v25** (published
+  2026-11-02, retrained on the 2026-11-01 pull holding the 827 features the owner mapped from
+  v13's leads) runs from `data/predictions_v25/yemen` (-> /home; `data/predictions/yemen` is
+  v13's), with its own precision table; the farm figure is the seven-area fit re-deduplicated
+  there. The 'Amran holdout is now the Huth farm area, where every model is blind, so the
+  ship decision rests on `scripts/yemen_v25_national_recall.py` (every mapped array >= 400 m2,
+  matched pixel precision): 0.152 against v13's 0.128, half the alarm pixels.
 - **Egypt**: the model's rooftop estimate is ~0 (no rooftop candidate matches a mapped rooftop).
   **Many of its leads are swimming pools and wastewater treatment plants** (owner, 2026-10-29),
   above all the plants' rectangular basins. `earthpv osm-hard-negatives` (`osm_negatives.py`)

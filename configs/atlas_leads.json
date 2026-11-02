@@ -324,30 +324,30 @@
     },
     "yemen": {
       "file": "yemen_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-01b/yemen_pv_new_leads.geojson",
-      "n": 1073,
-      "size_bytes": 1036606,
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/yemen_pv_new_leads.geojson",
+      "n": 1036,
+      "size_bytes": 920911,
       "osm_as_of": "2026-10-31",
       "min_distance_m": 100,
-      "made": "2026-11-01",
+      "made": "2026-11-02",
       "steep": {
         "slope_deg": 15.0,
         "max_area_m2": 1000.0,
         "cap_deg": 30.0,
-        "dropped": 472,
-        "review": 201,
-        "no_dem": 2
+        "dropped": 379,
+        "review": 138,
+        "no_dem": 1
       },
       "lowconf": {
         "placement": "no_building",
         "max_confidence": 0.9,
-        "dropped": 472
+        "dropped": 302
       },
       "blobs": {
         "file": "yemen_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-01b/yemen_pv_blob_leads.geojson",
-        "n": 25,
-        "size_bytes": 151032,
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/yemen_pv_blob_leads.geojson",
+        "n": 6,
+        "size_bytes": 25053,
         "min_area_m2": 100000.0
       }
     },
@@ -381,5 +381,5 @@
       }
     }
   },
-  "release": "https://github.com/open-energy-transition/earthpv/releases/tag/pv-new-leads-2026-11-01b"
+  "release": "https://github.com/open-energy-transition/earthpv/releases/tag/pv-new-leads-2026-11-02"
 }

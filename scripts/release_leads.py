@@ -89,7 +89,10 @@ MANIFEST = ROOT / "configs" / "atlas_leads.json"
 # and (per country) surface-water screens: a new tag, so the steep-only files stay published.
 # The same day the very large outlines moved to a blob file of their own (`--resplit`): the
 # lead files were replaced under the same tag, minus their blobs, keeping their date.
-TAG = "pv-new-leads-2026-11-01b"
+# 2026-11-02: Yemen re-run on v25 (`--aoi yemen`), a new tag holding every country's files,
+# the others byte for byte those of pv-new-leads-2026-11-01b, whose manifest entries keep
+# their URLs there.
+TAG = "pv-new-leads-2026-11-02"
 
 # Per AOI: the candidates behind its published atlas, the OSM pull(s) that count as
 # mapped, and the density directory holding the regions the page draws.
@@ -101,7 +104,9 @@ SOURCES = {
                         "data/labels/germany_national_osm_solar_PRE_ground_cap.parquet"]},
     # Nigeria's atlas is the v5 run; data/predictions/nigeria holds the losing checkpoint's.
     "nigeria": {"pred": "data/predictions_v5_nigeria/nigeria"},
-    "india": {}, "vietnam": {}, "zambia": {}, "egypt": {}, "yemen": {},
+    # Yemen's atlas is the v25 run (2026-11-02); data/predictions/yemen holds v13's.
+    "yemen": {"pred": "data/predictions_v25/yemen"},
+    "india": {}, "vietnam": {}, "zambia": {}, "egypt": {},
     "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {},
 }
 # The published page each run must match: its provinces are compared with the regions read
