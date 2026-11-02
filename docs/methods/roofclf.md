@@ -1,17 +1,5 @@
 # The rooftop classifier (roofclf)
 
-!!! success "Shipped, and half the main workflow"
-
-    `roofclf` is the instrument that covers everything **below** the segmentation
-    model's 400 m<sup>2</sup> detection floor, and (inside its calibrated domain) it now
-    also replaces segmentation's own rooftop estimate above that floor. Numbers on this
-    page come from the 30-quadrat fit in `data/roofclf/summary.json` and the capacity run
-    behind the published [evidence atlas](../results/capacity.md). Since 2026-10-25 that
-    run counts every roof in proportion to its score instead of only the roofs above a
-    threshold, which moved Best estimate from 24,438 to 34,589 MWp:
-    [Count every roof by its score](#count-every-roof-by-its-score) says why, and what it
-    leaves untested.
-
 ## What it is, in one paragraph
 
 `roofclf` is a per-building classifier that answers a single question: **does this roof
@@ -92,14 +80,22 @@ merely clips a neighbour's roof edge does not label that neighbour. The true int
 area is kept as `pv_area_true_m2`, and it is that column, not the building's size, that
 later measures how much of a flagged roof the panels actually cover.
 
-**The features.** Seventeen numbers, all read off the same dry-season composite the
+**The features.** Sixteen numbers, all read off the same dry-season composite the
 segmentation model uses. No new imagery is fetched at any point.
 
 | Block | Columns | What it carries |
 | --- | --- | --- |
-| Size | `log_roof_area`, `bf_confidence` | the adoption propensity that comes with a bigger roof, plus the footprint's own confidence score |
+| Size | `log_roof_area` | the adoption propensity that comes with a bigger roof |
 | Reflectance | 10 band means over the footprint | the roof's spectral signature, averaged over whatever real pixels it has |
 | Derived | `ndvi`, `ndbi`, `brightness`, `swir_vis_ratio`, `blue_red_ratio` | vegetation and built-up contrast, and the dark, comparatively flat visible response with a SWIR drop that characterises a module |
+
+Until 2026-10-30 the size block also held `bf_confidence`, VIDA's footprint confidence. It
+is empty on every Microsoft-sourced footprint, which is all of Yemen and France, and the
+empty value was filled with 0, ten Pakistani standard deviations below Pakistan's mean:
+about 1.5 times too high a level for every foreign roof scored by Pakistan's model.
+Without it Pakistan's median fold AUC is 0.8680 against 0.8682. Pakistan's published
+figures still come from the 17-feature model until the page is rebuilt
+([experiments register](../experiments.md#one-roofclf-for-every-country-leave-one-country-out-2026-10-29)).
 
 Roughly half of Pakistani VIDA footprints are smaller than one pixel and rasterise to no
 pixel at all. Those fall back to the pixel under their representative point, the same
