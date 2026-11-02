@@ -976,11 +976,24 @@ detector (`docs/methods/glint.md`):
   calibration models `k ~ Poisson(q_b * opportunity)` instead of dividing by a flat per-bin
   sensitivity.
 - **Panel-pose surveys** (`scripts/glint_pose_survey.py`, `pose.py`) sit on the Pakistan
-  (2,000-target sample, 281 fits) and France (all 6,337 OSM installations >= 1,000 m2, 1,277
-  fits, 2026-10-26; no French false-floor control yet) atlases. Every pose point carries its
+  (2,000-target sample, 281 fits), France (all 6,337 OSM installations >= 1,000 m2, 1,277
+  fits, 2026-10-26; no French false-floor control yet) and India (`india2000`, on /home:
+  `targets --sample`, 2,000 of 3,739, 312 fits, 321 points, 2026-11-02; no control) atlases.
+  **India's fits split in two**: south at tilt ~19 on Oct-Dec dates, and a quarter east (az
+  ~93) at tilt ~10 on Apr-Jun dates, south of 20N above all. Imagery shows north-south rows
+  behind the east fits (`data/glint/india2000_pose/east_check/`, the assistant's eye, not the
+  owner's), so probably single-axis trackers, whose fitted tilt is their roll at overpass.
+  Weak low-share east orientations are unconfirmed. Every pose point carries its
   OSM id, coordinates, admin-1 region and, from the cached `osm-tags` lookup
   (`<survey>osm_tags.parquet`), OSM `name`/`operator`; the chart's CSV download lists them.
   `scripts/patch_atlas_pose.py` adds or replaces only a published page's pose section.
+- **Large installations are read in parts** (`pose_parts.py`, `glint_pose_survey.py
+  parts-pull`/`parts-analyze`, 2026-10-26): >= 50,000 m2 outlines are cut into 100 m cells,
+  read from one window per installation against the WHOLE installation's annulus, fitted per
+  cell, and grouped into orientations (normals within 5 deg, >= 2 cells); the atlas shows
+  one point per orientation with its share of the area. **Pakistan's country2000 series
+  (the atlas's 2,000) predate the SCL cloud veto**; on the 843 top-ups the veto removes 7% of
+  fits, and Fauji Cement's published pose rests entirely on cloudy dates.
 
 ### MaStR validation (Germany)
 

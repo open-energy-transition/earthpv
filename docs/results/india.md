@@ -452,6 +452,79 @@ outlines at their detected share. The rest is a different checkpoint (v5, where 
 page used one since deleted) and a national precision table in place of Gujarat's own (the
 largest ground bin's `p_real` is 0.518 here against 0.309).
 
+## Panel pose from Sentinel-2 glint (2026-11-02)
+
+The [India atlas](../atlas-india.md) now carries the panel-orientation section Pakistan's and
+France's have. It comes from a sample of **2,000 of India's 3,739 OSM-mapped installations of
+1,000 m&sup2; or more**, once nested outlines are dissolved and solar thermal is dropped: all
+480 of the smallest class and 760 each of the two larger ones, spread across the country by
+2-degree cell. Each installation's Sentinel-2 series covers October 2025 to September 2026.
+[The method](pv-pose.md) is the same.
+
+| | Installations sampled | Glinted at least once | Pose fitted |
+|---|---:|---:|---:|
+| All | 2,000 | 497 (24.8%) | **312 (15.6%)** |
+| Ground-mount | 1,546 | 26.6% | 16.6% |
+| Rooftop | 454 | 18.9% | 12.1% |
+| 1,000 to 5,000 m&sup2; | 480 | 11.9% | 7.7% |
+| 5,000 to 50,000 m&sup2; | 760 | 19.1% | 12.5% |
+| Over 50,000 m&sup2; | 760 | 38.8% | 23.7% |
+
+**The 15.6% describes the sample, not India.** Large installations fit most often and the
+sample under-represents them (38% of the sample, 55% of the population). Weighted back to the
+real size classes the rate is 18.1%, against France's 20.2% and Pakistan's 23.2% at the same
+size.
+
+**This is the first atlas to read every large installation in parts.** All 760 of those over
+50,000 m&sup2; were also read in 100 m cells ([Solar glint](../methods/glint.md)). That raised
+their fits from 110 to 180: 72 gained a pose, 2 lost one under the cell read's cloud veto, and
+eight show two or more orientations. So the chart has 321 points for 312 installations.
+
+**The poses form two clusters, and the second is new.**
+
+| Cluster | Points | Median azimuth | Median tilt (IQR) | Whole-outline spike dates |
+|---|---:|---:|---:|---|
+| South-facing, azimuth 120&deg; or more | 242 | 170&deg; | 18.6&deg; (16.1-20.5) | 80% October to December |
+| East-facing, azimuth under 120&deg; | 79 | 93&deg; | 9.7&deg; (6.4-12.5) | 87% April to June |
+
+France has no fit below 129&deg;, and Pakistan has 23 of 281 below 120&deg;. India's east
+cluster is 25% of its points, 91% of them within 80 to 110&deg;, and it is mostly southern:
+51 of the 109 points south of 20&deg;N against 28 of the 212 north of it.
+
+That pattern could have been an artefact. From April to June the sun at overpass stands high
+and in the east, so any two bright dates agree on an east-facing, low-tilt plane by
+construction. The fits themselves are weaker than the south-facing ones: the plane predicts
+dates it does not spike on (median hit rate 0.75 against 1.00), and an east orientation
+covers a median 8.5% of its plant against 39%.
+
+**Imagery says most of it is real.** Row direction was judged by eye on Esri imagery for 27
+plants. A fixed south-facing array has rows running east to west.
+
+| Fits viewed | Rows north-south | Rows east-west | Other |
+|---|---:|---:|---|
+| South-facing controls, random, azimuth 165&deg; or more, at least half the plant | 0 | 6 | |
+| East-facing, the 9 covering the largest share of their plant | 8 | 0 | 1 diagonal, hillside blocks, does not match its fit |
+| East-facing, random, whole outline under 50,000 m&sup2; | 6 | 0 | |
+| East-facing, random, under 20% of the plant | 2 | 0 | 3 unclear, 1 rooftop not judged |
+
+North-south rows are what single-axis trackers look like: a tracker's panel normal stays in
+the east-west plane, so its azimuth stays near 90&deg; whatever the date, and the fitted tilt
+is its roll at overpass rather than a fixed tilt. **Trackers are an inference.** No plant's
+mount type was checked against a record, and fixed racks facing east would look the same from
+above. Two more limits apply. The page's tilt interquartile range (12.4-19.9&deg;) mixes the
+two clusters, so quote the south-facing one for fixed tilt. And the cluster sizes are not a
+tracker share, since the two kinds glint on different dates.
+
+The imagery check was done by the assistant and has not yet been reviewed by the owner
+(contact sheets and verdicts in `data/glint/india2000_pose/east_check/`, not in the
+repository). A low-share east orientation should be read as unconfirmed.
+
+**No Indian false-fit control has been measured**, as in
+[France](france.md#panel-pose-from-sentinel-2-glint-2026-10-26). Every point names its OSM
+installation in the atlas's tooltip and CSV download. The lookup on 2026-11-02 returned 313
+of 314 OSM elements; the other was deleted since the pull or dropped by the mirror. Of those
+returned, 53 carry a `name` and 14 an `operator`.
+
 ## Operational notes
 
 Compose built 25,576 of 25,590 selected cells between 25 September and 8 October, about 83
@@ -530,4 +603,22 @@ pixi run python scripts/prepare_national_osm_solar.py --aoi india \
 pixi run earthpv density --aoi india --districts
 pixi run earthpv atlas --aoi india --osm-solar data/labels/india_national_osm_solar.parquet \
   --include-offgrid-osm --imagery-date-range "Nov 2025 - Mar 2026"
+```
+
+The glint pose survey, then its section on the published atlas. It needs no rebuild, and
+`parts-analyze` comes before `osm-tags`, because the lookup names every installation the
+parts read posed:
+
+```bash
+python scripts/glint_pose_survey.py targets --name india2000 \
+    --source data/glint/india_pose/source_no_thermal.parquet --min-area 1000 --sample 2000
+python scripts/glint_pose_survey.py pull --name india2000 --start 2025-10-01 --end 2026-10-01
+python scripts/glint_pose_survey.py analyze --name india2000
+SUM=data/glint/india2000_pose/summary.csv
+python scripts/glint_pose_survey.py parts-pull --summary $SUM --start 2025-10-01 --end 2026-10-01
+python scripts/glint_pose_survey.py parts-analyze --summary $SUM
+python scripts/glint_pose_survey.py osm-tags --summary $SUM
+python scripts/patch_atlas_pose.py results/india_pv_evidence_atlas.html \
+    docs/assets/interactive/india_pv_evidence_atlas.html --summary $SUM --country India \
+    --density-dir data/predictions/india/density --data-note "(...)"
 ```

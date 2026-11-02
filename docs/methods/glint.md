@@ -452,6 +452,41 @@ A night-lights-style atlas page (`scripts/build_glint_pose_regional_atlas.py` ->
 province choropleth (validation rate, dashed outline where too thin to trust) alongside
 the latitude-band bars, matching this project's other interactive result pages.
 
+### Large installations read in parts (2026-10-26)
+
+A solar farm is often built in blocks on different slopes, or with rows turned to follow a
+field edge. Each block glints on its own dates. One percentile over the whole outline, fitted
+to one plane, can then describe one block at best, and the other blocks' dates count against
+it.
+
+Installations of 50,000 m<sup>2</sup> or more are now also read in parts
+(`src/earthpv/pose_parts.py`, `glint_pose_survey.py parts-pull` and `parts-analyze`):
+
+1. **Cells.** The outline is cut by a 100 m square grid in its local UTM zone. Pieces under
+   2,000 m<sup>2</sup> (20 pixels) are not read.
+2. **One window per installation.** Each scene is read once over the whole installation
+   (`glint._read_parts_stats`), so the cells cost no more downloads than the outline did.
+   Each cell's 98th percentile is set against the ground around the whole installation,
+   never against neighbouring cells: those are panels too, and they glint on their own
+   dates.
+3. **A pose per cell.** The rule is the one used for a whole installation: two or more
+   cloud-vetoed spike dates agreeing on one plane within 3 degrees.
+4. **Orientations.** Cells whose panel normals agree within 5 degrees form one orientation,
+   taken strongest cell first. An orientation needs at least two cells. A lone cell is not
+   reported, because a farm of a hundred cells offers a hundred chances of a chance
+   agreement.
+
+Each orientation carries the area of its cells, so it is a share of the installation, and
+it is placed at its cells' centre. An installation with no orientation keeps its
+whole-outline pose only if the cell read still saw two or more spike dates. The glinting
+patch moves between dates, so a pose can rest on dates that no single cell repeats.
+
+**Spatially pooling dates was rejected.** That alternative found the largest set of spike
+dates agreeing on one plane, removed them and repeated. On 16 test farms it split
+single-pose farms into near-identical orientations 3 to 4 degrees apart, and it produced
+orientations that owned no cells. The per-cell route reproduced the whole-outline pose on
+all four single-pose controls.
+
 ## Research scripts
 
 | Script | What it answers |

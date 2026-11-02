@@ -27,6 +27,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from earthpv.pose_parts import CELL_M, PARTS_MIN_M2
+
 TEMPLATE = r"""<title>__PAGE_TITLE__</title>
 <style>
 /* Palette: the same "night lights" tokens as the atlas templates and the docs site
@@ -505,6 +507,29 @@ def pose_locations(s: pd.DataFrame, summary_csv: Path, regions=None) -> pd.DataF
     return s
 
 
+def parts_outcome(s: pd.DataFrame, summary_csv: Path) -> tuple[pd.Series, pd.DataFrame]:
+    """Which installations have a pose once large ones read in parts are counted, and the
+    orientations of those (`pose_parts`, `glint_pose_survey.py parts-analyze`).
+
+    An installation read in parts is posed by its orientations when it has any. With none,
+    it keeps its whole-outline pose only if the per-cell read, which carries the cloud veto,
+    still saw two or more spike dates: the glinting patch can move between dates so that no
+    single cell repeats, and the whole outline is then the better instrument. A whole-outline
+    pose the cloud-vetoed cell read does not back (Pakistan's survey predates the veto, and
+    Fauji Cement's five spike dates were all cloud) is dropped. A survey with no parts files
+    is returned unchanged. Returns `(posed, orientations)` aligned to `s`."""
+    posed = s.n_consistent >= 2
+    farms_p, ori_p = survey_sidecar(summary_csv, "parts_farms.csv"), survey_sidecar(summary_csv, "orientations.csv")
+    if not farms_p.exists() or not ori_p.exists():
+        return posed, pd.DataFrame(columns=["pid"])
+    farms = pd.read_csv(farms_p).set_index("pid")
+    ori = pd.read_csv(ori_p)
+    in_parts = s.pid.isin(farms.index)
+    has_ori = s.pid.isin(ori.pid)
+    keep_whole = in_parts & ~has_ori & posed & (s.pid.map(farms.n_spike_dates) >= 2)
+    return (posed & ~in_parts) | has_ori | keep_whole, ori[ori.pid.isin(s.pid[has_ori])]
+
+
 def compute_pose_survey_data(
     summary_csv: Path, country: str, history_note: str = "", data_note: str = "",
     regions=None,
@@ -518,17 +543,18 @@ def compute_pose_survey_data(
     `regions` adds the admin-1 name), so the atlas tooltip and its CSV download name the
     installation a pose came from. Points are coloured by OSM `kind` (generator/plant)
     where every target has one, else by `placement` (`stats.color_by`): France's survey
-    dissolves generators into plants and keeps no kind."""
-    s = pd.read_csv(summary_csv)
-    fit = pose_locations(s[s.n_consistent >= 2], summary_csv, regions).reset_index(drop=True)
-    color_by = "kind" if set(s["kind"].dropna().unique()) <= {"generator", "plant"} else "placement"
+    dissolves generators into plants and keeps no kind.
 
-    az_min, az_max = float(fit.fit_az.min()), float(fit.fit_az.max())
-    # Everything outside the observed [az_min, az_max] range is unreachable by this
-    # sensor's fixed overpass geometry (see module docstring) -- shaded as one wedge
-    # rather than assumed-filled via a mirror.
-    wedge = [round(az_max, 1), round(az_min + 360.0, 1)]
-    wedge_span = round(wedge[1] - wedge[0], 1)
+    A large installation read in parts (`parts_outcome`) contributes one point per
+    orientation, placed at that orientation's own cells, sized by their area and carrying
+    its share of the installation (`oi`/`on`/`sh`). Statistics count installations
+    (`n_fitted`), the plot counts orientations (`n_points`)."""
+    s = pd.read_csv(summary_csv)
+    posed, ori = parts_outcome(s, summary_csv)
+    s["posed"] = posed.to_numpy()
+    s["detected"] = (s.n_spikes >= 1) | s.posed
+    fit = pose_locations(s[s.posed], summary_csv, regions).reset_index(drop=True)
+    color_by = "kind" if set(s["kind"].dropna().unique()) <= {"generator", "plant"} else "placement"
 
     def _place(r) -> dict:
         """Identity and location keys, each omitted when unknown (keeps the page small)."""
@@ -543,30 +569,47 @@ def compute_pose_survey_data(
                 out[key] = str(v).strip()
         return out
 
-    points = [
-        dict(p=r.pid, k=r.kind, pl=r.placement, a=round(float(r.area_m2), 1),
-             t=round(float(r.fit_tilt), 1), az=round(float(r.fit_az), 1),
-             n=int(r.n_consistent), **_place(r))
-        for r in fit.itertuples()
-    ]
+    by_pid = {pid: g for pid, g in ori.groupby("pid")} if len(ori) else {}
+    points = []
+    for r in fit.itertuples():
+        base = dict(p=r.pid, k=r.kind, pl=r.placement, **_place(r))
+        if r.pid not in by_pid:
+            points.append(dict(base, a=round(float(r.area_m2), 1), t=round(float(r.fit_tilt), 1),
+                               az=round(float(r.fit_az), 1), n=int(r.n_consistent)))
+            continue
+        g = by_pid[r.pid]
+        for o in g.itertuples():
+            points.append(dict(base, a=round(float(o.area_m2), 1), t=float(o.tilt), az=float(o.az),
+                               n=int(o.max_consistent), x=round(float(o.lon), 5),
+                               y=round(float(o.lat), 5), oi=int(o.orientation), on=len(g),
+                               sh=round(float(o.share), 3), fa=round(float(r.area_m2), 1)))
+    tilts = pd.Series([q["t"] for q in points], dtype=float)
+    azs = pd.Series([q["az"] for q in points], dtype=float)
+
+    az_min, az_max = float(azs.min()), float(azs.max())
+    # Everything outside the observed [az_min, az_max] range is unreachable by this
+    # sensor's fixed overpass geometry (see module docstring) -- shaded as one wedge
+    # rather than assumed-filled via a mirror.
+    wedge = [round(az_max, 1), round(az_min + 360.0, 1)]
+    wedge_span = round(wedge[1] - wedge[0], 1)
 
     ge1000 = s[s.area_m2 >= 1000]
-    pct_ge1000 = round(100 * (ge1000.n_consistent >= 2).mean(), 1) if len(ge1000) else 0.0
-    pct_onespike = round(100 * ((ge1000.n_spikes >= 1) & (ge1000.n_consistent < 2)).mean(), 1) if len(ge1000) else 0.0
-    pct_nosignal = round(100 * (ge1000.n_spikes == 0).mean(), 1) if len(ge1000) else 0.0
+    pct_ge1000 = round(100 * ge1000.posed.mean(), 1) if len(ge1000) else 0.0
+    pct_onespike = round(100 * (ge1000.detected & ~ge1000.posed).mean(), 1) if len(ge1000) else 0.0
+    pct_nosignal = round(100 * (~ge1000.detected).mean(), 1) if len(ge1000) else 0.0
 
     BINS = [0, 100, 500, 1000, 5000, 50000, 1e18]
     LABELS = ["<100", "100-500", "500-1k", "1k-5k", "5k-50k", ">50k"]
-    s["detected"] = s.n_spikes >= 1
-    s["validated"] = s.n_consistent >= 2
     s["bucket"] = pd.cut(s.area_m2, bins=BINS, labels=LABELS)
     strip = []
     for label in LABELS:
         g = s[s.bucket == label]
         if g.empty:  # a survey with a size floor (France: >= 1,000 m2) has no small buckets;
             continue  # their mean is NaN, which is not JSON and breaks the page's data block
-        strip.append([label, round(100 * g.detected.mean(), 1), round(100 * g.validated.mean(), 1)])
+        strip.append([label, round(100 * g.detected.mean(), 1), round(100 * g.posed.mean(), 1)])
 
+    n_on = pd.Series({p: len(g) for p, g in by_pid.items()}, dtype=int)
+    farms_p = survey_sidecar(summary_csv, "parts_farms.csv")
     return {
         "points": points,
         "wedge": wedge,
@@ -574,7 +617,8 @@ def compute_pose_survey_data(
         "strip": strip,
         "stats": {
             "country": country,
-            "n_fitted": len(fit),
+            "n_fitted": int(s.posed.sum()),
+            "n_points": len(points),
             "n_total": len(s),
             "n_ge1000": len(ge1000),
             "pct_ge1000": pct_ge1000,
@@ -582,10 +626,14 @@ def compute_pose_survey_data(
             "pct_nosignal": pct_nosignal,
             "az_min": round(az_min, 1),
             "az_max": round(az_max, 1),
-            "tilt_q25": round(float(fit.fit_tilt.quantile(.25)), 1),
-            "tilt_q75": round(float(fit.fit_tilt.quantile(.75)), 1),
-            "tilt_max": round(float(fit.fit_tilt.max()), 1),
+            "tilt_q25": round(float(tilts.quantile(.25)), 1),
+            "tilt_q75": round(float(tilts.quantile(.75)), 1),
+            "tilt_max": round(float(tilts.max()), 1),
             "color_by": color_by,
+            "n_parts_read": int(len(pd.read_csv(farms_p))) if farms_p.exists() else 0,
+            "parts_min_m2": PARTS_MIN_M2,
+            "cell_m": int(CELL_M),
+            "n_multi": int((n_on >= 2).sum()),
             "wedge_deg": wedge_span,
             "summary_path": str(summary_csv),
             "history_note": history_note,

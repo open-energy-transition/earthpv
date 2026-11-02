@@ -542,6 +542,96 @@ def _read_target_scl(src, geometry, lon: float, lat: float) -> tuple[float, floa
     return _frac(inside), _frac(ring), int((inside & valid).sum())
 
 
+# Large installations, read in parts (2026-10-26). A plant built in blocks that face
+# different ways glints on different dates in each block, and one percentile over the whole
+# outline can then fit at most one block's pose (Fauji Cement: 5 spike dates, 2 agreeing).
+# Each part is a piece of the outline (`pose_parts.split_into_parts`), read from ONE window
+# that holds the whole installation, so the parts cost no more downloads than the whole.
+PARTS_MAX_R_PX = 300  # half-window cap: 3 km at 10 m, so a window up to 6 km across
+
+
+def _parts_window(src, geom_native):
+    """A window centred on the installation's bounding box (not its representative point,
+    which for an irregular plant can sit near one edge), wide enough for the whole outline
+    plus a 10-pixel margin for the annulus, capped at `PARTS_MAX_R_PX`."""
+    import rasterio.windows
+
+    minx, miny, maxx, maxy = geom_native.bounds
+    row, col = src.index((minx + maxx) / 2, (miny + maxy) / 2)
+    half = max(maxx - minx, maxy - miny) / 2
+    r_px = int(np.clip(half / abs(src.transform.a) + 10, 16, PARTS_MAX_R_PX))
+    return rasterio.windows.Window(col - r_px, row - r_px, 2 * r_px, 2 * r_px)
+
+
+def _part_pixels(parts_native, shape, wt) -> list[np.ndarray]:
+    """Flat pixel indices of each part in a window, from one rasterisation pass. A part that
+    holds no pixel centre falls back to every pixel it touches, as `_read_target_stats`
+    does for a small target."""
+    import rasterio.features
+
+    def burn(geoms, all_touched):
+        shapes = [(g, i + 1) for i, g in geoms]
+        lab = rasterio.features.rasterize(shapes, out_shape=shape, transform=wt, fill=0,
+                                          all_touched=all_touched, dtype="int32")
+        flat = lab.ravel()
+        idx = np.flatnonzero(flat)
+        order = np.argsort(flat[idx], kind="stable")
+        idx, keys = idx[order], flat[idx][order]
+        bounds = np.searchsorted(keys, np.arange(1, len(parts_native) + 2))
+        return [idx[bounds[k]:bounds[k + 1]] for k in range(len(parts_native))]
+
+    pix = burn(list(enumerate(parts_native)), False)
+    empty = [i for i, p in enumerate(pix) if not len(p)]
+    if empty:
+        touched = burn([(i, parts_native[i]) for i in empty], True)
+        for i in empty:
+            pix[i] = touched[i]
+    return pix
+
+
+def _read_parts_stats(src, geometry, parts: list[tuple[str, object]],
+                      scl: bool = False) -> dict[str, tuple[float, float, int]]:
+    """Per-part `(p98, annulus median, n pixels)` in raw DN, or with `scl=True` per-part
+    `(cloud fraction, annulus cloud fraction, n valid pixels)`, from one window holding the
+    whole installation `geometry`.
+
+    Every part is set against the INSTALLATION's annulus (the window outside the outline
+    buffered by 30 m, as `_read_target_stats` defines it), never against neighbouring parts:
+    those are panels too and glint on their own dates, which would hide a part's spike on
+    exactly the dates it shares with them."""
+    import rasterio.features
+
+    geom_native = gpd.GeoSeries([geometry], crs="EPSG:4326").to_crs(src.crs).iloc[0]
+    parts_native = list(gpd.GeoSeries([g for _, g in parts], crs="EPSG:4326").to_crs(src.crs))
+    win = _parts_window(src, geom_native)
+    arr = src.read(1, window=win, boundless=True, fill_value=0)
+    wt = src.window_transform(win)
+    ring = ~rasterio.features.geometry_mask([geom_native.buffer(30)], arr.shape, wt, invert=True)
+    pix = _part_pixels(parts_native, arr.shape, wt)
+    flat = arr.ravel()
+    out: dict[str, tuple[float, float, int]] = {}
+    if scl:
+        cloud, valid = np.isin(flat, SCL_CLOUD_CLASSES), flat != 0
+        r = ring.ravel() & valid
+        ring_frac = float(cloud[r].mean()) if r.any() else np.nan
+        for (pid, _), p in zip(parts, pix):
+            v = p[valid[p]]
+            out[pid] = (float(cloud[v].mean()) if len(v) else np.nan, ring_frac, int(len(v)))
+        return out
+    a = flat.astype(float)
+    a[a == 0] = np.nan
+    ring_v = a[ring.ravel()]
+    ring_med = float(np.nanmedian(ring_v)) if np.isfinite(ring_v).sum() >= 20 else np.nan
+    for (pid, _), p in zip(parts, pix):
+        v = a[p]
+        v = v[np.isfinite(v)]
+        if not len(v) or not np.isfinite(ring_med):
+            out[pid] = (np.nan, np.nan, 0)
+        else:
+            out[pid] = (float(np.percentile(v, 98)), ring_med, int(len(v)))
+    return out
+
+
 def _polygon_band_stats(
     item, band: str, geometry, lon: float, lat: float, provider: str,
 ) -> tuple[float, float, int]:
@@ -713,6 +803,7 @@ def _search_items_bbox(provider: str, bbox: tuple[float, float, float, float],
 def _read_targets_from_item(
     item, band: str, targets: list[tuple[str, object, float, float]], provider: str,
     return_array: bool = False, apply_offset: bool = True, scl: bool = False,
+    parts: dict[str, list[tuple[str, object]]] | None = None,
 ) -> dict[str, tuple[float, float, int]] | dict[str, np.ndarray]:
     """Open one band asset once, read every target's window from it - the batched
     analogue of `_polygon_band_stats`, sharing one dataset handle (and its HTTP
@@ -753,6 +844,9 @@ def _read_targets_from_item(
     asset-open guard above -- which exists because an expired SAS token fails at
     `rasterio.open()`, before any per-target handler runs, and once cost a 45-minute
     country-scale run -- covers the SCL read too.
+
+    `parts` (`{target pid: [(part id, part geometry), ...]}`) reads a listed target in
+    parts instead (`_read_parts_stats`): its results are keyed by part id, not by pid.
     """
     import rasterio
 
@@ -762,6 +856,15 @@ def _read_targets_from_item(
     try:
         with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
             for pid, geometry, lon, lat in targets:
+                if parts and pid in parts:
+                    try:
+                        got = _read_parts_stats(src, geometry, parts[pid], scl=scl)
+                    except Exception as e:  # noqa: BLE001 - one bad target must not kill the batch
+                        log.debug("target %s (in parts) failed on %s: %s", pid, href, e)
+                        got = {q: (np.nan, np.nan, 0) for q, _ in parts[pid]}
+                    for q, (v, r, n) in got.items():
+                        out[q] = (v, r, n) if scl else (v + offset, r + offset, n)
+                    continue
                 try:
                     if scl:
                         out[pid] = _read_target_scl(src, geometry, lon, lat)
@@ -777,7 +880,8 @@ def _read_targets_from_item(
     except Exception as e:  # noqa: BLE001 - an unopenable asset (expired token, 503
         log.debug("failed to open %s: %s", href, e)  # storm) must not kill the batch
         for pid, _geometry, _lon, _lat in targets:
-            out[pid] = None if return_array else (np.nan, np.nan, 0)
+            for q in ([q for q, _ in parts[pid]] if parts and pid in parts else [pid]):
+                out[q] = None if return_array else (np.nan, np.nan, 0)
     return out
 
 
@@ -786,6 +890,7 @@ def tile_scene_series_batch(
     bands: tuple[str, ...] = GLINT_BANDS, max_cloud: int = 80,
     tile_deg: float = 1.0, max_workers: int = 6, keep_items: bool = False,
     use_scl: bool = True, dedupe_items: bool = False,
+    parts: dict[str, list[tuple[str, object]]] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Tile-major batched analogue of `scene_series`, for many targets at once.
 
@@ -817,6 +922,11 @@ def tile_scene_series_batch(
     every overlapping tile's copy (`_assign_items_by_footprint`), and skips items no
     target needs. Off by default so existing pulls stay reproducible; the per-date
     max-`npx` pick below still runs, so a copy that slips through is handled as before.
+
+    `parts` (`{target pid: [(part id, part geometry), ...]}`) reads each listed target in
+    parts (`_read_parts_stats`): the result then holds one series per PART id, with the
+    whole installation's sun and view angles, and none for the target itself. Targets not
+    listed are read as before.
     """
     keys = [_tile_key(lon, lat, tile_deg) for lon, lat in zip(targets.lon, targets.lat)]
     groups: dict[tuple, list[int]] = {}
@@ -824,7 +934,10 @@ def tile_scene_series_batch(
         groups.setdefault(k, []).append(i)
     log.info("tile-batch: %d targets -> %d groups (%.2f deg)", len(targets), len(groups), tile_deg)
 
-    all_rows: dict[str, list[dict]] = {pid: [] for pid in targets.pid}
+    all_rows: dict[str, list[dict]] = {
+        q: [] for pid in targets.pid
+        for q in ([q for q, _ in parts[pid]] if parts and pid in parts else [pid])
+    }
     for gi, ((gx, gy), rows_idx) in enumerate(groups.items()):
         grp = targets.iloc[rows_idx]
         bbox = (gx * tile_deg, gy * tile_deg, (gx + 1) * tile_deg, (gy + 1) * tile_deg)
@@ -873,13 +986,14 @@ def tile_scene_series_batch(
                 log.debug("tile-angles failed for %s: %s", item.id, e)
                 return []
             band_results = {
-                band: _read_targets_from_item(item, band, targets_here, provider)
+                band: _read_targets_from_item(item, band, targets_here, provider, parts=parts)
                 for band in bands
             }
             # One extra asset read per scene (+50% at the default two bands), which buys
             # the only per-pixel cloud evidence in the pipeline. See `annotate_spikes`.
             scl_results = (
-                _read_targets_from_item(item, "SCL", targets_here, provider, scl=True)
+                _read_targets_from_item(item, "SCL", targets_here, provider, scl=True,
+                                        parts=parts)
                 if use_scl else {}
             )
             out = []
@@ -888,20 +1002,21 @@ def tile_scene_series_batch(
                     ang = ta.at(lon, lat)
                     if ang is None:
                         continue
-                    row = dict(pid=pid, time=ta.sensing_time or item.datetime,
-                               cloud=item.properties.get("eo:cloud_cover"), **ang)
-                    for band in bands:
-                        p98, ring, npx = band_results[band][pid]
-                        row[f"p98_{band}"], row[f"ring_{band}"] = p98, ring
-                        row["npx"] = npx  # last band wins, matching `_scene_row`
-                    if use_scl:
-                        s_t, s_r, s_n = scl_results.get(pid) or (np.nan, np.nan, 0)
-                        row["scl_cloud_frac"] = s_t
-                        row["scl_ring_cloud_frac"] = s_r
-                        row["scl_npx"] = s_n
-                    if keep_items:
-                        row["_item"], row["_provider"] = item, provider
-                    out.append(row)
+                    for q in ([q for q, _ in parts[pid]] if parts and pid in parts else [pid]):
+                        row = dict(pid=q, time=ta.sensing_time or item.datetime,
+                                   cloud=item.properties.get("eo:cloud_cover"), **ang)
+                        for band in bands:
+                            p98, ring, npx = band_results[band][q]
+                            row[f"p98_{band}"], row[f"ring_{band}"] = p98, ring
+                            row["npx"] = npx  # last band wins, matching `_scene_row`
+                        if use_scl:
+                            s_t, s_r, s_n = scl_results.get(q) or (np.nan, np.nan, 0)
+                            row["scl_cloud_frac"] = s_t
+                            row["scl_ring_cloud_frac"] = s_r
+                            row["scl_npx"] = s_n
+                        if keep_items:
+                            row["_item"], row["_provider"] = item, provider
+                        out.append(row)
                 except Exception as e:  # noqa: BLE001 - per-target failures shouldn't
                     log.debug("target %s on %s failed: %s", pid, item.id, e)  # kill the scene
             return out

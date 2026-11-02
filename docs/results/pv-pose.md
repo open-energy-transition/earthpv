@@ -66,6 +66,17 @@ same size. It is on the [France atlas](../atlas-france.md), where every point na
 installation and the CSV download carries each one's id and coordinates. Numbers and caveats:
 [France](france.md#panel-pose-from-sentinel-2-glint-2026-10-26).
 
+## India: a second cluster
+
+India's survey is a spread sample of 2,000 installations of 1,000 m<sup>2</sup> or more, with
+312 fitted, and it is the first to read every installation over 50,000 m<sup>2</sup> in parts.
+Its poses split in two: a south-facing cluster like France's, and an east-facing one at low
+tilt, mostly south of 20 degrees N, resting on April to June dates. High-resolution imagery
+of the plants behind the east-facing fits mostly shows north-south rows, the layout of
+single-axis trackers, against east-west rows behind the south-facing ones. A tracker fit is
+its roll at overpass, not a fixed tilt. It is on the [India atlas](../atlas-india.md). Numbers
+and caveats: [India](india.md#panel-pose-from-sentinel-2-glint-2026-11-02).
+
 ## What glint is and is not good for
 
 Glint is a **reward-only** signal in this pipeline. A candidate with two or more mutually
