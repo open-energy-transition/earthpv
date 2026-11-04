@@ -166,25 +166,28 @@ def grid_specific_yield(
 
 
 def interpolate_yield(
-    probes: pd.DataFrame, lons: np.ndarray, lats: np.ndarray
+    probes: pd.DataFrame, lons: np.ndarray, lats: np.ndarray, k: int = 4,
 ) -> np.ndarray:
-    """Inverse-distance-weighted (power 2) interpolation of `probes`'
-    `kwh_per_kwp_yr` onto arbitrary (lon, lat) points. Plain numpy -- `scipy` is not a
-    project dependency and irradiance is smooth enough at country scale that IDW from a
-    few dozen cached PVGIS probes is ample; it also degrades gracefully at the edges of
-    the probe grid, unlike a triangulation-based method that can misbehave outside its
-    convex hull.
+    """Inverse-distance-weighted (power 2) interpolation of `probes`' `kwh_per_kwp_yr` onto
+    arbitrary (lon, lat) points, from each point's `k` nearest probes. Plain numpy -- `scipy` is
+    not a project dependency.
+
+    Local on purpose. With every probe in the sum, the far ones outweigh the near ones (their
+    number grows as distance squared while each weight falls by the same factor), so anywhere
+    between probes reads close to the national mean: Punjab's map showed a lattice of dark dots,
+    one at each probe, and its yield read high.
     """
     plon = probes["lon"].to_numpy(float)
     plat = probes["lat"].to_numpy(float)
     pval = probes["kwh_per_kwp_yr"].to_numpy(float)
     lons = np.asarray(lons, dtype=float)
     lats = np.asarray(lats, dtype=float)
+    k = min(k, len(pval))
 
     d2 = (lons[:, None] - plon[None, :]) ** 2 + (lats[:, None] - plat[None, :]) ** 2
-    d2 = np.maximum(d2, 1e-12)  # a query point exactly on a probe would divide by zero
-    w = 1.0 / d2
-    return (w * pval[None, :]).sum(axis=1) / w.sum(axis=1)
+    near = np.argsort(d2, axis=1)[:, :k]
+    w = 1.0 / np.maximum(np.take_along_axis(d2, near, axis=1), 1e-12)  # on a probe: no 1/0
+    return (w * pval[near]).sum(axis=1) / w.sum(axis=1)
 
 
 def run_pv_capacity_check(

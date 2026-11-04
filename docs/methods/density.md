@@ -960,40 +960,61 @@ earthpv redistribute-capacity --aoi pakistan --total-capacity 5800 --scope natio
 built and wired the same way, but has no real companion data yet -- no provincial NEPRA
 breakdown exists in this project's sources today, only the national scalar above.
 
-## Rooftop potential and saturation
+## Rooftop potential
 
-Everything above answers "how much PV is already there." `earthpv atlas
---potential-buildings <path>` (`atlas.py::build_potential_atlas`,
-`potential.py::large_roof_buildings`) answers a different, forward-looking question:
-where are large, currently-uncovered roofs that would make good candidates for *future*
-rooftop solar, and where is existing adoption already dense vs. sparse. It is a two-tab
-atlas, not a new capacity estimator, kept deliberately separate from every number above.
+Everything above answers "how much PV is already there." The potential map answers a
+forward-looking question: where do free roofs and good irradiance overlap? It is a siting
+signal built from three simple inputs, not a capacity estimator or a forecast, and it is kept
+separate from every number above.
 
-**Potential.** Every VIDA building nationally with `roof_area_m2 >= 200` is pulled from
-`roofclf.score_buildings_national`'s existing per-cell output, reusing only that table's
-building-footprint geometry, never its PV-presence scores -- this instrument only measures
-building footprint size, so none of `roofclf`'s calibration/precision caveats apply here.
-From each cell's total large-roof area, the segmentation model's own probability-weighted
-expected PV area is subtracted to get an **uncovered** large-roof area, which converts to
-peak capacity at the usual 0.18 kWp/m<sup>2</sup> module constant and then to annual
-energy via a PVGIS-modelled specific yield. 200 m<sup>2</sup>, not the 400 m<sup>2</sup>
-detection floor, is the cutoff because it reaches further into the realistic
-rooftop-opportunity space (roughly where Germany's MaStR register shows most rooftop
-capacity actually sits) rather than merely restating the population already above the
-detection floor -- with the caveat that the segmentation model has no discriminating
-signal at all in the 200-400 m<sup>2</sup> band, so that band's "potential" reads as
-almost entirely uncovered regardless of whether PV is actually there.
+```bash
+earthpv roof-potential --aoi <aoi> --roofclf-dir <scoring>/prob \
+  --roof-table <calibration buildings.geoparquet> --osm-solar <national OSM solar pull>
+```
 
-**Saturation.** This tab adds no new computation: `pv_ratio_det`/`pv_ratio_exp` (PV area
-over roof area) are already computed per cell and region and land unconditionally on
-`grid.geoparquet`/`regions.geoparquet`. The tab exists purely to give that existing ratio
-its own choropleth view.
+Every evidence atlas whose AOI has that table offers it under the map's "Show" menu as *Rooftop
+potential*, with no flag, and in GWh/yr rather than the page's usual MWp because capacity would
+not depend on the sun. A page without the table has no such entry. No total on the page includes
+it. `earthpv atlas --aoi <aoi> --potential-cells <table> --out <page>` draws a standalone page
+that adds a roof-size filter and views of the roof area already in use and of the yield.
+
+**Potential = free roof area x roof share x 0.18 kWp/m<sup>2</sup> x kWh/kWp**, per 0.1 degree
+cell and roof-size band (`potential.py::roof_potential_cells`,
+`atlas.py::build_potential_atlas`).
+
+**Building size.** Every VIDA footprint of at least 25 m<sup>2</sup> from
+`roofclf.score_buildings_national`'s per-cell output, in bands from 25, 100, 200 and 400
+m<sup>2</sup>. A footprint is not a suitable roof: structure, orientation and shade are not
+modelled.
+
+**Lack of PV.** A roof counts as free by `1 - p_roofclf`, and as 0 when it touches a mapped OSM
+solar outline or a model outline that earns capacity (`density.capacity_relevant_candidates`,
+so an unjudged merged sheet does not mark a town as taken). The whole roof counts as taken once
+it carries PV. The score also responds to the kind of roof that adopts PV, so large industrial
+roofs lose some potential they may still have. Its level is unreviewed in sparse cells, so the
+page's "Already in use" view leaves cells outside `density.calibrated_density_range` uncoloured.
+
+**Roof share.** `potential.measure_roof_share`: how much of a footprint mapped rooftop PV covers
+on the roofs that carry it, measured on the country's calibration table. The area-weighted share
+is the central figure, the median and 90th-percentile PV roof the range. It answers "what if every
+free roof took PV the way PV roofs do today", not an engineering maximum, and potential scales
+directly with it.
+
+**Irradiance.** PVGIS-ERA5 modelled yield for 2020 at a fixed, equator-facing tilt equal to the
+latitude with 14% system losses (`pv_capacity.grid_specific_yield`), interpolated from each cell's
+four nearest probes on a 20 x 20 grid cached beside the density outputs. Interpolating from every
+probe pulled all cells toward the national mean (leave-one-out error 59 against 44 kWh/kWp).
+
+The first version of this map (2026-08-02) took roofs of at least 200 m<sup>2</sup> at their full
+footprint and subtracted only segmentation's expected PV area, which is blind below 400
+m<sup>2</sup>. Its figure (144 GWp) is not comparable with this one.
 
 **Leads.** `scripts/build_potential_leads.py` (`pixi run potential-leads`) ranks
 individual large, uncovered roofs by `roof_area_m2 * kwh_per_kwp_yr` at the building's own
 cell, drops anything within 30 m of an existing detected candidate or hand-mapped OSM
 solar feature, and caps at 6 per 0.1 deg cell, for a human to spot-check the
-highest-opportunity roofs before treating any of this as validated.
+highest-opportunity roofs before treating any of this as validated. It reads
+`potential.py::large_roof_buildings`, footprints of at least 200 m<sup>2</sup> with no PV score.
 
 ## The plausibility gate
 

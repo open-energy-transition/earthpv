@@ -1429,7 +1429,7 @@ def large_roof_buildings_cmd(
     ),
 ) -> None:
     """Every VIDA building >= --min-roof-m2 nationally, pure footprint geometry (no
-    PV-presence probability) -- the raw material for `earthpv atlas --potential-buildings`.
+    PV-presence probability) -- the raw material for `scripts/build_potential_leads.py`.
     """
     import logging
 
@@ -1441,6 +1441,33 @@ def large_roof_buildings_cmd(
     out.parent.mkdir(parents=True, exist_ok=True)
     buildings.to_parquet(out)
     typer.echo(f"Wrote {len(buildings):,} buildings -> {out}")
+
+
+@app.command("roof-potential")
+def roof_potential_cmd(
+    aoi: str = typer.Option(..., help="AOI name; needs `density` already run"),
+    roofclf_dir: Path = typer.Option(
+        ..., help="Per-cell roofclf national-scoring dir (e.g. "
+        "data/roofclf_national_with_sppi/pakistan/prob)"
+    ),
+    roof_table: Path = typer.Option(
+        ..., help="The country's calibration table, `roof-classifier`'s buildings.geoparquet "
+        "(Pakistan: data/roofclf/buildings.geoparquet): measures how much of a roof PV covers"
+    ),
+    osm_solar: Path = typer.Option(..., help="National OSM solar pull: roofs it touches are taken"),
+    pred_dir: Path = typer.Option(Path("data/predictions")),
+    out: Path = typer.Option(
+        None, help="Output parquet (default <pred_dir>/<aoi>/potential/roof_potential_cells.parquet)"
+    ),
+) -> None:
+    """Free roof area per cell and roof-size band -- the raw material for
+    `earthpv atlas --potential-cells`, the rooftop solar potential map."""
+    import logging
+
+    from earthpv.potential import run_roof_potential
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    typer.echo(run_roof_potential(aoi, roofclf_dir, roof_table, osm_solar, pred_dir, out))
 
 
 @app.command()
@@ -1499,12 +1526,10 @@ def atlas(
         "pull and this run's own candidates.parquet (found automatically at "
         "<pred_dir>/<aoi>/candidates.parquet). --sub400-high-cells is ignored here.",
     ),
-    potential_buildings: Path = typer.Option(
-        None, help="Building-level parquet from `potential.large_roof_buildings` "
-        "(columns: cell, geometry, roof_area_m2) -- writes the POTENTIAL/SATURATION "
-        "atlas instead of any other atlas: uncovered large-roof area weighted by "
-        "modelled annual irradiance (Potential tab) alongside the existing PV-area/"
-        "roof-area ratio (Saturation tab). Takes priority over every other flag above.",
+    potential_cells: Path = typer.Option(
+        None, help="`earthpv roof-potential`'s parquet -- writes the rooftop solar POTENTIAL "
+        "map instead of any other atlas: free roof area x roof share x modelled annual "
+        "irradiance. Takes priority over every other flag above.",
     ),
     ge400_roof_cells: Path = typer.Option(
         None, help="Building-level parquet from `roofclf_ge400_capacity."
@@ -1595,10 +1620,8 @@ def atlas(
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     density_dir = Path(pred_dir) / aoi / "density"
-    if potential_buildings is not None:
-        build_potential_atlas(
-            aoi, density_dir, potential_buildings, out=out, zoom_out_frac=zoom_out,
-        )
+    if potential_cells is not None:
+        build_potential_atlas(aoi, density_dir, potential_cells, out=out, zoom_out_frac=zoom_out)
     elif osm_solar is not None or sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
         if osm_solar is not None:
             # The evidence atlas is the project's default capacity atlas, so --osm-solar

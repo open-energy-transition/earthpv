@@ -3,9 +3,9 @@
 Ranks buildings from `potential.large_roof_buildings` (>= 200 m2, pure footprint
 geometry -- see that module for why this carries none of the sub-400 m2 calibration
 caveats documented elsewhere in this project) by `roof_area_m2 * kwh_per_kwp_yr` at the
-building's own cell -- raw size times modelled annual irradiance, the same combination
-`atlas.py::build_potential_atlas` uses to color its Potential tab, just evaluated per
-building rather than summed per cell.
+building's own cell -- raw size times modelled annual irradiance, per building.
+`atlas.py::build_potential_atlas`'s map also discounts each roof by its PV score; this list
+stays geometry-only and drops roofs near known PV instead (below).
 
 A per-building "already covered" ratio (like density.py's `pv_ratio_exp`) isn't
 available for buildings outside density's signal-building table -- most large-but-

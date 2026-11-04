@@ -93,6 +93,16 @@
   .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .tab[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 
+  .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 0;
+    font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .sizes .k { margin-right: 4px; letter-spacing: 0.04em; text-transform: uppercase; font-size: 10.5px; }
+  .sizes button { font: inherit; padding: 5px 11px; background: transparent; cursor: pointer;
+    border: 1px solid var(--card-ring); border-radius: 999px; color: var(--ink-2);
+    transition: border-color .15s, color .15s; }
+  .sizes button:hover { color: var(--ink); border-color: var(--accent-dim); }
+  .sizes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .sizes button[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); border-color: var(--accent); }
+
   .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; align-items: start; margin-top: 16px; }
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
@@ -212,17 +222,21 @@
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">EarthPV · Sentinel-2 · TerraMind · PVGIS</p>
+    <p class="eyebrow">EarthPV · VIDA buildings · Sentinel-2 · PVGIS</p>
     <h1>__H1__</h1>
     <p class="lede">__LEDE_HTML__</p>
     <div class="switch" role="group" aria-label="Map layer">
       <button class="tab" id="tab0" type="button" data-i="0">
-        <span class="tt1">Potential</span><span class="tt2">uncovered large roofs &times; irradiance</span>
+        <span class="tt1">Potential</span><span class="tt2">free roof &times; sunshine</span>
       </button>
       <button class="tab" id="tab1" type="button" data-i="1">
-        <span class="tt1">Saturation</span><span class="tt2">existing PV area &divide; roof area</span>
+        <span class="tt1">Already in use</span><span class="tt2">roof area carrying PV</span>
+      </button>
+      <button class="tab" id="tab2" type="button" data-i="2">
+        <span class="tt1">Sunshine</span><span class="tt2">kWh per kWp per year</span>
       </button>
     </div>
+    <div class="sizes" id="sizes" role="group" aria-label="Roof size"><span class="k">Roof size</span></div>
   </header>
 
   <div class="grid">
@@ -237,13 +251,13 @@
           <div class="bar" id="legbar"></div>
           <div class="ticks" id="legticks"></div>
         </div>
-        <div class="cap" id="legcap">GWh/yr per cell</div>
+        <div class="cap" id="legcap"></div>
       </div>
     </section>
 
     <aside>
       <div class="card">
-        <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit" id="heroUnit">GWh/yr</span></div>
+        <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit" id="heroUnit"></span></div>
         <div class="hero-label" id="heroLabel">Potential, nationwide</div>
         <div class="hero-desc" id="heroDesc"></div>
         <div class="tiles" id="tiles"></div>
@@ -255,8 +269,8 @@
         <details class="tablewrap">
           <summary>Full province figures</summary>
           <div style="overflow-x:auto;"><table id="ptable">
-            <thead><tr><th>Province</th><th>Potential GWh/yr</th><th>Potential MWp</th>
-              <th>Saturation %</th><th>Large-roof km²</th><th>Uncovered km²</th></tr></thead>
+            <thead><tr><th>Province</th><th>Potential TWh/yr</th><th>Potential GWp</th>
+              <th>Roof km²</th><th>Free km²</th><th>In use %</th><th>kWh/kWp</th></tr></thead>
             <tbody></tbody>
           </table></div>
         </details>
@@ -267,37 +281,41 @@
   <details class="xdetails">
     <summary>Background &amp; method</summary>
     <div class="body">
-      <p><b>Potential</b> is not a capacity measurement of existing PV, and it does not
-      use any PV-presence probability. It starts from every building footprint
-      &ge; 200&nbsp;m&sup2; nationwide (from the same per-building roof-classifier
-      scoring run that also predicts PV presence elsewhere in this project, but here
-      only its <b>roof_area_m2</b> column is used -- pure building geometry, not a
-      prediction). From each cell's total large-roof area, the model's own
-      probability-weighted expected PV area is subtracted (an upper-leaning estimate of
-      what's already covered, so a roof with any sub-threshold PV signal is
-      conservatively excluded from "opportunity" rather than double-suggested) to get
-      an <b>uncovered</b> large-roof area. That area converts to peak capacity at the
-      same 0.18 kWp/m&sup2; module constant used throughout this project, then to
-      annual energy via PVGIS-modelled specific yield (kWh/kWp/yr) interpolated from a
-      coarse, cached probe grid across the country -- irradiance is smooth at country
-      scale, so a few dozen points are enough.</p>
+      <p><b>Potential = free roof area &times; roof share &times; 0.18 kWp/m&sup2;
+      &times; kWh per kWp.</b> Each 0.1&deg; cell gets one figure per roof-size band. It
+      answers where to look for future rooftop solar. It does not measure PV that exists,
+      and it is not a forecast of what will be built.</p>
 
-      <h4>Why 200 m² and not the model's 400 m² detection floor</h4>
-      <p>The segmentation model that finds existing PV is trained with everything below
-      400&nbsp;m&sup2; burned as "ignore," so it has essentially no discriminating
-      signal in the 200&ndash;400&nbsp;m&sup2; band. That band's "potential" therefore
-      reads as almost entirely uncovered regardless of whether PV is actually there --
-      expected, not a bug, and worth knowing when comparing this map to the 400&nbsp;m²
-      candidate population reported elsewhere on this site. 200&nbsp;m&sup2; was chosen
-      deliberately to reach further into the realistic rooftop-opportunity space
-      (roughly where Germany's MaStR register shows most rooftop capacity actually
-      sits), not to restate the already-known &ge;400&nbsp;m&sup2; population.</p>
+      <h4>Building size</h4>
+      <p>Every VIDA Open Buildings footprint of at least 25&nbsp;m&sup2;, which at this roof
+      share carries about 1.5&nbsp;kWp. A footprint is not a suitable roof: structure,
+      orientation, shade and ownership are not modelled, so weak and informal roofs count
+      here like any other.</p>
 
-      <h4>Saturation</h4>
-      <p>This tab adds no new computation: it is the same per-cell/per-region
-      PV-area-over-roof-area ratio the density stage always computes, drawn as its own
-      choropleth so dense-adoption urban areas are visually distinct from
-      under-adopted ones, rather than only appearing in a table.</p>
+      <h4>Lack of PV</h4>
+      <p>A roof counts as free by one minus its roof-classifier score. A roof touching a
+      hand-mapped OpenStreetMap solar outline, or a model outline that earns capacity,
+      counts as taken. A roof carrying PV counts as fully taken, however little of it the
+      panels cover, so <b>Already in use</b> is the share of roof area on such roofs, not
+      panel coverage. The score also responds to the kind of roof that adopts PV, so a large
+      industrial roof loses some potential it may still have. Its level is unreviewed in
+      sparse cells, and outside the building-density band it was calibrated over the
+      Already in use view leaves cells uncoloured rather than show an unmeasured figure.
+      Potential keeps those cells, because the score barely moves a figure that is mostly
+      roof area.</p>
+
+      <h4>Roof share</h4>
+      <p>The share of a footprint that mapped rooftop PV covers on the roofs that carry it,
+      from the calibration areas, weighted by area. The map means: <b>what if every free
+      roof took PV the way PV roofs do today</b>. It is not an engineering maximum. The low
+      and high figures use the median PV roof and the 90th-percentile one; potential scales
+      directly with this one number, and it is the largest uncertainty on the page.</p>
+
+      <h4>Sunshine</h4>
+      <p>PVGIS-ERA5 modelled yield for 2020: a fixed, equator-facing array tilted at the
+      latitude, with 14% system losses, interpolated from a coarse grid of probes. It is one
+      modelled year on a coarse grid, so local haze and terrain shading are not resolved.
+      Sunshine moves potential far less than roof area does.</p>
     </div>
   </details>
 
@@ -318,33 +336,68 @@
   const RAMP_DARK = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
   const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
 
+  let sel = 0, band = 0;
+  const sumFrom = (xs) => xs.slice(band).reduce((a, b) => a + b, 0);
+  const inUsePct = (roof, free) => roof > 0 ? (roof - free) / roof * 100 : null;
+  const pickTotals = () => Object.fromEntries(
+    ["gwh", "mwp", "roof_km2", "free_km2", "roof_dom_km2", "free_dom_km2", "known_km2",
+     "n_roofs", "n_known", "sum_p"].map(k => [k, sumFrom(T[k])]));
+  const sizeLabel = () => band === 0 ? "" : ` of ${DATA.band_lo[band]} m² and over`;
+
+  // A cell: [lon0, lat0, kWh/kWp, calibrated, roof km2 by band, free km2 by band].
   const VIEWS = [
     {
-      key: "potential", idx: 2, vmin: 0.01,
-      label: "Potential", heroUnit: "GWh/yr",
-      heroDesc: "Annual energy potential of uncovered roofs &ge; 200 m&sup2;, weighted by modelled irradiance.",
-      totalKey: "gwh_potential", provKey: "gwh_potential",
+      key: "potential", label: "Potential", unit: "TWh/yr",
       mapTitle: "Rooftop potential per 0.1° cell", legendCap: "GWh/yr per cell",
-      tiles: [
-        ["mwp_potential", "Potential MWp (capacity)"],
-        ["large_km2", "Large-roof area, km²"],
-        ["uncovered_km2", "Uncovered area, km²"],
-        ["n_large_buildings", "Buildings ≥ 200 m²"],
+      val: c => sumFrom(c[5]) * T.mwp_per_km2 * c[2] / 1000,
+      prov: p => sumFrom(p.gwh) / 1000,
+      hero: t => t.gwh / 1000,
+      desc: t => {
+        const S = T.roof_share;
+        return `Energy a year if every free roof${sizeLabel()} carried PV on ${Math.round(S.central * 100)}% of `
+          + `its area, as PV roofs do today. <b>${fmt(t.gwh / 1000 * S.low / S.central)} to `
+          + `${fmt(t.gwh / 1000 * S.high / S.central)} TWh/yr</b> across the measured range of roof share.`;
+      },
+      tiles: t => [
+        [`${fmt(t.mwp / 1000)} GWp`, "Potential capacity"],
+        [`${fmt(t.free_km2)} km²`, "Free roof area"],
+        [`${fmt(t.roof_km2)} km²`, "All roof area"],
+        [`${fmt(t.n_roofs / 1e6)} M`, "Roofs counted"],
       ],
     },
     {
-      key: "saturation", idx: 4, vmin: 0.001,
-      label: "Saturation", heroUnit: "%",
-      heroDesc: "Share of each cell's total roof area already carrying detected PV, area-weighted.",
-      totalKey: "sat_pct", provKey: "sat_pct",
-      mapTitle: "PV saturation per 0.1° cell", legendCap: "% of roof area with detected PV",
-      tiles: [
-        ["pv_buildings", "Buildings with detected PV"],
-        ["n_cells", "Cells mapped"],
+      key: "used", label: "Already in use", unit: "%",
+      mapTitle: "Roof area already in use per 0.1° cell",
+      legendCap: "% of roof area on roofs carrying PV. Uncoloured: score not calibrated there.",
+      val: c => c[3] ? inUsePct(sumFrom(c[4]), sumFrom(c[5])) : null,
+      prov: p => inUsePct(sumFrom(p.roof_dom_km2), sumFrom(p.free_dom_km2)),
+      hero: t => inUsePct(t.roof_dom_km2, t.free_dom_km2),
+      desc: () => `Share of roof area on roofs that carry PV, by mapped outlines, model outlines and `
+        + `the roof-classifier score. Panels cover only part of such a roof, so this is not panel `
+        + `coverage. Calibrated cells only.`,
+      tiles: t => [
+        [fmt(t.sum_p), "Roofs expected to carry PV"],
+        [fmt(t.n_known), "Roofs under a known outline"],
+        [`${fmt(T.n_domain_cells)} of ${fmt(T.n_cells)}`, "Calibrated cells"],
+        [`${fmt(T.domain_building_share * 100)}%`, "Buildings in those cells"],
+      ],
+    },
+    {
+      key: "sun", label: "Sunshine", unit: "kWh/kWp/yr",
+      mapTitle: "Modelled yield per 0.1° cell", legendCap: "kWh per kWp per year",
+      val: c => c[2],
+      prov: p => sumFrom(p.mwp) > 0 ? sumFrom(p.gwh) / sumFrom(p.mwp) * 1000 : null,
+      hero: t => t.gwh / t.mwp * 1000,
+      desc: () => `What 1 kWp of fixed, equator-facing panels yields in a year, from PVGIS-ERA5 for `
+        + `2020 with 14% system losses, averaged over the free roofs.`,
+      tiles: () => [
+        [fmt(T.kwh_range[0]), "Lowest cell, kWh/kWp"],
+        [fmt(T.kwh_range[1]), "Highest cell, kWh/kWp"],
+        [fmt(T.n_probes), "PVGIS probes"],
+        [`${T.kwp_per_m2}`, "kWp per m² of module"],
       ],
     },
   ];
-  let sel = 0;
 
   function proj(lon, lat) {
     return [ (lon - b0) / lonspan * W, (b3 - lat) / latspan * H ];
@@ -451,17 +504,14 @@
     return sortedAsc[Math.min(sortedAsc.length - 1, Math.floor(p * sortedAsc.length))];
   }
 
-  // A percentile cap on vmax (not the true max) keeps a handful of outlier cells from
-  // washing out contrast for the rest of the map -- both metrics here are heavily
-  // right-skewed (a few huge industrial roofs for Potential; Saturation is 86% exact
-  // zero nationally, with the nonzero tail itself long), so a domain fit to the true
-  // extremes leaves nearly every other cell indistinguishable near one end.
-  const VMAX_PERCENTILE = 0.98;
+  // Percentile caps keep a handful of outlier cells from washing out the contrast of the
+  // rest: a few huge roofs at the top, a long tail of near-empty desert cells at the bottom.
+  const VMIN_PERCENTILE = 0.02, VMAX_PERCENTILE = 0.98;
 
   function domainFor(view){
-    const vals = DATA.cells.map(c => c[view.idx]).filter(v => v > 0).sort((a,b) => a-b);
-    if (!vals.length) return {vmin: view.vmin, vmax: view.vmin * 10};
-    const vmin = vals[0];
+    const vals = DATA.cells.map(view.val).filter(v => v > 0).sort((a,b) => a-b);
+    if (!vals.length) return {vmin: 0.01, vmax: 0.1};
+    const vmin = percentile(vals, VMIN_PERCENTILE);
     const vmax = Math.max(vmin * 1.01, percentile(vals, VMAX_PERCENTILE));
     return {vmin, vmax};
   }
@@ -476,7 +526,7 @@
     const stops = dark ? RAMP_DARK : RAMP_LIGHT;
     const view = VIEWS[sel];
     const {vmin, vmax} = domainFor(view);
-    const bright = (c) => c[view.idx] > 0 ? tOf(c[view.idx], vmin, vmax) : -1;
+    const bright = (c) => { const v = view.val(c); return v > 0 ? tOf(v, vmin, vmax) : -1; };
 
     const mount = document.getElementById("mapmount");
     mount.innerHTML = "";
@@ -531,14 +581,16 @@
     gC.addEventListener("pointermove", (e) => {
       const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
-      const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
-      tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E</div>`
-        + `<div class="rowt${sel===0?' sel':''}"><span>Potential</span><span>${c[2].toFixed(2)} GWh/yr</span></div>`
-        + `<div class="rowt"><span>&nbsp;&nbsp;capacity</span><span>${c[3].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt${sel===1?' sel':''}"><span>Saturation</span><span>${c[4].toFixed(1)}%</span></div>`
-        + `<div class="rowt"><span>Large-roof area</span><span>${c[7].toFixed(2)} km²</span></div>`
-        + `<div class="rowt"><span>Uncovered area</span><span>${c[8].toFixed(2)} km²</span></div>`
-        + `<div class="rowt"><span>PV buildings</span><span>${c[5].toLocaleString()}</span></div>`;
+      const clon = c[0] + 0.05, clat = c[1] + 0.05;
+      const used = VIEWS[1].val(c), gwh = VIEWS[0].val(c);
+      const coord = `${Math.abs(clat).toFixed(2)}°${clat < 0 ? "S" : "N"} ${Math.abs(clon).toFixed(2)}°${clon < 0 ? "W" : "E"}`;
+      tip.innerHTML = `<div class="th">CELL ${coord}</div>`
+        + `<div class="rowt${sel===0?' sel':''}"><span>Potential</span><span>${fmt(gwh)} GWh/yr</span></div>`
+        + `<div class="rowt"><span>&nbsp;&nbsp;capacity</span><span>${fmt(sumFrom(c[5]) * T.mwp_per_km2)} MWp</span></div>`
+        + `<div class="rowt${sel===1?' sel':''}"><span>Already in use</span><span>${used === null ? "not calibrated" : fmt(used) + "%"}</span></div>`
+        + `<div class="rowt${sel===2?' sel':''}"><span>Sunshine</span><span>${fmt(c[2])} kWh/kWp</span></div>`
+        + `<div class="rowt"><span>Roof area</span><span>${fmt(sumFrom(c[4]))} km²</span></div>`
+        + `<div class="rowt"><span>Free roof area</span><span>${fmt(sumFrom(c[5]))} km²</span></div>`;
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
@@ -546,14 +598,18 @@
 
     const grad = stops.map((s,i)=>`${s} ${(i/(stops.length-1)*100).toFixed(0)}%`).join(",");
     document.getElementById("legbar").style.background = `linear-gradient(90deg, ${grad})`;
-    const ticks = [vmin, Math.sqrt(vmin * vmax), vmax].map(v => Math.round(v * 100) / 100);
+    const ticks = [vmin, Math.sqrt(vmin * vmax), vmax].map(v => Number(v.toPrecision(2)));
     document.getElementById("legticks").innerHTML =
-      ticks.map(v => `<span style="left:${(tOf(v, vmin, vmax)*100).toFixed(1)}%">${v}</span>`).join("");
+      ticks.map(v => `<span style="left:${(tOf(v, vmin, vmax)*100).toFixed(1)}%">${fmt(v)}</span>`).join("");
     document.getElementById("legcap").textContent = view.legendCap;
     document.getElementById("mapTitle").textContent = view.mapTitle;
   }
 
-  const fmt = n => Number(n).toLocaleString("en-US", {maximumFractionDigits: n >= 100 ? 0 : 1});
+  function fmt(n){
+    const a = Math.abs(n);
+    const digits = a >= 100 ? 0 : a >= 1 ? 1 : a >= 0.1 ? 2 : 3;
+    return Number(n).toLocaleString("en-US", {maximumFractionDigits: digits});
+  }
   function countUp(id, target, dur){
     const e = document.getElementById(id);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches){ e.textContent = fmt(target); return; }
@@ -567,44 +623,57 @@
   }
 
   function drawTable(view) {
-    const provs = [...DATA.provinces].sort((a,b) => b[view.provKey] - a[view.provKey]);
-    const maxP = provs.length ? Math.max(...provs.map(p => p[view.provKey]), 1e-9) : 1;
+    const val = p => { const v = view.prov(p); return v === null ? -1 : v; };
+    const provs = [...DATA.provinces].sort((a,b) => val(b) - val(a));
+    const maxP = provs.length ? Math.max(...provs.map(val), 1e-9) : 1;
     document.getElementById("ranks").innerHTML = provs.map(p => {
-      const v = p[view.provKey];
-      const unit = view.key === "saturation" ? "%" : "GWh/yr";
+      const v = view.prov(p);
       return `<div class="row"><div class="top"><span class="nm">${p.name}</span>`
-        + `<span class="vl">${fmt(v)} ${unit}</span></div>`
-        + `<div class="track"><div class="fill" style="width:${(v/maxP*100).toFixed(1)}%"></div></div></div>`;
+        + `<span class="vl">${v === null ? "not calibrated" : fmt(v) + " " + view.unit}</span></div>`
+        + `<div class="track"><div class="fill" style="width:${((v || 0)/maxP*100).toFixed(1)}%"></div></div></div>`;
     }).join("");
-    document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
-      `<tr><td>${p.name}</td><td>${fmt(p.gwh_potential)}</td><td>${fmt(p.mwp_potential)}</td>`
-      + `<td>${fmt(p.sat_pct)}</td><td>${fmt(p.large_km2)}</td><td>${fmt(p.uncovered_km2)}</td></tr>`).join("");
+    document.querySelector("#ptable tbody").innerHTML = provs.map(p => {
+      const used = VIEWS[1].prov(p), sun = VIEWS[2].prov(p);
+      return `<tr><td>${p.name}</td><td>${fmt(sumFrom(p.gwh) / 1000)}</td><td>${fmt(sumFrom(p.mwp) / 1000)}</td>`
+        + `<td>${fmt(sumFrom(p.roof_km2))}</td><td>${fmt(sumFrom(p.free_km2))}</td>`
+        + `<td>${used === null ? "not calibrated" : fmt(used)}</td><td>${sun === null ? "" : fmt(sun)}</td></tr>`;
+    }).join("");
   }
 
-  function setView(i){
-    sel = i;
-    ["tab0", "tab1"].forEach((id, j) =>
-      document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
-    const view = VIEWS[i];
-    countUp("heroNum", T[view.totalKey], 700);
-    document.getElementById("heroUnit").textContent = view.heroUnit;
+  function draw(){
+    const view = VIEWS[sel], t = pickTotals();
+    ["tab0", "tab1", "tab2"].forEach((id, j) =>
+      document.getElementById(id).setAttribute("aria-pressed", String(j === sel)));
+    document.querySelectorAll("#sizes button").forEach((b, j) =>
+      b.setAttribute("aria-pressed", String(j === band)));
+    countUp("heroNum", view.hero(t), 700);
+    document.getElementById("heroUnit").textContent = view.unit;
     document.getElementById("heroLabel").textContent = `${view.label}, nationwide`;
-    document.getElementById("heroDesc").innerHTML = view.heroDesc;
-    document.getElementById("tiles").innerHTML = view.tiles.map(([key, label]) =>
-      `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
+    document.getElementById("heroDesc").innerHTML = view.desc(t);
+    document.getElementById("tiles").innerHTML = view.tiles(t).map(([v, label]) =>
+      `<div class="tile"><div class="v">${v}</div><div class="k">${label}</div></div>`).join("");
     document.getElementById("rankH").textContent = `Provinces, ranked by ${view.label.toLowerCase()}`;
     renderMap();
     drawTable(view);
   }
-  ["tab0", "tab1"].forEach((id, i) =>
-    document.getElementById(id).addEventListener("click", () => setView(i)));
+  ["tab0", "tab1", "tab2"].forEach((id, i) =>
+    document.getElementById(id).addEventListener("click", () => { sel = i; draw(); }));
+
+  const sizes = document.getElementById("sizes");
+  DATA.band_lo.forEach((lo, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = i === 0 ? `All, ${lo} m² and over` : `${lo} m² and over`;
+    b.addEventListener("click", () => { band = i; draw(); });
+    sizes.appendChild(b);
+  });
 
   document.getElementById("foot").innerHTML =
-    `TerraMind-tiny segmentation (existing PV, Saturation tab) + roof-classifier building `
-    + `geometry (Potential tab, footprint area only, no PV-presence probability) + `
-    + `PVGIS-ERA5 modelled specific yield (${T.kwh_per_kwp_range[0]}&ndash;${T.kwh_per_kwp_range[1]} `
-    + `kWh/kWp/yr across ${fmt(T.n_cells)} cells) · ${T.kwp_per_m2} kWp/m² of module area · `
-    + `buildings from VIDA Open Buildings · see docs/methods/density.md for full derivation.`;
+    `Buildings from VIDA Open Buildings · PV from the roof-classifier score, OpenStreetMap and `
+    + `TerraMind segmentation · yield from PVGIS-ERA5 (${fmt(T.kwh_range[0])}&ndash;${fmt(T.kwh_range[1])} `
+    + `kWh/kWp/yr, ${fmt(T.n_cells)} cells) · roof share ${T.roof_share.central} `
+    + `(${T.roof_share.low}&ndash;${T.roof_share.high}), measured on ${fmt(T.n_pv_roofs_measured)} mapped PV roofs · `
+    + `${T.kwp_per_m2} kWp/m² of module area.`;
 
   const btn = document.getElementById("themeBtn");
   function updateThemeBtn(){ btn.textContent = isDark() ? "Light mode" : "Dark mode"; }
@@ -619,6 +688,6 @@
   });
 
   updateThemeBtn();
-  setView(0);
+  draw();
 })();
 </script>

@@ -72,6 +72,8 @@ pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
 earthpv ge400-roof-capacity --aoi <aoi> --osm-solar <national OSM solar pull>   # before sub400
 earthpv sub400-capacity     --aoi <aoi> --osm-solar <national OSM solar pull>
 # NOTE: --sub400-outdomain-cells is deliberately NOT passed -- see "Density stage".
+earthpv roof-potential --aoi <aoi> --roofclf-dir data/roofclf_national_with_sppi/<aoi>/prob \
+  --roof-table <calibration buildings.geoparquet> --osm-solar <national OSM solar pull>
 earthpv atlas --aoi <aoi> \
   --sub400-central-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
   --sub400-low-cells     data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
@@ -617,6 +619,17 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   (2026-10-30) on the late 2026-10-24 OSM pull its density already used, keeping the published
   seven-area farm fit (`/home/tobi/earthpv_data/yemen_7areas_20261024`); the working tree's
   fourteen-area refits stay unpublished.
+- **Rooftop potential layer (owner, 2026-11-02)**: an entry in "Show", off when the page opens,
+  from `potential.py`: free roof area x roof share x 0.18 kWp/m2 x PVGIS yield, coloured in
+  GWh/yr because capacity would ignore the sun. `earthpv atlas` picks up
+  `<pred_dir>/<aoi>/potential/roof_potential_cells.parquet` by itself (no flag) and the entry
+  hides where the table is absent, so `roof-potential` is a default step wherever a national
+  roofclf scoring exists; only Pakistan has one built. It is where solar could still go: no
+  total includes it. **Roof share** is how much of a footprint mapped PV covers on PV roofs
+  (Pakistan 0.337, 0.235-0.683), what owners install rather than a maximum, and the largest
+  uncertainty. Pakistan: 428.6 TWh/yr, 262 GWp (298-867 TWh/yr). `atlas --potential-cells` still
+  draws the standalone page with its size filter; `scripts/patch_atlas_potential.py` adds the
+  data to a published page. Method: `docs/methods/density.md`.
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and

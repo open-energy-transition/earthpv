@@ -351,7 +351,16 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     Combine both halves into the **main workflow's primary output**: Best estimate,
     de-duplicated against hand-mapped OSM.
 
+    Run `roof-potential` first. It writes `potential/roof_potential_cells.parquet`, which the
+    atlas finds by itself and offers as the map's *Rooftop potential* layer. No total on the
+    page includes it, and without the file the page simply has no such layer. See
+    [rooftop potential](methods/density.md#rooftop-potential).
+
     ```bash
+    pixi run earthpv roof-potential --aoi pakistan \
+        --roofclf-dir data/roofclf_national_with_sppi/pakistan/prob \
+        --roof-table data/roofclf/buildings.geoparquet \
+        --osm-solar data/labels/pakistan_overpass_solar.parquet
     pixi run earthpv atlas --aoi pakistan \
         --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
         --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
