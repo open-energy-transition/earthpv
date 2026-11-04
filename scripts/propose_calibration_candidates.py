@@ -207,9 +207,15 @@ def cropland_table(aoi: str, grid: pd.DataFrame) -> pd.DataFrame:
     return got
 
 
+SLUG_LETTERS = str.maketrans({"ı": "i", "ł": "l", "Ł": "L", "ø": "o", "Ø": "O", "đ": "d",
+                              "Đ": "D", "ß": "ss", "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE"})
+
+
 def slug(text: str) -> str:
     """A stem-safe place name, without the admin-type words ("Province de Nador" -> nador)."""
-    t = unicodedata.normalize("NFKD", str(text)).encode("ascii", "ignore").decode()
+    # Letters NFKD does not decompose would vanish (Turkish dotless i made "Ayvalık" ayvalk).
+    t = str(text).translate(SLUG_LETTERS)
+    t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode()
     s = re.sub(r"[^a-z0-9]+", "_", t.lower()).strip("_")
     admin = r"(province|prefecture|governorate|district|municipality|city|markz|wilaya)"
     s = re.sub(rf"^{admin}(_(de|du|of|d))?_", "", s)

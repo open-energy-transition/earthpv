@@ -293,6 +293,35 @@
         "min_area_m2": 100000.0
       }
     },
+    "turkiye": {
+      "file": "turkiye_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/turkiye_pv_new_leads.geojson",
+      "n": 15003,
+      "size_bytes": 19835745,
+      "osm_as_of": "2026-10-27",
+      "min_distance_m": 100,
+      "made": "2026-11-04",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 1230,
+        "review": 2141,
+        "no_dem": 25
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 7757
+      },
+      "blobs": {
+        "file": "turkiye_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/turkiye_pv_blob_leads.geojson",
+        "n": 774,
+        "size_bytes": 3886457,
+        "min_area_m2": 100000.0
+      }
+    },
     "vietnam": {
       "file": "vietnam_pv_new_leads.geojson",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-01b/vietnam_pv_new_leads.geojson",

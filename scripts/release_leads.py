@@ -91,7 +91,8 @@ MANIFEST = ROOT / "configs" / "atlas_leads.json"
 # lead files were replaced under the same tag, minus their blobs, keeping their date.
 # 2026-11-02: Yemen re-run on v25 (`--aoi yemen`), a new tag holding every country's files,
 # the others byte for byte those of pv-new-leads-2026-11-01b, whose manifest entries keep
-# their URLs there.
+# their URLs there. 2026-11-04: Türkiye's first files added to the same tag; the other
+# countries' files untouched, README.md and SHA256SUMS replaced.
 TAG = "pv-new-leads-2026-11-02"
 
 # Per AOI: the candidates behind its published atlas, the OSM pull(s) that count as
@@ -107,7 +108,7 @@ SOURCES = {
     # Yemen's atlas is the v25 run (2026-11-02); data/predictions/yemen holds v13's.
     "yemen": {"pred": "data/predictions_v25/yemen"},
     "india": {}, "vietnam": {}, "zambia": {}, "egypt": {},
-    "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {},
+    "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {}, "turkiye": {},
 }
 # The published page each run must match: its provinces are compared with the regions read
 # here, so a lead file cannot come from a run other than the page's.
@@ -348,6 +349,11 @@ modified Copernicus Sentinel-2 data. Released under the ODbL like every EarthPV 
 """
 
 
+def country_name(aoi: str) -> str:
+    """The country as the README names it (an AOI key drops diacritics)."""
+    return {"turkiye": "Türkiye"}.get(aoi, aoi.replace("_", " ").title())
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", type=Path, required=True, help="directory for the release assets")
@@ -371,7 +377,7 @@ def main() -> int:
     manifest["release"] = f"https://github.com/{REPO}/releases/tag/{TAG}"
 
     built = {a: e for a, e in manifest["aois"].items() if a != "france"}
-    rows = "\n".join(f"| {a.replace('_', ' ').title()} | {e['n']:,} | "
+    rows = "\n".join(f"| {country_name(a)} | {e['n']:,} | "
                      f"{e.get('blobs', {}).get('n', 0):,} | "
                      f"{e.get('steep', {}).get('dropped', 0):,} | "
                      f"{e.get('steep', {}).get('review', 0):,} | "
@@ -386,7 +392,7 @@ def main() -> int:
         steep_area=f"{STEEP_MAX_AREA_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}",
         steep_cap=f"{STEEP_CAP_DEG:g}", lowconf_max=f"{LOWCONF_MAX_CONFIDENCE:g}",
         water_pct=f"{100 * WATER_EVER_WET_MIN:g}",
-        water_aois=", ".join(a.replace("_", " ").title() for a, e in built.items()
+        water_aois=", ".join(country_name(a) for a, e in built.items()
                              if "water" in e) or "none yet"))
     files = ([args.out / e[k]["file"] if k else args.out / e["file"]
               for e in built.values() for k in (None, "blobs") if k is None or k in e]

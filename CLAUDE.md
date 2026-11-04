@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and thirteen countries have a published evidence atlas (see "Country
+country's own OSM labels, and fourteen countries have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -1152,6 +1152,7 @@ QUEUE first when removing compute markers.
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 526.3 | |
 | Nigeria | `v5_combined_france` ep 25 | 90.2 / 120.9 | name `v8` is taken by `v8_combined_nigeria` |
 | Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
+| Türkiye | `v19_combined_turkiye` ep 12 | 10,709.1 / 13,103.0 | tie with v5 on the holdout; dark open ground in Best |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1202,6 +1203,13 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   geoBoundaries NAM ADM2 names are shuffled (ADM1 is right; `propose_calibration_candidates.py`
   names Namibian boxes by region), and Esri serves most of Namibia only to zoom 17, so one
   calibration box passes the imagery gate.
+- **Türkiye** (published 2026-11-04): v19 tied v5 on the Gaziantep holdout (recall >= 500 m2
+  0.968 against 0.970, pixel IoU 0.581 against 0.548) and ships under the tie rule. Of what Best
+  adds over Verified, rooftop is partly real (roof-wide arrays in Manisa, Bursa and Ankara
+  industrial estates), open ground mostly not (lava and rock north of Lake Van, shaded eastern
+  slopes, dark fields; 0 of 10 sampled on Esri, the assistant's look), priced through ground
+  bins whose mapped fraction is high (0.375 above 50k m2). No filter; the page says so. 774
+  blobs (175 km2) await the solar farm review. Ember is not a ceiling (cells 36 GW, panels 6).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

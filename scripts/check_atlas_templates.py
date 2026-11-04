@@ -97,6 +97,7 @@ PUBLISHED = {
     # 2026-10-19, registered before its page exists.
     "poland_pv_evidence_atlas.html": ("poland", "Poland"),
     "namibia_pv_evidence_atlas.html": ("namibia", "Namibia"),
+    "turkiye_pv_evidence_atlas.html": ("turkiye", "Türkiye"),
 }
 
 

@@ -2790,6 +2790,10 @@ INTERACTIVE = [
     # v17_combined_namibia (it beat v5 on the held-out Erongo cells). docs/results/namibia.md
     # explains.
     ("results/namibia_pv_evidence_atlas.html", "namibia_pv_evidence_atlas.html"),
+    # Türkiye: segmentation-only, national, on its own LOCALIZED checkpoint
+    # v19_combined_turkiye (a tie with v5 on the held-out Gaziantep cells, shipped under the
+    # tie rule). docs/results/turkiye.md explains.
+    ("results/turkiye_pv_evidence_atlas.html", "turkiye_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;

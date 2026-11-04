@@ -113,6 +113,7 @@ source, and the vintage nearest the end of the atlas's imagery window was used.
 | South Africa | [NTCSA (Eskom)](https://www.ntcsa.co.za/wp-content/uploads/2026/10/Weekly_System_Status_Report_2026_w43.pdf), contracted utility PV plus its estimate of all other PV | Sep 2026 | 12,210 | 9, estimate only |
 | Poland | [ARE](https://www.are.waw.pl/badania-statystyczne/energetyka-w-liczbach) monthly statistics | Aug 2026 | 27,106 | none |
 | Poland | [URE](https://www.ure.gov.pl/download/9/16535/MAPAOZEna30092026nastroneURE.xlsx) installation list, above 50 kW | 30 Sep 2026 | 13,440 | 16 voivodeships |
+| Türkiye | [TEİAŞ](https://www.teias.gov.tr/turkiye-elektrik-uretim-iletim-istatistikleri) annual statistics, licensed and unlicensed plants | end of 2025 | 25,927 | none |
 | Egypt, Morocco, Namibia, Nigeria, Vietnam, Yemen, Zambia | [IRENA Renewable Capacity Statistics 2026](https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf) | end of 2025 | 3,247; 546; 389; 285; 19,252; 456; 328 | none |
 
 **None of them is ground truth for the map, and the atlas is not scored against them.** A
@@ -154,9 +155,12 @@ imported later can be on the imagery.
 | Germany | 84,473 | 29,906 | Jan 2017 to Aug 2026 | not a ceiling |
 | France | 13,368 | 16,196 | Jan 2017 to Sep 2024 | not a ceiling |
 | Poland | 7,781 | 21,769 | Jan 2017 to Aug 2026 | not a ceiling |
+| Türkiye | 13,103 | 6,222 | Jan 2017 to Aug 2026 | not a ceiling |
 
-**It is not a ceiling for India, Germany, France or Poland**, and those atlases say so
-instead: India makes a large share of its own panels, much of Germany's and France's fleets
+**It is not a ceiling for India, Germany, France, Poland or Türkiye**, and those atlases say
+so instead: India makes a large share of its own panels, Türkiye assembles most of its own
+(since 2017 China has shipped it about six times as much capacity in cells as in finished
+panels), much of Germany's and France's fleets
 predate 2017, and much of the EU's Chinese supply arrives through the Netherlands and other
 member states rather than directly. Poland had about 21.8 GW installed by February 2025
 ([Wikipedia](https://en.wikipedia.org/wiki/Solar_power_in_Poland)), against 15.3 GW of
