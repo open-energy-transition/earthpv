@@ -1,0 +1,61 @@
+# Türkiye's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Türkiye, national. Same starting condition as Poland, Namibia and the 2026-10-10 queue --
+# no calibration quadrats, no register used, no third-party dataset checked against -- so
+# the builder's default no-ground-truth text stands. The segmentation is localized on
+# Türkiye's own OpenStreetMap labels and ships only if it beats v5 on a held-out region
+# (results/turkiye_checkpoint_decision.json records which one did).
+#
+# Numbers belong in docs/results/turkiye.md; nothing here quotes a figure a rebuild could
+# change.
+
+title: Türkiye
+
+cities:
+  - [Istanbul, 28.979, 41.015]
+  - [Ankara, 32.854, 39.920]
+  - [Izmir, 27.142, 38.423]
+  - [Bursa, 29.061, 40.188]
+  - [Antalya, 30.713, 36.897]
+  - [Konya, 32.485, 37.871]
+  - [Adana, 35.321, 37.000]
+  - [Gaziantep, 37.383, 37.066]
+  - [Kayseri, 35.479, 38.731]
+  - [Diyarbakir, 40.231, 37.914]
+  - [Samsun, 36.330, 41.287]
+  - [Trabzon, 39.717, 41.003]
+  - [Erzurum, 41.277, 39.904]
+  - [Van, 43.380, 38.501]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of
+      Türkiye has been mapped panel by panel, so there is nothing to calibrate a
+      per-building rooftop classifier against here. Everything on the map is either
+      hand-mapped in OpenStreetMap or an array the segmentation model outlined directly,
+      which in practice means installations of roughly 400 m&sup2; and up. Household and
+      small-business rooftop systems are mostly below that size.
+    - >-
+      <b>Solar water heaters are not solar panels.</b> The rooftop solar water heaters on
+      many Turkish homes are tagged in OpenStreetMap much like photovoltaic panels. Those
+      tagged as thermal were removed before training and counting; each one is far below
+      the size the model can see.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation.
+      A solar park built on empty land that nobody has mapped yet falls outside both rules
+      and is not on this page.
+    - >-
+      <b>Very large model outlines count only once checked.</b> A model outline above
+      100,000 m&sup2; counts only when it is mapped or a person has judged it solar, which
+      removes large false detections and, with them, any real park nobody has looked at
+      yet. Mapping such a park brings it into the verified layer.
+    - >-
+      <b>On open ground the model adds little that is solar.</b> What the model adds
+      beyond the map on factory roofs is often real: industrial estates in Manisa, Bursa
+      and Ankara carry roof-wide arrays nobody has mapped. On open ground, and above all in
+      the east, its largest unmapped outlines were lava fields, rocky hills, shaded
+      mountain slopes and dark ploughed fields when checked on satellite imagery. Part of
+      the satellite-detected ground-mounted capacity there is therefore not real. The
+      Verified figure, which counts only mapped installations, is not affected.

@@ -592,6 +592,34 @@ aois:
       "0041_0070", "0042_0075", "0043_0075", "0044_0066",
     ]
 
+  # Added by scripts/new_region.py. No source_region key, so chips and compose fetch
+  # from Planetary Computer STAC rather than a local composite cache.
+  # 2026-10-29: Türkiye, owner request. ISO2 is TR (new_region.py's default, the first two
+  # ISO3 letters, gave TU).
+  turkiye:
+    bbox: [25.6, 35.8, 44.9, 42.2]
+    division: { name: Türkiye, country: TR, subtype: country, iso3: TUR }
+    grid_origin: [25.6, 35.8]
+    # May to September: the dry summer, with the eastern highlands clear of snow; the
+    # preflight found 10,258 scenes under 40% cloud in this window, median 2%.
+    compose_window: ["2026-05-01", "2026-09-30"]
+    cell_selection: duckdb
+    # Filled by scripts/pick_val_region.py --write, which only writes into an empty list.
+    # Val holdout = Gaziantep (geoBoundaries ADM1), 63 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 219 of
+    # 3771 dissolved >= 400 m2 positives (5.8%); the largest
+    # region (Konya, 341) is never the holdout.
+    val_tiles: [
+      "0109_0011", "0110_0011", "0110_0012", "0110_0013", "0111_0011", "0111_0012", "0111_0013", "0112_0013",
+      "0112_0014", "0113_0013", "0113_0014", "0114_0012", "0114_0013", "0115_0011", "0115_0012", "0115_0013",
+      "0116_0011", "0116_0012", "0116_0013", "0116_0014", "0117_0009", "0117_0010", "0117_0011", "0117_0012",
+      "0117_0013", "0117_0014", "0118_0010", "0118_0011", "0118_0012", "0118_0013", "0118_0014", "0118_0015",
+      "0119_0009", "0119_0010", "0119_0011", "0119_0012", "0119_0013", "0119_0014", "0119_0015", "0119_0016",
+      "0120_0010", "0120_0011", "0120_0013", "0120_0014", "0120_0015", "0120_0016", "0121_0010", "0121_0011",
+      "0121_0012", "0121_0013", "0121_0014", "0121_0016", "0122_0010", "0122_0011", "0122_0012", "0122_0013",
+      "0122_0015", "0122_0016", "0123_0010", "0123_0011", "0123_0012", "0123_0016", "0124_0016",
+    ]
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]
