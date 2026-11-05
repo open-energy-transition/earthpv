@@ -93,6 +93,8 @@ BOUNDARY = "_boundary.geojson"
 CANDIDATE = "_candidate.geojson"
 # propose_calibration_candidates.PRIORITY_SELECTION starts with this.
 PURPOSIVE = "purposive"
+# propose_calibration_candidates.py --bright (BRIGHT_SELECTION there)
+BRIGHT = "purposive: roofs brighter in NIR/SWIR"
 # propose_calibration_candidates.TOWN_SELECTION starts with this; `_t<k>` is the draw order.
 TOWNS = "random town boxes"
 TOWN_K = re.compile(r"_t(\d+)[a-h]?_calib_")
@@ -139,7 +141,8 @@ def _priority_key(f: dict, farm_first: bool = False) -> tuple:
     """Town boxes drawn at random (`--towns`) first, in draw order, so that whichever of them
     get mapped first are still a random sample of towns; then start-here boxes, by roof area
     in large buildings (`--pv-rich` boxes, which carry none, by their count of likely-PV
-    roofs); then the rest densest first; farm boxes
+    roofs); then the rest densest first; then bright-roof boxes (`--bright`), by the
+    classifier's score mass on their bright roofs; farm boxes
     (`propose_calibration_candidates.py --farmland`) last, by cropland share. A 9 km2 farm
     box is a longer job for a different instrument, and ranking it among the building boxes
     would reorder those every time farm candidates are drawn. `farm_first` puts the farm
@@ -147,6 +150,11 @@ def _priority_key(f: dict, farm_first: bool = False) -> tuple:
     p = f["properties"]
     if str(p.get("selection", "")).startswith(TOWNS) and (m := TOWN_K.search(p["id"])):
         return (-0.5, int(m.group(1)), p["id"])
+    if str(p.get("selection", "")).startswith(BRIGHT):
+        # After the sampled building boxes, so they never take the star by default: they
+        # measure one known bias, and the popup has no wording for them yet. Biggest
+        # exposure first.
+        return (1.5, -(p.get("screen_bright_score_mass_m2") or 0), p["id"])
     if str(p.get("selection", "")).startswith(PURPOSIVE):
         return (0, -(p.get("own_large_roof_m2") or 0), -(p.get("own_likely_pv_roofs") or 0),
                 p["id"])
@@ -245,6 +253,9 @@ def areas_for(aoi: str, labels_dir: Path = LABELS, configs_dir: Path = CONFIGS,
                                   "own_large_roof_m2": p.get("own_large_roof_m2"),
                                   # --pv-rich boxes only.
                                   "own_likely_pv_roofs": p.get("own_likely_pv_roofs"),
+                                  # --bright boxes only (their mapping order reads the mass).
+                                  "screen_share_beyond_cal_p99": p.get("screen_share_beyond_cal_p99"),
+                                  "screen_bright_score_mass_m2": p.get("screen_bright_score_mass_m2"),
                                   "imagery_layer": p.get("imagery_layer"),
                                   "imagery_date": p.get("imagery_date"),
                                   "selection": p.get("selection"),

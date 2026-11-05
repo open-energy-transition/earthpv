@@ -64,6 +64,15 @@ proportion to their buildings, with no classifier score and no look for solar an
 the draw. Written as `<place>_t<k>_calib_1km`; `calib-publish` ranks them first, in draw
 order, so a partly mapped set is still a random sample.
 
+**`--bright`: town boxes where roofs are brighter than in any calibration area**
+(2026-11-05). Purposive, like `--false-alarm`: roofclf over-credits roofs that are bright in
+NIR and SWIR, and most of the national exposure sits in bright towns no calibration area
+covers. `scripts/roofclf_bright_screen.py` measures every in-domain building's NIR+SWIR with the
+scoring's own feature code; this mode keeps the 1 km town windows whose median roof is brighter
+than every calibration area's, ranks them by the classifier's score mass on roofs beyond the
+calibration 99th percentile, and draws `--n-bright` (one per province first) through the same
+imagery gate. Written as `<place>_br<k>_calib_1km`. Chosen on brightness, never on solar.
+
 Farm boxes are written as `<place>_f<k>_farm_calib_<side>_candidate.geojson`, register with
 `new_calibration_quadrat.py --farm`, and are invisible to the rooftop roofclf
 (`roofclf.FARM_QUADRAT_INFIX`). Map ALL solar in a farm box, ground and rooftop, tracing
@@ -76,6 +85,7 @@ panels rather than enclosures.
     pixi run calib-candidates -- --aoi yemen --false-alarm ghayl_bawazir_pv1 \\
         --score-dir data/roofclf_transfer/yemen_pk/prob    # where roofclf is wrong
     pixi run calib-candidates -- --aoi yemen --towns --dry-run   # towns at random, no PV signal
+    pixi run calib-candidates -- --aoi pakistan --bright --window-start 2025-11-01 --dry-run
 """
 from __future__ import annotations
 
@@ -148,6 +158,16 @@ FALSE_ALARM_SELECTION = "purposive: high classifier scores where a reviewer saw 
 # random from the whole grid, kept if the box around it reaches the --pv-rich town floor.
 TOWN_SELECTION = "random town boxes by building"
 TOWN_MAX_DRAWS = 600                 # buildings drawn before the mode reports itself short
+# --bright: purposive town boxes where roofs are brighter in NIR/SWIR (mean of B08, B8A, B11,
+# B12) than in any calibration area. roofclf over-credits such roofs (leave-one-quadrat-out the
+# brightest 5% of calibration roofs are priced at 2.6x their mapped PV area below 400 m2 and
+# 5.1x above, 2026-11-05), and 83% of national roofs beyond the calibration p99 stand in
+# neighbourhoods brighter than nearly every calibration neighbourhood, so the calibration set
+# cannot see the landscape where most of that exposure is. Ranked on the national screen
+# (`scripts/roofclf_bright_screen.py`): selected on roof brightness and the classifier's score
+# mass on those roofs, never on solar seen.
+BRIGHT_SELECTION = "purposive: roofs brighter in NIR/SWIR than in any calibration area"
+BRIGHT_SCREEN = Path("data/roofclf_bright_screen")
 # --farmland: boxes for the ground-PV detector, stratified by cropland instead of buildings.
 FARM_SELECTION = "stratified random by cropland area"
 OWN_CROP_TOL = 1.25                  # a box's own cropland share within x/÷ this of its cell's
@@ -1267,6 +1287,165 @@ def propose_towns(aoi: str, args) -> list[dict]:
     return picked
 
 
+def propose_bright(aoi: str, args) -> list[dict]:
+    """`--n-bright` purposive town boxes in landscapes brighter than every calibration area.
+
+    1. **The screen** (`scripts/roofclf_bright_screen.py`, run first): every building the
+       national scoring scored in the density-calibrated domain, with its NIR+SWIR from the
+       same composite and feature code, aggregated into 0.01 deg windows on a 0.005 deg stride.
+    2. **Eligible**: a window whose median roof is brighter than the median roof of every
+       calibration area (`reference.json`'s `quadrat_median_max`) and which holds at least
+       `--pv-rich-min-density` buildings per km2 (a town).
+    3. **Ranked** by the classifier's score mass (p x roof area) on roofs beyond the
+       calibration areas' 99th NIR+SWIR percentile: where the over-credit, if real, is
+       largest. One box per province while one is left, `--bright-spacing-km` apart.
+    4. **The box** is the `--dense-side-m` geodesic square on the window centre, with no
+       overlap and the same Esri imagery gate (failures in `screened_out.csv`).
+
+    Mapped complete, a box like this measures the coverage ratio on bright roofs where the
+    calibration set has none. Selected on brightness, its share of roofs with solar is not a
+    sample of anything, so whether it enters the coverage ratio is an owner decision.
+    """
+    import duckdb
+    from shapely.geometry import mapping
+
+    from earthpv.buildings import fetch_vida_building_points
+    from earthpv.roofclf import load_boundary
+
+    sd = BRIGHT_SCREEN / aoi
+    if not (sd / "windows.parquet").exists():
+        raise SystemExit(f"{aoi}: no screen in {sd}; run scripts/roofclf_bright_screen.py first")
+    ref = json.loads((sd / "reference.json").read_text())
+    _, iso3, country, win0, earliest = gate_setup(aoi, args)
+    home = LABELS if aoi == FLAT_AOI else LABELS / aoi
+    out_dir = home / "candidate_quadrats"
+    files = sorted(out_dir.glob("*_candidate.geojson"))
+    sel_of = {p: json.loads(p.read_text())["features"][0]["properties"].get("selection", "")
+              for p in files}
+    registered = {p.name[: -len("_boundary.geojson")] for p in home.glob("*_calib_*_boundary.geojson")}
+    mine = [p for p in files if sel_of[p].startswith(BRIGHT_SELECTION)
+            and p.name[: -len("_candidate.geojson")] not in registered]
+    done = [p for p in files if sel_of[p].startswith(BRIGHT_SELECTION) and p not in mine]
+    if mine and not args.replace:
+        print(f"{aoi}: {len(mine)} bright-roof candidates already exist in {out_dir}; "
+              "pass --replace to redraw them")
+        return []
+    want = args.n_bright - len(done)
+    if want <= 0:
+        print(f"{aoi}: all {args.n_bright} bright-roof boxes are registered; nothing to draw")
+        return []
+
+    W = pd.read_parquet(sd / "windows.parquet")
+    side, floor = args.dense_side_m, args.pv_rich_min_density
+    elig = W[W["brighter_than_every_area"] & (W["density_km2"] >= floor)]
+    elig = elig.sort_values("mass_bright", ascending=False).reset_index(drop=True)
+    print(f"{aoi}: {len(elig):,} of {len(W):,} windows are towns ({floor:,.0f}+ bldg/km2) whose median "
+          f"roof is brighter than every calibration area's ({ref['quadrat_median_max']:.4f}, "
+          f"{ref['quadrat_median_argmax']}); they hold {elig['mass_bright'].sum() / W['mass_bright'].sum():.0%} "
+          f"of the score mass beyond the calibration p99 ({ref['cal_p99']:.4f}), windows overlapping")
+    grid = pd.read_parquet(args.grid or grid_path(aoi),
+                           columns=["cell", "lon0", "lat0", "n_buildings", "bldg_density_km2"])
+    admin = Admin(aoi)
+    near = existing_boxes(home) + [load_boundary(p) for p in files if p not in mine]
+    con = duckdb.connect()
+    con.execute("SET parquet_metadata_cache=true;")
+    picked, screened, provinces = [], [], set()
+    for prov_pass in (True, False):          # one per province first, then any
+        for w in elig.itertuples():
+            if len(picked) == want:
+                break
+            cx, cy = float(w.lon0 + 0.005), float(w.lat0 + 0.005)
+            poly = geodesic_square(cy, cx, side)
+            boxes = near + [shape_of(c) for c in picked]
+            if any(bx.intersects(poly) for bx in boxes) or any(
+                    GEOD.inv(cx, cy, shape_of(c).centroid.x, shape_of(c).centroid.y)[2] / 1000
+                    < args.bright_spacing_km for c in picked):
+                continue
+            district, region = admin.lookup(cx, cy)
+            if prov_pass and region in provinces:
+                continue
+            passed, img = imagery_gate(poly, earliest)
+            if not passed:
+                screened.append({"aoi": aoi, "stratum": "bright", "cell": "", "lat": round(cy, 6),
+                                 "lon": round(cx, 6), "reason": img["reason"],
+                                 "imagery_date": img.get("imagery_date", ""),
+                                 "date_screened": date.today().isoformat()})
+                continue
+            own = fetch_vida_building_points(poly.bounds, iso3, con=con)
+            geo_km2 = abs(GEOD.geometry_area_perimeter(poly)[0]) / 1e6
+            cell = grid[(grid["lon0"] <= cx) & (cx < grid["lon0"] + 0.1)
+                        & (grid["lat0"] <= cy) & (cy < grid["lat0"] + 0.1)].iloc[0]
+            tag = f"{int(side // 1000)}km" if side % 1000 == 0 else f"{side:g}m"
+            used = ({c["stem"] for c in picked} | {p.name[: -len("_candidate.geojson")] for p in files
+                                                   if p not in mine} | registered
+                    | {f"{r['name']}_calib_{tag}" for r in rejected_rows()})
+            k = len(picked) + len(done) + 1
+            base = f"{slug(district or region or aoi)}_br{k}"
+            stem = next(f"{base}{x}_calib_{tag}" for x in ("", *"bcdefgh")
+                        if f"{base}{x}_calib_{tag}" not in used)
+            dens = len(own) / geo_km2
+            props = {
+                "quadrat_id": stem,
+                "criterion": (f"median roof NIR+SWIR {w.ns_median:.3f} against the brightest calibration "
+                              f"area's {ref['quadrat_median_max']:.3f}; {w.share_bright:.0%} of roofs beyond "
+                              f"the calibration p99 ({ref['cal_p99']:.3f})"),
+                "location": ", ".join(x for x in (district, region, country) if x),
+                "province": region,
+                "size_km2": round(geo_km2, 4),
+                "center": f"[{cx:.6f} {cy:.6f}]",
+                "shape": "square (geodesic)",
+                "side_m": float(side),
+                "source_grid_cell": cell.cell,
+                "source_grid_density_bldg_km2": round(float(cell.bldg_density_km2), 2),
+                "source_grid_n_buildings": int(cell.n_buildings),
+                "own_n_buildings": int(len(own)),
+                "own_density_bldg_km2": round(dens, 2),
+                "screen_median_nirswir": round(float(w.ns_median), 4),
+                "screen_share_beyond_cal_p99": round(float(w.share_bright), 4),
+                "screen_bright_score_mass_m2": round(float(w.mass_bright), 1),
+                **img,
+                "imagery_checked": True,
+                "selection": BRIGHT_SELECTION,
+                "note": (f"Chosen by scripts/propose_calibration_candidates.py --bright to measure the "
+                         f"rooftop classifier on roofs that read bright in near and shortwave infrared "
+                         f"(white, metal and sheet roofs, bare concrete and mud), which it over-credits and which no "
+                         f"calibration area holds in numbers: {w.share_bright:.0%} of this window's roofs "
+                         f"are brighter than 99% of calibration roofs. Chosen on roof brightness, not on "
+                         f"solar, so its share of roofs with solar is whatever it is: map every "
+                         f"installation, ground and rooftop, and if there is none, say the box was "
+                         f"checked in full. Esri imagery here dates from {img['imagery_date']} (oldest "
+                         f"of centre and corners), no older than {earliest} for a composite starting "
+                         f"{win0}."),
+            }
+            picked.append({"stem": stem, "props": props, "geometry": mapping(poly)})
+            provinces.add(region)
+    print(f"{aoi}: {len(picked)} bright-roof candidates; {len(screened)} screened out on imagery")
+    for c in picked:
+        p = c["props"]
+        print(f"  {c['stem']:<36} {p['own_n_buildings']:>6,} bldg  {p['own_density_bldg_km2']:>6,.0f} bldg/km2  "
+              f"median NIR+SWIR {p['screen_median_nirswir']:.3f}  beyond p99 {p['screen_share_beyond_cal_p99']:.0%}  "
+              f"Esri {p['imagery_date']}  {p['location']}  {p['center']}")
+    if args.dry_run:
+        return picked
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for p in mine:
+        p.unlink()
+    for c in picked:
+        doc = {"type": "FeatureCollection", "name": f"{c['stem']}_candidate",
+               "features": [{"type": "Feature", "properties": c["props"], "geometry": c["geometry"]}]}
+        (out_dir / f"{c['stem']}_candidate.geojson").write_text(json.dumps(doc, indent=2) + "\n")
+    if screened:
+        log = out_dir / "screened_out.csv"
+        new = not log.exists()
+        with log.open("a", newline="") as fh:
+            wr = csv.DictWriter(fh, fieldnames=list(screened[0]))
+            if new:
+                wr.writeheader()
+            wr.writerows(screened)
+    print(f"  wrote {len(picked)} files to {out_dir}")
+    return picked
+
+
 def shape_of(candidate: dict):
     from shapely.geometry import shape
 
@@ -1477,6 +1656,9 @@ def main() -> int:
     mode.add_argument("--false-alarm", metavar="NAME", default=None,
                       help="write one purposive box at the window pv_rich_review.csv names and "
                            "marks no_pv: where the classifier's high scores show no solar")
+    mode.add_argument("--bright", action="store_true",
+                      help="purposive town boxes where roofs are brighter in NIR/SWIR than in any "
+                           "calibration area (needs scripts/roofclf_bright_screen.py's screen)")
     mode.add_argument("--towns", action="store_true",
                       help="draw town boxes at random (a random building's 1 km box, kept at the "
                            "--pv-rich town floor), with no PV signal: the level for towns")
@@ -1488,6 +1670,10 @@ def main() -> int:
                          "seen this AOI's labels")
     ap.add_argument("--n-towns", type=int, default=6,
                     help="--towns: town boxes per AOI, registered ones included")
+    ap.add_argument("--n-bright", type=int, default=2,
+                    help="--bright: boxes per AOI, registered ones included")
+    ap.add_argument("--bright-spacing-km", type=float, default=20.0,
+                    help="--bright: between box centres, so each box is another town")
     ap.add_argument("--town-spacing-km", type=float, default=2.0,
                     help="--towns: between box centres, and from registered areas and candidates")
     ap.add_argument("--pv-rich-spacing-km", type=float, default=4.0,
@@ -1520,7 +1706,7 @@ def main() -> int:
     for aoi in aois:
         (propose_priority if args.priority else propose_farmland if args.farmland
          else propose_pv_rich if args.pv_rich else propose_false_alarm if args.false_alarm
-         else propose_towns if args.towns else propose)(aoi, args)
+         else propose_towns if args.towns else propose_bright if args.bright else propose)(aoi, args)
     if not args.dry_run:
         print("next: pixi run calib-publish")
     return 0

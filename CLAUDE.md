@@ -768,6 +768,16 @@ published file.
   mapped set stays a random sample. Yemen's six (seed 94417): As Sab'in, Az Zaydiah, Dhamar,
   Bani Hushaysh, Al Marawi'ah, Bayt al Faqih; 60 of the 74 buildings drawn were outside
   towns, so about one Yemeni building in five sits in one.
+- **Bright-roof boxes** (`--bright`, 2026-11-05): purposive 1 km boxes where roofs are
+  brighter in NIR/SWIR (mean of B08, B8A, B11, B12) than in any calibration area. roofclf
+  over-credits such roofs, and the calibration set holds too few to test a fix. The mode reads
+  `scripts/roofclf_bright_screen.py`'s national screen (`data/roofclf_bright_screen/<aoi>/`,
+  every in-domain building through `epoch_feature_frame`): windows whose median roof is
+  brighter than every area's, ranked by score mass on roofs beyond the calibration p99, one
+  per province, the same imagery gate; stems `<place>_br<k>_calib_1km`. Pakistan's two
+  (Quetta, east of Karachi, drawn at `--pv-rich-min-density 300`) are Box 23;
+  `calib-publish` ranks them after the sampled boxes. Entering the coverage ratio is an
+  owner decision.
 
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,

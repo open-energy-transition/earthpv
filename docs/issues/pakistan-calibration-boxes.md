@@ -1693,3 +1693,42 @@ in `configs/atlas/pakistan.yaml` (no refit yet), and second passes over two of B
 - **Second passes over Box 20's Sahiwal f6 and Jhang f2.** Sahiwal gained 2 ground arrays
   (5 installations, 4 ground, re-pulled the same day); Jhang f2 is unchanged at 18. Jhang f2
   stays `corroborated`: the pass found nothing new, but the imagery is what made it so.
+
+### Box 23 -- two bright-roof boxes, Quetta and east of Karachi -- 2026-11-05 (proposed, imagery-screened)
+
+roofclf over-credits roofs that are bright in near and shortwave infrared (NIR+SWIR, the mean
+of B08, B8A, B11 and B12). Leave-one-quadrat-out, the brightest 5% of calibration roofs are
+priced at 2.58 times their mapped PV area below 400 m<sup>2</sup> and 5.12 times above. Of the
+model and pricing fixes tried on 2026-11-05, none passed the per-area test: the calibration
+areas hold too few bright roofs to show a fix (Sanghar alone holds about half of their mapped
+PV). A national screen (`scripts/roofclf_bright_screen.py`: every building of the density
+domain, through the scoring's own feature code) puts 3.3% of the classifier's score mass on
+roofs beyond the calibration areas' 99th NIR+SWIR percentile (0.4115). 36% of that is in Sindh
+and 35% in Balochistan, which holds 3.8% of all score mass, mostly in windows of 100 to 800
+buildings per km<sup>2</sup>. A 2016-19 baseline does not tell these roofs apart either: the
+brightest roofs got brighter since then, PV or not (new or re-roofed buildings), so only mapped
+areas can measure them.
+
+Drawn by `propose_calibration_candidates.py --bright --pv-rich-min-density 300`: 1 km windows
+whose median roof is brighter than every calibration area's median roof (0.397, Nasirabad
+Rural), ranked by the classifier's score mass on roofs beyond the calibration 99th percentile,
+one per province, through the same imagery gate (26 draws failed it,
+`data/labels/candidate_quadrats/screened_out.csv`). **Purposive**: chosen on roof brightness,
+not on solar, so their share of roofs with solar is not a sample of anything. Whether they
+enter the coverage ratio once mapped is an owner decision, as for a false-alarm box.
+
+| candidate | district, province | cell | VIDA buildings | median roof NIR+SWIR | roofs beyond the calibration p99 | Esri (Vivid) | what is there |
+|---|---|---|---:|---:|---:|---|---|
+| `quetta_br1_calib_1km` | Quetta, Balochistan | 0061_0065 | 3,683 | 0.402 | 33% | 2025-06-22 | dense town of flat roofs, a block of white warehouse sheds |
+| `karachi_br2_calib_1km` | Karachi, Sindh | 0066_0010 | 573 | 0.402 | 40% | 2025-05-17 | industrial and livestock sheds, half scrub |
+
+- **They cover both ways the over-credit shows.** Below 400 m<sup>2</sup> it sits in bright
+  neighbourhoods (Quetta's kind); at 400 m<sup>2</sup> and above, on bright sheds among
+  ordinary roofs (the Karachi box's kind).
+- **The first Sindh draw was rejected**: the Karachi nuclear power plant (K-2/K-3) and its staff
+  colony at Paradise Point, bright because of the plant's roofs, an industrial security site
+  and not a town (`results/calibration_rejected_regions.csv`, `karachi_nuclear_plant`). The
+  boxes were looked at on Esri imagery only for mappable roofs, never for solar (the
+  assistant's look).
+- **Mapping order**: after the sampled building boxes (11 and 12 of 12), so Malakand s7 keeps
+  the atlas's star.
