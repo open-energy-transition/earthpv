@@ -72,9 +72,16 @@
 
   // An embed marked `.embed.fit` is sized to its own content instead of scrolling inside
   // the fixed 760 px box, for a page whose 3D view zooms on scroll and would otherwise
-  // fight the frame's own scrolling (PVscope). It measures <body>, not scrollHeight:
-  // scrollHeight never drops below the frame's current height, so a frame sized that
-  // way can grow but never shrink back after the reader widens the window.
+  // fight the frame's own scrolling (PVscope). The PV Atlas pages (`.page-full-bleed.fit`,
+  // scripts/build_atlas_pages.py) are sized the same way, so the site page scrolls as one
+  // and the switcher and tier banner scroll away above the map. It measures <body>, not
+  // scrollHeight: scrollHeight never drops below the frame's current height, so a frame
+  // sized that way can grow but never shrink back after the reader widens the window.
+  // A map put in fullscreen leaves its page's flow, so <body> shrinks by the map while
+  // the frame fills the screen anyway; resizing then would lose the reader's place on the
+  // page when fullscreen ends, so the height is held until it does. The observer is
+  // marked on the document, not the frame, so a frame that loads a new page is observed
+  // again.
   function fitFrame(frame) {
     var doc;
     try {
@@ -84,13 +91,73 @@
     }
     if (!doc || !doc.body || doc.location.href === "about:blank") return;
     var apply = function () {
+      if (doc.fullscreenElement) return;
       var h = Math.ceil(doc.body.getBoundingClientRect().height);
       if (h > 0) frame.style.height = h + "px";
     };
     apply();
-    if (!frame.dataset.pvFitObserved && frame.contentWindow.ResizeObserver) {
-      frame.dataset.pvFitObserved = "1";
+    if (!doc.pvFitObserved && frame.contentWindow.ResizeObserver) {
+      doc.pvFitObserved = true;
       new frame.contentWindow.ResizeObserver(apply).observe(doc.body);
+      doc.addEventListener("fullscreenchange", apply);
+    }
+  }
+
+  // The bottom edge of Material's sticky header: the top of what a reader can see. Lower
+  // at the top of the page, where the announcement bar sits above the header.
+  function headerBottom() {
+    var header = document.querySelector(".md-header");
+    return header ? header.getBoundingClientRect().bottom : 0;
+  }
+
+  // Where the header's bottom edge rests once the page has scrolled past the announcement
+  // bar: the height of the header itself, stuck to the top.
+  function headerHeight() {
+    var header = document.querySelector(".md-header");
+    return header ? header.getBoundingClientRect().height : 0;
+  }
+
+  // A frame sized to its content never scrolls, so the two things the evidence atlas
+  // (`src/earthpv/templates/pv_evidence_atlas.html`) does against its own viewport are
+  // done against the site page's here.
+  function bindAtlasFrame(frame) {
+    var doc;
+    try {
+      doc = frame.contentDocument;
+    } catch (err) {
+      return;
+    }
+    if (!doc || !doc.body || doc.location.href === "about:blank" || doc.pvAtlasBound) return;
+    doc.pvAtlasBound = true;
+
+    // In-page links (the hero's "How the estimate is built" -> #method) scroll the site
+    // page to their target, clear of the sticky header. Deferred one task so the atlas's
+    // own handler has opened the <details> the link points at.
+    doc.addEventListener("click", function (ev) {
+      var a = ev.target.closest ? ev.target.closest('a[href^="#"]') : null;
+      var id = a ? decodeURIComponent(a.getAttribute("href").slice(1)) : "";
+      var target = id ? doc.getElementById(id) : null;
+      if (!target) return;
+      ev.preventDefault();
+      setTimeout(function () {
+        var top = window.scrollY + frame.getBoundingClientRect().top +
+          target.getBoundingClientRect().top - headerHeight() - 8;
+        window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      }, 0);
+    });
+
+    // The shared tooltip (`showTip`) sits above the pointer and flips below it within
+    // 150 px of the frame's top edge. The edge a reader sees is now the frame's top or
+    // the header's bottom, whichever is lower, so the flip is decided again after every
+    // move, before it paints (mutation observers run before rendering).
+    var tip = doc.getElementById("tip");
+    if (tip && frame.contentWindow.MutationObserver) {
+      new frame.contentWindow.MutationObserver(function () {
+        var y = parseFloat(tip.style.top);
+        if (isNaN(y)) return;
+        var seen = Math.max(0, headerBottom() - frame.getBoundingClientRect().top);
+        tip.classList.toggle("below", y - seen < 150);
+      }).observe(tip, { attributes: true, attributeFilter: ["style"] });
     }
   }
 
@@ -105,6 +172,19 @@
       }
       syncFrame(frame); // already loaded from cache, or a no-op before load
       if (frame.closest(".embed.fit")) fitFrame(frame);
+    }
+
+    // The PV Atlas pages: sized to the whole atlas (see fitFrame).
+    var atlases = document.querySelectorAll(".page-full-bleed.fit iframe");
+    for (var j = 0; j < atlases.length; j++) {
+      var atlas = atlases[j];
+      if (!atlas.dataset.pvFitBound) {
+        atlas.dataset.pvFitBound = "1";
+        atlas.addEventListener("load", fitFrame.bind(null, atlas));
+        atlas.addEventListener("load", bindAtlasFrame.bind(null, atlas));
+      }
+      fitFrame(atlas);
+      bindAtlasFrame(atlas);
     }
 
     // Material rewrites the attribute in place when the palette toggle is used. <body>

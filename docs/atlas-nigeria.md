@@ -5,7 +5,7 @@ hide:
   - toc
 ---
 
-<div class="page-full-bleed" markdown>
+<div class="page-full-bleed fit" markdown>
 <nav class="atlas-switch" aria-label="Choose a country atlas">
   <span class="atlas-switch__label">Atlas</span>
   <span class="atlas-switch__tier atlas-switch__tier--silver" title="400 m2 and up validated against local ground truth; leads mapped in OpenStreetMap to localize the model; any estimate below 400 m2 not yet checked">Silver</span>

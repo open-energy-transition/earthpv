@@ -687,6 +687,10 @@
   background: var(--pv-page);
 }
 
+/* `.page-full-bleed.fit` (the PV Atlas pages): the height above holds only until the
+   frame loads; embed-theme.js then sizes it to the atlas's whole length, so the site
+   page scrolls instead of the frame and the tier banner scrolls away above the map. */
+
 .embed-note {
   font-family: var(--md-code-font-family);
   font-size: 0.64rem;

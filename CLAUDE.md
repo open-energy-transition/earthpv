@@ -707,7 +707,11 @@ random ids: revert those, keep only real content changes.
 the load event and captures an empty WebGL map). A Shot can name a `ready` expression; the atlas
 sets `data-atlas-ready` on `<html>` once its map has drawn a complete frame. Atlas iframes on
 the docs site carry `allow="fullscreen"` and `local-network-access; loopback-network`
-(`build_atlas_pages.py`).
+(`build_atlas_pages.py`). **They are sized to the whole atlas, not the viewport (owner,
+2026-11-06)**: `.page-full-bleed.fit` makes `embed-theme.js` fit the frame to its `<body>`,
+so the site page scrolls as one and the switcher and Silver/Bronze banner scroll away above
+the map. The frame never scrolls, so that script also redoes the atlas's in-page links
+(`#method`) and the tooltip's flip-below test against the site page and its sticky header.
 
 **Calibration areas open in JOSM or iD from the atlas.** Clicking an area offers **Open in
 JOSM** (Remote Control `import` of the area's GeoJSON as a locked `upload_policy=never` layer,

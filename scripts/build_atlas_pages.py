@@ -250,8 +250,11 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
 
     tier = tier_of(html)
     title = title or f"{country} PV evidence atlas: verified and best estimate by 0.1-degree cell"
+    # `fit`: embed-theme.js sizes the frame to the whole atlas, so the page scrolls as one
+    # and the switcher and tier banner scroll away above the map (owner, 2026-11-06)
+    # instead of staying pinned over an atlas scrolling inside a viewport-high frame.
     parts = ["---", f'title: "EarthPV: {country}"', "hide:", "  - navigation", "  - toc",
-             "---", "", '<div class="page-full-bleed" markdown>', switcher(stem)]
+             "---", "", '<div class="page-full-bleed fit" markdown>', switcher(stem)]
     earned = earned_of(html)
     if earned != tier:
         label = TIERS[earned][0]
