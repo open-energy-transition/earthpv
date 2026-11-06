@@ -396,3 +396,15 @@ placement_bins:
     p_real_hi: 0.5722
     recall_lo: 0.811
     recall_hi: 0.845
+oversize_review:
+  derived: '2026-11-06'
+  reviewer: owner, 2026-11-06, every queued outline on the disk review page
+  review_csv: results/germany_oversize_review/review.csv
+  population: model-drawn outlines above max_candidate_m2 with no mapped solar within
+    min_distance_m of them (export.new_lead_mask)
+  max_candidate_m2: 100000.0
+  min_distance_m: 100.0
+  mapped_reference: data/labels/germany_national_osm_solar.parquet
+  n_outlines: 581
+  n_judged: 581
+  n_pv: 149

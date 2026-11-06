@@ -13,10 +13,17 @@ Interactive: [Nigeria PV evidence atlas](../atlas-nigeria.md).
 | | |
 | --- | --- |
 | Verified | **90.2 MWp** (90% 71 to 117) |
-| Best estimate | **120.9 MWp** (90% 112 to 158) |
+| Best estimate | **126.9 MWp** (90% 117 to 166) |
 | Grid | 6,254 of 6,341 cells of 0.1&deg;, 37 regions |
 | Imagery | Sentinel-2 L2A, November 2025 to March 2026 |
 | Model | `v5_combined_france` epoch 25 |
+
+!!! note "Revised on 4 November"
+    Until 4 November this page read Best 120.9 MWp (90% 112 to 158). On 3 November the
+    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
+    merge cap that the lead screens keep: 1 of the 226 is a solar park nobody has mapped,
+    0.12 km&sup2; in Rivers, and now counts whole as ground; the other 225 are not.
+    Best rises by 6.0 MWp; Verified did not move.
 
 !!! warning "A precision floor, not an estimate"
     Nigeria has **no calibration quadrats**, so there is no `roofclf` half and no
@@ -85,7 +92,8 @@ mined from rejected leads, not more positives.
 
 ## Plausibility gate
 
-`earthpv check-density` reports **0 fail and 23 suspect of 37 regions**. Every suspect is
+`earthpv check-density` reports **0 fail and 23 suspect of 37 regions** (24 since the judged
+park in Rivers, 6.2 MWp of ground against 0.1 of rooftop, on 4 November). Every suspect is
 flagged on the ground-to-rooftop ratio with a total below 1.5 MWp, far under the check's own
 50 MWp noise floor, so the ratio there is arithmetic on near-zero numbers rather than a
 signal. Published with the flags stated rather than suppressed.

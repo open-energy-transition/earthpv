@@ -355,7 +355,15 @@ in its `review_csv`, matched by `candidate_index` and area, whole (`p_real_fixed
 counted from the map; a verdict naming an outline the candidates do not hold at that area is an
 error (a new model run needs `draw --redraw`). From 2026-10-29 to 2026-11-01 India admitted 1,650 at
 the review's census and sample shares (30 of the 30 largest, 51 of 58 drawn by area; +28,468
-MWp); now only its judged parks (1,427 of 1,789, 577 km2). Best's per-cell floor is Verified
+MWp); now only its judged parks (1,427 of 1,789, 577 km2). The owner judged the queues of
+eleven more countries 2026-11-03 (913 of 919 outlines, 176 parks; applied 2026-11-04,
+`/home/tobi/earthpv_data/judged_PRE_20261104/` holds each density before), and Turkey's
+774 on 2026-11-06 (773 judged, 396 parks, 89.8 km2, +4,489.6 MWp;
+`/home/tobi/earthpv_data/judged_PRE_20261106/`), and Germany's 581 the same day (149 parks,
+32.4 km2, +1,619.1 MWp; its density, last run 2026-09-15, also took -82.0 from the 11 October
+rule; the 43 on band-loss composite cells all judged not solar). Re-running `density` for it also applies the 11 October rule (a mapped
+outline above the cap is ground) to pages built before it: Best moved by it in Vietnam
+(+2.7 MWp) and France (-8.2). Best's per-cell floor is Verified
 plus the judged parks in the cell (owner, 2026-11-02; `build_evidence_atlas` and
 `_size_distribution_data`, which must agree). `draw` queues every blob (stratum
 `queue`, largest first; since 2026-11-02 the default, census and sample only on request) and
@@ -499,7 +507,8 @@ MWp** (rooftop 1,992.8, ground 1,136.4). roofclf (30 quadrats, parcel label, are
 means, recall-corrected, probability-weighted since 2026-10-25), as priced in the atlas: sub-400
 central **24,060.4 MWp**, sub-400 AND-gate (floor, thresholded, uncorrected) **3,713.3 MWp**,
 ≥ 400 m² rooftop replacement **7,249.5 MWp**; median LOQO fold AUC 0.8682, within-size 0.8193,
-deployment threshold 0.2446. Atlas: **Best 34,128.5 MWp (90% CI 28,848-41,191), Verified 7,350.8
+deployment threshold 0.2446. Atlas: **Best 34,142.4 MWp (90% CI 28,863-41,207; two judged
+parks added 13.9 on 2026-11-04), Verified 7,350.8
 MWp (90% CI 6,349-9,526)** (on `v3_combined_india` until 2026-10-28: Best 34,588.8, Verified
 6,994.1; thresholded until 2026-10-25: Best 24,438.3, 90% 20,894-33,666). `check-density` fails 3 regions
 on single-cell concentration (KP, Balochistan, ICT), checked genuine (the calibration quadrats'
@@ -1092,7 +1101,8 @@ per-cell geography.
 be **INCREMENTAL** (sub-400 roofs only, deduped against OSM and segmentation), it is
 **pre-aggregated to one row per cell** (25M geometries OOM `atlas._join_buildings_to_grid_cells`),
 and its floor tier is "both signals in their top decile", not precision-calibrated. **Published:
-Verified 26,635 / Best 84,473 MWp** against ~74,800 MWp registered: Best fails its own register
+Verified 26,635 / Best 86,009.9 MWp** (84,472.7 before 149 judged parks, 2026-11-06) against
+~74,800 MWp registered: Best fails its own register
 check, so read the tiers as geography, not capacity (the page says so). Write-ups:
 `docs/methods/mastr-validation.md`, `docs/results/germany.md`.
 
@@ -1162,20 +1172,20 @@ QUEUE first when removing compute markers.
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
-| Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,128.5 | roofclf half, probability-weighted, Silver until people have checked it; see "Density stage" |
-| Germany | `v4_combined_all` ep 41 | 26,635 / 84,473 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked) |
-| France | `v5_combined_france` | 12,381.7 / 13,368.5 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
+| Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,142.4 | roofclf half, probability-weighted, Silver until people have checked it; see "Density stage" |
+| Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked); 149 judged parks count |
+| France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
 | India | `v5_combined_france` | 70,523.4 / 103,036.9 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count |
-| Vietnam | `v9_combined_vietnam` | 8,179.8 / 8,860.5 | |
-| Egypt | `v12_combined_egypt` | 3,315.1 / 3,378.6 | thin Cairo holdout |
-| Yemen | `v25_combined_yemen` | 277.5 / 457.3 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
-| South Africa | `v14_combined_south_africa` | 9,393.8 / 9,755.6 | decisive localization win |
-| Morocco | `v11_combined_morocco` | 380.4 / 411.2 | tie near 1.0; AOI stops at 27.7N |
-| Poland | `v15_combined_poland` | 6,604.3 / 7,780.9 | |
-| Zambia | `v4_combined_all` ep 41 | 505.8 / 526.3 | |
-| Nigeria | `v5_combined_france` ep 25 | 90.2 / 120.9 | name `v8` is taken by `v8_combined_nigeria` |
+| Vietnam | `v9_combined_vietnam` | 8,179.8 / 9,118.9 | 32 judged parks count |
+| Egypt | `v12_combined_egypt` | 3,315.1 / 3,809.9 | thin Cairo holdout |
+| Yemen | `v25_combined_yemen` | 277.5 / 586.2 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
+| South Africa | `v14_combined_south_africa` | 9,393.8 / 9,910.2 | decisive localization win |
+| Morocco | `v11_combined_morocco` | 380.4 / 416.5 | tie near 1.0; AOI stops at 27.7N |
+| Poland | `v15_combined_poland` | 6,604.3 / 9,110.3 | 113 judged parks count (+1,329 MWp) |
+| Zambia | `v4_combined_all` ep 41 | 505.8 / 531.7 | |
+| Nigeria | `v5_combined_france` ep 25 | 90.2 / 126.9 | name `v8` is taken by `v8_combined_nigeria` |
 | Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
-| Türkiye | `v19_combined_turkiye` ep 12 | 10,709.1 / 13,103.0 | tie with v5 on the holdout; dark open ground in Best |
+| Turkey | `v19_combined_turkiye` ep 12 | 10,709.1 / 17,592.6 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp) |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1226,13 +1236,15 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   geoBoundaries NAM ADM2 names are shuffled (ADM1 is right; `propose_calibration_candidates.py`
   names Namibian boxes by region), and Esri serves most of Namibia only to zoom 17, so one
   calibration box passes the imagery gate.
-- **Türkiye** (published 2026-11-04): v19 tied v5 on the Gaziantep holdout (recall >= 500 m2
+- **Turkey** (published 2026-11-04): v19 tied v5 on the Gaziantep holdout (recall >= 500 m2
   0.968 against 0.970, pixel IoU 0.581 against 0.548) and ships under the tie rule. Of what Best
   adds over Verified, rooftop is partly real (roof-wide arrays in Manisa, Bursa and Ankara
   industrial estates), open ground mostly not (lava and rock north of Lake Van, shaded eastern
   slopes, dark fields; 0 of 10 sampled on Esri, the assistant's look), priced through ground
-  bins whose mapped fraction is high (0.375 above 50k m2). No filter; the page says so. 774
-  blobs (175 km2) await the solar farm review. Ember is not a ceiling (cells 36 GW, panels 6).
+  bins whose mapped fraction is high (0.375 above 50k m2). No filter; the page says so. Of 774
+  blobs (175 km2) the owner judged 396 parks (89.8 km2, 2026-11-06): Best 13,103.0 -> 17,592.6;
+  `check-density` then fails 42 provinces (ratio; 15 also on one cell, 12 of them a judged
+  park). Ember is not a ceiling (cells 36 GW, panels 6).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

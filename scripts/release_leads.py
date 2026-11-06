@@ -91,7 +91,7 @@ MANIFEST = ROOT / "configs" / "atlas_leads.json"
 # lead files were replaced under the same tag, minus their blobs, keeping their date.
 # 2026-11-02: Yemen re-run on v25 (`--aoi yemen`), a new tag holding every country's files,
 # the others byte for byte those of pv-new-leads-2026-11-01b, whose manifest entries keep
-# their URLs there. 2026-11-04: Türkiye's first files added to the same tag; the other
+# their URLs there. 2026-11-04: Turkey's first files added to the same tag; the other
 # countries' files untouched, README.md and SHA256SUMS replaced.
 TAG = "pv-new-leads-2026-11-02"
 
@@ -350,8 +350,8 @@ modified Copernicus Sentinel-2 data. Released under the ODbL like every EarthPV 
 
 
 def country_name(aoi: str) -> str:
-    """The country as the README names it (an AOI key drops diacritics)."""
-    return {"turkiye": "Türkiye"}.get(aoi, aoi.replace("_", " ").title())
+    """The country's English name, as the README gives it (the AOI key `turkiye` is not)."""
+    return {"turkiye": "Turkey"}.get(aoi, aoi.replace("_", " ").title())
 
 
 def main() -> int:

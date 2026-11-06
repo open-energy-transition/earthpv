@@ -20,8 +20,9 @@ Interactive. Hover a cell for its value.
 </p>
 
 !!! danger "This atlas's tier totals fail a register check. Do not quote them."
-    The evidence atlas reports Verified 26,635 MWp and Best 84,473 MWp for Germany
-    (2026-10-20; Best was 88,709 until OSM-mapped misses stopped being counted on top of
+    The evidence atlas reports Verified 26,635 MWp and Best 86,010 MWp for Germany
+    (2026-11-06, when 149 unmapped parks the owner judged solar came in; 84,473 from
+    2026-10-20; Best was 88,709 until OSM-mapped misses stopped being counted on top of
     the recall-corrected satellite total, on the no-filter grid and a border-clipped
     OpenStreetMap pull). The tiers
     rest on converting mapped polygon area at a constant, and unlike anywhere else this
@@ -482,7 +483,12 @@ Two later changes moved them again, to **Verified 26,635 / Best 88,709 MWp**: th
 removed 249,115 of 475,210 pooled features that were never German at all. On 2026-10-20 Best
 fell again, to **84,473 MWp**: OSM-mapped installations the detector missed had been added on
 top of a recall-corrected total that already stands in for them (see the
-[experiments register](../experiments.md)).
+[experiments register](../experiments.md)). On 2026-11-06 it rose to **86,010 MWp**: the owner
+judged on imagery all 581 model outlines above the 100,000 m&sup2; merge cap that the lead
+screens keep, and the 149 that are solar parks nobody has mapped (32.4 km&sup2;) now count
+whole as ground, +1,619 MWp. The 43 lying on composite cells that lost most of their bands
+were all judged not solar. Re-running `density` for it also applied the 11 October rule (a
+mapped outline above the cap is ground) in four cells, -82 MWp. Verified did not move.
 Verified is 23% of Germany's 112 GWp of registered PV from OSM mapping 2.6% of units, which is
 plausible for a subset skewed to large installations where 34% was not.
 

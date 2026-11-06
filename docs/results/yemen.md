@@ -18,7 +18,7 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
 | | |
 | --- | --- |
 | Verified | **277.5 MWp** (90% 238 to 325); 151.3 until 2026-11-02, 130.9 until 2026-10-30, 65.9 before the 2026-10-24 OpenStreetMap refresh |
-| Best estimate | **457.3 MWp** (90% 361 to 629); 324.7 until 2026-11-02, 302.1 until 2026-10-30, 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
+| Best estimate | **586.2 MWp** (90% 480 to 774); 457.3 until 2026-11-04, 324.7 until 2026-11-02, 302.1 until 2026-10-30, 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
 | of which farm ground PV, < 400 m&sup2; | **171.0 MWp** (90% 85 to 335), 34 cells, calibrated on seven farm areas; 169.1 until 2026-11-02; [below](#farm-ground-pv-added-2026-10-24) |
 | OpenStreetMap | pulled 2026-11-01, 4,135 installations in the grid (3,315 on the late 2026-10-24 pull, 2,723 in the page before, 1,892 on 2026-10-10) |
 | Grid | 810 cells of 0.1&deg;, 22 governorates (geoBoundaries) |
@@ -40,7 +40,8 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
     end of 2025**, and the 120 MW Aden plant, in operation since July 2024, is being
     doubled to 240 MW
     ([pv magazine, 8 September 2026](https://www.pv-magazine.com/2026/09/08/yemens-largest-solar-plant-set-to-double-to-240-mw/)).
-    That plant is not in OpenStreetMap, and this page does not count it.
+    That plant is not in OpenStreetMap. Since 2026-11-04 Best counts the model's outline of
+    it, which the owner judged solar: 67 MWp, the land constant on 1.34 km&sup2;.
 
 !!! note "Revised 2026-10-24: OpenStreetMap refreshed, the owner's traces counted as panels, seven farm areas"
     The OpenStreetMap layer was pulled again (2,746 features against 1,892), the segmentation
@@ -69,6 +70,15 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
     against the new pull and v25's detections: 169.1 to 171.0 MWp. The mapping leads are
     v25's (`pv-new-leads-2026-11-02`: 1,036 leads and 6 very large outlines, against v13's
     1,073 and 25). Sections below that quote v13 keep their dates.
+
+!!! note "Revised 2026-11-04: five parks judged solar"
+    On 3 November the owner judged, on the disk review page, the six model outlines above
+    the 100,000 m&sup2; merge cap that the lead screens keep: five are solar parks nobody
+    has mapped, 2.6 km&sup2; (the Aden plant, the park at Mocha, the Red Sea coast park and
+    two smaller ones in Al Hudaydah), and now count whole as ground; one is not. Best rises
+    from 457.3 to 586.2 MWp (90% 480 to 774); Verified did not move. Aden now fails
+    `check-density`'s single-cell check, the park being 99% of the governorate's capacity:
+    a genuine concentration, stated rather than suppressed.
 
 ## Localizing the detector
 
@@ -168,9 +178,10 @@ of 2,002, against 2 of 2,333 for v13), but 239 of the 260 lie inside its own tra
 (outside them 21 of 1,606 match), so the higher `p_real` is mostly the training labels
 found again; through "combine, don't add" Best takes those arrays from the map either way.
 Of its 8 outlines above the merge cap (3.2 km&sup2;, against v13's 29 and 11.2 km&sup2;),
-three are the Aden, Mocha and Red Sea parks below; the other five were not inspected.
-`check-density` reports 0 fail and 7 suspect of 22 governorates, each below the 50 MWp
-floor.
+three are the Aden, Mocha and Red Sea parks below. Of the six the lead screens keep, the
+owner judged five parks on 3 November (those three and two smaller ones in Al Hudaydah),
+which now count. `check-density` reported 0 fail and 7 suspect of 22 governorates, each
+below the 50 MWp floor; with the parks, 1 fail (Aden, its park) and 9 suspect.
 
 ## Why neither model sees Yemen's mapped PV
 
@@ -222,6 +233,7 @@ The cap excludes all 29 from capacity, since only an outline carrying an OpenStr
 geometry is exempt. That removes the rock and the parks together. All three parks are in the
 exported mapping leads (`yemen_pv_new_leads.geojson`, Aden and the Red Sea park about
 300th of 2,331, Mocha about 670th); once mapped, they enter Verified at the land constant.
+Under v25 the owner judged all three solar on 3 November, and Best counts them (above).
 
 ## Plausibility gate
 

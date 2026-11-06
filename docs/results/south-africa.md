@@ -16,10 +16,18 @@ Interactive: [South Africa PV evidence atlas](../atlas-south-africa.md).
 | | |
 | --- | --- |
 | Verified | **9,393.8 MWp** (90% 7,078 to 12,787) |
-| Best estimate | **9,755.6 MWp** (90% 8,789 to 12,875) |
+| Best estimate | **9,910.2 MWp** (90% 8,902 to 12,879) |
 | Grid | 3,647 cells of 0.1&deg;, 9 provinces (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, April to September 2026 |
 | Model | `v14_combined_south_africa` epoch 41, localized (beat `v5_combined_france` on the held-out Western Cape; see below) |
+
+!!! note "Revised on 4 November"
+    Until 4 November this page read Best 9,755.6 MWp (90% 8,789 to 12,875). On 3 November the
+    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
+    merge cap that the lead screens keep: 5 of the 250 are solar parks nobody has
+    mapped, 3.1 km&sup2; with the 2.6 km&sup2; park in North West among them, and now count
+    whole as ground; 244 are not, and one left unsure stays out until it is settled. Best
+    rises by 154.6 MWp; Verified did not move.
 
 !!! warning "A precision floor, and blind to most of the country's rooftop solar"
     South Africa has **no calibration quadrats**, so there is no `roofclf` half and no
@@ -158,7 +166,7 @@ model-drawn candidates exceed the 100,000 m&sup2; merge cap and are excluded fro
 candidates carry an OpenStreetMap plant geometry and are exempt. Of the 24 largest
 model-drawn ones, four overlap a mapped park and outrun its outline, one is a park that is
 not mapped (26.63&deg;E 26.73&deg;S, 2.6 km&sup2;, in the exported mapping leads at about
-rank 1,560 of 8,484), and nineteen are an open-pit mine near Kathu, dark rock, salt pans,
+rank 1,560 of 8,484; judged a park on 3 November, it now counts), and nineteen are an open-pit mine near Kathu, dark rock, salt pans,
 grassland and irrigated fields.
 
 The rest, priced by the precision table, are **3,128.5 MWp** (`est_mwp_rc`, 90% 2,168 to
@@ -171,17 +179,17 @@ m&sup2; and 45% above it.
 inside the border after dissolving, 35,071 rooftop and 2,932 ground: 1,825.3 MWp of rooftop
 (90% 1,539 to 2,138) and 7,568.6 MWp of ground (90% 5,264 to 10,962). The Northern Cape,
 where most parks of the procurement rounds stand, is 4,710 MWp of it. Best adds the model's
-detections where they exceed the mapped value and is floored at Verified in 591 cells,
-which is why it sits only 362 MWp higher.
+detections where they exceed the mapped value and is floored at Verified in 592 cells,
+which is why it sits only 516 MWp higher, 154.6 of it the five judged parks.
 
 | Province | Verified (MWp) | Best (MWp) |
 | --- | ---: | ---: |
 | Northern Cape | 4,710.1 | 4,743.1 |
 | Western Cape | 980.1 | 1,027.9 |
-| Gauteng | 898.0 | 923.4 |
+| Gauteng | 898.0 | 937.5 |
 | Free State | 823.7 | 850.5 |
-| North West | 775.3 | 798.0 |
-| Limpopo | 643.8 | 674.3 |
+| North West | 775.3 | 931.9 |
+| Limpopo | 643.8 | 680.8 |
 | KwaZulu-Natal | 187.8 | 268.1 |
 | Eastern Cape | 205.7 | 254.1 |
 | Mpumalanga | 124.8 | 167.5 |

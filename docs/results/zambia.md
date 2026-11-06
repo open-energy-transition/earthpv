@@ -12,10 +12,17 @@ Interactive: [Zambia PV evidence atlas](../atlas-zambia.md).
 | | |
 | --- | --- |
 | Verified | **505.8 MWp** (90% 376 to 698) |
-| Best estimate | **526.3 MWp** (90% 451 to 699) |
+| Best estimate | **531.7 MWp** (90% 498 to 698) |
 | Grid | 1,843 cells of 0.1&deg;, all 10 provinces |
 | Imagery | Sentinel-2 L2A, May to October 2025 |
 | Model | `v4_combined_all` epoch 41, zero-shot |
+
+!!! note "Revised on 4 November"
+    Until 4 November this page read Best 526.3 MWp (90% 451 to 699). On 3 November the
+    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
+    merge cap that the lead screens keep: 1 of the 73 is a solar park nobody has mapped,
+    0.11 km&sup2; in Copperbelt, and now counts whole as ground; the other 72 are not.
+    Best rises by 5.4 MWp; Verified did not move.
 
 !!! warning "A precision floor, not an estimate"
     Zambia has **no calibration quadrats**, so there is no `roofclf` half and no
@@ -25,7 +32,7 @@ Interactive: [Zambia PV evidence atlas](../atlas-zambia.md).
     mostly of solar-farm perimeters. Every number here is a lower bound of the kind
     [France publishes](france.md), not a recall-corrected estimate.
 
-Best exceeds Verified by only 20.5 MWp. The atlas is overwhelmingly the hand-mapped
+Best exceeds Verified by only 25.9 MWp. The atlas is overwhelmingly the hand-mapped
 OpenStreetMap population converted at the project's constants, with a thin layer of model
 detections on top. That is the honest shape of a first pass with no local evidence.
 
@@ -104,7 +111,11 @@ interpretable rather than artefacts:
   with a total between 0.7 and 7 MWp, far below the check's own 50 MWp noise floor.
 
 Published per this project's standing precedent for a checked-genuine plausibility failure,
-with the failure stated rather than suppressed.
+with the failure stated rather than suppressed. Re-run on 4 November for the solar farm
+review, `density` counts a mapped outline above the merge cap as ground, the rule since 11
+October: the 1.04 km&sup2; of Bangweulu and Ngonye no longer price as rooftop, Lusaka's
+rooftop estimate falls from 102.5 to 9.3 MWp, and Lusaka passes: 0 fail and 8 suspect.
+Best and Verified are unchanged by it.
 
 ## Two constants worth revisiting
 

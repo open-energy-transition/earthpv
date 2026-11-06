@@ -527,9 +527,11 @@ then <code>earthpv density --aoi &lt;country&gt; --districts</code> and the atla
 
 def write_hub() -> Path:
     """`data/oversize_review/index.html`: every country's page and what `apply` has recorded."""
+    from release_leads import country_name
+
     rows = []
     for r in share_table():
-        name = r["aoi"].replace("_", " ").title()
+        name = country_name(r["aoi"])
         link = f'<a href="{r["aoi"]}/index.html">{name}</a>' if r["page"] else name
         rows.append(HUB_ROW.format(link=link, share=r["judged"] / max(r["n"], 1), **r))
     PACKAGES.mkdir(parents=True, exist_ok=True)

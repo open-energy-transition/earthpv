@@ -14,10 +14,19 @@ Interactive: [Vietnam PV evidence atlas](../atlas-vietnam.md).
 | | |
 | --- | --- |
 | Verified | **8,179.8 MWp** (90% 6,006 to 11,425) |
-| Best estimate | **8,860.5 MWp** (90% 7,881 to 11,655) |
+| Best estimate | **9,118.9 MWp** (90% 8,030 to 11,746) |
 | Grid | 2,611 of 2,611 cells of 0.1&deg;, 64 provinces (geoBoundaries, pre-2025 boundaries) |
 | Imagery | Sentinel-2 L2A, September 2025 to August 2026 |
 | Model | `v9_combined_vietnam` epoch 36, localized (see below) |
+
+!!! note "Revised on 4 November"
+    Until 4 November this page read Best 8,860.5 MWp (90% 7,881 to 11,655). On 3 November the
+    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
+    merge cap that the lead screens keep: 32 of the 56 are solar parks nobody has
+    mapped, 5.1 km&sup2;, and now count whole as ground; the other 24 are not. Best rises by
+    258.4 MWp, 255.7 of it the parks; the rest is `density` re-run under the rule of 11
+    October, which prices six mapped outlines above the cap as ground instead of rooftop.
+    Verified did not move.
 
 !!! warning "A precision floor, not an estimate"
     Vietnam has **no calibration quadrats**, so there is no `roofclf` half and no
@@ -142,10 +151,12 @@ for the reason in the warning above, which inflates every ratio the gate compute
 
 6,536 candidates: 3,678 rooftop, 1,688 ground-adjacent, 1,170 with no building. Only 90
 exceed the 100,000 m&sup2; merge cap, 17.7% of candidate area, against 69.1% for v5 on
-Nigeria; 103 more are OSM-verified plant geometries and are exempt. The model's own
-estimate (`est_mwp_rc`) is 4,225 MWp, 823 rooftop and 3,403 ground, and the
-probability-weighted ceiling (`est_mwp_exp`) is 8,039 MWp. Best exceeds Verified by only
-681 MWp because the model mostly re-finds mapped plants and, with no glint sample, its
+Nigeria; 103 more are OSM-verified plant geometries and are exempt. Of the 90, the 56 the
+lead screens keep were judged by the owner on 3 November: 32 are parks (5.1 km&sup2;) and
+count whole as ground. The model's own
+estimate (`est_mwp_rc`) is 4,528 MWp, 786 rooftop and 3,742 ground (4,225 before the
+review), and the probability-weighted ceiling (`est_mwp_exp`) is 8,039 MWp. Best exceeds
+Verified by only 939 MWp because the model mostly re-finds mapped plants and, with no glint sample, its
 unmapped detections are discounted to the mapped fraction.
 
 ## Operational notes

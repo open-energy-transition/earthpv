@@ -1,8 +1,8 @@
-# TerraTorch fine-tuning config for PV segmentation -- v5's corpus + TÜRKIYE.
+# TerraTorch fine-tuning config for PV segmentation -- v5's corpus + TURKEY.
 #
 # Identical recipe to configs/terramind_pv_v5_france.yaml and v15_combined_poland (same
 # backbone, necks, decoder, loss, lr, schedule, monitor metric, patience). The only variable
-# is the corpus: Türkiye's own OpenStreetMap solar labels are added, per the owner's standing
+# is the corpus: Turkey's own OpenStreetMap solar labels are added, per the owner's standing
 # instruction (2026-09-23) that every new country's segmentation is LOCALIZED.
 #
 # Corpus (data/chips/combined_turkiye/index.parquet, written by scripts/run_country_compute.sh
@@ -10,9 +10,9 @@
 # R = clamp(round(7000 / n_train), 1, 8)). Exact chip counts are in the run log and
 # docs/results/turkiye.md.
 #
-# Val holdout: Türkiye's `val_tiles` (configs/aoi.yaml), a geographic cluster chosen from the
+# Val holdout: Turkey's `val_tiles` (configs/aoi.yaml), a geographic cluster chosen from the
 # label map BEFORE training, never from a score, with a one-cell train buffer
-# (scripts/mark_val_buffer.py). v5 has never seen a Türkiye chip, so
+# (scripts/mark_val_buffer.py). v5 has never seen a Turkey chip, so
 # scripts/compare_local_vs_v5.py compares the two on equal footing under the owner's ship
 # rule: whichever scores better on the held-out region, a tie going to the local model.
 

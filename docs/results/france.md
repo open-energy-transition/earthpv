@@ -333,7 +333,11 @@ population it is built for and no part of the population France's register censo
 ### The evidence atlas
 
 National, over 6,021 cells and 13 regions: **Verified 12,382 MWp (90% 9,410-16,613), Best
-estimate 13,369 MWp (90% 11,478-17,762)**, against a registered 34.6 GWp. Built on the
+estimate 13,447 MWp (90% 11,501-17,836)**, against a registered 34.6 GWp. Best read 13,369
+MWp until 4 November: the owner judged the 29 model outlines above the 100,000 m&sup2;
+merge cap on 3 November, 12 of them parks nobody has mapped (1.7 km&sup2;, 86.7 MWp),
+which now count whole as ground; re-running `density` for them also prices four mapped
+outlines above the cap as ground rather than rooftop, the rule since 11 October (-8.2 MWp). Built on the
 retrained v5 checkpoint, and rebuilt end to end on 2026-09-17 once the wider compose landed.
 
 **The `--min-buildings 1` compose finished on 2026-09-16.** It built 6,858 cells, of which

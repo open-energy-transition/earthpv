@@ -1,29 +1,29 @@
 candidate_index,lon,lat,area_m2,region,stratum,k,code,verdict,evidence
-206,14.87871,-17.72676,588268.1251262131,Omusati,queue,0,q0000,,
-127,15.85868,-17.43594,522810.70472848305,Ohangwena,queue,1,q0001,,
-245,19.65809,-18.0913,370711.51878908975,Kavango,queue,2,q0002,,
-106,19.5015,-18.05521,325158.0654778159,Kavango,queue,3,q0003,,
-304,19.39558,-18.16705,264123.1850578178,Kavango,queue,4,q0004,,
-196,16.37578,-17.50642,247067.3179350682,Ohangwena,queue,5,q0005,,
-191,23.87743,-17.78491,247028.91663708322,Caprivi,queue,6,q0006,,
-118,16.83363,-17.63591,231368.50332778617,Ohangwena,queue,7,q0007,,
-153,14.58715,-17.6334,210258.2029792592,Omusati,queue,8,q0008,,
-176,15.20216,-17.7995,205762.2181080067,Omusati,queue,9,q0009,,
-178,15.21178,-17.75945,177840.02395705908,Omusati,queue,10,q0010,,
-79,14.6484,-17.69557,174033.2500736546,Omusati,queue,11,q0011,,
-301,15.13711,-17.81271,169134.40602665153,Omusati,queue,12,q0012,,
-345,14.71202,-17.77241,163226.8012701292,Omusati,queue,13,q0013,,
-319,16.67874,-17.63937,162702.55150946046,Ohangwena,queue,14,q0014,,
-190,23.79699,-17.84808,162277.11540526646,Caprivi,queue,15,q0015,,
-203,15.31765,-17.66896,159623.19764019246,Omusati,queue,16,q0016,,
-374,15.08827,-17.40309,150019.66422118447,Omusati,queue,17,q0017,,
-109,23.77799,-17.87576,143906.64512142754,Caprivi,queue,18,q0018,,
-74,20.96107,-18.06466,141513.12851355778,Kavango,queue,19,q0019,,
-90,15.46597,-17.44953,140103.57851049778,Omusati,queue,20,q0020,,
-91,16.45068,-17.60993,138929.72320927627,Ohangwena,queue,21,q0021,,
-110,14.61237,-17.67729,138505.00044757457,Omusati,queue,22,q0022,,
-173,15.10919,-17.6696,130804.18954337953,Omusati,queue,23,q0023,,
-276,16.67765,-17.59705,121201.97432887967,Ohangwena,queue,24,q0024,,
-311,15.28566,-17.76663,113588.27750115494,Omusati,queue,25,q0025,,
-292,17.05908,-17.64504,101661.37029793317,Ohangwena,queue,26,q0026,,
-156,16.88382,-17.69157,100281.23770620028,Ohangwena,queue,27,q0027,,
+206,14.87871,-17.72676,588268.1251262131,Omusati,queue,0,q0000,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+127,15.85868,-17.43594,522810.7047284831,Ohangwena,queue,1,q0001,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+245,19.65809,-18.0913,370711.51878908975,Kavango,queue,2,q0002,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+106,19.5015,-18.05521,325158.0654778159,Kavango,queue,3,q0003,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+304,19.39558,-18.16705,264123.1850578178,Kavango,queue,4,q0004,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+196,16.37578,-17.50642,247067.3179350682,Ohangwena,queue,5,q0005,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+191,23.87743,-17.78491,247028.9166370832,Caprivi,queue,6,q0006,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+118,16.83363,-17.63591,231368.50332778617,Ohangwena,queue,7,q0007,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+153,14.58715,-17.6334,210258.2029792592,Omusati,queue,8,q0008,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+176,15.20216,-17.7995,205762.2181080067,Omusati,queue,9,q0009,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+178,15.21178,-17.75945,177840.02395705908,Omusati,queue,10,q0010,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+79,14.6484,-17.69557,174033.2500736546,Omusati,queue,11,q0011,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+301,15.13711,-17.81271,169134.40602665153,Omusati,queue,12,q0012,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+345,14.71202,-17.77241,163226.8012701292,Omusati,queue,13,q0013,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+319,16.67874,-17.63937,162702.55150946046,Ohangwena,queue,14,q0014,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+190,23.79699,-17.84808,162277.11540526646,Caprivi,queue,15,q0015,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+203,15.31765,-17.66896,159623.19764019246,Omusati,queue,16,q0016,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+374,15.08827,-17.40309,150019.66422118447,Omusati,queue,17,q0017,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+109,23.77799,-17.87576,143906.64512142754,Caprivi,queue,18,q0018,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+74,20.96107,-18.06466,141513.12851355778,Kavango,queue,19,q0019,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+90,15.46597,-17.44953,140103.57851049778,Omusati,queue,20,q0020,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+91,16.45068,-17.60993,138929.72320927627,Ohangwena,queue,21,q0021,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+110,14.61237,-17.67729,138505.00044757457,Omusati,queue,22,q0022,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+173,15.10919,-17.6696,130804.18954337951,Omusati,queue,23,q0023,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+276,16.67765,-17.59705,121201.97432887967,Ohangwena,queue,24,q0024,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+311,15.28566,-17.76663,113588.27750115494,Omusati,queue,25,q0025,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+292,17.05908,-17.64504,101661.37029793316,Ohangwena,queue,26,q0026,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+156,16.88382,-17.69157,100281.23770620028,Ohangwena,queue,27,q0027,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"

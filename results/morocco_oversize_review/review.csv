@@ -1,41 +1,41 @@
 candidate_index,lon,lat,area_m2,region,stratum,k,code,verdict,evidence
-70,-6.07488,34.76783,1545206.5951292003,Rabat-Salé-Kenitra,queue,0,q0000,,
-89,-6.21878,34.71765,1061351.7854879117,Rabat-Salé-Kenitra,queue,1,q0001,,
-69,-6.08914,34.79564,961286.5378353356,Rabat-Salé-Kenitra,queue,2,q0002,,
-169,-5.90536,35.0976,807148.6528994713,Tangier-Tetouan-Al Hoceima,queue,3,q0003,,
-65,-5.66038,35.74212,607919.2067445864,Tangier-Tetouan-Al Hoceima,queue,4,q0004,,
-110,-6.16591,34.77759,502868.07531036553,Rabat-Salé-Kenitra,queue,5,q0005,,
-175,-6.00734,34.60673,483688.3573813485,Rabat-Salé-Kenitra,queue,6,q0006,,
-176,-5.99973,34.97669,459995.8725691903,Rabat-Salé-Kenitra,queue,7,q0007,,
-97,-6.10153,34.82089,448082.4848891711,Rabat-Salé-Kenitra,queue,8,q0008,,
-245,-6.02632,35.36602,346454.13122397335,Tangier-Tetouan-Al Hoceima,queue,9,q0009,,
-91,-5.74271,34.28149,319952.9980821246,Rabat-Salé-Kenitra,queue,10,q0010,,
-117,-6.30566,34.79719,261617.34068005602,Rabat-Salé-Kenitra,queue,11,q0011,,
-128,-6.09926,34.76723,233081.96306841308,Rabat-Salé-Kenitra,queue,12,q0012,,
-192,-7.09415,30.92074,227895.86765214987,Drâa-Tafilalet,queue,13,q0013,,
-61,-5.46886,34.49438,227093.91099490155,Rabat-Salé-Kenitra,queue,14,q0014,,
-127,-5.81535,34.08715,223406.92676301184,Fez-Meknes,queue,15,q0015,,
-99,-6.34181,34.7739,223352.7733601476,Rabat-Salé-Kenitra,queue,16,q0016,,
-154,-6.55402,34.07408,222698.3827019697,Rabat-Salé-Kenitra,queue,17,q0017,,
-71,-6.0798,35.06254,207702.93942685542,Tangier-Tetouan-Al Hoceima,queue,18,q0018,,
-92,-6.10702,34.8311,206508.65561999264,Rabat-Salé-Kenitra,queue,19,q0019,,
-204,-6.05689,35.23741,202303.9385506939,Tangier-Tetouan-Al Hoceima,queue,20,q0020,,
-121,-6.22811,34.70631,187152.27698306204,Rabat-Salé-Kenitra,queue,21,q0021,,
-273,-6.03755,34.65689,184212.5353593633,Rabat-Salé-Kenitra,queue,22,q0022,,
-274,-5.98113,34.8034,183809.9101280854,Rabat-Salé-Kenitra,queue,23,q0023,,
-166,-7.19933,31.08146,155110.87296508823,Drâa-Tafilalet,queue,24,q0024,,
-181,-6.54121,34.29002,140235.112727758,Rabat-Salé-Kenitra,queue,25,q0025,,
-226,-6.19086,34.79088,133589.31993106846,Rabat-Salé-Kenitra,queue,26,q0026,,
-216,-5.95249,34.93305,115984.78905292554,Rabat-Salé-Kenitra,queue,27,q0027,,
-177,-5.86554,34.66527,114796.67105297791,Rabat-Salé-Kenitra,queue,28,q0028,,
-60,-6.26819,34.31555,114113.51555805886,Rabat-Salé-Kenitra,queue,29,q0029,,
-237,-5.41464,35.28311,113455.90933993086,Tangier-Tetouan-Al Hoceima,queue,30,q0030,,
-64,-6.15218,33.83127,111598.08345807134,Rabat-Salé-Kenitra,queue,31,q0031,,
-178,-6.35673,34.35046,110727.21319824737,Rabat-Salé-Kenitra,queue,32,q0032,,
-126,-4.96027,34.61467,109700.4011088754,Fez-Meknes,queue,33,q0033,,
-214,-5.88806,35.12258,109001.06813615677,Tangier-Tetouan-Al Hoceima,queue,34,q0034,,
-125,-6.3515,34.30427,106928.92423977167,Rabat-Salé-Kenitra,queue,35,q0035,,
-44,-6.08643,35.01621,105800.27990506194,Tangier-Tetouan-Al Hoceima,queue,36,q0036,,
-280,-7.20091,30.93066,105707.09306774812,Drâa-Tafilalet,queue,37,q0037,,
-144,-4.43301,34.19342,104738.79742232687,Fez-Meknes,queue,38,q0038,,
-195,-8.03611,31.13587,102760.82855487388,Marrakech-Safi,queue,39,q0039,,
+70,-6.07488,34.76783,1545206.5951292005,Rabat-Salé-Kenitra,queue,0,q0000,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+89,-6.21878,34.71765,1061351.7854879117,Rabat-Salé-Kenitra,queue,1,q0001,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+69,-6.08914,34.79564,961286.5378353356,Rabat-Salé-Kenitra,queue,2,q0002,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+169,-5.90536,35.0976,807148.6528994713,Tangier-Tetouan-Al Hoceima,queue,3,q0003,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+65,-5.66038,35.74212,607919.2067445864,Tangier-Tetouan-Al Hoceima,queue,4,q0004,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+110,-6.16591,34.77759,502868.07531036553,Rabat-Salé-Kenitra,queue,5,q0005,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+175,-6.00734,34.60673,483688.3573813485,Rabat-Salé-Kenitra,queue,6,q0006,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+176,-5.99973,34.97669,459995.8725691903,Rabat-Salé-Kenitra,queue,7,q0007,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+97,-6.10153,34.82089,448082.4848891711,Rabat-Salé-Kenitra,queue,8,q0008,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+245,-6.02632,35.36602,346454.1312239733,Tangier-Tetouan-Al Hoceima,queue,9,q0009,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+91,-5.74271,34.28149,319952.9980821246,Rabat-Salé-Kenitra,queue,10,q0010,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+117,-6.30566,34.79719,261617.340680056,Rabat-Salé-Kenitra,queue,11,q0011,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+128,-6.09926,34.76723,233081.96306841308,Rabat-Salé-Kenitra,queue,12,q0012,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+192,-7.09415,30.92074,227895.86765214987,Drâa-Tafilalet,queue,13,q0013,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+61,-5.46886,34.49438,227093.91099490155,Rabat-Salé-Kenitra,queue,14,q0014,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+127,-5.81535,34.08715,223406.92676301184,Fez-Meknes,queue,15,q0015,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+99,-6.34181,34.7739,223352.7733601476,Rabat-Salé-Kenitra,queue,16,q0016,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+154,-6.55402,34.07408,222698.3827019697,Rabat-Salé-Kenitra,queue,17,q0017,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+71,-6.0798,35.06254,207702.93942685545,Tangier-Tetouan-Al Hoceima,queue,18,q0018,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+92,-6.10702,34.8311,206508.65561999264,Rabat-Salé-Kenitra,queue,19,q0019,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+204,-6.05689,35.23741,202303.9385506939,Tangier-Tetouan-Al Hoceima,queue,20,q0020,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+121,-6.22811,34.70631,187152.27698306204,Rabat-Salé-Kenitra,queue,21,q0021,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+273,-6.03755,34.65689,184212.5353593633,Rabat-Salé-Kenitra,queue,22,q0022,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+274,-5.98113,34.8034,183809.9101280854,Rabat-Salé-Kenitra,queue,23,q0023,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+166,-7.19933,31.08146,155110.87296508823,Drâa-Tafilalet,queue,24,q0024,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+181,-6.54121,34.29002,140235.112727758,Rabat-Salé-Kenitra,queue,25,q0025,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+226,-6.19086,34.79088,133589.31993106846,Rabat-Salé-Kenitra,queue,26,q0026,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+216,-5.95249,34.93305,115984.78905292554,Rabat-Salé-Kenitra,queue,27,q0027,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+177,-5.86554,34.66527,114796.67105297792,Rabat-Salé-Kenitra,queue,28,q0028,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+60,-6.26819,34.31555,114113.51555805886,Rabat-Salé-Kenitra,queue,29,q0029,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+237,-5.41464,35.28311,113455.90933993086,Tangier-Tetouan-Al Hoceima,queue,30,q0030,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+64,-6.15218,33.83127,111598.08345807134,Rabat-Salé-Kenitra,queue,31,q0031,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+178,-6.35673,34.35046,110727.21319824737,Rabat-Salé-Kenitra,queue,32,q0032,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+126,-4.96027,34.61467,109700.4011088754,Fez-Meknes,queue,33,q0033,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+214,-5.88806,35.12258,109001.06813615675,Tangier-Tetouan-Al Hoceima,queue,34,q0034,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+125,-6.3515,34.30427,106928.92423977167,Rabat-Salé-Kenitra,queue,35,q0035,pv,"owner, 2026-11-03, every queued outline on the disk review page"
+44,-6.08643,35.01621,105800.27990506194,Tangier-Tetouan-Al Hoceima,queue,36,q0036,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+280,-7.20091,30.93066,105707.09306774812,Drâa-Tafilalet,queue,37,q0037,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+144,-4.43301,34.19342,104738.79742232688,Fez-Meknes,queue,38,q0038,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+195,-8.03611,31.13587,102760.82855487388,Marrakech-Safi,queue,39,q0039,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"

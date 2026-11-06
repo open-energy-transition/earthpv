@@ -60,7 +60,7 @@ repository; nothing was deleted on failure.
 | [Localizing the detector on Morocco](results/morocco.md#localizing-the-detector) | <span class="outcome mixed">partial</span> | v11, trained with Morocco's own OSM labels (49 train chips, accepted by the owner below the chain's floor of 50), against v5 on the held-out Drâa-Tafilalet: recall on arrays of 500 m<sup>2</sup> and up 0.994 to 0.992, pixel IoU 0.938 to 0.935. A tie, shipped to v11 under the rule; the holdout is three parks (Noor IV, Noor Erfoud, Noor Zagora) with no small arrays, so it cannot separate the checkpoints where they differ. |
 | [Localizing the detector on Poland](results/poland.md#localizing-the-detector) | <span class="outcome works">shipped</span> | v15, trained with Poland's own OSM labels, against v5 on a held-out Lublin region (706 chips, 361 with PV): recall on arrays of 500 m<sup>2</sup> and up 0.927 to 0.960, 1,000 m<sup>2</sup> and up 0.826 to 0.917, pixel IoU 0.571 to 0.645. A checkpoint-picker bug (a killed run's last.ckpt) first selected the wrong epoch; caught before publication and fixed. |
 | [Localizing the detector on Namibia](results/namibia.md#localizing-the-detector) | <span class="outcome works">shipped</span> | v17, trained with Namibia's own OSM labels (mostly traced panel rows) plus South Africa's chips, against v5 on a held-out Erongo region (36 chips): recall on arrays of 500 m<sup>2</sup> and up 0.766 to 0.952, 1,000 m<sup>2</sup> and up 0.179 to 0.795, pixel IoU 0.456 to 0.662. It also reads the Cuvelai basin's seasonal pans as ground-mounted panels, about 54 MWp of Best. |
-| [Localizing the detector on Türkiye](results/turkiye.md#localizing-the-detector) | <span class="outcome mixed">partial</span> | v19, trained with Türkiye's own OSM labels (mostly traced panel rows), against v5 on a held-out Gaziantep region (164 chips): recall on arrays of 500 m<sup>2</sup> and up 0.970 to 0.968, 1,000 m<sup>2</sup> and up 0.953 to 0.951, pixel IoU 0.548 to 0.581. A tie, shipped to v19 under the rule; the holdout's large, well-mapped parks barely separate the checkpoints. |
+| [Localizing the detector on Turkey](results/turkiye.md#localizing-the-detector) | <span class="outcome mixed">partial</span> | v19, trained with Turkey's own OSM labels (mostly traced panel rows), against v5 on a held-out Gaziantep region (164 chips): recall on arrays of 500 m<sup>2</sup> and up 0.970 to 0.968, 1,000 m<sup>2</sup> and up 0.953 to 0.951, pixel IoU 0.548 to 0.581. A tie, shipped to v19 under the rule; the holdout's large, well-mapped parks barely separate the checkpoints. |
 | [Quadrat candidates from a mapped-solar heatmap](https://github.com/open-energy-transition/earthpv/blob/main/scripts/heatmap_quadrat_candidates.py) | <span class="outcome mixed">partial</span> | OpenInfraMap's solar heatmap, rebuilt from the OSM pull per 1.5 km box and per 1,000 VIDA buildings, ranks boxes where a quadrat may already be close to complete. Against Germany's register (count completeness per municipality): 71% of 38 candidates sit in municipalities at least 30% complete, against 10% of all mapped boxes, and 21% against 3% at 50%; mapped density ranks completeness far more than adoption (rho 0.94 against 0.14, partly by construction, since both share the mapped count). A candidate generator, not a certificate: four in five picks sit in municipalities under 50% complete, and every one still needs the imagery sweep. In Pakistan only 404 of 263,442 boxes hold any mapped small PV, and four of the six picks are existing quadrats. |
 | [roofclf on French residential PV](results/france.md#earthpv-against-france-the-sub-400-m2-instrument-does-not-transfer) | <span class="outcome negative">rejected</span> | 0.627 AUC within size band against Pakistan's ~0.834. A 20 m<sup>2</sup> array is a fifth of a Sentinel-2 pixel. |
 | [13x the roofclf labels, from OpenPVMapper](results/france.md#was-it-just-too-few-labels-no) | <span class="outcome negative">rejected</span> | 16,435 positives against 1,231 moves AUC by -0.005. The model scores 0.683 even on its own label source. |
@@ -747,6 +747,26 @@ at Verified alone it hid 3,128 MWp of them. India's segmentation estimate goes f
 61,324 MWp, Best from 82,574 to 103,037 MWp (90% 83,676 to 132,969), Verified unchanged at
 70,523; against MNRE ground-mounted Best goes from 0.73 to 0.91 of registered capacity (0.82 AC),
 as the sample predicted. No other country's figures move.
+
+**Eleven more countries judged, 2026-11-03.** The owner judged every outline queued for
+Egypt, France, Morocco, Namibia, Nigeria, Pakistan, Poland, South Africa, Vietnam, Yemen and
+Zambia, 913 of 919 (six left unsure stay out): 176 are parks. What a blob is depends on
+the country: Poland 113 of 142, Yemen 5 of 6, Vietnam 32 of 56 and France 12 of 29 were
+parks, against Egypt 4 of 23, South Africa 5 of 249, Pakistan 2 of 41 and at most one in
+Morocco, Nigeria, Zambia and Namibia, where sheets of false alarms (pans, rock, dark
+fields, mines) dominate. Best rises in ten atlases, Verified in none: Poland 7,781 to 9,110
+MWp, Egypt 3,379 to 3,810 (an 8.1 km<sup>2</sup> park in New Valley), Vietnam 8,861 to
+9,119, South Africa 9,756 to 9,910, Yemen 457 to 586 (the Aden, Mocha and Red Sea parks),
+France 13,369 to 13,447 (net of -8 MWp from re-running `density` under the 11
+October rule), Pakistan 34,129 to 34,142, and Nigeria, Morocco and Zambia by 5 to 6 MWp
+each. On 6 November the owner judged Turkey's 774 (one left unsure): 396 are parks,
+89.8 km<sup>2</sup>, and Best rises from 13,103 to 17,593 MWp, Verified unchanged. The same
+day the owner judged Germany's 581: 149 are parks, 32.4 km<sup>2</sup>, and none of the 43
+lying on composite cells that lost their bands. Germany's Best rises from 84,473 to 86,010 MWp:
++1,619 from the parks and -82 from re-running `density` (last run 15 September) under the 11
+October rule, in four cells where a mapped outline above the cap was priced as rooftop.
+Every queued blob in every country now has a verdict but Poland's five and South Africa's
+and Turkey's one left unsure.
 
 **How much of a lead file to check** (`scripts/lead_share.py`, `results/lead_share/`). Where a
 reference exists, the real installations sit at the top of the ranked file: the top third

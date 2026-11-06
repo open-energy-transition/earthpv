@@ -15,10 +15,17 @@ Interactive: [Morocco PV evidence atlas](../atlas-morocco.md).
 | | |
 | --- | --- |
 | Verified | **380.4 MWp** (90% 265 to 550) |
-| Best estimate | **411.2 MWp** (90% 361 to 554) |
+| Best estimate | **416.5 MWp** (90% 366 to 555) |
 | Grid | 703 cells of 0.1&deg;, north of 27&deg;40&prime; N, 11 regions (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, April to September 2026 |
 | Model | `v11_combined_morocco` epoch 24, localized (tied with `v5_combined_france` on the holdout; see below) |
+
+!!! note "Revised on 4 November"
+    Until 4 November this page read Best 411.2 MWp (90% 361 to 554). On 3 November the
+    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
+    merge cap that the lead screens keep: 1 of the 40 is a solar park nobody has mapped,
+    0.11 km&sup2; in Rabat-Sal&eacute;-Kenitra, and now counts whole as ground; the other 39
+    are not. Best rises by 5.3 MWp; Verified did not move.
 
 !!! warning "A precision floor, and a small part of Morocco's solar fleet"
     Morocco has **no calibration quadrats**, so there is no `roofclf` half and no
@@ -94,7 +101,9 @@ m&sup2;. None lay inside a filtered solar-thermal outline. 50 model-drawn candid
 the 100,000 m&sup2; merge cap and are excluded from capacity (14.6 km&sup2;, 52.8% of
 candidate area, the largest 1.55 km&sup2;); none of them touches a mapped installation, and
 the eight largest are dark ploughed fields in the Gharb plain, a burnt hillside near Tangier
-and the Merja Zerga lagoon, not parks. A further 8 oversize candidates carry a mapped plant
+and the Merja Zerga lagoon, not parks. The owner judged the 40 that the lead screens keep on 3
+November: one, 0.11 km&sup2; in Rabat-Sal&eacute;-Kenitra, is a park and counts whole as
+ground; the other 39 are not. A further 8 oversize candidates carry a mapped plant
 outline and are exempt.
 
 The rest, priced by the precision table, are **87.7 MWp** (`est_mwp_rc`, 90% 51 to 163),
@@ -113,7 +122,7 @@ at Verified in 16 cells.
 | Marrakech-Safi | 78.1 | 79.7 |
 | Fez-Meknes | 33.8 | 40.8 |
 | Tangier-Tetouan-Al Hoceima | 36.7 | 40.2 |
-| Rabat-Salé-Kenitra | 3.1 | 19.7 |
+| Rabat-Salé-Kenitra | 3.1 | 25.1 |
 | Casablanca-Settat | 6.4 | 7.0 |
 | Oriental | 5.0 | 5.2 |
 | Souss-Massa | 0.4 | 1.2 |

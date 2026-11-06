@@ -39,7 +39,7 @@ URL = ("https://files.ember-energy.org/public-downloads/customs/outputs/"
        "mart_solar_exports_full_release_monthly.csv")
 
 # AOI -> Ember's area name, where they differ from the AOI's division name.
-EMBER_AREA = {"vietnam": "Viet Nam", "germany": "Germany"}
+EMBER_AREA = {"vietnam": "Viet Nam", "germany": "Germany", "turkiye": "Türkiye"}
 # Imagery window end for AOIs whose configs/aoi.yaml has no compose_window: Pakistan's
 # published atlas states "Oct 2025 - Jun 2026"; Germany's carries no date at all.
 CUTOFF_OVERRIDE = {"pakistan": "2026-06"}
@@ -53,6 +53,9 @@ NOT_A_CEILING = {
     # Installed ~21.8 GW by Feb 2025 against 15.3 GW of direct imports from China by then.
     "poland": "much of Poland's Chinese supply arrives through other EU countries, and its "
               "installed fleet already exceeded its direct imports from China in early 2025",
+    # Ember, 2017-01..2026-08: 36.1 GW of cells from China against 6.2 GW of panels.
+    "turkiye": "Turkey assembles most of its own panels: since 2017 China has shipped it about "
+               "six times as much capacity in solar cells as in finished panels",
 }
 
 

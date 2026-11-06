@@ -139,7 +139,13 @@ countries hold 100,556 leads and 3,127 blobs between them; France's audited rele
 kept its 29 apart. A blob is whatever the 10 m pixels merged into one shape, and what that
 is varies by country: 1,427 of the 1,640 judged on imagery in India were parks, 41% of
 Germany's 581 hold a registered unit, and of the 121 in Pakistan's file of July 2026 three
-have been mapped since, of Yemen's 29 none. **No blob counts towards capacity until it is
+have been mapped since, of Yemen's 29 none. On 3 November the owner judged the queued blobs
+of eleven more countries, 913 of 919: parks were the rule in Poland (113 of 142), Yemen (5
+of 6) and Vietnam (32 of 56), common in France (12 of 29), and rare elsewhere: Egypt 4 of
+23, South Africa 5 of 249, Pakistan 2 of 41, Morocco 1 of 40, Zambia 1 of 73, Nigeria 1 of
+226 and Namibia none of 28. Turkey's and Germany's followed on 6 November: 396 of 773 and
+149 of 581 are parks.
+**No blob counts towards capacity until it is
 mapped in OpenStreetMap or a person has judged it solar on the Sentinel-2 imagery the model
 saw** (owner, 2026-11-01; `density.load_oversize_admission`). That ended India's admission of
 its 1,562 unreviewed blobs at the review sample's share real (see

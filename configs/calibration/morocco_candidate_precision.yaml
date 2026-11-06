@@ -360,3 +360,15 @@ placement_bins:
     sensitivity: 0.261
     p_real_lo: 0.1136
     p_real_hi: 0.2983
+oversize_review:
+  derived: '2026-11-04'
+  reviewer: owner, 2026-11-03, every queued outline on the disk review page
+  review_csv: results/morocco_oversize_review/review.csv
+  population: model-drawn outlines above max_candidate_m2 with no mapped solar within
+    min_distance_m of them (export.new_lead_mask)
+  max_candidate_m2: 100000.0
+  min_distance_m: 100.0
+  mapped_reference: data/labels/morocco_overpass_solar.parquet
+  n_outlines: 40
+  n_judged: 40
+  n_pv: 1

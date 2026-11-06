@@ -1,24 +1,24 @@
 candidate_index,lon,lat,area_m2,region,stratum,k,code,verdict,evidence
-171,32.28771,25.91001,8140384.2711528465,New Valley Governorate,queue,0,q0000,,
-224,34.42984,28.81997,7474910.452101294,South Sinai Governorate,queue,1,q0001,,
-128,33.34833,29.06833,4181826.5521691944,South Sinai Governorate,queue,2,q0002,,
-196,27.65564,26.40319,591010.3231746553,New Valley Governorate,queue,3,q0003,,
-149,31.40617,30.21745,404688.67724102957,Qalyubia Governorate,queue,4,q0004,,
-407,33.33469,29.1249,198353.4592731886,South Sinai Governorate,queue,5,q0005,,
-430,31.08474,28.93032,198188.05413803377,Beni Suef Governorate,queue,6,q0006,,
-193,30.11811,30.31241,185397.00256443897,Beheira Governorate,queue,7,q0007,,
-494,31.25593,31.10747,183321.51485677704,Kafr el-Sheikh Governorate,queue,8,q0008,,
-433,31.58122,22.43733,181749.65631510265,Aswan Governorate,queue,9,q0009,,
-163,30.71067,30.48169,163435.9508638546,Beheira Governorate,queue,10,q0010,,
-525,28.92793,25.40681,162479.1262340995,New Valley Governorate,queue,11,q0011,,
-336,30.74936,30.43214,151846.4637987127,Monufia Governorate,queue,12,q0012,,
-153,32.69292,25.08748,147414.4282218327,Aswan Governorate,queue,13,q0013,,
-422,31.58352,22.43055,147340.53417254126,Aswan Governorate,queue,14,q0014,,
-183,31.80817,30.10665,141567.18166982708,Cairo Governorate,queue,15,q0015,,
-435,28.69037,28.0715,124014.74573920463,Giza Governorate,queue,16,q0016,,
-434,30.79017,30.09071,120561.48622040718,Giza Governorate,queue,17,q0017,,
-263,30.99502,30.15437,119385.66649712052,Giza Governorate,queue,18,q0018,,
-515,33.33565,29.11858,119192.19276031236,South Sinai Governorate,queue,19,q0019,,
-461,34.49808,28.8839,117532.1044688521,South Sinai Governorate,queue,20,q0020,,
-146,29.18872,30.82892,112968.21117540158,Matrouh Governorate,queue,21,q0021,,
-51,32.73035,23.96168,101679.4379999272,Aswan Governorate,queue,22,q0022,,
+171,32.28771,25.91001,8140384.2711528465,New Valley Governorate,queue,0,q0000,pv,"owner, 2026-11-03, every queued outline on the disk review page"
+224,34.42984,28.81997,7474910.452101294,South Sinai Governorate,queue,1,q0001,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+128,33.34833,29.06833,4181826.5521691935,South Sinai Governorate,queue,2,q0002,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+196,27.65564,26.40319,591010.3231746553,New Valley Governorate,queue,3,q0003,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+149,31.40617,30.21745,404688.6772410296,Qalyubia Governorate,queue,4,q0004,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+407,33.33469,29.1249,198353.4592731886,South Sinai Governorate,queue,5,q0005,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+430,31.08474,28.93032,198188.05413803377,Beni Suef Governorate,queue,6,q0006,pv,"owner, 2026-11-03, every queued outline on the disk review page"
+193,30.11811,30.31241,185397.00256443897,Beheira Governorate,queue,7,q0007,pv,"owner, 2026-11-03, every queued outline on the disk review page"
+494,31.25593,31.10747,183321.51485677704,Kafr el-Sheikh Governorate,queue,8,q0008,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+433,31.58122,22.43733,181749.65631510265,Aswan Governorate,queue,9,q0009,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+163,30.71067,30.48169,163435.9508638546,Beheira Governorate,queue,10,q0010,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+525,28.92793,25.40681,162479.1262340995,New Valley Governorate,queue,11,q0011,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+336,30.74936,30.43214,151846.4637987127,Monufia Governorate,queue,12,q0012,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+153,32.69292,25.08748,147414.4282218327,Aswan Governorate,queue,13,q0013,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+422,31.58352,22.43055,147340.53417254126,Aswan Governorate,queue,14,q0014,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+183,31.80817,30.10665,141567.18166982708,Cairo Governorate,queue,15,q0015,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+435,28.69037,28.0715,124014.74573920463,Giza Governorate,queue,16,q0016,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+434,30.79017,30.09071,120561.48622040718,Giza Governorate,queue,17,q0017,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+263,30.99502,30.15437,119385.66649712052,Giza Governorate,queue,18,q0018,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+515,33.33565,29.11858,119192.19276031236,South Sinai Governorate,queue,19,q0019,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+461,34.49808,28.8839,117532.1044688521,South Sinai Governorate,queue,20,q0020,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+146,29.18872,30.82892,112968.21117540158,Matrouh Governorate,queue,21,q0021,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+51,32.73035,23.96168,101679.4379999272,Aswan Governorate,queue,22,q0022,pv,"owner, 2026-11-03, every queued outline on the disk review page"

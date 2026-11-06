@@ -594,11 +594,11 @@ aois:
 
   # Added by scripts/new_region.py. No source_region key, so chips and compose fetch
   # from Planetary Computer STAC rather than a local composite cache.
-  # 2026-10-29: Türkiye, owner request. ISO2 is TR (new_region.py's default, the first two
+  # 2026-10-29: Turkey, owner request. ISO2 is TR (new_region.py's default, the first two
   # ISO3 letters, gave TU).
   turkiye:
     bbox: [25.6, 35.8, 44.9, 42.2]
-    division: { name: Türkiye, country: TR, subtype: country, iso3: TUR }
+    division: { name: Turkey, country: TR, subtype: country, iso3: TUR }
     grid_origin: [25.6, 35.8]
     # May to September: the dry summer, with the eastern highlands clear of snow; the
     # preflight found 10,258 scenes under 40% cloud in this window, median 2%.

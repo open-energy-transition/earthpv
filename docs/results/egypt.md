@@ -15,10 +15,17 @@ Interactive: [Egypt PV evidence atlas](../atlas-egypt.md).
 | | |
 | --- | --- |
 | Verified | **3,315.1 MWp** (90% 2,314 to 4,789) |
-| Best estimate | **3,378.6 MWp** (90% 3,028 to 4,823) |
+| Best estimate | **3,809.9 MWp** (90% 3,328 to 4,963) |
 | Grid | 946 cells of 0.1&deg;, 27 governorates (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, April to September 2026 |
 | Model | `v12_combined_egypt` epoch 16, localized (it beat `v5_combined_france` on the holdout; see below) |
+
+!!! note "Revised on 4 November"
+    Until 4 November this page read Best 3,378.6 MWp (90% 3,028 to 4,823). On 3 November the
+    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
+    merge cap that the lead screens keep: 4 of the 23 are solar parks nobody has mapped, 8.6
+    km&sup2; with the 8.14 km&sup2; outline in New Valley among them, and now count whole as
+    ground; the other 19 are not. Best rises by 431.3 MWp; Verified did not move.
 
 !!! warning "A precision floor, not an estimate"
     No **calibration quadrat** enters Egypt's figures (the one registered area, below, holds
@@ -134,11 +141,14 @@ failure.
 
 1,218 candidates: 223 rooftop, 461 ground-adjacent, 534 with no building, median 4,249
 m&sup2;. 31 model-drawn candidates exceed the 100,000 m&sup2; merge cap and are excluded
-from capacity, 26.4% of candidate area, the largest 8.14 km&sup2;. 15 oversize candidates
+from capacity, 26.4% of candidate area, the largest 8.14 km&sup2;, unless a person judges
+them solar: of the 23 the lead screens keep, the owner judged 4 parks on 3 November (8.6
+km&sup2;, the largest among them), which count whole as ground. 15 oversize candidates
 carry an OSM plant geometry (58.7 km&sup2;) and are exempt, all counted as ground; VIDA
-overlap had placed one of them on a roof. The model's own estimate (`est_mwp_rc`) is
-1,193.4 MWp (90% 739 to 1,902), 1,193.2 of it ground; with no recall reference it equals
-the precision-weighted `est_mwp_cal_total`.
+overlap had placed one of them on a roof. The model's own estimate (`est_mwp_rc`) was
+1,193.4 MWp (90% 739 to 1,902) before the review, 1,193.2 of it ground; with no recall
+reference it equals the precision-weighted `est_mwp_cal_total`. The four judged parks add
+431.3 MWp to it.
 
 **The model's rooftop estimate is 0.2 MWp.** The 223 rooftop candidates cover 1.7
 km&sup2;, but the 176 of them at 1,000 m&sup2; and up match no mapped rooftop installation
@@ -152,8 +162,9 @@ nobody has mapped or a bright roof.
 layer at the two constants: 687 features once overlapping outlines are dissolved, 65.8
 km&sup2; of ground perimeter (3,288.4 MWp) against 0.15 km&sup2; of rooftop (26.7 MWp).
 Benban, the outline north of it and Kharga are 55.7 km&sup2; of that ground area, about
-2,785 MWp. Best adds 63.5 MWp. The model's ground estimate prices the same parks at the
-largest ground bin's `p_real` of 0.379, below the mapped value, so in 48 cells Best is
+2,785 MWp. Best adds 494.8 MWp, 431.3 of it the four judged parks. The model's ground
+estimate prices the same parks at the
+largest ground bin's `p_real` of 0.379, below the mapped value, so in 50 cells Best is
 floored at Verified; what remains on top is model detections and unmatched mapped features
 elsewhere.
 

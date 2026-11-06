@@ -1,42 +1,42 @@
 candidate_index,lon,lat,area_m2,region,stratum,k,code,verdict,evidence
-5999,68.08474,25.7279,13487998.617032751,Sindh,queue,0,q0000,,
-5743,69.66521,31.68804,4278711.439357968,Balochistan,queue,1,q0001,,
-6381,68.06441,25.63041,2340966.7586894296,Sindh,queue,2,q0002,,
-5962,68.08218,25.65868,1885712.2146617991,Sindh,queue,3,q0003,,
-8130,69.80042,31.53422,1883837.813229408,Balochistan,queue,4,q0004,,
-6437,65.14451,28.17229,1516347.5539968642,Balochistan,queue,5,q0005,,
-6000,68.08393,25.68304,1405831.1608697092,Sindh,queue,6,q0006,,
-5920,68.07082,25.77354,1256233.8660714375,Sindh,queue,7,q0007,,
-6328,68.30158,25.5702,1058918.196399789,Sindh,queue,8,q0008,,
-7576,66.76702,30.9436,1030767.8267943203,Balochistan,queue,9,q0009,,
-5793,68.7484,30.33158,1026207.7913662959,Balochistan,queue,10,q0010,,
-6670,68.66146,30.14266,618478.4683793901,Balochistan,queue,11,q0011,,
-9224,65.227,28.17247,505708.01200776594,Balochistan,queue,12,q0012,,
-7327,68.70419,30.33113,501891.2415516189,Balochistan,queue,13,q0013,,
-7949,69.79093,33.03121,497831.2234972345,Khyber Pakhtunkhwa,queue,14,q0014,,
-6138,68.29529,25.63243,409076.6768837699,Sindh,queue,15,q0015,,
-7945,68.67222,30.05978,401111.0024206649,Balochistan,queue,16,q0016,,
-5317,68.294,25.64042,360243.39376877254,Sindh,queue,17,q0017,,
-8681,67.4974,26.49987,349285.8613411882,Sindh,queue,18,q0018,,
-6236,67.11468,30.03073,321395.1472470906,Balochistan,queue,19,q0019,,
-5973,68.04909,25.67273,260149.59405578318,Sindh,queue,20,q0020,,
-6047,65.22758,28.13206,254302.7529161577,Balochistan,queue,21,q0021,,
-7047,66.27254,27.1147,247451.27276464517,Balochistan,queue,22,q0022,,
-5940,72.81415,32.552,207450.40670906834,Punjab,queue,23,q0023,,
-7838,66.30626,27.53084,201708.75304990634,Balochistan,queue,24,q0024,,
-6997,68.04481,25.68393,184205.55620045314,Sindh,queue,25,q0025,,
-5448,66.77816,28.54898,183632.83616605785,Balochistan,queue,26,q0026,,
-6237,67.70263,25.15483,174265.85466640536,Sindh,queue,27,q0027,,
-5199,72.12739,34.06935,169841.48992157239,Khyber Pakhtunkhwa,queue,28,q0028,,
-6222,75.30745,35.66999,149816.9327050321,Gilgit-Baltistan,queue,29,q0029,,
-6070,68.06497,25.78823,143283.4621009363,Sindh,queue,30,q0030,,
-7912,68.06648,25.76841,125373.16291101731,Sindh,queue,31,q0031,,
-7892,66.35624,27.27678,124389.20003279136,Balochistan,queue,32,q0032,,
-8323,66.22146,27.37121,124167.73021675041,Balochistan,queue,33,q0033,,
-6050,65.17559,28.12283,121260.33012317866,Balochistan,queue,34,q0034,,
-8132,67.84669,26.33069,119756.65089361317,Sindh,queue,35,q0035,,
-7858,68.28775,25.58451,116478.45097968241,Sindh,queue,36,q0036,,
-8586,72.97124,33.92104,116192.18982334132,Khyber Pakhtunkhwa,queue,37,q0037,,
-5452,67.73281,25.15246,107942.87397983472,Sindh,queue,38,q0038,,
-7989,68.28899,25.52656,106171.54032455717,Sindh,queue,39,q0039,,
-7941,66.43795,30.69218,100431.0783496229,Balochistan,queue,40,q0040,,
+5999,68.08474,25.7279,13487998.617032751,Sindh,queue,0,q0000,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5743,69.66521,31.68804,4278711.439357968,Balochistan,queue,1,q0001,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6381,68.06441,25.63041,2340966.7586894296,Sindh,queue,2,q0002,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5962,68.08218,25.65868,1885712.2146617991,Sindh,queue,3,q0003,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+8130,69.80042,31.53422,1883837.813229408,Balochistan,queue,4,q0004,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6437,65.14451,28.17229,1516347.5539968642,Balochistan,queue,5,q0005,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6000,68.08393,25.68304,1405831.1608697092,Sindh,queue,6,q0006,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5920,68.07082,25.77354,1256233.8660714375,Sindh,queue,7,q0007,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6328,68.30158,25.5702,1058918.196399789,Sindh,queue,8,q0008,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7576,66.76702,30.9436,1030767.8267943204,Balochistan,queue,9,q0009,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5793,68.7484,30.33158,1026207.791366296,Balochistan,queue,10,q0010,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6670,68.66146,30.14266,618478.4683793901,Balochistan,queue,11,q0011,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+9224,65.227,28.17247,505708.01200776594,Balochistan,queue,12,q0012,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7327,68.70419,30.33113,501891.2415516189,Balochistan,queue,13,q0013,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7949,69.79093,33.03121,497831.2234972345,Khyber Pakhtunkhwa,queue,14,q0014,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6138,68.29529,25.63243,409076.6768837699,Sindh,queue,15,q0015,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7945,68.67222,30.05978,401111.0024206649,Balochistan,queue,16,q0016,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5317,68.294,25.64042,360243.39376877254,Sindh,queue,17,q0017,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+8681,67.4974,26.49987,349285.8613411882,Sindh,queue,18,q0018,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6236,67.11468,30.03073,321395.1472470906,Balochistan,queue,19,q0019,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5973,68.04909,25.67273,260149.5940557832,Sindh,queue,20,q0020,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6047,65.22758,28.13206,254302.7529161577,Balochistan,queue,21,q0021,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7047,66.27254,27.1147,247451.2727646452,Balochistan,queue,22,q0022,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5940,72.81415,32.552,207450.40670906837,Punjab,queue,23,q0023,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7838,66.30626,27.53084,201708.75304990637,Balochistan,queue,24,q0024,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6997,68.04481,25.68393,184205.55620045317,Sindh,queue,25,q0025,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5448,66.77816,28.54898,183632.83616605785,Balochistan,queue,26,q0026,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6237,67.70263,25.15483,174265.85466640536,Sindh,queue,27,q0027,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5199,72.12739,34.06935,169841.4899215724,Khyber Pakhtunkhwa,queue,28,q0028,pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6222,75.30745,35.66999,149816.9327050321,Gilgit-Baltistan,queue,29,q0029,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6070,68.06497,25.78823,143283.4621009363,Sindh,queue,30,q0030,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7912,68.06648,25.76841,125373.16291101732,Sindh,queue,31,q0031,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7892,66.35624,27.27678,124389.20003279136,Balochistan,queue,32,q0032,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+8323,66.22146,27.37121,124167.7302167504,Balochistan,queue,33,q0033,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+6050,65.17559,28.12283,121260.33012317866,Balochistan,queue,34,q0034,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+8132,67.84669,26.33069,119756.65089361316,Sindh,queue,35,q0035,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7858,68.28775,25.58451,116478.4509796824,Sindh,queue,36,q0036,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+8586,72.97124,33.92104,116192.18982334132,Khyber Pakhtunkhwa,queue,37,q0037,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+5452,67.73281,25.15246,107942.87397983472,Sindh,queue,38,q0038,pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7989,68.28899,25.52656,106171.54032455717,Sindh,queue,39,q0039,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"
+7941,66.43795,30.69218,100431.0783496229,Balochistan,queue,40,q0040,not_pv,"owner, 2026-11-03, every queued outline on the disk review page"

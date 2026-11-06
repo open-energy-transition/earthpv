@@ -105,7 +105,8 @@ m&sup2;. 69 carry a mapped OpenStreetMap geometry, 20 of them above the 100,000 
 merge cap and exempt from it. **63 model-drawn outlines exceed the cap and are excluded
 from capacity** (15.0 km&sup2;); 52 of them (12.3 km&sup2;, up to 1.2 km&sup2; each) lie in
 Omusati and Ohangwena, the same oshana country. The disk review page (`scripts/oversize_review.py`) holds the 28 that pass the
-lead screens; none has been judged yet, so the cap stands as for every country without a review.
+lead screens. The owner judged all 28 on 3 November and found none solar, so nothing above
+the cap counts and no figure on this page moved.
 
 The model's own estimate is **143.1 MWp** (`est_mwp_rc`, 90% 87 to 231), 137.5 of it
 ground; thresholded and unweighted, its own outlines below the cap are 35.5 MWp

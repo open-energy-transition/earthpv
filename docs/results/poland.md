@@ -13,10 +13,17 @@ Interactive: [Poland PV evidence atlas](../atlas-poland.md).
 | | |
 | --- | --- |
 | Verified | **6,604.3 MWp** (90% 4,618 to 9,528) |
-| Best estimate | **7,780.9 MWp** (90% 6,411 to 10,398) |
+| Best estimate | **9,110.3 MWp** (90% 7,248 to 12,083) |
 | Grid | 3,948 cells of 0.1&deg;, 16 voivodeships (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, May to September 2026 |
 | Model | `v15_combined_poland` epoch 27, localized (beat `v5_combined_france` on the holdout; see below) |
+
+!!! note "Revised on 4 November"
+    Until 4 November this page read Best 7,780.9 MWp (90% 6,411 to 10,398). On 3 November the
+    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
+    merge cap that the lead screens keep: 113 of the 147 are solar parks nobody has mapped,
+    26.6 km&sup2;, and now count whole as ground; 29 are not, and 5 left unsure stay out
+    until they are settled. Best rises by 1,329.4 MWp; Verified did not move.
 
 !!! warning "A precision floor, and blind to most of Poland's solar"
     Poland has **no calibration quadrats**, so there is no `roofclf` half and no instrument
@@ -106,34 +113,36 @@ largest and at least seven of the eight around rank 40 are solar parks on the co
 of the largest eight with no mapped solar within 100 m. At the land constant they would be
 about 2 GWp. The cap is kept, as for every country, because it is what removes the rock,
 fields and pits elsewhere; these parks are in the exported mapping leads
-(`poland_pv_new_leads.geojson`, 5,793 leads) and enter Verified once mapped.
+(`poland_pv_new_leads.geojson`, 5,793 leads) and enter Verified once mapped. On 3 November
+the owner judged the 147 that the lead screens keep: 113 are parks (26.6 km&sup2;) and now
+count whole as ground, 29 are not, and 5 left unsure stay out until settled.
 
-The model's own estimate is **4,741.9 MWp** (`est_mwp_rc`, 90% 3,124 to 6,969), nearly all
-of it ground and about half of it (2.2 GWp) the 155 mapped outlines it reproduces; thresholded and
+The model's own estimate is **6,071.3 MWp** (`est_mwp_rc`), 4,741.9 (90% 3,124 to 6,969)
+before the 113 judged parks, nearly all of it ground and about half of it (2.2 GWp) the 155 mapped outlines it reproduces; thresholded and
 unweighted, its own outlines below the cap are 385 MWp (`est_mwp_det`).
 
 **Verified is the hand-mapped layer at the two constants.** 44,551 reference features after
 dissolving (14,613 ground, 21,920 rooftop, 8,018 unclassified): 6,522.8 MWp of ground and
-81.5 of rooftop. Best is floored at Verified in 1,166 cells.
+81.5 of rooftop. Best is floored at Verified in 1,174 cells.
 
 | Voivodeship | Verified (MWp) | Best (MWp) |
 | --- | ---: | ---: |
-| Greater Poland | 1,462.4 | 1,608.6 |
-| West Pomeranian | 620.6 | 667.4 |
-| Pomeranian | 551.9 | 651.5 |
-| Lubusz | 489.8 | 561.4 |
-| Masovian | 377.6 | 553.4 |
+| Greater Poland | 1,462.4 | 1,825.8 |
+| West Pomeranian | 620.6 | 837.2 |
+| Lubusz | 489.8 | 787.3 |
+| Pomeranian | 551.9 | 774.9 |
+| Lower Silesian | 464.2 | 736.5 |
+| Masovian | 377.6 | 611.8 |
+| Warmian-Masurian | 394.1 | 530.1 |
 | Lublin | 474.0 | 526.3 |
-| Lower Silesian | 464.2 | 512.0 |
-| Warmian-Masurian | 394.1 | 491.4 |
-| Kuyavian-Pomeranian | 342.4 | 411.1 |
-| Podlaskie | 309.2 | 359.8 |
-| Lodz | 210.2 | 317.3 |
-| Subcarpathian | 274.3 | 308.0 |
-| Swietokrzyskie | 174.8 | 214.8 |
-| Opole | 162.9 | 209.3 |
-| Silesian | 124.6 | 171.3 |
-| Lesser Poland | 111.3 | 139.8 |
+| Kuyavian-Pomeranian | 342.4 | 430.6 |
+| Lodz | 210.2 | 390.3 |
+| Podlaskie | 309.2 | 366.4 |
+| Subcarpathian | 274.3 | 329.3 |
+| Swietokrzyskie | 174.8 | 257.9 |
+| Opole | 162.9 | 256.4 |
+| Lesser Poland | 111.3 | 191.7 |
+| Silesian | 124.6 | 180.2 |
 
 ## Operational notes
 

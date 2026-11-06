@@ -305,8 +305,9 @@ sample and the calibration boxes. That has not been run.
 
 ### The atlas totals do not survive the same check
 
-Germany's evidence atlas reports **Verified 26,635 MWp and Best 84,473 MWp** (2026-10-20; Best
-was 88,709 before OSM-mapped misses stopped being counted twice).
+Germany's evidence atlas reports **Verified 26,635 MWp and Best 86,010 MWp** (2026-11-06, with
+149 judged parks; 84,473 from 2026-10-20; Best was 88,709 before OSM-mapped misses stopped
+being counted twice).
 Verified is the hand-mapped OpenStreetMap population converted at the two constants, and that
 conversion is where the tiers are weakest: area times a constant does not give German capacity
 when the polygon may outline the roof or the site rather than the array. The atlas is
