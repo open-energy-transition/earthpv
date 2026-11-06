@@ -27,9 +27,9 @@ hide:
   <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
-  <p><strong>Bronze until more of its leads are mapped in OpenStreetMap.</strong> Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR); the small-installation estimate below that is not yet validated. Silver also needs leads mapped in OpenStreetMap to localize the model: about a third of the 14,535 places the model found solar that OpenStreetMap does not have yet, and of its 581 very large outlines.</p>
-  <p><strong>You can help:</strong> download the lead file under <em>Download the data behind this atlas</em> and work down it from the top on recent imagery, mapping every real installation. Once about a third has a verdict, the model is retrained on what you mapped and the atlas shows Silver.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> <a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a></p>
+  <p><strong>This Bronze atlas is not yet verified.</strong> Its estimate below 400 m&sup2; is not validated, and too few of its leads are mapped in OpenStreetMap.</p>
+  <p><a class="atlas-tier-cta" href="../contribute/leads/">Contribute data: map the model's leads &rarr;</a></p>
+  <button class="atlas-tier-close" type="button" aria-label="Close this notice" title="Close" hidden>&times;</button>
 </div>
 <iframe src="../assets/interactive/germany_pv_evidence_atlas.html" title="Germany PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>

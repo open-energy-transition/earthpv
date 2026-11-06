@@ -845,8 +845,11 @@ workflow ahead of the build.
 **The PV Atlas pages are generated** (`scripts/build_atlas_pages.py`): one row per country in
 `ATLASES`; each page's tier (Gold/Silver/Bronze) is read from the calibration badge its own
 atlas carries (`atlas.VALIDATION_TIERS`), the switcher and `--nav` block are grouped by tier, and
-Silver/Bronze pages open with a missing-small-installations warning (`WARNING` + `HELP` + `CTA`)
-and a call to map a calibration area. A new country is one row plus a rerun; **never edit
+Silver/Bronze pages open with a banner of two short sentences saying what is not yet
+calibrated or verified and one contribute link (`banner`: `WARNING`, `TIER_NOTE` or
+`LEADS_WARNING`, plus `CTA`; owner, 2026-11-06), which a reader can close
+(`docs/assets/javascripts/atlas-banner.js`, remembered per wording in localStorage). A new
+country is one row plus a rerun; **never edit
 `docs/atlas*.md` by hand**. A tier that is a judgement goes in `configs/atlas/<aoi>.yaml`
 (`validation: {score, note}`, which beats `derive_validation_score` and is read by all three
 atlas builders and `apply_validation_badges.py`), with a country note in
@@ -862,9 +865,9 @@ Yemen, 46% of register hits in Germany, and below it 2-4% were real
 file checked" (2026-10-31); `validation.leads_checked` is now a record the Downloads card
 states. Without it `resolve_validation_badge` shows Bronze whatever the tier earned (an
 explicit `--validation-score` is capped too), keeps the earned tier on the badge as
-`data-earned`, and `build_atlas_pages` gives the page the leads banner (`LEADS_WARNING`,
-`EARNED_NOTE`, worded softly on the owner's request: leads need mapping to localize the
-model). `atlas.lead_rule_gaps` names what a page lacks. `docs/atlas-quality-levels.md`
+`data-earned`, and `build_atlas_pages` gives the page the leads banner (`LEADS_WARNING`
+with `SMALL_GAP` and `LEADS_NEED`, linking `docs/contribute/leads.md`).
+`atlas.lead_rule_gaps` names what a page lacks. `docs/atlas-quality-levels.md`
 (generated, `quality_page`; the owner removed its standings table) lists every criterion
 and ends on the flywheel figure the levels follow. Pakistan's v16 is declared retrained on
 v3's 2026-07-16 lead file at `share: 0.5` (the owner's "over half", blobs counted among the

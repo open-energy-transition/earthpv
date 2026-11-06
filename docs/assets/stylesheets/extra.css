@@ -629,9 +629,16 @@
   text-underline-offset: 2px;
 }
 
+/* Two short sentences and one link (scripts/build_atlas_pages.py `banner`): side by side
+   where there is room, the link wrapping under the text on a narrow screen. */
 .atlas-tier-alert {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
   margin: 0 0 0.6rem;
-  padding: 0.55rem 0.9rem;
+  padding: 0.55rem 2.6rem 0.55rem 0.9rem;
   border: 1px solid var(--tier-colour);
   border-left: 6px solid var(--tier-colour);
   border-radius: 10px;
@@ -646,10 +653,11 @@
 
 .md-typeset .atlas-tier-alert p {
   margin: 0;
+  flex: 1 1 28rem;
 }
 
 .md-typeset .atlas-tier-alert p + p {
-  margin-top: 0.35rem;
+  flex: 0 1 auto;
 }
 
 .md-typeset .atlas-tier-alert a.atlas-tier-cta {
@@ -666,11 +674,32 @@
   filter: brightness(1.08);
 }
 
-.md-typeset .atlas-tier-alert a.atlas-tier-more {
-  margin-left: 0.6rem;
+/* `display: flex` above would otherwise beat the `hidden` attribute of a closed banner. */
+.atlas-tier-alert[hidden],
+.atlas-tier-close[hidden] {
+  display: none;
+}
+
+/* Closes the banner (docs/assets/javascripts/atlas-banner.js), top right at any width. */
+.atlas-tier-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
   color: var(--pv-ink-2);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.atlas-tier-close:hover,
+.atlas-tier-close:focus-visible {
+  background: color-mix(in srgb, var(--tier-colour) 28%, transparent);
+  color: var(--pv-ink);
 }
 
 .page-full-bleed {

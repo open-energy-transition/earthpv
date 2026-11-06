@@ -27,9 +27,9 @@ hide:
   <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--bronze" role="note">
-  <p><strong>Bronze atlas: smaller installations are missing.</strong> Only mapped installations and arrays the model outlines, about 400 m&sup2; (70 kWp) and up, are counted, so read every figure as a floor.</p>
-  <p><strong>You can change that:</strong> map every panel inside a hollow diamond on the map, starting with the <strong>&#9733; star</strong>. Six to ten complete areas start an estimate of Vietnam's smaller installations.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
+  <p><strong>This Bronze atlas is not yet calibrated or verified.</strong> It counts only mapped installations and arrays of about 400 m&sup2; and up, so every figure is a floor.</p>
+  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a></p>
+  <button class="atlas-tier-close" type="button" aria-label="Close this notice" title="Close" hidden>&times;</button>
 </div>
 <iframe src="../assets/interactive/vietnam_pv_evidence_atlas.html" title="Vietnam PV evidence atlas: verified and best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>

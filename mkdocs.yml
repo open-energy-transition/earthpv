@@ -71,6 +71,8 @@ extra_javascript:
   # Click-to-sort on content tables. Matters most on the experiments register, which is
   # 90-odd rows and is usually read by verdict or by which experiment moved a number.
   - assets/javascripts/tablesort.js
+  # The close button on the PV Atlas pages' Silver/Bronze banner, remembered per wording.
+  - assets/javascripts/atlas-banner.js
 
 markdown_extensions:
   - abbr

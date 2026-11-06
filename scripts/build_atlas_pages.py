@@ -27,8 +27,9 @@ of the mapping flywheel. It replaced "every lead checked" (2026-10-31). A page w
 calibration earns more than Bronze but lacks it shows Bronze, and its badge keeps the earned
 tier as `data-earned`; its banner says what is missing (`atlas.lead_rule_gaps`).
 
-Silver and Bronze pages open with a warning that smaller installations are missing, what a
-reader can do about it, and links into the Contribute Data section (docs/contribute/).
+Silver and Bronze pages open with a banner of two short sentences saying what is not yet
+calibrated or verified, and one link to where a reader can help in the Contribute Data
+section (docs/contribute/; owner, 2026-11-06).
 `docs/atlas-quality-levels.md` lists every criterion and ends on the flywheel figure the
 levels follow (`quality_page`); the switcher links it.
 
@@ -58,25 +59,23 @@ TIERS = {
                "mapped in OpenStreetMap to localize the model"),
 }
 
-# (page stem, country, interactive file, iframe title, country-specific warning line)
+# (page stem, country, interactive file, iframe title)
 ATLASES = [
     ("atlas", "Pakistan", "pakistan_evidence_atlas.html",
-     "Pakistan PV evidence atlas: best estimate by 0.1-degree cell", ""),
-    ("atlas-germany", "Germany", "germany_pv_evidence_atlas.html", None, ""),
-    ("atlas-france", "France", "france_pv_evidence_atlas.html", None,
-     "A French household array is about 20 m&sup2;, a fifth of a Sentinel-2 pixel, so "
-     "every figure here is a floor."),
-    ("atlas-egypt", "Egypt", "egypt_pv_evidence_atlas.html", None, ""),
-    ("atlas-india", "India", "india_pv_evidence_atlas.html", None, ""),
-    ("atlas-morocco", "Morocco", "morocco_pv_evidence_atlas.html", None, ""),
-    ("atlas-namibia", "Namibia", "namibia_pv_evidence_atlas.html", None, ""),
-    ("atlas-nigeria", "Nigeria", "nigeria_pv_evidence_atlas.html", None, ""),
-    ("atlas-poland", "Poland", "poland_pv_evidence_atlas.html", None, ""),
-    ("atlas-south-africa", "South Africa", "south_africa_pv_evidence_atlas.html", None, ""),
-    ("atlas-turkiye", "Turkey", "turkiye_pv_evidence_atlas.html", None, ""),
-    ("atlas-vietnam", "Vietnam", "vietnam_pv_evidence_atlas.html", None, ""),
-    ("atlas-yemen", "Yemen", "yemen_pv_evidence_atlas.html", None, ""),
-    ("atlas-zambia", "Zambia", "zambia_pv_evidence_atlas.html", None, ""),
+     "Pakistan PV evidence atlas: best estimate by 0.1-degree cell"),
+    ("atlas-germany", "Germany", "germany_pv_evidence_atlas.html", None),
+    ("atlas-france", "France", "france_pv_evidence_atlas.html", None),
+    ("atlas-egypt", "Egypt", "egypt_pv_evidence_atlas.html", None),
+    ("atlas-india", "India", "india_pv_evidence_atlas.html", None),
+    ("atlas-morocco", "Morocco", "morocco_pv_evidence_atlas.html", None),
+    ("atlas-namibia", "Namibia", "namibia_pv_evidence_atlas.html", None),
+    ("atlas-nigeria", "Nigeria", "nigeria_pv_evidence_atlas.html", None),
+    ("atlas-poland", "Poland", "poland_pv_evidence_atlas.html", None),
+    ("atlas-south-africa", "South Africa", "south_africa_pv_evidence_atlas.html", None),
+    ("atlas-turkiye", "Turkey", "turkiye_pv_evidence_atlas.html", None),
+    ("atlas-vietnam", "Vietnam", "vietnam_pv_evidence_atlas.html", None),
+    ("atlas-yemen", "Yemen", "yemen_pv_evidence_atlas.html", None),
+    ("atlas-zambia", "Zambia", "zambia_pv_evidence_atlas.html", None),
 ]
 
 
@@ -109,117 +108,64 @@ def totals_of(html: str) -> dict:
     return json.loads(m.group(1)).get("totals", {}) if m else {}
 
 
+# The banner on a Silver or Bronze page: two short sentences saying what is not yet
+# calibrated or verified, then one link to where a reader can help (owner, 2026-11-06;
+# it was three paragraphs). The atlas's own confidence section carries the detail.
 WARNING = {
     "silver": (
-        "<strong>Silver atlas: smaller installations are missing.</strong> Installations of "
-        "about 400 m&sup2; (70 kWp) and up are validated against hand-mapped ground truth; "
-        "below that, where household rooftops sit, there is no calibrated estimate. {extra}"
+        "<strong>This Silver atlas is not yet verified.</strong> Only arrays of about "
+        "400 m&sup2; and up are checked against hand-mapped ground truth."
     ),
     "bronze": (
-        "<strong>Bronze atlas: smaller installations are missing.</strong> Only mapped "
-        "installations and arrays the model outlines, about 400 m&sup2; (70 kWp) and up, are "
-        "counted, so read every figure as a floor."
+        "<strong>This Bronze atlas is not yet calibrated or verified.</strong> It counts only "
+        "mapped installations and arrays of about 400 m&sup2; and up, so every figure is a "
+        "floor."
     ),
 }
 # A country whose reason for its tier is not the generic one (its tier is set in
-# configs/atlas/<aoi>.yaml `validation`). Replaces WARNING and HELP for that page.
-# Kept short (owner request 2026-10-24: the banner at half its former length); the
-# atlas's own confidence section carries the detail.
+# configs/atlas/<aoi>.yaml `validation`). Replaces WARNING for that page.
 TIER_NOTE = {
     # Silver by the owner's decision (2026-11-02): the small-installation estimate is
     # calibrated, but the checks Gold asks of the rooftop classifier are not done.
     "Pakistan": (
-        "<strong>Silver atlas: the small-installation estimate is not yet checked by "
-        "people.</strong> Installations of about 400 m&sup2; (70 kWp) and up are validated "
-        "against hand-mapped ground truth. The estimate below that is calibrated on areas "
-        "mapped panel by panel, but nobody has yet checked the classifier's results on cells "
-        "drawn at random or building by building, so read Best as an estimate still to be "
-        "confirmed.",
-        "<strong>You can help:</strong> map every panel inside a calibration area. Sparsely "
-        "built areas help most: the estimate there rests on the fewest mapped areas.",
+        "<strong>This Silver atlas is not yet verified.</strong> Its estimate below "
+        "400 m&sup2; is calibrated, but nobody has checked it by hand yet."
     ),
+    # Germany and Yemen show the leads banner below until they meet the lead rule; these
+    # are their Silver banners after that.
     "Germany": (
-        "<strong>Silver atlas: the small-installation estimate is not yet validated.</strong> "
-        "Arrays of about 400 m&sup2; and up are checked against Germany's register (MaStR). "
-        "The estimate below that misses the register's municipal totals by about half, and "
-        "Best sits above the ~75 GWp registered: read the map as where capacity sits.",
-        "<strong>You can help:</strong> a few areas mapped panel by panel would check the "
-        "small-installation geography directly.",
+        "<strong>This Silver atlas is not yet verified.</strong> Its estimate below "
+        "400 m&sup2; misses Germany's register by about half, so read the map as where "
+        "capacity sits."
     ),
-    # Silver by the owner's decision (2026-10-23), kept 2026-10-24 when farm areas began
-    # calibrating farm ground PV: household rooftops below 400 m2 are still unmeasured.
+    # Silver by the owner's decision (2026-10-23): household rooftops below 400 m2 are
+    # still unmeasured.
     "Yemen": (
-        "<strong>Silver atlas: farm solar is calibrated, household rooftops are not.</strong> "
-        "Installations of about 400 m&sup2; (70 kWp) and up are counted, plus small "
-        "solar-irrigation arrays calibrated on hand-mapped farm areas. Small rooftop systems "
-        "are not estimated yet, so read the rooftop figures as a floor.",
-        "<strong>You can help:</strong> map every panel inside a hollow diamond. Building "
-        "areas calibrate rooftops; farm areas widen the farm estimate.",
+        "<strong>This Silver atlas is not yet verified.</strong> Farm solar is calibrated on "
+        "hand-mapped areas, but small rooftop systems are not estimated yet."
     ),
 }
 # A page that earned Silver or Gold on its calibration but shows Bronze because not enough
 # of its leads have been mapped in OpenStreetMap to localize the model (owner rule,
-# 2026-11-01; it replaced "every lead checked"). EARNED_NOTE says, in one sentence, what the
-# calibration does cover; the banner then says what is missing, keyed by
-# `atlas.lead_rule_gaps`. Worded softly on purpose (owner, 2026-11-01): the point is that
-# mapped leads localize the model, not a checklist.
-LEADS_WARNING = "<strong>{title}</strong> {earned_note} {needs}"
-LEADS_TITLE = {
-    ("leads_mapped", "leads_retrained"):
-        "Bronze until more of its leads are mapped in OpenStreetMap.",
-    ("leads_retrained",): "Bronze until the model is retrained on the mapped leads.",
+# 2026-11-01; it replaced "every lead checked"). SMALL_GAP says what its calibration leaves
+# out; LEADS_NEED what the lead rule still asks, keyed by `atlas.lead_rule_gaps`.
+LEADS_WARNING = "<strong>This Bronze atlas is not yet verified.</strong> {small}, and {needs}."
+SMALL_GAP = {
+    "Germany": "Its estimate below 400 m&sup2; is not validated",
+    "France": "Nothing below 400 m&sup2; is estimated",
+    "Yemen": "Small rooftop systems are not estimated",
 }
 LEADS_NEED = {
-    ("leads_mapped", "leads_retrained"):
-        "{earned} also needs leads mapped in OpenStreetMap to localize the model: about a "
-        "third of the {n} places the model found solar that OpenStreetMap does not have "
-        "yet{blobs}.",
-    ("leads_retrained",):
-        "{earned} also needs the model retrained on what people have mapped.",
+    ("leads_mapped", "leads_retrained"): "too few of its leads are mapped in OpenStreetMap",
+    ("leads_retrained",): "the model is not yet retrained on the mapped leads",
 }
-LEADS_BLOBS = ", and of its {nb} very large outlines"
-LEADS_HELP = (
-    "<strong>You can help:</strong> download the lead file under <em>Download the data behind "
-    "this atlas</em> and work down it from the top on recent imagery, mapping every real "
-    "installation. {then}"
-)
-LEADS_THEN = {
-    ("leads_mapped", "leads_retrained"):
-        "Once about a third has a verdict, the model is retrained on what you mapped and the "
-        "atlas shows {earned}.",
-    ("leads_retrained",): "Once the model is retrained on it, the atlas shows {earned}.",
+# Where a reader can help: the Contribute Data section (docs/contribute/).
+CTA = {
+    "calibrate": '<a class="atlas-tier-cta" href="../contribute/">Contribute data: map a '
+                 'calibration area &rarr;</a>',
+    "leads": '<a class="atlas-tier-cta" href="../contribute/leads/">Contribute data: map the '
+             'model\'s leads &rarr;</a>',
 }
-LEADS_CTA = (
-    '<a class="atlas-tier-cta" href="../contribute/leads/">Map the leads with JOSM &rarr;</a> '
-    '<a class="atlas-tier-more" href="../atlas-quality-levels/">What the levels mean</a>'
-)
-EARNED_NOTE = {
-    "Germany": "Arrays of about 400 m&sup2; and up are checked against Germany's register "
-               "(MaStR); the small-installation estimate below that is not yet validated.",
-    "France": "Arrays of about 400 m&sup2; and up are checked against 14 communes mapped "
-              "panel by panel; nothing below that is estimated.",
-    "Yemen": "Installations of about 400 m&sup2; and up are counted, plus small "
-             "solar-irrigation arrays calibrated on hand-mapped farm areas; small rooftop "
-             "systems are not estimated.",
-}
-# What a reader can do about it: the Contribute Data section (docs/contribute/).
-HELP = {
-    "silver": (
-        "<strong>You can help:</strong> small areas mapped completely, panel by panel, in "
-        "OpenStreetMap are what an estimate of the smaller installations is fitted on."
-    ),
-    "bronze": (
-        "<strong>You can change that:</strong> map every panel inside a hollow diamond on the "
-        "map, starting with the <strong>&#9733; star</strong>. Six to ten complete areas start "
-        "an estimate of {country}'s smaller installations."
-    ),
-}
-CTA = (
-    '<a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration '
-    'area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser '
-    '(iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a>'
-)
-
 
 def _href(stem: str) -> str:
     return f"../{stem}/"
@@ -245,7 +191,17 @@ def switcher(current: str) -> str:
     return "\n".join(lines)
 
 
-def page(stem: str, country: str, html: str, title: str | None, extra: str) -> str:
+def banner(tier: str, text: str, cta: str) -> str:
+    """The Silver/Bronze banner: two short sentences, then one link. A reader can close it
+    (owner, 2026-11-06); docs/assets/javascripts/atlas-banner.js shows the button and
+    remembers the choice, so without scripts the button stays hidden."""
+    return (f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
+            f"  <p>{text}</p>\n  <p>{cta}</p>\n"
+            '  <button class="atlas-tier-close" type="button" aria-label="Close this notice" '
+            'title="Close" hidden>&times;</button>\n</div>')
+
+
+def page(stem: str, country: str, html: str, title: str | None) -> str:
     from earthpv import atlas
 
     tier = tier_of(html)
@@ -257,31 +213,18 @@ def page(stem: str, country: str, html: str, title: str | None, extra: str) -> s
              "---", "", '<div class="page-full-bleed fit" markdown>', switcher(stem)]
     earned = earned_of(html)
     if earned != tier:
-        label = TIERS[earned][0]
-        leads = totals_of(html).get("leads") or {}
-        n, nb = leads.get("n"), (leads.get("blobs") or {}).get("n")
         gaps = tuple(atlas.lead_rule_gaps(aoi_of(html)))
         if not gaps:
             raise SystemExit(f"{html}: its badge shows {tier}, below the {earned} it earned, "
                              "but its config meets every lead rule; re-badge it first "
                              "(scripts/patch_atlas_leads.py)")
-        needs = LEADS_NEED[gaps].format(
-            earned=label, n=f"{n:,}" if n else "all the",
-            blobs=LEADS_BLOBS.format(nb=f"{nb:,}") if nb else "")
-        text = LEADS_WARNING.format(
-            title=LEADS_TITLE[gaps],
-            earned_note=EARNED_NOTE.get(country, f"Its calibration meets {label}."),
-            needs=needs)
-        help_ = LEADS_HELP.format(then=LEADS_THEN[gaps].format(earned=label))
-        parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
-                     f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{LEADS_CTA}</p>\n</div>")
+        small = SMALL_GAP.get(country, f"It earned {TIERS[earned][0]} on its calibration")
+        text = LEADS_WARNING.format(small=small, needs=LEADS_NEED[gaps])
+        # Only mapping is a reader's to do; a model retrain is not.
+        cta = CTA["leads" if "leads_mapped" in gaps else "calibrate"]
+        parts.append(banner(tier, text, cta))
     elif tier in WARNING:
-        text = WARNING[tier].format(country=country, extra=extra).strip()
-        help_ = HELP[tier].format(country=country)
-        if country in TIER_NOTE:
-            text, help_ = TIER_NOTE[country]
-        parts.append(f'<div class="atlas-tier-alert atlas-tier-alert--{tier}" role="note">\n'
-                     f"  <p>{text}</p>\n  <p>{help_}</p>\n  <p>{CTA}</p>\n</div>")
+        parts.append(banner(tier, TIER_NOTE.get(country, WARNING[tier]), CTA["calibrate"]))
     # `allow="fullscreen"`: the atlas map has a fullscreen button, which a frame without
     # the permission silently disables. The local-network ones let the "Open in JOSM"
     # button reach JOSM's Remote Control on 127.0.0.1 under Chrome's Local Network Access

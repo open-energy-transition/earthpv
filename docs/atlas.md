@@ -27,9 +27,9 @@ hide:
   <a class="atlas-switch__about" href="../atlas-quality-levels/">What the levels mean</a>
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--silver" role="note">
-  <p><strong>Silver atlas: the small-installation estimate is not yet checked by people.</strong> Installations of about 400 m&sup2; (70 kWp) and up are validated against hand-mapped ground truth. The estimate below that is calibrated on areas mapped panel by panel, but nobody has yet checked the classifier's results on cells drawn at random or building by building, so read Best as an estimate still to be confirmed.</p>
-  <p><strong>You can help:</strong> map every panel inside a calibration area. Sparsely built areas help most: the estimate there rests on the fewest mapped areas.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a> <a class="atlas-tier-more" href="../contribute/id/">In the browser (iD)</a> <a class="atlas-tier-more" href="../contribute/josm/">With JOSM</a></p>
+  <p><strong>This Silver atlas is not yet verified.</strong> Its estimate below 400 m&sup2; is calibrated, but nobody has checked it by hand yet.</p>
+  <p><a class="atlas-tier-cta" href="../contribute/">Contribute data: map a calibration area &rarr;</a></p>
+  <button class="atlas-tier-close" type="button" aria-label="Close this notice" title="Close" hidden>&times;</button>
 </div>
 <iframe src="../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>
 </div>
