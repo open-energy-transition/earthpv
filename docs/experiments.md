@@ -140,6 +140,7 @@ repository; nothing was deleted on failure.
 | [Yard features for small ground-mount](issues/small-ground-mount-instrument.md) | <span class="outcome mixed">partial</span> | The building index brackets 98.5% of the population, but detection lands at 1-2% precision. |
 | [Yard-SPPI and roofclf AND-gate for ground-mount](issues/small-ground-mount-instrument.md#making-sppi-and-roofclf-agree-does-not-rescue-it-either) | <span class="outcome negative">rejected</span> | The rooftop floor's construction does not transfer: 2% precision, and the best operating point turns the roofclf side off. |
 | [Parcel label for roofclf](methods/roofclf.md#the-parcel-label-parcel-label-2026-08-16) | <span class="outcome works">shipped</span> | Counting PV in the yard, not just on the roof. 80% of what it recovers turns out to be rooftop PV overhanging an undersized footprint, not ground-mount. |
+| [Pakistan's roofclf on 41 areas, priced on 19](#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07) | <span class="outcome works">shipped</span> | Eleven more areas train the ranking (Best +328 MWp); letting the selection rule also hand them the price gives +3,314 MWp and a 90% interval to 82 GWp, from farm-yard ground arrays the label calls rooftop. |
 | Yard feature block in the roofclf model | <span class="outcome negative">rejected</span> | Loses to roof-only features even against the parcel label it was built for: 0.8712 against 0.8734. |
 | SPPI as a roofclf input feature | <span class="outcome negative">rejected</span> | 0.8736 to 0.8734 AUC. It helps by disagreeing, not by being a column. |
 | Glint-date imagery as a roofclf feature | <span class="outcome negative">rejected</span> | Only 7-24% of rooftops can ever glint into a near-nadir view; size-controlled AUC moves 0.7875 to 0.7879. |
@@ -789,6 +790,60 @@ scores from `scripts/export_roofclf_points.py`). Every row of that log is blank,
 moved from Gold to Silver with no figure changed, and no atlas is Gold.
 `atlas.derive_validation_score` now stops at Silver: a person's check cannot be read from
 files on disk, so Gold can only be declared (`validation.score` in the country's config).
+
+### Pakistan's roofclf on 41 areas, priced on the 19 it had (2026-11-07)
+
+Eleven Pakistani areas mapped since August had not reached either fit: Kasur, Jacobabad and
+Mastung (density-gap boxes), Kalat Rural and seven farm areas (Badin f8, Jhang f5, Lasbela
+f1, Qambar Shahdadkot f7, Sahiwal f6, Swabi f4, Thatta f3). They joined `roofclf` and
+segmentation's calibration table; Jhang f2 (poor imagery) and Box 21's three randomly sampled
+boxes (Gujranwala s8, Qilla Abdullah s6, Sanghar s2) stayed out of both as a test of the
+level. The refit drops `bf_confidence` (empty outside Pakistan, worth nothing inside it).
+
+**A label bug first.** The 2026-10-25 guard that keeps a large ground array from labelling
+the farmhouse it clips (`roofclf.roof_pv_area`) also stripped the industrial areas' rooftop
+PV, which is mapped as factory-roof outlines tagged `power=plant` and so placed `ground`:
+117 of Faisalabad's 164 PV buildings and 189 of Multan's 292. The guard now applies only to
+an array lying less than half on footprints, the overlap test segmentation's labels already
+apply to an untagged generator. Kalat's 29 large arrays lie at most 0.47 on footprints and
+stay out; the industrial areas get their roofs back, except 16 of Multan's large arrays,
+some of them on roofs in Esri imagery. The published model predated the guard, so the fix
+changes no published label.
+
+**Ranking.** Median leave-one-area-out AUC is 0.8678 over the 30 earlier areas against 0.8682
+(10 better, 19 worse) and 0.8459 over all 41: the new areas are hard (Kalat 0.716, Kasur
+0.688, Sahiwal 0.606 on 5 PV roofs, Jhang f5 0.703, Lasbela 0.653, Swabi 0.740). On the
+held-out random boxes the new model ranks as the old one did (Gujranwala 0.781 against
+0.784, Qilla Abdullah 0.828 against 0.830). Segmentation's table gains recall evidence only, since none of the eleven
+holds a v16 candidate: `est_mwp_rc` 3,143.1 -> 3,146.8 MWp, which the atlas absorbs.
+
+**Price.** The same scoring priced on five sets of coverage-ratio areas (MWp):
+
+| coverage-ratio areas | sub-400 central | &ge; 400 m<sup>2</sup> rooftop | Best (90% interval) | Verified |
+| --- | ---: | ---: | --- | ---: |
+| published (30-area fit, `bf_confidence`) | 24,060 | 7,249 | 34,142 (28,863-41,207) | 7,351 |
+| **the published 19 (shipped)** | **24,381** | **7,258** | **34,470 (28,628-41,310)** | **7,138** |
+| the rule's 21 (Multan out; Kalat, Kasur, Sahiwal in) | 28,341 | 6,282 | 37,456 (30,136-82,394) | 7,163 |
+| the rule's, without Kalat | 25,443 | 6,187 | 34,465 (28,991-45,020) | 7,068 |
+| the rule's, without Kalat and Sahiwal (below the density floor) | 25,374 | 6,190 | 34,399 (28,857-43,565) | 7,066 |
+| the rule's, without all three | 24,979 | 7,596 | 35,404 (29,422-42,148) | 7,369 |
+
+Kalat's household "PV" is 72% farm-yard ground arrays of 100 to 400 m<sup>2</sup> (solar
+pumps) that the parcel label hands to the nearest farmhouse, about 7x the PV per
+probability-weighted roof area of any other area (Sahiwal 66%, Kasur 42%; the lower band's
+nine published areas 4.6%). Resampled areas that draw it more than once give the interval's
+top. The &ge; 400 m<sup>2</sup> column swings on one industrial estate: the lower density band
+(< 1,717 bldg/km<sup>2</sup>, 2,937 of 2,957 in-domain cells) holds Multan, or SITE Karachi
+once Multan leaves, or neither once the sparse areas move the median edge.
+
+**Verdict:** shipped with the coverage ratio pinned to the published 19
+(`sub400_capacity.PINNED_COVERAGE_QUADRATS`, owner's choice): Best 34,142.4 -> 34,470.3 MWp,
+Verified 7,350.8 -> 7,138.3 (the AND-gate floor flags fewer roofs under the refit). The new
+areas change the ranking model and nothing else. Whether they may set the price waits on
+whether farm-yard ground PV belongs in the rooftop label (open question 21). The level
+question is untouched: the held-out random boxes read 0.125 m<sup>2</sup> of mapped PV per
+probability-weighted m<sup>2</sup> of household roof under both models, against the lower
+band's 0.33.
 
 ## What did not work
 

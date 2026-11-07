@@ -81,6 +81,24 @@ DEFAULT_RATIO_HI = 2.0
 # and already-diagnosed problem unrelated to density -- see CLAUDE.md); it also fails
 # the ratio band on its own (0.312), so this is belt-and-suspenders, not load-bearing.
 DEFAULT_EXCLUDE = ("mardan",)
+# Coverage-ratio quadrats pinned per AOI by the owner, which replace the rate_ratio rule for
+# that AOI. Pakistan (owner, 2026-11-07): roofclf was refit on 41 areas that day, but the
+# price stays on the 19 areas the rule chose from the 30-area fit. Under the refit the rule
+# drops Multan (rate_ratio 1.88 -> 2.13: 16 of its large arrays lie under half on VIDA
+# footprints and leave its label) and admits Kalat Rural, Kasur and Sahiwal f6, whose
+# household PV is 72%, 42% and 66% farm-yard ground arrays that the parcel label hands to
+# the nearest building. Kalat alone carries about 7x the PV per probability-weighted roof
+# area of any other area: with all three, Best read 37,456 MWp and its 90% interval reached
+# 82,394. The new areas train the ranking; whether they may also set the price is open.
+# Remove an AOI's entry to return it to the rule.
+PINNED_COVERAGE_QUADRATS: dict[str, tuple[str, ...]] = {
+    "pakistan": (
+        "bahawalnagar_rural", "faisalabad", "islamabad_east", "islamabad_north",
+        "islamabad_northeast", "islamabad_south", "islamabad_west", "karachi_coast", "lahore",
+        "layyah_periurban", "lodhran_periurban", "malok", "multan", "peshawar",
+        "peshawar_west", "sanghar", "sialkot", "site_karachi", "sukkur",
+    ),
+}
 
 
 def select_calibrated_quadrats(
@@ -88,13 +106,33 @@ def select_calibrated_quadrats(
     ratio_lo: float = DEFAULT_RATIO_LO,
     ratio_hi: float = DEFAULT_RATIO_HI,
     exclude: tuple[str, ...] = DEFAULT_EXCLUDE,
+    aoi: str | None = None,
 ) -> tuple[list[str], pd.DataFrame]:
     """Quadrats whose roofclf rate_ratio (predicted/true adoption rate) falls in
     [ratio_lo, ratio_hi] -- i.e. where the classifier's raw predicted rate is not wildly
     off from ground truth. Returns `(quadrat_names, folds_subset_df)` for logging/audit.
+
+    An AOI listed in `PINNED_COVERAGE_QUADRATS` gets its pinned set instead (in the folds
+    file's order, so the quadrat bootstrap draws as the rule's selection would), and the
+    ratio band is not applied; the log names what the rule would have added and dropped.
     """
     folds = pd.read_csv(folds_path).set_index("quadrat")
     folds = folds[~folds.index.isin(exclude)]
+    pinned = PINNED_COVERAGE_QUADRATS.get(aoi or "")
+    if pinned is not None:
+        missing = sorted(set(pinned) - set(folds.index))
+        if missing:
+            raise ValueError(f"Pinned coverage-ratio quadrats for {aoi} missing from "
+                             f"{folds_path}: {missing}")
+        sel = folds[folds.index.isin(pinned)]
+        rule = set(folds[(folds.rate_ratio >= ratio_lo) & (folds.rate_ratio <= ratio_hi)].index)
+        log.info(
+            "Coverage-ratio quadrats PINNED for %s (PINNED_COVERAGE_QUADRATS, %d): %s -- the "
+            "rate_ratio rule [%.2f, %.2f] would add %s and drop %s",
+            aoi, len(sel), sel.index.tolist(), ratio_lo, ratio_hi,
+            sorted(rule - set(pinned)), sorted(set(pinned) - rule),
+        )
+        return sel.index.tolist(), sel
     sel = folds[(folds.rate_ratio >= ratio_lo) & (folds.rate_ratio <= ratio_hi)]
     if sel.empty:
         raise ValueError(
@@ -1289,7 +1327,7 @@ def domain_restricted_capacity(
         all_cells.loc[all_cells.cell.isin(in_domain_cells), "n_buildings"].sum()
     )
     n_buildings_national = int(all_cells.n_buildings.sum())
-    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
+    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi, aoi=aoi)
     precision_info = density_regime_precision(buildings_path, quadrats, threshold)
     composition = parcel_label_composition(buildings_path, quadrats, threshold, weighting)
     ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
@@ -1721,7 +1759,7 @@ def domain_restricted_and_gate_capacity(
 
     all_cells = pd.read_parquet(cell_density_path)
     in_domain_cells = national_cell_domain(cell_density_path, aoi)
-    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
+    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi, aoi=aoi)
 
     bt = gpd.read_parquet(buildings_path)
     if "sppi" not in bt.columns:
@@ -1947,7 +1985,7 @@ def out_of_domain_and_gate_capacity(
     all_cells = pd.read_parquet(cell_density_path)
     in_domain_cells = national_cell_domain(cell_density_path, aoi)
     out_domain_cells = set(all_cells.cell) - in_domain_cells
-    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
+    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi, aoi=aoi)
 
     from earthpv.density import calibrated_density_range
 

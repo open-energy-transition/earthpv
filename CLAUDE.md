@@ -322,9 +322,11 @@ evidence the new one lacks (placement split, glint calibration, manual reviews,
 `register-p-unmapped`) unless `--allow-downgrade`; `density.py` warns when a table has no
 `placement_bins` for an AOI whose candidates span both placements. Reproducing Pakistan's table
 needs the calibration boxes and `--glint-sample`, not a bare re-run (its `recall_reference`
-records 19,221 features). **Pakistan's table was re-derived 2026-10-26 for v16**, with the
-any-candidate recall and 30 calibration boxes, as `status: interim-mapped-only`: `p_unmapped`
-from mapped installations only, no glint sample in any bin yet.
+records 19,491 features). **Pakistan's table was re-derived 2026-10-26 for v16**, with the
+any-candidate recall, and again **2026-11-07 with 41 calibration boxes** (the three random
+boxes of Box 21 and Jhang f2 held out), as `status: interim-mapped-only`: `p_unmapped` from
+mapped installations only, no glint sample in any bin yet. None of the eleven boxes added then
+holds a v16 candidate, so they add recall evidence only (`est_mwp_rc` 3,143.1 -> 3,146.8).
 
 **OSM reference polygons are dissolved before use** (`labels.dissolve_overlapping`): a
 `power=plant` perimeter with a nested `power=generator` way, or duplicate mapping passes, would
@@ -502,26 +504,29 @@ replicates) with correlated terms sharing one draw vector, and asserts its compo
 values sum to the published total -- a guard against adding an atlas component without adding it
 to the uncertainty.
 
-**Pakistan's current published figures (v16, 2026-10-28).** Segmentation `est_mwp_rc` **3,129.2
-MWp** (rooftop 1,992.8, ground 1,136.4). roofclf (30 quadrats, parcel label, area-weighted zonal
-means, recall-corrected, probability-weighted since 2026-10-25), as priced in the atlas: sub-400
-central **24,060.4 MWp**, sub-400 AND-gate (floor, thresholded, uncorrected) **3,713.3 MWp**,
-≥ 400 m² rooftop replacement **7,249.5 MWp**; median LOQO fold AUC 0.8682, within-size 0.8193,
-deployment threshold 0.2446. Atlas: **Best 34,142.4 MWp (90% CI 28,863-41,207; two judged
-parks added 13.9 on 2026-11-04), Verified 7,350.8
-MWp (90% CI 6,349-9,526)** (on `v3_combined_india` until 2026-10-28: Best 34,588.8, Verified
-6,994.1; thresholded until 2026-10-25: Best 24,438.3, 90% 20,894-33,666). `check-density` fails 3 regions
-on single-cell concentration (KP, Balochistan, ICT), checked genuine (the calibration quadrats'
-own cities) and published per standing precedent. **The mandatory random validations of the last
-three rescorings (seeds 20260817, 20260820, 20260920; tiles in
-`results/pakistan_roofclf_parcel_validation/` and `results/pakistan_roofclf_validation/`) have
-NOT been reviewed**: `results/roofclf_random_validation_log.csv` has 60 rows with blank verdicts,
+**Pakistan's current published figures (2026-11-07).** Segmentation (v16, 41-box table)
+`est_mwp_rc` **3,146.8 MWp** (rooftop 1,994.3, ground 1,152.5). roofclf (fitted on 41 areas
+since 2026-11-07, 16 features without `bf_confidence`, parcel label, area-weighted zonal means,
+recall-corrected, probability-weighted since 2026-10-25), its coverage ratio and area recall
+fitted on the **19 pinned areas** (`sub400_capacity.PINNED_COVERAGE_QUADRATS`, see "Calibration
+quadrats"), as priced in the atlas: sub-400 central **24,381.0 MWp**, sub-400 AND-gate (floor,
+thresholded, uncorrected) **3,500.7 MWp**, ≥ 400 m² rooftop replacement **7,257.9 MWp**; median
+LOQO fold AUC 0.8459 over the 41 areas (0.8678 over the 30 earlier ones, against 0.8682 before),
+within-size 0.815, deployment threshold 0.2470 (precision 0.50, recall 0.642). Atlas: **Best
+34,470.3 MWp (90% CI 28,628-41,310), Verified 7,138.3 MWp (90% CI 6,182-9,116)** (30-area fit
+with `bf_confidence` until 2026-11-07: Best 34,142.4, Verified 7,350.8; on `v3_combined_india`
+until 2026-10-28: Best 34,588.8, Verified 6,994.1; thresholded until 2026-10-25: Best 24,438.3,
+90% 20,894-33,666). `check-density` passes all 7 regions (Gilgit-Baltistan exempt from the ratio
+check). **The mandatory random validations of the last four rescorings (seeds 20260817,
+20260820, 20260920, 20261107; tiles in `results/pakistan_roofclf_parcel_validation/`,
+`results/pakistan_roofclf_validation/` and `results/pakistan_roofclf_q41_validation/`) have NOT
+been reviewed**: `results/roofclf_random_validation_log.csv` has 80 rows with blank verdicts,
 so the published figure rests on an unreviewed rescoring (open question 3). **The score-level
 review** (`scripts/roofclf_level_review.py`, 400 blind roofs in 100-1,000 bldg/km² cells,
 `results/pakistan_roofclf_level_review/`) tests whether scores sum to the PV-roof count the 9
-lower-band quadrats imply (1.115 / 1.270 per PV roof); drawn 2026-10-28, not yet reviewed. The
-coverage ratio's lower band (< 1,717 bldg/km²) prices 2,937 of 2,957 in-domain cells from those 9
-quadrats. Pre-change outputs are kept beside the canonical paths with `_PRE_<change>_<date>`
+lower-band quadrats imply (1.115 / 1.270 per PV roof under the 30-area model; 1.136 for the
+lower band under the 41-area one); drawn 2026-10-28, not yet reviewed. The coverage ratio's
+lower band (< 1,717 bldg/km²) prices 2,937 of 2,957 in-domain cells from those 9 quadrats. Pre-change outputs are kept beside the canonical paths with `_PRE_<change>_<date>`
 suffixes.
 
 **Overture publishes a coastal admin division twice** (land, and land plus territorial waters).
@@ -636,7 +641,7 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   roofclf scoring exists; only Pakistan has one built. It is where solar could still go: no
   total includes it. **Roof share** is how much of a footprint mapped PV covers on PV roofs
   (Pakistan 0.337, 0.235-0.683), what owners install rather than a maximum, and the largest
-  uncertainty. Pakistan: 428.6 TWh/yr, 262 GWp (298-867 TWh/yr). `atlas --potential-cells` still
+  uncertainty. Pakistan: 426.6 TWh/yr, 261 GWp (297-861 TWh/yr). `atlas --potential-cells` still
   draws the standalone page with its size filter; `scripts/patch_atlas_potential.py` adds the
   data to a published page. Method: `docs/methods/density.md`.
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
@@ -919,9 +924,11 @@ only for the docs site's embedded `<img>`s and print/export.
 
 ### Calibration quadrats
 
-**31 Pakistani quadrats are registered; 30 are in the `roofclf` fit.** Purposive selections
+**45 Pakistani quadrats are registered; 41 are in the `roofclf` fit (since 2026-11-07), 19 in
+its coverage ratio.** Purposive selections
 (industrial estates, dense residential blocks) plus deliberately rural extensions that set the
-density domain. All are declared **Rule-1 complete** by the owner (every visible panel mapped).
+density domain, then sampled boxes (Boxes 19-22). All but Jhang f2 are declared **Rule-1
+complete** by the owner (every visible panel mapped).
 **Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own capture
 date, not the Sentinel-2 composite's, so the newest installations are structurally missed. This
 makes precision and `base_rate` **lower bounds** and `rate_ratio` an **upper bound**; recall over
@@ -929,18 +936,32 @@ mapped installations is unaffected.
 
 **Every area feeds both detectors (owner, 2026-10-25)**: mappers map every installation,
 ground and rooftop, in building and farm areas alike. `roofclf.discover_quadrats` returns both
-kinds by default (`farm=True`/`False` selects one), so **Pakistan's next `roof-classifier` refit
-picks up Sahiwal, Jhang f2, Jhang f5 (farm) and Mastung** besides Kalat Rural. Jhang f2 is
-`corroborated` (poor imagery) and must be left out with explicit `--quadrat` flags; Kalat
-Rural's inclusion is an owner decision. The guard Kalat was held out for now exists:
-`roofclf.roof_pv_area` ignores ground-placed installations of 400 m² or more, which before
-labelled every farmhouse a large ground array clipped (most of Kalat's has-PV buildings), and
-the parcel term already stopped at 400 m² (open question 8).
+kinds by default (`farm=True`/`False` selects one). **The 2026-11-07 refit took in Kasur,
+Jacobabad and Mastung (gap boxes), Kalat Rural (owner's call) and seven farm areas** (Badin f8,
+Jhang f5, Lasbela f1, Qambar Shahdadkot f7, Sahiwal f6, Swabi f4, Thatta f3) by explicit
+`--quadrat` flags: Jhang f2 is `corroborated` (poor imagery), and Box 21's three random boxes
+(Gujranwala s8, Qilla Abdullah s6, Sanghar s2) stay out of both fits as a test of the level.
+`roofclf.roof_pv_area` ignores a ground-placed installation of 400 m² or more unless at least
+half of it lies on footprints (`GROUND_GUARD_MIN_ON_ROOF`, the overlap test
+`labels.classify_placement` applies to an untagged generator but never to an untagged
+`power=plant`). The industrial areas are mapped as untagged `power=plant` roof outlines, so
+without the test the 2026-10-25 guard stripped 117 of Faisalabad's 164 PV buildings and 189 of
+Multan's 292; Kalat's farm arrays lie at most 0.47 on footprints and stay out. It still drops 16
+of Multan's large arrays, some of them on roofs (Esri), which is what moves Multan's
+`rate_ratio` past 2.
 
 **Ranking transfers across quadrats; absolute adoption rates do not** (`rate_ratio` has spanned
 0.2-5x), which is why the coverage ratio is stratified. `select_calibrated_quadrats` picks the
 precision-trusted subset (`rate_ratio` roughly in [0.5, 2.0]) independently of Rule-1 status and
-of the density-domain selection; check both gates for any new quadrat.
+of the density-domain selection; check both gates for any new quadrat. **Pakistan's set is
+pinned** (`sub400_capacity.PINNED_COVERAGE_QUADRATS`, owner, 2026-11-07) to the 19 areas the
+rule chose from the 30-area fit. On the 41-area fit the rule drops Multan (`rate_ratio` 1.88 ->
+2.13) and admits Kalat Rural, Kasur and Sahiwal f6, whose household PV is 72%, 42% and 66%
+farm-yard ground arrays that the parcel label hands to the nearest building: Kalat carries
+about 7x the PV per probability-weighted roof area of any other area, and with all three Best
+read 37,456 MWp with a 90% interval reaching 82,394. Separately, the lower band's ≥ 400 m²
+price swings about 1,000 MWp on whether one industrial estate (Multan or SITE Karachi) sits
+below the median band edge. Whether the new areas may set the price is open question 21.
 `scripts/new_calibration_quadrat.py` adds one (geodesic square or hand-drawn `--geojson`): it
 checks boundary overlap with every existing quadrat before writing, and cross-confirms a live
 Overpass pull against a second query (mirrors have returned truncated, non-error responses).
@@ -1179,7 +1200,7 @@ QUEUE first when removing compute markers.
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
-| Pakistan | `v16_combined_pakistan` | 7,350.8 / 34,142.4 | roofclf half, probability-weighted, Silver until people have checked it; see "Density stage" |
+| Pakistan | `v16_combined_pakistan` | 7,138.3 / 34,470.3 | roofclf half on 41 areas, priced on 19; probability-weighted, Silver until people have checked it; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked); 149 judged parks count |
 | France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
 | India | `v5_combined_france` | 70,523.4 / 103,036.9 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count |

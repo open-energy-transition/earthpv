@@ -54,9 +54,11 @@ inside it, a roof with no mapped PV is a genuine negative. That is exactly the s
 missing in the failure regime, which is why the quadrats are spent on training rather than
 only on after-the-fact correction.
 
-Thirty-one quadrats now carry Rule-1, with 16,469 mapped installations between them; 30
-feed the current fit (Kalat Rural is registered and Rule-1 but held out -- see
-[Calibration quadrats](calibration-quadrats.md)).
+Forty-five quadrats are registered, all but one (Jhang f2, poor imagery) Rule-1. Since
+2026-11-07, 41 of them feed the fit, with 16,680 mapped installations on 130,418 buildings;
+Jhang f2 and three randomly sampled boxes are held out, the boxes as a test of the level (see
+[Calibration quadrats](calibration-quadrats.md)). The coverage ratio of stage 5 is still
+fitted on 19 of them ([experiments register](../experiments.md#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07)).
 
 !!! warning "Rule-1 is relative to the mapping imagery, not to the model's imagery"
 
@@ -94,8 +96,8 @@ is empty on every Microsoft-sourced footprint, which is all of Yemen and France,
 empty value was filled with 0, ten Pakistani standard deviations below Pakistan's mean:
 about 1.5 times too high a level for every foreign roof scored by Pakistan's model.
 Without it Pakistan's median fold AUC is 0.8680 against 0.8682. Pakistan's published
-figures still come from the 17-feature model until the page is rebuilt
-([experiments register](../experiments.md#one-roofclf-for-every-country-leave-one-country-out-2026-10-29)).
+figures use the model without it since 2026-11-07, when the page moved to the 41-area refit
+([experiments register](../experiments.md#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07)).
 
 Roughly half of Pakistani VIDA footprints are smaller than one pixel and rasterise to no
 pixel at all. Those fall back to the pixel under their representative point, the same
@@ -326,10 +328,10 @@ Wherever a building needs a yes or a no, one operating point is used, and it is 
 **precision**, not for balanced sensitivity: a false positive is expensive in a figure no
 human reviews in a way it is not in the mapping-leads queue.
 
-`p_roofclf >= 0.2446` is the smallest threshold holding precision at 0.50 on the pooled
-out-of-fold scores, and it catches 66% of PV-carrying buildings there. Both numbers are
-still leave-one-quadrat-out measurements: one threshold instead of 30 per-fold ones, but
-no building was ever scored by a model that saw its own quadrat.
+`p_roofclf >= 0.2470` is the smallest threshold holding precision at 0.50 on the pooled
+out-of-fold scores of the 41 areas, and it catches 64% of PV-carrying buildings there. Both
+numbers are still leave-one-quadrat-out measurements: one threshold instead of 41 per-fold
+ones, but no building was ever scored by a model that saw its own quadrat.
 
 **Since 2026-10-25 the threshold no longer decides what Best estimate counts.** It defines
 the roofclf-AND-SPPI floor, where two detectors agreeing on a building is a yes/no rule by

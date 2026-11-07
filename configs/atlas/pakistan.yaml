@@ -205,59 +205,64 @@ calibration_boxes:
   - {name: "Attock Peri-urban", stem: attock_periurban_calib_2km, status: rule1}
   - {name: "Layyah Peri-urban", stem: layyah_periurban_calib_2km, status: rule1}
   - {name: "Lodhran Peri-urban", stem: lodhran_periurban_calib_2km, status: rule1}
+  # Registered 2026-08-17 (Box 17) and held out of every refit until the ground guard could
+  # keep its farm arrays out of the rooftop label; in roofclf and the segmentation table
+  # since 2026-11-07 (Box 24), not in the coverage ratio.
+  - {name: "Kalat Rural", stem: kalat_rural_calib_3km, status: rule1}
   # Added 2026-10-25: Mastung, Balochistan, a density-gap box (the 50-125 bldg/km2 band,
   # docs/issues/roofclf-calibration-density-mismatch.md) under Esri imagery of 2025-06-09,
-  # declared Rule-1 complete by the owner. Not in a roofclf refit yet, so `used: false`.
+  # declared Rule-1 complete by the owner. In roofclf and the segmentation table since
+  # 2026-11-07 (Box 24), like every area below except the four marked `used: false`.
   # Confirmed zero, but registered where the screen put it: 13 VIDA buildings (3.3 per km2),
   # so it must not move the density band's floor (Box 20, pakistan-calibration-boxes.md).
-  - {name: "Mastung (no PV)", stem: mastung_gap_calib_2km, status: rule1, used: false}
+  - {name: "Mastung (no PV)", stem: mastung_gap_calib_2km, status: rule1}
   # Added 2026-10-25: Sahiwal, Punjab, Pakistan's first farm area (calib-candidates
   # --farmland, cropland stratum 6 of 8, Esri 2025-05-26), mapped by the owner. It
   # calibrates the farm ground-PV detector, which has not been run on Pakistan; roofclf
   # skips farm areas (`_farm_calib_`).
   # Second pass by the owner 2026-10-29: 5 installations (was 3), re-pulled (Box 22).
-  - {name: "Sahiwal (farm)", stem: sahiwal_f6_farm_calib_3km, status: rule1, used: false}
+  - {name: "Sahiwal (farm)", stem: sahiwal_f6_farm_calib_3km, status: rule1}
   # Added 2026-10-25: Jhang, Punjab, two more sampled farm boxes (cropland strata 2 and 5
   # of 8, Esri 2025-07-28), mapped by the owner. Jhang f2's imagery is poor (owner): small
   # arrays may be missed, so it is `corroborated`, not `rule1`, and should train the farm
   # detector rather than calibrate it. 18 installations, median 39 m2.
-  - {name: "Jhang (farm, poor imagery)", stem: jhang_f2_farm_calib_3km, status: corroborated, used: false}
-  - {name: "Jhang south (farm)", stem: jhang_f5_farm_calib_3km, status: rule1, used: false}
+  - {name: "Jhang (farm, poor imagery)", stem: jhang_f2_farm_calib_3km, status: corroborated, used: false}  # held out of both fits (imagery)
+  - {name: "Jhang south (farm)", stem: jhang_f5_farm_calib_3km, status: rule1}
   # Added 2026-10-29: Kasur, Punjab, the second of Box 19's density-gap boxes mapped, where
   # the screen put it (changeset 191181692). Esri Vivid imagery of 2025-05-01 at the centre
   # and all four corners, checked at registration since none had been recorded. 15
   # installations (9 ground, 6 rooftop) on 221 VIDA buildings (55 per km2). `used: false`
   # until a roofclf refit (Box 22, pakistan-calibration-boxes.md).
-  - {name: "Kasur", stem: kasur_gap_calib_2km, status: rule1, used: false}
+  - {name: "Kasur", stem: kasur_gap_calib_2km, status: rule1}
   # Added 2026-10-29: Thatta, Sindh, a sampled farm box (cropland stratum 3 of 8, Esri
   # 2025-02-20), in which the owner found no PV. Calibrates the farm ground-PV detector,
   # which has not been run on Pakistan.
-  - {name: "Thatta (farm, no PV)", stem: thatta_f3_farm_calib_3km, status: rule1, used: false}
+  - {name: "Thatta (farm, no PV)", stem: thatta_f3_farm_calib_3km, status: rule1}
   # Added 2026-10-29: Badin, Sindh, the farm box the atlas starred (cropland stratum 8 of 8,
   # 94% cropland, Esri 2025-06-07): 2 small rooftop arrays (85 m2) on 665 VIDA buildings.
-  - {name: "Badin (farm)", stem: badin_f8_farm_calib_3km, status: rule1, used: false}
+  - {name: "Badin (farm)", stem: badin_f8_farm_calib_3km, status: rule1}
   # Added 2026-10-29: Qambar Shahdadkot, Sindh, the next starred farm box (stratum 7 of 8,
   # 93% cropland, Esri 2025-05-29): no PV (owner; OSM API and Overpass agree).
-  - {name: "Qambar Shahdadkot (farm, no PV)", stem: qambar_shahdadkot_f7_farm_calib_3km, status: rule1, used: false}
+  - {name: "Qambar Shahdadkot (farm, no PV)", stem: qambar_shahdadkot_f7_farm_calib_3km, status: rule1}
   # Added 2026-10-29: Swabi, Khyber Pakhtunkhwa, the next starred farm box (stratum 4 of 8,
   # 74% cropland, Esri 2025-09-19; changeset 191183685): 57 installations, 45 of them ground.
-  - {name: "Swabi (farm)", stem: swabi_f4_farm_calib_3km, status: rule1, used: false}
+  - {name: "Swabi (farm)", stem: swabi_f4_farm_calib_3km, status: rule1}
   # Added 2026-10-29: Qilla Abdullah, Balochistan, the first of Box 21's eight sampled building
   # boxes mapped (density band 6 of 8, Esri 2025-05-21; changeset 191184456): 46 installations.
-  - {name: "Qilla Abdullah", stem: qilla_abdullah_s6_calib_2km, status: rule1, used: false}
+  - {name: "Qilla Abdullah", stem: qilla_abdullah_s6_calib_2km, status: rule1, used: false}  # held out of both fits: Box 21's random boxes test the level
   # Added 2026-10-29: Lasbela, Balochistan, the last farm candidate (cropland stratum 1 of 8,
   # 28% cropland, Esri 2025-08-30; changeset 191186090): 37 installations, 36 of them ground.
-  - {name: "Lasbela (farm)", stem: lasbela_f1_farm_calib_3km, status: rule1, used: false}
+  - {name: "Lasbela (farm)", stem: lasbela_f1_farm_calib_3km, status: rule1}
   # Added 2026-10-29: Sanghar, Sindh, Box 21's density band 2 of 8 (Esri 2025-04-02): 2 rooftop
   # installations on 413 VIDA buildings.
-  - {name: "Sanghar", stem: sanghar_s2_calib_2km, status: rule1, used: false}
+  - {name: "Sanghar", stem: sanghar_s2_calib_2km, status: rule1, used: false}  # held out of both fits: Box 21's random boxes test the level
   # Added 2026-10-29: Gujranwala, Punjab, Box 21's densest band (8 of 8, 3,065 bldg/km2, Esri
   # 2025-05-18): 37 installations (28 rooftop, 9 ground).
-  - {name: "Gujranwala", stem: gujranwala_s8_calib_1km, status: rule1, used: false}
+  - {name: "Gujranwala", stem: gujranwala_s8_calib_1km, status: rule1, used: false}  # held out of both fits: Box 21's random boxes test the level
   # Added 2026-10-29: Jacobabad, Sindh, the third of Box 19's density-gap boxes mapped, where
   # the screen put it (Esri Vivid 2025-06-05 at the centre and all four corners): no PV on
   # 332 VIDA buildings (83 per km2), confirmed against OSM's live API and Overpass (Box 22).
-  - {name: "Jacobabad (no PV)", stem: jacobabad_gap_calib_2km, status: rule1, used: false}
+  - {name: "Jacobabad (no PV)", stem: jacobabad_gap_calib_2km, status: rule1}
 
 confidence:
   # Extra <li>s under "Outside the range". The two country-neutral bullets there (hand-picked

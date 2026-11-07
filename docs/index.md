@@ -106,15 +106,15 @@ Full detail, including panel orientation from glint and growth since 2021/22:
 
 ## How small an installation does it find?
 
-Measured on 30 exhaustively hand-mapped Pakistani calibration areas (123,898 buildings), at
+Measured on 41 exhaustively hand-mapped Pakistani calibration areas (130,418 buildings), at
 the operating point the published atlas uses:
 
 | Panel area on the roof | Roughly | Found |
 | --- | --- | --- |
-| Above 100 m² | above 20 kWp | 92% rising to over 99% |
-| 50 to 100 m² | 10 to 20 kWp | 83% |
-| 20 to 50 m² | 4 to 9 kWp | 49% |
-| Below 20 m² | below 4 kWp | 22 to 31% |
+| Above 100 m² | above 20 kWp | 91% rising to over 99% |
+| 50 to 100 m² | 10 to 20 kWp | 82% |
+| 20 to 50 m² | 4 to 9 kWp | 47% |
+| Below 20 m² | below 4 kWp | 20 to 29% |
 
 Detection is recall-first: about 1 in 10 PV-free buildings is also flagged, so detections
 are leads for human verification, not a finished inventory.

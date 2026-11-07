@@ -23,26 +23,30 @@ rather than hand-maintained prose.
 
 ![Map of Pakistan's provinces with all 31 calibration quadrats as markers whose area scales with mapped installations, 16,469 in total. The quadrats cluster in Punjab and around the major cities, with Lahore's 5,695 installations the largest marker, deliberately rural extensions spread across Sindh and Balochistan including Nasirabad Rural with zero installations, and Kalat Rural drawn as an open circle labelled excluded from the fit.](../assets/figures/quadrat_map.png)
 
-The map is generated straight from the label files on disk
-(`scripts/detection_domain_examples.py`), so unlike the table below it always reflects
-every registered quadrat -- currently 31, including Kalat Rural, which is registered and
-Rule-1 but excluded from the `roofclf` fit (a &ge; 400 m<sup>2</sup> ground-mount array
-clipping roofs dominates its labels; see
-[Calibration boxes](../issues/pakistan-calibration-boxes.md), Box 17). The geography is
+The map is generated from the label files on disk
+(`scripts/detection_domain_examples.py`). As last drawn it shows the 31 quadrats registered
+by August 2026, with Kalat Rural as an open circle because it was then excluded from the
+`roofclf` fit (a &ge; 400 m<sup>2</sup> ground-mount array clipping roofs dominated its
+labels; see [Calibration boxes](../issues/pakistan-calibration-boxes.md), Box 17). Kalat has
+been in the fit since 2026-11-07, with 13 later areas the map does not show yet. The geography is
 the honest part: coverage is purposive and city-leaning, which is exactly why the
 [random-cell validation](roofclf-national-validation.md) and the density-domain
 restriction exist.
 
 ## Current quadrats
 
-**31 quadrats are registered; 30 feed the current `roofclf` fit.** `Kalat Rural`
-(`kalat_rural_calib_3km`) is registered and Rule-1 but held out, because its mapped PV is
-dominated by a &ge;400 m<sup>2</sup> ground-mount array that clips nearby roofs (22,064 of
-its 28,412 m<sup>2</sup> of mapped PV, against 18,919 m<sup>2</sup> of roof area in the
-whole box) and `building_table`'s roof term has no placement/size guard yet to keep that
-ground array from being counted as rooftop PV. `roofclf.discover_quadrats` globs the label
-directory automatically, so it must be excluded by hand until that guard exists -- see
-[Calibration boxes](../issues/pakistan-calibration-boxes.md)'s Box 17 for the measurement.
+**45 quadrats are registered; 41 feed the current `roofclf` fit (since 2026-11-07), and 19
+of those its coverage ratio.** The refit added Kasur, Jacobabad and Mastung (density-gap
+boxes), Kalat Rural and seven farm areas. Kalat Rural (`kalat_rural_calib_3km`) had been held
+out since August because a &ge;400 m<sup>2</sup> ground-mount array clipping nearby roofs
+dominated its labels (22,064 of its 28,412 m<sup>2</sup> of mapped PV); the label now leaves
+out a ground array of that size unless at least half of it lies on footprints, which keeps
+Kalat's out and the industrial areas' factory roofs in. Jhang f2 (poor imagery) and the three
+randomly sampled boxes of Box 21 (Gujranwala s8, Qilla Abdullah s6, Sanghar s2) are held out,
+the boxes as a test of the level. The coverage ratio stays on the 19 areas it was fitted on
+before: the selection rule would admit Kalat, Kasur and Sahiwal, whose household PV is mostly
+farm-yard ground arrays. The table below predates the refit; the later areas are in
+[Calibration boxes](../issues/pakistan-calibration-boxes.md)' Boxes 17 to 24.
 
 Geometry and mapped-PV columns come from `data/labels/*_calib_*_boundary.geojson` and each
 quadrat's newest `_overpass_solar` pull; building columns come from a named `roofclf` run's

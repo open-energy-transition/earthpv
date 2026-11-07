@@ -1732,3 +1732,43 @@ enter the coverage ratio once mapped is an owner decision, as for a false-alarm 
   assistant's look).
 - **Mapping order**: after the sampled building boxes (11 and 12 of 12), so Malakand s7 keeps
   the atlas's star.
+
+### Box 24 -- eleven areas join the fits, three random boxes held out -- 2026-11-07
+
+The refit Boxes 20 and 22 waited for. `roofclf` and segmentation's calibration table now take
+in Kasur, Jacobabad and Mastung (Box 19's gap screens), Kalat Rural (Box 17, the owner's
+call) and seven farm areas (Badin f8, Jhang f5, Lasbela f1, Qambar Shahdadkot f7, Sahiwal f6,
+Swabi f4, Thatta f3): 41 areas, 130,418 buildings, 16,680 mapped installations. Jhang f2 stays
+out (poor imagery, `corroborated`), and so do Box 21's three random boxes, Gujranwala s8,
+Qilla Abdullah s6 and Sanghar s2, kept out of both fits as an unbiased test of the level. In
+`configs/atlas/pakistan.yaml` the eleven lose `used: false`, Kalat gets an entry, and the four
+held out keep it.
+
+| area | buildings | PV buildings | fold AUC | `rate_ratio` | household PV that is yard ground |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `kalat_rural_calib_3km` | 419 | 28 | 0.716 | 1.02 | 72% |
+| `kasur_gap_calib_2km` | 221 | 16 | 0.688 | 0.52 | 42% |
+| `sahiwal_f6_farm_calib_3km` | 435 | 5 | 0.606 | 1.04 | 66% |
+| `jhang_f5_farm_calib_3km` | 2,030 | 90 | 0.703 | 0.38 | |
+| `lasbela_f1_farm_calib_3km` | 898 | 70 | 0.653 | 0.24 | |
+| `swabi_f4_farm_calib_3km` | 489 | 44 | 0.740 | 0.31 | |
+| `badin_f8_farm_calib_3km` | 663 | 2 | 0.997 | 5.64 | |
+| `jacobabad_gap_calib_2km`, `mastung_gap_calib_2km`, `thatta_f3_farm_calib_3km`, `qambar_shahdadkot_f7_farm_calib_3km` | 1,365 | 0 | | | |
+
+- **The label guard needed an overlap test.** Kalat was held out for a ground array clipping
+  farmhouses; the guard written for it (2026-10-25) also stripped the industrial areas, whose
+  factory-roof outlines are mapped as `power=plant` and so placed `ground`. A large ground
+  array now leaves the label only when less than half of it lies on footprints: all 29 of
+  Kalat's (at most 0.47), and of the industrial areas' 16 in Multan, 15 in Peshawar West,
+  12 in SITE Karachi and 9 in Sundar; 211 of all 303 large ground-tagged arrays stay in.
+- **Not in the price.** The coverage ratio stays on the 19 areas it used before. By the
+  `rate_ratio` rule Kalat, Kasur and Sahiwal would join it and Multan (1.88 -> 2.13) would
+  leave, and Kalat's yard-ground arrays alone would lift Best by about 3,000 MWp (experiments
+  register, "Pakistan's roofclf on 41 areas, priced on the 19 it had").
+- **The density domain is unchanged.** Mastung (3.3 bldg/km<sup>2</sup>), Thatta (39.3),
+  Kalat (46.5) and Sahiwal (48.3) read below its 48.5 floor; none of them is in the price,
+  and Mastung was registered on the condition that it not move the floor (Box 20).
+- **Segmentation's table** (`configs/calibration/pakistan_candidate_precision.yaml`, 41 boxes,
+  recall reference 19,491) gains recall evidence only: none of the eleven holds a v16
+  candidate.
+

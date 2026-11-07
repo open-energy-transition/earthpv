@@ -1,13 +1,13 @@
 aoi: pakistan
 status: interim-mapped-only
-derived: '2026-10-26'
+derived: '2026-11-07'
 min_distance_m: 100.0
 false_floor: 0.087
 false_n: 69
 false_validated: 6
-recall_reference: rooftopsenti pakistan_500 OSM snapshot (pre-pipeline) + 30 ground-truth
-  calibration box(es) (16410 fully-mapped installations)
-recall_reference_n: 19221
+recall_reference: rooftopsenti pakistan_500 OSM snapshot (pre-pipeline) + 41 ground-truth
+  calibration box(es) (16680 fully-mapped installations)
+recall_reference_n: 19491
 n_draws: 4000
 seed: 20260723
 ci_pct:
@@ -35,15 +35,15 @@ bins:
   manual_real: 0
   p_unmapped: 0.0
   p_unmapped_source: none
-  recall_n: 13032
+  recall_n: 13189
   recall_matched: 286
-  recall: 0.0219
+  recall: 0.0217
   recall_source: measured
   p_real: 0.1641
   p_real_lo: 0.1288
   p_real_hi: 0.2025
-  recall_lo: 0.02
-  recall_hi: 0.0241
+  recall_lo: 0.0197
+  recall_hi: 0.0238
 - label: 100-500
   n_candidates: 2224
   n_mapped: 559
@@ -59,19 +59,19 @@ bins:
   manual_real: 0
   p_unmapped: 0.0
   p_unmapped_source: none
-  recall_n: 3015
+  recall_n: 3110
   recall_matched: 451
-  recall: 0.1496
+  recall: 0.145
   recall_source: measured
   p_real: 0.2513
   p_real_lo: 0.2366
   p_real_hi: 0.2663
-  recall_lo: 0.1388
-  recall_hi: 0.1601
+  recall_lo: 0.1346
+  recall_hi: 0.1553
 - label: 500-1k
   n_candidates: 2091
-  n_mapped: 846
-  mapped_frac: 0.4046
+  n_mapped: 847
+  mapped_frac: 0.4051
   sensitivity: 0.162
   sensitivity_source: study
   sensitivity_study: 0.162
@@ -83,15 +83,15 @@ bins:
   manual_real: 0
   p_unmapped: 0.0
   p_unmapped_source: none
-  recall_n: 667
+  recall_n: 680
   recall_matched: 489
-  recall: 0.7331
+  recall: 0.7191
   recall_source: measured
-  p_real: 0.4046
-  p_real_lo: 0.387
-  p_real_hi: 0.4225
-  recall_lo: 0.7046
-  recall_hi: 0.7602
+  p_real: 0.4051
+  p_real_lo: 0.3875
+  p_real_hi: 0.423
+  recall_lo: 0.6905
+  recall_hi: 0.7463
 - label: 1k-5k
   n_candidates: 6697
   n_mapped: 2507
@@ -107,15 +107,15 @@ bins:
   manual_real: 0
   p_unmapped: 0.0
   p_unmapped_source: none
-  recall_n: 1630
+  recall_n: 1635
   recall_matched: 1424
-  recall: 0.8736
+  recall: 0.8709
   recall_source: measured
   p_real: 0.3743
   p_real_lo: 0.3651
   p_real_hi: 0.3842
-  recall_lo: 0.8594
-  recall_hi: 0.887
+  recall_lo: 0.8567
+  recall_hi: 0.8844
 - label: 5k-50k
   n_candidates: 2248
   n_mapped: 929
@@ -189,15 +189,15 @@ placement_bins:
     manual_n: 0
     manual_real: 0
     p_real: 0.3133
-    recall_n: 12521
+    recall_n: 12587
     recall_matched: 250
-    recall: 0.02
+    recall: 0.0199
     recall_source: measured
     sensitivity: 0.025
     p_real_lo: 0.2348
     p_real_hi: 0.4019
-    recall_lo: 0.018
-    recall_hi: 0.0221
+    recall_lo: 0.0179
+    recall_hi: 0.0219
   - label: 100-500
     n_candidates: 836
     n_mapped: 335
@@ -207,31 +207,31 @@ placement_bins:
     manual_n: 0
     manual_real: 0
     p_real: 0.4007
-    recall_n: 2675
+    recall_n: 2694
     recall_matched: 271
-    recall: 0.1013
+    recall: 0.1006
     recall_source: measured
     sensitivity: 0.088
     p_real_lo: 0.3741
     p_real_hi: 0.4289
-    recall_lo: 0.0919
-    recall_hi: 0.111
+    recall_lo: 0.0913
+    recall_hi: 0.1103
   - label: 500-1k
     n_candidates: 1081
-    n_mapped: 456
-    mapped_frac: 0.4218
+    n_mapped: 457
+    mapped_frac: 0.4228
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.4218
+    p_real: 0.4228
     recall_n: 529
     recall_matched: 376
     recall: 0.7108
     recall_source: measured
     sensitivity: 0.162
-    p_real_lo: 0.3975
-    p_real_hi: 0.4463
+    p_real_lo: 0.3984
+    p_real_hi: 0.4473
     recall_lo: 0.6766
     recall_hi: 0.7419
   - label: 1k-5k
@@ -298,15 +298,15 @@ placement_bins:
     manual_n: 0
     manual_real: 0
     p_real: 0.0405
-    recall_n: 511
+    recall_n: 602
     recall_matched: 36
-    recall: 0.0705
+    recall: 0.0598
     recall_source: measured
     sensitivity: 0.025
     p_real_lo: 0.0212
     p_real_hi: 0.071
-    recall_lo: 0.0536
-    recall_hi: 0.0903
+    recall_lo: 0.0454
+    recall_hi: 0.0769
   - label: 100-500
     n_candidates: 1388
     n_mapped: 91
@@ -316,15 +316,15 @@ placement_bins:
     manual_n: 0
     manual_real: 0
     p_real: 0.0656
-    recall_n: 340
+    recall_n: 416
     recall_matched: 180
-    recall: 0.5294
+    recall: 0.4327
     recall_source: measured
     sensitivity: 0.088
     p_real_lo: 0.0556
     p_real_hi: 0.0769
-    recall_lo: 0.4846
-    recall_hi: 0.5729
+    recall_lo: 0.3926
+    recall_hi: 0.4723
   - label: 500-1k
     n_candidates: 1010
     n_mapped: 119
@@ -334,15 +334,15 @@ placement_bins:
     manual_n: 0
     manual_real: 0
     p_real: 0.1178
-    recall_n: 138
+    recall_n: 151
     recall_matched: 113
-    recall: 0.8188
+    recall: 0.7483
     recall_source: measured
     sensitivity: 0.162
     p_real_lo: 0.1025
     p_real_hi: 0.1349
-    recall_lo: 0.7604
-    recall_hi: 0.8673
+    recall_lo: 0.6852
+    recall_hi: 0.8016
   - label: 1k-5k
     n_candidates: 3062
     n_mapped: 457
@@ -352,15 +352,15 @@ placement_bins:
     manual_n: 0
     manual_real: 0
     p_real: 0.1492
-    recall_n: 282
+    recall_n: 287
     recall_matched: 244
-    recall: 0.8652
+    recall: 0.8502
     recall_source: measured
     sensitivity: 0.306
-    p_real_lo: 0.1387
-    p_real_hi: 0.1601
-    recall_lo: 0.8291
-    recall_hi: 0.8954
+    p_real_lo: 0.1389
+    p_real_hi: 0.1602
+    recall_lo: 0.8128
+    recall_hi: 0.8818
   - label: 5k-50k
     n_candidates: 1067
     n_mapped: 276
@@ -377,7 +377,7 @@ placement_bins:
     sensitivity: 0.293
     p_real_lo: 0.2373
     p_real_hi: 0.2813
-    recall_lo: 0.8541
+    recall_lo: 0.854
     recall_hi: 0.9454
   - label: '>50k'
     n_candidates: 76
@@ -395,7 +395,7 @@ placement_bins:
     sensitivity: 0.261
     p_real_lo: 0.58
     p_real_hi: 0.751
-    recall_lo: 0.8541
+    recall_lo: 0.854
     recall_hi: 0.9454
 oversize_review:
   derived: '2026-11-04'

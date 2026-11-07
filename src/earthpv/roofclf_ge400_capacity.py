@@ -122,7 +122,7 @@ def domain_restricted_ge400_roof_capacity(
 
     all_cells = pd.read_parquet(cell_density_path)
     in_domain_cells = national_cell_domain(cell_density_path, aoi)
-    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi)
+    quadrats, folds_subset = select_calibrated_quadrats(folds_path, ratio_lo, ratio_hi, aoi=aoi)
     composition = parcel_label_composition(buildings_path, quadrats, threshold, weighting)
     ground_share = composition["yard_ground_share_of_flagged"] if composition else 0.0
     quadrat_density = quadrat_building_density_km2(quadrat_profile_path, quadrats)

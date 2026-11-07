@@ -153,6 +153,11 @@ YARD_RING_M = 20.0
 # double-count one installation across two instruments. Same value as
 # MIN_PV_AREA_FOR_PACKING / chips.MIN_PV_AREA, deliberately.
 YARD_MAX_INSTALLATION_M2 = 400.0
+# Share of a ground-tagged installation of YARD_MAX_INSTALLATION_M2 or more that must lie on
+# building footprints for `roof_pv_area` to count it as rooftop PV after all: the overlap
+# rule `labels.classify_placement` applies to untagged generators (configs/aoi.yaml
+# `rooftop_overlap_frac`), which it never applies to an untagged `power=plant`.
+GROUND_GUARD_MIN_ON_ROOF = 0.5
 
 
 # --------------------------------------------------------------------------------------
@@ -997,15 +1002,34 @@ def roof_pv_area(bu: gpd.GeoDataFrame, pv: gpd.GeoDataFrame) -> np.ndarray:
     in EPSG:4326.
 
     A ground-placed installation of `YARD_MAX_INSTALLATION_M2` or more labels no building
-    (2026-10-25): above that floor ground-mount is segmentation's and the map's, and its
-    overlap with a footprint is a farmhouse it clips or a panel row VIDA traced as a
-    building, not rooftop PV. This is the guard Kalat Rural was held out of refits for, and
-    what lets farm areas calibrate roofclf at all."""
+    (2026-10-25) when less than `GROUND_GUARD_MIN_ON_ROOF` of it lies on footprints: above
+    that floor ground-mount is segmentation's and the map's, and its overlap with a
+    footprint is a farmhouse it clips or a panel row VIDA traced as a building, not rooftop
+    PV. This is the guard Kalat Rural was held out of refits for, and what lets farm areas
+    calibrate roofclf at all.
+
+    The overlap test (2026-11-07) is the one `labels.classify_placement` already applies to
+    an untagged `generator` (`rooftop_overlap_frac`, 0.5). It skips it for a `power=plant`
+    with no roof tag, which it calls ground outright, and the industrial calibration areas
+    are mapped that way: factory-roof outlines tagged `power=plant`. Without the test the
+    guard took 117 of Faisalabad's 164 PV buildings and 189 of Multan's 292 (Esri shows
+    roofs, several with panel blocks), the areas that calibrate the >= 400 m2 replacement.
+    Kalat's 29 large ground arrays lie at most 0.47 on footprints (median 0.11) and stay
+    guarded."""
     from earthpv.labels import geodesic_area_m2
 
     pv_area = np.zeros(len(bu))
     if not pv.empty and {"placement", "area_m2"} <= set(pv.columns):
-        pv = pv[~((pv["placement"] == "ground") & (pv["area_m2"] >= YARD_MAX_INSTALLATION_M2))]
+        large_ground = ((pv["placement"] == "ground")
+                        & (pv["area_m2"] >= YARD_MAX_INSTALLATION_M2)).to_numpy(copy=True)
+        if large_ground.any():
+            roofs = bu.geometry.union_all() if len(bu) else None
+            for i in np.flatnonzero(large_ground):
+                g = pv.geometry.iloc[i]
+                on_roof = (geodesic_area_m2(g.intersection(roofs)) / max(geodesic_area_m2(g), 1e-6)
+                           if roofs is not None else 0.0)
+                large_ground[i] = on_roof < GROUND_GUARD_MIN_ON_ROOF
+        pv = pv[~large_ground]
     if not pv.empty:
         sindex = bu.sindex
         for g in pv.geometry:
@@ -1601,7 +1625,14 @@ YARD_FEATURES = (
 )
 # Default model input: footprint size plus footprint reflectance. Set by the ablation, not
 # by preference.
-MODEL_FEATURES = ["log_roof_area", "bf_confidence"] + SPECTRAL_FEATURES
+# `bf_confidence` (VIDA's footprint confidence) left the model 2026-10-30: it is empty on
+# every Microsoft-sourced footprint (all of Yemen and France), and `_with_derived` fills
+# an empty cell with 0, ten Pakistani standard deviations below Pakistan's mean, which the
+# 2026-09-20 model turned into +0.55 logit on every foreign roof. Leave-one-quadrat-out it
+# was worth nothing in Pakistan (median fold AUC +0.0001 without it, 21 of 29 better).
+# Models saved with it still load and score: `load_model` reads each model's own list.
+SIZE_FEATURES = ["log_roof_area"]
+MODEL_FEATURES = SIZE_FEATURES + SPECTRAL_FEATURES
 PARCEL_MODEL_FEATURES = MODEL_FEATURES + YARD_FEATURES
 FEATURES = (
     MODEL_FEATURES + PROB_FEATURES + SHAPE_FEATURES + LOCAL_CONTRAST_FEATURES
@@ -1839,7 +1870,7 @@ _ABLATIONS = {
     # Bigger roofs carry PV more often, so a model given only footprint size already
     # scores well above chance. Unless the spectral block beats this it is decoration:
     # "large buildings have PV" is a prior, not a measurement of *this* building.
-    "area_only": ["log_roof_area", "bf_confidence"],
+    "area_only": list(SIZE_FEATURES),
     # The converse: does the imagery alone separate PV roofs, with no size hint?
     "spectral_only": list(SPECTRAL_FEATURES),
     # The shipped default.
@@ -1899,7 +1930,7 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
         # is no longer the shipped model -- it is the roof-only model measured against a
         # parcel label, i.e. exactly the "does the yard block earn its place" contrast.
         ablations["plus_yard"] = list(PARCEL_MODEL_FEATURES)
-        ablations["yard_only"] = ["log_roof_area", "bf_confidence"] + list(YARD_FEATURES)
+        ablations["yard_only"] = list(SIZE_FEATURES) + list(YARD_FEATURES)
     from earthpv.preprocess import TEMPORAL_UNMIX_COMPACT, TEMPORAL_UNMIX_FEATURES
 
     if all(c in table.columns for c in TEMPORAL_UNMIX_COMPACT):
@@ -1908,7 +1939,7 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
             list(MODEL_FEATURES) + [c for c in TEMPORAL_UNMIX_FEATURES if c in table.columns]
         )
         ablations["temporal_unmix_only"] = (
-            ["log_roof_area", "bf_confidence"] + list(TEMPORAL_UNMIX_COMPACT)
+            list(SIZE_FEATURES) + list(TEMPORAL_UNMIX_COMPACT)
         )
     if all(c in table.columns for c in TEMPORAL_COMPACT_FEATURES):
         ablations["plus_temporal"] = list(MODEL_FEATURES) + list(TEMPORAL_COMPACT_FEATURES)
@@ -1918,7 +1949,7 @@ def ablate(table: pd.DataFrame, l2: float = L2) -> pd.DataFrame:
         # "says nothing" -- a block that reaches well above the size-only baseline on its
         # own but adds nothing on top is redundant with the median, not uninformative.
         ablations["temporal_only"] = (
-            ["log_roof_area", "bf_confidence"] + list(TEMPORAL_COMPACT_FEATURES)
+            list(SIZE_FEATURES) + list(TEMPORAL_COMPACT_FEATURES)
         )
     if all(c in table.columns for c in DISPERSION_FEATURES):
         ablations["plus_extremes"] = (

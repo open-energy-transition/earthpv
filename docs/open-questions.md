@@ -115,13 +115,15 @@ guard), and the France pull must first be moved out of the
 ### 3. The random-cell validation has never been logged
 
 The main workflow makes a 20-cell random JOSM review mandatory after every national roofclf
-scoring, because the quadrats are curated and industrial-leaning. Three scorings have shipped
+scoring, because the quadrats are curated and industrial-leaning. Four scorings have shipped
 since 2026-08-17 and none has a logged verdict: the parcel-label batch (seed 20260817,
 `results/pakistan_roofclf_parcel_validation/`) was reviewed by the owner but its per-cell
 counts were never written down; the Box 18 refit (seed 20260820) and the area-weighted
 rescoring (seed 20260920), both in `results/pakistan_roofclf_validation/`, were generated and
-not reviewed. `results/roofclf_random_validation_log.csv` holds all three batches as 60 rows
-(the third added 2026-10-28), every verdict blank. The published Best
+not reviewed. The 41-area rescoring behind the page since 2026-11-07 (seed 20261107,
+`results/pakistan_roofclf_q41_validation/`) was not reviewed either.
+`results/roofclf_random_validation_log.csv` holds all four batches as 80 rows, every verdict
+blank. The published Best
 therefore rests on an unreviewed rescoring, priced since 2026-10-25 by a weighting that leans
 harder on the score's level (item 1), and item 2 would move it again on top.
 Protocol: [roofclf random-cell validation](methods/roofclf-national-validation.md). The
@@ -193,24 +195,6 @@ decision.
 More human-verified Pakistani installations, retrain, measure. In-domain training chips
 tripled large-array recall (0.18 to 0.55 at or above 1,000 m&sup2; in Punjab), and no
 architectural change has come close. For roofclf the equivalent is item 1's quadrats.
-
-### 8. `building_table`'s roof term counts a ground array that clips a shed as rooftop PV
-
-`parcel_pv_area` skips any installation at or above `YARD_MAX_INSTALLATION_M2` (400 m&sup2;),
-because above that floor ground-mount is segmentation's and the atlas already prices it. The
-roof term beside it (`roof_pv_area`) has no such guard. On Kalat Rural, sited deliberately to
-include ground-mount, **69 of the 89 buildings the roof term labels has-PV are labelled solely
-because a >= 400 m&sup2; ground array clips them** (median footprint 29 m&sup2;, a 21.24% base
-rate at 46.5 bldg/km&sup2;). Folding it in unchanged would fit the sparse band's coverage
-ratio on ground-mount and double-count against segmentation's `est_mwp_rc_ground`.
-
-**Guard in place (2026-10-25):** `roof_pv_area` now ignores ground-placed installations of
-400 m&sup2; or more, the owner's condition for letting farm areas calibrate `roofclf` at all
-(every area now feeds both detectors). **What would close it:** the next refit re-measures every
-quadrat's `base_rate` and `pv_area_true_m2` with the guard (expected small outside Kalat,
-unmeasured), and the owner decides whether Kalat Rural joins. Until then it is excluded from
-every refit by hand, because `roofclf.discover_quadrats` picks it up automatically, as it now
-picks up the farm areas. See [Calibration boxes](issues/pakistan-calibration-boxes.md)' Box 17.
 
 ### 9. Small ground-mounted installations have no calibrated instrument
 
@@ -396,6 +380,36 @@ original val chips, and separately on false-positive pixels over the 175 hard-ne
 chips, which would otherwise swamp them; then on leads per class. The treatment-plant count
 needs a reviewed sample of the new leads, since OSM cannot supply it. `water=lake` (23
 leads, partly resort lagoons) is the next class to check.
+
+### 21. Which areas may set Pakistan's roofclf price (2026-11-07)
+
+Pakistan's roofclf was refit on 41 areas, but its coverage ratio is pinned to the 19 areas
+the 30-area fit chose (`sub400_capacity.PINNED_COVERAGE_QUADRATS`): under the refit the
+`rate_ratio` rule drops Multan and admits Kalat Rural, Kasur and Sahiwal f6, which lifts Best
+from 34,470 to 37,456 MWp and the 90% interval's top from 41,310 to 82,394
+([experiments register](experiments.md#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07)).
+Three things decide whether the pin can go:
+
+1. **Farm-yard ground PV in the rooftop label.** The parcel label hands mapped PV below
+   400 m<sup>2</sup> within 20 m of a footprint to that building. In towns that is mostly
+   rooftop PV overhanging an undersized outline; in Kalat 72% of household "PV" is ground
+   arrays of 100 to 400 m<sup>2</sup> (solar pumps), Sahiwal 66%, Kasur 42%, Layyah 59%
+   (already in the 19), against 4.6% over the lower band's nine areas. Counting only rooftop
+   and overhanging PV in the coverage ratio's numerator would settle it for every area alike.
+2. **The ground guard's 0.5 footprint share.** It keeps every one of Kalat's large arrays
+   out (at most 0.47 on footprints) and still drops 16 of Multan's, some of them on roofs,
+   which moves Multan's `rate_ratio` from 1.88 to 2.13, just past the rule's limit.
+3. **The band edge is a median.** The lower band prices 2,937 of 2,957 in-domain cells, and
+   its &ge; 400 m<sup>2</sup> price swings about 1,000 MWp on whether Multan or SITE Karachi
+   falls below the edge.
+
+**Next step:** decide item 1, refit the coverage ratio by the rule under it, and keep the pin
+unless the three held-out random boxes (Gujranwala s8, Qilla Abdullah s6, Sanghar s2) read
+closer to it. They now read 0.125 m<sup>2</sup> of PV per probability-weighted m<sup>2</sup>
+of household roof against the lower band's 0.33, unchanged by the refit; that gap is
+the level problem of item 1, which no choice of areas here fixes.
+The five priced variants are in
+`/home/tobi/earthpv_data/roofclf_national_q41/variants/`.
 
 ## Known defects carried on purpose
 

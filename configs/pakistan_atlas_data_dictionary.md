@@ -1,9 +1,9 @@
-# Pakistan PV evidence atlas: downloadable data (2026-10-26)
+# Pakistan PV evidence atlas: downloadable data (2026-11-07)
 
 This release accompanies the [Pakistan PV evidence atlas](https://open-energy-transition.github.io/earthpv/atlas/)
 built by [`earthpv`](https://github.com/open-energy-transition/earthpv). It reproduces the
-page as published on 2026-10-26: **Best estimate 34,128.5 MWp (90% range 28,848 to 41,191)**
-and **Verified 7,350.8 MWp (90% range 6,349 to 9,526)**. All geometries are WGS84
+page as published on 2026-11-07: **Best estimate 34,470.3 MWp (90% range 28,628 to 41,310)**
+and **Verified 7,138.3 MWp (90% range 6,182 to 9,116)**. All geometries are WGS84
 (EPSG:4326); capacity columns named `*_mwp*` are MWp and `*_kwp*` are kWp (DC, peak).
 
 **Every file is a point-in-time snapshot.** Nothing here is regenerated when the pipeline
@@ -24,8 +24,18 @@ as current. How each figure is derived: `docs/methods/density.md` and
   placement, recall measured as "found by any candidate" against the pre-pipeline OSM
   snapshot plus all 30 calibration quadrats, and unmapped candidates counted as not real (a
   lower bound; the earlier glint term no longer applies to these candidates). Segmentation's
-  recall-corrected figure moves from 4,051.9 to 3,129.2 MWp.
-- **The checkpoint is now the slimmed v16** (33 MB, no download at load).
+  recall-corrected figure moves from 4,051.9 to 3,129.2 MWp, then to 3,143.1 when two very
+  large outlines a person judged solar were admitted (2026-11-04).
+- **roofclf refit on 41 calibration areas (2026-11-07)**, up from 30: Kasur, Jacobabad,
+  Mastung, Kalat Rural and seven farm areas. Three randomly sampled areas and one with poor
+  imagery are held out. The model drops `bf_confidence` (16 features), and the label no
+  longer strips factory roofs mapped as `power=plant`: a ground-tagged array of 400 m² or
+  more leaves the label only when less than half of it lies on building footprints. The
+  coverage ratio and area recall stay on the same 19 areas as before, so the new areas change
+  the ranking, not the price. The segmentation table's recall boxes go from 30 to 41
+  (3,146.8 MWp). Best moves from 34,142.4 to 34,470.3 MWp, Verified from 7,350.8 to 7,138.3.
+- **The checkpoint is now the slimmed v16** (33 MB, no download at load; predictions
+  identical to the training checkpoint).
 
 ## Start here: Best and Verified per cell
 
@@ -51,8 +61,8 @@ figures.
 | `model_covered` | 1 where imagery was processed (all cells) |
 | `n_pv_buildings` | Segmentation's count of buildings carrying a detection |
 
-National sums: Best 34,128.5, Verified 7,350.8, `small_central` 24,060.4, `mwp_large`
-8,326.6, `small_low` 3,713.3, `osm_mwp` 3,637.5, `osm_mwp_unmatched` 1,483.6 MWp.
+National sums: Best 34,470.3, Verified 7,138.3, `small_central` 24,381.0, `mwp_large`
+8,348.9, `small_low` 3,500.7, `osm_mwp` 3,637.5, `osm_mwp_unmatched` 1,483.6 MWp.
 
 ## Segmentation: arrays of 400 m² and up
 
@@ -60,8 +70,8 @@ National sums: Best 34,128.5, Verified 7,350.8, `small_central` 24,060.4, `mwp_l
   0.1° cell. Building count, roof area, and PV area/capacity under three estimators: `*_det`
   (thresholded candidate polygons, a precision-honest floor), `*_exp` (probability-weighted
   area, a ceiling), and `*_cal`/`*_rc` (calibrated, and recall-corrected). `est_mwp_rc` is the
-  segmentation headline (3,129.2 MWp nationally; rooftop `est_mwp_rc_roof` 1,992.8, ground
-  `est_mwp_rc_ground` 1,136.4), with `est_mwp_rc_lo`/`_hi` its interval. Inside the calibrated
+  segmentation headline (3,146.8 MWp nationally; rooftop `est_mwp_rc_roof` 1,994.3, ground
+  `est_mwp_rc_ground` 1,152.5), with `est_mwp_rc_lo`/`_hi` its interval. Inside the calibrated
   domain the atlas replaces `est_mwp_rc_roof` with roofclf's estimate, so for Best use the
   atlas table above. `bldg_density_km2` sets the density-calibration domain.
 - **`pakistan_capacity_by_region.parquet`** (133 rows): the same estimators per admin unit,
@@ -93,27 +103,27 @@ converts at 0.18 kWp per m² of module.
   (`cell`) and roof-size bin (`size_bin_lo`, the lower edge in m²: 0 and 100 below 400 m²;
   400, 1,000, 5,000 and 20,000 above). `n_buildings` is the buildings priced in the group
   (67.7 million and 629 thousand); `sum_p` is the sum of their scores, the expected number of
-  PV-carrying roofs (2.88 million and 152.0 thousand); `roof_area_m2` is the group's
+  PV-carrying roofs (3.03 million and 153.2 thousand); `roof_area_m2` is the group's
   capacity-weighted mean roof size; `geometry` is one real building's representative point,
-  not the cell. `est_kwp_sub400`/`est_kwp_ge400_roof` is the capacity (24,060.4 and 7,249.5
+  not the cell. `est_kwp_sub400`/`est_kwp_ge400_roof` is the capacity (24,381.0 and 7,257.9
   MWp in total). `est_kwp_sub400_ground`/`est_kwp_ge400_roof_ground` is the share of it that
-  is ground-placed PV in the building's yard (211.7 and 63.8 MWp), which the atlas books as
+  is ground-placed PV in the building's yard (214.6 and 63.9 MWp), which the atlas books as
   ground-mount.
-- **`pakistan_roofclf_sub400_low_buildings.parquet`** (559,313 rows): the floor population,
-  one row per building where roofclf (`p_roofclf` >= 0.2446) and the spectral index SPPI
-  (`sppi` >= -0.0316) agree. Thresholded by design and not recall-corrected:
-  `est_kwp_sub400_and_gate`, 3,713.3 MWp in total.
-- **`pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet`** (34,365 rows): the same
-  agreement rule outside the calibrated domain, 188.5 MWp. **Not in the published figures**:
+- **`pakistan_roofclf_sub400_low_buildings.parquet`** (526,681 rows): the floor population,
+  one row per building where roofclf (`p_roofclf` >= 0.2470) and the spectral index SPPI
+  (`sppi` >= -0.0309) agree. Thresholded by design and not recall-corrected:
+  `est_kwp_sub400_and_gate`, 3,500.7 MWp in total.
+- **`pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet`** (31,217 rows): the same
+  agreement rule outside the calibrated domain, 174.1 MWp. **Not in the published figures**:
   it would apply a correction where no quadrat measured it.
 - **`pakistan_roofclf_model.json`** and **`pakistan_roofclf_summary.json`**: the fitted
   logistic regression (features, coefficients, zonal convention) and its calibration summary
-  (30 quadrats, median held-out AUC 0.868, 0.819 within roof-size band, deployment threshold
-  0.2446). Unchanged since the 2026-10-25 release.
-- **`pakistan_calibration_quadrat_boundaries.zip`**: the boundary of each of the 30 quadrats
+  (41 quadrats, median held-out AUC 0.846, 0.868 over the 30 of the earlier fit, 0.815 within
+  roof-size band, deployment threshold 0.2470). Refit 2026-11-07.
+- **`pakistan_calibration_quadrat_boundaries.zip`**: the boundary of each of the 41 quadrats
   roofclf was fitted on (every visible panel mapped by hand), plus `quadrats.csv`: buildings,
   PV buildings, held-out AUC, `rate_ratio`, and `coverage_ratio_quadrat` (True for the 19 the
-  coverage ratio and area recall were fitted on). The same 30 quadrats are the segmentation
+  coverage ratio and area recall were fitted on). The same 41 quadrats are the segmentation
   table's recall boxes. Per-quadrat history: `docs/methods/calibration-quadrats.md` and
   `docs/issues/pakistan-calibration-boxes.md`.
 

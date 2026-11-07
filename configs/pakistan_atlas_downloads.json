@@ -3,13 +3,13 @@
     "file": "pakistan_atlas_capacity_by_cell.parquet",
     "label": "Best estimate and Verified per grid cell",
     "note": "The atlas's own map: every Best and Verified component per 0.1 degree cell, summing to the page's headline figures. The PyPSA-ready table. 4,470 rows.",
-    "size_bytes": 214724
+    "size_bytes": 263361
   },
   {
     "file": "pakistan_capacity_by_cell.parquet",
     "label": "Segmentation estimate per grid cell",
     "note": "The >= 400 m2 segmentation half alone (est_mwp_rc and its estimators), with building counts and roof area per cell. 4,470 rows.",
-    "size_bytes": 589163
+    "size_bytes": 589325
   },
   {
     "file": "pakistan_capacity_by_building.parquet",
@@ -21,7 +21,7 @@
     "file": "pakistan_capacity_by_region.parquet",
     "label": "Capacity per admin region",
     "note": "Region-level aggregate, if `density --districts` was run. 133 rows.",
-    "size_bytes": 530956
+    "size_bytes": 531060
   },
   {
     "file": "pakistan_roofclf_ge400_roof_by_cell_and_size.parquet",
@@ -38,14 +38,14 @@
   {
     "file": "pakistan_roofclf_sub400_low_buildings.parquet",
     "label": "roofclf+SPPI sub-400 m2, stricter floor",
-    "note": "In-domain, the internal floor population. 559,313 rows.",
-    "size_bytes": 59770789
+    "note": "In-domain, the internal floor population. 526,681 rows.",
+    "size_bytes": 56203370
   },
   {
     "file": "pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet",
     "label": "roofclf+SPPI sub-400 m2, out-of-domain",
-    "note": "Explicitly-flagged extrapolation beyond the calibrated domain, in the atlas's figures only when it was built with --sub400-outdomain-cells. 34,365 rows.",
-    "size_bytes": 3904989
+    "note": "Explicitly-flagged extrapolation beyond the calibrated domain, in the atlas's figures only when it was built with --sub400-outdomain-cells. 31,217 rows.",
+    "size_bytes": 3550006
   },
   {
     "file": "pakistan_raw_detections_unreviewed.parquet",
@@ -57,19 +57,19 @@
     "file": "pakistan_roofclf_model.json",
     "label": "Fitted roofclf model",
     "note": "Coefficients, feature list and the zonal convention they were fitted under.",
-    "size_bytes": 1685
+    "size_bytes": 1581
   },
   {
     "file": "pakistan_roofclf_summary.json",
     "label": "roofclf calibration summary",
     "note": "Leave-one-quadrat-out skill, the deployment threshold and its precision/recall.",
-    "size_bytes": 2736
+    "size_bytes": 2670
   },
   {
     "file": "pakistan_calibration_quadrat_boundaries.zip",
     "label": "Calibration quadrat boundaries",
-    "note": "GeoJSON boundary of each of the 30 quadrats roofclf was fitted on, with quadrats.csv: held-out skill and which ones the coverage ratio was fitted on.",
-    "size_bytes": 23167
+    "note": "GeoJSON boundary of each of the 41 quadrats roofclf was fitted on, with quadrats.csv: held-out skill and which ones the coverage ratio was fitted on.",
+    "size_bytes": 30641
   },
   {
     "file": "pakistan_glint_pose_survey.csv",
@@ -87,6 +87,6 @@
     "file": "DATA_DICTIONARY.md",
     "label": "Data dictionary",
     "note": "Column definitions, units and known caveats for every file in this release.",
-    "size_bytes": 10385
+    "size_bytes": 11269
   }
 ]

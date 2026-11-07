@@ -23,7 +23,7 @@ rooftop vs ground-mount by how large each installation is, instead of by geograp
 
 ## The headline figure
 
-**Best estimate: 34,588.8 MWp** (90% range 29,308 &ndash; 41,736; 24,438.3 until 2026-10-25, when roofclf's two components switched from counting the roofs above a threshold to counting every roof by its score -- see [roofclf](../methods/roofclf.md#count-every-roof-by-its-score); 24,330.0 until 2026-10-20, when OSM-mapped misses stopped being counted on top of the satellite figure's own estimate of its misses, and small roofs next to a segmentation detection whose figure Best does not use stopped being dropped -- see the [experiments register](../experiments.md)). It combines every
+**Best estimate: 34,470.3 MWp** (90% range 28,628 &ndash; 41,310; 34,142.4 until 2026-11-07, when roofclf was refit on 41 calibration areas, see the [experiments register](../experiments.md#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07); 34,588.8 until 2026-10-28, when segmentation moved to a model trained on Pakistan's current map; 24,438.3 until 2026-10-25, when roofclf's two components switched from counting the roofs above a threshold to counting every roof by its score -- see [roofclf](../methods/roofclf.md#count-every-roof-by-its-score); 24,330.0 until 2026-10-20, when OSM-mapped misses stopped being counted on top of the satellite figure's own estimate of its misses, and small roofs next to a segmentation detection whose figure Best does not use stopped being dropped -- see the [experiments register](../experiments.md)). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
 "Ground-mount capacity" below) with &ge;400 m<sup>2</sup> capacity (roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
@@ -33,11 +33,12 @@ cells. Every component is measured inside the density-calibrated domain: an
 out-of-domain roofclf-AND-SPPI extrapolation was tested and dropped from the published
 atlas (see "Calibration coverage" below).
 
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 46 percent OpenStreetMap-mapped and 54 percent roofclf-and-SPPI agreement, totalling 7.0 gigawatts peak; Best estimate is 6 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.6 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 46 percent OpenStreetMap-mapped and 54 percent roofclf-and-SPPI agreement, totalling 7.0 gigawatts peak; Best estimate is 6 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.6 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 51 percent OpenStreetMap-mapped and 49 percent roofclf-and-SPPI agreement, totalling 7.1 gigawatts peak; Best estimate is 5 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.5 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 51 percent OpenStreetMap-mapped and 49 percent roofclf-and-SPPI agreement, totalling 7.1 gigawatts peak; Best estimate is 5 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.5 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
-SPPI no longer contributes to Best at all; its role is in the internal floor (6,994.1
-MWp), where it is now larger than all of hand-mapped OSM put together. Full per-component
+SPPI no longer contributes to Best at all; its role is in the internal floor (Verified,
+7,138.3 MWp), where roofclf-and-SPPI agreement (3,500.7 MWp) is about as large as all of
+hand-mapped OSM (3,637.6 MWp). Full per-component
 breakdown, with credible intervals on every slice:
 [capacity composition](../assets/interactive/pakistan_atlas_composition.html){ target="_blank" }.
 
