@@ -685,6 +685,19 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   method, written by the template's `renderMethod()` from the page's own components (gated like
   the composition bar, so a segmentation-only country never reads about roofclf); the hero links
   to it. Country evidence stays in `configs/atlas/<aoi>.yaml` caveats.
+- **Solar thermal power plants (CSP) count in Best and Verified (owner, 2026-11-07)**, at their
+  electric rating in MW, never as PV (`solar_thermal.py`, `docs/methods/solar-thermal.md`).
+  `atlas._append_csp` adds `data/labels/<aoi>_csp_plants.parquet` to the hand-mapped population
+  after its dissolve, as ground rows priced at their rating (`csp_mw`), always counted from the
+  map (never "matched" by a detection, never in the OSM-misses absorption); `_size_distribution_
+  data` adds them the same way. They are inside `osm_mwp`, carried apart as cell column
+  `csp_mwp`, `totals.csp_mwp`/`csp_n`/`csp_status`, a tile and a map quantity where non-zero, a
+  composition row (`osm_csp`, `osm_unmatched_csp`) and a method step. A tagged plant is exact; one
+  priced from site area takes one shared lognormal draw (`CSP_LOG_SD` 0.41, never permuted). A
+  country without a table reads `csp_status.checked: false`. Capacity: `plant:output:electricity`,
+  else site x `CSP_MW_PER_KM2` 27.2 (median of 46 tagged plants), also for a tag more than 3x that
+  density on >= 0.5 km2 (Noor 3's 582 MW is the whole complex). A PV outline at least half inside a
+  plant is dropped as mirror field (`_append_csp` warns: the OSM file was not filtered).
 
 **Plot gotchas**: on a log scale Plot routes any `tickFormat` through d3's log formatter, which
 blanks every tick with mantissa > 2 (draw labels with a text mark); a `{value, label}` channel
@@ -1196,24 +1209,30 @@ an atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS DONE"**, s
 `<aoi>_atlas_done` does not relaunch a finished country: re-run its steps as a one-off unit.
 **Editing a script a unit is running is unsafe** (bash reads incrementally): restart the unit.
 Before stopping a compose unit by hand, `rm data/vn_in_queue_markers/<aoi>_round_start`; stop the
-QUEUE first when removing compute markers.
+QUEUE first when removing compute markers. The queue's disk guard is `DISK_MIN_HOME_GB`
+(default 120, overridable by environment; Spain's queue ran at 100 from 2026-11-07, owner).
+**A country can be given the GPU first** (owner, 2026-11-07, Spain): `scripts/gpu_priority.py
+--aoi <aoi> [--now]` (unit `earthpv-gpu-priority-<aoi>`) pauses (SIGSTOP) every other process
+WAITING on `data/.gpu.lock` and holds the lock between the country's GPU steps, from its
+compose_done (or now) until its `infer` marker; a running job is never touched. Killed hard, it
+leaves waiters stopped: `pkill -CONT -x flock`.
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
 | Pakistan | `v16_combined_pakistan` | 7,138.3 / 34,470.3 | roofclf half on 41 areas, priced on 19; probability-weighted, Silver until people have checked it; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked); 149 judged parks count |
 | France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
-| India | `v5_combined_france` | 70,523.4 / 103,036.9 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count |
+| India | `v5_combined_france` | 70,266.0 / 102,779.7 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count; 4 CSP plants 197.9 MW |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 9,118.9 | 32 judged parks count |
 | Egypt | `v12_combined_egypt` | 3,315.1 / 3,809.9 | thin Cairo holdout |
 | Yemen | `v25_combined_yemen` | 277.5 / 586.2 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
-| South Africa | `v14_combined_south_africa` | 9,393.8 / 9,910.2 | decisive localization win |
-| Morocco | `v11_combined_morocco` | 380.4 / 416.5 | tie near 1.0; AOI stops at 27.7N |
-| Poland | `v15_combined_poland` | 6,604.3 / 9,110.3 | 113 judged parks count (+1,329 MWp) |
+| South Africa | `v14_combined_south_africa` | 9,322.7 / 9,839.0 | decisive localization win; 7 CSP plants 600 MW, 13.4 km2 of PV-tagged mirror rows out |
+| Morocco | `v11_combined_morocco` | 898.9 / 935.1 | tie near 1.0; AOI stops at 27.7N; Noor 1-3 CSP 518.6 MW |
+| Poland | `v15_combined_poland` | 6,604.1 / 9,110.2 | 113 judged parks count (+1,329 MWp) |
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 531.7 | |
 | Nigeria | `v5_combined_france` ep 25 | 90.2 / 126.9 | name `v8` is taken by `v8_combined_nigeria` |
 | Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
-| Turkey | `v19_combined_turkiye` ep 12 | 10,709.1 / 17,592.6 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp) |
+| Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp); 1 CSP plant 5.8 MW |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1229,8 +1248,9 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   ground/rooftop/hybrid/KUSUM, `scripts/validate_india_mnre.py`, fetched through MoSPI's MCP
   server; the REST API needs TLS legacy renegotiation): January 2026 ground-mounted Best 0.91 of
   registered (0.82 AC basis), Spearman 0.97 over 19 states,
-  rooftop 7.5%. 253 solar-thermal features (~0.7% of both
-  tiers) remain as a known defect. **The compose was widened by `ring_cells: 3`** (+3,573
+  rooftop 7.5%. Its solar thermal was taken out 2026-11-07 (30 outlines, 9.1 km2, -455 MWp in
+  both tiers; 5 candidates, -61.5 MWp of model ground) and its 4 CSP plants (197.9 MW) count
+  instead. **The compose was widened by `ring_cells: 3`** (+3,573
   cells, published 2026-10-28; `scripts/run_india_ring_chain.sh`, markers
   `data/india_ring_markers/`; the run before it is kept in
   `/home/tobi/earthpv_data/india_PRE_ring_20261024/`). It imaged Khavda's outlines whole
@@ -1291,10 +1311,33 @@ resumes (`--fetch-only`); `scripts/ranged_download.py` (source.coop throttles si
 **Solar-thermal is in OSM under the same `generator:source=solar` tag.**
 `scripts/drop_solar_thermal.py --aoi <aoi>` drops thermal/CSP elements from the labels before
 chips (`--by-id` at India's size, where the bbox scan fails); `--candidates` drops candidates at
-least half inside them before `density`. Countries before Morocco are unfiltered. The backup is
+least half inside them before `density`. Since 2026-11-07 thermal also means
+`generator:type=solar_thermal_collector` with no method tag (Spain: 161 rows, 156 inside Alvarado
+II) and the plants in `KNOWN_THERMAL` (by id, on documentary evidence). **Every published country
+but France and Germany was checked 2026-11-07** (their scan was stopped on the owner's request; their
+pages read `csp_status` absent, i.e. not checked, until they run) with `scripts/solar_thermal_plants.py --aoi <aoi> --osm-solar <the
+atlas's OSM file> [--candidates ...] [--by-id | --pbf <Geofabrik extract> | --tile-deg 2]`, which
+filters the atlas's own OSM file in place (original `<stem>_PRE_thermal_<date>.parquet`), drops
+any feature at least half inside a CSP plant (mappers draw mirror rows with the PV preset: South
+Africa 50 rows, 13.4 km2, ~670 MWp counted as PV until then), writes the CSP table (even empty)
+and reports to `results/solar_thermal/`, caching the Overpass tags there (Overpass 502/504s on
+area scans: `--tile-deg 2` or `--by-id`). `run_country_compute.sh` runs it after `osm_solar`
+(non-fatal). CSP found: Spain 43 plants 2,383 MW, South Africa 7 / 600, Morocco 3 / 518.6, India 4
+/ 197.9, Turkey 1 / 5.8; none in Egypt, Pakistan, Namibia, Zambia, Nigeria, Yemen, Vietnam, Poland
+(14 collectors left PV there). Pages whose figures did not change were not rebuilt.
+Heating plants (thermal, no electric output) are dropped from PV and not counted. The backup is
 named `<aoi>_solar_labels_with_thermal.parquet` because `chips._newest_overpass_path` globs
 `<aoi>_overpass_solar*.parquet` and takes the last name in sort order; a backup matching that
 glob silently undoes the filter (dotted stems are now ignored).
+
+**A candidate file that only LOST rows needs only the touched cells recomputed**:
+`scripts/density_partial_update.sh <aoi> [pred_dir]` moves the partials of cells whose box a
+removed candidate intersects aside, rewrites the fingerprint and runs `density` without
+`--force` (a partial depends only on its cell's buildings, raster and box candidates and holds no
+candidate index; on Namibia identical to `--force` to the last digit; India ~1 h against 28 h).
+**Run `density` and `atlas` from a tree that has `results/<aoi>_osm_ground_screen/`**: the screen
+is read by a relative path and is untracked, so a clean worktree silently skips it (India +2,845
+MWp until it was linked in, 2026-11-07).
 
 ## Conventions & gotchas
 

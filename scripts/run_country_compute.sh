@@ -249,6 +249,12 @@ step check_density $PY -m earthpv.cli check-density --aoi $AOI
 # biggest parks are tens of km2. Above the cap a feature is kept only on that evidence.
 step osm_solar    $PY scripts/prepare_national_osm_solar.py --aoi $AOI --labels "$LABELS" \
                      --keep-detected-screen results/${AOI}_osm_ground_screen/screen_full.csv
+# Solar thermal power plants (CSP): Best and Verified count them at their electric rating
+# (2026-11-07). Writes data/labels/${AOI}_csp_plants.parquet, which the atlas reads by itself,
+# and drops any feature lying inside a CSP plant (mirror rows drawn with the PV preset) from
+# the national file. Non-fatal: without the table the page says solar thermal was not checked.
+step csp          bash -c "$PY scripts/solar_thermal_plants.py --aoi $AOI --osm-solar $OSM \
+                     || echo 'solar thermal plants failed (non-fatal)'"
 # --include-offgrid-osm: every label cell is in the compose selection, so this is a no-op
 # unless a label cell never composited (cloud); then it keeps that hand-mapped capacity
 # rather than dropping it, as France and Germany do.

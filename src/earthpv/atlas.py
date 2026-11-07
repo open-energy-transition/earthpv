@@ -449,6 +449,7 @@ CELL_COLS_EVIDENCE = [
     "lon0", "lat0", "mwp_verified", "mwp_best", "osm_mwp", "osm_n", "small_low",
     "small_central", "mwp_large", "in_domain", "n_pv_buildings", "small_outdomain",
     "is_extended", "osm_mwp_unmatched", "best_floor_lift", "model_covered", "small_ground",
+    "csp_mwp",
 ]
 CELL_COLS_GROWTH_EVIDENCE = [
     "lon0", "lat0", "delta_mwp_total", "delta_mwp_sub400", "delta_mwp_roof",
@@ -1865,6 +1866,72 @@ def _apply_screen_credit(osm: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return osm
 
 
+def _append_csp(osm: gpd.GeoDataFrame, aoi: str,
+                labels_dir: Path = Path("data/labels")) -> tuple[gpd.GeoDataFrame, dict]:
+    """Add the country's solar thermal power plants (`earthpv.solar_thermal`) to the
+    hand-mapped population, after the dissolve and the screen credit (owner, 2026-11-07:
+    CSP counts in Best).
+
+    A plant is a ground row with `csp` True and `csp_mw` its electric rating; the callers
+    price it at that rating instead of an area constant, never let a satellite detection
+    "match" it (no PV detection stands in for a mirror field), and keep it out of the
+    OSM-misses absorption. Every PV row is `csp` False. A PV outline lying at least half
+    inside a plant is dropped here too, so a pull that still holds the plant's own outline
+    cannot count it twice. Returns the frame and `csp_status` for the page: `checked` False
+    when the country has no CSP table (the page then says solar thermal was not checked)."""
+    from earthpv import solar_thermal as st
+
+    osm = osm.copy()
+    osm["csp"] = False
+    osm["csp_mw"] = np.nan
+    osm["csp_mw_source"] = None
+    osm["csp_name"] = None
+    plants = st.load_plants(aoi, labels_dir)
+    if plants is None:
+        return osm, {"checked": False}
+    status = {"checked": True, "n_plants": int(len(plants)), "mw": 0.0,
+              "mw_per_km2": st.CSP_MW_PER_KM2, "plants": []}
+    if plants.empty:
+        return osm, status
+    p = plants.to_crs(osm.crs) if osm.crs is not None else plants
+    utm = p.estimate_utm_crs()
+    zone = p.to_crs(utm).geometry.buffer(0).union_all()
+    pv = osm.to_crs(utm).geometry
+    with np.errstate(invalid="ignore", divide="ignore"):
+        inside = (pv.intersection(zone).area / pv.area).fillna(0.0).to_numpy() >= 0.5
+    if inside.any():
+        log.warning("Evidence atlas: %d OSM PV features (%.3f km2) lie inside solar thermal plants "
+                    "and are dropped -- the OSM file was not filtered "
+                    "(scripts/solar_thermal_plants.py)", int(inside.sum()),
+                    float(osm.loc[inside, "area_m2"].sum()) / 1e6)
+        osm = osm[~inside]
+    rows = gpd.GeoDataFrame({
+        "id": p["id"].to_numpy(), "placement": "ground",
+        "area_m2": p["area_m2"].to_numpy(float), "csp": True,
+        "csp_mw": p["mw"].to_numpy(float), "csp_mw_source": p["mw_source"].to_numpy(),
+        "csp_name": p["name"].to_numpy(),
+    }, geometry=p.geometry.to_numpy(), crs=osm.crs)
+    out = gpd.GeoDataFrame(pd.concat([osm, rows], ignore_index=True), geometry="geometry", crs=osm.crs)
+    rp = plants.geometry.representative_point()
+    status["mw"] = round(float(plants["mw"].sum()), 1)
+    status["plants"] = [
+        {"name": (None if pd.isna(n) else str(n)), "id": str(i), "mw": round(float(m), 1),
+         "mw_source": str(s), "area_km2": round(float(a) / 1e6, 2),
+         "lon": round(float(x), 4), "lat": round(float(y), 4)}
+        for n, i, m, s, a, x, y in zip(plants["name"], plants["id"], plants["mw"],
+                                       plants["mw_source"], plants["area_m2"], rp.x, rp.y)
+    ]
+    return out, status
+
+
+def _csp_kwp(osm: gpd.GeoDataFrame, kwp: np.ndarray) -> np.ndarray:
+    """`kwp` with every CSP row replaced by its rating (kW), so the same column carries both."""
+    if "csp" not in osm.columns:
+        return kwp
+    csp = osm["csp"].fillna(False).to_numpy(bool)
+    return np.where(csp, osm["csp_mw"].fillna(0.0).to_numpy(float) * 1000.0, kwp)
+
+
 def _evidence_uncertainty(
     *,
     density_dir: Path,
@@ -1911,6 +1978,11 @@ def _evidence_uncertainty(
     - **Farm ground PV** (`small_ground`, `ground` = its ratio, bootstrap replicates and
       number of mapped farm areas): the module-constant draw, times the bootstrap over farm
       areas when there are `GROUND_MIN_AREAS` or more, else `GROUND_JUDGEMENT_CI90`.
+    - **Solar thermal power plants** (`osm_csp`, `osm_unmatched_csp`, 2026-11-07): a tagged
+      plant is its nameplate rating, exact; a plant priced from site area (`osm_csp_area`)
+      takes one shared lognormal draw of `solar_thermal.CSP_LOG_SD`, the measured spread of
+      MW per km2 among tagged plants. Like the kWp constants it is the same constant
+      everywhere, so it is never permuted between countries.
 
     Two things this interval does NOT cover, and no arithmetic here can fix: the
     calibration quadrats are purposive rather than a probability sample, so this is not a
@@ -1999,6 +2071,10 @@ def _evidence_uncertainty(
                                f"({n_areas} mapped farm area{'' if n_areas == 1 else 's'}, "
                                f"fewer than {GROUND_MIN_AREAS})")
 
+    from earthpv import solar_thermal as st
+
+    f_csp = np.exp(np.random.default_rng(seed + 4).normal(0.0, st.CSP_LOG_SD, n_draws))
+
     c = components
     # Verified: hand-mapped OSM (exact areas, so only the conversion constant moves) plus
     # the AND-gate's coverage-ratio-weighted small-PV.
@@ -2010,6 +2086,9 @@ def _evidence_uncertainty(
         "osm_ground": (c["osm_ground"] - g_tr) * f_land + g_tr * f_mod,
         "small_low": c["small_low"] * cov["small_low"] * f_mod,
     }
+    if c.get("osm_csp"):
+        verified_parts["osm_csp"] = (c["osm_csp"] - c.get("osm_csp_area", 0.0)
+                                     + c.get("osm_csp_area", 0.0) * f_csp)
     # Best: the OSM the model did not already find, its own >= 400 m2 estimate (roofclf
     # in-domain, segmentation outside it, segmentation ground everywhere) and the two
     # roofclf-alone small-PV components.
@@ -2032,8 +2111,11 @@ def _evidence_uncertainty(
     # module draw with every other module-area component.
     if c.get("small_ground"):
         best_parts["small_ground"] = c["small_ground"] * f_mod * f_ground
+    if c.get("osm_unmatched_csp"):
+        best_parts["osm_unmatched_csp"] = (c["osm_unmatched_csp"] - c.get("osm_unmatched_csp_area", 0.0)
+                                           + c.get("osm_unmatched_csp_area", 0.0) * f_csp)
 
-    v_point = sum(components[k] for k in ("osm_roof", "osm_ground", "small_low"))
+    v_point = sum(components.get(k, 0.0) for k in ("osm_roof", "osm_ground", "small_low", "osm_csp"))
     b_point = sum(components[k] for k in best_parts)
     floor_offset = total_best - b_point
     for name, point, target in (
@@ -2085,6 +2167,7 @@ def _evidence_uncertainty(
         "outdomain_extrapolation_ci90": list(extrapolation_ci90),
         "small_ground_interval": ground_interval,
         "ground_judgement_ci90": list(GROUND_JUDGEMENT_CI90),
+        "csp_log_sd": st.CSP_LOG_SD,
         "not_covered": [
             "purposive (not probability-sampled) calibration quadrats -- this is not a "
             "design-based national margin of error",
@@ -2198,7 +2281,9 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
     methods = [
         ("roofclf's building-by-building estimate (rooftops of every size, in cells inside "
          "its calibrated density range)", total("ge400_roof", "small_central")),
-        ("installations mapped in OpenStreetMap", total("osm_unmatched_roof", "osm_unmatched_ground")
+        ("installations mapped in OpenStreetMap"
+         + (" (solar thermal power plants among them)" if total("osm_unmatched_csp") > 0 else ""),
+         total("osm_unmatched_roof", "osm_unmatched_ground", "osm_unmatched_csp")
          + float(best_floor_offset or 0.0)),
         ("TerraMind segmentation of large arrays", total("seg_roof_outdomain", "seg_ground")),
         ("roofclf and SPPI agreeing, extrapolated beyond the calibrated density range",
@@ -2772,6 +2857,9 @@ def build_evidence_atlas(
     # shrinks 24.4% once dissolved; see labels.dissolve_overlapping's docstring).
     osm = dissolve_overlapping(osm, group_col="placement")
     osm = _apply_screen_credit(osm)
+    # Solar thermal power plants join the hand-mapped population at their electric rating
+    # (2026-11-07, `_append_csp`); a country without a CSP table gets `checked: False`.
+    osm, csp_status = _append_csp(osm, aoi, labels_dir)
     cand = gpd.read_parquet(candidates_path)
     # The table `density` priced the candidates with (recorded in its meta.json), so the
     # recall the satellite total was divided by is the one OSM is reconciled against.
@@ -2789,6 +2877,8 @@ def build_evidence_atlas(
     match_m = osm_match_distance_m(seg_table, legacy_osm_addition)
     osm = osm.copy()
     osm["matched"] = ~new_lead_mask(osm, cand, min_distance_m=match_m)
+    # No PV detection stands in for a solar thermal plant: it is always counted from the map.
+    osm.loc[osm["csp"].to_numpy(bool), "matched"] = False
     # Rooftop conversion is size-dependent where it has been measured against a register
     # (Germany only so far): a 30 m2 OSM feature is an array and converts near full module
     # coverage, a 5,000 m2 one is a roof or site outline and converts at about a quarter of
@@ -2807,6 +2897,7 @@ def build_evidence_atlas(
         osm["placement"] == "rooftop", osm["area_m2"] * rooftop_k,
         osm["area_m2"] * np.where(osm["traced_ground"], kwp_mod, kwp_land),
     )
+    osm["kwp"] = _csp_kwp(osm, osm["kwp"].to_numpy(float))
     if include_offgrid_osm:
         grid, n_added = _extend_grid_with_offgrid_osm(grid, osm)
         if n_added:
@@ -2849,8 +2940,10 @@ def build_evidence_atlas(
         in_grid_osm["counted"] |= (
             (in_grid_osm["placement"] == "rooftop") & in_grid_osm["cell"].isin(ge400_domain_cells)
         )
-    n_osm_ge400 = int((in_grid_osm["area_m2"] >= 400.0).sum())
-    n_osm_lt400 = int((in_grid_osm["area_m2"] < 400.0).sum())
+    # PV installations only: the solar thermal plants are no PV training data.
+    _pv_osm = in_grid_osm[~in_grid_osm["csp"].astype(bool)]
+    n_osm_ge400 = int((_pv_osm["area_m2"] >= 400.0).sum())
+    n_osm_lt400 = int((_pv_osm["area_m2"] < 400.0).sum())
     osm_by_cell = in_grid_osm.groupby("cell").apply(
         lambda d: pd.Series({
             "osm_mwp": d["kwp"].sum() / 1000,
@@ -2865,15 +2958,25 @@ def build_evidence_atlas(
     # than `osm` so these parts sum to the cell-aggregated totals exactly, excluding the
     # features that fell outside the grid.
     _osm_roof_m = in_grid_osm["placement"] == "rooftop"
+    # Solar thermal plants are rated, not converted from area: their own parts, apart from
+    # ground-mount PV and its land-constant prior. `_area` is the share priced from site area
+    # (no usable tag), the only part with an error of its own.
+    _csp_m = in_grid_osm["csp"].astype(bool)
+    _csp_area_m = _csp_m & (in_grid_osm["csp_mw_source"].fillna("tag") != "tag")
     osm_parts = {
         "osm_roof": float(in_grid_osm.loc[_osm_roof_m, "kwp"].sum()) / 1000,
-        "osm_ground": float(in_grid_osm.loc[~_osm_roof_m, "kwp"].sum()) / 1000,
+        "osm_ground": float(in_grid_osm.loc[~_osm_roof_m & ~_csp_m, "kwp"].sum()) / 1000,
         "osm_unmatched_roof": float(
             in_grid_osm.loc[_osm_roof_m & in_grid_osm["counted"], "kwp"].sum()
         ) / 1000,
         "osm_unmatched_ground": float(
-            in_grid_osm.loc[~_osm_roof_m & in_grid_osm["counted"], "kwp"].sum()
+            in_grid_osm.loc[~_osm_roof_m & ~_csp_m & in_grid_osm["counted"], "kwp"].sum()
         ) / 1000,
+        "osm_csp": float(in_grid_osm.loc[_csp_m, "kwp"].sum()) / 1000,
+        "osm_unmatched_csp": float(in_grid_osm.loc[_csp_m & in_grid_osm["counted"], "kwp"].sum()) / 1000,
+        "osm_csp_area": float(in_grid_osm.loc[_csp_area_m, "kwp"].sum()) / 1000,
+        "osm_unmatched_csp_area": float(
+            in_grid_osm.loc[_csp_area_m & in_grid_osm["counted"], "kwp"].sum()) / 1000,
         # The module-priced share of the ground parts (panel-traced polygons), which takes
         # the module draw rather than the land one.
         "osm_ground_traced": float(in_grid_osm.loc[in_grid_osm["traced_ground"], "kwp"].sum()) / 1000,
@@ -2950,6 +3053,11 @@ def build_evidence_atlas(
     grid["small_central"] = grid["cell"].map(by_central).fillna(0.0)
     grid["small_outdomain"] = grid["cell"].map(by_outdomain).fillna(0.0)
     grid["small_ground"] = grid["cell"].map(by_ground).fillna(0.0)
+    # Solar thermal power plants, already inside `osm_mwp`/`osm_mwp_unmatched`: carried apart
+    # for the map layer, the hover and the tile.
+    grid["csp_mwp"] = grid["cell"].map(
+        in_grid_osm[in_grid_osm["csp"].astype(bool)].groupby("cell")["kwp"].sum() / 1000.0
+    ).fillna(0.0)
     grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
     n_domain_cells = int(grid["in_domain"].sum())
     # Distinct from `in_domain`: these cells carry an EXTRAPOLATED small-PV contribution
@@ -2987,7 +3095,7 @@ def build_evidence_atlas(
         c_place = cp["placement"].astype(str).to_numpy()
         used = (c_place != "rooftop") | cp["cell"].isin(roof_cells).to_numpy()
         cp, c_place = cp[used], c_place[used]
-        miss = in_grid_osm[in_grid_osm["counted"] & (
+        miss = in_grid_osm[in_grid_osm["counted"] & ~in_grid_osm["csp"].astype(bool) & (
             (in_grid_osm["placement"] != "rooftop") | in_grid_osm["cell"].isin(roof_cells))]
         retain, inflation, absorption_rows = osm_absorbed_inflation(
             cp["area_m2"].to_numpy(float), c_place,
@@ -3067,7 +3175,7 @@ def build_evidence_atlas(
          round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings),
          round(float(r.small_outdomain), 3), int(r.is_extended),
          round(float(r.osm_mwp_unmatched), 3), round(float(r.best_floor_lift), 3),
-         int(bool(r.model_covered)), round(float(r.small_ground), 3)]
+         int(bool(r.model_covered)), round(float(r.small_ground), 3), round(float(r.csp_mwp), 3)]
         for r in grid.itertuples()
     ]
     cell_cols = CELL_COLS_EVIDENCE
@@ -3103,7 +3211,7 @@ def build_evidence_atlas(
         reg_regions = _page_regions(aoi, regions_path)
         keep = [
             "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
-            "small_low", "small_central", "small_outdomain", "small_ground",
+            "small_low", "small_central", "small_outdomain", "small_ground", "csp_mwp",
         ]
         pts2 = gpd.GeoDataFrame(
             grid[keep], geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
@@ -3122,6 +3230,7 @@ def build_evidence_atlas(
                 "small_central": round(float(row["small_central"]), 1),
                 "small_outdomain": round(float(row["small_outdomain"]), 1),
                 "small_ground": round(float(row["small_ground"]), 1),
+                "csp_mwp": round(float(row["csp_mwp"]), 1),
                 "nb": int(r.n_pv_buildings),
                 "rings": _rings(r.geometry),
             })
@@ -3219,6 +3328,12 @@ def build_evidence_atlas(
             "small_ground": (round(float(grid.small_ground.sum()), 1)
                              if ground_status["measured"] else None),
             "small_ground_status": ground_status,
+            # Solar thermal power plants (CSP) from OpenStreetMap, at their electric rating, inside
+            # osm_mwp, Verified and Best (2026-11-07). `csp_status.checked` False: the country's
+            # OSM was never checked for them, and the page says so instead of showing 0.
+            "csp_mwp": round(float(grid.csp_mwp.sum()), 1),
+            "csp_n": int(in_grid_osm["csp"].astype(bool).sum()),
+            "csp_status": csp_status,
             # Rooftop PV below 400 m2 exists only where a roofclf half ran; without one the
             # small_* figures above are 0.0 by construction, and the page says "not measured".
             "small_rooftop_status": {"measured": central_buildings_path is not None},
@@ -3283,7 +3398,7 @@ def build_evidence_atlas(
         aoi, density_dir, osm_solar_path, candidates_path,
         low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
         sub400_outdomain_buildings_path, legacy_osm_addition=legacy_osm_addition,
-        include_offgrid_osm=include_offgrid_osm,
+        include_offgrid_osm=include_offgrid_osm, labels_dir=labels_dir,
     )
     # Farm ground PV is a ratio estimate on blob area: it has a total but no
     # per-installation size, so it joins the chart's ground-mount total unbinned and the
@@ -3436,6 +3551,7 @@ def _size_distribution_data(
     sub400_outdomain_buildings_path: Path | None = None,
     legacy_osm_addition: bool = False,
     include_offgrid_osm: bool = False,
+    labels_dir: Path = Path("data/labels"),
 ) -> dict:
     """Re-bins `build_evidence_atlas`'s Best-estimate total by installation size and
     placement (rooftop / ground-mount) instead of by 0.1-degree cell. Shared by
@@ -3541,6 +3657,9 @@ def _size_distribution_data(
     grid = gpd.read_parquet(density_dir / "grid.geoparquet")
     osm = gpd.read_parquet(osm_solar_path)
     osm = _apply_screen_credit(dissolve_overlapping(osm, group_col="placement"))
+    # Solar thermal plants, exactly as `build_evidence_atlas` adds them: ground rows at their
+    # rating, in their site-area bin, always counted from the map.
+    osm, _ = _append_csp(osm, aoi, labels_dir)
     if include_offgrid_osm:
         grid, _ = _extend_grid_with_offgrid_osm(grid, osm)
     unbinned_roof = 0.0    # priced below 400 m2 per cell, no per-roof size (see docstring)
@@ -3598,6 +3717,7 @@ def _size_distribution_data(
 
     # --- hand-mapped OSM, counted from the map exactly as `build_evidence_atlas` counts it
     osm["matched"] = ~new_lead_mask(osm, cands, min_distance_m=match_m)
+    osm.loc[osm["csp"].to_numpy(bool), "matched"] = False
     # The SAME size-dependent rooftop conversion `build_evidence_atlas` uses, because this
     # function's contract is that it re-bins the published total rather than recomputing it.
     # Applying the table in one place and the flat constant in the other would make the size
@@ -3607,6 +3727,7 @@ def _size_distribution_data(
         osm["area_m2"] * cc.osm_rooftop_kwp_per_m2(osm["area_m2"].to_numpy(), aoi),
         osm["area_m2"] * np.where(_osm_traced_ground(osm), kwp_mod, kwp_land),
     )
+    osm["kwp"] = _csp_kwp(osm, osm["kwp"].to_numpy(float))
     osm_pts = osm.copy()
     osm_pts["geometry"] = osm_pts.geometry.representative_point()
     osm_all = gpd.sjoin(osm_pts, grid[["cell", "geometry"]], predicate="within", how="left")
@@ -3619,7 +3740,7 @@ def _size_distribution_data(
     # same strata and the same candidates `build_evidence_atlas` uses.
     if not legacy_osm_addition and table_has_recall(table):
         used = ground_mask | roof_outdomain_mask
-        miss = osm_joined[osm_joined["counted"] & (
+        miss = osm_joined[osm_joined["counted"] & ~osm_joined["csp"].astype(bool) & (
             (osm_joined["placement"] != "rooftop") | ~osm_joined["cell"].isin(ge400_cells))]
         retain_used, _, _ = osm_absorbed_inflation(
             area[used], placement[used], None if glint is None else glint[used],

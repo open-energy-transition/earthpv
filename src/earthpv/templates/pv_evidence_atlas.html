@@ -401,6 +401,7 @@
      <400m2 (since 2026-10-24) and the OSM contribution -- four tiles that sum exactly to
      the headline number above them. */
   #tiles { grid-template-columns: repeat(4, 1fr); }
+  #tiles.n5 { grid-template-columns: repeat(3, 1fr); }
   @media (max-width: 760px) { #tiles { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 400px) { #tiles { grid-template-columns: 1fr; } }
   /* A field the page cannot fill reads as a statement, not as a zero. */
@@ -1231,6 +1232,10 @@ out geom;</div>
   // Farm ground PV below 400 m2 (2026-10-24). Undefined on an atlas written before it was
   // carried, which reads as 0 here and as "not measured" in the totals.
   const GROUND_IDX = 16;
+  // Solar thermal power plants (CSP) from OpenStreetMap, MW, already inside OSM_IDX and Best
+  // (2026-11-07). Found by name, so a page without it reads 0.
+  const CSP_IDX = (DATA.cell_cols || []).indexOf("csp_mwp");
+  const cspOf = c => CSP_IDX >= 0 ? (c[CSP_IDX] || 0) : 0;
   // Rooftop potential, at the end of a page's cells where `earthpv roof-potential` has run.
   const POTENTIAL_GWH_IDX = (DATA.cell_cols || []).indexOf("potential_gwh");
   const POTENTIAL_MWP_IDX = (DATA.cell_cols || []).indexOf("potential_mwp");
@@ -1248,8 +1253,11 @@ out geom;</div>
   // Best also folds in OSM installations the model hadn't already found plus a per-cell
   // floor correction, both literally OSM-sourced capacity, so they are one tile and the
   // three tiles sum to `mwp_best` exactly.
-  T.osm_contribution = (T.osm_mwp_unmatched || 0)
+  T.osm_contribution = (T.osm_mwp_unmatched || 0) - (T.csp_mwp || 0)
     + ((T.uncertainty && T.uncertainty.best_floor_offset_mwp) || 0);
+  // Solar thermal power plants (CSP): counted in Best and Verified from the map at their
+  // electric rating, MW. A tile of their own only where the map holds any.
+  const HAS_CSP = (T.csp_mwp || 0) > 0;
   const fmt = n => Math.round(n).toLocaleString("en-US");
   // Hover values: five significant digits, so a small cell reads 0.0041234 MWp, not 0.0.
   const fmt5 = n => Number(n).toLocaleString("en-US", {maximumSignificantDigits: 5});
@@ -1292,6 +1300,8 @@ out geom;</div>
         ? "Small arrays beside fields are found by a separate farm detector. " : "")
       + SIZE_NOTE + " "
       + "Installations mapped in OpenStreetMap are counted from the map, whatever their size. "
+      + (HAS_CSP ? `Best also counts ${fmt(T.csp_mwp)} MW of solar thermal power plants (CSP) mapped there, `
+        + "at their electric rating: they are not photovoltaic. " : "")
       + "<a href=\"#method\">How the estimate is built</a> · open-source pipeline: "
       + "<a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
     tiles: [
@@ -1299,6 +1309,7 @@ out geom;</div>
       ["small_all", "Satellite rooftop &lt;400 m², MWp"],
       ["small_ground", "Satellite farm ground &lt;400 m², MWp"],
       ["osm_contribution", "Added from Open&shy;Street&shy;Map, MWp"],
+      ...(HAS_CSP ? [["csp_mwp", "Solar thermal power (CSP), Open&shy;Street&shy;Map, MW"]] : []),
     ],
   };
 
@@ -1531,6 +1542,9 @@ out geom;</div>
      desc: "Sentinel-2 roofclf density estimate for rooftop arrays below the 400 m² segmentation floor"},
     {id: "ground", prop: "f", label: "Satellite farm ground, < 400 m²",
      desc: "Farm ground-PV detector: arrays beside fields below 400 m², where it is calibrated"},
+    {id: "csp", prop: "t", label: "Solar thermal power (CSP)", unit: "MW",
+     title: "solar thermal power", zero: "no solar thermal power plant",
+     desc: "Concentrated solar power plants mapped in OpenStreetMap, at their electric rating; counted in Best, not photovoltaic"},
     // Where rooftop solar could still go, so no total includes it. In energy, because a
     // capacity figure would not depend on the sun at all.
     {id: "potential", prop: "p", label: "Rooftop potential (not installed PV)", unit: "GWh/yr",
@@ -1540,6 +1554,7 @@ out geom;</div>
   const cellValue = {
     b: c => c[BEST_IDX], o: c => c[OSM_IDX], l: c => c[LARGE_IDX], s: smallOf,
     f: c => c[GROUND_IDX] || 0,
+    t: cspOf,
     p: c => POTENTIAL_GWH_IDX >= 0 ? c[POTENTIAL_GWH_IDX] : 0,
     g: c => Math.max(c[BEST_IDX] - c[OSM_IDX], 0),
   };
@@ -2064,7 +2079,7 @@ out geom;</div>
   function cellTip(c, def){
     const clon = (c[0] + 0.05).toFixed(2), clat = (c[1] + 0.05).toFixed(2);
     const smallTotal = smallOf(c);
-    const osmOnly = (c[OSM_UNMATCHED_IDX] || 0) + (c[FLOOR_LIFT_IDX] || 0);
+    const osmOnly = (c[OSM_UNMATCHED_IDX] || 0) + (c[FLOOR_LIFT_IDX] || 0) - cspOf(c);
     const km2 = cellKm2(c[1]);
     let h = `<div class="th">CELL ${clat}°N ${clon}°E · ${fmt(km2)} km²</div>`;
     if (def.id !== "best") {
@@ -2077,6 +2092,7 @@ out geom;</div>
     h += row("satellite rooftop &lt;400 m²", HAS_SMALL_ROOF ? `${fmt5(smallTotal)} MWp` : "not measured");
     if ((c[GROUND_IDX] || 0) > 0) h += row("satellite farm ground &lt;400 m²", `${fmt5(c[GROUND_IDX])} MWp`);
     if (osmOnly > 0.05) h += row("added from OSM mapping", `${fmt5(osmOnly)} MWp`);
+    if (cspOf(c) > 0) h += row("solar thermal power (CSP), OSM", `${fmt5(cspOf(c))} MW`);
     if (c[OSM_IDX] > 0) h += row("OSM-mapped, all", `${fmt5(c[OSM_IDX])} MWp`);
     if (c[COVERED_IDX] === 0) h += row("coverage", "OSM-mapped only, not imaged");
     return h;
@@ -3477,6 +3493,12 @@ out geom;</div>
         label: "OSM-mapped ground-mount PV that Best counts from the map: no satellite detection nearby, or one "
           + "whose figure Best does not use. Where it uses a satellite figure that covers a mapped "
           + "installation, it counts that figure instead, so nothing is counted twice.", size: "any size" },
+      { key: "osm_unmatched_csp", method: "osm", placement: "ground", mwp: comp("osm_unmatched_csp").mwp, ci: comp("osm_unmatched_csp").ci,
+        short: "Solar thermal power plants (CSP), from the map",
+        label: "Concentrated solar power plants mapped in OpenStreetMap, at their electric rating in MW: "
+          + "the map's own figure where it gives one, otherwise "
+          + `${(T.csp_status || {}).mw_per_km2 || 27.2} MW per km² of site. Not photovoltaic, and no `
+          + "satellite figure stands in for them.", size: "any size" },
       { key: "floor_offset", method: "osm", mwp: floorOffset, ci: null, texture: true,
         short: "OSM-mapped above the satellite figure",
         label: "Cells where the OSM-mapped capacity exceeds the satellite estimate: Best takes the mapped "
@@ -3517,6 +3539,8 @@ out geom;</div>
         short: "OSM-mapped rooftop", label: "OSM-mapped rooftop PV, all of it, whether or not a satellite detection covers it", size: "any size" },
       { key: "osm_ground", method: "osm", placement: "ground", mwp: comp("osm_ground").mwp, ci: comp("osm_ground").ci,
         short: "OSM-mapped ground-mount", label: "OSM-mapped ground-mount PV, all of it, whether or not a satellite detection covers it", size: "any size" },
+      { key: "osm_csp", method: "osm", placement: "ground", mwp: comp("osm_csp").mwp, ci: comp("osm_csp").ci,
+        short: "Solar thermal power plants (CSP)", label: "Concentrated solar power plants mapped in OpenStreetMap, at their electric rating in MW", size: "any size" },
       { key: "small_low", method: "sppi", placement: "roof", mwp: comp("small_low").mwp, ci: comp("small_low").ci,
         short: "Satellite roofclf + SPPI, < 400 m²",
         label: "Rooftops under 400 m² where roofclf and SPPI both see panels, inside the calibrated density "
@@ -3716,12 +3740,26 @@ out geom;</div>
     const weighting = (T.roofclf_weighting || {}).small_central;
     const kwp = T.kwp_per_m2 || 0.18;
     const step = (token, html) => `<li style="--m: var(--${token})">${html}</li>`;
+    const cspN = T.csp_n || 0;
     const steps = [step("domain",
-      `<b>Installations mapped by hand in OpenStreetMap.</b> ${fmt(T.osm_n || 0)} installations `
+      `<b>Installations mapped by hand in OpenStreetMap.</b> ${fmt((T.osm_n || 0) - cspN)} installations `
       + `that volunteers drew from aerial imagery. Each converts to capacity by its area: about `
       + `${kwp} kWp per m² of panel on a roof, and 0.05 kWp per m² for the outline of a `
       + `ground-mounted park, which also takes in the gaps between panel rows and the access tracks. `
       + `The same map is what the detectors below learn from and are checked against.`)];
+    const CS = T.csp_status || {};
+    if (HAS_CSP) {
+      const byArea = (CS.plants || []).filter(q => q.mw_source !== "tag").length;
+      steps.push(step("domain",
+        `<b>Solar thermal power plants, mapped in OpenStreetMap.</b> ${fmt(cspN)} concentrated solar `
+        + `power plant${cspN === 1 ? "" : "s"}, ${fmt(T.csp_mwp)} MW: mirror fields that focus sunlight `
+        + `to drive a steam turbine. They are not photovoltaic, so they are kept out of every PV `
+        + `figure on this page and counted in Best and Verified at their electric rating`
+        + (byArea ? `: the map's own figure, or for ${byArea} plant${byArea === 1 ? "" : "s"} without a usable one, `
+          + `${CS.mw_per_km2} MW per km² of site, the median of the plants that carry one.`
+          : `, as the map gives it.`)
+        + ` No satellite detection stands in for a mirror field.`));
+    }
     if (hasSeg) steps.push(step("large",
       `<b>Large arrays, outlined from Sentinel-2.</b> A TerraMind model, fine-tuned on mapped `
       + `installations, marks the pixels that look like solar panels, and touching pixels become `
@@ -3782,6 +3820,8 @@ out geom;</div>
       + `the satellite figure, the map's figure is used. Satellite areas convert to capacity with `
       + `the same two constants as the map, and MWp means the panels' rated peak power, not what `
       + `they generate. `
+      + (HAS_CSP ? `Solar thermal plants add their electric rating in MW. ` : "")
+      + (CS.checked === false ? `This country's map has not yet been checked for solar thermal power plants. ` : "")
       + (hasAnd ? "" : `The Verified floor is the hand-mapped capacity alone. `)
       + `The 90% range combines the measured uncertainties listed in the next section, which `
       + `also says what the range leaves out.</p>`;
@@ -4199,6 +4239,7 @@ out geom;</div>
     small_all: "Rooftop PV below 400 m² needs the rooftop classifier, which has not been calibrated for this country yet",
     small_ground: "The farm ground-PV detector has not been run for this country yet",
   };
+  document.getElementById("tiles").classList.toggle("n5", VIEW.tiles.length === 5);
   document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
     T[key] == null
       ? `<div class="tile" title="${esc(NOT_MEASURED[key] || "Not measured for this country")}">`
@@ -4544,6 +4585,8 @@ out geom;</div>
           + `(${esc(monthLabel(r.as_of))})`).join("; ") + ". "
         : `No official national figure was found for ${esc(AOI)}, so only the customs record of `
           + `panels imported from China is shown. `)
+      + (HAS_CSP ? `It includes ${fmt(T.csp_mwp)} MW of solar thermal power plants (CSP), which `
+        + "registers of photovoltaic capacity and the panel imports below do not count. " : "")
       + "Each figure counts something different, so none of them is ground truth for this map "
       + "(see <i>Sources</i> below the chart).";
     const imagery = T.imagery_date_range ? ` in its imagery window (${esc(T.imagery_date_range)})` : "";

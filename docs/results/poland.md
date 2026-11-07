@@ -12,11 +12,19 @@ Interactive: [Poland PV evidence atlas](../atlas-poland.md).
 
 | | |
 | --- | --- |
-| Verified | **6,604.3 MWp** (90% 4,618 to 9,528) |
-| Best estimate | **9,110.3 MWp** (90% 7,248 to 12,083) |
+| Verified | **6,604.1 MWp** (90% 4,618 to 9,528) |
+| Best estimate | **9,110.2 MWp** (90% 7,248 to 12,083) |
 | Grid | 3,948 cells of 0.1&deg;, 16 voivodeships (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, May to September 2026 |
 | Model | `v15_combined_poland` epoch 27, localized (beat `v5_combined_france` on the holdout; see below) |
+
+!!! note "Revised on 7 November: solar thermal"
+    Until 7 November this page read Verified 6,604.3 MWp and Best 9,110.3 MWp. The solar
+    thermal check every atlas now runs ([solar thermal power plants](../methods/solar-thermal.md))
+    found 14 small collectors typed `solar_thermal_collector` without a method tag still counted
+    as PV, 0.003 km&sup2; in all; they are out, and both tiers fall by 0.1 to 0.2 MWp. Poland has
+    no solar thermal power plant; its two thermal plants (solar district heating) make no
+    electricity and do not count.
 
 !!! note "Revised on 4 November"
     Until 4 November this page read Best 7,780.9 MWp (90% 6,411 to 10,398). On 3 November the

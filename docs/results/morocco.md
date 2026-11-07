@@ -14,11 +14,20 @@ Interactive: [Morocco PV evidence atlas](../atlas-morocco.md).
 
 | | |
 | --- | --- |
-| Verified | **380.4 MWp** (90% 265 to 550) |
-| Best estimate | **416.5 MWp** (90% 366 to 555) |
+| Verified | **898.9 MWp** (90% 761 to 1,124) |
+| Best estimate | **935.1 MWp** (90% 846 to 1,148) |
 | Grid | 703 cells of 0.1&deg;, north of 27&deg;40&prime; N, 11 regions (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, April to September 2026 |
 | Model | `v11_combined_morocco` epoch 24, localized (tied with `v5_combined_france` on the holdout; see below) |
+
+!!! note "Revised on 7 November: solar thermal"
+    Until 7 November this page read Verified 380.4 MWp (90% 265 to 550) and Best 416.5 MWp
+    (90% 366 to 555). Every atlas now counts concentrated solar power plants mapped in
+    OpenStreetMap at their electric rating ([solar thermal power plants](../methods/solar-thermal.md)). Noor 1 (160 MW) and Noor 2 (200 MW) count at
+    their tags; Noor 3 counts at 158.6 MW from its site, because its outline is tagged 582 MW,
+    the whole complex (its rating is 150 MW). Together they add 518.6 MW to both tiers, more
+    than the photovoltaic capacity this page finds, and the page says so beside its totals.
+    Noor IV, the complex's photovoltaic plant, was counted before and still is.
 
 !!! note "Revised on 4 November"
     Until 4 November this page read Best 411.2 MWp (90% 361 to 554). On 3 November the

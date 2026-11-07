@@ -18,11 +18,23 @@ Interactive: [India PV evidence atlas](../atlas-india.md).
 
 | | |
 | --- | --- |
-| Verified | **70,523.4 MWp** (90% 49,526 to 101,390) |
-| Best estimate | **103,036.9 MWp** (90% 83,676 to 132,969) |
+| Verified | **70,266.0 MWp** (90% 49,412 to 100,926) |
+| Best estimate | **102,779.7 MWp** (90% 83,451 to 132,694) |
 | Grid | all 29,171 selected cells of 0.1&deg; (97.1% of India's 30,056), 35 of 36 states and union territories (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, November 2025 to March 2026 |
 | Model | `v5_combined_france` epoch 25 (the localized `v10_combined_india` lost; see below) |
+
+!!! note "Revised on 7 November: solar thermal"
+    Until 7 November this page read Verified 70,523.4 MWp (90% 49,526 to 101,390) and Best
+    103,036.9 MWp (90% 83,676 to 132,969). India's solar thermal, counted as PV here until then
+    (see *Candidate population* below), is now taken out, and every atlas counts concentrated
+    solar power plants mapped in OpenStreetMap at their electric rating ([solar thermal power plants](../methods/solar-thermal.md)). 30 thermal
+    outlines, 9.1 km&sup2;, leave the hand-mapped layer (455 MWp at the land constant), 5 model
+    candidates on the same plants leave the satellite figure (61.5 MWp), and India's four plants
+    count at 197.9 MW: Dhirubhai Ambani (100 MW as tagged), Godawari (50 MW), Megha (45.4 MW
+    from its site; rated 50) and a 2.5 MW tower near Bikaner. Verified falls by 257.4 MWp and
+    Best by 257.2. The density stage was recomputed only in the three cells the five candidates
+    touch, a shortcut checked to give the same result as a full rebuild.
 
 !!! note "Revised the day it was published"
     This page first went out on 11 October with Best at 75,855.7 MWp (90% 66,332 to
@@ -383,7 +395,8 @@ outlines above 5 km&sup2;) against 9.3 km&sup2; of rooftop polygons. Best adds 2
 on top, model detections outside anything Verified counts, most of it the admitted
 unmapped parks.
 
-Solar-thermal is counted as PV on this page. OpenStreetMap tags concentrated-solar plants
+Solar-thermal was counted as PV on this page until 7 November (see the note at the top, which
+also gives what replaced it). OpenStreetMap tags concentrated-solar plants
 and rooftop water heaters with the same `generator:source=solar` the label pull selects,
 and India's labels were built before that was noticed (Morocco's, run next, turned out to
 be half solar-thermal). It was measured the day after publication, by looking the label
@@ -392,10 +405,10 @@ other countries use failed on every public mirror at India's size: 253 of the 24
 features are solar-thermal, 9.4 km&sup2; once dissolved, among them the Dhirubhai Ambani
 (100 MW), Megha (50 MW) and Godawari (50 MW) concentrated-solar plants. Ten features of the
 hand-mapped layer lie mostly inside them and carry 473 MWp at the two constants, about 0.7%
-of Verified and of Best. They are not removed on this page: dropping the four model
-candidates that sit on the same plants rewrites the candidate file, which rebuilds the
-density stage over all 25,576 cells (about 31 hours) for a change well inside either
-interval. The widening rebuilt it anyway, and ran the candidate filter, which changed
+of Verified and of Best. They stayed in until 7 November: dropping the model candidates that
+sit on the same plants rewrites the candidate file, which rebuilt the density stage over every
+cell (about 31 hours) for a change well inside either interval, until recomputing only the
+cells those candidates touch was shown to give the same result. The widening rebuilt it anyway, and ran the candidate filter, which changed
 nothing: it drops candidates inside thermal elements already removed from the labels, and
 India's labels never were. Every country run after India filters it
 (`scripts/drop_solar_thermal.py`).

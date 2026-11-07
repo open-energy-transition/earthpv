@@ -13,11 +13,17 @@ Interactive: [Turkey PV evidence atlas](../atlas-turkiye.md).
 
 | | |
 | --- | --- |
-| Verified | **10,709.1 MWp** (90% 8,031 to 14,642) |
-| Best estimate | **17,592.6 MWp** (90% 14,323 to 22,241) |
+| Verified | **10,714.9 MWp** (90% 8,036 to 14,647) |
+| Best estimate | **17,598.4 MWp** (90% 14,329 to 22,247) |
 | Grid | 5,534 imaged cells of 0.1&deg;, of the 8,319 that cover the country; 81 provinces (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, May to September 2026; median scene 31 July, middle half 9 July to 27 August |
 | Model | `v19_combined_turkiye` epoch 12, localized (tied `v5_combined_france` on holdout recall, better outlines; see below) |
+
+!!! note "Revised on 7 November: solar thermal"
+    Until 7 November this page read Verified 10,709.1 MWp (90% 8,031 to 14,642) and Best
+    17,592.6 MWp (90% 14,323 to 22,241). Every atlas now counts concentrated solar power plants
+    mapped in OpenStreetMap at their electric rating ([solar thermal power plants](../methods/solar-thermal.md)): Turkey's one, the 5.75 MW Mersin
+    Toroslar plant, adds 5.8 MW to both tiers.
 
 !!! note "Revised on 6 November"
     Until 6 November this page read Best 13,103.0 MWp (90% 11,524 to 15,872). On 6 November

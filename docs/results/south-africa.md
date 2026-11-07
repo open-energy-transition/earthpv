@@ -15,11 +15,20 @@ Interactive: [South Africa PV evidence atlas](../atlas-south-africa.md).
 
 | | |
 | --- | --- |
-| Verified | **9,393.8 MWp** (90% 7,078 to 12,787) |
-| Best estimate | **9,910.2 MWp** (90% 8,902 to 12,879) |
+| Verified | **9,322.7 MWp** (90% 7,189 to 12,416) |
+| Best estimate | **9,839.0 MWp** (90% 8,953 to 12,585) |
 | Grid | 3,647 cells of 0.1&deg;, 9 provinces (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, April to September 2026 |
 | Model | `v14_combined_south_africa` epoch 41, localized (beat `v5_combined_france` on the held-out Western Cape; see below) |
+
+!!! note "Revised on 7 November: solar thermal"
+    Until 7 November this page read Verified 9,393.8 MWp (90% 7,078 to 12,787) and Best
+    9,910.2 MWp (90% 8,902 to 12,879). Every atlas now counts concentrated solar power plants
+    mapped in OpenStreetMap at their electric rating ([solar thermal power plants](../methods/solar-thermal.md)): South Africa's seven, Khi Solar
+    One, KaXu, Xina, Bokpoort, Karoshoek, Kathu and Redstone, add 600 MW to both tiers. The
+    same check found that mappers had drawn the mirror rows of all seven with the photovoltaic
+    preset: 50 outlines, 13.4 km&sup2;, which this page counted as about 671 MWp of
+    ground-mount PV. They are now part of the plants, and both tiers fall by about 71 MWp.
 
 !!! note "Revised on 4 November"
     Until 4 November this page read Best 9,755.6 MWp (90% 8,789 to 12,875). On 3 November the

@@ -176,6 +176,7 @@ nav:
       - Rooftop classifier (roofclf): methods/roofclf.md
       - How roofclf sees panels: methods/roofclf-physics.md
       - Farm ground PV (groundclf): methods/groundclf.md
+      - Solar thermal power plants: methods/solar-thermal.md
       - PVscope: methods/pvscope.md
       - Calibration: methods/calibration.md
       - Validation against MaStR: methods/mastr-validation.md

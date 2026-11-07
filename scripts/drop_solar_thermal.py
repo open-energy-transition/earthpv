@@ -11,8 +11,9 @@ would convert at the ground-mount land constant into PV that does not exist, and
 training would teach the model to call PV.
 
 Rule: drop an element whose `generator:method` or `plant:method` names `thermal` (or whose
-`generator:type` is a CSP collector type) UNLESS the same tag also names `photovoltaic` --
-a hybrid perimeter (thermal;photovoltaic) is kept, since part of it is PV. Matching is by
+`generator:type` is a CSP collector type or `solar_thermal_collector`) UNLESS the same tag
+also names `photovoltaic` -- a hybrid perimeter (thermal;photovoltaic) is kept, since part of
+it is PV. Plants no tag marks as thermal are listed by id in `KNOWN_THERMAL`. Matching is by
 OSM id against the labels' `id` column (`osm-<type>/<id>`). The original file is kept as
 `<aoi>_solar_labels_with_thermal.parquet` and the dropped ids are written next to it.
 Idempotent: a second run finds nothing to drop. The backup name must NOT match
@@ -56,7 +57,26 @@ sys.path.insert(0, str(REPO / "src"))
 from earthpv.config import Settings  # noqa: E402
 from earthpv.overpass import _run_query  # noqa: E402
 
-CSP_TYPES = "heliostat|parabolic_trough|solar_power_tower|fresnel_reflector|dish"
+# `solar_thermal_collector` is the wiki's own type for a thermal collector (water heaters and
+# CSP collector rows alike); until 2026-11-07 only CSP geometry types were listed, so rows
+# typed `solar_thermal_collector` with no `generator:method` tag stayed in as PV (Spain: 161,
+# 156 of them inside Parque solar Alvarado II). A row whose method names photovoltaic is
+# still kept by the hybrid rule.
+CSP_TYPES = ("heliostat|parabolic_trough|solar_power_tower|fresnel_reflector|dish"
+             "|solar_thermal_collector")
+
+# Solar-thermal plants that no tag marks as thermal (no `plant:method`/`generator:method`, no
+# CSP collector type): only a name or the plant's documentation says so. Dropped by id in
+# every mode, whenever the labels hold them. Add a plant here only on that evidence.
+KNOWN_THERMAL = {
+    "osm-relation/20388547": {
+        "name": "Parque solar Alvarado II",
+        "note": "Spain, Badajoz: 50 MW parabolic-trough CSP plant (name:en '... Solar Thermal "
+                "Power Plant'), 2.52 km2, no method tag; added 2026-11-07",
+        # The tags the plant should carry, so `solar_thermal.is_csp_plant` counts it.
+        "power": "plant", "plant:method": "thermal", "plant:output:electricity": "50 MW",
+    },
+}
 
 
 def thermal_ids(bbox, timeout: int = 300, tile_deg: float = 5.0) -> dict[str, dict]:
@@ -106,8 +126,9 @@ def _classify(elements) -> dict[str, dict]:
         if "thermal" not in method and not re.search(CSP_TYPES, t.get("generator:type", "")):
             continue   # an id lookup returns every element, not only the matching ones
         out[f"osm-{e['type']}/{e['id']}"] = {
-            k: t[k] for k in ("name", "power", "generator:method", "plant:method",
-                              "generator:type", "plant:output:electricity") if k in t
+            k: t[k] for k in ("name", "name:en", "power", "generator:method", "plant:method",
+                              "generator:type", "plant:output:electricity",
+                              "plant:output:hot_water", "plant:output:heat") if k in t
         }
     return out
 
@@ -187,6 +208,7 @@ def main() -> int:
     path = a.labels_dir / f"{a.aoi}_overpass_solar.parquet"
     lab = gpd.read_parquet(path)
     th = thermal_ids_by_id(lab["id"]) if a.by_id else thermal_ids(cfg["bbox"])
+    th.update({i: v for i, v in KNOWN_THERMAL.items() if i in set(lab["id"])})
     hit = lab["id"].isin(th)
     where = "among the labels" if a.by_id else "in the bbox"
     print(f"{a.aoi}: {len(th)} solar-thermal elements {where}, {int(hit.sum())} of "

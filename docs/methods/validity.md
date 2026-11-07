@@ -140,22 +140,25 @@ and the fleet was built after 2017, that is a ceiling on what any atlas could co
 imported panels sit in warehouses, are re-exported or are not installed yet, and none
 imported later can be on the imagery.
 
-| Country | Best estimate (MWp) | Imported from China (MWp) | Period | Best as share of it |
+| Country | Best estimate, photovoltaic (MWp) | Imported from China (MWp) | Period | Best as share of it |
 | --- | ---: | ---: | --- | ---: |
-| Pakistan | 34,589 | 57,609 | Jan 2017 to Jun 2026 | 60% |
-| Vietnam | 8,860 | 31,116 | Jan 2017 to Aug 2026 | 28% |
-| South Africa | 9,756 | 18,533 | Jan 2017 to Aug 2026 | 53% |
-| Egypt | 3,379 | 9,106 | Jan 2017 to Aug 2026 | 37% |
-| Nigeria | 121 | 5,663 | Jan 2017 to Mar 2026 | 2% |
-| Morocco | 411 | 4,817 | Jan 2017 to Aug 2026 | 9% |
-| Yemen | 67 | 2,848 | Jan 2017 to Mar 2026 | 2% |
-| Zambia | 526 | 827 | Jan 2017 to Oct 2025 | 64% |
+| Pakistan | 34,470 | 57,609 | Jan 2017 to Jun 2026 | 60% |
+| Vietnam | 9,119 | 31,116 | Jan 2017 to Aug 2026 | 29% |
+| South Africa | 9,239 | 18,533 | Jan 2017 to Aug 2026 | 50% |
+| Egypt | 3,810 | 9,106 | Jan 2017 to Aug 2026 | 42% |
+| Nigeria | 127 | 5,663 | Jan 2017 to Mar 2026 | 2% |
+| Morocco | 417 | 4,817 | Jan 2017 to Aug 2026 | 9% |
+| Yemen | 586 | 2,848 | Jan 2017 to Mar 2026 | 21% |
+| Zambia | 532 | 827 | Jan 2017 to Oct 2025 | 64% |
 | Namibia | 530 | 1,498 | Jan 2017 to Aug 2026 | 35% |
-| India | 103,037 | 95,060 | Jan 2017 to Mar 2026 | not a ceiling |
-| Germany | 84,473 | 29,906 | Jan 2017 to Aug 2026 | not a ceiling |
-| France | 13,368 | 16,196 | Jan 2017 to Sep 2024 | not a ceiling |
-| Poland | 7,781 | 21,769 | Jan 2017 to Aug 2026 | not a ceiling |
-| Turkey | 13,103 | 6,222 | Jan 2017 to Aug 2026 | not a ceiling |
+| India | 102,582 | 95,060 | Jan 2017 to Mar 2026 | not a ceiling |
+| Germany | 86,010 | 29,906 | Jan 2017 to Aug 2026 | not a ceiling |
+| France | 13,447 | 16,196 | Jan 2017 to Sep 2024 | not a ceiling |
+| Poland | 9,110 | 21,769 | Jan 2017 to Aug 2026 | not a ceiling |
+| Turkey | 17,593 | 6,222 | Jan 2017 to Aug 2026 | not a ceiling |
+
+Best here is each published page's figure as of 7 November 2026 without its solar thermal power
+plants (South Africa 600 MW, Morocco 518.6, India 197.9, Turkey 5.8), which are not panels.
 
 **It is not a ceiling for India, Germany, France, Poland or Turkey**, and those atlases say
 so instead: India makes a large share of its own panels, Turkey assembles most of its own
@@ -165,9 +168,8 @@ predate 2017, and much of the EU's Chinese supply arrives through the Netherland
 member states rather than directly. Poland had about 21.8 GW installed by February 2025
 ([Wikipedia](https://en.wikipedia.org/wiki/Solar_power_in_Poland)), against 15.3 GW of
 panels imported directly from China by then. Where it is a ceiling, the gap is mostly what this project cannot see: no
-Bronze or Silver atlas counts installations below about 400 m&sup2;, and the countries at
-2% (Nigeria, Yemen) are ones whose solar is overwhelmingly small household and pumping
-systems.
+Bronze or Silver atlas counts installations below about 400 m&sup2;, and Nigeria, at 2%, is
+a country whose solar is overwhelmingly small household and pumping systems.
 
 ## Does the approach scale worldwide
 
