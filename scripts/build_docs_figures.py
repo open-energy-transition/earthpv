@@ -2093,23 +2093,23 @@ ROOFCLF_H = 1064
 # their own alt text until 2026-08-15. Re-transcribe them in the same commit as any
 # pipeline run that moves the atlas, and check the numbers in `docs/methods/roofclf.md`'s
 # image alt text against them.
-# data/roofclf/summary.json (30-quadrat area-weighted parcel-label refit, 2026-09-20)
+# data/roofclf/summary.json (41-area refit without bf_confidence, 2026-11-07)
 ROOFCLF_STATS = {
-    "n_quadrats": 30,
-    "auc": 0.868,
-    "auc_within_size": 0.819,
-    "threshold": 0.2446,
+    "n_quadrats": 41,
+    "auc": 0.846,
+    "auc_within_size": 0.815,
+    "threshold": 0.2470,
     "precision": 0.50,
-    "recall": 0.66,
+    "recall": 0.64,
 }
 # data/roofclf_national_with_sppi/pakistan/density/*_summary.json (probability-weighted,
-# 2026-10-25)
+# coverage ratio on the 19 pinned areas, 2026-11-07)
 ROOFCLF_CAPACITY = {
     "n_domain_cells": 2957,
-    "n_national_cells": 4463,
-    "verified_sub400": 3784,
-    "best_sub400": 24206,
-    "best_ge400_roof": 7503,
+    "n_national_cells": 4470,
+    "verified_sub400": 3501,
+    "best_sub400": 24381,
+    "best_ge400_roof": 7258,
 }
 
 

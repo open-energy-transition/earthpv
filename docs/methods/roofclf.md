@@ -36,8 +36,8 @@ shape is gone and colour is all that is left.
 
 ## The flow, end to end
 
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 30 folds at 0.868 AUC and 0.819 within roof-size band, and a deployment threshold of 0.2446 at precision 0.50 and recall 0.66 that sets the floor and the leads. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, weight each roof by its score and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 24,206 plus 7,503 MWp, both priced by score, floored per cell at hand-mapped OSM plus the stricter, thresholded 3,784 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
-![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 30 folds at 0.868 AUC and 0.819 within roof-size band, and a deployment threshold of 0.2446 at precision 0.50 and recall 0.66 that sets the floor and the leads. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,463 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, weight each roof by its score and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 24,206 plus 7,503 MWp, both priced by score, floored per cell at hand-mapped OSM plus the stricter, thresholded 3,784 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 41 folds at 0.846 AUC and 0.815 within roof-size band, and a deployment threshold of 0.2470 at precision 0.50 and recall 0.64 that sets the floor and the leads. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,470 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, weight each roof by its score and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 24,381 plus 7,258 MWp, both priced by score, floored per cell at hand-mapped OSM plus the stricter, thresholded 3,501 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.svg#only-light)
+![Flow chart of the roofclf pipeline in six stages. Stage one, inputs per calibration quadrat: a Rule-1 complete mapped boundary, VIDA building footprints, and the 10-band Sentinel-2 dry-season composite. Stage two, one row per building: a has_pv label from 5 percent footprint overlap, and features of log roof area plus 10 band means plus NDVI, NDBI, brightness and two ratios. Stage three, fit and measure: L2 logistic regression, leave-one-quadrat-out over 41 folds at 0.846 AUC and 0.815 within roof-size band, and a deployment threshold of 0.2470 at precision 0.50 and recall 0.64 that sets the floor and the leads. Stage four, national scoring of 75.7 million buildings one cell at a time with SPPI computed alongside. Stage five, probability to capacity: restrict to 2,957 of 4,470 density-matched cells, remove buildings already counted by a detection or by OpenStreetMap, weight each roof by its score and convert roof area to MWp through a coverage ratio. Stage six, into the evidence atlas: Best estimate combines 24,381 plus 7,258 MWp, both priced by score, floored per cell at hand-mapped OSM plus the stricter, thresholded 3,501 MWp roofclf-and-SPPI agreement population.](../assets/figures/roofclf_flow.dark.svg#only-dark)
 
 The six stages below follow the chart from top to bottom.
 
@@ -266,10 +266,10 @@ train and test and report skill the model does not have.
 
 | Measure | Value | Read it as |
 | --- | --- | --- |
-| Median fold AUC | **0.868** | ranking skill on a quadrat the model has never seen |
-| Median fold AUC within roof-size band | **0.819** | the same, with size removed as a discriminator |
+| Median fold AUC | **0.846** | ranking skill on a quadrat the model has never seen (41 areas; 0.868 over the 30 of the earlier fit) |
+| Median fold AUC within roof-size band | **0.815** | the same, with size removed as a discriminator |
 | Segmentation raster, within size band | **0.500** | chance. The 400 m<sup>2</sup> floor, measured |
-| Fraction head, unconditional | 0.599 | better than segmentation, still well behind |
+| Fraction head, unconditional | 0.612 | better than segmentation, still well behind |
 
 ### Why the within-size number is the honest one
 
@@ -540,14 +540,17 @@ ground-mount share is measured on the same score weights.
 
 | Component | Pricing | Population | MWp |
 | --- | --- | --- | --- |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | thresholded | Internal floor on Best estimate | 3,784 |
-| Sub-400 m<sup>2</sup>, roofclf alone, in domain | by score | Best estimate | 24,206 |
-| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | by score | Best estimate | 7,503 |
-| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | thresholded | Not published (dropped 2026-08-15) | 189 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, in domain | thresholded | Internal floor on Best estimate | 3,501 |
+| Sub-400 m<sup>2</sup>, roofclf alone, in domain | by score | Best estimate | 24,381 |
+| At or above 400 m<sup>2</sup> rooftop, roofclf, in domain | by score | Best estimate | 7,258 |
+| Sub-400 m<sup>2</sup>, roofclf and SPPI agreeing, outside the domain | thresholded | Not published (dropped 2026-08-15) | 174 |
 
 The published atlas total, which also carries hand-mapped OSM and the segmentation model's
-own ground-mount and out-of-domain rooftop estimates, is **Best estimate 34,588.8 MWp (90%
-range 29,308 to 41,736)** -- the first three rows only. It was 24,438.3 MWp (20,894 to
+own ground-mount and out-of-domain rooftop estimates, is **Best estimate 34,470.3 MWp (90%
+range 28,628 to 41,310)** -- the first three rows only. It was 34,142.4 MWp until 2026-11-07,
+when roofclf was refit on 41 areas with its coverage ratio kept on 19
+([experiments register](../experiments.md#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07)),
+34,588.8 MWp until 2026-10-28, when segmentation moved to v16, and 24,438.3 MWp (20,894 to
 33,666) until 2026-10-25, when the two Best-estimate rows switched from counting the roofs
 above the threshold to counting every roof by its score (13,263 and 8,257 before; see
 [Count every roof by its score](#count-every-roof-by-its-score)), and 24,330.0 until 2026-10-20, when
