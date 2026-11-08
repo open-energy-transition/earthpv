@@ -73,6 +73,12 @@ aois:
     to: 2026-08
     mwp: 18532.9
     ceiling: true
+  spain:
+    ember_area: Spain
+    from: 2017-01
+    to: 2026-08
+    mwp: 59328.8
+    ceiling: true
   turkiye:
     ember_area: Türkiye
     from: 2017-01

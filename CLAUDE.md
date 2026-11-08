@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and fourteen countries have a published evidence atlas (see "Country
+country's own OSM labels, and fifteen countries have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -773,7 +773,9 @@ published file.
 - **Start-here boxes:** `--bronze --priority` adds two PURPOSIVE 1 km boxes per Bronze AOI (the
   most large-roof area in the densest quarter, chosen on buildings only, marked `selection:
   purposive: ...`); the eight sampled boxes stay the representative set. `calib-publish` ranks
-  them first and the atlas draws `start_here` as a star.
+  them first and the atlas draws `start_here` as a star. `--exclude-box W,S,E,N`
+  (repeatable) leaves out a district whose footprints do not read as roofs (Spain: the
+  Campo de Dalias greenhouses, central Madrid).
 - **PV-rich boxes** (`--pv-rich --score-dir <roofclf prob dir>`, 2026-10-28): purposive 1 km
   TOWN windows (own density >= 800 bldg/km²) with the most household roofs in the national top
   5% of a roofclf scoring from a model that has NOT seen the AOI's labels (Yemen: Pakistan's,
@@ -1246,6 +1248,7 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Nigeria | `v5_combined_france` ep 25 | 90.2 / 126.9 | name `v8` is taken by `v8_combined_nigeria` |
 | Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
 | Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp); 1 CSP plant 5.8 MW |
+| Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | clear win over v5 on the holdout; floor of 1 building per cell; 43 CSP plants 2,383 MW; 998 blobs not judged yet |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1306,6 +1309,18 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   blobs (175 km2) the owner judged 396 parks (89.8 km2, 2026-11-06): Best 13,103.0 -> 17,592.6;
   `check-density` then fails 42 provinces (ratio; 15 also on one cell, 12 of them a judged
   park). Ember is not a ceiling (cells 36 GW, panels 6).
+- **Spain** (published 2026-11-08): v26 beat v5 on the Castilla-La Mancha holdout (recall >=
+  500 m2 0.863 against 0.787 at pixel precision 0.84). **VIDA has block-shaped holes in Spain**,
+  city centres included, so `data/vida/ESP.parquet` is VIDA plus OSM buildings in empty 0.01 deg
+  blocks (`scripts/fill_vida_from_osm.py`; raw at `/home/tobi/earthpv_data/ESP.parquet`); other
+  countries' VIDA has not been checked for holes. Imaged at a floor of 1 building per cell
+  (owner; 5,712 cells against 1,896). Plastic greenhouses are not read as PV
+  (`scripts/spain_greenhouse_check.py`: 68.5 of 3,126 MWp in the five districts, the assistant's
+  look at 15 outlines), though footprints trace them as buildings. Of what Best adds over
+  Verified, open ground is mostly rock, fields and quarries (3 of 20 solar, the assistant's
+  look); the page says so. 998 blobs (324.4 km2) await the review and none counts. REE is
+  national only on the page: its capacity API returned 500s and its regional notes lack totals
+  for the large regions.
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

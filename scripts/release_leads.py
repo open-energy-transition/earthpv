@@ -108,7 +108,7 @@ SOURCES = {
     # Yemen's atlas is the v25 run (2026-11-02); data/predictions/yemen holds v13's.
     "yemen": {"pred": "data/predictions_v25/yemen"},
     "india": {}, "vietnam": {}, "zambia": {}, "egypt": {},
-    "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {}, "turkiye": {},
+    "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {}, "turkiye": {}, "spain": {},
 }
 # The published page each run must match: its provinces are compared with the regions read
 # here, so a lead file cannot come from a run other than the page's.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Morocco, Egypt, Yemen, South Africa: the unattended queue behind the 2026-10-10 run
-# (Poland added 2026-10-19, Namibia 2026-10-28, Türkiye 2026-10-29).
+# (Poland added 2026-10-19, Namibia 2026-10-28, Türkiye 2026-10-29, Spain 2026-11-02).
 #
 # Generalises scripts/run_vn_in_queue.sh from two hard-wired countries to an ordered list.
 # This script owns the NETWORK LANE -- label pulls and compose, one country at a time in
@@ -21,7 +21,8 @@ LOG=data/country_queue.log
 mkdir -p "$QMARK"
 say() { echo "$(date '+%F %T') QUEUE: $*" | tee -a "$LOG"; }
 
-# aoi | bbox for the Overpass pull | ISO3 | Overpass tile grid. Order = priority.
+# aoi | bbox for the Overpass pull | ISO3 | Overpass tile grid | optional building floor per
+# cell (default MIN_BUILDINGS). Order = priority.
 COUNTRIES="
 morocco|-13.2,27.6,-1.0,35.95|MAR|4x3
 egypt|24.7,22.0,36.9,31.7|EGY|4x4
@@ -30,8 +31,13 @@ south_africa|16.4,-34.9,32.9,-22.1|ZAF|8x6
 poland|14.0,49.0,24.2,54.9|POL|5x4
 namibia|11.7,-29.0,25.3,-16.9|NAM|4x4
 turkiye|25.6,35.8,44.9,42.2|TUR|10x4
+spain|-18.2,27.6,4.4,43.9|ESP|12x9|1
 "
 AOIS=$(echo "$COUNTRIES" | awk -F'|' 'NF {print $1}')
+# QUEUE_ONLY="<aoi> ..." limits this instance to those countries, so a new country can run
+# beside a queue already working through the others without restarting it. Launch guards
+# are per unit, so two instances overlapping on one country do not double-launch.
+AOIS=${QUEUE_ONLY:-$AOIS}
 
 # Compose settings exactly as scripts/run_vn_in_queue.sh, which carries the measurements
 # behind each one (Nigeria livelock post-mortem, the 2026-09-24 dead-connection fix, the
@@ -59,6 +65,7 @@ built() { find -L "data/composites/$1/composites" -name composite_0.tif 2>/dev/n
 selected() { grep -aoE "Selected [0-9]+ cells" "data/compose_$1.log" 2>/dev/null | tail -1 | grep -oE "[0-9]+"; }
 free_gb() { df -BG --output=avail "$1" | tail -1 | tr -dc 0-9; }
 field() { echo "$COUNTRIES" | awk -F'|' -v a="$1" -v k="$2" '$1 == a {print $k}'; }
+floor_of() { local v; v=$(field "$1" 5); echo "${v:-$MIN_BUILDINGS}"; }
 vida_ok() { local f="data/vida/$(field "$1" 3).parquet"; [ -s "$f" ] && [ ! -e "$(readlink -f "$f").part" ]; }
 labels_ok() { [ -s "data/labels/$1_overpass_solar.parquet" ]; }
 compose_active() {
@@ -102,7 +109,7 @@ start_compose() {
     -p LimitNOFILE=65536:65536 -p MemoryMax=12G \
     --setenv=EARTHPV_PC_TIMEOUT_S=$PC_TIMEOUT_S --setenv=EARTHPV_REQUIRE_BOUNDARY=1 \
     $GDAL_NET_ENV \
-    bash scripts/compose_loop.sh "$aoi" 0 $MIN_BUILDINGS $WORKERS 3600 $STALL_S \
+    bash scripts/compose_loop.sh "$aoi" 0 "$(floor_of "$aoi")" $WORKERS 3600 $STALL_S \
       "--resampling nearest" >/dev/null
 }
 
@@ -150,7 +157,7 @@ maybe_compute() {
   fi
   if val_empty "$aoi"; then
     say "$aoi has no val_tiles: choosing the holdout from the label map (scripts/pick_val_region.py)"
-    if ! $PY scripts/pick_val_region.py --aoi "$aoi" --write >> "$LOG" 2>&1; then
+    if ! $PY scripts/pick_val_region.py --aoi "$aoi" --min-buildings "$(floor_of "$aoi")" --write >> "$LOG" 2>&1; then
       say "NEEDS ATTENTION: $aoi holdout could not be chosen automatically"
       touch "$QMARK/${aoi}_needs_attention"; return 0
     fi

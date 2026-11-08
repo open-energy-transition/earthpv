@@ -114,6 +114,7 @@ source, and the vintage nearest the end of the atlas's imagery window was used.
 | Poland | [ARE](https://www.are.waw.pl/badania-statystyczne/energetyka-w-liczbach) monthly statistics | Aug 2026 | 27,106 | none |
 | Poland | [URE](https://www.ure.gov.pl/download/9/16535/MAPAOZEna30092026nastroneURE.xlsx) installation list, above 50 kW | 30 Sep 2026 | 13,440 | 16 voivodeships |
 | Turkey | [TEİAŞ](https://www.teias.gov.tr/turkiye-elektrik-uretim-iletim-istatistikleri) annual statistics, licensed and unlicensed plants | end of 2025 | 25,927 | none |
+| Spain | [REE](https://www.ree.es/sites/default/files/2026-03/1103_NP_ISE_2025.pdf) annual system report, self-consumption included | end of 2025 | 49,900 | none |
 | Egypt, Morocco, Namibia, Nigeria, Vietnam, Yemen, Zambia | [IRENA Renewable Capacity Statistics 2026](https://www.irena.org/-/media/Files/IRENA/Agency/Publication/2026/Mar/IRENA_DAT_RE_Capacity_Statistics_2026.pdf) | end of 2025 | 3,247; 546; 389; 285; 19,252; 456; 328 | none |
 
 **None of them is ground truth for the map, and the atlas is not scored against them.** A
@@ -142,6 +143,7 @@ imported later can be on the imagery.
 
 | Country | Best estimate, photovoltaic (MWp) | Imported from China (MWp) | Period | Best as share of it |
 | --- | ---: | ---: | --- | ---: |
+| Spain | 39,394 | 59,329 | Jan 2017 to Aug 2026 | 66% |
 | Pakistan | 34,470 | 57,609 | Jan 2017 to Jun 2026 | 60% |
 | Vietnam | 9,119 | 31,116 | Jan 2017 to Aug 2026 | 29% |
 | South Africa | 9,239 | 18,533 | Jan 2017 to Aug 2026 | 50% |
@@ -157,8 +159,8 @@ imported later can be on the imagery.
 | Poland | 9,110 | 21,769 | Jan 2017 to Aug 2026 | not a ceiling |
 | Turkey | 17,593 | 6,222 | Jan 2017 to Aug 2026 | not a ceiling |
 
-Best here is each published page's figure as of 7 November 2026 without its solar thermal power
-plants (South Africa 600 MW, Morocco 518.6, India 197.9, Turkey 5.8), which are not panels.
+Best here is each published page's figure as of 8 November 2026 without its solar thermal power
+plants (Spain 2,383 MW, South Africa 600, Morocco 518.6, India 197.9, Turkey 5.8), which are not panels.
 
 **It is not a ceiling for India, Germany, France, Poland or Turkey**, and those atlases say
 so instead: India makes a large share of its own panels, Turkey assembles most of its own

@@ -293,6 +293,35 @@
         "min_area_m2": 100000.0
       }
     },
+    "spain": {
+      "file": "spain_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/spain_pv_new_leads.geojson",
+      "n": 11929,
+      "size_bytes": 16614534,
+      "osm_as_of": "2026-11-02",
+      "min_distance_m": 100,
+      "made": "2026-11-08",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 1872,
+        "review": 3282,
+        "no_dem": 26
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 10038
+      },
+      "blobs": {
+        "file": "spain_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/spain_pv_blob_leads.geojson",
+        "n": 998,
+        "size_bytes": 5610868,
+        "min_area_m2": 100000.0
+      }
+    },
     "turkiye": {
       "file": "turkiye_pv_new_leads.geojson",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/turkiye_pv_new_leads.geojson",

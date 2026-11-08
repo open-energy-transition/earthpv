@@ -90,7 +90,7 @@ Checked 7 November 2026. *Removed from PV* is what left the OSM file the atlas c
 
 | Country | CSP plants | MW | Removed from PV | Candidates | Page |
 | --- | ---: | ---: | --- | ---: | --- |
-| Spain | 43 | 2,383.0 | 1,409 label features (281 PV-tagged inside plants) | - | atlas not yet built |
+| Spain | 43 | 2,383.0 | 1,409 label features (281 PV-tagged inside plants) | 11 | built with them: Verified 39,379.3; Best 41,776.7 |
 | South Africa | 7 | 600.0 | 50 PV-tagged mirror rows, 13.4 km&sup2; | 0 | Verified 9,393.8 to 9,322.7; Best 9,910.2 to 9,839.0 |
 | Morocco | 3 | 518.6 | none (filtered in October) | 0 | Verified 380.4 to 898.9; Best 416.5 to 935.1 |
 | India | 4 | 197.9 | 30 outlines, 9.1 km&sup2; | 5 | Verified 70,523.4 to 70,266.0; Best 103,036.9 to 102,779.7 |

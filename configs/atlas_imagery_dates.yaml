@@ -143,6 +143,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1372
     made: '2026-10-29'
+  spain:
+    median: '2026-08-02'
+    p25: '2026-07-07'
+    p75: '2026-09-02'
+    first: '2026-05-01'
+    last: '2026-09-30'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 5712
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1300
+    made: '2026-11-08'
   turkiye:
     median: '2026-07-31'
     p25: '2026-07-09'

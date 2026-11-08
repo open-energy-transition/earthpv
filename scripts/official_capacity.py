@@ -47,6 +47,21 @@ OUT = REPO / "configs" / "external" / "official_capacity.yaml"
 # Hand-entered from the cited document. `mw` is the national figure the page draws,
 # `range` its stated uncertainty where it has one, `regions` keyed by the atlas's names.
 PUBLISHED: dict[str, list[dict]] = {
+    "spain": [{
+        "id": "ree",
+        "name": "REE",
+        "title": "El sistema eléctrico español en 2025",
+        "publisher": "Red Eléctrica",
+        "kind": "statistics",
+        "url": "https://www.ree.es/sites/default/files/2026-03/1103_NP_ISE_2025.pdf",
+        "as_of": "2025-12-31",
+        # "Casi 50 GW": 33.1% of the 150.8 GW mix that includes self-consumption, as the note
+        # puts it. REE's data API returned 500s for installed capacity on 2026-11-08 and its
+        # regional notes give no capacity total for the largest PV regions, so no provinces.
+        "mw": 49900.0,
+        "scope": "National solar PV at the end of 2025 from the grid operator's annual system "
+                 "report: 33.1% of a 150.8 GW generation mix, self-consumption included.",
+    }],
     "pakistan": [{
         "id": "transitionzero",
         "name": "TransitionZero",

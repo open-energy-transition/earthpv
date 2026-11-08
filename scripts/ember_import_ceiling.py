@@ -75,6 +75,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--csv", type=Path, required=True, help=f"Ember's monthly file ({URL})")
     ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--aoi", action="append",
+                    help="update only this AOI, keeping the file's other entries (repeatable)")
     a = ap.parse_args()
 
     d = pd.read_csv(a.csv)
@@ -83,10 +85,11 @@ def main() -> int:
     data_end = d["month"].max()
 
     aois = Settings.load().aois
-    out = {}
+    kept = yaml.safe_load(a.out.read_text()) if a.aoi and a.out.exists() else {}
+    out = dict(kept.get("aois", {}))
     for aoi, cfg in sorted(aois.items()):
         div = (cfg or {}).get("division") or {}
-        if div.get("subtype") != "country":
+        if div.get("subtype") != "country" or (a.aoi and aoi not in a.aoi):
             continue
         area = EMBER_AREA.get(aoi, div.get("name"))
         s = d[d["Area"] == area]
@@ -107,11 +110,11 @@ def main() -> int:
         "source": "Ember, China's Solar PV Exports (China customs, GACC), CC-BY-4.0",
         "url": "https://ember-energy.org/data/china-solar-exports-data/",
         "data_through": data_end,
-        "retrieved": datetime.date.today().isoformat(),
+        "retrieved": kept.get("retrieved", datetime.date.today().isoformat()),
         "method": "Sum of Ember's monthly panel capacity (MW, export value / average module "
                   "price) to each country from the first month of the record to the end of "
                   "the atlas's imagery window.",
-        "aois": out,
+        "aois": dict(sorted(out.items())),
     }
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text("# Written by scripts/ember_import_ceiling.py; do not edit by hand.\n"

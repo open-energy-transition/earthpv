@@ -1,0 +1,83 @@
+# Spain's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Spain, national: the peninsula, the Balearic and Canary Islands, Ceuta and Melilla. Same
+# starting condition as Poland and Türkiye -- no calibration quadrats, no record-level
+# register (PRETOR publishes none, docs/data-registry.md), no third-party dataset checked
+# against -- so the builder's default no-ground-truth text stands. The segmentation is
+# localized on Spain's own OpenStreetMap labels and ships only if it beats v5 on a held-out
+# region (results/spain_checkpoint_decision.json records which one did).
+#
+# Numbers belong in docs/results/spain.md; nothing here quotes a figure a rebuild could
+# change.
+#
+# Checked 2026-11-08 (scripts/spain_greenhouse_check.py, docs/results/spain.md): Almería's and
+# Murcia's plastic greenhouses do not read as PV, so the page carries no caveat about them.
+
+title: Spain
+
+# The mapper's first box (owner, 2026-11-08): Vigo's car-plant roofs rather than the rule's
+# pick, a dense Palma neighbourhood whose blocks are traced as single large buildings.
+start_here: pontevedra_priority_calib_1km
+
+cities:
+  - [Madrid, -3.704, 40.417]
+  - [Barcelona, 2.173, 41.385]
+  - [Valencia, -0.376, 39.470]
+  - [Seville, -5.984, 37.389]
+  - [Zaragoza, -0.889, 41.649]
+  - [Málaga, -4.421, 36.721]
+  - [Murcia, -1.130, 37.992]
+  - [Almería, -2.463, 36.838]
+  - [Badajoz, -6.970, 38.879]
+  - [Ciudad Real, -3.927, 38.986]
+  - [Valladolid, -4.724, 41.652]
+  - [Bilbao, -2.935, 43.263]
+  - [A Coruña, -8.411, 43.362]
+  - [Palma, 2.650, 39.570]
+  - [Las Palmas, -15.414, 28.124]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet.</b> No area of Spain
+      has been mapped panel by panel, so there is nothing to calibrate a per-building
+      rooftop classifier against here. Everything on the map is either hand-mapped in
+      OpenStreetMap or an array the segmentation model outlined directly, which in practice
+      means installations of roughly 400 m&sup2; and up. Household and small-business
+      rooftop systems are mostly below that size.
+    - >-
+      <b>Concentrated solar plants are counted, but not as photovoltaics.</b> Spain's
+      parabolic-trough and tower plants are tagged in OpenStreetMap much like solar parks.
+      They were taken out before training and out of the photovoltaic layers, and each plant
+      counts in Best and Verified at its electric rating, not by its mirror area.
+    - >-
+      <b>Nearly every cell was imaged.</b> Map cells were imaged if they hold at least one
+      known building or any hand-mapped solar installation, a wider net than most countries
+      on this site. Cells that hold neither are hatched on the map: they were not looked at,
+      which is not the same as holding no solar.
+    - >-
+      <b>Building footprints are stitched from two sources.</b> The open footprint dataset
+      used elsewhere (VIDA) has large gaps in Spain, including the centres of Seville,
+      Valencia and M&aacute;laga. Those gaps were filled with OpenStreetMap buildings, which
+      are themselves incomplete in places, so rooftop and ground placement and the choice of
+      which cells to image are less even here than the map suggests.
+    - >-
+      <b>Very large model outlines count only once checked.</b> A model outline above
+      100,000 m&sup2; counts only when it is mapped or a person has judged it solar, which
+      removes large false detections and, with them, any real park nobody has looked at
+      yet. Spain's have not been judged yet, so the real parks among them are still missing
+      from Best. Mapping such a park brings it into the verified layer.
+    - >-
+      <b>On open ground, most of what the model adds is not solar.</b> Looked at on imagery,
+      the largest unmapped outlines in the cells where Best most exceeds Verified are mostly
+      bare rock outcrops in the western woodlands, arable fields and quarries, with some real
+      parks among them. Such outlines reach Best at the mapped share of their size class,
+      which is high for large ground outlines because Spain's solar parks are so well mapped.
+      Verified, which counts only mapped installations, is not affected.
+    - >-
+      <b>The plausibility check cannot vouch for the regional figures here.</b> It compares
+      each region's ground-mounted capacity with its rooftop capacity, and nearly every
+      Spanish region fails or is flagged. That is expected where rooftop systems are mostly
+      too small for the model to see, since the comparison then has almost nothing to divide
+      by. It also means the check says little either way about false detections on open
+      ground.

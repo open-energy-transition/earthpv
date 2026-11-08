@@ -20,6 +20,7 @@ hide:
   <a href="../atlas-nigeria/">Nigeria</a>
   <a href="../atlas-poland/">Poland</a>
   <a href="../atlas-south-africa/">South Africa</a>
+  <a href="../atlas-spain/">Spain</a>
   <a href="../atlas-turkiye/">Turkey</a>
   <span aria-current="page">Vietnam</span>
   <a href="../atlas-yemen/">Yemen</a>

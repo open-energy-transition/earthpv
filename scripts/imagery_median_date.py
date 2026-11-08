@@ -53,7 +53,8 @@ sys.path.insert(0, str(REPO / "src"))
 
 OUT = REPO / "configs" / "atlas_imagery_dates.yaml"
 ATLAS_AOIS = ["pakistan", "germany", "france", "india", "vietnam", "egypt", "yemen",
-              "south_africa", "morocco", "poland", "zambia", "nigeria", "namibia"]
+              "south_africa", "morocco", "poland", "zambia", "nigeria", "namibia",
+              "spain"]
 MAX_CLOUD = 60      # compose.py's call to annual_composite
 MAX_ITEMS = 12      # annual_composite's default
 RANK_SINCE = dt.date(2026, 10, 10)   # imagery._rank_items (coverage before cloud cover)

@@ -618,11 +618,20 @@ def propose_priority(aoi: str, args) -> list[dict]:
     pool = grid[grid["bldg_density_km2"] >= floor].copy()
     pool["roof_cover"] = pool["roof_area_m2"] / (pool["cell_area_km2"] * 1e6)
     pool["mean_roof_m2"] = pool["roof_area_m2"] / pool["n_buildings"]
+    # Footprint datasets trace plastic greenhouses as buildings and can merge a historic
+    # centre's blocks into one, so such a district scores as the best "large roof" land there
+    # is (Spain: Campo de Dalias, central Madrid). The caller names them after looking.
+    for w, so, e, n in args.exclude_box or []:
+        pool = pool[~((pool["lon0"] < e) & (pool["lon0"] + 0.1 > w)
+                      & (pool["lat0"] < n) & (pool["lat0"] + 0.1 > so))]
     scan = pd.concat([pool.nlargest(PRIORITY_CELLS, "roof_cover"),
                       pool.nlargest(PRIORITY_CELLS, "mean_roof_m2")]).drop_duplicates("cell")
     criterion = (f"densest {PRIORITY_STRATA} of {args.strata} density bands (cells from "
                  f"{floor:,.0f} bldg/km2), most roof area in buildings of "
                  f"{LARGE_ROOF_M2:,.0f} m2 or more")
+    if args.exclude_box:
+        criterion += (f", leaving out {len(args.exclude_box)} districts where footprints do "
+                      "not read as roofs (seen on imagery)")
 
     admin = Admin(aoi)
     con = duckdb.connect()
@@ -1662,6 +1671,10 @@ def main() -> int:
     mode.add_argument("--towns", action="store_true",
                       help="draw town boxes at random (a random building's 1 km box, kept at the "
                            "--pv-rich town floor), with no PV signal: the level for towns")
+    ap.add_argument("--exclude-box", action="append", default=[], metavar="W,S,E,N",
+                    type=lambda v: tuple(float(x) for x in v.split(",")),
+                    help="--priority: skip cells touching this box (repeatable), e.g. a "
+                         "greenhouse district or a centre whose blocks read as large roofs")
     ap.add_argument("--n-priority", type=int, default=2,
                     help="start-here (or, with --pv-rich, PV-rich) boxes per AOI")
     ap.add_argument("--score-dir", type=Path, default=None,

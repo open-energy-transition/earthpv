@@ -1,7 +1,7 @@
 # Written by scripts/official_capacity.py; do not edit by hand.
 note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
   for the atlas: `scope` says what each counts.'
-retrieved: '2026-10-29'
+retrieved: '2026-11-08'
 aois:
   egypt:
   - id: irena
@@ -237,6 +237,17 @@ aois:
       Western Cape: 827.8
     regions_scope: 'Estimated rooftop and other uncontracted PV only: the 2,780.2 MW of contracted utility-scale
       PV is not split by province.'
+  spain:
+  - id: ree
+    name: REE
+    title: El sistema eléctrico español en 2025
+    publisher: Red Eléctrica
+    kind: statistics
+    url: https://www.ree.es/sites/default/files/2026-03/1103_NP_ISE_2025.pdf
+    as_of: '2025-12-31'
+    mw: 49900.0
+    scope: 'National solar PV at the end of 2025 from the grid operator''s annual system report: 33.1%
+      of a 150.8 GW generation mix, self-consumption included.'
   turkiye:
   - id: teias
     name: TEİAŞ
