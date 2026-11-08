@@ -3,9 +3,9 @@
  * Three stacked canvases: `under` holds what never moves (the sphere's shading and the
  * pencil ring), `earth` is redrawn as the globe turns, `over` holds the brush stroke.
  *
- * The ink is drawn from the geometry rather than filtered afterwards. Every coastline
- * point keeps its own pressure, so the line stays the same as the land turns under it and
- * only the paper grain, knocked out of the ink last, belongs to the page.
+ * Everything on `earth` is drawn from the geography, hatching included, and every line
+ * point keeps its own pressure, so each mark turns with the land under it. A texture
+ * fixed to the screen would make the land look as if it slid beneath a second sheet.
  *
  * d3-geo does the two things that are hard to do by hand, clipping polygons at the horizon
  * and point-in-country tests. Lines and dots are projected here directly, which is what
@@ -25,7 +25,11 @@
   var SPIN_DEG_S = 3.2;
   var AUTO_FPS = 24;           // the hand-drawn cadence, and half the work
   var NEW_ATLAS = 'contribute/new-atlas/';
-  var RED_MW = 100;            // a bin at or above this is red: 684 bins hold half the capacity
+  var HATCH_DEG = 1.15;        // between pencil lines
+  var HATCH_STEP = 1.6;        // between the points of one line
+  var HATCH_POLE = [-30, -35]; // the South Atlantic; its far end is the North Pacific
+  var TONE_ALPHA = 0.2;        // the pale tone over a cell the model has looked at
+  var RED_MW = 100;            // a 0.1 degree cell at or above this is red: 382 cells, 35% of capacity
 
   function el(id) { return document.getElementById(id); }
 
@@ -83,51 +87,6 @@
     return c;
   }
 
-  /* What dry ink misses: an alpha mask knocked out of everything drawn on the globe. */
-  function grainTile() {
-    var size = 256, c = document.createElement('canvas');
-    c.width = c.height = size;
-    var x = c.getContext('2d'), rand = mulberry(5);
-    var coarse = new Float32Array(32 * 32);
-    for (var k = 0; k < coarse.length; k++) coarse[k] = rand();
-    var img = x.createImageData(size, size), d = img.data;
-    for (var py = 0; py < size; py++) {
-      for (var px = 0; px < size; px++) {
-        var cx = px / 8, cy = py / 8, ix = Math.floor(cx), iy = Math.floor(cy);
-        var fx = cx - ix, fy = cy - iy;
-        var a = coarse[(iy % 32) * 32 + (ix % 32)];
-        var b = coarse[(iy % 32) * 32 + ((ix + 1) % 32)];
-        var c2 = coarse[((iy + 1) % 32) * 32 + (ix % 32)];
-        var e = coarse[((iy + 1) % 32) * 32 + ((ix + 1) % 32)];
-        var patch = (a * (1 - fx) + b * fx) * (1 - fy) + (c2 * (1 - fx) + e * fx) * fy;
-        var speck = rand();
-        var o = (px + py * size) * 4;
-        d[o + 3] = speck > 0.97 - patch * 0.26 ? 110 + rand() * 120 : rand() * 26;
-      }
-    }
-    x.putImageData(img, 0, 0);
-    return c;
-  }
-
-  /* Pencil shading laid over land nobody has processed yet. */
-  function hatchTile() {
-    var size = 128, c = document.createElement('canvas');
-    c.width = c.height = size;
-    var x = c.getContext('2d'), rand = mulberry(21);
-    x.lineCap = 'round';
-    for (var off = -size; off < size * 2; off += 5.6) {
-      for (var w = -size; w <= size; w += size) {   // two copies, so the lines run off and back on
-        x.strokeStyle = 'rgba(' + INK + ',' + (0.08 + rand() * 0.15) + ')';
-        x.lineWidth = 0.35 + rand() * 0.4;
-        x.beginPath();
-        x.moveTo(off + w, 0);
-        x.lineTo(off + w - size * 0.46, size);
-        x.stroke();
-      }
-    }
-    return c;
-  }
-
   /* --------------------------------------------------------------------------- data */
 
   function decodeArcs(world) {
@@ -176,8 +135,6 @@
     var rot = START.slice();
     var projection = d3.geoOrthographic().clipAngle(90).precision(0.6);
     var path = d3.geoPath(projection, ctx);
-    var grain = ctx.createPattern(grainTile(), 'repeat');
-    var hatch = ctx.createPattern(hatchTile(), 'repeat');
 
     var arcs = decodeArcs(world);
     var atlasByName = {};
@@ -230,7 +187,7 @@
     var inked = coarse(inkedPolys);
 
     /* ---------------------------------------------------------------- line work */
-    var lineSets = { grat: [], pencilBorder: [], pencilCoast: [], pencilGhost: [], ink: [], inkGhost: [] };
+    var lineSets = { grat: [], hatch: [], pencilBorder: [], pencilCoast: [], pencilGhost: [], ink: [], inkGhost: [] };
 
     (function buildLines() {
       var uses = new Uint8Array(arcs.length), inkUse = new Uint8Array(arcs.length);
@@ -285,10 +242,53 @@
         for (lon = -180; lon <= 180; lon += 2.5) pts.push([lon, lat]);
         lineSets.grat.push(make(pts, 0.5, 18));
       }
+
+      /* Pencil shading, drawn on the land so that it turns with it: circles round one
+         tilted axis, kept wherever a map of the pencil land says they are ashore. Lines
+         round the Earth's own axis would crowd together towards the poles; these are evenly
+         spaced everywhere and close up only at the axis's two ends, both in open ocean. */
+      var mapW = 2160, mapH = 1080, map = document.createElement('canvas');
+      map.width = mapW; map.height = mapH;
+      var mapCtx = map.getContext('2d', { willReadFrequently: true });
+      mapCtx.beginPath();
+      d3.geoPath(d3.geoEquirectangular().scale(mapW / TAU).translate([mapW / 2, mapH / 2]), mapCtx)(pencil);
+      mapCtx.fill();
+      var land = mapCtx.getImageData(0, 0, mapW, mapH).data;
+      function ashore(lo, la) {
+        var mx = Math.min(mapW - 1, Math.floor((lo + 180) / 360 * mapW));
+        var my = Math.min(mapH - 1, Math.floor((90 - la) / 180 * mapH));
+        return land[(my * mapW + mx) * 4 + 3] > 127;
+      }
+      function flushHatch(run) {
+        if (run.length >= 2) lineSets.hatch.push(make(run, 0.08, 5));
+      }
+      var ax = new Float64Array(3);
+      unit(HATCH_POLE[0], HATCH_POLE[1], ax, 0);
+      var ul = Math.hypot(ax[1], ax[0]), ux = -ax[1] / ul, uy = ax[0] / ul;   // across the axis
+      var vx = ax[1] * 0 - ax[2] * uy, vy = ax[2] * ux - ax[0] * 0, vz = ax[0] * uy - ax[1] * ux;
+      for (var theta = HATCH_DEG; theta < 180; theta += HATCH_DEG) {
+        var ct = Math.cos(theta * RAD), st = Math.sin(theta * RAD), run = [];
+        var dphi = HATCH_STEP / Math.max(0.05, st);
+        for (var phi = 0; phi < 360; phi += dphi) {
+          var cf = st * Math.cos(phi * RAD), sf = st * Math.sin(phi * RAD);
+          var hx = ct * ax[0] + cf * ux + sf * vx;
+          var hy = ct * ax[1] + cf * uy + sf * vy;
+          var hz = ct * ax[2] + sf * vz;
+          lon = Math.atan2(hy, hx) / RAD;
+          lat = Math.asin(Math.max(-1, Math.min(1, hz))) / RAD;
+          if (ashore(lon, lat)) {
+            run.push([lon, lat]);
+          } else {
+            flushHatch(run);
+            run = [];
+          }
+        }
+        flushHatch(run);
+      }
     })();
 
     /* ----------------------------------------------------- the atlases' own cells */
-    var step = earth.bin_deg, rand = mulberry(9);
+    var step = earth.bin_deg;
     var seen = [], pv = [];
     earth.processed.forEach(function (row) {
       var lat = (row[0] + 0.5) * step;
@@ -297,20 +297,71 @@
       }
     });
     earth.pv.forEach(function (row) {
-      var lat = (row[0] + 0.5) * step;
-      for (var i = 1; i < row.length; i += 2) pv.push([(row[i] + 0.5) * step, lat, row[i + 1]]);
+      var lat = (row[0] + 0.5) * step, lon = 0;
+      for (var i = 1; i < row.length; i += 2) {
+        lon += row[i];
+        pv.push([(lon + 0.5) * step, lat, row[i + 1]]);
+      }
     });
-    pv.sort(function (a, b) { return a[2] - b[2]; });   // the largest blots land on top
+    pv.sort(function (a, b) { return a[2] - b[2]; });   // the brush reaches the largest last
 
-    var seenXYZ = new Float32Array(seen.length * 3), seenJit = new Float32Array(seen.length * 3);
-    seen.forEach(function (p, i) {
-      unit(p[0] + (rand() - 0.5) * step, p[1] + (rand() - 0.5) * step, seenXYZ, i * 3);
-      seenJit[i * 3] = 0.5 + rand() * 0.9;
-      seenJit[i * 3 + 1] = rand();
-    });
+    var seenXYZ = new Float32Array(seen.length * 3);
+    seen.forEach(function (p, i) { unit(p[0], p[1], seenXYZ, i * 3); });
     var pvXYZ = new Float32Array(pv.length * 3), pvMW = new Float32Array(pv.length);
-    var pvRnd = new Float32Array(pv.length);
-    pv.forEach(function (p, i) { unit(p[0], p[1], pvXYZ, i * 3); pvMW[i] = p[2]; pvRnd[i] = rand(); });
+    pv.forEach(function (p, i) { unit(p[0], p[1], pvXYZ, i * 3); pvMW[i] = p[2]; });
+
+    /* A 0.1 degree cell is about a pixel at this size, so the cells are laid down pixel by
+       pixel: as dots they would only cover each other. Each cell is shared among the four
+       pixels around it, which keeps it steady as the globe turns. */
+    var raster = document.createElement('canvas'), rasterCtx = raster.getContext('2d');
+    var rImage, rPixels, rTone, rMW, rMark, rSize = 0, rLeft = 0, rTop = 0, rCell = 1;
+    var rTouched = new Int32Array((seen.length + pv.length) * 4), rCount = 0;
+
+    /* From a trace of ink to full vermilion, over a log scale of MW in one cell. */
+    var LOG_LOW = -2, LOG_HIGH = Math.log(RED_MW) / Math.LN10;
+    var ramp = (function () {
+      var stops = [[0, 38, 35, 31, 0.24], [0.25, 38, 35, 31, 0.36], [0.5, 38, 35, 31, 0.58],
+                   [0.726, 38, 35, 31, 0.82], [0.85, 38, 35, 31, 0.97], [0.925, 112, 40, 22, 1],
+                   [1, 163, 44, 16, 1]];
+      var out = new Uint32Array(256), s = 0;
+      for (var i = 0; i < 256; i++) {
+        var u = i / 255;
+        while (s < stops.length - 2 && u > stops[s + 1][0]) s++;
+        var a = stops[s], b = stops[s + 1], t = (u - a[0]) / (b[0] - a[0]);
+        var mix = function (k) { return a[k] + (b[k] - a[k]) * t; };
+        out[i] = ((mix(4) * 255) << 24) | (mix(3) << 16) | (mix(2) << 8) | mix(1);
+      }
+      return out;
+    })();
+
+    function rasterSetup() {
+      var margin = 2;
+      rSize = Math.ceil(2 * (R + margin) * DPR);
+      rLeft = Math.round((cx - R - margin) * DPR);
+      rTop = Math.round((cy - R - margin) * DPR);
+      raster.width = raster.height = rSize;
+      rImage = rasterCtx.createImageData(rSize, rSize);
+      rPixels = new Uint32Array(rImage.data.buffer);
+      rTone = new Float32Array(rSize * rSize);
+      rMW = new Float32Array(rSize * rSize);
+      rMark = new Uint8Array(rSize * rSize);
+      rCell = step * RAD * R * DPR;
+    }
+
+    function touch(buf, o, v) {
+      buf[o] += v;
+      if (!rMark[o]) { rMark[o] = 1; rTouched[rCount++] = o; }
+    }
+
+    function deposit(buf, px, py, v) {
+      var ix = Math.floor(px), iy = Math.floor(py);
+      if (ix < 0 || iy < 0 || ix >= rSize - 1 || iy >= rSize - 1) return;
+      var fx = px - ix, fy = py - iy, o = iy * rSize + ix;
+      touch(buf, o, v * (1 - fx) * (1 - fy));
+      touch(buf, o + 1, v * fx * (1 - fy));
+      touch(buf, o + rSize, v * (1 - fx) * fy);
+      touch(buf, o + rSize + 1, v * fx * fy);
+    }
 
     /* ------------------------------------------------------------------- drawing */
     var cl, sl, cp, sp, cg, sg;
@@ -356,51 +407,61 @@
     }
 
     function drawCells(ink) {
-      var i, j, x, y, z, x1, y1, k, X, Y, Z, n;
-      /* Stipple for every cell the model has looked at. */
+      var i, j, x, y, z, x1, y1, k, X, Y, Z, n, o;
+      /* Under a pixel per cell, a pixel shows the mean of the cells it holds. X undoes the
+         crowding towards the limb, so a country reads the same wherever it is on the globe. */
+      var share = Math.min(1, rCell * rCell);
+      rCount = 0;
+
+      /* A pale tone over every cell the model has looked at. */
       n = Math.floor(seen.length * ink);
-      var dot = 0.72 * S;
-      ctx.fillStyle = 'rgba(' + INK + ',.52)';
       for (i = 0; i < n; i++) {
         j = i * 3; x = seenXYZ[j]; y = seenXYZ[j + 1]; z = seenXYZ[j + 2];
         x1 = x * cl - y * sl; y1 = x * sl + y * cl;
         k = z * cp + x1 * sp; X = x1 * cp - z * sp;
         if (X <= 0) continue;
         Y = y1 * cg - k * sg; Z = k * cg + y1 * sg;
-        var s = dot * seenJit[j] * Math.max(0.5, X);
-        ctx.fillRect(cx + R * Y - s / 2, cy - R * Z - s / 2, s, s);
+        deposit(rTone, (cx + R * Y) * DPR - rLeft - 0.5, (cy - R * Z) * DPR - rTop - 0.5, share * X);
       }
 
-      /* Capacity. Area is proportional to MWp; the smallest stay ink, the rest go red. */
-      var sumi = new Path2D(), red = new Path2D();
+      /* Capacity, cell by cell. The largest also get a mark of their own, its area
+         proportional to MWp, so one great park still shows on a screen of coarse pixels. */
+      var red = new Path2D();
       n = Math.floor(pv.length * ink);
-      ctx.fillStyle = 'rgba(' + INK + ',.8)';
       for (i = 0; i < n; i++) {
         j = i * 3; x = pvXYZ[j]; y = pvXYZ[j + 1]; z = pvXYZ[j + 2];
         x1 = x * cl - y * sl; y1 = x * sl + y * cl;
         k = z * cp + x1 * sp; X = x1 * cp - z * sp;
         if (X <= 0) continue;
         Y = y1 * cg - k * sg; Z = k * cg + y1 * sg;
-        var mw = pvMW[i], r = Math.min(13, 0.27 * Math.sqrt(mw)) * S * (0.4 + 0.6 * X);
-        var px = cx + R * Y, py = cy - R * Z;
-        var target = mw >= RED_MW ? red : sumi;
-        if (r < 1) {           // below a pixel a circle and a square look the same
-          var a = Math.max(0.42 * S, r) * 2;
-          if (target === sumi) ctx.fillRect(px - a / 2, py - a / 2, a, a);
-          else target.rect(px - a / 2, py - a / 2, a, a);
-        } else {
-          target.moveTo(px + r, py);
-          target.arc(px, py, r, 0, TAU);
-          if (r > 2.4) {          // a blot, not a disc
-            var t = pvRnd[i] * TAU, d = r * 0.75, q = r * (0.3 + pvRnd[i] * 0.3);
-            target.moveTo(px + Math.cos(t) * d + q, py + Math.sin(t) * d);
-            target.arc(px + Math.cos(t) * d, py + Math.sin(t) * d, q, 0, TAU);
-          }
+        var mw = pvMW[i], px = cx + R * Y, py = cy - R * Z;
+        deposit(rMW, px * DPR - rLeft - 0.5, py * DPR - rTop - 0.5, mw * share * X);
+        if (mw >= RED_MW) {
+          var r = Math.max(0.5, Math.min(2.6, 0.055 * Math.sqrt(mw))) * S * (0.4 + 0.6 * X);
+          red.moveTo(px + r, py);
+          red.arc(px, py, r, 0, TAU);
         }
       }
-      ctx.fillStyle = 'rgba(' + INK + ',.8)';
-      ctx.fill(sumi);
-      ctx.fillStyle = 'rgba(' + RED + ',.9)';
+
+      for (i = 0; i < rCount; i++) {
+        o = rTouched[i];
+        if (rMW[o] > 0) {
+          var u = (Math.log(rMW[o]) / Math.LN10 - LOG_LOW) / (LOG_HIGH - LOG_LOW);
+          rPixels[o] = ramp[u <= 0 ? 0 : u >= 1 ? 255 : Math.round(u * 255)];
+        } else {
+          rPixels[o] = ((Math.min(1, rTone[o] * 1.3) * TONE_ALPHA * 255) << 24) | (31 << 16) | (35 << 8) | 38;
+        }
+      }
+      rasterCtx.putImageData(rImage, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(raster, rLeft, rTop);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      for (i = 0; i < rCount; i++) {
+        o = rTouched[i];
+        rPixels[o] = 0; rTone[o] = 0; rMW[o] = 0; rMark[o] = 0;
+      }
+
+      ctx.fillStyle = 'rgba(' + RED + ',.92)';
       ctx.fill(red);
     }
 
@@ -417,8 +478,7 @@
       path(pencil);
       ctx.fillStyle = 'rgba(' + INK + ',.05)';
       ctx.fill();
-      ctx.fillStyle = hatch;
-      ctx.fill();
+      strokeSet(lineSets.hatch, [0.35, 0.55, 0.8], 0.26, INK, 0.16);
 
       strokeSet(lineSets.grat, [0.5], 0.13, INK, 0.3);
       strokeSet(lineSets.pencilBorder, [0.45, 0.7], 0.3, INK, 0.1);
@@ -428,9 +488,9 @@
       /* Inked land: sumi wash, deepest at the coast. */
       ctx.beginPath();
       path(inked);
-      ctx.fillStyle = 'rgba(' + INK + ',' + (0.3 * ink) + ')';
+      ctx.fillStyle = 'rgba(' + INK + ',' + (0.13 * ink) + ')';
       ctx.fill();
-      if (ink > 0.02) strokeSet(lineSets.ink, [5], 0.1 * ink, INK, 0);   // the wash bleeds a little
+      if (ink > 0.02) strokeSet(lineSets.ink, [3.5], 0.08 * ink, INK, 0);   // the wash bleeds a little
 
       if (hovered && !hovered.atlas) {
         ctx.beginPath();
@@ -442,7 +502,7 @@
       drawCells(ink);
 
       if (quality > 0) strokeSet(lineSets.inkGhost, [0.4, 0.7], 0.35 * ink, INK, 0.2);
-      strokeSet(lineSets.ink, [0.7, 1.05, 1.5, 2.1, 2.9], 0.95 * ink, INK, 0);
+      strokeSet(lineSets.ink, [0.55, 0.8, 1.1, 1.5, 2], 0.95 * ink, INK, 0);
 
       if (hovered) {
         ctx.beginPath();
@@ -452,12 +512,6 @@
         ctx.lineJoin = 'round';
         ctx.stroke();
       }
-
-      /* Dry ink: the paper's tooth shows through everything drawn on the globe. */
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = grain;
-      ctx.fillRect(cx - R - 4, cy - R - 4, 2 * R + 8, 2 * R + 8);
-      ctx.globalCompositeOperation = 'source-over';
     }
 
     /* ---------------------------------------------- the sphere and the pencil ring */
@@ -488,6 +542,10 @@
       var c = uctx;
       c.setTransform(DPR, 0, 0, DPR, 0, 0);
       c.clearRect(0, 0, W, H);
+
+      /* Opaque, so that the sheet's fibres do not show through land turning over them. */
+      c.fillStyle = '#f8f4ec';
+      c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
 
       /* The sphere: a little brighter than the sheet, darkening at the limb. */
       var g = c.createRadialGradient(cx - R * 0.28, cy - R * 0.34, R * 0.1, cx, cy, R);
@@ -707,6 +765,7 @@
       cx = W / 2;
       cy = H / 2 + (narrow ? 0 : 12);
       projection.translate([cx, cy]).scale(R);
+      rasterSetup();
       brushSetup();
       buildSlices();
       drawUnder();

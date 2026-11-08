@@ -42,9 +42,11 @@ EARTH = LANDING / "earth.json"
 INDEX = DOCS / "index.md"
 GLOBAL_PV = REPO / "configs" / "external" / "global_pv_capacity.yaml"
 
-# A 0.1 degree cell is under a pixel on a page-sized globe, so the cells are drawn in
-# 0.2 degree bins, each carrying the summed capacity of its cells.
-BIN_DEG = 0.2
+# The atlases' own resolution: one 0.1 degree cell, one entry. An off-lattice country's cells
+# keep their one-to-one bins and move by at most half a cell.
+BIN_DEG = 0.1
+# Below this a cell reads as a trace of ink whatever its size, so the file need not say more.
+MIN_CELL_MWP = 0.01
 # A polygon of an atlas country counts as processed when a processed cell lies within this
 # many degrees of it, so that coastal islets stay with their country and an overseas
 # territory the atlas never imaged (French Guiana, Reunion) does not.
@@ -283,7 +285,8 @@ def write() -> None:
     verified_mwp = sum(a["verified"] for a in atlases)
 
     # Rows of constant latitude keep the file small: [lat, lon0, run, lon1, run, ...] for
-    # the processed cells and [lat, lon, mwp, lon, mwp, ...] for the capacity.
+    # the processed cells and [lat, dlon, mwp, dlon, mwp, ...] for the capacity, each dlon
+    # counted from the entry before it in the row.
     rows: dict[int, list[int]] = {}
     for lon, lat in sorted(processed, key=lambda k: (k[1], k[0])):
         row = rows.setdefault(lat, [])
@@ -292,8 +295,10 @@ def write() -> None:
         else:
             row += [lon, 1]
     pv_rows: dict[int, list[float]] = {}
+    previous: dict[int, int] = {}
     for (lon, lat), mwp in sorted(capacity.items(), key=lambda kv: (kv[0][1], kv[0][0])):
-        pv_rows.setdefault(lat, []).extend([lon, _sig(mwp)])
+        pv_rows.setdefault(lat, []).extend([lon - previous.get(lat, 0), _sig(max(mwp, MIN_CELL_MWP))])
+        previous[lat] = lon
 
     earth = {
         "bin_deg": BIN_DEG,
