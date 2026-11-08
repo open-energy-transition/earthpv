@@ -666,7 +666,20 @@ SVG/HTML; the map and the three Plot charts say they could not load.
 - **For every page built or retemplated from 2026-10-24 on**: the province chart shows the top 7
   (`PROV_TOP`) with a *Show all N provinces* toggle; a fifth KPI tile gives processed cells
   against the country's (`totals.n_cells_processed` / `n_cells_country`, `atlas._cell_coverage`);
-  the Silver/Bronze banner is short.
+  the Silver/Bronze banner is short. Since 2026-11-07 (owner) hand-mapped OSM is one tile (both
+  sizes, split beneath), and the coverage tile gives way to what the installed PV generates per
+  year (`totals.generation`, `atlas.generation_totals`: each cell's Best times its PVGIS yield,
+  interpolated from a cached probe grid, `pv_capacity.irradiance_probes_path`) wherever one is
+  cached, which `earthpv atlas` does by default (`fetch_irradiance_probes`: 100 PVGIS points,
+  once per AOI, into `data/irradiance_probes/<aoi>.csv`; `--no-fetch-irradiance` keeps the
+  coverage tile); the unimaged hatching keeps the coverage counts.
+  `scripts/patch_atlas_generation.py --fetch` adds it to a published page. Pakistan 55.9 TWh/yr at
+  1,623 kWh/kWp. Yield is for equator-facing panels at the latitude's tilt, so it leans high
+  (Germany 96.0 TWh/yr from its 86 GWp Best); the tile's tooltip says so. Its interval is Best's
+  at the same mean yield, so it carries no yield uncertainty, and no pose survey enters it.
+  **South of the equator the panel azimuth is 0** (`specific_yield_kwh_per_kwp`, 2026-11-07:
+  180 everywhere had South Africa at 1,073 kWh/kWp instead of 1,830; the wrong grids are in
+  `data/irradiance_probes/PRE_azimuth_fix_20261107/`). Method: `docs/methods/density.md`.
 - **Cells nobody imaged are hatched (2026-10-28)**: `unimaged` in the data block (runs
   `[lon0, lat0, n]` from `atlas._cell_coverage`, exactly `n_cells_country - n_cells_processed`
   cells) is drawn over the cells, so an OSM-only cell shows its colour hatched and bare land

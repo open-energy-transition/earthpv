@@ -1016,6 +1016,32 @@ solar feature, and caps at 6 per 0.1 deg cell, for a human to spot-check the
 highest-opportunity roofs before treating any of this as validated. It reads
 `potential.py::large_roof_buildings`, footprints of at least 200 m<sup>2</sup> with no PV score.
 
+## What the installed PV generates
+
+Every evidence atlas has a tile with the electricity its Best estimate generates in a year, in
+TWh/yr (GWh/yr below 1 TWh/yr). Capacity alone cannot be compared between countries with
+different sun.
+
+**Generation = Best (MWp) x kWh/kWp**, summed over the 0.1 degree cells so that the national
+yield is weighted by where the capacity sits (`atlas.py::generation_totals`). The yield comes
+from PVGIS-ERA5 for 2020: about 100 points on a regular grid over the country, interpolated to
+each cell centre from its four nearest points. `earthpv atlas` fetches the grid on a country's
+first build and caches it in `data/irradiance_probes/<aoi>.csv`, so later builds make no PVGIS
+call (`--no-fetch-irradiance` skips the fetch). `scripts/patch_atlas_generation.py --fetch` adds
+the figure to a published page without a rebuild. How the points are interpolated barely
+matters: taking the one nearest point or the eight nearest moves a country's figure by at most
+0.6%.
+
+**How to read it.** The figure is modelled from the capacity estimate; no generation data enters
+it. Three things limit it:
+
+- **Pose.** Every panel is modelled fixed, facing the equator, at a tilt equal to the latitude,
+  with 14% system loss. Real roofs face every way, so the figure leans high. Trackers, which
+  yield more, are not modelled either.
+- **Weather.** One year, 2020, not the year of the imagery.
+- **The interval carries capacity only.** It is Best's 90% interval at the same mean yield. The
+  uncertainty in the yield is not in it, nor are soiling and outages beyond the system loss.
+
 ## The plausibility gate
 
 The leads product has a human on every candidate. The capacity atlas has nobody, so a

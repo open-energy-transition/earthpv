@@ -80,7 +80,10 @@ def specific_yield_kwh_per_kwp(
     try:
         data, _ = pvlib.iotools.get_pvgis_hourly(
             lat, lon, start=year, end=year, raddatabase="PVGIS-ERA5",
-            surface_tilt=abs(lat), surface_azimuth=180, pvcalculation=True,
+            # Facing the equator: pvlib's azimuth is clockwise from north, so south of the
+            # equator that is 0. Until 2026-11-07 it was 180 everywhere, which turned every
+            # southern-hemisphere probe away from the sun (South Africa read 1,073 kWh/kWp).
+            surface_tilt=abs(lat), surface_azimuth=180 if lat >= 0 else 0, pvcalculation=True,
             peakpower=1, loss=loss_pct, outputformat="json",
         )
         return float(data["P"].sum() / 1000.0)
@@ -188,6 +191,44 @@ def interpolate_yield(
     near = np.argsort(d2, axis=1)[:, :k]
     w = 1.0 / np.maximum(np.take_along_axis(d2, near, axis=1), 1e-12)  # on a probe: no 1/0
     return (w * pval[near]).sum(axis=1) / w.sum(axis=1)
+
+
+# Where an AOI's PVGIS probe grid is cached: `roof-potential` writes one beside its density
+# run, and `earthpv atlas` (`fetch_irradiance_probes`, on by default) or
+# `scripts/patch_atlas_generation.py --fetch` writes `data/irradiance_probes/<aoi>.csv` for a
+# country without one, once; every later build reads the cache.
+IRRADIANCE_PROBES_DIR = Path("data/irradiance_probes")
+DEFAULT_GENERATION_N_PROBE = 100
+GENERATION_SOURCE = (
+    f"PVGIS-ERA5 2020, fixed panels facing the equator at a tilt equal to the latitude, "
+    f"{DEFAULT_SYSTEM_LOSS_PCT:g}% system loss"
+)
+
+
+def irradiance_probes_path(aoi: str, density_dir: Path | None = None) -> Path | None:
+    """The cached PVGIS probe grid for an AOI, or None: the density run's own
+    (`<density_dir>/irradiance_probes.csv`), else `data/irradiance_probes/<aoi>.csv`."""
+    cands = ([Path(density_dir) / "irradiance_probes.csv"] if density_dir else []) + [
+        IRRADIANCE_PROBES_DIR / f"{aoi}.csv"]
+    return next((c for c in cands if c.exists()), None)
+
+
+def fetch_irradiance_probes(
+    aoi: str, lon0, lat0, n_probe: int = DEFAULT_GENERATION_N_PROBE,
+) -> Path | None:
+    """Query PVGIS on a regular grid over 0.1 degree cells with corners (`lon0`, `lat0`) and
+    cache it as `data/irradiance_probes/<aoi>.csv` (a few minutes; probes already cached are not
+    asked again). None, with a warning, when no probe succeeds, e.g. offline."""
+    path = IRRADIANCE_PROBES_DIR / f"{aoi}.csv"
+    lon0, lat0 = np.asarray(lon0, dtype=float), np.asarray(lat0, dtype=float)
+    bounds = (float(lon0.min()) + 0.05, float(lat0.min()) + 0.05,
+              float(lon0.max()) + 0.05, float(lat0.max()) + 0.05)
+    try:
+        grid_specific_yield(bounds, path, n_probe=n_probe)
+    except RuntimeError as err:
+        log.warning("No PVGIS probe grid for %s: %s", aoi, err)
+        return None
+    return path
 
 
 def run_pv_capacity_check(

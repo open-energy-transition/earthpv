@@ -95,6 +95,37 @@ EMBER_IMPORTS = Path(__file__).resolve().parents[2] / "configs" / "external" / "
 LEADS_MANIFEST = Path(__file__).resolve().parents[2] / "configs" / "atlas_leads.json"
 
 
+def generation_totals(data: dict, probes: pd.DataFrame) -> dict | None:
+    """The electricity a page's installed PV generates in a year: each 0.1 degree cell's Best
+    estimate times its modelled specific yield (`probes`, PVGIS, interpolated to the cell
+    centre), so the national yield is weighted by where the capacity sits. The interval is
+    Best's scaled by that mean yield: it carries no yield uncertainty. Read from the page's own
+    data block, the same way `scripts/patch_atlas_generation.py` patches a published page.
+    """
+    from earthpv.pv_capacity import GENERATION_SOURCE, interpolate_yield
+
+    cols = data["cell_cols"]
+    ix, iy, ib = cols.index("lon0"), cols.index("lat0"), cols.index("mwp_best")
+    cells = np.asarray([[c[ix], c[iy], c[ib]] for c in data["cells"]], dtype=float)
+    cells = cells[cells[:, 2] > 0]
+    if not len(cells) or probes.empty:
+        return None
+    kwh = interpolate_yield(probes, cells[:, 0] + 0.05, cells[:, 1] + 0.05)
+    mean = float((cells[:, 2] * kwh).sum() / cells[:, 2].sum())
+    totals = data["totals"]
+    out = {
+        "gwh": round(totals["mwp_best"] * mean / 1000.0, 1),
+        "kwh_per_kwp": round(mean),
+        "kwh_range": [round(float(kwh.min())), round(float(kwh.max()))],
+        "n_probes": int(len(probes)),
+        "source": GENERATION_SOURCE,
+    }
+    ci = totals.get("mwp_best_ci")
+    if isinstance(ci, list) and len(ci) == 2:
+        out["gwh_ci"] = [round(ci[0] * mean / 1000.0, 1), round(ci[1] * mean / 1000.0, 1)]
+    return out
+
+
 def import_ceiling(aoi: str, path: Path = EMBER_IMPORTS) -> dict | None:
     """Panels imported from China into the AOI up to the end of its imagery window, from
     Ember's customs-based export data (scripts/ember_import_ceiling.py writes the table).
@@ -2630,6 +2661,7 @@ def build_evidence_atlas(
     validation_score: str | None = None,
     legacy_osm_addition: bool = False,
     ground_cells_path: Path | None = None,
+    fetch_irradiance: bool = True,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
     atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
@@ -3379,6 +3411,20 @@ def build_evidence_atlas(
     leads = leads_for_page(aoi)
     if potential_totals:
         data["totals"]["potential"] = potential_totals
+    # What the installed PV generates per year, on every page: from the AOI's cached PVGIS probe
+    # grid (`pv_capacity.irradiance_probes_path`), fetched and cached on a first build unless
+    # `fetch_irradiance` is off. Without one (offline) the page shows cell coverage instead.
+    from earthpv.pv_capacity import fetch_irradiance_probes, irradiance_probes_path
+
+    probes_path = irradiance_probes_path(aoi, density_dir)
+    if probes_path is None and fetch_irradiance:
+        cols = data["cell_cols"]
+        probes_path = fetch_irradiance_probes(
+            aoi, [c[cols.index("lon0")] for c in data["cells"]],
+            [c[cols.index("lat0")] for c in data["cells"]])
+    generation = generation_totals(data, pd.read_csv(probes_path)) if probes_path else None
+    if generation:
+        data["totals"]["generation"] = generation
     if leads:
         data["totals"]["leads"] = leads
 

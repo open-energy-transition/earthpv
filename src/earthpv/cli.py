@@ -1607,6 +1607,12 @@ def atlas(
         "it): farm ground PV below 400 m2, added to Best in the detector's own calibration "
         "domain as its own component. Omitted, the page shows the field as not measured.",
     ),
+    fetch_irradiance: bool = typer.Option(
+        True, "--fetch-irradiance/--no-fetch-irradiance",
+        help="Fetch and cache a PVGIS probe grid (data/irradiance_probes/<aoi>.csv, 100 points, "
+        "a few minutes, once per AOI) when none is cached, for the KPI tile of what the installed "
+        "PV generates per year. Off, a page without a cached grid shows cell coverage instead.",
+    ),
 ) -> None:
     """Regenerate the self-contained HTML capacity atlas from existing density outputs
     (density writes it automatically at the end of every run)."""
@@ -1659,6 +1665,7 @@ def atlas(
                 validation_score=validation_score,
                 legacy_osm_addition=legacy_osm_addition,
                 ground_cells_path=ground_cells,
+                fetch_irradiance=fetch_irradiance,
             )
         else:
             if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):

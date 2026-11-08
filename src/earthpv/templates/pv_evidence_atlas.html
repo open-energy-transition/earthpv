@@ -784,14 +784,16 @@
     <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
       <div class="r" id="kBestCi"></div>
       <div class="k">Best estimate, the highest defensible figure</div></div>
-    <div class="kpi"><div class="v" id="kOsmGe400">0</div>
-      <div class="k">Training data hand-mapped in OpenStreetMap, &ge;400 m&sup2;</div></div>
-    <div class="kpi"><div class="v" id="kOsmLt400">0</div>
-      <div class="k">Training data hand-mapped in OpenStreetMap, &lt;400 m&sup2;</div></div>
+    <div class="kpi"><div class="v" id="kOsm">0</div>
+      <div class="r" id="kOsmSplit"></div>
+      <div class="k">Training data hand-mapped in OpenStreetMap</div></div>
     <div class="kpi"><div class="v" id="kDomain">0</div>
       <div class="k">of 0.1&deg; cells within the calibrated building-density range</div></div>
     <div class="kpi" id="kpiCover" hidden><div class="v" id="kCover">0</div>
       <div class="k" id="kCoverK"></div></div>
+    <div class="kpi" id="kpiGen" hidden><div class="v" id="kGen">0</div>
+      <div class="r" id="kGenR"></div>
+      <div class="k">Electricity the installed PV of the best estimate generates per year</div></div>
   </div>
 
   <section class="sec" id="sizebins">
@@ -4147,11 +4149,36 @@ out geom;</div>
   const ciText = (ci) => (Array.isArray(ci) && ci.length === 2)
     ? `90% range ${fmt(ci[0])}–${fmt(ci[1])}` : "";
   document.getElementById("kBestCi").textContent = ciText(T.mwp_best_ci);
-  document.getElementById("kOsmGe400").textContent = fmt(T.osm_n_ge400);
-  document.getElementById("kOsmLt400").textContent = fmt(T.osm_n_lt400);
+  // One tile for the map's two sizes (it was two until 2026-11-07), to make room for what
+  // the installed PV generates, below.
+  const osmGe = T.osm_n_ge400 || 0, osmLt = T.osm_n_lt400 || 0;
+  document.getElementById("kOsm").textContent = fmt(osmGe + osmLt);
+  document.getElementById("kOsmSplit").textContent = `${fmt(osmGe)} at ≥400 m², ${fmt(osmLt)} below`;
   document.getElementById("kDomain").innerHTML = `${fmt(T.n_domain_cells)}<small>/ ${fmt(T.n_cells)}</small>`;
+  // What the installed PV generates per year (`atlas.generation_totals`: each cell's Best
+  // times its PVGIS yield). It takes the coverage tile's place (owner, 2026-11-07); the
+  // unimaged-cell hatching keeps those counts on the map. In TWh/yr, GWh/yr below 1 TWh.
+  // One decimal below 100 TWh/yr, kept when it is zero, so a figure and its range read alike.
+  const twhDigits = (gwh) => {
+    const d = gwh >= 100000 ? 0 : 1;
+    return {minimumFractionDigits: d, maximumFractionDigits: d};
+  };
+  const energy = (gwh) => gwh >= 1000
+    ? [(gwh / 1000).toLocaleString("en-US", twhDigits(gwh)), "TWh/yr"]
+    : [fmt(gwh), "GWh/yr"];
+  if (T.generation){
+    const G = T.generation, [v, unit] = energy(G.gwh), div = unit === "TWh/yr" ? 1000 : 1;
+    const nf = (x) => div === 1000 ? (x / 1000).toLocaleString("en-US", twhDigits(G.gwh)) : fmt(x);
+    document.getElementById("kGen").innerHTML = `${v}<small>${unit}</small>`;
+    document.getElementById("kGenR").textContent = (G.gwh_ci ? `90% range ${nf(G.gwh_ci[0])}–${nf(G.gwh_ci[1])}, ` : "")
+      + `${fmt(G.kwh_per_kwp)} kWh per kWp`;
+    document.getElementById("kpiGen").title = `Modelled yield: ${G.source}. Every panel is modelled `
+      + `facing the equator, close to the best orientation, while real roofs face every way, so `
+      + `actual output is likely lower. The range is the best estimate's, at the same yield.`;
+    document.getElementById("kpiGen").hidden = false;
+  }
   // How much of the country was looked at. Absent on a page built before 2026-10-24.
-  if (T.n_cells_country){
+  if (T.n_cells_country && !T.generation){
     const nOut = Math.max(0, T.n_cells_country - T.n_cells_processed);
     document.getElementById("kCover").innerHTML = `${fmt(T.n_cells_processed)}<small>/ ${fmt(T.n_cells_country)}</small>`;
     document.getElementById("kCoverK").textContent = `of the country's 0.1° cells imaged and processed; `
