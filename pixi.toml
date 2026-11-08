@@ -84,6 +84,9 @@ calib-export = "python scripts/export_calibration_quadrats_geojson.py"
 # docs/assets/labels/calibration_areas/, which the atlas's "Open in JOSM / iD" buttons load
 # -- re-run whenever a quadrat or candidate is added, or `calibration_boxes` changes.
 calib-publish = "python scripts/publish_calibration_areas.py"
+# One row per calibration area: its OSM solar elements, the changesets behind them and what
+# changed since registration. Read-only; docs/contribute/activity.md covers the OSMCha key.
+calib-activity = "python scripts/calibration_area_activity.py"
 # Stratified random calibration candidates for a country (density bands of equal building
 # share, boxes placed on VIDA footprints, Esri imagery-date gate), written where
 # calib-publish reads them -- e.g. `pixi run calib-candidates -- --bronze`.

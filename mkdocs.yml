@@ -167,6 +167,7 @@ nav:
       - Map the leads with JOSM: contribute/leads.md
       - Draw your own area: contribute/draw-area.md
       - Report and verify: contribute/report.md
+      - Follow area activity: contribute/activity.md
       - Register an area (maintainers): contribute/maintainers.md
   # Then how the shipped pipeline actually works, with its reference pages.
   - How it works:

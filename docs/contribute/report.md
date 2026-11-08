@@ -51,4 +51,5 @@ first pass was.
    tier.
 
 You can follow this on the report itself. On the atlas, an area you finished turns from a
-hollow into a filled diamond once it is registered and the country's atlas is rebuilt.
+hollow into a filled diamond once it is registered and the country's atlas is rebuilt. To
+see what OpenStreetMap shows for every area at once, [follow area activity](activity.md).
