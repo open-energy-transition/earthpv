@@ -893,7 +893,8 @@ DC, end of 2025: 330.7 of 2,974 GW, 11.1%; update it at each Snapshot). Wet ink 
 dry part what Best adds. **Nothing on the globe may be a texture fixed to the screen (owner,
 2026-11-08)**: land turning under one looks as if it slides beneath a second sheet, so even the
 pencil hatching is geometry. A polygon of an atlas country with no processed cell stays pencil
-(France's overseas parts) but still clicks through to its atlas. A click on a country without an
+(France's overseas parts) but still clicks through to its atlas. The hover card's figures are that
+atlas's own `totals` (`_atlas_facts`), and it stays to the essentials (owner, 2026-11-08). A click on a country without an
 atlas opens `docs/contribute/new-atlas.md` with `?country=&iso3=&bbox=`, which `new-atlas.js`
 writes into the commands' `YOUR_*` placeholders. `docs/assets/landing/world.json` is Natural Earth
 1:50m, rebuilt only with `--base-map`; a simplified ring must keep its winding or d3 fills the

@@ -234,6 +234,14 @@ def _sig(value: float, digits: int = 2) -> float:
     return float(f"{value:.{digits}g}")
 
 
+def _atlas_facts(totals: dict) -> dict:
+    """What the globe's hover card adds about one atlas, from its page's own totals."""
+    return {
+        "gwh": (totals.get("generation") or {}).get("gwh"),
+        "imagery": (totals.get("imagery_dates") or {}).get("median"),
+    }
+
+
 def write() -> None:
     """Rewrite earth.json and docs/index.md from the published atlases."""
     world = json.loads(WORLD.read_text())
@@ -278,6 +286,7 @@ def write() -> None:
             "best": round(totals["mwp_best"], 1),
             "verified": round(totals["mwp_verified"], 1),
             "parts": parts,
+            "facts": _atlas_facts(totals),
         })
 
     atlases.sort(key=lambda a: -a["best"])

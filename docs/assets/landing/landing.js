@@ -803,9 +803,46 @@
       return ll ? featureAt(ll[0], ll[1]) : null;
     }
 
-    function gw(mwp) {
-      var v = mwp / 1000;
-      return (v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(1) : v.toFixed(2)) + ' GW';
+    /* MW below a gigawatt, GW from there up: 7.4 MW, 530 MW, 1.8 GW, 103 GW. */
+    function power(mwp) {
+      if (mwp >= 1000) return (mwp / 1000).toFixed(mwp >= 100000 ? 0 : 1) + ' GW';
+      return mwp.toFixed(mwp >= 10 ? 0 : 1) + ' MW';
+    }
+
+    function energy(gwh) {
+      if (gwh < 1000) return Math.round(gwh) + ' GWh';
+      return (gwh / 1000).toFixed(gwh >= 100000 ? 0 : 1) + ' TWh';
+    }
+
+    function worldShare(mwp) {
+      var pct = mwp / 1000 / earth.world.gw * 100;
+      return pct >= 1 ? pct.toFixed(1) + '%' : pct >= 0.1 ? pct.toFixed(2) + '%' : 'under 0.1%';
+    }
+
+    function imageryMonth(iso) {
+      var parts = iso.split('-');
+      return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+parts[1] - 1] + ' ' + parts[0];
+    }
+
+    /* The essentials only: the atlas itself has the rest. A figure a page lacks is left out. */
+    function atlasRows(a) {
+      var t = a.facts, rows = [['Of the world\'s solar', worldShare(a.best)]];
+      if (t.gwh != null) rows.push(['Generates', 'about ' + energy(t.gwh) + ' a year']);
+      if (t.imagery) rows.push(['Imagery', 'around ' + imageryMonth(t.imagery)]);
+      return rows;
+    }
+
+    function fillFacts(rows) {
+      var list = el('card-facts');
+      list.textContent = '';
+      list.hidden = !rows;
+      (rows || []).forEach(function (row) {
+        var dt = document.createElement('dt'), dd = document.createElement('dd');
+        dt.textContent = row[0];
+        dd.textContent = row[1];
+        list.appendChild(dt);
+        list.appendChild(dd);
+      });
     }
 
     function linkFor(f) {
@@ -819,13 +856,15 @@
       el('card-name').textContent = f.name;
       if (f.atlas) {
         el('card-tier').textContent = f.atlas.tier + ' atlas';
-        el('card-best').textContent = gw(f.atlas.best) + ' best estimate';
-        el('card-verified').textContent = gw(f.atlas.verified) + ' verified';
+        el('card-best').textContent = power(f.atlas.best) + ' best estimate';
+        el('card-verified').textContent = power(f.atlas.verified) + ' verified';
+        fillFacts(atlasRows(f.atlas));
         el('card-go').textContent = 'Open the atlas →';
       } else {
         el('card-tier').textContent = '';
         el('card-best').textContent = 'No atlas yet.';
         el('card-verified').textContent = '';
+        fillFacts(null);
         el('card-go').textContent = 'Build it on your PC →';
       }
       card.href = linkFor(f);
@@ -836,6 +875,8 @@
       var left = x + 18, top = y - bh - 12;
       if (left + bw > W - 8) left = x - bw - 18;
       if (top < 8) top = y + 18;
+      left = Math.max(8, Math.min(left, W - bw - 8));   // a tall card must stay on the page
+      top = Math.max(8, Math.min(top, H - bh - 8));
       card.style.left = left + 'px';
       card.style.top = top + 'px';
     }
@@ -848,10 +889,21 @@
       if (intro >= 1) drawOver();
     }
 
+    var pinTimer = 0;
+
     function hideCard() {
+      clearTimeout(pinTimer);
       card.hidden = true;
       card.classList.remove('is-pinned');
     }
+
+    /* A tap beside the card, off the globe, puts it away: it can cover most of a phone. */
+    document.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'touch' || card.hidden) return;
+      if (canvas.contains(e.target) || card.contains(e.target)) return;
+      setHovered(null);
+      hideCard();
+    });
 
     canvas.addEventListener('pointermove', function (e) {
       if (dragging) {
@@ -880,8 +932,8 @@
       }
     });
 
-    canvas.addEventListener('pointerleave', function () {
-      if (dragging) return;
+    canvas.addEventListener('pointerleave', function (e) {
+      if (dragging || e.pointerType === 'touch') return;   // a lifted finger "leaves" too
       overGlobe = false;
       setHovered(null);
       hideCard();
@@ -910,11 +962,15 @@
         return;
       }
       if (e.pointerType === 'touch') {
-        /* No hover on touch: the first tap shows what it would open. */
+        /* No hover on touch: the first tap shows what it would open. The card takes taps
+           only once this tap's own click has passed, or that click would land on the card
+           appearing under the finger and open the atlas straight away. */
         setHovered(f);
         fillCard(f);
         card.hidden = false;
-        card.classList.add('is-pinned');
+        card.classList.remove('is-pinned');
+        clearTimeout(pinTimer);
+        pinTimer = setTimeout(function () { card.classList.add('is-pinned'); }, 400);
         var box = stage.getBoundingClientRect();
         placeCard(e.clientX - box.left, e.clientY - box.top);
         return;

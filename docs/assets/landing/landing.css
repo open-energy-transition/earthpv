@@ -159,6 +159,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   gap: 2px;
   min-width: 190px;
   max-width: 280px;
+  width: max-content;
   padding: 11px 15px 12px;
   background: var(--paper-2);
   border-left: 3px solid var(--shu);
@@ -182,6 +183,19 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 .card__tier:empty, .card__line:empty { display: none; }
 .card__line { font-size: 14px; }
 .card__go { margin-top: 6px; font-size: 14px; color: var(--shu); }
+.card__facts {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 16px;
+  margin: 7px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid rgba(38, 35, 31, .18);
+  font-size: 12.5px;
+  line-height: 1.38;
+}
+.card__facts[hidden] { display: none; }
+.card__facts dt { color: var(--ink-2); }
+.card__facts dd { margin: 0; text-align: right; white-space: nowrap; }
 
 /* ------------------------------------------------- title, as on a Grid2Poster */
 .title {
@@ -312,7 +326,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   .legend { display: block; width: auto; padding-top: 4px; }
   .legend__note { display: block; }
   .oet { justify-content: flex-end; padding: 12px 0 18px; }
-  .card { max-width: 62vw; }
+  .card { max-width: calc(100vw - 32px); }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
