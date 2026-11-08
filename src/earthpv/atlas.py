@@ -36,6 +36,9 @@ import datetime
 import re
 import json
 import logging
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import geopandas as gpd
@@ -208,6 +211,30 @@ def imagery_dates(aoi: str, path: Path = IMAGERY_DATES) -> dict | None:
         return None
     return {k: entry[k] for k in ("median", "p25", "p75", "first", "last", "windows",
                                   "n_cells", "n_cells_sampled", "n_scene_days") if k in entry}
+
+
+def reconstruct_imagery_dates(aoi: str, timeout_s: int = 1800) -> dict | None:
+    """Write the AOI's entry in `IMAGERY_DATES` and return it: scripts/imagery_median_date.py, a
+    STAC search for 120 of its cells, a few minutes, once per AOI. None, with a warning, when
+    that fails (offline, no composites): the page then shows its compose window. A subprocess
+    because the script sets process-wide network options (socket timeout, IPv4) that must not
+    outlive it here.
+    """
+    script = Path(__file__).resolve().parents[2] / "scripts" / "imagery_median_date.py"
+    env = {"EARTHPV_FORCE_IPV4": "1", **os.environ}
+    try:
+        subprocess.run([sys.executable, str(script), "--aoi", aoi], check=True, env=env,
+                       timeout=timeout_s, capture_output=True, text=True)
+    except subprocess.CalledProcessError as err:
+        log.warning("No median imagery date for %s: %s", aoi, (err.stderr or "").strip()[-300:])
+        return None
+    except (OSError, subprocess.TimeoutExpired) as err:
+        log.warning("No median imagery date for %s: %s", aoi, err)
+        return None
+    dates = imagery_dates(aoi)
+    if dates is None:
+        log.warning("No median imagery date for %s: no scenes found in its sampled cells", aoi)
+    return dates
 
 
 def leads_release(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
@@ -2661,6 +2688,7 @@ def build_evidence_atlas(
     validation_score: str | None = None,
     legacy_osm_addition: bool = False,
     ground_cells_path: Path | None = None,
+    fetch_imagery_dates: bool = True,
     fetch_irradiance: bool = True,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
@@ -3406,6 +3434,8 @@ def build_evidence_atlas(
     if references:
         data["totals"]["references"] = references
     dates = imagery_dates(aoi)
+    if dates is None and fetch_imagery_dates:
+        dates = reconstruct_imagery_dates(aoi)
     if dates:
         data["totals"]["imagery_dates"] = dates
     leads = leads_for_page(aoi)

@@ -656,7 +656,12 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   acquisition date of its scenes and their middle half (`totals.imagery_dates`,
   `atlas.imagery_dates`, `configs/atlas_imagery_dates.yaml`): composites do not record their
   scenes, so `scripts/imagery_median_date.py` re-runs compose's STAC search and ranking for
-  a random sample of each AOI's cells. The hero no longer carries the Ember line.
+  a random sample of each AOI's cells. The hero no longer carries the Ember line, and its
+  imagery line gives that median date rather than the compose window (owner, 2026-11-08; the
+  window only where a page has no reconstruction). `earthpv atlas` writes the entry itself for
+  an AOI without one (`atlas.reconstruct_imagery_dates`; `--no-fetch-imagery-dates` skips it),
+  so only a re-compose needs the script by hand. Downloaded figures' source line keeps the
+  window.
   `scripts/official_capacity.py` writes `configs/external/official_capacity.yaml`
   (registers from disk: MaStR per Land, ODRE per region at the 2024-12-31 vintage, MNRE per
   state for Jan 2026; cited documents typed into `PUBLISHED`, e.g. TransitionZero's Pakistan

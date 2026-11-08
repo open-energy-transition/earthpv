@@ -4249,7 +4249,11 @@ out geom;</div>
   countUp("heroNum", T.mwp_best, 700);
   document.getElementById("heroCi").textContent = ciText(T.mwp_best_ci);
   document.getElementById("heroFreshness").textContent = [
-    T.imagery_date_range ? `Sentinel-2 imagery: ${T.imagery_date_range}` : null,
+    // The scenes' median date, as in "Against official and published figures" (owner,
+    // 2026-11-08); the compose window only on a page without that reconstruction.
+    T.imagery_dates && T.imagery_dates.median
+      ? `Median Sentinel-2 imagery date: ${monthLabel(T.imagery_dates.median)}`
+      : T.imagery_date_range ? `Sentinel-2 imagery: ${T.imagery_date_range}` : null,
     T.generated_at ? `atlas generated ${T.generated_at}` : null,
   ].filter(Boolean).join(" · ");
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;

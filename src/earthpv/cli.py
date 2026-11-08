@@ -1607,6 +1607,12 @@ def atlas(
         "it): farm ground PV below 400 m2, added to Best in the detector's own calibration "
         "domain as its own component. Omitted, the page shows the field as not measured.",
     ),
+    fetch_imagery_dates: bool = typer.Option(
+        True, "--fetch-imagery-dates/--no-fetch-imagery-dates",
+        help="Reconstruct the median date of the AOI's Sentinel-2 scenes (a STAC search for 120 "
+        "cells, a few minutes, once per AOI, into configs/atlas_imagery_dates.yaml) when it has "
+        "no entry, for the page's hero. Off, a page without an entry shows its compose window.",
+    ),
     fetch_irradiance: bool = typer.Option(
         True, "--fetch-irradiance/--no-fetch-irradiance",
         help="Fetch and cache a PVGIS probe grid (data/irradiance_probes/<aoi>.csv, 100 points, "
@@ -1665,6 +1671,7 @@ def atlas(
                 validation_score=validation_score,
                 legacy_osm_addition=legacy_osm_addition,
                 ground_cells_path=ground_cells,
+                fetch_imagery_dates=fetch_imagery_dates,
                 fetch_irradiance=fetch_irradiance,
             )
         else:

@@ -31,13 +31,16 @@ to Planetary Computer can hang on a dead IPv6 socket indefinitely; EARTHPV_FORCE
 the cure compose uses), are retried, and a cell that still fails is left out and counted.
 
 Writes configs/atlas_imagery_dates.yaml, which `atlas.imagery_dates` puts into an atlas's
-`totals.imagery_dates`; entries for AOIs not re-run are kept.
+`totals.imagery_dates`; entries for AOIs not re-run are kept. `earthpv atlas` runs this by
+itself for an AOI with no entry (`atlas.reconstruct_imagery_dates`), so only a re-compose
+needs it by hand.
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import fcntl
 import inspect
 import os
 import random
@@ -52,6 +55,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
 OUT = REPO / "configs" / "atlas_imagery_dates.yaml"
+LOCK = REPO / "data" / ".imagery_dates.lock"
 ATLAS_AOIS = ["pakistan", "germany", "france", "india", "vietnam", "egypt", "yemen",
               "south_africa", "morocco", "poland", "zambia", "nigeria", "namibia",
               "spain"]
@@ -134,8 +138,6 @@ def main() -> int:
 
     _harden_python_network()
 
-    doc = yaml.safe_load(a.out.read_text()) if a.out.exists() else {}
-    entries = doc.get("aois", {}) if doc else {}
     for aoi in a.aoi or ATLAS_AOIS:
         cells = cell_paths(aoi)
         sample = random.Random(f"{a.seed}:{aoi}").sample(cells, min(a.n, len(cells)))
@@ -149,7 +151,7 @@ def main() -> int:
             print(f"  {aoi}: no scenes found in {len(rows)} cells, skipped")
             continue
         windows = sorted({r["window"] for r in rows if r["window"]})
-        entries[aoi] = {
+        e = {
             "median": quantile_date(days, 0.5).isoformat(),
             "p25": quantile_date(days, 0.25).isoformat(),
             "p75": quantile_date(days, 0.75).isoformat(),
@@ -163,25 +165,34 @@ def main() -> int:
             "n_scene_days": len(days),
             "made": dt.date.today().isoformat(),
         }
-        e = entries[aoi]
         print(f"  {aoi:13s} median {e['median']}  middle half {e['p25']} to {e['p75']}  "
               f"({len(days)} scene-days, {len(rows)} of {len(cells)} cells, windows {windows}"
               + (f", {empty} cells with none" if empty else "")
               + (f", {failed} failed" if failed else "") + ")", flush=True)
-        write(a.out, entries)
+        write(a.out, aoi, e)
     return 0
 
 
-def write(path: Path, entries: dict) -> None:
-    """Rewrite the table after every AOI, so a stalled run keeps what it finished."""
-    out = {
-        "note": "Median acquisition date of the Sentinel-2 scenes behind each evidence atlas's "
-                "composites, reconstructed from the STAC catalogue for a random sample of "
-                "cells (scripts/imagery_median_date.py). p25/p75 bound the middle half.",
-        "aois": dict(sorted(entries.items())),
-    }
-    path.write_text("# Written by scripts/imagery_median_date.py; do not edit by hand.\n"
-                    + yaml.safe_dump(out, sort_keys=False, width=100))
+def write(path: Path, aoi: str, entry: dict) -> None:
+    """Add one AOI to the table, after every AOI so a stalled run keeps what it finished. From
+    a fresh read under a lock and by atomic rename: country runs overlap, and an atlas reading
+    the table must never find half a file."""
+    with open(LOCK, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        doc = yaml.safe_load(path.read_text()) if path.exists() else None
+        entries = (doc or {}).get("aois", {})
+        entries[aoi] = entry
+        out = {
+            "note": "Median acquisition date of the Sentinel-2 scenes behind each evidence "
+                    "atlas's composites, reconstructed from the STAC catalogue for a random "
+                    "sample of cells (scripts/imagery_median_date.py). p25/p75 bound the "
+                    "middle half.",
+            "aois": dict(sorted(entries.items())),
+        }
+        tmp = path.with_name(f".{path.name}.tmp")
+        tmp.write_text("# Written by scripts/imagery_median_date.py; do not edit by hand.\n"
+                       + yaml.safe_dump(out, sort_keys=False, width=100))
+        os.replace(tmp, path)
 
 
 if __name__ == "__main__":
