@@ -25,10 +25,11 @@
   var SPIN_DEG_S = 3.2;
   var AUTO_FPS = 24;           // the hand-drawn cadence, and half the work
   var NEW_ATLAS = 'contribute/new-atlas/';
+  var NARROW_W = 1040;         // below this the page stacks: the same width as in landing.css
   var HATCH_DEG = 1.15;        // between pencil lines
   var HATCH_STEP = 1.6;        // between the points of one line
   var HATCH_POLE = [-30, -35]; // the South Atlantic; its far end is the North Pacific
-  var TONE_ALPHA = 0.2;        // the pale tone over a cell the model has looked at
+  var TONE_ALPHA = 0.95;       // the white over a cell the model has looked at
   var RED_MW = 100;            // a 0.1 degree cell at or above this is red: 382 cells, 35% of capacity
 
   function el(id) { return document.getElementById(id); }
@@ -317,12 +318,12 @@
     var rImage, rPixels, rTone, rMW, rMark, rSize = 0, rLeft = 0, rTop = 0, rCell = 1;
     var rTouched = new Int32Array((seen.length + pv.length) * 4), rCount = 0;
 
-    /* From a trace of ink to full vermilion, over a log scale of MW in one cell. */
+    /* From a blush on the white land to full vermilion, over a log scale of MW in one cell.
+       Opaque: the land under a cell with solar is white whatever the wash beneath it. */
     var LOG_LOW = -2, LOG_HIGH = Math.log(RED_MW) / Math.LN10;
     var ramp = (function () {
-      var stops = [[0, 38, 35, 31, 0.24], [0.25, 38, 35, 31, 0.36], [0.5, 38, 35, 31, 0.58],
-                   [0.726, 38, 35, 31, 0.82], [0.85, 38, 35, 31, 0.97], [0.925, 112, 40, 22, 1],
-                   [1, 163, 44, 16, 1]];
+      var stops = [[0, 252, 240, 233, 1], [0.25, 249, 222, 209, 1], [0.5, 241, 176, 152, 1],
+                   [0.726, 224, 112, 80, 1], [0.85, 198, 68, 38, 1], [1, 163, 44, 16, 1]];
       var out = new Uint32Array(256), s = 0;
       for (var i = 0; i < 256; i++) {
         var u = i / 255;
@@ -413,7 +414,7 @@
       var share = Math.min(1, rCell * rCell);
       rCount = 0;
 
-      /* A pale tone over every cell the model has looked at. */
+      /* White under every cell the model has looked at, so that the red stands out. */
       n = Math.floor(seen.length * ink);
       for (i = 0; i < n; i++) {
         j = i * 3; x = seenXYZ[j]; y = seenXYZ[j + 1]; z = seenXYZ[j + 2];
@@ -449,7 +450,7 @@
           var u = (Math.log(rMW[o]) / Math.LN10 - LOG_LOW) / (LOG_HIGH - LOG_LOW);
           rPixels[o] = ramp[u <= 0 ? 0 : u >= 1 ? 255 : Math.round(u * 255)];
         } else {
-          rPixels[o] = ((Math.min(1, rTone[o] * 1.3) * TONE_ALPHA * 255) << 24) | (31 << 16) | (35 << 8) | 38;
+          rPixels[o] = ((Math.min(1, rTone[o] * 1.3) * TONE_ALPHA * 255) << 24) | (248 << 16) | (253 << 8) | 255;
         }
       }
       rasterCtx.putImageData(rImage, 0, 0);
@@ -485,12 +486,12 @@
       if (quality > 0) strokeSet(lineSets.pencilGhost, [0.4, 0.6], 0.2, INK, 0.3);
       strokeSet(lineSets.pencilCoast, [0.5, 0.75, 1.05], 0.62, INK, 0.08);
 
-      /* Inked land: sumi wash, deepest at the coast. */
+      /* A country with an atlas: only a trace of wash, for whatever its atlas did not image.
+         What it did image is laid over this in white. */
       ctx.beginPath();
       path(inked);
-      ctx.fillStyle = 'rgba(' + INK + ',' + (0.13 * ink) + ')';
+      ctx.fillStyle = 'rgba(' + INK + ',' + (0.05 * ink) + ')';
       ctx.fill();
-      if (ink > 0.02) strokeSet(lineSets.ink, [3.5], 0.08 * ink, INK, 0);   // the wash bleeds a little
 
       if (hovered && !hovered.atlas) {
         ctx.beginPath();
@@ -726,7 +727,7 @@
     }
 
     function placeLabels() {
-      var narrow = window.innerWidth <= 860 || window.innerHeight <= 620;
+      var narrow = window.innerWidth <= NARROW_W || window.innerHeight <= 620;
       el('readout-share').textContent = (share * 100).toFixed(1) + '%';
       if (!narrow) {
         var a = TOP + share * TAU + 0.05;
@@ -757,13 +758,13 @@
         c.width = Math.round(W * DPR);
         c.height = Math.round(H * DPR);
       });
-      var narrow = window.innerWidth <= 860 || window.innerHeight <= 620;
-      var room = narrow ? Math.min(W / 2 - 10, H / 2 - 10) : Math.min(W / 2 - 40, H / 2 - 34);
+      var narrow = window.innerWidth <= NARROW_W || window.innerHeight <= 620;
+      var room = narrow ? Math.min(W / 2 - 10, H / 2 - 24) : Math.min(W / 2 - 40, H / 2 - 34);
       ringR = room - (narrow ? 26 : 30);
       R = ringR / (narrow ? 1.1 : 1.095);
       S = R / 300;
       cx = W / 2;
-      cy = H / 2 + (narrow ? 0 : 12);
+      cy = H / 2 + (narrow ? 14 : 12);   // stacked, the percentage sits above the ring
       projection.translate([cx, cy]).scale(R);
       rasterSetup();
       brushSetup();

@@ -82,7 +82,7 @@ a { color: inherit; }
   text-transform: uppercase;
 }
 
-.actions { display: flex; gap: 12px; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
 .btn {
   position: relative;
   display: inline-block;
@@ -107,6 +107,12 @@ a { color: inherit; }
 .btn--ink::before { background: var(--ink); }
 .btn:hover, .btn:focus-visible { color: var(--paper-2); }
 .btn:hover::before, .btn:focus-visible::before { background: var(--shu); border-color: var(--shu); }
+.btn--shu { color: var(--paper-2); }
+.btn--shu::before { background: var(--shu); border-color: var(--shu); }
+.btn--shu:hover::before, .btn--shu:focus-visible::before { background: var(--ink); border-color: var(--ink); }
+.github { display: block; width: 26px; height: 26px; margin-left: 2px; color: var(--ink); transition: color .18s ease; }
+.github svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.github:hover, .github:focus-visible { color: var(--shu); }
 a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 
 /* ------------------------------------------------------------------ globe */
@@ -189,6 +195,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   font-size: min(54px, 6.4vw, calc((100vw - 600px) / 13.6), 6.2vh);
   font-weight: 400;
   line-height: 1.14;
+  color: var(--shu);
   letter-spacing: .24em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -249,8 +256,8 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 .legend__row { display: flex; align-items: center; gap: 9px; line-height: 1.65; }
 .legend__note { margin-top: 8px !important; font-size: 11.5px; line-height: 1.4; color: var(--ink-2); }
 .key { flex: none; display: block; width: 16px; height: 11px; }
-.key--ink { background: rgba(38, 35, 31, .3); border: 1px solid var(--ink); filter: url(#rough-fine); }
-.key--ramp { background: linear-gradient(90deg, rgba(38, 35, 31, .28), var(--ink) 58%, var(--shu) 88%); }
+.key--ink { background: #fffdf8; border: 1px solid var(--ink); filter: url(#rough-fine); }
+.key--ramp { background: linear-gradient(90deg, #f9ded1, #e07050 50%, var(--shu)); border: 1px solid rgba(38, 35, 31, .3); }
 .key--pencil {
   border: 1px solid rgba(38, 35, 31, .55);
   background: repeating-linear-gradient(115deg, rgba(38, 35, 31, .3) 0 1px, transparent 1px 3.5px);
@@ -272,7 +279,6 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   transition: color .18s ease;
 }
 .oet svg { width: 40px; height: auto; filter: url(#rough-fine); }
-.oet__bar { stroke: var(--shu); }
 .oet:hover { color: var(--ink); }
 
 /* -------------------------------------------------- narrow and short screens */
@@ -284,6 +290,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   /* The corners stop being corners: they become a row under the title. */
   .page { grid-template-columns: 1fr auto; grid-template-rows: minmax(0, 1fr) auto auto; }
   .stage, .title { grid-column: 1 / -1; }
+  .stage { margin-top: 14px; }    /* the brush stroke stays clear of the buttons above it */
   .top { grid-column: 1 / -1; }
   .title h1 { font-size: min(46px, 6.4vw, 6.2vh); }
   .ledger p.stats, .atlas-links ul { max-width: none; }
@@ -291,14 +298,14 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   .legend { width: auto; display: flex; flex-wrap: wrap; gap: 0 20px; }
   .legend__note { display: none; }
 }
-@media (max-width: 860px), (max-height: 620px) {
+@media (max-width: 1040px), (max-height: 620px) {    /* NARROW_W in landing.js */
   html, body { height: auto; }
   .page { display: block; height: auto; min-height: 0; overflow: visible; }
   .title h1 { font-size: min(46px, 6.4vw); }
   .top { position: static; padding: 16px 16px 0; }
   .brand__name { display: none; }
   .btn { padding: 8px 16px 9px; font-size: 14px; }
-  .stage { height: min(100vw, 70vh); margin-top: 6px; }
+  .stage { height: calc(min(100vw, 70vh) + 28px); margin-top: 6px; }
   .readout { position: static; justify-content: center; opacity: 1; margin: 4px 0 12px; }
   .title { padding: 12px 16px 16px; }
   .legend, .oet { position: static; margin: 0 16px; padding: 0; }
