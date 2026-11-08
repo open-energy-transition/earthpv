@@ -29,7 +29,9 @@ next atlas, and the next model learns from it.
 | **4. Map a calibration area** | trace **every** panel inside one box, down to the smallest rooftop unit | the small-installation estimate is fitted and checked on complete areas; they move a country from Bronze towards Gold | [the steps below](#how-it-works) |
 | **5. Investigate a local dataset** | find the register, statistics or study your country already has, and tell us what it counts | it is drawn beside the atlas, and a legally complete register can calibrate it | [Know a local dataset?](#know-a-local-dataset) |
 
-None of the three needs the others first, and none needs any coding.
+None of the three needs the others first, and none needs any coding. If your country has no
+atlas at all and you have a graphics card, you can
+[build its first atlas on your own PC](new-atlas.md).
 [How it works](../how-it-works.md#workflow) describes all six stations, and an
 [LLM assistant can help you](#help-from-an-llm-assistant) at any of them.
 

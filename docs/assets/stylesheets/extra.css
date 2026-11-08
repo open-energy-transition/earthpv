@@ -976,3 +976,15 @@
   opacity: 0.35; font-size: 0.85em; }
 .md-typeset th.sortable-th[aria-sort="ascending"]::after { content: "↑"; opacity: 0.9; }
 .md-typeset th.sortable-th[aria-sort="descending"]::after { content: "↓"; opacity: 0.9; }
+
+/* contribute/new-atlas: the note that says which country the globe sent you here for. */
+.atlas-start[hidden] { display: none; }
+.atlas-start {
+  margin: 1.2em 0 1.6em;
+  padding: .9em 1.2em;
+  border-left: 4px solid #a32c10;
+  background: var(--md-code-bg-color);
+}
+.md-typeset .atlas-start p { margin: 0; }
+.md-typeset .atlas-start__lead { font-size: 1.1em; }
+.md-typeset .atlas-start__note { margin-top: .35em; font-size: .85em; color: var(--md-default-fg-color--light); }

@@ -1,0 +1,7 @@
+Third-party material on the Electrify Earth landing page.
+
+world.json     Country outlines simplified from Natural Earth 1:50m (public domain), through
+               world-atlas 2.0.2 (ISC).
+vendor/        d3-array 3.2.4 and d3-geo 3.1.1, (c) Mike Bostock, ISC licence.
+fonts/         Zen Old Mincho (c) Yoshimichi Ohira, SIL Open Font Licence 1.1.
+title.svg      Letter outlines from Dokdo (c) FONTRIX, SIL Open Font Licence 1.1.

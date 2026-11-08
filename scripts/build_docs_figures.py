@@ -2285,7 +2285,7 @@ EVW_H = 890
 # Transcribed from the 2026-08-20 Box 18 refit's published atlas (`data/` and `results/`
 # are gitignored, so the docs CI can read neither) -- same caveat as ROOFCLF_STATS
 # above: re-transcribe these in the same commit as any pipeline run that moves the
-# atlas, together with the alt text in README.md and docs/index.md.
+# atlas, together with the alt text in README.md and docs/overview.md.
 def _evw_headline():
     """Best estimate and its 90% range, read from the PUBLISHED atlas rather than typed
     here. Hardcoding them meant this diagram kept drawing 18,827 MWp after the 2026-09-21

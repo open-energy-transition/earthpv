@@ -441,6 +441,10 @@ def main() -> int:
         (DOCS / f"{row[0]}.md").write_text(page(*row))
     (DOCS / "atlas-quality-levels.md").write_text(quality_page())
     print(f"wrote {len(ATLASES)} atlas pages and atlas-quality-levels.md")
+    # The Electrify Earth globe at the site root is drawn from these same atlases.
+    import build_landing_page
+
+    build_landing_page.write()
     if a.nav:
         print(nav_block())
     return 0

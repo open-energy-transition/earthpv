@@ -1,0 +1,17 @@
+# The world total the landing page's brush stroke is measured against
+# (scripts/build_landing_page.py, written into docs/assets/landing/earth.json).
+#
+# IEA PVPS rather than IRENA: PVPS reports DC capacity, as the atlases do (kWp of module),
+# and IRENA's 2,388-2,391 GW for the same date mixes AC and DC by country. The fact sheet
+# gives 2,276 GW at the end of 2024 and 698 GW installed in 2025.
+#
+# The atlases' imagery is mostly from late 2025 and 2026, so this is the nearest published
+# vintage and not the same date. Update `gw`, `as_of`, `as_of_label` and the links at the
+# next Snapshot, then rerun scripts/build_landing_page.py.
+gw: 2974
+as_of: "2025-12-31"
+as_of_label: end of 2025
+source: IEA PVPS, Snapshot of Global PV Markets 2026
+short: IEA PVPS
+url: https://iea-pvps.org/snapshot-reports/snapshot-2026/
+fact_sheet: https://iea-pvps.org/wp-content/uploads/2026/05/Snapshot-2026-FS.pdf

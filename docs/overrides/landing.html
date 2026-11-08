@@ -1,0 +1,118 @@
+{#-
+  The site root: Electrify Earth (docs/index.md, `template: landing.html`).
+
+  A standalone page rather than an extension of Material's base.html: it is one poster-like
+  screen with no navigation, search or footer. Its figures and country links are
+  `page.content`, which scripts/build_landing_page.py writes into docs/index.md from the
+  published atlases, so they also show when the scripts do not run.
+-#}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Electrify Earth | EarthPV</title>
+  {% set headline = "Free and open mapping of solar power around the Earth, one country at a time." %}
+  {% set social_image = config.site_url ~ "assets/figures/social-preview.png" %}
+  <meta name="description" content="{{ headline }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EarthPV">
+  <meta property="og:title" content="Electrify Earth">
+  <meta property="og:description" content="{{ headline }}">
+  <meta property="og:image" content="{{ social_image }}">
+  <meta property="og:url" content="{{ config.site_url }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Electrify Earth">
+  <meta name="twitter:description" content="{{ headline }}">
+  <meta name="twitter:image" content="{{ social_image }}">
+  {# The written introduction used to live here: an old link to one of its sections follows it. #}
+  <script>if (location.hash.length > 1) location.replace("{{ 'overview/' | url }}" + location.hash);</script>
+  <link rel="icon" href="{{ config.theme.favicon | url }}">
+  <link rel="preload" href="{{ 'assets/landing/fonts/zen-old-mincho-latin-400.woff2' | url }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ 'assets/landing/landing.css' | url }}">
+</head>
+<body>
+
+<!-- The ragged edge every ink shape on the page shares. -->
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <filter id="rough" x="-6%" y="-12%" width="112%" height="124%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="4.5" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="rough-fine" x="-4%" y="-8%" width="108%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="3" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="2" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="page">
+
+  <header class="top">
+    <a class="brand" href="{{ 'overview/' | url }}" aria-label="EarthPV overview">
+      <span class="seal" aria-hidden="true"><span class="seal__mark"></span></span>
+      <span class="brand__name">EarthPV</span>
+    </a>
+    <nav class="actions" aria-label="EarthPV links">
+      <a class="btn btn--ink" href="{{ 'overview/' | url }}"><span>Documentation</span></a>
+      <a class="btn" href="https://discord.gg/T5zh6N24Hv"><span>Discord</span></a>
+    </nav>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="under" aria-hidden="true"></canvas>
+    <canvas id="earth" role="img" tabindex="-1"
+            aria-label="An ink sketch of the Earth. Countries processed with EarthPV are inked in, with their solar capacity in red; the country links below the globe open each atlas."></canvas>
+    <canvas id="over" aria-hidden="true"></canvas>
+
+    <p class="readout" id="readout" hidden>
+      <b id="readout-share"></b>
+      <span>of the world's solar<br>mapped so far</span>
+    </p>
+    <p class="world-label" id="world-label" hidden></p>
+
+    <a class="card" id="card" hidden>
+      <strong id="card-name"></strong>
+      <span class="card__tier" id="card-tier"></span>
+      <span class="card__line" id="card-best"></span>
+      <span class="card__line" id="card-verified"></span>
+      <span class="card__go" id="card-go"></span>
+    </a>
+  </main>
+
+  <section class="title">
+    <h1><img src="{{ 'assets/landing/title.svg' | url }}" alt="Electrify Earth" width="640" height="40"></h1>
+    <svg class="rule" viewBox="0 0 600 8" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M2 4.6C60 3.2 120 3.4 190 3.7 280 4.1 350 2.9 430 3.3 500 3.7 560 3.5 598 4.2 556 5.2 470 5 400 4.9 300 4.8 210 5.5 130 5.2 80 5 30 5.2 2 4.6Z"/>
+    </svg>
+    <p class="subtitle">Free and open mapping of solar power around the Earth</p>
+    <div class="ledger">{{ page.content }}</div>
+  </section>
+
+  <aside class="legend" aria-label="How to read the globe">
+    <p class="legend__row"><i class="key key--ink"></i>Processed with EarthPV</p>
+    <p class="legend__row"><i class="key key--dot"></i>Solar found (dot area is capacity)</p>
+    <p class="legend__row"><i class="key key--pencil"></i>Not processed yet: click to start it</p>
+    <p class="legend__note">The total sums {{ page.meta.n_atlases }} country estimates. Most count only arrays
+      above about 400&nbsp;m&sup2;, so read it as how far the mapping has come, not as a census.</p>
+  </aside>
+
+  <a class="oet" href="https://openenergytransition.org" aria-label="Open Energy Transition">
+    <svg viewBox="16 22 340 134" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="25">
+        <path d="M68.73 34.38C56.72 34.38 45.19 40.11 36.7 50.3 28.21 60.49 23.43 74.33 23.43 88.74 23.43 103.15 28.21 116.99 36.7 127.18 45.19 137.37 56.72 143.1 68.73 143.1"/>
+        <path d="M91.38 143.1C103.39 143.1 114.92 137.37 123.42 127.18 131.91 116.99 136.68 103.15 136.68 88.74 136.68 74.33 131.91 60.49 123.42 50.3 114.92 40.11 103.39 34.38 91.38 34.38"/>
+        <path class="oet__bar" stroke-linecap="square" d="M181.98 88.74H212.19"/>
+        <path stroke-linecap="square" d="M181.98 34.38H242.39M181.98 143.1H242.39M287.69 34.38H348.09M287.69 143.1V88.74"/>
+      </g>
+    </svg>
+    <span>Open Energy Transition</span>
+  </a>
+
+</div>
+
+<script>window.EARTH_BASE = "{{ 'assets/landing/' | url }}";</script>
+<script src="{{ 'assets/landing/vendor/d3-array.min.js' | url }}" defer></script>
+<script src="{{ 'assets/landing/vendor/d3-geo.min.js' | url }}" defer></script>
+<script src="{{ 'assets/landing/landing.js' | url }}" defer></script>
+</body>
+</html>

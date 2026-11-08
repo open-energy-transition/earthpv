@@ -541,7 +541,7 @@ recall in Punjab went from 0.18 to 0.55 purely on training data their verificati
 A run with no mapping community attached gives you a candidate file nobody will validate,
 a recall number nobody can check, and a capacity estimate resting on a single global
 calibration. Line up a local OpenStreetMap community, a university group, or an NGO first.
-[TraceTheSun](index.md#tracethesun) describes what that collaboration looks like.
+[TraceTheSun](overview.md#tracethesun) describes what that collaboration looks like.
 
 ### Step 0: preflight
 
@@ -829,6 +829,9 @@ on its own labels, while swapping TerraMind for THOR at the same patch size lowe
 IoU on ten of eleven holdouts.
 
 ## Contribute your country atlas back
+
+Starting from nothing? [Build an atlas on your PC](contribute/new-atlas.md) is the same path as
+a page of commands to copy. This section is the full checklist for sending the result back.
 
 **The goal is a global PV evidence atlas assembled from many countries, each run and
 verified by people who know the ground.** No single group can map the world's rooftops, and
