@@ -172,16 +172,59 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 .card[hidden] { display: none; }
 .card.is-pinned { pointer-events: auto; }
 .card strong { font-size: 20px; font-weight: 400; line-height: 1.2; }
+.card__head { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+.card__title { display: flex; flex-direction: column; gap: 1px; }
 .card__tier {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--ink-2);
-  margin-bottom: 4px;
+  color: var(--tier-text, var(--ink-2));
 }
-.card__tier:empty, .card__line:empty { display: none; }
+.card__tier:empty, .card__line:empty, .card__note:empty { display: none; }
 .card__line { font-size: 14px; }
+/* The calibration badge of the atlas page: the same disc, mark and light-panel metals. */
+.medal {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--tier-hi), var(--tier) 58%, var(--tier-lo));
+  box-shadow: 0 0 0 1.5px var(--tier-ring), 0 1px 3px rgba(38, 35, 31, .4);
+}
+.medal::after {
+  content: "";
+  width: 23px;
+  height: 23px;
+  background: var(--tier-ink);
+  -webkit-mask: url("../figures/earthpv-logo-mark-white.png") center / contain no-repeat;
+  mask: url("../figures/earthpv-logo-mark-white.png") center / contain no-repeat;
+}
+.card__head[data-tier=""] .medal { display: none; }
+.card__head[data-tier="gold"] {
+  --tier: #a9760a; --tier-hi: #d8a53c; --tier-lo: #7d5405; --tier-ink: #fff8e6;
+  --tier-text: #8a6108; --tier-ring: rgba(169, 118, 10, .45);
+}
+.card__head[data-tier="silver"] {
+  --tier: #5f6e82; --tier-hi: #93a2b5; --tier-lo: #414c5b; --tier-ink: #fff;
+  --tier-text: #4d5a6b; --tier-ring: rgba(95, 110, 130, .45);
+}
+.card__head[data-tier="bronze"] {
+  --tier: #9c4a14; --tier-hi: #cf7a3f; --tier-lo: #6f3209; --tier-ink: #fdeade;
+  --tier-text: #8a3f10; --tier-ring: rgba(156, 74, 20, .48);
+}
+/* Width 0 and min-width 100%: the note wraps to the card instead of widening it. */
+.card__note {
+  width: 0;
+  min-width: 100%;
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.3;
+}
 .card__go { margin-top: 6px; font-size: 14px; color: var(--shu); }
 .card__facts {
   display: grid;

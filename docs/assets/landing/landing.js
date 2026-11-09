@@ -877,32 +877,31 @@
       return mwp.toFixed(mwp >= 10 ? 0 : 1) + ' MW';
     }
 
-    function energy(gwh) {
-      if (gwh < 1000) return Math.round(gwh) + ' GWh';
-      return (gwh / 1000).toFixed(gwh >= 100000 ? 0 : 1) + ' TWh';
+    /* Two significant figures on the smaller side, at most two decimals, and the same on both
+       so that they add up to 100: 72% and 28%, 3.8% and 96.2%, 0.04% and 99.96%. */
+    function percents(a, b) {
+      var small = Math.min(a, b) * 100;
+      var digits = small > 0 ? Math.min(2, Math.max(0, 1 - Math.floor(Math.log10(small)))) : 0;
+      return [(a * 100).toFixed(digits) + '%', (b * 100).toFixed(digits) + '%'];
     }
 
-    function imageryMonth(iso) {
-      var parts = iso.split('-');
-      return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+parts[1] - 1] + ' ' + parts[0];
-    }
-
-    function mappedRow(label, mwp) {
-      return mwp != null ? [label, power(mwp) + ' mapped'] : [label, 'not measured', 'not-measured'];
-    }
-
-    /* The essentials only: the atlas itself has the rest. A figure a page lacks is left out,
-       and farm ground it did not measure says so: never 0. */
+    /* Best's split at the 400 m² floor. A page with no rooftop detector below the floor holds
+       only part of what is there, so its small share is a lower bound: India's 0.04% must
+       not read as a measurement, and a share that rounds to nothing is "not measured". */
     function atlasRows(a) {
-      var t = a.facts, rows = [];
-      if (t.gwh != null) rows.push(['Generates', 'about ' + energy(t.gwh) + ' a year']);
-      if (t.imagery) rows.push(['Imagery', 'around ' + imageryMonth(t.imagery)]);
-      rows.push(mappedRow('OpenStreetMap under 400 m²', t.osm_mwp_lt400));
-      rows.push(mappedRow('OpenStreetMap 400 m² and up', t.osm_mwp_ge400));
-      rows.push(t.farm_ground != null
-        ? ['Farm ground under 400 m²', power(t.farm_ground)]
-        : ['Farm ground under 400 m²', 'not measured', 'not-measured']);
-      return rows;
+      var t = a.facts, p = percents(t.share_lt400, t.share_ge400);
+      var small = ['Under 400 m²', p[0] + ' of total'], large = ['400 m² and up', p[1] + ' of total'];
+      if (t.rooftop_measured) return [small, large];
+      small = parseFloat(p[0]) > 0 ? ['Under 400 m²', 'at least ' + small[1]]
+                                   : ['Under 400 m²', 'not measured', 'not-measured'];
+      return [small, ['400 m² and up', 'at most ' + large[1]]];
+    }
+
+    function unmeasuredNote(t) {
+      var gaps = [];
+      if (!t.rooftop_measured) gaps.push('Rooftops');
+      if (!t.farm_ground_measured) gaps.push(gaps.length ? 'farm ground' : 'Farm ground');
+      return gaps.length ? gaps.join(' and ') + ' under 400 m² not measured' : '';
     }
 
     function fillFacts(rows) {
@@ -929,17 +928,18 @@
 
     function fillCard(f) {
       el('card-name').textContent = f.name;
+      el('card-head').dataset.tier = f.atlas ? f.atlas.tier : '';
       if (f.atlas) {
         el('card-tier').textContent = f.atlas.tier + ' atlas';
         el('card-best').textContent = power(f.atlas.best) + ' best estimate';
-        el('card-verified').textContent = power(f.atlas.verified) + ' verified';
         fillFacts(atlasRows(f.atlas));
+        el('card-note').textContent = unmeasuredNote(f.atlas.facts);
         el('card-go').textContent = 'Open the atlas →';
       } else {
         el('card-tier').textContent = f.kind || '';
         el('card-best').textContent = 'No atlas yet.';
-        el('card-verified').textContent = '';
         fillFacts(null);
+        el('card-note').textContent = '';
         el('card-go').textContent = 'Build it on your PC →';
       }
       card.href = linkFor(f);

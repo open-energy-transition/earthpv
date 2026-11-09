@@ -75,11 +75,16 @@
     <p class="world-label" id="world-label" hidden></p>
 
     <a class="card" id="card" hidden>
-      <strong id="card-name"></strong>
-      <span class="card__tier" id="card-tier"></span>
+      <span class="card__head" id="card-head" data-tier="">
+        <span class="medal" aria-hidden="true"></span>
+        <span class="card__title">
+          <strong id="card-name"></strong>
+          <span class="card__tier" id="card-tier"></span>
+        </span>
+      </span>
       <span class="card__line" id="card-best"></span>
-      <span class="card__line" id="card-verified"></span>
       <dl class="card__facts" id="card-facts" hidden></dl>
+      <span class="card__note" id="card-note"></span>
       <span class="card__go" id="card-go"></span>
     </a>
   </main>
