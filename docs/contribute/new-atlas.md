@@ -6,7 +6,8 @@ title: Build an atlas on your PC
 
 <div class="atlas-start" data-new-atlas hidden markdown="0">
   <p class="atlas-start__lead"><strong data-new-atlas-country></strong> has no atlas yet. You could be the person who draws it.</p>
-  <p class="atlas-start__note">The commands below are already filled in for this country. Its box comes from a world map, so check it before you start.</p>
+  <p class="atlas-start__note">The commands below are already filled in. The box comes from a world map, so check it before you start.</p>
+  <p class="atlas-start__note" data-new-atlas-china hidden><strong>Ask on Discord before you start.</strong> Open building footprints barely reach China, and this pipeline only images places where it knows there are buildings, so the steps below would find very little here yet.</p>
 </div>
 
 Every atlas on the [globe](../index.md) came out of this pipeline on one desktop computer with a
@@ -23,7 +24,7 @@ two people do not spend the same week on it. It is also the fastest place to get
 | You need | How much | Good to know |
 | --- | --- | --- |
 | **An NVIDIA graphics card** | 6 GB of memory is enough | The target card is a GTX 1060. Anything newer works unchanged. |
-| **Free disk space** | About 15 GB per 1,000 cells, plus one building file of 3 to 10 GB | India's building file alone is 64 GB. An external drive is fine. |
+| **Free disk space** | About 15 GB per 1,000 cells, plus one building file of 3 to 10 GB | India's building file alone is 64 GB, the United States' 21 GB. An external drive is fine. |
 | **A steady connection** | About 300 MB per cell | This sets how long your run takes. Everything else waits on it. |
 | **Linux** | The commands use `systemd-run` | Other systems have not been tested. |
 | **A little of your own judgement** | A few hours, spread out | Two steps need a person looking at imagery. No script or agent can do them for you. |
@@ -42,6 +43,9 @@ connection and about 11 MB per cell:
 | India | 29,171 | weeks | a day or more | over 300 GB |
 
 Every long step can be stopped and restarted, and it carries on where it left off.
+
+The United States and China are too large for one PC, so on the globe each state or province is
+its own atlas.
 
 ## 1. Get the code
 

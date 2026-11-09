@@ -22,6 +22,22 @@
 
     var pattern = new RegExp(Object.keys(values).join("|"), "g");
     var article = document.querySelector(".md-content__inner") || document.body;
+
+    // A US state or Chinese province: `--division` must be spelled as geoBoundaries spells it,
+    // which for China is not the name on the map, and the page's commands are for a country.
+    var division = (q.get("division") || "").trim().slice(0, 80);
+    if (division) {
+      var tokens = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+      var previous = "";
+      while (tokens.nextNode()) {
+        var token = tokens.currentNode, text = token.nodeValue.trim();
+        if (!text) continue;
+        if (/--division$/.test(previous)) token.nodeValue = token.nodeValue.replace("YOUR_COUNTRY", division);
+        if (/--subtype$/.test(previous)) token.nodeValue = token.nodeValue.replace("country", "region");
+        previous = text;
+      }
+    }
+
     var walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
     var hits = [];
     while (walker.nextNode()) {
@@ -33,6 +49,7 @@
     });
 
     banner.querySelector("[data-new-atlas-country]").textContent = country;
+    banner.querySelector("[data-new-atlas-china]").hidden = iso3 !== "CHN";
     banner.hidden = false;
   }
 

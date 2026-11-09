@@ -20,6 +20,16 @@ It is rebuilt with:
 
 from world-atlas@2.0.2 (Natural Earth 1:50m, public domain) and
 i18n-iso-countries@7.14.0/codes.json.
+
+The United States and China are drawn and picked state by state, from
+`docs/assets/landing/regions.json`, which is rebuilt with:
+
+    python scripts/build_landing_page.py \
+        --admin1 ne_50m_admin_1_states_provinces.geojson \
+        --geoboundaries gb_USA_ADM1.geojson gb_CHN_ADM1.geojson
+
+from Natural Earth 5.1.2 (public domain) and the geoBoundaries gbOpen ADM1 layers, which are
+read only to check that every division name is spelled as the pipeline will look it up.
 """
 
 from __future__ import annotations
@@ -38,6 +48,7 @@ from build_atlas_pages import ATLASES, DOCS, REPO, tier_of  # noqa: E402
 
 LANDING = DOCS / "assets" / "landing"
 WORLD = LANDING / "world.json"
+REGIONS = LANDING / "regions.json"
 EARTH = LANDING / "earth.json"
 INDEX = DOCS / "index.md"
 GLOBAL_PV = REPO / "configs" / "external" / "global_pv_capacity.yaml"
@@ -54,6 +65,30 @@ PART_BUFFER_DEG = 0.5
 # Douglas-Peucker tolerance of the base map, in degrees: 80,617 points come down to about
 # a third, which a browser can redraw on every frame of a turning globe.
 SIMPLIFY_DEG = 0.035
+# A state's outline is only picked and highlighted, never drawn as a coast, so it can be
+# coarser; an islet below this many square degrees falls to the nearest state when picked.
+REGION_SIMPLIFY_DEG = 0.05
+REGION_MIN_PART_DEG2 = 0.01
+
+# Countries too large for one atlas on one PC: the globe draws and picks them state by state.
+SUBDIVIDED = {
+    "United States of America": {"iso3": "USA", "label": "United States", "short": "US", "name_key": "name"},
+    "China": {"iso3": "CHN", "label": "China", "short": "China", "name_key": "name_en"},
+}
+# The pipeline finds a state by its name in geoBoundaries ADM1 (`compose._aoi_boundary`), which
+# spells China's provinces in full. Every province not listed here is "<name> Province".
+CHINA_DIVISION = {
+    "Beijing": "Beijing Municipality",
+    "Chongqing": "Chongqing Municipality",
+    "Shanghai": "Shanghai Municipality",
+    "Tianjin": "Tianjin Municipality",
+    "Guangdong": "Guangzhou Province",  # sic: geoBoundaries' own label for Guangdong
+    "Guangxi": "Guangxi Zhuang Autonomous Region",
+    "Inner Mongolia": "Inner Mongolia Autonomous Region",
+    "Ningxia": "Ningxia Ningxia Hui Autonomous Region",  # sic
+    "Tibet": "Tibet Autonomous Region",
+    "Xinjiang": "Xinjiang Uyghur Autonomous Region",
+}
 
 # Natural Earth abbreviates long names for its own labels; the page and the commands on
 # the contribute page want them in full.
@@ -90,6 +125,78 @@ FULL_NAMES = {
     "W. Sahara": "Western Sahara",
     "Wallis and Futuna Is.": "Wallis and Futuna",
 }
+
+
+def _delta_coded(points) -> list[int]:
+    """Lon/lat pairs as one flat list of deltas, in hundredths of a degree."""
+    flat, px, py = [], 0, 0
+    for lon, lat, *_ in points:
+        x, y = round(lon * 100), round(lat * 100)
+        flat += [x - px, y - py]
+        px, py = x, y
+    return flat
+
+
+def build_regions(admin1_path: Path, geoboundaries: list[Path]) -> None:
+    """Write regions.json: the states of `SUBDIVIDED`, and the borders between them."""
+    from shapely.geometry import LineString, MultiLineString, MultiPolygon, shape
+    from shapely.geometry.polygon import orient
+    from shapely.ops import linemerge
+
+    known = {f["properties"]["shapeName"] for p in geoboundaries
+             for f in json.loads(p.read_text())["features"]}
+    countries = {f["n"] for f in json.loads(WORLD.read_text())["features"]}
+    features = json.loads(admin1_path.read_text())["features"]
+
+    regions, lines = [], []
+    for country, spec in SUBDIVIDED.items():
+        units = []
+        for f in features:
+            if f["properties"]["admin"] != country:
+                continue
+            name = f["properties"][spec["name_key"]]
+            division = CHINA_DIVISION.get(name, f"{name} Province") if spec["iso3"] == "CHN" else name
+            if division not in known:
+                raise SystemExit(f"{division}: not a name in the geoBoundaries layers given")
+            units.append((name, division, f["properties"]["type_en"], shape(f["geometry"])))
+
+        for name, division, kind, geom in units:
+            parts = list(geom.geoms) if isinstance(geom, MultiPolygon) else [geom]
+            largest = max(p.area for p in parts)
+            kept = [p for p in parts if p.area >= REGION_MIN_PART_DEG2 or p.area == largest]
+            # d3 reads a ring's winding on the sphere: exterior clockwise, or it fills the rest
+            # of the Earth, and simplifying can flip it. Orient last.
+            polys = [orient(p.simplify(REGION_SIMPLIFY_DEG, preserve_topology=True), sign=-1.0)
+                     for p in kept]
+            west, south, east, north = geom.bounds
+            region = {
+                # Georgia is also a country, and a name here has to identify one place.
+                "n": f"{name} ({spec['short']})" if name in countries else name,
+                "c": country,
+                "i": spec["iso3"],
+                "t": f"{kind}, {spec['label']}",
+                "b": [math.floor(west * 10) / 10, math.floor(south * 10) / 10,
+                      math.ceil(east * 10) / 10, math.ceil(north * 10) / 10],
+                "d": division,
+                "p": [[_delta_coded(r.coords) for r in [p.exterior, *p.interiors]] for p in polys],
+            }
+            regions.append(region)
+
+        shared = []
+        for i, (*_, a) in enumerate(units):
+            for *_, b in units[i + 1:]:
+                if a.intersects(b):
+                    meet = a.boundary.intersection(b.boundary)
+                    shared += [g for g in getattr(meet, "geoms", [meet])
+                               if isinstance(g, LineString) and g.length > 0]
+        merged = linemerge(MultiLineString(shared))
+        for line in getattr(merged, "geoms", [merged]):
+            lines.append(_delta_coded(line.simplify(SIMPLIFY_DEG).coords))
+
+    REGIONS.write_text(json.dumps({"scale": 0.01, "lines": lines, "regions": regions},
+                                  separators=(",", ":")))
+    print(f"wrote {REGIONS.name}: {len(regions)} states and provinces, {len(lines)} border lines, "
+          f"{REGIONS.stat().st_size / 1e3:,.0f} kB")
 
 
 def build_base_map(topo_path: Path, codes_path: Path) -> None:
@@ -168,14 +275,7 @@ def build_base_map(topo_path: Path, codes_path: Path) -> None:
             "p": polys,
         })
 
-    coded = []
-    for pts in simple:
-        flat, px, py = [], 0, 0
-        for lon, lat in pts:
-            x, y = round(lon * 100), round(lat * 100)
-            flat += [x - px, y - py]
-            px, py = x, y
-        coded.append(flat)
+    coded = [_delta_coded(pts) for pts in simple]
     LANDING.mkdir(parents=True, exist_ok=True)
     WORLD.write_text(json.dumps({"scale": 0.01, "arcs": coded, "features": features},
                                 separators=(",", ":")))
@@ -235,10 +335,17 @@ def _sig(value: float, digits: int = 2) -> float:
 
 
 def _atlas_facts(totals: dict) -> dict:
-    """What the globe's hover card adds about one atlas, from its page's own totals."""
+    """What the globe's hover card adds about one atlas, from its page's own totals.
+
+    The atlases hold hand-mapped installations in two size classes only. Farm ground the
+    atlas did not measure is sent as None, never as the 0 its total holds.
+    """
     return {
         "gwh": (totals.get("generation") or {}).get("gwh"),
         "imagery": (totals.get("imagery_dates") or {}).get("median"),
+        "osm_lt400": totals["osm_n_lt400"],
+        "osm_ge400": totals["osm_n_ge400"],
+        "farm_ground": totals["small_ground"] if totals["small_ground_status"]["measured"] else None,
     }
 
 
@@ -247,6 +354,7 @@ def write() -> None:
     world = json.loads(WORLD.read_text())
     arcs = _decode_arcs(world)
     by_name = {f["n"]: f for f in world["features"]}
+    regions = {r["n"]: r for r in json.loads(REGIONS.read_text())["regions"]}
     ref = yaml.safe_load(GLOBAL_PV.read_text())
 
     atlases = []
@@ -269,18 +377,21 @@ def write() -> None:
                 capacity[key] = capacity.get(key, 0.0) + float(mwp)
 
         feature = by_name.get(country)
-        if feature is None:
-            raise SystemExit(f"{country}: not a country name in {WORLD.name}")
-        parts = _processed_parts(feature, arcs, lons[covered], lats[covered])
-        if not parts:
-            raise SystemExit(f"{country}: no processed cell inside its outline")
-        left_out = len(feature["p"]) - len(parts)
-        if left_out:
-            print(f"  {country}: {left_out} of {len(feature['p'])} polygons hold no processed "
-                  "cell and stay in pencil")
+        region = regions.get(country)
+        if feature is None and region is None:
+            raise SystemExit(f"{country}: neither a country in {WORLD.name} nor a state in {REGIONS.name}")
+        parts: list[int] = []    # a state is inked whole
+        if feature is not None:
+            parts = _processed_parts(feature, arcs, lons[covered], lats[covered])
+            if not parts:
+                raise SystemExit(f"{country}: no processed cell inside its outline")
+            left_out = len(feature["p"]) - len(parts)
+            if left_out:
+                print(f"  {country}: {left_out} of {len(feature['p'])} polygons hold no processed "
+                      "cell and stay in pencil")
         atlases.append({
             "name": country,
-            "iso3": feature["i"],
+            "iso3": (feature or region)["i"],
             "href": f"{stem}/",
             "tier": tier_of(html),
             "best": round(totals["mwp_best"], 1),
@@ -357,11 +468,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--base-map", type=Path, help="world-atlas countries-50m.json")
     ap.add_argument("--iso-codes", type=Path, help="i18n-iso-countries codes.json")
+    ap.add_argument("--admin1", type=Path, help="Natural Earth ne_50m_admin_1_states_provinces.geojson")
+    ap.add_argument("--geoboundaries", type=Path, nargs="+", help="gbOpen ADM1 GeoJSON, one per country")
     a = ap.parse_args()
     if a.base_map:
         if not a.iso_codes:
             ap.error("--base-map needs --iso-codes")
         build_base_map(a.base_map, a.iso_codes)
+    if a.admin1:
+        if not a.geoboundaries:
+            ap.error("--admin1 needs --geoboundaries")
+        build_regions(a.admin1, a.geoboundaries)
     write()
     return 0
 

@@ -90,15 +90,17 @@
 
   /* --------------------------------------------------------------------------- data */
 
+  function decodeLine(flat, scale) {
+    var pts = new Array(flat.length / 2), x = 0, y = 0;
+    for (var i = 0; i < flat.length; i += 2) {
+      x += flat[i]; y += flat[i + 1];
+      pts[i / 2] = [x * scale, y * scale];
+    }
+    return pts;
+  }
+
   function decodeArcs(world) {
-    return world.arcs.map(function (flat) {
-      var pts = new Array(flat.length / 2), x = 0, y = 0;
-      for (var i = 0; i < flat.length; i += 2) {
-        x += flat[i]; y += flat[i + 1];
-        pts[i / 2] = [x * world.scale, y * world.scale];
-      }
-      return pts;
-    });
+    return world.arcs.map(function (flat) { return decodeLine(flat, world.scale); });
   }
 
   function ringCoords(ids, arcs) {
@@ -124,7 +126,7 @@
 
   /* ------------------------------------------------------------------------ the page */
 
-  function start(world, earth) {
+  function start(world, earth, regions) {
     var stage = el('stage'), under = el('under'), canvas = el('earth'), over = el('over');
     var ctx = canvas.getContext('2d'), uctx = under.getContext('2d'), octx = over.getContext('2d');
     var card = el('card'), readout = el('readout'), worldLabel = el('world-label');
@@ -151,6 +153,25 @@
     });
     var featureByName = {};
     features.forEach(function (f) { featureByName[f.name] = f; });
+
+    /* The United States and China are too large for one atlas on one PC, so they are drawn
+       and picked state by state. Without this file they simply stay whole countries. */
+    var inkedRegionPolys = [];
+    if (regions) {
+      regions.regions.forEach(function (r) {
+        var polys = r.p.map(function (poly) {
+          return poly.map(function (flat) { return decodeLine(flat, regions.scale); });
+        });
+        var item = { name: r.n, kind: r.t, iso: r.i, box: r.b, division: r.d, rings: polys,
+                     feature: { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: polys } },
+                     atlas: atlasByName[r.n] || null };
+        var country = featureByName[r.c];
+        (country.regions = country.regions || []).push(item);
+        featureByName[r.n] = item;
+        if (item.atlas) inkedRegionPolys = inkedRegionPolys.concat(polys);
+      });
+    }
+    var inkedRegions = inkedRegionPolys.length ? { type: 'MultiPolygon', coordinates: inkedRegionPolys } : null;
 
     /* What is inked and what stays pencil, polygon by polygon: France's atlas never imaged
        French Guiana, so that polygon stays pencil while still clicking through to France. */
@@ -188,7 +209,7 @@
     var inked = coarse(inkedPolys);
 
     /* ---------------------------------------------------------------- line work */
-    var lineSets = { grat: [], hatch: [], pencilBorder: [], pencilCoast: [], pencilGhost: [], ink: [], inkGhost: [] };
+    var lineSets = { grat: [], hatch: [], pencilBorder: [], regionBorder: [], pencilCoast: [], pencilGhost: [], ink: [], inkGhost: [] };
 
     (function buildLines() {
       var uses = new Uint8Array(arcs.length), inkUse = new Uint8Array(arcs.length);
@@ -232,6 +253,16 @@
         }
       });
 
+      if (regions) {
+        regions.lines.forEach(function (flat) {
+          lineSets.regionBorder.push(make(decodeLine(flat, regions.scale), 0.1, 11));
+        });
+      }
+      inkedRegionPolys.forEach(function (poly) {
+        lineSets.ink.push(make(poly[0], 0, 16));
+        lineSets.inkGhost.push(make(poly[0], 0.55, 9));
+      });
+
       var lon, lat, pts;
       for (lon = -180; lon < 180; lon += 30) {
         pts = [];
@@ -251,9 +282,16 @@
       var mapW = 2160, mapH = 1080, map = document.createElement('canvas');
       map.width = mapW; map.height = mapH;
       var mapCtx = map.getContext('2d', { willReadFrequently: true });
+      var mapPath = d3.geoPath(d3.geoEquirectangular().scale(mapW / TAU).translate([mapW / 2, mapH / 2]), mapCtx);
       mapCtx.beginPath();
-      d3.geoPath(d3.geoEquirectangular().scale(mapW / TAU).translate([mapW / 2, mapH / 2]), mapCtx)(pencil);
+      mapPath(pencil);
       mapCtx.fill();
+      if (inkedRegions) {       // a state with an atlas leaves the rest of its country in pencil
+        mapCtx.globalCompositeOperation = 'destination-out';
+        mapCtx.beginPath();
+        mapPath(inkedRegions);
+        mapCtx.fill();
+      }
       var land = mapCtx.getImageData(0, 0, mapW, mapH).data;
       function ashore(lo, la) {
         var mx = Math.min(mapW - 1, Math.floor((lo + 180) / 360 * mapW));
@@ -483,6 +521,7 @@
 
       strokeSet(lineSets.grat, [0.5], 0.13, INK, 0.3);
       strokeSet(lineSets.pencilBorder, [0.45, 0.7], 0.3, INK, 0.1);
+      strokeSet(lineSets.regionBorder, [0.35, 0.55], 0.28, INK, 0.1);
       if (quality > 0) strokeSet(lineSets.pencilGhost, [0.4, 0.6], 0.2, INK, 0.3);
       strokeSet(lineSets.pencilCoast, [0.5, 0.75, 1.05], 0.62, INK, 0.08);
 
@@ -490,6 +529,7 @@
          What it did image is laid over this in white. */
       ctx.beginPath();
       path(inked);
+      if (inkedRegions) path(inkedRegions);
       ctx.fillStyle = 'rgba(' + INK + ',' + (0.05 * ink) + ')';
       ctx.fill();
 
@@ -790,9 +830,37 @@
         if (lat < b[0][1] - 0.02 || lat > b[1][1] + 0.02) continue;
         var w = b[0][0], e = b[1][0];
         if (w <= e ? (lon < w - 0.02 || lon > e + 0.02) : (lon < w - 0.02 && lon > e + 0.02)) continue;
-        if (d3.geoContains(f.feature, [lon, lat])) return f;
+        if (d3.geoContains(f.feature, [lon, lat])) return f.regions ? regionAt(f, lon, lat) : f;
       }
       return null;
+    }
+
+    function inPolygon(rings, lon, lat) {
+      var inside = false;
+      rings.forEach(function (ring) {
+        for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+          var a = ring[i], b = ring[j];
+          if ((a[1] > lat) !== (b[1] > lat) && lon < (b[0] - a[0]) * (lat - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+        }
+      });
+      return inside;
+    }
+
+    /* The state under a point of its country, or on a coastal sliver the nearest one. */
+    function regionAt(country, lon, lat) {
+      var nearest = country.regions[0], best = Infinity;
+      for (var i = 0; i < country.regions.length; i++) {
+        var region = country.regions[i];
+        for (var p = 0; p < region.rings.length; p++) {
+          if (inPolygon(region.rings[p], lon, lat)) return region;
+          var ring = region.rings[p][0];
+          for (var v = 0; v < ring.length; v++) {
+            var dx = ring[v][0] - lon, dy = ring[v][1] - lat, d = dx * dx + dy * dy;
+            if (d < best) { best = d; nearest = region; }
+          }
+        }
+      }
+      return nearest;
     }
 
     function pick(event) {
@@ -814,21 +882,22 @@
       return (gwh / 1000).toFixed(gwh >= 100000 ? 0 : 1) + ' TWh';
     }
 
-    function worldShare(mwp) {
-      var pct = mwp / 1000 / earth.world.gw * 100;
-      return pct >= 1 ? pct.toFixed(1) + '%' : pct >= 0.1 ? pct.toFixed(2) + '%' : 'under 0.1%';
-    }
-
     function imageryMonth(iso) {
       var parts = iso.split('-');
       return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+parts[1] - 1] + ' ' + parts[0];
     }
 
-    /* The essentials only: the atlas itself has the rest. A figure a page lacks is left out. */
+    /* The essentials only: the atlas itself has the rest. A figure a page lacks is left out,
+       and farm ground it did not measure says so: never 0. */
     function atlasRows(a) {
-      var t = a.facts, rows = [['Of the world\'s solar', worldShare(a.best)]];
+      var t = a.facts, rows = [];
       if (t.gwh != null) rows.push(['Generates', 'about ' + energy(t.gwh) + ' a year']);
       if (t.imagery) rows.push(['Imagery', 'around ' + imageryMonth(t.imagery)]);
+      rows.push(['OpenStreetMap under 400 m²', t.osm_lt400.toLocaleString('en-US') + ' mapped']);
+      rows.push(['OpenStreetMap 400 m² and up', t.osm_ge400.toLocaleString('en-US') + ' mapped']);
+      rows.push(t.farm_ground != null
+        ? ['Farm ground under 400 m²', power(t.farm_ground)]
+        : ['Farm ground under 400 m²', 'not measured', 'not-measured']);
       return rows;
     }
 
@@ -840,6 +909,7 @@
         var dt = document.createElement('dt'), dd = document.createElement('dd');
         dt.textContent = row[0];
         dd.textContent = row[1];
+        if (row[2]) dd.className = row[2];
         list.appendChild(dt);
         list.appendChild(dd);
       });
@@ -848,7 +918,8 @@
     function linkFor(f) {
       if (f.atlas) return f.atlas.href;
       var q = '?country=' + encodeURIComponent(f.name) +
-              (f.iso ? '&iso3=' + f.iso : '') + '&bbox=' + f.box.join(',');
+              (f.iso ? '&iso3=' + f.iso : '') + '&bbox=' + f.box.join(',') +
+              (f.division ? '&division=' + encodeURIComponent(f.division) : '');
       return NEW_ATLAS + q;
     }
 
@@ -861,7 +932,7 @@
         fillFacts(atlasRows(f.atlas));
         el('card-go').textContent = 'Open the atlas →';
       } else {
-        el('card-tier').textContent = '';
+        el('card-tier').textContent = f.kind || '';
         el('card-best').textContent = 'No atlas yet.';
         el('card-verified').textContent = '';
         fillFacts(null);
@@ -1095,8 +1166,8 @@
   }
 
   function boot() {
-    Promise.all([json('world.json'), json('earth.json')])
-      .then(function (d) { start(d[0], d[1]); })
+    Promise.all([json('world.json'), json('earth.json'), json('regions.json').catch(function () { return null; })])
+      .then(function (d) { start(d[0], d[1], d[2]); })
       .catch(function (err) {
         /* The country links and figures are plain HTML and still work. */
         if (window.console) console.error('Electrify Earth:', err);
