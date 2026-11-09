@@ -47,6 +47,28 @@ OUT = REPO / "configs" / "external" / "official_capacity.yaml"
 # Hand-entered from the cited document. `mw` is the national figure the page draws,
 # `range` its stated uncertainty where it has one, `regions` keyed by the atlas's names.
 PUBLISHED: dict[str, list[dict]] = {
+    "belgium": [{
+        "id": "elia",
+        "name": "Elia",
+        "title": "Photovoltaic power production estimation and forecast on Belgian grid (ods032)",
+        "publisher": "Elia",
+        "kind": "statistics",
+        "url": "https://opendata.elia.be/explore/dataset/ods032/",
+        "as_of": "2026-09-30",
+        # `monitoredcapacity` at 2026-09-30 10:00 UTC, queried from Elia's open-data API on
+        # 2026-11-09; the three regions sum to the national figure. ods032 ends on 2026-10-26
+        # (ods209 continues it, without the Flanders and Wallonia rows).
+        "mw": 12128.3,
+        "scope": "The solar capacity Elia, the transmission system operator, monitors for its "
+                 "generation estimates on 30 September 2026, the last day of the imagery "
+                 "window. Elia's dataset gives it in MW and does not say whether that is panel "
+                 "(DC) or inverter (AC) capacity.",
+        "regions": {
+            "Vlaams Gewest": 8713.8,
+            "Wallonne Gewest": 3083.1,
+            "Brussels Hoofdstedelijk": 331.4,
+        },
+    }],
     "spain": [{
         "id": "ree",
         "name": "REE",

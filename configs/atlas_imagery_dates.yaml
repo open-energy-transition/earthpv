@@ -3,6 +3,20 @@ note: Median acquisition date of the Sentinel-2 scenes behind each evidence atla
   from the STAC catalogue for a random sample of cells (scripts/imagery_median_date.py). p25/p75 bound
   the middle half.
 aois:
+  belgium:
+    median: '2026-07-01'
+    p25: '2026-05-28'
+    p75: '2026-08-02'
+    first: '2026-05-01'
+    last: '2026-09-29'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 423
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1304
+    made: '2026-11-09'
   egypt:
     median: '2026-07-31'
     p25: '2026-06-16'

@@ -65,6 +65,7 @@ ATLASES = [
      "Pakistan PV evidence atlas: best estimate by 0.1-degree cell"),
     ("atlas-germany", "Germany", "germany_pv_evidence_atlas.html", None),
     ("atlas-france", "France", "france_pv_evidence_atlas.html", None),
+    ("atlas-belgium", "Belgium", "belgium_pv_evidence_atlas.html", None),
     ("atlas-egypt", "Egypt", "egypt_pv_evidence_atlas.html", None),
     ("atlas-india", "India", "india_pv_evidence_atlas.html", None),
     ("atlas-morocco", "Morocco", "morocco_pv_evidence_atlas.html", None),

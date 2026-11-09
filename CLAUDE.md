@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and fifteen countries have a published evidence atlas (see "Country
+country's own OSM labels, and sixteen countries have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -1280,6 +1280,7 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
 | Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp); 1 CSP plant 5.8 MW |
 | Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | clear win over v5 on the holdout; floor of 1 building per cell; 43 CSP plants 2,383 MW; 998 blobs not judged yet |
+| Belgium | `v31_combined_belgium` ep 22 | 502.3 / 639.3 | recall tie with v5, wins on IoU (thin holdout: Brussels, 2 cells); Best is 5.3% of Elia's 12,128 MW; published before owner review; leads, calibration areas and the 4-outline farm review still owed |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks

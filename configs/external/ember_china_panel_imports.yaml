@@ -6,6 +6,12 @@ retrieved: '2026-10-19'
 method: Sum of Ember's monthly panel capacity (MW, export value / average module price) to each country
   from the first month of the record to the end of the atlas's imagery window.
 aois:
+  belgium:
+    ember_area: Belgium
+    from: 2017-01
+    to: 2026-08
+    mwp: 25440.0
+    ceiling: true
   egypt:
     ember_area: Egypt
     from: 2017-01
