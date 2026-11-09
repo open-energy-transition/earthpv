@@ -589,40 +589,13 @@
       c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
 
       /* The sphere: a little brighter than the sheet, darkening at the limb. */
-      var g = c.createRadialGradient(cx - R * 0.28, cy - R * 0.34, R * 0.1, cx, cy, R);
+      var g = c.createRadialGradient(cx, cy, R * 0.1, cx, cy, R);
       g.addColorStop(0, 'rgba(255,253,248,.22)');
       g.addColorStop(0.75, 'rgba(255,253,248,.05)');
       g.addColorStop(0.93, 'rgba(60,52,42,.03)');
       g.addColorStop(1, 'rgba(60,52,42,.11)');
       c.fillStyle = g;
       c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
-
-      /* Sketched shadow: hatching in a crescent away from the light. */
-      var rand2 = mulberry(31), lightX = cx - R * 0.07, lightY = cy - R * 0.08, lightR = R * 0.955;
-      var dirX = Math.cos(1.12), dirY = Math.sin(1.12), nx = -dirY, ny = dirX;
-      c.lineCap = 'round';
-      for (var d = -R; d < R; d += 3.4 * S) {
-        var run = null;
-        var flush = function () {
-          if (run && run.length > 1) {
-            c.beginPath();
-            run.forEach(function (p, i) { c[i ? 'lineTo' : 'moveTo'](p[0], p[1]); });
-            c.strokeStyle = 'rgba(' + INK + ',' + (0.1 + rand2() * 0.16) + ')';
-            c.lineWidth = (0.35 + rand2() * 0.5) * S;
-            c.stroke();
-          }
-          run = null;
-        };
-        for (var t = -R; t < R; t += 3) {
-          var px = cx + nx * d + dirX * t + (rand2() - 0.5) * 0.7;
-          var py = cy + ny * d + dirY * t + (rand2() - 0.5) * 0.7;
-          var inside = (px - cx) * (px - cx) + (py - cy) * (py - cy) < (R - 1.2) * (R - 1.2);
-          var lit = (px - lightX) * (px - lightX) + (py - lightY) * (py - lightY) < lightR * lightR;
-          if (inside && !lit) (run = run || []).push([px, py]);
-          else flush();
-        }
-        flush();
-      }
 
       /* The sphere's own outline, thin on the lit side. */
       brushDisc(c, R, function (a, p) {
@@ -631,6 +604,7 @@
       }, 'rgba(' + INK + ',.88)');
 
       /* The pencil ring: the whole world's PV, still to be drawn over. */
+      c.lineCap = 'round';
       var rand3 = mulberry(12);
       for (var pass = 0; pass < 2; pass++) {
         var n = 1400, wob = pressure(n + 1, rand3, 60), lift = pressure(n + 1, rand3, 20);
