@@ -895,7 +895,10 @@ dry part what Best adds. **Nothing on the globe may be a texture fixed to the sc
 pencil hatching is geometry. A polygon of an atlas country with no processed cell stays pencil
 (France's overseas parts) but still clicks through to its atlas. The hover card's figures are that
 atlas's own `totals` (`_atlas_facts`), and it stays to the essentials (owner, 2026-11-08): farm ground
-it did not measure reads "not measured", never 0. A click on a country without an
+it did not measure reads "not measured", never 0. Mapped capacity below and above 400 m² is
+`totals.osm_mwp_lt400`/`_ge400`; a page built before 2026-11-09 lacks them, so `scripts/atlas_osm_by_size.py`
+prices its OSM file into `configs/atlas_osm_sizes.yaml` and refuses one that does not reproduce the
+page's counts and `osm_mwp`. A click on a country without an
 atlas opens `docs/contribute/new-atlas.md` with `?country=&iso3=&bbox=`, which `new-atlas.js`
 writes into the commands' `YOUR_*` placeholders. `docs/assets/landing/world.json` is Natural Earth
 1:50m, rebuilt only with `--base-map`; a simplified ring must keep its winding or d3 fills the

@@ -52,6 +52,7 @@ REGIONS = LANDING / "regions.json"
 EARTH = LANDING / "earth.json"
 INDEX = DOCS / "index.md"
 GLOBAL_PV = REPO / "configs" / "external" / "global_pv_capacity.yaml"
+OSM_SIZES = REPO / "configs" / "atlas_osm_sizes.yaml"
 
 # The atlases' own resolution: one 0.1 degree cell, one entry. An off-lattice country's cells
 # keep their one-to-one bins and move by at most half a cell.
@@ -334,17 +335,18 @@ def _sig(value: float, digits: int = 2) -> float:
     return float(f"{value:.{digits}g}")
 
 
-def _atlas_facts(totals: dict) -> dict:
+def _atlas_facts(totals: dict, osm_sizes: dict) -> dict:
     """What the globe's hover card adds about one atlas, from its page's own totals.
 
-    The atlases hold hand-mapped installations in two size classes only. Farm ground the
-    atlas did not measure is sent as None, never as the 0 its total holds.
+    Mapped capacity below and above 400 m2 is in the totals of a page built since 2026-11-09,
+    and in `osm_sizes` (scripts/atlas_osm_by_size.py) for one built before. A figure a page
+    has no value for and farm ground it did not measure are sent as None, never as 0.
     """
     return {
         "gwh": (totals.get("generation") or {}).get("gwh"),
         "imagery": (totals.get("imagery_dates") or {}).get("median"),
-        "osm_lt400": totals["osm_n_lt400"],
-        "osm_ge400": totals["osm_n_ge400"],
+        "osm_mwp_lt400": totals.get("osm_mwp_lt400", osm_sizes.get("osm_mwp_lt400")),
+        "osm_mwp_ge400": totals.get("osm_mwp_ge400", osm_sizes.get("osm_mwp_ge400")),
         "farm_ground": totals["small_ground"] if totals["small_ground_status"]["measured"] else None,
     }
 
@@ -356,11 +358,13 @@ def write() -> None:
     by_name = {f["n"]: f for f in world["features"]}
     regions = {r["n"]: r for r in json.loads(REGIONS.read_text())["regions"]}
     ref = yaml.safe_load(GLOBAL_PV.read_text())
+    osm_sizes = yaml.safe_load(OSM_SIZES.read_text())
 
     atlases = []
     processed: dict[tuple[int, int], int] = {}
     capacity: dict[tuple[int, int], float] = {}
     for stem, country, html, *_ in ATLASES:
+        aoi = html.split("_evidence_atlas")[0].removesuffix("_pv")
         data = _page_data(html)
         totals = data["totals"]
         cols = {c: i for i, c in enumerate(data["cell_cols"])}
@@ -397,7 +401,7 @@ def write() -> None:
             "best": round(totals["mwp_best"], 1),
             "verified": round(totals["mwp_verified"], 1),
             "parts": parts,
-            "facts": _atlas_facts(totals),
+            "facts": _atlas_facts(totals, osm_sizes.get(aoi, {})),
         })
 
     atlases.sort(key=lambda a: -a["best"])

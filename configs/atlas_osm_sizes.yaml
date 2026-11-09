@@ -1,0 +1,52 @@
+# Hand-mapped capacity (MWp) below and above 400 m2 per published atlas, for
+# pages that do not carry it in their totals. Written by
+# scripts/atlas_osm_by_size.py, each checked against its page's counts and
+# osm_mwp. Do not edit by hand.
+belgium:
+  osm_mwp_lt400: 49.1
+  osm_mwp_ge400: 453.2
+egypt:
+  osm_mwp_lt400: 13.0
+  osm_mwp_ge400: 3302.1
+france:
+  osm_mwp_lt400: 532.0
+  osm_mwp_ge400: 11849.8
+germany:
+  osm_mwp_lt400: 2058.1
+  osm_mwp_ge400: 24577.0
+india:
+  osm_mwp_lt400: 41.6
+  osm_mwp_ge400: 70224.4
+morocco:
+  osm_mwp_lt400: 6.0
+  osm_mwp_ge400: 893.0
+namibia:
+  osm_mwp_lt400: 21.2
+  osm_mwp_ge400: 443.2
+nigeria:
+  osm_mwp_lt400: 10.8
+  osm_mwp_ge400: 79.4
+pakistan:
+  osm_mwp_lt400: 319.3
+  osm_mwp_ge400: 3318.2
+poland:
+  osm_mwp_lt400: 97.6
+  osm_mwp_ge400: 6506.5
+south_africa:
+  osm_mwp_lt400: 643.9
+  osm_mwp_ge400: 8678.7
+spain:
+  osm_mwp_lt400: 70.1
+  osm_mwp_ge400: 39309.2
+turkiye:
+  osm_mwp_lt400: 10.7
+  osm_mwp_ge400: 10704.1
+vietnam:
+  osm_mwp_lt400: 0.9
+  osm_mwp_ge400: 8178.9
+yemen:
+  osm_mwp_lt400: 49.9
+  osm_mwp_ge400: 227.7
+zambia:
+  osm_mwp_lt400: 0.9
+  osm_mwp_ge400: 504.9

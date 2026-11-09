@@ -3004,6 +3004,11 @@ def build_evidence_atlas(
     _pv_osm = in_grid_osm[~in_grid_osm["csp"].astype(bool)]
     n_osm_ge400 = int((_pv_osm["area_m2"] >= 400.0).sum())
     n_osm_lt400 = int((_pv_osm["area_m2"] < 400.0).sum())
+    # Capacity of the same two classes, solar thermal plants included as in `osm_mwp`. The
+    # globe's hover card shows these (scripts/atlas_osm_by_size.py for older pages).
+    _osm_lt400 = in_grid_osm["area_m2"] < 400.0
+    osm_mwp_lt400 = float(in_grid_osm.loc[_osm_lt400, "kwp"].sum()) / 1000
+    osm_mwp_ge400 = float(in_grid_osm.loc[~_osm_lt400, "kwp"].sum()) / 1000
     osm_by_cell = in_grid_osm.groupby("cell").apply(
         lambda d: pd.Series({
             "osm_mwp": d["kwp"].sum() / 1000,
@@ -3379,6 +3384,8 @@ def build_evidence_atlas(
             "osm_n": int(grid.osm_n.sum()),
             "osm_n_ge400": n_osm_ge400,
             "osm_n_lt400": n_osm_lt400,
+            "osm_mwp_lt400": round(osm_mwp_lt400, 1),
+            "osm_mwp_ge400": round(osm_mwp_ge400, 1),
             "n_osm_matched": int(osm["matched"].sum()),
             "small_low": round(float(grid.small_low.sum()), 1),
             "small_central": round(float(grid.small_central.sum()), 1),

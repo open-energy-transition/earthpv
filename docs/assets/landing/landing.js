@@ -887,14 +887,18 @@
       return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+parts[1] - 1] + ' ' + parts[0];
     }
 
+    function mappedRow(label, mwp) {
+      return mwp != null ? [label, power(mwp) + ' mapped'] : [label, 'not measured', 'not-measured'];
+    }
+
     /* The essentials only: the atlas itself has the rest. A figure a page lacks is left out,
        and farm ground it did not measure says so: never 0. */
     function atlasRows(a) {
       var t = a.facts, rows = [];
       if (t.gwh != null) rows.push(['Generates', 'about ' + energy(t.gwh) + ' a year']);
       if (t.imagery) rows.push(['Imagery', 'around ' + imageryMonth(t.imagery)]);
-      rows.push(['OpenStreetMap under 400 m²', t.osm_lt400.toLocaleString('en-US') + ' mapped']);
-      rows.push(['OpenStreetMap 400 m² and up', t.osm_ge400.toLocaleString('en-US') + ' mapped']);
+      rows.push(mappedRow('OpenStreetMap under 400 m²', t.osm_mwp_lt400));
+      rows.push(mappedRow('OpenStreetMap 400 m² and up', t.osm_mwp_ge400));
       rows.push(t.farm_ground != null
         ? ['Farm ground under 400 m²', power(t.farm_ground)]
         : ['Farm ground under 400 m²', 'not measured', 'not-measured']);
