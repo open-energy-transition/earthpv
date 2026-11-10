@@ -267,9 +267,10 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 }
 .subtitle {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   letter-spacing: .05em;
   color: var(--ink-2);
+  text-wrap: balance;
 }
 .ledger p.stats {
   display: flex;
@@ -341,7 +342,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 
 /* -------------------------------------------------- narrow and short screens */
 /* The title block sits between the two lower corners, so it may not reach them. */
-.ledger p.stats, .atlas-links ul { max-width: calc(100vw - 590px); margin-left: auto; margin-right: auto; }
+.subtitle, .ledger p.stats, .atlas-links ul { max-width: calc(100vw - 590px); margin-left: auto; margin-right: auto; }
 @media (max-height: 780px) { .legend__note { display: none; } }
 
 @media (max-width: 1180px) {
@@ -351,7 +352,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   .stage { margin-top: 14px; }    /* the brush stroke stays clear of the buttons above it */
   .top { grid-column: 1 / -1; }
   .title h1 { font-size: min(46px, 6.4vw, 6.2vh); }
-  .ledger p.stats, .atlas-links ul { max-width: none; }
+  .subtitle, .ledger p.stats, .atlas-links ul { max-width: none; }
   .legend, .oet { position: static; align-self: end; padding: 0 28px 16px; }
   .legend { width: auto; display: flex; flex-wrap: wrap; gap: 0 20px; }
   .legend__note { display: none; }
