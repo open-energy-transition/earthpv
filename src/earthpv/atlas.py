@@ -3516,8 +3516,8 @@ def build_evidence_atlas(
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title}'s PV Atlas",
-        "__H1__": f"{title}'s PV Atlas",
+        "__PAGE_TITLE__": f"EarthPV: {title}",
+        "__H1__": title,
         "__HEADER_LOGO__": header_logo_html(),
         "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
         "__VALIDATION_BADGE__": resolve_validation_badge(

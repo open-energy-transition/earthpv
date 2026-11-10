@@ -175,7 +175,7 @@ def _href(stem: str) -> str:
 
 def switcher(current: str) -> str:
     lines = ['<nav class="atlas-switch" aria-label="Choose a country atlas">',
-             '  <span class="atlas-switch__label">Atlas</span>']
+             '  <span class="atlas-switch__label">Countries</span>']
     for tier, (label, desc) in TIERS.items():
         rows = [r for r in ATLASES if tier_of(r[2]) == tier]
         if not rows:      # a level no country shows (Silver from 2026-10-31): no empty label

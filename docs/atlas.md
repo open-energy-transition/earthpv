@@ -7,7 +7,7 @@ hide:
 
 <div class="page-full-bleed fit" markdown>
 <nav class="atlas-switch" aria-label="Choose a country atlas">
-  <span class="atlas-switch__label">Atlas</span>
+  <span class="atlas-switch__label">Countries</span>
   <span class="atlas-switch__tier atlas-switch__tier--silver" title="400 m2 and up validated against local ground truth; leads mapped in OpenStreetMap to localize the model; any estimate below 400 m2 not yet checked">Silver</span>
   <span aria-current="page">Pakistan</span>
   <span class="atlas-switch__tier atlas-switch__tier--bronze" title="400 m2 and up only, not yet calibrated, or not yet enough leads mapped in OpenStreetMap to localize the model">Bronze</span>

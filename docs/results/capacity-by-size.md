@@ -14,7 +14,7 @@ not run, those bins are framed as not measured.
 
 **[Open the size-distribution chart](../assets/interactive/pakistan_size_distribution_atlas.html)**
 (interactive; hover a bar for its exact value and installation count). The geographic view
-of the same total is the [Pakistan PV Atlas](../atlas.md).
+of the same total is [Pakistan's map under Countries](../atlas.md).
 
 ## Why size, not just geography
 

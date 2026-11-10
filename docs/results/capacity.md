@@ -12,7 +12,7 @@ inside the cells its calibration quadrats cover, where it measures better. See
 "Segmentation vs. roofclf on large rooftops" below for the comparison that motivated the
 swap.
 
-**The map itself lives on its own page: [open the Pakistan PV Atlas](../atlas.md).**
+**The map itself lives on its own page: [open Pakistan under Countries](../atlas.md).**
 Interactive, full width, with a country switcher. Hover a cell for its value, and see
 "Download the underlying data" at the bottom of it for capacity parquets, calibration
 boundaries, the pose survey, raw detections and the model checkpoint. This page is the
