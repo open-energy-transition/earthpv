@@ -593,8 +593,8 @@ divisions survive. Only Germany's admin layer was affected; geoBoundaries has no
 
 `templates/pv_evidence_atlas.html` is shared by every country, and everything country-specific
 lives in `configs/atlas/<aoi>.yaml`, never in the builder. `atlas_config.load(aoi)` supplies
-`title`, `cities`, `calibration_boxes`, `composition_page`, `layers`, `validation` and three
-optional confidence blocks (`ground_truth`, `caveats`, `corroboration`). A missing file is
+`title`, `cities`, `calibration_boxes`, `composition_page`, `layers`, `validation`, `map_view` and
+three optional confidence blocks (`ground_truth`, `caveats`, `corroboration`). A missing file is
 normal (a complete page minus the sections that need local evidence); a malformed one is an
 error, including an unknown key.
 
@@ -742,7 +742,9 @@ SVG/HTML; the map and the three Plot charts say they could not load.
 - **Cells nobody imaged are hatched (2026-10-28)**: `unimaged` in the data block (runs
   `[lon0, lat0, n]` from `atlas._cell_coverage`, exactly `n_cells_country - n_cells_processed`
   cells) is drawn over the cells, so an OSM-only cell shows its colour hatched and bare land
-  means imaged with nothing found; the map frames the whole country (`_bounds_with_runs`), and
+  means imaged with nothing found; the map frames the whole country (`_bounds_with_runs`) unless
+  its config names a `map_view` (Spain and Portugal open on the mainland, owner 2026-11-10;
+  `scripts/patch_atlas_view.py` sets it on a published page, byte-identical to a rebuild), and
   the hatch has a layer switch, a legend key with the counts, a hover and a PNG legend key.
   `scripts/patch_atlas_coverage.py` adds it, and the two counts where a page lacks them, to a
   published page without a rebuild; every published atlas and its sync source carries it.

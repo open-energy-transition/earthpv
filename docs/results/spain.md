@@ -7,7 +7,8 @@ beats the general model on a held-out region. It does, clearly, and this page ru
 `v26_combined_spain`. Spain's ground-mounted fleet is unusually well mapped, so Verified is
 already most of Best.
 
-Interactive: [Spain PV evidence atlas](../atlas-spain.md).
+Interactive: [Spain under Countries](../atlas-spain.md). The map opens on the peninsula and the
+Balearics; the Canaries are on it too, a pan to the south-west, and in every figure.
 
 ## Headline
 

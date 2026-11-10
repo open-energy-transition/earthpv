@@ -19,6 +19,11 @@ title: Spain
 # pick, a dense Palma neighbourhood whose blocks are traced as single large buildings.
 start_here: pontevedra_priority_calib_1km
 
+# The map opens on the peninsula, the Balearics, Ceuta and Melilla (owner, 2026-11-10): framing
+# the Canaries too left the mainland a small corner of an ocean. The islands stay on the map
+# and in every total, a pan away. Extent of the page's own cells east of 12 W.
+map_view: [-9.3, 35.1, 4.4, 43.8]
+
 cities:
   - [Madrid, -3.704, 40.417]
   - [Barcelona, 2.173, 41.385]

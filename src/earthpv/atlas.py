@@ -3338,8 +3338,13 @@ def build_evidence_atlas(
         processed = grid[grid["model_covered"].astype(bool)] if "model_covered" in grid else grid
         cell_cover = _cell_coverage(aoi, reg_regions.geometry.union_all(), processed)
     unimaged = cell_cover.pop("unimaged", [])
-    # The map frames the whole country, so the hatched cells nobody looked at are in view.
+    # The map frames the whole country, so the hatched cells nobody looked at are in view,
+    # unless the country's config names the view it opens on (`map_view`: the mainland of a
+    # country with distant islands).
     bounds = _bounds_with_runs(bounds, unimaged)
+    view = atlas_config.load(aoi).map_view
+    if view:
+        bounds = [round(v, 3) for v in view]
 
     total_verified = float(grid.mwp_verified.sum())
     total_best = float(grid.mwp_best.sum())

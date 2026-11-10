@@ -7,7 +7,8 @@ shipped only if it beats the general model on a held-out region. It does, clearl
 page runs on `v30_combined_portugal`. The Azores and Madeira are included, as Spain includes
 the Canaries.
 
-Interactive: [Portugal under Countries](../atlas-portugal.md).
+Interactive: [Portugal under Countries](../atlas-portugal.md). The map opens on the mainland; the
+Azores and Madeira are on it too, a pan to the west, and in every figure.
 
 ## Headline
 

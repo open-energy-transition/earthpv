@@ -14,6 +14,11 @@
 
 title: Portugal
 
+# The map opens on the mainland (owner, 2026-11-10): framing the Azores and Madeira too left it a
+# small corner of the Atlantic. The islands stay on the map and in every total, a pan away.
+# Extent of the page's own cells east of 10 W.
+map_view: [-9.6, 36.9, -6.2, 42.2]
+
 cities:
   - [Lisbon, -9.139, 38.722]
   - [Porto, -8.611, 41.150]

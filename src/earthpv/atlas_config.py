@@ -62,6 +62,13 @@ silently drop the section it was meant to fill):
         date: "2026-11-01"                 # when
         note: "..."                        # optional: how many leads, which OSM pull
     start_here: yafi_pv2_calib_1km         # the candidate to map first, drawn as a star
+    map_view: [-9.3, 35.1, 4.4, 43.8]      # [west, south, east, north] the map opens on
+
+`map_view` frames the map where it opens, sets its height, and is where the reset button
+returns. Without it the map frames the whole country with every unimaged cell. It is for a
+country whose distant islands would otherwise shrink the mainland to a corner (Spain's
+Canaries, Portugal's Azores and Madeira; owner, 2026-11-10): the islands stay on the map,
+in every total and table, a pan away.
 
 `start_here` names a candidate (`candidate_quadrats/<stem>_candidate.geojson`) when which
 one to map first is a judgement. `scripts/publish_calibration_areas.py` ranks it first and
@@ -117,7 +124,7 @@ CONFIG_DIR = Path("configs/atlas")
 NO_STAR = "none"
 
 _TOP_KEYS = {"title", "composition_page", "cities", "calibration_boxes", "confidence", "layers",
-             "validation", "start_here"}
+             "validation", "start_here", "map_view"}
 _VALIDATION_KEYS = {"score", "note", "leads_checked", "retrained_on_leads"}
 _LEADS_CHECKED_KEYS = {"made", "by", "date", "note"}
 _RETRAINED_KEYS = {"leads", "share", "blobs_share", "model", "by", "date", "note"}
@@ -161,6 +168,8 @@ class AtlasConfig:
     retrained_date: str = ""
     retrained_note: str = ""
     start_here: str = ""
+    # `map_view`: [west, south, east, north] the map opens on; empty: the whole country.
+    map_view: tuple = ()
 
     # Kept so a caller can tell "this country has no config" from "this country has a
     # config that supplies nothing", which read the same otherwise and mean different
@@ -170,6 +179,19 @@ class AtlasConfig:
 
 def _fail(aoi: str, msg: str) -> None:
     raise ValueError(f"configs/atlas/{aoi}.yaml: {msg}")
+
+
+def _parse_map_view(aoi: str, raw) -> tuple:
+    """`map_view` as (west, south, east, north) in degrees, or () when absent."""
+    if raw is None:
+        return ()
+    if (not isinstance(raw, list) or len(raw) != 4
+            or any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in raw)):
+        _fail(aoi, "`map_view` must be [west, south, east, north] in degrees")
+    w, s, e, n = (float(v) for v in raw)
+    if not (-180 <= w < e <= 180 and -90 <= s < n <= 90):
+        _fail(aoi, f"`map_view` {raw} is not a box: need west < east and south < north")
+    return (w, s, e, n)
 
 
 def _parse_cities(aoi: str, raw) -> tuple:
@@ -372,5 +394,6 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
         retrained_date=str(retrained.get("date") or "").strip(),
         retrained_note=str(retrained.get("note") or "").strip(),
         start_here=str(raw.get("start_here") or "").strip(),
+        map_view=_parse_map_view(aoi, raw.get("map_view")),
         path=path,
     )
