@@ -180,7 +180,7 @@ open a pull request:
 cp results/YOUR_AOI_pv_evidence_atlas.html docs/assets/interactive/
 # add ("atlas-YOUR_AOI", "YOUR_COUNTRY", "YOUR_AOI_pv_evidence_atlas.html", None), to ATLASES
 pixi run python scripts/build_atlas_pages.py --nav   # writes the pages, inks the globe
-# paste the printed PV Atlas block into mkdocs.yml, then:
+# paste the printed Countries block into mkdocs.yml, then:
 pixi run -e docs mkdocs build --strict
 gh pr create --fill
 ```

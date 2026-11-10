@@ -1,6 +1,6 @@
 # Map the leads with JOSM
 
-Every country's atlas on the [PV Atlas](../atlas.md) tab links two files of **mapping
+Every country's atlas on the [Countries](../atlas.md) tab links two files of **mapping
 leads**: places where the segmentation model outlined a solar array in Sentinel-2 imagery
 more than 100 m from every solar installation in OpenStreetMap when the file was made. Most
 are arrays of 400 m<sup>2</sup> and more, the size the model is trained and measured on:
@@ -44,7 +44,7 @@ This guide combines three JOSM plugins the way Open Energy Transition's
 
 ## 1. Get the lead file
 
-1. Open the country's atlas from the [PV Atlas](../atlas.md) tab and scroll to **Download
+1. Open the country's atlas from the [Countries](../atlas.md) tab and scroll to **Download
    the data behind this atlas**. The first card, *Mapping leads: solar arrays the model found
    that OpenStreetMap does not have yet*, links the country's two files,
    `<country>_pv_new_leads.geojson` and `<country>_pv_blob_leads.geojson`, and their release

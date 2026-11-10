@@ -35,7 +35,7 @@ levels follow (`quality_page`); the switcher links it.
 
     python scripts/build_atlas_pages.py          # rewrites docs/atlas*.md
     python scripts/build_atlas_pages.py --nav    # also prints the mkdocs.yml nav block
-    # Paste only the PV Atlas block over the old one: other nav sections may follow it.
+    # Paste only the Countries block over the old one: other nav sections may follow it.
 """
 
 from __future__ import annotations
@@ -241,8 +241,8 @@ def page(stem: str, country: str, html: str, title: str | None) -> str:
 
 def nav_block() -> str:
     # The quality-levels page goes last: a section opens on its first page, and clicking
-    # PV Atlas must land on the top-tier country's map, not on the criteria.
-    out = ["  - PV Atlas:"]
+    # Countries must land on the top-tier country's map, not on the criteria.
+    out = ["  - Countries:"]
     for tier, (label, _) in TIERS.items():
         rows = [r for r in ATLASES if tier_of(r[2]) == tier]
         if rows:          # mkdocs rejects a section with no pages

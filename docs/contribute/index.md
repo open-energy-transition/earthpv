@@ -69,7 +69,7 @@ What matters is never declaring an area complete when it is not.
 
 ## How it works
 
-1. **Pick an area on the atlas.** Open a country's atlas from the [PV Atlas](../atlas.md)
+1. **Pick an area on the atlas.** Open a country's atlas from the [Countries](../atlas.md)
    tab. Hollow diamonds are candidate areas nobody has mapped yet, and a **star** marks the
    one to start with (the *Start here* button under the map takes you to it); filled
    diamonds are finished areas, which still welcome a second check. Click one.

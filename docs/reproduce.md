@@ -773,8 +773,8 @@ copies it there -- add a `(results/....html, docs-facing name)` pair and run
 `pixi run docs-figures`), and a caveats section. `docs/results/germany.md` and
 `docs/results/growth.md` are the templates to copy -- not `docs/results/capacity.md`, which
 links to the atlas page rather than embedding it, because Pakistan's atlas has its own
-full-bleed page under **PV Atlas** and embedding it twice built the same map on two URLs. Add the new page under `mkdocs.yml`'s
-**PV Atlas** nav entry once it exists. There is deliberately no config schema or generator
+full-bleed page under **Countries** and embedding it twice built the same map on two URLs. Add the new page under `mkdocs.yml`'s
+**Countries** nav entry once it exists. There is deliberately no config schema or generator
 for this: a country's results are whatever pages it actually has, added by hand, not
 templated -- the one time this project tried a config-driven, auto-combined dashboard
 (`earthpv dashboard`, `src/earthpv/dashboard.py`), keeping it in sync turned out to cost
@@ -935,9 +935,9 @@ pixi run earthpv atlas --aoi <country> --osm-solar <national OSM pull> \
 Add a short results page under `docs/results/<country>.md`, copying
 `docs/results/germany.md` for shape: a lede, the embedded interactive page, and a caveats
 section that says what the numbers do **not** claim. If the country also gets its own
-full-bleed page under **PV Atlas**, link to that from the results page instead of embedding
+full-bleed page under **Countries**, link to that from the results page instead of embedding
 the same interactive twice. Register the HTML in
-`INTERACTIVE` in `scripts/build_docs_figures.py`, add the page to `mkdocs.yml`'s PV Atlas
+`INTERACTIVE` in `scripts/build_docs_figures.py`, add the page to `mkdocs.yml`'s Countries
 nav, and run `pixi run docs-figures && pixi run -e docs mkdocs build --strict`. The build is
 strict, so a broken link fails CI rather than shipping.
 

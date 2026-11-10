@@ -143,7 +143,7 @@ nav:
   # visible from the atlas pages themselves.
   # Grouped by calibration tier; scripts/build_atlas_pages.py writes the pages and prints
   # this block (--nav), so the two cannot drift.
-  - PV Atlas:
+  - Countries:
       - Silver:
           - Pakistan: atlas.md
       - Bronze:
