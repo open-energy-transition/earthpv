@@ -306,16 +306,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 .legend__row { display: flex; align-items: center; gap: 9px; line-height: 1.65; }
 .legend__note { margin-top: 8px !important; font-size: 11.5px; line-height: 1.4; color: var(--ink-2); }
 .key { flex: none; display: block; width: 16px; height: 11px; }
-.key--ink { background: #fffdf8; border: 1.5px solid var(--ink); filter: url(#rough-fine); }
-/* An outline drawn whole in pencil and only partly inked, as the globe draws an atlas
-   that is not Gold yet. */
-.key--open {
-  background: #fffdf8;
-  border: 1.5px dashed var(--ink);
-  outline: 1px solid rgba(38, 35, 31, .4);
-  outline-offset: -1.25px;
-  filter: url(#rough-fine);
-}
+.key--ink { background: #fffdf8; border: 1px solid var(--ink); filter: url(#rough-fine); }
 .key--ramp { background: linear-gradient(90deg, #f9ded1, #e07050 50%, var(--shu)); border: 1px solid rgba(38, 35, 31, .3); }
 .key--pencil {
   border: 1px solid rgba(38, 35, 31, .55);

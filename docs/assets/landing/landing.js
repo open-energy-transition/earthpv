@@ -31,14 +31,6 @@
   var HATCH_POLE = [-30, -35]; // the South Atlantic; its far end is the North Pacific
   var TONE_ALPHA = 0.95;       // the white over a cell the model has looked at
   var RED_MW = 100;            // a 0.1 degree cell at or above this is red: 382 cells, 35% of capacity
-  /* An atlas's outline is inked as far as the atlas is done: Gold closes it, Silver and
-     Bronze leave it open, the brush lifting off over about this share of the line so that
-     the pencil underdrawing shows through. The same language as the stroke round the globe,
-     where wet ink is verified and the dry brush only estimated. */
-  var TIER_RANK = { bronze: 1, silver: 2, gold: 3 };
-  var TIER_DRY = [0, 0.5, 0.26, 0];   // by rank
-  var DRY_STEP_DEG = 0.25;            // an open outline is resampled to this, so a long straight
-                                      // border opens in places rather than all or nothing
 
   function el(id) { return document.getElementById(id); }
 
@@ -164,7 +156,7 @@
 
     /* The United States and China are too large for one atlas on one PC, so they are drawn
        and picked state by state. Without this file they simply stay whole countries. */
-    var inkedRegionPolys = [], inkedRegionRanks = [];
+    var inkedRegionPolys = [];
     if (regions) {
       regions.regions.forEach(function (r) {
         var polys = r.p.map(function (poly) {
@@ -176,10 +168,7 @@
         var country = featureByName[r.c];
         (country.regions = country.regions || []).push(item);
         featureByName[r.n] = item;
-        if (item.atlas) {
-          inkedRegionPolys = inkedRegionPolys.concat(polys);
-          polys.forEach(function () { inkedRegionRanks.push(TIER_RANK[item.atlas.tier] || 1); });
-        }
+        if (item.atlas) inkedRegionPolys = inkedRegionPolys.concat(polys);
       });
     }
     var inkedRegions = inkedRegionPolys.length ? { type: 'MultiPolygon', coordinates: inkedRegionPolys } : null;
@@ -220,60 +209,23 @@
     var inked = coarse(inkedPolys);
 
     /* ---------------------------------------------------------------- line work */
-    /* `ink` and `inkGhost` are indexed by tier rank. */
-    var lineSets = { grat: [], hatch: [], pencilBorder: [], regionBorder: [], pencilCoast: [], pencilGhost: [],
-                     ink: [[], [], [], []], inkGhost: [[], [], [], []] };
+    var lineSets = { grat: [], hatch: [], pencilBorder: [], regionBorder: [], pencilCoast: [], pencilGhost: [], ink: [], inkGhost: [] };
 
     (function buildLines() {
-      /* inkUse holds the rank of the best atlas an arc bounds: a border between two atlases
-         is the edge of both, so it is closed if either of them is. */
       var uses = new Uint8Array(arcs.length), inkUse = new Uint8Array(arcs.length);
       features.forEach(function (f) {
         f.polys.forEach(function (poly, i) {
-          var rank = f.atlas && f.atlas.partSet.has(i) ? TIER_RANK[f.atlas.tier] || 1 : 0;
+          var isInk = f.atlas && f.atlas.partSet.has(i);
           poly.forEach(function (r) {
             r.forEach(function (a) {
               var k = a < 0 ? ~a : a;
               uses[k]++;
-              if (rank > inkUse[k]) inkUse[k] = rank;
+              if (isInk) inkUse[k] = 1;
             });
           });
         });
       });
       var rand = mulberry(20261108);
-      /* The open outlines draw where the brush lifts from their own generator, so the rest of
-         the line work keeps the draws it always had. */
-      var randDry = mulberry(1107);
-
-      /* Resample a line on the sphere so that no step is longer than `deg`, carrying its
-         pressure along, and give it where the dry brush leaves the paper. */
-      function dried(line, deg) {
-        var xyz = line.xyz, w = line.w, outXYZ = [], outW = [], i, s;
-        for (i = 0; i < line.n; i++) {
-          var j = i * 3;
-          if (i) {
-            var p = j - 3, dot = xyz[p] * xyz[j] + xyz[p + 1] * xyz[j + 1] + xyz[p + 2] * xyz[j + 2];
-            var steps = Math.ceil(Math.acos(Math.max(-1, Math.min(1, dot))) / RAD / deg);
-            for (s = 1; s < steps; s++) {
-              var t = s / steps, x = xyz[p] + (xyz[j] - xyz[p]) * t;
-              var y = xyz[p + 1] + (xyz[j + 1] - xyz[p + 1]) * t, z = xyz[p + 2] + (xyz[j + 2] - xyz[p + 2]) * t;
-              var len = Math.hypot(x, y, z);
-              outXYZ.push(x / len, y / len, z / len);
-              outW.push(w[i - 1] + (w[i] - w[i - 1]) * t);
-            }
-          }
-          outXYZ.push(xyz[j], xyz[j + 1], xyz[j + 2]);
-          outW.push(w[i]);
-        }
-        var n = outW.length;
-        return { n: n, xyz: new Float32Array(outXYZ), w: new Float32Array(outW), gap: pressure(n, randDry, 12) };
-      }
-
-      function inkLine(pts, rank) {
-        var line = make(pts, 0, 16), ghost = make(pts, 0.55, 9);
-        lineSets.ink[rank].push(TIER_DRY[rank] ? dried(line, DRY_STEP_DEG) : line);
-        lineSets.inkGhost[rank].push(ghost);
-      }
 
       function make(pts, wobble, period) {
         var n = pts.length, xyz = new Float32Array(n * 3);
@@ -291,7 +243,8 @@
 
       arcs.forEach(function (pts, k) {
         if (inkUse[k]) {
-          inkLine(pts, inkUse[k]);
+          lineSets.ink.push(make(pts, 0, 16));
+          lineSets.inkGhost.push(make(pts, 0.55, 9));
         } else if (uses[k] >= 2) {
           lineSets.pencilBorder.push(make(pts, 0.22, 11));
         } else {
@@ -305,7 +258,10 @@
           lineSets.regionBorder.push(make(decodeLine(flat, regions.scale), 0.1, 11));
         });
       }
-      inkedRegionPolys.forEach(function (poly, i) { inkLine(poly[0], inkedRegionRanks[i]); });
+      inkedRegionPolys.forEach(function (poly) {
+        lineSets.ink.push(make(poly[0], 0, 16));
+        lineSets.inkGhost.push(make(poly[0], 0.55, 9));
+      });
 
       var lon, lat, pts;
       for (lon = -180; lon < 180; lon += 30) {
@@ -457,13 +413,12 @@
     }
 
     /* Stroke a set of lines in width buckets. `lift` is the pressure below which the
-       brush leaves the paper; widths thin towards the limb. A `dry` brush also leaves it
-       wherever a line's `gap` falls below it. */
-    function strokeSet(set, widths, alpha, color, lift, dry) {
+       brush leaves the paper; widths thin towards the limb. */
+    function strokeSet(set, widths, alpha, color, lift) {
       var nb = widths.length, paths = new Array(nb), b, i;
       for (b = 0; b < nb; b++) paths[b] = new Path2D();
       for (var s = 0; s < set.length; s++) {
-        var line = set[s], xyz = line.xyz, w = line.w, n = line.n, gap = dry ? line.gap : null;
+        var line = set[s], xyz = line.xyz, w = line.w, n = line.n;
         var has = false, px = 0, py = 0;
         for (i = 0; i < n; i++) {
           var j = i * 3, x = xyz[j], y = xyz[j + 1], z = xyz[j + 2];
@@ -472,7 +427,7 @@
           if (X <= 0) { has = false; continue; }
           var Y = y1 * cg - k * sg, Z = k * cg + y1 * sg;
           var sx = cx + R * Y, sy = cy - R * Z;
-          if (has && w[i] >= lift && !(gap && gap[i] < dry)) {
+          if (has && w[i] >= lift) {
             var v = (w[i] - lift) / (1 - lift);
             v = v * v;
             b = Math.min(nb - 1, Math.floor(v * nb * (X < 0.35 ? 0.55 : 1)));
@@ -587,15 +542,8 @@
 
       drawCells(ink);
 
-      for (var rank = 1; rank <= 3; rank++) {
-        if (quality > 0) strokeSet(lineSets.inkGhost[rank], [0.4, 0.7], 0.35 * ink, INK, 0.2);
-        /* An open outline is still drawn whole in pencil: what the atlas has not finished
-           shows as line work not yet inked, never as a missing coast. */
-        if (TIER_DRY[rank]) strokeSet(lineSets.ink[rank], [0.5, 0.75, 1.05], 0.62 * ink, INK, 0.08);
-      }
-      for (rank = 1; rank <= 3; rank++) {
-        strokeSet(lineSets.ink[rank], [0.55, 0.8, 1.1, 1.5, 2], 0.95 * ink, INK, 0, TIER_DRY[rank]);
-      }
+      if (quality > 0) strokeSet(lineSets.inkGhost, [0.4, 0.7], 0.35 * ink, INK, 0.2);
+      strokeSet(lineSets.ink, [0.55, 0.8, 1.1, 1.5, 2], 0.95 * ink, INK, 0);
 
       if (hovered) {
         ctx.beginPath();
