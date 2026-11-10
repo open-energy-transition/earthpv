@@ -16,10 +16,19 @@ Interactive: [South Africa PV evidence atlas](../atlas-south-africa.md).
 | | |
 | --- | --- |
 | Verified | **9,322.7 MWp** (90% 7,189 to 12,416) |
-| Best estimate | **9,839.0 MWp** (90% 8,953 to 12,585) |
+| Best estimate | **10,075.9 MWp** (90% 9,181 to 12,665) |
 | Grid | 3,647 cells of 0.1&deg;, 9 provinces (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, April to September 2026 |
 | Model | `v14_combined_south_africa` epoch 41, localized (beat `v5_combined_france` on the held-out Western Cape; see below) |
+
+!!! note "Revised on 10 November: large installations judged"
+    Until 10 November this page read Best 9,839.0 MWp (90% 8,953 to 12,585). On 10 November the
+    owner judged, on the [large installation review](../contribute/review.md), every unmapped
+    model outline from 1 ha up to the 10 ha merge cap that the lead screens keep: 344 of
+    the 593 judged are solar, the other 249 are not. These leads counted before at
+    the share their size class usually turns out real; now a lead judged solar counts as real
+    (a roof outline at 1/2.5 of its area, since the model draws about 2.5 times the array) and
+    one judged not solar counts nothing. Best rises by 236.9 MWp; Verified did not move.
 
 !!! note "Revised on 7 November: solar thermal"
     Until 7 November this page read Verified 9,393.8 MWp (90% 7,078 to 12,787) and Best

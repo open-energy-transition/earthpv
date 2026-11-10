@@ -18,12 +18,21 @@ Interactive: [Yemen PV evidence atlas](../atlas-yemen.md).
 | | |
 | --- | --- |
 | Verified | **277.5 MWp** (90% 238 to 325); 151.3 until 2026-11-02, 130.9 until 2026-10-30, 65.9 before the 2026-10-24 OpenStreetMap refresh |
-| Best estimate | **586.2 MWp** (90% 480 to 774); 457.3 until 2026-11-04, 324.7 until 2026-11-02, 302.1 until 2026-10-30, 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
+| Best estimate | **623.6 MWp** (90% 514 to 813); 586.2 until 2026-11-10, 457.3 until 2026-11-04, 324.7 until 2026-11-02, 302.1 until 2026-10-30, 67.1 on 2026-10-12, 99.8 on the morning of 2026-10-24 |
 | of which farm ground PV, < 400 m&sup2; | **171.0 MWp** (90% 85 to 335), 34 cells, calibrated on seven farm areas; 169.1 until 2026-11-02; [below](#farm-ground-pv-added-2026-10-24) |
 | OpenStreetMap | pulled 2026-11-01, 4,135 installations in the grid (3,315 on the late 2026-10-24 pull, 2,723 in the page before, 1,892 on 2026-10-10) |
 | Grid | 810 cells of 0.1&deg;, 22 governorates (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, October 2025 to March 2026 |
 | Model | `v25_combined_yemen` epoch 30, retrained on the 2026-11-01 pull; `v13_combined_yemen` epoch 28 until 2026-11-02 (tied with `v5_combined_france` at zero on the holdout; see below) |
+
+!!! note "Revised on 10 November: large installations judged"
+    Until 10 November this page read Best 586.2 MWp (90% 480 to 774). On 10 November the
+    owner judged, on the [large installation review](../contribute/review.md), every unmapped
+    model outline from 1 ha up to the 10 ha merge cap that the lead screens keep: 43 of
+    the 105 judged are solar, the other 62 are not. These leads counted before at
+    the share their size class usually turns out real; now a lead judged solar counts as real
+    (a roof outline at 1/2.5 of its area, since the model draws about 2.5 times the array) and
+    one judged not solar counts nothing. Best rises by 37.4 MWp; Verified did not move.
 
 !!! warning "Household rooftops below 400 m&sup2; are not estimated"
     Yemen has **no `roofclf` half**: it was fitted on Yemen's nine building boxes and

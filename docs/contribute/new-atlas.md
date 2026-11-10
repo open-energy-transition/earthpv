@@ -142,6 +142,19 @@ pixi run blob-review apply --aoi YOUR_AOI --reviewer "Your name" \
     --verdicts YOUR_AOI_blob_verdicts.csv
 ```
 
+A second page does the same for the outlines from 1 ha up to 10 ha, on roofs and on the
+ground. These already count at the share their size usually turns out real, and your verdict
+replaces that share for each one you judge. It is optional, and any part of it helps:
+
+```bash
+pixi run large-review draw --aoi YOUR_AOI --labels data/labels/YOUR_AOI_overpass_solar.parquet
+# open data/large_review/index.html, judge, export the verdicts
+pixi run large-review apply --aoi YOUR_AOI --reviewer "Your name" \
+    --verdicts YOUR_AOI_large_verdicts.csv
+```
+
+[Judge large installations](review.md) explains both pages.
+
 ## 7. Draw the atlas
 
 ```bash

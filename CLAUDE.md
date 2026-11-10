@@ -60,6 +60,8 @@ earthpv postprocess --aoi <aoi> --threshold 0.3
 earthpv export --aoi <aoi>
 pixi run blob-review draw --aoi <aoi>   # the solar farm review: every outline above the merge
 #   cap. Judge in data/oversize_review/index.html, then `pixi run blob-review apply --verdicts ...`
+pixi run large-review draw --aoi <aoi>  # the large installation review: leads 10,000 m2 up to
+#   the cap. Judge in data/large_review/index.html, then `pixi run large-review apply ...`
 earthpv density --aoi <aoi> --districts && earthpv check-density --aoi <aoi>
 
 earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration quadrats
@@ -97,6 +99,33 @@ a country's package after `export`; `data/oversize_review/index.html` lists ever
 `pixi run blob-review status` the counts. Sittings can be partial: apply any export, then
 `density --districts` (no `--force`) and the atlas. An agent prepares this and never judges it.
 See "Density stage".
+
+**So is the large installation review (owner, 2026-11-10)**: the same disk page for the leads
+from `LARGE_MIN_M2` (10,000 m²) up to the cap, rooftop and ground (`pixi run large-review`,
+`scripts/oversize_review.py --kind large`; `results/<aoi>_large_review/`, packages in
+`data/large_review/` -> /home, ~190 KB per lead). `run_country_compute.sh` draws it after the
+blob page (both retried once, never fatal: a 2026-11-09 DNS outage left Belgium's blob page
+missing while its step read done). Any named reviewer's verdict counts (owner), and it is a
+documented way to contribute for people who run EarthPV (`docs/contribute/review.md`). The 18
+countries with a run (about 37,000 leads; India 9,935, Germany 7,592) were queued 2026-11-10 in
+unit `earthpv-large-review-draw` (log `data/large_review_draw.log`, smallest first);
+`pixi run large-review status` says which have pages. The owner judged seven 2026-11-10
+(Belgium, Egypt, Netherlands, Nigeria, Portugal, South Africa, Yemen: 2,335 of 2,443 leads,
+1,381 solar, 108 unsure), applied the same day, roofs at 1/2.5 (owner). Large ROOF leads are
+priced far too low: their bins put P(real) at 0.00-0.07, and the owner found 92-99% solar in
+Belgium, the Netherlands, Portugal and South Africa. Rebuilt and published the same day
+(`/home/tobi/earthpv_data/lead_review_20261110/rebuild.sh`, density backups in
+`lead_review_PRE_20261110/`; controls with the verdicts hidden reproduced all seven pages
+exactly); the Netherlands' and Portugal's pages are not published yet. Best: Belgium 639.3 -> 970.8, Netherlands 3,927.2 -> 4,567.3, Portugal
+6,147.9 -> 6,193.6, Yemen 586.2 -> 623.6, Egypt 3,809.9 -> 3,848.7, Nigeria 126.9 -> 157.3,
+South Africa 9,839.0 -> 10,075.9; Verified unchanged. Esri's `export`
+answers HTTP 500 for detail finer than it holds (Namibia, Zambia, Yemen: zoom 17), so `_esri`
+steps down to half and a quarter of the pixels. Pricing: "Density stage". **Both pages
+carry a fourth verdict, key 4 "Bright roof" (owner, 2026-11-10)**: not PV on a very bright
+roof, priced as `not_pv`, kept apart as `flag: bright_roof` in review.csv (`review_flag` in
+review.geojson, a column in `status`) so the false alarm can be studied
+(`build_review_page.write_page(bright_roof=True)`; the other pages that share it keep three
+keys, since their joins know only those).
 
 **Imagery date is the gate on sparse areas, not mapping effort.** Out-of-domain random cells and
 low-density quadrats have repeatedly sat under reference imagery too old to confirm or refute
@@ -391,6 +420,29 @@ verdicts (`--redraw`, which also clears the crops). The page's saved progress is
 draw, so old verdicts cannot attach to a redraw's codes. The composite
 decides epoch (11 of India's 50 sampled parks postdate Esri), Esri decides texture (dark ploughed
 fields read as panel blocks at 10 m): neither panel alone suffices.
+
+**A verdict on a lead below the cap replaces its size bin's P(real) (owner, 2026-11-10).**
+`apply --kind large` writes a `lead_review` block (`capacity_calibration.LEAD_REVIEW_KEY`;
+`min_area_m2`, `review_csv`, `mapped_reference`, `min_distance_m`, every reviewer's name).
+`density.load_oversize_admission` returns its verdicts in the same frame as the blob rows
+(column `p_real_judged`: `not_pv` 0, `pv` 1 on the ground and 1/`rooftop_outline_ratio` on a
+roof; `_lead_verdicts`), so every caller of
+`capacity_relevant_candidates` gets them with no change; `cc.candidate_p_real(judged=...)`
+applies them at the five call sites that price candidates (`density.judged_of`). Unlike a blob,
+a judged lead KEEPS its bin's recall (it is one of the installations recall was measured on),
+its placement and its kWp constant; it stays in `process_cell`'s candidate set (cached partials
+valid) and in `*_det`. Uncertainty: a constant P(real), recall drawn. Best's per-cell floor
+adds judged leads at their verdict's share and their own placement's constant
+(`atlas.judged_floor_kwp`, shared by `build_evidence_atlas` and `_size_distribution_data`; the
+cell column keeps the name `judged_park_mwp`). Unsure or blank changes nothing; a lead mapped
+since rests. `calibrate-candidates` carries the block forward and `_table_evidence` guards it.
+Checked 2026-11-10: with no block, Poland and Belgium rebuild to their published Verified/Best
+exactly; with 40 synthetic verdicts on a scratch Belgian run (14 rooftop `pv`, whole), Best
+639.3 -> 822.3 and the size chart re-bins it. **A roof lead judged solar counts 1/2.5 of its
+outline, a ground lead whole (owner, 2026-11-10;
+`capacity_calibration.LEAD_ROOF_OUTLINE_RATIO`, recorded per block as
+`rooftop_outline_ratio`)**: Pakistan's roof outlines of 5k-50k m2 are 2.52x the mapped array
+(open question 17), which a bin's P(real) used to absorb. Measured in Pakistan only.
 
 **`buildings.geoparquet`'s summed rooftop capacity is not `grid.geoparquet`'s region total,
 by construction**: the region total sums each rooftop candidate's full polygon once, the
@@ -1273,17 +1325,17 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
 | India | `v5_combined_france` | 70,266.0 / 102,779.7 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count; 4 CSP plants 197.9 MW |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 9,118.9 | 32 judged parks count |
-| Egypt | `v12_combined_egypt` | 3,315.1 / 3,809.9 | thin Cairo holdout |
-| Yemen | `v25_combined_yemen` | 277.5 / 586.2 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
-| South Africa | `v14_combined_south_africa` | 9,322.7 / 9,839.0 | decisive localization win; 7 CSP plants 600 MW, 13.4 km2 of PV-tagged mirror rows out |
+| Egypt | `v12_combined_egypt` | 3,315.1 / 3,848.7 | thin Cairo holdout; 46 judged large leads count |
+| Yemen | `v25_combined_yemen` | 277.5 / 623.6 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
+| South Africa | `v14_combined_south_africa` | 9,322.7 / 10,075.9 | decisive localization win; 344 judged large leads count; 7 CSP plants 600 MW, 13.4 km2 of PV-tagged mirror rows out |
 | Morocco | `v11_combined_morocco` | 898.9 / 935.1 | tie near 1.0; AOI stops at 27.7N; Noor 1-3 CSP 518.6 MW |
 | Poland | `v15_combined_poland` | 6,604.1 / 9,110.2 | 113 judged parks count (+1,329 MWp) |
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 531.7 | |
-| Nigeria | `v5_combined_france` ep 25 | 90.2 / 126.9 | name `v8` is taken by `v8_combined_nigeria` |
+| Nigeria | `v5_combined_france` ep 25 | 90.2 / 157.3 | name `v8` is taken by `v8_combined_nigeria` |
 | Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
 | Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp); 1 CSP plant 5.8 MW |
 | Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | clear win over v5 on the holdout; floor of 1 building per cell; 43 CSP plants 2,383 MW; 998 blobs not judged yet |
-| Belgium | `v31_combined_belgium` ep 22 | 502.3 / 639.3 | recall tie with v5, wins on IoU (thin holdout: Brussels, 2 cells); Best is 5.3% of Elia's 12,128 MW; published before owner review; leads, calibration areas and the 4-outline farm review still owed |
+| Belgium | `v31_combined_belgium` ep 22 | 502.3 / 970.8 | recall tie with v5, wins on IoU (thin holdout: Brussels, 2 cells); Best is 8.0% of Elia's 12,128 MW, 224 judged large leads counting (639.3 before, 2026-11-10); published before owner review; leads, calibration areas and the 4-outline farm review still owed |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks

@@ -13,10 +13,19 @@ Interactive: [Nigeria PV evidence atlas](../atlas-nigeria.md).
 | | |
 | --- | --- |
 | Verified | **90.2 MWp** (90% 71 to 117) |
-| Best estimate | **126.9 MWp** (90% 117 to 166) |
+| Best estimate | **157.3 MWp** (90% 142 to 187) |
 | Grid | 6,254 of 6,341 cells of 0.1&deg;, 37 regions |
 | Imagery | Sentinel-2 L2A, November 2025 to March 2026 |
 | Model | `v5_combined_france` epoch 25 |
+
+!!! note "Revised on 10 November: large installations judged"
+    Until 10 November this page read Best 126.9 MWp (90% 117 to 166). On 10 November the
+    owner judged, on the [large installation review](../contribute/review.md), every unmapped
+    model outline from 1 ha up to the 10 ha merge cap that the lead screens keep: 28 of
+    the 369 judged are solar, the other 341 are not. These leads counted before at
+    the share their size class usually turns out real; now a lead judged solar counts as real
+    (a roof outline at 1/2.5 of its area, since the model draws about 2.5 times the array) and
+    one judged not solar counts nothing. Best rises by 30.4 MWp; Verified did not move.
 
 !!! note "Revised on 4 November"
     Until 4 November this page read Best 120.9 MWp (90% 112 to 158). On 3 November the

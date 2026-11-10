@@ -13,17 +13,26 @@ Interactive: [Belgium PV evidence atlas](../atlas-belgium.md).
 | | |
 | --- | --- |
 | Verified | **502.3 MWp** (90% 413 to 629) |
-| Best estimate | **639.3 MWp** (90% 557 to 774) |
+| Best estimate | **970.8 MWp** (90% 860 to 1,127) |
 | Grid | 423 cells of 0.1&deg;, 3 regions (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, May to September 2026, median scene 1 July |
 | Model | `v31_combined_belgium` epoch 22, localized (see below) |
+
+!!! note "Revised on 10 November: large installations judged"
+    Until 10 November this page read Best 639.3 MWp (90% 557 to 774). On 10 November the
+    owner judged, on the [large installation review](../contribute/review.md), every unmapped
+    model outline from 1 ha up to the 10 ha merge cap that the lead screens keep: 224 of
+    the 252 judged are solar, the other 28 are not. Most are on roofs, where the size class had put the chance of solar near 4%. These leads counted before at
+    the share their size class usually turns out real; now a lead judged solar counts as real
+    (a roof outline at 1/2.5 of its area, since the model draws about 2.5 times the array) and
+    one judged not solar counts nothing. Best rises by 331.5 MWp; Verified did not move.
 
 !!! warning "A precision floor, and blind to most of Belgium's solar"
     Belgium has **no calibration quadrats**, so there is no `roofclf` half and no instrument
     below the 400 m&sup2; segmentation floor, and recall was deliberately not corrected
     (`--recall-reference none`). Elia, the transmission system operator, monitored
     **12,128 MW** of solar on 30 September 2026
-    ([ods032](https://opendata.elia.be/explore/dataset/ods032/)), so Best is about 5% of the
+    ([ods032](https://opendata.elia.be/explore/dataset/ods032/)), so Best is about 8% of the
     fleet. Read this page as a map of the larger arrays and of what is mapped, not as an
     estimate of Belgian solar. Panels imported directly from China, 25.4 GW from January 2017
     to August 2026 ([Ember](https://ember-energy.org/data/china-solar-exports-data/)), are
@@ -33,12 +42,12 @@ Interactive: [Belgium PV evidence atlas](../atlas-belgium.md).
 
 | Region | Verified (MWp) | Best (MWp) | Elia monitored (MW) | Best as a share of Elia |
 | --- | ---: | ---: | ---: | ---: |
-| Vlaams Gewest | 218.3 | 290.5 | 8,713.8 | 3.3% |
-| Wallonne Gewest | 248.5 | 273.9 | 3,083.1 | 8.9% |
-| Brussels Hoofdstedelijk | 26.8 | 27.6 | 331.4 | 8.3% |
-| **Belgium** | **502.3** | **639.3** | **12,128.3** | **5.3%** |
+| Vlaams Gewest | 218.3 | 511.5 | 8,713.8 | 5.9% |
+| Wallonne Gewest | 248.5 | 354.9 | 3,083.1 | 11.5% |
+| Brussels Hoofdstedelijk | 26.8 | 44.0 | 331.4 | 13.3% |
+| **Belgium** | **502.3** | **970.8** | **12,128.3** | **8.0%** |
 
-The regions sum to 493.6 MWp Verified and 592.0 MWp Best; the rest of the national totals lies
+The regions sum to 493.6 MWp Verified and 910.4 MWp Best; the rest of the national totals lies
 in border cells outside the three regions. Elia's dataset gives monitored capacity in MW and
 does not say whether that is panel (DC) or inverter (AC) capacity. None of these figures is
 ground truth for this map.

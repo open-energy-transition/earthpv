@@ -360,3 +360,23 @@ placement_bins:
     sensitivity: 0.261
     p_real_lo: 0.5767
     p_real_hi: 0.7857
+lead_review:
+  derived: '2026-11-10'
+  reviewer: owner, 2026-11-10, every queued lead on the large installation review
+    page
+  review_csv: results/belgium_large_review/review.csv
+  population: model-drawn new leads from min_area_m2 up to max_candidate_m2 with no
+    mapped solar within min_distance_m of them (export.new_lead_mask), inside the
+    atlas's regions and through the lead screens
+  pricing: a pv verdict sets the lead's P(real) to 1 on the ground and to 1/rooftop_outline_ratio
+    on a roof (the model's roof outline is about that many times its array), not_pv
+    to 0; its size bin's recall still applies; unsure or blank keeps the bin's P(real)
+  rooftop_outline_ratio: 2.5
+  min_area_m2: 10000.0
+  max_candidate_m2: 100000.0
+  min_distance_m: 100.0
+  mapped_reference: data/labels/belgium_overpass_solar.parquet
+  n_outlines: 261
+  n_judged: 252
+  n_pv: 224
+  n_not_pv: 28

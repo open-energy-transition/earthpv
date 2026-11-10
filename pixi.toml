@@ -110,6 +110,9 @@ quadrat-correlations = "python scripts/quadrat_correlations.py"
 # Judge very large model outlines (blobs) by eye: draw|package|apply|status. A step of every
 # country's run; only a judged or mapped blob counts. See scripts/oversize_review.py.
 blob-review = "python scripts/oversize_review.py"
+# The same review for the large leads below the cap (10,000 m2 up to it): a judged lead is
+# priced by its verdict instead of its size bin's P(real). A step of every country's run too.
+large-review = "python scripts/oversize_review.py --kind large"
 # Regenerate every figure and interactive page the docs site and README embed.
 docs-figures = "python scripts/build_docs_figures.py"
 # Re-capture the interactive HTML pages as PNGs for the README (needs firefox).

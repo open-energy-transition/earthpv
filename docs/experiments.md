@@ -771,6 +771,27 @@ October rule, in four cells where a mapped outline above the cap was priced as r
 Every queued blob in every country now has a verdict but Poland's five and South Africa's
 and Turkey's one left unsure.
 
+**The large installation review, 2026-11-10** (owner: a review page for the larger
+installations, default in the workflow, a documented way to contribute). The same disk page
+for the leads below the cap, from 10,000 m<sup>2</sup> up to it, rooftop and ground
+(`pixi run large-review`): about 37,000 leads over eighteen countries, from India's 9,935 and
+Germany's 7,592 to Yemen's 108. Unlike a blob, such a lead already counts at its size bin's
+P(real); a verdict replaces that for its own lead (solar 1, not solar 0) and keeps the bin's
+recall. Any named reviewer's verdict counts. With no verdict applied, Poland and Belgium
+rebuild to their published figures exactly; 40 synthetic verdicts on a scratch Belgian run
+(14 rooftop leads judged solar) raised Best from 639.3 to 822.3 MWp, because a judged
+outline counted whole and a roof outline is about 2.5 times its panels in Pakistan. **The
+owner judged seven countries the same day** (Belgium, Egypt, the Netherlands, Nigeria,
+Portugal, South Africa, Yemen; 2,335 of 2,443 leads, 1,381 solar, 108 left unsure). Large roof
+leads turned out badly underpriced: their size bins put P(real) at 0.00 to 0.07, and the
+owner found 148 of 161 solar in Belgium, 353 of 354 in the Netherlands, 60 of 61 in Portugal
+and 205 of 224 in South Africa; off roofs far fewer were solar (Nigeria 16 of 318, Egypt 14 of 126).
+**Owner decision:** a roof lead judged solar counts 1/2.5 of its outline, a ground lead
+whole (open question 17), which adds about 1,150 MWp of model capacity over the seven against
+2,989 for whole outlines. Both pages also gained a fourth verdict, "Bright roof" (not PV, kept
+apart for study). The bins below 10,000 m<sup>2</sup> are priced the same way and were not
+reviewed.
+
 **How much of a lead file to check** (`scripts/lead_share.py`, `results/lead_share/`). Where a
 reference exists, the real installations sit at the top of the ranked file: the top third
 held 69% of the leads mapped since in Pakistan (385 of v3's 4,435 leads of 2026-07-16) and 87%

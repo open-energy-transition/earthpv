@@ -279,6 +279,12 @@ def load_oversize_admission(
     `p_real_fixed` and `oversize_stratum` indexed like
     `cands`, for `capacity_relevant_candidates(..., oversize_admission=...)`; None when no
     outline is admitted.
+
+    **And the leads below the cap a person judged (`lead_review`, owner, 2026-11-10)**, in
+    the same frame as column `p_real_judged` (solar 1 on the ground and 1/2.5 on a roof, not
+    solar 0; NaN on a blob row, as
+    `p_real_fixed` is NaN on a lead row): `_lead_verdicts`. Every caller passes this frame
+    on, so each one prices the verdicts without a change of its own.
     """
     from earthpv import capacity_calibration as cc
 
@@ -289,6 +295,27 @@ def load_oversize_admission(
         if not path.exists():
             return None
         table = cc.load_table(path)
+    parts = [f for f in (_blob_admission(aoi, cands, table, max_candidate_m2),
+                         _lead_verdicts(aoi, cands, table, max_candidate_m2)) if f is not None]
+    if not parts:
+        return None
+    out = pd.concat(parts)
+    for col in ("oversize_stratum", "p_real_fixed", "p_real_judged"):
+        if col not in out.columns:
+            out[col] = None if col == "oversize_stratum" else np.nan
+    return out
+
+
+def judged_of(cands: pd.DataFrame) -> np.ndarray | None:
+    """A frame's `p_real_judged` for `candidate_p_real(judged=...)`; None when it has none."""
+    return cands["p_real_judged"].to_numpy(float) if "p_real_judged" in cands.columns else None
+
+
+def _blob_admission(aoi: str, cands: gpd.GeoDataFrame, table: dict | None,
+                    max_candidate_m2: float) -> pd.DataFrame | None:
+    """The outlines above the cap judged solar, as `load_oversize_admission` describes."""
+    from earthpv import capacity_calibration as cc
+
     block = (table or {}).get(cc.OVERSIZE_REVIEW_KEY)
     if not block:
         return None
@@ -325,6 +352,66 @@ def load_oversize_admission(
     p = cc.oversize_review_p_real(block)
     return pd.DataFrame({"oversize_stratum": "reviewed", "p_real_fixed": p["reviewed"]},
                         index=pd.Index(pv["candidate_index"].to_numpy(), name=pool.index.name))
+
+
+def _lead_verdicts(aoi: str, cands: gpd.GeoDataFrame, table: dict | None,
+                   max_candidate_m2: float) -> pd.DataFrame | None:
+    """`p_real_judged` for every lead below the cap with a `pv` or `not_pv` verdict in the
+    `lead_review` block's `review_csv` (`scripts/oversize_review.py --kind large`).
+
+    The pool is the one the review drew from: model-drawn outlines from the block's
+    `min_area_m2` up to the cap that are new leads against its `mapped_reference` at its
+    `min_distance_m`. A judged lead that has been mapped since leaves the pool: the map
+    counts it, its candidate is priced by its bin again, and its verdict rests. A verdict
+    naming an outline these candidates do not hold at that area is an error, as for blobs.
+    An unsure or blank verdict changes nothing. A `pv` lead on a roof is priced at
+    1/`rooftop_outline_ratio` (the model's roof outline is about 2.5 times its array), on the
+    ground at 1; `not_pv` at 0."""
+    from earthpv import capacity_calibration as cc
+
+    block = (table or {}).get(cc.LEAD_REVIEW_KEY)
+    if not block:
+        return None
+    if float(block.get("max_candidate_m2", max_candidate_m2)) != float(max_candidate_m2):
+        raise ValueError(
+            f"{aoi}: the large installation review was drawn below {block['max_candidate_m2']:.0f}"
+            f" m2, this run caps at {max_candidate_m2:.0f} m2 -- the review does not describe it")
+    from earthpv.export import new_lead_mask
+
+    rev = pd.read_csv(block["review_csv"])
+    judged = rev[rev["verdict"].fillna("").isin(("pv", "not_pv"))]
+    if judged.empty:
+        return None
+    known = judged["candidate_index"].isin(cands.index)
+    if not known.all():
+        raise ValueError(
+            f"{aoi}: {int((~known).sum())} judged outlines in {block['review_csv']} are not in "
+            "this run's candidates (another candidate file?)")
+    area = cands.loc[judged["candidate_index"], "area_m2"].to_numpy(float)
+    if not np.allclose(area, judged["area_m2"].to_numpy(float), rtol=1e-6, atol=1.0):
+        raise ValueError(f"{aoi}: {block['review_csv']}: a judged outline's area differs from "
+                         "the candidate it names (another candidate file?)")
+    src = cands.get("geometry_source", pd.Series("model", index=cands.index)).fillna("model")
+    a = cands["area_m2"].to_numpy(float)
+    pool = cands[(a >= float(block["min_area_m2"])) & (a <= max_candidate_m2)
+                 & (src != "osm").to_numpy()]
+    pool = pool[pool.index.isin(judged["candidate_index"])]
+    if pool.empty:
+        return None
+    ref = gpd.read_parquet(block["mapped_reference"])[["geometry"]]
+    pool = pool[new_lead_mask(pool, ref, min_distance_m=float(block["min_distance_m"]))]
+    judged = judged[judged["candidate_index"].isin(pool.index)]  # the rest are mapped since
+    if judged.empty:
+        return None
+    ratio = float(block.get("rooftop_outline_ratio", cc.LEAD_ROOF_OUTLINE_RATIO))
+    if not ratio >= 1.0:
+        raise ValueError(f"{aoi}: lead_review rooftop_outline_ratio {ratio} is below 1")
+    roof = (cands.loc[judged["candidate_index"], "placement"].astype(str).to_numpy() == "rooftop"
+            if "placement" in cands.columns else np.zeros(len(judged), bool))
+    pv = judged["verdict"].to_numpy() == "pv"
+    return pd.DataFrame(
+        {"p_real_judged": np.where(pv, np.where(roof, 1.0 / ratio, 1.0), 0.0)},
+        index=pd.Index(judged["candidate_index"].to_numpy(), name=cands.index.name))
 
 
 def capacity_relevant_candidates(
@@ -480,7 +567,9 @@ def capacity_relevant_candidates(
     # Model outlines above the cap that a person judged solar (`load_oversize_admission`):
     # new leads, priced whole rather than by a size bin, and always a site (ground) for the
     # same reason an exempted OSM outline is.
-    if oversize_admission is not None and len(oversize_admission):
+    has_blobs = (oversize_admission is not None and len(oversize_admission)
+                 and oversize_admission["p_real_fixed"].notna().any())
+    if has_blobs:
         from earthpv.capacity_calibration import OVERSIZE_STRATA
         adm = oversize_admission.reindex(cands.index)
         admitted = over & ~is_osm_over & adm["p_real_fixed"].notna()
@@ -501,6 +590,35 @@ def capacity_relevant_candidates(
             stats["n_oversize_admitted"], max_candidate_m2,
             stats["oversize_admitted_area_m2"] / 1e6,
         )
+    # Leads below the cap a person judged (`_lead_verdicts`): their size bin's P(real) is
+    # replaced by the verdict (`p_real_judged`), their placement and recall stay their own.
+    # They stay in the frame either way, so `process_cell` keeps the candidate set its
+    # cached partials were built from, and the detected-area columns (`*_det`) keep them:
+    # a verdict says what the outline is, not what the model drew.
+    if (oversize_admission is not None and len(oversize_admission)
+            and "p_real_judged" in oversize_admission.columns
+            and oversize_admission["p_real_judged"].notna().any()):
+        jud = oversize_admission["p_real_judged"].reindex(cands.index)
+        judged = ~over & ~(geometry_source == "osm") & jud.notna()
+        if judged.any():
+            cands["p_real_judged"] = np.where(judged, jud, np.nan)
+            pv = judged & (cands["p_real_judged"] > 0)
+            stats["n_lead_judged_pv"] = int(pv.sum())
+            stats["lead_judged_pv_area_m2"] = float(cands.loc[pv, "area_m2"].sum())
+            # A roof lead counts 1/rooftop_outline_ratio of its outline (`_lead_verdicts`).
+            stats["lead_judged_pv_credited_area_m2"] = float(
+                (cands.loc[pv, "area_m2"] * cands.loc[pv, "p_real_judged"]).sum())
+            stats["n_lead_judged_not_pv"] = int((judged & ~pv).sum())
+            stats["lead_judged_not_pv_area_m2"] = float(cands.loc[judged & ~pv, "area_m2"].sum())
+            log.warning(
+                "Large installation review: %d leads below %.0f m2 judged solar (%.2f km2 of "
+                "outline, %.2f km2 credited) and %d not (%.2f km2) priced by the verdict instead "
+                "of their size bin's P(real)",
+                stats["n_lead_judged_pv"], max_candidate_m2,
+                stats["lead_judged_pv_area_m2"] / 1e6,
+                stats["lead_judged_pv_credited_area_m2"] / 1e6, stats["n_lead_judged_not_pv"],
+                stats["lead_judged_not_pv_area_m2"] / 1e6,
+            )
     drop = over & ~exempt
     stats["n_oversize_excluded"] = int(drop.sum())
     stats["oversize_area_m2"] = float(cands.loc[drop, "area_m2"].sum())
@@ -1194,8 +1312,13 @@ def _candidate_uncertainty(
     stratum = (cands["oversize_stratum"].to_numpy(object) if fixed is not None
                else np.full(len(cands), None, dtype=object))
     is_fixed = ~np.isnan(fixed) if fixed is not None else np.zeros(len(cands), bool)
+    # Leads below the cap a person judged (`lead_review`): the verdict replaces the bin's
+    # P(real) draws (a constant: 0, 1, or 1/2.5 on a roof), the bin's recall draws still apply.
+    judged = judged_of(cands)
+    jp = judged if judged is not None else np.full(len(cands), np.nan)
+    is_judged = ~np.isnan(jp) & ~is_fixed
     p_pt = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement_col,
-                               fixed=fixed, confidence=confidence)
+                               fixed=fixed, confidence=confidence, judged=judged)
     r_pt = cc.candidate_recall(area, table, floor=recall_floor, placement=placement_col,
                                fixed=fixed, confidence=confidence)
 
@@ -1209,6 +1332,7 @@ def _candidate_uncertainty(
         "roof": rooftop[keep], "grp": grp[keep], "area": area[keep],
         "rc_pt": (area * p_pt / r_pt)[keep],
         "fixed": is_fixed[keep], "stratum": stratum[keep],
+        "judged": is_judged[keep], "jarea": np.where(is_judged, area * np.nan_to_num(jp), 0.0)[keep],
     })
     if df.empty:
         return None
@@ -1237,11 +1361,16 @@ def _candidate_uncertainty(
     mats = {k: np.zeros((len(cells), n_draws)) for k in ("cal_all", "rc_all", "cal_roof", "rc_roof")}
     for roof_only, cal_key, rc_key in ((False, "cal_all", "rc_all"), (True, "cal_roof", "rc_roof")):
         sub = df[df.roof] if roof_only else df
-        for (c, b, v, g), a in sub[~sub.fixed].groupby(["cell", "b", "v", "grp"])["area"].sum().items():
+        priced = sub[~sub.fixed & ~sub.judged]
+        for (c, b, v, g), a in priced.groupby(["cell", "b", "v", "grp"])["area"].sum().items():
             w, r_dr = w_by_group[g]
             wa = a * w[int(v), b]
             mats[cal_key][pos[c]] += wa
             mats[rc_key][pos[c]] += wa / r_dr[b]
+        for (c, b, g), a in sub[sub.judged].groupby(["cell", "b", "grp"])["jarea"].sum().items():
+            if a > 0:  # a lead judged not solar adds nothing
+                mats[cal_key][pos[c]] += a
+                mats[rc_key][pos[c]] += a / w_by_group[g][1][b]
     if df.fixed.any():
         # Admitted outlines are ground by construction, so only the all-placement matrices
         # carry them; each stratum shares one draw vector across cells (fully correlated,
@@ -1706,6 +1835,7 @@ def run_density(
                 fixed=cands["p_real_fixed"].to_numpy() if "p_real_fixed" in cands.columns else None,
                 confidence=cands["confidence"].to_numpy(float)
                 if "confidence" in cands.columns else None,
+                judged=judged_of(cands),
             )
         log.info("Calibration table %s (%s): est_mwp_cal is precision-weighted", cal_path, cal_status)
         # A table with no `placement_bins` prices ground-mount off rooftop's much higher
@@ -1832,7 +1962,9 @@ def run_density(
             "osm_screen_applied", "n_osm_oversize_screen_limited",
             "osm_oversize_screen_outline_area_m2", "osm_oversize_screen_credited_area_m2")},
         **{k: v for k, v in oversize_stats.items() if k.startswith(("n_oversize_admitted",
-                                                                    "oversize_admitted"))},
+                                                                    "oversize_admitted",
+                                                                    "n_lead_judged",
+                                                                    "lead_judged"))},
         "did_full_rebuild": did_full_rebuild,
         "n_cell_failures": n_cell_failures,
         "candidates_fingerprint_written": did_full_rebuild and n_cell_failures == 0,

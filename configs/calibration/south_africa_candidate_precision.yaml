@@ -372,3 +372,23 @@ oversize_review:
   n_outlines: 250
   n_judged: 249
   n_pv: 5
+lead_review:
+  derived: '2026-11-10'
+  reviewer: owner, 2026-11-10, every queued lead on the large installation review
+    page
+  review_csv: results/south_africa_large_review/review.csv
+  population: model-drawn new leads from min_area_m2 up to max_candidate_m2 with no
+    mapped solar within min_distance_m of them (export.new_lead_mask), inside the
+    atlas's regions and through the lead screens
+  pricing: a pv verdict sets the lead's P(real) to 1 on the ground and to 1/rooftop_outline_ratio
+    on a roof (the model's roof outline is about that many times its array), not_pv
+    to 0; its size bin's recall still applies; unsure or blank keeps the bin's P(real)
+  rooftop_outline_ratio: 2.5
+  min_area_m2: 10000.0
+  max_candidate_m2: 100000.0
+  min_distance_m: 100.0
+  mapped_reference: data/labels/south_africa_overpass_solar.parquet
+  n_outlines: 640
+  n_judged: 593
+  n_pv: 344
+  n_not_pv: 249

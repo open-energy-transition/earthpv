@@ -110,6 +110,11 @@ with no completeness rule. Each one you check and map is counted in the atlas an
 training example for that country's own model. [Map the leads with JOSM](leads.md) walks
 through it with the OpenData, Todo list and continuous download plugins.
 
+**If you run EarthPV on your own PC**, you can also judge the largest of them without mapping:
+every country's run draws two review pages, one picture per outline of a hectare or more,
+and three keys to say solar, not solar or unsure. Each verdict changes the country's
+capacity directly, under your name. [Judge large installations](review.md) shows how.
+
 ## Know a local dataset?
 
 Most countries already count some of their solar, and a person who knows the country often

@@ -909,6 +909,26 @@ def posterior_draws(table: dict, n_draws: int | None = None, seed: int | None = 
 OVERSIZE_REVIEW_KEY = "oversize_review"
 OVERSIZE_STRATA = ("census", "sample", "reviewed")
 
+# **Large installations below the cap: a person's verdict replaces the size bin's P(real)
+# (owner, 2026-11-10).** `scripts/oversize_review.py --kind large` draws the model's new
+# leads from `min_area_m2` (default 10,000 m2) up to the cap for the same disk review, and
+# `apply` writes this block. `density.load_oversize_admission` returns each judged lead's
+# `p_real_judged`: 0 for `not_pv`; for `pv` 1 on the ground and 1/`rooftop_outline_ratio`
+# on a roof; an unsure or unjudged lead keeps its bin's price. Unlike an admitted blob, a
+# judged lead keeps its size bin's RECALL: it is one of the installations that recall was
+# measured on, so it still stands in for the ones the model missed, and only its precision
+# is replaced. Any named reviewer's verdict counts (owner, 2026-11-10); `reviewer` keeps
+# every sitting's name on record.
+LEAD_REVIEW_KEY = "lead_review"
+# **A judged roof lead counts 1/2.5 of its outline (owner, 2026-11-10).** The model's roof
+# outline is bigger than the array it found: 2.52 times the mapped array for outlines of
+# 5,000-50,000 m2 (90% 2.43-2.61) and 2.54 above, in Pakistan (`scripts/candidate_area_bias.py`,
+# `results/pakistan_candidate_area_bias.json`, open question 17), which a bin's P(real) used to
+# absorb. A ground lead counts whole, as a judged park does: the land constant is already per
+# m2 of site outline. The block records the ratio it was priced at (`rooftop_outline_ratio`);
+# a block without one takes this.
+LEAD_ROOF_OUTLINE_RATIO = 2.5
+
 
 def oversize_review_p_real(block: dict) -> dict[str, float]:
     """Point share real per stratum of an `oversize_review` block: the review's `census` and
@@ -968,6 +988,8 @@ def _table_evidence(table: dict) -> set[str]:
         evidence.add("register-p-unmapped")
     if table.get(OVERSIZE_REVIEW_KEY):
         evidence.add("oversize-review")
+    if table.get(LEAD_REVIEW_KEY):
+        evidence.add("lead-review")
     # A table pricing low-confidence open ground apart must not be silently replaced by one
     # that pools it back into the ground bins (a bare re-run with --no-confidence-split).
     if table.get("confidence_split"):
@@ -1113,12 +1135,16 @@ def candidate_p_real(
     placement: np.ndarray | None = None,
     fixed: np.ndarray | None = None,
     confidence: np.ndarray | None = None,
+    judged: np.ndarray | None = None,
 ) -> np.ndarray:
     """Per-candidate P(real): the bin prior, Bayes-updated where glint evidence exists.
 
     `fixed` (NaN where absent) replaces the result outright for candidates priced by their
     own review rather than by a size bin: an admitted outline above the merge cap
     (`oversize_review`, `density.capacity_relevant_candidates` writes `p_real_fixed`).
+    `judged` (NaN where absent) does the same for a lead below the cap a person judged
+    (`lead_review`, `p_real_judged`: 1 solar, 0 not); unlike `fixed` it leaves the
+    candidate's recall to its size bin (`candidate_recall` is not told about it).
 
     A glint-validated candidate (>= `min_consistent` mutually-consistent spike dates)
     gets posterior odds = prior odds * LR with LR = S_b / f - the same measured
@@ -1157,6 +1183,9 @@ def candidate_p_real(
     if fixed is not None:
         fixed = np.asarray(fixed, dtype=float)
         out = np.where(np.isnan(fixed), out, fixed)
+    if judged is not None:
+        judged = np.asarray(judged, dtype=float)
+        out = np.where(np.isnan(judged), out, judged)
     return out
 
 

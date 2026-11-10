@@ -77,9 +77,20 @@ def main() -> None:
     print(f"{len(items)} panels -> {out} ({out.stat().st_size / 1e6:.1f} MB)")
 
 
+# The page's verdicts in key order (keys 1, 2, 3, ...): export value, button label, tooltip.
+VERDICTS = [("pv", "PV", "Solar panels in the outline"),
+            ("no_pv", "Not PV", "Something else"),
+            ("unsure", "Unsure", "These panels cannot settle it")]
+# Not PV, and the outline sits on a very bright roof: a false alarm kept apart so it can be
+# studied (owner, 2026-11-10). Joins that know only the three above must not be offered it.
+BRIGHT_ROOF = ("bright_roof", "Bright roof",
+               "Not PV: a very bright roof (white or light metal, a reflective coating)")
+
+
 def write_page(out: Path, name: str, items: list[dict], guide: str | None = None,
                title: str = "Blind PV review", store: str | None = None,
-               export_name: str = "verdicts.csv", back: str | None = None) -> Path:
+               export_name: str = "verdicts.csv", back: str | None = None,
+               bright_roof: bool = False) -> Path:
     """Write the review page for `items`, for any review, not only the blind folders.
 
     Each item needs `code` and `img` (a data URI, or a path relative to `out` so the images
@@ -87,15 +98,23 @@ def write_page(out: Path, name: str, items: list[dict], guide: str | None = None
     image; default "Esri imagery <date>"), `lon`/`lat`/`bbox` for the imagery links. `guide`
     replaces the "How to judge" text (HTML); the default is the blind reviews' own. The
     export is `code,imagery_date,verdict,note` with verdicts `pv`, `no_pv`, `unsure`, saved
-    as `export_name`. Progress is saved in the browser under `store` (default `name`), which
-    must change whenever the same codes come to mean other outlines. `back` links a page of
-    pages. (`scripts/oversize_review.py package` uses this for unmapped parks, 2026-10-29.)"""
+    as `export_name`; `bright_roof=True` adds a fourth, `bright_roof` (key 4: not PV, on a
+    very bright roof), which only a join that maps it may be given. Progress is saved in the
+    browser under `store` (default `name`), which must change whenever the same codes come
+    to mean other outlines. `back` links a page of pages. (`scripts/oversize_review.py
+    package` uses this for unmapped parks, 2026-10-29.)"""
     home = f'<a class="btn" href="{back}">All countries</a>' if back else ""
+    verdicts = VERDICTS + ([BRIGHT_ROOF] if bright_roof else [])
+    buttons = "\n".join(f'      <button data-v="{v}" title="{tip}"><kbd>{k}</kbd>{label}</button>'
+                        for k, (v, label, tip) in enumerate(verdicts, 1))
     page = (TEMPLATE.replace("__NAME__", name)
             .replace("__TITLE__", title)
             .replace("__STORE__", store or name)
             .replace("__EXPORT__", export_name)
             .replace("__BACK__", home)
+            .replace("__NVERDICTS__", str(len(verdicts)))
+            .replace("__BUTTONS__", buttons)
+            .replace("__LABELS__", json.dumps({v: label for v, label, _ in verdicts}))
             .replace("__GUIDE__", GUIDE if guide is None else guide)
             .replace("__ITEMS__", json.dumps(items).replace("</", "<\\/")))
     out.write_text(page)
@@ -128,16 +147,19 @@ TEMPLATE = r"""<!doctype html>
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2330; --muted: #5d6677; --line: #d9dde5;
   --pv: #1f8a5b; --no: #c0392b; --unsure: #b7791f; --todo: #c9ced8; --accent: #2563eb;
+  --bright: #6b52b8;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0f131a; --panel: #171c25; --ink: #e6e9ef; --muted: #98a2b3; --line: #2a3140;
     --pv: #34c27f; --no: #ef6b5b; --unsure: #e2a83c; --todo: #3a4252; --accent: #6ea8ff;
+    --bright: #9b84e8;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0f131a; --panel: #171c25; --ink: #e6e9ef; --muted: #98a2b3; --line: #2a3140;
   --pv: #34c27f; --no: #ef6b5b; --unsure: #e2a83c; --todo: #3a4252; --accent: #6ea8ff;
+  --bright: #9b84e8;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink);
@@ -162,12 +184,14 @@ main { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid;
 .meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
   margin: 10px 0 0; color: var(--muted); font-size: 14px; }
 .meta b { color: var(--ink); font-size: 18px; }
-.verdicts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.verdicts { display: grid; grid-template-columns: repeat(__NVERDICTS__, 1fr); gap: 8px; margin-top: 12px; }
+@media (max-width: 480px) { .verdicts { grid-template-columns: repeat(2, 1fr); } }
 .verdicts button { padding: 12px 6px; font-weight: 600; }
 .verdicts button kbd { font: 12px ui-monospace, monospace; color: var(--muted); margin-right: 4px; }
 .verdicts button.on[data-v="pv"] { background: var(--pv); border-color: var(--pv); color: #fff; }
 .verdicts button.on[data-v="no_pv"] { background: var(--no); border-color: var(--no); color: #fff; }
 .verdicts button.on[data-v="unsure"] { background: var(--unsure); border-color: var(--unsure); color: #fff; }
+.verdicts button.on[data-v="bright_roof"] { background: var(--bright); border-color: var(--bright); color: #fff; }
 .verdicts button.on kbd { color: #fff; }
 textarea { width: 100%; margin-top: 10px; min-height: 56px; font: inherit; color: var(--ink);
   background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
@@ -184,6 +208,7 @@ textarea { width: 100%; margin-top: 10px; min-height: 56px; font: inherit; color
 .chip.pv { background: var(--pv); color: #fff; }
 .chip.no_pv { background: var(--no); color: #fff; }
 .chip.unsure { background: var(--unsure); color: #fff; }
+.chip.bright_roof { background: var(--bright); color: #fff; }
 .chip.cur { border-color: var(--accent); }
 .side h2 { font-size: 14px; margin: 0 0 8px; }
 .side p, .side li { font-size: 13px; color: var(--muted); }
@@ -209,9 +234,7 @@ input[type=file] { display: none; }
     <img id="img" alt="">
     <div class="meta"><b id="code"></b><span id="date"></span></div>
     <div class="verdicts">
-      <button data-v="pv"><kbd>1</kbd>PV</button>
-      <button data-v="no_pv"><kbd>2</kbd>Not PV</button>
-      <button data-v="unsure"><kbd>3</kbd>Unsure</button>
+__BUTTONS__
     </div>
     <textarea id="note" placeholder="Note (optional): what you see, e.g. 'greenhouses', 'panels on the roof beside it'"></textarea>
     <div class="nav">
@@ -240,7 +263,7 @@ __GUIDE__
 (function () {
   const ITEMS = JSON.parse(document.getElementById("items").textContent);
   const STORE = "pvreview:__STORE__";
-  const LABEL = { pv: "PV", no_pv: "Not PV", unsure: "Unsure" };
+  const LABEL = __LABELS__, KEYS = Object.keys(LABEL);  // key 1 is KEYS[0], and so on
   let state = {};
   try { state = JSON.parse(localStorage.getItem(STORE) || "{}") || {}; } catch (e) { state = {}; }
   let cur = 0;
@@ -275,7 +298,7 @@ __GUIDE__
     const done = ITEMS.filter((x) => state[x.code] && state[x.code].verdict).length;
     $("prog").textContent = `${done} / ${ITEMS.length} judged`;
     $("bar").style.width = (100 * done / ITEMS.length) + "%";
-    const c = { pv: 0, no_pv: 0, unsure: 0 };
+    const c = Object.fromEntries(KEYS.map((k) => [k, 0]));
     ITEMS.forEach((x) => { const s = state[x.code]; if (s && c[s.verdict] !== undefined) c[s.verdict]++; });
     $("counts").innerHTML = Object.entries(c).map(([k, n]) => `<span>${LABEL[k]}: <b>${n}</b></span>`).join("");
     paint();
@@ -324,9 +347,7 @@ __GUIDE__
   $("grid").addEventListener("click", (e) => { const c = e.target.closest(".chip"); if (c) go(+c.dataset.i); });
   document.addEventListener("keydown", (e) => {
     if (e.target.tagName === "TEXTAREA") { if (e.key === "Escape") e.target.blur(); return; }
-    if (e.key === "1") judge("pv");
-    else if (e.key === "2") judge("no_pv");
-    else if (e.key === "3") judge("unsure");
+    if (/^[1-9]$/.test(e.key)) { if (KEYS[+e.key - 1]) judge(KEYS[+e.key - 1]); }
     else if (e.key === "ArrowLeft" || e.key === "k") go(cur - 1);
     else if (e.key === "ArrowRight" || e.key === "j") go(cur + 1);
     else if (e.key === "n") { e.preventDefault(); $("note").focus(); }

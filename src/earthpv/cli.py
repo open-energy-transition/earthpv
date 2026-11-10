@@ -2017,10 +2017,14 @@ def calibrate_candidates(
     # see (`capacity_relevant_candidates` is called above without an admission), so a
     # re-derivation keeps it rather than dropping evidence it has no way to re-measure.
     prior = cc.load_table(dest) if Path(dest).exists() else {}
-    if prior.get(cc.OVERSIZE_REVIEW_KEY) and not allow_downgrade:
-        table[cc.OVERSIZE_REVIEW_KEY] = prior[cc.OVERSIZE_REVIEW_KEY]
-        typer.echo(f"carried forward the oversize review from {dest} "
-                   f"({prior[cc.OVERSIZE_REVIEW_KEY].get('review_csv')})")
+    # The large-installation review (`lead_review`) judges leads INSIDE the bins, but the
+    # bins are derived without it (they describe every candidate of their size, judged or
+    # not), and its verdicts only replace a judged lead's own price: carried forward too.
+    for key, what in ((cc.OVERSIZE_REVIEW_KEY, "oversize review"),
+                      (cc.LEAD_REVIEW_KEY, "large installation review")):
+        if prior.get(key) and not allow_downgrade:
+            table[key] = prior[key]
+            typer.echo(f"carried forward the {what} from {dest} ({prior[key].get('review_csv')})")
     cc.write_table(table, dest, allow_downgrade=allow_downgrade)
     for row in table["bins"]:
         rec = "recall=  n/a" if row["recall"] is None else f"recall={row['recall']:.3f}"

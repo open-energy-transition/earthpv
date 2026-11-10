@@ -101,6 +101,39 @@ stage is what drops them, because it has no human in the loop. Set
 reflects it after a `--force` rebuild; `meta.json` records
 `oversize_stale_partials` when it does not.
 
+## A person's verdict replaces a large outline's price
+
+Two review pages put a person back in the loop for the largest outlines
+([Judge large installations](../contribute/review.md)). Above the cap, an outline enters
+capacity only once a person judges it solar, whole and at the land constant. From
+10,000 m<sup>2</sup> up to the cap, an unmapped lead is already counted at its size bin's
+P(real); a verdict replaces that probability for its own lead, 0 for not solar and for
+solar 1 on the ground or 1/2.5 on a roof (below), and leaves everything else as it was
+(2026-11-10). The lead keeps its placement and
+its kWp constant, and it keeps its size bin's **recall**: it is one of the installations the
+recall was measured on, so it still stands in for those of its size the model missed. A
+blob above the cap gets no recall correction, because no size bin describes it.
+
+The verdict changes the precision-weighted and recall-corrected columns only; the detected
+area (`*_det`) is what the model drew and stays as it was. In the credible interval a judged
+lead's probability is a constant rather than a draw from its bin, while its recall is still
+drawn. Best's per-cell floor is Verified plus every outline a person judged solar, blobs and
+leads alike, each at its verdict's share and its own placement's constant. A lead mapped in
+OpenStreetMap after it was judged is counted from the map, and its verdict rests.
+
+**A roof lead judged solar counts 1/2.5 of its outline (owner, 2026-11-10).** The model's
+outline is larger than the array it finds. Measured in Pakistan on candidates that found a
+mapped installation, a roof outline of 5,000 to 50,000 m<sup>2</sup> covers 2.52 times the
+mapped array (90% interval 2.43 to 2.61), and one above 50,000 m<sup>2</sup> 2.54 times. A size
+bin's P(real) happens to absorb that (the precision-weighted area of candidates of
+500 m<sup>2</sup> and more comes to about 0.9 of the mapped area), but a verdict of 1 would
+not, so a judged roof lead is priced at 1/2.5. A ground lead counts whole, as a judged solar
+park does: the land constant is already a price per m<sup>2</sup> of site outline, about 3.6
+times below the panel constant. Pakistan's ground outlines of 5,000 to 50,000 m<sup>2</sup>
+measure 2.56 times the mapped site, so whole ground leads lean high. The ratio is measured in
+one country only; the calibration table records the ratio each review was priced at
+(`rooftop_outline_ratio`).
+
 ## The recall curve
 
 ![Measured model recall by installation size against a pre-pipeline OpenStreetMap reference, rising from about 3 percent below 100 square metres to 100 percent above 50,000, with credible intervals.](../assets/figures/model_recall_bins.svg#only-light)

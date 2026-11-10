@@ -196,6 +196,13 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     #   open data/oversize_review/index.html (every country), judge as many as you like, export
     pixi run blob-review apply --aoi india --reviewer "<name>" --verdicts <the export>
     pixi run blob-review status                         # what each country has left
+    # The large installation review, a step of every run too: the same page for the leads
+    # from 10,000 m² up to the cap, rooftop and ground. These already count at their size
+    # bin's P(real); a verdict replaces it for its own lead (solar 1, not solar 0), and the
+    # bin's recall still applies. Any named reviewer's verdict counts.
+    pixi run large-review draw --aoi india
+    #   open data/large_review/index.html, judge, export
+    pixi run large-review apply --aoi india --reviewer "<name>" --verdicts <the export>
     pixi run earthpv density --aoi india --districts    # no --force: the cells stay valid
 
     # Optional precision upgrade for the bins below 1,000 m², where glint is blind:
@@ -883,7 +890,9 @@ without it a number has no evidence behind it, and it is the one step no agent c
 you. The solar farm review (`pixi run blob-review`, in the density step) is the other step of
 that kind, but you can stop it whenever you like: a very large outline nobody has judged
 stays out of the capacity figures, so the atlas is honest at any point, and each park judged
-adds to it.
+adds to it. The large installation review (`pixi run large-review`) is its companion for the
+outlines from 1 ha up to 10 ha: those already count at their size class's share, so it can
+be left at any point too ([Judge large installations](contribute/review.md)).
 
 ### 3. Build the data pack
 
@@ -977,7 +986,7 @@ a Planetary Computer token expiring), assembling the data pack, and drafting the
 page.
 
 **What an agent must not do on its own**, and what to tell it not to: draw or declare
-calibration areas complete, sign off random-cell validation, judge the solar farm review, or
+calibration areas complete, sign off random-cell validation, judge either review page, or
 publish a headline number without the validation behind it. Those are the steps where the evidence actually enters,
 and an agent has no way to look at the imagery and decide. Ask it to prepare the review
 tiles and wait.

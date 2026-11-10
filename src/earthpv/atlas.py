@@ -2628,12 +2628,42 @@ def osm_match_distance_m(table: dict | None, legacy: bool = False) -> float:
     return max(float(NEAR_BUILDING_M), float(table.get("min_distance_m") or NEAR_BUILDING_M))
 
 
+def judged_of(cands: pd.DataFrame) -> np.ndarray | None:
+    """`density.judged_of`: a frame's `p_real_judged` (a person's verdict on a lead below the
+    cap, `lead_review`), or None."""
+    from earthpv.density import judged_of as _judged_of
+
+    return _judged_of(cands)
+
+
+def judged_floor_kwp(cands: pd.DataFrame, kwp_mod: float, kwp_land: float) -> np.ndarray:
+    """kWp per candidate that Best's per-cell floor adds to Verified: what a person judged
+    solar. An admitted blob (`p_real_fixed`) counts whole at the land constant, as since
+    2026-11-02; a lead below the cap judged solar (`p_real_judged` > 0, 2026-11-10) at its
+    verdict's share of the outline (1 on the ground, 1/2.5 on a roof) and its own placement's
+    constant. Everything else 0. `build_evidence_atlas` and `_size_distribution_data` both
+    take the floor from here, so they cannot disagree."""
+    area = cands["area_m2"].to_numpy(float)
+    out = np.zeros(len(cands))
+    if "p_real_fixed" in cands.columns:
+        out = np.where(cands["p_real_fixed"].notna().to_numpy(), area * kwp_land, out)
+    judged = judged_of(cands)
+    if judged is not None:
+        roof = (cands["placement"].astype(str).to_numpy() == "rooftop"
+                if "placement" in cands.columns else np.zeros(len(cands), bool))
+        share = np.nan_to_num(judged)
+        out = np.where((share > 0) & (out == 0),
+                       area * share * np.where(roof, kwp_mod, kwp_land), out)
+    return out
+
+
 def osm_absorbed_inflation(
     cand_area: np.ndarray, cand_placement: np.ndarray, cand_glint: np.ndarray | None,
     miss_area: np.ndarray, miss_rooftop: np.ndarray, miss_mwp: np.ndarray,
     table: dict, recall_floor: float, kwp_mod: float, kwp_land: float,
     cand_fixed: np.ndarray | None = None,
     cand_confidence: np.ndarray | None = None,
+    cand_judged: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, list[dict]]:
     """Share of each candidate's recall inflation that OSM-mapped misses already account for.
 
@@ -2641,13 +2671,14 @@ def osm_absorbed_inflation(
     stratum replaced by roofclf pairs its OSM with roofclf, not with segmentation). Returns
     `(retain, inflation_mwp, rows)`: a candidate's corrected MWp is
     `detected + inflation * retain`; `rows` is the per placement x size-bin audit.
+    `cand_judged` is `p_real_judged` (a person's verdict on a lead below the cap).
     """
     from earthpv import capacity_calibration as cc
 
     cand_area = np.asarray(cand_area, float)
     roof = np.asarray(cand_placement).astype(str) == "rooftop"
     p = cc.candidate_p_real(cand_area, table, glint_consistent=cand_glint, placement=cand_placement,
-                            fixed=cand_fixed, confidence=cand_confidence)
+                            fixed=cand_fixed, confidence=cand_confidence, judged=cand_judged)
     r = np.maximum(cc.candidate_recall(cand_area, table, floor=recall_floor,
                                        placement=cand_placement, fixed=cand_fixed,
                                        confidence=cand_confidence), recall_floor)
@@ -3170,6 +3201,7 @@ def build_evidence_atlas(
             float(meta.get("recall_floor", cc.DEFAULT_RECALL_FLOOR)), kwp_mod, kwp_land,
             cand_fixed=cp["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cp.columns else None,
             cand_confidence=cp["confidence"].to_numpy(float) if "confidence" in cp.columns else None,
+            cand_judged=judged_of(cp),
         )
         cut = pd.DataFrame({"cell": cp["cell"].to_numpy(), "roof": c_place == "rooftop",
                             "mwp": inflation * (1.0 - retain)})
@@ -3205,12 +3237,15 @@ def build_evidence_atlas(
     # A park a person judged solar (a blob with a `pv` verdict) is as real as a mapped one and
     # lies apart from every mapped feature, so the floor is the mapped figure PLUS it. Floored
     # at Verified alone, a cell the model underrates swallowed it (owner, 2026-11-02; India:
-    # 2,274 of 19,609 MWp). No review, no change.
+    # 2,274 of 19,609 MWp). No review, no change. A lead below the cap judged solar
+    # (`lead_review`, 2026-11-10) is as real, so it joins the floor too, at its own placement's
+    # constant (it may be a roof); `judged_floor_kwp` is shared with `_size_distribution_data`.
     judged_mwp = 0.0
-    if "p_real_fixed" in cand.columns and cand["p_real_fixed"].notna().any():
-        judged = cand[cand["p_real_fixed"].notna()]
+    jk = judged_floor_kwp(cand, kwp_mod, kwp_land)
+    if (jk > 0).any():
+        judged = cand[jk > 0]
         jp = gpd.GeoDataFrame(
-            {"mwp": judged["area_m2"].to_numpy(float) * kwp_land / 1000.0},
+            {"mwp": jk[jk > 0] / 1000.0},
             geometry=judged.geometry.representative_point().to_numpy(), crs=cand.crs)
         jp = gpd.sjoin(jp, grid[["cell", "geometry"]], predicate="within", how="inner")
         judged_mwp = grid["cell"].map(jp.groupby("cell")["mwp"].sum()).fillna(0.0)
@@ -3783,8 +3818,9 @@ def _size_distribution_data(
     glint = cands["glint_consistent"].to_numpy() if "glint_consistent" in cands.columns else None
     fixed = cands["p_real_fixed"].to_numpy(float) if "p_real_fixed" in cands.columns else None
     confidence = cands["confidence"].to_numpy(float) if "confidence" in cands.columns else None
+    lead_judged = judged_of(cands)
     p_real = cc.candidate_p_real(area, table, glint_consistent=glint, placement=placement,
-                                 fixed=fixed, confidence=confidence)
+                                 fixed=fixed, confidence=confidence, judged=lead_judged)
     recall = cc.candidate_recall(area, table, floor=cc.DEFAULT_RECALL_FLOOR, placement=placement,
                                  fixed=fixed, confidence=confidence)
     rc_area = area * p_real / np.clip(recall, cc.DEFAULT_RECALL_FLOOR, None)
@@ -3831,6 +3867,7 @@ def _size_distribution_data(
             miss["kwp"].to_numpy(float) / 1000.0, table,
             float(meta.get("recall_floor", cc.DEFAULT_RECALL_FLOOR)), kwp_mod, kwp_land,
             cand_confidence=None if confidence is None else confidence[used],
+            cand_judged=None if lead_judged is None else lead_judged[used],
         )
         retain = np.ones(len(cands))
         retain[used] = retain_used
@@ -3930,9 +3967,11 @@ def _size_distribution_data(
         return float(v) if v is not None and pd.notna(v) else 0.0
 
     # A judged park is in `seg_ground_by_cell` and in the floor (see `build_evidence_atlas`), so
-    # what a shortfall tops up is still the cell's mapped installations.
-    judged = ~np.isnan(fixed) & in_grid if fixed is not None else np.zeros(len(cands), bool)
-    judged_by_cell = _cell_sum(cell_of[judged], area[judged] * kwp_land / 1000.0)
+    # what a shortfall tops up is still the cell's mapped installations. So is a lead below
+    # the cap judged solar, in the segmentation figure of its placement.
+    jk = judged_floor_kwp(cands, kwp_mod, kwp_land)
+    judged = (jk > 0) & in_grid
+    judged_by_cell = _cell_sum(cell_of[judged], jk[judged] / 1000.0)
     all_cells = grid["cell"].to_numpy()
     shortfalls: dict[str, float] = {}
     for c in all_cells:

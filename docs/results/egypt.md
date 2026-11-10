@@ -15,10 +15,19 @@ Interactive: [Egypt PV evidence atlas](../atlas-egypt.md).
 | | |
 | --- | --- |
 | Verified | **3,315.1 MWp** (90% 2,314 to 4,789) |
-| Best estimate | **3,809.9 MWp** (90% 3,328 to 4,963) |
+| Best estimate | **3,848.7 MWp** (90% 3,371 to 4,968) |
 | Grid | 946 cells of 0.1&deg;, 27 governorates (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, April to September 2026 |
 | Model | `v12_combined_egypt` epoch 16, localized (it beat `v5_combined_france` on the holdout; see below) |
+
+!!! note "Revised on 10 November: large installations judged"
+    Until 10 November this page read Best 3,809.9 MWp (90% 3,328 to 4,963). On 10 November the
+    owner judged, on the [large installation review](../contribute/review.md), every unmapped
+    model outline from 1 ha up to the 10 ha merge cap that the lead screens keep: 46 of
+    the 169 judged are solar, the other 123 are not. These leads counted before at
+    the share their size class usually turns out real; now a lead judged solar counts as real
+    (a roof outline at 1/2.5 of its area, since the model draws about 2.5 times the array) and
+    one judged not solar counts nothing. Best rises by 38.8 MWp; Verified did not move.
 
 !!! note "Revised on 4 November"
     Until 4 November this page read Best 3,378.6 MWp (90% 3,028 to 4,823). On 3 November the

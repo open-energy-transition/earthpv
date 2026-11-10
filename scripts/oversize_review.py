@@ -48,6 +48,28 @@ leaves the pool and is counted from the map (no error, `apply` reports it). A ne
 renumbers the candidates, so `apply` and `density` refuse the old review; `draw --redraw` starts
 a new one, and because the page's saved progress is keyed to the draw, old verdicts cannot
 attach themselves to the new outlines.
+
+**`--kind large`: the large installation review (owner, 2026-11-10), a default step too.** The
+same review for the leads BELOW the cap, from `LARGE_MIN_M2` (10,000 m2, `--min-area-m2`) up to
+it: model-drawn new leads through the same regions and screens, rooftop and ground alike,
+largest first, in `results/<aoi>_large_review/` and `data/large_review/` (on /home). These
+leads are already in capacity, each at its size bin's P(real); a verdict replaces that price
+for its own lead (`pv` 1 on the ground and 1/2.5 on a roof, where the model's outline is
+about 2.5 times the array, owner 2026-11-10; `not_pv` 0) and keeps the bin's recall
+(`capacity_calibration.LEAD_REVIEW_KEY`, `density._lead_verdicts`). Any named reviewer's
+verdict counts (owner, 2026-11-10). The crops are cut tighter (1 km of composite, 400 m of
+native pixels, about 250 m of Esri), because a 1 ha roof is a speck in a park's window.
+
+    pixi run large-review draw --aoi india
+    # open data/large_review/index.html, judge, export, then:
+    pixi run large-review apply --aoi india --reviewer "<name>" --verdicts <the export>
+    pixi run earthpv density --aoi india --districts    # no --force; then the atlas
+
+**Bright roofs are kept apart (owner, 2026-11-10).** Both pages carry a fourth verdict, key 4
+"Bright roof": not PV, and the outline sits on a very bright roof (white or light metal, a
+reflective coating). `apply` prices it as `not_pv` and writes `bright_roof` into review.csv's
+`flag` column (and `review_flag` in review.geojson), so these false alarms can be pulled out
+and studied together; `status` counts them.
 """
 
 from __future__ import annotations
@@ -56,6 +78,7 @@ import argparse
 import shutil
 import sys
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
@@ -64,7 +87,39 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "scripts"))
 
 VERDICTS = ("pv", "not_pv")
-PACKAGES = REPO / "data" / "oversize_review"
+# The page's export values -> review.csv's verdict and flag. `bright_roof` is a not-PV verdict
+# on a very bright roof, kept apart for study; it prices exactly as not PV.
+PAGE_VERDICTS = {"pv": ("pv", ""), "no_pv": ("not_pv", ""), "unsure": ("unsure", ""),
+                 "bright_roof": ("not_pv", "bright_roof"), "": ("", "")}
+LARGE_MIN_M2 = 10_000.0
+
+
+@dataclass(frozen=True)
+class Kind:
+    """What one review covers and where it lives; `main` picks one with `--kind`."""
+    name: str
+    title: str             # the page's and the hub's heading
+    suffix: str            # results/<aoi><suffix>/review.csv
+    packages: Path         # crops, pages and the hub
+    export: str            # the page's export file name
+    task: str              # the pixi task the instructions name
+    table_key: str         # the calibration table block `apply` writes
+    context_min_m: float   # the composite panels show at least this much ground
+    detail_m: float        # the native-pixel panel's width
+    esri_min_m: float | None  # the Esri panel's width (None: as the composite's)
+    noun: str              # what one row is, in messages
+
+
+KINDS = {
+    "blob": Kind("blob", "Solar farm review", "_oversize_review", REPO / "data" / "oversize_review",
+                 "{aoi}_blob_verdicts.csv", "blob-review", "oversize_review", 1500.0, 1280.0, None,
+                 "outlines above the cap"),
+    "large": Kind("large", "Large installation review", "_large_review",
+                  REPO / "data" / "large_review", "{aoi}_large_verdicts.csv", "large-review",
+                  "lead_review", 1000.0, 400.0, 250.0, "leads below the cap"),
+}
+K = KINDS["blob"]  # set by `main`; the module's functions read the kind from here
+PACKAGES = K.packages  # kept for callers that import it (the blob review's own directory)
 # France's leads were audited and released on their own (scripts/build_france_osm_leads.py):
 # its run is not in release_leads.SOURCES, its reference is that build's own three pulls in
 # one file, and its blob file went through none of the later lead screens.
@@ -90,8 +145,9 @@ def candidates_path(aoi: str) -> Path:
     return REPO / run_source(aoi)["pred"] / "candidates.parquet"
 
 
-def population(aoi: str, labels: Path, min_distance_m: float):
-    """New-lead model outlines above the cap, with their ADM1 region."""
+def population(aoi: str, labels: Path, min_distance_m: float, min_area_m2: float | None = None):
+    """New-lead model outlines above the cap (the blob review), or from `min_area_m2` up to
+    the cap (the large installation review), with their ADM1 region."""
     import geopandas as gpd
 
     from earthpv.buildings import _iso3_for
@@ -103,7 +159,10 @@ def population(aoi: str, labels: Path, min_distance_m: float):
 
     c = gpd.read_parquet(candidates_path(aoi))
     src = c["geometry_source"].fillna("model") if "geometry_source" in c.columns else "model"
-    pool = c[(c["area_m2"] > MAX_CANDIDATE_M2) & (src != "osm")]
+    if min_area_m2 is None:
+        pool = c[(c["area_m2"] > MAX_CANDIDATE_M2) & (src != "osm")]
+    else:
+        pool = c[(c["area_m2"] >= min_area_m2) & (c["area_m2"] <= MAX_CANDIDATE_M2) & (src != "osm")]
     ref = gpd.read_parquet(labels)[["geometry"]]
     ref = ref[ref.geometry.notna() & ~ref.geometry.is_empty]
     pool = pool[new_lead_mask(pool, ref, min_distance_m=min_distance_m)].copy()
@@ -160,9 +219,12 @@ def cmd_draw(a) -> int:
     import pandas as pd
 
     path = a.out / "review.csv"
-    pool = population(a.aoi, a.labels, a.min_distance_m)
+    if K.name == "large" and (a.census_n or a.sample_n):
+        raise SystemExit("--census-n / --sample-n belong to the blob review; the large "
+                         "installation review is a queue only")
+    pool = population(a.aoi, a.labels, a.min_distance_m, a.min_area_m2)
     queue = lead_screened(a.aoi, pool)
-    print(f"{a.aoi}: {len(pool)} outlines above the cap with no mapped solar within "
+    print(f"{a.aoi}: {len(pool)} {K.noun} with no mapped solar within "
           f"{a.min_distance_m:.0f} m ({pool.area_m2.sum() / 1e6:.1f} km2); {len(queue)} after "
           f"the atlas's regions and the lead screens ({queue.area_m2.sum() / 1e6:.1f} km2)")
     if path.exists() and not a.redraw:
@@ -177,7 +239,7 @@ def cmd_draw(a) -> int:
     pick = (rng.choice(rest.index, size=min(a.sample_n, len(rest)), replace=False,
                        p=rest["area_m2"] / rest["area_m2"].sum()) if a.sample_n else [])
     sample = rest.loc[pick]
-    cols = ["candidate_index", "lon", "lat", "area_m2", "region"]
+    cols = _columns(queue)
     out = pd.concat([census[cols].assign(stratum="census", k=range(len(census))),
                      sample[cols].assign(stratum="sample", k=range(len(sample)))])
     out["code"] = [f"{s[0]}{k:02d}" for s, k in zip(out.stratum, out.k)]
@@ -186,9 +248,16 @@ def cmd_draw(a) -> int:
     a.out.mkdir(parents=True, exist_ok=True)
     out.to_csv(path, index=False)
     # The crops are named by code, and a new draw reuses the codes.
-    shutil.rmtree(PACKAGES / a.aoi / "crops", ignore_errors=True)
+    shutil.rmtree(K.packages / a.aoi / "crops", ignore_errors=True)
     _queue_rest(path, queue)
     return cmd_package(a)
+
+
+def _columns(pool) -> list[str]:
+    """review.csv's columns from the pool: the large review also keeps each lead's placement,
+    since a roof and a field read differently and convert at different constants."""
+    cols = ["candidate_index", "lon", "lat", "area_m2", "region"]
+    return cols + (["placement"] if K.name == "large" and "placement" in pool.columns else [])
 
 
 def _queue_rest(path: Path, pool) -> None:
@@ -201,8 +270,7 @@ def _queue_rest(path: Path, pool) -> None:
     rest = rest.sort_values("area_m2", ascending=False)
     in_queue = rev["stratum"] == "queue"
     k0 = int(rev.loc[in_queue, "k"].max() + 1) if in_queue.any() else 0
-    q = rest[["candidate_index", "lon", "lat", "area_m2", "region"]].assign(
-        stratum="queue", k=range(k0, k0 + len(rest)))
+    q = rest[_columns(rest)].assign(stratum="queue", k=range(k0, k0 + len(rest)))
     q["code"] = [f"q{k:04d}" for k in q["k"]]
     q["verdict"] = ""
     q["evidence"] = ""
@@ -228,7 +296,12 @@ def cmd_apply(a) -> int:
     if bad or blank.any():
         raise SystemExit(f"{a.review}: verdicts must be {VERDICTS}, found {bad or ['']}; only a "
                          "queue outline may stay blank (unreviewed)")
-    pool = population(a.aoi, a.labels, a.min_distance_m)
+    if K.name == "large":
+        if a.exclude_region:
+            raise SystemExit("--exclude-region belongs to the blob review")
+        # The band the review was drawn over, even if a later draw asked for a lower floor.
+        a.min_area_m2 = float(min(a.min_area_m2, rev["area_m2"].min()))
+    pool = population(a.aoi, a.labels, a.min_distance_m, a.min_area_m2)
     gone = rev[~rev["candidate_index"].isin(pool["candidate_index"])]
     c = pd.read_parquet(candidates_path(a.aoi), columns=["area_m2"])
     same = gone["candidate_index"].isin(c.index)
@@ -239,7 +312,9 @@ def cmd_apply(a) -> int:
                          "draw, so start a new review with `draw --redraw`")
     if a.verdicts is not None:  # only once nothing above can refuse the sitting
         rev.to_csv(a.review, index=False)
-    prior = (cc.load_table(cc.default_table_path(a.aoi)) or {}).get(cc.OVERSIZE_REVIEW_KEY) or {}
+    prior = (cc.load_table(cc.default_table_path(a.aoi)) or {}).get(K.table_key) or {}
+    if K.name == "large":
+        return _apply_large(a, rev, gone, prior)
     unknown = set(a.exclude_region) - set(pool["region"].dropna())
     if unknown:
         raise SystemExit(f"--exclude-region names no outline's region: {sorted(unknown)}")
@@ -309,31 +384,90 @@ def cmd_apply(a) -> int:
     return 0
 
 
+def _apply_large(a, rev, gone, prior: dict) -> int:
+    """`apply` for the large installation review: the `lead_review` block. Each judged lead
+    is priced by its verdict in `density` (`_lead_verdicts`); nothing is drawn as a share."""
+    import pandas as pd
+
+    from earthpv import capacity_calibration as cc
+    from earthpv.postprocess import MAX_CANDIDATE_M2
+
+    v = rev["verdict"].fillna("")
+    earlier = prior.get("reviewer")  # every sitting's reviewer stays on record
+    block = {
+        "derived": date.today().isoformat(),
+        "reviewer": f"{earlier}; {a.reviewer}" if earlier and a.reviewer not in earlier
+                    else a.reviewer,
+        "review_csv": str(a.review),
+        "population": "model-drawn new leads from min_area_m2 up to max_candidate_m2 with no "
+                      "mapped solar within min_distance_m of them (export.new_lead_mask), inside "
+                      "the atlas's regions and through the lead screens",
+        "pricing": "a pv verdict sets the lead's P(real) to 1 on the ground and to "
+                   "1/rooftop_outline_ratio on a roof (the model's roof outline is about that "
+                   "many times its array), not_pv to 0; its size bin's recall still applies; "
+                   "unsure or blank keeps the bin's P(real)",
+        "rooftop_outline_ratio": float(prior.get("rooftop_outline_ratio")
+                                       or cc.LEAD_ROOF_OUTLINE_RATIO),
+        "min_area_m2": float(a.min_area_m2),
+        "max_candidate_m2": float(MAX_CANDIDATE_M2),
+        "min_distance_m": float(a.min_distance_m),
+        "mapped_reference": str(a.labels),
+        "n_outlines": int(len(rev)),
+        "n_judged": int(v.isin(VERDICTS).sum()),
+        "n_pv": int(v.eq("pv").sum()),
+        "n_not_pv": int(v.eq("not_pv").sum()),
+    }
+    path = cc.default_table_path(a.aoi)
+    table = cc.load_table(path)
+    table[K.table_key] = block
+    cc.write_table(table, path)
+    live = ~rev["candidate_index"].isin(gone["candidate_index"])
+    pv, no = live & v.eq("pv"), live & v.eq("not_pv")
+    roof = (rev["placement"].astype(str).eq("rooftop") if "placement" in rev.columns
+            else pd.Series(False, index=rev.index))
+    credited = (rev.loc[pv & ~roof, "area_m2"].sum()
+                + rev.loc[pv & roof, "area_m2"].sum() / block["rooftop_outline_ratio"])
+    print(f"{block['n_judged']} of {len(rev)} leads judged: {int(pv.sum())} solar "
+          f"({rev.loc[pv, 'area_m2'].sum() / 1e6:.2f} km2 of outline, {credited / 1e6:.2f} km2 "
+          f"credited, roofs at 1/{block['rooftop_outline_ratio']:g}), {int(no.sum())} not solar "
+          f"({rev.loc[no, 'area_m2'].sum() / 1e6:.2f} km2) count nothing -> {path}")
+    if len(gone):
+        print(f"{len(gone)} reviewed leads are mapped since: the map counts those, not the verdict")
+    write_hub()
+    print(f"Next: `earthpv density --aoi {a.aoi} --districts`, then the atlas. `package` drops "
+          "the judged leads from the page.")
+    return 0
+
+
 def _share_row(aoi: str, path: Path) -> dict:
     import pandas as pd
 
     rev = pd.read_csv(path)
     v = rev["verdict"].fillna("")
     left = v.eq("")
+    flag = rev["flag"].fillna("") if "flag" in rev.columns else pd.Series("", index=rev.index)
     return {"aoi": aoi, "n": len(rev), "judged": int((~left).sum()), "pv": int(v.eq("pv").sum()),
             "not_pv": int(v.eq("not_pv").sum()), "left": int(left.sum()),
+            "bright": int(flag.eq("bright_roof").sum()),
             "left_km2": float(rev.loc[left, "area_m2"].sum() / 1e6),
-            "page": (PACKAGES / aoi / "index.html").exists()}
+            "page": (K.packages / aoi / "index.html").exists()}
 
 
 def share_table() -> list[dict]:
-    rows = [_share_row(p.parent.name.removesuffix("_oversize_review"), p)
-            for p in sorted((REPO / "results").glob("*_oversize_review/review.csv"))]
+    rows = [_share_row(p.parent.name.removesuffix(K.suffix), p)
+            for p in sorted((REPO / "results").glob(f"*{K.suffix}/review.csv"))]
     return sorted(rows, key=lambda r: -r["left_km2"])
 
 
 def cmd_status(a) -> int:
     rows = share_table()
     print(f"{'country':14s} {'outlines':>8s} {'judged':>7s} {'solar':>6s} {'not':>5s} "
-          f"{'left':>6s} {'left km2':>9s}  share judged")
+          f"{'bright':>6s} {'left':>6s} {'left km2':>9s}  share judged")
     for r in rows:
         print(f"{r['aoi']:14s} {r['n']:8d} {r['judged']:7d} {r['pv']:6d} {r['not_pv']:5d} "
-              f"{r['left']:6d} {r['left_km2']:9.1f}  {r['judged'] / max(r['n'], 1):.0%}")
+              f"{r['bright']:6d} {r['left']:6d} {r['left_km2']:9.1f}  "
+              f"{r['judged'] / max(r['n'], 1):.0%}")
+    print("bright: not PV on a very bright roof (key 4 on the page), counted inside 'not'")
     print(f"-> {write_hub()}")
     return 0
 
@@ -362,17 +496,51 @@ GUIDE = r"""      <ul>
           dark only in true colour; water is dark in every panel.</li>
         <li><b>Unsure</b>: these four panels cannot settle it. Open the links and decide, or
           leave it unsure: it does not count, and it comes back next time.</li>
+        <li><b>Bright roof</b>: not PV, and the outline sits on very bright roofs (white or
+          light metal, a reflective coating). It counts as Not PV; the label keeps these
+          false alarms apart so they can be studied.</li>
       </ul>
       <p>The composite is the imagery the model read, so it shows parks built after the Esri
         capture: panels on the composite and bare or freshly cleared ground on an older Esri
         image is a park built since. A flat grey block is a cell nobody imaged; a black block,
         dark red in the false colour, is a cell that lost bands. Neither is ground: judge
         those parts on Esri. Keys: <kbd>1</kbd> PV, <kbd>2</kbd> Not PV,
-        <kbd>3</kbd> unsure, <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step, <kbd>n</kbd> note.</p>
+        <kbd>3</kbd> unsure, <kbd>4</kbd> bright roof, <kbd>&larr;</kbd> <kbd>&rarr;</kbd>
+        step, <kbd>n</kbd> note.</p>
       <p>Stop whenever you like: progress stays in this browser, and any export can be
         applied, however partial. An outline left blank or unsure stays out of capacity and
         comes back on the next page. Export, then run
         <code>pixi run blob-review apply --aoi __AOI__ --reviewer "&lt;name&gt;"
+        --verdicts &lt;the export&gt;</code>.</p>"""
+
+GUIDE_LARGE = r"""      <ul>
+        <li><b>PV</b>: solar panels inside or touching the yellow outline, on a roof or on the
+          ground. On Esri, rows of dark blue-grey rectangles in a regular grid, often with a
+          thin gap between rows; on a roof they follow its edges and leave a margin. On the
+          composite, an even dark patch with straight edges, dark purple in the false colour.
+          The outline is the model's and is often larger than the array: judge whether PV is
+          there, not how much of the outline it fills.</li>
+        <li><b>Not PV</b>: something else, typically a dark or blue metal roof, a tar or wet
+          roof, greenhouses or shade netting, solar water heaters (small, scattered, with a
+          tank), a car park, water, a dark field, rock or a shadow, and the imagery is recent
+          enough to show panels if they were there.</li>
+        <li><b>Unsure</b>: these four panels cannot settle it. Open the links and decide, or
+          leave it unsure: it keeps the price it had, and it comes back next time.</li>
+        <li><b>Bright roof</b>: not PV, and the outline sits on a very bright roof (white or
+          light metal, a reflective coating), bright on the composite as well as on Esri. It
+          counts as Not PV; the label keeps these false alarms apart so they can be
+          studied. A bright roof that does carry panels is PV.</li>
+      </ul>
+      <p>These leads already count, each at the share its size class is usually right. Your
+        verdict replaces that share for this lead alone: solar counts it as real (a roof
+        outline at 1/2.5 of its area, since the model draws about 2.5 times the array there),
+        not solar counts it as nothing. The composite is the imagery the model read, so it shows arrays
+        built after the Esri capture. A flat grey block is a cell nobody imaged. Keys:
+        <kbd>1</kbd> PV, <kbd>2</kbd> Not PV, <kbd>3</kbd> unsure, <kbd>4</kbd> bright roof,
+        <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step, <kbd>n</kbd> note.</p>
+      <p>Stop whenever you like: progress stays in this browser, and any export can be
+        applied, however partial. Export, then run
+        <code>pixi run large-review apply --aoi __AOI__ --reviewer "&lt;name&gt;"
         --verdicts &lt;the export&gt;</code>.</p>"""
 
 
@@ -422,7 +590,7 @@ def cmd_package(a) -> int:
     cfg = s.aois[a.aoi]
     origin = _grid_origin(a.aoi, cfg, s)
     epoch = _epoch(a.aoi, cfg)
-    pkg = PACKAGES / a.aoi
+    pkg = K.packages / a.aoi
     (pkg / "crops").mkdir(parents=True, exist_ok=True)
     comp = REPO / f"data/composites/{a.aoi}/composites"
     show = rev["verdict"].fillna("").eq("") | a.include_judged
@@ -430,7 +598,8 @@ def cmd_package(a) -> int:
     for r, g, on_page in zip(rev.itertuples(), geoms, show):
         jpg, meta = pkg / "crops" / f"{r.code}.jpg", pkg / "crops" / f"{r.code}.esri"
         if on_page and (a.force or not jpg.exists() or not meta.exists()):
-            jobs.append((r.code, (g, comp, origin, epoch, jpg, not a.no_esri)))
+            jobs.append((r.code, (g, comp, origin, epoch, jpg, not a.no_esri,
+                                  K.context_min_m, K.detail_m, K.esri_min_m)))
     no_esri = 0
     with ProcessPoolExecutor(max_workers=a.workers) as pool:
         for n, (code, ok, esri_date) in enumerate(pool.map(_render_job, jobs, chunksize=4), 1):
@@ -452,10 +621,11 @@ def cmd_package(a) -> int:
             continue
         w, so, e, n = g.bounds
         p = g.representative_point()
+        size = (f"{r.area_m2:,.0f} m² · {PLACES.get(getattr(r, 'placement', ''), 'placement unknown')}"
+                if K.name == "large" else f"{r.area_m2 / 1e4:,.0f} ha")
         items.append({
             "code": r.code, "img": f"crops/{r.code}.jpg", "date": esri_date,
-            "date_label": (f"{r.area_m2 / 1e4:,.0f} ha · {r.region} · Esri "
-                           f"{esri_date or 'not fetched'}"),
+            "date_label": f"{size} · {r.region} · Esri {esri_date or 'not fetched'}",
             "lon": round(p.x, 6), "lat": round(p.y, 6),
             "bbox": [round(w - 0.002, 6), round(so - 0.002, 6), round(e + 0.002, 6),
                      round(n + 0.002, 6)],
@@ -464,10 +634,12 @@ def cmd_package(a) -> int:
         (pkg / "index.html").unlink(missing_ok=True)
         print(f"every outline of {a.aoi} has a verdict; no page")
     else:
-        page = write_page(pkg / "index.html", f"{a.aoi}_oversize_review", items,
-                          guide=GUIDE.replace("__AOI__", a.aoi), title="Solar farm review",
-                          store=f"{a.aoi}_oversize_review:{_draw_id(rev)}",
-                          export_name=f"{a.aoi}_blob_verdicts.csv", back="../index.html")
+        guide = GUIDE_LARGE if K.name == "large" else GUIDE
+        page = write_page(pkg / "index.html", f"{a.aoi}{K.suffix}", items,
+                          guide=guide.replace("__AOI__", a.aoi), title=K.title,
+                          store=f"{a.aoi}{K.suffix}:{_draw_id(rev)}",
+                          export_name=K.export.format(aoi=a.aoi), back="../index.html",
+                          bright_roof=True)
         print(f"{len(items)} of {len(rev)} outlines on the page -> {page}"
               + (f"; {no_esri} without their Esri panel (`package` retries)" if no_esri else ""))
     if unrendered:
@@ -480,6 +652,8 @@ def cmd_package(a) -> int:
         "review_verdict": rev.verdict, "review_evidence": rev.evidence, "esri_date": rev.esri_date,
         "stratum": rev.stratum, "k": rev.k, "area_ha": (rev.area_m2 / 1e4).round(1),
         "region": rev.region, "candidate_index": rev.candidate_index,
+        **({"placement": rev.placement} if "placement" in rev.columns else {}),
+        **({"review_flag": rev["flag"]} if "flag" in rev.columns else {}),
     }, geometry=geoms, crs="EPSG:4326")
     gj.to_file(a.out / "review.geojson", driver="GeoJSON")
     print(f"JOSM layer {a.out / 'review.geojson'}. Do not upload it: the outlines are the model's.")
@@ -489,8 +663,22 @@ def cmd_package(a) -> int:
 
 HUB_ROW = ('<tr><td>{link}</td><td>{left:,}</td><td>{left_km2:,.1f}</td><td>{judged:,} of {n:,} '
            '({share:.0%})</td><td>{pv:,}</td><td>{not_pv:,}</td></tr>')
+PLACES = {"rooftop": "on a roof", "ground_adjacent": "beside a building",
+          "no_building": "open ground"}
+HUB_INTRO = {
+    "blob": """Very large model outlines, one look each: Sentinel-2 as the model saw it, its false colour,
+and Esri for texture. An outline counts towards capacity only once a person judges it solar
+or it is mapped in OpenStreetMap. Largest first within each country.""",
+    "large": """The model's large leads below the solar farm cap, from 10,000 m&sup2;, on roofs and on the
+ground, one look each: Sentinel-2 as the model saw it, its native pixels, its false colour, and
+Esri for texture. They already count, each at the share its size class is usually right; a
+verdict replaces that share for its own lead (solar: real, a roof outline at 1/2.5 of its area;
+not solar: nothing). Largest first
+within each country. The <a href="../oversize_review/index.html">solar farm review</a> has the
+outlines above the cap.""",
+}
 HUB = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Solar farm review</title>
+<html lang="en"><head><meta charset="utf-8"><title>__TITLE__</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root { color-scheme: light dark; --ink: light-dark(#1d2330, #e6e9ef);
@@ -508,17 +696,15 @@ th:first-child, td:first-child { text-align: left; }
 th { font-size: 13px; color: var(--muted); font-weight: 600; }
 code { font-size: 13px; }
 </style></head><body>
-<h1>Solar farm review</h1>
-<p>Very large model outlines, one look each: Sentinel-2 as the model saw it, its false colour,
-and Esri for texture. An outline counts towards capacity only once a person judges it solar
-or it is mapped in OpenStreetMap. Largest first within each country.</p>
+<h1>__TITLE__</h1>
+<p>__INTRO__</p>
 <table><thead><tr><th>Country</th><th>To judge</th><th>km&sup2; to judge</th><th>Judged</th>
 <th>Solar</th><th>Not solar</th></tr></thead><tbody>
 __ROWS__
 </tbody></table>
 <p>Counts are what <code>apply</code> has recorded. Progress since then is in each page, until
 you export it and run<br>
-<code>pixi run blob-review apply --aoi &lt;country&gt; --reviewer "&lt;name&gt;" --verdicts
+<code>pixi run __TASK__ apply --aoi &lt;country&gt; --reviewer "&lt;name&gt;" --verdicts
 &lt;the export&gt;</code><br>
 then <code>earthpv density --aoi &lt;country&gt; --districts</code> and the atlas.</p>
 </body></html>
@@ -526,7 +712,8 @@ then <code>earthpv density --aoi &lt;country&gt; --districts</code> and the atla
 
 
 def write_hub() -> Path:
-    """`data/oversize_review/index.html`: every country's page and what `apply` has recorded."""
+    """`<packages>/index.html` (`data/oversize_review/` or `data/large_review/`): every country's
+    page and what `apply` has recorded."""
     from release_leads import country_name
 
     rows = []
@@ -534,9 +721,10 @@ def write_hub() -> Path:
         name = country_name(r["aoi"])
         link = f'<a href="{r["aoi"]}/index.html">{name}</a>' if r["page"] else name
         rows.append(HUB_ROW.format(link=link, share=r["judged"] / max(r["n"], 1), **r))
-    PACKAGES.mkdir(parents=True, exist_ok=True)
-    out = PACKAGES / "index.html"
-    out.write_text(HUB.replace("__ROWS__", "\n".join(rows)))
+    K.packages.mkdir(parents=True, exist_ok=True)
+    out = K.packages / "index.html"
+    out.write_text(HUB.replace("__TITLE__", K.title).replace("__INTRO__", HUB_INTRO[K.name])
+                   .replace("__TASK__", K.task).replace("__ROWS__", "\n".join(rows)))
     return out
 
 
@@ -546,10 +734,12 @@ def _month(day: str) -> str:
     return _d.fromisoformat(day).strftime("%b %Y")
 
 
-def _render(geom, comp_dir: Path, origin, epoch: str, out: Path,
-            esri: bool = True) -> tuple[bool, str | None]:
+def _render(geom, comp_dir: Path, origin, epoch: str, out: Path, esri: bool = True,
+            context_min_m: float = CONTEXT_MIN_M, detail_m: float = DETAIL_M,
+            esri_min_m: float | None = None) -> tuple[bool, str | None]:
     """One outline's four panels as a 2 x 2 JPEG. Returns whether the panels are as asked (an
-    Esri fetch that failed is not, and wants another try) and the Esri capture date."""
+    Esri fetch that failed is not, and wants another try) and the Esri capture date. The
+    widths are the review kind's (`Kind`); `esri_min_m` None gives Esri the composite's."""
     from PIL import Image
     from pyproj import Transformer
 
@@ -558,25 +748,28 @@ def _render(geom, comp_dir: Path, origin, epoch: str, out: Path,
     to_utm = Transformer.from_crs("EPSG:4326", utm, always_xy=True)
     gu = _transform(geom, to_utm)
     x0, y0, x1, y1 = gu.bounds
-    side = max(CONTEXT_MIN_M, 1.25 * max(x1 - x0, y1 - y0))
+    extent = max(x1 - x0, y1 - y0)
+    side = max(context_min_m, 1.25 * extent)
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     rx, ry = to_utm.transform(rep.x, rep.y)
     bands = sorted({b for b, _ in TRUE_RGB + FALSE_RGB})
     ctx, ctx_tf = _s2_window(comp_dir, origin, utm, cx, cy, side, bands)
-    det, det_tf = _s2_window(comp_dir, origin, utm, rx, ry, DETAIL_M, bands)
+    det, det_tf = _s2_window(comp_dir, origin, utm, rx, ry, detail_m, bands)
     km = f"{side / 1000:.1f} km across"
     panels = [
         _caption(_outline(_rgb(ctx, bands, TRUE_RGB), gu, ctx_tf), f"Sentinel-2 {epoch}, {km}"),
         _caption(_outline(_rgb(det, bands, TRUE_RGB), gu, det_tf),
-                 f"10 m pixels, {DETAIL_M / 1000:.1f} km across"),
+                 f"10 m pixels, {detail_m / 1000:.1f} km across"),
         _caption(_outline(_rgb(ctx, bands, FALSE_RGB), gu, ctx_tf),
                  "false colour: SWIR, NIR, red"),
     ]
     esri_date, ok = None, True
     if esri:
-        im, esri_date = _esri(geom, rep, side)
+        esri_side = side if esri_min_m is None else max(esri_min_m, 1.6 * extent)
+        im, esri_date = _esri(geom, rep, esri_side)
         ok = im is not None
-        panels.append(_caption(im, f"Esri World Imagery {esri_date or '(no capture date)'}"))
+        width = "" if esri_min_m is None else f", {esri_side:,.0f} m across"
+        panels.append(_caption(im, f"Esri World Imagery {esri_date or '(no capture date)'}{width}"))
     if len(panels) < 4 or panels[3] is None:
         panels = panels[:3] + [_caption(Image.new("RGB", (PANEL, PANEL), (40, 40, 40)),
                                         "Esri not fetched")]
@@ -662,7 +855,12 @@ def _caption(im, text: str):
 def _esri(geom, rep, side: float):
     """Esri World Imagery over the context window (Web Mercator, so the crop is square), the
     outline drawn on it, and the capture date at the outline's centre (the calibration
-    sampler's own query). (None, None) on any network failure."""
+    sampler's own query). (None, None) on any network failure.
+
+    Where Esri holds nothing as fine as the window asks for (most of Namibia stops at zoom 17,
+    about 1.2 m), `export` answers HTTP 500, so a failed request is asked again at half and
+    then a quarter of the pixels over the same window and scaled up: the large installation
+    review's 250 m windows ask for 0.5 m."""
     import io
     import math
     import urllib.request
@@ -678,14 +876,21 @@ def _esri(geom, rep, side: float):
     half = side / math.cos(math.radians(rep.y)) / 2
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     bbox = (cx - half, cy - half, cx + half, cy + half)
-    url = ("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
-           f"?bbox={','.join(f'{v:.2f}' for v in bbox)}&bboxSR=3857&imageSR=3857"
-           f"&size={PANEL},{PANEL}&format=jpg&f=image")
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "earthpv-oversize-review"})
-        im = Image.open(io.BytesIO(urllib.request.urlopen(req, timeout=60).read())).convert("RGB")
-    except Exception:  # noqa: BLE001 -- the panel says it is missing; the review goes on
+    im = None
+    for px in (PANEL, PANEL // 2, PANEL // 4):
+        url = ("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/"
+               f"export?bbox={','.join(f'{v:.2f}' for v in bbox)}&bboxSR=3857&imageSR=3857"
+               f"&size={px},{px}&format=jpg&f=image")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "earthpv-oversize-review"})
+            im = Image.open(io.BytesIO(urllib.request.urlopen(req, timeout=60).read())).convert("RGB")
+            break
+        except Exception:  # noqa: BLE001 -- coarser next; the panel says it is missing at last
+            continue
+    if im is None:
         return None, None
+    if im.size != (PANEL, PANEL):
+        im = im.resize((PANEL, PANEL), Image.Resampling.BICUBIC)
     d = ImageDraw.Draw(im)
     scale = PANEL / (2 * half)
     for part in getattr(gm, "geoms", [gm]):
@@ -708,7 +913,12 @@ def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: s
     missing = sorted(set(rev.code[(v.verdict.to_numpy() == "") & ~queue & (prev0 == "")]))
     if missing:
         raise SystemExit(f"{len(missing)} outlines have no verdict in {verdicts}: {missing[:8]}")
-    page = v["verdict"].map({"pv": "pv", "no_pv": "not_pv", "unsure": "unsure", "": ""})
+    unknown = sorted(set(v["verdict"]) - set(PAGE_VERDICTS))
+    if unknown:
+        raise SystemExit(f"{verdicts}: unknown verdicts {unknown}; the page writes "
+                         f"{sorted(k for k in PAGE_VERDICTS if k)}")
+    page = v["verdict"].map({k: m[0] for k, m in PAGE_VERDICTS.items()})
+    flag = v["verdict"].map({k: m[1] for k, m in PAGE_VERDICTS.items()}).to_numpy()
     # No verdict on the page for an outline judged before: keep the earlier one.
     page = pd.Series(np.where(page.to_numpy() == "", prev0, page.to_numpy()), index=page.index)
     is_unsure = (page == "unsure").to_numpy()
@@ -742,6 +952,13 @@ def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: s
     rev["verdict"] = page
     note = v["note"].to_numpy()
     fresh = v["verdict"].to_numpy() != ""
+    # A fresh verdict sets the flag (or clears one an earlier sitting set); none keeps it.
+    old_flag = (rev["flag"].astype(object).fillna("").to_numpy() if "flag" in rev
+                else np.full(len(rev), "", dtype=object))
+    rev["flag"] = np.where(fresh, flag, old_flag)
+    if (flag == "bright_roof").any():
+        print(f"{int((flag == 'bright_roof').sum())} outlines judged not PV on a very bright "
+              "roof: priced as not_pv, flagged bright_roof in review.csv")
     # A column of blanks reads back as floats.
     old = (rev["evidence"].astype(object).fillna("").to_numpy() if "evidence" in rev
            else [""] * len(rev))
@@ -755,7 +972,11 @@ def _merge_page_verdicts(rev, verdicts: Path, unsure_as: str | None, reviewer: s
 
 
 def main() -> int:
+    global K
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--kind", choices=sorted(KINDS), default="blob",
+                    help="blob: outlines above the cap (the solar farm review); large: leads "
+                         "from --min-area-m2 up to the cap (the large installation review)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("draw", "package", "apply"):
         p = sub.add_parser(name)
@@ -764,6 +985,8 @@ def main() -> int:
                        help="the mapped reference (default: the published run's own, run_source)")
         p.add_argument("--min-distance-m", type=float, default=100.0)
         p.add_argument("--seed", type=int, default=20261028)
+        p.add_argument("--min-area-m2", type=float, default=None,
+                       help=f"--kind large: the smallest lead drawn (default {LARGE_MIN_M2:,.0f})")
     sub.add_parser("status", help="every country's verdicts; refreshes the index page")
     d = sub.choices["draw"]
     d.add_argument("--census-n", type=int, default=0,
@@ -791,13 +1014,18 @@ def main() -> int:
                    help="keep a region's sample rows apart in the measured share; a record only")
     p.add_argument("--reviewer", required=True)
     a = ap.parse_args()
+    K = KINDS[a.kind]
     if a.cmd == "status":
         return cmd_status(a)
+    if K.name == "large":
+        a.min_area_m2 = LARGE_MIN_M2 if a.min_area_m2 is None else a.min_area_m2
+    elif a.min_area_m2 is not None:
+        raise SystemExit("--min-area-m2 belongs to --kind large; the blob review starts at the cap")
     a.labels = a.labels or Path(run_source(a.aoi)["osm"])
     if a.cmd in ("draw", "package"):
-        a.out = a.out or REPO / "results" / f"{a.aoi}_oversize_review"
+        a.out = a.out or REPO / "results" / f"{a.aoi}{K.suffix}"
         return cmd_draw(a) if a.cmd == "draw" else cmd_package(a)
-    a.review = a.review or Path(f"results/{a.aoi}_oversize_review/review.csv")
+    a.review = a.review or Path(f"results/{a.aoi}{K.suffix}/review.csv")
     return cmd_apply(a)
 
 

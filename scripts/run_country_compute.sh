@@ -230,9 +230,19 @@ step export       $PY -m earthpv.cli export --aoi $AOI --exclude-mapped --min-di
 # largest first, and write its on-disk review package, Sentinel-2 composite and Esri panels plus
 # a review page (scripts/oversize_review.py; data/oversize_review/index.html lists every country).
 # Nothing counts until a person judges the page and runs `oversize_review.py apply`, so the atlas
-# below keeps the cap; a failure here (no outlines, no network) never stops the chain.
+# below keeps the cap; a failure here (no outlines, no network) never stops the chain. Each draw
+# is tried twice, two minutes apart: on 2026-11-09 a DNS outage left Belgium with no page while
+# the step still read done.
 step oversize_review bash -c "$PY scripts/oversize_review.py draw --aoi $AOI --labels $LABELS \
-                     || echo 'oversize review package failed (non-fatal)'"
+                     || { sleep 120; $PY scripts/oversize_review.py draw --aoi $AOI --labels $LABELS; } \
+                     || echo 'REVIEW PAGE MISSING: oversize review package failed (non-fatal); re-run pixi run blob-review draw --aoi $AOI'"
+# The same review for the large leads BELOW the cap, 10,000 m2 up to it, on roofs and on the
+# ground (owner, 2026-11-10; scripts/oversize_review.py --kind large, data/large_review/index.html).
+# These already count, each at its size bin's P(real); a person's verdict replaces that price
+# for its own lead once `apply` has recorded it. Never fatal either.
+step large_review bash -c "$PY scripts/oversize_review.py --kind large draw --aoi $AOI --labels $LABELS \
+                     || { sleep 120; $PY scripts/oversize_review.py --kind large draw --aoi $AOI --labels $LABELS; } \
+                     || echo 'REVIEW PAGE MISSING: large installation review package failed (non-fatal); re-run pixi run large-review draw --aoi $AOI'"
 # Ranking of large OSM power=plant perimeters by how much of each the model lights up.
 # Review artefacts ONLY; an exclusion list is hand-audited and never auto-applied.
 step screen       $PY scripts/screen_osm_ground_perimeters.py --aoi $AOI --labels "$LABELS" \

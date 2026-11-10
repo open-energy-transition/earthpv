@@ -366,6 +366,21 @@ where German OSM is too sparse to swap outlines**. **Next step:** keep a pre-sub
 candidate file for Germany, run the script there, and if the ratio holds, price
 `p_unmapped`-credited candidates at outline area divided by the measured ratio.
 
+**It now also reaches every lead a person judges solar (2026-11-10).** The large installation
+review (`pixi run large-review`, leads from 10,000 m&sup2; up to the cap) prices a judged
+lead by its verdict. **Owner decision, 2026-11-10:** a roof lead judged solar counts 1/2.5 of
+its outline (`capacity_calibration.LEAD_ROOF_OUTLINE_RATIO`, recorded per review as
+`rooftop_outline_ratio`), a ground lead whole, as judged parks do. The ratio is Pakistan's
+(roof outlines of 5k-50k m&sup2; 2.52 times the mapped array, above 50k 2.54); the owner's
+first verdicts make it matter: 1,381 leads judged solar over seven countries, 92-99% of the
+large roof leads in Belgium, the Netherlands, Portugal and South Africa. Whole outlines would
+have added about 2,989 MWp of model capacity, 1/2.5 about 1,150. **Next step:** measure the
+ratio where the verdicts are, by re-tracing the model's outline of mapped large roof arrays
+(the candidate files keep only the swapped-in OSM outline) or, in Germany, as registered kWp
+per m&sup2; of model outline from MaStR; where mappers outline whole roofs, the OSM route
+reads low. Pakistan's ground outlines of 5k-50k m&sup2; measure 2.56 times the mapped site,
+so whole ground leads lean high.
+
 ### 19. Egypt: retrain with the pool and wastewater hard negatives (2026-10-29)
 
 The owner's review found many of Egypt's leads on swimming pools and on wastewater
