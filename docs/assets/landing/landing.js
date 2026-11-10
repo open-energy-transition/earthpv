@@ -743,10 +743,16 @@
     function placeLabels() {
       var narrow = window.innerWidth <= NARROW_W || window.innerHeight <= 620;
       el('readout-share').textContent = (share * 100).toFixed(1) + '%';
+      var best = el('readout-best'), readoutY = 0;
+      best.textContent = '';
+      best.appendChild(document.createTextNode((earth.best_mwp / 1000).toLocaleString('en-US',
+        { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' GW best estimate'));
+      best.appendChild(document.createElement('br'));
+      best.appendChild(document.createTextNode('in ' + earth.atlases.length + ' countries'));
       if (!narrow) {
         var a = TOP + share * TAU + 0.05;
         readout.style.left = (cx + Math.cos(a) * (ringR + 34 * S)) + 'px';
-        readout.style.top = (cy + Math.sin(a) * (ringR + 34 * S) - 26) + 'px';
+        readoutY = cy + Math.sin(a) * (ringR + 34 * S);
         var b = TOP - 0.05;
         worldLabel.style.left = (cx + Math.cos(b) * (ringR + 18 * S)) + 'px';
         worldLabel.style.top = (cy + Math.sin(b) * (ringR + 18 * S) - 10) + 'px';
@@ -762,6 +768,8 @@
       worldLabel.appendChild(src);
       worldLabel.hidden = narrow;
       readout.hidden = false;
+      /* The share centred on the stroke's end: the lines beside it are taller than it is. */
+      if (!narrow) readout.style.top = (readoutY - readout.offsetHeight / 2) + 'px';
     }
 
     function resize() {
@@ -773,12 +781,14 @@
         c.height = Math.round(H * DPR);
       });
       var narrow = window.innerWidth <= NARROW_W || window.innerHeight <= 620;
-      var room = narrow ? Math.min(W / 2 - 10, H / 2 - 24) : Math.min(W / 2 - 40, H / 2 - 34);
+      /* Stacked, the percentage and its two lines of figures sit above the ring: landing.css
+         gives the stage 40px for those lines, and the globe moves down by as much. */
+      var room = narrow ? Math.min(W / 2 - 10, H / 2 - 44) : Math.min(W / 2 - 40, H / 2 - 34);
       ringR = room - (narrow ? 26 : 30);
       R = ringR / (narrow ? 1.1 : 1.095);
       S = R / 300;
       cx = W / 2;
-      cy = H / 2 + (narrow ? 14 : 12);   // stacked, the percentage sits above the ring
+      cy = H / 2 + (narrow ? 34 : 12);
       projection.translate([cx, cy]).scale(R);
       rasterSetup();
       brushSetup();

@@ -2,9 +2,10 @@
   The site root: Electrify Earth (docs/index.md, `template: landing.html`).
 
   A standalone page rather than an extension of Material's base.html: it is one poster-like
-  screen with no navigation, search or footer. Its figures and country links are
-  `page.content`, which scripts/build_landing_page.py writes into docs/index.md from the
-  published atlases, so they also show when the scripts do not run.
+  screen with no navigation, search or footer. Its country links are `page.content`, which
+  scripts/build_landing_page.py writes into docs/index.md from the published atlases, so they
+  also show when the scripts do not run. The figures sit in the readout beside the globe,
+  which landing.js fills from earth.json.
 -#}
 <!doctype html>
 <html lang="en">
@@ -70,7 +71,7 @@
 
     <p class="readout" id="readout" hidden>
       <b id="readout-share"></b>
-      <span>of the world's solar<br>mapped so far</span>
+      <span>of the world's solar<br>mapped so far<span class="readout__best" id="readout-best"></span></span>
     </p>
     <p class="world-label" id="world-label" hidden></p>
 
