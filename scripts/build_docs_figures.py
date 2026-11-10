@@ -2800,6 +2800,12 @@ INTERACTIVE = [
     # Belgium: segmentation-only, national, on its own LOCALIZED checkpoint v31_combined_belgium
     # (it beat v5 on the held-out cells). docs/results/belgium.md explains.
     ("results/belgium_pv_evidence_atlas.html", "belgium_pv_evidence_atlas.html"),
+    # Portugal: segmentation-only, national with the Azores and Madeira, on its own LOCALIZED
+    # checkpoint v30_combined_portugal (it beat v5 on the held-out cells).
+    ("results/portugal_pv_evidence_atlas.html", "portugal_pv_evidence_atlas.html"),
+    # Netherlands: segmentation-only, national, on the GENERAL checkpoint v5_combined_france at
+    # threshold 0.98 (the localized v32 lost on the held-out province). docs/results/ explains.
+    ("results/netherlands_pv_evidence_atlas.html", "netherlands_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;

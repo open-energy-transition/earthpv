@@ -1084,6 +1084,22 @@ GEOBOUNDARIES_API = "https://www.geoboundaries.org/api/current/gbOpen/{iso3}/{le
 GEOBOUNDARIES_CACHE = "data/geoboundaries/gb_{iso3}_{level}.geojson"
 
 
+def _repair_mojibake(name: str | None) -> str | None:
+    """Undo UTF-8 read as Latin-1 in a boundary name ("SANTAR\u00c3\\x89M" becomes "SANTAR\u00c9M").
+
+    geoBoundaries' Portuguese ADM1 has 6 of its 20 names like this. Left alone they reach the
+    atlas garbled, and the control character they carry is not allowed in YAML, where
+    `pick_val_region.py` records region names. A correctly encoded accented name does not
+    decode as UTF-8 and comes back unchanged.
+    """
+    if name is None:
+        return None
+    try:
+        return name.encode("latin-1").decode("utf-8")
+    except UnicodeError:
+        return name
+
+
 def fetch_geoboundaries(iso3: str, level: str) -> gpd.GeoDataFrame | None:
     """Admin polygons from geoBoundaries (open data, CC-BY): level 'ADM1' = provinces,
     'ADM2' = districts.
@@ -1137,7 +1153,7 @@ def fetch_geoboundaries(iso3: str, level: str) -> gpd.GeoDataFrame | None:
         return None
     rows = [{
         "id": f["properties"].get("shapeID"),
-        "name": f["properties"].get("shapeName"),
+        "name": _repair_mojibake(f["properties"].get("shapeName")),
         "country": f["properties"].get("shapeGroup", iso3),
         "geometry": shapely_shape(f["geometry"]),
     } for f in feats]

@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and sixteen countries have a published evidence atlas (see "Country
+country's own OSM labels, and eighteen countries have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -116,7 +116,9 @@ priced far too low: their bins put P(real) at 0.00-0.07, and the owner found 92-
 Belgium, the Netherlands, Portugal and South Africa. Rebuilt and published the same day
 (`/home/tobi/earthpv_data/lead_review_20261110/rebuild.sh`, density backups in
 `lead_review_PRE_20261110/`; controls with the verdicts hidden reproduced all seven pages
-exactly); the Netherlands' and Portugal's pages are not published yet. Best: Belgium 639.3 -> 970.8, Netherlands 3,927.2 -> 4,567.3, Portugal
+exactly); the Netherlands' and Portugal's first pages went out with their verdicts, also
+2026-11-10, and the owner judged Namibia's 105 the same day (10 solar, 95 not, 64 of them
+Cuvelai pans; Best 530.2 -> 512.3). Best: Belgium 639.3 -> 970.8, Netherlands 3,927.2 -> 4,567.3, Portugal
 6,147.9 -> 6,193.6, Yemen 586.2 -> 623.6, Egypt 3,809.9 -> 3,848.7, Nigeria 126.9 -> 157.3,
 South Africa 9,839.0 -> 10,075.9; Verified unchanged. Esri's `export`
 answers HTTP 500 for detail finer than it holds (Namibia, Zambia, Yemen: zoom 17), so `_esri`
@@ -1332,10 +1334,12 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Poland | `v15_combined_poland` | 6,604.1 / 9,110.2 | 113 judged parks count (+1,329 MWp) |
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 531.7 | |
 | Nigeria | `v5_combined_france` ep 25 | 90.2 / 157.3 | name `v8` is taken by `v8_combined_nigeria` |
-| Namibia | `v17_combined_namibia` | 464.3 / 530.2 | Cuvelai pans in Best; one calibration box |
+| Namibia | `v17_combined_namibia` | 464.3 / 512.3 | Cuvelai pans partly in Best (those of 1 ha and up judged out 2026-11-10); one calibration box |
 | Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp); 1 CSP plant 5.8 MW |
 | Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | clear win over v5 on the holdout; floor of 1 building per cell; 43 CSP plants 2,383 MW; 998 blobs not judged yet |
 | Belgium | `v31_combined_belgium` ep 22 | 502.3 / 970.8 | recall tie with v5, wins on IoU (thin holdout: Brussels, 2 cells); Best is 8.0% of Elia's 12,128 MW, 224 judged large leads counting (639.3 before, 2026-11-10); published before owner review; leads, calibration areas and the 4-outline farm review still owed |
+| Portugal | `v30_combined_portugal` ep 19 | 5,830.5 / 6,193.6 | clear win over v5 on the Lisbon holdout; Azores and Madeira in; Best is 84% of DGEG's 7,396 MW; 153 judged large leads count; 110 blobs not judged yet; Évora molten-salt CSP 3.4 MW |
+| Netherlands | `v5_combined_france` ep 25 at 0.98 | 3,708.6 / 4,567.3 | v32 lost the Zuid-Holland holdout on recall; Best is 16% of CBS's 29,426.5 MWp; 543 judged large leads count; 7 blobs not judged yet |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1382,7 +1386,8 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   region outlines to the AOI bbox.
 - **Namibia** (published 2026-10-29): v17 beat v5 on the Erongo holdout (recall >= 500 m2
   0.952 against 0.766), but **reads the Cuvelai basin's seasonal pans (oshanas) as ground
-  PV**: about 54 of the 66 MWp Best adds over Verified, 10 of 10 sampled on Esri were pans;
+  PV**: about 54 of the 66 MWp Best adds over Verified (31 of 48 since the owner judged the
+  leads of 1 ha and up, 2026-11-10), 10 of 10 sampled on Esri were pans;
   priced through the >50k m2 ground bin (21 of 101 mapped). No filter yet; the page says so.
   geoBoundaries NAM ADM2 names are shuffled (ADM1 is right; `propose_calibration_candidates.py`
   names Namibian boxes by region), and Esri serves most of Namibia only to zoom 17, so one
@@ -1408,6 +1413,15 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   look); the page says so. 998 blobs (324.4 km2) await the review and none counts. REE is
   national only on the page: its capacity API returned 500s and its regional notes lack totals
   for the large regions.
+- **Portugal** (published 2026-11-10): geoBoundaries PRT ADM1 garbles 6 of its 20 names
+  (UTF-8 read as Latin-1, with a control byte YAML refuses); `density._repair_mojibake` fixes
+  them on read, and changes no other cached boundary. DGEG's regions are NUTS II, which the
+  districts do not nest in, so the page compares the national figure only.
+- **Netherlands** (published 2026-11-10): ships v5 at threshold 0.98, the only threshold where
+  v5 reaches v32's precision (`compare_local_vs_v5.py`); recall is not corrected, so arrays
+  that never reach 0.98 are missing. VIDA has holes here too: 2.87 M of the 6.96 M footprints
+  are OSM fill (`scripts/fill_vida_from_osm.py`). Ember is not a ceiling (226.7 GW imported,
+  most passed on). Zoneiland (Almere) counts 0.5 MW as CSP from its tags, unchecked.
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

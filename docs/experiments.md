@@ -790,7 +790,11 @@ and 205 of 224 in South Africa; off roofs far fewer were solar (Nigeria 16 of 31
 whole (open question 17), which adds about 1,150 MWp of model capacity over the seven against
 2,989 for whole outlines. Both pages also gained a fourth verdict, "Bright roof" (not PV, kept
 apart for study). The bins below 10,000 m<sup>2</sup> are priced the same way and were not
-reviewed.
+reviewed. Five of the seven were republished the same day; the Netherlands (3,927.2 to
+4,567.3 MWp) and Portugal (6,147.9 to 6,193.6) were first published with their verdicts.
+**Namibia's 105 followed the same afternoon**: 10 solar and 95 not, 64 of those the Cuvelai
+pans the model reads as ground PV, so Best fell from 530.2 to 512.3 MWp, the first country
+the review lowered.
 
 **How much of a lead file to check** (`scripts/lead_share.py`, `results/lead_share/`). Where a
 reference exists, the real installations sit at the top of the ranked file: the top third

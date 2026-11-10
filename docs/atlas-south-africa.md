@@ -18,8 +18,10 @@ hide:
   <a href="../atlas-india/">India</a>
   <a href="../atlas-morocco/">Morocco</a>
   <a href="../atlas-namibia/">Namibia</a>
+  <a href="../atlas-netherlands/">Netherlands</a>
   <a href="../atlas-nigeria/">Nigeria</a>
   <a href="../atlas-poland/">Poland</a>
+  <a href="../atlas-portugal/">Portugal</a>
   <span aria-current="page">South Africa</span>
   <a href="../atlas-spain/">Spain</a>
   <a href="../atlas-turkiye/">Turkey</a>

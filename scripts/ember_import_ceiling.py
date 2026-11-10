@@ -53,6 +53,10 @@ NOT_A_CEILING = {
     # Installed ~21.8 GW by Feb 2025 against 15.3 GW of direct imports from China by then.
     "poland": "much of Poland's Chinese supply arrives through other EU countries, and its "
               "installed fleet already exceeded its direct imports from China in early 2025",
+    # Ember, 2017-01..2026-08: 226.7 GW of panels against 29.4 GWp installed (CBS, end 2025).
+    "netherlands": "the Netherlands is the EU's main port of entry for Chinese panels: since "
+                   "2017 it has imported nearly eight times its installed fleet, most of it "
+                   "passed on to other countries",
     # Ember, 2017-01..2026-08: 36.1 GW of cells from China against 6.2 GW of panels.
     "turkiye": "Turkey assembles most of its own panels: since 2017 China has shipped it about "
                "six times as much capacity in solar cells as in finished panels",

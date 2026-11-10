@@ -69,6 +69,61 @@ PUBLISHED: dict[str, list[dict]] = {
             "Brussels Hoofdstedelijk": 331.4,
         },
     }],
+    "netherlands": [{
+        "id": "cbs",
+        "name": "CBS",
+        "title": "Zonnestroom; vermogen en vermogensklasse, bedrijven en woningen, regio (85005NED)",
+        "publisher": "Centraal Bureau voor de Statistiek",
+        "kind": "statistics",
+        "url": "https://www.cbs.nl/nl-nl/cijfers/detail/85005NED",
+        "as_of": "2025-12-31",
+        # `OpgesteldVermogenVanZonnepanelen` for all sectors and dwellings (E007161), 2025,
+        # status "nader voorlopig", from CBS's OData API on 2026-11-10 (table modified
+        # 2026-06-12); the latest year, nine months before the imagery window ends. Of the
+        # national figure 6,222.2 MWp is large ground-mounted, 10,564.4 large rooftop and
+        # 12,639.9 small (up to 15 kWp). 445.9 MWp has no province, so the twelve sum to
+        # 28,980.6.
+        "mw": 29426.5,
+        "scope": "Installed panel (DC) capacity at the end of 2025 from the statistics office, "
+                 "provisional: every installation, household rooftops included. 12.6 GWp of it "
+                 "is systems of 15 kWp or less and 6.2 GWp large ground-mounted; 446 MWp is "
+                 "not assigned to a province.",
+        "regions": {
+            "Groningen": 1984.0,
+            "Fryslân": 1470.7,
+            "Drenthe": 1816.1,
+            "Overijssel": 2395.5,
+            "Flevoland": 1350.2,
+            "Gelderland": 3918.7,
+            "Utrecht": 1576.9,
+            "Noord-Holland": 2662.0,
+            "Zuid-Holland": 3464.7,
+            "Zeeland": 1121.1,
+            "Noord-Brabant": 4998.1,
+            "Limburg": 2222.6,
+        },
+    }],
+    "portugal": [{
+        "id": "dgeg",
+        "name": "DGEG",
+        "title": "Estatísticas rápidas das renováveis, n.º 262, setembro de 2026",
+        "publisher": "Direção-Geral de Energia e Geologia",
+        "kind": "statistics",
+        "url": "https://www.dgeg.gov.pt/pt/estatistica/energia/publicacoes/"
+               "estatisticas-rapidas-das-renovaveis/",
+        "as_of": "2026-09-30",
+        # "Potência instalada", Fotovoltaica, column 2026 (to September, provisional), in the
+        # bulletin's workbook dgeg-arr-q-2026-09.xlsx, downloaded 2026-11-10: 3,936 MW
+        # conventional, 2,626 self-consumption (UPAC), 649 small production (UPP), 167
+        # micro/mini and 18 concentrating. Its regions are NUTS II, which the districts on
+        # this page do not nest in, so no regions.
+        "mw": 7396.0,
+        "scope": "Installed solar PV at the end of September 2026, the last month of the "
+                 "imagery window, from the energy directorate's monthly renewables bulletin "
+                 "(provisional): power plants, 2.6 GW of self-consumption units, small "
+                 "production units and micro and mini generation. Given in MW, without saying "
+                 "whether panel (DC) or inverter (AC) capacity.",
+    }],
     "spain": [{
         "id": "ree",
         "name": "REE",

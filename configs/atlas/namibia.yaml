@@ -47,9 +47,11 @@ confidence:
       mistake for panels, and with them the occasional real park that is not yet in
       OpenStreetMap. Mapping such a park brings it into the verified layer.
     - >-
-      <b>Seasonal pans in the north are counted as solar parks.</b> In the Cuvelai basin
-      (Omusati, Ohangwena, Oshana and Oshikoto) the model reads the flat, bright floors and
-      standing water of oshanas as ground-mounted panels. Satellite imagery of the largest
-      such detections shows pans, not panels, so most of the satellite-detected capacity in
-      those four regions is not real. No filter removes them yet; the Verified figure, which
+      <b>Seasonal pans in the north are still partly counted as solar parks.</b> In the
+      Cuvelai basin (Omusati, Ohangwena, Oshana and Oshikoto) the model reads the flat,
+      bright floors and standing water of oshanas as ground-mounted panels. A person has
+      judged every model outline there of one hectare and up on imagery, and the pans among
+      them no longer count; smaller outlines on pans still reach Best at the share their size
+      class usually turns out real, so much of the satellite-detected capacity left in those
+      four regions is not real either. No filter removes them yet; the Verified figure, which
       counts only mapped installations, is not affected.

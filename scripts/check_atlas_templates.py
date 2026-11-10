@@ -100,6 +100,8 @@ PUBLISHED = {
     "turkiye_pv_evidence_atlas.html": ("turkiye", "Turkey"),
     "spain_pv_evidence_atlas.html": ("spain", "Spain"),
     "belgium_pv_evidence_atlas.html": ("belgium", "Belgium"),
+    "portugal_pv_evidence_atlas.html": ("portugal", "Portugal"),
+    "netherlands_pv_evidence_atlas.html": ("netherlands", "Netherlands"),
 }
 
 

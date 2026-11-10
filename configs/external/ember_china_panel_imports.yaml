@@ -53,6 +53,14 @@ aois:
     to: 2026-08
     mwp: 1498.0
     ceiling: true
+  netherlands:
+    ember_area: Netherlands
+    from: 2017-01
+    to: 2026-08
+    mwp: 226693.4
+    ceiling: false
+    why_not: 'the Netherlands is the EU''s main port of entry for Chinese panels: since 2017 it has imported
+      nearly eight times its installed fleet, most of it passed on to other countries'
   nigeria:
     ember_area: Nigeria
     from: 2017-01
@@ -73,6 +81,12 @@ aois:
     ceiling: false
     why_not: much of Poland's Chinese supply arrives through other EU countries, and its installed fleet
       already exceeded its direct imports from China in early 2025
+  portugal:
+    ember_area: Portugal
+    from: 2017-02
+    to: 2026-08
+    mwp: 21565.7
+    ceiling: true
   south_africa:
     ember_area: South Africa
     from: 2017-01

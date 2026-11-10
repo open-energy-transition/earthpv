@@ -750,6 +750,31 @@ aois:
 
   # Added 2026-11-07 (owner request) with Portugal, Belgium, the Netherlands, Luxembourg
   # and Italy: the same localized recipe, window and building floor as the standard
+  # country run. Includes the Azores and Madeira, as Spain includes the Canaries.
+  portugal:
+    bbox: [-31.4, 30.0, -6.1, 42.2]
+    division: { name: Portugal, country: PT, subtype: country, iso3: PRT }
+    # On the global 0.1 degree lattice (earthpv.global_grid), so this country's cells are
+    # global cells and its atlas combines with its neighbours' without re-binning. Never
+    # change it once compose has run: it names every cell.
+    grid_origin: [-31.4, 30.0]
+    # May to September 2026, Spain's window, so the six countries share one imagery epoch.
+    compose_window: ["2026-05-01", "2026-09-30"]
+    cell_selection: duckdb
+    # Filled by scripts/pick_val_region.py --write, which only writes into an empty list.
+    # Val holdout = LISBOA (geoBoundaries ADM1), 28 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 125 of
+    # 1255 dissolved >= 400 m2 positives (10.0%); the largest
+    # region (SANTARÉM, 218) is never the holdout.
+    val_tiles: [
+      "0218_0087", "0218_0088", "0219_0087", "0219_0088", "0219_0089", "0219_0090", "0219_0091", "0220_0087",
+      "0220_0088", "0220_0089", "0220_0090", "0220_0091", "0220_0092", "0221_0087", "0221_0088", "0221_0089",
+      "0221_0090", "0221_0091", "0222_0088", "0222_0089", "0222_0090", "0222_0091", "0222_0092", "0223_0088",
+      "0223_0089", "0223_0090", "0223_0091", "0224_0090",
+    ]
+
+  # Added 2026-11-07 (owner request) with Portugal, Belgium, the Netherlands, Luxembourg
+  # and Italy: the same localized recipe, window and building floor as the standard
   # country run.
   belgium:
     bbox: [2.5, 49.4, 6.5, 51.6]
@@ -769,6 +794,34 @@ aois:
     # region (Vlaams Gewest, 706) is never the holdout.
     val_tiles: [
       "0018_0014", "0019_0014",
+    ]
+
+  # Added 2026-11-07 (owner request) with Portugal, Belgium, the Netherlands, Luxembourg
+  # and Italy: the same localized recipe, window and building floor as the standard
+  # country run. European part only.
+  netherlands:
+    bbox: [3.3, 50.7, 7.3, 53.6]
+    division: { name: Netherlands, country: NL, subtype: country, iso3: NLD }
+    # On the global 0.1 degree lattice (earthpv.global_grid), so this country's cells are
+    # global cells and its atlas combines with its neighbours' without re-binning. Never
+    # change it once compose has run: it names every cell.
+    grid_origin: [3.3, 50.7]
+    # May to September 2026, Spain's window, so the six countries share one imagery epoch
+    # (preflight median cloud 15%).
+    compose_window: ["2026-05-01", "2026-09-30"]
+    cell_selection: duckdb
+    # Filled by scripts/pick_val_region.py --write, which only writes into an empty list.
+    # Val holdout = Zuid-Holland (geoBoundaries ADM1), 41 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 289 of
+    # 1720 dissolved >= 400 m2 positives (16.8%); the largest
+    # region (Noord-Brabant, 383) is never the holdout.
+    val_tiles: [
+      "0007_0010", "0007_0011", "0007_0012", "0008_0010", "0008_0011", "0008_0012", "0009_0009", "0009_0010",
+      "0009_0011", "0009_0012", "0009_0013", "0010_0010", "0010_0011", "0010_0012", "0010_0013", "0010_0014",
+      "0011_0010", "0011_0011", "0011_0012", "0011_0013", "0011_0014", "0011_0015", "0012_0010", "0012_0011",
+      "0012_0012", "0012_0013", "0012_0014", "0012_0015", "0013_0010", "0013_0011", "0013_0012", "0013_0013",
+      "0013_0014", "0014_0011", "0014_0012", "0014_0013", "0014_0014", "0015_0011", "0015_0012", "0015_0014",
+      "0016_0011",
     ]
 
 seasons:

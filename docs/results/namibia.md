@@ -13,7 +13,7 @@ Interactive: [Namibia PV evidence atlas](../atlas-namibia.md).
 | | |
 | --- | --- |
 | Verified | **464.3 MWp** (90% 336 to 657) |
-| Best estimate | **530.2 MWp** (90% 480 to 664) |
+| Best estimate | **512.3 MWp** (90% 470 to 658) |
 | Grid | 459 imaged cells of 0.1&deg;, of the 7,260 that cover the country; 13 regions (geoBoundaries) |
 | Imagery | Sentinel-2 L2A, May to September 2026 |
 | Model | `v17_combined_namibia` epoch 24, localized (beat `v5_combined_france` on the holdout; see below) |
@@ -24,11 +24,21 @@ Interactive: [Namibia PV evidence atlas](../atlas-namibia.md).
     It has no glint sample, so `p_unmapped` is 0 and `p_real` collapses to the
     OpenStreetMap-mapped fraction, and recall was deliberately skipped
     (`--recall-reference none`). **Most of what the model adds in the Cuvelai basin is
-    seasonal pans, not panels** (below): about 54 of the 66 MWp by which Best exceeds
-    Verified. For comparison, IRENA puts Namibia at 389 MW of solar PV at the end of 2025
+    seasonal pans, not panels** (below): about 31 of the 48 MWp by which Best exceeds
+    Verified, after the large installation review took out the largest. For comparison, IRENA puts Namibia at 389 MW of solar PV at the end of 2025
     (IRENA's own estimate), and 1,498 MWp of panels were imported directly from China from
     January 2017 to August 2026 ([Ember](https://ember-energy.org/data/china-solar-exports-data/)).
     Neither is ground truth for the map.
+
+!!! note "Revised on 10 November: large installations judged"
+    Until 10 November this page read Best 530.2 MWp (90% 480 to 664). On 10 November the
+    owner judged, on the [large installation review](../contribute/review.md), all 105
+    unmapped model outlines from 1 ha up to the 10 ha merge cap that the lead screens keep:
+    10 are solar and 95 are not, 64 of those in the Cuvelai basin. These leads counted before
+    at the share their size class usually turns out real; now a lead judged solar counts as
+    real (a roof outline at 1/2.5 of its area) and one judged not solar counts nothing. Best
+    falls by 17.9 MWp, and what the four Cuvelai regions add over Verified from 53.7 to
+    31.3 MWp; Verified did not move.
 
 ## Localizing the detector
 
@@ -98,6 +108,13 @@ mapped plants make 21 of 101 candidates real, so every unmapped outline of that 
 priced at about a fifth of its area. The page states the problem in its caveats; no filter
 removes the pans yet. Verified, which counts only mapped installations, is not affected.
 
+**Since 10 November the largest are judged.** The owner looked at every unmapped outline
+from 1 ha up to the merge cap on the large installation review, 65 of them in the four
+Cuvelai regions, and found 64 of those not solar (the other, in Oshana, is). Those count
+nothing now, which takes what the basin adds over Verified from 53.7 to 31.3 MWp
+(Ohangwena 18.0 to 3.8, Omusati 29.2 to 21.3). The smaller outlines on pans still reach
+Best at their bin's share.
+
 ## Candidate population
 
 965 candidates: 111 rooftop, 117 ground-adjacent, 737 with no building, median 3,803
@@ -118,18 +135,18 @@ rooftop. Best is floored at Verified in 34 cells.
 
 | Region | Verified (MWp) | Best (MWp) |
 | --- | ---: | ---: |
-| Karas | 159.9 | 160.3 |
-| Erongo | 111.6 | 111.9 |
-| Hardap | 65.1 | 66.1 |
-| Otjozondjupa | 53.5 | 53.7 |
-| Omusati | 3.3 | 32.5 |
-| Khomas | 27.0 | 28.4 |
-| Oshikoto | 22.1 | 27.4 |
+| Karas | 159.9 | 160.2 |
+| Erongo | 111.6 | 113.6 |
+| Hardap | 65.1 | 66.2 |
+| Otjozondjupa | 53.5 | 53.6 |
+| Khomas | 27.0 | 32.1 |
+| Omusati | 3.3 | 24.6 |
+| Oshikoto | 22.1 | 23.5 |
 | Omaheke | 17.9 | 18.0 |
-| Ohangwena | 0.0 | 18.0 |
-| Caprivi | 1.2 | 4.4 |
-| Kavango | 0.0 | 3.2 |
-| Oshana | 0.0 | 1.2 |
+| Oshana | 0.0 | 4.8 |
+| Kavango | 0.0 | 3.9 |
+| Ohangwena | 0.0 | 3.8 |
+| Caprivi | 1.2 | 2.7 |
 | Kunene | 0.3 | 0.5 |
 
 ## Mapping leads and a calibration area

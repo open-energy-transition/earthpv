@@ -1,7 +1,7 @@
 # Written by scripts/official_capacity.py; do not edit by hand.
 note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
   for the atlas: `scope` says what each counts.'
-retrieved: '2026-11-09'
+retrieved: '2026-11-10'
 aois:
   belgium:
   - id: elia
@@ -152,6 +152,31 @@ aois:
     mw: 389.0
     scope: National on- and off-grid solar PV at the end of 2025, IRENA's own estimate. No national register
       or statistic was found for this country.
+  netherlands:
+  - id: cbs
+    name: CBS
+    title: Zonnestroom; vermogen en vermogensklasse, bedrijven en woningen, regio (85005NED)
+    publisher: Centraal Bureau voor de Statistiek
+    kind: statistics
+    url: https://www.cbs.nl/nl-nl/cijfers/detail/85005NED
+    as_of: '2025-12-31'
+    mw: 29426.5
+    scope: 'Installed panel (DC) capacity at the end of 2025 from the statistics office, provisional:
+      every installation, household rooftops included. 12.6 GWp of it is systems of 15 kWp or less and
+      6.2 GWp large ground-mounted; 446 MWp is not assigned to a province.'
+    regions:
+      Groningen: 1984.0
+      Fryslân: 1470.7
+      Drenthe: 1816.1
+      Overijssel: 2395.5
+      Flevoland: 1350.2
+      Gelderland: 3918.7
+      Utrecht: 1576.9
+      Noord-Holland: 2662.0
+      Zuid-Holland: 3464.7
+      Zeeland: 1121.1
+      Noord-Brabant: 4998.1
+      Limburg: 2222.6
   nigeria:
   - id: irena
     name: IRENA
@@ -229,6 +254,19 @@ aois:
       Świętokrzyskie Voivodeship: 355.0
     regions_scope: Installations above 50 kW only, so the bulk of rooftop PV, about 13.7 GW of prosumer
       microinstallations nationally (ARE), is outside these figures.
+  portugal:
+  - id: dgeg
+    name: DGEG
+    title: Estatísticas rápidas das renováveis, n.º 262, setembro de 2026
+    publisher: Direção-Geral de Energia e Geologia
+    kind: statistics
+    url: https://www.dgeg.gov.pt/pt/estatistica/energia/publicacoes/estatisticas-rapidas-das-renovaveis/
+    as_of: '2026-09-30'
+    mw: 7396.0
+    scope: 'Installed solar PV at the end of September 2026, the last month of the imagery window, from
+      the energy directorate''s monthly renewables bulletin (provisional): power plants, 2.6 GW of self-consumption
+      units, small production units and micro and mini generation. Given in MW, without saying whether
+      panel (DC) or inverter (AC) capacity.'
   south_africa:
   - id: ntcsa
     name: NTCSA (Eskom)
