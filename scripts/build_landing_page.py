@@ -53,8 +53,16 @@ EARTH = LANDING / "earth.json"
 INDEX = DOCS / "index.md"
 GLOBAL_PV = REPO / "configs" / "external" / "global_pv_capacity.yaml"
 
-# The size chart's bins below the 400 m2 floor, as `atlas._size_bin_display_labels` writes them.
-BELOW_FLOOR_BINS = {"<100 m²", "100–400 m²"}
+# The globe's hover card draws an atlas's size chart in four bars (owner, 2026-11-11): its seven
+# bins, as `atlas._size_bin_display_labels` writes them, merged at the 400 m2 floor and at 5,000
+# and 100,000 m2. The first bar is everything below the floor, the capacity with no
+# per-installation size (`size_unbinned_*`) included, and the card highlights it.
+SIZE_GROUPS = (
+    ("<400 m²", ("<100 m²", "100–400 m²")),
+    ("400–5k m²", ("400–1k m²", "1k–5k m²")),
+    ("5k–100k m²", ("5k–20k m²", "20k–100k m²")),
+    ("≥100k m²", ("≥100k m²",)),
+)
 
 # The atlases' own resolution: one 0.1 degree cell, one entry. An off-lattice country's cells
 # keep their one-to-one bins and move by at most half a cell.
@@ -338,25 +346,23 @@ def _sig(value: float, digits: int = 2) -> float:
 
 
 def _atlas_facts(data: dict) -> dict:
-    """Best's split at the 400 m2 floor, all the globe's hover card says about an atlas's sizes.
+    """An atlas's size chart in the four bars of `SIZE_GROUPS`, MWp, and what it did not measure.
 
     From the page's own size chart: its bins, plus the capacity below the floor that has no
-    per-installation size (`size_unbinned_*`). The shares are of what the bins add up to, so
-    the two make 100%. What a page did not measure below the floor is sent with them: there
-    the share below is only a floor and the card has to say so.
+    per-installation size (`size_unbinned_*`), so the bars add up to the chart's total. Where a
+    page did not measure something below the floor, the first bar is only a floor and the card
+    has to say so.
     """
     totals = data["totals"]
-    below = totals["size_unbinned_roof_mwp"] + totals["size_unbinned_ground_mwp"]
-    above = 0.0
+    group_of = {label: i for i, (_, bins) in enumerate(SIZE_GROUPS) for label in bins}
+    mwp = [0.0] * len(SIZE_GROUPS)
+    mwp[0] = totals["size_unbinned_roof_mwp"] + totals["size_unbinned_ground_mwp"]
     for b in data["bins"]:
-        mwp = b["roof_mwp"] + b["ground_mwp"]
-        if b["label"] in BELOW_FLOOR_BINS:
-            below += mwp
-        else:
-            above += mwp
+        if b["label"] not in group_of:
+            raise SystemExit(f"size bin {b['label']!r} is in no SIZE_GROUPS bar")
+        mwp[group_of[b["label"]]] += b["roof_mwp"] + b["ground_mwp"]
     return {
-        "share_lt400": round(below / (below + above), 6),
-        "share_ge400": round(above / (below + above), 6),
+        "sizes": [round(v, 1) for v in mwp],
         "rooftop_measured": bool(totals["small_rooftop_status"]["measured"]),
         "farm_ground_measured": bool(totals["small_ground_status"]["measured"]),
     }
@@ -438,6 +444,7 @@ def write() -> None:
         "world": ref,
         "best_mwp": round(best_mwp, 1),
         "verified_mwp": round(verified_mwp, 1),
+        "size_labels": [label for label, _ in SIZE_GROUPS],
         "atlases": atlases,
         "processed": [[lat, *row] for lat, row in rows.items()],
         "pv": [[lat, *row] for lat, row in pv_rows.items()],

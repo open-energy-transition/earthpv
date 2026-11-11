@@ -861,24 +861,36 @@
       return mwp.toFixed(mwp >= 10 ? 0 : 1) + ' MW';
     }
 
-    /* Two significant figures on the smaller side, at most two decimals, and the same on both
-       so that they add up to 100: 72% and 28%, 3.8% and 96.2%, 0.04% and 99.96%. */
-    function percents(a, b) {
-      var small = Math.min(a, b) * 100;
-      var digits = small > 0 ? Math.min(2, Math.max(0, 1 - Math.floor(Math.log10(small)))) : 0;
-      return [(a * 100).toFixed(digits) + '%', (b * 100).toFixed(digits) + '%'];
-    }
-
-    /* Best's split at the 400 m² floor. A page with no rooftop detector below the floor holds
-       only part of what is there, so its small share is a lower bound: India's 0.04% must
-       not read as a measurement, and a share that rounds to nothing is "not measured". */
-    function atlasRows(a) {
-      var t = a.facts, p = percents(t.share_lt400, t.share_ge400);
-      var small = ['Under 400 m²', p[0] + ' of total'], large = ['400 m² and up', p[1] + ' of total'];
-      if (t.rooftop_measured) return [small, large];
-      small = parseFloat(p[0]) > 0 ? ['Under 400 m²', 'at least ' + small[1]]
-                                   : ['Under 400 m²', 'not measured', 'not-measured'];
-      return [small, ['400 m² and up', 'at most ' + large[1]]];
+    /* The atlas's size chart in four bars (owner, 2026-11-11): earth.json's `size_labels`
+       and the atlas's `facts.sizes` in MWp, each bar's length against the longest, its figure
+       beside it, the bar below 400 m² in vermilion. Where a page has no rooftop detector below
+       the floor that bar holds only part of what is there, so it fades on past its end and its
+       figure reads "at least"; one that rounds to nothing reads "not measured". */
+    function fillSizes(a) {
+      var box = el('card-sizes');
+      box.textContent = '';
+      box.hidden = !a;
+      if (!a) return;
+      var t = a.facts, top = Math.max.apply(null, t.sizes) || 1;
+      var span = function (cls, text) {
+        var s = document.createElement('span');
+        s.className = cls;
+        if (text) s.textContent = text;
+        return s;
+      };
+      box.appendChild(span('card__sizes-head', 'By installation size'));
+      t.sizes.forEach(function (mwp, i) {
+        var small = i === 0 ? ' is-small' : '';
+        var floor = !!small && !t.rooftop_measured, none = floor && mwp < 0.05;
+        var track = span('card__size-track'), bar = span('card__size-bar' + small);
+        bar.style.width = (mwp > 0 ? Math.max(1.5, 88 * mwp / top) : 0) + '%';
+        track.appendChild(bar);
+        if (floor && !none) track.appendChild(span('card__size-fade'));
+        box.appendChild(span('card__size-label' + small, earth.size_labels[i]));
+        box.appendChild(track);
+        box.appendChild(span('card__size-value' + small + (none ? ' not-measured' : ''),
+          none ? 'not measured' : (floor ? 'at least ' : '') + (mwp < 0.05 ? '0 MW' : power(mwp))));
+      });
     }
 
     function unmeasuredNote(t) {
@@ -886,20 +898,6 @@
       if (!t.rooftop_measured) gaps.push('Rooftops');
       if (!t.farm_ground_measured) gaps.push(gaps.length ? 'farm ground' : 'Farm ground');
       return gaps.length ? gaps.join(' and ') + ' under 400 m² not measured' : '';
-    }
-
-    function fillFacts(rows) {
-      var list = el('card-facts');
-      list.textContent = '';
-      list.hidden = !rows;
-      (rows || []).forEach(function (row) {
-        var dt = document.createElement('dt'), dd = document.createElement('dd');
-        dt.textContent = row[0];
-        dd.textContent = row[1];
-        if (row[2]) dd.className = row[2];
-        list.appendChild(dt);
-        list.appendChild(dd);
-      });
     }
 
     function linkFor(f) {
@@ -916,13 +914,13 @@
       if (f.atlas) {
         el('card-tier').textContent = f.atlas.tier + ' atlas';
         el('card-best').textContent = power(f.atlas.best) + ' best estimate';
-        fillFacts(atlasRows(f.atlas));
+        fillSizes(f.atlas);
         el('card-note').textContent = unmeasuredNote(f.atlas.facts);
         el('card-go').textContent = 'Open the atlas →';
       } else {
         el('card-tier').textContent = f.kind || '';
         el('card-best').textContent = 'No atlas yet.';
-        fillFacts(null);
+        fillSizes(null);
         el('card-note').textContent = '';
         el('card-go').textContent = 'Build it on your PC →';
       }

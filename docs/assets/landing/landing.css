@@ -227,20 +227,43 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   line-height: 1.3;
 }
 .card__go { margin-top: 6px; font-size: 14px; color: var(--shu); }
-.card__facts {
+/* The atlas's size chart, four bars of label, bar and figure; the bar below 400 m2 in vermilion. */
+.card__sizes {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1px 16px;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 3px 9px;
+  width: 280px;
+  max-width: 100%;
   margin: 7px 0 0;
   padding-top: 7px;
   border-top: 1px solid rgba(38, 35, 31, .18);
   font-size: 12.5px;
-  line-height: 1.38;
+  line-height: 1.35;
 }
-.card__facts[hidden] { display: none; }
-.card__facts dt { color: var(--ink-2); }
-.card__facts dd { margin: 0; text-align: right; white-space: nowrap; }
-.card__facts dd.not-measured { color: var(--ink-2); font-style: italic; }
+.card__sizes[hidden] { display: none; }
+.card__sizes-head {
+  grid-column: 1 / -1;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.card__size-label { font-family: var(--mono); font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.card__size-track { display: flex; align-items: center; height: 10px; }
+.card__size-bar { height: 100%; background: rgba(38, 35, 31, .42); }
+.card__size-bar.is-small { background: var(--shu); }
+/* More is there, by an unknown amount: the bar goes on and fades out, as on the atlas's chart. */
+.card__size-fade {
+  flex: none;
+  width: 12%;
+  height: 100%;
+  background: linear-gradient(to right, var(--shu), rgba(163, 44, 16, 0));
+}
+.card__size-value { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.card__size-label.is-small, .card__size-value.is-small { color: var(--shu); font-weight: 600; }
+.card__size-value.not-measured { color: var(--ink-2); font-style: italic; font-weight: 400; }
 
 /* ------------------------------------------------- title, as on a Grid2Poster */
 .title {

@@ -949,11 +949,13 @@ DC, end of 2025: 330.7 of 2,974 GW, 11.1%; update it at each Snapshot). Wet ink 
 dry part what Best adds. **Nothing on the globe may be a texture fixed to the screen (owner,
 2026-11-08)**: land turning under one looks as if it slides beneath a second sheet, so even the
 pencil hatching is geometry. A polygon of an atlas country with no processed cell stays pencil
-(France's overseas parts) but still clicks through to its atlas. The hover card holds only the atlas's
-Gold, Silver or Bronze medal (the disc and mark of the page's own badge, `tier_of`), its Best, and Best's
-share below and from 400 m² (owner, 2026-11-09; `_atlas_facts`, from the page's `bins` plus
-`size_unbinned_*`). Where a page has no rooftop detector below the floor the shares read "at least" and
-"at most" and a line names what was not measured, so a floor never passes for a small measured share.
+(France's overseas parts) but still clicks through to its atlas. The hover card holds the atlas's
+Gold, Silver or Bronze medal (the disc and mark of the page's own badge, `tier_of`), its Best, and its
+size chart as four horizontal bars in MW/GW: <400 m² (vermilion, `size_unbinned_*` included), 400-5k,
+5k-100k and >=100k m² (owner, 2026-11-11, replacing 2026-11-09's two shares; `_atlas_facts`,
+`SIZE_GROUPS`, from the page's `bins`). Where a page has no rooftop detector below the floor the first
+bar fades on past its end and reads "at least" ("not measured" if it rounds to nothing), and a line
+names what was not measured, so a floor never passes for a measured amount.
 `scripts/atlas_osm_by_size.py` and `totals.osm_mwp_lt400`/`_ge400` no longer feed the card. A click on a country without an
 atlas opens `docs/contribute/new-atlas.md` with `?country=&iso3=&bbox=`, which `new-atlas.js`
 writes into the commands' `YOUR_*` placeholders. `docs/assets/landing/world.json` is Natural Earth
