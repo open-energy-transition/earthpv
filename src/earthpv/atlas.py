@@ -2703,6 +2703,12 @@ def osm_absorbed_inflation(
     return retain, inflation, rows
 
 
+def atlas_name(country: str) -> str:
+    """A country map's name, its heading and browser tab: "Spain's PV Atlas", and
+    "Netherlands' PV Atlas" for a name ending in s (owner, 2026-11-11)."""
+    return f"{country}'{'' if country.endswith('s') else 's'} PV Atlas"
+
+
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
@@ -3556,8 +3562,8 @@ def build_evidence_atlas(
     html = EVIDENCE_TEMPLATE.read_text()
     for key, value in {
         "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"EarthPV: {title}",
-        "__H1__": title,
+        "__PAGE_TITLE__": atlas_name(title),
+        "__H1__": atlas_name(title),
         "__HEADER_LOGO__": header_logo_html(),
         "__DOWNLOAD_SECTION__": download_section_html(aoi, _pq_name),
         "__VALIDATION_BADGE__": resolve_validation_badge(
