@@ -96,6 +96,7 @@ VALIDATION_TIERS = {
 
 EMBER_IMPORTS = Path(__file__).resolve().parents[2] / "configs" / "external" / "ember_china_panel_imports.yaml"
 LEADS_MANIFEST = Path(__file__).resolve().parents[2] / "configs" / "atlas_leads.json"
+POLYGONS_MANIFEST = Path(__file__).resolve().parents[2] / "configs" / "atlas_polygons.json"
 
 
 def generation_totals(data: dict, probes: pd.DataFrame) -> dict | None:
@@ -345,6 +346,21 @@ def leads_for_page(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
     release["checked"] = ({k: c[k] for k in ("by", "date", "note") if c[k]} | {"all": True}
                           if c["checked"] else {"all": False})
     return release
+
+
+def polygons_release(aoi: str, path: Path = POLYGONS_MANIFEST) -> dict | None:
+    """`totals.polygons`: the AOI's solar polygon file on GitHub, every outline the model
+    drew behind this atlas and every OpenStreetMap solar feature it counts, in one
+    GeoParquet (scripts/release_polygons.py, which writes the manifest; owner, 2026-11-11).
+    The Downloads section links it after the lead files. None when the AOI has none."""
+    if not path.exists():
+        return None
+    e = (json.loads(path.read_text()).get("aois") or {}).get(aoi)
+    if not e:
+        return None
+    return {k: e[k] for k in ("url", "file", "size_bytes", "format", "made", "n_model",
+                              "n_model_leads", "n_model_reviewed", "n_osm", "n_osm_csp",
+                              "osm_as_of", "min_distance_m") if k in e}
 
 
 def derive_validation_score(aoi: str, has_sub400: bool,
@@ -3510,6 +3526,9 @@ def build_evidence_atlas(
         data["totals"]["generation"] = generation
     if leads:
         data["totals"]["leads"] = leads
+    polygons = polygons_release(aoi)
+    if polygons:
+        data["totals"]["polygons"] = polygons
 
     if downloads and data_release_url:
         base = data_release_url.rstrip("/")

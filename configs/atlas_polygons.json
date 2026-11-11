@@ -1,0 +1,29 @@
+{
+  "aois": {
+    "india": {
+      "file": "india_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/india_pv_polygons.parquet",
+      "size_bytes": 19281480,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-11",
+      "n_model": 103619,
+      "n_model_leads": 100201,
+      "n_model_reviewed": 1640,
+      "n_osm": 7309,
+      "n_osm_csp": 4,
+      "osm_as_of": "2026-09-22",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 104963,
+        "n_outside": 1344,
+        "pred": "data/predictions/india",
+        "raw_osm": [
+          "data/labels/india_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-09-22",
+        "osm_solar": "data/labels/india_national_osm_solar.parquet"
+      }
+    }
+  },
+  "release": "https://github.com/open-energy-transition/earthpv/releases/tag/pv-polygons-2026-11-11"
+}

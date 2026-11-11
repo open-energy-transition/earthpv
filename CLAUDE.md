@@ -644,6 +644,15 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   manifest `blobs`, linked on the same card); `--resplit` split the 11-01b files in place,
   keeping their `made` date. 100,556 leads and 3,127 blobs; France's audited release already
   kept its 29 apart (`france_pv_leads_oversize.geojson`).
+  **Every outline in one GeoParquet (owner, 2026-11-11)**: `scripts/release_polygons.py
+  --aoi <aoi> --out <dir> [--upload]` writes `<aoi>_pv_polygons.parquet` (`source` model or
+  osm: the run's candidates inside the page's regions, any size, with `osm_within_100m` and
+  any `review_verdict`, plus the atlas's `--osm-solar` file and its CSP plants; zstd 19,
+  Hilbert order, GeoParquet 1.1 bbox column, model coordinates at 6 decimals) to release
+  `pv-polygons-2026-11-11`, and `configs/atlas_polygons.json`, which `atlas.polygons_release`
+  puts in `totals.polygons`: a Downloads card after the lead files.
+  `scripts/patch_atlas_polygons.py` adds it to a published page and its results/ sync source.
+  India only so far (103,619 model + 7,309 OSM outlines, 19.3 MB).
   **Small leads on steep ground are left out (owner, 2026-10-31)**: `export.steep_lead_screen`
   drops a lead under `STEEP_MAX_AREA_M2` (1,000 m²) whose GLO-90 slope at its representative
   point exceeds `STEEP_SLOPE_DEG` (15°), and keeps a larger one flagged `steep_review` (a
