@@ -69,6 +69,24 @@ PUBLISHED: dict[str, list[dict]] = {
             "Brussels Hoofdstedelijk": 331.4,
         },
     }],
+    "luxembourg": [{
+        "id": "ilr",
+        "name": "ILR",
+        "title": "Statistiques du marché électricité 2025",
+        "publisher": "Institut Luxembourgeois de Régulation",
+        "kind": "statistics",
+        "url": "https://www.ilr.lu/wp-content/uploads/publication/"
+               "ILR_infographie_statistiques-marches_electricite_20260625-1.pdf",
+        "as_of": "2025-12-31",
+        # "Puissance installée par source d'énergie", Photovoltaïque 746,35 MW (+35.8% on
+        # 2024), in the regulator's June 2026 infographic (CC BY 4.0), downloaded 2026-11-11;
+        # the latest year-end, nine months before the imagery window ends. No canton figures.
+        "mw": 746.35,
+        "scope": "Installed solar PV at the end of 2025 from the energy regulator's market "
+                 "statistics: every installation connected to the grid, household rooftops "
+                 "included. Given in MW, without saying whether panel (DC) or inverter (AC) "
+                 "capacity.",
+    }],
     "netherlands": [{
         "id": "cbs",
         "name": "CBS",

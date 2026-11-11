@@ -73,6 +73,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1277
     made: '2026-10-29'
+  luxembourg:
+    median: '2026-07-13'
+    p25: '2026-06-20'
+    p75: '2026-08-16'
+    first: '2026-05-01'
+    last: '2026-09-25'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 40
+    n_cells_sampled: 40
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 418
+    made: '2026-11-11'
   morocco:
     median: '2026-07-26'
     p25: '2026-06-26'

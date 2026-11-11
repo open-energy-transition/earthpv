@@ -57,6 +57,10 @@ NOT_A_CEILING = {
     "netherlands": "the Netherlands is the EU's main port of entry for Chinese panels: since "
                    "2017 it has imported nearly eight times its installed fleet, most of it "
                    "passed on to other countries",
+    # Ember, 2017-02..2026-08: 155.2 MW of panels against 746.35 MW installed (ILR, end 2025).
+    "luxembourg": "Luxembourg buys most of its panels through its neighbours: its installed "
+                  "fleet at the end of 2025 was nearly five times the panels it imported "
+                  "directly from China since 2017",
     # Ember, 2017-01..2026-08: 36.1 GW of cells from China against 6.2 GW of panels.
     "turkiye": "Turkey assembles most of its own panels: since 2017 China has shipped it about "
                "six times as much capacity in solar cells as in finished panels",

@@ -1,7 +1,7 @@
 ---
 title: Electrify Earth
 template: landing.html
-n_atlases: 18
+n_atlases: 19
 search:
   exclude: true
 ---
@@ -15,6 +15,7 @@ search:
 - [France](atlas-france.md){ data-iso="FRA" }
 - [Germany](atlas-germany.md){ data-iso="DEU" }
 - [India](atlas-india.md){ data-iso="IND" }
+- [Luxembourg](atlas-luxembourg.md){ data-iso="LUX" }
 - [Morocco](atlas-morocco.md){ data-iso="MAR" }
 - [Namibia](atlas-namibia.md){ data-iso="NAM" }
 - [Netherlands](atlas-netherlands.md){ data-iso="NLD" }

@@ -1,0 +1,65 @@
+# Luxembourg's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# Luxembourg, national. Same starting condition as Belgium and the Netherlands -- no
+# calibration quadrats, no record-level register used, no third-party dataset checked
+# against -- so the builder's default no-ground-truth text stands. The segmentation is
+# localized on Luxembourg's own OpenStreetMap labels; it tied v5 on the held-out canton and
+# ships under the tie rule (results/luxembourg_checkpoint_decision.json).
+#
+# Numbers belong in docs/results/luxembourg.md; nothing here quotes a figure a rebuild could
+# change.
+
+title: Luxembourg
+
+cities:
+  - [Luxembourg, 6.130, 49.612]
+  - [Esch-sur-Alzette, 5.981, 49.496]
+  - [Differdange, 5.891, 49.524]
+  - [Dudelange, 6.087, 49.481]
+  - [Mersch, 6.107, 49.749]
+  - [Ettelbruck, 6.104, 49.847]
+  - [Diekirch, 6.157, 49.868]
+  - [Wiltz, 5.932, 49.966]
+  - [Clervaux, 6.031, 50.055]
+  - [Echternach, 6.421, 49.812]
+  - [Grevenmacher, 6.441, 49.680]
+  - [Remich, 6.367, 49.545]
+
+confidence:
+  caveats:
+    - >-
+      <b>The small-installation half of this page does not exist yet, and in Luxembourg that
+      is most of the solar.</b> No area of Luxembourg has been mapped panel by panel, so
+      there is nothing to calibrate a per-building rooftop classifier against here.
+      Everything on the map is either hand-mapped in OpenStreetMap or an array the
+      segmentation model outlined directly, which in practice means installations of roughly
+      400 m&sup2; and up. The household and small-business rooftop systems that make up most
+      of Luxembourg's fleet are below that size, so Best sits far below the regulator's
+      figure further down this page.
+    - >-
+      <b>Cells on the border are kept whole, and in a country this small that matters a
+      lot.</b> A map cell that straddles the border with France, Belgium or Germany is
+      counted in full, and most of Luxembourg's cells touch a border. A large share of what
+      the model finds lies on the far side, in France, Belgium or Germany, and is in this
+      page's total; the hand-mapped installations are Luxembourg's own.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation. A
+      park built on empty land that nobody has mapped yet falls outside both rules and is not
+      on this page. Cells that were not imaged are hatched on the map.
+    - >-
+      <b>The model was checked on a thin holdout.</b> The localized model and the general one
+      were compared on one held-out canton with only a few dozen mapped installations, and
+      tied. The localized model ships under the project's rule that a tie goes to it, but a
+      holdout that small cannot separate two models by much.
+    - >-
+      <b>Very large model outlines count only once checked.</b> A model outline above
+      100,000 m&sup2; counts only when it is mapped or a person has judged it solar.
+      Luxembourg's have not been judged yet. Mapping such a park brings it into the verified
+      layer.
+    - >-
+      <b>The plausibility check cannot vouch for the canton figures here.</b> It compares
+      each canton's ground-mounted capacity with its rooftop capacity, and nearly every
+      canton is flagged. That is expected where rooftop systems are mostly too small for the
+      model to see, since the comparison then has little to divide by. It also means the
+      check says little either way about false detections on open ground.

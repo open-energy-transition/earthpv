@@ -41,6 +41,14 @@ aois:
     mwp: 95060.1
     ceiling: false
     why_not: India makes a large share of its own panels and restricts Chinese ones for public projects
+  luxembourg:
+    ember_area: Luxembourg
+    from: 2017-02
+    to: 2026-08
+    mwp: 155.2
+    ceiling: false
+    why_not: 'Luxembourg buys most of its panels through its neighbours: its installed fleet at the end
+      of 2025 was nearly five times the panels it imported directly from China since 2017'
   morocco:
     ember_area: Morocco
     from: 2017-01

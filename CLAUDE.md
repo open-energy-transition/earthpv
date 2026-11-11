@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and eighteen countries have a published evidence atlas (see "Country
+country's own OSM labels, and nineteen countries have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -1342,6 +1342,7 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Belgium | `v31_combined_belgium` ep 22 | 502.3 / 970.8 | recall tie with v5, wins on IoU (thin holdout: Brussels, 2 cells); Best is 8.0% of Elia's 12,128 MW, 224 judged large leads counting (639.3 before, 2026-11-10); published before owner review; leads, calibration areas and the 4-outline farm review still owed |
 | Portugal | `v30_combined_portugal` ep 19 | 5,830.5 / 6,193.6 | clear win over v5 on the Lisbon holdout; Azores and Madeira in; Best is 84% of DGEG's 7,396 MW; 153 judged large leads count; 110 blobs not judged yet; Évora molten-salt CSP 3.4 MW |
 | Netherlands | `v5_combined_france` ep 25 at 0.98 | 3,708.6 / 4,567.3 | v32 lost the Zuid-Holland holdout on recall; Best is 16% of CBS's 29,426.5 MWp; 543 judged large leads count; 7 blobs not judged yet |
+| Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | tie with v5 on the thin Mersch holdout (39 of 48 each); Best is 5.4% of ILR's 746.35 MW; 8.3 of the model's 21.3 MWp lies beyond the border; no large installation review yet, 1 blob not judged |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1424,6 +1425,12 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   that never reach 0.98 are missing. VIDA has holes here too: 2.87 M of the 6.96 M footprints
   are OSM fill (`scripts/fill_vida_from_osm.py`). Ember is not a ceiling (226.7 GW imported,
   most passed on). Zoneiland (Almere) counts 0.5 MW as CSP from its tags, unchecked.
+- **Luxembourg** (published 2026-11-11): 23 of its 40 cells straddle the border and are kept
+  whole, so 8.3 of the model's 21.3 MWp (recall-corrected; `n_candidates_outside_border` in
+  its density `meta.json`) lies in France, Belgium or Germany, the largest a 0.16 km2
+  OSM-matched park across the Sauer from Echternach that is exempt from the merge cap. ILR
+  publishes no canton figures, and Ember is not a ceiling (155.2 MW of panels straight from
+  China against 746.35 MW installed).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

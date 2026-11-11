@@ -1,7 +1,7 @@
 # Written by scripts/official_capacity.py; do not edit by hand.
 note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
   for the atlas: `scope` says what each counts.'
-retrieved: '2026-11-10'
+retrieved: '2026-11-11'
 aois:
   belgium:
   - id: elia
@@ -130,6 +130,18 @@ aois:
       Sikkim: 7.6
       Nāgāland: 3.3
       Meghālaya: 4.3
+  luxembourg:
+  - id: ilr
+    name: ILR
+    title: Statistiques du marché électricité 2025
+    publisher: Institut Luxembourgeois de Régulation
+    kind: statistics
+    url: https://www.ilr.lu/wp-content/uploads/publication/ILR_infographie_statistiques-marches_electricite_20260625-1.pdf
+    as_of: '2025-12-31'
+    mw: 746.35
+    scope: 'Installed solar PV at the end of 2025 from the energy regulator''s market statistics: every
+      installation connected to the grid, household rooftops included. Given in MW, without saying whether
+      panel (DC) or inverter (AC) capacity.'
   morocco:
   - id: irena
     name: IRENA
