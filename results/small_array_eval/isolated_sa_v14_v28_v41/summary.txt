@@ -1,0 +1,21 @@
+south_africa whole cells (sheet_scan curve v14_v28_v41), 21667 mapped arrays; thresholds {'v14': 0.3, 'v28': 0.3, 'v41': 0.3}
+
+  arrays placement       bin    n   v14   v28   v41
+isolated    ground   400-700   10 0.000 0.600 0.800
+isolated    ground  700-1000    2 0.000 0.000 0.500
+isolated    ground 1000-5000    5 0.400 0.800 0.800
+isolated   rooftop     0-100   30 0.000 0.000 0.033
+isolated   rooftop   100-200   41 0.000 0.024 0.146
+isolated   rooftop   200-400   49 0.020 0.163 0.265
+isolated   rooftop   400-700   35 0.029 0.314 0.486
+isolated   rooftop  700-1000   13 0.231 0.692 0.923
+isolated   rooftop 1000-5000   20 0.450 0.750 0.950
+     all    ground   400-700  388 0.930 0.930 0.972
+     all    ground  700-1000  200 0.935 0.965 0.985
+     all    ground 1000-5000  188 0.388 0.830 0.878
+     all   rooftop     0-100 8906 0.757 0.847 0.884
+     all   rooftop   100-200 7859 0.853 0.911 0.934
+     all   rooftop   200-400 2330 0.700 0.831 0.900
+     all   rooftop   400-700  697 0.588 0.806 0.869
+     all   rooftop  700-1000  323 0.712 0.876 0.907
+     all   rooftop 1000-5000  314 0.783 0.933 0.971

@@ -192,21 +192,26 @@ per-cell like `density`.
 Ruff is configured (line-length 100) but run manually. The practical "does it work" check is a
 small end-to-end run: `chips --aoi germany --limit 500` → `train --smoke` → `evaluate`.
 
-**The released segmentation model is v14, fetched with `pixi run fetch-model`.**
-`scripts/fetch_model.py` downloads `earthpv_segmentation_v14.ckpt` from the GitHub release
-`segmentation-model-v14-2026-10-23` into `data/models/release/` and checks its SHA-256;
-`new_region.py plan` and the setup docs take the file name from its `RELEASE` dict. It is
-`v14_combined_south_africa` epoch 41 put through `scripts/slim_checkpoint.py` (optimizer state
-dropped, `backbone_pretrained: false`, so 33 MB and no Hugging Face download at load), and it
-reproduces South Africa's published probability raster byte for byte. It has the best
-installation recall of seven checkpoints over eleven regions, at lower pixel precision; v15 is
-the precise alternative and is not released (`results/release_model_benchmark.csv`,
-`docs/pretrained-model.md`). **Every published atlas still runs on its own country's
-checkpoint; the release changes no published number.** To release a newer model: slim it,
-upload it with `SHA256SUMS`, `MODEL_CARD.md`, `LICENSE` and `NOTICE` to a new tag, update
-`RELEASE`, and redo the page's tables from the same benchmark. **The weights are Apache-2.0**
-(matching TerraMind); `NOTICE` carries the TerraMind, OpenStreetMap and Copernicus
-attributions, and detections made with the model stay ODbL like every data output.
+**The released segmentation model is v28 (since 2026-11-12, owner), fetched with `pixi run
+fetch-model`.** `scripts/fetch_model.py` downloads `earthpv_segmentation_v28.ckpt` from the
+GitHub release `segmentation-model-v28-2026-11-12` into `data/models/release/` and checks its
+SHA-256; `new_region.py plan` and the setup docs take the file name from its `RELEASE` dict. It
+is `v28_resnet50_south_africa/last.ckpt` (ResNet-50 from SSL4EO-S12 on v14's corpus, the EMA
+weights at the end of a fixed 42-epoch budget) put through `scripts/slim_checkpoint.py`
+(139 MB, no download at load; identical predictions). Of eight checkpoints at matched pixel
+precision it found the most arrays zero-shot over ten countries (v29, Tiny with the
+size-weighted loss, ties it there but loses on the in-corpus holdouts and was never scanned
+over whole cells), with about v14's false alarms over whole cells; the production threshold stays 0.3
+(`results/release_model_benchmark_v28.csv`, `docs/pretrained-model.md`, the register's v28
+entry). **Every published atlas still runs on its own country's checkpoint; the release
+changes no published number.** To release a newer model: slim it, upload it with
+`SHA256SUMS`, `MODEL_CARD.md`, `LICENSE`, `NOTICE`, its config and benchmark to a new tag,
+update `RELEASE`, and redo the page's tables. **The weights are CC BY 4.0**, the licence of the
+SSL4EO-S12 weights they are fine-tuned from (v14, still downloadable at
+`segmentation-model-v14-2026-10-23`, is Apache-2.0 like TerraMind); `NOTICE` carries the
+SSL4EO-S12, OpenStreetMap and Copernicus attributions, and detections made with the model stay
+ODbL like every data output. The config's recipe (`ema`, `jitter`, the warmup-cosine
+`scheduler`) needs `train.py` options that are not on main yet.
 
 ## Architecture
 

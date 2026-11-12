@@ -125,7 +125,7 @@ leads. This is the first thing you get to look at.
 
 ```bash
 pixi run -e ml earthpv infer --aoi YOUR_AOI \
-    --checkpoint data/models/release/earthpv_segmentation_v14.ckpt
+    --checkpoint data/models/release/earthpv_segmentation_v28.ckpt
 
 pixi run earthpv postprocess --aoi YOUR_AOI --threshold 0.3 --building-buffer-m 500 --stream-buildings
 pixi run python scripts/drop_solar_thermal.py --aoi YOUR_AOI --candidates

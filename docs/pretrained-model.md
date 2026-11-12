@@ -1,12 +1,17 @@
 # Pretrained model
 
 EarthPV's segmentation model is published as a GitHub release, so a new country can be
-run without training anything first. It is a fine-tuned TerraMind, 33 MB, and it is the
-checkpoint that scored best on held-out regions in eleven countries (see
-[How it was chosen](#how-it-was-chosen)).
+run without training anything first. It is a ResNet-50 fine-tuned to outline solar arrays,
+139 MB, and of eight checkpoints compared at the same pixel precision it found the most
+arrays in ten countries none was trained on, tied with one that was never tested over whole
+cells (see [How it was chosen](#how-it-was-chosen)).
 
-**[Download from the release](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23)**
-&nbsp;·&nbsp; `earthpv_segmentation_v14.ckpt` &nbsp;·&nbsp; SHA-256 `d39d38a8...`
+**[Download from the release](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v28-2026-11-12)**
+&nbsp;·&nbsp; `earthpv_segmentation_v28.ckpt` &nbsp;·&nbsp; SHA-256 `0c2a24b5...`
+
+It replaces the TerraMind model released on 2026-10-23
+([`segmentation-model-v14-2026-10-23`](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23)),
+which stays downloadable.
 
 ## Set up EarthPV with it
 
@@ -16,7 +21,7 @@ cd earthpv
 pixi install              # data pipeline
 pixi install -e ml        # adds PyTorch (cu126) and TerraTorch, a multi-GB solve
 pixi run -e ml gpu-check  # should print your GPU
-pixi run fetch-model      # -> data/models/release/earthpv_segmentation_v14.ckpt, checksum verified
+pixi run fetch-model      # -> data/models/release/earthpv_segmentation_v28.ckpt, checksum verified
 ```
 
 `fetch-model` uses the standard library only, keeps an existing file whose checksum
@@ -25,8 +30,8 @@ by hand:
 
 ```bash
 mkdir -p data/models/release && cd data/models/release
-curl -fLO https://github.com/open-energy-transition/earthpv/releases/download/segmentation-model-v14-2026-10-23/earthpv_segmentation_v14.ckpt
-curl -fLO https://github.com/open-energy-transition/earthpv/releases/download/segmentation-model-v14-2026-10-23/SHA256SUMS
+curl -fLO https://github.com/open-energy-transition/earthpv/releases/download/segmentation-model-v28-2026-11-12/earthpv_segmentation_v28.ckpt
+curl -fLO https://github.com/open-energy-transition/earthpv/releases/download/segmentation-model-v28-2026-11-12/SHA256SUMS
 sha256sum -c SHA256SUMS
 ```
 
@@ -44,7 +49,7 @@ pixi run python scripts/new_region.py plan  --aoi <aoi>        # prints the comm
 
 pixi run earthpv overpass-labels --bbox <bbox> --iso3 <ISO3> --name <aoi>
 pixi run earthpv compose --aoi <aoi> --window <START:END>      # hours, network-bound
-pixi run -e ml earthpv infer --aoi <aoi> --checkpoint data/models/release/earthpv_segmentation_v14.ckpt
+pixi run -e ml earthpv infer --aoi <aoi> --checkpoint data/models/release/earthpv_segmentation_v28.ckpt
 pixi run earthpv postprocess --aoi <aoi> --threshold 0.3 --max-building-dist 30
 pixi run earthpv export --aoi <aoi> --exclude-mapped --min-distance-m 100
 ```
@@ -71,7 +76,7 @@ subtracted. A composite on another scale is a domain shift the model was never s
 ```python
 from earthpv.infer import load_model, predict_window
 
-task, device, task_type = load_model("data/models/release/earthpv_segmentation_v14.ckpt")
+task, device, task_type = load_model("data/models/release/earthpv_segmentation_v28.ckpt")
 prob = predict_window(window, task, device, task_type)
 # window: (10, 224, 224) array of digital numbers in the band order above
 # prob:   (224, 224) PV probability; the published pipeline thresholds it at 0.3
@@ -85,109 +90,131 @@ false positives at the window spacing.
 
 | | |
 | --- | --- |
-| Backbone | TerraMind 1.0 tiny (`terramind_v1_tiny`, IBM and ESA), fine-tuned end to end through TerraTorch |
-| Decoder | UNet, channels 256-128-64-32, on a feature pyramid from ViT blocks 2, 5, 8 and 11 |
-| Parameters | 8.2 million |
+| Backbone | ResNet-50 pretrained by MoCo on SSL4EO-S12 Sentinel-2 (TerraTorch's `ssl4eos12_resnet50_sentinel2_all_moco`, from TorchGeo), its first convolution cut to the 10 bands, fine-tuned end to end |
+| Decoder | UNet, channels 256-128-64-32-32, on all five ResNet stages; the finest skip is the 20 m stem, the output 10 m |
+| Parameters | 34.6 million |
 | Input | 224 &times; 224 px at 10 m (2.24 km), 10 bands as above |
 | Output | Two classes, background and PV; production threshold 0.3 |
-| Training labels | 29,458 chips of 2.24 km, cut around OpenStreetMap solar polygons and from background in Germany (3,189), Pakistan (2,712, Punjab included), India (Gujarat, 760), France (18,577) and South Africa (4,220) |
-| Training | Tversky loss (alpha 0.3, beta 0.7, which penalises a missed array more than a false one), AdamW at 10<sup>-4</sup>, batch 8 with 2-step accumulation; best epoch 41 of 49 by validation mIoU (0.811) on geographic holdouts, 16 hours on a GTX 1060 |
-| Training config | [`configs/terramind_pv_v14_south_africa.yaml`](https://github.com/open-energy-transition/earthpv/blob/main/configs/terramind_pv_v14_south_africa.yaml) |
-| Licence | [Apache-2.0](#licence-and-attribution), weights only |
+| Training labels | 29,458 chips of 2.24 km, cut around OpenStreetMap solar polygons and from background in France (18,577), South Africa (4,220), Germany (3,189), Pakistan (2,712, Punjab included) and India (Gujarat, 760): the same corpus as the 2026-10-23 release |
+| Training | Tversky loss (alpha 0.3, beta 0.7, which penalises a missed array more than a false one), AdamW at 10<sup>-4</sup> after a 1,000-step warmup, cosine decay to 10<sup>-6</sup>, batch 8 with 2-step accumulation, radiometric jitter; a fixed budget of 42 epochs, and the released weights are the exponential moving average at its end (decay 0.9999), on a GTX 1060 |
+| Training config | [`configs/terramind_pv_v28_resnet50_south_africa.yaml`](https://github.com/open-energy-transition/earthpv/blob/main/configs/terramind_pv_v28_resnet50_south_africa.yaml) |
+| Licence | [CC BY 4.0](#licence-and-attribution), weights only |
 
 It is built for **arrays of roughly 400 m&sup2; and up, and ground-mount at any size**.
 Anything smaller is burned into the training mask as `ignore`, so the model is not trained
-to find a household system, and mostly does not. Small rooftop PV is the
+to find a household system. It finds about half of isolated rooftop arrays of 700-1,000
+m&sup2; and few below 400 m&sup2; ([The floor](#where-it-stops)). Small rooftop PV is the
 [rooftop classifier](methods/roofclf.md)'s job, which needs local calibration and is not
 part of this release.
 
 ## How it was chosen
 
-Seven checkpoints were scored on 2026-10-23 on the same held-out chips in eleven regions:
-`v5_combined_france`, the generalist every localized model
-was compared against, and the six models localized to one more country each, all trained
-with the same recipe. A held-out chip is one the checkpoint never trained on. An
-installation of 400 m&sup2; or more counts as found when the model marks any of its pixels at
-threshold 0.3.
+Eight checkpoints were trained on the same corpus and compared at the same pixel precision,
+so a model cannot win by marking more pixels: the released TerraMind (v14), TerraMind Tiny,
+Small and Base on a newer recipe, two Tiny variants (a 10 m path into the decoder, a
+size-weighted loss), and two ResNet-50s, with and without that loss. An installation counts
+as found when the model marks any of its pixels.
 
-**On the six holdouts that are in every training corpus and held out of all of them**, the
-only comparison fair to all seven:
+**In ten countries no checkpoint was trained on**, 4,746 chips with 2,181 rooftop arrays of
+400-5,000 m&sup2; and 22,076 ground-mounted arrays of 400 m&sup2; and up:
 
-| Checkpoint | Installations found | Rooftop, 400-5,000 m&sup2; | Ground-mount | Pixel precision | Pixel IoU |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| **v14, South Africa (released)** | **65.6%** | **51.5%** | **78.2%** | 0.74 | 0.61 |
-| v15, Poland | 63.7% | 48.0% | 77.7% | 0.77 | 0.62 |
-| v5, the generalist | 63.3% | 48.3% | 76.6% | 0.77 | 0.61 |
-| v9, Vietnam | 60.1% | 42.6% | 75.9% | 0.76 | 0.62 |
-| v11, Morocco | 56.4% | 38.7% | 72.2% | 0.76 | 0.61 |
-| v12, Egypt | 54.6% | 34.2% | 73.2% | 0.75 | 0.60 |
-| v10, India | 48.9% | 29.2% | 66.5% | 0.74 | 0.59 |
+| Checkpoint | Rooftop, 400-5,000 m&sup2; | Ground-mount | Pixel precision |
+| --- | ---: | ---: | ---: |
+| **v28, ResNet-50 (released)** | **85.5%** | **82.1%** | 0.81 |
+| v29, TerraMind Tiny, size-weighted loss | 85.4% | 82.2% | 0.83 |
+| v27, TerraMind Tiny with a 10 m path | 82.5% | 78.8% | 0.80 |
+| v36, TerraMind Base | 80.4% | 79.9% | 0.80 |
+| v22, TerraMind Tiny, newer recipe | 77.9% | 79.4% | 0.80 |
+| v14, TerraMind Tiny (released 2026-10-23) | 77.7% | 79.6% | 0.78 |
+| v41, ResNet-50, size-weighted loss | 73.1% | 79.9% | 0.85 |
+| v35, TerraMind Small | 72.8% | 78.1% | 0.80 |
 
-That is 4,270 installations in France, Germany, Pakistan, Punjab and the Surat-Bharuch-Vadodara
-box in Gujarat, the last scored on both the Gujarat and the national India chips.
+The countries are Egypt, India, Morocco, Namibia, Nigeria, Poland, Turkey, Vietnam, Yemen
+and Zambia. Against v14, v28 finds 229 rooftop arrays v14 misses and misses 59 v14 finds
+(paired McNemar p < 10<sup>-24</sup>); on ground-mount it is 924 against 363. v29, v35 and v41 stay
+more precise than v14 even at threshold 0.95, so they are scored there. v29 ties v28 here,
+but finds fewer rooftop arrays on the training countries' holdouts (73.3% against 79.8%), and
+the same loss added to the ResNet (v41) doubled its false alarms over whole cells, a test v29
+never had.
 
-**Head to head against v5, leaving out South Africa** (v14's own country), v14 finds 84.4%
-of 10,882 held-out installations against 81.5%: 496 found only by v14, 179 only by v5
-(paired McNemar p < 10<sup>-30</sup>). On rooftop arrays of 400-5,000 m&sup2;, the hardest class,
-it is 52.3% against 49.1% (p = 6 &times; 10<sup>-5</sup>). With Poland left out as well, where its
-gain is largest, it still finds more (76.9% against 75.4%, p = 7 &times; 10<sup>-7</sup>).
+**On the held-out regions of its own training countries** (France, Germany, Pakistan, Punjab,
+Gujarat, South Africa) it finds 79.8% of rooftop arrays of 400-5,000 m&sup2; against v14's
+57.3% (1,148 gained, 92 lost), and 91.4% of ground-mount against 90.8%.
 
-| Region | Holdout | Installations | Found, v5 | Found, v14 | Pixel precision, v5 | Pixel precision, v14 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| France | in corpus, held out | 2,217 | 48% | 51% | 0.81 | 0.76 |
-| Germany | in corpus, held out | 495 | 90% | 89% | 0.73 | 0.66 |
-| Pakistan | in corpus, held out | 420 | 71% | 75% | 0.61 | 0.61 |
-| Punjab (Pakistan) | in corpus, held out | 577 | 64% | 66% | 0.50 | 0.50 |
-| Gujarat (India) | in corpus, held out | 290 | 94% | 95% | 0.80 | 0.78 |
-| India, same box | in corpus, held out | 271 | 94% | 96% | 0.77 | 0.75 |
-| Poland | never seen | 4,334 | 91% | 96% | 0.79 | 0.69 |
-| Vietnam | never seen | 446 | 97% | 97% | 0.76 | 0.72 |
-| Morocco | never seen | 1,809 | 99% | 99% | 0.98 | 0.67 |
-| Egypt | never seen | 23 | 4% | 4% | 0.59 | 0.82 |
-| South Africa | v14's own, held out | 4,700 | 76% | 78% | 0.64 | 0.78 |
+**Over whole cells, it finds more with about as many false alarms.** Held-out chips cannot
+show the large false sheets a model can draw over farmland, so every candidate also ran over
+1,000 whole South African cells and 300 Turkish ones, at the production threshold 0.3:
 
-**What it costs is precision.** v14 marks more pixels: outside South Africa its pixel
-precision is 0.72 against v5's 0.79. In Morocco it spreads beyond the parks into the desert
-around them, 38,572 false-positive pixels against v5's 1,862, while finding the same 99% of
-installations. A higher threshold buys back little: at 0.8 it still finds 83.8% outside
-South Africa, at precision 0.73. Pixel precision here treats OpenStreetMap as complete, which
-it is nowhere, so every figure in that column is a lower bound.
+| At 0.3 | v14 | v28 |
+| --- | ---: | ---: |
+| South Africa: rooftop arrays found | 66.4% | 85.3% |
+| South Africa: ground-mount found | 85.6% | 93.6% |
+| South Africa: unmapped objects per 1,000 km&sup2; | 17.9 | 19.3 |
+| South Africa: the 5 parks a person judged solar, kept | 5 | 5 |
+| South Africa: unmapped sheets of 100,000 m&sup2; and up | v14's 102 gone, 6 new | |
+| Turkey (never trained on): rooftop arrays found, of 71 | 73.2% | 95.8% |
+| Turkey: ground-mount found | 89.7% | 94.1% |
+| Turkey: unmapped objects per 1,000 km&sup2; | 46.7 | 52.7 |
 
-**Why recall decides.** EarthPV is recall-first: every detection goes to a person, and a
-missed array is simply missing from the map. The ship rule the project applies to every
-localized model is the same one, installation recall first and pixel IoU only on a tie.
-If your country is mostly desert ground-mount, or you need clean outlines more than you need
-every lead, v15 is the most precise checkpoint in the set (pixel precision 0.79 and IoU 0.66
-outside South Africa, at 83.6% recall). It is not part of this release.
+**Against a model localized to one country it usually still finds more.** On each country's
+own holdout, at the localized checkpoint's pixel precision, v28 finds more rooftop arrays
+than the localized TerraMind in 12 of the 13 countries that have them (Egypt's holdout has
+one, which neither finds), and more or as many ground arrays in nine. It finds fewer ground arrays in Namibia (60% against 88%), Morocco (95%
+against 99%), Spain (85% against 89%), Turkey (96.9% against 98.2%) and Egypt (22 arrays):
+in deserts and on dark open ground a localized model is still the better choice. A ResNet
+localized the same way to Denmark found 66% of its holdout's arrays against 43% for
+Denmark's localized TerraMind.
 
-Every row behind these tables, per region and checkpoint, is in
-[`results/release_model_benchmark.csv`](https://github.com/open-energy-transition/earthpv/blob/main/results/release_model_benchmark.csv).
+The full comparison is in the [experiment register](experiments.md#a-convolutional-network-instead-of-terramind-v28-resnet-50-2026-11-12),
+and every row behind these tables is in
+[`results/release_model_benchmark_v28.csv`](https://github.com/open-energy-transition/earthpv/blob/main/results/release_model_benchmark_v28.csv).
+
+### Where it stops
+
+Recall of isolated rooftop arrays (no other mapped array within 50 m), at 0.3, in Pakistan's
+calibration areas, where every visible panel is mapped, and over 1,000 South African cells:
+
+| Rooftop array | Pakistan, its localized TerraMind (v16) | Pakistan, v28 | South Africa, v14 | South Africa, v28 |
+| --- | ---: | ---: | ---: | ---: |
+| 100-200 m&sup2; | 0% | 0% | 0% | 2% |
+| 200-400 m&sup2; | 2% | 7% | 2% | 16% |
+| 400-700 m&sup2; | 29% | 46% | 3% | 31% |
+| 700-1,000 m&sup2; | 22% | 56% | 23% | 69% |
+
+The bins hold 9 to 67 arrays each, so read them as a direction. In Pakistan's areas v28
+draws no more unmapped objects than v16 (0.17 against 0.21 per km&sup2;).
 
 ## Limits
 
 - **A new country is a domain shift.** Every number above on a country outside the training
-  set is a zero-shot transfer, and it varies widely: on the four countries it never saw it finds 96% of held-out installations in Poland, 97% in Vietnam, 99% in Morocco and 4% in Egypt. Fine-tuning on a
-  country's own OpenStreetMap labels is what moved South Africa's pixel IoU from 0.36 to
-  0.67. Starting `train` from the released weights is not wired in yet; localizing means
-  training from TerraMind on your chips plus whatever corpus you have
-  ([Step 5](reproduce.md#step-5-retrain-in-domain)).
+  set is a zero-shot transfer, and it varies widely by country: rooftop recall runs from 65%
+  of 161 arrays in India to 97% in Vietnam. Fine-tuning on a country's own OpenStreetMap
+  labels is what each published atlas does. Starting `train` from the released weights is
+  not wired in yet; localizing means training from the pretrained backbone on your chips
+  plus whatever corpus you have ([Step 5](reproduce.md#step-5-retrain-in-domain)).
+- **Deserts and dark ground.** In Namibia and Morocco a TerraMind trained on the same corpus
+  finds more ground-mount than this model, so the gap there is the architecture, not the
+  missing local training.
 - **Precision is a property of the place.** Bright bare ground, salt flats and greenhouses
   produce false positives at different rates in different landscapes. Every detection is a
   lead for a person to check against high-resolution imagery, not a confirmed installation.
 - **Arrays Sentinel-2 cannot separate from their surroundings stay invisible.** Yemen's
   ~600 m&sup2; solar irrigation arrays differ from the farmland around them by about 2% per
-  band and no checkpoint finds them.
+  band; this model finds 1 of 10 held-out rooftop arrays there.
 
 ## Licence and attribution
 
-**The model weights are released under the
-[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)**, the same licence as
-[TerraMind 1.0](https://huggingface.co/ibm-esa-geospatial/TerraMind-1.0-tiny), from which
-they derive. The release carries the licence text as `LICENSE` and the attributions as
-`NOTICE`. Keep `NOTICE` with the weights if you redistribute them or a fine-tune of them.
+**The model weights are released under
+[Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/)**,
+the licence of the [SSL4EO-S12](https://github.com/zhu-xlab/SSL4EO-S12) ResNet-50 weights
+they are fine-tuned from (Wang et al., 2023, distributed by
+[TorchGeo](https://huggingface.co/torchgeo/resnet50_sentinel2_all_moco)). The release carries
+the licence text as `LICENSE` and the attributions as `NOTICE`. Keep `NOTICE` with the weights
+if you redistribute them or a fine-tune of them.
 
-Credit TerraMind (IBM and ESA), &copy; OpenStreetMap contributors (the training labels,
-ODbL 1.0) and Copernicus Sentinel-2 when you publish results made with it, and cite this
-repository. The licence covers the weights only. Detections and capacity tables made with
-them are derivative of OpenStreetMap and fall under ODbL, like the project's other data
-outputs (see the [README](https://github.com/open-energy-transition/earthpv#licence)).
+Credit SSL4EO-S12, &copy; OpenStreetMap contributors (the training labels, ODbL 1.0) and
+Copernicus Sentinel-2 when you publish results made with it, and cite this repository. The
+licence covers the weights only; the code that loads them is MIT, and TerraTorch is
+Apache-2.0. Detections and capacity tables made with them are derivative of OpenStreetMap and
+fall under ODbL, like the project's other data outputs (see the
+[README](https://github.com/open-energy-transition/earthpv#licence)).

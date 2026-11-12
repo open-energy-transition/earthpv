@@ -26,9 +26,9 @@ from pathlib import Path
 
 REPO = "open-energy-transition/earthpv"
 RELEASE = {
-    "tag": "segmentation-model-v14-2026-10-23",
-    "file": "earthpv_segmentation_v14.ckpt",
-    "sha256": "d39d38a864d249c9eff8e6eaf5e5b8d8388ce2c2c9c1f0f1ab66d3bf1a89bbbe",
+    "tag": "segmentation-model-v28-2026-11-12",
+    "file": "earthpv_segmentation_v28.ckpt",
+    "sha256": "0c2a24b50f66a0c33aad86b0fea6d52a781d23e71b6f9a39950fa0dd19640fe8",
 }
 
 

@@ -132,10 +132,11 @@ small-rooftop half does not work at all.
 ## Run the pretrained model
 
 The segmentation model is published as a
-[GitHub release](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23):
-TerraMind tiny fine-tuned on OpenStreetMap solar labels from Germany, Pakistan, India,
-France and South Africa, 33 MB, and the best of seven checkpoints on held-out regions in
-eleven countries. You need Linux and an NVIDIA GPU; a 6 GB GTX 1060 is enough.
+[GitHub release](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v28-2026-11-12):
+a ResNet-50 (pretrained on SSL4EO-S12) fine-tuned on OpenStreetMap solar labels from Germany,
+Pakistan, India, France and South Africa, 139 MB, and of eight checkpoints the one that found
+the most arrays in ten countries none was trained on. You need Linux and an NVIDIA GPU; a 6 GB
+GTX 1060 is enough.
 
 ```bash
 git clone https://github.com/open-energy-transition/earthpv.git && cd earthpv
@@ -144,7 +145,7 @@ pixi run fetch-model                   # downloads the checkpoint and checks its
 
 pixi run python scripts/new_region.py add --aoi <aoi> --bbox <bbox> --iso3 <ISO3>
 pixi run earthpv compose --aoi <aoi> --window <clear-season START:END>    # hours
-pixi run -e ml earthpv infer --aoi <aoi> --checkpoint data/models/release/earthpv_segmentation_v14.ckpt
+pixi run -e ml earthpv infer --aoi <aoi> --checkpoint data/models/release/earthpv_segmentation_v28.ckpt
 pixi run earthpv postprocess --aoi <aoi> --threshold 0.3
 pixi run earthpv export --aoi <aoi>    # ranked candidates for OpenStreetMap mappers
 ```
@@ -201,9 +202,9 @@ checkable. [Join the community on Discord](https://discord.gg/T5zh6N24Hv).
 
 ## Licence
 
-Code MIT. The [released segmentation model](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v14-2026-10-23)'s
-weights are Apache-2.0, like the TerraMind model they are fine-tuned from; its `NOTICE`
-lists the attributions to keep. Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
+Code MIT. The [released segmentation model](https://github.com/open-energy-transition/earthpv/releases/tag/segmentation-model-v28-2026-11-12)'s
+weights are CC BY 4.0, like the SSL4EO-S12 weights they are fine-tuned from; its `NOTICE`
+lists the attributions to keep (the earlier TerraMind release, v14, is Apache-2.0). Imagery from Copernicus Sentinel-2; building footprints from VIDA Open Buildings
 and Overture Maps; labels from OpenStreetMap contributors under ODbL; administrative
 boundaries from geoBoundaries under CC-BY; solar-panel import figures from
 [Ember](https://ember-energy.org/data/china-solar-exports-data/) under CC-BY-4.0.

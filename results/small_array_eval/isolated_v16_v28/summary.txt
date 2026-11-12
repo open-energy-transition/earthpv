@@ -1,0 +1,28 @@
+39 areas with arrays of 44, 184.9 km2; thresholds {'v16': 0.3, 'v28': 0.3}
+unmapped objects per km2: v16 0.206 (38), v28 0.173 (32)
+
+  arrays placement       bin     n   v16   v28
+isolated    ground     0-100   129 0.000 0.000
+isolated    ground   100-200    46 0.000 0.000
+isolated    ground   200-400    23 0.043 0.087
+isolated    ground   400-700    15 0.133 0.267
+isolated    ground  700-1000    16 0.375 0.750
+isolated    ground 1000-5000    33 0.697 0.909
+isolated   rooftop     0-100   283 0.000 0.000
+isolated   rooftop   100-200    67 0.000 0.000
+isolated   rooftop   200-400    42 0.024 0.071
+isolated   rooftop   400-700    24 0.292 0.458
+isolated   rooftop  700-1000     9 0.222 0.556
+isolated   rooftop 1000-5000    33 0.879 0.848
+     all    ground     0-100   482 0.006 0.002
+     all    ground   100-200   135 0.030 0.022
+     all    ground   200-400    86 0.221 0.256
+     all    ground   400-700    77 0.468 0.558
+     all    ground  700-1000    67 0.567 0.746
+     all    ground 1000-5000   146 0.877 0.945
+     all   rooftop     0-100 12633 0.001 0.001
+     all   rooftop   100-200  2023 0.018 0.014
+     all   rooftop   200-400   591 0.105 0.120
+     all   rooftop   400-700   212 0.344 0.354
+     all   rooftop  700-1000    85 0.553 0.612
+     all   rooftop 1000-5000   193 0.876 0.855

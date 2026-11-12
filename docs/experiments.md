@@ -165,6 +165,9 @@ repository; nothing was deleted on failure.
 | [Which training labels teach rooftop PV as background](#which-training-labels-teach-rooftop-pv-as-background-a-per-source-audit-2026-10-30) | <span class="outcome mixed">partial</span> | v14 over 10,473 training chips it never trained on, from 15 sources. Vietnam's chips hold about 10 unmapped PV roofs per mapped rooftop array and Germany's national chips about 16 (83% of registered rooftop units of 72 kWp or more sit on background pixels), against 0.1 to 0.3 in France, South Africa and Pakistan. Poland's labels are clean of it. Supports the harmful-label part of v18's loss for those two sources; a second pooled corpus burns their unlabelled roofs as ignore. |
 | [TerraMind's own input standardisation (v21)](#feeding-terramind-the-input-it-was-pretrained-on-v21-2026-10-30) | <span class="outcome negative">rejected</span> | Every checkpoint saw DN / 10000, never TerraMind's pretraining standardisation. A frozen-feature probe said that cost a lot (held-out token AP 0.469 against 0.737), but fine-tuned with v14's recipe otherwise unchanged it ties v14 on rooftop recall (0.575 against 0.574 at matched precision, p = 0.87) and is 0.6 points behind on ground. It converges in half the epochs; its one regional effect beyond epoch noise is a loss in France. |
 | [Training on arrays down to 100 m<sup>2</sup> (v24)](#training-on-arrays-down-to-100-m2-v24-2026-11-01) | <span class="outcome negative">rejected</span> | v16 retrained with Pakistan's 4,048 mapped arrays of 100 to 400 m<sup>2</sup> burned as PV instead of ignore. At the production threshold it finds more small rooftop arrays in the calibration areas (0.052 against 0.0375 at its later epoch) only because it flags more pixels everywhere (43% more there). At v16's pixel precision it finds 0.032 and 0.036 at its two saved epochs, against 0.0375, and nothing changes below 100 m<sup>2</sup> (about 0.1%). Small rooftop PV stays `roofclf`'s job. |
+| [A ResNet-50 instead of TerraMind (v28)](#a-convolutional-network-instead-of-terramind-v28-resnet-50-2026-11-12) | <span class="outcome works">shipped</span> | A CNN pretrained on SSL4EO-S12, on v14's corpus with v22's recipe. At v14's pixel precision it finds far more rooftop arrays of 400 to 5,000 m<sup>2</sup> (in-corpus holdouts 0.798 against 0.573; zero-shot over ten countries 0.855 against 0.777) and a few more ground arrays (0.914 and 0.821 against 0.908 and 0.796). Over 1,000 whole South African cells at 0.3 it finds 0.853 of rooftop arrays against 0.664 with about as many unmapped objects, and keeps all five judged parks. Released as the baseline model 2026-11-12 (`segmentation-model-v28-2026-11-12`, CC BY 4.0); the country atlases keep their own checkpoints. It loses ground arrays to the localized TerraMind in Namibia and Morocco. |
+| [TerraMind Small and Base (v35, v36)](#a-convolutional-network-instead-of-terramind-v28-resnet-50-2026-11-12) | <span class="outcome negative">rejected</span> | v28's corpus and recipe on the larger TerraMinds. Zero-shot rooftop 0.728 (Small) and 0.804 (Base) against v28's 0.855; Small loses even to Tiny. Large does not fit the 6 GB GPU. |
+| [The ResNet with a size-weighted loss (v41)](#a-convolutional-network-instead-of-terramind-v28-resnet-50-2026-11-12) | <span class="outcome negative">rejected</span> | v28 plus v29's per-array weighting. Best on its own corpus's holdouts (rooftop 0.864) but zero-shot it finds fewer rooftop arrays than v14 (0.731), draws twice v28's unmapped objects over whole cells (South Africa 39.6 against 19.3 per 1,000 km<sup>2</sup>) and drops a judged park: it fails the rule fixed before it ran. |
 | [PSF weights, buffered footprints, context and model-form blocks](#the-capacity-chain-is-a-quantification-problem-2026-10-22) | <span class="outcome negative">rejected</span> | Eleven more feature, weighting and training-set variants; none better than +0.0005 within size band. |
 | External corroboration: nightlights and a wealth index | <span class="outcome mixed">partial</span> | VIIRS nightlights and Meta's Relative Wealth Index correlate with published capacity (r=0.76, r=0.66), but partial correlation shows most of that tracks the same building-density confound (0.54, 0.35). Kept as a plausibility citation, not promoted to a stratification input. |
 | Unrestricted national roofclf capacity | <span class="outcome open">superseded</span> | 18 to 37 GWp, rejected as miscalibrated; replaced by the domain-restricted estimate. |
@@ -871,6 +874,134 @@ whether farm-yard ground PV belongs in the rooftop label (open question 21). The
 question is untouched: the held-out random boxes read 0.125 m<sup>2</sup> of mapped PV per
 probability-weighted m<sup>2</sup> of household roof under both models, against the lower
 band's 0.33.
+
+### A convolutional network instead of TerraMind: v28 ResNet-50 (2026-11-12)
+
+Every segmentation model in this register was a ViT foundation model (TerraMind, THOR), whose
+finest learned feature is a 16 px token. v28 is a ResNet-50 pretrained by MoCo on SSL4EO-S12
+Sentinel-2 (TerraTorch's `ssl4eos12_resnet50_sentinel2_all_moco`, CC-BY-4.0 weights), with a
+plain UNet whose finest skip is the 20 m stem. It was trained on v14's corpus
+(`combined_south_africa`) with v22's recipe (fixed 42-epoch budget, warmup and cosine decay,
+weight average, radiometric jitter), seed 1, on DN / 10000 like every checkpoint. The owner
+asked (2026-11-08) whether it should replace TerraMind, and to check larger TerraMind models
+too: v35 (TerraMind Small) and v36 (Base) took the same corpus and recipe. Large does not fit
+the GTX 1060, even at batch 4.
+
+**At matched pixel precision it finds the most arrays, in and out of its corpus.** Scored with
+`scripts/fair_score.py` at v14's pooled pixel precision over the six in-corpus holdouts, and
+with `scripts/zero_shot_suite.py` over ten countries outside the corpus (4,746 chips; 2,181
+rooftop arrays of 400 to 5,000 m<sup>2</sup>, 22,076 ground arrays):
+
+| Model | Change from v14 | In-corpus holdouts, rooftop / ground | Zero-shot, rooftop / ground |
+| --- | --- | --- | --- |
+| v14 (released 2026-10-23) | | 0.573 / 0.908 | 0.777 / 0.796 |
+| v22 seed 1 | v22's recipe | 0.568 / 0.909 | 0.779 / 0.794 |
+| v27 | v22 plus a 10 m path into the decoder | 0.722 / 0.910 | 0.825 / 0.787 |
+| v29 | v22 plus a per-array size-weighted Tversky loss | 0.733 / 0.933 | 0.854 / 0.822 |
+| v35 | TerraMind Small, v22's recipe | 0.487 / 0.886 | 0.728 / 0.781 |
+| v36 | TerraMind Base, v22's recipe | 0.602 / 0.917 | 0.804 / 0.799 |
+| **v28** | **ResNet-50, v22's recipe** | **0.798 / 0.914** | **0.855 / 0.821** |
+| v41 | v28 plus v29's loss | 0.864 / 0.906 | 0.731 / 0.799 |
+
+Rooftop is arrays of 400 to 5,000 m<sup>2</sup>, ground every ground array of 400 m<sup>2</sup>
+and up. Zero-shot, v28 against v14 is +229/-59 rooftop arrays (p = 8 x 10<sup>-25</sup>) and
++924/-363 ground (p = 10<sup>-56</sup>), at a threshold of 0.071 where its pixel precision
+equals v14's at 0.3; at 0.3 it is the more precise model. v29, v35 and v41 stay more precise
+than v14 even at 0.95, so they are scored there. v29 ties v28 zero-shot (at a higher
+precision) but not on the in-corpus holdouts, and it never ran over whole cells. Base is the only TerraMind size that gains on
+Tiny, and it stays 0.05 behind v28 zero-shot; Small loses to Tiny.
+
+**Over whole cells it finds more with about as many false alarms.** Chips cannot see large
+false sheets, so
+`scripts/sheet_scan.py curve` ran each model over 1,000 whole South African cells (in corpus
+for both) and 300 Turkish cells (zero-shot for both), at the production threshold 0.3:
+
+| At 0.3 | v14 | v19 (Turkey's own) | v28 | v41 |
+| --- | --- | --- | --- | --- |
+| South Africa, rooftop arrays found | 0.664 | | 0.853 (+255/-3) | 0.903 |
+| South Africa, ground arrays found | 0.856 | | 0.936 (+111/-14) | 0.961 |
+| South Africa, unmapped objects per 1,000 km<sup>2</sup> | 17.9 | | 19.3 | 39.6 |
+| South Africa, judged parks kept (of 5) | 5 | | 5 | 4 |
+| South Africa, judged false blobs drawn again (of 244) | 244 | | 21 | 26 |
+| Turkey, rooftop arrays found (71) | 0.732 | 0.775 | 0.958 | 0.986 |
+| Turkey, ground arrays found | 0.897 | 0.946 | 0.941 | 0.956 |
+| Turkey, unmapped objects per 1,000 km<sup>2</sup> | 46.7 | 51.9 | 52.7 | 80.5 |
+
+v28's unmapped objects equal v14's at threshold 0.5. Of v14's unmapped sheets of 100,000
+m<sup>2</sup> and up in South Africa, 102 are gone and 6 are new. Its detections show no
+lattice at the window stride (centroid offsets chi<sup>2</sup>/dof 1.06, against v14's 2.90).
+
+**Against each country's own localized TerraMind, on that country's holdout** (at the local
+checkpoint's pixel precision; `results/fair_score/local_vs_v28/`): v28 finds more rooftop
+arrays in 12 of the 13 countries that have them (Egypt's holdout has one, found by neither). On ground arrays it wins in France, Pakistan,
+Punjab, Germany, Poland and Vietnam, ties in South Africa, India and Gujarat, and loses in
+Namibia (0.603 against 0.884), Morocco (0.949 against 0.992), Spain (0.853 against 0.887),
+Turkey (0.969 against 0.982) and Egypt (22 arrays). Tiny trained on the same corpus (v22 seed
+1) also beats it on ground in Namibia (0.701) and Morocco (0.994), so those two are the
+architecture, not the localization. The losses sit in 7 and 4 chips, the panel rows of a few
+parks, so the per-array McNemar test overstates them.
+
+**A national rerun with v28 passes most, not all, of its fixed criteria.** Pakistan and
+Germany ran the whole atlas chain on v28 (2026-11-08/09; `scripts/v28_country_test_eval.py`,
+`data/predictions_v28/`). Pakistan passes 4 of 5: rooftop recall over mapped arrays at 30 m
+fails narrowly (0.452 against v16's 0.459, +45/-49 of 505), ground 0.594 against 0.507, Best
+34,443.3 against 34,470.3 MWp. Germany passes 4 of 6: it confirms 17,421 unmapped
+register units against 3,497 and ranks Gemeinden better (Spearman 0.749 against 0.628), but
+rooftop `p_unmapped` at 5,000 to 50,000 m<sup>2</sup> falls (0.446 against 0.514) and it covers
+84.6% of the 149 judged parks. Nothing was published from it.
+
+**A localized ResNet** (`scripts/run_resnet_local.sh`, a side-car to each new country run that
+trains v28's model on the country's own corpus and only reports) beat Denmark's localized
+TerraMind (v37) on its Nordjylland holdout at v37's pixel precision 0.894: 0.658 of 120
+arrays against 0.433 (+28/-1), rooftop 19 of 24 against 2, ground 0.625 against 0.521
+(+11/-1). A thin holdout; California, Texas and Mexico follow
+(`results/fair_score/resnet_local/<aoi>/`).
+
+**It moves the size floor down, not away.** Recall of ISOLATED mapped arrays (no other mapped
+array within 50 m, since a neighbour's detection otherwise credits a small one), as the largest
+production probability inside the outline, at 0.3:
+
+| Isolated arrays | Pakistan, 44 Rule-1 areas: v16 | v28 | n | South Africa, 1,000 cells: v14 | v28 | v41 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Rooftop 100-200 m<sup>2</sup> | 0 | 0 | 67 | 0 | 0.02 | 0.15 |
+| Rooftop 200-400 m<sup>2</sup> | 0.02 | 0.07 | 42 | 0.02 | 0.16 | 0.27 |
+| Rooftop 400-700 m<sup>2</sup> | 0.29 | 0.46 | 24 | 0.03 | 0.31 | 0.49 |
+| Rooftop 700-1,000 m<sup>2</sup> | 0.22 | 0.56 | 9 | 0.23 | 0.69 | 0.92 |
+| Rooftop 1,000-5,000 m<sup>2</sup> | 0.88 | 0.85 | 33 | 0.45 | 0.75 | 0.95 |
+| Ground 700-1,000 m<sup>2</sup> | 0.38 | 0.75 | 16 | | | |
+
+In Pakistan's areas v28 draws no more unmapped objects than v16 (0.17 against 0.21 per
+km<sup>2</sup> over 185 km<sup>2</sup>; Jhang f2, not Rule-1, left out). Half of the arrays are
+found at about 700 to 1,000 m<sup>2</sup> instead of above 1,000; below 400 m<sup>2</sup>, where
+training burns every array as ignore, segmentation stays nearly blind and small rooftop PV
+stays `roofclf`'s job. The bins hold 9 to 67 arrays (South Africa's 13 to 49): read them as a
+direction.
+
+**v41 fails the rule fixed before it ran** (`scripts/run_v41_resnet_sizeweight.sh`: zero-shot
+rooftop at least v28's plus 0.02, ground within 0.01, no more unmapped objects or new sheets
+over whole cells, judged parks kept). Its in-corpus gain does not travel: zero-shot it finds
+fewer rooftop arrays than v14 (0.731; 0.740 even at 0.3) and fewer of 400 to 1,000 m<sup>2</sup>
+(0.63 against v28's 0.82), it draws twice v28's unmapped objects over whole cells, and it
+drops a judged park. The size-weighted loss widens what the model fires on, as it did for
+Tiny (v29).
+
+**Verdict:** v28 is the released baseline model from 2026-11-12
+(`segmentation-model-v28-2026-11-12`, `pixi run fetch-model`), replacing v14 for areas
+without a model of their own; its weights are CC-BY-4.0 because the SSL4EO-S12 weights it is
+fine-tuned from are. Every published atlas keeps its own country's checkpoint, so no published
+number changes. New countries still localize TerraMind and ship the holdout winner; the
+localized ResNet side-car decides whether that changes. TerraMind Small and Base, v27, v29 and
+v41 are not adopted.
+
+Code: `configs/terramind_pv_v28_resnet50_south_africa.yaml`, `scripts/fair_score.py`,
+`scripts/zero_shot_suite.py`, `scripts/sheet_scan.py`, `scripts/isolated_small_recall.py`; the
+unit scripts that chained them (`run_baseline_checks.sh`, `run_resnet_assessment.sh`,
+`run_v28_country_test_{gpu,cpu}.sh` with `v28_country_test_eval.py`,
+`run_v41_resnet_sizeweight.sh`, `run_resnet_local.sh`) stayed local. Results: every pooled and
+per-country row in `results/release_model_benchmark_v28.csv`;
+`results/small_array_eval/{isolated_v16_v28,isolated_sa_v14_v28_v41}/`; locally
+`results/fair_score/`, `data/sheet_scan/{south_africa,turkiye}/` and
+`data/predictions_v28/v28_country_test_report.json`.
 
 ## What did not work
 

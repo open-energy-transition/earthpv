@@ -38,7 +38,7 @@ A third environment, `docs`, builds this site and is independent of both.
 checkpoint is published as a GitHub release:
 
 ```bash
-pixi run fetch-model      # -> data/models/release/earthpv_segmentation_v14.ckpt, SHA-256 checked
+pixi run fetch-model      # -> data/models/release/earthpv_segmentation_v28.ckpt, SHA-256 checked
 ```
 
 Every `--checkpoint` below can point at it. What it was trained on, how it was chosen and
@@ -646,7 +646,7 @@ systemd-run --user --collect --unit=earthpv-compose-surat-thani \
 # detect, rank, export
 pixi run fetch-model
 pixi run -e ml earthpv infer --aoi surat_thani \
-    --checkpoint data/models/release/earthpv_segmentation_v14.ckpt
+    --checkpoint data/models/release/earthpv_segmentation_v28.ckpt
 pixi run earthpv postprocess --aoi surat_thani --threshold 0.3 --max-building-dist 30
 pixi run earthpv export --aoi surat_thani --exclude-mapped --min-distance-m 100
 ```

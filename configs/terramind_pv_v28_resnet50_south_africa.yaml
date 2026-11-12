@@ -1,0 +1,70 @@
+# TerraTorch fine-tuning config for PV segmentation -- v28: a convolutional network on v22's
+# recipe and corpus (2026-11-05, step 2b of the model plan after v23).
+#
+# The experiment register has no CNN baseline: every segmentation model so far is a ViT
+# foundation model (TerraMind, THOR). The literature finds a native-resolution CNN competitive
+# with or ahead of foundation models on small Sentinel-2 objects (PANGAEA, arXiv 2412.04204),
+# and TransitionZero's solar asset mapper is a UNet++ on this ResNet-50. v28 is a ResNet-50
+# pretrained on SSL4EO-S12 Sentinel-2 by MoCo, with a plain UNet whose finest skip is the 20 m
+# stem; everything else is configs/terramind_pv_v22_recipe_south_africa.yaml, seed 1.
+
+data:
+  index_path: data/chips/combined_south_africa/index.parquet
+  batch_size: 8
+  num_workers: 4
+  jitter: {p: 0.5, gain: 0.07, offset: 0.01}
+
+task:
+  model_factory: EncoderDecoderFactory
+  model_args:
+    # ResNet-50 pretrained by MoCo on SSL4EO-S12 (13-band Sentinel-2 L1C / 10000, so our
+    # DN / 10000 input is on its scale). TerraTorch subsets conv1 to our 10 bands.
+    backbone: ssl4eos12_resnet50_sentinel2_all_moco
+    backbone_pretrained: true
+    backbone_model_bands: [BLUE, GREEN, RED, RED_EDGE_1, RED_EDGE_2, RED_EDGE_3,
+                           NIR_BROAD, NIR_NARROW, SWIR_1, SWIR_2]
+    # All five stages: 64 ch at 20 m (conv1), 256 at 40 m, 512 at 80 m, 1024 at 160 m,
+    # 2048 at 320 m. A plain UNet over them ends at 10 m.
+    backbone_out_indices: [0, 1, 2, 3, 4]
+    necks: []
+    decoder: UNetDecoder
+    decoder_channels: [256, 128, 64, 32, 32]
+    num_classes: 2
+    rescale: true
+  # Recall-first: Tversky with beta>alpha penalises false negatives (missed PV) harder
+  # than false positives. gamma=1 = plain Tversky (no focal term).
+  loss: tversky
+  tversky_args: {alpha: 0.3, beta: 0.7, gamma: 1.0}
+  class_weights: [0.25, 0.75]
+  ignore_index: -1
+  lr: 1.0e-4
+  optimizer: AdamW
+  optimizer_hparams:
+    weight_decay: 0.05
+  # Stepped per optimizer step: 30,458 train rows / batch 8 / accumulation 2 = 1,904 a epoch.
+  scheduler: SequentialLR
+  scheduler_hparams:
+    interval: step
+    schedulers:
+      LinearLR: {start_factor: 0.01, end_factor: 1.0, total_iters: 1000}
+      CosineAnnealingLR: {T_max: 78968, eta_min: 1.0e-6}
+    milestones: [1000]
+  freeze_backbone: false
+  plot_on_val: false
+
+trainer:
+  max_epochs: 42
+  accumulate_grad_batches: 2
+
+seed: 1
+early_stopping: false
+ema: {decay: 0.9999}
+
+# -> /home/tobi/earthpv_data/models/v28_resnet50_south_africa (aidisc is the binding constraint)
+checkpoint_dir: data/models/v28_resnet50_south_africa
+# Selects the two informational top-k checkpoints only; the model is last.ckpt.
+monitor: val/mIoU
+monitor_mode: max
+
+# Training is protected against systemd-oomd restarts: continue from this run's own last.ckpt.
+resume: true
