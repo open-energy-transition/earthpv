@@ -216,12 +216,13 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   --tier: #9c4a14; --tier-hi: #cf7a3f; --tier-lo: #6f3209; --tier-ink: #fdeade;
   --tier-text: #8a3f10; --tier-ring: rgba(156, 74, 20, .48);
 }
-/* Width 0 and min-width 100%: the note wraps to the card instead of widening it. */
+/* Width 0 and min-width 100%: the note wraps to the card instead of widening it. In vermilion,
+   like the bar below 400 m2 whose gap it names. */
 .card__note {
   width: 0;
   min-width: 100%;
   margin-top: 4px;
-  color: var(--ink-2);
+  color: var(--shu);
   font-size: 11.5px;
   font-style: italic;
   line-height: 1.3;
@@ -263,7 +264,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 }
 .card__size-value { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .card__size-label.is-small, .card__size-value.is-small { color: var(--shu); font-weight: 600; }
-.card__size-value.not-measured { color: var(--ink-2); font-style: italic; font-weight: 400; }
+.card__size-value.not-measured { color: var(--shu); font-style: italic; font-weight: 400; }
 
 /* ------------------------------------------------- title, as on a Grid2Poster */
 .title {
