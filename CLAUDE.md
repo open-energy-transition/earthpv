@@ -898,7 +898,10 @@ published file.
 **The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
 keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,
 `report.md`, `maintainers.md`). Mappers report through `.github/ISSUE_TEMPLATE/calibration-area.yml`;
-the popup's "Report progress" link prefills `area` and `country`. A screenshot still to be taken
+the popup's "Report progress" link prefills `area` and `country`. Country requests, and claims
+of a country someone is building, go through `.github/ISSUE_TEMPLATE/new-country.yml` (label
+`new-country`), which `contribute/new-atlas`'s links open prefilled with the globe's country, ISO3
+and box (`new-atlas.js`). A screenshot still to be taken
 is a `<div class="shot-needed" markdown>` placeholder naming the target file.
 
 `new_calibration_quadrat.py --aoi <aoi>` registers outside Pakistan into `data/labels/<aoi>/`,

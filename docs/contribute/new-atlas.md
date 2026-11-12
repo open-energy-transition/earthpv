@@ -7,6 +7,7 @@ title: Build an atlas on your PC
 <div class="atlas-start" data-new-atlas hidden markdown="0">
   <p class="atlas-start__lead"><strong data-new-atlas-country></strong> has no atlas yet. You could be the person who draws it.</p>
   <p class="atlas-start__note">The commands below are already filled in. The box comes from a world map, so check it before you start.</p>
+  <p class="atlas-start__note">Would you rather ask for it? <a href="https://github.com/open-energy-transition/earthpv/issues/new?template=new-country.yml&amp;builder=I+am+asking+the+maintainers+to+build+it">Request this country</a>, and tell us there what you know about its solar.</p>
   <p class="atlas-start__note" data-new-atlas-china hidden><strong>Ask on Discord before you start.</strong> Open building footprints barely reach China, and this pipeline only images places where it knows there are buildings, so the steps below would find very little here yet.</p>
 </div>
 
@@ -16,8 +17,10 @@ the trained model are all free, and you need no account for any of them. When yo
 country goes from a pencil line to ink on the globe, and your atlas tells the country something
 it may never have measured.
 
-**Tell us which country you are starting** on [Discord](https://discord.gg/T5zh6N24Hv), so that
-two people do not spend the same week on it. It is also the fastest place to get unstuck.
+**Tell us which country you are starting** on [Discord](https://discord.gg/T5zh6N24Hv) or in a
+[new country issue](https://github.com/open-energy-transition/earthpv/issues/new?template=new-country.yml&builder=I+am+building+it+myself+on+my+own+PC+%28so+nobody+else+starts+the+same+country%29),
+so that two people do not spend the same week on it. Discord is also the fastest place to get
+unstuck. If you would rather someone else built it, [request the country](https://github.com/open-energy-transition/earthpv/issues/new?template=new-country.yml&builder=I+am+asking+the+maintainers+to+build+it) instead.
 
 ## What it takes
 

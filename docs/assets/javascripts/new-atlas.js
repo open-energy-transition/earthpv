@@ -48,6 +48,16 @@
       node.nodeValue = node.nodeValue.replace(pattern, function (m) { return values[m]; });
     });
 
+    // The new country issue form (.github/ISSUE_TEMPLATE/new-country.yml), prefilled by field id.
+    document.querySelectorAll('a[href*="template=new-country.yml"]').forEach(function (a) {
+      var url = new URL(a.href);
+      url.searchParams.set("title", "[new country] " + country);
+      url.searchParams.set("country", country);
+      if (values.YOUR_ISO3) url.searchParams.set("iso3", values.YOUR_ISO3);
+      if (values.YOUR_BBOX) url.searchParams.set("bbox", values.YOUR_BBOX);
+      a.href = url.toString();
+    });
+
     banner.querySelector("[data-new-atlas-country]").textContent = country;
     banner.querySelector("[data-new-atlas-china]").hidden = iso3 !== "CHN";
     banner.hidden = false;

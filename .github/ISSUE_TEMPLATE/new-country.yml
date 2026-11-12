@@ -1,0 +1,85 @@
+name: New country
+description: Ask for a solar atlas of a country, US state or Chinese province that has none yet, or say you are building one.
+title: "[new country] "
+labels: ["new-country"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for asking. Each atlas takes days of imagery download, a retrain on the country's own OpenStreetMap solar mapping, and a person judging the largest outlines, so the countries with local data and local help go first. What you know about your country is what moves it up the list.
+
+        Please check the [open requests](https://github.com/open-energy-transition/earthpv/issues?q=is%3Aissue+is%3Aopen+label%3Anew-country) first and add to one if your country is there. You can also build the atlas yourself on one PC with an NVIDIA card: https://open-energy-transition.github.io/earthpv/contribute/new-atlas/
+  - type: input
+    id: country
+    attributes:
+      label: Country
+      description: The United States and China are one atlas per state or province, so name the state or province there.
+      placeholder: "Brazil"
+    validations:
+      required: true
+  - type: input
+    id: iso3
+    attributes:
+      label: ISO 3166 alpha-3 code
+      placeholder: "BRA"
+  - type: input
+    id: bbox
+    attributes:
+      label: Bounding box (west,south,east,north)
+      description: Filled in when you came from the globe. Leave it blank if you do not know it.
+      placeholder: "-74.1,-33.8,-34.7,5.3"
+  - type: dropdown
+    id: builder
+    attributes:
+      label: Who would build it
+      options:
+        - "I am asking the maintainers to build it"
+        - "I am building it myself on my own PC (so nobody else starts the same country)"
+        - "I would build it myself with some help"
+    validations:
+      required: true
+  - type: textarea
+    id: use
+    attributes:
+      label: What would you use it for
+      description: For example grid or energy system planning, policy, research, or a local mapping community. It helps us choose which country comes next.
+  - type: textarea
+    id: official
+    attributes:
+      label: Official or published capacity figures
+      description: A register, a regulator's or grid operator's statistics, or a study. Please give a link, the date it refers to, what it counts (installed or registered, AC or DC, rooftop or ground, above which size), whether it splits by region, and its licence. The atlas draws these beside its own estimate.
+  - type: textarea
+    id: osm
+    attributes:
+      label: Solar mapping in OpenStreetMap
+      description: Roughly how much is mapped, and by whom? A local mapping community, an import, or a register-based dataset all help, because the model is retrained on the country's own mapping.
+  - type: input
+    id: season
+    attributes:
+      label: Driest, least cloudy months
+      description: The imagery is a median of the clearest scenes within a few months, so a wet season leaves gaps.
+      placeholder: "November to March"
+  - type: textarea
+    id: lookalikes
+    attributes:
+      label: Things that look like solar panels from above
+      description: Greenhouses, salt pans, solar water heaters, solar thermal plants, dark ploughed fields. Large solar parks the atlas must find are welcome too.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: How you could help
+      options:
+        - label: Map the model's leads in OpenStreetMap
+        - label: Map a calibration area completely
+        - label: Judge the largest outlines on a review page
+        - label: Run the pipeline on my own PC (Linux, NVIDIA card with 6 GB)
+        - label: Find and read the official figures
+  - type: input
+    id: contact
+    attributes:
+      label: OpenStreetMap or Discord username
+      description: Optional, so a maintainer can reach you about mapping or the build.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
