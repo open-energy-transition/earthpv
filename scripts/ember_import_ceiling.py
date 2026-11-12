@@ -61,6 +61,16 @@ NOT_A_CEILING = {
     "luxembourg": "Luxembourg buys most of its panels through its neighbours: its installed "
                   "fleet at the end of 2025 was nearly five times the panels it imported "
                   "directly from China since 2017",
+    # Ember, 2017-01..2026-08: 17.4 GW of panels against 43.7 GW installed at the end of 2025,
+    # 19.3 GW of it by the end of 2016 (GSE, Rapporto Statistico 2025).
+    "italy": "Italy built over 19 GW before 2017, and much of the EU's Chinese supply arrives "
+             "through the Netherlands: its fleet at the end of 2025 was two and a half times "
+             "the panels it imported directly from China since 2017",
+    # Ember, 2017-01..2026-08: 4.35 GW of panels against 5.47 GW registered on 2026-09-30
+    # (Energistyrelsen).
+    "denmark": "much of Denmark's Chinese supply arrives through other EU countries: its "
+               "registered fleet in September 2026 was a quarter larger than all the panels it "
+               "imported directly from China since 2017",
     # Ember, 2017-01..2026-08: 36.1 GW of cells from China against 6.2 GW of panels.
     "turkiye": "Turkey assembles most of its own panels: since 2017 China has shipped it about "
                "six times as much capacity in solar cells as in finished panels",

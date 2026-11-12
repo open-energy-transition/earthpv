@@ -1,0 +1,362 @@
+aoi: denmark
+status: interim-mapped-only
+derived: '2026-11-12'
+min_distance_m: 100.0
+false_floor: 0.087
+false_n: 69
+false_validated: 6
+recall_reference: none
+recall_reference_n: 0
+n_draws: 4000
+seed: 20260723
+ci_pct:
+- 5.0
+- 95.0
+bin_edges_m2:
+- 100.0
+- 500.0
+- 1000.0
+- 5000.0
+- 50000.0
+bins:
+- label: <100
+  n_candidates: 4
+  n_mapped: 4
+  mapped_frac: 1.0
+  sensitivity: 0.025
+  sensitivity_source: study
+  sensitivity_study: 0.025
+  sensitivity_n: 80
+  sensitivity_validated: 2
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 1.0
+  p_real_lo: 0.635
+  p_real_hi: 0.9996
+- label: 100-500
+  n_candidates: 46
+  n_mapped: 11
+  mapped_frac: 0.2391
+  sensitivity: 0.088
+  sensitivity_source: study
+  sensitivity_study: 0.088
+  sensitivity_n: 80
+  sensitivity_validated: 7
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.2391
+  p_real_lo: 0.1494
+  p_real_hi: 0.346
+- label: 500-1k
+  n_candidates: 30
+  n_mapped: 5
+  mapped_frac: 0.1667
+  sensitivity: 0.162
+  sensitivity_source: study
+  sensitivity_study: 0.162
+  sensitivity_n: 80
+  sensitivity_validated: 13
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.1667
+  p_real_lo: 0.0797
+  p_real_hi: 0.2985
+- label: 1k-5k
+  n_candidates: 116
+  n_mapped: 16
+  mapped_frac: 0.1379
+  sensitivity: 0.306
+  sensitivity_source: study
+  sensitivity_study: 0.306
+  sensitivity_n: 85
+  sensitivity_validated: 26
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.1379
+  p_real_lo: 0.0916
+  p_real_hi: 0.1967
+- label: 5k-50k
+  n_candidates: 193
+  n_mapped: 86
+  mapped_frac: 0.4456
+  sensitivity: 0.293
+  sensitivity_source: study
+  sensitivity_study: 0.293
+  sensitivity_n: 82
+  sensitivity_validated: 24
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.4456
+  p_real_lo: 0.3861
+  p_real_hi: 0.5052
+- label: '>50k'
+  n_candidates: 102
+  n_mapped: 93
+  mapped_frac: 0.9118
+  sensitivity: 0.261
+  sensitivity_source: study
+  sensitivity_study: 0.261
+  sensitivity_n: 92
+  sensitivity_validated: 24
+  glint_sample_n: 0
+  glint_sample_validated: 0
+  manual_n: 0
+  manual_real: 0
+  p_unmapped: 0.0
+  p_unmapped_source: none
+  recall_n: 0
+  recall_matched: 0
+  recall: null
+  recall_source: none
+  p_real: 0.9118
+  p_real_lo: 0.8569
+  p_real_hi: 0.9493
+provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from manual
+  review of unmapped candidates where sampled (n>=20), else glint inversion p_u(b)
+  = clip((v_b - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed
+  installations (results/glint_validation_pakistan/), f from 69 Lahore no-PV controls,
+  v from a stratified glint sample of unmapped candidates (scripts/glint_candidate_precision.py).
+  recall(b) = fraction of coverage-restricted, pipeline-independent mapped OSM installations
+  of bin b matched by any candidate; density divides by it (clamped at a floor) for
+  the Horvitz-Thompson estimator est_mwp_rc. *_lo/*_hi are the 5th/95th percentiles
+  of posteriors over every stored count (Jeffreys Beta for the direct rates; for glint
+  bins a uniform-prior binomial-mixture likelihood k ~ Binom(n, p_u*S + (1-p_u)*f),
+  which stays honestly flat where S ~ f). The p_real point clips p_u at 0, so where
+  the observed glint rate sits below the false floor the floor-leaning point can fall
+  below p_real_lo - the interval, not the point, is the uncertainty statement. interim-mapped-only
+  means p_u=0 everywhere: an honest lower bound.'
+placement_bins:
+  rooftop:
+  - label: <100
+    n_candidates: 2
+    n_mapped: 1
+    mapped_frac: 0.5
+    p_unmapped: 0.0
+    p_unmapped_source: inherited-from-pooled
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.5
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.025
+    p_real_lo: 0.0954
+    p_real_hi: 0.9068
+  - label: 100-500
+    n_candidates: 24
+    n_mapped: 6
+    mapped_frac: 0.25
+    p_unmapped: 0.0
+    p_unmapped_source: inherited-from-pooled
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.25
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.088
+    p_real_lo: 0.1278
+    p_real_hi: 0.4084
+  - label: 500-1k
+    n_candidates: 12
+    n_mapped: 2
+    mapped_frac: 0.1667
+    p_unmapped: 0.0
+    p_unmapped_source: inherited-from-pooled
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.1667
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.162
+    p_real_lo: 0.0514
+    p_real_hi: 0.3858
+  - label: 1k-5k
+    n_candidates: 58
+    n_mapped: 6
+    mapped_frac: 0.1034
+    p_unmapped: 0.0
+    p_unmapped_source: inherited-from-pooled
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.1034
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.306
+    p_real_lo: 0.0514
+    p_real_hi: 0.1834
+  - label: 5k-50k
+    n_candidates: 33
+    n_mapped: 1
+    mapped_frac: 0.0303
+    p_unmapped: 0.0
+    p_unmapped_source: inherited-from-pooled
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.0303
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.293
+    p_real_lo: 0.0052
+    p_real_hi: 0.114
+  - label: '>50k'
+    n_candidates: 1
+    n_mapped: 0
+    mapped_frac: 0.0
+    p_unmapped: 0.0
+    p_unmapped_source: inherited-from-pooled
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.0
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.261
+    p_real_lo: 0.0017
+    p_real_hi: 0.7796
+  ground:
+  - label: <100
+    n_candidates: 2
+    n_mapped: 2
+    mapped_frac: 1.0
+    p_unmapped: 0.0
+    p_unmapped_source: interim-mapped-only-by-placement
+    manual_n: 0
+    manual_real: 0
+    p_real: 1.0
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.025
+    p_real_lo: 0.4299
+    p_real_hi: 0.9992
+  - label: 100-500
+    n_candidates: 22
+    n_mapped: 3
+    mapped_frac: 0.1364
+    p_unmapped: 0.0
+    p_unmapped_source: interim-mapped-only-by-placement
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.1364
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.088
+    p_real_lo: 0.0508
+    p_real_hi: 0.2789
+  - label: 500-1k
+    n_candidates: 18
+    n_mapped: 1
+    mapped_frac: 0.0556
+    p_unmapped: 0.0
+    p_unmapped_source: interim-mapped-only-by-placement
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.0556
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.162
+    p_real_lo: 0.0106
+    p_real_hi: 0.1946
+  - label: 1k-5k
+    n_candidates: 58
+    n_mapped: 9
+    mapped_frac: 0.1552
+    p_unmapped: 0.0
+    p_unmapped_source: interim-mapped-only-by-placement
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.1552
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.306
+    p_real_lo: 0.0906
+    p_real_hi: 0.2444
+  - label: 5k-50k
+    n_candidates: 160
+    n_mapped: 80
+    mapped_frac: 0.5
+    p_unmapped: 0.0
+    p_unmapped_source: interim-mapped-only-by-placement
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.5
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.293
+    p_real_lo: 0.4356
+    p_real_hi: 0.5646
+  - label: '>50k'
+    n_candidates: 101
+    n_mapped: 92
+    mapped_frac: 0.9109
+    p_unmapped: 0.0
+    p_unmapped_source: interim-mapped-only-by-placement
+    manual_n: 0
+    manual_real: 0
+    p_real: 0.9109
+    recall_n: 0
+    recall_matched: 0
+    recall: null
+    recall_source: none
+    sensitivity: 0.261
+    p_real_lo: 0.8558
+    p_real_hi: 0.9481

@@ -2810,6 +2810,14 @@ INTERACTIVE = [
     # v33_combined_luxembourg (a tie with v5 on the held-out Canton Mersch, shipped under the
     # tie rule). docs/results/luxembourg.md explains.
     ("results/luxembourg_pv_evidence_atlas.html", "luxembourg_pv_evidence_atlas.html"),
+    # Italy: segmentation-only, national, on its own LOCALIZED checkpoint v34_combined_italy
+    # (the average of epochs 21 and 29, which beat v5 on the held-out Nord-Ovest).
+    # docs/results/italy.md explains.
+    ("results/italy_pv_evidence_atlas.html", "italy_pv_evidence_atlas.html"),
+    # Denmark: segmentation-only, national, on its own LOCALIZED checkpoint
+    # v37_combined_denmark (it beat v5 on the held-out Nordjylland). docs/results/denmark.md
+    # explains.
+    ("results/denmark_pv_evidence_atlas.html", "denmark_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;

@@ -1,7 +1,7 @@
 # Written by scripts/official_capacity.py; do not edit by hand.
 note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
   for the atlas: `scope` says what each counts.'
-retrieved: '2026-11-11'
+retrieved: '2026-11-12'
 aois:
   belgium:
   - id: elia
@@ -19,6 +19,19 @@ aois:
       Vlaams Gewest: 8713.8
       Wallonne Gewest: 3083.1
       Brussels Hoofdstedelijk: 331.4
+  denmark:
+  - id: ens
+    name: Energistyrelsen
+    title: Solcelleudbygningen i Danmark pr. 3. kvartal 2026
+    publisher: Energistyrelsen (Danish Energy Agency)
+    kind: register
+    url: https://ens.dk/media/8490/download
+    as_of: '2026-09-30'
+    mw: 5468.0
+    scope: 'Grid-connected solar PV registered on 30 September 2026, the last day of the imagery window,
+      from the energy agency''s master data register: every installation, household rooftops included.
+      3.2 GW of it is 83 large plants without subsidy or self-consumption. Given in MW, without saying
+      whether panel (DC) or inverter (AC) capacity.'
   egypt:
   - id: irena
     name: IRENA
@@ -130,6 +143,23 @@ aois:
       Sikkim: 7.6
       Nāgāland: 3.3
       Meghālaya: 4.3
+  italy:
+  - id: gse
+    name: GSE
+    title: Solare Fotovoltaico, Rapporto Statistico 2025
+    publisher: Gestore dei Servizi Energetici
+    kind: statistics
+    url: https://www.gse.it/documenti_site/Documenti%20GSE/Rapporti%20statistici/Solare%20Fotovoltaico%20-%20Rapporto%20Statistico%202025.pdf
+    as_of: '2025-12-31'
+    mw: 43687.0
+    scope: 'Installed panel (DC) capacity at the end of 2025 from the energy services operator''s statistical
+      report: every installation in operation, household rooftops included; 14.3 GW of it is ground-mounted.'
+    regions:
+      Nord-Ovest: 9695.0
+      Nord-Est: 10769.0
+      Centro: 8326.0
+      Sud: 9115.0
+      Isole: 5783.0
   luxembourg:
   - id: ilr
     name: ILR

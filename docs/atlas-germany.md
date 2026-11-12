@@ -14,8 +14,10 @@ hide:
   <span aria-current="page">Germany</span>
   <a href="../atlas-france/">France</a>
   <a href="../atlas-belgium/">Belgium</a>
+  <a href="../atlas-denmark/">Denmark</a>
   <a href="../atlas-egypt/">Egypt</a>
   <a href="../atlas-india/">India</a>
+  <a href="../atlas-italy/">Italy</a>
   <a href="../atlas-luxembourg/">Luxembourg</a>
   <a href="../atlas-morocco/">Morocco</a>
   <a href="../atlas-namibia/">Namibia</a>

@@ -69,6 +69,54 @@ PUBLISHED: dict[str, list[dict]] = {
             "Brussels Hoofdstedelijk": 331.4,
         },
     }],
+    "denmark": [{
+        "id": "ens",
+        "name": "Energistyrelsen",
+        "title": "Solcelleudbygningen i Danmark pr. 3. kvartal 2026",
+        "publisher": "Energistyrelsen (Danish Energy Agency)",
+        "kind": "register",
+        "url": "https://ens.dk/media/8490/download",
+        "as_of": "2026-09-30",
+        # "Pr. 30. september 2026 er der registreret 175.455 nettilsluttede solcelleanlæg
+        # svarende til ca. 5.468 MW" (Tabel 1, from the agency's master data register,
+        # extracted 2026-10-01), in the quarterly note of 2 October 2026, downloaded
+        # 2026-11-12. Of it 3,164 MW is 83 plants without subsidy or self-consumption (the
+        # large parks), 1,128 MW self-consumption systems, 238 MW tendered plants and 938 MW
+        # earlier support schemes. No regional figures.
+        "mw": 5468.0,
+        "scope": "Grid-connected solar PV registered on 30 September 2026, the last day of the "
+                 "imagery window, from the energy agency's master data register: every "
+                 "installation, household rooftops included. 3.2 GW of it is 83 large plants "
+                 "without subsidy or self-consumption. Given in MW, without saying whether "
+                 "panel (DC) or inverter (AC) capacity.",
+    }],
+    "italy": [{
+        "id": "gse",
+        "name": "GSE",
+        "title": "Solare Fotovoltaico, Rapporto Statistico 2025",
+        "publisher": "Gestore dei Servizi Energetici",
+        "kind": "statistics",
+        "url": "https://www.gse.it/documenti_site/Documenti%20GSE/Rapporti%20statistici/"
+               "Solare%20Fotovoltaico%20-%20Rapporto%20Statistico%202025.pdf",
+        "as_of": "2025-12-31",
+        # "Potenza Installata (MW)", 2025, per region (page 14 of the October 2026 report,
+        # downloaded 2026-11-12), summed into this page's five ADM1 macro-regions (ISTAT's
+        # ripartizioni; Trentino-Alto Adige is the two provinces); the regions round to
+        # 43,688 against the national 43,687. Of the national figure 14,296 MW is
+        # ground-mounted (33%). The latest year-end, nine months before the imagery window
+        # ends; Italy installed 6,520 MW in 2025.
+        "mw": 43687.0,
+        "scope": "Installed panel (DC) capacity at the end of 2025 from the energy services "
+                 "operator's statistical report: every installation in operation, household "
+                 "rooftops included; 14.3 GW of it is ground-mounted.",
+        "regions": {
+            "Nord-Ovest": 9695.0,
+            "Nord-Est": 10769.0,
+            "Centro": 8326.0,
+            "Sud": 9115.0,
+            "Isole": 5783.0,
+        },
+    }],
     "luxembourg": [{
         "id": "ilr",
         "name": "ILR",

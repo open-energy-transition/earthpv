@@ -12,6 +12,15 @@ aois:
     to: 2026-08
     mwp: 25440.0
     ceiling: true
+  denmark:
+    ember_area: Denmark
+    from: 2017-01
+    to: 2026-08
+    mwp: 4352.2
+    ceiling: false
+    why_not: 'much of Denmark''s Chinese supply arrives through other EU countries: its registered fleet
+      in September 2026 was a quarter larger than all the panels it imported directly from China since
+      2017'
   egypt:
     ember_area: Egypt
     from: 2017-01
@@ -41,6 +50,15 @@ aois:
     mwp: 95060.1
     ceiling: false
     why_not: India makes a large share of its own panels and restricts Chinese ones for public projects
+  italy:
+    ember_area: Italy
+    from: 2017-01
+    to: 2026-08
+    mwp: 17436.3
+    ceiling: false
+    why_not: 'Italy built over 19 GW before 2017, and much of the EU''s Chinese supply arrives through
+      the Netherlands: its fleet at the end of 2025 was two and a half times the panels it imported directly
+      from China since 2017'
   luxembourg:
     ember_area: Luxembourg
     from: 2017-02

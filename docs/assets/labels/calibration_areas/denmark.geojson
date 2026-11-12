@@ -1,0 +1,3 @@
+{"type":"FeatureCollection","earthpv":{"aoi":"denmark","warning":"earthpv calibration reference layer - do not upload to OSM","register_cmd":"python scripts/new_calibration_quadrat.py --aoi denmark"},"features":[
+
+]}

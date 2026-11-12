@@ -17,6 +17,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1304
     made: '2026-11-09'
+  denmark:
+    median: '2026-07-09'
+    p25: '2026-05-25'
+    p75: '2026-08-24'
+    first: '2026-05-01'
+    last: '2026-09-30'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 704
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1201
+    made: '2026-11-12'
   egypt:
     median: '2026-07-31'
     p25: '2026-06-16'
@@ -73,6 +87,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1277
     made: '2026-10-29'
+  italy:
+    median: '2026-08-02'
+    p25: '2026-07-09'
+    p75: '2026-08-27'
+    first: '2026-05-02'
+    last: '2026-09-30'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 3193
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1325
+    made: '2026-11-12'
   luxembourg:
     median: '2026-07-13'
     p25: '2026-06-20'

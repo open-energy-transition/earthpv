@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and nineteen countries have a published evidence atlas (see "Country
+country's own OSM labels, and twenty-one countries have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -1354,6 +1354,8 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Portugal | `v30_combined_portugal` ep 19 | 5,830.5 / 6,193.6 | clear win over v5 on the Lisbon holdout; Azores and Madeira in; Best is 84% of DGEG's 7,396 MW; 153 judged large leads count; 110 blobs not judged yet; Évora molten-salt CSP 3.4 MW |
 | Netherlands | `v5_combined_france` ep 25 at 0.98 | 3,708.6 / 4,567.3 | v32 lost the Zuid-Holland holdout on recall; Best is 16% of CBS's 29,426.5 MWp; 543 judged large leads count; 7 blobs not judged yet |
 | Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | tie with v5 on the thin Mersch holdout (39 of 48 each); Best is 5.4% of ILR's 746.35 MW; 8.3 of the model's 21.3 MWp lies beyond the border; no large installation review yet, 1 blob not judged |
+| Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 13,880.6 | clear win over v5 on the Nord-Ovest holdout (0.645 vs 0.544 of 3,350); Best is 32% of GSE's 43,687 MW and 97% of its 14,296 MW ground-mounted; 377 blobs and 4,586 large leads not judged yet |
+| Denmark | `v37_combined_denmark` ep 28 at 0.95 | 2,639.9 / 2,695.1 | win over v5 on the thin Nordjylland holdout (52 vs 45 of 98, all >= 1,000 m2); Best is 49% of Energistyrelsen's 5,468 MW; 3 blobs and 63 large leads not judged yet |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1442,6 +1444,19 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   OSM-matched park across the Sauer from Echternach that is exempt from the merge cap. ILR
   publishes no canton figures, and Ember is not a ceiling (155.2 MW of panels straight from
   China against 746.35 MW installed).
+- **Italy** (published 2026-11-12): a map of the ground-mounted fleet. The model outlines
+  almost no rooftops (Best 704 MWp rooftop, 13,176 ground) where GSE puts two thirds of
+  43,687 MW on buildings, so against GSE's regional totals the five macro-regions rank
+  backwards (rho -0.5) and against its ground-mounted shares in the same order, each within
+  a quarter. geoBoundaries ITA ADM1 is ISTAT's five macro-regions; `official_capacity.py`
+  sums GSE's 21 regions into them. Ember is not a ceiling (17.4 GW imported directly, 19.3 GW
+  built before 2017). Ground outlines not checked by eye.
+- **Denmark** (published 2026-11-12): Best adds only 55 MWp over Verified (floored in 144
+  cells). Solar heating fields look like parks: the 33 model outlines inside the 674 mapped
+  thermal polygons were dropped, unmapped ones count as PV. `Høng solvarmeanlæg` (a heating
+  plant by name) is tagged `plant:output:electricity=yes` and counts as 1.7 MW CSP, probably
+  mis-tagged. Energistyrelsen's quarterly note has no regions. Ember is not a ceiling (4.35 GW
+  imported directly against 5.47 GW registered).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the
