@@ -687,8 +687,8 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   inside the grid, as the per-cell total does. Where `small_rooftop_status` or
   `small_ground_status` is unmeasured, a bar below 400 m² continues past its measured top as a fade
   that goes invisible, open-ended, in the same column (owner, 2026-11-02; a fixed height, since the
-  amount is unknown; nothing on a bar under `FADE_MIN_SHARE` of the tallest, nor on the "not split"
-  column), with a header, legend key, tiles, tooltip
+  amount is unknown; on every such bin however short, an empty one fading up from the axis since
+  2026-11-12; never on the "not split" column), with a header, legend key, tiles, tooltip
   notes and CSV columns saying so. Capacity below 400 m² with no per-installation size (farm
   ground PV, Germany's per-cell rooftop half) is a "<400 m², not split" column
   (`totals.size_unbinned_*_mwp`). `scripts/patch_atlas_sizes.py` adds it to a published page

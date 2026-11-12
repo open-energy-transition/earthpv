@@ -3395,13 +3395,12 @@ out geom;</div>
   // few small arrays segmentation outlines, so a short bar there must not read as a small
   // market. Such a bar continues past its measured top, in the same column, as a fade that
   // goes invisible with no top edge: more is missing, by an unknown amount, so its height is
-  // fixed and measures nothing (owner, 2026-11-02). A bar too short to see carries nothing:
-  // the caption, the tiles and the text say "not measured" there.
+  // fixed and measures nothing (owner, 2026-11-02). Every such bar fades however short it
+  // is, and a bin with nothing measured fades up from the axis (owner, 2026-11-12).
   // Capacity below 400 m2 estimated as a total, with no size per
   // installation (farm ground PV; a rooftop half priced per cell), gets a column of its own
   // (`totals.size_unbinned_*_mwp`), not a share of the two bins it cannot be split between.
   const SIZE_UNSPLIT = "<400 m², not split";
-  const FADE_MIN_SHARE = 0.015;  // of the tallest bar: about 4 px, below it there is no bar to continue
   function sizeMissing(){
     return [HAS_SMALL_ROOF ? null : "rooftop", HAS_GROUND ? null : "farm ground"].filter(Boolean);
   }
@@ -3427,15 +3426,12 @@ out geom;</div>
     if (ground && !HAS_GROUND) return `farm ground PV not measured: ${SIZE_FLOOR_NOTE}`;
     return null;
   }
-  // The bins whose bar fades on: a detector is missing there and the bar can be seen. The
-  // unsplit column is never one: its capacity has no size to continue.
+  // The bins whose bar fades on: every bin below 400 m2 where a detector is missing, the
+  // shortest bar and an empty bin included. The unsplit column is never one: its capacity
+  // has no size to continue.
   function sizeFadeBins(){
     if (!sizeMissing().length) return [];
-    const totals = new Map();
-    sizeRows().forEach(r => totals.set(r.bin, (totals.get(r.bin) || 0) + r.mwp));
-    const top = Math.max(0, ...totals.values());
-    return [...totals.keys()].filter(b => b !== SIZE_UNSPLIT && binBelow400(b)
-      && totals.get(b) > 0 && totals.get(b) >= FADE_MIN_SHARE * top);
+    return sizeDomain().filter(b => b !== SIZE_UNSPLIT && binBelow400(b));
   }
   // The chart's own header: what is missing, then what the bars hold.
   function sizeHeadLines(){
@@ -3571,7 +3567,7 @@ out geom;</div>
         Plot.text(totals, {x: "bin", y: "total", text: d => d.total > 0 ? compact(d.total) : "", dy: -8,
           fill: P.ink2, fontWeight: 600, filter: d => !fadeBins.includes(d.bin)}),
         // On the fade, a halo keeps the figure readable.
-        Plot.text(totals, {x: "bin", y: "total", text: d => compact(d.total), dy: -8,
+        Plot.text(totals, {x: "bin", y: "total", text: d => d.total > 0 ? compact(d.total) : "", dy: -8,
           fill: P.ink, fontWeight: 600, stroke: P.panel, filter: d => fadeBins.includes(d.bin)}),
         Plot.ruleY([0], {stroke: P.muted}),
       ],
