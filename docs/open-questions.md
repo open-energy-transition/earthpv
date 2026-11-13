@@ -1,6 +1,6 @@
 # Open questions
 
-What is genuinely unresolved, as of 2026-10-28. This page exists so that the honest gaps are
+What is genuinely unresolved, as of 2026-11-10. This page exists so that the honest gaps are
 findable in one place rather than buried in the write-up of whichever experiment first ran
 into them.
 
@@ -129,6 +129,15 @@ harder on the score's level (item 1), and item 2 would move it again on top.
 Protocol: [roofclf random-cell validation](methods/roofclf-national-validation.md). The
 out-of-domain batch (`results/pakistan_roofclf_validation_outdomain/`) is blocked by stale
 imagery (item 4) and should not hold the others up.
+
+**Since 2026-11-10 both checks are disk review pages** (`scripts/roofclf_review_page.py`,
+`data/roofclf_review/index.html`), the format the large-lead review was judged in: the
+published batch (seed 20261107) as 20 random flagged roofs per cell, which `log` writes into
+the log with a precision estimate, and item 1's 400-roof level review, whose export
+`roofclf_level_review.py analyze` now also reads against the published 41-area scoring (the
+draw was on the 30-area one; the same buildings, scores correlated 0.998). Only the 20261107
+batch needs a review: the four older batches in the log (seeds 20260817, 20260820, 20260920,
+20261030) describe scorings no page uses.
 
 ### 4. Stale reference imagery: the labels' epoch, and a sparse remainder nobody can check
 
@@ -293,7 +302,79 @@ dozen cells of an existing AOI on a co-located VM and diff them against the loca
 byte-identical, route the next country that way. (The Planetary Computer Hub was retired in
 June 2024, so there is no free hosted notebook.)
 
-### 13. Glint and pose: four untested refinements
+### 13. Glint and pose: untested refinements, and what a longer window buys (updated 2026-11-10)
+
+**A four-year window, not the denser constellation, is the free lever (assessed
+2026-11-10, no pixels read; `scripts/glint_window_projection.py` reproduces every number
+from `results/glint_opportunity/`, `results/glint_validation_pakistan/` and the stored
+quadrat geometry).** Counting granules in the quadrats' metadata, the first half of 2026
+holds only 7 to 44% more scenes than the second half of 2024 (median about 1.2x):
+Sentinel-2C took over a slot rather than adding a satellite. Doubling the window to four
+years doubles expected opportunities instead. Two models project it. The pooled Poisson in
+`glint_opportunity.py` reproduces the measured validated rate and overshoots two-year
+detection by about 60% (0.59 modelled against 0.37 measured, count-weighted over mapped
+installations of 400 m&sup2; and up), so spikes cluster on some targets and never come on
+others. A bounded two-component fit (a share `f` per bin that can glint at all, Poisson
+chances for those; f = 0.21, 0.25, 0.52, 0.68 for 400-500, 500-1k, 1k-5k, 5k-50k m&sup2;,
+capped at 1 above 50k where a plant is several planes) reproduces both measured rates and is
+the line to quote. For the 9,076 mapped Pakistani installations of 400 m&sup2; and up:
+
+| Window | Detected, by count | Validated, by count | Detected, by capacity | Validated, by capacity |
+| --- | ---: | ---: | ---: | ---: |
+| 2 yr, measured | 0.37 | 0.24 | 0.60 | 0.27 |
+| 4 yr, bounded | 0.43 | 0.39 | 0.74 | 0.61 |
+| 4 yr, pooled (ceiling) | 0.82 | 0.53 | 0.86 | 0.59 |
+
+Rooftops of 400 m&sup2; and up barely move by count (0.32 to 0.37), since most are 400 to
+1,000 m&sup2; where only a quarter can ever glint; ground and capacity move a lot, because
+capacity sits in the 5k m&sup2; and larger bins where most arrays can glint and only lack
+chances. Caveats: the array must exist at a fixed pose for the whole window (Pakistan's
+post-2022 stock mostly does not reach back four years; India's, Spain's, France's and
+Germany's parks do); the size mix is Pakistan's OSM mapping, 68% ground by count.
+**Steps:** re-pull the 500-target validation sample (`glint_validate_pakistan.py`) over
+four years and check the 5k-50k m&sup2; validated rate against the bounded 0.54 and the
+pooled 0.63; if it lands there, pull four years for every lead of 1,000 m&sup2; and up in
+the large-lead and blob review populations through the tile-major fetch (tens of thousands
+of targets, days of network), add a glint column to the review pages, and let the largest
+bins' pricing use glint absence as evidence (the opportunity model already makes silence
+informative above about 20 expected chances). A window-length extension is also where
+glint as a *detector* ends: it stays blind below 500 m&sup2; (likelihood ratio 1), caps at
+the pose ceiling above, costs about a minute of network per target, and its 2.0%
+false-spike floor was measured on buildings, not on the wet pans, ponds and basins where
+the open-ground false positives live (still water cannot glint here, the sun never comes
+within 17&deg; of zenith at overpass, but wind-roughened water can, unmeasured).
+
+**A longer window cannot widen the observable azimuths (measured 2026-11-10).** The
+required azimuth over two years runs 84&deg; to 180&deg; across the 23 quadrats and never
+crosses due south; the second year repeats the first year's western edge to within 0.6&deg;.
+The sun at a 10:30 crossing is always east of the meridian, and swath-edge view geometry
+rotates the bisector to 180&deg; at most (Sialkot, Multan, Sundar, the multi-orbit
+quadrats). So the shaded wedge on the pose plot, south through west and north to
+east-southeast, is unmeasurable from Sentinel-2 at any window length, in every country
+(north-east to north in the southern hemisphere). Only an afternoon crossing would mirror
+the band; no free sensor at usable resolution has one, and Landsat crosses earlier, i.e.
+further east. The east-west asymmetry of the installed population therefore comes only
+from uncensored sources: MaStR (below) and OpenPVMapper.
+
+**Landsat 8 and 9 as a second glint sensor (scoped 2026-11-10, untested).** Same
+near-nadir view, 8-day combined revisit, a crossing 20 to 30 minutes earlier, so the
+glinting pose needs a few degrees more tilt and a more easterly azimuth: a second band
+beside Sentinel-2's, not a wider one. Pixel mixing at 30 m (15 m panchromatic) puts the
+floor near 5,000 m&sup2;, i.e. the large-lead and blob population only. Three things it
+could give that Sentinel-2 cannot: (1) more chances at a shifted geometry for arrays of
+5,000 m&sup2; and up; (2) **a direct tracker test**: a fixed plane satisfies both sensors'
+specular conditions at one pose, a single-axis tracker has rolled several degrees in the
+half hour between crossings, outside the 3&deg; tolerance, which would settle India's
+east-facing cluster (`india2000_pose`, today the assistant's eye on imagery); (3) OLI's
+12-bit range rarely saturates, so spike amplitude becomes measurable. Steps, in order and
+each cheap: extend `glint_observability_ceiling.py` to Landsat sun angles (metadata only);
+pull Landsat Collection 2 series (Planetary Computer `landsat-c2-l2`, QA_PIXEL in place of
+SCL, annulus widened to two or three pixels) for the Pakistani installations of 5,000
+m&sup2; and up that already have Sentinel-2 poses plus the 600 verified negatives behind
+the 2.0% floor; report Landsat's own detection and false-spike rates per bin, the joint-fit
+agreement, and on India's east-facing sample whether the two sensors disagree the way a
+tracker predicts. Read raw per-scene reflectance for glint, never the BRDF-adjusted
+harmonized (HLS) product.
 
 - **MaStR's uncensored pose distribution.** The installed-pose prior in
   `glint_opportunity.py` is assumed (`DEFAULT_POSE_PRIOR`, tilt 25 &plusmn; 8, azimuth
@@ -381,6 +462,92 @@ per m&sup2; of model outline from MaStR; where mappers outline whole roofs, the 
 reads low. Pakistan's ground outlines of 5k-50k m&sup2; measure 2.56 times the mapped site,
 so whole ground leads lean high.
 
+### 18. Grid load as a second, physical measure of the level (scoped 2026-10-28)
+
+Every estimate of the level so far comes from imagery calibrated on mapped areas, and the
+level is what moves Best (items 1 and 16). A system operator's hourly load that leaves out
+consumers' own solar dips at midday in proportion to that solar's capacity times irradiance;
+regressed on weather, it gives a capacity independent of imagery, quadrats and roofclf. It
+measures capacity that displaces grid supply in daylight, not installed capacity: off-grid
+systems never show, batteries move the saving to the evening, load shedding removes served
+demand. Outside Germany it is a lower bound with stated confounders, not a ceiling to judge
+Best against (the Ember import ceiling's lesson). The same machinery, capacity per cell times
+hourly yield per kWp under a pose mix, is the hourly behind-the-meter generation an energy
+model needs, which nothing here produces yet.
+
+**The series exist, and demandcast already retrieves them**
+(`open-energy-transition/demandcast`, whose source files record whether each series leaves out
+embedded generation, and which has reviewed a `midday_dip` as `net_demand` for Germany,
+Pakistan and four Indian states):
+
+| Country | Hourly load (demandcast module) | Truth to test against | Terms |
+| --- | --- | --- | --- |
+| Germany | ENTSO-E actual total load from 2015 (`entsoe`, free API token); SMARD Netzlast needs none | MaStR, local: 6.28M units with commissioning date, `Einspeisungsart`, `AnschlussAnHoechstOderHochSpannung`, tilt and azimuth | ENTSO-E load is not CC BY: analyse, publish derived numbers only |
+| Pakistan | ISMO system demand FY2025 (2024-07 to 2025-06), without K-Electric (`ismo`); NTDC 2015 to 2020-04 as the pre-boom shape (`ntdc`) | none; the atlas and PRIED's 33.35 GW survey | ISMO: personal use, no redistribution |
+| South Africa | Eskom RSA contracted demand from 2021-04 (`eskom`) | Eskom's own demand-reduction estimate, 7,463.6 MW in December 2025; CSIR 6.8 GW mid-2025 | Eskom: no non-private use; check before publishing |
+| India | NITI ICED demand met, 28 states and 5 UTs, 2017 to 2026-03 (`niti`) | MNRE's monthly state-wise rooftop capacity (21.5 GW nationally, September 2025) | open, redistributable |
+
+Not checked: whether ISMO has posted FY2026 (2025-07 to 2026-06), the year that overlaps
+Pakistan's composites. Its library lists files only in a browser.
+
+**Germany first, where the answer is known.** Per month, regress hourly load on hour by
+day-type effects, holidays, temperature by hour, and the capacity-weighted yield per kWp from
+ERA5 (atlite, MaStR's pose mix, its capacity per cell as weights). The yield coefficient is
+the embedded capacity the load leaves out, identified by sunny against cloudy days at the same
+hour. Germany has no PV-free baseline, and dark days add lighting and heating load in the
+same direction as missing PV, so judge the trend before the level. Criteria, fixed before
+running:
+
+1. The monthly coefficient tracks MaStR's cumulative capacity, 2015 to 2025, at r >= 0.9.
+   If not, stop: the method fails with the best data there is.
+2. Its slope against the MaStR subset the series leaves out is 0.8 to 1.2, and it tells which
+   subset that is: all distribution-connected PV, or self-consumption units only.
+3. The latest year is within 20% of that subset, with month-to-month scatter under 10%, so that
+   one Pakistani fiscal year can say something.
+
+If 1 holds and 2 or 3 fail, the method measures growth, not the level: item 10, not item 1.
+
+**Then India, then Pakistan.** India has open data, a register per state, and Pakistan's
+confounders: cloudy days are cooler, which lowers cooling load the other way, and demandcast
+reviews a `midday_rise` in Karnataka, Rajasthan, Punjab and Uttar Pradesh from agricultural
+supply moved to daytime, so those states need it modelled or left out. Pakistan last, against
+Best outside K-Electric's territory and time-matched to the series, read as a lower bound.
+South Africa's atlas has no rooftop half below 400 m&sup2;, so there it measures what the page
+leaves out.
+
+**Pakistan pilot, run 2026-10-29** (owner's choice of country;
+`scripts/pakistan_grid_load_pilot.py`, outputs in `results/pakistan_grid_load_pilot/`, inputs
+in `data/grid_load/pakistan/`). ISMO FY2025 load, ERA5 (Open-Meteo) and NASA POWER (CERES
+SYN1deg) at 185 half-degree nodes holding 99.1% of Best outside K-Electric's territory, pose
+18 deg south, losses 0.85; per month, day and hour-by-day-type effects, hour-specific
+temperature, rain and dew point; ERA5's yield instrumented by POWER's, because the day effect
+leaves only cloud anomalies to identify on and ERA5's errors in them bias the slope toward
+zero (ERA5 alone recovers 0.66 of the instrumented estimate). Results:
+
+- **The signal is there**: the instrumented 90% interval sits above zero in all 11 months,
+  and the placebo (the yield of a week later) stays within 1.5 GWp of zero in the median month.
+- **Its level is far below Best**: 9.4 GWp median over 11 months (8.0 without May 2025, whose
+  placebo reads 8.6 GWp), monthly 3.6 to 16.0, against 31.9 GWp of Best outside K-Electric on
+  composites 6 to 18 months later. Pose and losses move it 10%.
+- **It does not grow across the year**, so the month-to-month swing is behaviour, not
+  capacity: winter months run low (3.6 to 6.7), plausibly because a system that cannot export
+  displaces at most its owner's own midday load, which is small without cooling; November
+  runs high (16.0) on Lahore's smog closures, which changed demand on exactly the dark days.
+
+Verdict: the load measures grid-displacing daytime capacity in Pakistan, a lower bound that
+sits between the ~6 GW officially net-metered and Best, and cannot check the level, because
+the gap has two explanations it cannot separate (PV that never displaces grid supply, and
+Best being high). What would separate them: ISMO's hourly generation file (utility solar of
+known capacity through the same chain; its URL sits behind the library's token, so it has to
+be copied from a browser), the FY2026 file that overlaps the composites, and the Germany and
+India tests above, which have registers.
+
+**Prerequisites:** `~/.cdsapirc` exists (ERA5); atlite is in no pixi environment; no ENTSO-E
+token; the MaStR sqlite is `~/.open-MaStR/data/sqlite/open-mastr.db` (4.6 GB). The ERA5
+cutouts are the long pole and belong on /home. demandcast models gross demand and marks these
+series as net of embedded solar with no way to add it back: per-region behind-the-meter
+generation from this pipeline is its missing term.
+
 ### 19. Egypt: retrain with the pool and wastewater hard negatives (2026-10-29)
 
 The owner's review found many of Egypt's leads on swimming pools and on wastewater
@@ -395,6 +562,38 @@ original val chips, and separately on false-positive pixels over the 175 hard-ne
 chips, which would otherwise swamp them; then on leads per class. The treatment-plant count
 needs a reviewed sample of the new leads, since OSM cannot supply it. `water=lake` (23
 leads, partly resort lagoons) is the next class to check.
+
+### 20. roofclf across countries: drop `bf_confidence`, borrow from a matched donor (2026-10-29)
+
+The leave-one-country-out test (experiments register, "One roofclf for every country?")
+found `bf_confidence` empty on every Yemeni and French building, filled with 0, which
+Pakistan's model turns into +0.55 logit on every foreign roof. Rankings are untouched, but
+foreign levels are inflated. **Done 2026-10-30:** the feature left `MODEL_FEATURES`,
+Pakistan was refitted (median fold AUC 0.8682 to 0.8680) and rescored, and Yemen was
+rescored with the refit model: Yafi' and Qa'tabah town now sum to 2.35 per PV roof
+against 3.6. At Yemen's 18 areas with PV its own fit beats every single donor, so the
+multi-donor `--extra-table` once planned here is not needed.
+**Next step:**
+1. ~~Republish Pakistan on the refit model.~~ **Done 2026-11-07**, on the 41-area refit
+   without `bf_confidence` instead (item 21; Best 34,470.3 MWp), not the 30-area
+   `data/roofclf_nobf` chain.
+2. Review the new scoring's random cells (seed 20261030, 20 cells, 5,302 flagged
+   buildings, `results/pakistan_roofclf_nobf_validation/`) along with the 60 still blank
+   from earlier rescorings (item 3).
+3. India's Gurgaon box has 12 mostly large PV roofs. India's first household box is the
+   next useful target, fitted with Pakistan's table as donor at 25% (`docs/reproduce.md`,
+   Step 6).
+4. Yemen's household rooftops (2026-10-31). Its own fit ranks them (AUC 0.83), but priced
+   leave-one-box-out (`scripts/roofclf_yemen_pricing.py`) its scores do not beat roof area
+   alone on the four town boxes (median error 0.52 against 0.16 on the set the chain would
+   use; Sayun at 0.12 to 0.31 of truth; Qa'tabah s6, no PV, priced above every town).
+   Ghayl Bawazir, swept and registered with no PV the same day, removes every
+   precision-0.5 cut from Yemen's scores, so the chain would book zero, and roof area
+   prices it at about one town's PV. Whether to build a roof-area household figure for
+   Yemen's towns is an owner decision. It needs town boxes drawn at random, not for their
+   PV (`calib-candidates --towns`, six drawn 2026-10-31), so that towns without solar
+   are averaged in. More PV-rich
+   boxes add ranking, which is not the constraint.
 
 ### 21. Which areas may set Pakistan's roofclf price (2026-11-07)
 
@@ -425,6 +624,58 @@ of household roof against the lower band's 0.33, unchanged by the refit; that ga
 the level problem of item 1, which no choice of areas here fixes.
 The five priced variants are in
 `/home/tobi/earthpv_data/roofclf_national_q41/variants/`.
+
+### 22. Other free satellite data: what could still help, ranked (scoped 2026-11-10)
+
+An assessment, not a measurement. The register has already closed the exits that look
+largest from outside: temporal Sentinel-2 features do not lift roofclf (the glint-date and
+step-change tests), AlphaEarth and OlmoEarth, which fold in Landsat and Sentinel-1, measure
+propensity rather than panels, VIIRS adds nothing once roof area is partialled out, Sentinel-1
+corner reflection was speckle, and WorldCover works only gated behind SPPI. What remains
+free can each clean a few percent of leads or corroborate a few hundred large outlines; none
+moves a Best figure the way a calibration area mapped on dated imagery does, and no free,
+openly licensed, global source of dated high-resolution imagery exists (item 4). Ranked by
+expected effect on what is published, with the first measurement each would need:
+
+- **The Sentinel-2 archive itself**: the four-year glint window (item 13) and annual growth
+  epochs (item 10). Blocked by bandwidth, not data.
+- **Landsat 8 and 9**: glint, the tracker test, and an onset year since 2013 per large
+  outline (item 13). The onset year is also a false-positive filter for the open-ground
+  modes the country notes list (Turkey's lava, Namibia's pans, Spain's quarries, Yemen's
+  shaded slopes have no construction date in a 2013 to 2026 record; a park does) and a
+  commissioning-year series for the growth product without any new composite. A per-lead
+  time series at 30 m over the roughly 37,000 large leads is a small read. First
+  measurement: onset year against MaStR commissioning dates for Germany's judged parks.
+- **Google Open Buildings 2.5D Temporal** (annual presence and height, 2016 to 2023,
+  Global South only; Pakistan, India, Yemen, Egypt, Nigeria, Namibia, Zambia, Morocco,
+  Vietnam). VIDA is an undated snapshot and the unit roofclf classifies; building age and
+  height are two features it does not have, and height separates sheds from houses, which
+  the fill rate already depends on. First measurement: the two features on one Pakistani
+  quadrat set, size-controlled AUC on the spatial holdout, the glint-date harness
+  (`glint_date_roofclf_feature.py`); drop it below one point. It also gives item 15 a dated
+  completeness check that VIIRS cannot.
+- **Sentinel-1 multi-temporal variance** (item 14): unchanged, still untested; expect a
+  narrow filter, since the level test in `sar.py` was weak and chance on mountain layover.
+- **EMIT** (NASA hyperspectral on the ISS, 60 m, free, acquired over arid regions): a
+  spectral PV signature in the SWIR that rock, pans and lava lack, at a pixel size that
+  limits it to parks of a few hectares and up. Its coverage mask is the arid terrain where
+  the open-ground false positives live, which is why it is here at all. First measurement:
+  an advisory column on the blob review pages against the owner's existing verdicts, never
+  a veto.
+- **Copernicus VHR Europe mosaics** (2 m, 2018 and 2021, registered Copernicus users): the
+  only free source that touches item 4's gate, dated high-resolution imagery for calibration
+  areas, but Europe only, a 2021 vintage, and the licence needs reading before mappers trace
+  from it. Relevant to Germany, France, Spain, Portugal, Poland, Belgium and the Netherlands.
+- **NISAR** (L-band SAR, free from 2025): a second radar channel where C-band was marginal.
+  A line here, not a plan.
+- **Thermal (Landsat TIRS, 100 m)**: the daytime panel-to-desert contrast is not consistent
+  in the literature; the robust signal is cold water. Egypt's pools and basins and wet pans
+  read far cooler than panels at 10:00, and the JRC water layer in use ends in 2020, so
+  basins built since are invisible to it. First measurement: Egypt's known pool leads.
+
+Nothing in this list helps below a few thousand square metres, so nothing here helps
+roofclf, SPPI or the sub-400 m&sup2; estimate, which is where about two thirds of capacity
+sits in a complete register.
 
 ## Known defects carried on purpose
 
@@ -466,3 +717,13 @@ with the next India rebuild (`drop_solar_thermal.py --aoi india --by-id`, then
 atlas is therefore built from a checkpoint that can no longer be verified against its own
 weights, which is stated on [that page](results/gujarat.md). Nothing recovers this except
 retraining.
+
+### 23. EuropePV: one atlas for the Continental Europe Synchronous Area (planned 2026-11-12)
+
+Proposed, not started: a combined evidence atlas over CESA whose sub-400 m² half is band
+roof area priced by national PV registers (Germany's size-band estimator generalised),
+with no calibration quadrats. Plan, data inventory, measured rates, timeline (3 to 4 weeks
+for the EU core plus Switzerland, 6 to 8 for the whole area) and disk (about 150 / 350 GB):
+`docs/issues/europepv-synchronous-area-plan.md`. Open for the owner: build it at all, the
+scope, the disk, and GPU sharing with the ResNet runs.
+
