@@ -87,9 +87,13 @@ SHOTS = [
     # correcting a 1500x1650 box that cut through the row beneath). Re-check this box
     # whenever the page layout changes -- a card added or resized moves the boundary,
     # and the failure is silent. Re-cut 2026-10-19 for the MapLibre/Plot page, whose
-    # toolbar row made the map card taller.
+    # toolbar row made the map card taller. Re-cut 2026-11-13 for the wide layout (owner):
+    # the total and the imagery date head the page above a map as wide as the window, so
+    # the frame is the header, that headline and the whole map card, ending in the gutter
+    # above the description and province panels. The map's height follows the viewport
+    # (85% of it, at most 900 px), so a different `height` moves the bottom edge too.
     Shot("docs/assets/interactive/pakistan_evidence_atlas.html", "pakistan_evidence_atlas",
-         width=1500, height=2100, crop=(128, 24, 1360, 1308),
+         width=1500, height=2100, crop=(24, 24, 1464, 1433),
          ready="document.documentElement.dataset.atlasReady === '1'"),
     # The glint pose survey, framed on the polar plot and its stat column.
     Shot("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose",

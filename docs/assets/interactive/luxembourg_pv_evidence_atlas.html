@@ -109,7 +109,12 @@
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased; line-height: 1.5;
   }
-  .wrap { max-width: 1280px; margin: 0 auto; padding: clamp(16px, 3.5vw, 48px); }
+  /* The top of the page (title, headline, map and what sits under the map) runs to 1920 px,
+     so the map fills a wide screen (owner, 2026-11-13); every section below it keeps the
+     1280 px reading width it always had (1184 px inside the gutters). */
+  .wrap { max-width: 1920px; margin: 0 auto; padding: clamp(16px, 3.5vw, 48px); }
+  .wrap > :not(header):not(#capacity):not(.kpis) { max-width: 1184px; margin-left: auto;
+    margin-right: auto; }
 
   header { margin-bottom: 6px; }
   .eyebrow {
@@ -147,6 +152,27 @@
   .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 22px;
     align-items: start; margin-top: 16px; }
   @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ── headline: the total and how old the imagery is, above the map ───────────── */
+  /* Each figure is a label, a value and a line beneath it; the date's box is as tall as
+     the total's, so the two labels, values and lines each share a row. */
+  #capacity { margin-top: 30px; }
+  .headline { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 44px;
+    margin: 0 4px 18px; }
+  .hl-stat .hero-label { margin: 0 0 8px; }
+  .hl-stat .hero-ci, .hl-stat .hero-freshness { margin-top: 8px; }
+  .hl-img { padding-left: 44px; border-left: 1px solid var(--card-ring); }
+  .hl-date { height: clamp(34px, 5.13vw, 51px); display: flex; align-items: flex-end;
+    font-size: clamp(24px, 3.4vw, 36px); font-weight: 760; letter-spacing: -0.02em;
+    line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+  /* Where the two may wrap onto two rows, the rule between them would hang on its own. */
+  @media (max-width: 1100px) { .hl-img { padding-left: 0; border-left: 0; } }
+  /* Under the map: what the headline counts, beside the provinces. */
+  .grid.under { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: stretch;
+    margin-top: 22px; }
+  @media (max-width: 900px) { .grid.under { grid-template-columns: minmax(0, 1fr); } }
+  .under .hero-desc { margin-top: 0; max-width: 92ch; }
+  .under .rank { margin-top: 0; }
 
   .card {
     background: var(--panel); border-radius: 16px; padding: 18px;
@@ -758,7 +784,18 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
   </header>
 
   <section class="sec" id="capacity">
-    <div class="grid">
+    <div class="headline">
+      <div class="hl-stat">
+        <div class="hero-label">Nationwide</div>
+        <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
+        <div class="hero-ci" id="heroCi"></div>
+      </div>
+      <div class="hl-stat hl-img">
+        <div class="hero-label" id="heroImgLabel">Median Sentinel-2 imagery date</div>
+        <div class="hl-date" id="heroImgDate"></div>
+        <div class="hero-freshness" id="heroFreshness"></div>
+      </div>
+    </div>
       <section class="card map-card">
         <div class="map-head">
           <div class="map-title" id="mapTitle">Luxembourg PV capacity, by 0.1&deg; cell</div>
@@ -822,17 +859,13 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
         </div>
       </section>
 
-      <aside>
+    <div class="grid under">
         <div class="card">
-          <div class="hero-num"><span id="heroNum">0</span><span class="hero-unit">MWp</span></div>
-          <div class="hero-label">Nationwide</div>
-          <div class="hero-ci" id="heroCi"></div>
-          <div class="hero-freshness" id="heroFreshness"></div>
           <div class="hero-desc" id="heroDesc"></div>
           <div class="tiles" id="tiles"></div>
         </div>
 
-        <div class="card rank" style="margin-top:14px;">
+        <div class="card rank">
           <div class="fig-head" style="margin:0 0 8px;">
             <h3 style="margin:2px 0 0;">Provinces, ranked by capacity</h3>
             <div class="dlbar" data-fig="provinces"></div>
@@ -851,7 +884,6 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
             </table></div>
           </details>
         </div>
-      </aside>
     </div>
   </section>
 
@@ -1870,7 +1902,16 @@ out geom;</div>
   function mapHeight(width){
     const merc = lat => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
     const ratio = (merc(b3) - merc(b1)) / ((b2 - b0) * Math.PI / 180);
-    return Math.round(Math.max(380, Math.min(680, width * ratio + 24)));
+    return Math.round(Math.max(380, Math.min(mapMaxHeight(), width * ratio + 24)));
+  }
+  // The map is as tall as the country's shape asks, up to 900 px and 85% of the reader's
+  // window. Inside the documentation site's frame, which is sized to the whole page, the
+  // window that counts is the site's.
+  function mapMaxHeight(){
+    let vh = window.innerHeight;
+    try { if (window.top !== window && window.top.innerHeight) vh = window.top.innerHeight; }
+    catch (e){ /* a frame on another origin: its own height is the best guess */ }
+    return Math.max(380, Math.min(900, Math.round(vh * 0.85)));
   }
 
   function buildStyle(){
@@ -3330,11 +3371,13 @@ out geom;</div>
     renderLayerLists();
 
     mountDownloads("map", Object.assign({PNG: exportMapPng}, gridDownloads));
-    new ResizeObserver(() => {
+    const refit = () => {
       const hNew = mapHeight(shell.clientWidth || 720) + "px";
       if (mapEl.style.height !== hNew && !document.fullscreenElement){ mapEl.style.height = hNew; map.resize(); }
       if (map.isStyleLoaded()) renderLegend();
-    }).observe(shell);
+    };
+    new ResizeObserver(refit).observe(shell);
+    window.addEventListener("resize", refit);
   }
 
   // ════════════════════════════════════════════════════════════════════════════════
@@ -4407,14 +4450,21 @@ out geom;</div>
 
   countUp("heroNum", T.mwp_best, 700);
   document.getElementById("heroCi").textContent = ciText(T.mwp_best_ci);
-  document.getElementById("heroFreshness").textContent = [
-    // The scenes' median date, as in "Against official and published figures" (owner,
-    // 2026-11-08); the compose window only on a page without that reconstruction.
-    T.imagery_dates && T.imagery_dates.median
-      ? `Median Sentinel-2 imagery date: ${monthLabel(T.imagery_dates.median)}`
-      : T.imagery_date_range ? `Sentinel-2 imagery: ${T.imagery_date_range}` : null,
-    T.generated_at ? `atlas generated ${T.generated_at}` : null,
-  ].filter(Boolean).join(" · ");
+  {
+    // The headline's second figure, how old the imagery is: the scenes' median date, as in
+    // "Against official and published figures" (owner, 2026-11-08), with the middle half of
+    // them beneath; the compose window only on a page without that reconstruction.
+    const D = T.imagery_dates && T.imagery_dates.median ? T.imagery_dates : null;
+    const mon = s => monthLabel(String(s).slice(0, 7));
+    const big = D ? monthLabel(D.median) : T.imagery_date_range || T.generated_at || "";
+    document.getElementById("heroImgDate").textContent = big;
+    document.getElementById("heroImgLabel").textContent = D ? "Median Sentinel-2 imagery date"
+      : T.imagery_date_range ? "Sentinel-2 imagery" : "Atlas generated";
+    document.getElementById("heroFreshness").textContent = [
+      D && D.p25 && D.p75 ? `middle half of the scenes ${mon(D.p25)} to ${mon(D.p75)}` : null,
+      T.generated_at && big !== T.generated_at ? `atlas generated ${T.generated_at}` : null,
+    ].filter(Boolean).join(" · ");
+  }
   document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
   renderMethod();
   // The hero's "How the estimate is built" link opens the section it jumps to.

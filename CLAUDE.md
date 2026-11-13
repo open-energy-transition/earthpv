@@ -662,10 +662,10 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   and `patch_atlas_leads.py` on `results/<aoi>_pv_evidence_atlas.html`; commit
   `configs/atlas_leads.json` with the page. `SOURCES` needs an entry only for a run or OSM pull
   other than the defaults. Belgium, Denmark, Italy, Luxembourg, the Netherlands and Portugal
-  got theirs 2026-11-13; Texas's chain started before the step existed. **Most published pages
-  are not on HEAD's template** (the 2026-11-12 size-fade fix was a literal replacement), so
-  `patch_atlas_leads.py --old-template` needs the revision each was built from: Belgium's,
-  Luxembourg's, the Netherlands' and Portugal's was b1d03e0 plus ad064f7's template diff.
+  got theirs 2026-11-13; Texas's chain started before the step existed. **Every published page
+  is on one template since 2026-11-13** (the wide layout, below); before that most were on
+  b1d03e0 plus ad064f7's template diff, so a page restored from before then needs that as
+  `--old-template`.
   **Blobs have a file of their own (owner, 2026-11-01)**: leads above `MAX_CANDIDATE_M2`
   (100,000 m2) go to `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`,
   manifest `blobs`, linked on the same card); `--resplit` split the 11-01b files in place,
@@ -734,6 +734,12 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   uncertainty. Pakistan: 426.6 TWh/yr, 261 GWp (297-861 TWh/yr). `atlas --potential-cells` still
   draws the standalone page with its size filter; `scripts/patch_atlas_potential.py` adds the
   data to a published page. Method: `docs/methods/density.md`.
+- **Layout (owner, 2026-11-13)**: the total and the scenes' median date head the page, above
+  a map card as wide as the window (`.wrap` up to 1920 px; the sections from the size chart down
+  keep 1280), with the description, tiles and province chart under the map. The map's height
+  follows the window: 85% of it, at most 900 px, the site's window inside the docs iframe
+  (`mapMaxHeight`). All 22 pages were moved onto it with `retemplate_atlas.py`, data blocks
+  byte for byte; the README screenshot's crop in `screenshot_pages.py` was re-cut for it.
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and
