@@ -734,12 +734,20 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   uncertainty. Pakistan: 426.6 TWh/yr, 261 GWp (297-861 TWh/yr). `atlas --potential-cells` still
   draws the standalone page with its size filter; `scripts/patch_atlas_potential.py` adds the
   data to a published page. Method: `docs/methods/density.md`.
-- **Layout (owner, 2026-11-13)**: the total and the scenes' median date head the page, above
-  a map card as wide as the window (`.wrap` up to 1920 px; the sections from the size chart down
-  keep 1280), with the description, tiles and province chart under the map. The map's height
-  follows the window: 85% of it, at most 900 px, the site's window inside the docs iframe
-  (`mapMaxHeight`). All 22 pages were moved onto it with `retemplate_atlas.py`, data blocks
-  byte for byte; the README screenshot's crop in `screenshot_pages.py` was re-cut for it.
+- **Layout (owner, 2026-11-13)**: the page runs to 1920 px (`.wrap`). The total and the
+  scenes' median date head it; below them the map card (about 60% of the width) with the size
+  chart, its tiles and bin table in a column beside it (`#sizebins`, no longer a section of its
+  own), then the KPI boxes, 2 x 2, beside the province chart. The description and its tiles
+  that sat under the map were removed (owner), and with them the page's link to the
+  repository. Further down, composition sits beside uncertainty (`.pair`), the national
+  comparison beside the provincial one (`.ref-pair`), the background panels in columns
+  (`.xgrid`) and the release files side by side (`.dl-pair`), each stacking where a column
+  would get under about 600 px; the pose section goes to three columns from 1,400 px. The
+  map's height follows the window: 85% of it, at most 900 px, the site's window inside the
+  docs iframe (`mapMaxHeight`). All 22 pages were moved onto it with `retemplate_atlas.py`,
+  data blocks byte for byte; the README screenshot's crop in `screenshot_pages.py` was re-cut
+  for it. A `.dl-item` needs `[hidden] { display: none }` beside its `display: flex`: without
+  it every page but India's showed an empty polygons card (0f48f4c to 2026-11-13).
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and
@@ -799,8 +807,8 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   violet, farm ground PV green; hatching means ground-mount everywhere.
 - **"How the estimate is built" (2026-10-28)**: a plain-language methods section, one step per
   method, written by the template's `renderMethod()` from the page's own components (gated like
-  the composition bar, so a segmentation-only country never reads about roofclf); the hero links
-  to it. Country evidence stays in `configs/atlas/<aoi>.yaml` caveats.
+  the composition bar, so a segmentation-only country never reads about roofclf); the hero
+  linked to it until 2026-11-13. Country evidence stays in `configs/atlas/<aoi>.yaml` caveats.
 - **Solar thermal power plants (CSP) count in Best and Verified (owner, 2026-11-07)**, at their
   electric rating in MW, never as PV (`solar_thermal.py`, `docs/methods/solar-thermal.md`).
   `atlas._append_csp` adds `data/labels/<aoi>_csp_plants.parquet` to the hand-mapped population

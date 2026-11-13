@@ -60,7 +60,7 @@ mapping calibration areas and checking the mapping leads is how an atlas moves u
 <p align="center">
   <a href="https://open-energy-transition.github.io/earthpv/atlas/">
     <img src="docs/assets/figures/pakistan_evidence_atlas.png" width="560"
-         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 34,470 MWp (90 percent range 28,628 to 41,310) and the median date of the imagery above a night-lights style map of estimated capacity per 0.1 degree cell concentrated in the Punjab corridor and the Karachi industrial belt.">
+         alt="The EarthPV evidence atlas: Pakistan's rooftop solar capacity, best estimate 34,470 MWp (90 percent range 28,628 to 41,310) and the median date of the imagery above a night-lights style map of estimated capacity per 0.1 degree cell, concentrated in the Punjab corridor and the Karachi industrial belt, beside a bar chart of the same total by installation size.">
   </a>
 </p>
 

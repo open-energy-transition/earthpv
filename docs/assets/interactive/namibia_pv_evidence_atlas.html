@@ -109,12 +109,22 @@
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased; line-height: 1.5;
   }
-  /* The top of the page (title, headline, map and what sits under the map) runs to 1920 px,
-     so the map fills a wide screen (owner, 2026-11-13); every section below it keeps the
-     1280 px reading width it always had (1184 px inside the gutters). */
+  /* The page runs to 1920 px on a wide screen (owner, 2026-11-13): the map with the size
+     chart beside it at the top, and below it sections side by side in pairs (`.pair`) where
+     each still gets about 600 px, stacked as before where not. */
   .wrap { max-width: 1920px; margin: 0 auto; padding: clamp(16px, 3.5vw, 48px); }
-  .wrap > :not(header):not(#capacity):not(.kpis) { max-width: 1184px; margin-left: auto;
-    margin-right: auto; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr));
+    gap: 44px 22px; align-items: start; margin-top: 44px; }
+  .pair > .sec { margin-top: 0; }
+  /* The national comparison beside the provincial one, the download files side by side, and
+     the three background panels in columns; a hidden card leaves the row to the others. */
+  .ref-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr));
+    gap: 14px 22px; align-items: start; }
+  .dl-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr));
+    gap: 14px 22px; align-items: start; margin-bottom: 14px; }
+  .dl-pair .leads-item { margin-bottom: 0; }
+  .xgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
+    gap: 0 22px; align-items: start; }
 
   header { margin-bottom: 6px; }
   .eyebrow {
@@ -167,11 +177,19 @@
     line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
   /* Where the two may wrap onto two rows, the rule between them would hang on its own. */
   @media (max-width: 1100px) { .hl-img { padding-left: 0; border-left: 0; } }
-  /* Under the map: what the headline counts, beside the provinces. */
-  .grid.under { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: stretch;
+  /* The map, and beside it the same total by installation size (owner, 2026-11-13: the map
+     across the whole width was too much). A page without size bins gives the map the row. */
+  .grid.top { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); margin-top: 0; }
+  .grid.top.solo { grid-template-columns: minmax(0, 1fr); }
+  @media (max-width: 900px) { .grid.top { grid-template-columns: minmax(0, 1fr); } }
+  .size-col > .card + .card { margin-top: 14px; }
+  /* Under the map: the KPI boxes beside the provinces, on the same two columns (owner,
+     2026-11-13, in place of the description and its tiles). */
+  .grid.under { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start;
     margin-top: 22px; }
   @media (max-width: 900px) { .grid.under { grid-template-columns: minmax(0, 1fr); } }
-  .under .hero-desc { margin-top: 0; max-width: 92ch; }
+  .under .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
+  @media (max-width: 520px) { .under .kpis { grid-template-columns: minmax(0, 1fr); } }
   .under .rank { margin-top: 0; }
 
   .card {
@@ -426,10 +444,6 @@
   /* The hero tiles are every addend of Best: model >=400m2, rooftop <400m2, farm ground
      <400m2 (since 2026-10-24) and the OSM contribution -- four tiles that sum exactly to
      the headline number above them. */
-  #tiles { grid-template-columns: repeat(4, 1fr); }
-  #tiles.n5 { grid-template-columns: repeat(3, 1fr); }
-  @media (max-width: 760px) { #tiles { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 400px) { #tiles { grid-template-columns: 1fr; } }
   /* A field the page cannot fill reads as a statement, not as a zero. */
   .tile .v.nm { font-size: 14px; font-weight: 600; color: var(--muted); padding-top: 7px; }
   .tile { background: var(--panel-2); border-radius: 12px; padding: 12px 13px;
@@ -505,6 +519,9 @@
   /* ── downloads: a point-in-time data release, plus a live-OSM Overpass escape
      hatch for anything the release has already gone stale on ── */
   .dl-list { display: flex; flex-direction: column; gap: 9px; }
+  /* `display: flex` would otherwise show a card the page left `hidden` (a country with no
+     polygons release showed an empty one). */
+  .dl-item[hidden] { display: none; }
   .dl-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
     padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--card-ring);
     border-radius: 10px; }
@@ -664,6 +681,14 @@
   .pose-native .pose-footnote { margin-top: 16px; font-size: 12px; color: var(--pose-ink-faint);
     line-height: 1.6; }
   .pose-native .dlbar { font-family: var(--font-display); }
+  /* On a wide screen: the polar plot, then the figures and the explanation in two columns.
+     After the rules above, which it overrides. */
+  @media (min-width: 1400px) {
+    .pose-native .pose-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); }
+    .pose-native .pose-sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 22px; align-items: start; align-content: start; }
+    .pose-native .pose-sidebar > .pose-callout { grid-column: 2; grid-row: 1 / span 4; }
+  }
 
   .foot { margin-top: 34px; font-family: var(--font-mono); font-size: 11px; color: var(--muted);
     letter-spacing: 0.03em; line-height: 1.7; }
@@ -796,6 +821,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
         <div class="hero-freshness" id="heroFreshness"></div>
       </div>
     </div>
+    <div class="grid top">
       <section class="card map-card">
         <div class="map-head">
           <div class="map-title" id="mapTitle">Namibia PV capacity, by 0.1&deg; cell</div>
@@ -858,12 +884,60 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
           <div class="legend-keys" id="legkeys"></div>
         </div>
       </section>
+      <div class="size-col" id="sizebins">
+        <section class="card chart-card">
+          <div class="fig-head">
+            <div>
+              <div class="map-title">The same Sentinel-2-detectable total, by installation size</div>
+              <div class="map-sub">rooftop and ground-mount stacked &middot; linear scale &middot; MWp &middot; hover a bar for detail</div>
+            </div>
+            <div class="dlbar" data-fig="sizes"></div>
+          </div>
+          <div class="chart-legend">
+            <div class="lk"><span class="comp-swatch roof-solid"></span>rooftop</div>
+            <div class="lk"><span class="comp-swatch ground-hatch"></span>ground-mount (hatched)</div>
+            <div class="lk" id="extrapKey"><span class="comp-swatch extrap"></span>rooftop, extrapolated beyond calibration</div>
+            <div class="lk" id="nmKey" hidden><span class="comp-swatch not-measured"></span><span id="nmKeyText"></span></div>
+          </div>
+          <div id="chartmount" class="plot-host"></div>
+          <div class="hero-desc" id="sizeDesc" style="margin-top:14px;"></div>
+        </section>
+        <div class="card">
+          <div class="hero-desc" id="sizeAside" style="margin-top:0;"></div>
+          <div class="tiles" id="sizeTiles"></div>
+        </div>
+
+        <div class="card rank">
+          <h3>Full size-bin figures</h3>
+          <details class="tablewrap">
+            <summary>All bins</summary>
+            <div style="overflow-x:auto;"><table id="btable">
+              <thead><tr><th>Size bin</th><th>Rooftop MWp</th><th>Ground MWp</th>
+                <th>Rooftop n</th><th>Ground n</th></tr></thead>
+              <tbody></tbody>
+            </table></div>
+            <div class="hero-desc" id="btableNote" hidden style="margin-top:8px;min-height:0;font-size:12px;"></div>
+          </details>
+        </div>
+      </div>
+    </div>
 
     <div class="grid under">
-        <div class="card">
-          <div class="hero-desc" id="heroDesc"></div>
-          <div class="tiles" id="tiles"></div>
-        </div>
+      <div class="kpis">
+        <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
+          <div class="r" id="kBestCi"></div>
+          <div class="k">Best estimate, the highest defensible figure</div></div>
+        <div class="kpi"><div class="v" id="kOsm">0</div>
+          <div class="r" id="kOsmSplit"></div>
+          <div class="k">Training data hand-mapped in OpenStreetMap</div></div>
+        <div class="kpi"><div class="v" id="kDomain">0</div>
+          <div class="k">of 0.1&deg; cells within the calibrated building-density range</div></div>
+        <div class="kpi" id="kpiCover" hidden><div class="v" id="kCover">0</div>
+          <div class="k" id="kCoverK"></div></div>
+        <div class="kpi" id="kpiGen" hidden><div class="v" id="kGen">0</div>
+          <div class="r" id="kGenR"></div>
+          <div class="k">Electricity the installed PV of the best estimate generates per year</div></div>
+      </div>
 
         <div class="card rank">
           <div class="fig-head" style="margin:0 0 8px;">
@@ -887,71 +961,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
     </div>
   </section>
 
-  <div class="kpis">
-    <div class="kpi"><div class="v" id="kBest">0<small>MWp</small></div>
-      <div class="r" id="kBestCi"></div>
-      <div class="k">Best estimate, the highest defensible figure</div></div>
-    <div class="kpi"><div class="v" id="kOsm">0</div>
-      <div class="r" id="kOsmSplit"></div>
-      <div class="k">Training data hand-mapped in OpenStreetMap</div></div>
-    <div class="kpi"><div class="v" id="kDomain">0</div>
-      <div class="k">of 0.1&deg; cells within the calibrated building-density range</div></div>
-    <div class="kpi" id="kpiCover" hidden><div class="v" id="kCover">0</div>
-      <div class="k" id="kCoverK"></div></div>
-    <div class="kpi" id="kpiGen" hidden><div class="v" id="kGen">0</div>
-      <div class="r" id="kGenR"></div>
-      <div class="k">Electricity the installed PV of the best estimate generates per year</div></div>
-  </div>
-
-  <section class="sec" id="sizebins">
-    <div class="sec-head">
-      <div>
-        <div class="sec-label">Capacity</div>
-        <div class="sec-title">The same Sentinel-2-detectable total, by installation size</div>
-      </div>
-    </div>
-
-    <div class="grid">
-      <section class="card chart-card">
-        <div class="fig-head">
-          <div>
-            <div class="map-title">Capacity per size bin, rooftop and ground-mount stacked</div>
-            <div class="map-sub">linear scale &middot; MWp &middot; hover a bar for detail</div>
-          </div>
-          <div class="dlbar" data-fig="sizes"></div>
-        </div>
-        <div class="chart-legend">
-          <div class="lk"><span class="comp-swatch roof-solid"></span>rooftop</div>
-          <div class="lk"><span class="comp-swatch ground-hatch"></span>ground-mount (hatched)</div>
-          <div class="lk" id="extrapKey"><span class="comp-swatch extrap"></span>rooftop, extrapolated beyond calibration</div>
-          <div class="lk" id="nmKey" hidden><span class="comp-swatch not-measured"></span><span id="nmKeyText"></span></div>
-        </div>
-        <div id="chartmount" class="plot-host"></div>
-        <div class="hero-desc" id="sizeDesc" style="margin-top:14px;"></div>
-      </section>
-
-      <aside>
-        <div class="card">
-          <div class="hero-desc" id="sizeAside" style="margin-top:0;"></div>
-          <div class="tiles" id="sizeTiles"></div>
-        </div>
-
-        <div class="card rank" style="margin-top:14px;">
-          <h3>Full size-bin figures</h3>
-          <details class="tablewrap">
-            <summary>All bins</summary>
-            <div style="overflow-x:auto;"><table id="btable">
-              <thead><tr><th>Size bin</th><th>Rooftop MWp</th><th>Ground MWp</th>
-                <th>Rooftop n</th><th>Ground n</th></tr></thead>
-              <tbody></tbody>
-            </table></div>
-            <div class="hero-desc" id="btableNote" hidden style="margin-top:8px;min-height:0;font-size:12px;"></div>
-          </details>
-        </div>
-      </aside>
-    </div>
-  </section>
-
+  <div class="pair">
   <section class="sec" id="composition">
     <div class="sec-head">
       <div>
@@ -1017,6 +1027,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
       </details>
     </div>
   </section>
+  </div>
 
   <!-- This atlas beside the figures a reader already knows: registers, statistics offices,
        published estimates (`totals.references`, configs/external/official_capacity.yaml)
@@ -1029,6 +1040,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
         <div class="sec-title">Against official and published figures</div>
       </div>
     </div>
+    <div class="ref-pair">
     <div class="card chart-card">
       <div class="fig-head">
         <div>
@@ -1045,7 +1057,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
         <ul class="ref-src" id="refNotes"></ul>
       </details>
     </div>
-    <div class="card chart-card" id="refRegionCard" style="margin-top:14px;">
+    <div class="card chart-card" id="refRegionCard">
       <div class="fig-head">
         <div>
           <div class="map-title" id="refRegionTitle">By province</div>
@@ -1067,6 +1079,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
           <tbody></tbody>
         </table></div>
       </details>
+    </div>
     </div>
   </section>
 
@@ -1165,6 +1178,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
       </div>
     </div>
 
+    <div class="xgrid">
     <!-- Written by `renderMethod()` from this page's own components, so a country shows
          only the methods it has. -->
     <details class="xdetails" id="method">
@@ -1207,6 +1221,8 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
       </div>
     </details>
 
+    </div>
+
     <div class="hero-desc" style="margin-top:16px;">Read more on the project's
     documentation site: <a href="https://open-energy-transition.github.io/earthpv/methods/density/" target="_blank" rel="noopener">capacity methodology</a> ·
     <a href="https://open-energy-transition.github.io/earthpv/methods/roofclf/" target="_blank" rel="noopener">roofclf</a> ·
@@ -1225,6 +1241,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
       <div class="sec-sub" id="dlRelease"></div>
     </div>
 
+    <div class="dl-pair">
     <div class="dl-item leads-item" id="leadsItem" hidden>
       <div class="dl-main">
         <div class="dl-name">Mapping leads: solar arrays the model found that OpenStreetMap does not have yet</div>
@@ -1239,6 +1256,7 @@ a.vscore:hover .vscore-cta { text-decoration: underline; }
         <div class="dl-note" id="polygonsNote"></div>
       </div>
       <div class="dl-link" id="polygonsLink"></div>
+    </div>
     </div>
 
     <details class="xdetails" id="dlDetails">
@@ -1452,31 +1470,6 @@ out geom;</div>
 
   const VIEW = {
     label: "Best estimate",
-    name: "Total photovoltaic capacity detectable with Sentinel-2",
-    // Says what this page measures below the 400 m2 floor, which differs by country: mapped
-    // calibration areas (Pakistan), a register (Germany), nothing, and farm ground PV or not.
-    desc: "Arrays of about 400 m² and more are outlined directly in Sentinel-2's 10 m pixels. "
-      + (HAS_SMALL_ROOF
-        ? "Smaller rooftop arrays are too small to outline, so every building gets a score, and "
-          + (Object.keys((T.uncertainty || {}).coverage_bootstrap || {}).length
-            ? "areas where volunteers mapped every panel convert the scores into panel area. "
-            : "a calibration converts the scores into panel area. ")
-        : "Smaller rooftop arrays are too small to outline. ")
-      + (T.small_ground_status && T.small_ground_status.measured
-        ? "Small arrays beside fields are found by a separate farm detector. " : "")
-      + SIZE_NOTE + " "
-      + "Installations mapped in OpenStreetMap are counted from the map, whatever their size. "
-      + (HAS_CSP ? `Best also counts ${fmt(T.csp_mwp)} MW of solar thermal power plants (CSP) mapped there, `
-        + "at their electric rating: they are not photovoltaic. " : "")
-      + "<a href=\"#method\">How the estimate is built</a> · open-source pipeline: "
-      + "<a href=\"https://github.com/open-energy-transition/earthpv\" target=\"_blank\" rel=\"noopener\">github.com/open-energy-transition/earthpv</a>.",
-    tiles: [
-      ["mwp_large", "Satellite-detected &ge;400 m², MWp"],
-      ["small_all", "Satellite rooftop &lt;400 m², MWp"],
-      ["small_ground", "Satellite farm ground &lt;400 m², MWp"],
-      ["osm_contribution", "Added from Open&shy;Street&shy;Map, MWp"],
-      ...(HAS_CSP ? [["csp_mwp", "Solar thermal power (CSP), Open&shy;Street&shy;Map, MW"]] : []),
-    ],
   };
 
   function isDark(){
@@ -4465,9 +4458,8 @@ out geom;</div>
       T.generated_at && big !== T.generated_at ? `atlas generated ${T.generated_at}` : null,
     ].filter(Boolean).join(" · ");
   }
-  document.getElementById("heroDesc").innerHTML = `<b>${VIEW.name}.</b> ${VIEW.desc}`;
   renderMethod();
-  // The hero's "How the estimate is built" link opens the section it jumps to.
+  // A link to the methods section opens it.
   document.querySelectorAll('a[href="#method"]').forEach(a => a.addEventListener("click", () => {
     const d = document.getElementById("method");
     if (d) d.open = true;
@@ -4479,12 +4471,6 @@ out geom;</div>
     small_all: "Rooftop PV below 400 m² needs the rooftop classifier, which has not been calibrated for this country yet",
     small_ground: "The farm ground-PV detector has not been run for this country yet",
   };
-  document.getElementById("tiles").classList.toggle("n5", VIEW.tiles.length === 5);
-  document.getElementById("tiles").innerHTML = VIEW.tiles.map(([key, label]) =>
-    T[key] == null
-      ? `<div class="tile" title="${esc(NOT_MEASURED[key] || "Not measured for this country")}">`
-        + `<div class="v nm">not measured</div><div class="k">${label}</div></div>`
-      : `<div class="tile"><div class="v">${fmt(T[key])}</div><div class="k">${label}</div></div>`).join("");
 
   drawProvinceTable();
   initMap();
@@ -4583,6 +4569,7 @@ out geom;</div>
     });
   } else if (sizeSection) {
     sizeSection.style.display = "none";
+    sizeSection.parentElement.classList.add("solo");
   }
 
   const hasComposition = !!(T.uncertainty && T.uncertainty.components);
