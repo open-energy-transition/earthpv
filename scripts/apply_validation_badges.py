@@ -21,7 +21,7 @@ import json
 from earthpv import atlas_config
 from earthpv.atlas import (CELL_COLS_EVIDENCE, CELL_COLS_GROWTH,
                            CELL_COLS_GROWTH_EVIDENCE, derive_validation_score,
-                           download_section_html, header_logo_html,
+                           download_section_html,
                            lead_rule_sub, shown_validation_score, validation_badge_html,
                            write_cell_geoparquet)
 
@@ -159,15 +159,9 @@ def stamp(path: Path, score: str, aoi: str = "atlas",
     html = OLD_LOGO.sub("\n", html)
     if drop_lede:
         html = LEDE.sub("\n", html)
-    # Top strapline out, logo mark in. Anchored on the <h1> rather than on the eyebrow it
-    # replaces, so a SECOND run -- where the eyebrow is already gone -- still re-inserts
-    # the logo instead of quietly dropping it.
+    # Top strapline out, and no logo mark in its place: the atlases carry none since
+    # 2026-11-13 (owner); OLD_LOGO above takes out one an earlier run put in.
     html = EYEBROW.sub("\n", html, count=1)
-    m_h1 = re.search(r'([ \t]*)<h1>', html)
-    if m_h1:
-        indent = m_h1.group(1)
-        html = (html[:m_h1.start()] + f"{indent}{header_logo_html()}\n"
-                + html[m_h1.start():])
     # Gold and Silver also need a third of the leads mapped and the model retrained on them
     # once (atlas.lead_rule_gaps): the badge shows Bronze until they are, keeping the earned
     # tier as `data-earned`.

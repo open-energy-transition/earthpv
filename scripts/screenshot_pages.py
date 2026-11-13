@@ -94,7 +94,7 @@ SHOTS = [
     # taller of the two at this width; the map's height follows the viewport (85% of it, at
     # most 900 px), so a different `width` or `height` moves the bottom edge.
     Shot("docs/assets/interactive/pakistan_evidence_atlas.html", "pakistan_evidence_atlas",
-         width=1500, height=2100, crop=(24, 24, 1464, 1434),
+         width=1500, height=2100, crop=(24, 24, 1464, 1398),
          ready="document.documentElement.dataset.atlasReady === '1'"),
     # The glint pose survey, framed on the polar plot and its stat column.
     Shot("results/glint_validation_pakistan/pv_pose_country2000.html", "pakistan_pv_pose",

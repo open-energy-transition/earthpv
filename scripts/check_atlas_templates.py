@@ -24,7 +24,6 @@ ATLAS = ROOT / "src" / "earthpv" / "atlas.py"
 # template that is not published does not have to grow features it has no use for.
 REQUIRED = {
     "pv_evidence_atlas.html": [
-        ("__HEADER_LOGO__", "the EarthPV mark at the top"),
         ("__VALIDATION_BADGE__", "the calibration score stamp"),
         ("__DOWNLOAD_SECTION__", "the per-cell CSV and GeoParquet downloads"),
         ("comp-sizes", "the installation-size bands under the composition bar"),
@@ -38,12 +37,10 @@ REQUIRED = {
         ('id="references"', "the comparison with official and published figures and Ember imports"),
     ],
     "pv_growth_evidence_atlas.html": [
-        ("__HEADER_LOGO__", "the EarthPV mark at the top"),
         ("__VALIDATION_BADGE__", "the calibration score stamp"),
         ("__DOWNLOAD_SECTION__", "the per-cell downloads"),
     ],
     "pv_atlas.html": [
-        ("__HEADER_LOGO__", "the EarthPV mark at the top"),
         ("__VALIDATION_BADGE__", "the calibration score stamp"),
         ("__DOWNLOAD_SECTION__", "the per-cell downloads"),
     ],

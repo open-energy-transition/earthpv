@@ -747,7 +747,11 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   docs iframe (`mapMaxHeight`). All 22 pages were moved onto it with `retemplate_atlas.py`,
   data blocks byte for byte; the README screenshot's crop in `screenshot_pages.py` was re-cut
   for it. A `.dl-item` needs `[hidden] { display: none }` beside its `display: flex`: without
-  it every page but India's showed an empty polygons card (0f48f4c to 2026-11-13).
+  it every page but India's showed an empty polygons card (0f48f4c to 2026-11-13). **No
+  EarthPV mark above the title (owner, 2026-11-13)**: `__HEADER_LOGO__` left the evidence,
+  growth-evidence and `pv_atlas.html` templates (`atlas.py` still passes the key, unused),
+  `apply_validation_badges.py` no longer puts it back, and it was cut from the published
+  Pakistan growth, Gujarat and France comparison pages.
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and
