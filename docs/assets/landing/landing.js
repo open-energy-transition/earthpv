@@ -893,15 +893,13 @@
       });
     }
 
-    /* One sentence, behind the warning sign (owner, 2026-11-13). Where one of the two small-array
-       detectors is calibrated (Pakistan's and Germany's rooftops, Yemen's farm ground) the
-       sentence names the other, since the bar below 400 m² carries the calibrated one. */
+    /* One sentence, behind the warning sign (owner, 2026-11-13), only where small rooftops are
+       uncalibrated: a missing farm detector alone (Pakistan, Germany) gets no warning (owner).
+       Yemen's farm ground is calibrated, so its sentence names rooftops. */
     function unmeasuredNote(t) {
-      if (!t.rooftop_measured && !t.farm_ground_measured)
-        return 'No small-array detector has been calibrated here yet.';
-      if (!t.rooftop_measured) return 'No small-rooftop detector has been calibrated here yet.';
-      if (!t.farm_ground_measured) return 'No small farm-array detector has been calibrated here yet.';
-      return '';
+      if (t.rooftop_measured) return '';
+      return t.farm_ground_measured ? 'No small-rooftop detector has been calibrated here yet.'
+                                    : 'No small-array detector has been calibrated here yet.';
     }
 
     function linkFor(f) {
