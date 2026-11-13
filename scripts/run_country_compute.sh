@@ -282,6 +282,16 @@ step leads        bash -c "{ $PY scripts/release_leads.py --aoi $AOI --upload \
                      && $PY scripts/patch_atlas_leads.py results/${AOI}_pv_evidence_atlas.html \
                           --old-template src/earthpv/templates/pv_evidence_atlas.html \
                      || echo 'LEADS MISSING: lead release failed (non-fatal); re-run scripts/release_leads.py --aoi $AOI --upload and scripts/patch_atlas_leads.py'"
+# Every outline behind the page in one GeoParquet, a default for every atlas too (owner,
+# 2026-11-13): the run's model outlines and the OSM features the atlas counts go to the polygon
+# release (scripts/release_polygons.py: this country's file, README.md and SHA256SUMS uploaded,
+# configs/atlas_polygons.json updated, to be committed with the page), then the page gets its
+# Downloads card (scripts/patch_atlas_polygons.py). Tried twice, never fatal.
+step polygons     bash -c "{ $PY scripts/release_polygons.py --aoi $AOI --upload \
+                     || { sleep 120; $PY scripts/release_polygons.py --aoi $AOI --upload; }; } \
+                     && $PY scripts/patch_atlas_polygons.py results/${AOI}_pv_evidence_atlas.html \
+                          --old-template src/earthpv/templates/pv_evidence_atlas.html \
+                     || echo 'POLYGONS MISSING: polygon release failed (non-fatal); re-run scripts/release_polygons.py --aoi $AOI --upload and scripts/patch_atlas_polygons.py'"
 touch "$QMARK/${AOI}_atlas_done"
 # SKIP_DIAGNOSTIC=1 (the 2026-10-10 queue): stop at the deliverable. The losing checkpoint's
 # whole-country run below holds the GPU for hours that the next country's training needs;

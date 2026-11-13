@@ -1,5 +1,125 @@
 {
   "aois": {
+    "belgium": {
+      "file": "belgium_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/belgium_pv_polygons.parquet",
+      "size_bytes": 1826610,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 1274,
+      "n_model_leads": 1081,
+      "n_model_reviewed": 252,
+      "n_osm": 25054,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-11-07",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 1440,
+        "n_outside": 166,
+        "pred": "data/predictions/belgium",
+        "raw_osm": [
+          "data/labels/belgium_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-07",
+        "osm_solar": "data/labels/belgium_national_osm_solar.parquet"
+      }
+    },
+    "denmark": {
+      "file": "denmark_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/denmark_pv_polygons.parquet",
+      "size_bytes": 550702,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 486,
+      "n_model_leads": 258,
+      "n_model_reviewed": 0,
+      "n_osm": 3876,
+      "n_osm_csp": 1,
+      "osm_as_of": "2026-11-08",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 510,
+        "n_outside": 24,
+        "pred": "data/predictions/denmark",
+        "raw_osm": [
+          "data/labels/denmark_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-08",
+        "osm_solar": "data/labels/denmark_national_osm_solar.parquet"
+      }
+    },
+    "egypt": {
+      "file": "egypt_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/egypt_pv_polygons.parquet",
+      "size_bytes": 357556,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 1202,
+      "n_model_leads": 1149,
+      "n_model_reviewed": 192,
+      "n_osm": 687,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-10-05",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 1218,
+        "n_outside": 16,
+        "pred": "data/predictions/egypt",
+        "raw_osm": [
+          "data/labels/egypt_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-05",
+        "osm_solar": "data/labels/egypt_national_osm_solar.parquet"
+      }
+    },
+    "france": {
+      "file": "france_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/france_pv_polygons.parquet",
+      "size_bytes": 11910903,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 42215,
+      "n_model_leads": 35088,
+      "n_model_reviewed": 29,
+      "n_osm": 54111,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-09-04",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 49145,
+        "n_outside": 6930,
+        "pred": "data/predictions_v5/france",
+        "raw_osm": [
+          "data/labels/france_mapped_20261022.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-02",
+        "osm_solar": "data/labels/france_national_osm_solar.parquet"
+      }
+    },
+    "germany": {
+      "file": "germany_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/germany_pv_polygons.parquet",
+      "size_bytes": 23545226,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 24500,
+      "n_model_leads": 17660,
+      "n_model_reviewed": 581,
+      "n_osm": 226095,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-09-04",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 25291,
+        "n_outside": 791,
+        "pred": "data/predictions/germany",
+        "raw_osm": [
+          "data/labels/germany_national_osm_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-09-04",
+        "osm_solar": "data/labels/germany_national_osm_solar.parquet"
+      }
+    },
     "india": {
       "file": "india_pv_polygons.parquet",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/india_pv_polygons.parquet",
@@ -22,6 +142,390 @@
         ],
         "raw_osm_as_of": "2026-09-22",
         "osm_solar": "data/labels/india_national_osm_solar.parquet"
+      }
+    },
+    "italy": {
+      "file": "italy_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/italy_pv_polygons.parquet",
+      "size_bytes": 6811766,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 18558,
+      "n_model_leads": 13091,
+      "n_model_reviewed": 0,
+      "n_osm": 27703,
+      "n_osm_csp": 3,
+      "osm_as_of": "2026-11-07",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 18644,
+        "n_outside": 86,
+        "pred": "data/predictions/italy",
+        "raw_osm": [
+          "data/labels/italy_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-07",
+        "osm_solar": "data/labels/italy_national_osm_solar.parquet"
+      }
+    },
+    "luxembourg": {
+      "file": "luxembourg_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/luxembourg_pv_polygons.parquet",
+      "size_bytes": 135312,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 330,
+      "n_model_leads": 306,
+      "n_model_reviewed": 0,
+      "n_osm": 394,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-08-14",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 369,
+        "n_outside": 39,
+        "pred": "data/predictions/luxembourg",
+        "raw_osm": [
+          "data/labels/luxembourg_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-08-14",
+        "osm_solar": "data/labels/luxembourg_national_osm_solar.parquet"
+      }
+    },
+    "morocco": {
+      "file": "morocco_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/morocco_pv_polygons.parquet",
+      "size_bytes": 331163,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 702,
+      "n_model_leads": 680,
+      "n_model_reviewed": 40,
+      "n_osm": 981,
+      "n_osm_csp": 3,
+      "osm_as_of": "2026-09-16",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 709,
+        "n_outside": 7,
+        "pred": "data/predictions/morocco",
+        "raw_osm": [
+          "data/labels/morocco_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-09-16",
+        "osm_solar": "data/labels/morocco_national_osm_solar.parquet"
+      }
+    },
+    "namibia": {
+      "file": "namibia_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/namibia_pv_polygons.parquet",
+      "size_bytes": 345547,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 925,
+      "n_model_leads": 848,
+      "n_model_reviewed": 133,
+      "n_osm": 1254,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-10-14",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 965,
+        "n_outside": 40,
+        "pred": "data/predictions/namibia",
+        "raw_osm": [
+          "data/labels/namibia_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-14",
+        "osm_solar": "data/labels/namibia_national_osm_solar.parquet"
+      }
+    },
+    "netherlands": {
+      "file": "netherlands_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/netherlands_pv_polygons.parquet",
+      "size_bytes": 2251507,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 5011,
+      "n_model_leads": 4047,
+      "n_model_reviewed": 548,
+      "n_osm": 13882,
+      "n_osm_csp": 1,
+      "osm_as_of": "2026-11-02",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 5206,
+        "n_outside": 195,
+        "pred": "data/predictions/netherlands",
+        "raw_osm": [
+          "data/labels/netherlands_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-02",
+        "osm_solar": "data/labels/netherlands_national_osm_solar.parquet"
+      }
+    },
+    "nigeria": {
+      "file": "nigeria_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/nigeria_pv_polygons.parquet",
+      "size_bytes": 1052070,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 4997,
+      "n_model_leads": 4950,
+      "n_model_reviewed": 595,
+      "n_osm": 482,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-08-13",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 5109,
+        "n_outside": 112,
+        "pred": "data/predictions_v5_nigeria/nigeria",
+        "raw_osm": [
+          "data/labels/nigeria_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-09-23",
+        "osm_solar": "data/labels/nigeria_national_osm_solar.parquet"
+      }
+    },
+    "pakistan": {
+      "file": "pakistan_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/pakistan_pv_polygons.parquet",
+      "size_bytes": 4832409,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 13575,
+      "n_model_leads": 8639,
+      "n_model_reviewed": 41,
+      "n_osm": 31835,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-10-25",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 13660,
+        "n_outside": 85,
+        "pred": "data/predictions/pakistan",
+        "raw_osm": [
+          "data/labels/pakistan_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-25",
+        "osm_solar": "data/labels/pakistan_overpass_solar.parquet"
+      }
+    },
+    "poland": {
+      "file": "poland_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/poland_pv_polygons.parquet",
+      "size_bytes": 5241521,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 8909,
+      "n_model_leads": 5707,
+      "n_model_reviewed": 142,
+      "n_osm": 44537,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-10-18",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 8995,
+        "n_outside": 86,
+        "pred": "data/predictions/poland",
+        "raw_osm": [
+          "data/labels/poland_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-18",
+        "osm_solar": "data/labels/poland_national_osm_solar.parquet"
+      }
+    },
+    "portugal": {
+      "file": "portugal_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/portugal_pv_polygons.parquet",
+      "size_bytes": 1476292,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 2070,
+      "n_model_leads": 1531,
+      "n_model_reviewed": 299,
+      "n_osm": 8156,
+      "n_osm_csp": 1,
+      "osm_as_of": "2026-11-07",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 2100,
+        "n_outside": 30,
+        "pred": "data/predictions/portugal",
+        "raw_osm": [
+          "data/labels/portugal_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-07",
+        "osm_solar": "data/labels/portugal_national_osm_solar.parquet"
+      }
+    },
+    "south_africa": {
+      "file": "south_africa_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/south_africa_pv_polygons.parquet",
+      "size_bytes": 5148523,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 10723,
+      "n_model_leads": 8429,
+      "n_model_reviewed": 842,
+      "n_osm": 38006,
+      "n_osm_csp": 7,
+      "osm_as_of": "2026-10-10",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 10778,
+        "n_outside": 55,
+        "pred": "data/predictions/south_africa",
+        "raw_osm": [
+          "data/labels/south_africa_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-10",
+        "osm_solar": "data/labels/south_africa_national_osm_solar.parquet"
+      }
+    },
+    "spain": {
+      "file": "spain_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/spain_pv_polygons.parquet",
+      "size_bytes": 10040835,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 27166,
+      "n_model_leads": 24837,
+      "n_model_reviewed": 0,
+      "n_osm": 19428,
+      "n_osm_csp": 43,
+      "osm_as_of": "2026-11-02",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 27703,
+        "n_outside": 537,
+        "pred": "data/predictions/spain",
+        "raw_osm": [
+          "data/labels/spain_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-02",
+        "osm_solar": "data/labels/spain_national_osm_solar.parquet"
+      }
+    },
+    "texas": {
+      "file": "texas_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/texas_pv_polygons.parquet",
+      "size_bytes": 4232470,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 7435,
+      "n_model_leads": 7016,
+      "n_model_reviewed": 0,
+      "n_osm": 12948,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-10-29",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 7560,
+        "n_outside": 125,
+        "pred": "data/predictions/texas",
+        "raw_osm": [
+          "data/labels/texas_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-10",
+        "osm_solar": "data/labels/texas_national_osm_solar.parquet"
+      }
+    },
+    "turkiye": {
+      "file": "turkiye_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/turkiye_pv_polygons.parquet",
+      "size_bytes": 6998742,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 27775,
+      "n_model_leads": 24764,
+      "n_model_reviewed": 773,
+      "n_osm": 4310,
+      "n_osm_csp": 1,
+      "osm_as_of": "2026-10-27",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 27886,
+        "n_outside": 111,
+        "pred": "data/predictions/turkiye",
+        "raw_osm": [
+          "data/labels/turkiye_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-27",
+        "osm_solar": "data/labels/turkiye_national_osm_solar.parquet"
+      }
+    },
+    "vietnam": {
+      "file": "vietnam_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/vietnam_pv_polygons.parquet",
+      "size_bytes": 1743594,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 6418,
+      "n_model_leads": 4969,
+      "n_model_reviewed": 56,
+      "n_osm": 2103,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-09-18",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 6536,
+        "n_outside": 118,
+        "pred": "data/predictions/vietnam",
+        "raw_osm": [
+          "data/labels/vietnam_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-09-18",
+        "osm_solar": "data/labels/vietnam_national_osm_solar.parquet"
+      }
+    },
+    "yemen": {
+      "file": "yemen_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/yemen_pv_polygons.parquet",
+      "size_bytes": 697432,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 1999,
+      "n_model_leads": 1723,
+      "n_model_reviewed": 111,
+      "n_osm": 4135,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-10-31",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 2002,
+        "n_outside": 3,
+        "pred": "data/predictions_v25/yemen",
+        "raw_osm": [
+          "data/labels/yemen_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-10-31",
+        "osm_solar": "/home/tobi/earthpv_data/predictions_v25/yemen/yemen_national_osm_solar_20261101.parquet"
+      }
+    },
+    "zambia": {
+      "file": "zambia_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/zambia_pv_polygons.parquet",
+      "size_bytes": 280119,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-13",
+      "n_model": 658,
+      "n_model_leads": 652,
+      "n_model_reviewed": 73,
+      "n_osm": 106,
+      "n_osm_csp": 0,
+      "osm_as_of": "2026-08-04",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 679,
+        "n_outside": 21,
+        "pred": "data/predictions/zambia",
+        "raw_osm": [
+          "data/labels/zambia_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-08-06",
+        "osm_solar": "data/labels/zambia_national_osm_solar.parquet"
       }
     }
   },

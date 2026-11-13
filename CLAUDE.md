@@ -679,7 +679,15 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   `pv-polygons-2026-11-11`, and `configs/atlas_polygons.json`, which `atlas.polygons_release`
   puts in `totals.polygons`: a Downloads card after the lead files.
   `scripts/patch_atlas_polygons.py` adds it to a published page and its results/ sync source.
-  India only so far (103,619 model + 7,309 OSM outlines, 19.3 MB).
+  **Every atlas has its file since 2026-11-13, and every new one gets it by default (owner)**:
+  `run_country_compute.sh`'s `polygons` step, after `leads`, runs `release_polygons.py --aoi
+  <aoi> --upload` (only that country's file plus README.md and SHA256SUMS go up; the default
+  `--out` is the release's own directory, `/home/tobi/earthpv_data/pv_polygons_2026-11-11`,
+  which must hold every country's file) and `patch_atlas_polygons.py` on the page. The OSM rows
+  are the atlas's own `--osm-solar`: the file `earthpv atlas` recorded in
+  `evidence_atlas_inputs.json`, else `ATLAS_OSM_SOLAR` (Pakistan: `pakistan_overpass_solar.parquet`,
+  the 25 October pull), else the national file; France's run is `POLY_SOURCES` (v5, the
+  2026-10-22 pull). An outline invalid as mapped in OSM is kept as it is, never repaired.
   **Small leads on steep ground are left out (owner, 2026-10-31)**: `export.steep_lead_screen`
   drops a lead under `STEEP_MAX_AREA_M2` (1,000 m²) whose GLO-90 slope at its representative
   point exceeds `STEEP_SLOPE_DEG` (15°), and keeps a larger one flagged `steep_review` (a

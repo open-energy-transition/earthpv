@@ -29,8 +29,17 @@ area (DuckDB, GDAL >= 3.9, GeoPandas `bbox=`) reads only the row groups it needs
 OpenStreetMap coordinates keep their own 7 decimals; model outlines are rounded to 6
 (about 10 cm, against a 10 m pixel), which takes India's file from 24 to 18 MB.
 
-    pixi run python scripts/release_polygons.py --aoi india --out /home/tobi/earthpv_data/pv_polygons_2026-11-11
-    pixi run python scripts/release_polygons.py --aoi india --out ... --upload
+**Every atlas gets its file by default (owner, 2026-11-13)**, like its lead files:
+scripts/run_country_compute.sh runs `--aoi <aoi> --upload` after the `leads` step, then
+scripts/patch_atlas_polygons.py on the page. Into an existing release `--upload` sends only
+the named countries' files plus README.md and SHA256SUMS, which list every country, so
+`--out` must hold them all: the default is the release's own directory. The OSM rows are the
+atlas's own `--osm-solar` file: the one `earthpv atlas` recorded in
+`<pred>/density/evidence_atlas_inputs.json` (since 2026-11-07), else `ATLAS_OSM_SOLAR`, else
+`data/labels/<aoi>_national_osm_solar.parquet`; `--osm-solar` overrides all three.
+
+    pixi run python scripts/release_polygons.py --aoi india
+    pixi run python scripts/release_polygons.py --aoi italy --upload   # default --out
 
 Writes `<out>/<aoi>_pv_polygons.parquet`, `<out>/README.md`, `<out>/SHA256SUMS` and
 `configs/atlas_polygons.json`, which `atlas.polygons_release` reads into
@@ -65,6 +74,23 @@ from release_leads import PAGES, REPO, SOURCES, _osm_as_of, _page_data, country_
 
 MANIFEST = ROOT / "configs" / "atlas_polygons.json"
 TAG = "pv-polygons-2026-11-11"
+# Every country's file as uploaded under TAG: README.md and SHA256SUMS cover them all.
+RELEASE_DIR = Path(os.environ.get(
+    "EARTHPV_POLYGONS_DIR",
+    Path.home() / "earthpv_data" / f"pv_polygons_{TAG.removeprefix('pv-polygons-')}"))
+# Runs the lead release's table does not describe. France's leads were released apart
+# (scripts/build_france_osm_leads.py), from the v5 run and the 2026-10-22 pull its solar farm
+# review also used (oversize_review.FRANCE).
+# Germany's lead release also names germany_national_osm_solar_PRE_ground_cap.parquet, which
+# is no longer on disk (2026-11-13): here the national file alone is the mapped reference, so
+# a model outline near one of the ground outlines above 5 km2 that file drops can read as a
+# lead in `osm_within_100m` although the lead file left it out.
+POLY_SOURCES = {"france": {"pred": "data/predictions_v5/france",
+                           "osm": ["data/labels/france_mapped_20261022.parquet"]},
+                "germany": {"osm": ["data/labels/germany_national_osm_solar.parquet"]}}
+# The atlas's --osm-solar where `earthpv atlas` did not record it: Pakistan's page counts the
+# 25 October 2026 pull (31,835 features, 31,186 after the atlas's dissolve), as its leads do.
+ATLAS_OSM_SOLAR = {"pakistan": "data/labels/pakistan_overpass_solar.parquet"}
 MIN_DISTANCE_M = 100.0
 ROW_GROUP = 16_384
 ZSTD_LEVEL = 19  # 22 is no smaller; reading is as fast either way
@@ -117,6 +143,25 @@ def review_verdicts(aoi: str, cands: gpd.GeoDataFrame) -> pd.Series:
     return out
 
 
+def _rel(p: Path) -> str:
+    try:
+        return str(p.relative_to(ROOT))
+    except ValueError:
+        return str(p)
+
+
+def atlas_osm_solar(aoi: str) -> Path:
+    """The OSM file the published atlas counted (see the module docstring)."""
+    pred = ROOT / {**SOURCES, **POLY_SOURCES}.get(aoi, {}).get("pred", f"data/predictions/{aoi}")
+    rec = pred / "density" / "evidence_atlas_inputs.json"
+    if rec.exists():
+        d = json.loads(rec.read_text())
+        osm = (d.get("inputs") or d).get("osm_solar")
+        if osm:
+            return Path(osm) if Path(osm).is_absolute() else ROOT / osm
+    return ROOT / ATLAS_OSM_SOLAR.get(aoi, f"data/labels/{aoi}_national_osm_solar.parquet")
+
+
 def model_rows(aoi: str, src: dict) -> tuple[gpd.GeoDataFrame, dict]:
     pred = ROOT / src.get("pred", f"data/predictions/{aoi}")
     cands = gpd.read_parquet(pred / "candidates.parquet")
@@ -145,7 +190,7 @@ def model_rows(aoi: str, src: dict) -> tuple[gpd.GeoDataFrame, dict]:
     if "oversize" not in cands:
         cands["oversize"] = cands["area_m2"] > MAX_CANDIDATE_M2
     stats = {"n_candidates": n_all, "n_outside": int(n_all - len(cands)),
-             "pred": str(pred.relative_to(ROOT)), "raw_osm": [str(p.relative_to(ROOT)) for p in paths],
+             "pred": _rel(pred), "raw_osm": [_rel(p) for p in paths],
              "raw_osm_as_of": _osm_as_of(frames, paths)}
     return cands, stats
 
@@ -155,7 +200,7 @@ def osm_rows(aoi: str, osm_solar: Path) -> tuple[gpd.GeoDataFrame, dict]:
     osm = osm[osm.geometry.notna() & ~osm.geometry.is_empty].copy()
     osm["source"], osm["technology"] = "osm", "pv"
     osm["placement"] = osm["placement"].replace({"small": "rooftop"})
-    stats = {"osm_solar": str(osm_solar.relative_to(ROOT)), "n_pv": len(osm),
+    stats = {"osm_solar": _rel(osm_solar), "n_pv": len(osm),
              "osm_as_of": _osm_as_of([osm], [osm_solar])}
     csp_path = ROOT / "data" / "labels" / f"{aoi}_csp_plants.parquet"
     if csp_path.exists():
@@ -168,7 +213,7 @@ def osm_rows(aoi: str, osm_solar: Path) -> tuple[gpd.GeoDataFrame, dict]:
 
 
 def build(aoi: str, out: Path, osm_solar: Path) -> dict:
-    model, mstats = model_rows(aoi, SOURCES.get(aoi, {}))
+    model, mstats = model_rows(aoi, {**SOURCES, **POLY_SOURCES}.get(aoi, {}))
     osm, ostats = osm_rows(aoi, osm_solar)
     gdf = gpd.GeoDataFrame(pd.concat([model, osm], ignore_index=True), geometry="geometry",
                            crs="EPSG:4326")
@@ -203,9 +248,16 @@ def build(aoi: str, out: Path, osm_solar: Path) -> dict:
     gdf.to_parquet(path, compression="zstd", compression_level=ZSTD_LEVEL,
                    row_group_size=ROW_GROUP, write_covering_bbox=True, schema_version="1.1.0")
     back = gpd.read_parquet(path)
-    assert len(back) == len(gdf) and back.geometry.is_valid.all(), "invalid geometry written"
+    # Every row is as valid as its source: an outline already invalid there (an OpenStreetMap
+    # polygon mapped self-intersecting, Pakistan: a few) is kept as it is, never repaired.
+    valid = gdf.geometry.is_valid.to_numpy()
+    assert len(back) == len(gdf) and (back.geometry.is_valid.to_numpy() == valid).all(), \
+        "invalid geometry written"
     if broke.any():
         print(f"  {int(broke.sum())} outlines kept unrounded (rounding made them invalid)")
+    if not valid.all():
+        bad = gdf.loc[~valid, "source"].value_counts().to_dict()
+        print(f"  {int((~valid).sum())} outlines invalid in their source, kept as they are: {bad}")
     n_model, n_osm = int((gdf["source"] == "model").sum()), int((gdf["source"] == "osm").sum())
     print(f"  {aoi}: {n_model:,} model outlines ({mstats['n_outside']:,} outside the page's "
           f"regions left out) + {n_osm:,} OSM features ({ostats.get('n_csp', 0)} CSP) -> "
@@ -252,7 +304,7 @@ Columns:
 | column | rows | meaning |
 | --- | --- | --- |
 | source | all | `model` (a segmentation outline) or `osm` (an OpenStreetMap feature) |
-| id | all | `<country>-pv-NNNNNN` for a model outline, its id in the country's lead and MapRoulette files; `osm-way/...` or `osm-relation/...` for OpenStreetMap |
+| id | all | `<country>-pv-NNNNNN` for a model outline, its id in the country's lead and MapRoulette files (France's audited lead release numbers its leads by département instead); `osm-way/...` or `osm-relation/...` for OpenStreetMap |
 | technology | all | `pv`, or `csp` for a concentrating solar power plant (counted at its electric rating, never as PV) |
 | placement | all | model: `rooftop`, `ground_adjacent` or `no_building`, from VIDA building footprints; osm: `rooftop`, `ground` or `unknown` |
 | area_m2 | all | geodesic area of the outline (0 for an OpenStreetMap node, which is a point) |
@@ -299,10 +351,11 @@ Open Buildings). Released under the ODbL like every EarthPV data output.
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--aoi", action="append", required=True)
-    ap.add_argument("--out", type=Path, required=True, help="directory for the release assets")
+    ap.add_argument("--out", type=Path, default=RELEASE_DIR,
+                    help=f"directory holding every country's release assets (default {RELEASE_DIR})")
     ap.add_argument("--osm-solar", type=Path,
-                    help="the atlas's --osm-solar file (default "
-                         "data/labels/<aoi>_national_osm_solar.parquet; one --aoi only)")
+                    help="the atlas's --osm-solar file (default: the one the atlas recorded, "
+                         "see the module docstring; one --aoi only)")
     ap.add_argument("--upload", action="store_true", help=f"create {TAG} and upload the assets")
     args = ap.parse_args()
 
@@ -312,7 +365,8 @@ def main() -> int:
         ap.error("--osm-solar names one country's file")
     manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {"aois": {}}
     for aoi in args.aoi:
-        osm = (args.osm_solar or Path(f"data/labels/{aoi}_national_osm_solar.parquet")).resolve()
+        osm = ROOT / args.osm_solar if args.osm_solar else atlas_osm_solar(aoi)
+        print(f"  {aoi}: OSM rows from {_rel(osm)}")
         manifest["aois"][aoi] = build(aoi, args.out, osm)
     manifest["aois"] = dict(sorted(manifest["aois"].items()))
     manifest["release"] = f"https://github.com/{REPO}/releases/tag/{TAG}"
@@ -333,11 +387,18 @@ def main() -> int:
     print(f"wrote {MANIFEST.relative_to(ROOT)} and {len(files) + 1} assets in {args.out}")
 
     if args.upload:
-        assets = [str(f) for f in files] + [str(args.out / "SHA256SUMS")]
         exists = subprocess.run(["gh", "release", "view", TAG, "-R", REPO],
                                 capture_output=True).returncode == 0
+        # Into an existing release only what changed: these countries' files, and the README
+        # and checksums that list every country (also the release's notes).
+        sent = ([args.out / entries[a]["file"] for a in args.aoi] + [args.out / "README.md"]
+                if exists else files)
+        assets = [str(f) for f in sent] + [str(args.out / "SHA256SUMS")]
         if exists:
-            cmd = ["gh", "release", "upload", TAG, "-R", REPO, "--clobber", *assets]
+            subprocess.run(["gh", "release", "upload", TAG, "-R", REPO, "--clobber", *assets],
+                           check=True)
+            cmd = ["gh", "release", "edit", TAG, "-R", REPO,
+                   "--notes-file", str(args.out / "README.md")]
         else:
             cmd = ["gh", "release", "create", TAG, "-R", REPO, "--latest=false",
                    "--title", f"PV polygons per country: model outlines and OpenStreetMap "
