@@ -642,8 +642,18 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   from `data/predictions_v5_nigeria`), clipped to the page's regions, and refuses a run whose
   regions differ from the page's; France links its audited `france-osm-leads-2026-10-22`.
   `scripts/patch_atlas_leads.py` adds the link to a published page without a rebuild (and
-  re-resolves the badge, below). **A new country gets its file only when `release_leads.py` is
-  re-run for it** (add it to `SOURCES`).
+  re-resolves the badge, below). **Every atlas gets its lead file by default (owner,
+  2026-11-13)**: `run_country_compute.sh`'s `leads` step, after `atlas`, runs
+  `release_leads.py --aoi <aoi> --upload` (only that country's files plus README.md and
+  SHA256SUMS go up to the current tag; the default `--out` is the release's own directory,
+  `/home/tobi/earthpv_data/pv_new_leads_2026-11-02`, which must hold every country's files)
+  and `patch_atlas_leads.py` on `results/<aoi>_pv_evidence_atlas.html`; commit
+  `configs/atlas_leads.json` with the page. `SOURCES` needs an entry only for a run or OSM pull
+  other than the defaults. Belgium, Denmark, Italy, Luxembourg, the Netherlands and Portugal
+  got theirs 2026-11-13; Texas's chain started before the step existed. **Most published pages
+  are not on HEAD's template** (the 2026-11-12 size-fade fix was a literal replacement), so
+  `patch_atlas_leads.py --old-template` needs the revision each was built from: Belgium's,
+  Luxembourg's, the Netherlands' and Portugal's was b1d03e0 plus ad064f7's template diff.
   **Blobs have a file of their own (owner, 2026-11-01)**: leads above `MAX_CANDIDATE_M2`
   (100,000 m2) go to `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`,
   manifest `blobs`, linked on the same card); `--resplit` split the 11-01b files in place,

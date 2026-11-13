@@ -271,6 +271,17 @@ step csp          bash -c "$PY scripts/solar_thermal_plants.py --aoi $AOI --osm-
 step atlas        $PY -m earthpv.cli atlas --aoi $AOI --osm-solar "$OSM" --include-offgrid-osm \
                      --imagery-date-range "$DATE_RANGE" \
                      --out results/${AOI}_pv_evidence_atlas.html
+# Mapping leads, a default for every atlas (owner, 2026-11-13). The run's outlines more than
+# 100 m from mapped solar, screened and split into leads and blobs, go to the lead release
+# (scripts/release_leads.py: this country's two files, README.md and SHA256SUMS uploaded, and
+# configs/atlas_leads.json updated, to be committed with the page), then the page above gets
+# its Downloads link (scripts/patch_atlas_leads.py, from the template it was just built from).
+# Tried twice, never fatal: without it the page simply has no lead link.
+step leads        bash -c "{ $PY scripts/release_leads.py --aoi $AOI --upload \
+                     || { sleep 120; $PY scripts/release_leads.py --aoi $AOI --upload; }; } \
+                     && $PY scripts/patch_atlas_leads.py results/${AOI}_pv_evidence_atlas.html \
+                          --old-template src/earthpv/templates/pv_evidence_atlas.html \
+                     || echo 'LEADS MISSING: lead release failed (non-fatal); re-run scripts/release_leads.py --aoi $AOI --upload and scripts/patch_atlas_leads.py'"
 touch "$QMARK/${AOI}_atlas_done"
 # SKIP_DIAGNOSTIC=1 (the 2026-10-10 queue): stop at the deliverable. The losing checkpoint's
 # whole-country run below holds the GPU for hours that the next country's training needs;

@@ -41,12 +41,20 @@ each file checked (`atlas.LEAD_SHARE_MIN`). `--resplit` splits files built befor
 (every lead in one file) in place, keeping their date, so a lead check made on them still
 names them.
 
+**Every atlas gets its files by default (owner, 2026-11-13).** scripts/run_country_compute.sh
+runs `--aoi <aoi> --upload` after `earthpv atlas`, then scripts/patch_atlas_leads.py on the page,
+so a new country's page links its leads from the start. A country needs a `SOURCES` entry only
+when its atlas came from another run directory or OSM pull than the defaults. With `--aoi`,
+`--upload` sends only those countries' files plus README.md and SHA256SUMS (which cover every
+country's files, so `--out` must hold them all: the default is the release's own directory).
+
 France is not built here: its leads were audited against IGN aerial imagery and released
 on their own (`france-osm-leads-2026-10-22`, scripts/build_france_osm_leads.py, which already
 kept its outlines above the cap apart); its manifest entry links those files.
 
     pixi run python scripts/release_leads.py --out /home/tobi/earthpv_data/pv_new_leads_2026-11-01
     pixi run python scripts/release_leads.py --out ... --upload     # gh release create/upload
+    pixi run python scripts/release_leads.py --aoi italy --upload   # one country, default --out
     pixi run python scripts/release_leads.py --out <dir of a published release> --resplit
 
 Writes `<out>/<aoi>_pv_new_leads.geojson`, `<out>/<aoi>_pv_blob_leads.geojson`,
@@ -61,6 +69,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -92,11 +101,18 @@ MANIFEST = ROOT / "configs" / "atlas_leads.json"
 # 2026-11-02: Yemen re-run on v25 (`--aoi yemen`), a new tag holding every country's files,
 # the others byte for byte those of pv-new-leads-2026-11-01b, whose manifest entries keep
 # their URLs there. 2026-11-04: Turkey's first files added to the same tag; the other
-# countries' files untouched, README.md and SHA256SUMS replaced.
+# countries' files untouched, README.md and SHA256SUMS replaced. Spain's likewise 2026-11-08.
+# 2026-11-13: Belgium, Denmark, Italy, Luxembourg, the Netherlands and Portugal, the same way,
+# and from then on every new atlas (run_country_compute.sh's `leads` step).
 TAG = "pv-new-leads-2026-11-02"
+# Every country's files as uploaded under TAG: README.md and SHA256SUMS cover them all.
+RELEASE_DIR = Path(os.environ.get(
+    "EARTHPV_LEADS_DIR",
+    Path.home() / "earthpv_data" / f"pv_new_leads_{TAG.removeprefix('pv-new-leads-')}"))
 
 # Per AOI: the candidates behind its published atlas, the OSM pull(s) that count as
-# mapped, and the density directory holding the regions the page draws.
+# mapped, and the density directory holding the regions the page draws. An AOI missing here
+# builds from the defaults (data/predictions/<aoi>, data/labels/<aoi>_overpass_solar.parquet).
 SOURCES = {
     "pakistan": {},
     # Germany's national file carries the 52,946 OSM nodes the pre-cap file lacks; the
@@ -109,6 +125,8 @@ SOURCES = {
     "yemen": {"pred": "data/predictions_v25/yemen"},
     "india": {}, "vietnam": {}, "zambia": {}, "egypt": {},
     "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {}, "turkiye": {}, "spain": {},
+    "belgium": {}, "denmark": {}, "italy": {}, "luxembourg": {}, "netherlands": {},
+    "portugal": {},
 }
 # The published page each run must match: its provinces are compared with the regions read
 # here, so a lead file cannot come from a run other than the page's.
@@ -152,9 +170,12 @@ def _osm_as_of(frames: list[gpd.GeoDataFrame], paths: list[Path]) -> str:
 
 
 def _page_data(page: Path) -> dict:
-    from retemplate_atlas import extract, read_old_template
-
-    return json.loads(extract(read_old_template("HEAD"), page.read_text())["__PV_DATA_JSON__"])
+    """The page's data block, read straight from its `<script id="pv">` so that a page built
+    from any template revision can be checked (most published pages are on older ones)."""
+    html = page.read_text()
+    tag = '<script id="pv" type="application/json">'
+    start = html.index(tag) + len(tag)
+    return json.loads(html[start:html.index("</script>", start)])
 
 
 def _write(gdf: gpd.GeoDataFrame, path: Path) -> None:
@@ -349,6 +370,12 @@ modified Copernicus Sentinel-2 data. Released under the ODbL like every EarthPV 
 """
 
 
+def _assets(out: Path, entries) -> list[Path]:
+    """The lead and blob files of the manifest entries `entries`, in `out`."""
+    return [out / (e[k]["file"] if k else e["file"])
+            for e in entries for k in (None, "blobs") if k is None or k in e]
+
+
 def country_name(aoi: str) -> str:
     """The country's English name, as the README gives it (the AOI key `turkiye` is not)."""
     return {"turkiye": "Turkey"}.get(aoi, aoi.replace("_", " ").title())
@@ -356,7 +383,8 @@ def country_name(aoi: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--out", type=Path, required=True, help="directory for the release assets")
+    ap.add_argument("--out", type=Path, default=RELEASE_DIR,
+                    help=f"directory holding every country's release assets ({RELEASE_DIR})")
     ap.add_argument("--aoi", action="append", help="only these AOIs (default: every one)")
     ap.add_argument("--min-distance-m", type=float, default=100.0)
     ap.add_argument("--upload", action="store_true", help=f"create {TAG} and upload the assets")
@@ -365,13 +393,12 @@ def main() -> int:
                          "before the blob file) into leads and blobs, keeping their date")
     args = ap.parse_args()
 
-    import os
     os.chdir(ROOT)
     args.out.mkdir(parents=True, exist_ok=True)
     manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {"aois": {}}
     for aoi in args.aoi or list(SOURCES):
         manifest["aois"][aoi] = (resplit(aoi, manifest["aois"][aoi], args.out) if args.resplit
-                                 else build(aoi, SOURCES[aoi], args.out, args.min_distance_m))
+                                 else build(aoi, SOURCES.get(aoi, {}), args.out, args.min_distance_m))
     manifest["aois"]["france"] = FRANCE
     manifest["aois"] = dict(sorted(manifest["aois"].items()))
     manifest["release"] = f"https://github.com/{REPO}/releases/tag/{TAG}"
@@ -394,20 +421,25 @@ def main() -> int:
         water_pct=f"{100 * WATER_EVER_WET_MIN:g}",
         water_aois=", ".join(country_name(a) for a, e in built.items()
                              if "water" in e) or "none yet"))
-    files = ([args.out / e[k]["file"] if k else args.out / e["file"]
-              for e in built.values() for k in (None, "blobs") if k is None or k in e]
-             + [args.out / "README.md"])
+    files = _assets(args.out, built.values()) + [args.out / "README.md"]
     sums = [f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}" for f in files]
     (args.out / "SHA256SUMS").write_text("\n".join(sums) + "\n")
     MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"wrote {MANIFEST.relative_to(ROOT)} and {len(files) + 1} assets in {args.out}")
 
     if args.upload:
-        assets = [str(f) for f in files] + [str(args.out / "SHA256SUMS")]
         exists = subprocess.run(["gh", "release", "view", TAG, "-R", REPO],
                                 capture_output=True).returncode == 0
+        # Into an existing release only what changed: these countries' files, and the README
+        # and checksums that list every country (also the release's notes).
+        sent = (_assets(args.out, [built[a] for a in args.aoi if a in built])
+                + [args.out / "README.md"]) if exists and args.aoi else files
+        assets = [str(f) for f in sent] + [str(args.out / "SHA256SUMS")]
         if exists:
-            cmd = ["gh", "release", "upload", TAG, "-R", REPO, "--clobber", *assets]
+            subprocess.run(["gh", "release", "upload", TAG, "-R", REPO, "--clobber", *assets],
+                           check=True)
+            cmd = ["gh", "release", "edit", TAG, "-R", REPO,
+                   "--notes-file", str(args.out / "README.md")]
         else:
             cmd = ["gh", "release", "create", TAG, "-R", REPO, "--latest=false",
                    "--title", f"PV mapping leads per country ({dt.date.today().isoformat()})",

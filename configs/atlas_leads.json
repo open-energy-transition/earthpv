@@ -1,5 +1,63 @@
 {
   "aois": {
+    "belgium": {
+      "file": "belgium_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/belgium_pv_new_leads.geojson",
+      "n": 974,
+      "size_bytes": 1018353,
+      "osm_as_of": "2026-11-07",
+      "min_distance_m": 100,
+      "made": "2026-11-13",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 2,
+        "review": 2,
+        "no_dem": 0
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 101
+      },
+      "blobs": {
+        "file": "belgium_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/belgium_pv_blob_leads.geojson",
+        "n": 4,
+        "size_bytes": 17926,
+        "min_area_m2": 100000.0
+      }
+    },
+    "denmark": {
+      "file": "denmark_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/denmark_pv_new_leads.geojson",
+      "n": 255,
+      "size_bytes": 255198,
+      "osm_as_of": "2026-11-08",
+      "min_distance_m": 100,
+      "made": "2026-11-13",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 0,
+        "review": 0,
+        "no_dem": 0
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 0
+      },
+      "blobs": {
+        "file": "denmark_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/denmark_pv_blob_leads.geojson",
+        "n": 3,
+        "size_bytes": 7941,
+        "min_area_m2": 100000.0
+      }
+    },
     "egypt": {
       "file": "egypt_pv_new_leads.geojson",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-01b/egypt_pv_new_leads.geojson",
@@ -109,6 +167,64 @@
         "min_area_m2": 100000.0
       }
     },
+    "italy": {
+      "file": "italy_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/italy_pv_new_leads.geojson",
+      "n": 11210,
+      "size_bytes": 13598399,
+      "osm_as_of": "2026-11-07",
+      "min_distance_m": 100,
+      "made": "2026-11-13",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 533,
+        "review": 358,
+        "no_dem": 17
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 971
+      },
+      "blobs": {
+        "file": "italy_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/italy_pv_blob_leads.geojson",
+        "n": 377,
+        "size_bytes": 1687555,
+        "min_area_m2": 100000.0
+      }
+    },
+    "luxembourg": {
+      "file": "luxembourg_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/luxembourg_pv_new_leads.geojson",
+      "n": 284,
+      "size_bytes": 279037,
+      "osm_as_of": "2026-08-14",
+      "min_distance_m": 100,
+      "made": "2026-11-13",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 0,
+        "review": 0,
+        "no_dem": 0
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 21
+      },
+      "blobs": {
+        "file": "luxembourg_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/luxembourg_pv_blob_leads.geojson",
+        "n": 1,
+        "size_bytes": 3981,
+        "min_area_m2": 100000.0
+      }
+    },
     "morocco": {
       "file": "morocco_pv_new_leads.geojson",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-01b/morocco_pv_new_leads.geojson",
@@ -169,6 +285,35 @@
         "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-01b/namibia_pv_blob_leads.geojson",
         "n": 28,
         "size_bytes": 109724,
+        "min_area_m2": 100000.0
+      }
+    },
+    "netherlands": {
+      "file": "netherlands_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/netherlands_pv_new_leads.geojson",
+      "n": 4040,
+      "size_bytes": 3772147,
+      "osm_as_of": "2026-11-02",
+      "min_distance_m": 100,
+      "made": "2026-11-13",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 0,
+        "review": 0,
+        "no_dem": 2
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 0
+      },
+      "blobs": {
+        "file": "netherlands_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/netherlands_pv_blob_leads.geojson",
+        "n": 7,
+        "size_bytes": 24922,
         "min_area_m2": 100000.0
       }
     },
@@ -261,6 +406,35 @@
         "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-01b/poland_pv_blob_leads.geojson",
         "n": 147,
         "size_bytes": 653934,
+        "min_area_m2": 100000.0
+      }
+    },
+    "portugal": {
+      "file": "portugal_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/portugal_pv_new_leads.geojson",
+      "n": 966,
+      "size_bytes": 1155997,
+      "osm_as_of": "2026-11-07",
+      "min_distance_m": 100,
+      "made": "2026-11-13",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 17,
+        "review": 52,
+        "no_dem": 0
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 438
+      },
+      "blobs": {
+        "file": "portugal_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/portugal_pv_blob_leads.geojson",
+        "n": 110,
+        "size_bytes": 554629,
         "min_area_m2": 100000.0
       }
     },
