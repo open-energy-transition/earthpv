@@ -16,9 +16,26 @@ title: Germany
 # totals and its geography does not survive the register's own check (median municipal
 # error 48.4% against 37.8% for simply scaling roof area), and the Best estimate sits
 # above the ~74.8 GWp registered. Not yet understood well enough to call validated.
+# The owner declared the half below 400 m2 validated on 2026-11-13, and every lead and blob of
+# the 2026-11-01 lead file checked (14,535 leads; the 581 blobs' verdicts are on record, 149
+# solar). The lead rule also asks for the model retrained on that mapping (atlas.leads_retrained):
+# the owner chose to retrain first (2026-11-13), so the page shows Bronze until that model is
+# named under `retrained_on_leads` as `model:`.
 validation:
   score: silver
-  note: "Register-checked above 400&nbsp;m&sup2;.<br>Smaller half not validated."
+  note: "Register-validated above and<br>below 400&nbsp;m&sup2;."
+  leads_checked:
+    made: "2026-11-01"
+    by: owner
+    date: "2026-11-13"
+    note: "every lead (14,535) and every blob (581) of the 2026-11-01 file, declared checked by the owner on 2026-11-13; the blob verdicts are in results/germany_oversize_review/"
+  retrained_on_leads:
+    leads: "2026-11-01"
+    share: 1.0
+    blobs_share: 1.0
+    by: owner
+    date: "2026-11-13"
+    note: "every lead and blob of the 2026-11-01 file checked; the German model is still v4_combined_all epoch 41, and the retrain on the OSM pull holding that mapping is queued"
 
 cities:
   - [Berlin, 13.405, 52.520]

@@ -57,7 +57,8 @@ silently drop the section it was meant to fill):
         leads: "2026-07-16"                # the lead file worked through, by its date
         share: 0.5                         # share of its leads with a verdict (>= 1/3)
         blobs_share: 0.5                   # same for its blobs; default: `share`
-        model: v16_combined_pakistan       # the localized model trained on that mapping
+        model: v16_combined_pakistan       # the localized model trained on that mapping;
+                                           # absent while the retrain is still to come
         by: owner                          # who declared it
         date: "2026-11-01"                 # when
         note: "..."                        # optional: how many leads, which OSM pull
@@ -93,7 +94,9 @@ the OpenStreetMap solar that includes that mapping. Like a quadrat's Rule-1 stat
 declaration, not something code can derive. It names the lead file, the shares and the new
 model, and once declared it stays true: "at least once" does not expire with a new lead
 file. Without it `atlas.resolve_validation_badge` shows Bronze whatever the tier earned
-(`atlas.leads_retrained`).
+(`atlas.leads_retrained`). Declared without `model`, it records the leads worked through and
+the retrain still to come: the page stays Bronze, and its badge and banner name the retrain
+as what is missing.
 
 `validation.leads_checked` records that every lead in the country's current lead file has a
 human verdict, naming the file by its `made` date; the Downloads card says so. From
@@ -358,8 +361,10 @@ def load(aoi: str, config_dir: Path = CONFIG_DIR) -> AtlasConfig:
     if unknown:
         _fail(aoi, f"unknown validation.retrained_on_leads key(s) {sorted(unknown)}; "
                    f"expected {sorted(_RETRAINED_KEYS)}")
-    if retrained and not all(retrained.get(k) for k in ("leads", "model", "by", "date")):
-        _fail(aoi, "`validation.retrained_on_leads` needs `leads`, `model`, `by` and `date`")
+    # No `model` yet: the leads are worked through and the retrain is still to come, which
+    # `atlas.lead_rule_gaps` reports as the one gap left (Germany, 2026-11-13).
+    if retrained and not all(retrained.get(k) for k in ("leads", "by", "date")):
+        _fail(aoi, "`validation.retrained_on_leads` needs `leads`, `by` and `date`")
     shares = {}
     for k in ("share", "blobs_share"):
         v = retrained.get(k)

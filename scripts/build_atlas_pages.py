@@ -159,7 +159,8 @@ TIER_NOTE = {
 # out; LEADS_NEED what the lead rule still asks, keyed by `atlas.lead_rule_gaps`.
 LEADS_WARNING = "<strong>This Bronze atlas is not yet verified.</strong> {small}, and {needs}."
 SMALL_GAP = {
-    "Germany": "Its estimate below 400 m&sup2; is not validated",
+    # Germany: none since the owner declared its half below 400 m2 validated (2026-11-13), so
+    # its banner reads "It earned Silver on its calibration".
     "France": "Nothing below 400 m&sup2; is estimated",
     "Yemen": "Small rooftop systems are not estimated",
 }

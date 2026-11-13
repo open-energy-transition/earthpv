@@ -317,8 +317,12 @@ LEAD_RULE_GAPS = {
     "leads_mapped": "Needs more leads mapped",
     "leads_retrained": "Model not yet retrained on them",
 }
-# The badge's sub-line under a page shown below its earned tier: one plain sentence.
-LEAD_RULE_SUB = "Needs more leads mapped in<br>OpenStreetMap to localize the model."
+# The badge's sub-line under a page shown below its earned tier: one plain sentence for the
+# first gap `lead_rule_gaps` names (a page whose leads are mapped lacks only the retrain).
+LEAD_RULE_SUB = {
+    "leads_mapped": "Needs more leads mapped in<br>OpenStreetMap to localize the model.",
+    "leads_retrained": "Leads checked; the model is not<br>yet retrained on them.",
+}
 
 
 def lead_rule_gaps(aoi: str) -> list[str]:
@@ -333,7 +337,8 @@ def lead_rule_gaps(aoi: str) -> list[str]:
 def lead_rule_sub(aoi: str, earned: str) -> str:
     """The badge's sub-line for a page shown as Bronze although its calibration earns
     `earned`: the earned tier, then what is missing."""
-    return f"{VALIDATION_TIERS[earned][0]} otherwise.<br>{LEAD_RULE_SUB}"
+    gaps = lead_rule_gaps(aoi) or ["leads_mapped"]
+    return f"{VALIDATION_TIERS[earned][0]} otherwise.<br>{LEAD_RULE_SUB[gaps[0]]}"
 
 
 def leads_for_page(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:

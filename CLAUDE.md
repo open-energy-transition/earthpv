@@ -1048,7 +1048,10 @@ localize the model (owner, 2026-11-01)**: at least `atlas.LEAD_SHARE_MIN` (a thi
 file's leads and of its blobs have a verdict, and the localized model was trained again on
 the OSM pull holding that mapping, declared as `validation.retrained_on_leads: {leads, share,
 blobs_share, model, by, date, note}` (`atlas.leads_retrained`; `blobs_share` defaults to
-`share`); it does not lapse with a new lead file. A third because the real ones sit at the
+`share`); it does not lapse with a new lead file. Declared without `model` (Germany,
+2026-11-13), it records the leads worked through and the retrain still to come: the page
+stays Bronze and its badge reads "Leads checked; the model is not yet retrained on them"
+(`atlas.LEAD_RULE_SUB`, keyed by the first gap). A third because the real ones sit at the
 top of the ranked file: the top third held 69% of what was mapped later in Pakistan, 87% in
 Yemen, 46% of register hits in Germany, and below it 2-4% were real
 (`scripts/lead_share.py`, `results/lead_share/`). It replaced "every lead in the current
@@ -1067,8 +1070,10 @@ Silver and show Bronze until they declare one. **Gold also needs roofclf checked
 point data inspection (`scripts/export_roofclf_points.py`) on the scoring behind the page.
 `derive_validation_score` stops at Silver, so Gold is only ever declared (`validation.score:
 gold`, or `--validation-score`). **No atlas is Gold today; Pakistan is Silver** (config, its
-own `TIER_NOTE`) until both are recorded; no figure changed. **Germany earns Silver** (its
-register-calibrated small half fails its own register check). **Yemen earns Silver**: its farm
+own `TIER_NOTE`) until both are recorded; no figure changed. **Germany earns Silver**; the owner
+declared its small half validated and every lead and blob of the 2026-11-01 file checked
+(2026-11-13), and chose a retrain on that mapping before Silver shows, so its page stays
+Bronze until `retrained_on_leads` names the new model. **Yemen earns Silver**: its farm
 areas calibrate farm ground PV only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
 `used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the
 owner; Yafi' and Qa'tabah town, the first PV-rich town boxes, were mapped 2026-10-29). In those
@@ -1392,7 +1397,7 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
 | Pakistan | `v16_combined_pakistan` | 7,138.3 / 34,470.3 | roofclf half on 41 areas, priced on 19; probability-weighted, Silver until people have checked it; see "Density stage" |
-| Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated roofclf; earns Silver, shows Bronze (leads unchecked); 149 judged parks count |
+| Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated roofclf; earns Silver, shows Bronze until retrained on its leads (all checked, owner 2026-11-13); 149 judged parks count |
 | France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
 | India | `v5_combined_france` | 70,266.0 / 102,779.7 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count; 4 CSP plants 197.9 MW |
 | Vietnam | `v9_combined_vietnam` | 8,179.8 / 9,118.9 | 32 judged parks count |
