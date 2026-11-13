@@ -411,7 +411,7 @@ TEMPLATE = r"""<meta charset="utf-8">
       <section class="card map-card">
         <div class="map-head">
           <div class="map-title">Sub-400 m² capacity per cell, plus large PV for scale</div>
-          <div class="map-sub" id="mapsub">≈11 km × 11 km cells · log scale</div>
+          <div class="map-sub" id="mapsub">0.1° × 0.1° cells · log scale</div>
         </div>
         <div id="mapmount"></div>
         <div class="legend">

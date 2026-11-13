@@ -517,7 +517,7 @@ __CSS__
       <section class="card map-card">
         <div class="map-head">
           <div class="map-title">Capacity per cell at the selected standard of proof</div>
-          <div class="map-sub">≈11 km × 11 km cells · log scale</div>
+          <div class="map-sub">0.1° × 0.1° cells · log scale</div>
         </div>
         <div id="mapmount"></div>
         <div class="legend">

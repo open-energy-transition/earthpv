@@ -308,7 +308,7 @@ __CSS__
       <section class="card map-card">
         <div class="map-head">
           <div class="map-title" id="mapTitle">-</div>
-          <div class="map-sub" id="mapSub">&asymp;11 km &times; 11 km cells</div>
+          <div class="map-sub" id="mapSub">0.1&deg; &times; 0.1&deg; cells</div>
         </div>
         <div id="mapmount"></div>
         <div class="legend">
