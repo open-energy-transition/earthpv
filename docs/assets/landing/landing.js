@@ -897,7 +897,7 @@
       var gaps = [];
       if (!t.rooftop_measured) gaps.push('Rooftops');
       if (!t.farm_ground_measured) gaps.push(gaps.length ? 'farm ground' : 'Farm ground');
-      return gaps.length ? gaps.join(' and ') + ' under 400 m² not measured' : '';
+      return gaps.length ? gaps.join(' and ') + ' under 400\u00a0m² not measured' : '';
     }
 
     function linkFor(f) {
