@@ -241,6 +241,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1300
     made: '2026-11-08'
+  texas:
+    median: '2026-08-07'
+    p25: '2026-07-09'
+    p75: '2026-08-25'
+    first: '2026-05-02'
+    last: '2026-09-29'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 1863
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1352
+    made: '2026-11-13'
   turkiye:
     median: '2026-07-31'
     p25: '2026-07-09'

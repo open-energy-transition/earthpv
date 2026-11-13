@@ -1,7 +1,7 @@
 # Written by scripts/official_capacity.py; do not edit by hand.
 note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
   for the atlas: `scope` says what each counts.'
-retrieved: '2026-11-12'
+retrieved: '2026-11-13'
 aois:
   belgium:
   - id: elia
@@ -344,6 +344,135 @@ aois:
     mw: 49900.0
     scope: 'National solar PV at the end of 2025 from the grid operator''s annual system report: 33.1%
       of a 150.8 GW generation mix, self-consumption included.'
+  texas:
+  - id: eia_epm
+    name: EIA
+    title: 'Electric Power Monthly, table 6.2.B: net summer capacity using primarily renewable energy
+      sources, by state, August 2026'
+    publisher: U.S. Energy Information Administration
+    kind: statistics
+    url: https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_6_02_b
+    as_of: '2026-08-31'
+    mw: 37200.5
+    scope: 'All solar PV in Texas at the end of August 2026, a month before the imagery window ends: 33.7
+      GW of utility-scale plants (net summer capacity, an inverter (AC) rating) and EIA''s estimate of
+      3.5 GW of small-scale systems below 1 MW, household rooftops included.'
+  - id: eia860m
+    name: EIA-860M
+    title: Preliminary Monthly Electric Generator Inventory, September 2026
+    publisher: U.S. Energy Information Administration
+    kind: register
+    url: https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx
+    as_of: '2026-09-30'
+    mw: 34978.8
+    scope: Every operating utility-scale solar PV generator in Texas (1 MW and up) at the end of September
+      2026, the last month of the imagery window, at nameplate inverter (AC) capacity; systems below 1
+      MW are not in it. Where EIA reports it, the panel (DC) capacity of the same plants is about 29%
+      higher.
+    regions:
+      Andrews: 1070.0
+      Angelina: 180.0
+      Austin: 10.0
+      Bastrop: 200.0
+      Bee: 300.7
+      Bell: 780.8
+      Bexar: 102.8
+      Borden: 530.6
+      Bosque: 490.9
+      Brazoria: 818.1
+      Brewster: 50.0
+      Brooks: 10.0
+      Brown: 320.0
+      Calhoun: 196.3
+      Cameron: 180.0
+      Childress: 571.6
+      Collin: 7.7
+      Concho: 360.0
+      Cooke: 214.2
+      Coryell: 56.0
+      Crane: 150.0
+      Culberson: 482.0
+      Dallas: 6.1
+      Dawson: 152.0
+      Delta: 204.5
+      Denton: 524.5
+      Dimmit: 200.0
+      Eastland: 401.4
+      Ector: 949.4
+      El Paso: 180.0
+      Ellis: 214.7
+      Erath: 9.9
+      Falls: 708.8
+      Fannin: 216.6
+      Fayette: 240.0
+      Fort Bend: 1221.2
+      Franklin: 257.5
+      Freestone: 10.0
+      Frio: 532.4
+      Goliad: 300.0
+      Grayson: 20.3
+      Grimes: 210.0
+      Guadalupe: 6.9
+      Hamilton: 100.0
+      Harris: 71.5
+      Haskell: 705.0
+      Henderson: 10.0
+      Hill: 1176.2
+      Hopkins: 1105.9
+      Howard: 10.0
+      Hunt: 70.0
+      Jack: 650.0
+      Jackson: 150.5
+      Jim Wells: 131.0
+      Jones: 200.0
+      Karnes: 10.0
+      Kaufman: 346.7
+      Kent: 452.0
+      Kinney: 199.6
+      Lamar: 1460.0
+      Lamb: 150.0
+      Leon: 209.0
+      Liberty: 109.9
+      Limestone: 638.3
+      Lubbock: 4.4
+      McLennan: 174.9
+      Menard: 7.5
+      Milam: 1190.0
+      Mitchell: 1.1
+      Motley: 250.0
+      Navarro: 765.7
+      Nolan: 200.0
+      Nueces: 27.5
+      Pecos: 2177.5
+      Polk: 150.0
+      Presidio: 10.0
+      Rains: 125.0
+      Real: 1.5
+      Red River: 610.0
+      Reeves: 100.0
+      Runnels: 125.0
+      Rusk: 200.0
+      San Patricio: 150.0
+      Scurry: 653.2
+      Starr: 136.0
+      Sterling: 145.0
+      Swisher: 1100.0
+      Tarrant: 4.0
+      Tom Green: 567.8
+      Travis: 185.3
+      Upshur: 3.0
+      Upton: 905.0
+      Uvalde: 303.5
+      Van Zandt: 59.0
+      Victoria: 180.0
+      Waller: 480.0
+      Webb: 725.0
+      Wharton: 1100.0
+      Williamson: 1.4
+      Wilson: 7.0
+      Winkler: 250.0
+    regions_scope: 'Utility-scale plants of 1 MW and up only, in the counties that have one; rooftop systems
+      are outside these figures. Not drawn here: Yoakum County (300 MW), where no cell was imaged.'
   turkiye:
   - id: teias
     name: TEİAŞ

@@ -27,6 +27,7 @@ hide:
   <a href="../atlas-portugal/">Portugal</a>
   <a href="../atlas-south-africa/">South Africa</a>
   <a href="../atlas-spain/">Spain</a>
+  <a href="../atlas-texas/">Texas</a>
   <span aria-current="page">Turkey</span>
   <a href="../atlas-vietnam/">Vietnam</a>
   <a href="../atlas-yemen/">Yemen</a>

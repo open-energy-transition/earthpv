@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and twenty-one countries have a published evidence atlas (see "Country
+country's own OSM labels, and twenty-one countries and the state of Texas have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -282,6 +282,18 @@ than at setup. `source.coop` 403s any request without a User-Agent header, which
 like "no such country." Guide: `docs/reproduce.md`'s "Scale to a new country" section. Before a
 new country's atlas is built, re-run `scripts/ember_import_ceiling.py` (see "Documentation
 site"), and add any official figures to `scripts/official_capacity.py` and re-run it.
+
+**A state or province can be an AOI of its own (`division.subtype: region`, 2026-11-10:
+California, Texas).** Compose clips to its ADM1 polygon by name (`compose._aoi_boundary`);
+`density.subnational_units` makes its own ADM2 units (more than half their area inside; a
+representative point lost Texas's Aransas County to the bay) its regions, with no district
+layer, so the atlas's province chart, its cell count and `pick_val_region.py`'s holdout stay
+inside it; `density.aoi_border` clips the OSM solar file and the CSP table to it (the national
+ADM1 union would have counted Nevada's parks on California's page). Training labels still
+take the neighbours inside the bbox. `scripts/vida_subset.py` (`VIDA_BOXES` in
+`prepare_country_vida.sh`) installs only some boxes of a country's VIDA: **`data/vida/USA.parquet`
+holds California's and Texas's footprints only**, so another US state needs it redone with its
+box added (`<raw>.json` lists the boxes).
 
 ### Compose stage (imagery for AOIs without local composites)
 
@@ -1374,6 +1386,7 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | tie with v5 on the thin Mersch holdout (39 of 48 each); Best is 5.4% of ILR's 746.35 MW; 8.3 of the model's 21.3 MWp lies beyond the border; no large installation review yet, 1 blob not judged |
 | Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 13,880.6 | clear win over v5 on the Nord-Ovest holdout (0.645 vs 0.544 of 3,350); Best is 32% of GSE's 43,687 MW and 97% of its 14,296 MW ground-mounted; 377 blobs and 4,586 large leads not judged yet |
 | Denmark | `v37_combined_denmark` ep 28 at 0.95 | 2,639.9 / 2,695.1 | win over v5 on the thin Nordjylland holdout (52 vs 45 of 98, all >= 1,000 m2); Best is 49% of Energistyrelsen's 5,468 MW; 3 blobs and 63 large leads not judged yet |
+| Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 46,206.4 | first US state (counties as regions); recall tie with v5 on Bexar County (302 vs 300 of 355), wins on IoU; Best is 124% of EIA's 37,200.5 MW AC, about one in DC; 845 blobs and 875 large leads not judged yet |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1475,6 +1488,16 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   plant by name) is tagged `plant:output:electricity=yes` and counts as 1.7 MW CSP, probably
   mis-tagged. Energistyrelsen's quarterly note has no regions. Ember is not a ceiling (4.35 GW
   imported directly against 5.47 GW registered).
+- **Texas** (published 2026-11-13): the first state run as an AOI of its own. Verified is
+  OSM's park perimeters (1,016 ground outlines, 912 km2) at the land constant, which EIA-860M
+  confirms there: 86 outlines holding a plant with panel capacity measure 0.047 kWp/m2 DC. Best
+  adds 494 MWp; 845 blobs (701 km2) wait, few near an EIA plant. Against EIA (AC: Electric Power
+  Monthly 37,200.5 MW, EIA-860M 34,978.8 MW utility-scale by county, `data/external/eia/`) the
+  page is about one in DC terms (plants carry 1.29x panel over inverter), Spearman 0.74 over 101
+  counties. 8.4 GWp of mapped parks lie over 2 km from any operating EIA plant, 97% detected by
+  the model. Overpass refused the CSP area scan; `solar_thermal_plants.py --pbf` read the
+  Geofabrik extract (no CSP, as EIA). Composites on moreaidata. No Ember line (customs data are
+  national).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

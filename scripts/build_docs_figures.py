@@ -2818,6 +2818,10 @@ INTERACTIVE = [
     # v37_combined_denmark (it beat v5 on the held-out Nordjylland). docs/results/denmark.md
     # explains.
     ("results/denmark_pv_evidence_atlas.html", "denmark_pv_evidence_atlas.html"),
+    # Texas: a US state run as an AOI of its own (counties as regions), segmentation-only,
+    # on its own LOCALIZED checkpoint v39_combined_texas (tied v5 on the held-out Bexar
+    # County, won on pixel IoU). docs/results/texas.md explains.
+    ("results/texas_pv_evidence_atlas.html", "texas_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;

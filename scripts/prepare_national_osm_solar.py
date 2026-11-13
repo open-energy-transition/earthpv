@@ -116,22 +116,23 @@ def prepare(aoi: str, out: Path, rooftop_max_m2: float = ROOFTOP_MAX_M2,
         # Both were invisible while the atlas dropped OSM outside its density grid. Once
         # `--include-offgrid-osm` keeps that population, every foreign feature becomes a
         # cell and drags the map across a continent.
+        # A state or province AOI (California, Texas) clips to its own polygon, not the
+        # country's: `density.aoi_border`.
         from earthpv.buildings import _iso3_for
-        from earthpv.density import fetch_geoboundaries
+        from earthpv.density import aoi_border
 
         iso3 = _iso3_for(cfg)
-        adm1 = fetch_geoboundaries(iso3, "ADM1") if iso3 else None
-        if adm1 is None:
-            log.warning("no geoBoundaries ADM1 for %r -- keeping the unclipped pull", iso3)
+        border = aoi_border(aoi, cfg, settings)
+        if border is None:
+            log.warning("no boundary for %s (%r) -- keeping the unclipped pull", aoi, iso3)
         else:
             import shapely
 
-            country = adm1.to_crs("EPSG:4326").geometry.union_all()
             rep = ref.geometry.representative_point()
-            inside = shapely.contains_xy(country, rep.x.values, rep.y.values)
+            inside = shapely.contains_xy(border, rep.x.values, rep.y.values)
             log.info(
-                "clipped to %s: %d of %d features inside the national boundary (%d dropped)",
-                iso3, int(inside.sum()), len(ref), int((~inside).sum()),
+                "clipped to %s's border: %d of %d features inside (%d dropped)",
+                aoi, int(inside.sum()), len(ref), int((~inside).sum()),
             )
             ref = ref[inside].reset_index(drop=True)
 

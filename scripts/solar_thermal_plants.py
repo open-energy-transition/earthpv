@@ -70,13 +70,12 @@ def _read(p: Path) -> gpd.GeoDataFrame:
 
 
 def _border(aoi: str):
-    from earthpv.buildings import _iso3_for
-    from earthpv.density import fetch_geoboundaries
+    """The country's ADM1 union, or a state or province AOI's own polygon
+    (`density.aoi_border`), so California's table does not take Nevada's plants."""
+    from earthpv.density import aoi_border
 
-    cfg = Settings.load().aois[aoi]
-    iso3 = _iso3_for(cfg)
-    adm1 = fetch_geoboundaries(iso3, "ADM1") if iso3 else None
-    return None if adm1 is None else adm1.to_crs("EPSG:4326").geometry.union_all()
+    settings = Settings.load()
+    return aoi_border(aoi, settings.aois[aoi], settings)
 
 
 _HSTORE = None

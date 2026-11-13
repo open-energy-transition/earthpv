@@ -1217,6 +1217,54 @@ def drop_nested_duplicates(gdf: gpd.GeoDataFrame, kind: str) -> gpd.GeoDataFrame
     return gdf.drop(index=drop)
 
 
+def is_subnational(cfg: dict) -> bool:
+    """A state or province run as an AOI of its own (`division.subtype: region`, e.g.
+    California and Texas from 2026-11-10), as opposed to a whole country."""
+    return (cfg.get("division") or {}).get("subtype") == "region"
+
+
+def aoi_border(aoi: str, cfg: dict, settings: Settings):
+    """The outline a run's hand-mapped population is clipped to (one shapely geometry, or
+    None when no boundary can be had).
+
+    A country is its geoBoundaries ADM1 union, the clip `prepare_national_osm_solar.py` and
+    `solar_thermal_plants.py` have always applied. A state or province is its own polygon
+    (`compose._aoi_boundary`): the national union would let California's page count the
+    Nevada parks inside its bbox, which `atlas --include-offgrid-osm` keeps.
+    """
+    if is_subnational(cfg):
+        b = _aoi_boundary(aoi, cfg, settings)
+        return None if b is None else b.to_crs("EPSG:4326").geometry.union_all()
+    iso3 = _iso3_for(cfg)
+    adm1 = fetch_geoboundaries(iso3, "ADM1") if iso3 else None
+    return None if adm1 is None else adm1.to_crs("EPSG:4326").geometry.union_all()
+
+
+def subnational_units(aoi: str, cfg: dict, settings: Settings) -> gpd.GeoDataFrame | None:
+    """A state or province AOI's own ADM2 units (US counties): those with more than half
+    their area inside `compose._aoi_boundary` (a representative point dropped Texas's
+    Aransas County, mostly bay, whose point fell in the water outside the land outline).
+
+    They stand where a country's provinces stand: `load_admin`'s regions, hence the atlas's
+    province chart and its cell count (the union of the regions), and the holdout's
+    candidate regions in `scripts/pick_val_region.py`. The country's ADM1 layer would be
+    every state of the country, and the holdout could land in a neighbouring one.
+    """
+    import shapely
+
+    iso3 = _iso3_for(cfg)
+    boundary = _aoi_boundary(aoi, cfg, settings)
+    adm2 = fetch_geoboundaries(iso3, "ADM2") if iso3 else None
+    if boundary is None or adm2 is None or adm2.empty:
+        return None
+    adm2 = adm2.to_crs("EPSG:4326")
+    outline = boundary.geometry.union_all()
+    adm2 = adm2[adm2.intersects(outline)]
+    share = shapely.area(shapely.intersection(adm2.geometry.values, outline)) / shapely.area(
+        adm2.geometry.values)
+    return adm2[share > 0.5].reset_index(drop=True)
+
+
 def load_admin(
     aoi: str, cfg: dict, settings: Settings, iso3: str, labels_dir: Path,
     districts: bool, regions_file: Path | None,
@@ -1228,6 +1276,9 @@ def load_admin(
     level (with a rerun hint) rather than aborting the whole run.
     """
     country = (cfg.get("division") or {}).get("country")
+    # A state or province AOI: its regions are its own ADM2 units, and there is no finer
+    # layer to add as districts (`subnational_units`).
+    sub = is_subnational(cfg)
 
     def _load(kind: str, subtype: str, adm: str) -> gpd.GeoDataFrame | None:
         if regions_file and kind == "region":
@@ -1236,8 +1287,11 @@ def load_admin(
         if cache.exists():
             log.info("Using cached %s polygons %s", kind, cache)
             return gpd.read_parquet(cache).to_crs("EPSG:4326")
-        gdf = fetch_geoboundaries(iso3, adm)
-        if (gdf is None or gdf.empty) and country is not None:
+        if sub:
+            gdf = subnational_units(aoi, cfg, settings) if kind == "region" else None
+        else:
+            gdf = fetch_geoboundaries(iso3, adm)
+        if (gdf is None or gdf.empty) and country is not None and not sub:
             try:
                 gdf = overture.fetch_regions(country, settings, subtype=subtype)
             except Exception as e:  # noqa: BLE001 - Overture S3 timeouts must not kill the run
@@ -1252,7 +1306,7 @@ def load_admin(
         return gdf.to_crs("EPSG:4326")
 
     regions = drop_nested_duplicates(_load("region", "region", "ADM1"), "region")
-    dist = _load("district", "county", "ADM2") if districts else None
+    dist = _load("district", "county", "ADM2") if districts and not sub else None
     return regions, drop_nested_duplicates(dist, "district")
 
 

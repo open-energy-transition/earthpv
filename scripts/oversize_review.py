@@ -166,8 +166,15 @@ def population(aoi: str, labels: Path, min_distance_m: float, min_area_m2: float
     ref = gpd.read_parquet(labels)[["geometry"]]
     ref = ref[ref.geometry.notna() & ~ref.geometry.is_empty]
     pool = pool[new_lead_mask(pool, ref, min_distance_m=min_distance_m)].copy()
-    _, cfg = resolve_aoi(aoi, Settings.load())
-    adm1 = fetch_geoboundaries(_iso3_for(cfg), "ADM1").to_crs(4326)
+    settings = Settings.load()
+    _, cfg = resolve_aoi(aoi, settings)
+    from earthpv.density import is_subnational, subnational_units
+
+    # A state or province AOI names its leads by its own ADM2 units, which are also the
+    # regions `density` will write: the country's ADM1 layer would keep the leads of the
+    # border cells that lie in a neighbouring state.
+    adm1 = (subnational_units(aoi, cfg, settings) if is_subnational(cfg)
+            else fetch_geoboundaries(_iso3_for(cfg), "ADM1")).to_crs(4326)
     rp = gpd.GeoDataFrame(geometry=pool.geometry.representative_point(), crs=4326)
     j = gpd.sjoin(rp, adm1[["name", "geometry"]], how="left", predicate="within")
     pool["region"] = j.groupby(level=0)["name"].first().reindex(pool.index)

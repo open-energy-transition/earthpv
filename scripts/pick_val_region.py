@@ -8,7 +8,9 @@ by hand on that principle; this script states the rule so a run can apply it una
 
   - positives are dissolved OSM solar features at or above the 400 m2 chip floor
     (`chips.MIN_PV_AREA`), counted once per connected cluster;
-  - each is assigned to a geoBoundaries ADM1 region by representative point;
+  - each is assigned to a geoBoundaries ADM1 region by representative point (for a state or
+    province AOI, `division.subtype: region`, to its own ADM2 units instead,
+    `density.subnational_units`: the country's ADM1 layer would offer only neighbours);
   - the region holding the MOST positives is never chosen (it is the training core);
   - among regions holding between 8% and 30% of positives and at least 15 of them, the one
     closest to `--target` (17%, Vietnam's share) wins; failing that, any region but the
@@ -38,7 +40,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from earthpv.chips import MIN_PV_AREA  # noqa: E402
 from earthpv.config import CONFIG_PATH, Settings  # noqa: E402
-from earthpv.density import fetch_geoboundaries  # noqa: E402
+from earthpv.density import fetch_geoboundaries, is_subnational, subnational_units  # noqa: E402
 from earthpv.labels import dissolve_overlapping  # noqa: E402
 
 CELL_DEG = 0.1
@@ -58,7 +60,14 @@ def pick(aoi: str, target: float, min_buildings: int) -> tuple[str, list[str], d
     pos = pos[pos["area_m2"] >= MIN_PV_AREA]
     pts = gpd.GeoDataFrame(geometry=pos.geometry.representative_point(), crs=pos.crs)
 
-    adm = fetch_geoboundaries(iso3, "ADM1")
+    if is_subnational(cfg):
+        adm = subnational_units(aoi, cfg, Settings.load())
+        if adm is None or adm.empty:
+            raise SystemExit(f"{aoi}: no ADM2 units inside the AOI's boundary")
+        level = "geoBoundaries ADM2 inside the AOI"
+    else:
+        adm = fetch_geoboundaries(iso3, "ADM1")
+        level = "geoBoundaries ADM1"
     adm = adm.to_crs(pts.crs)
     joined = gpd.sjoin(pts, adm[["name", "geometry"]], predicate="within", how="inner")
     counts = joined.groupby("name").size().sort_values(ascending=False)
@@ -95,7 +104,7 @@ def pick(aoi: str, target: float, min_buildings: int) -> tuple[str, list[str], d
     info = {
         "region": region, "positives": int(counts[region]), "total_positives": total,
         "share": round(float(share[region]), 3), "core": core, "core_positives": int(counts[core]),
-        "cells": len(tiles), "regions_with_positives": len(counts),
+        "cells": len(tiles), "regions_with_positives": len(counts), "level": level,
     }
     return region, tiles, info
 
@@ -110,7 +119,7 @@ def write(aoi: str, tiles: list[str], info: dict) -> None:
     if j < 0 or (nxt and j > m.end() + nxt.start()):
         raise SystemExit(f"{aoi}: no empty `val_tiles: []` in its block; refusing to overwrite")
     comment = (
-        f"    # Val holdout = {info['region']} (geoBoundaries ADM1), {info['cells']} cells, chosen by\n"
+        f"    # Val holdout = {info['region']} ({info.get('level', 'geoBoundaries ADM1')}), {info['cells']} cells, chosen by\n"
         f"    # scripts/pick_val_region.py from the label map before training: {info['positives']} of\n"
         f"    # {info['total_positives']} dissolved >= 400 m2 positives ({100 * info['share']:.1f}%); the largest\n"
         f"    # region ({info['core']}, {info['core_positives']}) is never the holdout.\n"
