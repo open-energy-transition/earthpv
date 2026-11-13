@@ -1868,7 +1868,7 @@ out geom;</div>
      avail: N_UNIMAGED > 0, sw: "hatch",
      key: T.n_cells_country ? `not imaged: ${fmt(N_UNIMAGED)} of the country's ${fmt(T.n_cells_country)} cells, `
        + `where only hand-mapped OSM counts` : "not imaged: only hand-mapped OSM counts there"},
-    {id: "osm", label: "OSM-mapped capacity, ring grows with MWp", layers: ["osm-rings"], on: true,
+    {id: "osm", label: "OSM-mapped capacity, ring grows with MWp", layers: ["osm-rings"], on: false,
      avail: DATA.cells.some(c => c[OSM_IDX] > 0), sw: "ring", key: "OSM-mapped capacity (ring grows with MWp)"},
     {id: "domain", label: "Cells with sub-400 m² calibration", layers: ["domain-line"], on: false,
      avail: DATA.cells.some(c => c[DOMAIN_IDX]), sw: "dash", key: "cells with sub-400 m² calibration (dashed outline)"},

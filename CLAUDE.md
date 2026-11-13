@@ -640,7 +640,9 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   colour scale is refitted per quantity.
   Basemaps: none (night lights), Esri grey canvas, OpenStreetMap, Esri satellite (**CARTO needs
   an API key now**). City labels are HTML (no glyph server); calibration areas are diamonds.
-- **More layers**: an opt-in *live OSM solar* overlay queries Overpass from zoom 11 (mirrors can
+- **More layers**: no OpenStreetMap data shows when a page opens (owner, 2026-11-14): the
+  OSM-mapped capacity rings (`OVERLAYS` id `osm`) start off, and the *live OSM solar* overlay,
+  also opt-in, queries Overpass from zoom 11 (mirrors can
   lag months, so the status line shows the returned OSM timestamp); readers add GeoJSON/CSV,
   GeoJSON URLs, XYZ tiles or WMS; a country can ship layers in its config (`layers:`, schema in
   `atlas_config`), embedded by `atlas.map_layers_json` (5 MB cap) into a `pv-layers` block.
