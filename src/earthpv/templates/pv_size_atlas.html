@@ -137,8 +137,6 @@
   .legend .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
   .legend .sw.roof { background: var(--accent); }
   .legend .sw.ground { background: var(--large); }
-  .legend .sw.extrap { background: repeating-linear-gradient(45deg,
-    var(--accent-dim) 0 3px, var(--panel) 3px 6px); border: 1px solid var(--accent-dim); }
 
   .hero-num { font-size: clamp(36px, 5.4vw, 54px); font-weight: 800; letter-spacing: -0.03em;
     line-height: 0.95; color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -228,12 +226,12 @@
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">EarthPV · Sentinel-2 · OpenStreetMap · TerraMind · roofclf · SPPI</p>
+    <p class="eyebrow">EarthPV · Sentinel-2 · OpenStreetMap · TerraMind · roofclf</p>
     <h1>__H1__</h1>
     <p class="lede">The same Best-estimate total the <a href="pakistan_evidence_atlas.html">evidence
     atlas</a> reports per 0.1&deg; cell, sliced a different way: by <b>installation size</b>
     instead of by geography, and by <b>rooftop vs ground-mount</b> instead of by placement mix.
-    Nothing here is a new estimate &mdash; every MWp below comes from the same six
+    Nothing here is a new estimate &mdash; every MWp below comes from the same
     components, the same calibration, the same domain restriction as the main atlas; this
     page only re-bins them. See &ldquo;What this page is (and is not)&rdquo; below.</p>
   </header>
@@ -265,7 +263,6 @@
         <div class="legend">
           <div class="lk"><span class="sw roof"></span>rooftop</div>
           <div class="lk"><span class="sw ground"></span>ground-mount</div>
-          <div class="lk"><span class="sw extrap"></span>rooftop, extrapolated beyond calibration</div>
         </div>
       </section>
 
@@ -309,7 +306,7 @@
         <p>This is the <a href="pakistan_evidence_atlas.html">evidence atlas</a>'s own
         Best-estimate total, decomposed by installation size and placement instead of by
         0.1&deg; grid cell. Every MWp here is computed by the identical formula the main
-        atlas uses for the same six components (hand-mapped OpenStreetMap installations the
+        atlas uses for the same components (hand-mapped OpenStreetMap installations the
         model never found, segmentation's own detections above and below the
         density-matched domain, and roofclf's per-building estimate for small
         rooftops &mdash; both model instruments recall-corrected, each standing in for the
@@ -325,7 +322,7 @@
 
     <details class="xdetails">
       <summary><span><span class="xt">Where the size bins come from</span>
-        <span class="xs">six populations, one re-binning</span></span><span class="xi">+</span></summary>
+        <span class="xs">five populations, one re-binning</span></span><span class="xi">+</span></summary>
       <div class="xbody">
         <dl class="viewdefs">
           <dt><span class="tag large">Ground-mount</span> segmentation, every size, no domain restriction</dt>
@@ -339,16 +336,15 @@
           is the only evidence-backed figure. A candidate is counted by exactly one of the
           two, never both, by cell.</dd>
 
-          <dt><span class="tag central">Rooftop, &lt;400 m&sup2;</span> roofclf, cross-checked with SPPI</dt>
+          <dt><span class="tag central">Rooftop, &lt;400 m&sup2;</span> roofclf, inside the calibrated domain</dt>
           <dd>Below the segmentation model's practical floor, every rooftop's PV is
           estimated per building. Inside the domain this is roofclf alone, every roof
           weighted by the classifier's score and calibrated against hand-mapped quadrats for
           how much panel a roof carries per unit of score and what share of real panel area
           the scores account for (its installation count is the sum of scores, the expected
-          number of PV roofs); outside it (no calibration
-          quadrat in that density range) it falls back to roofclf-AND-SPPI agreement, a
-          strict, marked extrapolation carrying neither correction &mdash; the hatched
-          portion of the small rooftop bars.</dd>
+          number of PV roofs). Outside it (no calibration quadrat in that density range)
+          rooftop PV below 400 m&sup2; is not measured, so those bars hold only the
+          hand-mapped installations and the few small arrays segmentation outlines.</dd>
 
           <dt><span class="tag large">Hand-mapped, unmatched</span> OpenStreetMap installations the model missed</dt>
           <dd>Sized by their own real OSM geometry, split rooftop/ground-mount by the
@@ -430,12 +426,11 @@
     gPlot.appendChild(el("line", {x1: 0, x2: plotW, y1: plotH, y2: plotH, class: "axis-line"}));
 
     const tip = document.getElementById("tip");
-    function showTip(e, label, series, mwp, nInst, extrap){
+    function showTip(e, label, series, mwp, nInst){
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       tip.innerHTML = `<div class="th">${label} &mdash; ${series}</div>`
         + `<div class="rowt"><span>Capacity</span><span>${fmt(mwp)} MWp</span></div>`
-        + `<div class="rowt"><span>Installations</span><span>${fmt(nInst)}</span></div>`
-        + (extrap > 0 ? `<div class="rowt"><span>of which extrapolated</span><span>${fmt(extrap)} MWp</span></div>` : "");
+        + `<div class="rowt"><span>Installations</span><span>${fmt(nInst)}</span></div>`;
     }
     function moveTip(e){ tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; }
     function hideTip(){ tip.style.opacity = 0; }
@@ -445,33 +440,15 @@
       const roofX = gx + groupW / 2 - barGap / 2 - barW;
       const groundX = gx + groupW / 2 + barGap / 2;
 
-      // rooftop bar, with an extrapolated top segment if present
+      // rooftop bar
       const roofH = (b.roof_mwp / maxVal) * plotH;
-      const roofY = plotH - roofH;
-      const extrapH = (b.roof_extrapolated_mwp / maxVal) * plotH;
       if (roofH > 0){
-        if (extrapH > 0 && extrapH < roofH){
-          const baseH = roofH - extrapH;
-          const baseRect = el("rect", {x: roofX.toFixed(1), y: (plotH - baseH).toFixed(1),
-            width: barW.toFixed(1), height: baseH.toFixed(1), class: "bar-rect roof", fill: "var(--accent)"});
-          const extrapRect = el("rect", {x: roofX.toFixed(1), y: roofY.toFixed(1),
-            width: barW.toFixed(1), height: extrapH.toFixed(1), class: "bar-rect roof",
-            fill: "url(#extrapHatch)"});
-          [baseRect, extrapRect].forEach(r => {
-            r.addEventListener("pointerenter", e => showTip(e, b.label, "rooftop", b.roof_mwp, b.roof_n, b.roof_extrapolated_mwp));
-            r.addEventListener("pointermove", moveTip);
-            r.addEventListener("pointerleave", hideTip);
-          });
-          gPlot.appendChild(baseRect); gPlot.appendChild(extrapRect);
-        } else {
-          const rect = el("rect", {x: roofX.toFixed(1), y: roofY.toFixed(1),
-            width: barW.toFixed(1), height: roofH.toFixed(1), class: "bar-rect roof",
-            fill: extrapH >= roofH && roofH > 0 ? "url(#extrapHatch)" : "var(--accent)"});
-          rect.addEventListener("pointerenter", e => showTip(e, b.label, "rooftop", b.roof_mwp, b.roof_n, b.roof_extrapolated_mwp));
-          rect.addEventListener("pointermove", moveTip);
-          rect.addEventListener("pointerleave", hideTip);
-          gPlot.appendChild(rect);
-        }
+        const rect = el("rect", {x: roofX.toFixed(1), y: (plotH - roofH).toFixed(1),
+          width: barW.toFixed(1), height: roofH.toFixed(1), class: "bar-rect roof", fill: "var(--accent)"});
+        rect.addEventListener("pointerenter", e => showTip(e, b.label, "rooftop", b.roof_mwp, b.roof_n));
+        rect.addEventListener("pointermove", moveTip);
+        rect.addEventListener("pointerleave", hideTip);
+        gPlot.appendChild(rect);
       }
 
       // ground-mount bar
@@ -479,7 +456,7 @@
       if (groundH > 0){
         const rect = el("rect", {x: groundX.toFixed(1), y: (plotH - groundH).toFixed(1),
           width: barW.toFixed(1), height: groundH.toFixed(1), class: "bar-rect ground", fill: "var(--large)"});
-        rect.addEventListener("pointerenter", e => showTip(e, b.label, "ground-mount", b.ground_mwp, b.ground_n, 0));
+        rect.addEventListener("pointerenter", e => showTip(e, b.label, "ground-mount", b.ground_mwp, b.ground_n));
         rect.addEventListener("pointermove", moveTip);
         rect.addEventListener("pointerleave", hideTip);
         gPlot.appendChild(rect);
@@ -494,16 +471,6 @@
       lbl.textContent = b.label;
       gPlot.appendChild(lbl);
     });
-
-    // hatch pattern for the extrapolated slice, defined once
-    const defs = el("defs", {});
-    const dark = isDark();
-    const pattern = el("pattern", {id: "extrapHatch", patternUnits: "userSpaceOnUse",
-      width: 6, height: 6, patternTransform: "rotate(45)"});
-    pattern.appendChild(el("rect", {width: 6, height: 6, fill: dark ? "#3c2a12" : "#f2e3bf"}));
-    pattern.appendChild(el("rect", {width: 3, height: 6, fill: "var(--accent-dim)"}));
-    defs.appendChild(pattern);
-    svg.insertBefore(defs, svg.firstChild);
 
     mount.appendChild(svg);
   }
@@ -539,8 +506,8 @@
   drawTable();
 
   document.getElementById("foot").innerHTML =
-    `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf/SPPI per-building `
-    + `classifiers · ${T.n_bins} size bins · same run as the evidence atlas · `
+    `OpenStreetMap solar pull + TerraMind-tiny segmentation + roofclf per-building `
+    + `classifier · ${T.n_bins} size bins · same run as the evidence atlas · `
     + `see docs/methods/density.md for full derivations and caveats.`;
 
   const btn = document.getElementById("themeBtn");

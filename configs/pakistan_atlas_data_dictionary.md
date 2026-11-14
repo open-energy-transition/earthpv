@@ -1,9 +1,9 @@
-# Pakistan PV evidence atlas: downloadable data (2026-11-07)
+# Pakistan PV evidence atlas: downloadable data (2026-11-13)
 
 This release accompanies the [Pakistan PV evidence atlas](https://open-energy-transition.github.io/earthpv/atlas/)
 built by [`earthpv`](https://github.com/open-energy-transition/earthpv). It reproduces the
-page as published on 2026-11-07: **Best estimate 34,470.3 MWp (90% range 28,628 to 41,310)**
-and **Verified 7,138.3 MWp (90% range 6,182 to 9,116)**. All geometries are WGS84
+page as published on 2026-11-13: **Best estimate 34,468.6 MWp (90% range 28,626 to 41,308)**
+and **Verified 3,637.5 MWp (90% range 2,917 to 4,664)**. All geometries are WGS84
 (EPSG:4326); capacity columns named `*_mwp*` are MWp and `*_kwp*` are kWp (DC, peak).
 
 **Every file is a point-in-time snapshot.** Nothing here is regenerated when the pipeline
@@ -36,6 +36,10 @@ as current. How each figure is derived: `docs/methods/density.md` and
   (3,146.8 MWp). Best moves from 34,142.4 to 34,470.3 MWp, Verified from 7,350.8 to 7,138.3.
 - **The checkpoint is now the slimmed v16** (33 MB, no download at load; predictions
   identical to the training checkpoint).
+- **SPPI left the atlas (2026-11-13).** Verified is now the hand-mapped OpenStreetMap
+  capacity alone: it no longer adds the roofs where roofclf and the SPPI spectral index
+  agreed (3,500.7 MWp), and those two files are no longer part of the release. Verified moves
+  from 7,138.3 to 3,637.5 MWp; Best, floored per cell at Verified, from 34,470.3 to 34,468.6.
 
 ## Start here: Best and Verified per cell
 
@@ -46,23 +50,22 @@ figures.
 | Column | Meaning |
 | --- | --- |
 | `lon0`, `lat0` | South-west corner of the cell; `geometry` is the cell polygon |
-| `mwp_best` | Best estimate: `osm_mwp_unmatched + mwp_large + small_central + small_outdomain + small_ground`, floored at `mwp_verified` |
-| `best_floor_lift` | What that floor added in this cell (258.0 MWp nationally) |
-| `mwp_verified` | Verified: `osm_mwp + small_low` |
+| `mwp_best` | Best estimate: `osm_mwp_unmatched + mwp_large + small_central + small_ground`, floored at `mwp_verified` plus any park a person judged solar there |
+| `best_floor_lift` | What that floor added in this cell (255.2 MWp nationally) |
+| `mwp_verified` | Verified: `osm_mwp`, the hand-mapped capacity |
 | `osm_mwp`, `osm_n` | Hand-mapped OpenStreetMap capacity and installation count, deduplicated |
 | `osm_mwp_unmatched` | The part of `osm_mwp` the satellite estimate does not already stand in for |
 | `mwp_large` | 400 m² and up: roofclf's rooftop estimate inside the calibrated domain, segmentation's recall-corrected rooftop outside it, plus segmentation's ground-mount everywhere |
 | `small_central` | roofclf alone, rooftop below 400 m², priced by probability, inside the domain |
-| `small_low` | roofclf AND SPPI agreeing, rooftop below 400 m², thresholded: the floor |
-| `small_outdomain` | Out-of-domain extrapolation: 0, not published |
 | `small_ground` | Farm ground PV below 400 m²: 0, not measured in Pakistan |
+| `csp_mwp` | Solar thermal power plants from OpenStreetMap, MW, inside `osm_mwp`: 0, none in Pakistan |
 | `in_domain` | 1 inside the density-calibration domain (2,957 cells) |
-| `is_extended` | 1 where an out-of-domain extrapolation contributes (none) |
 | `model_covered` | 1 where imagery was processed (all cells) |
 | `n_pv_buildings` | Segmentation's count of buildings carrying a detection |
+| `potential_gwh`, `potential_mwp` | Rooftop solar potential (free roof area), not installed PV: in no total |
 
-National sums: Best 34,470.3, Verified 7,138.3, `small_central` 24,381.0, `mwp_large`
-8,348.9, `small_low` 3,500.7, `osm_mwp` 3,637.5, `osm_mwp_unmatched` 1,483.6 MWp.
+National sums: Best 34,468.6, Verified 3,637.5, `small_central` 24,381.0, `mwp_large`
+8,348.9, `osm_mwp` 3,637.5, `osm_mwp_unmatched` 1,483.6 MWp.
 
 ## Segmentation: arrays of 400 m² and up
 
@@ -109,13 +112,6 @@ converts at 0.18 kWp per m² of module.
   MWp in total). `est_kwp_sub400_ground`/`est_kwp_ge400_roof_ground` is the share of it that
   is ground-placed PV in the building's yard (214.6 and 63.9 MWp), which the atlas books as
   ground-mount.
-- **`pakistan_roofclf_sub400_low_buildings.parquet`** (526,681 rows): the floor population,
-  one row per building where roofclf (`p_roofclf` >= 0.2470) and the spectral index SPPI
-  (`sppi` >= -0.0309) agree. Thresholded by design and not recall-corrected:
-  `est_kwp_sub400_and_gate`, 3,500.7 MWp in total.
-- **`pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet`** (31,217 rows): the same
-  agreement rule outside the calibrated domain, 174.1 MWp. **Not in the published figures**:
-  it would apply a correction where no quadrat measured it.
 - **`pakistan_roofclf_model.json`** and **`pakistan_roofclf_summary.json`**: the fitted
   logistic regression (features, coefficients, zonal convention) and its calibration summary
   (41 quadrats, median held-out AUC 0.846, 0.868 over the 30 of the earlier fit, 0.815 within

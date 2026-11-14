@@ -423,8 +423,8 @@ out method choices too, and those have moved Best further than the interval is w
 20-35% moves in one week of recalibration. Pakistan's atlas config now says so in a caveat
 (`confidence.caveats`, shown from the next rebuild). **What would close it**, an owner
 decision: publish a stated method bracket beside the interval (the threshold-weighted Best is
-one `--weighting threshold` run away), or add a judgement term the way
-`OUTDOMAIN_EXTRAPOLATION_CI90` does for the out-of-domain component.
+one `--weighting threshold` run away), or add a judgement term the way the out-of-domain
+component's `OUTDOMAIN_EXTRAPOLATION_CI90` did (removed with SPPI, 2026-11-13).
 
 ### 17. A segmentation outline is 2.4 times the array it finds (measured 2026-10-28)
 

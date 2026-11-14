@@ -358,8 +358,9 @@ yet, especially outside the industrial stratum.
     figure is calibration: its predicted/true ratio spans 49x across quadrats, and a
     quadrat-supervised retrain that looked consistent in sample did not hold on its
     holdout ([Quadrat-supervised fraction retrain](../issues/quadrat-supervision-fraction-retrain.md)).
-    `sub400_capacity.py` now prices roofclf scores and the roofclf-and-SPPI floor only;
-    the fraction head survives in the [growth map](../results/growth.md).
+    `sub400_capacity.py` now prices roofclf scores only (it still writes the roofclf-and-SPPI
+    floor, which no atlas reads since 2026-11-13); the fraction head survives in the
+    [growth map](../results/growth.md).
 
 ### Per-building classification
 
@@ -848,11 +849,11 @@ correction that does not exist yet, what is a defensible **range**, and does any
 independent of imagery corroborate it? Two frames, kept explicitly separate -- mixing
 them is exactly the base-rate-transfer mistake this page documents repeatedly.
 
-The Low/Central/High bracket members below are resolved per 0.1&deg; cell (not just as
+The Low/Central/High bracket members below were resolved per 0.1&deg; cell (not just as
 national totals) in an interactive atlas, switchable between four views:
-`results/pakistan_pv_sub400_bracket_atlas.html`
-(`atlas.build_sub400_bracket_atlas`, `earthpv atlas --sub400-low-cells ... --sub400-
-central-cells ... --sub400-high-cells ...`). Large PV (>= 400 m<sup>2</sup>,
+`results/pakistan_pv_sub400_bracket_atlas.html` (`atlas.build_sub400_bracket_atlas`,
+removed 2026-11-13 when the owner took SPPI out of the atlases, since its Low view was the
+AND-gate). Large PV (>= 400 m<sup>2</sup>,
 recall-corrected) is always shown too, per a follow-up request (2026-07-31): for Low
 and Central it is added into the reported total using the ROOFTOP-scope figure only
 (large PV nationwide plus small PV inside the checked cells, the same "large
@@ -860,7 +861,7 @@ everywhere, small where checked" combination `build_combined_atlas` already ship
 its single roofclf-alone case, now extended to both Low and Central); for High it is
 shown for scale only and not added in, since High is an explicit, uncalibrated ceiling
 and folding it together with the project's main validated number would blur that
-distinction. The atlas still reports each view's small-PV-only component alongside
+distinction. The atlas reported each view's small-PV-only component alongside
 the combined figure, so nothing here is hidden, only added to.
 
 A fourth view, **All-PV**, answers a deliberately different, wider question: Central's

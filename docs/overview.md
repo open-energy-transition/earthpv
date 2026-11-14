@@ -69,16 +69,15 @@ not, so EarthPV runs two instruments and combines them.
   detection becomes a ranked mapping lead, and it is the only instrument for ground-mounted
   solar at any size.
 - **roofclf** asks a smaller question of every building: *does this roof carry PV?* A 100
-  m² array is a handful of mixed pixels, too few to outline but often enough to classify. It
-  is cross-checked with SPPI, a zero-training spectral index.
+  m² array is a handful of mixed pixels, too few to outline but often enough to classify.
 
 Both are calibrated against areas where every installation was mapped by hand, then combined
 with the hand-mapped OpenStreetMap layer into the evidence atlas, de-duplicated against each
 other. A country with neither calibration areas nor a register gets the segmentation half
 only.
 
-![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against hand-mapped ground-truth quadrats, then combined with overlaps removed into the published evidence atlas.](assets/figures/evidence_workflow.svg#only-light)
-![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier cross-checked with SPPI. Both are calibrated against hand-mapped ground-truth quadrats, then combined with overlaps removed into the published evidence atlas.](assets/figures/evidence_workflow.dark.svg#only-dark)
+![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier. Both are calibrated against hand-mapped ground-truth quadrats, then combined with overlaps removed into the published evidence atlas.](assets/figures/evidence_workflow.svg#only-light)
+![The evidence atlas workflow: Sentinel-2 imagery, OpenStreetMap solar mapping and VIDA building footprints feed two detectors, TerraMind segmentation for arrays of 400 square metres and above plus all ground-mount, and the per-building roofclf classifier. Both are calibrated against hand-mapped ground-truth quadrats, then combined with overlaps removed into the published evidence atlas.](assets/figures/evidence_workflow.dark.svg#only-dark)
 
 **Why free imagery, when sharper imagery exists.** Esri, Bing and Mapbox resolve individual
 panels but only let a *person* trace from them in the OpenStreetMap editor. So the model

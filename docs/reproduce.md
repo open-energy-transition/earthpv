@@ -302,8 +302,8 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     from 0.386 to 0.094, and the thresholded count booked about an eighth of the mapped
     PV in sparse quadrats. The output is then one row per cell and size bin rather than
     one per building. `--weighting threshold` reproduces the figures published before
-    2026-10-25; pass the same value to step 14. The AND-gate floor is thresholded either
-    way. [roofclf](methods/roofclf.md#count-every-roof-by-its-score) has the measurement
+    2026-10-25; pass the same value to step 14. The roofclf-AND-SPPI floor it also writes
+    is thresholded either way. [roofclf](methods/roofclf.md#count-every-roof-by-its-score) has the measurement
     and what it leaves untested.
 
     **Run step 14 first** (it does not depend on this one). Since 2026-10-20 this step
@@ -322,11 +322,11 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     density/`: `sub400_central_incremental_buildings.parquet` (roofclf alone, the
     evidence atlas's Best-estimate small-PV component; one row per cell and size bin under
     the default weighting, with `n_buildings` and `sum_p`), `sub400_low_incremental_
-    buildings.parquet` (roofclf AND SPPI agreeing, used as an internal floor on
-    Best estimate), and (added
+    buildings.parquet` (roofclf AND SPPI agreeing, an internal floor under Verified until
+    2026-11-13, now read by no atlas), and (added
     2026-08-11) `sub400_outdomain_and_gate_incremental_buildings.parquet` (roofclf AND
     SPPI agreeing OUTSIDE the density-matched domain -- an extrapolation, no longer fed
-    into the published atlas as of 2026-08-15, see step 15). The first two describe only
+    into the published atlas as of 2026-08-15). Only the first feeds step 15. The first two describe only
     the density-matched cells and must not be rescaled by their share of the country; the
     third describes the rest of the country and is even less certain, since no calibration
     quadrat sits in that density range at all. See `sub400_capacity.py`'s module docstring and [Capacity
@@ -370,7 +370,6 @@ the [experiments register](experiments.md) are optional extras, not alternative 
         --osm-solar data/labels/pakistan_overpass_solar.parquet
     pixi run earthpv atlas --aoi pakistan \
         --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
-        --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
         --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
         --osm-solar data/labels/pakistan_overpass_solar.parquet \
         --pose-summary-csv data/glint/country2000_summary.csv \
@@ -414,18 +413,16 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     straight through. Omitting `--pose-summary-csv` writes the page with no pose section
     at all.
 
-    **`--sub400-outdomain-cells` is optional and the published atlas does not pass it**
-    -- it would add roofclf-AND-SPPI agreement outside the density-matched domain to
-    Best as a strict, clearly-marked extrapolation, but that component is not measured
-    where it would be applied and the JOSM pass meant to check it is blocked by stale
-    reference imagery. See [Capacity map](results/capacity.md#calibration-coverage) for
-    why. Both `sub400-*` and this flag's input come from step 13's `earthpv
-    sub400-capacity`, which writes all three building-level parquets in one run.
+    **SPPI is not an atlas input (owner, 2026-11-13).** `earthpv atlas` no longer takes
+    `--sub400-low-cells` (the roofclf-AND-SPPI floor) or `--sub400-outdomain-cells` (its
+    extrapolation outside the density-matched domain); `--sub400-central-cells` alone makes
+    the roofclf half. See [Capacity map](results/capacity.md#calibration-coverage) for why
+    the extrapolation was never published.
 
     **`--ge400-roof-cells` is easy to omit by accident and changes the headline number
     by double digits of percent** (measured 2026-08-10: omitting it dropped Best
     estimate 14.6%) -- it is a separate step (14) from the rest of the atlas's inputs,
-    unlike `--sub400-*`, which both come from step 13. `--out` matters too: without it,
+    unlike `--sub400-central-cells`, which comes from step 13. `--out` matters too: without it,
     the atlas writes to `data/predictions/<aoi>/density/<aoi>_pv_evidence_atlas.html`,
     not this project's actual published location
     (`docs/assets/interactive/pakistan_evidence_atlas.html`, what the docs site and
@@ -435,9 +432,9 @@ the [experiments register](experiments.md) are optional extras, not alternative 
     recall-corrected &ge; 400 m&sup2; detections (roofclf's own estimate inside the
     density-matched domain from step 14, segmentation's recall-corrected estimate
     everywhere else) plus roofclf-alone density, with the OSM/detection overlap removed
-    rather than double-counted, and floored per cell at hand-mapped OSM plus the
-    stricter roofclf-and-SPPI agreement population. Without a mapped quadrat yet (step 10's prerequisite),
-    omit `--sub400-*`/`--ge400-roof-cells` entirely for the &ge; 400 m&sup2;
+    rather than double-counted, and floored per cell at hand-mapped OSM (Verified, which
+    is the hand-mapped capacity alone). Without a mapped quadrat yet (step 10's prerequisite),
+    omit `--sub400-central-cells`/`--ge400-roof-cells` entirely for the &ge; 400 m&sup2;
     segmentation-only atlas -- still this workflow's output, just missing its sub-400
     m&sup2; half until quadrats exist.
 
@@ -742,7 +739,6 @@ pixi run earthpv sub400-capacity --aoi surat_thani \
     --osm-solar <national OSM/Overpass solar pull>
 pixi run earthpv atlas --aoi surat_thani \
     --sub400-central-cells data/roofclf_national_with_sppi/surat_thani/density/sub400_central_incremental_buildings.parquet \
-    --sub400-low-cells     data/roofclf_national_with_sppi/surat_thani/density/sub400_low_incremental_buildings.parquet \
     --osm-solar <national OSM/Overpass solar pull>
 ```
 
@@ -915,7 +911,7 @@ packs. The pack is, at most:
 | `<country>_capacity_by_cell.parquet` | The &ge; 400 m² segmentation half alone, per cell. |
 | `<country>_capacity_by_building.parquet` | One row per building carrying a segmentation detection. |
 | `<country>_capacity_by_region.parquet` | Admin-region aggregate, if `density --districts` ran. |
-| `<country>_roofclf_sub400_*.parquet` | The sub-400 m² populations, central and the stricter floor. |
+| `<country>_roofclf_sub400_central_*.parquet` | The sub-400 m² roofclf estimate that feeds Best (the roofclf-AND-SPPI floor left the pack 2026-11-13). |
 | `<country>_roofclf_ge400_roof_*.parquet` | roofclf's rooftop replacement above the floor. |
 | `<country>_raw_detections_unreviewed.parquet` | Every candidate polygon before human review. Leads, not truth. |
 | `<country>_roofclf_model.json`, `_summary.json` | The fitted model and its leave-one-quadrat-out skill. |

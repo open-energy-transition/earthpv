@@ -286,9 +286,6 @@
     <button class="tab" id="tab3" type="button" data-i="3">
       <span class="tt1">Ground-mount</span><span class="tt2">segmentation, &Delta; MWp</span>
     </button>
-    <button class="tab" id="tab4" type="button" data-i="4">
-      <span class="tt1">SPPI onset</span><span class="tt2">corroboration, no model</span>
-    </button>
   </div>
 
   <div class="grid">
@@ -323,7 +320,7 @@
           <div style="overflow-x:auto;"><table id="ptable">
             <thead><tr><th>Province</th><th>&Delta; total</th><th>&Delta; sub-400</th>
               <th>&Delta; roof &ge;400</th><th>&Delta; ground</th>
-              <th>Current MWp</th><th>Pre-boom MWp</th><th>SPPI onset MWp</th></tr></thead>
+              <th>Current MWp</th><th>Pre-boom MWp</th></tr></thead>
             <tbody></tbody>
           </table></div>
         </details>
@@ -380,15 +377,6 @@
         <i>expanded</i> since 2021/22 can be under-credited: OSM geometry replacement
         gives both epochs the same present-day footprint, biasing that plant's delta
         toward zero (conservative).</p>
-      </div>
-      <div class="formula">
-        <div class="fl"><span class="dot" style="background:#57c344"></span>SPPI onset <span class="tag high">corroboration only</span></div>
-        <p><b>No model: a fixed five-band spectral formula</b> on the same building's
-        reflectance in both epochs. A building "onsets" when its SPPI crosses the has-PV
-        threshold between the composites. Its MWp figure converts 100% of onset roof area
-        with no precision weighting &mdash; an explicit outer ceiling from an independent
-        mechanism, shown so the model-based maps can be checked against something that
-        shares none of their machinery. Not part of the total.</p>
       </div>
     </div>
     <details class="xdetails">
@@ -451,12 +439,12 @@
   const RAMP_LIGHT_BLUE = ["#dcecf8","#aed3ee","#79b4e0","#4b90c9","#1c6fa8","#144f7a","#0c3350"];
   const RAMP_DARK_GROUND  = ["#3a1512","#6e2318","#a3341c","#cf4a24","#ef6a3d","#ff9d76","#ffd6c4"];
   const RAMP_LIGHT_GROUND = ["#f9e0d3","#f2bda2","#e59470","#d16a42","#b34a1e","#8a3413","#5c1f09"];
-  const RAMP_DARK_GREEN  = ["#12300f","#1d4a17","#2a6b20","#3a932c","#57c344","#8fe57f","#d8f9cf"];
-  const RAMP_LIGHT_GREEN = ["#ddf3d8","#b3e5a8","#83cf72","#57b246","#3a8f2e","#276b20","#164612"];
 
-  /* cell tuple: [lon0, lat0, dTotal, dSub400, dRoof, dGround, curTotal, preTotal,
-     nOnset, onsetMwp, inDomain] */
-  const IDX = [2, 3, 4, 5, 9];
+  /* cell tuple: [lon0, lat0, dTotal, dSub400, dRoof, dGround, curTotal, preTotal, inDomain]
+     (`cell_cols`; a page built before 2026-11-13 also carries nOnset, onsetMwp before
+     inDomain, so inDomain is found by name) */
+  const IDX = [2, 3, 4, 5];
+  const IN_DOMAIN_IDX = (DATA.cell_cols || []).indexOf("in_domain");
   const VIEWS = [
     { key: "total", label: "Total growth", unit: "MWp",
       name: "Total measured growth: atlas composition, current minus pre-boom",
@@ -474,10 +462,6 @@
       name: "Ground-mount growth: segmentation, current minus pre-boom",
       desc: "Utility-scale plants and other ground arrays, converted at the calibrated land constant per epoch. Segmentation is the only instrument for this component.",
       vmax: 5, dark: RAMP_DARK_GROUND, light: RAMP_LIGHT_GROUND },
-    { key: "sppi", label: "SPPI onset", unit: "MWp",
-      name: "SPPI onset capacity: uncalibrated ceiling from an independent mechanism",
-      desc: "A fixed five-band spectral formula on each building's own reflectance, both epochs, no model. An outer ceiling for corroboration — NOT part of the total (see the method notes).",
-      vmax: 5, dark: RAMP_DARK_GREEN, light: RAMP_LIGHT_GREEN },
   ];
   let sel = 0;
 
@@ -623,13 +607,12 @@
       const c = e.target.__c; if (!c){ tip.style.opacity = 0; return; }
       tip.style.opacity = 1; tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px";
       const clon = (c[0]+0.05).toFixed(2), clat = (c[1]+0.05).toFixed(2);
-      tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E · roof: ${c[10] ? "roofclf" : "segmentation"}</div>`
+      tip.innerHTML = `<div class="th">CELL ${clat}°N ${clon}°E · roof: ${c[IN_DOMAIN_IDX] ? "roofclf" : "segmentation"}</div>`
         + `<div class="rowt${sel===0?' sel':''}"><span>&Delta; total</span><span>${c[2].toFixed(1)} MWp</span></div>`
         + `<div class="rowt${sel===1?' sel':''}"><span>&Delta; sub-400 m²</span><span>${c[3].toFixed(1)} MWp</span></div>`
         + `<div class="rowt${sel===2?' sel':''}"><span>&Delta; rooftop ≥ 400 m²</span><span>${c[4].toFixed(1)} MWp</span></div>`
         + `<div class="rowt${sel===3?' sel':''}"><span>&Delta; ground-mount</span><span>${c[5].toFixed(1)} MWp</span></div>`
-        + `<div class="rowt"><span>Current / pre-boom</span><span>${c[6].toFixed(1)} / ${c[7].toFixed(1)}</span></div>`
-        + `<div class="rowt${sel===4?' sel':''}"><span>SPPI onset (uncalib.)</span><span>${c[9].toFixed(1)} MWp · ${c[8].toLocaleString()} bldg</span></div>`;
+        + `<div class="rowt"><span>Current / pre-boom</span><span>${c[6].toFixed(1)} / ${c[7].toFixed(1)}</span></div>`;
     });
     gC.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
 
@@ -667,8 +650,8 @@
   document.getElementById("kDeltaRoof").firstChild.textContent = fmt(T.d_roof);
   document.getElementById("kDeltaGround").firstChild.textContent = fmt(T.d_ground);
 
-  const TOTAL_KEY = ["d_total", "d_sub400", "d_roof", "d_ground", "onset_mwp"];
-  const PROV_KEY = ["d_total", "d_sub400", "d_roof", "d_ground", "onset_mwp"];
+  const TOTAL_KEY = ["d_total", "d_sub400", "d_roof", "d_ground"];
+  const PROV_KEY = ["d_total", "d_sub400", "d_roof", "d_ground"];
 
   function drawTable() {
     const provs = [...DATA.provinces].sort((a,b) => b[PROV_KEY[sel]] - a[PROV_KEY[sel]]);
@@ -686,7 +669,7 @@
     document.querySelector("#ptable tbody").innerHTML = provs.map(p =>
       `<tr><td>${p.name}</td><td>${fmt(p.d_total)}</td><td>${fmt(p.d_sub400)}</td>`
       + `<td>${fmt(p.d_roof)}</td><td>${fmt(p.d_ground)}</td>`
-      + `<td>${fmt(p.cur_total)}</td><td>${fmt(p.pre_total)}</td><td>${fmt(p.onset_mwp)}</td></tr>`).join("");
+      + `<td>${fmt(p.cur_total)}</td><td>${fmt(p.pre_total)}</td></tr>`).join("");
   }
 
   const MAP_TITLES = [
@@ -694,12 +677,11 @@
     "Sub-400 m² rooftop growth per 0.1° cell (roofclf), current minus pre-boom",
     "Rooftop ≥ 400 m² growth per 0.1° cell (roofclf in-domain / segmentation out), current minus pre-boom",
     "Ground-mount growth per 0.1° cell (segmentation), current minus pre-boom",
-    "SPPI onset capacity per 0.1° cell (uncalibrated ceiling, corroboration only)",
   ];
 
   function setView(i) {
     sel = i;
-    ["tab0", "tab1", "tab2", "tab3", "tab4"].forEach((id, j) =>
+    ["tab0", "tab1", "tab2", "tab3"].forEach((id, j) =>
       document.getElementById(id).setAttribute("aria-pressed", String(j === i)));
     const view = VIEWS[i];
     document.getElementById("heroUnit").textContent = view.unit;
@@ -714,12 +696,6 @@
          <div class="tile"><div class="v">${fmt(T.pre.total)}</div><div class="k">Pre-boom MWp</div></div>
          <div class="tile"><div class="v">${fmt(T.neg_mass)}</div><div class="k">Negative-cell mass (noise scale)</div></div>
          <div class="tile"><div class="v">${fmt(T.n_covered)}<small style="font-size:0.5em;">/${fmt(T.n_cells)}</small></div><div class="k">Cells with both epochs</div></div>`;
-    } else if (i === 4) {
-      document.getElementById("tiles").innerHTML =
-        `<div class="tile"><div class="v">${fmt(T.n_onset)}</div><div class="k">Onset buildings</div></div>
-         <div class="tile"><div class="v">${fmt(T.onset_mwp)}</div><div class="k">Onset MWp (uncalibrated ceiling)</div></div>
-         <div class="tile"><div class="v">${fmt(T.d_total)}</div><div class="k">Measured growth, for comparison</div></div>
-         <div class="tile"><div class="v">${fmt(T.n_cells)}</div><div class="k">Cells nationwide</div></div>`;
     } else {
       const KEY = ["", "sub400", "roof", "ground"][i];
       document.getElementById("tiles").innerHTML =
@@ -730,7 +706,7 @@
     }
     render(); drawTable();
   }
-  for (let i = 0; i < 5; i++)
+  for (let i = 0; i < 4; i++)
     document.getElementById("tab" + i).addEventListener("click", () => setView(i));
 
   document.getElementById("foot").innerHTML =

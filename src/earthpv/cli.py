@@ -983,10 +983,10 @@ def sub400_capacity_cmd(
     not claim (in particular: NOT a national figure, do not rescale it).
 
     Writes `sub400_central_incremental_buildings.parquet` (roofclf-only, the evidence
-    atlas's Best-estimate small-PV component) and `sub400_low_incremental_buildings.
-    parquet` (the AND-gate, the Verified small-PV component) plus a summary JSON for
-    each, both feeding directly into `earthpv atlas --sub400-central-cells ...
-    --sub400-low-cells ...`.
+    atlas's Best-estimate small-PV component, `earthpv atlas --sub400-central-cells ...`)
+    and `sub400_low_incremental_buildings.parquet` (the roofclf AND SPPI floor) plus a
+    summary JSON for each. The floor and the out-of-domain AND-gate file are research
+    outputs: no atlas reads them since 2026-11-13 (owner: SPPI out of the atlases).
     """
     import json
     import logging
@@ -1165,8 +1165,8 @@ def ge400_roof_capacity_cmd(
     """roofclf-based capacity for >= 400 m2 ROOFTOP buildings -- REPLACES segmentation's
     own est_mwp_rc_roof inside the density-matched domain (roofclf measured AUC 0.896 vs
     segmentation's 0.73-0.78 on the same buildings; see `roofclf_ge400_capacity.py`'s
-    module docstring). Feeds `earthpv atlas --ge400-roof-cells ...` alongside the
-    existing --sub400-low-cells/--sub400-central-cells."""
+    module docstring). Feeds `earthpv atlas --ge400-roof-cells ...` alongside
+    --sub400-central-cells."""
     import json
     import logging
 
@@ -1488,43 +1488,20 @@ def atlas(
         "per cell inside the density-domain restriction only; other cells show large-PV "
         "alone, marked by a dashed outline where small-PV is actually included.",
     ),
-    sub400_low_cells: Path = typer.Option(
-        None, help="Building-level parquet from "
-        "`sub400_capacity.domain_restricted_and_gate_capacity` (columns: cell, geometry, "
-        "roof_area_m2, est_kwp_sub400_and_gate). Pass together with --sub400-central-cells "
-        "and --sub400-high-cells to write the three-view sub-400 m2 BRACKET atlas instead "
-        "of any other atlas -- Low/Central/High selectable per cell, large-PV always shown.",
-    ),
     sub400_central_cells: Path = typer.Option(
         None, help="Building-level parquet from "
         "`sub400_capacity.domain_restricted_capacity` (columns: cell, geometry, "
-        "roof_area_m2, est_kwp_sub400) -- the bracket atlas's Central view.",
-    ),
-    sub400_outdomain_cells: Path = typer.Option(
-        None, help="Building-level parquet from "
-        "`sub400_capacity.out_of_domain_and_gate_capacity` (columns: cell, geometry, "
-        "roof_area_m2, est_kwp_sub400_outdomain) -- roofclf-AND-SPPI agreement outside "
-        "the density-calibrated domain, added to the Best-estimate tier as a strict, "
-        "clearly-marked extrapolation (2026-08-11). Only used with the EVIDENCE atlas "
-        "(--osm-solar); optional, never affects Verified.",
-    ),
-    sub400_high_cells: Path = typer.Option(
-        None, help="Building-level parquet from "
-        "`roofclf_capacity.incremental_capacity` (columns: cell, geometry, roof_area_m2, "
-        "est_kwp_roofclf), unrestricted national -- the bracket atlas's High view. No "
-        "longer used by the evidence atlas: its Ceiling tier was removed 2026-08-06 "
-        "(a later roofclf refit's lower deployment threshold roughly doubled this "
-        "figure with no accompanying validation).",
+        "roof_area_m2, est_kwp_sub400): roofclf's rooftop PV below 400 m2, in Best. Only "
+        "used with the EVIDENCE atlas (--osm-solar); omitted, the page is segmentation-only "
+        "and says rooftop PV below 400 m2 is not measured. (The roofclf+SPPI floor, "
+        "--sub400-low-cells, and its extrapolation, --sub400-outdomain-cells, left the "
+        "atlas 2026-11-13.)",
     ),
     osm_solar: Path = typer.Option(
         None, help="National OSM/Overpass solar pull (e.g. "
-        "data/labels/<aoi>_overpass_solar.parquet). Pass together with "
-        "--sub400-low-cells/--sub400-central-cells to write the "
-        "EVIDENCE atlas (Verified/Best, the project's default as of 2026-08-01, "
-        "Ceiling removed 2026-08-06) instead of the older Low/Central/High/All-PV "
-        "bracket atlas -- same two building-level parquets, plus this national mapping "
-        "pull and this run's own candidates.parquet (found automatically at "
-        "<pred_dir>/<aoi>/candidates.parquet). --sub400-high-cells is ignored here.",
+        "data/labels/<aoi>_overpass_solar.parquet): writes the EVIDENCE atlas "
+        "(Verified/Best, the project's capacity atlas), with this run's own "
+        "candidates.parquet (found automatically at <pred_dir>/<aoi>/candidates.parquet).",
     ),
     potential_cells: Path = typer.Option(
         None, help="`earthpv roof-potential`'s parquet -- writes the rooftop solar POTENTIAL "
@@ -1625,65 +1602,39 @@ def atlas(
     import json
     import logging
 
-    from earthpv.atlas import (
-        build_combined_atlas, build_evidence_atlas, build_potential_atlas,
-        build_sub400_bracket_atlas,
-    )
+    from earthpv.atlas import build_combined_atlas, build_evidence_atlas, build_potential_atlas
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     density_dir = Path(pred_dir) / aoi / "density"
     if potential_cells is not None:
         build_potential_atlas(aoi, density_dir, potential_cells, out=out, zoom_out_frac=zoom_out)
-    elif osm_solar is not None or sub400_low_cells is not None or sub400_central_cells is not None or sub400_high_cells is not None:
-        if osm_solar is not None:
-            # The evidence atlas is the project's default capacity atlas, so --osm-solar
-            # alone is enough to reach it. A country with no mapped calibration quadrats
-            # has no `roofclf` half at all (Germany, Gujarat) and gets the
-            # segmentation-only evidence atlas: the two tiers still mean the same
-            # standards of proof, Verified just has no AND-gate population to add and
-            # Best no roofclf-alone density. Passing ONE of the pair is still an error --
-            # that is a half-configured run, not a segmentation-only one.
-            if bool(sub400_low_cells) != bool(sub400_central_cells):
-                raise typer.BadParameter(
-                    "--sub400-low-cells and --sub400-central-cells must be given together "
-                    "for the evidence atlas's roofclf half, or both omitted for the "
-                    "segmentation-only atlas (--sub400-high-cells is no longer used -- "
-                    "the Ceiling tier was removed 2026-08-06)"
-                )
-            candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
-            downloads = (
-                json.loads(Path(downloads_manifest).read_text())
-                if downloads_manifest else None
-            )
-            build_evidence_atlas(
-                aoi, density_dir, osm_solar, candidates_path,
-                sub400_low_cells, sub400_central_cells,
-                out=out, zoom_out_frac=zoom_out,
-                ge400_roof_buildings_path=ge400_roof_cells,
-                sub400_outdomain_buildings_path=sub400_outdomain_cells,
-                pose_summary_csv=pose_summary_csv,
-                pose_history_note=pose_history_note,
-                pose_data_note=pose_data_note,
-                imagery_date_range=imagery_date_range,
-                downloads=downloads,
-                data_release_url=data_release_url,
-                include_offgrid_osm=include_offgrid_osm,
-                validation_score=validation_score,
-                legacy_osm_addition=legacy_osm_addition,
-                ground_cells_path=ground_cells,
-                fetch_imagery_dates=fetch_imagery_dates,
-                fetch_irradiance=fetch_irradiance,
-            )
-        else:
-            if not (sub400_low_cells and sub400_central_cells and sub400_high_cells):
-                raise typer.BadParameter(
-                    "--sub400-low-cells, --sub400-central-cells and --sub400-high-cells "
-                    "must all be given together for the bracket atlas"
-                )
-            build_sub400_bracket_atlas(
-                aoi, density_dir, sub400_low_cells, sub400_central_cells, sub400_high_cells,
-                out=out, zoom_out_frac=zoom_out,
-            )
+    elif osm_solar is not None:
+        # The evidence atlas is the project's capacity atlas, so --osm-solar alone is
+        # enough to reach it. A country with no roofclf half gets the segmentation-only
+        # evidence atlas: Best has no roofclf density below 400 m2, and says so.
+        candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
+        downloads = (
+            json.loads(Path(downloads_manifest).read_text())
+            if downloads_manifest else None
+        )
+        build_evidence_atlas(
+            aoi, density_dir, osm_solar, candidates_path,
+            central_buildings_path=sub400_central_cells,
+            out=out, zoom_out_frac=zoom_out,
+            ge400_roof_buildings_path=ge400_roof_cells,
+            pose_summary_csv=pose_summary_csv,
+            pose_history_note=pose_history_note,
+            pose_data_note=pose_data_note,
+            imagery_date_range=imagery_date_range,
+            downloads=downloads,
+            data_release_url=data_release_url,
+            include_offgrid_osm=include_offgrid_osm,
+            validation_score=validation_score,
+            legacy_osm_addition=legacy_osm_addition,
+            ground_cells_path=ground_cells,
+            fetch_imagery_dates=fetch_imagery_dates,
+            fetch_irradiance=fetch_irradiance,
+        )
     elif sub400_cells is not None:
         build_combined_atlas(aoi, density_dir, sub400_cells, out=out, zoom_out_frac=zoom_out)
     else:
@@ -1693,7 +1644,7 @@ def atlas(
             "six-estimator/simple fallback was removed 2026-09-02 (it published a "
             "deprecated page alongside the real product). For a country with no mapped "
             "calibration quadrats, pass --osm-solar alone for the segmentation-only "
-            "evidence atlas; add --sub400-low-cells/--sub400-central-cells where a "
+            "evidence atlas; add --sub400-central-cells (and --ge400-roof-cells) where a "
             "roofclf half exists."
         )
 
@@ -1711,14 +1662,6 @@ def atlas_by_size(
         "data/labels/<aoi>_overpass_solar.parquet) -- same input `earthpv atlas` takes "
         "as --osm-solar.",
     ),
-    sub400_low_cells: Path = typer.Option(
-        ..., help="Building-level parquet from "
-        "`sub400_capacity.domain_restricted_and_gate_capacity` -- same input `earthpv "
-        "atlas` takes as --sub400-low-cells. Never shown as its own bin here (it never "
-        "feeds Best estimate on its own); required only to replicate the evidence "
-        "atlas's per-cell 'Best floored at Verified' correction, so this page's total "
-        "doesn't silently undercount the published one.",
-    ),
     sub400_central_cells: Path = typer.Option(
         ..., help="Building-level parquet from "
         "`sub400_capacity.domain_restricted_capacity` (columns: cell, geometry, "
@@ -1732,14 +1675,8 @@ def atlas_by_size(
         "Its own cell coverage also defines the density-matched domain here, exactly as "
         "in the evidence atlas.",
     ),
-    sub400_outdomain_cells: Path = typer.Option(
-        None, help="Building-level parquet from "
-        "`sub400_capacity.out_of_domain_and_gate_capacity` -- same input `earthpv atlas` "
-        "takes as --sub400-outdomain-cells. Optional; rendered as a visually distinct "
-        "extrapolated slice within the small-rooftop bars.",
-    ),
 ) -> None:
-    """Alternate lens on the evidence atlas's Best-estimate total: the SAME six
+    """Alternate lens on the evidence atlas's Best-estimate total: the SAME
     components, re-binned by installation size and rooftop-vs-ground-mount placement
     instead of by 0.1-degree cell. Needs the same inputs as `earthpv atlas`'s evidence
     atlas, plus this run's own candidates.parquet, found automatically at
@@ -1755,8 +1692,7 @@ def atlas_by_size(
     candidates_path = Path(pred_dir) / aoi / "candidates.parquet"
     build_size_distribution_atlas(
         aoi, density_dir, osm_solar, candidates_path,
-        sub400_low_cells, sub400_central_cells, ge400_roof_cells,
-        sub400_outdomain_buildings_path=sub400_outdomain_cells,
+        sub400_central_cells, ge400_roof_cells,
         out=out,
     )
 

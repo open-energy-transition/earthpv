@@ -54,9 +54,10 @@ selected quadrats on which the predicted-to-true adoption ratio has historically
 classifier at that level plausibly learns some amount of *propensity* -- building type
 and neighbourhood context correlated with adoption -- alongside the spectral signature of
 panels themselves. The same confound surfaced explicitly in the step-change experiment.
-The SPPI cross-check exists specifically as a defence here: SPPI is a zero-training,
-purely spectral index, and the OSM-plus-agreement population (6,994.1 MWp) is therefore
-the hardest number in the atlas.
+Verified is the defence here: it is the capacity hand-mapped in OpenStreetMap alone
+(3,637.5 MWp), with no classifier in it, and therefore the hardest number in the atlas.
+Until 2026-11-13 it also held the roofs where roofclf and the zero-training SPPI index
+agreed; the owner then took SPPI out of the atlases.
 
 Since 2026-10-25 that chain prices every roof by its score rather than counting the roofs
 above a threshold ([roofclf](roofclf.md#count-every-roof-by-its-score)). Held out by quadrat
@@ -144,7 +145,7 @@ imported later can be on the imagery.
 | Country | Best estimate, photovoltaic (MWp) | Imported from China (MWp) | Period | Best as share of it |
 | --- | ---: | ---: | --- | ---: |
 | Spain | 39,394 | 59,329 | Jan 2017 to Aug 2026 | 66% |
-| Pakistan | 34,470 | 57,609 | Jan 2017 to Jun 2026 | 60% |
+| Pakistan | 34,469 | 57,609 | Jan 2017 to Jun 2026 | 60% |
 | Vietnam | 9,119 | 31,116 | Jan 2017 to Aug 2026 | 29% |
 | South Africa | 9,239 | 18,533 | Jan 2017 to Aug 2026 | 50% |
 | Egypt | 3,810 | 9,106 | Jan 2017 to Aug 2026 | 42% |

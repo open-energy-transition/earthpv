@@ -45,8 +45,7 @@ _DE = "data/roofclf_national_germany_prod/germany/density"
 SOURCES = {
     "france": {"pred": "data/predictions_v5"},
     "nigeria": {"pred": "data/predictions_v5_nigeria"},
-    "germany": {"central": f"{_DE}/sub400_central_incremental_buildings.parquet",
-                "low": f"{_DE}/sub400_low_incremental_buildings.parquet"},
+    "germany": {"central": f"{_DE}/sub400_central_incremental_buildings.parquet"},
 }
 
 
@@ -90,7 +89,7 @@ def main() -> int:
                     aoi, pred / "density",
                     Path(src.get("osm", f"data/labels/{aoi}_national_osm_solar.parquet")),
                     pred / "candidates.parquet",
-                    low_buildings_path=src.get("low"), central_buildings_path=src.get("central"),
+                    central_buildings_path=src.get("central"),
                     legacy_osm_addition=legacy, include_offgrid_osm=offgrid,
                 )
                 ground = float(T.get("small_ground") or 0.0)

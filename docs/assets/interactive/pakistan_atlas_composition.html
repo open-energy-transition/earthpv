@@ -13,7 +13,6 @@
   --osm:            #399260;
   --seg:            #3f7fd6;
   --roofclf:        #b87d1e;
-  --sppi:           #9c6fd1;
   --shadow: 0 1px 0 rgba(0,0,0,0.4), 0 12px 32px -16px rgba(0,0,0,0.6);
 }
 @media (prefers-color-scheme: light) {
@@ -30,7 +29,6 @@
     --osm:            #227a45;
     --seg:            #2a68c4;
     --roofclf:        #96620a;
-    --sppi:           #7550b0;
     --shadow: 0 1px 0 rgba(0,0,0,0.03), 0 12px 32px -18px rgba(0,0,0,0.18);
   }
 }
@@ -47,7 +45,6 @@
   --osm:            #227a45;
   --seg:            #2a68c4;
   --roofclf:        #96620a;
-  --sppi:           #7550b0;
   --shadow: 0 1px 0 rgba(0,0,0,0.03), 0 12px 32px -18px rgba(0,0,0,0.18);
 }
 
@@ -209,7 +206,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
 
     <div class="card">
       <h2>Verified (the internal floor) - for comparison</h2>
-      <p class="card-sub">A stricter accounting: full hand-mapped OSM (not just what the model missed) plus only the roofclf+SPPI AND-gate</p>
+      <p class="card-sub">A stricter accounting: every installation hand-mapped in OpenStreetMap, whether or not the model found it</p>
       <div class="legend" id="legendVerified"></div>
       <div class="stack-wrap" id="stackWrapVerified">
         <div class="stack" id="stackVerified" style="height:28px"></div>
@@ -238,29 +235,23 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
         its own ≥ 400 m² replacement inside the density-calibrated domain and its sub-400 m²
         "central" estimate together dwarf every other source. Direct OSM mapping and TerraMind
         segmentation (ground-mount everywhere, plus rooftop outside the calibrated domain)
-        split roughly the remaining fifth. <strong>SPPI's role in Best is deliberately small</strong>:
-        it only appears in the out-of-domain extrapolation, a strict, explicitly-flagged
-        judgement band with no calibration quadrat of its own - never blended into the
-        in-domain roofclf estimate. SPPI's larger role is in <strong>Verified</strong>, the
-        stricter floor, where roofclf-AND-SPPI agreement is almost as large as all of hand-mapped
-        OSM combined.
+        split roughly the remaining fifth. <strong>Verified</strong>, the stricter floor, is the
+        hand-mapped capacity alone: no model detection enters it.
       </p>
       <p>
-        <strong>The two roofclf slices in Best are recall-corrected; the floor's is not.</strong>
+        <strong>The two roofclf slices in Best are recall-corrected.</strong>
         Both Best-estimate roofclf components divide by the measured share of real installed
         panel area that the classifier actually flags (0.81 below 400 m², 0.98 at or above it),
         so they estimate the whole population of each size class rather than only the roofs the
         classifier caught &mdash; the same correction the segmentation slices have always
-        carried. The roofclf-AND-SPPI slices are deliberately left uncorrected: a floor built by
-        requiring two independent detectors to agree stops being a floor the moment it
-        extrapolates to installations neither of them saw.
+        carried.
       </p>
       <div class="foot" id="footNote"></div>
     </div>
   </div>
 </div>
 
-<script id="acmp-data" type="application/json">{"mwp_best":34470.3,"mwp_best_ci":[28628.0,41309.8],"mwp_verified":7138.3,"mwp_verified_ci":[6181.6,9115.7],"best_rows":[{"key":"osm_unmatched_roof","label":"OSM-mapped rooftop, counted from the map (no satellite detection nearby, or one whose figure Best does not use)","method":"osm","placement":"roof","mwp":1339.2,"ci":[1129.4,1568.9],"pct":3.8850836807338487},{"key":"osm_unmatched_ground","label":"OSM-mapped ground-mount, counted from the map (no satellite detection nearby)","method":"osm","placement":"ground","mwp":144.4,"ci":[100.5,209.2],"pct":0.41891135267172025},{"key":"floor_offset","label":"OSM-mapped above the satellite figure: cells where Best takes the mapped capacity, so it never reads below what is already mapped","method":"osm","placement":null,"mwp":256.8,"ci":null,"pct":0.7449891645851645},{"key":"seg_roof_outdomain","label":"TerraMind segmentation of Sentinel-2 - rooftop, outside the calibrated domain, less the misses already counted from the map","method":"seg","placement":"roof","mwp":4.8,"ci":[4.1,5.8],"pct":0.013925031113741394},{"key":"seg_ground","label":"TerraMind segmentation of Sentinel-2 - ground-mount (every cell), less the misses already counted from the map","method":"seg","placement":"ground","mwp":1086.2,"ci":[709.2,1619.3],"pct":3.1511184991137293},{"key":"ge400_roof","label":"roofclf - \u2265 400 m\u00b2 rooftop, replacing segmentation inside the calibrated domain","method":"roofclf","placement":"roof","mwp":7257.9,"ci":[5613.8,9359.7],"pct":21.055517358421596},{"key":"small_central","label":"roofclf alone - sub-400 m\u00b2 rooftop, coverage ratio and recall, density-calibrated","method":"roofclf","placement":"roof","mwp":24381.0,"ci":[19632.5,29850.9],"pct":70.73045491336019}],"verified_rows":[{"key":"osm_roof","label":"OSM-mapped rooftop, all of it, whether or not a satellite detection covers it","method":"osm","placement":"roof","mwp":1339.2,"ci":[1129.4,1568.9],"pct":18.760769370858608},{"key":"osm_ground","label":"OSM-mapped ground-mount, all of it, whether or not a satellite detection covers it","method":"osm","placement":"ground","mwp":2298.4,"ci":[1598.6,3328.9],"pct":32.19814241486068},{"key":"small_low","label":"roofclf + SPPI agreement - sub-400 m\u00b2, inside the calibrated domain","method":"sppi","placement":"roof","mwp":3500.7,"ci":[3019.1,4906.5],"pct":49.04108821428071}],"best_by_method":[{"method":"osm","name":"OSM-mapped","desc":"Installations mapped by hand in OpenStreetMap solar tagging.","mwp":1740.4,"pct":5.048984197990734},{"method":"seg","name":"Satellite: TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly in Sentinel-2.","mwp":1091.0,"pct":3.165043530227471},{"method":"roofclf","name":"Satellite: roofclf","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check.","mwp":31638.9,"pct":91.78597227178179}],"verified_by_method":[{"method":"osm","name":"OSM-mapped","desc":"Installations mapped by hand in OpenStreetMap solar tagging.","mwp":3637.6000000000004,"pct":50.958911785719295},{"method":"sppi","name":"Satellite: roofclf + SPPI","desc":"roofclf AND the zero-training SPPI spectral index agreeing - a stricter, cross-validated signal.","mwp":3500.7,"pct":49.04108821428071}],"colors":{"osm":{"dark":"#399260","light":"#227a45"},"seg":{"dark":"#3f7fd6","light":"#2a68c4"},"roofclf":{"dark":"#b87d1e","light":"#96620a"},"sppi":{"dark":"#9c6fd1","light":"#7550b0"}},"method_order":["osm","seg","roofclf","sppi"],"method_meta":{"osm":{"name":"OSM-mapped","desc":"Installations mapped by hand in OpenStreetMap solar tagging."},"seg":{"name":"Satellite: TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly in Sentinel-2."},"roofclf":{"name":"Satellite: roofclf","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},"sppi":{"name":"Satellite: roofclf + SPPI","desc":"roofclf AND the zero-training SPPI spectral index agreeing - a stricter, cross-validated signal."}},"n_draws":1000,"ci_pct":[5.0,95.0],"n_calib_boxes":45,"n_domain_cells":2957,"n_cells":4470}</script>
+<script id="acmp-data" type="application/json">{"mwp_best":34468.6,"mwp_best_ci":[28626.4,41308.2],"mwp_verified":3637.5,"mwp_verified_ci":[2917.1,4664.4],"best_rows":[{"key":"osm_unmatched_roof","label":"OSM-mapped rooftop, counted from the map (no satellite detection nearby, or one whose figure Best does not use)","method":"osm","placement":"roof","mwp":1339.2,"ci":[1129.4,1568.9],"pct":3.8852752940357314},{"key":"osm_unmatched_ground","label":"OSM-mapped ground-mount, counted from the map (no satellite detection nearby)","method":"osm","placement":"ground","mwp":144.4,"ci":[100.5,209.2],"pct":0.41893201348473685},{"key":"floor_offset","label":"OSM-mapped above the satellite figure: cells where Best takes the mapped capacity, so it never reads below what is already mapped","method":"osm","placement":null,"mwp":255.2,"ci":null,"pct":0.7403840016710862},{"key":"seg_roof_outdomain","label":"TerraMind segmentation of Sentinel-2 - rooftop, outside the calibrated domain, less the misses already counted from the map","method":"seg","placement":"roof","mwp":4.8,"ci":[4.1,5.8],"pct":0.013925717899769647},{"key":"seg_ground","label":"TerraMind segmentation of Sentinel-2 - ground-mount (every cell), less the misses already counted from the map","method":"seg","placement":"ground","mwp":1086.2,"ci":[709.2,1619.3],"pct":3.151273913068706},{"key":"ge400_roof","label":"roofclf - \u2265 400 m\u00b2 rooftop, replacing segmentation inside the calibrated domain","method":"roofclf","placement":"roof","mwp":7257.9,"ci":[5613.8,9359.7],"pct":21.05655582182044},{"key":"small_central","label":"roofclf alone - sub-400 m\u00b2 rooftop, coverage ratio and recall, density-calibrated","method":"roofclf","placement":"roof","mwp":24381.0,"ci":[19632.5,29850.9],"pct":70.73394335714245}],"verified_rows":[{"key":"osm_roof","label":"OSM-mapped rooftop, all of it, whether or not a satellite detection covers it","method":"osm","placement":"roof","mwp":1339.2,"ci":[1129.4,1568.9],"pct":36.81649484536082},{"key":"osm_ground","label":"OSM-mapped ground-mount, all of it, whether or not a satellite detection covers it","method":"osm","placement":"ground","mwp":2298.4,"ci":[1598.6,3328.9],"pct":63.18625429553265}],"best_by_method":[{"method":"osm","name":"OSM-mapped","desc":"Installations mapped by hand in OpenStreetMap solar tagging.","mwp":1738.8000000000002,"pct":5.0445913091915555},{"method":"seg","name":"Satellite: TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly in Sentinel-2.","mwp":1091.0,"pct":3.165199630968476},{"method":"roofclf","name":"Satellite: roofclf","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction.","mwp":31638.9,"pct":91.79049917896289}],"verified_by_method":[{"method":"osm","name":"OSM-mapped","desc":"Installations mapped by hand in OpenStreetMap solar tagging.","mwp":3637.6000000000004,"pct":100.00274914089348}],"colors":{"osm":{"dark":"#399260","light":"#227a45"},"seg":{"dark":"#3f7fd6","light":"#2a68c4"},"roofclf":{"dark":"#b87d1e","light":"#96620a"}},"method_order":["osm","seg","roofclf"],"method_meta":{"osm":{"name":"OSM-mapped","desc":"Installations mapped by hand in OpenStreetMap solar tagging."},"seg":{"name":"Satellite: TerraMind segmentation","desc":"The fine-tuned pixel-segmentation model, outlining panels directly in Sentinel-2."},"roofclf":{"name":"Satellite: roofclf","desc":"Per-building classifier, density-calibrated coverage ratio and recall correction."}},"n_draws":1000,"ci_pct":[5.0,95.0],"n_calib_boxes":45,"n_domain_cells":2957,"n_cells":4470}</script>
 <script>
 (function () {
   const DATA = JSON.parse(document.getElementById('acmp-data').textContent);
@@ -277,13 +268,11 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
   }
 
   // Methods and component count are read off the published rows, not asserted: an atlas
-  // built without an optional component (the out-of-domain extrapolation is the only one
-  // SPPI contributes to Best) decomposes into fewer of both.
+  // built without an optional component decomposes into fewer of both.
   const LEDE_METHOD_PHRASE = {
     osm: "hand-mapped OSM the model had not already found",
     seg: "the TerraMind segmentation model",
     roofclf: "roofclf's own per-building classifier",
-    sppi: "roofclf cross-checked against the SPPI spectral index",
   };
   const ledeMethods = DATA.method_order.filter(
     (m) => DATA.best_rows.some((r) => r.method === m)).map((m) => LEDE_METHOD_PHRASE[m]);
@@ -303,8 +292,6 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
   // ---- KPIs ----
   const ge400 = DATA.best_rows.find((r) => r.key === 'ge400_roof');
   const osmBest = DATA.best_by_method.find((m) => m.method === 'osm');
-  const sppiBest = DATA.best_by_method.find((m) => m.method === 'sppi');
-  const smallLow = DATA.verified_rows.find((r) => r.key === 'small_low');
   const kpis = [
     {
       label: 'Best estimate', value: `${fmt1(DATA.mwp_best)}`,
@@ -318,15 +305,9 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
       label: 'Hand-mapped OSM share', value: `${fmt1(osmBest.mwp)}`,
       sub: `MWp &middot; ${pct(osmBest.pct)} of Best`, dot: 'osm',
     },
-    // SPPI is absent from Best whenever the atlas was built without the out-of-domain
-    // extrapolation (its only Best component), so this KPI reports the floor alone rather
-    // than dereferencing a method that contributed nothing.
-    sppiBest ? {
-      label: 'SPPI-corroborated', value: `${fmt1(sppiBest.mwp)}`,
-      sub: `MWp in Best (${pct(sppiBest.pct)}) &middot; +${fmt1(smallLow.mwp)} in Verified's floor`, dot: 'sppi',
-    } : {
-      label: 'SPPI-corroborated', value: `${fmt1(smallLow.mwp)}`,
-      sub: `MWp, all of it in Verified's floor &middot; nothing in Best`, dot: 'sppi',
+    {
+      label: 'Verified, the floor', value: `${fmt1(DATA.mwp_verified)}`,
+      sub: `MWp hand-mapped in OSM &middot; 90% CI ${fmt0(DATA.mwp_verified_ci[0])}–${fmt0(DATA.mwp_verified_ci[1])}`, dot: 'osm',
     },
   ];
   document.getElementById('kpis').innerHTML = kpis.map((k) => `
@@ -344,7 +325,6 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     osm: "any size",
     seg: "\u2265 400 m\u00b2",
     roofclf: "any size, where calibrated",
-    sppi: "< 400 m\u00b2",
   };
 
   function renderLegend(elId, methods, rows) {
@@ -365,7 +345,7 @@ table.data-table .tier-row td { padding-top: 16px; font-weight: 650; color: var(
     `Best estimate - ${DATA.best_rows.length} components, ${bestMethods.size} `
     + `method${bestMethods.size === 1 ? '' : 's'}`;
   renderLegend('legendBest', DATA.method_order.filter((m) => bestMethods.has(m)), DATA.best_rows);
-  renderLegend('legendVerified', ['osm', 'sppi'], DATA.verified_rows);
+  renderLegend('legendVerified', ['osm'], DATA.verified_rows);
 
   // ---- Stacked bars ----
   function renderStack(stackId, tooltipId, rows, total, labelThresholdPct) {

@@ -44,22 +44,22 @@ one national number:
   so its installation count is the sum of scores, the expected number of PV-carrying roofs,
   rather than a count of flagged buildings. The
   roofclf-AND-SPPI agreement outside that domain was dropped from both this page and the
-  main atlas on 2026-08-15 (it was the one component not measured where it was applied);
-  passing `--sub400-outdomain-cells` still restores it, as a marked extrapolation drawn
-  as a hatched slice on the 100&ndash;400 m&sup2; rooftop bar.
+  main atlas on 2026-08-15 (it was the one component not measured where it was applied),
+  and the flag that could restore it went on 2026-11-13, when the owner took SPPI out of the
+  atlases.
 - **Hand-mapped OpenStreetMap, unmatched by the model** -- sized by each installation's
   own real geodesic area, split rooftop/ground-mount by its mapped placement tag.
 
-One more population feeds this page without ever appearing as its own bin: the
-AND-gate (roofclf-and-SPPI-agreeing) sub-400 m&sup2; population inside the domain. It
-never contributes to Best estimate directly, but the main atlas floors Best at what a
-person has actually mapped plus that stricter population, *per cell* -- a matched
+One more step shapes this page without appearing as its own bin: the main atlas floors
+Best at what a person has actually mapped (plus any park or lead a person judged solar),
+*per cell* -- a matched
 OpenStreetMap installation's own bin-averaged precision/recall correction can
 undershoot its true mapped area (Quaid-e-Azam Solar Park is the standing example).
 Skipping that floor here would have silently undercounted this page's total against
 the published one by about 4.5% in the cells holding the country's largest matched
 ground-mount plants -- caught exactly because the two totals are required to match, not
-assumed to.
+assumed to. Until 2026-11-13 that floor also held the roofs where roofclf and SPPI agreed,
+which this page needed as an input; it no longer does.
 
 ## What this page does not show
 
@@ -77,12 +77,9 @@ plus this run's own `candidates.parquet`:
 ```bash
 pixi run earthpv atlas-by-size --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet \
-    --sub400-low-cells       data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
     --sub400-central-cells   data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
     --ge400-roof-cells       data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet \
     --out docs/assets/interactive/pakistan_size_distribution_atlas.html
 ```
 
-`--sub400-low-cells` is required even though the AND-gate population is never shown --
-see "Where each bin's capacity comes from" above. Run `earthpv atlas` for the geographic
-view first (or afterward) so the two pages describe the same underlying run.
+Run `earthpv atlas` for the geographic view first (or afterward) so the two pages describe the same underlying run.

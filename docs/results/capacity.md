@@ -5,7 +5,7 @@ best defensible estimate, reading detections from two instruments, split by plac
 by calibration coverage rather than cleanly by size: a segmentation model that outlines individual
 arrays directly (every mapping lead, all ground-mount capacity at any size, and rooftop
 capacity 400 m<sup>2</sup> and larger outside the cells covered below), and **roofclf**,
-a per-building classifier cross-checked against the zero-training **SPPI** index, which
+a per-building classifier, which
 covers every rooftop below 400 m<sup>2</sup> -- where segmentation is trained blind -- and
 also *replaces* segmentation's own rooftop estimate at or above 400 m<sup>2</sup>
 inside the cells its calibration quadrats cover, where it measures better. See
@@ -23,7 +23,7 @@ rooftop vs ground-mount by how large each installation is, instead of by geograp
 
 ## The headline figure
 
-**Best estimate: 34,470.3 MWp** (90% range 28,628 &ndash; 41,310; 34,142.4 until 2026-11-07, when roofclf was refit on 41 calibration areas, see the [experiments register](../experiments.md#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07); 34,588.8 until 2026-10-28, when segmentation moved to a model trained on Pakistan's current map; 24,438.3 until 2026-10-25, when roofclf's two components switched from counting the roofs above a threshold to counting every roof by its score -- see [roofclf](../methods/roofclf.md#count-every-roof-by-its-score); 24,330.0 until 2026-10-20, when OSM-mapped misses stopped being counted on top of the satellite figure's own estimate of its misses, and small roofs next to a segmentation detection whose figure Best does not use stopped being dropped -- see the [experiments register](../experiments.md)). It combines every
+**Best estimate: 34,468.6 MWp** (90% range 28,626 &ndash; 41,308; 34,470.3 until 2026-11-13, when the roofclf-and-SPPI floor left the atlas; 34,142.4 until 2026-11-07, when roofclf was refit on 41 calibration areas, see the [experiments register](../experiments.md#pakistans-roofclf-on-41-areas-priced-on-the-19-it-had-2026-11-07); 34,588.8 until 2026-10-28, when segmentation moved to a model trained on Pakistan's current map; 24,438.3 until 2026-10-25, when roofclf's two components switched from counting the roofs above a threshold to counting every roof by its score -- see [roofclf](../methods/roofclf.md#count-every-roof-by-its-score); 24,330.0 until 2026-10-20, when OSM-mapped misses stopped being counted on top of the satellite figure's own estimate of its misses, and small roofs next to a segmentation detection whose figure Best does not use stopped being dropped -- see the [experiments register](../experiments.md)). It combines every
 installation a person has drawn in OpenStreetMap (15,642 of them, deduplicated -- see
 "Ground-mount capacity" below) with &ge;400 m<sup>2</sup> capacity (roofclf's own
 rooftop estimate inside the density-matched cells, segmentation's recall-corrected rooftop
@@ -33,12 +33,13 @@ cells. Every component is measured inside the density-calibrated domain: an
 out-of-domain roofclf-AND-SPPI extrapolation was tested and dropped from the published
 atlas (see "Calibration coverage" below).
 
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 51 percent OpenStreetMap-mapped and 49 percent roofclf-and-SPPI agreement, totalling 7.1 gigawatts peak; Best estimate is 5 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.5 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
-![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is 51 percent OpenStreetMap-mapped and 49 percent roofclf-and-SPPI agreement, totalling 7.1 gigawatts peak; Best estimate is 5 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.5 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is all OpenStreetMap-mapped, totalling 3.6 gigawatts peak; Best estimate is 5 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.5 gigawatts peak.](../assets/figures/capacity_composition.svg#only-light)
+![Two horizontal bars, Verified and Best estimate, each split by the method that produced its capacity: Verified is all OpenStreetMap-mapped, totalling 3.6 gigawatts peak; Best estimate is 5 percent OpenStreetMap-mapped, 3 percent TerraMind segmentation and 92 percent roofclf alone, totalling 34.5 gigawatts peak.](../assets/figures/capacity_composition.dark.svg#only-dark)
 
-SPPI no longer contributes to Best at all; its role is in the internal floor (Verified,
-7,138.3 MWp), where roofclf-and-SPPI agreement (3,500.7 MWp) is about as large as all of
-hand-mapped OSM (3,637.6 MWp). Full per-component
+Verified, the internal floor, is the capacity hand-mapped in OpenStreetMap alone: 3,637.5
+MWp (90% range 2,917 to 4,664). Until 2026-11-13 it also carried the roofs where roofclf
+and the SPPI spectral index agreed (3,500.7 MWp, 7,138.3 MWp in all); the owner then took
+SPPI out of the atlases. Full per-component
 breakdown, with credible intervals on every slice:
 [capacity composition](../assets/interactive/pakistan_atlas_composition.html){ target="_blank" }.
 
@@ -60,16 +61,12 @@ full measurement, "How confident should you be in this?" on the atlas page, and
 [validation against MaStR](../methods/mastr-validation.md) for what a complete register
 can and cannot settle here.
 
-The sub-400 m<sup>2</sup> population is split into two populations of differing strictness:
-a more permissive one (roofclf alone, feeding the figure above directly) and a stricter one
-requiring **roofclf and SPPI to both agree** -- two independent detectors, not one model
-trusted alone -- used internally as a floor so the headline figure never reads below what a
-person has actually mapped plus that stricter population. Neither double-counts, on either
-axis: OpenStreetMap-mapped installations are matched by location and removed from the
+The sub-400 m<sup>2</sup> population that feeds the figure above is roofclf alone. Nothing
+double-counts: OpenStreetMap-mapped installations are matched by location and removed from the
 model-detected side before summing, and the sub-400 m<sup>2</sup> instrument itself drops
 any building within 30 m of an OpenStreetMap solar feature, not just those near an
 existing segmentation candidate. Best is also floored, per cell, at what a person has
-actually mapped plus the stricter (AND-gate) population, so a cell where the model's own
+actually mapped (plus any park or lead a person judged solar), so a cell where the model's own
 estimate happens to read low never publishes below what is already confirmed on the
 ground.
 
@@ -129,9 +126,8 @@ to the mapping imagery's own epoch, so it biases measured recall up (and this co
 down); the national population being corrected has already been deduplicated against
 segmentation and OpenStreetMap while recall is measured over a whole quadrat; and a bin
 measured below 0.10 is floored there rather than trusted, capping the inflation at
-tenfold. The internal floor (Verified) and the AND-gate tiers are deliberately **not**
-corrected this way -- a tier built by requiring two independent detectors to agree stops
-being a floor the moment it extrapolates to installations neither of them saw.
+tenfold. The internal floor (Verified, the hand-mapped capacity) is not corrected this way:
+it counts what people have drawn, nothing more.
 
 ### The parcel label
 
@@ -164,14 +160,16 @@ quadrats deliberately sized to include the farmland between settlements. Full de
 and the history of every widening step: [Calibration quadrats](../methods/calibration-quadrats.md)
 and [Calibration boxes log](../issues/pakistan-calibration-boxes.md).
 
-Outside this domain, roofclf-AND-SPPI agreement can substitute as a standard of evidence
-(`sub400_capacity.out_of_domain_and_gate_capacity`, `--sub400-outdomain-cells`), but it is
-**not published**: it was the one Best-estimate component not measured where it was
+Outside this domain, rooftop PV below 400 m<sup>2</sup> is not measured. roofclf-AND-SPPI
+agreement was tested there as a substitute standard of evidence
+(`sub400_capacity.out_of_domain_and_gate_capacity`) and **never published**, and no atlas
+reads SPPI since 2026-11-13: it was the one Best-estimate component not measured where it was
 applied (a coverage ratio fit on urban/semi-urban quadrats, extrapolated onto a much
 sparser rural remainder with no calibration coverage of its own), and manual JOSM review
 of that population is blocked by reference imagery too old to confirm recently-installed
-small PV. The capacity function and CLI flag still exist for anyone who wants that
-estimate explicitly; see [Experiments](../experiments.md) for the full measurement.
+small PV. The capacity function still exists for anyone who wants that estimate
+explicitly (the atlas flag went 2026-11-13, when the owner took SPPI out of the atlases);
+see [Experiments](../experiments.md) for the full measurement.
 
 ## What this map cannot tell you, and what an independent estimate confirms it can
 
@@ -179,8 +177,7 @@ estimate explicitly; see [Experiments](../experiments.md) for the full measureme
 the reason.** Sentinel-2's 10 m pixels make an individual array smaller than roughly
 400 m<sup>2</sup> a mixed-pixel problem rather than a shape you can outline -- the
 segmentation model is not even trained to try below that floor. Everything under it is
-covered instead by `roofclf`, a per-building classifier cross-checked against the
-zero-training SPPI index, restricted to the cells whose building density resembles the
+covered instead by `roofclf`, a per-building classifier, restricted to the cells whose building density resembles the
 hand-mapped calibration quadrats it was measured on. That restriction is deliberate --
 it is what keeps the sub-400 m<sup>2</sup> numbers honest -- but it also means the total
 depends on calibration coverage, not on a direct count, and the 90% range on the headline
@@ -304,20 +301,17 @@ pixi run earthpv ge400-roof-capacity --aoi pakistan \
 # Evidence atlas (Best estimate), combining all three.
 pixi run earthpv atlas --aoi pakistan \
     --osm-solar data/labels/pakistan_overpass_solar.parquet \
-    --sub400-low-cells     data/roofclf_national_with_sppi/pakistan/density/sub400_low_incremental_buildings.parquet \
     --sub400-central-cells data/roofclf_national_with_sppi/pakistan/density/sub400_central_incremental_buildings.parquet \
     --ge400-roof-cells     data/roofclf_national_with_sppi/pakistan/density/ge400_roof_incremental_buildings.parquet
 ```
 
-`--sub400-outdomain-cells` is deliberately not passed: the published atlas reports only
-components measured where they are applied (see "Calibration coverage" above). Passing
-`data/roofclf_national_with_sppi/pakistan/density/sub400_outdomain_and_gate_incremental_buildings.parquet`
-adds roofclf-AND-SPPI agreement outside the density-matched domain to Best instead, as a
-strict extrapolation marked with its own dotted cell outline.
+The atlas reports only components measured where they are applied (see "Calibration
+coverage" above). `sub400-capacity` also writes the roofclf-AND-SPPI floor and its
+out-of-domain extrapolation, which no atlas reads since 2026-11-13.
 
 Neither `density` nor `roofclf-score-national` needs a GPU or retraining; both run on
 rasters already on disk, each taking roughly two hours single-process for all of
 Pakistan, and both are resumable per cell. See [Setup New
 Country](../reproduce.md#the-full-pipeline) for the stages that produce those rasters in
-the first place, and [Capacity density](../methods/density.md) for how `roofclf`/SPPI
+the first place, and [Capacity density](../methods/density.md) for how `roofclf`
 and the OSM pull that feed the evidence atlas are themselves built.

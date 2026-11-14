@@ -8,7 +8,7 @@ to the published total) and presents it as its own page, since the atlas itself
 never renders this breakdown as a standalone view -- only as an internal
 uncertainty-composition detail.
 
-Every component is tagged with which of four methods produced it:
+Every component is tagged with which of three methods produced it:
   - OSM-mapped: installations Best counts from the map rather than from a satellite
     figure (no detection nearby, or one whose figure Best does not use), plus a per-cell
     floor correction (both converted at the module/land kWp priors).
@@ -19,10 +19,10 @@ Every component is tagged with which of four methods produced it:
     and recall-corrected
     estimate, for >= 400 m2 rooftop inside the calibrated domain (replacing
     segmentation there) and the sub-400 m2 "central" estimate.
-  - roofclf + SPPI: the classifier's AND-gate agreement with the zero-training SPPI
-    spectral index, used only for the out-of-domain sub-400 m2 extrapolation inside
-    Best (the in-domain AND-gate, `small_low`, feeds Verified instead -- shown here
-    for context, not summed into Best).
+
+Verified, shown for comparison, is the hand-mapped OSM capacity alone. Until 2026-11-13 it
+also carried roofclf's agreement with the SPPI spectral index (`small_low`), a fourth
+method; the owner took SPPI out of the atlases that day.
 
 Usage:
     .pixi/envs/default/bin/python scripts/build_atlas_composition.py
@@ -41,9 +41,8 @@ METHOD = {
     "osm_unmatched_roof": "osm", "osm_unmatched_ground": "osm", "floor_offset": "osm",
     "seg_roof_outdomain": "seg", "seg_ground": "seg",
     "ge400_roof": "roofclf", "small_central": "roofclf",
-    "small_outdomain": "sppi",
 }
-VERIFIED_METHOD = {"osm_roof": "osm", "osm_ground": "osm", "small_low": "sppi"}
+VERIFIED_METHOD = {"osm_roof": "osm", "osm_ground": "osm"}
 
 # Placement, carried alongside the method so the page can encode it separately. Colour
 # here means METHOD, so the two OSM rows of a tier (rooftop and ground-mount) drew in one
@@ -54,8 +53,8 @@ VERIFIED_METHOD = {"osm_roof": "osm", "osm_ground": "osm", "small_low": "sppi"}
 PLACEMENT = {
     "osm_unmatched_roof": "roof", "osm_unmatched_ground": "ground", "floor_offset": None,
     "seg_roof_outdomain": "roof", "seg_ground": "ground",
-    "ge400_roof": "roof", "small_central": "roof", "small_outdomain": "roof",
-    "osm_roof": "roof", "osm_ground": "ground", "small_low": "roof",
+    "ge400_roof": "roof", "small_central": "roof",
+    "osm_roof": "roof", "osm_ground": "ground",
 }
 
 LABEL = {
@@ -71,30 +70,25 @@ LABEL = {
                   "misses already counted from the map",
     "ge400_roof": "roofclf - ≥ 400 m² rooftop, replacing segmentation inside the calibrated domain",
     "small_central": "roofclf alone - sub-400 m² rooftop, coverage ratio and recall, density-calibrated",
-    "small_outdomain": "roofclf + SPPI agreement - sub-400 m², extrapolated outside the calibrated domain",
     "osm_roof": "OSM-mapped rooftop, all of it, whether or not a satellite detection covers it",
     "osm_ground": "OSM-mapped ground-mount, all of it, whether or not a satellite detection covers it",
-    "small_low": "roofclf + SPPI agreement - sub-400 m², inside the calibrated domain",
 }
 
 METHOD_META = {
     "osm": {"name": "OSM-mapped", "desc": "Installations mapped by hand in OpenStreetMap solar tagging."},
     "seg": {"name": "Satellite: TerraMind segmentation", "desc": "The fine-tuned pixel-segmentation model, outlining panels directly in Sentinel-2."},
-    "roofclf": {"name": "Satellite: roofclf", "desc": "Per-building classifier, density-calibrated coverage ratio and recall correction, no spectral cross-check."},
-    "sppi": {"name": "Satellite: roofclf + SPPI", "desc": "roofclf AND the zero-training SPPI spectral index agreeing - a stricter, cross-validated signal."},
+    "roofclf": {"name": "Satellite: roofclf", "desc": "Per-building classifier, density-calibrated coverage ratio and recall correction."},
 }
 
 # Fixed categorical order (never cycled): most-directly-measured to
 # least-direct, matching this project's own trust ordering (hand-mapped ground
-# truth, then pixel model, then tabular classifier alone, then a
-# cross-validated-but-extrapolated signal).
-METHOD_ORDER = ["osm", "seg", "roofclf", "sppi"]
+# truth, then pixel model, then tabular classifier).
+METHOD_ORDER = ["osm", "seg", "roofclf"]
 
 COLORS = {
     "osm":     {"dark": "#399260", "light": "#227a45"},
     "seg":     {"dark": "#3f7fd6", "light": "#2a68c4"},
     "roofclf": {"dark": "#b87d1e", "light": "#96620a"},
-    "sppi":    {"dark": "#9c6fd1", "light": "#7550b0"},
 }
 
 
@@ -116,14 +110,14 @@ def build_rows(totals: dict) -> tuple[list[dict], list[dict]]:
     verified_total = totals["mwp_verified"]
 
     best_keys = ["osm_unmatched_roof", "osm_unmatched_ground", "floor_offset",
-                 "seg_roof_outdomain", "seg_ground", "ge400_roof", "small_central", "small_outdomain"]
+                 "seg_roof_outdomain", "seg_ground", "ge400_roof", "small_central"]
     best_rows = []
     for k in best_keys:
         if k == "floor_offset":
             mwp, ci = floor_offset, None
         elif k not in comp:
-            # An optional component the atlas was not built with (the out-of-domain
-            # extrapolation, say) is absent rather than zero -- skip it instead of drawing
+            # An optional component the atlas was not built with (no roofclf half, say)
+            # is absent rather than zero -- skip it instead of drawing
             # an empty slice for a quantity the atlas does not report.
             continue
         else:
@@ -133,7 +127,7 @@ def build_rows(totals: dict) -> tuple[list[dict], list[dict]]:
             "mwp": mwp, "ci": ci, "pct": 100 * mwp / best_total,
         })
 
-    verified_keys = ["osm_roof", "osm_ground", "small_low"]
+    verified_keys = ["osm_roof", "osm_ground"]
     verified_rows = []
     for k in verified_keys:
         mwp, ci = comp[k]["mwp"], comp[k]["ci"]

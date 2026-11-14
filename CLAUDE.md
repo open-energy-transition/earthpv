@@ -36,9 +36,7 @@ calibration coverage rather than cleanly by size, combine into one product:
   published rasters come from `v16_combined_pakistan` since 2026-10-28, `v3_combined_india`
   before; the others are listed under "Country runs").
 - **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `ge400-roof-capacity` →
-  `sub400-capacity`): a per-building "does this roof carry PV?" classifier, cross-checked with
-  the zero-training **SPPI** spectral index (roofclf AND SPPI agreeing) as an internal floor.
-  Covers every building **< 400 m²** and also **replaces** segmentation's rooftop estimate for
+  `sub400-capacity`): a per-building "does this roof carry PV?" classifier. Covers every building **< 400 m²** and also **replaces** segmentation's rooftop estimate for
   buildings **≥ 400 m²** inside the density-calibrated domain, where it measures better (AUC
   ~0.76-0.78 against segmentation's ~0.50-0.78, strongly quadrat-dependent). Both capacity
   functions are domain-restricted and refuse to rescale to a national total on their own.
@@ -46,8 +44,22 @@ calibration coverage rather than cleanly by size, combine into one product:
   segmentation's ground-mount, roofclf's rooftop replacement in-domain plus segmentation's own
   recall-corrected rooftop out-of-domain, plus roofclf density below 400 m², de-duplicated
   against each other and against OSM, and floored per cell at **Verified** plus any park a person
-  judged solar there (hand-mapped OSM
-  plus the stricter roofclf+SPPI agreement population). Best carries a 90% credible interval.
+  judged solar there. **Verified is the hand-mapped OSM capacity alone** (plus CSP at its
+  rating). Best carries a 90% credible interval.
+
+**SPPI is out of the atlases (owner, 2026-11-13).** Verified used to add the roofs where
+roofclf and the zero-training SPPI spectral index agreed (the "AND-gate" floor, `small_low`:
+Pakistan's 3,500.7 MWp), and the evidence, size, composition, growth and growth-evidence
+atlases all showed SPPI in some form. None does now: `earthpv atlas`/`atlas-by-size` no longer
+take `--sub400-low-cells`, `--sub400-outdomain-cells` or `--sub400-high-cells`, the sub-400 m2
+bracket atlas is deleted, and the evidence template reads cells by name (`cell_cols`), so pages
+built before (with three retired all-zero columns) and after draw alike. Pakistan moved
+Verified 7,138.3 -> 3,637.5 and Best 34,470.3 -> 34,468.6 (Best's per-cell floor); no other
+page changed a figure. The other 21 pages were patched with `scripts/patch_atlas_drop_sppi.py`
+(refuses a page whose retired fields are non-zero) and retemplated; the growth atlas with its
+`--growth` mode. `sub400-capacity` still writes the AND-gate files and `roofclf-score-national`
+still computes SPPI per building: research outputs no atlas reads. roofclf never used SPPI as a
+feature.
 
 The end-to-end command sequence is in `docs/reproduce.md`'s "The full pipeline"; the short
 version:
@@ -73,12 +85,10 @@ pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
 
 earthpv ge400-roof-capacity --aoi <aoi> --osm-solar <national OSM solar pull>   # before sub400
 earthpv sub400-capacity     --aoi <aoi> --osm-solar <national OSM solar pull>
-# NOTE: --sub400-outdomain-cells is deliberately NOT passed -- see "Density stage".
 earthpv roof-potential --aoi <aoi> --roofclf-dir data/roofclf_national_with_sppi/<aoi>/prob \
   --roof-table <calibration buildings.geoparquet> --osm-solar <national OSM solar pull>
 earthpv atlas --aoi <aoi> \
   --sub400-central-cells data/roofclf_national_with_sppi/<aoi>/density/sub400_central_incremental_buildings.parquet \
-  --sub400-low-cells     data/roofclf_national_with_sppi/<aoi>/density/sub400_low_incremental_buildings.parquet \
   --ge400-roof-cells     data/roofclf_national_with_sppi/<aoi>/density/ge400_roof_incremental_buildings.parquet \
   --osm-solar <national OSM solar pull>
 ```
@@ -143,17 +153,15 @@ Germany has none: MaStR publishes per-municipality totals and the estimator is a
 a quadrat coverage ratio (see "MaStR validation").
 
 **A country with neither** gets the **segmentation-only evidence atlas** (`earthpv atlas --aoi
-<aoi> --osm-solar <pull>`, omitting BOTH `--sub400-low-cells` and `--sub400-central-cells`;
-supplying one is rejected as a half-configured run). Verified degrades to hand-mapped OSM alone
-and Best to that plus the ≥ 400 m² detections; neither reaches below the floor. France is in
+<aoi> --osm-solar <pull>`, omitting `--sub400-central-cells`). Best is hand-mapped OSM plus the
+≥ 400 m² detections and does not reach below the floor; the page says "not measured" there. France is in
 this state because `roofclf` does not transfer to French residential PV.
 
 **`--osm-solar` is required, and `density` no longer writes an atlas.** The old six-estimator
-and simple atlases were removed; `build_sub400_bracket_atlas` and `build_combined_atlas` remain
-and share `templates/pv_atlas.html`.
+and simple atlases were removed, and the sub-400 m2 bracket atlas with SPPI (2026-11-13);
+`build_combined_atlas` remains on `templates/pv_atlas.html`.
 
-Of the many sub-400 m² instruments tried, only `roofclf` (cross-validated with SPPI) was
-promoted; the rest are in `docs/experiments.md`.
+Of the many sub-400 m² instruments tried, only `roofclf` was promoted; the rest are in `docs/experiments.md`.
 
 ## Environments & commands
 
@@ -183,7 +191,7 @@ export`, plus `compose` (build imagery for AOIs with no local composites). `trai
 50 steps; `chips --limit N` caps the chip count for quick runs. For capacity, see "Main
 workflow": `density → check-density` for the ≥ 400 m² segmentation half, `roof-classifier →
 roofclf-score-national → ge400-roof-capacity → sub400-capacity` for the roofclf half, then
-`atlas --sub400-central-cells --sub400-low-cells --ge400-roof-cells --osm-solar` to combine
+`atlas --sub400-central-cells --ge400-roof-cells --osm-solar` to combine
 them. `roofclf-score-national` is the long pole (hours at country scale) and is resumable
 per-cell like `density`.
 
@@ -491,8 +499,8 @@ components (`sub400_capacity.COVERAGE_BOOTSTRAP_SEED`).
 dividing by the measured share of true mapped PV **area** landing on flagged buildings, per size
 bin and density stratum -- the same Horvitz-Thompson step as `est_mwp_rc`. Coverage ratio and
 area recall are refit inside the SAME bootstrap replicates so their dependent errors are never
-multiplied as if independent. **Deliberately NOT applied to either AND-gate tier**: those are
-floors. `--no-recall-correct` reproduces the uncorrected figures; `--coverage-boot N` (default
+multiplied as if independent. Not applied to the AND-gate files (thresholded floors no atlas
+reads since 2026-11-13). `--no-recall-correct` reproduces the uncorrected figures; `--coverage-boot N` (default
 200; 0 disables and narrows the interval).
 
 **roofclf's Best components are priced by probability, not by a threshold (2026-10-25)**
@@ -502,7 +510,7 @@ the output is one row per (cell, size bin) carrying `n_buildings` and `sum_p`. L
 out it cut the median sub-400 m² PV-area error 0.386 -> 0.094 (20 of 29); thresholding booked
 12% of mapped PV in quadrats below 300 bldg/km². What it trusts instead is the score's LEVEL in
 sparse national cells, which is unmeasured (open question 1 holds the declared revert rule).
-**The AND-gate floors stay thresholded** (`_check_weighting` refuses probability with SPPI),
+**The AND-gate files stay thresholded** (`_check_weighting` refuses probability with SPPI),
 and the fitting primitives (`coverage_ratio_by_size`, `area_recall_by_size` and their
 stratified and bootstrap wrappers) keep `"threshold"` as their own default, so a new caller
 passes `weighting` explicitly. Give `ge400-roof-capacity` and `sub400-capacity` the same
@@ -563,11 +571,10 @@ refuses a split table without it. It RAISES the model's priced capacity in 12 of
 (the confident ground outlines get their own, higher mapped share) yet moves Best by under
 0.5% (South Africa -35.5 MWp; controls reproduce the published pages exactly). Owner decision.
 
-**Out-of-domain roofclf-AND-SPPI capacity (`sub400_capacity.out_of_domain_and_gate_capacity`,
-`--sub400-outdomain-cells`) exists but is not published** (owner decision 2026-08-15): it is
-the one component not measured where it would be applied, and its manual review is blocked by
-stale imagery. Everything that reports it degrades to absent rather than zero when the flag is
-omitted; pass it and it comes back.
+**Out-of-domain roofclf-AND-SPPI capacity (`sub400_capacity.out_of_domain_and_gate_capacity`)
+is written by `sub400-capacity` but read by no atlas**: never published (owner decision
+2026-08-15: not measured where it would be applied, review blocked by stale imagery), and its
+`--sub400-outdomain-cells` option left `earthpv atlas` with SPPI on 2026-11-13.
 
 **The 90% credible interval** (`atlas._evidence_uncertainty`) composes every measured source
 (module/land kWp priors, coverage-ratio quadrat bootstrap, `KWP_LAND_CI90`, the farm-ground
@@ -575,16 +582,17 @@ replicates) with correlated terms sharing one draw vector, and asserts its compo
 values sum to the published total -- a guard against adding an atlas component without adding it
 to the uncertainty.
 
-**Pakistan's current published figures (2026-11-07).** Segmentation (v16, 41-box table)
+**Pakistan's current published figures (2026-11-07; Verified 2026-11-13).** Segmentation (v16, 41-box table)
 `est_mwp_rc` **3,146.8 MWp** (rooftop 1,994.3, ground 1,152.5). roofclf (fitted on 41 areas
 since 2026-11-07, 16 features without `bf_confidence`, parcel label, area-weighted zonal means,
 recall-corrected, probability-weighted since 2026-10-25), its coverage ratio and area recall
 fitted on the **19 pinned areas** (`sub400_capacity.PINNED_COVERAGE_QUADRATS`, see "Calibration
-quadrats"), as priced in the atlas: sub-400 central **24,381.0 MWp**, sub-400 AND-gate (floor,
-thresholded, uncorrected) **3,500.7 MWp**, ≥ 400 m² rooftop replacement **7,257.9 MWp**; median
+quadrats"), as priced in the atlas: sub-400 central **24,381.0 MWp**, ≥ 400 m² rooftop
+replacement **7,257.9 MWp** (the AND-gate file, 3,500.7 MWp, is no longer in the atlas); median
 LOQO fold AUC 0.8459 over the 41 areas (0.8678 over the 30 earlier ones, against 0.8682 before),
 within-size 0.815, deployment threshold 0.2470 (precision 0.50, recall 0.642). Atlas: **Best
-34,470.3 MWp (90% CI 28,628-41,310), Verified 7,138.3 MWp (90% CI 6,182-9,116)** (30-area fit
+34,468.6 MWp (90% CI 28,626-41,308), Verified 3,637.5 MWp (90% CI 2,917-4,664)** (with the
+roofclf+SPPI floor in Verified until 2026-11-13: Best 34,470.3, Verified 7,138.3; 30-area fit
 with `bf_confidence` until 2026-11-07: Best 34,142.4, Verified 7,350.8; on `v3_combined_india`
 until 2026-10-28: Best 34,588.8, Verified 6,994.1; thresholded until 2026-10-25: Best 24,438.3,
 90% 20,894-33,666). `check-density` passes all 7 regions (Gilgit-Baltistan exempt from the ratio
@@ -817,8 +825,8 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   the ink diamond; tooltips and popups say what each calibrates and whether the page's figures
   use it (`farm`/`used` from `atlas._load_calib_boxes`; a page built earlier reads `farm` from
   the published ids once the areas load). Neither kind feeds the other's instrument.
-- **Colour means method everywhere**: OSM teal, segmentation blue, roofclf amber, roofclf+SPPI
-  violet, farm ground PV green; hatching means ground-mount everywhere.
+- **Colour means method everywhere**: OSM teal, segmentation blue, roofclf amber, farm ground
+  PV green; hatching means ground-mount everywhere.
 - **"How the estimate is built" (2026-10-28)**: a plain-language methods section, one step per
   method, written by the template's `renderMethod()` from the page's own components (gated like
   the composition bar, so a segmentation-only country never reads about roofclf); the hero
@@ -1329,7 +1337,8 @@ per-cell geography.
 **Germany's atlas** (`scripts/build_germany_sub400_atlas_inputs.py`): the roofclf component must
 be **INCREMENTAL** (sub-400 roofs only, deduped against OSM and segmentation), it is
 **pre-aggregated to one row per cell** (25M geometries OOM `atlas._join_buildings_to_grid_cells`),
-and its floor tier is "both signals in their top decile", not precision-calibrated. **Published:
+and its floor tier ("both signals in their top decile", zero in the published size_band half)
+is no longer read by the atlas (2026-11-13). **Published:
 Verified 26,635 / Best 86,009.9 MWp** (84,472.7 before 149 judged parks, 2026-11-06) against
 ~74,800 MWp registered: Best fails its own register
 check, so read the tiers as geography, not capacity (the page says so). Write-ups:
@@ -1407,7 +1416,7 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
-| Pakistan | `v16_combined_pakistan` | 7,138.3 / 34,470.3 | roofclf half on 41 areas, priced on 19; probability-weighted, Silver until people have checked it; see "Density stage" |
+| Pakistan | `v16_combined_pakistan` | 3,637.5 / 34,468.6 | roofclf half on 41 areas, priced on 19; probability-weighted, Silver until people have checked it; see "Density stage" |
 | Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated roofclf; earns Silver, shows Bronze until retrained on its leads (all checked, owner 2026-11-13); 149 judged parks count |
 | France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
 | India | `v5_combined_france` | 70,266.0 / 102,779.7 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count; 4 CSP plants 197.9 MW |

@@ -51,8 +51,8 @@ Interactive. Hover a cell for its value.
 
 !!! warning "Segmentation-only: no roofclf half, and a register cannot supply one"
     Germany has **zero calibration quadrats**, so neither `roofclf` nor the sub-400 m<sup>2</sup>
-    instruments exist for it, the same state as Gujarat. Verified therefore has no
-    roofclf-AND-SPPI population to add and Best no roofclf-alone density; both tiers stop at
+    instruments exist for it, the same state as Gujarat. Best therefore has no
+    roofclf-alone density; both tiers stop at
     the 400 m&sup2; floor, above which sits only 34.5% of German rooftop capacity. The
     register does not substitute: MaStR publishes no coordinates below 30 kWp, which is
     `roofclf`'s entire domain. Closing this needs mapped German quadrats, and the 3.6% OSM
@@ -334,8 +334,8 @@ regional test flattered the baseline.
 
 **This is why the roofclf half is reported here and not folded into the atlas.** A component
 measured as worse than multiplying roof area by a constant does not belong inside a published
-Best estimate, and the atlas's floor tier needs a roofclf-and-SPPI agreement population that
-Germany cannot fit for the same 3.6% reason. The atlas therefore stays segmentation-only, and
+Best estimate, and the atlas's floor tier then needed a roofclf-and-SPPI agreement population
+(no tier has used one since 2026-11-13) that Germany cannot fit for the same 3.6% reason. The atlas therefore stays segmentation-only, and
 this estimate stands beside it with its own numbers.
 
 **Still preliminary.** No exhaustively mapped German quadrats exist, so the classifier carries

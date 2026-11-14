@@ -3,18 +3,17 @@
 **The evidence atlas (`templates/pv_evidence_atlas.html`, `build_evidence_atlas`) is the
 project's capacity atlas.** It tiers by STANDARD OF PROOF rather than by point estimate:
 
-- **Verified**: every PV installation hand-mapped in OpenStreetMap, plus (where a country
-  has mapped calibration quadrats) sub-400 m2 buildings where roofclf and SPPI
-  independently agree. No model detection enters this tier by itself.
+- **Verified**: every PV installation hand-mapped in OpenStreetMap (and solar thermal power
+  plants at their rating). No model detection enters this tier. Until 2026-11-13 it also
+  carried sub-400 m2 buildings where roofclf and the SPPI spectral index agreed (the
+  AND-gate floor, Pakistan only); the owner took SPPI out of the atlases that day.
 - **Best**: the hand-mapped population the model did not already find, plus its own
   recall-corrected >= 400 m2 detections, plus the roofclf-alone small-PV density where
   that half exists. The project's own pick, the highest figure it defends.
 
-A country with no mapped quadrats has no roofclf half, so `low_buildings_path` and
-`central_buildings_path` are omitted and the atlas is segmentation-only -- the tiers still
-mean the same things, Verified simply has no AND-gate population to add and Best no
-roofclf-alone density (Germany, Gujarat). Both must be omitted together; supplying one is
-a half-configured run and is rejected by the CLI.
+A country with no mapped quadrats (and no register to stand in for them) has no roofclf
+half, so `central_buildings_path` is omitted and the atlas is segmentation-only: Best has no
+roofclf-alone density below 400 m2, and the page says "not measured" there.
 
 **Removed 2026-09-02: the six-estimator and simple atlases** (`build_atlas`,
 `_build_estimator_atlas`, `_build_simple_atlas`, `templates/pv_estimator_atlas.html`).
@@ -26,8 +25,10 @@ and requires `--osm-solar`. Nothing can regenerate a six-estimator page any more
 artifacts derived from one were removed with it rather than left to drift: the unpublished
 `docs/assets/interactive/pakistan_capacity_atlas.html`, the `capacity_estimators` docs
 figure and its `read_estimator_totals` reader, and the README screenshot entry. That keeps
-the "every figure is generated from a tracked source" invariant true. `build_sub400_bracket_atlas` and `build_combined_atlas` are untouched and still
-share `templates/pv_atlas.html`.
+the "every figure is generated from a tracked source" invariant true. `build_combined_atlas`
+still uses `templates/pv_atlas.html`. **Removed 2026-11-13: the sub-400 m2 bracket atlas**
+(`build_sub400_bracket_atlas`, `templates/pv_sub400_bracket_atlas.html`), whose Low view was
+the roofclf+SPPI AND-gate population, when the owner took SPPI out of the atlases.
 """
 
 from __future__ import annotations
@@ -51,7 +52,6 @@ from earthpv import potential as potential_mod
 log = logging.getLogger(__name__)
 
 TEMPLATE = Path(__file__).parent / "templates" / "pv_atlas.html"
-SUB400_BRACKET_TEMPLATE = Path(__file__).parent / "templates" / "pv_sub400_bracket_atlas.html"
 EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.html"
 
 # --------------------------------------------------------------------------------------
@@ -524,20 +524,21 @@ _VSCORE_SUB = {
 # Column names for the per-cell arrays each atlas embeds, emitted into the page as
 # `cell_cols` so the CSV export is schema-driven instead of hardcoding positions in JS.
 # Keep each list in step with the `cells = [...]` comprehension it names.
+# The evidence template reads its cells by these names (2026-11-13), so a page built before
+# the roofclf+SPPI floor left (with `small_low`, `small_outdomain` and `is_extended` still in
+# its rows) and one built after both draw correctly.
 CELL_COLS_EVIDENCE = [
-    "lon0", "lat0", "mwp_verified", "mwp_best", "osm_mwp", "osm_n", "small_low",
-    "small_central", "mwp_large", "in_domain", "n_pv_buildings", "small_outdomain",
-    "is_extended", "osm_mwp_unmatched", "best_floor_lift", "model_covered", "small_ground",
+    "lon0", "lat0", "mwp_verified", "mwp_best", "osm_mwp", "osm_n",
+    "small_central", "mwp_large", "in_domain", "n_pv_buildings",
+    "osm_mwp_unmatched", "best_floor_lift", "model_covered", "small_ground",
     "csp_mwp",
 ]
 CELL_COLS_GROWTH_EVIDENCE = [
     "lon0", "lat0", "delta_mwp_total", "delta_mwp_sub400", "delta_mwp_roof",
-    "delta_mwp_ground", "mwp_total_cur", "mwp_total_pre", "n_onset_buildings",
-    "onset_mwp", "in_domain",
+    "delta_mwp_ground", "mwp_total_cur", "mwp_total_pre", "in_domain",
 ]
 CELL_COLS_GROWTH = [
-    "lon0", "lat0", "delta_est_mwp_rc", "delta_est_mwp_det", "n_onset_buildings",
-    "onset_roof_area_km2", "onset_mwp", "delta_mwp_exp_fraction",
+    "lon0", "lat0", "delta_est_mwp_rc", "delta_est_mwp_det", "delta_mwp_exp_fraction",
 ]
 
 
@@ -1165,206 +1166,6 @@ def _join_buildings_to_grid_cells(
     return joined.dropna(subset=["cell"]).groupby("cell")[value_col].sum()
 
 
-def build_sub400_bracket_atlas(
-    aoi: str, density_dir: Path,
-    low_buildings_path: Path, central_buildings_path: Path, high_buildings_path: Path,
-    out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
-) -> Path:
-    """Per-cell atlas of the three sub-400 m² capacity bracket members
-    (`docs/methods/density.md`'s "A sub-400 m² capacity bracket", 2026-07-31), switchable
-    between them, with the large-PV (>= 400 m², recall-corrected, rooftop-scope)
-    instrument ALWAYS shown alongside every view -- both populations resolve to the same
-    0.1 degree grid, so the two read together regardless of which small-PV view is active.
-
-    `*_buildings_path` are the per-building parquets each bracket function already
-    returns (this only aggregates them to cells, it recomputes nothing):
-
-    - `low_buildings_path`: `sub400_capacity.domain_restricted_and_gate_capacity`'s
-      `incr` (columns: cell, geometry, roof_area_m2, est_kwp_sub400_and_gate) --
-      roofclf AND SPPI agree, 93-cell density-calibrated domain only.
-    - `central_buildings_path`: `sub400_capacity.domain_restricted_capacity`'s `incr`
-      (est_kwp_sub400) -- roofclf alone, the SAME 93-cell domain.
-    - `high_buildings_path`: `roofclf_capacity.incremental_capacity`'s `incr`
-      (est_kwp_roofclf) -- flat national precision, unrestricted, explicitly
-      uncalibrated ceiling.
-
-    Low and central share one domain (`in_domain`, drawn as a dashed outline regardless
-    of the selected view -- it does not change meaning when High is selected, since High
-    is unrestricted and simply has no signal in most cells rather than being "out of
-    domain"). Large-PV is `est_mwp_rc_roof` from the run's own `grid.geoparquet` --
-    national, rooftop-scope, recall-corrected -- so it converts capacity at the same
-    module constant the sub-400 figures use throughout, not the ground-mount site
-    constant.
-    """
-    density_dir = Path(density_dir)
-    grid = gpd.read_parquet(density_dir / "grid.geoparquet")
-    if "est_mwp_rc_roof" not in grid.columns:
-        raise ValueError(
-            f"{density_dir}/grid.geoparquet has no est_mwp_rc_roof column -- run "
-            "`earthpv calibrate-candidates` before `density` so recall-correction "
-            "exists; the bracket atlas needs the large-PV instrument to show alongside."
-        )
-    title = atlas_config.load(aoi).title
-
-    by_low = _join_buildings_to_grid_cells(
-        gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
-    ) / 1000.0
-    by_central = _join_buildings_to_grid_cells(
-        gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
-    ) / 1000.0
-    by_high = _join_buildings_to_grid_cells(
-        gpd.read_parquet(high_buildings_path), "est_kwp_roofclf", grid
-    ) / 1000.0
-
-    grid = grid.copy()
-    grid["mwp_low"] = grid["cell"].map(by_low).fillna(0.0)
-    grid["mwp_central"] = grid["cell"].map(by_central).fillna(0.0)
-    grid["mwp_high"] = grid["cell"].map(by_high).fillna(0.0)
-    grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
-    n_domain_cells = int(grid["in_domain"].sum())
-    # Low and Central are combined with large PV (>= 400 m2, recall-corrected rooftop)
-    # into a single reported total, per the user's explicit request (2026-07-31): fold
-    # the >= 400 m2 instrument into the Low and Central estimates specifically, the same
-    # "large everywhere + small where checked" combination `build_combined_atlas` already
-    # ships for its own single roofclf-alone case. High stays UNCOMBINED on purpose -- it
-    # is presented as an explicit, unvalidated national ceiling on the sub-400 m2 signal
-    # alone, and folding an already-uncalibrated national extrapolation together with the
-    # project's main validated number would blur exactly the distinction this atlas exists
-    # to preserve.
-    grid["mwp_combined_low"] = grid["mwp_low"] + grid["est_mwp_rc_roof"]
-    grid["mwp_combined_central"] = grid["mwp_central"] + grid["est_mwp_rc_roof"]
-    # All-PV (2026-07-31): Central's small-PV component plus large PV across EVERY
-    # placement (`est_mwp_rc`, ground-mount included), not just rooftop. Kept as a
-    # fourth, separately labelled view rather than folded into Central, because it
-    # answers a different question -- "how much PV of any kind" vs. "how much rooftop
-    # PV" -- and ground-mount converts at a different constant (site area, not module
-    # area) and carries its own, separately documented plausibility risk (the ground
-    # mount vs. rooftop ratio check in `plausibility.py` exists precisely because this
-    # is the pipeline's most bug-prone component). Folding it into Central silently
-    # would make a rooftop number look bigger without saying why.
-    grid["mwp_all_pv"] = grid["mwp_central"] + grid["est_mwp_rc"]
-
-    cells = [
-        [round(float(r.lon0), 3), round(float(r.lat0), 3),
-         round(float(r.mwp_low), 3), round(float(r.mwp_central), 3), round(float(r.mwp_high), 3),
-         round(float(r.est_mwp_rc_roof), 3), int(r.n_pv_buildings),
-         round(float(r.roof_area_m2) / 1e6, 3), int(r.in_domain),
-         round(float(r.mwp_combined_low), 3), round(float(r.mwp_combined_central), 3),
-         round(float(r.est_mwp_rc), 3), round(float(r.mwp_all_pv), 3)]
-        for r in grid.itertuples()
-    ]
-    bounds = [
-        round(float(grid.lon0.min()), 3), round(float(grid.lat0.min()), 3),
-        round(float(grid.lon0.max()) + 0.1, 3), round(float(grid.lat0.max()) + 0.1, 3),
-    ]
-    if zoom_out_frac:
-        lon_pad = (bounds[2] - bounds[0]) * zoom_out_frac / 2
-        lat_pad = (bounds[3] - bounds[1]) * zoom_out_frac / 2
-        bounds = [
-            round(bounds[0] - lon_pad, 3), round(bounds[1] - lat_pad, 3),
-            round(bounds[2] + lon_pad, 3), round(bounds[3] + lat_pad, 3),
-        ]
-
-    provinces = []
-    regions_path = density_dir / "regions.geoparquet"
-    if regions_path.exists():
-        reg = gpd.read_parquet(regions_path)
-        reg_regions = _region_rows(reg)
-        pts = gpd.GeoDataFrame(
-            grid[[
-                "mwp_low", "mwp_central", "mwp_high", "est_mwp_rc_roof", "est_mwp_rc",
-                "mwp_combined_low", "mwp_combined_central", "mwp_all_pv", "n_pv_buildings",
-            ]],
-            geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
-        )
-        joined = gpd.sjoin(pts, reg_regions[["region_id", "geometry"]], predicate="within", how="left")
-        by_region = joined.groupby("region_id")[
-            ["mwp_low", "mwp_central", "mwp_high", "est_mwp_rc_roof", "est_mwp_rc",
-             "mwp_combined_low", "mwp_combined_central", "mwp_all_pv"]
-        ].sum()
-        for r in reg_regions.itertuples():
-            area_km2 = max(float(r.area_km2), 1e-9)
-            row = by_region.reindex([r.region_id]).fillna(0.0).iloc[0]
-            provinces.append({
-                "name": str(r.name),
-                "mwp_low": round(float(row["mwp_combined_low"]), 1),
-                "mwp_central": round(float(row["mwp_combined_central"]), 1),
-                "mwp_high": round(float(row["mwp_high"]), 1),
-                "mwp_all_pv": round(float(row["mwp_all_pv"]), 1),
-                "mwp_large": round(float(row["est_mwp_rc_roof"]), 1),
-                "mwp_large_all": round(float(row["est_mwp_rc"]), 1),
-                "mwp_low_small_only": round(float(row["mwp_low"]), 1),
-                "mwp_central_small_only": round(float(row["mwp_central"]), 1),
-                "nb": int(r.n_pv_buildings),
-                "dens": round(float(r.pv_area_rc_total_m2) / area_km2, 1),
-                "rings": _rings(r.geometry),
-            })
-        provinces.sort(key=lambda p: -p["mwp_central"])
-
-    total_low = float(grid.mwp_low.sum())
-    total_central = float(grid.mwp_central.sum())
-    total_high = float(grid.mwp_high.sum())
-    total_large = float(grid.est_mwp_rc_roof.sum())
-    total_large_all = float(grid.est_mwp_rc.sum())
-    total_combined_low = float(grid.mwp_combined_low.sum())
-    total_combined_central = float(grid.mwp_combined_central.sum())
-    total_all_pv = float(grid.mwp_all_pv.sum())
-
-    data = {
-        "bounds": bounds,
-        "cells": cells,
-        "provinces": provinces,
-        "cities": [list(c) for c in atlas_config.load(aoi).cities],
-        "calibBoxes": _load_calib_boxes(aoi, labels_dir),
-        "totals": {
-            "mwp_low": round(total_combined_low, 1),
-            "mwp_central": round(total_combined_central, 1),
-            "mwp_high": round(total_high, 1),
-            "mwp_large": round(total_large, 1),
-            "mwp_low_small_only": round(total_low, 1),
-            "mwp_central_small_only": round(total_central, 1),
-            "mwp_all_pv": round(total_all_pv, 1),
-            "mwp_large_all": round(total_large_all, 1),
-            "pv_buildings": int(grid.n_pv_buildings.sum()),
-            "n_cells": int(len(grid)),
-            "n_domain_cells": n_domain_cells,
-            "kwp_per_m2": 0.18,
-        },
-    }
-
-    html = SUB400_BRACKET_TEMPLATE.read_text()
-    for key, value in {
-        "__PV_DATA_JSON__": json.dumps(data, separators=(",", ":")),
-        "__PAGE_TITLE__": f"{title} Sub-400 m² Capacity Bracket",
-        "__H1__": f"How much rooftop solar is too small for {title}'s satellite map to see?",
-        "__AOI_TITLE__": title,
-        "__LEDE_HTML__": (
-            "The satellite model above only detects installations of 400 square metres "
-            "or larger. Four different, differently-confident methods estimate what "
-            "that leaves out, or restate it at a wider scope. Switch between them: "
-            "large installations (400 m² and up, from the main model) are always shown "
-            "alongside, on every view. For Low and Central, the total shown adds "
-            "large rooftop installations to small ones; for High, large rooftop "
-            "installations are shown for scale only and are not added in; All-PV adds "
-            "large installations of every placement, ground-mount farms included, to "
-            "Central's small-PV component, a wider and separately labelled question "
-            "from the other three."
-        ),
-    }.items():
-        html = html.replace(key, value)
-
-    out = Path(out) if out else density_dir / f"{aoi}_pv_sub400_bracket_atlas.html"
-    out.write_text(_assert_no_placeholders(html, out.name))
-    log.info(
-        "Wrote sub-400 bracket atlas (low combined %.0f / central combined %.0f / "
-        "high %.0f / all-PV %.0f MWp, large-PV roof %.0f / all-placement %.0f MWp, "
-        "%d/%d domain cells) -> %s",
-        total_combined_low, total_combined_central, total_high, total_all_pv,
-        total_large, total_large_all, n_domain_cells, len(grid), out,
-    )
-    return out
-
-
 GROWTH_TEMPLATE = Path(__file__).parent / "templates" / "pv_growth_atlas.html"
 
 
@@ -1372,11 +1173,12 @@ def build_growth_atlas(
     aoi: str, growth_dir: Path, out: Path | None = None,
     zoom_out_frac: float = 0.0,
 ) -> Path:
-    """Three-tab atlas from `scripts/pv_growth_map.py` (segmentation, current vs.
+    """Two-tab atlas from `scripts/pv_growth_map.py` (segmentation, current vs.
     pre-boom epoch -- called once with segmentation density dirs, growth_dir, and once
-    more with fraction-sourced density dirs into the sibling `growth_fraction/` dir) and
-    `scripts/sppi_growth_map.py` (per-building SPPI epoch-diff), all reading from
-    `growth_dir` (default `<density_dir>/growth`) and its `growth_fraction` sibling.
+    more with fraction-sourced density dirs into the sibling `growth_fraction/` dir),
+    reading from `growth_dir` (default `<density_dir>/growth`) and its `growth_fraction`
+    sibling. Its third tab, `scripts/sppi_growth_map.py`'s SPPI onset, left 2026-11-13
+    (owner: SPPI out of the atlases).
 
     Deliberately does not attempt to visualize the boom-window stacked-model retrain
     (`docs/issues/boom-window-stacking-experiment.md`) as a map layer -- that experiment
@@ -1385,19 +1187,6 @@ def build_growth_atlas(
     """
     growth_dir = Path(growth_dir)
     grid = gpd.read_parquet(growth_dir / "growth_grid.geoparquet")
-
-    sppi_path = growth_dir / "sppi_growth_grid.geoparquet"
-    sppi_cols = ["n_onset_buildings", "onset_roof_area_m2", "onset_mwp"]
-    if sppi_path.exists():
-        sppi = gpd.read_parquet(sppi_path).drop(columns="geometry")
-        missing = [c for c in sppi_cols if c not in sppi.columns]
-        for c in missing:  # older sppi_growth_grid.geoparquet predating onset_mwp
-            sppi[c] = 0.0
-        grid = grid.merge(sppi[["cell", *sppi_cols]], on="cell", how="left")
-    else:
-        for c in sppi_cols:
-            grid[c] = 0.0
-    grid[sppi_cols] = grid[sppi_cols].fillna(0.0)
 
     # Fraction-sourced growth: scripts/pv_growth_map.py run a second time against
     # density runs built with --fraction-prob-dir, in a sibling directory (not a
@@ -1424,8 +1213,7 @@ def build_growth_atlas(
     cells = [
         [round(float(r.lon0), 3), round(float(r.lat0), 3),
          round(float(r.delta_est_mwp_rc), 3), round(float(r.delta_est_mwp_det), 3),
-         int(r.n_onset_buildings), round(float(r.onset_roof_area_m2) / 1e6, 4),
-         round(float(r.onset_mwp), 3), round(float(r.delta_mwp_exp_fraction), 3)]
+         round(float(r.delta_mwp_exp_fraction), 3)]
         for r in grid.itertuples()
     ]
     cell_cols = CELL_COLS_GROWTH
@@ -1443,12 +1231,7 @@ def build_growth_atlas(
 
     provinces = []
     regions_path = growth_dir / "growth_regions.geoparquet"
-    sppi_regions_path = growth_dir / "sppi_growth_regions.geoparquet"
     frac_regions_path = frac_dir / "growth_regions.geoparquet"
-    sppi_by_name = {}
-    if sppi_regions_path.exists():
-        sr = gpd.read_parquet(sppi_regions_path)
-        sppi_by_name = {str(row["name"]): row for _, row in sr.iterrows()}
     frac_by_name = {}
     if frac_regions_path.exists():
         fr = gpd.read_parquet(frac_regions_path)
@@ -1456,7 +1239,6 @@ def build_growth_atlas(
     if regions_path.exists():
         reg = gpd.read_parquet(regions_path)
         for r in _region_rows(reg).itertuples():
-            sr = sppi_by_name.get(str(r.name))
             fr = frac_by_name.get(str(r.name))
             provinces.append({
                 "name": str(r.name),
@@ -1464,14 +1246,6 @@ def build_growth_atlas(
                 "delta_mwp_det": round(float(r.delta_est_mwp_det), 1),
                 "mwp_rc": round(float(r.est_mwp_rc), 1),
                 "mwp_rc_preboom": round(float(r.est_mwp_rc_preboom), 1),
-                "n_onset": int(sr["n_onset_buildings"]) if sr is not None else 0,
-                "onset_km2": (
-                    round(float(sr["onset_roof_area_m2"]) / 1e6, 2) if sr is not None else 0.0
-                ),
-                "onset_mwp": (
-                    round(float(sr["onset_mwp"]), 1)
-                    if sr is not None and "onset_mwp" in sr else 0.0
-                ),
                 "delta_mwp_exp_fraction": (
                     round(float(fr["delta_est_mwp_exp"]), 1) if fr is not None else 0.0
                 ),
@@ -1496,9 +1270,6 @@ def build_growth_atlas(
             "delta_mwp_det": round(float(grid.delta_est_mwp_det.sum()), 1),
             "mwp_rc_current": round(float(grid.est_mwp_rc.sum()), 1),
             "mwp_rc_preboom": round(float(grid.est_mwp_rc_preboom.sum()), 1),
-            "n_onset_buildings": int(grid.n_onset_buildings.sum()),
-            "onset_km2": round(float(grid.onset_roof_area_m2.sum()) / 1e6, 1),
-            "onset_mwp": round(float(grid.onset_mwp.sum()), 1),
             "delta_mwp_exp_fraction": round(float(grid.delta_mwp_exp_fraction.sum()), 1),
             "mwp_exp_fraction_current": round(float(grid.mwp_exp_fraction_current.sum()), 1),
             "mwp_exp_fraction_preboom": round(float(grid.mwp_exp_fraction_preboom.sum()), 1),
@@ -1513,13 +1284,11 @@ def build_growth_atlas(
         "__H1__": f"Where {title}'s rooftop solar appeared since before the boom",
         "__AOI_TITLE__": title,
         "__LEDE_HTML__": (
-            "Pakistan's rooftop PV stock is dominated by a post-2022 import boom. Three "
-            "independent instruments diff the same pre-boom (2021/22) and current "
-            "Sentinel-2 imagery to show where that growth actually landed: a trained "
-            "segmentation model's own recall-corrected capacity estimate, that same "
-            "checkpoint's fraction head reaching below its 400 m² floor, and a "
-            "model-free spectral index computed directly on each building's own "
-            "reflectance. Switch between them below."
+            "Pakistan's rooftop PV stock is dominated by a post-2022 import boom. Two "
+            "instruments diff the same pre-boom (2021/22) and current Sentinel-2 imagery "
+            "to show where that growth actually landed: a trained segmentation model's own "
+            "recall-corrected capacity estimate, and that same checkpoint's fraction head "
+            "reaching below its 400 m² floor. Switch between them below."
         ),
     }.items():
         html = html.replace(key, value)
@@ -1527,12 +1296,9 @@ def build_growth_atlas(
     out = Path(out) if out else growth_dir / f"{aoi}_pv_growth_atlas.html"
     out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
-        "Wrote growth atlas (Δ %.1f MWp recall-corrected, %d SPPI-onset buildings, "
-        "%.1f km² onset roof area, %.1f MWp uncalibrated SPPI ceiling, "
+        "Wrote growth atlas (Δ %.1f MWp recall-corrected, "
         "Δ %.1f MWp fraction-sourced expected area) -> %s",
-        data["totals"]["delta_mwp_rc"], data["totals"]["n_onset_buildings"],
-        data["totals"]["onset_km2"], data["totals"]["onset_mwp"],
-        data["totals"]["delta_mwp_exp_fraction"], out,
+        data["totals"]["delta_mwp_rc"], data["totals"]["delta_mwp_exp_fraction"], out,
     )
     return out
 
@@ -1545,17 +1311,15 @@ def build_growth_evidence_atlas(
 ) -> Path:
     """Night-lights atlas for `earthpv growth`'s output (growth.build_growth): the
     two-epoch, same-instrument growth grid composed the way the evidence atlas composes
-    capacity. Five views: total / sub-400 (roofclf) / rooftop >= 400 (roofclf-or-seg by
-    domain) / ground-mount (seg) / SPPI onset (corroboration only, not in the total).
+    capacity. Four views: total / sub-400 (roofclf) / rooftop >= 400 (roofclf-or-seg by
+    domain) / ground-mount (seg); a fifth, SPPI onset, left 2026-11-13 (owner: SPPI out of
+    the atlases).
     Supersedes `build_growth_atlas`, which renders the old cross-checkpoint
     segmentation-only diff."""
     growth_dir = Path(growth_dir)
     grid = gpd.read_parquet(growth_dir / "growth_grid.geoparquet")
     summary = json.loads((growth_dir / "summary.json").read_text())
 
-    for c in ["n_onset_buildings", "onset_mwp"]:  # absent when no SPPI grid was merged
-        if c not in grid.columns:
-            grid[c] = 0.0
     delta_cols = ["delta_mwp_total", "delta_mwp_sub400", "delta_mwp_roof", "delta_mwp_ground"]
     grid[delta_cols] = grid[delta_cols].fillna(0.0)  # uncovered cells render dark, not lit
 
@@ -1564,7 +1328,7 @@ def build_growth_evidence_atlas(
          round(float(r.delta_mwp_total), 3), round(float(r.delta_mwp_sub400), 3),
          round(float(r.delta_mwp_roof), 3), round(float(r.delta_mwp_ground), 3),
          round(float(r.mwp_total_cur), 3), round(float(r.mwp_total_pre), 3),
-         int(r.n_onset_buildings), round(float(r.onset_mwp), 3), int(bool(r.in_domain))]
+         int(bool(r.in_domain))]
         for r in grid.itertuples()
     ]
     cell_cols = CELL_COLS_GROWTH_EVIDENCE
@@ -1593,7 +1357,6 @@ def build_growth_evidence_atlas(
                 "d_ground": round(float(r.delta_mwp_ground), 1),
                 "cur_total": round(float(r.mwp_total_cur), 1),
                 "pre_total": round(float(r.mwp_total_pre), 1),
-                "onset_mwp": round(float(getattr(r, "onset_mwp", 0.0) or 0.0), 1),
                 "rings": _rings(r.geometry),
             })
         provinces.sort(key=lambda p: -p["d_total"])
@@ -1615,8 +1378,6 @@ def build_growth_evidence_atlas(
             "n_domain": summary["n_domain_cells"],
             "neg_mass": summary["delta_mwp_negative_cell_mass"],
             "seg_only_delta": summary["delta_est_mwp_rc_segmentation_only"],
-            "n_onset": int(grid.n_onset_buildings.sum()),
-            "onset_mwp": round(float(grid.onset_mwp.sum()), 1),
         },
     }
 
@@ -1658,25 +1419,6 @@ def build_growth_evidence_atlas(
 # --------------------------------------------------------------------------------------
 EVIDENCE_N_DRAWS = 1000
 EVIDENCE_DRAWS_SEED = 20260811
-
-# The ONLY term in the evidence atlas's intervals that is a stated judgement rather than a
-# measurement, applied to the out-of-domain AND-gate component alone (a uniform
-# multiplicative factor on it). It exists because that component is a strict
-# extrapolation: every out-of-domain cell nationally sits BELOW the calibrated
-# building-density band (measured 2026-08-11 -- all of them below, none above), median
-# out-of-domain density ~6x sparser than the least-dense calibration quadrat, so no
-# quadrat anywhere in this project constrains its coverage ratio in either direction.
-# `coverage_ratio_bootstrap_factors` cannot price this: resampling the 15 urban/semi-urban
-# quadrats measures how much the answer moves within the kind of place that HAS been
-# mapped, which is a different question from whether that fit transfers to rural roofs at
-# all. Skewed down rather than symmetric because the plausible failure is over-crediting
-# sparse rural roofs the classifier was never calibrated on, not under-crediting them.
-# Deliberately visible and configurable (`extrapolation_ci90`), and reported separately in
-# `totals.uncertainty.components` so a reader can see the Best interval with and without
-# it -- the alternative (leaving this component out of the interval entirely) would report
-# a *narrower* Best interval precisely because part of it is less well founded, which is
-# the wrong direction.
-OUTDOMAIN_EXTRAPOLATION_CI90 = (0.25, 1.25)
 
 # Farm ground PV (`groundclf`, in Best since 2026-10-24): the error of its ratio of
 # mapped PV area to detected blob area is measured by a bootstrap over completely mapped
@@ -2023,7 +1765,6 @@ def _evidence_uncertainty(
     total_best: float,
     n_draws: int = EVIDENCE_N_DRAWS,
     seed: int = EVIDENCE_DRAWS_SEED,
-    extrapolation_ci90: tuple[float, float] = OUTDOMAIN_EXTRAPOLATION_CI90,
     ground: dict | None = None,
     roofclf_probability: bool = False,
 ) -> dict:
@@ -2051,9 +1792,7 @@ def _evidence_uncertainty(
       factors`). Already includes its own kWp uncertainty, so those components are NOT
       multiplied by the kWp factors again.
     - **The coverage ratio's quadrat-resampling error** (`_aligned_coverage_factors`), on
-      all four roofclf-based components, correlated across them.
-    - **The out-of-domain extrapolation** (`OUTDOMAIN_EXTRAPOLATION_CI90`), a stated
-      judgement, on that one component only.
+      both roofclf-based components, correlated across them.
     - **Farm ground PV** (`small_ground`, `ground` = its ratio, bootstrap replicates and
       number of mapped farm areas): the module-constant draw, times the bootstrap over farm
       areas when there are `GROUND_MIN_AREAS` or more, else `GROUND_JUDGEMENT_CI90`.
@@ -2110,8 +1849,8 @@ def _evidence_uncertainty(
     cov: dict[str, np.ndarray] = {}
     cov_meta: dict[str, dict] = {}
     missing: list[str] = []
-    for key in ("small_low", "small_central", "small_outdomain", "ge400_roof"):
-        # A component the atlas was never given (no `--sub400-outdomain-cells`, say)
+    for key in ("small_central", "ge400_roof"):
+        # A component the atlas was never given (no roofclf half, say)
         # contributes exactly zero MWp, so its coverage-ratio bootstrap cannot move the
         # published interval -- asking for it would only warn about a calibration nothing
         # in the number depends on.
@@ -2125,8 +1864,6 @@ def _evidence_uncertainty(
         else:
             cov_meta[key] = info
 
-    rng = np.random.default_rng(seed + 2)
-    f_extrap = rng.uniform(extrapolation_ci90[0], extrapolation_ci90[1], n_draws)
 
     f_ground, ground_interval = np.ones(n_draws), ""
     if components.get("small_ground"):
@@ -2155,22 +1892,20 @@ def _evidence_uncertainty(
     f_csp = np.exp(np.random.default_rng(seed + 4).normal(0.0, st.CSP_LOG_SD, n_draws))
 
     c = components
-    # Verified: hand-mapped OSM (exact areas, so only the conversion constant moves) plus
-    # the AND-gate's coverage-ratio-weighted small-PV.
+    # Verified: hand-mapped OSM (exact areas, so only the conversion constant moves).
     # A panel-traced ground polygon is module area (`osm_ground_traced`, part of the ground
     # figure): it takes the module draw.
     g_tr, gu_tr = c.get("osm_ground_traced", 0.0), c.get("osm_unmatched_ground_traced", 0.0)
     verified_parts = {
         "osm_roof": c["osm_roof"] * f_mod,
         "osm_ground": (c["osm_ground"] - g_tr) * f_land + g_tr * f_mod,
-        "small_low": c["small_low"] * cov["small_low"] * f_mod,
     }
     if c.get("osm_csp"):
         verified_parts["osm_csp"] = (c["osm_csp"] - c.get("osm_csp_area", 0.0)
                                      + c.get("osm_csp_area", 0.0) * f_csp)
     # Best: the OSM the model did not already find, its own >= 400 m2 estimate (roofclf
-    # in-domain, segmentation outside it, segmentation ground everywhere) and the two
-    # roofclf-alone small-PV components.
+    # in-domain, segmentation outside it, segmentation ground everywhere) and roofclf's
+    # small-PV density.
     best_parts = {
         "osm_unmatched_roof": c["osm_unmatched_roof"] * f_mod,
         "osm_unmatched_ground": (c["osm_unmatched_ground"] - gu_tr) * f_land + gu_tr * f_mod,
@@ -2179,13 +1914,6 @@ def _evidence_uncertainty(
         "seg_ground": c["seg_ground"] * f_seg["est_mwp_rc_ground"],
         "small_central": c["small_central"] * cov["small_central"] * f_mod,
     }
-    # Only carried when the out-of-domain extrapolation was actually supplied: a zero
-    # component would otherwise publish an empty slice, an all-zero table column and a
-    # legend key for a quantity this atlas does not report.
-    if c["small_outdomain"]:
-        best_parts["small_outdomain"] = (
-            c["small_outdomain"] * cov["small_outdomain"] * f_mod * f_extrap
-        )
     # Farm ground PV is traced around its panels, so it is module area and shares the
     # module draw with every other module-area component.
     if c.get("small_ground"):
@@ -2194,7 +1922,7 @@ def _evidence_uncertainty(
         best_parts["osm_unmatched_csp"] = (c["osm_unmatched_csp"] - c.get("osm_unmatched_csp_area", 0.0)
                                            + c.get("osm_unmatched_csp_area", 0.0) * f_csp)
 
-    v_point = sum(components.get(k, 0.0) for k in ("osm_roof", "osm_ground", "small_low", "osm_csp"))
+    v_point = sum(components.get(k, 0.0) for k in ("osm_roof", "osm_ground", "osm_csp"))
     b_point = sum(components[k] for k in best_parts)
     floor_offset = total_best - b_point
     for name, point, target in (
@@ -2216,20 +1944,11 @@ def _evidence_uncertainty(
     n_below = int((b_draws < v_draws).sum())
     b_draws = np.maximum(b_draws, v_draws)
 
-    # The Best interval WITHOUT the extrapolation judgement, so its contribution is visible
-    # rather than baked in: same draws, that one component held at its point value.
-    b_draws_no_extrap = (
-        sum(v for k, v in best_parts.items() if k != "small_outdomain")
-        + c["small_outdomain"] * cov["small_outdomain"] * f_mod
-        + floor_offset
-    )
-
     return {
         "n_draws": n_draws,
         "ci_pct": list(cc.CI_PCT),
         "mwp_verified_ci": _ci(v_draws),
         "mwp_best_ci": _ci(b_draws),
-        "mwp_best_ci_without_extrapolation": _ci(np.maximum(b_draws_no_extrap, v_draws)),
         "best_floor_offset_mwp": round(float(floor_offset), 1),
         "n_draws_best_below_verified": n_below,
         "components": {
@@ -2243,7 +1962,6 @@ def _evidence_uncertainty(
         "coverage_bootstrap_missing": missing,
         "kwp_module_ci90": list(cc.KWP_MODULE_CI90),
         "kwp_land_ci90": list(cc.KWP_LAND_CI90),
-        "outdomain_extrapolation_ci90": list(extrapolation_ci90),
         "small_ground_interval": ground_interval,
         "ground_judgement_ci90": list(GROUND_JUDGEMENT_CI90),
         "csp_log_sd": st.CSP_LOG_SD,
@@ -2365,8 +2083,6 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
          total("osm_unmatched_roof", "osm_unmatched_ground", "osm_unmatched_csp")
          + float(best_floor_offset or 0.0)),
         ("TerraMind segmentation of large arrays", total("seg_roof_outdomain", "seg_ground")),
-        ("roofclf and SPPI agreeing, extrapolated beyond the calibrated density range",
-         total("small_outdomain")),
         ("the farm ground-PV detector (arrays beside fields, below 400 m&sup2;)",
          total("small_ground")),
     ]
@@ -2398,7 +2114,7 @@ def _composition_note(cfg, components: dict, best_floor_offset: float,
 
 
 def _confidence_html(
-    cfg, *, total_best: float, best_ci: list, has_extrapolation: bool,
+    cfg, *, total_best: float, best_ci: list,
     has_quadrat_bootstrap: bool, n_calib_boxes: int, n_calib_rule1: int,
     ground_interval: str = "", roofclf_probability: bool = False,
     kwp_module_ci90: list | None = None, kwp_land_ci90: list | None = None,
@@ -2419,7 +2135,6 @@ def _confidence_html(
     - the quadrat-resampling bullet on `has_quadrat_bootstrap`, because a country whose
       coverage ratio was fitted some other way (Germany, against its register) has no
       quadrat composition to resample and the bullet would describe nothing;
-    - the extrapolation bullet on `has_extrapolation`, as before;
     - the purposive-sampling and Rule-1-epoch bullets, and the ground-truth paragraph, on
       actually having quadrats the page's figures USE (`used: false` in the config marks a
       registered area nothing draws on yet, which gets its own, weaker sentence);
@@ -2476,11 +2191,6 @@ def _confidence_html(
             "shift with other areas. It carries a judgement instead, a factor of two either "
             "way at 90%, which widens the range rather than leaving its least-tested part "
             "out.")
-    if has_extrapolation:
-        inside.append(
-            "<b>An allowance for a rural extrapolation.</b> This build includes a rough "
-            "estimate of small rooftop PV in cells outside the calibrated density range, "
-            "and that extrapolation's own uncertainty is folded into the range.")
 
     outside = []
     if n_calib_boxes > 0:
@@ -2733,10 +2443,9 @@ def atlas_name(country: str) -> str:
 def build_evidence_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
-    low_buildings_path: Path | None = None, central_buildings_path: Path | None = None,
+    central_buildings_path: Path | None = None,
     out: Path | None = None, zoom_out_frac: float = 0.0, labels_dir: Path = Path("data/labels"),
     ge400_roof_buildings_path: Path | None = None,
-    sub400_outdomain_buildings_path: Path | None = None,
     pose_summary_csv: Path | None = None,
     pose_history_note: str = "", pose_data_note: str = "",
     imagery_date_range: str | None = None,
@@ -2750,23 +2459,20 @@ def build_evidence_atlas(
     fetch_irradiance: bool = True,
 ) -> Path:
     """Two-tier evidence atlas -- promoted 2026-08-01 to the project's default capacity
-    atlas, superseding `build_sub400_bracket_atlas`'s Low/Central/High/All-PV framing
-    (kept above for reference; no longer the CLI's default path). A third tier, Ceiling
+    atlas, superseding the sub-400 m2 bracket atlas's Low/Central/High/All-PV framing
+    (removed 2026-11-13). A third tier, Ceiling
     (roofclf flagged nationwide at a flat 0.5 precision weight, restricted only to
     buildings with no existing large detection nearby, plus every large installation
     already known), was removed 2026-08-06 at the owner's request: a lower deployment
     threshold from a later roofclf refit roughly doubled it (37,173 -> 79,221 MWp small-PV
     component) with no accompanying validation, so it had stopped being a meaningful
-    bound and the owner judged it not worth carrying forward. `high_buildings_path` /
-    `roofclf_capacity.incremental_capacity` are unaffected -- `build_sub400_bracket_atlas`
-    still uses them for its own High view. Each remaining tier is a different STANDARD OF
-    PROOF, not a different point estimate on the same scale:
+    bound and the owner judged it not worth carrying forward. Each remaining tier is a
+    different STANDARD OF PROOF, not a different point estimate on the same scale:
 
     - **Verified**: every PV installation hand-mapped in OpenStreetMap (`osm_solar_path`,
       any placement, converted at the module constant for rooftop and the land constant
-      for everything else), plus sub-400 m2 buildings where roofclf AND SPPI
-      independently agree (`low_buildings_path`). No model detection enters this tier by
-      itself.
+      for everything else). No model detection enters this tier. (Until 2026-11-13 it
+      also took sub-400 m2 buildings where roofclf and SPPI agreed; owner, removed.)
     - **Best**: the hand-mapped population minus what the model already found -- so the
       two don't double count, `candidates_path`'s `osm_matched_id` marks the overlap --
       plus the model's own recall-corrected >= 400 m2 detections (`grid.est_mwp_rc`,
@@ -2790,26 +2496,9 @@ def build_evidence_atlas(
     behavior (segmentation's own `est_mwp_rc`, roof+ground combined, unchanged) for AOIs
     with no roofclf national scoring yet.
 
-    **`sub400_outdomain_buildings_path` (added 2026-08-11): roofclf-AND-SPPI agreement
-    outside the density-calibrated domain, folded into Best only.** A manual JOSM
-    validation pass for cells outside the calibrated domain (drawn to test whether that
-    domain could be widened with evidence) turned out to be blocked by reference imagery
-    too old to confirm or refute recently-installed small PV -- see
-    `docs/methods/roofclf-national-validation.md`. Requiring two independently-built
-    detectors (roofclf, a supervised classifier; SPPI, a zero-training spectral index) to
-    agree is used as a substitute standard of evidence for exactly the cells that cannot
-    currently be checked by eye. `sub400_capacity.out_of_domain_and_gate_capacity`
-    produces this path's buildings; its own docstring states the caveat that must travel
-    with this number: EVERY out-of-domain cell nationally sits outside the calibrated
-    density band in one direction (measured 2026-08-11: all 4,300 below, none above), so
-    this is a strict extrapolation of a fit measured on 13 urban/semi-urban quadrats
-    across the rural remainder of the country, not a modest widening of it. It is added
-    to `mwp_best` alongside `small_central`, marked separately in the map/totals as
-    `small_outdomain` (never merged into `small_central` itself) and cells it touches get
-    their own `is_extended` flag distinct from `in_domain` -- a reader must be able to
-    tell "calibrated" and "extrapolated" apart, the same reasoning that keeps Verified
-    and Best as separate tiers in the first place. Optional; omitting it reproduces the
-    pre-2026-08-11 Best-estimate total exactly.
+    **SPPI left the atlas 2026-11-13 (owner).** The roofclf-AND-SPPI floor that Verified
+    carried (Pakistan's 3,500.7 MWp) and its never-published out-of-domain extrapolation
+    (`--sub400-outdomain-cells`) are no longer inputs; `sub400-capacity` still writes them.
 
     Ported from `scripts/build_pakistan_pv_evidence_overview.py` (see that file's git
     history for the full derivation and the 2026-08-01 redefinition of Ceiling) with two
@@ -3108,31 +2797,14 @@ def build_evidence_atlas(
         ) / 1000,
     }
 
-    # Both absent = a country with no mapped calibration quadrats, so no `roofclf` half
-    # (Germany, Gujarat). The atlas is then segmentation-only: Verified degrades to the
-    # hand-mapped OSM population alone, Best to that plus the >= 400 m2 detections. Same
-    # "component absent rather than zero" handling the out-of-domain extrapolation gets --
-    # `_evidence_uncertainty`'s `cov` loop already skips the bootstrap for any component
-    # contributing 0 MWp, so the published interval stays honest.
-    by_low = (
-        _join_buildings_to_grid_cells(
-            gpd.read_parquet(low_buildings_path), "est_kwp_sub400_and_gate", grid
-        ) / 1000.0
-        if low_buildings_path is not None
-        else pd.Series(dtype=float)
-    )
+    # Absent = a country with no `roofclf` half: the atlas is then segmentation-only, Best
+    # the hand-mapped OSM plus the >= 400 m2 detections. `_evidence_uncertainty`'s `cov`
+    # loop skips the bootstrap for any component contributing 0 MWp.
     by_central = (
         _join_buildings_to_grid_cells(
             gpd.read_parquet(central_buildings_path), "est_kwp_sub400", grid
         ) / 1000.0
         if central_buildings_path is not None
-        else pd.Series(dtype=float)
-    )
-    by_outdomain = (
-        _join_buildings_to_grid_cells(
-            gpd.read_parquet(sub400_outdomain_buildings_path), "est_kwp_sub400_outdomain", grid
-        ) / 1000.0
-        if sub400_outdomain_buildings_path is not None
         else pd.Series(dtype=float)
     )
 
@@ -3172,22 +2844,15 @@ def build_evidence_atlas(
         osm_by_cell.get("osm_mwp_unmatched", pd.Series(dtype=float))
     ).fillna(0.0)
     grid["osm_n"] = grid["cell"].map(osm_by_cell.get("osm_n", pd.Series(dtype=float))).fillna(0.0)
-    grid["small_low"] = grid["cell"].map(by_low).fillna(0.0)
     grid["small_central"] = grid["cell"].map(by_central).fillna(0.0)
-    grid["small_outdomain"] = grid["cell"].map(by_outdomain).fillna(0.0)
     grid["small_ground"] = grid["cell"].map(by_ground).fillna(0.0)
     # Solar thermal power plants, already inside `osm_mwp`/`osm_mwp_unmatched`: carried apart
     # for the map layer, the hover and the tile.
     grid["csp_mwp"] = grid["cell"].map(
         in_grid_osm[in_grid_osm["csp"].astype(bool)].groupby("cell")["kwp"].sum() / 1000.0
     ).fillna(0.0)
-    grid["in_domain"] = grid["cell"].isin(by_low.index) | grid["cell"].isin(by_central.index)
+    grid["in_domain"] = grid["cell"].isin(by_central.index)
     n_domain_cells = int(grid["in_domain"].sum())
-    # Distinct from `in_domain`: these cells carry an EXTRAPOLATED small-PV contribution
-    # (out_of_domain_and_gate_capacity, no calibration quadrat in their density range),
-    # never a calibrated one -- must render differently on the map, not folded into the
-    # same "checked" visual as in_domain.
-    grid["is_extended"] = grid["cell"].isin(by_outdomain.index)
 
     # roofclf replaces segmentation's rooftop estimate inside the density-matched domain
     # (see docstring); outside it, segmentation's own est_mwp_rc_roof is the only
@@ -3251,10 +2916,9 @@ def build_evidence_atlas(
         )
     grid["mwp_large"] = grid["mwp_large_roof"] + grid["seg_ground_mwp"]
 
-    grid["mwp_verified"] = grid["osm_mwp"] + grid["small_low"]
+    grid["mwp_verified"] = grid["osm_mwp"]
     grid["mwp_best"] = (
-        grid["osm_mwp_unmatched"] + grid["mwp_large"] + grid["small_central"] + grid["small_outdomain"]
-        + grid["small_ground"]
+        grid["osm_mwp_unmatched"] + grid["mwp_large"] + grid["small_central"] + grid["small_ground"]
     )
     # Best is "the highest defensible figure" -- it must never read below Verified in the
     # same cell. It can, before this floor: Best drops a cell's matched-OSM value in favor
@@ -3285,7 +2949,7 @@ def build_evidence_atlas(
             n_cells_best_floored, len(grid),
         )
     # Carried per cell so the map's hover can account for Best in full. The two
-    # size-domain rows it used to show (`mwp_large`, `small_central`+`small_outdomain`)
+    # size-domain rows it used to show (`mwp_large`, `small_central`)
     # are only the MODEL's share: Best also folds in hand-mapped OSM the model never
     # found, plus this floor lift. The national KPI tiles gained a third tile for exactly
     # this on 2026-08-14 (now "Added from OpenStreetMap", 2026-11-02); the per-cell hover
@@ -3297,10 +2961,8 @@ def build_evidence_atlas(
     cells = [
         [round(float(r.lon0), 3), round(float(r.lat0), 3),
          round(float(r.mwp_verified), 3), round(float(r.mwp_best), 3),
-         round(float(r.osm_mwp), 3), int(r.osm_n),
-         round(float(r.small_low), 3), round(float(r.small_central), 3),
+         round(float(r.osm_mwp), 3), int(r.osm_n), round(float(r.small_central), 3),
          round(float(r.mwp_large), 3), int(r.in_domain), int(r.n_pv_buildings),
-         round(float(r.small_outdomain), 3), int(r.is_extended),
          round(float(r.osm_mwp_unmatched), 3), round(float(r.best_floor_lift), 3),
          int(bool(r.model_covered)), round(float(r.small_ground), 3), round(float(r.csp_mwp), 3)]
         for r in grid.itertuples()
@@ -3338,7 +3000,7 @@ def build_evidence_atlas(
         reg_regions = _page_regions(aoi, regions_path)
         keep = [
             "mwp_verified", "mwp_best", "osm_mwp", "mwp_large",
-            "small_low", "small_central", "small_outdomain", "small_ground", "csp_mwp",
+            "small_central", "small_ground", "csp_mwp",
         ]
         pts2 = gpd.GeoDataFrame(
             grid[keep], geometry=gpd.points_from_xy(grid.lon_center, grid.lat_center), crs=grid.crs,
@@ -3353,9 +3015,7 @@ def build_evidence_atlas(
                 "mwp_best": round(float(row["mwp_best"]), 1),
                 "osm_mwp": round(float(row["osm_mwp"]), 1),
                 "mwp_large": round(float(row["mwp_large"]), 1),
-                "small_low": round(float(row["small_low"]), 1),
                 "small_central": round(float(row["small_central"]), 1),
-                "small_outdomain": round(float(row["small_outdomain"]), 1),
                 "small_ground": round(float(row["small_ground"]), 1),
                 "csp_mwp": round(float(row["csp_mwp"]), 1),
                 "nb": int(r.n_pv_buildings),
@@ -3390,9 +3050,7 @@ def build_evidence_atlas(
         "ge400_roof": float(grid.loc[_in_ge400, "mwp_large_roof"].sum()),
         "seg_roof_outdomain": float(grid.loc[~_in_ge400, "mwp_large_roof"].sum()),
         "seg_ground": float(grid.seg_ground_mwp.sum()),
-        "small_low": float(grid.small_low.sum()),
         "small_central": float(grid.small_central.sum()),
-        "small_outdomain": float(grid.small_outdomain.sum()),
         "small_ground": float(grid.small_ground.sum()),
     }
     central_summary = _capacity_summary_for(
@@ -3410,13 +3068,7 @@ def build_evidence_atlas(
         density_dir=density_dir, meta=meta, kwp_mod=kwp_mod, kwp_land=kwp_land,
         components=unc_components,
         boots={
-            "small_low": _capacity_summary_for(
-                low_buildings_path, "domain_restricted_and_gate_sub400_capacity"
-            ).get("coverage_ratio_bootstrap", {}),
             "small_central": central_summary.get("coverage_ratio_bootstrap", {}),
-            "small_outdomain": _capacity_summary_for(
-                sub400_outdomain_buildings_path, "out_of_domain_and_gate_sub400_capacity"
-            ).get("coverage_ratio_bootstrap", {}),
             "ge400_roof": ge400_summary.get("coverage_ratio_bootstrap", {}),
         },
         total_verified=total_verified, total_best=total_best,
@@ -3454,9 +3106,7 @@ def build_evidence_atlas(
             "osm_mwp_lt400": round(osm_mwp_lt400, 1),
             "osm_mwp_ge400": round(osm_mwp_ge400, 1),
             "n_osm_matched": int(osm["matched"].sum()),
-            "small_low": round(float(grid.small_low.sum()), 1),
             "small_central": round(float(grid.small_central.sum()), 1),
-            "small_outdomain": round(float(grid.small_outdomain.sum()), 1),
             # Standard on every page: the value where the farm ground-PV detector ran,
             # None (shown as "not measured", never as 0) where it did not.
             "small_ground": (round(float(grid.small_ground.sum()), 1)
@@ -3468,8 +3118,8 @@ def build_evidence_atlas(
             "csp_mwp": round(float(grid.csp_mwp.sum()), 1),
             "csp_n": int(in_grid_osm["csp"].astype(bool).sum()),
             "csp_status": csp_status,
-            # Rooftop PV below 400 m2 exists only where a roofclf half ran; without one the
-            # small_* figures above are 0.0 by construction, and the page says "not measured".
+            # Rooftop PV below 400 m2 exists only where a roofclf half ran; without one
+            # small_central above is 0.0 by construction, and the page says "not measured".
             "small_rooftop_status": {"measured": central_buildings_path is not None},
             "pv_buildings": int(grid.n_pv_buildings.sum()),
             "n_cells": int(len(grid)),
@@ -3477,7 +3127,6 @@ def build_evidence_atlas(
             # the outlines the page draws (absent when the AOI has no region layer).
             **cell_cover,
             "n_domain_cells": n_domain_cells,
-            "n_extended_cells": int(grid.is_extended.sum()),
             "n_cells_best_floored": n_cells_best_floored,
             # How OSM was reconciled with the satellite figures (2026-10-20 fix); a page
             # built with `legacy_osm_addition` says so here rather than looking current.
@@ -3549,8 +3198,8 @@ def build_evidence_atlas(
     # not measured rather than letting a short bar read as a small market.
     size_data = _size_distribution_data(
         aoi, density_dir, osm_solar_path, candidates_path,
-        low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
-        sub400_outdomain_buildings_path, legacy_osm_addition=legacy_osm_addition,
+        central_buildings_path, ge400_roof_buildings_path,
+        legacy_osm_addition=legacy_osm_addition,
         include_offgrid_osm=include_offgrid_osm, labels_dir=labels_dir,
     )
     # Farm ground PV is a ratio estimate on blob area: it has a total but no
@@ -3606,7 +3255,6 @@ def build_evidence_atlas(
         "__CONFIDENCE_HTML__": _confidence_html(
             atlas_config.load(aoi),
             total_best=total_best, best_ci=uncertainty["mwp_best_ci"],
-            has_extrapolation=int(grid["is_extended"].sum()) > 0,
             has_quadrat_bootstrap=bool(uncertainty.get("coverage_bootstrap")),
             n_calib_boxes=data["totals"]["n_calib_boxes"],
             n_calib_rule1=data["totals"]["n_calib_rule1"],
@@ -3622,10 +3270,8 @@ def build_evidence_atlas(
 
     out.write_text(_assert_no_placeholders(html, out.name))
     log.info(
-        "Wrote evidence atlas (verified %.0f / best %.0f MWp, "
-        "%d/%d domain cells, %d extended-only cells contributing %.0f MWp) -> %s",
-        total_verified, total_best, n_domain_cells, len(grid),
-        int(grid.is_extended.sum()), float(grid.small_outdomain.sum()), out,
+        "Wrote evidence atlas (verified %.0f / best %.0f MWp, %d/%d domain cells) -> %s",
+        total_verified, total_best, n_domain_cells, len(grid), out,
     )
     return out
 
@@ -3699,9 +3345,8 @@ def size_totals(size: dict, ground_total: float) -> dict:
 def _size_distribution_data(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
-    low_buildings_path: Path | None = None, central_buildings_path: Path | None = None,
+    central_buildings_path: Path | None = None,
     ge400_roof_buildings_path: Path | None = None,
-    sub400_outdomain_buildings_path: Path | None = None,
     legacy_osm_addition: bool = False,
     include_offgrid_osm: bool = False,
     labels_dir: Path = Path("data/labels"),
@@ -3717,7 +3362,7 @@ def _size_distribution_data(
     a comparison; the caller should treat a mismatch against a published atlas as a
     bug, not a footnote).
 
-    Six populations carry every MWp shown, each with a real per-object size field --
+    Five populations carry every MWp shown, each with a real per-object size field --
     exactly `build_evidence_atlas`'s `best_parts`:
 
     - segmentation candidates, ground-mount placement, no domain restriction
@@ -3731,19 +3376,11 @@ def _size_distribution_data(
       see `parcel_label_composition`. 0 under a roof-only calibration table.
     - `central_buildings_path` (roofclf alone, < 400 m2, in-domain). Same split, via
       `est_kwp_sub400_ground`.
-    - `sub400_outdomain_buildings_path` (roofclf+SPPI agreement, < 400 m2,
-      extrapolated outside the domain) -- optional, matches `earthpv atlas`'s own
-      `--sub400-outdomain-cells`; rendered as a visually distinct slice. Not split by
-      the parcel-label ground share (this component doesn't track it; it is also
-      unpublished as of 2026-08-15, see CLAUDE.md's "Density stage").
     - hand-mapped OSM installations the model never detected
       (`osm_unmatched_roof`/`osm_unmatched_ground`).
 
-    `low_buildings_path` (the AND-gate population) is NOT one of those six and is
-    never shown as its own bin -- it never feeds Best estimate on its own (see
-    `build_evidence_atlas`'s docstring). It is still a REQUIRED input here, for one
-    narrow purpose: `build_evidence_atlas` floors Best at Verified (`osm_mwp +
-    small_low`) *per cell*, because a matched OSM installation's own bin-averaged
+    `build_evidence_atlas` floors Best at Verified (`osm_mwp`, plus judged parks) *per
+    cell*, because a matched OSM installation's own bin-averaged
     precision/recall correction can undershoot its true mapped area (Quaid-e-Azam
     Solar Park read Verified 866 MWp against Best's pre-fix 243 MWp in exactly this
     way). Skipping that floor here would silently undercount this page's total
@@ -3752,8 +3389,9 @@ def _size_distribution_data(
     country's largest OSM-matched ground-mount plants. Wherever the floor applies,
     the shortfall is attributed to that cell's own OSM-matched installations (weighted
     by their share of the cell's matched capacity, sized by their own true geodesic
-    area), or to its `low` buildings if a cell has no matched OSM at all -- so the
-    top-up lands in the size bin it actually belongs to rather than a flat correction.
+    area), so the top-up lands in the size bin it actually belongs to rather than a flat
+    correction. (Until 2026-11-13 the floor also held the roofclf+SPPI AND-gate
+    population, which took a cell's shortfall when it had no matched OSM.)
 
     Domain cells are derived from `ge400_roof_buildings_path` via
     `_join_buildings_to_grid_cells` (a fresh spatial join against THIS grid's own cell
@@ -3763,7 +3401,7 @@ def _size_distribution_data(
 
     **Every roofclf input is optional (2026-10-30)**, as it is for `build_evidence_atlas`:
     a segmentation-only country has no ge400 domain, so every rooftop candidate is
-    `seg_roof_outdomain`, and the floor is Verified = OSM alone. Its bins below 400 m2
+    `seg_roof_outdomain`. Its bins below 400 m2
     then hold only OSM-mapped installations and the few small arrays segmentation
     outlines; `totals.small_rooftop_status` says so on the page, never this function.
     `include_offgrid_osm` adds the same OSM-only cells `build_evidence_atlas` adds, so
@@ -3794,7 +3432,6 @@ def _size_distribution_data(
     ground_mwp = np.zeros(n_bins)
     roof_n = np.zeros(n_bins)
     ground_n = np.zeros(n_bins)
-    extrap_mwp = np.zeros(n_bins)  # the sub-400 out-of-domain slice, WITHIN roof_mwp
 
     def _size_bin_add(area_v: np.ndarray, mwp_v: np.ndarray, roof: bool,
                       n_weight: np.ndarray | None = None) -> None:
@@ -3957,27 +3594,6 @@ def _size_distribution_data(
             unbinned_ground += float(central_ground_kwp.sum()) / 1000.0
         central_by_cell = _join_buildings_to_grid_cells(central, "est_kwp_sub400", grid) / 1000.0
 
-    # --- roofclf+SPPI, < 400 m2, extrapolated outside the domain --------------------
-    outd_by_cell = pd.Series(dtype=float)
-    if sub400_outdomain_buildings_path is not None and Path(sub400_outdomain_buildings_path).exists():
-        outd = gpd.read_parquet(sub400_outdomain_buildings_path)
-        if not outd.empty:
-            s, n = _size_bin_sum(
-                outd["roof_area_m2"].to_numpy(float),
-                outd["est_kwp_sub400_outdomain"].to_numpy(float) / 1000.0, edges,
-            )
-            roof_mwp[:] += s; roof_n[:] += n
-            extrap_mwp[:] += s
-            outd_by_cell = _join_buildings_to_grid_cells(outd, "est_kwp_sub400_outdomain", grid) / 1000.0
-
-    # --- AND-gate ("low"), < 400 m2, in-domain -- NEVER shown, floor-check input only
-    low = (gpd.read_parquet(low_buildings_path)
-           if low_buildings_path is not None else gpd.GeoDataFrame())
-    low_by_cell = (
-        _join_buildings_to_grid_cells(low, "est_kwp_sub400_and_gate", grid) / 1000.0
-        if not low.empty else pd.Series(dtype=float)
-    )
-
     # --- hand-mapped OSM: counted feeds Best directly; the rest feeds the floor --------
     # Off-grid OSM is in no total either, unless `include_offgrid_osm` gave it a cell.
     unmatched = osm_all.loc[osm_all["counted"] & osm_all["cell"].notna()]
@@ -4013,24 +3629,14 @@ def _size_distribution_data(
         large_roof = _get(ge400_by_cell, c) if c in ge400_cells else _get(seg_roof_all_by_cell, c)
         best_raw = (
             _get(osm_unmatched_by_cell, c) + large_roof + _get(seg_ground_by_cell, c)
-            + _get(central_by_cell, c) + _get(outd_by_cell, c)
+            + _get(central_by_cell, c)
         )
-        verified = _get(osm_all_by_cell, c) + _get(low_by_cell, c) + _get(judged_by_cell, c)
+        verified = _get(osm_all_by_cell, c) + _get(judged_by_cell, c)
         sf = verified - best_raw
         if sf > 1e-6:
             shortfalls[c] = sf
 
     matched_joined = osm_joined.loc[~osm_joined["counted"]]
-    low_joined = pd.DataFrame()
-    if not low.empty:
-        # Drop `low`'s own stale `cell` column first -- keeping it collides with
-        # grid's `cell` in the join output (silently renamed to `cell_left`/
-        # `cell_right` by geopandas rather than raising), the exact string-id-vs-
-        # spatial-join mismatch `_join_buildings_to_grid_cells` exists to avoid.
-        low_pts = low.drop(columns=["cell"]).copy()
-        low_pts["geometry"] = low_pts.geometry.representative_point()
-        low_joined = gpd.sjoin(low_pts, grid[["cell", "geometry"]], predicate="within", how="left")
-        low_joined = low_joined.dropna(subset=["cell"])
 
     unattributed = 0.0
     for c, sf in shortfalls.items():
@@ -4046,25 +3652,13 @@ def _size_distribution_data(
                 else:
                     ground_mwp[idx] += amt
             continue
-        sub2 = low_joined.loc[low_joined["cell"] == c] if not low_joined.empty else low_joined
-        if not sub2.empty:
-            wsum = float(sub2["est_kwp_sub400_and_gate"].sum())
-            if "roof_area_m2" not in sub2.columns:
-                unbinned_roof += sf
-                continue
-            for _, row in sub2.iterrows():
-                share = (row["est_kwp_sub400_and_gate"] / wsum) if wsum > 0 else 1.0 / len(sub2)
-                amt = sf * share
-                idx = int(np.digitize([row["roof_area_m2"]], edges[1:-1])[0])
-                roof_mwp[idx] += amt
-            continue
         unattributed += sf
 
     if unattributed:
         log.warning(
             "Size-distribution atlas: %.1f MWp of the Best-estimate floor could not be "
-            "attributed to a specific installation (no matched OSM or AND-gate building "
-            "in the affected cell) -- added to the largest ground-mount bin instead.",
+            "attributed to a specific installation (no matched OSM installation in the "
+            "affected cell) -- added to the largest ground-mount bin instead.",
             unattributed,
         )
         ground_mwp[-1] += unattributed
@@ -4078,7 +3672,6 @@ def _size_distribution_data(
             "label": labels[i],
             "roof_mwp": round(float(roof_mwp[i]), 2),
             "ground_mwp": round(float(ground_mwp[i]), 2),
-            "roof_extrapolated_mwp": round(float(extrap_mwp[i]), 2),
             "roof_n": int(round(roof_n[i])),
             "ground_n": int(round(ground_n[i])),
         }
@@ -4102,8 +3695,7 @@ def _size_distribution_data(
 def build_size_distribution_atlas(
     aoi: str, density_dir: Path,
     osm_solar_path: Path, candidates_path: Path,
-    low_buildings_path: Path, central_buildings_path: Path, ge400_roof_buildings_path: Path,
-    sub400_outdomain_buildings_path: Path | None = None,
+    central_buildings_path: Path, ge400_roof_buildings_path: Path,
     out: Path | None = None,
 ) -> Path:
     """Standalone size-distribution page. See `_size_distribution_data` for what's
@@ -4111,8 +3703,7 @@ def build_size_distribution_atlas(
     title = atlas_config.load(aoi).title
     size_data = _size_distribution_data(
         aoi, density_dir, osm_solar_path, candidates_path,
-        low_buildings_path, central_buildings_path, ge400_roof_buildings_path,
-        sub400_outdomain_buildings_path,
+        central_buildings_path, ge400_roof_buildings_path,
     )
     data = {"bins": size_data["bins"], "totals": size_data["totals"]}
 

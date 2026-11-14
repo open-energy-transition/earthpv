@@ -280,8 +280,8 @@ round of labels. This section is the technical complement: what actually reads w
 by stage, from raw Sentinel-2 pixels to the two published products. Each box below is a
 real module or CLI stage; the [Setup New Country](reproduce.md) runbook runs them in this order.
 
-![How raw data becomes a mapping lead and a capacity number: Sentinel-2 composites and OpenStreetMap labels train a TerraMind checkpoint; five inference instruments (segmentation, the fraction head, glint, SPPI, roofclf) read the same imagery; postprocess, density and the sub-400 square metre bracket combine their outputs; a plausibility gate checks the capacity numbers; and four outputs follow: MapRoulette leads back to OpenStreetMap, a capacity atlas, a PyPSA-Earth grid CSV, and an evidence atlas.](assets/figures/architecture.svg#only-light)
-![How raw data becomes a mapping lead and a capacity number: Sentinel-2 composites and OpenStreetMap labels train a TerraMind checkpoint; five inference instruments (segmentation, the fraction head, glint, SPPI, roofclf) read the same imagery; postprocess, density and the sub-400 square metre bracket combine their outputs; a plausibility gate checks the capacity numbers; and four outputs follow: MapRoulette leads back to OpenStreetMap, a capacity atlas, a PyPSA-Earth grid CSV, and an evidence atlas.](assets/figures/architecture.dark.svg#only-dark)
+![How raw data becomes a mapping lead and a capacity number: Sentinel-2 composites and OpenStreetMap labels train a TerraMind checkpoint; four inference instruments (segmentation, the fraction head, glint, roofclf) read the same imagery; postprocess, density and the sub-400 square metre capacity step combine their outputs; a plausibility gate checks the capacity numbers; and four outputs follow: MapRoulette leads back to OpenStreetMap, a capacity atlas, a PyPSA-Earth grid CSV, and an evidence atlas.](assets/figures/architecture.svg#only-light)
+![How raw data becomes a mapping lead and a capacity number: Sentinel-2 composites and OpenStreetMap labels train a TerraMind checkpoint; four inference instruments (segmentation, the fraction head, glint, roofclf) read the same imagery; postprocess, density and the sub-400 square metre capacity step combine their outputs; a plausibility gate checks the capacity numbers; and four outputs follow: MapRoulette leads back to OpenStreetMap, a capacity atlas, a PyPSA-Earth grid CSV, and an evidence atlas.](assets/figures/architecture.dark.svg#only-dark)
 
 ### Raw data, once
 
@@ -298,7 +298,7 @@ Three inputs, each reused everywhere downstream rather than re-fetched per stage
 - **VIDA / Overture buildings** -- imagery-derived footprints (`buildings.py`), which
   matter because they include small, unmapped structures OpenStreetMap does not yet
   have. Buildings feed three downstream consumers directly: `postprocess`'s building
-  join, `roofclf`'s per-building features, and the sub-400 m² bracket's domain
+  join, `roofclf`'s per-building features, and the sub-400 m² capacity step's domain
   restriction. The diagram omits those three arrows to stay legible; the dependency is
   real in all three places.
 
@@ -310,7 +310,7 @@ monitors validation mIoU. See [Detection model](methods/detection.md) for the mo
 internals and the two invariants (chip jitter, Hann-tapered overlap-add) that keep
 inference from tiling into a grid of false positives.
 
-From there, five instruments can read the same Sentinel-2 composites, but only two of
+From there, four instruments can read the same Sentinel-2 composites, but only two of
 them are the **main workflow** -- everything else is optional, kept as evidence, a
 secondary product, or a documented negative result:
 
@@ -318,11 +318,10 @@ secondary product, or a documented negative result:
 | --- | --- | --- | --- |
 | **Segmentation raster** (`infer`) | **Yes -- every mapping lead; all ground-mount capacity; rooftop &ge; 400 m² outside roofclf's calibrated cells** | Yes, the primary one | per-pixel PV probability; the only instrument with a polygon and a defended ≥ 400 m² floor |
 | **[roofclf](methods/roofclf.md)** | **Yes -- every rooftop < 400 m², plus rooftop &ge; 400 m² inside its calibrated cells, where it replaces segmentation** | No, a separate lightweight classifier | per-building "does this roof carry PV," trained on exhaustively mapped calibration quadrats |
-| **SPPI** (spectral PV probability index) | Partially -- cross-checks roofclf as an internal floor for the evidence atlas | No, a fixed spectral formula | a zero-training index, cross-validated against the same ground truth as roofclf |
 | **Glint matched filter** | Optional -- boosts the leads ranking only | No | specular-flash geometry consistent with one fixed panel plane; a physical corroboration, not a probability |
 | **Fraction head** | Optional, not promoted (see below) | Yes, a separately trained checkpoint | per-pixel PV *coverage fraction*; drops the polygon, aims at sub-400 m² signal a segmentation threshold cannot see |
 
-Glint and SPPI need no model fit at all. roofclf is trained, but on a different, much
+Glint needs no model fit at all. roofclf is trained, but on a different, much
 smaller, hand-labelled corpus (the calibration quadrats), not on the segmentation
 checkpoint. This matters for how much to trust agreement between instruments: two
 signals that share no training data corroborating each other is real evidence; two
@@ -330,8 +329,8 @@ heads of the same checkpoint agreeing is not.
 
 ### Two optional instruments never got promoted past "evidence"
 
-The fraction head and standalone SPPI are marked in the diagram as auxiliary: each
-carries real signal, but roofclf already does its job with a calibration measured on the
+The fraction head is marked in the diagram as auxiliary, and SPPI, a zero-training
+spectral index, is no longer drawn at all: each carries real signal, but roofclf already does its job with a calibration measured on the
 quadrats. Neither is part of the main workflow, and the main workflow does not need them
 to be:
 
@@ -346,11 +345,9 @@ to be:
   evaluation; roofclf reaches 0.879 on the full 27-quadrat set it is fitted on) and adds nothing as a
   roofclf feature, but an AND-gate (roofclf **and** SPPI agreeing) raises precision by
   4 points at matched recall in the three quadrats where roofclf alone overestimates.
-  That AND-gate is what [the evidence
-  atlas](#the-outputs-leads-the-evidence-atlas-and-what-else-comes-out) uses as an internal
-  floor so the headline figure never reads below what a person has actually mapped plus
-  that stricter population -- SPPI's one load-bearing role in the main workflow, short of
-  being a standalone instrument in it.
+  Until 2026-11-13 that AND-gate was an internal floor under [the evidence
+  atlas](#the-outputs-leads-the-evidence-atlas-and-what-else-comes-out)'s Verified tier;
+  the owner then took SPPI out of the atlases, and it remains a research instrument only.
 
 Glint is the one instrument in the "boosts only" lane: it can raise `rank_score`, never
 lower it, because a missing glint on a real array (bad viewing geometry, wrong season)
@@ -373,8 +370,8 @@ See [Solar glint](methods/glint.md) and [Panel pose from glint](results/pv-pose.
   wherever roofclf has been calibrated.
 - **`roof-classifier` → `roofclf-score-national` → `sub400-capacity`** fits `roofclf` on
   the calibration quadrats, scores every VIDA building nationally, then restricts to the
-  2,957 of 4,463 cells whose building density matches the quadrats and intersects
-  roofclf with SPPI, explicitly refusing to rescale that figure to a national total. It
+  2,957 of 4,463 cells whose building density matches the quadrats, explicitly refusing
+  to rescale that figure to a national total. It
   covers roofclf's **< 400 m² population**, a separate module (`sub400_capacity.py`) not
   merged into `density.py`.
 - **`ge400-roof-capacity`** applies the same domain restriction and coverage-ratio
@@ -403,10 +400,9 @@ the same underlying artifacts:
   **Best estimate**, this project's own highest defensible figure: hand-mapped OSM
   installations, plus segmentation's ground-mount detections, plus rooftop &ge; 400 m²
   from roofclf inside its calibrated cells and from segmentation elsewhere, plus
-  roofclf-alone density below 400 m², plus a smaller roofclf-and-SPPI extension outside
-  the calibrated cells -- OSM overlap removed rather than double-counted throughout, and
-  floored per cell at what a person has actually mapped plus the stricter
-  roofclf-and-SPPI agreement population. An earlier, looser tier,
+  roofclf-alone density below 400 m² -- OSM overlap removed rather than double-counted
+  throughout, and floored per cell at what a person has actually mapped (**Verified**, the
+  hand-mapped capacity alone). An earlier, looser tier,
   **Ceiling** (a flat-precision, uncalibrated upper bound), was removed on 2026-08-06: a
   later roofclf refit's lower deployment threshold roughly doubled it with no
   accompanying validation, so it had stopped being a meaningful bound.
@@ -416,7 +412,7 @@ the same underlying artifacts:
   [Calibration](methods/calibration.md).
 - **Optional extras, same artifacts, not required for the above**: the plain segmentation-
   only capacity atlas (`earthpv atlas` with no `--sub400-*` flags, what a country with no
-  mapped quadrats yet gets), the older Low/Central/High/All-PV bracket atlas, the
+  mapped quadrats yet gets), the
   rooftop potential/saturation atlas, and the retired config-driven national dashboard
   bundle (`earthpv dashboard`, kept working but no longer built by this site -- Results
   links directly to each standalone artifact page instead).
@@ -429,7 +425,7 @@ the same underlying artifacts:
 | Chips, train, infer | Yes -- the segmentation checkpoint every polygon comes from | `chips.py`, `train.py`, `infer.py` | [Detection model](methods/detection.md) |
 | postprocess, export | Yes -- every mapping lead, any size | `postprocess.py`, `export.py` | [Segmentation & the building map](methods/segmentation.md) |
 | density, calibration | Yes -- segmentation's ≥ 400 m² total, rooftop and ground-mount | `density.py`, `capacity_calibration.py` | [Capacity density](methods/density.md), [Calibration](methods/calibration.md) |
-| roofclf, SPPI | Yes -- < 400 m² rooftop, plus ≥ 400 m² rooftop inside the calibrated cells | `roofclf.py`, `sub400_capacity.py`, `roofclf_ge400_capacity.py` | [The rooftop classifier](methods/roofclf.md), [Calibration quadrats](methods/calibration-quadrats.md) |
+| roofclf | Yes -- < 400 m² rooftop, plus ≥ 400 m² rooftop inside the calibrated cells | `roofclf.py`, `sub400_capacity.py`, `roofclf_ge400_capacity.py` | [The rooftop classifier](methods/roofclf.md), [Calibration quadrats](methods/calibration-quadrats.md) |
 | Plausibility gate | Yes | `plausibility.py` | this page's [Combine, rank, and gate](#combine-rank-and-gate) section |
 | Atlas | Yes -- the evidence atlas, the primary output | `atlas.py` | [Capacity map](results/capacity.md), [Growth](results/growth.md) |
 | Glint | Optional -- boosts leads ranking only | `glint.py` | [Solar glint](methods/glint.md), [Panel pose](results/pv-pose.md) |

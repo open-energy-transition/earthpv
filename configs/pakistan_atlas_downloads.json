@@ -3,7 +3,7 @@
     "file": "pakistan_atlas_capacity_by_cell.parquet",
     "label": "Best estimate and Verified per grid cell",
     "note": "The atlas's own map: every Best and Verified component per 0.1 degree cell, summing to the page's headline figures. The PyPSA-ready table. 4,470 rows.",
-    "size_bytes": 263361
+    "size_bytes": 246478
   },
   {
     "file": "pakistan_capacity_by_cell.parquet",
@@ -34,18 +34,6 @@
     "label": "roofclf sub-400 m2, central estimate",
     "note": "In-domain, feeds Best estimate. One row per cell and size bin, every building weighted by its score: n_buildings, sum_p (the expected number of PV roofs) and roof_area_m2 (the bin's capacity-weighted mean roof size). 5,914 rows.",
     "size_bytes": 400196
-  },
-  {
-    "file": "pakistan_roofclf_sub400_low_buildings.parquet",
-    "label": "roofclf+SPPI sub-400 m2, stricter floor",
-    "note": "In-domain, the internal floor population. 526,681 rows.",
-    "size_bytes": 56203370
-  },
-  {
-    "file": "pakistan_roofclf_sub400_outdomain_andgate_buildings.parquet",
-    "label": "roofclf+SPPI sub-400 m2, out-of-domain",
-    "note": "Explicitly-flagged extrapolation beyond the calibrated domain, in the atlas's figures only when it was built with --sub400-outdomain-cells. 31,217 rows.",
-    "size_bytes": 3550006
   },
   {
     "file": "pakistan_raw_detections_unreviewed.parquet",
@@ -87,6 +75,6 @@
     "file": "DATA_DICTIONARY.md",
     "label": "Data dictionary",
     "note": "Column definitions, units and known caveats for every file in this release.",
-    "size_bytes": 11269
+    "size_bytes": 11071
   }
 ]

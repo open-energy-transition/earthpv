@@ -73,7 +73,6 @@ say "rebuilding the Germany atlas on the complete grid"
 $PY -m earthpv.cli atlas --aoi germany \
   --osm-solar data/labels/germany_national_osm_solar.parquet \
   --sub400-central-cells data/roofclf_national_germany_prod/germany/density/sub400_central_incremental_buildings.parquet \
-  --sub400-low-cells data/roofclf_national_germany_prod/germany/density/sub400_low_incremental_buildings.parquet \
   --include-offgrid-osm \
   --out docs/assets/interactive/germany_pv_evidence_atlas.html >> "$LOG" 2>&1 \
   || { say "atlas FAILED"; exit 1; }

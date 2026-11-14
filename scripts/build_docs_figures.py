@@ -104,10 +104,8 @@ class Theme:
 # docs/assets/stylesheets/extra.css. `rule` is that stylesheet's hairline flattened
 # against the surface and pushed a little harder, since a gridline has to read on its
 # own where a table border has cell text next to it.
-# s4 (violet) is only used by fig_capacity_composition -- it is the same hue as
-# `results/pakistan_atlas_composition.html`'s "roofclf + SPPI" category, already run
-# through the palette validator's CVD/contrast checks there, reused here rather than
-# re-derived so the two pages never disagree on what that category looks like.
+# s4 (violet) is drawn by no figure since 2026-11-13: it was the "roofclf + SPPI" category
+# of fig_capacity_composition, which left the atlases that day (owner).
 LIGHT = Theme("light", "#f1ebdd", "#2a2216", "#5f5540", "#857a61", "#cfc0a5", "#faf6ec",
               "#c25e12", "#1c6fa8", "#1f9b8a", "#7550b0")
 DARK = Theme("dark", "#100d09", "#f7f1e6", "#c9bda4", "#93866c", "#3a2d16", "#1a160f",
@@ -744,12 +742,12 @@ def read_atlas_composition():
 
 # Fixed order (never cycled): most-directly-measured method to least-direct, matching
 # results/pakistan_atlas_composition.html's own ordering and the project's own trust
-# hierarchy for these four sources.
-COMPOSITION_METHODS = ["osm", "seg", "roofclf", "sppi"]
-COMPOSITION_SLOT = {"osm": "s3", "seg": "s2", "roofclf": "s1", "sppi": "s4"}
+# hierarchy for these three sources.
+COMPOSITION_METHODS = ["osm", "seg", "roofclf"]
+COMPOSITION_SLOT = {"osm": "s3", "seg": "s2", "roofclf": "s1"}
 COMPOSITION_LABEL = {
     "osm": "OSM-mapped", "seg": "Satellite: TerraMind segmentation",
-    "roofclf": "Satellite: roofclf", "sppi": "Satellite: roofclf + SPPI",
+    "roofclf": "Satellite: roofclf",
 }
 
 
@@ -1965,7 +1963,7 @@ def build_architecture_svg(t: Theme) -> str:
     # ---- layout: 6 lanes, top to bottom -------------------------------------------
 
     title = "How raw data becomes a mapping lead and a capacity number"
-    subtitle = ("Five instruments read the same Sentinel-2 composites and combine into two "
+    subtitle = ("Four instruments read the same Sentinel-2 composites and combine into two "
                 "products: OpenStreetMap mapping leads and a calibrated capacity atlas.")
     parts.append(f'<text x="{ARCH_MARGIN}" y="38" font-size="17.5" font-weight="600" '
                  f'fill="{t.ink}">{_esc(title)}</text>')
@@ -1991,14 +1989,13 @@ def build_architecture_svg(t: Theme) -> str:
         ["TerraTorch + Lightning,", "checkpoint monitors val mIoU"])
 
     # Lane C - inference signals
-    lane_label("Inference - five instruments, same Sentinel-2 imagery", 372)
-    xc, wc = _row_x(5, gap=20)
+    lane_label("Inference - four instruments, same Sentinel-2 imagery", 372)
+    xc, wc = _row_x(4, gap=20)
     box("c1", xc[0], 378, wc, 106, "Segmentation raster", ["infer: per-pixel PV", "probability, primary", "≥ 400 m² instrument"], stroke=t.s1)
     box("c2", xc[1], 378, wc, 106, "Fraction head", ["alt checkpoint: per-pixel", "PV coverage fraction,", "drops the polygon"], stroke=t.s3)
     box("c3", xc[2], 378, wc, 106, "Glint matched filter", ["specular flash geometry,", "corroborates only", "(never demotes)"], stroke=t.s2)
-    box("c4", xc[3], 378, wc, 106, "SPPI", ["zero-training spectral", "index, cross-validated,", "no model fit"], stroke=t.s3)
-    box("c5", xc[4], 378, wc, 106, "roofclf", ["per-building classifier:", "size + reflectance,", "calibration quadrats"], stroke=t.s1)
-    note("Glint and SPPI read the composites directly, no model fit; segmentation and the fraction head share one TerraMind checkpoint; roofclf trains separately on calibration-quadrat labels.", 502)
+    box("c5", xc[3], 378, wc, 106, "roofclf", ["per-building classifier:", "size + reflectance,", "calibration quadrats"], stroke=t.s1)
+    note("Glint reads the composites directly, no model fit; segmentation and the fraction head share one TerraMind checkpoint; roofclf trains separately on calibration-quadrat labels.", 502)
 
     # Lane D - combine and rank
     lane_label("Combine & rank", 538)
@@ -2007,8 +2004,8 @@ def build_architecture_svg(t: Theme) -> str:
         ["polygonize, join to building", "footprint, rank_score for", "the leads queue"])
     box("d2", xd[1], 544, wd, 100, "density",
         ["per-building / cell / region", "MWp: _det / _exp / _cal,", "≥ 400 m² only"])
-    box("d3", xd[2], 544, wd, 100, "sub-400 m² bracket",
-        ["domain-restricted roofclf +", "SPPI AND-gate, building-", "density-matched cells"])
+    box("d3", xd[2], 544, wd, 100, "sub-400 m² capacity",
+        ["domain-restricted roofclf,", "priced by score, building-", "density-matched cells"])
 
     # Lane E - plausibility gate
     lane_label("Plausibility gate", 664)
@@ -2028,7 +2025,7 @@ def build_architecture_svg(t: Theme) -> str:
     box("f4", xf[3], 786, wf, 94, "Evidence atlas",
         ["Best estimate, sub-400 m²", "plus ≥ 400 m²"], stroke=t.s2)
 
-    note("Building footprints also feed roofclf and the sub-400 m² bracket directly (arrows omitted for clarity).", 936)
+    note("Building footprints also feed roofclf and the sub-400 m² capacity step directly (arrows omitted for clarity).", 936)
     note("Solid grey = the main trunk. Blue = load-bearing instruments. Orange = glint, corroborates only. Aqua = auxiliary instruments not (yet) in the headline number.", 954)
 
     # ---- arrows -------------------------------------------------------------------
@@ -2041,7 +2038,6 @@ def build_architecture_svg(t: Theme) -> str:
     arrow("c1", "d2", t.s1)
     arrow("c2", "d2", t.s3, dashed=True)
     arrow("c3", "d1", t.s2)
-    arrow("c4", "d3", t.s3)
     arrow("c5", "d3", t.s1)
     arrow("d1", "f1", t.ink_dim)
     arrow("d2", "e1", t.ink_dim)
@@ -2075,7 +2071,7 @@ def write_architecture_diagram():
 
 # ---------------------------------------------------- generated roofclf flow chart
 #
-# The architecture diagram shows roofclf as one box among five instruments, which is the
+# The architecture diagram shows roofclf as one box among four instruments, which is the
 # right altitude there and useless for someone trying to follow what roofclf actually
 # does. This one zooms into that single box: quadrat labels in at the top, two atlas
 # numbers out at the bottom, one lane per stage of docs/methods/roofclf.md.
@@ -2107,7 +2103,6 @@ ROOFCLF_STATS = {
 ROOFCLF_CAPACITY = {
     "n_domain_cells": 2957,
     "n_national_cells": 4470,
-    "verified_sub400": 3501,
     "best_sub400": 24381,
     "best_ge400_roof": 7258,
 }
@@ -2195,8 +2190,8 @@ def build_roofclf_svg(t: Theme) -> str:
         [f"{s['n_quadrats']} folds, each scored by a model", f"that never saw it: {s['auc']:.3f} AUC,",
          f"{s['auc_within_size']:.3f} within roof-size band"], stroke=t.s1)
     box("c3", xc[2], 402, wc, 104, "Deployment threshold",
-        [f"p >= {s['threshold']:.4f}: precision {s['precision']:.2f}", f"at recall {s['recall']:.2f}. Sets the floor",
-         "and the leads; Best sums scores"], stroke=t.s1)
+        [f"p >= {s['threshold']:.4f}: precision {s['precision']:.2f}", f"at recall {s['recall']:.2f}. Sets the",
+         "leads; Best sums scores"], stroke=t.s1)
     note("Folds are spatial by construction. A random split would put neighbouring roofs in "
          "train and test and report skill the model does not have.", 540)
 
@@ -2204,7 +2199,7 @@ def build_roofclf_svg(t: Theme) -> str:
     lane_label("4. Score the country (earthpv roofclf-score-national)", 572)
     dw, dx = ROOFCLF_W - 2 * ARCH_MARGIN, ARCH_MARGIN
     box("d1", dx, 580, dw, 88, "Every VIDA building, one 0.1 degree cell at a time",
-        ["75.7M buildings get a p_roofclf, and SPPI from the same five bands at no extra read cost.",
+        ["75.7M buildings get a p_roofclf from the same composites the segmentation model reads.",
          "Composite fill pixels are masked out, and overlapping tiles are deduped onto one canonical cell,",
          "because both once turned into millions of false positives along cell edges."], stroke=t.s1)
 
@@ -2226,9 +2221,8 @@ def build_roofclf_svg(t: Theme) -> str:
     xf, wf = _row_x(1, gap=60)
     box("f1", xf[0], 894, wf, 94, "Best estimate",
         [f"roofclf alone in domain {cap['best_sub400']:,} MWp, plus {cap['best_ge400_roof']:,} MWp of "
-         ">= 400 m2 roofs, both priced by score -- floored per cell at hand-mapped OSM plus",
-         f"the stricter, thresholded {cap['verified_sub400']:,} MWp roofclf-AND-SPPI population, "
-         "two instruments that share no training data"], stroke=t.s1)
+         ">= 400 m2 roofs, both priced by score,",
+         "and each cell floored at the capacity hand-mapped in OpenStreetMap"], stroke=t.s1)
 
     note("roofclf also REPLACES the segmentation model's own rooftop estimate for buildings "
          "at or above 400 m2 inside the same domain, where it measures better.", 1020)
@@ -2374,7 +2368,7 @@ def build_evidence_workflow_svg(t: Theme) -> str:
         ["outlines individual arrays ≥ 400 m² directly in the pixels;",
          "the only instrument for ground-mount PV at any size,",
          "and the source of every human-checkable mapping lead"], stroke=t.s2)
-    box("b2", xb[1], 238, wb, 88, "roofclf, cross-checked with SPPI",
+    box("b2", xb[1], 238, wb, 88, "roofclf (per-building classifier)",
         ["asks \"does this roof carry PV?\" for every building;",
          "the only instrument below 400 m², and the better",
          "rooftop one wherever it has been calibrated"], stroke=t.s1)
@@ -2400,9 +2394,9 @@ def build_evidence_workflow_svg(t: Theme) -> str:
     box("d1", (EVW_W - dw) / 2, 534, dw, 122, "One best instrument per component",
         ["ground-mount at any size: segmentation",
          "rooftop ≥ 400 m²: roofclf inside its calibrated cells, segmentation elsewhere",
-         "rooftop < 400 m²: roofclf, cross-checked with SPPI",
+         "rooftop < 400 m²: roofclf, inside its calibrated cells",
          "OSM-mapped installations a detection missed fill in its estimate of misses",
-         "each cell floored at OSM plus the stricter roofclf-AND-SPPI agreement"])
+         "each cell floored at the capacity hand-mapped in OSM"])
 
     # Lane E - output
     lane_label("Published output", 710)

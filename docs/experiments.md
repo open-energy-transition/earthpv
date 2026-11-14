@@ -24,7 +24,7 @@ repository; nothing was deleted on failure.
 | Building prior from VIDA Open Buildings | <span class="outcome works">shipped</span> | Makes "no building nearby" a usable false-positive signal. |
 | Quadrats as training data, not just correction | <span class="outcome works">shipped</span> | Became `roofclf`, now half the main workflow. |
 | [roofclf, a per-building classifier](methods/roofclf.md) | <span class="outcome works">shipped</span> | 0.879 AUC (0.834 within size band) on 27 quadrats where segmentation scores near chance. |
-| SPPI as a corroborating second opinion | <span class="outcome works">shipped</span> | Zero-training spectral index; agreement with roofclf sets an internal floor on the atlas's headline figure. |
+| [SPPI as a corroborating second opinion](#requiring-two-detectors-to-agree) | <span class="outcome open">superseded</span> | Zero-training spectral index; its agreement with roofclf was Verified's floor until the owner took SPPI out of the atlases (2026-11-13). |
 | Coverage ratio stratified by size and density | <span class="outcome works">shipped</span> | Replaced precision as the multiplier, and a flat ratio with a measured per-stratum one. |
 | Placement-split precision and recall | <span class="outcome works">shipped</span> | Unpooling rooftop from ground-mount moved both, in opposite directions. |
 | OSM and a recall-corrected total: combine, don't add | <span class="outcome works">shipped</span> | Mapped misses were counted twice; Germany's Best fell 4.8%, Pakistan's rose 0.4% net. |
@@ -206,8 +206,16 @@ Quetta), and as an extra column in `roofclf` it does nothing at all (0.8736 to 0
 What it is good for is **disagreeing**: requiring roofclf and SPPI to agree lifts precision
 from 0.496 to 0.540 at matched recall, and the gain concentrates in exactly the low-adoption
 places where roofclf alone is known to over-predict. That is why agreement between the two
-sets the internal floor under the evidence atlas's headline figure, rather than either
+set the internal floor under the evidence atlas's headline figure, rather than either
 model on its own.
+
+**Out of the atlases since 2026-11-13 (owner).** Verified is now the hand-mapped OSM
+capacity alone: Pakistan's moved from 7,138.3 to 3,637.5 MWp (the floor was 3,500.7 MWp of
+it), and Best from 34,470.3 to 34,468.6, through its per-cell floor at Verified. No other
+atlas carried a floor, and none changed a figure. The never-published out-of-domain
+extrapolation, the sub-400 m2 bracket atlas and the growth atlases' SPPI onset views went
+with it. `sub400-capacity` still writes the AND-gate files and the national scoring still
+computes SPPI, so the instrument can be measured again; no page reads it.
 
 ### One estimator, applied to both halves
 

@@ -240,13 +240,11 @@
   .tile .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--muted); margin-top: 4px; }
 
-  /* Composition-by-method stacked bars (Best + Verified) -- same 4 method colors and
+  /* Composition-by-method stacked bars (Best + Verified) -- same method colors and
      mark specs as results/pakistan_atlas_composition.html, reusing THIS page's own
      tokens instead of a separate palette: roofclf alone is --accent (it supplies most
      of Best, so it gets the primary hue), segmentation is --large (already this
-     page's own "model detections >=400 m2" color), OSM is --domain, and roofclf+SPPI
-     is --extended (already this page's "extrapolated beyond calibration" color --
-     small_outdomain literally is that extrapolation). */
+     page's own "model detections >=400 m2" color), and OSM is --domain. */
   .comp-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 14px 0 12px; }
   .comp-legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
     font-size: 11px; color: var(--ink-2); }
@@ -254,7 +252,6 @@
   .comp-swatch.osm { background: var(--domain); }
   .comp-swatch.seg { background: var(--large); }
   .comp-swatch.roofclf { background: var(--accent); }
-  .comp-swatch.sppi { background: var(--extended); }
   .comp-stack-wrap { position: relative; }
   .comp-row-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin: 16px 0 6px; }
   .comp-stack { display: flex; width: 100%; height: 34px; border-radius: 6px; overflow: hidden;
