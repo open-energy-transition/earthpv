@@ -19,7 +19,8 @@ It is rebuilt with:
         --base-map countries-50m.json --iso-codes codes.json
 
 from world-atlas@2.0.2 (Natural Earth 1:50m, public domain) and
-i18n-iso-countries@7.14.0/codes.json.
+i18n-iso-countries@7.14.0/codes.json. On the way Crimea moves from Russia, where Natural
+Earth's de facto borders put it, to Ukraine (`TRANSFERS`).
 
 The United States and China are drawn and picked state by state, from
 `docs/assets/landing/regions.json`, which is rebuilt with:
@@ -147,6 +148,15 @@ FULL_NAMES = {
     "Wallis and Futuna Is.": "Wallis and Futuna",
 }
 
+# Natural Earth draws the borders held on the ground, so world-atlas brings Crimea in as a
+# polygon of Russia. The globe draws the internationally recognised border (UN General
+# Assembly resolution 68/262): Crimea, Sevastopol with it, is part of Ukraine (owner,
+# 2026-11-14). Each entry moves the donor's polygon holding the point to the receiver and
+# dissolves the border between them, so no line is left across the Perekop isthmus.
+TRANSFERS = (
+    ("RUS", "UKR", (34.10, 44.95)),  # Crimea, by Simferopol
+)
+
 
 def _delta_coded(points) -> list[int]:
     """Lon/lat pairs as one flat list of deltas, in hundredths of a degree."""
@@ -156,6 +166,66 @@ def _delta_coded(points) -> list[int]:
         flat += [x - px, y - py]
         px, py = x, y
     return flat
+
+
+def _splice(receiver: list[int], donor: list[int]) -> tuple[list[int], set[int]]:
+    """One ring from two rings that share a stretch of border, and the arcs that border held.
+
+    The rings come from one topology, so the donor runs the shared arcs backwards. With the
+    donor rotated to start on its shared run (Y to X) and the receiver to start on its own
+    (X to Y), the union is the donor's other arcs (X to Y) followed by the receiver's (Y to X).
+    """
+    in_receiver = [~a in receiver for a in donor]
+    k = sum(in_receiver)
+    if not k or k == len(donor):
+        raise ValueError("the rings share no border, or the donor ring is all border")
+    starts = [i for i in range(len(donor)) if in_receiver[i] and not in_receiver[i - 1]]
+    if len(starts) != 1:
+        raise ValueError("the rings share more than one stretch of border")
+    d = donor[starts[0]:] + donor[:starts[0]]
+    run = [~a for a in reversed(d[:k])]
+    for i in range(len(receiver)):
+        u = receiver[i:] + receiver[:i]
+        if u[:k] == run:
+            return d[k:] + u[k:], {a if a >= 0 else ~a for a in d[:k]}
+    raise ValueError("the shared border runs in a different order in the two rings")
+
+
+def _apply_transfers(features: list[dict], arcs: list, outline) -> list:
+    """Move each `TRANSFERS` polygon to its receiver and return the arcs left in use.
+
+    `outline(ids)` is a ring of arc ids as a shapely Polygon. An arc no ring uses any more
+    (the dissolved border) is dropped and every arc id renumbered, since the page draws every
+    arc it is given as a coast or a border.
+    """
+    from shapely.geometry import Point
+
+    by_iso = {f["i"]: f for f in features}
+    for donor_iso, receiver_iso, (lon, lat) in TRANSFERS:
+        donor, receiver = by_iso[donor_iso], by_iso[receiver_iso]
+        hit = [k for k, p in enumerate(donor["p"]) if outline(p[0]).contains(Point(lon, lat))]
+        if len(hit) != 1:
+            raise ValueError(f"{len(hit)} polygons of {donor_iso} hold {lon}, {lat}")
+        poly = donor["p"].pop(hit[0])
+        if len(poly) != 1:
+            raise ValueError(f"the {donor_iso} polygon at {lon}, {lat} has holes")
+        for p in receiver["p"]:
+            if any(~a in p[0] for a in poly[0]):
+                p[0], _ = _splice(p[0], poly[0])
+                break
+        else:
+            receiver["p"].append(poly)  # no shared border: it joins as an island
+        print(f"moved the {donor_iso} polygon at {lon}, {lat} to {receiver_iso}")
+
+    used = sorted({a if a >= 0 else ~a for f in features for p in f["p"] for r in p for a in r})
+    new_id = {old: new for new, old in enumerate(used)}
+    for f in features:
+        for p in f["p"]:
+            for r in p:
+                r[:] = [new_id[a] if a >= 0 else ~new_id[~a] for a in r]
+    if len(used) < len(arcs):
+        print(f"dropped {len(arcs) - len(used)} arcs no ring uses any more")
+    return [arcs[k] for k in used]
 
 
 def build_regions(admin1_path: Path, geoboundaries: list[Path]) -> None:
@@ -310,19 +380,21 @@ def build_base_map(topo_path: Path, codes_path: Path) -> None:
     iso3 = {row[2]: row[1] for row in json.loads(codes_path.read_text())}
     features = []
     for g in topo["objects"]["countries"]["geometries"]:
-        polys = g["arcs"] if g["type"] == "MultiPolygon" else [g["arcs"]]
-        shapes = [Polygon(ring(p[0])) for p in polys]
-        west, south, east, north = MultiPolygon(shapes).bounds
         name = g["properties"]["name"]
         features.append({
             "n": FULL_NAMES.get(name, name),
             "i": iso3.get(str(g.get("id", "")).zfill(3), ""),
-            # The outer box, rounded outward to a tenth of a degree, for the commands on
-            # the contribute page.
-            "b": [math.floor(west * 10) / 10, math.floor(south * 10) / 10,
-                  math.ceil(east * 10) / 10, math.ceil(north * 10) / 10],
-            "p": polys,
+            "p": g["arcs"] if g["type"] == "MultiPolygon" else [g["arcs"]],
         })
+    simple = _apply_transfers(features, simple, lambda ids: Polygon(ring(ids)))
+    for f in features:
+        polys = f.pop("p")
+        west, south, east, north = MultiPolygon([Polygon(ring(p[0])) for p in polys]).bounds
+        # The outer box, rounded outward to a tenth of a degree, for the commands on the
+        # contribute page.
+        f["b"] = [math.floor(west * 10) / 10, math.floor(south * 10) / 10,
+                  math.ceil(east * 10) / 10, math.ceil(north * 10) / 10]
+        f["p"] = polys
 
     coded = [_delta_coded(pts) for pts in simple]
     LANDING.mkdir(parents=True, exist_ok=True)

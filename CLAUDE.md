@@ -1046,7 +1046,10 @@ names what was not measured, so a floor never passes for a measured amount.
 atlas opens `docs/contribute/new-atlas.md` with `?country=&iso3=&bbox=`, which `new-atlas.js`
 writes into the commands' `YOUR_*` placeholders. `docs/assets/landing/world.json` is Natural Earth
 1:50m, rebuilt only with `--base-map`; a simplified ring must keep its winding or d3 fills the
-rest of the sphere (`build_base_map` restores it). The United States and China are drawn and picked
+rest of the sphere (`build_base_map` restores it). **Crimea is Ukraine's (owner, 2026-11-14)**:
+Natural Earth's de facto borders put it in Russia, so `build_base_map` moves that polygon into
+Ukraine's mainland and drops the Perekop border arc (`TRANSFERS`); a rebuild from world-atlas@2.0.2
+otherwise reproduces the file byte for byte. The United States and China are drawn and picked
 state by state (owner, 2026-11-08; `regions.json`, Natural Earth 1:50m admin-1, rebuilt only with
 `--admin1`), and a state's `d` is its name as geoBoundaries spells it, which `compose._aoi_boundary`
 matches (`Guangzhou Province` is Guangdong there). A state becomes an atlas by its display name in
