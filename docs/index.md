@@ -1,7 +1,7 @@
 ---
 title: Electrify Earth
 template: landing.html
-n_atlases: 22
+n_atlases: 23
 search:
   exclude: true
 ---
@@ -11,6 +11,7 @@ search:
 <div class="atlas-links" markdown>
 
 - [Belgium](atlas-belgium.md){ data-iso="BEL" }
+- [California](atlas-california.md){ data-iso="USA" }
 - [Denmark](atlas-denmark.md){ data-iso="DNK" }
 - [Egypt](atlas-egypt.md){ data-iso="EGY" }
 - [France](atlas-france.md){ data-iso="FRA" }

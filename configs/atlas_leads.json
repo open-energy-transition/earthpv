@@ -29,6 +29,35 @@
         "min_area_m2": 100000.0
       }
     },
+    "california": {
+      "file": "california_pv_new_leads.geojson",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/california_pv_new_leads.geojson",
+      "n": 3368,
+      "size_bytes": 3557591,
+      "osm_as_of": "2026-11-11",
+      "min_distance_m": 100,
+      "made": "2026-11-14",
+      "steep": {
+        "slope_deg": 15.0,
+        "max_area_m2": 1000.0,
+        "cap_deg": 30.0,
+        "dropped": 30,
+        "review": 48,
+        "no_dem": 2
+      },
+      "lowconf": {
+        "placement": "no_building",
+        "max_confidence": 0.9,
+        "dropped": 0
+      },
+      "blobs": {
+        "file": "california_pv_blob_leads.geojson",
+        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/california_pv_blob_leads.geojson",
+        "n": 124,
+        "size_bytes": 542248,
+        "min_area_m2": 100000.0
+      }
+    },
     "denmark": {
       "file": "denmark_pv_new_leads.geojson",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/denmark_pv_new_leads.geojson",

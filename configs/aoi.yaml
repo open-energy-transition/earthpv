@@ -977,6 +977,31 @@ aois:
       "0023_0029", "0023_0030", "0024_0027", "0024_0028", "0024_0029", "0024_0030", "0024_0031",
     ]
 
+  # California (owner, 2026-11-10), a US state run as an AOI of its own: its regions are
+  # its counties (density.subnational_units) and its OSM solar and CSP clip to the state
+  # (density.aoi_border). data/vida/USA.parquet holds only California's and Texas's
+  # boxes (scripts/prepare_country_vida.sh with VIDA_BOXES).
+  california:
+    bbox: [-124.5, 32.5, -114.1, 42.1]
+    division: { name: California, country: US, subtype: region, iso3: USA }
+    # On the global 0.1 degree lattice (earthpv.global_grid), so this country's cells are
+    # global cells and its atlas combines with its neighbours' without re-binning. Never
+    # change it once compose has run: it names every cell.
+    grid_origin: [-124.5, 32.5]
+    # May to September 2026, Spain's and Europe's window (preflight median cloud 2%).
+    compose_window: ["2026-05-01", "2026-09-30"]
+    cell_selection: duckdb
+    # Filled by scripts/pick_val_region.py --write, which only writes into an empty list.
+    # Val holdout = Santa Clara (geoBoundaries ADM2 inside the AOI), 22 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 615 of
+    # 6014 dissolved >= 400 m2 positives (10.2%); the largest
+    # region (Los Angeles, 967) is never the holdout.
+    val_tiles: [
+      "0023_0048", "0023_0049", "0024_0047", "0024_0048", "0024_0049", "0025_0046", "0025_0047", "0025_0048",
+      "0025_0049", "0026_0046", "0026_0047", "0026_0048", "0026_0049", "0027_0045", "0027_0046", "0027_0047",
+      "0027_0048", "0028_0045", "0028_0046", "0029_0044", "0029_0045", "0029_0046",
+    ]
+
   # Texas (owner, 2026-11-10), a US state run as an AOI of its own: its regions are its
   # counties (density.subnational_units) and its OSM solar and CSP clip to the state
   # (density.aoi_border). data/vida/USA.parquet holds only California's and Texas's

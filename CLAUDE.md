@@ -16,7 +16,7 @@ from OpenStreetMap solar mapping; building footprints classify detections as roo
 is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
 workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
 a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and twenty-one countries and the state of Texas have a published evidence atlas (see "Country
+country's own OSM labels, and twenty-one countries and the states of Texas and California have a published evidence atlas (see "Country
 runs"). Read `README.md` for the narrative and headline numbers.
 
 **Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
@@ -1444,6 +1444,7 @@ leaves waiters stopped: `pkill -CONT -x flock`.
 | Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 13,880.6 | clear win over v5 on the Nord-Ovest holdout (0.645 vs 0.544 of 3,350); Best is 32% of GSE's 43,687 MW and 97% of its 14,296 MW ground-mounted; 377 blobs and 4,586 large leads not judged yet |
 | Denmark | `v37_combined_denmark` ep 28 at 0.95 | 2,639.9 / 2,695.1 | win over v5 on the thin Nordjylland holdout (52 vs 45 of 98, all >= 1,000 m2); Best is 49% of Energistyrelsen's 5,468 MW; 3 blobs and 63 large leads not judged yet |
 | Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 46,206.4 | first US state (counties as regions); recall tie with v5 on Bexar County (302 vs 300 of 355), wins on IoU; Best is 124% of EIA's 37,200.5 MW AC, about one in DC; 845 blobs and 875 large leads not judged yet |
+| California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 27,553.6 | second US state; beat v5 on Santa Clara County (695 vs 626 of 1,254 at precision 0.55); Best is 59% of EIA's 46,334.9 MW (21.2 GW of it small-scale, unmeasured here); 5 CSP plants 922 MW; 124 blobs and 1,176 large leads not judged yet |
 
 Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
 - **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
@@ -1555,6 +1556,18 @@ Per-country write-ups are `docs/results/<country>.md`. Country-specific points s
   the model. Overpass refused the CSP area scan; `solar_thermal_plants.py --pbf` read the
   Geofabrik extract (no CSP, as EIA). Composites on moreaidata. No Ember line (customs data are
   national).
+- **California** (published 2026-11-14): the second state AOI, run like Texas. Verified is
+  mostly OSM park outlines (506 km2 dissolved) at the land constant, which reads a little high
+  there: 305 outlines holding an EIA-860M plant with panel capacity measure 0.043 kWp/m2 DC
+  pooled, 0.047 median. Best adds 435.5 MWp, and the per-cell floor lifts it in 479 cells (the
+  model at 0.95 prices below the mapped parks). Against EIA (Electric Power Monthly total solar
+  46,334.9 MW, 21,240.1 of it small-scale; EIA-860M 25,621.3 MW utility-scale PV and thermal by
+  county, `official_capacity.eia860m_state`, which matches county names case-blind: EIA writes
+  one row KERN) Best is about 0.85 of the utility fleet in DC terms (1.275x panel over
+  inverter), Spearman 0.91 over 44 counties. Unlike Texas, 29 of the 124 blobs (53 of 94 km2)
+  lie within 500 m of an EIA plant, so judging them is the largest gain on the page. 5 CSP
+  plants (Ivanpah 1-3, Mojave Solar, Genesis) 922.0 MW from their tags, as EIA. The
+  polygons file was uploaded by hand (the chain predates the `polygons` step).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 - **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the

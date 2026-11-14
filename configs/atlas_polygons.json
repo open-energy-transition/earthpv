@@ -24,6 +24,30 @@
         "osm_solar": "data/labels/belgium_national_osm_solar.parquet"
       }
     },
+    "california": {
+      "file": "california_pv_polygons.parquet",
+      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/california_pv_polygons.parquet",
+      "size_bytes": 4840904,
+      "format": "GeoParquet 1.1, zstd",
+      "made": "2026-11-14",
+      "n_model": 5270,
+      "n_model_leads": 3522,
+      "n_model_reviewed": 0,
+      "n_osm": 44481,
+      "n_osm_csp": 5,
+      "osm_as_of": "2026-11-11",
+      "min_distance_m": 100,
+      "sources": {
+        "n_candidates": 5308,
+        "n_outside": 38,
+        "pred": "data/predictions/california",
+        "raw_osm": [
+          "data/labels/california_overpass_solar.parquet"
+        ],
+        "raw_osm_as_of": "2026-11-11",
+        "osm_solar": "data/labels/california_national_osm_solar.parquet"
+      }
+    },
     "denmark": {
       "file": "denmark_pv_polygons.parquet",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/denmark_pv_polygons.parquet",

@@ -1,0 +1,91 @@
+# California's evidence atlas content (src/earthpv/atlas_config.py for the schema).
+#
+# California, a state run as an AOI of its own (`division.subtype: region`), like Texas: its
+# regions are its counties (`density.subnational_units`), and its hand-mapped solar is
+# clipped to the state's own outline (Nevada's parks around Las Vegas lie inside the bbox).
+# No calibration quadrats, no record-level register used, so the builder's default
+# no-ground-truth text stands. The segmentation is localized on California's own
+# OpenStreetMap labels and beat v5 on the held-out Santa Clara County
+# (results/california_checkpoint_decision.json).
+#
+# Numbers belong in docs/results/california.md; nothing here quotes a figure a rebuild could
+# change.
+
+title: California
+
+cities:
+  - [Los Angeles, -118.244, 34.052]
+  - [San Diego, -117.161, 32.716]
+  - [San Jose, -121.886, 37.338]
+  - [San Francisco, -122.419, 37.775]
+  - [Sacramento, -121.494, 38.582]
+  - [Fresno, -119.787, 36.738]
+  - [Bakersfield, -119.019, 35.373]
+  - [Oakland, -122.271, 37.804]
+  - [Long Beach, -118.194, 33.770]
+  - [Riverside, -117.396, 33.953]
+  - [San Bernardino, -117.290, 34.108]
+  - [Stockton, -121.291, 37.958]
+  - [Modesto, -120.997, 37.639]
+  - [Visalia, -119.292, 36.330]
+  - [Salinas, -121.655, 36.678]
+  - [Santa Barbara, -119.698, 34.420]
+  - [Lancaster, -118.137, 34.698]
+  - [Palm Springs, -116.545, 33.830]
+  - [El Centro, -115.563, 32.792]
+  - [Blythe, -114.596, 33.610]
+  - [Barstow, -117.022, 34.895]
+  - [Redding, -122.392, 40.587]
+  - [Eureka, -124.164, 40.802]
+
+confidence:
+  caveats:
+    - >-
+      <b>This page maps California's solar parks, not its rooftops.</b> No area of California
+      has been mapped panel by panel, so there is nothing to calibrate a per-building rooftop
+      classifier against here. Everything on the map is either hand-mapped in OpenStreetMap
+      or an array the segmentation model outlined directly, which in practice means
+      installations of roughly 400 m&sup2; and up. The household and business systems the
+      U.S. Energy Information Administration (EIA) counts as small-scale, close to half of
+      California's solar capacity, are below that size and almost all missing from Best.
+    - >-
+      <b>Panel capacity, not inverter capacity.</b> This page counts panels (MWp, DC). EIA's
+      figures further down count inverter capacity (AC), and California's PV plants carry
+      roughly 28% more panel than inverter capacity where EIA reports both, so read Best
+      against EIA's figures with that in mind.
+    - >-
+      <b>Most of this page is mapped park outlines, priced by area.</b> OpenStreetMap
+      mappers have outlined most of California's solar parks as whole sites. A site's
+      capacity is its area times a fixed density of panels per square metre of site,
+      measured on parks elsewhere. In the California parks where EIA reports panel capacity,
+      the mapped site holds a little less than that density on average, so the hand-mapped
+      parks may read somewhat high, and a single park can differ from it either way.
+    - >-
+      <b>Solar thermal plants count at their rating.</b> California's concentrated solar
+      power plants (Ivanpah, Mojave Solar and Genesis) are counted at their electric rating
+      as mapped in OpenStreetMap, not as panels, in both Verified and Best.
+    - >-
+      <b>Very large model outlines count only once checked.</b> A model outline above
+      100,000 m&sup2; counts only when it is mapped or a person has judged it solar, and
+      California has over a hundred of them waiting, as well as over a thousand large model
+      outlines below that size. Over half of the very large outlines' area lies near a plant
+      in EIA's inventory that OpenStreetMap does not hold yet, so many are probably real
+      parks, and Best is low by what they hold. Mapping a real park brings it into the
+      verified layer.
+    - >-
+      <b>Imagery covers where people live, plus every mapped solar site.</b> Map cells were
+      imaged if they hold at least 1,000 buildings or any hand-mapped solar installation. A
+      park built on empty land that nobody has mapped yet falls outside both rules and is not
+      on this page; some of EIA's plants lie in such cells. Cells that were not imaged are
+      hatched on the map.
+    - >-
+      <b>Regions are counties, and border cells are kept whole.</b> California is run as a
+      state, so the regions on this page are its counties. A map cell that straddles the
+      border with Nevada, Arizona or Mexico is counted in full, so a few panels outside
+      California are in this page's total.
+    - >-
+      <b>The plausibility check cannot vouch for the county figures here.</b> It compares
+      each county's ground-mounted capacity with its rooftop capacity, and most counties with
+      a park fail it. That is expected where rooftop systems are mostly too small for the
+      model to see, since the comparison then has little to divide by. It also means the
+      check says little either way about false detections on open ground.

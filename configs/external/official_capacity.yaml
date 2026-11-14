@@ -1,7 +1,7 @@
 # Written by scripts/official_capacity.py; do not edit by hand.
 note: 'Figures each evidence atlas draws beside its own in ''Against other figures''. None is ground truth
   for the atlas: `scope` says what each counts.'
-retrieved: '2026-11-13'
+retrieved: '2026-11-14'
 aois:
   belgium:
   - id: elia
@@ -19,6 +19,79 @@ aois:
       Vlaams Gewest: 8713.8
       Wallonne Gewest: 3083.1
       Brussels Hoofdstedelijk: 331.4
+  california:
+  - id: eia_epm
+    name: EIA
+    title: 'Electric Power Monthly, table 6.2.B: net summer capacity using primarily renewable energy
+      sources, by state, August 2026'
+    publisher: U.S. Energy Information Administration
+    kind: statistics
+    url: https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_6_02_b
+    as_of: '2026-08-31'
+    mw: 46334.9
+    scope: 'All solar power in California at the end of August 2026, a month before the imagery window
+      ends: 24.2 GW of utility-scale PV plants (net summer capacity, an inverter (AC) rating), 0.9 GW
+      of solar thermal plants and EIA''s estimate of 21.2 GW of small-scale PV below 1 MW, household rooftops
+      included.'
+  - id: eia860m
+    name: EIA-860M
+    title: Preliminary Monthly Electric Generator Inventory, September 2026
+    publisher: U.S. Energy Information Administration
+    kind: register
+    url: https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx
+    as_of: '2026-09-30'
+    mw: 25621.3
+    scope: Every operating utility-scale solar PV and solar thermal generator in California (1 MW and
+      up) at the end of September 2026, the last month of the imagery window, at nameplate inverter (AC)
+      capacity; systems below 1 MW are not in it. Where EIA reports it, the panel (DC) capacity of the
+      same PV plants is about 28% higher.
+    regions:
+      Alameda: 121.1
+      Amador: 1.0
+      Butte: 10.0
+      Colusa: 3.5
+      Contra Costa: 89.3
+      El Dorado: 6.8
+      Fresno: 1832.0
+      Glenn: 1.5
+      Humboldt: 9.2
+      Imperial: 2155.8
+      Inyo: 7.0
+      Kern: 6756.4
+      Kings: 1769.9
+      Lassen: 10.1
+      Los Angeles: 1531.2
+      Madera: 119.3
+      Marin: 4.0
+      Mendocino: 5.6
+      Merced: 360.3
+      Monterey: 11.6
+      Napa: 6.1
+      Orange: 46.8
+      Placer: 4.0
+      Riverside: 4747.5
+      Sacramento: 386.2
+      San Benito: 148.4
+      San Bernardino: 2794.6
+      San Diego: 182.6
+      San Francisco: 4.5
+      San Joaquin: 37.1
+      San Luis Obispo: 1133.0
+      San Mateo: 4.2
+      Santa Barbara: 69.5
+      Santa Clara: 36.1
+      Santa Cruz: 4.4
+      Shasta: 4.5
+      Solano: 28.7
+      Sonoma: 20.1
+      Stanislaus: 299.1
+      Tehama: 8.4
+      Tulare: 790.7
+      Tuolumne: 5.1
+      Ventura: 25.3
+      Yolo: 28.8
+    regions_scope: Utility-scale plants of 1 MW and up only, in the counties that have one; rooftop systems
+      are outside these figures.
   denmark:
   - id: ens
     name: Energistyrelsen

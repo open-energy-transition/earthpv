@@ -17,9 +17,9 @@ Two kinds of entry:
   cutoff, France's ODRE register per region at the year-end vintage after the imagery,
   India's MNRE state-wise register for the imagery's centre month
   (`scripts/validate_india_mnre.py`), Poland's URE installation list summed by
-  voivodeship (`URE_WORKBOOK`, downloaded from `URE_URL`), and Texas's utility-scale plants
-  from EIA-860M summed by county (`EIA860M_WORKBOOK`, from `EIA860M_URL`). A register whose
-  input is not on disk keeps the entry the YAML already has.
+  voivodeship (`URE_WORKBOOK`, downloaded from `URE_URL`), and Texas's and California's
+  utility-scale plants from EIA-860M summed by county (`EIA860M_WORKBOOK`, from
+  `EIA860M_URL`). A register whose input is not on disk keeps the entry the YAML already has.
 - **From a cited document** (`PUBLISHED`): typed in from the source, which `url` names, and
   checked against a fresh download of it (2026-10-29). Where a country publishes nothing
   national, IRENA's Renewable Capacity Statistics stand in, with IRENA's own flag for
@@ -292,6 +292,27 @@ PUBLISHED: dict[str, list[dict]] = {
                  "inverter (AC) rating) and EIA's estimate of 3.5 GW of small-scale systems "
                  "below 1 MW, household rooftops included.",
     }],
+    "california": [{
+        "id": "eia_epm",
+        "name": "EIA",
+        "title": "Electric Power Monthly, table 6.2.B: net summer capacity using primarily "
+                 "renewable energy sources, by state, August 2026",
+        "publisher": "U.S. Energy Information Administration",
+        "kind": "statistics",
+        "url": "https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_6_02_b",
+        "as_of": "2026-08-31",
+        # California, August 2026 (the table Texas's entry was read from, data/external/eia/
+        # epm_table_6_02_b_2026-08.html): utility-scale solar PV 24,177.0 MW net summer
+        # capacity, solar thermal 917.8 MW, estimated small-scale PV 21,240.1 MW, estimated
+        # total solar PV 45,417.1 MW, estimated total solar 46,334.9 MW. Total solar, since
+        # the atlas counts the state's concentrated solar power plants at their rating.
+        "mw": 46334.9,
+        "scope": "All solar power in California at the end of August 2026, a month before the "
+                 "imagery window ends: 24.2 GW of utility-scale PV plants (net summer "
+                 "capacity, an inverter (AC) rating), 0.9 GW of solar thermal plants and EIA's "
+                 "estimate of 21.2 GW of small-scale PV below 1 MW, household rooftops "
+                 "included.",
+    }],
     "turkiye": [{
         "id": "teias",
         "name": "TEİAŞ",
@@ -516,14 +537,16 @@ EIA860M_URL = ("https://www.eia.gov/electricity/data/eia860m/xls/september_gener
 EIA860M_WORKBOOK = REPO / "data" / "external" / "eia" / "september_generator2026.xlsx"
 
 
-def texas_eia860m() -> dict | None:
-    """Texas's utility-scale PV per county from EIA-860M, the monthly inventory of every
-    operating generator of 1 MW and up, as of September 2026 (the last month of the imagery
-    window). Nameplate (AC) capacity summed by EIA's own county name, which matches the
-    page's county names (geoBoundaries ADM2) one for one; counties without a plant are left
-    out, and so is a county the page does not draw (no imaged cell, so no region row in the
-    density run's `regions.geoparquet`), which `atlas.official_capacity` would refuse; the
-    state total keeps it and `regions_scope` names it. The `Operating` sheet is the
+def eia860m_state(aoi: str, state: str, name: str, thermal: bool = False) -> dict | None:
+    """A US state's utility-scale solar per county from EIA-860M, the monthly inventory of
+    every operating generator of 1 MW and up, as of September 2026 (the last month of the
+    imagery window). Nameplate (AC) capacity summed by EIA's own county name, which matches
+    the page's county names (geoBoundaries ADM2) one for one up to letter case (EIA writes
+    one Kern County row as KERN); counties without a plant are left out, and so is a county
+    the page does not draw (no imaged cell, so no region row in the density run's
+    `regions.geoparquet`), which `atlas.official_capacity` would refuse; the state total
+    keeps it and `regions_scope` names it. `thermal` adds the solar thermal generators, for
+    a page that counts its concentrated solar power plants. The `Operating` sheet is the
     workbook's first."""
     if not EIA860M_WORKBOOK.exists():
         return None
@@ -533,23 +556,32 @@ def texas_eia860m() -> dict | None:
             or not rows[head].get("M", "").startswith("Nameplate Capacity") \
             or rows[head].get("P") != "Technology":
         raise SystemExit(f"EIA-860M: unexpected header {rows[head] if head is not None else None}")
-    by_county: dict[str, float] = {}
-    for r in rows[head + 1:]:
-        if r.get("G") == "TX" and r.get("P") == "Solar Photovoltaic":
-            by_county[r["H"].strip()] = by_county.get(r["H"].strip(), 0.0) + float(r["M"])
-    regions_path = REPO / "data" / "predictions" / "texas" / "density" / "regions.geoparquet"
-    off_page: dict[str, float] = {}
+    techs = {"Solar Photovoltaic"}
+    if thermal:
+        techs |= {"Solar Thermal with Energy Storage", "Solar Thermal without Energy Storage"}
+    regions_path = REPO / "data" / "predictions" / aoi / "density" / "regions.geoparquet"
+    on_page: set[str] = set()
     if regions_path.exists():
         import pyarrow.parquet as pq
 
         on_page = set(pq.read_table(regions_path, columns=["name"]).column("name").to_pylist())
-        off_page = {k: v for k, v in by_county.items() if k not in on_page}
+    page_name = {k.casefold(): k for k in on_page}
+    by_county: dict[str, float] = {}
+    for r in rows[head + 1:]:
+        if r.get("G") == state and r.get("P") in techs:
+            county = r["H"].strip()
+            county = page_name.get(county.casefold(), county)
+            by_county[county] = by_county.get(county, 0.0) + float(r["M"])
+    off_page = ({k: v for k, v in by_county.items() if k not in on_page}
+                if regions_path.exists() else {})
     scope = ("Utility-scale plants of 1 MW and up only, in the counties that have one; rooftop "
              "systems are outside these figures.")
     if off_page:
         scope += (" Not drawn here: " + ", ".join(
             f"{k} County ({v:,.0f} MW)" for k, v in sorted(off_page.items()))
             + ", where no cell was imaged.")
+    what = ("solar PV and solar thermal generator" if thermal
+            else "solar PV generator")
     return {
         "id": "eia860m",
         "name": "EIA-860M",
@@ -559,18 +591,32 @@ def texas_eia860m() -> dict | None:
         "url": EIA860M_URL,
         "as_of": "2026-09-30",
         "mw": round(sum(by_county.values()), 1),
-        "scope": "Every operating utility-scale solar PV generator in Texas (1 MW and up) at "
+        "scope": f"Every operating utility-scale {what} in {name} (1 MW and up) at "
                  "the end of September 2026, the last month of the imagery window, at "
                  "nameplate inverter (AC) capacity; systems below 1 MW are not in it. Where "
-                 "EIA reports it, the panel (DC) capacity of the same plants is about 29% "
-                 "higher.",
+                 f"EIA reports it, the panel (DC) capacity of the same {'PV ' if thermal else ''}"
+                 f"plants is about {EIA_DC_AC_PCT[aoi]}% higher.",
         "regions": {k: round(v, 1) for k, v in sorted(by_county.items()) if k not in off_page},
         "regions_scope": scope,
     }
 
 
+# Panel (DC) over inverter (AC) capacity, in percent above AC, over the state's PV plants
+# whose every generator reports both in EIA-860M (September 2026): Texas 1.29; California
+# 1.275 (941 of 984 plants, 30,615.6 MW DC on 24,012.2 MW AC).
+EIA_DC_AC_PCT = {"texas": 29, "california": 28}
+
+
+def texas_eia860m() -> dict | None:
+    return eia860m_state("texas", "TX", "Texas")
+
+
+def california_eia860m() -> dict | None:
+    return eia860m_state("california", "CA", "California", thermal=True)
+
+
 REGISTERS = {"germany": germany_mastr, "france": france_odre, "india": india_mnre,
-             "poland": poland_ure, "texas": texas_eia860m}
+             "poland": poland_ure, "texas": texas_eia860m, "california": california_eia860m}
 
 
 def main() -> int:
@@ -591,7 +637,8 @@ def main() -> int:
                 print(f"  {aoi}: register input not on disk, keeping {len(reg)} existing entry")
             else:
                 reg = [reg]
-            entries = entries + reg if aoi in ("poland", "texas") else reg + entries
+            entries = entries + reg if aoi in ("poland", "texas", "california") \
+                else reg + entries
         if aoi in IRENA:
             entries.append(irena(*IRENA[aoi]))
         if entries:

@@ -2816,6 +2816,11 @@ INTERACTIVE = [
     # on its own LOCALIZED checkpoint v39_combined_texas (tied v5 on the held-out Bexar
     # County, won on pixel IoU). docs/results/texas.md explains.
     ("results/texas_pv_evidence_atlas.html", "texas_pv_evidence_atlas.html"),
+    # California: the second US state run as an AOI of its own (counties as regions),
+    # segmentation-only, on its own LOCALIZED checkpoint v38_combined_california (an average
+    # of epochs 32 and 40; beat v5 on the held-out Santa Clara County).
+    # docs/results/california.md explains.
+    ("results/california_pv_evidence_atlas.html", "california_pv_evidence_atlas.html"),
     ("results/training_data_registry.html", "training_data_registry.html"),
     # PVscope: one 640 m Peshawar West window of Sentinel-2 pixels against mapped rooftop PV,
     # as a 3D band cube and in spectral space. Written by scripts/build_pvscope.py;

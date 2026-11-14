@@ -17,6 +17,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1304
     made: '2026-11-09'
+  california:
+    median: '2026-07-29'
+    p25: '2026-06-21'
+    p75: '2026-09-04'
+    first: '2026-05-01'
+    last: '2026-09-30'
+    windows:
+    - 2026-05-01:2026-09-30
+    n_cells: 1405
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1374
+    made: '2026-11-14'
   denmark:
     median: '2026-07-09'
     p25: '2026-05-25'
