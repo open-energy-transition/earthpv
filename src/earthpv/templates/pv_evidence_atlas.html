@@ -66,7 +66,7 @@
   @media (prefers-color-scheme: light) {
     :root {
       --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
-      --land: #e6dcc7; --map-bg: #efe8d8;
+      --land: #fffdf8; --map-bg: #efe8d8;
       --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
       --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
       --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
@@ -79,7 +79,7 @@
   }
   :root[data-theme="light"] {
     --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
-    --land: #e6dcc7; --map-bg: #efe8d8;
+    --land: #fffdf8; --map-bg: #efe8d8;
     --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
     --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
     --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
@@ -1364,14 +1364,18 @@ out geom;</div>
 
   // Sequential ramps as [position, colour] stops, monotone in lightness (audited by
   // scripts/atlas_ramp_audit.py): bright = more on the dark page, dark = more on the light.
-  // The dark one is the Electrify Earth globe's night ramp, ember to gold (owner, 2026-11-14;
-  // docs/assets/landing/landing.js, THEMES.dark.ramp), over this page's own fitted range.
+  // Both are the Electrify Earth globe's (owner, 2026-11-14; docs/assets/landing/landing.js,
+  // THEMES.*.ramp), over this page's own fitted range: by night ember to gold, by day blush
+  // to vermilion on the globe's white land (`--land`).
   const RAMP_DARK = [[0, "#603052"], [0.25, "#a03442"], [0.5, "#da4c2c"], [0.726, "#ff8838"],
     [0.85, "#ffbe64"], [1, "#fff0c8"]];
-  const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"].map((s, k, a) => [k / (a.length - 1), s]);
-  // A cell of this much or more is a hot spot, as on the globe (its RED_MW): by night a cream
-  // mark sits on it, its area growing with the cell's MWp, and a halo glows round it.
-  const HOT_MW = 100, HOT_HALO = "rgb(255,150,80)", HOT_MARK = "rgb(255,232,184)";
+  const RAMP_LIGHT = [[0, "#fcf0e9"], [0.25, "#f9ded1"], [0.5, "#f1b098"], [0.726, "#e07050"],
+    [0.85, "#c64426"], [1, "#a32c10"]];
+  // A cell of this much or more is a hot spot, as on the globe (its RED_MW): a mark sits on
+  // it, its area growing with the cell's MWp, cream by night with a halo glowing round it,
+  // vermilion by day with none.
+  const HOT_MW = 100, HOT_HALO = "rgb(255,150,80)";
+  const hotMark = dark => dark ? "rgb(255,232,184)" : "rgb(163,44,16)";
 
   const SVGNS = "http://www.w3.org/2000/svg";
   function el(n, a){
@@ -1718,7 +1722,8 @@ out geom;</div>
   const hotMarkRadius = def => ["interpolate", ["exponential", 2], ["zoom"],
     0, ["*", hotSize(def), CELLPX0], 5, ["*", hotSize(def), CELLPX0 * 32],
     22, ["*", hotSize(def), CELLPX0 * 32]];
-  const glowOn = () => OV.glow.on && isDark() && STATE.basemap === "none";
+  // The glow and the halo are night effects; the mark shows by day too, as on the globe.
+  const glowOn = id => OV.glow.on && STATE.basemap === "none" && (id === "hot-mark" || isDark());
   const GLOW_LAYERS = ["glow", "hot-halo", "hot-mark"];
 
   // Keyless tile services only, every one serving CORS headers (or the PNG export could
@@ -1844,16 +1849,17 @@ out geom;</div>
                "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 2.4],
                "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.95]}},
       // Hot spots, as on the globe: a soft halo OVER the cells round any cell of HOT_MW or
-      // more (the grid is opaque, so under it nothing would show), and a cream mark on the
-      // cell itself, so a hot spot reads even where all its neighbours are bright.
+      // more (the grid is opaque, so under it nothing would show), and a mark on the cell
+      // itself (cream by night; vermilion by day, without the halo), so a hot spot reads
+      // even where all its neighbours are bright.
       {id: "hot-halo", type: "circle", source: "glowpts", filter: hotFilter(def),
        layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
        paint: {"circle-color": HOT_HALO, "circle-radius": hotRadius(def),
                "circle-blur": 1, "circle-opacity": 0.5}},
       {id: "hot-mark", type: "circle", source: "glowpts", filter: hotFilter(def),
-       layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
-       paint: {"circle-color": HOT_MARK, "circle-radius": hotMarkRadius(def),
-               "circle-blur": 0.3, "circle-opacity": 0.95}},
+       layout: {visibility: OV.glow.on && STATE.basemap === "none" ? "visible" : "none"},
+       paint: {"circle-color": hotMark(P.dark), "circle-radius": hotMarkRadius(def),
+               "circle-blur": 0.3, "circle-opacity": P.dark ? 0.95 : 0.92}},
       // Over the cells, so a cell that holds only hand-mapped OSM shows its colour hatched.
       {id: "unimaged", type: "fill", source: "unimaged", layout: {visibility: OV.unimaged.on ? "visible" : "none"},
        paint: {"fill-pattern": HATCH_ICON, "fill-opacity": hatchOpacity(), "fill-antialias": false}},
@@ -2017,6 +2023,8 @@ out geom;</div>
     m.setPaintProperty("hot-halo", "circle-radius", hotRadius(def));
     m.setFilter("hot-mark", hotFilter(def));
     m.setPaintProperty("hot-mark", "circle-radius", hotMarkRadius(def));
+    m.setPaintProperty("hot-mark", "circle-color", hotMark(P.dark));
+    m.setPaintProperty("hot-mark", "circle-opacity", P.dark ? 0.95 : 0.92);
     m.setPaintProperty("cells-hover", "line-color", P.ink);
     m.setPaintProperty("domain-line", "line-color", P.ink2);
     m.setPaintProperty("prov-line", "line-color", P.provStroke);
@@ -2039,7 +2047,7 @@ out geom;</div>
     }
     MAP.tileTheme = P.dark;
     setVis("land", none);
-    for (const id of GLOW_LAYERS) setVis(id, glowOn());
+    for (const id of GLOW_LAYERS) setVis(id, glowOn(id));
     renderLegend();
   }
 
@@ -2944,7 +2952,7 @@ out geom;</div>
   function toggleOverlay(o, on){
     o.on = on;
     if (o.id === "cities"){ document.getElementById("cityLayer").hidden = !on; placeCities(); }
-    else if (o.id === "glow") for (const id of GLOW_LAYERS) setVis(id, glowOn());
+    else if (o.id === "glow") for (const id of GLOW_LAYERS) setVis(id, glowOn(id));
     else for (const id of o.layers || []) setVis(id, on);
     if (o.id === "live"){ if (on) refreshLive(); else setLiveStatus(""); }
     renderLegend();

@@ -645,12 +645,13 @@ SVG/HTML; the map and the three Plot charts say they could not load.
 
 - **Map**: "Show" picks the cell quantity (Best, *Not yet in OpenStreetMap*, hand-mapped, model
   >= / < 400 m²), always as MWp per cell (the per-km² toggle was removed 2026-10-28); the log
-  colour scale is refitted per quantity. By night the ramp is the Electrify Earth globe's
-  night ramp, ember to gold (`RAMP_DARK`, [position, colour] stops), and a cell of `HOT_MW`
-  (100, the globe's `RED_MW`) or more gets the globe's hot spot: a cream mark on the cell and a
-  halo over its neighbours (`hot-mark`, `hot-halo`; owner, 2026-11-14), the mark growing with
-  the map only up to zoom 5, so zoomed in it marks its own cell. Both follow the glow switch
-  (dark, no basemap); the light ramp is unchanged.
+  colour scale is refitted per quantity. Both ramps are the Electrify Earth globe's ([position,
+  colour] stops; owner, 2026-11-14): by night ember to gold (`RAMP_DARK`), by day blush to
+  vermilion (`RAMP_LIGHT`) on the globe's white land (light `--land` #fffdf8). A cell of
+  `HOT_MW` (100, the globe's `RED_MW`) or more gets the globe's hot spot: a mark on the cell,
+  cream by night with a halo over its neighbours (`hot-halo`), vermilion by day without one
+  (`hot-mark`). The mark grows with the map only up to zoom 5, so zoomed in it marks its own
+  cell. Both follow the glow switch, with no basemap.
   Basemaps: none (night lights), Esri grey canvas, OpenStreetMap, Esri satellite (**CARTO needs
   an API key now**). City labels are HTML (no glyph server); calibration areas are diamonds.
 - **More layers**: no OpenStreetMap data shows when a page opens (owner, 2026-11-14): the

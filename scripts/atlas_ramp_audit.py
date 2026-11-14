@@ -41,7 +41,7 @@ ATLAS = ROOT / "docs" / "assets" / "interactive" / "pakistan_evidence_atlas.html
 TEMPLATE = ROOT / "src" / "earthpv" / "templates" / "pv_evidence_atlas.html"
 # straight from the template's :root blocks
 LAND_DARK, MAPBG_DARK = "#241f16", "#0c0a07"
-LAND_LIGHT, MAPBG_LIGHT = "#e6dcc7", "#efe8d8"
+LAND_LIGHT, MAPBG_LIGHT = "#fffdf8", "#efe8d8"
 VMIN = 0.02
 
 
