@@ -1369,9 +1369,9 @@ out geom;</div>
   const RAMP_DARK = [[0, "#603052"], [0.25, "#a03442"], [0.5, "#da4c2c"], [0.726, "#ff8838"],
     [0.85, "#ffbe64"], [1, "#fff0c8"]];
   const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"].map((s, k, a) => [k / (a.length - 1), s]);
-  // A cell of this much or more is a hot spot, as on the globe (its RED_MW): by night a halo
-  // glows round it, as large as the globe draws it relative to the cell.
-  const HOT_MW = 100, HOT_HALO = "rgb(255,150,80)";
+  // A cell of this much or more is a hot spot, as on the globe (its RED_MW): by night a cream
+  // mark sits on it, its area growing with the cell's MWp, and a halo glows round it.
+  const HOT_MW = 100, HOT_HALO = "rgb(255,150,80)", HOT_MARK = "rgb(255,232,184)";
 
   const SVGNS = "http://www.w3.org/2000/svg";
   function el(n, a){
@@ -1707,14 +1707,19 @@ out geom;</div>
     return ["case", ["<=", v, 0], zeroColor, interp];
   }
 
-  // The globe's hot spots (landing.js): a cell of HOT_MW or more gets a halo 2.8 times its
-  // mark, whose radius is 0.055 x sqrt(MW) held between 0.5 and 2.6, counted here in cells.
-  // Capacity only: the potential layer is energy, so it has none.
+  // The globe's hot spots (landing.js): a cell of HOT_MW or more gets a mark of radius
+  // 0.055 x sqrt(MW), held between 0.5 and 2.6, and a halo 2.8 times that, counted here in
+  // cells. Capacity only: the potential layer is energy, so it has none.
   const hotFilter = def => def.unit === "GWh/yr" ? ["==", 1, 0] : [">=", ["get", def.prop], HOT_MW];
-  const hotRadius = def => cellScaled(["*", 2.8, ["min", 2.6, ["max", 0.5,
-    ["*", 0.055, ["sqrt", ["max", ["get", def.prop], 0]]]]]]);
+  const hotSize = def => ["min", 2.6, ["max", 0.5, ["*", 0.055, ["sqrt", ["max", ["get", def.prop], 0]]]]];
+  const hotRadius = def => cellScaled(["*", 2.8, hotSize(def)]);
+  // The mark grows with the map up to zoom 5 (a country's view) and then keeps its size in
+  // pixels, so zoomed in it marks its own cell instead of covering its neighbours.
+  const hotMarkRadius = def => ["interpolate", ["exponential", 2], ["zoom"],
+    0, ["*", hotSize(def), CELLPX0], 5, ["*", hotSize(def), CELLPX0 * 32],
+    22, ["*", hotSize(def), CELLPX0 * 32]];
   const glowOn = () => OV.glow.on && isDark() && STATE.basemap === "none";
-  const GLOW_LAYERS = ["glow", "hot-halo", "hot-cells"];
+  const GLOW_LAYERS = ["glow", "hot-halo", "hot-mark"];
 
   // Keyless tile services only, every one serving CORS headers (or the PNG export could
   // not read the canvas back). CARTO's basemaps were the first choice and were dropped
@@ -1839,15 +1844,16 @@ out geom;</div>
                "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 2.4],
                "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.95]}},
       // Hot spots, as on the globe: a soft halo OVER the cells round any cell of HOT_MW or
-      // more (the grid is opaque, so under it nothing would show), then that cell drawn
-      // again on top, so its own colour stays true.
+      // more (the grid is opaque, so under it nothing would show), and a cream mark on the
+      // cell itself, so a hot spot reads even where all its neighbours are bright.
       {id: "hot-halo", type: "circle", source: "glowpts", filter: hotFilter(def),
        layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
        paint: {"circle-color": HOT_HALO, "circle-radius": hotRadius(def),
                "circle-blur": 1, "circle-opacity": 0.5}},
-      {id: "hot-cells", type: "fill", source: "cells", filter: hotFilter(def),
+      {id: "hot-mark", type: "circle", source: "glowpts", filter: hotFilter(def),
        layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
-       paint: {"fill-color": rampExpr(def, zero), "fill-antialias": false}},
+       paint: {"circle-color": HOT_MARK, "circle-radius": hotMarkRadius(def),
+               "circle-blur": 0.3, "circle-opacity": 0.95}},
       // Over the cells, so a cell that holds only hand-mapped OSM shows its colour hatched.
       {id: "unimaged", type: "fill", source: "unimaged", layout: {visibility: OV.unimaged.on ? "visible" : "none"},
        paint: {"fill-pattern": HATCH_ICON, "fill-opacity": hatchOpacity(), "fill-antialias": false}},
@@ -2009,8 +2015,8 @@ out geom;</div>
     m.setPaintProperty("glow", "circle-color", rampExpr(def, P.land));
     m.setFilter("hot-halo", hotFilter(def));
     m.setPaintProperty("hot-halo", "circle-radius", hotRadius(def));
-    m.setFilter("hot-cells", hotFilter(def));
-    m.setPaintProperty("hot-cells", "fill-color", rampExpr(def, P.land));
+    m.setFilter("hot-mark", hotFilter(def));
+    m.setPaintProperty("hot-mark", "circle-radius", hotMarkRadius(def));
     m.setPaintProperty("cells-hover", "line-color", P.ink);
     m.setPaintProperty("domain-line", "line-color", P.ink2);
     m.setPaintProperty("prov-line", "line-color", P.provStroke);
