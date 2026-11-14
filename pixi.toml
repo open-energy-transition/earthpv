@@ -47,6 +47,7 @@ python = "3.11.*"
 
 [feature.docs.pypi-dependencies]
 mkdocs-material = ">=9.5"
+mkdocs-glightbox = "*"
 
 [environments]
 default = { solve-group = "default" }

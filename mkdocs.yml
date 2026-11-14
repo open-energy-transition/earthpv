@@ -118,6 +118,7 @@ plugins:
         - Results
         - Perspectives
   - search
+  - glightbox
 
 extra:
   social:
