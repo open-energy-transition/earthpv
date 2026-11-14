@@ -776,6 +776,11 @@ SVG/HTML; the map and the three Plot charts say they could not load.
   growth-evidence and `pv_atlas.html` templates (`atlas.py` still passes the key, unused),
   `apply_validation_badges.py` no longer puts it back, and it was cut from the published
   Pakistan growth, Gujarat and France comparison pages.
+  **The total carries its scope (owner, 2026-11-14)**: a chip beside "Nationwide" reads
+  ">400 m² only" (tooltip: plus anything mapped by hand, so a floor) wherever the page's
+  `small_rooftop_status` is unmeasured, "rooftops >400 m² only" where only farm ground PV
+  below 400 m² is measured (Yemen), and nothing where small rooftops are measured (Pakistan,
+  Germany): template JS off the page's own statuses, so every new atlas gets it.
 - **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
   the same `uncertainty.components` the headline CI is composed from.
 - **"Against official and published figures" (2026-10-29)**: the national total (Best and
