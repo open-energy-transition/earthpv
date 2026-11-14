@@ -4,5 +4,7 @@ world.json     Country outlines simplified from Natural Earth 1:50m (public doma
                world-atlas 2.0.2 (ISC).
 regions.json   US state and Chinese province outlines simplified from Natural Earth 1:50m
                admin-1 (public domain).
+stars.json     The night sky of the dark mode: the Yale Bright Star Catalogue, 5th revised
+               edition (Hoffleit and Warren 1991, Yale University Observatory), to V 6.5.
 vendor/        d3-array 3.2.4 and d3-geo 3.1.1, (c) Mike Bostock, ISC licence.
 fonts/         Zen Old Mincho (c) Yoshimichi Ohira, SIL Open Font Licence 1.1.

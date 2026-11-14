@@ -1,5 +1,6 @@
 /* Electrify Earth. Colours from Grid2Poster's japanese_ink theme: paper, two inks and one
-   rust-vermilion accent. */
+   rust-vermilion accent. Dark mode is the same page at the end of a very late sunset: the
+   Earth's night side in space, its limb still lit, the stars behind it (landing.js). */
 @font-face {
   font-family: "Zen Old Mincho";
   src: url("fonts/zen-old-mincho-latin-400.woff2") format("woff2");
@@ -12,9 +13,44 @@
   --ink: #26231f;
   --ink-2: #6a6a6a;
   --shu: #a32c10;
+  --shu-fade: rgba(163, 44, 16, 0);
+  --hair: rgba(38, 35, 31, .18);
+  --bar: rgba(38, 35, 31, .42);
+  --card-shadow: 0 1px 2px rgba(38, 35, 31, .28), 0 8px 22px rgba(38, 35, 31, .12);
   --serif: "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
 }
+/* The night: deep space, starlight for ink, the last of the sunset for vermilion. Set by the
+   script in landing.html's head; the media query covers a page without scripts. */
+:root[data-theme="dark"] {
+  --paper: #04060d;
+  --paper-2: #0e1424;
+  --ink: #ece3d1;
+  --ink-2: #9aa3b8;
+  --shu: #ff9466;
+  --shu-fade: rgba(255, 148, 102, 0);
+  --hair: rgba(236, 227, 209, .16);
+  --bar: rgba(236, 227, 209, .42);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, .7), 0 10px 30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(236, 227, 209, .07);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #04060d;
+    --paper-2: #0e1424;
+    --ink: #ece3d1;
+    --ink-2: #9aa3b8;
+    --shu: #ff9466;
+    --shu-fade: rgba(255, 148, 102, 0);
+    --hair: rgba(236, 227, 209, .16);
+    --bar: rgba(236, 227, 209, .42);
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, .7), 0 10px 30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(236, 227, 209, .07);
+    color-scheme: dark;
+  }
+}
+.for-dark { display: none; }
+:root[data-theme="dark"] .for-dark { display: inline; }
+:root[data-theme="dark"] .for-light { display: none; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -35,6 +71,7 @@ a { color: inherit; }
   height: 100dvh;
   min-height: 600px;
   overflow: hidden;
+  isolation: isolate;      /* the sky canvas paints beneath everything in it, flow content too */
 }
 
 /* ---------------------------------------------------------------- corners */
@@ -113,10 +150,32 @@ a { color: inherit; }
 .github { display: block; width: 26px; height: 26px; margin-left: 2px; color: var(--ink); transition: color .18s ease; }
 .github svg { display: block; width: 100%; height: 100%; fill: currentColor; }
 .github:hover, .github:focus-visible { color: var(--shu); }
-a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
+a:focus-visible, .mode:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
+/* The light switch: a crescent by day, the sun by night, as on the rest of the site. */
+.mode {
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  transition: color .18s ease, transform .3s ease;
+}
+.mode svg { display: block; width: 100%; height: 100%; filter: url(#rough-fine); }
+.mode__moon { fill: currentColor; }
+.mode__sun { fill: currentColor; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; }
+.mode .mode__sun, :root[data-theme="dark"] .mode .mode__moon { display: none; }
+:root[data-theme="dark"] .mode .mode__sun { display: block; }
+.mode:hover, .mode:focus-visible { color: var(--shu); transform: rotate(-14deg); }
 
 /* ------------------------------------------------------------------ globe */
 .stage { position: relative; min-height: 0; }
+/* The night sky behind the whole page, drawn once per size by landing.js. */
+#sky { position: absolute; z-index: -1; inset: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
+:root[data-theme="dark"] #sky { display: block; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 #earth { touch-action: none; cursor: grab; outline: none; }
 #earth.is-over { cursor: pointer; }
@@ -164,7 +223,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   padding: 11px 15px 12px;
   background: var(--paper-2);
   border-left: 3px solid var(--shu);
-  box-shadow: 0 1px 2px rgba(38, 35, 31, .28), 0 8px 22px rgba(38, 35, 31, .12);
+  box-shadow: var(--card-shadow);
   color: var(--ink);
   text-decoration: none;
   pointer-events: none;
@@ -216,6 +275,9 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   --tier: #9c4a14; --tier-hi: #cf7a3f; --tier-lo: #6f3209; --tier-ink: #fdeade;
   --tier-text: #8a3f10; --tier-ring: rgba(156, 74, 20, .48);
 }
+:root[data-theme="dark"] .card__head[data-tier="gold"] { --tier-text: #e6bb5c; --tier-ring: rgba(230, 187, 92, .5); }
+:root[data-theme="dark"] .card__head[data-tier="silver"] { --tier-text: #b9c5d6; --tier-ring: rgba(185, 197, 214, .45); }
+:root[data-theme="dark"] .card__head[data-tier="bronze"] { --tier-text: #e59a66; --tier-ring: rgba(229, 154, 102, .5); }
 /* Width 0 and min-width 100%: the note wraps to the card instead of widening it. In vermilion,
    like the bar below 400 m2 whose gap it names, at the size of the card's lines and behind a
    warning sign (owner, 2026-11-12). */
@@ -252,7 +314,7 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   max-width: 100%;
   margin: 7px 0 0;
   padding-top: 7px;
-  border-top: 1px solid rgba(38, 35, 31, .18);
+  border-top: 1px solid var(--hair);
   font-size: 12.5px;
   line-height: 1.35;
 }
@@ -267,14 +329,14 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
 }
 .card__size-label { font-family: var(--mono); font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 .card__size-track { display: flex; align-items: center; height: 10px; }
-.card__size-bar { height: 100%; background: rgba(38, 35, 31, .42); }
+.card__size-bar { height: 100%; background: var(--bar); }
 .card__size-bar.is-small { background: var(--shu); }
 /* More is there, by an unknown amount: the bar goes on and fades out, as on the atlas's chart. */
 .card__size-fade {
   flex: none;
   width: 12%;
   height: 100%;
-  background: linear-gradient(to right, var(--shu), rgba(163, 44, 16, 0));
+  background: linear-gradient(to right, var(--shu), var(--shu-fade));
 }
 .card__size-value { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .card__size-label.is-small, .card__size-value.is-small { color: var(--shu); font-weight: 600; }
@@ -296,6 +358,13 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   letter-spacing: .24em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+/* At night the title takes the colours of the sky just after the sun has gone. */
+:root[data-theme="dark"] .title h1 span {
+  background: linear-gradient(100deg, #ffd890 0%, #ffa36a 34%, #f2737a 66%, #b77bd0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .rule {
   display: block;
@@ -350,6 +419,16 @@ a:focus-visible { outline: 2px solid var(--shu); outline-offset: 3px; }
   border: 1px solid rgba(38, 35, 31, .55);
   background: repeating-linear-gradient(115deg, rgba(38, 35, 31, .3) 0 1px, transparent 1px 3.5px);
   filter: url(#rough-fine);
+}
+/* The keys in the globe's night colours (landing.js, THEMES.dark). */
+:root[data-theme="dark"] .key--ink { background: #4a5878; border-color: #efe5cf; }
+:root[data-theme="dark"] .key--ramp {
+  background: linear-gradient(90deg, #5c3050, #d64a2e 45%, #ff9e48 75%, #ffeec4);
+  border-color: rgba(236, 227, 209, .3);
+}
+:root[data-theme="dark"] .key--pencil {
+  border-color: rgba(160, 182, 226, .55);
+  background: repeating-linear-gradient(115deg, rgba(160, 182, 226, .3) 0 1px, transparent 1px 3.5px);
 }
 
 .oet {

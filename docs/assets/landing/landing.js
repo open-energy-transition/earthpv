@@ -10,6 +10,14 @@
  * d3-geo does the two things that are hard to do by hand, clipping polygons at the horizon
  * and point-in-country tests. Lines and dots are projected here directly, which is what
  * lets a 33,000-point coastline carry per-segment widths at a useful frame rate.
+ *
+ * Dark mode is the same Earth seen from space at the end of a very late sunset. The Sun has
+ * just gone behind the globe's lower left limb, so the whole face is night: the air along
+ * the limb still glows from sunset orange through blue to the green of the airglow, and
+ * behind it are the stars that really lie around the Sun's direction today (Yale Bright Star
+ * Catalogue, stars.json), with the Milky Way and the zodiacal light. A fourth canvas, `sky`,
+ * holds them behind the whole page. The camera is fixed in space and the Earth turns under
+ * it, so the sky and the sunset stay still while the land goes round.
  */
 (function () {
   'use strict';
@@ -32,7 +40,72 @@
   var TONE_ALPHA = 0.95;       // the white over a cell the model has looked at
   var RED_MW = 100;            // a 0.1 degree cell at or above this is red: 382 cells, 35% of capacity
 
+  /* The night. MOON is the pencil by night, STAR the ink, EMBER the vermilion. */
+  var MOON = '160,182,226', STAR = '240,230,208', EMBER = '255,140,88';
+  var EARTH_DEG = 22;          // the globe's angular radius from the camera, which sets the sky's scale
+  var SUN_PSI = 215 * Math.PI / 180;   // where the Sun has set: lower left, counter-clockwise from the right
+  var SUN_AT = 0.9;            // and how far out, in globe radii: just inside the limb, so it is hidden
+
+  /* Everything the two themes draw differently. A line set is [rgb, alpha]. The light values
+     are the ink sketch's, unchanged. */
+  var THEMES = {
+    light: {
+      dark: false,
+      wash: [INK, 0.05], hatch: [INK, 0.26], grat: [INK, 0.13], border: [INK, 0.3],
+      region: [INK, 0.28], ghost: [INK, 0.2], coast: [INK, 0.62],
+      inkWash: [INK, 0.05], inkGhost: [INK, 0.35], ink: [INK, 0.95], red: RED,
+      tone: [255, 253, 248], toneAlpha: TONE_ALPHA,
+      ramp: [[0, 252, 240, 233], [0.25, 249, 222, 209], [0.5, 241, 176, 152],
+             [0.726, 224, 112, 80], [0.85, 198, 68, 38], [1, 163, 44, 16]],
+      mark: [RED, 0.92], halo: null,
+      ring: [INK, 0.4, 0.2], tick: [INK, 0.55], label: [INK, 0.62],
+      brush: null, spatter: [INK, 0.82]
+    },
+    /* By night the land EarthPV has looked at is lit a cool slate, and its solar glows from
+       ember to gold: brighter is more. The brush is the sunset itself, gold to rose. */
+    dark: {
+      dark: true,
+      wash: [MOON, 0.07], hatch: [MOON, 0.15], grat: [MOON, 0.08], border: [MOON, 0.26],
+      region: [MOON, 0.2], ghost: [MOON, 0.14], coast: [MOON, 0.52],
+      inkWash: [MOON, 0.05], inkGhost: [STAR, 0.3], ink: [STAR, 0.9], red: EMBER,
+      tone: [150, 172, 226], toneAlpha: 0.42,
+      ramp: [[0, 96, 48, 82], [0.25, 160, 52, 66], [0.5, 218, 76, 44],
+             [0.726, 255, 136, 56], [0.85, 255, 190, 100], [1, 255, 240, 200]],
+      mark: ['255,232,184', 0.95], halo: ['255,150,80', 0.2],
+      ring: ['186,200,232', 0.3, 0.15], tick: ['200,210,236', 0.5], label: ['205,214,238', 0.66],
+      brush: [[255, 228, 172], [255, 170, 104], [240, 112, 124]], spatter: ['240,112,124', 0.82]
+    }
+  };
+
   function el(id) { return document.getElementById(id); }
+
+  function rgba(c) { return 'rgba(' + c[0] + ',' + c[1] + ')'; }
+
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+
+  function normed(v) {
+    var l = Math.hypot(v[0], v[1], v[2]);
+    return [v[0] / l, v[1] / l, v[2] / l];
+  }
+
+  function cross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  }
+
+  /* The colour ramp of the solar raster, as little-endian RGBA words. */
+  function buildRamp(stops) {
+    var out = new Uint32Array(256), s = 0;
+    for (var i = 0; i < 256; i++) {
+      var u = i / 255;
+      while (s < stops.length - 2 && u > stops[s + 1][0]) s++;
+      var a = stops[s], b = stops[s + 1], t = (u - a[0]) / (b[0] - a[0]);
+      var mix = function (k) { return a[k] + (b[k] - a[k]) * t; };
+      out[i] = (255 << 24) | (mix(3) << 16) | (mix(2) << 8) | mix(1);
+    }
+    return out;
+  }
 
   function mulberry(seed) {
     return function () {
@@ -88,6 +161,115 @@
     return c;
   }
 
+  /* ------------------------------------------------------------------- the night sky */
+
+  /* The Sun's direction today, as an equatorial unit vector (J2000 axes), from the low
+     precision formula of the Astronomical Almanac: good to a hundredth of a degree. Also its
+     ecliptic longitude and the obliquity, for the zodiacal light. */
+  function sunToday(date) {
+    var n = date.getTime() / 86400000 + 2440587.5 - 2451545.0;
+    var g = (357.528 + 0.9856003 * n) * RAD;
+    var lam = (280.460 + 0.9856474 * n + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * RAD;
+    var eps = (23.439 - 0.0000004 * n) * RAD;
+    return { dir: [Math.cos(lam), Math.cos(eps) * Math.sin(lam), Math.sin(eps) * Math.sin(lam)],
+             lam: lam, eps: eps };
+  }
+
+  /* The camera: looking along A, the Sun at SUN_AT globe radii from the centre towards SUN_PSI,
+     celestial north as near to up as that allows. Seen from inside the sky, east is on the
+     left, which X = A x U gives. Solved by a few rounds of fixed-point iteration. */
+  function skyFrame(sun) {
+    var beta = Math.atan(SUN_AT * Math.tan(EARTH_DEG * RAD));
+    var A = sun.slice(), U, X;
+    for (var it = 0; it < 12; it++) {
+      U = normed([-A[2] * A[0], -A[2] * A[1], 1 - A[2] * A[2]]);
+      X = normed(cross(A, U));
+      var c = Math.cos(SUN_PSI), s = Math.sin(SUN_PSI);
+      var toSun = [c * X[0] + s * U[0], c * X[1] + s * U[1], c * X[2] + s * U[2]];
+      A = normed([sun[0] - Math.sin(beta) * toSun[0], sun[1] - Math.sin(beta) * toSun[1],
+                  sun[2] - Math.sin(beta) * toSun[2]]);
+    }
+    U = normed([-A[2] * A[0], -A[2] * A[1], 1 - A[2] * A[2]]);
+    X = normed(cross(A, U));
+    return { A: A, U: U, X: X };
+  }
+
+  /* Equatorial (J2000) to galactic: x to the Galactic Centre, z to the north galactic pole. */
+  var GAL = [[-0.0548755604, -0.8734370902, -0.4838350155],
+             [0.4941094279, -0.4448296300, 0.7469822445],
+             [-0.8676661490, -0.1980763734, 0.4559837762]];
+
+  function hash3(x, y, z) {
+    var h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(z, 1274126177);
+    h = Math.imul(h ^ (h >>> 13), 1103515245);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+
+  function noise3(x, y, z) {
+    var xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+    var u = x - xi, v = y - yi, w = z - zi;
+    u = u * u * (3 - 2 * u); v = v * v * (3 - 2 * v); w = w * w * (3 - 2 * w);
+    var a = hash3(xi, yi, zi), b = hash3(xi + 1, yi, zi);
+    var c = hash3(xi, yi + 1, zi), d = hash3(xi + 1, yi + 1, zi);
+    var e = hash3(xi, yi, zi + 1), f = hash3(xi + 1, yi, zi + 1);
+    var g = hash3(xi, yi + 1, zi + 1), h = hash3(xi + 1, yi + 1, zi + 1);
+    var x1 = a + (b - a) * u, x2 = c + (d - c) * u, x3 = e + (f - e) * u, x4 = g + (h - g) * u;
+    var y1 = x1 + (x2 - x1) * v, y2 = x3 + (x4 - x3) * v;
+    return y1 + (y2 - y1) * w;
+  }
+
+  function fbm(x, y, z, octaves) {
+    var sum = 0, amp = 0.5, norm = 0;
+    for (var o = 0; o < octaves; o++) {
+      sum += amp * noise3(x, y, z);
+      norm += amp;
+      x = x * 2.03 + 17.1; y = y * 2.03 + 3.7; z = z * 2.03 + 9.3;
+      amp *= 0.5;
+    }
+    return sum / norm;
+  }
+
+  function smoothstep(a, b, x) {
+    var t = clamp01((x - a) / (b - a));
+    return t * t * (3 - 2 * t);
+  }
+
+  /* The Milky Way's light in one direction (galactic unit vector), roughly as it looks to
+     the eye: a thin disc brightest towards Sagittarius, the bulge, the Cygnus and Carina
+     clouds, and the dark Great Rift with dust lanes along the plane. Returns [disc, bulge]. */
+  function milkyWay(gx, gy, gz) {
+    var b = Math.asin(gz) / RAD, ab = Math.abs(b);
+    if (ab > 45) return null;
+    var l = Math.atan2(gy, gx) / RAD;
+    var width = 4.5 + 4 * Math.exp(-l * l / 1800);
+    var along = 0.3 + 0.7 * Math.exp(-l * l / 3200) + 0.3 * Math.exp(-(l - 78) * (l - 78) / 260) +
+                0.2 * Math.exp(-(l + 72) * (l + 72) / 380);
+    var disc = Math.exp(-b * b / (2 * width * width)) * along + 0.18 * Math.exp(-ab / 16) * along;
+    var bulge = Math.exp(-(l * l / 128 + (b + 1.5) * (b + 1.5) / 90));
+    var clumps = fbm(gx * 7, gy * 7, gz * 7, 3);
+    var dust = fbm(gx * 15 + 5, gy * 15, gz * 15, 3);
+    var rift = l > -15 && l < 82 ? Math.exp(-Math.pow((b - 1.4 - 0.025 * l) / 2.4, 2)) : 0;
+    var dim = (1 - 0.8 * rift * smoothstep(0.3, 0.6, dust)) *
+              (1 - 0.55 * Math.exp(-ab / 3.5) * smoothstep(0.5, 0.75, dust));
+    disc *= (0.35 + 1.3 * clumps * clumps) * dim;
+    bulge *= (0.7 + 0.6 * clumps) * dim;
+    return [disc, bulge];
+  }
+
+  /* Star colour from B-V, a little paler than a true black body, as the eye sees them. */
+  var STAR_COLOURS = [[-0.4, 165, 190, 255], [0, 208, 220, 255], [0.35, 246, 246, 255],
+                      [0.6, 255, 243, 228], [1.0, 255, 224, 192], [1.5, 255, 200, 148],
+                      [2.0, 255, 182, 124]];
+
+  function starColour(bv) {
+    var s = STAR_COLOURS, i = 0;
+    if (bv <= s[0][0]) return s[0].slice(1);
+    while (i < s.length - 2 && bv > s[i + 1][0]) i++;
+    var a = s[i], b = s[i + 1], t = clamp01((bv - a[0]) / (b[0] - a[0]));
+    return [Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t),
+            Math.round(a[3] + (b[3] - a[3]) * t)];
+  }
+
   /* --------------------------------------------------------------------------- data */
 
   function decodeLine(flat, scale) {
@@ -130,8 +312,31 @@
     var stage = el('stage'), under = el('under'), canvas = el('earth'), over = el('over');
     var ctx = canvas.getContext('2d'), uctx = under.getContext('2d'), octx = over.getContext('2d');
     var card = el('card'), readout = el('readout'), worldLabel = el('world-label');
+    var sky = el('sky'), sctx = sky ? sky.getContext('2d') : null;
 
-    document.body.style.backgroundImage = 'url(' + paperTile().toDataURL() + ')';
+    var root = document.documentElement, T = THEMES.light, ramp = null, paperURL = null;
+    var stars = null, starsAsked = false;
+
+    /* The paper's grain by day; by night the sky canvas is the background. */
+    function setTheme() {
+      T = THEMES[root.getAttribute('data-theme') === 'dark' && sctx ? 'dark' : 'light'];
+      ramp = buildRamp(T.ramp);
+      if (!T.dark && !paperURL) paperURL = 'url(' + paperTile().toDataURL() + ')';
+      document.body.style.backgroundImage = T.dark ? 'none' : paperURL;
+      canvas.setAttribute('aria-label', T.dark
+        ? 'The Earth at night from space, just after sunset. Countries processed with EarthPV are outlined in light and lit, with their solar capacity glowing from red to gold; the country links below the globe open each atlas.'
+        : 'An ink sketch of the Earth. Countries processed with EarthPV are outlined in ink and left white, with their solar capacity in red; the country links below the globe open each atlas.');
+      if (T.dark && !starsAsked) {
+        starsAsked = true;
+        json('stars.json').then(function (doc) {
+          stars = decodeStars(doc);
+          if (T.dark) drawSky();
+        }).catch(function (err) {
+          if (window.console) console.warn('Electrify Earth: no stars,', err);
+        });
+      }
+    }
+    setTheme();
 
     var W = 0, H = 0, DPR = 1, cx = 0, cy = 0, R = 1, ringR = 1, S = 1;
     var quality = 2;
@@ -356,22 +561,10 @@
     var rImage, rPixels, rTone, rMW, rMark, rSize = 0, rLeft = 0, rTop = 0, rCell = 1;
     var rTouched = new Int32Array((seen.length + pv.length) * 4), rCount = 0;
 
-    /* From a blush on the white land to full vermilion, over a log scale of MW in one cell.
-       Opaque: the land under a cell with solar is white whatever the wash beneath it. */
+    /* From a blush on the white land to full vermilion, over a log scale of MW in one cell
+       (by night from ember to gold: THEMES' `ramp`). Opaque: the land under a cell with
+       solar is white whatever the wash beneath it. */
     var LOG_LOW = -2, LOG_HIGH = Math.log(RED_MW) / Math.LN10;
-    var ramp = (function () {
-      var stops = [[0, 252, 240, 233, 1], [0.25, 249, 222, 209, 1], [0.5, 241, 176, 152, 1],
-                   [0.726, 224, 112, 80, 1], [0.85, 198, 68, 38, 1], [1, 163, 44, 16, 1]];
-      var out = new Uint32Array(256), s = 0;
-      for (var i = 0; i < 256; i++) {
-        var u = i / 255;
-        while (s < stops.length - 2 && u > stops[s + 1][0]) s++;
-        var a = stops[s], b = stops[s + 1], t = (u - a[0]) / (b[0] - a[0]);
-        var mix = function (k) { return a[k] + (b[k] - a[k]) * t; };
-        out[i] = ((mix(4) * 255) << 24) | (mix(3) << 16) | (mix(2) << 8) | mix(1);
-      }
-      return out;
-    })();
 
     function rasterSetup() {
       var margin = 2;
@@ -465,7 +658,7 @@
 
       /* Capacity, cell by cell. The largest also get a mark of their own, its area
          proportional to MWp, so one great park still shows on a screen of coarse pixels. */
-      var red = new Path2D();
+      var red = new Path2D(), halo = T.halo ? new Path2D() : null;
       n = Math.floor(pv.length * ink);
       for (i = 0; i < n; i++) {
         j = i * 3; x = pvXYZ[j]; y = pvXYZ[j + 1]; z = pvXYZ[j + 2];
@@ -479,16 +672,21 @@
           var r = Math.max(0.5, Math.min(2.6, 0.055 * Math.sqrt(mw))) * S * (0.4 + 0.6 * X);
           red.moveTo(px + r, py);
           red.arc(px, py, r, 0, TAU);
+          if (halo) {
+            halo.moveTo(px + r * 2.8, py);
+            halo.arc(px, py, r * 2.8, 0, TAU);
+          }
         }
       }
 
+      var tone = T.tone, toneWord = (tone[2] << 16) | (tone[1] << 8) | tone[0], toneA = T.toneAlpha;
       for (i = 0; i < rCount; i++) {
         o = rTouched[i];
         if (rMW[o] > 0) {
           var u = (Math.log(rMW[o]) / Math.LN10 - LOG_LOW) / (LOG_HIGH - LOG_LOW);
           rPixels[o] = ramp[u <= 0 ? 0 : u >= 1 ? 255 : Math.round(u * 255)];
         } else {
-          rPixels[o] = ((Math.min(1, rTone[o] * 1.3) * TONE_ALPHA * 255) << 24) | (248 << 16) | (253 << 8) | 255;
+          rPixels[o] = ((Math.min(1, rTone[o] * 1.3) * toneA * 255) << 24) | toneWord;
         }
       }
       rasterCtx.putImageData(rImage, 0, 0);
@@ -500,7 +698,11 @@
         rPixels[o] = 0; rTone[o] = 0; rMW[o] = 0; rMark[o] = 0;
       }
 
-      ctx.fillStyle = 'rgba(' + RED + ',.92)';
+      if (halo) {
+        ctx.fillStyle = rgba(T.halo);
+        ctx.fill(halo);
+      }
+      ctx.fillStyle = rgba(T.mark);
       ctx.fill(red);
     }
 
@@ -515,40 +717,40 @@
       /* Pencil land: a faint wash and hatching. */
       ctx.beginPath();
       path(pencil);
-      ctx.fillStyle = 'rgba(' + INK + ',.05)';
+      ctx.fillStyle = rgba(T.wash);
       ctx.fill();
-      strokeSet(lineSets.hatch, [0.35, 0.55, 0.8], 0.26, INK, 0.16);
+      strokeSet(lineSets.hatch, [0.35, 0.55, 0.8], T.hatch[1], T.hatch[0], 0.16);
 
-      strokeSet(lineSets.grat, [0.5], 0.13, INK, 0.3);
-      strokeSet(lineSets.pencilBorder, [0.45, 0.7], 0.3, INK, 0.1);
-      strokeSet(lineSets.regionBorder, [0.35, 0.55], 0.28, INK, 0.1);
-      if (quality > 0) strokeSet(lineSets.pencilGhost, [0.4, 0.6], 0.2, INK, 0.3);
-      strokeSet(lineSets.pencilCoast, [0.5, 0.75, 1.05], 0.62, INK, 0.08);
+      strokeSet(lineSets.grat, [0.5], T.grat[1], T.grat[0], 0.3);
+      strokeSet(lineSets.pencilBorder, [0.45, 0.7], T.border[1], T.border[0], 0.1);
+      strokeSet(lineSets.regionBorder, [0.35, 0.55], T.region[1], T.region[0], 0.1);
+      if (quality > 0) strokeSet(lineSets.pencilGhost, [0.4, 0.6], T.ghost[1], T.ghost[0], 0.3);
+      strokeSet(lineSets.pencilCoast, [0.5, 0.75, 1.05], T.coast[1], T.coast[0], 0.08);
 
       /* A country with an atlas: only a trace of wash, for whatever its atlas did not image.
          What it did image is laid over this in white. */
       ctx.beginPath();
       path(inked);
       if (inkedRegions) path(inkedRegions);
-      ctx.fillStyle = 'rgba(' + INK + ',' + (0.05 * ink) + ')';
+      ctx.fillStyle = 'rgba(' + T.inkWash[0] + ',' + (T.inkWash[1] * ink) + ')';
       ctx.fill();
 
       if (hovered && !hovered.atlas) {
         ctx.beginPath();
         path(hovered.feature);
-        ctx.fillStyle = 'rgba(' + RED + ',.14)';
+        ctx.fillStyle = 'rgba(' + T.red + ',.14)';
         ctx.fill();
       }
 
       drawCells(ink);
 
-      if (quality > 0) strokeSet(lineSets.inkGhost, [0.4, 0.7], 0.35 * ink, INK, 0.2);
-      strokeSet(lineSets.ink, [0.55, 0.8, 1.1, 1.5, 2], 0.95 * ink, INK, 0);
+      if (quality > 0) strokeSet(lineSets.inkGhost, [0.4, 0.7], T.inkGhost[1] * ink, T.inkGhost[0], 0.2);
+      strokeSet(lineSets.ink, [0.55, 0.8, 1.1, 1.5, 2], T.ink[1] * ink, T.ink[0], 0);
 
       if (hovered) {
         ctx.beginPath();
         path(hovered.feature);
-        ctx.strokeStyle = 'rgba(' + RED + ',.95)';
+        ctx.strokeStyle = 'rgba(' + T.red + ',.95)';
         ctx.lineWidth = 1.7 * S;
         ctx.lineJoin = 'round';
         ctx.stroke();
@@ -579,29 +781,176 @@
       c.fill();
     }
 
+    /* The night side of the Earth and the air round its limb, pixel by pixel, once per size:
+       the Sun has just set behind the limb at SUN_PSI, so the air there still glows in
+       sunset bands (orange low down, gold, then blue), and the rest of the limb shows only a
+       faint blue rim and the thin green line of the airglow, about 100 km up. Heights are
+       exaggerated about threefold so that the bands read at this size. Each band is a
+       profile in height times a profile in angle from the Sun, both from tables. */
+    var ATMO_EXT = 1.17;
+
+    function atmosphereProfiles(RD) {
+      var steps = Math.ceil(ATMO_EXT * RD * 4) + 2, k, i;
+      var radial = [], angular = [];
+      function table(n, f) {
+        var t = new Float32Array(n);
+        for (i = 0; i < n; i++) t[i] = f(i);
+        return t;
+      }
+      function sq(x) { return x * x; }
+      /* Outside the limb, by height h in globe radii. */
+      var hOut = [
+        function (h) { return Math.exp(-h / 0.013); },                       // orange, low air
+        function (h) { return Math.exp(-sq((h - 0.008) / 0.009)); },        // gold
+        function (h) { return Math.exp(-sq((h - 0.017) / 0.012)); },        // blue
+        function (h) { return Math.exp(-sq((h - 0.042) / 0.005)); },        // airglow
+        function (h) { return Math.exp(-h / 0.07); },                        // forward scatter
+        function (h) { return Math.exp(-h / 0.13); }                         // violet
+      ];
+      /* Inside, by depth t below the limb: air in front of the ground, and the dusk on it. */
+      var hIn = [
+        function (t) { return Math.exp(-t / 0.009); },
+        function (t) { return Math.exp(-t / 0.006); },
+        function (t) { return Math.exp(-t / 0.02); },
+        function (t) { return 0; },
+        function (t) { return Math.exp(-t / 0.055); },
+        function (t) { return 0; }
+      ];
+      for (k = 0; k < hOut.length; k++) {
+        radial.push(table(steps, (function (fo, fi) {
+          return function (j) {
+            var q = j / 4 / RD;
+            return q >= 1 ? fo(q - 1) : fi(1 - q);
+          };
+        })(hOut[k], hIn[k])));
+      }
+      /* By s = 1 - cos(angle from the Sun), 0 to 2. */
+      var sFn = [
+        function (s) { return Math.exp(-s / 0.075); },
+        function (s) { return Math.exp(-s / 0.04); },
+        function (s) { return 0.09 + 0.55 * Math.exp(-s / 0.4); },
+        function (s) { return 1 - 0.85 * Math.exp(-s / 0.3); },
+        function (s) { return Math.exp(-s / 0.13); },
+        function (s) { return Math.exp(-s / 0.5); }
+      ];
+      for (k = 0; k < sFn.length; k++) {
+        angular.push(table(1025, (function (f) { return function (j) { return f(j / 512); }; })(sFn[k])));
+      }
+      return { radial: radial, angular: angular };
+    }
+
+    /* Colour and strength of each band; inside the limb the scatter term is the dusk. */
+    var ATMO_BANDS = [[255, 92, 36, 1.1], [255, 190, 96, 0.55], [72, 128, 255, 0.9],
+                      [96, 238, 156, 0.34], [255, 120, 86, 0.34], [130, 84, 204, 0.24]];
+    var ATMO_IN = [[255, 98, 44, 0.9], [255, 190, 110, 0.5], [44, 86, 178, 0.6], [0, 0, 0, 0],
+                   [150, 52, 44, 0.62], [0, 0, 0, 0]];
+
+    /* The ground well inside the limb is a plain gradient; only the ring from ATMO_INNER out
+       is shaded pixel by pixel, into its own canvas, laid over that gradient. */
+    var ATMO_INNER = 0.78;
+
+    function groundRGB(q) {
+      var qq = q * q;
+      return [12 - 6 * qq, 23 - 12 * qq, 46 - 20 * qq];
+    }
+
+    function drawAtmosphere(c) {
+      var g = c.createRadialGradient(cx, cy, 0, cx, cy, R);
+      for (var gi = 0; gi <= 10; gi++) g.addColorStop(gi / 10, 'rgb(' + groundRGB(gi / 10).join(',') + ')');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
+
+      var RD = R * DPR, half = Math.ceil(ATMO_EXT * RD) + 1, size = half * 2;
+      var x0 = Math.round(cx * DPR) - half, y0 = Math.round(cy * DPR) - half;
+      var ox = cx * DPR - x0, oy = cy * DPR - y0;
+      var ring = document.createElement('canvas');
+      ring.width = ring.height = size;
+      var rctx = ring.getContext('2d'), img = rctx.createImageData(size, size), d = img.data;
+      var P = atmosphereProfiles(RD), rad = P.radial, ang = P.angular, nb = ATMO_BANDS.length;
+      var sx = Math.cos(SUN_PSI), sy = -Math.sin(SUN_PSI);
+      var lim = ATMO_EXT * RD, inner = ATMO_INNER * RD, rand = mulberry(31);
+      for (var py = 0; py < size; py++) {
+        var dy = py + 0.5 - oy;
+        if (Math.abs(dy) > lim) continue;
+        var outer = Math.sqrt(lim * lim - dy * dy);
+        var hole = Math.abs(dy) < inner ? Math.sqrt(inner * inner - dy * dy) : -1;
+        var from = Math.max(0, Math.floor(ox - outer)), to = Math.min(size - 1, Math.ceil(ox + outer));
+        for (var px = from; px <= to; px++) {
+          var dx = px + 0.5 - ox;
+          if (dx > -hole && dx < hole) { px = Math.floor(ox + hole); continue; }
+          var r = Math.sqrt(dx * dx + dy * dy);
+          if (r > lim || r < inner) continue;
+          var o = (py * size + px) * 4, q = r / RD;
+          var si = Math.round((1 - (dx * sx + dy * sy) / r) * 512);
+          var ri = Math.round(r * 4), k, w, band;
+          var dither = rand() - 0.5;
+          /* The air outside the limb, as added light. */
+          var lr = 0, lg = 0, lb = 0;
+          if (r > RD - 1) {
+            for (k = 0; k < nb; k++) {
+              band = ATMO_BANDS[k];
+              w = rad[k][ri] * ang[k][si] * band[3];
+              lr += band[0] * w; lg += band[1] * w; lb += band[2] * w;
+            }
+          }
+          /* The ground: deep night blue, with the air and the dusk over it near the limb,
+             faded in from the gradient's edge. Opaque, so no star shows through the Earth. */
+          var gr = 0, gg = 0, gb = 0;
+          if (r < RD + 1) {
+            var base = groundRGB(q), feather = smoothstep(ATMO_INNER, ATMO_INNER + 0.06, q);
+            gr = base[0]; gg = base[1]; gb = base[2];
+            for (k = 0; k < nb; k++) {
+              band = ATMO_IN[k];
+              if (!band[3]) continue;
+              w = rad[k][ri] * ang[k][si] * band[3] * feather;
+              gr += band[0] * w; gg += band[1] * w; gb += band[2] * w;
+            }
+          }
+          var cover = clamp01(RD - r + 0.5);
+          var la = Math.min(1, Math.max(lr, lg, lb) / 255);
+          var alpha = cover + (1 - cover) * la;
+          if (alpha <= 0) continue;
+          /* Premultiplied mix of the opaque ground and the light, back to straight colour. */
+          var outR = cover * Math.min(255, gr) + (1 - cover) * Math.min(255, lr);
+          var outG = cover * Math.min(255, gg) + (1 - cover) * Math.min(255, lg);
+          var outB = cover * Math.min(255, gb) + (1 - cover) * Math.min(255, lb);
+          d[o] = outR / alpha + dither; d[o + 1] = outG / alpha + dither;
+          d[o + 2] = outB / alpha + dither; d[o + 3] = alpha * 255 + 0.5;
+        }
+      }
+      rctx.putImageData(img, 0, 0);
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.drawImage(ring, x0, y0);
+      c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+
     function drawUnder() {
       var c = uctx;
       c.setTransform(DPR, 0, 0, DPR, 0, 0);
       c.clearRect(0, 0, W, H);
 
-      /* Opaque, so that the sheet's fibres do not show through land turning over them. */
-      c.fillStyle = '#f8f4ec';
-      c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
+      if (T.dark) {
+        drawAtmosphere(c);
+      } else {
+        /* Opaque, so that the sheet's fibres do not show through land turning over them. */
+        c.fillStyle = '#f8f4ec';
+        c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
 
-      /* The sphere: a little brighter than the sheet, darkening at the limb. */
-      var g = c.createRadialGradient(cx, cy, R * 0.1, cx, cy, R);
-      g.addColorStop(0, 'rgba(255,253,248,.22)');
-      g.addColorStop(0.75, 'rgba(255,253,248,.05)');
-      g.addColorStop(0.93, 'rgba(60,52,42,.03)');
-      g.addColorStop(1, 'rgba(60,52,42,.11)');
-      c.fillStyle = g;
-      c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
+        /* The sphere: a little brighter than the sheet, darkening at the limb. */
+        var g = c.createRadialGradient(cx, cy, R * 0.1, cx, cy, R);
+        g.addColorStop(0, 'rgba(255,253,248,.22)');
+        g.addColorStop(0.75, 'rgba(255,253,248,.05)');
+        g.addColorStop(0.93, 'rgba(60,52,42,.03)');
+        g.addColorStop(1, 'rgba(60,52,42,.11)');
+        c.fillStyle = g;
+        c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.fill();
 
-      /* The sphere's own outline, thin on the lit side. */
-      brushDisc(c, R, function (a, p) {
-        var side = 0.5 + 0.5 * Math.cos(a - 0.85);
-        return (0.5 + 2.1 * side * side + p * 0.7) * S;
-      }, 'rgba(' + INK + ',.88)');
+        /* The sphere's own outline, thin on the lit side. */
+        brushDisc(c, R, function (a, p) {
+          var side = 0.5 + 0.5 * Math.cos(a - 0.85);
+          return (0.5 + 2.1 * side * side + p * 0.7) * S;
+        }, 'rgba(' + INK + ',.88)');
+      }
 
       /* The pencil ring: the whole world's PV, still to be drawn over. */
       c.lineCap = 'round';
@@ -618,7 +967,7 @@
           c[pen ? 'lineTo' : 'moveTo'](sx, sy);
           pen = true;
         }
-        c.strokeStyle = 'rgba(' + INK + ',' + (pass ? 0.2 : 0.4) + ')';
+        c.strokeStyle = 'rgba(' + T.ring[0] + ',' + (pass ? T.ring[2] : T.ring[1]) + ')';
         c.lineWidth = (pass ? 0.5 : 0.8) * S;
         c.stroke();
       }
@@ -632,11 +981,140 @@
         c.beginPath();
         c.moveTo(cx + ca * (ringR - 3 * S), cy + sa * (ringR - 3 * S));
         c.lineTo(cx + ca * (ringR + 7 * S), cy + sa * (ringR + 7 * S));
-        c.strokeStyle = 'rgba(' + INK + ',.55)';
+        c.strokeStyle = rgba(T.tick);
         c.lineWidth = 0.9 * S;
         c.stroke();
-        c.fillStyle = 'rgba(' + INK + ',.62)';
+        c.fillStyle = rgba(T.label);
         c.fillText(gw.toLocaleString('en-US') + (gw === 500 ? ' GW' : ''), cx + ca * (ringR + 21 * S), cy + sa * (ringR + 21 * S));
+      }
+    }
+
+    /* The night sky behind the page, once per size: the camera's view past the Earth, the
+       Sun just hidden behind it (skyFrame). The diffuse light (the sunset's afterglow
+       round the Sun, a faint blue haze round the Earth, the Milky Way, the zodiacal light
+       along the ecliptic) is shaded at about half the page's resolution and scaled up; the
+       stars are then drawn one by one at full resolution. */
+    var skyTimer = 0, skyDone = false, skyBase = null;
+
+    function scheduleSky() {
+      clearTimeout(skyTimer);
+      if (!T.dark || !sctx) return;
+      skyTimer = setTimeout(drawSky, skyDone ? 150 : 0);
+    }
+
+    function drawSky() {
+      if (!T.dark || !sctx || !W) return;      // not before the first layout
+      skyDone = true;
+      var box = sky.getBoundingClientRect(), sbox = stage.getBoundingClientRect();
+      if (!box.width || !box.height) return;
+      var sun = sunToday(new Date()), F = skyFrame(sun.dir);
+      var v = { SW: box.width, SH: box.height, gx: sbox.left - box.left + cx, gy: sbox.top - box.top + cy,
+                A: F.A, U: F.U, X: F.X, S: sun.dir, f: R / Math.tan(EARTH_DEG * RAD),
+                ce: Math.cos(sun.eps), se: Math.sin(sun.eps) };
+      var sd = Math.min(window.devicePixelRatio || 1, 2);
+      if (v.SW * v.SH * sd * sd > 9e6) sd = Math.sqrt(9e6 / (v.SW * v.SH));
+      sky.width = Math.round(v.SW * sd);
+      sky.height = Math.round(v.SH * sd);
+
+      /* The diffuse light is kept, so the stars arriving later do not shade it again. */
+      var key = [v.SW, v.SH, v.gx, v.gy, R, new Date().toDateString()].join();
+      if (!skyBase || skyBase.key !== key) skyBase = { key: key, canvas: diffuseSky(v) };
+      sctx.setTransform(1, 0, 0, 1, 0, 0);
+      sctx.imageSmoothingEnabled = true;
+      sctx.imageSmoothingQuality = 'high';
+      sctx.drawImage(skyBase.canvas, 0, 0, sky.width, sky.height);
+      if (stars) {
+        sctx.setTransform(sd, 0, 0, sd, 0, 0);
+        drawStars(v);
+      }
+    }
+
+    function diffuseSky(v) {
+      var A = v.A, U = v.U, X = v.X, Sd = v.S, f = v.f, SW = v.SW, SH = v.SH;
+      var k = Math.min(0.34, Math.sqrt(200000 / (SW * SH)));
+      var lw = Math.max(2, Math.round(SW * k)), lh = Math.max(2, Math.round(SH * k));
+      var low = document.createElement('canvas');
+      low.width = lw; low.height = lh;
+      var lctx = low.getContext('2d'), img = lctx.createImageData(lw, lh), d = img.data;
+      var rand = mulberry(5);
+      for (var row = 0; row < lh; row++) {
+        var dy = v.gy - (row + 0.5) * SH / lh;
+        for (var col = 0; col < lw; col++) {
+          var dx = (col + 0.5) * SW / lw - v.gx;
+          var x = A[0] * f + X[0] * dx + U[0] * dy;
+          var y = A[1] * f + X[1] * dx + U[1] * dy;
+          var z = A[2] * f + X[2] * dx + U[2] * dy;
+          var l = Math.sqrt(x * x + y * y + z * z);
+          x /= l; y /= l; z /= l;
+          var q = Math.sqrt(dx * dx + dy * dy) / R;
+          var th = Math.acos(Math.max(-1, Math.min(1, x * Sd[0] + y * Sd[1] + z * Sd[2]))) / RAD;
+          /* Space, a little less black towards the Earth. */
+          var near = Math.exp(-Math.max(0, q - 1) / 1.4), haze = Math.exp(-Math.max(0, q - 1) / 0.22);
+          var r = 3 + 5 * near + 10 * haze, g = 4 + 7 * near + 16 * haze, b = 11 + 15 * near + 38 * haze;
+          /* The afterglow: orange right by the hidden Sun, rose, then violet. */
+          var w1 = Math.exp(-th / 3.2) * 0.62, w2 = Math.exp(-th / 8.5) * 0.3, w3 = Math.exp(-th / 21) * 0.3;
+          r += 255 * w1 + 226 * w2 + 92 * w3;
+          g += 146 * w1 + 92 * w2 + 58 * w3;
+          b += 78 * w1 + 106 * w2 + 152 * w3;
+          /* The Milky Way. */
+          var mw = milkyWay(GAL[0][0] * x + GAL[0][1] * y + GAL[0][2] * z,
+                            GAL[1][0] * x + GAL[1][1] * y + GAL[1][2] * z,
+                            GAL[2][0] * x + GAL[2][1] * y + GAL[2][2] * z);
+          if (mw) {
+            r += 22 * mw[0] + 44 * mw[1];
+            g += 25 * mw[0] + 38 * mw[1];
+            b += 35 * mw[0] + 31 * mw[1];
+          }
+          /* The zodiacal light: sunlight off interplanetary dust, a cone along the ecliptic. */
+          var beta = Math.abs(Math.asin(Math.max(-1, Math.min(1, -y * v.se + z * v.ce)))) / RAD;
+          var zod = Math.exp(-beta / (4 + 0.12 * th)) * Math.pow(9 / Math.max(th, 5), 1.3) * 0.11;
+          r += 255 * zod; g += 236 * zod; b += 212 * zod;
+          var o = (row * lw + col) * 4, dither = (rand() - 0.5) * 1.4;
+          d[o] = r + dither; d[o + 1] = g + dither; d[o + 2] = b + dither; d[o + 3] = 255;
+        }
+      }
+      lctx.putImageData(img, 0, 0);
+      return low;
+    }
+
+    /* The stars, from the catalogue, at their magnitude and colour. The sunset's glare and
+       the air at the limb wash out the faint ones. */
+    function drawStars(v) {
+      var A = v.A, U = v.U, X = v.X, Sd = v.S, f = v.f, gx = v.gx, gy = v.gy;
+      var corner = Math.max(Math.hypot(gx, gy), Math.hypot(v.SW - gx, gy), Math.hypot(gx, v.SH - gy),
+                            Math.hypot(v.SW - gx, v.SH - gy));
+      var zmin = Math.cos(Math.atan(corner / f));
+      /* A small screen packs more sky into each pixel: draw fewer faint stars there, so they
+         stay as sparse as on a desktop (about three times as many stars per magnitude). */
+      var vmax = Math.min(6.5, 6.5 + 4.2 * Math.log(f / 740) / Math.LN10);
+      for (var i = 0; i < stars.n; i++) {
+        if (stars.mag[i] > vmax) continue;
+        var j = i * 3, sx = stars.xyz[j], sy = stars.xyz[j + 1], sz = stars.xyz[j + 2];
+        var zc = sx * A[0] + sy * A[1] + sz * A[2];
+        if (zc < zmin) continue;
+        var px = gx + f * (sx * X[0] + sy * X[1] + sz * X[2]) / zc;
+        var py = gy - f * (sx * U[0] + sy * U[1] + sz * U[2]) / zc;
+        if (px < -4 || py < -4 || px > v.SW + 4 || py > v.SH + 4) continue;
+        var rg = Math.hypot(px - gx, py - gy) / R;
+        if (rg < 1) continue;
+        var m = stars.mag[i];
+        var ths = Math.acos(Math.max(-1, Math.min(1, sx * Sd[0] + sy * Sd[1] + sz * Sd[2]))) / RAD;
+        var fade = smoothstep(1, 1.07, rg) * (0.3 + 0.7 * smoothstep(3, 16, ths));
+        var a = clamp01(0.3 + (vmax - m) * 0.17) * fade;
+        if (a < 0.03) continue;
+        var rad = 0.55 + Math.max(0, 5.5 - m) * 0.2, col = starColour(stars.bv[i]);
+        var cs = col[0] + ',' + col[1] + ',' + col[2];
+        if (m < 2.6) {
+          var gr = rad * (3.4 + (2.6 - m) * 1.3);
+          var gl = sctx.createRadialGradient(px, py, 0, px, py, gr);
+          gl.addColorStop(0, 'rgba(' + cs + ',' + (0.3 * fade) + ')');
+          gl.addColorStop(0.35, 'rgba(' + cs + ',' + (0.08 * fade) + ')');
+          gl.addColorStop(1, 'rgba(' + cs + ',0)');
+          sctx.fillStyle = gl;
+          sctx.beginPath(); sctx.arc(px, py, gr, 0, TAU); sctx.fill();
+        }
+        sctx.fillStyle = 'rgba(' + cs + ',' + a + ')';
+        sctx.beginPath(); sctx.arc(px, py, rad, 0, TAU); sctx.fill();
       }
     }
 
@@ -669,6 +1147,20 @@
       c.lineCap = 'round';
       var arc = share * TAU, dryFrom = verifiedShare / share;
       var steps = Math.min(1399, Math.ceil(arc * ringR / 0.9));
+      /* By night the stroke is the sunset: gold where it is wet, through orange to rose. */
+      var light = null;
+      if (T.brush) {
+        var bc = T.brush;
+        if (c.createConicGradient) {
+          light = c.createConicGradient(TOP, cx, cy);
+          light.addColorStop(0, 'rgb(' + bc[0] + ')');
+          light.addColorStop(share * dryFrom, 'rgb(' + bc[1] + ')');
+          light.addColorStop(share, 'rgb(' + bc[2] + ')');
+          light.addColorStop(1, 'rgb(' + bc[2] + ')');
+        } else {
+          light = 'rgb(' + bc[1] + ')';
+        }
+      }
       bristles.forEach(function (b) {
         c.beginPath();
         var pen = false, last = Math.floor(steps * p);
@@ -683,14 +1175,20 @@
           c[pen ? 'lineTo' : 'moveTo'](sx, sy);
           pen = true;
         }
-        c.strokeStyle = 'rgba(' + INK + ',' + b.alpha + ')';
+        if (light) {
+          c.globalAlpha = b.alpha;
+          c.strokeStyle = light;
+        } else {
+          c.strokeStyle = 'rgba(' + INK + ',' + b.alpha + ')';
+        }
         c.lineWidth = b.width;
         c.stroke();
       });
+      c.globalAlpha = 1;
 
       /* What the brush throws off as it leaves the paper. */
       var rand2 = mulberry(58), reach = (1 - verifiedShare / share) * arc;
-      c.fillStyle = 'rgba(' + INK + ',.82)';
+      c.fillStyle = rgba(T.spatter);
       for (var i = 0; i < 46; i++) {
         var along = Math.pow(rand2(), 1.6), side = rand2() < 0.5 ? -1 : 1;
         var when = 1 - along * reach / arc, size = (0.35 + Math.pow(rand2(), 3) * 2.1) * S;
@@ -734,7 +1232,7 @@
       if (a1 - a0 < 0.012) a1 = a0 + 0.012;    // a very small atlas still shows
       c.beginPath();
       c.arc(cx, cy, ringR + 19 * S, a0, a1);
-      c.strokeStyle = 'rgba(' + RED + ',.95)';
+      c.strokeStyle = 'rgba(' + T.red + ',.95)';
       c.lineWidth = 3.4 * S;
       c.lineCap = 'butt';
       c.stroke();
@@ -795,6 +1293,7 @@
       buildSlices();
       drawUnder();
       placeLabels();
+      scheduleSky();
       if (intro >= 1) {
         drawBrush(1);
         cacheBrush();
@@ -1133,6 +1632,16 @@
       }
     }
 
+    /* The switch in the header, or the system, changed the theme: redraw everything. */
+    new MutationObserver(function () {
+      var was = T;
+      setTheme();
+      if (T === was) return;
+      if (!T.dark && sky) sky.width = sky.height = 0;
+      skyDone = false;
+      if (W) resize();
+    }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () {
       resize();
       window.addEventListener('resize', resize);
@@ -1144,6 +1653,18 @@
       }
       requestAnimationFrame(frame);
     });
+  }
+
+  /* stars.json: four integers a star, RA and Dec in 0.02 degree, V and B-V in tenths. */
+  function decodeStars(doc) {
+    var s = doc.stars, n = s.length / 4;
+    var out = { n: n, xyz: new Float32Array(n * 3), mag: new Float32Array(n), bv: new Float32Array(n) };
+    for (var i = 0; i < n; i++) {
+      unit(s[i * 4] * 0.02, s[i * 4 + 1] * 0.02, out.xyz, i * 3);
+      out.mag[i] = s[i * 4 + 2] / 10;
+      out.bv[i] = s[i * 4 + 3] / 10;
+    }
+    return out;
   }
 
   function json(name) {

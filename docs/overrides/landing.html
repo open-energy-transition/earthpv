@@ -28,6 +28,38 @@
   <meta name="twitter:image" content="{{ social_image }}">
   {# The written introduction used to live here: an old link to one of its sections follows it. #}
   <script>if (location.hash.length > 1) location.replace("{{ 'overview/' | url }}" + location.hash);</script>
+  {#- Light or dark, decided before the page paints: the reader's choice from any page of the
+      site, which Material keeps under this key, else the system's. The switch in the header
+      stores its choice the same way, as mkdocs.yml's two palette entries, so the rest of the
+      site follows it. landing.js redraws the globe when `data-theme` changes. -#}
+  <script>
+    (function () {
+      var key = new URL("{{ config.extra.scope | d(base_url) }}", location).pathname + ".__palette";
+      var media = window.matchMedia("(prefers-color-scheme: dark)"), root = document.documentElement;
+      function stored() {
+        try { var p = JSON.parse(localStorage.getItem(key)); return p && p.color ? p.color.scheme : null; }
+        catch (e) { return null; }
+      }
+      function apply(theme) { root.setAttribute("data-theme", theme); root.style.colorScheme = theme; }
+      var scheme = stored();
+      apply(scheme ? (scheme === "slate" ? "dark" : "light") : (media.matches ? "dark" : "light"));
+      if (media.addEventListener) media.addEventListener("change", function (e) {
+        if (!stored()) apply(e.matches ? "dark" : "light");
+      });
+      window.EARTH_THEME = {
+        get: function () { return root.getAttribute("data-theme"); },
+        set: function (theme) {
+          var dark = theme === "dark";
+          apply(theme);
+          try {
+            localStorage.setItem(key, JSON.stringify({ index: dark ? 1 : 0, color: {
+              media: dark ? "(prefers-color-scheme: dark)" : "(prefers-color-scheme: light)",
+              scheme: dark ? "slate" : "default", primary: "custom", accent: "custom" } }));
+          } catch (e) {}
+        }
+      };
+    })();
+  </script>
   <link rel="icon" href="{{ config.theme.favicon | url }}">
   <link rel="preload" href="{{ 'assets/landing/fonts/zen-old-mincho-latin-400.woff2' | url }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ 'assets/landing/landing.css' | url }}">
@@ -48,6 +80,8 @@
 
 <div class="page">
 
+  <canvas id="sky" aria-hidden="true"></canvas>
+
   <header class="top">
     <a class="brand" href="{{ 'overview/' | url }}" aria-label="EarthPV overview">
       <span class="seal" aria-hidden="true"><span class="seal__mark"></span></span>
@@ -60,6 +94,10 @@
       <a class="github" href="https://github.com/open-energy-transition/earthpv" aria-label="EarthPV on GitHub" title="EarthPV on GitHub">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       </a>
+      <button class="mode" id="mode" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="mode__moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 14.6A8.9 8.9 0 1 1 9.4 3.4a7 7 0 0 0 11.2 11.2Z"/></svg>
+        <svg class="mode__sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.3"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1"/></svg>
+      </button>
     </nav>
   </header>
 
@@ -91,7 +129,7 @@
   </main>
 
   <section class="title">
-    <h1>Electrify Earth</h1>
+    <h1><span>Electrify Earth</span></h1>
     <svg class="rule" viewBox="0 0 600 8" preserveAspectRatio="none" aria-hidden="true">
       <path d="M2 4.6C60 3.2 120 3.4 190 3.7 280 4.1 350 2.9 430 3.3 500 3.7 560 3.5 598 4.2 556 5.2 470 5 400 4.9 300 4.8 210 5.5 130 5.2 80 5 30 5.2 2 4.6Z"/>
     </svg>
@@ -101,7 +139,7 @@
 
   <aside class="legend" aria-label="How to read the globe">
     <p class="legend__row"><i class="key key--ink"></i>Processed with EarthPV</p>
-    <p class="legend__row"><i class="key key--ramp"></i>Solar found: deeper red is more</p>
+    <p class="legend__row"><i class="key key--ramp"></i><span>Solar found: <span class="for-light">deeper red is more</span><span class="for-dark">brighter is more</span></span></p>
     <p class="legend__row"><i class="key key--pencil"></i>Not processed yet: click to start it</p>
     <p class="legend__note">The total sums {{ page.meta.n_atlases }} country estimates. Most count only arrays
       above about 400&nbsp;m&sup2;, so read it as how far the mapping has come, not as a census.</p>
@@ -121,6 +159,22 @@
 
 </div>
 
+<script>
+  (function () {
+    var btn = document.getElementById("mode"), theme = window.EARTH_THEME;
+    function label() {
+      var text = theme.get() === "dark" ? "Switch to light mode" : "Switch to dark mode";
+      btn.setAttribute("aria-label", text);
+      btn.title = text;
+    }
+    btn.addEventListener("click", function () {
+      theme.set(theme.get() === "dark" ? "light" : "dark");
+      label();
+    });
+    new MutationObserver(label).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    label();
+  })();
+</script>
 <script>window.EARTH_BASE = "{{ 'assets/landing/' | url }}";</script>
 <script src="{{ 'assets/landing/vendor/d3-array.min.js' | url }}" defer></script>
 <script src="{{ 'assets/landing/vendor/d3-geo.min.js' | url }}" defer></script>

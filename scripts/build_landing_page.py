@@ -30,6 +30,14 @@ The United States and China are drawn and picked state by state, from
 
 from Natural Earth 5.1.2 (public domain) and the geoBoundaries gbOpen ADM1 layers, which are
 read only to check that every division name is spelled as the pipeline will look it up.
+
+In dark mode the globe hangs in the real night sky behind it, from
+`docs/assets/landing/stars.json`: the Yale Bright Star Catalogue down to V 6.5, rebuilt with:
+
+    python scripts/build_landing_page.py --stars bsc5.dat
+
+from the ASCII catalogue at http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz (5th revised
+edition, Hoffleit and Warren 1991; also CDS V/50).
 """
 
 from __future__ import annotations
@@ -49,6 +57,8 @@ from build_atlas_pages import ATLASES, DOCS, REPO, tier_of  # noqa: E402
 LANDING = DOCS / "assets" / "landing"
 WORLD = LANDING / "world.json"
 REGIONS = LANDING / "regions.json"
+STARS = LANDING / "stars.json"
+STARS_VMAX = 6.5
 EARTH = LANDING / "earth.json"
 INDEX = DOCS / "index.md"
 GLOBAL_PV = REPO / "configs" / "external" / "global_pv_capacity.yaml"
@@ -208,6 +218,34 @@ def build_regions(admin1_path: Path, geoboundaries: list[Path]) -> None:
                                   separators=(",", ":")))
     print(f"wrote {REGIONS.name}: {len(regions)} states and provinces, {len(lines)} border lines, "
           f"{REGIONS.stat().st_size / 1e3:,.0f} kB")
+
+
+def build_stars(bsc_path: Path, vmax: float = STARS_VMAX) -> None:
+    """Write stars.json, the night sky behind the globe in dark mode.
+
+    Four integers a star, to keep the file small: RA and Dec (J2000) in units of 0.02 degree,
+    about a third of a pixel at the page's scale, then V and B-V in tenths. A star with no
+    B-V is written as 0.6, a sun-like white."""
+    flat, n = [], 0
+    for line in bsc_path.read_text(encoding="latin-1").splitlines():
+        line = line.ljust(114)
+        rah, vmag, bv = line[75:77], line[102:107].strip(), line[109:114].strip()
+        if not rah.strip() or not vmag or float(vmag) > vmax:
+            continue      # a few entries (novae, non-stellar objects) have no J2000 position
+        ra = (int(rah) + int(line[77:79]) / 60 + float(line[79:83]) / 3600) * 15
+        dec = int(line[84:86]) + int(line[86:88]) / 60 + int(line[88:90]) / 3600
+        if line[83] == "-":
+            dec = -dec
+        flat += [round(ra / 0.02) % 18000, round(dec / 0.02), round(float(vmag) * 10),
+                 round((float(bv) if bv else 0.6) * 10)]
+        n += 1
+    STARS.write_text(json.dumps({
+        "source": "Yale Bright Star Catalogue, 5th revised edition (Hoffleit and Warren 1991)",
+        "vmax": vmax,
+        "units": "per star: RA and Dec J2000 in 0.02 degree, V x 10, B-V x 10",
+        "stars": flat,
+    }, separators=(",", ":")) + "\n")
+    print(f"{STARS.relative_to(REPO)}: {n:,} stars to V {vmax}")
 
 
 def build_base_map(topo_path: Path, codes_path: Path) -> None:
@@ -486,7 +524,10 @@ def main() -> int:
     ap.add_argument("--iso-codes", type=Path, help="i18n-iso-countries codes.json")
     ap.add_argument("--admin1", type=Path, help="Natural Earth ne_50m_admin_1_states_provinces.geojson")
     ap.add_argument("--geoboundaries", type=Path, nargs="+", help="gbOpen ADM1 GeoJSON, one per country")
+    ap.add_argument("--stars", type=Path, help="Yale Bright Star Catalogue, ASCII bsc5.dat")
     a = ap.parse_args()
+    if a.stars:
+        build_stars(a.stars)
     if a.base_map:
         if not a.iso_codes:
             ap.error("--base-map needs --iso-codes")
