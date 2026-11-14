@@ -1362,10 +1362,16 @@ out geom;</div>
   const METHOD_TOKEN = {osm: "domain", seg: "large", roofclf: "accent", ground: "ground"};
   const methodColor = (P, m) => m === "total" ? P.ink : P[METHOD_TOKEN[m]];
 
-  // Sequential ramps, one hue each, monotone in lightness (audited by
+  // Sequential ramps as [position, colour] stops, monotone in lightness (audited by
   // scripts/atlas_ramp_audit.py): bright = more on the dark page, dark = more on the light.
-  const RAMP_DARK = ["#3c2a12","#7a3f0e","#b5610f","#e07d17","#f5a623","#ffcf5c","#fff1c2"];
-  const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"];
+  // The dark one is the Electrify Earth globe's night ramp, ember to gold (owner, 2026-11-14;
+  // docs/assets/landing/landing.js, THEMES.dark.ramp), over this page's own fitted range.
+  const RAMP_DARK = [[0, "#603052"], [0.25, "#a03442"], [0.5, "#da4c2c"], [0.726, "#ff8838"],
+    [0.85, "#ffbe64"], [1, "#fff0c8"]];
+  const RAMP_LIGHT = ["#f2e3bf","#eec98a","#e5a24e","#d97f22","#c25e12","#9c4410","#5f2c0a"].map((s, k, a) => [k / (a.length - 1), s]);
+  // A cell of this much or more is a hot spot, as on the globe (its RED_MW): by night a halo
+  // glows round it, as large as the globe draws it relative to the cell.
+  const HOT_MW = 100, HOT_HALO = "rgb(255,150,80)";
 
   const SVGNS = "http://www.w3.org/2000/svg";
   function el(n, a){
@@ -1697,9 +1703,18 @@ out geom;</div>
     const v = ["get", def.prop];
     const lo = Math.log(sc.vmin), hi = Math.log(sc.vmax) > lo ? Math.log(sc.vmax) : lo + 1;
     const interp = ["interpolate", ["linear"], ["ln", ["max", v, sc.vmin]]];
-    stops.forEach((s, k) => interp.push(lo + (hi - lo) * k / (stops.length - 1), s));
+    stops.forEach(([t, s]) => interp.push(lo + (hi - lo) * t, s));
     return ["case", ["<=", v, 0], zeroColor, interp];
   }
+
+  // The globe's hot spots (landing.js): a cell of HOT_MW or more gets a halo 2.8 times its
+  // mark, whose radius is 0.055 x sqrt(MW) held between 0.5 and 2.6, counted here in cells.
+  // Capacity only: the potential layer is energy, so it has none.
+  const hotFilter = def => def.unit === "GWh/yr" ? ["==", 1, 0] : [">=", ["get", def.prop], HOT_MW];
+  const hotRadius = def => cellScaled(["*", 2.8, ["min", 2.6, ["max", 0.5,
+    ["*", 0.055, ["sqrt", ["max", ["get", def.prop], 0]]]]]]);
+  const glowOn = () => OV.glow.on && isDark() && STATE.basemap === "none";
+  const GLOW_LAYERS = ["glow", "hot-halo", "hot-cells"];
 
   // Keyless tile services only, every one serving CORS headers (or the PNG export could
   // not read the canvas back). CARTO's basemaps were the first choice and were dropped
@@ -1753,7 +1768,7 @@ out geom;</div>
     {id: "farmcand", follows: "cand", avail: false, sw: "cand farm", key: "farm candidate area, not yet mapped"},
     {id: "live", label: "OSM solar today, live (zoom in)", layers: ["live-fill", "live-line", "live-pt"], on: false,
      avail: true, sw: "live", key: "OpenStreetMap solar features, live from Overpass", status: true},
-    {id: "glow", label: "Glow around bright cells", layers: ["glow"], on: true, avail: true},
+    {id: "glow", label: "Glow round bright cells and hot spots (100 MW+)", layers: GLOW_LAYERS, on: true, avail: true},
   ];
   const OV = Object.fromEntries(OVERLAYS.map(o => [o.id, o]));
 
@@ -1823,6 +1838,16 @@ out geom;</div>
        paint: {"line-color": rampExpr(def, "rgba(0,0,0,0)"),
                "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 2.4],
                "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.95]}},
+      // Hot spots, as on the globe: a soft halo OVER the cells round any cell of HOT_MW or
+      // more (the grid is opaque, so under it nothing would show), then that cell drawn
+      // again on top, so its own colour stays true.
+      {id: "hot-halo", type: "circle", source: "glowpts", filter: hotFilter(def),
+       layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
+       paint: {"circle-color": HOT_HALO, "circle-radius": hotRadius(def),
+               "circle-blur": 1, "circle-opacity": 0.5}},
+      {id: "hot-cells", type: "fill", source: "cells", filter: hotFilter(def),
+       layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
+       paint: {"fill-color": rampExpr(def, zero), "fill-antialias": false}},
       // Over the cells, so a cell that holds only hand-mapped OSM shows its colour hatched.
       {id: "unimaged", type: "fill", source: "unimaged", layout: {visibility: OV.unimaged.on ? "visible" : "none"},
        paint: {"fill-pattern": HATCH_ICON, "fill-opacity": hatchOpacity(), "fill-antialias": false}},
@@ -1982,6 +2007,10 @@ out geom;</div>
     m.setPaintProperty("cells-edge", "line-color", rampExpr(def, "rgba(0,0,0,0)"));
     setVis("cells-edge", !none);
     m.setPaintProperty("glow", "circle-color", rampExpr(def, P.land));
+    m.setFilter("hot-halo", hotFilter(def));
+    m.setPaintProperty("hot-halo", "circle-radius", hotRadius(def));
+    m.setFilter("hot-cells", hotFilter(def));
+    m.setPaintProperty("hot-cells", "fill-color", rampExpr(def, P.land));
     m.setPaintProperty("cells-hover", "line-color", P.ink);
     m.setPaintProperty("domain-line", "line-color", P.ink2);
     m.setPaintProperty("prov-line", "line-color", P.provStroke);
@@ -2004,7 +2033,7 @@ out geom;</div>
     }
     MAP.tileTheme = P.dark;
     setVis("land", none);
-    setVis("glow", OV.glow.on && P.dark && none);
+    for (const id of GLOW_LAYERS) setVis(id, glowOn());
     renderLegend();
   }
 
@@ -2013,7 +2042,7 @@ out geom;</div>
     const def = LAYERS.find(d => d.id === STATE.layer) || LAYERS[0];
     const sc = MAP.scale || scaleFor(def);
     const stops = isDark() ? RAMP_DARK : RAMP_LIGHT;
-    const grad = stops.map((s, i) => `${s} ${(i / (stops.length - 1) * 100).toFixed(0)}%`).join(",");
+    const grad = stops.map(([t, s]) => `${s} ${(t * 100).toFixed(1)}%`).join(",");
     document.getElementById("legbar").style.background = `linear-gradient(90deg, ${grad})`;
     const lo = Math.log(sc.vmin), hi = Math.log(sc.vmax);
     const pos = v => (Math.log(v) - lo) / (hi - lo) * 100;
@@ -2909,7 +2938,7 @@ out geom;</div>
   function toggleOverlay(o, on){
     o.on = on;
     if (o.id === "cities"){ document.getElementById("cityLayer").hidden = !on; placeCities(); }
-    else if (o.id === "glow") setVis("glow", on && isDark() && STATE.basemap === "none");
+    else if (o.id === "glow") for (const id of GLOW_LAYERS) setVis(id, glowOn());
     else for (const id of o.layers || []) setVis(id, on);
     if (o.id === "live"){ if (on) refreshLive(); else setLiveStatus(""); }
     renderLegend();
@@ -3034,7 +3063,7 @@ out geom;</div>
     const sc = MAP.scale, stops = isDark() ? RAMP_DARK : RAMP_LIGHT;
     const lw = Math.min(420, w - 160), ly = headH + h + 16;
     const g = ctx.createLinearGradient(pad, 0, pad + lw, 0);
-    stops.forEach((s, i) => g.addColorStop(i / (stops.length - 1), s));
+    stops.forEach(([t, s]) => g.addColorStop(t, s));
     ctx.fillStyle = g; ctx.fillRect(pad, ly, lw, 11);
     ctx.fillStyle = P.muted; ctx.font = `10.5px ${P.fontMono}`; ctx.textAlign = "center";
     const lo = Math.log(sc.vmin), hi = Math.log(sc.vmax);

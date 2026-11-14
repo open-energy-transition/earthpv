@@ -645,7 +645,11 @@ SVG/HTML; the map and the three Plot charts say they could not load.
 
 - **Map**: "Show" picks the cell quantity (Best, *Not yet in OpenStreetMap*, hand-mapped, model
   >= / < 400 m²), always as MWp per cell (the per-km² toggle was removed 2026-10-28); the log
-  colour scale is refitted per quantity.
+  colour scale is refitted per quantity. By night the ramp is the Electrify Earth globe's
+  night ramp, ember to gold (`RAMP_DARK`, [position, colour] stops), and a cell of `HOT_MW`
+  (100, the globe's `RED_MW`) or more gets the globe's hot-spot halo, drawn over its
+  neighbours with the cell itself on top (`hot-halo`, `hot-cells`; owner, 2026-11-14). The
+  halo follows the glow switch (dark, no basemap); the light ramp is unchanged.
   Basemaps: none (night lights), Esri grey canvas, OpenStreetMap, Esri satellite (**CARTO needs
   an API key now**). City labels are HTML (no glyph server); calibration areas are diamonds.
 - **More layers**: no OpenStreetMap data shows when a page opens (owner, 2026-11-14): the

@@ -91,41 +91,53 @@ def load_cells():
 
 
 def shipped_ramps():
-    """The two ramps currently in the TEMPLATE, so the audit tracks the source of truth."""
+    """The two ramps currently in the TEMPLATE, so the audit tracks the source of truth.
+
+    A ramp is a list of (position, colour) stops. The template writes the dark one as
+    `[position, "#rrggbb"]` pairs (the globe's night ramp, whose stops are not evenly
+    spaced) and the light one as plain colours, evenly spaced."""
     s = TEMPLATE.read_text()
     out = {}
     for name in ("RAMP_DARK", "RAMP_LIGHT"):
-        m = re.search(rf'const {name} = \[(.*?)\];', s, re.S)
-        out[name] = re.findall(r'#[0-9a-fA-F]{6}', m.group(1))
+        body = re.search(rf'const {name} = \[(.*?)\](?:\.map\(.*?\))?;', s, re.S).group(1)
+        pairs = re.findall(r'\[\s*([0-9.]+)\s*,\s*"(#[0-9a-fA-F]{6})"\s*\]', body)
+        if pairs:
+            out[name] = [(float(t), h) for t, h in pairs]
+        else:
+            hexes = re.findall(r'#[0-9a-fA-F]{6}', body)
+            out[name] = [(k / (len(hexes) - 1), h) for k, h in enumerate(hexes)]
     return out["RAMP_DARK"], out["RAMP_LIGHT"]
+
+
+def ramp_arrays(stops):
+    """Stops as given ((position, colour) pairs, or plain colours evenly spaced)."""
+    if isinstance(stops[0], str):
+        stops = [(k / (len(stops) - 1), h) for k, h in enumerate(stops)]
+    return (np.array([t for t, _ in stops], float),
+            np.array([hex2rgb(h) for _, h in stops]))
 
 
 def t_of(v, vmax):
     return (np.log(np.maximum(v, VMIN)) - np.log(VMIN)) / (np.log(vmax) - np.log(VMIN))
 
 
-def ramp_color(t, stops_rgb):
+def ramp_color(t, stops_pos, stops_rgb):
     """The template's own piecewise-linear sRGB interpolation, reproduced exactly."""
     t = np.clip(np.asarray(t, float), 0, 1)
-    n = len(stops_rgb) - 1
-    f = t * n
-    i = np.minimum(n - 1, np.floor(f).astype(int))
-    r = (f - i)[:, None]
-    a, b = stops_rgb[i], stops_rgb[i + 1]
-    return a + (b - a) * r
+    return np.stack([np.interp(t, stops_pos, stops_rgb[:, k]) for k in range(3)], axis=-1)
 
 
 def score(stops, values, land):
-    rgb = np.array([hex2rgb(h) for h in stops])
+    pos, rgb = ramp_arrays(stops)
     vmax = max(8.0, values.max())
     qs = np.percentile(values, np.linspace(0, 100, 101))
-    lab = rgb2oklab(ramp_color(t_of(qs, vmax), rgb))
+    lab = rgb2oklab(ramp_color(t_of(qs, vmax), pos, rgb))
     steps = np.linalg.norm(np.diff(lab, axis=0), axis=1)
-    marks = rgb2oklab(ramp_color(t_of(np.percentile(values, [0, 50, 90, 100]), vmax), rgb))
+    marks = rgb2oklab(ramp_color(t_of(np.percentile(values, [0, 50, 90, 100]), vmax), pos, rgb))
     slab = rgb2oklab(rgb)
     dL = np.diff(slab[:, 0])
     cvd = np.linalg.norm(np.diff(rgb2oklab(deuteranope(
-        ramp_color(t_of(qs, vmax), rgb))), axis=0), axis=1)
+        ramp_color(t_of(qs, vmax), pos, rgb))), axis=0), axis=1)
     return {
         "pctStep": steps.mean(), "p10": np.percentile(steps, 10),
         "p0-50": np.linalg.norm(marks[1] - marks[0]),
@@ -173,8 +185,8 @@ def cmd_preview(args):
     k = np.cos(np.radians((b1 + b3) / 2))
     v = cells[:, 2]
     t = np.where(v > 0, t_of(v, max(8.0, v.max())), -1)
-    rgb = np.array([hex2rgb(h) for h in stops])
-    cols = ramp_color(np.clip(t, 0, 1), rgb)
+    pos, rgb = ramp_arrays(stops)
+    cols = ramp_color(np.clip(t, 0, 1), pos, rgb)
 
     fig, ax = plt.subplots(figsize=(6.4, 8.0), facecolor=mapbg)
     ax.set_facecolor(mapbg)
@@ -182,7 +194,7 @@ def cmd_preview(args):
         c = cols[i] if t[i] >= 0 else hex2rgb(land)
         ax.add_patch(Rectangle((cells[i, 0], cells[i, 1]), 0.1, 0.1,
                                facecolor=tuple(np.clip(c, 0, 1)), edgecolor="none"))
-    strip = ramp_color(np.linspace(0, 1, 256), rgb).reshape(1, 256, 3)
+    strip = ramp_color(np.linspace(0, 1, 256), pos, rgb).reshape(1, 256, 3)
     ax.imshow(np.clip(strip, 0, 1), extent=[b0, b2, b1 - 1.15, b1 - 0.35], aspect="auto")
     ax.set_xlim(b0, b2)
     ax.set_ylim(b1 - 1.3, b3)
