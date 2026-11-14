@@ -66,7 +66,7 @@
   @media (prefers-color-scheme: light) {
     :root {
       --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
-      --land: #fffdf8; --map-bg: #efe8d8;
+      --land: #e6dcc7; --map-bg: #efe8d8;
       --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
       --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
       --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
@@ -79,7 +79,7 @@
   }
   :root[data-theme="light"] {
     --page: #f1ebdd; --panel: #faf6ec; --panel-2: #f3ecdb;
-    --land: #fffdf8; --map-bg: #efe8d8;
+    --land: #e6dcc7; --map-bg: #efe8d8;
     --ink: #2a2216; --ink-2: #5f5540; --muted: #857a61; --city: #17120b; --city-halo: rgba(255,252,244,0.94);
     --hair: rgba(120,80,20,0.16); --prov-stroke: rgba(120,74,16,0.35);
     --accent: #c25e12; --accent-dim: #db7f24; --domain: #1f9b8a; --large: #1c6fa8;
@@ -1364,18 +1364,16 @@ out geom;</div>
 
   // Sequential ramps as [position, colour] stops, monotone in lightness (audited by
   // scripts/atlas_ramp_audit.py): bright = more on the dark page, dark = more on the light.
-  // Both are the Electrify Earth globe's (owner, 2026-11-14; docs/assets/landing/landing.js,
-  // THEMES.*.ramp), over this page's own fitted range: by night ember to gold, by day blush
-  // to vermilion on the globe's white land (`--land`).
-  const RAMP_DARK = [[0, "#603052"], [0.25, "#a03442"], [0.5, "#da4c2c"], [0.726, "#ff8838"],
-    [0.85, "#ffbe64"], [1, "#fff0c8"]];
-  const RAMP_LIGHT = [[0, "#fcf0e9"], [0.25, "#f9ded1"], [0.5, "#f1b098"], [0.726, "#e07050"],
-    [0.85, "#c64426"], [1, "#a32c10"]];
-  // A cell of this much or more is a hot spot, as on the globe (its RED_MW): a mark sits on
-  // it, its area growing with the cell's MWp, cream by night with a halo glowing round it,
-  // vermilion by day with none.
-  const HOT_MW = 100, HOT_HALO = "rgb(255,150,80)";
-  const hotMark = dark => dark ? "rgb(255,232,184)" : "rgb(163,44,16)";
+  // The ember ramps of the owner's colour-scale preview (2026-11-14), evenly spaced over a
+  // fitted floor (scaleFor, RAMP_FLOOR_SHARE): smoulder to white heat by night, sand to
+  // oxblood by day.
+  const evenly = a => a.map((s, k) => [k / (a.length - 1), s]);
+  const RAMP_DARK = evenly(["#412a1f","#783727","#b63d26","#ea5713","#fe921a","#ffcf64","#fff8d6"]);
+  const RAMP_LIGHT = evenly(["#e6d1b0","#e6af68","#e48225","#d85206","#ba2f12","#8d1b14","#5c1714"]);
+  // The ramp starts where the smallest lit cells add up to this share of the total.
+  const RAMP_FLOOR_SHARE = 0.01;
+  // By night the hottest cells glow: this share of the lit cells, by the quantity shown.
+  const HOT_SHARE = 0.025;
 
   const SVGNS = "http://www.w3.org/2000/svg";
   function el(n, a){
@@ -1607,9 +1605,14 @@ out geom;</div>
     if (!vals.length) return {vmin: 0.01, vmax: 1};
     vals.sort((a, b) => a - b);
     const vmax = vals[vals.length - 1];
-    // Floor at the 2nd percentile of the cells that have any capacity, so a handful of
-    // near-zero cells cannot stretch the ramp across eight decades of noise.
-    let vmin = Math.max(vals[Math.floor(vals.length * 0.02)], vmax * 1e-5);
+    // A fitted floor: the ramp starts where the smallest cells have added up to
+    // RAMP_FLOOR_SHARE of the total, so the long tail of near-empty cells shares the bottom
+    // colour instead of stretching the ramp across decades of noise (the legend says "<=").
+    // Never below 10^-4 of the largest cell. The 2nd percentile until 2026-11-14.
+    const tot = vals.reduce((a, b) => a + b, 0);
+    let k = 0, acc = 0;
+    while (k < vals.length - 1 && acc + vals[k] < tot * RAMP_FLOOR_SHARE) acc += vals[k++];
+    let vmin = Math.max(vals[k], vmax * 1e-4);
     if (!(vmax > vmin)) vmin = vmax / 10;
     return {vmin, vmax};
   }
@@ -1711,20 +1714,18 @@ out geom;</div>
     return ["case", ["<=", v, 0], zeroColor, interp];
   }
 
-  // The globe's hot spots (landing.js): a cell of HOT_MW or more gets a mark of radius
-  // 0.055 x sqrt(MW), held between 0.5 and 2.6, and a halo 2.8 times that, counted here in
-  // cells. Capacity only: the potential layer is energy, so it has none.
-  const hotFilter = def => def.unit === "GWh/yr" ? ["==", 1, 0] : [">=", ["get", def.prop], HOT_MW];
-  const hotSize = def => ["min", 2.6, ["max", 0.5, ["*", 0.055, ["sqrt", ["max", ["get", def.prop], 0]]]]];
-  const hotRadius = def => cellScaled(["*", 2.8, hotSize(def)]);
-  // The mark grows with the map up to zoom 5 (a country's view) and then keeps its size in
-  // pixels, so zoomed in it marks its own cell instead of covering its neighbours.
-  const hotMarkRadius = def => ["interpolate", ["exponential", 2], ["zoom"],
-    0, ["*", hotSize(def), CELLPX0], 5, ["*", hotSize(def), CELLPX0 * 32],
-    22, ["*", hotSize(def), CELLPX0 * 32]];
-  // The glow and the halo are night effects; the mark shows by day too, as on the globe.
-  const glowOn = id => OV.glow.on && STATE.basemap === "none" && (id === "hot-mark" || isDark());
-  const GLOW_LAYERS = ["glow", "hot-halo", "hot-mark"];
+  // The hot-spot glow: the top HOT_SHARE of lit cells, more opaque the hotter the cell
+  // (0.15 at the threshold to 0.6 at the largest, on a log scale).
+  function hotGlow(def){
+    const vals = DATA.cells.map(c => cellValue[def.prop](c)).filter(v => v > 0).sort((a, b) => a - b);
+    if (!vals.length) return {filter: ["==", 1, 0], opacity: 0};
+    const thr = vals[Math.floor(vals.length * (1 - HOT_SHARE))], vmax = vals[vals.length - 1];
+    return {filter: [">=", ["get", def.prop], thr],
+      opacity: ["interpolate", ["linear"], ["ln", ["max", ["get", def.prop], thr]],
+        Math.log(thr), 0.15, Math.log(Math.max(vmax, thr * 1.01)), 0.6]};
+  }
+  const glowOn = () => OV.glow.on && isDark() && STATE.basemap === "none";
+  const GLOW_LAYERS = ["glow", "hot"];
 
   // Keyless tile services only, every one serving CORS headers (or the PNG export could
   // not read the canvas back). CARTO's basemaps were the first choice and were dropped
@@ -1778,7 +1779,7 @@ out geom;</div>
     {id: "farmcand", follows: "cand", avail: false, sw: "cand farm", key: "farm candidate area, not yet mapped"},
     {id: "live", label: "OSM solar today, live (zoom in)", layers: ["live-fill", "live-line", "live-pt"], on: false,
      avail: true, sw: "live", key: "OpenStreetMap solar features, live from Overpass", status: true},
-    {id: "glow", label: "Glow round bright cells and hot spots (100 MW+)", layers: GLOW_LAYERS, on: true, avail: true},
+    {id: "glow", label: "Glow round bright cells and hot spots", layers: GLOW_LAYERS, on: true, avail: true},
   ];
   const OV = Object.fromEntries(OVERLAYS.map(o => [o.id, o]));
 
@@ -1848,18 +1849,12 @@ out geom;</div>
        paint: {"line-color": rampExpr(def, "rgba(0,0,0,0)"),
                "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 2.4],
                "line-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.95]}},
-      // Hot spots, as on the globe: a soft halo OVER the cells round any cell of HOT_MW or
-      // more (the grid is opaque, so under it nothing would show), and a mark on the cell
-      // itself (cream by night; vermilion by day, without the halo), so a hot spot reads
-      // even where all its neighbours are bright.
-      {id: "hot-halo", type: "circle", source: "glowpts", filter: hotFilter(def),
+      // The hot-spot glow: a soft disc in the cell's own colour OVER the cells (the grid is
+      // opaque, so under it nothing would show), round the hottest cells (hotGlow).
+      {id: "hot", type: "circle", source: "glowpts", filter: hotGlow(def).filter,
        layout: {visibility: OV.glow.on && P.dark && STATE.basemap === "none" ? "visible" : "none"},
-       paint: {"circle-color": HOT_HALO, "circle-radius": hotRadius(def),
-               "circle-blur": 1, "circle-opacity": 0.5}},
-      {id: "hot-mark", type: "circle", source: "glowpts", filter: hotFilter(def),
-       layout: {visibility: OV.glow.on && STATE.basemap === "none" ? "visible" : "none"},
-       paint: {"circle-color": hotMark(P.dark), "circle-radius": hotMarkRadius(def),
-               "circle-blur": 0.3, "circle-opacity": P.dark ? 0.95 : 0.92}},
+       paint: {"circle-color": rampExpr(def, P.land), "circle-radius": cellScaled(3.2),
+               "circle-blur": 1, "circle-opacity": hotGlow(def).opacity}},
       // Over the cells, so a cell that holds only hand-mapped OSM shows its colour hatched.
       {id: "unimaged", type: "fill", source: "unimaged", layout: {visibility: OV.unimaged.on ? "visible" : "none"},
        paint: {"fill-pattern": HATCH_ICON, "fill-opacity": hatchOpacity(), "fill-antialias": false}},
@@ -2019,12 +2014,10 @@ out geom;</div>
     m.setPaintProperty("cells-edge", "line-color", rampExpr(def, "rgba(0,0,0,0)"));
     setVis("cells-edge", !none);
     m.setPaintProperty("glow", "circle-color", rampExpr(def, P.land));
-    m.setFilter("hot-halo", hotFilter(def));
-    m.setPaintProperty("hot-halo", "circle-radius", hotRadius(def));
-    m.setFilter("hot-mark", hotFilter(def));
-    m.setPaintProperty("hot-mark", "circle-radius", hotMarkRadius(def));
-    m.setPaintProperty("hot-mark", "circle-color", hotMark(P.dark));
-    m.setPaintProperty("hot-mark", "circle-opacity", P.dark ? 0.95 : 0.92);
+    const hot = hotGlow(def);
+    m.setFilter("hot", hot.filter);
+    m.setPaintProperty("hot", "circle-color", rampExpr(def, P.land));
+    m.setPaintProperty("hot", "circle-opacity", hot.opacity);
     m.setPaintProperty("cells-hover", "line-color", P.ink);
     m.setPaintProperty("domain-line", "line-color", P.ink2);
     m.setPaintProperty("prov-line", "line-color", P.provStroke);
@@ -2047,7 +2040,7 @@ out geom;</div>
     }
     MAP.tileTheme = P.dark;
     setVis("land", none);
-    for (const id of GLOW_LAYERS) setVis(id, glowOn(id));
+    for (const id of GLOW_LAYERS) setVis(id, glowOn());
     renderLegend();
   }
 
@@ -2074,7 +2067,7 @@ out geom;</div>
       return x - gap(l) / 2 > gap(loL) && x + gap(l) / 2 < 100 - gap(hiL);
     });
     document.getElementById("legticks").innerHTML =
-      `<span class="lo" style="left:0%">${loL}</span>`
+      `<span class="lo" style="left:0%">≤ ${loL}</span>`
       + inner.map(v => `<span style="left:${pos(v).toFixed(1)}%">${compact(v)}</span>`).join("")
       + `<span class="hi" style="left:100%">${hiL}</span>`;
     document.getElementById("legzero").hidden = STATE.basemap !== "none";
@@ -2952,7 +2945,7 @@ out geom;</div>
   function toggleOverlay(o, on){
     o.on = on;
     if (o.id === "cities"){ document.getElementById("cityLayer").hidden = !on; placeCities(); }
-    else if (o.id === "glow") for (const id of GLOW_LAYERS) setVis(id, glowOn(id));
+    else if (o.id === "glow") for (const id of GLOW_LAYERS) setVis(id, glowOn());
     else for (const id of o.layers || []) setVis(id, on);
     if (o.id === "live"){ if (on) refreshLive(); else setLiveStatus(""); }
     renderLegend();

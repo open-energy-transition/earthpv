@@ -41,7 +41,7 @@ ATLAS = ROOT / "docs" / "assets" / "interactive" / "pakistan_evidence_atlas.html
 TEMPLATE = ROOT / "src" / "earthpv" / "templates" / "pv_evidence_atlas.html"
 # straight from the template's :root blocks
 LAND_DARK, MAPBG_DARK = "#241f16", "#0c0a07"
-LAND_LIGHT, MAPBG_LIGHT = "#fffdf8", "#efe8d8"
+LAND_LIGHT, MAPBG_LIGHT = "#e6dcc7", "#efe8d8"
 VMIN = 0.02
 
 
@@ -99,7 +99,7 @@ def shipped_ramps():
     s = TEMPLATE.read_text()
     out = {}
     for name in ("RAMP_DARK", "RAMP_LIGHT"):
-        body = re.search(rf'const {name} = \[(.*?)\](?:\.map\(.*?\))?;', s, re.S).group(1)
+        body = re.search(rf'const {name} = (?:evenly\()?\[(.*?)\]\)?;', s, re.S).group(1)
         pairs = re.findall(r'\[\s*([0-9.]+)\s*,\s*"(#[0-9a-fA-F]{6})"\s*\]', body)
         if pairs:
             out[name] = [(float(t), h) for t, h in pairs]
