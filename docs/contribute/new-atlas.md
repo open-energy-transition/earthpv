@@ -98,13 +98,14 @@ pixi run python scripts/overpass_labels_chunked.py \
 pixi run python scripts/drop_solar_thermal.py --aoi YOUR_AOI
 ```
 
-The first run also downloads the country's building footprints once. Solar water heaters and
-mirror fields carry the same OpenStreetMap tag as panels, so the second command takes them out.
+Solar water heaters and mirror fields carry the same OpenStreetMap tag as panels, so the second
+command takes them out.
 
 ## 4. Build the imagery
 
-This is the long one. It runs in the background, survives closing the terminal, and resumes if your
-computer restarts. First make sure your long jobs outlive your login:
+This is the long one. It runs in the background and survives closing the terminal. Before the
+imagery it downloads the country's building footprints once. First make sure your long jobs
+outlive your login:
 
 ```bash
 loginctl enable-linger "$USER"
@@ -112,8 +113,11 @@ loginctl enable-linger "$USER"
 systemd-run --user --collect --unit=earthpv-compose-YOUR_AOI \
     -p WorkingDirectory="$PWD" bash scripts/compose_loop.sh YOUR_AOI 0 1000
 
-journalctl --user -fu earthpv-compose-YOUR_AOI     # watch it, Ctrl+C only stops watching
+grep LOOP: data/compose_YOUR_AOI.log | tail     # cells done so far
 ```
+
+If the computer restarts, the job does not start again by itself. Run the same `systemd-run`
+command again: it skips the cells that are already done.
 
 The `1000` means imaging only cells with at least 1,000 buildings. Use a lower number in a country
 of small villages.

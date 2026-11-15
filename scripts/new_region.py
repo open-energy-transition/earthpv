@@ -226,6 +226,8 @@ TEMPLATE = """
 def cmd_add(args) -> int:
     import yaml
 
+    from earthpv.iso3166 import ISO3_TO_ISO2
+
     text = CONFIG.read_text()
     raw = yaml.safe_load(text)
     if args.aoi in (raw.get("aois") or {}):
@@ -235,6 +237,11 @@ def cmd_add(args) -> int:
 
     minx, miny, maxx, maxy = args.bbox
     iso3 = args.iso3.upper()
+    # ISO2 is not the first two ISO3 letters for 93 of 249 countries (SWE is SE, not SW).
+    iso2 = (args.iso2 or ISO3_TO_ISO2.get(iso3) or "").upper()
+    if not iso2:
+        print(f"No ISO2 code known for '{iso3}'. Pass it with --iso2.")
+        return 1
     comment = "\n".join(
         f"  # {ln}" for ln in textwrap.wrap(args.comment or DEFAULT_COMMENT, 84)
     )
@@ -242,7 +249,7 @@ def cmd_add(args) -> int:
         comment=comment,
         aoi=args.aoi, minx=minx, miny=miny, maxx=maxx, maxy=maxy,
         division=args.division or args.aoi.replace("_", " ").title(),
-        iso2=args.iso2 or iso3[:2], subtype=args.subtype, iso3=iso3,
+        iso2=iso2, subtype=args.subtype, iso3=iso3,
     )
 
     # The `aois:` mapping is followed by a top-level `seasons:` block; insert before it
@@ -362,7 +369,7 @@ def main() -> int:
     a.add_argument("--aoi", required=True, help="short key, lowercase with underscores")
     a.add_argument("--bbox", type=parse_bbox, required=True)
     a.add_argument("--iso3", required=True)
-    a.add_argument("--iso2", help="ISO2 country code, defaults to the first two ISO3 letters")
+    a.add_argument("--iso2", help="ISO2 country code, looked up from --iso3 by default")
     a.add_argument("--division", help="administrative name, defaults to a title-cased AOI key")
     a.add_argument("--subtype", default="region", choices=["country", "region", "county"])
     a.add_argument("--comment", help="one-line note written above the AOI block")
