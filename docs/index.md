@@ -1,7 +1,7 @@
 ---
 title: Electrify Earth
 template: landing.html
-n_atlases: 23
+n_atlases: 24
 search:
   exclude: true
 ---
@@ -28,6 +28,7 @@ search:
 - [Portugal](atlas-portugal.md){ data-iso="PRT" }
 - [South Africa](atlas-south-africa.md){ data-iso="ZAF" }
 - [Spain](atlas-spain.md){ data-iso="ESP" }
+- [Sweden](atlas-sweden.md){ data-iso="SWE" }
 - [Texas](atlas-texas.md){ data-iso="USA" }
 - [Turkey](atlas-turkiye.md){ data-iso="TUR" }
 - [Vietnam](atlas-vietnam.md){ data-iso="VNM" }
