@@ -134,6 +134,7 @@ pixi run -e ml earthpv infer --aoi YOUR_AOI \
 pixi run earthpv postprocess --aoi YOUR_AOI --threshold 0.3 --building-buffer-m 500 --stream-buildings
 pixi run python scripts/drop_solar_thermal.py --aoi YOUR_AOI --candidates
 pixi run earthpv export --aoi YOUR_AOI --exclude-mapped --min-distance-m 100
+pixi run earthpv calibrate-candidates --aoi YOUR_AOI --recall-reference none
 ```
 
 ## 6. Judge the very large outlines
@@ -171,7 +172,6 @@ pixi run python scripts/screen_osm_ground_perimeters.py --aoi YOUR_AOI \
     --out results/YOUR_AOI_osm_ground_screen/screen_full.csv \
     --png-dir results/YOUR_AOI_osm_ground_screen
 
-pixi run earthpv calibrate-candidates --aoi YOUR_AOI --recall-reference none
 pixi run earthpv density --aoi YOUR_AOI --districts --threshold 0.3
 pixi run earthpv check-density --aoi YOUR_AOI
 
@@ -189,7 +189,8 @@ pixi run earthpv atlas --aoi YOUR_AOI --include-offgrid-osm \
 Open `results/YOUR_AOI_pv_evidence_atlas.html` in your browser. That is your country's solar map.
 
 `check-density` reports regions that look implausible. It is telling you where to look, and in a
-country with no small-rooftop estimate some warnings are expected.
+country with no small-rooftop estimate some warnings are expected. It then ends in `FAIL`, so run
+the commands after it on their own rather than chaining them with `&&`.
 
 ## 8. Put it on the globe
 
