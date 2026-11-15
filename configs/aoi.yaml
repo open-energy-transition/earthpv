@@ -1029,6 +1029,19 @@ aois:
       "0083_0035", "0083_0036", "0083_0037", "0083_0038", "0084_0035", "0084_0036", "0084_0037", "0085_0036",
     ]
 
+  # Added by scripts/new_region.py. No source_region key, so chips and compose fetch
+  # from Planetary Computer STAC rather than a local composite cache.
+  sweden:
+    bbox: [11.1, 55.3, 24.2, 69.1]
+    division: { name: Sweden, country: SE, subtype: country, iso3: SWE }
+    grid_origin: [11.1, 55.3]
+    # Northern-hemisphere summer. The compose default (Nov-Mar) is Sweden's winter, with
+    # snow cover and a low sun (polar night north of 66.5N). Preflight over this window
+    # found 4,875 scenes under 40% cloud across 151 MGRS tiles, median cloud 16%.
+    compose_window: ["2026-05-01", "2026-08-31"]
+    # Filled by scripts/pick_val_region.py --write, which only writes into an empty list.
+    val_tiles: []
+
 seasons:
   spring: ["2025-03-01", "2025-05-31"]
   summer: ["2025-06-01", "2025-08-31"]
