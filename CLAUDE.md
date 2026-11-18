@@ -1,68 +1,55 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this
-repository. It documents the **current** state of the pipeline: its rules, its gotchas and its
-published results. What was tried, rejected or superseded to get here lives in
-`docs/experiments.md` (the dated experiment register) and `docs/open-questions.md` (open
-items); method write-ups are under `docs/methods/` and `docs/issues/`. Consult those before
-re-deriving something that may already have a documented answer.
+This file guides Claude Code (claude.ai/code) in this repository. It records the **current**
+pipeline: its rules, its gotchas and its published results. What was tried, rejected or
+superseded lives in `docs/experiments.md` (the dated experiment register); open items in
+`docs/open-questions.md`; method write-ups in `docs/methods/` and `docs/issues/`; per-country
+write-ups in `docs/results/<country>.md`. Check those before re-deriving something. Pre-change
+outputs are kept beside the canonical paths with `_PRE_<change>_<date>` suffixes or under
+`/home/tobi/earthpv_data/*PRE*`.
 
 ## What this is
 
-`earthpv` detects individual large solar PV arrays (target > 400 m², the practical floor for
-per-pixel supervision at Sentinel-2's 10 m GSD) from Sentinel-2 L2A imagery by fine-tuning the
-open-source **TerraMind** geospatial foundation model (IBM/ESA, via **TerraTorch**). Labels come
-from OpenStreetMap solar mapping; building footprints classify detections as rooftop/ground. It
-is **recall-first**: candidates are meant to be human-validated against high-res imagery in OSM
-workflows, so false positives are tolerated. Installations below the 400 m² floor are covered by
-a separate per-building classifier, `roofclf`. Segmentation is localized per country on that
-country's own OSM labels, and twenty-one countries and the states of Texas and California have a published evidence atlas (see "Country
-runs"). Read `README.md` for the narrative and headline numbers.
+`earthpv` detects solar PV in Sentinel-2 L2A imagery and turns it into a per-country **evidence
+atlas** of installed capacity. Labels come from OpenStreetMap solar mapping; building footprints
+(VIDA) classify detections as rooftop or ground. It is **recall-first**: candidates are meant to
+be validated by people against high-res imagery in OSM workflows, so false positives are
+tolerated. Two detectors:
 
-**Why two detectors**: Germany's legally complete PV register (MaStR) puts **65.5% of rooftop
-capacity in installations below the 400 m² floor** (97.2% by count; quote the capacity share).
-A segmentation model trained above that floor is structurally blind to about two-thirds of
-rooftop capacity, which is why `roofclf` is not optional infrastructure.
+- **Segmentation** outlines arrays **> 400 m²** (the practical floor for per-pixel supervision
+  at 10 m GSD), localized per country on that country's own OSM labels (TerraMind fine-tunes via
+  TerraTorch; the released baseline v28 is a ResNet-50).
+- **`roofclf`**, a per-building "does this roof carry PV?" classifier, covers roofs below the
+  floor. It is not optional: Germany's legally complete register (MaStR) puts **65.5% of rooftop
+  capacity in installations below 400 m²** (97.2% by count; quote the capacity share).
 
-## Main workflow (default pipeline, primary output)
+Twenty-one countries plus Texas and California have a published atlas ("Country runs").
+`README.md` has the narrative and headline numbers.
 
-The **evidence atlas** is the primary output. Two detectors, split by placement and by
-calibration coverage rather than cleanly by size, combine into one product:
+## Main workflow (default pipeline)
 
-- **Segmentation** (`infer` → `postprocess` → `density`): the TerraMind fine-tune, outlining
-  panels directly. Produces every mapping lead regardless of size, is the only instrument for
-  ground-mount at any size, and is the rooftop instrument for arrays **≥ 400 m²** wherever
-  `roofclf` is not calibrated to replace it. Each country runs its own checkpoint (Pakistan's
-  published rasters come from `v16_combined_pakistan` since 2026-10-28, `v3_combined_india`
-  before; the others are listed under "Country runs").
-- **`roofclf`** (`roof-classifier` → `roofclf-score-national` → `ge400-roof-capacity` →
-  `sub400-capacity`): a per-building "does this roof carry PV?" classifier. Covers every building **< 400 m²** and also **replaces** segmentation's rooftop estimate for
-  buildings **≥ 400 m²** inside the density-calibrated domain, where it measures better (AUC
-  ~0.76-0.78 against segmentation's ~0.50-0.78, strongly quadrat-dependent). Both capacity
+The evidence atlas (`atlas.build_evidence_atlas`) combines:
+
+- **Segmentation** (`infer` → `postprocess` → `density`): every mapping lead regardless of size,
+  the only instrument for ground-mount at any size, and the rooftop instrument for arrays
+  **≥ 400 m²** wherever roofclf is not calibrated to replace it. Each country runs its own
+  checkpoint (table under "Country runs").
+- **roofclf** (`roof-classifier` → `roofclf-score-national` → `ge400-roof-capacity` →
+  `sub400-capacity`): every building **< 400 m²**, and it **replaces** segmentation's rooftop
+  estimate for buildings **≥ 400 m²** inside the density-calibrated domain, where it measures
+  better (AUC ~0.76-0.78 against segmentation's ~0.50-0.78, quadrat-dependent). Both capacity
   functions are domain-restricted and refuse to rescale to a national total on their own.
-- **`atlas.build_evidence_atlas`** combines both into **Best estimate**: hand-mapped OSM, plus
-  segmentation's ground-mount, roofclf's rooftop replacement in-domain plus segmentation's own
-  recall-corrected rooftop out-of-domain, plus roofclf density below 400 m², de-duplicated
-  against each other and against OSM, and floored per cell at **Verified** plus any park a person
-  judged solar there. **Verified is the hand-mapped OSM capacity alone** (plus CSP at its
-  rating). Best carries a 90% credible interval.
+- **Best** = hand-mapped OSM + segmentation's ground-mount + roofclf's rooftop replacement
+  in-domain + segmentation's recall-corrected rooftop out-of-domain + roofclf density below
+  400 m², de-duplicated against each other and against OSM, floored per cell at Verified plus
+  whatever a person judged solar there. **Verified = the hand-mapped OSM capacity alone** (plus
+  CSP at its rating). Best carries a 90% credible interval.
+- **SPPI is in no atlas (owner, 2026-11-13).** `sub400-capacity` still writes the AND-gate and
+  out-of-domain files and `roofclf-score-national` still computes SPPI per building: research
+  outputs nothing reads. roofclf never used SPPI as a feature. The evidence template reads cells
+  by name (`cell_cols`), so pages built with the three retired all-zero columns draw alike.
 
-**SPPI is out of the atlases (owner, 2026-11-13).** Verified used to add the roofs where
-roofclf and the zero-training SPPI spectral index agreed (the "AND-gate" floor, `small_low`:
-Pakistan's 3,500.7 MWp), and the evidence, size, composition, growth and growth-evidence
-atlases all showed SPPI in some form. None does now: `earthpv atlas`/`atlas-by-size` no longer
-take `--sub400-low-cells`, `--sub400-outdomain-cells` or `--sub400-high-cells`, the sub-400 m2
-bracket atlas is deleted, and the evidence template reads cells by name (`cell_cols`), so pages
-built before (with three retired all-zero columns) and after draw alike. Pakistan moved
-Verified 7,138.3 -> 3,637.5 and Best 34,470.3 -> 34,468.6 (Best's per-cell floor); no other
-page changed a figure. The other 21 pages were patched with `scripts/patch_atlas_drop_sppi.py`
-(refuses a page whose retired fields are non-zero) and retemplated; the growth atlas with its
-`--growth` mode. `sub400-capacity` still writes the AND-gate files and `roofclf-score-national`
-still computes SPPI per building: research outputs no atlas reads. roofclf never used SPPI as a
-feature.
-
-The end-to-end command sequence is in `docs/reproduce.md`'s "The full pipeline"; the short
-version:
+Full sequence: `docs/reproduce.md`, "The full pipeline". Short version:
 
 ```bash
 earthpv labels --aoi <aoi>       && earthpv chips --aoi <aoi>
@@ -70,10 +57,10 @@ earthpv train  --config configs/terramind_pv.yaml
 earthpv infer  --aoi <aoi> --checkpoint <ckpt>
 earthpv postprocess --aoi <aoi> --threshold 0.3
 earthpv export --aoi <aoi>
-pixi run blob-review draw --aoi <aoi>   # the solar farm review: every outline above the merge
-#   cap. Judge in data/oversize_review/index.html, then `pixi run blob-review apply --verdicts ...`
-pixi run large-review draw --aoi <aoi>  # the large installation review: leads 10,000 m2 up to
-#   the cap. Judge in data/large_review/index.html, then `pixi run large-review apply ...`
+pixi run blob-review draw --aoi <aoi>   # solar farm review: every outline above the merge cap.
+#   Judge in data/oversize_review/index.html, then `pixi run blob-review apply --verdicts ...`
+pixi run large-review draw --aoi <aoi>  # large installation review: leads 10,000 m2 up to the
+#   cap. Judge in data/large_review/index.html, then `pixi run large-review apply ...`
 earthpv density --aoi <aoi> --districts && earthpv check-density --aoi <aoi>
 
 earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration quadrats
@@ -93,92 +80,96 @@ earthpv atlas --aoi <aoi> \
   --osm-solar <national OSM solar pull>
 ```
 
-**Random-cell manual validation is part of this workflow, not an optional extra.** The
-calibration quadrats are curated and industrial-leaning; a `roofclf` that scores well only there
-is not evidence it works on the rest of the country.
-`scripts/tile_roofclf_detections_geojson.py --random-cells N --seed S` draws N cells uniformly
-from the national scoring output, excludes calibration quadrats, and writes JOSM-reviewable
-GeoJSON tiles into `results/<aoi>_roofclf_validation/`. Results go in
-`results/roofclf_random_validation_log.csv`. Protocol:
-`docs/methods/roofclf-national-validation.md`.
+`--osm-solar` is required, and `density` no longer writes an atlas (`build_combined_atlas`
+remains on `templates/pv_atlas.html`).
 
-**The solar farm review is part of this workflow too (owner, 2026-11-02).** A very large
-model outline (a blob) stays out of capacity until it is mapped or a person judges it solar, so
-one look per outline is the cheapest capacity there is to verify. `run_country_compute.sh` draws
-a country's package after `export`; `data/oversize_review/index.html` lists every country's page,
-`pixi run blob-review status` the counts. Sittings can be partial: apply any export, then
-`density --districts` (no `--force`) and the atlas. An agent prepares this and never judges it.
-See "Density stage".
+**Countries without quadrats.** With a complete register (Germany) the capacity half needs no
+mapped quadrats: `roof-classifier` fits on pseudo-quadrats, `roofclf-score-national` scores the
+country, and `scripts/calibrate_germany_capacity.py` fits kWp per credited m² against the
+register (see "MaStR validation"). With neither, build the **segmentation-only atlas** (`earthpv
+atlas --aoi <aoi> --osm-solar <pull>`, no `--sub400-central-cells`): Best does not reach below the
+floor and the page says "not measured" there. France is in this state because roofclf does not
+transfer to French residential PV.
 
-**So is the large installation review (owner, 2026-11-10)**: the same disk page for the leads
-from `LARGE_MIN_M2` (10,000 m²) up to the cap, rooftop and ground (`pixi run large-review`,
-`scripts/oversize_review.py --kind large`; `results/<aoi>_large_review/`, packages in
-`data/large_review/` -> /home, ~190 KB per lead). `run_country_compute.sh` draws it after the
-blob page (both retried once, never fatal: a 2026-11-09 DNS outage left Belgium's blob page
-missing while its step read done). Any named reviewer's verdict counts (owner), and it is a
-documented way to contribute for people who run EarthPV (`docs/contribute/review.md`). The 18
-countries with a run (about 37,000 leads; India 9,935, Germany 7,592) were queued 2026-11-10 in
-unit `earthpv-large-review-draw` (log `data/large_review_draw.log`, smallest first);
-`pixi run large-review status` says which have pages. The owner judged seven 2026-11-10
-(Belgium, Egypt, Netherlands, Nigeria, Portugal, South Africa, Yemen: 2,335 of 2,443 leads,
-1,381 solar, 108 unsure), applied the same day, roofs at 1/2.5 (owner). Large ROOF leads are
-priced far too low: their bins put P(real) at 0.00-0.07, and the owner found 92-99% solar in
-Belgium, the Netherlands, Portugal and South Africa. Rebuilt and published the same day
-(`/home/tobi/earthpv_data/lead_review_20261110/rebuild.sh`, density backups in
-`lead_review_PRE_20261110/`; controls with the verdicts hidden reproduced all seven pages
-exactly); the Netherlands' and Portugal's first pages went out with their verdicts, also
-2026-11-10, and the owner judged Namibia's 105 the same day (10 solar, 95 not, 64 of them
-Cuvelai pans; Best 530.2 -> 512.3). Best: Belgium 639.3 -> 970.8, Netherlands 3,927.2 -> 4,567.3, Portugal
-6,147.9 -> 6,193.6, Yemen 586.2 -> 623.6, Egypt 3,809.9 -> 3,848.7, Nigeria 126.9 -> 157.3,
-South Africa 9,839.0 -> 10,075.9; Verified unchanged. Esri's `export`
-answers HTTP 500 for detail finer than it holds (Namibia, Zambia, Yemen: zoom 17), so `_esri`
-steps down to half and a quarter of the pixels. Pricing: "Density stage". **Both pages
-carry a fourth verdict, key 4 "Bright roof" (owner, 2026-11-10)**: not PV on a very bright
-roof, priced as `not_pv`, kept apart as `flag: bright_roof` in review.csv (`review_flag` in
-review.geojson, a column in `status`) so the false alarm can be studied
-(`build_review_page.write_page(bright_roof=True)`; the other pages that share it keep three
-keys, since their joins know only those).
+### Human review steps (part of the workflow, not extras)
 
-**Imagery date is the gate on sparse areas, not mapping effort.** Out-of-domain random cells and
-low-density quadrats have repeatedly sat under reference imagery too old to confirm or refute
-recently installed small PV, so a zero there is uninterpretable in both directions. Do not
-register such a quadrat: it pulls the sparse band's coverage ratio toward zero on evidence that
-does not support it. Check `imagery_layer`/`imagery_date` before drawing, not after mapping
-(Box 17 in `docs/issues/pakistan-calibration-boxes.md`).
+An agent prepares each of these and **never judges them**; verdicts come from named people.
 
-**A country with a complete register does not need mapped quadrats for the capacity half.**
-Germany has none: MaStR publishes per-municipality totals and the estimator is an aggregate, so
-`roof-classifier` fits on pseudo-quadrats, `roofclf-score-national` scores the country, and
-`scripts/calibrate_germany_capacity.py` fits kWp per credited m² against the register instead of
-a quadrat coverage ratio (see "MaStR validation").
-
-**A country with neither** gets the **segmentation-only evidence atlas** (`earthpv atlas --aoi
-<aoi> --osm-solar <pull>`, omitting `--sub400-central-cells`). Best is hand-mapped OSM plus the
-≥ 400 m² detections and does not reach below the floor; the page says "not measured" there. France is in
-this state because `roofclf` does not transfer to French residential PV.
-
-**`--osm-solar` is required, and `density` no longer writes an atlas.** The old six-estimator
-and simple atlases were removed, and the sub-400 m2 bracket atlas with SPPI (2026-11-13);
-`build_combined_atlas` remains on `templates/pv_atlas.html`.
-
-Of the many sub-400 m² instruments tried, only `roofclf` was promoted; the rest are in `docs/experiments.md`.
+- **roofclf random-cell validation, after every national scoring pass.** The calibration
+  quadrats are curated and industrial-leaning; scoring well there is not evidence roofclf works
+  on the rest of the country. `scripts/tile_roofclf_detections_geojson.py --random-cells N
+  --seed S` draws N cells uniformly from the national scoring output, excluding quadrats, into
+  `results/<aoi>_roofclf_validation/`; results go in `results/roofclf_random_validation_log.csv`;
+  protocol `docs/methods/roofclf-national-validation.md`. **Review on the page, not in JOSM**:
+  `scripts/roofclf_review_page.py cells --batch <tiles> --window-start <composite start>` puts 20
+  random flagged roofs per cell on the shared page (`data/roofclf_review/` -> /home; keys 1-4,
+  bright roof counted not PV, no score shown); `log --batch --verdicts --reviewer` fills the log
+  and writes the batch's precision (cells weighted by flagged count). `level` does the same for
+  the blind score-level review, whose `roofclf_level_review.py analyze` reads the level against
+  the published scoring. Only seed 20261107 describes Pakistan's published scoring.
+- **Mapped PV outside the calibration areas validates sensitivity only.** It was mapped from
+  segmentation leads, area screening and chance finds, so it is positive-only and selected.
+  `scripts/roofclf_osm_positive_check.py` compares roofclf's score on those roofs with the
+  quadrats' out-of-fold score per array-size bin, post-stratified on proximity to a segmentation
+  lead. Never read fill per PV roof, the coverage ratio or the level from that set (mappers skip
+  tiny arrays: fill reads 1.4-2.5x the quadrats'). `scripts/osm_sweep_completeness_review.py`
+  draws a blind, score-stratified review of unmapped roofs in densely mapped ~1 km boxes; a box
+  found nearly complete is a candidate calibration area, which only the owner can declare.
+- **Solar farm (blob) review (owner, 2026-11-02).** A model outline above the merge cap stays
+  out of capacity until it is mapped or a person judges it solar. `run_country_compute.sh`
+  draws a country's page after `export`; `data/oversize_review/index.html` lists every
+  country's page and `pixi run blob-review status` the counts. Sittings can be partial: apply
+  any export, then `density --districts` (no `--force`) and the atlas. Mechanics and pricing are
+  under "Density stage".
+- **Large installation review (owner, 2026-11-10).** The same disk page for leads from
+  `LARGE_MIN_M2` (10,000 m²) up to the cap, rooftop and ground (`pixi run large-review`,
+  `scripts/oversize_review.py --kind large`; `results/<aoi>_large_review/`, packages in
+  `data/large_review/` -> /home, ~190 KB per lead), drawn after the blob page. Both draws are
+  retried once and never fatal, so check the page exists (a DNS outage once left one missing
+  while its step read done); `pixi run large-review status` says which countries have pages.
+  Any named reviewer's verdict counts (owner); it is a documented way to contribute
+  (`docs/contribute/review.md`). It matters most for large ROOF leads, whose bins price P(real)
+  at 0.00-0.07 where reviewers found 92-99% solar. Both pages carry key 4 **"Bright roof"**:
+  priced as `not_pv`, kept as `flag: bright_roof` in review.csv (`review_flag` in
+  review.geojson, a `status` column) so the false alarm can be studied
+  (`build_review_page.write_page(bright_roof=True)`; other pages on that builder keep three
+  keys, since their joins know only those). Esri's `export` answers HTTP 500 for detail finer
+  than it holds (zoom 17 in Namibia, Zambia, Yemen), so `_esri` steps down to half and a
+  quarter of the pixels.
+- **Imagery date is the gate on sparse areas, not mapping effort.** Out-of-domain random cells
+  and low-density quadrats often sit under reference imagery too old to confirm or refute recent
+  small PV, so a zero there is uninterpretable. Do not register such a quadrat (it pulls the
+  sparse band's coverage ratio toward zero). Check `imagery_layer`/`imagery_date` before
+  drawing, not after mapping.
 
 ## Environments & commands
 
-Managed with **pixi**. Two environments share one solve-group, plus an independent docs env:
+Managed with **pixi**:
 - `default` -- the data pipeline (DuckDB, geopandas, rasterio, odc-stac). No PyTorch.
-- `ml` -- adds `torch`/`torchvision` (**cu126 wheels**) and `terratorch`.
+- `ml` -- adds `torch`/`torchvision` (**cu126 wheels**) and `terratorch`; shares `default`'s
+  solve-group.
 - `docs` -- mkdocs-material only (`no-default-feature`), so a docs edit never waits on a solve.
+- `ml-cpu` / `ml-rocm` -- the `ml` stack on PyTorch's CPU-only or ROCm 6.3 wheels, for people
+  without an NVIDIA card (`docs/contribute/new-atlas.md`, "No NVIDIA card?"). Each has its own
+  solve-group (`+cpu`/`+rocm6.3` wheels cannot share one with `+cu126`), so their data libraries
+  resolve newer than `default`'s; the model stack (terratorch, lightning, timm,
+  segmentation-models-pytorch, huggingface-hub, kornia) is pinned to `ml`'s locked versions:
+  **move those pins whenever `ml` re-locks**. `pytorch-triton-rocm` must name the ROCm index
+  itself or the solve fails. No code switch: `infer`/`train`/`evaluate` take the GPU whenever
+  `torch.cuda.is_available()`, which a ROCm build reports for an AMD card. `ml-rocm` has never
+  run on an AMD card. CPU inference matches the 1060's to rounding (no pixel crosses 0.3) at ~3x
+  the time; CPU training is impractical (Lightning turns `16-mixed` into `bf16-mixed`, ~40 s per
+  ResNet-50 batch).
 
 ```bash
 pixi install            # default env
 pixi install -e ml      # + torch cu126 + terratorch (multi-GB solve)
 pixi install -e docs    # mkdocs-material
-pixi run -e ml gpu-check # verify torch.cuda + device name
+pixi run -e ml gpu-check # names the device infer/train will use (scripts/gpu_check.py; exit 0 on CPU)
 ```
 
-Run pipeline stages via the CLI (Typer). Long GPU stages should use the `ml` env; to avoid
-pixi's per-invocation overhead you can call the interpreter directly:
+Run stages via the CLI (Typer); long GPU stages in the `ml` env, or call the interpreter directly
+to avoid pixi's per-invocation overhead:
 
 ```bash
 pixi run earthpv labels --aoi germany            # default env is fine for data stages
@@ -187,38 +178,29 @@ pixi run earthpv labels --aoi germany            # default env is fine for data 
 ```
 
 CLI stages (`src/earthpv/cli.py`): `labels → chips → train → evaluate → infer → postprocess →
-export`, plus `compose` (build imagery for AOIs with no local composites). `train --smoke` runs
-50 steps; `chips --limit N` caps the chip count for quick runs. For capacity, see "Main
-workflow": `density → check-density` for the ≥ 400 m² segmentation half, `roof-classifier →
-roofclf-score-national → ge400-roof-capacity → sub400-capacity` for the roofclf half, then
-`atlas --sub400-central-cells --ge400-roof-cells --osm-solar` to combine
-them. `roofclf-score-national` is the long pole (hours at country scale) and is resumable
-per-cell like `density`.
+export`, plus `compose` (imagery for AOIs with no local composites), the capacity stages listed
+under "Main workflow", `osm-hard-negatives`, `groundclf*`, `validate-mastr` and
+`validate-france`. `train --smoke` runs 50 steps; `chips --limit N` caps the chip count.
+`roofclf-score-national` is the long pole (hours) and is resumable per cell like `density`.
 
-**There is no test suite and no lint task wired** (one test file exists,
-`tests/test_mastr_validation.py`, run as a plain script -- pytest is not a declared dependency).
-Ruff is configured (line-length 100) but run manually. The practical "does it work" check is a
-small end-to-end run: `chips --aoi germany --limit 500` → `train --smoke` → `evaluate`.
+**There is no test suite and no lint task wired** (`tests/test_mastr_validation.py` runs as a
+plain script; pytest is not a dependency). Ruff is configured (line-length 100) but run
+manually. The practical check is a small end-to-end run: `chips --aoi germany --limit 500` →
+`train --smoke` → `evaluate`.
 
-**The released segmentation model is v28 (since 2026-11-12, owner), fetched with `pixi run
-fetch-model`.** `scripts/fetch_model.py` downloads `earthpv_segmentation_v28.ckpt` from the
-GitHub release `segmentation-model-v28-2026-11-12` into `data/models/release/` and checks its
-SHA-256; `new_region.py plan` and the setup docs take the file name from its `RELEASE` dict. It
-is `v28_resnet50_south_africa/last.ckpt` (ResNet-50 from SSL4EO-S12 on v14's corpus, the EMA
-weights at the end of a fixed 42-epoch budget) put through `scripts/slim_checkpoint.py`
-(139 MB, no download at load; identical predictions). Of eight checkpoints at matched pixel
-precision it found the most arrays zero-shot over ten countries (v29, Tiny with the
-size-weighted loss, ties it there but loses on the in-corpus holdouts and was never scanned
-over whole cells), with about v14's false alarms over whole cells; the production threshold stays 0.3
-(`results/release_model_benchmark_v28.csv`, `docs/pretrained-model.md`, the register's v28
-entry). **Every published atlas still runs on its own country's checkpoint; the release
-changes no published number.** To release a newer model: slim it, upload it with
+**The released segmentation model is v28 (owner, 2026-11-12)**, fetched with `pixi run
+fetch-model`: `scripts/fetch_model.py` downloads `earthpv_segmentation_v28.ckpt` from release
+`segmentation-model-v28-2026-11-12` into `data/models/release/` and checks its SHA-256;
+`new_region.py plan` and the setup docs take the file name from its `RELEASE` dict. It is
+`v28_resnet50_south_africa/last.ckpt` (ResNet-50 from SSL4EO-S12 on v14's corpus, EMA weights
+after a fixed 42-epoch budget) put through `scripts/slim_checkpoint.py` (139 MB, identical
+predictions), run at threshold 0.3 (`results/release_model_benchmark_v28.csv`,
+`docs/pretrained-model.md`). **Every published atlas runs on its own country's checkpoint; the
+release changes no published number.** To release a newer model: slim it, upload it with
 `SHA256SUMS`, `MODEL_CARD.md`, `LICENSE`, `NOTICE`, its config and benchmark to a new tag,
-update `RELEASE`, and redo the page's tables. **The weights are CC BY 4.0**, the licence of the
-SSL4EO-S12 weights they are fine-tuned from (v14, still downloadable at
-`segmentation-model-v14-2026-10-23`, is Apache-2.0 like TerraMind); `NOTICE` carries the
-SSL4EO-S12, OpenStreetMap and Copernicus attributions, and detections made with the model stay
-ODbL like every data output. The config's recipe (`ema`, `jitter`, the warmup-cosine
+update `RELEASE`, and redo the page's tables. **The weights are CC BY 4.0** (the SSL4EO-S12
+licence; `NOTICE` carries the SSL4EO-S12, OpenStreetMap and Copernicus attributions); detections
+stay ODbL like every data output. The config's recipe (`ema`, `jitter`, the warmup-cosine
 `scheduler`) needs `train.py` options that are not on main yet.
 
 ## Architecture
@@ -233,772 +215,495 @@ Sentinel-2 composite COGs (`CompositeIndex`) and its OSM/Overture label + buildi
 (`imagery.py`) fetchers are **fallbacks** for AOIs with no local artifacts. **Direct Overture S3
 queries time out from this machine -- prefer the local/VIDA paths.**
 
-Consequence: an AOI is only fully usable where the `source_region` actually has composites.
-`germany` uses `germany_500`; `punjab` uses `pakistan_500` for *buildings* but that region's
-composites cover **Balochistan, not Punjab** -- so Punjab imagery is built on demand by the
-`compose` stage into `data/composites/punjab/`, which `infer` prefers over the `source_region`.
+An AOI is only fully usable where its `source_region` has composites. `germany` uses
+`germany_500`; `punjab` uses `pakistan_500` for *buildings*, but that region's composites cover
+**Balochistan, not Punjab**, so Punjab imagery is built by `compose` into
+`data/composites/punjab/`, which `infer` prefers over the `source_region`.
 
-### Bands & the TerraMind model
+### Bands & the segmentation models
 
-Local composites are **10-band** (B02–B12 minus the two 60 m atmospheric bands B01/B09).
-TerraMind's pretrained S2L2A patch-embed is 12-band; at load, `configs/terramind_pv.yaml`
-passes `backbone_bands: {S2L2A: [10 names]}` so TerraTorch **subsets the patch-embed** to
-exactly those 10 bands (`config.py` holds `LOCAL_BANDS` / `MODEL_BANDS` and the mapping). The
-backbone is `terramind_v1_tiny` (fits a 6 GB GPU); it's a plain ViT, so a UNet decoder needs a
-feature pyramid built by the neck stack `SelectIndices → ReshapeTokensToImage →
-LearnedInterpolateToPyramidal`. Training (`train.py`) is a TerraTorch `SemanticSegmentationTask`
-via Lightning; checkpoints monitor `val/mIoU`.
+Local composites are **10-band** (B02–B12 minus the 60 m bands B01/B09). TerraMind's pretrained
+S2L2A patch-embed is 12-band; `configs/terramind_pv.yaml` passes `backbone_bands: {S2L2A: [10
+names]}` so TerraTorch **subsets the patch-embed** to those bands (`config.py` holds
+`LOCAL_BANDS` / `MODEL_BANDS` and the mapping). Country checkpoints use `terramind_v1_tiny` (fits
+a 6 GB GPU), a plain ViT, so the UNet decoder needs the neck stack `SelectIndices →
+ReshapeTokensToImage → LearnedInterpolateToPyramidal`. Training (`train.py`) is a TerraTorch
+`SemanticSegmentationTask` via Lightning; checkpoints monitor `val/mIoU`.
 
-- **Compare checkpoints on installation recall, never on one val/mIoU.** val/mIoU is dominated
-  by large ground plants, and epoch selection noise is as large as a backbone change (v14's
-  second-best checkpoint finds 0.621 of rooftop arrays against the shipped one's 0.565).
-  `scripts/compare_backbones.py` (paired McNemar per installation, at matched pixel precision,
-  over every AOI's holdout) and `evaluate(extra_thresholds=...)` do this.
-- **TerraTorch's TerraMind backbone does not standardise its input** (only its generation and
-  TiM builders take TerraMind's pretraining mean/std), so every checkpoint up to v20 saw DN /
-  10000, each band's spread 5-8x narrower than in pretraining. `backbone: earthpv_terramind`
-  with `backbone_variant: terramind_v1_*` (`terramind_backbone.py`) applies TerraMind's own
-  statistics inside the model, like `thor_backbone`; existing checkpoints load unchanged. A
-  frozen-feature probe put held-out token AP at 0.469 on DN / 10000 against 0.737 (corpus
-  statistics 0.452), but **v21** (v14's recipe and corpus, `scripts/run_tmnorm_compare.sh`,
-  2026-10-30) shows it does not survive full fine-tuning at 1e-4: rooftop recall 0.575 against
-  v14's 0.574 at matched precision, ground 0.6 points lower, France worse at both saved epochs;
-  it only converges in half the epochs. Rejected; untested with a lower encoder LR. TiM
-  variants cannot take our 10 bands. Small and Base fit the 1060 at batch 8 (1.0 / 2.7 GiB
-  peak, 2x / 4.9x Tiny's step time).
+- **Compare checkpoints on installation recall at matched pixel precision, never on one
+  val/mIoU or one fixed threshold.** val/mIoU is dominated by large ground plants and
+  epoch-selection noise is as large as a backbone change; a fixed threshold rewards whichever
+  checkpoint fires most. `scripts/compare_backbones.py` (paired McNemar per installation over
+  every AOI's holdout) and `evaluate(extra_thresholds=...)` do this. Probabilities saturate, so
+  matching often needs a threshold of 0.95-0.97.
+- **Averaging an epoch pair's weights beats picking either epoch**
+  (`scripts/average_checkpoints.py`, in-corpus and zero-shot; recomputing BatchNorm statistics does
+  not help). But a threshold matched on holdout chips measures outline width, not false objects:
+  over whole cells an average at its matched ~0.97 loses arrays to the baseline at 0.3, while at 0.3
+  it finds more and adds a few smooth false sheets over plain farmland. **Chip-level holdouts cannot
+  measure large false sheets**; `scripts/sheet_scan.py` (`curve`, `blobs`) compares whole cells.
+- **Judge a candidate baseline (released) model zero-shot.** `scripts/zero_shot_suite.py build`
+  makes `data/chips/zs_<aoi>` from whole chip sets of 10 countries outside
+  `combined_south_africa` (5 km exclusion around corpus chips), scored with fair_score as
+  `zs_<aoi>@<aoi>` and pooled by `zero_shot_suite.py report`; valid only for models trained on
+  that corpus. `scripts/run_baseline_checks.sh` runs it and the sheet scan.
+- **TerraTorch's TerraMind backbone does not standardise its input**, so stock checkpoints see
+  DN / 10000. `backbone: earthpv_terramind` with `backbone_variant: terramind_v1_*`
+  (`terramind_backbone.py`) applies TerraMind's own statistics (existing checkpoints load
+  unchanged), but it gave no gain after full fine-tuning (v21, register). TiM variants cannot
+  take our 10 bands.
 - **On the GTX 1060 `train` uses PyTorch's math SDPA kernel** (`earthpv.attention`, pre-Volta
-  GPUs only): the default kernel is about 3x slower for TerraMind training. **TerraMind
-  inference deliberately keeps PyTorch's default kernel**: the gain is small and the kernels
-  agree only to rounding, so switching would break byte-for-byte reproduction of published
-  rasters. `EARTHPV_SDPA=default|math` overrides.
+  only): the default kernel is ~3x slower for TerraMind training. **Inference deliberately keeps
+  the default kernel**: the kernels agree only to rounding, so switching would break
+  byte-for-byte reproduction of published rasters. `EARTHPV_SDPA=default|math` overrides.
 - **Training is protected against systemd-oomd.** `datamodule` drops each chip from the page
   cache after reading it (a ~20 GB corpus cannot be cached inside a unit's MemoryMax).
-  `resume: true` in a training config is opt-in and continues from the run's own `last.ckpt`;
-  pair it with `systemd-run -p Restart=on-abnormal`.
-- `src/earthpv/thor_backbone.py` (THOR-Tiny, read from the gitignored `third_party/` checkout
-  because it pins TerraTorch 1.2.5) is tooling from a backbone comparison that was not adopted.
+  `resume: true` is opt-in and continues from the run's own `last.ckpt`; pair it with
+  `systemd-run -p Restart=on-abnormal`.
+- `src/earthpv/thor_backbone.py` (reads the gitignored `third_party/` checkout) is tooling from
+  a backbone comparison that was not adopted.
 
 ### Adding a new AOI
 
-`scripts/new_region.py` is the front door for a region with no local data: `check` preflights
-the four open sources (Overpass label count, VIDA parquet for the ISO3, geoBoundaries
-ADM1/ADM2, Sentinel-2 cloud cover in the compose window) read-only, `add` appends the AOI block
-to `configs/aoi.yaml` (with `val_tiles: []`) and re-parses to catch a bad insert, `plan` prints
-the runbook. **New AOIs must carry `division.iso3`** -- `buildings._iso3_for` prefers it and the
-ISO2 fallback map only covers PK/DE/IN, so an AOI without it fails at the density stage rather
-than at setup. `source.coop` 403s any request without a User-Agent header, which reads exactly
-like "no such country." Guide: `docs/reproduce.md`'s "Scale to a new country" section. Before a
-new country's atlas is built, re-run `scripts/ember_import_ceiling.py` (see "Documentation
-site"), and add any official figures to `scripts/official_capacity.py` and re-run it.
+`scripts/new_region.py` is the front door: `check` preflights the four open sources (Overpass
+label count, VIDA parquet for the ISO3, geoBoundaries ADM1/ADM2, Sentinel-2 cloud cover in the
+compose window) read-only, `add` appends the AOI block to `configs/aoi.yaml` (with `val_tiles:
+[]`) and re-parses it, `plan` prints the runbook. **New AOIs must carry `division.iso3`**
+(`buildings._iso3_for` prefers it; the ISO2 fallback covers only PK/DE/IN, so an AOI without it
+fails at `density`). `source.coop` 403s any request without a User-Agent header, which reads
+exactly like "no such country." Guide: `docs/reproduce.md`, "Scale to a new country". Before a
+new country's atlas is built, re-run `scripts/ember_import_ceiling.py` and add any official
+figures to `scripts/official_capacity.py` and re-run it.
 
-**A state or province can be an AOI of its own (`division.subtype: region`, 2026-11-10:
-California, Texas).** Compose clips to its ADM1 polygon by name (`compose._aoi_boundary`);
-`density.subnational_units` makes its own ADM2 units (more than half their area inside; a
-representative point lost Texas's Aransas County to the bay) its regions, with no district
-layer, so the atlas's province chart, its cell count and `pick_val_region.py`'s holdout stay
-inside it; `density.aoi_border` clips the OSM solar file and the CSP table to it (the national
-ADM1 union would have counted Nevada's parks on California's page). Training labels still
-take the neighbours inside the bbox. `scripts/vida_subset.py` (`VIDA_BOXES` in
-`prepare_country_vida.sh`) installs only some boxes of a country's VIDA: **`data/vida/USA.parquet`
-holds California's and Texas's footprints only**, so another US state needs it redone with its
-box added (`<raw>.json` lists the boxes).
+**A state or province can be an AOI** (`division.subtype: region`: California, Texas). Compose
+clips to its ADM1 polygon by name (`compose._aoi_boundary`); `density.subnational_units` makes
+its ADM2 units (more than half their area inside; a representative point lost Texas's Aransas
+County to the bay) its regions, with no district layer, so the province chart, cell count and
+`pick_val_region.py`'s holdout stay inside it; `density.aoi_border` clips the OSM solar file and
+the CSP table to it. Training labels still take the neighbours inside the bbox.
+`scripts/vida_subset.py` (`VIDA_BOXES` in `prepare_country_vida.sh`) installs only some boxes of
+a country's VIDA: **`data/vida/USA.parquet` holds California's and Texas's footprints only**, so
+another US state needs it redone with its box added (`<raw>.json` lists the boxes).
 
 ### Compose stage (imagery for AOIs without local composites)
 
-`compose.py` builds Sentinel-2 composites on demand via Planetary Computer STAC
+`compose.py` builds Sentinel-2 composites via Planetary Computer STAC
 (`imagery.annual_composite`: dry-season median of the ~12 least-cloudy scenes per 0.1° cell). It
-only composites **building-populated cells** (rooftop PV needs roofs), prioritized by density,
-plus label cells (since 2026-10-12 `compose._solar_label_cells` covers a mapped park's whole
-outline, not just its representative point). Output mirrors the rooftopsenti COG layout
-(`<cell>/composite_0.tif`) so `CompositeIndex`/`infer` read it unchanged. It is **resumable**
-(skips finished cells) and **network-bound**. `compose.run_compose` honours an AOI's
-`compose_window` when `--window` is not passed. AOI keys: `ring_cells: N` adds every cell within
-N cells of the selection (appended after existing cells, so resumed runs are unchanged);
-`cell_selection: duckdb` aggregates per-cell VIDA counts in DuckDB (cached in
-`data/cells_cache/`), needed for very large countries; `grid_origin` pins the cell naming.
+composites **building-populated cells** (prioritized by density) plus label cells
+(`compose._solar_label_cells` covers a mapped park's whole outline). Output mirrors the
+rooftopsenti COG layout (`<cell>/composite_0.tif`) so `CompositeIndex`/`infer` read it
+unchanged. It is **resumable** and **network-bound**; it honours an AOI's `compose_window` when
+`--window` is not passed. AOI keys: `ring_cells: N` adds every cell within N cells of the
+selection (appended, so resumed runs are unchanged); `cell_selection: duckdb` aggregates
+per-cell VIDA counts in DuckDB (cached in `data/cells_cache/`) for very large countries;
+`grid_origin` pins the cell naming.
 
-**Composites built before 2026-10-10 carry two known defects** (open question 11):
-`eo:cloud_cover` is per MGRS tile, so dry-season scenes tie at 0% and the twelve kept could all
-come from a tile clipping the cell's corner (`imagery._rank_items` now ranks scenes covering
->= 99% of the cell first); and `odc.stac.load(fail_on_error=False)` turned failed reads into
-zeros, so a cell could lose a whole band (`imagery.BAND_DROPOUT_MAX` now raises and the cell is
-retried). India, Zambia, Nigeria and Vietnam were not recomposited;
-`scripts/scan_composite_defects.py` measures a country.
+`imagery._rank_items` ranks scenes covering >= 99% of the cell first (`eo:cloud_cover` is per
+MGRS tile, so dry-season scenes tie at 0%), and `imagery.BAND_DROPOUT_MAX` raises on a cell that
+lost a band (failed reads used to become zeros). Composites built before 2026-10-10 lack both
+fixes; India, Zambia, Nigeria and Vietnam were not recomposited (open question 11;
+`scripts/scan_composite_defects.py` measures a country).
 
 ### Postprocess & ranking
 
 `postprocess.py` polygonizes probability rasters, then joins candidates to building footprints
-for a rooftop/ground/no-building `placement` and a metric-based `rank_score` (confidence ×
-building prior). Footprints come from `buildings.py::load_dense_buildings` -- **VIDA Open
-Buildings** (Google+Microsoft, imagery-derived, includes small/unmapped roofs), fetched
-windowed-and-cached per AOI; the local Overture ≥500 m² set is the fallback.
-`postprocess.replace_with_osm_geometry` substitutes an OSM-mapped installation's real geometry
-for the model's coarse candidate polygon when one matches (keeping only the closest OSM match
-per feature). `export.py` sorts by `rank_score` and writes GeoParquet/GeoJSON + a MapRoulette
+for a rooftop/ground/no-building `placement` and a `rank_score` (confidence × building prior).
+Footprints come from `buildings.py::load_dense_buildings` -- **VIDA Open Buildings**
+(Google+Microsoft, includes small/unmapped roofs), fetched windowed-and-cached per AOI; the
+local Overture ≥500 m² set is the fallback. `postprocess.replace_with_osm_geometry` substitutes
+an OSM-mapped installation's geometry for the model's coarse polygon when one matches (closest
+match only). `export.py` sorts by `rank_score` and writes GeoParquet/GeoJSON + a MapRoulette
 challenge.
 
 For large countries: `--building-buffer-m` bounds which footprints are fetched (placement uses
-30 m and the rank prior ~40 m, so nothing is dropped; 500 for Vietnam/India);
-`--stream-buildings` fetches/joins/discards per 0.25° chunk instead of holding a national
-building table; `--reuse-join <previous candidates.parquet>` (with `--stream-buildings`) keeps
-the join of every chunk whose candidate geometries are unchanged (India's full join is 23 h).
+30 m and the rank prior ~40 m; 500 for Vietnam/India); `--stream-buildings` fetches/joins/discards
+per 0.25° chunk; `--reuse-join <previous candidates.parquet>` (with `--stream-buildings`) keeps
+the join of every chunk whose candidates are unchanged (India's full join is 23 h).
 
-### Density stage (aggregation into PyPSA-ready shapes)
+### Density stage (segmentation capacity, PyPSA-ready shapes)
 
-`density.py` reuses the per-cell probability rasters (no GPU) to report *aggregate* PV capacity
-per building/grid-cell/region for the **≥ 400 m²** population; it is measurably blind below that
-floor on its own. Three area metrics per building: `*_det` (thresholded candidate polygons --
-precision-honest floor), `*_exp` (probability-weighted area, an upper-leaning ceiling), and
-`*_cal` (`*_det` re-weighted by a measured P(real | size, glint, placement)). The headline
-segmentation number is `est_mwp_rc`, which additionally divides by measured recall per size
-class (Horvitz-Thompson). Full derivation: `docs/methods/density.md`.
+`density.py` reuses the per-cell probability rasters (no GPU) to report capacity per
+building/cell/region for the **≥ 400 m²** population. Three area metrics per building: `*_det`
+(thresholded polygons, a precision-honest floor), `*_exp` (probability-weighted, an
+upper-leaning ceiling) and `*_cal` (`*_det` re-weighted by measured P(real | size, glint,
+placement)). The headline is `est_mwp_rc`, which also divides by measured recall per size class
+(Horvitz-Thompson). Derivation: `docs/methods/density.md`.
 
 **Area → capacity uses two calibrated constants, never one.** Rooftop converts at
-`DEFAULT_KWP_PER_M2_MODULE = 0.18` kWp/m² (module area); ground-mount at
-`DEFAULT_KWP_PER_M2_LAND = 0.05` kWp/m² (site area: ground training labels are OSM
-`power=plant` perimeters; `KWP_LAND_CI90 = (0.035, 0.075)`, calibrated on two Pakistani plants
-and since matched by capacity-tagged parks in India and South Africa at 0.045). Applying the
-module constant to site area overstates ground-mount 2-3x, so `_ratios`/`_composed_mwp_draws`
-split every estimator by `placement` before conversion. Both constants carry lognormal priors
-(`capacity_calibration.py`, `kwp_draws`) that propagate into the credible intervals. France's
-register measures the module constant at 0.150; 0.18 is unchanged pending an owner decision.
+`DEFAULT_KWP_PER_M2_MODULE = 0.18` kWp/m² (module area); ground at `DEFAULT_KWP_PER_M2_LAND =
+0.05` (site area: ground labels are OSM `power=plant` perimeters; `KWP_LAND_CI90 = (0.035,
+0.075)`; capacity-tagged parks measure 0.043-0.047 in India, South Africa, Texas and
+California). The module constant on site area overstates ground-mount 2-3x, so
+`_ratios`/`_composed_mwp_draws` split every estimator by `placement` before conversion. Both
+constants carry lognormal priors (`capacity_calibration.kwp_draws`) that propagate into the
+intervals. France's register measures the module constant at 0.150; 0.18 stays pending an owner
+decision.
 
-**Precision/recall calibration is split by placement** (`capacity_calibration.derive_placement_tables`):
-pooling let ground-mount borrow rooftop's much higher OSM corroboration rate. Ground bins fall
-back to `p_unmapped = 0.0` (an honest floor). `density.candidate_p_real`/`candidate_recall` and
-`_candidate_uncertainty` select each candidate's own placement subtable. **Recall is
-"was this real installation found by ANY candidate"**: restricting the finder to the same
-placement understated large-rooftop recall up to 24x (a large array overruns its VIDA footprint
-and gets classified `ground_adjacent`/`no_building`).
+**Precision/recall calibration is split by placement**
+(`capacity_calibration.derive_placement_tables`); ground bins fall back to `p_unmapped = 0.0` (an
+honest floor). `density.candidate_p_real`, `candidate_recall` and `_candidate_uncertainty` select
+each candidate's placement subtable. **Recall is "was this installation found by ANY candidate"**: a
+large array overruns its VIDA footprint and is classified `ground_adjacent`/`no_building`, so a
+same-placement finder understated large-rooftop recall up to 24x.
 
-**The checked-in calibration YAML is load-bearing** (`configs/calibration/<aoi>_candidate_precision.yaml`)
-and was silently regressed once by a bare re-run. Guards: `calibrate-candidates --by-placement`
-defaults to True; `capacity_calibration.write_table` **refuses** to overwrite a table carrying
-evidence the new one lacks (placement split, glint calibration, manual reviews,
-`register-p-unmapped`) unless `--allow-downgrade`; `density.py` warns when a table has no
-`placement_bins` for an AOI whose candidates span both placements. Reproducing Pakistan's table
-needs the calibration boxes and `--glint-sample`, not a bare re-run (its `recall_reference`
-records 19,491 features). **Pakistan's table was re-derived 2026-10-26 for v16**, with the
-any-candidate recall, and again **2026-11-07 with 41 calibration boxes** (the three random
-boxes of Box 21 and Jhang f2 held out), as `status: interim-mapped-only`: `p_unmapped` from
-mapped installations only, no glint sample in any bin yet. None of the eleven boxes added then
-holds a v16 candidate, so they add recall evidence only (`est_mwp_rc` 3,143.1 -> 3,146.8).
+**The checked-in calibration YAML is load-bearing**
+(`configs/calibration/<aoi>_candidate_precision.yaml`) and was silently regressed once by a bare
+re-run. Guards: `calibrate-candidates --by-placement` defaults to True;
+`capacity_calibration.write_table` **refuses** to overwrite a table carrying evidence the new one
+lacks (placement split, glint calibration, manual reviews, `register-p-unmapped`, review blocks)
+unless `--allow-downgrade`; `density.py` warns when a table lacks `placement_bins` for an AOI with
+both placements. Pakistan's table (v16, 41 calibration boxes, `status: interim-mapped-only`:
+`p_unmapped` from mapped installations only, no glint sample yet) needs the calibration boxes and
+`--glint-sample` to reproduce, not a bare re-run.
 
 **OSM reference polygons are dissolved before use** (`labels.dissolve_overlapping`): a
-`power=plant` perimeter with a nested `power=generator` way, or duplicate mapping passes, would
-otherwise double-count one installation. Wired into `export.load_mapped_reference_attrs`,
-`postprocess.replace_with_osm_geometry`, and `atlas.build_evidence_atlas`'s own OSM sum.
+`power=plant` perimeter with a nested `power=generator`, or duplicate mapping passes, would
+otherwise double-count. Wired into `export.load_mapped_reference_attrs`,
+`postprocess.replace_with_osm_geometry` and `atlas.build_evidence_atlas`'s OSM sum.
 
-**Candidates over `postprocess.MAX_CANDIDATE_M2` (100k m²) are excluded from capacity**
-(`density.capacity_relevant_candidates`, shared by `run_density` and the evidence atlas):
-`polygonize_chips` merges every touching thresholded pixel with no upper bound, so a connected
-sheet of false positives can become one multi-km² "installation". A `geometry_source == "osm"`
-oversize candidate (a real, human-mapped footprint) is exempt, with two limits mirroring
-`prepare_national_osm_solar.py`'s rules for Verified: an exempted outline is always ground
-(VIDA traces a park's panel rows as buildings), and when the AOI has a ground screen
+**The merge cap.** Candidates over `postprocess.MAX_CANDIDATE_M2` (100k m²) are excluded from
+capacity (`density.capacity_relevant_candidates`, shared by `density`, the evidence atlas and
+`calibrate-candidates`): `polygonize_chips` merges touching pixels with no bound, so a sheet of
+false positives becomes one multi-km² "installation". A `geometry_source == "osm"` oversize
+candidate is exempt but always ground, and where the AOI has a ground screen
 (`results/<aoi>_osm_ground_screen/screen_full.csv`, auto-discovered by `density.load_osm_screen`)
-an outline above 5 km² that fails the screen (imaged >= 0.9, detected >= 0.5) is credited at
-outline area x `det_frac` instead of whole. The same rule runs in `density`, the evidence atlas
-and `calibrate-candidates`. The Verified layer carries that outline at the same share
-(`screen_credit`, below) rather than dropping it, so Best takes it whole through its per-cell
-floor instead of the model figure, which the size bin's `p_real` halves a second time.
+an outline above 5 km² that fails it (imaged >= 0.9, detected >= 0.5) is credited at outline
+area x `det_frac`. Verified carries that outline at the same share (`screen_credit`), so Best
+takes it through its per-cell floor rather than at the bin's `p_real`.
 
-**Model outlines above the cap (blobs) count only once a person has judged them (owner,
-2026-11-01).** A blob never enters capacity until it is mapped in OSM or carries a `pv` verdict
-in the country's review: `scripts/oversize_review.py draw|apply` writes an `oversize_review`
-block into the calibration table, and `density.load_oversize_admission` admits exactly the
-new-lead outlines (`export.new_lead_mask` at the review's `min_distance_m`) with a `pv` verdict
-in its `review_csv`, matched by `candidate_index` and area, whole (`p_real_fixed` 1, stratum
-`reviewed`), placed as ground, recall 1. One judged and then mapped leaves the pool and is
-counted from the map; a verdict naming an outline the candidates do not hold at that area is an
-error (a new model run needs `draw --redraw`). From 2026-10-29 to 2026-11-01 India admitted 1,650 at
-the review's census and sample shares (30 of the 30 largest, 51 of 58 drawn by area; +28,468
-MWp); now only its judged parks (1,427 of 1,789, 577 km2). The owner judged the queues of
-eleven more countries 2026-11-03 (913 of 919 outlines, 176 parks; applied 2026-11-04,
-`/home/tobi/earthpv_data/judged_PRE_20261104/` holds each density before), and Turkey's
-774 on 2026-11-06 (773 judged, 396 parks, 89.8 km2, +4,489.6 MWp;
-`/home/tobi/earthpv_data/judged_PRE_20261106/`), and Germany's 581 the same day (149 parks,
-32.4 km2, +1,619.1 MWp; its density, last run 2026-09-15, also took -82.0 from the 11 October
-rule; the 43 on band-loss composite cells all judged not solar). Re-running `density` for it also applies the 11 October rule (a mapped
-outline above the cap is ground) to pages built before it: Best moved by it in Vietnam
-(+2.7 MWp) and France (-8.2). Best's per-cell floor is Verified
-plus the judged parks in the cell (owner, 2026-11-02; `build_evidence_atlas` and
-`_size_distribution_data`, which must agree). `draw` queues every blob (stratum
-`queue`, largest first; since 2026-11-02 the default, census and sample only on request) and
-`apply` takes a partial export, keeping earlier verdicts; a blank or unsure queue outline stays
-out and returns on the next page; `excluded_regions` no longer filters (a verdict outranks it).
-**The queue is the published blob file's population** (`oversize_review.lead_screened`: the
-page's regions and the lead screens; `run_source` takes the candidates and reference behind the
-published atlas from `release_leads.SOURCES`, plus France's
-`data/labels/france_mapped_20261022.parquet`). They are population-level
-only: kept out of `process_cell`, so cached partials stay valid and no `--force` is needed.
-`calibrate-candidates` does not see them (the bins describe the rest) and carries the block
-forward; `_table_evidence` guards it. A country without the block keeps the cap exactly; its
-unmapped parks above the cap appear only in the new-leads export.
-**The review is a disk review of the imagery the model saw (2026-10-29).** `draw` (a
-non-fatal step of `run_country_compute.sh` after `export`) also runs `package`: one 2 x 2 JPEG
-per outline in `data/oversize_review/<aoi>/crops/` (composite true colour, 10 m detail, false
-colour SWIR/NIR/red, Esri with capture date; FIXED reflectance stretch) and `index.html`, the
-`build_review_page.write_page` page (keys 1/2/3, notes, Google/Bing/Wayback/JOSM links, CSV
-export, `<aoi>_blob_verdicts.csv`; a judged outline leaves the page on the next `package`,
-`--include-judged` keeps it). `apply --verdicts <export>` refuses unsure census or sample rows
-unless `--unsure-as`, and reports agreement with earlier verdicts; `draw` never redraws over
-verdicts (`--redraw`, which also clears the crops). The page's saved progress is keyed to the
-draw, so old verdicts cannot attach to a redraw's codes. The composite
-decides epoch (11 of India's 50 sampled parks postdate Esri), Esri decides texture (dark ploughed
-fields read as panel blocks at 10 m): neither panel alone suffices.
+**Blobs (model outlines above the cap) count only once a person has judged them (owner,
+2026-11-01).** `scripts/oversize_review.py draw|apply` writes an `oversize_review` block into
+the calibration table; `density.load_oversize_admission` admits exactly the new-lead outlines
+(`export.new_lead_mask` at the review's `min_distance_m`) with a `pv` verdict in its
+`review_csv`, matched by `candidate_index` and area, whole (`p_real_fixed` 1, stratum
+`reviewed`), placed as ground, recall 1. One judged and later mapped is counted from the map; a
+verdict naming an outline the candidates no longer hold at that area is an error (a new model
+run needs `draw --redraw`, which also clears the crops). `draw` queues every blob (stratum
+`queue`, largest first); `apply` takes partial exports, keeps earlier verdicts, reports
+agreement with them, and refuses unsure census/sample rows unless `--unsure-as`; a blank or
+unsure queue outline stays out and returns on the next page; `excluded_regions` no longer
+filters (a verdict outranks it). The queue is the published blob
+file's population (`oversize_review.lead_screened`; `run_source` takes the candidates and
+reference behind the page from `release_leads.SOURCES`). The review blocks act at population
+level, outside `process_cell`, so cached partials stay valid and no `--force` is needed;
+`calibrate-candidates` carries them forward and `_table_evidence` guards them. A country without
+the block keeps the cap exactly.
 
-**A verdict on a lead below the cap replaces its size bin's P(real) (owner, 2026-11-10).**
-`apply --kind large` writes a `lead_review` block (`capacity_calibration.LEAD_REVIEW_KEY`;
-`min_area_m2`, `review_csv`, `mapped_reference`, `min_distance_m`, every reviewer's name).
-`density.load_oversize_admission` returns its verdicts in the same frame as the blob rows
-(column `p_real_judged`: `not_pv` 0, `pv` 1 on the ground and 1/`rooftop_outline_ratio` on a
-roof; `_lead_verdicts`), so every caller of
-`capacity_relevant_candidates` gets them with no change; `cc.candidate_p_real(judged=...)`
-applies them at the five call sites that price candidates (`density.judged_of`). Unlike a blob,
-a judged lead KEEPS its bin's recall (it is one of the installations recall was measured on),
-its placement and its kWp constant; it stays in `process_cell`'s candidate set (cached partials
-valid) and in `*_det`. Uncertainty: a constant P(real), recall drawn. Best's per-cell floor
-adds judged leads at their verdict's share and their own placement's constant
-(`atlas.judged_floor_kwp`, shared by `build_evidence_atlas` and `_size_distribution_data`; the
-cell column keeps the name `judged_park_mwp`). Unsure or blank changes nothing; a lead mapped
-since rests. `calibrate-candidates` carries the block forward and `_table_evidence` guards it.
-Checked 2026-11-10: with no block, Poland and Belgium rebuild to their published Verified/Best
-exactly; with 40 synthetic verdicts on a scratch Belgian run (14 rooftop `pv`, whole), Best
-639.3 -> 822.3 and the size chart re-bins it. **A roof lead judged solar counts 1/2.5 of its
-outline, a ground lead whole (owner, 2026-11-10;
-`capacity_calibration.LEAD_ROOF_OUTLINE_RATIO`, recorded per block as
-`rooftop_outline_ratio`)**: Pakistan's roof outlines of 5k-50k m2 are 2.52x the mapped array
-(open question 17), which a bin's P(real) used to absorb. Measured in Pakistan only.
+**The review page shows the imagery the model saw.** `draw` runs `package`: one 2 x 2 JPEG per
+outline in `data/oversize_review/<aoi>/crops/` (composite true colour, 10 m detail, false colour
+SWIR/NIR/red, Esri with capture date; fixed reflectance stretch) and `index.html` from
+`build_review_page.write_page` (keys 1/2/3, notes, Google/Bing/Wayback/JOSM links, CSV export
+`<aoi>_blob_verdicts.csv`; a judged outline leaves the page on the next `package`,
+`--include-judged` keeps it). Saved progress is keyed to the draw, so old verdicts cannot attach
+to a redraw's codes. The composite decides epoch, Esri decides texture: neither alone suffices.
 
-**`buildings.geoparquet`'s summed rooftop capacity is not `grid.geoparquet`'s region total,
-by construction**: the region total sums each rooftop candidate's full polygon once, the
-per-building table credits only the intersection with each building capped at its roof area
-(~46% gap nationally in Pakistan). Per-building disaggregation is a conservative floor.
+**A verdict on a lead below the cap replaces its bin's P(real) (owner, 2026-11-10).** `apply
+--kind large` writes a `lead_review` block (`capacity_calibration.LEAD_REVIEW_KEY`;
+`min_area_m2`, `review_csv`, `mapped_reference`, `min_distance_m`, reviewers).
+`density.load_oversize_admission` returns its verdicts with the blob rows (`p_real_judged`:
+`not_pv` 0, `pv` 1 on the ground and 1/`rooftop_outline_ratio` on a roof), so every caller of
+`capacity_relevant_candidates` gets them; `cc.candidate_p_real(judged=...)` applies them at the
+five pricing call sites (`density.judged_of`). Unlike a blob, a judged lead keeps its bin's
+recall, its placement and its kWp constant, and stays in `process_cell` and `*_det`. **A roof
+lead judged solar counts 1/2.5 of its outline, a ground lead whole** (owner;
+`capacity_calibration.LEAD_ROOF_OUTLINE_RATIO`, recorded per block): Pakistan's roof outlines of
+5k-50k m² are 2.52x the mapped array, measured in Pakistan only. Unsure or blank changes
+nothing. Best's per-cell floor adds judged parks and leads (`atlas.judged_floor_kwp`, shared by
+`build_evidence_atlas` and `_size_distribution_data`, which must agree; cell column
+`judged_park_mwp`).
 
-**A model outline is ~2.4x the panel area it found** (Pakistan rooftop >= 400 m², 2.5 inside
-Rule-1 quadrats; `scripts/candidate_area_bias.py` on PRE-substitution candidates, open
-question 17). Published capacity barely sees it (matched candidates carry their OSM outline,
-and bin `p_real` discounts the rest to ~0.9 of mapped area); it bites wherever `p_unmapped`
-credits unmatched candidates as real, i.e. Germany's register-derived bins.
+**`buildings.geoparquet`'s summed rooftop capacity is not `grid.geoparquet`'s region total**, by
+construction: the region total sums each rooftop candidate's polygon once, the per-building
+table credits only its intersection with each building capped at roof area (~46% gap in
+Pakistan). Per-building disaggregation is a conservative floor.
 
-**roofclf replaces segmentation's rooftop estimate for ≥ 400 m² buildings inside the density
-domain** (`roofclf_ge400_capacity.py`, `earthpv ge400-roof-capacity`): segmentation is blind to
-installation size relative to its building, so a large building with a small array reads as a
-miss. Outside the domain, segmentation's own `est_mwp_rc_roof` remains the only number.
-
-**The coverage ratio** (true mapped PV area / score-weighted roof area, or flagged roof area
-under `--weighting threshold`) **is measured per building-size decile AND per density
-stratum** (`sub400_capacity.coverage_ratio_by_size_and_density`, shared by sub-400 central,
-sub-400 AND-gate and the ≥ 400 m² replacement). Its uncertainty comes from
-**resampling calibration quadrats**, not buildings (quadrat composition is what moves these
-numbers): 200 bootstrap replicates, with one replicate index shared across all roofclf atlas
-components (`sub400_capacity.COVERAGE_BOOTSTRAP_SEED`).
-
-**roofclf's own misses are corrected for** (`sub400_capacity.area_recall_by_size_and_density`):
-dividing by the measured share of true mapped PV **area** landing on flagged buildings, per size
-bin and density stratum -- the same Horvitz-Thompson step as `est_mwp_rc`. Coverage ratio and
-area recall are refit inside the SAME bootstrap replicates so their dependent errors are never
-multiplied as if independent. Not applied to the AND-gate files (thresholded floors no atlas
-reads since 2026-11-13). `--no-recall-correct` reproduces the uncorrected figures; `--coverage-boot N` (default
-200; 0 disables and narrows the interval).
-
-**roofclf's Best components are priced by probability, not by a threshold (2026-10-25)**
-(`sub400_capacity.WEIGHTINGS`, `--weighting`, default `probability`). Every in-domain building
-counts by its `p_roofclf`, with coverage ratio and area recall refit on the same weights, and
-the output is one row per (cell, size bin) carrying `n_buildings` and `sum_p`. Leave-one-quadrat-
-out it cut the median sub-400 m² PV-area error 0.386 -> 0.094 (20 of 29); thresholding booked
-12% of mapped PV in quadrats below 300 bldg/km². What it trusts instead is the score's LEVEL in
-sparse national cells, which is unmeasured (open question 1 holds the declared revert rule).
-**The AND-gate files stay thresholded** (`_check_weighting` refuses probability with SPPI),
-and the fitting primitives (`coverage_ratio_by_size`, `area_recall_by_size` and their
-stratified and bootstrap wrappers) keep `"threshold"` as their own default, so a new caller
-passes `weighting` explicitly. Give `ge400-roof-capacity` and `sub400-capacity` the same
-`--weighting`; `threshold` reproduces the pre-2026-10-25 figures. The atlas records it in
-`totals.roofclf_weighting` and counts the size chart's roofclf objects as `sum_p`.
-
-**The parcel label (`roof-classifier --parcel-label`) is the production label.** It adds mapped
-PV within `YARD_RING_M` (20 m) of a footprint, attributed whole to the nearest building, for
-installations below 400 m² only (`roofclf.parcel_pv_area`). 80% of what it recovers is mapped
-rooftop PV overhanging an undersized VIDA outline and 20% is OSM `placement=ground`;
-`sub400_capacity.parcel_label_composition` reports the split, which is what to quote for the
-placement claim. A parcel-label model needs its own national rescoring, and
-`roofclf.check_scoring_matches_calibration` refuses to pair a scoring with another
-calibration's coverage ratio. Full derivation: `docs/methods/roofclf.md`.
-
-**A foreign quadrat table can train a country's fit** (`roof-classifier --extra-table
-<other>/buildings.geoparquet --extra-share 0.5`): its rows enter every fold's training and the
-deployment fit at that share of the likelihood, are never a fold, and never reach the coverage
-ratio. Pakistan's unchanged model ranks Yemen's four building boxes with PV as well as Yemen's
-own (median AUC 0.809 against 0.813; equal-share pooling 0.818, `data/roofclf_yemen_pk_pooled`;
-unweighted pooling loses the farm areas), so ranking is not Yemen's problem: the level and
-the rural false positives are (`scripts/roofclf_transfer_yemen.py`).
-
-**OSM and a recall-corrected total: combine, don't add.** `est_mwp_rc` already stands in for
-the mapped installations the model missed, so adding unmatched OSM on top counts them twice.
-`build_evidence_atlas` (and `_size_distribution_data`, which re-bins the same total) takes, per
-placement x size bin, `max(HT, D + U)`: the absorbed share comes out of each candidate's
-inflation, never below a cell's precision-weighted `est_mwp_cal_*`
-(`atlas.osm_absorbed_inflation`). Where a recall correction applies, OSM counts as matched at
-the table's own `min_distance_m` (100 m). Inside the ge400 roofclf domain every OSM rooftop
-installation is counted from the map. `--legacy-osm-addition` reproduces the old convention;
-the page records its convention in `totals.osm_combination`.
-
-**The sub-400 populations dedupe only against candidates whose figure Best uses**
-(`sub400_capacity.dedup_candidates`; `--legacy-seg-dedup` reproduces the old run).
-`sub400-capacity` reads the domain from `ge400-roof-capacity`'s output, so **run
-ge400-roof-capacity first**.
-
-**The density-calibration domain is a building-density band**, `density.CALIBRATED_BLDG_DENSITY_KM2`
-for Pakistan, fit from the density span of every Rule-1-complete calibration quadrat -- **NOT**
-from `select_calibrated_quadrats`'s separate precision-trust selection. Currently **(48.5,
-5,258.00) bldg/km²**, covering **2,957 of 4,463 national cells (66.3%, 94.7% of buildings)**.
-The band is per AOI: `density.calibrated_density_range(aoi)` looks up
-`CALIBRATED_BLDG_DENSITY_BY_AOI` (france 17.5-390.8), warns when an AOI has none, and falls back
-to Pakistan's; `aoi` is threaded through `sub400_capacity.py`, `roofclf_ge400_capacity.py`,
-`growth.py` and `cli.py`. `--ratio-lo`/`--ratio-hi` do **not** affect this domain (they tune
-the precision-trust band, a real footgun if conflated). **To widen it**, a quadrat's OWN average
-density must read below the floor; a boundary traced around a settlement almost never does, so a
-range-extending quadrat must deliberately average in non-built land. History:
-`docs/methods/calibration-quadrats.md`, `docs/methods/density.md`.
-
-**Pricing low-probability open ground apart exists but is not adopted (2026-11-01).**
-`calibrate-candidates --confidence-split 0.9` (off by default) or
-`scripts/split_calibration_tables.py` (splits a checked-in table's ground bins, keeping its
-recall rows and evidence) adds a third placement table, `capacity_calibration.LOWCONF_GROUP`,
-for the lead rule's class; every pricing call passes `confidence`, and `_placement_group`
-refuses a split table without it. It RAISES the model's priced capacity in 12 of 13 countries
-(the confident ground outlines get their own, higher mapped share) yet moves Best by under
-0.5% (South Africa -35.5 MWp; controls reproduce the published pages exactly). Owner decision.
-
-**Out-of-domain roofclf-AND-SPPI capacity (`sub400_capacity.out_of_domain_and_gate_capacity`)
-is written by `sub400-capacity` but read by no atlas**: never published (owner decision
-2026-08-15: not measured where it would be applied, review blocked by stale imagery), and its
-`--sub400-outdomain-cells` option left `earthpv atlas` with SPPI on 2026-11-13.
+**A model outline is ~2.4x the panel area it found** (Pakistan rooftop >= 400 m²,
+`scripts/candidate_area_bias.py` on pre-substitution candidates; open question 17). Published
+capacity barely sees it (matched candidates carry their OSM outline, bin `p_real` discounts the
+rest); it bites wherever `p_unmapped` credits unmatched candidates as real, i.e. Germany's
+register-derived bins.
 
 **The 90% credible interval** (`atlas._evidence_uncertainty`) composes every measured source
-(module/land kWp priors, coverage-ratio quadrat bootstrap, `KWP_LAND_CI90`, the farm-ground
-replicates) with correlated terms sharing one draw vector, and asserts its component point
-values sum to the published total -- a guard against adding an atlas component without adding it
-to the uncertainty.
+(kWp priors, coverage-ratio quadrat bootstrap, `KWP_LAND_CI90`, the farm-ground replicates) with
+correlated terms sharing one draw vector, and asserts its component point values sum to the
+published total: a guard against adding a component without adding it to the uncertainty.
 
-**Pakistan's current published figures (2026-11-07; Verified 2026-11-13).** Segmentation (v16, 41-box table)
-`est_mwp_rc` **3,146.8 MWp** (rooftop 1,994.3, ground 1,152.5). roofclf (fitted on 41 areas
-since 2026-11-07, 16 features without `bf_confidence`, parcel label, area-weighted zonal means,
-recall-corrected, probability-weighted since 2026-10-25), its coverage ratio and area recall
-fitted on the **19 pinned areas** (`sub400_capacity.PINNED_COVERAGE_QUADRATS`, see "Calibration
-quadrats"), as priced in the atlas: sub-400 central **24,381.0 MWp**, ≥ 400 m² rooftop
-replacement **7,257.9 MWp** (the AND-gate file, 3,500.7 MWp, is no longer in the atlas); median
-LOQO fold AUC 0.8459 over the 41 areas (0.8678 over the 30 earlier ones, against 0.8682 before),
-within-size 0.815, deployment threshold 0.2470 (precision 0.50, recall 0.642). Atlas: **Best
-34,468.6 MWp (90% CI 28,626-41,308), Verified 3,637.5 MWp (90% CI 2,917-4,664)** (with the
-roofclf+SPPI floor in Verified until 2026-11-13: Best 34,470.3, Verified 7,138.3; 30-area fit
-with `bf_confidence` until 2026-11-07: Best 34,142.4, Verified 7,350.8; on `v3_combined_india`
-until 2026-10-28: Best 34,588.8, Verified 6,994.1; thresholded until 2026-10-25: Best 24,438.3,
-90% 20,894-33,666). `check-density` passes all 7 regions (Gilgit-Baltistan exempt from the ratio
-check). **The mandatory random validations of the last four rescorings (seeds 20260817,
-20260820, 20260920, 20261107; tiles in `results/pakistan_roofclf_parcel_validation/`,
-`results/pakistan_roofclf_validation/` and `results/pakistan_roofclf_q41_validation/`) have NOT
-been reviewed**: `results/roofclf_random_validation_log.csv` has 80 rows with blank verdicts,
-so the published figure rests on an unreviewed rescoring (open question 3). **The score-level
-review** (`scripts/roofclf_level_review.py`, 400 blind roofs in 100-1,000 bldg/km² cells,
-`results/pakistan_roofclf_level_review/`) tests whether scores sum to the PV-roof count the 9
-lower-band quadrats imply (1.115 / 1.270 per PV roof under the 30-area model; 1.136 for the
-lower band under the 41-area one); drawn 2026-10-28, not yet reviewed. The coverage ratio's
-lower band (< 1,717 bldg/km²) prices 2,937 of 2,957 in-domain cells from those 9 quadrats. Pre-change outputs are kept beside the canonical paths with `_PRE_<change>_<date>`
-suffixes.
+**OSM and a recall-corrected total: combine, don't add.** `est_mwp_rc` already stands in for the
+mapped installations the model missed. `build_evidence_atlas` (and `_size_distribution_data`)
+takes, per placement x size bin, `max(HT, D + U)`: the absorbed share comes out of each
+candidate's inflation, never below a cell's `est_mwp_cal_*` (`atlas.osm_absorbed_inflation`).
+Where a recall correction applies, OSM counts as matched at the table's `min_distance_m`
+(100 m). Inside the ge400 roofclf domain every OSM rooftop installation is counted from the map.
+`--legacy-osm-addition` reproduces the old convention; the page records it in
+`totals.osm_combination`.
+
+**Pricing low-confidence open ground apart exists but is not adopted** (owner decision pending):
+`calibrate-candidates --confidence-split 0.9` or `scripts/split_calibration_tables.py` adds a
+third placement table (`capacity_calibration.LOWCONF_GROUP`); every pricing call passes
+`confidence`, and `_placement_group` refuses a split table without it.
 
 **Overture publishes a coastal admin division twice** (land, and land plus territorial waters).
-**Keep the LAND polygon, the SMALLER of a nested pair** -- "keep the largest" picks the wrong one
-every time. `density.drop_nested_duplicates` (in `load_admin` at both levels, repeated on read
-by `atlas._region_rows`) tests **nesting**, not name equality, so genuinely distinct same-name
-divisions survive. Only Germany's admin layer was affected; geoBoundaries has no maritime rows.
+**Keep the LAND polygon, the SMALLER of a nested pair.** `density.drop_nested_duplicates` (in
+`load_admin` at both levels, repeated by `atlas._region_rows`) tests **nesting**, not name
+equality. geoBoundaries has no maritime rows.
+
+### roofclf capacity (the sub-400 half)
+
+Method: `docs/methods/roofclf.md`.
+
+- **≥ 400 m² replacement in-domain** (`roofclf_ge400_capacity.py`, `earthpv
+  ge400-roof-capacity`): segmentation is blind to array size relative to its building, so a
+  large building with a small array reads as a miss. Outside the domain,
+  segmentation's `est_mwp_rc_roof` remains the only number.
+- **The coverage ratio** (true mapped PV area / score-weighted roof area) is measured **per
+  building-size decile AND per density stratum**
+  (`sub400_capacity.coverage_ratio_by_size_and_density`, shared by sub-400 central, the AND-gate and
+  the ≥ 400 m² replacement). Its uncertainty comes from **resampling calibration quadrats**, not
+  buildings: 200 bootstrap replicates, one replicate index shared across all roofclf components
+  (`sub400_capacity.COVERAGE_BOOTSTRAP_SEED`).
+- **roofclf's own misses are corrected for** (`sub400_capacity.area_recall_by_size_and_density`):
+  divide by the measured share of mapped PV **area** on flagged buildings, per size bin and
+  density stratum. Coverage ratio and area recall are refit inside the SAME bootstrap
+  replicates. `--no-recall-correct` reproduces uncorrected figures; `--coverage-boot N` (default
+  200; 0 disables and narrows the interval).
+- **Priced by probability, not a threshold** (`sub400_capacity.WEIGHTINGS`, `--weighting`,
+  default `probability`): every in-domain building counts by its `p_roofclf`, with coverage
+  ratio and area recall refit on the same weights; output is one row per (cell, size bin) with
+  `n_buildings` and `sum_p`. It trusts the score's LEVEL in sparse national cells, which is
+  unmeasured (open question 1 holds the declared revert rule). The AND-gate files stay
+  thresholded (`_check_weighting` refuses probability with SPPI), and the fitting primitives keep
+  `"threshold"` as their own default, so a new caller passes `weighting` explicitly. **Give
+  `ge400-roof-capacity` and `sub400-capacity` the same `--weighting`.** The atlas records it in
+  `totals.roofclf_weighting`.
+- **The sub-400 populations dedupe only against candidates whose figure Best uses**
+  (`sub400_capacity.dedup_candidates`). `sub400-capacity` reads the domain from
+  `ge400-roof-capacity`'s output, so **run ge400-roof-capacity first**.
+- **The parcel label (`roof-classifier --parcel-label`) is the production label**: it adds mapped
+  PV within `YARD_RING_M` (20 m) of a footprint, whole to the nearest building, for installations
+  below 400 m² only (`roofclf.parcel_pv_area`). 80% of what it recovers is rooftop PV overhanging
+  an undersized VIDA outline, 20% OSM `placement=ground`; quote
+  `sub400_capacity.parcel_label_composition` for the placement claim. A parcel-label model
+  needs its own national rescoring; `roofclf.check_scoring_matches_calibration` refuses to pair
+  a scoring with another calibration's coverage ratio.
+- **A foreign quadrat table can train a country's fit** (`roof-classifier --extra-table
+  <other>/buildings.geoparquet --extra-share 0.5`): its rows enter every fold's training and the
+  deployment fit at that share of the likelihood, are never a fold, and never reach the coverage
+  ratio. There is **no global roofclf**: pooling never beats a country's own fit, and a matched
+  donor helps only while a country has few areas (`scripts/roofclf_loco.py`). `bf_confidence`
+  is not a feature (empty outside Pakistan).
+- **Ranking is not a level.** Check a new country's pricing leave-one-box-out against a
+  roof-area-only null (`scripts/roofclf_yemen_pricing.py`), not only its AUC: Yemen's scores rank
+  well and price worse than roof area, so Yemen stays "not measured".
+- **The density-calibration domain is a building-density band**, fit from the density span of
+  every Rule-1-complete calibration quadrat (NOT `select_calibrated_quadrats`'s precision-trust
+  selection). Pakistan: **(48.5, 5,258.00) bldg/km²**, 2,957 of 4,463 cells (94.7% of buildings).
+  Per AOI: `density.calibrated_density_range(aoi)` looks up `CALIBRATED_BLDG_DENSITY_BY_AOI`
+  (france 17.5-390.8), warns when an AOI has none and falls back to Pakistan's; `aoi` is threaded
+  through `sub400_capacity.py`, `roofclf_ge400_capacity.py`, `growth.py` and `cli.py`.
+  `--ratio-lo`/`--ratio-hi` do **not** affect this domain (they tune the precision-trust band, a
+  real footgun). **To widen it**, a quadrat's OWN average density must read below the floor, so
+  a range-extending quadrat must deliberately average in non-built land.
+
+**Pakistan's published figures.** Segmentation v16 with the 41-box table: `est_mwp_rc` 3,146.8
+MWp (rooftop 1,994.3, ground 1,152.5). roofclf fitted on 41 areas (16 features, parcel label,
+area-weighted zonal means, recall-corrected, probability-weighted), coverage ratio and area
+recall fitted on the **19 pinned areas** (`sub400_capacity.PINNED_COVERAGE_QUADRATS`): sub-400
+central 24,381.0, ≥ 400 m² rooftop replacement 7,257.9. Median LOQO fold AUC 0.8459, deployment
+threshold 0.2470 (precision 0.50, recall 0.642). **Best 34,468.6 MWp (90% 28,626-41,308),
+Verified 3,637.5 (2,917-4,664).** `check-density` passes all 7 regions (Gilgit-Baltistan exempt
+from the ratio check). **No random validation cell has been reviewed yet** (every row of
+`results/roofclf_random_validation_log.csv` is blank, five seeds) and neither has the blind
+score-level review (`results/pakistan_roofclf_level_review/`), so the published figure rests on
+an unreviewed rescoring (open question 3). The coverage ratio's lower band (< 1,717 bldg/km²)
+prices 2,937 of 2,957 in-domain cells from 9 quadrats.
 
 ### One atlas template, one config file per country (`configs/atlas/<aoi>.yaml`)
 
-`templates/pv_evidence_atlas.html` is shared by every country, and everything country-specific
-lives in `configs/atlas/<aoi>.yaml`, never in the builder. `atlas_config.load(aoi)` supplies
-`title`, `cities`, `calibration_boxes`, `composition_page`, `layers`, `validation`, `map_view` and
-three optional confidence blocks (`ground_truth`, `caveats`, `corroboration`). A missing file is
-normal (a complete page minus the sections that need local evidence); a malformed one is an
-error, including an unknown key.
+`templates/pv_evidence_atlas.html` is shared by every country; everything country-specific lives
+in `configs/atlas/<aoi>.yaml`, never in the builder. `atlas_config.load(aoi)` supplies `title`,
+`cities`, `calibration_boxes`, `composition_page`, `layers`, `validation`, `map_view`,
+`start_here` and three optional confidence blocks (`ground_truth`, `caveats`, `corroboration`). A
+missing file is normal; a malformed one is an error, including an unknown key.
+`_confidence_html` gates every claim on the thing that makes it true and derives its counts;
+`_composition_note` derives "which method supplies most of Best" from the page's own components.
+`_load_calib_boxes` looks in `data/labels/<aoi>/` before `data/labels/`.
 
-`_confidence_html` gates every claim on the thing that makes it true (the quadrat-resampling
-bullet on an actual coverage bootstrap, purposive-sampling and Rule-1 bullets on actually
-having quadrats, corroboration on the config supplying one) and derives its counts.
-`_composition_note` derives the "which method supplies most of Best" sentence from the page's
-own components. `_load_calib_boxes` looks in `data/labels/<aoi>/` before `data/labels/`.
+**`scripts/check_atlas_templates.py` fails CI** if a published atlas names another country in its
+visible text or links another country's page (config strings are exempt). **`pv_growth_atlas.html`
+and `pv_size_atlas.html` still carry Pakistan-only prose and links** and are not covered by the
+guard.
 
-**`scripts/check_atlas_templates.py` fails CI** if a published atlas names another country in
-its visible text or links another country's page (config-supplied strings are exempt, so a
-country's own config may compare against another on purpose). **`pv_growth_atlas.html` and
-`pv_size_atlas.html` still carry Pakistan-only prose and links** and are not covered by the
-guard; a second country's growth atlas would leak Pakistan's text.
+### The evidence atlas page
 
-### The evidence atlas page: MapLibre GL + Observable Plot
+**MapLibre GL JS 5.24 and Observable Plot 0.6.17 on D3 7.9**, from jsDelivr at exact versions
+with SRI hashes. **MapLibre 5, not 6**: v6 is ESM-only with a separate module worker, which does
+not load from a CDN into a `file://` page or an iframe. Offline, hero, KPIs, tables, the
+composition bar and the pose plot still render; the map and Plot charts say they could not load.
 
-**The map is MapLibre GL JS 5.24 and the charts are Observable Plot 0.6.17 on D3 7.9**, loaded
-from jsDelivr at exact versions with SRI hashes. **MapLibre 5, not 6**: v6 is ESM-only with a
-separate module worker, which does not load from a CDN into a `file://` page or an iframe.
-Offline, the page degrades: hero, KPIs, tables, the composition bar and the pose plot are plain
-SVG/HTML; the map and the three Plot charts say they could not load.
+Page rules worth knowing before touching the template:
 
+- **Unmeasured is "not measured", never 0**, on every surface, keyed off `totals.*_status`
+  (`small_rooftop_status`, `small_ground_status`). The size chart continues each unmeasured bar
+  below 400 m² as an open-ended fade (also on empty bins; never on the "<400 m², not split"
+  column, which holds capacity with no per-installation size: farm ground PV, Germany's per-cell
+  rooftop half, `totals.size_unbinned_*_mwp`). The hero total carries a scope chip, ">400 m²
+  only" or "rooftops >400 m² only", from the same statuses.
+- **Colour means method**: OSM teal, segmentation blue, roofclf amber, farm ground PV green;
+  hatching means ground-mount. Farm calibration areas (`_farm_calib_`) are green diamonds,
+  building areas ink diamonds.
 - **Map**: "Show" picks the cell quantity (Best, *Not yet in OpenStreetMap*, hand-mapped, model
-  >= / < 400 m²), always as MWp per cell (the per-km² toggle was removed 2026-10-28); the log
-  colour scale is refitted per quantity. The ramps are the ember ramps of the owner's
-  colour-scale preview (2026-11-14, `~/earthpv-ramp-preview`, option "Ember, fitted floor,
-  hot-spot glow"): seven even stops each (`RAMP_DARK`, `RAMP_LIGHT`), from a fitted floor
-  where the smallest lit cells add up to 1% of the total (`RAMP_FLOOR_SHARE`; the legend
-  reads "<=" there; the 2nd percentile before). By night the top 2.5% of lit cells glow
-  (`HOT_SHARE`, layer `hot`: a soft disc 3.2 cells wide in the cell's own colour, opacity
-  0.15-0.6), under the glow switch and with no basemap.
-  Basemaps: none (night lights), Esri grey canvas, OpenStreetMap, Esri satellite (**CARTO needs
-  an API key now**). City labels are HTML (no glyph server); calibration areas are diamonds.
-- **More layers**: no OpenStreetMap data shows when a page opens (owner, 2026-11-14): the
-  OSM-mapped capacity rings (`OVERLAYS` id `osm`) start off, and the *live OSM solar* overlay,
-  also opt-in, queries Overpass from zoom 11 (mirrors can
-  lag months, so the status line shows the returned OSM timestamp); readers add GeoJSON/CSV,
-  GeoJSON URLs, XYZ tiles or WMS; a country can ship layers in its config (`layers:`, schema in
-  `atlas_config`), embedded by `atlas.map_layers_json` (5 MB cap) into a `pv-layers` block.
-- **Downloads**: every figure as PNG/SVG/CSV, the map as PNG plus the grid as GeoJSON/CSV,
-  re-rendered at 960 px with title and source line, never serialised from screen.
-- **Mapping leads (2026-10-28)**: the Downloads section links the country's lead file, its
-  model's candidates more than 100 m from any OSM solar feature, from `totals.leads`
-  (`atlas.leads_release`, manifest `configs/atlas_leads.json`). The files are GitHub release
-  assets, never embedded (India's is 91 MB): `scripts/release_leads.py --out <dir> [--upload]`
-  rebuilds them with export's ranking and `candidate_id`s from the run behind each page (Nigeria
-  from `data/predictions_v5_nigeria`), clipped to the page's regions, and refuses a run whose
-  regions differ from the page's; France links its audited `france-osm-leads-2026-10-22`.
-  `scripts/patch_atlas_leads.py` adds the link to a published page without a rebuild (and
-  re-resolves the badge, below). **Every atlas gets its lead file by default (owner,
-  2026-11-13)**: `run_country_compute.sh`'s `leads` step, after `atlas`, runs
-  `release_leads.py --aoi <aoi> --upload` (only that country's files plus README.md and
-  SHA256SUMS go up to the current tag; the default `--out` is the release's own directory,
-  `/home/tobi/earthpv_data/pv_new_leads_2026-11-02`, which must hold every country's files)
-  and `patch_atlas_leads.py` on `results/<aoi>_pv_evidence_atlas.html`; commit
-  `configs/atlas_leads.json` with the page. `SOURCES` needs an entry only for a run or OSM pull
-  other than the defaults. Belgium, Denmark, Italy, Luxembourg, the Netherlands and Portugal
-  got theirs 2026-11-13; Texas's chain started before the step existed. **Every published page
-  is on one template since 2026-11-13** (the wide layout, below); before that most were on
-  b1d03e0 plus ad064f7's template diff, so a page restored from before then needs that as
-  `--old-template`.
-  **Blobs have a file of their own (owner, 2026-11-01)**: leads above `MAX_CANDIDATE_M2`
-  (100,000 m2) go to `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`,
-  manifest `blobs`, linked on the same card); `--resplit` split the 11-01b files in place,
-  keeping their `made` date. 100,556 leads and 3,127 blobs; France's audited release already
-  kept its 29 apart (`france_pv_leads_oversize.geojson`).
-  **Every outline in one GeoParquet (owner, 2026-11-11)**: `scripts/release_polygons.py
-  --aoi <aoi> --out <dir> [--upload]` writes `<aoi>_pv_polygons.parquet` (`source` model or
-  osm: the run's candidates inside the page's regions, any size, with `osm_within_100m` and
-  any `review_verdict`, plus the atlas's `--osm-solar` file and its CSP plants; zstd 19,
-  Hilbert order, GeoParquet 1.1 bbox column, model coordinates at 6 decimals) to release
-  `pv-polygons-2026-11-11`, and `configs/atlas_polygons.json`, which `atlas.polygons_release`
-  puts in `totals.polygons`: a Downloads card after the lead files.
-  `scripts/patch_atlas_polygons.py` adds it to a published page and its results/ sync source.
-  **Every atlas has its file since 2026-11-13, and every new one gets it by default (owner)**:
-  `run_country_compute.sh`'s `polygons` step, after `leads`, runs `release_polygons.py --aoi
-  <aoi> --upload` (only that country's file plus README.md and SHA256SUMS go up; the default
-  `--out` is the release's own directory, `/home/tobi/earthpv_data/pv_polygons_2026-11-11`,
-  which must hold every country's file) and `patch_atlas_polygons.py` on the page. The OSM rows
-  are the atlas's own `--osm-solar`: the file `earthpv atlas` recorded in
-  `evidence_atlas_inputs.json`, else `ATLAS_OSM_SOLAR` (Pakistan: `pakistan_overpass_solar.parquet`,
-  the 25 October pull), else the national file; France's run is `POLY_SOURCES` (v5, the
-  2026-10-22 pull). An outline invalid as mapped in OSM is kept as it is, never repaired.
-  **Small leads on steep ground are left out (owner, 2026-10-31)**: `export.steep_lead_screen`
-  drops a lead under `STEEP_MAX_AREA_M2` (1,000 m²) whose GLO-90 slope at its representative
-  point exceeds `STEEP_SLOPE_DEG` (15°), and keeps a larger one flagged `steep_review` (a
-  mountain solar farm needs a human) unless it is above `STEEP_CAP_DEG` (30°, any size;
-  owner, 2026-11-01, from 60 Wadi Hadramawt shadows the owner flagged,
-  `results/leads_steep_screen/owner_flagged_yemen.csv`); every lead carries `slope_deg`.
-  One rule for every caller: `export.steep_rule`. Shaded slopes, cliff
-  edges, escarpment shadows and gullies read like panels: a third of Yemen's leads stood above
-  12° against 0.5% of its highland OSM solar. Applied by `release_leads.py` (tag
-  `pv-new-leads-2026-11-01`; the 2026-10-28 files stay published) and by `earthpv export`'s
-  new-leads file. Validation: `scripts/validate_steep_lead_screen.py`,
-  `results/leads_steep_screen/`; the owner judged 153 sampled leads on imagery (2026-11-01,
-  `verdicts_owner.csv`): none solar, removed 86 not / 3 unsure, kept 62 not / 2 unsure. The
-  slope is read from whole cached DEM tiles (`data/dem` -> /home, ~5 MB each); a first
-  country-wide run downloads hundreds, slowly under a busy link.
-  **Open-ground leads of low peak probability are left out too (2026-11-01)**:
-  `export.low_confidence_rule` drops a `no_building` lead whose `confidence` (the PEAK
-  probability in the outline, not a mean) is below `LOWCONF_MAX_CONFIDENCE` (0.9), any size.
-  MaStR finds a unit in 0-5% of such unmatched outlines against 10-38% above 0.9; 0-1.3%
-  OSM-mapped in most countries; at most 1.5% of mapped area lost. Below 0.9 the mapped share
-  is flat, so a lower cut buys nothing, and `ground_adjacent` is spared (15-35% register hits).
-  **The surface-water screen is per country** (`lead_water_screen: true` in configs/aoi.yaml:
-  Pakistan, Egypt, Namibia; `export --water-screen/--no-water-screen`): `surface_water.py`
-  (JRC Global Surface Water 1984-2020, block cache `data/jrc_gsw` -> /home) drops non-rooftop
-  leads >= 25% ever wet (pans, salt pans, ponds). Never India or Vietnam: Khavda's salt marsh,
-  floating and pond PV. `planetary_computer.sign` 404s for this dataset; the module signs with
-  the collection token, which lives ~15 min. Released as `pv-new-leads-2026-11-01b`; neither
-  screen removes a `steep_review` lead (the owner keeps those for a human; the rule alone would
-  take 2,017 of 3,298). Survey: `results/fp_filter_survey/`.
-- **Size chart on every page (2026-10-30)**: `_size_distribution_data` re-bins Best by size
-  with or without a roofclf half (it was Pakistan-only), counting only candidates and OSM
-  inside the grid, as the per-cell total does. Where `small_rooftop_status` or
-  `small_ground_status` is unmeasured, a bar below 400 m² continues past its measured top as a fade
-  that goes invisible, open-ended, in the same column (owner, 2026-11-02; a fixed height, since the
-  amount is unknown; on every such bin however short, an empty one fading up from the axis since
-  2026-11-12; never on the "not split" column), with a header, legend key, tiles, tooltip
-  notes and CSV columns saying so. Capacity below 400 m² with no per-installation size (farm
-  ground PV, Germany's per-cell rooftop half) is a "<400 m², not split" column
-  (`totals.size_unbinned_*_mwp`). `scripts/patch_atlas_sizes.py` adds it to a published page
-  and refuses one whose bins miss its Best by over 2%. Yemen was rebuilt for it instead
-  (2026-10-30) on the late 2026-10-24 OSM pull its density already used, keeping the published
-  seven-area farm fit (`/home/tobi/earthpv_data/yemen_7areas_20261024`); the working tree's
-  fourteen-area refits stay unpublished.
-- **Rooftop potential layer (owner, 2026-11-02)**: an entry in "Show", off when the page opens,
-  from `potential.py`: free roof area x roof share x 0.18 kWp/m2 x PVGIS yield, coloured in
-  GWh/yr because capacity would ignore the sun. `earthpv atlas` picks up
-  `<pred_dir>/<aoi>/potential/roof_potential_cells.parquet` by itself (no flag) and the entry
-  hides where the table is absent, so `roof-potential` is a default step wherever a national
-  roofclf scoring exists; only Pakistan has one built. It is where solar could still go: no
-  total includes it. **Roof share** is how much of a footprint mapped PV covers on PV roofs
-  (Pakistan 0.337, 0.235-0.683), what owners install rather than a maximum, and the largest
-  uncertainty. Pakistan: 426.6 TWh/yr, 261 GWp (297-861 TWh/yr). `atlas --potential-cells` still
-  draws the standalone page with its size filter; `scripts/patch_atlas_potential.py` adds the
-  data to a published page. Method: `docs/methods/density.md`.
-- **Layout (owner, 2026-11-13)**: the page runs to 1920 px (`.wrap`). The total and the
-  scenes' median date head it; below them the map card (about 60% of the width) with the size
-  chart, its tiles and bin table in a column beside it (`#sizebins`, no longer a section of its
-  own), then the KPI boxes, 2 x 2, beside the province chart. The description and its tiles
-  that sat under the map were removed (owner), and with them the page's link to the
-  repository. Further down, composition sits beside uncertainty (`.pair`), the national
-  comparison beside the provincial one (`.ref-pair`), the background panels in columns
-  (`.xgrid`) and the release files side by side (`.dl-pair`), each stacking where a column
-  would get under about 600 px; the pose section goes to three columns from 1,400 px. The
-  map's height follows the window: 85% of it, at most 900 px, the site's window inside the
-  docs iframe (`mapMaxHeight`). All 22 pages were moved onto it with `retemplate_atlas.py`,
-  data blocks byte for byte; the README screenshot's crop in `screenshot_pages.py` was re-cut
-  for it. A `.dl-item` needs `[hidden] { display: none }` beside its `display: flex`: without
-  it every page but India's showed an empty polygons card (0f48f4c to 2026-11-13). **No
-  EarthPV mark above the title (owner, 2026-11-13)**: `__HEADER_LOGO__` left the evidence,
-  growth-evidence and `pv_atlas.html` templates (`atlas.py` still passes the key, unused),
-  `apply_validation_badges.py` no longer puts it back, and it was cut from the published
-  Pakistan growth, Gujarat and France comparison pages.
-  **The total carries its scope (owner, 2026-11-14)**: a chip beside "Nationwide" reads
-  ">400 m² only" (tooltip: plus anything mapped by hand, so a floor) wherever the page's
-  `small_rooftop_status` is unmeasured, "rooftops >400 m² only" where only farm ground PV
-  below 400 m² is measured (Yemen), and nothing where small rooftops are measured (Pakistan,
-  Germany): template JS off the page's own statuses, so every new atlas gets it.
-- **Uncertainty section**: a forest plot of each Best component's point and 90% interval, from
-  the same `uncertainty.components` the headline CI is composed from.
-- **"Against official and published figures" (2026-10-29)**: the national total (Best and
-  Verified with their intervals) beside each `totals.references` entry and the Ember customs
-  record, then per province this atlas's bar over the reference's for the first reference
-  that publishes provinces (a picker when several do), with its rank agreement in words and
-  as Spearman's rho. Plain bars from zero, each name above its bar and its value at the end,
-  amber for the atlas and grey (`--ref`) for everything else: the first version's dots and
-  dumbbells in small monospace were hard to read (owner). The atlas is dated by the median
-  acquisition date of its scenes and their middle half (`totals.imagery_dates`,
-  `atlas.imagery_dates`, `configs/atlas_imagery_dates.yaml`): composites do not record their
-  scenes, so `scripts/imagery_median_date.py` re-runs compose's STAC search and ranking for
-  a random sample of each AOI's cells. The hero no longer carries the Ember line, and its
-  imagery line gives that median date rather than the compose window (owner, 2026-11-08; the
-  window only where a page has no reconstruction). `earthpv atlas` writes the entry itself for
-  an AOI without one (`atlas.reconstruct_imagery_dates`; `--no-fetch-imagery-dates` skips it),
-  so only a re-compose needs the script by hand. Downloaded figures' source line keeps the
-  window.
-  `scripts/official_capacity.py` writes `configs/external/official_capacity.yaml`
-  (registers from disk: MaStR per Land, ODRE per region at the 2024-12-31 vintage, MNRE per
-  state for Jan 2026; cited documents typed into `PUBLISHED`, e.g. TransitionZero's Pakistan
-  provinces); `atlas.official_capacity(aoi, provinces)` refuses a province key the page does
-  not have. `scripts/patch_atlas_references.py` adds the section to a published page without a
-  rebuild. Drawn side by side, never scored: none of them is ground truth for the map.
-- **For every page built or retemplated from 2026-10-24 on**: the province chart shows the top 7
-  (`PROV_TOP`) with a *Show all N provinces* toggle; a fifth KPI tile gives processed cells
-  against the country's (`totals.n_cells_processed` / `n_cells_country`, `atlas._cell_coverage`);
-  the Silver/Bronze banner is short. Since 2026-11-07 (owner) hand-mapped OSM is one tile (both
-  sizes, split beneath), and the coverage tile gives way to what the installed PV generates per
-  year (`totals.generation`, `atlas.generation_totals`: each cell's Best times its PVGIS yield,
-  interpolated from a cached probe grid, `pv_capacity.irradiance_probes_path`) wherever one is
-  cached, which `earthpv atlas` does by default (`fetch_irradiance_probes`: 100 PVGIS points,
-  once per AOI, into `data/irradiance_probes/<aoi>.csv`; `--no-fetch-irradiance` keeps the
-  coverage tile); the unimaged hatching keeps the coverage counts.
-  `scripts/patch_atlas_generation.py --fetch` adds it to a published page. Pakistan 55.9 TWh/yr at
-  1,623 kWh/kWp. Yield is for equator-facing panels at the latitude's tilt, so it leans high
-  (Germany 96.0 TWh/yr from its 86 GWp Best); the tile's tooltip says so. Its interval is Best's
-  at the same mean yield, so it carries no yield uncertainty, and no pose survey enters it.
-  **South of the equator the panel azimuth is 0** (`specific_yield_kwh_per_kwp`, 2026-11-07:
-  180 everywhere had South Africa at 1,073 kWh/kWp instead of 1,830; the wrong grids are in
-  `data/irradiance_probes/PRE_azimuth_fix_20261107/`). Method: `docs/methods/density.md`.
-- **Cells nobody imaged are hatched (2026-10-28)**: `unimaged` in the data block (runs
-  `[lon0, lat0, n]` from `atlas._cell_coverage`, exactly `n_cells_country - n_cells_processed`
-  cells) is drawn over the cells, so an OSM-only cell shows its colour hatched and bare land
-  means imaged with nothing found; the map frames the whole country (`_bounds_with_runs`) unless
-  its config names a `map_view` (Spain and Portugal open on the mainland, owner 2026-11-10;
-  `scripts/patch_atlas_view.py` sets it on a published page, byte-identical to a rebuild), and
-  the hatch has a layer switch, a legend key with the counts, a hover and a PNG legend key.
-  `scripts/patch_atlas_coverage.py` adds it, and the two counts where a page lacks them, to a
-  published page without a rebuild; every published atlas and its sync source carries it.
-- **Farm and building calibration areas are drawn apart (2026-10-25)**: a farm area
-  (`_farm_calib_`) is a green diamond with its own layer switch and legend key, a building area
-  the ink diamond; tooltips and popups say what each calibrates and whether the page's figures
-  use it (`farm`/`used` from `atlas._load_calib_boxes`; a page built earlier reads `farm` from
-  the published ids once the areas load). Neither kind feeds the other's instrument.
-- **Colour means method everywhere**: OSM teal, segmentation blue, roofclf amber, farm ground
-  PV green; hatching means ground-mount everywhere.
-- **"How the estimate is built" (2026-10-28)**: a plain-language methods section, one step per
-  method, written by the template's `renderMethod()` from the page's own components (gated like
-  the composition bar, so a segmentation-only country never reads about roofclf); the hero
-  linked to it until 2026-11-13. Country evidence stays in `configs/atlas/<aoi>.yaml` caveats.
-- **Solar thermal power plants (CSP) count in Best and Verified (owner, 2026-11-07)**, at their
-  electric rating in MW, never as PV (`solar_thermal.py`, `docs/methods/solar-thermal.md`).
-  `atlas._append_csp` adds `data/labels/<aoi>_csp_plants.parquet` to the hand-mapped population
-  after its dissolve, as ground rows priced at their rating (`csp_mw`), always counted from the
-  map (never "matched" by a detection, never in the OSM-misses absorption); `_size_distribution_
-  data` adds them the same way. They are inside `osm_mwp`, carried apart as cell column
-  `csp_mwp`, `totals.csp_mwp`/`csp_n`/`csp_status`, a tile and a map quantity where non-zero, a
-  composition row (`osm_csp`, `osm_unmatched_csp`) and a method step. A tagged plant is exact; one
-  priced from site area takes one shared lognormal draw (`CSP_LOG_SD` 0.41, never permuted). A
-  country without a table reads `csp_status.checked: false`. Capacity: `plant:output:electricity`,
-  else site x `CSP_MW_PER_KM2` 27.2 (median of 46 tagged plants), also for a tag more than 3x that
-  density on >= 0.5 km2 (Noor 3's 582 MW is the whole complex). A PV outline at least half inside a
-  plant is dropped as mirror field (`_append_csp` warns: the OSM file was not filtered).
+  >= / < 400 m², CSP, rooftop potential), always as MWp per cell, on log ember ramps
+  (`RAMP_DARK`/`RAMP_LIGHT`, floor `RAMP_FLOOR_SHARE`, night glow `HOT_SHARE`). **No OSM data
+  shows when a page opens (owner)**: the OSM capacity rings and the live Overpass overlay are
+  opt-in. Basemaps: none, Esri grey, OpenStreetMap, Esri satellite (**CARTO needs an API key**).
+  City labels are HTML (no glyph server). Readers can add GeoJSON/CSV/XYZ/WMS; a country can ship
+  layers in its config (embedded by `atlas.map_layers_json`, 5 MB cap). **Unimaged cells are
+  hatched** (`unimaged` runs from `atlas._cell_coverage`), and the map frames the whole country
+  unless the config names a `map_view`.
+- **Layout**: one wide template on every page since 2026-11-13 (map ~60% with the size chart
+  beside it, KPIs 2 x 2 beside the province chart, lower sections paired). No EarthPV logo above
+  the title (owner). A `.dl-item` needs `[hidden] { display: none }` beside its `display: flex`,
+  or empty download cards show.
+- **Tiles and sections**: the generation tile (`totals.generation`, `atlas.generation_totals`:
+  Best times PVGIS yield from a cached probe grid `data/irradiance_probes/<aoi>.csv`, fetched by
+  `earthpv atlas` unless `--no-fetch-irradiance`; leans high, carries no yield uncertainty;
+  **south of the equator the panel azimuth is 0**); the province chart (top 7, `PROV_TOP`); a
+  forest plot of each Best component's 90% interval; "How the estimate is built" (`renderMethod()`
+  from the page's own components); "Against official and published figures" (national and
+  per-province bars against `configs/external/official_capacity.yaml`, written by
+  `scripts/official_capacity.py`, and the Ember import ceiling; drawn side by side, never
+  scored). The hero dates the atlas by the scenes' median acquisition date (`totals.imagery_dates`,
+  `configs/atlas_imagery_dates.yaml`; `earthpv atlas` reconstructs a missing entry by re-running
+  compose's STAC search, `--no-fetch-imagery-dates` skips it).
+- **Rooftop potential layer** (`potential.py`, `earthpv roof-potential`): free roof area x roof
+  share x 0.18 kWp/m² x PVGIS yield, in GWh/yr, off when the page opens and in no total. `earthpv
+  atlas` picks up `<pred_dir>/<aoi>/potential/roof_potential_cells.parquet` by itself, so run
+  `roof-potential` wherever a national roofclf scoring exists (only Pakistan has one).
+- **Solar thermal power plants (CSP) count in Best and Verified at their electric rating, never
+  as PV** (`solar_thermal.py`, `atlas._append_csp`, `docs/methods/solar-thermal.md`): added from
+  `data/labels/<aoi>_csp_plants.parquet` as ground rows priced at `csp_mw`, always counted from
+  the map, carried as `csp_mwp` and `totals.csp_*`. Capacity is `plant:output:electricity`, else
+  site x `CSP_MW_PER_KM2` 27.2 (also for a tag > 3x that density on >= 0.5 km², e.g. a whole
+  complex's rating on one plant). A PV outline at least half inside a plant is dropped as mirror
+  field. A country without a table reads `csp_status.checked: false`.
+- **Downloads**: every figure as PNG/SVG/CSV, re-rendered at 960 px, never serialised from
+  screen; plus the release files below.
+- **Plot gotchas**: on a log scale Plot routes any `tickFormat` through d3's log formatter, which
+  blanks every tick with mantissa > 2 (draw labels with a text mark); a `{value, label}` channel
+  object as `barX`'s `y` breaks the implicit stack (rename the field instead); `grid: true` on a
+  scale plus a `gridX` mark draws two grids.
 
-**Plot gotchas**: on a log scale Plot routes any `tickFormat` through d3's log formatter, which
-blanks every tick with mantissa > 2 (draw labels with a text mark); a `{value, label}` channel
-object as `barX`'s `y` breaks the implicit stack (rename the field instead); `grid: true` on a
-scale plus a `gridX` mark draws two grids.
+**Release files (default steps of `run_country_compute.sh`, owner 2026-11-13).**
+- **Mapping leads**: the model's candidates more than 100 m from any OSM solar feature.
+  `scripts/release_leads.py --aoi <aoi> --upload` (after `atlas`) rebuilds a country's files
+  with export's ranking and `candidate_id`s from the run behind the page, clipped to the page's
+  regions (refuses a run whose regions differ), and uploads only that country's files plus
+  README.md and SHA256SUMS to the current tag; the default `--out`,
+  `/home/tobi/earthpv_data/pv_new_leads_2026-11-02`, must hold every country's files.
+  `scripts/patch_atlas_leads.py` links them on `results/<aoi>_pv_evidence_atlas.html`; commit
+  `configs/atlas_leads.json` (manifest, read by `atlas.leads_release`) with the page. `SOURCES`
+  needs an entry only for a non-default run or OSM pull; France links its audited
+  `france-osm-leads-2026-10-22` release instead. **Blobs** (leads above 100,000 m²) go to their
+  own `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`).
+- **Polygons**: `scripts/release_polygons.py --aoi <aoi> --upload` (after `leads`) writes
+  `<aoi>_pv_polygons.parquet` (model outlines inside the page's regions, any size, with
+  `osm_within_100m` and any `review_verdict`, plus the atlas's own `--osm-solar` rows and CSP
+  plants; GeoParquet 1.1, zstd, Hilbert order) to release `pv-polygons-2026-11-11` (default
+  `--out` `/home/tobi/earthpv_data/pv_polygons_2026-11-11`, must hold every country's file);
+  `configs/atlas_polygons.json` feeds `atlas.polygons_release`; `scripts/patch_atlas_polygons.py`
+  adds the card. The OSM rows come from `evidence_atlas_inputs.json`, else `ATLAS_OSM_SOLAR`,
+  else the national file. An outline invalid as mapped in OSM is kept as is, never repaired.
+- **Lead screens** (one rule per screen, used by `release_leads.py` and `earthpv export`'s
+  new-leads file): `export.steep_rule` drops a lead under `STEEP_MAX_AREA_M2` (1,000 m²) whose
+  GLO-90 slope exceeds `STEEP_SLOPE_DEG` (15°) and any lead above `STEEP_CAP_DEG` (30°), and keeps
+  a larger one flagged `steep_review` for a human (shaded slopes, cliff edges and gullies read
+  like panels; slope from whole cached DEM tiles in `data/dem` -> /home).
+  `export.low_confidence_rule` drops a `no_building` lead whose PEAK `confidence` is below
+  `LOWCONF_MAX_CONFIDENCE` (0.9); `ground_adjacent` is spared. **The surface-water screen is per
+  country** (`lead_water_screen: true` in configs/aoi.yaml: Pakistan, Egypt, Namibia;
+  `export --water-screen/--no-water-screen`; `surface_water.py`, JRC Global Surface Water, cache
+  `data/jrc_gsw` -> /home): drops non-rooftop leads >= 25% ever wet. Never India or Vietnam
+  (salt-marsh, floating and pond PV). `planetary_computer.sign` 404s for this dataset; the module
+  signs with the collection token, which lives ~15 min. No screen removes a `steep_review` lead.
 
 **`scripts/retemplate_atlas.py` moves published pages onto a new template without rebuilding
 them**: it recovers each placeholder's value by aligning the page with the template it was built
 from (`--old-template <git rev>`, default HEAD), proves the split by substituting back, then
-fills the current template; only `__LAYERS_JSON__` and `__AOI_KEY__` are computed fresh. **After
-a template commit, pass the revision the pages were last built from**, not HEAD. `--new-template`
-fills a template other than the working tree's (keeps an uncommitted edit out); `--refresh-prose
-REV` also rewrites the confidence and composition prose from each page's own data block, only
-where `atlas.py` at REV reproduces the page's existing prose (a page whose country config has
-changed since keeps its prose).
+fills the current template (only `__LAYERS_JSON__` and `__AOI_KEY__` are computed fresh). **After
+a template commit, pass the revision the pages were last built from**, not HEAD (a page
+restored from before 2026-11-13 was built on b1d03e0 plus ad064f7's template diff). `--new-template`
+fills a template other than the working tree's; `--refresh-prose REV` rewrites the confidence and
+composition prose from each page's data block where `atlas.py` at REV reproduces the existing
+prose. Single-purpose patchers (`scripts/patch_atlas_*.py`: leads, polygons, sizes, references,
+generation, coverage, view, pose, potential, drop_sppi) change one section of a published page
+without a rebuild.
 
 **Re-template the SYNC SOURCES too, not only `docs/assets/interactive/`.** Most published
 atlases are copies `build_docs_figures.sync_interactive` makes from
 `results/<aoi>_pv_evidence_atlas.html` (Germany from `data/predictions/germany/density/`); a
-local `pixi run docs-figures` copies those sources over the committed pages and would revert
-them. Expect `docs-figures` to rewrite ~50 SVGs whose only change is matplotlib's timestamp and
-random ids: revert those, keep only real content changes.
+local `pixi run docs-figures` copies those over the committed pages and would revert them.
+Expect `docs-figures` to rewrite ~50 SVGs whose only change is matplotlib's timestamp and random
+ids: revert those, keep only real content changes.
 
-**`scripts/screenshot_pages.py` drives Firefox over WebDriver BiDi** (`--screenshot` fires at
-the load event and captures an empty WebGL map). A Shot can name a `ready` expression; the atlas
-sets `data-atlas-ready` on `<html>` once its map has drawn a complete frame. Atlas iframes on
-the docs site carry `allow="fullscreen"` and `local-network-access; loopback-network`
-(`build_atlas_pages.py`). **They are sized to the whole atlas, not the viewport (owner,
-2026-11-06)**: `.page-full-bleed.fit` makes `embed-theme.js` fit the frame to its `<body>`,
-so the site page scrolls as one and the switcher and Silver/Bronze banner scroll away above
-the map. The frame never scrolls, so that script also redoes the atlas's in-page links
-(`#method`) and the tooltip's flip-below test against the site page and its sticky header.
+**`scripts/screenshot_pages.py` drives Firefox over WebDriver BiDi** (`--screenshot` fires at the
+load event and captures an empty WebGL map); a Shot can name a `ready` expression, and the atlas
+sets `data-atlas-ready` on `<html>` once its map has drawn. Atlas iframes on the docs site carry
+`allow="fullscreen"` and `local-network-access; loopback-network` (`build_atlas_pages.py`) and
+are **sized to the whole atlas, not the viewport (owner)**: `.page-full-bleed.fit` makes
+`embed-theme.js` fit the frame to its `<body>`, so that script also redoes in-page links and the
+tooltip's flip test against the site page and its sticky header.
 
-**Calibration areas open in JOSM or iD from the atlas.** Clicking an area offers **Open in
-JOSM** (Remote Control `import` of the area's GeoJSON as a locked `upload_policy=never` layer,
-then `load_and_zoom` with the protocol's changeset comment and
-`#tracethesun;#earthpv;#earthpv-calibration`), **Open in iD** (`#gpx=<url>.geojson`) and a
-download. A **Propose** control drops a 2 km square matching
-`new_calibration_quadrat.geodesic_square` and checks overlap as `check_overlap` does. The
-boundaries come from `pixi run calib-publish` (`scripts/publish_calibration_areas.py`), which
-writes full-precision `docs/assets/labels/calibration_areas/<aoi>.geojson` plus one file per
-area; the page fetches its index at run time, so a new area reaches every atlas with a
-re-publish, no rebuild. **Re-run it whenever a quadrat or candidate is added or
-`calibration_boxes` changes**; `check_atlas_templates.py` fails CI on a configured box without a
-published file.
+**Calibration areas open in JOSM or iD from the atlas** (Remote Control `import` as a locked
+`upload_policy=never` layer, then `load_and_zoom` with the protocol's changeset comment and
+`#tracethesun;#earthpv;#earthpv-calibration`; iD via `#gpx=<url>.geojson`), and a **Propose**
+control drops a 2 km square matching `new_calibration_quadrat.geodesic_square`. Boundaries come
+from `pixi run calib-publish` (`scripts/publish_calibration_areas.py`) into
+`docs/assets/labels/calibration_areas/<aoi>.geojson` plus one file per area; the page fetches the
+index at run time. **Re-run it whenever a quadrat or candidate is added or `calibration_boxes`
+changes**; `check_atlas_templates.py` fails CI on a configured box without a published file.
 
 **Calibration candidates are sampled, not hand-picked:** `pixi run calib-candidates -- --aoi
-<aoi>` (or `--bronze`), i.e. `scripts/propose_calibration_candidates.py`.
-- **Strata:** the density grid cut into 8 bands of equal building share, one candidate each.
-- **Draw:** building-weighted random cells per band, seed derived from the AOI name; 20 km
-  spacing, one province each while possible.
-- **Placement:** on VIDA footprints, own density within 25% of the cell's; 1 km boxes above
-  600 bldg/km², 2 km otherwise.
-- **Imagery gate:** the oldest Esri World Imagery capture at centre and corners must be no more
-  than 12 months before `compose_window` start (`World_Imagery/MapServer/4/query`).
-- **Output:** `data/labels/<aoi>/candidate_quadrats/`, failures in `screened_out.csv`.
-  `--replace` redraws only sampled candidates. Then run `calib-publish`. Pakistan's eight
-  (seed 24490, drawn 2026-10-28 on the pre-v16 grid) are Box 21 in
-  `docs/issues/pakistan-calibration-boxes.md`.
-- **Start-here boxes:** `--bronze --priority` adds two PURPOSIVE 1 km boxes per Bronze AOI (the
-  most large-roof area in the densest quarter, chosen on buildings only, marked `selection:
-  purposive: ...`); the eight sampled boxes stay the representative set. `calib-publish` ranks
-  them first and the atlas draws `start_here` as a star. `--exclude-box W,S,E,N`
-  (repeatable) leaves out a district whose footprints do not read as roofs (Spain: the
-  Campo de Dalias greenhouses, central Madrid).
-- **PV-rich boxes** (`--pv-rich --score-dir <roofclf prob dir>`, 2026-10-28): purposive 1 km
-  TOWN windows (own density >= 800 bldg/km²) with the most household roofs in the national top
-  5% of a roofclf scoring from a model that has NOT seen the AOI's labels (Yemen: Pakistan's,
-  `data/roofclf_transfer/yemen_pk/prob`). Rooftop positives for the fit, not the level. Draw
-  with `--dry-run`, look at each window's top-scored roofs on Esri z18, record the verdict in
-  `candidate_quadrats/pv_rich_review.csv` (`no_pv` keeps the draw 5 km away), then write with
-  `--pv-rich-confirmed-only`. Without the town floor Pakistan's model filled Yemen's top windows
-  with rural stone houses, roofless shells and greenhouse tunnels at p > 0.9. Yemen's ten
-  (`*_pv<k>_calib_1km`) were confirmed by the assistant, not the owner.
-- **Which atlases get a star** (2026-10-29): `calib-publish` ranks and stars candidates on
-  every atlas whose own page reports roofclf (`totals.small_rooftop_status`, or for an older
-  page all `small_*` zero) or groundclf (`totals.small_ground_status`) as not measured
-  (`unmeasured_instruments`), Gold and Silver included; only a page measuring both gets none.
-  Where only farm ground PV is unmeasured, farm boxes rank first: Pakistan's star was Badin
-  (`badin_f8_farm`, 94% cropland; 2 rooftop arrays), then Qambar Shahdadkot f7 (no PV), Swabi
-  f4 (57 installations, 45 ground) and Lasbela f1 (37, 36 ground), all mapped 2026-10-29. With
-  no farm candidate left the star falls back to the densest building box (Gujranwala s8,
-  mapped the same day; then Malakand s7).
-  Germany and France qualify but have no open candidates.
-- **A chosen star**: `start_here: <stem>` in `configs/atlas/<aoi>.yaml` makes `calib-publish`
-  rank that country's candidates with it first and star it, on any atlas. Yemen's was Yafi'
-  (2026-10-29, picked on Esri imagery over the classifier's top window, Adh Dhihar); mapped
-  and registered the same day, so the key was dropped and the star moved on by rule. Ghayl
-  Bawazir (`ghayl_bawazir_fa1_calib_1km`, owner's pick 2026-10-30) went the same way: swept
-  2026-10-31, registered with no PV. Since then Yemen has no star (`start_here: none`,
-  owner): the candidates keep their mapping order, none is starred.
-- **False-alarm boxes** (`--false-alarm <window> [--score-dir]`, 2026-10-30): one purposive
-  1 km box at a window `pv_rich_review.csv` marks `no_pv`, selection "...where a reviewer saw
-  no solar" (the atlas popup keys on that, never on "PV classifier"). The level's other end
-  from a PV-rich box: Ghayl Bawazir, 683 of 966 buildings in Pakistan's model's top 5%, its
-  top-scored roofs roofless shells. Whether it enters the coverage ratio is an owner decision.
-- **Random town boxes** (`--towns [--n-towns 6]`, 2026-10-31): a building drawn at random
-  from the whole density grid, its 1 km box kept if it reaches the town floor (800 bldg/km2),
-  no PV signal anywhere; selection "random town boxes by building, seed N", stems
-  `<place>_t<k>_calib_1km`. `calib-publish` ranks them first, in draw order, so a partly
-  mapped set stays a random sample. Yemen's six (seed 94417): As Sab'in, Az Zaydiah, Dhamar,
-  Bani Hushaysh, Al Marawi'ah, Bayt al Faqih; 60 of the 74 buildings drawn were outside
-  towns, so about one Yemeni building in five sits in one.
-- **Bright-roof boxes** (`--bright`, 2026-11-05): purposive 1 km boxes where roofs are
-  brighter in NIR/SWIR (mean of B08, B8A, B11, B12) than in any calibration area. roofclf
-  over-credits such roofs, and the calibration set holds too few to test a fix. The mode reads
-  `scripts/roofclf_bright_screen.py`'s national screen (`data/roofclf_bright_screen/<aoi>/`,
-  every in-domain building through `epoch_feature_frame`): windows whose median roof is
-  brighter than every area's, ranked by score mass on roofs beyond the calibration p99, one
-  per province, the same imagery gate; stems `<place>_br<k>_calib_1km`. Pakistan's two
-  (Quetta, east of Karachi, drawn at `--pv-rich-min-density 300`) are Box 23;
-  `calib-publish` ranks them after the sampled boxes. Entering the coverage ratio is an
-  owner decision.
+<aoi>` (`scripts/propose_calibration_candidates.py`) cuts the density grid into 8 bands of equal
+building share and draws one building-weighted candidate per band (seed from the AOI name, 20 km
+spacing, one province each while possible), placed on VIDA footprints (1 km boxes above 600
+bldg/km², 2 km otherwise), behind an **imagery gate** (the oldest Esri capture at centre and
+corners no more than 12 months before `compose_window` start). Output in
+`data/labels/<aoi>/candidate_quadrats/`, failures in `screened_out.csv`; `--replace` redraws only
+sampled candidates; then run `calib-publish`. Other modes: `--bronze --priority` (two purposive
+start-here boxes), `--pv-rich --score-dir` (town windows with the most top-5% roofclf roofs from
+a model that has not seen the AOI; review each in `pv_rich_review.csv` before
+`--pv-rich-confirmed-only`), `--false-alarm`, `--towns` (random town boxes), `--bright`
+(bright-roof boxes from `scripts/roofclf_bright_screen.py`), `--farmland` (cropland-stratified
+3 km farm boxes), `--exclude-box W,S,E,N`. Pakistan has no `compose_window` or `division.iso3`,
+so the sampler takes `--window-start 2025-11-01` there. Whether purposive boxes (PV-rich,
+false-alarm, bright) enter a coverage ratio is an owner decision. **Stars**: `calib-publish` stars
+the first candidate on every atlas whose own page reports roofclf or groundclf as not measured
+(farm boxes first where only farm ground PV is unmeasured); `start_here: <stem>` in the country
+config picks the star, `start_here: none` stars nothing.
 
-**The community guide is the "Contribute Data" nav section**, `docs/contribute/` (`index.md`
-keeps the `/contribute/` URL that popups, badges and README link to; plus `id.md`, `josm.md`,
-`report.md`, `maintainers.md`). Mappers report through `.github/ISSUE_TEMPLATE/calibration-area.yml`;
-the popup's "Report progress" link prefills `area` and `country`. Country requests, and claims
-of a country someone is building, go through `.github/ISSUE_TEMPLATE/new-country.yml` (label
-`new-country`), which `contribute/new-atlas`'s links open prefilled with the globe's country, ISO3
-and box (`new-atlas.js`). A screenshot still to be taken
-is a `<div class="shot-needed" markdown>` placeholder naming the target file.
-
-`new_calibration_quadrat.py --aoi <aoi>` registers outside Pakistan into `data/labels/<aoi>/`,
-using that AOI's admin files and ISO3. Pakistan stays flat, because a flat non-Pakistani box
-would join the next Pakistani refit.
+**The community guide is the "Contribute Data" nav section** (`docs/contribute/`; `index.md`
+keeps the `/contribute/` URL that popups, badges and README link to). Mappers report through
+`.github/ISSUE_TEMPLATE/calibration-area.yml` (the popup's "Report progress" link prefills it);
+country requests and claims through `new-country.yml` (label `new-country`), prefilled from the
+globe by `new-atlas.js`. A screenshot still to be taken is a `<div class="shot-needed" markdown>`
+placeholder naming the target file. `new_calibration_quadrat.py --aoi <aoi>` registers outside
+Pakistan into `data/labels/<aoi>/`; Pakistan stays flat in `data/labels/`.
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 
-The capacity atlas has no human on each candidate, so a false-positive mode that survives
-`p_real` reaches the headline silently. Two per-region checks from artifacts `density` already
-wrote: **ground-mount:rooftop capacity ratio** (bare ground, riverbed, salt flat, rock and snow
-read bright) and **single-cell concentration** (one 0.1° cell over 25% of a region). Both need
+The atlas has no human on each candidate, so a false-positive mode that survives `p_real`
+reaches the headline silently. Two per-region checks from artifacts `density` wrote: the
+**ground-mount:rooftop capacity ratio** (bare ground, riverbed, salt flat, rock and snow read
+bright) and **single-cell concentration** (one 0.1° cell over 25% of a region); both need
 `mwp_ground >= 50`. `RATIO_CHECK_EXEMPT_REGIONS` exempts Gilgit-Baltistan from the ratio check.
-In segmentation-only countries the ratio check also fires on a *missing rooftop denominator*
-(small arrays are a fraction of a pixel), which is stated on publication, not waived. Exit 1 = a
-region failed, 2 = `density` has not run. **Run it between `density` and publishing** -- docs CI
-cannot, since `data/` is gitignored.
+In segmentation-only countries the ratio check also fires on a *missing rooftop denominator*,
+which is stated on publication, not waived. Exit 1 = a region failed, 2 = `density` has not run.
+**Run it between `density` and publishing** -- docs CI cannot, since `data/` is gitignored.
 
 ### Invariants that prevent tiling artifacts (do not regress)
 
-Naive sliding-window inference produced a regular grid of false positives. Two fixes must stay
-in place:
-- **Positive chips are jittered** (`chips.py::sample_chip_centers`, ±900 m) so the PV array is
+Naive sliding-window inference produced a regular grid of false positives. Two fixes must stay:
+- **Positive chips are jittered** (`chips.py::sample_chip_centers`, ±900 m) so the array is
   *not* centered in the frame. Without jitter the model learns a center bias and fires once per
   window at inference → a grid at the stride spacing. Diagnostic: nearest-neighbor distance
   between detections spikes at the window stride.
@@ -1009,203 +714,125 @@ in place:
 ### Documentation site
 
 `mkdocs.yml` + `docs/` build the MkDocs Material site published to GitHub Pages by
-`.github/workflows/docs.yml` on every push to `main` (no path filter). **Every figure and
-embedded interactive page under `docs/assets/` is generated** by
-`scripts/build_docs_figures.py` (`pixi run docs-figures`), which reads its numbers from tracked
-files (`results/*.csv`, the atlas HTML's embedded JSON, calibration YAML) so the site cannot
-drift from them -- edit the sources, not the SVGs. Local preview:
-`pixi run docs-figures && pixi run -e docs docs-serve`. The build runs `--strict`. Docs prose
-avoids em dashes and emoji.
+`.github/workflows/docs.yml` on every push to `main`. **Every figure and embedded interactive
+page under `docs/assets/` is generated** by `scripts/build_docs_figures.py` (`pixi run
+docs-figures`) from tracked files (`results/*.csv`, the atlas HTML's embedded JSON, calibration
+YAML): edit the sources, not the SVGs. Preview: `pixi run docs-figures && pixi run -e docs
+docs-serve`. The build runs `--strict`. Docs prose avoids em dashes and emoji.
 
 **`mkdocs build --strict` does NOT validate URLs inside raw HTML.** A raw relative URL needs one
 `../` per path segment of the page's own served URL (`index.md` excepted).
-`scripts/check_docs_links.py` checks every raw-HTML relative URL in `docs/` and runs in the docs
-workflow ahead of the build.
+`scripts/check_docs_links.py` checks them and runs in the docs workflow ahead of the build.
 
-**The site root is the Electrify Earth globe (owner, 2026-11-08)**, and the written introduction
-moved to `docs/overview.md` (`/overview/`; the root redirects old `#anchors` there). `docs/index.md`
-and `docs/assets/landing/earth.json` are generated by `scripts/build_landing_page.py`, which
-`build_atlas_pages.py` calls, so **never edit `docs/index.md` by hand** and a new country is inked
-by its one row in `ATLASES`. `docs/overrides/landing.html` is a standalone template (no Material
-chrome), drawn by `docs/assets/landing/landing.js`: a sketched globe where a country with an atlas
-is outlined in ink and the rest stay pencil, the atlases' own 0.1 degree cells laid down as a per-pixel raster
-(white = processed, blush to vermilion on a log scale = Best, a small red mark from `RED_MW`; owner: white land, so the red stands out), and
-a brush stroke round the globe whose sweep is the atlases' summed Best over the world total in `configs/external/global_pv_capacity.yaml` (IEA PVPS,
-DC, end of 2025: 330.7 of 2,974 GW, 11.1%; update it at each Snapshot). Wet ink is Verified, the
-dry part what Best adds. **Nothing on the globe may be a texture fixed to the screen (owner,
-2026-11-08)**: land turning under one looks as if it slides beneath a second sheet, so even the
-pencil hatching is geometry. A polygon of an atlas country with no processed cell stays pencil
-(France's overseas parts) but still clicks through to its atlas. The hover card holds the atlas's
-Gold, Silver or Bronze medal (the disc and mark of the page's own badge, `tier_of`), its Best, and its
-size chart as four horizontal bars in MW/GW: <400 m² (vermilion, `size_unbinned_*` included), 400-5k,
-5k-100k and >=100k m² (owner, 2026-11-11, replacing 2026-11-09's two shares; `_atlas_facts`,
-`SIZE_GROUPS`, from the page's `bins`). Where a page has no rooftop detector below the floor the first
-bar fades on past its end and reads "at least" ("not measured" if it rounds to nothing), and a line
-names what was not measured, so a floor never passes for a measured amount.
-`scripts/atlas_osm_by_size.py` and `totals.osm_mwp_lt400`/`_ge400` no longer feed the card. A click on a country without an
-atlas opens `docs/contribute/new-atlas.md` with `?country=&iso3=&bbox=`, which `new-atlas.js`
-writes into the commands' `YOUR_*` placeholders. `docs/assets/landing/world.json` is Natural Earth
-1:50m, rebuilt only with `--base-map`; a simplified ring must keep its winding or d3 fills the
-rest of the sphere (`build_base_map` restores it). **Crimea is Ukraine's (owner, 2026-11-14)**:
-Natural Earth's de facto borders put it in Russia, so `build_base_map` moves that polygon into
-Ukraine's mainland and drops the Perekop border arc (`TRANSFERS`); a rebuild from world-atlas@2.0.2
-otherwise reproduces the file byte for byte. The United States and China are drawn and picked
-state by state (owner, 2026-11-08; `regions.json`, Natural Earth 1:50m admin-1, rebuilt only with
-`--admin1`), and a state's `d` is its name as geoBoundaries spells it, which `compose._aoi_boundary`
-matches (`Guangzhou Province` is Guangdong there). A state becomes an atlas by its display name in
-`ATLASES`. VIDA barely reaches China (2.7 M footprints, nearly all along its southern border), so the
-contribute page warns before a province run.
-**The globe has a dark mode (2026-11-14, not yet reviewed by the owner)**: the page follows the
-site's light/dark choice (Material's `__palette` key in localStorage, which the header's sun/moon
-switch also writes, else dark) and by night draws the Earth from space just after a very
-late sunset: the Sun hidden behind the lower left limb, the limb's air in sunset bands with the
-green airglow on the night side, solar from ember to gold, and on a `#sky` canvas behind the page
-the real stars round the Sun's direction on the day (`stars.json`, Yale Bright Star Catalogue to
-V 6.5, rebuilt with `build_landing_page.py --stars bsc5.dat`) with a modelled Milky Way and
-zodiacal light. The camera is fixed in space, so the sky stays still while the Earth turns. Every
-colour that differs is in `THEMES` in landing.js; light mode renders pixel for pixel as before.
+**The site root is the Electrify Earth globe**, generated with `docs/assets/landing/earth.json`
+by `scripts/build_landing_page.py` (called by `build_atlas_pages.py`): **never edit
+`docs/index.md` by hand**; the written introduction is `docs/overview.md`.
+`docs/overrides/landing.html` is a standalone template drawn by `docs/assets/landing/landing.js`:
+countries with an atlas inked, their 0.1° cells as a raster, a brush stroke whose sweep is the
+atlases' summed Best over the world total in `configs/external/global_pv_capacity.yaml` (update
+it at each IEA PVPS Snapshot), a hover card with tier medal, Best and a four-bar size chart (an
+unmeasured first bar fades and reads "at least"). A click on a country without an atlas opens
+`docs/contribute/new-atlas.md` with `?country=&iso3=&bbox=`. Rules: **nothing on the globe may be
+a texture fixed to the screen (owner)**, even the hatching is geometry; **Crimea is Ukraine's
+(owner)**: `build_base_map` moves Natural Earth's polygon into Ukraine (`TRANSFERS`), so check
+any new base map; a simplified ring must keep its winding or d3 fills the rest of the sphere.
+`world.json` (Natural Earth 1:50m) is rebuilt only with `--base-map`; US states and Chinese
+provinces (`regions.json`, rebuilt with `--admin1`) are picked one by one, a state's `d` being
+its geoBoundaries name, which `compose._aoi_boundary` matches. VIDA barely reaches China. The
+globe follows the site's light/dark choice; every colour that differs by theme is in `THEMES`
+in landing.js (stars from `stars.json`, rebuilt with `--stars bsc5.dat`).
 
-**The site opens dark whatever the system's theme (owner, 2026-11-18)**: `mkdocs.yml` lists the
-dark palette first with no `media` (landing.html writes the same order, dark 0, light 1), and
+**The site opens dark whatever the system's theme (owner, 2026-11-18)**: `mkdocs.yml` lists the dark
+palette first with no `media` (landing.html writes the same order, dark 0, light 1), and
 `docs/overrides/partials/palette-default.html` forgets a palette Material stored under the old
 `(prefers-color-scheme: ...)` entries, once. `embed-theme.js` syncs the PV Atlas frames
-(`.page-full-bleed`) as well as `.embed` ones. Standalone result pages opened outside the site
-still follow the system.
+(`.page-full-bleed`) as well as `.embed` ones. Standalone result pages opened outside the site still
+follow the system.
 
-**The PV Atlas pages are generated** (`scripts/build_atlas_pages.py`): one row per country in
-`ATLASES`; each page's tier (Gold/Silver/Bronze) is read from the calibration badge its own
-atlas carries (`atlas.VALIDATION_TIERS`), the switcher and `--nav` block are grouped by tier, and
-Silver/Bronze pages open with a banner of two short sentences saying what is not yet
-calibrated or verified and one contribute link (`banner`: `WARNING`, `TIER_NOTE` or
-`LEADS_WARNING`, plus `CTA`; owner, 2026-11-06), which a reader can close
-(`docs/assets/javascripts/atlas-banner.js`, remembered per wording in localStorage). A new
-country is one row plus a rerun; **never edit
-`docs/atlas*.md` by hand**. A tier that is a judgement goes in `configs/atlas/<aoi>.yaml`
-(`validation: {score, note}`, which beats `derive_validation_score` and is read by all three
-atlas builders and `apply_validation_badges.py`), with a country note in
-`build_atlas_pages.TIER_NOTE`. **Gold and Silver also need the leads mapped in OSM to
-localize the model (owner, 2026-11-01)**: at least `atlas.LEAD_SHARE_MIN` (a third) of a lead
-file's leads and of its blobs have a verdict, and the localized model was trained again on
-the OSM pull holding that mapping, declared as `validation.retrained_on_leads: {leads, share,
-blobs_share, model, by, date, note}` (`atlas.leads_retrained`; `blobs_share` defaults to
-`share`); it does not lapse with a new lead file. Declared without `model` (Germany,
-2026-11-13), it records the leads worked through and the retrain still to come: the page
-stays Bronze and its badge reads "Leads checked; the model is not yet retrained on them"
-(`atlas.LEAD_RULE_SUB`, keyed by the first gap). A third because the real ones sit at the
-top of the ranked file: the top third held 69% of what was mapped later in Pakistan, 87% in
-Yemen, 46% of register hits in Germany, and below it 2-4% were real
-(`scripts/lead_share.py`, `results/lead_share/`). It replaced "every lead in the current
-file checked" (2026-10-31); `validation.leads_checked` is now a record the Downloads card
-states. Without it `resolve_validation_badge` shows Bronze whatever the tier earned (an
-explicit `--validation-score` is capped too), keeps the earned tier on the badge as
-`data-earned`, and `build_atlas_pages` gives the page the leads banner (`LEADS_WARNING`
-with `SMALL_GAP` and `LEADS_NEED`, linking `docs/contribute/leads.md`).
-`atlas.lead_rule_gaps` names what a page lacks. `docs/atlas-quality-levels.md`
-(generated, `quality_page`; the owner removed its standings table) lists every criterion
-and ends on the flywheel figure the levels follow. Pakistan's v16 is declared retrained on
-v3's 2026-07-16 lead file at `share: 0.5` (the owner's "over half", blobs counted among the
-leads then; 385 of its 4,435 leads are mapped in v16's pull); France, Germany and Yemen earn
-Silver and show Bronze until they declare one. **Gold also needs roofclf checked by people
-(owner, 2026-11-02)**: random validation (`results/roofclf_random_validation_log.csv`) and
-point data inspection (`scripts/export_roofclf_points.py`) on the scoring behind the page.
-`derive_validation_score` stops at Silver, so Gold is only ever declared (`validation.score:
-gold`, or `--validation-score`). **No atlas is Gold today; Pakistan is Silver** (config, its
-own `TIER_NOTE`) until both are recorded; no figure changed. **Germany earns Silver**; the owner
-declared its small half validated and every lead and blob of the 2026-11-01 file checked
-(2026-11-13), and chose a retrain on that mapping before Silver shows, so its page stays
-Bronze until `retrained_on_leads` names the new model. **Yemen earns Silver**: its farm
-areas calibrate farm ground PV only, so household rooftops below 400 m² are unmeasured; its twelve building boxes carry
-`used: false` (roofclf was fitted on nine 2026-10-25, median fold AUC 0.71, and left off by the
-owner; Yafi' and Qa'tabah town, the first PV-rich town boxes, were mapped 2026-10-29). In those
-two Pakistan's unchanged roofclf ranks household roofs at AUC 0.79 / 0.89 but its scores sum to
-3.6 per PV roof (170 over 47) against 1.115 in Pakistan's quadrats: the first measured level.
+**The PV Atlas pages are generated** (`scripts/build_atlas_pages.py`, one row per country in
+`ATLASES`; **never edit `docs/atlas*.md` by hand**). Each page's tier (Gold/Silver/Bronze) is read
+from the calibration badge its own atlas carries (`atlas.VALIDATION_TIERS`); Silver/Bronze pages
+open with a closable banner (`WARNING`, `TIER_NOTE` or `LEADS_WARNING`, plus `CTA`;
+`docs/assets/javascripts/atlas-banner.js`). Tier rules:
+- A judgement tier goes in `configs/atlas/<aoi>.yaml` (`validation: {score, note}`, which beats
+  `derive_validation_score` and is read by all three atlas builders and
+  `apply_validation_badges.py`), with a country note in `build_atlas_pages.TIER_NOTE`.
+- **Gold and Silver also need the leads mapped in OSM to localize the model (owner)**: a
+  verdict on at least `atlas.LEAD_SHARE_MIN` (a third) of a lead file's leads and of its blobs,
+  and the localized model retrained on the OSM pull holding that mapping, declared as
+  `validation.retrained_on_leads: {leads, share, blobs_share, model, by, date, note}`
+  (`atlas.leads_retrained`). Declared without `model`, the page stays Bronze with "Leads
+  checked; the model is not yet retrained on them" (`atlas.LEAD_RULE_SUB`). Without it
+  `resolve_validation_badge` shows Bronze whatever the tier earned (keeping it as
+  `data-earned`) and the page gets the leads banner; `atlas.lead_rule_gaps` names the gaps.
+- **Gold also needs roofclf checked by people (owner)**: random validation and point-data
+  inspection (`scripts/export_roofclf_points.py`) on the scoring behind the page.
+  `derive_validation_score` stops at Silver, so Gold is only ever declared. **No atlas is Gold;
+  Pakistan is Silver.** `derive_validation_score` gives Silver to any AOI with a registered area
+  in `data/labels/<aoi>/`, `used: false` or not (India is pinned Bronze for that reason).
+- `docs/atlas-quality-levels.md` is generated (`quality_page`).
 
-**Every evidence atlas shows an import ceiling** (in its "Against official and published
-figures" section since 2026-10-29, no longer under the headline): solar panels imported from
-China from Jan 2017 to the end of the imagery window, from Ember's customs-based export data
-(CC-BY-4.0).
+**Every evidence atlas shows an import ceiling** (Chinese panel exports to the country from Jan
+2017 to the end of the imagery window, Ember customs data, CC-BY-4.0):
 `scripts/ember_import_ceiling.py --csv <Ember monthly CSV>` writes
 `configs/external/ember_china_panel_imports.yaml`; `atlas.import_ceiling(aoi)` puts it in
-`totals.import_ceiling`. India, Germany, France and Poland are flagged `ceiling: false` (domestic
-manufacturing or non-Chinese import routes) and the page says why. Table:
-`docs/methods/validity.md`.
+`totals.import_ceiling`. Countries with domestic manufacturing or other routes are flagged
+`ceiling: false` and the page says why. It is context, never a judge of an estimate.
 
-Nav runs **Results → How it works → Setup → Experiments**. `docs/experiments.md` is the
-canonical register of every experiment (shipped/partial/rejected/superseded) with links to
-`docs/issues/`; `docs/open-questions.md` lists actionable open items and is **excluded from the
-published site** (`exclude_docs`), so no site page may link to it; an item is removed once
-closed and moves to the register with a verdict. Every doc under `docs/issues/` carries a dated
-status banner (shipped, closed-negative, superseded, or open).
-
-The site chrome (`docs/assets/stylesheets/extra.css`) shares its design tokens (`--pv-*`) with
-the result pages it embeds -- keep both in sync by eye. `docs/assets/javascripts/embed-theme.js`
-drives each embedded page's theme toggle from the site's Material toggle.
+Nav runs **Results → How it works → Setup → Experiments**. `docs/open-questions.md` is
+**excluded from the published site** (`exclude_docs`), so no site page may link to it; an item is
+removed once closed and moves to the register with a verdict. Every doc under `docs/issues/`
+carries a dated status banner. The site chrome (`docs/assets/stylesheets/extra.css`) shares its
+`--pv-*` tokens with the embedded result pages; keep both in sync by eye.
+`docs/assets/javascripts/embed-theme.js` drives each embedded page's theme from Material's toggle.
 `pixi run docs-screenshots` needs a real (snap) Firefox profile staged under
-`~/earthpv-screenshots/` (not `/tmp` or the external drive) and pins `ui.systemUsesDarkTheme`
-and `ui.prefersReducedMotion` (the hero count-up animation can otherwise be caught mid-way).
+`~/earthpv-screenshots/` (not `/tmp` or the external drive) and pins `ui.systemUsesDarkTheme` and
+`ui.prefersReducedMotion`.
 
-**The interactive "night lights" HTML style (dark glowing choropleth, KPI strip, tab switcher,
-`<details class="xdetails">` methodology sections) is the default for any new results page.**
-Reference: `src/earthpv/templates/pv_evidence_atlas.html` (pipeline-native) /
-`results/pakistan_pv_evidence_overview.html` (standalone-script version). A new standalone script
-slices the shared CSS via matched string markers (`build_pakistan_pv_evidence_overview.py`'s
-`_slice`/`_shared_fragments`) rather than forking it by hand. Static figures stay appropriate
-only for the docs site's embedded `<img>`s and print/export.
+**The "night lights" HTML style (dark glowing choropleth, KPI strip, tab switcher, `<details
+class="xdetails">` methodology sections) is the default for any new results page.** Reference:
+`src/earthpv/templates/pv_evidence_atlas.html`; a standalone script slices the shared CSS via
+matched string markers (`build_pakistan_pv_evidence_overview.py`'s `_slice`/`_shared_fragments`)
+rather than forking it. Static figures are only for the docs site's `<img>`s and print.
 
 ### Calibration quadrats
 
-**45 Pakistani quadrats are registered; 41 are in the `roofclf` fit (since 2026-11-07), 19 in
-its coverage ratio.** Purposive selections
-(industrial estates, dense residential blocks) plus deliberately rural extensions that set the
-density domain, then sampled boxes (Boxes 19-22). All but Jhang f2 are declared **Rule-1
-complete** by the owner (every visible panel mapped).
-**Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own capture
-date, not the Sentinel-2 composite's, so the newest installations are structurally missed. This
-makes precision and `base_rate` **lower bounds** and `rate_ratio` an **upper bound**; recall over
-mapped installations is unaffected.
+**45 Pakistani quadrats are registered; 41 are in the roofclf fit, 19 in its coverage ratio**
+(pinned, owner). Purposive selections (industrial estates, dense residential blocks), rural
+extensions that set the density domain, then sampled boxes. All but Jhang f2 (`corroborated`,
+poor imagery) are declared **Rule-1 complete** by the owner (every visible panel mapped). Box
+21's three random boxes (Gujranwala s8, Qilla Abdullah s6, Sanghar s2) stay out of both fits as a
+test of the level; whether Kalat Rural, Kasur and Sahiwal f6 may set the price is open question
+21 (their household PV is mostly farm-yard ground arrays the parcel label hands to roofs).
+History: `docs/issues/pakistan-calibration-boxes.md`; per-quadrat table:
+`docs/methods/calibration-quadrats.md`.
 
-**Every area feeds both detectors (owner, 2026-10-25)**: mappers map every installation,
-ground and rooftop, in building and farm areas alike. `roofclf.discover_quadrats` returns both
-kinds by default (`farm=True`/`False` selects one). **The 2026-11-07 refit took in Kasur,
-Jacobabad and Mastung (gap boxes), Kalat Rural (owner's call) and seven farm areas** (Badin f8,
-Jhang f5, Lasbela f1, Qambar Shahdadkot f7, Sahiwal f6, Swabi f4, Thatta f3) by explicit
-`--quadrat` flags: Jhang f2 is `corroborated` (poor imagery), and Box 21's three random boxes
-(Gujranwala s8, Qilla Abdullah s6, Sanghar s2) stay out of both fits as a test of the level.
-`roofclf.roof_pv_area` ignores a ground-placed installation of 400 m² or more unless at least
-half of it lies on footprints (`GROUND_GUARD_MIN_ON_ROOF`, the overlap test
-`labels.classify_placement` applies to an untagged generator but never to an untagged
-`power=plant`). The industrial areas are mapped as untagged `power=plant` roof outlines, so
-without the test the 2026-10-25 guard stripped 117 of Faisalabad's 164 PV buildings and 189 of
-Multan's 292; Kalat's farm arrays lie at most 0.47 on footprints and stay out. It still drops 16
-of Multan's large arrays, some of them on roofs (Esri), which is what moves Multan's
-`rate_ratio` past 2.
-
-**Ranking transfers across quadrats; absolute adoption rates do not** (`rate_ratio` has spanned
-0.2-5x), which is why the coverage ratio is stratified. `select_calibrated_quadrats` picks the
-precision-trusted subset (`rate_ratio` roughly in [0.5, 2.0]) independently of Rule-1 status and
-of the density-domain selection; check both gates for any new quadrat. **Pakistan's set is
-pinned** (`sub400_capacity.PINNED_COVERAGE_QUADRATS`, owner, 2026-11-07) to the 19 areas the
-rule chose from the 30-area fit. On the 41-area fit the rule drops Multan (`rate_ratio` 1.88 ->
-2.13) and admits Kalat Rural, Kasur and Sahiwal f6, whose household PV is 72%, 42% and 66%
-farm-yard ground arrays that the parcel label hands to the nearest building: Kalat carries
-about 7x the PV per probability-weighted roof area of any other area, and with all three Best
-read 37,456 MWp with a 90% interval reaching 82,394. Separately, the lower band's ≥ 400 m²
-price swings about 1,000 MWp on whether one industrial estate (Multan or SITE Karachi) sits
-below the median band edge. Whether the new areas may set the price is open question 21.
-`scripts/new_calibration_quadrat.py` adds one (geodesic square or hand-drawn `--geojson`): it
-checks boundary overlap with every existing quadrat before writing, and cross-confirms a live
-Overpass pull against a second query (mirrors have returned truncated, non-error responses).
-
-Per-quadrat table: `docs/methods/calibration-quadrats.md`. Dated history of every
-addition/correction/withdrawal: `docs/issues/pakistan-calibration-boxes.md`.
+- **Rule-1 is epoch-relative**: it certifies completeness against the mapping imagery's own
+  capture date, so the newest installations are missed. Precision and `base_rate` are **lower
+  bounds**, `rate_ratio` an **upper bound**; recall over mapped installations is unaffected.
+- **Every area feeds both detectors (owner)**: mappers map every installation, ground and
+  rooftop, in building and farm areas alike. `roofclf.discover_quadrats` returns both kinds
+  (`farm=True`/`False` selects one); fits name their quadrats with explicit `--quadrat` flags.
+- `roofclf.roof_pv_area` ignores a ground-placed installation of 400 m² or more unless at least
+  half of it lies on footprints (`GROUND_GUARD_MIN_ON_ROOF`): industrial areas are mapped as
+  untagged `power=plant` roof outlines, which the guard would otherwise strip.
+- **Ranking transfers across quadrats; absolute adoption rates do not** (`rate_ratio` spans
+  0.2-5x), hence the stratified coverage ratio. `select_calibrated_quadrats` picks the
+  precision-trusted subset (`rate_ratio` roughly in [0.5, 2.0]) independently of Rule-1 status
+  and of the density domain; check both gates for any new quadrat.
+- `scripts/new_calibration_quadrat.py` adds one (geodesic square or `--geojson`), checks overlap
+  with every existing quadrat, and cross-confirms a live Overpass pull against a second query
+  (mirrors have returned truncated, non-error responses).
+- Capacity commands read each quadrat's building density from a profile table,
+  `sub400_capacity.quadrat_profile_for(aoi)`: `results/calibration_quadrats.csv` for Pakistan,
+  `results/<aoi>_calibration_quadrats.csv` otherwise (`scripts/build_calibration_quadrats_csv.py
+  --labels-dir data/labels/<aoi> --out ...`), or `--quadrat-profile`.
 
 ### Farm ground PV: `groundclf` and farm calibration areas
 
-A footprint-free pixel detector in the roofclf family for small arrays beside fields (solar
-pumps), which neither instrument above sees (`src/earthpv/groundclf.py`,
-`docs/methods/groundclf.md`). Named `roofclf_ground` until 2026-10-25: models tagged with
-the old name still load (`LEGACY_DETECTORS`) and `data/roofclf_ground` is a symlink to
-`data/groundclf`:
+A footprint-free pixel detector for small arrays beside fields (solar pumps), which neither
+detector above sees (`src/earthpv/groundclf.py`, `docs/methods/groundclf.md`; models tagged with
+the old name `roofclf_ground` still load, `LEGACY_DETECTORS`):
 
 ```bash
 pixi run calib-candidates -- --aoi <aoi> --farmland          # cropland-stratified 3 km boxes
@@ -1214,420 +841,278 @@ earthpv groundclf-score-national --aoi <aoi>             # blobs per cell, resum
 earthpv groundclf-capacity --aoi <aoi> --osm-solar <national OSM pull>
 ```
 
-- **A standard atlas field**: `earthpv atlas --ground-cells <ground_cells.parquet>` adds
-  `small_ground` (farm ground PV < 400 m²) to Best in the detector's calibration domain only,
-  with its own tile, map quantity, province column, composition and uncertainty row, in green.
-  Without it a page says "not measured" (`totals.small_ground_status.measured: false`), never 0.
-  Run `groundclf-capacity` with the SAME `--osm-solar` file the atlas counts, and
-  `--roofclf-buildings` where a roofclf half exists (a blob within 20 m of a priced building is
-  its yard array).
-- **A calibration domain PER REGION** (`groundclf.domain_cells`): a cell is priced with a
+- **Atlas field**: `earthpv atlas --ground-cells <ground_cells.parquet>` adds `small_ground`
+  (farm ground PV < 400 m²) to Best in the detector's domain only, in green; without it the page
+  says "not measured". Run `groundclf-capacity` with the SAME `--osm-solar` file the atlas
+  counts, and `--roofclf-buildings` where a roofclf half exists (a blob within 20 m of a priced
+  building is its yard array).
+- **A calibration domain per region** (`groundclf.domain_cells`): a cell is priced with a
   region's ratio only if its cropland share, building density AND median elevation (Copernicus
-  DEM, `cell_elevation`, cached in `data/cells_cache/<aoi>_elevation.parquet`) each lie within
-  x/÷1.25 of that region's areas; a region = a landscape, the areas sharing the `region`
-  boundary property (Yemen: Tihama, Highlands); a region with no detected area prices nothing
-  (`regions_unpriced`). Regrouping changes the fit's random draws: retrain, never patch
-  `calibration.csv`. The headline
-  is `est_mwp_in_domain`; `est_mwp_all_cells_extrapolated` is not on the page. Interval:
-  `region_ratio_draws` bootstraps each region over its own areas from `BOOT_MIN_AREAS` (3), else
-  a stated x/÷2 (`JUDGEMENT_CI90`); the summary's `interval` names which. Blobs inside a
-  registered farm area count nothing (`--labels-dir`).
+  DEM, cached in `data/cells_cache/<aoi>_elevation.parquet`) each lie within x/÷1.25 of that
+  region's areas; a region is the areas sharing the `region` boundary property; a region with
+  no detected area prices nothing. Regrouping changes the fit's random draws: retrain, never
+  patch `calibration.csv`. The headline is `est_mwp_in_domain`. Interval: `region_ratio_draws`
+  bootstraps each region from `BOOT_MIN_AREAS` (3) areas, else a stated x/÷2 (`JUDGEMENT_CI90`).
 - **Farm quadrats carry `_farm_calib_` in their stem** (`roofclf.FARM_QUADRAT_INFIX`;
-  `new_calibration_quadrat.py --farm`). They are the detector's clean areas; building
-  quadrats join as kind `train` (owner's choice, 2026-10-25): their pixels enter the fit, but
-  not the threshold, the ratio or the domain, so the figure stays a farm figure. Blobs inside
-  any registered area, either kind, count nothing.
-- **A mapped polygon is priced by its tag** (`groundclf.panel_area_factor`):
-  `power=generator` is the array; `power=plant` is a site, counted at 0.05/0.18 of its area, or 0
-  when a generator inside it carries its panels; nodes count 0. **`osm_panel_tracers`** in
-  `configs/aoi.yaml` names mappers whose polygons are panel traces whatever the tag
-  (`labels.panel_traced`, written as `panel_traced` by `prepare_national_osm_solar.py`); the
-  evidence atlas prices those ground polygons at the MODULE constant. Matched on last editor
-  (`osm_user`/`osm_version`; `overpass.element_meta_by_id` annotates older pulls).
-- **Two label sources.** Clean areas (farm quadrats, `--clean-region`) give precision, threshold
-  and capacity ratio. Weak areas (`--weak-region`: ordinary OSM, oversized rectangles, nodes)
-  train only, as multiple-instance bags.
-- **Thresholds are logits**, not probabilities (a balanced fit saturates strong detections at
-  p = 1.0 in float32).
+  `new_calibration_quadrat.py --farm`) and are the clean areas; building quadrats join as kind
+  `train` (pixels in the fit, not the threshold, ratio or domain). Blobs inside any registered
+  area count nothing (`--labels-dir`). A farm area not declared `rule1` trains only.
+- **A mapped polygon is priced by its tag** (`groundclf.panel_area_factor`): `power=generator` is
+  the array; `power=plant` counts 0.05/0.18 of its area, or 0 when a generator inside carries its
+  panels; nodes count 0. **`osm_panel_tracers`** in `configs/aoi.yaml` names mappers whose
+  polygons are panel traces whatever the tag (`labels.panel_traced`, matched on last editor); the
+  evidence atlas prices those ground polygons at the MODULE constant.
+- Clean areas give precision, threshold and capacity ratio; weak areas (`--weak-region`) train
+  only, as multiple-instance bags. **Thresholds are logits** (a balanced fit saturates at p = 1.0
+  in float32). The capacity estimand defaults to arrays below 400 m² (`--max-array-m2`).
 - **Vetoes**: >= 30% of a blob within 8 m of a paved OSM road; SWIR more than 20% below the
-  blob's ring (water-harvesting ponds; MNDWI fails in a dry-season median); no pixel within 50 m
-  of a building, cropland or green pixel; a blob over 25,000 m² (`MAX_BLOB_M2`); a blob on
-  Copernicus GLO-90 slope over 12° (`SLOPE_VETO_DEG`, `dem_slope_at`; whole DEM tiles cached in
-  `data/dem/` -> `/home`, a remote full-resolution read takes a minute per tile): highland
-  cliff shadows, which no cell-level domain variable separates.
-- **The capacity estimand defaults to arrays below 400 m²** (`--max-array-m2`; `0` prices every
-  size).
-- **Overpass is a cached dependency**: area labels in `data/groundclf/<aoi>/areas/`, paved
-  roads per 1-degree chunk in `data/roads/<aoi>/`. National scoring never calls it; the road veto
-  is applied in the capacity step. A chunk that cannot be fetched leaves its blobs with
-  `road_checked=False`, reported in the summary.
-- **Farm candidates exist for Yemen, Egypt, Morocco, India, Pakistan and South Africa** (8 each);
-  `calib-publish` ranks them after every building box. Pakistan has no `compose_window` or
-  `division.iso3` in `configs/aoi.yaml`, so the sampler takes `--window-start 2025-11-01` in
-  every mode (`gate_setup`).
-- **Pakistan's farm areas (2026-10-29) do not work**: eight 3 km boxes, `region` Punjab plain /
-  Lower Indus / Peshawar valley / Balochistan coast; the fit (`data/groundclf/pakistan` on
-  /home) has held-out pixel AUC ~0.83 but object precision 2-5% and ~0 recall on Jhang f5 and
-  Swabi (ground arrays median 44-106 m² against 'Amran's 581). Not scored; Pakistan's farm
-  ground PV stays "not measured". A farm area its config does not declare `rule1` (Jhang f2)
-  trains only (`train_ground`'s `train_only`).
-- **Yemen is the only country with a farm figure**: seven areas ('Amran plus six Tihama areas cut where
-  Esri imagery is from 2024-10 on), 169.1 MWp (90% 77-327) in 34 cells. The rest of Tihama is a
-  training-only weak region (`data/labels/yemen/tihama_stale_imagery_region.geojson`). Analysis
-  and the owner's lead review: `results/yemen_agripv_testground/`.
+  blob's ring (water-harvesting ponds); no pixel within 50 m of a building, cropland or green
+  pixel; a blob over 25,000 m² (`MAX_BLOB_M2`); GLO-90 slope over 12° (`SLOPE_VETO_DEG`).
+- **Overpass is a cached dependency**: area labels in `data/groundclf/<aoi>/areas/`, paved roads
+  per 1° chunk in `data/roads/<aoi>/`; national scoring never calls it. A chunk that cannot be
+  fetched leaves its blobs `road_checked=False`, reported in the summary.
+- **Only Yemen has a farm figure** (seven areas, 169.1 MWp in 34 cells; the rest of Tihama is a
+  training-only weak region, `data/labels/yemen/tihama_stale_imagery_region.geojson`).
+  Pakistan's farm fit (object precision 2-5%, ~0 recall on Jhang f5 and Swabi) is not scored,
+  so Pakistan's farm ground PV stays "not measured". Farm candidates exist for Yemen, Egypt,
+  Morocco, India, Pakistan and South Africa.
 
 ### Glint
 
-Sentinel-2's specular-glint response is a secondary, corroborating signal, not a standalone
-detector (`docs/methods/glint.md`):
-- **Direct per-target detection** boosts (never demotes) `rank_score`: detection rate rises from
+Sentinel-2's specular glint is a secondary, corroborating signal, not a standalone detector
+(`docs/methods/glint.md`):
+- **Direct per-target detection boosts (never demotes) `rank_score`**: detection rate rises from
   ~6% to ~73% with installation size; validation plateaus around 26-31% for arrays ≥ 1,000 m².
-- **Per-pixel SCL cloud masking** (`glint._read_target_scl`), gated on the annulus, not the
+- **Per-pixel SCL cloud masking** (`glint._read_target_scl`) is gated on the annulus, not the
   target (a real glint is often saturated-bright, which SCL also flags as cloud).
-- **Tile copies count once and asset URLs are re-signed per read.** Overlapping MGRS tiles
-  deliver one pass as 2-4 items seconds apart: `annotate_spikes` collapses them
-  (`one_row_per_acquisition`) and `dedupe_items=True` avoids fetching them.
-  `glint._asset_href` re-signs Planetary Computer URLs at open (the client's cached 45-min token
-  silently dropped scenes in long pulls). The 662-candidate `p_unmapped` sample predates this and
-  is unchecked (open question 2).
-- **Opportunity-normalized sensitivity** (`src/earthpv/glint_opportunity.py`): the capacity
-  calibration models `k ~ Poisson(q_b * opportunity)` instead of dividing by a flat per-bin
-  sensitivity.
-- **Panel-pose surveys** (`scripts/glint_pose_survey.py`, `pose.py`) sit on the Pakistan
-  (2,000-target sample, 281 fits), France (all 6,337 OSM installations >= 1,000 m2, 1,277
-  fits, 2026-10-26; no French false-floor control yet) and India (`india2000`, on /home:
-  `targets --sample`, 2,000 of 3,739, 312 fits, 321 points, 2026-11-02; no control) atlases.
-  **India's fits split in two**: south at tilt ~19 on Oct-Dec dates, and a quarter east (az
-  ~93) at tilt ~10 on Apr-Jun dates, south of 20N above all. Imagery shows north-south rows
-  behind the east fits (`data/glint/india2000_pose/east_check/`, the assistant's eye, not the
-  owner's), so probably single-axis trackers, whose fitted tilt is their roll at overpass.
-  Weak low-share east orientations are unconfirmed. Every pose point carries its
-  OSM id, coordinates, admin-1 region and, from the cached `osm-tags` lookup
-  (`<survey>osm_tags.parquet`), OSM `name`/`operator`; the chart's CSV download lists them.
-  `scripts/patch_atlas_pose.py` adds or replaces only a published page's pose section.
-- **Large installations are read in parts** (`pose_parts.py`, `glint_pose_survey.py
-  parts-pull`/`parts-analyze`, 2026-10-26): >= 50,000 m2 outlines are cut into 100 m cells,
-  read from one window per installation against the WHOLE installation's annulus, fitted per
-  cell, and grouped into orientations (normals within 5 deg, >= 2 cells); the atlas shows
-  one point per orientation with its share of the area. **Pakistan's country2000 series
-  (the atlas's 2,000) predate the SCL cloud veto**; on the 843 top-ups the veto removes 7% of
-  fits, and Fauji Cement's published pose rests entirely on cloudy dates.
+- **Tile copies count once and asset URLs are re-signed per read**: overlapping MGRS tiles
+  deliver one pass as 2-4 items (`annotate_spikes` collapses them via
+  `one_row_per_acquisition`; `dedupe_items=True` avoids fetching them), and
+  `glint._asset_href` re-signs Planetary Computer URLs at open (a cached 45-min token silently
+  dropped scenes in long pulls).
+- **Opportunity-normalized sensitivity** (`glint_opportunity.py`): the capacity calibration
+  models `k ~ Poisson(q_b * opportunity)` instead of dividing by a flat per-bin sensitivity.
+- **Panel-pose surveys** (`scripts/glint_pose_survey.py`, `pose.py`) sit on the Pakistan, France
+  and India atlases; large installations are read in parts (`pose_parts.py`, `parts-pull`/
+  `parts-analyze`: 100 m cells grouped into orientations). Every pose point carries OSM id,
+  coordinates, admin-1 and cached OSM `name`/`operator`. `scripts/patch_atlas_pose.py` replaces
+  only a page's pose section.
 
 ### MaStR validation (Germany)
 
 `mastr_validation.py` / `earthpv validate-mastr` checks against a legally complete register.
 **65.5% of German rooftop capacity sits below the 400 m² / 72 kWp floor**, and that share is
-**not transferable as a flat constant** (0.25-1.00 across municipalities, 5th-95th percentile;
-France's register brackets its own share at 17-31%). Germany's grid covers 96.2% of Gemeinden by
-count, 99.75% by capacity. Read the **above-floor** block of the comparison (truth =
-`kw_rooftop - kw_le_72`), not the all-capacity one. German OSM (~3.6% of registered rooftop
-units) cannot serve as a completeness reference.
+**not transferable as a flat constant** (0.25-1.00 across municipalities; France brackets its own
+at 17-31%). Read the **above-floor** block of the comparison (truth = `kw_rooftop - kw_le_72`).
+German OSM (~3.6% of registered rooftop units) cannot serve as a completeness reference.
 
-**The register as a precision instrument** (`scripts/mastr_p_unmapped.py`,
-`calibrate-candidates --mastr-p-unmapped`). MaStR geolocates units only at/above 30 kWp (a
-privacy policy), so a registered unit's point inside an unmapped candidate is direct evidence the
-candidate is real, for exactly segmentation's population; the register is silent over `roofclf`'s
-domain. `derive_placement_tables` takes it via opt-in `p_unmapped_by_placement` (omitting it
-reproduces old behaviour; Pakistan unaffected). **The chance term must be land-use matched**: the
-null is the base rate among buildings the model did NOT detect, same cells, same size bin (large
-German roofs carry registered PV often); a displaced-polygon control measures how empty farmland
-is instead. Correction is `(obs - f) / (1 - f)`, a lower bound. `>50k m²` and all ground keep the
-displaced control.
-
-**OSM rooftop polygons convert at a size-dependent constant in Germany**
-(`capacity_calibration.osm_rooftop_kwp_per_m2`, keyed by AOI): German OSM outlines roofs and
-sites rather than arrays, measured at 0.200 / 0.189 / 0.139 / 0.051 kWp/m² for <200 / 200-500 /
-500-2k / >2k m². Every other AOI returns the flat 0.18. Only `build_evidence_atlas` uses it;
-`_size_distribution_data` keeps the flat constant deliberately.
-
-**Germany's roofclf half is calibrated from the register, not quadrats.** The classifier ranks
-German roofs adequately on OSM labels; the calibration is one constant, kWp per credited m²,
-fitted against MaStR across fully covered Gemeinden (`vg250_gem.parquet`, joins on AGS): **0.2793
-kWp/m² (90% 0.2654-0.2926), national 52.37 GWp against a registered 54.29**. Scripts:
-`scripts/run_germany_roofclf_production.py`, `scripts/calibrate_germany_capacity.py`,
-`scripts/validate_sub400_against_mastr.py`. Production fit: `data/roofclf_germany_prod/` (Germany
-plus the French border set, the only foreign data that helped).
-
-**Against a roof-area baseline the sub-400 estimator is regime-specific**: Pakistan roofclf 26.5%
-median municipal error against the null's 88.9% (a 3.4x cut); Germany 48.4% against 37.8% (the
-baseline wins, and no alternative supervision has beaten it). Where PV is near-ubiquitous,
-capacity is close to proportional to roof area. **A national total agreeing with a register is
-not evidence the geography is right**: over- and under-prediction cancel, and PyPSA consumes the
-per-cell geography.
-
-**Germany's atlas** (`scripts/build_germany_sub400_atlas_inputs.py`): the roofclf component must
-be **INCREMENTAL** (sub-400 roofs only, deduped against OSM and segmentation), it is
-**pre-aggregated to one row per cell** (25M geometries OOM `atlas._join_buildings_to_grid_cells`),
-and its floor tier ("both signals in their top decile", zero in the published size_band half)
-is no longer read by the atlas (2026-11-13). **Published:
-Verified 26,635 / Best 86,009.9 MWp** (84,472.7 before 149 judged parks, 2026-11-06) against
-~74,800 MWp registered: Best fails its own register
-check, so read the tiers as geography, not capacity (the page says so). Write-ups:
-`docs/methods/mastr-validation.md`, `docs/results/germany.md`.
+- **The register as a precision instrument** (`scripts/mastr_p_unmapped.py`,
+  `calibrate-candidates --mastr-p-unmapped`): MaStR geolocates units only at/above 30 kWp, so a
+  registered point inside an unmapped candidate is evidence it is real, for exactly
+  segmentation's population. `derive_placement_tables` takes it via opt-in
+  `p_unmapped_by_placement`. **The chance term must be land-use matched** (base rate among
+  undetected buildings, same cells, same size bin); correction `(obs - f) / (1 - f)`, a lower
+  bound. `>50k m²` and all ground keep the displaced-polygon control.
+- **OSM rooftop polygons convert at a size-dependent constant in Germany**
+  (`capacity_calibration.osm_rooftop_kwp_per_m2`: 0.200 / 0.189 / 0.139 / 0.051 kWp/m² for <200 /
+  200-500 / 500-2k / >2k m², because German OSM outlines roofs and sites); every other AOI gets
+  the flat 0.18. Only `build_evidence_atlas` uses it; `_size_distribution_data` keeps the flat
+  constant deliberately.
+- **Germany's sub-400 half is register-calibrated.** roofclf calibration is one constant, kWp per
+  credited m², fitted against MaStR across fully covered Gemeinden (`vg250_gem.parquet`, AGS):
+  0.2793 kWp/m² (`scripts/run_germany_roofclf_production.py`,
+  `scripts/calibrate_germany_capacity.py`, `scripts/validate_sub400_against_mastr.py`;
+  production fit `data/roofclf_germany_prod/`). **But the published half is
+  `scripts/build_germany_sub400_atlas_inputs.py --method size_band --kwp-per-m2 0.03493
+  --min-roof-m2 200 --max-roof-m2 400`** (roof area at a register-fitted constant, no classifier;
+  `scripts/germany_sub400_topup.sh`), not the builder's roofclf default. The component must be
+  **INCREMENTAL** (sub-400 roofs only, deduped against OSM and segmentation) and
+  **pre-aggregated to one row per cell** (25M geometries OOM `atlas._join_buildings_to_grid_cells`).
+  Where PV is near-ubiquitous capacity is close to proportional to roof area, so in Germany the
+  roof-area baseline beats roofclf. **A national total agreeing with a register is not evidence
+  the geography is right**: errors cancel, and PyPSA consumes the per-cell geography. Germany's
+  Best exceeds its register (~74,800 MWp); the page says to read the tiers as geography.
 
 ### France validation (ODRE register + OpenPVMapper)
 
-`france_validation.py` / `earthpv validate-france`. France's register **censors units below 36 kW
-into per-commune/IRIS aggregates, publishes no coordinates, and has no rooftop/ground field**, so
-shares are bracketed, never stated, and there is no `p_unmapped` instrument. It publishes **dated
-year-end vintages**, which `interpolate_to_date` reads back to a quadrat's mapping day. Against 14
-hand-mapped communes this measures the module constant at **0.150 kWp/m² against the assumed
-0.180** (not yet acted on; does not transfer to Pakistan on its own). Write-ups:
-`docs/methods/france-validation.md`, `docs/results/france.md`.
+`france_validation.py` / `earthpv validate-france`. The register **censors units below 36 kW
+into per-commune/IRIS aggregates, publishes no coordinates and has no rooftop/ground field**, so
+shares are bracketed, never stated, and there is no `p_unmapped` instrument. Its **dated
+year-end vintages** are read back to a quadrat's mapping day by `interpolate_to_date`. Against 14
+hand-mapped communes it measures the module constant at **0.150 kWp/m²** (not acted on).
+Write-ups: `docs/methods/france-validation.md`, `docs/results/france.md`.
 
 - **`tag` on the French labels is load-bearing**: `thermal` (solar hot water) and `false` are
-  dropped; `unknown`/`missing` go to `data/labels/france_sensitivity/`. Solar thermal is the
-  systematic confusion for imagery detectors.
+  dropped; `unknown`/`missing` go to `data/labels/france_sensitivity/`.
 - **France quadrats live in `data/labels/france/`, NOT `data/labels/`** (where they would join
-  the next Pakistani refit); pass `--labels-dir`. `scripts/build_france_quadrats.py` builds them.
-  **Saint-Gely-du-Fesc is unfinished** and excluded from every fit by explicit `--quadrat` flags;
-  Langoat and Saulny are excluded from the module-constant fit (register hole).
-- **Commune-sized quadrats**: `roofclf.building_table` reads seg/frac probability from a single
-  0.1° cell, so France runs `roof-classifier` **without `--seg-prob-dir`**.
-- **`roofclf` does not transfer to French residential PV** (median fold AUC 0.710 against
-  Pakistan's ~0.86; the median French array is 20 m² against a 100 m² pixel). Hence no roofclf
-  half. Whether `roofclf` can work is a property of national subsidy design (array size) and
+  the next Pakistani refit); pass `--labels-dir`. **Saint-Gely-du-Fesc is unfinished** and
+  excluded from every fit by explicit `--quadrat` flags; Langoat and Saulny are excluded from the
+  module-constant fit (register hole). Commune-sized quadrats: France runs `roof-classifier`
+  **without `--seg-prob-dir`** (`building_table` reads seg probability from one 0.1° cell).
+- **roofclf does not transfer to French residential PV** (median array 20 m² against a 100 m²
+  pixel). Whether roofclf can work is a property of national subsidy design (array size) and
   cannot be inferred from a neighbour.
-- **OpenPVMapper** (Kasmi 2026, `doi:10.5281/zenodo.21534856`, CC-BY-4.0) is a model output, not
-  ground truth: agreement with it is not validation.
+- **OpenPVMapper** (Kasmi 2026, `doi:10.5281/zenodo.21534856`, CC-BY-4.0) is a model output:
+  agreement with it is not validation.
 - **Register CSV exports truncate silently on an SSL reset**: `scripts/fetch_odre_vintages.sh`
-  re-fetches until the line count is plausible and `load_vintages` refuses any vintage under
-  1 GWp.
-- **AOI config**: `grid_origin: [-5.15, 41.33]`, `compose_window: ["2024-05-01", "2024-09-30"]`
-  (imagery, labels and the 2024-12-31 register vintage in one epoch).
-- **Checkpoint: v5** (`data/models/v5_combined_france/terramind-pv-epoch=25-step=37986.ckpt`),
-  applied to France only. **Candidate precision table**
-  `configs/calibration/france_candidate_precision.yaml` is fitted with `--recall-reference none`,
-  so France's figures are a **precision floor, not recall-corrected**; quote
-  `est_mwp_det`/`est_mwp_exp`, never `est_mwp_cal` or `est_mwp_rc_roof`, in register comparisons.
-- **Published (6,021 cells after the border clip): Verified 12,381.7 / Best 13,368.5 MWp** (90%
-  11,478-17,762) against a registered 34.6 GWp. `check-density` fails 9 of 13 regions on the
-  ground:rooftop ratio, from the missing rooftop denominator.
-- **Artifacts**: the v5 register comparison is `results/france_validation_v5/`;
-  `results/france_validation/france_validation.json` is a v4 run despite its canonical-looking
-  path. `validate-france --pred-dir` takes `data/predictions_v5`, not
-  `data/predictions_v5/france` (the wrong one silently skips the floor-recall block).
+  re-fetches until the line count is plausible and `load_vintages` refuses a vintage under 1 GWp.
+- **Run**: `grid_origin: [-5.15, 41.33]`, `compose_window: ["2024-05-01", "2024-09-30"]`;
+  checkpoint `data/models/v5_combined_france/terramind-pv-epoch=25-step=37986.ckpt`; the precision
+  table is fitted with `--recall-reference none`, so France's figures are a **precision floor,
+  not recall-corrected**: quote `est_mwp_det`/`est_mwp_exp`, never `est_mwp_cal` or
+  `est_mwp_rc_roof`, in register comparisons. `check-density` fails 9 of 13 regions on the
+  ratio (missing rooftop denominator). The v5 register comparison is
+  `results/france_validation_v5/` (`results/france_validation/` is a v4 run); `validate-france
+  --pred-dir` takes `data/predictions_v5`, not `data/predictions_v5/france` (the wrong one
+  silently skips the floor-recall block).
 
 ### Country runs
 
 Owner rules for every new country: **localize** segmentation on the country's own OSM labels,
-ship whichever checkpoint scores better on a held-out region (tie goes to local), >= 1,000
-buildings per cell plus label cells, end in an evidence atlas, publish by push to main.
-Holdouts are picked from the label map before training by `scripts/pick_val_region.py` and
-written into `configs/aoi.yaml`.
+ship whichever checkpoint scores better on a held-out region (tie goes to local;
+`compare_local_vs_v5.py` scores both at the same pixel precision), >= 1,000 buildings per cell
+plus label cells, end in an evidence atlas, publish by push to main. Holdouts are picked from
+the label map before training by `scripts/pick_val_region.py` and written into
+`configs/aoi.yaml`.
 
-Machinery: `earthpv-country-queue` (`scripts/run_country_queue.sh`; status
-`bash scripts/country_queue_status.sh`; markers `data/country_queue_markers/`; log
+Machinery: `earthpv-country-queue` (`scripts/run_country_queue.sh`; status `bash
+scripts/country_queue_status.sh`; markers `data/country_queue_markers/`; log
 `data/country_monitor.log`) and the earlier `earthpv-vn-in-queue` (`scripts/run_vn_in_queue.sh`,
-`bash scripts/vn_in_status.sh`, `data/vn_in_monitor.log`) pull labels, run the thermal filter and
-compose, then hand each country to `scripts/run_country_compute.sh <aoi>` (chips ->
-`mark_val_buffer.py` -> merge -> train -> `pick_best_checkpoint.py` -> `compare_local_vs_v5.py`
--> infer -> atlas chain, behind markers in `data/<aoi>_pipeline_markers/`). **The queue decides
-an atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS DONE"**, so removing
-`<aoi>_atlas_done` does not relaunch a finished country: re-run its steps as a one-off unit.
-**Editing a script a unit is running is unsafe** (bash reads incrementally): restart the unit.
-Before stopping a compose unit by hand, `rm data/vn_in_queue_markers/<aoi>_round_start`; stop the
-QUEUE first when removing compute markers. The queue's disk guard is `DISK_MIN_HOME_GB`
-(default 120, overridable by environment; Spain's queue ran at 100 from 2026-11-07, owner).
-**A country can be given the GPU first** (owner, 2026-11-07, Spain): `scripts/gpu_priority.py
---aoi <aoi> [--now]` (unit `earthpv-gpu-priority-<aoi>`) pauses (SIGSTOP) every other process
-WAITING on `data/.gpu.lock` and holds the lock between the country's GPU steps, from its
-compose_done (or now) until its `infer` marker; a running job is never touched. Killed hard, it
-leaves waiters stopped: `pkill -CONT -x flock`.
+`data/vn_in_monitor.log`) pull labels, run the thermal filter and compose, then hand each country
+to `scripts/run_country_compute.sh <aoi>` (chips -> `mark_val_buffer.py` -> merge -> train ->
+`pick_best_checkpoint.py` or, with `snapshots:`, `pick_checkpoint_by_recall.py` ->
+`compare_local_vs_v5.py` -> infer -> postprocess -> thermal -> export -> blob and large review
+pages -> ground screen -> calibrate -> density -> check-density -> osm_solar -> csp -> atlas ->
+leads -> polygons, behind markers in `data/<aoi>_pipeline_markers/`).
+- **The queue decides an atlas is finished by grepping `data/<aoi>_pipeline.log` for "ATLAS
+  DONE"**, so removing `<aoi>_atlas_done` does not relaunch a finished country: re-run its steps
+  as a one-off unit.
+- **Editing a script a unit is running is unsafe** (bash reads incrementally): restart the unit.
+- Before stopping a compose unit by hand, `rm data/vn_in_queue_markers/<aoi>_round_start`; stop
+  the QUEUE first when removing compute markers.
+- Disk guards: `DISK_MIN_HOME_GB` (default 120, overridable by environment) and
+  `DISK_MIN_MORE_GB` (default 15) on `/run/media/tobi/moreaidata`, where Mexico, Chile and
+  Australia (and Texas's composites) keep their data.
+- A `COUNTRIES` row's sixth field names a country whose compose must finish before this one's
+  starts (`chile|...|CHL|10x20||mexico`); its labels may pull earlier.
+- **A country can be given the GPU first**: `scripts/gpu_priority.py --aoi <aoi> [--now]` (unit
+  `earthpv-gpu-priority-<aoi>`) SIGSTOPs every other process WAITING on `data/.gpu.lock` and
+  holds the lock between the country's GPU steps until its `infer` marker; a running job is never
+  touched. Killed hard, it leaves waiters stopped: `pkill -CONT -x flock`.
+
+Published atlases (each page's `totals` match these; queue counts for the reviews come from
+`pixi run blob-review status` / `large-review status`):
 
 | Country | Checkpoint | Verified / Best (MWp) | Notes |
 | --- | --- | --- | --- |
-| Pakistan | `v16_combined_pakistan` | 3,637.5 / 34,468.6 | roofclf half on 41 areas, priced on 19; probability-weighted, Silver until people have checked it; see "Density stage" |
-| Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated roofclf; earns Silver, shows Bronze until retrained on its leads (all checked, owner 2026-11-13); 149 judged parks count |
-| France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; earns Silver, shows Bronze (leads unchecked) |
-| India | `v5_combined_france` | 70,266.0 / 102,779.7 | v10 lost the Gujarat holdout; `ring_cells: 3`; 1,427 judged parks count; 4 CSP plants 197.9 MW |
-| Vietnam | `v9_combined_vietnam` | 8,179.8 / 9,118.9 | 32 judged parks count |
-| Egypt | `v12_combined_egypt` | 3,315.1 / 3,848.7 | thin Cairo holdout; 46 judged large leads count |
-| Yemen | `v25_combined_yemen` | 277.5 / 623.6 | retrained on mapped leads 2026-11-02 (holdout tie, wins on every mapped array); farm ground PV; earns Silver, shows Bronze (leads unchecked) |
-| South Africa | `v14_combined_south_africa` | 9,322.7 / 10,075.9 | decisive localization win; 344 judged large leads count; 7 CSP plants 600 MW, 13.4 km2 of PV-tagged mirror rows out |
-| Morocco | `v11_combined_morocco` | 898.9 / 935.1 | tie near 1.0; AOI stops at 27.7N; Noor 1-3 CSP 518.6 MW |
-| Poland | `v15_combined_poland` | 6,604.1 / 9,110.2 | 113 judged parks count (+1,329 MWp) |
+| Pakistan | `v16_combined_pakistan` | 3,637.5 / 34,468.6 | roofclf half; Silver |
+| Germany | `v4_combined_all` ep 41 | 26,635 / 86,009.9 | register-calibrated sub-400 half; earns Silver, shows Bronze until retrained on its checked leads |
+| France | `v5_combined_france` | 12,381.7 / 13,447.1 | precision floor, no roofclf; shows Bronze (leads unchecked) |
+| India | `v5_combined_france` | 70,266.0 / 102,779.7 | `ring_cells: 3`; pinned Bronze |
+| Vietnam | `v9_combined_vietnam` | 8,179.8 / 9,118.9 | |
+| Egypt | `v12_combined_egypt` | 3,315.1 / 3,848.7 | thin Cairo holdout |
+| Yemen | `v25_combined_yemen` | 277.5 / 623.6 | farm ground PV; earns Silver, shows Bronze |
+| South Africa | `v14_combined_south_africa` | 9,322.7 / 10,075.9 | |
+| Morocco | `v11_combined_morocco` | 898.9 / 935.1 | AOI stops at 27.7N |
+| Poland | `v15_combined_poland` | 6,604.1 / 9,110.2 | |
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 531.7 | |
 | Nigeria | `v5_combined_france` ep 25 | 90.2 / 157.3 | name `v8` is taken by `v8_combined_nigeria` |
-| Namibia | `v17_combined_namibia` | 464.3 / 512.3 | Cuvelai pans partly in Best (those of 1 ha and up judged out 2026-11-10); one calibration box |
-| Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | tie with v5 on the holdout; dark open ground in Best; 396 judged parks count (+4,490 MWp); 1 CSP plant 5.8 MW |
-| Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | clear win over v5 on the holdout; floor of 1 building per cell; 43 CSP plants 2,383 MW; 998 blobs not judged yet |
-| Belgium | `v31_combined_belgium` ep 22 | 502.3 / 970.8 | recall tie with v5, wins on IoU (thin holdout: Brussels, 2 cells); Best is 8.0% of Elia's 12,128 MW, 224 judged large leads counting (639.3 before, 2026-11-10); published before owner review; leads, calibration areas and the 4-outline farm review still owed |
-| Portugal | `v30_combined_portugal` ep 19 | 5,830.5 / 6,193.6 | clear win over v5 on the Lisbon holdout; Azores and Madeira in; Best is 84% of DGEG's 7,396 MW; 153 judged large leads count; 110 blobs not judged yet; Évora molten-salt CSP 3.4 MW |
-| Netherlands | `v5_combined_france` ep 25 at 0.98 | 3,708.6 / 4,567.3 | v32 lost the Zuid-Holland holdout on recall; Best is 16% of CBS's 29,426.5 MWp; 543 judged large leads count; 7 blobs not judged yet |
-| Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | tie with v5 on the thin Mersch holdout (39 of 48 each); Best is 5.4% of ILR's 746.35 MW; 8.3 of the model's 21.3 MWp lies beyond the border; no large installation review yet, 1 blob not judged |
-| Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 13,880.6 | clear win over v5 on the Nord-Ovest holdout (0.645 vs 0.544 of 3,350); Best is 32% of GSE's 43,687 MW and 97% of its 14,296 MW ground-mounted; 377 blobs and 4,586 large leads not judged yet |
-| Denmark | `v37_combined_denmark` ep 28 at 0.95 | 2,639.9 / 2,695.1 | win over v5 on the thin Nordjylland holdout (52 vs 45 of 98, all >= 1,000 m2); Best is 49% of Energistyrelsen's 5,468 MW; 3 blobs and 63 large leads not judged yet |
-| Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 46,206.4 | first US state (counties as regions); recall tie with v5 on Bexar County (302 vs 300 of 355), wins on IoU; Best is 124% of EIA's 37,200.5 MW AC, about one in DC; 845 blobs and 875 large leads not judged yet |
-| California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 27,553.6 | second US state; beat v5 on Santa Clara County (695 vs 626 of 1,254 at precision 0.55); Best is 59% of EIA's 46,334.9 MW (21.2 GW of it small-scale, unmeasured here); 5 CSP plants 922 MW; 124 blobs and 1,176 large leads not judged yet |
+| Namibia | `v17_combined_namibia` | 464.3 / 512.3 | Cuvelai pans partly in Best |
+| Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | dark open ground in Best |
+| Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | floor of 1 building per cell |
+| Belgium | `v31_combined_belgium` ep 22 | 502.3 / 970.8 | published before owner review; calibration areas still owed |
+| Portugal | `v30_combined_portugal` ep 19 | 5,830.5 / 6,193.6 | Azores and Madeira in |
+| Netherlands | `v5_combined_france` ep 25 at 0.98 | 3,708.6 / 4,567.3 | v32 lost on recall; recall not corrected |
+| Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | 8.3 of the model's 21.3 MWp lies beyond the border |
+| Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 13,880.6 | a map of the ground-mounted fleet |
+| Denmark | `v37_combined_denmark` ep 28 at 0.95 | 2,639.9 / 2,695.1 | thin Nordjylland holdout |
+| Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 46,206.4 | state AOI, counties as regions |
+| California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 27,553.6 | state AOI; small-scale PV unmeasured |
 
-Per-country write-ups are `docs/results/<country>.md`. Country-specific points still in force:
-- **India**: Verified is almost all ground perimeters. **Best counts the unmapped parks
-  above the merge cap that a person judged solar** (1,427 of 1,789, 577 km2, 28,857 MWp of
-  `est_mwp_rc`, all judged by the owner 2026-11-02; 81 from 2026-11-01; from 2026-10-29 1,650 at
-  the review's shares, +28,468; verdicts in `results/india_oversize_review/`; the other 149 met
-  the lead screens and count only if mapped)
-  and Verified credits the seven outlines above 5 km² that fail the screen at their detected
-  share (Khavda 2,230 MWp in both tiers; Rewa still unimaged). Pre-change outputs carry
-  `_PRE_oversize_20261029`, those before the blob rule
-  `/home/tobi/earthpv_data/india_PRE_blobrule_20261101/`, those before the full review
-  `/home/tobi/earthpv_data/india_PRE_judged_20261102/`. **India's register is MNRE via MoSPI eSankhyiki** (state x month x
-  ground/rooftop/hybrid/KUSUM, `scripts/validate_india_mnre.py`, fetched through MoSPI's MCP
-  server; the REST API needs TLS legacy renegotiation): January 2026 ground-mounted Best 0.91 of
-  registered (0.82 AC basis), Spearman 0.97 over 19 states,
-  rooftop 7.5%. Its solar thermal was taken out 2026-11-07 (30 outlines, 9.1 km2, -455 MWp in
-  both tiers; 5 candidates, -61.5 MWp of model ground) and its 4 CSP plants (197.9 MW) count
-  instead. **The compose was widened by `ring_cells: 3`** (+3,573
-  cells, published 2026-10-28; `scripts/run_india_ring_chain.sh`, markers
-  `data/india_ring_markers/`; the run before it is kept in
-  `/home/tobi/earthpv_data/india_PRE_ring_20261024/`). It imaged Khavda's outlines whole
-  (+330 MWp) and every mapped outline cell, but its Himalayan cells add ~220 MWp of
-  false positives on shaded slopes and snow edges, which the page states and no veto removes
-  yet. India is **pinned Bronze** in `configs/atlas/india.yaml`: `derive_validation_score`
-  gives Silver to any AOI with a registered area in `data/labels/<aoi>/`, `used: false` or not.
-- **Yemen**: segmentation finds almost none of its labels (small Tihama irrigation arrays barely
-  differ from their surroundings), so Best is the OSM map plus farm ground PV. **v25** (published
-  2026-11-02, retrained on the 2026-11-01 pull holding the 827 features the owner mapped from
-  v13's leads) runs from `data/predictions_v25/yemen` (-> /home; `data/predictions/yemen` is
-  v13's), with its own precision table; the farm figure is the seven-area fit re-deduplicated
-  there. The 'Amran holdout is now the Huth farm area, where every model is blind, so the
-  ship decision rests on `scripts/yemen_v25_national_recall.py` (every mapped array >= 400 m2,
-  matched pixel precision): 0.152 against v13's 0.128, half the alarm pixels.
-- **Egypt**: the model's rooftop estimate is ~0 (no rooftop candidate matches a mapped rooftop).
-  **Many of its leads are swimming pools and wastewater treatment plants** (owner, 2026-10-29),
-  above all the plants' rectangular basins. `earthpv osm-hard-negatives` (`osm_negatives.py`)
-  cuts hard-negative chip centers on the OSM-mapped ones and counts the leads each class
-  touches; `--pbf` reads a Geofabrik extract when Overpass is overloaded. OSM explains the
-  pools (77 of 1,165 leads mostly a mapped pool) but not the plants (9 leads). 1,120 chips in
-  `data/chips/egypt_hard_neg` (-> /home), val-buffered with `mark_val_buffer.py --chips`;
-  175 fall in the Cairo holdout against its 9 original chips, so score the sets apart. No
-  model has been trained on them yet (open question 19).
+Country points still in force (write-ups in `docs/results/<country>.md`):
+- **India**: Verified is almost all ground perimeters; Best counts the parks above the cap that
+  the owner judged solar (verdicts in `results/india_oversize_review/`), and Verified credits the
+  seven outlines above 5 km² that fail the screen at their detected share (Khavda). The register
+  is MNRE via MoSPI eSankhyiki (`scripts/validate_india_mnre.py`, fetched through MoSPI's MCP
+  server; the REST API needs TLS legacy renegotiation). The `ring_cells: 3` Himalayan cells add
+  ~220 MWp of false positives on shaded slopes and snow edges, stated on the page, no veto yet.
+- **Yemen**: segmentation finds almost none of its labels, so Best is the OSM map plus farm
+  ground PV. v25 runs from `data/predictions_v25/yemen` (`data/predictions/yemen` is v13's) with
+  its own precision table. Its holdout is a farm area where every model is blind, so model
+  decisions rest on `scripts/yemen_v25_national_recall.py` (every mapped array >= 400 m², matched
+  pixel precision). roofclf is fitted but left off (owner).
+- **Egypt**: the rooftop estimate is ~0. Many leads are swimming pools and wastewater-plant
+  basins; `earthpv osm-hard-negatives` (`osm_negatives.py`, `--pbf` reads a Geofabrik extract
+  when Overpass is overloaded) cut 1,120 chips into `data/chips/egypt_hard_neg` (-> /home), 175 of
+  them in the Cairo holdout, so score the sets apart. v20, trained with them, cut pool leads but
+  is not shipped (owner decision, open question 19).
 - **Morocco**: geoBoundaries MAR includes Western Sahara, so `atlas.build_evidence_atlas` clips
   region outlines to the AOI bbox.
-- **Namibia** (published 2026-10-29): v17 beat v5 on the Erongo holdout (recall >= 500 m2
-  0.952 against 0.766), but **reads the Cuvelai basin's seasonal pans (oshanas) as ground
-  PV**: about 54 of the 66 MWp Best adds over Verified (31 of 48 since the owner judged the
-  leads of 1 ha and up, 2026-11-10), 10 of 10 sampled on Esri were pans;
-  priced through the >50k m2 ground bin (21 of 101 mapped). No filter yet; the page says so.
-  geoBoundaries NAM ADM2 names are shuffled (ADM1 is right; `propose_calibration_candidates.py`
-  names Namibian boxes by region), and Esri serves most of Namibia only to zoom 17, so one
-  calibration box passes the imagery gate.
-- **Turkey** (published 2026-11-04): v19 tied v5 on the Gaziantep holdout (recall >= 500 m2
-  0.968 against 0.970, pixel IoU 0.581 against 0.548) and ships under the tie rule. Of what Best
-  adds over Verified, rooftop is partly real (roof-wide arrays in Manisa, Bursa and Ankara
-  industrial estates), open ground mostly not (lava and rock north of Lake Van, shaded eastern
-  slopes, dark fields; 0 of 10 sampled on Esri, the assistant's look), priced through ground
-  bins whose mapped fraction is high (0.375 above 50k m2). No filter; the page says so. Of 774
-  blobs (175 km2) the owner judged 396 parks (89.8 km2, 2026-11-06): Best 13,103.0 -> 17,592.6;
-  `check-density` then fails 42 provinces (ratio; 15 also on one cell, 12 of them a judged
-  park). Ember is not a ceiling (cells 36 GW, panels 6).
-- **Spain** (published 2026-11-08): v26 beat v5 on the Castilla-La Mancha holdout (recall >=
-  500 m2 0.863 against 0.787 at pixel precision 0.84). **VIDA has block-shaped holes in Spain**,
-  city centres included, so `data/vida/ESP.parquet` is VIDA plus OSM buildings in empty 0.01 deg
-  blocks (`scripts/fill_vida_from_osm.py`; raw at `/home/tobi/earthpv_data/ESP.parquet`); other
-  countries' VIDA has not been checked for holes. Imaged at a floor of 1 building per cell
-  (owner; 5,712 cells against 1,896). Plastic greenhouses are not read as PV
-  (`scripts/spain_greenhouse_check.py`: 68.5 of 3,126 MWp in the five districts, the assistant's
-  look at 15 outlines), though footprints trace them as buildings. Of what Best adds over
-  Verified, open ground is mostly rock, fields and quarries (3 of 20 solar, the assistant's
-  look); the page says so. 998 blobs (324.4 km2) await the review and none counts. REE is
-  national only on the page: its capacity API returned 500s and its regional notes lack totals
-  for the large regions.
-- **Portugal** (published 2026-11-10): geoBoundaries PRT ADM1 garbles 6 of its 20 names
-  (UTF-8 read as Latin-1, with a control byte YAML refuses); `density._repair_mojibake` fixes
-  them on read, and changes no other cached boundary. DGEG's regions are NUTS II, which the
-  districts do not nest in, so the page compares the national figure only.
-- **Netherlands** (published 2026-11-10): ships v5 at threshold 0.98, the only threshold where
-  v5 reaches v32's precision (`compare_local_vs_v5.py`); recall is not corrected, so arrays
-  that never reach 0.98 are missing. VIDA has holes here too: 2.87 M of the 6.96 M footprints
-  are OSM fill (`scripts/fill_vida_from_osm.py`). Ember is not a ceiling (226.7 GW imported,
-  most passed on). Zoneiland (Almere) counts 0.5 MW as CSP from its tags, unchecked.
-- **Luxembourg** (published 2026-11-11): 23 of its 40 cells straddle the border and are kept
-  whole, so 8.3 of the model's 21.3 MWp (recall-corrected; `n_candidates_outside_border` in
-  its density `meta.json`) lies in France, Belgium or Germany, the largest a 0.16 km2
-  OSM-matched park across the Sauer from Echternach that is exempt from the merge cap. ILR
-  publishes no canton figures, and Ember is not a ceiling (155.2 MW of panels straight from
-  China against 746.35 MW installed).
-- **Italy** (published 2026-11-12): a map of the ground-mounted fleet. The model outlines
-  almost no rooftops (Best 704 MWp rooftop, 13,176 ground) where GSE puts two thirds of
-  43,687 MW on buildings, so against GSE's regional totals the five macro-regions rank
-  backwards (rho -0.5) and against its ground-mounted shares in the same order, each within
-  a quarter. geoBoundaries ITA ADM1 is ISTAT's five macro-regions; `official_capacity.py`
-  sums GSE's 21 regions into them. Ember is not a ceiling (17.4 GW imported directly, 19.3 GW
-  built before 2017). Ground outlines not checked by eye.
-- **Denmark** (published 2026-11-12): Best adds only 55 MWp over Verified (floored in 144
-  cells). Solar heating fields look like parks: the 33 model outlines inside the 674 mapped
-  thermal polygons were dropped, unmapped ones count as PV. `Høng solvarmeanlæg` (a heating
-  plant by name) is tagged `plant:output:electricity=yes` and counts as 1.7 MW CSP, probably
-  mis-tagged. Energistyrelsen's quarterly note has no regions. Ember is not a ceiling (4.35 GW
-  imported directly against 5.47 GW registered).
-- **Texas** (published 2026-11-13): the first state run as an AOI of its own. Verified is
-  OSM's park perimeters (1,016 ground outlines, 912 km2) at the land constant, which EIA-860M
-  confirms there: 86 outlines holding a plant with panel capacity measure 0.047 kWp/m2 DC. Best
-  adds 494 MWp; 845 blobs (701 km2) wait, few near an EIA plant. Against EIA (AC: Electric Power
-  Monthly 37,200.5 MW, EIA-860M 34,978.8 MW utility-scale by county, `data/external/eia/`) the
-  page is about one in DC terms (plants carry 1.29x panel over inverter), Spearman 0.74 over 101
-  counties. 8.4 GWp of mapped parks lie over 2 km from any operating EIA plant, 97% detected by
-  the model. Overpass refused the CSP area scan; `solar_thermal_plants.py --pbf` read the
-  Geofabrik extract (no CSP, as EIA). Composites on moreaidata. No Ember line (customs data are
+- **Namibia**: v17 reads the Cuvelai basin's seasonal pans (oshanas) as ground PV, priced
+  through the >50k m² ground bin; no filter, the page says so. geoBoundaries NAM ADM2 names are
+  shuffled (ADM1 is right; boxes are named by region), and Esri serves most of Namibia only to
+  zoom 17.
+- **Turkey**: open-ground false positives (lava and rock north of Lake Van, shaded eastern
+  slopes, dark fields) are priced through ground bins with a high mapped share; no filter, the
+  page says so. `check-density` fails 42 provinces.
+- **Spain**: **VIDA has block-shaped holes**, city centres included, so `data/vida/ESP.parquet` is
+  VIDA plus OSM buildings in empty 0.01° blocks (`scripts/fill_vida_from_osm.py`; raw at
+  `/home/tobi/earthpv_data/ESP.parquet`); the Netherlands is filled the same way, other
+  countries are unchecked. Plastic greenhouses are not read as PV though footprints trace them.
+  REE is national only on the page.
+- **Portugal**: geoBoundaries PRT ADM1 garbles 6 of 20 names (UTF-8 read as Latin-1);
+  `density._repair_mojibake` fixes them on read. DGEG's NUTS II regions do not nest with the
+  districts, so the page compares the national figure only.
+- **Netherlands**: ships v5 at 0.98, the only threshold where v5 reaches v32's precision.
+  Zoneiland (Almere) counts 0.5 MW as CSP from its tags, unchecked.
+- **Luxembourg**: 23 of its 40 cells straddle the border and are kept whole; ILR publishes no
+  canton figures.
+- **Italy**: the model outlines almost no rooftops, so against GSE's regional totals the
+  macro-regions rank backwards and against its ground-mounted shares they agree.
+  geoBoundaries ITA ADM1 is ISTAT's five macro-regions; `official_capacity.py` sums GSE's 21
+  regions into them.
+- **Denmark**: solar heating fields look like parks: model outlines inside mapped thermal
+  polygons are dropped, unmapped ones count as PV. `Høng solvarmeanlæg` is tagged
+  `plant:output:electricity=yes` and counts 1.7 MW CSP, probably mis-tagged.
+- **Texas / California**: compared with EIA (Electric Power Monthly and EIA-860M by county,
+  `data/external/eia/`, `official_capacity.eia860m_state`, which matches county names case-blind)
+  at about 1.27-1.29x panel over inverter. California's unjudged blobs sit near EIA plants, so
+  judging them is the largest gain there. Overpass refused Texas's CSP area scan;
+  `solar_thermal_plants.py --pbf` read the Geofabrik extract. No Ember line (customs data are
   national).
-- **California** (published 2026-11-14): the second state AOI, run like Texas. Verified is
-  mostly OSM park outlines (506 km2 dissolved) at the land constant, which reads a little high
-  there: 305 outlines holding an EIA-860M plant with panel capacity measure 0.043 kWp/m2 DC
-  pooled, 0.047 median. Best adds 435.5 MWp, and the per-cell floor lifts it in 479 cells (the
-  model at 0.95 prices below the mapped parks). Against EIA (Electric Power Monthly total solar
-  46,334.9 MW, 21,240.1 of it small-scale; EIA-860M 25,621.3 MW utility-scale PV and thermal by
-  county, `official_capacity.eia860m_state`, which matches county names case-blind: EIA writes
-  one row KERN) Best is about 0.85 of the utility fleet in DC terms (1.275x panel over
-  inverter), Spearman 0.91 over 44 counties. Unlike Texas, 29 of the 124 blobs (53 of 94 km2)
-  lie within 500 m of an EIA plant, so judging them is the largest gain on the page. 5 CSP
-  plants (Ivanpah 1-3, Mojave Solar, Genesis) 922.0 MW from their tags, as EIA. The
-  polygons file was uploaded by hand (the chain predates the `polygons` step).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
-- **South Africa / India**: capacity-tagged parks measure 0.045 kWp/m² (mostly AC) against the
-  0.05 land constant.
 
-Opt-in pieces built for large countries (other AOIs keep their behaviour):
-`fetch_geoboundaries` caches to `data/geoboundaries/gb_<ISO3>_<LEVEL>.geojson`, and
-`EARTHPV_REQUIRE_BOUNDARY=1` makes compose fail closed instead of renaming every cell;
-compose network hardening (GDAL `TCP_KEEPALIVE` + `LOW_SPEED_TIME=60`, `EARTHPV_NET_TIMEOUT_S=120`,
-`EARTHPV_FORCE_IPV4=1` via `compose._harden_python_network`; stall watchdog 900 s);
-`prepare_national_osm_solar.py --keep-detected-screen` keeps ground features above the 5 km² cap
-on the screen's evidence (the cap is German); `overpass_labels_chunked.py` caches tiles and
-resumes (`--fetch-only`); `scripts/ranged_download.py` (source.coop throttles single streams);
-`parquet_metadata_cache` on every DuckDB connection.
-
-**Solar-thermal is in OSM under the same `generator:source=solar` tag.**
+**Solar thermal is in OSM under the same `generator:source=solar` tag.**
 `scripts/drop_solar_thermal.py --aoi <aoi>` drops thermal/CSP elements from the labels before
-chips (`--by-id` at India's size, where the bbox scan fails); `--candidates` drops candidates at
-least half inside them before `density`. Since 2026-11-07 thermal also means
-`generator:type=solar_thermal_collector` with no method tag (Spain: 161 rows, 156 inside Alvarado
-II) and the plants in `KNOWN_THERMAL` (by id, on documentary evidence). **Every published country
-but France and Germany was checked 2026-11-07** (their scan was stopped on the owner's request; their
-pages read `csp_status` absent, i.e. not checked, until they run) with `scripts/solar_thermal_plants.py --aoi <aoi> --osm-solar <the
-atlas's OSM file> [--candidates ...] [--by-id | --pbf <Geofabrik extract> | --tile-deg 2]`, which
-filters the atlas's own OSM file in place (original `<stem>_PRE_thermal_<date>.parquet`), drops
-any feature at least half inside a CSP plant (mappers draw mirror rows with the PV preset: South
-Africa 50 rows, 13.4 km2, ~670 MWp counted as PV until then), writes the CSP table (even empty)
-and reports to `results/solar_thermal/`, caching the Overpass tags there (Overpass 502/504s on
-area scans: `--tile-deg 2` or `--by-id`). `run_country_compute.sh` runs it after `osm_solar`
-(non-fatal). CSP found: Spain 43 plants 2,383 MW, South Africa 7 / 600, Morocco 3 / 518.6, India 4
-/ 197.9, Turkey 1 / 5.8; none in Egypt, Pakistan, Namibia, Zambia, Nigeria, Yemen, Vietnam, Poland
-(14 collectors left PV there). Pages whose figures did not change were not rebuilt.
-Heating plants (thermal, no electric output) are dropped from PV and not counted. The backup is
-named `<aoi>_solar_labels_with_thermal.parquet` because `chips._newest_overpass_path` globs
-`<aoi>_overpass_solar*.parquet` and takes the last name in sort order; a backup matching that
-glob silently undoes the filter (dotted stems are now ignored).
+chips (`--by-id` at India's size); `--candidates` drops candidates at least half inside them
+before `density`. Thermal also means `generator:type=solar_thermal_collector` with no method tag
+and the plants in `KNOWN_THERMAL`. `scripts/solar_thermal_plants.py --aoi <aoi> --osm-solar <the
+atlas's OSM file> [--candidates ...] [--by-id | --pbf <extract> | --tile-deg 2]` filters the
+atlas's OSM file in place (original kept as `<stem>_PRE_thermal_<date>.parquet`), drops features
+at least half inside a CSP plant (mappers draw mirror rows with the PV preset), writes the CSP
+table (even empty) and reports to `results/solar_thermal/`; `run_country_compute.sh` runs it
+after `osm_solar` (non-fatal). France and Germany were never checked. Heating plants are dropped
+from PV and not counted. The label backup is named `<aoi>_solar_labels_with_thermal.parquet`
+because `chips._newest_overpass_path` globs `<aoi>_overpass_solar*.parquet` and takes the last
+name in sort order: a backup matching that glob silently undoes the filter.
 
 **A candidate file that only LOST rows needs only the touched cells recomputed**:
-`scripts/density_partial_update.sh <aoi> [pred_dir]` moves the partials of cells whose box a
-removed candidate intersects aside, rewrites the fingerprint and runs `density` without
-`--force` (a partial depends only on its cell's buildings, raster and box candidates and holds no
-candidate index; on Namibia identical to `--force` to the last digit; India ~1 h against 28 h).
-**Run `density` and `atlas` from a tree that has `results/<aoi>_osm_ground_screen/`**: the screen
-is read by a relative path and is untracked, so a clean worktree silently skips it (India +2,845
-MWp until it was linked in, 2026-11-07).
+`scripts/density_partial_update.sh <aoi> [pred_dir]` moves aside the partials of cells a removed
+candidate intersects, rewrites the fingerprint and runs `density` without `--force` (identical
+to `--force` to the last digit; India ~1 h against 28 h). **Run `density` and `atlas` from a tree
+that has `results/<aoi>_osm_ground_screen/`**: the screen is read by a relative path and is
+untracked, so a clean worktree silently skips it (India +2,845 MWp).
+
+Opt-in pieces for large countries: `fetch_geoboundaries` caches to
+`data/geoboundaries/gb_<ISO3>_<LEVEL>.geojson`, and `EARTHPV_REQUIRE_BOUNDARY=1` makes compose
+fail closed instead of renaming every cell; compose network hardening (GDAL `TCP_KEEPALIVE` +
+`LOW_SPEED_TIME=60`, `EARTHPV_NET_TIMEOUT_S=120`, `EARTHPV_FORCE_IPV4=1` via
+`compose._harden_python_network`; stall watchdog 900 s); `prepare_national_osm_solar.py
+--keep-detected-screen` keeps ground features above the 5 km² cap on the screen's evidence;
+`overpass_labels_chunked.py` caches tiles and resumes (`--fetch-only`);
+`scripts/ranged_download.py` (source.coop throttles single streams); `parquet_metadata_cache` on
+every DuckDB connection.
 
 ## Conventions & gotchas
 
@@ -1643,29 +1128,35 @@ MWp until it was linked in, 2026-11-07).
   `ls -t | head -1` returns the SECOND-best whenever the final improvement is not the argmax. A
   restarted run leaves the dead run's files in the same directory and Lightning writes the live
   run's state to `last-v1.ckpt`. Use `scripts/pick_best_checkpoint.py`, which reads Lightning's
-  own `best_model_path` from every `last*.ckpt` and takes the best score.
+  own `best_model_path` from every `last*.ckpt` and takes the best score. **A run whose config
+  sets `snapshots: {keep_last: 12}`** (a slim checkpoint per epoch, EMA weights where the run has
+  EMA) is picked by `scripts/pick_checkpoint_by_recall.py`: installation recall at the
+  val/mIoU pick's precision, chosen on half the val chips and confirmed on the other, a
+  false-alarm guard, and the best+last weight average as a candidate. The `pick`/`decide`
+  markers then hold the checkpoint AND its threshold (line 2; absent means 0.3), which
+  postprocess, the ground screen and density take. `PICK_BY_RECALL=0` opts out. The shipped
+  threshold is the matched one, which for an averaged candidate can be ~0.97 and loses arrays
+  over whole cells; not yet changed.
 - **`scripts/merge_chip_index.py` writes `data/chips/combined/index.parquet` unless `--out` is
   given**, which is an existing corpus: pass `--out` or back it up first.
 - **`roofclf.discover_quadrats` globs `*_calib_*_boundary.geojson`.** A quadrat stem without
   `_calib_` is invisible to `earthpv roof-classifier`, which fails with "No calibration quadrats
   found" seconds after launch -- easy to mistake for a still-running job. Anything in
-  `data/labels/` matching the glob joins the next Pakistani refit (keep other countries' quadrats
-  in `data/labels/<aoi>/`).
+  `data/labels/` matching the glob joins the next Pakistani refit (keep other countries'
+  quadrats in `data/labels/<aoi>/`).
 - **`export.load_mapped_reference_attrs` globs `data/labels/*_overpass_solar.parquet`
-  AOI-agnostically**, so every country's pull in that directory enters every AOI's mapped
-  reference. Matching is spatial, but `recall_reference` provenance counts change (Pakistan's
-  table documents 18,276); move other countries' files aside before re-deriving Pakistan's table.
-- **A "national" OSM pull is not national until it is clipped to the border** (a bbox pull is
-  not a border pull). `prepare_national_osm_solar.py` builds the `--osm-solar` input: it clips
-  on the geoBoundaries ADM1 union by default (`--no-clip` opts out), maps `small` -> rooftop,
-  reclassifies rooftop features above `MAX_CANDIDATE_M2` as ground, and drops ground features
-  above 5 km² unless `--keep-detected-screen`. With the screen, an outline above 5 km² that
-  fails it is credited, not dropped (2026-10-29): `area_m2` becomes outline x `det_frac`,
-  floored at the union of the plants mapped inside it that are each under the cap (the cap runs
-  after `dissolve_overlapping`, so they used to go out with it), and `screen_credit` records the
-  share, which `atlas._apply_screen_credit` reapplies after the atlas's own dissolve. Only an
-  outline earning nothing (unimaged, nothing nested) is dropped. Of the screened countries only
-  India's layer changes.
+  AOI-agnostically**, so every country's pull there enters every AOI's mapped reference.
+  Matching is spatial, but `recall_reference` provenance counts change: move other countries'
+  files aside before re-deriving Pakistan's table.
+- **A "national" OSM pull is not national until it is clipped to the border.**
+  `prepare_national_osm_solar.py` builds the `--osm-solar` input: it clips on the geoBoundaries
+  ADM1 union by default (`--no-clip` opts out), maps `small` -> rooftop, reclassifies rooftop
+  features above `MAX_CANDIDATE_M2` as ground, and drops ground features above 5 km² unless
+  `--keep-detected-screen`. With the screen, an outline above 5 km² that fails it is credited:
+  `area_m2` becomes outline x `det_frac`, floored at the union of the plants mapped inside it
+  that are each under the cap, and `screen_credit` records the share, which
+  `atlas._apply_screen_credit` reapplies after the atlas's own dissolve. Only an outline earning
+  nothing is dropped.
 - **Overture prunes its release directory to the last two releases.** A pinned
   `overture_release` eventually 404s as `IO Error: No files found`, which reads like "no data
   for this area". Check
@@ -1680,27 +1171,25 @@ MWp until it was linked in, 2026-11-07).
 - **The native-20 m bands are resampled BILINEAR for fresh AOIs; never mix modes within an
   AOI.** Composites carry an `earthpv_resampling` tag (absent = nearest); Pakistan, Germany,
   France, Zambia and Nigeria are `nearest`. `compose` INHERITS an AOI's existing mode
-  (`imagery.BAND_RESAMPLING`, `compose --resampling`), so a resumable run cannot mix the two.
-  Recompose a country wholesale or leave it alone. SCL stays nearest always.
-- **`roofclf`'s zonal means are AREA-WEIGHTED by default, and calibration and national scoring
-  must never disagree about that.** `roofclf.area_weighted_zonal_mean` weights each 10 m pixel by
-  the fraction of the footprint covering it (`preprocess.coverage_matrix`, subpix 4) instead of
+  (`imagery.BAND_RESAMPLING`, `compose --resampling`). Recompose a country wholesale or leave it
+  alone. SCL stays nearest always.
+- **roofclf's zonal means are AREA-WEIGHTED, and calibration and national scoring must never
+  disagree about that.** `roofclf.area_weighted_zonal_mean` weights each 10 m pixel by the
+  fraction of the footprint covering it (`preprocess.coverage_matrix`, subpix 4) instead of
   pixel-centre sampling, where 72.4% of Pakistani VIDA footprints own zero pixels. Applied in
   BOTH `building_table` and `score_buildings_national`, resolved from
   `roofclf.AREA_WEIGHTED_ZONAL`, recorded in `model_full.json` and the scoring's `_model.json`;
-  `check_scoring_matches_calibration` refuses a mismatch. Nodata is masked with the same
-  all-bands-equal-fill test `zonal_mean_max` uses, and a footprint with no subpixel keeps the
-  pixel-centre value rather than becoming NaN. `--no-area-weighted` reproduces the older figures.
+  `check_scoring_matches_calibration` refuses a mismatch. `--no-area-weighted` reproduces the
+  older figures.
 - **`preprocess.trimmed_mean_stack` replaces `np.nanpercentile` in every stack-reading path**
   (`np.nanpercentile` falls back to a per-slice Python loop on any NaN: 24.5 s against 0.08 s);
   bit-identical results.
 - **A pre-2022 composite layer is on a different radiometric scale** (no BOA offset before
   baseline 04.00; every model here is fitted on post-2022 composites at +1000 DN). Pakistan's
   composite_1 offset is **per cell, not flat**: 122 cells built 2026-07-05 already match
-  composite_0, the rest read ~800 DN darker with a wide spread. Harmonize per cell (match each
-  band's window median to composite_0; `scripts/composite1_offset_survey.py`) before scoring one,
-  e.g. via `roofclf.epoch_feature_frame(..., dn_offset=...)`. An old epoch is not a negative set
-  for `roofclf` (it reads adopter-type roofs as much as panels).
+  composite_0, the rest read ~800 DN darker with a wide spread. Harmonize per cell
+  (`scripts/composite1_offset_survey.py`, `roofclf.epoch_feature_frame(..., dn_offset=...)`)
+  before scoring one. An old epoch is not a negative set for roofclf.
 - **Training positive threshold** is `MIN_PV_AREA` in `chips.py` (arrays below it are burned as
   `ignore = -1`, not negatives). Changing it requires rebuilding chips and retraining.
 - **Geographic val split** uses `val_tiles` in `configs/aoi.yaml`; these must be MGRS tiles the
@@ -1709,29 +1198,28 @@ MWp until it was linked in, 2026-11-07).
 - **Areas are geodesic** (`labels.geodesic_area_m2`), never `.area` on lat/lon geometries.
 - Long GPU/network stages are run detached and polled; the rich progress bar does not flush
   cleanly to a redirected log, so watch checkpoint files / cell counts rather than the log.
-- **The aidisc drive is the binding constraint; `/home` (sda4, ~1.2 TB free) is where bulk
-  outputs belong.** Composites and national scoring passes live under `/home/tobi/earthpv_*` and
-  are symlinked back into `data/` (`data/composites/<aoi>` -> `/home/tobi/earthpv_composites/<aoi>`).
-  **A new AOI's composites MUST be symlinked onto `/home`, never written straight into
-  `data/composites/<aoi>/` on aidisc** (~10 MB per cell). A full disk does not name itself:
-  `compose` dies with Python **exit code 120** (failure to flush stdout) and a truncated log.
-  Committed cells survive (atomic `.tif.tmp` rename), so recovery is move, symlink, resume. Check
-  `df -h /run/media/tobi/aidisc` BEFORE a national run; moving and symlinking preserves data,
-  deleting does not.
+- **The aidisc drive is the binding constraint; `/home` is where bulk outputs belong.**
+  Composites and national scoring passes live under `/home/tobi/earthpv_*` and are symlinked back
+  into `data/` (`data/composites/<aoi>` -> `/home/tobi/earthpv_composites/<aoi>`); newer
+  countries use `/run/media/tobi/moreaidata`. **A new AOI's composites MUST be symlinked off
+  aidisc, never written straight into `data/composites/<aoi>/`** (~10 MB per cell). A full disk
+  does not name itself: `compose` dies with Python **exit code 120** (failure to flush stdout)
+  and a truncated log. Committed cells survive (atomic `.tif.tmp` rename), so recovery is move,
+  symlink, resume. Check `df -h /run/media/tobi/aidisc` BEFORE a national run; moving and
+  symlinking preserves data, deleting does not.
 - **A country-scale `compose` leaks file descriptors and degrades before it dies; run it in a
   restart loop capped by WALL CLOCK** (e.g. `timeout 7200` per pass, rc=124 as the expected
-  path), not by waiting for a crash -- a degraded pass looks healthy from outside while running
-  at a quarter of the rate. It is resumable and idempotent, and a fresh pass also re-signs the
-  Planetary Computer SAS token (~24 h lifetime; on 403s `annual_composite` fails over to Earth
-  Search and the data stays fine). Let "a pass added nothing" be the stop condition.
+  path), not by waiting for a crash -- a degraded pass looks healthy while running at a quarter
+  of the rate. It is resumable and idempotent, and a fresh pass also re-signs the Planetary
+  Computer SAS token (~24 h lifetime; on 403s `annual_composite` fails over to Earth Search).
+  Let "a pass added nothing" be the stop condition.
 - **With `workers` > 1, set `imagery.PC_TIMEOUT_S` to several times the expected per-cell wall
   time, and `compose_loop.sh`'s `STALL_S` well above a pass's startup cost plus one slow cell.**
   Compose is bandwidth-bound (~290 MB per cell), so under N workers a healthy cell takes ~N x its
-  uncontended time; the default 60 s patience then trips on every cell and each hand-off
-  downloads the cell twice, a livelock that reads exactly like a provider outage. Diagnostic:
-  measure the link (an outage leaves it idle, this leaves it saturated) and count `exceeded <N>s`
-  hand-offs per landed cell. A compose that is "progressing" is not evidence the patience is
-  right.
+  uncontended time; a short patience trips on every cell and each hand-off downloads the cell
+  twice, a livelock that reads exactly like a provider outage. Diagnostic: measure the link (an
+  outage leaves it idle, this leaves it saturated) and count `exceeded <N>s` hand-offs per
+  landed cell.
 - **`nohup setsid` alone does not survive a session logout on this machine.** systemd-logind
   kills a whole session's cgroup unless lingering is enabled: check
   `loginctl show-user "$USER" | grep Linger` and `loginctl enable-linger "$USER"` once before
