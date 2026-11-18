@@ -1057,13 +1057,20 @@ matches (`Guangzhou Province` is Guangdong there). A state becomes an atlas by i
 contribute page warns before a province run.
 **The globe has a dark mode (2026-11-14, not yet reviewed by the owner)**: the page follows the
 site's light/dark choice (Material's `__palette` key in localStorage, which the header's sun/moon
-switch also writes, else the system's) and by night draws the Earth from space just after a very
+switch also writes, else dark) and by night draws the Earth from space just after a very
 late sunset: the Sun hidden behind the lower left limb, the limb's air in sunset bands with the
 green airglow on the night side, solar from ember to gold, and on a `#sky` canvas behind the page
 the real stars round the Sun's direction on the day (`stars.json`, Yale Bright Star Catalogue to
 V 6.5, rebuilt with `build_landing_page.py --stars bsc5.dat`) with a modelled Milky Way and
 zodiacal light. The camera is fixed in space, so the sky stays still while the Earth turns. Every
 colour that differs is in `THEMES` in landing.js; light mode renders pixel for pixel as before.
+
+**The site opens dark whatever the system's theme (owner, 2026-11-18)**: `mkdocs.yml` lists the
+dark palette first with no `media` (landing.html writes the same order, dark 0, light 1), and
+`docs/overrides/partials/palette-default.html` forgets a palette Material stored under the old
+`(prefers-color-scheme: ...)` entries, once. `embed-theme.js` syncs the PV Atlas frames
+(`.page-full-bleed`) as well as `.embed` ones. Standalone result pages opened outside the site
+still follow the system.
 
 **The PV Atlas pages are generated** (`scripts/build_atlas_pages.py`): one row per country in
 `ATLASES`; each page's tier (Gold/Silver/Bronze) is read from the calibration badge its own

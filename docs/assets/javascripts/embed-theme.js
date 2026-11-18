@@ -17,10 +17,15 @@
 (function () {
   "use strict";
 
+  // Every frame that takes the site's theme: the `.embed` pages, and the PV Atlas pages
+  // (`.page-full-bleed`, scripts/build_atlas_pages.py), which otherwise follow the system
+  // and put a light atlas inside the dark site, the default since 2026-11-18.
+  var THEMED = ".embed iframe, .page-full-bleed iframe";
+
   function siteWantsDark() {
     var scheme = document.body.getAttribute("data-md-color-scheme");
     if (scheme) return scheme === "slate";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return true; // the site's default (mkdocs.yml lists the dark palette first)
   }
 
   function syncFrame(frame) {
@@ -66,7 +71,7 @@
   }
 
   function syncAll() {
-    var frames = document.querySelectorAll(".embed iframe");
+    var frames = document.querySelectorAll(THEMED);
     for (var i = 0; i < frames.length; i++) syncFrame(frames[i]);
   }
 
@@ -162,7 +167,7 @@
   }
 
   function attach() {
-    var frames = document.querySelectorAll(".embed iframe");
+    var frames = document.querySelectorAll(THEMED);
     for (var i = 0; i < frames.length; i++) {
       var frame = frames[i];
       if (!frame.dataset.pvThemeBound) {

@@ -21,8 +21,10 @@
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
 }
 /* The night: deep space, starlight for ink, the last of the sunset for vermilion. Set by the
-   script in landing.html's head; the media query covers a page without scripts. */
-:root[data-theme="dark"] {
+   script in landing.html's head; dark is the site's default, so a page without scripts (no
+   `data-theme`) is dark too. */
+:root[data-theme="dark"],
+:root:not([data-theme]) {
   --paper: #04060d;
   --paper-2: #0e1424;
   --ink: #ece3d1;
@@ -33,20 +35,6 @@
   --bar: rgba(236, 227, 209, .42);
   --card-shadow: 0 1px 2px rgba(0, 0, 0, .7), 0 10px 30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(236, 227, 209, .07);
   color-scheme: dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --paper: #04060d;
-    --paper-2: #0e1424;
-    --ink: #ece3d1;
-    --ink-2: #9aa3b8;
-    --shu: #ff9466;
-    --shu-fade: rgba(255, 148, 102, 0);
-    --hair: rgba(236, 227, 209, .16);
-    --bar: rgba(236, 227, 209, .42);
-    --card-shadow: 0 1px 2px rgba(0, 0, 0, .7), 0 10px 30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(236, 227, 209, .07);
-    color-scheme: dark;
-  }
 }
 .for-dark { display: none; }
 :root[data-theme="dark"] .for-dark { display: inline; }

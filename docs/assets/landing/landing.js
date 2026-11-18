@@ -1632,7 +1632,7 @@
       }
     }
 
-    /* The switch in the header, or the system, changed the theme: redraw everything. */
+    /* The switch in the header changed the theme: redraw everything. */
     new MutationObserver(function () {
       var was = T;
       setTheme();

@@ -7,6 +7,7 @@
 
 {% block extrahead %}
   {{ super() }}
+  {% include "partials/palette-default.html" %}
   {% set social_image = config.site_url ~ "assets/figures/social-preview.png" %}
   {% set headline = "Open, global photovoltaic mapping from free satellite imagery." %}
   <meta property="og:type" content="website">

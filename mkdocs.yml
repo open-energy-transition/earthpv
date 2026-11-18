@@ -46,21 +46,23 @@ theme:
     - content.code.annotate
     - search.suggest
     - search.highlight
+  # Dark is the default (owner, 2026-11-18): the first entry, with no `media`, is what a first
+  # visit opens on, whatever the system's theme. The switch keeps the reader's choice.
+  # docs/overrides/partials/palette-default.html forgets a palette stored under the old
+  # system-keyed entries, and landing.html writes this same order (dark 0, light 1).
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
+    - scheme: slate
       primary: custom
       accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
 
 extra_css:
   - assets/stylesheets/extra.css

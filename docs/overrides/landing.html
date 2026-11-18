@@ -29,32 +29,29 @@
   {# The written introduction used to live here: an old link to one of its sections follows it. #}
   <script>if (location.hash.length > 1) location.replace("{{ 'overview/' | url }}" + location.hash);</script>
   {#- Light or dark, decided before the page paints: the reader's choice from any page of the
-      site, which Material keeps under this key, else the system's. The switch in the header
-      stores its choice the same way, as mkdocs.yml's two palette entries, so the rest of the
-      site follows it. landing.js redraws the globe when `data-theme` changes. -#}
+      site, which Material keeps under this key, else dark, the site's default (owner,
+      2026-11-18). The switch in the header stores its choice the same way, as mkdocs.yml's two
+      palette entries (dark first), so the rest of the site follows it. landing.js redraws the
+      globe when `data-theme` changes. -#}
+  {% include "partials/palette-default.html" %}
   <script>
     (function () {
       var key = new URL("{{ config.extra.scope | d(base_url) }}", location).pathname + ".__palette";
-      var media = window.matchMedia("(prefers-color-scheme: dark)"), root = document.documentElement;
+      var root = document.documentElement;
       function stored() {
         try { var p = JSON.parse(localStorage.getItem(key)); return p && p.color ? p.color.scheme : null; }
         catch (e) { return null; }
       }
       function apply(theme) { root.setAttribute("data-theme", theme); root.style.colorScheme = theme; }
-      var scheme = stored();
-      apply(scheme ? (scheme === "slate" ? "dark" : "light") : (media.matches ? "dark" : "light"));
-      if (media.addEventListener) media.addEventListener("change", function (e) {
-        if (!stored()) apply(e.matches ? "dark" : "light");
-      });
+      apply(stored() === "default" ? "light" : "dark");
       window.EARTH_THEME = {
         get: function () { return root.getAttribute("data-theme"); },
         set: function (theme) {
           var dark = theme === "dark";
           apply(theme);
           try {
-            localStorage.setItem(key, JSON.stringify({ index: dark ? 1 : 0, color: {
-              media: dark ? "(prefers-color-scheme: dark)" : "(prefers-color-scheme: light)",
-              scheme: dark ? "slate" : "default", primary: "custom", accent: "custom" } }));
+            localStorage.setItem(key, JSON.stringify({ index: dark ? 0 : 1, color: {
+              media: "", scheme: dark ? "slate" : "default", primary: "custom", accent: "custom" } }));
           } catch (e) {}
         }
       };

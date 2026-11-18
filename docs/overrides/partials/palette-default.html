@@ -1,0 +1,22 @@
+{#-
+  Dark is the site's default (owner, 2026-11-18). mkdocs.yml lists the dark palette first with
+  no `media`, so a first visit opens on it whatever the system's theme.
+
+  Material stores the palette on every page view, not only when the switch is used, so every
+  browser that visited while the palette followed the system holds whichever theme its system
+  asked for then, under the old entries' `(prefers-color-scheme: ...)` media. Forget that once,
+  so those browsers open dark too; a palette stored since carries an empty media and stays. A
+  reader who had picked light by hand picks it once more.
+
+  Included in the <head> of main.html and landing.html, so it runs before Material's own
+  script (partials/javascripts/palette.html, in the header) applies the stored palette.
+-#}
+<script>
+  (function () {
+    var key = new URL("{{ config.extra.scope | d(base_url) }}", location).pathname + ".__palette";
+    try {
+      var p = JSON.parse(localStorage.getItem(key));
+      if (p && p.color && /^\(prefers-color-scheme/.test(p.color.media || "")) localStorage.removeItem(key);
+    } catch (e) {}
+  })();
+</script>
