@@ -269,6 +269,20 @@ aois:
     n_cells_failed: 0
     n_scene_days: 1352
     made: '2026-11-13'
+  sweden:
+    median: '2026-07-04'
+    p25: '2026-05-19'
+    p75: '2026-07-21'
+    first: '2026-05-01'
+    last: '2026-08-28'
+    windows:
+    - 2026-05-01:2026-08-31
+    n_cells: 1910
+    n_cells_sampled: 120
+    n_cells_no_scene: 0
+    n_cells_failed: 0
+    n_scene_days: 1123
+    made: '2026-11-15'
   turkiye:
     median: '2026-07-31'
     p25: '2026-07-09'
