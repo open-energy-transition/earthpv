@@ -933,20 +933,6 @@
     </div>
   </section>
 
-  <!-- Written by `earthpv.quality.checklist_html` from this page's data, its config and the
-       review, decision and validation records; refreshed whenever a page is patched. -->
-  <section class="sec" id="quality">
-    <div class="sec-head">
-      <div>
-        <div class="sec-label">Quality</div>
-        <div class="sec-title">What has been checked so far, and what is still open</div>
-      </div>
-    </div>
-    <div class="qa">
-    __QUALITY_HTML__
-    </div>
-  </section>
-
   <div class="pair">
   <section class="sec" id="composition">
     <div class="sec-head">
@@ -1156,6 +1142,21 @@
     </p>
   </section>
 
+  <!-- Written by `earthpv.quality.checklist_html` from this page's data, its config and the
+       review, decision and validation records; refreshed whenever a page is patched. Below
+       the panel orientation (owner, 2026-11-19). -->
+  <section class="sec" id="quality">
+    <div class="sec-head">
+      <div>
+        <div class="sec-label">Quality</div>
+        <div class="sec-title">What has been checked so far, and what is still open</div>
+      </div>
+    </div>
+    <div class="qa">
+    __QUALITY_HTML__
+    </div>
+  </section>
+
   <section class="sec" id="background">
     <div class="sec-head">
       <div>
@@ -1222,7 +1223,7 @@
     <div class="sec-head">
       <div>
         <div class="sec-label">Data</div>
-        <div class="sec-title">Download the data behind this atlas</div>
+        <div class="sec-title">Download the raw data and new OpenStreetMap hints behind this atlas</div>
       </div>
       <div class="sec-sub" id="dlRelease"></div>
     </div>
@@ -1230,7 +1231,7 @@
     <div class="dl-pair">
     <div class="dl-item leads-item" id="leadsItem" hidden>
       <div class="dl-main">
-        <div class="dl-name">Mapping leads: solar arrays the model found that OpenStreetMap does not have yet</div>
+        <div class="dl-name">Mapping leads: solar installations a person has checked that OpenStreetMap does not have yet</div>
         <div class="dl-note" id="leadsNote"></div>
       </div>
       <div class="dl-link" id="leadsLink"></div>
@@ -4179,73 +4180,24 @@ out geom;</div>
         : "";
   }
 
-  // Mapping leads: the model's outlines with no OpenStreetMap solar feature within
-  // `min_distance_m`, from the run behind this page. A release file, linked rather than
-  // embedded (India's is 91 MB); a page whose AOI has none shows no card.
-  function renderLeads(L){
+  // Mapping leads: only the outlines a person judged solar on the country's review pages
+  // (scripts/oversize_review.py) that OpenStreetMap does not have yet, the confirmed file of
+  // scripts/release_leads.py. The model's unchecked lead and blob files are not offered to
+  // mappers (owner, 2026-11-19), so a page whose AOI has no confirmed file shows no card,
+  // and the card does not link the release, whose page lists those files too.
+  function renderLeads(C, L){
     const day = s => new Date(s + "T00:00:00Z").toLocaleDateString("en-GB",
       {day: "numeric", month: "long", year: "numeric", timeZone: "UTC"});
-    const release = L.url.replace(/\/releases\/download\/([^/]+)\/.*/, "/releases/tag/$1");
-    document.getElementById("leadsNote").innerHTML = (L.note
-      || `${fmt(L.n)} places where the segmentation model outlined a solar array in the `
-        + `Sentinel-2 imagery more than ${fmt(L.min_distance_m)} m from every solar installation in `
-        + `OpenStreetMap as of ${day(L.osm_as_of)}, most promising first. They are unverified `
-        + `outlines drawn from 10 m pixels: check each one against recent high-resolution imagery `
-        + `before mapping it, and expect some bright roofs, greenhouses and dark fields among them. `
-        + `Anything mapped since that date can still appear.`)
-      // The steep-ground screen (export.steep_lead_screen) and the lead check
-      // (atlas.leads_checked); a page built before either says nothing about it.
-      + (L.steep ? ` Leads under ${fmt(L.steep.max_area_m2)} m² on ground steeper than `
-        + `${L.steep.slope_deg}°`
-        + (L.steep.cap_deg ? `, and leads of any size above ${L.steep.cap_deg}°,` : ``)
-        + ` were left out (${fmt(L.steep.dropped)}): shaded slopes, cliff `
-        + `edges and gullies read like panels. ${fmt(L.steep.review)} larger ones on steep ground `
-        + `are kept and marked <code>steep_review</code>, since a solar farm can stand on a `
-        + `mountainside.` : "")
-      // The open-ground and surface-water screens (export.low_confidence_lead_screen,
-      // export.water_lead_screen, 2026-11-01); a file built before them says nothing.
-      + (L.lowconf ? ` Leads with no building nearby whose highest model probability is `
-        + `below ${L.lowconf.max_confidence} were left out as well (${fmt(L.lowconf.dropped)}): `
-        + `fields, riverbeds, shaded slopes and scrub.` : "")
-      + (L.water ? ` So were ${fmt(L.water.dropped)} leads off rooftops at least `
-        + `${Math.round(100 * L.water.ever_wet_min)}% of whose outline has been under water `
-        + `since 1984: seasonal pans, salt pans and ponds.` : "")
-      // Very large outlines in a file of their own (release_leads.split_blobs, 2026-11-01):
-      // never counted in capacity until mapped or judged solar by a person
-      // (density.load_oversize_admission). A page built before says nothing about them.
-      + (L.blobs ? ` The ${fmt(L.blobs.n)} very large outlines, above `
-        + `${fmt(L.blobs.min_area_m2)} m², are in a file of their own, largest first: as often a `
-        + `sheet of false alarms as a solar park the map does not have yet. None counts towards `
-        + `this atlas's capacity until it is mapped in OpenStreetMap or a person has judged it `
-        + `solar on the Sentinel-2 imagery the model saw.` : "")
-      // Outlines a person judged on the country's review pages (scripts/oversize_review.py),
-      // sorted by release_leads.build (2026-11-19): judged solar to a file of their own, judged
-      // not solar out of every file. A file built before says nothing about them.
-      + (L.confirmed ? ` ${fmt(L.confirmed.n)} outline${L.confirmed.n === 1 ? "" : "s"} that a `
-        + `person judged solar on this country's review pages, and that OpenStreetMap does not `
-        + `have yet, ${L.confirmed.n === 1 ? "is" : "are"} in a file of their own, largest `
-        + `first: each one is a real installation waiting to be traced, so start there.` : "")
-      + (L.judged_not_pv && (L.judged_not_pv.leads + L.judged_not_pv.blobs)
-        ? ` ${fmt(L.judged_not_pv.leads + L.judged_not_pv.blobs)} outlines a person judged not `
-          + `solar are left out of every file.` : "")
-      + (L.checked ? (L.checked.all
-          ? ` Every lead in this file has been checked by a person`
-            + (L.checked.date ? ` (${esc(L.checked.by || "")}, ${day(L.checked.date)})` : "") + `.`
-          : ` Checking leads and mapping the real installations in OpenStreetMap is what `
-            + `localizes the model: about a third of the leads and of the very large outlines, `
-            + `worked from the top, are enough to retrain it.`) : "")
-      + ` The GeoJSON opens in JOSM, iD and QGIS; the <a href="https://open-energy-transition.github.io/earthpv/contribute/leads/" `
-      + `target="_blank" rel="noopener">mapping guide</a> explains how to work through it.`;
+    document.getElementById("leadsNote").innerHTML =
+      `${fmt(C.n)} installation${C.n === 1 ? "" : "s"} the model found and a person judged solar, `
+      + `missing from OpenStreetMap`
+      + (L.osm_as_of ? ` on ${day(L.osm_as_of)}` : ``) + `, largest first. Trace each one from `
+      + `high-resolution imagery, never from the outline. How, and other ways to help: `
+      + `<a href="https://open-energy-transition.github.io/earthpv/contribute/" target="_blank" `
+      + `rel="noopener">Contribute</a>.`;
     document.getElementById("leadsLink").innerHTML =
-      (L.confirmed ? `<a href="${esc(L.confirmed.url)}" target="_blank" rel="noopener">${esc(L.confirmed.file)}</a>`
-        + `<span class="dl-size">GeoJSON · ${fmt(L.confirmed.n)} judged solar · `
-        + `${fmtBytes(L.confirmed.size_bytes)}</span>` : "")
-      + `<a href="${esc(L.url)}" target="_blank" rel="noopener">${esc(L.file)}</a>`
-      + `<span class="dl-size">GeoJSON · ${fmt(L.n)} leads · ${fmtBytes(L.size_bytes)}</span>`
-      + (L.blobs ? `<a href="${esc(L.blobs.url)}" target="_blank" rel="noopener">${esc(L.blobs.file)}</a>`
-        + `<span class="dl-size">GeoJSON · ${fmt(L.blobs.n)} very large outlines · `
-        + `${fmtBytes(L.blobs.size_bytes)}</span>` : "")
-      + (release !== L.url ? `<a href="${esc(release)}" target="_blank" rel="noopener">release notes</a>` : "");
+      `<a href="${esc(C.url)}" target="_blank" rel="noopener">${esc(C.file)}</a>`
+      + `<span class="dl-size">GeoJSON · ${fmt(C.n)} judged solar · ${fmtBytes(C.size_bytes)}</span>`;
     document.getElementById("leadsItem").hidden = false;
   }
 
@@ -4267,7 +4219,6 @@ out geom;</div>
       + `the area of the panels it found: this atlas prices outlines by measured precision and `
       + `recall per size rather than counting each one whole. `
       + `${fmt(P.n_model_leads)} have no OpenStreetMap solar within ${fmt(P.min_distance_m)} m`
-      + (T.leads && T.leads.url ? ` (the lead files above keep those that pass their screens)` : ``)
       + (P.n_model_reviewed ? `, and ${fmt(P.n_model_reviewed)} carry a person's verdict on `
         + `the imagery` : ``)
       + `. GeoParquet opens in QGIS 3.36 and later, DuckDB and GeoPandas; the release notes `
@@ -4851,12 +4802,13 @@ out geom;</div>
   }
 
   const hasDownloads = Array.isArray(T.downloads) && T.downloads.length > 0;
-  const hasLeads = !!(T.leads && T.leads.url);
+  // Only checked leads are offered (renderLeads); the unchecked files are counted, not linked.
+  const hasLeads = !!(T.leads && T.leads.confirmed && T.leads.confirmed.url);
   const hasPolygons = !!(T.polygons && T.polygons.url);
   const downloadsSection = document.getElementById("downloads");
   if (hasDownloads) renderDownloads();
   else document.getElementById("dlDetails").hidden = true;
-  if (hasLeads) renderLeads(T.leads);
+  if (hasLeads) renderLeads(T.leads.confirmed, T.leads);
   if (hasPolygons) renderPolygons(T.polygons);
   if (!hasDownloads && !hasLeads && !hasPolygons && downloadsSection)
     downloadsSection.style.display = "none";

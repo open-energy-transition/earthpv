@@ -178,7 +178,7 @@ nav:
   # the old /contribute/ URL, which the atlas popups and the README link to.
   # Ordered by the mapping flywheel's stages (contribute/index.md): check the leads (3),
   # map calibration areas (4), share local data (5), then running the pipeline yourself.
-  - Contribute Data:
+  - Contribute:
       - contribute/index.md
       - Judge large installations: contribute/review.md
       - Map the leads: contribute/leads.md

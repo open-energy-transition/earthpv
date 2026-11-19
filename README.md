@@ -93,7 +93,7 @@ also map calibration areas completely, so the small-installation estimate can be
 checked, and track down the registers and statistics a country already keeps; each
 country's model is then retrained on its own labels. An LLM assistant helps at every
 step and makes none of the calls: it never edits OpenStreetMap or signs off a number. See
-[Contribute data](https://open-energy-transition.github.io/earthpv/contribute/).
+[Contribute](https://open-energy-transition.github.io/earthpv/contribute/).
 
 <p align="center">
   <img src="docs/assets/figures/osm_ai_flywheel.svg" width="720"

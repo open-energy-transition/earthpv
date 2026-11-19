@@ -162,7 +162,8 @@ def stamp(path: Path, score: str, aoi: str = "atlas",
     # Top strapline out, and no logo mark in its place: the atlases carry none since
     # 2026-11-13 (owner); OLD_LOGO above takes out one an earlier run put in.
     html = EYEBROW.sub("\n", html, count=1)
-    # Gold and Silver also need a third of the leads mapped and the model retrained on them
+    # Gold and Silver also need a third of the large leads (1 ha and up) and of the blobs
+    # checked, the real ones mapped, and the model retrained on them
     # once (atlas.lead_rule_gaps): the badge shows Bronze until they are, keeping the earned
     # tier as `data-earned`.
     shown = shown_validation_score(aoi, score)

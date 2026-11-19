@@ -63,8 +63,9 @@ EVIDENCE_TEMPLATE = Path(__file__).parent / "templates" / "pv_evidence_atlas.htm
 # country can have a perfectly good segmentation run and simply no local ground truth to
 # check it against.
 # Gold and Silver also need the mapping leads mapped in OpenStreetMap to localize the model
-# (owner, 2026-11-01): a third of a lead file's leads and a third of its blobs with a human
-# verdict, and the segmentation model retrained on that mapping at least once
+# (owner, 2026-11-01): a third of a lead file's leads of 1 ha and up and a third of its blobs
+# with a human verdict (owner, 2026-11-19: the two review pages' populations), and the
+# segmentation model retrained on that mapping at least once
 # (`leads_retrained`, `LEAD_SHARE_MIN`), applied by `resolve_validation_badge`. It replaced
 # "every lead in the current file checked" (2026-10-31 to 2026-11-01; `leads_checked` is now
 # a record the Downloads card states).
@@ -289,19 +290,27 @@ def leads_checked(aoi: str, path: Path = LEADS_MANIFEST) -> dict:
 # pull) and 87% in Yemen (2026-10-28 file, 246 of 2,259 mapped by 2026-10-31), and 46% of
 # the leads holding a registered unit in Germany; below it 4% of Pakistan's and 2% of
 # Yemen's leads were real. scripts/lead_share.py, results/lead_share/.
+# Since 2026-11-19 (owner) the share counts only the leads of `LEAD_RULE_MIN_M2` and up, and
+# the blobs: the populations of the large installation and solar farm review pages
+# (scripts/oversize_review.py). Smaller leads reach no review page and, unchecked, are no
+# longer offered to mappers, so nobody could give them a verdict.
 LEAD_SHARE_MIN = 1 / 3
+# The smallest lead the share counts: scripts/oversize_review.py's LARGE_MIN_M2 (1 ha).
+LEAD_RULE_MIN_M2 = 10_000.0
 
 
 def leads_retrained(aoi: str) -> dict:
     """Whether the country's leads have been mapped in OpenStreetMap to localize the model,
     the lead requirement Silver and Gold share (owner, 2026-11-01).
 
-    One turn of the mapping flywheel: at least `LEAD_SHARE_MIN` of a lead file's leads, and
-    of its blobs, have a human verdict (the real installations mapped in OpenStreetMap, the
-    rest judged not solar), and the localized model was trained again on the OSM solar that
-    holds that mapping. A declaration in `configs/atlas/<aoi>.yaml`
-    (`validation.retrained_on_leads`) naming the lead file, the shares and the new model. It
-    does not lapse with a rebuilt lead file, since "at least once" stays true.
+    One turn of the mapping flywheel: at least `LEAD_SHARE_MIN` of a lead file's leads of
+    `LEAD_RULE_MIN_M2` and up, and of its blobs, have a human verdict (the real installations
+    mapped in OpenStreetMap, the rest judged not solar), and the localized model was trained
+    again on the OSM solar that holds that mapping. A declaration in
+    `configs/atlas/<aoi>.yaml` (`validation.retrained_on_leads`) naming the lead file, the
+    shares and the new model. It does not lapse with a rebuilt lead file, since "at least
+    once" stays true; a declaration made before 2026-11-19 counted leads of every size, and
+    stands.
     `blobs_share` defaults to `share`: a declaration made before the blob file existed
     counted the blobs among the leads. Returns `mapped` (the shares are met), `retrained`
     (that and a model named) plus the declaration's fields."""
@@ -397,15 +406,25 @@ def lead_rule_sub(aoi: str, earned: str) -> str:
 
 
 def leads_for_page(aoi: str, path: Path = LEADS_MANIFEST) -> dict | None:
-    """`totals.leads`: the lead and blob files (`leads_release`) plus whether every lead in
-    them has been checked (`leads_checked`), which the Downloads card states."""
+    """`totals.leads`: what the page says about the country's mapping leads.
+
+    Only the confirmed file, outlines a person judged solar on the review pages, is offered
+    to mappers (owner, 2026-11-19): the page links it and nothing else. The lead and blob
+    files (`leads_release`) are unchecked model outlines, so the page keeps only their counts
+    and date, for the quality checklist, and never their links. Plus whether every lead has
+    been checked (`leads_checked`)."""
     release = leads_release(aoi, path)
     if not release:
         return None
+    page = {k: release[k] for k in ("n", "osm_as_of", "min_distance_m", "made",
+                                    "confirmed", "judged_not_pv") if k in release}
+    if release.get("blobs"):
+        page["blobs"] = {k: release["blobs"][k] for k in ("n", "min_area_m2")
+                         if k in release["blobs"]}
     c = leads_checked(aoi, path)
-    release["checked"] = ({k: c[k] for k in ("by", "date", "note") if c[k]} | {"all": True}
-                          if c["checked"] else {"all": False})
-    return release
+    page["checked"] = ({k: c[k] for k in ("by", "date", "note") if c[k]} | {"all": True}
+                       if c["checked"] else {"all": False})
+    return page
 
 
 def polygons_release(aoi: str, path: Path = POLYGONS_MANIFEST) -> dict | None:

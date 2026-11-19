@@ -90,8 +90,9 @@ pixi run earthpv density --aoi YOUR_AOI --districts
 # then the atlas, with the same command that built it
 ```
 
-Your verdicts also sort the country's lead files (below) the next time they are made: a step
-of every run after the atlas (`scripts/release_leads.py`). Maintainers publish them with
+Your verdicts also decide which leads mappers get (below) the next time the lead files are
+made: a step of every run after the atlas (`scripts/release_leads.py`). The atlas offers
+mappers only the outlines a person has judged solar. Maintainers publish them with
 `pixi run python scripts/release_leads.py --aoi YOUR_AOI --upload` and then
 `scripts/patch_atlas_leads.py` on the atlas, so the published files and the page's download
 card follow the review.
@@ -102,14 +103,13 @@ country. An outline you judged leaves the page the next time it is packaged.
 ## What happens to an outline you judged
 
 - **Judged solar: a confirmed lead.** Until someone maps it, it is in the country's
-  `<country>_pv_confirmed_leads.geojson`, largest first, the file the
-  [lead guide](leads.md) tells mappers to open first. A person's verdict outranks the lead
+  `<country>_pv_confirmed_leads.geojson`, largest first, the only lead file the atlas
+  offers mappers ([lead guide](leads.md)). A person's verdict outranks the lead
   screens, so it stays there whatever its slope or model probability. It counts in the atlas
   from your verdict once the country is recomputed; mapping it gives it its real shape.
-- **Judged not solar.** It leaves the lead and blob files for good, so no mapper checks it
-  again, and counts nothing.
-- **Unsure, or skipped.** It stays in the lead or blob file (marked `review_verdict =
-  unsure` if you pressed 3) and comes back on the next page.
+- **Judged not solar.** It is dropped from the lead files for good and counts nothing.
+- **Unsure, or skipped.** It stays unconfirmed (marked `review_verdict = unsure` if you
+  pressed 3), so no mapper is sent to it, and comes back on the next page.
 - **Mapped later.** Once someone maps it in OpenStreetMap, the map counts it and your verdict
   rests. Mapping a confirmed outline is still worth it: the map gives its real shape, and the
   country's next model learns from it ([map the leads](leads.md)).

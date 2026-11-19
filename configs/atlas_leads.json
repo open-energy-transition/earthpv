@@ -2,7 +2,6 @@
   "aois": {
     "belgium": {
       "file": "belgium_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/belgium_pv_new_leads.geojson",
       "n": 722,
       "size_bytes": 622940,
       "osm_as_of": "2026-11-07",
@@ -23,7 +22,6 @@
       },
       "blobs": {
         "file": "belgium_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/belgium_pv_blob_leads.geojson",
         "n": 4,
         "size_bytes": 18106,
         "min_area_m2": 100000.0
@@ -45,7 +43,6 @@
     },
     "california": {
       "file": "california_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/california_pv_new_leads.geojson",
       "n": 2220,
       "size_bytes": 2051985,
       "osm_as_of": "2026-11-11",
@@ -66,7 +63,6 @@
       },
       "blobs": {
         "file": "california_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/california_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 207,
         "min_area_m2": 100000.0
@@ -88,7 +84,6 @@
     },
     "denmark": {
       "file": "denmark_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/denmark_pv_new_leads.geojson",
       "n": 255,
       "size_bytes": 255198,
       "osm_as_of": "2026-11-08",
@@ -109,7 +104,6 @@
       },
       "blobs": {
         "file": "denmark_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/denmark_pv_blob_leads.geojson",
         "n": 3,
         "size_bytes": 7941,
         "min_area_m2": 100000.0
@@ -117,7 +111,6 @@
     },
     "egypt": {
       "file": "egypt_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/egypt_pv_new_leads.geojson",
       "n": 545,
       "size_bytes": 542520,
       "osm_as_of": "2026-10-05",
@@ -143,7 +136,6 @@
       },
       "blobs": {
         "file": "egypt_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/egypt_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 202,
         "min_area_m2": 100000.0
@@ -182,7 +174,6 @@
     },
     "germany": {
       "file": "germany_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/germany_pv_new_leads.geojson",
       "n": 14535,
       "size_bytes": 19842055,
       "osm_as_of": "2026-09-04",
@@ -203,7 +194,6 @@
       },
       "blobs": {
         "file": "germany_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/germany_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 204,
         "min_area_m2": 100000.0
@@ -225,7 +215,6 @@
     },
     "india": {
       "file": "india_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/india_pv_new_leads.geojson",
       "n": 62169,
       "size_bytes": 62370207,
       "osm_as_of": "2026-09-22",
@@ -246,7 +235,6 @@
       },
       "blobs": {
         "file": "india_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/india_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 202,
         "min_area_m2": 100000.0
@@ -268,9 +256,8 @@
     },
     "italy": {
       "file": "italy_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/italy_pv_new_leads.geojson",
-      "n": 11210,
-      "size_bytes": 14102849,
+      "n": 6794,
+      "size_bytes": 6307732,
       "osm_as_of": "2026-11-07",
       "min_distance_m": 100,
       "made": "2026-11-19",
@@ -289,7 +276,6 @@
       },
       "blobs": {
         "file": "italy_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/italy_pv_blob_leads.geojson",
         "n": 1,
         "size_bytes": 6337,
         "min_area_m2": 100000.0
@@ -297,21 +283,20 @@
       "confirmed": {
         "file": "italy_pv_confirmed_leads.geojson",
         "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/italy_pv_confirmed_leads.geojson",
-        "n": 297,
-        "size_bytes": 1334091,
+        "n": 3275,
+        "size_bytes": 6670851,
         "n_solar_farm": 297,
-        "n_large_installation": 0,
-        "area_m2": 58812841.1,
+        "n_large_installation": 2978,
+        "area_m2": 145027673.9,
         "mapped_since": 0
       },
       "judged_not_pv": {
-        "leads": 0,
+        "leads": 1438,
         "blobs": 79
       }
     },
     "luxembourg": {
       "file": "luxembourg_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/luxembourg_pv_new_leads.geojson",
       "n": 284,
       "size_bytes": 279037,
       "osm_as_of": "2026-08-14",
@@ -332,7 +317,6 @@
       },
       "blobs": {
         "file": "luxembourg_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/luxembourg_pv_blob_leads.geojson",
         "n": 1,
         "size_bytes": 3981,
         "min_area_m2": 100000.0
@@ -340,7 +324,6 @@
     },
     "morocco": {
       "file": "morocco_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/morocco_pv_new_leads.geojson",
       "n": 305,
       "size_bytes": 408374,
       "osm_as_of": "2026-09-16",
@@ -361,7 +344,6 @@
       },
       "blobs": {
         "file": "morocco_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/morocco_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 204,
         "min_area_m2": 100000.0
@@ -383,7 +365,6 @@
     },
     "namibia": {
       "file": "namibia_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/namibia_pv_new_leads.geojson",
       "n": 156,
       "size_bytes": 143266,
       "osm_as_of": "2026-10-14",
@@ -409,7 +390,6 @@
       },
       "blobs": {
         "file": "namibia_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/namibia_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 204,
         "min_area_m2": 100000.0
@@ -431,7 +411,6 @@
     },
     "netherlands": {
       "file": "netherlands_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/netherlands_pv_new_leads.geojson",
       "n": 3492,
       "size_bytes": 3044686,
       "osm_as_of": "2026-11-02",
@@ -452,7 +431,6 @@
       },
       "blobs": {
         "file": "netherlands_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/netherlands_pv_blob_leads.geojson",
         "n": 7,
         "size_bytes": 25237,
         "min_area_m2": 100000.0
@@ -474,7 +452,6 @@
     },
     "nigeria": {
       "file": "nigeria_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/nigeria_pv_new_leads.geojson",
       "n": 1376,
       "size_bytes": 1093659,
       "osm_as_of": "2026-09-23",
@@ -495,7 +472,6 @@
       },
       "blobs": {
         "file": "nigeria_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/nigeria_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 204,
         "min_area_m2": 100000.0
@@ -517,7 +493,6 @@
     },
     "pakistan": {
       "file": "pakistan_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/pakistan_pv_new_leads.geojson",
       "n": 5634,
       "size_bytes": 5307369,
       "osm_as_of": "2026-10-25",
@@ -543,7 +518,6 @@
       },
       "blobs": {
         "file": "pakistan_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/pakistan_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 205,
         "min_area_m2": 100000.0
@@ -565,7 +539,6 @@
     },
     "poland": {
       "file": "poland_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/poland_pv_new_leads.geojson",
       "n": 4400,
       "size_bytes": 5830362,
       "osm_as_of": "2026-10-18",
@@ -586,7 +559,6 @@
       },
       "blobs": {
         "file": "poland_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/poland_pv_blob_leads.geojson",
         "n": 5,
         "size_bytes": 20697,
         "min_area_m2": 100000.0
@@ -608,7 +580,6 @@
     },
     "portugal": {
       "file": "portugal_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/portugal_pv_new_leads.geojson",
       "n": 667,
       "size_bytes": 609765,
       "osm_as_of": "2026-11-07",
@@ -629,7 +600,6 @@
       },
       "blobs": {
         "file": "portugal_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/portugal_pv_blob_leads.geojson",
         "n": 110,
         "size_bytes": 559579,
         "min_area_m2": 100000.0
@@ -651,7 +621,6 @@
     },
     "south_africa": {
       "file": "south_africa_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/south_africa_pv_new_leads.geojson",
       "n": 4602,
       "size_bytes": 4139666,
       "osm_as_of": "2026-10-10",
@@ -672,7 +641,6 @@
       },
       "blobs": {
         "file": "south_africa_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/south_africa_pv_blob_leads.geojson",
         "n": 1,
         "size_bytes": 3008,
         "min_area_m2": 100000.0
@@ -694,7 +662,6 @@
     },
     "spain": {
       "file": "spain_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/spain_pv_new_leads.geojson",
       "n": 11929,
       "size_bytes": 16614534,
       "osm_as_of": "2026-11-02",
@@ -715,7 +682,6 @@
       },
       "blobs": {
         "file": "spain_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/spain_pv_blob_leads.geojson",
         "n": 998,
         "size_bytes": 5610868,
         "min_area_m2": 100000.0
@@ -723,7 +689,6 @@
     },
     "texas": {
       "file": "texas_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/texas_pv_new_leads.geojson",
       "n": 2124,
       "size_bytes": 1913190,
       "osm_as_of": "2026-11-10",
@@ -744,7 +709,6 @@
       },
       "blobs": {
         "file": "texas_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/texas_pv_blob_leads.geojson",
         "n": 4,
         "size_bytes": 17338,
         "min_area_m2": 100000.0
@@ -766,7 +730,6 @@
     },
     "turkiye": {
       "file": "turkiye_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/turkiye_pv_new_leads.geojson",
       "n": 15003,
       "size_bytes": 20510880,
       "osm_as_of": "2026-10-27",
@@ -787,7 +750,6 @@
       },
       "blobs": {
         "file": "turkiye_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/turkiye_pv_blob_leads.geojson",
         "n": 1,
         "size_bytes": 3701,
         "min_area_m2": 100000.0
@@ -809,7 +771,6 @@
     },
     "vietnam": {
       "file": "vietnam_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/vietnam_pv_new_leads.geojson",
       "n": 4328,
       "size_bytes": 5946412,
       "osm_as_of": "2026-09-18",
@@ -830,7 +791,6 @@
       },
       "blobs": {
         "file": "vietnam_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/vietnam_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 204,
         "min_area_m2": 100000.0
@@ -852,7 +812,6 @@
     },
     "yemen": {
       "file": "yemen_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/yemen_pv_new_leads.geojson",
       "n": 931,
       "size_bytes": 796044,
       "osm_as_of": "2026-10-31",
@@ -873,7 +832,6 @@
       },
       "blobs": {
         "file": "yemen_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/yemen_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 202,
         "min_area_m2": 100000.0
@@ -895,7 +853,6 @@
     },
     "zambia": {
       "file": "zambia_pv_new_leads.geojson",
-      "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/zambia_pv_new_leads.geojson",
       "n": 199,
       "size_bytes": 355158,
       "osm_as_of": "2026-08-06",
@@ -916,7 +873,6 @@
       },
       "blobs": {
         "file": "zambia_pv_blob_leads.geojson",
-        "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-new-leads-2026-11-02/zambia_pv_blob_leads.geojson",
         "n": 0,
         "size_bytes": 203,
         "min_area_m2": 100000.0

@@ -77,8 +77,9 @@ installations first:
 | Vegetation veto | a crop cycle observed over the year, so not a panel | drops, into a separate clean file |
 
 `earthpv export` writes GeoParquet, GeoJSON and a MapRoulette challenge ordered by
-`rank_score`, and each country's atlas links its file of [mapping leads](results/leads.md):
-the candidates more than 100 m from any solar installation already in OpenStreetMap. The
+`rank_score`. The candidates more than 100 m from any solar installation already in
+OpenStreetMap are the [mapping leads](results/leads.md); each country's atlas offers mappers
+those a person has judged solar. The
 atlas itself publishes the best estimate with its 90% range and every gap as a gap: cells
 nobody imaged are hatched, an instrument that has not been calibrated reads "not measured"
 rather than zero, and the candidate calibration areas still to map are drawn on the map, a
@@ -90,12 +91,12 @@ The largest outlines are judged first, on two review pages every country's run d
 picture per outline from the imagery the model saw, for the solar farms above 10 ha and the
 large installations from 1 ha. A verdict counts in the atlas at the next rebuild, and it
 sorts the lead files: an outline judged solar that OpenStreetMap lacks moves to the
-country's confirmed-lead file, the first a mapper opens, and one judged not solar leaves the
-lead files ([Judge large installations](contribute/review.md)).
+country's confirmed-lead file, the only one the atlas offers mappers, and one judged not
+solar is dropped ([Judge large installations](contribute/review.md)).
 
-Mappers then open the leads in the OpenStreetMap editor, confirmed ones first, compare each
-against the high-resolution layers, and either map the installation properly or discard the
-lead. Local mappers add what no imagery shows: which industrial estate this is, whether the
+Mappers then open the confirmed leads in the OpenStreetMap editor, find each on the
+high-resolution layers and map the installation properly. Local mappers add what no imagery
+shows: which industrial estate this is, whether the
 roof belongs to a factory or a school, whether the array is net-metered. Leads carry no
 completeness rule ([Map the leads](contribute/leads.md)).
 

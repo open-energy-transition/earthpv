@@ -122,7 +122,9 @@ An agent prepares each of these and **never judges them**; verdicts come from na
   any export, then `density --districts` (no `--force`) and the atlas. Mechanics and pricing are
   under "Density stage". **Verdicts of both review pages become mapping leads** (2026-11-19):
   after the atlas, re-run the `leads` release (below), which moves `pv` outlines to the
-  confirmed-lead file and drops `not_pv`/`bright_roof` ones from the lead files.
+  confirmed-lead file and drops `not_pv`/`bright_roof` ones from the lead files. **Only the
+  confirmed file reaches mappers (owner, 2026-11-19)**: the atlas links no unchecked lead or
+  blob file.
   **`pixi run flywheel-status`** (`scripts/flywheel_status.py`) reads the verdicts into a call
   per country and placement: precision of new outlines >= 1 ha with a 90% Wilson interval
   (30+ verdicts; fine if it starts >= 0.8, false alarms if it ends < 0.5; blobs never decide),
@@ -573,8 +575,8 @@ Page rules worth knowing before touching the template:
   beside it, KPIs 2 x 2 beside the province chart, lower sections paired). No EarthPV logo above
   the title (owner). A `.dl-item` needs `[hidden] { display: none }` beside its `display: flex`,
   or empty download cards show.
-- **Quality checklist** (`earthpv.quality`, `__QUALITY_HTML__`, section `#quality` under the
-  map; owner, 2026-11-19): 16 checks in five stages (detection, map ground truth, checked by
+- **Quality checklist** (`earthpv.quality`, `__QUALITY_HTML__`, section `#quality` below the
+  panel orientation, above the background notes; owner, 2026-11-19): 16 checks in five stages (detection, map ground truth, checked by
   people, below 400 m², independent), each done / with flags / under way / not yet / n/a and
   tagged with the level that needs it. Every status is read from a record (page totals,
   `validation` declarations, calibration table, review CSVs, `results/<aoi>_checkpoint_decision.json`,
@@ -616,13 +618,16 @@ Page rules worth knowing before touching the template:
 - **Mapping leads**: the model's candidates more than 100 m from any OSM solar feature.
   `scripts/release_leads.py --aoi <aoi> --upload` (after `atlas`) rebuilds a country's files
   with export's ranking and `candidate_id`s from the run behind the page, clipped to the page's
-  regions (refuses a run whose regions differ), and uploads only that country's files plus
-  README.md and SHA256SUMS to the current tag; the default `--out`,
-  `/home/tobi/earthpv_data/pv_new_leads_2026-11-02`, must hold every country's files.
+  regions (refuses a run whose regions differ), and uploads only that country's CONFIRMED file
+  plus README.md and SHA256SUMS to the current tag, removing any lead or blob file still there
+  (owner, 2026-11-19: the release holds confirmed files only; lead and blob files stay in
+  `--out`, the manifest has no link for them; `--refresh` rewrites README/sums/manifest without
+  rebuilding); the default `--out`, `/home/tobi/earthpv_data/pv_new_leads_2026-11-02`, must
+  hold every country's files.
   `scripts/patch_atlas_leads.py` links them on `results/<aoi>_pv_evidence_atlas.html`; commit
   `configs/atlas_leads.json` (manifest, read by `atlas.leads_release`) with the page. `SOURCES`
-  needs an entry only for a non-default run or OSM pull; France links its audited
-  `france-osm-leads-2026-10-22` release instead. Germany's leads are held to the candidates of
+  needs an entry only for a non-default run or OSM pull; France's entry names its audited
+  `france-osm-leads-2026-10-22` release instead (no confirmed file, so no leads card). Germany's leads are held to the candidates of
   its checked 2026-11-01 files (`keep_ids_from`, copies in `data/leads_reference/`), since the
   pre-cap OSM file its reference also named is gone. **Blobs** (leads above 100,000 m²) go to their
   own `<aoi>_pv_blob_leads.geojson`, largest first (`release_leads.split_blobs`). **Review
@@ -631,7 +636,11 @@ Page rules worth knowing before touching the template:
   `pv` that OSM still lacks goes to `<aoi>_pv_confirmed_leads.geojson` (largest first, written
   only when non-empty, exempt from every lead screen), one judged not PV is in no file, unsure
   ones stay marked `review_verdict`. Manifest keys `confirmed` (with `mapped_since`) and
-  `judged_not_pv`; the atlas card lists the confirmed file first.
+  `judged_not_pv`. **The atlas offers mappers only the confirmed file (owner, 2026-11-19)**:
+  `atlas.leads_for_page` keeps the lead and blob files' counts in `totals.leads` (the quality
+  checklist reads them) but never their links, and a country with no confirmed file shows no
+  leads card. The Downloads heading reads "Download the raw data and new OpenStreetMap hints
+  behind this atlas": the polygon file is the raw data, the confirmed leads the hints.
 - **Polygons**: `scripts/release_polygons.py --aoi <aoi> --upload` (after `leads`) writes
   `<aoi>_pv_polygons.parquet` (model outlines inside the page's regions, any size, with
   `osm_within_100m` and any `review_verdict`, plus the atlas's own `--osm-solar` rows and CSP
@@ -708,7 +717,7 @@ the first candidate on every atlas whose own page reports roofclf or groundclf a
 (farm boxes first where only farm ground PV is unmeasured); `start_here: <stem>` in the country
 config picks the star, `start_here: none` stars nothing.
 
-**The community guide is the "Contribute Data" nav section** (`docs/contribute/`; `index.md`
+**The community guide is the "Contribute" nav section** (`docs/contribute/`; `index.md`
 keeps the `/contribute/` URL that popups, badges and README link to). `index.md` is the
 flywheel overview: the stage-by-stage figure (`build_docs_figures.write_flywheel_stages_diagram`,
 `mapping_flywheel_stages.svg`, same six station numbers as `osm_ai_flywheel.svg`, station 3
@@ -791,8 +800,10 @@ open with a closable banner (`WARNING`, `TIER_NOTE` or `LEADS_WARNING`, plus `CT
   `derive_validation_score` and is read by all three atlas builders and
   `apply_validation_badges.py`), with a country note in `build_atlas_pages.TIER_NOTE`.
 - **Gold and Silver also need the leads mapped in OSM to localize the model (owner)**: a
-  verdict on at least `atlas.LEAD_SHARE_MIN` (a third) of a lead file's leads and of its blobs,
-  and the localized model retrained on the OSM pull holding that mapping, declared as
+  verdict on at least `atlas.LEAD_SHARE_MIN` (a third) of a lead file's leads of 1 ha and up
+  (`atlas.LEAD_RULE_MIN_M2`) and of its blobs, i.e. of the two review pages' outlines (owner,
+  2026-11-19; smaller leads reach no page and no mapper; earlier declarations counted every
+  lead and stand), and the localized model retrained on the OSM pull holding that mapping, declared as
   `validation.retrained_on_leads: {leads, share, blobs_share, model, by, date, note}`
   (`atlas.leads_retrained`). Declared without `model`, the page stays Bronze with "Leads
   checked; the model is not yet retrained on them" (`atlas.LEAD_RULE_SUB`). Without it

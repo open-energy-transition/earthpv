@@ -1,6 +1,12 @@
 #!/usr/bin/env python
-"""Build each country's mapping-lead file for a GitHub release, and the manifest the
-evidence atlases link it from.
+"""Build each country's mapping-lead files, publish its confirmed leads in a GitHub release,
+and write the manifest the evidence atlases read.
+
+**Only the confirmed file is published (owner, 2026-11-19).** The lead and blob files below
+are built in `--out` for the review pages and the lead-share analyses, but never uploaded:
+they are unchecked model outlines. `--upload` sends each country's confirmed file (outlines
+a person judged solar) with README.md and SHA256SUMS, and removes any lead or blob file
+still on the release; the manifest carries release links for the confirmed files only.
 
 A lead is a segmentation candidate of the run behind a country's published atlas
 (`data/predictions/<aoi>/candidates.parquet`, the file `density` read) that lies more than
@@ -36,8 +42,9 @@ outlines, recall-first like every candidate file, and the README asset says so.
 alarms. Blobs are written to `<aoi>_pv_blob_leads.geojson`, largest first, and never count
 towards capacity until they are mapped in OpenStreetMap or a person has judged them solar on
 the imagery the model saw (`scripts/oversize_review.py`, `density.load_oversize_admission`).
-`<aoi>_pv_new_leads.geojson` keeps the rest, most promising first. Silver needs a third of
-each file checked (`atlas.LEAD_SHARE_MIN`). `--resplit` splits files built before this
+`<aoi>_pv_new_leads.geojson` keeps the rest, most promising first. Silver needs a verdict on
+a third of the leads of `LARGE_MIN_M2` (1 ha) and up and of the blobs, the populations of the
+two review pages (`atlas.LEAD_SHARE_MIN`, owner 2026-11-19). `--resplit` splits files built before this
 (every lead in one file) in place, keeping their date, so a lead check made on them still
 names them.
 
@@ -47,7 +54,8 @@ outlines on the imagery the model saw (scripts/oversize_review.py). Their verdic
 the review blocks of the country's calibration table (`review_table`, as `density` and
 scripts/release_polygons.py read them), sort the leads three ways. An outline judged solar
 that OpenStreetMap still lacks goes to `<aoi>_pv_confirmed_leads.geojson`, largest first:
-every one is solar, so it is the first file a mapper should open. A verdict outranks the
+every one is solar, and it is the only lead file the atlas offers mappers (owner,
+2026-11-19; `atlas.leads_for_page` keeps the other files' counts, never their links). A verdict outranks the
 lead screens, so a confirmed lead is kept whatever its slope, confidence or water history.
 An outline judged not solar (or bright roof) is left out of every file, since nobody should
 check it again; its verdict stays in review.csv and in the polygon release. Unsure and
@@ -61,8 +69,10 @@ scripts/patch_atlas_leads.py on the page.
 runs `--aoi <aoi> --upload` after `earthpv atlas`, then scripts/patch_atlas_leads.py on the page,
 so a new country's page links its leads from the start. A country needs a `SOURCES` entry only
 when its atlas came from another run directory or OSM pull than the defaults. With `--aoi`,
-`--upload` sends only those countries' files plus README.md and SHA256SUMS (which cover every
-country's files, so `--out` must hold them all: the default is the release's own directory).
+`--upload` sends only those countries' confirmed files plus README.md and SHA256SUMS (which
+cover every country's confirmed file, so `--out` must hold them all: the default is the
+release's own directory). `--refresh` rebuilds nothing and rewrites README.md, SHA256SUMS and
+the manifest from the files in `--out`; with `--upload` it re-sends every confirmed file.
 
 France is not built here: its leads were audited against IGN aerial imagery and released
 on their own (`france-osm-leads-2026-10-22`, scripts/build_france_osm_leads.py, which already
@@ -72,11 +82,12 @@ kept its outlines above the cap apart); its manifest entry links those files.
     pixi run python scripts/release_leads.py --out ... --upload     # gh release create/upload
     pixi run python scripts/release_leads.py --aoi italy --upload   # one country, default --out
     pixi run python scripts/release_leads.py --out <dir of a published release> --resplit
+    pixi run python scripts/release_leads.py --refresh --upload     # README, sums, no rebuild
 
-Writes `<out>/<aoi>_pv_new_leads.geojson`, `<out>/<aoi>_pv_blob_leads.geojson`,
-`<out>/<aoi>_pv_confirmed_leads.geojson` (only where a person has judged a lead solar),
+Writes `<out>/<aoi>_pv_new_leads.geojson` and `<out>/<aoi>_pv_blob_leads.geojson` (local
+only), `<out>/<aoi>_pv_confirmed_leads.geojson` (only where a person has judged a lead solar),
 `<out>/README.md`, `<out>/SHA256SUMS` and `configs/atlas_leads.json`, which
-`atlas.leads_release` reads into `totals.leads` and scripts/patch_atlas_leads.py adds to
+`atlas.leads_for_page` reads into `totals.leads` and scripts/patch_atlas_leads.py adds to
 published pages.
 """
 
@@ -122,7 +133,9 @@ MANIFEST = ROOT / "configs" / "atlas_leads.json"
 # their URLs there. 2026-11-04: Turkey's first files added to the same tag; the other
 # countries' files untouched, README.md and SHA256SUMS replaced. Spain's likewise 2026-11-08.
 # 2026-11-13: Belgium, Denmark, Italy, Luxembourg, the Netherlands and Portugal, the same way,
-# and from then on every new atlas (run_country_compute.sh's `leads` step).
+# and from then on every new atlas (run_country_compute.sh's `leads` step). 2026-11-19: every
+# lead and blob file removed from this tag, which holds the confirmed files only (owner); the
+# earlier tags still hold theirs.
 TAG = "pv-new-leads-2026-11-02"
 # Every country's files as uploaded under TAG: README.md and SHA256SUMS cover them all.
 RELEASE_DIR = Path(os.environ.get(
@@ -285,9 +298,7 @@ def split_blobs(leads: gpd.GeoDataFrame, aoi: str, out: Path) -> dict:
     _write(leads[~blob], out / f"{aoi}_pv_new_leads.geojson")
     path = out / f"{aoi}_pv_blob_leads.geojson"
     _write(blobs, path)
-    return {"file": path.name,
-            "url": f"https://github.com/{REPO}/releases/download/{TAG}/{path.name}",
-            "n": int(blob.sum()), "size_bytes": path.stat().st_size,
+    return {"file": path.name, "n": int(blob.sum()), "size_bytes": path.stat().st_size,
             "min_area_m2": MAX_CANDIDATE_M2}
 
 
@@ -394,7 +405,6 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
           f"{export_n if export_n is not None else '-'}) -> {path.stat().st_size / 1e6:.1f} MB")
     return {
         "file": path.name,
-        "url": f"https://github.com/{REPO}/releases/download/{TAG}/{path.name}",
         "n": len(leads) - blobs["n"],
         "size_bytes": path.stat().st_size,
         "osm_as_of": _osm_as_of(frames, paths),
@@ -414,106 +424,78 @@ def build(aoi: str, src: dict, out: Path, min_distance_m: float) -> dict:
     }
 
 
-README = """# EarthPV mapping leads, {date}
+README = """# EarthPV confirmed mapping leads, {date}
 
-Up to three GeoJSON files per country: solar arrays the EarthPV segmentation model outlined in
-Sentinel-2 imagery that lie more than {dist} m from every solar installation in OpenStreetMap
-when the file was made. `<country>_pv_confirmed_leads.geojson`, where a country has one, holds
-the outlines a person has already judged solar on the review pages, largest first: map these
-first (see "Judged solar" below). `<country>_pv_new_leads.geojson` holds the other leads up to
-{blob_m2} m2, most promising first; `<country>_pv_blob_leads.geojson` holds the other very
-large outlines above that, largest first (see "Very large outlines" below). Each country's
-files come from the same model run as its published evidence atlas
-(https://open-energy-transition.github.io/earthpv/atlas/), which links them.
+One GeoJSON file per country, `<country>_pv_confirmed_leads.geojson`, largest first: solar
+installations the EarthPV segmentation model outlined in Sentinel-2 imagery more than {dist} m
+from every solar installation in OpenStreetMap, which a person has since judged solar. Each one
+is a real installation waiting to be traced. Each country's file comes from the same model run
+as its published evidence atlas (https://open-energy-transition.github.io/earthpv/atlas/),
+which links it.
 
-**Judged solar: the confirmed leads.** Every country's run draws two review pages, one picture
-per outline from the imagery the model saw (Sentinel-2 as composited, its false colour, and
-Esri World Imagery with its capture date): the solar farm review for outlines above {blob_m2}
-m2 and the large installation review for leads from {large_m2} m2 up to that. A named person
-gives each one a verdict. Outlines judged solar that OpenStreetMap still lacks are in the
-confirmed file, whatever the screens below would say: each is a real installation waiting to
-be traced. `review_page` names the page it was judged on. Outlines judged not solar are left
-out of all three files, so nobody checks them twice; an outline judged unsure stays in the
-leads or blob file with `review_verdict = unsure`. The guide to judging is
-https://open-energy-transition.github.io/earthpv/contribute/review/.
+**Only checked leads are published (2026-11-19).** The model's other outlines are drawn from
+10 m pixels and unchecked, and many are bright roofs, greenhouses, dark fields or rock, so they
+are not handed to mappers. They go to two review pages first, one picture per outline from the
+imagery the model saw (Sentinel-2 as composited, its false colour, and Esri World Imagery with
+its capture date): the solar farm review for outlines above {blob_m2} m2 and the large
+installation review for leads from {large_m2} m2 up to that. A named person gives each one a
+verdict, and `review_page` names the page it was given on. A verdict outranks the lead screens
+(steep ground, open ground at low confidence, pans and ponds), so a confirmed lead is kept
+whatever its slope or model probability. The guide to judging is
+https://open-energy-transition.github.io/earthpv/contribute/review/. Every model outline,
+checked or not, is in the country's polygon file (release pv-polygons-2026-11-11), with any
+verdict beside it.
 
-**These are leads, not data.** Every feature is an unverified outline drawn from 10 m pixels,
-typically about twice the area of the panels it found. Check each one against recent
-high-resolution imagery before mapping anything; some will be bright roofs, greenhouses,
-dark fields or rock. Nothing here should be imported into OpenStreetMap automatically. The
-mapping guide is https://open-energy-transition.github.io/earthpv/contribute/.
-
-**Steep ground.** Shaded hillsides, cliff edges and the shadows below escarpments read like
-panels in Sentinel-2. A lead smaller than {steep_area} m2 on ground steeper than
-{steep_deg} degrees (Copernicus GLO-90 slope at a point inside the outline) is left out of
-these files. Of 89 such leads drawn across twelve countries and checked on imagery none was
-solar (86 were not, 3 could not be settled), and the rule would remove 2 of the 22,124
-outlines the model drew on solar that is mapped. A larger lead on steep ground
-is kept and marked `steep_review = true`: a solar farm can be built on a mountainside, so
-someone has to look at it. Above {steep_cap} degrees a lead of any size is left out: shadowed
-cliffs again, and none of the 13,344 outlines of 1,000 m2 or more that the model drew on
-mapped solar stands that steep. Every lead carries the slope it was judged on (`slope_deg`).
-
-**Open ground at low confidence.** A lead with no building near it whose peak model
-probability is below {lowconf_max} is left out at any size: dark fields, riverbeds, shaded
-slopes, forest, farm reservoirs. Germany's register, which locates every unit of 30 kW or
-more, finds one inside 0-5% of such outlines against 10-38% of the more confident ones,
-none of 18 drawn at random was solar on imagery, and leaving them out loses at most 1.5% of
-the mapped solar area the model finds. A `steep_review` lead stays whatever its probability.
-
-**Pans and ponds (some countries only).** In countries where it is switched on
-({water_aois}), a lead not on a rooftop with at least {water_pct}% of its outline ever
-under water since 1984 (JRC Global Surface Water) is left out: seasonal pans, salt pans,
-fish and wastewater ponds. Those leads carry `ever_wet_frac`. It stays off where solar
-stands on water or wet ground (floating plants, pond PV, salt-marsh parks).
-
-**Very large outlines (blobs).** An outline above {blob_m2} m2 (10 ha) is in the blob file.
-Sentinel-2's 10 m pixels merge everything bright and touching into one shape, so a blob is a
-solar park OpenStreetMap does not hold yet as often as a sheet of false alarms: pans,
-ploughed fields, shadowed slopes. India's reviewed blobs were mostly parks (81 of 90); of
-Pakistan's 121 blobs from July only 3 have been mapped since. The atlases never count a
-blob's capacity until it is mapped in OpenStreetMap or a person has judged it solar on the
-Sentinel-2 imagery the model saw. Map the panels or the park's outline, not the blob.
-
-**How much to check.** A Silver atlas needs about a third of its leads and a third of its
-blobs to have a verdict (the real installations mapped in OpenStreetMap, the rest judged not
-solar) and the model retrained on what was mapped. Work from the top of
-the leads file: in Pakistan the top third held more than two thirds of all the leads people
-mapped later, in Yemen almost nine in ten. Work through the blobs largest first.
-
-Features in the leads file are sorted most promising first. Columns:
+**Trace, never import.** A confirmed outline is drawn from 10 m pixels, typically about twice
+the area of the panels it found. Find each installation on recent high-resolution imagery and
+trace what you see there; nothing here should be imported into OpenStreetMap automatically.
+An outline above {blob_m2} m2 (`oversize`) was judged on Sentinel-2 and can take in the fields
+around a park: map the park's outline or its panel blocks, never the model's outline. The
+mapping guide is https://open-energy-transition.github.io/earthpv/contribute/leads/.
 
 | column | meaning |
 | --- | --- |
-| candidate_id | id in the country's candidate and MapRoulette exports |
-| rank_score | model confidence times a building prior; the sort key |
+| candidate_id | id in the country's candidate and polygon exports |
+| rank_score | model confidence times a building prior |
 | confidence | peak (highest) model probability inside the outline |
-| area_m2 | geodesic area of the outline |
+| area_m2 | geodesic area of the outline; the sort key |
 | placement | rooftop, ground_adjacent or no_building, from VIDA building footprints |
 | building_dist_m, building_overlap_frac, building_prior, building_id | the building join behind placement |
-| oversize | outline above {blob_m2} m2: true in the blob file only |
+| oversize | outline above {blob_m2} m2, judged on the solar farm review |
 | slope_deg | Copernicus GLO-90 terrain slope in degrees at the lead's point (empty off the DEM) |
-| steep_review | true for a lead of {steep_area} m2 or more on ground steeper than {steep_deg} degrees (and not above {steep_cap}): kept for a human, may be shadow on a slope or a mountain solar farm |
+| steep_review | true on ground steeper than {steep_deg} degrees: check the panels are not the slope's own shadow |
 | ever_wet_frac | share of the outline ever under water, 1984-2020 (only where the pans-and-ponds screen is on) |
-| review_verdict | `pv` in the confirmed file; `unsure` where a person looked on a review page and could not settle it; empty if nobody has judged it |
+| review_verdict | `pv`: a person judged it solar |
 | review_page | `solar_farm` or `large_installation`: the review page the verdict was given on |
 | lon, lat | a point inside the outline |
 
-| country | confirmed | leads | blobs | judged not solar, left out | steep leads left out | steep_review | open ground, low confidence, left out | pans and ponds left out | OpenStreetMap as of |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| country | confirmed leads | above {blob_m2} m2 | {large_m2} m2 up to that | judged not solar | OpenStreetMap as of |
+| --- | ---: | ---: | ---: | ---: | --- |
 {rows}
 
-France's leads are a separate, audited release, its blobs in `france_pv_leads_oversize.geojson`: https://github.com/{repo}/releases/tag/france-osm-leads-2026-10-22
+No confirmed leads yet: {none}.
 
 Licence: derived from OpenStreetMap (ODbL 1.0, (c) OpenStreetMap contributors) and contains
 modified Copernicus Sentinel-2 data. Released under the ODbL like every EarthPV data output.
 """
+# Release assets that must never be published again (owner, 2026-11-19): the model's unchecked
+# lead and blob files. `--upload` removes any it finds on the release.
+UNCHECKED_SUFFIXES = ("_pv_new_leads.geojson", "_pv_blob_leads.geojson")
 
 
 def _assets(out: Path, entries) -> list[Path]:
-    """The lead, blob and confirmed files of the manifest entries `entries`, in `out`."""
-    return [out / (e[k]["file"] if k else e["file"])
-            for e in entries for k in (None, "blobs", "confirmed") if k is None or k in e]
+    """The confirmed files of the manifest entries `entries`, in `out`: the only lead files
+    uploaded (owner, 2026-11-19). The lead and blob files stay local."""
+    return [out / e["confirmed"]["file"] for e in entries if "confirmed" in e]
+
+
+def _unlinked(entry: dict) -> dict:
+    """A manifest entry without release links for its unchecked lead and blob files, which are
+    no longer published (an entry written before 2026-11-19 carries them)."""
+    entry = {k: v for k, v in entry.items() if k != "url"}
+    if "blobs" in entry:
+        entry["blobs"] = {k: v for k, v in entry["blobs"].items() if k != "url"}
+    return entry
 
 
 def country_name(aoi: str) -> str:
@@ -527,66 +509,87 @@ def main() -> int:
                     help=f"directory holding every country's release assets ({RELEASE_DIR})")
     ap.add_argument("--aoi", action="append", help="only these AOIs (default: every one)")
     ap.add_argument("--min-distance-m", type=float, default=100.0)
-    ap.add_argument("--upload", action="store_true", help=f"create {TAG} and upload the assets")
+    ap.add_argument("--upload", action="store_true",
+                    help=f"create {TAG} or update it: upload the confirmed files, README.md and "
+                         "SHA256SUMS, and remove any unchecked lead or blob file from it")
     ap.add_argument("--resplit", action="store_true",
                     help="split the lead files already in --out (one file per country, from "
                          "before the blob file) into leads and blobs, keeping their date")
+    ap.add_argument("--refresh", action="store_true",
+                    help="rebuild nothing: rewrite README.md, SHA256SUMS and the manifest from "
+                         "the files already in --out (with --upload, re-sends every confirmed "
+                         "file)")
     args = ap.parse_args()
 
     os.chdir(ROOT)
     args.out.mkdir(parents=True, exist_ok=True)
     manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {"aois": {}}
-    for aoi in args.aoi or list(SOURCES):
-        manifest["aois"][aoi] = (resplit(aoi, manifest["aois"][aoi], args.out) if args.resplit
-                                 else build(aoi, SOURCES.get(aoi, {}), args.out, args.min_distance_m))
+    if not args.refresh:
+        for aoi in args.aoi or list(SOURCES):
+            manifest["aois"][aoi] = (resplit(aoi, manifest["aois"][aoi], args.out)
+                                     if args.resplit else
+                                     build(aoi, SOURCES.get(aoi, {}), args.out,
+                                           args.min_distance_m))
+    manifest["aois"] = {a: (e if a == "france" else _unlinked(e))
+                        for a, e in manifest["aois"].items()}
     manifest["aois"]["france"] = FRANCE
     manifest["aois"] = dict(sorted(manifest["aois"].items()))
     manifest["release"] = f"https://github.com/{REPO}/releases/tag/{TAG}"
 
     built = {a: e for a, e in manifest["aois"].items() if a != "france"}
-    rows = "\n".join(f"| {country_name(a)} | {e.get('confirmed', {}).get('n', 0):,} | "
-                     f"{e['n']:,} | {e.get('blobs', {}).get('n', 0):,} | "
-                     f"{sum(e.get('judged_not_pv', {}).values()):,} | "
-                     f"{e.get('steep', {}).get('dropped', 0):,} | "
-                     f"{e.get('steep', {}).get('review', 0):,} | "
-                     f"{e.get('lowconf', {}).get('dropped', 0):,} | "
-                     f"{format(e['water']['dropped'], ',') if 'water' in e else 'off'} | "
-                     f"{e['osm_as_of']} |"
-                     for a, e in built.items())
+    rows = "\n".join(f"| {country_name(a)} | {e['confirmed']['n']:,} | "
+                     f"{e['confirmed'].get('n_solar_farm', 0):,} | "
+                     f"{e['confirmed'].get('n_large_installation', 0):,} | "
+                     f"{sum(e.get('judged_not_pv', {}).values()):,} | {e['osm_as_of']} |"
+                     for a, e in built.items() if "confirmed" in e)
+    none = ", ".join(country_name(a) for a, e in manifest["aois"].items()
+                     if "confirmed" not in e) or "none"
     made = sorted({e["made"] for e in built.values()})
     (args.out / "README.md").write_text(README.format(
-        date=made[-1] if args.resplit else dt.date.today().isoformat(),
-        dist=int(args.min_distance_m), rows=rows, repo=REPO, blob_m2=f"{MAX_CANDIDATE_M2:,.0f}",
-        large_m2=f"{LARGE_MIN_M2:,.0f}",
-        steep_area=f"{STEEP_MAX_AREA_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}",
-        steep_cap=f"{STEEP_CAP_DEG:g}", lowconf_max=f"{LOWCONF_MAX_CONFIDENCE:g}",
-        water_pct=f"{100 * WATER_EVER_WET_MIN:g}",
-        water_aois=", ".join(country_name(a) for a, e in built.items()
-                             if "water" in e) or "none yet"))
+        date=made[-1] if (args.resplit or args.refresh) else dt.date.today().isoformat(),
+        dist=int(args.min_distance_m), rows=rows, none=none, blob_m2=f"{MAX_CANDIDATE_M2:,.0f}",
+        large_m2=f"{LARGE_MIN_M2:,.0f}", steep_deg=f"{STEEP_SLOPE_DEG:g}"))
     files = _assets(args.out, built.values()) + [args.out / "README.md"]
+    missing = [f.name for f in files if not f.exists()]
+    if missing:
+        raise SystemExit(f"--out lacks {', '.join(missing)}: it must hold every country's "
+                         "confirmed file")
     sums = [f"{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}" for f in files]
     (args.out / "SHA256SUMS").write_text("\n".join(sums) + "\n")
     MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"wrote {MANIFEST.relative_to(ROOT)} and {len(files) + 1} assets in {args.out}")
+    print(f"wrote {MANIFEST.relative_to(ROOT)} and {len(files) + 1} release assets in "
+          f"{args.out} (lead and blob files stay local)")
 
     if args.upload:
-        exists = subprocess.run(["gh", "release", "view", TAG, "-R", REPO],
-                                capture_output=True).returncode == 0
-        # Into an existing release only what changed: these countries' files, and the README
-        # and checksums that list every country (also the release's notes).
+        view = subprocess.run(["gh", "release", "view", TAG, "-R", REPO, "--json", "assets"],
+                              capture_output=True, text=True)
+        exists = view.returncode == 0
+        # Into an existing release only what changed: these countries' confirmed files, and
+        # the README and checksums that list every country (also the release's notes).
         sent = (_assets(args.out, [built[a] for a in args.aoi if a in built])
-                + [args.out / "README.md"]) if exists and args.aoi else files
+                + [args.out / "README.md"]) if exists and args.aoi and not args.refresh else files
         assets = [str(f) for f in sent] + [str(args.out / "SHA256SUMS")]
+        title = "Confirmed PV mapping leads per country"
         if exists:
             subprocess.run(["gh", "release", "upload", TAG, "-R", REPO, "--clobber", *assets],
                            check=True)
-            cmd = ["gh", "release", "edit", TAG, "-R", REPO,
-                   "--notes-file", str(args.out / "README.md")]
+            subprocess.run(["gh", "release", "edit", TAG, "-R", REPO, "--title", title,
+                            "--notes-file", str(args.out / "README.md")], check=True)
+            # A confirmed file whose country now has none, and every unchecked lead or blob
+            # file, leaves the release.
+            keep = {f.name for f in files} | {"SHA256SUMS"}
+            stale = [a["name"] for a in json.loads(view.stdout)["assets"]
+                     if a["name"] not in keep
+                     and (a["name"].endswith(UNCHECKED_SUFFIXES)
+                          or a["name"].endswith("_pv_confirmed_leads.geojson"))]
+            for name in stale:
+                subprocess.run(["gh", "release", "delete-asset", TAG, name, "-R", REPO, "--yes"],
+                               check=True)
+            print(f"uploaded {len(assets)} assets to {TAG}; removed {len(stale)}")
         else:
-            cmd = ["gh", "release", "create", TAG, "-R", REPO, "--latest=false",
-                   "--title", f"PV mapping leads per country ({dt.date.today().isoformat()})",
-                   "--notes-file", str(args.out / "README.md"), *assets]
-        subprocess.run(cmd, check=True)
+            subprocess.run(["gh", "release", "create", TAG, "-R", REPO, "--latest=false",
+                            "--title", title, "--notes-file", str(args.out / "README.md"),
+                            *assets], check=True)
     return 0
 
 

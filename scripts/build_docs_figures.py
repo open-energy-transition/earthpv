@@ -2628,7 +2628,7 @@ def write_flywheel_diagram():
         print(f"  wrote {path.relative_to(ROOT)}")
 
 
-# ------------------------------------------- the flywheel, stage by stage (Contribute Data)
+# ------------------------------------------------ the flywheel, stage by stage (Contribute)
 #
 # The same six stations as the wheel above, unrolled into a column so each can say who does
 # it, what it hands on and which quality level it builds; station 3 opens into its two ways
@@ -2656,11 +2656,11 @@ STG_STAGES = [
      "model outlines of every size", ["bronze", "gold"]),
     ("2", "Publish the atlas", "model", False,
      ["Verified and Best capacity per 0.1° cell with a 90% range,",
-      "the lead files to work through, and calibration areas to",
+      "the leads people have judged solar, and calibration areas to",
       "map, with a star on the one to start with."],
      "the atlas and its downloads", ["bronze"]),
     ("3", "Check the leads", None, True, [],
-     "a third of each lead file checked", ["silver"]),
+     "a third of the large leads checked", ["silver"]),
     ("4", "Map calibration areas", "you, in iD or JOSM", True,
      ["Every visible panel inside a 1 to 3 km box, down to the",
       "smallest rooftop unit. A half-mapped area is left out."],
@@ -2682,8 +2682,8 @@ STG_CHECKS = [
       "model saw: 1 solar, 2 not solar, 3 unsure, 4 bright roof."],
      "counted at the next rebuild"),
     ("Map in JOSM or iD", "you, in an editor",
-     ["Confirmed leads first, then the lead file from the top and the",
-      "blobs largest first. Trace from imagery, never from the lead."],
+     ["The confirmed leads, largest first: each one judged solar by",
+      "a person. Trace from imagery, never from the lead."],
      "installations traced in OpenStreetMap"),
 ]
 
@@ -2810,7 +2810,7 @@ def build_flywheel_stages_svg(t: Theme) -> str:
     parts.append(f'<path d="M{ax},{subs[0] + STG_SUB_H + 2} V{subs[1] - 3}" stroke="{t.ink}" '
                  f'stroke-width="2.2" marker-end="{marker(t.ink_dim)}"/>')
     text(ax + 12, subs[0] + STG_SUB_H + 22, "judged solar: into the confirmed-lead file, "
-         "mapped first", size=11.5, fill=t.ink)
+         "for mappers", size=11.5, fill=t.ink)
 
     # Spokes through OpenStreetMap, and the verdicts' shortcut into the atlas.
     spoke(boxes[1][0] + 30, "out", "counted")

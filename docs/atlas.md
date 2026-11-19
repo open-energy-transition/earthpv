@@ -37,7 +37,7 @@ hide:
 </nav>
 <div class="atlas-tier-alert atlas-tier-alert--silver" role="note">
   <p><strong>This Silver atlas is not yet verified.</strong> Its estimate below 400 m&sup2; is calibrated, but nobody has checked it by hand yet.</p>
-  <p><a class="atlas-tier-cta" href="../contribute/calibration-areas/">Contribute data: map a calibration area &rarr;</a></p>
+  <p><a class="atlas-tier-cta" href="../contribute/calibration-areas/">Contribute: map a calibration area &rarr;</a></p>
   <button class="atlas-tier-close" type="button" aria-label="Close this notice" title="Close" hidden>&times;</button>
 </div>
 <iframe src="../assets/interactive/pakistan_evidence_atlas.html" title="Pakistan PV evidence atlas: best estimate by 0.1-degree cell" allow="fullscreen; local-network-access; loopback-network"></iframe>

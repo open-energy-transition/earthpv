@@ -55,10 +55,10 @@ CHECKS = {
     "plausibility": ("detection", "Plausibility check on every region", "bronze"),
     "osm": ("map", "Hand-mapped solar counted once", "bronze"),
     "ground_truth": ("map", "Local ground truth", "silver"),
-    "leads": ("map", "Mapping leads published", "bronze"),
+    "leads": ("map", "Mapping leads drawn up", "bronze"),
     "blobs": ("people", "Very large outlines judged (solar farm review)", None),
     "large_review": ("people", "Large installations judged (review page)", None),
-    "leads_mapped": ("people", "A third of the leads checked", "silver"),
+    "leads_mapped": ("people", "A third of the large leads checked", "silver"),
     "retrained": ("people", "Model retrained on the checked leads", "silver"),
     "small": ("small", "Installations below 400 m&sup2; estimated", "gold"),
     "small_holds": ("small", "That estimate holds up against ground truth", "gold"),
@@ -266,16 +266,19 @@ def checklist(aoi: str, totals: dict, shown: str, earned: str,
         rows["ground_truth"] = ("todo", (
             "No calibration area mapped completely, and no recall reference yet."))
 
+    # Mappers are offered only the leads a person judged solar (owner, 2026-11-19); the
+    # model's other leads are drawn up for the review pages, counted here, never linked.
     if leads:
         nb = (leads.get("blobs") or {}).get("n", 0)
         nc = (leads.get("confirmed") or {}).get("n", 0)
         rows["leads"] = ("done", (
             f"{_n(leads.get('n', 0))} leads" + (f" and {_n(nb)} very large outlines" if nb else "")
-            + (f", plus {_n(nc)} judged solar and waiting to be mapped" if nc else "")
-            + (f", against OpenStreetMap as of {_date(leads.get('osm_as_of'))}"
-               if leads.get("osm_as_of") else "") + "."))
+            + " that OpenStreetMap does not have"
+            + (f" as of {_date(leads.get('osm_as_of'))}" if leads.get("osm_as_of") else "")
+            + ". Mappers get only those a person has judged solar: "
+            + (f"{_n(nc)} so far, in the download below." if nc else "none yet.")))
     else:
-        rows["leads"] = ("todo", "No lead file published yet.")
+        rows["leads"] = ("todo", "No leads drawn up yet.")
 
     rows["blobs"] = _review_row(blob_r, "One not yet judged counts only once it is mapped.")
     rows["large_review"] = _review_row(
@@ -291,11 +294,15 @@ def checklist(aoi: str, totals: dict, shown: str, earned: str,
                else " and of the very large outlines")
             + f" of the {_date(lr['leads'])} lead file."))
     else:
-        seen = [f"{_n(r['pv'] + r['not_pv'])} of {_n(r['queue'])} {what}"
+        # The share counts the leads of 1 ha and up and the blobs (owner, 2026-11-19): exactly
+        # the outlines of the two review pages, so their verdicts are the progress.
+        seen = [f"{_n(r['pv'] + r['not_pv'])} of {_n(r['queue'])} {what} "
+                f"({100 * (r['pv'] + r['not_pv']) // r['queue']}%)"   # down: 99%, not 100%
                 for r, what in ((blob_r, "very large outlines"), (large_r, "large installations"))
                 if r and r["queue"] and r["pv"] + r["not_pv"]]
         need = ("Not recorded yet. Needed: a verdict, mapped in OpenStreetMap or judged not "
-                "solar, on about a third of the leads from the top and of the very large outlines.")
+                f"solar, on a third of the leads of {atlas.LEAD_RULE_MIN_M2 / 1e4:g} ha and up "
+                "and of the very large outlines, the outlines of the two review pages.")
         rows["leads_mapped"] = (("partial", f"{need} On the review pages so far: "
                                  f"{' and '.join(seen)}.") if seen else ("todo", need))
     if lr["retrained"]:

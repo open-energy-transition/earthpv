@@ -55,7 +55,7 @@ silently drop the section it was meant to fill):
         note: "..."                        # optional: how, where the verdicts are
       retrained_on_leads:                  # the flywheel has turned once
         leads: "2026-07-16"                # the lead file worked through, by its date
-        share: 0.5                         # share of its leads with a verdict (>= 1/3)
+        share: 0.5                         # share of its leads >= 1 ha with a verdict (>= 1/3)
         blobs_share: 0.5                   # same for its blobs; default: `share`
         model: v16_combined_pakistan       # the localized model trained on that mapping;
                                            # absent while the retrain is still to come
@@ -96,8 +96,10 @@ atlas` still wins over this.
 
 `validation.retrained_on_leads` is the other half of Silver and Gold (owner, 2026-11-01): the
 leads have been mapped in OpenStreetMap to localize the model. At least a third
-(`atlas.LEAD_SHARE_MIN`) of a lead file's leads and of its blobs have a human verdict (the
-real ones mapped, the rest judged not solar), and the localized model was trained again on
+(`atlas.LEAD_SHARE_MIN`) of a lead file's leads of 1 ha and up (`atlas.LEAD_RULE_MIN_M2`; the
+large installation review) and of its blobs (the solar farm review) have a human verdict (the
+real ones mapped, the rest judged not solar; owner, 2026-11-19, when smaller leads stopped
+reaching mappers), and the localized model was trained again on
 the OpenStreetMap solar that includes that mapping. Like a quadrat's Rule-1 status it is a
 declaration, not something code can derive. It names the lead file, the shares and the new
 model, and once declared it stays true: "at least once" does not expire with a new lead

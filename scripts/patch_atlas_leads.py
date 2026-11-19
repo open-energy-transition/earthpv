@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-"""Add the mapping-lead download to a published evidence atlas without rebuilding it.
+"""Set the mapping-lead download of a published evidence atlas without rebuilding it.
 
-`earthpv atlas` embeds `totals.leads` (`atlas.leads_release`, from the manifest
-scripts/release_leads.py writes), which the Downloads section turns into a link to the
-country's lead file on GitHub. A page built before 2026-10-28 has no such key.
+`earthpv atlas` embeds `totals.leads` (`atlas.leads_for_page`, from the manifest
+scripts/release_leads.py writes). The Downloads section links only the country's confirmed
+file, the leads a person judged solar; the model's unchecked lead and blob files are counted
+on the page, never linked (owner, 2026-11-19). A page built before 2026-10-28 has no such key.
 
 This recovers the page's placeholder values exactly as `retemplate_atlas.py` does, sets
 `totals.leads` from the manifest where the builder puts it (after `import_ceiling`), with
@@ -93,7 +94,10 @@ def main() -> int:
             continue
         if not args.dry_run:
             page.write_text(html)
-        what = f"{leads['n']:,} leads, {leads['file']}" if leads else "no lead file"
+        conf = (leads or {}).get("confirmed")
+        what = (f"{leads['n']:,} leads; "
+                + (f"{conf['n']:,} confirmed, {conf['file']}" if conf else "none confirmed")
+                if leads else "no lead file")
         what += f"; badge {shown}" + (f" (earned {earned})" if shown != earned else "")
         print(f"  {'checked' if args.dry_run else 'wrote'} {page} [{aoi}]: {what}")
     return 1 if failed else 0

@@ -69,7 +69,8 @@ validation:
     leads: "2026-07-16"
     # Over half of that file's leads had a verdict, as the owner declared under the rule of
     # 2026-11-01, when its 121 outlines above 100,000 m2 were counted among its leads; the
-    # rule since asks a third of the leads and a third of the blobs (atlas.LEAD_SHARE_MIN).
+    # rule since asks a third of the leads and a third of the blobs (atlas.LEAD_SHARE_MIN),
+    # and since 2026-11-19 only of the leads of 1 ha and up; this declaration stands.
     share: 0.5
     model: v16_combined_pakistan
     by: owner

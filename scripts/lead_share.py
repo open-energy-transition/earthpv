@@ -3,7 +3,9 @@
 
 Silver asks for a third of a lead file's leads and of its very large outlines (blobs, above
 the 100,000 m2 merge cap) to have a verdict before the model is retrained on them
-(`atlas.LEAD_SHARE_MIN`, owner 2026-11-01). This measures where in a ranked lead file the
+(`atlas.LEAD_SHARE_MIN`, owner 2026-11-01); since 2026-11-19 only the leads of 1 ha and up
+count (`atlas.LEAD_RULE_MIN_M2`), the review pages' outlines. The measurements below were
+made on whole lead files, before that. This measures where in a ranked lead file the
 real installations are, in the three places a reference exists:
 
   * Pakistan: v3's lead file of 2026-07-16 (`data/predictions/pakistan/

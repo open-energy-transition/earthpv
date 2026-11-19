@@ -21,14 +21,15 @@ the navigation and the badge on the map cannot disagree:
 - **Bronze**: 400 m2 and up only, with no local calibration.
 
 Gold and Silver also need the leads mapped in OpenStreetMap to localize the model (owner,
-2026-11-01; `atlas.leads_retrained`): a third of a lead file's leads and of its very large
-outlines with a verdict, and the segmentation model retrained on that mapping once, one turn
-of the mapping flywheel. It replaced "every lead checked" (2026-10-31). A page whose
+2026-11-01; `atlas.leads_retrained`): a third of a lead file's leads of 1 ha and up and of
+its very large outlines with a verdict (owner, 2026-11-19: the two review pages' outlines),
+and the segmentation model retrained on that mapping once, one turn of the mapping flywheel.
+It replaced "every lead checked" (2026-10-31). A page whose
 calibration earns more than Bronze but lacks it shows Bronze, and its badge keeps the earned
 tier as `data-earned`; its banner says what is missing (`atlas.lead_rule_gaps`).
 
 Silver and Bronze pages open with a banner of two short sentences saying what is not yet
-calibrated or verified, and one link to where a reader can help in the Contribute Data
+calibrated or verified, and one link to where a reader can help in the Contribute
 section (docs/contribute/; owner, 2026-11-06).
 `docs/atlas-quality-levels.md` lists every criterion and ends on the flywheel figure the
 levels follow (`quality_page`); the switcher links it.
@@ -171,15 +172,17 @@ SMALL_GAP = {
     "Yemen": "Small rooftop systems are not estimated",
 }
 LEADS_NEED = {
-    ("leads_mapped", "leads_retrained"): "too few of its leads are mapped in OpenStreetMap",
+    ("leads_mapped", "leads_retrained"): "too few of its large leads have been checked",
     ("leads_retrained",): "the model is not yet retrained on the mapped leads",
 }
-# Where a reader can help: the Contribute Data section (docs/contribute/).
+# Where a reader can help: the Contribute section (docs/contribute/).
 CTA = {
-    "calibrate": '<a class="atlas-tier-cta" href="../contribute/calibration-areas/">Contribute '
-                 'data: map a calibration area &rarr;</a>',
-    "leads": '<a class="atlas-tier-cta" href="../contribute/leads/">Contribute data: map the '
-             'model\'s leads &rarr;</a>',
+    "calibrate": '<a class="atlas-tier-cta" href="../contribute/calibration-areas/">Contribute: '
+                 'map a calibration area &rarr;</a>',
+    # The lead rule counts the review pages' outlines (owner, 2026-11-19), so a reader
+    # helps it most by judging them.
+    "leads": '<a class="atlas-tier-cta" href="../contribute/review/">Contribute: judge the '
+             'large installations &rarr;</a>',
 }
 
 def _href(stem: str) -> str:
@@ -306,19 +309,18 @@ CRITERIA = {
          "bright and touching into one shape, so it is as often a sheet of false alarms as a "
          "solar park the map does not have yet. A blob counts towards capacity only once it "
          "is mapped in OpenStreetMap or a person has judged it solar on the Sentinel-2 "
-         "imagery the model saw; until then it is a lead in a file of its own.",
+         "imagery the model saw; until then it is an unchecked lead.",
          "`density.load_oversize_admission`, `scripts/oversize_review.py`"),
         ("Plausibility gate",
          "Before publication each region's ground-mount to rooftop ratio and its "
          "single-cell concentration are checked; a failure is looked at and stated on the "
          "page.",
          "`earthpv check-density`"),
-        ("Mapping leads published",
+        ("Mapping leads drawn up",
          "The model's outlines more than 100 m from any solar installation in "
-         "OpenStreetMap, in up to three files: the outlines a person has judged solar on the "
-         "country's review pages, largest first; the other leads, most promising first; and "
-         "the other very large outlines, largest first. An outline a person judged not solar "
-         "is left out of all three. Leads under 1,000 m&sup2; on ground steeper "
+         "OpenStreetMap. Mappers are offered only those a person has judged solar on the "
+         "country's review pages, in one file, largest first; an outline judged not solar "
+         "is dropped. Leads under 1,000 m&sup2; on ground steeper "
          "than 15&deg; are left out (shaded slopes and cliff edges read like panels); "
          "larger ones on steep ground stay, marked <code>steep_review</code>, because a "
          "solar farm can stand on a mountainside, unless the ground is steeper than 30&deg;, "
@@ -333,9 +335,9 @@ CRITERIA = {
          "where every visible panel is mapped (Rule 1).",
          "`atlas.derive_validation_score`"),
         ("Leads mapped to localize the model",
-         "The mapping flywheel has turned at least once: people have checked about a third "
-         "of a lead file's leads, working down from the top, and a third of its very large "
-         "outlines, largest first, mapping the real installations in OpenStreetMap and "
+         "The mapping flywheel has turned at least once: people have checked a third of a "
+         "lead file's leads of 1 ha and up and a third of its very large outlines, largest "
+         "first, on the review pages, mapping the real installations in OpenStreetMap and "
          "judging the rest not solar; and the localized segmentation model has been trained "
          "again on the country's OpenStreetMap solar, now holding that mapping. Until this is "
          "recorded the atlas shows Bronze, whatever its calibration earns.",
@@ -406,7 +408,8 @@ def quality_page() -> str:
            "found, not how much solar a country has. The levels add up: Silver needs everything Bronze asks for, and Gold "
            "everything Silver asks for. A country shows the highest level whose every "
            "criterion it meets.", "",
-           "Under its map, every atlas also carries a checklist, *What has been checked so "
+           "Near its end, below the panel orientation, every atlas also carries a checklist, "
+           "*What has been checked so "
            "far, and what is still open*: each step below and the two review pages, marked "
            "done, under way or not yet, with the numbers behind it and the level that needs "
            "it. It is read from the country's records (review verdicts, declarations, the "
@@ -433,21 +436,22 @@ def quality_page() -> str:
             "high-resolution capture shows only there; map the panels or the park's outline, "
             "not the blob. The largest outlines can be settled before anyone maps them, on the "
             "country's [review pages](contribute/review.md): an outline judged not solar there "
-            "is checked and leaves the lead files, and one judged solar moves to the country's "
-            "confirmed-lead file, the first a mapper should open, and is checked once it is "
-            "mapped. The [lead mapping guide](contribute/leads.md) walks through the lead "
-            "files in JOSM.", "",
-            "## How much to map: a third", "",
-            "Mapping every lead does not pay: the real installations sit near the top of a "
-            "lead file, which is sorted most promising first, and the bottom is mostly false "
-            "alarms, above all among the small ones. Where people have worked through a lead "
-            "file, the top third held more than two thirds of the leads they went on to map in "
-            "Pakistan (385 of v3's 4,435 leads of July 2026) and nearly nine in ten in Yemen (246 of "
-            "2,259 in a week of October 2026); below it only 2 to 4% of leads were real. In "
-            "Germany, whose register locates every installation of 30 kW or more, the top "
-            "third holds 46% of the leads with a registered unit inside. So a third of the "
-            "leads, worked from the top, and a third of the very large outlines, largest "
-            "first, give the model most of what a full pass would. A maintainer records it as "
+            "is checked and is dropped from the lead files, and one judged solar moves to the "
+            "country's confirmed-lead file, the only lead file mappers are offered, and is "
+            "checked once it is mapped. The [lead mapping guide](contribute/leads.md) walks "
+            "through it in JOSM.", "",
+            "## How much to check: a third of the large leads", "",
+            "Only the leads of 1 ha and up count, and the very large outlines above 10 ha: "
+            "they are the outlines of the two review pages, where a person judges each one on "
+            "the imagery the model saw, and the ones judged solar are the only leads mappers "
+            "are offered. Smaller leads reach neither, so they are not counted. Checking "
+            "everything does not pay: where people worked through a whole ranked lead file, "
+            "the top third held more than two thirds of the leads they went on to map in "
+            "Pakistan (385 of v3's 4,435 leads of July 2026) and nearly nine in ten in Yemen "
+            "(246 of 2,259 in a week of October 2026), and below it only 2 to 4% of leads "
+            "were real. So a third of the large leads and a third of the very large outlines, "
+            "largest first, with a verdict and the real ones mapped, is what a retrain needs. "
+            "A maintainer records it as "
             "`validation.retrained_on_leads`, naming the lead file, the shares checked and "
             "the model trained on the result. It needs doing once: it does not lapse when a "
             "new lead file is made.", "",
@@ -460,8 +464,8 @@ def quality_page() -> str:
             "- **Bronze: the wheel is set up.** A model trained on the country's own "
             "OpenStreetMap solar detects arrays from space (station 1), and the atlas is "
             "published with its mapping leads and the areas to map (station 2).",
-            "- **Silver: the wheel has turned once.** People check a third of the leads, "
-            "judging the largest on the review pages and mapping the real installations "
+            "- **Silver: the wheel has turned once.** People check a third of the large leads, "
+            "judging them on the review pages and mapping the real installations "
             "(station 3), and the model is retrained on what they mapped "
             "(station 6), so its next leads come from a model that has learned the country's "
             "own false alarms and missed arrays. The figures are checked against local "
