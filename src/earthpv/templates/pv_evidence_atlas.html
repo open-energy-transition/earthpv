@@ -1202,7 +1202,11 @@
         this page was built.</p>
         <p><b>Exports.</b> Every figure downloads as PNG (for slides), SVG (vector, for
         papers) and CSV (the numbers behind it); the map as PNG with its legend and
-        attribution, and the grid as GeoJSON or CSV. Basemap imagery and tiles keep their
+        attribution, and the grid as GeoJSON or CSV. Every export carries this atlas's
+        quality level (Gold, Silver or Bronze, the badge at the top): in its file name, on
+        the figure and as an <code>earthpv_quality_level</code> column or property, so a
+        figure or table taken from here still says how far its numbers have been checked.
+        Basemap imagery and tiles keep their
         own providers' terms: OpenStreetMap data is &copy; OpenStreetMap contributors (ODbL),
         the grey canvas and the satellite imagery &copy; Esri and its partners.</p>
       </div>
@@ -1483,10 +1487,119 @@ out geom;</div>
     const s = String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   }
+  // Every CSV leads with the page's quality level, one column on every row, so the level
+  // survives a sort, a filter or a copy of a few rows into another sheet.
   function saveCSV(cols, rows, name){
-    const out = [cols.join(",")];
-    for (const r of rows) out.push(cols.map((c, i) => csvCell(Array.isArray(r) ? r[i] : r[c])).join(","));
+    const q = qualityLevel();
+    const lead = q ? [csvCell(q.name)] : [];
+    const out = [(q ? [QUALITY_COL] : []).concat(cols).join(",")];
+    for (const r of rows)
+      out.push(lead.concat(cols.map((c, i) => csvCell(Array.isArray(r) ? r[i] : r[c]))).join(","));
     saveBlob(new Blob([out.join("\n") + "\n"], {type: "text/csv;charset=utf-8"}), name);
+  }
+
+  // ── the quality level every export carries ───────────────────────────────────────
+  // A figure or table lifted off this page travels without the badge at its top, so each
+  // export carries the level itself: in its file name (`exportName`), as the badge's
+  // medallion in the header of a PNG or SVG with a line under the figure saying what the
+  // level means, as the first column of a CSV and as a property of every GeoJSON feature.
+  // It is read off the badge the page shows (`atlas.resolve_validation_badge`, which
+  // scripts/patch_atlas_leads.py rewrites in place), so an export never claims a level the
+  // page does not, and a re-badged page exports its new level without a rebuild.
+  const QUALITY_URL = "https://open-energy-transition.github.io/earthpv/atlas-quality-levels/";
+  const QUALITY_COL = "earthpv_quality_level";
+  function qualityLevel(){
+    const b = document.querySelector(".vscore");
+    const key = b && (b.className.match(/\bvscore--(gold|silver|bronze)\b/) || [])[1];
+    if (!key) return null;
+    let note = "";
+    const sub = b.querySelector(".vscore-sub");
+    if (sub){
+      const c = sub.cloneNode(true);
+      c.querySelectorAll("br").forEach(br => br.replaceWith(" "));
+      note = c.textContent.replace(/[ \t\r\n]+/g, " ").trim();
+      if (note && !/[.!?]$/.test(note)) note += ".";
+    }
+    // The EarthPV mark the badge masks into its medallion, as a data URI.
+    let logo = null;
+    const mark = b.querySelector(".vscore-mark");
+    if (mark){
+      const cs = getComputedStyle(mark, "::after");
+      const img = cs.getPropertyValue("mask-image") || cs.getPropertyValue("-webkit-mask-image") || "";
+      logo = (img.match(/url\(["']?(data:[^"')]+)["']?\)/) || [])[1] || null;
+    }
+    const v = (n, dflt) => tok(n, b) || dflt;
+    return {key, name: key[0].toUpperCase() + key.slice(1), note, logo,
+      fill: v("--vs", "#888888"), hi: v("--vs-hi", "#aaaaaa"), lo: v("--vs-lo", "#666666"),
+      ink: v("--vs-ink", "#111111"), text: v("--vs-text", "#888888")};
+  }
+  // `<country>_pv_atlas_<level>_<what>.<ext>`, e.g. pakistan_pv_atlas_silver_provinces.png.
+  function exportName(what, ext){
+    const q = qualityLevel();
+    return `${SLUG}_pv_atlas_${q ? q.key + "_" : ""}${what}.${ext}`;
+  }
+  function qualityLine(){
+    const q = qualityLevel();
+    if (!q) return null;
+    return `EarthPV quality level: ${q.name}.${q.note ? " " + q.note : ""} `
+      + `What the levels mean: ${QUALITY_URL.replace(/^https:\/\//, "")}`;
+  }
+  const QUALITY_MARK_H = 44;
+  // The badge's medallion and level as a standalone SVG, QUALITY_MARK_H tall: nested as is
+  // into an exported figure, drawn as an image onto the map's PNG. `logo: false` leaves the
+  // mark out of the disc, for a browser that will not rasterise an SVG holding an image.
+  function qualityMarkSvg(P, q, logo = true){
+    const h = QUALITY_MARK_H, r = 15, padL = 9, gap = 10, padR = 14;
+    const label = "EARTHPV CALIBRATION", spacing = 1.2;
+    const m = document.createElement("canvas").getContext("2d");
+    m.font = `8.5px ${P.fontMono}`;
+    const labelW = m.measureText(label).width + label.length * spacing;
+    m.font = `800 15px ${P.fontDisplay}`;
+    const nameW = m.measureText(q.name).width;
+    const w = Math.ceil(padL + 2 * r + gap + Math.max(labelW, nameW) + padR);
+    const svg = el("svg", {width: w, height: h, viewBox: `0 0 ${w} ${h}`});
+    const id = `earthpv-quality-${q.key}`;
+    const defs = el("defs", {});
+    const grad = el("linearGradient", {id: `${id}-disc`, x1: 0.2, y1: 0, x2: 0.8, y2: 1});
+    for (const [o, c] of [[0, q.hi], [0.58, q.fill], [1, q.lo]])
+      grad.appendChild(el("stop", {offset: o, "stop-color": c}));
+    defs.appendChild(grad);
+    // The mark is black on transparency; flood it with the tier's ink through its alpha.
+    const ink = el("filter", {id: `${id}-ink`, x: 0, y: 0, width: 1, height: 1,
+      "color-interpolation-filters": "sRGB"});
+    ink.appendChild(el("feFlood", {"flood-color": q.ink, result: "ink"}));
+    ink.appendChild(el("feComposite", {in: "ink", in2: "SourceAlpha", operator: "in"}));
+    defs.appendChild(ink);
+    svg.appendChild(defs);
+    svg.appendChild(el("rect", {x: 0.5, y: 0.5, width: w - 1, height: h - 1, rx: 12,
+      fill: q.fill, "fill-opacity": 0.12, stroke: q.fill, "stroke-opacity": 0.5}));
+    const cx = padL + r, cy = h / 2;
+    svg.appendChild(el("circle", {cx, cy, r, fill: `url(#${id}-disc)`,
+      stroke: q.fill, "stroke-opacity": 0.6, "stroke-width": 1.5}));
+    if (logo && q.logo){
+      const im = el("image", {x: cx - 9.5, y: cy - 9.5, width: 19, height: 19,
+        filter: `url(#${id}-ink)`, href: q.logo});
+      im.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", q.logo);
+      svg.appendChild(im);
+    }
+    const tx = padL + 2 * r + gap;
+    const t1 = el("text", {x: tx, y: 18, fill: P.muted, "font-size": 8.5,
+      "font-family": P.fontMono, "letter-spacing": spacing});
+    t1.textContent = label;
+    const t2 = el("text", {x: tx, y: 34, fill: q.text, "font-size": 15, "font-weight": 800,
+      "font-family": P.fontDisplay});
+    t2.textContent = q.name;
+    svg.append(t1, t2);
+    return svg;
+  }
+  // Where a figure's title block and the mark go: the mark top right with the text beside
+  // it, or, on a figure too narrow for both, the mark on a row of its own above the title.
+  function markLayout(mark, width){
+    if (!mark) return {textW: width, markRow: false, top: 0};
+    const mw = +mark.getAttribute("width");
+    const markRow = width - mw - 16 < 260;
+    return {mw, markRow, textW: markRow ? width : width - mw - 16,
+      top: markRow ? QUALITY_MARK_H + 10 : 0};
   }
   const ATTRIBUTION =
     '<a href="https://open-energy-transition.github.io/earthpv/" target="_blank" rel="noopener">EarthPV</a>, '
@@ -1529,25 +1642,39 @@ out geom;</div>
     const h = +svg.getAttribute("height") || vb[3] || 400;
     return [w, h];
   }
-  // Wrap a chart SVG as a self-describing figure.
-  function figureSvg(chart, meta){
+  // Wrap a chart SVG as a self-describing figure: title, subtitle and the quality level's
+  // medallion above the chart, the level, any note and the source line below it.
+  function figureSvg(chart, meta, logo = true){
     const P = palette();
     const [cw, ch] = svgSize(chart);
     const pad = 24, W = cw + 2 * pad;
-    const maxChars = Math.floor((W - 2 * pad) / 6.6);
-    const sub = meta.subtitle ? wrapText(meta.subtitle, maxChars) : [];
-    const foot = wrapText((meta.note ? meta.note + " " : "") + sourceLine(), Math.floor((W - 2 * pad) / 6.9));
-    const headH = 22 + 26 + sub.length * 16 + 8;
-    const footH = 12 + foot.length * 14 + 14;
+    const q = qualityLevel();
+    const mark = q ? qualityMarkSvg(P, q, logo) : null;
+    const L = markLayout(mark, W - 2 * pad);
+    const title = wrapText(meta.title, Math.floor(L.textW / 9.4));
+    const sub = meta.subtitle ? wrapText(meta.subtitle, Math.floor(L.textW / 6.6)) : [];
+    const footChars = Math.floor((W - 2 * pad) / 6.9);
+    const qual = q ? wrapText(qualityLine(), footChars) : [];
+    const foot = wrapText((meta.note ? meta.note + " " : "") + sourceLine(), footChars);
+    const titleY = L.top + 22 + 17, subY = titleY + (title.length - 1) * 21 + 21;
+    const headH = Math.max(subY - 12 + sub.length * 16 + 8, mark && !L.markRow ? QUALITY_MARK_H + 20 : 0);
+    const footH = 12 + (qual.length + foot.length) * 14 + 14;
     const H = headH + ch + footH;
     const svg = el("svg", {width: W, height: H, viewBox: `0 0 ${W} ${H}`,
       "font-family": P.fontDisplay});
     svg.appendChild(el("rect", {x: 0, y: 0, width: W, height: H, fill: P.panel}));
-    const t = el("text", {x: pad, y: 22 + 17, fill: P.ink, "font-size": 17, "font-weight": 700});
-    t.textContent = meta.title;
-    svg.appendChild(t);
+    if (mark){
+      mark.setAttribute("x", L.markRow ? pad : W - pad - L.mw);
+      mark.setAttribute("y", 10);
+      svg.appendChild(mark);
+    }
+    title.forEach((line, i) => {
+      const t = el("text", {x: pad, y: titleY + i * 21, fill: P.ink, "font-size": 17, "font-weight": 700});
+      t.textContent = line;
+      svg.appendChild(t);
+    });
     sub.forEach((line, i) => {
-      const s = el("text", {x: pad, y: 22 + 26 + 12 + i * 16, fill: P.ink2, "font-size": 12});
+      const s = el("text", {x: pad, y: subY + i * 16, fill: P.ink2, "font-size": 12});
       s.textContent = line;
       svg.appendChild(s);
     });
@@ -1559,9 +1686,9 @@ out geom;</div>
     // the figure. Inline size beats any stylesheet rule.
     c.style.width = cw + "px"; c.style.height = ch + "px"; c.style.maxWidth = "none";
     svg.appendChild(c);
-    foot.forEach((line, i) => {
-      const s = el("text", {x: pad, y: headH + ch + 12 + 10 + i * 14, fill: P.muted, "font-size": 10.5,
-        "font-family": P.fontMono});
+    qual.concat(foot).forEach((line, i) => {
+      const s = el("text", {x: pad, y: headH + ch + 12 + 10 + i * 14, fill: i < qual.length ? P.ink2 : P.muted,
+        "font-size": 10.5, "font-family": P.fontMono});
       s.textContent = line;
       svg.appendChild(s);
     });
@@ -1584,11 +1711,39 @@ out geom;</div>
         const ctx = cv.getContext("2d");
         ctx.drawImage(img, 0, 0, cv.width, cv.height);
         URL.revokeObjectURL(url);
-        cv.toBlob(b => b ? resolve(b) : reject(new Error("PNG encoding failed")), "image/png");
+        // A browser that counts an image inside an SVG as foreign taints the canvas and
+        // throws here (a SecurityError), which the caller answers by drawing it without one.
+        try { cv.toBlob(b => b ? resolve(b) : reject(new Error("PNG encoding failed")), "image/png"); }
+        catch (err) { reject(err); }
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG could not be rasterised")); };
       img.src = url;
     });
+  }
+  // An SVG element as a decoded image, its pixel size `scale` times its own, for a canvas.
+  function svgImage(svg, scale){
+    const [w, h] = svgSize(svg);
+    const c = svg.cloneNode(true);
+    c.setAttribute("width", w * scale); c.setAttribute("height", h * scale);
+    const url = URL.createObjectURL(new Blob([serialize(c)], {type: "image/svg+xml;charset=utf-8"}));
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = async () => {
+        try { if (img.decode) await img.decode(); } catch (e) { /* drawn as loaded */ }
+        URL.revokeObjectURL(url); resolve(img);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG could not be rasterised")); };
+      img.src = url;
+    });
+  }
+  // A PNG drawn with the EarthPV mark in the quality medallion, or without it where the
+  // browser will not export a canvas that drew an SVG holding an image (`svgToPngBlob`).
+  async function withMarkFallback(make){
+    try { return await make(true); }
+    catch (err) {
+      if (err && err.name === "SecurityError") return make(false);
+      throw err;
+    }
   }
   const DL_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>';
   // fig: {name, formats: {PNG: fn, SVG: fn, ...}} where each fn returns a Promise or nothing.
@@ -1611,11 +1766,12 @@ out geom;</div>
   }
   function chartDownloads(key, spec){
     // spec: {title, subtitle(), note?, render(width) -> SVG, csv() -> [cols, rows]}
-    const file = ext => `${SLUG}_pv_atlas_${key}.${ext}`;
-    const fig = () => figureSvg(spec.render(EXPORT_W), {title: spec.title(), subtitle: spec.subtitle(), note: spec.note});
+    const file = ext => exportName(key, ext);
+    const fig = (logo = true) => figureSvg(spec.render(EXPORT_W),
+      {title: spec.title(), subtitle: spec.subtitle(), note: spec.note}, logo);
     const formats = {};
     if (spec.render){
-      formats.PNG = async () => saveBlob(await svgToPngBlob(fig(), 2), file("png"));
+      formats.PNG = async () => saveBlob(await withMarkFallback(logo => svgToPngBlob(fig(logo), 2)), file("png"));
       formats.SVG = async () => saveBlob(new Blob([serialize(fig())], {type: "image/svg+xml"}), file("svg"));
     }
     if (spec.csv) formats.CSV = async () => { const [cols, rows] = spec.csv(); saveCSV(cols, rows, file("csv")); };
@@ -3097,27 +3253,44 @@ out geom;</div>
     const m = MAP.map;
     await new Promise(r => { if (m.loaded() && m.areTilesLoaded()) r(); else m.once("idle", r); });
     await new Promise(r => { m.once("render", r); m.triggerRepaint(); });
+    const def = LAYERS.find(d => d.id === STATE.layer) || LAYERS[0];
+    const blob = await withMarkFallback(logo => mapPngBlob(def, logo));
+    saveBlob(blob, exportName(`map_${def.id}`, "png"));
+  }
+  async function mapPngBlob(def, logo){
+    const m = MAP.map;
     const P = palette();
     const src = m.getCanvas();
     const w = src.clientWidth, h = src.clientHeight, S = 2, pad = 24;
-    const def = LAYERS.find(d => d.id === STATE.layer) || LAYERS[0];
     const unit = `${def.unit || "MWp"} per 0.1° cell`;
     const attribution = [...document.querySelectorAll(".maplibregl-ctrl-attrib-inner")]
       .map(n => n.textContent.replace(/\s+/g, " ").trim()).join(" ")
       .split("|").map(t => t.trim()).filter(t => t && t !== ATTRIBUTION_TEXT && !/^(EarthPV|MapLibre)$/.test(t)).join(" · ");
+    const q = qualityLevel();
+    const mark = q ? qualityMarkSvg(P, q, logo) : null;
+    const markImg = mark ? await svgImage(mark, S) : null;
+    const L = markLayout(mark, w);
     const measure = document.createElement("canvas").getContext("2d");
+    measure.font = `700 17px ${P.fontDisplay}`;
+    const title = wrapMeasured(measure, `${AOI}: ${def.label}`, L.textW);
+    measure.font = `12px ${P.fontDisplay}`;
+    const desc = wrapMeasured(measure, `${def.desc}. ${unit}, log scale.`, L.textW);
     measure.font = `10.5px ${P.fontMono}`;
+    const qual = q ? wrapMeasured(measure, qualityLine(), w) : [];
     const foot = wrapMeasured(measure, [sourceLine(), attribution].filter(Boolean).join(" · "), w);
-    const headH = 64, legendH = 58, footH = 16 + foot.length * 14;
+    const titleY = L.top + 32, descY = titleY + (title.length - 1) * 21 + 19;
+    const headH = Math.max(descY + (desc.length - 1) * 15 + 13, mark && !L.markRow ? QUALITY_MARK_H + 20 : 0);
+    const legendH = 58, footH = 16 + (qual.length + foot.length) * 14;
     const cv = document.createElement("canvas");
     cv.width = (w + 2 * pad) * S; cv.height = (headH + h + legendH + footH) * S;
     const ctx = cv.getContext("2d");
     ctx.scale(S, S);
     ctx.fillStyle = P.panel; ctx.fillRect(0, 0, w + 2 * pad, headH + h + legendH + footH);
+    if (markImg) ctx.drawImage(markImg, L.markRow ? pad : pad + w - L.mw, 10, L.mw, QUALITY_MARK_H);
     ctx.fillStyle = P.ink; ctx.font = `700 17px ${P.fontDisplay}`;
-    ctx.fillText(`${AOI}: ${def.label}`, pad, 32);
+    title.forEach((line, i) => ctx.fillText(line, pad, titleY + i * 21));
     ctx.fillStyle = P.ink2; ctx.font = `12px ${P.fontDisplay}`;
-    ctx.fillText(`${def.desc}. ${unit}, log scale.`, pad, 51);
+    desc.forEach((line, i) => ctx.fillText(line, pad, descY + i * 15));
     ctx.drawImage(src, pad, headH, w, h);
     if (OV.cities.on){
       ctx.save();
@@ -3166,15 +3339,17 @@ out geom;</div>
       ctx.fillStyle = P.ink2;
       ctx.fillText(ctx.measureText(long).width <= w + pad - hx - 17 ? long : "not imaged", hx + 17, hy + 9);
     }
-    ctx.fillStyle = P.muted; ctx.font = `10.5px ${P.fontMono}`;
-    foot.forEach((line, i) => ctx.fillText(line, pad, headH + h + legendH + 6 + i * 14));
-    const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("the map canvas could not be read")), "image/png"));
-    saveBlob(blob, `${SLUG}_pv_atlas_map_${def.id}.png`);
+    ctx.fillStyle = P.ink2; ctx.font = `10.5px ${P.fontMono}`;
+    qual.forEach((line, i) => ctx.fillText(line, pad, headH + h + legendH + 6 + i * 14));
+    ctx.fillStyle = P.muted;
+    foot.forEach((line, i) => ctx.fillText(line, pad, headH + h + legendH + 6 + (qual.length + i) * 14));
+    return new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("the map canvas could not be read")), "image/png"));
   }
   function exportCellsGeoJSON(){
     const cols = DATA.cell_cols || [];
+    const q = qualityLevel();
     const fc = {type: "FeatureCollection", features: DATA.cells.map(c => {
-      const props = {};
+      const props = q ? {[QUALITY_COL]: q.name} : {};
       cols.forEach((k, i) => props[k] = c[i]);
       props.area_km2 = +cellKm2(c[1]).toFixed(3);
       const x = c[0], y = c[1];
@@ -3182,11 +3357,13 @@ out geom;</div>
         coordinates: [[[x, y], [+(x + 0.1).toFixed(4), y], [+(x + 0.1).toFixed(4), +(y + 0.1).toFixed(4)],
           [x, +(y + 0.1).toFixed(4)], [x, y]]]}};
     })};
-    saveBlob(new Blob([JSON.stringify(fc)], {type: "application/geo+json"}), `${SLUG}_pv_atlas_cells.geojson`);
+    // Also once for the whole file (a foreign member, which RFC 7946 allows), with its meaning.
+    if (q) Object.assign(fc, {[QUALITY_COL]: q.name, earthpv_quality_levels: QUALITY_URL});
+    saveBlob(new Blob([JSON.stringify(fc)], {type: "application/geo+json"}), exportName("cells", "geojson"));
   }
   function exportCellsCSV(){
     const cols = (DATA.cell_cols || []).concat(["area_km2"]);
-    saveCSV(cols, DATA.cells.map(c => c.concat([+cellKm2(c[1]).toFixed(3)])), `${SLUG}_capacity_by_cell.csv`);
+    saveCSV(cols, DATA.cells.map(c => c.concat([+cellKm2(c[1]).toFixed(3)])), exportName("capacity_by_cell", "csv"));
   }
 
   // `data-atlas-ready` on <html> marks the moment the map has drawn its first complete

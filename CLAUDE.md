@@ -67,8 +67,9 @@ earthpv roof-classifier --aoi <aoi>                 # needs mapped calibration q
 earthpv roofclf-score-national --aoi <aoi>          # long: hours at country scale
 
 # ESSENTIAL, not optional -- run after every national scoring pass. See
-# docs/methods/roofclf-national-validation.md.
-pixi run roofclf-tiles -- --random-cells 20 --seed <fresh int> --mapcss
+# docs/methods/roofclf-national-validation.md. Draws 20 random in-domain cells and their page;
+#   judge in data/roofclf_review/index.html, then `pixi run roofclf-review apply ...`
+pixi run roofclf-review draw --aoi <aoi> --seed <fresh int> [--calib-dir <its fit>]
 
 earthpv ge400-roof-capacity --aoi <aoi> --osm-solar <national OSM solar pull>   # before sub400
 earthpv sub400-capacity     --aoi <aoi> --osm-solar <national OSM solar pull>
@@ -95,18 +96,26 @@ transfer to French residential PV.
 
 An agent prepares each of these and **never judges them**; verdicts come from named people.
 
-- **roofclf random-cell validation, after every national scoring pass.** The calibration
-  quadrats are curated and industrial-leaning; scoring well there is not evidence roofclf works
-  on the rest of the country. `scripts/tile_roofclf_detections_geojson.py --random-cells N
-  --seed S` draws N cells uniformly from the national scoring output, excluding quadrats, into
-  `results/<aoi>_roofclf_validation/`; results go in `results/roofclf_random_validation_log.csv`;
-  protocol `docs/methods/roofclf-national-validation.md`. **Review on the page, not in JOSM**:
-  `scripts/roofclf_review_page.py cells --batch <tiles> --window-start <composite start>` puts 20
-  random flagged roofs per cell on the shared page (`data/roofclf_review/` -> /home; keys 1-4,
-  bright roof counted not PV, no score shown); `log --batch --verdicts --reviewer` fills the log
-  and writes the batch's precision (cells weighted by flagged count). `level` does the same for
-  the blind score-level review, whose `roofclf_level_review.py analyze` reads the level against
-  the published scoring. Only seed 20261107 describes Pakistan's published scoring.
+- **roofclf random-cell review, after every national scoring pass (2026-11-19).** The
+  calibration quadrats are curated and industrial-leaning; scoring well there is not evidence
+  roofclf works on the rest of the country. `pixi run roofclf-review draw --aoi <aoi> --seed S`
+  (`scripts/roofclf_review_page.py`) draws 20 cells uniformly from the scored cells inside the
+  density domain the atlas prices (`tile_roofclf_detections_geojson.py --random-cells
+  --in-domain`; `--all-cells` for every scored cell), quadrats excluded, into
+  `results/<aoi>_roofclf_random_<seed>/`, adds blank rows to the country's log
+  (`results/roofclf_random_validation_log.csv` for Pakistan, `results/<aoi>_roofclf_random_
+  validation_log.csv` elsewhere: `quality.ROOFCLF_LOG`, which the checklist reads) and pages
+  20 random flagged roofs per cell like the blob and large pages (`data/roofclf_review/` ->
+  /home, hub `index.html`; keys 1-4, bright roof counted not PV, no score shown). Each roof is
+  six panels: roof and yard, close up, 300 m, on **Esri (saved) and Mapbox (fetched live by
+  the browser, never stored)** over the same ground (`view`), lines drawn by the page (`o`
+  hides them). Mapbox needs a public `pk.` token in `~/.config/earthpv/mapbox_token`, written
+  into the page, or pasted by the reviewer (kept in the browser). A batch drawn from another
+  scoring is refused (fingerprint in `review_design.json`). `apply --verdicts --reviewer`
+  fills the log and writes the batch's precision (cells weighted by flagged count); `status`
+  lists every page. `level` pages the blind score-level review, whose
+  `roofclf_level_review.py analyze` reads the level against the published scoring. Only seed
+  20261107 (`BATCH_OF`, drawn from every scored cell) describes Pakistan's published scoring.
 - **Mapped PV outside the calibration areas validates sensitivity only.** It was mapped from
   segmentation leads, area screening and chance finds, so it is positive-only and selected.
   `scripts/roofclf_osm_positive_check.py` compares roofclf's score on those roofs with the
@@ -132,6 +141,8 @@ An agent prepares each of these and **never judges them**; verdicts come from na
   local chip corpus) against the corpus; >= 10% asks for a mapping round and a retrain. The
   thresholds are judgement, approved by the owner (2026-11-19). It cannot see recall: the
   held-out region decides when to stop.
+  Verdicts as training negatives are an experiment (`scripts/verdict_hard_negatives.py`,
+  Texas v47 vs control v47c, `scripts/run_texas_verdict_negatives.sh`), not a pipeline step.
 - **Large installation review (owner, 2026-11-10).** The same disk page for leads from
   `LARGE_MIN_M2` (10,000 m²) up to the cap, rooftop and ground (`pixi run large-review`,
   `scripts/oversize_review.py --kind large`; `results/<aoi>_large_review/`, packages in
@@ -190,7 +201,7 @@ pixi run earthpv labels --aoi germany            # default env is fine for data 
 
 CLI stages (`src/earthpv/cli.py`): `labels → chips → train → evaluate → infer → postprocess →
 export`, plus `compose` (imagery for AOIs with no local composites), the capacity stages listed
-under "Main workflow", `osm-hard-negatives`, `groundclf*`, `validate-mastr` and
+under "Main workflow", `combine-atlas`, `osm-hard-negatives`, `groundclf*`, `validate-mastr` and
 `validate-france`. `train --smoke` runs 50 steps; `chips --limit N` caps the chip count.
 `roofclf-score-national` is the long pole (hours) and is resumable per cell like `density`.
 
@@ -285,6 +296,14 @@ fails at `density`). `source.coop` 403s any request without a User-Agent header,
 exactly like "no such country." Guide: `docs/reproduce.md`, "Scale to a new country". Before a
 new country's atlas is built, re-run `scripts/ember_import_ceiling.py` and add any official
 figures to `scripts/official_capacity.py` and re-run it.
+
+**New AOIs sit on the global 0.1° lattice**: `grid_origin` on whole tenths of a degree, so a
+country's cells are global cells and its atlas combines with its neighbours' cell by cell
+(`earthpv.global_grid`, "Combined atlases"). `new_region.py add` writes it
+(`global_grid.snap_down` of the bbox corner); `compose` refuses to START an AOI off the lattice
+and only warns for one that already holds composites (`EARTHPV_ALLOW_OFF_LATTICE=1` overrides).
+**Never change a `grid_origin` after the first compose**: it renames every cell. Off the lattice:
+Pakistan, Germany, France, Zambia, Nigeria.
 
 **A state or province can be an AOI** (`division.subtype: region`: California, Texas). Compose
 clips to its ADM1 polygon by name (`compose._aoi_boundary`); `density.subnational_units` makes
@@ -608,7 +627,11 @@ Page rules worth knowing before touching the template:
   complex's rating on one plant). A PV outline at least half inside a plant is dropped as mirror
   field. A country without a table reads `csp_status.checked: false`.
 - **Downloads**: every figure as PNG/SVG/CSV, re-rendered at 960 px, never serialised from
-  screen; plus the release files below.
+  screen; plus the release files below. **Every export carries the page's quality level
+  (owner, 2026-11-19)**: `<country>_pv_atlas_<level>_<what>.<ext>` (`exportName`), the
+  badge's medallion in a PNG/SVG header plus a level line under the figure, a leading
+  `earthpv_quality_level` CSV column and GeoJSON property. `qualityLevel()` reads the badge
+  the page shows (`.vscore--<tier>`), so a re-badged page exports its new level unrebuilt.
 - **Plot gotchas**: on a log scale Plot routes any `tickFormat` through d3's log formatter, which
   blanks every tick with mantissa > 2 (draw labels with a text mark); a `{value, label}` channel
   object as `barX`'s `y` breaks the implicit stack (rename the field instead); `grid: true` on a
@@ -730,6 +753,31 @@ country requests and claims through `new-country.yml` (label `new-country`), pre
 globe by `new-atlas.js`. A screenshot still to be taken is a `<div class="shot-needed" markdown>`
 placeholder naming the target file. `new_calibration_quadrat.py --aoi <aoi>` registers outside
 Pakistan into `data/labels/<aoi>/`; Pakistan stays flat in `data/labels/`.
+
+### Combined atlases (`earthpv combine-atlas`)
+
+`earthpv combine-atlas --config configs/combined/<name>.yaml` (`combine.py`, page
+`combine_page.py`) sums several countries' evidence atlases on the global grid into
+`data/combined/<name>/`. Per member: (1) **control**: `build_evidence_atlas(cells_only=True)` on
+its own density run must reproduce its published Verified/Best (`CONTROL_TOL_MWP`) or the member
+is refused; (2) **global grid**: `density`'s candidate figure is recomputed on the lattice from
+`density.priced_candidates`, OSM and roofclf rows join by position; an off-lattice member's
+roofclf half must be split per global cell (Germany: `.../germany/density_gcell/`); (3)
+**partition**: detections and OSM count only inside the member's border
+(`build_evidence_atlas(partition=...)`), whereas a country's own page keeps border cells whole;
+(4) **joint interval**: kWp draws share one seed across members, each member's own terms get a
+member seed or permutation (`_evidence_uncertainty(perm_seed=)`); the country pages draw
+segmentation's kWp independently of OSM's and so understate that correlation (not changed). The
+per-cell floor is
+grid-dependent, so a member's combined Best differs slightly from its page's. A Europe preview
+(Germany, France, Poland, Turkey) exists, unpublished and uncommitted.
+
+`density` writes `gcell` on an on-lattice grid, `candidate_estimates.parquet` (every priced
+detection; `candidate_row` counts density's cap-filtered frame, not candidates.parquet, so join
+on the point) and `grid_origin`/`grid_on_global_lattice`/`n_candidates_outside_border`/
+`est_mwp_rc_outside_border` in `meta.json`; `earthpv atlas` writes
+`<density_dir>/evidence_atlas_inputs.json`, which `combine.member_inputs` reads. A test build with
+`--out` elsewhere overwrites that record too.
 
 ### Plausibility gate (`plausibility.py`, `earthpv check-density`)
 
