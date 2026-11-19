@@ -105,6 +105,7 @@ PUBLISHED = {
     "denmark_pv_evidence_atlas.html": ("denmark", "Denmark"),
     "texas_pv_evidence_atlas.html": ("texas", "Texas"),
     "california_pv_evidence_atlas.html": ("california", "California"),
+    "sweden_pv_evidence_atlas.html": ("sweden", "Sweden"),
 }
 
 
