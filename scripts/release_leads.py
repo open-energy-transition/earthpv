@@ -166,9 +166,12 @@ SOURCES = {
                 "osm": ["data/labels/nigeria_overpass_solar_pull20261114.parquet"]},
     # Yemen's atlas is the v25 run (2026-11-02); data/predictions/yemen holds v13's.
     "yemen": {"pred": "data/predictions_v25/yemen"},
+    # Denmark's atlas is the localized ResNet-50 run (v37r) since 2026-11-19;
+    # data/predictions/denmark holds the TerraMind v37 run's.
+    "denmark": {"pred": "data/predictions_resnet_20261119/denmark"},
     "india": {}, "vietnam": {}, "zambia": {}, "egypt": {},
     "south_africa": {}, "morocco": {}, "poland": {}, "namibia": {}, "turkiye": {}, "spain": {},
-    "belgium": {}, "denmark": {}, "italy": {}, "luxembourg": {}, "netherlands": {},
+    "belgium": {}, "italy": {}, "luxembourg": {}, "netherlands": {},
     "portugal": {},
 }
 # The published page each run must match: its provinces are compared with the regions read

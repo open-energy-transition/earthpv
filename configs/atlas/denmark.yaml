@@ -4,7 +4,8 @@
 # calibration quadrats, no record-level register used, no third-party dataset checked
 # against -- so the builder's default no-ground-truth text stands. The segmentation is
 # localized on Denmark's own OpenStreetMap labels and beat v5 on the held-out Nordjylland
-# (results/denmark_checkpoint_decision.json).
+# (results/denmark_checkpoint_decision.json); since 2026-11-19 it is the ResNet-50 v37r, which
+# found more there than the TerraMind v37 it replaced.
 #
 # Numbers belong in docs/results/denmark.md; nothing here quotes a figure a rebuild could
 # change.
@@ -67,8 +68,10 @@ confidence:
     - >-
       <b>Very large model outlines count only once checked.</b> A model outline above
       100,000 m&sup2; counts only when it is mapped or a person has judged it solar.
-      Denmark's few have not been judged yet, nor have its large model outlines below that
-      size. Mapping such a park brings it into the verified layer.
+      In Denmark every such outline lies at a mapped installation or outside the country's
+      regions, at sea or across the border, so none waits to be judged; its large model
+      outlines below that size have not been judged yet. Mapping such a park brings it into the
+      verified layer.
     - >-
       <b>Cells on the border are kept whole.</b> A map cell that straddles the border with
       Germany, or the strait to Sweden, is counted in full, so a few panels outside Denmark
@@ -79,3 +82,13 @@ confidence:
       region fails it. That is expected where rooftop systems are mostly too small for the
       model to see, since the comparison then has little to divide by. It also means the
       check says little either way about false detections on open ground.
+
+# The quality checklist on the page (earthpv.quality): what no file on record says. The
+# solar farm review's queue is empty because no unmapped outline above the cap lies inside the
+# page's regions, not because the model drew none (the default text for an empty queue).
+quality:
+  blobs:
+    status: na
+    note: >-
+      None to judge: every model outline above 100,000 m&sup2; lies at a mapped installation
+      or outside the country's regions.

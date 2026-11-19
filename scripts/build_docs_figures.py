@@ -3050,9 +3050,10 @@ INTERACTIVE = [
     # (the average of epochs 21 and 29, which beat v5 on the held-out Nord-Ovest).
     # docs/results/italy.md explains.
     ("results/italy_pv_evidence_atlas.html", "italy_pv_evidence_atlas.html"),
-    # Denmark: segmentation-only, national, on its own LOCALIZED checkpoint
-    # v37_combined_denmark (it beat v5 on the held-out Nordjylland). docs/results/denmark.md
-    # explains.
+    # Denmark: segmentation-only, national, on its own LOCALIZED checkpoint, since 2026-11-19
+    # the ResNet-50 v37r_resnet50_denmark (it beat v5 and the TerraMind v37_combined_denmark
+    # on the held-out Nordjylland; run in data/predictions_resnet_20261119).
+    # docs/results/denmark.md explains.
     ("results/denmark_pv_evidence_atlas.html", "denmark_pv_evidence_atlas.html"),
     # Texas: a US state run as an AOI of its own (counties as regions), segmentation-only,
     # on its own LOCALIZED checkpoint v39_combined_texas (tied v5 on the held-out Bexar

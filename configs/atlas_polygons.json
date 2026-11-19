@@ -51,20 +51,20 @@
     "denmark": {
       "file": "denmark_pv_polygons.parquet",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/denmark_pv_polygons.parquet",
-      "size_bytes": 550702,
+      "size_bytes": 631865,
       "format": "GeoParquet 1.1, zstd",
-      "made": "2026-11-13",
-      "n_model": 486,
-      "n_model_leads": 258,
+      "made": "2026-11-19",
+      "n_model": 1168,
+      "n_model_leads": 849,
       "n_model_reviewed": 0,
       "n_osm": 3876,
       "n_osm_csp": 1,
       "osm_as_of": "2026-11-08",
       "min_distance_m": 100,
       "sources": {
-        "n_candidates": 510,
-        "n_outside": 24,
-        "pred": "data/predictions/denmark",
+        "n_candidates": 1251,
+        "n_outside": 83,
+        "pred": "data/predictions_resnet_20261119/denmark",
         "raw_osm": [
           "data/labels/denmark_overpass_solar.parquet"
         ],

@@ -1124,7 +1124,7 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Netherlands | `v5_combined_france` ep 25 at 0.98 | 3,708.6 / 4,567.3 | v32 lost on recall; recall not corrected |
 | Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | 8.3 of the model's 21.3 MWp lies beyond the border |
 | Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 19,972.6 | a map of the ground-mounted fleet |
-| Denmark | `v37_combined_denmark` ep 28 at 0.95 | 2,639.9 / 2,695.1 | thin Nordjylland holdout |
+| Denmark | `v37r_resnet50_denmark` ep 10 at 0.95 | 2,639.9 / 2,683.1 | localized ResNet-50 since 2026-11-19; thin Nordjylland holdout |
 | Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 52,249.8 | state AOI, counties as regions |
 | California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 32,198.9 | state AOI; small-scale PV unmeasured |
 

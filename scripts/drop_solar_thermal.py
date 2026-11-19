@@ -155,10 +155,10 @@ def thermal_ids_by_id(label_ids, timeout: int = 180, batch: int = 1000) -> dict[
     return out
 
 
-def filter_candidates(aoi: str, labels_dir: Path) -> int:
+def filter_candidates(aoi: str, labels_dir: Path, pred_dir: Path | None = None) -> int:
     record = labels_dir / f"{aoi}_solar_thermal_dropped.json"
     backup = labels_dir / f"{aoi}_solar_labels_with_thermal.parquet"
-    cpath = REPO / f"data/predictions/{aoi}/candidates.parquet"
+    cpath = (pred_dir or REPO / "data/predictions") / aoi / "candidates.parquet"
     if not record.exists():
         print(f"{aoi}: no solar-thermal labels were dropped; candidates unchanged")
         return 0
@@ -201,9 +201,12 @@ def main() -> int:
                     help="look the label elements up by OSM id instead of scanning the bbox")
     ap.add_argument("--candidates", action="store_true",
                     help="filter model candidates against the already-dropped thermal polygons")
+    ap.add_argument("--pred-dir", type=Path, default=None,
+                    help="with --candidates: the run's prediction directory, holding "
+                         "<aoi>/candidates.parquet (default data/predictions)")
     a = ap.parse_args()
     if a.candidates:
-        return filter_candidates(a.aoi, a.labels_dir)
+        return filter_candidates(a.aoi, a.labels_dir, a.pred_dir)
     cfg = Settings.load().aois[a.aoi]
     path = a.labels_dir / f"{a.aoi}_overpass_solar.parquet"
     lab = gpd.read_parquet(path)

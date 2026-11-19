@@ -84,11 +84,11 @@
     },
     "denmark": {
       "file": "denmark_pv_new_leads.geojson",
-      "n": 255,
-      "size_bytes": 255198,
+      "n": 849,
+      "size_bytes": 728622,
       "osm_as_of": "2026-11-08",
       "min_distance_m": 100,
-      "made": "2026-11-13",
+      "made": "2026-11-19",
       "steep": {
         "slope_deg": 15.0,
         "max_area_m2": 1000.0,
@@ -104,9 +104,13 @@
       },
       "blobs": {
         "file": "denmark_pv_blob_leads.geojson",
-        "n": 3,
-        "size_bytes": 7941,
+        "n": 0,
+        "size_bytes": 204,
         "min_area_m2": 100000.0
+      },
+      "judged_not_pv": {
+        "leads": 0,
+        "blobs": 0
       }
     },
     "egypt": {
