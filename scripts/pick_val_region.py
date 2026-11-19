@@ -46,7 +46,8 @@ from earthpv.labels import dissolve_overlapping  # noqa: E402
 CELL_DEG = 0.1
 
 
-def pick(aoi: str, target: float, min_buildings: int) -> tuple[str, list[str], dict]:
+def pick(aoi: str, target: float, min_buildings: int,
+         labels: Path | None = None) -> tuple[str, list[str], dict]:
     cfg = Settings.load().aois[aoi]
     iso3 = cfg["division"]["iso3"]
     # The origin compose actually names cells from (see density._grid_origin): with a raw
@@ -54,7 +55,7 @@ def pick(aoi: str, target: float, min_buildings: int) -> tuple[str, list[str], d
     from earthpv.density import _grid_origin
     ox, oy = _grid_origin(aoi, cfg, Settings.load())
 
-    lab = gpd.read_parquet(REPO / f"data/labels/{aoi}_overpass_solar.parquet")
+    lab = gpd.read_parquet(labels or REPO / f"data/labels/{aoi}_overpass_solar.parquet")
     lab = lab[lab.geom_type.isin(["Polygon", "MultiPolygon"])]
     pos = dissolve_overlapping(lab, group_col=None)
     pos = pos[pos["area_m2"] >= MIN_PV_AREA]
@@ -138,8 +139,10 @@ def main() -> int:
     ap.add_argument("--target", type=float, default=0.17)
     ap.add_argument("--min-buildings", type=int, default=1000)
     ap.add_argument("--write", action="store_true")
+    ap.add_argument("--labels", type=Path, default=None,
+                    help="label pull to read (default data/labels/<aoi>_overpass_solar.parquet)")
     a = ap.parse_args()
-    region, tiles, info = pick(a.aoi, a.target, a.min_buildings)
+    region, tiles, info = pick(a.aoi, a.target, a.min_buildings, a.labels)
     print(info)
     if a.write:
         write(a.aoi, tiles, info)

@@ -601,7 +601,7 @@ Page rules worth knowing before touching the template:
   `validation` declarations, calibration table, review CSVs, `results/<aoi>_checkpoint_decision.json`,
   `<density>/plausibility.csv`, the roofclf random-cell log, `results/glint_coverage/`); what
   no file holds goes in the config's `quality: {<check>: {status, note}}` (model choice of
-  Pakistan, Germany, France, Zambia, Nigeria). `patch_atlas_leads.py` and `retemplate_atlas.py`
+  Pakistan, Germany, France, Zambia). `patch_atlas_leads.py` and `retemplate_atlas.py`
   recompute it on every pass, so re-run `patch_atlas_leads.py` on the pages after a review
   sitting or a declaration.
 - **Tiles and sections**: the generation tile (`totals.generation`, `atlas.generation_totals`:
@@ -1115,7 +1115,7 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Morocco | `v11_combined_morocco` | 898.9 / 935.1 | AOI stops at 27.7N |
 | Poland | `v15_combined_poland` | 6,604.1 / 9,110.2 | |
 | Zambia | `v4_combined_all` ep 41 | 505.8 / 531.7 | |
-| Nigeria | `v5_combined_france` ep 25 | 90.2 / 157.3 | name `v8` is taken by `v8_combined_nigeria` |
+| Nigeria | `v45r_resnet50_nigeria` ep 11 at 0.3 | 90.2 / 128.0 | localized ResNet-50 since 2026-11-19; its 157 blobs unjudged |
 | Namibia | `v17_combined_namibia` | 464.3 / 512.3 | Cuvelai pans partly in Best |
 | Turkey | `v19_combined_turkiye` ep 12 | 10,714.9 / 17,598.4 | dark open ground in Best |
 | Spain | `v26_combined_spain` ep 21 | 39,379.3 / 41,776.7 | floor of 1 building per cell |

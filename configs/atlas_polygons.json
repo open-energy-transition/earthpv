@@ -291,24 +291,24 @@
     "nigeria": {
       "file": "nigeria_pv_polygons.parquet",
       "url": "https://github.com/open-energy-transition/earthpv/releases/download/pv-polygons-2026-11-11/nigeria_pv_polygons.parquet",
-      "size_bytes": 1052070,
+      "size_bytes": 978750,
       "format": "GeoParquet 1.1, zstd",
-      "made": "2026-11-13",
-      "n_model": 4997,
-      "n_model_leads": 4950,
-      "n_model_reviewed": 595,
+      "made": "2026-11-19",
+      "n_model": 4029,
+      "n_model_leads": 3905,
+      "n_model_reviewed": 513,
       "n_osm": 482,
       "n_osm_csp": 0,
       "osm_as_of": "2026-08-13",
       "min_distance_m": 100,
       "sources": {
-        "n_candidates": 5109,
-        "n_outside": 112,
-        "pred": "data/predictions_v5_nigeria/nigeria",
+        "n_candidates": 4054,
+        "n_outside": 25,
+        "pred": "data/predictions_nigeria_20261114/nigeria",
         "raw_osm": [
-          "data/labels/nigeria_overpass_solar.parquet"
+          "data/labels/nigeria_overpass_solar_pull20261114.parquet"
         ],
-        "raw_osm_as_of": "2026-09-23",
+        "raw_osm_as_of": "2026-10-20",
         "osm_solar": "data/labels/nigeria_national_osm_solar.parquet"
       }
     },

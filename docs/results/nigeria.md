@@ -1,10 +1,11 @@
-# Nigeria: the checkpoint mattered more than the country did
+# Nigeria: a model localized on Nigeria's own map
 
-Nigeria was composed and run between 16 and 23 September 2026. Like
-[Zambia](zambia.md), it started from nothing local: no cached imagery, no calibration
-quadrats, no national register, no third-party PV dataset. Unlike Zambia, it was scored
-against two checkpoints rather than one, and the difference between them turned out to be
-the most informative result of the run.
+Nigeria was composed and run between 16 and 23 September 2026 and published on a general
+checkpoint, `v5_combined_france`, which had never seen it. On the owner's request (14 November)
+it was run again from a fresh OpenStreetMap pull with a model localized on Nigeria's own map,
+`v45r_resnet50_nigeria`. That model beat v5 on a held-out region and has run this page since
+19 November. Nigeria still has no calibration quadrats, no national register and no
+third-party PV dataset.
 
 Interactive: [Nigeria PV evidence atlas](../atlas-nigeria.md).
 
@@ -13,39 +14,95 @@ Interactive: [Nigeria PV evidence atlas](../atlas-nigeria.md).
 | | |
 | --- | --- |
 | Verified | **90.2 MWp** (90% 71 to 117) |
-| Best estimate | **157.3 MWp** (90% 142 to 187) |
+| Best estimate | **128.0 MWp** (90% 118 to 147) |
+| Generation | 0.20 TWh/yr from Best (90% 0.18 to 0.22), 1,530 kWh/kWp |
 | Grid | 6,254 of 6,341 cells of 0.1&deg;, 37 regions |
-| Imagery | Sentinel-2 L2A, November 2025 to March 2026 |
-| Model | `v5_combined_france` epoch 25 |
+| Imagery | Sentinel-2 L2A, November 2025 to March 2026, median scene 1 January |
+| Model | `v45r_resnet50_nigeria`, epoch 11, at threshold 0.3, localized (see below) |
 
-!!! note "Revised on 10 November: large installations judged"
-    Until 10 November this page read Best 126.9 MWp (90% 117 to 166). On 10 November the
-    owner judged, on the [large installation review](../contribute/review.md), every unmapped
-    model outline from 1 ha up to the 10 ha merge cap that the lead screens keep: 28 of
-    the 369 judged are solar, the other 341 are not. These leads counted before at
-    the share their size class usually turns out real; now a lead judged solar counts as real
-    (a roof outline at 1/2.5 of its area, since the model draws about 2.5 times the array) and
-    one judged not solar counts nothing. Best rises by 30.4 MWp; Verified did not move.
-
-!!! note "Revised on 4 November"
-    Until 4 November this page read Best 120.9 MWp (90% 112 to 158). On 3 November the
-    owner judged, on the disk review page, every model outline above the 100,000 m&sup2;
-    merge cap that the lead screens keep: 1 of the 226 is a solar park nobody has mapped,
-    0.12 km&sup2; in Rivers, and now counts whole as ground; the other 225 are not.
-    Best rises by 6.0 MWp; Verified did not move.
+!!! note "Revised on 19 November: the localized model"
+    Until 19 November this page ran on v5 and read Best 157.3 MWp (90% 142 to 187). The
+    localized model draws fewer and different outlines, so the reviews started again. The owner
+    judged 513 of its 524 unmapped outlines from 1 ha up to the 10 ha merge cap: 18 are solar
+    and 495 are not. Its 157 outlines above the cap (69.8 km&sup2;) are not judged yet, so none
+    of them counts. Best falls by 29.3 MWp: rooftop 51.6 to 39.0, ground 105.6 to 89.0, most of
+    it in Kano (36.2 to 29.6), Lagos (10.4 to 4.3) and the Federal Capital Territory (12.3 to
+    8.8). Verified did not move, because it still counts the September pull (below). Earlier,
+    on v5: Best 120.9 MWp, then 126.9 after one park was judged among 226 outlines above the cap
+    (4 November), then 157.3 after 28 of 369 large outlines were judged solar (10 November).
 
 !!! warning "A precision floor, not an estimate"
     Nigeria has **no calibration quadrats**, so there is no `roofclf` half and no
     instrument at all below the 400 m&sup2; segmentation floor. It has no glint sample, so
     `p_unmapped` is 0 and `p_real` collapses to the OpenStreetMap-mapped fraction, measured
-    at 0.006 to 0.047. Recall was deliberately skipped (`--recall-reference none`). These
-    are lower bounds of the kind [France](france.md) and [Zambia](zambia.md) publish, and
-    they are not a statement about how much solar Nigeria has.
+    at 0.010 to 0.028 per size class. Recall was deliberately skipped
+    (`--recall-reference none`). Where a person judged an outline, the verdict replaces that
+    price. These are lower bounds of the kind [France](france.md) and [Zambia](zambia.md)
+    publish, and they are not a statement about how much solar Nigeria has.
+
+## The localized model (v45r, 2026-11-19)
+
+**Labels.** A national Overpass pull of 14 November holds 1,687 solar features, 407 of them
+400 m&sup2; and up, against 1,268 and 285 in September; none is solar thermal. Some of the
+new ones are the model's own leads, mapped since (below).
+
+**Holdout.** `pick_val_region.py` chose **Lagos** from that label map before training: 24
+cells, 31 of 289 dissolved positives of 400 m&sup2; and up (10.7%). The largest region, the
+Federal Capital Territory (105), is never the holdout.
+
+**Training.** A ResNet-50 pretrained on SSL4EO-S12, the architecture of the released
+[v28](../pretrained-model.md), with the recipe of the localized ResNets that beat both
+localized TerraMind and v28 in Denmark, California and Texas. Its corpus is v28's (v5's plus
+South Africa) with Nigeria's chips added (210 train, 22 val, 126 holding PV). The holdout
+holds too few installations to choose among epochs by recall, so epoch 11, the val/mIoU pick,
+ships at 0.3.
+
+| On the Lagos holdout, at equal pixel precision | Local `v45r` | General `v5` |
+| --- | ---: | ---: |
+| Installations of 500 m&sup2; and up found (of 73) | **59** (0.808) | 48 (0.658) |
+| of 1,000 m&sup2; and up (of 59) | 50 | 47 |
+| of 500 to 1,000 m&sup2; (of 14) | 7 | 3 |
+| Pixel IoU | **0.497** | 0.414 |
+| Pixel F1 | 0.651 | 0.615 |
+
+v5 never reaches the local model's precision, so both are compared at v5's best (0.74, v5 at
+threshold 0.98). Scored with `fair_score.py` at v5's production precision over the 76
+held-out installations of 400 m&sup2; and up, the local model finds 61 against v5's 50, 11
+more and none fewer (McNemar p = 0.001). The released v28, which never saw Nigeria, ties it
+there (61, 13 more and 2 fewer than v5), so most of the gain is the ResNet, not Nigeria's
+labels. 72 of the 73 held-out installations are ground-mounted, so rooftop recall is not
+measured.
+
+**The candidate population.** The local model draws fewer, larger outlines:
+
+| | v5 | v45r |
+| --- | ---: | ---: |
+| candidates | 5,109 | 4,054 |
+| rooftop candidates | 650 | 317 |
+| above the 100,000 m&sup2; cap, out of capacity until judged | 286 (69.1% of candidate area) | 160 (71.4%) |
+| largest single outline | 4.06 km&sup2; | 7.39 km&sup2; |
+| candidate area up to the cap | 36.8 km&sup2; | 28.7 km&sup2; |
+| `est_mwp_exp`, the ceiling | 398.0 MWp | 291.9 MWp |
+| `check-density` | 24 suspect of 37, 0 fail | **15 suspect of 37**, 0 fail |
+
+**What the reviews found.** On v45r's large installation page, 495 of the 513 judged leads
+are not solar (11 of them bright roofs), and on open ground 414 of 429. The 18 judged solar
+(0.53 km&sup2;) count whole, roofs at 1/2.5 of the outline; 11 left unsure keep their size
+class's price. v5's verdicts were not carried over: they name v5's outlines. Of the 29 v5
+outlines judged solar, 14 are mapped in OpenStreetMap since and 11 are among v45r's 18; the
+other 4 (0.17 km&sup2;) are outlines v45r draws but that were not on its page.
+
+**The earlier claim was wrong.** This page said in September that a localization retrain
+would not help Nigeria, because too few mapped arrays clear the training floor. The localized
+run found 11 more of 73 held-out installations at equal precision. It also shows that this
+does not close the gap to Ember's import figure: Best fell, because the new outlines were
+judged and most large ones are not solar.
 
 ## The finding: v4 and v5 disagree, and v5 is right
 
-The chain infers twice, with `v4_combined_all` (the production checkpoint everywhere except
-France) and `v5_combined_france`, then scores both against the same OpenStreetMap
+This section is the September run, on two general checkpoints. The chain inferred twice, with
+`v4_combined_all` (then the production checkpoint everywhere except France) and
+`v5_combined_france`, then scored both against the same OpenStreetMap
 population. Scored over 191 dissolved mapped installations at or above 400 m&sup2;:
 
 | size bin | n | v4 recall | v5 recall |
@@ -88,69 +145,67 @@ one. It also means every AOI still on v4 should be re-scored before its numbers 
 
 The v4 artifacts are kept as `*_PRE_v5_20260923` so the comparison stays reproducible.
 
-## The blob problem is reduced, not solved
+## The blob problem is not solved
 
 `polygonize_chips` merges every touching thresholded pixel with no upper bound, so a
-connected sheet of false positives becomes one candidate. Even under v5, **69.1% of
-candidate area sits above the 100,000 m&sup2; cap** and is excluded from capacity by
-`density.capacity_relevant_candidates`. The largest survivor is 4.06 km&sup2;.
+connected sheet of false positives becomes one candidate. Under v45r, **71.4% of candidate
+area sits above the 100,000 m&sup2; cap** (69.1% under v5) and is excluded from capacity by
+`density.capacity_relevant_candidates` until a person judges it; the largest outline is
+7.39 km&sup2;. v5's 226 such outlines were judged in November and one was a park. v45r's 157
+wait on the solar farm review page.
 
 That exclusion is what keeps the headline honest, but it is not a fix. Nigeria's failure
-mode is precision, not recall, and the instrument that addresses it is hard negatives
-mined from rejected leads, not more positives.
+mode is precision, not recall: 495 of 513 judged large leads were not solar.
 
 ## Plausibility gate
 
-`earthpv check-density` reports **0 fail and 23 suspect of 37 regions** (24 since the judged
-park in Rivers, 6.2 MWp of ground against 0.1 of rooftop, on 4 November). Every suspect is
-flagged on the ground-to-rooftop ratio with a total below 1.5 MWp, far under the check's own
-50 MWp noise floor, so the ratio there is arithmetic on near-zero numbers rather than a
-signal. Published with the flags stated rather than suppressed.
+`earthpv check-density` reports **0 fail and 15 suspect of 37 regions** (24 suspect under
+v5). Every suspect is flagged on the ground-to-rooftop ratio, the largest Imo with
+5.1 MWp in all, far under the check's own 50 MWp noise floor, so the ratio there is
+arithmetic on near-zero numbers rather than a signal. Published with the flags stated rather
+than suppressed.
 
 ## Mapping leads
 
-Nigeria is a recall-first leads product before it is a capacity product. From the v5
-candidates, after removing anything within 100 m of an already-mapped OpenStreetMap solar
-feature, **5,074 new leads** remain, of which 1,312 are at or above 5,000 m&sup2;. They ship
-as two MapRoulette challenges in `data/predictions_v5_nigeria/nigeria/`:
-
-| tier | tasks | area | median | note |
-| --- | --- | --- | --- | --- |
-| `leads_map` | 1,026 | 32.2 km&sup2; | 21,480 m&sup2; | 5k to 100k m&sup2;, ranked best first |
-| `leads_review` | 286 | 83.6 km&sup2; | 184,814 m&sup2; | above the merge cap, redraw rather than trace |
-
-The head of the queue is confidence-1.00 rooftop leads on large roofs in Lagos, Abuja, Kano,
-Kaduna, Jos and Maiduguri.
+The atlas offers mappers only the outlines a person has judged solar: v45r's
+`nigeria_pv_confirmed_leads.geojson` holds those 18, in release `pv-new-leads-2026-11-02`.
+The unchecked lead files stay local: 1,877 leads from v45r's candidates more than 100 m from
+any solar feature of the 14 November pull, after the lead screens and without the 495 judged
+not solar, and the 157 outlines above the cap. Every model outline (4,029 inside the regions)
+is in `nigeria_pv_polygons.parquet`, release `pv-polygons-2026-11-11`.
 
 !!! danger "Mapping from leads contaminates the next calibration"
     With no glint sample, `mapped_frac` **is** Nigeria's precision estimate. Mapping the
     model's own leads raises it mechanically, which raises `p_real`, which raises
     `est_mwp_cal` and `est_mwp_rc`. The atlas capacity would climb without the model
     improving at all. Freeze the pre-mapping OpenStreetMap snapshot as the evaluation
-    reference, or filter later pulls by feature timestamp. The recall table above was
-    computed against the 15 September 2026 snapshot, before any lead-driven mapping.
+    reference, or filter later pulls by feature timestamp. v4 and v5 were compared against
+    the 15 September 2026 snapshot, before any lead-driven mapping. The 14 November pull v45r
+    trained on already holds some: 14 of the 29 v5 outlines judged solar are mapped since.
 
-## What Nigeria needs next, and what it does not
+## What Nigeria needs next
 
-**Not a localisation retrain.** OpenStreetMap holds 1,372 Nigerian solar ways, but the
-median mapped feature is 225 m&sup2; and only 22% clear the 400 m&sup2; training floor. At
-the label-to-chip ratios observed elsewhere (Gujarat 866 features to 760 chips, Zambia 221
-to 31), Nigeria yields roughly 300 to 400 chips. The
-[v6 France experiment](../experiments.md) measured a 3,201-chip in-domain retrain landing
-*worse* than zero-shot on slope and recovery. Nigeria is an order of magnitude below the
-volume that already failed.
+**Judge the 157 outlines above the cap.** They hold 71% of v45r's candidate area and count
+nothing until judged; the solar farm review page lists them.
 
-**Hard negatives**, mined from leads a mapper rejects, attack the 69% blob problem directly.
-`earthpv hard-negative-chips --centers` consumes them, and `pakistan_hard_neg` (2,626 chips)
-shows the approach scales.
+**Verified from the 14 November pull.** The page still counts the national OSM file built
+from the September pull (482 features). Rebuilding it from the November pull, whose raw pull
+holds a third more features (1,687 against 1,268), would move Verified and Best together.
 
 **One exhaustively mapped calibration quadrat** is worth more than diffuse national mapping,
-because it is the only thing that unlocks a `roofclf` half and a real coverage ratio. A list
-of installations is not a calibration area: the coverage ratio needs a bounded area where
-the *absence* of PV is known. Check imagery date before drawing the box, not after mapping
-it. See the [quadrat protocol](../calibration-mapping-protocol.md).
+because it is the only thing that unlocks a `roofclf` half and a real coverage ratio. Ten
+candidate boxes pass the imagery gate; none is mapped yet. A list of installations is not a
+calibration area: the coverage ratio needs a bounded area where the *absence* of PV is known.
+Check imagery date before drawing the box, not after mapping it. See the
+[quadrat protocol](../calibration-mapping-protocol.md).
+
+**Hard negatives**, from the 495 large leads judged not solar and from leads a mapper
+rejects, attack the precision problem directly. Whether review verdicts should train the
+next model is being tested on Texas first.
 
 ## Reproducing
+
+The September run (imagery, v4 and v5):
 
 ```bash
 pixi run python scripts/new_region.py check --iso3 NGA --name nigeria
@@ -171,3 +226,16 @@ several workers, or every cell trips the 60 s Planetary Computer patience and is
 twice; Nigeria livelocked for 17 hours on this and the log was indistinguishable from a
 provider outage. And the compose unit is memory-capped, so expect roughly one OOM restart
 per 10 hours, which the restart loop absorbs.
+
+The localized run (labels pulled 2026-11-14, holdout written into `configs/aoi.yaml` by
+`pick_val_region.py --labels`, model `v45r_resnet50_nigeria`) reused those composites, with
+58 defective cells recomposed. Its predictions are in `data/predictions_nigeria_20261114/`,
+and the page's last steps were:
+
+```bash
+pixi run earthpv density --aoi nigeria --pred-dir data/predictions_nigeria_20261114 \
+  --districts --threshold 0.3 --calibration configs/calibration/nigeria_candidate_precision.yaml
+pixi run earthpv atlas --aoi nigeria --pred-dir data/predictions_nigeria_20261114 \
+  --osm-solar data/labels/nigeria_national_osm_solar.parquet \
+  --imagery-date-range "Nov 2025 - Mar 2026" --out results/nigeria_pv_evidence_atlas.html
+```

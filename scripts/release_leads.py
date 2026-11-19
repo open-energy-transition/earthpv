@@ -159,8 +159,11 @@ SOURCES = {
                 "screened": {"steep": 209, "lowconf": 2335},
                 "keep_ids_from": ["data/leads_reference/germany_20261101/germany_pv_new_leads.geojson",
                                   "data/leads_reference/germany_20261101/germany_pv_blob_leads.geojson"]},
-    # Nigeria's atlas is the v5 run; data/predictions/nigeria holds the losing checkpoint's.
-    "nigeria": {"pred": "data/predictions_v5_nigeria/nigeria"},
+    # Nigeria's atlas is the localized v45r run since 2026-11-19 (v5's was
+    # data/predictions_v5_nigeria; data/predictions/nigeria holds v4's). Its reviews were drawn
+    # against the 2026-11-14 pull, so that pull is what counts as mapped.
+    "nigeria": {"pred": "data/predictions_nigeria_20261114/nigeria",
+                "osm": ["data/labels/nigeria_overpass_solar_pull20261114.parquet"]},
     # Yemen's atlas is the v25 run (2026-11-02); data/predictions/yemen holds v13's.
     "yemen": {"pred": "data/predictions_v25/yemen"},
     "india": {}, "vietnam": {}, "zambia": {}, "egypt": {},

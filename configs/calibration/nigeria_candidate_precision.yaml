@@ -1,6 +1,6 @@
 aoi: nigeria
 status: interim-mapped-only
-derived: '2026-09-23'
+derived: '2026-11-19'
 min_distance_m: 100.0
 false_floor: 0.087
 false_n: 69
@@ -20,7 +20,7 @@ bin_edges_m2:
 - 50000.0
 bins:
 - label: <100
-  n_candidates: 214
+  n_candidates: 87
   n_mapped: 0
   mapped_frac: 0.0
   sensitivity: 0.025
@@ -40,11 +40,11 @@ bins:
   recall_source: none
   p_real: 0.0
   p_real_lo: 0.0
-  p_real_hi: 0.0091
+  p_real_hi: 0.022
 - label: 100-500
-  n_candidates: 1285
-  n_mapped: 8
-  mapped_frac: 0.0062
+  n_candidates: 668
+  n_mapped: 15
+  mapped_frac: 0.0225
   sensitivity: 0.088
   sensitivity_source: study
   sensitivity_study: 0.088
@@ -60,13 +60,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0062
-  p_real_lo: 0.0033
-  p_real_hi: 0.0107
+  p_real: 0.0225
+  p_real_lo: 0.0145
+  p_real_hi: 0.0335
 - label: 500-1k
-  n_candidates: 784
-  n_mapped: 2
-  mapped_frac: 0.0026
+  n_candidates: 514
+  n_mapped: 5
+  mapped_frac: 0.0097
   sensitivity: 0.162
   sensitivity_source: study
   sensitivity_study: 0.162
@@ -82,13 +82,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0026
-  p_real_lo: 0.0007
-  p_real_hi: 0.0071
+  p_real: 0.0097
+  p_real_lo: 0.0045
+  p_real_hi: 0.0191
 - label: 1k-5k
-  n_candidates: 1495
-  n_mapped: 6
-  mapped_frac: 0.004
+  n_candidates: 1538
+  n_mapped: 16
+  mapped_frac: 0.0104
   sensitivity: 0.306
   sensitivity_source: study
   sensitivity_study: 0.306
@@ -104,13 +104,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.004
-  p_real_lo: 0.002
-  p_real_hi: 0.0075
+  p_real: 0.0104
+  p_real_lo: 0.0068
+  p_real_hi: 0.0154
 - label: 5k-50k
-  n_candidates: 790
+  n_candidates: 945
   n_mapped: 15
-  mapped_frac: 0.019
+  mapped_frac: 0.0159
   sensitivity: 0.293
   sensitivity_source: study
   sensitivity_study: 0.293
@@ -126,13 +126,13 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.019
-  p_real_lo: 0.0123
-  p_real_hi: 0.0284
+  p_real: 0.0159
+  p_real_lo: 0.0103
+  p_real_hi: 0.0237
 - label: '>50k'
-  n_candidates: 255
+  n_candidates: 142
   n_mapped: 4
-  mapped_frac: 0.0157
+  mapped_frac: 0.0282
   sensitivity: 0.261
   sensitivity_source: study
   sensitivity_study: 0.261
@@ -148,9 +148,9 @@ bins:
   recall_matched: 0
   recall: null
   recall_source: none
-  p_real: 0.0157
-  p_real_lo: 0.0068
-  p_real_hi: 0.0331
+  p_real: 0.0282
+  p_real_lo: 0.0121
+  p_real_hi: 0.059
 provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from manual
   review of unmapped candidates where sampled (n>=20), else glint inversion p_u(b)
   = clip((v_b - f)/(S_b - f), 0, 1). S from the 500-target study on OSM-confirmed
@@ -168,7 +168,7 @@ provenance: 'p_real(b) = mapped_frac(b) + (1-mapped_frac(b)) * p_u(b); p_u from 
 placement_bins:
   rooftop:
   - label: <100
-    n_candidates: 19
+    n_candidates: 1
     n_mapped: 0
     mapped_frac: 0.0
     p_unmapped: 0.0
@@ -181,74 +181,74 @@ placement_bins:
     recall: null
     recall_source: none
     sensitivity: 0.025
-    p_real_lo: 0.0001
-    p_real_hi: 0.093
+    p_real_lo: 0.0012
+    p_real_hi: 0.7724
   - label: 100-500
-    n_candidates: 150
-    n_mapped: 7
-    mapped_frac: 0.0467
+    n_candidates: 66
+    n_mapped: 11
+    mapped_frac: 0.1667
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.0467
+    p_real: 0.1667
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.088
-    p_real_lo: 0.0244
-    p_real_hi: 0.0796
+    p_real_lo: 0.1013
+    p_real_hi: 0.2465
   - label: 500-1k
-    n_candidates: 100
-    n_mapped: 2
-    mapped_frac: 0.02
+    n_candidates: 45
+    n_mapped: 4
+    mapped_frac: 0.0889
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.02
+    p_real: 0.0889
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.162
-    p_real_lo: 0.0059
-    p_real_hi: 0.0534
+    p_real_lo: 0.0387
+    p_real_hi: 0.1771
   - label: 1k-5k
-    n_candidates: 277
-    n_mapped: 4
-    mapped_frac: 0.0144
+    n_candidates: 139
+    n_mapped: 10
+    mapped_frac: 0.0719
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.0144
+    p_real: 0.0719
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.306
-    p_real_lo: 0.006
-    p_real_hi: 0.0309
+    p_real_lo: 0.042
+    p_real_hi: 0.1136
   - label: 5k-50k
-    n_candidates: 96
-    n_mapped: 1
-    mapped_frac: 0.0104
+    n_candidates: 62
+    n_mapped: 0
+    mapped_frac: 0.0
     p_unmapped: 0.0
     p_unmapped_source: inherited-from-pooled
     manual_n: 0
     manual_real: 0
-    p_real: 0.0104
+    p_real: 0.0
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.293
-    p_real_lo: 0.0017
-    p_real_hi: 0.0402
+    p_real_lo: 0.0
+    p_real_hi: 0.031
   - label: '>50k'
-    n_candidates: 6
+    n_candidates: 0
     n_mapped: 0
     mapped_frac: 0.0
     p_unmapped: 0.0
@@ -261,11 +261,11 @@ placement_bins:
     recall: null
     recall_source: none
     sensitivity: 0.261
-    p_real_lo: 0.0003
-    p_real_hi: 0.2691
+    p_real_lo: 0.0
+    p_real_hi: 0.0
   ground:
   - label: <100
-    n_candidates: 195
+    n_candidates: 86
     n_mapped: 0
     mapped_frac: 0.0
     p_unmapped: 0.0
@@ -279,102 +279,90 @@ placement_bins:
     recall_source: none
     sensitivity: 0.025
     p_real_lo: 0.0
-    p_real_hi: 0.0096
+    p_real_hi: 0.0216
   - label: 100-500
-    n_candidates: 1135
-    n_mapped: 0
-    mapped_frac: 0.0
+    n_candidates: 602
+    n_mapped: 3
+    mapped_frac: 0.005
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0
+    p_real: 0.005
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.088
-    p_real_lo: 0.0
-    p_real_hi: 0.0017
+    p_real_lo: 0.0018
+    p_real_hi: 0.0113
   - label: 500-1k
-    n_candidates: 684
-    n_mapped: 0
-    mapped_frac: 0.0
+    n_candidates: 469
+    n_mapped: 1
+    mapped_frac: 0.0021
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0
+    p_real: 0.0021
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.162
-    p_real_lo: 0.0
-    p_real_hi: 0.0027
+    p_real_lo: 0.0004
+    p_real_hi: 0.0084
   - label: 1k-5k
-    n_candidates: 1218
-    n_mapped: 2
-    mapped_frac: 0.0016
+    n_candidates: 1399
+    n_mapped: 4
+    mapped_frac: 0.0029
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0016
+    p_real: 0.0029
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.306
-    p_real_lo: 0.0005
-    p_real_hi: 0.0046
+    p_real_lo: 0.0012
+    p_real_hi: 0.0061
   - label: 5k-50k
-    n_candidates: 694
-    n_mapped: 13
-    mapped_frac: 0.0187
+    n_candidates: 883
+    n_mapped: 12
+    mapped_frac: 0.0136
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0187
+    p_real: 0.0136
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.293
-    p_real_lo: 0.0115
-    p_real_hi: 0.0285
+    p_real_lo: 0.0082
+    p_real_hi: 0.021
   - label: '>50k'
-    n_candidates: 249
+    n_candidates: 142
     n_mapped: 4
-    mapped_frac: 0.0161
+    mapped_frac: 0.0282
     p_unmapped: 0.0
     p_unmapped_source: interim-mapped-only-by-placement
     manual_n: 0
     manual_real: 0
-    p_real: 0.0161
+    p_real: 0.0282
     recall_n: 0
     recall_matched: 0
     recall: null
     recall_source: none
     sensitivity: 0.261
-    p_real_lo: 0.0069
-    p_real_hi: 0.0335
-oversize_review:
-  derived: '2026-11-04'
-  reviewer: owner, 2026-11-03, every queued outline on the disk review page
-  review_csv: results/nigeria_oversize_review/review.csv
-  population: model-drawn outlines above max_candidate_m2 with no mapped solar within
-    min_distance_m of them (export.new_lead_mask)
-  max_candidate_m2: 100000.0
-  min_distance_m: 100.0
-  mapped_reference: data/labels/nigeria_overpass_solar.parquet
-  n_outlines: 226
-  n_judged: 226
-  n_pv: 1
+    p_real_lo: 0.0119
+    p_real_hi: 0.0582
 lead_review:
-  derived: '2026-11-10'
-  reviewer: owner, 2026-11-10, every queued lead on the large installation review
+  derived: '2026-11-19'
+  reviewer: owner, 2026-11-19, every queued lead on the large installation review
     page
   review_csv: results/nigeria_large_review/review.csv
   population: model-drawn new leads from min_area_m2 up to max_candidate_m2 with no
@@ -387,8 +375,8 @@ lead_review:
   min_area_m2: 10000.0
   max_candidate_m2: 100000.0
   min_distance_m: 100.0
-  mapped_reference: data/labels/nigeria_overpass_solar.parquet
-  n_outlines: 373
-  n_judged: 369
-  n_pv: 28
-  n_not_pv: 341
+  mapped_reference: data/labels/nigeria_overpass_solar_pull20261114.parquet
+  n_outlines: 524
+  n_judged: 513
+  n_pv: 18
+  n_not_pv: 495

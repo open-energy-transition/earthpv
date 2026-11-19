@@ -262,6 +262,17 @@ aois:
     division: { name: Nigeria, country: NG, subtype: country, iso3: NGA }
     grid_origin: [2.668, 4.24]
     compose_window: ["2025-11-01", "2026-03-15"]
+    # Nigeria v2 (2026-11-18): the holdout of the localized v45r run, chosen from the
+    # 2026-11-14 pull (`pick_val_region.py --labels`); v5, published before it, never read one.
+    # Val holdout = Lagos (geoBoundaries ADM1), 24 cells, chosen by
+    # scripts/pick_val_region.py from the label map before training: 31 of
+    # 289 dissolved >= 400 m2 positives (10.7%); the largest
+    # region (Abuja Federal Capital Territory, 105) is never the holdout.
+    val_tiles: [
+      "0000_0021", "0001_0021", "0002_0022", "0003_0022", "0004_0022", "0005_0022", "0005_0023", "0006_0022",
+      "0006_0023", "0007_0022", "0007_0023", "0008_0022", "0008_0023", "0009_0022", "0009_0023", "0010_0022",
+      "0010_0023", "0011_0022", "0012_0022", "0012_0023", "0013_0022", "0013_0023", "0015_0021", "0016_0021",
+    ]
 
   # Vietnam (registered 2026-09-23, owner request: national run + localized retrain).
   # bbox = geoBoundaries ADM1 union floored/ceiled to 0.1 deg, EXCEPT the east edge, cut
