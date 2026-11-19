@@ -13,8 +13,8 @@ Interactive: [Italy under Countries](../atlas-italy.md).
 | | |
 | --- | --- |
 | Verified | **12,175.7 MWp** (90% 8,653 to 17,396) |
-| Best estimate | **13,880.6 MWp** (90% 11,653 to 18,433) |
-| Generation | 20.6 TWh/yr from Best (90% 17.3 to 27.4), 1,486 kWh/kWp |
+| Best estimate | **19,972.6 MWp** (90% 16,017 to 25,645) |
+| Generation | 29.6 TWh/yr from Best (90% 23.7 to 38.0), 1,481 kWh/kWp |
 | Grid | 3,193 imaged cells of 0.1&deg;, of the 3,551 that cover the country; 5 macro-regions (geoBoundaries ADM1) |
 | Imagery | Sentinel-2 L2A, May to September 2026, median scene 2 August |
 | Model | `v34_combined_italy`, the average of epochs 21 and 29, at threshold 0.7, localized (see below) |
@@ -25,11 +25,12 @@ Interactive: [Italy under Countries](../atlas-italy.md).
     (`--recall-reference none`). The energy services operator, GSE, counts **43,687 MW** of
     panels in operation at the end of 2025
     ([Rapporto Statistico 2025](https://www.gse.it/documenti_site/Documenti%20GSE/Rapporti%20statistici/Solare%20Fotovoltaico%20-%20Rapporto%20Statistico%202025.pdf)),
-    so Best is about 32% of the fleet. Two thirds of that fleet (29,391 MW) is on buildings,
-    greenhouses and canopies, and the model outlines almost none of it: Best is 704 MWp
-    rooftop and 13,176 MWp ground. GSE's ground-mounted part, **14,296 MW**, is the figure
-    this page is close to. Read it as a map of Italy's ground-mounted solar and of what is
-    mapped. Panels imported directly from China, 17.4 GW from January 2017 to August 2026
+    so Best is about 46% of the fleet. Two thirds of that fleet (29,391 MW) is on buildings,
+    greenhouses and canopies, and the model outlines little of it: Best is 1,612 MWp rooftop
+    (908 MWp more since the large roof leads were judged) and 18,360 MWp ground. GSE's
+    ground-mounted part, **14,296 MW**, is the figure to read this page against: Best's
+    ground-mount is 128% of it. Read it as a map of Italy's ground-mounted solar and of what
+    is mapped. Panels imported directly from China, 17.4 GW from January 2017 to August 2026
     ([Ember](https://ember-energy.org/data/china-solar-exports-data/)), are well below the
     fleet: Italy built 19.3 GW before 2017 and buys much of the rest through other EU ports, so
     the page does not call that a ceiling.
@@ -42,17 +43,20 @@ region's ground-mounted share, which the last column applies, rounded as GSE pri
 
 | Macro-region | Verified (MWp) | Best (MWp) | GSE, end of 2025 (MW) | GSE ground-mounted (MW, approx.) | Best as a share of GSE ground |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Sud | 3,789.3 | 4,156.6 | 9,115 | 4,056 | 102% |
-| Centro | 3,058.9 | 3,234.7 | 8,326 | 3,713 | 87% |
-| Isole | 2,054.5 | 2,360.3 | 5,783 | 3,139 | 75% |
-| Nord-Est | 1,777.3 | 2,221.7 | 10,769 | 1,988 | 112% |
-| Nord-Ovest | 1,270.7 | 1,632.2 | 9,695 | 1,353 | 121% |
+| Sud | 3,789.3 | 5,590.6 | 9,115 | 4,056 | 138% |
+| Centro | 3,058.9 | 4,350.8 | 8,326 | 3,713 | 117% |
+| Isole | 2,054.5 | 3,723.9 | 5,783 | 3,139 | 119% |
+| Nord-Est | 1,777.3 | 3,286.9 | 10,769 | 1,988 | 165% |
+| Nord-Ovest | 1,270.7 | 2,641.9 | 9,695 | 1,353 | 195% |
 
 Against GSE's totals the ranking runs backwards (Spearman's rho -0.5 on the page): the
 north, where 82 to 86% of capacity is on buildings, leads GSE's table and trails this one.
-Against the ground-mounted part the order is the same in all five, and Best is within a
-quarter of it in each. Best also carries 704 MWp of rooftop, most of it hand-mapped, so the
-ground comparison flatters it slightly in the north. None of these figures is ground truth
+Against the ground-mounted part the order is the same in all five, and Best lies above it
+in each, by 17% (Centro) to 95% (Nord-Ovest), since the 297 parks judged on 18 November and
+the 2,978 large installations judged solar on 19 November (below) count; it was 75% to 121%
+before them. GSE's figures end in December 2025 and the imagery runs to September 2026.
+Best also carries 1,612 MWp of rooftop, hand-mapped or judged on the review page, which
+weighs most against the ground figure in the north. None of these figures is ground truth
 for this map.
 
 ## Localizing the detector
@@ -77,20 +81,22 @@ general one needed threshold 0.98 to match its precision.
 ## Plausibility gate
 
 `earthpv check-density` compares each region's ground-mounted capacity with its rooftop
-capacity. All five fail:
+capacity. Four fail and Nord-Ovest is suspect:
 
 | Macro-region | Rooftop (MWp) | Ground (MWp) | Ratio | Status |
 | --- | ---: | ---: | ---: | --- |
-| Sud | 19.7 | 2,419.0 | 122.6 | fail |
-| Isole | 12.0 | 1,248.9 | 104.2 | fail |
-| Centro | 18.6 | 1,594.1 | 85.9 | fail |
-| Nord-Est | 46.8 | 1,374.5 | 29.4 | fail |
-| Nord-Ovest | 50.1 | 980.6 | 19.6 | fail |
+| Sud | 117.7 | 3,287.7 | 27.9 | fail |
+| Centro | 109.4 | 2,364.4 | 21.6 | fail |
+| Isole | 88.9 | 2,341.0 | 26.3 | fail |
+| Nord-Est | 339.6 | 1,944.5 | 5.7 | fail |
+| Nord-Ovest | 330.5 | 1,504.3 | 4.6 | suspect |
 
 The same pattern as [France](france.md) and the [Netherlands](netherlands.md): the model
-sees almost no rooftop arrays, so the denominator is tiny. Whether its ground outlines are
-themselves right has **not been checked by eye in Italy**; the agreement with GSE's
-ground-mounted figures above is the only check so far.
+sees few rooftop arrays, so the denominator is small. The roof leads judged solar on
+19 November raised it from 147 to 986 MWp, which took Nord-Ovest from fail to suspect (all
+five failed before). Whether the model's ground outlines are themselves right has been
+checked by eye for the unmapped outlines of 1 ha and up that the lead screens put on the
+two review pages (below); below 1 ha, the agreement with GSE's ground-mounted figures above is the only check so far.
 
 ## What is counted
 
@@ -98,13 +104,21 @@ ground-mounted figures above is the only check so far.
   11,292 rooftop and 3,016 unknown; after the solar thermal filter and the dissolve 27,703
   remain, 9,340 of them 400 m&sup2; and up holding 12,040.9 MWp. Verified is all mapped
   capacity.
-- **Model:** 18,644 candidates. Best adds 1,704.9 MWp over Verified. 405 outlines above the
-  100,000 m&sup2; merge cap (19.1% of candidate area, the largest 1.27 km&sup2;) are excluded
-  from capacity until judged; 307 OSM-verified oversize candidates (70.73 km&sup2;) are
+- **Model:** 18,644 candidates. Best adds 7,796.9 MWp over Verified. Of the 405 outlines
+  above the 100,000 m&sup2; merge cap (19.1% of candidate area), the 297 judged solar count
+  whole; the other 108 (5.4%, the largest 1.13 km&sup2;) stay out of capacity, 79 judged not
+  solar, 1 left unsure and 28 never on the review page (near mapped solar, or left out by
+  the lead screens). 307 OSM-verified oversize candidates (70.73 km&sup2;) are
   exempt. 79 priced candidates, 9.4 MWp, lie beyond the border in cells kept whole.
-- **Waiting for a person:** 377 outlines above the cap (76.9 km&sup2;) on the solar farm
-  review and 4,586 leads from 1 ha up to the cap on the large installation review. None is
-  judged yet, so none counts.
+- **Judged by a person** (the owner, on the two disk review pages). On 18 November, 376 of
+  the 377 outlines above the cap (76.9 km&sup2;): **297 are parks**, 58.8 km&sup2;, and
+  each counts whole as ground; 79 are not (one a bright roof), and 1 left unsure stays out
+  and stays on the page. On 19 November, 4,416 of the 4,586 leads from 1 ha up to the cap
+  (129.1 km&sup2;): **2,978 solar** (86.2 km&sup2; of outline, 78.4 km&sup2; credited,
+  roofs at 1/2.5) and 1,438 not (39.2 km&sup2;, 29 of them bright roofs), which now count
+  nothing; 170 left unsure keep their size bin's price. Roof leads were mostly solar (680 of
+  754), leads beside buildings mostly so (1,666 of 2,339), leads on open ground about half
+  (632 of 1,323); by macro-region the solar share ran from 59% (Isole) to 75% (Nord-Ovest).
 - **Solar thermal:** 488 of the 28,188 features were thermal and left the PV count. Three
   plants tagged as solar thermal with electric output count 2.1 MW, priced from their site
   area since none states a capacity; one in central Sardinia is probably Ottana's Fresnel
@@ -118,8 +132,9 @@ ground-mounted figures above is the only check so far.
 **A rooftop instrument.** Areas mapped panel by panel would start a small-installation half,
 and two thirds of Italy's capacity is on buildings.
 
-**The reviews.** 377 outlines above the cap and 4,586 large leads wait on the review pages;
-judging them, or mapping the parks in OpenStreetMap, is the cheapest capacity to verify.
+**The installations judged solar, mapped.** Mapping the 297 parks and 2,978 large
+installations the reviews admitted in OpenStreetMap would move them from Best into
+Verified; 170 large leads and one blob left unsure wait on the review pages.
 
 **The steps still owed.** Look at a sample of the model's unmapped ground outlines on
 high-resolution imagery, publish the mapping leads, and propose calibration areas.

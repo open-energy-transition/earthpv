@@ -807,6 +807,26 @@ reviewed. Five of the seven were republished the same day; the Netherlands (3,92
 pans the model reads as ground PV, so Best fell from 530.2 to 512.3 MWp, the first country
 the review lowered.
 
+**Texas, California and Italy, 2026-11-18.** The owner judged both pages for the two states
+and Italy's solar farm page. Blobs: Texas 841 of 845 (51 parks, 122.9 km<sup>2</sup>; the
+rest fields and bare ground), California all 124 (70 parks, 79.5 km<sup>2</sup>), Italy 376
+of 377 (297 parks, 58.8 km<sup>2</sup>). Large leads: Texas 842 of 875 (83 solar), California
+1,148 of 1,176 (823 solar). Where a public plant inventory exists the verdicts agree with it
+without having seen it: 19 of the 21 Texas blobs and 28 of the 29 Californian ones within
+500 m of an EIA-860M solar plant were judged parks, against 32 of 824 and 42 of 95 elsewhere.
+Roof leads split by place: California's were solar (86 of 98), as in Europe, Texas's were not
+(37 of 180, with 95 of the rest bright roofs, 159 bright roofs in all). Verified moves
+nowhere; Best: Texas 46,206.4 to 52,249.8 MWp, California 27,553.6 to 32,198.9, Italy
+13,880.6 to 16,821.2. Texas's Best is now 1.16 times EIA's utility-scale fleet in DC terms
+and Italy's ground-mount 113% of GSE's ground-mounted figure: 17 Texan parks (42.4
+km<sup>2</sup>) lie more than 5 km from any EIA plant, like the 168 km<sup>2</sup> of mapped
+outlines EIA lacks, and GSE's figures end in December 2025. With the verdicts not yet
+applied, the same inputs rebuilt all three published pages exactly. Italy's large page
+followed on 19 November: 4,416 of 4,586 leads judged, 2,978 solar (680 of 754 roof leads,
+1,666 of 2,339 beside buildings, 632 of 1,323 on open ground). Italy's Best rose to 19,972.6
+MWp and its rooftop from 704 to 1,612 MWp; its ground-mount is now 128% of GSE's
+ground-mounted figure, and Best exceeds that figure in every macro-region, by 17 to 95%.
+
 **How much of a lead file to check** (`scripts/lead_share.py`, `results/lead_share/`). Where a
 reference exists, the real installations sit at the top of the ranked file: the top third
 held 69% of the leads mapped since in Pakistan (385 of v3's 4,435 leads of 2026-07-16) and 87%

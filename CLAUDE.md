@@ -1075,10 +1075,10 @@ Published atlases (each page's `totals` match these; queue counts for the review
 | Portugal | `v30_combined_portugal` ep 19 | 5,830.5 / 6,193.6 | Azores and Madeira in |
 | Netherlands | `v5_combined_france` ep 25 at 0.98 | 3,708.6 / 4,567.3 | v32 lost on recall; recall not corrected |
 | Luxembourg | `v33_combined_luxembourg` ep 21 | 25.4 / 40.5 | 8.3 of the model's 21.3 MWp lies beyond the border |
-| Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 13,880.6 | a map of the ground-mounted fleet |
+| Italy | `v34_combined_italy` avg ep 21+29 at 0.7 | 12,175.7 / 19,972.6 | a map of the ground-mounted fleet |
 | Denmark | `v37_combined_denmark` ep 28 at 0.95 | 2,639.9 / 2,695.1 | thin Nordjylland holdout |
-| Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 46,206.4 | state AOI, counties as regions |
-| California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 27,553.6 | state AOI; small-scale PV unmeasured |
+| Texas | `v39_combined_texas` ep 36 at 0.3 | 45,712.0 / 52,249.8 | state AOI, counties as regions |
+| California | `v38_combined_california` avg ep 32+40 at 0.95 | 27,118.1 / 32,198.9 | state AOI; small-scale PV unmeasured |
 
 Country points still in force (write-ups in `docs/results/<country>.md`):
 - **India**: Verified is almost all ground perimeters; Best counts the parks above the cap that
@@ -1127,10 +1127,11 @@ Country points still in force (write-ups in `docs/results/<country>.md`):
   `plant:output:electricity=yes` and counts 1.7 MW CSP, probably mis-tagged.
 - **Texas / California**: compared with EIA (Electric Power Monthly and EIA-860M by county,
   `data/external/eia/`, `official_capacity.eia860m_state`, which matches county names case-blind)
-  at about 1.27-1.29x panel over inverter. California's unjudged blobs sit near EIA plants, so
-  judging them is the largest gain there. Overpass refused Texas's CSP area scan;
-  `solar_thermal_plants.py --pbf` read the Geofabrik extract. No Ember line (customs data are
-  national).
+  at about 1.27-1.29x panel over inverter. Both review pages judged (owner, 2026-11-18): an
+  EIA plant within 500 m predicts a park verdict (Texas 19 of 21 blobs, California 28 of 29),
+  and Texas's roof leads are mostly not PV (37 of 180 solar; 95 of the rest bright roofs).
+  Overpass refused Texas's CSP area scan; `solar_thermal_plants.py --pbf` read the Geofabrik
+  extract. No Ember line (customs data are national).
 - **Poland**: compose snaps the grid to the country's own lower-left, so the ground screen and
   `pick_val_region.py` use `density._grid_origin`, never the raw `grid_origin`.
 

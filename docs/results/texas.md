@@ -15,8 +15,8 @@ Interactive: [Texas under Countries](../atlas-texas.md).
 | | |
 | --- | --- |
 | Verified | **45,712.0 MWp** (90% 31,832 to 66,151) |
-| Best estimate | **46,206.4 MWp** (90% 41,310 to 66,432) |
-| Generation | 72.2 TWh/yr from Best (90% 64.6 to 103.8), 1,563 kWh/kWp |
+| Best estimate | **52,249.8 MWp** (90% 45,528 to 68,524) |
+| Generation | 81.0 TWh/yr from Best (90% 70.6 to 106.2), 1,551 kWh/kWp |
 | Grid | 1,863 imaged cells of 0.1&deg;, of the 6,077 that cover the state; 239 of its 254 counties hold an imaged cell |
 | Imagery | Sentinel-2 L2A, May to September 2026, median scene 7 August |
 | Model | `v39_combined_texas` epoch 36 at threshold 0.3, localized (see below) |
@@ -24,7 +24,7 @@ Interactive: [Texas under Countries](../atlas-texas.md).
 !!! warning "A map of the parks, in panel capacity"
     Texas has **no calibration quadrats**, so there is no `roofclf` half and no instrument
     below the 400 m&sup2; segmentation floor, and recall was not corrected
-    (`--recall-reference none`). Best is 46,074.5 MWp ground and 132.0 MWp rooftop: the
+    (`--recall-reference none`). Best is 52,053.3 MWp ground and 196.5 MWp rooftop: the
     rooftop systems the U.S. Energy Information Administration estimates at **3,529.6 MW**
     are almost all missing. EIA counts **37,200.5 MW** of solar PV in Texas at the end of
     August 2026, 33,670.9 MW of it utility-scale
@@ -34,13 +34,14 @@ Interactive: [Texas under Countries](../atlas-texas.md).
     ([EIA-860M](https://www.eia.gov/electricity/data/eia860m/)). Those are **inverter (AC)**
     figures; this page counts **panels (DC)**, and where EIA-860M reports both, Texas's plants
     carry 1.29 times as much panel as inverter capacity, about 45 GW DC for the utility-scale
-    fleet. Read Best's 124% of EIA's total with that in mind.
+    fleet. Read Best's 140% of EIA's total with that in mind, and with the parks EIA does not
+    list (below).
 
 The page compares the state total with both EIA figures, and the counties with EIA-860M's
 utility-scale plants summed by county (101 counties; Yoakum County's 300 MW lies in a cell
 that was not imaged). Over those 101 counties Best and EIA rank the counties at Spearman
-0.74, and Best is 0.7 to 1.5 times EIA's AC figure in most of the counties with the most
-capacity, about one in DC terms. None of these figures is ground truth for this map. Ember's
+0.78, and Best is 0.9 to 1.8 times EIA's AC figure in the ten counties with the most
+capacity, 0.7 to 1.4 in DC terms. None of these figures is ground truth for this map. Ember's
 customs data are national, so this page has no import ceiling.
 
 ## Localizing the detector
@@ -86,12 +87,14 @@ that no other atlas can check this way:
 
 ## Plausibility gate
 
-`earthpv check-density` fails 63 counties and flags 133 as suspect of the 239 on the page,
+`earthpv check-density` fails 71 counties and flags 104 as suspect of the 239 on the page,
 all on the ground-mounted to rooftop ratio and the share of one cell. The same pattern as
 [Denmark](denmark.md) and [Italy](italy.md): the model sees almost no rooftop arrays, so the
 denominator is tiny, and a county with one large park has most of its capacity in one cell.
-Whether the model's ground outlines are themselves right has **not been checked by eye in
-Texas**; the EIA comparison above is the check so far.
+The review of 18 November added eight such fails (63 before), each a park judged solar that
+now holds most of its county. The model's unmapped outlines of 1 ha and up have now been
+judged by eye (below); the smaller ones have not, and the EIA comparison above is their
+only check.
 
 ## What is counted
 
@@ -100,15 +103,23 @@ Texas**; the EIA comparison above is the check so far.
   are 400 m&sup2; and up and hold 45,651.3 MWp. Verified is all mapped capacity, almost all
   of it the 1,016 ground outlines (912 km&sup2;).
 - **Model:** 7,560 candidates; none lies inside a mapped solar-thermal outline. Best adds
-  494.4 MWp over Verified: in 217 cells the model's priced figure fell below the mapped
-  capacity and Best is floored at Verified. 1,109 outlines above the 100,000 m&sup2; merge
-  cap (52.4% of candidate area, the largest 15.6 km&sup2;) are excluded from capacity until
-  judged; 196 OSM-verified oversize candidates (842.3 km&sup2;) are exempt. 99 priced
-  candidates, 94.9 MWp, lie beyond the state's outline in cells kept whole.
-- **Waiting for a person:** 845 outlines above the cap (701.1 km&sup2;) on the solar farm
-  review and 875 leads from 1 ha up to the cap (29.3 km&sup2;) on the large installation
-  review. None is judged yet. Only 20 EIA-860M plants that OSM lacks (2.9 GW AC) lie within
-  500 m of one of the blobs, so most of the 701 km&sup2; is probably not solar.
+  6,537.8 MWp over Verified: in 219 cells the model's priced figure fell below the mapped
+  capacity and Best is floored at Verified. Of the 1,109 outlines above the 100,000 m&sup2;
+  merge cap (52.4% of candidate area), the 51 judged solar count whole; the other 1,058
+  (45.9%, the largest 15.6 km&sup2;) stay out of capacity, 790 judged not solar, 4 left
+  unsure and 264 never on the review page (near mapped solar, or left out by the lead
+  screens). 196 OSM-verified oversize candidates (842.3 km&sup2;) are exempt. 99 priced candidates,
+  94.9 MWp, lie beyond the state's outline in cells kept whole.
+- **Judged by a person** (the owner, 18 November 2026, on the two disk review pages):
+  841 of the 845 outlines above the cap (701.1 km&sup2;). **51 are parks**, 122.9
+  km&sup2;, and each counts whole as ground; 790 are not (fields, bare ground; 2 bright
+  roofs), and 4 left unsure stay out and stay on the page. Of the 875 leads from 1 ha up to
+  the cap, 842 are judged: 83 solar (2.59 km&sup2; of outline, 2.01 km&sup2; credited, roofs
+  at 1/2.5) and 759 not (26.2 km&sup2;, 159 of them bright roofs), which now count nothing;
+  33 left unsure keep their size bin's price. Against EIA-860M, 19 of the 21 blobs within
+  500 m of a solar plant were judged parks, against 32 of the 824 elsewhere; 17 of the
+  parks (42.4 km&sup2;, about 2.1 GWp) lie more than 5 km from any plant EIA lists, like
+  the mapped outlines EIA lacks (above).
 - **Mapping leads:** 2,963 leads and the blob file, in release `pv-new-leads-2026-11-02`,
   linked from the page's Downloads.
 - **Solar thermal:** none counted. EIA lists no solar thermal capacity in Texas, the OSM scan
@@ -121,8 +132,9 @@ Texas**; the EIA comparison above is the check so far.
 
 ## What Texas needs next
 
-**The reviews.** 845 outlines above the cap and 875 large leads wait on the review pages; a
-judged park enters Best, and most of the blobs are probably fields or bare ground.
+**The parks judged solar, mapped.** Mapping the 51 parks the review admitted in
+OpenStreetMap would move them from Best into Verified; 4 blobs and 33 large leads were left
+unsure and wait on the review pages.
 
 **A rooftop instrument.** Areas mapped panel by panel would start a small-installation half
 for the 3.5 GW EIA estimates on rooftops.
